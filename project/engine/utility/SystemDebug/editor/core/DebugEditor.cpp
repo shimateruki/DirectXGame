@@ -52,7 +52,6 @@
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
-#include "BuiltInCreatePresetRegistry.h"
 #include "EditorCommandRegistry.h"
 #include <unordered_map>
 #include <unordered_set>
@@ -430,9 +429,6 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
         DebugConsole::GetInstance()->AddLog("Asset Database: 起動時の差分索引を開始しました。");
     }
     PresetManager::GetInstance()->Initialize();
-    if (sceneManager_ && sceneManager_->GetCurrentScene()) {
-        BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
-    }
     PresetEditor::GetInstance()->Initialize();
     PresetEditor::GetInstance()->SetPlacePresetCallback([this](const std::string& presetName) {
         if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;

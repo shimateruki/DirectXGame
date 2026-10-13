@@ -1,27 +1,5 @@
 #include "SceneFactory.h"
-#include "game/scene/gameplay/GamePlayScene.h"
-#include "game/scene/select/GameSelectScene.h"
-#include "game/scene/title/TitleScene.h"
-#include "game/scene/settings/SettingsScene.h"
-#include"game/scene/gameover/GameOverScene.h"
-#include"game/scene/clear/GameClearScene.h"
-#include"game/scene/preview/PreviewScene.h"
-#include "game/scene/editor/SceneAssetEditorScene.h"
-#include "game/scene/tutorial/TutorialScene.h"
 #include <utility>
-
-// 文字列キーは SceneManager の遷移先と対応します。登録順はエディタの一覧表示にも使います。
-SceneFactory::SceneFactory() {
-    RegisterScene("TITLE", [] { return std::make_unique<TitleScene>(); });
-    RegisterScene("SETTING", [] { return std::make_unique<SettingsScene>(); });
-    RegisterScene("GAMEPLAY", [] { return std::make_unique<GamePlayScene>(); });
-    RegisterScene("SELECT", [] { return std::make_unique<GameSelectScene>(); });
-    RegisterScene("GAMEOVER", [] { return std::make_unique<GameOverScene>(); });
-    RegisterScene("GAMECLEAR", [] { return std::make_unique<GameClearScene>(); });
-    RegisterScene("PREVIEW", [] { return std::make_unique<PreviewScene>(); });
-    RegisterScene("TUTORIAL", [] { return std::make_unique<TutorialScene>(); });
-    RegisterScene("SCENE_EDITOR", [] { return std::make_unique<SceneAssetEditorScene>(); });
-}
 
 std::unique_ptr<BaseScene> SceneFactory::CreateScene(const std::string& sceneName) {
     // 未登録キーを別のシーンへ置き換えず、呼び出し側に失敗を返す。

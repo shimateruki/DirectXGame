@@ -30,9 +30,15 @@ const std::vector<int>& Keys() {
 
 EditorToolSettings& EditorToolSettings::Get() { static EditorToolSettings value; return value; }
 void EditorToolSettings::Clear() {
+    // 登録を捨てる前に、一時非表示にした表示設定とコマンド所有権を元へ戻す。
     RestoreHidden();
     EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
-    tools_.clear(); visibility_.clear(); ownedVisibility_.clear(); open_ = false; status_.clear(); saved_.clear();
+    tools_.clear();
+    visibility_.clear();
+    ownedVisibility_.clear();
+    open_ = false;
+    status_.clear();
+    saved_.clear();
 }
 
 void EditorToolSettings::AddTool(const std::string& id, const std::string& name,
@@ -71,6 +77,7 @@ std::string EditorToolSettings::Conflict(const Tool& tool) const {
         tool.key == DIK_Y || tool.key == DIK_P || tool.key == DIK_K ||
         (tool.key >= DIK_1 && tool.key <= DIK_9))) || (tool.alt && tool.key == DIK_F4))
         return "既存操作の予約キー（割当不可）";
+    // 他のツールとキー・修飾キーが完全一致する割当も拒否する。
     for (const Tool& other : tools_) {
         if (other.id != tool.id && other.key == tool.key && other.ctrl == tool.ctrl &&
             other.shift == tool.shift && other.alt == tool.alt) return "重複: " + other.name;
@@ -88,6 +95,7 @@ void EditorToolSettings::RefreshCommand(const Tool& tool) {
 }
 
 std::string EditorToolSettings::Snapshot() const {
+    // 一時非表示中は見た目のfalseではなく、隠す前の個別設定を保存する。
     nlohmann::json data;
     data["version"] = 1;
     for (const auto& tool : tools_) data["shortcuts"][tool.id] = {
@@ -98,6 +106,7 @@ std::string EditorToolSettings::Snapshot() const {
 
 void EditorToolSettings::Load() {
     try {
+        // 読込失敗時には既存設定を保持するため、まず複製した設定に検証結果を集める。
         std::ifstream file(kPath);
         if (!file) { saved_ = Snapshot(); status_ = "保存設定がないため、現在の設定を使用します。"; return; }
         const auto data = nlohmann::json::parse(file);
@@ -114,20 +123,24 @@ void EditorToolSettings::Load() {
         for (const auto& value : visibility_) flags.push_back(data.contains("visibility") && data["visibility"].contains(value.id)
             ? data["visibility"][value.id].get<bool>() : (hidden_ ? value.beforeHide : *value.value));
         // すべて検証した後にまとめて反映し、不正JSONで半端な状態を残しません。
-        RestoreHidden(); tools_ = std::move(next);
+        RestoreHidden();
+        tools_ = std::move(next);
         for (size_t i = 0; i < flags.size(); ++i) *visibility_[i].value = flags[i];
         for (const auto& tool : tools_) RefreshCommand(tool);
-        saved_ = Snapshot(); status_ = "設定を読み込みました。競合がある割当は発動しません。";
+        saved_ = Snapshot();
+        status_ = "設定を読み込みました。競合がある割当は発動しません。";
     } catch (const std::exception& e) { status_ = "読込失敗（現在の設定を維持）: " + std::string(e.what()); }
 }
 
 void EditorToolSettings::Save() {
+    // 予約キーと重複が残る設定はディスクへ保存しない。
     for (const auto& tool : tools_) if (!Conflict(tool).empty()) {
         status_ = "保存できません。予約キー・重複のある行を修正してください。"; return;
     }
     try {
         std::filesystem::create_directories(std::filesystem::path(kPath).parent_path());
         const auto contents = Snapshot();
+        // 一時ファイルを書き切ってから置換し、途中失敗で既存の設定を失わないようにする。
         const std::string temporary = std::string(kPath) + ".tmp";
         std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
         file << contents; file.close();
@@ -149,6 +162,7 @@ void EditorToolSettings::SetAllVisible(bool visible) {
 }
 
 void EditorToolSettings::HandleShortcuts(bool editing) {
+    // 文字入力・ポップアップ・マウス操作中のキーをツール起動へ横取りしない。
     const auto& io = ImGui::GetIO();
     if (!editing || open_ || io.WantTextInput || io.WantCaptureKeyboard || ImGui::IsAnyItemActive() ||
         ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) ||
@@ -182,6 +196,7 @@ void EditorToolSettings::DrawVisibilityMenu() {
     if (ImGui::MenuItem("すべてON")) SetAllVisible(true);
     if (ImGui::MenuItem("すべてOFF")) SetAllVisible(false);
     ImGui::Separator();
+    // 一時非表示は各項目の設定を記憶してから全て隠し、解除時に戻す。
     if (ImGui::MenuItem(hidden_ ? "一時非表示を元に戻す" : "下記の補助表示を一時的にすべて隠す")) {
         if (hidden_) RestoreHidden();
         else { for (auto& value : visibility_) { value.beforeHide = *value.value; *value.value = false; } hidden_ = true; }
@@ -204,6 +219,7 @@ void EditorToolSettings::DrawWindow() {
     ImGui::SetNextWindowSize(ImVec2(900, 610), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("エディター設定：ショートカット・補助表示", &open_)) { ImGui::End(); return; }
     ImGui::TextWrapped("ゲーム操作とは別の設定です。ショートカットは編集中のみ有効です。文字入力・ポップアップ・マウス操作中は発動しません。");
+    // 保存済みへの復元は現在の編集内容を捨てるため、確認Popupを通す。
     if (ImGui::Button("設定を保存")) Save();
     ImGui::SameLine();
     if (ImGui::Button("保存済みに戻す")) ImGui::OpenPopup("保存済み設定へ戻す確認");
@@ -217,6 +233,7 @@ void EditorToolSettings::DrawWindow() {
     ImGui::TextDisabled("保存先: %s", kPath);
     if (!status_.empty()) ImGui::TextWrapped("%s", status_.c_str());
     ImGui::InputText("対象を検索", filter_, sizeof(filter_));
+    // ショートカットの編集と、補助表示のON/OFFを別タブへ配置する。
     if (ImGui::BeginTabBar("EditorSettingsTabs")) {
         if (ImGui::BeginTabItem("エディターのショートカット")) {
             ImGui::TextWrapped("キーと修飾キーを選択してください。既存操作の予約キーと重複は発動・保存を禁止します。未設定で割当解除できます。");
@@ -226,6 +243,7 @@ void EditorToolSettings::DrawWindow() {
                 for (const char* name : {"Ctrl", "Shift", "Alt"}) ImGui::TableSetupColumn(name, ImGuiTableColumnFlags_WidthFixed, 45.0f);
                 ImGui::TableSetupColumn("状態", ImGuiTableColumnFlags_WidthStretch, 1.5f);
                 ImGui::TableSetupScrollFreeze(0,1); ImGui::TableHeadersRow();
+                // 変更時にコマンド側の表示ショートカットも更新する。
                 for (auto& tool : tools_) {
                     if (filter_[0] && tool.name.find(filter_) == std::string::npos && tool.category.find(filter_) == std::string::npos) continue;
                     ImGui::PushID(tool.id.c_str()); ImGui::TableNextRow(); ImGui::TableSetColumnIndex(0);

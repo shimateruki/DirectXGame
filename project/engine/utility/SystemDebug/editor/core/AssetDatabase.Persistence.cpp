@@ -38,6 +38,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
     result.record.importer = GetDefaultImporter(result.record.type);
     result.record.importSettings = GetDefaultImportSettings(result.record.type);
 
+    // 元ファイルの印を記録し、次回の永続索引が流用できるか判断する材料にします。
     std::error_code error;
     result.record.fileSize = fs::file_size(sourcePath, error);
     if (error) {
@@ -49,6 +50,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
     json metadata;
     bool metadataExists = fs::exists(metaPath, error);
     if (metadataExists) {
+        // 既存のImport設定は既定値より優先し、壊れた.metaは自動上書きしません。
         try {
             std::ifstream input(metaPath, std::ios::binary);
             if (!input.is_open()) {
@@ -78,6 +80,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
         }
     }
     else if (createMissingMeta) {
+        // 初回索引作成で許可された場合だけ新しいGUIDを発行します。
         result.record.guid = GenerateGuid();
         std::string writeError;
         if (!WriteMeta(result.record, &writeError)) {
@@ -95,6 +98,8 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
         return result;
     }
 
+    // 同一走査でGUIDが重複した場合、通常の索引更新では元.metaを保護します。
+    // 新規作成モードでだけ新GUIDを書き、既存参照との衝突を解消します。
     const auto owner = guidOwners.find(result.record.guid);
     if (!result.record.guid.empty() && owner != guidOwners.end()) {
         if (!createMissingMeta) {
@@ -124,6 +129,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
         guidOwners[result.record.guid] = result.record.sourcePath;
     }
 
+    // GUID以外のMeta情報が古いときは、既存Import設定を残したまま形式だけ更新します。
     if (metadataExists) {
         const bool needsUpdate = metadata.value("version", 0) != kAssetMetaVersion ||
             metadata.value("source", std::string()) != result.record.sourcePath ||
@@ -161,6 +167,7 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
         ? record.importSettings
         : json::object();
 
+    // Metaファイルと同じ場所の一時ファイルを確定後に置き換えます。
     const fs::path metaPath = ResolveAbsolutePath(record.metaPath);
     fs::path temporaryPath = metaPath;
     temporaryPath += ".tmp";
@@ -191,6 +198,7 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
         }
     }
 
+    // Windows側で既存ファイルを置き換え、書き込み完了まで要求します。
     if (!MoveFileExW(
         temporaryPath.c_str(),
         metaPath.c_str(),
@@ -222,6 +230,7 @@ bool AssetDatabase::LoadPersistentIndexCache() {
             throw std::runtime_error("キャッシュファイルを開けません");
         }
 
+        // Cacheの版だけでなく対象ResourcesのRootも照合し、別プロジェクトの情報を使いません。
         json document;
         input >> document;
         if (!document.is_object() ||
@@ -233,6 +242,7 @@ bool AssetDatabase::LoadPersistentIndexCache() {
             throw std::runtime_error("キャッシュ形式または対象Resourcesが一致しません");
         }
 
+        // 全項目を一時Mapに検証してから採用し、途中で不正データが出たら一件も流用しません。
         std::unordered_map<std::string, PersistentAssetEntry> loadedAssets;
         loadedAssets.reserve(document["assets"].size());
         for (const json& item : document["assets"]) {
@@ -268,6 +278,7 @@ bool AssetDatabase::LoadPersistentIndexCache() {
                 throw std::runtime_error("Asset項目の必須情報が不正です");
             }
 
+            // 相対PathがResources外へ抜けないことと、Metaが元Assetに対応することを確認します。
             const fs::path sourceAbsolute = ResolveAbsolutePath(entry.record.sourcePath);
             fs::path expectedMetaAbsolute = sourceAbsolute;
             expectedMetaAbsolute += ".meta";
@@ -303,6 +314,7 @@ bool AssetDatabase::SavePersistentIndexCache() {
     fs::path temporaryPath = cachePath;
     temporaryPath += ".tmp";
 
+    // Mapの列挙順に依存しない安定したJSONを作り、差分と再現性を保ちます。
     std::vector<const PersistentAssetEntry*> sortedEntries;
     sortedEntries.reserve(persistentAssetsByPath_.size());
     for (const auto& pair : persistentAssetsByPath_) {
@@ -368,6 +380,7 @@ bool AssetDatabase::SavePersistentIndexCache() {
         }
     }
 
+    // Cacheも一時ファイルを完成させてから差し替え、途中失敗時は次回の全解析に任せます。
     if (!MoveFileExW(
         temporaryPath.c_str(),
         cachePath.c_str(),

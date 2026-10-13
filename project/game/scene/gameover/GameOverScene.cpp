@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameover/GameOverScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -43,6 +44,16 @@ constexpr float kMenuRevealDelay = 0.62f;
 constexpr const char* kFallingCrownSpritePrefix = "gameover_falling_crown_";
 constexpr const char* kDizzyStarSpritePrefix = "gameover_dizzy_star_";
 constexpr const char* kGameOverImpactCue = "game_over_impact_cue";
+
+bool TryResetLivesForExit() {
+    // タイトルでもリトライでも、残機の初期値が保存できるまで次のシーンへ進めない。
+    if (GameDataManager::GetInstance()->ResetLives()) {
+        return true;
+    }
+    ::MessageBoxW(nullptr, L"残機を保存できませんでした。保存先を確認して、もう一度選択してください。",
+                  L"セーブエラー", MB_OK | MB_ICONERROR);
+    return false;
+}
 
 float Clamp01(float value) {
     // 演出の前後を含む経過時間でも補間率を有効域に保つ。
@@ -274,7 +285,7 @@ void GameOverScene::Draw() {
         obj->Draw(pointLightRes, spotLightRes);
     }
 
-    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
+    DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
@@ -598,9 +609,9 @@ void GameOverScene::UpdateMenuInput() {
     }
 
     const bool up = inputManager_->IsKeyTriggered(DIK_UP) || inputManager_->IsKeyTriggered(DIK_W) ||
-                    inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
+                    inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP);
     const bool down = inputManager_->IsKeyTriggered(DIK_DOWN) || inputManager_->IsKeyTriggered(DIK_S) ||
-                      inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
+                      inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
 
     if (up) {
         ChangeSelection(-1);
@@ -622,7 +633,9 @@ void GameOverScene::StartRetryExit() {
         return;
     }
 
-    GameDataManager::GetInstance()->ResetLives();
+    if (!TryResetLivesForExit()) {
+        return;
+    }
     retryExitActive_ = true;
     retrySceneChangeRequested_ = false;
     retryExitTimer_ = 0.0f;
@@ -927,6 +940,9 @@ void GameOverScene::ConfirmSelection() {
         StartRetryExit();
         break;
     case MenuItem::Title:
+        if (!TryResetLivesForExit()) {
+            return;
+        }
         retrySceneChangeRequested_ = true;
         DebugConsole::GetInstance()->AddLog("[GameOver] Return title selected.");
         SceneManager::GetInstance()->ChangeSceneWithoutLoading("TITLE");

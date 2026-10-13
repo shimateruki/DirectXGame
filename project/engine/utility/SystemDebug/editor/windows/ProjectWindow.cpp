@@ -993,18 +993,20 @@ void ProjectWindow::Draw() {
 #ifdef USE_IMGUI
     AssetDatabase* assetDatabase = AssetDatabase::GetInstance();
 
-    // ---------------------------------------------------------
-    // ウィンドウ開始
-    // ---------------------------------------------------------
+    // Preset、Model、Prefab、VFXを一つのProjectウィンドウのタブで切り替える。
     ImGui::Begin("Project (Assets)");
 
-    if (!ImGui::BeginTabBar("ProjectAssetTabs")) { ImGui::End(); return; }
+    if (!ImGui::BeginTabBar("ProjectAssetTabs")) {
+        ImGui::End();
+        return;
+    }
     if (ImGui::BeginTabItem("プリセット")) {
         PresetEditor::GetInstance()->DrawLibrary(true);
         ImGui::EndTabItem();
     }
     if (ImGui::BeginTabItem("モデル")) {
         ImGui::SeparatorText("Asset Database");
+    // 初回索引中は進捗、完了後はAsset数・再解析数・エラー数を示す。
     const AssetDatabaseRefreshResult& databaseStatus = assetDatabase->GetLastRefreshResult();
     if (assetDatabase->IsInitialIndexBuildInProgress()) {
         if (assetDatabase->IsInitialDirectoryScanInProgress()) {
@@ -1038,6 +1040,7 @@ void ProjectWindow::Draw() {
             databaseStatus.createdMetaCount,
             databaseStatus.errorCount);
     }
+    // Asset索引とDDS変換が重なる間は、手動更新と追加の変換要求を無効にする。
     const DDSCacheBuildState ddsState = assetDatabase->GetDDSCacheBuildState();
     const bool ddsProcessBusy = ddsState == DDSCacheBuildState::Queued ||
         ddsState == DDSCacheBuildState::Running;
@@ -1086,9 +1089,7 @@ void ProjectWindow::Draw() {
         ImGui::TreePop();
     }
 
-    // =================================================================================
-    // 1. モデルファイル一覧 (Raw Models)
-    // =================================================================================
+    // Modelの実ファイルとディレクトリを、サムネイル付きの格子へ並べる。
     if (ImGui::CollapsingHeader("Models (Source)", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string baseDirectory = "Resources/3DModel/";
 
@@ -1110,6 +1111,7 @@ void ProjectWindow::Draw() {
         ImGui::TextDisabled("%s", currentModelDirectory_.c_str());
         ImGui::Separator();
 
+        // ディレクトリ内のAssetだけを表示し、下位フォルダーは個別の入口として描く。
         const std::vector<std::string> modelDirectories = assetDatabase->GetSubdirectories(currentModelDirectory_);
         const std::vector<const EditorAssetRecord*> directoryAssets =
             assetDatabase->GetAssetsInDirectory(currentModelDirectory_, false);
@@ -1136,6 +1138,7 @@ void ProjectWindow::Draw() {
                     [](const EditorAssetRecord* asset) {
                         return asset && asset->type == EditorAssetType::Model;
                     });
+                // 直下にModelを含むフォルダーは、フォルダー自体を配置可能なModelとして扱う。
                 const bool isModelFolder = modelAssetIterator != childAssets.end();
 
                 ImGui::TableNextColumn();
@@ -1198,6 +1201,7 @@ void ProjectWindow::Draw() {
                 }
             }
 
+            // 個別ModelはGUIDをDrag Payloadへ載せ、Sceneへ配置するときの参照を保つ。
             for (const EditorAssetRecord* asset : directoryAssets) {
                 if (!asset || asset->type != EditorAssetType::Model) {
                     continue;
@@ -1269,11 +1273,8 @@ void ProjectWindow::Draw() {
 
     ImGui::EndTabItem();
     }
-    // 既存の保存・上書き・内部キー変更などの操作は管理タブで引き続き利用できます。
+    // Presetの作成・上書き・名前変更など、内容を変更する操作は管理タブに置く。
     if (ImGui::BeginTabItem("管理")) {
-    // =================================================================================
-    // 2. プリセット一覧 (Presets)
-    // =================================================================================
     if (ImGui::CollapsingHeader("Presets (Configured)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_PLUS_SQUARE " Create New Preset");
@@ -1319,7 +1320,7 @@ void ProjectWindow::Draw() {
             ImGui::TextDisabled("(No Presets Saved)");
         }
         else {
-            // プリセットをフォルダ（スラッシュ区切り）で分類
+            // 名前の先頭のスラッシュ区切りを仮想フォルダーとして表示する。
             std::map<std::string, std::vector<std::string>> folders;
             std::vector<std::string> rootPresets;
 
@@ -1333,7 +1334,7 @@ void ProjectWindow::Draw() {
                 }
             }
 
-            // 描画用ヘルパーラムダ
+            // どのフォルダーでも同じサムネイルとコンテキスト操作を使う。
             auto DrawPresetGrid = [&](const std::vector<std::string>& list, const char* tableId) {
                 float thumbnailSize = 80.0f;
                 float padding = 16.0f;
@@ -1370,7 +1371,7 @@ void ProjectWindow::Draw() {
 
                         bool openRename = false; // リネーム画面を開くフラグ
 
-                        // コンテキストメニュー
+                        // 右クリックから上書き、Prefab化、サムネイル再生成、削除を行う。
                         if (ImGui::BeginPopupContextItem("PresetContextMenu")) {
                             if (ImGui::MenuItem(ICON_FA_EDIT " Rename")) {
                                 openRename = true; // 直接開かずフラグを立てる
@@ -1405,12 +1406,12 @@ void ProjectWindow::Draw() {
                             ImGui::EndPopup();
                         }
 
-                        // フラグが立ったらポップアップを開く
+                        // ImGuiのPopupはメニューを閉じた後に開くため、改名要求だけ保持する。
                         if (openRename) {
                             ImGui::OpenPopup("RenamePresetPopup");
                         }
 
-                        // 名前変更ポップアップの実処理
+                        // 名前変更後はサムネイルのキャッシュキーも新名称へ移す。
                         if (ImGui::BeginPopup("RenamePresetPopup")) {
                             static char renameBuf[64] = "";
 
@@ -1451,7 +1452,7 @@ void ProjectWindow::Draw() {
                 }
                 };
 
-            // フォルダごとの表示
+            // フォルダーごとに同じ描画ラムダを呼び、ルート直下だけ最後へ置く。
             for (const auto& [folderName, list] : folders) {
                 if (ImGui::TreeNodeEx(folderName.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                     DrawPresetGrid(list, folderName.c_str());
@@ -1469,10 +1470,7 @@ void ProjectWindow::Draw() {
         }
     }
 
-    // =================================================================================
-    // 3. パーティクル一覧 (GPU Particles)
-    // =================================================================================
-
+    // VFXのAsset一覧は別タブへ置き、Preset管理の操作と混ぜない。
         ImGui::Separator();
     ImGui::EndTabItem();
     }

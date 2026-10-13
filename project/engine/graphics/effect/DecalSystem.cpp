@@ -16,7 +16,7 @@ Vector3 SafeNormal(const Vector3& value) {
 }
 
 Quaternion BuildSurfaceQuaternion(const Vector3& normal, float rotationRadians) {
-    // The plane primitive faces local -Z. Build an orthonormal frame whose -Z follows the surface normal.
+    // Planeのローカル-Zを面法線へ合わせ、面上の回転も含む直交基底を作る。
     const Vector3 zAxis = -SafeNormal(normal);
     const Vector3 helper = std::abs(Math::Dot(zAxis, { 0.0f, 1.0f, 0.0f })) > 0.98f
         ? Vector3{ 1.0f, 0.0f, 0.0f }
@@ -24,6 +24,7 @@ Quaternion BuildSurfaceQuaternion(const Vector3& normal, float rotationRadians) 
     Vector3 xAxis = SafeNormal(Math::Cross(helper, zAxis));
     Vector3 yAxis = SafeNormal(Math::Cross(zAxis, xAxis));
 
+    // 接地面の法線は固定し、面内のX・Y軸だけを指定角度で回す。
     const float cosine = std::cos(rotationRadians);
     const float sine = std::sin(rotationRadians);
     const Vector3 rotatedX = xAxis * cosine + yAxis * sine;
@@ -50,6 +51,7 @@ std::unique_ptr<Object3d> DecalSystem::Create(
     const DecalSpawnDesc& desc) {
     if (!common) return nullptr;
 
+    // Decalは通常のObject3dをPlaneとして生成し、照明・影・衝突を無効にする。
     auto decal = std::make_unique<Object3d>();
     decal->Initialize(common);
     ModelManager::GetInstance()->LoadModel("Primitives/plane");
@@ -72,6 +74,7 @@ std::unique_ptr<Object3d> DecalSystem::Create(
     collider.type = ColliderType::kNone;
     decal->SetColliderConfig(collider);
 
+    // 尺寸や時間を有効範囲へ揃え、再生状態を初期化してから面に置く。
     Object3d::DecalSettings settings;
     settings.enabled = true;
     settings.size = {
@@ -97,6 +100,7 @@ Object3d* DecalSystem::Spawn(
     std::unique_ptr<Object3d> decal = Create(
         scene.GetObject3dCommon(), surfacePoint, surfaceNormal, desc);
     if (!decal) return nullptr;
+    // 所有権をSceneへ移したあと、実際にSceneへ保持されたときだけ非所有ポインタを返す。
     Object3d* result = decal.get();
     scene.AddObject(std::move(decal));
     for (const std::unique_ptr<Object3d>& ownedObject : scene.GetObjects()) {
@@ -127,6 +131,7 @@ void DecalSystem::AlignToSurface(
     const Vector3& surfaceNormal,
     float rotationRadians,
     float depthOffset) {
+    // Z-fightingを避けるため法線方向へ少し浮かせ、Planeの寸法と向きを接地面に揃える。
     const Vector3 normal = SafeNormal(surfaceNormal);
     Object3d::DecalSettings settings = object.GetDecalSettings();
     settings.depthOffset = (std::max)(depthOffset, 0.0001f);

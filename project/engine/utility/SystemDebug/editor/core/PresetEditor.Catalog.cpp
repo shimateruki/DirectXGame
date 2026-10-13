@@ -24,6 +24,7 @@ void PresetEditor::HandleDeferredDelete() {
 }
 
 void PresetEditor::RefreshModelList() {
+    // フォルダー単位のModel名を集め、同じフォルダーに複数形式があっても候補は一件にする。
     modelNames_.clear();
     const std::filesystem::path root = "Resources/3DModel";
     if (!std::filesystem::exists(root)) {
@@ -41,6 +42,7 @@ void PresetEditor::RefreshModelList() {
             continue;
         }
 
+        // ルート直下のファイルだけはファイル名を使い、それ以外は相対フォルダーをModel名にする。
         std::filesystem::path relative = std::filesystem::relative(entry.path().parent_path(), root);
         std::string modelName = relative.generic_string();
         if (modelName == ".") {
@@ -60,6 +62,7 @@ bool PresetEditor::MatchesSearch(const std::string& name, const json& data) cons
         return true;
     }
 
+    // 表示名だけでなく型、分類、説明、元Object名まで検索対象に含める。
     std::string haystack = name + " " +
         ReadString(data, "presetDisplayName", "") + " " +
         ReadString(data, "presetUsage", "") + " " +
@@ -72,6 +75,7 @@ bool PresetEditor::MatchesSearch(const std::string& name, const json& data) cons
         ReadString(data, "presetSection", "") + " " +
         ReadString(data, "presetDescription", "") + " " +
         ReadString(data, "presetSourceObject", "");
+    // 旧形式でparam内に保存された型名も拾う。
     if (data.contains("param") && data["param"].is_object()) {
         const json& param = data["param"];
         haystack += " " + ReadString(param, "enemyType", "");
@@ -97,6 +101,7 @@ bool PresetEditor::IsStageLibraryPreset(const json& data) const {
 }
 
 PresetEditor::Category PresetEditor::DetectCategory(const json& data) const {
+    // 新しいtype、直下の種別名、旧param内の種別名の順に分類を決める。
     std::string type = ReadString(data, "type", "");
     if (type == "Enemy") return Category::Enemy;
     if (type == "Gimmick") return Category::Gimmick;
@@ -176,6 +181,7 @@ float PresetEditor::ReadFloat(const json& data, const char* key, float defaultVa
 }
 
 int PresetEditor::ReadInt(const json& data, const char* key, int defaultValue) const {
+    // 古いJSONの数値表現が浮動小数でも、整数設定として読めるようにする。
     if (data.contains(key) && data[key].is_number_integer()) {
         return data[key].get<int>();
     }

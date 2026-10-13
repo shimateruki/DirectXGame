@@ -49,7 +49,6 @@
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
-#include "BuiltInCreatePresetRegistry.h"
 #include <unordered_map>
 #include <utility>
 namespace fs = std::filesystem;

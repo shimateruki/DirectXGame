@@ -29,9 +29,7 @@
 #include "SceneController.h"
 #include "DebrisEffectEditor.h"
 #include "TrailEmitterEditor.h"
-#include "GimmickFactory.h"
-#include "game/actor/enemy/spawn/EnemyFactory.h"
-#include "ItemFactory.h"
+#include "EditorObjectFactoryRegistry.h"
 #include "json.hpp"
 #include <filesystem>
 #include <array>
@@ -365,21 +363,21 @@ namespace {
     void CreateGimmick(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
         if (!scene || !scene->GetObject3dCommon()) return;
 
-        auto gimmick = GimmickFactory::GetInstance()->CreateGimmick(type, scene->GetObject3dCommon());
+        auto gimmick = EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Gimmick, type, scene->GetObject3dCommon());
         AddCreatedObject(editor, scene, std::move(gimmick), "Gimmick_" + type, "Create Gimmick " + type, useGameViewCursor);
     }
 
     void CreateEnemy(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
         if (!scene || !scene->GetObject3dCommon()) return;
 
-        auto enemy = EnemyFactory::GetInstance()->CreateEnemy(type, scene->GetObject3dCommon());
+        auto enemy = EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Enemy, type, scene->GetObject3dCommon());
         AddCreatedObject(editor, scene, std::move(enemy), "Enemy_" + type, "Create Enemy " + type, useGameViewCursor);
     }
 
     void CreateItem(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
         if (!scene || !scene->GetObject3dCommon()) return;
 
-        auto item = ItemFactory::GetInstance()->CreateItem(type, scene->GetObject3dCommon());
+        auto item = EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Item, type, scene->GetObject3dCommon());
         AddCreatedObject(editor, scene, std::move(item), "Item_" + type, "Create Item " + type, useGameViewCursor);
     }
 
@@ -480,7 +478,7 @@ void HierarchyWindow::Initialize(DebugEditor* editor) {
 
 void HierarchyWindow::Draw() {
 #ifdef USE_IMGUI
-    // プロジェクトウィンドウ (Asset Browserなど) の描画
+    // Asset Browserを先に描き、Sceneがある場合だけHierarchy本体を開く。
     editor_->DrawProjectWindow();
 
     if (editor_->GetSceneManager() == nullptr) return;
@@ -489,6 +487,7 @@ void HierarchyWindow::Draw() {
 
     ImGui::Begin(ICON_FA_SITEMAP " Hierarchy###Hierarchy");
 
+    // Prefab編集中は通常Sceneと区別できる帯を表示し、保存・破棄の入口をここに置く。
     if (editor_->IsPrefabEditMode()) {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.18f, 0.28f, 1.0f));
         if (ImGui::BeginChild("PrefabModeHeader", ImVec2(0.0f, 74.0f), true)) {
@@ -514,6 +513,7 @@ void HierarchyWindow::Draw() {
         ImGui::EndPopup();
     }
 
+    // 旧ツール一覧は選択中のIEditableを切り替え、Inspectorの編集対象を変える。
     if (ImGui::CollapsingHeader(ICON_FA_COGS " システム設定 (System Settings)")) {
         ImGui::TextWrapped("ツールは上部の「ツール」メニューから分類別に開けます。ここは従来の一覧です。");
         IEditable* currentObj = EditorManager::GetInstance()->GetSelectedObject();
@@ -634,6 +634,7 @@ void HierarchyWindow::Draw() {
     }
 
     ImGui::Separator();
+    // SceneAssetの作成・切替と、SceneWorkspace固有の階層表示を先に置く。
     DrawSceneAssetManager();
     if (SceneWorkspace* workspace = editor_->GetSceneWorkspace()) {
         ImGui::Separator();
@@ -643,9 +644,7 @@ void HierarchyWindow::Draw() {
     ImGui::Separator();
     ImGui::Separator();
 
-    // =======================================================
-    //  検索バーとカテゴリフィルタを横に並べて表示！
-    // =======================================================
+    // 検索、Object種類、Layerの絞り込みはHierarchy表示だけに適用する。
     ImGui::Text(ICON_FA_SEARCH " 検索:");
     ImGui::SameLine();
     ImGui::PushItemWidth(120.0f); // 検索バーの幅
@@ -705,6 +704,7 @@ void HierarchyWindow::Draw() {
     filterStr = ToLowerAscii(filterStr);
 
 
+    // 検索中は一致Objectを平坦に表示し、通常時だけ親子ツリーを描く。
     if (!filterStr.empty()) {
         ImGui::TextColored(ImVec4(0, 1, 1, 1), ICON_FA_SEARCH_PLUS " 検索結果:");
         auto& objects = currentScene->GetObjects();
@@ -737,6 +737,7 @@ void HierarchyWindow::Draw() {
             DrawCreateContextMenu(currentScene, false);
             ImGui::EndPopup();
         }
+        // 空白領域へのAssetドロップは種類ごとにPreviewまたはScene Objectを生成する。
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
                 const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
@@ -795,6 +796,7 @@ void HierarchyWindow::Draw() {
 
         ImGui::Separator();
         auto& objects = currentScene->GetObjects();
+        // グループ表示はルートObjectだけを分類し、親子関係そのものは変えない。
         if (groupHierarchy_) {
             // 親を持つObjectは既存のツリー内に表示する。ここではルートだけを仮想フォルダへ振り分ける。
             std::array<std::vector<Object3d*>, static_cast<size_t>(HierarchyDisplayGroup::Count)> groups;
@@ -843,6 +845,7 @@ void HierarchyWindow::Draw() {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.8f, 0.7f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.8f, 0.8f, 0.8f));
 
+    // よく使う衝突用・演出用Objectは固定設定で作り、Undo対象としてEditorへ渡す。
     if (ImGui::Button(ICON_FA_BOLT " 透明ボックス生成 (トリガー用)", ImVec2(-1, 40))) {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
@@ -876,6 +879,7 @@ void HierarchyWindow::Draw() {
     ImGui::PopStyleColor(3);
     ImGui::Dummy(ImVec2(0, 50));
     ImGui::TextDisabled(ICON_FA_UNLINK " (ここにドロップして親解除)");
+    // 親解除時は元のワールド姿勢を保持し、結果を編集履歴へ登録する。
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
             Object3d* sourceObj = *(Object3d**)payload->Data;
@@ -937,6 +941,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
         });
     };
 
+    // 選択Assetが消えた場合は編集中のScene、なければ先頭の候補へ選択を戻す。
     if (selectedSceneAssetFilename_.empty() || findAsset(selectedSceneAssetFilename_) == assets.end()) {
         if (findAsset(currentFilename) != assets.end()) {
             selectedSceneAssetFilename_ = currentFilename;
@@ -953,6 +958,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
     }
     const bool selectedAssetIsActive = selectedAsset != assets.end() &&
         editor_->IsCurrentSceneAsset(selectedSceneAssetFilename_);
+    // 実行設定を変更しただけでは現在のRuntimeへ反映されないため、再読込の必要性を示す。
     bool selectedRuntimeNeedsReload = false;
     if (selectedAssetIsActive && editor_->GetSceneManager()) {
         const SceneLoadContext& activeContext = editor_->GetSceneManager()->GetActiveSceneLoadContext();
@@ -999,6 +1005,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
         ImGui::EndCombo();
     }
 
+    // JSON AssetとC++の実行Sceneクラスの対応を、この選択行から変更できる。
     if (selectedAsset != assets.end()) {
         const std::vector<std::string> runtimeScenes = editor_->GetRegisteredSceneNames();
         ImGui::BeginDisabled(sceneTransitioning || runtimeScenes.empty());
@@ -1033,6 +1040,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
                 ImVec4(1.0f, 0.72f, 0.2f, 1.0f),
                 ICON_FA_EXCLAMATION_TRIANGLE " 旧形式Scene。実行設定の保存でScene Asset形式へ更新します。");
         }
+        // 実行設定はModalを開く前に現在値をバッファへ複写し、キャンセルなら保存しない。
         if (ImGui::Button(ICON_FA_COG " 実行設定", ImVec2(122.0f, 0.0f))) {
             const std::vector<std::string>& controllerNames =
                 SceneControllerFactory::GetInstance()->GetRegisteredNames();
@@ -1068,6 +1076,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
         }
     }
 
+    // 遷移中の作成・開く・複製・改名・削除は、Scene状態が変わるため無効化する。
     ImGui::BeginDisabled(sceneTransitioning);
     if (ImGui::Button(ICON_FA_PLUS " 新規", ImVec2(84.0f, 0.0f))) {
         OpenCreateSceneDialog();
@@ -1123,6 +1132,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
             sceneAssetStatusMessage_.c_str());
     }
 
+    // 保存単位ごとの操作とActive Scene全体の保存を、Dirty概要の下へ並べる。
     ImGui::SeparatorText("保存");
     if (editor_->HasAnyDirty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.2f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " %s", editor_->GetDirtySummaryText().c_str());
@@ -1195,6 +1205,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
         return;
     }
 
+    // メニューやボタンで立てた要求フラグを、一フレームだけOpenPopupへ渡す。
     if (requestCreateScenePopup_) {
         ImGui::OpenPopup("新規Scene Asset###CreateSceneAsset");
         requestCreateScenePopup_ = false;
@@ -1220,6 +1231,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
         requestRuntimeSettingsPopup_ = false;
     }
 
+    // 実行設定はControllerと各参照ファイルをまとめて保存する。
     ImGui::SetNextWindowSize(ImVec2(620.0f, 0.0f), ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal(
         "Scene Asset実行設定###SceneAssetRuntimeSettings",
@@ -1281,6 +1293,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
         ImGui::EndPopup();
     }
 
+    // 新規Assetは空Sceneか現在Sceneの複製を選び、登録済みの実行クラスへ紐付ける。
     ImGui::SetNextWindowSize(ImVec2(480.0f, 0.0f), ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal("新規Scene Asset###CreateSceneAsset", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextWrapped("Scene IDはファイル名に使用します。表示名には日本語を使用できます。");
@@ -1318,6 +1331,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
         }
         ImGui::Separator();
 
+        // 作成のみと作成後に開く操作で同じ検証・生成経路を使用する。
         const auto createAsset = [&](bool openAfterCreate) {
             if (runtimeScenes.empty()) {
                 sceneAssetStatusMessage_ = "SceneFactoryに実行クラスが登録されていません。";
@@ -1367,6 +1381,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
         ImGui::EndPopup();
     }
 
+    // 複製・改名は成功後に選択中Assetを新しいファイル名へ切り替える。
     ImGui::SetNextWindowSize(ImVec2(460.0f, 0.0f), ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal("Scene Assetを複製###DuplicateSceneAsset", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("複製元: %s", selectedSceneAssetFilename_.c_str());
@@ -1438,6 +1453,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
         ImGui::EndPopup();
     }
 
+    // 削除は関連JSONも対象となるため、対象名を示した専用Modalで確定する。
     ImGui::SetNextWindowSize(ImVec2(440.0f, 0.0f), ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal("Scene Assetを削除###DeleteSceneAsset", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextColored(ImVec4(1.0f, 0.42f, 0.32f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " この操作は元に戻せません。");
@@ -1467,6 +1483,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
         ImGui::EndPopup();
     }
 
+    // 未保存Sceneを開き直すときは保存・破棄・取消の三択をここで確定する。
     ImGui::SetNextWindowSize(ImVec2(480.0f, 0.0f), ImGuiCond_Appearing);
     if (ImGui::BeginPopupModal("未保存のScene変更###OpenSceneAssetUnsaved", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.28f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " 未保存の変更があります。");

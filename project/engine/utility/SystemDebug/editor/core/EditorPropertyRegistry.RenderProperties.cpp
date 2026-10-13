@@ -9,11 +9,13 @@ using nlohmann::json;
 using EditorPropertyBuiltIn::CommonFlags;
 
 void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
-    // 描画材質とコンポーネントの編集項目を登録し、対象型ごとの違いを明示します。
+    // 各登録は安定したProperty ID、表示情報、JSONの読取・書込、適用対象を一組にします。
+    // Scene/Prefabの差分もこのIDを参照するため、表示名だけを変える場合もIDは維持します。
     const auto renderableOnly = [](const Object3d& object) {
         return !object.IsCameraObject() && object.GetMeshRenderer() != nullptr;
     };
 
+    // 描画項目はCamera ObjectやRendererのない配置物へ出さず、適用前にJSON型を確認します。
     Register({
         "rendering.model", "モデル", "Rendering", EditorPropertyType::String, CommonFlags(),
         [](const Object3d& object) { return json(object.GetModelName()); },
@@ -24,6 +26,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
         },
         renderableOnly,
     });
+    // BlendModeはenumの有効範囲に収め、保存データの未知値で不正なPipelineを選ばせません。
     Register({
         "rendering.blendMode", "合成方式", "Rendering", EditorPropertyType::Integer, CommonFlags(),
         [](const Object3d& object) { return json(static_cast<int>(object.GetBlendMode())); },
@@ -56,6 +59,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
         },
         renderableOnly,
     });
+    // Tilingは2成分の配列として保存し、必要成分がない差分は反映しません。
     Register({
         "rendering.textureTiling", "Texture Tiling", "Rendering", EditorPropertyType::Vector2, CommonFlags(true),
         [](const Object3d& object) {
@@ -140,6 +144,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
         renderableOnly,
     });
 
+    // Colliderは現在の設定を複製して対象成分だけ差し替えます。
+    // 型・中心・大きさ・回転を別々にUndo/Prefab差分へ載せても他の成分を失いません。
     Register({
         "component.collision.type", "Collider Type", "Component", EditorPropertyType::Integer, CommonFlags(),
         [](const Object3d& object) { return json(static_cast<int>(object.GetColliderConfig().type)); },
@@ -205,6 +211,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
             return true;
         },
     });
+    // Particle名とLODは同じComponent欄でも、GPU/CPUとモデル段階で別の保存先です。
     Register({
         "component.particle.cpu", "CPU Particle", "Component", EditorPropertyType::String, CommonFlags(),
         [](const Object3d& object) { return json(object.GetParticleName()); },
@@ -233,6 +240,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
         },
         renderableOnly,
     });
+    // LODの読込では空のモデル名や無効な段階を除き、適用できる定義だけをObjectへ渡します。
     Register({
         "component.lod.levels", "LOD Levels", "Component", EditorPropertyType::String,
         EditorPropertyFlags::PrefabOverride,
@@ -283,6 +291,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
             return true;
         },
     });
+    // アニメーション名・Controller・記録パスはそれぞれ別の実行系が消費します。
+    // ControllerだけはSetAnimatorControllerの失敗を呼び出し元へ返します。
     Register({
         "component.animation.name", "Animation", "Component", EditorPropertyType::String, CommonFlags(),
         [](const Object3d& object) { return json(object.animName_); },
@@ -336,6 +346,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
             return true;
         },
     });
+    // Event IDはこのObjectの受信先、Target IDは他Objectへの発火先として別項目です。
     Register({
         "component.link.eventId", "Event ID", "Component", EditorPropertyType::Integer, CommonFlags(),
         [](const Object3d& object) { return json(object.GetEventID()); },
@@ -354,6 +365,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
             return true;
         },
     });
+    // NavAgentは未装着なら表示に既定値を使い、最初の編集時にComponentを生成します。
+    // 参照だけのためにSceneへ新しいComponentを増やしません。
     Register({
         "component.nav.enabled", "経路探索を有効化", "Component", EditorPropertyType::Bool, CommonFlags(),
         [](const Object3d& object) { return json(object.GetNavAgentComponent() && object.GetNavAgentComponent()->IsEnabled()); },

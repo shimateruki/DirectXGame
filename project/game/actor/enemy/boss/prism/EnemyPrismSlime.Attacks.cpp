@@ -1,6 +1,7 @@
 ﻿#include "game/actor/enemy/boss/prism/EnemyPrismSlime.Internal.h"
 
 #include "game/actor/enemy/boss/core/BossChantVisual.h"
+#include "game/system/SceneGameplayAccess.h"
 
 using namespace EnemyPrismSlimeImplementation;
 
@@ -530,6 +531,7 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
         return;
     }
 
+    // 予備動作中は残り時間から結晶の組み上がり率を作り、発射済みとは別の更新へ進めます。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kCrystalLanceVolleyAttackId);
     float revealProgress = 1.0f;
     if (currentAttack_ == AttackKind::CrystalLanceVolley && attackState_ == AttackState::Windup) {
@@ -544,6 +546,7 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
             continue;
         }
 
+        // 未発射の槍は陣の奥で育て、標的へ照準を合わせながら発光と周囲の粒子を増やします。
         if (!lance->launched) {
             const float centeredSlot =
                 static_cast<float>(lance->slotIndex) - static_cast<float>(kCrystalLanceCount - 1) * 0.5f;
@@ -592,6 +595,7 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
             continue;
         }
 
+        // 発射後は速度で進め、前位置と現位置を使って速い槍の接触すり抜けを防ぎます。
         lance->age += (std::max)(deltaTime, 0.0f);
         // 発射の閃光だけを強くし、飛行中は結晶の輪郭が読める明るさへ戻します。
         lance->object->SetEmissive(1.28f + 1.82f * std::exp(-lance->age * 13.0f));
@@ -613,6 +617,7 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
                 DistanceSquaredToSegment(targetCenter, previousPosition, lance->position) <= hitRadius * hitRadius;
         }
 
+        // 一斉射の複数の槍が重なっても、PlayerへのDamageEventは一度だけ送ります。
         if (hitTarget && !crystalVolleyDamageApplied_) {
             const Vector3 knockbackDirection = NormalizePlanar(lance->velocity);
             DamageEvent event;
@@ -629,6 +634,7 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
             crystalVolleyDamageApplied_ = true;
         }
 
+        // 命中と寿命終了のどちらでも破片を出し、配列から消して次の更新対象にしません。
         const bool expired = lance->age >= (std::max)(0.3f, attack.lifetime);
         if (hitTarget || expired) {
             SpawnCrystalLanceShatter(*lance);
@@ -691,6 +697,26 @@ void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
     const float halfAngle = std::asin(std::clamp(attack.radius / (std::max)(attack.maxRange, 0.1f), 0.0f, 0.95f));
     if (distance > attack.maxRange || distance > reachedDistance ||
         (distance > 0.001f && forward / distance < std::cos(halfAngle))) {
+        return;
+    }
+
+    // 扇形内で最も近い棘の地面を基準にし、棘より高い足場への貫通を防ぐ。
+    float nearestDistanceSq = (std::numeric_limits<float>::max)();
+    float nearbyGroundY = prismSpellOrigin_.y;
+    for (int i = 0; i <= actionIndex_ && i < static_cast<int>(prismSpikePositions_.size()); ++i) {
+        const Vector3& spike = prismSpikePositions_[i];
+        const float dx = spike.x - target_->GetWorldPosition().x;
+        const float dz = spike.z - target_->GetWorldPosition().z;
+        const float distanceSq = dx * dx + dz * dz;
+        if (distanceSq < nearestDistanceSq) {
+            nearestDistanceSq = distanceSq;
+            nearbyGroundY = spike.y;
+        }
+    }
+    const AABB targetBounds = target_->GetAABB();
+    constexpr float kSpikeReachHeight = 2.4f;
+    if (targetBounds.min.y > nearbyGroundY + kSpikeReachHeight ||
+        targetBounds.max.y < nearbyGroundY - 0.3f) {
         return;
     }
 
@@ -780,6 +806,7 @@ void EnemyPrismSlime::ApplyWindTornado() {
     float distance = 0.0f;
     float hitRadius = 0.0f;
     bool hit = false;
+    // 渦ごとに発生時刻と高さ範囲が異なるので、実体化済みで最も中心に近い候補を選びます。
     for (std::size_t index = 0; index < windVortices_.size(); ++index) {
         if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f)
             continue;
@@ -802,6 +829,7 @@ void EnemyPrismSlime::ApplyWindTornado() {
         return;
     }
 
+    // 中心では方向が定まらないため攻撃開始時の向きを使い、外側ほど押し出しを弱めます。
     const Vector3 pushDirection = distance > 0.001f ? NormalizePlanar(difference) : lockedDirection_;
     const float falloff = 1.0f - std::clamp(distance / (std::max)(hitRadius, 0.1f), 0.0f, 1.0f);
     if (Character* character = dynamic_cast<Character*>(target_)) {
@@ -816,6 +844,7 @@ void EnemyPrismSlime::ApplyWindTornado() {
 
     EmitDirectedPreset(kWindImpactPreset, target_->GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f}, pushDirection,
                        1.25f);
+    // 外力とDamageEventは別経路で渡し、既に命中した後は再送しません。
     DamageEvent event;
     event.target = target_;
     event.attacker = this;
@@ -920,6 +949,7 @@ void EnemyPrismSlime::UpdateSummonPortalVisuals(float deltaTime) {
         return;
     }
 
+    // 予備動作の経過に合わせて魔法陣の組み上がり率を作り、発光層にも同じ進行を渡します。
     float revealProgress = 1.0f;
     if (currentAttack_ == AttackKind::SlimeSummon && attackState_ == AttackState::Windup) {
         revealProgress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f);
@@ -942,6 +972,7 @@ void EnemyPrismSlime::UpdateSummonPortalVisuals(float deltaTime) {
         if (portal.glow) {
             portal.glow->SetRevealProgress(assembly);
         }
+        // 通常層と発光層の不透明度を分け、完成に向けて明るさを増やします。
         float scale = 1.36f * (0.42f + easedReveal * 0.58f);
         float alpha = 0.26f + assembly * 0.58f;
         float glowAlpha = portal.color.w * (0.06f + assembly * 0.18f);
@@ -964,6 +995,7 @@ void EnemyPrismSlime::UpdateSummonPortalVisuals(float deltaTime) {
                 continue;
             }
         } else {
+            // 召喚前は小さな呼吸と周回粒子を続け、ゲートが動いていることを示します。
             const float pulse = std::sin(portal.age * (5.5f + easedReveal * 7.0f) + static_cast<float>(index) * 1.7f);
             scale *= 1.0f + pulse * (0.015f + easedReveal * 0.035f);
             alpha *= 0.91f + pulse * 0.09f;
@@ -983,6 +1015,7 @@ void EnemyPrismSlime::UpdateSummonPortalVisuals(float deltaTime) {
             }
         }
 
+        // 陣の通常層を地面に置き、発光層は少し上へずらして重なりを分離します。
         portal.effect->SetIsVisible(assembly > 0.001f);
         portal.effect->SetTranslate(portal.groundPosition + Vector3{0.0f, 0.065f, 0.0f});
         portal.effect->SetRotation(
@@ -1078,6 +1111,6 @@ void EnemyPrismSlime::SpawnSummonedSlime(std::unique_ptr<BaseEnemy> enemy) {
     if (!sceneManager || !sceneManager->GetCurrentScene()) {
         return;
     }
-    enemy->SetTarget(sceneManager->GetCurrentScene()->GetPlayer());
+    enemy->SetTarget(GetScenePlayer(sceneManager->GetCurrentScene()));
     sceneManager->GetCurrentScene()->AddObject(std::move(enemy));
 }

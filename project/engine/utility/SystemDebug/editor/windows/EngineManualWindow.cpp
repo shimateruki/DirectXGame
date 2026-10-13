@@ -293,7 +293,7 @@ const std::vector<ManualPage>& GetManualPages() {
                 "検証ボタンでGAMEPLAYに必要なPlayer、Camera、goal、重複Object名、参照ファイルを確認します。エラーがあるGAMEPLAY Assetは実行前に停止します。",
                 "未保存変更がある場合は、保存して開く、保存せず開く、キャンセルから選びます。保存を選ぶとSave Preview確認後に切り替わります。",
                 "複製、名前変更、削除はScene一覧で対象を選んで実行します。Active Sceneは別Sceneを開くまで削除できません。",
-                "新しいC++ Sceneクラスを追加した場合はSceneFactoryのRegisterSceneへ登録します。登録名は実行クラス候補と上部メニューへ自動反映されます。",
+                "新しいC++ Sceneクラスを追加した場合はゲーム側のRegisterGameScenesでSceneFactoryへ登録します。登録名は実行クラス候補と上部メニューへ自動反映されます。",
                 "GAMEPLAYを共有して固有処理だけ追加する場合はISceneControllerを継承し、SceneControllerFactoryへ登録します。OnInitialize、OnUpdate、OnFinalizeだけを実装します。",
             },
             "ObjectはResources/json/3Dobject/<id>.jsonとカテゴリ別JSON、SpriteはResources/json/sprite/<id>_sprite.jsonへ保存されます。実行クラスとControllerは_sceneAsset、各リソースは_sceneAsset.resourcesへ保存されます。",

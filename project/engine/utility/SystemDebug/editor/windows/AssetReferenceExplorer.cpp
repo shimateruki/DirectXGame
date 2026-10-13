@@ -127,6 +127,7 @@ void AssetReferenceExplorer::BuildAliasIndex() {
     for (std::size_t index = 0; index < assets.size(); ++index) {
         const EditorAssetRecord& asset = assets[index];
         const fs::path source(asset.sourcePath);
+        // JSON 側では GUID、完全 Path、ファイル名、拡張子なし名が混在するため同じ Asset を複数名で引きます。
         addAlias(asset.guid, index);
         addAlias("guid:" + asset.guid, index);
         addAlias(asset.sourcePath, index);
@@ -140,6 +141,7 @@ void AssetReferenceExplorer::BuildAliasIndex() {
         const std::string lowerPath = Normalize(asset.sourcePath);
         constexpr const char* modelPrefix = "resources/3dmodel/";
         if (lowerPath.rfind(modelPrefix, 0) == 0) {
+            // Model 参照にはフォルダ名だけを保存する形式もあるので、親フォルダも別名へ加えます。
             fs::path relative = fs::path(lowerPath.substr(std::strlen(modelPrefix)));
             const fs::path parent = relative.parent_path();
             if (!parent.empty()) {
@@ -154,6 +156,7 @@ void AssetReferenceExplorer::BuildAliasIndex() {
 
 std::vector<std::size_t> AssetReferenceExplorer::ResolveCandidates(const std::string& value, const std::string& key) const {
     (void)key;
+    // Resources/ の有無だけを吸収して索引を検索します。複数一致は確定参照として扱いません。
     const std::string normalized = Normalize(value);
     auto iterator = aliasToAssetIndices_.find(normalized);
     if (iterator != aliasToAssetIndices_.end()) {
@@ -175,6 +178,7 @@ void AssetReferenceExplorer::VisitJson(
     const std::string& key,
     std::unordered_map<std::string, std::vector<Usage>>& destination,
     bool collectMissing) {
+    // JSON Pointer を更新しながら葉の文字列へ降り、修復時に同じ値だけを安全に書き換えます。
     if (value.is_object()) {
         for (auto iterator = value.begin(); iterator != value.end(); ++iterator) {
             VisitJson(iterator.value(), ownerPath, pointer + "/" + EscapeJsonPointerToken(iterator.key()), iterator.key(), destination, collectMissing);
@@ -194,6 +198,7 @@ void AssetReferenceExplorer::VisitJson(
     const std::vector<std::size_t> candidates = ResolveCandidates(text, key);
     const auto& assets = AssetDatabase::GetInstance()->GetAssets();
     if (!candidates.empty()) {
+        // Path/GUID と一意に一致した場合だけ Direct、曖昧な名称は動的参照候補に分類します。
         const bool direct = IsDirectReferenceValue(text) && candidates.size() == 1;
         for (std::size_t assetIndex : candidates) {
             if (assetIndex >= assets.size() || assets[assetIndex].sourcePath == ownerPath) continue;
@@ -208,6 +213,8 @@ void AssetReferenceExplorer::VisitJson(
         return;
     }
 
+    // 一致する Asset がなく、キー名も参照らしい文字列だけ Missing 候補に残します。
+    // targetScene は Asset Path ではないため除外します。
     if (collectMissing && IsReferenceLikeKey(key) &&
         (IsDirectReferenceValue(text) || text.size() >= 3) &&
         Normalize(key).find("targetscene") == std::string::npos) {
@@ -243,6 +250,7 @@ std::vector<std::size_t> AssetReferenceExplorer::FindRepairCandidates(const Miss
     struct Scored { std::size_t index; int score; };
     std::vector<Scored> scored;
     scored.reserve(assets.size());
+    // ファイル名の前方一致とキー名に対応する Asset 種別を加点し、上位5件だけ提示します。
     for (std::size_t index = 0; index < assets.size(); ++index) {
         const std::string stem = FileStemLower(assets[index].sourcePath);
         int score = CommonPrefixScore(wanted, stem) * 4;
@@ -288,6 +296,7 @@ bool AssetReferenceExplorer::RepairMissingReference(MissingReference& missing, s
     try {
         input >> data;
         nlohmann::json::json_pointer pointer(missing.jsonPointer);
+        // 再スキャン後に元 JSON が変わった場合は、古い候補で別の値を上書きしないよう中断します。
         if (!data.contains(pointer) || !data[pointer].is_string() || data[pointer].get<std::string>() != missing.value) {
             message = "参照元が再スキャン後に変更されています。再スキャンしてください。";
             return false;
@@ -297,6 +306,7 @@ bool AssetReferenceExplorer::RepairMissingReference(MissingReference& missing, s
         message = std::string("JSONを更新できません: ") + exception.what();
         return false;
     }
+    // 実際の書き込みはユーザーが候補を選んだ後だけ行い、索引再作成を要求します。
     std::ofstream output(missing.ownerPath, std::ios::trunc);
     if (!output.is_open()) {
         message = "参照元JSONを書き込めません。";

@@ -11,7 +11,7 @@ class SceneFactory : public AbstractSceneFactory {
 public:
     using SceneCreator = std::function<std::unique_ptr<BaseScene>()>;
 
-    SceneFactory();
+    SceneFactory() = default;
 
     /// <summary>名前に対応するシーンインスタンスを生成する。未登録ならnullptr。</summary>
     std::unique_ptr<BaseScene> CreateScene(const std::string& sceneName) override;

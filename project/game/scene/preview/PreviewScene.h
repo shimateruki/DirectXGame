@@ -1,5 +1,6 @@
 #pragma once
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "game/system/IStageProgressScene.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
@@ -37,7 +38,7 @@ class GameRule;
 /// <summary>
 /// アセット確認用の独立シーン。配置 Object とプレイヤーを管理し、編集用の更新・描画を行う。
 /// </summary>
-class PreviewScene : public BaseScene, public IStageProgressScene {
+class PreviewScene : public BaseScene, public IStageProgressScene, public ISceneGameplayAccess {
   public:
     PreviewScene();
     ~PreviewScene() override;

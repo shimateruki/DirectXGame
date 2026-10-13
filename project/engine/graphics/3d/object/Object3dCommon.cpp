@@ -10,33 +10,55 @@
 
 void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     // 描画パスごとに専用 PSO を先に作り、実行中の描画切り替えでは再コンパイルしない。
+    BeginInitialize(dxCommon);
+    while (!InitializeStep()) {
+    }
+}
+
+void Object3dCommon::BeginInitialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-    CreateRootSignature();
-    CreateShadowRootSignature();
-    CreatePipelineStates();
-    CreateLocalFogPipeline();
-    CreateEffectRootSignature();
-    CreateEffectPipeline();
-    CreateWaterRootSignature();
-    CreateWaterPipeline();
-    CreateMagmaPipeline();
-    CreateIcePipeline();
-    CreateFirePipeline();
-    CreateLaserPipeline();
-    CreateSlimeGelPipeline();
-    CreateShockwavePipeline();
-    CreateLiquidContactPipeline();
-    CreateDamageCrackPipeline();
-    CreateUpdraftPipeline();
-    CreateStunBindPipeline();
-    CreateCrownUnlockPipeline();
-    CreatePoisonSporePipeline();
-    CreateCloudPipeline();
-    CreateGatePortalPipeline();
-    CreateWindOrbPipeline();
+    initializationStep_ = 0;
+}
 
-    CreateSkyboxPipeline();
+bool Object3dCommon::InitializeStep() {
+    using Step = void (Object3dCommon::*)();
+    static constexpr std::array<Step, kInitializationStepCount> steps = {
+        &Object3dCommon::CreateRootSignature,
+        &Object3dCommon::CreateShadowRootSignature,
+        &Object3dCommon::CreatePipelineStates,
+        &Object3dCommon::CreateLocalFogPipeline,
+        &Object3dCommon::CreateEffectRootSignature,
+        &Object3dCommon::CreateEffectPipeline,
+        &Object3dCommon::CreateWaterRootSignature,
+        &Object3dCommon::CreateWaterPipeline,
+        &Object3dCommon::CreateMagmaPipeline,
+        &Object3dCommon::CreateIcePipeline,
+        &Object3dCommon::CreateFirePipeline,
+        &Object3dCommon::CreateLaserPipeline,
+        &Object3dCommon::CreateSlimeGelPipeline,
+        &Object3dCommon::CreateShockwavePipeline,
+        &Object3dCommon::CreateLiquidContactPipeline,
+        &Object3dCommon::CreateDamageCrackPipeline,
+        &Object3dCommon::CreateUpdraftPipeline,
+        &Object3dCommon::CreateStunBindPipeline,
+        &Object3dCommon::CreateCrownUnlockPipeline,
+        &Object3dCommon::CreatePoisonSporePipeline,
+        &Object3dCommon::CreateCloudPipeline,
+        &Object3dCommon::CreateGatePortalPipeline,
+        &Object3dCommon::CreateWindOrbPipeline,
+        &Object3dCommon::CreateSkyboxPipeline,
+    };
+    if (initializationStep_ >= steps.size()) {
+        return true;
+    }
+    // 依存するRootSignatureを先に作る順序を保ったまま、一回で一種類だけ生成する。
+    (this->*steps[initializationStep_++])();
+    return initializationStep_ == steps.size();
+}
+
+float Object3dCommon::GetInitializationProgress() const {
+    return static_cast<float>(initializationStep_) / static_cast<float>(kInitializationStepCount);
 }
 
 void Object3dCommon::SetGraphicsCommand() {

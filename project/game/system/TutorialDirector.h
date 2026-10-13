@@ -42,6 +42,10 @@ class TutorialDirector {
 
     bool IsLoaded() const { return loaded_; }
     bool IsCompleted() const { return completed_; }
+    /// <summary>完了後の出口をセーブ成功時だけ開けます。</summary>
+    void SetCompletionGateEnabled(bool enabled) {
+        if (completed_) SetGateTransitionEnabled(enabled);
+    }
     bool IsCinematicPlaying() const { return cinematicActive_; }
     int GetCurrentStepIndex() const { return currentStepIndex_; }
     const std::string& GetCurrentStepId() const;
@@ -206,10 +210,11 @@ class TutorialDirector {
 
     PromptVisual promptPanel_;
     PromptVisual promptLabel_;
-    std::array<PromptVisual, 3> promptIcons_{};
+    std::array<PromptVisual, 4> promptIcons_{};
     float promptAlpha_ = 0.0f;
     bool promptRequestedVisible_ = false;
     bool promptGamepadMode_ = false;
+    std::string promptBindingSignature_;
 
     std::array<PromptVisual, 3> objectiveMarkers_{};
     std::array<std::string, 3> objectiveTargetNames_{};

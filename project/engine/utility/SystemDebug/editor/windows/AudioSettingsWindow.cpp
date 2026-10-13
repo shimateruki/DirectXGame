@@ -34,6 +34,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
     ImGui::TextWrapped(
         "複数clipのランダム再生、音量・Pitch揺らぎ、同時発音数、距離減衰を1つのJSONで管理します。");
 
+    // ディスク上の Event 定義を毎回列挙し、別ツールで追加された JSON も一覧へ反映します。
     const std::filesystem::path directory("Resources/json/audio_events");
     std::vector<std::string> eventFiles;
     std::error_code error;
@@ -67,6 +68,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
         audioEventFileName_,
         sizeof(audioEventFileName_));
 
+    // 入力名に拡張子がなければ JSON を補い、読込・保存・試聴で同じ Path を使います。
     std::filesystem::path eventPath =
         directory / std::filesystem::path(audioEventFileName_);
     if (eventPath.extension().empty()) {
@@ -100,6 +102,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
             : "Audio Eventを再生できませんでした。保存内容を確認してください。";
     }
 
+    // Clip の重複を避けます。削除時は次の要素が同じ位置へ詰まるので index を進めません。
     ImGui::InputText(
         "追加するclip",
         audioEventClipPath_,
@@ -131,6 +134,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
         ++index;
     }
 
+    // Event 全体の再生揺らぎと発音制限を編集します。距離減衰は 3D 指定時だけ表示します。
     ImGui::DragFloatRange2(
         "音量範囲",
         &audioEventDefinition_.volumeMin,
@@ -185,6 +189,7 @@ void AudioSettingsWindow::DrawImGui() {
     ImGui::TextWrapped("全体音量と、SE/BGMごとの個別音量を調整して保存できます。");
     ImGui::Separator();
 
+    // マスター音量は操作時に反映します。保存操作で Game 設定と音源一覧を両方永続化します。
     float seMaster = gameSettings->GetSEVolume();
     float bgmMaster = gameSettings->GetBGMVolume();
 
@@ -216,6 +221,7 @@ void AudioSettingsWindow::DrawImGui() {
 
     DrawAudioEventEditor();
 
+    // 新規登録欄はファイルを検索して選べる一方、入力した ID の重複と Path の実在も検証します。
     ImGui::SeparatorText("音声を登録");
     ImGui::InputText("ID##NewAudio", newAudioId_, sizeof(newAudioId_));
     ImGui::InputText("表示名##NewAudio", newAudioName_, sizeof(newAudioName_));
@@ -267,6 +273,7 @@ void AudioSettingsWindow::DrawImGui() {
 
     ImGui::InputTextWithHint("検索", "id / 表示名 / パス", searchBuffer_, sizeof(searchBuffer_));
 
+    // 一覧は検索で絞り、各行の音量・Loop・試聴・停止をその場で操作します。
     constexpr ImGuiTableFlags tableFlags =
         ImGuiTableFlags_Borders |
         ImGuiTableFlags_RowBg |
@@ -284,6 +291,7 @@ void AudioSettingsWindow::DrawImGui() {
         ImGui::TableSetupColumn("パス", ImGuiTableColumnFlags_WidthFixed, 260.0f);
         ImGui::TableHeadersRow();
 
+        // 行の反復中には削除せず ID を退避し、Table 終了後に保存します。
         auto& entries = audioSettings->GetEntries();
         std::string removeId;
         for (int index = 0; index < static_cast<int>(entries.size()); ++index) {

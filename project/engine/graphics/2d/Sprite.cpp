@@ -23,6 +23,7 @@ Matrix4x4 MakeSpriteLocalMatrix(const Sprite* sprite) {
 }
 
 Matrix4x4 MakeSpriteWorldMatrix(const Sprite* sprite) {
+	// 親の行列を再帰的に掛け、子のローカル座標を描画時のワールド座標へ変換する。
 	Math math;
 	Matrix4x4 localMatrix = MakeSpriteLocalMatrix(sprite);
 	Sprite* parent = sprite ? sprite->GetParent() : nullptr;
@@ -46,6 +47,7 @@ uint32_t ResolveSpriteTextureHandle(uint32_t textureHandle) {
 		return textureHandle;
 	}
 
+	// 未指定テクスチャは白画像で描き、DDSがない環境ではPNGへフォールバックする。
 	TextureManager* textureManager = TextureManager::GetInstance();
 	uint32_t fallback = textureManager->Load("Resources/sprite/common/white.dds", false, false);
 	if (fallback == 0) {
@@ -56,6 +58,7 @@ uint32_t ResolveSpriteTextureHandle(uint32_t textureHandle) {
 }
 
 Sprite::~Sprite() {
+	// 親子は所有関係ではないため、破棄時には相互参照だけ外す。
 	SetParent(nullptr, false);
 	for (Sprite* child : children_) {
 		if (child) {
@@ -92,7 +95,7 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 		isVisible_ = false;
 	}
 
-	// 各種リソース作成
+	// 四頂点と六インデックスの矩形を生成し、毎フレーム更新するバッファをマップする。
 	vertexResource_ = dxCommon_->CreateBufferResource(sizeof(VertexData) * 4);
 	vertexBufferView_ = { vertexResource_->GetGPUVirtualAddress(), sizeof(VertexData) * 4, sizeof(VertexData) };
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
@@ -105,6 +108,7 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 	indexData[3] = 1; indexData[4] = 3; indexData[5] = 2;
 	indexResource_->Unmap(0, nullptr); // アンマップ
 
+	// 頂点位置と別に、階層変換・投影とマテリアル色をGPUへ渡す。
 	wvpResource_ = dxCommon_->CreateBufferResource(sizeof(TransformationMatrix));
 	wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
 	Math math;
@@ -122,16 +126,17 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 /// 更新処理
 /// </summary>
 void Sprite::Update() {
+	// 編集用の色を作業色空間へ変換してからGPUデータへ反映する。
 	if (materialData_) {
 		materialData_->color = ColorSpace::AuthoringToWorking(color_);
 	}
-	//  アニメーション処理 
+	// 横一列のスプライトシートを想定し、現在フレームのUV範囲を更新する。
 	if (isPlaying_) {
-		// タイマーを進める
+		// このアニメーションは呼び出し一回を1/60秒として進める。
 		animationTimer_ += 1.0f / 60.0f;
 
 		if (animationTimer_ >= frameDuration_) {
-			// 次のフレームへ
+			// 最終フレームを越えたらループか停止を選ぶ。
 			currentFrame_++;
 			animationTimer_ = 0.0f; // タイマーリセット
 
@@ -145,17 +150,15 @@ void Sprite::Update() {
 			}
 		}
 
-		// 現在のフレームに基づいてテクスチャの表示範囲を計算
+		// 一枚の画像を横に分割した現在フレームの矩形へ切り替える。
 		textureLeftTop_.x = (float)(currentFrame_ * frameWidth_);
 		textureLeftTop_.y = 0; // 今回は横一列のアニメーションを想定
 		textureSize_.x = (float)frameWidth_;
 		textureSize_.y = (float)frameHeight_;
 	}
 
-
-	// --- 頂点座標計算 ---
+	// アンカー基準の矩形を作り、反転時は左右または上下の座標を入れ替える。
 	{
-		// アンカーポイントを考慮した頂点ごとのローカル座標
 		float left = (0.0f - anchorPoint_.x) * size_.x;
 		float right = (1.0f - anchorPoint_.x) * size_.x;
 		float top = (0.0f - anchorPoint_.y) * size_.y;
@@ -168,14 +171,14 @@ void Sprite::Update() {
 			std::swap(top, bottom);
 		}
 
-		// ４点の頂点データに反映
+		// インデックスバッファの並びに合わせて四隅の座標を配置する。
 		vertexData_[0].position = { left, bottom, 0.0f, 1.0f };
 		vertexData_[1].position = { left, top, 0.0f, 1.0f };
 		vertexData_[2].position = { right, bottom, 0.0f, 1.0f };
 		vertexData_[3].position = { right, top, 0.0f, 1.0f };
 	}
 
-	// --- UV座標計算 ---
+	// テクスチャ矩形を画像全体の大きさで割り、GPU用の正規化UVへ変換する。
 	{
 		if (textureHandle_ == 0) {
 			return;
@@ -194,7 +197,7 @@ void Sprite::Update() {
 		vertexData_[3].texcoord = { tex_right, tex_top };
 	}
 
-	// --- 行列計算 ---
+	// 親子変換を含むワールド行列へ画面の正射影を掛ける。
 	Math math;
 	Matrix4x4 worldMatrix = MakeSpriteWorldMatrix(this);
 	Matrix4x4 viewMatrix = math.MakeIdentity4x4();
@@ -218,6 +221,7 @@ void Sprite::SetColor(const Vector4& color) {
 /// 描画
 /// </summary>
 void Sprite::Draw() {
+	// リプレイからの削除状態も含め、描画不能なSpriteはGPUコマンドを出さない。
 	if (!common_ || !dxCommon_) return;
 	assert(common_);
 	if (!isVisible_ || replayRemoved_ || textureHandle_ == 0) return;
@@ -225,6 +229,7 @@ void Sprite::Draw() {
 	if (!vertexData_ || !materialData_) return;
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 
+	// 更新済みの頂点、変換、マテリアル、テクスチャを束ねて一枚の矩形を描く。
 	common_->SetPipeline(commandList);
 	commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
 	commandList->IASetIndexBuffer(&indexBufferView_);
@@ -307,6 +312,7 @@ uint64_t Sprite::EnsureReplayId() {
 
 Sprite::ReplayState Sprite::CaptureReplayState() const {
 	ReplayState state;
+	// 見た目の状態だけでなく、アニメーション進行と親子関係のIDも保存する。
 	state.position = position_;
 	state.rotation = rotation_;
 	state.size = size_;
@@ -336,6 +342,7 @@ Sprite::ReplayState Sprite::CaptureReplayState() const {
 }
 
 void Sprite::RestoreReplayState(const ReplayState& state) {
+	// 親の復元順に依存しないよう、いったん親子関係を切ってローカル状態を戻す。
 	SetParent(nullptr, false);
 	position_ = state.position;
 	rotation_ = state.rotation;
@@ -364,6 +371,7 @@ void Sprite::RestoreReplayState(const ReplayState& state) {
 }
 
 void Sprite::RefreshAfterReplayRestore() {
+	// Updateはアニメーションを進めるため、復元フレームの再計算中だけ再生を止める。
 	const bool wasPlaying = isPlaying_;
 	isPlaying_ = false;
 	Update();
@@ -371,10 +379,12 @@ void Sprite::RefreshAfterReplayRestore() {
 }
 
 void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {
+	// 自分自身や子孫を親に指定すると行列計算が循環するので拒否する。
 	if (parent == this || HasParentInChain(parent, this)) {
 		return;
 	}
 
+	// 親変更前の表示位置を保存し、必要なら新しい親のローカル座標へ換算する。
 	Vector2 worldPosition = GetWorldPosition();
 
 	if (parent_) {

@@ -9,6 +9,7 @@
 #include "CollisionManager.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "ParticleSystem.h"
 #include "HitEffectDirector.h"
 #include "MeshEffectManager.h"
@@ -22,7 +23,7 @@
 
 void BaseEnemy::BindSceneSpawnContext(BaseScene* scene) {
     // シーン登録後に目標を結び、生成順に依存してプレイヤー参照を失わないようにする。
-    SetTarget(scene ? scene->GetPlayer() : nullptr);
+    SetTarget(GetScenePlayer(scene));
 }
 
 namespace {

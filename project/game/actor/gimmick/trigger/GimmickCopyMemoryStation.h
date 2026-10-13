@@ -5,6 +5,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <string_view>
 
 class Player;
 
@@ -22,6 +23,18 @@ class GimmickCopyMemoryStation final : public BaseGimmick {
 
   private:
     static constexpr size_t kCoreCount = 4;
+
+    // 旧Scene JSONのparamを、このギミックが使う設定だけへ写す境界です。
+    struct Settings {
+        std::array<std::string_view, kCoreCount> types{};
+        float activationRadius = 0.9f;
+        float essenceScale = 1.0f;
+        float hoverAmount = 0.10f;
+        float glow = 0.45f;
+        bool unlimitedDuration = true;
+        bool startActive = true;
+    };
+    Settings ReadSettings() const;
 
     void BeginPlayState();
     void ResetEditorState();

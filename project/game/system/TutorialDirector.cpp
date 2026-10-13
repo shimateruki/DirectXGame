@@ -9,6 +9,7 @@
 #include "DebugConsole.h"
 #include "GimmickStageGate.h"
 #include "InputManager.h"
+#include "game/ui/InputGlyphResolver.h"
 #include "Player.h"
 #include "SceneManager.h"
 #include "Sprite.h"
@@ -152,6 +153,7 @@ void TutorialDirector::Finalize() {
     promptAlpha_ = 0.0f;
     promptRequestedVisible_ = false;
     promptGamepadMode_ = false;
+    promptBindingSignature_.clear();
     objectiveMarkers_ = {};
     objectiveTargetNames_ = {};
     objectiveOffsetY_ = 0.75f;
@@ -185,7 +187,9 @@ void TutorialDirector::Update(float deltaTime) {
     stepTimer_ += (std::max)(0.0f, deltaTime);
     UpdateCinematic(deltaTime);
     // 手順が続いている間も、最後に使用した入力方式へ案内を切り替えます。
-    if (!stepConditionSatisfied_ && inputManager_ && promptGamepadMode_ != inputManager_->IsGamepadMode()) {
+    if (!stepConditionSatisfied_ && inputManager_ &&
+        (promptGamepadMode_ != inputManager_->IsGamepadMode() ||
+         promptBindingSignature_ != GetInputGlyphBindingSignature())) {
         ApplyStepPrompt(&steps_[static_cast<size_t>(currentStepIndex_)]);
     }
     UpdatePrompt(deltaTime);
@@ -987,13 +991,29 @@ void TutorialDirector::BindPromptSprites() {
 }
 
 void TutorialDirector::ApplyStepPrompt(const Step* step) {
-    // 最後に使った入力方式の画像を選び、ラベルとアイコンの配置を組み直す。
+    // JSON の操作画像を現在の割当に解決し、変更後のキーをチュートリアルでも教える。
     promptGamepadMode_ = inputManager_ && inputManager_->IsGamepadMode();
-    const std::vector<std::string>* icons = step ? &step->promptIcons : nullptr;
-    if (step && promptGamepadMode_ && !step->promptIconsGamepad.empty()) {
-        icons = &step->promptIconsGamepad;
+    promptBindingSignature_ = GetInputGlyphBindingSignature();
+    std::vector<InputGlyphSpec> glyphs;
+    if (step && !step->promptIcons.empty()) {
+        if (step->promptIcons[0] == "ui/input/combo/combo_wasd.png") {
+            if (promptGamepadMode_) glyphs.push_back({"ui/input/controller/pad_l_stick.png"});
+            else for (const char* action : {"Forward", "Backward", "Left", "Right"})
+                glyphs.push_back(ResolveActionGlyph(action, false));
+        } else {
+            for (size_t i = 0; i < step->promptIcons.size(); ++i) {
+                InputGlyphSpec glyph = ResolveInputGlyph(step->promptIcons[i], promptGamepadMode_);
+                if (promptGamepadMode_ && glyph.path == step->promptIcons[i] &&
+                    i < step->promptIconsGamepad.size()) {
+                    glyph = {step->promptIconsGamepad[i]};
+                }
+                glyphs.push_back(std::move(glyph));
+            }
+        }
+    } else if (step && promptGamepadMode_) {
+        for (const std::string& path : step->promptIconsGamepad) glyphs.push_back({path});
     }
-    const bool show = step && step->showPrompt && (!icons->empty() || !step->promptLabel.empty());
+    const bool show = step && step->showPrompt && (!glyphs.empty() || !step->promptLabel.empty());
     SetPromptVisible(show);
     promptLabel_.requestedVisible = false;
     for (PromptVisual& visual : promptIcons_) {
@@ -1007,25 +1027,33 @@ void TutorialDirector::ApplyStepPrompt(const Step* step) {
     if (hasLabel) {
         promptLabel_.requestedVisible = true;
         promptLabel_.sprite->SetVisible(true);
-        SetFullTextureRect(promptLabel_.sprite, step->promptLabel, {470.0f, 76.0f});
-        promptLabel_.basePosition.x = icons->empty() ? 960.0f : 1070.0f;
+        const bool fourKeys = glyphs.size() >= 4;
+        SetFullTextureRect(promptLabel_.sprite, step->promptLabel, {fourKeys ? 360.0f : 470.0f, 76.0f});
+        promptLabel_.basePosition.x = glyphs.empty() ? 960.0f : (fourKeys ? 1140.0f : 1070.0f);
         promptLabel_.baseSize = promptLabel_.sprite->GetSize();
     }
 
-    const size_t iconCount = (std::min)(icons->size(), promptIcons_.size());
-    constexpr float kPromptIconSpacing = 132.0f;
-    const float iconGroupCenterX = hasLabel ? 690.0f : 960.0f;
+    const size_t iconCount = (std::min)(glyphs.size(), promptIcons_.size());
+    const float kPromptIconSpacing = iconCount >= 4 ? 90.0f : 132.0f;
+    const float iconGroupCenterX = iconCount >= 4 ? 745.0f : (hasLabel ? 690.0f : 960.0f);
     const float firstIconX = iconGroupCenterX - kPromptIconSpacing * static_cast<float>(iconCount - 1) * 0.5f;
     for (size_t index = 0; index < promptIcons_.size(); ++index) {
         PromptVisual& visual = promptIcons_[index];
         if (!visual.sprite) {
             continue;
         }
-        const bool hasIcon = index < icons->size();
+        const bool hasIcon = index < iconCount;
         visual.requestedVisible = hasIcon;
         visual.sprite->SetVisible(hasIcon);
         if (hasIcon) {
-            SetFullTextureRect(visual.sprite, (*icons)[index], {190.0f, 118.0f});
+            const InputGlyphSpec& glyph = glyphs[index];
+            SetFullTextureRect(visual.sprite, glyph.path, {iconCount >= 4 ? 90.0f : 190.0f, 118.0f});
+            if (glyph.useCrop) {
+                visual.sprite->SetTextureRect({glyph.cropX, glyph.cropY}, {glyph.width, glyph.height});
+                const float fit = (std::min)(visual.sprite->GetSize().x / glyph.width,
+                                            visual.sprite->GetSize().y / glyph.height);
+                visual.sprite->SetSize({glyph.width * fit, glyph.height * fit});
+            }
             visual.basePosition.x = firstIconX + kPromptIconSpacing * static_cast<float>(index);
             visual.baseSize = visual.sprite->GetSize();
         }

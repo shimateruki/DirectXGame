@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/editor/SceneAssetEditorScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 
 #include "BulletManager.h"
@@ -53,7 +54,6 @@ void SceneAssetEditorScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
 
-    EventManager::GetInstance()->ClearAllListeners();
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
@@ -157,7 +157,7 @@ void SceneAssetEditorScene::Draw() {
     ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
     object3dCommon_->SetGraphicsCommand();
     objectManager_->Draw(pointLight, spotLight);
-    DrawEnemyTelegraphs(pointLight, spotLight);
+    DrawEnemyTelegraphs(*this, pointLight, spotLight);
     BulletManager::GetInstance()->Draw(pointLight, spotLight);
     LightEditor::GetInstance()->Draw3D();
 

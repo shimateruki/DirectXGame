@@ -176,20 +176,17 @@ void Camera::Initialize() {
 
 
 void Camera::Update(float deltaTime) {
+    // 演出レイヤーの進行だけは大きなフレーム落ちを抑え、通常追従の補間は実経過時間で計算する。
     const float frameDelta = std::clamp(deltaTime, 0.0f, 0.1f);
     auto LerpVec3 = [](const Vector3& a, const Vector3& b, float t) {
         return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
         };
 
-    // =================================================================
-    // [1] 通常カメラの処理（プレイヤー追従および各モードの座標計算）
-    // =================================================================
+    // まず追従対象から通常の視点と注視点を求め、その後に演出用Overrideを重ねる。
     if (followObject_) {
         Vector3 playerPos = followObject_->GetWorldPosition();
 
-        // -----------------------------------------------------------------
-        // (A) 注視点 (TargetPos) の基本計算
-        // -----------------------------------------------------------------
+        // 回転モードは軌道中心を、その他の追従モードはプレイヤーの上方を基準に見る。
         Vector3 targetPos = playerPos;
         if (followMode_ == FollowMode::kOrbit) {
             targetPos.x += orbitCenterOffset_.x;
@@ -199,9 +196,7 @@ void Camera::Update(float deltaTime) {
             targetPos.y += aimHeight_;
         }
 
-        // -----------------------------------------------------------------
-        // (B) 目標座標 (Desired Eye) の計算
-        // -----------------------------------------------------------------
+        // 各モードで目標視点を作る。以下の補間と衝突回避はこの結果に共通で適用する。
         Vector3 desiredEye = eye_;
         float toRad = PI / 180.0f;
 
@@ -209,7 +204,7 @@ void Camera::Update(float deltaTime) {
         case FollowMode::kLockOn:
         {
             if (targetObject_) {
-                // ロックオン時の注視点計算
+                // 敵そのものではなくプレイヤー寄りを注視し、両者の足元を画面内に残す。
                 Vector3 enemyPos = targetObject_->GetWorldPosition();
                 Vector3 playerFocus = playerPos;
                 playerFocus.y += aimHeight_ * 0.5f;
@@ -230,6 +225,7 @@ void Camera::Update(float deltaTime) {
                 float heightDiff = std::max(0.0f, enemyPos.y - playerPos.y);
                 float heightZoom = std::min(heightDiff * 0.3f, 4.0f);
 
+                // 近距離では二体が切れないよう後退し、遠距離でも引き幅に上限を設ける。
                 float closeZoomOut = 0.0f;
                 if (distanceXZ < 8.0f) {
                     closeZoomOut = (8.0f - distanceXZ) * 0.7f;
@@ -249,6 +245,7 @@ void Camera::Update(float deltaTime) {
                     return a;
                     };
 
+                // 角度差を[-π, π]へ折り返し、回転方向が境界で反転しないようにする。
                 float diff = NormalizeAngle(angleToEnemy - rotation_.y);
                 rotation_.y += diff * (1.0f - std::exp(-5.0f * std::max(0.0f, deltaTime)));
 
@@ -312,22 +309,18 @@ void Camera::Update(float deltaTime) {
         }
         }
 
-        // -----------------------------------------------------------------
-        // 右クリック（エイム・フック構え）時の1人称オーバーライド
-        // -----------------------------------------------------------------
+        // エイム中はモードごとの視点を一時的に頭の位置へ寄せ、視線の向きは維持する。
         bool isAiming = (inputManager_ && inputManager_->IsActionPressed("SecondaryAction") &&
             !isAimCameraSuppressed_ && followMode_ != FollowMode::kLockOn);
         if (isAiming) {
-            // カメラの目標位置をプレイヤーの頭の位置に設定
+            // ここで視点と注視点の両方を置き換え、後段の補間へ渡す。
             desiredEye = playerPos + Vector3{ 0.0f, aimHeight_, 0.0f };
             Matrix4x4 rotateMatFP = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
             Vector3 forwardFP = math.TransformNormal({ 0, 0, 1 }, rotateMatFP);
             targetPos = desiredEye + forwardFP * 10.0f;
         }
 
-        // -----------------------------------------------------------------
-        // (C) 初期化と補間の実行 【ズームイン・アウトの滑らか対応版】
-        // -----------------------------------------------------------------
+        // 初回だけ補間せず即時配置し、それ以降は注視点と視点を別の速さで追従させる。
         if (!isCameraInitialized_) {
             smoothTarget_ = targetPos;
             smoothEye_ = desiredEye;
@@ -336,16 +329,19 @@ void Camera::Update(float deltaTime) {
             isCameraInitialized_ = true;
         }
         else {
-            // 基本の補間スピード
+            // 60fps 時の追従率を経過秒数へ換算し、異なるフレームレートでも同じ時間で追いつく。
+            const auto frameIndependentAlpha = [deltaTime](float alphaAt60Fps) {
+                return 1.0f - std::pow(1.0f - alphaAt60Fps, (std::max)(0.0f, deltaTime) * 60.0f);
+            };
             float targetLerpFactor = (followMode_ == FollowMode::kLockOn)
-                ? 1.0f - std::exp(-10.0f * std::max(0.0f, deltaTime)) : 0.2f;
+                ? 1.0f - std::exp(-10.0f * (std::max)(0.0f, deltaTime)) : frameIndependentAlpha(0.2f);
             float eyeLerpFactor = (followMode_ == FollowMode::kLockOn)
-                ? 1.0f - std::exp(-7.0f * std::max(0.0f, deltaTime)) : 0.15f;
+                ? 1.0f - std::exp(-7.0f * (std::max)(0.0f, deltaTime)) : frameIndependentAlpha(0.15f);
 
-            // ★エイム中は強制固定（ワープ）を廃止し、滑らかにズームする係数に変更
+            // エイムへの切替中も位置を飛ばさず、視線を視点より速く追従させる。
             if (isAiming) {
-                targetLerpFactor = 0.4f; // 視線の向きは早めに追従させてエイムしやすくする
-                eyeLerpFactor = 0.2f;    // カメラ位置は少し時間をかけて頭に引き寄せる
+                targetLerpFactor = frameIndependentAlpha(0.4f); // 視線の向きは早めに追従させる。
+                eyeLerpFactor = frameIndependentAlpha(0.2f);    // カメラ位置は少し遅れて引き寄せる。
             }
 
             smoothTarget_ = LerpVec3(smoothTarget_, targetPos, targetLerpFactor);
@@ -358,11 +354,9 @@ void Camera::Update(float deltaTime) {
             eye_ = smoothEye_;
         }
 
-        // -----------------------------------------------------------------
-        // (D) 障害物判定 (Collision)
-        // -----------------------------------------------------------------
+        // 追従視点とプレイヤーの間に地形がある場合だけ、手前へ視点を移動する。
         if (!isEyeFrozen_) {
-            // エイム中などはコリジョンを通さず、引き寄せられている視点位置をダイレクトに適用
+            // 一人称・固定視点・エイム中はこの地形補正を適用しない。
             if (followMode_ != FollowMode::kFirstPerson && followMode_ != FollowMode::kFixedPoint && !isAiming) {
                 Vector3 rayStartPos = playerPos;
                 rayStartPos.y += aimHeight_;
@@ -374,7 +368,7 @@ void Camera::Update(float deltaTime) {
                 Vector3 targetEye = smoothEye_;
                 float finalDist = dist;
 
-                // ① 壁などのオブジェクトとの判定
+                // 地形レイの衝突点より少し手前で止め、壁への視点のめり込みを防ぐ。
                 if (dist > 0.1f) {
                     RaycastHit hit = CollisionManager::GetInstance()->Raycast(
                         rayStartPos, direction, dist, CollisionCategories::Get("ground")
@@ -387,7 +381,7 @@ void Camera::Update(float deltaTime) {
                     }
                 }
 
-                // ② 地面へのめり込み防止
+                // 視線が下向きなら、足元より低い視点を地面限界まで引き上げる。
                 float groundLimitY = playerPos.y + 0.5f;
                 if (targetEye.y < groundLimitY && direction.y < -0.001f) {
                     float distToGround = (groundLimitY - rayStartPos.y) / direction.y;
@@ -399,13 +393,11 @@ void Camera::Update(float deltaTime) {
                 eye_ = targetEye;
             }
             else {
-                eye_ = smoothEye_; // desiredEye ではなく滑らかに移動中の smoothEye_ を適用！
+                eye_ = smoothEye_; // 補間済み視点を使い、エイム切替時の位置飛びを避ける。
             }
         }
 
-        // -----------------------------------------------------------------
-        // (E) プレイヤー透過処理（近距離フェード）
-        // -----------------------------------------------------------------
+        // カメラがプレイヤーに近付いたときは本体と子オブジェクトの透明度を揃える。
         Vector3 playerPosForDist = followObject_->GetWorldPosition();
         playerPosForDist.y += aimHeight_ * 0.5f;
 
@@ -428,6 +420,7 @@ void Camera::Update(float deltaTime) {
         }
     }
     else if (followMode_ == FollowMode::kFixedPoint) {
+        // 追従対象がない固定視点は、前回の平滑化位置も同時に更新して復帰時の跳びを防ぐ。
         Vector3 desiredEye = fixedPointPos_;
         float pitch = fixedPointAngle_.x;
         float yaw = fixedPointAngle_.y;
@@ -443,6 +436,7 @@ void Camera::Update(float deltaTime) {
         isCameraInitialized_ = true;
     }
     else if (followMode_ == FollowMode::kOrbit) {
+        // 対象なしの軌道カメラは保存済み中心を使い、視点と注視点を別々に補間する。
         Vector3 orbitTarget = fixedPointPos_;
         orbitAngle_ += orbitSpeed_;
 
@@ -470,9 +464,7 @@ void Camera::Update(float deltaTime) {
         }
     }
 
-    // =================================================================
-    // [2] シネマティックカメラ (Override) の補間処理
-    // =================================================================
+    // 演出カメラの位置は、通常カメラの計算が終わってから加重して重ねる。
     Vector3 normalEye = eye_;
     Vector3 normalTarget = target_;
     if (followObject_ == nullptr && isOverridden_) {
@@ -481,6 +473,7 @@ void Camera::Update(float deltaTime) {
     }
 
     auto resolveOverridePose = [&]() {
+        // 目の位置と注視点は固定座標、シーンオブジェクト追従、通常注視点への軸追従を組み合わせられる。
         Vector3 desiredEye = overrideParams_.fixedEyePos;
         if (overrideParams_.eyeSource == OverrideEyeSource::kSceneObject && overrideParams_.eyeObject) {
             desiredEye = overrideParams_.eyeObject->GetWorldPosition() + overrideParams_.eyeObjectOffset;
@@ -512,6 +505,7 @@ void Camera::Update(float deltaTime) {
             if (overrideParams_.trackTargetZ) desiredTarget.z = normalTarget.z;
         }
 
+        // Override先も必要なら独立して平滑化し、切替直後だけ現在の目標位置で初期化する。
         if (!overrideFollowInitialized_) {
             overrideFollowEye_ = desiredEye;
             overrideFollowTarget_ = desiredTarget;
@@ -537,6 +531,7 @@ void Camera::Update(float deltaTime) {
         return std::pair<Vector3, Vector3>{ overrideFollowEye_, overrideFollowTarget_ };
     };
 
+    // 重みを増減して演出へ入る・戻る。継続時間0なら目標姿勢を直ちに適用する。
     if (overrideDuration_ > 0.0f) {
         if (isOverridden_) {
             overrideTimer_ += frameDelta;
@@ -577,9 +572,7 @@ void Camera::Update(float deltaTime) {
         }
     }
 
-    // =================================================================
-    // [3] 行列とプロジェクションの更新
-    // =================================================================
+    // 位置の確定後に手ブレと画角演出を加算し、最後に描画用行列へ変換する。
     Vector3 viewEye = eye_;
     Vector3 viewTarget = target_;
     Vector3 mixedShakeOffset = { 0.0f, 0.0f, 0.0f };
@@ -601,6 +594,7 @@ void Camera::Update(float deltaTime) {
     viewEye = viewEye + mixedShakeOffset;
     viewTarget = viewTarget + mixedShakeOffset * 0.25f;
 
+    // FOVの開始側と終了側で別の包絡線を使い、複数パルスを合成する。
     float mixedFovOffset = 0.0f;
     for (FovPulseLayer& layer : fovPulseLayers_) {
         const float progress = std::clamp(layer.elapsed / layer.duration, 0.0f, 1.0f);
@@ -625,6 +619,7 @@ void Camera::Update(float deltaTime) {
     Vector3 forward = { viewTarget.x - viewEye.x, viewTarget.y - viewEye.y, viewTarget.z - viewEye.z };
     Vector3 currentUp = up_;
 
+    // 真上・真下を見るとLookAtの上方向が視線と平行になるため、別の上方向を選ぶ。
     if (std::abs(forward.x) < 0.001f && std::abs(forward.z) < 0.001f) {
         if (forward.y < 0.0f) {
             currentUp = { 0.0f, 0.0f, 1.0f };

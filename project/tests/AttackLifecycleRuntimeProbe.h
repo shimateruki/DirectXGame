@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_IMGUI
 #include "SceneManager.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "EnemyFireSlime.h"
 #include "game/actor/enemy/combat/ISequencePreviewEnemy.h"
@@ -28,11 +29,18 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     static BaseEnemy* enemy = nullptr;
     static float hpBefore = 0;
     static int damageEvents = 0;
+    static EventManager::SubscriptionId damageSubscription = EventManager::kInvalidSubscriptionId;
     static bool sawBullet = false, sawAction = false, ended = false;
     static EnemyAttackProfile authored;
     static bool done = false;
     if (done) return;
-    auto finish = [&](const std::string& message) { log << message << std::endl; done = true; WinApp::CloseNow(); };
+    auto finish = [&](const std::string& message) {
+        EventManager::GetInstance()->Unsubscribe(damageSubscription);
+        damageSubscription = EventManager::kInvalidSubscriptionId;
+        log << message << std::endl;
+        done = true;
+        WinApp::CloseNow();
+    };
     if (GetTickCount64() - began > 300000) { finish("FAIL: lifecycle timeout"); return; }
     if (manager->IsTransitioning()) return;
     if (phase == 0) {
@@ -41,7 +49,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     }
     auto* scene = manager->GetCurrentScene();
     if (!scene || manager->GetCurrentSceneName() != "GAMEPLAY") return;
-    auto* player = scene->GetPlayer();
+    auto* player = GetScenePlayer(scene);
     if (!player || !player->param_) { finish("FAIL: no runtime player"); return; }
     if (phase == 1) {
         // 入場ムービーの無敵・操作ロックが解けてから通常の被弾を検証します。
@@ -59,7 +67,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         attack.sequence.events.front().projectile.damage = 2;
         attack.sequence.events.front().name = "RuntimeAuthoredProjectile";
         authored.attacks.push_back(attack);
-        EventManager::GetInstance()->Subscribe([](const DamageEvent& event) {
+        damageSubscription = EventManager::GetInstance()->Subscribe([](const DamageEvent& event) {
             const auto* bullet = dynamic_cast<const Bullet*>(event.attacker);
             if (bullet && bullet->GetName() == "RuntimeAuthoredProjectile") ++damageEvents;
         });

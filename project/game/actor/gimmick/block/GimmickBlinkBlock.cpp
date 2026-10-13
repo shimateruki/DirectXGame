@@ -2,13 +2,18 @@
 #include "CollisionConfig.h"
 #include "Player.h"
 
+GimmickBlinkBlock::~GimmickBlinkBlock() {
+    EventManager::GetInstance()->Unsubscribe(jumpSubscription_);
+}
+
 void GimmickBlinkBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("BlinkBlock");
 
     // イベント購読
-    EventManager::GetInstance()->Subscribe([this](const PlayerJumpEvent& e) { this->OnPlayerJump(e); });
+    EventManager::GetInstance()->Unsubscribe(jumpSubscription_);
+    jumpSubscription_ = EventManager::GetInstance()->Subscribe([this](const PlayerJumpEvent& e) { OnPlayerJump(e); });
 
     // 初期パラメータの読み込み
     if (param_.has_value()) {

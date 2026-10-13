@@ -1,5 +1,6 @@
 #pragma once
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
@@ -30,7 +31,7 @@ class InputManager;
 /// <summary>
 /// ゲームオーバーシーン
 /// </summary>
-class GameOverScene : public BaseScene {
+class GameOverScene : public BaseScene, public ISceneGameplayAccess {
   public:
     GameOverScene() = default;
     ~GameOverScene() override = default;

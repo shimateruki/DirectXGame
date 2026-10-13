@@ -8,7 +8,7 @@ using nlohmann::json;
 using EditorPropertyBuiltIn::CommonFlags;
 
 void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
-    // カメラとゲームプレイ設定の型・保存先・UI 表示を一か所に登録します。
+    // Cameraオブジェクトと、汎用EntityParameterを持つゲーム用Objectに編集項目を登録する。
     const auto cameraOnly = [](const Object3d& object) {
         return object.IsCameraObject();
     };
@@ -18,6 +18,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         return object.param_.has_value() && className != "Player" && className != "Enemy";
     };
 
+    // Cameraの有効性と役割は種類を限定し、誤った型・範囲のJSONを受け付けない。
     Register({
         "camera.enabled", "Camera有効", "Camera", EditorPropertyType::Bool, CommonFlags(),
         [](const Object3d& object) { return json(object.GetSceneCameraSettings().enabled); },
@@ -40,6 +41,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         cameraOnly,
         { "Main", "Cinematic" },
     });
+    // 視野角とClip距離は、描画行列が破綻しない範囲へ制限する。
     Register({
         "camera.fov", "FOV", "Camera", EditorPropertyType::Number, CommonFlags(true),
         [](const Object3d& object) { return json(object.GetSceneCameraSettings().fovY); },
@@ -73,6 +75,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         },
         cameraOnly,
     });
+    // 視点の取得元、追従対象、オフセット、追従速度をひとまとまりで公開する。
     Register({
         "camera.eyeSource", "Eye取得元", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().eyeSource)); },
@@ -131,6 +134,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         },
         cameraOnly,
     });
+    // 注視点は固定点、シーン内Object、カメラ前方から選び、追従方法を別に指定する。
     Register({
         "camera.targetMode", "注視方法", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().targetMode)); },
@@ -212,6 +216,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         },
         cameraOnly,
     });
+    // 演出への出入り時間とEasingは、視点と注視点の計算結果を合成する際に使う。
     Register({
         "camera.blendIn", "Blend In", "Camera", EditorPropertyType::Number, CommonFlags(),
         [](const Object3d& object) { return json(object.GetSceneCameraSettings().blendInDuration); },
@@ -245,6 +250,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         { "Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step" },
     });
 
+    // EntityParameterの数値・整数・真偽値・文字列は同じ検証と読み書き手順で登録する。
+    // 対象がPlayer/Enemyではないことは冒頭の述語で確認する。
     auto registerParamNumber = [this, gameplayParameterOnly](
         const char* path,
         const char* displayName,
@@ -306,6 +313,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         });
     };
 
+    // パスはEditorから参照する安定ID。表示名を変えても保存項目との対応は維持する。
     registerParamNumber("gameplay.healAmount", "回復量", &Object3d::EntityParameter::healAmount);
     registerParamNumber("gameplay.interval", "間隔", &Object3d::EntityParameter::interval);
     registerParamInteger("gameplay.maxCount", "最大数", &Object3d::EntityParameter::maxCount);

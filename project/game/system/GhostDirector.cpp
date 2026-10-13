@@ -857,6 +857,7 @@ int GhostDirector::FindTransformTrack(Object3d* object) const {
     if (!object) {
         return -1;
     }
+    // 一覧選択はトラックとキーの選択を同期し、実Scene上の対象も選び直します。
     for (int index = 0; index < static_cast<int>(sequence_.transformTracks.size()); ++index) {
         const auto& binding = sequence_.transformTracks[index].binding;
         if (GetRoleIndex(binding.targetName) >= 0 && ResolveTrackTarget(binding) == object)
@@ -1208,6 +1209,7 @@ void GhostDirector::DrawTransformTrackEditor() {
         track.name = trackName;
     }
 
+    // Binding 変更は再生器の参照先も変わるので、最後にプレビューを再構築します。
     bool bindingChanged = DrawObjectBindingEditor("対象", track.binding, false, false);
 
     ImGui::Checkbox("有効", &track.enabled);
@@ -1215,6 +1217,7 @@ void GhostDirector::DrawTransformTrackEditor() {
     ImGui::Checkbox("Mute", &track.muted);
     ImGui::SameLine();
     ImGui::Checkbox("Lock", &track.locked);
+    // 絶対/相対を切り替えるときは現在の姿勢を基準に全キーを変換し、見た目の位置を保ちます。
     const bool wasRelative = track.relative;
     ImGui::BeginDisabled(track.anchorRelative);
     if (ImGui::Checkbox("相対Transform", &track.relative) && wasRelative != track.relative) {
@@ -1248,6 +1251,7 @@ void GhostDirector::DrawTransformTrackEditor() {
         EvaluatePreviewAtCurrentTime();
     }
 
+    // Legacy Path を残しますが、Inline Key がある場合はそちらを優先することを表示します。
     const auto pathFiles = CollectJsonStems(kAnimationDirectory);
     const std::string pathLabel = track.legacyPathFile.empty() ? "Inline Keys" : track.legacyPathFile;
     if (ImGui::BeginCombo("Legacy Ghost Path", pathLabel.c_str())) {
@@ -1272,6 +1276,7 @@ void GhostDirector::DrawTransformTrackEditor() {
             RecordTransformKey(target, true);
     }
 
+    // 選択キーを切り替えた時刻で即座にシークし、Game Viewと入力値を一致させます。
     if (!track.keys.empty()) {
         if (selectedKeyIndex_ < 0 || selectedKeyIndex_ >= static_cast<int>(track.keys.size())) {
             selectedKeyIndex_ = 0;
@@ -1299,6 +1304,7 @@ void GhostDirector::DrawTransformTrackEditor() {
         keyChanged |= ImGui::DragFloat3("Scale", &key.scale.x, 0.01f, 0.001f, 100.0f);
         const char* easingNames[] = {"Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step"};
         keyChanged |= ImGui::Combo("次のキーへの補間", &key.easingToNext, easingNames, IM_ARRAYSIZE(easingNames));
+        // 時刻編集で並び順が変わるためSort後に近いキーを選び直し、無効な添字を保持しません。
         if (keyChanged) {
             const float editedTime = key.time;
             sequence_.Sort();
@@ -1750,6 +1756,7 @@ void GhostDirector::DrawTimelineCanvas() {
     constexpr float labelWidth = 230.0f;
     constexpr float headerHeight = 28.0f;
     constexpr float rowHeight = 36.0f;
+    // 種類別配列の件数を合算し、一本の時間軸へ連結した行番号を作ります。
     const int transformCount = static_cast<int>(sequence_.transformTracks.size());
     const int cameraCount = static_cast<int>(sequence_.cameraShots.size());
     const int animationCount = static_cast<int>(sequence_.animationClips.size());
@@ -1773,6 +1780,7 @@ void GhostDirector::DrawTimelineCanvas() {
     drawList->AddLine(ImVec2(origin.x + labelWidth, origin.y), ImVec2(origin.x + labelWidth, end.y),
                       IM_COL32(105, 115, 135, 255), 1.0f);
 
+    // 全トラックで共有する秒目盛りを先に描き、各行のClipやSignalをその上へ重ねます。
     const int secondCount = static_cast<int>(std::ceil(duration));
     for (int second = 0; second <= secondCount; ++second) {
         const float x = origin.x + labelWidth + second * timelinePixelsPerSecond_;
@@ -1791,6 +1799,7 @@ void GhostDirector::DrawTimelineCanvas() {
         }
         drawList->AddLine(ImVec2(origin.x, y1), ImVec2(end.x, y1), IM_COL32(60, 65, 78, 180), 1.0f);
 
+        // 行番号を種類ごとの配列Indexへ戻して、移動キー・Camera Shot・素材Clipを描き分けます。
         if (row < transformCount) {
             const auto& track = sequence_.transformTracks[row];
             const bool selected = selectedTrackKind_ == 0 && selectedTrackIndex_ == row;
@@ -1864,11 +1873,13 @@ void GhostDirector::DrawTimelineCanvas() {
         }
     }
 
+    // 選択中のスクラブ時刻をすべての種類の行に通る赤線で示します。
     const float playheadX = origin.x + labelWidth + currentScrubTime_ * timelinePixelsPerSecond_;
     drawList->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, end.y), IM_COL32(255, 82, 82, 255), 2.0f);
     drawList->AddTriangleFilled(ImVec2(playheadX - 6.0f, origin.y), ImVec2(playheadX + 6.0f, origin.y),
                                 ImVec2(playheadX, origin.y + 9.0f), IM_COL32(255, 82, 82, 255));
 
+    // 縦位置はトラック選択、横位置は時刻選択へ変換し、移動キー近傍ならキーも選びます。
     if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         const ImVec2 mouse = ImGui::GetIO().MousePos;
         const int row = static_cast<int>((mouse.y - origin.y - headerHeight) / rowHeight);
@@ -1905,6 +1916,7 @@ void GhostDirector::DrawTimelineCanvas() {
                 selectedKeyIndex_ = -1;
             }
         }
+        // ラベル領域のクリックでは時刻を変えず、Clip側を押した場合だけ姿勢を再評価します。
         if (mouse.x >= origin.x + labelWidth) {
             currentScrubTime_ =
                 std::clamp((mouse.x - origin.x - labelWidth) / timelinePixelsPerSecond_, 0.0f, duration);

@@ -3,6 +3,7 @@
 #include "InputManager.h"
 #include "CameraManager.h"
 #include "engine/utility/math/Math.h"
+#include <cmath>
 
 Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
     Vector3 move = {0.0f, 0.0f, 0.0f};
@@ -44,6 +45,13 @@ Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
     }
     if (input->IsActionPressed("Right")) {
         move += right;
+    }
+
+    // アナログ入力を優先し、倒し具合を速度に反映します。方向キーの操作は従来通り残します。
+    const Vector2 stick = input->GetLeftStick();
+    const float stickLength = std::sqrt(stick.x * stick.x + stick.y * stick.y);
+    if (stickLength > 0.001f) {
+        return (right * stick.x + forward * stick.y) * moveSpeed;
     }
 
     // 速度を適用

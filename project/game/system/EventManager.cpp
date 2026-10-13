@@ -1,79 +1,116 @@
 #include "EventManager.h"
+#include <utility>
 
 EventManager* EventManager::GetInstance() {
-    // シーン内のイベント購読を同じバスへ集約する。
     static EventManager instance;
     return &instance;
 }
 
-// --- PlayerHitEvent 関連 ---
+template <typename Event>
+EventManager::SubscriptionId EventManager::SubscribeTo(
+    ListenerList<Event>& listeners, std::function<void(const Event&)> callback) {
+    if (!callback) return kInvalidSubscriptionId;
+    const SubscriptionId id = nextSubscriptionId_++;
+    listeners.push_back({id, std::move(callback), true});
+    return id;
+}
 
-void EventManager::Subscribe(std::function<void(const PlayerHitEvent&)> callback) {
-    // リストにコールバック関数を追加する
-    playerHitListeners_.push_back(callback);
+template <typename Event>
+void EventManager::DispatchTo(ListenerList<Event>& listeners, const Event& event) {
+    // 配信中に追加された購読は次のイベントから通知します。
+    const SubscriptionId lastExistingId = nextSubscriptionId_ - 1;
+    ++dispatchDepth_;
+    try {
+        for (auto& listener : listeners) {
+            if (listener.active && listener.id <= lastExistingId) listener.callback(event);
+        }
+    } catch (...) {
+        --dispatchDepth_;
+        if (dispatchDepth_ == 0) PruneInactiveListeners();
+        throw;
+    }
+    --dispatchDepth_;
+    if (dispatchDepth_ == 0) PruneInactiveListeners();
+}
+
+template <typename Event>
+void EventManager::MarkInactive(ListenerList<Event>& listeners, SubscriptionId id) {
+    for (auto& listener : listeners) {
+        if (listener.id == id) {
+            listener.active = false;
+            return;
+        }
+    }
+}
+
+template <typename Event>
+void EventManager::PruneInactive(ListenerList<Event>& listeners) {
+    listeners.remove_if([](const Listener<Event>& listener) { return !listener.active; });
+}
+
+void EventManager::PruneInactiveListeners() {
+    PruneInactive(playerHitListeners_);
+    PruneInactive(bulletHitListeners_);
+    PruneInactive(damageListeners_);
+    PruneInactive(playerDeathListeners_);
+    PruneInactive(playerJumpListeners_);
+}
+
+EventManager::SubscriptionId EventManager::Subscribe(std::function<void(const PlayerHitEvent&)> callback) {
+    return SubscribeTo(playerHitListeners_, std::move(callback));
 }
 
 void EventManager::Dispatch(const PlayerHitEvent& event) {
-    // 登録順にその場で通知する。通知中に ClearAllListeners() を呼ばない。
-    for (auto& listener : playerHitListeners_) {
-        listener(event);
-    }
+    DispatchTo(playerHitListeners_, event);
 }
 
-void EventManager::Subscribe(std::function<void(const BulletHitEvent&)> callback) {
-    // Bullet 用のリストに追加する
-    bulletHitListeners_.push_back(callback);
+EventManager::SubscriptionId EventManager::Subscribe(std::function<void(const BulletHitEvent&)> callback) {
+    return SubscribeTo(bulletHitListeners_, std::move(callback));
 }
 
 void EventManager::Dispatch(const BulletHitEvent& event) {
-    // Bullet 用のリストのリスナーを実行する
-    for (auto& listener : bulletHitListeners_) {
-        listener(event);
-    }
+    DispatchTo(bulletHitListeners_, event);
 }
 
-void EventManager::Subscribe(std::function<void(const DamageEvent&)> callback) {
-    // ダメージ処理の購読を発生順に保持する。
-    damageListeners_.push_back(callback);
+EventManager::SubscriptionId EventManager::Subscribe(std::function<void(const DamageEvent&)> callback) {
+    return SubscribeTo(damageListeners_, std::move(callback));
 }
 
 void EventManager::Dispatch(const DamageEvent& event) {
-    // 命中側が渡したイベントをその場で登録順に配る。
-    for (auto& listener : damageListeners_) {
-        listener(event);
-    }
+    DispatchTo(damageListeners_, event);
 }
 
-void EventManager::Subscribe(std::function<void(const PlayerDeathEvent&)> callback) {
-    // プレイヤー死亡時の処理をシーン単位で登録する。
-    playerDeathListeners_.push_back(callback);
+EventManager::SubscriptionId EventManager::Subscribe(std::function<void(const PlayerDeathEvent&)> callback) {
+    return SubscribeTo(playerDeathListeners_, std::move(callback));
 }
 
 void EventManager::Dispatch(const PlayerDeathEvent& event) {
-    // 死亡確定後に登録済みの通知先を順番に呼ぶ。
-    for (auto& listener : playerDeathListeners_) {
-        listener(event);
-    }
+    DispatchTo(playerDeathListeners_, event);
 }
 
-void EventManager::Subscribe(std::function<void(const PlayerJumpEvent&)> callback) {
-    // ジャンプ発生時の効果やルール処理を登録する。
-    playerJumpListeners_.push_back(callback);
+EventManager::SubscriptionId EventManager::Subscribe(std::function<void(const PlayerJumpEvent&)> callback) {
+    return SubscribeTo(playerJumpListeners_, std::move(callback));
 }
 
 void EventManager::Dispatch(const PlayerJumpEvent& event) {
-    // ジャンプ通知は待ち行列に積まず、同じフレームで処理する。
-    for (auto& listener : playerJumpListeners_) {
-        listener(event);
-    }
+    DispatchTo(playerJumpListeners_, event);
 }
 
-// シーン切り替えで古いオブジェクトを指すコールバックを残さないよう、購読をまとめて解除します。
+void EventManager::Unsubscribe(SubscriptionId id) {
+    if (id == kInvalidSubscriptionId) return;
+    MarkInactive(playerHitListeners_, id);
+    MarkInactive(bulletHitListeners_, id);
+    MarkInactive(damageListeners_, id);
+    MarkInactive(playerDeathListeners_, id);
+    MarkInactive(playerJumpListeners_, id);
+    if (dispatchDepth_ == 0) PruneInactiveListeners();
+}
+
 void EventManager::ClearAllListeners() {
-    // シーン破棄後のオブジェクトをコールバックが参照しないよう、登録をまとめて外す。
-    playerHitListeners_.clear();
-    bulletHitListeners_.clear();
-    damageListeners_.clear();
-    playerDeathListeners_.clear();
-    playerJumpListeners_.clear();
+    for (auto& listener : playerHitListeners_) listener.active = false;
+    for (auto& listener : bulletHitListeners_) listener.active = false;
+    for (auto& listener : damageListeners_) listener.active = false;
+    for (auto& listener : playerDeathListeners_) listener.active = false;
+    for (auto& listener : playerJumpListeners_) listener.active = false;
+    if (dispatchDepth_ == 0) PruneInactiveListeners();
 }

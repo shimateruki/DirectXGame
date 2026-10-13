@@ -146,6 +146,7 @@ void EnemyAttackPreviewWindow::DrawPlayerCopySettings() {
 
 void EnemyAttackPreviewWindow::DrawImGui() {
 #ifdef USE_IMGUI
+    // ムービー、術者、弾、軌道部品、コピー能力の順で編集対象を優先し、同時表示を避ける。
     if (crownMovieMode_) { DrawCrownMovieSettings(); return; }
     if (authoringActorSelected_) {
         ImGui::SeparatorText("術者（プレビューActorへの参照）");
@@ -155,6 +156,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         return;
     }
     // 部品選択中は多数の既存設定の奥へ埋めず、選んだ部品をInspectorの主対象にします。
+    // 編集中に特定の部品を選んだ場合は、その部品のInspectorを先に表示する。
     if (sceneManager_ && !sceneManager_->IsPlaying()) {
         const auto* attack = GetSelectedAttackDefinition();
         if (attack && attack->sequence.enabled && selectedTrack_ <= -2 &&
@@ -191,6 +193,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         return;
     }
 
+    // プレビューの有効化に合わせて一時Objectを生成・除去し、Sceneへ残さない。
     bool nextEnabled = enabled_;
     if (ImGui::Checkbox("プレビューを有効化", &nextEnabled)) {
         enabled_ = nextEnabled;
@@ -209,6 +212,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         ImGui::TextDisabled("攻撃ごとの状態は下の演出参照で選択できます。");
     }
 
+    // 敵種の変更はProfileと推奨距離を更新し、表示中ならプレビューを先頭から再開する。
     ImGui::SeparatorText("攻撃対象");
     const char* currentLabel = kEnemyLabels[
         std::clamp(enemyTypeIndex_, 0, static_cast<int>(std::size(kEnemyLabels)) - 1)];
@@ -227,6 +231,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         ImGui::EndCombo();
     }
 
+    // 選んだ攻撃により同じ敵でも演出内容が変わる。専用の槍雨は別項目として扱う。
     if (editableProfile_.attacks.size() > 1 && !IsGiantHookSplitPreview()) {
         const EnemyAttackDefinition* currentAttack = GetSelectedAttackDefinition();
         const char* attackLabel = falseKingSealBarragePreview_
@@ -256,6 +261,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         }
     }
 
+    // 偽王の槍雨は共有Tuningを直接編集し、保存ボタンでAssetへ反映する。
     if (enemyTypeIndex_ == 8 && falseKingSealBarragePreview_) {
         ImGui::SeparatorText("第2形態・空中槍雨の演出");
         auto& tuning = CrownFinaleTuning::Get();
@@ -282,6 +288,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         ImGui::TextDisabled("全域放電は即死。seal専用のメッシュエフェクト・GPU粒子・3D破片プリセットで外観を調整できます。");
     }
 
+    // 巨大スライムの分裂確認は通常攻撃とは別のモードを選ぶ。
     if (enemyTypeIndex_ == 3) {
         const char* giantPreviewModes[] = {
             "ジャンププレス攻撃",
@@ -299,6 +306,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         }
     }
 
+    // 詠唱の遮蔽を調べるため、エフェクト単体表示と斜め視点を用意する。
     if (auto* prismSlime = dynamic_cast<EnemyPrismSlime*>(previewEnemy_)) {
         if (ImGui::Checkbox("詠唱エフェクトのみ表示（遮蔽確認）", &prismChantOnly_)) {
             prismSlime->SetDebugPreviewChantOnly(prismChantOnly_);
@@ -330,6 +338,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         ImGui::TextDisabled("詠唱のみ表示で光が見えれば、本体との重なりが原因です。");
     }
 
+    // 偽王は攻撃範囲が広いため、全景・側面・実体生成フレームの三つの確認導線を置く。
     if (dynamic_cast<EnemyFalseKingSlime*>(previewEnemy_)) {
         // ボスの近接表示とは分け、標的周辺と上空から来る攻撃を一緒に観察する。
         const auto frameAttack = [this]() {
@@ -397,6 +406,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
     }
 
     // 攻撃プロファイルの射程が既定値を超える場合も、プレビュー上で標的を配置できるようにします。
+    // 対象との距離上限は攻撃の最大射程まで広げ、選択中の長距離攻撃も配置できるようにする。
     float maxTargetDistance = (std::max)(kDefaultTargetDistanceLimit, GetRecommendedTargetDistance());
     if (const EnemyAttackDefinition* attack = GetSelectedAttackDefinition()) {
         maxTargetDistance = (std::max)(maxTargetDistance, attack->maxRange);
@@ -413,6 +423,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
     }
     ImGui::Checkbox(previewPlayer_ ? "プレイヤー標的を表示" : "ダミー標的を表示", &showTarget_);
 
+    // 実プレイヤーを選んだ場合は実際のDamageEventを手動発火して被弾を比較できる。
     if (previewPlayer_) {
         const float maxHp = (std::max)(1.0f, previewPlayer_->GetMaxHp());
         const float hp = std::clamp(previewPlayer_->GetHp(), 0.0f, maxHp);
@@ -445,6 +456,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         RestartPreview();
     }
 
+    // 下段は攻撃定義の編集と、同じ定義を使う固定刻みの再生操作を並べる。
     DrawAttackProfileEditor();
 
     ImGui::SeparatorText("再生");

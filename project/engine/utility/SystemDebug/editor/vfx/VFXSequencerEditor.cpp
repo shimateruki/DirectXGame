@@ -120,6 +120,7 @@ void VFXSequencerEditor::PlayPreview() {
 }
 
 void VFXSequencerEditor::Update(float deltaTime) {
+    // StageのTransport、Editor固有の再生速度、実ゲームの更新有無を分けて扱う。
     float timeStep = deltaTime;
     if (timeStep <= 0.0001f) {
         timeStep = 1.0f / 60.0f;
@@ -132,6 +133,7 @@ void VFXSequencerEditor::Update(float deltaTime) {
     MeshEffectManager* meshManager = MeshEffectManager::GetInstance();
 
     auto restartPreviewAt = [&](float seekTime) {
+        // 時間を戻す場合は生存中のMesh・GPU演出を消してから先頭から再発火させる。
         previewSequencer_.Stop();
         meshManager->ClearActiveEffects();
         gpuManager->ResetSimulation();
@@ -160,6 +162,7 @@ void VFXSequencerEditor::Update(float deltaTime) {
 
     float particlePreviewScale = previewPlaybackSpeed_;
     if (usePreviewStage) {
+        // Play/Stop/Seekの要求シリアルを消化し、他ツールの操作を二重適用しない。
         particlePreviewScale *= previewStage->GetPlaybackSpeed();
         timeStep *= previewStage->GetPlaybackSpeed();
         if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
@@ -197,11 +200,13 @@ void VFXSequencerEditor::Update(float deltaTime) {
     }
 
     if (!isGamePlaying && isThisEditorSelected) {
+        // 停止中のEditorではゲーム更新がManagerを進めないため、ここでプレビューを更新する。
         meshManager->Update(previewPaused ? 0.0f : timeStep);
         gpuManager->Update(deltaTime);
     }
 
     if (usePreviewStage) {
+        // 各イベントの種別と発火区間をStageの共通タイムラインへ報告する。
         const float duration = (std::max)(previewSequencer_.GetDuration(), 0.1f);
         std::vector<EffectPreviewStage::TimelineEvent> timelineEvents;
         timelineEvents.reserve(previewSequencer_.GetEvents().size());
@@ -288,6 +293,7 @@ void VFXSequencerEditor::RefreshFileList() {
 
 void VFXSequencerEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    // Preview操作、Event編集、JSON読込を一画面で行う。再生中はEvent配列を編集させない。
     ImGui::Text(ICON_FA_FILM " VFX Cue Editor");
     ImGui::TextDisabled("パーティクル、メッシュ、SE、カメラ揺れ、画面演出を時間差で組み合わせます。");
 
@@ -401,6 +407,7 @@ void VFXSequencerEditor::DrawImGui() {
     ImGui::EndDisabled();
 
     ImGui::SeparatorText("保存と読み込み");
+    // 別Sequenceの読込は未保存編集を捨てるため、モーダルで置換を確認する。
     if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存ファイル", sequenceNameInput_)) {
         for (const auto& seqName : sequenceFileList_) {
             const bool isSelected = (std::string(sequenceNameInput_) == seqName);
@@ -470,6 +477,7 @@ void VFXSequencerEditor::DrawImGui() {
 
 void VFXSequencerEditor::DrawTimelinePreview() {
 #ifdef USE_IMGUI
+    // 表示秒数を画素幅へ換算し、行選択と発火時刻のドラッグを同じ矩形で扱う。
     auto& events = previewSequencer_.GetEvents();
     ImGui::SeparatorText("タイムライン");
     ImGui::TextWrapped("行をクリックして選択 / バーを左右ドラッグして発火時刻を移動（再生中は編集できません）");
@@ -514,6 +522,7 @@ void VFXSequencerEditor::DrawTimelinePreview() {
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) draggingEvent_ = -1;
 
     const ImU32 bgColor = IM_COL32(28, 31, 36, 255);
+    // 時間目盛り、Eventの色付きバー、現在時刻の順に重ねて描く。
     const ImU32 lineColor = IM_COL32(95, 100, 110, 160);
     drawList->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + height), bgColor, 4.0f);
     drawList->AddRect(origin, ImVec2(origin.x + width, origin.y + height), IM_COL32(120, 130, 145, 180), 4.0f);
@@ -560,6 +569,7 @@ void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
 
     ImGui::SameLine();
     if (ImGui::SmallButton(ICON_FA_TRASH_ALT)) {
+        // 削除後は参照中のeventが無効になるので、この描画を直ちに終える。
         events.erase(events.begin() + index);
         selectedEvent_ = -1;
         if (open) ImGui::TreePop();
@@ -568,6 +578,7 @@ void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
     }
 
     if (open) {
+        // 素材Editorへ移る際は名前をクリップボードへ渡す。編集中データの自動保存はしない。
         const char* materialTool = event.type == VFXEventType::MeshEffect ? "tool.mesh" :
             (event.type == VFXEventType::GPUParticle || event.type == VFXEventType::MovingParticle ? "tool.gpu" : nullptr);
         if (materialTool) {

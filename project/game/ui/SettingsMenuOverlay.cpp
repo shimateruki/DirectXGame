@@ -106,6 +106,7 @@ void SettingsMenuOverlay::SetActive(bool active) {
             WinApp::SetCursorVisibility(true);
         }
         ++activeCount_;
+        Window()->SetCursorRecenteringSuppressed(true);
         ReadValues();
         category_ = row_ = scroll_ = 0;
         footer_ = -1;
@@ -115,6 +116,7 @@ void SettingsMenuOverlay::SetActive(bool active) {
         replayOnly_ = false;
     } else {
         --activeCount_;
+        Window()->SetCursorRecenteringSuppressed(activeCount_ > 0);
         if (activeCount_ == 0 && !replayOnly_) {
             if (GetForegroundWindow() == Window()->GetHwnd())
                 ClipCursor(&previousCursorClip);
@@ -548,11 +550,11 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
                         input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A);
     const bool back = input_->IsKeyTriggered(DIK_ESCAPE) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B);
     const int horizontal =
-        (input_->IsKeyTriggered(DIK_RIGHT) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ? 1 : 0) -
-        (input_->IsKeyTriggered(DIK_LEFT) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ? 1 : 0);
+        (input_->IsKeyTriggered(DIK_RIGHT) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ? 1 : 0) -
+        (input_->IsKeyTriggered(DIK_LEFT) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ? 1 : 0);
     const int vertical =
-        (input_->IsKeyTriggered(DIK_DOWN) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) ? 1 : 0) -
-        (input_->IsKeyTriggered(DIK_UP) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) ? 1 : 0);
+        (input_->IsKeyTriggered(DIK_DOWN) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN) ? 1 : 0) -
+        (input_->IsKeyTriggered(DIK_UP) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP) ? 1 : 0);
     Vector2 p = Pointer();
     const bool click = input_->IsMouseButtonTriggered(0);
     if (modal_ != Modal::None) {
@@ -842,6 +844,7 @@ void SettingsMenuOverlay::RestoreReplayState(const nlohmann::json& state) {
     if (active_ != active) {
         activeCount_ += active ? 1 : -1;
         active_ = active;
+        Window()->SetCursorRecenteringSuppressed(activeCount_ > 0);
     }
     replayOnly_ = true;
     modal_ = Modal::None;

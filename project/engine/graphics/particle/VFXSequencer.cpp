@@ -139,6 +139,7 @@ namespace {
         const Vector3& rootRotation,
         const Vector3& localOffset,
         Matrix4x4& emitMatrix) {
+        // 対象に付ける演出はローカルオフセット、対象なしはルート座標を基準に解決する。
         if (targetObject) {
             Vector3 targetLocalOffset = {
                 localOffset.x * rootScale.x,
@@ -171,6 +172,7 @@ namespace {
     void RemovePostPulseContribution(VFXEvent& event) {
         if (!event.hasAppliedPostPulse) return;
 
+        // 前フレームに加算した分だけ戻し、別イベントの寄与を消さない。
         PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
         if (params) {
             params->radialIntensity -= event.appliedRadialIntensity;
@@ -195,6 +197,7 @@ namespace {
             return;
         }
 
+        // 毎フレーム「前回の寄与を引く→今回の包絡線を足す」を行い、値の蓄積を防ぐ。
         RemovePostPulseContribution(event);
 
         const float duration = (std::max)(event.duration, 0.01f);
@@ -322,6 +325,7 @@ void VFXSequencer::Update(float deltaTime) {
     float timeStep = deltaTime;
     currentTime_ += timeStep;
 
+    // 時刻に達していないイベントも再生を継続させるため、完了判定へ含める。
     bool allFinished = true;
     for (auto& event : events_) {
         if (event.isFinished) continue;
@@ -336,6 +340,7 @@ void VFXSequencer::Update(float deltaTime) {
             ApplyPostPulse(event, currentTime_);
         }
         else if (event.type == VFXEventType::LightPulse) {
+            // 光源の生成は一度だけ行い、寿命の終了まではイベントを保持する。
             if (!event.hasFired) {
                 Matrix4x4 emitMat;
                 Vector3 lightPos = ResolveSequencerPosition(targetObject_, useRootPosition_, rootPosition_, rootScale_, rootRotation_, event.offset, emitMat);
@@ -363,6 +368,7 @@ void VFXSequencer::Update(float deltaTime) {
                 event.isFinished = true;
             }
 
+            // ベジェ曲線上の位置を補間し、毎フレームその位置から粒子を放出する。
             float easeT = ApplyEventEasing(event.easingType, progress);
             Vector3 localPos = CalculateBezier(event.offset, event.controlPoint, event.endOffset, easeT);
 
@@ -374,12 +380,14 @@ void VFXSequencer::Update(float deltaTime) {
             GPUParticleManager::GetInstance()->Emit(event.presetName, spawnPos, emitMat);
         }
         else if (!event.hasFired) {
+            // それ以外は発火時に一回だけ各システムへ要求し、同フレームで完了にする。
             if (event.type == VFXEventType::GPUParticle) {
                 Matrix4x4 emitMat;
                 Vector3 spawnPos = ResolveSequencerPosition(targetObject_, useRootPosition_, rootPosition_, rootScale_, rootRotation_, event.offset, emitMat);
                 GPUParticleManager::GetInstance()->Emit(event.presetName, spawnPos, emitMat);
             }
             else if (event.type == VFXEventType::MeshEffect) {
+                // 対象ありなら追従エフェクト、対象なしなら解決済み座標で単発生成する。
                 std::string path = "Resources/json/effect/" + event.presetName + ".json";
                 Object3d* target = targetObject_;
                 Vector3 eventScale = {
@@ -453,6 +461,7 @@ void VFXSequencer::Update(float deltaTime) {
 }
 
 void VFXSequencer::Save(const std::string& sequenceName) {
+    // 編集値だけを保存し、再生中の発火状態や加算済みPostEffect値は書き出さない。
     json root;
     root["version"] = 3;
     root["events"] = json::array();
@@ -485,6 +494,7 @@ void VFXSequencer::Save(const std::string& sequenceName) {
         root["events"].push_back(eventJson);
     }
 
+    // 保存直後の再読込にも使えるよう、ファイルとメモリキャッシュを同じ内容へ揃える。
     std::filesystem::create_directories(kSequenceDirectory);
     std::string filepath = std::string(kSequenceDirectory) + sequenceName + ".json";
 
@@ -519,6 +529,7 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     }
     Reset();
 
+    // ファイル更新時刻が一致するときだけキャッシュを使い、編集後の内容を見落とさない。
     auto& cache = SequenceEventCache();
     auto& writeTimeCache = SequenceWriteTimeCache();
     auto cacheIt = cache.find(sequenceName);
@@ -547,6 +558,7 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     file >> root;
     events_.clear();
 
+    // 欠けているフィールドはイベントの初期値を使い、旧バージョンのJSONも読めるようにする。
     if (root.contains("events") && root["events"].is_array()) {
         for (const auto& eventJson : root["events"]) {
             VFXEvent event;
@@ -578,6 +590,7 @@ void VFXSequencer::Load(const std::string& sequenceName) {
         }
     }
 
+    // 読み込んだ編集値をキャッシュし、実行状態はゼロから再開する。
     ResetEventRuntimeState(events_);
     cache[sequenceName] = events_;
     if (hasWriteTime) {
@@ -601,6 +614,7 @@ void VFXSequencer::PlayOneShot(const std::string& sequenceName, const Vector3& p
 }
 
 void VFXSequencer::PlayOneShot(const std::string& sequenceName, const Vector3& position, const Vector3& scale, const Vector3& rotation) {
+    // 呼び出し側が所有しない演出を共有リストへ移し、再生完了まで保持する。
     auto sequence = std::make_unique<VFXSequencer>();
     sequence->Initialize(nullptr);
     sequence->Load(sequenceName);

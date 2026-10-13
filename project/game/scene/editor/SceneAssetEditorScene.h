@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 
 #include <memory>
 #include <vector>
@@ -19,7 +20,7 @@ class SpriteCommon;
 /// <summary>
 /// Scene Assetをゲームロジックから分離して編集するための専用シーン。
 /// </summary>
-class SceneAssetEditorScene : public BaseScene {
+class SceneAssetEditorScene : public BaseScene, public ISceneGameplayAccess {
   public:
     SceneAssetEditorScene() = default;
     ~SceneAssetEditorScene() override = default;

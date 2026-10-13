@@ -1,6 +1,7 @@
 #include "engine/core/editor/GameEditorController.Internal.h"
 
 #include "game/ui/SettingsMenuOverlay.h"
+#include "game/system/SceneGameplayAccess.h"
 #ifdef USE_IMGUI
 using namespace GameEditorControllerImplementation;
 
@@ -11,7 +12,7 @@ bool debugHugeHealth = false;
 Player* DebugHealthPlayer(SceneManager* manager) {
     // シーン切替直後には対象が存在しないため、デバッグ操作側へ不在を返す。
     auto* scene = manager ? manager->GetCurrentScene() : nullptr;
-    return scene ? dynamic_cast<Player*>(scene->GetPlayer()) : nullptr;
+    return GetScenePlayer(scene);
 }
 
 void DisableDebugHugeHealth(SceneManager* manager) {

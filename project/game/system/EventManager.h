@@ -1,35 +1,40 @@
 #pragma once
 #include "Event.h"
+#include <cstdint>
 #include <functional>
 #include <list>
 
 // ダメージ、弾ヒット、死亡などのイベントを同期的に配信する。
-// Subscribe は解除ハンドルを返さないため、シーン破棄前に ClearAllListeners() が必要。
+// 購読IDで個別解除でき、購読者の破棄時にも解除できる。
 class EventManager {
   public:
+    using SubscriptionId = uint64_t;
+    static constexpr SubscriptionId kInvalidSubscriptionId = 0;
     static EventManager* GetInstance();
 
     // --- PlayerHitEvent 関連 ---
-    void Subscribe(std::function<void(const PlayerHitEvent&)> callback);
+    SubscriptionId Subscribe(std::function<void(const PlayerHitEvent&)> callback);
     void Dispatch(const PlayerHitEvent& event);
 
     // --- BulletHitEvent 関連 ---
-    void Subscribe(std::function<void(const BulletHitEvent&)> callback);
+    SubscriptionId Subscribe(std::function<void(const BulletHitEvent&)> callback);
     void Dispatch(const BulletHitEvent& event);
 
     // --- DamageEvent 関連 ---
-    void Subscribe(std::function<void(const DamageEvent&)> callback);
+    SubscriptionId Subscribe(std::function<void(const DamageEvent&)> callback);
     void Dispatch(const DamageEvent& event);
 
     // --- PlayerDeathEvent 関連 ---
-    void Subscribe(std::function<void(const PlayerDeathEvent&)> callback);
+    SubscriptionId Subscribe(std::function<void(const PlayerDeathEvent&)> callback);
     void Dispatch(const PlayerDeathEvent& event);
 
     // --- PlayerJumpEvent 関連 ---
-    void Subscribe(std::function<void(const PlayerJumpEvent&)> callback);
+    SubscriptionId Subscribe(std::function<void(const PlayerJumpEvent&)> callback);
     void Dispatch(const PlayerJumpEvent& event);
 
-    // シーンを参照するコールバックが無効になる前に、全購読を解除する。
+    /// <summary>指定した購読だけを無効化します。配信中の解除も次の呼び出しに反映します。</summary>
+    void Unsubscribe(SubscriptionId id);
+    // 全購読を解除する必要がある場合に使用する。
     void ClearAllListeners();
 
   private:
@@ -39,9 +44,25 @@ class EventManager {
     EventManager& operator=(const EventManager&) = delete;
 
   private:
-    std::list<std::function<void(const PlayerHitEvent&)>> playerHitListeners_;
-    std::list<std::function<void(const BulletHitEvent&)>> bulletHitListeners_;
-    std::list<std::function<void(const DamageEvent&)>> damageListeners_;
-    std::list<std::function<void(const PlayerDeathEvent&)>> playerDeathListeners_;
-    std::list<std::function<void(const PlayerJumpEvent&)>> playerJumpListeners_;
+    template <typename Event> struct Listener {
+        SubscriptionId id = kInvalidSubscriptionId;
+        std::function<void(const Event&)> callback;
+        bool active = true;
+    };
+    template <typename Event> using ListenerList = std::list<Listener<Event>>;
+
+    template <typename Event>
+    SubscriptionId SubscribeTo(ListenerList<Event>& listeners, std::function<void(const Event&)> callback);
+    template <typename Event> void DispatchTo(ListenerList<Event>& listeners, const Event& event);
+    template <typename Event> void MarkInactive(ListenerList<Event>& listeners, SubscriptionId id);
+    template <typename Event> void PruneInactive(ListenerList<Event>& listeners);
+    void PruneInactiveListeners();
+
+    ListenerList<PlayerHitEvent> playerHitListeners_;
+    ListenerList<BulletHitEvent> bulletHitListeners_;
+    ListenerList<DamageEvent> damageListeners_;
+    ListenerList<PlayerDeathEvent> playerDeathListeners_;
+    ListenerList<PlayerJumpEvent> playerJumpListeners_;
+    SubscriptionId nextSubscriptionId_ = 1;
+    int dispatchDepth_ = 0;
 };

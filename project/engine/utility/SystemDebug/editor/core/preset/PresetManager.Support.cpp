@@ -138,6 +138,7 @@ void RemoveSceneObjectGuids(json& node) {
 }
 
 json BuildPresetNode(Object3d* object, std::unordered_set<const Object3d*>& visited) {
+    // 親子参照の循環や重複を避け、Scene固有GUIDを除いて再利用可能なツリーを作ります。
     if (!object || visited.count(object) != 0) {
         return json::object();
     }
@@ -170,6 +171,7 @@ json BuildPrefabNode(
         return json::object();
     }
 
+    // 元Prefabから来たObjectは安定IDを引き継ぎ、追加したObjectだけ新IDを発行します。
     visited.insert(object);
     json node = object->ExportToJson();
     node.erase("guid");
@@ -199,6 +201,7 @@ void EnsurePrefabObjectIds(json& node, const std::string& assetId, const std::st
     if (!node.is_object()) {
         return;
     }
+    // 旧AssetでIDが欠ける場合だけ、Asset IDと階層位置から再現可能なIDを補います。
     if (!node.contains("prefabObjectId") || !node["prefabObjectId"].is_string() ||
         node["prefabObjectId"].get<std::string>().empty()) {
         node["prefabObjectId"] = MakeStableId("object", assetId + ':' + hierarchyPath);
@@ -217,6 +220,7 @@ void EnsurePrefabObjectIds(json& node, const std::string& assetId, const std::st
 }
 
 void EnsurePrefabVariantFields(json& asset) {
+    // 旧Variantの不足フィールドを空の差分として補い、現在の読込処理へ渡します。
     if (!asset.contains("removedObjectIds") || !asset["removedObjectIds"].is_array()) {
         asset["removedObjectIds"] = json::array();
     }
@@ -496,6 +500,7 @@ void CreateObjectFromPresetNode(
         return;
     }
 
+    // EnemyはFactoryで派生型を生成し、それ以外は通常Objectとして作ります。
     const std::string enemyType = ResolveEnemyType(node);
     std::unique_ptr<Object3d> object;
     if (!enemyType.empty()) {
@@ -508,6 +513,7 @@ void CreateObjectFromPresetNode(
     object->ImportFromJson(node);
     // Preset/Prefabの生成物は、Asset内データとは別のScene実体です。
     object->RegeneratePersistentGuid();
+    // JSON読込後に敵種別とStatusを再適用し、生成した実体の戦闘値を揃えます。
     if (!enemyType.empty()) {
         object->SetClassName("Enemy");
         object->SetEnemyType(enemyType);
@@ -526,6 +532,7 @@ void CreateObjectFromPresetNode(
         object->SetName(node.value("presetDisplayName", node["name"].get<std::string>()));
     }
 
+    // Prefab配置では元Asset内のObject IDとScene実体のInstance IDを分けて保持します。
     if (prefabContext) {
         Object3d::PrefabInstanceInfo info;
         info.prefabName = prefabContext->prefabName;
@@ -536,6 +543,7 @@ void CreateObjectFromPresetNode(
         object->SetPrefabInstanceInfo(info);
     }
 
+    // 親子関係と行列を確定してから所有権を出力配列へ移し、子ノードを再帰生成します。
     Object3d* raw = object.get();
     if (parent) {
         raw->SetParent(parent);
@@ -594,6 +602,7 @@ const char* GetSerializedPropertyKey(const std::string& propertyPath) {
     }
 
     // Registry導入前の外部Propertyに対する移行期間用Fallbackです。
+    // カメラとGameplayの古い保存キーもここで読み書きできる状態を保ちます。
     if (propertyPath == "identity.name") return "name";
     if (propertyPath == "identity.tag") return "tag";
     if (propertyPath == "identity.layer") return "layer";
@@ -710,6 +719,7 @@ const json* FindJsonPath(const json& source, const std::string& path) {
 }
 
 json* EnsureJsonPath(json& source, const std::string& path) {
+    // Prefab差分を保存するため、途中のObjectがない場合は生成して末端の値を返します。
     json* current = &source;
     std::size_t begin = 0;
     while (begin < path.size()) {
@@ -758,6 +768,7 @@ json GetMissingSourceDefault(const std::string& propertyPath) {
 }
 
 json ReadSourceProperty(const json& sourceNode, const std::string& propertyPath) {
+    // Registryで決まる保存Pathを解決し、旧Assetで省略された値は型ごとの既定値に戻します。
     const char* key = GetSerializedPropertyKey(propertyPath);
     if (!key) {
         return json();

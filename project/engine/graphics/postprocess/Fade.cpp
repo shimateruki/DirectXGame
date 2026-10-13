@@ -58,6 +58,7 @@ void Fade::InitializeSprites() {
         spriteCommon_->Initialize(DirectXCommon::GetInstance());
     }
 
+    // 連番画像を読み込めない場合も画面を覆えるよう、白一枚を黒く着色するSpriteを持つ。
     const uint32_t whiteHandle = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/common/white.png");
     if (whiteHandle == 0) {
         return;
@@ -83,6 +84,7 @@ void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, i
         resolvedHandles.push_back(handle);
     }
 
+    // すべて揃ってから確定し、途中までのフレームを誤って再生しない。
     sequence.textureHandles = std::move(resolvedHandles);
 
     if (!sequence.textureHandles.empty()) {
@@ -116,6 +118,7 @@ void Fade::Update(float deltaTime) {
     // 開閉を同じ被覆率で表し、連番画像のフレーム選択に使う。
     coverage_ = IsClosing() ? EaseInOut(t) : 1.0f - EaseInOut(t);
 
+    // このフェードはSpriteで描画し、旧PostEffect側のフェード値は毎回解除する。
     ResetPostEffectFade();
 
     if (t >= 1.0f) {
@@ -131,6 +134,7 @@ void Fade::Draw() {
 
     InitializeSprites();
 
+    // 演出の種類に応じた画像列を選び、使えないときは描画側で黒板へ戻す。
     if (style_ == VisualStyle::CrownIris) {
         LoadSequence(crownIris_, "Resources/sprite/fade/crown_iris", 48);
         DrawFrameSequence(crownIris_, coverage_);
@@ -180,6 +184,7 @@ void Fade::DrawFrameSequence(FrameSequence& sequence, float coverage) {
         return;
     }
 
+    // 画面の被覆率を連番画像の添字に対応させ、開閉に同じ画像列を使う。
     const float framePosition = Clamp01(coverage) * static_cast<float>(sequence.textureHandles.size() - 1);
     const size_t frameIndex = static_cast<size_t>(std::round(framePosition));
     const uint32_t textureHandle = sequence.textureHandles[(std::min)(frameIndex, sequence.textureHandles.size() - 1)];

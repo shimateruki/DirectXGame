@@ -56,10 +56,12 @@ const char* GetDebugMorphDisplayName(Player::EnemyMorphType type) {
 } // namespace
 void GamePlayScene::DrawImGui() {
 #ifdef USE_IMGUI
+    // ステージ切替、プレイヤー状態、各ボスの演出確認をこのSceneのデバッグ面へ集める。
     ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: GamePlay");
     ImGui::Separator();
 
     if (ImGui::CollapsingHeader(ICON_FA_MAP " Stage Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 登録済みのステージだけを選べるようにし、ボタンは選択とScene再生成をまとめて行う。
         const auto& stages = StageManager::GetInstance()->GetStages();
         int currentIndex = StageManager::GetInstance()->GetCurrentStageIndex();
 
@@ -95,6 +97,7 @@ void GamePlayScene::DrawImGui() {
         }
         ImGui::Separator();
 
+        // Combo側は選択だけを更新し、明示的なReloadボタンでSceneを読み直す。
         std::vector<const char*> stageNames;
         for (const auto& s : stages)
             stageNames.push_back(s.name.c_str());
@@ -109,6 +112,7 @@ void GamePlayScene::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader(ICON_FA_TROPHY " Stage Status", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 永続的なクリア状態と、今回のプレイ中に拾ったスターを別々に表示する。
         int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
         bool isCleared = GameDataManager::GetInstance()->IsStageCleared(currentStage);
 
@@ -142,7 +146,7 @@ void GamePlayScene::DrawImGui() {
             float maxHp = player_->GetMaxHp();
             ImGui::ProgressBar(hp / maxHp, ImVec2(-1, 0), "HP");
 
-            // --- Debug HP Control ---
+            // HPはデバッグ確認のため実データへ直接書き込み、残機とコインは管理器経由で戻す。
             if (ImGui::Button(ICON_FA_AMBULANCE " HPを1にする (Debug)")) {
                 if (player_->param_.has_value()) {
                     player_->param_->hp = 1.0f;
@@ -169,6 +173,7 @@ void GamePlayScene::DrawImGui() {
             }
 
             ImGui::Separator();
+            // 移動先のAnchor、再生状態、プレイヤー生存状態を確認してから転送ボタンを有効にする。
             ImGui::Text("デバッグ移動");
             const bool debugRuntimePlaying = GetSceneManager() && GetSceneManager()->IsPlaying();
             const bool teleportRequestPending = pendingDebugTeleportDestination_ != DebugTeleportDestination::None;
@@ -202,6 +207,7 @@ void GamePlayScene::DrawImGui() {
             if (!teleportStateReady || !hasGoalAnchor) {
                 ImGui::EndDisabled();
             }
+            // ボタンが使えない理由と、移動に伴う状態解除をUI上にも明示する。
             if (!debugRuntimePlaying) {
                 ImGui::TextDisabled("編集状態を保持して再生を開始し、移動します。");
             }
@@ -215,6 +221,7 @@ void GamePlayScene::DrawImGui() {
             }
 
             ImGui::Separator();
+            // 吸収を待たずに実装済み能力を確認するため、変身型を直接選べるようにする。
             ImGui::Text("デバッグ変身（時間制限なし）");
             ImGui::TextDisabled("現在: %s", GetDebugMorphDisplayName(player_->GetEnemyMorphType()));
 
@@ -254,6 +261,7 @@ void GamePlayScene::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader(ICON_FA_GEM " クリスタルスライム Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 中ボスがScene内にいるときだけ、実際の撃破経路を使うテスト操作を出す。
         EnemyPrismSlime* prismBoss = FindPrismBossForHUD();
         if (prismBoss) {
             const float bossHp = prismBoss->GetEncounterCurrentHp();
@@ -273,6 +281,7 @@ void GamePlayScene::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader(ICON_FA_CROWN " 偽王スライム Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 各段階を飛ばす処理の可否はボス自身に問い合わせ、無効な操作を押せないようにする。
         EnemyFalseKingSlime* falseKing = FindFalseKingBossForHUD();
         if (falseKing) {
             const float bossHp = falseKing->GetEncounterCurrentHp();
@@ -285,6 +294,7 @@ void GamePlayScene::DrawImGui() {
             ImGui::Text("現在: 第%d形態 / 封印 %d / 3", falseKing->GetBattlePhase(), falseKing->GetBrokenSealCount());
             ImGui::TextDisabled("見たい区間を選ぶと、実際の形態遷移処理を通して再生します。");
 
+            // 第一形態の終了、王冠の幕間、最終撃破を個別に確認する。
             const bool canEndPhaseOne = falseKing->CanTriggerDebugPhaseTwoTransition();
             if (!canEndPhaseOne)
                 ImGui::BeginDisabled();
@@ -331,6 +341,7 @@ void GamePlayScene::DrawImGui() {
         saveIndicatorOverlay_->DrawImGui();
     }
 
+    // SceneイベントとHUDの編集面は、上の進行状態デバッグとは分けて表示する。
     DrawGoalPresentationEditor();
 
     ImGui::Separator();

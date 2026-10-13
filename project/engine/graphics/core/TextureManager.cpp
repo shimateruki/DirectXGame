@@ -1,4 +1,5 @@
 #include "TextureManager.h"
+#include "engine/system/scene/LoadingProfiler.h"
 
 #include <algorithm>
 #include <cassert>
@@ -405,7 +406,11 @@ bool UploadTextureDataWithDedicatedCommandList(
             return false;
         }
 
+        const auto waitStart = std::chrono::steady_clock::now();
         WaitForSingleObject(fenceEvent, INFINITE);
+        const auto waitMs = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - waitStart).count();
+        LogSlowLoadingOperation("synchronous texture upload GPU wait", waitMs);
         CloseHandle(fenceEvent);
     }
 
@@ -586,7 +591,11 @@ void TextureManager::WaitForAsyncUploadBatch() {
                 pendingCopyFenceValue_,
                 fenceEvent);
             if (SUCCEEDED(hr)) {
+                const auto waitStart = std::chrono::steady_clock::now();
                 WaitForSingleObject(fenceEvent, INFINITE);
+                const auto waitMs = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - waitStart).count();
+                LogSlowLoadingOperation("async texture upload GPU wait", waitMs);
             }
             CloseHandle(fenceEvent);
         }

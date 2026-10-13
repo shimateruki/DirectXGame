@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickFireCannon.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "BaseScene.h"
 #include "BulletManager.h"
 #include "CollisionConfig.h"
@@ -158,7 +159,7 @@ bool GimmickFireCannon::FindFireDirection(Vector3& outDirection) const {
         return false;
     }
 
-    Player* player = scene->GetPlayer();
+    Player* player = GetScenePlayer(scene);
     if (!player) {
         return false;
     }
@@ -305,7 +306,7 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
         if (fireTimer_ > 0.0f)
             return;
         auto* scene = SceneManager::GetInstance()->GetCurrentScene();
-        auto* player = scene ? scene->GetPlayer() : nullptr;
+        auto* player = GetScenePlayer(scene);
         if (!player)
             return;
         const Vector3 target = player->GetWorldPosition();

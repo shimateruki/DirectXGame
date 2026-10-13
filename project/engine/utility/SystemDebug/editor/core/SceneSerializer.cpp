@@ -1,4 +1,5 @@
 #include "SceneSerializer.h"
+#include "game/system/SceneEntityParameterCodec.h"
 #include "DebugEditor.h"
 #include "Object3d.h"
 #include "CollisionConfig.h"
@@ -544,61 +545,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["targetID"] = obj->GetTargetID();
     d["myEventID"] = obj->GetEventID();
 
-    // 7. パラメータ。Player/Enemyの共通ステータスはGameplayStatusManagerだけが保存元です。
-    if (obj->param_.has_value()) {
-        auto& p = obj->param_.value();
-        if (isManagedCharacter) {
-            if (className == "Enemy" && !p.enemyType.empty()) {
-                d["param"]["enemyType"] = p.enemyType;
-                // 出現条件は配置固有の設定なので、共通ステータスと分けて保存します。
-                if (p.enemyType == "PrismSlime" || p.enemyType == "MagmaSlime" || p.enemyType == "FalseKingSlime") {
-                    d["param"]["actionMode"] = p.actionMode;
-                    d["param"]["shakeDuration"] = p.shakeDuration;
-                    d["param"]["startActive"] = p.startActive;
-                }
-            }
-        } else {
-            d["param"]["hp"] = p.hp;
-            d["param"]["maxHp"] = p.maxHp;
-            d["param"]["attackPower"] = p.attackPower;
-            d["param"]["speed"] = p.speed;
-            d["param"]["gravity"] = p.gravity;
-            d["param"]["jumpPower"] = p.jumpPower;
-            d["param"]["maxFallSpeed"] = p.maxFallSpeed;
-            d["param"]["enemyType"] = p.enemyType;
-            d["param"]["gimmickType"] = p.gimmickType;
-            d["param"]["itemType"] = p.itemType;
-            d["param"]["healAmount"] = p.healAmount;
-            d["param"]["interval"] = p.interval;
-            d["param"]["maxCount"] = p.maxCount;
-            d["param"]["shakeDuration"] = p.shakeDuration;
-            d["param"]["fallDuration"] = p.fallDuration;
-            d["param"]["colorType"] = p.colorType;
-            d["param"]["detectionRange"] = p.detectionRange;
-            d["param"]["switchMode"] = p.switchMode;
-            d["param"]["actionMode"] = p.actionMode;
-            d["param"]["targetScene"] = p.targetScene;
-            d["param"]["moveAmount"] = p.moveAmount;
-            d["param"]["moveSpeed"] = p.moveSpeed;
-            d["param"]["startActive"] = p.startActive;
-            d["param"]["returnOnOff"] = p.returnOnOff;
-            d["param"]["volumeMode"] = p.volumeMode;
-            d["param"]["volumePayload"] = p.volumePayload;
-            d["param"]["volumeTriggerOnce"] = p.volumeTriggerOnce;
-            d["param"]["volumeTriggerOnExit"] = p.volumeTriggerOnExit;
-            d["param"]["volumeRearmDelay"] = p.volumeRearmDelay;
-            d["param"]["volumeBlendDuration"] = p.volumeBlendDuration;
-            d["param"]["copyMemoryTypeA"] = p.copyMemoryTypeA;
-            d["param"]["copyMemoryTypeB"] = p.copyMemoryTypeB;
-            d["param"]["copyMemoryTypeC"] = p.copyMemoryTypeC;
-            d["param"]["copyMemoryTypeD"] = p.copyMemoryTypeD;
-            d["param"]["copyMemoryActivationRadius"] = p.copyMemoryActivationRadius;
-            d["param"]["copyMemoryEssenceScale"] = p.copyMemoryEssenceScale;
-            d["param"]["copyMemoryHoverAmount"] = p.copyMemoryHoverAmount;
-            d["param"]["copyMemoryGlow"] = p.copyMemoryGlow;
-            d["param"]["copyMemoryUnlimitedDuration"] = p.copyMemoryUnlimitedDuration;
-        }
-    }
+    // 保存と読込で同じ param 定義を使用します。
+    const json parameter = SceneEntityParameterCodec::Serialize(*obj);
+    if (!parameter.empty()) d["param"] = parameter;
 
     // 8. グラフィックス
     Vector4 color = obj->GetColor();

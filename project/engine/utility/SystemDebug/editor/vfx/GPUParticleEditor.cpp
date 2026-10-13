@@ -21,6 +21,7 @@ void GPUParticleEditor::Initialize() {
 }
 
 void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
+    // Preview StageがこのEditorを操作中のときだけManagerの再生速度と時刻を占有する。
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     const bool usePreviewStage = previewStage && previewStage->IsEnabled();
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
@@ -32,6 +33,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
     const float previewDuration = (std::max)(0.1f, config_.emitLife + 0.25f);
     auto restartPreview = [&](float seekTime) {
+        // シークは一度発生をやり直し、目標時刻までEditor用の時計を進めて近似する。
         manager->ResetSimulation();
         emitTimer_ = 0.0f;
         previewTime_ = 0.0f;
@@ -53,6 +55,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         manager->SetTimeScale(previousScale);
     };
 
+    // 操作シリアルを比較し、Play・Stop・Seekを一回ずつ反映する。
     if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         restartPreview(0.0f);
@@ -72,6 +75,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     manager->SetTimeScale(previewStage->GetPlaybackSpeed());
     const float scaledDelta = deltaTime * manager->GetTimeScale();
 
+    // Loop発生の間隔もプレビュー速度に従わせる。
     if (config_.isLooping && scaledDelta > 0.0f) {
         emitTimer_ += scaledDelta;
         if (emitTimer_ >= (std::max)(0.01f, config_.emitInterval)) {
@@ -96,6 +100,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         manager->UpdateEditorPreviewStep(deltaTime);
     }
 
+    // タイムラインと性能表示は実GPUの粒子数でなく設定からの生存数見積もりを使う。
     std::vector<EffectPreviewStage::TimelineEvent> events;
     events.push_back({ "Spawn", 0.0f, 0.05f, Vector4{ 0.35f, 0.85f, 1.0f, 1.0f } });
     events.push_back({ "Particle life", 0.0f, (std::min)(config_.emitLife, previewDuration), Vector4{ 0.25f, 0.65f, 1.0f, 1.0f } });
@@ -137,6 +142,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
 void GPUParticleEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    // 編集パネルを発生条件、寿命曲線、環境、プレビュー、保存に分けて表示する。
     ImGui::Text("--- GPUパーティクルエディタ ---");
 
     // ⚙️ システム設定
@@ -246,6 +252,7 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::ColorEdit4("消滅時の色 (End Color)", &config_.endColor.x);
         ImGui::DragFloat(ICON_FA_SUN " 発光強度 (HDR Intensity)", &config_.colorIntensity, 0.1f, 0.0f, 20.0f);
 
+        // 発生用テクスチャの候補だけに絞る。選択値はEmit時に適用する。
         std::vector<std::string> allPaths = TextureManager::GetInstance()->GetAvailableTexturePaths();
         static std::vector<std::string> filteredPaths;
         static std::vector<std::string> fileNames;
@@ -284,6 +291,7 @@ void GPUParticleEditor::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader("共通Curve / Gradient / LOD", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 共通Curve UIの編集結果をGPU設定の始点・中間点・終点に書き戻す。
         VFXFloatCurve sizeCurve = VFXFloatCurve::FromThreePoints(
             config_.baseSize,
             config_.sizeMidTime,
@@ -525,6 +533,7 @@ void GPUParticleEditor::DrawImGui() {
 
     // 💾 保存と読み込み
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 保存先JSONを毎回列挙し、名前入力とギャラリーを同じプリセット群に揃える。
         std::string dirPath = "Resources/json/gpu_particles/";
         std::vector<std::string> presetList;
         if (std::filesystem::exists(dirPath)) {
@@ -624,6 +633,7 @@ void GPUParticleEditor::DrawImGui() {
 }
 
 void GPUParticleEditor::EmitWithPreview() {
+    // 保存用の発生位置は保持し、プレビュー時だけ一時コピーの位置を差し替える。
     GPUParticleConfig tempConfig = config_;
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     if (previewStage && previewStage->IsEnabled()) {
@@ -651,6 +661,7 @@ void GPUParticleEditor::EmitWithPreview() {
 }
 
 void GPUParticleEditor::Save(const std::string& presetName) {
+    // 実行設定をJSONへ写す。Preview Stageの一時座標は保存しない。
     json j;
     j["emitPos"] = { config_.emitPos.x, config_.emitPos.y, config_.emitPos.z };
     j["emitArea"] = { config_.emitArea.x, config_.emitArea.y, config_.emitArea.z };
@@ -732,6 +743,7 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         file >> j;
         file.close();
 
+        // 追加された機能は旧プリセットにキーがないため、先に互換用の初期値を入れる。
         config_.spriteSheetColumns = 1;
         config_.spriteSheetRows = 1;
         config_.spriteSheetFrameCount = 1;
@@ -796,6 +808,7 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("texturePath")) {
             config_.texturePath = j["texturePath"];
         }
+        // 旧形式の平坦なSprite項目を読み、後段の新形式があればそちらで上書きする。
         if (j.contains("spriteSheetColumns")) config_.spriteSheetColumns = j["spriteSheetColumns"];
         if (j.contains("spriteSheetRows")) config_.spriteSheetRows = j["spriteSheetRows"];
         if (j.contains("spriteSheetFrameCount")) config_.spriteSheetFrameCount = j["spriteSheetFrameCount"];

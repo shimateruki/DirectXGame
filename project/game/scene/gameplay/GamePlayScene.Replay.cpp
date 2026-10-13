@@ -147,15 +147,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
           {"hpAnimationTimer", hudHpAnimationTimer_},
           {"morphGaugeTimer", hudMorphGaugeTimer_},
           {"morphGaugeVisibleTimer", hudMorphGaugeVisibleTimer_}}},
-        {"lifeLost",
-         {{"active", lifeLostPresentationActive_},
-          {"finished", lifeLostPresentationFinished_},
-          {"blackHold", lifeLostBlackHold_},
-          {"numberDropped", lifeLostNumberDropped_},
-          {"timer", lifeLostPresentationTimer_},
-          {"beforeLives", lifeLostBeforeLives_},
-          {"afterLives", lifeLostAfterLives_},
-          {"revive", lifeLostRevive_}}},
+        {"lifeLost", lifeLostState_.CaptureReplay()},
         {"overlays",
          {{"pause", std::move(pauseState)},
           {"controlsGuide", std::move(controlsGuideState)},
@@ -236,15 +228,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
     }
 
     if (const auto found = state.find("lifeLost"); found != state.end() && found->is_object()) {
-        const json& lifeLost = *found;
-        lifeLostPresentationActive_ = lifeLost.value("active", lifeLostPresentationActive_);
-        lifeLostPresentationFinished_ = lifeLost.value("finished", lifeLostPresentationFinished_);
-        lifeLostBlackHold_ = lifeLost.value("blackHold", lifeLostBlackHold_);
-        lifeLostNumberDropped_ = lifeLost.value("numberDropped", lifeLostNumberDropped_);
-        lifeLostPresentationTimer_ = lifeLost.value("timer", lifeLostPresentationTimer_);
-        lifeLostBeforeLives_ = lifeLost.value("beforeLives", lifeLostBeforeLives_);
-        lifeLostAfterLives_ = lifeLost.value("afterLives", lifeLostAfterLives_);
-        lifeLostRevive_ = lifeLost.value("revive", lifeLostRevive_);
+        lifeLostState_.RestoreReplay(*found);
     }
 
     if (const auto found = state.find("overlays"); found != state.end() && found->is_object()) {

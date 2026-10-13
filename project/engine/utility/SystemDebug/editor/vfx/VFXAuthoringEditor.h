@@ -57,6 +57,7 @@ inline bool DrawFloatCurve(
     bool changed = false;
     ImGui::PushID(id);
 
+    // 見た目の曲線は現在のキーから毎フレーム評価する。描画用配列は保存値へ戻さない。
     std::vector<float> preview(64);
     for (std::size_t index = 0; index < preview.size(); ++index) {
         preview[index] = curve.Evaluate(
@@ -81,6 +82,7 @@ inline bool DrawFloatCurve(
         VFXFloatCurve before = curve;
         ImGui::SetNextItemWidth(82.0f);
         bool timeChanged = ImGui::DragFloat("Time", &curve.keys[index].time, 0.005f, 0.0f, 1.0f, "%.3f");
+        // 両端を0と1に固定し、中間キーは隣同士の順序を崩さない範囲へ制限する。
         if (index == 0) curve.keys[index].time = 0.0f;
         if (index + 1 == curve.keys.size()) curve.keys[index].time = 1.0f;
         if (index > 0 && index + 1 < curve.keys.size()) {
@@ -93,6 +95,7 @@ inline bool DrawFloatCurve(
             apply(curve);
             changed = true;
         }
+        // 連続ドラッグは一つのUndo操作として追跡する。
         EditorPropertyTransaction::TrackLastItem(
             std::string(id) + ": Key Time",
             before,
@@ -114,6 +117,7 @@ inline bool DrawFloatCurve(
             apply);
 
         if (allowPerKeyEasing && index + 1 < curve.keys.size()) {
+            // 補間方式は「このキーから次のキーまで」に属するため末尾には出さない。
             ImGui::SameLine();
             int easing = static_cast<int>(curve.keys[index].easing);
             ImGui::SetNextItemWidth(105.0f);
@@ -134,6 +138,7 @@ inline bool DrawFloatCurve(
             ImGui::SameLine();
             before = curve;
             if (ImGui::SmallButton("削除")) {
+                // erase後の参照と添字を使わないよう、このフレームのキー走査を終える。
                 curve.keys.erase(curve.keys.begin() + static_cast<std::ptrdiff_t>(index));
                 apply(curve);
                 EditorPropertyTransaction::RegisterDiscrete(
@@ -150,6 +155,7 @@ inline bool DrawFloatCurve(
     }
 
     if (allowKeyCountChange && static_cast<int>(curve.keys.size()) < maximumKeys && ImGui::Button("キーを追加")) {
+        // 最も広い空白区間へ追加し、Normalizeで時間順を再確定する。
         const VFXFloatCurve before = curve;
         const float time = FindInsertionTime(curve.keys);
         curve.keys.push_back({ time, curve.Evaluate(time, 1.0f), VFXCurveEasing::Linear });
@@ -175,6 +181,7 @@ inline bool DrawColorGradient(
     bool allowKeyCountChange = true) {
     bool changed = false;
     ImGui::PushID(id);
+    // 曲線と同じ時刻制約を色キーにも適用し、色のドラッグをUndoへまとめる。
     for (std::size_t index = 0; index < gradient.keys.size(); ++index) {
         ImGui::PushID(static_cast<int>(index));
         ImGui::TextDisabled("Color %d", static_cast<int>(index + 1));
@@ -217,6 +224,7 @@ inline bool DrawColorGradient(
             ImGui::SameLine();
             before = gradient;
             if (ImGui::SmallButton("削除")) {
+                // 端点は保持し、中間色だけ削除可能にする。
                 gradient.keys.erase(gradient.keys.begin() + static_cast<std::ptrdiff_t>(index));
                 apply(gradient);
                 EditorPropertyTransaction::RegisterDiscrete(
@@ -259,6 +267,7 @@ inline bool DrawLodSettings(
     bool changed = false;
     ImGui::PushID(id);
 
+    // 有効化と数値ドラッグを別のUndo単位にし、各変更後に値の整合性を戻す。
     VFXLodSettings before = settings;
     if (ImGui::Checkbox("距離LODを有効化", &settings.enabled)) {
         settings.Sanitize();

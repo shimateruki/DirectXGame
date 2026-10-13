@@ -115,6 +115,7 @@ void AnimatorControllerEditor::LoadController(const std::string& fileName) {
 }
 
 void AnimatorControllerEditor::SaveController() {
+    // 保存成功後だけPreview対象へ再読込し、編集中の値とSceneの実行状態を揃える。
     if (fileNameBuffer_[0] == '\0') {
         return;
     }
@@ -215,6 +216,7 @@ void AnimatorControllerEditor::DrawPreviewTargetControls() {
     }
     Object3d* target = ResolvePreviewTarget();
     if (target) {
+        // Player用Controllerはゲームの行動Stateが主導するため、能力モーションだけ別経路で試す。
         if (Player* player = dynamic_cast<Player*>(target);
             player && std::string(fileNameBuffer_) == "player_slime") {
             AnimatorControllerRuntime* runtime = player->GetSlimeAnimatorControllerRuntime();
@@ -241,6 +243,7 @@ void AnimatorControllerEditor::DrawPreviewTargetControls() {
             return;
         }
         ImGui::Text("割り当て中: %s", target->GetAnimatorControllerPath().empty() ? "(なし)" : target->GetAnimatorControllerPath().c_str());
+        // 通常ObjectはAssetを保存してから割当・State再生する。
         if (ImGui::Button("このControllerをObjectへ割り当て", ImVec2(-1.0f, 0.0f))) {
             SaveController();
             target->SetAnimatorController(fileNameBuffer_);
@@ -319,6 +322,7 @@ void AnimatorControllerEditor::DrawStateEditor() {
         ImGui::TextDisabled("Model/Body Clipに長さがある場合はそちらを優先します。");
 
         ImGui::SeparatorText("Animation Events");
+        // Eventは正規化時刻でClipへ結び、名前とPayloadを実行時Cueへ渡す。
         if (ImGui::Button(ICON_FA_PLUS " Event追加")) {
             state.events.push_back({});
         }
@@ -353,6 +357,7 @@ void AnimatorControllerEditor::DrawStateEditor() {
         if (ImGui::Button("Entry Stateに設定", ImVec2(-1.0f, 0.0f))) controller_.entryState = state.name;
         ImGui::BeginDisabled(controller_.states.size() <= 1);
         if (ImGui::Button(ICON_FA_TRASH " State削除", ImVec2(-1.0f, 0.0f))) {
+            // 削除したStateを参照する遷移も同時に取り除き、Entryが消えたら先頭へ戻す。
             const std::string removedName = state.name;
             controller_.states.erase(controller_.states.begin() + selectedStateIndex_);
             controller_.transitions.erase(
@@ -397,6 +402,7 @@ void AnimatorControllerEditor::DrawParameterEditor() {
     if (parameter.type == AnimatorParameterType::Int) ImGui::DragInt("Default", &parameter.defaultInt);
     if (parameter.type == AnimatorParameterType::Bool) ImGui::Checkbox("Default", &parameter.defaultBool);
     if (Object3d* target = ResolvePreviewTarget()) {
+        // DefaultはAssetの値、Runtime Valueは現在再生中のObjectへの一時入力として分ける。
         Player* player = dynamic_cast<Player*>(target);
         const bool isSlimeController = player && std::string(fileNameBuffer_) == "player_slime";
         AnimatorControllerRuntime* runtime = isSlimeController
@@ -471,6 +477,7 @@ void AnimatorControllerEditor::DrawTransitionEditor() {
     if (transition.hasExitTime) ImGui::SliderFloat("Exit Time", &transition.exitTime, 0.0f, 1.0f, "%.2f normalized");
 
     ImGui::SeparatorText("Conditions");
+    // 条件配列を削除した後は添字を戻し、次の条件を飛ばさず表示する。
     if (ImGui::Button("Condition追加")) transition.conditions.push_back({});
     for (int index = 0; index < static_cast<int>(transition.conditions.size()); ++index) {
         auto& condition = transition.conditions[index];

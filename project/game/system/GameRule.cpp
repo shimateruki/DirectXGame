@@ -2,6 +2,7 @@
 #include "EventManager.h"
 #include "DebugConsole.h"
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "Event.h"
 #include "Player.h"
 #include "game/scene/gameplay/GamePlayScene.h"
@@ -43,20 +44,57 @@ DamageType ResolveDamageType(const DamageEvent& event) {
 }
 } // namespace
 
+// 旗の取得状態と演出時計をまとめ、GameRule はイベントの振り分けだけを担当します。
+class CheckpointRule {
+  public:
+    void Initialize(BaseScene* scene) {
+        scene_ = scene;
+        activeCheckpoint_ = nullptr;
+        raisingCheckpoint_ = nullptr;
+        checkpointBaseEmissive_ = 1.0f;
+        checkpointPresentationTimer_ = 0.0f;
+        checkpointParticleTimer_ = 0.0f;
+        checkpointAmbientRingTimer_ = 0.0f;
+        checkpointRaiseDelay_ = 0.0f;
+    }
+    void Activate(Player* player, Object3d* checkpoint);
+    void Restore(const std::string& checkpointObjectName);
+    void Update(float deltaTime);
+
+  private:
+    BaseScene* scene_ = nullptr;
+    Object3d* activeCheckpoint_ = nullptr;
+    Object3d* raisingCheckpoint_ = nullptr;
+    float checkpointBaseEmissive_ = 1.0f;
+    float checkpointPresentationTimer_ = 0.0f;
+    float checkpointParticleTimer_ = 0.0f;
+    float checkpointAmbientRingTimer_ = 0.0f;
+    float checkpointRaiseDelay_ = 0.0f;
+};
+
 // チェックポイント、属性効果、ダメージ適用のゲーム規則を管理します。見た目の通知より先に有効性を判定します。
 
+GameRule::GameRule() = default;
+
+GameRule::~GameRule() {
+    for (auto& id : eventSubscriptions_) {
+        EventManager::GetInstance()->Unsubscribe(id);
+        id = EventManager::kInvalidSubscriptionId;
+    }
+}
+
 void GameRule::Initialize(BaseScene* scene) {
+    for (auto& id : eventSubscriptions_) {
+        EventManager::GetInstance()->Unsubscribe(id);
+        id = EventManager::kInvalidSubscriptionId;
+    }
     scene_ = scene;
     activeStatusEffects_.clear();
-    activeCheckpoint_ = nullptr;
-    raisingCheckpoint_ = nullptr;
-    checkpointRaiseDelay_ = 0.0f;
-    checkpointPresentationTimer_ = 0.0f;
-    checkpointParticleTimer_ = 0.0f;
-    checkpointAmbientRingTimer_ = 0.0f;
+    if (!checkpointRule_) checkpointRule_ = std::make_unique<CheckpointRule>();
+    checkpointRule_->Initialize(scene);
 
     // 接触イベントでは対象の EventType を優先し、汎用 TargetID は個別処理の後に使う。
-    EventManager::GetInstance()->Subscribe([this](const PlayerHitEvent& event) {
+    eventSubscriptions_[0] = EventManager::GetInstance()->Subscribe([this](const PlayerHitEvent& event) {
         Object3d* whoHit = event.me;           // プレイヤー
         Object3d* objectHit = event.hitObject; // 当たった物
 
@@ -92,7 +130,7 @@ void GameRule::Initialize(BaseScene* scene) {
 
         case EventType::Checkpoint: {
             if (Player* player = dynamic_cast<Player*>(whoHit)) {
-                ActivateCheckpoint(player, objectHit);
+                checkpointRule_->Activate(player, objectHit);
             }
         } break;
 
@@ -155,7 +193,7 @@ void GameRule::Initialize(BaseScene* scene) {
     });
 
     // HP 減算が成立したときだけ、打撃演出・状態異常・ノックバックへ進む。
-    EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
+    eventSubscriptions_[1] = EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
         if (!event.target)
             return;
         Player* playerTarget = dynamic_cast<Player*>(event.target);
@@ -221,7 +259,7 @@ void GameRule::Initialize(BaseScene* scene) {
 
     // プレイヤー死亡時の処理
     // ========================================================
-    EventManager::GetInstance()->Subscribe([this](const PlayerDeathEvent& event) {
+    eventSubscriptions_[2] = EventManager::GetInstance()->Subscribe([this](const PlayerDeathEvent& event) {
         // 隔離プレビューでHPを0にしても、実セーブの残機は消費しません。
         if (!event.player || event.player->IsEditorInternal())
             return;
@@ -246,7 +284,7 @@ void GameRule::Update(float deltaTime) {
         return;
     }
 
-    UpdateCheckpointPresentation(deltaTime);
+    checkpointRule_->Update(deltaTime);
 
     for (auto it = activeStatusEffects_.begin(); it != activeStatusEffects_.end();) {
         ActiveStatusEffect& status = *it;
@@ -280,7 +318,7 @@ void GameRule::Update(float deltaTime) {
     }
 }
 
-void GameRule::ActivateCheckpoint(Player* player, Object3d* checkpoint) {
+void CheckpointRule::Activate(Player* player, Object3d* checkpoint) {
     if (!player || !checkpoint) {
         return;
     }
@@ -311,6 +349,10 @@ void GameRule::ActivateCheckpoint(Player* player, Object3d* checkpoint) {
 }
 
 void GameRule::RestoreCheckpointPresentation(const std::string& checkpointObjectName) {
+    if (checkpointRule_) checkpointRule_->Restore(checkpointObjectName);
+}
+
+void CheckpointRule::Restore(const std::string& checkpointObjectName) {
     if (!scene_ || checkpointObjectName.empty()) return;
 
     for (const auto& owned : scene_->GetObjects()) {
@@ -336,7 +378,7 @@ void GameRule::RestoreCheckpointPresentation(const std::string& checkpointObject
     }
 }
 
-void GameRule::UpdateCheckpointPresentation(float deltaTime) {
+void CheckpointRule::Update(float deltaTime) {
     // 未到達の旗も案内として光らせます。有限寿命の演出を間隔を空けて再生します。
     checkpointParticleTimer_ -= deltaTime;
     checkpointAmbientRingTimer_ -= deltaTime;
@@ -446,7 +488,7 @@ bool GameRule::IsStatusTargetAlive(Object3d* target) const {
     if (!target || !scene_) {
         return false;
     }
-    if (target != scene_->GetPlayer() && !scene_->IsAlive(target)) {
+    if (target != GetScenePlayer(scene_) && !scene_->IsAlive(target)) {
         return false;
     }
     if (target->isDead || !target->GetIsVisible()) {

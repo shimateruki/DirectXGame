@@ -1,6 +1,8 @@
 #pragma once
 #include <algorithm>
+#include <array>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -11,6 +13,10 @@
 #include <utility>
 #include <vector>
 #include "json.hpp"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
 
 // セーブデータ、ステージクリア状況、スターコイン、残機/コインを一元管理する
 class GameDataManager {
@@ -74,6 +80,9 @@ class GameDataManager {
     /// <summary>有効なセーブスロットへ切り替え、その内容を読み込みます。</summary>
     /// <param name="slotIndex">0 始まりのスロット番号。範囲外は端の番号に丸めます。</param>
     void SetActiveSlot(int slotIndex) {
+        // 未保存の通常コインと時間を別スロットへ混ぜない。
+        if (!FlushPendingSave())
+            return;
         if (slotIndex < 0)
             slotIndex = 0;
         if (slotIndex >= kSaveSlotCount)
@@ -141,27 +150,18 @@ class GameDataManager {
     }
 
     // 保存ファイルに未管理の項目があれば保持し、管理中の項目だけ更新します。
-    void Save() {
+    bool Save() {
+        dirty_ = true;
         nlohmann::json data;
-
-        // 既存ファイルを読み込み、未管理の値をできるだけ保持する
-        std::ifstream inFile(GetSaveFilePath());
-        // スロット制導入前のセーブを最初のスロットへ引き継ぐ。
-        if (!inFile.is_open() && activeSlot_ == 0) {
-            inFile.open(GetLegacySaveFilePath());
-        }
-        if (inFile.is_open()) {
-            try {
-                inFile >> data;
-                if (!data.is_object()) {
-                    data = nlohmann::json::object();
-                }
-            } catch (const nlohmann::json::exception&) {
-                // 壊れた既存セーブは引き継がず、現在の正常な状態から書き直します。
-                data = nlohmann::json::object();
-            }
-            inFile.close();
-        }
+        const std::filesystem::path savePath(GetSaveFilePath());
+        const std::filesystem::path tempPath = savePath.wstring() + L".tmp";
+        const std::filesystem::path backupPath = savePath.wstring() + L".bak";
+        std::error_code ec;
+        const bool hasPrimary = std::filesystem::exists(savePath, ec);
+        if (ec) return false;
+        // 破損した本体とバックアップを上書きせず、復旧の余地を残す。
+        if (!ReadSaveJson(activeSlot_, data) && hasPrimary) return false;
+        if (!data.is_object()) data = nlohmann::json::object();
 
         data["lives"] = lives_;
         data["coins"] = coins_;
@@ -176,16 +176,82 @@ class GameDataManager {
         }
         data["starCoins"] = coinData;
 
-        std::filesystem::create_directories(std::filesystem::path(GetSaveFilePath()).parent_path());
-        std::ofstream outFile(GetSaveFilePath());
-        if (outFile.is_open()) {
+        try {
+            std::filesystem::create_directories(savePath.parent_path());
+            // 同じディレクトリの一時ファイルへ書き、完了した内容だけ本体へ置換する。
+            std::ofstream outFile(tempPath, std::ios::binary | std::ios::trunc);
+            if (!outFile) return false;
             outFile << data.dump(4);
+            outFile.flush();
+            if (!outFile.good()) return false;
             outFile.close();
+            if (outFile.fail()) return false;
+            HANDLE tempHandle = ::CreateFileW(tempPath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+                                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (tempHandle == INVALID_HANDLE_VALUE) return false;
+            const bool flushed = ::FlushFileBuffers(tempHandle) != 0;
+            ::CloseHandle(tempHandle);
+            if (!flushed) return false;
+
+            // 本体が正常な場合だけ直前の世代をバックアップに残す。
+            nlohmann::json primary;
+            if (hasPrimary && ReadJsonFile(savePath, primary)) {
+                std::filesystem::copy_file(savePath, backupPath, std::filesystem::copy_options::overwrite_existing, ec);
+                if (ec) return false;
+            }
+            if (!::MoveFileExW(tempPath.c_str(), savePath.c_str(),
+                               MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+                return false;
+            }
+            dirty_ = false;
+            saveDelaySeconds_ = 0.0f;
+            return true;
+        } catch (const std::exception&) {
+            return false;
         }
+    }
+
+    /// <summary>通常コインとプレイ時間の保留分を、シーン移動・終了時に保存します。</summary>
+    bool FlushPendingSave() { return !dirty_ || Save(); }
+
+    /// <summary>連続取得した通常コインを最大1秒分まとめ、プレイ時間は30秒ごとに保存します。</summary>
+    void TickAutosave(float deltaTime) {
+        if (!dirty_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
+        saveDelaySeconds_ -= deltaTime;
+        if (saveDelaySeconds_ <= 0.0f && !Save()) saveDelaySeconds_ = 5.0f;
+    }
+
+    /// <summary>操作可能なシーンの実時間を秒単位で記録します。停止中は呼びません。</summary>
+    void AdvancePlayTime(float deltaTime) {
+        if (!std::isfinite(deltaTime) || deltaTime <= 0.0f || playTimeSeconds_ >= kMaxPlayTimeSeconds) return;
+        playTimeRemainder_ += deltaTime;
+        if (playTimeRemainder_ < 1.0f) return;
+        const int addedSeconds = static_cast<int>(playTimeRemainder_);
+        playTimeRemainder_ -= static_cast<float>(addedSeconds);
+        playTimeSeconds_ = (std::min)(kMaxPlayTimeSeconds, playTimeSeconds_ + addedSeconds);
+        dirty_ = true;
+        if (saveDelaySeconds_ <= 0.0f) saveDelaySeconds_ = 30.0f;
+    }
+
+    /// <summary>ゴールでクリア記録と今回のスターコインを一度に確定します。</summary>
+    bool CommitStageClear(int stageIdx, const std::array<bool, kStarCoinsPerStage>& collected) {
+        const auto oldCleared = clearedStages_;
+        const auto oldCoins = stageStarCoins_;
+        if (!IsStageCleared(stageIdx)) clearedStages_.push_back(stageIdx);
+        for (int i = 0; i < kStarCoinsPerStage; ++i) {
+            if (collected[i]) GetOrCreateStarCoins(stageIdx)[i] = true;
+        }
+        if (Save()) return true;
+        clearedStages_ = oldCleared;
+        stageStarCoins_ = oldCoins;
+        return false;
     }
 
     // ファイルがないか壊れている場合は、新規ゲームの初期値へ戻します。
     void Load() {
+        dirty_ = false;
+        saveDelaySeconds_ = 0.0f;
+        playTimeRemainder_ = 0.0f;
         nlohmann::json data;
         if (!ReadSaveJson(activeSlot_, data)) {
             lives_ = kStartingLives;
@@ -253,12 +319,18 @@ class GameDataManager {
             lives_ = 0;
         Save();
     }
-    void ResetLives() {
+    // 残機リセットは保存が成功したときだけ確定し、失敗時はメニューから再試行できるようにする。
+    bool ResetLives() {
+        const int previousLives = lives_;
         lives_ = kStartingLives;
-        Save();
+        if (Save()) {
+            return true;
+        }
+        lives_ = previousLives;
+        return false;
     }
 
-    // コイン操作。変更はその場で保存します。
+    // 設定操作は即時保存し、ゲーム中の連続取得だけ短時間まとめます。
     int GetCoins() const { return coins_; }
     void SetCoins(int coins) {
         coins_ = std::clamp(coins, 0, kMaxCoins);
@@ -276,7 +348,9 @@ class GameDataManager {
         lives_ =
             static_cast<int>((std::min)(static_cast<int64_t>(kMaxLives), static_cast<int64_t>(lives_) + earnedLives));
         coins_ = static_cast<int>(totalCoins % kCoinsPerLife);
-        Save();
+        dirty_ = true;
+        // 取得のたびに時計を戻すと、連続取得中に永久に保存されなくなる。
+        if (saveDelaySeconds_ <= 0.0f || saveDelaySeconds_ > 1.0f) saveDelaySeconds_ = 1.0f;
     }
     void ResetCoins() {
         coins_ = 0;
@@ -285,7 +359,8 @@ class GameDataManager {
 
     int GetPlayTimeSeconds() const { return playTimeSeconds_; }
     void SetPlayTimeSeconds(int seconds) {
-        playTimeSeconds_ = std::clamp(seconds, 0, 99 * 60 * 60 + 59 * 60 + 59);
+        playTimeSeconds_ = std::clamp(seconds, 0, kMaxPlayTimeSeconds);
+        playTimeRemainder_ = 0.0f;
         Save();
     }
 
@@ -486,6 +561,7 @@ class GameDataManager {
         lives_ = kStartingLives;
         coins_ = 0;
         playTimeSeconds_ = 0;
+        playTimeRemainder_ = 0.0f;
         clearedStages_.clear();
         seenUnlockedStages_.clear();
         stageStarCoins_.clear();
@@ -501,9 +577,17 @@ class GameDataManager {
         }
 
         std::error_code ec;
-        const bool removed = std::filesystem::remove(GetSaveFilePath(slotIndex), ec);
+        const std::string path = GetSaveFilePath(slotIndex);
+        // バックアップを残すと削除したスロットが次回起動時に復活してしまう。
+        bool removed = std::filesystem::remove(path + ".bak", ec);
+        if (ec) return false;
+        removed = std::filesystem::remove(path + ".tmp", ec) || removed;
+        if (ec) return false;
+        removed = std::filesystem::remove(path, ec) || removed;
+        if (ec) return false;
         if (slotIndex == 0) {
-            std::filesystem::remove(GetLegacySaveFilePath(), ec);
+            removed = std::filesystem::remove(GetLegacySaveFilePath(), ec) || removed;
+            if (ec) return false;
         }
 
         if (slotIndex == activeSlot_) {
@@ -550,21 +634,22 @@ class GameDataManager {
 
     /// <summary>スロット 0 では旧形式の保存パスも読み込み候補にします。</summary>
     /// <returns>JSON オブジェクトを読めた場合は true。</returns>
-    bool ReadSaveJson(int slotIndex, nlohmann::json& outData) const {
-        std::ifstream file(GetSaveFilePath(slotIndex));
-        if (!file.is_open() && slotIndex == 0) {
-            file.open(GetLegacySaveFilePath());
-        }
-        if (!file.is_open()) {
-            return false;
-        }
-
+    static bool ReadJsonFile(const std::filesystem::path& path, nlohmann::json& outData) {
+        std::ifstream file(path);
+        if (!file) return false;
         try {
             file >> outData;
         } catch (...) {
             return false;
         }
         return outData.is_object();
+    }
+
+    bool ReadSaveJson(int slotIndex, nlohmann::json& outData) const {
+        const std::string path = GetSaveFilePath(slotIndex);
+        if (ReadJsonFile(path, outData)) return true;
+        if (ReadJsonFile(path + ".bak", outData)) return true;
+        return slotIndex == 0 && ReadJsonFile(GetLegacySaveFilePath(), outData);
     }
 
     std::vector<bool>& GetOrCreateStarCoins(int stageIdx) {
@@ -576,6 +661,10 @@ class GameDataManager {
     int lives_ = kStartingLives;
     int coins_ = 0;
     int playTimeSeconds_ = 0;
+    static constexpr int kMaxPlayTimeSeconds = 99 * 60 * 60 + 59 * 60 + 59;
+    float playTimeRemainder_ = 0.0f;
+    float saveDelaySeconds_ = 0.0f;
+    bool dirty_ = false;
     int activeSlot_ = 0;
     bool pendingRespawnIrisIn_ = false;
     StageCheckpointRespawn pendingStageCheckpointRespawn_;

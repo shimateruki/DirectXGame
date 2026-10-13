@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/title/TitleScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -661,12 +662,12 @@ void TitleScene::UpdateMainMenu() {
     // 枠の編集位置に文字とカーソルを追従させ、選択時だけ強調する。
     InputManager* input = InputManager::GetInstance();
 
-    if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+    if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
         currentMenuIndex_--;
         if (currentMenuIndex_ < 0)
             currentMenuIndex_ = (int)MenuIndex::Max - 1;
     }
-    if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+    if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
         currentMenuIndex_++;
         if (currentMenuIndex_ >= (int)MenuIndex::Max)
             currentMenuIndex_ = 0;
@@ -776,11 +777,11 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         return;
     }
 
-    const bool moveUp = input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
-    const bool moveDown = input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
-    const bool moveLeft = input->IsKeyTriggered(DIK_LEFT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
+    const bool moveUp = input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP);
+    const bool moveDown = input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
+    const bool moveLeft = input->IsKeyTriggered(DIK_LEFT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
     const bool moveRight =
-        input->IsKeyTriggered(DIK_RIGHT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
+        input->IsKeyTriggered(DIK_RIGHT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
 
     if (saveSelectMode_ == SaveSelectMode::DeleteConfirm) {
         if (moveLeft || moveRight) {
@@ -1080,6 +1081,7 @@ Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2
 
 void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     // セーブ記録と選択状態を基準配置へ毎フレーム反映し、画面の再開閉でもずれを残さない。
+    // 入場の時間差と起動中の強調を先に数値化し、個々のSpriteへ同じ進捗を配る。
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
     const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
     const bool launching = inSaveSelect && saveSelectMode_ == SaveSelectMode::Launching;
@@ -1091,6 +1093,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     const float hintReveal = SmoothStep(std::clamp((saveSelectOpenTime_ - 0.22f) / 0.25f, 0.0f, 1.0f));
     const bool settingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
     const bool showMainMenu = !settingsOpen && !inSaveSelect && titleIntroComplete_;
+    // メインメニューとセーブ選択画面を同時に見せないよう、共通部品の可視性を揃える。
     if (titleTextSprite_)
         titleTextSprite_->SetVisible(false);
     if (startTextSprite_)
@@ -1112,6 +1115,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f);
 
+    // 暗幕は削除確認で濃くし、起動中は選択カードを目立たせる。
     if (saveSelectBackdrop_) {
         saveSelectBackdrop_->SetVisible(inSaveSelect);
         saveSelectBackdrop_->SetColor(deleteConfirm ? Vector4{0.03f, 0.05f, 0.08f, 0.82f}
@@ -1119,6 +1123,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
                                                 : Vector4{0.04f, 0.08f, 0.13f, 0.58f});
     }
 
+    // 詳細パネル、タイトル、操作ガイドは異なる遅延で現れる。
     const bool gamepadHints = InputManager::GetInstance()->IsGamepadMode();
     if (saveDetailPanel_) {
         saveDetailPanel_->SetVisible(inSaveSelect && panelReveal > 0.0f);
@@ -1144,6 +1149,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         saveGamepadHint_->SetVisible(inSaveSelect && gamepadHints && !deleteConfirm && !launching && hintReveal > 0.0f);
         saveGamepadHint_->SetColor({1.0f, 1.0f, 1.0f, hintReveal});
     }
+    // 選択中スロットのファイル番号と空欄表示は保存要約から毎フレーム更新する。
     if (saveDetailFileName_) {
         saveDetailFileName_->SetVisible(inSaveSelect && panelReveal > 0.0f);
         saveDetailFileName_->SetColor({0.20f, 0.26f, 0.38f, panelReveal});
@@ -1162,6 +1168,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         saveLaunchLabel_->SetColor({0.17f, 0.39f, 0.65f, reveal});
     }
 
+    // 各行の登場時間、選択強調、起動時の減光を計算してからカードと文字へ反映する。
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
         const float rowReveal = SmoothStep(std::clamp((saveSelectOpenTime_ - i * 0.065f) / 0.26f, 0.0f, 1.0f));
         const float selectionTarget = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == i ? 1.0f : 0.0f;
@@ -1198,6 +1205,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
             saveSlotCards_[i]->SetColor({cardColor.x, cardColor.y, cardColor.z, cardColor.w * rowReveal * launchDim});
         }
 
+        // 古いフレーム部品は表示せず、カード画像を選択状態に合わせて差し替える。
         for (auto* frame : saveSlotFrames_[i]) {
             if (frame) {
                 frame->SetVisible(false);
@@ -1234,6 +1242,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
                                                textColor.w * rowReveal * launchDim});
         }
 
+        // 詳細欄は実データがある選択行だけに出し、王冠・スター・残機を同じ透明度で見せる。
         const bool showDetails = inSaveSelect && panelReveal > 0.0f && summary.exists && i == currentSaveSlotIndex_;
         const Vector4 detailIconColor = {iconColor.x, iconColor.y, iconColor.z, iconColor.w * panelReveal};
         const Vector4 detailNumberColor = {numberColor.x, numberColor.y, numberColor.z, numberColor.w * panelReveal};
@@ -1274,10 +1283,11 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
             saveSlotPlayTimeLabels_[i]->SetColor(detailTextColor);
         }
 
-        const int totalSeconds = std::clamp(summary.playTimeSeconds, 0, 99 * 60 + 59);
-        const int minutes = totalSeconds / 60;
-        const int seconds = totalSeconds % 60;
-        const std::array<int, 4> timeDigits = {minutes / 10, minutes % 10, seconds / 10, seconds % 10};
+        // 既存の5枚の数字Spriteを時:分として使い、長時間プレイでも値を止めない。
+        const int totalMinutes = std::clamp(summary.playTimeSeconds / 60, 0, 99 * 60 + 59);
+        const int hours = totalMinutes / 60;
+        const int minutes = totalMinutes % 60;
+        const std::array<int, 4> timeDigits = {hours / 10, hours % 10, minutes / 10, minutes % 10};
         int digitIndex = 0;
         for (int part = 0; part < 5; ++part) {
             Sprite* sprite = saveSlotPlayTimeDigits_[i][part];
@@ -1299,6 +1309,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         }
     }
 
+    // 選択枠はキー入力で行が変わっても瞬間移動させず、現在の行へ滑らかに追従する。
     const int focusedRow = std::clamp(saveSelectFocusIndex_, 0, GameDataManager::kSaveSlotCount - 1);
     const float follow = std::clamp(deltaTime * 12.0f, 0.0f, 1.0f);
     saveSelectionGlowY_ += (saveSlotCardBasePositions_[focusedRow].y - saveSelectionGlowY_) * follow;
@@ -1319,6 +1330,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         saveDeleteButtonText_->SetVisible(false);
     }
 
+    // 削除確認中だけ確認Popupを出し、Yes/Backの選択側を点滅させる。
     if (savePromptBubble_) {
         savePromptBubble_->SetVisible(deleteConfirm);
         savePromptBubble_->SetColor({1.0f, 0.86f, 0.64f, 0.94f});
@@ -1378,7 +1390,7 @@ void TitleScene::DrawSaveSlotUI() {
 }
 
 void TitleScene::Draw() {
-    // --- 一人称視点判定 ---
+    // 視点がプレイヤーの内側にある場合は本体を描かず、各パスの順序を維持する。
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
@@ -1398,7 +1410,7 @@ void TitleScene::Draw() {
 
     auto& objects = objectManager_->GetObjects();
 
-    // --- 1. 不透明描画 ---
+    // 不透明物体を先に描き、透明・霧・特殊材質はそれぞれ後段のパスへ回す。
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_)
             continue;
@@ -1407,12 +1419,12 @@ void TitleScene::Draw() {
         obj->Draw(pointLightRes, spotLightRes);
     }
 
-    // --- 2. 中間描画 (弾・デバッグ) ---
-    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
+    // 弾と予告を不透明物体より前面、透明物体より手前の段階で描く。
+    DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
-    // --- 3. 透明描画 ---
+    // 透明物体と粒子の後、霧・GrabTextureを使う特殊材質を描画する。
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_)
             continue;
@@ -1428,11 +1440,8 @@ void TitleScene::Draw() {
     DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
 
-// ====================================================================
-// UI描画専用の関数
-// ====================================================================
+// タイトルとセーブ選択の2D部品を、暗幕から設定画面まで順に重ねる。
 void TitleScene::DrawUI() {
-    // --- 4. 2D描画 (UIスプライト) ---
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     // 背景用の暗幕は、JSON配置と実行時生成のどちらでもカード・文字より先に一度だけ描画します。
     if (saveSelectBackdrop_) {

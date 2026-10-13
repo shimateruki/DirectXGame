@@ -141,6 +141,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
 
     const float previewDuration = (std::max)(config_.lifetimeMax, 0.1f);
     auto restartPreviewAt = [&](float seekTime) {
+        // 破片を再生成し、一定刻みと端数の更新で指定時刻へ追いつく。
         manager->ResetEditorPreview();
         manager->SpawnFromConfig(config_, GetPreviewPosition());
         previewTime_ = 0.0f;
@@ -160,6 +161,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
         manager->SetTimeScale(previousScale);
     };
 
+    // Stageからの再生・停止・シーク要求はシリアルの変更時だけ消化する。
     if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         restartPreviewAt(0.0f);
@@ -177,6 +179,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
 
     manager->SetTimeScale(previewStage->GetPlaybackSpeed());
     const float scaledDelta = deltaTime * manager->GetTimeScale();
+    // Editor固有のループ間隔とStage全体のループ設定を別々に判定する。
     if (loopPreview_ && scaledDelta > 0.0f) {
         loopTimer_ += scaledDelta;
         if (loopTimer_ >= loopInterval_) {
@@ -196,6 +199,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
         }
     }
 
+    // 発生・生存・縮小開始を共通Timelineへ送り、現在の破片数をプレビュー情報にする。
     std::vector<EffectPreviewStage::TimelineEvent> events;
     events.push_back({ "Burst", 0.0f, 0.06f, Vector4{ 1.0f, 0.65f, 0.25f, 1.0f } });
     events.push_back({ "Debris lifetime", 0.0f, previewDuration, Vector4{ 0.75f, 0.55f, 0.35f, 1.0f } });
@@ -227,6 +231,7 @@ void DebrisEffectEditor::DrawImGui() {
     ImGui::Separator();
 
     if (ImGui::CollapsingHeader(ICON_FA_BOLT " クイックプリセット", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 雛形を適用した後はモデル入力欄も同期し、表示と保存設定を一致させる。
         if (ImGui::Button("岩の爆発", ImVec2(120.0f, 28.0f))) {
             ApplyQuickPresetRock();
             SyncModelBuffersFromConfig();
@@ -309,6 +314,7 @@ void DebrisEffectEditor::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 入力欄の文字列は保存・読込時に確定し、編集中だけなら既存Presetを上書きしない。
         if (!presetList_.empty()) {
             std::vector<const char*> presetNames;
             for (const auto& name : presetList_) {

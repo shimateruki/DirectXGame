@@ -1,5 +1,6 @@
 #pragma once
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
@@ -38,7 +39,7 @@ class TutorialDirector;
 /// <summary>
 /// TutorialDirector の手順進行と、プレイヤー・配置・操作ガイド・完了後の遷移をまとめるシーン。
 /// </summary>
-class TutorialScene : public BaseScene {
+class TutorialScene : public BaseScene, public ISceneGameplayAccess {
   public:
     TutorialScene();
     ~TutorialScene() override;
@@ -152,6 +153,8 @@ class TutorialScene : public BaseScene {
 
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
+    bool goalSaveErrorShown_ = false;
+    float goalSaveRetryTimer_ = 0.0f;
     bool sessionStarCoins_[3] = {false, false, false};
     std::unique_ptr<TutorialDirector> tutorialDirector_;
     std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;

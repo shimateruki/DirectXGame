@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "744f143fa4a70caf2f6063669006f732",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_scan_atlas.png",
+  "version": 1
+}

@@ -1,5 +1,7 @@
 #pragma once
+#include "LifeLostPresentationState.h"
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "game/system/IStageProgressScene.h"
 #include "AudioPlayer.h"
 #include "BulletManager.h"
@@ -46,7 +48,7 @@ struct StageData;
 /// <summary>
 /// ゲームプレイ本編のシーン。ステージ読み込み、プレイヤー、HUD、ゴール演出を統合する。
 /// </summary>
-class GamePlayScene : public BaseScene, public IStageProgressScene {
+class GamePlayScene : public BaseScene, public IStageProgressScene, public ISceneGameplayAccess {
   public:
     GamePlayScene();
     ~GamePlayScene() override;
@@ -135,7 +137,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene {
     /// <param name="afterLives">減少後の残機数。</param>
     void StartLifeLostPresentation(int beforeLives, int afterLives);
     bool IsSealBarrageMovieActive() const { return sealBarrageMovie_.active; }
-    bool IsLifeLostPresentationFinished() const { return lifeLostPresentationFinished_; }
+    bool IsLifeLostPresentationFinished() const { return lifeLostState_.IsFinished(); }
     void HideLifeLostPresentationOverlay();
 
   private:
@@ -584,14 +586,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene {
     float falseKingBossHudPhasePulseTimer_ = 0.0f;
 
     // --- ライフ減少演出 ---
-    bool lifeLostPresentationActive_ = false;
-    bool lifeLostPresentationFinished_ = true;
-    bool lifeLostBlackHold_ = false;
-    bool lifeLostNumberDropped_ = false;
-    float lifeLostPresentationTimer_ = 0.0f;
-    int lifeLostBeforeLives_ = 0;
-    int lifeLostAfterLives_ = 0;
-    Vector2 lifeLostIrisCenter_ = {0.5f, 0.5f};
+    LifeLostPresentationState lifeLostState_;
     HudSpriteState lifeLostIcon_;
     HudSpriteState lifeLostXIcon_;
     std::array<HudSpriteState, 2> lifeLostDigits_;
@@ -599,7 +594,6 @@ class GamePlayScene : public BaseScene, public IStageProgressScene {
     std::unique_ptr<Camera> lifeLostCamera_;
     std::unique_ptr<Object3d> lifeLostSlimeObject_;
     std::unique_ptr<Object3d> lifeLostStunObject_;
-    bool lifeLostRevive_ = false;
 
     // --- オーバーレイ ---
     std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
@@ -613,7 +607,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene {
     /// <summary>選択中のステージ設定を使い、シーンの基幹システムを初期化します。</summary>
     /// <param name="currentStage">読み込むステージの設定。</param>
     void InitializeCoreSystems(const StageData& currentStage);
-    void InitializeRenderCommons();
+    bool InitializeRenderCommons();
 
     void InitializeGameplaySystems();
     void InitializeGameplayObjectSystems();
@@ -680,6 +674,8 @@ class GamePlayScene : public BaseScene, public IStageProgressScene {
     size_t loadingInitializeItemIndex_ = 0;
     size_t loadingInitializeCompletedUnits_ = 0;
     size_t loadingInitializeTotalUnits_ = 1;
+    bool loadingStageObjectsStarted_ = false;
+    int loadingRenderCommonPhase_ = 0;
 
     // ゴール処理中は通常のゲーム更新を止め、演出側で時間を進めます。
     /// <summary>ゴール中の入力と演出更新を処理し、通常更新を続けるか判定します。</summary>

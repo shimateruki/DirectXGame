@@ -91,7 +91,11 @@ void DrawTimelineBlock(
 void EnemyAttackPreviewWindow::DrawTimelineWindow() {
     // 設定上の攻撃時間と実際の AI フェーズを同じ時間軸に重ねて比較します。
 #ifdef USE_IMGUI
-    if (crownMovieMode_) { DrawCrownMovieTimeline(); return; }
+    // 王冠ムービーでは専用トラックを使い、通常の敵攻撃トラックとは表示を切り替えます。
+    if (crownMovieMode_) {
+        DrawCrownMovieTimeline();
+        return;
+    }
     constexpr const char* kWindowName = "攻撃・能力プレビュー - Timeline";
     const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove;
     if (!ImGui::Begin(kWindowName, nullptr, windowFlags)) {
@@ -110,6 +114,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         return;
     }
 
+    // 配置プレビュー中は部品単体の調整へ絞り、通常の攻撃プレビュー操作を隠します。
     DrawTrackTimeline();
     if (placementPreview_) {
         ImGui::TextWrapped("配置モード: 選択部品を単独表示しています。攻撃全体の再生はInspectorの「保存せず動作確認」を使います。");
@@ -128,6 +133,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         return;
     }
 
+    // タイムラインが入力を受けるときだけ Space と矢印キーをシークへ割り当てます。
     const bool timelineFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     if (timelineFocused && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive()) {
         if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
@@ -147,6 +153,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         }
     }
 
+    // キーボード操作と同じ SeekPreview をボタンでも使い、再生位置の計算を揃えます。
     ImGui::PushID("EnemyAttackTimelineToolbar");
     if (playerCopyMode_) ImGui::Text("プレイヤー / %s / %s", kCopyLabels[copyTypeIndex_], kCopyActions[copyActionIndex_]);
     if (ImGui::Button(playing_ ? "■ 一時停止" : "▶ 再生", ImVec2(108.0f, 0.0f))) {
@@ -185,6 +192,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
     }
     ImGui::PopID();
 
+    // 集計欄は最後に取得した実測 Sample を表示します。設定値と混同しないよう別列にします。
     const TimelineSample* currentSample = timelineSamples_.empty() ? nullptr : &timelineSamples_.back();
     if (ImGui::BeginTable("EnemyAttackTimelineSummary", 4, ImGuiTableFlags_SizingStretchSame)) {
         const char* labels[] = { "時間 / Frame", playerCopyMode_ ? "入力フェーズ" : "AIフェーズ", "速度", "接地からの高さ" };
@@ -224,6 +232,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
     ImGui::SameLine();
     ImGui::TextDisabled("Space: 再生/停止  ←/→: 1F  Shift+←/→: 10F  Home: 先頭");
 
+    // 左側のラベル幅と右側の秒数スケールから、横スクロール可能な Canvas を作ります。
     constexpr float kLabelWidth = 118.0f;
     constexpr float kHeaderHeight = 28.0f;
     constexpr float kLaneHeight = 30.0f;
@@ -251,6 +260,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         ImVec2(origin.x + kLabelWidth, canvasEnd.y),
         IM_COL32(105, 115, 135, 255));
 
+    // 機能に応じて一段目の名称だけ差し替え、以後の実測レーン配置は共有します。
     const bool giantHookPreview = IsGiantHookSplitPreview();
     const char* laneNames[kLaneCount] = {
         giantHookPreview ? "専用モーション" : "設定タイミング",
@@ -274,6 +284,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         drawList->AddText(ImVec2(origin.x + 8.0f, y0 + 7.0f), IM_COL32(205, 213, 226, 255), laneNames[lane]);
     }
 
+    // 拡大率に応じて目盛りを細かくし、一秒境界のみ時刻ラベルを表示します。
     float tickStep = 1.0f;
     if (timelinePixelsPerSecond_ >= 220.0f) tickStep = 0.25f;
     else if (timelinePixelsPerSecond_ >= 110.0f) tickStep = 0.5f;
@@ -293,6 +304,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         }
     }
 
+    // 設定レーンには共通命令、巨大フック専用演出、通常の攻撃フェーズを排他的に描きます。
     const EnemyAttackDefinition* sequenceAttack = GetSelectedAttackDefinition();
     if (sequenceAttack && sequenceAttack->sequence.enabled) {
         const auto& sequence = sequenceAttack->sequence;
@@ -347,6 +359,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         DrawTimelineBlock(drawList, origin, kLabelWidth, timelinePixelsPerSecond_, laneY, kLaneHeight, cursorTime, cooldownEnd, IM_COL32(75, 120, 145, 190), "再使用待ち");
     }
 
+    // 実測レーンは同じ AI フェーズの連続区間を一つのブロックにまとめます。
     if (!timelineSamples_.empty()) {
         const float phaseLaneY = origin.y + kHeaderHeight + kLaneHeight;
         std::size_t segmentBegin = 0;
@@ -374,6 +387,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
             segmentBegin = index;
         }
 
+        // グラフは取得済み Sample の最大値で正規化し、設定上の最大速度も縦軸へ含めます。
         float maxSpeed = 1.0f;
         float maxHeight = 1.0f;
         float maxDeformation = 0.25f;
@@ -394,6 +408,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
             maxSpeed = (std::max)(maxSpeed, attack->maxSpeed);
         }
 
+        // 各値を時刻に沿う折れ線として描き、粒子・破片の系統数も同じ関数で表示します。
         const auto drawGraph = [&](int lane, float TimelineSample::* valueMember, float maxValue, ImU32 color) {
             const float laneTop = origin.y + kHeaderHeight + kLaneHeight * static_cast<float>(lane) + 4.0f;
             const float laneBottom = laneTop + kLaneHeight - 8.0f;
@@ -445,6 +460,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         drawCountScale(9, maxDebrisPieces, IM_COL32(190, 166, 130, 255));
     }
 
+    // 現在位置は全レーンを縦断する線で示し、Canvas 上のクリックやドラッグでシークします。
     const float playheadTime = std::clamp(elapsedTime_, 0.0f, duration);
     const float playheadX = origin.x + kLabelWidth + playheadTime * timelinePixelsPerSecond_;
     drawList->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, canvasEnd.y), IM_COL32(255, 82, 82, 255), 2.0f);
@@ -492,6 +508,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         }
     }
 
+    // 自動追従は再生中に限り、右側へ進む余裕を残して横スクロールさせます。
     if (playing_ && timelineFollowPlayhead_) {
         const float playheadLocalX = kLabelWidth + playheadTime * timelinePixelsPerSecond_;
         const float desiredScroll = (std::max)(0.0f, playheadLocalX - visibleWidth * 0.75f);
@@ -506,87 +523,162 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
 void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
 #ifdef USE_IMGUI
     // 同じ下段ドックを使い、InspectorとGame Viewを残して確認します。
-    if (!ImGui::Begin("攻撃・能力プレビュー - Timeline",nullptr,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoMove)) {
-        ImGui::End(); return;
+    if (!ImGui::Begin("攻撃・能力プレビュー - Timeline", nullptr,
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove)) {
+        ImGui::End();
+        return;
     }
+
     ImGui::PushID("CrownMovieTimeline");
-    ImGui::TextUnformatted(crownDefeatMode_?"最終撃破ムービー / 60 fps":"王冠継承・崩壊ムービー / 60 fps");
+    ImGui::TextUnformatted(crownDefeatMode_
+        ? "最終撃破ムービー / 60 fps"
+        : "王冠継承・崩壊ムービー / 60 fps");
     if (!enabled_) {
         ImGui::TextDisabled("右のInspectorから「ムービープレビューを開始」を押してください。");
-        ImGui::PopID(); ImGui::End(); return;
+        ImGui::PopID();
+        ImGui::End();
+        return;
     }
-    const auto& t=CrownFinaleTuning::Get();
-    if (ImGui::Button(playing_?"一時停止":"再生")) {
-        if (!playing_ && elapsedTime_>=loopDuration_-.001f) SeekPreview(0);
-        playing_=!playing_;
+
+    // 再生終端から再開する場合は先頭へ戻し、時間スライダーも同じ Seek 処理を使います。
+    const auto& t = CrownFinaleTuning::Get();
+    if (ImGui::Button(playing_ ? "一時停止" : "再生")) {
+        if (!playing_ && elapsedTime_ >= loopDuration_ - .001f) {
+            SeekPreview(0);
+        }
+        playing_ = !playing_;
     }
-    ImGui::SameLine(); if (ImGui::Button("先頭")) SeekPreview(0);
-    const int frames[]={-10,-1,1,10};
-    for (int frame:frames) {
-        ImGui::SameLine(); char label[16]; std::snprintf(label,sizeof(label),"%+dF",frame);
-        if (ImGui::Button(label)) SeekPreview(elapsedTime_+frame*kFixedPreviewStep);
+    ImGui::SameLine();
+    if (ImGui::Button("先頭")) {
+        SeekPreview(0);
     }
-    ImGui::SameLine(); ImGui::SetNextItemWidth(95); ImGui::SliderFloat("速度",&playbackSpeed_,.1f,2.0f,"%.2fx");
-    ImGui::SameLine(); ImGui::Checkbox("ループ",&loop_);
-    float seek=elapsedTime_; ImGui::SetNextItemWidth(-1);
-    if (ImGui::SliderFloat("##Time",&seek,0,loopDuration_,"%.3f 秒")) SeekPreview(seek);
-    ImGui::Text("%.3f / %.2f 秒 | %dF",elapsedTime_,loopDuration_,static_cast<int>(std::round(elapsedTime_*60)));
-    if(crownDefeatMode_) {
-        const auto& d=CrownDefeatTuning::Get();
-        const char* names[]={"最後の一撃","王冠の亀裂","王冠破砕","力の喪失","小スライム","勝利","終了"};
-        const float points[]={0,.14f,d.rupture+.015f,d.shrink,d.settle+.025f,d.victory+.035f,1};
-        for(int i=0;i<7;++i) {if(i)ImGui::SameLine();if(ImGui::Button(names[i]))SeekPreview(points[i]*loopDuration_);}
+
+    const int frames[] = { -10, -1, 1, 10 };
+    for (int frame : frames) {
+        ImGui::SameLine();
+        char label[16];
+        std::snprintf(label, sizeof(label), "%+dF", frame);
+        if (ImGui::Button(label)) {
+            SeekPreview(elapsedTime_ + frame * kFixedPreviewStep);
+        }
+    }
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(95);
+    ImGui::SliderFloat("速度", &playbackSpeed_, .1f, 2.0f, "%.2fx");
+    ImGui::SameLine();
+    ImGui::Checkbox("ループ", &loop_);
+
+    float seek = elapsedTime_;
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::SliderFloat("##Time", &seek, 0, loopDuration_, "%.3f 秒")) {
+        SeekPreview(seek);
+    }
+
+    ImGui::Text("%.3f / %.2f 秒 | %dF", elapsedTime_, loopDuration_,
+        static_cast<int>(std::round(elapsedTime_ * 60)));
+
+    // 最終撃破は章ごとのジャンプボタンを表示して終了し、継承ムービーのレーンは作りません。
+    if (crownDefeatMode_) {
+        const auto& d = CrownDefeatTuning::Get();
+        const char* names[] = { "最後の一撃", "王冠の亀裂", "王冠破砕", "力の喪失", "小スライム", "勝利", "終了" };
+        const float points[] = { 0, .14f, d.rupture + .015f, d.shrink, d.settle + .025f, d.victory + .035f, 1 };
+        for (int index = 0; index < 7; ++index) {
+            if (index) {
+                ImGui::SameLine();
+            }
+            if (ImGui::Button(names[index])) {
+                SeekPreview(points[index] * loopDuration_);
+            }
+        }
         ImGui::Separator();
         ImGui::TextWrapped("最後の一撃 → 王冠の亀裂と再集束 → 破砕・放電 → 力が抜けて小スライムへ → 王の勝利");
         ImGui::TextDisabled("本番と同じ時間で進行します。設定は右のInspectorから保存できます。");
-        ImGui::PopID();ImGui::End();return;
+        ImGui::PopID();
+        ImGui::End();
+        return;
     }
-    const char* names[]={"破断","欠片着地","暴走","吸い込み","体内模様","金色の体","王冠","翼","脱出","最終ステージ"};
-    const float points[]={t.movieFragmentBreakTime,t.movieFragmentLandTime,t.movieRageTime,t.movieFragmentPullTime,
-        t.movieFragmentAbsorbTime,t.movieBodyTime,t.movieCrownTime,t.movieWingsTime,t.movieEscapeTime,t.movieArriveTime};
-    for (int i=0;i<10;++i) {
-        if (i && i!=5) ImGui::SameLine();
-        if (ImGui::Button(names[i])) SeekPreview(points[i]*loopDuration_);
+
+    // 継承ムービーは Tuning の各時点へ直接移動できるようにし、二段に並べます。
+    const char* names[] = { "破断", "欠片着地", "暴走", "吸い込み", "体内模様", "金色の体", "王冠", "翼", "脱出", "最終ステージ" };
+    const float points[] = { t.movieFragmentBreakTime, t.movieFragmentLandTime, t.movieRageTime,
+        t.movieFragmentPullTime, t.movieFragmentAbsorbTime, t.movieBodyTime, t.movieCrownTime,
+        t.movieWingsTime, t.movieEscapeTime, t.movieArriveTime };
+    for (int index = 0; index < 10; ++index) {
+        if (index && index != 5) {
+            ImGui::SameLine();
+        }
+        if (ImGui::Button(names[index])) {
+            SeekPreview(points[index] * loopDuration_);
+        }
     }
+
+    // テキスト入力中はショートカットを奪わず、固定フレーム単位でシークします。
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive()) {
-        if (ImGui::IsKeyPressed(ImGuiKey_Space,false)) playing_=!playing_;
-        const int step=ImGui::GetIO().KeyShift?10:1;
-        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow,false)) SeekPreview(elapsedTime_-step*kFixedPreviewStep);
-        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow,false)) SeekPreview(elapsedTime_+step*kFixedPreviewStep);
-        if (ImGui::IsKeyPressed(ImGuiKey_Home,false)) SeekPreview(0);
+        if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+            playing_ = !playing_;
+        }
+        const int step = ImGui::GetIO().KeyShift ? 10 : 1;
+        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow, false)) {
+            SeekPreview(elapsedTime_ - step * kFixedPreviewStep);
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow, false)) {
+            SeekPreview(elapsedTime_ + step * kFixedPreviewStep);
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Home, false)) {
+            SeekPreview(0);
+        }
     }
-    const ImVec2 origin=ImGui::GetCursorScreenPos(); const float width=ImGui::GetContentRegionAvail().x;
-    const float labelWidth=90, pixels=(std::max)(10.0f,(width-labelWidth)/loopDuration_);
-    ImDrawList* draw=ImGui::GetWindowDrawList();
-    for (int second=0;second<=static_cast<int>(loopDuration_);++second) {
-        float x=origin.x+labelWidth+second*pixels; char label[16]; std::snprintf(label,sizeof(label),"%ds",second);
-        draw->AddLine({x,origin.y+19},{x,origin.y+158},IM_COL32(115,123,140,90));
-        draw->AddText({x+2,origin.y},IM_COL32(225,230,240,255),label);
+
+    // 秒の目盛りを引き、王冠・プレイヤー・ステージ・カメラの進行を別レーンで示します。
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const float width = ImGui::GetContentRegionAvail().x;
+    const float labelWidth = 90;
+    const float pixels = (std::max)(10.0f, (width - labelWidth) / loopDuration_);
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    for (int second = 0; second <= static_cast<int>(loopDuration_); ++second) {
+        float x = origin.x + labelWidth + second * pixels;
+        char label[16];
+        std::snprintf(label, sizeof(label), "%ds", second);
+        draw->AddLine({ x, origin.y + 19 }, { x, origin.y + 158 }, IM_COL32(115, 123, 140, 90));
+        draw->AddText({ x + 2, origin.y }, IM_COL32(225, 230, 240, 255), label);
     }
-    const char* rows[]={"王冠の欠片","プレイヤー","ステージ","カメラ"};
-    for(int row=0;row<4;++row) draw->AddText({origin.x,origin.y+28+row*32},IM_COL32(230,233,239,255),rows[row]);
-    auto block=[&](int row,float start,float end,ImU32 color,const char* label) {
-        DrawTimelineBlock(draw,origin,labelWidth,pixels,origin.y+23+row*32,30,start*loopDuration_,end*loopDuration_,color,label);
+
+    const char* rows[] = { "王冠の欠片", "プレイヤー", "ステージ", "カメラ" };
+    for (int row = 0; row < 4; ++row) {
+        draw->AddText({ origin.x, origin.y + 28 + row * 32 }, IM_COL32(230, 233, 239, 255), rows[row]);
+    }
+    auto block = [&](int row, float start, float end, ImU32 color, const char* label) {
+        DrawTimelineBlock(draw, origin, labelWidth, pixels, origin.y + 23 + row * 32,
+            30, start * loopDuration_, end * loopDuration_, color, label);
     };
-    block(0,0,t.movieFragmentBreakTime,IM_COL32(192,153,70,240),"亀裂");
-    block(0,t.movieFragmentBreakTime,t.movieFragmentLandTime,IM_COL32(245,169,75,240),"落下");
-    block(0,t.movieFragmentLandTime,t.movieFragmentPullTime,IM_COL32(185,172,100,240),"着地");
-    block(0,t.movieFragmentPullTime,t.movieFragmentAbsorbTime,IM_COL32(85,191,221,240),"吸収");
-    block(1,t.movieFragmentAbsorbTime,t.movieBodyTime,IM_COL32(114,218,223,240),"体内模様");
-    block(1,t.movieBodyTime,t.movieCrownTime,IM_COL32(239,190,56,240),"金色の体");
-    block(1,t.movieCrownTime,t.movieWingsTime,IM_COL32(239,164,56,240),"王冠");
-    block(1,t.movieWingsTime,t.movieEscapeTime,IM_COL32(235,213,156,240),"翼");
-    block(1,t.movieEscapeTime,t.movieArriveTime,IM_COL32(125,177,236,240),"飛行脱出");
-    block(1,t.movieArriveTime,1,IM_COL32(112,205,168,240),"着地");
-    block(2,t.movieRageTime,t.movieRageTime+.07f,IM_COL32(236,190,116,240),"衝撃");
-    block(2,t.movieRageTime+.02f,t.movieArriveTime,IM_COL32(218,95,91,240),"床・壁の崩壊");
-    block(3,0,t.movieFragmentLandTime,IM_COL32(134,145,222,240),"装飾を追う");
-    block(3,t.movieFragmentLandTime,t.movieEscapeTime,IM_COL32(152,135,206,240),"吸収・変身");
-    block(3,t.movieEscapeTime,1,IM_COL32(109,159,204,240),"脱出・最終戦");
-    float x=origin.x+labelWidth+elapsedTime_*pixels;
-    draw->AddLine({x,origin.y+18},{x,origin.y+158},IM_COL32(255,117,116,255),2);
-    ImGui::Dummy({width,162});
+
+    // 以下の区間は Tuning 側の 0〜1 の時刻を実秒へ変換して重ねます。
+    block(0, 0, t.movieFragmentBreakTime, IM_COL32(192, 153, 70, 240), "亀裂");
+    block(0, t.movieFragmentBreakTime, t.movieFragmentLandTime, IM_COL32(245, 169, 75, 240), "落下");
+    block(0, t.movieFragmentLandTime, t.movieFragmentPullTime, IM_COL32(185, 172, 100, 240), "着地");
+    block(0, t.movieFragmentPullTime, t.movieFragmentAbsorbTime, IM_COL32(85, 191, 221, 240), "吸収");
+
+    block(1, t.movieFragmentAbsorbTime, t.movieBodyTime, IM_COL32(114, 218, 223, 240), "体内模様");
+    block(1, t.movieBodyTime, t.movieCrownTime, IM_COL32(239, 190, 56, 240), "金色の体");
+    block(1, t.movieCrownTime, t.movieWingsTime, IM_COL32(239, 164, 56, 240), "王冠");
+    block(1, t.movieWingsTime, t.movieEscapeTime, IM_COL32(235, 213, 156, 240), "翼");
+    block(1, t.movieEscapeTime, t.movieArriveTime, IM_COL32(125, 177, 236, 240), "飛行脱出");
+    block(1, t.movieArriveTime, 1, IM_COL32(112, 205, 168, 240), "着地");
+
+    block(2, t.movieRageTime, t.movieRageTime + .07f, IM_COL32(236, 190, 116, 240), "衝撃");
+    block(2, t.movieRageTime + .02f, t.movieArriveTime, IM_COL32(218, 95, 91, 240), "床・壁の崩壊");
+
+    block(3, 0, t.movieFragmentLandTime, IM_COL32(134, 145, 222, 240), "装飾を追う");
+    block(3, t.movieFragmentLandTime, t.movieEscapeTime, IM_COL32(152, 135, 206, 240), "吸収・変身");
+    block(3, t.movieEscapeTime, 1, IM_COL32(109, 159, 204, 240), "脱出・最終戦");
+
+    // 再生ヘッドを全レーンに通し、Dummy で描画領域の高さを ImGui へ通知します。
+    float x = origin.x + labelWidth + elapsedTime_ * pixels;
+    draw->AddLine({ x, origin.y + 18 }, { x, origin.y + 158 }, IM_COL32(255, 117, 116, 255), 2);
+    ImGui::Dummy({ width, 162 });
     ImGui::TextDisabled("Space: 再生/停止 / ←→: 1F / Shift+←→: 10F / Home: 先頭");
-    ImGui::PopID(); ImGui::End();
+    ImGui::PopID();
+    ImGui::End();
 #endif
 }

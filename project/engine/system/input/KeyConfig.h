@@ -49,6 +49,8 @@ public:
 
     /// <summary>アクション名に対応する入力割り当てを取得する。</summary>
     const BindData* GetBindData(const std::string& actionName) const;
+    /// <summary>指定キーがいずれかのゲーム操作へ割り当てられているか返す。</summary>
+    bool IsKeyAssigned(int keyCode) const;
 
     // ゲーム内設定はコピー上で編集し、適用時だけ既存アクションを書き換えます。
     std::unordered_map<std::string, BindData> GetBindings() const { return bindings_; }

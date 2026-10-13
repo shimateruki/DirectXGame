@@ -20,6 +20,11 @@ public:
     /// <summary>DirectX基盤を受け取り、3D描画用の各パイプラインを作成する。</summary>
     void Initialize(DirectXCommon* dxCommon);
 
+    /// <summary>ロード画面を描画しながらパイプラインを一種類ずつ準備する。</summary>
+    void BeginInitialize(DirectXCommon* dxCommon);
+    bool InitializeStep();
+    float GetInitializationProgress() const;
+
     /// <summary>通常の3Dモデル描画用ルートシグネチャとパイプラインを設定する。</summary>
     void SetGraphicsCommand();
 
@@ -102,6 +107,8 @@ private:
     void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState, bool shaderDepthTest = false);
 
 private:
+    static constexpr size_t kInitializationStepCount = 24;
+    size_t initializationStep_ = 0;
     // DirectX基盤への参照。Object3dCommonは所有しない。
     DirectXCommon* dxCommon_ = nullptr;
 

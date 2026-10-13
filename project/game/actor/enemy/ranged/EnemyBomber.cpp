@@ -1,4 +1,5 @@
 #include "EnemyBomber.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
@@ -20,7 +21,6 @@ constexpr float kMinThrowDistance = 1.0f;
 constexpr float kBombSpawnHeight = 2.0f;
 constexpr float kFootworkSpeed = 1.25f;
 constexpr float kPreferredDistance = 13.0f;
-constexpr float kBombTelegraphRadius = 2.35f;
 constexpr float kCarryThrowInterval = 0.42f;
 constexpr float kCarryBombForwardSpeed = 24.0f;
 constexpr float kCarryBombUpSpeed = 8.0f;
@@ -229,11 +229,8 @@ void EnemyBomber::UpdateThrowState(float deltaTime, bool inRange) {
     case ThrowState::Windup:
         windupTimer_ -= deltaTime;
         {
-            // 予告円は標的の水平位置に置き、残り時間を進行率として見せる。
-            Vector3 targetPos = target_->GetTranslate();
-            targetPos.y = GetTranslate().y;
-            const float progress = GetThrowProgress();
-            ShowAttackTelegraphCircle(targetPos, kBombTelegraphRadius, progress, {0.05f, 0.045f, 0.04f, 0.62f});
+            // この時点では着弾後の転がりを予測できない。誤った爆発予定地を示さない。
+            HideAttackTelegraph();
             UpdateHeldBombVisual(deltaTime);
         }
         if (windupTimer_ <= 0.0f) {
@@ -690,7 +687,7 @@ void EnemyBomber::SpawnBombObject(std::unique_ptr<BaseEnemy> bomb) {
     }
 
     if (!bomb->IsCarried()) {
-        bomb->SetTarget(sceneManager->GetCurrentScene()->GetPlayer());
+        bomb->SetTarget(GetScenePlayer(sceneManager->GetCurrentScene()));
     }
     sceneManager->GetCurrentScene()->AddObject(std::move(bomb));
 }

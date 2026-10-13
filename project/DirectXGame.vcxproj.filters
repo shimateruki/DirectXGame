@@ -328,7 +328,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\LightEditor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.cpp">
+    <ClCompile Include="game\editor\BuiltInCreatePresetRegistry.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\misc\GhostRecorder.cpp">
@@ -939,6 +939,9 @@
     <ClInclude Include="game\scene\gameplay\GamePlayScene.h">
       <Filter>Scenes\gameplay</Filter>
     </ClInclude>
+    <ClInclude Include="game\scene\gameplay\LifeLostPresentationState.h">
+      <Filter>Scenes\gameplay</Filter>
+    </ClInclude>
     <ClInclude Include="game\scene\gameplay\GamePlayScene.PresentationMath.h">
       <Filter>Scenes\gameplay</Filter>
     </ClInclude>
@@ -1069,7 +1072,13 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\LightEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.h">
+    <ClInclude Include="game\editor\BuiltInCreatePresetRegistry.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\editor\RegisterGameEditorFactories.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorObjectFactoryRegistry.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\misc\GhostRecorder.h">
@@ -1325,6 +1334,12 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\system\GameRule.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\system\RuntimePresetCatalog.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\system\SceneEntityParameterCodec.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\system\StageCatalog.h">

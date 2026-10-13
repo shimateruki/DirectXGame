@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickMagmaGeyser.h"
+#include "game/system/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
 #include "CameraManager.h"
@@ -400,7 +401,7 @@ bool GimmickMagmaGeyser::IsPlaying() const {
 bool GimmickMagmaGeyser::IsPlayerWithinSimulationRange() const {
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
-    Player* player = scene ? scene->GetPlayer() : nullptr;
+    Player* player = GetScenePlayer(scene);
     if (!player) {
         // 敵攻撃プレビューなど、プレイヤーを持たない確認画面では従来どおり再生する。
         return true;

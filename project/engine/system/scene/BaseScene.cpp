@@ -1,8 +1,6 @@
 #include "BaseScene.h"
 #include "DirectXCommon.h"
 #include "Object3d.h"
-#include "BaseEnemy.h"
-#include "Player.h"
 #include "BulletManager.h"
 #include "Camera.h"
 #include "GPUParticleManager.h"
@@ -83,19 +81,10 @@ void BaseScene::OnActivated() {
 }
 
 void BaseScene::FixedUpdate(float fixedDeltaTime) {
-    // 物理用の固定刻みで全オブジェクトを進め、別管理の Player だけ補完更新します。
-    auto& objects = GetObjects();
-    Player* player = GetPlayer();
-    bool playerWasUpdated = false;
-
-    for (auto& object : objects) {
+    // シーンが所有する全オブジェクトを固定刻みで進めます。
+    for (auto& object : GetObjects()) {
         if (!object || object->IsReplayRemoved()) continue;
         object->FixedUpdate(fixedDeltaTime);
-        playerWasUpdated = playerWasUpdated || object.get() == player;
-    }
-
-    if (player && !playerWasUpdated && !player->IsReplayRemoved()) {
-        player->FixedUpdate(fixedDeltaTime);
     }
 }
 
@@ -181,7 +170,7 @@ void BaseScene::ReleaseReplaySprites() {
 }
 
 void BaseScene::RefreshRenderCameraData() {
-    // カメラ切り替え後に全描画物と別管理の Player の定数を更新します。
+    // カメラ切り替え後にシーン内の描画物へ定数を反映します。
     auto& objects = GetObjects();
     for (auto& object : objects) {
         if (object) {
@@ -189,9 +178,6 @@ void BaseScene::RefreshRenderCameraData() {
         }
     }
 
-    if (Player* player = GetPlayer()) {
-        player->RefreshRenderCameraData();
-    }
 }
 
 void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
@@ -356,15 +342,15 @@ bool BaseScene::IsSpecialMaterialType(int materialType) const {
     return (materialType >= 8 && materialType <= 22) || materialType == 26;
 }
 
-bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const {
-    // 一人称視点では Player 自身とその子オブジェクトを隠します。
-    if (!isFirstPerson || !object || !player) {
+bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Object3d* viewActor, bool isFirstPerson) const {
+    // 一人称視点では視点の主体とその子オブジェクトを隠します。
+    if (!isFirstPerson || !object || !viewActor) {
         return false;
     }
 
     Object3d* current = object;
     while (current) {
-        if (current == player) {
+        if (current == viewActor) {
             return true;
         }
         current = current->GetParent();
@@ -372,16 +358,7 @@ bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isF
     return false;
 }
 
-void BaseScene::DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* spotLight) {
-    // 敵の攻撃予告は本体描画とは別に集めて描きます。
-    for (const auto& object : GetObjects()) {
-        if (auto* enemy = dynamic_cast<BaseEnemy*>(object.get())) {
-            enemy->DrawAttackTelegraph(pointLight, spotLight);
-        }
-    }
-}
-
-bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player, bool isFirstPerson) {
+bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Object3d* viewActor, bool isFirstPerson) {
     // 対象がないフレームは専用パスの開始と終了を省略します。
     if (!dxCommon) {
         return false;
@@ -392,7 +369,7 @@ bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>
 
     bool hasFog = false;
     for (auto& obj : objects) {
-        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), viewActor, isFirstPerson)) {
             hasFog = true;
             break;
         }
@@ -403,7 +380,7 @@ bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>
 
     dxCommon->PreDrawLocalFog();
     for (auto& obj : objects) {
-        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), viewActor, isFirstPerson)) {
             obj->DrawLocalFog(dxCommon->GetDepthSrvHandle());
         }
     }
@@ -411,7 +388,7 @@ bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>
     return true;
 }
 
-bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Player* player, bool isFirstPerson) {
+bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Object3d* viewActor, bool isFirstPerson) {
     // 深度・背景色を読む材質をまとめ、必要な時だけ Grab Texture を更新します。
     if (!dxCommon) {
         return false;
@@ -424,7 +401,7 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Obj
     for (auto& obj : objects) {
         if (obj && obj->GetIsRenderVisible() &&
             (IsSpecialMaterialType(obj->GetMaterialType()) || obj->HasOwnedSpecialMaterialVisuals()) &&
-            !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+            !IsHiddenByFirstPerson(obj.get(), viewActor, isFirstPerson)) {
             hasSpecialObjects = true;
             break;
         }
@@ -441,7 +418,7 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Obj
         const uint32_t depthSrvHandle = dxCommon->GetDepthSrvHandle();
         const uint32_t grabSrvHandle = dxCommon->GetGrabSrvHandle();
         for (auto& obj : objects) {
-            if (!obj || !obj->GetIsRenderVisible() || IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+            if (!obj || !obj->GetIsRenderVisible() || IsHiddenByFirstPerson(obj.get(), viewActor, isFirstPerson)) {
                 continue;
             }
 

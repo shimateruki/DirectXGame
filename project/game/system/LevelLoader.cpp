@@ -1,11 +1,16 @@
 #include "LevelLoader.h"
+#include "game/system/SceneEntityParameterCodec.h"
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
+#include "engine/system/scene/LoadingProfiler.h"
 #include "json.hpp"
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <utility>
 #include <algorithm>
+#include <limits>
 #include <vector>
 #include <Windows.h> // OutputDebugStringA用
 
@@ -27,7 +32,6 @@
 #include "ModelManager.h"
 #include "CollisionManager.h"
 #include "InputManager.h"
-#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include "SpriteLayoutScaler.h"
 
 using json = nlohmann::json;
@@ -290,10 +294,12 @@ void LevelLoader::ConfigureEnemyRuntimeReferences(BaseScene* scene) {
 }
 
 void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename, bool resolveSceneAssetPath) {
-    // 配置物の生成前に編集済みプリセットとステータスを読み、生成直後の適用値をそろえます。
-    PresetManager::GetInstance()->Initialize();
-    GameplayStatusManager::GetInstance()->Initialize();
+    BeginObjectLayoutLoad(scene, filename, resolveSceneAssetPath);
+    while (!ContinueObjectLayoutLoad(scene, (std::numeric_limits<size_t>::max)())) {
+    }
+}
 
+void LevelLoader::BeginObjectLayoutLoad(BaseScene* scene, const std::string& filename, bool resolveSceneAssetPath) {
     const std::string resolvedFilename =
         scene && resolveSceneAssetPath ? scene->ResolvePrimaryObjectLayoutPath(filename) : filename;
     std::string justName = resolvedFilename;
@@ -313,6 +319,13 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
 
     // 親子リンクは全ファイルの生成が終わるまで保留します。
     parentPendingList_.clear();
+    pendingObjectFiles_.clear();
+    pendingFileIndex_ = 0;
+    pendingObjectIndex_ = 0;
+    pendingObjects_ = json::array();
+    pendingFileLoaded_ = false;
+    objectLayoutLoading_ = true;
+    preparationStep_ = 0;
 
     // 分割形式のファイル名を同じベース名から導出します。
     std::string playerFile = baseFilename + "_player.json";
@@ -343,12 +356,43 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
 
     // 新しい分割形式を優先し、旧形式の単一JSONも読み込み可能にします。
     if (useSplitFiles) {
-        LoadSingleJson(scene, playerFile);
-        LoadSingleJson(scene, enemyFile);
-        LoadSingleJson(scene, objectFile);
-        LoadSingleJson(scene, cameraFile);
+        pendingObjectFiles_ = {playerFile, enemyFile, objectFile, cameraFile};
     } else {
-        LoadSingleJson(scene, resolvedFilename);
+        pendingObjectFiles_ = {resolvedFilename};
+    }
+}
+
+bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) {
+    if (!objectLayoutLoading_) {
+        return true;
+    }
+    // 配置物生成前の管理データも別フレームで読み、JSON解析と重ならないようにする。
+    if (preparationStep_ == 0) {
+        const auto start = std::chrono::steady_clock::now();
+        runtimePresets_.Load();
+        LogSlowLoadingOperation("LevelLoader preset initialization",
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+        ++preparationStep_;
+        return false;
+    }
+    if (preparationStep_ == 1) {
+        const auto start = std::chrono::steady_clock::now();
+        GameplayStatusManager::GetInstance()->Initialize();
+        LogSlowLoadingOperation("LevelLoader status initialization",
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+        ++preparationStep_;
+        return false;
+    }
+    // 少なくとも一件は進める。残り件数をファイル間で共有し、分割ファイルも一フレームに集中させない。
+    size_t remainingObjects = (std::max)(size_t{1}, maxObjects);
+    while (pendingFileIndex_ < pendingObjectFiles_.size() && remainingObjects > 0) {
+        if (!LoadSingleJson(scene, pendingObjectFiles_[pendingFileIndex_], remainingObjects)) {
+            return false;
+        }
+        ++pendingFileIndex_;
+    }
+    if (pendingFileIndex_ < pendingObjectFiles_.size()) {
+        return false;
     }
 
     // GUIDを優先して親を探し、古いシーンだけ名前による参照へフォールバックします。
@@ -370,32 +414,53 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     }
 
     ConfigureEnemyRuntimeReferences(scene);
+    objectLayoutLoading_ = false;
+    pendingObjectFiles_.clear();
+    return true;
+}
+
+float LevelLoader::GetObjectLayoutLoadProgress() const {
+    if (!objectLayoutLoading_ || pendingObjectFiles_.empty()) {
+        return 1.0f;
+    }
+    const float fileProgress = pendingFileLoaded_ && !pendingObjects_.empty()
+        ? static_cast<float>(pendingObjectIndex_) / static_cast<float>(pendingObjects_.size())
+        : 0.0f;
+    return (static_cast<float>(pendingFileIndex_) + fileProgress) /
+           static_cast<float>(pendingObjectFiles_.size());
 }
 
 // JSON一件ごとに種類別のFactoryで生成し、保存値の復元後にランタイム参照をつなぎます。
-void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) {
-    json sceneData;
+bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, size_t& remainingObjects) {
     auto& objects = scene->GetObjects();
     Object3dCommon* object3dCommon = scene->GetObject3dCommon();
 
     try {
-        if (!scene->TakePreparedJson(filename, sceneData)) {
-            std::ifstream file(filename);
-            if (!file.is_open()) {
-                return;
+        if (!pendingFileLoaded_) {
+            json sceneData;
+            if (!scene->TakePreparedJson(filename, sceneData)) {
+                std::ifstream file(filename);
+                if (!file.is_open()) {
+                    return true;
+                }
+                sceneData = json::parse(file);
             }
-            sceneData = json::parse(file);
+            pendingObjects_ = json::array();
+            if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+                if (RequiresLevelObjectNormalization(sceneData["objects"])) {
+                    AppendNormalizedLevelObjects(sceneData["objects"], pendingObjects_);
+                } else {
+                    pendingObjects_ = std::move(sceneData["objects"]);
+                }
+            }
+            pendingFileLoaded_ = true;
+            pendingObjectIndex_ = 0;
         }
 
-        if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
-            const json* objectsToLoad = &sceneData["objects"];
-            json normalizedObjects = json::array();
-            if (RequiresLevelObjectNormalization(sceneData["objects"])) {
-                AppendNormalizedLevelObjects(sceneData["objects"], normalizedObjects);
-                objectsToLoad = &normalizedObjects;
-            }
-
-            for (const auto& objData : *objectsToLoad) {
+        if (pendingObjects_.is_array()) {
+            while (pendingObjectIndex_ < pendingObjects_.size() && remainingObjects > 0) {
+                const auto& objData = pendingObjects_[pendingObjectIndex_++];
+                --remainingObjects;
                 if (!objData.contains("name") || !objData["name"].is_string())
                     continue;
                 std::string name = objData["name"].get<std::string>();
@@ -453,7 +518,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         player->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 
                         // シーンにプレイヤーを登録
-                        scene->SetPlayer(player.get());
+                        SetScenePlayer(scene, player.get());
 
                         newObj = std::move(player);
                     }
@@ -512,7 +577,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (gimmick) {
                             gimmick->SetGimmickType(gType);
                             // プリセットによるパラメータ上書き
-                            PresetManager::GetInstance()->ApplyPresetToObject(gType, gimmick.get());
+                            runtimePresets_.ApplyToObject(gType, gimmick.get());
 
                             newObj = std::move(gimmick);
                         }
@@ -825,112 +890,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     targetObject->SetItemType(objData["itemType"].get<std::string>());
                 }
 
-                if (objData.contains("param") && objData["param"].is_object()) {
-                    if (!targetObject->param_.has_value())
-                        targetObject->param_.emplace();
-                    json p = objData["param"];
-                    auto& param = targetObject->param_.value();
-                    const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(targetObject);
-                    const bool hasHp = !isManagedCharacter && p.contains("hp");
-                    const bool hasMaxHp = !isManagedCharacter && p.contains("maxHp");
-                    if (hasHp)
-                        param.hp = p["hp"];
-                    if (hasMaxHp)
-                        param.maxHp = p["maxHp"];
-                    if (!isManagedCharacter && p.contains("attackPower"))
-                        param.attackPower = p["attackPower"];
-                    if (!isManagedCharacter && p.contains("speed"))
-                        param.speed = p["speed"];
-                    if (!isManagedCharacter && p.contains("gravity"))
-                        param.gravity = p["gravity"];
-                    if (!isManagedCharacter && p.contains("jumpPower"))
-                        param.jumpPower = p["jumpPower"];
-                    if (!isManagedCharacter && p.contains("morphLimited"))
-                        param.morphLimited = p["morphLimited"];
-                    if (!isManagedCharacter && p.contains("morphDuration"))
-                        param.morphDuration = p["morphDuration"];
-                    if (!isManagedCharacter && p.contains("maxFallSpeed"))
-                        param.maxFallSpeed = p["maxFallSpeed"];
-                    if (p.contains("enemyType"))
-                        param.enemyType = p["enemyType"];
-                    if (p.contains("gimmickType"))
-                        param.gimmickType = p["gimmickType"];
-                    if (p.contains("itemType"))
-                        param.itemType = p["itemType"];
-                    if (p.contains("healAmount"))
-                        param.healAmount = p["healAmount"];
-                    if (p.contains("interval"))
-                        param.interval = p["interval"];
-                    if (p.contains("maxCount"))
-                        param.maxCount = p["maxCount"];
-                    if (p.contains("shakeDuration"))
-                        param.shakeDuration = p["shakeDuration"];
-                    if (p.contains("fallDuration"))
-                        param.fallDuration = p["fallDuration"];
-                    if (p.contains("colorType"))
-                        param.colorType = p["colorType"];
-                    if (!isManagedCharacter && p.contains("detectionRange"))
-                        param.detectionRange = p["detectionRange"];
-                    if (p.contains("switchMode"))
-                        param.switchMode = p["switchMode"];
-                    if (p.contains("actionMode"))
-                        param.actionMode = p["actionMode"];
-                    if (p.contains("targetScene"))
-                        param.targetScene = p["targetScene"].get<std::string>();
-                    if (p.contains("moveAmount"))
-                        param.moveAmount = p["moveAmount"];
-                    if (p.contains("moveSpeed"))
-                        param.moveSpeed = p["moveSpeed"];
-                    if (p.contains("startActive"))
-                        param.startActive = p["startActive"];
-                    if (p.contains("returnOnOff"))
-                        param.returnOnOff = p["returnOnOff"];
-                    if (p.contains("volumeMode"))
-                        param.volumeMode = p["volumeMode"];
-                    if (p.contains("volumePayload") && p["volumePayload"].is_string())
-                        param.volumePayload = p["volumePayload"].get<std::string>();
-                    if (p.contains("volumeTriggerOnce"))
-                        param.volumeTriggerOnce = p["volumeTriggerOnce"];
-                    if (p.contains("volumeTriggerOnExit"))
-                        param.volumeTriggerOnExit = p["volumeTriggerOnExit"];
-                    if (p.contains("volumeRearmDelay"))
-                        param.volumeRearmDelay = (std::max)(0.0f, p["volumeRearmDelay"].get<float>());
-                    if (p.contains("volumeBlendDuration"))
-                        param.volumeBlendDuration = (std::max)(0.0f, p["volumeBlendDuration"].get<float>());
-                    if (p.contains("copyMemoryTypeA") && p["copyMemoryTypeA"].is_string())
-                        param.copyMemoryTypeA = p["copyMemoryTypeA"].get<std::string>();
-                    if (p.contains("copyMemoryTypeB") && p["copyMemoryTypeB"].is_string())
-                        param.copyMemoryTypeB = p["copyMemoryTypeB"].get<std::string>();
-                    if (p.contains("copyMemoryTypeC") && p["copyMemoryTypeC"].is_string())
-                        param.copyMemoryTypeC = p["copyMemoryTypeC"].get<std::string>();
-                    if (p.contains("copyMemoryTypeD") && p["copyMemoryTypeD"].is_string())
-                        param.copyMemoryTypeD = p["copyMemoryTypeD"].get<std::string>();
-                    if (p.contains("copyMemoryActivationRadius"))
-                        param.copyMemoryActivationRadius =
-                            (std::max)(0.1f, p["copyMemoryActivationRadius"].get<float>());
-                    if (p.contains("copyMemoryEssenceScale"))
-                        param.copyMemoryEssenceScale = p["copyMemoryEssenceScale"].get<float>();
-                    if (p.contains("copyMemoryHoverAmount"))
-                        param.copyMemoryHoverAmount = p["copyMemoryHoverAmount"].get<float>();
-                    if (p.contains("copyMemoryGlow"))
-                        param.copyMemoryGlow = p["copyMemoryGlow"].get<float>();
-                    if (p.contains("copyMemoryUnlimitedDuration"))
-                        param.copyMemoryUnlimitedDuration = p["copyMemoryUnlimitedDuration"];
-                    if (!isManagedCharacter) {
-                        param.maxHp = (std::max)(param.maxHp, 1.0f);
-                        if (hasMaxHp && !hasHp) {
-                            param.hp = param.maxHp;
-                        }
-                        param.hp = (std::max)(param.hp, 0.0f);
-                        if (param.hp > param.maxHp) {
-                            param.maxHp = param.hp;
-                        }
-                        param.attackPower = (std::max)(param.attackPower, 0.0f);
-                    }
-                    if (!isManagedCharacter &&
-                        (targetObject->GetClassName() == "Enemy" || !targetObject->GetEnemyType().empty())) {
-                        param.morphDuration = (std::max)(param.morphDuration, 0.1f);
-                    }
+                if (objData.contains("param")) {
+                    SceneEntityParameterCodec::Apply(*targetObject, objData["param"]);
                 }
 
                 ApplySlimeMaterialDefault(targetObject);
@@ -982,10 +943,20 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 }
             }
         }
+        if (pendingObjectIndex_ < pendingObjects_.size()) {
+            return false;
+        }
+        pendingObjects_ = json::array();
+        pendingObjectIndex_ = 0;
+        pendingFileLoaded_ = false;
     } catch (const json::parse_error& e) {
         std::string message = "Failed to parse " + filename + " : " + e.what() + "\n";
         OutputDebugStringA(message.c_str());
+        pendingObjects_ = json::array();
+        pendingObjectIndex_ = 0;
+        pendingFileLoaded_ = false;
     }
+    return true;
 }
 
 void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename) {

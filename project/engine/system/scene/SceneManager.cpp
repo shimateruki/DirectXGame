@@ -2,6 +2,7 @@
 
 #include "DirectXCommon.h"
 #include "LoadingScene.h"
+#include "engine/system/scene/LoadingProfiler.h"
 #include "ModelManager.h"
 #include "TextureManager.h"
 #include "MeshEffectManager.h"
@@ -26,6 +27,13 @@ namespace {
 // LoadingSceneは描画基盤を持たないため、準備済みの次Sceneの演出は消しません。
 void ReleaseSceneMeshEffects(BaseScene* scene) {
     if (scene && scene->GetObject3dCommon()) MeshEffectManager::GetInstance()->Clear();
+}
+
+void LogSlowLoadingStep(const char* operation, const std::string& sceneName,
+                        std::chrono::steady_clock::time_point start) {
+    const double elapsedMs = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - start).count();
+    LogSlowLoadingOperation(sceneName + " / " + operation, elapsedMs);
 }
 }
 
@@ -400,8 +408,10 @@ void SceneManager::ClearActiveSceneAsset() {
 
 void SceneManager::BeginLoadingTransition() {
     // GPUが旧シーンを使い終えてから解放し、LoadingSceneへ所有権を切り替える。
+    const auto transitionWaitStart = std::chrono::steady_clock::now();
     TextureManager::GetInstance()->WaitForAsyncUploadBatch();
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
+    LogSlowLoadingStep("old scene GPU synchronization", currentSceneName_, transitionWaitStart);
 
     if (currentScene_) {
         ReleaseSceneMeshEffects(currentScene_.get());
@@ -588,13 +598,21 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
         // 非同期にし、Scene本体の構築は描画と競合しないこのスレッドで確定します。
         asyncUploadBatchStarted_ = TextureManager::GetInstance()->BeginAsyncUploadBatch();
         sceneInitializationStarted_ = true;
+        const auto beginStart = std::chrono::steady_clock::now();
         preparedScene_->BeginLoadingInitialize();
+        LogSlowLoadingStep("BeginLoadingInitialize", loadingTargetSceneName_, beginStart);
     }
 
     if (!sceneInitializationFinished_) {
         TextureManager::GetInstance()->SetAsyncUploadRecording(asyncUploadBatchStarted_);
         try {
+            const auto stepStart = std::chrono::steady_clock::now();
+            const float progressBefore = preparedScene_->GetLoadingInitializeProgress();
             sceneInitializationFinished_ = preparedScene_->InitializeLoadingStep();
+            const double stepMs = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - stepStart).count();
+            LogSlowLoadingOperation(loadingTargetSceneName_ +
+                " / InitializeLoadingStep progress=" + std::to_string(progressBefore), stepMs);
         }
         catch (...) {
             TextureManager::GetInstance()->SetAsyncUploadRecording(false);
@@ -702,7 +720,9 @@ float SceneManager::CalculateLoadingProgress() const {
 
 void SceneManager::SwapToPreparedScene() {
     // GPU使用が終わってからLoadingSceneを解放し、準備済みシーンを有効化する。
+    const auto swapWaitStart = std::chrono::steady_clock::now();
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
+    LogSlowLoadingStep("loading scene GPU synchronization", loadingTargetSceneName_, swapWaitStart);
 
     if (currentScene_) {
         ReleaseSceneMeshEffects(currentScene_.get());

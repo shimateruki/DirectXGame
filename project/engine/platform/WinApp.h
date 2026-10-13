@@ -52,11 +52,15 @@ public:
     /// <summary>カーソル位置をウィンドウ内に固定するか切り替える。</summary>
     void SetCursorLocked(bool isLocked);
 
+    /// <summary>メニュー操作中など、一時的にカーソルの中央戻しを止める。</summary>
+    void SetCursorRecenteringSuppressed(bool suppressed) { cursorRecenteringSuppressed_ = suppressed; }
+
 private:
     HWND hwnd_ = nullptr;
     HINSTANCE hInstance_ = nullptr;
     bool isCursorClipping_ = false;
     bool isCursorLocked_ = false;
+    bool cursorRecenteringSuppressed_ = false;
 
     inline static bool closeRequested_ = false;
 };

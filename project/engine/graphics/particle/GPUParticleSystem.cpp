@@ -9,7 +9,9 @@
 #include "GraphicsPipelineBuilder.h"
 #include <TextureManager.h>
 #include <algorithm>
+#include <array>
 #include <filesystem>
+#include <mutex>
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -169,40 +171,59 @@ void GPUParticleSystem::CreateComputePipeline() {
     rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_ALL, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
     rsBuilder.Build(device, computeRootSignature_.GetAddressOf());
 
-    Microsoft::WRL::ComPtr<ID3DBlob> csBlobInit;
-    Microsoft::WRL::ComPtr<ID3DBlob> csBlobResetDrawArguments;
-    Microsoft::WRL::ComPtr<ID3DBlob> csBlobUpdate;
-    Microsoft::WRL::ComPtr<ID3DBlob> csBlobEmit;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-
-    HRESULT hr = D3DCompileFromFile(L"Resources/shader/particle/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "InitCS", "cs_5_0", 0, 0, &csBlobInit, &errorBlob);
-    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
-
-    hr = D3DCompileFromFile(L"Resources/shader/particle/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "ResetDrawArgumentsCS", "cs_5_0", 0, 0, &csBlobResetDrawArguments, &errorBlob);
-    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
-
-    hr = D3DCompileFromFile(L"Resources/shader/particle/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "UpdateCS", "cs_5_0", 0, 0, &csBlobUpdate, &errorBlob);
-    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
-
-    hr = D3DCompileFromFile(L"Resources/shader/particle/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "EmitCS", "cs_5_0", 0, 0, &csBlobEmit, &errorBlob);
-    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
+    // 発生プリセットごとに同じ4本のCompute Shaderをコンパイルするとロード画面が停止する。
+    // バイトコードだけ共有し、粒子バッファとPSOは各Systemで生成する。
+    constexpr wchar_t kSourcePath[] = L"Resources/shader/particle/ParticleCS.hlsl";
+    constexpr const char* kEntryPoints[] = {"InitCS", "ResetDrawArgumentsCS", "UpdateCS", "EmitCS"};
+    static std::mutex shaderCacheMutex;
+    static std::filesystem::file_time_type cachedSourceTime{};
+    static std::array<Microsoft::WRL::ComPtr<ID3DBlob>, 4> cachedBlobs{};
+    std::array<Microsoft::WRL::ComPtr<ID3DBlob>, 4> shaderBlobs;
+    {
+        std::lock_guard<std::mutex> lock(shaderCacheMutex);
+        std::error_code timeError;
+        const auto sourceTime = std::filesystem::last_write_time(kSourcePath, timeError);
+        if (timeError || !cachedBlobs[0] || cachedSourceTime != sourceTime) {
+            std::array<Microsoft::WRL::ComPtr<ID3DBlob>, 4> rebuiltBlobs;
+            for (size_t index = 0; index < rebuiltBlobs.size(); ++index) {
+                Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
+                const HRESULT compileHr = D3DCompileFromFile(
+                    kSourcePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+                    kEntryPoints[index], "cs_5_0", 0, 0, &rebuiltBlobs[index], &errorBlob);
+                if (FAILED(compileHr)) {
+                    OutputDebugStringA(errorBlob
+                        ? static_cast<const char*>(errorBlob->GetBufferPointer())
+                        : "ParticleCS compilation failed.\n");
+                    assert(false);
+                    return;
+                }
+            }
+            if (!timeError) {
+                cachedSourceTime = sourceTime;
+                cachedBlobs = rebuiltBlobs;
+            }
+            shaderBlobs = std::move(rebuiltBlobs);
+        } else {
+            shaderBlobs = cachedBlobs;
+        }
+    }
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = computeRootSignature_.Get();
 
-    psoDesc.CS = { csBlobInit->GetBufferPointer(), csBlobInit->GetBufferSize() };
-    hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateInit_));
+    psoDesc.CS = { shaderBlobs[0]->GetBufferPointer(), shaderBlobs[0]->GetBufferSize() };
+    HRESULT hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateInit_));
     assert(SUCCEEDED(hr));
 
-    psoDesc.CS = { csBlobResetDrawArguments->GetBufferPointer(), csBlobResetDrawArguments->GetBufferSize() };
+    psoDesc.CS = { shaderBlobs[1]->GetBufferPointer(), shaderBlobs[1]->GetBufferSize() };
     hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateResetDrawArguments_));
     assert(SUCCEEDED(hr));
 
-    psoDesc.CS = { csBlobUpdate->GetBufferPointer(), csBlobUpdate->GetBufferSize() };
+    psoDesc.CS = { shaderBlobs[2]->GetBufferPointer(), shaderBlobs[2]->GetBufferSize() };
     hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateUpdate_));
     assert(SUCCEEDED(hr));
 
-    psoDesc.CS = { csBlobEmit->GetBufferPointer(), csBlobEmit->GetBufferSize() };
+    psoDesc.CS = { shaderBlobs[3]->GetBufferPointer(), shaderBlobs[3]->GetBufferSize() };
     hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateEmit_));
     assert(SUCCEEDED(hr));
 }

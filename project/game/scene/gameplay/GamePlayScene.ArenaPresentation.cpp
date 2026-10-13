@@ -41,6 +41,7 @@ void GamePlayScene::StartArenaBossIntro(Object3d* bossObject, Object3d* gateObje
         return;
     }
 
+    // 演出開始前の操作権とカメラ値を保存し、途中終了でも Finish で戻せるようにします。
     arenaBossIntroActive_ = true;
     arenaBossIntroTimer_ = 0.0f;
     arenaBossIntroRevealDelay_ = std::clamp(bossRevealDelay, 0.20f, 1.40f);
@@ -76,6 +77,7 @@ void GamePlayScene::StartArenaBossIntro(Object3d* bossObject, Object3d* gateObje
     arenaBossIntroBossTarget_ = bossPosition + Vector3{0.0f, 4.70f, 0.0f};
     arenaBossIntroBossEye_ = bossPosition + bossToPlayer * 31.0f + right * 2.6f + Vector3{0.0f, 5.8f, 0.0f};
 
+    // 動画中はプレイヤーの速度とカメラ追従を止め、各ショットの固定視点を使います。
     player_->BeginCinematicLock(true);
     player_->SetVelocity({0.0f, 0.0f, 0.0f});
     camera->SetInputEnabled(false);
@@ -102,6 +104,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
     arenaBossIntroTimer_ += std::max(deltaTime, 0.0f);
     player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
+    // シネマバーは冒頭で開き、戦闘画面に戻す終盤で閉じます。
     if (arenaBossIntroCinemaBarOverrideActive_) {
         if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
             const float openRate = AnimationInterpolation::ApplyEasing(
@@ -125,6 +128,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
         return;
     }
 
+    // 落下・跳ね返り中のボスの動きに合わせて注視点だけを少し追従させます。
     const Vector3 currentBossPosition = arenaBossIntroBoss_->GetWorldPosition();
     const float authoredBossY = arenaBossIntroBossTarget_.y - 4.70f;
     const float bossRise = std::clamp(currentBossPosition.y - authoredBossY, -0.4f, 3.6f);
@@ -133,6 +137,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
     Vector3 eye = arenaBossIntroGameplayEye_;
     Vector3 target = arenaBossIntroGameplayTarget_;
     float fov = arenaBossIntroBaseFov_;
+    // ゲート寄り → ゲート保持 → ボスへ移動 → ボス保持 → 戦闘構図への復帰を時刻で選びます。
     if (arenaBossIntroTimer_ < kArenaBossIntroGateShotEnd) {
         const float rate = AnimationInterpolation::ApplyEasing(
             AnimationInterpolation::SegmentRate(arenaBossIntroTimer_, 0.0f, kArenaBossIntroGateShotEnd),
@@ -175,6 +180,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
         fov = AnimationInterpolation::Lerp(0.48f, arenaBossIntroBaseFov_, rate);
     }
 
+    // FixedPoint の視点・向き・FOV を同じフレームへ適用し、他の追従処理に奪われないようにします。
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
     camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
@@ -242,6 +248,7 @@ void GamePlayScene::StartArenaBossDefeatReward(Object3d* rewardObject) {
         return;
     }
 
+    // 報酬へ注目する前のカメラと操作権を保存し、演出の終了時に必ず復元します。
     arenaBossRewardActive_ = true;
     arenaBossRewardTimer_ = 0.0f;
     arenaBossRewardObject_ = rewardObject;
@@ -258,6 +265,7 @@ void GamePlayScene::StartArenaBossDefeatReward(Object3d* rewardObject) {
     arenaBossRewardFocusTarget_ = crownPosition + Vector3{0.0f, 1.15f, 0.0f};
     arenaBossRewardFocusEye_ = crownPosition + crownToPlayer * 7.4f + right * 2.9f + Vector3{0.0f, 3.4f, 0.0f};
 
+    // 王冠の受け取り中はプレイヤーの移動を止め、カメラを固定ショットへ切り替えます。
     player_->BeginCinematicLock();
     player_->SetVelocity({0.0f, 0.0f, 0.0f});
     camera->SetInputEnabled(false);
@@ -283,6 +291,7 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
     arenaBossRewardTimer_ += (std::max)(0.0f, deltaTime);
     player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
+    // 報酬への寄りと戦闘画面への復帰に合わせてシネマバーを開閉します。
     if (arenaBossRewardCinemaBarOverrideActive_) {
         if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
             const float openRate = AnimationInterpolation::ApplyEasing(
@@ -311,6 +320,7 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
     Vector3 eye = arenaBossRewardGameplayEye_;
     Vector3 target = arenaBossRewardGameplayTarget_;
     float fov = arenaBossRewardBaseFov_;
+    // 報酬へ寄る → 移動中の王冠を追う → 元の視点へ戻る、の順に構図を補間します。
     if (arenaBossRewardTimer_ < kArenaBossRewardFocusInEnd) {
         const float rate = AnimationInterpolation::ApplyEasing(
             AnimationInterpolation::SegmentRate(arenaBossRewardTimer_, 0.0f, kArenaBossRewardFocusInEnd),
@@ -340,6 +350,7 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
         fov = AnimationInterpolation::Lerp(0.47f, arenaBossRewardBaseFov_, rate);
     }
 
+    // 導入演出と同じ FixedPoint 経路を使い、補間した視点を毎フレーム反映します。
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
     camera->SetFollowMode(Camera::FollowMode::kFixedPoint);

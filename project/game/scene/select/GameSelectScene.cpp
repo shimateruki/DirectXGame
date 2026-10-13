@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SettingsMenuOverlay.h"
 #include "ScenePreloader.h"
@@ -166,7 +167,6 @@ bool GameSelectScene::InitializeLoadingStep() {
         completeUnit();
         return false;
     case 1:
-        EventManager::GetInstance()->ClearAllListeners();
         CameraManager::GetInstance()->Initialize();
         CameraManager::GetInstance()->SetInputManager(inputManager_);
         spriteCommon_ = std::make_unique<SpriteCommon>();
@@ -323,6 +323,8 @@ void GameSelectScene::Update(float deltaTime) {
         return;
     }
 
+    GameDataManager::GetInstance()->AdvancePlayTime(deltaTime);
+
     // --- ポストエフェクト更新 ---
     PostEffect::GetInstance()->Update(deltaTime);
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
@@ -391,7 +393,7 @@ void GameSelectScene::Update(float deltaTime) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
-            Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+            Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f)
                 camera->AddRotation(mouseDelta);
         }
@@ -476,11 +478,12 @@ bool GameSelectScene::HandlePauseOverlay(float deltaTime) {
 }
 
 void GameSelectScene::Draw() {
-    // ロックオン表示と特殊マテリアルを含むシーン描画の順序を統一する。
+    // ゲートとプレイヤーを通常の3Dパスに描き、半透明・霧・特殊材質を後段へ回します。
+    // 各パスで近距離のプレイヤーと子パーツを同じ条件で除外します。
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
-    // 一人称判定
+    // FollowModeとは別に、壁際でカメラが胸元に寄った場合も身体を隠します。
     if (player_ && camera) {
         Vector3 pPos = player_->GetWorldPosition();
         pPos.y += 1.0f;
@@ -503,7 +506,7 @@ void GameSelectScene::Draw() {
 
     auto& objects = objectManager_->GetObjects();
 
-    // --- 1. 不透明描画 ---
+    // 背景の後で不透明物の深度を先に決め、霧と特殊材質はここでは描きません。
     for (auto& obj : objects) {
         if (!obj->GetIsVisible())
             continue;
@@ -528,12 +531,12 @@ void GameSelectScene::Draw() {
     if (animatedCube_)
         animatedCube_->Draw(pointLightRes, spotLightRes);
 
-    // --- 2. 中間描画 ---
-    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
+    // ゲート等の不透明物が済んでから、弾・予兆・編集用3Dガイドを描きます。
+    DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
-    // --- 3. 透明描画 ---
+    // 半透明と通常粒子は不透明物の後に重ねます。
     for (auto& obj : objects) {
         if (!obj->GetIsVisible())
             continue;
@@ -555,19 +558,18 @@ void GameSelectScene::Draw() {
     }
     particleSystem_->Draw();
 
-    // 4. ローカルフォグ
+    // 霧の後、GrabTextureと深度を使う材質を描きます。GPU粒子はその画面コピーを再利用します。
     DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
-    // 5. 流体描画
     const bool grabUpdated =
         DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
 
-    // 6. GPUパーティクル
     DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
 
 void GameSelectScene::DrawUI() {
-    // ゲートの名前やスターは 3D の後段で画面座標へ重ねる。
+    // ゲートの名札と収集済みスターは、3Dの投影後に画面座標へ重ねます。
+    // 操作Spriteと照準の後、設定画面をポーズより前面に出します。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_)
         sprite->Draw();

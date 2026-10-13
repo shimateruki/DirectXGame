@@ -21,6 +21,11 @@
 #include "ProfilerManager.h"
 #include "RenderStats.h"
 #include "SceneFactory.h"
+#include "game/scene/RegisterGameScenes.h"
+#ifdef USE_IMGUI
+#include "game/editor/RegisterGameEditorFactories.h"
+#include "game/editor/BuiltInCreatePresetRegistry.h"
+#endif
 #include "SceneManager.h"
 #include "SrvManager.h"
 #include "StageManager.h"
@@ -107,7 +112,12 @@ void Game::InitializeEngineServices() {
 	GameSettingsManager::GetInstance()->Initialize();
 	GameAudioSettings::GetInstance()->Initialize();
 
-	sceneFactory_ = std::make_unique<SceneFactory>();
+	auto gameSceneFactory = std::make_unique<SceneFactory>();
+	RegisterGameScenes(*gameSceneFactory);
+#ifdef USE_IMGUI
+	RegisterGameEditorFactories();
+#endif
+	sceneFactory_ = std::move(gameSceneFactory);
 	sceneManager_ = std::make_unique<SceneManager>();
 }
 
@@ -181,6 +191,9 @@ void Game::InitializeEditorTools() {
 #ifdef USE_IMGUI
 	editorController_ = std::make_unique<GameEditorController>();
 	editorController_->Initialize(sceneManager_.get(), dxCommon_);
+	if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+		BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
+	}
 #endif
 }
 
@@ -200,6 +213,7 @@ void Game::ConfigureInitialPlayState() {
 
 void Game::Finalize() {
 	// シーンとエディタを終了し、エンジン基盤を解放する。
+	GameDataManager::GetInstance()->FlushPendingSave();
 	if (sceneManager_) {
 		sceneManager_->Finalize();
 	}
@@ -266,6 +280,11 @@ void Game::Update() {
 	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get())) finalDeltaTime = 1.0f / 60.0f;
 #endif
 	UpdateGameSystems(deltaTime, finalDeltaTime);
+	// コインの連続取得を短時間まとめ、シーン切替中は保留分を確定する。
+	GameDataManager::GetInstance()->TickAutosave(deltaTime);
+	if (sceneManager_ && sceneManager_->IsTransitioning()) {
+		GameDataManager::GetInstance()->FlushPendingSave();
+	}
 	ApplyInitialSceneOverrides();
 }
 

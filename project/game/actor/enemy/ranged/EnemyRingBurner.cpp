@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "EnemyRingBurner.h"
+#include "game/system/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
 #include "EventManager.h"
@@ -296,7 +297,7 @@ void EnemyRingBurner::ResolveRuntimeTarget() {
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
     if (scene) {
-        target_ = scene->GetPlayer();
+        target_ = GetScenePlayer(scene);
     }
 }
 

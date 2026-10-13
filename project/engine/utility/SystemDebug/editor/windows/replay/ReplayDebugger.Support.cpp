@@ -3,7 +3,7 @@
 #ifdef USE_IMGUI
 using namespace ReplayDebuggerImplementation;
 
-// 補助処理の定義を一か所に保持し、共有状態と呼び出し順を維持します。
+// Replay Archive と実行時 Snapshot の相互変換をここへまとめます。
 namespace ReplayDebuggerImplementation {
 bool IsSupportedReplayArchiveSchema(int version) {
     return version >= kMinimumReplayArchiveSchemaVersion &&
@@ -64,6 +64,7 @@ json SceneLoadContextToJson(const SceneLoadContext& context) {
 SceneLoadContext JsonToSceneLoadContext(const json& value) {
     SceneLoadContext context;
     if (!value.is_object()) return context;
+    // 旧 Archive にキーがない場合も、Scene の既定 Controller だけは DEFAULT を保持します。
     context.sceneAssetId = value.value("sceneAssetId", std::string{});
     context.displayName = value.value("displayName", std::string{});
     context.runtimeScene = value.value("runtimeScene", std::string{});
@@ -78,6 +79,7 @@ SceneLoadContext JsonToSceneLoadContext(const json& value) {
 }
 
 json EntityParameterToJson(const Object3d::EntityParameter& value) {
+    // 配置由来の戦闘・移動・ギミック設定を Replay に含め、シーク後の動作を再現します。
     return {
         { "hp", value.hp }, { "maxHp", value.maxHp }, { "attackPower", value.attackPower },
         { "speed", value.speed }, { "gravity", value.gravity }, { "maxFallSpeed", value.maxFallSpeed },
@@ -97,6 +99,7 @@ json EntityParameterToJson(const Object3d::EntityParameter& value) {
 Object3d::EntityParameter JsonToEntityParameter(const json& value) {
     Object3d::EntityParameter result;
     if (!value.is_object()) return result;
+    // 未保存キーは現行の既定値に戻し、旧版 Archive を読み込めるようにします。
     result.hp = value.value("hp", result.hp);
     result.maxHp = value.value("maxHp", result.maxHp);
     result.attackPower = value.value("attackPower", result.attackPower);
@@ -127,6 +130,7 @@ Object3d::EntityParameter JsonToEntityParameter(const json& value) {
 }
 
 json AnimatorSnapshotToJson(const AnimatorControllerRuntime::Snapshot& value) {
+    // 現在・前状態と遷移の経過時間を一緒に残し、復元後の補間位置を保ちます。
     return {
         { "currentState", value.currentState }, { "previousState", value.previousState },
         { "currentTime", value.currentTime }, { "previousTime", value.previousTime },
@@ -150,6 +154,7 @@ AnimatorControllerRuntime::Snapshot JsonToAnimatorSnapshot(const json& value) {
 }
 
 json ParticleEmitterToJson(const std::optional<ParticleEmitterComponent>& value) {
+    // Component の不在は null として保存し、設定だけでなく発生タイマーも残します。
     if (!value) return nullptr;
     return {
         { "cpuParticle", value->GetCpuParticle() },
@@ -240,6 +245,8 @@ std::optional<NavAgentComponent> JsonToNavAgent(const json& value) {
 }
 
 json ObjectReplayStateToJson(const Object3d::ReplayState& value) {
+    // Transform、可視状態、Animator、衝突、描画材質を同じフレームの Snapshot として保存します。
+    // Component の optional 値と派生型の custom 状態も、Object 本体と同時に復元できる形へ変換します。
     return {
         { "scale", Vector3ToJson(value.scale) }, { "rotation", Vector3ToJson(value.rotation) },
         { "translation", Vector3ToJson(value.translation) }, { "quaternion", QuaternionToJson(value.quaternion) },
@@ -264,6 +271,8 @@ json ObjectReplayStateToJson(const Object3d::ReplayState& value) {
 
 Object3d::ReplayState JsonToObjectReplayState(const json& value) {
     Object3d::ReplayState result;
+    // 不足キーは ReplayState の初期値を維持し、古い Snapshot の読み込みを許容します。
+    // JSON の配列要素は専用変換を通し、短い配列では初期値に戻します。
     result.scale = JsonToVector3(value.value("scale", json::array()), result.scale);
     result.rotation = JsonToVector3(value.value("rotation", json::array()), result.rotation);
     result.translation = JsonToVector3(value.value("translation", json::array()), result.translation);
@@ -277,6 +286,7 @@ Object3d::ReplayState JsonToObjectReplayState(const json& value) {
     result.animationName = value.value("animationName", std::string{});
     result.animationLoop = value.value("animationLoop", result.animationLoop);
     result.animatorControllerPath = value.value("animatorControllerPath", std::string{});
+    // Animator Snapshot は空 Object へフォールバックし、EntityParameter は保存フラグがあるときだけ復元します。
     result.animatorSnapshot = JsonToAnimatorSnapshot(value.value("animatorSnapshot", json::object()));
     result.hasParameter = value.value("hasParameter", false);
     if (result.hasParameter) result.parameter = JsonToEntityParameter(value.value("parameter", json::object()));
@@ -287,6 +297,7 @@ Object3d::ReplayState JsonToObjectReplayState(const json& value) {
     result.materialType = value.value("materialType", int32_t{ 0 });
     result.color = JsonToVector4(value.value("color", json::array()), result.color);
     result.emissive = value.value("emissive", result.emissive);
+    // null の Component は生成せず、保存されていた種類だけ optional を再構成します。
     result.particleEmitterComponent = JsonToParticleEmitter(value.value("particleEmitter", json(nullptr)));
     result.meshEffectComponent = JsonToMeshEffect(value.value("meshEffect", json(nullptr)));
     result.pathMoverComponent = JsonToPathMover(value.value("pathMover", json(nullptr)));
@@ -298,6 +309,7 @@ Object3d::ReplayState JsonToObjectReplayState(const json& value) {
 }
 
 json SpriteReplayStateToJson(const Sprite::ReplayState& value) {
+    // Sprite は UV とアニメーション時刻、親 Replay ID まで残して描画状態を再現します。
     return {
         { "position", Vector2ToJson(value.position) }, { "rotation", value.rotation },
         { "size", Vector2ToJson(value.size) }, { "color", Vector4ToJson(value.color) },
@@ -315,6 +327,7 @@ json SpriteReplayStateToJson(const Sprite::ReplayState& value) {
 
 Sprite::ReplayState JsonToSpriteReplayState(const json& value) {
     Sprite::ReplayState result;
+    // 新旧 Archive 間で項目が増減しても、各フィールドは既定値へフォールバックします。
     result.position = JsonToVector2(value.value("position", json::array()), result.position);
     result.rotation = value.value("rotation", result.rotation);
     result.size = JsonToVector2(value.value("size", json::array()), result.size);
@@ -355,6 +368,7 @@ std::string MakeLocalTimestamp(const char* format) {
 }
 
 bool ReadArchiveHeader(const std::filesystem::path& filePath, json& header, std::string& error) {
+    // 本文の読み込み前に Magic・ヘッダー・Schema の順で検証します。
     std::ifstream stream(filePath, std::ios::binary);
     if (!stream) {
         error = "ファイルを開けません。";

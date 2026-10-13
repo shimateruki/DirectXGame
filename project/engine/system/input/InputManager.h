@@ -124,11 +124,18 @@ public:
     /// <summary>直近の操作デバイスがゲームパッドか返します。</summary>
     bool IsGamepadMode() const { return isGamepadMode_; }
 
-    /// <summary>XInput を優先し、入力がなければ SDL の左スティック値を返します。</summary>
+    /// <summary>XInput、未接続時は SDL から統合した左スティック値を返します。</summary>
     Vector2 GetLeftStick() const;
 
-    /// <summary>XInput を優先し、入力がなければ SDL の右スティック値を返します。</summary>
+    /// <summary>XInput、未接続時は SDL から統合した右スティック値を返します。</summary>
     Vector2 GetRightStick() const;
+
+    /// <summary>マウス移動と右スティックを、Camera::AddRotation 用の相対移動量にまとめます。</summary>
+    /// <param name="deltaTime">スティックの角速度をフレーム時間へ換算する秒数。</param>
+    Vector2 GetCameraLookDelta(float deltaTime) const;
+
+    /// <summary>メニュー用の左スティック方向入力です。初回と押し続けた後の反復で true を返します。</summary>
+    bool IsMenuStickTriggered(WORD dpadDirection) const;
 
     /// <summary>低・高周波の振動を指定時間だけ要求します。並行要求は強い方を採用します。</summary>
     void PlayRumble(float lowFrequency, float highFrequency, float duration);
@@ -194,12 +201,19 @@ private:
 
     // SDL2 センサー値と校正時の加速度基準値。
     SDL_GameController* sdlController_ = nullptr;
+    bool xinputConnected_ = false;
     Vector3 accelData_ = { 0, 0, 0 };
     Vector3 gyroData_ = { 0, 0, 0 };
     Vector3 baseAccel_ = { 0.0f, 0.0f, 0.0f };
     bool isCalibrated_ = false;
 
     bool isGamepadMode_ = false;
+    std::array<bool, 4> menuStickTriggered_{};
+    int menuStickDirection_ = 0;
+    uint64_t menuStickNextRepeatMs_ = 0;
+
+    void OpenFirstAvailableSdlController();
+    void UpdateMenuStickNavigation();
 
     /// <summary>強弱の振動量と残り時間を持つ一時的な振動要求。</summary>
     struct RumbleRequest {

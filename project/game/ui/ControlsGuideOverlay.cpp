@@ -2,6 +2,7 @@
 #include "ControlsGuideOverlay.h"
 
 #include "InputManager.h"
+#include "game/ui/InputGlyphResolver.h"
 #include "Player.h"
 #include "Sprite.h"
 #include "SpriteCommon.h"
@@ -119,23 +120,17 @@ void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
     sprite->SetTextureRect({0.0f, 0.0f}, {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
 }
 
-std::string ResolveInputGlyphPath(const std::string& keyboardPath, bool gamepadMode) {
-    // ゲームパッド使用時だけ操作画像を対応するボタン・スティックへ置き換える。
-    if (!gamepadMode)
-        return keyboardPath;
-    if (keyboardPath == "ui/input/combo/combo_wasd.png")
-        return "ui/input/controller/pad_l_stick.png";
-    if (keyboardPath == "ui/input/keyboard/key_space.png")
-        return "ui/input/controller/pad_a.png";
-    if (keyboardPath == "ui/input/mouse/mouse_move.png")
-        return "ui/input/controller/pad_r_stick.png";
-    if (keyboardPath == "ui/input/mouse/mouse_left.png")
-        return "ui/input/controller/pad_x.png";
-    if (keyboardPath == "ui/input/mouse/mouse_right.png")
-        return "ui/input/controller/pad_lb.png";
-    if (keyboardPath == "ui/input/keyboard/key_e.png")
-        return "ui/input/controller/pad_y.png";
-    return keyboardPath;
+Vector2 SetGlyphTexture(Sprite* sprite, const InputGlyphSpec& glyph) {
+    // アトラス画像は全体の大きさではなく、該当キーの領域だけをSpriteへ渡す。
+    const uint32_t handle = Sprite::LoadTexture(glyph.path);
+    SetFullTextureRect(sprite, handle);
+    sprite->SetTextureName(glyph.path);
+    if (glyph.useCrop) {
+        sprite->SetTextureRect({glyph.cropX, glyph.cropY}, {glyph.width, glyph.height});
+        return {glyph.width, glyph.height};
+    }
+    const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
+    return {static_cast<float>(metadata.width), static_cast<float>(metadata.height)};
 }
 } // namespace
 
@@ -147,6 +142,18 @@ void ControlsGuideOverlay::Initialize(SpriteCommon* spriteCommon, Player* player
     player_ = player;
     LoadLayout(layoutPath);
     BindLayoutSprites();
+    if (spriteCommon_ && pages_[0].actionGlyphs[0].sprite) {
+        for (size_t i = 0; i < extraMoveGlyphs_.size(); ++i) {
+            auto sprite = std::make_unique<Sprite>();
+            sprite->Initialize(spriteCommon_, Sprite::LoadTexture("ui/input/keyboard/key_scan_atlas.png"));
+            sprite->SetName("controls_guide_move_key_" + std::to_string(i + 1));
+            sprite->SetVisible(false);
+            Sprite* raw = sprite.get();
+            sprites_.push_back(std::move(sprite));
+            extraMoveGlyphs_[i].sprite = raw;
+            extraMoveGlyphs_[i].baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        }
+    }
     RefreshAbilityVisuals();
     RefreshInputGlyphs(true);
     SetAllVisible(false);
@@ -192,6 +199,7 @@ void ControlsGuideOverlay::Finalize() {
     rightArrow_ = {};
     pageDots_ = {};
     pages_ = {};
+    extraMoveGlyphs_ = {};
     spriteCommon_ = nullptr;
     inputManager_ = nullptr;
     player_ = nullptr;
@@ -201,6 +209,7 @@ void ControlsGuideOverlay::Finalize() {
     abilityLabelTexturePaths_ = {};
     abilityActionAvailable_ = {};
     inputGlyphGamepadMode_ = false;
+    inputGlyphBindingSignature_.clear();
 }
 
 // 開いた直後のTab入力で閉じないよう、キーが離れるまで再トグルを抑制します。
@@ -258,9 +267,9 @@ void ControlsGuideOverlay::Update(float deltaTime) {
 
         if (!isSliding_) {
             const bool left = inputManager_->IsKeyTriggered(DIK_LEFT) || inputManager_->IsKeyTriggered(DIK_A) ||
-                              inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
+                              inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
             const bool right = inputManager_->IsKeyTriggered(DIK_RIGHT) || inputManager_->IsKeyTriggered(DIK_D) ||
-                               inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
+                               inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
 
             if (left != right) {
                 StartSlide(left ? -1 : 1);
@@ -550,6 +559,10 @@ void ControlsGuideOverlay::SetPageVisible(int pageIndex, bool visible) {
         if (label.sprite)
             label.sprite->SetVisible(actionVisible);
     }
+    if (pageIndex == 0) {
+        for (Element& glyph : extraMoveGlyphs_)
+            if (glyph.sprite) glyph.sprite->SetVisible(visible && !inputGlyphGamepadMode_);
+    }
 }
 
 void ControlsGuideOverlay::SetPageOffset(int pageIndex, float offsetX) {
@@ -575,6 +588,8 @@ void ControlsGuideOverlay::SetPageOffset(int pageIndex, float offsetX) {
     for (Element& label : page.actionLabels) {
         applyOffset(label);
     }
+    if (pageIndex == 0)
+        for (Element& glyph : extraMoveGlyphs_) applyOffset(glyph);
     if (pageIndex == 1 && bookEnabled_)
         LayoutBook(offsetX);
 }
@@ -703,9 +718,11 @@ void ControlsGuideOverlay::RefreshAbilityVisuals() {
 void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
     // 入力機器が変わったときだけキー表示を差し替え、同時表示による混乱を防ぐ。
     const bool gamepadMode = inputManager_ && inputManager_->IsGamepadMode();
-    if (!force && inputGlyphGamepadMode_ == gamepadMode)
+    std::string signature = GetInputGlyphBindingSignature();
+    if (!force && inputGlyphGamepadMode_ == gamepadMode && inputGlyphBindingSignature_ == signature)
         return;
     inputGlyphGamepadMode_ = gamepadMode;
+    inputGlyphBindingSignature_ = std::move(signature);
 
     constexpr std::array<const char*, kActionCount> basicGlyphs = {
         "ui/input/combo/combo_wasd.png", "ui/input/keyboard/key_space.png", "ui/input/mouse/mouse_move.png"};
@@ -713,15 +730,45 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
         Element& visual = pages_[0].actionGlyphs[static_cast<size_t>(action)];
         if (!visual.sprite)
             continue;
-        const std::string path = ResolveInputGlyphPath(basicGlyphs[static_cast<size_t>(action)], gamepadMode);
-        const uint32_t handle = Sprite::LoadTexture(path);
-        SetFullTextureRect(visual.sprite, handle);
-        visual.sprite->SetTextureName(path);
-        const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
-        const float width = static_cast<float>((std::max)(metadata.width, size_t{1}));
-        const float height = static_cast<float>((std::max)(metadata.height, size_t{1}));
+        const Vector2 glyphSize = SetGlyphTexture(
+            visual.sprite, ResolveInputGlyph(basicGlyphs[static_cast<size_t>(action)], gamepadMode));
+        const float width = (std::max)(glyphSize.x, 1.0f);
+        const float height = (std::max)(glyphSize.y, 1.0f);
         const float fit = (std::min)(visual.baseSize.x / width, visual.baseSize.y / height);
         visual.sprite->SetSize({width * fit, height * fit});
+    }
+    if (Element& first = pages_[0].actionGlyphs[0]; first.sprite) {
+        const Vector2 area = first.basePosition;
+        if (gamepadMode) {
+            first.baseSize = {132.0f * layoutRatio_.x, 89.0f * layoutRatio_.y};
+            const Vector2 padSize = SetGlyphTexture(first.sprite, ResolveInputGlyph(basicGlyphs[0], true));
+            const float fit = (std::min)(first.baseSize.x / (std::max)(padSize.x, 1.0f),
+                                        first.baseSize.y / (std::max)(padSize.y, 1.0f));
+            first.sprite->SetSize({padSize.x * fit, padSize.y * fit});
+            for (Element& glyph : extraMoveGlyphs_)
+                if (glyph.sprite) glyph.sprite->SetVisible(false);
+        } else {
+            const char* directions[] = {"Forward", "Backward", "Left", "Right"};
+            const Vector2 tileSize = {56.0f * layoutRatio_.x, 38.0f * layoutRatio_.y};
+            first.basePosition = {area.x, area.y};
+            first.baseSize = tileSize;
+            first.sprite->SetSize(tileSize);
+            for (size_t i = 0; i < extraMoveGlyphs_.size(); ++i) {
+                Element& glyph = extraMoveGlyphs_[i];
+                if (!glyph.sprite) continue;
+                SetGlyphTexture(glyph.sprite, ResolveActionGlyph(directions[i + 1], false));
+                const int slot = static_cast<int>(i + 1);
+                glyph.basePosition = {area.x + static_cast<float>(slot % 2) * 66.0f * layoutRatio_.x,
+                                      area.y + static_cast<float>(slot / 2) * 44.0f * layoutRatio_.y};
+                glyph.baseSize = tileSize;
+                glyph.sprite->SetSize(tileSize);
+                glyph.sprite->SetVisible(pages_[0].panel.sprite && pages_[0].panel.sprite->IsVisible());
+            }
+        }
+        if (!gamepadMode) {
+            first.basePosition = area;
+        }
+        SetPageOffset(0, 0.0f);
     }
 
     const json fallback = json::object();
@@ -733,12 +780,9 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
             item.row >= 0 && item.row < bookMoveCount_
                 ? entry["moves"][item.row].value("glyph", std::string("ui/input/keyboard/key_e.png"))
                 : "ui/input/keyboard/key_e.png";
-        const std::string path = ResolveInputGlyphPath(keyboardPath, gamepadMode);
-        const uint32_t handle = Sprite::LoadTexture(path);
-        SetFullTextureRect(item.visual.sprite, handle);
-        item.visual.sprite->SetTextureName(path);
-        const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
-        item.textureSize = {static_cast<float>(metadata.width), static_cast<float>(metadata.height)};
+        const InputGlyphSpec glyph = ResolveInputGlyph(keyboardPath, gamepadMode);
+        item.textureSize = SetGlyphTexture(item.visual.sprite, glyph);
+        item.textureOrigin = glyph.useCrop ? Vector2{glyph.cropX, glyph.cropY} : Vector2{};
     }
     if (bookEnabled_)
         LayoutBook(bookOffsetX_);
@@ -763,7 +807,10 @@ void ControlsGuideOverlay::RefreshBook() {
             path = item.row >= 0 && item.row < bookMoveCount_
                        ? entry["moves"][item.row].value("glyph", std::string("ui/input/keyboard/key_e.png"))
                        : "ui/input/keyboard/key_e.png";
-            path = ResolveInputGlyphPath(path, inputManager_ && inputManager_->IsGamepadMode());
+            const InputGlyphSpec glyph = ResolveInputGlyph(path, inputManager_ && inputManager_->IsGamepadMode());
+            item.textureSize = SetGlyphTexture(item.visual.sprite, glyph);
+            item.textureOrigin = glyph.useCrop ? Vector2{glyph.cropX, glyph.cropY} : Vector2{};
+            continue;
         }
         const uint32_t handle = Sprite::LoadTexture(path);
         SetFullTextureRect(item.visual.sprite, handle);

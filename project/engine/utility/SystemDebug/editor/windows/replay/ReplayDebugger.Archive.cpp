@@ -248,6 +248,7 @@ bool ReplayDebugger::DeserializeInputSample(
 }
 
 bool ReplayDebugger::SaveCurrentReplayArchive() {
+    // 編集可能な現在の履歴だけを保存し、読み込んだArchiveを再保存して混同しない。
     if (!HasFrames() || loadedArchiveReadOnly_) {
         statusMessage_ = loadedArchiveReadOnly_
             ? "読み込んだ保存リプレイは再保存できません。"
@@ -272,6 +273,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
     const std::filesystem::path temporaryPath = archivePath.string() + ".tmp";
 
     const SceneLoadContext sceneContext = sceneManager_->GetActiveSceneLoadContext();
+    // Scene識別子と保存先頭からの相対時刻をヘッダーへ記録する。
     const std::string currentSceneName = sceneManager_->GetCurrentSceneName();
     const std::string sceneLabel = !sceneContext.displayName.empty()
         ? sceneContext.displayName
@@ -297,6 +299,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
         payload["frames"].push_back(SerializeFrame(frame, firstFrameTime));
     }
     payload["inputs"] = json::array();
+    // 先頭フレーム以前の入力は再実行に不要なので除外し、ヘッダー件数と一致させる。
     for (const InputSample& sample : inputSamples_) {
         if (sample.time <= firstFrameTime || sample.deltaTime <= 0.0f) {
             continue;
@@ -305,6 +308,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
     }
 
     try {
+        // JSONヘッダーは一覧用に残し、フレーム本体はCBORへ圧縮して連結する。
         const std::vector<std::uint8_t> binaryPayload = json::to_cbor(payload);
         std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
         if (!stream) {
@@ -377,6 +381,7 @@ void ReplayDebugger::RefreshReplayArchiveList() {
 }
 
 bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
+    // 現在のScene編集が未保存なら切替を止め、Archiveの正当性を確かめてから読込を始める。
     if (!sceneManager_ || archiveIndex >= replayArchiveEntries_.size()) return false;
     if (!sceneManager_->IsPlaying() && debugEditor_ && debugEditor_->HasAnyDirty()) {
         statusMessage_ = "未保存のシーン編集があります。編集内容を保存してからリプレイを読み込んでください。";
@@ -409,6 +414,7 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
 
     try {
         const json header = json::parse(headerLine);
+        // Schema、CBOR構造、フレームと入力の上限を確認した後で一時領域へ復元する。
         if (!IsSupportedReplayArchiveSchema(header.value("schemaVersion", 0))) {
             statusMessage_ = "未対応の保存リプレイバージョンです。";
             return false;
@@ -465,6 +471,7 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
     }
 
     statusMessage_ = "保存リプレイの元シーンを読み込みます。";
+    // 解析が成功してもSceneが一致するまでは現在のフレーム履歴へ適用しない。
     if (!RequestPendingArchiveScene()) {
         pendingReplayArchive_.reset();
         return false;
@@ -541,6 +548,7 @@ bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
     if (!scene) return true;
 
     ReleaseRetainedObjects();
+    // Play中のScene実体へ結び直してから履歴を移し、Scene世代を更新する。
     frames_.clear();
     activeScene_ = scene;
     activeSceneGeneration_ = sceneManager_->GetSceneGeneration();
@@ -577,6 +585,7 @@ bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
 
     ClearTransientRuntime();
     ApplyFrame(0);
+    // 自動回帰要求なら同じ読込経路を使い、そのまま入力再実行へ移る。
     if (pendingRegressionStart_) {
         pendingRegressionStart_ = false;
         if (!StartRegression()) {

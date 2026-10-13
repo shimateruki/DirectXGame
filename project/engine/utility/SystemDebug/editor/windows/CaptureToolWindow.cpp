@@ -87,7 +87,8 @@ fs::path GetCaptureRoot() {
     if (root.filename() == L"project" && root.has_parent_path()) {
         return root.parent_path() / "captures";
     }
-    return root / "captures";}
+    return root / "captures";
+}
 
 RECT ClampRectToVirtualScreen(const RECT& source) {
     RECT screen{
@@ -160,7 +161,9 @@ bool ResolveClientRect(RECT& outRect, std::string& errorMessage) {
 
 bool ResolveCaptureRect(DebugEditor* editor, CaptureToolWindow::CaptureArea area, bool forceGameViewClientCapture, RECT& outRect, std::string& errorMessage) {
     // ウィンドウ全体と Game View の座標系を区別し、画面内の有効な矩形へ解決します。
-    switch (area) {    case CaptureToolWindow::CaptureArea::GameView: {
+    switch (area) {
+    case CaptureToolWindow::CaptureArea::GameView: {
+        // Game View座標がまだ得られない場合はクライアント領域に後退する。
         if (forceGameViewClientCapture) {
             return ResolveClientRect(outRect, errorMessage);
         }
@@ -175,7 +178,8 @@ bool ResolveCaptureRect(DebugEditor* editor, CaptureToolWindow::CaptureArea area
         outRect = { left, top, right, bottom };
         outRect = ClampRectToVirtualScreen(outRect);
         return true;
-    }    case CaptureToolWindow::CaptureArea::Window: {
+    }
+    case CaptureToolWindow::CaptureArea::Window: {
         HWND hwnd = GetMainWindowHandle();
         if (!hwnd || !GetWindowRect(hwnd, &outRect)) {
             errorMessage = "ウィンドウ全体の撮影範囲を取得できませんでした。";
@@ -215,6 +219,7 @@ bool CaptureScreenRect(const RECT& rect, CapturedImage& outImage, std::string& e
         return false;
     }
 
+    // 上から下へ連続する32bit DIBを作り、画面DCから指定領域だけコピーする。
     BITMAPINFO bitmapInfo{};
     bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     bitmapInfo.bmiHeader.biWidth = width;
@@ -242,6 +247,7 @@ bool CaptureScreenRect(const RECT& rect, CapturedImage& outImage, std::string& e
     HGDIOBJ oldObject = SelectObject(memoryDc, bitmap);
     BOOL copied = BitBlt(memoryDc, 0, 0, width, height, screenDc, rect.left, rect.top, SRCCOPY | CAPTUREBLT);
 
+    // 画素を読み取る前に選択中のGDIオブジェクトとDCだけを戻す。
     if (oldObject) {
         SelectObject(memoryDc, oldObject);
     }
@@ -261,6 +267,7 @@ bool CaptureScreenRect(const RECT& rect, CapturedImage& outImage, std::string& e
     std::memcpy(outImage.bgra.data(), bits, byteSize);
     DeleteObject(bitmap);
 
+    // デスクトップの取得画素は透過を保証しないため、PNGでは不透明へ固定する。
     for (size_t i = 3; i < outImage.bgra.size(); i += 4) {
         outImage.bgra[i] = 255;
     }
@@ -280,6 +287,7 @@ bool SavePngWithWic(const fs::path& path, const CapturedImage& image, std::strin
         return false;
     }
 
+    // 呼び出しスレッド側のCOM状態に合わせて、ここで初期化した場合だけ終了処理を行う。
     HRESULT coResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     const bool shouldUninitialize = SUCCEEDED(coResult);
     if (FAILED(coResult) && coResult != RPC_E_CHANGED_MODE) {
@@ -297,6 +305,7 @@ bool SavePngWithWic(const fs::path& path, const CapturedImage& image, std::strin
         return false;
     }
 
+    // Stream、Encoder、Frameの順に用意し、各段階のHRESULTを次へ伝える。
     Microsoft::WRL::ComPtr<IWICStream> stream;
     hr = factory->CreateStream(&stream);
     if (SUCCEEDED(hr)) {
@@ -587,6 +596,7 @@ void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRec
             const auto recordingStart = Clock::now();
             auto nextFrameTime = recordingStart;
 
+            // 実際の取得時刻をMP4のPresentation Timeへ変換する。
             while (!recordingStopRequested_.load(std::memory_order_acquire)) {
                 {
                     std::unique_lock<std::mutex> lock(recordingWaitMutex_);
@@ -612,12 +622,14 @@ void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRec
 
                 nextFrameTime += frameInterval;
                 if (nextFrameTime <= frameEnd) {
+                    // 遅延分のフレームは撮影し直さず、次の予定時刻まで飛ばして負荷の累積を防ぐ。
                     const auto skipped = static_cast<std::uint64_t>((frameEnd - nextFrameTime) / frameInterval) + 1u;
                     skippedFrameCount_.fetch_add(skipped, std::memory_order_relaxed);
                     nextFrameTime += frameInterval * static_cast<Clock::duration::rep>(skipped);
                 }
             }
 
+            // 録画停止時もSink Writerを確定しないと、MP4の索引が未完成になる。
             HRESULT finalizeResult = S_OK;
             if (sinkWriter_) {
                 finalizeResult = sinkWriter_->Finalize();

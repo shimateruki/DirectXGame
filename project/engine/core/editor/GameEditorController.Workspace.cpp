@@ -10,9 +10,11 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
     }
 
     showDebugWindows_ = true;
+    // 前の対象選択を残すと、新しいワークスペースのInspectorに別用途の編集対象が混ざる。
     debugEditor_->SetSelectedObject(nullptr);
     EditorManager::GetInstance()->ClearSelection();
 
+    // ワークスペースごとの主役となる編集対象と、専用のタイムライン表示を切り替える。
     IEditable* target = nullptr;
     switch (preset) {
     case WorkspacePreset::Vfx:
@@ -42,6 +44,7 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
     default: break;
     }
 
+    // 保存済みiniがあるときだけ後続のフレームで復元し、なければ既定ドックを組み立てる。
     const std::filesystem::path layoutPath =
         std::filesystem::path("output/editor_state/workspaces") / (std::string(key) + ".ini");
     std::error_code error;
@@ -80,6 +83,7 @@ void GameEditorController::SaveWorkspacePreset(WorkspacePreset preset) {
 }
 
 void GameEditorController::ProcessPendingWorkspaceLayout() {
+    // メニュー操作の直後に読み込まず、DockSpaceの更新時点で保留していた配置を反映する。
     if (pendingWorkspaceLayout_ < 0) {
         return;
     }
@@ -130,21 +134,25 @@ void GameEditorController::DrawWorkspaceMenu() {
 }
 
 void GameEditorController::SetupDefaultDockspace() {
-	ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(
-		0,
-		ImGui::GetMainViewport(),
-		ImGuiDockNodeFlags_PassthruCentralNode);
+    ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(
+        0,
+        ImGui::GetMainViewport(),
+        ImGuiDockNodeFlags_PassthruCentralNode);
 
+    // Asset一覧の拡大要求は、既存の上下分割を再利用できる場合だけ局所調整する。
     const bool expandAssets = PresetEditor::GetInstance()->ConsumeLibraryDockExpandRequest();
-    if (expandAssets) SetReplayDebuggerVisible(false);
+    if (expandAssets) {
+        SetReplayDebuggerVisible(false);
+    }
     if (dockspaceInitialized_ && expandAssets) {
         ImGuiWindow* project = ImGui::FindWindowByName("Project (Assets)");
         ImGuiWindow* console = ImGui::FindWindowByName("Debug Console");
         ImGuiDockNode* bottom = project ? project->DockNode : nullptr;
         // 旧配置の左右分割だけをまとめ、HierarchyとInspectorの幅は維持します。
         if (bottom && console && console->DockNode && bottom != console->DockNode &&
-            bottom->ParentNode && bottom->ParentNode == console->DockNode->ParentNode)
+            bottom->ParentNode && bottom->ParentNode == console->DockNode->ParentNode) {
             bottom = bottom->ParentNode;
+        }
         ImGuiWindow* gameView = ImGui::FindWindowByName("Game View");
         if (bottom && gameView && gameView->DockNode && bottom->ParentNode &&
             bottom->ParentNode == gameView->DockNode->ParentNode) {
@@ -169,8 +177,11 @@ void GameEditorController::SetupDefaultDockspace() {
             dockspaceInitialized_ = false;
         }
     }
-    if (dockspaceInitialized_) return;
+    if (dockspaceInitialized_) {
+        return;
+    }
 
+    // 再構築時はルートから作り直し、左右に編集パネル、下にタイムラインまたはAsset群を配置する。
 	dockspaceInitialized_ = true;
 	ImGui::DockBuilderRemoveNode(dockspaceId);
 	ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
@@ -223,8 +234,7 @@ void GameEditorController::SetupDefaultDockspace() {
 	ImGui::DockBuilderFinish(dockspaceId);
 }
 
-// 編集中はScene View、再生中はGame Viewとして使う単一Viewportを描画する。
-
+// カメラプレビューは別の実装ファイルにあり、ここではDock先のウィンドウ名だけを使用する。
 void DrawCameraObjectPreviewWindow();
 
 

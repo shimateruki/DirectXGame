@@ -188,6 +188,7 @@ void MaterialPreviewBoard::CreateBoard() {
 
     RemoveBoard();
 
+    // 既存ボードを消してから同一モデルを読み込み、材質差だけを比較できるようにする。
     std::string modelName = modelNameBuffer_;
     if (modelName.empty()) modelName = "Primitives/sphere";
     ModelManager::GetInstance()->LoadModel(modelName);
@@ -197,6 +198,7 @@ void MaterialPreviewBoard::CreateBoard() {
 
     Vector3 origin = { 0.0f, 2.0f, 0.0f };
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    // 隔離ステージでは列全体を中央寄せし、通常配置では選択Objectの横を起点にする。
     bool placedInEffectStage = useEffectPreviewStage_ && previewStage && previewStage->IsEnabled();
     if (placedInEffectStage) {
         origin = previewStage->GetGroundPosition();
@@ -216,6 +218,7 @@ void MaterialPreviewBoard::CreateBoard() {
         object->Initialize(common);
         object->SetModel(modelName);
         object->SetName(std::string(kPreviewPrefix) + std::to_string(entry.materialType) + "_" + entry.shortLabel);
+        // Preview専用の名前とClassを付け、衝突・保存操作に通常Objectとして混ざらないようにする。
         object->SetClassName("EditorOnly");
         object->SetSaveCategory("Object");
         object->SetIsLocked(true);
@@ -235,6 +238,7 @@ void MaterialPreviewBoard::CreateBoard() {
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
         if (placedInEffectStage) {
+            // モデル形状の下端を地面へ合わせるため、ワールドAABBから高さを補正する。
             const AABB bounds = object->GetModelWorldAABB();
             if (std::isfinite(bounds.min.y)) {
                 constexpr float kGroundClearance = 0.02f;
@@ -341,6 +345,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         if (showOnlySpecialMaterials_ && !IsSpecialMaterialType(base.type)) continue;
 
         if (expandModeVariants_ && !base.modes.empty()) {
+            // effectTypeを持つ材質は各モードを別Objectへ展開して比較する。
             for (const Mode& mode : base.modes) {
                 entries.push_back({
                     base.type,
@@ -447,6 +452,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
     if (!water) return;
 
     water->effectType = entry.effectType;
+    // 共通のWaterParamDataを特殊材質ごとに再解釈するため、まず比較用の基準値を揃える。
     water->waveSpeed = 2.0f;
     water->waveHeight = 1.0f;
     water->waveFrequency = 4.0f;
@@ -458,6 +464,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
     water->flowSpeedY = 0.1f;
 
     switch (entry.materialType) {
+    // 材質固有の既定値だけを基準から上書きし、プレビュー時の見え方を整える。
     case 8:
         object->SetBlendMode(BlendMode::kNormal);
         water->effectType = 0.0f;

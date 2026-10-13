@@ -9,6 +9,7 @@ using EditorPropertyBuiltIn::CommonFlags;
 
 void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
     // 全オブジェクトに共通する基本プロパティを先に登録します。
+    // GUID は保存データとの対応に使うため参照専用とし、名前や分類だけを通常編集の対象にします。
     Register({
         "identity.name", "名前", "Identity", EditorPropertyType::String, CommonFlags(),
         [](const Object3d& object) { return json(object.GetName()); },
@@ -51,6 +52,7 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return true;
         },
     });
+    // Transform の Setter 後に両行列を更新し、Inspector での変更を同フレームの表示へ反映します。
     Register({
         "transform.position", "座標", "Transform", EditorPropertyType::Vector3, CommonFlags(true),
         [](const Object3d& object) {
@@ -93,6 +95,7 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return true;
         },
     });
+    // 表示や編集ロックは Object の状態として保存し、描画パラメータとは別に扱います。
     Register({
         "rendering.visible", "表示", "Rendering", EditorPropertyType::Bool, CommonFlags(),
         [](const Object3d& object) { return json(object.GetIsVisible()); },
@@ -120,6 +123,7 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return true;
         },
     });
+    // 色と PBR 値は既存の Object3d Setter を経由し、描画側の反映手順を共通化します。
     Register({
         "rendering.color", "色", "Rendering", EditorPropertyType::Vector4, CommonFlags(true),
         [](const Object3d& object) {
@@ -159,6 +163,7 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return true;
         },
     });
+    // 衝突属性と Mask はビット列として保持するため、JSON からは整数だけ受け取ります。
     Register({
         "collision.attribute", "衝突属性", "Collision", EditorPropertyType::Integer, CommonFlags(),
         [](const Object3d& object) { return json(object.GetCollisionAttribute()); },

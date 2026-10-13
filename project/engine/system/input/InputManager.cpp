@@ -2,11 +2,56 @@
 #include <cassert>        // assertマクロを使用するためにインクルード
 #include "math.h"         // abs()関数などを使用するためにインクルード
 #include <algorithm>
+#include <cmath>
 #include"DebugConsole.h"
+
+namespace {
+Vector2 NormalizeStick(SHORT rawX, SHORT rawY, SHORT deadZone) {
+    const float x = static_cast<float>(rawX) / 32768.0f;
+    const float y = static_cast<float>(rawY) / 32768.0f;
+    const float length = std::hypot(x, y);
+    const float threshold = static_cast<float>(deadZone) / 32768.0f;
+    if (length <= threshold) return {0.0f, 0.0f};
+    // 円形デッドゾーンを差し引き、倒した量が移動速度へ滑らかにつながるようにします。
+    const float magnitude = std::clamp((length - threshold) / (1.0f - threshold), 0.0f, 1.0f);
+    return {x / length * magnitude, y / length * magnitude};
+}
+}
 
 InputManager* InputManager::GetInstance() {
     static InputManager instance;
     return &instance;
+}
+
+void InputManager::OpenFirstAvailableSdlController() {
+    for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+        if (!SDL_IsGameController(i)) continue;
+        sdlController_ = SDL_GameControllerOpen(i);
+        if (!sdlController_) continue;
+        SDL_GameControllerSetSensorEnabled(sdlController_, SDL_SENSOR_ACCEL, SDL_TRUE);
+        SDL_GameControllerSetSensorEnabled(sdlController_, SDL_SENSOR_GYRO, SDL_TRUE);
+        baseAccel_ = {};
+        isCalibrated_ = false;
+        return;
+    }
+}
+
+void InputManager::UpdateMenuStickNavigation() {
+    menuStickTriggered_.fill(false);
+    const Vector2 stick = GetLeftStick();
+    int direction = 0;
+    if (std::max(std::abs(stick.x), std::abs(stick.y)) >= 0.45f) {
+        direction = std::abs(stick.y) >= std::abs(stick.x) ? (stick.y > 0 ? 1 : 2) : (stick.x < 0 ? 3 : 4);
+    }
+    const uint64_t now = GetTickCount64();
+    if (direction != menuStickDirection_) {
+        menuStickDirection_ = direction;
+        menuStickNextRepeatMs_ = now + 320;
+        if (direction) menuStickTriggered_[direction - 1] = true;
+    } else if (direction && now >= menuStickNextRepeatMs_) {
+        menuStickTriggered_[direction - 1] = true;
+        menuStickNextRepeatMs_ = now + 130;
+    }
 }
 
 
@@ -42,7 +87,7 @@ void InputManager::Initialize(HWND hwnd)
 
     // 新しい状態を取得
     ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
-    XInputGetState(0, &gamepadState);
+    xinputConnected_ = XInputGetState(0, &gamepadState) == ERROR_SUCCESS;
 
     // --- SDL2初期化 (Joy-Con用) ---
 
@@ -62,38 +107,19 @@ void InputManager::Initialize(HWND hwnd)
     SDL_EventState(SDL_JOYBUTTONDOWN, SDL_IGNORE);
     SDL_EventState(SDL_JOYBUTTONUP, SDL_IGNORE);
 
-    // コントローラー接続
-    for (int i = 0; i < SDL_NumJoysticks(); ++i) {
-        if (SDL_IsGameController(i)) {
-            sdlController_ = SDL_GameControllerOpen(i);
-            if (sdlController_) {
-                // センサー有効化
-                SDL_GameControllerSetSensorEnabled(sdlController_, (SDL_SensorType)SDL_SENSOR_ACCEL, SDL_TRUE);
-                SDL_GameControllerSetSensorEnabled(sdlController_, (SDL_SensorType)SDL_SENSOR_GYRO, SDL_TRUE);
-
-                // キャリブレーション状態の初期化
-                baseAccel_ = { 0, 0, 0 };
-                isCalibrated_ = false;
-                break;
-            }
-        }
-    }
+    OpenFirstAvailableSdlController();
 
 }
 
 
-// 毎フレームの更新処理
+// キー、マウス、XInput、SDLの状態を前フレームと比較できる形へ揃える。
 void InputManager::Update()
 {
-    // =================================================================
-    // 1. DirectInput更新 (キーボード・マウス)
-    // =================================================================
-
-    // 前フレームの状態を保存
+    // トリガー判定用の旧状態を保存してから、DirectInputの現在状態を取得する。
     memcpy(prevKeyState, keyState, sizeof(keyState));
     prevMouseState = mouseState;
 
-    // キーボード情報の取得
+    // 一時的にフォーカスを失ったデバイスは再取得してから読み直す。
     HRESULT result = keyboardDevice->GetDeviceState(sizeof(keyState), keyState);
     if (FAILED(result)) {
         keyboardDevice->Unacquire();
@@ -101,7 +127,6 @@ void InputManager::Update()
         keyboardDevice->GetDeviceState(sizeof(keyState), keyState);
     }
 
-    // マウス情報の取得
     result = mouseDevice->GetDeviceState(sizeof(mouseState), &mouseState);
     if (FAILED(result)) {
         mouseDevice->Unacquire();
@@ -109,25 +134,41 @@ void InputManager::Update()
         mouseDevice->GetDeviceState(sizeof(mouseState), &mouseState);
     }
 
-
-    // =================================================================
-    // 2. ゲームパッド状態の更新 (XInput & SDL2)
-    // =================================================================
+    // パッドはXInputを先に試し、未接続時だけSDLのボタン・軸を共通状態へ変換する。
     prevGamepadState = gamepadState;
 
-    // --- XInput (Xboxコントローラー) の更新 ---
     ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
-    XInputGetState(0, &gamepadState);
+    xinputConnected_ = XInputGetState(0, &gamepadState) == ERROR_SUCCESS;
 
-
-    // --- SDL2 (Joy-Con / Proコン) の更新 ---
+    // SDL側の接続解除通知と実際の接続状態の両方を確認する。
     SDL_Event event;
-    while (SDL_PollEvent(&event)) {}
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_CONTROLLERDEVICEREMOVED && sdlController_ &&
+            SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(sdlController_)) == event.cdevice.which) {
+            SDL_GameControllerClose(sdlController_);
+            sdlController_ = nullptr;
+            accelData_ = {};
+            gyroData_ = {};
+            isCalibrated_ = false;
+        }
+    }
+
+    // 起動後に接続したパッドも、次のフレームから利用できるようにします。
+    if (sdlController_ && !SDL_GameControllerGetAttached(sdlController_)) {
+        SDL_GameControllerClose(sdlController_);
+        sdlController_ = nullptr;
+        accelData_ = {};
+        gyroData_ = {};
+        isCalibrated_ = false;
+    }
+    if (!sdlController_) {
+        OpenFirstAvailableSdlController();
+    }
 
     SDL_GameControllerUpdate();
 
     if (sdlController_) {
-        // ... (加速度・ジャイロの処理はそのまま) ...
+        // センサーだけはSDLから常に取得し、操作ボタンはXInput接続時に二重計上しない。
         float data[3];
         bool hasData = false;
         if (SDL_GameControllerGetSensorData(sdlController_, (SDL_SensorType)SDL_SENSOR_ACCEL, data, 3) == 0) {
@@ -144,38 +185,32 @@ void InputManager::Update()
             }
         }
 
-        // -------------------------------------------------------------
-        // ★修正点1: SDLのスティック入力を取得して XInput形式 に統合
-        // -------------------------------------------------------------
+        if (!xinputConnected_) {
+        // SDLの軸とボタンをXInput形式へ写し、以後の操作判定を接続元から独立させる。
         // SDLの軸入力(-32768 ～ 32767)を取得
         int16_t leftX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTX);
         int16_t leftY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTY);
         int16_t rightX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTX);
         int16_t rightY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTY);
 
-        // 値が入っている場合のみ上書き (XInput側が0の場合などを考慮)
-        // ※SDLのY軸はXInputと逆の場合が多いですが、ここでは「入力があるか」の判定に使えれば良いのでそのままでもOK
-        // 必要なら: leftY = -leftY; のように反転
+        // SDL の Y 軸は下方向が正なので反転します。最小値は符号反転後に飽和させます。
         if (abs(leftX) > 0 || abs(leftY) > 0) {
             gamepadState.Gamepad.sThumbLX = leftX;
-            gamepadState.Gamepad.sThumbLY = (short)-leftY; // Y軸反転させておくのが一般的
+            gamepadState.Gamepad.sThumbLY = static_cast<SHORT>(std::clamp(-static_cast<int>(leftY), -32768, 32767));
         }
         if (abs(rightX) > 0 || abs(rightY) > 0) {
             gamepadState.Gamepad.sThumbRX = rightX;
-            gamepadState.Gamepad.sThumbRY = (short)-rightY;
+            gamepadState.Gamepad.sThumbRY = static_cast<SHORT>(std::clamp(-static_cast<int>(rightY), -32768, 32767));
         }
 
-        // トリガー (ZLR)
+        // トリガーはSDLの16bit範囲をXInputの8bit範囲へ縮小する。
         int16_t trigLeft = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
         int16_t trigRight = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
-        // SDLトリガー(0~32767) を XInput(0~255) に合わせるには >> 7 くらい
         if (trigLeft > 0) gamepadState.Gamepad.bLeftTrigger = (BYTE)(trigLeft >> 7);
         if (trigRight > 0) gamepadState.Gamepad.bRightTrigger = (BYTE)(trigRight >> 7);
 
 
-        // -------------------------------------------------------------
-        // B. Joy-Conのボタン入力を XInput形式 に変換して統合 (既存コード)
-        // -------------------------------------------------------------
+        // ABXYはSDLとXInputでラベル配置が異なるため、ゲーム内の期待する配置へ対応させる。
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_B)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_A;
         }
@@ -212,12 +247,11 @@ void InputManager::Update()
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
         }
+        }
     }
 
 
-    // =================================================================
-    // 3. キャリブレーション
-    // =================================================================
+    // センサーの基準値だけは専用キーで再調整する。
     // View/Backは操作ガイド用に使うため、センサー再調整はCキーだけで行います。
     if (IsKeyTriggered(DIK_C)) {
         Calibrate();
@@ -225,11 +259,7 @@ void InputManager::Update()
     }
 
 
-    // =================================================================
-    // 4. 操作モードの自動切り替え判定 (★修正済み)
-    // =================================================================
-
-    // --- A. キーボード・マウスの入力判定 ---
+    // 最後に実際の操作があった入力系を判定し、画面の操作案内を切り替える。
     bool isKeyMouseActive = false;
 
     // キーボード入力チェック
@@ -240,9 +270,7 @@ void InputManager::Update()
         }
     }
 
-    // ★修正点2: マウスの「微細なブレ」を無視する (閾値を設ける)
-    // マウスは触れてなくてもセンサーの誤差で 1〜2 動くことがあるため、
-    // 明らかに動かしたと判定できる数値(例えば 5程度)以上で反応させる
+    // マウスセンサーの微小な揺れでは案内表示を切り替えない。
     const long MOUSE_MOVE_THRESHOLD = 5;
 
     if (abs(mouseState.lX) > MOUSE_MOVE_THRESHOLD ||
@@ -259,13 +287,7 @@ void InputManager::Update()
         }
     }
 
-    // キーボード/マウス入力があればフラグを下ろす
-    if (isKeyMouseActive) {
-        isGamepadMode_ = false;
-    }
-
-
-    // --- B. ゲームパッドの入力判定 ---
+    // パッド側はボタン・トリガー・大きなスティック入力を操作として扱う。
     bool isGamepadActive = false;
 
     // ボタン入力チェック
@@ -273,12 +295,8 @@ void InputManager::Update()
         isGamepadActive = true;
     }
 
-    // ★修正点3: スティックのデッドゾーン判定を「モード切替用」に甘くする
-    // デフォルトの XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE (7849) はゲーム操作用には良いが、
-    // 「コントローラー触った！」という検知には少し鈍感な場合があるため、閾値を下げる。
-
-    // モード切替検知用の閾値 (少し触れたら反応するように小さくする: 例 2000)
-    const short DETECTION_DEADZONE = 2000;
+    // モード切替は操作用デッドゾーンより強い入力で行い、静止時の軸の揺れを除きます。
+    const short DETECTION_DEADZONE = 10000;
 
     // 左スティック
     if (abs(gamepadState.Gamepad.sThumbLX) > DETECTION_DEADZONE ||
@@ -296,14 +314,21 @@ void InputManager::Update()
         isGamepadActive = true;
     }
 
-    // ゲームパッド入力があればフラグを立てる (後勝ち判定)
-    if (isGamepadActive) {
+    // 同時入力時はキーボード・マウスを優先し、案内表示がフレーム毎に揺れるのを防ぎます。
+    if (isKeyMouseActive) {
+        isGamepadMode_ = false;
+    } else if (isGamepadActive) {
         isGamepadMode_ = true;
+    } else if (!xinputConnected_ && !sdlController_) {
+        // 抜線後はゲームパッドの案内を残さず、キーボード表示へ戻します。
+        isGamepadMode_ = false;
     }
+    UpdateMenuStickNavigation();
 }
 
 InputManager::ReplayState InputManager::CaptureReplayState() const {
     ReplayState result;
+    // リプレイのトリガー判定を再現するため、現在値と前回値を対で保存する。
     std::copy(std::begin(keyState), std::end(keyState), result.keys.begin());
     std::copy(std::begin(prevKeyState), std::end(prevKeyState), result.previousKeys.begin());
     std::copy(std::begin(mouseState.rgbButtons), std::end(mouseState.rgbButtons), result.mouseButtons.begin());
@@ -315,6 +340,7 @@ InputManager::ReplayState InputManager::CaptureReplayState() const {
     result.previousMouseY = prevMouseState.lY;
     result.previousMouseWheel = prevMouseState.lZ;
 
+    // SDLもXInput形式へ統合済みなので、記録するパッド状態は一組でよい。
     const XINPUT_GAMEPAD& pad = gamepadState.Gamepad;
     const XINPUT_GAMEPAD& previousPad = prevGamepadState.Gamepad;
     result.gamepadButtons = pad.wButtons;
@@ -339,6 +365,7 @@ InputManager::ReplayState InputManager::CaptureReplayState() const {
 }
 
 void InputManager::ApplyReplayState(const ReplayState& state) {
+    // 記録済みの前回値を復元し、シーク直後の押下・離上判定が変わらないようにする。
     std::copy(state.keys.begin(), state.keys.end(), std::begin(keyState));
     std::copy(state.previousKeys.begin(), state.previousKeys.end(), std::begin(prevKeyState));
 
@@ -353,6 +380,7 @@ void InputManager::ApplyReplayState(const ReplayState& state) {
     prevMouseState.lY = state.previousMouseY;
     prevMouseState.lZ = state.previousMouseWheel;
 
+    // パッド状態も同じ形式へ戻してから、案内モードとセンサー基準を揃える。
     gamepadState = {};
     prevGamepadState = {};
     XINPUT_GAMEPAD& pad = gamepadState.Gamepad;
@@ -413,29 +441,34 @@ Vector2 InputManager::GetMouseMoveDelta() const {
     return { (float)mouseState.lX, (float)mouseState.lY };
 }
 
+Vector2 InputManager::GetCameraLookDelta(float deltaTime) const {
+    const Vector2 mouse = GetMouseMoveDelta();
+    const Vector2 stick = GetRightStick();
+    // カメラ設定の感度と反転を Camera::AddRotation 側で共通適用します。
+    const float step = 360.0f * std::clamp(deltaTime, 0.0f, 0.05f);
+    return {mouse.x + stick.x * step, mouse.y - stick.y * step};
+}
+
+bool InputManager::IsMenuStickTriggered(WORD dpadDirection) const {
+    switch (dpadDirection) {
+    case XINPUT_GAMEPAD_DPAD_UP: return menuStickTriggered_[0];
+    case XINPUT_GAMEPAD_DPAD_DOWN: return menuStickTriggered_[1];
+    case XINPUT_GAMEPAD_DPAD_LEFT: return menuStickTriggered_[2];
+    case XINPUT_GAMEPAD_DPAD_RIGHT: return menuStickTriggered_[3];
+    default: return false;
+    }
+}
+
 // ゲームパッドの左スティックの入力を取得
 Vector2 InputManager::GetGamepadLeftStick() const {
-    const SHORT deadZone = XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE; // デッドゾーンの閾値
-    SHORT lx = gamepadState.Gamepad.sThumbLX; // 生の入力値 (-32768 ~ 32767)
-    SHORT ly = gamepadState.Gamepad.sThumbLY;
-
-    // デッドゾーン内の入力を0として扱う
-    // デッドゾーン外なら、値を-1.0f ~ 1.0fの範囲に正規化する
-    float x = (abs(lx) > deadZone) ? lx / 32768.0f : 0.0f;
-    float y = (abs(ly) > deadZone) ? ly / 32768.0f : 0.0f;
-    return { x, y };
+    return NormalizeStick(gamepadState.Gamepad.sThumbLX, gamepadState.Gamepad.sThumbLY,
+                          XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 }
 
 // ゲームパッドの右スティックの入力を取得
 Vector2 InputManager::GetGamepadRightStick() const {
-    const SHORT deadZone = XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE; // デッドゾーンの閾値
-    SHORT rx = gamepadState.Gamepad.sThumbRX; // 生の入力値
-    SHORT ry = gamepadState.Gamepad.sThumbRY;
-
-    // 左スティックと同様に、デッドゾーン処理と正規化を行う
-    float x = (abs(rx) > deadZone) ? rx / 32768.0f : 0.0f;
-    float y = (abs(ry) > deadZone) ? ry / 32768.0f : 0.0f;
-    return { x, y };
+    return NormalizeStick(gamepadState.Gamepad.sThumbRX, gamepadState.Gamepad.sThumbRY,
+                          XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 }
 
 // ゲームパッドのボタンが押されているか
@@ -517,6 +550,7 @@ void InputManager::StopRumble() {
 }
 
 void InputManager::RefreshRumbleOutput() {
+    // 同時に要求された振動は各モーターの最大強度を採り、最長の残り時間だけSDLへ送る。
     float lowFrequency = 0.0f;
     float highFrequency = 0.0f;
     float longestRemaining = 0.0f;
@@ -526,6 +560,7 @@ void InputManager::RefreshRumbleOutput() {
         longestRemaining = std::max(longestRemaining, request.remaining);
     }
 
+    // 強度が前回と同じならデバイスへ再送しない。
     if (lowFrequency == appliedLowFrequency_ && highFrequency == appliedHighFrequency_) {
         return;
     }
@@ -576,38 +611,7 @@ void InputManager::Finalize() {
 }
 
 Vector2 InputManager::GetRightStick() const {
-    // 1. まず XInput (Xboxコントローラー) をチェック
-    Vector2 input = GetGamepadRightStick();
-
-    // 入力があればそれを返す
-    if (abs(input.x) > 0.0f || abs(input.y) > 0.0f) {
-        return input;
-    }
-
-    // 2. XInputがない場合、SDL2 (Joy-Con / Proコン) をチェック
-    if (sdlController_) {
-        // SDLの軸の値は -32768 ～ 32767
-        Sint16 axisX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTX);
-        Sint16 axisY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTY);
-
-        // デッドゾーン (遊び) の設定
-        const int kDeadZone = 3000;
-
-        float x = 0.0f;
-        float y = 0.0f;
-
-        if (abs(axisX) > kDeadZone) {
-            x = (float)axisX / 32768.0f;
-        }
-        if (abs(axisY) > kDeadZone) {
-            y = ((float)axisY / 32768.0f) * -1.0f;
-        }
-
-        return { x, y };
-    }
-
-    // どちらも入力がなければゼロを返す
-    return { 0.0f, 0.0f };
+    return GetGamepadRightStick();
 }
 
 bool InputManager::IsGamepadButtonTriggered(WORD button) const {
@@ -616,36 +620,7 @@ bool InputManager::IsGamepadButtonTriggered(WORD button) const {
 }
 
 Vector2 InputManager::GetLeftStick() const {
-    // 1. まず XInput (Xboxコントローラー) をチェック
-    Vector2 input = GetGamepadLeftStick();
-
-    // 入力があればそれを返す
-    if (abs(input.x) > 0.0f || abs(input.y) > 0.0f) {
-        return input;
-    }
-
-    // 2. XInputがない場合、SDL2 (Joy-Con / Proコン) をチェック
-    if (sdlController_) {
-        // 右スティックのコードをコピーして、AXIS_LEFTX / LEFTY に変更
-        Sint16 axisX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTX);
-        Sint16 axisY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTY);
-
-        const int kDeadZone = 3000;
-        float x = 0.0f;
-        float y = 0.0f;
-
-        if (abs(axisX) > kDeadZone) {
-            x = (float)axisX / 32768.0f;
-        }
-        if (abs(axisY) > kDeadZone) {
-            // SDLのY軸は上がマイナスなので、反転(-1.0f)させて上をプラスにする
-            y = ((float)axisY / 32768.0f) * -1.0f;
-        }
-
-        return { x, y };
-    }
-
-    return { 0.0f, 0.0f };
+    return GetGamepadLeftStick();
 }
 
 // 現在押されている全キーのリストを取得する

@@ -17,8 +17,6 @@ class DebugEditor;
 class Camera;
 class DirectXCommon;
 class BulletManager;
-class Player;
-class GameRule;
 class Skybox;
 class ScenePreloadData;
 struct SceneLoadManifest;
@@ -178,11 +176,6 @@ public:
     virtual ParticleSystem* GetParticleSystem() { return nullptr; }
     virtual Skybox* GetSkybox() { return nullptr; }
 
-    // LevelLoader とゲーム進行処理向けの Player・ルール参照です。
-    virtual Player* GetPlayer() const { return nullptr; }
-    virtual void SetPlayer(Player* player) { (void)player; }
-    virtual GameRule* GetGameRule() { return nullptr; }
-
     /// <summary>targetID に紐づくイベント受信オブジェクトへ通知します。</summary>
     void TriggerEvent(int targetID);
 
@@ -223,16 +216,15 @@ protected:
 
     // 特殊描画対象の判定と、一人称視点で隠すオブジェクトの除外に使う。
     bool IsSpecialMaterialType(int materialType) const;
-    bool IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const;
+    bool IsHiddenByFirstPerson(Object3d* object, Object3d* viewActor, bool isFirstPerson) const;
 
     // 敵の予兆を不透明モデルの後、パーティクルや特殊材質の前に描画します。
-    void DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* spotLight);
 
     /// <summary>対象一覧からローカルフォグを描画し、描画したか返す。</summary>
-    bool DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player = nullptr, bool isFirstPerson = false);
+    bool DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Object3d* viewActor = nullptr, bool isFirstPerson = false);
 
     // 水、炎、ポータルなど通常パスと分ける特殊マテリアルを描画します。
-    bool DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Player* player = nullptr, bool isFirstPerson = false);
+    bool DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Object3d* viewActor = nullptr, bool isFirstPerson = false);
 
     // シーンカメラに合わせて GPU パーティクルを描画します。
     bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);

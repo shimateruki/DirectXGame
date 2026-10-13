@@ -385,6 +385,7 @@ bool CopyProjectFiltered(
         return false;
     }
 
+    // 提出対象の project を相対Pathで再構成し、除外フォルダの内側へは降りません。
     fs::recursive_directory_iterator it(source, fs::directory_options::skip_permission_denied, ec);
     const fs::recursive_directory_iterator end;
     if (ec) {
@@ -405,6 +406,7 @@ bool CopyProjectFiltered(
             return false;
         }
 
+        // リパースポイントを辿ると元プロジェクト外へ出る可能性があるため再帰を止めます。
         if (it->is_directory(ec)) {
             if (IsReparsePoint(entryPath) || IsProjectDirectoryExcluded(relative)) {
                 ++stats.skippedDirectories;
@@ -421,6 +423,7 @@ bool CopyProjectFiltered(
             errorMessage = "プロジェクトファイルのサイズを取得できません: " + PathToUtf8(entryPath);
             return false;
         }
+        // 生成物や端末固有ファイルは集計だけしてコピー対象から外します。
         if (IsProjectFileExcluded(relative, bytes, stats)) {
             continue;
         }
@@ -575,6 +578,7 @@ bool CopyDirectoryFiltered(
         return false;
     }
 
+    // 先に全ファイルを集め、同名のDDS/PNGペアを確定してからコピー方針を決めます。
     std::vector<ResourceFile> files;
     fs::recursive_directory_iterator it(source, fs::directory_options::skip_permission_denied, ec);
     const fs::recursive_directory_iterator end;
@@ -596,6 +600,7 @@ bool CopyDirectoryFiltered(
             return false;
         }
 
+        // Editor生成フォルダを丸ごと除外し、容量集計へも反映します。
         if (it->is_directory(ec)) {
             if (ShouldSkipResourceDirectory(entryPath.filename()) || IsEditorGeneratedDirectory(relative)) {
                 ++stats.skippedDirectories;
@@ -620,6 +625,7 @@ bool CopyDirectoryFiltered(
         files.push_back({ entryPath, relative, bytes });
     }
 
+    // 拡張子だけが異なる同名テクスチャを一組として数えます。
     constexpr uint8_t kHasDds = 1 << 0;
     constexpr uint8_t kHasPng = 1 << 1;
     std::unordered_map<std::wstring, uint8_t> texturePairs;
@@ -639,6 +645,7 @@ bool CopyDirectoryFiltered(
         }
     }
 
+    // 監査で未使用と判断された素材、次に指定モードで不要なテクスチャ形式を除外します。
     for (const ResourceFile& file : files) {
         const std::wstring normalizedRelative = ToLowerWide(file.relative.generic_wstring());
         if (unusedResourcePaths.find(normalizedRelative) != unusedResourcePaths.end()) {
@@ -1004,6 +1011,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, "プロジェクトルートを検出できませんでした。");
         }
 
+        // 必要なら収集前に指定構成をビルドし、監査による除外指定があれば索引を作り直します。
         if (request.buildBeforePackage) {
             std::string buildError;
             if (!RunMSBuild(projectRoot, request.configuration, buildError)) {
@@ -1022,6 +1030,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             }
         }
 
+        // 実行ファイルのある出力構成を確かめてから、提出Setの一時・旧版・ZIPのPathを決めます。
         const fs::path outputRoot = fs::weakly_canonical(projectRoot.parent_path() / "generated" / "outputs" / PathFromUtf8(request.configuration));
         const fs::path sourceExe = outputRoot / "DirectXGame.exe";
         std::error_code ec;
@@ -1047,6 +1056,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, "安全のため出力先を削除できません: " + PathToUtf8(destination));
         }
 
+        // 中断された前回の一時Setと退避済み旧版を整理してから新しい一時Setを作ります。
         if (fs::exists(staging, ec)) {
             fs::remove_all(staging, ec);
             if (ec) {
@@ -1078,6 +1088,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, "実行ファイルセットの出力先を作成できません: " + PathToUtf8(runtimeDestination));
         }
 
+        // 実行Setへ本体とDLLを揃えた後、選別したResourcesと起動バッチ・Manifestを追加します。
         const std::string exeFileName = packageName + ".exe";
         fs::copy_file(sourceExe, runtimeDestination / PathFromUtf8(exeFileName), fs::copy_options::overwrite_existing, ec);
         if (ec) {
@@ -1137,6 +1148,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, manifestError);
         }
 
+        // 提出形式だけはソース側の project と README も同じ一時Setへまとめます。
         ProjectCopyStats projectStats;
         if (request.includeProject) {
             std::string projectCopyError;
@@ -1156,6 +1168,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             }
         }
 
+        // 完成後にだけ旧Setを退避して一時Setを正式名へ移します。移動失敗なら旧Setへ戻します。
         const bool hadPreviousSet = fs::exists(destination, ec);
         if (hadPreviousSet) {
             fs::rename(destination, previous, ec);
@@ -1179,6 +1192,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             }
         }
 
+        // ZIP は正式Setから最後に作り、Set自体が完成した事実は失敗メッセージにも残します。
         if (request.createZip) {
             std::string zipError;
             if (!CreateZipArchive(packageRoot, destination, zipPath, zipError)) {

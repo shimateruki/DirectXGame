@@ -5,6 +5,7 @@
 /// <summary>プレイヤーのジャンプに合わせて出現状態が切り替わるブロックです。</summary>
 class GimmickBlinkBlock : public BaseGimmick {
   public:
+    ~GimmickBlinkBlock() override;
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
 
@@ -17,4 +18,5 @@ class GimmickBlinkBlock : public BaseGimmick {
 
     bool isActive_ = true;
     int colorType_ = 0; // 0: Blue, 1: Red
+    EventManager::SubscriptionId jumpSubscription_ = EventManager::kInvalidSubscriptionId;
 };

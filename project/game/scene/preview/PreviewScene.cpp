@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/preview/PreviewScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -175,7 +176,6 @@ void PreviewScene::Initialize() {
     const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
 
     // --- 2. 各種マネージャ初期化 ---
-    EventManager::GetInstance()->ClearAllListeners();
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
@@ -366,7 +366,7 @@ void PreviewScene::Update(float deltaTime) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
-            Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+            Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }
@@ -456,7 +456,7 @@ void PreviewScene::Draw() {
     }
 
     // 3. 中間描画
-    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
+    DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 

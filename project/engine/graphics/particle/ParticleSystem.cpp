@@ -72,62 +72,55 @@ void ParticleSystem::SpawnFromEmitter() {
 void ParticleSystem::SpawnFromParams(const EmitterParams& params, const Vector3& origin) {
     if (particles_.size() >= ResolveParticleLimit(params)) return;
 
-    // ---------------------------------------------------
-    // ★形状ごとの計算分岐
-    // ---------------------------------------------------
+    // 出現形状に応じて発生位置と初速を決める。粒子の共通属性は分岐の後で埋める。
     Vector3 pos = origin;
     Vector3 vel = params.initialVelocity; // 基準速度
 
     if (params.emitterType == EmitterType::Box) {
-        // --- 1. Box (従来通り) ---
+        // Boxは基準位置の各軸へ独立した乱数を加える。
         pos.x += params.spawnArea.x * dis(randomEngine_);
         pos.y += params.spawnArea.y * dis(randomEngine_);
         pos.z += params.spawnArea.z * dis(randomEngine_);
 
-        // 速度にはランダム性を足す
+        // Boxの速度だけは初速の各軸へ乱数成分を追加する。
         vel.x += params.velocityRandomness.x * dis(randomEngine_);
         vel.y += params.velocityRandomness.y * dis(randomEngine_);
         vel.z += params.velocityRandomness.z * dis(randomEngine_);
     } else if (params.emitterType == EmitterType::Sphere) {
-        // --- 2. Sphere (球体) ---
-        // ランダムな方向ベクトルを作成
+        // Sphereは乱数方向を正規化して球面上の位置を決め、外向きへ飛ばす。
         Vector3 dir = { dis(randomEngine_), dis(randomEngine_), dis(randomEngine_) };
 
-        // 長さが0にならないようにチェックして正規化
+        // 乱数がゼロベクトルになったときは上方向を使う。
         float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
         if (len != 0.0f) dir = dir / len;
         else dir = { 0, 1, 0 }; // ゼロなら上へ
 
-        // 位置: 中心から半径分ずらす (中身を埋めるなら * dis(gen) ではなく * abs(dis(gen)) など工夫)
         pos += dir * params.spawnRadius;
 
-        // 速度: 中心から外側に向かって飛ぶ (爆発)
-        // initialVelocity.z を「スピード」として扱うと使いやすいです
+        // initialVelocityの長さを速度量として使い、方向は球面法線へ置き換える。
         float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
         if (speed == 0) speed = 1.0f; // デフォルトスピード
 
         vel = dir * speed;
     } else if (params.emitterType == EmitterType::Cone) {
-        // --- 3. Cone (円錐) ---
-        // Y軸(上)向きを基準に、角度分だけランダムに傾ける計算が必要
-        // 簡易実装: XとZをランダムにずらして正規化
+        // Coneは上方向を基準にX/Zを傾けた方向を作る簡易的な放出形状。
 
         float angleRad = params.coneAngle * (3.14159f / 180.0f);
-        float r = std::tan(angleRad); // 広がり具合
+        float r = std::tan(angleRad); // 指定角度をX/Z方向の広がり幅へ変換する。
 
         Vector3 dir;
         dir.x = dis(randomEngine_) * r;
         dir.z = dis(randomEngine_) * r;
         dir.y = 1.0f; // 上向き
 
-        // 正規化
+        // 初速へ使うため方向を正規化する。
         float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
         if (len != 0) dir = dir / len;
 
-        // 位置: 原点から出るか、少し円状に広げるか
-        pos += dir * (dis(randomEngine_) * 0.5f + 0.5f); // 少しばらつかせる
+        // 発生点は原点から同じ方向へ0～1の範囲で散らす。
+        pos += dir * (dis(randomEngine_) * 0.5f + 0.5f);
 
-        // 速度: 方向 * スピード
+        // 初速の大きさだけ維持し、向きは放出方向へ合わせる。
         float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
         if (speed == 0) speed = 5.0f;
         vel = dir * speed;
@@ -135,6 +128,7 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const Vector3&
     }
 
 
+    // 共通の寿命・色・サイズと、編集用カーブの焼き込み結果を粒子へ保存する。
     Particle p;
     p.position = pos;
     p.velocity = vel;
@@ -146,7 +140,7 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const Vector3&
     p.endSize = params.endSize;
     p.acceleration = params.acceleration;
     p.hdrIntensity = params.hdrIntensity;
-    // 回転初期化 (前回の実装分)
+    // 編集用カーブは両方のキーが揃っている場合だけ有効にする。
     p.useAuthoringCurves =
         params.useAuthoringCurves &&
         !params.sizeOverLife.keys.empty() &&
@@ -169,6 +163,7 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
     float lifeTimeMin, float lifeTimeMax,
     float startSize, float endSize)       
 {
+    // カメラ距離等の放出倍率を先に適用し、上限数を越える前に粒子を止める。
     const float emissionScale = ResolveEmissionScale(params_, position);
     if (emissionScale <= 0.0001f) {
         return;
@@ -184,9 +179,8 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         }
 
         Vector3 spawnDir;
-        if (direction) { // 方向指定あり
+        if (direction) { // 指定方向に二軸の角度揺れを加える。
             spawnDir = *direction;
-            // ... (既存のばらつき計算) ...
             if (spreadAngle > 0.0f) {
                 std::uniform_real_distribution<float> angleDist(-spreadAngle / 2.0f, spreadAngle / 2.0f);
                 Matrix4x4 rotX = math.MakeRotateXMatrix(angleDist(randomEngine_));
@@ -203,7 +197,7 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         }
         spawnDir = math.Normalize(spawnDir);
 
-        //Particle 構造体に直接詰める
+        // 発生時点の属性と、寿命中に評価するカーブを一粒子分作る。
         Particle p;
         p.position = position;
         p.velocity = spawnDir * initialSpeed;
@@ -216,15 +210,15 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         p.rotation = 0.0f; 
         p.acceleration = params_.acceleration;
         p.hdrIntensity = params_.hdrIntensity;
-    // 回転スピード決定 (度数法 -> ラジアン変換)
-    float rotSpeedDeg = params_.initialRotationSpeed + dis(randomEngine_) * params_.rotationSpeedRandomness;
+        // 回転速度は度からラジアンへ直してから積分に渡す。
+        float rotSpeedDeg = params_.initialRotationSpeed + dis(randomEngine_) * params_.rotationSpeedRandomness;
         p.useAuthoringCurves =
             params_.useAuthoringCurves &&
             !params_.sizeOverLife.keys.empty() &&
             !params_.colorOverLife.keys.empty();
         p.sizeOverLife = BakeVFXCurve(params_.sizeOverLife, startSize);
         p.colorOverLife = BakeVFXGradient(params_.colorOverLife, initialColor);
-    p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
+        p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
         particles_.push_back(p);
     }
 }
@@ -249,7 +243,7 @@ void ParticleSystem::Update(float deltaTime) {
     const auto cpuStart = std::chrono::high_resolution_clock::now();
     deltaTime *= simulationTimeScale_;
 
-    // --- 1. エミッター（自動発生）の処理 ---
+    // 連続放出は端数を次フレームへ持ち越し、指定秒間レートを維持する。
     if (params_.isEmitting && params_.particlesPerSecond > 0.0f) {
         // 1フレームでの発生数を計算
         const Vector3 emitterPosition = params_.spawnPosition + editorPreviewOffset_;
@@ -264,9 +258,7 @@ void ParticleSystem::Update(float deltaTime) {
         }
     }
 
-    // --- 2. 行列などの事前計算 ---
-
-    // カメラ情報取得
+    // カメラ行列がなければ描画姿勢を作れないため、計測値を残してここで戻る。
     const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     // カメラが無い場合の安全対策 (必要に応じて)
     if (!camera) {
@@ -292,10 +284,10 @@ void ParticleSystem::Update(float deltaTime) {
     billboardMatrix.m[3][2] = 0.0f;
     billboardMatrix.m[3][3] = 1.0f;
 
-    // GPUに送るカウントをリセット
+    // このフレームにGPUへ渡す生存粒子数をゼロから数え直す。
     particleCount_ = 0;
 
-    // --- 3. パーティクル個別の更新ループ ---
+    // 生存粒子だけ、寿命・色・大きさ・物理状態・GPUインスタンス行列を更新する。
     for (auto it = particles_.begin(); it != particles_.end(); ) {
         Particle& p = *it;
         p.currentTime += deltaTime;
@@ -310,8 +302,7 @@ void ParticleSystem::Update(float deltaTime) {
         float lifeRatio = p.currentTime / p.lifeTime;
         if (lifeRatio > 1.0f) lifeRatio = 1.0f;
 
-        // --- カラーの更新 ---
-        // Lerpで開始色～終了色を補間
+        // 編集カーブが有効ならそちらを使い、なければ開始色と終了色を補間する。
         Vector4 currentColor = p.useAuthoringCurves
             ? p.colorOverLife.Evaluate(lifeRatio)
             : Vector4{
@@ -325,7 +316,7 @@ void ParticleSystem::Update(float deltaTime) {
         currentColor.y *= p.hdrIntensity;
         currentColor.z *= p.hdrIntensity;
 
-        // --- サイズ更新 (グラフ適用) ---
+        // サイズも新しいカーブを優先し、旧形式の固定10点グラフへ戻せるようにする。
         // 旧形式の10点サイズカーブを寿命の進行率から選びます。
         int graphIndex = (int)(lifeRatio * 9.0f);
         if (graphIndex < 0) graphIndex = 0;
@@ -338,8 +329,7 @@ void ParticleSystem::Update(float deltaTime) {
         p.velocity.x += p.acceleration.x * deltaTime;
         p.velocity.y += p.acceleration.y * deltaTime;
         p.velocity.z += p.acceleration.z * deltaTime;
-        // --- 物理更新 ---
-        // 速度による位置更新
+        // 加速度を速度へ加えた後、その速度で位置を積分する。
         p.position.x += p.velocity.x * deltaTime;
         p.position.y += p.velocity.y * deltaTime;
         p.position.z += p.velocity.z * deltaTime;
@@ -348,26 +338,19 @@ void ParticleSystem::Update(float deltaTime) {
         p.rotation += p.rotationSpeed * deltaTime;
 
 
-        // --- 行列計算 ---
-
-        // 1. スケール行列
+        // 粒子面をカメラへ向けたまま、その面内だけで回転させる。
         Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize * p.baseScale.x, currentSize * p.baseScale.y, currentSize });
 
         // ビルボード回転より前に Z 回転を置き、常にカメラへ向いた面の中で回します。
         Matrix4x4 rotateMatrix = math.MakeRotateZMatrix(p.rotation);
 
-        // 3. 平行移動行列
         Matrix4x4 translateMatrix = math.MakeTranslateMatrix(p.position);
 
-        // 4. ワールド行列の合成
-        // 順序: スケール -> Z回転 -> ビルボード回転(カメラ向き) -> 平行移動(位置)
-        // これで「カメラを向きながら、自分の中心で回る」ことができます
+        // 行列の順序はサイズ、面内回転、カメラ向き、配置位置。
         Matrix4x4 worldMatrix = scaleMatrix * rotateMatrix * billboardMatrix * translateMatrix;
 
 
-        // --- GPUバッファへの書き込み ---
-
-        // 最大数を超えて書き込まないようにチェック
+        // CPU側に粒子が残っていても、GPUの固定インスタンス容量は越えない。
         if (particleCount_ < kMaxParticles) {
             instancingData_[particleCount_].world = worldMatrix;
             instancingData_[particleCount_].color = currentColor;
@@ -395,6 +378,7 @@ void ParticleSystem::Draw() {
     dxCommon->StartGpuProfile("Particle CPU pass");
     common_->SetPipeline(commandList, params_.blendMode);
 
+    // 共通の四角形メッシュと、Updateで詰めた粒子ごとの姿勢・色をインスタンス描画する。
     D3D12_VERTEX_BUFFER_VIEW vbvs[] = { vertexBufferView_, instancingBufferView_ };
     commandList->IASetVertexBuffers(0, 2, vbvs);
     commandList->IASetIndexBuffer(&indexBufferView_);

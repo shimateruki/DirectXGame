@@ -350,6 +350,7 @@ void ModelOptimizerWindow::DrawImGui() {
     ImGui::TextDisabled("対象: OBJ / 静的glTF。スキン、ボーンアニメ、モーフ、glbは自動LOD候補から除外します。");
     ImGui::Spacing();
 
+    // 対象モデルは一覧・選択Object・Projectからのドラッグ・直接入力の四経路で指定できる。
     if (ImGui::Button(ICON_FA_SYNC " モデル一覧更新")) {
         RefreshModelList();
     }
@@ -387,6 +388,7 @@ void ModelOptimizerWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::Text("LOD設定");
+    // 生成候補の保持率と切替距離はビルダーへ渡す値であり、採用前はSceneへ反映しない。
     ImGui::DragFloat("LOD1 保持率（高いほど形を残す）", &lodRatios_[0], 0.01f, 0.05f, 0.95f, "%.2f");
     ImGui::DragFloat("LOD1 距離", &lodDistances_[0], 0.5f, 1.0f, 500.0f, "%.1f");
     ImGui::DragFloat("LOD2 保持率（高いほど形を残す）", &lodRatios_[1], 0.01f, 0.02f, 0.90f, "%.2f");
@@ -613,10 +615,12 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
     }
 
     if (!analyzeOnly) {
+        // 生成開始時の選択Objectを保持し、処理完了後の採用先を不用意に変えない。
         pendingApplyTarget_ = editor_ ? editor_->GetSelectedObject3D() : nullptr;
         hasPendingGeneratedReview_ = false;
     }
 
+    // 外部ビルダーは引数ごとに引用符で囲み、Model名やBlenderパスの空白を保つ。
     std::string command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ";
     command += QuoteCommandArg("tools/model_lod/model_lod_builder.ps1");
     command += " -Model " + QuoteCommandArg(modelName);
@@ -664,6 +668,7 @@ void ModelOptimizerWindow::UpdateBuilderProcess() {
 
     HANDLE processHandle = static_cast<HANDLE>(builderProcessHandle_);
     const DWORD waitResult = WaitForSingleObject(processHandle, 0);
+    // 描画フレーム中は待機せず、終了時だけOSハンドルを閉じてレポートを読む。
     if (waitResult == WAIT_TIMEOUT) {
         return;
     }
@@ -743,6 +748,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     }
 
     if (pendingPreviewIndex_ >= pendingPreviewItems_.size()) {
+        // 最初に作った比較Objectを選択してから一時キューを破棄する。
         previewCreationActive_ = false;
         pendingPreviewItems_.clear();
         pendingPreviewIndex_ = 0;
@@ -906,6 +912,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
     }
 
     std::vector<Object3d::LodLevel> levels;
+    // 失敗レコードとモデル名のない候補を除き、距離LODの設定だけ採用する。
     for (const auto& lod : latestReport_["lods"]) {
         if (!lod.is_object()) continue;
         const int level = ReadIntOrZero(lod, "level");
@@ -926,6 +933,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
     }
 
     const nlohmann::json beforeState = editor_->CaptureObjectState(object);
+    // 元モデルとLOD設定を一回のUndo対象として登録し、SceneをDirtyにする。
     object->SetModel(sourceModel);
     object->SetLodLevels(levels);
     object->SetLodEnabled(true);
@@ -1042,6 +1050,7 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
 
     Vector3 origin = { 0.0f, 2.0f, 0.0f };
     if (autoUseEffectPreviewStage_) {
+        // 比較位置は隔離Stageを優先し、通常Sceneでは選択Objectの横に置く。
         EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
         stage->EnableForToolPreview();
         stage->RequestCameraRecenter();

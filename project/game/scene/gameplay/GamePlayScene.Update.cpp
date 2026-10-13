@@ -14,6 +14,7 @@
 #include "GameSettingsManager.h"
 #include "GameRule.h"
 #include "InputManager.h"
+#include "KeyConfig.h"
 #include "LightEditor.h"
 #include "LockOnSystem.h"
 #include "MeshEffectManager.h"
@@ -305,15 +306,22 @@ void GamePlayScene::Update(float deltaTime) {
     }
     if (!SceneManager::GetInstance()->IsPlaying() && (crownDefeat_.active || crownDefeat_.completed)) ResetCrownDefeat();
     if (crownDefeat_.active) {
-        UpdatePostEffectState(deltaTime);UpdateCrownDefeat(deltaTime);
+        UpdatePostEffectState(deltaTime);
+        UpdateCrownDefeat(deltaTime);
         // 演出中は衝突・AIを進めず、描画と粒子だけを更新します。
-        if(particleSystem_)particleSystem_->Update(deltaTime);
+        if (particleSystem_) {
+            particleSystem_->Update(deltaTime);
+        }
         GPUParticleManager::GetInstance()->Update(deltaTime);
-        for(auto& object:GetObjects())object->UpdateWorldMatrix(true);
-        UpdateUI(deltaTime);return;
+        for (auto& object : GetObjects()) {
+            object->UpdateWorldMatrix(true);
+        }
+        UpdateUI(deltaTime);
+        return;
     }
-    if (crownFinale_.prepared && !SceneManager::GetInstance()->IsPlaying())
+    if (crownFinale_.prepared && !SceneManager::GetInstance()->IsPlaying()) {
         ResetCrownFinaleWorld();
+    }
     if (crownFinale_.active) {
         UpdatePostEffectState(deltaTime);
         UpdateCrownFinale(deltaTime);
@@ -418,13 +426,16 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // 操作可能な時間だけ加算し、ゴール演出やポーズの時間を含めない。
+    GameDataManager::GetInstance()->AdvancePlayTime(deltaTime);
+
     // UIが入力を消費しなかったフレームだけ、シーン固有の操作を受け付けます。
     if (sceneController_) {
         sceneController_->OnUpdate(*this, deltaTime);
     }
 
     UpdatePostEffectState(deltaTime);
-    if (lifeLostPresentationActive_) {
+    if (lifeLostState_.IsActive()) {
         UpdateUI(deltaTime);
         return;
     }
@@ -441,8 +452,9 @@ void GamePlayScene::Update(float deltaTime) {
         UpdateLockOnSprite(CameraManager::GetInstance()->GetActiveCamera(), lockOnSystem_->GetTarget(), deltaTime);
     } else {
         isDrawLockOn_ = false;
-        if (lockOnSprite_)
+        if (lockOnSprite_) {
             lockOnSprite_->SetVisible(false);
+        }
     }
     UpdateEffectDebugShortcuts();
 
@@ -567,7 +579,7 @@ bool GamePlayScene::IsControlsGuideOpenTriggered() const {
     }
 #endif
 
-    if (lifeLostPresentationActive_ || lifeLostBlackHold_ || isGoal_ ||
+    if (lifeLostState_.IsActive() || lifeLostState_.HoldsBlack() || isGoal_ ||
         (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) || (settingsOverlay_ && settingsOverlay_->IsActive())) {
         return false;
     }
@@ -635,11 +647,15 @@ bool GamePlayScene::IsPauseOpenTriggered() const {
     }
 #endif
 
-    if (lifeLostPresentationActive_ || lifeLostBlackHold_ || isGoal_) {
+    if (lifeLostState_.IsActive() || lifeLostState_.HoldsBlack() || isGoal_) {
         return false;
     }
 
-    return inputManager_->IsKeyTriggered(DIK_P) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START);
+    // P がゲーム操作へ割り当てられている場合はその操作を優先し、既存のユーザー設定を保持する。
+    const bool pAssignedToGameplay = KeyConfig::GetInstance()->IsKeyAssigned(DIK_P);
+    return (!pAssignedToGameplay && inputManager_->IsKeyTriggered(DIK_P)) ||
+           inputManager_->IsKeyTriggered(DIK_ESCAPE) ||
+           inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START);
 }
 
 bool GamePlayScene::HandleGoalClear(float& deltaTime) {
@@ -648,7 +664,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         return false;
     }
 
-    if (!goalSavePerformed_) {
+    if (!goalSavePerformed_ && goalPresentationState_ != GoalPresentationState::Returning) {
         int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
         auto* gameData = GameDataManager::GetInstance();
         const bool wasStageCleared = gameData->IsStageCleared(currentStage);
@@ -660,25 +676,34 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
             }
         }
 
-        gameData->MarkStageCleared(currentStage);
-        const int newCrownCount = gameData->GetClearedStageCount();
-        if (!wasStageCleared && newCrownCount > previousCrownCount) {
-            gameData->RequestStageClearRewardPresentation(currentStage, previousCrownCount, newCrownCount);
-        }
-
-        for (int i = 0; i < 3; i++) {
-            if (sessionStarCoins_[i]) {
-                gameData->MarkStarCoinCollected(currentStage, i);
+        const std::array<bool, GameDataManager::kStarCoinsPerStage> collected = {
+            sessionStarCoins_[0], sessionStarCoins_[1], sessionStarCoins_[2]};
+        if (!gameData->CommitStageClear(currentStage, collected)) {
+            // 保存失敗を放置するとクリア演出から抜けられないため、毎回プレイヤーに進路を選んでもらう。
+            const int choice = ::MessageBoxW(
+                nullptr,
+                L"ステージクリアを保存できませんでした。保存先を確認してください。\n\n"
+                L"「再試行」: もう一度保存します。\n"
+                L"「キャンセル」: クリア記録と今回のスターコインを保存せず、ステージ選択へ戻ります。",
+                L"セーブエラー", MB_RETRYCANCEL | MB_ICONERROR);
+            if (choice != IDRETRY) {
+                RequestGoalReturnToSelect();
             }
-        }
-        gameData->RequestStageSelectReturnPresentation(currentStage, previousCrownCount, newCrownCount,
-                                                       newStarCoinIndices);
+        } else {
+            const int newCrownCount = gameData->GetClearedStageCount();
+            if (!wasStageCleared && newCrownCount > previousCrownCount) {
+                gameData->RequestStageClearRewardPresentation(currentStage, previousCrownCount, newCrownCount);
+            }
 
-        if (saveIndicatorOverlay_) {
-            saveIndicatorOverlay_->Play(1.35f);
+            gameData->RequestStageSelectReturnPresentation(currentStage, previousCrownCount, newCrownCount,
+                                                           newStarCoinIndices);
+
+            if (saveIndicatorOverlay_) {
+                saveIndicatorOverlay_->Play(1.35f);
+            }
+            DebugConsole::GetInstance()->AddLog("Stage clear data saved.");
+            goalSavePerformed_ = true;
         }
-        DebugConsole::GetInstance()->AddLog("Saving stage clear data...");
-        goalSavePerformed_ = true;
     }
 
     UpdateGoalPresentation(deltaTime);
@@ -689,7 +714,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
     GPUParticleManager::GetInstance()->Update(deltaTime);
     UpdateUI(deltaTime);
 
-    if (!goalEditorPreviewMode_ && goalPresentationState_ == GoalPresentationState::ReadyToReturn) {
+    if (goalSavePerformed_ && !goalEditorPreviewMode_ && goalPresentationState_ == GoalPresentationState::ReadyToReturn) {
         constexpr float kAutomaticReturnDelay = 0.85f;
         const bool confirmPressed = inputManager_ && inputManager_->IsActionTriggered("Jump");
         const bool automaticReturn =
@@ -703,6 +728,11 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         if (!goalReturnFadeStarted_ || Fade::GetInstance()->IsFinished()) {
             SceneManager::GetInstance()->ChangeSceneAfterFade("SELECT");
         }
+        return true;
+    }
+
+    if (!goalSavePerformed_) {
+        deltaTime = 0.0f;
         return true;
     }
 
@@ -772,6 +802,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     DrawGoalCrownPhysicsTuning();
 #endif
 
+    // 王冠の着地点はプレイヤーの現在姿勢とモデルの下端から求め、潰れ・伸びにも追従させる。
     const GoalCrownPhysicsTuning& physics = GetGoalCrownPhysicsTuning();
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& presentation = goalPresentationTuning_;
@@ -783,6 +814,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     const float stretchRate = std::max(0.0f, -squashRate);
     const float slimeSurfaceHeight = std::max(0.82f, playerScale.y * 0.72f + 0.30f);
 
+    // モデル原点と見た目の下端の差を補正し、頭上へ置いたときに浮きや埋まりを防ぐ。
     float crownPivotFromBottom = 0.0f;
     if (Model* crownModel = goalCrownObject_->GetModel()) {
         crownPivotFromBottom = std::max(0.0f, -crownModel->GetLocalAabbMin().y * std::abs(goalCrownBaseScale_.y));
@@ -798,6 +830,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     Vector3 crownScale = goalCrownBaseScale_;
     Vector3 crownRotation = goalCrownBaseRotation_;
 
+    // 視線誘導中はその場で見せ、次に弧を描いて頭上へ運び、着地後はバネで追従させる。
     if (t < presentation.crownMoveStartTime) {
         // カメラが寄り切るまでは王冠をその場に留め、取得物を読ませます。
         const float focusPulse = (std::sin(t * 7.0f) + 1.0f) * 0.5f;
@@ -829,6 +862,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             crownScale.y *= 1.0f + arcPulse * 0.012f;
             crownScale.z *= 1.0f + arcPulse * 0.018f;
         } else {
+            // 頭上まで運んだ後は着地点へ下ろし、着地直後にバネ状態を初期化する。
             const float fall = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(t, approachEndTime, animation.crownLandTime),
                 AnimationInterpolation::EasingType::SmootherStep);
@@ -841,6 +875,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             crownScale.y *= 1.0f + descentPulse * 0.010f;
             crownScale.z *= 1.0f + descentPulse * 0.016f;
         }
+        // 着地前の毎フレームは王冠の見た目の位置をバネの初期値へ揃える。
         goalCrownSpringInitialized_ = false;
         goalCrownSpringPosition_ = crownPosition;
         goalCrownSpringVelocity_ = {};
@@ -864,6 +899,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             goalCrownSpringInitialized_ = true;
         }
 
+        // 長いフレームを制限し、必要なら小刻みに積分して王冠の揺れを安定させる。
         const float dt = std::clamp(deltaTime, 0.0f, 1.0f / 30.0f);
         const int substepCount = std::max(1, static_cast<int>(std::ceil(dt / (1.0f / 120.0f))));
         const float substep = dt / static_cast<float>(substepCount);
@@ -875,6 +911,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             goalCrownSpringPosition_ = goalCrownSpringPosition_ + goalCrownSpringVelocity_ * substep;
         }
 
+        // バネが跳ね過ぎても頭から大きく外れないよう、水平と上下の偏差を別々に制限する。
         Vector3 crownOffset = goalCrownSpringPosition_ - targetPosition;
         const float maxPlanarOffset = physics.maxPlanarOffset + motionEnergy * 0.05f;
         const float planarLength = std::sqrt(crownOffset.x * crownOffset.x + crownOffset.z * crownOffset.z);
@@ -893,6 +930,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         crownPosition = targetPosition + crownOffset;
         goalCrownSpringPosition_ = crownPosition;
 
+        // 王冠の位置ずれと速度から前後・左右の傾きを求め、プレイヤー本体の傾きも加える。
         const float forwardOffset = Math::Dot(crownOffset, goalMoveForward_);
         const float rightOffset = Math::Dot(crownOffset, goalMoveRight_);
         const float forwardSpeed = Math::Dot(goalCrownSpringVelocity_, goalMoveForward_);
@@ -909,6 +947,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         const float targetYaw = goalCrownBaseRotation_.y + NormalizeYaw(playerRotation.y - goalPlayerBaseRotation_.y);
         targetRotation.y = goalCrownSpringRotation_.y + NormalizeYaw(targetYaw - goalCrownSpringRotation_.y);
 
+        // Yaw差を最短角へ畳んでから回転バネを積分する。
         for (int step = 0; step < substepCount; ++step) {
             Vector3 rotationDelta = targetRotation - goalCrownSpringRotation_;
             rotationDelta.y = NormalizeYaw(rotationDelta.y);
@@ -919,6 +958,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         }
         crownRotation = goalCrownSpringRotation_;
 
+        // 下向きの偏差と速度が大きいときだけ、王冠を少し潰して着地感を出す。
         const float compression =
             std::clamp(-crownOffset.y * 2.2f + std::max(0.0f, -goalCrownSpringVelocity_.y) * 0.045f, 0.0f, 0.35f);
         crownScale.x *= 1.0f + compression * physics.compressionScale;
@@ -926,6 +966,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         crownScale.z *= 1.0f + compression * physics.compressionScale;
     }
 
+    // 描画と後続の演出から参照される確定位置を、Object3dとSceneの状態へ反映する。
     goalCrownPosition_ = crownPosition;
     goalCrownObject_->SetTranslate(crownPosition);
     goalCrownObject_->SetScale(crownScale);
@@ -1178,7 +1219,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
-            Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+            Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }

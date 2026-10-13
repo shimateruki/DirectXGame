@@ -481,7 +481,7 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, Vector3& velocity, co
 }
 
 void EnemyFireSlime::DispatchBreathDamage(const Vector3& direction, float distance) {
-    // 距離と正面方向の両方を確認し、見た目のブレス範囲外へはダメージを送らない。
+    // 扇形に加え、炎メッシュの高さと遮蔽物を確認してから命中を通知する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
     if (!target_ || distance > attack.maxRange + 0.55f) {
         return;
@@ -491,6 +491,30 @@ void EnemyFireSlime::DispatchBreathDamage(const Vector3& direction, float distan
     const float facingDot = direction.x * toTarget.x + direction.z * toTarget.z;
     if (facingDot < 0.34f) {
         return;
+    }
+
+    const float bodyHeight = (std::max)(0.7f, std::abs(GetScale().y));
+    const float visualCenterY = GetTranslate().y + 0.68f * bodyHeight;
+    const float visualHalfHeight = 0.75f * (std::max)(0.7f, std::abs(GetScale().x));
+    const AABB targetBounds = target_->GetAABB();
+    if (targetBounds.max.y < visualCenterY - visualHalfHeight ||
+        targetBounds.min.y > visualCenterY + visualHalfHeight) {
+        return;
+    }
+
+    const Vector3 rayStart = GetWorldPosition() + Vector3{0.0f, 0.72f * bodyHeight, 0.0f};
+    const Vector3 targetCenter = (targetBounds.min + targetBounds.max) * 0.5f;
+    const Vector3 rayDelta = targetCenter - rayStart;
+    const float rayDistance = Math::Length(rayDelta);
+    if (rayDistance > 0.01f) {
+        PhysicsQueryFilter filter;
+        filter.mask = CollisionCategories::Get("ground") | CollisionCategories::Get("map_block");
+        filter.ignoredObject = this;
+        const RaycastHit wall = CollisionManager::GetInstance()->Raycast(
+            rayStart, rayDelta / rayDistance, rayDistance, filter);
+        if (wall.isHit && wall.distance < rayDistance - 0.1f) {
+            return;
+        }
     }
 
     DamageEvent damageEvent;

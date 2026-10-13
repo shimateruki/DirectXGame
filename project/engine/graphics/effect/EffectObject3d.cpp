@@ -129,39 +129,30 @@ bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
 void EffectObject3d::Update(float deltaTime) {
     if (!isPlaying_ || !materialData_) return;
 
-    // 時間を進める
+    // 再生寿命とUVスクロールは同じ経過秒を使う。描画用進捗だけ寿命内へ制限する。
     currentTime_ += deltaTime;
     materialData_->time += deltaTime; // UVスクロール用
 
     // 進行度 (0.0f ～ 1.0f) を計算
     float progress = std::clamp(currentTime_ / lifetime_, 0.0f, 1.0f);
 
-    // ========================================================
-    // ★ 緩急（イージング）の適用
-    // ========================================================
-    // エディタで選んだ easingType_ を使って進行度を曲げる！
+    // Editor指定のイージングを、軌跡の出現と消滅、色・大きさへ共通で使う。
     float easeProgress = ApplyEasing1(easingType_, progress);
 
-    // ========================================================
-    // ★ アニメーションの適用
-    // ========================================================
-    // ① 軌跡を伸ばす (Reveal)
+    // 先に軌跡を見せ、後半50%でディゾルブを進める。
     materialData_->revealProgress = easeProgress;
 
-    // ② ディゾルブ (後半50%から消え始める処理にもイージングを乗せる)
     materialData_->dissolveFade = std::clamp((easeProgress - 0.5f) * 2.0f, 0.0f, 1.0f);
 
-    // 画面サイズの更新（歪み用）
+    // 歪み演出のUV計算に現在の画面寸法を渡す。
     materialData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
 
-    // ========================================================
-    // ★ スケールと色の補間（Lerp）
-    // ========================================================
+    // 指定した開始・終了のスケールと色を、同じ進捗で補間する。
     Vector3 currentScale;
     currentScale.x = std::lerp(startScale_.x, endScale_.x, easeProgress);
     currentScale.y = std::lerp(startScale_.y, endScale_.y, easeProgress);
     currentScale.z = std::lerp(startScale_.z, endScale_.z, easeProgress);
-    SetScale(currentScale); // 親クラス(Object3d)のスケールセット関数を呼ぶ
+    SetScale(currentScale);
 
     Vector4 currentColor;
     currentColor.x = std::lerp(startColor_.x, endColor_.x, easeProgress);
@@ -170,6 +161,7 @@ void EffectObject3d::Update(float deltaTime) {
     currentColor.w = std::lerp(startColor_.w, endColor_.w, easeProgress);
     SetColor(currentColor);
 
+    // 対象に付く場合はローカルオフセットを対象のワールド行列へ通し、根元のYawを合成する。
     if (targetObject_) {
         Matrix4x4 worldMat = targetObject_->GetWorldMatrix();
         Vector3 followPos = Math::TransformNormal(offsetPos_, worldMat);
@@ -182,7 +174,7 @@ void EffectObject3d::Update(float deltaTime) {
         SetRotation({ offsetRot_.x, offsetRot_.y + targetYaw, offsetRot_.z });
     }
 
-    // 寿命が来たら再生終了（またはループ）
+    // 寿命到達時は自動ループなら時間を戻し、単発なら再生を止める。
     if (progress >= 1.0f) {
         if (isAutoLoop_) {
             currentTime_ = 0.0f; // 経過時間をリセットしてループ
@@ -206,29 +198,25 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     Model* model = GetMeshRenderer()->GetModel();
     if (!model)
     {
-        // ★ 3. モデルが取得できずに弾かれているか確認
+        // モデルなしのままGPUへ描画要求を出さない。
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "  Error: Model is NULL! Drawing skipped.");
         return;
     }
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
-    // 1. エフェクト専用パイプラインへの切り替え
+    // 通常の3Dマテリアルとは異なる専用パイプラインへ切り替える。
     common_->SetEffectGraphicsCommand(blendMode_);
 
-    // =======================================================
-    // 2. ルートパラメータのセット (必ず定義通りの4つをセットする！)
-    // =======================================================
-
-    // [0] CBV b0 (VS用) -> ここにWVP行列を渡す！(先頭64バイトが読まれるのでOK)
+    // ルートスロットの順序はエフェクト用RootSignatureと一致させる。
+    // 0: VSのWVP、1: 予備のVS定数、2: PSマテリアル。
     commandList->SetGraphicsRootConstantBufferView(0, GetMeshRenderer()->GetWvpResource()->GetGPUVirtualAddress());
 
-    // [1] CBV b1 (VS用) -> 空っぽだとクラッシュするので、とりあえずWVPバッファを繋いでおく
+    // 未使用のVS定数スロットにも有効なリソースを割り当てる。
     commandList->SetGraphicsRootConstantBufferView(1, GetMeshRenderer()->GetWvpResource()->GetGPUVirtualAddress());
 
-    // [2] CBV b0 (PS用) -> エフェクトマテリアル
     commandList->SetGraphicsRootConstantBufferView(2, materialBuffer_->GetGPUVirtualAddress());
 
-    // [3] DescriptorTable t0 (PS用) -> テクスチャ
+    // テクスチャ未設定時は白画像を使い、必要なGrab/Noise/RampのSRVを順に束ねる。
     const uint32_t fallbackTextureHandle = GetDefaultWhiteTextureHandle();
     uint32_t texHandle = GetMeshRenderer()->GetTextureHandle();
     if (texHandle == 0) {
@@ -242,7 +230,7 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
 
     uint32_t noiseHandle = noiseTextureHandle_;
     if (noiseHandle == 0) {
-        // まだエディタで設定されていない場合は白画像を入れてクラッシュを回避
+        // Noise未設定でもRootSignatureに有効なSRVを渡す。
         noiseHandle = fallbackTextureHandle;
     }
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, noiseHandle);
@@ -251,9 +239,7 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
         rampHandle = fallbackTextureHandle;
     }
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, rampHandle);
-    // =======================================================
-    // 3. メッシュ描画
-    // =======================================================
+    // 頂点構造とマテリアルが確定してからメッシュ本体を描く。
     model->DrawMeshOnly();
 }
 
@@ -275,9 +261,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
 
         float currentY = pitchStep * i - (spiralPitch / 2.0f);
 
-        // ==========================================
-           // ★ 三日月型（テーパー）の計算の修正
-           // ==========================================
+        // 三日月形では弧の両端で内径を外径に寄せ、厚みもゼロへ絞る。
         float currentInRad = inRad;
         float currentOutRad = outRad;
         float currentThick = thickness;
@@ -285,36 +269,33 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         if (isCrescent) {
             float taper = sinf(u * 3.14159265f);
 
-            // ★ 修正：外径(刃先)は美しい円弧をキープし、内径(根元)を両端で刃先に合わせる！
             currentInRad = outRad - (outRad - inRad) * taper;
 
-            // 立体的な厚みも両端に向かって薄くする
             currentThick = thickness * taper;
         }
 
-        // テーパーをかけた後の値で中間地点を計算
+        // 一断面を内縁・上面・下面・外縁の四頂点で表す。
         float midRad = (currentInRad + currentOutRad) / 2.0f;
         float halfThick = currentThick / 2.0f;
 
-        // 1. 内側の縁 (V=1.0) -> ★ currentInRad に変更
+        // 内縁はUVのV=1側に置く。
         Model::VertexData vIn;
         vIn.position = { s * currentInRad, currentY, c * currentInRad, 1.0f };
         vIn.texcoord = { u, 1.0f };
         vIn.normal = { 0.0f, 1.0f, 0.0f };
 
-        // 2. 中間・上側 (V=0.5)
+        // 中央上面と下面は厚み分だけY座標を分ける。
         Model::VertexData vTop;
         vTop.position = { s * midRad, currentY + halfThick, c * midRad, 1.0f };
         vTop.texcoord = { u, 0.5f };
         vTop.normal = { s, 1.0f, c };
 
-        // 3. 中間・下側 (V=0.5)
         Model::VertexData vBottom;
         vBottom.position = { s * midRad, currentY - halfThick, c * midRad, 1.0f };
         vBottom.texcoord = { u, 0.5f };
         vBottom.normal = { s, -1.0f, c };
 
-        // 4. 外側の縁 (V=0.0) 
+        // 外縁はUVのV=0側に置く。
         Model::VertexData vOut;
         vOut.position = { s * currentOutRad, currentY, c * currentOutRad, 1.0f };
         vOut.texcoord = { u, 0.0f };
@@ -326,7 +307,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         proceduralVertices_.push_back(vOut);
     }
 
-    // インデックス生成 (変更なし)
+    // 隣り合う断面の四頂点を面ごとに二三角形でつなぐ。
     for (int i = 0; i < segments; ++i) {
         uint32_t curr = i * 4;
         uint32_t next = (i + 1) * 4;
@@ -726,12 +707,11 @@ void EffectObject3d::UpdateProceduralMesh() {
 
     int type = materialData_ ? materialData_->proceduralType : 0;
 
+    // 材質の形状番号に対応する頂点生成器を選ぶ。1と2だけ同じ生成器の形を切り替える。
     if (type == 1) {
-        // ★ 斜め切り: 最後に true を渡して三日月型にする！
         GenerateSlashVertices(editSlashAngle_, editInnerRadius_, editOuterRadius_, editThickness_, editSpiralPitch_, editMeshSegments_, true);
     }
     else if (type == 2) {
-        // 回転切り: そのまま(false)にして、リング型を維持する
         GenerateSlashVertices(editSlashAngle_, editInnerRadius_, editOuterRadius_, editThickness_, editSpiralPitch_, editMeshSegments_, false);
     }
     else if (type == 3) { // 突き
@@ -766,9 +746,7 @@ void EffectObject3d::UpdateProceduralMesh() {
     }
     else { return; }
 
-    // ==========================================
-    // ★ 全形状共通：UVタイリング（スケール）の適用
-    // ==========================================
+    // 生成器が作ったUVへ共通のタイリングを掛け、動的Modelへまとめて反映する。
     for (auto& v : proceduralVertices_) {
         v.texcoord.x *= editUvTiling_.x;
         v.texcoord.y *= editUvTiling_.y;
@@ -793,7 +771,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     }
     file.close();
 
-    // デフォルト値リセット
+    // 前に読み込んだエフェクトの特殊設定が、欠けたJSON項目へ残らないよう初期化する。
     SetProceduralType(0);
     SetEnableNoiseTexture(false);
     SetEnableColorRamp(false);

@@ -401,7 +401,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.Settings.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.Catalog.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.cpp" />
+    <ClCompile Include="game\editor\BuiltInCreatePresetRegistry.cpp" />
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp" />
     <ClCompile Include="game\system\GhostDirector.cpp" />
     <ClCompile Include="game\system\GhostDirector.Studio.cpp" />
@@ -916,6 +916,8 @@
     <ClInclude Include="game\scene\gameover\GameOverScene.h" />
     <ClInclude Include="game\scene\clear\GameClearScene.h" />
     <ClInclude Include="game\system\GameRule.h" />
+    <ClInclude Include="game\system\RuntimePresetCatalog.h" />
+    <ClInclude Include="game\system\SceneEntityParameterCodec.h" />
     <ClInclude Include="game\system\StageCatalog.h" />
     <ClInclude Include="game\system\StageManager.h" />
     <ClInclude Include="game\system\TutorialDirector.h" />
@@ -961,6 +963,7 @@
     <ClInclude Include="engine\utility\math\Math.h" />
     <ClInclude Include="engine\graphics\core\SrvManager.h" />
     <ClInclude Include="game\scene\gameplay\GamePlayScene.h" />
+    <ClInclude Include="game\scene\gameplay\LifeLostPresentationState.h" />
     <ClInclude Include="game\scene\gameplay\GamePlayScene.PresentationMath.h" />
     <ClInclude Include="game\scene\preview\PreviewScene.h" />
     <ClInclude Include="game\scene\editor\SceneAssetEditorScene.h" />
@@ -1007,7 +1010,9 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\LightEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PresetEditor.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.h" />
+    <ClInclude Include="game\editor\BuiltInCreatePresetRegistry.h" />
+    <ClInclude Include="game\editor\RegisterGameEditorFactories.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorObjectFactoryRegistry.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
     <ClInclude Include="game\system\GhostDirector.h" />
     <ClInclude Include="game\system\CinematicPlayer.h" />

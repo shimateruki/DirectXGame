@@ -1,5 +1,6 @@
 ﻿#define NOMINMAX
 #include "RidingPlatformController.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "GimmickMovingFloor.h"
 #include "BaseEnemy.h"
 #include "game/actor/gimmick/combat/GimmickMagmaGeyser.h"
@@ -142,7 +143,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
     if (!wasPlaying_)
         Reset(floor, *scene);
     wasPlaying_ = true;
-    auto* rider = dynamic_cast<Player*>(scene->GetPlayer());
+    auto* rider = GetScenePlayer(scene);
     if (!rider || deltaTime <= 0)
         return;
     const Vector3 previous = floor.GetTranslate();

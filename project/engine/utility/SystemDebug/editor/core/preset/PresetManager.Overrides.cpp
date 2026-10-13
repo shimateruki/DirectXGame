@@ -225,6 +225,7 @@ bool PresetManager::ApplyPrefabProperty(
     }
 
     std::string prefabName = info.prefabName;
+    // 表示名が改名されても、保存されたAsset IDを優先して実体を探し直す。
     auto assetIt = prefabs_.find(prefabName);
     if (assetIt == prefabs_.end() || assetIt->second.value("assetId", "") != info.assetId) {
         assetIt = std::find_if(prefabs_.begin(), prefabs_.end(), [&info](const auto& pair) {
@@ -255,6 +256,7 @@ bool PresetManager::ApplyPrefabProperty(
 
     const std::string baseAssetId = assetIt->second.value("baseAssetId", "");
     if (baseAssetId.empty()) {
+        // 通常Prefabは元ノードを書き換え、Variantは親との差分だけを保持する。
         if (!WriteSourceProperty(*sourceNode, propertyPath, newSourceValue)) {
             return false;
         }
@@ -278,6 +280,8 @@ bool PresetManager::ApplyPrefabProperty(
     }
     RefreshPrefabInheritance();
 
+    // 同じ元ノードを共有する配置のうち、旧値のままのものだけ新値へ追従させる。
+    // 個体側で上書きした値は変更しない。
     for (Object3d* candidate : sceneObjects) {
         if (!candidate || candidate == object || !candidate->IsPrefabInstance()) {
             continue;
@@ -344,6 +348,7 @@ bool PresetManager::ApplyPrefabComponent(
     }
     MigrateLegacyComponentOverrides(assetIt->second);
 
+    // Componentの追加・削除前の有効状態を各Prefab Assetごとに控える。
     std::unordered_map<std::string, bool> oldEffectivePresence;
     for (const auto& [name, asset] : prefabs_) {
         (void)name;
@@ -375,6 +380,7 @@ bool PresetManager::ApplyPrefabComponent(
         }
 
         RemoveComponentPropertyOverrides(assetIt->second, info.sourceObjectId, componentTypeId);
+        // 有無が親と一致すれば構造差分を消し、追加した場合は内部Propertyの差分を残す。
         json& objectComponentOverrides = assetIt->second["componentOverrides"][info.sourceObjectId];
         const bool basePresent = registry->IsComponentPresent(*baseNode, componentTypeId);
         if (basePresent == instancePresent) {
@@ -402,6 +408,7 @@ bool PresetManager::ApplyPrefabComponent(
     }
 
     RefreshPrefabInheritance();
+    // 派生関係を再計算し、明示的に構造を変更していない配置だけ同期する。
     for (Object3d* candidate : sceneObjects) {
         if (!candidate || candidate == object || !candidate->IsPrefabInstance()) {
             continue;
@@ -495,6 +502,7 @@ bool PresetManager::RevertPrefabVariantProperty(
 
     const std::string prefabName = assetIt->first;
     const json beforeAsset = assetIt->second;
+    // Variant上のキーを消して親の有効値へ戻し、配置の手動上書きは保持する。
     allOverrides[info.sourceObjectId].erase(propertyPath);
     if (allOverrides[info.sourceObjectId].empty()) {
         allOverrides.erase(info.sourceObjectId);
@@ -572,6 +580,7 @@ bool PresetManager::RevertPrefabVariantComponent(
         allOverrides.erase(info.sourceObjectId);
     }
     RemoveComponentPropertyOverrides(assetIt->second, info.sourceObjectId, componentTypeId);
+    // 存在差分を消すと内部Propertyも意味を失うため、両方取り除いて継承を再計算する。
     RefreshPrefabInheritance();
 
     for (Object3d* candidate : sceneObjects) {
@@ -622,6 +631,7 @@ bool PresetManager::RevertPrefabProperty(Object3d* object, const std::string& pr
 }
 
 int PresetManager::ApplyAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects) {
+    // 一配置群の構造差分を先に適用し、Component内部のProperty差分を後から処理する。
     if (!object || !object->IsPrefabInstance()) {
         return 0;
     }

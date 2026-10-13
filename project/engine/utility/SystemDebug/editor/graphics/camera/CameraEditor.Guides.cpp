@@ -18,6 +18,7 @@ void CameraEditor::DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vec
     Math math;
     orbitEditGizmoTarget_ = (std::clamp)(orbitEditGizmoTarget_, 0, 1);
     const bool editStartEye = orbitEditGizmoTarget_ == 1;
+    // 同じギズモを中心位置と開始視点で使い回し、編集先だけ切り替える。
     Vector3 gizmoPosition = editStartEye ? GetOrbitStartEye() : GetOrbitCenter();
     Matrix4x4 world = math.MakeTranslateMatrix(gizmoPosition);
     Matrix4x4 view = camera->GetViewMatrix();
@@ -36,6 +37,7 @@ void CameraEditor::DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vec
         (snapEnabled && snapValue > 0.0f) ? snap : nullptr);
 
     if (ImGuizmo::IsUsing()) {
+        // ドラッグ中はカメラへ即時反映し、操作を離した時だけ設定を保存する。
         isDraggingOrbitCenterGizmo_ = true;
         Vector3 editedCenter = { world.m[3][0], world.m[3][1], world.m[3][2] };
         if (editStartEye) {
@@ -73,6 +75,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
     const float markerSize = (std::max)(0.05f, settings_.cameraGuideSize);
     const float frustumLength = (std::max)(0.5f, settings_.cameraFrustumLength);
 
+    // 各描画ヘルパーで共通の上限を確認し、Editorガイドがプリミティブ枠を超えないようにする。
     auto drawSphere = [&](const Vector3& pos, float size, const Vector4& color) {
         if (instanceCount >= maxDrawLimit) return;
         Matrix4x4 world = math.Multiply(math.MakeScaleMatrix({ size, size, size }), math.MakeTranslateMatrix(pos));
@@ -88,6 +91,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         float halfRight, float halfUp, float halfForward, float thickness, const Vector4& color) {
         if (instanceCount >= maxDrawLimit) return;
 
+        // カメラ基底から八隅を求め、12本の辺だけをワイヤーとして描く。
         auto corner = [&](float sx, float sy, float sz) {
             return center + right * (halfRight * sx) + up * (halfUp * sy) + forward * (halfForward * sz);
         };
@@ -188,6 +192,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         const Vector3 target = eye + safeForward * frustumLength;
         const float safeFovY = std::clamp(fovY, DegToRad(1.0f), DegToRad(179.0f));
         const float halfHeight = frustumLength * std::tan(safeFovY * 0.5f);
+        // 縦FOVと固定の16:9比から、視線先のフラスタム四隅を復元する。
         const float halfWidth = halfHeight * (16.0f / 9.0f);
         const float localMarkerSize = markerSize * sizeScale;
         const Vector3 topLeft = target + up * halfHeight - right * halfWidth;
@@ -228,6 +233,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
 
     // Camera Object選択中は、そのObject自身のFOV・位置・注視先でCamera Editorと同じガイドを描きます。
     if (Object3d* cameraObject = GetSelectedCameraObject()) {
+        // Scene内カメラは保存されたFOVと姿勢を使い、ゲームカメラとは色を分ける。
         Vector3 eye{};
         Vector3 target{};
         if (ResolveSceneCameraPose(cameraObject, eye, target)) {
@@ -279,6 +285,7 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
         };
 
     if (radius > 0.01f && instanceCount < maxDrawLimit) {
+        // Orbit中心と半径を水平リングにし、開始位置は別の線と点で示す。
         Matrix4x4 ringWorld = math.Multiply(
             math.MakeScaleMatrix({ radius * 2.0f, 0.04f, radius * 2.0f }),
             math.MakeTranslateMatrix(center));

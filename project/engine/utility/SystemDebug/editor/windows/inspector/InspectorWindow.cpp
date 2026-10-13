@@ -10,6 +10,7 @@ void InspectorWindow::Initialize(DebugEditor* editor) {
 
 void InspectorWindow::Draw() {
 #ifdef USE_IMGUI
+    // Sceneと代表選択Objectを確定し、複数選択時は共通項目だけ対象群へ反映する。
     if (editor_->GetSceneManager() == nullptr) return;
     BaseScene* currentScene = editor_->GetSceneManager()->GetCurrentScene();
     if (currentScene == nullptr) return;
@@ -42,6 +43,7 @@ void InspectorWindow::Draw() {
 
         DrawPrefabInstancePanel(editor_, currentScene, selectedObject);
 
+        // 名前とパス編集は代表Object固有の操作として扱う。
         // --- 名前表示 ---
         char nameBuffer[256];
         std::string currentName = selectedObject->GetName();
@@ -76,6 +78,7 @@ void InspectorWindow::Draw() {
         // 🚨 ここから下は「パス編集中」はロック（操作不能）にするエリア
         // =========================================================================
         ImGui::BeginDisabled(editor_->GetIsPathEditMode());
+        // パス編集中に本体を変形・削除しないため、以降の通常Inspectorを一括で無効化する。
         ImGui::Spacing();
 
         if (ImGui::Button(ICON_FA_COPY " 複製 (Duplicate)")) {
@@ -91,6 +94,7 @@ void InspectorWindow::Draw() {
         ImGui::TextDisabled(ICON_FA_CUBES " クラス: %s", selectedObject->GetClassName().c_str());
 
         if (selectedObject->IsCameraObject()) {
+            // Camera専用UIを描いたら無効化スコープを閉じ、通常の材質・Collider編集へ進まない。
             DrawCameraObjectInspector(editor_, currentScene, selectedObject);
             ImGui::EndDisabled();
             return;
@@ -99,6 +103,7 @@ void InspectorWindow::Draw() {
         const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(selectedObject);
 
         static Object3d* tagLayerBufferOwner = nullptr;
+        // テキスト入力の編集中バッファは選択Objectが変わった時だけ同期し、毎フレーム上書きしない。
         static char tagBuffer[128] = {};
         static char layerBuffer[128] = {};
         if (tagLayerBufferOwner != selectedObject) {
@@ -282,6 +287,7 @@ void InspectorWindow::Draw() {
         ImGui::Separator();
         ImGui::Text(ICON_FA_ARROWS_ALT " トランスフォーム (Transform)");
         Transform transformValue = *selectedObject->GetTransform();
+        // 代表Objectの値を一時編集し、他の選択Objectへは移動・回転・拡縮の差分を適用する。
         Transform* transform = &transformValue;
         bool isTransformChanged = false;
 
@@ -350,6 +356,7 @@ void InspectorWindow::Draw() {
         }
 
         if (isTransformChanged) {
+            // 最後に代表ObjectもSetter経由で確定し、全対象の行列とDirty状態を更新する。
             selectedObject->SetLocalTransform(transformValue);
             RefreshInspectorTargetMatrices(inspectorTargets);
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -359,6 +366,8 @@ void InspectorWindow::Draw() {
         // --- コライダー設定 ---
         ImGui::Separator();
         if (ImGui::CollapsingHeader(ICON_FA_SHIELD_ALT " コリジョン設定 (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // 現状のスコープではMaterial・LOD・Particle等もこのヘッダー内に含まれる。
+            // Collisionを閉じると後続UIも隠れる構造であり、独立化は別の改修として扱う。
             Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
             bool isColChanged = false;
 
@@ -403,6 +412,7 @@ void InspectorWindow::Draw() {
                 }
                 if (colConfig.footprint.size() >= 3 &&
                     ImGui::TreeNode("上面の輪郭 (XZ・ローカル座標)")) {
+                    // 凸輪郭だけを受け付ける。編集中に凹形状になった頂点は直前値へ戻す。
                     ImGui::TextUnformatted("凸形状の輪郭です。移動床の乗車判定にも使います。");
                     for (size_t index = 0; index < colConfig.footprint.size(); ++index) {
                         ImGui::PushID(static_cast<int>(index));
@@ -448,6 +458,7 @@ void InspectorWindow::Draw() {
             }
             ImGui::Separator();
             if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                // 材質種別ごとに同じPBRフィールドを別の意味で使う項目がある。
                 bool isGraphicsChanged = false;
                 DrawMaterialInstancePanel(editor_, selectedObject, inspectorTargets);
                 DrawDecalPanel(editor_, selectedObject, inspectorTargets);
@@ -922,6 +933,7 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             if (HasRegisteredComponent(selectedObject, "LOD") &&
                 ImGui::CollapsingHeader(ICON_FA_COMPRESS_ARROWS_ALT " LOD / 軽量モデル")) {
+                // 現在の描画LODを表示しつつ、モデルに付いた各距離の切替点を編集する。
                 MeshRenderer* renderer = selectedObject->GetMeshRenderer();
                 if (!renderer || selectedObject->GetModelName().empty()) {
                     ImGui::TextDisabled("モデルが設定されていません。");
@@ -991,6 +1003,7 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             if (HasRegisteredComponent(selectedObject, "ParticleEmitter") &&
                 ImGui::CollapsingHeader(ICON_FA_FIRE " パーティクル")) {
+                // 旧CPU名とGPU Preset名は別の選択肢としてObjectへ保持する。
                 // --- CPU Particle (Old) ---
                 const auto& cpuParamsMap = ParticleManager::GetInstance()->GetParamsMap();
                 std::vector<const char*> cpuItemNames;
@@ -1041,6 +1054,7 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             if (HasRegisteredComponent(selectedObject, "MeshEffect") &&
                 ImGui::CollapsingHeader(ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)")) {
+                // effect JSONを列挙し、二つのSlotで別々のパスを選べるようにする。
                 std::vector<std::string> effectPaths;
                 std::vector<std::string> effectDisplayNames;
                 

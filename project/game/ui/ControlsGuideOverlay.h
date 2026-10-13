@@ -114,10 +114,12 @@ class ControlsGuideOverlay : public IEditable {
     Element rightArrow_;
     std::array<Element, kPageCount> pageDots_{};
     std::array<PageVisual, kPageCount> pages_{};
+    std::array<Element, 3> extraMoveGlyphs_{}; // 基本操作の移動キー4方向を同時に示す。
 
     // 開閉とページ遷移の一時状態です。時間値は秒単位です。
     bool isActive_ = false;
     bool inputGlyphGamepadMode_ = false;
+    std::string inputGlyphBindingSignature_;
     bool suppressToggleInput_ = false;
     bool isSliding_ = false;
     int currentPage_ = 1;

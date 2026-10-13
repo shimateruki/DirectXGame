@@ -1,17 +1,24 @@
 // GameRule.h
 #pragma once
 #include <memory>
+#include <array>
 #include <string>
 #include <vector>
 #include "Object3d.h"
 #include "Event.h"
+#include "EventManager.h"
 
 class BaseScene;
 class Player;
+class CheckpointRule;
 
 // 衝突イベントからダメージ、ゴール、クリア演出などのゲームルールを処理するクラス
 class GameRule {
   public:
+    GameRule();
+    ~GameRule();
+    GameRule(const GameRule&) = delete;
+    GameRule& operator=(const GameRule&) = delete;
     // 監視対象のシーンを登録し、接触・ダメージ・死亡イベントを購読する。
     // EventManager が購読を保持する間は、この GameRule と scene を存続させる。
     void Initialize(BaseScene* scene);
@@ -22,13 +29,12 @@ class GameRule {
     void RestoreCheckpointPresentation(const std::string& checkpointObjectName);
 
   private:
+    std::array<EventManager::SubscriptionId, 3> eventSubscriptions_{};
     // DamageEvent から HP 減算や撃破判定を行う
     bool ApplyDamage(Object3d* target, float damage, bool bypassPlayerInvincibility = false);
     void ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale);
     bool IsStatusTargetAlive(Object3d* target) const;
     void EmitStatusVisual(Object3d* target, const std::string& presetName) const;
-    void ActivateCheckpoint(Player* player, Object3d* checkpoint);
-    void UpdateCheckpointPresentation(float deltaTime);
 
     // 状態異常の残り秒と継続ダメージ・演出の独立した時計。target はシーン内 Object の借用参照。
     struct ActiveStatusEffect {
@@ -44,11 +50,5 @@ class GameRule {
 
     BaseScene* scene_ = nullptr;
     std::vector<ActiveStatusEffect> activeStatusEffects_;
-    Object3d* activeCheckpoint_ = nullptr;
-    Object3d* raisingCheckpoint_ = nullptr;
-    float checkpointBaseEmissive_ = 1.0f;
-    float checkpointPresentationTimer_ = 0.0f;
-    float checkpointParticleTimer_ = 0.0f;
-    float checkpointAmbientRingTimer_ = 0.0f;
-    float checkpointRaiseDelay_ = 0.0f;
+    std::unique_ptr<CheckpointRule> checkpointRule_;
 };

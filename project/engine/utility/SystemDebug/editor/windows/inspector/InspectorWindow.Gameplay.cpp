@@ -131,9 +131,12 @@ void InspectorWindow::DrawPathMoverSection(Object3d *selectedObject) {
 }
 
 void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
+  // 選択物のイベント、生成種別、型固有パラメータを同じInspectorへ表示します。
+  // Scene JSONに保存される値を直接編集するため、型変更時だけ必要な初期値もここで補います。
   if (!selectedObject) {
     return;
   }
+  // 偽王の終幕調整は通常の共通パラメータでは表せないため、専用UIへ委譲します。
   if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(selectedObject)) king->DrawFinaleEditor();
 
   // --- Game Data (Stats) ---
@@ -152,6 +155,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
                                 "スターコイン (StarCoin)"};
     if (ImGui::Combo(ICON_FA_FLAG " イベント種類", &currentItemIndex,
                      eventNames, IM_ARRAYSIZE(eventNames))) {
+      // Goalへ切り替えた配置物はPlayerとの接触で発火できるよう、
+      // 既存Colliderがない場合に限って球Triggerを補います。
       const EventType selectedEventType =
           static_cast<EventType>(currentItemIndex);
       selectedObject->SetEventType(selectedEventType);
@@ -183,6 +188,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
       }
     }
 
+    // Class Typeはロード時の生成経路を変えるため、Itemだけは見た目・接触・初期値を同時に設定します。
     if (ImGui::Combo(ICON_FA_CUBES " Class Type", &currentClassIndex,
                      classItems, IM_ARRAYSIZE(classItems))) {
       selectedObject->SetClassName(classItems[currentClassIndex]);
@@ -235,6 +241,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
       ImGui::Unindent();
     }
 
+    // Player/Enemyの共通ステータスは専用管理器が正本です。この表からは変更させず、
+    // 配置ごとの例外設定だけを下で編集します。
     if (selectedObject->GetClassName() == "Enemy" ||
         selectedObject->GetClassName() == "Player") {
       ImGui::SeparatorText("キャラクター・ステータス（表示のみ）");
@@ -276,6 +284,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
       }
       if (selectedObject->param_.has_value() &&
           selectedObject->param_->enemyType == "RingBurner") {
+        // リング攻撃の半径と予告は個体ごとに異なる配置値なので共通ステータスとは分けます。
         auto &p = selectedObject->param_.value();
         ImGui::SeparatorText("リング攻撃（配置ごとに保存）");
         ImGui::DragFloat("最大半径", &p.moveAmount, 0.25f, 6.0f, 48.0f);
@@ -284,6 +293,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         ImGui::TextWrapped("リングは3.6秒で等速に拡大します。頭に乗ると停止し、降りた後も4秒間停止します。感知範囲は上のステータス管理で調整できます。");
       }
     } else if (selectedObject->GetClassName() == "Gimmick") {
+      // 同じEntityParameterのフィールドをギミックごとに別の意味で使うため、
+      // 選択中の種類だけに対応する入力欄を出します。型と値の対応は保存形式にも依存します。
       if (!selectedObject->param_.has_value())
         selectedObject->param_.emplace();
       auto &p = selectedObject->param_.value();
@@ -305,6 +316,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
           ImGui::DragFloat("水没後の待機時間", &p.interval, 0.1f, 0.1f, 10.0f);
         }
       } else if (gType == "MovingFloor") {
+        // 移動方式によりmoveAmountの意味が変わります。噴出口連動では高さを直接編集しません。
         ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度 (Speed)", &p.speed,
                          0.1f, 0.0f, 100.0f);
         const char *moveModes[] = {"従来の上下移動", "浮遊", "X方向に往復",
@@ -322,6 +334,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
                            "%.1f m");
         }
       } else if (gType == "HazardRideFloor") {
+        // 妨害物はTarget IDからの連番で起動するため、数と方向を同じ配置物で管理します。
         ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度", &p.speed, 0.1f,
                          0.1f, 40.0f, "%.1f m/s");
         ImGui::DragFloat(ICON_FA_RULER_HORIZONTAL " 移動距離", &p.moveAmount,
@@ -367,6 +380,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         ImGui::TextDisabled(
             "Target ID と受信側の My Event ID を合わせてください");
       } else if (gType == "EventReceiver") {
+        // 通常の移動と王冠落下演出は同じactionModeから分岐し、入力項目を切り替えます。
         const char *actionModes[] = {
             "出現",   "Y方向に移動", "X方向に移動", "Z方向に移動",
             "有効化", "無効化",      "ボス王冠落下"};
@@ -404,6 +418,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         ImGui::TextDisabled("My Event ID: 中ボス撃破時の Target ID");
         ImGui::TextDisabled("障壁は Target ID + 1 から障壁数ぶんを使用します");
       } else if (gType == "GameplayVolume") {
+        // モードごとにPayloadの用途が異なり、退出で戻せるのは一部のモードだけです。
         const char *volumeModes[] = {
             "イベント連携", "チェックポイント", "落下死",
             "Feedback Cue", "BGM", "Environment Profile"};
@@ -429,6 +444,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         ImGui::Checkbox("開始時に有効", &p.startActive);
 
         const bool supportsReturn = (p.volumeMode == 0 || p.volumeMode == 4 || p.volumeMode == 5) && !p.volumeTriggerOnExit;
+        // 設定値は保持したまま、実行時に意味のない組合せだけUI入力を抑止します。
         ImGui::BeginDisabled(!supportsReturn);
         ImGui::Checkbox("退出時にOFFへ戻す", &p.returnOnOff);
         ImGui::EndDisabled();
@@ -441,6 +457,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
           ImGui::TextDisabled("既存の落下・残機処理へ接続します");
         }
       } else if (gType == "CopyMemoryStation") {
+        // 空欄スロットはコアを表示しません。4台目の有効化では初期能力を入れ、
+        // OFFに戻すと空欄にして3台構成のScene JSONを維持します。
         const char* copyTypeIds[] = {
             "", "Slime", "FireSlime", "ThunderSlime", "WindSlime", "Bomber"};
         const char* copyTypeLabels[] = {
@@ -490,6 +508,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
                          200.0f);
         ImGui::TextDisabled("フックを当てるとプレイヤー側へ引き寄せます");
       } else if (gType == "LiquidLevel") {
+        // マグマ脱出モードは複数の配置物を連番IDで関連付けます。
+        // ここでは入力値だけを編集し、実際の参照解決は実行時へ委ねます。
         const char* modes[] = {"従来のスイッチ上下", "マグマ脱出：一定速度で上昇"};
         ImGui::Combo("液面の動作", &p.actionMode, modes, IM_ARRAYSIZE(modes));
         if (p.actionMode == 1) {
@@ -514,6 +534,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
                          0.1f, 10.0f, "%.2f s");
         ImGui::TextDisabled("触れたプレイヤーを炎上させ、上方向へ弾き返します");
       } else if (gType == "MagmaGeyser") {
+        // 同じ噴出口でも噴射・火山弾・岩盤で使うパラメータが異なります。
+        // 泡の予兆はObjectのparamではなくRendererの材質値として保存されます。
         const char* modes[] = {"噴射ダメージ", "火山弾", "岩盤を持ち上げる"};
         p.actionMode = (std::clamp)(p.actionMode, 0, 2);
         ImGui::Combo("噴出口の動作", &p.actionMode, modes, IM_ARRAYSIZE(modes));
@@ -577,6 +599,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         ImGui::Checkbox("OFFで停止", &p.returnOnOff);
         ImGui::TextDisabled("スイッチ連動で回転の開始/停止ができます");
       } else if (gType == "PhaseFlipFloor") {
+        // UIは1始まり、保存値は0始まりです。床数を減らした場合にも範囲へ収めます。
         int floorNumber = p.colorType + 1;
         int phaseCount = (std::max)(1, p.maxCount);
         ImGui::DragInt("床番号", &floorNumber, 1, 1, phaseCount);
@@ -618,6 +641,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
             ImGui::TextDisabled("前方固定はローカルZ+方向に火球を撃ちます");
         }
       } else if (gType == "StageGate") {
+        // セレクト用のTarget IDとシーン遷移先は別用途です。
+        // モードを切り替えても別モードの保存値は残し、選択中の項目だけ編集します。
         const char *gateModes[] = {"ステージセレクト用ノード",
                                    "シーン転移ゲート", "ステージ開始ゲート"};
         p.actionMode = (std::clamp)(p.actionMode, 0, 2);
@@ -668,6 +693,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
       }
       ImGui::Unindent();
     } else if (selectedObject->GetClassName() == "Item") {
+      // アイテム種別ごとの配置値はここへ集め、共通Objectの描画設定とは分けます。
       if (!selectedObject->param_.has_value())
         selectedObject->param_.emplace();
       auto &p = selectedObject->param_.value();

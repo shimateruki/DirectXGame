@@ -160,8 +160,9 @@ void GimmickArenaEncounter::BeginEncounter() {
 }
 
 void GimmickArenaEncounter::CompleteEncounter() {
-    // マグマ脱出の再挑戦でのみ、中ボス戦をやり直さずに再開します。
-    if (IsMagmaMode())
+    // 通常ボスも同じステージのチェックポイント復帰では撃破状態を引き継ぐ。
+    // 最終ボスの報酬演出は別経路で管理するため、この一時記録には含めない。
+    if (!IsHighCrownMode())
         GameDataManager::GetInstance()->RememberCheckpointEncounter(StageManager::GetInstance()->GetCurrentStageIndex(),
                                                                     GetEventID());
     state_ = State::Cleared;

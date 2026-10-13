@@ -92,6 +92,7 @@ void EnemyBomb::ApplyManagedScale(const Vector3& scale) {
 void EnemyBomb::Update(float deltaTime) {
     if (state_ == State::Exploded) {
         // 爆発判定を出した次の更新で、再接触と再描画を止めます。
+        HideAttackTelegraph();
         SetCollisionAttribute(0);
         SetCollisionMask(0);
         SetIsVisible(false);
@@ -102,11 +103,7 @@ void EnemyBomb::Update(float deltaTime) {
 
     // 運搬が始まった瞬間だけ点火し、毎フレーム導火線を戻さないようにします。
     if (isCarried_ && state_ != State::Ignited) {
-        state_ = State::Ignited;
-        fuseTimer_ = 3.0f; // 運搬開始時に導火線を3秒へ戻します。
-        pulseTimer_ = 0.0f;
-        flashTimer_ = 0.0f;
-        flashState_ = false;
+        Ignite(3.0f);
     }
 
     if (isCarried_) {
@@ -184,6 +181,24 @@ void EnemyBomb::Update(float deltaTime) {
         // 共通の敵更新で移動を確定してから、掃引で床や壁との衝突を補正します。
         BaseEnemy::Update(deltaTime);
         ResolveSweptCollision(previousPosition);
+    }
+
+    // 実際の爆発位置は接地後の移動で決まる。現在の爆弾を中心に判定半径を示す。
+    if (state_ == State::Ignited && !isCarried_ && !playerOwned_ && isGrounded_) {
+        const float progress = std::clamp(1.0f - fuseTimer_ / 2.8f, 0.0f, 1.0f);
+        // 爆弾の中心は床より高い。予告円だけ足元の接地面へ投影する。
+        const Vector3 bombPosition = GetTranslate();
+        const RaycastHit ground = CollisionManager::GetInstance()->Raycast(
+            bombPosition + Vector3{0.0f, 1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, 4.0f,
+            CollisionCategories::Get("ground"));
+        if (ground.isHit) {
+            ShowAttackTelegraphCircle({bombPosition.x, ground.hitPoint.y + 0.02f, bombPosition.z},
+                                      explosionRadius_, progress, {1.0f, 0.30f, 0.08f, 0.72f});
+        } else {
+            HideAttackTelegraph();
+        }
+    } else {
+        HideAttackTelegraph();
     }
 }
 
@@ -294,11 +309,7 @@ void EnemyBomb::UpdateChase(float deltaTime) {
 
     // プレイヤーが点火距離に入った時だけ追跡から導火線へ移ります。
     if (distance <= 4.0f) {
-        state_ = State::Ignited;
-        fuseTimer_ = 3.0f; // 近接点火時の導火線を3秒に設定します。
-        pulseTimer_ = 0.0f;
-        flashTimer_ = 0.0f;
-        flashState_ = false;
+        Ignite(3.0f); // 近接点火時も予告と爆発で同じ半径を使います。
         velocity_.x = 0.0f;
         velocity_.z = 0.0f;
         return;
@@ -385,7 +396,7 @@ void EnemyBomb::Explode() {
     // 爆発判定の半径はエフェクト設定から読み、見た目と攻撃範囲をそろえます。
     // 判定はこのフレームにだけ出し、次のUpdateで無効化します。
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(LoadExplosionRadiusFromEffectJson());
+    SetCollisionRadius(explosionRadius_);
 
     // 所有者によって攻撃属性と対象マスクを切り替えます。
     // 投げ返した爆弾がプレイヤーへ即座に当たるのを防ぎます。
@@ -451,6 +462,7 @@ void EnemyBomb::Ignite(float fuseTime) {
     // 再点火時に光の周期も戻し、導火線の開始と警告表示を同期する。
     state_ = State::Ignited;
     fuseTimer_ = fuseTime;
+    explosionRadius_ = LoadExplosionRadiusFromEffectJson();
     pulseTimer_ = 0.0f;
     flashTimer_ = 0.0f;
     flashState_ = false;

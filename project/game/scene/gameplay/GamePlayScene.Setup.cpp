@@ -41,6 +41,8 @@
 
 namespace {
 
+// 操作ガイドは起動直後の初回表示でも画像のデコード待ちを出さないよう、
+// 再生可能なコピー能力の肖像と操作ラベルをロード画面の対象に含めます。
 constexpr const char* kControlsGuidePortraitsToPreload[] = {
     "Resources/sprite/ui/control_guide/portraits/pink_slime.png",
     "Resources/sprite/ui/control_guide/portraits/bomb_slime.png",
@@ -49,27 +51,37 @@ constexpr const char* kControlsGuidePortraitsToPreload[] = {
     "Resources/sprite/ui/control_guide/portraits/thunder_slime.png"};
 
 constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
+    // 共通操作と通常形態。
     "Resources/sprite/ui/control_guide/labels/absorb.png",
     "Resources/sprite/ui/control_guide/labels/throw.png",
     "Resources/sprite/ui/control_guide/labels/slime_attack.png",
     "Resources/sprite/ui/control_guide/labels/hook_aim.png",
     "Resources/sprite/ui/control_guide/labels/slime_dive.png",
+
+    // 変身後の技は能力ごとに表示されるため、現在の能力だけに絞らず先読みします。
     "Resources/sprite/ui/control_guide/labels/puni_straight.png",
     "Resources/sprite/ui/control_guide/labels/puni_guard.png",
+
     "Resources/sprite/ui/control_guide/labels/bomb_throw.png",
     "Resources/sprite/ui/control_guide/labels/bomb_place.png",
     "Resources/sprite/ui/control_guide/labels/blast_jump.png",
+
     "Resources/sprite/ui/control_guide/labels/fireball.png",
     "Resources/sprite/ui/control_guide/labels/flame_breath.png",
     "Resources/sprite/ui/control_guide/labels/blaze_step.png",
+
     "Resources/sprite/ui/control_guide/labels/thunder_chain.png",
     "Resources/sprite/ui/control_guide/labels/charged_discharge.png",
     "Resources/sprite/ui/control_guide/labels/thunder_step.png",
+
     "Resources/sprite/ui/control_guide/labels/updraft.png",
     "Resources/sprite/ui/control_guide/labels/wind_breath.png",
     "Resources/sprite/ui/control_guide/labels/wind_dash.png"};
 
+// ここはエフェクト定義の所有リストです。Stage JSONに現れない攻撃演出も、
+// 初回発動時のファイル読込を避けるためGameplay開始前に登録します。
 constexpr const char* kGameplayMeshEffectsToPreload[] = {
+    // 爆発と通常／属性ダメージ。
     "Resources/json/effect/effect_bakuhatu.json",
     "Resources/json/effect/effect_bomb_core_flash.json",
     "Resources/json/effect/effect_bomb_shockwave_ring.json",
@@ -83,6 +95,8 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_hitfx_kickpunch_ground_glow.json",
     "Resources/json/effect/effect_hitfx_kickpunch_shock_arc.json",
     "Resources/json/effect/effect_hitfx_kickpunch_thin_streak.json",
+
+    // 雷の常時表現、予兆、回避、着弾。
     "Resources/json/effect/effect_thunder_slime_constant_aura.json",
     "Resources/json/effect/effect_player_thunder_warning.json",
     "Resources/json/effect/effect_player_thunder_bolt.json",
@@ -94,12 +108,16 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_player_thunder_evade_burst.json",
     "Resources/json/effect/effect_thunder_charge_ground.json",
     "Resources/json/effect/effect_thunder_scorch_mark.json",
+
+    // 中ボスの召喚・結界と撃破時の共通演出。
     "Resources/json/effect/effect_prism_spike_ground_flash.json",
     "Resources/json/effect/effect_prism_arena_seal_ring.json",
     "Resources/json/effect/effect_prism_midboss_summon_pillar.json",
     "Resources/json/effect/effect_prism_arena_release_wave.json",
     "Resources/json/effect/effect_enemy_defeat_core_flash.json",
     "Resources/json/effect/effect_enemy_defeat_pop_ring.json",
+
+    // 運搬した敵とピンク形態の攻撃。
     "Resources/json/effect/effect_carry_bomber_throw_burst.json",
     "Resources/json/effect/effect_carry_eye_charge_ring.json",
     "Resources/json/effect/effect_carry_eye_beam_muzzle.json",
@@ -113,6 +131,8 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_pink_slime_landing_burst_ring.json",
     "Resources/json/effect/effect_pink_slime_landing_core_flash.json",
     "Resources/json/effect/effect_pink_slime_landing_shock_arc.json",
+
+    // ステージ進行で使用するゲート、王冠、ゴール、チェックポイント。
     "Resources/json/effect/effect_warp_gate_floor.json",
     "Resources/json/effect/effect_warp_gate_pillar.json",
     "Resources/json/effect/effect_crown_idle_shell.json",
@@ -140,6 +160,8 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_checkpoint_activate_pillar.json",
     "Resources/json/effect/effect_copy_memory_transfer_ring.json",
     "Resources/json/effect/effect_copy_memory_transfer_pillar.json",
+
+    // プレイヤーの防御・設置・変身・風移動。
     "Resources/json/effect/effect_player_pink_guard_start.json",
     "Resources/json/effect/effect_player_pink_guard_shell.json",
     "Resources/json/effect/effect_player_pink_guard_release.json",
@@ -156,10 +178,13 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_player_wind_soar_launch.json",
     "Resources/json/effect/effect_player_wind_slow_fall.json",
     "Resources/json/effect/effect_player_wind_soar_land.json",
+
+    // リングバーナーは波本体と熱の余韻を別定義で描きます。
     "Resources/json/effect/effect_ring_burner_charge.json",
     "Resources/json/effect/effect_ring_burner_wave.json",
     "Resources/json/effect/effect_ring_burner_wave_heat.json"};
 
+// GPU粒子はMeshEffectと読込経路が異なるため、同名の攻撃に属しても別一覧で管理します。
 constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_core",
                                                                 "hit_bomb_flash_core",
                                                                 "hit_bomb_fire_mushroom",
@@ -168,6 +193,8 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_c
                                                                 "hit_bomb_black_smoke",
                                                                 "hit_bomb_orange_smoke",
                                                                 "hit_bomb_gray_smoke",
+
+                                                                // 命中、撃破、運搬時の粒子。
                                                                 "hit_damage_puni_mist",
                                                                 "hit_damage_puni_splash",
                                                                 "hit_damage_pop_stars",
@@ -191,6 +218,8 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_c
                                                                 "carry_eye_charge_sparks",
                                                                 "carry_eye_beam_sparks",
                                                                 "carry_bat_glide_wisp",
+
+                                                                // 雷・プリズム・火の敵攻撃と状態異常。
                                                                 "thunder_slime_aura",
                                                                 "thunder_slime_radial_charge",
                                                                 "thunder_slime_charge",
@@ -221,6 +250,8 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_c
                                                                 "hit_player_explosion_core",
                                                                 "hit_player_explosion_sparks",
                                                                 "hit_player_explosion_smoke",
+
+                                                                // プレイヤーの移動、王冠、ゴール、各コピー能力。
                                                                 "player_jump_dust",
                                                                 "player_land_dust",
                                                                 "crown_get_burst",
@@ -249,11 +280,15 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_c
                                                                 "player_wind_updraft",
                                                                 "player_wind_dash",
                                                                 "wind_slime_gust_impact",
+
+                                                                // チェックポイント、記憶台、リングバーナー。
                                                                 "checkpoint_active_motes",
                                                                 "copy_memory_transfer_sparks",
                                                                 "checkpoint_flag_capture_stars",
                                                                 "ring_burner_charge_sparks",
                                                                 "ring_burner_discharge_embers",
+
+                                                                // マグマと偽王の多段攻撃。途中の演出段階も先読みします。
                                                                 "magma_slime_core_embers",
                                                                 "magma_slime_charge",
                                                                 "magma_slime_mortar_trail",
@@ -281,6 +316,7 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_c
                                                                 "false_king_shockwave_charge_ring",
                                                                 "false_king_dominion"};
 
+// VFX Sequenceは個々の粒子・メッシュを束ねる発火順を持つため、素材とは別にロードします。
 constexpr const char* kGameplayVfxSequencesToPreload[] = {"bomb_explosion_cue",
                                                           "player_base_bash_hit_cue",
                                                           "player_base_press_enemy_hit_cue",
@@ -295,6 +331,8 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {"bomb_explosion_cue",
                                                           "pull_catch_cue",
                                                           "throw_slam_cue",
                                                           "enemy_ability_hit_cue",
+
+                                                          // 王冠取得とゴールの色違いは個別シーケンスです。
                                                           "crown_get_cue",
                                                           "crown_focus_cue",
                                                           "crown_result_cue",
@@ -303,6 +341,8 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {"bomb_explosion_cue",
                                                           "crown_get_silver_cue",
                                                           "crown_result_silver_cue",
                                                           "crown_victory_land_silver_cue",
+
+                                                          // ボス部屋の封鎖から解放、チェックポイントまで。
                                                           "prism_arena_seal_cue",
                                                           "prism_midboss_appear_cue",
                                                           "prism_arena_release_cue",
@@ -316,6 +356,7 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {"bomb_explosion_cue",
                                                           "checkpoint_idle_cue",
                                                           "copy_memory_station_activate_cue"};
 
+// 破片はGPU粒子とは別のランタイムで生成され、最初の衝突で待たないよう予熱します。
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {"bomb_hit_fragment_burst",
                                                            "prism_crystal_shatter",
                                                            "throw_slam_pebble_burst",
@@ -329,7 +370,8 @@ constexpr const char* kGameplayDebrisPresetsToPreload[] = {"bomb_hit_fragment_bu
 // 非同期ロードは段階ごとに依存を満たしてから進めます。再入場時の状態復元はロード完了後に行います。
 
 SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
-    // Scene Asset 指定を優先し、未指定時だけ現在ステージの配置と演出素材を先読みする。
+    // Scene Asset指定を優先し、通常のステージ入場だけStageManagerの配置へフォールバックします。
+    // ここで列挙するのは「ロード画面中に読ませる」対象で、ゲーム中の使用可否ではありません。
     SceneLoadManifest manifest;
 
     std::string objectLayoutPath = "Resources/json/3Dobject/stage1.json";
@@ -354,12 +396,14 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
         }
     }
 
+    // 配置JSONと常設HUDは生成の前提です。ステージごとのSpriteは上で解決したパスを使います。
     manifest.AddObjectLayout(objectLayoutPath);
     manifest.AddSpriteLayout(spriteLayoutPath);
     manifest.AddSpriteLayout("Resources/json/sprite/gameplayHUD.json");
     manifest.AddSpriteLayout("Resources/json/sprite/controlsGuide.json");
     manifest.AddJson("Resources/json/animator/player_slime.json");
     manifest.AddJson("Resources/json/cinematic/goal_clear.json");
+    // 実行時の管理器ごとに読込APIが違うため、同じ演出でも種類別にManifestへ登録します。
     for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
         manifest.AddJson("Resources/json/gpu_particles/" + std::string(presetName) + ".json");
     }
@@ -372,6 +416,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
         manifest.AddJson("Resources/json/vfx_sequence/" + std::string(sequenceName) + ".json");
     }
+    // 操作ガイドとコピー能力HUDは開始直後に開けるため、現在形態以外も先読みします。
     for (const char* path : kControlsGuidePortraitsToPreload) {
         manifest.AddTexture(path);
     }
@@ -381,6 +426,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     for (const char* path : CopyStyleHud::kTexturePaths) {
         manifest.AddTexture("Resources/sprite/" + std::string(path));
     }
+    // 演出カメラやゴール画面で使う固定素材は、Scene JSONに参照がなくても必要です。
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
@@ -404,6 +450,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_l.png");
     manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_r.png");
     manifest.AddTexture("Resources/sprite/ui/result/clear/returning_select_text.png");
+    // BGMはScene Assetの明示指定が最優先。空欄の通常ステージだけStageManagerへ問い合わせます。
     std::string preloadBgmPath = GetSceneLoadContext().bgmPath;
     if (preloadBgmPath.empty()) {
         const auto& preloadStages = StageManager::GetInstance()->GetStages();
@@ -426,10 +473,13 @@ void GamePlayScene::Initialize() {
 }
 
 void GamePlayScene::BeginLoadingInitialize() {
-    // 再入場時に演出とロードの進捗を初期化し、前回のステージ状態を残さない。
+    // 再入場時にロード進捗と開始演出を両方戻します。演出側を残すと、
+    // 新しい配置ができる前に前ステージの門・カメラを参照してしまいます。
     loadingInitializePhase_ = 0;
     loadingInitializeItemIndex_ = 0;
     loadingInitializeCompletedUnits_ = 0;
+    loadingStageObjectsStarted_ = false;
+    loadingRenderCommonPhase_ = 0;
 #ifdef USE_IMGUI
     pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
 #endif
@@ -441,19 +491,22 @@ void GamePlayScene::BeginLoadingInitialize() {
     stageEntryPresentationTimer_ = 0.0f;
     stageEntryPresentationRetryTimer_ = 0.0f;
     stageEntryGate_ = nullptr;
+    // 固定フェーズの完了通知13件と、実際に1件ずつ処理する素材数を足します。
+    // フェーズ追加時はInitializeLoadingStepのcompleteUnitとの対応も更新が必要です。
     loadingInitializeTotalUnits_ =
         13 + std::size(kGameplayGpuParticlePresetsToPreload) + std::size(kGameplayMeshEffectsToPreload) +
         std::size(kGameplayDebrisPresetsToPreload) + std::size(kGameplayVfxSequencesToPreload);
 }
 
 bool GamePlayScene::InitializeLoadingStep() {
-    // GPU・メッシュ・破片・VFX を小分けに読み込み、ロード画面へ進捗を返す。
-    // 一回の呼び出しで原則一単位だけ処理し、ロード画面へ進捗を返します。
-    // リストを使い切った段階だけ次のフェーズへ進み、依存順は崩しません。
+    // 1回の呼び出しで原則1単位だけ進め、ロード画面の描画機会を残します。
+    // 配列を使い切った境界だけ同じ呼び出しで次のフェーズへ進むため、
+    // 各caseのreturn/continueは進捗表示と依存順の両方に関わります。
     auto completeUnit = [this]() { ++loadingInitializeCompletedUnits_; };
 
     for (;;) {
         switch (loadingInitializePhase_) {
+        // ステージの選択と描画基盤を先に確定します。後続のObject生成はこれらを借用します。
         case 0:
             if (HasSceneAssetContext()) {
                 StageManager::GetInstance()->SetCurrentStageById(GetSceneLoadContext().sceneAssetId);
@@ -468,7 +521,9 @@ bool GamePlayScene::InitializeLoadingStep() {
             completeUnit();
             return false;
         case 2:
-            InitializeRenderCommons();
+            if (!InitializeRenderCommons()) {
+                return false;
+            }
             ++loadingInitializePhase_;
             completeUnit();
             return false;
@@ -478,6 +533,7 @@ bool GamePlayScene::InitializeLoadingStep() {
             completeUnit();
             return false;
         case 4:
+            // 管理器本体を初期化してから、各素材を1件ずつ登録します。
             InitializeGameplayParticleRuntime();
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
@@ -530,17 +586,30 @@ bool GamePlayScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             continue;
         case 10:
+            // Skyboxと実配置は先読みが済んでから作ります。
             InitializeGameplaySkybox();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
         case 11:
             // 参照元となるランタイムと演出を準備してから、ステージの実オブジェクトを生成します。
-            LoadCurrentStageObjects(StageManager::GetInstance()->GetCurrentStage());
+            if (!loadingStageObjectsStarted_) {
+                levelLoader_ = std::make_unique<LevelLoader>();
+                levelLoader_->BeginObjectLayoutLoad(
+                    this, StageManager::GetInstance()->GetCurrentStage().levelPath);
+                loadingStageObjectsStarted_ = true;
+            }
+            // 配置 JSON 全件を一度に生成するとロード画面の描画が止まるため、毎フレーム数件ずつ復元する。
+            if (!levelLoader_->ContinueObjectLayoutLoad(this, 4)) {
+                return false;
+            }
+            ApplyGoalCrownState();
+            ApplyStageStarCoinState();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
         case 12:
+            // Objectの生成完了後にSpriteとHUDを作ることで、Player参照とSceneの表示値を使えます。
             LoadCurrentStageSpritesAndView(StageManager::GetInstance()->GetCurrentStage());
             ++loadingInitializePhase_;
             completeUnit();
@@ -556,6 +625,7 @@ bool GamePlayScene::InitializeLoadingStep() {
             completeUnit();
             return false;
         case 15: {
+            // Scene Asset側の任意Controllerが未登録なら、操作不能を避けるためDEFAULTへ戻します。
             const std::string controllerName =
                 GetSceneLoadContext().controllerName.empty() ? "DEFAULT" : GetSceneLoadContext().controllerName;
             sceneController_ = SceneControllerFactory::GetInstance()->Create(controllerName);
@@ -571,6 +641,7 @@ bool GamePlayScene::InitializeLoadingStep() {
             return false;
         }
         case 16:
+            // 最後に演出タイムラインを接続し、完了をLoadingSceneへ返します。
             InitializeGoalCinematicTimeline();
             InitializeDebugAnimationPreview();
             ++loadingInitializePhase_;
@@ -584,10 +655,21 @@ bool GamePlayScene::InitializeLoadingStep() {
 
 float GamePlayScene::GetLoadingInitializeProgress() const {
     // まだ総作業数が設定されていない場合も 0 除算を避ける。
-    return loadingInitializeTotalUnits_ == 0 ? 1.0f
-                                             : std::clamp(static_cast<float>(loadingInitializeCompletedUnits_) /
-                                                              static_cast<float>(loadingInitializeTotalUnits_),
-                                                          0.0f, 1.0f);
+    if (loadingInitializeTotalUnits_ == 0) {
+        return 1.0f;
+    }
+    const float renderProgress = loadingInitializePhase_ == 2
+        ? (loadingRenderCommonPhase_ == 2 && object3dCommon_
+            ? (1.0f + object3dCommon_->GetInitializationProgress()) / 3.0f
+            : static_cast<float>(loadingRenderCommonPhase_) / 3.0f)
+        : 0.0f;
+    const float stageProgress = loadingInitializePhase_ == 11 && loadingStageObjectsStarted_ && levelLoader_
+        ? levelLoader_->GetObjectLayoutLoadProgress()
+        : 0.0f;
+    return std::clamp((static_cast<float>(loadingInitializeCompletedUnits_) +
+                           renderProgress + stageProgress) /
+                          static_cast<float>(loadingInitializeTotalUnits_),
+                      0.0f, 1.0f);
 }
 
 void GamePlayScene::OnActivated() {
@@ -644,25 +726,38 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
-    // シーン切替前のイベント購読とカメラ設定を消し、このステージ用に準備する。
+    // シーン用のカメラ設定を初期化する。イベント購読は各所有者の破棄時に解除する。
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
 
     LOG("Game Initialized!");
 
-    EventManager::GetInstance()->ClearAllListeners();
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 }
 
-void GamePlayScene::InitializeRenderCommons() {
+bool GamePlayScene::InitializeRenderCommons() {
     // 2D・3D・通常粒子の共通描画器を先に用意して各マネージャーへ渡す。
-    spriteCommon_ = std::make_unique<SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_);
-
-    object3dCommon_ = std::make_unique<Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_);
-    MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+    if (loadingRenderCommonPhase_ == 0) {
+        spriteCommon_ = std::make_unique<SpriteCommon>();
+        spriteCommon_->Initialize(dxCommon_);
+        ++loadingRenderCommonPhase_;
+        return false;
+    }
+    if (loadingRenderCommonPhase_ == 1) {
+        object3dCommon_ = std::make_unique<Object3dCommon>();
+        object3dCommon_->BeginInitialize(dxCommon_);
+        ++loadingRenderCommonPhase_;
+        return false;
+    }
+    if (loadingRenderCommonPhase_ == 2) {
+        if (!object3dCommon_->InitializeStep()) {
+            return false;
+        }
+        MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+        ++loadingRenderCommonPhase_;
+        return false;
+    }
 
     particleCommon_ = std::make_unique<ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
@@ -676,6 +771,8 @@ void GamePlayScene::InitializeRenderCommons() {
     gameRule_->Initialize(this);
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+    ++loadingRenderCommonPhase_;
+    return true;
 }
 
 void GamePlayScene::InitializeGameplaySystems() {

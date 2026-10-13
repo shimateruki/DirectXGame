@@ -256,6 +256,7 @@ float ReadArrayFloat(const nlohmann::json& json, const char* name, size_t index,
 }
 
 RenderConfig LoadConfig(const fs::path& configPath) {
+    // JSONを編集用の設定へ変換し、寸法などは描画APIへ渡せる範囲へ制限する。
     std::ifstream file(configPath, std::ios::binary);
     if (!file) {
         throw std::runtime_error("config open failed");
@@ -277,6 +278,7 @@ RenderConfig LoadConfig(const fs::path& configPath) {
     cfg.bold = ReadBool(json, "bold", true);
     cfg.textColor = ReadColor(json, "textColor", cfg.textColor);
 
+    // グラデーション、縁取り、影は任意項目。省略時はRenderConfigの既定値を使う。
     if (json.contains("textGradient") && json["textGradient"].is_object()) {
         const nlohmann::json& gradient = json["textGradient"];
         cfg.textGradientEnabled = ReadBool(gradient, "enabled", false);
@@ -362,6 +364,7 @@ ComPtr<IDWriteTextFormat> CreateTextFormatForConfig(
         return format;
     };
 
+    // 指定された外部フォントの名前を優先し、見つからなければその集合の先頭へ戻す。
     if (customCollection) {
         if (!cfg.fontFamilyName.empty() && CollectionHasFamily(customCollection, cfg.fontFamilyName)) {
             ComPtr<IDWriteTextFormat> format = create(cfg.fontFamilyName, customCollection);
@@ -376,6 +379,7 @@ ComPtr<IDWriteTextFormat> CreateTextFormatForConfig(
         }
     }
 
+    // 外部フォントが使えない環境でも、日本語を描ける候補から順に試す。
     const std::wstring systemCandidates[] = {
         cfg.fontFamilyName,
         L"Meiryo UI",
@@ -413,6 +417,7 @@ void DrawTextLayoutWithOffset(
 }
 
 void SaveBitmapAsPng(IWICImagingFactory* wicFactory, IWICBitmap* bitmap, const fs::path& outputPath) {
+    // Direct2Dで描いたWIC Bitmapを、Premultiplied BGRAのPNGへ書き出す。
     fs::create_directories(outputPath.parent_path());
 
     ComPtr<IWICStream> stream;
@@ -452,6 +457,7 @@ void SaveBitmapAsPng(IWICImagingFactory* wicFactory, IWICBitmap* bitmap, const f
 }
 
 RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
+    // WIC/D2D/DirectWriteを同じCOMスレッドで生成し、透過キャンバスへ描画する。
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     const bool ownsCom = (hr == S_OK || hr == S_FALSE);
     if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
@@ -476,6 +482,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     loader.Attach(new ResourceFontCollectionLoader());
     dwriteFactory->RegisterFontCollectionLoader(loader.Get());
 
+    // 独自フォントを一時コレクションとして登録し、使用したファミリー名を結果に残す。
     std::wstring collectionKey;
     ComPtr<IDWriteFontCollection> customCollection = CreateResourceFontCollection(dwriteFactory.Get(), loader.Get(), cfg.fontPath, collectionKey);
     ComPtr<IDWriteTextFormat> textFormat = CreateTextFormatForConfig(dwriteFactory.Get(), customCollection.Get(), cfg, result);
@@ -483,6 +490,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
     textFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
 
+    // 文字の実寸に余白・縁取り・影の張り出しを加え、自動キャンバスの寸法を決める。
     const float outlinePad = (cfg.outlineEnabled && cfg.outlineWidth > 0.0f) ? cfg.outlineWidth : 0.0f;
     const float edgePadding = std::ceil(cfg.padding + outlinePad + 2.0f);
     const float shadowPadX = cfg.shadowEnabled ? std::abs(cfg.shadowOffsetX) : 0.0f;
@@ -519,6 +527,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     result.width = width;
     result.height = height;
 
+    // 透明度を持つWIC Bitmapへ直接描けるRenderTargetを作る。
     ComPtr<IWICBitmap> bitmap;
     hr = wicFactory->CreateBitmap(
         static_cast<UINT>(width),
@@ -542,6 +551,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     ComPtr<ID2D1SolidColorBrush> outlineBrush = CreateBrush(renderTarget.Get(), cfg.outlineColor);
     ComPtr<ID2D1SolidColorBrush> shadowBrush = CreateBrush(renderTarget.Get(), cfg.shadowColor);
 
+    // 文字メトリクスの左上と負方向の影を補正し、余白内へ文字を置く。
     const D2D1_POINT_2F origin = D2D1::Point2F(
         edgePadding - metrics.left + negativeShadowX,
         edgePadding - metrics.top + negativeShadowY);
@@ -549,6 +559,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     ComPtr<ID2D1GradientStopCollection> textGradientStops;
     ComPtr<ID2D1LinearGradientBrush> textGradientBrush;
     ID2D1Brush* textFillBrush = textBrush.Get();
+    // グラデーション使用時だけ塗りブラシを差し替え、縁と影は単色ブラシのまま使う。
     if (cfg.textGradientEnabled) {
         const float ridge = cfg.textGradientRidgePosition;
         const D2D1_GRADIENT_STOP stops[] = {
@@ -579,11 +590,13 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     renderTarget->BeginDraw();
     renderTarget->Clear(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.0f));
 
+    // 影、縁、本文の順で描き、最終画像は透明背景を保つ。
     if (cfg.shadowEnabled && cfg.shadowColor.a > 0.0f) {
         DrawTextLayoutWithOffset(renderTarget.Get(), textLayout.Get(), shadowBrush.Get(), origin, cfg.shadowOffsetX, cfg.shadowOffsetY);
     }
 
     if (cfg.outlineEnabled && cfg.outlineWidth > 0.0f && cfg.outlineColor.a > 0.0f) {
+        // 指定半径の円内へ文字をずらして重ね、画像としての太い縁を作る。
         const int radius = std::clamp(static_cast<int>(std::ceil(cfg.outlineWidth)), 1, 64);
         for (int y = -radius; y <= radius; ++y) {
             for (int x = -radius; x <= radius; ++x) {

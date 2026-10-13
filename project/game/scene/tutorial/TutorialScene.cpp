@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/tutorial/TutorialScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -161,6 +162,8 @@ void TutorialScene::SetIsGoal(bool isGoal) {
     isGoal_ = isGoal;
     if (!isGoal_) {
         goalSavePerformed_ = false;
+        goalSaveErrorShown_ = false;
+        goalSaveRetryTimer_ = 0.0f;
     }
 }
 
@@ -315,7 +318,6 @@ bool TutorialScene::InitializeLoadingStep() {
             inputManager_ = InputManager::GetInstance();
             LOG("Tutorial Scene Initialized!");
             const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
-            EventManager::GetInstance()->ClearAllListeners();
             CameraManager::GetInstance()->Initialize();
             CameraManager::GetInstance()->SetInputManager(inputManager_);
             ++loadingInitializePhase_;
@@ -495,16 +497,26 @@ void TutorialScene::Finalize() {
 }
 
 void TutorialScene::Update(float deltaTime) {
+    // 手順完了後に保存できなければ出口を閉じたまま、一定間隔で再試行する。
+    if (!isGoal_ && tutorialDirector_ && tutorialDirector_->IsCompleted() && !goalSavePerformed_) {
+        goalSaveRetryTimer_ = (std::max)(0.0f, goalSaveRetryTimer_ - deltaTime);
+        if (goalSaveRetryTimer_ <= 0.0f) HandleTutorialFlowCompleted();
+    }
     // ゴール後はクリアを一度だけ保存し、保存演出が終わるまで選択画面へ進めない。
     if (isGoal_) {
-        if (!goalSavePerformed_) {
-            // チュートリアルクリア状況を保存
-            GameDataManager::GetInstance()->MarkStageCleared(-1);
-            if (saveIndicatorOverlay_) {
-                saveIndicatorOverlay_->Play(1.35f);
+        goalSaveRetryTimer_ = (std::max)(0.0f, goalSaveRetryTimer_ - deltaTime);
+        if (!goalSavePerformed_ && goalSaveRetryTimer_ <= 0.0f) {
+            if (GameDataManager::GetInstance()->CommitStageClear(-1, {})) {
+                if (saveIndicatorOverlay_) saveIndicatorOverlay_->Play(1.35f);
+                goalSavePerformed_ = true;
+            } else {
+                goalSaveRetryTimer_ = 5.0f;
+                if (!goalSaveErrorShown_) {
+                    ::MessageBoxW(nullptr, L"セーブに失敗しました。保存先を確認してください。5秒後に再試行します。",
+                                  L"セーブエラー", MB_OK | MB_ICONERROR);
+                    goalSaveErrorShown_ = true;
+                }
             }
-            DebugConsole::GetInstance()->AddLog("Saving tutorial clear data...");
-            goalSavePerformed_ = true;
         }
 
         if (saveIndicatorOverlay_) {
@@ -513,7 +525,7 @@ void TutorialScene::Update(float deltaTime) {
 
         deltaTime = 0.0f; // 時を止める
 
-        if ((inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) &&
+        if (goalSavePerformed_ && (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) &&
             (!saveIndicatorOverlay_ || !saveIndicatorOverlay_->IsPlaying())) {
             SceneManager::GetInstance()->ChangeScene("SELECT");
             return;
@@ -525,6 +537,10 @@ void TutorialScene::Update(float deltaTime) {
             saveIndicatorOverlay_->Update(deltaTime);
         }
         return;
+    }
+
+    if (!isGoal_) {
+        GameDataManager::GetInstance()->AdvancePlayTime(deltaTime);
     }
 
     // --- ポストエフェクト更新 ---
@@ -599,7 +615,7 @@ void TutorialScene::Update(float deltaTime) {
 
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
-            Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+            Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }
@@ -631,7 +647,8 @@ void TutorialScene::Update(float deltaTime) {
 }
 
 void TutorialScene::Draw() {
-    // カメラがプレイヤーに接近したら身体を描かず、手前の視界を確保する。
+    // カメラがプレイヤーに接近したら身体と子パーツを各3Dパスから除き、視界を確保します。
+    // チュートリアルは専用の演出パスを持たず、通常モデル→半透明→深度参照表現の順です。
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
@@ -652,6 +669,7 @@ void TutorialScene::Draw() {
 
     auto& objects = objectManager_->GetObjects();
 
+    // 背景と不透明モデルで深度を確定してから、弾と半透明を描画します。
     if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
         skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
@@ -684,14 +702,16 @@ void TutorialScene::Draw() {
         obj->Draw(pointLightRes, spotLightRes);
     }
 
+    // 身体を隠した近距離でも、操作の目印であるフックマーカーは残します。
     if (player_ && player_->GetHookMarker()) {
         player_->GetHookMarker()->Draw(pointLightRes, spotLightRes);
     }
 
-    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
+    DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
+    // 半透明は不透明パスから外しておき、地形の後に重ねます。
     for (auto& obj : objects) {
         bool isPlayerPart = false;
         if (isFirstPerson) {
@@ -713,6 +733,7 @@ void TutorialScene::Draw() {
     }
     particleSystem_->Draw();
 
+    // 霧と特殊材質は画面色・深度を読むため、通常のObject描画とは分けます。
     DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
     bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
@@ -724,7 +745,8 @@ void TutorialScene::Draw() {
 }
 
 void TutorialScene::DrawUI() {
-    // 操作案内と保存通知はゲーム本体のSpriteより手前に重ねる。
+    // 背景Sprite→照準→プレイヤーUI→操作案内→保存通知の順で重ねます。
+    // 案内と保存通知はゲーム本体のSpriteより手前に置き、表示中に読めるようにします。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_)
         sprite->Draw();
@@ -819,12 +841,20 @@ void TutorialScene::HandleTutorialFlowCompleted() {
         return;
     }
 
-    GameDataManager::GetInstance()->MarkStageCleared(-1);
-    if (saveIndicatorOverlay_) {
-        saveIndicatorOverlay_->Play(1.35f);
+    if (GameDataManager::GetInstance()->CommitStageClear(-1, {})) {
+        if (tutorialDirector_) tutorialDirector_->SetCompletionGateEnabled(true);
+        if (saveIndicatorOverlay_) saveIndicatorOverlay_->Play(1.35f);
+        DebugConsole::GetInstance()->AddLog("Tutorial flow completed. Exit gate unlocked.");
+        goalSavePerformed_ = true;
+    } else {
+        if (tutorialDirector_) tutorialDirector_->SetCompletionGateEnabled(false);
+        goalSaveRetryTimer_ = 5.0f;
+        if (!goalSaveErrorShown_) {
+            ::MessageBoxW(nullptr, L"セーブに失敗しました。保存先を確認してください。ゴールで再試行します。",
+                          L"セーブエラー", MB_OK | MB_ICONERROR);
+            goalSaveErrorShown_ = true;
+        }
     }
-    DebugConsole::GetInstance()->AddLog("Tutorial flow completed. Exit gate unlocked.");
-    goalSavePerformed_ = true;
 }
 
 bool TutorialScene::IsVisible(Object3d* obj) {

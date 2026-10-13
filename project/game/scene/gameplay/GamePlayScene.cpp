@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -70,7 +71,8 @@ GamePlayScene::~GamePlayScene() {
 }
 
 void GamePlayScene::Draw() {
-    // --- 一人称視点（カメラのめり込み）判定 ---
+    // 近距離では自キャラのモデルが視界を塞ぐため、通常パス・半透明パス・特殊材質パスで
+    // 同じ「プレイヤーとその子を描かない」判定を使います。王冠演出中は専用カメラなので除外します。
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
@@ -79,9 +81,7 @@ void GamePlayScene::Draw() {
     }
 #endif
 
-    // =========================================================
-    // カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする
-    // =========================================================
+    // FollowMode以外でも壁際などでカメラが胸元へ寄るため、距離で同じ扱いへ切り替えます。
     if (!crownFinale_.active && !crownDefeat_.active && !crownDefeat_.completed && !isFirstPerson && player_ && camera) {
         Vector3 pPos = player_->GetWorldPosition();
         pPos.y += 1.0f; // プレイヤーの胸の高さを基準にする
@@ -98,28 +98,24 @@ void GamePlayScene::Draw() {
     ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
     ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
 
-    if (lifeLostPresentationActive_) {
+    if (lifeLostState_.IsActive()) {
         DrawLifeLostPresentationWorld(pointLightRes, spotLightRes);
         return;
     }
 
-    if (lifeLostBlackHold_) {
+    if (lifeLostState_.HoldsBlack()) {
         return;
     }
 
     auto& objects = objectManager_->GetObjects();
 
-    // =======================================================
-    // 1. 背景描画
-    // =======================================================
+    // 背景を先に描き、以降は不透明→半透明→画面色・深度を読む特殊材質の順で重ねます。
     if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
         skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
-    // =======================================================
-    // 2. 不透明モデル描画
-    // =======================================================
+    // 不透明パスでは、別のパイプラインを必要とする霧・流体・半透明を除きます。
     object3dCommon_->SetGraphicsCommand();
     object3dCommon_->SetPipelineState(BlendMode::kNone); // 不透明設定
 
@@ -163,16 +159,12 @@ void GamePlayScene::Draw() {
         animatedCube_->Draw(pointLightRes, spotLightRes);
     }
 
-    // =======================================================
-    // 3. 中間描画 (弾・デバッグUIなど)
-    // =======================================================
-    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
+    // 弾と攻撃予兆は背景・地形の後、半透明の粒子より前のパスで描きます。
+    DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
-    // =======================================================
-    // 4. 半透明モデル描画
-    // =======================================================
+    // 半透明モデルは不透明物の深度が決まった後に描画します。
     for (auto& obj : objects) {
         bool isPlayerPart = false;
         if (isFirstPerson) {
@@ -196,14 +188,11 @@ void GamePlayScene::Draw() {
     }
     particleSystem_->Draw();
 
-    // =======================================================
-    // 5. ローカルフォグ (霧の箱) の描画
-    // =======================================================
+    // ローカルフォグは通常モデルと分け、深度を参照する描画区間へつなぎます。
     DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
-    // =======================================================
-    // 6. GPUパーティクル / 流体 (水・マグマ・氷) の描画
-    // =======================================================
+    // 画面色のコピーは高コストなので、流体または歪み粒子が必要なフレームだけ行います。
+    // hasFluidにはObjectが所有する追加の特殊材質と弾の特殊描画も含めます。
     bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
     for (auto& obj : objects) {
         if (IsSpecialMaterialType(obj->GetMaterialType()) || obj->HasOwnedSpecialMaterialVisuals()) {
@@ -223,7 +212,8 @@ void GamePlayScene::Draw() {
             dxCommon_->UpdateGrabTexture();
             grabUpdated = true;
         }
-        // 水・炎・GPUパーティクルは深度をSRVとして読むため、この区間ではDSVを外します。
+        // 水・炎・GPU粒子は深度をSRVとして読むため、この区間ではDSVを外します。
+        // PostDrawLocalFogで描画先を戻すまでは、通常の3D描画を挟めません。
         dxCommon_->PreDrawLocalFog();
 
         if (hasFluid) {
@@ -242,6 +232,8 @@ void GamePlayScene::Draw() {
                 if (isPlayerPart)
                     continue; // 流体の場合は分身になることはないので単純スキップ
 
+                // 材質番号ごとの描画入口は深度とGrabTextureの受け渡し方が共通です。
+                // 同じObjectが持つ追加の特殊材質は、主材質の直後に描きます。
                 int matType = obj->GetMaterialType();
                 if (matType == 8) {
                     obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
@@ -289,11 +281,8 @@ void GamePlayScene::Draw() {
         dxCommon_->PostDrawLocalFog();
     }
 
-    // =======================================================
-    // 7. メッシュエフェクト（アタッチ済み）の描画
-    //    エフェクトの歪み(Distortion)はGrabTextureを参照するため、
-    //    Object3d::Draw() の中ではなくGrabTexture更新後にここで描画する。
-    // =======================================================
+    // アタッチ済みMeshEffectの歪みはGrabTextureの更新後に描きます。
+    // カメラプレビュー中は本編画面のコピーを触らないため、このパスを飛ばします。
     {
         bool hasMeshEffects = false;
         for (auto& obj : objects) {
@@ -323,9 +312,9 @@ void GamePlayScene::Draw() {
 // UI描画専用の関数
 // ====================================================================
 void GamePlayScene::DrawUI() {
-    // --- 4. 2D描画 (UIスプライト) ---
+    // ワールド描画の後に2Dを重ねます。早期returnする演出は通常HUDと同時表示しません。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
-    if (lifeLostPresentationActive_ || lifeLostBlackHold_) {
+    if (lifeLostState_.IsActive() || lifeLostState_.HoldsBlack()) {
         DrawGameplayHUD();
         return;
     }
@@ -340,6 +329,7 @@ void GamePlayScene::DrawUI() {
         DrawCrownFinaleUI();
         return;
     }
+    // JSON配置のSpriteとプレイヤーUIを描いた後、照準・HUD・モーダルの順に重ねます。
     for (auto& sprite : sprites_) {
         if (sprite && !IsGameplayHUDSprite(sprite.get())) {
             sprite->Draw();
@@ -354,6 +344,7 @@ void GamePlayScene::DrawUI() {
     }
     DrawGameplayHUD();
     DrawCrownFinaleUI();
+    // 設定画面はポーズより手前に置き、保存通知はモーダルの後段へ描画します。
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
         controlsGuideOverlay_->Draw();
     }
@@ -372,7 +363,6 @@ void GamePlayScene::DrawUI() {
 void GamePlayScene::DrawShadow() {
     // 配置オブジェクトを影パスへ渡し、通常描画と同じ管理集合を使う。
     if (objectManager_) {
-
         objectManager_->DrawShadow();
     }
 }

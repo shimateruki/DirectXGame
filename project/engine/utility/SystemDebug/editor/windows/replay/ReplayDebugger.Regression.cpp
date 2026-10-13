@@ -18,6 +18,7 @@ bool ReplayDebugger::StartRegression() {
     regressionResult_.running = true;
     regressionResult_.archiveName = loadedArchiveName_;
     regressionResult_.expectedGoal = IsGoalReached(frames_.back().sceneState);
+    // 判定値は前回実行から引き継がず、入力・比較フレーム・計測の開始位置を揃える。
     regressionInputIndex_ = 0;
     regressionExpectedFrameIndex_ = 1;
     regressionNextScreenshotIndex_ = 0;
@@ -45,6 +46,7 @@ bool ReplayDebugger::StartRegression() {
     }
     regressionOutputDirectory_ = outputDirectory.string();
 
+    // 記録入力の全長を等分し、実行中に通過した時点を撮影予約に変える。
     const double duration = inputSamples_.back().time;
     const int screenshotCount = (std::clamp)(regressionSettings_.screenshotCount, 0, 8);
     for (int index = 0; index < screenshotCount && duration > 0.0; ++index) {
@@ -73,6 +75,7 @@ void ReplayDebugger::UpdateRegressionBeforeSimulation() {
         return;
     }
 
+    // シーン更新前に入力を適用する。時間刻みは異常値で物理更新が跳ばない範囲へ制限する。
     const InputSample& sample = inputSamples_[regressionInputIndex_];
     // 記録時の入力と時間刻みをGame更新の前に再現する。
     regressionStepDeltaTime_ = (std::clamp)(sample.deltaTime, 0.0001f, 0.25f);
@@ -88,6 +91,7 @@ void ReplayDebugger::CaptureRegressionAfterSimulation() {
     regressionElapsedTime_ += regressionStepDeltaTime_;
     ++regressionResult_.simulatedFrames;
 
+    // 毎フレームの計測値を蓄積し、終了時に平均と最大を別々に判定できるようにする。
     const float cpuMs = ProfilerManager::GetInstance()->GetLatestCpuTime("更新処理");
     const float gpuMs = ProfilerManager::GetInstance()->GetLatestGpuTime("Total");
     regressionCpuTotalMs_ += (std::max)(0.0f, cpuMs);
@@ -130,6 +134,7 @@ void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
     }
 
     Object3d* currentPlayer = nullptr;
+    // Replay IDを優先し、旧記録などで一致しないときだけ永続GUID・種別と名前へ後退する。
     for (const auto& object : scene->GetObjects()) {
         if (!object || object->IsReplayRemoved()) {
             continue;
@@ -149,6 +154,7 @@ void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
         return;
     }
 
+    // 位置の差は各軸の合計でなく三次元距離で評価し、全比較フレームの最大値を残す。
     const Vector3 actual = currentPlayer->CaptureReplayState().translation;
     const Vector3 reference = expectedPlayer->state.translation;
     const float dx = actual.x - reference.x;
@@ -158,6 +164,7 @@ void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
     regressionResult_.maxPositionError = (std::max)(regressionResult_.maxPositionError, error);
     ++regressionResult_.comparedFrames;
 
+    // 大きな軌跡差とは独立に、非有限値とワールド外への逸脱を検出する。
     const float limit = (std::max)(1.0f, regressionSettings_.worldPositionLimit);
     if (!std::isfinite(actual.x) || !std::isfinite(actual.y) || !std::isfinite(actual.z) ||
         std::abs(actual.x) > limit || std::abs(actual.y) > limit || std::abs(actual.z) > limit) {
@@ -193,6 +200,7 @@ void ReplayDebugger::FinishRegression() {
         return;
     }
 
+    // 記録終端に到達できなかった場合でも最後の基準位置との比較を残す。
     if (regressionExpectedFrameIndex_ < frames_.size()) {
         CompareRegressionFrame(frames_.back());
     }
@@ -238,6 +246,7 @@ void ReplayDebugger::FinishRegression() {
         }
     }
 
+    // 撮影は描画側で処理されるため、判定後も画像の保存完了までレポート確定を待つ。
     regressionResult_.running = false;
     regressionResult_.passed = regressionResult_.failures.empty();
     regressionStepPrepared_ = false;
@@ -258,6 +267,7 @@ void ReplayDebugger::CapturePendingRegressionScreenshot(CaptureToolWindow* captu
         return;
     }
 
+    // 一度に全画像を保存せず、描画済みGame Viewから予約順に一枚ずつ取得する。
     const std::string outputPath = pendingRegressionScreenshotPaths_.front();
     pendingRegressionScreenshotPaths_.pop_front();
     std::error_code fileError;
@@ -317,6 +327,7 @@ void ReplayDebugger::FinalizeRegressionReport() {
     const std::filesystem::path temporaryPath = reportPath.string() + ".tmp";
     std::error_code fileError;
     try {
+        // 書き込み途中のJSONを完成済みレポートとして見せないため一時ファイルを経由する。
         std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
         if (!stream) {
             throw std::runtime_error("レポートファイルを開けません。");

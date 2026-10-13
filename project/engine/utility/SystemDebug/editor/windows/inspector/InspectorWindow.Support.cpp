@@ -14,6 +14,7 @@ std::string ToLowerAscii(std::string text) {
 }
 
 std::vector<Object3d*> CollectInspectorTargets(DebugEditor* editor, Object3d* primary) {
+    // 複数選択の重複を除き、主選択Objectが選択一覧から漏れても編集対象へ含める。
     std::vector<Object3d*> targets;
     if (!primary) {
         return targets;
@@ -88,6 +89,7 @@ void ApplyPrimaryTransformDeltaToTargets(
         return;
     }
 
+    // 主選択の絶対値ではなく差分を他の対象へ渡し、相対的な配置を保つ。
     const Vector3 positionDelta = {
         afterPosition.x - beforePosition.x,
         afterPosition.y - beforePosition.y,
@@ -104,6 +106,7 @@ void ApplyPrimaryTransformDeltaToTargets(
         SafeScaleRatio(afterScale.z, beforeScale.z),
     };
 
+    // 主選択は既にUIで変更済みなので、それ以外だけローカルTransformへ差分を適用する。
     for (Object3d* object : targets) {
         if (!object || object == primary) {
             continue;
@@ -153,6 +156,7 @@ void ConfigureSpriteCardObject(Object3d* object) {
         return;
     }
 
+    // PlaneへSpriteテクスチャを貼る2.5D表示として、描画と衝突の既定値を揃える。
     object->SetClassName("Model");
     object->SetModel("Primitives/plane");
     if (object->GetName().empty() || object->GetName() == "Object") {
@@ -185,6 +189,7 @@ void ApplyRegisteredComponentToTargets(
     const std::vector<Object3d*>& targets,
     const std::string& componentTypeId,
     bool add) {
+    // 複数選択へ同じComponent操作を適用し、変更があったときだけDirtyと行列を更新する。
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     bool changed = false;
     for (Object3d* target : targets) {
@@ -254,6 +259,7 @@ void DrawRegisteredAddComponentMenu(
     ImGui::TextDisabled("追加するComponent");
     ImGui::Separator();
 
+    // 対象Objectへ適用可能なComponentと、各ComponentのPresetを同じメニューへ列挙する。
     bool hasAddableComponent = false;
     for (const EditorComponentDescriptor* component : registry->GetApplicableComponentsForObject(primary)) {
         if (!component) {
@@ -343,6 +349,7 @@ void DrawAutomaticComponentProperties(
         return;
     }
 
+    // 複数選択の中から実際にこのComponentを持つObjectだけを編集対象へ絞る。
     std::vector<Object3d*> componentTargets;
     componentTargets.reserve(targets.size());
     for (Object3d* target : targets) {
@@ -370,6 +377,7 @@ void DrawAutomaticComponentProperties(
         ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 120.0f);
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
+        // Registryが持つ型、読み書き、複数編集、Prefab差分の情報から各行を描く。
         for (const EditorPropertyDescriptor* property : properties) {
             if (!property || !registry->IsApplicable(primary, property->path)) {
                 continue;
@@ -419,6 +427,7 @@ void DrawAutomaticComponentProperties(
                 ImGui::TextDisabled("代表のみ");
             }
 
+            // MultiEditでないPropertyは主選択だけへ書き、対象外Objectには適用しない。
             if (changed && !readOnly) {
                 for (Object3d* target : componentTargets) {
                     if (!target || (!multiEditable && target != primary) ||
@@ -543,6 +552,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
         changed = true;
     }
 
+    // Camera自身のTransformはコピーへ編集し、変更時にSetterと行列更新を通す。
     ImGui::SeparatorText("Transform");
     Transform transformValue = *cameraObject->GetTransform();
     Transform* transform = &transformValue;
@@ -567,6 +577,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
         cameraObject->UpdateWorldMatrix();
     }
 
+    // FOVは表示時だけ度へ変換し、Clip範囲はNearよりFarが大きい状態へ揃える。
     ImGui::SeparatorText("Lens / Blend");
     float fovDegrees = ToDegrees(settings.fovY);
     if (ImGui::SliderFloat("FOV (度)", &fovDegrees, 10.0f, 120.0f, "%.1f")) {
@@ -586,6 +597,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
         changed = true;
     }
 
+    // 視点と注視点は取得元と追従方法を独立に設定する。
     ImGui::SeparatorText("Eye / Follow");
     const char* eyeSourceNames[] = { "Camera ObjectのTransform", "Scene Objectを追従" };
     int eyeSource = static_cast<int>(settings.eyeSource);
@@ -637,6 +649,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
         }
     }
 
+    // 記録パスの選択・テスト再生はCamera Objectの保存値と実行状態を分けて扱う。
     ImGui::SeparatorText("Ghost Recorder");
     const std::string recordPreview = cameraObject->GetRecordPathName().empty() ? "(なし)" : cameraObject->GetRecordPathName();
     if (ImGui::BeginCombo("パスデータ", recordPreview.c_str())) {
@@ -730,6 +743,7 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
 
     PresetManager* manager = PresetManager::GetInstance();
     const auto info = object->GetPrefabInstanceInfo();
+    // InstanceのProperty/Component差分と、Variant自身のBase差分を別々に取得する。
     const auto overrides = manager->GetPrefabOverrides(object);
     const auto componentOverrides = manager->GetPrefabComponentOverrides(object);
     const auto variantOverrides = manager->GetPrefabVariantOverrides(object);
@@ -773,6 +787,7 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
     const std::vector<Object3d*> sceneObjects = CollectSceneObjects(scene);
     const std::vector<Object3d*> instanceObjects = CollectPrefabInstanceObjects(scene, info.instanceId);
 
+    // 全件Applyは参照するScene内Objectへの伝播を一つのUndoグループへまとめる。
     if (ImGui::Button(ICON_FA_UPLOAD " Apply All", ImVec2(112.0f, 0.0f))) {
         EditorTransactionManager::GetInstance()->BeginGroup("Apply All Prefab Overrides");
         const auto beforeStates = editor->CaptureObjectStates(sceneObjects);
@@ -796,6 +811,7 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
         DebugConsole::GetInstance()->AddLog("Prefab Unpack: " + std::to_string(unpacked) + " objects");
     }
 
+    // Componentの有無と通常Propertyの値は別の差分としてApply/Revertする。
     ImGui::SeparatorText(("Component Overrides (" + std::to_string(componentOverrides.size()) + ")").c_str());
     if (componentOverrides.empty()) {
         ImGui::TextDisabled("このObjectにComponent構造差分はありません。");
@@ -858,6 +874,7 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
         ImGui::PopID();
     }
 
+    // VariantならInstance差分の下に、Base Prefabとの差分も表示する。
     if (!basePrefabName.empty()) {
         const std::size_t variantOverrideCount = variantOverrides.size() + variantComponentOverrides.size();
         ImGui::SeparatorText(("Variant Source Overrides (" + std::to_string(variantOverrideCount) + ")").c_str());

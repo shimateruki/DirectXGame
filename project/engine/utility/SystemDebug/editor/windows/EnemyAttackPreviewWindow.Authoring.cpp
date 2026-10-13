@@ -298,6 +298,7 @@ void EnemyAttackPreviewWindow::PreviewDraft(bool keepTime) {
 
 bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
 #ifdef USE_IMGUI
+    // 編集Sceneで扱える敵の攻撃だけを制作対象とし、観測専用のモードとは分けます。
     if (!sceneManager_ || sceneManager_->IsPlaying()) return false;
     auto* attack = GetSelectedAttackDefinition();
     const std::string type = GetSelectedEnemyType();
@@ -306,6 +307,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
     ImGui::TextWrapped("1 攻撃を開く → 2 部品を配置 → 3 保存して動作確認");
     ImGui::TextColored(profileDirty_ ? ImVec4(1, 0.75f, 0.3f, 1) : ImVec4(0.4f, 0.9f, 0.65f, 1),
         "%s", profileDirty_ ? "未保存の変更があります" : "保存済み");
+    // 未保存の定義だけを動作確認する入口と、保存後に本編条件で再生する入口を区別します。
     if (ImGui::Button("保存", ImVec2(-1, 0))) SaveSelectedProfile(false);
     if (attack->sequence.enabled) {
         if (ImGui::Button("保存せずに攻撃を試す", ImVec2(-1, 0))) PreviewDraft(false);
@@ -334,6 +336,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         ImGui::TextWrapped("本編で射程内の共通攻撃を選ぶ方式です。プレビューは選択した攻撃を固定再生します。プリズムの外側の行動サイクルは既存AIです。");
         ImGui::TreePop();
     }
+    // プレイヤーコピー用と敵用の攻撃を同じ一覧から選ぶとき、Binding で候補を分けます。
     if (ImGui::BeginCombo("対象の攻撃", attack->displayName.c_str())) {
         for (int i = 0; i < static_cast<int>(editableProfile_.attacks.size()); ++i) {
             const auto& candidate = editableProfile_.attacks[i];
@@ -354,6 +357,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
     attack = GetSelectedAttackDefinition();
     if (EditText("攻撃名", attack->displayName)) profileDirty_ = true;
     ImGui::TextWrapped("選択した攻撃を直接編集します。別案を作る場合は複製してください。");
+    // 再読込は編集中ベクトルを入れ替えるため、未保存時は破棄確認を挟みます。
     if (ImGui::Button("保存済みへ戻す")) {
         if (profileDirty_) ImGui::OpenPopup("未保存の変更を破棄しますか");
         else ReloadAuthoringProfile();
@@ -369,6 +373,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
     attack = GetSelectedAttackDefinition();
     if (!attack->sequence.assetPath.empty())
         ImGui::TextWrapped("共有アセットを参照中。この攻撃の部品を変更したら、別の攻撃へ切り替える前に保存してください。個別に編集する場合は複製を使います。");
+    // 共有 Asset を複製した場合は参照 Path を外し、元の攻撃素材を編集しない独立案にします。
     if (attack->sequence.enabled && ImGui::Button("この攻撃を複製して編集", ImVec2(-1, 0))) {
         auto copy = *attack;
         int suffix = 1;
@@ -402,6 +407,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         created.windupDuration = 0;
         created.activeDuration = created.sequence.duration;
         created.cooldown = 2;
+        // 新しい攻撃は既存の同 Binding と優先度が衝突しないよう末尾へ配置します。
         for (const auto& existing : editableProfile_.attacks)
             if (existing.sequence.binding == created.sequence.binding)
                 created.sequence.priority = (std::max)(created.sequence.priority, (std::min)(existing.sequence.priority, 999) + 1);
@@ -421,16 +427,17 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
     };
     bool created = false;
     if (ImGui::TreeNode("新しい攻撃を作る・見本から始める")) {
-    if (ImGui::Button("空の攻撃を新規作成", ImVec2(-1, 0))) created = createAttack(nullptr, "新しい攻撃");
-    if (ImGui::Button("表示＋判定の例から作成", ImVec2(-1, 0)))
-        created = createAttack("Resources/json/attack_assets/authoring_sweep.json", "表示と判定の攻撃");
-    if (ImGui::Button("二段攻撃の例から作成", ImVec2(-1, 0)))
-        created = createAttack("Resources/json/attack_assets/authoring_double_sweep.json", "二段の攻撃");
-    if (ImGui::Button("本体の動き＋接触分岐の例から作成", ImVec2(-1, 0)))
-        created = createAttack("Resources/json/attack_assets/authoring_contact_combo.json", "接触で追撃する攻撃");
-    if (ImGui::Button("照準・発射・追尾の例から作成", ImVec2(-1, 0)))
-        created = createAttack("Resources/json/attack_assets/authoring_homing.json", "追尾する攻撃Object");
-    ImGui::TreePop();
+        // 見本の読込直後に共有 Path を解除するので、元ファイルを変更せず編集できます。
+        if (ImGui::Button("空の攻撃を新規作成", ImVec2(-1, 0))) created = createAttack(nullptr, "新しい攻撃");
+        if (ImGui::Button("表示＋判定の例から作成", ImVec2(-1, 0)))
+            created = createAttack("Resources/json/attack_assets/authoring_sweep.json", "表示と判定の攻撃");
+        if (ImGui::Button("二段攻撃の例から作成", ImVec2(-1, 0)))
+            created = createAttack("Resources/json/attack_assets/authoring_double_sweep.json", "二段の攻撃");
+        if (ImGui::Button("本体の動き＋接触分岐の例から作成", ImVec2(-1, 0)))
+            created = createAttack("Resources/json/attack_assets/authoring_contact_combo.json", "接触で追撃する攻撃");
+        if (ImGui::Button("照準・発射・追尾の例から作成", ImVec2(-1, 0)))
+            created = createAttack("Resources/json/attack_assets/authoring_homing.json", "追尾する攻撃Object");
+        ImGui::TreePop();
     }
     if (created) { ImGui::End(); return true; }
     attack = GetSelectedAttackDefinition();
@@ -451,6 +458,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         ImGui::End();
         return true;
     }
+    // 攻撃が切り替わったら部品選択と Undo 履歴を破棄し、別攻撃の編集履歴を混ぜません。
     const std::string identity = editableProfile_.enemyType + "/" + attack->id;
     if (authoringIdentity_ != identity) {
         authoringIdentity_ = identity;
@@ -459,6 +467,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
     }
     if (!ImGui::IsAnyItemActive()) authoringGestureOpen_ = false;
     ImGui::TextWrapped("%s", attack->displayName.c_str());
+    // 既存 C++ 攻撃の観測モードには部品トラックがないため、数値編集へ誘導して終了します。
     if (!attack->sequence.enabled) {
         ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "現在は観測・数値調整の対象です");
         ImGui::TextWrapped("この既存攻撃は部品編集へ未移行です。画面の槍や魔法陣を名前で選び、配置や表示時間を再編集する一覧はまだありません。右側で変更できるのは攻撃全体の数値です。");
@@ -486,6 +495,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
     ImGui::TextWrapped("表示部品を選択 → 中央に表示 → 右のInspectorで素材・位置・大きさ・時間を変更。下のタイムラインで表示区間を調整できます。");
     ImGui::TextDisabled("表示物と判定は独立した部品です。");
     auto& sequence = attack->sequence;
+    // Event は生成・放出の命令、Track は時間区間を持つ表示・判定部品として別に並べます。
     if (!sequence.events.empty()) {
         ImGui::SeparatorText("攻撃の構成（選択して再編集）");
         for (int i = 0; i < static_cast<int>(sequence.events.size()); ++i) {
@@ -519,6 +529,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         if (ImGui::DragFloat("この攻撃の抽選重み", &attack->selectionWeight, 0.1f, 0, 100000)) profileDirty_ = true;
         ImGui::TextWrapped("例: 同じ射程の候補の重みが3と1なら75%%と25%%。0は本編の抽選から除外します。");
     }
+    // UI 操作前の値を保存し、部品追加・削除を一つの Undo 単位として記録します。
     const auto before = sequence;
     ImGui::Text("生成・放出 %d / 時間区間を持つ部品 %d", static_cast<int>(sequence.events.size()), static_cast<int>(sequence.tracks.size()));
     if (ImGui::Button("＋ 部品を追加（素材から選択）", ImVec2(-1,0))) ImGui::OpenPopup("攻撃部品を追加");
@@ -537,6 +548,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         else if (kind == 3) add = ImGui::Button("球の判定を追加");
         else if (kind == 4) add = SelectJson("術者の動き", "Resources/json/animation_clip", picked);
         if (add) {
+            // Event と Track では上限と保存先が違うため、種類を確定してから分岐します。
             if ((kind < 2 && sequence.events.size() >= 128) || (kind >= 2 && sequence.tracks.size() >= 64))
                 profileStatus_ = "部品数の上限に達しています。";
             else {
@@ -572,6 +584,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         ImGui::TextWrapped("選んだ素材を追加して配置確認を開きます。生成Objectの見た目と術者モデルは独立しています。");
         ImGui::EndPopup();
     }
+    // 判定 Track の親が先にある表示 Track のときだけ、Hierarchy 上でも子として描きます。
     auto hasParent = [&](int i) {
         const auto& track = sequence.tracks[i];
         return track.type == "hitbox" && track.parentTrack >= 0 && track.parentTrack < i &&
@@ -598,6 +611,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         for (int j = i + 1; j < static_cast<int>(sequence.tracks.size()); ++j)
             if (hasParent(j) && sequence.tracks[j].parentTrack == i) drawPart(j, true);
     }
+    // Undo/Redo は配置プレビューを止めてから定義を入れ替え、編集中の再生へ再反映します。
     if (ImGui::Button("元に戻す") && !authoringUndo_.empty()) {
         StopPlacementPreview();
         selectedTrack_ = -1;
@@ -639,6 +653,7 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
     auto& sequence = attack->sequence;
     const auto before = sequence;
     bool changed = false;
+    // 共有 Asset の割り当てと新規作成は、現在の攻撃定義への参照 Path を明示的に更新します。
     if (ImGui::TreeNode("詳細: 共有攻撃アセット")) {
         std::string path = sequence.assetPath;
         if (SelectJson("既存アセットを割り当て", "Resources/json/attack_assets", path)) {
@@ -663,10 +678,12 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
         }
         ImGui::TreePop();
     }
+    // 選択 Track の種類によって、表示物・術者アニメーション・判定の編集項目を切り替えます。
     if (selectedTrack_ >= 0 && selectedTrack_ < static_cast<int>(sequence.tracks.size())) {
         auto& track = sequence.tracks[selectedTrack_];
         ImGui::SeparatorText("選択した攻撃部品");
         changed |= EditText("部品名", track.name);
+        // キー時刻は部品開始からの相対値で、位置と補間を Track ごとに持ちます。
         for (int i = 0; track.type != "body_animation" && i < static_cast<int>(track.keys.size()); ++i) {
             ImGui::PushID(i);
             auto& key = track.keys[i];
@@ -694,6 +711,7 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
         if (track.type != "body_animation") changed |= ImGui::Checkbox("術者に追従", &track.followOwner);
         changed |= ImGui::DragFloat("表示・判定開始", &track.begin, 0.01f, 0, sequence.duration, "%.3f 秒");
         changed |= ImGui::DragFloat("表示・判定終了", &track.end, 0.01f, 0, sequence.duration, "%.3f 秒");
+        // 接触結果で分岐する条件では、判定 Track の終了を待つため参照元を選ばせます。
         const char* ids[] = {"always", "grounded", "airborne", "target_in_range", "contact", "no_contact", "track_completed"};
         const char* labels[] = {"常時", "接地中", "空中", "標的が射程内", "指定判定の終了後: 接触あり", "指定判定の終了後: 接触なし", "指定判定の終了後: 結果を問わない"};
         int condition = 0;
@@ -714,6 +732,7 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
             }
             ImGui::TextWrapped("分岐元の終了以降に開始してください。接触はHP減少の確定ではありません。元が条件不成立で省略された場合、後続も省略します。");
         }
+        // 表示物は共通動作とキー移動を排他的に選び、判定を子 Track として追加できます。
         if (track.type == "mesh_vfx") {
             if (SelectJson("表示プリセット", "Resources/json/effect", track.preset, authoringAssets_)) {
                 changed = true;
@@ -747,6 +766,7 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
             }
         }
         else if (track.type == "body_animation") {
+            // 術者の見た目だけを Workbench で作った Clip から再生します。
             changed |= SelectJson("本体クリップ", "Resources/json/animation_clip", track.preset);
             changed |= ImGui::DragFloat("クリップ再生速度", &track.playbackSpeed, 0.01f, 0.01f, 10);
             changed |= ImGui::DragFloat("クリップ開始位置 (秒)", &track.clipOffset, 0.01f, 0, 300);
@@ -755,6 +775,7 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
             changed |= ImGui::DragFloat("終わりのブレンド (秒)", &track.blendOut, 0.01f, 0, 30);
             ImGui::TextWrapped("Animation Workbenchで保存した本体変形を描画だけに重ねます。移動・判定や子オブジェクトは動かしません。キーの編集はWorkbenchで行います。");
         } else {
+            // 判定 Track は表示物を親に選べますが、参照は前にある Mesh VFX Track のみに限定します。
             const char* parentName = track.parentTrack >= 0 && track.parentTrack < static_cast<int>(sequence.tracks.size())
                 ? sequence.tracks[track.parentTrack].name.c_str() : "親なし / 要確認";
             if (ImGui::BeginCombo("追従するObject", parentName)) {
@@ -772,6 +793,7 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
             changed |= ImGui::DragFloat("ダメージ倍率", &track.damageScale, 0.01f, 0, 100);
             ImGui::TextWrapped("1回の攻撃で各対象に1回命中します。表示スケールは判定半径へ影響しません。");
         }
+        // 配列の追加・削除後は Track 参照が無効になり得るので、以降は値を使わず履歴へ記録します。
         if (ImGui::Button("部品を複製") && sequence.tracks.size() < 64) {
             auto copy = track; copy.name += " コピー"; sequence.tracks.push_back(copy); changed = true;
         }

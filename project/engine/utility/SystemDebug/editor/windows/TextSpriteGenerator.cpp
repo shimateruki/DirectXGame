@@ -687,6 +687,7 @@ void TextSpriteGenerator::DrawImGui() {
     ImGui::TextDisabled("透明PNGとして出力し、必要ならSpriteとしてシーンに追加できます。");
     ImGui::Separator();
 
+    // Game View 上の配置値は正式PNGの内容には含めず、編集時の見え方だけを調整します。
     ImGui::Checkbox("Game Viewにプレビュー", &previewEnabled_);
     ImGui::SameLine();
     if (ImGui::Checkbox("PNG自動更新", &previewAutoUpdate_) && previewAutoUpdate_) { MarkPreviewDirty(); }
@@ -695,6 +696,7 @@ void TextSpriteGenerator::DrawImGui() {
     ImGui::DragFloat("プレビュー倍率", &previewScale_, 0.01f, 0.05f, 8.0f, "%.2f");
     ImGui::Separator();
 
+    // 文字を変えたときは名前の自動生成も更新し、プレビューを後段で無効化します。
     if (ImGui::InputTextMultiline("文字", textBuffer_, sizeof(textBuffer_), ImVec2(-1.0f, 96.0f))) {
         textureChanged = true;
         if (autoOutputName_) {
@@ -710,6 +712,7 @@ void TextSpriteGenerator::DrawImGui() {
     ImGui::SetNextItemWidth(180.0f);
     ImGui::InputText("フォント検索", fontFilterBuffer_, sizeof(fontFilterBuffer_));
 
+    // フォント一覧はリソースから取得した実パスと表示名が同じ添字で対応します。
     const char* selectedFont = fontNamesUtf8_.empty() ? "Meiryo" : fontNamesUtf8_[selectedFontIndex_].c_str();
     if (ImGui::BeginCombo("フォント", selectedFont)) {
         std::string filter = fontFilterBuffer_;
@@ -725,6 +728,7 @@ void TextSpriteGenerator::DrawImGui() {
         ImGui::EndCombo();
     }
 
+    // サイズ・色・余白・キャンバスの変更は再レンダリングを必要とする設定です。
     textureChanged |= ImGui::DragFloat("フォントサイズ", &fontSize_, 1.0f, 4.0f, 320.0f, "%.0f");
     textureChanged |= ImGui::Checkbox("太字", &bold_);
     textureChanged |= ImGui::DragFloat("余白", &padding_, 1.0f, 0.0f, 256.0f, "%.0f");
@@ -736,6 +740,7 @@ void TextSpriteGenerator::DrawImGui() {
     }
 
     ImGui::Separator();
+    // アウトラインと影は透明PNG内へ焼き込まれるため、切替時もプレビューを更新します。
     textureChanged |= ImGui::Checkbox("アウトライン", &outlineEnabled_);
     if (outlineEnabled_) {
         textureChanged |= ImGui::DragFloat("アウトライン幅", &outlineWidth_, 0.25f, 0.0f, 32.0f, "%.2f");
@@ -749,6 +754,7 @@ void TextSpriteGenerator::DrawImGui() {
     }
 
     ImGui::Separator();
+    // 外部ツールによるPNG生成は明示操作か自動更新タイマーからだけ実行します。
     if (ImGui::Button("PNGプレビュー更新")) {
         MarkPreviewDirty();
         previewRequestPending_ = true;
@@ -766,6 +772,7 @@ void TextSpriteGenerator::DrawImGui() {
     }
 
     ImGui::Separator();
+    // 手動で出力名を編集したら自動命名を解除し、次の文字変更で上書きしません。
     if (ImGui::Checkbox("出力名を文字から自動生成", &autoOutputName_)) {
         if (autoOutputName_) {
             UpdateOutputNameFromText();
@@ -780,6 +787,7 @@ void TextSpriteGenerator::DrawImGui() {
         UpdateOutputNameFromText();
     }
 
+    // Sceneへの追加は正式PNGの出力成功後にだけ行い、生成失敗時は配置しません。
     if (ImGui::Button(ICON_FA_FILE_EXPORT " PNG出力")) {
         ExportToFile();
     }
@@ -861,6 +869,7 @@ void TextSpriteGenerator::RefreshFonts() {
         previousFamily = fontNamesUtf8_[selectedFontIndex_];
     }
 
+    // 古い一覧と DirectWrite の独自Collectionを外してから、現在のリソースフォントを登録し直します。
     fontNamesWide_.clear();
     fontNamesUtf8_.clear();
     fontPaths_.clear();
@@ -890,6 +899,7 @@ void TextSpriteGenerator::RefreshFonts() {
         return;
     }
 
+    // Collection Key はフォントPathの集合から作り、Loaderの寿命をCollectionより長く保ちます。
     resourceFontCollectionKey_ = MakeFontCollectionKey(resourceFontPaths);
     resourceFontLoader_.Reset();
     resourceFontLoader_.Attach(new ResourceFontCollectionLoader());
@@ -911,6 +921,7 @@ void TextSpriteGenerator::RefreshFonts() {
         return;
     }
 
+    // Family名と実ファイルPathを同じ順に保存し、同名Familyでも別Pathなら区別します。
     const UINT32 familyCount = resourceFontCollection_->GetFontFamilyCount();
     for (UINT32 familyIndex = 0; familyIndex < familyCount; ++familyIndex) {
         Microsoft::WRL::ComPtr<IDWriteFontFamily> family;
@@ -961,6 +972,7 @@ void TextSpriteGenerator::RefreshFonts() {
         fontPaths_.push_back("");
     }
 
+    // 再取得前と同じFamily/Pathが残っていれば選択を戻します。
     selectedFontIndex_ = 0;
     if (!previousFamily.empty()) {
         for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
@@ -994,6 +1006,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
     std::filesystem::create_directories(std::filesystem::path(fullPath).parent_path(), ec);
     std::filesystem::create_directories(std::filesystem::path(kToolRequestPath).parent_path(), ec);
 
+    // UIの選択値を安全な範囲へ収め、CLIが読める絶対PathとUTF-8文字列へ変換します。
     const int selectedIndex = fontPaths_.empty()
         ? 0
         : std::clamp(selectedFontIndex_, 0, static_cast<int>(fontPaths_.size()) - 1);
@@ -1004,6 +1017,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
     const std::string outputPath = ToAbsoluteGenericPath(fullPath);
     const std::string reportPathUtf8 = ToAbsoluteGenericPath(reportPath);
 
+    // 文字や日本語PathはJSONへエスケープし、外部CLIへの入力を一つの要求ファイルにまとめます。
     std::ofstream request(requestPath, std::ios::binary | std::ios::trunc);
     if (!request.is_open()) {
         DebugConsole::GetInstance()->AddLog("Text PNG: request file create failed.");
@@ -1037,6 +1051,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
         L" render -config " + QuoteCommandArg(std::filesystem::absolute(requestPath, ec).wstring()) +
         L" -out " + QuoteCommandArg(std::filesystem::absolute(std::filesystem::path(fullPath), ec).wstring());
 
+    // 外部プロセスの終了とPNGの存在を別々に確認します。
     DWORD exitCode = 1;
     if (!RunProcessAndWait(commandLine, 15000, exitCode)) {
         DebugConsole::GetInstance()->AddLog("Text PNG: external tool failed. exit=" + std::to_string(exitCode));
@@ -1048,6 +1063,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
         return false;
     }
 
+    // レポートがない場合は設定したキャンバス寸法を返し、プレビュー作成自体は続けます。
     if (!ReadRenderReport(reportPath, outWidth, outHeight)) {
         outWidth = autoCanvas_ ? std::max(1, canvasWidth_) : std::clamp(canvasWidth_, 1, 4096);
         outHeight = autoCanvas_ ? std::max(1, canvasHeight_) : std::clamp(canvasHeight_, 1, 4096);

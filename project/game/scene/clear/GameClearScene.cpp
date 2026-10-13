@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/clear/GameClearScene.h"
+#include "game/system/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -161,7 +162,7 @@ void GameClearScene::Draw() {
     }
 
     // --- 2. 中間描画 (弾・デバッグ) ---
-    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
+    DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 

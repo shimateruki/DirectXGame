@@ -48,7 +48,6 @@
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
-#include "BuiltInCreatePresetRegistry.h"
 #include <unordered_map>
 #include <utility>
 namespace fs = std::filesystem;
@@ -467,6 +466,7 @@ void DebugEditor::SaveCrashRecoveryDraft() {
         return;
     }
 
+    // 通常保存と同じシリアライザで全対象を作り、編集中Sceneの現在値をドラフトへ写します。
     auto targets = serializer_.BuildSceneSaveTargets(currentSceneFilename_, SaveMode::All);
     if (targets.empty()) {
         return;
@@ -476,6 +476,7 @@ void DebugEditor::SaveCrashRecoveryDraft() {
     const fs::path draftRoot = fs::path(crashRecoveryDraftDir_);
 
     for (const auto& target : targets) {
+        // Resources/json内の許可Path以外は復元対象にせず、ドラフトも作りません。
         if (!IsCrashRecoverySourcePathAllowed(target.path)) {
             continue;
         }
@@ -501,6 +502,7 @@ void DebugEditor::SaveCrashRecoveryDraft() {
         return;
     }
 
+    // 少なくとも一件の書き込みに成功してから、未正常終了扱いのSessionへ反映します。
     crashRecoveryLastFiles_ = files;
     WriteCrashRecoverySession(false, true, crashRecoveryLastFiles_);
 }
@@ -518,6 +520,7 @@ void DebugEditor::WriteCrashRecoverySession(bool cleanExit, bool dirty, const nl
         session = nlohmann::json::object();
     }
 
+    // 既存の開始時刻・解決済みフラグは維持し、Heartbeatで変わる項目だけ更新します。
     session["version"] = 1;
     session["sessionId"] = crashRecoverySessionId_;
     session["updatedAt"] = NowIsoString();
@@ -554,6 +557,7 @@ void DebugEditor::LoadCrashRecoveryCandidate() {
     bool hasBest = false;
     nlohmann::json bestManifest;
 
+    // 正常終了・解決済み・ドラフトなしを除き、更新時刻が最も新しい一件だけを提示します。
     for (const auto& entry : fs::directory_iterator(root, ec)) {
         if (ec || !entry.is_directory()) {
             continue;
@@ -660,6 +664,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
         return false;
     }
 
+    // Manifest に保存されたPathをそのまま信用せず、現在の作業Rootと許可範囲で検証します。
     const fs::path projectRoot = fs::current_path();
     const fs::path jsonRoot = projectRoot / "Resources/json";
     const fs::path recoveryRoot = projectRoot / fs::path(kCrashRecoveryRoot);
@@ -688,6 +693,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
             continue;
         }
 
+        // 上書きする現行JSONは先に別フォルダへ退避し、ファイルごとの失敗を数えます。
         std::error_code ec;
         if (fs::exists(source, ec)) {
             const fs::path currentBackup = backupRoot / fs::path(sourceText);
@@ -713,6 +719,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
         ++restoredCount;
     }
 
+    // 一件以上戻せたときだけ成功とし、部分失敗の件数も通知へ含めます。
     if (restoredCount <= 0) {
         crashRecoveryStatus_ = "復元できるファイルがありませんでした。";
         return false;
@@ -725,6 +732,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
     DebugConsole::GetInstance()->AddLog(crashRecoveryStatus_);
     TriggerSaveNotification(crashRecoveryStatus_);
 
+    // 編集中Sceneが安定している場合は再読込し、復元したJSONを画面へ反映します。
     if (sceneManager_ && !sceneManager_->GetCurrentSceneName().empty() && !sceneManager_->IsTransitioning()) {
         sceneManager_->ReloadCurrentScene();
     }

@@ -1,10 +1,10 @@
 {
   "title": "冒険のきほん",
   "intro": "ぷにっと動いて、ぽんっとジャンプ！\nまずは移動とカメラに慣れていこう。",
-  "note": "初期設定の操作です。キー設定を変えた場合は設定画面を確認。",
+  "note": "操作アイコンは現在のキー設定に合わせて切り替わります。",
   "moves": [
-    { "name": "移動", "condition": "W / A / S / D ・ 左スティック", "description": "進みたい方向へ動こう。足場の端では慎重に。", "glyph": "ui/input/combo/combo_wasd.png", "glyphSize": [132, 89] },
-    { "name": "ジャンプ", "condition": "Space ・ パッド A", "description": "移動しながら跳んで、次の足場を目指そう。", "glyph": "ui/input/keyboard/key_space.png", "glyphSize": [145, 64] },
+    { "name": "移動", "condition": "移動ボタン・左スティック", "description": "進みたい方向へ動こう。足場の端では慎重に。", "glyph": "ui/input/combo/combo_wasd.png", "glyphSize": [132, 89] },
+    { "name": "ジャンプ", "condition": "ジャンプボタン", "description": "移動しながら跳んで、次の足場を目指そう。", "glyph": "ui/input/keyboard/key_space.png", "glyphSize": [145, 64] },
     { "name": "カメラ", "condition": "マウス移動 ・ 右スティック", "description": "周りを見渡して、進む先や着地点を確かめよう。", "glyph": "ui/input/mouse/mouse_move.png", "glyphSize": [92, 92] }
   ],
   "footer": "← → / A・D：ページ切替    Tab / パッド B：もどる"

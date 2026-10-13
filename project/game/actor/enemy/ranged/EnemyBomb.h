@@ -42,6 +42,7 @@ class EnemyBomb : public BaseEnemy {
     float pulseTimer_ = 0.0f; // 膨張・収縮の位相
 
     bool isThrown_ = false;          // 投擲後、接地して停止するまで true
+    float explosionRadius_ = 3.0f;  // 点火時にエフェクト設定から決め、予告と爆発で共有する。
     bool isAbilityExecuted_ = false; // 自爆能力の多重発動防止
     bool playerOwned_ = false;
     Vector3 managedBaseScale_ = {0.16f, 0.16f, 0.16f};

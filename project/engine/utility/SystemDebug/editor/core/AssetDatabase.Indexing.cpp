@@ -46,6 +46,7 @@ bool AssetDatabase::StartFilesystemWatcher() {
         FALSE,
         FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME);
 
+    // 監視対象は除外フォルダを避けた直下ディレクトリごとに作る。
     std::error_code error;
     for (const fs::directory_entry& entry : fs::directory_iterator(resourcesRoot_, error)) {
         if (error) {
@@ -83,6 +84,7 @@ void AssetDatabase::RestartFilesystemWatcher() {
 }
 
 std::vector<fs::path> AssetDatabase::CollectSourcePaths() {
+    // 手動更新では全パスを集め、metaと一時ファイルを索引対象から除く。
     std::vector<fs::path> sourcePaths;
     std::error_code error;
     fs::recursive_directory_iterator iterator(
@@ -110,6 +112,7 @@ std::vector<fs::path> AssetDatabase::CollectSourcePaths() {
             "Resources走査中にエラーが発生しました: " + error.message());
     }
 
+    // 走査順に依存しない索引と重複GUID判定にするため順序を固定する。
     std::sort(sourcePaths.begin(), sourcePaths.end(), [](const fs::path& left, const fs::path& right) {
         return left.generic_string() < right.generic_string();
     });
@@ -136,6 +139,7 @@ void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta, bool buildDDS
     initialDirectoryScanInProgress_ = true;
 
     if (!persistentIndexCacheInitialized_) {
+        // 永続索引は初回だけ読み込み、次のフレームから再利用できる候補にする。
         persistentIndexCacheInitialized_ = true;
         LoadPersistentIndexCache();
     }
@@ -160,6 +164,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
     // 一フレームの走査量を制限し、エディター操作を止めないようにします。
     const auto frameDeadline = std::chrono::steady_clock::now() + kInitialIndexFrameBudget;
     if (initialDirectoryScanInProgress_) {
+        // 第1段階はファイル列挙だけを行い、meta読み込みとは別の予算で分割する。
         const fs::recursive_directory_iterator end;
         std::size_t scannedThisFrame = 0;
         std::error_code error;
@@ -195,6 +200,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
             return true;
         }
 
+        // 列挙完了後に安定した順序へ並べ替え、第2段階のレコード生成へ移る。
         initialDirectoryScanInProgress_ = false;
         std::sort(pendingSourcePaths_.begin(), pendingSourcePaths_.end(), [](const fs::path& left, const fs::path& right) {
             return left.generic_string() < right.generic_string();
@@ -207,6 +213,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
     }
 
     std::size_t processedThisFrame = 0;
+    // 第2段階は永続キャッシュを優先し、変更されたファイルだけmetaを読み直す。
     while (pendingSourcePathIndex_ < pendingSourcePaths_.size() &&
            processedThisFrame < kInitialIndexMaxAssetsPerFrame) {
         const fs::path& sourcePath = pendingSourcePaths_[pendingSourcePathIndex_];
@@ -255,6 +262,7 @@ void AssetDatabase::CompleteInitialIndexBuild() {
     });
     RebuildLookupTables();
 
+    // 完成した結果を永続索引へ反映してから、変更通知を再開する。
     persistentAssetsByPath_ = std::move(pendingPersistentAssetsByPath_);
     persistentIndexCacheAvailable_ = true;
     SavePersistentIndexCache();
@@ -281,6 +289,7 @@ void AssetDatabase::CompleteInitialIndexBuild() {
 }
 
 void AssetDatabase::RebuildLookupTables() {
+    // パスとGUIDの直接検索、親ディレクトリからの一覧検索を同時に再構築する。
     std::unordered_map<std::string, std::set<std::string>> directorySets;
     for (std::size_t index = 0; index < assets_.size(); ++index) {
         const EditorAssetRecord& asset = assets_[index];
@@ -292,6 +301,7 @@ void AssetDatabase::RebuildLookupTables() {
         const std::string directory = TrimTrailingSlash(fs::path(asset.sourcePath).parent_path().generic_string());
         assetsByDirectory_[ToLowerAscii(directory)].push_back(index);
 
+        // 各Assetの親をResourcesまでたどり、空ディレクトリを除いた階層を作る。
         fs::path current = fs::path(directory);
         while (!current.empty()) {
             const std::string currentPath = TrimTrailingSlash(current.generic_string());

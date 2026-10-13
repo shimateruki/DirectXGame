@@ -1,13 +1,20 @@
 
 #include "DirectXCommon.h"
 #include "ColorSpace.h"
+#include "engine/system/scene/LoadingProfiler.h"
 #include "WinApp.h"
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <format>
 #include <vector>
 #include <dxcapi.h>
 #include <fstream>
+#include <filesystem>
+#include <map>
+#include <mutex>
+#include <set>
+#include <tuple>
 #include <thread>
 #include "SRVManager.h"
 #include "PostEffect.h"
@@ -216,11 +223,71 @@ void DirectXCommon::UpdateFixFPS()
 }
 
 // HLSLファイルをDXCでコンパイルし、生成されたシェーダーバイナリを返す。
+namespace {
+using ShaderDependency = std::pair<std::filesystem::path, std::filesystem::file_time_type>;
+
+bool CollectShaderDependencies(const std::filesystem::path& source,
+                               std::set<std::filesystem::path>& visited,
+                               std::vector<ShaderDependency>& dependencies) {
+    std::error_code error;
+    const auto absolutePath = std::filesystem::absolute(source, error).lexically_normal();
+    if (error) return false;
+    if (!visited.insert(absolutePath).second) return true;
+
+    const auto modified = std::filesystem::last_write_time(absolutePath, error);
+    if (error) return false;
+    dependencies.emplace_back(absolutePath, modified);
+
+    std::ifstream file(absolutePath);
+    if (!file) return false;
+    std::string line;
+    while (std::getline(file, line)) {
+        const size_t first = line.find_first_not_of(" \t");
+        if (first == std::string::npos || line.compare(first, 8, "#include") != 0) continue;
+        const size_t open = line.find_first_of("\"<", first + 8);
+        if (open == std::string::npos) return false;
+        const char closeChar = line[open] == '"' ? '"' : '>';
+        const size_t close = line.find(closeChar, open + 1);
+        if (close == std::string::npos) return false;
+        const auto includeName = std::filesystem::path(line.substr(open + 1, close - open - 1));
+        auto includePath = absolutePath.parent_path() / includeName;
+        if (!std::filesystem::exists(includePath)) {
+            includePath = std::filesystem::path("Resources/shader") / includeName;
+        }
+        // 依存先を特定できない場合はキャッシュせず、DXC本来のinclude解決に任せる。
+        if (!std::filesystem::exists(includePath) ||
+            !CollectShaderDependencies(includePath, visited, dependencies)) return false;
+    }
+    return true;
+}
+}
+
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	const std::wstring& filePath, const wchar_t* profile, const wchar_t* entryPoint)
 {
-	// ログ出力用のストリームを準備
-	std::ofstream logStream("shader_compile.log", std::ios_base::app);
+	// 同じシェーダーをシーンや粒子システムごとに再コンパイルしない。
+	// 元ファイルとinclude先の更新時刻が変わればキャッシュを無効にする。
+	using ShaderKey = std::tuple<std::wstring, std::wstring, std::wstring>;
+	struct CachedShader {
+		std::vector<ShaderDependency> dependencies;
+		Microsoft::WRL::ComPtr<IDxcBlob> blob;
+	};
+	static std::mutex cacheMutex;
+	static std::map<ShaderKey, CachedShader> shaderCache;
+	const ShaderKey key{filePath, profile, entryPoint};
+	std::lock_guard<std::mutex> cacheLock(cacheMutex);
+	const auto found = shaderCache.find(key);
+	if (found != shaderCache.end()) {
+		bool unchanged = true;
+		for (const auto& [path, modified] : found->second.dependencies) {
+			std::error_code error;
+			if (std::filesystem::last_write_time(path, error) != modified || error) {
+				unchanged = false;
+				break;
+			}
+		}
+		if (unchanged) return found->second.blob;
+	}
 
 	Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
 	// メンバ変数のdxcUtils_を使う
@@ -254,6 +321,15 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob = nullptr;
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 	assert(SUCCEEDED(hr));
+	if (shaderBlob) {
+		std::set<std::filesystem::path> visited;
+		std::vector<ShaderDependency> dependencies;
+		if (CollectShaderDependencies(filePath, visited, dependencies)) {
+			shaderCache[key] = {std::move(dependencies), shaderBlob};
+		} else {
+			shaderCache.erase(key);
+		}
+	}
 
 	return shaderBlob;
 }
@@ -269,7 +345,11 @@ void DirectXCommon::Finalize() {
 
 	if (fence_->GetCompletedValue() < fenceValue_) {
 		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+		const auto waitStart = std::chrono::steady_clock::now();
 		WaitForSingleObject(fenceEvent_, INFINITE);
+		const auto waitMs = std::chrono::duration<double, std::milli>(
+			std::chrono::steady_clock::now() - waitStart).count();
+		LogSlowLoadingOperation("DirectXCommon GPU fence wait", waitMs);
 	}
 
 	// --- コマンドリストが開いていたら安全に閉じる ---
@@ -325,7 +405,13 @@ void DirectXCommon::PostDraw() {
 
 	// コマンドキューにコマンドリストを投入し、GPUに実行を指示します。
 	commandQueue_->ExecuteCommandLists(1, commandLists);
+	const auto presentStart = std::chrono::steady_clock::now();
 	swapChain_->Present(1, 0);
+	const double presentMs = std::chrono::duration<double, std::milli>(
+		std::chrono::steady_clock::now() - presentStart).count();
+	if (presentMs >= 40.0) {
+		LogSlowLoadingOperation("DirectXCommon Present", presentMs);
+	}
 
 	// フェンスの目標値をインクリメントします。
 	fenceValue_++;
@@ -336,7 +422,13 @@ void DirectXCommon::PostDraw() {
 	if (fence_->GetCompletedValue() < fenceValue_) {
 		// GPUが指定したフェンス値に達したときに発火するイベントを設定します。
 		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+		const auto waitStart = std::chrono::steady_clock::now();
 		WaitForSingleObject(fenceEvent_, INFINITE);
+		const double waitMs = std::chrono::duration<double, std::milli>(
+			std::chrono::steady_clock::now() - waitStart).count();
+		if (waitMs >= 40.0) {
+			LogSlowLoadingOperation("DirectXCommon frame GPU fence wait", waitMs);
+		}
 	}
 }
 
@@ -723,7 +815,11 @@ void DirectXCommon::WaitForGPUAndReset() {
 
 	if (fence_->GetCompletedValue() < fenceValue_) {
 		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+		const auto waitStart = std::chrono::steady_clock::now();
 		WaitForSingleObject(fenceEvent_, INFINITE);
+		const auto waitMs = std::chrono::duration<double, std::milli>(
+			std::chrono::steady_clock::now() - waitStart).count();
+		LogSlowLoadingOperation("DirectXCommon GPU fence wait", waitMs);
 	}
 
 	// --- 再利用可能な状態にリセット ---
@@ -745,7 +841,11 @@ void DirectXCommon::WaitForGPUIdle() {
 
 	if (fence_->GetCompletedValue() < fenceValue_) {
 		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+		const auto waitStart = std::chrono::steady_clock::now();
 		WaitForSingleObject(fenceEvent_, INFINITE);
+		const auto waitMs = std::chrono::duration<double, std::milli>(
+			std::chrono::steady_clock::now() - waitStart).count();
+		LogSlowLoadingOperation("DirectXCommon WaitForGPUIdle", waitMs);
 	}
 }
 

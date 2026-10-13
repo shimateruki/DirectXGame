@@ -416,3 +416,11 @@ const BindData* KeyConfig::GetBindData(const std::string& actionName) const {
     }
     return nullptr; // 見つからない場合
 }
+
+bool KeyConfig::IsKeyAssigned(int keyCode) const {
+    // ポーズなどの共通ショートカットより、ユーザーが保存した操作割当を優先する。
+    for (const auto& [action, binding] : bindings_) {
+        if (binding.keyCode == keyCode) return true;
+    }
+    return false;
+}

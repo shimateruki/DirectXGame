@@ -1,5 +1,6 @@
 #pragma once
 #include "BaseScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "AudioPlayer.h"
 #include "BulletManager.h"
 #include "Camera.h"
@@ -37,7 +38,7 @@ class SettingsMenuOverlay;
 /// <summary>
 /// ステージ選択シーン。ステージゲート、解放演出、王冠/スター/コイン HUD を扱う。
 /// </summary>
-class GameSelectScene : public BaseScene {
+class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
   public:
     GameSelectScene();
     ~GameSelectScene() override;

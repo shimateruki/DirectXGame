@@ -36,6 +36,7 @@ class GoalClearPlayerAnimator {
             return false;
         }
 
+        // 元の操作権・姿勢を保存し、ムービー中はこの基準から毎フレーム姿勢を計算します。
         savedControlActive_ = player_->IsControlActive();
         basePosition_ = player_->GetTranslate();
         baseScale_ = player_->GetScale();
@@ -46,6 +47,7 @@ class GoalClearPlayerAnimator {
         player_->SetIsControlActive(false);
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
+        // 指定された前方がない場合は王冠へ向きます。Visual Yaw の差を含めてモデル正面を合わせます。
         const Vector3 crownForward =
             NormalizePlanarDirection({crownPosition.x - basePosition_.x, 0.0f, crownPosition.z - basePosition_.z},
                                      DirectionFromYaw(baseRotation_.y - player_->GetVisualYawOffset()));
@@ -80,6 +82,7 @@ class GoalClearPlayerAnimator {
         if (!player_ || !isActive_) {
             return;
         }
+        // 演出を中断したときは開始姿勢と行列を戻し、次のScene更新へ古い変形を残しません。
         player_->SetTranslate(basePosition_);
         player_->SetScale(baseScale_);
         player_->SetRotation(baseRotation_);
@@ -89,6 +92,7 @@ class GoalClearPlayerAnimator {
     }
 
     void RestoreControl() {
+        // 演出前に操作不能だった状態も尊重し、無条件に操作を有効にはしません。
         if (player_) {
             player_->SetIsControlActive(savedControlActive_);
         }
@@ -99,6 +103,7 @@ class GoalClearPlayerAnimator {
             return;
         }
 
+        // 絶対時刻からポーズを計算し、シークやプレビューで前のフレームに依存しないようにします。
         const Tuning& c = tuning_;
         Vector3 position = basePosition_;
         Vector3 scale = baseScale_;
@@ -111,6 +116,7 @@ class GoalClearPlayerAnimator {
             scale.y = baseScale_.y * (1.0f - breathe * 0.009f);
             scale.z = baseScale_.z * (1.0f + breathe * 0.012f);
         } else if (time < c.anticipationStartTime) {
+            // 王冠が落ちた衝撃だけを短く見せ、次の踏み切り姿勢へつなぎます。
             const float p = AnimationInterpolation::SegmentRate(time, c.crownLandTime, c.anticipationStartTime);
             const float impact = std::sin(p * kPi) * (1.0f - p * 0.45f);
             position.y -= c.landingSquash * 0.10f * impact;
@@ -118,6 +124,7 @@ class GoalClearPlayerAnimator {
             scale.y = baseScale_.y * (1.0f - c.landingSquash * 0.78f * impact);
             scale.z = baseScale_.z * (1.0f + c.landingSquash * impact);
         } else if (time < c.jumpStartTime) {
+            // 跳躍前は沈み込みと前傾を同時に増やし、離陸の予備動作にします。
             const float p = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(time, c.anticipationStartTime, c.jumpStartTime),
                 AnimationInterpolation::EasingType::SmootherStep);
@@ -128,6 +135,7 @@ class GoalClearPlayerAnimator {
             rotation.x += moveForward_.z * 0.070f * p;
             rotation.z -= moveForward_.x * 0.070f * p;
         } else if (time < c.apexTime) {
+            // 上昇中は王冠へ前進し、横方向の弧を加えて正面から立体的に見せます。
             const float raw = AnimationInterpolation::SegmentRate(time, c.jumpStartTime, c.apexTime);
             const float travel =
                 AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
@@ -148,6 +156,7 @@ class GoalClearPlayerAnimator {
                                    baseScale_.y * (1.0f + c.resultStretch),
                                    baseScale_.z * (1.0f - c.resultStretch * 0.36f)};
 
+            // 離陸直後は潰れから縦伸びへ、残りは結果画面用の姿勢へ収束させます。
             if (raw < 0.24f) {
                 const float stretchRate =
                     AnimationInterpolation::ApplyEasing(raw / 0.24f, AnimationInterpolation::EasingType::EaseOut);
@@ -158,6 +167,7 @@ class GoalClearPlayerAnimator {
                 scale = AnimationInterpolation::Lerp(stretchScale, resultScale, settleRate);
             }
 
+            // 回転の本体はQuaternion補間とし、踏み切りと空中の傾きだけ後から足します。
             rotation = AnimationInterpolation::SlerpEuler(baseRotation_, resultRotation_, travel);
             const float takeoffLean = (1.0f - travel) * 0.070f;
             rotation.x += moveForward_.z * takeoffLean;
@@ -167,6 +177,7 @@ class GoalClearPlayerAnimator {
             rotation.z += moveForward_.x * airLean;
             rotation.y = NormalizeYaw(rotation.y + std::sin(raw * kPi) * 0.20f);
         } else if (time < c.victoryLandTime) {
+            // 頂点から着地までは高度と横弧を消し、結果姿勢を保ちながら接地で潰します。
             const float raw = AnimationInterpolation::SegmentRate(time, c.apexTime, c.victoryLandTime);
             const float fall =
                 AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
@@ -190,6 +201,7 @@ class GoalClearPlayerAnimator {
             rotation.x += moveForward_.z * descentLean;
             rotation.z -= moveForward_.x * descentLean;
         } else {
+            // 結果表示中は一定周期で跳ね続け、左右の傾きを周期ごとに反転します。
             position.x += moveForward_.x * c.forwardDistance;
             position.z += moveForward_.z * c.forwardDistance;
             const float holdTime = time - c.victoryLandTime;
@@ -214,6 +226,7 @@ class GoalClearPlayerAnimator {
             rotation.z += moveRight_.z * bounceLean;
         }
 
+        // 計算済みポーズをPlayerへまとめて反映し、描画が参照する行列も同フレームで更新します。
         posePosition_ = position;
         currentScale_ = scale;
         player_->SetTranslate(position);

@@ -14,6 +14,7 @@ void Check(bool result, const std::string& message) {
 
 int main(int argc, char** argv) {
     try {
+        // 実アセットを読み、敵・プレイヤーの定義が同じ形式で解決できることから確認する。
         Check(argc == 2, "temporary output path required");
         EnemyAttackProfile profile;
         std::string error;
@@ -29,6 +30,7 @@ int main(int argc, char** argv) {
         Check(enemy && player && enemy->sequence.enabled && player->sequence.enabled, "shared definitions missing");
         Check(player->damage == 14 && player->sequence.binding == "player_special", "player configuration lost");
 
+        // 定義を複製して時計だけを試す攻撃を作り、元の攻撃とJSON往復を崩さないことを見る。
         auto copy = *enemy;
         Check(copy.sequence.actorControl.enabled && copy.sequence.tracks.size() == 1,
             "fireball lifecycle and body clip missing");
@@ -48,6 +50,7 @@ int main(int argc, char** argv) {
         Check(reloaded.LoadFromFile(argv[1], &error), error);
         const auto* saved = reloaded.FindAttack(copy.id);
         Check(saved && saved->sequence.events.size() == 3, "clone round trip failed");
+        // 同時刻・途中・終端のイベントが、保存順に依存せず時刻順で一度ずつ発火する。
         AttackSequenceClock clock;
         Check(clock.Start(saved->sequence), "start failed");
         std::vector<float> fired;
@@ -61,6 +64,7 @@ int main(int argc, char** argv) {
         clock.Update(1, always, execute);
         Check(fired.size() == 3 && !clock.IsRunning(), "finished sequence executed again");
 
+        // 条件不成立時のスキップと、後続まで停止する設定を別々に確認する。
         auto conditional = saved->sequence;
         conditional.events = {first, middle, last};
         conditional.events[1].condition = "grounded";
@@ -74,6 +78,7 @@ int main(int argc, char** argv) {
         clock.Update(1, [](const std::string& name) { return name == "always"; }, execute);
         Check(fired.size() == 1 && !clock.IsRunning(), "stop branch leaked later events");
 
+        // 負の時間と非数、取消、固定刻み、未知操作・範囲外時刻を拒否する。
         Check(clock.Start(saved->sequence), "restart failed");
         fired.clear();
         clock.Update(-1, always, execute);
@@ -126,6 +131,7 @@ int main(int argc, char** argv) {
         clock.Update(1, always, verifyFan);
         clock.Update(1, always, verifyFan);
         Check(shots == 5 && flashes == 5 && !clock.IsRunning(), "prism shot count incorrect");
+        // 同じ発射式の端値と、対象が一致した場合の退避方向を確認する。
         context.targetDistance = 100;
         Check(ResolveAttackSequenceEmission(fan->sequence.events[0], context, 13, 28).speed == 28, "maximum speed clamp failed");
         context.targetDistance = 0;
@@ -137,6 +143,7 @@ int main(int argc, char** argv) {
         const auto fallback = ResolveAttackSequenceEmission(coincidentShot, coincident, 13, 28);
         Check(fallback.direction.x == 0 && fallback.direction.y == 0 && fallback.direction.z == 1,
             "coincident target lost fallback direction");
+        // 見た目の設定を含めて保存し直し、壊れた値を受け付けないことを確認する。
         auto prismCopy = *fan;
         prismCopy.id = "prism_variant";
         prism.attacks.push_back(prismCopy);
@@ -318,6 +325,7 @@ int main(int argc, char** argv) {
         Check(EnemyAttackProfile::LoadSequenceAsset(motionPath, loadedMotion, &error), error);
         Check(loadedMotion.tracks[0].turnDegreesPerSecond == 100 && loadedMotion.tracks[0].homingDuration == 1.2f &&
             loadedMotion.tracks[1].parentTrack == 0, "motion round trip lost settings");
+        // 優先度・重み・均等抽選と、距離制限による候補除外を確認する。
         EnemyAttackProfile lottery;
         lottery.enemyType = "SelectionTest";
         EnemyAttackDefinition a, b;
@@ -346,6 +354,7 @@ int main(int argc, char** argv) {
         Check(loadedLottery.selectionMode == "uniform" && loadedLottery.FindAttack("b")->selectionWeight == 3,
             "selection round trip lost settings");
         // 既存IDの上書き編集で攻撃が増殖せず、選択していない攻撃も保持されることを確認します。
+        // 同じIDへの再編集では別の攻撃を増殖・変更させない。
         const auto originalCount = loadedLottery.attacks.size();
         auto* edited = loadedLottery.FindAttack("a");
         edited->displayName = "再編集した攻撃";
@@ -417,6 +426,7 @@ int main(int argc, char** argv) {
         Check(!badComponent.Validate(), "inverted projectile speed range accepted");
         std::cout << "Projectile component tests passed: legacy radius, independent edits, JSON round trip, disabled events, invalid values\n";
         // 配置ギズモの編集値を実ランタイムの座標解決へ渡して往復を確認します。
+        // ギズモで回転・移動した値を、ランタイムの発射座標へ戻して比較する。
         AttackSequenceContext placementContext;
         placementContext.position = {10,2,-7};
         placementContext.forward = {1,0,0};
@@ -451,6 +461,7 @@ int main(int argc, char** argv) {
         Check(Math::Length(ResolveAttackSequenceEmission(placedSaved.events.front(),placementContext,0,0).position-initialPosition-worldDelta)<0.0001f &&
             placedSaved.tracks.front().keys[1].position[0]==8,"placement save/reopen changed transform");
         std::cout << "Placement tests passed: rotated offset basis, size offsets, rotation pivot, current-time keys, save/reopen\n";
+        // Actor側の照準固定時間と予告幅も、保存後の定義に残ることを確認する。
         auto lifecycle = *profile.FindAttack("fireball");
         lifecycle.sequence.actorControl.aimLockTime = 0.19f;
         lifecycle.sequence.actorControl.telegraphWidth = 1.7f;

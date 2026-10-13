@@ -1,5 +1,4 @@
 #include "WinApp.h"
-#include "game/ui/SettingsMenuOverlay.h"
 #include <Windows.h>
 #ifdef USE_IMGUI
 #include "imgui_impl_win32.h"
@@ -147,7 +146,7 @@ bool WinApp::Update() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    if (isCursorLocked_ && !SettingsMenuOverlay::IsAnyActive()) {
+    if (isCursorLocked_ && !cursorRecenteringSuppressed_) {
         // 他のアプリ（ブラウザ等）を操作している時にマウスが奪われないよう、
         // 自分のゲーム画面がアクティブ（最前面）の時だけ固定する！
         if (GetActiveWindow() == hwnd_) {

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a54b868f146018002d6957ab178fcda1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_style/bomb.dds",
+  "version": 1
+}

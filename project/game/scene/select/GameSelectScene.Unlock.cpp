@@ -28,6 +28,7 @@ void GameSelectScene::BeginUnlockPresentation() {
     unlockKeyObject_ = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(unlockingStageIndex_));
     unlockLockObject_ = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(unlockingStageIndex_));
 
+    // ゲートが見つからない場合もステージ配置座標を基準に演出位置を計算する。
     const Vector3 gatePosition =
         unlockTargetGate_ ? unlockTargetGate_->GetWorldPosition() : GetStageNodePosition(unlockingStageIndex_);
     const Vector3 towardHub = {-gatePosition.x, 0.0f, -gatePosition.z};
@@ -57,6 +58,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
 
+    // 注視点は錠、ゲート、ステージ節点の優先順で選び、元の視点を復帰用に保存する。
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         Vector3 focus = gatePosition + Vector3{0.0f, 1.10f, 0.0f};
         if (unlockTargetGate_) {
@@ -145,6 +147,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
 
+    // カメラは導入で錠の正面へ寄せ、終了前に開始位置へ補間して戻す。
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
@@ -164,6 +167,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         camera->ConfigFixedPoint(eye, SelectLookAtRotation(eye, target));
     }
 
+    // 鍵は登場、曲線での接近、回転、離脱を同じ時間軸上で組み立てる。
     if (unlockKeyObject_) {
         const Vector3 startPosition = {lockPosition.x + unlockGateDirection_.x * 5.45f + side.x * 1.30f,
                                        lockPosition.y + 1.65f,
@@ -178,11 +182,13 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         const Vector3 controlPosition = {(startPosition.x + insertPosition.x) * 0.5f + side.x * 1.15f,
                                          std::max(startPosition.y, insertPosition.y) + 1.25f,
                                          (startPosition.z + insertPosition.z) * 0.5f + side.z * 1.15f};
+        // 二回の線形補間で二次ベジェ曲線上の接近位置を求める。
         const Vector3 firstCurve = SelectLerpVector3(startPosition, controlPosition, approachT);
         const Vector3 secondCurve = SelectLerpVector3(controlPosition, insertPosition, approachT);
         Vector3 keyPosition = SelectLerpVector3(firstCurve, secondCurve, approachT);
         float keyScaleRate = appearT;
         float keyRoll = (1.0f - approachT) * std::sin(time * 8.0f) * 0.16f;
+        // 錠に差し込んだ後は位置を固定し、回転だけを進める。
         if (time >= kUnlockKeyTurnStartTime) {
             const float turnT = SelectEaseInOutCubic(SelectClamp01(
                 (time - kUnlockKeyTurnStartTime) / std::max(kUnlockKeyTurnEndTime - kUnlockKeyTurnStartTime, 0.001f)));
@@ -190,6 +196,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
             keyRoll = turnT * std::numbers::pi_v<float> * 0.5f;
             keyScaleRate *= 1.0f + std::sin(turnT * std::numbers::pi_v<float>) * 0.12f;
         }
+        // 開錠後は鍵を上へ逃がしながら縮小する。
         if (time >= kUnlockLockReleaseTime) {
             const float vanishT = SelectEaseInOutCubic(SelectClamp01((time - kUnlockLockReleaseTime) / 0.88f));
             keyPosition.x += unlockGateDirection_.x * vanishT * 0.75f;
@@ -208,6 +215,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         unlockKeyObject_->SetEmissive(2.7f + std::sin(time * 9.0f) * 0.35f);
     }
 
+    // 錠は鍵の回転に反応して揺れ、解放時に落下して画面から外れる。
     if (unlockLockObject_) {
         Vector3 position = unlockLockBasePosition_;
         Vector3 rotation = unlockLockBaseRotation_;
@@ -238,6 +246,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         unlockLockObject_->SetScale(scale);
     }
 
+    // 各節目の効果はフラグで一回だけ発火させ、フレーム落ちでも二重再生しない。
     if (!unlockKeyAppearImpactPlayed_ && time >= kUnlockKeyAppearStartTime) {
         unlockKeyAppearImpactPlayed_ = true;
         const Vector3 keyPosition =
@@ -276,6 +285,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         }
     }
 
+    // 接近中の残光だけは一定間隔で追加し、節目の単発演出と分ける。
     if (unlockParticleTimer_ <= 0.0f && time >= kUnlockKeyAppearStartTime && time < kUnlockLockReleaseTime) {
         unlockParticleTimer_ = 0.15f;
         const Vector3 particlePosition = unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition;
@@ -299,6 +309,7 @@ void GameSelectScene::FinishUnlockPresentation() {
         GameDataManager::GetInstance()->MarkStageUnlockSeen(unlockedStageIndex);
     }
 
+    // 演出で動かした鍵・錠を元のTransformへ戻し、表示状態はゲート状態の再適用に委ねる。
     if (unlockKeyObject_) {
         unlockKeyObject_->SetTranslate(unlockKeyBasePosition_);
         unlockKeyObject_->SetRotation(unlockKeyBaseRotation_);
@@ -316,6 +327,7 @@ void GameSelectScene::FinishUnlockPresentation() {
         player_->SetIsControlActive(unlockHadPlayerControl_);
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
+    // カメラ入力とプレイヤー追従を復元し、演出開始前の操作権へ戻す。
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetEye(unlockCameraStartEye_);
         camera->SetTarget(unlockCameraStartTarget_);
@@ -328,6 +340,7 @@ void GameSelectScene::FinishUnlockPresentation() {
         camera->SetInputEnabled(true);
     }
 
+    // 次の解放演出が前回の発火フラグや対象ポインタを引き継がないよう初期化する。
     unlockingStageIndex_ = -1;
     unlockPresentationTimer_ = 0.0f;
     unlockParticleTimer_ = 0.0f;

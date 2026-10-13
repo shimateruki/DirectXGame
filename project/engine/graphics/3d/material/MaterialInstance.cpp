@@ -46,6 +46,7 @@ void ReadValue(const json& source, const char* key, T& destination) {
 }
 
 void OverlayMaterial(const json& source, MaterialInstanceData& material) {
+    // 親から受け継いだ値は残し、子JSONに書かれた項目だけ上書きする。
     ReadValue(source, "displayName", material.displayName);
     if (source.contains("color")) ReadVector4(source["color"], material.color);
     ReadValue(source, "blendMode", material.blendMode);
@@ -63,6 +64,7 @@ void OverlayMaterial(const json& source, MaterialInstanceData& material) {
     if (source.contains("textureTiling")) ReadVector2(source["textureTiling"], material.textureTiling);
     ReadValue(source, "autoTextureTiling", material.autoTextureTiling);
 
+    // 水面・特殊エフェクト固有の設定は通常のマテリアル項目とは別階層にある。
     if (!source.contains("special") || !source["special"].is_object()) return;
     const json& special = source["special"];
     ReadValue(special, "waveSpeed", material.waveSpeed);
@@ -95,6 +97,7 @@ bool LoadResolvedInternal(
     std::unordered_set<std::string>& loading,
     int depth,
     std::string* errorMessage) {
+    // 継承の深さと再帰経路を制限し、循環または異常に長い参照を拒否する。
     if (depth > 16) {
         SetError(errorMessage, "Material Instanceの継承が16段を超えています: " + NormalizePath(assetPath));
         return false;
@@ -107,6 +110,7 @@ bool LoadResolvedInternal(
         return false;
     }
 
+    // 途中で失敗したときは経路集合から現在のパスを外し、次回の読み込みに影響させない。
     std::ifstream file(assetPath);
     if (!file) {
         loading.erase(normalizedPath);
@@ -139,6 +143,7 @@ bool LoadResolvedInternal(
         }
     }
 
+    // 親の解決を終えたあと、子の共通項目とpropertiesを重ねる。
     material.version = root.value("version", material.version);
     material.baseAsset = baseAsset;
     const json& properties = root.contains("properties") && root["properties"].is_object()
@@ -151,6 +156,7 @@ bool LoadResolvedInternal(
 
 MaterialInstanceData MaterialInstanceAsset::Capture(const Object3d& object) {
     MaterialInstanceData material;
+    // まずObject3dの共通マテリアル値を取り出す。
     material.color = object.GetColor();
     material.blendMode = static_cast<int>(object.GetBlendMode());
     material.materialType = object.GetMaterialType();
@@ -167,6 +173,7 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const Object3d& object) {
     material.textureTiling = object.GetTextureTiling();
     material.autoTextureTiling = object.GetAutoTextureTiling();
 
+    // Rendererが特殊GPUパラメータを持つ場合だけ追加項目を取得する。
     if (const MeshRenderer* renderer = object.GetMeshRenderer()) {
         if (const MeshRenderer::WaterParamForGPU* special = renderer->GetWaterParamData()) {
             material.waveSpeed = special->waveSpeed;
@@ -188,6 +195,7 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const Object3d& object) {
 }
 
 void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, Object3d& object) {
+    // Setterを通してObject3d側のマテリアルとテクスチャ状態を更新する。
     object.SetColor(material.color);
     object.SetBlendMode(static_cast<BlendMode>(std::clamp(material.blendMode, 0, 5)));
     object.SetMaterialType(material.materialType);
@@ -204,6 +212,7 @@ void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, Object3d
     object.SetTextureTiling(material.textureTiling);
     object.SetAutoTextureTiling(material.autoTextureTiling);
 
+    // 特殊パラメータはRendererのGPU用データに対応するものだけ反映する。
     if (MeshRenderer* renderer = object.GetMeshRenderer()) {
         if (MeshRenderer::WaterParamForGPU* special = renderer->GetWaterParamData()) {
             special->waveSpeed = material.waveSpeed;
@@ -245,6 +254,7 @@ bool MaterialInstanceAsset::Save(
         return false;
     }
 
+    // 保存先の階層を作ってから、通常項目と特殊項目をJSONにまとめる。
     const fs::path path(assetPath);
     std::error_code error;
     if (!path.parent_path().empty()) {
@@ -288,6 +298,7 @@ bool MaterialInstanceAsset::Save(
         { "effectScaleZ", material.effectScaleZ }
     };
 
+    // 親アセットを指定した場合も、現在値はpropertiesとして保存する。
     json root;
     root["assetType"] = "MaterialInstance";
     root["version"] = material.version;
@@ -309,6 +320,7 @@ std::vector<std::string> MaterialInstanceAsset::Discover(const std::string& root
     const fs::path root(rootDirectory);
     if (!fs::exists(root, error)) return assets;
 
+    // 拡張子で候補だけを集め、内容がMaterialInstanceかどうかはここでは判定しない。
     for (fs::recursive_directory_iterator iterator(root, error), end; iterator != end && !error; iterator.increment(error)) {
         if (!iterator->is_regular_file() || iterator->path().extension() != ".json") continue;
         assets.push_back(NormalizePath(iterator->path()));

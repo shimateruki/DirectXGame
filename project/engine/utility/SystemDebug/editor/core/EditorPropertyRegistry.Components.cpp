@@ -13,6 +13,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
         return RegisterComponent(std::move(descriptor));
     };
 
+    // 常設の基本情報を先に置き、Camera では使えない描画・衝突機能を条件付きで登録します。
     registerInspectorHiddenComponent({ "SceneObject", "Scene Object", "名前、GUID、Tag、LayerなどObject自体の情報です。", 0, true, false,
         always, always, EditorComponentInspectorMode::Custom });
     RegisterComponent({ "Transform", "Transform", "位置・回転・スケールと親子Transformを管理します。", 10, true, false, always,
@@ -22,6 +23,8 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
         [](const Object3d& object) { return !object.IsCameraObject(); },
         [](const Object3d& object) { return object.HasBuiltInComponent(Object3d::kMeshRendererComponentType); },
         EditorComponentInspectorMode::Custom });
+    // Collider は形状の有無だけでなく、旧データの属性・Presence Marker でも存在を判定します。
+    // 追加時は通常の床向け設定を与え、削除時は判定に関わる状態をまとめて解除します。
     EditorComponentDescriptor colliderComponent{ "Collider", "Collider", "衝突形状、属性、衝突Maskを管理します。", 30, false, true,
         [](const Object3d& object) { return !object.IsCameraObject(); },
         [](const Object3d& object) {
@@ -54,6 +57,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
             object.SetComponentPresenceMarker("Collider", false);
             return true;
         } };
+    // Trigger プリセットは同じ Collider を再設定し、Player との接触だけを検知します。
     colliderComponent.presets.push_back({
         "Trigger",
         "Trigger Collider Preset",
@@ -74,6 +78,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
         },
     });
     RegisterComponent(std::move(colliderComponent));
+    // 以下は追加・削除可能な描画／演出コンポーネントです。LOD の追加だけは Manifest も読み込みます。
     RegisterComponent({ "ParticleEmitter", "Particle Emitter", "CPU/GPU Particle AssetをObjectへ接続します。", 40, false, true, always,
         [](const Object3d& object) {
             return object.HasParticleEmitterComponent();
@@ -119,6 +124,8 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
         [](Object3d& object) {
             return object.RemoveMeshEffectComponent();
         } });
+    // Animator は既存の Animation 名と Controller Path も存在判定に含め、旧形式の設定を拾います。
+    // 削除時には再生名・Loop・Controller を一緒に消して状態の食い違いを防ぎます。
     RegisterComponent({ "Animator", "Animator", "AnimationとAnimator Controllerを管理します。", 70, false, true, always,
         [](const Object3d& object) {
             return object.HasComponentPresenceMarker("Animator") ||
@@ -136,6 +143,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
             object.SetComponentPresenceMarker("Animator", false);
             return true;
         } });
+    // 移動と参照を担うコンポーネントを続けて登録します。Automatic は共通プロパティ描画を使用します。
     RegisterComponent({ "PathMover", "Path Mover", "Ghost Recorderで記録したPath移動を管理します。", 80, false, true, always,
         [](const Object3d& object) {
             return object.HasPathMoverComponent();
@@ -171,6 +179,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
         [](Object3d& object) {
             return object.RemoveNavAgentComponent();
         } });
+    // Camera や Gameplay は専用パネルで編集するため、共通 Inspector の追加候補には表示しません。
     registerInspectorHiddenComponent({ "Camera", "Camera", "Scene CameraのLens、追従、Blendを管理します。", 100, false, false,
         [](const Object3d& object) { return object.IsCameraObject(); },
         [](const Object3d& object) { return object.IsCameraObject(); },

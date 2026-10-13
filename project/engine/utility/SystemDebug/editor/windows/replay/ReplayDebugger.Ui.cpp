@@ -157,50 +157,52 @@ void ReplayDebugger::Draw(bool* open) {
         ImGui::EndMenuBar();
     }
 
+    // メニュー・ショートカットのあと、保存履歴／再生／詳細解析を同じ記録状態から表示します。
     HandleEditorShortcuts();
     if (!statusMessage_.empty()) ImGui::TextWrapped("%s", statusMessage_.c_str());
     if (ImGui::BeginTabBar("ReplayWorkspaceTabs")) {
-    if (ImGui::BeginTabItem("保存済みリプレイ")) {
-        ImGui::TextWrapped("保存した記録は、ゲームを起動し直してもここから読み込めます。元のシーンとアセットが必要です。");
-        ImGui::TextWrapped("1. 保存データを選ぶ → 2. 読み込む → 3. 上部の再生でPlayを開始 → 4.「再生・確認」で履歴再生");
-        DrawArchivePanel();
-        ImGui::EndTabItem();
-    }
-    if (ImGui::BeginTabItem("再生・確認")) {
-        if (!HasFrames()) ImGui::TextWrapped("記録がありません。Play中に記録するか、「保存済みリプレイ」から読み込んでください。");
-        DrawToolbar();
-        DrawTimelineEditor();
-        ImGui::EndTabItem();
-    }
-    if (ImGui::BeginTabItem("詳細解析")) {
-    DrawRegressionPanel();
-    DrawSummaryCards();
+        if (ImGui::BeginTabItem("保存済みリプレイ")) {
+            ImGui::TextWrapped("保存した記録は、ゲームを起動し直してもここから読み込めます。元のシーンとアセットが必要です。");
+            ImGui::TextWrapped("1. 保存データを選ぶ → 2. 読み込む → 3. 上部の再生でPlayを開始 → 4.「再生・確認」で履歴再生");
+            DrawArchivePanel();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("再生・確認")) {
+            if (!HasFrames()) ImGui::TextWrapped("記録がありません。Play中に記録するか、「保存済みリプレイ」から読み込んでください。");
+            DrawToolbar();
+            DrawTimelineEditor();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("詳細解析")) {
+            DrawRegressionPanel();
+            DrawSummaryCards();
 
-    ImGui::SeparatorText("フレーム内要素");
-    if (ImGui::RadioButton("Object3D", !inspectSprites_)) {
-        inspectSprites_ = false;
-    }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Sprite / UI", inspectSprites_)) {
-        inspectSprites_ = true;
-    }
-    const float availableWidth = ImGui::GetContentRegionAvail().x;
-    const float browserWidth = (std::max)(500.0f, availableWidth * 0.62f);
-    ImGui::BeginChild("##ReplayObjectBrowserPane", ImVec2(browserWidth, 0.0f), true);
-    if (inspectSprites_) DrawSpriteBrowser();
-    else DrawObjectBrowser();
-    ImGui::EndChild();
+            // 左側の個体一覧で選んだ ID のSnapshotを右側へ表示し、設定欄も同じペインに置きます。
+            ImGui::SeparatorText("フレーム内要素");
+            if (ImGui::RadioButton("Object3D", !inspectSprites_)) {
+                inspectSprites_ = false;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Sprite / UI", inspectSprites_)) {
+                inspectSprites_ = true;
+            }
+            const float availableWidth = ImGui::GetContentRegionAvail().x;
+            const float browserWidth = (std::max)(500.0f, availableWidth * 0.62f);
+            ImGui::BeginChild("##ReplayObjectBrowserPane", ImVec2(browserWidth, 0.0f), true);
+            if (inspectSprites_) DrawSpriteBrowser();
+            else DrawObjectBrowser();
+            ImGui::EndChild();
 
-    ImGui::SameLine();
-    ImGui::BeginChild("##ReplayObjectInspectorPane", ImVec2(0.0f, 0.0f), true);
-    if (inspectSprites_) DrawSpriteInspector();
-    else DrawObjectInspector();
-    DrawSettingsPanel();
-    ImGui::EndChild();
+            ImGui::SameLine();
+            ImGui::BeginChild("##ReplayObjectInspectorPane", ImVec2(0.0f, 0.0f), true);
+            if (inspectSprites_) DrawSpriteInspector();
+            else DrawObjectInspector();
+            DrawSettingsPanel();
+            ImGui::EndChild();
 
-    ImGui::EndTabItem();
-    }
-    ImGui::EndTabBar();
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
     }
 
     ImGui::End();
@@ -540,6 +542,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         return;
     }
 
+    // 最初の記録時刻をCanvasの原点に置き、履歴が伸びた分だけ横幅を増やします。
     const double startTime = frames_.front().time;
     const double endTime = frames_.back().time;
     const double duration = (std::max)(0.1, endTime - startTime);
@@ -563,6 +566,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         ImVec2(origin.x + kLabelWidth, end.y),
         IM_COL32(105, 115, 135, 255));
 
+    // Frameの密度、生成/削除、HP/死亡を別レーンに分け、変化の種類を一目で追えるようにします。
     const char* laneNames[] = { "Frames", "Spawn / Remove", "HP / Death" };
     for (int lane = 0; lane < 3; ++lane) {
         const float y0 = origin.y + kTimelineHeaderHeight + lane * kTimelineLaneHeight;
@@ -574,6 +578,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         drawList->AddText(ImVec2(origin.x + 8.0f, y0 + 5.0f), IM_COL32(205, 213, 226, 255), laneNames[lane]);
     }
 
+    // ズームに合わせて目盛り間隔を変え、整数秒にだけラベルを付けます。
     float tickStep = 1.0f;
     if (timelinePixelsPerSecond_ >= 220.0f) tickStep = 0.25f;
     else if (timelinePixelsPerSecond_ >= 110.0f) tickStep = 0.5f;
@@ -593,6 +598,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         }
     }
 
+    // 記録済み診断値から、各Frameの変化量と生成・削除・HP変化を印へ変換します。
     for (std::size_t index = 0; index < frames_.size(); ++index) {
         const FrameSnapshot& frame = frames_[index];
         const float elapsed = static_cast<float>(frame.time - startTime);
@@ -628,6 +634,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         }
     }
 
+    // 現在選択中のFrameを赤い線で示します。記録中の末尾とは独立したCursorです。
     const float playheadElapsed = static_cast<float>(frames_[cursor_].time - startTime);
     const float playheadX = origin.x + kLabelWidth + playheadElapsed * timelinePixelsPerSecond_;
     drawList->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, end.y), IM_COL32(255, 82, 82, 255), 2.0f);
@@ -637,6 +644,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         ImVec2(playheadX, origin.y + 9.0f),
         IM_COL32(255, 82, 82, 255));
 
+    // Hover時は最も近い保存Frameの診断値を示し、クリック/ドラッグでその時刻へ移動します。
     if (ImGui::IsItemHovered()) {
         const ImVec2 mouse = ImGui::GetIO().MousePos;
         if (mouse.x >= origin.x + kLabelWidth) {
@@ -673,6 +681,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         }
     }
 
+    // 自動スクロールは記録中だけ末尾へ追従し、停止中の手動比較位置を動かしません。
     if (mode_ == Mode::Recording && autoScrollTimeline_) {
         ImGui::SetScrollX(ImGui::GetScrollMaxX());
     }

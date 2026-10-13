@@ -14,15 +14,7 @@
 
 void GamePlayScene::StartLifeLostPresentation(int beforeLives, int afterLives) {
     // 演出開始時の表示数を固定し、途中でセーブ値が変わっても数字を跳ねさせません。
-    lifeLostPresentationActive_ = true;
-    lifeLostPresentationFinished_ = false;
-    lifeLostBlackHold_ = true;
-    lifeLostNumberDropped_ = false;
-    lifeLostRevive_ = afterLives > 0;
-    lifeLostPresentationTimer_ = 0.0f;
-    lifeLostBeforeLives_ = std::clamp(beforeLives, 0, 99);
-    lifeLostAfterLives_ = std::clamp(afterLives, 0, 99);
-    lifeLostIrisCenter_ = {0.5f, 0.5f};
+    lifeLostState_.Start(beforeLives, afterLives);
     if (lifeLostSlimeObject_) {
         lifeLostSlimeObject_->SetIsVisible(false);
     }
@@ -30,17 +22,6 @@ void GamePlayScene::StartLifeLostPresentation(int beforeLives, int afterLives) {
         lifeLostStunObject_->SetIsVisible(false);
     }
 
-    // 暗転の中心は、切り替え前のカメラで見たプレイヤー位置に合わせます。
-    if (player_) {
-        Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-        if (cam) {
-            Vector3 worldPos = player_->GetWorldPosition();
-            worldPos.y += 1.0f;
-            Vector3 ndc = Math::Transform(worldPos, cam->GetViewProjectionMatrix());
-            lifeLostIrisCenter_ = {std::clamp((ndc.x + 1.0f) * 0.5f, 0.08f, 0.92f),
-                                   std::clamp((1.0f - ndc.y) * 0.5f, 0.08f, 0.92f)};
-        }
-    }
     if (lifeLostCamera_) {
         CameraManager::GetInstance()->SetActiveCamera(lifeLostCamera_.get());
     }
@@ -49,9 +30,7 @@ void GamePlayScene::StartLifeLostPresentation(int beforeLives, int afterLives) {
 // シーン遷移や復帰で演出が中断されても、専用カメラと表示物を残しません。
 void GamePlayScene::HideLifeLostPresentationOverlay() {
     // 残機減少演出のカメラとSpriteを片付け、通常シーンへ描画を戻す。
-    lifeLostPresentationActive_ = false;
-    lifeLostPresentationFinished_ = true;
-    lifeLostBlackHold_ = false;
+    lifeLostState_.Hide();
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
     if (lifeLostIcon_.sprite)
         lifeLostIcon_.sprite->SetVisible(false);
@@ -70,9 +49,9 @@ void GamePlayScene::HideLifeLostPresentationOverlay() {
 }
 
 void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
-    if (!lifeLostPresentationActive_) {
+    if (!lifeLostState_.IsActive()) {
         // 演出完了後もシーン切り替えまで黒画面を保持します。
-        if (lifeLostBlackHold_) {
+        if (lifeLostState_.HoldsBlack()) {
             const float screenW = static_cast<float>(WinApp::kClientWidth);
             const float screenH = static_cast<float>(WinApp::kClientHeight);
             if (lifeLostBackdrop_.sprite) {
@@ -105,18 +84,16 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
         return;
     }
 
-    lifeLostPresentationTimer_ += deltaTime;
+    lifeLostState_.Advance(deltaTime);
     UpdateLifeLostPresentationWorld(deltaTime);
-    const float t = lifeLostPresentationTimer_;
+    const float t = lifeLostState_.Timer();
     constexpr float kNumberDropTime = 1.28f;
-    const float kFadeOutStartTime = lifeLostRevive_ ? 2.65f : 2.35f;
+    const float kFadeOutStartTime = lifeLostState_.Revives() ? 2.65f : 2.35f;
     constexpr float kFadeOutDuration = 0.35f;
-    const float kEndTime = lifeLostRevive_ ? 3.12f : 2.85f;
+    const float kEndTime = lifeLostState_.Revives() ? 3.12f : 2.85f;
     if (t >= kEndTime) {
         // 終端では描画を消して完了通知だけ残し、次のシーン更新に渡します。
-        lifeLostPresentationActive_ = false;
-        lifeLostPresentationFinished_ = true;
-        lifeLostBlackHold_ = true;
+        lifeLostState_.Finish();
         if (lifeLostIcon_.sprite)
             lifeLostIcon_.sprite->SetVisible(false);
         if (lifeLostXIcon_.sprite)
@@ -133,7 +110,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     }
 
     if (t >= kNumberDropTime) {
-        lifeLostNumberDropped_ = true;
+        lifeLostState_.MarkNumberDropped();
     }
 
     float alpha = std::clamp(t / 0.25f, 0.0f, 1.0f);
@@ -141,12 +118,12 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
         alpha = std::clamp(1.0f - (t - kFadeOutStartTime) / kFadeOutDuration, 0.0f, 1.0f);
     }
 
-    const int displayLives = lifeLostNumberDropped_ ? lifeLostAfterLives_ : lifeLostBeforeLives_;
+    const int displayLives = lifeLostState_.DidDropNumber() ? lifeLostState_.AfterLives() : lifeLostState_.BeforeLives();
     const float screenW = static_cast<float>(WinApp::kClientWidth);
     const float screenH = static_cast<float>(WinApp::kClientHeight);
     const float centerX = screenW * 0.5f;
     const float centerY = screenH * 0.5f;
-    const float settlePulse = lifeLostNumberDropped_
+    const float settlePulse = lifeLostState_.DidDropNumber()
                                   ? 1.0f + std::max(0.0f, 1.0f - (t - kNumberDropTime) / 0.42f) * 0.22f
                                   : 1.0f + std::sin(t * 7.0f) * 0.035f;
 
@@ -204,7 +181,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
         digit->SetTextureHandle(handle);
         digit->SetPosition({startX + (sourceIndex - (2 - (showTens ? 2 : 1))) * spacing, digitY});
         digit->SetSize({digitWidth, digitHeight});
-        digit->SetColor(lifeLostNumberDropped_ ? Vector4{1.0f, 0.65f, 0.22f, alpha}
+        digit->SetColor(lifeLostState_.DidDropNumber() ? Vector4{1.0f, 0.65f, 0.22f, alpha}
                                                : Vector4{1.0f, 0.92f, 0.38f, alpha});
         digit->Update();
     }
@@ -212,12 +189,12 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
 
 void GamePlayScene::DrawLifeLostPresentation() {
     // 暗転保持中も背景は描き、演出終了まで画面の飛びを防ぐ。
-    if (!lifeLostPresentationActive_ && !lifeLostBlackHold_)
+    if (!lifeLostState_.IsActive() && !lifeLostState_.HoldsBlack())
         return;
-    if (!lifeLostPresentationActive_) {
+    if (!lifeLostState_.IsActive()) {
         DrawGameplayHUDSprite(lifeLostBackdrop_);
     }
-    if (!lifeLostPresentationActive_)
+    if (!lifeLostState_.IsActive())
         return;
     DrawGameplayHUDSprite(lifeLostIcon_);
     DrawGameplayHUDSprite(lifeLostXIcon_);
@@ -275,7 +252,7 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
 void GamePlayScene::UpdateLifeLostPresentationWorld(float deltaTime) {
     // 演出時計からカメラとモデル姿勢を求め、ゲーム側の物理更新には依存しない。
     (void)deltaTime;
-    const float t = lifeLostPresentationTimer_;
+    const float t = lifeLostState_.Timer();
 
     if (lifeLostCamera_) {
         CameraManager::GetInstance()->SetActiveCamera(lifeLostCamera_.get());
@@ -295,7 +272,7 @@ void GamePlayScene::UpdateLifeLostPresentationWorld(float deltaTime) {
 void GamePlayScene::DrawLifeLostPresentationWorld(ID3D12Resource* pointLightResource,
                                                   ID3D12Resource* spotLightResource) {
     // 残機演出が有効な間だけ専用ワールドを描画する。
-    if (!lifeLostPresentationActive_) {
+    if (!lifeLostState_.IsActive()) {
         return;
     }
 

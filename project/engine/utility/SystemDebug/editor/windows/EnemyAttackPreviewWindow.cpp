@@ -2,6 +2,7 @@
 #include "EnemyAttackPreviewWindow.Constants.h"
 #include "engine/animation/BodyAnimationClip.h"
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/system/SceneGameplayAccess.h"
 #include "game/system/CrownFinaleTuning.h"
 #include "game/system/CrownDefeatTuning.h"
 
@@ -562,7 +563,7 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
     if (!playerCopyMode_) ResolvePreviewProjectileHits();
 
     if (previewScene_ && !playerCopyMode_) {
-        if (GameRule* gameRule = previewScene_->GetGameRule()) {
+        if (GameRule* gameRule = GetSceneGameRule(previewScene_)) {
             gameRule->Update(deltaTime);
         }
     }

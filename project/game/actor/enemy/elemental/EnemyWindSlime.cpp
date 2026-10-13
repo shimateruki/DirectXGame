@@ -276,9 +276,11 @@ void EnemyWindSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
 }
 
 void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
+    // 攻撃中は通常の水平移動を止め、状態ごとの高度・予告・発射だけを更新する。
     velocity.x = 0.0f;
     velocity.z = 0.0f;
 
+    // 後隙では予告を消し、タイマー終了で待機へ戻る。
     if (attackState_ == AttackState::Recover) {
         HideAttackTelegraph();
         attackStateTimer_ = (std::max)(0.0f, attackStateTimer_ - deltaTime);
@@ -288,6 +290,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const
         return;
     }
 
+    // ブレス中は固定した方向へ周期的に押し出し判定と風粒子を出す。
     if (attackState_ == AttackState::GustActive) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kGustAttackId);
         attackStateTimer_ = (std::max)(0.0f, attackStateTimer_ - deltaTime);
@@ -313,6 +316,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const
         return;
     }
 
+    // 弾幕の準備中は上昇しながら着弾地点を示し、後半に狙いを固定する。
     if (attackState_ == AttackState::VolleyTakeoff) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
         const float duration = (std::max)(0.01f, attack.windupDuration);
@@ -345,6 +349,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const
             TriggerAttackTelegraphCue({0.72f, 1.0f, 0.92f, 1.0f});
             warningTriggered_ = true;
         }
+        // 上昇完了後に弾の保持演出を発射段階へ移す。
         if (attackStateTimer_ <= 0.0f) {
             attackState_ = AttackState::VolleyActive;
             const float minimumActive = kVolleyFirstShotDelay + kVolleyShotInterval * 2.0f + 0.28f;
@@ -357,6 +362,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const
         return;
     }
 
+    // 空中では次弾の予告を保ち、発射数が尽きた後に着地へ進む。
     if (attackState_ == AttackState::VolleyActive) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
         attackStateTimer_ = (std::max)(0.0f, attackStateTimer_ - deltaTime);
@@ -376,6 +382,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const
         }
         UpdateHeldWindOrbs(deltaTime);
 
+        // 大きなdeltaTimeで発射時刻を跨いでも、必要な弾数を順に処理する。
         while (volleyShotCount_ < kVolleyOrbCount && volleyShotTimer_ <= 0.0f) {
             FireAerialWindOrb(volleyShotCount_);
             ++volleyShotCount_;
@@ -388,6 +395,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const
         return;
     }
 
+    // 着地中は保持弾を隠し、地面に戻った時点で接地状態と衝撃演出を確定する。
     if (attackState_ == AttackState::VolleyLanding) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
         const float duration = (std::max)(0.16f, attack.recoveryDuration);
@@ -415,6 +423,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const
         return;
     }
 
+    // 残る状態はブレスの予備動作。前半だけ方向を追い、予告後は狙いを固定する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kGustAttackId);
     const float duration = (std::max)(0.01f, attack.windupDuration);
     attackStateTimer_ = (std::max)(0.0f, attackStateTimer_ - deltaTime);

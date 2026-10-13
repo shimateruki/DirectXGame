@@ -11,6 +11,7 @@ namespace {
 using json = nlohmann::json;
 
 bool JsonValuesEqual(const json& lhs, const json& rhs) {
+    // 複数選択の混在判定では、編集時の浮動小数点誤差を差分として扱わないようにします。
     if (lhs.is_number() && rhs.is_number()) {
         return std::fabs(lhs.get<double>() - rhs.get<double>()) <= 0.00001;
     }
@@ -33,6 +34,7 @@ bool StartsWith(const std::string& text, const char* prefix) {
 }
 
 const json* FindSerializedPath(const json& source, const std::string& path) {
+    // Editor の Property Path ではなく、保存 JSON 内のドット区切り Path を順にたどります。
     const json* current = &source;
     std::size_t begin = 0;
     while (begin < path.size()) {
@@ -80,11 +82,13 @@ bool HasNonZeroSerializedInteger(const json& source, const char* path) {
 }
 
 bool ResolveSerializedComponentPresence(const json& source, const std::string& componentTypeId) {
+    // 明示的な削除印を最優先し、印のない旧 JSON は従来フィールドから存在を推測します。
     bool markerPresent = false;
     if (TryReadSerializedPresenceMarker(source, componentTypeId, markerPresent)) {
         return markerPresent;
     }
 
+    // 旧形式の各フィールドが空かどうかを種類ごとに判定します。
     if (componentTypeId == "Collider") {
         return HasNonZeroSerializedInteger(source, "collider.type") ||
             HasNonZeroSerializedInteger(source, "collisionAttribute") ||
@@ -125,12 +129,13 @@ void SetSerializedComponentPresence(
     json& source,
     const std::string& componentTypeId,
     bool present) {
+    // Variant の削除印だけでは基底 Prefab の値が残るため、旧形式のフィールドも初期化します。
     source["components"][componentTypeId]["_editorPresent"] = present;
     if (present) {
         return;
     }
 
-    // Componentを削除したVariantでも、基底Prefabの実行時設定が残らない値へ戻します。
+    // Component ごとに実行時に参照される値を解除します。
     if (componentTypeId == "Collider") {
         source["collider"]["type"] = static_cast<int>(ColliderType::kNone);
         source["collisionAttribute"] = 0;
@@ -175,6 +180,7 @@ void SetSerializedComponentPresence(
 }
 
 std::string ResolveComponentTypeId(const std::string& path) {
+    // UI 上の Property Path の接頭辞を、Inspector の Component 区分へ変換します。
     if (StartsWith(path, "identity.")) return "SceneObject";
     if (StartsWith(path, "transform.")) return "Transform";
     if (StartsWith(path, "rendering.")) return "MeshRenderer";
@@ -193,6 +199,8 @@ std::string ResolveComponentTypeId(const std::string& path) {
 }
 
 std::string ResolveSerializedPath(const std::string& path) {
+    // 編集用 Path と保存 JSON のキー名は一致しないため、互換フィールドへ写像します。
+    // transform/描画と、旧形式の component フィールドを同じ窓口から扱います。
     if (path == "identity.name") return "name";
     if (path == "identity.guid") return "guid";
     if (path == "identity.tag") return "tag";
@@ -241,6 +249,7 @@ std::string ResolveSerializedPath(const std::string& path) {
     if (path == "component.path.relative") return "recorder.isRecordRelative";
     if (path == "component.link.eventId") return "myEventID";
     if (path == "component.link.targetId") return "targetID";
+    // NavAgent 以降は任意プロパティ名を保持したまま、保存先の親キーだけ変換します。
     if (StartsWith(path, "component.nav.")) {
         const std::string property = path.substr(std::string("component.nav.").size());
         return "components.NavAgent." + property;
@@ -294,6 +303,7 @@ EditorPropertyUiHints ResolveUiHints(const std::string& path, EditorPropertyType
         break;
     }
 
+    // 角度と FOV は表示単位が違うため、通常の数値入力より専用ヒントを優先します。
     if (path == "transform.rotation" || path == "component.collision.rotation") {
         hints.displayAsDegrees = true;
         hints.speed = 0.25f;
@@ -333,6 +343,7 @@ bool EditorPropertyRegistry::RegisterComponent(EditorComponentDescriptor descrip
         componentIndices_.find(descriptor.typeId) != componentIndices_.end()) {
         return false;
     }
+    // Component と Preset の識別子重複を防いでから、Editor の一覧へ追加します。
     std::vector<std::string> presetIds;
     presetIds.reserve(descriptor.presets.size());
     for (const EditorComponentPresetDescriptor& preset : descriptor.presets) {
@@ -552,6 +563,7 @@ bool EditorPropertyRegistry::HasMixedValue(const std::vector<Object3d*>& objects
         return false;
     }
 
+    // 適用できない Object は比較から除き、最初の適用可能値を基準にします。
     const Object3d* first = nullptr;
     for (Object3d* object : objects) {
         if (object && IsApplicable(object, path)) {
@@ -578,6 +590,7 @@ void EditorPropertyRegistry::InitializeBuiltInProperties() {
     }
     initialized_ = true;
 
+    // Property 登録時に所属 Component を照合するため、Component を先に登録します。
     RegisterBuiltInComponents();
     RegisterBuiltInBaseProperties();
     RegisterBuiltInRenderAndComponentProperties();

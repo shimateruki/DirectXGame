@@ -30,6 +30,8 @@ void PresetManager::RefreshPrefabInheritance() {
 
             json resolvedRoot = baseIt->second["root"];
 
+            // Variantの差分は削除、追加、親変更、値変更の順で適用する。
+            // 親になる追加Objectを先に用意しないと、既存Objectをその下へ移せない。
             const json& removedObjectIds = asset["removedObjectIds"];
             if (removedObjectIds.is_array()) {
                 for (const auto& sourceObjectId : removedObjectIds) {
@@ -90,6 +92,7 @@ void PresetManager::RefreshPrefabInheritance() {
             }
 
             const json& nodeOverrides = asset["nodeOverrides"];
+            // Registry管理外の生JSON差分を戻してから、既知Propertyを型付きの経路で上書きする。
             if (nodeOverrides.is_object()) {
                 for (auto nodeIt = nodeOverrides.begin(); nodeIt != nodeOverrides.end(); ++nodeIt) {
                     json* node = FindSourceNodeRecursive(resolvedRoot, nodeIt.key());
@@ -148,6 +151,7 @@ void PresetManager::RefreshPrefabInheritance() {
 }
 
 void PresetManager::AddPrefabFromObject(const std::string& prefabName, Object3d* obj) {
+    // 同名Assetがあれば新規IDを発行せず更新し、既存Instanceのリンクを保つ。
     if (!obj || prefabName.empty()) {
         return;
     }
@@ -197,6 +201,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
 
     const std::string baseAssetId = assetIt->second.value("baseAssetId", "");
     if (baseAssetId.empty()) {
+        // 親のないPrefabは編集済みツリーをそのまま正とし、Variant用差分を空に戻す。
         assetIt->second["root"] = std::move(editedRoot);
         assetIt->second["propertyOverrides"] = json::object();
         assetIt->second["removedObjectIds"] = json::array();
@@ -219,6 +224,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
         CollectPrefabNodeLocations(baseRoot, "", 0, baseLocations);
         CollectPrefabNodeLocations(editedRoot, "", 0, editedLocations);
 
+        // sourceObjectIdを軸に、削除・追加・移動と値の差分を別々に作る。
         json removedObjectIds = json::array();
         for (const auto& [sourceObjectId, location] : baseLocations) {
             (void)location;
@@ -310,6 +316,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
             json baseRaw = baseNode;
             json editedRaw = editedNode;
             for (json* raw : { &baseRaw, &editedRaw }) {
+                // 親子や既知Componentは専用の差分へ出したので、残りだけJSON Merge Patchにする。
                 raw->erase("children");
                 raw->erase("prefabObjectId");
                 raw->erase("prefabInstance");
@@ -378,6 +385,7 @@ int PresetManager::SynchronizePrefabInstances(
     };
 
     std::unordered_map<std::string, std::vector<Object3d*>> instances;
+    // 同じPrefab配置に属するObjectをInstance IDでまとめ、他の配置へ波及させない。
     for (const auto& object : sceneObjects) {
         if (!object || !object->IsPrefabInstance()) continue;
         const auto& info = object->GetPrefabInstanceInfo();
@@ -401,6 +409,7 @@ int PresetManager::SynchronizePrefabInstances(
 
         const json& oldRoot = (*oldAsset)["root"];
         const json& newRoot = (*newAsset)["root"];
+        // 更新前後のsourceObjectIdと親を比較し、Sceneのローカル編集を保持できる範囲だけ同期する。
         std::unordered_map<std::string, PrefabNodeLocation> oldLocations;
         std::unordered_map<std::string, PrefabNodeLocation> newLocations;
         CollectPrefabNodeLocations(oldRoot, "", 0, oldLocations);

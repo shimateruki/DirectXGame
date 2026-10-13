@@ -1,5 +1,6 @@
 ﻿#define NOMINMAX
 #include "GimmickCopyMemoryStation.h"
+#include "game/system/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
 #include "BaseScene.h"
@@ -193,10 +194,24 @@ std::unique_ptr<Object3d> GimmickCopyMemoryStation::Clone() const {
     return clone;
 }
 
+GimmickCopyMemoryStation::Settings GimmickCopyMemoryStation::ReadSettings() const {
+    Settings settings;
+    if (!param_) return settings;
+    settings.types = {param_->copyMemoryTypeA, param_->copyMemoryTypeB,
+                      param_->copyMemoryTypeC, param_->copyMemoryTypeD};
+    settings.activationRadius = param_->copyMemoryActivationRadius;
+    settings.essenceScale = param_->copyMemoryEssenceScale;
+    settings.hoverAmount = param_->copyMemoryHoverAmount;
+    settings.glow = param_->copyMemoryGlow;
+    settings.unlimitedDuration = param_->copyMemoryUnlimitedDuration;
+    settings.startActive = param_->startActive;
+    return settings;
+}
+
 void GimmickCopyMemoryStation::BeginPlayState() {
     // 再生開始時は編集設定を有効状態の初期値へ反映します。
     initializedForPlay_ = true;
-    runtimeEnabled_ = param_.has_value() ? param_->startActive : true;
+    runtimeEnabled_ = ReadSettings().startActive;
     selectionCooldown_ = 0.0f;
     latchedCore_ = -1;
     collisionObserved_ = false;
@@ -206,7 +221,7 @@ void GimmickCopyMemoryStation::ResetEditorState() {
     // 前回再生での選択とアニメーションを編集画面へ持ち越しません。
     initializedForPlay_ = false;
     corePulseTimers_.fill(0.0f);
-    runtimeEnabled_ = param_ ? param_->startActive : true;
+    runtimeEnabled_ = ReadSettings().startActive;
     selectionCooldown_ = 0.0f;
     latchedCore_ = -1;
     collisionObserved_ = false;
@@ -218,14 +233,15 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
     visualTimer_ = std::fmod(visualTimer_ + deltaTime, 600.0f);
     SceneManager* manager = SceneManager::GetInstance();
     Player* player = manager && manager->IsPlaying() && manager->GetCurrentScene()
-                         ? manager->GetCurrentScene()->GetPlayer()
+                         ? GetScenePlayer(manager->GetCurrentScene())
                          : nullptr;
     if (player && (player->isDead || player->IsCinematicLocked()))
         player = nullptr;
-    const float size = param_ ? std::clamp(param_->copyMemoryEssenceScale, 0.25f, 2.0f) : 1.0f;
-    const float hover = param_ ? std::clamp(param_->copyMemoryHoverAmount, 0.0f, 0.35f) : 0.10f;
-    const float glow = param_ ? std::clamp(param_->copyMemoryGlow, 0.0f, 2.0f) : 0.45f;
-    const bool four = param_ && !param_->copyMemoryTypeD.empty();
+    const Settings settings = ReadSettings();
+    const float size = std::clamp(settings.essenceScale, 0.25f, 2.0f);
+    const float hover = std::clamp(settings.hoverAmount, 0.0f, 0.35f);
+    const float glow = std::clamp(settings.glow, 0.0f, 2.0f);
+    const bool four = !settings.types[3].empty();
     const bool single = IsSingleCore();
     const std::string desiredModel = single ? "Gimmicks/copy_memory_station_single"
                                      : four ? "Gimmicks/copy_memory_station_four"
@@ -366,7 +382,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
                 radius *= 1.0f + std::sin(elapsed / kPulseDuration * 3.14159265f) * 0.20f;
             }
         }
-        alpha *= param_ ? std::clamp(param_->copyMemoryGlow * 2.0f, 0.0f, 1.5f) : 0.9f;
+        alpha *= param_ ? std::clamp(ReadSettings().glow * 2.0f, 0.0f, 1.5f) : 0.9f;
         effect->SetIsVisible(alpha > 0.015f);
         if (!effect->GetIsVisible())
             continue;
@@ -412,7 +428,7 @@ Vector3 GimmickCopyMemoryStation::GetCoreLocalPosition(size_t index) const {
     // 1能力だけなら空の台座を並べず、取得判定と光も中央へ揃える。
     if (IsSingleCore())
         return {0.0f, 1.8f, 0.0f};
-    return param_ && !param_->copyMemoryTypeD.empty() ? kFourCoreLocalPositions[index]
+    return !ReadSettings().types[3].empty() ? kFourCoreLocalPositions[index]
                                                       : kCoreLocalPositions[(std::min)(index, size_t{2})];
 }
 
@@ -426,23 +442,12 @@ std::string GimmickCopyMemoryStation::GetConfiguredType(size_t index) const {
     if (!param_.has_value()) {
         return {};
     }
-    switch (index) {
-    case 0:
-        return param_->copyMemoryTypeA;
-    case 1:
-        return param_->copyMemoryTypeB;
-    case 2:
-        return param_->copyMemoryTypeC;
-    case 3:
-        return param_->copyMemoryTypeD;
-    default:
-        return {};
-    }
+    return index < kCoreCount ? std::string(ReadSettings().types[index]) : std::string{};
 }
 
 int GimmickCopyMemoryStation::FindTouchedCore(const Vector3& playerPosition) const {
     // 水平方向だけで最も近い有効コアを探し、見た目と取得先を一致させます。
-    const float configuredRadius = param_.has_value() ? param_->copyMemoryActivationRadius : 0.9f;
+    const float configuredRadius = ReadSettings().activationRadius;
     const float scaleRadius = (std::max)(std::abs(GetScale().x), std::abs(GetScale().z));
     const float radius = (std::max)(0.1f, configuredRadius) * scaleRadius;
     const float radiusSquared = radius * radius;
@@ -471,7 +476,7 @@ void GimmickCopyMemoryStation::ActivateCore(Player& player, size_t index) {
     }
 
     const std::string enemyType = GetConfiguredType(index);
-    const bool unlimitedDuration = !param_.has_value() || param_->copyMemoryUnlimitedDuration;
+    const bool unlimitedDuration = ReadSettings().unlimitedDuration;
     if (!player.ApplyStoredCopy(enemyType, unlimitedDuration)) {
         return;
     }
