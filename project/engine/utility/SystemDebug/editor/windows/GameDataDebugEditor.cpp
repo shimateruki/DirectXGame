@@ -15,6 +15,7 @@
 
 namespace {
 std::string FormatTime(int totalSeconds) {
+    // セーブデータの経過秒数を画面表示用の時分秒へ整える。
     totalSeconds = std::max(totalSeconds, 0);
     const int hours = totalSeconds / 3600;
     const int minutes = (totalSeconds / 60) % 60;
@@ -29,6 +30,7 @@ std::string FormatTime(int totalSeconds) {
     return buffer;
 }
 
+// 初期解放と前段ステージのクリア状態から、指定スロットで入れるか判定します。
 bool IsStageUnlockedForSave(const StageData& stage, int stageIndex, GameDataManager* save) {
     if (!save) {
         return false;

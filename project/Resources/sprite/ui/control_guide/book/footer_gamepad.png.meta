@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0a6ea24085d23dbf8cf4df4bdf91361c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/footer_gamepad.png",
+  "version": 1
+}

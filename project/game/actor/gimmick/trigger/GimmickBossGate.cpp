@@ -9,6 +9,7 @@
 #include <cassert>
 
 namespace {
+// ボスゲートの開閉率を両端で滑らかにつなぎます。
 float SmoothStep01(float value) {
     // 閉鎖率の両端で門の上下移動が急停止しないようにする。
     const float t = std::clamp(value, 0.0f, 1.0f);
@@ -27,7 +28,7 @@ void GimmickBossGate::Initialize(Object3dCommon* common, const std::string& mode
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(0xffffffffu);
 
-    Object3d::ColliderConfig collider;
+    engine::Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 3.5f, 0.0f};
     collider.size = {6.0f, 3.5f, 0.55f};
@@ -94,7 +95,7 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
     if (active) {
         SetIsVisible(true);
         if (closure_ <= 0.001f) {
-            Vector3 cue = authoredPosition_;
+            engine::Vector3 cue = authoredPosition_;
             cue.y += 0.1f;
             VFXSequencer::PlayOneShot("high_crown_gate_close_cue", cue, {1.0f, 1.0f, 1.0f});
         }
@@ -103,7 +104,7 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickBossGate::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickBossGate::Clone() const {
     // 編集配置を複製し、実行時の閉鎖率は新しい門で計算する。
     auto clone = std::make_unique<GimmickBossGate>();
     assert(common_ != nullptr);
@@ -112,7 +113,7 @@ std::unique_ptr<Object3d> GimmickBossGate::Clone() const {
     return clone;
 }
 
-Vector3 GimmickBossGate::GetClosedPosition() {
+engine::Vector3 GimmickBossGate::GetClosedPosition() {
     // 閉鎖位置の基準は現在の編集配置から一度だけ確定する。
     CaptureAuthoredState();
     return authoredPosition_;
@@ -155,7 +156,7 @@ void GimmickBossGate::ResetForEditor() {
 void GimmickBossGate::ApplyRuntimeState() {
     // 閉鎖率に応じて門を上下させ、十分閉じるまで壁の接触を有効にしない。
     const float eased = SmoothStep01(closure_);
-    Vector3 position = authoredPosition_;
+    engine::Vector3 position = authoredPosition_;
     position.y += (1.0f - eased) * GetTravelDistance();
     SetTranslate(position);
     SetScale(authoredScale_);

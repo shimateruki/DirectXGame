@@ -9,7 +9,7 @@
 
 // 派生キャラクターが決めた速度へ重力と外力を加え、最後に Motor で衝突込みの移動を行います。
 void Character::Update(float deltaTime) {
-    Object3d::Update(deltaTime);
+    engine::Object3d::Update(deltaTime);
 
     if (!param_.has_value()) {
         return;
@@ -23,8 +23,8 @@ void Character::Update(float deltaTime) {
         const float duration = (std::max)(externalImpulseDuration_, 0.001f);
         const float remaining = std::clamp(externalImpulseTimer_ / duration, 0.0f, 1.0f);
         const float weight = remaining * remaining * (3.0f - 2.0f * remaining);
-        velocity_.x = Math::Lerp(velocity_.x, externalImpulseVelocity_.x, weight);
-        velocity_.z = Math::Lerp(velocity_.z, externalImpulseVelocity_.z, weight);
+        velocity_.x = engine::Math::Lerp(velocity_.x, externalImpulseVelocity_.x, weight);
+        velocity_.z = engine::Math::Lerp(velocity_.z, externalImpulseVelocity_.z, weight);
         if (externalImpulseVerticalPending_) {
             velocity_.y = (std::max)(velocity_.y, externalImpulseVelocity_.y);
             externalImpulseVerticalPending_ = false;
@@ -37,7 +37,7 @@ void Character::Update(float deltaTime) {
         isDead = true;
     }
 
-    Vector3 position = GetTranslate();
+    engine::Vector3 position = GetTranslate();
     characterMotor_.Move(*this, position, velocity_, isGrounded_, deltaTime);
     SetTranslate(position);
 }
@@ -59,7 +59,7 @@ void Character::SyncCharacterMotorSettings() {
     characterMotor_.SetSettings(settings);
 }
 
-void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
+void Character::ApplyExternalImpulse(const engine::Vector3& velocity, float duration) {
     // 連続被弾では弱い水平外力で強いノックバックを上書きせず、上方向だけ維持できる。
     const float safeDuration = (std::max)(0.01f, duration);
     if (externalImpulseTimer_ <= 0.0f) {
@@ -85,14 +85,14 @@ void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
 
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // キャラクター固有の描画はここで加えず、共通のライト付き 3D 描画経路を使う。
-    Object3d::Draw(pointLightResource, spotLightResource);
+    engine::Object3d::Draw(pointLightResource, spotLightResource);
 }
 
 // =================================================================
 // 衝突判定・物理挙動
 // =================================================================
 
-bool Character::OnCollision(Object3d* other) {
+bool Character::OnCollision(engine::Object3d* other) {
     CollisionInfo info = CheckCollision(other);
 
     if (!info.isColliding) {
@@ -112,13 +112,13 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
     }
 
     SyncCharacterMotorSettings();
-    Vector3 position = GetTranslate();
+    engine::Vector3 position = GetTranslate();
     characterMotor_.ResolveCollision(position, velocity_, isGrounded_, info, attribute);
     SetTranslate(position);
 }
 
 // 編集用の複製ではステータスと移動設定を引き継ぎ、経路レコーダーは新しい実体として初期化します。
-std::unique_ptr<Object3d> Character::Clone() const {
+std::unique_ptr<engine::Object3d> Character::Clone() const {
     if (typeid(*this) != typeid(Character)) {
         return nullptr;
     }

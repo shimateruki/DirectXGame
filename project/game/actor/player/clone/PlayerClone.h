@@ -6,7 +6,7 @@
 /// </summary>
 class PlayerClone : public Character {
   public:
-    void Initialize(Object3dCommon* common, const Vector3& position, const Vector3& velocity);
+    void Initialize(Object3dCommon* common, const engine::Vector3& position, const engine::Vector3& velocity);
     void Update(float deltaTime) override;
 
     bool IsGrounded() const { return isGrounded_; }

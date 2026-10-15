@@ -55,23 +55,23 @@ public:
     // 攻撃タイムラインが所有する表示物。管理側のdtを加算せず、指定秒の姿を描画します。
     bool StartTimelineEffect(EffectScopeId scopeId, const std::string& path);
     void EvaluateTimelineEffect(EffectScopeId scopeId, float time, float duration,
-        const Vector3& position, const Vector3& rotation, const Vector3& scale);
+        const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale);
 
     /// <summary>対象Object3dに追従するメッシュエフェクトを生成する。</summary>
-    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
+    void SpawnEffect(const std::string& jsonFilePath, engine::Object3d* baseObject = nullptr, const engine::Vector3& extOffset = { 0,0,0 }, const engine::Vector3& extRot = { 0,0,0 }, const engine::Vector3& extScale = { 1,1,1 });
 
     /// <summary>JSON側の配置値に代えて、指定のワールド座標・回転で生成する。</summary>
-    void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
+    void SpawnEffectAt(const std::string& jsonFilePath, const engine::Vector3& worldPos, const engine::Vector3& worldRot, const engine::Vector3& scale = { 1,1,1 });
 
     /// <summary>指定スコープに属するエフェクトをワールド座標で生成する。</summary>
     void SpawnEffectAtScoped(EffectScopeId scopeId, const std::string& jsonFilePath,
-        const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
+        const engine::Vector3& worldPos, const engine::Vector3& worldRot, const engine::Vector3& scale = { 1,1,1 });
 
     /// <summary>リング状の波紋エフェクトを発生させる。</summary>
-    void SpawnRingWaveEffect(const Vector3& position);
+    void SpawnRingWaveEffect(const engine::Vector3& position);
 
     /// <summary>円柱状のポータルエフェクトを一定時間発生させる。</summary>
-    void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
+    void SpawnPortalEffect(const engine::Vector3& position, float lifetime = 3.0f);
 
     /// <summary>初期化状態とプリロードを維持し、再生中のエフェクトだけを消す。</summary>
     void ClearActiveEffects();
@@ -104,7 +104,8 @@ private:
     std::unordered_set<std::string> preloadedEffects_;
     bool updatedThisFrame_ = false;
     float timeScale_ = 1.0f;
-    struct TimelineOffset { Vector3 position, rotation; };
+    /// <summary>タイムライン編集時に各エフェクトへ加える位置と回転の補正値。</summary>
+    struct TimelineOffset { engine::Vector3 position, rotation; };
     std::unordered_map<EffectObject3d*, TimelineOffset> timelineOffsets_;
 
 };

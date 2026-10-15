@@ -2,7 +2,7 @@
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 
 void EnemySpawner::Initialize(Object3dCommon* common, const std::string& enemyType, float interval, int maxCount) {
-    Object3d::Initialize(common);
+    engine::Object3d::Initialize(common);
     common_ = common;
     enemyType_ = enemyType;
     spawnInterval_ = interval;
@@ -28,13 +28,13 @@ void EnemySpawner::Update(float deltaTime) {
         spawnCount_++;
     }
 
-    Object3d::Update(deltaTime);
+    engine::Object3d::Update(deltaTime);
 }
 
 void EnemySpawner::Spawn() {
     if (onSpawnCallback_) {
         // 自分の配置座標をスポーン位置として使う
-        Vector3 spawnPos = {0, 0, 0};
+        engine::Vector3 spawnPos = {0, 0, 0};
         if (GetTransform()) {
             spawnPos = GetTransform()->translate;
         }

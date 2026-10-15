@@ -48,7 +48,7 @@ void GimmickRotatingObject::Update(float deltaTime) {
 
     if (active_) {
         const float radiansPerSecond = param_->speed * 3.14159265f / 180.0f;
-        Vector3 rot = GetTransform()->rotate;
+        engine::Vector3 rot = GetTransform()->rotate;
 
         if (param_->actionMode == 0) {
             rot.x += radiansPerSecond * deltaTime;
@@ -80,7 +80,7 @@ void GimmickRotatingObject::OnSwitchEvent(bool active) {
     active_ = active;
 }
 
-std::unique_ptr<Object3d> GimmickRotatingObject::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickRotatingObject::Clone() const {
     // 回転開始時刻は複製せず、保存済みの配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickRotatingObject>();
     assert(common_ != nullptr);

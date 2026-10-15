@@ -21,7 +21,7 @@ constexpr const char* kNames[] = {"__Editor_Cinematic_Actor", "__Editor_Cinemati
                                   "__Editor_Cinematic_Floor"};
 constexpr const char* kRoles[] = {"$Actor", "$Gate", "$Camera"};
 constexpr const char* kLabels[] = {"演出対象", "基準オブジェクト", "演出カメラ"};
-constexpr Vector3 kOrigin{16000.0f, 10000.0f, 16000.0f};
+constexpr engine::Vector3 kOrigin{16000.0f, 10000.0f, 16000.0f};
 } // namespace
 
 int GhostDirector::GetRoleIndex(const std::string& name) {
@@ -32,7 +32,7 @@ int GhostDirector::GetRoleIndex(const std::string& name) {
     return -1;
 }
 
-Object3d* GhostDirector::FindStudioObject(int role) const {
+engine::Object3d* GhostDirector::FindStudioObject(int role) const {
     // シーンが切り替わっていたら古いポインタをたどらないようにします。
     if (role < 0 || role >= 4 || !sceneManager_ || sceneManager_->GetCurrentScene() != studioScene_)
         return nullptr;
@@ -45,7 +45,7 @@ Object3d* GhostDirector::FindStudioObject(int role) const {
 void GhostDirector::CreateStudioObjects() {
     // 実ステージと離れた座標に、対象・基準・カメラ・床の仮オブジェクトを作ります。
     for (int index = 0; index < 4; ++index) {
-        auto object = std::make_unique<Object3d>();
+        auto object = std::make_unique<engine::Object3d>();
         object->Initialize(studioScene_->GetObject3dCommon());
         object->SetName(kNames[index]);
         object->SetClassName(index == 2 ? "CinematicCamera" : "EditorOnly");
@@ -61,12 +61,12 @@ void GhostDirector::CreateStudioObjects() {
         }
         if (index == 0) {
             object->SetScale({1.7f, 1.7f, 1.7f});
-            object->SetTranslate(kOrigin + Vector3{0, 0, 4});
+            object->SetTranslate(kOrigin + engine::Vector3{0, 0, 4});
         } else if (index == 2) {
-            object->SetTranslate(kOrigin + Vector3{-6, 4, -10});
+            object->SetTranslate(kOrigin + engine::Vector3{-6, 4, -10});
             object->SetRotation({0.2f, 0.4f, 0});
         } else if (index == 3) {
-            object->SetTranslate(kOrigin + Vector3{0, -0.3f, 0});
+            object->SetTranslate(kOrigin + engine::Vector3{0, -0.3f, 0});
             object->SetScale({24, 0.2f, 24});
             object->SetColor({0.22f, 0.25f, 0.29f, 1});
         }
@@ -129,8 +129,8 @@ void GhostDirector::PlaceStudioCamera() {
     currentScrubTime_ = 0.0f;
     if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetFollowTarget(nullptr);
-        camera->SetEye(kOrigin + Vector3{-10, 7, -15});
-        camera->SetTarget(kOrigin + Vector3{0, 1, 3});
+        camera->SetEye(kOrigin + engine::Vector3{-10, 7, -15});
+        camera->SetTarget(kOrigin + engine::Vector3{0, 1, 3});
         camera->SetRotation({0.284f, 0.507f, 0});
         camera->SetFovY(0.65f);
         CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
@@ -160,7 +160,7 @@ void GhostDirector::EndStudio() {
         }
         if (studioCameraSaved_) {
             if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
-                Object3d* follow = nullptr;
+                engine::Object3d* follow = nullptr;
                 for (const auto& object : studioScene_->GetObjects())
                     if (object.get() == studioStoredFollow_)
                         follow = object.get();
@@ -242,13 +242,13 @@ void GhostDirector::DrawStudioControls() {
                     camera.name = "演出カメラの移動";
                     camera.binding = templateCamera_;
                     camera.anchorRelative = true;
-                    const Vector3 positions[] = {{0, 0, 0}, {0, 2, 2.3f}, {0, 0, 5}, {0, 0, 5}};
+                    const engine::Vector3 positions[] = {{0, 0, 0}, {0, 2, 2.3f}, {0, 0, 5}, {0, 0, 5}};
                     const float times[] = {0, 0.9f, 1.8f, 2.7f};
                     for (int index = 0; index < 4; ++index) {
                         actor.keys.push_back({times[index], positions[index], {}, {1.7f, 1.7f, 1.7f}, 4});
-                        const Vector3 eye{-6.0f + index * 0.6f, 4, -10.0f + index};
-                        const Vector3 direction = positions[index] + Vector3{0, 1, 0} - eye;
-                        Vector3 rotation{
+                        const engine::Vector3 eye{-6.0f + index * 0.6f, 4, -10.0f + index};
+                        const engine::Vector3 direction = positions[index] + engine::Vector3{0, 1, 0} - eye;
+                        engine::Vector3 rotation{
                             -std::atan2(direction.y, std::sqrt(direction.x * direction.x + direction.z * direction.z)),
                             std::atan2(direction.x, direction.z), 0};
                         camera.keys.push_back({times[index], eye, rotation, {1, 1, 1}, 4});

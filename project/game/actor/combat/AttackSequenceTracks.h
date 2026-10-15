@@ -15,6 +15,7 @@ struct AttackTransformKey {
     int interpolation = 1; // 次のキーまで: 0=保持、1=線形、2=Smoothstep
 };
 
+/// <summary>攻撃中の表示、判定、体アニメーションを時間区間と条件付きで定義する。</summary>
 struct AttackSequenceTrack {
     std::string name = "表示物";
     std::string type = "mesh_vfx"; // mesh_vfx / hitbox / body_animation
@@ -38,6 +39,7 @@ struct AttackSequenceTrack {
 
     // 絶対時刻から直接評価するため、順再生とシークで補間結果が一致します。
     AttackTransformKey Evaluate(float localTime) const {
+        // 区間外では端のキーを返し、区間内だけ前後キーの補間種別を適用する。
         if (keys.empty()) return {};
         if (localTime <= keys.front().time) return keys.front();
         for (size_t i = 1; i < keys.size(); ++i) {
@@ -61,6 +63,7 @@ struct AttackSequenceTrack {
     }
 
     bool Validate(float duration, std::string* error) const {
+        // JSON由来の値を再生前に検査し、補間時のゼロ除算や範囲外参照を防ぐ。
         auto fail = [&](const char* message) { if (error) *error = message; return false; };
         if (parentTrack < -1) return fail("親Objectの参照番号が不正です。");
         if (motion != "keyframed" && motion != "aim_launch" && motion != "homing") return fail("未対応の動作部品です。");

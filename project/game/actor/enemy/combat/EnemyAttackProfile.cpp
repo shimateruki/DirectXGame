@@ -23,6 +23,7 @@ constexpr const char* kProfileDirectory = "Resources/json/enemy_attack/";
 std::mutex gProfileCacheMutex;
 std::unordered_map<std::string, EnemyAttackProfile> gProfileCache;
 
+// 攻撃JSONの数値項目を読み、欠落時は指定された既定値を返します。
 float ReadFloat(const json& object, const char* key, float fallback) {
     // 欠損やNaNを既定値へ戻し、後段の距離・秒数計算へ不正値を流さない。
     const auto it = object.find(key);
@@ -42,7 +43,7 @@ std::string ReadString(const json& object, const char* key, const std::string& f
     return it->get<std::string>();
 }
 
-Vector3 ReadVector3(const json& object, const char* key, const Vector3& fallback) {
+engine::Vector3 ReadVector3(const json& object, const char* key, const engine::Vector3& fallback) {
     // 3軸がすべて数値の場合だけ採用し、部分的な配列は既定値へ戻す。
     const auto it = object.find(key);
     if (it == object.end() || !it->is_array() || it->size() < 3 || !(*it)[0].is_number() || !(*it)[1].is_number() ||
@@ -52,11 +53,12 @@ Vector3 ReadVector3(const json& object, const char* key, const Vector3& fallback
     return {(*it)[0].get<float>(), (*it)[1].get<float>(), (*it)[2].get<float>()};
 }
 
-json WriteVector3(const Vector3& value) {
+json WriteVector3(const engine::Vector3& value) {
     // 読み込み側と同じXYZ順の配列として保存する。
     return json::array({value.x, value.y, value.z});
 }
 
+// 弾の当たり判定、運動、外観を一つの攻撃部品JSONへ保存します。
 json WriteProjectile(const AttackProjectileComponent& p) {
     // 弾の判定・移動・外観を同じ部品の下にまとめ、攻撃定義から独立して保存する。
     const auto& a = p.appearance;
@@ -69,6 +71,7 @@ json WriteProjectile(const AttackProjectileComponent& p) {
         {"billboardScale", a.billboardScale}, {"trailInterval", a.trailInterval}, {"trailSpeedScale", a.trailSpeedScale}}}};
 }
 
+// 省略値には既定値を使い、弾部品全体を検証して復元します。
 AttackProjectileComponent ReadProjectile(const json& source) {
     // 省略された項目は部品の既定値を使い、最後に組み合わせ全体を検証する。
     AttackProjectileComponent p;
@@ -95,6 +98,7 @@ AttackProjectileComponent ReadProjectile(const json& source) {
     return p;
 }
 
+// 攻撃イベントと各トラックを時間順の攻撃シーケンスJSONへ保存します。
 json WriteSequence(const AttackSequenceDefinition& sequence) {
     // 時間順のイベントと見た目・判定トラックを一つの攻撃アセットに書き出す。
     json tracks = json::array();
@@ -142,6 +146,7 @@ json WriteSequence(const AttackSequenceDefinition& sequence) {
         {"visualScale", sequence.visualScale}, {"fireAppearance", appearance}, {"events", events}, {"tracks", tracks}};
 }
 
+// 外部アセット参照を優先し、なければ埋め込みトラックを復元します。
 void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
     // 外部アセット参照があればそれを優先し、なければJSON内のトラックを復元する。
     const std::string assetPath = source.value("assetPath", std::string{});
@@ -235,9 +240,9 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
         event.operation = item.value("operation", std::string("projectile"));
         event.condition = item.value("condition", std::string("always"));
         event.stopOnFalse = item.value("stopOnFalse", false);
-        const Vector3 offset = ReadVector3(item, "offset", {0, 1.05f, 0.65f});
+        const engine::Vector3 offset = ReadVector3(item, "offset", {0, 1.05f, 0.65f});
         event.right = offset.x; event.up = offset.y; event.forward = offset.z;
-        const Vector3 sizeOffset = ReadVector3(item, "sizeOffset", {0, 0, 0});
+        const engine::Vector3 sizeOffset = ReadVector3(item, "sizeOffset", {0, 0, 0});
         event.sizeRight = sizeOffset.x; event.sizeUp = sizeOffset.y; event.sizeForward = sizeOffset.z;
         event.yawDegrees = item.value("yawDegrees", 0.0f);
         event.aimAtTarget = item.value("aimAtTarget", true);
@@ -254,6 +259,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
     }
 }
 
+// 既定攻撃へJSONで明示された項目を重ね、未指定項目は既定値を保ちます。
 void MergeAttackJson(const json& source, EnemyAttackDefinition& attack) {
     // 既定攻撃へ設定済みの項目だけ上書きし、古いJSONの欠損項目は既定値を残す。
     attack.selectionWeight = source.value("selectionWeight", 1.0f);
@@ -322,6 +328,7 @@ void MergeAttackJson(const json& source, EnemyAttackDefinition& attack) {
     }
 }
 
+// ランタイムと編集画面が共有する攻撃定義を階層JSONへ出力します。
 json WriteAttackJson(const EnemyAttackDefinition& attack) {
     // 編集画面とランタイムが参照する項目を同じ階層構造で保存する。
     return {{"id", attack.id}, {"selectionWeight", attack.selectionWeight},
@@ -363,6 +370,7 @@ json WriteAttackJson(const EnemyAttackDefinition& attack) {
               {"feedbackCue", attack.feedbackCue}}}};
 }
 
+// アセットがない場合にも使う攻撃定義を、共通の既定値から構築します。
 EnemyAttackDefinition MakeAttack(const char* id, const char* displayName, float minRange, float maxRange, float radius,
                                  float windup, float active, float recovery, float cooldown, float warningLead,
                                  float damage, float minSpeed, float maxSpeed, float lifetime, float previewDistance,
@@ -490,23 +498,23 @@ bool EnemyAttackDefinition::IsCancelWindowOpen(float elapsedActionTime) const {
 
 bool EnemyAttackDefinition::HasConfiguredKnockback() const {
     // ほぼゼロの設定は旧処理のノックバック値に任せる。
-    return Math::Length(knockbackVelocity) > 0.001f;
+    return engine::Math::Length(knockbackVelocity) > 0.001f;
 }
 
-Vector3 EnemyAttackDefinition::ResolveKnockback(const Vector3& forward, const Vector3& legacyFallback) const {
+engine::Vector3 EnemyAttackDefinition::ResolveKnockback(const engine::Vector3& forward, const engine::Vector3& legacyFallback) const {
     if (!HasConfiguredKnockback()) {
         return legacyFallback;
     }
 
     // 設定値の X/Z は敵の右/前を基準にした成分。空中へ向いた forward は水平化してから変換する。
-    Vector3 planarForward = {forward.x, 0.0f, forward.z};
-    if (Math::Length(planarForward) <= 0.001f) {
+    engine::Vector3 planarForward = {forward.x, 0.0f, forward.z};
+    if (engine::Math::Length(planarForward) <= 0.001f) {
         planarForward = {0.0f, 0.0f, 1.0f};
     } else {
-        planarForward = Math::Normalize(planarForward);
+        planarForward = engine::Math::Normalize(planarForward);
     }
-    const Vector3 right = {planarForward.z, 0.0f, -planarForward.x};
-    return right * knockbackVelocity.x + Vector3{0.0f, knockbackVelocity.y, 0.0f} + planarForward * knockbackVelocity.z;
+    const engine::Vector3 right = {planarForward.z, 0.0f, -planarForward.x};
+    return right * knockbackVelocity.x + engine::Vector3{0.0f, knockbackVelocity.y, 0.0f} + planarForward * knockbackVelocity.z;
 }
 
 float EnemyAttackDefinition::ResolveInvincibilityDuration(float legacyFallback) const {

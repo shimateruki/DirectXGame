@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "80cae531536f59e1b6cf009e88306b0c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_Checkpoint_Path.obj",
+  "version": 1
+}

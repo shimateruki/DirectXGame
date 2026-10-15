@@ -53,6 +53,6 @@ private:
     float gizmoScale_ = 0.75f;
 
     Object3dCommon* common_ = nullptr;
-    std::vector<std::unique_ptr<Object3d>> pointLightGizmos_;
-    std::vector<std::unique_ptr<Object3d>> spotLightGizmos_;
+    std::vector<std::unique_ptr<engine::Object3d>> pointLightGizmos_;
+    std::vector<std::unique_ptr<engine::Object3d>> spotLightGizmos_;
 };

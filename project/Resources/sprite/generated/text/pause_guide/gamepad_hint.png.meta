@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e143445f166a4b35921edb55328f032a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/gamepad_hint.png",
+  "version": 1
+}

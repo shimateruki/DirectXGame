@@ -19,16 +19,20 @@ class GameAudioSettings {
         bool loop = false;
     };
 
+    /// 音声設定を共有するインスタンスを返す。
     static GameAudioSettings* GetInstance();
 
+    /// 保存済みの登録音声を読み込む。
     void Initialize();
     // JSON の不正な項目・重複 ID は読み飛ばす。Editor で登録した分だけ有効。
     void Load();
+    /// 現在の音声登録と音量を JSON へ書き出す。
     void Save() const;
 
     std::vector<SoundEntry>& GetEntries() { return entries_; }
     const std::vector<SoundEntry>& GetEntries() const { return entries_; }
 
+    /// ID に一致する登録音声を返す。見つからなければ nullptr。
     SoundEntry* FindEntry(const std::string& id);
     const SoundEntry* FindEntry(const std::string& id) const;
     // Editor で音声を付け直すための登録・削除。重複 ID と空の必須項目を拒否する。
@@ -44,6 +48,7 @@ class GameAudioSettings {
     // volumeScale は登録音量へ乗算する倍率。loopOverride はループ再生を追加指定する。
     void PlaySE(const std::string& id, float volumeScale = 1.0f, bool loopOverride = false);
     void PlayBGM(const std::string& id, float volumeScale = 1.0f, bool loopOverride = true);
+    /// ID に対応する再生中の音声を停止する。
     void Stop(const std::string& id);
 
   private:

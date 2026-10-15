@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "960564d9e1e6a1f9e0dae14d56288911",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/object3d/Object3d.DashPanel.PS.hlsl",
+  "version": 1
+}

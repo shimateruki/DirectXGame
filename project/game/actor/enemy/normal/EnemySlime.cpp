@@ -42,23 +42,25 @@ constexpr float kDiveTrailInterval = 0.12f;
 constexpr float kWanderHopInterval = 1.15f;
 constexpr float kLandingSquashDuration = 0.20f;
 
+// 通常スライムの演出率を0～1へ制限します。
 float Clamp01(float value) {
     // 予備動作や着地演出の進行率を描画用の範囲に収める。
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// 通常スライムの演出率を両端で滑らかにつなぎます。
 float SmoothStep01(float value) {
     // 動作の境目でスケールや速度の変化が急にならないよう両端を滑らかにする。
     const float t = Clamp01(value);
     return t * t * (3.0f - 2.0f * t);
 }
 
-float PlanarLength(const Vector3& value) {
+float PlanarLength(const engine::Vector3& value) {
     // 上昇や落下の速度を除き、地面に沿う移動量だけを測る。
     return std::sqrt(value.x * value.x + value.z * value.z);
 }
 
-Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
+engine::Vector3 NormalizePlanarOr(const engine::Vector3& value, const engine::Vector3& fallback) {
     // 対象と重なった瞬間も直前の向きを維持し、突進方向を失わない。
     const float length = PlanarLength(value);
     if (length <= 0.0001f) {
@@ -67,32 +69,33 @@ Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
+// 演出率を0～1へ収めて二つの値を線形補間します。
 float LerpFloat(float from, float to, float rate) {
     // フレームごとの補間率を制限し、低FPSでも目標値を通り越さない。
     return from + (to - from) * Clamp01(rate);
 }
 
-Vector3 MakeDiveEffectRotation(const Vector3& direction, float pitch) {
+engine::Vector3 MakeDiveEffectRotation(const engine::Vector3& direction, float pitch) {
     // 軌跡エフェクトのYawを突進方向へ合わせ、Pitchは演出ごとに指定する。
     return {pitch, std::atan2(direction.x, direction.z), 0.0f};
 }
 
-void SpawnMeshEffectAtSafe(const char* path, const Vector3& position, const Vector3& rotation, const Vector3& scale) {
+void SpawnMeshEffectAtSafe(const char* path, const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale) {
     // 演出マネージャーがない環境では攻撃本体を止めず、表示だけ省く。
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
         meshEffect->SpawnEffectAt(path, position, rotation, scale);
     }
 }
 
-Vector3 ResolveSlimeGroundEffectPosition(const Vector3& position, float lift = 0.04f) {
-    Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(position);
+engine::Vector3 ResolveSlimeGroundEffectPosition(const engine::Vector3& position, float lift = 0.04f) {
+    engine::Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(position);
     groundPosition.y += lift;
     return groundPosition;
 }
 
-void SpawnDebrisOnGroundSafe(const char* presetName, const Vector3& position, float lift = 0.04f) {
-    const Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(position);
-    Vector3 effectPosition = groundPosition;
+void SpawnDebrisOnGroundSafe(const char* presetName, const engine::Vector3& position, float lift = 0.04f) {
+    const engine::Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(position);
+    engine::Vector3 effectPosition = groundPosition;
     effectPosition.y += lift;
     if (auto* debrisEffect = DebrisEffectManager::GetInstance()) {
         debrisEffect->SpawnOnGround(presetName, effectPosition, groundPosition.y);
@@ -101,7 +104,7 @@ void SpawnDebrisOnGroundSafe(const char* presetName, const Vector3& position, fl
 
 } // namespace
 
-void EmitGpuPresetSafe(const char* presetName, const Vector3& position) {
+void EmitGpuPresetSafe(const char* presetName, const engine::Vector3& position) {
     // GPU粒子が未初期化のプレビューでも、攻撃処理を継続する。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized()) {
@@ -109,9 +112,9 @@ void EmitGpuPresetSafe(const char* presetName, const Vector3& position) {
     }
 }
 
-Object3d* FindEnemyDamageTarget(Object3d* object) {
+engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
     // 子メッシュとの接触を親の敵へたどり、ダメージ対象を統一する。
-    for (Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3d* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -127,7 +130,7 @@ void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName
     ResetVisualPose();
 }
 
-void EnemySlime::ApplyManagedScale(const Vector3& scale) {
+void EnemySlime::ApplyManagedScale(const engine::Vector3& scale) {
     // 編集された大きさをアニメーションの基準にも反映し、次フレームに戻らないようにする。
     baseScale_ = scale;
     hasBaseScale_ = true;
@@ -165,7 +168,7 @@ void EnemySlime::Update(float deltaTime) {
     idleTimer_ += deltaTime;
 
     float targetDistance = 0.0f;
-    Vector3 targetDirection = GetTargetPlanarDirection(&targetDistance);
+    engine::Vector3 targetDirection = GetTargetPlanarDirection(&targetDistance);
     float effectiveDetectionRange = detectionRange_;
     if (param_.has_value()) {
         effectiveDetectionRange = (std::max)(effectiveDetectionRange, param_->detectionRange);
@@ -240,31 +243,31 @@ void EnemySlime::ResetVisualPose() {
     }
 }
 
-Vector3 EnemySlime::CalculateGroundedVisualOffset(const Vector3& visualScale) const {
+engine::Vector3 EnemySlime::CalculateGroundedVisualOffset(const engine::Vector3& visualScale) const {
     const Model* model = GetModel();
     if (!model) {
         return {0.0f, 0.0f, 0.0f};
     }
 
-    const Vector3 modelCenter = model->GetCenter();
-    const Vector3 modelSize = model->GetSize();
+    const engine::Vector3 modelCenter = model->GetCenter();
+    const engine::Vector3 modelSize = model->GetSize();
     const float modelBottom = modelCenter.y - modelSize.y * 0.5f;
     // 身体を潰してもモデル底面が地面から浮かないよう、見た目だけ高さを補正する。
     return {0.0f, modelBottom * (1.0f - visualScale.y), 0.0f};
 }
 
-Vector3 EnemySlime::CalculateDiveVisualOffset(const Vector3& visualScale, const Vector3& visualRotation) const {
+engine::Vector3 EnemySlime::CalculateDiveVisualOffset(const engine::Vector3& visualScale, const engine::Vector3& visualRotation) const {
     const Model* model = GetModel();
     if (!model) {
         return {0.0f, 0.0f, 0.0f};
     }
 
-    const Vector3 modelCenter = model->GetCenter();
-    const Vector3 modelSize = model->GetSize();
+    const engine::Vector3 modelCenter = model->GetCenter();
+    const engine::Vector3 modelSize = model->GetSize();
     // ピンクスライムのモデル正面はローカル-Zです。顔側を固定し、伸びを後方へ逃がします。
-    const Vector3 frontAnchor = {modelCenter.x, modelCenter.y, modelCenter.z - modelSize.z * 0.5f};
-    const Matrix4x4 visualMatrix = Math::MakeAffineMatrix(visualScale, visualRotation, {0.0f, 0.0f, 0.0f});
-    const Vector3 deformedAnchor = Math::Transform(frontAnchor, visualMatrix);
+    const engine::Vector3 frontAnchor = {modelCenter.x, modelCenter.y, modelCenter.z - modelSize.z * 0.5f};
+    const engine::Matrix4x4 visualMatrix = engine::Math::MakeAffineMatrix(visualScale, visualRotation, {0.0f, 0.0f, 0.0f});
+    const engine::Vector3 deformedAnchor = engine::Math::Transform(frontAnchor, visualMatrix);
     return frontAnchor - deformedAnchor;
 }
 
@@ -285,7 +288,7 @@ const char* EnemySlime::GetDebugMoveStateName() const {
     }
 }
 
-Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
+engine::Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
     // 距離は水平面で測り、対象不在なら現在向きを返して攻撃方向を安定させる。
     if (!target_) {
         if (outDistance) {
@@ -294,10 +297,10 @@ Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
         return GetFacingPlanarDirection();
     }
 
-    Vector3 myPos = GetTranslate();
-    Vector3 targetPos = target_->GetWorldPosition();
+    engine::Vector3 myPos = GetTranslate();
+    engine::Vector3 targetPos = target_->GetWorldPosition();
     targetPos.y = myPos.y;
-    Vector3 toTarget = targetPos - myPos;
+    engine::Vector3 toTarget = targetPos - myPos;
     toTarget.y = 0.0f;
 
     const float distance = PlanarLength(toTarget);
@@ -307,20 +310,20 @@ Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
     return NormalizePlanarOr(toTarget, GetFacingPlanarDirection());
 }
 
-Vector3 EnemySlime::GetFacingPlanarDirection() const {
+engine::Vector3 EnemySlime::GetFacingPlanarDirection() const {
     // モデルの正面がローカル-Zなので、ワールドYawから半回転分を差し引く。
     const float yaw = GetRotation().y - kSlimeModelYawOffset;
     return {std::sin(yaw), 0.0f, std::cos(yaw)};
 }
 
-void EnemySlime::FaceDirection(const Vector3& direction, float turnRate) {
+void EnemySlime::FaceDirection(const engine::Vector3& direction, float turnRate) {
     // 最短角補間で対象へ向け、±π付近で長回りしないようにする。
     const float length = PlanarLength(direction);
     if (length <= 0.0001f) {
         return;
     }
 
-    static Math math;
+    static engine::Math math;
     const float targetYaw = std::atan2(direction.x, direction.z) + kSlimeModelYawOffset;
     SetRotationY(math.LerpShortAngle(GetRotation().y, targetYaw, Clamp01(turnRate)));
 }
@@ -339,8 +342,8 @@ void EnemySlime::UpdateWander(float deltaTime) {
     attackWarningTriggered_ = false;
 
     const float wanderSpeed = (std::max)(1.35f, param_->speed * 3.0f);
-    Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
-    Vector3 wanderDirection = NormalizePlanarOr(wanderVelocity, GetFacingPlanarDirection());
+    engine::Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
+    engine::Vector3 wanderDirection = NormalizePlanarOr(wanderVelocity, GetFacingPlanarDirection());
     const float wanderPlanarSpeed = PlanarLength(wanderVelocity);
 
     if (wanderPlanarSpeed > 0.05f) {
@@ -361,7 +364,7 @@ void EnemySlime::UpdateWander(float deltaTime) {
     velocity_.z *= 0.82f;
 }
 
-void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float distance) {
+void EnemySlime::UpdateCharge(float deltaTime, const engine::Vector3& direction, float distance) {
     // 進行率に応じて突進予定線と演出を強め、警告の後に上昇へ切り替える。
     moveState_ = MoveState::Charge;
     jumpTimer_ = 0.0f;
@@ -370,7 +373,7 @@ void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float d
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
     const float chargeDuration = (std::max)(0.01f, attack.windupDuration);
     const float chargeRate = Clamp01(chargeTimer_ / chargeDuration);
-    const Vector3 telegraphCenter = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.05f);
+    const engine::Vector3 telegraphCenter = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.05f);
     const float predictedDistance =
         std::clamp(distance + attack.radius, (std::max)(2.4f, attack.minRange), attack.maxRange);
     ShowAttackTelegraphLine(telegraphCenter, diveDirection_, predictedDistance, attack.radius * 2.0f, chargeRate,
@@ -395,7 +398,7 @@ void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float d
     }
 }
 
-void EnemySlime::BeginRise(const Vector3& direction) {
+void EnemySlime::BeginRise(const engine::Vector3& direction) {
     // 予兆を消して水平速度を止め、上昇と落下を別段階にする。
     moveState_ = MoveState::Rise;
     chargeTimer_ = 0.0f;
@@ -424,7 +427,7 @@ void EnemySlime::UpdateRise(float deltaTime) {
     riseTimer_ += deltaTime;
 
     float distance = 0.0f;
-    Vector3 targetDirection = GetTargetPlanarDirection(&distance);
+    engine::Vector3 targetDirection = GetTargetPlanarDirection(&distance);
     diveDirection_ = NormalizePlanarOr(targetDirection, diveDirection_);
 
     FaceDirection(diveDirection_, 0.16f);
@@ -439,7 +442,7 @@ void EnemySlime::UpdateRise(float deltaTime) {
     }
 }
 
-void EnemySlime::BeginDive(const Vector3& direction, float distance) {
+void EnemySlime::BeginDive(const engine::Vector3& direction, float distance) {
     // 対象距離と攻撃JSONの速度範囲から突進速度を決め、下向き速度で開始する。
     moveState_ = MoveState::Dive;
     chargeTimer_ = 0.0f;
@@ -470,10 +473,10 @@ void EnemySlime::UpdateDive(float deltaTime) {
     SpawnDiveTrailEffect(deltaTime);
 
     float distance = 0.0f;
-    Vector3 targetDirection = GetTargetPlanarDirection(&distance);
+    engine::Vector3 targetDirection = GetTargetPlanarDirection(&distance);
     if (distance > 0.65f) {
         const float steerRate = deltaTime * kDiveSteerStrength;
-        Vector3 blended = {LerpFloat(diveDirection_.x, targetDirection.x, steerRate), 0.0f,
+        engine::Vector3 blended = {LerpFloat(diveDirection_.x, targetDirection.x, steerRate), 0.0f,
                            LerpFloat(diveDirection_.z, targetDirection.z, steerRate)};
         diveDirection_ = NormalizePlanarOr(blended, diveDirection_);
         FaceDirection(diveDirection_, 0.22f);
@@ -540,14 +543,14 @@ void EnemySlime::SpawnChargePulseEffect(float deltaTime, float chargeRate) {
     }
     chargeEffectTimer_ = 0.0f;
 
-    Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.06f);
+    engine::Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.06f);
     const float scale = 0.84f + chargeRate * 0.82f;
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
     const char* windupVfx = attack.windupVfx.empty() ? kChargePulseEffectPath : attack.windupVfx.c_str();
     SpawnMeshEffectAtSafe(windupVfx, position, {0.0f, 0.0f, 0.0f}, {scale, 0.9f, scale});
 
     if (chargeRate > 0.52f) {
-        Vector3 corePosition = GetTranslate();
+        engine::Vector3 corePosition = GetTranslate();
         corePosition.y += (std::max)(0.45f, GetScale().y * 0.28f);
         const float coreScale = 0.34f + chargeRate * 0.42f;
         SpawnMeshEffectAtSafe(kChargeCoreEffectPath, corePosition, MakeDiveEffectRotation(diveDirection_, -0.10f),
@@ -582,28 +585,28 @@ void EnemySlime::SpawnChargeVortexEffect(float deltaTime, float chargeRate) {
     }
     chargeVortexTimer_ = 0.0f;
 
-    const Vector3 center = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.30f + chargeRate * 0.24f);
+    const engine::Vector3 center = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.30f + chargeRate * 0.24f);
     const float baseAngle = idleTimer_ * (7.4f + chargeRate * 3.2f);
     const float radius = (std::max)(0.48f, 1.20f - chargeRate * 0.34f + std::sin(idleTimer_ * 13.0f) * 0.08f);
     const float scale = 0.54f + chargeRate * 0.30f;
 
-    Vector3 position = center;
+    engine::Vector3 position = center;
     position.x += std::cos(baseAngle) * radius;
     position.z += std::sin(baseAngle) * radius;
-    Vector3 toCenter = {center.x - position.x, 0.0f, center.z - position.z};
+    engine::Vector3 toCenter = {center.x - position.x, 0.0f, center.z - position.z};
     SpawnMeshEffectAtSafe(kChargeVortexEffectPath, position, MakeDiveEffectRotation(toCenter, -0.18f),
                           {scale, scale, 1.12f + chargeRate * 0.46f});
 }
 
 void EnemySlime::SpawnLaunchEffect() {
     // 地面から離れる瞬間だけ、足元に蹴り出しの輪を置く。
-    Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.08f);
+    engine::Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.08f);
     SpawnMeshEffectAtSafe(kLaunchRingEffectPath, position, {0.0f, 0.0f, 0.0f}, {1.15f, 0.9f, 1.15f});
 }
 
 void EnemySlime::SpawnApexEffect() {
     // 上昇の頂点で視線を集め、落下攻撃への切り替わりを見せる。
-    Vector3 position = GetTranslate();
+    engine::Vector3 position = GetTranslate();
     position.y += 0.28f;
     SpawnMeshEffectAtSafe(kApexFlashEffectPath, position, MakeDiveEffectRotation(diveDirection_, -0.18f),
                           {0.82f, 0.82f, 0.82f});
@@ -617,7 +620,7 @@ void EnemySlime::SpawnDiveTrailEffect(float deltaTime) {
     }
     diveTrailTimer_ = kDiveTrailInterval;
 
-    Vector3 position = GetTranslate();
+    engine::Vector3 position = GetTranslate();
     position.x -= diveDirection_.x * 0.52f;
     position.y += 0.22f;
     position.z -= diveDirection_.z * 0.52f;
@@ -631,12 +634,12 @@ void EnemySlime::SpawnDiveTrailEffect(float deltaTime) {
 
 void EnemySlime::SpawnLandingEffect() {
     // 床の破片・輪と本体の閃光を同じ着地点から発生させる。
-    Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.06f);
+    engine::Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.06f);
     SpawnDebrisOnGroundSafe(kLandingDebrisPresetName, GetTranslate(), 0.05f);
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
     const char* impactVfx = attack.impactVfx.empty() ? kLandingRingEffectPath : attack.impactVfx.c_str();
     SpawnMeshEffectAtSafe(impactVfx, position, {0.0f, 0.0f, 0.0f}, {1.85f, 0.95f, 1.85f});
-    Vector3 flashPosition = position;
+    engine::Vector3 flashPosition = position;
     flashPosition.y += 0.34f;
     SpawnMeshEffectAtSafe(kLandingCoreEffectPath, flashPosition, MakeDiveEffectRotation(diveDirection_, -0.42f),
                           {1.10f, 1.10f, 1.10f});
@@ -649,8 +652,8 @@ void EnemySlime::SpawnLandingEffect() {
 
 void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     // 行動ごとの目標変形を作り、ばねで補間して物理判定を変えずに見た目だけ動かす。
-    Vector3 targetVisualScale = {1.0f, 1.0f, 1.0f};
-    Vector3 targetVisualRotation = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 targetVisualScale = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 targetVisualRotation = {0.0f, 0.0f, 0.0f};
     SlimeBounceAnimator::Params bounceParams;
     bounceParams.speedForFullBounce = 2.2f;
     bounceParams.idleAmplitude = 0.055f;
@@ -660,8 +663,8 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     bounceParams.verticalStretch = 0.31f;
     bounceParams.airborneStretch = 0.30f;
 
-    const auto toVisualScale = [this](const Vector3& absoluteScale) {
-        return Vector3{std::abs(baseScale_.x) > 0.0001f ? absoluteScale.x / baseScale_.x : 1.0f,
+    const auto toVisualScale = [this](const engine::Vector3& absoluteScale) {
+        return engine::Vector3{std::abs(baseScale_.x) > 0.0001f ? absoluteScale.x / baseScale_.x : 1.0f,
                        std::abs(baseScale_.y) > 0.0001f ? absoluteScale.y / baseScale_.y : 1.0f,
                        std::abs(baseScale_.z) > 0.0001f ? absoluteScale.z / baseScale_.z : 1.0f};
     };
@@ -737,9 +740,9 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     visualScale_.y = std::clamp(visualScale_.y, 0.44f, 1.60f);
     visualScale_.z = std::clamp(visualScale_.z, 0.58f, 2.02f);
 
-    Vector3 renderedScale = visualScale_;
-    Vector3 renderedRotation = visualRotation_;
-    Vector3 reactionOffset = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 renderedScale = visualScale_;
+    engine::Vector3 renderedRotation = visualRotation_;
+    engine::Vector3 reactionOffset = {0.0f, 0.0f, 0.0f};
     ApplyDamageReactionPose(renderedScale, renderedRotation, &reactionOffset);
     renderedScale.x = std::clamp(renderedScale.x, 0.52f, 1.58f);
     renderedScale.y = std::clamp(renderedScale.y, 0.40f, 1.68f);
@@ -752,7 +755,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     if (MeshRenderer* renderer = GetMeshRenderer()) {
         const bool keepGroundContact =
             isGrounded_ || moveState_ == MoveState::Charge || moveState_ == MoveState::Recover;
-        Vector3 visualOffset = {0.0f, 0.0f, 0.0f};
+        engine::Vector3 visualOffset = {0.0f, 0.0f, 0.0f};
         if (moveState_ == MoveState::Dive) {
             visualOffset = CalculateDiveVisualOffset(renderedScale, renderedRotation);
         } else if (keepGroundContact) {
@@ -765,7 +768,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     }
 }
 
-std::unique_ptr<Object3d> EnemySlime::Clone() const {
+std::unique_ptr<engine::Object3d> EnemySlime::Clone() const {
     // 新しい個体を初期化してから、シーン内の配置設定と攻撃対象を引き継ぐ。
     auto newSlime = std::make_unique<EnemySlime>();
     newSlime->Initialize(common_, this->GetModelName());

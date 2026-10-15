@@ -27,6 +27,7 @@ using EnemyAttackPreviewConstants::kFixedPreviewStep;
 namespace {
 #ifdef USE_IMGUI
 ImU32 GetPhaseColor(const std::string& phase, int alpha = 230) {
+    // 攻撃フェーズごとに帯の色を固定し、タイムライン内の境界を見分けやすくする。
     if (phase == "予兆") return IM_COL32(255, 158, 52, alpha);
     if (phase == "攻撃") return IM_COL32(255, 74, 28, alpha);
     if (phase == "硬直") return IM_COL32(212, 126, 92, alpha);
@@ -51,6 +52,7 @@ ImU32 GetPhaseColor(const std::string& phase, int alpha = 230) {
     return IM_COL32(128, 164, 196, alpha);
 }
 
+// 攻撃フェーズの開始・終了時刻を時間軸上の色付き矩形に変換します。
 void DrawTimelineBlock(
     ImDrawList* drawList,
     const ImVec2& origin,

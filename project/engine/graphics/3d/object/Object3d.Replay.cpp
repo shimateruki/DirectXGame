@@ -2,6 +2,8 @@
 
 #include <atomic>
 
+namespace engine {
+
 namespace {
 std::atomic<uint64_t> gNextReplayId{ 1 };
 }
@@ -14,6 +16,7 @@ uint64_t Object3d::EnsureReplayId() {
 }
 
 Object3d::ReplayState Object3d::CaptureReplayState() const {
+    // TransformだけでなくAnimator・衝突属性・素材と各Componentも同じフレームへ保存する。
     ReplayState state;
     state.scale = transform_.scale;
     state.rotation = transform_.rotate;
@@ -51,6 +54,7 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     state.navAgentComponent = navAgentComponent_;
 
     state.replayRemoved = replayRemoved_;
+    // 派生Object固有の状態は共通スナップショットの末尾へ委譲する。
     CaptureReplayCustomState(state.custom);
     return state;
 }
@@ -137,3 +141,5 @@ void Object3d::CaptureReplayCustomState(json& state) const {
 void Object3d::RestoreReplayCustomState(const json& state) {
     (void)state;
 }
+
+} // namespace engine

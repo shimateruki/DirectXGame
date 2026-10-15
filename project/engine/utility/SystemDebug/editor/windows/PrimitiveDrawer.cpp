@@ -48,9 +48,9 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
 
     hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&primitivePipelineState_)); assert(SUCCEEDED(hr));
 
-    Vector4 cubeVerts[] = { {-0.5f,-0.5f,-0.5f,1}, {0.5f,-0.5f,-0.5f,1}, {-0.5f,0.5f,-0.5f,1}, {0.5f,0.5f,-0.5f,1}, {-0.5f,-0.5f,0.5f,1}, {0.5f,-0.5f,0.5f,1}, {-0.5f,0.5f,0.5f,1}, {0.5f,0.5f,0.5f,1} };
+    engine::Vector4 cubeVerts[] = { {-0.5f,-0.5f,-0.5f,1}, {0.5f,-0.5f,-0.5f,1}, {-0.5f,0.5f,-0.5f,1}, {0.5f,0.5f,-0.5f,1}, {-0.5f,-0.5f,0.5f,1}, {0.5f,-0.5f,0.5f,1}, {-0.5f,0.5f,0.5f,1}, {0.5f,0.5f,0.5f,1} };
     uint32_t cubeIdx[] = { 0,1, 1,3, 3,2, 2,0, 4,5, 5,7, 7,6, 6,4, 0,4, 1,5, 2,6, 3,7 };
-    cubeVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeVerts)); cubeVertexBufferView_ = { cubeVertexBuffer_->GetGPUVirtualAddress(), sizeof(cubeVerts), sizeof(Vector4) };
+    cubeVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeVerts)); cubeVertexBufferView_ = { cubeVertexBuffer_->GetGPUVirtualAddress(), sizeof(cubeVerts), sizeof(engine::Vector4) };
     void* vbData; hr = cubeVertexBuffer_->Map(0, nullptr, &vbData); assert(SUCCEEDED(hr)); memcpy(vbData, cubeVerts, sizeof(cubeVerts)); cubeVertexBuffer_->Unmap(0, nullptr);
     cubeIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeIdx)); cubeIndexBufferView_ = { cubeIndexBuffer_->GetGPUVirtualAddress(), sizeof(cubeIdx), DXGI_FORMAT_R32_UINT };
     void* ibData; hr = cubeIndexBuffer_->Map(0, nullptr, &ibData); assert(SUCCEEDED(hr)); memcpy(ibData, cubeIdx, sizeof(cubeIdx)); cubeIndexBuffer_->Unmap(0, nullptr);
@@ -59,7 +59,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     hr = primitiveColorBuffer_->Map(0, nullptr, (void**)&primitiveColorData_);
     assert(SUCCEEDED(hr));
     const int kSegments = 36; // 16角形で円を作る
-    Vector4 sphereVerts[kSegments * 3];
+    engine::Vector4 sphereVerts[kSegments * 3];
     uint32_t sphereIdx[kSegments * 6];
 
     for (int i = 0; i < kSegments; ++i) {
@@ -83,7 +83,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
         sphereIdx[kSegments * 4 + i * 2 + 1] = kSegments * 2 + ((i + 1) % kSegments);
     }
     sphereVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(sphereVerts));
-    sphereVertexBufferView_ = { sphereVertexBuffer_->GetGPUVirtualAddress(), sizeof(sphereVerts), sizeof(Vector4) };
+    sphereVertexBufferView_ = { sphereVertexBuffer_->GetGPUVirtualAddress(), sizeof(sphereVerts), sizeof(engine::Vector4) };
     void* svbData; hr = sphereVertexBuffer_->Map(0, nullptr, &svbData); assert(SUCCEEDED(hr));
     memcpy(svbData, sphereVerts, sizeof(sphereVerts)); sphereVertexBuffer_->Unmap(0, nullptr);
 
@@ -97,7 +97,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     assert(SUCCEEDED(hr));
     // --- 円柱のバッファ作成 ---
     const int kCylinderSegments = 16; // 16角柱で円柱を表現
-    Vector4 cylinderVerts[kCylinderSegments * 2];
+    engine::Vector4 cylinderVerts[kCylinderSegments * 2];
     uint32_t cylinderIdx[kCylinderSegments * 6];
 
     for (int i = 0; i < kCylinderSegments; ++i) {
@@ -126,7 +126,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
 
     // 頂点バッファ生成
     cylinderVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cylinderVerts));
-    cylinderVertexBufferView_ = { cylinderVertexBuffer_->GetGPUVirtualAddress(), sizeof(cylinderVerts), sizeof(Vector4) };
+    cylinderVertexBufferView_ = { cylinderVertexBuffer_->GetGPUVirtualAddress(), sizeof(cylinderVerts), sizeof(engine::Vector4) };
     void* cvbData; hr = cylinderVertexBuffer_->Map(0, nullptr, &cvbData); assert(SUCCEEDED(hr));
     memcpy(cvbData, cylinderVerts, sizeof(cylinderVerts)); cylinderVertexBuffer_->Unmap(0, nullptr);
 
@@ -150,12 +150,13 @@ void PrimitiveDrawer::PreDraw(ID3D12GraphicsCommandList* commandList) {
     commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 }
 
-void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex) {
-    Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
+void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
+    // インスタンスごとの行列・色を定数バッファへ書き、枠線用の24インデックスを描く。
+    engine::Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
 
     primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
 
-    Vector4 opaqueColor = color;
+    engine::Vector4 opaqueColor = color;
     opaqueColor.w = 1.0f;
     primitiveColorData_[instanceIndex].vector = opaqueColor;
 
@@ -166,15 +167,15 @@ void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const
     commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
 
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
-    RenderStats::GetInstance()->RecordIndexedDraw(24);
+    engine::RenderStats::GetInstance()->RecordIndexedDraw(24);
 }
 
-void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex) {
-    Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
+void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
+    engine::Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
 
     primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
 
-    Vector4 opaqueColor = color;
+    engine::Vector4 opaqueColor = color;
     opaqueColor.w = 1.0f;
     primitiveColorData_[instanceIndex].vector = opaqueColor;
 
@@ -190,7 +191,7 @@ void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, con
 
     // 16分割 * 3平面 * 2(線分) = 96 インデックス
     commandList->DrawIndexedInstanced(216, 1, 0, 0, 0);
-    RenderStats::GetInstance()->RecordIndexedDraw(216);
+    engine::RenderStats::GetInstance()->RecordIndexedDraw(216);
 
     // デフォルトの描画（キューブ）用バッファに復帰
     commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);
@@ -198,14 +199,14 @@ void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, con
 }
 
 
-void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex) {
-    Math math;
+void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
+    engine::Math math;
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera) return;
 
     // 定数バッファの更新（WVP行列と色）
     primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
-    Vector4 opaqueColor = color;
+    engine::Vector4 opaqueColor = color;
     opaqueColor.w = 1.0f;
     primitiveColorData_[instanceIndex].vector = opaqueColor;
 
@@ -221,7 +222,7 @@ void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, c
 
     // 16分割 × (上面+底面+縦線=3パーツ) × 2インデックス = 96インデックス
     commandList->DrawIndexedInstanced(96, 1, 0, 0, 0);
-    RenderStats::GetInstance()->RecordIndexedDraw(96);
+    engine::RenderStats::GetInstance()->RecordIndexedDraw(96);
 
     // 他の描画（DrawWireCube等）に影響が出ないようにキューブ用に戻しておく
     commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);

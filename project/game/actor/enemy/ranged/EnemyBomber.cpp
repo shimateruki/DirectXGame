@@ -55,25 +55,28 @@ constexpr const char* kCarryBombBlastJumpPreset = "player_bomb_blast_jump";
 constexpr float kPi = 3.14159265f;
 constexpr float kTwoPi = kPi * 2.0f;
 
+// 爆弾演出の進行率を0～1へ制限します。
 float Saturate(float value) {
     // 投擲演出の進行率がタイマーの境界を越えても描画値を一定範囲に保つ。
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// 爆弾演出の始点と終点を滑らかにつなぎます。
 float SmoothStep01(float value) {
     // 爆弾の取り出しと着地姿勢が段階の境界で急変しないようにする。
     value = Saturate(value);
     return value * value * (3.0f - 2.0f * value);
 }
 
+// 進行率を制限して爆弾演出の数値を線形補間します。
 float LerpFloat(float start, float end, float rate) {
     // 投げ動作内で指定した進行率を使い、位置や角度の目標値を補間する。
     return start + (end - start) * rate;
 }
 
-Object3d* FindEnemyDamageTarget(Object3d* object) {
+engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
     // 子オブジェクトに当たった場合も、被弾対象となる親の敵を探す。
-    for (Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3d* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -127,7 +130,7 @@ void EnemyBomber::Update(float deltaTime) {
     UpdateThrowTimers(deltaTime);
 
     float distance = 0.0f;
-    Vector3 direction{};
+    engine::Vector3 direction{};
     const bool inRange = IsTargetInRange(&distance, &direction);
     if (inRange && throwState_ != ThrowState::LeapThrow) {
         UpdateFacing(direction);
@@ -195,17 +198,17 @@ void EnemyBomber::UpdateThrowTimers(float deltaTime) {
     throwRecoverPoseTimer_ = std::max(0.0f, throwRecoverPoseTimer_ - deltaTime);
 }
 
-void EnemyBomber::UpdateCombatMovement(float deltaTime, const Vector3& direction, float distance, bool inRange) {
+void EnemyBomber::UpdateCombatMovement(float deltaTime, const engine::Vector3& direction, float distance, bool inRange) {
     if (throwState_ == ThrowState::Idle) {
         UpdateFootwork(deltaTime, direction, distance, inRange);
     } else if (throwState_ == ThrowState::Windup) {
         // 投擲の予告中は水平移動を弱め、標的表示と実際の発射位置をずらしにくくする。
-        Vector3 velocity = GetVelocity();
+        engine::Vector3 velocity = GetVelocity();
         velocity.x *= 0.18f;
         velocity.z *= 0.18f;
         SetVelocity(velocity);
     } else if (throwState_ == ThrowState::Landing) {
-        Vector3 velocity = GetVelocity();
+        engine::Vector3 velocity = GetVelocity();
         velocity.x *= 0.58f;
         velocity.z *= 0.58f;
         SetVelocity(velocity);
@@ -284,12 +287,12 @@ void EnemyBomber::SetCarried(bool isCarried) {
     HideAttackTelegraph();
 }
 
-bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) const {
+bool EnemyBomber::IsTargetInRange(float* outDistance, engine::Vector3* outDirection) const {
     // 水平距離と方向を同時に計算し、近すぎる対象には投擲を開始しない。
     if (!target_)
         return false;
 
-    Vector3 toTarget = target_->GetTranslate() - GetTranslate();
+    engine::Vector3 toTarget = target_->GetTranslate() - GetTranslate();
     toTarget.y = 0.0f;
 
     const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
@@ -311,12 +314,12 @@ bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) con
     return distance <= detectionRange_ && distance >= kMinThrowDistance;
 }
 
-void EnemyBomber::UpdateFacing(const Vector3& direction) {
+void EnemyBomber::UpdateFacing(const engine::Vector3& direction) {
     // モデルの正面補正を加え、最短角で対象へ振り向く。
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq > 0.0001f) {
         const float targetYaw = std::atan2(direction.x, direction.z) + kBomberModelYawOffset;
-        SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f));
+        SetRotationY(engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f));
     }
 }
 
@@ -331,7 +334,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
     params.verticalStretch = 0.34f;
     params.airborneStretch = 0.30f;
 
-    Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+    engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
     if (throwState_ == ThrowState::Windup) {
         const float chargeRate = GetThrowProgress();
         targetScale = SlimeBounceAnimator::MakeChargeSquash(baseScale_, chargeRate, idleTimer_, 0.92f);
@@ -367,7 +370,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         targetScale.z *= 1.0f + remainingRate * 0.18f + wave * 0.06f;
     }
 
-    Vector3 animatedRotation = GetRotation();
+    engine::Vector3 animatedRotation = GetRotation();
     float yaw = animatedRotation.y;
     float pitch = 0.0f;
     float roll = 0.0f;
@@ -398,10 +401,10 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         const float remainingRate = Saturate(throwRecoverPoseTimer_ / kThrowRecoverPoseDuration);
         roll += std::sin((1.0f - remainingRate) * kPi * 2.0f) * remainingRate * 0.10f;
     }
-    Vector3 targetRotation = {pitch, yaw, roll};
+    engine::Vector3 targetRotation = {pitch, yaw, roll};
     ApplyDamageReactionPose(targetScale, targetRotation);
     SetRotation(targetRotation);
-    SetScale(Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 12.0f)));
+    SetScale(engine::Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 12.0f)));
 }
 
 void EnemyBomber::UpdateHeldBombVisual(float deltaTime) {
@@ -445,7 +448,7 @@ void EnemyBomber::EnsureHeldBombVisual() {
         return;
     }
 
-    heldBombVisual_ = std::make_unique<Object3d>();
+    heldBombVisual_ = std::make_unique<engine::Object3d>();
     heldBombVisual_->Initialize(common_);
     heldBombVisual_->SetModel(kHeldBombModelName);
     heldBombVisual_->SetCollisionAttribute(0);
@@ -461,18 +464,18 @@ void EnemyBomber::HideHeldBombVisual() {
     }
 }
 
-Vector3 EnemyBomber::ComputeHeldBombPosition(float progress) const {
+engine::Vector3 EnemyBomber::ComputeHeldBombPosition(float progress) const {
     // 本体の前後・左右・高さを段階ごとに補間し、取り出しから投げ出しまでの手元位置を作る。
     progress = Saturate(progress);
     const float yaw = GetRotation().y - kBomberModelYawOffset;
-    const Vector3 forward = {std::sin(yaw), 0.0f, std::cos(yaw)};
-    const Vector3 right = {std::cos(yaw), 0.0f, -std::sin(yaw)};
+    const engine::Vector3 forward = {std::sin(yaw), 0.0f, std::cos(yaw)};
+    const engine::Vector3 right = {std::cos(yaw), 0.0f, -std::sin(yaw)};
     const float extractRate = SmoothStep01(progress / 0.22f);
     const float liftRate = SmoothStep01((progress - 0.08f) / 0.32f);
     const float holdBackRate = SmoothStep01((progress - 0.40f) / 0.24f);
     const float throwRate = SmoothStep01((progress - 0.74f) / 0.26f);
 
-    Vector3 position = GetTranslate();
+    engine::Vector3 position = GetTranslate();
     const float forwardOffset = 1.25f + extractRate * 0.45f - holdBackRate * 0.25f + throwRate * 1.45f;
     const float sideOffset = std::sin(progress * kPi) * 0.16f * footworkDirection_;
     const float heightOffset = 1.45f + liftRate * 1.35f - holdBackRate * 0.12f + throwRate * 0.18f;
@@ -492,9 +495,9 @@ float EnemyBomber::GetThrowLeapProgress() const {
     return 1.0f - std::clamp(throwLeapTimer_ / kThrowLeapDuration, 0.0f, 1.0f);
 }
 
-void EnemyBomber::UpdateFootwork(float deltaTime, const Vector3& direction, float distance, bool inRange) {
+void EnemyBomber::UpdateFootwork(float deltaTime, const engine::Vector3& direction, float distance, bool inRange) {
     // 射程内では横移動しながら理想距離を保ち、射程外では巡回速度を使う。
-    Vector3 velocity = GetVelocity();
+    engine::Vector3 velocity = GetVelocity();
     velocity.x = 0.0f;
     velocity.z = 0.0f;
 
@@ -505,7 +508,7 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const Vector3& direction, floa
             footworkTimer_ = 1.4f;
         }
 
-        Vector3 side = {direction.z * footworkDirection_, 0.0f, -direction.x * footworkDirection_};
+        engine::Vector3 side = {direction.z * footworkDirection_, 0.0f, -direction.x * footworkDirection_};
         velocity.x += side.x * kFootworkSpeed;
         velocity.z += side.z * kFootworkSpeed;
 
@@ -526,11 +529,11 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const Vector3& direction, floa
         }
     } else {
         velocity = CalculateWanderVelocity(deltaTime, kFootworkSpeed * 0.65f, 0.7f);
-        Vector3 wanderDirection = {velocity.x, 0.0f, velocity.z};
+        engine::Vector3 wanderDirection = {velocity.x, 0.0f, velocity.z};
         const float lengthSq = wanderDirection.x * wanderDirection.x + wanderDirection.z * wanderDirection.z;
         if (lengthSq > 0.0001f) {
             const float targetYaw = std::atan2(wanderDirection.x, wanderDirection.z) + kBomberModelYawOffset;
-            SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f));
+            SetRotationY(engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f));
         }
     }
 
@@ -558,12 +561,12 @@ void EnemyBomber::BeginThrowLeap() {
     const float throwMoveYaw = throwLeapBaseYaw_ - kBomberModelYawOffset;
     throwSpinDirection_ = (footworkDirection_ >= 0.0f) ? 1.0f : -1.0f;
 
-    Vector3 velocity = GetVelocity();
+    engine::Vector3 velocity = GetVelocity();
     velocity.y = (std::max)(velocity.y, kThrowJumpVelocity);
     velocity.x = std::sin(throwMoveYaw) * kThrowHopForwardSpeed;
     velocity.z = std::cos(throwMoveYaw) * kThrowHopForwardSpeed;
     SetVelocity(velocity);
-    Vector3 position = GetTranslate();
+    engine::Vector3 position = GetTranslate();
     position.y += kThrowTakeoffLift;
     SetTranslate(position);
     isGrounded_ = false;
@@ -607,8 +610,8 @@ void EnemyBomber::ThrowBomb() {
     if (!spawnCallback_ || !common_ || !target_)
         return;
 
-    const Vector3 bodyPos = GetTranslate();
-    Vector3 targetDirection = target_->GetTranslate() - bodyPos;
+    const engine::Vector3 bodyPos = GetTranslate();
+    engine::Vector3 targetDirection = target_->GetTranslate() - bodyPos;
     targetDirection.y = 0.0f;
     float directionLength = std::sqrt(targetDirection.x * targetDirection.x + targetDirection.z * targetDirection.z);
     if (directionLength > 0.001f) {
@@ -618,18 +621,18 @@ void EnemyBomber::ThrowBomb() {
         targetDirection = {std::sin(GetRotation().y), 0.0f, std::cos(GetRotation().y)};
     }
 
-    const Vector3 releasePos = {bodyPos.x + targetDirection.x * 2.95f, bodyPos.y + 2.85f,
+    const engine::Vector3 releasePos = {bodyPos.x + targetDirection.x * 2.95f, bodyPos.y + 2.85f,
                                 bodyPos.z + targetDirection.z * 2.95f};
 
     auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", common_);
     if (!bomb)
         return;
 
-    Vector3 spawnPos = releasePos;
+    engine::Vector3 spawnPos = releasePos;
     bomb->SetTranslate(spawnPos);
     bomb->SetTarget(target_);
 
-    Vector3 toTarget = target_->GetTranslate() - spawnPos;
+    engine::Vector3 toTarget = target_->GetTranslate() - spawnPos;
     toTarget.y = 0.0f;
     float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
     if (distance > 0.001f) {
@@ -643,8 +646,8 @@ void EnemyBomber::ThrowBomb() {
     bomb->SetRotationY(std::atan2(toTarget.x, toTarget.z));
     bomb->SetCarried(false);
 
-    const Vector3 targetPos = target_->GetTranslate();
-    Vector3 deltaToTarget = {targetPos.x - spawnPos.x, (targetPos.y + 0.35f) - spawnPos.y, targetPos.z - spawnPos.z};
+    const engine::Vector3 targetPos = target_->GetTranslate();
+    engine::Vector3 deltaToTarget = {targetPos.x - spawnPos.x, (targetPos.y + 0.35f) - spawnPos.y, targetPos.z - spawnPos.z};
     const float horizontalDistance = std::sqrt(deltaToTarget.x * deltaToTarget.x + deltaToTarget.z * deltaToTarget.z);
     const float flightTime = std::clamp(horizontalDistance / 12.0f, 0.85f, 1.35f);
     const float gravity = 60.0f;

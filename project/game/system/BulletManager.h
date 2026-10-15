@@ -15,7 +15,7 @@ struct BulletVisualConfig {
     float explosionRadius = 0.0f;
     int32_t materialType = 0;
     BlendMode blendMode = BlendMode::kNormal;
-    Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+    engine::Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};
     float emissive = 1.0f;
     float visualScale = 1.0f;
     float waveSpeed = 2.0f;
@@ -79,7 +79,7 @@ class BulletManager {
     /// <param name="gravity">下向きの加速度。負値は 0 に補正します。</param>
     /// <param name="attr">弾自身の衝突属性。</param>
     /// <param name="mask">衝突対象にする属性マスク。</param>
-    void Fire(const Vector3& pos, const Vector3& vel, uint32_t attr, uint32_t mask,
+    void Fire(const engine::Vector3& pos, const engine::Vector3& vel, uint32_t attr, uint32_t mask,
               const std::string& model = "Primitives/sphere", float radius = 0.2f, float life = 120,
               const BulletVisualConfig& visualConfig = {}, float damage = 1.0f,
               const StatusEffectApplication& statusEffect = {}, DamageType damageType = DamageType::Physical,

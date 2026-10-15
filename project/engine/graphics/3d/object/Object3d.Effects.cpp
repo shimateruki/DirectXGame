@@ -18,9 +18,12 @@
 #include <fstream>
 #include <filesystem>
 
+namespace engine {
+
 namespace {
 
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
+    // 地形の当たり判定データを、保存済みパスと素材基準の候補から解決する。
     std::filesystem::path filePath(path);
     if (std::filesystem::exists(filePath)) {
         return filePath;
@@ -34,6 +37,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     return filePath;
 }
 
+// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
         if (current == child) {
@@ -41,36 +45,6 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
         }
     }
     return false;
-}
-
-void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
-    const float epsilon = 0.0001f;
-
-    Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
-    Vector3 rowY = { matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] };
-    Vector3 rowZ = { matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] };
-
-    transform.scale = {
-        std::max(Math::Length(rowX), epsilon),
-        std::max(Math::Length(rowY), epsilon),
-        std::max(Math::Length(rowZ), epsilon),
-    };
-    transform.translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
-
-    Matrix4x4 rotateMatrix = Math::MakeIdentity4x4();
-    rotateMatrix.m[0][0] = matrix.m[0][0] / transform.scale.x;
-    rotateMatrix.m[0][1] = matrix.m[0][1] / transform.scale.x;
-    rotateMatrix.m[0][2] = matrix.m[0][2] / transform.scale.x;
-    rotateMatrix.m[1][0] = matrix.m[1][0] / transform.scale.y;
-    rotateMatrix.m[1][1] = matrix.m[1][1] / transform.scale.y;
-    rotateMatrix.m[1][2] = matrix.m[1][2] / transform.scale.y;
-    rotateMatrix.m[2][0] = matrix.m[2][0] / transform.scale.z;
-    rotateMatrix.m[2][1] = matrix.m[2][1] / transform.scale.z;
-    rotateMatrix.m[2][2] = matrix.m[2][2] / transform.scale.z;
-
-    transform.quaternion = Math::MatrixToQuaternion(rotateMatrix);
-    transform.rotate = Math::MatrixToEuler(rotateMatrix);
-    transform.isQuaternionMaster = true;
 }
 
 }
@@ -118,15 +92,15 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                     effect->SetName(primaryEffect + "_" + std::to_string(i));
 
                     if (effect->LoadFromJson(primaryEffect)) {
-                        Vector3 localRot = effect->GetRotation();
-                        Vector3 localPos = effect->GetTranslate();
+                        engine::Vector3 localRot = effect->GetRotation();
+                        engine::Vector3 localPos = effect->GetTranslate();
 
                         if (volumeMode == 1 && i == 1) {
                             localRot.x += 1.570796f; // 90度クロス
                         }
                         else if (volumeMode == 2) {
                             float gap = 0.02f;
-                            Vector3 localZ;
+                            engine::Vector3 localZ;
                             localZ.x = sinf(localRot.y) * cosf(localRot.x);
                             localZ.y = -sinf(localRot.x);
                             localZ.z = cosf(localRot.y) * cosf(localRot.x);
@@ -174,15 +148,15 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                     effect->SetName(secondaryEffect + "_" + std::to_string(i));
 
                     if (effect->LoadFromJson(secondaryEffect)) {
-                        Vector3 localRot = effect->GetRotation();
-                        Vector3 localPos = effect->GetTranslate();
+                        engine::Vector3 localRot = effect->GetRotation();
+                        engine::Vector3 localPos = effect->GetTranslate();
 
                         if (volumeMode == 1 && i == 1) {
                             localRot.x += 1.570796f;
                         }
                         else if (volumeMode == 2) {
                             float gap = 0.02f;
-                            Vector3 localZ;
+                            engine::Vector3 localZ;
                             localZ.x = sinf(localRot.y) * cosf(localRot.x);
                             localZ.y = -sinf(localRot.x);
                             localZ.z = cosf(localRot.y) * cosf(localRot.x);
@@ -229,3 +203,5 @@ void Object3d::DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Res
         effect->Draw(pointLightResource, spotLightResource);
     }
 }
+
+} // namespace engine

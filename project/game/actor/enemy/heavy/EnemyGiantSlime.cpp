@@ -33,7 +33,7 @@ constexpr int kSplitSlimeCount = 4;
 constexpr float kSplitSlimeRadius = 3.1f;
 constexpr float kGiantSlimeModelYawOffset = 3.1415926535f;
 
-Vector3 NormalizePlanar(Vector3 value) {
+engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     // ジャンプとフックの向きは水平面だけで扱い、方向が消えた場合も前方を基準にする。
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
@@ -43,6 +43,7 @@ Vector3 NormalizePlanar(Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
+// 巨大スライムの攻撃・着地演出を両端で滑らかにつなぎます。
 float SmoothStep01(float value) {
     // 端点で急に速度が変わらないよう、補間率を範囲内に収めてから滑らかにする。
     value = std::clamp(value, 0.0f, 1.0f);
@@ -81,7 +82,7 @@ void EnemyGiantSlime::Update(float deltaTime) {
         BeginLandingRecovery();
     }
 
-    Vector3 direction = {0.0f, 0.0f, 1.0f};
+    engine::Vector3 direction = {0.0f, 0.0f, 1.0f};
     float distance = 9999.0f;
     UpdateTargetFacing(direction, distance);
     UpdateBossTargetEngagement(distance);
@@ -125,7 +126,7 @@ bool EnemyGiantSlime::UpdateHookSplitState(float deltaTime) {
         if (isGrounded_ && GetVelocity().y <= 0.5f) {
             BeginGroundHookResistance(true);
         } else {
-            Vector3 velocity = GetVelocity();
+            engine::Vector3 velocity = GetVelocity();
             velocity.x *= 0.88f;
             velocity.z *= 0.88f;
             SetVelocity(velocity);
@@ -176,21 +177,21 @@ void EnemyGiantSlime::UpdateTimers(float deltaTime) {
     }
 }
 
-void EnemyGiantSlime::UpdateTargetFacing(Vector3& direction, float& distance) {
+void EnemyGiantSlime::UpdateTargetFacing(engine::Vector3& direction, float& distance) {
     // 高低差は照準に含めず、交戦前は索敵範囲に入った対象だけへ向きを変える。
     if (target_) {
-        Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+        engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
         direction = NormalizePlanar(toTarget);
         distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
         if (IsBossTargetEngaged() || distance <= detectionRange_) {
             const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
-            SetRotation({0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f), 0.0f});
+            SetRotation({0.0f, engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f), 0.0f});
         }
     }
 }
 
-void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const Vector3& direction, float distance) {
+void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const engine::Vector3& direction, float distance) {
     // 滞空中は着地予測地点を表示し、落下時間に合わせて警告を一度だけ強める。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kJumpPressAttackId);
     switch (state_) {
@@ -221,10 +222,10 @@ void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const Vector3& directi
     }
 }
 
-void EnemyGiantSlime::UpdateIdleState(float deltaTime, const Vector3& direction, float distance) {
+void EnemyGiantSlime::UpdateIdleState(float deltaTime, const engine::Vector3& direction, float distance) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kJumpPressAttackId);
     if (isGrounded_) {
-        Vector3 velocity = GetVelocity();
+        engine::Vector3 velocity = GetVelocity();
         velocity.x *= 0.65f;
         velocity.z *= 0.65f;
         SetVelocity(velocity);
@@ -236,17 +237,17 @@ void EnemyGiantSlime::UpdateIdleState(float deltaTime, const Vector3& direction,
             }
         } else {
             jumpTimer_ += deltaTime * 0.65f;
-            Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, 1.25f, 0.55f);
-            Vector3 wanderDirection = {wanderVelocity.x, 0.0f, wanderVelocity.z};
+            engine::Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, 1.25f, 0.55f);
+            engine::Vector3 wanderDirection = {wanderVelocity.x, 0.0f, wanderVelocity.z};
             if (IsBossTargetEngaged() && target_) {
                 // 交戦後は射程外でも目標へ跳び、ランダム徘徊に戻らないようにします。
                 wanderDirection = direction;
             }
-            const float wanderLength = Math::Length(wanderDirection);
+            const float wanderLength = engine::Math::Length(wanderDirection);
             if (wanderLength > 0.001f) {
                 wanderDirection = wanderDirection / wanderLength;
                 const float targetYaw = std::atan2(wanderDirection.x, wanderDirection.z) + kGiantSlimeModelYawOffset;
-                SetRotation({0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.05f), 0.0f});
+                SetRotation({0.0f, engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.05f), 0.0f});
             }
 
             if (jumpTimer_ >= 1.75f && wanderLength > 0.05f) {
@@ -259,7 +260,7 @@ void EnemyGiantSlime::UpdateIdleState(float deltaTime, const Vector3& direction,
     ApplySlimeAnimation(deltaTime);
 }
 
-void EnemyGiantSlime::BeginThrown(const Vector3& initialVelocity) {
+void EnemyGiantSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     // 投げ状態へ移る際にジャンプ警告とフック変形を消し、判定を投擲用へ切り替える。
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
@@ -283,7 +284,7 @@ void EnemyGiantSlime::BeginThrown(const Vector3& initialVelocity) {
     BaseEnemy::BeginThrown(initialVelocity);
 }
 
-std::unique_ptr<Object3d> EnemyGiantSlime::Clone() const {
+std::unique_ptr<engine::Object3d> EnemyGiantSlime::Clone() const {
     // 複製先に配置設定と追跡対象を引き継ぎ、攻撃状態の一時値は初期化し直す。
     auto clone = std::make_unique<EnemyGiantSlime>();
     assert(common_ != nullptr);
@@ -294,7 +295,7 @@ std::unique_ptr<Object3d> EnemyGiantSlime::Clone() const {
     return clone;
 }
 
-void EnemyGiantSlime::BeginJumpCharge(const Vector3& direction, float distance) {
+void EnemyGiantSlime::BeginJumpCharge(const engine::Vector3& direction, float distance) {
     // 射程に収めた着地点を予告し、溜め中の移動を止めて回避の猶予を作る。
     state_ = State::ChargeJump;
     stateTimer_ = 0.0f;
@@ -322,16 +323,16 @@ void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
     SetVelocity({0.0f, 0.0f, 0.0f});
 
     if (target_) {
-        Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+        engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
         toTarget.y = 0.0f;
-        const float targetDistance = Math::Length(toTarget);
+        const float targetDistance = engine::Math::Length(toTarget);
         if (targetDistance > 0.001f) {
-            Vector3 direction = toTarget / targetDistance;
+            engine::Vector3 direction = toTarget / targetDistance;
             const float jumpDistance = std::clamp(targetDistance * 0.95f, attack.minRange, attack.maxRange);
             landingTelegraphPosition_ = GetTranslate() + direction * jumpDistance;
             landingTelegraphPosition_.y = GetTranslate().y;
             const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
-            SetRotation({0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.12f), 0.0f});
+            SetRotation({0.0f, engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.12f), 0.0f});
         }
     }
 
@@ -349,10 +350,10 @@ void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
               baseScale_.z * (1.0f + t * 0.34f - pulse)});
 
     if (stateTimer_ >= windupDuration) {
-        Vector3 toLanding = landingTelegraphPosition_ - GetTranslate();
+        engine::Vector3 toLanding = landingTelegraphPosition_ - GetTranslate();
         toLanding.y = 0.0f;
-        const float landingDistance = Math::Length(toLanding);
-        Vector3 jumpDirection = landingDistance > 0.001f ? toLanding / landingDistance : Vector3{0.0f, 0.0f, 1.0f};
+        const float landingDistance = engine::Math::Length(toLanding);
+        engine::Vector3 jumpDirection = landingDistance > 0.001f ? toLanding / landingDistance : engine::Vector3{0.0f, 0.0f, 1.0f};
         LaunchJump(jumpDirection, landingDistance);
     }
 }
@@ -396,7 +397,7 @@ void EnemyGiantSlime::UpdateLandingRecovery(float deltaTime) {
 
 void EnemyGiantSlime::SpawnLandingTelegraph() {
     // 予告リングを地面より少し上に置き、地形との重なりで消えないようにする。
-    Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_);
+    engine::Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_);
     effectPos.y += 0.04f;
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
         meshEffect->SpawnRingWaveEffect(effectPos);
@@ -405,7 +406,7 @@ void EnemyGiantSlime::SpawnLandingTelegraph() {
 
 void EnemyGiantSlime::SpawnLandingEffects() {
     // 衝撃波・攻撃設定のメッシュVFX・粒子を同じ着地点から再生する。
-    Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(GetTranslate());
+    engine::Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(GetTranslate());
     effectPos.y += 0.04f;
     HitEffectDirector::SpawnThrowSlamShockwave(effectPos, 24.0f);
 
@@ -421,14 +422,14 @@ void EnemyGiantSlime::SpawnLandingEffects() {
         particleSystem = scene->GetParticleSystem();
     }
     if (particleSystem) {
-        Vector3 up = {0.0f, 1.0f, 0.0f};
+        engine::Vector3 up = {0.0f, 1.0f, 0.0f};
         particleSystem->SpawnParticles(effectPos, 42, 4.5f, &up, 42.0f, {1.0f, 0.55f, 0.84f, 1.0f},
                                        {1.0f, 0.86f, 0.95f, 0.0f}, 0.18f, 0.48f, 0.65f, 0.08f);
     }
 }
 
 // フックで引っ張られて分裂する特殊処理
-void EnemyGiantSlime::BeginHookSplitPull(const Vector3& hookOwnerPos) {
+void EnemyGiantSlime::BeginHookSplitPull(const engine::Vector3& hookOwnerPos) {
     // フックを受けた時点の姿勢を保存し、空中なら着地してから分裂の抵抗時間を始める。
     if (hasSplit_)
         return;
@@ -461,7 +462,7 @@ void EnemyGiantSlime::BeginHookSplitPull(const Vector3& hookOwnerPos) {
     hookSplitAwaitingLanding_ = !isGrounded_;
     if (hookSplitAwaitingLanding_) {
         hookSplitPhase_ = HookSplitPhase::AirborneTether;
-        Vector3 velocity = GetVelocity();
+        engine::Vector3 velocity = GetVelocity();
         velocity.x *= 0.20f;
         velocity.z *= 0.20f;
         velocity.y = (std::min)(velocity.y, 1.5f);
@@ -470,10 +471,10 @@ void EnemyGiantSlime::BeginHookSplitPull(const Vector3& hookOwnerPos) {
     } else {
         BeginGroundHookResistance(false);
     }
-    SetColor(hookSplitWeakPoint_ ? Vector4{1.0f, 0.48f, 0.86f, 1.0f} : Vector4{0.42f, 0.88f, 1.0f, 1.0f});
+    SetColor(hookSplitWeakPoint_ ? engine::Vector4{1.0f, 0.48f, 0.86f, 1.0f} : engine::Vector4{0.42f, 0.88f, 1.0f, 1.0f});
 }
 
-bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const Vector3& hookOwnerPos,
+bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const engine::Vector3& hookOwnerPos,
                                           ParticleSystem* particleSystem) {
     // 引き先の変化を追いながら、着地・踏ん張り・滑り・分裂の段階を進める。
     if (hasSplit_) {
@@ -484,9 +485,9 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const Vector3& hookOw
     }
 
     hookSplitOwnerPosition_ = hookOwnerPos;
-    Vector3 toOwner = hookOwnerPos - GetTranslate();
-    const Vector3 nextDirection = NormalizePlanar(toOwner);
-    if (Math::Length(nextDirection) > 0.001f) {
+    engine::Vector3 toOwner = hookOwnerPos - GetTranslate();
+    const engine::Vector3 nextDirection = NormalizePlanar(toOwner);
+    if (engine::Math::Length(nextDirection) > 0.001f) {
         hookSplitDirection_ = nextDirection;
     }
 
@@ -541,7 +542,7 @@ void EnemyGiantSlime::CancelHookSplitPull() {
     stateTimer_ = 0.0f;
     SetColor(defaultColor_);
     SetScale(baseScale_);
-    Vector3 rot = GetRotation();
+    engine::Vector3 rot = GetRotation();
     rot.x = 0.0f;
     rot.z = 0.0f;
     SetRotation(rot);
@@ -578,28 +579,28 @@ const char* EnemyGiantSlime::GetDebugHookSplitPhaseName() const {
     }
 }
 
-Vector3 EnemyGiantSlime::GetHookAttachmentPosition() const {
+engine::Vector3 EnemyGiantSlime::GetHookAttachmentPosition() const {
     // 見た目のせん断・拡縮を反映した位置を返し、フックの線が変形前の胴体に残らないようにする。
     MeshRenderer* renderer = GetMeshRenderer();
     Model* model = renderer ? renderer->GetModel() : nullptr;
     if (!model) {
-        return GetWorldPosition() + hookSplitDirection_ * 0.8f + Vector3{0.0f, 0.7f, 0.0f};
+        return GetWorldPosition() + hookSplitDirection_ * 0.8f + engine::Vector3{0.0f, 0.7f, 0.0f};
     }
 
-    const Vector3 modelCenter = model->GetCenter();
-    const Vector3 modelSize = model->GetSize();
+    const engine::Vector3 modelCenter = model->GetCenter();
+    const engine::Vector3 modelSize = model->GetSize();
     const float shearPivotY = modelCenter.y - modelSize.y * 0.5f;
-    const Vector3 localAttachment = {modelCenter.x, modelCenter.y + modelSize.y * 0.18f,
+    const engine::Vector3 localAttachment = {modelCenter.x, modelCenter.y + modelSize.y * 0.18f,
                                      modelCenter.z - modelSize.z * 0.32f};
 
-    Matrix4x4 shearLocal = Math::MakeIdentity4x4();
+    engine::Matrix4x4 shearLocal = engine::Math::MakeIdentity4x4();
     shearLocal.m[1][0] = hookVisualShear_.x;
     shearLocal.m[1][2] = hookVisualShear_.z;
     shearLocal.m[3][0] = -shearPivotY * hookVisualShear_.x;
     shearLocal.m[3][2] = -shearPivotY * hookVisualShear_.z;
-    const Matrix4x4 visualAffine = Math::MakeAffineMatrix(hookVisualScale_, hookVisualRotation_, hookVisualOffset_);
-    const Matrix4x4 visualLocal = Math::Multiply(shearLocal, visualAffine);
-    return Math::Transform(Math::Transform(localAttachment, visualLocal), GetWorldMatrix());
+    const engine::Matrix4x4 visualAffine = engine::Math::MakeAffineMatrix(hookVisualScale_, hookVisualRotation_, hookVisualOffset_);
+    const engine::Matrix4x4 visualLocal = engine::Math::Multiply(shearLocal, visualAffine);
+    return engine::Math::Transform(engine::Math::Transform(localAttachment, visualLocal), GetWorldMatrix());
 }
 
 void EnemyGiantSlime::BeginGroundHookResistance(bool landedFromAir) {
@@ -615,22 +616,22 @@ void EnemyGiantSlime::BeginGroundHookResistance(bool landedFromAir) {
     SyncGroundCollisionRadius();
 }
 
-void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const Vector3& hookOwnerPos) {
+void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector3& hookOwnerPos) {
     if (!isHookSplitPulled_ || hasSplit_) {
         return;
     }
 
-    Vector3 toOwner = hookOwnerPos - GetTranslate();
+    engine::Vector3 toOwner = hookOwnerPos - GetTranslate();
     const float planarDistance = std::sqrt(toOwner.x * toOwner.x + toOwner.z * toOwner.z);
-    Vector3 direction = NormalizePlanar(toOwner);
+    engine::Vector3 direction = NormalizePlanar(toOwner);
     hookSplitDirection_ = direction;
-    const Vector3 side = {-direction.z, 0.0f, direction.x};
+    const engine::Vector3 side = {-direction.z, 0.0f, direction.x};
     const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
 
-    Vector3 targetVisualScale = {1.0f, 1.0f, 1.0f};
-    Vector3 targetVisualRotation = {0.0f, 0.0f, 0.0f};
-    Vector3 targetVisualShear = {0.0f, 0.0f, 0.0f};
-    Vector3 targetPosition = GetTranslate();
+    engine::Vector3 targetVisualScale = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 targetVisualRotation = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 targetVisualShear = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 targetPosition = GetTranslate();
     bool pinGroundAnchor = false;
 
     if (hookSplitAwaitingLanding_) {
@@ -675,7 +676,7 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const Vector3& hookO
                               std::abs(std::sin(hookSplitPullTimer_ * 28.0f)) * tearProgress * 0.11f;
         targetVisualShear.x = struggleSide * (0.8f + tearProgress * 0.7f);
 
-        const Vector3 baseToOwner = hookOwnerPos - hookSplitBasePosition_;
+        const engine::Vector3 baseToOwner = hookOwnerPos - hookSplitBasePosition_;
         const float basePlanarDistance = std::sqrt(baseToOwner.x * baseToOwner.x + baseToOwner.z * baseToOwner.z);
         const float maximumSlip = (std::min)(basePlanarDistance * 0.12f, 1.65f);
         const float slipStep1 = SmoothStep01((progress - 0.50f) / 0.10f);
@@ -702,14 +703,14 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const Vector3& hookO
     SlimeBounceAnimator::StepDampedSpring(hookVisualShear_, hookVisualShearVelocity_, targetVisualShear, deltaTime,
                                           24.0f, 0.64f);
 
-    Vector3 targetVisualOffset =
-        pinGroundAnchor ? CalculateHookAnchorOffset(hookVisualScale_, hookVisualRotation_) : Vector3{0.0f, 0.0f, 0.0f};
+    engine::Vector3 targetVisualOffset =
+        pinGroundAnchor ? CalculateHookAnchorOffset(hookVisualScale_, hookVisualRotation_) : engine::Vector3{0.0f, 0.0f, 0.0f};
     SlimeBounceAnimator::StepDampedSpring(hookVisualOffset_, hookVisualOffsetVelocity_, targetVisualOffset, deltaTime,
                                           22.0f, 0.78f);
 
-    Vector3 renderedScale = hookVisualScale_;
-    Vector3 renderedRotation = hookVisualRotation_;
-    Vector3 renderedOffset = hookVisualOffset_;
+    engine::Vector3 renderedScale = hookVisualScale_;
+    engine::Vector3 renderedRotation = hookVisualRotation_;
+    engine::Vector3 renderedOffset = hookVisualOffset_;
     ApplyDamageReactionPose(renderedScale, renderedRotation, &renderedOffset, 0.72f);
 
     SetScale(baseScale_);
@@ -733,20 +734,20 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const Vector3& hookO
     UpdateWorldMatrix();
 }
 
-Vector3 EnemyGiantSlime::CalculateHookAnchorOffset(const Vector3& visualScale, const Vector3& visualRotation) const {
+engine::Vector3 EnemyGiantSlime::CalculateHookAnchorOffset(const engine::Vector3& visualScale, const engine::Vector3& visualRotation) const {
     MeshRenderer* renderer = GetMeshRenderer();
     Model* model = renderer ? renderer->GetModel() : nullptr;
     if (!model) {
         return {0.0f, 0.5f * (1.0f - visualScale.y), 0.5f * (1.0f - visualScale.z)};
     }
 
-    const Vector3 modelCenter = model->GetCenter();
-    const Vector3 modelSize = model->GetSize();
+    const engine::Vector3 modelCenter = model->GetCenter();
+    const engine::Vector3 modelSize = model->GetSize();
     // 描画姿勢が変わっても、プレイヤーと反対側の接地点を同じ場所に保ちます。
-    const Vector3 rearGroundAnchor = {modelCenter.x, modelCenter.y - modelSize.y * 0.5f,
+    const engine::Vector3 rearGroundAnchor = {modelCenter.x, modelCenter.y - modelSize.y * 0.5f,
                                       modelCenter.z + modelSize.z * 0.5f};
-    const Matrix4x4 visualMatrix = Math::MakeAffineMatrix(visualScale, visualRotation, {0.0f, 0.0f, 0.0f});
-    const Vector3 deformedAnchor = Math::Transform(rearGroundAnchor, visualMatrix);
+    const engine::Matrix4x4 visualMatrix = engine::Math::MakeAffineMatrix(visualScale, visualRotation, {0.0f, 0.0f, 0.0f});
+    const engine::Vector3 deformedAnchor = engine::Math::Transform(rearGroundAnchor, visualMatrix);
     return rearGroundAnchor - deformedAnchor;
 }
 
@@ -766,7 +767,7 @@ void EnemyGiantSlime::ResetHookSplitVisual() {
 }
 
 // ジャンプ攻撃、着地衝撃波、伸縮の補助処理
-void EnemyGiantSlime::LaunchJump(const Vector3& direction, float distance) {
+void EnemyGiantSlime::LaunchJump(const engine::Vector3& direction, float distance) {
     // 重力から滞空時間を概算し、予告地点まで届く水平速度を上限付きで決める。
     const float gravity = param_.has_value() ? (std::max)(1.0f, param_->gravity) : 70.0f;
     const float configuredJumpPower =
@@ -795,14 +796,14 @@ void EnemyGiantSlime::DispatchLandingShockwave() {
     if (!target_)
         return;
 
-    Vector3 diff = target_->GetTranslate() - GetTranslate();
+    engine::Vector3 diff = target_->GetTranslate() - GetTranslate();
     diff.y = 0.0f;
-    const float distance = Math::Length(diff);
+    const float distance = engine::Math::Length(diff);
     const EnemyAttackDefinition& attack = GetAttackDefinition(kJumpPressAttackId);
     if (distance > attack.radius)
         return;
 
-    Vector3 direction = distance > 0.001f ? diff / distance : Vector3{0.0f, 0.0f, 1.0f};
+    engine::Vector3 direction = distance > 0.001f ? diff / distance : engine::Vector3{0.0f, 0.0f, 1.0f};
     DamageEvent damageEvent;
     damageEvent.target = target_;
     damageEvent.attacker = this;
@@ -813,8 +814,8 @@ void EnemyGiantSlime::DispatchLandingShockwave() {
 
 void EnemyGiantSlime::ApplySlimeAnimation(float deltaTime) {
     // 攻撃段階ごとの潰れ・伸びと被弾反応を合成し、配置時の大きさを基準に描画する。
-    Vector3 targetScale = baseScale_;
-    Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
+    engine::Vector3 targetScale = baseScale_;
+    engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
     if (landingPulseTimer_ > 0.0f) {
         const float t = landingPulseTimer_ / 0.35f;
         targetScale.x = baseScale_.x * (1.35f - t * 0.25f);
@@ -847,15 +848,15 @@ void EnemyGiantSlime::ApplySlimeAnimation(float deltaTime) {
 
     ApplyDamageReactionPose(targetScale, targetRotation, nullptr, 0.82f);
     const float poseRate = (std::min)(1.0f, deltaTime * 8.0f);
-    SetScale(Math::Lerp(GetScale(), targetScale, poseRate));
-    const Vector3 currentRotation = GetRotation();
+    SetScale(engine::Math::Lerp(GetScale(), targetScale, poseRate));
+    const engine::Vector3 currentRotation = GetRotation();
     SetRotation({currentRotation.x + (targetRotation.x - currentRotation.x) * poseRate, currentRotation.y,
                  currentRotation.z + (targetRotation.z - currentRotation.z) * poseRate});
 }
 
 void EnemyGiantSlime::SyncWorldCollisionRadius(float worldRadius, float worldCenterY) {
     // 表示スケールが変化しても判定のワールド半径が一定になるよう逆算する。
-    const Vector3 scale = GetScale();
+    const engine::Vector3 scale = GetScale();
     const float maxScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     const float yScale = (std::max)(0.001f, std::abs(scale.y));
     ColliderConfig config = GetColliderConfig();
@@ -886,9 +887,9 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(ParticleSystem* particleSystem) {
     hookSplitWeakPoint_ = false;
     state_ = State::Idle;
 
-    Vector3 splitCenter = GetTranslate();
+    engine::Vector3 splitCenter = GetTranslate();
     if (particleSystem) {
-        Vector3 up = {0.0f, 1.0f, 0.0f};
+        engine::Vector3 up = {0.0f, 1.0f, 0.0f};
         particleSystem->SpawnParticles(splitCenter, 48, 2.0f, &up, 34.0f, {0.35f, 0.85f, 1.0f, 1.0f},
                                        {0.35f, 0.85f, 1.0f, 0.0f}, 0.25f, 0.65f, 0.85f, 0.08f);
     }
@@ -901,8 +902,8 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(ParticleSystem* particleSystem) {
                 continue;
 
             const float angle = (6.28318531f / static_cast<float>(kSplitSlimeCount)) * static_cast<float>(i);
-            Vector3 dir = {std::sin(angle), 0.0f, std::cos(angle)};
-            Vector3 pos = splitCenter + dir * kSplitSlimeRadius;
+            engine::Vector3 dir = {std::sin(angle), 0.0f, std::cos(angle)};
+            engine::Vector3 pos = splitCenter + dir * kSplitSlimeRadius;
             pos.y += 0.45f;
 
             const float yaw = std::atan2(dir.x, dir.z) + kGiantSlimeModelYawOffset;

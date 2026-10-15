@@ -109,7 +109,7 @@ void CameraEditor::DrawImGui() {
             }
             ImGui::DragFloat("ガイド点の大きさ", &settings_.orbitGuideMarkerSize, 0.01f, 0.1f, 2.0f);
 
-            Vector3 center = GetOrbitCenter();
+            engine::Vector3 center = GetOrbitCenter();
             if (ImGui::Button(ICON_FA_REDO " 現在位置を周回開始位置にセット")) {
                 CaptureOrbitStartFromCurrentCamera(CameraManager::GetInstance()->GetMainCamera());
             }
@@ -118,7 +118,7 @@ void CameraEditor::DrawImGui() {
             if (ImGui::Button("現在の角度を開始角度にする")) {
                 Camera* cam = CameraManager::GetInstance()->GetMainCamera();
                 if (cam) {
-                    Vector3 diff = cam->GetEye() - center;
+                    engine::Vector3 diff = cam->GetEye() - center;
                     settings_.orbitStartAngleDeg = RadToDeg(std::atan2(diff.z, diff.x));
                     ApplyOrbitStartAngle(cam, true);
                 }
@@ -152,8 +152,8 @@ void CameraEditor::DrawImGui() {
 
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (camera) {
-            Vector3 pos = camera->GetEye();
-            Vector3 rot = camera->GetRotation();
+            engine::Vector3 pos = camera->GetEye();
+            engine::Vector3 rot = camera->GetRotation();
             ImGui::TextDisabled(ICON_FA_LOCATION_ARROW " 現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
             ImGui::TextDisabled(ICON_FA_SYNC " 現在角度: %.2f, %.2f, %.2f", rot.x, rot.y, rot.z);
 
@@ -218,7 +218,7 @@ void CameraEditor::DrawImGui() {
         if (cameraCount == 0) {
             ImGui::TextDisabled("Hierarchyの作成メニューからCamera Objectを追加してください。");
         }
-        else if (Object3d* selectedCameraObject = GetSelectedCameraObject()) {
+        else if (engine::Object3d* selectedCameraObject = GetSelectedCameraObject()) {
             const SceneCameraSettings& cameraSettings = selectedCameraObject->GetSceneCameraSettings();
             ImGui::TextColored(ImVec4(0.35f, 1.0f, 0.45f, 1.0f), "選択中: %s", selectedCameraObject->GetName().c_str());
             ImGui::TextDisabled("位置・注視・追従・EasingはCamera ObjectのInspectorで編集します。");
@@ -281,8 +281,8 @@ void CameraEditor::DrawImGui() {
                 ImGui::PopStyleColor();
 
                 if (rowHovered) {
-                    const Vector3 eye = ResolveOverrideEye(param);
-                    const Vector3 target = ResolveOverrideTarget(param);
+                    const engine::Vector3 eye = ResolveOverrideEye(param);
+                    const engine::Vector3 target = ResolveOverrideTarget(param);
                     ImGui::BeginTooltip();
                     ImGui::Text("%s", name.c_str());
                     ImGui::Text("Eye: %.2f, %.2f, %.2f", eye.x, eye.y, eye.z);
@@ -466,6 +466,7 @@ void CameraEditor::DrawImGui() {
 
 void CameraEditor::DrawCameraPreviewPanel() {
 #ifdef USE_IMGUI
+    // カメラの描画負荷を調整できるよう、更新頻度と解像度をプレビュー設定にまとめる。
     if (!ImGui::CollapsingHeader(ICON_FA_CAMERA " カメラ可視化 / プレビュー", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
@@ -513,6 +514,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
         previewResolutionLabels,
         IM_ARRAYSIZE(previewResolutionLabels))) {
         settings_.cameraPreviewResolutionScale = kPreviewResolutionScales[previewResolutionIndex];
+        // RenderTargetサイズの変更後は古いプレビューを無効化する。
         PostEffect::GetInstance()->SetCameraPreviewResolutionScale(settings_.cameraPreviewResolutionScale);
         InvalidateCameraPreviews();
         SaveSettings();
@@ -523,14 +525,14 @@ void CameraEditor::DrawCameraPreviewPanel() {
         postEffect->GetCameraPreviewWidth(),
         postEffect->GetCameraPreviewHeight());
 
-    Object3d* selectedCameraObject = GetSelectedCameraObject();
+    engine::Object3d* selectedCameraObject = GetSelectedCameraObject();
     if (selectedCameraObject) {
         ImGui::TextColored(
             ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
             "Camera Object: %s",
             selectedCameraObject->GetName().c_str());
-        Vector3 selectedEye{};
-        Vector3 selectedTarget{};
+        engine::Vector3 selectedEye{};
+        engine::Vector3 selectedTarget{};
         if (ResolveSceneCameraPose(selectedCameraObject, selectedEye, selectedTarget)) {
             ImGui::TextDisabled("Object Eye: %.2f, %.2f, %.2f", selectedEye.x, selectedEye.y, selectedEye.z);
             ImGui::TextDisabled("Object Target: %.2f, %.2f, %.2f", selectedTarget.x, selectedTarget.y, selectedTarget.z);
@@ -540,8 +542,8 @@ void CameraEditor::DrawCameraPreviewPanel() {
         ImGui::TextDisabled("HierarchyでCamera Objectを選択すると、専用プレビューを表示します。");
     }
 
-    const Vector3 eye = GetPreviewCameraEye();
-    const Vector3 forward = GetPreviewCameraForward();
+    const engine::Vector3 eye = GetPreviewCameraEye();
+    const engine::Vector3 forward = GetPreviewCameraForward();
     ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "プレビュー対象: %s", GetPreviewCameraLabel());
     ImGui::TextDisabled("カメラ位置: %.2f, %.2f, %.2f", eye.x, eye.y, eye.z);
     ImGui::TextDisabled("視線方向: %.2f, %.2f, %.2f", forward.x, forward.y, forward.z);
@@ -556,6 +558,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
     }
 
     if (!settings_.cameraPreviewVisible || !EditorToolSettings::Get().IsVisible("cameraPreview")) {
+        // 折り畳み・非表示中は実描画側も更新を止められるよう、Imageを登録しない。
         return;
     }
 
@@ -571,6 +574,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
     float height = std::clamp(settings_.cameraPreviewHeight, 80.0f, 480.0f);
     float width = height * aspect;
     if (width > availableWidth) {
+        // 縦横比を崩さずInspectorの幅に収める。
         width = availableWidth;
         height = width / aspect;
     }

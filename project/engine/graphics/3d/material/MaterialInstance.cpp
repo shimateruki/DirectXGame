@@ -23,13 +23,13 @@ void SetError(std::string* destination, const std::string& message) {
     }
 }
 
-bool ReadVector2(const json& value, Vector2& destination) {
+bool ReadVector2(const json& value, engine::Vector2& destination) {
     if (!value.is_array() || value.size() < 2) return false;
     destination = { value[0].get<float>(), value[1].get<float>() };
     return true;
 }
 
-bool ReadVector4(const json& value, Vector4& destination) {
+bool ReadVector4(const json& value, engine::Vector4& destination) {
     if (!value.is_array() || value.size() < 4) return false;
     destination = {
         value[0].get<float>(), value[1].get<float>(),
@@ -39,12 +39,14 @@ bool ReadVector4(const json& value, Vector4& destination) {
 }
 
 template <typename T>
+// JSONに非nullの項目があるときだけ継承済みの材質値を置き換えます。
 void ReadValue(const json& source, const char* key, T& destination) {
     if (source.contains(key) && !source[key].is_null()) {
         destination = source[key].get<T>();
     }
 }
 
+// 親から継承した材質値を維持し、子JSONにある項目だけ上書きします。
 void OverlayMaterial(const json& source, MaterialInstanceData& material) {
     // 親から受け継いだ値は残し、子JSONに書かれた項目だけ上書きする。
     ReadValue(source, "displayName", material.displayName);
@@ -91,6 +93,7 @@ fs::path ResolveBasePath(const fs::path& ownerPath, const std::string& baseAsset
     return basePath;
 }
 
+// 親材質を再帰的に読み込み、循環と過度な継承深度を拒否します。
 bool LoadResolvedInternal(
     const fs::path& assetPath,
     MaterialInstanceData& material,
@@ -154,7 +157,7 @@ bool LoadResolvedInternal(
 }
 }
 
-MaterialInstanceData MaterialInstanceAsset::Capture(const Object3d& object) {
+MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3d& object) {
     MaterialInstanceData material;
     // まずObject3dの共通マテリアル値を取り出す。
     material.color = object.GetColor();
@@ -194,7 +197,7 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const Object3d& object) {
     return material;
 }
 
-void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, Object3d& object) {
+void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, engine::Object3d& object) {
     // Setterを通してObject3d側のマテリアルとテクスチャ状態を更新する。
     object.SetColor(material.color);
     object.SetBlendMode(static_cast<BlendMode>(std::clamp(material.blendMode, 0, 5)));
@@ -329,7 +332,8 @@ std::vector<std::string> MaterialInstanceAsset::Discover(const std::string& root
     return assets;
 }
 
-bool Object3d::ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+bool engine::Object3d::ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+    // 継承を解決した材質が読めた場合だけ適用し、参照パスを更新する。
     MaterialInstanceData material;
     if (!MaterialInstanceAsset::LoadResolved(assetPath, material, errorMessage)) {
         return false;
@@ -339,7 +343,8 @@ bool Object3d::ApplyMaterialInstance(const std::string& assetPath, std::string* 
     return true;
 }
 
-bool Object3d::SaveMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+bool engine::Object3d::SaveMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+    // 現在の材質を保存できた場合だけ、Objectの参照先を新しいアセットへ切り替える。
     MaterialInstanceData material = MaterialInstanceAsset::Capture(*this);
     material.displayName = std::filesystem::path(assetPath).stem().string();
     if (!MaterialInstanceAsset::Save(assetPath, material, errorMessage)) {

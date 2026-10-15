@@ -25,6 +25,7 @@ void SRVManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 uint32_t SRVManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
+    // 記述子の払い出しとビュー作成を同じロック内で行い、並列登録時の重複を防ぐ。
     std::lock_guard<std::mutex> lock(mutex_);
     assert(nextIndex_ < kMaxSRVCount);
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
@@ -40,6 +41,7 @@ void SRVManager::SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* comma
 }
 
 void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
+    // 描画コマンドにこの SRV ヒープを明示してから記述子テーブルを使用する。
     assert(srvDescriptorHeap_);
 
     ID3D12DescriptorHeap* pHeaps[] = { srvDescriptorHeap_.Get() };
@@ -47,6 +49,7 @@ void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
 }
 
 uint32_t SRVManager::Allocate() {
+    // ビューを後で作る呼び出しにも、同じ連番から記述子枠を確保する。
     std::lock_guard<std::mutex> lock(mutex_);
     assert(nextIndex_ < kMaxSRVCount);
     uint32_t index = nextIndex_;
@@ -55,6 +58,7 @@ uint32_t SRVManager::Allocate() {
 }
 
 void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
+    // 事前に確保した枠へビューを書き込み、払い出し位置は進めない。
     std::lock_guard<std::mutex> lock(mutex_);
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
     cpuHandle.ptr += (static_cast<unsigned long long>(descriptorSize_) * index);
@@ -62,6 +66,7 @@ void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource,
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
+    // SRVヒープの先頭から記述子一個分の幅で進め、シェーダーに渡す位置を求める。
     if (index >= kMaxSRVCount) {
         assert(false && "SRV Index out of range!");
     }
@@ -78,6 +83,7 @@ void SRVManager::SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* comman
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE SRVManager::GetCPUDescriptorHandle(uint32_t index) {
+    // CPUから記述子を書き換える際はGPU用とは別のヒープ先頭ハンドルを使う。
     if (index >= kMaxSRVCount) {
         assert(false && "SRV Index out of range!");
     }

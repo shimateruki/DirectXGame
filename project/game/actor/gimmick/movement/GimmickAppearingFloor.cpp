@@ -66,7 +66,7 @@ void GimmickAppearingFloor::Update(float deltaTime) {
         if (visibleTimer_ <= warningTime) {
             bool blinkOn = std::fmod(visibleTimer_, blinkInterval_ * 2.0f) >= blinkInterval_;
             SetIsVisible(blinkOn);
-            SetColor(blinkOn ? Vector4{0.9f, 1.0f, 0.35f, 1.0f} : Vector4{0.55f, 1.0f, 0.7f, 1.0f});
+            SetColor(blinkOn ? engine::Vector4{0.9f, 1.0f, 0.35f, 1.0f} : engine::Vector4{0.55f, 1.0f, 0.7f, 1.0f});
         } else {
             SetIsVisible(true);
             SetColor({0.55f, 1.0f, 0.7f, 1.0f});
@@ -101,7 +101,7 @@ void GimmickAppearingFloor::SetFloorActive(bool active) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickAppearingFloor::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickAppearingFloor::Clone() const {
     // 新しい実体を初期化してから、出現時間と配置を引き継ぐ。
     auto newObj = std::make_unique<GimmickAppearingFloor>();
     assert(common_ != nullptr);

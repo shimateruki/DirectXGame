@@ -4,7 +4,7 @@
 
 class DebugEditor;
 class BaseScene;
-class Object3d;
+namespace engine { class Object3d; }
 
 /// <summary>
 /// 左ペインのHierarchy表示と、オブジェクト生成メニューを担当する。
@@ -34,8 +34,8 @@ public:
     void OpenSceneAssetFromMenu(const std::string& filename);
 
 private:
-    void DrawHierarchyNode(Object3d* obj);
-    bool HasMatchingCategory(Object3d* obj);
+    void DrawHierarchyNode(engine::Object3d* obj);
+    bool HasMatchingCategory(engine::Object3d* obj);
     void DrawSceneAssetManager();
     void DrawSceneAssetDialogs();
     void RequestOpenSceneAsset(const std::string& filename);

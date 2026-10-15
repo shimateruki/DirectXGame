@@ -10,7 +10,7 @@
 struct PlayerCopyTypeDescriptor {
     std::string_view enemyType;
     std::string_view modelName;
-    Vector4 displayColor;
+    engine::Vector4 displayColor;
 };
 
 namespace PlayerCopyTypeCatalog {

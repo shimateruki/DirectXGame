@@ -314,17 +314,17 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         if (ImGui::Button("術者を斜め前から見る", ImVec2(-1.0f, 0.0f))) {
             EffectPreviewStage::GetInstance()->ApplyCameraOverride();
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-                const Vector3 boss = prismSlime->GetWorldPosition();
-                Vector3 forward = previewTarget_
-                    ? previewTarget_->GetWorldPosition() - boss : Vector3{ 0.0f, 0.0f, 1.0f };
+                const engine::Vector3 boss = prismSlime->GetWorldPosition();
+                engine::Vector3 forward = previewTarget_
+                    ? previewTarget_->GetWorldPosition() - boss : engine::Vector3{ 0.0f, 0.0f, 1.0f };
                 forward.y = 0.0f;
                 const float length = std::sqrt(forward.x * forward.x + forward.z * forward.z);
                 forward = length > 0.001f
-                    ? Vector3{ forward.x / length, 0.0f, forward.z / length }
-                    : Vector3{ 0.0f, 0.0f, 1.0f };
-                const Vector3 side = { forward.z, 0.0f, -forward.x };
-                const Vector3 focus = boss + forward * 1.0f + Vector3{ 0.0f, 1.4f, 0.0f };
-                const Vector3 offset = forward * 7.0f + side * 7.0f + Vector3{ 0.0f, 6.0f, 0.0f };
+                    ? engine::Vector3{ forward.x / length, 0.0f, forward.z / length }
+                    : engine::Vector3{ 0.0f, 0.0f, 1.0f };
+                const engine::Vector3 side = { forward.z, 0.0f, -forward.x };
+                const engine::Vector3 focus = boss + forward * 1.0f + engine::Vector3{ 0.0f, 1.4f, 0.0f };
+                const engine::Vector3 offset = forward * 7.0f + side * 7.0f + engine::Vector3{ 0.0f, 6.0f, 0.0f };
                 const float azimuth = std::atan2(offset.x, -offset.z);
                 camera->SetFollowTarget(nullptr);
                 camera->SetEye(focus + offset);
@@ -345,7 +345,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
             EffectPreviewStage::GetInstance()->ApplyCameraOverride();
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
             if (!camera) return;
-            Vector3 target = EffectPreviewStage::GetInstance()->GetGroundPosition();
+            engine::Vector3 target = EffectPreviewStage::GetInstance()->GetGroundPosition();
             target.y += 5.0f;
             target.z += targetDistance_ * 0.5f;
             const float distance = (std::max)(42.0f, targetDistance_ + 30.0f);
@@ -363,10 +363,10 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         if (ImGui::Button("空中魔法陣を横から見る", ImVec2(-1.0f, 0.0f))) {
             EffectPreviewStage::GetInstance()->ApplyCameraOverride();
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-                Vector3 focus = EffectPreviewStage::GetInstance()->GetGroundPosition();
+                engine::Vector3 focus = EffectPreviewStage::GetInstance()->GetGroundPosition();
                 focus.z += falseKingSealBarragePreview_ ? 0.0f : targetDistance_;
                 focus.y += 6.0f;
-                const Vector3 offset{21.0f, 5.0f, -26.0f};
+                const engine::Vector3 offset{21.0f, 5.0f, -26.0f};
                 camera->SetFollowTarget(nullptr);
                 camera->SetEye(focus + offset);
                 camera->SetTarget(focus);
@@ -627,6 +627,7 @@ void EnemyAttackPreviewWindow::DrawCrownDefeatSettings() {
 
 void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
 #ifdef USE_IMGUI
+    // 選択中の敵種別に対応するプロファイルを表示し、編集対象をプレビューと同期する。
     ImGui::SeparatorText("攻撃プロファイル");
     const std::string profilePath = EnemyAttackProfile::GetDefaultPath(GetSelectedEnemyType());
     ImGui::TextDisabled("%s", profilePath.c_str());
@@ -652,6 +653,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
             !selectedSequenceAttack->sequence.events.empty() || !selectedSequenceAttack->sequence.tracks.empty()));
     if (canEditSequence) {
         if (ImGui::Button("共通攻撃を追加・選択攻撃から複製")) {
+            // 複製元の共有シーケンス参照を外し、新しい攻撃だけを編集できるようにする。
             EnemyAttackDefinition copy;
             if (const auto* selected = GetSelectedAttackDefinition()) copy = *selected;
             copy.sequence.assetPath.clear(); // 複製後の変更で、元の共有アセットを書き換えない。
@@ -686,6 +688,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
         changed |= DrawProfileString("表示名", editedAttack->displayName);
         if (selectedTrack_ <= -2) ImGui::SetNextItemOpen(true);
         if (canEditSequence && ImGui::TreeNodeEx("共通実行シーケンス", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // 実行先と時刻を共通ランタイムの設定へ保存し、旧攻撃値との責務を分ける。
             auto& sequence = editedAttack->sequence;
             changed |= ImGui::Checkbox("共通ランタイムで実行", &sequence.enabled);
             if (sequence.enabled) {
@@ -733,6 +736,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
                 }
                 ImGui::TextWrapped("部品設定がある弾は個別の値を優先します。イベントは時刻順に各1回実行し、条件はその時点で評価します。");
                 for (int i = 0; i < static_cast<int>(sequence.events.size()); ++i) {
+                    // 選択したトラックに属するイベントだけを開き、時刻と発火条件を編集する。
                     if (selectedTrack_ <= -2 && i != -2 - selectedTrack_) continue;
                     ImGui::PushID(i);
                     auto& event = sequence.events[i];
@@ -785,6 +789,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
 
 
         if (ImGui::TreeNodeEx("距離・範囲", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // AIの選択距離と、実際の命中形状・ローカル位置を別々に調整する。
             changed |= ImGui::DragFloat("最小発動距離", &editedAttack->minRange, 0.05f, 0.0f, 50.0f, "%.2f m");
             changed |= ImGui::DragFloat("最大発動距離", &editedAttack->maxRange, 0.05f, 0.0f, 50.0f, "%.2f m");
             changed |= ImGui::DragFloat("攻撃半径・幅", &editedAttack->radius, 0.05f, 0.01f, 50.0f, "%.2f m");
@@ -805,6 +810,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
         }
 
         if (ImGui::TreeNodeEx("タイミング", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // 共通シーケンスが術者を制御する場合、競合する旧式の時間設定を無効化する。
             const bool controlled = editedAttack->sequence.enabled && editedAttack->sequence.actorControl.enabled;
             if (controlled) ImGui::TextWrapped("予備動作と後隙は上の術者制御・シーケンス長を編集してください。");
             ImGui::BeginDisabled(controlled);
@@ -834,6 +840,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
         }
 
         if (ImGui::TreeNodeEx("状態異常", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // 炎上を初めて選ぶときだけ有効な既定値を補い、既存の調整値は保持する。
             const char* statusTypes[] = { "なし", "炎上" };
             int statusIndex = editedAttack->statusEffectType == "burning" ? 1 : 0;
             if (ImGui::Combo("種類", &statusIndex, statusTypes, IM_ARRAYSIZE(statusTypes))) {
@@ -863,6 +870,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
         }
 
         if (ImGui::TreeNode("演出参照")) {
+            // 炎スライムはControllerの状態名を選び、他の敵は従来の文字列参照を使う。
             if (std::string(GetSelectedEnemyType()) == "FireSlime") {
                 static AnimatorControllerAsset fireSlimeController;
                 static bool loaded = fireSlimeController.Load("Resources/json/animator/enemy_fire_slime.json");
@@ -892,6 +900,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
         }
 
         profileDirty_ |= changed;
+        // UI変更は下書きプレビューへ反映し、保存操作までは元のJSONへ書き込まない。
         if (changed) RequestDraftRefresh();
         if (profileDirty_) {
             ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.22f, 1.0f), "未保存の変更があります");

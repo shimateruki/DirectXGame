@@ -15,16 +15,16 @@
 
 namespace {
 // 3つの見本の間に十分な選択余白を作り、意図しない能力の取得を防ぎます。
-constexpr std::array<Vector3, 3> kCoreLocalPositions = {
-    Vector3{-2.45f, 1.80f, -0.32f},
-    Vector3{0.00f, 1.80f, 0.64f},
-    Vector3{2.45f, 1.80f, -0.32f},
+constexpr std::array<engine::Vector3, 3> kCoreLocalPositions = {
+    engine::Vector3{-2.45f, 1.80f, -0.32f},
+    engine::Vector3{0.00f, 1.80f, 0.64f},
+    engine::Vector3{2.45f, 1.80f, -0.32f},
 };
-constexpr std::array<Vector3, 4> kFourCoreLocalPositions = {
-    Vector3{-3.675f, 1.80f, -0.32f},
-    Vector3{-1.225f, 1.80f, 0.64f},
-    Vector3{1.225f, 1.80f, 0.64f},
-    Vector3{3.675f, 1.80f, -0.32f},
+constexpr std::array<engine::Vector3, 4> kFourCoreLocalPositions = {
+    engine::Vector3{-3.675f, 1.80f, -0.32f},
+    engine::Vector3{-1.225f, 1.80f, 0.64f},
+    engine::Vector3{1.225f, 1.80f, 0.64f},
+    engine::Vector3{3.675f, 1.80f, -0.32f},
 };
 constexpr float kCoreVisualScale = 0.92f;
 constexpr float kSelectionCooldown = 0.28f;
@@ -55,7 +55,7 @@ void GimmickCopyMemoryStation::Initialize(Object3dCommon* common, const std::str
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
 
-    Object3d::ColliderConfig collider;
+    engine::Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 0.95f, 0.0f};
     collider.size = {3.1f, 1.6f, 1.85f};
@@ -73,7 +73,7 @@ void GimmickCopyMemoryStation::Initialize(Object3dCommon* common, const std::str
     param_->startActive = true;
 
     for (size_t index = 0; index < kCoreCount; ++index) {
-        coreVisuals_[index] = std::make_unique<Object3d>();
+        coreVisuals_[index] = std::make_unique<engine::Object3d>();
         coreVisuals_[index]->Initialize(common);
         coreVisuals_[index]->SetName("CopyMemoryStation_Core_" + std::to_string(index + 1));
         coreVisuals_[index]->SetClassName("Object");
@@ -95,7 +95,7 @@ void GimmickCopyMemoryStation::Initialize(Object3dCommon* common, const std::str
         // 常駐する小数の描画物を使い回し、取得を繰り返しても粒を増殖させません。
         for (size_t part = 0; part < 4; ++part) {
             auto& effect = effects_[index * 4 + part];
-            effect = std::make_unique<Object3d>();
+            effect = std::make_unique<engine::Object3d>();
             effect->Initialize(common);
             effect->SetModel(part == 3 ? "Gimmicks/copy_essence_halo" : "Gimmicks/copy_essence_spark");
             effect->SetColliderType(ColliderType::kNone);
@@ -139,7 +139,7 @@ void GimmickCopyMemoryStation::Draw(ID3D12Resource* pointLightResource, ID3D12Re
     if (!GetIsVisible()) {
         return;
     }
-    for (const std::unique_ptr<Object3d>& core : coreVisuals_) {
+    for (const std::unique_ptr<engine::Object3d>& core : coreVisuals_) {
         if (core && core->GetIsVisible()) {
             core->Draw(pointLightResource, spotLightResource);
         }
@@ -150,7 +150,7 @@ void GimmickCopyMemoryStation::Draw(ID3D12Resource* pointLightResource, ID3D12Re
     }
 }
 
-bool GimmickCopyMemoryStation::OnCollision(Object3d* other) {
+bool GimmickCopyMemoryStation::OnCollision(engine::Object3d* other) {
     // コアごとの接触を調べ、同じ接触が続く間の連続取得を防ぎます。
     auto* player = dynamic_cast<Player*>(other);
     SceneManager* sceneManager = SceneManager::GetInstance();
@@ -185,7 +185,7 @@ void GimmickCopyMemoryStation::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickCopyMemoryStation::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickCopyMemoryStation::Clone() const {
     // 内部見本は初期化で作り直し、設定された能力種別だけコピーします。
     auto clone = std::make_unique<GimmickCopyMemoryStation>();
     assert(common_ != nullptr);
@@ -195,6 +195,7 @@ std::unique_ptr<Object3d> GimmickCopyMemoryStation::Clone() const {
 }
 
 GimmickCopyMemoryStation::Settings GimmickCopyMemoryStation::ReadSettings() const {
+    // ステーション固有の保存値を読み、未設定項目は既定値で補う。
     Settings settings;
     if (!param_) return settings;
     settings.types = {param_->copyMemoryTypeA, param_->copyMemoryTypeB,
@@ -266,7 +267,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
             ConfigureCore(index, configuredType);
         }
 
-        Object3d* core = coreVisuals_[index].get();
+        engine::Object3d* core = coreVisuals_[index].get();
         if (!core || !core->GetIsVisible()) {
             continue;
         }
@@ -274,12 +275,12 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
         corePulseTimers_[index] = (std::max)(0.0f, corePulseTimers_[index] - (std::max)(0.0f, deltaTime));
         const float phase = visualTimer_ * 2.15f + static_cast<float>(index) * 2.0944f;
         const float bounce = std::sin(phase) * hover;
-        Vector3 position = GetCoreWorldPosition(index);
+        engine::Vector3 position = GetCoreWorldPosition(index);
         position.y += bounce * std::abs(GetScale().y);
         // 接近時は選んだ能力だけが少し伸び上がり、取得物であることを伝えます。
         float approach = 0.0f;
         if (player && runtimeEnabled_) {
-            const Vector3 delta = player->GetWorldPosition() - position;
+            const engine::Vector3 delta = player->GetWorldPosition() - position;
             const float range = 2.1f * (std::max)(0.1f, std::abs(GetScale().x));
             approach = std::clamp(1.0f - std::sqrt(delta.x * delta.x + delta.z * delta.z) / range, 0.0f, 1.0f);
         }
@@ -289,7 +290,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
 
         const float pulseRate = corePulseTimers_[index] > 0.0f ? 1.0f - corePulseTimers_[index] / kPulseDuration : 1.0f;
         const float pulse = corePulseTimers_[index] > 0.0f ? 1.0f + std::sin(pulseRate * 3.14159265f) * 0.28f : 1.0f;
-        const Vector3 rootScale = GetScale();
+        const engine::Vector3 rootScale = GetScale();
         // 台座の横幅を調整しても能力マークが潰れないよう、縦・奥行きから均一倍率を作ります。
         const float uniformRootScale = (std::max)(0.1f, (std::abs(rootScale.y) + std::abs(rootScale.z)) * 0.5f);
         const float visualScale = uniformRootScale * kCoreVisualScale * size;
@@ -300,8 +301,8 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
             if (elapsed < 0.32f) {
                 const float t = elapsed / 0.32f;
                 const float eased = t * t * (3.0f - 2.0f * t);
-                const Vector3 target =
-                    player ? player->GetWorldPosition() + Vector3{0.0f, 0.5f, 0.0f} : transferTargets_[index];
+                const engine::Vector3 target =
+                    player ? player->GetWorldPosition() + engine::Vector3{0.0f, 0.5f, 0.0f} : transferTargets_[index];
                 transferTargets_[index] = target;
                 position = position * (1.0f - eased) + target * eased;
                 position.y += std::sin(t * 3.14159265f) * 0.35f;
@@ -318,7 +319,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
         });
         core->SetEmissive(runtimeEnabled_ ? glow + approach * 0.35f + (corePulseTimers_[index] > 0.0f ? 0.3f : 0.0f)
                                           : 0.0f);
-        core->SetColor(runtimeEnabled_ ? Vector4{1, 1, 1, 1} : Vector4{0.35f, 0.35f, 0.35f, 1});
+        core->SetColor(runtimeEnabled_ ? engine::Vector4{1, 1, 1, 1} : engine::Vector4{0.35f, 0.35f, 0.35f, 1});
         core->Update(deltaTime);
         // 見本モデルはObjectManagerへ登録しない内部描画物です。
         // Object3d::Updateは描画定数の確定をObjectManagerへ遅延するため、
@@ -335,19 +336,19 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
     const auto* descriptor = PlayerCopyTypeCatalog::Find(GetConfiguredType(index));
     if (!descriptor)
         return;
-    Vector4 color = descriptor->displayColor;
+    engine::Vector4 color = descriptor->displayColor;
     // ボムの光は黒い本体でも埋もれない、淡い紫にします。
     if (GetConfiguredType(index) == "Bomber")
         color = {0.75f, 0.53f, 1.0f, 1.0f};
     const bool active = corePulseTimers_[index] > 0.0f;
     const float elapsed = kPulseDuration - corePulseTimers_[index];
-    const Vector3 origin = coreVisuals_[index]->GetWorldPosition();
+    const engine::Vector3 origin = coreVisuals_[index]->GetWorldPosition();
     for (size_t part = 0; part < 4; ++part) {
         auto* effect = effects_[index * 4 + part].get();
         float alpha = 0.0f;
         float radius = 0.1f;
-        Vector3 position = origin;
-        Vector3 rotation = GetRotation();
+        engine::Vector3 position = origin;
+        engine::Vector3 rotation = GetRotation();
         if (part < 3) {
             const float seed = static_cast<float>(part) * 2.094395f + static_cast<float>(index) * 0.71f;
             const float cycle = std::fmod(
@@ -355,7 +356,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
             const float twinkle = cycle < 0.45f ? std::sin(cycle / 0.45f * 3.14159265f) : 0.0f;
             alpha = twinkle * (0.38f + approach * 0.35f);
             radius = (0.055f + twinkle * 0.045f) * scale;
-            Vector3 offset{std::cos(seed + visualTimer_ * 0.3f) * 0.95f,
+            engine::Vector3 offset{std::cos(seed + visualTimer_ * 0.3f) * 0.95f,
                            0.28f + std::sin(seed + visualTimer_ * 0.6f) * 0.40f,
                            std::sin(seed + visualTimer_ * 0.3f) * 0.35f};
             position = position + offset * scale;
@@ -365,7 +366,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
                 position = origin + offset * (scale * (1.0f - elapsed / 0.32f));
             } else if (active && elapsed < 0.72f) {
                 const float t = (elapsed - 0.32f) / 0.40f;
-                position = transferTargets_[index] + Vector3{std::cos(seed) * (0.2f + t * 0.8f),
+                position = transferTargets_[index] + engine::Vector3{std::cos(seed) * (0.2f + t * 0.8f),
                                                              std::sin(seed) * (0.2f + t * 0.6f) + 0.2f,
                                                              std::sin(seed * 2.0f) * t * 0.3f};
                 alpha = (1.0f - t) * 0.9f;
@@ -373,8 +374,8 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
             }
             rotation.z += visualTimer_ * 0.7f + seed;
         } else {
-            const Vector3 local = GetCoreLocalPosition(index);
-            position = Math::Transform({local.x, 0.835f, local.z}, GetWorldMatrix());
+            const engine::Vector3 local = GetCoreLocalPosition(index);
+            position = engine::Math::Transform({local.x, 0.835f, local.z}, GetWorldMatrix());
             radius = scale * 0.72f;
             alpha = 0.12f + approach * 0.45f;
             if (active) {
@@ -398,7 +399,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
 void GimmickCopyMemoryStation::ConfigureCore(size_t index, const std::string& enemyType) {
     // 能力カタログに登録された型だけ対応モデルを表示します。
     displayedTypes_[index] = enemyType;
-    Object3d* core = coreVisuals_[index].get();
+    engine::Object3d* core = coreVisuals_[index].get();
     const PlayerCopyTypeDescriptor* descriptor = PlayerCopyTypeCatalog::Find(enemyType);
     if (!core || !descriptor) {
         if (core) {
@@ -424,7 +425,7 @@ bool GimmickCopyMemoryStation::IsSingleCore() const {
     return count == 1;
 }
 
-Vector3 GimmickCopyMemoryStation::GetCoreLocalPosition(size_t index) const {
+engine::Vector3 GimmickCopyMemoryStation::GetCoreLocalPosition(size_t index) const {
     // 1能力だけなら空の台座を並べず、取得判定と光も中央へ揃える。
     if (IsSingleCore())
         return {0.0f, 1.8f, 0.0f};
@@ -432,9 +433,9 @@ Vector3 GimmickCopyMemoryStation::GetCoreLocalPosition(size_t index) const {
                                                       : kCoreLocalPositions[(std::min)(index, size_t{2})];
 }
 
-Vector3 GimmickCopyMemoryStation::GetCoreWorldPosition(size_t index) const {
+engine::Vector3 GimmickCopyMemoryStation::GetCoreWorldPosition(size_t index) const {
     // 台座の回転と拡大縮小も含めて、コアの接触位置を変換します。
-    return Math::Transform(GetCoreLocalPosition(index), GetWorldMatrix());
+    return engine::Math::Transform(GetCoreLocalPosition(index), GetWorldMatrix());
 }
 
 std::string GimmickCopyMemoryStation::GetConfiguredType(size_t index) const {
@@ -445,7 +446,7 @@ std::string GimmickCopyMemoryStation::GetConfiguredType(size_t index) const {
     return index < kCoreCount ? std::string(ReadSettings().types[index]) : std::string{};
 }
 
-int GimmickCopyMemoryStation::FindTouchedCore(const Vector3& playerPosition) const {
+int GimmickCopyMemoryStation::FindTouchedCore(const engine::Vector3& playerPosition) const {
     // 水平方向だけで最も近い有効コアを探し、見た目と取得先を一致させます。
     const float configuredRadius = ReadSettings().activationRadius;
     const float scaleRadius = (std::max)(std::abs(GetScale().x), std::abs(GetScale().z));
@@ -457,7 +458,7 @@ int GimmickCopyMemoryStation::FindTouchedCore(const Vector3& playerPosition) con
         if (!PlayerCopyTypeCatalog::IsSupported(GetConfiguredType(index))) {
             continue;
         }
-        const Vector3 corePosition = GetCoreWorldPosition(index);
+        const engine::Vector3 corePosition = GetCoreWorldPosition(index);
         const float deltaX = playerPosition.x - corePosition.x;
         const float deltaZ = playerPosition.z - corePosition.z;
         const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
@@ -484,6 +485,6 @@ void GimmickCopyMemoryStation::ActivateCore(Player& player, size_t index) {
     latchedCore_ = static_cast<int>(index);
     selectionCooldown_ = kSelectionCooldown;
     corePulseTimers_[index] = kPulseDuration;
-    transferTargets_[index] = player.GetWorldPosition() + Vector3{0.0f, 0.5f, 0.0f};
+    transferTargets_[index] = player.GetWorldPosition() + engine::Vector3{0.0f, 0.5f, 0.0f};
     VFXSequencer::PlayOneShot(kActivationCue, player.GetWorldPosition(), {0.65f, 0.65f, 0.65f});
 }

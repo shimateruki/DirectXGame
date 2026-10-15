@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4da1b7d7dd696ffc37192865ef057f8c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/navigation_basics.png",
+  "version": 1
+}

@@ -83,19 +83,21 @@ public:
     /// <summary>
     /// 指定Objectの設定を新しいPresetとして登録する。
     /// </summary>
-    void AddPresetFromObject(const std::string& presetName, Object3d* obj);
+    void AddPresetFromObject(const std::string& presetName, engine::Object3d* obj);
 
     /// <summary>
     /// 指定ObjectへPreset設定を適用する。
     /// </summary>
-    void ApplyPresetToObject(const std::string& presetName, Object3d* obj);
+    void ApplyPresetToObject(const std::string& presetName, engine::Object3d* obj);
 
     /// <summary>
     /// PresetからObject群を生成する。
     /// </summary>
-    std::vector<std::unique_ptr<Object3d>> CreateObjectsFromPreset(const std::string& presetName, Object3dCommon* common) const;
+    std::vector<std::unique_ptr<engine::Object3d>> CreateObjectsFromPreset(const std::string& presetName, Object3dCommon* common) const;
 
     void RemovePreset(const std::string& presetName);
+    /// 指定した複数のPresetを削除し、変更があった場合だけ一度保存する。
+    void RemovePresets(const std::vector<std::string>& presetNames);
     void RenamePreset(const std::string& oldName, const std::string& newName);
 
     const std::map<std::string, json>& GetPresets() const { return presets_; }
@@ -116,10 +118,10 @@ public:
     /// <summary>
     /// 選択Object階層をPrefabとして登録する。
     /// </summary>
-    void AddPrefabFromObject(const std::string& prefabName, Object3d* obj);
+    void AddPrefabFromObject(const std::string& prefabName, engine::Object3d* obj);
 
     /// Prefab Modeで編集した階層をAssetへ保存する。Variantでは基底との差分へ変換する。
-    bool UpdatePrefabFromObject(const std::string& prefabName, Object3d* obj);
+    bool UpdatePrefabFromObject(const std::string& prefabName, engine::Object3d* obj);
 
     /// Prefab Asset更新前後を比較し、Scene内の未変更Instanceだけを新しいSourceへ同期する。
     int SynchronizePrefabInstances(
@@ -139,35 +141,35 @@ public:
     /// <summary>
     /// PrefabからObject群を生成する。
     /// </summary>
-    std::vector<std::unique_ptr<Object3d>> CreateObjectsFromPrefab(const std::string& prefabName, Object3dCommon* common) const;
+    std::vector<std::unique_ptr<engine::Object3d>> CreateObjectsFromPrefab(const std::string& prefabName, Object3dCommon* common) const;
 
     // Instanceの配置差分やComponent構造差分を除き、SourceとのProperty差分を返す。
-    std::vector<PrefabPropertyOverride> GetPrefabOverrides(const Object3d* object) const;
-    std::vector<PrefabComponentOverride> GetPrefabComponentOverrides(const Object3d* object) const;
-    std::vector<PrefabVariantOverride> GetPrefabVariantOverrides(const Object3d* object) const;
-    std::vector<PrefabVariantComponentOverride> GetPrefabVariantComponentOverrides(const Object3d* object) const;
+    std::vector<PrefabPropertyOverride> GetPrefabOverrides(const engine::Object3d* object) const;
+    std::vector<PrefabComponentOverride> GetPrefabComponentOverrides(const engine::Object3d* object) const;
+    std::vector<PrefabVariantOverride> GetPrefabVariantOverrides(const engine::Object3d* object) const;
+    std::vector<PrefabVariantComponentOverride> GetPrefabVariantComponentOverrides(const engine::Object3d* object) const;
     PrefabStructureOverrideSummary GetPrefabStructureOverrideSummary(const std::string& prefabName) const;
-    bool HasValidPrefabSource(const Object3d* object) const;
+    bool HasValidPrefabSource(const engine::Object3d* object) const;
     // Instanceの値をSourceへ反映し、Source値のままの別Instanceだけ更新する。
     // 名前と配置専用PropertyはSourceへ反映しない。
-    bool ApplyPrefabProperty(Object3d* object, const std::string& propertyPath, const std::vector<Object3d*>& sceneObjects);
-    bool RevertPrefabProperty(Object3d* object, const std::string& propertyPath);
-    bool ApplyPrefabComponent(Object3d* object, const std::string& componentTypeId, const std::vector<Object3d*>& sceneObjects);
-    bool RevertPrefabComponent(Object3d* object, const std::string& componentTypeId);
+    bool ApplyPrefabProperty(engine::Object3d* object, const std::string& propertyPath, const std::vector<engine::Object3d*>& sceneObjects);
+    bool RevertPrefabProperty(engine::Object3d* object, const std::string& propertyPath);
+    bool ApplyPrefabComponent(engine::Object3d* object, const std::string& componentTypeId, const std::vector<engine::Object3d*>& sceneObjects);
+    bool RevertPrefabComponent(engine::Object3d* object, const std::string& componentTypeId);
     bool RevertPrefabVariantProperty(
-        Object3d* object,
+        engine::Object3d* object,
         const std::string& propertyPath,
-        const std::vector<Object3d*>& sceneObjects);
+        const std::vector<engine::Object3d*>& sceneObjects);
     bool RevertPrefabVariantComponent(
-        Object3d* object,
+        engine::Object3d* object,
         const std::string& componentTypeId,
-        const std::vector<Object3d*>& sceneObjects);
+        const std::vector<engine::Object3d*>& sceneObjects);
     // 同じinstanceIdの階層全体へ適用し、個別操作をひとつのAsset履歴にまとめる。
-    int ApplyAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects);
-    int RevertAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects);
+    int ApplyAllPrefabOverrides(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects);
+    int RevertAllPrefabOverrides(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects);
     // 同じinstanceIdの階層からPrefabへの紐付けを外す。戻り値は解除したObject数。
-    int UnpackPrefabInstance(Object3d* object, const std::vector<Object3d*>& sceneObjects);
-    void AssignNewPrefabInstanceId(const std::vector<Object3d*>& objects) const;
+    int UnpackPrefabInstance(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects);
+    void AssignNewPrefabInstanceId(const std::vector<engine::Object3d*>& objects) const;
 
     void RemovePrefab(const std::string& prefabName);
     void RenamePrefab(const std::string& oldName, const std::string& newName);
@@ -183,8 +185,8 @@ public:
     void SaveAll();
 
 private:
-    json* FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& info);
-    const json* FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& info) const;
+    json* FindPrefabSourceNode(const engine::Object3d::PrefabInstanceInfo& info);
+    const json* FindPrefabSourceNode(const engine::Object3d::PrefabInstanceInfo& info) const;
 
     std::map<std::string, json> presets_;
     std::map<std::string, json> prefabs_;

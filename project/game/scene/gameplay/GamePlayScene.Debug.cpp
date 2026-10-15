@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/ui/SaveIndicatorOverlay.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
@@ -139,7 +140,7 @@ void GamePlayScene::DrawImGui() {
 
     if (ImGui::CollapsingHeader(ICON_FA_USER " Player Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (player_) {
-            Vector3 pos = player_->GetTranslate();
+            engine::Vector3 pos = player_->GetTranslate();
             ImGui::Text("Position: (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z);
 
             float hp = player_->GetHp();
@@ -445,13 +446,13 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
     }
 }
 
-Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
+engine::Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
     // デバッグ操作用に現在のシーン配置から名前を解決する。
     if (!objectManager_ || !objectName || objectName[0] == '\0') {
         return nullptr;
     }
 
-    std::vector<Object3d*> objectsToVisit;
+    std::vector<engine::Object3d*> objectsToVisit;
     objectsToVisit.reserve(objectManager_->GetObjects().size());
     for (const auto& object : objectManager_->GetObjects()) {
         if (object) {
@@ -460,12 +461,12 @@ Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
     }
 
     while (!objectsToVisit.empty()) {
-        Object3d* object = objectsToVisit.back();
+        engine::Object3d* object = objectsToVisit.back();
         objectsToVisit.pop_back();
         if (object->GetName() == objectName) {
             return object;
         }
-        for (Object3d* child : object->GetChildren()) {
+        for (engine::Object3d* child : object->GetChildren()) {
             if (child) {
                 objectsToVisit.push_back(child);
             }
@@ -474,14 +475,14 @@ Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
     return nullptr;
 }
 
-bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const Vector3& anchorOffset,
+bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const engine::Vector3& anchorOffset,
                                                 const char* facingObjectName, const char* destinationLabel) {
     if (!player_ || player_->isDead || isGoal_) {
         DebugConsole::GetInstance()->AddLog("Debug teleport skipped: player is unavailable.");
         return false;
     }
 
-    Object3d* anchor = FindDebugObjectByName(anchorName);
+    engine::Object3d* anchor = FindDebugObjectByName(anchorName);
     if (!anchor) {
         DebugConsole::GetInstance()->AddLog(std::string("Debug teleport anchor not found: ") +
                                             (anchorName ? anchorName : "(null)"));
@@ -489,20 +490,20 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const Ve
     }
 
     // 親子階層を含む編集直後のTransformも確定してから、コライダー上面を着地点にします。
-    Object3d* anchorRoot = anchor;
+    engine::Object3d* anchorRoot = anchor;
     while (anchorRoot->GetParent()) {
         anchorRoot = anchorRoot->GetParent();
     }
     anchorRoot->UpdateWorldMatrix(false);
 
-    Vector3 destination = anchor->GetWorldPosition() + anchorOffset;
+    engine::Vector3 destination = anchor->GetWorldPosition() + anchorOffset;
     const AABB anchorBounds = anchor->GetAABB();
     if (anchorBounds.max.y > anchorBounds.min.y) {
         destination.y = anchorBounds.max.y + kDebugTeleportPlayerFloorClearance;
     }
 
-    Vector3 facingDirection = {1.0f, 0.0f, 0.0f};
-    if (Object3d* facingObject = FindDebugObjectByName(facingObjectName)) {
+    engine::Vector3 facingDirection = {1.0f, 0.0f, 0.0f};
+    if (engine::Object3d* facingObject = FindDebugObjectByName(facingObjectName)) {
         facingDirection = facingObject->GetWorldPosition() - destination;
         facingDirection.y = 0.0f;
         const float facingLength =

@@ -31,20 +31,21 @@ constexpr float kPromptFadeResponse = 9.0f;
 constexpr float kObjectiveFadeResponse = 10.0f;
 constexpr float kObjectiveScreenMargin = 54.0f;
 
-float HorizontalDistance(const Vector3& a, const Vector3& b) {
+// チュートリアルの移動距離は段差を無視したXZ平面で測ります。
+float HorizontalDistance(const engine::Vector3& a, const engine::Vector3& b) {
     // 移動課題の進捗には段差の高さを含めず、地面上の距離を使う。
     const float dx = a.x - b.x;
     const float dz = a.z - b.z;
     return std::sqrt(dx * dx + dz * dz);
 }
 
-void SetFullTextureRect(Sprite* sprite, const std::string& texturePath, const Vector2& maxSize) {
+void SetFullTextureRect(engine::Sprite* sprite, const std::string& texturePath, const engine::Vector2& maxSize) {
     // 案内画像を差し替える際に前のUVを残さず、枠内へ縦横比を保って収める。
     if (!sprite || texturePath.empty()) {
         return;
     }
 
-    const uint32_t handle = Sprite::LoadTexture(texturePath);
+    const uint32_t handle = engine::Sprite::LoadTexture(texturePath);
     if (handle == 0) {
         return;
     }
@@ -164,6 +165,7 @@ void TutorialDirector::Finalize() {
     cinematicSequence_.Clear();
 }
 
+// Play中の手順、案内表示と演出を進め、条件達成後も最短表示時間と待機時間を満たしてから次へ進みます。
 void TutorialDirector::Update(float deltaTime) {
     if (!loaded_ || completed_ || !player_) {
         UpdatePrompt(deltaTime);
@@ -219,7 +221,7 @@ void TutorialDirector::NotifyControlsGuideOpened() {
     controlsGuideOpened_ = true;
 }
 
-void TutorialDirector::NotifyLockOnTarget(const Object3d* target) {
+void TutorialDirector::NotifyLockOnTarget(const engine::Object3d* target) {
     // 生ポインタの寿命に依存せず、目標名だけを課題判定へ渡す。
     lockedTargetName_ = target ? target->GetName() : std::string{};
 }
@@ -235,7 +237,7 @@ const std::string& TutorialDirector::GetCurrentStepId() const {
 
 void TutorialDirector::CaptureReplayState(json& state) const {
     // 対象物はポインタでなく名前を保存し、復元時に現シーンから解決する。
-    const auto objectName = [](const Object3d* object) { return object ? object->GetName() : std::string{}; };
+    const auto objectName = [](const engine::Object3d* object) { return object ? object->GetName() : std::string{}; };
 
     state = {{"currentStepIndex", currentStepIndex_},
              {"stepTimer", stepTimer_},
@@ -318,7 +320,7 @@ void TutorialDirector::RestoreReplayState(const json& state) {
             player_->SetTutorialCarryActionPermissions(currentStep->allowCarriedThrow, currentStep->allowCarriedAbsorb);
 
             const std::string carriedEnemyName = state.value("playerCarriedEnemy", std::string{});
-            Object3d* savedCarriedEnemy = FindObjectByName(carriedEnemyName);
+            engine::Object3d* savedCarriedEnemy = FindObjectByName(carriedEnemyName);
             if (savedCarriedEnemy) {
                 player_->SetCarriedEnemy(savedCarriedEnemy);
             } else if (player_->GetCarriedEnemy()) {
@@ -536,7 +538,7 @@ TutorialDirector::CompletionCondition TutorialDirector::ParseCondition(const std
     return CompletionCondition::kTimer;
 }
 
-bool TutorialDirector::ReadVector3(const json& value, Vector3& destination) {
+bool TutorialDirector::ReadVector3(const json& value, engine::Vector3& destination) {
     // 3成分未満なら既存値を保持し、壊れた座標で復元しない。
     if (!value.is_array() || value.size() < 3) {
         return false;
@@ -555,6 +557,8 @@ void TutorialDirector::BeginFlowIfNeeded() {
     EnterStep(0);
 }
 
+// 手順開始時の状態を記録し、敵・ゲート・案内・カメラ演出をこの手順の設定へ切り替えます。
+// 無効な番号やPlayer不在の場合はFlowを完了扱いにします。
 void TutorialDirector::EnterStep(int stepIndex) {
     if (stepIndex < 0 || stepIndex >= static_cast<int>(steps_.size()) || !player_) {
         CompleteFlow();
@@ -635,6 +639,7 @@ void TutorialDirector::AdvanceStep() {
     EnterStep(nextStep);
 }
 
+// コピー形態の共通条件を確認した後、手順固有の行動・距離・対象条件を評価します。
 bool TutorialDirector::EvaluateCurrentStep() const {
     if (!player_ || currentStepIndex_ < 0 || currentStepIndex_ >= static_cast<int>(steps_.size())) {
         return false;
@@ -684,7 +689,7 @@ bool TutorialDirector::AreTargetEnemiesDefeated(const Step& step) const {
     }
 
     for (const std::string& objectName : step.targetEnemyObjects) {
-        Object3d* object = FindObjectByName(objectName);
+        engine::Object3d* object = FindObjectByName(objectName);
         if (!object) {
             continue;
         }
@@ -731,8 +736,8 @@ bool TutorialDirector::IsActionTriggered(const std::string& action) const {
     if (action == "MouseRight")
         return inputManager_->IsActionTriggered("SecondaryAction");
     if (action == "MouseMove") {
-        const Vector2 delta = inputManager_->GetMouseMoveDelta();
-        const Vector2 stick = inputManager_->GetRightStick();
+        const engine::Vector2 delta = inputManager_->GetMouseMoveDelta();
+        const engine::Vector2 stick = inputManager_->GetRightStick();
         return std::abs(delta.x) + std::abs(delta.y) > 0.5f || std::abs(stick.x) + std::abs(stick.y) > 0.25f;
     }
     return !action.empty() && inputManager_->IsActionTriggered(action);
@@ -834,6 +839,7 @@ void TutorialDirector::SetGateTransitionEnabled(bool enabled) {
     }
 }
 
+// 課題用の敵を初期位置と物理状態へ戻してから表示を切り替え、運搬中なら先に手放します。
 void TutorialDirector::SetSpawnEnemyActive(const std::string& objectName, bool active) {
     const auto it = std::find_if(spawnEnemies_.begin(), spawnEnemies_.end(),
                                  [&objectName](const SpawnEnemySlot& slot) { return slot.objectName == objectName; });
@@ -947,7 +953,7 @@ void TutorialDirector::RestoreSpawnEnemyStateBeforeStep(int stepIndex) {
     }
 }
 
-Object3d* TutorialDirector::FindObjectByName(const std::string& name) const {
+engine::Object3d* TutorialDirector::FindObjectByName(const std::string& name) const {
     // 名前から現在のシーン内で解決し、前回シーンのポインタを使わない。
     if (!scene_ || name.empty()) {
         return nullptr;
@@ -991,15 +997,14 @@ void TutorialDirector::BindPromptSprites() {
 }
 
 void TutorialDirector::ApplyStepPrompt(const Step* step) {
-    // JSON の操作画像を現在の割当に解決し、変更後のキーをチュートリアルでも教える。
+    // 固定操作表から入力機器に合う画像を選び、ゲーム内操作と案内を一致させる。
     promptGamepadMode_ = inputManager_ && inputManager_->IsGamepadMode();
     promptBindingSignature_ = GetInputGlyphBindingSignature();
     std::vector<InputGlyphSpec> glyphs;
     if (step && !step->promptIcons.empty()) {
         if (step->promptIcons[0] == "ui/input/combo/combo_wasd.png") {
             if (promptGamepadMode_) glyphs.push_back({"ui/input/controller/pad_l_stick.png"});
-            else for (const char* action : {"Forward", "Backward", "Left", "Right"})
-                glyphs.push_back(ResolveActionGlyph(action, false));
+            else glyphs.push_back({"ui/input/combo/combo_wasd.png"});
         } else {
             for (size_t i = 0; i < step->promptIcons.size(); ++i) {
                 InputGlyphSpec glyph = ResolveInputGlyph(step->promptIcons[i], promptGamepadMode_);
@@ -1075,7 +1080,7 @@ void TutorialDirector::UpdatePrompt(float deltaTime) {
             return;
         }
         visual.sprite->SetVisible(visible && visual.requestedVisible);
-        Vector4 color = visual.baseColor;
+        engine::Vector4 color = visual.baseColor;
         color.w *= promptAlpha_;
         visual.sprite->SetColor(color);
         visual.sprite->SetPosition({visual.basePosition.x, visual.basePosition.y + (1.0f - promptAlpha_) * 18.0f});
@@ -1140,7 +1145,7 @@ void TutorialDirector::UpdateObjectiveMarker(float deltaTime) {
     const float response = 1.0f - std::exp(-kObjectiveFadeResponse * (std::max)(0.0f, deltaTime));
     Camera* camera =
         objectiveRequestedVisible_ && !cinematicActive_ ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
-    const Matrix4x4 viewProjection = camera ? camera->GetViewProjectionMatrix() : Matrix4x4{};
+    const engine::Matrix4x4 viewProjection = camera ? camera->GetViewProjectionMatrix() : engine::Matrix4x4{};
 
     for (size_t index = 0; index < objectiveMarkers_.size(); ++index) {
         PromptVisual& marker = objectiveMarkers_[index];
@@ -1148,17 +1153,17 @@ void TutorialDirector::UpdateObjectiveMarker(float deltaTime) {
             continue;
         }
 
-        Object3d* target =
+        engine::Object3d* target =
             objectiveTargetNames_[index].empty() ? nullptr : FindObjectByName(objectiveTargetNames_[index]);
         bool canShow = camera && target && target->GetIsVisible();
         if (const auto* enemy = dynamic_cast<const BaseEnemy*>(target); enemy && enemy->isDead) {
             canShow = false;
         }
 
-        Vector2 screenPosition = marker.basePosition;
+        engine::Vector2 screenPosition = marker.basePosition;
         if (canShow) {
             const AABB bounds = target->GetModelWorldAABB();
-            const Vector3 markerWorld = {(bounds.min.x + bounds.max.x) * 0.5f, bounds.max.y + objectiveOffsetY_,
+            const engine::Vector3 markerWorld = {(bounds.min.x + bounds.max.x) * 0.5f, bounds.max.y + objectiveOffsetY_,
                                          (bounds.min.z + bounds.max.z) * 0.5f};
             const float w = markerWorld.x * viewProjection.m[0][3] + markerWorld.y * viewProjection.m[1][3] +
                             markerWorld.z * viewProjection.m[2][3] + viewProjection.m[3][3];
@@ -1206,7 +1211,7 @@ void TutorialDirector::UpdateObjectiveMarker(float deltaTime) {
         const float pulse = 1.0f + std::sin(objectiveAnimationTime_ * 3.6f + phaseOffset) * 0.045f;
         marker.sprite->SetPosition({screenPosition.x, screenPosition.y - 8.0f - bounce * 7.0f});
         marker.sprite->SetSize({marker.baseSize.x * pulse, marker.baseSize.y * pulse});
-        Vector4 color = marker.baseColor;
+        engine::Vector4 color = marker.baseColor;
         color.w *= alpha;
         marker.sprite->SetColor(color);
     }

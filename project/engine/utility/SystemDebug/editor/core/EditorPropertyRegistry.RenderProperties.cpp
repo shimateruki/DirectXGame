@@ -11,15 +11,15 @@ using EditorPropertyBuiltIn::CommonFlags;
 void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // 各登録は安定したProperty ID、表示情報、JSONの読取・書込、適用対象を一組にします。
     // Scene/Prefabの差分もこのIDを参照するため、表示名だけを変える場合もIDは維持します。
-    const auto renderableOnly = [](const Object3d& object) {
+    const auto renderableOnly = [](const engine::Object3d& object) {
         return !object.IsCameraObject() && object.GetMeshRenderer() != nullptr;
     };
 
     // 描画項目はCamera ObjectやRendererのない配置物へ出さず、適用前にJSON型を確認します。
     Register({
         "rendering.model", "モデル", "Rendering", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetModelName()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetModelName()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetModel(value.get<std::string>());
             return true;
@@ -29,8 +29,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // BlendModeはenumの有効範囲に収め、保存データの未知値で不正なPipelineを選ばせません。
     Register({
         "rendering.blendMode", "合成方式", "Rendering", EditorPropertyType::Integer, CommonFlags(),
-        [](const Object3d& object) { return json(static_cast<int>(object.GetBlendMode())); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(static_cast<int>(object.GetBlendMode())); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number_integer()) return false;
             const int mode = std::clamp(value.get<int>(), 0, static_cast<int>(BlendMode::kCountOfBlendMode) - 1);
             object.SetBlendMode(static_cast<BlendMode>(mode));
@@ -41,8 +41,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.materialType", "マテリアルType", "Rendering", EditorPropertyType::Integer, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetMaterialType()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetMaterialType()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number_integer()) return false;
             object.SetMaterialType(value.get<int>());
             return true;
@@ -51,8 +51,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.texture", "基本Texture", "Rendering", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetTexturePath()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetTexturePath()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetTexture(value.get<std::string>());
             return true;
@@ -62,11 +62,11 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // Tilingは2成分の配列として保存し、必要成分がない差分は反映しません。
     Register({
         "rendering.textureTiling", "Texture Tiling", "Rendering", EditorPropertyType::Vector2, CommonFlags(true),
-        [](const Object3d& object) {
-            const Vector2 value = object.GetTextureTiling();
+        [](const engine::Object3d& object) {
+            const engine::Vector2 value = object.GetTextureTiling();
             return json::array({ value.x, value.y });
         },
-        [](Object3d& object, const json& value) {
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_array() || value.size() < 2) return false;
             object.SetTextureTiling({ value[0].get<float>(), value[1].get<float>() });
             return true;
@@ -75,8 +75,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.autoTextureTiling", "自動Tiling", "Rendering", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetAutoTextureTiling()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetAutoTextureTiling()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetAutoTextureTiling(value.get<bool>());
             return true;
@@ -85,8 +85,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.lighting", "Lighting", "Rendering", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetEnableLighting()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetEnableLighting()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetEnableLighting(value.get<bool>());
             return true;
@@ -95,8 +95,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.environmentMap", "環境Map", "Rendering", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetEnableEnvMap()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetEnableEnvMap()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetEnableEnvMap(value.get<bool>());
             return true;
@@ -105,8 +105,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.environmentIntensity", "環境反射強度", "Rendering", EditorPropertyType::Number, CommonFlags(true),
-        [](const Object3d& object) { return json(object.GetEnvIntensity()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetEnvIntensity()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number()) return false;
             object.SetEnvIntensity((std::max)(value.get<float>(), 0.0f));
             return true;
@@ -115,8 +115,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.normalMapEnabled", "Normal Map", "Rendering", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetEnableNormalMap()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetEnableNormalMap()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetEnableNormalMap(value.get<bool>());
             return true;
@@ -125,8 +125,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.normalMap", "Normal Texture", "Rendering", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNormalMapPath()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNormalMapPath()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetNormalMap(value.get<std::string>());
             return true;
@@ -135,8 +135,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "rendering.ormMap", "ORM Texture", "Rendering", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetOrmMapPath()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetOrmMapPath()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetOrmMap(value.get<std::string>());
             return true;
@@ -148,10 +148,10 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // 型・中心・大きさ・回転を別々にUndo/Prefab差分へ載せても他の成分を失いません。
     Register({
         "component.collision.type", "Collider Type", "Component", EditorPropertyType::Integer, CommonFlags(),
-        [](const Object3d& object) { return json(static_cast<int>(object.GetColliderConfig().type)); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(static_cast<int>(object.GetColliderConfig().type)); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number_integer()) return false;
-            Object3d::ColliderConfig config = object.GetColliderConfig();
+            engine::Object3d::ColliderConfig config = object.GetColliderConfig();
             config.type = static_cast<ColliderType>(std::clamp(
                 value.get<int>(), static_cast<int>(ColliderType::kNone), static_cast<int>(ColliderType::kTerrain)));
             object.SetColliderConfig(config);
@@ -162,13 +162,13 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.collision.center", "Collider中心", "Component", EditorPropertyType::Vector3, CommonFlags(true),
-        [](const Object3d& object) {
-            const Vector3& value = object.GetColliderConfig().center;
+        [](const engine::Object3d& object) {
+            const engine::Vector3& value = object.GetColliderConfig().center;
             return json::array({ value.x, value.y, value.z });
         },
-        [](Object3d& object, const json& value) {
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_array() || value.size() < 3) return false;
-            Object3d::ColliderConfig config = object.GetColliderConfig();
+            engine::Object3d::ColliderConfig config = object.GetColliderConfig();
             config.center = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             object.SetColliderConfig(config);
             return true;
@@ -176,13 +176,13 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.collision.size", "Colliderサイズ", "Component", EditorPropertyType::Vector3, CommonFlags(true),
-        [](const Object3d& object) {
-            const Vector3& value = object.GetColliderConfig().size;
+        [](const engine::Object3d& object) {
+            const engine::Vector3& value = object.GetColliderConfig().size;
             return json::array({ value.x, value.y, value.z });
         },
-        [](Object3d& object, const json& value) {
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_array() || value.size() < 3) return false;
-            Object3d::ColliderConfig config = object.GetColliderConfig();
+            engine::Object3d::ColliderConfig config = object.GetColliderConfig();
             config.size = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             object.SetColliderConfig(config);
             return true;
@@ -190,13 +190,13 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.collision.rotation", "Collider回転", "Component", EditorPropertyType::Vector3, CommonFlags(true),
-        [](const Object3d& object) {
-            const Vector3& value = object.GetColliderConfig().rotation;
+        [](const engine::Object3d& object) {
+            const engine::Vector3& value = object.GetColliderConfig().rotation;
             return json::array({ value.x, value.y, value.z });
         },
-        [](Object3d& object, const json& value) {
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_array() || value.size() < 3) return false;
-            Object3d::ColliderConfig config = object.GetColliderConfig();
+            engine::Object3d::ColliderConfig config = object.GetColliderConfig();
             config.rotation = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             object.SetColliderConfig(config);
             return true;
@@ -204,8 +204,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.collision.static", "Static Collision", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.IsStatic()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.IsStatic()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetStatic(value.get<bool>());
             return true;
@@ -214,8 +214,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // Particle名とLODは同じComponent欄でも、GPU/CPUとモデル段階で別の保存先です。
     Register({
         "component.particle.cpu", "CPU Particle", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetParticleName()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetParticleName()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetParticleName(value.get<std::string>());
             return true;
@@ -223,8 +223,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.particle.gpu", "GPU Particle", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetGPUParticleName()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetGPUParticleName()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetGPUParticleName(value.get<std::string>());
             return true;
@@ -232,8 +232,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.lod.enabled", "LOD有効", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.IsLodEnabled()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.IsLodEnabled()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetLodEnabled(value.get<bool>());
             return true;
@@ -244,7 +244,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     Register({
         "component.lod.levels", "LOD Levels", "Component", EditorPropertyType::String,
         EditorPropertyFlags::PrefabOverride,
-        [](const Object3d& object) {
+        [](const engine::Object3d& object) {
             json levels = json::array();
             for (const auto& level : object.GetLodLevels()) {
                 levels.push_back({
@@ -255,12 +255,12 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
             }
             return levels;
         },
-        [](Object3d& object, const json& value) {
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_array()) return false;
-            std::vector<Object3d::LodLevel> levels;
+            std::vector<engine::Object3d::LodLevel> levels;
             for (const auto& source : value) {
                 if (!source.is_object()) continue;
-                Object3d::LodLevel level;
+                engine::Object3d::LodLevel level;
                 level.level = source.value("level", 0);
                 level.modelName = source.value("modelName", "");
                 level.distance = source.value("distance", 0.0f);
@@ -275,8 +275,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.meshEffect.primary", "Mesh Effect 1", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetMeshEffect1Name()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetMeshEffect1Name()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetMeshEffect1Name(value.get<std::string>());
             return true;
@@ -284,8 +284,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.meshEffect.secondary", "Mesh Effect 2", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetMeshEffect2Name()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetMeshEffect2Name()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetMeshEffect2Name(value.get<std::string>());
             return true;
@@ -295,8 +295,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // ControllerだけはSetAnimatorControllerの失敗を呼び出し元へ返します。
     Register({
         "component.animation.name", "Animation", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.animName_); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.animName_); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.animName_ = value.get<std::string>();
             return true;
@@ -304,8 +304,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.animation.loop", "Animation Loop", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.isAnimLoop_); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.isAnimLoop_); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.isAnimLoop_ = value.get<bool>();
             return true;
@@ -313,16 +313,16 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.animation.controller", "Animator Controller", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetAnimatorControllerPath()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetAnimatorControllerPath()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             return object.SetAnimatorController(value.get<std::string>());
         },
     });
     Register({
         "component.path.name", "Ghost Path", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetRecordPathName()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetRecordPathName()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_string()) return false;
             object.SetRecordPathName(value.get<std::string>());
             return true;
@@ -330,8 +330,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.path.loop", "Path Loop", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.IsRecordLoop()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.IsRecordLoop()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetRecordLoop(value.get<bool>());
             return true;
@@ -339,8 +339,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.path.relative", "Path相対座標", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.IsRecordRelative()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.IsRecordRelative()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.SetRecordRelative(value.get<bool>());
             return true;
@@ -349,8 +349,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // Event IDはこのObjectの受信先、Target IDは他Objectへの発火先として別項目です。
     Register({
         "component.link.eventId", "Event ID", "Component", EditorPropertyType::Integer, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetEventID()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetEventID()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number_integer()) return false;
             object.SetEventID(value.get<int>());
             return true;
@@ -358,8 +358,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.link.targetId", "Target ID", "Component", EditorPropertyType::Integer, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetTargetID()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetTargetID()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number_integer()) return false;
             object.SetTargetID(value.get<int>());
             return true;
@@ -369,8 +369,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // 参照だけのためにSceneへ新しいComponentを増やしません。
     Register({
         "component.nav.enabled", "経路探索を有効化", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() && object.GetNavAgentComponent()->IsEnabled()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() && object.GetNavAgentComponent()->IsEnabled()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.EnsureNavAgentComponent()->SetEnabled(value.get<bool>());
             return true;
@@ -378,8 +378,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.cellSize", "セルサイズ", "Component", EditorPropertyType::Number, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetCellSize() : 1.0f); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetCellSize() : 1.0f); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number()) return false;
             object.EnsureNavAgentComponent()->SetCellSize(value.get<float>());
             return true;
@@ -387,8 +387,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.agentRadius", "Agent半径", "Component", EditorPropertyType::Number, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetAgentRadius() : 0.55f); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetAgentRadius() : 0.55f); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number()) return false;
             object.EnsureNavAgentComponent()->SetAgentRadius(value.get<float>());
             return true;
@@ -396,8 +396,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.agentHeight", "Agent高さ", "Component", EditorPropertyType::Number, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetAgentHeight() : 1.5f); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetAgentHeight() : 1.5f); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number()) return false;
             object.EnsureNavAgentComponent()->SetAgentHeight(value.get<float>());
             return true;
@@ -405,8 +405,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.searchPadding", "探索余白", "Component", EditorPropertyType::Number, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetSearchPadding() : 5.0f); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetSearchPadding() : 5.0f); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number()) return false;
             object.EnsureNavAgentComponent()->SetSearchPadding(value.get<float>());
             return true;
@@ -414,8 +414,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.repathInterval", "再探索間隔", "Component", EditorPropertyType::Number, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetRepathInterval() : 0.35f); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetRepathInterval() : 0.35f); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number()) return false;
             object.EnsureNavAgentComponent()->SetRepathInterval(value.get<float>());
             return true;
@@ -423,8 +423,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.stoppingDistance", "停止距離", "Component", EditorPropertyType::Number, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetStoppingDistance() : 0.25f); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetStoppingDistance() : 0.25f); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number()) return false;
             object.EnsureNavAgentComponent()->SetStoppingDistance(value.get<float>());
             return true;
@@ -432,8 +432,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.obstacleMask", "障害物Mask", "Component", EditorPropertyType::Integer, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetObstacleMask() : CollisionCategories::Get("ground")); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetObstacleMask() : CollisionCategories::Get("ground")); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_number_integer() && !value.is_number_unsigned()) return false;
             object.EnsureNavAgentComponent()->SetObstacleMask(value.get<std::uint32_t>());
             return true;
@@ -441,8 +441,8 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.allowDiagonal", "斜め移動", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const Object3d& object) { return json(!object.GetNavAgentComponent() || object.GetNavAgentComponent()->AllowsDiagonal()); },
-        [](Object3d& object, const json& value) {
+        [](const engine::Object3d& object) { return json(!object.GetNavAgentComponent() || object.GetNavAgentComponent()->AllowsDiagonal()); },
+        [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean()) return false;
             object.EnsureNavAgentComponent()->SetAllowDiagonal(value.get<bool>());
             return true;

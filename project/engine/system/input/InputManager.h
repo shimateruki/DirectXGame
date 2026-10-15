@@ -54,9 +54,9 @@ public:
         int16_t previousRightX = 0;
         int16_t previousRightY = 0;
         bool gamepadMode = false;
-        Vector3 accelerometer{};
-        Vector3 gyroscope{};
-        Vector3 baseAccelerometer{};
+        engine::Vector3 accelerometer{};
+        engine::Vector3 gyroscope{};
+        engine::Vector3 baseAccelerometer{};
     };
 
     /// <summary>エンジンで共有する入力管理インスタンスを取得します。</summary>
@@ -88,10 +88,10 @@ public:
     bool IsMouseButtonReleased(int button) const;
 
     /// <summary>前フレームからのマウス移動量を返します。</summary>
-    Vector2 GetMouseMoveDelta() const;
+    engine::Vector2 GetMouseMoveDelta() const;
 
     /// <summary>現在のマウス位置を返します。</summary>
-    Vector2 GetMousePosition() const;
+    engine::Vector2 GetMousePosition() const;
 
     /// <summary>このフレームのホイール変化量を返します。</summary>
     float GetMouseWheelDelta() const;
@@ -107,10 +107,10 @@ public:
     int GetPressedMouseButton() const;
 
     /// <summary>ゲームパッド左スティックの入力を返します。</summary>
-    Vector2 GetGamepadLeftStick() const;
+    engine::Vector2 GetGamepadLeftStick() const;
 
     /// <summary>ゲームパッド右スティックの入力を返します。</summary>
-    Vector2 GetGamepadRightStick() const;
+    engine::Vector2 GetGamepadRightStick() const;
 
     /// <summary>指定ゲームパッドボタンが押され続けているか返します。</summary>
     bool IsGamepadButtonPressed(WORD button) const;
@@ -125,14 +125,14 @@ public:
     bool IsGamepadMode() const { return isGamepadMode_; }
 
     /// <summary>XInput、未接続時は SDL から統合した左スティック値を返します。</summary>
-    Vector2 GetLeftStick() const;
+    engine::Vector2 GetLeftStick() const;
 
     /// <summary>XInput、未接続時は SDL から統合した右スティック値を返します。</summary>
-    Vector2 GetRightStick() const;
+    engine::Vector2 GetRightStick() const;
 
     /// <summary>マウス移動と右スティックを、Camera::AddRotation 用の相対移動量にまとめます。</summary>
     /// <param name="deltaTime">スティックの角速度をフレーム時間へ換算する秒数。</param>
-    Vector2 GetCameraLookDelta(float deltaTime) const;
+    engine::Vector2 GetCameraLookDelta(float deltaTime) const;
 
     /// <summary>メニュー用の左スティック方向入力です。初回と押し続けた後の反復で true を返します。</summary>
     bool IsMenuStickTriggered(WORD dpadDirection) const;
@@ -153,16 +153,16 @@ public:
     void Finalize();
 
     /// <summary>現在の加速度センサー値を返します。</summary>
-    Vector3 GetAccelerometer() const { return accelData_; }
+    engine::Vector3 GetAccelerometer() const { return accelData_; }
 
     /// <summary>現在のジャイロセンサー値を返します。</summary>
-    Vector3 GetGyroscope() const { return gyroData_; }
+    engine::Vector3 GetGyroscope() const { return gyroData_; }
 
     /// <summary>現在の加速度を基準値として記録します。</summary>
     void Calibrate() { baseAccel_ = accelData_; }
 
     /// <summary>校正時の加速度基準値を返します。</summary>
-    Vector3 GetBaseAccelerometer() const { return baseAccel_; }
+    engine::Vector3 GetBaseAccelerometer() const { return baseAccel_; }
 
     /// <summary>KeyConfig のアクションが押され続けているか返します。</summary>
     bool IsActionPressed(const std::string& actionName) const;
@@ -176,7 +176,9 @@ public:
     bool IsActionReleased(const std::string& actionName) const;
 
 private:
+    /// <summary>共有インスタンス以外から入力管理器を生成させない。</summary>
     InputManager() = default;
+    /// <summary>共有インスタンスの破棄をクラス内に限定する。</summary>
     ~InputManager() = default;
     InputManager(const InputManager&) = delete;
     InputManager& operator=(const InputManager&) = delete;
@@ -202,9 +204,9 @@ private:
     // SDL2 センサー値と校正時の加速度基準値。
     SDL_GameController* sdlController_ = nullptr;
     bool xinputConnected_ = false;
-    Vector3 accelData_ = { 0, 0, 0 };
-    Vector3 gyroData_ = { 0, 0, 0 };
-    Vector3 baseAccel_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 accelData_ = { 0, 0, 0 };
+    engine::Vector3 gyroData_ = { 0, 0, 0 };
+    engine::Vector3 baseAccel_ = { 0.0f, 0.0f, 0.0f };
     bool isCalibrated_ = false;
 
     bool isGamepadMode_ = false;
@@ -212,7 +214,9 @@ private:
     int menuStickDirection_ = 0;
     uint64_t menuStickNextRepeatMs_ = 0;
 
+    /// <summary>利用可能なSDLコントローラーを一つ開き、センサー参照を準備する。</summary>
     void OpenFirstAvailableSdlController();
+    /// <summary>メニューの方向入力と押し続けたときの反復タイミングを更新する。</summary>
     void UpdateMenuStickNavigation();
 
     /// <summary>強弱の振動量と残り時間を持つ一時的な振動要求。</summary>
@@ -222,7 +226,7 @@ private:
         float remaining = 0.0f;
     };
 
-    // 複数の要求を合成し、実際に変化した場合だけデバイスへ送ります。
+    /// <summary>複数の振動要求を合成し、出力値が変わった場合だけデバイスへ送る。</summary>
     void RefreshRumbleOutput();
 
     std::vector<RumbleRequest> rumbleRequests_;

@@ -12,7 +12,7 @@
 #include <vector>
 
 class DebugEditor;
-class Object3d;
+namespace engine { class Object3d; }
 class SceneManager;
 
 // Sceneデータを変更しない一時表示と、シーンごとの編集地点ブックマークを管理する。
@@ -44,8 +44,8 @@ private:
     // 編集視点の位置・回転と注視対象の識別情報。valid が false の枠は未登録。
     struct CameraBookmark {
         bool valid = false;
-        Vector3 position = { 0.0f, 0.0f, 0.0f };
-        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 position = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
         std::string objectGuid;
         std::string objectName;
     };
@@ -64,7 +64,7 @@ private:
     void LoadBookmarks();
     void SaveBookmarks() const;
     std::vector<std::string> CollectSceneLayers() const;
-    void CollectHierarchy(Object3d* root, std::unordered_set<Object3d*>& objects) const;
+    void CollectHierarchy(engine::Object3d* root, std::unordered_set<engine::Object3d*>& objects) const;
     void ResetSceneRuntimeState();
 
 private:

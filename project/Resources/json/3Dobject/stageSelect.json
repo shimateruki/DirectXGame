@@ -10,7 +10,7 @@
             "light": "Resources/json/light/stageSelect.json",
             "skybox": ""
         },
-        "runtimeScene": "SCENE_EDITOR",
+        "runtimeScene": "SELECT",
         "spriteLayout": "Resources/json/sprite/stageSelect_sprite.json",
         "version": 3
     }

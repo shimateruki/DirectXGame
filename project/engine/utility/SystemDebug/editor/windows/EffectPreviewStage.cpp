@@ -54,6 +54,7 @@ bool IsPreviewEnvironmentName(const std::string& name) {
 }
 
 const char* GetToolKindName(EffectPreviewStage::ToolKind kind) {
+    // プレビューを共有する編集ツールの種類を、画面表示用の名称へ変換する。
     switch (kind) {
     case EffectPreviewStage::ToolKind::CpuParticle:
         return "CPU Particle";
@@ -73,7 +74,7 @@ const char* GetToolKindName(EffectPreviewStage::ToolKind kind) {
     }
 }
 
-ImU32 ToImU32(const Vector4& color) {
+ImU32 ToImU32(const engine::Vector4& color) {
     return ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w));
 }
 }
@@ -126,7 +127,7 @@ void EffectPreviewStage::ReturnToScene() {
     }
 
     if (dxCommon_) {
-        const Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        const engine::Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
         dxCommon_->SetRenderClearColor(
             sceneClearColor.x,
             sceneClearColor.y,
@@ -568,7 +569,7 @@ void EffectPreviewStage::Update() {
         RestoreCameraState();
         hasPlacedCamera_ = false;
         recenterCameraRequested_ = false;
-        const Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        const engine::Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
         dxCommon_->SetRenderClearColor(sceneClearColor.x, sceneClearColor.y, sceneClearColor.z, sceneClearColor.w);
     }
     wasEnabled_ = enabled_;
@@ -582,8 +583,8 @@ void EffectPreviewStage::Update() {
         }
     }
 
-    Object3d* floor = FindFloor();
-    Vector3 previewPos = GetGroundPosition();
+    engine::Object3d* floor = FindFloor();
+    engine::Vector3 previewPos = GetGroundPosition();
     if (enabled_ && (showFloor_ || showGrid_ || showAxes_)) {
         if (!floor) {
             CreateFloor();
@@ -611,8 +612,8 @@ void EffectPreviewStage::Update() {
             const float offset = (static_cast<float>(i) - static_cast<float>(kGridCenterIndex)) * gridSpacing_;
             const bool isCenter = i == kGridCenterIndex;
             const bool isMajor = (i - kGridCenterIndex) % 5 == 0;
-            const Vector4 xLineColor = isCenter && showAxes_ ? xAxisColor_ : (isMajor ? majorGridColor_ : minorGridColor_);
-            const Vector4 zLineColor = isCenter && showAxes_ ? zAxisColor_ : (isMajor ? majorGridColor_ : minorGridColor_);
+            const engine::Vector4 xLineColor = isCenter && showAxes_ ? xAxisColor_ : (isMajor ? majorGridColor_ : minorGridColor_);
+            const engine::Vector4 zLineColor = isCenter && showAxes_ ? zAxisColor_ : (isMajor ? majorGridColor_ : minorGridColor_);
             const float lineWidth = isCenter && showAxes_ ? 0.040f : (isMajor ? 0.025f : 0.014f);
             UpdateEnvironmentObject(MakeGridXName(i), { previewPos.x, gridY, previewPos.z + offset }, { half, 0.010f, lineWidth }, xLineColor);
             UpdateEnvironmentObject(MakeGridZName(i), { previewPos.x + offset, gridY + 0.006f, previewPos.z }, { lineWidth, 0.010f, half }, zLineColor);
@@ -759,7 +760,7 @@ void EffectPreviewStage::DrawImGui() {
 #endif
 }
 
-Vector3 EffectPreviewStage::GetGroundPosition() const {
+engine::Vector3 EffectPreviewStage::GetGroundPosition() const {
     // 隔離空間では Scene と離れた基準座標を加え、既存オブジェクトとの重なりを避ける。
     if (!isolatedSpace_) return origin_;
     return {
@@ -769,9 +770,9 @@ Vector3 EffectPreviewStage::GetGroundPosition() const {
     };
 }
 
-Vector3 EffectPreviewStage::GetPreviewPosition() const {
+engine::Vector3 EffectPreviewStage::GetPreviewPosition() const {
     // 接地面と発生中心は別にし、床上エフェクトと空中エフェクトを比較しやすくする。
-    Vector3 position = GetGroundPosition();
+    engine::Vector3 position = GetGroundPosition();
     position.y += previewCenterHeight_;
     return position;
 }
@@ -794,11 +795,11 @@ void EffectPreviewStage::PlaceCameraAtPreview() {
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera) return;
 
-    Vector3 target = GetGroundPosition();
+    engine::Vector3 target = GetGroundPosition();
     target.y += cameraTargetHeight_;
     constexpr float kDegreesToRadians = 3.14159265358979323846f / 180.0f;
     const float azimuth = cameraAzimuthDegrees_ * kDegreesToRadians;
-    Vector3 eye = {
+    engine::Vector3 eye = {
         target.x + std::sin(azimuth) * cameraDistance_,
         target.y + cameraHeight_,
         target.z - std::cos(azimuth) * cameraDistance_
@@ -842,14 +843,14 @@ void EffectPreviewStage::RemoveFloor() {
     // Scene のコンテナ走査中は削除せず、専用環境だけを後から撤去予約する。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
-    std::vector<Object3d*> targets;
+    std::vector<engine::Object3d*> targets;
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (object && IsPreviewEnvironmentName(object->GetName())) {
             targets.push_back(object.get());
         }
     }
 
-    for (Object3d* target : targets) {
+    for (engine::Object3d* target : targets) {
         sceneManager_->GetCurrentScene()->RequestRemoveObject(target);
     }
     if (!targets.empty()) {
@@ -857,12 +858,12 @@ void EffectPreviewStage::RemoveFloor() {
     }
 }
 
-Object3d* EffectPreviewStage::FindFloor() const {
+engine::Object3d* EffectPreviewStage::FindFloor() const {
     // 床も他のプレビュー環境と同じ名前検索経路を使う。
     return FindEnvironmentObject(kFloorName);
 }
 
-Object3d* EffectPreviewStage::FindEnvironmentObject(const std::string& name) const {
+engine::Object3d* EffectPreviewStage::FindEnvironmentObject(const std::string& name) const {
     // 通常 Scene の Object と区別するため、編集環境の固定名で探す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
 
@@ -880,7 +881,7 @@ void EffectPreviewStage::CreateEnvironmentObject(const std::string& name) {
     BaseScene* scene = sceneManager_->GetCurrentScene();
     if (!scene->GetObject3dCommon() || FindEnvironmentObject(name)) return;
 
-    auto object = std::make_unique<Object3d>();
+    auto object = std::make_unique<engine::Object3d>();
     object->Initialize(scene->GetObject3dCommon());
     object->SetName(name);
     object->SetClassName("EditorOnly_EffectPreviewStage");
@@ -905,9 +906,9 @@ void EffectPreviewStage::CreateEnvironmentObject(const std::string& name) {
     scene->AddObject(std::move(object));
 }
 
-void EffectPreviewStage::UpdateEnvironmentObject(const std::string& name, const Vector3& translate, const Vector3& scale, const Vector4& color) {
+void EffectPreviewStage::UpdateEnvironmentObject(const std::string& name, const engine::Vector3& translate, const engine::Vector3& scale, const engine::Vector4& color) {
     // 環境の配置と色だけを更新し、モデルや材質設定は生成時の共通値を保つ。
-    Object3d* object = FindEnvironmentObject(name);
+    engine::Object3d* object = FindEnvironmentObject(name);
     if (!object) return;
 
     object->SetEditorInternal(true);
@@ -921,7 +922,7 @@ void EffectPreviewStage::UpdateEnvironmentObject(const std::string& name, const 
 
 void EffectPreviewStage::SetEnvironmentObjectVisible(const std::string& name, bool visible) {
     // ツールを閉じた後も残る環境 Object を、必要に応じて非表示へ切り替える。
-    if (Object3d* object = FindEnvironmentObject(name)) {
+    if (engine::Object3d* object = FindEnvironmentObject(name)) {
         object->SetIsVisible(visible);
     }
 }

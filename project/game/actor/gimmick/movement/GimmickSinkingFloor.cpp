@@ -38,14 +38,14 @@ void GimmickSinkingFloor::Update(float deltaTime) {
     float targetY = startPos_.y + (isStepped ? -sinkDepth_ : 0.0f);
     float t = 1.0f - std::exp(-sinkSpeed_ * deltaTime);
 
-    Vector3 pos = GetTransform()->translate;
-    pos.y = Math::Lerp(pos.y, targetY, t);
+    engine::Vector3 pos = GetTransform()->translate;
+    pos.y = engine::Math::Lerp(pos.y, targetY, t);
     SetTranslate(pos);
 
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickSinkingFloor::OnCollision(Object3d* other) {
+bool GimmickSinkingFloor::OnCollision(engine::Object3d* other) {
     // プレイヤーが上面を踏んだ短い間だけ、目標の沈み位置を維持する。
     if (other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
@@ -56,7 +56,7 @@ bool GimmickSinkingFloor::OnCollision(Object3d* other) {
     return true;
 }
 
-std::unique_ptr<Object3d> GimmickSinkingFloor::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickSinkingFloor::Clone() const {
     // 移動中の位相は複製せず、保存された配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickSinkingFloor>();
     assert(common_ != nullptr);
@@ -93,8 +93,8 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
     const float dt = (std::max)(0.0f, deltaTime);
     const float depth = (std::max)(0.1f, param_->moveAmount);
     const float speed = (std::max)(0.1f, param_->speed);
-    const Vector3 before = GetTranslate();
-    Vector3 next = before;
+    const engine::Vector3 before = GetTranslate();
+    engine::Vector3 next = before;
     if (submergePhase_ == 0 && !riders.empty()) {
         submergePhase_ = 1;
         submergeTimer_ = 0.0f;
@@ -123,7 +123,7 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
     SetTranslate(next);
     BaseGimmick::Update(deltaTime);
     // 移動床と同じ順序で乗員を運び、下降中にプレイヤーが宙に残るのを防ぐ。
-    const Vector3 displacement = next - before;
+    const engine::Vector3 displacement = next - before;
     for (auto* rider : riders) {
         rider->SetTranslate(rider->GetTranslate() + displacement);
         rider->UpdateLocalMatrix();

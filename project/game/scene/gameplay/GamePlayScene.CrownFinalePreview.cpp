@@ -33,7 +33,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 3, true);
     p.eye = camera->GetEye(); p.target = camera->GetTargetPoint(); p.rotation = camera->GetRotation();
     p.followMode = camera->GetFollowMode(); p.follow = camera->GetFollowTarget(); p.fov = camera->GetFovY();
-    std::vector<std::unique_ptr<Object3d>> copies;
+    std::vector<std::unique_ptr<engine::Object3d>> copies;
     EnemyFalseKingSlime* previewBoss = nullptr;
     // 生成前に走査を終え、元のScene保存値から表示だけを一時的に分離します。
     for (const auto& object : GetObjects()) {
@@ -69,7 +69,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     player->SetScale(player_->GetScale()); player->SetGrounded(true);
     // 登場操作を毎回やり直さず、第二形態の中央位置で演出を開始します。
     const auto& tuning = CrownFinaleTuning::Get();
-    const Vector3 bossPosition = sourceBoss->GetTranslate() + Vector3{0.0f, 0.0f, tuning.sealCenterOffsetZ};
+    const engine::Vector3 bossPosition = sourceBoss->GetTranslate() + engine::Vector3{0.0f, 0.0f, tuning.sealCenterOffsetZ};
     previewBoss->SetTranslate(bossPosition);
     previewBoss->SetRotation(sourceBoss->GetRotation()); previewBoss->UpdateWorldMatrix(true);
     player->SetTranslate({0.0f, 0.82f, 12.0f}); player->SetMoveYaw(3.14159265f);
@@ -77,7 +77,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     player_ = player.get(); p.objects.push_back(player.get()); copies.push_back(std::move(player));
     p.active = true;
     CameraManager::GetInstance()->SetActiveCamera(p.camera.get());
-    for (Object3d* object : p.hiddenObjects) object->SetEditorHiddenReason(kCrownMovieHiddenReason, true);
+    for (engine::Object3d* object : p.hiddenObjects) object->SetEditorHiddenReason(kCrownMovieHiddenReason, true);
     // Editor更新の安全な境界で登録し、開始時の床・壁の走査から参照可能にします。
     for (auto& copy : copies) AddObject(std::move(copy));
     objectManager_->ApplyPendingChanges();
@@ -121,15 +121,15 @@ void GamePlayScene::RewindCrownMoviePreview() {
 void GamePlayScene::StepCrownMoviePreview(float deltaTime) {
     if (crownMoviePreview_.active && crownMoviePreview_.defeat) {
         UpdateCrownDefeat(deltaTime);
-        for(Object3d* object:crownMoviePreview_.objects)object->UpdateWorldMatrix(true);
-        for(Object3d* object:crownFinale_.generatedObjects)object->UpdateWorldMatrix(true);
+        for(engine::Object3d* object:crownMoviePreview_.objects)object->UpdateWorldMatrix(true);
+        for(engine::Object3d* object:crownFinale_.generatedObjects)object->UpdateWorldMatrix(true);
         return;
     }
     if (!crownMoviePreview_.active || !crownFinale_.active) return;
     UpdateCrownFinale(deltaTime);
     // Object3d::Updateは描画定数を確定しません。カメラの確定後に全モデルへ転送します。
-    for (Object3d* object : crownMoviePreview_.objects) object->UpdateWorldMatrix(true);
-    for (Object3d* object : crownFinale_.generatedObjects) object->UpdateWorldMatrix(true);
+    for (engine::Object3d* object : crownMoviePreview_.objects) object->UpdateWorldMatrix(true);
+    for (engine::Object3d* object : crownFinale_.generatedObjects) object->UpdateWorldMatrix(true);
 }
 
 void GamePlayScene::EndCrownMoviePreview() {
@@ -140,8 +140,8 @@ void GamePlayScene::EndCrownMoviePreview() {
     ResetCrownFinaleWorld();
     objectManager_->ApplyPendingChanges();
     player_ = p.originalPlayer;
-    for (Object3d* object : p.hiddenObjects) object->SetEditorHiddenReason(kCrownMovieHiddenReason, false);
-    for (Object3d* object : p.objects) {
+    for (engine::Object3d* object : p.hiddenObjects) object->SetEditorHiddenReason(kCrownMovieHiddenReason, false);
+    for (engine::Object3d* object : p.objects) {
         object->SetIsVisible(false); object->SetReplayRemoved(true);
         RequestRemoveObject(object);
     }

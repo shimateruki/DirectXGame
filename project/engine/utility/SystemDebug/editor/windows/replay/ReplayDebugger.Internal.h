@@ -44,29 +44,29 @@ inline constexpr const char* kReplayArchiveMagic = "CG4_REPLAY_ARCHIVE";
 // 読み込みは旧スキーマも許すが、書き込み時は常に現在の版を使います。
 bool IsSupportedReplayArchiveSchema(int version);
 
-json Vector2ToJson(const Vector2& value);
+json Vector2ToJson(const engine::Vector2& value);
 
-json Vector3ToJson(const Vector3& value);
+json Vector3ToJson(const engine::Vector3& value);
 
-json Vector4ToJson(const Vector4& value);
+json Vector4ToJson(const engine::Vector4& value);
 
-json QuaternionToJson(const Quaternion& value);
+json QuaternionToJson(const engine::Quaternion& value);
 
-Vector2 JsonToVector2(const json& value, const Vector2& fallback = {});
+engine::Vector2 JsonToVector2(const json& value, const engine::Vector2& fallback = {});
 
-Vector3 JsonToVector3(const json& value, const Vector3& fallback = {});
+engine::Vector3 JsonToVector3(const json& value, const engine::Vector3& fallback = {});
 
-Vector4 JsonToVector4(const json& value, const Vector4& fallback = {});
+engine::Vector4 JsonToVector4(const json& value, const engine::Vector4& fallback = {});
 
-Quaternion JsonToQuaternion(const json& value, const Quaternion& fallback = { 0.0f, 0.0f, 0.0f, 1.0f });
+engine::Quaternion JsonToQuaternion(const json& value, const engine::Quaternion& fallback = { 0.0f, 0.0f, 0.0f, 1.0f });
 
 json SceneLoadContextToJson(const SceneLoadContext& context);
 
 SceneLoadContext JsonToSceneLoadContext(const json& value);
 
-json EntityParameterToJson(const Object3d::EntityParameter& value);
+json EntityParameterToJson(const engine::Object3d::EntityParameter& value);
 
-Object3d::EntityParameter JsonToEntityParameter(const json& value);
+engine::Object3d::EntityParameter JsonToEntityParameter(const json& value);
 
 json AnimatorSnapshotToJson(const AnimatorControllerRuntime::Snapshot& value);
 
@@ -92,13 +92,13 @@ json NavAgentToJson(const std::optional<NavAgentComponent>& value);
 
 std::optional<NavAgentComponent> JsonToNavAgent(const json& value);
 
-json ObjectReplayStateToJson(const Object3d::ReplayState& value);
+json ObjectReplayStateToJson(const engine::Object3d::ReplayState& value);
 
-Object3d::ReplayState JsonToObjectReplayState(const json& value);
+engine::Object3d::ReplayState JsonToObjectReplayState(const json& value);
 
-json SpriteReplayStateToJson(const Sprite::ReplayState& value);
+json SpriteReplayStateToJson(const engine::Sprite::ReplayState& value);
 
-Sprite::ReplayState JsonToSpriteReplayState(const json& value);
+engine::Sprite::ReplayState JsonToSpriteReplayState(const json& value);
 
 std::filesystem::path GetReplayArchiveDirectory();
 

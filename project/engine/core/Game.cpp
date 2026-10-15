@@ -27,6 +27,7 @@
 #include "game/editor/BuiltInCreatePresetRegistry.h"
 #endif
 #include "SceneManager.h"
+#include "engine/system/scene/LoadingProfiler.h"
 #include "SrvManager.h"
 #include "StageManager.h"
 #include "TextureManager.h"
@@ -52,6 +53,7 @@ constexpr float kFixedDeltaTime = 1.0f / 60.0f;
 constexpr int kMaxFixedStepsPerFrame = 4;
 constexpr int kHistorySampleCount = 120;
 
+// Post Effect設定から線形色空間の選択を読み、読込失敗時は現在値を維持します。
 void LoadColorWorkflowSetting() {
 	std::ifstream file("Resources/json/post_effect.json");
 	if (!file.is_open()) {
@@ -62,7 +64,7 @@ void LoadColorWorkflowSetting() {
 		nlohmann::json settings;
 		file >> settings;
 		if (settings.contains("linearWorkflowEnabled")) {
-			ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
+			engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
 				settings["linearWorkflowEnabled"].get<bool>());
 		}
 	}
@@ -91,20 +93,37 @@ void RefreshSceneRenderCameraData(SceneManager* sceneManager) {
 
 void Game::Initialize() {
 	// エンジン基盤、シーン、ポストエフェクト、エディタ、初期プレイ状態を順番に準備する。
-	InitializeEngineServices();
-	InitializePostProcess();
-	InitializeScene();
-	InitializeEditorTools();
+	StartupProfileScope startupScope("Game::Initialize");
+	{
+		StartupProfileScope phase("engine services");
+		InitializeEngineServices();
+	}
+	{
+		StartupProfileScope phase("post effects");
+		InitializePostProcess();
+	}
+	{
+		StartupProfileScope phase("first scene");
+		InitializeScene();
+	}
+	{
+		StartupProfileScope phase("editor tools");
+		InitializeEditorTools();
+	}
 	ConfigureInitialPlayState();
 
 	CameraEditor::GetInstance()->Initialize();
 	dxCommon_->CreateRenderTexture();
 	lastTime_ = std::chrono::high_resolution_clock::now();
+	LogStartupProfileCheckpoint("Game::Initialize complete");
 }
 
 void Game::InitializeEngineServices() {
 	// ゲーム全体で使うマネージャやアセットを初期化し、シーン生成の準備を行う。
-	Framework::Initialize();
+	{
+		StartupProfileScope phase("Framework::Initialize call");
+		Framework::Initialize();
+	}
 
 	ProfilerManager::GetInstance()->Initialize();
 	StageManager::GetInstance()->Initialize();
@@ -520,7 +539,7 @@ void Game::Draw() {
 		gpuTrace.flush();
 	}
 #endif
-	RenderStats* renderStats = RenderStats::GetInstance();
+	engine::RenderStats* renderStats = engine::RenderStats::GetInstance();
 	renderStats->BeginFrame();
 	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
 		renderStats->SetActiveLightCounts(
@@ -614,7 +633,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 
 	dxCommon_->StartGpuProfile("影描画");
 	{
-		ScopedRenderPass renderPass(RenderPass::Shadow);
+		engine::ScopedRenderPass renderPass(engine::RenderPass::Shadow);
 		if (sceneManager_) {
 			sceneManager_->DrawShadow();
 		}
@@ -628,7 +647,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	if (editorMode) {
 		dxCommon_->StartGpuProfile("  3Dシーン");
 		{
-			ScopedRenderPass renderPass(RenderPass::MainScene);
+			engine::ScopedRenderPass renderPass(engine::RenderPass::MainScene);
 			const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
 			ID3D12Resource* pointLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetPointLightResource();
 			ID3D12Resource* spotLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetSpotLightResource();
@@ -650,7 +669,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 
 		dxCommon_->StartGpuProfile("  ゲームUI");
 		{
-			ScopedRenderPass renderPass(RenderPass::GameUI);
+			engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
 			if (sceneManager_) {
 				sceneManager_->DrawUI();
 			}
@@ -659,7 +678,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 
 		dxCommon_->StartGpuProfile("  デバッグ");
 		{
-			ScopedRenderPass renderPass(RenderPass::EditorOverlay);
+			engine::ScopedRenderPass renderPass(engine::RenderPass::EditorOverlay);
 			if (editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
 				editorController_->DrawSceneDebug(dxCommon_->GetCommandList());
 			}
@@ -670,7 +689,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	{
 		if (sceneManager_) {
 			{
-				ScopedRenderPass renderPass(RenderPass::MainScene);
+				engine::ScopedRenderPass renderPass(engine::RenderPass::MainScene);
 				sceneManager_->Draw();
 				ID3D12Resource* pointLight = nullptr;
 				ID3D12Resource* spotLight = nullptr;
@@ -685,7 +704,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 				}
 			}
 			{
-				ScopedRenderPass renderPass(RenderPass::GameUI);
+				engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
 				sceneManager_->DrawUI();
 			}
 		}
@@ -693,7 +712,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 
 	dxCommon_->StartGpuProfile("Fade");
 	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
-		ScopedRenderPass renderPass(RenderPass::GameUI);
+		engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
 		Fade::GetInstance()->Draw();
 	}
 	dxCommon_->EndGpuProfile("Fade");
@@ -720,7 +739,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	}
 
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-	ScopedRenderPass renderPass(RenderPass::CameraPreview);
+	engine::ScopedRenderPass renderPass(engine::RenderPass::CameraPreview);
 	dxCommon_->SetCameraPreviewRendering(true);
 	if (renderEditorPreview) {
 		if (Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f)) {
@@ -757,7 +776,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView) {
 	// レンダーテクスチャへ複数段のポストエフェクトを適用し、最終出力先へ渡す。
 	dxCommon_->StartGpuProfile("後処理");
-	ScopedRenderPass renderPass(RenderPass::PostProcess);
+	engine::ScopedRenderPass renderPass(engine::RenderPass::PostProcess);
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 	const uint32_t renderTextureHandle = dxCommon_->GetRenderTextureSrvHandle();
 

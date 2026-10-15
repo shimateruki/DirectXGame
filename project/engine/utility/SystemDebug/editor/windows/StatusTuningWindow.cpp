@@ -30,6 +30,7 @@ bool IsSupportedModelFile(const fs::path& path) {
 }
 
 std::string MakeModelKeyFromFile(const fs::path& modelFile) {
+    // モデル名と同名のフォルダに入ったファイルは、フォルダ名をAssetキーにする。
     fs::path relative = fs::relative(modelFile, kModelRootDirectory);
     fs::path parent = relative.parent_path();
     if (!parent.empty() && parent.filename() == modelFile.stem()) {
@@ -40,6 +41,7 @@ std::string MakeModelKeyFromFile(const fs::path& modelFile) {
 }
 
 std::string GetModelDisplayName(const std::string& modelName) {
+    // ステータス調整画面だけ日本語の通称を付け、未登録モデルは短い元名で示す。
     if (modelName.empty()) return "未設定";
     const std::string shortName = fs::path(modelName).filename().string();
     if (shortName == "slime_pink") return "ピンクスライム";

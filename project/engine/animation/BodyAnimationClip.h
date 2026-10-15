@@ -14,20 +14,20 @@ public:
     /// <summary>指定時刻の移動、回転、拡縮、せん断と次キーへの補間方法。</summary>
     struct Key {
         float time = 0.0f;
-        Vector3 translate = { 0.0f, 0.0f, 0.0f };
-        Vector3 rotate = { 0.0f, 0.0f, 0.0f };
-        Vector3 scale = { 1.0f, 1.0f, 1.0f };
-        Vector3 shear = {};
+        engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
+        engine::Vector3 shear = {};
         float shearPivotY = 0.0f;
         int easingToNext = 4;
     };
 
     /// <summary>Evaluateが計算した任意時刻の身体姿勢。</summary>
     struct Sample {
-        Vector3 translate = { 0.0f, 0.0f, 0.0f };
-        Vector3 rotate = { 0.0f, 0.0f, 0.0f };
-        Vector3 scale = { 1.0f, 1.0f, 1.0f };
-        Vector3 shear = {};
+        engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
+        engine::Vector3 shear = {};
         float shearPivotY = 0.0f;
     };
 

@@ -57,10 +57,10 @@
 #include <functional>
 #include <utility>
 namespace fs = std::filesystem;
-const float PI = (float)M_PI;
 
 namespace {
-std::unique_ptr<Object3d> CreateEditorObjectFromState(Object3dCommon* common, const nlohmann::json& state) {
+// Undo/Redoの保存状態から同じ動的型のObjectを作り直し、型情報が不正なら復元を中止します。
+std::unique_ptr<engine::Object3d> CreateEditorObjectFromState(Object3dCommon* common, const nlohmann::json& state) {
     if (!common || !state.is_object() || !state.contains("_editorRuntimeType") ||
         !state["_editorRuntimeType"].is_string()) {
         return nullptr;
@@ -71,10 +71,10 @@ std::unique_ptr<Object3d> CreateEditorObjectFromState(Object3dCommon* common, co
     const std::string enemyType = state.value("enemyType", std::string{});
     const std::string gimmickType = state.value("gimmickType", std::string{});
     const std::string itemType = state.value("itemType", std::string{});
-    std::unique_ptr<Object3d> object;
+    std::unique_ptr<engine::Object3d> object;
 
-    if (expectedType == typeid(Object3d).name()) {
-        object = std::make_unique<Object3d>();
+    if (expectedType == typeid(engine::Object3d).name()) {
+        object = std::make_unique<engine::Object3d>();
         object->Initialize(common);
     } else if (!enemyType.empty()) {
         object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
@@ -107,7 +107,8 @@ bool ContainsGroundKeywordForDefault(const std::string& value) {
         value.find("wall") != std::string::npos;
 }
 
-bool ShouldApplyGroundDefaults(Object3d* object) {
+bool ShouldApplyGroundDefaults(engine::Object3d* object) {
+    // 地形として扱えるモデルだけに初期Colliderを補い、敵・演出・子Meshには付けない。
     if (!object) {
         return false;
     }
@@ -135,7 +136,8 @@ bool ShouldApplyGroundDefaults(Object3d* object) {
         ContainsGroundKeywordForDefault(modelName);
 }
 
-void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
+void ApplyGroundDefaultsForGeneratedModel(engine::Object3d* object) {
+    // 自動生成した地形の未設定項目だけに地面用の衝突属性を与える。
     if (!ShouldApplyGroundDefaults(object)) {
         return;
     }
@@ -154,295 +156,14 @@ void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
 }
 }
 
-static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
-static float ToDegrees(float radians) { return radians * (180.0f / PI); }
 
-namespace {
-    constexpr float kCrashRecoveryAutosaveInterval = 3.0f;
-    constexpr float kCrashRecoveryHeartbeatInterval = 5.0f;
-    constexpr const char* kCrashRecoveryRoot = "Resources/.backup/crash_recovery";
-    constexpr const char* kCrashRecoverySessionFile = "session.json";
 
-    std::string ToGenericPath(const fs::path& path) {
-        return path.generic_string();
-    }
-
-    std::string NowIsoString() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
-        return out.str();
-    }
-
-    std::string MakeCrashRecoveryStamp() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y%m%d_%H%M%S") << "_" << std::setw(3) << std::setfill('0') << millis;
-        return out.str();
-    }
-
-    bool ReadJsonFileSafe(const fs::path& path, nlohmann::json& outJson) {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        try {
-            file >> outJson;
-            return outJson.is_object();
-        }
-        catch (...) {
-            return false;
-        }
-    }
-
-    bool WriteJsonFileSafe(const fs::path& path, const nlohmann::json& data) {
-        std::error_code ec;
-        fs::create_directories(path.parent_path(), ec);
-        if (ec) {
-            return false;
-        }
-
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        file << data.dump(4);
-        return file.good();
-    }
-
-    bool IsPathInside(const fs::path& child, const fs::path& parent) {
-        std::error_code ec;
-        const fs::path childAbs = fs::absolute(child, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-        const fs::path parentAbs = fs::absolute(parent, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-
-        std::wstring childText = childAbs.native();
-        std::wstring parentText = parentAbs.native();
-        std::transform(childText.begin(), childText.end(), childText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        std::transform(parentText.begin(), parentText.end(), parentText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        if (!parentText.empty() && parentText.back() != L'\\' && parentText.back() != L'/') {
-            parentText.push_back(fs::path::preferred_separator);
-        }
-        return childText.rfind(parentText, 0) == 0;
-    }
-
-    bool IsCrashRecoverySourcePathAllowed(const fs::path& path) {
-        const std::string generic = path.lexically_normal().generic_string();
-        const std::string lower = [&generic]() {
-            std::string value = generic;
-            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return value;
-        }();
-        return lower.rfind("resources/json/", 0) == 0 &&
-            lower.find("/../") == std::string::npos &&
-            lower.find("resources/.backup/") != 0 &&
-            lower.find("resources/.cache/") != 0;
-    }
-
-    float GetCreateYOffsetForObject(const Object3d* object) {
-        if (!object) return 1.0f;
-
-        const auto& collider = object->GetColliderConfig();
-        if (collider.size.y > 0.0f) return collider.size.y;
-        if (collider.size.x > 0.0f) return collider.size.x;
-
-        const Transform& transform = object->GetTransform();
-        if (transform.scale.y > 0.0f) return transform.scale.y;
-        return 1.0f;
-    }
-
-    Vector3 GetPlacementExtents(const Object3d* object) {
-        if (!object) return { 1.0f, 1.0f, 1.0f };
-
-        const auto& collider = object->GetColliderConfig();
-        const Transform& transform = object->GetTransform();
-        return {
-            collider.size.x > 0.0f ? collider.size.x : std::abs(transform.scale.x),
-            collider.size.y > 0.0f ? collider.size.y : std::abs(transform.scale.y),
-            collider.size.z > 0.0f ? collider.size.z : std::abs(transform.scale.z)
-        };
-    }
-
-    bool IsNearlyZero(const Vector3& value) {
-        return std::abs(value.x) < 0.0001f &&
-            std::abs(value.y) < 0.0001f &&
-            std::abs(value.z) < 0.0001f;
-    }
-
-    Vector3 NormalizeOrUp(const Vector3& value) {
-        if (IsNearlyZero(value)) {
-            return { 0.0f, 1.0f, 0.0f };
-        }
-        return Math::Normalize(value);
-    }
-
-    void ApplyEditorPreviewLightOverride(Object3d* object) {
-        if (!object) {
-            return;
-        }
-
-        if (auto* material = object->GetMaterialData()) {
-            material->enableLighting = 0;
-            material->selectedLighting = 0;
-            material->emissive = (std::max)(material->emissive, 1.0f);
-        }
-    }
-
-    float GetSurfaceOffset(const Object3d* object, const Vector3& normal) {
-        Vector3 extents = GetPlacementExtents(object);
-        Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
-        float extentOnNormal = extents.x * absNormal.x + extents.y * absNormal.y + extents.z * absNormal.z;
-        if (!object) return extentOnNormal;
-
-        const auto& collider = object->GetColliderConfig();
-        float centerOnNormal =
-            collider.center.x * normal.x +
-            collider.center.y * normal.y +
-            collider.center.z * normal.z;
-        return std::max(extentOnNormal - centerOnNormal, 0.0f);
-    }
-
-    Vector3 GetSurfaceAlignedRotation(const Vector3& currentRotation, const Vector3& normal) {
-        constexpr float kHalfPi = PI * 0.5f;
-        Vector3 n = NormalizeOrUp(normal);
-
-        if (std::abs(n.y) >= std::abs(n.x) && std::abs(n.y) >= std::abs(n.z)) {
-            if (n.y < 0.0f) {
-                return { PI, currentRotation.y, 0.0f };
-            }
-            return { 0.0f, currentRotation.y, 0.0f };
-        }
-
-        if (std::abs(n.x) >= std::abs(n.z)) {
-            return { 0.0f, currentRotation.y, n.x > 0.0f ? -kHalfPi : kHalfPi };
-        }
-
-        return { n.z > 0.0f ? kHalfPi : -kHalfPi, currentRotation.y, 0.0f };
-    }
-
-    void ApplyGridSnap(Vector3& position, const Vector3& normal, bool hasSurface, bool enabled, float snapValue) {
-        if (!enabled || snapValue <= 0.0f) return;
-
-        if (!hasSurface || std::abs(normal.x) < 0.5f) {
-            position.x = std::round(position.x / snapValue) * snapValue;
-        }
-        if (hasSurface && std::abs(normal.y) < 0.5f) {
-            position.y = std::round(position.y / snapValue) * snapValue;
-        }
-        if (!hasSurface || std::abs(normal.z) < 0.5f) {
-            position.z = std::round(position.z / snapValue) * snapValue;
-        }
-    }
-
-    bool ShouldUsePreviewDrawClassOverride(const Object3d* object) {
-        if (!object) return false;
-
-        const std::string className = object->GetClassName();
-        return object->IsCameraObject() ||
-            className == "GPUParticle" ||
-            className == "InvisibleBox";
-    }
-
-    bool IsValidAabb(const AABB& aabb) {
-        return aabb.max.x > aabb.min.x &&
-            aabb.max.y > aabb.min.y &&
-            aabb.max.z > aabb.min.z;
-    }
-
-    Vector3 GetAabbCenter(const AABB& aabb) {
-        return {
-            (aabb.min.x + aabb.max.x) * 0.5f,
-            (aabb.min.y + aabb.max.y) * 0.5f,
-            (aabb.min.z + aabb.max.z) * 0.5f
-        };
-    }
-
-    float Distance(const Vector3& a, const Vector3& b) {
-        float dx = a.x - b.x;
-        float dy = a.y - b.y;
-        float dz = a.z - b.z;
-        return std::sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    std::string GetLeafName(const std::string& path) {
-        size_t slash = path.find_last_of("/\\");
-        if (slash == std::string::npos) {
-            return path.empty() ? "Preset" : path;
-        }
-        std::string leaf = path.substr(slash + 1);
-        return leaf.empty() ? "Preset" : leaf;
-    }
-
-    bool SceneHasObjectName(BaseScene* scene, const std::string& name) {
-        if (!scene) return false;
-
-        for (const auto& object : scene->GetObjects()) {
-            if (object && object->GetName() == name) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool ReservedHasName(const std::vector<std::string>& reservedNames, const std::string& name) {
-        return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
-    }
-
-    std::string MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
-        std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
-        if (!SceneHasObjectName(scene, base) && !ReservedHasName(reservedNames, base)) {
-            return base;
-        }
-
-        for (int index = 1; index < 10000; ++index) {
-            std::string candidate = base + "_" + std::to_string(index);
-            if (!SceneHasObjectName(scene, candidate) && !ReservedHasName(reservedNames, candidate)) {
-                return candidate;
-            }
-        }
-        return base + "_New";
-    }
-
-    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
-        if (objects.empty()) return;
-
-        std::vector<std::string> reservedNames;
-        std::string rootName = MakeUniquePresetObjectName(scene, GetLeafName(presetName), reservedNames);
-        objects.front()->SetName(rootName);
-        reservedNames.push_back(rootName);
-
-        for (size_t index = 1; index < objects.size(); ++index) {
-            if (!objects[index]) continue;
-
-            std::string baseName = objects[index]->GetName();
-            if (baseName.empty()) {
-                baseName = rootName + "_Child";
-            }
-            std::string uniqueName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
-            objects[index]->SetName(uniqueName);
-            reservedNames.push_back(uniqueName);
-        }
-    }
-
-}
 
 // ========================================================================
 // 初期化
 // ========================================================================
 
-nlohmann::json DebugEditor::CaptureObjectState(Object3d* object) const {
+nlohmann::json DebugEditor::CaptureObjectState(engine::Object3d* object) const {
     nlohmann::json state = nlohmann::json::object();
     if (!object) return state;
     if (object == selectedObject_ && !IsObjectInCurrentScene(object)) return state;
@@ -457,11 +178,11 @@ nlohmann::json DebugEditor::CaptureObjectState(Object3d* object) const {
     return state;
 }
 
-std::vector<DebugEditor::ObjectStateSnapshot> DebugEditor::CaptureObjectStates(const std::vector<Object3d*>& objects) const {
+std::vector<DebugEditor::ObjectStateSnapshot> DebugEditor::CaptureObjectStates(const std::vector<engine::Object3d*>& objects) const {
     // 現在 Scene に属する Object だけ記録し、破棄済みポインタを Undo 対象にしない。
     std::vector<ObjectStateSnapshot> snapshots;
     snapshots.reserve(objects.size());
-    for (Object3d* object : objects) {
+    for (engine::Object3d* object : objects) {
         if (!object || !IsObjectInCurrentScene(object)) {
             continue;
         }
@@ -475,7 +196,7 @@ std::vector<DebugEditor::ObjectStateSnapshot> DebugEditor::CaptureObjectStates(c
     return snapshots;
 }
 
-void DebugEditor::ApplyObjectState(Object3d* object, const nlohmann::json& state) {
+void DebugEditor::ApplyObjectState(engine::Object3d* object, const nlohmann::json& state) {
     // JSON の属性を戻した後、親は GUID を優先して探し、旧データだけ名前へフォールバックする。
     if (!object || !state.is_object()) return;
 
@@ -487,7 +208,7 @@ void DebugEditor::ApplyObjectState(Object3d* object, const nlohmann::json& state
         object->SetStatic(state["isStatic"].get<bool>());
     }
 
-    Object3d* parent = nullptr;
+    engine::Object3d* parent = nullptr;
     if (state.contains("parentGuid") && state["parentGuid"].is_string()) {
         parent = FindObjectByPersistentGuid(state["parentGuid"].get<std::string>());
         if (parent == object) parent = nullptr;
@@ -504,7 +225,7 @@ void DebugEditor::ApplyObjectState(Object3d* object, const nlohmann::json& state
     object->UpdateWorldMatrix();
 }
 
-Object3d* DebugEditor::FindObjectByName(const std::string& name) const {
+engine::Object3d* DebugEditor::FindObjectByName(const std::string& name) const {
     // 旧コマンド用の代替検索なので、対象は現在開いている Scene に限る。
     if (name.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
 
@@ -517,13 +238,13 @@ Object3d* DebugEditor::FindObjectByName(const std::string& name) const {
     return nullptr;
 }
 
-Object3d* DebugEditor::FindObjectByPersistentGuid(const std::string& guid) const {
+engine::Object3d* DebugEditor::FindObjectByPersistentGuid(const std::string& guid) const {
     // 名前が変わった後でも同じ Object を復元できるよう永続 ID で検索する。
     if (guid.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
     return sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(guid);
 }
 
-Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
+engine::Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
     // 保存時の実行型を再生成できる場合だけ追加し、GUID 衝突時は新しい ID を振る。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || !state.is_object()) return nullptr;
 
@@ -540,7 +261,7 @@ Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
         object->RegeneratePersistentGuid();
     }
 
-    Object3d* raw = object.get();
+    engine::Object3d* raw = object.get();
     sceneManager_->GetCurrentScene()->AddObjectImmediate(std::move(object));
     if (auto* enemy = dynamic_cast<BaseEnemy*>(raw)) {
         enemy->BindSceneSpawnContext(sceneManager_->GetCurrentScene());
@@ -548,7 +269,7 @@ Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
     return raw;
 }
 
-std::unique_ptr<Object3d> DebugEditor::RemoveObjectImmediate(Object3d* object) {
+std::unique_ptr<engine::Object3d> DebugEditor::RemoveObjectImmediate(engine::Object3d* object) {
     // Scene 配列から即時に切り離し、所有権を呼び出し元へ返す。
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
     return sceneManager_->GetCurrentScene()->TakeObjectImmediate(object);
@@ -563,14 +284,14 @@ void DebugEditor::RegisterCommand(const EditorCommand& command) {
     EditorTransactionManager::GetInstance()->Register(std::move(transaction));
 }
 
-void DebugEditor::RegisterObjectEdited(Object3d* object, const std::string& label) {
+void DebugEditor::RegisterObjectEdited(engine::Object3d* object, const std::string& label) {
     // 単体編集も状態差分を使う共通経路へ渡す。
     if (!object) return;
     if (object == selectedObject_ && !IsObjectInCurrentScene(object)) return;
     RegisterObjectEdited(object, CaptureObjectState(object), label);
 }
 
-void DebugEditor::RegisterObjectEdited(Object3d* object, const nlohmann::json& beforeState, const std::string& label) {
+void DebugEditor::RegisterObjectEdited(engine::Object3d* object, const nlohmann::json& beforeState, const std::string& label) {
     // 前後の JSON が同じなら履歴を作らず、実際の変更だけ Dirty にする。
     if (!object || !beforeState.is_object()) return;
     if (object == selectedObject_ && !IsObjectInCurrentScene(object)) return;
@@ -626,12 +347,12 @@ void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& 
     }
 
     auto applyStates = [this, changes](bool undo) {
-        std::vector<Object3d*> appliedObjects;
+        std::vector<engine::Object3d*> appliedObjects;
         appliedObjects.reserve(changes.size());
         for (const StateChange& change : changes) {
             const std::string& primaryName = undo ? change.afterName : change.beforeName;
             const std::string& fallbackName = undo ? change.beforeName : change.afterName;
-            Object3d* object = FindObjectByPersistentGuid(change.guid);
+            engine::Object3d* object = FindObjectByPersistentGuid(change.guid);
             if (!object) object = FindObjectByName(primaryName);
             if (!object) {
                 object = FindObjectByName(fallbackName);
@@ -648,7 +369,7 @@ void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& 
         }
         if (!appliedObjects.empty()) {
             ClearObjectSelection();
-            for (Object3d* object : appliedObjects) {
+            for (engine::Object3d* object : appliedObjects) {
                 AddSelectedObject(object);
             }
             EditorManager::GetInstance()->SetSelectedObject(this);
@@ -662,10 +383,10 @@ void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& 
     EditorTransactionManager::GetInstance()->Register(std::move(transaction));
 }
 
-void DebugEditor::AddEditorObject(std::unique_ptr<Object3d> object, const std::string& label) {
+void DebugEditor::AddEditorObject(std::unique_ptr<engine::Object3d> object, const std::string& label) {
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
-    Object3d* raw = object.get();
+    engine::Object3d* raw = object.get();
     raw->EnsurePersistentGuid();
     if (FindObjectByPersistentGuid(raw->GetPersistentGuid())) {
         raw->RegeneratePersistentGuid();
@@ -690,11 +411,11 @@ void DebugEditor::AddEditorObject(std::unique_ptr<Object3d> object, const std::s
     MarkDirtyForObject(raw);
 }
 
-void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label) {
+void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<engine::Object3d>> objects, const std::string& label) {
     // 複数配置を Scene へ移し、最後に先頭 Object を選択して編集を続けられるようにする。
     if (objects.empty()) return;
 
-    Object3d* root = objects.front().get();
+    engine::Object3d* root = objects.front().get();
     for (auto& object : objects) {
         if (object) {
             AddEditorObject(std::move(object), label);
@@ -752,7 +473,7 @@ void DebugEditor::TrackInspectorEdit(const std::vector<ObjectStateSnapshot>& bef
 #endif
 }
 
-void DebugEditor::MarkDirtyForObject(Object3d* object) {
+void DebugEditor::MarkDirtyForObject(engine::Object3d* object) {
     // Prefab 編集中の変更は Scene Asset ではなく Prefab の未保存状態へ振り分ける。
     if (!object) {
         MarkDirty(SaveMode::Object);
@@ -863,23 +584,24 @@ void DebugEditor::DuplicateSelected() {
     if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
 
     if (selectedObjects_.size() > 1) {
-        std::vector<Object3d*> sourceObjects = selectedObjects_;
-        std::vector<Object3d*> createdObjects;
+        std::vector<engine::Object3d*> sourceObjects = selectedObjects_;
+        std::vector<engine::Object3d*> createdObjects;
         createdObjects.reserve(sourceObjects.size());
-        std::unordered_map<Object3d*, Object3d*> duplicateMap;
+        std::unordered_map<engine::Object3d*, engine::Object3d*> duplicateMap;
 
+        /// <summary>複製元、保存状態、生成中の複製Objectを確定前にまとめて保持する。</summary>
         struct PreparedDuplicate {
-            Object3d* source;
+            engine::Object3d* source;
             nlohmann::json state;
-            std::unique_ptr<Object3d> object;
+            std::unique_ptr<engine::Object3d> object;
         };
         std::vector<PreparedDuplicate> prepared;
         std::unordered_set<std::string> reservedNames;
         Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
         if (!common) return;
 
-        const Vector3 duplicateOffset = { 1.5f, 0.0f, 1.5f };
-        for (Object3d* source : sourceObjects) {
+        const engine::Vector3 duplicateOffset = { 1.5f, 0.0f, 1.5f };
+        for (engine::Object3d* source : sourceObjects) {
             if (!source || !IsObjectInCurrentScene(source)) continue;
 
             nlohmann::json duplicatedState = CaptureObjectState(source);
@@ -907,7 +629,7 @@ void DebugEditor::DuplicateSelected() {
             if (FindObjectByPersistentGuid(candidate.object->GetPersistentGuid())) {
                 candidate.object->RegeneratePersistentGuid();
             }
-            Object3d* created = candidate.object.get();
+            engine::Object3d* created = candidate.object.get();
             if (auto* enemy = dynamic_cast<BaseEnemy*>(created)) {
                 enemy->BindSceneSpawnContext(sceneManager_->GetCurrentScene());
             }
@@ -924,7 +646,7 @@ void DebugEditor::DuplicateSelected() {
 
         // 選択範囲内の親子関係は、複製元ではなく複製先同士へ張り直します。
         for (const auto& [source, created] : duplicateMap) {
-            Object3d* sourceParent = source ? source->GetParent() : nullptr;
+            engine::Object3d* sourceParent = source ? source->GetParent() : nullptr;
             const auto parent = duplicateMap.find(sourceParent);
             if (parent != duplicateMap.end()) {
                 created->SetParent(parent->second, true);
@@ -932,7 +654,7 @@ void DebugEditor::DuplicateSelected() {
             }
         }
 
-        for (Object3d* created : createdObjects) {
+        for (engine::Object3d* created : createdObjects) {
             nlohmann::json afterState = CaptureObjectState(created);
             EditorCommand command;
             command.type = EditorCommandType::ObjectCreated;
@@ -944,7 +666,7 @@ void DebugEditor::DuplicateSelected() {
         }
 
         ClearObjectSelection();
-        for (Object3d* created : createdObjects) {
+        for (engine::Object3d* created : createdObjects) {
             AddSelectedObject(created);
         }
         PresetManager::GetInstance()->AssignNewPrefabInstanceId(createdObjects);
@@ -959,7 +681,7 @@ void DebugEditor::DuplicateSelected() {
     // 保存状態から同じ実行型を再生成する。未対応型は別型に変えず複製を中止する。
     nlohmann::json duplicateState = CaptureObjectState(selectedObject_);
     duplicateState.erase("guid");
-    std::unique_ptr<Object3d> newObj = CreateEditorObjectFromState(
+    std::unique_ptr<engine::Object3d> newObj = CreateEditorObjectFromState(
         sceneManager_->GetCurrentScene()->GetObject3dCommon(), duplicateState);
     if (!newObj) {
         DebugConsole::GetInstance()->AddLog("Duplicate cancelled: " + selectedObject_->GetName() +
@@ -978,22 +700,22 @@ void DebugEditor::DuplicateSelected() {
     // =========================================================
     //  マウスカーソルの位置(レイキャスト)を計算してペースト！
     // =========================================================
-    Math math;
-    Ray ray = ScreenPointToRay(gameViewMousePos_);
-    Vector3 finalPos = { 0, 0, 0 };
+    engine::Math math;
+    engine::Ray ray = ScreenPointToRay(gameViewMousePos_);
+    engine::Vector3 finalPos = { 0, 0, 0 };
     bool found = false;
 
     // A. まず、他のオブジェクトの表面にマウスポインタが乗っているか判定
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
-    RayResult best; best.isHit = false; best.distance = 1e5f;
+    engine::RayResult best; best.isHit = false; best.distance = 1e5f;
     for (auto& obj : objects) {
         // 自分自身、カーソル、非表示のものは無視
         if (obj.get() == selectedObject_ || obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible()) continue;
 
-        Matrix4x4 wm = obj->GetWorldMatrix();
-        Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
-        Vector3 ws = obj->GetTransform()->scale;
-        RayResult tmp;
+        engine::Matrix4x4 wm = obj->GetWorldMatrix();
+        engine::Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
+        engine::Vector3 ws = obj->GetTransform()->scale;
+        engine::RayResult tmp;
         if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
             if (tmp.distance < best.distance) best = tmp;
         }
@@ -1007,8 +729,8 @@ void DebugEditor::DuplicateSelected() {
     }
     else {
         // 1. コピー元（選択中）のワールド座標を取得
-        Matrix4x4 sourceWm = selectedObject_->GetWorldMatrix();
-        Vector3 sourcePos = { sourceWm.m[3][0], sourceWm.m[3][1], sourceWm.m[3][2] };
+        engine::Matrix4x4 sourceWm = selectedObject_->GetWorldMatrix();
+        engine::Vector3 sourcePos = { sourceWm.m[3][0], sourceWm.m[3][1], sourceWm.m[3][2] };
 
         // 2. カメラ位置(ray.origin)からコピー元までの距離を計算
         float diffX = sourcePos.x - ray.origin.x;
@@ -1017,7 +739,7 @@ void DebugEditor::DuplicateSelected() {
         float distToRef = std::sqrt(diffX * diffX + diffY * diffY + diffZ * diffZ);
 
         // 3. マウスクリックしたレイの方向に、その距離だけ進んだ場所を新しい点とする
-        Vector3 rayDir = math.Normalize(ray.diff);
+        engine::Vector3 rayDir = math.Normalize(ray.diff);
         finalPos = { ray.origin.x + rayDir.x * distToRef,
                      ray.origin.y + rayDir.y * distToRef,
                      ray.origin.z + rayDir.z * distToRef };
@@ -1065,11 +787,11 @@ void DebugEditor::DeleteSelected() {
 
     if (prefabEditMode_) {
         auto& sceneObjects = sceneManager_->GetCurrentScene()->GetObjects();
-        std::unordered_set<Object3d*> selectedSet(selectedObjects_.begin(), selectedObjects_.end());
-        std::vector<Object3d*> deleteRoots;
-        for (Object3d* selected : selectedObjects_) {
+        std::unordered_set<engine::Object3d*> selectedSet(selectedObjects_.begin(), selectedObjects_.end());
+        std::vector<engine::Object3d*> deleteRoots;
+        for (engine::Object3d* selected : selectedObjects_) {
             bool hasSelectedAncestor = false;
-            for (Object3d* parent = selected ? selected->GetParent() : nullptr; parent; parent = parent->GetParent()) {
+            for (engine::Object3d* parent = selected ? selected->GetParent() : nullptr; parent; parent = parent->GetParent()) {
                 if (selectedSet.find(parent) != selectedSet.end()) {
                     hasSelectedAncestor = true;
                     break;
@@ -1080,8 +802,8 @@ void DebugEditor::DeleteSelected() {
             }
         }
 
-        std::vector<Object3d*> deleteObjects;
-        std::function<void(Object3d*)> collectChildren = [&](Object3d* parent) {
+        std::vector<engine::Object3d*> deleteObjects;
+        std::function<void(engine::Object3d*)> collectChildren = [&](engine::Object3d* parent) {
             if (!parent) return;
             deleteObjects.push_back(parent);
             for (const auto& candidate : sceneObjects) {
@@ -1090,14 +812,14 @@ void DebugEditor::DeleteSelected() {
                 }
             }
         };
-        for (Object3d* root : deleteRoots) {
+        for (engine::Object3d* root : deleteRoots) {
             collectChildren(root);
         }
 
         std::vector<nlohmann::json> deletedStates;
         deletedStates.reserve(deleteObjects.size());
         Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
-        for (Object3d* object : deleteObjects) {
+        for (engine::Object3d* object : deleteObjects) {
             nlohmann::json state = CaptureObjectState(object);
             if (!CreateEditorObjectFromState(common, state)) {
                 DebugConsole::GetInstance()->AddLog("Delete cancelled: " + object->GetName() +
@@ -1113,9 +835,9 @@ void DebugEditor::DeleteSelected() {
         EditorTransaction transaction;
         transaction.label = "Delete Prefab Child";
         transaction.undo = [this, deletedStates]() {
-            Object3d* firstRestored = nullptr;
+            engine::Object3d* firstRestored = nullptr;
             for (const auto& state : deletedStates) {
-                Object3d* restored = AddObjectFromState(state);
+                engine::Object3d* restored = AddObjectFromState(state);
                 if (!firstRestored) firstRestored = restored;
             }
             if (firstRestored) {
@@ -1127,7 +849,7 @@ void DebugEditor::DeleteSelected() {
         transaction.redo = [this, deletedStates]() {
             for (auto it = deletedStates.rbegin(); it != deletedStates.rend(); ++it) {
                 const std::string name = it->value("name", "");
-                if (Object3d* object = FindObjectByName(name)) {
+                if (engine::Object3d* object = FindObjectByName(name)) {
                     RemoveObjectImmediate(object);
                 }
             }
@@ -1142,9 +864,9 @@ void DebugEditor::DeleteSelected() {
         return;
     }
 
-    std::vector<Object3d*> targets = selectedObjects_;
+    std::vector<engine::Object3d*> targets = selectedObjects_;
     Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
-    for (Object3d* target : targets) {
+    for (engine::Object3d* target : targets) {
         if (!target || !IsObjectInCurrentScene(target)) continue;
         if (!CreateEditorObjectFromState(common, CaptureObjectState(target))) {
             DebugConsole::GetInstance()->AddLog("Delete cancelled: " + target->GetName() +
@@ -1156,7 +878,7 @@ void DebugEditor::DeleteSelected() {
     int deletedCount = 0;
     std::string deletedName;
 
-    for (Object3d* target : targets) {
+    for (engine::Object3d* target : targets) {
         if (!target || !IsObjectInCurrentScene(target)) continue;
 
         nlohmann::json beforeState = CaptureObjectState(target);
@@ -1190,7 +912,7 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
     switch (command.type) {
     case EditorCommandType::ObjectCreated: {
         if (undo) {
-            Object3d* object = FindObjectByPersistentGuid(
+            engine::Object3d* object = FindObjectByPersistentGuid(
                 command.afterState.value("guid", std::string()));
             if (!object) object = FindObjectByName(command.afterName);
             if (object) {
@@ -1200,7 +922,7 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
                 EditorManager::GetInstance()->ClearSelection();
             }
         } else {
-            Object3d* created = AddObjectFromState(command.afterState);
+            engine::Object3d* created = AddObjectFromState(command.afterState);
             if (created) {
                 SetSelectedObject(created);
                 EditorManager::GetInstance()->SetSelectedObject(this);
@@ -1211,14 +933,14 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
     }
     case EditorCommandType::ObjectDeleted: {
         if (undo) {
-            Object3d* restored = AddObjectFromState(command.beforeState);
+            engine::Object3d* restored = AddObjectFromState(command.beforeState);
             if (restored) {
                 SetSelectedObject(restored);
                 EditorManager::GetInstance()->SetSelectedObject(this);
                 MarkDirtyForObject(restored);
             }
         } else {
-            Object3d* object = FindObjectByPersistentGuid(
+            engine::Object3d* object = FindObjectByPersistentGuid(
                 command.beforeState.value("guid", std::string()));
             if (!object) object = FindObjectByName(command.beforeName);
             if (object) {
@@ -1235,7 +957,7 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
         const std::string& primaryName = undo ? command.afterName : command.beforeName;
         const std::string& fallbackName = undo ? command.beforeName : command.afterName;
         const nlohmann::json& targetState = undo ? command.beforeState : command.afterState;
-        Object3d* object = FindObjectByPersistentGuid(targetState.value("guid", std::string()));
+        engine::Object3d* object = FindObjectByPersistentGuid(targetState.value("guid", std::string()));
         if (!object) object = FindObjectByName(primaryName);
         if (!object) object = FindObjectByName(fallbackName);
         if (object) {

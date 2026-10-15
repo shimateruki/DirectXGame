@@ -132,7 +132,7 @@
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\deps\restore_sdl2.ps1"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force; &amp; '$(ProjectDir)tools\build\Compile-StartupShaders.ps1' -ProjectRoot '$(MSBuildProjectDirectory)' -OutputDirectory '$(OutDir)StartupShaderCache' -DxcPath '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxc.exe'"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -309,7 +309,6 @@
     <ClCompile Include="engine\graphics\3d\camera\CameraManager.cpp" />
     <ClCompile Include="engine\graphics\3d\camera\Camera.cpp" />
     <ClCompile Include="engine\system\audio\AudioPlayer.cpp" />
-    <ClCompile Include="engine\graphics\3d\camera\debugCamera.cpp" />
     <ClCompile Include="engine\graphics\core\DirectXCommon.cpp" />
     <ClCompile Include="engine\graphics\core\RenderStats.cpp" />
     <ClCompile Include="game\system\EventManager.cpp" />
@@ -941,7 +940,6 @@
     <ClInclude Include="engine\graphics\3d\camera\SceneCameraSettings.h" />
     <ClInclude Include="engine\system\audio\AudioPlayer.h" />
     <ClInclude Include="engine\utility\SystemDebug\D3DResouceLeakChecKer.h" />
-    <ClInclude Include="engine\graphics\3d\camera\debugCamera.h" />
     <ClInclude Include="engine\graphics\core\DirectXCommon.h" />
     <ClInclude Include="engine\graphics\core\RenderStats.h" />
     <ClInclude Include="game\actor\Event.h" />

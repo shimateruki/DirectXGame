@@ -127,31 +127,31 @@ using CombatMath::EaseOutCubic;
 using CombatMath::NormalizePlanar;
 
 // ゼロベクトルなら fallback を返し、方向ベクトルの正規化を安定させます。
-inline Vector3 SafeNormalize(const Vector3& value, const Vector3& fallback) {
-    if (Math::Length(value) <= 0.001f) {
+inline engine::Vector3 SafeNormalize(const engine::Vector3& value, const engine::Vector3& fallback) {
+    if (engine::Math::Length(value) <= 0.001f) {
         return fallback;
     }
-    return Math::Normalize(value);
+    return engine::Math::Normalize(value);
 }
 
 // モデルの指定軸を攻撃方向へ合わせる回転を生成します。
-inline Quaternion MakeAxisToDirectionQuaternion(const Vector3& axis, const Vector3& direction) {
-    const Vector3 from = SafeNormalize(axis, {0.0f, 1.0f, 0.0f});
-    const Vector3 to = SafeNormalize(direction, from);
-    const float dot = std::clamp(Math::Dot(from, to), -1.0f, 1.0f);
+inline engine::Quaternion MakeAxisToDirectionQuaternion(const engine::Vector3& axis, const engine::Vector3& direction) {
+    const engine::Vector3 from = SafeNormalize(axis, {0.0f, 1.0f, 0.0f});
+    const engine::Vector3 to = SafeNormalize(direction, from);
+    const float dot = std::clamp(engine::Math::Dot(from, to), -1.0f, 1.0f);
     if (dot > 0.9999f) {
         return {0.0f, 0.0f, 0.0f, 1.0f};
     }
     if (dot < -0.9999f) {
-        Vector3 perpendicular = Math::Cross(from, {1.0f, 0.0f, 0.0f});
-        if (Math::Length(perpendicular) <= 0.001f) {
-            perpendicular = Math::Cross(from, {0.0f, 0.0f, 1.0f});
+        engine::Vector3 perpendicular = engine::Math::Cross(from, {1.0f, 0.0f, 0.0f});
+        if (engine::Math::Length(perpendicular) <= 0.001f) {
+            perpendicular = engine::Math::Cross(from, {0.0f, 0.0f, 1.0f});
         }
-        perpendicular = Math::Normalize(perpendicular);
+        perpendicular = engine::Math::Normalize(perpendicular);
         return {perpendicular.x, perpendicular.y, perpendicular.z, 0.0f};
     }
 
-    const Vector3 rotationAxis = Math::Cross(from, to);
+    const engine::Vector3 rotationAxis = engine::Math::Cross(from, to);
     const float scale = std::sqrt((1.0f + dot) * 2.0f);
     const float inverseScale = 1.0f / scale;
     return {

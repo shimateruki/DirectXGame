@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d1c1a696b9a04b39907c31ccaf986dc6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/page_footer_gamepad.png",
+  "version": 1
+}

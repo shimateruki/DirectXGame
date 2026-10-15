@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
+#include "Camera.h"
+#include "Player.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "StageManager.h"
@@ -13,17 +15,17 @@
 using namespace StageSelectDetail;
 
 // ゲート出入りの演出。材質退避・復元とカメラ復帰をまとめ、遷移条件や実行順は変更しない。
-void GameSelectScene::CaptureGateEntryMaterialState(Object3d* rootObject) {
+void GameSelectScene::CaptureGateEntryMaterialState(engine::Object3d* rootObject) {
     // ゲート突入演出で変更する前に、子を含む材質を復元用に控える。
     gateEntryMaterialSnapshots_.clear();
     if (!rootObject) {
         return;
     }
 
-    std::vector<Object3d*> stack;
+    std::vector<engine::Object3d*> stack;
     stack.push_back(rootObject);
     while (!stack.empty()) {
-        Object3d* object = stack.back();
+        engine::Object3d* object = stack.back();
         stack.pop_back();
         if (!object) {
             continue;
@@ -45,7 +47,7 @@ void GameSelectScene::CaptureGateEntryMaterialState(Object3d* rootObject) {
         }
         gateEntryMaterialSnapshots_.push_back(snapshot);
 
-        for (Object3d* child : object->GetChildren()) {
+        for (engine::Object3d* child : object->GetChildren()) {
             if (child) {
                 stack.push_back(child);
             }
@@ -53,10 +55,10 @@ void GameSelectScene::CaptureGateEntryMaterialState(Object3d* rootObject) {
     }
 }
 
-void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const Vector3& gatePosition,
-                                                     const Vector3& direction) {
+void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const engine::Vector3& gatePosition,
+                                                     const engine::Vector3& direction) {
     const float dissolveProgress = SelectClamp01(progress);
-    Vector3 dissolveDirection = direction;
+    engine::Vector3 dissolveDirection = direction;
     const float directionLength =
         std::sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
     if (directionLength > 0.0001f) {
@@ -74,16 +76,16 @@ void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const Vecto
     const float edgeWidth = 0.30f - 0.16f * clipProgress;
     const float emissive = 1.25f + clipProgress * 0.95f + edgePeak * 1.45f;
     const float dissolveNoise = 0.74f - 0.18f * clipProgress;
-    const Vector4 portalColor = {1.0f, 0.66f, 0.26f, 0.94f};
+    const engine::Vector4 portalColor = {1.0f, 0.66f, 0.26f, 0.94f};
 
     for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
-        Object3d* object = snapshot.object;
+        engine::Object3d* object = snapshot.object;
         if (!object) {
             continue;
         }
 
-        const Vector4 baseColor = snapshot.color;
-        const Vector4 dissolveColor = {baseColor.x * (1.0f - heat) + 1.0f * heat,
+        const engine::Vector4 baseColor = snapshot.color;
+        const engine::Vector4 dissolveColor = {baseColor.x * (1.0f - heat) + 1.0f * heat,
                                        baseColor.y * (1.0f - heat) + 0.76f * heat,
                                        baseColor.z * (1.0f - heat) + 0.34f * heat, 1.0f - fadeProgress};
 
@@ -107,7 +109,7 @@ void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const Vecto
 void GameSelectScene::RestoreGateEntryMaterialState() {
     // 編集・再入場時にゲートの演出色が残らないよう、控えた材質を戻す。
     for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
-        Object3d* object = snapshot.object;
+        engine::Object3d* object = snapshot.object;
         if (!object) {
             continue;
         }
@@ -192,18 +194,18 @@ bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageS
         return false;
     }
 
-    const Vector3 gatePos = gateReturnTargetGate_->GetWorldPosition();
-    const Vector3 selectPlayerStart = player_->GetWorldPosition();
-    const Vector3 stageNodePosition = GetStageNodePosition(request.stageIndex);
-    const Vector3 fallbackToGate = {gatePos.x - stageNodePosition.x, 0.0f, gatePos.z - stageNodePosition.z};
+    const engine::Vector3 gatePos = gateReturnTargetGate_->GetWorldPosition();
+    const engine::Vector3 selectPlayerStart = player_->GetWorldPosition();
+    const engine::Vector3 stageNodePosition = GetStageNodePosition(request.stageIndex);
+    const engine::Vector3 fallbackToGate = {gatePos.x - stageNodePosition.x, 0.0f, gatePos.z - stageNodePosition.z};
     const float fallbackLengthSq = fallbackToGate.x * fallbackToGate.x + fallbackToGate.z * fallbackToGate.z;
-    const Vector3 fallbackFromPlayer = {gatePos.x - selectPlayerStart.x, 0.0f, gatePos.z - selectPlayerStart.z};
-    const Vector3 gateDirection = SelectGateEntryDirection(
+    const engine::Vector3 fallbackFromPlayer = {gatePos.x - selectPlayerStart.x, 0.0f, gatePos.z - selectPlayerStart.z};
+    const engine::Vector3 gateDirection = SelectGateEntryDirection(
         gateReturnTargetGate_, fallbackLengthSq > 0.0001f ? fallbackToGate : fallbackFromPlayer);
-    const Vector3 outwardDirection =
+    const engine::Vector3 outwardDirection =
         SelectNormalizeGateDirectionXZ({-gateDirection.x, 0.0f, -gateDirection.z}, {0.0f, 0.0f, -1.0f});
     const SelectGateEntryRoute probeRoute = SelectBuildGateEntryRoute(gatePos, gateDirection, selectPlayerStart.y);
-    const Vector3 landingProbePosition = {probeRoute.surface.x + outwardDirection.x * kGateReturnExitForwardOffset,
+    const engine::Vector3 landingProbePosition = {probeRoute.surface.x + outwardDirection.x * kGateReturnExitForwardOffset,
                                           selectPlayerStart.y,
                                           probeRoute.surface.z + outwardDirection.z * kGateReturnExitForwardOffset};
     const float returnGroundY = SelectResolveGateReturnGroundY(landingProbePosition, gatePos, stageNodePosition,
@@ -238,18 +240,18 @@ bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageS
     }
 
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        const Vector3 side = {gateDirection.z, 0.0f, -gateDirection.x};
-        const Vector3 gateFocus = {gatePos.x, returnGroundY + kGateReturnCameraFocusHeight, gatePos.z};
-        const Vector3 landingFocus = {gateReturnEndPlayerPosition_.x,
+        const engine::Vector3 side = {gateDirection.z, 0.0f, -gateDirection.x};
+        const engine::Vector3 gateFocus = {gatePos.x, returnGroundY + kGateReturnCameraFocusHeight, gatePos.z};
+        const engine::Vector3 landingFocus = {gateReturnEndPlayerPosition_.x,
                                       gateReturnEndPlayerPosition_.y + kGateReturnCameraFocusHeight,
                                       gateReturnEndPlayerPosition_.z};
         // ゲート真正面だけを見ると、着地後のプレイヤーが画面外やゲート裏へ逃げやすいです。
         // 注視点を着地点寄りにし、少し斜めから見ることでゲートから出る動きと着地を同時に見せます。
-        const Vector3 focus = SelectLerpVector3(gateFocus, landingFocus, kGateReturnCameraLandingFocusRate);
-        const Vector3 restoreTarget = {gateReturnEndPlayerPosition_.x,
+        const engine::Vector3 focus = SelectLerpVector3(gateFocus, landingFocus, kGateReturnCameraLandingFocusRate);
+        const engine::Vector3 restoreTarget = {gateReturnEndPlayerPosition_.x,
                                        gateReturnEndPlayerPosition_.y + kGateReturnThirdPersonTargetHeight,
                                        gateReturnEndPlayerPosition_.z};
-        const Vector3 restoreEye = {restoreTarget.x - outwardDirection.x * kGateReturnThirdPersonDistance,
+        const engine::Vector3 restoreEye = {restoreTarget.x - outwardDirection.x * kGateReturnThirdPersonDistance,
                                     restoreTarget.y + kGateReturnThirdPersonHeight,
                                     restoreTarget.z - outwardDirection.z * kGateReturnThirdPersonDistance};
         gateReturnCameraStartEye_ = camera->GetEye();
@@ -287,12 +289,12 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
     }
 
     gateReturnPresentationTimer_ += deltaTime;
-    const Vector3 outwardDirection =
+    const engine::Vector3 outwardDirection =
         SelectNormalizeGateDirectionXZ({-gateReturnDirection_.x, 0.0f, -gateReturnDirection_.z}, {0.0f, 0.0f, -1.0f});
 
     if (gateReturnTargetGate_) {
-        const Vector3 gatePos = gateReturnTargetGate_->GetWorldPosition();
-        const Vector3 stageNodePosition =
+        const engine::Vector3 gatePos = gateReturnTargetGate_->GetWorldPosition();
+        const engine::Vector3 stageNodePosition =
             gateReturnStageIndex_ >= 0 ? GetStageNodePosition(gateReturnStageIndex_) : gateReturnEndPlayerPosition_;
         const float returnGroundY =
             SelectResolveGateReturnGroundY(gateReturnEndPlayerPosition_, gatePos, stageNodePosition,
@@ -313,8 +315,8 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
         camera->SetFollowTarget(nullptr);
         camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
 
-        Vector3 eye = gateReturnCameraEndEye_;
-        Vector3 target = gateReturnCameraEndTarget_;
+        engine::Vector3 eye = gateReturnCameraEndEye_;
+        engine::Vector3 target = gateReturnCameraEndTarget_;
         if (gateReturnPresentationTimer_ < kGateReturnCameraRestoreStartTime) {
             const float introT =
                 SelectEaseOutCubic(SelectClamp01(gateReturnPresentationTimer_ / kGateReturnCameraIntroDuration));
@@ -384,8 +386,8 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
     }
 
     gateEntryTargetGate_ = FindNearestStageGate(nullptr);
-    gateEntryStartPlayerPosition_ = player_ ? player_->GetWorldPosition() : Vector3{};
-    gateEntryStartPlayerScale_ = player_ ? player_->GetScale() : Vector3{1.0f, 1.0f, 1.0f};
+    gateEntryStartPlayerPosition_ = player_ ? player_->GetWorldPosition() : engine::Vector3{};
+    gateEntryStartPlayerScale_ = player_ ? player_->GetScale() : engine::Vector3{1.0f, 1.0f, 1.0f};
     gateEntryTargetPlayerPosition_ = gateEntryStartPlayerPosition_;
     gateEntrySurfacePlayerPosition_ = gateEntryStartPlayerPosition_;
     gateEntryInsidePlayerPosition_ = gateEntryStartPlayerPosition_;
@@ -397,12 +399,12 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
     gateEntryHadPlayerControl_ = player_ ? player_->IsControlActive() : true;
 
     if (gateEntryTargetGate_ && player_) {
-        const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
-        const Vector3 toGateRaw = {gatePos.x - gateEntryStartPlayerPosition_.x, 0.0f,
+        const engine::Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
+        const engine::Vector3 toGateRaw = {gatePos.x - gateEntryStartPlayerPosition_.x, 0.0f,
                                    gatePos.z - gateEntryStartPlayerPosition_.z};
         // 接触位置そのものではなく、ゲート面の向きから突入方向を決める。
         // これにより、ゲートの端から触れてもカメラ構図と突入方向が大きく暴れない。
-        const Vector3 toGate = SelectGateEntryDirection(gateEntryTargetGate_, toGateRaw);
+        const engine::Vector3 toGate = SelectGateEntryDirection(gateEntryTargetGate_, toGateRaw);
         gateEntryDirection_ = toGate;
         const float entryY = gatePos.y;
         const SelectGateEntryRoute entryRoute = SelectBuildGateEntryRoute(gatePos, toGate, entryY);
@@ -421,10 +423,10 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
         }
 
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-            const Vector3 side = {toGate.z, 0.0f, -toGate.x};
+            const engine::Vector3 side = {toGate.z, 0.0f, -toGate.x};
             // カメラはプレイヤーの接触位置ではなくゲート中心を基準にする。
             // 表裏の差はtoGateの向きだけで反転させ、どちら側から入っても同じ構図に近づける。
-            const Vector3 focus = {gatePos.x, gatePos.y + kGateEntryCameraFocusHeight, gatePos.z};
+            const engine::Vector3 focus = {gatePos.x, gatePos.y + kGateEntryCameraFocusHeight, gatePos.z};
             gateEntryCameraStartEye_ = camera->GetEye();
             gateEntryCameraStartTarget_ = camera->GetTargetPoint();
             gateEntryCameraEndTarget_ = focus;
@@ -473,8 +475,8 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
         camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-        const Vector3 currentEye = SelectLerpVector3(gateEntryCameraStartEye_, gateEntryCameraEndEye_, cameraT);
-        const Vector3 currentTarget =
+        const engine::Vector3 currentEye = SelectLerpVector3(gateEntryCameraStartEye_, gateEntryCameraEndEye_, cameraT);
+        const engine::Vector3 currentTarget =
             SelectLerpVector3(gateEntryCameraStartTarget_, gateEntryCameraEndTarget_, cameraT);
         camera->ConfigFixedPoint(currentEye, SelectLookAtRotation(currentEye, currentTarget));
     }
@@ -485,8 +487,8 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
         player_->SetIsControlActive(false);
 
         if (gateEntryTargetGate_) {
-            const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
-            const Vector3 toGate = gateEntryDirection_;
+            const engine::Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
+            const engine::Vector3 toGate = gateEntryDirection_;
             const float entryY = gatePos.y;
             // 演出中にゲートが親子関係やEditor操作で動いても、入口・中心・奥位置を最新Transformから作り直す。
             const SelectGateEntryRoute entryRoute = SelectBuildGateEntryRoute(gatePos, toGate, entryY);
@@ -500,18 +502,18 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
 
         // 接触した瞬間の位置から直接ゲート中心へ飛ばすとワープ感が強いので、
         // まずゲート正面の入口ラインへ短く補間し、その後ゲート奥へ吸い込む。
-        Vector3 centeredStart = gateEntryStartPlayerPosition_;
+        engine::Vector3 centeredStart = gateEntryStartPlayerPosition_;
         centeredStart.y = gateEntryStartPlayerPosition_.y +
                           (gateEntrySurfacePlayerPosition_.y - gateEntryStartPlayerPosition_.y) * centeringT;
-        const Vector3 alignedStart = SelectLerpVector3(centeredStart, gateEntrySurfacePlayerPosition_, alignT);
-        const Vector3 controlA =
+        const engine::Vector3 alignedStart = SelectLerpVector3(centeredStart, gateEntrySurfacePlayerPosition_, alignT);
+        const engine::Vector3 controlA =
             SelectLerpVector3(gateEntrySurfacePlayerPosition_, gateEntryTargetPlayerPosition_, 0.42f);
-        const Vector3 controlB =
+        const engine::Vector3 controlB =
             SelectLerpVector3(gateEntryTargetPlayerPosition_, gateEntryInsidePlayerPosition_, 0.58f);
-        const Vector3 divePos = SelectBezierVector3(
+        const engine::Vector3 divePos = SelectBezierVector3(
             gateEntrySurfacePlayerPosition_, {controlA.x, controlA.y + kGateEntryLiftHeight, controlA.z},
             {controlB.x, controlB.y + kGateEntryLiftHeight * 0.35f, controlB.z}, gateEntryInsidePlayerPosition_, diveT);
-        Vector3 playerPos = SelectLerpVector3(alignedStart, divePos, SelectClamp01((t - 0.08f) / 0.28f));
+        engine::Vector3 playerPos = SelectLerpVector3(alignedStart, divePos, SelectClamp01((t - 0.08f) / 0.28f));
 
         player_->SetTranslate(playerPos);
         player_->SetScale(gateEntryStartPlayerScale_);
@@ -522,7 +524,7 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
 
     if (gateEntryCinematicTimer_ >= kGateEntryCinematicDuration) {
         if (player_) {
-            const Vector3 gatePos =
+            const engine::Vector3 gatePos =
                 gateEntryTargetGate_ ? gateEntryTargetGate_->GetWorldPosition() : gateEntryInsidePlayerPosition_;
             ApplyGateEntryDissolveMaterial(1.0f, gatePos, gateEntryDirection_);
             gateEntryMaterialSnapshots_.clear();

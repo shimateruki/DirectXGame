@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5a6cfb56df7a8a488dc5a7ac30525002",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/capture.dds",
+  "version": 1
+}

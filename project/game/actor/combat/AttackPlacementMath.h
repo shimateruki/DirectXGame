@@ -4,13 +4,13 @@
 
 // ギズモのワールド移動を、保存形式である右・上・前の相対位置へ戻します。
 namespace AttackPlacementMath {
-inline Vector3 ToLocalDelta(Vector3 delta, float yaw) {
+inline engine::Vector3 ToLocalDelta(engine::Vector3 delta, float yaw) {
     return {delta.x * std::cos(yaw) - delta.z * std::sin(yaw), delta.y,
         delta.x * std::sin(yaw) + delta.z * std::cos(yaw)};
 }
 
 // 発射方向を回しても発生位置は動かさないよう、サイズ依存オフセットを含めて逆変換します。
-inline void RotateEvent(AttackSequenceEvent& event, Vector3 ownerSize, float deltaYaw) {
+inline void RotateEvent(AttackSequenceEvent& event, engine::Vector3 ownerSize, float deltaYaw) {
     const float right = event.right + ownerSize.x * event.sizeRight;
     const float forward = event.forward + ownerSize.z * event.sizeForward;
     event.right = right * std::cos(deltaYaw) - forward * std::sin(deltaYaw) - ownerSize.x * event.sizeRight;

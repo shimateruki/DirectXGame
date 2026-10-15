@@ -18,7 +18,8 @@
 using json = nlohmann::json;
 
 #ifdef USE_IMGUI
-static ImVec2 WorldToScreen(const Vector3& worldPos, const Matrix4x4& mat) {
+static ImVec2 WorldToScreen(const engine::Vector3& worldPos, const engine::Matrix4x4& mat) {
+    // 背面の点は画面外へ退避し、透視除算後にImGuiの左上原点へ変換する。
     float w = worldPos.x * mat.m[0][3] + worldPos.y * mat.m[1][3] + worldPos.z * mat.m[2][3] + mat.m[3][3];
     if (w < 0.001f) return ImVec2(-10000.0f, -10000.0f);
 
@@ -187,7 +188,7 @@ void LightEditor::Update() {
         pointLightGizmos_.resize(pointLights.size());
         for (size_t i = 0; i < pointLightGizmos_.size(); ++i) {
             if (!pointLightGizmos_[i]) {
-                pointLightGizmos_[i] = std::make_unique<Object3d>();
+                pointLightGizmos_[i] = std::make_unique<engine::Object3d>();
                 pointLightGizmos_[i]->Initialize(common_);
                 pointLightGizmos_[i]->SetModel("Primitives/sphere");
                 pointLightGizmos_[i]->SetMaterialType(0);
@@ -202,7 +203,7 @@ void LightEditor::Update() {
             pointLightGizmos_[i]->SetTranslate(pointLights[i].data.position);
             pointLightGizmos_[i]->SetScale({ gizmoScale_, gizmoScale_, gizmoScale_ });
 
-            Vector4 color = pointLights[i].data.color;
+            engine::Vector4 color = pointLights[i].data.color;
             color.x = color.x < 0.35f ? 0.35f : color.x;
             color.y = color.y < 0.35f ? 0.35f : color.y;
             color.z = color.z < 0.1f ? 0.1f : color.z;
@@ -225,7 +226,7 @@ void LightEditor::Update() {
         spotLightGizmos_.resize(spotLights.size());
         for (size_t i = 0; i < spotLightGizmos_.size(); ++i) {
             if (!spotLightGizmos_[i]) {
-                spotLightGizmos_[i] = std::make_unique<Object3d>();
+                spotLightGizmos_[i] = std::make_unique<engine::Object3d>();
                 spotLightGizmos_[i]->Initialize(common_);
                 spotLightGizmos_[i]->SetModel("Primitives/sphere");
                 spotLightGizmos_[i]->SetMaterialType(0);
@@ -238,7 +239,7 @@ void LightEditor::Update() {
             // スポットライト位置をギズモに反映
             spotLightGizmos_[i]->SetTranslate(spotLights[i].data.position);
             spotLightGizmos_[i]->SetScale({ gizmoScale_ * 0.85f, gizmoScale_ * 1.35f, gizmoScale_ * 0.85f });
-            Vector4 color = spotLights[i].data.color;
+            engine::Vector4 color = spotLights[i].data.color;
             color.x = color.x < 0.15f ? 0.15f : color.x;
             color.y = color.y < 0.55f ? 0.55f : color.y;
             color.z = color.z < 0.85f ? 0.85f : color.z;
@@ -388,7 +389,7 @@ void LightEditor::DrawImGui() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    Vector4& clearColor = lightManager_->GetSceneClearColor();
+    engine::Vector4& clearColor = lightManager_->GetSceneClearColor();
     if (ImGui::ColorEdit4(ICON_FA_PALETTE " 背景色 (Clear Color)", &clearColor.x)) {
         DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     }

@@ -34,7 +34,7 @@ int main() {
         if (!projectile.CheckCollision(&target).isColliding)
             throw std::runtime_error("actual player collider contact missing");
         // 見た目の倍率が2でも、旧式の原点中心球では接触が成立しない位置です。
-        if (Math::Length(projectileTransform.translate) <= 1.0f + projectile.GetRadius())
+        if (engine::Math::Length(projectileTransform.translate) <= 1.0f + projectile.GetRadius())
             throw std::runtime_error("old preview mismatch not reproduced");
         projectileTransform.translate.z = -3;
         projectileTransform.UpdateMatrix();

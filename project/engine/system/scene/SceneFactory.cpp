@@ -17,6 +17,7 @@ std::vector<std::string> SceneFactory::GetRegisteredSceneNames() const {
 
 // 同名登録は生成関数だけ差し替え、一覧上の位置は変えません。
 bool SceneFactory::RegisterScene(const std::string& sceneName, SceneCreator creator) {
+    // 同名シーンの生成処理は差し替えられるが、一覧上の登録順は増やさない。
     if (sceneName.empty() || !creator) {
         return false;
     }

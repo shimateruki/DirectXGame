@@ -5,8 +5,8 @@
 #include "engine/utility/math/Math.h"
 #include <cmath>
 
-Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
-    Vector3 move = {0.0f, 0.0f, 0.0f};
+engine::Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
+    engine::Vector3 move = {0.0f, 0.0f, 0.0f};
     float moveSpeed = player->GetMoveSpeed();
 
     InputManager* input = player->GetInputManager();
@@ -17,7 +17,7 @@ Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
     }
 
     // --- 方向ベクトルの準備 ---
-    Vector3 forward, right;
+    engine::Vector3 forward, right;
 
     {
         // ロックオンしても入力方向の基準は変えず、自由に足場を移動できます。
@@ -48,7 +48,7 @@ Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
     }
 
     // アナログ入力を優先し、倒し具合を速度に反映します。方向キーの操作は従来通り残します。
-    const Vector2 stick = input->GetLeftStick();
+    const engine::Vector2 stick = input->GetLeftStick();
     const float stickLength = std::sqrt(stick.x * stick.x + stick.y * stick.y);
     if (stickLength > 0.001f) {
         return (right * stick.x + forward * stick.y) * moveSpeed;

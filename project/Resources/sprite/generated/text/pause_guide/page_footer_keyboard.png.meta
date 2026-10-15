@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a7a3b5a723084ca799420e367843ff4b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/page_footer_keyboard.png",
+  "version": 1
+}

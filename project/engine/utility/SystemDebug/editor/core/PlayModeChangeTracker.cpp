@@ -28,7 +28,7 @@ void PlayModeChangeTracker::Clear() {
     open_ = false;
 }
 
-bool PlayModeChangeTracker::IsEligible(const Object3d* object) const {
+bool PlayModeChangeTracker::IsEligible(const engine::Object3d* object) const {
     if (!object || object->IsEditorInternal() || object->GetPersistentGuid().empty()) return false;
     const std::string className = object->GetClassName();
     const std::string category = object->GetSaveCategory();
@@ -43,7 +43,8 @@ bool PlayModeChangeTracker::IsEligible(const Object3d* object) const {
     return true;
 }
 
-bool PlayModeChangeTracker::IsRuntimeDrivenTransform(const Object3d* object) const {
+bool PlayModeChangeTracker::IsRuntimeDrivenTransform(const engine::Object3d* object) const {
+    // 実行時に自走するギミックの位置差分は、編集内容として採用しない。
     if (!object) return true;
     const std::string className = object->GetClassName();
     const std::string category = object->GetSaveCategory();
@@ -61,6 +62,7 @@ bool PlayModeChangeTracker::IsTransformKey(const std::string& key) {
 }
 
 nlohmann::json PlayModeChangeTracker::ExtractTransform(const nlohmann::json& state) {
+    // オブジェクト全体ではなく位置・回転・大きさだけを実行中の差分へ抽出する。
     nlohmann::json result = nlohmann::json::object();
     if (!state.is_object()) return result;
     for (auto iterator = state.begin(); iterator != state.end(); ++iterator) {
@@ -70,6 +72,7 @@ nlohmann::json PlayModeChangeTracker::ExtractTransform(const nlohmann::json& sta
 }
 
 nlohmann::json PlayModeChangeTracker::ExtractProperties(const nlohmann::json& state) {
+    // 実行中の差分確認では位置と識別子を除き、調整可能なプロパティだけ比較する。
     nlohmann::json result = nlohmann::json::object();
     if (!state.is_object()) return result;
     for (auto iterator = state.begin(); iterator != state.end(); ++iterator) {
@@ -147,7 +150,7 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
     for (const ChangeCandidate& candidate : candidates_) {
         if ((!candidate.applyTransform || !candidate.transformChanged) &&
             (!candidate.applyProperties || !candidate.propertiesChanged)) continue;
-        Object3d* object = sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(candidate.guid);
+        engine::Object3d* object = sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(candidate.guid);
         if (!object) continue;
         const nlohmann::json beforeApply = editor_->CaptureObjectState(object);
         nlohmann::json merged = candidate.applyProperties ? candidate.runtimeState : beforeApply;
@@ -175,6 +178,7 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
 }
 
 void PlayModeChangeTracker::Draw() {
+    // Play中の差分はObjectごとにTransformと設定値を独立して選択させる。
     if (!open_) return;
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(760.0f, 520.0f), ImGuiCond_FirstUseEver);

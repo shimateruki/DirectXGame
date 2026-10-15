@@ -7,11 +7,11 @@
 /// 速度、重力、接地判定など、物理的に動くキャラクターの基底クラス。
 /// </summary>
 // Characterは、重力、速度、接地判定、物理衝突補正を持つ移動キャラクターの基底クラスです。
-class Character : public Object3d {
+class Character : public engine::Object3d {
   public:
-    // 衝突時の基本的な押し戻しを行う
-    // 衝突相手から必要な物理補正やイベント処理を行います。
-    bool OnCollision(Object3d* other) override;
+    /// <summary>衝突相手から受ける押し戻しなどの物理補正を適用する。</summary>
+    /// <returns>衝突を処理した場合はtrue。</returns>
+    bool OnCollision(engine::Object3d* other) override;
 
     /// <summary>
     /// 速度と重力を反映して座標を更新する。
@@ -19,17 +19,20 @@ class Character : public Object3d {
     // 速度、重力、接地状態を反映してTransformを更新します。
     void Update(float deltaTime) override;
 
-    // キャラクター本体をライト情報付きで描画します。
+    /// <summary>ライト情報を使ってキャラクター本体を描画する。</summary>
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
-    Vector3 GetVelocity() const { return velocity_; }
-    void SetVelocity(const Vector3& v) { velocity_ = v; }
+    /// <summary>現在の移動速度を取得・設定する。</summary>
+    engine::Vector3 GetVelocity() const { return velocity_; }
+    void SetVelocity(const engine::Vector3& v) { velocity_ = v; }
 
-    // ダメージ状態へ移行せず、一定時間だけ移動へ外力を重ねます。
-    void ApplyExternalImpulse(const Vector3& velocity, float duration = 0.16f);
+    /// <summary>ダメージ状態へ移らず、指定時間だけ移動へ外力を重ねる。</summary>
+    void ApplyExternalImpulse(const engine::Vector3& velocity, float duration = 0.16f);
 
+    /// <summary>最後の移動更新での接地状態を取得・設定する。</summary>
     bool IsGrounded() const { return isGrounded_; }
     void SetGrounded(bool grounded) { isGrounded_ = grounded; }
+    /// <summary>衝突と移動を計算するCharacterMotorを可変または読み取り専用で返す。</summary>
     CharacterMotor& GetCharacterMotor() { return characterMotor_; }
     const CharacterMotor& GetCharacterMotor() const { return characterMotor_; }
 
@@ -53,20 +56,25 @@ class Character : public Object3d {
         this->param_->maxFallSpeed = maxFallSpeed;
     }
 
-    // 衝突情報に基づいて押し戻しや速度の補正を適用します。
+    /// <summary>衝突情報に基づいて押し戻しと速度補正を適用する。</summary>
     void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
-    std::unique_ptr<Object3d> Clone() const override;
+    /// <summary>Character自身の配置と移動状態を複製する。</summary>
+    /// <returns>派生型から呼ばれた場合はnullptr。派生側でCloneを実装する。</returns>
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   protected:
+    /// <summary>速度や接地などCharacter固有の状態をリプレイ用JSONへ書く。</summary>
     void CaptureReplayCustomState(json& state) const override;
+    /// <summary>CharacterMotorの設定を現在のキャラクターパラメータへ同期する。</summary>
     void SyncCharacterMotorSettings();
+    /// <summary>リプレイ用JSONからCharacter固有の状態を戻す。</summary>
     void RestoreReplayCustomState(const json& state) override;
 
-    Vector3 velocity_ = {0.0f, 0.0f, 0.0f}; // 現在速度。
+    engine::Vector3 velocity_ = {0.0f, 0.0f, 0.0f}; // 現在速度。
     bool isGrounded_ = false;               // 最後の更新で接地しているか。
 private:
-    Vector3 externalImpulseVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 externalImpulseVelocity_ = {0.0f, 0.0f, 0.0f};
     float externalImpulseTimer_ = 0.0f;
     float externalImpulseDuration_ = 0.0f;
     CharacterMotor characterMotor_;

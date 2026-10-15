@@ -31,22 +31,27 @@ const char* SelectLoadingSlimeTexturePath() {
     return kTexturePaths[static_cast<std::size_t>(distribution(randomEngine))];
 }
 
+// ロード演出の補間値を0～1へ収めます。
 float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// ロード画面の設計解像度から幅と高さを取得します。
 float ScreenW() {
     return static_cast<float>(WinApp::kClientWidth);
 }
 
+// ロード画面の設計高さを返します。
 float ScreenH() {
     return static_cast<float>(WinApp::kClientHeight);
 }
 
+// 進捗ゲージの左端を画面中央基準で配置します。
 float GaugeLeft() {
     return (ScreenW() - kGaugeWidth) * 0.5f;
 }
 
+// 進捗ゲージを画面下端から一定距離に配置します。
 float GaugeY() {
     return ScreenH() - 72.0f;
 }
@@ -54,7 +59,7 @@ float GaugeY() {
 
 void LoadingScene::Initialize() {
     // ロード中だけ使うSpriteを作り、進捗表示とキャラクター演出を同じ座標系へ揃えます。
-    spriteCommon_ = std::make_unique<SpriteCommon>();
+    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
     spriteCommon_->Initialize(DirectXCommon::GetInstance());
 
     const uint32_t whiteHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
@@ -225,9 +230,9 @@ void LoadingScene::SetProgress(float progress) {
     targetProgress_ = Clamp01(progress);
 }
 
-Sprite* LoadingScene::CreateSprite(uint32_t textureHandle, const Vector2& position, const Vector2& size, const Vector4& color) {
+engine::Sprite* LoadingScene::CreateSprite(uint32_t textureHandle, const engine::Vector2& position, const engine::Vector2& size, const engine::Vector4& color) {
     // Spriteの所有権はSceneへ残し、部品更新用に生ポインタだけ返します。
-    auto sprite = std::make_unique<Sprite>();
+    auto sprite = std::make_unique<engine::Sprite>();
     sprite->Initialize(spriteCommon_.get(), textureHandle);
     sprite->SetAnchorPoint({ 0.5f, 0.5f });
     sprite->SetPosition(position);
@@ -235,7 +240,7 @@ Sprite* LoadingScene::CreateSprite(uint32_t textureHandle, const Vector2& positi
     sprite->SetColor(color);
     sprite->Update();
 
-    Sprite* raw = sprite.get();
+    engine::Sprite* raw = sprite.get();
     sprites_.push_back(std::move(sprite));
     return raw;
 }
@@ -251,7 +256,7 @@ void LoadingScene::UpdateSlimeRunAnimation() {
     const float hopT = std::fmod(timer_ * 1.45f, 1.0f);
     int frame = 0;
     float lift = 0.0f;
-    Vector2 size = { 116.0f, 130.0f };
+    engine::Vector2 size = { 116.0f, 130.0f };
     float rotation = 0.0f;
 
     if (hopT < 0.22f) {
@@ -296,7 +301,7 @@ void LoadingScene::UpdateSlimeRunAnimation() {
 void LoadingScene::UpdateDotAnimation() {
     // 点ごとに位相をずらし、進捗待ちでも静止して見えないようにします。
     for (size_t i = 0; i < dots_.size(); ++i) {
-        Sprite* dot = dots_[i];
+        engine::Sprite* dot = dots_[i];
         if (!dot) {
             continue;
         }
@@ -335,7 +340,7 @@ void LoadingScene::UpdateProgressGauge() {
     gaugeGlow_->SetColor({ 0.42f, 0.98f, 1.0f, 0.18f + pulse * 0.18f });
 
     for (size_t i = 0; i < gaugeBubbles_.size(); ++i) {
-        Sprite* bubble = gaugeBubbles_[i];
+        engine::Sprite* bubble = gaugeBubbles_[i];
         if (!bubble) {
             continue;
         }

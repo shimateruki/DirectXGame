@@ -15,9 +15,11 @@
 using json = nlohmann::json;
 
 namespace {
-bool IntersectsFrustumSphere(const Frustum& frustum, const Vector3& center, float radius) {
+// 球が視錐台の全平面の外側にないことを確認し、ライトの描画対象を絞ります。
+bool IntersectsFrustumSphere(const engine::Frustum& frustum, const engine::Vector3& center, float radius) {
+    // いずれかの視錐台面より球が完全に外なら描画対象から除く。
     const float safeRadius = (std::max)(radius, 0.0f);
-    for (const Plane& plane : frustum.planes) {
+    for (const engine::Plane& plane : frustum.planes) {
         const float signedDistance =
             plane.normal.x * center.x +
             plane.normal.y * center.y +
@@ -76,7 +78,7 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
 void LightManager::Update() {
 
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
-    const Frustum* activeFrustum = activeCamera ? &activeCamera->GetFrustum() : nullptr;
+    const engine::Frustum* activeFrustum = activeCamera ? &activeCamera->GetFrustum() : nullptr;
 
     // ---------------------------------------------------
     // 1. 平行光源 (Directional Light)
@@ -89,8 +91,8 @@ void LightManager::Update() {
         if (SUCCEEDED(directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&dirMap))) && dirMap) {
 
             // 2. Normalizeする前に、ベクトルの長さが0でないかチェック(0除算防止)
-            if (Math::Length(directionalLightData_.direction) > 0.0001f) {
-                directionalLightData_.direction = Math::Normalize(directionalLightData_.direction);
+            if (engine::Math::Length(directionalLightData_.direction) > 0.0001f) {
+                directionalLightData_.direction = engine::Math::Normalize(directionalLightData_.direction);
             } else {
                 // 長さが0ならデフォルトの向きをセット
                 directionalLightData_.direction = { 0.0f, -1.0f, 0.0f };
@@ -98,16 +100,13 @@ void LightManager::Update() {
 
             // 3. 安全が確認できたので書き込む
             DirectionalLight gpuLight = directionalLightData_;
-            gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
-            gpuLight.ambientColor = ColorSpace::AuthoringToWorking(gpuLight.ambientColor);
-            gpuLight.fogColor = ColorSpace::AuthoringToWorking(gpuLight.fogColor);
+            gpuLight.color = engine::ColorSpace::AuthoringToWorking(gpuLight.color);
+            gpuLight.ambientColor = engine::ColorSpace::AuthoringToWorking(gpuLight.ambientColor);
+            gpuLight.fogColor = engine::ColorSpace::AuthoringToWorking(gpuLight.fogColor);
             *dirMap = gpuLight;
 
             // 4. アンマップ
             directionalLightResource_->Unmap(0, nullptr);
-        } else {
-            // ここに来る場合は、GPUデバイスが失われている可能性があります
-            // OutputDebugStringA("Warning: DirectionalLight Map failed.\n");
         }
     }
 
@@ -124,7 +123,7 @@ void LightManager::Update() {
 
         // A. 追従処理
         if (instance.target) {
-            Vector3 targetPos = instance.target->GetTranslate(); // または GetWorldPosition()
+            engine::Vector3 targetPos = instance.target->GetTranslate(); // または GetWorldPosition()
             instance.data.position = {
                 targetPos.x + instance.offset.x,
                 targetPos.y + instance.offset.y,
@@ -158,7 +157,7 @@ void LightManager::Update() {
         // --- GPUバッファへコピー ---
         int index = pointLightConstData_->activeCount;
         MeshRenderer::PointLight gpuLight = instance.data;
-        gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
+        gpuLight.color = engine::ColorSpace::AuthoringToWorking(gpuLight.color);
         pointLightConstData_->lights[index] = gpuLight;
         pointLightConstData_->activeCount++;
     }
@@ -186,7 +185,7 @@ void LightManager::Update() {
         if (pointLightConstData_->activeCount < kMaxPointLights) {
             int transientIndex = pointLightConstData_->activeCount;
             MeshRenderer::PointLight gpuLight = pulse.data;
-            gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
+            gpuLight.color = engine::ColorSpace::AuthoringToWorking(gpuLight.color);
             pointLightConstData_->lights[transientIndex] = gpuLight;
             pointLightConstData_->activeCount++;
         }
@@ -205,7 +204,7 @@ void LightManager::Update() {
 
         // A. 追従処理 & 向き同期 (懐中電灯)
         if (instance.target) {
-            Vector3 targetPos = instance.target->GetTranslate();
+            engine::Vector3 targetPos = instance.target->GetTranslate();
             instance.data.position = {
                 targetPos.x + instance.offset.x,
                 targetPos.y + instance.offset.y,
@@ -214,8 +213,8 @@ void LightManager::Update() {
 
             // ターゲットの正面方向を取得してライトの向きにする
             // 行列のZ軸ベクトル(前方)を取得するのが最も確実
-            Matrix4x4 worldMat = instance.target->GetWorldMatrix();
-            Vector3 forward = { worldMat.m[0][2], worldMat.m[1][2], worldMat.m[2][2] };
+            engine::Matrix4x4 worldMat = instance.target->GetWorldMatrix();
+            engine::Vector3 forward = { worldMat.m[0][2], worldMat.m[1][2], worldMat.m[2][2] };
 
             // 正規化
             float len = std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
@@ -247,25 +246,25 @@ void LightManager::Update() {
         // --- GPUバッファへコピー ---
         int index = spotLightConstData_->activeCount;
         MeshRenderer::SpotLight gpuLight = instance.data;
-        gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
+        gpuLight.color = engine::ColorSpace::AuthoringToWorking(gpuLight.color);
         spotLightConstData_->lights[index] = gpuLight;
         spotLightConstData_->activeCount++;
     }
 }
 
-const Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const Camera* camera) {
+const engine::Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const Camera* camera) {
     // 光源方向とカメラ注視点から影領域を組み立て、キャッシュ行列を更新します。
-    Math math;
-    Vector3 lightDirection = directionalLightData_.direction;
-    if (Math::Length(lightDirection) > 0.0001f) {
-        lightDirection = Math::Normalize(lightDirection);
+    engine::Math math;
+    engine::Vector3 lightDirection = directionalLightData_.direction;
+    if (engine::Math::Length(lightDirection) > 0.0001f) {
+        lightDirection = engine::Math::Normalize(lightDirection);
     }
     else {
         lightDirection = { 0.0f, -1.0f, 0.0f };
     }
     directionalLightData_.direction = lightDirection;
 
-    const Vector3 target = camera ? camera->GetEye() : Vector3{};
+    const engine::Vector3 target = camera ? camera->GetEye() : engine::Vector3{};
     const float areaSize = std::clamp(shadowAreaSize_, 20.0f, 240.0f);
     const auto changed = [](float lhs, float rhs) {
         return std::abs(lhs - rhs) > 0.0001f;
@@ -280,18 +279,18 @@ const Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const Camera* 
         changed(lightDirection.z, cachedShadowDirection_.z);
 
     if (!shadowMatrixCacheValid_ || eyeChanged || directionChanged || changed(areaSize, cachedShadowAreaSize_)) {
-        const Vector3 lightPosition = {
+        const engine::Vector3 lightPosition = {
             target.x - lightDirection.x * 200.0f,
             target.y - lightDirection.y * 200.0f,
             target.z - lightDirection.z * 200.0f,
         };
-        Vector3 up = { 0.0f, 1.0f, 0.0f };
+        engine::Vector3 up = { 0.0f, 1.0f, 0.0f };
         if (std::abs(lightDirection.x) < 0.001f && std::abs(lightDirection.z) < 0.001f) {
             up = { 0.0f, 0.0f, 1.0f };
         }
 
-        const Matrix4x4 lightView = math.MakeLookAtMatrix(lightPosition, target, up);
-        const Matrix4x4 lightProjection = math.MakeOrthographicMatrix(areaSize, areaSize, 1.0f, 400.0f);
+        const engine::Matrix4x4 lightView = math.MakeLookAtMatrix(lightPosition, target, up);
+        const engine::Matrix4x4 lightProjection = math.MakeOrthographicMatrix(areaSize, areaSize, 1.0f, 400.0f);
         directionalLightData_.lightViewProj = math.Multiply(lightView, lightProjection);
         cachedShadowEye_ = target;
         cachedShadowDirection_ = lightDirection;
@@ -423,8 +422,8 @@ void LightManager::ClearAllLights() {
 }
 
 void LightManager::PlayPointLightPulse(
-    const Vector3& position,
-    const Vector4& color,
+    const engine::Vector3& position,
+    const engine::Vector4& color,
     float intensity,
     float radius,
     float duration,
@@ -813,12 +812,12 @@ bool LightManager::LoadEnvironmentProfile(
         file >> root;
         profile = CaptureEnvironmentProfile();
 
-        const auto readVector3 = [](const json& value, Vector3& destination) {
+        const auto readVector3 = [](const json& value, engine::Vector3& destination) {
             if (value.is_array() && value.size() >= 3) {
                 destination = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             }
         };
-        const auto readVector4 = [](const json& value, Vector4& destination) {
+        const auto readVector4 = [](const json& value, engine::Vector4& destination) {
             if (value.is_array() && value.size() >= 4) {
                 destination = {
                     value[0].get<float>(), value[1].get<float>(),
@@ -963,19 +962,19 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
         1.0f);
     const float t = linearT * linearT * (3.0f - 2.0f * linearT);
     const auto lerp = [t](float from, float to) { return from + (to - from) * t; };
-    const auto lerp3 = [&](const Vector3& from, const Vector3& to) {
-        return Vector3{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z) };
+    const auto lerp3 = [&](const engine::Vector3& from, const engine::Vector3& to) {
+        return engine::Vector3{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z) };
     };
-    const auto lerp4 = [&](const Vector4& from, const Vector4& to) {
-        return Vector4{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z), lerp(from.w, to.w) };
+    const auto lerp4 = [&](const engine::Vector4& from, const engine::Vector4& to) {
+        return engine::Vector4{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z), lerp(from.w, to.w) };
     };
 
     const DirectionalLight& fromLight = environmentBlendFrom_.directionalLight;
     const DirectionalLight& toLight = environmentBlendTo_.directionalLight;
     directionalLightData_.color = lerp4(fromLight.color, toLight.color);
     directionalLightData_.direction = lerp3(fromLight.direction, toLight.direction);
-    if (Math::Length(directionalLightData_.direction) > 0.0001f) {
-        directionalLightData_.direction = Math::Normalize(directionalLightData_.direction);
+    if (engine::Math::Length(directionalLightData_.direction) > 0.0001f) {
+        directionalLightData_.direction = engine::Math::Normalize(directionalLightData_.direction);
     }
     directionalLightData_.intensity = lerp(fromLight.intensity, toLight.intensity);
     directionalLightData_.ambientColor = lerp3(fromLight.ambientColor, toLight.ambientColor);

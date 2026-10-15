@@ -1,5 +1,11 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "ParticleCommon.h"
+#include "Text.h"
+#include "game/ui/ControlsGuideOverlay.h"
+#include "game/ui/PauseMenuOverlay.h"
+#include "game/ui/SettingsMenuOverlay.h"
+#include "game/ui/SaveIndicatorOverlay.h"
 #include "ScenePreloader.h"
 #include "SceneController.h"
 #include "SceneManager.h"
@@ -40,43 +46,6 @@
 #include <iterator>
 
 namespace {
-
-// 操作ガイドは起動直後の初回表示でも画像のデコード待ちを出さないよう、
-// 再生可能なコピー能力の肖像と操作ラベルをロード画面の対象に含めます。
-constexpr const char* kControlsGuidePortraitsToPreload[] = {
-    "Resources/sprite/ui/control_guide/portraits/pink_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/bomb_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/wind_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/fire_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/thunder_slime.png"};
-
-constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
-    // 共通操作と通常形態。
-    "Resources/sprite/ui/control_guide/labels/absorb.png",
-    "Resources/sprite/ui/control_guide/labels/throw.png",
-    "Resources/sprite/ui/control_guide/labels/slime_attack.png",
-    "Resources/sprite/ui/control_guide/labels/hook_aim.png",
-    "Resources/sprite/ui/control_guide/labels/slime_dive.png",
-
-    // 変身後の技は能力ごとに表示されるため、現在の能力だけに絞らず先読みします。
-    "Resources/sprite/ui/control_guide/labels/puni_straight.png",
-    "Resources/sprite/ui/control_guide/labels/puni_guard.png",
-
-    "Resources/sprite/ui/control_guide/labels/bomb_throw.png",
-    "Resources/sprite/ui/control_guide/labels/bomb_place.png",
-    "Resources/sprite/ui/control_guide/labels/blast_jump.png",
-
-    "Resources/sprite/ui/control_guide/labels/fireball.png",
-    "Resources/sprite/ui/control_guide/labels/flame_breath.png",
-    "Resources/sprite/ui/control_guide/labels/blaze_step.png",
-
-    "Resources/sprite/ui/control_guide/labels/thunder_chain.png",
-    "Resources/sprite/ui/control_guide/labels/charged_discharge.png",
-    "Resources/sprite/ui/control_guide/labels/thunder_step.png",
-
-    "Resources/sprite/ui/control_guide/labels/updraft.png",
-    "Resources/sprite/ui/control_guide/labels/wind_breath.png",
-    "Resources/sprite/ui/control_guide/labels/wind_dash.png"};
 
 // ここはエフェクト定義の所有リストです。Stage JSONに現れない攻撃演出も、
 // 初回発動時のファイル読込を避けるためGameplay開始前に登録します。
@@ -416,16 +385,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
         manifest.AddJson("Resources/json/vfx_sequence/" + std::string(sequenceName) + ".json");
     }
-    // 操作ガイドとコピー能力HUDは開始直後に開けるため、現在形態以外も先読みします。
-    for (const char* path : kControlsGuidePortraitsToPreload) {
-        manifest.AddTexture(path);
-    }
-    for (const char* path : kControlsGuideAbilityLabelsToPreload) {
-        manifest.AddTexture(path);
-    }
-    for (const char* path : CopyStyleHud::kTexturePaths) {
-        manifest.AddTexture("Resources/sprite/" + std::string(path));
-    }
+    // 操作ガイドとコピー能力HUDの画像はcontrolsGuide.jsonの参照から収集します。
     // 演出カメラやゴール画面で使う固定素材は、Scene JSONに参照がなくても必要です。
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
@@ -739,7 +699,7 @@ void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
 bool GamePlayScene::InitializeRenderCommons() {
     // 2D・3D・通常粒子の共通描画器を先に用意して各マネージャーへ渡す。
     if (loadingRenderCommonPhase_ == 0) {
-        spriteCommon_ = std::make_unique<SpriteCommon>();
+        spriteCommon_ = std::make_unique<engine::SpriteCommon>();
         spriteCommon_->Initialize(dxCommon_);
         ++loadingRenderCommonPhase_;
         return false;
@@ -804,7 +764,7 @@ void GamePlayScene::InitializeGameplayObjectSystems() {
     lockOnSystem_->Initialize(inputManager_);
 
     uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
-    lockOnSprite_ = std::make_unique<Sprite>();
+    lockOnSprite_ = std::make_unique<engine::Sprite>();
     lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
     lockOnSprite_->SetName("HUD_LockOn");
     lockOnSprite_->SetTextureName("ui/hud/lockOn.png");
@@ -890,6 +850,9 @@ void GamePlayScene::LoadCurrentStageSpritesAndView(const StageData& currentStage
 
 void GamePlayScene::InitializeGameplayOverlays() {
     // プレイヤー参照と SpriteCommon が揃ってから操作ガイドとメニューを作る。
+    pauseGuideSession_ = false;
+    pausePageSliding_ = false;
+    pausePageSlideTime_ = 0.0f;
     controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
     controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
 
@@ -970,7 +933,7 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
     const GameDataManager::StageCheckpointRespawn checkpoint =
         GameDataManager::GetInstance()->ConsumeStageCheckpointRespawn();
     if (checkpoint.active && player_ && checkpoint.stageIndex == StageManager::GetInstance()->GetCurrentStageIndex()) {
-        const Vector3 respawnPosition{checkpoint.positionX, checkpoint.positionY, checkpoint.positionZ};
+        const engine::Vector3 respawnPosition{checkpoint.positionX, checkpoint.positionY, checkpoint.positionZ};
         player_->SetTranslate(respawnPosition);
         player_->ActivateCheckpoint(respawnPosition, checkpoint.checkpointObjectName);
         if (gameRule_) {
@@ -990,12 +953,12 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
     }
 
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-    Vector2 irisCenter = {0.5f, 0.5f};
+    engine::Vector2 irisCenter = {0.5f, 0.5f};
     if (cam && player_) {
         cam->Update();
-        Vector3 worldPos = player_->GetWorldPosition();
+        engine::Vector3 worldPos = player_->GetWorldPosition();
         worldPos.y += 1.0f;
-        Vector3 ndc = Math::Transform(worldPos, cam->GetViewProjectionMatrix());
+        engine::Vector3 ndc = engine::Math::Transform(worldPos, cam->GetViewProjectionMatrix());
         const bool isOnScreen = std::isfinite(ndc.x) && std::isfinite(ndc.y) && std::isfinite(ndc.z) && ndc.z >= 0.0f &&
                                 std::abs(ndc.x) <= 1.15f && std::abs(ndc.y) <= 1.15f;
         if (isOnScreen) {

@@ -26,8 +26,8 @@ struct EnemyAttackDefinition {
     float minRange = 0.0f;
     float maxRange = 10.0f;
     std::string hitShape = "sphere";
-    Vector3 hitOffset = {0.0f, 0.0f, 0.0f};
-    Vector3 hitSize = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 hitOffset = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hitSize = {1.0f, 1.0f, 1.0f};
     float radius = 1.0f;
 
     // フェーズ時間と予告。すべて秒単位です。
@@ -41,7 +41,7 @@ struct EnemyAttackDefinition {
 
     // 命中時のダメージ・ノックバック・状態異常です。速度はワールド単位/秒、時間は秒です。
     float damage = 1.0f;
-    Vector3 knockbackVelocity = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 knockbackVelocity = {0.0f, 0.0f, 0.0f};
     float invincibilityDuration = 0.0f;
     std::string statusEffectType;
     float statusDuration = 0.0f;
@@ -78,7 +78,7 @@ struct EnemyAttackDefinition {
     /// <summary>ノックバックが設定されているか調べます。</summary>
     bool HasConfiguredKnockback() const;
     /// <summary>前方を基準にローカルノックバックをワールド方向へ変換します。</summary>
-    Vector3 ResolveKnockback(const Vector3& forward, const Vector3& legacyFallback) const;
+    engine::Vector3 ResolveKnockback(const engine::Vector3& forward, const engine::Vector3& legacyFallback) const;
     /// <summary>無敵時間が未設定なら従来値を使います。</summary>
     float ResolveInvincibilityDuration(float legacyFallback = 1.0f) const;
 };

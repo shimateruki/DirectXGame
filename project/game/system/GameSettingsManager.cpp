@@ -10,11 +10,13 @@
 #include <fstream>
 
 namespace {
+// 保存・再生に使う音量を設定可能な範囲へ制限します。
 float ClampVolume(float value) {
     // 壊れた保存値の NaN は音量計算へ流さず既定値へ戻す。
     return std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : 1.0f;
 }
 
+// マウス感度を設定可能な範囲へ制限します。
 float ClampSensitivity(float value) {
     // 無効な設定でカメラ操作が止まらないよう有効範囲へ丸める。
     return std::isfinite(value) ? std::clamp(value, 0.2f, 1.0f) : 1.0f;

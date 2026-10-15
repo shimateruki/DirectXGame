@@ -27,7 +27,7 @@ bool AttackSequence::Start(const EnemyAttackDefinition& definition, const Attack
     initialContext_ = context;
     initialContext_.owner = nullptr; // 保存するのは座標のみ。寿命のあるActor参照を持ち越しません。
     trackStates_ = std::move(prepared);
-    bodyPose_ = std::make_shared<Matrix4x4>(Math::MakeIdentity4x4());
+    bodyPose_ = std::make_shared<engine::Matrix4x4>(engine::Math::MakeIdentity4x4());
     if (context.owner && context.owner->GetMeshRenderer())
         context.owner->GetMeshRenderer()->SetTimelineVisualTransform(bodyPose_);
     Update(0.0f, context); // 時刻0の命令を入力されたフレームに実行します。
@@ -58,9 +58,9 @@ bool AttackSequence::CheckCondition(const std::string& condition, const AttackSe
     if (condition == "airborne") return !context.grounded;
     if (condition == "target_in_range") {
         // 照準時に固定した発射速度用の距離と、発火時点の射程判定を分けます。
-        Vector3 difference = context.targetPosition - context.position;
+        engine::Vector3 difference = context.targetPosition - context.position;
         difference.y = 0;
-        const float distance = Math::Length(difference);
+        const float distance = engine::Math::Length(difference);
         return context.hasTarget && distance >= definition_.minRange && distance <= definition_.maxRange;
     }
     return condition == "always";
@@ -92,7 +92,7 @@ void AttackSequence::Cancel() {
 void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& context) {
     const float now = clock_.GetElapsed();
     std::vector<DamageEvent> damageEvents;
-    if (bodyPose_) *bodyPose_ = Math::MakeIdentity4x4();
+    if (bodyPose_) *bodyPose_ = engine::Math::MakeIdentity4x4();
     std::vector<size_t> order(definition_.sequence.tracks.size());
     std::iota(order.begin(), order.end(), size_t{0});
     // 一更新で分岐元の終了と後続の開始を跨いでも、JSONの配列順に依存させません。
@@ -121,13 +121,13 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             origin.position = trackStates_[track.parentTrack].worldPosition;
             origin.forward = trackStates_[track.parentTrack].worldForward;
         }
-        Vector3 forward{origin.forward.x, 0, origin.forward.z};
-        const float length = Math::Length(forward);
-        forward = length > 0.0001f ? forward * (1 / length) : Vector3{0, 0, 1};
-        const Vector3 right{forward.z, 0, -forward.x};
+        engine::Vector3 forward{origin.forward.x, 0, origin.forward.z};
+        const float length = engine::Math::Length(forward);
+        forward = length > 0.0001f ? forward * (1 / length) : engine::Vector3{0, 0, 1};
+        const engine::Vector3 right{forward.z, 0, -forward.x};
         auto positionAt = [&](const AttackTransformKey& key) {
             if (track.motion != "keyframed" && state.motionInitialized) return state.motion.position;
-            return origin.position + right * key.position[0] + Vector3{0, key.position[1], 0} + forward * key.position[2];
+            return origin.position + right * key.position[0] + engine::Vector3{0, key.position[1], 0} + forward * key.position[2];
         };
         const float localTime = std::clamp(now - track.begin, 0.0f, track.end - track.begin);
         const auto key = track.Evaluate(localTime);
@@ -138,7 +138,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
                 state.motion.direction = forward;
                 state.motionInitialized = true;
             }
-            state.motion.Advance(track, localTime, context.targetPosition + Vector3{0, track.targetHeight, 0}, context.hasTarget);
+            state.motion.Advance(track, localTime, context.targetPosition + engine::Vector3{0, track.targetHeight, 0}, context.hasTarget);
         }
         state.worldPosition = positionAt(key);
         state.worldForward = track.motion != "keyframed" ? state.motion.direction : forward;
@@ -148,13 +148,13 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             if (!state.bodyClip.Evaluate(track.clipOffset + localTime * track.playbackSpeed, track.loop, sample)) continue;
             const float weight = (std::min)(track.blendIn > 0 ? std::clamp(localTime / track.blendIn, 0.0f, 1.0f) : 1.0f,
                 track.blendOut > 0 ? std::clamp((track.end - now) / track.blendOut, 0.0f, 1.0f) : 1.0f);
-            Matrix4x4 shear = Math::MakeIdentity4x4();
+            engine::Matrix4x4 shear = engine::Math::MakeIdentity4x4();
             shear.m[1][0] = sample.shear.x * weight;
             shear.m[1][2] = sample.shear.z * weight;
             shear.m[3][0] = -sample.shearPivotY * shear.m[1][0];
             shear.m[3][2] = -sample.shearPivotY * shear.m[1][2];
-            const Vector3 scale{1 + (sample.scale.x - 1) * weight, 1 + (sample.scale.y - 1) * weight, 1 + (sample.scale.z - 1) * weight};
-            *bodyPose_ = Math::Multiply(shear, Math::MakeAffineMatrix(scale, sample.rotate * weight, sample.translate * weight));
+            const engine::Vector3 scale{1 + (sample.scale.x - 1) * weight, 1 + (sample.scale.y - 1) * weight, 1 + (sample.scale.z - 1) * weight};
+            *bodyPose_ = engine::Math::Multiply(shear, engine::Math::MakeAffineMatrix(scale, sample.rotate * weight, sample.translate * weight));
         } else if (track.type == "mesh_vfx") {
             auto* effects = MeshEffectManager::GetInstance();
             if (now >= track.end) {
@@ -180,7 +180,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             filter.ignoredObject = context.owner;
             const float previousLocal = std::clamp(previous - track.begin, 0.0f, track.end - track.begin);
             auto oldKey = track.Evaluate(previousLocal);
-            Vector3 oldPosition = state.hasPreviousPosition ? state.previousPosition : positionAt(oldKey);
+            engine::Vector3 oldPosition = state.hasPreviousPosition ? state.previousPosition : positionAt(oldKey);
             if (!state.hasPreviousPosition && track.parentTrack >= 0) {
                 const auto& parent = definition_.sequence.tracks[track.parentTrack];
                 const auto& parentState = trackStates_[track.parentTrack];
@@ -188,7 +188,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
                 const float frameEnd = (std::min)(now, parent.end);
                 const float fraction = frameEnd > frameBegin
                     ? std::clamp(((std::max)(previous, track.begin) - frameBegin) / (frameEnd - frameBegin), 0.0f, 1.0f) : 1;
-                oldPosition = Math::Lerp(parentState.frameStartPosition, parentState.worldPosition, fraction)
+                oldPosition = engine::Math::Lerp(parentState.frameStartPosition, parentState.worldPosition, fraction)
                     + positionAt(oldKey) - parentState.worldPosition;
             }
             std::vector<float> sampleTimes;
@@ -198,7 +198,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             sampleTimes.push_back(localTime);
             for (float sampleTime : sampleTimes) {
                 const auto sample = track.Evaluate(sampleTime);
-                const Vector3 position = positionAt(sample);
+                const engine::Vector3 position = positionAt(sample);
                 // 保持キーの切り替えは瞬間移動なので、中間空間へ攻撃判定を作らない。
                 const auto hits = oldKey.interpolation == 0
                     ? CollisionManager::GetInstance()->OverlapSphere(position, track.radius, filter)
@@ -236,7 +236,7 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
     // 定義された操作種別を共有の発生位置・速度へ解決してから実演出を起動する。
     const auto part = ResolveProjectileComponent(definition_, event);
     const auto emission = ResolveAttackSequenceEmission(event, context, part.minSpeed, part.maxSpeed);
-    const Vector3 position = emission.position;
+    const engine::Vector3 position = emission.position;
     if (event.operation == "gpu_vfx") {
         auto* particles = GPUParticleManager::GetInstance();
         if (particles->IsInitialized() && !event.preset.empty()) {
@@ -245,7 +245,7 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
         }
         return;
     }
-    const Vector3 direction = emission.direction;
+    const engine::Vector3 direction = emission.direction;
     const float speed = emission.speed;
     BulletVisualConfig visual;
     visual.collisionRadiusIsWorld = true;
@@ -284,9 +284,9 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
     const auto mask = CollisionCategories::Get(context.playerOwned ? "enemy" : "player") | CollisionCategories::Get("ground");
     for (int i = 0; i < event.count; ++i) {
         const float angle = event.count == 1 ? 0.0f : (static_cast<float>(i) / (event.count - 1) - 0.5f) * event.spreadDegrees * 0.01745329252f;
-        const Vector3 spread{direction.x * std::cos(angle) + direction.z * std::sin(angle), direction.y,
+        const engine::Vector3 spread{direction.x * std::cos(angle) + direction.z * std::sin(angle), direction.y,
                             direction.z * std::cos(angle) - direction.x * std::sin(angle)};
-        BulletManager::GetInstance()->Fire(position, spread * speed + Vector3{0, event.verticalSpeed, 0},
+        BulletManager::GetInstance()->Fire(position, spread * speed + engine::Vector3{0, event.verticalSpeed, 0},
             part.collisionEnabled ? attribute : 0, part.collisionEnabled ? mask : 0,
             part.model, part.radius, part.lifetime, visual, part.damage, status,
             part.style == "fire" ? DamageType::Fire : DamageType::Physical);

@@ -60,6 +60,7 @@ bool IsGeneratedLodFile(const fs::path& path) {
 }
 
 bool IsInsideDirectory(const fs::path& path, const fs::path& root) {
+    // 正規化したパスの境界を比較し、指定ディレクトリ外への出力を防ぐ。
     std::error_code ec;
     const fs::path fullPath = fs::absolute(path, ec).lexically_normal();
     if (ec) return false;
@@ -88,6 +89,7 @@ bool SafeDeleteGeneratedLodFile(const fs::path& path) {
 }
 
 std::string ToModelName(const fs::path& fullPath) {
+    // 素材のフルパスをエンジン内で参照するモデル名へ変換する。
     std::error_code ec;
     fs::path relative = fs::relative(fullPath, "Resources/3DModel", ec);
     if (ec || relative.empty()) {
@@ -106,7 +108,9 @@ std::string ToModelName(const fs::path& fullPath) {
 using EditorWindowsText::Utf8ToWide;
 using EditorWindowsText::WideToUtf8;
 
+// 外部コマンドへパスを一引数として渡せるよう、引用符をエスケープして全体を囲みます。
 std::string QuoteCommandArg(const std::string& value) {
+    // 外部最適化ツールへ渡す引数の引用符をエスケープする。
     std::string escaped;
     escaped.reserve(value.size() + 2);
     escaped.push_back('"');
@@ -129,6 +133,7 @@ std::string FormatFloat(float value) {
 }
 
 std::string FormatByteSize(std::int64_t bytes) {
+    // 最適化前後の容量比較用に単位を揃え、小数１桁まで表示する。
     const char* units[] = { "B", "KB", "MB", "GB" };
     double value = static_cast<double>((std::max)(std::int64_t{ 0 }, bytes));
     int unitIndex = 0;
@@ -147,6 +152,7 @@ std::string FormatByteSize(std::int64_t bytes) {
     return buffer;
 }
 
+// LODの段階ごとにプレビュー上のラベル色を選びます。
 ImU32 GetPreviewLabelColor(int level) {
     switch (level) {
     case 0:
@@ -161,6 +167,7 @@ ImU32 GetPreviewLabelColor(int level) {
 }
 
 std::string BuildPreviewLabelText(const nlohmann::json& lod) {
+    // 元モデルと簡略化モデルを区別し、切替距離と削減率をプレビュー上へ示す。
     const int level = (lod.is_object() && lod.contains("level") && lod["level"].is_number())
         ? lod["level"].get<int>()
         : 0;
@@ -185,6 +192,7 @@ std::string BuildPreviewLabelText(const nlohmann::json& lod) {
 }
 
 bool StartHiddenProcess(const std::string& commandLine, PROCESS_INFORMATION& processInfo) {
+    // 外部最適化ツールを非表示で起動し、終了待ちとハンドル解放は呼び出し側に委ねる。
     std::wstring command = Utf8ToWide(commandLine);
     if (command.empty()) {
         return false;
@@ -217,6 +225,7 @@ bool StartHiddenProcess(const std::string& commandLine, PROCESS_INFORMATION& pro
 }
 
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
+    // 最適化レポートの構文を確認し、読めない場合は結果を更新しない。
     std::ifstream file(path);
     if (!file) {
         return false;
@@ -280,6 +289,7 @@ bool HasGltfUnsafeLodFeature(const nlohmann::json& gltf) {
 }
 
 bool IsSupportedOptimizerSource(const fs::path& path) {
+    // glTFだけは既存のLOD拡張が競合する可能性を確認してから受け付ける。
     const std::string ext = ToLowerAscii(path.extension().string());
     if (ext == ".obj") {
         return true;
@@ -316,7 +326,7 @@ std::int64_t ReadInt64OrZero(const nlohmann::json& value, const char* key) {
     return value[key].get<std::int64_t>();
 }
 
-bool IsLodPreviewObject(const Object3d* object) {
+bool IsLodPreviewObject(const engine::Object3d* object) {
     if (!object) return false;
     return object->GetName().rfind(kLodPreviewPrefix, 0) == 0 || object->GetClassName() == "EditorOnly_LODPreview";
 }
@@ -328,7 +338,7 @@ void ModelOptimizerWindow::Initialize(DebugEditor* editor) {
     RefreshModelList();
 }
 
-void ModelOptimizerWindow::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+void ModelOptimizerWindow::SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
     // 3D プレビューのラベル投影に使う、Game View 内の表示範囲を保持する。
     gameViewOffsetX_ = offset.x;
     gameViewOffsetY_ = offset.y;
@@ -763,7 +773,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     }
 
     const PendingPreviewItem item = pendingPreviewItems_[pendingPreviewIndex_];
-    auto object = std::make_unique<Object3d>();
+    auto object = std::make_unique<engine::Object3d>();
     object->Initialize(common);
     object->SetName(std::string(kLodPreviewPrefix) + "LOD" + std::to_string(item.level));
     // 専用名で試験配置を識別し、衝突を無効にして通常の Scene 操作を妨げない。
@@ -778,7 +788,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     object->UpdateLocalMatrix();
     object->UpdateWorldMatrix();
 
-    Object3d* rawPreview = object.get();
+    engine::Object3d* rawPreview = object.get();
     scene->AddObjectImmediate(std::move(object));
     if (!firstPendingPreview_) {
         firstPendingPreview_ = rawPreview;
@@ -812,7 +822,7 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
         const int level = (lod.contains("level") && lod["level"].is_number()) ? lod["level"].get<int>() : 0;
         const std::string previewName = std::string(kLodPreviewPrefix) + "LOD" + std::to_string(level);
 
-        Object3d* previewObject = nullptr;
+        engine::Object3d* previewObject = nullptr;
         for (auto& object : scene->GetObjects()) {
             if (object && object->GetName() == previewName) {
                 previewObject = object.get();
@@ -824,10 +834,10 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
         }
 
         const AABB bounds = previewObject->GetModelWorldAABB();
-        Vector3 labelWorld = previewObject->GetWorldPosition();
+        engine::Vector3 labelWorld = previewObject->GetWorldPosition();
         labelWorld.y = bounds.max.y + 0.75f;
 
-        Vector2 labelScreen;
+        engine::Vector2 labelScreen;
         if (!ProjectWorldToGameView(labelWorld, labelScreen)) {
             continue;
         }
@@ -850,15 +860,15 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
 #endif
 }
 
-bool ModelOptimizerWindow::ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const {
+bool ModelOptimizerWindow::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
     // NDC から Game View の座標へ変換し、背面や画面外のラベルを省く。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) {
         return false;
     }
 
-    Matrix4x4 viewProjection = Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
-    Vector3 ndc = Math::Transform(world, viewProjection);
+    engine::Matrix4x4 viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    engine::Vector3 ndc = engine::Math::Transform(world, viewProjection);
     if (ndc.z < 0.0f || ndc.z > 1.0f) {
         return false;
     }
@@ -893,7 +903,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToSelected() {
     return ApplyLodConfigToObject(editor_ ? editor_->GetSelectedObject3D() : nullptr);
 }
 
-bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
+bool ModelOptimizerWindow::ApplyLodConfigToObject(engine::Object3d* object) {
     // 保存済みの LOD 設定を選択オブジェクトへ反映し、プレビューと実配置を揃えます。
     if (!editor_ || !object) {
         lastStatus_ = "LODを適用するObjectが選択されていません。";
@@ -911,14 +921,14 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
         return false;
     }
 
-    std::vector<Object3d::LodLevel> levels;
+    std::vector<engine::Object3d::LodLevel> levels;
     // 失敗レコードとモデル名のない候補を除き、距離LODの設定だけ採用する。
     for (const auto& lod : latestReport_["lods"]) {
         if (!lod.is_object()) continue;
         const int level = ReadIntOrZero(lod, "level");
         if (level <= 0) continue;
 
-        Object3d::LodLevel levelData;
+        engine::Object3d::LodLevel levelData;
         levelData.level = level;
         levelData.modelName = lod.value("modelName", "");
         levelData.distance = ReadFloatOrZero(lod, "distance");
@@ -947,7 +957,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
 
 bool ModelOptimizerWindow::AcceptGeneratedLods() {
     // 生成開始時の対象が残っていれば優先し、採用後に比較用 Object を撤去する。
-    Object3d* target = pendingApplyTarget_;
+    engine::Object3d* target = pendingApplyTarget_;
     if (!target && editor_) {
         target = editor_->GetSelectedObject3D();
     }
@@ -1020,7 +1030,7 @@ int ModelOptimizerWindow::DeleteGeneratedLodFilesFromReport() {
 
 void ModelOptimizerWindow::CreatePreviewObjects() {
     // 古い試験配置を取り除き、新しいレポートの各 LOD を横並びの生成待ちへ積む。
-    Object3d* selectedBeforeRemove = editor_ ? editor_->GetSelectedObject3D() : nullptr;
+    engine::Object3d* selectedBeforeRemove = editor_ ? editor_->GetSelectedObject3D() : nullptr;
     if (IsLodPreviewObject(selectedBeforeRemove)) {
         selectedBeforeRemove = nullptr;
     }
@@ -1048,7 +1058,7 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
         return;
     }
 
-    Vector3 origin = { 0.0f, 2.0f, 0.0f };
+    engine::Vector3 origin = { 0.0f, 2.0f, 0.0f };
     if (autoUseEffectPreviewStage_) {
         // 比較位置は隔離Stageを優先し、通常Sceneでは選択Objectの横に置く。
         EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
@@ -1117,14 +1127,14 @@ void ModelOptimizerWindow::RemovePreviewObjects() {
     }
 
     BaseScene* scene = editor_->GetSceneManager()->GetCurrentScene();
-    std::vector<Object3d*> targets;
+    std::vector<engine::Object3d*> targets;
     for (auto& object : scene->GetObjects()) {
         if (IsLodPreviewObject(object.get())) {
             targets.push_back(object.get());
         }
     }
 
-    for (Object3d* object : targets) {
+    for (engine::Object3d* object : targets) {
         scene->RequestRemoveObject(object);
     }
 }

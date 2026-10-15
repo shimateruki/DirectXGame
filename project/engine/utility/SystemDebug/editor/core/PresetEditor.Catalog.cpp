@@ -86,6 +86,7 @@ bool PresetEditor::MatchesSearch(const std::string& name, const json& data) cons
 }
 
 bool PresetEditor::MatchesCategory(const json& data, Category category) const {
+    // ステージ別カテゴリだけは内部種別に加えて選択中のコレクション名も照合する。
     if (category == Category::All) {
         return true;
     }
@@ -123,6 +124,7 @@ PresetEditor::Category PresetEditor::DetectCategory(const json& data) const {
 }
 
 const char* PresetEditor::GetCategoryLabel(Category category) const {
+    // 未知の値は一覧で空欄にせず、全件カテゴリの表示名へ戻す。
     switch (category) {
     case Category::Stage1: return "ステージ別";
     case Category::Enemy: return "敵";
@@ -135,6 +137,7 @@ const char* PresetEditor::GetCategoryLabel(Category category) const {
 }
 
 ImVec4 PresetEditor::GetCategoryColor(Category category) const {
+    // カテゴリごとの識別色を返し、未知の値には中立色を使う。
     switch (category) {
     case Category::Stage1: return ImVec4(0.16f, 0.76f, 0.88f, 1.0f);
     case Category::Enemy: return ImVec4(0.78f, 0.28f, 0.24f, 1.0f);
@@ -155,6 +158,7 @@ ImVec4 PresetEditor::GetStage1SectionColor(int sectionOrder) const {
 }
 
 std::string PresetEditor::ShortModelName(const std::string& modelName) const {
+    // リスト表示では最後のパス要素だけ見せ、保存している元の参照文字列は変えない。
     if (modelName.empty()) {
         return "(なし)";
     }
@@ -198,8 +202,9 @@ bool PresetEditor::ReadBool(const json& data, const char* key, bool defaultValue
     return defaultValue;
 }
 
-Vector3 PresetEditor::ReadVector3(const json& data, const char* key, const Vector3& defaultValue) const {
-    Vector3 value = defaultValue;
+engine::Vector3 PresetEditor::ReadVector3(const json& data, const char* key, const engine::Vector3& defaultValue) const {
+    // 数値でない要素だけ既定値を保ち、部分的に壊れた配置値も読めるようにする。
+    engine::Vector3 value = defaultValue;
     if (data.contains(key) && data[key].is_array() && data[key].size() >= 3) {
         if (data[key][0].is_number()) value.x = data[key][0].get<float>();
         if (data[key][1].is_number()) value.y = data[key][1].get<float>();
@@ -217,6 +222,7 @@ std::string PresetEditor::ToLower(const std::string& value) const {
 }
 
 std::vector<PresetEditor::TypeOption> PresetEditor::GetEnemyOptions() const {
+    // Preset作成UIに出す敵種と、Factoryへ渡す識別子を組で定義する。
     return {
         { "FireSlime", "Fire Slime" },
         { "ThunderSlime", "Thunder Slime" },
@@ -229,6 +235,7 @@ std::vector<PresetEditor::TypeOption> PresetEditor::GetEnemyOptions() const {
 }
 
 std::vector<PresetEditor::TypeOption> PresetEditor::GetGimmickOptions() const {
+    // 保存する内部IDとEditor表示名を同じ順番で保持し、選択値の対応を明示する。
     return {
         { "Default", "通常" },
         { "MovingFloor", "移動床" },

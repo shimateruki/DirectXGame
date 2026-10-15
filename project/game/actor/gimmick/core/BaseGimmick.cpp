@@ -3,7 +3,7 @@
 #include <typeinfo>
 
 void BaseGimmick::Initialize(Object3dCommon* common, const std::string& modelName) {
-    Object3d::Initialize(common);
+    engine::Object3d::Initialize(common);
 
     // モデル読み込みと設定
     ModelManager::GetInstance()->LoadModel(modelName);
@@ -25,16 +25,16 @@ void BaseGimmick::Initialize(Object3dCommon* common, const std::string& modelNam
 
 void BaseGimmick::Update(float deltaTime) {
     // 共通の Transform・描画・当たり判定更新を派生ギミックにも適用する。
-    Object3d::Update(deltaTime);
+    engine::Object3d::Update(deltaTime);
 }
 
-bool BaseGimmick::OnCollision(Object3d* other) {
+bool BaseGimmick::OnCollision(engine::Object3d* other) {
     // 基底クラスでは特に何もしない。派生クラスで処理する
     (void)other;
     return false;
 }
 
-std::unique_ptr<Object3d> BaseGimmick::Clone() const {
+std::unique_ptr<engine::Object3d> BaseGimmick::Clone() const {
     // 派生型を基底型として複製しない。各派生クラスが自分の複製を担当する。
     if (typeid(*this) != typeid(BaseGimmick)) {
         return nullptr;

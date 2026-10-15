@@ -130,7 +130,7 @@ void PlayerCopyAbilityController::DrawOwnedVisuals(Player& player, uint32_t dept
     }
 }
 
-bool PlayerCopyAbilityController::NotifyGuardedHit(Player& player, const Vector3& sourcePosition) {
+bool PlayerCopyAbilityController::NotifyGuardedHit(Player& player, const engine::Vector3& sourcePosition) {
     // ガード成功後の能力固有反応が発生したかを呼び出し元へ返す。
     return impl_->session && impl_->session->NotifyGuardedHit(player, sourcePosition);
 }

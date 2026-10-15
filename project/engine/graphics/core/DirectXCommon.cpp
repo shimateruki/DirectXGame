@@ -4,6 +4,7 @@
 #include "engine/system/scene/LoadingProfiler.h"
 #include "WinApp.h"
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <chrono>
 #include <format>
@@ -268,6 +269,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	// 同じシェーダーをシーンや粒子システムごとに再コンパイルしない。
 	// 元ファイルとinclude先の更新時刻が変わればキャッシュを無効にする。
 	using ShaderKey = std::tuple<std::wstring, std::wstring, std::wstring>;
+	/// <summary>コンパイル済みシェーダーと依存ファイルを一緒に保持し、更新判定に使う。</summary>
 	struct CachedShader {
 		std::vector<ShaderDependency> dependencies;
 		Microsoft::WRL::ComPtr<IDxcBlob> blob;
@@ -289,6 +291,34 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 		if (unchanged) return found->second.blob;
 	}
 
+#if defined(NDEBUG) && !defined(USE_IMGUI)
+	// 配布セットの事前コンパイル済みDXILを優先する。Shaderとinclude先が更新されていれば使わない。
+	const std::filesystem::path compiledPath = std::filesystem::path("StartupShaderCache") /
+		std::filesystem::path(filePath + L"." + profile + L"." + entryPoint + L".cso");
+	std::error_code cacheError;
+	const auto compiledTime = std::filesystem::last_write_time(compiledPath, cacheError);
+	if (!cacheError) {
+		std::set<std::filesystem::path> visited;
+		std::vector<ShaderDependency> dependencies;
+		if (CollectShaderDependencies(filePath, visited, dependencies)) {
+			const bool current = std::all_of(dependencies.begin(), dependencies.end(),
+				[compiledTime](const ShaderDependency& dependency) {
+					return dependency.second <= compiledTime;
+				});
+			if (current) {
+				Microsoft::WRL::ComPtr<IDxcBlobEncoding> compiledFile;
+				if (SUCCEEDED(dxcUtils_->LoadFile(compiledPath.c_str(), nullptr, &compiledFile))) {
+					Microsoft::WRL::ComPtr<IDxcBlob> compiledBlob;
+					if (SUCCEEDED(compiledFile.As(&compiledBlob))) {
+						shaderCache[key] = {std::move(dependencies), compiledBlob};
+						return compiledBlob;
+					}
+				}
+			}
+		}
+	}
+#endif
+
 	Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
 	// メンバ変数のdxcUtils_を使う
 	HRESULT hr = dxcUtils_->LoadFile(filePath.c_str(), nullptr, &shaderSource);
@@ -299,10 +329,17 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	shaderSourceBuffer.Size = shaderSource->GetBufferSize();
 	shaderSourceBuffer.Encoding = DXC_CP_UTF8;
 
+	// 配布版はシェーダーのデバッグ情報を埋め込まず、コンパイルとPSO生成の負担を減らす。
+#if defined(NDEBUG) && !defined(USE_IMGUI)
 	LPCWSTR arguments[] = {
-		  filePath.c_str(), L"-E", entryPoint, L"-T", profile,
-		  L"-Zi", L"-Qembed_debug", L"-Od", L"-Zpr",
+		filePath.c_str(), L"-E", entryPoint, L"-T", profile, L"-Od", L"-Zpr",
 	};
+#else
+	LPCWSTR arguments[] = {
+		filePath.c_str(), L"-E", entryPoint, L"-T", profile,
+		L"-Zi", L"-Qembed_debug", L"-Od", L"-Zpr",
+	};
+#endif
 
 	Microsoft::WRL::ComPtr<IDxcResult> shaderResult = nullptr;
 	// メンバ変数のdxcCompiler_, includeHandler_を使う
@@ -314,7 +351,6 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	Microsoft::WRL::ComPtr<IDxcBlobUtf8> shaderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
 	if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
-		// Log(shaderError->GetStringPointer()); // ログ関数を呼び出す
 		assert(false);
 	}
 
@@ -407,6 +443,12 @@ void DirectXCommon::PostDraw() {
 	commandQueue_->ExecuteCommandLists(1, commandLists);
 	const auto presentStart = std::chrono::steady_clock::now();
 	swapChain_->Present(1, 0);
+	static bool firstPresentLogged = false;
+	if (!firstPresentLogged) {
+		// 最初のタイトルフレームを表示した時点を起動時間の終点とする。
+		LogStartupProfileCheckpoint("first Present");
+		firstPresentLogged = true;
+	}
 	const double presentMs = std::chrono::duration<double, std::milli>(
 		std::chrono::steady_clock::now() - presentStart).count();
 	if (presentMs >= 40.0) {
@@ -436,10 +478,10 @@ void DirectXCommon::PostDraw() {
 void DirectXCommon::InitializeDXGIDevice() {
 
 #ifdef _DEBUG
+	// Debug構成だけD3D12診断レイヤーを有効にする。
 	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
 		debugController->EnableDebugLayer();
-		//debugController->SetEnableGPUBasedValidation(true);
 	}
 #endif
 
@@ -447,6 +489,7 @@ void DirectXCommon::InitializeDXGIDevice() {
 	assert(SUCCEEDED(hr));
 
 	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter;
+	// ソフトウェアアダプタを避け、高性能GPUから順に実デバイスを選ぶ。
 	for (UINT i = 0; dxgiFactory_->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAdapter)) != DXGI_ERROR_NOT_FOUND; ++i) {
 		DXGI_ADAPTER_DESC3 adapterDesc{};
 		hr = useAdapter->GetDesc3(&adapterDesc);
@@ -459,6 +502,7 @@ void DirectXCommon::InitializeDXGIDevice() {
 	assert(useAdapter != nullptr);
 
 	D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0 };
+	// 上位の機能レベルが使えない環境では対応可能なレベルまで下げる。
 	for (size_t i = 0; i < _countof(featureLevels); ++i) {
 		hr = D3D12CreateDevice(useAdapter.Get(), featureLevels[i], IID_PPV_ARGS(&device_));
 		if (SUCCEEDED(hr)) {
@@ -687,14 +731,13 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bo
 		whiteImage.rowPitch = 4;
 		whiteImage.slicePitch = 4;
 
-		uint8_t* pixels = new uint8_t[4]{ 255, 255, 255, 255 };
-		whiteImage.pixels = pixels;
+		// ScratchImage は画素を内部バッファへコピーするため、ローカル配列で十分。
+		std::array<uint8_t, 4> pixels{ 255, 255, 255, 255 };
+		whiteImage.pixels = pixels.data();
 
 		image.InitializeFromImage(whiteImage);
 		mipImages.InitializeFromImage(whiteImage);
 
-		// ★ついでにメモリリーク修正: 配列をnewしたので delete[] が正解です
-		delete[] pixels;
 		return mipImages;
 	}
 
@@ -1425,7 +1468,7 @@ void DirectXCommon::ProcessPendingResize() {
 
 void DirectXCommon::SetRenderClearColor(float r, float g, float b, float a) {
     // 編集用の色を作業色空間へ変換し、描画スレッドと競合しないよう更新する。
-    const Vector4 workingColor = ColorSpace::AuthoringToWorking({ r, g, b, a });
+    const engine::Vector4 workingColor = engine::ColorSpace::AuthoringToWorking({ r, g, b, a });
     std::lock_guard<std::mutex> lock(clearColorMutex_);
     clearColor_[0] = workingColor.x;
     clearColor_[1] = workingColor.y;

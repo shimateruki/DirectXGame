@@ -15,6 +15,7 @@
 namespace {
 constexpr const char* kPath = "Saved/Editor/editor_tools.json";
 const std::vector<int>& Keys() {
+    // 操作設定で選べるキーコードを一度だけ構築し、予約コードを候補から除く。
     static const std::vector<int> keys = [] {
         std::vector<int> result{0};
         for (int key = 2; key <= 53; ++key) {
@@ -176,6 +177,7 @@ void EditorToolSettings::HandleShortcuts(bool editing) {
 }
 
 void EditorToolSettings::DrawToolsMenu() {
+    // ツールを用途別にまとめ、実行可否はコマンド登録側の状態へ合わせる。
     if (!ImGui::BeginMenu("ツール")) return;
     for (const char* category : {"戦闘", "演出", "ステージ", "素材", "検証・設定"}) {
         if (!ImGui::BeginMenu(category)) continue;

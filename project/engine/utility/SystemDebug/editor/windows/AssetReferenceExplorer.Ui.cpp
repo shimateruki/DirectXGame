@@ -129,7 +129,7 @@ void AssetReferenceExplorer::DrawSelectedAssetDetails() {
 
 void AssetReferenceExplorer::DrawSelectedObjectReferences() {
     // 選択Objectをその場でJSON化して、保存前のAsset参照も確認します。
-    Object3d* object = editor_ ? editor_->GetSelectedObject() : nullptr;
+    engine::Object3d* object = editor_ ? editor_->GetSelectedObject() : nullptr;
     if (!object) {
         ImGui::TextDisabled("HierarchyまたはGameViewでObjectを選択してください。");
         return;

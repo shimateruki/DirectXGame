@@ -4,12 +4,14 @@
 #include "BaseScene.h"
 #include "CollisionConfig.h"
 #include "GameAudioSettings.h"
+#include "GameDataManager.h"
 #include "Player.h"
 #include "SceneManager.h"
 #include "VFXSequencer.h"
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 
 void GimmickGameplayVolume::Initialize(Object3dCommon* common, const std::string& modelName) {
     // プレイヤーだけを検知する透明な OBB とし、用途は JSON の volumeMode で選ぶ。
@@ -26,7 +28,7 @@ void GimmickGameplayVolume::Initialize(Object3dCommon* common, const std::string
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
 
-    Object3d::ColliderConfig collider;
+    engine::Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 0.0f, 0.0f};
     collider.size = {1.0f, 1.0f, 1.0f};
@@ -77,7 +79,7 @@ void GimmickGameplayVolume::Draw(ID3D12Resource* pointLightResource, ID3D12Resou
     }
 }
 
-bool GimmickGameplayVolume::OnCollision(Object3d* other) {
+bool GimmickGameplayVolume::OnCollision(engine::Object3d* other) {
     // プレイヤーが入った最初のフレームだけ入場処理を呼び、物理的には押し戻さない。
     auto* player = dynamic_cast<Player*>(other);
     if (!player) {
@@ -114,7 +116,7 @@ void GimmickGameplayVolume::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickGameplayVolume::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickGameplayVolume::Clone() const {
     // 実行時の占有と一度きりの発動履歴は複製先へ引き継がない。
     auto clone = std::make_unique<GimmickGameplayVolume>();
     assert(common_ != nullptr);
@@ -189,14 +191,27 @@ void GimmickGameplayVolume::Activate(Player* player) {
         break;
     case Mode::Checkpoint:
         if (player) {
-            const Vector3 checkpointPosition = GetWorldPosition();
+            const engine::Vector3 checkpointPosition = GetWorldPosition();
+            const engine::Vector3 previousRespawnPosition = player->GetRespawnPosition();
+            const bool restoringSameCheckpoint =
+                std::abs(previousRespawnPosition.x - checkpointPosition.x) < 0.01f &&
+                std::abs(previousRespawnPosition.y - checkpointPosition.y) < 0.01f &&
+                std::abs(previousRespawnPosition.z - checkpointPosition.z) < 0.01f;
             player->ActivateCheckpoint(checkpointPosition);
+            if (!restoringSameCheckpoint && !player->IsEditorInternal()) {
+                // 領域型のチェックポイントも旗と同じ報酬を与え、復活直後の再進入は除外します。
+                GameDataManager* gameData = GameDataManager::GetInstance();
+                if (gameData->GetLives() < GameDataManager::kMaxLives) {
+                    gameData->SetLives(gameData->GetLives() + 1);
+                }
+                player->RestoreHpToFull();
+            }
             VFXSequencer::PlayOneShot("checkpoint_activate_cue", checkpointPosition);
         }
         break;
     case Mode::FallDeath:
         if (player && !player->isDead) {
-            Vector3 position = player->GetTranslate();
+            engine::Vector3 position = player->GetTranslate();
             position.y = -19.0f;
             player->SetTranslate(position);
             player->SetVelocity({0.0f, 0.0f, 0.0f});

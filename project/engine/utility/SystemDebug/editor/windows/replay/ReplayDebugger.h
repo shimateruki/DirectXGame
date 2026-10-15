@@ -44,14 +44,18 @@ public:
     /// <param name="simulationDeltaTime">実際にゲーム更新へ渡した経過秒数。</param>
     /// <param name="isPlaying">現在Play中ならtrue。</param>
     void CaptureAfterSimulation(float simulationDeltaTime, bool isPlaying);
+    /// <summary>Replay Debuggerのウィンドウを描画する。</summary>
     void Draw(bool* open);
 
     /// <summary>有効なシーンの履歴を停止・再生表示中で、通常のゲーム更新を止めるべきか返す。</summary>
     bool ShouldFreezeSimulation() const;
+    /// <summary>記録モード中か返す。</summary>
     bool IsRecording() const { return mode_ == Mode::Recording; }
+    /// <summary>再生できる履歴フレームがあるか返す。</summary>
     bool HasFrames() const;
+    /// <summary>現在の記録・停止・再生モードを返す。</summary>
     Mode GetMode() const { return mode_; }
-    // Main Menu Barから、実行を停止または選択時点から分岐再開します。
+    /// <summary>実行を停止するか、選択時点から分岐して再開する。</summary>
     void ToggleSimulationPause();
 
     /// <summary>Play開始直前の編集状態を通常の巻き戻し履歴とは別に保持する。</summary>
@@ -60,15 +64,16 @@ public:
     /// <summary>Play中に生成したObjectやSpriteを除き、同じSceneへ編集状態を復元する。</summary>
     /// <returns>保存した基準フレームを同じシーンへ適用できた場合にtrue。</returns>
     bool RestorePlayInEditorSnapshot();
+    /// <summary>Play開始前の編集状態を保持しているか返す。</summary>
     bool HasPlayInEditorSnapshot() const { return playInEditorSnapshot_.has_value(); }
 
-    // 再生停止やシーン再読み込みの直前に、保持オブジェクトを通常管理へ戻します。
+    /// <summary>シーン変更前に保持オブジェクトを通常管理へ戻し、履歴を解除する。</summary>
     void ResetForSceneChange();
 
-    // 回帰テスト中は記録時のフレーム時間をGame更新へ渡す。
+    /// <summary>回帰再生中は記録時のフレーム時間をゲーム更新へ渡す。</summary>
     /// <param name="defaultDeltaTime">通常更新で使う経過秒数。</param>
     float ResolveSimulationDeltaTime(float defaultDeltaTime) const;
-    // 描画完了後に、回帰テストで予約されたGame View画像を保存します。
+    /// <summary>描画後に、回帰テストで予約されたGame View画像を保存する。</summary>
     void CapturePendingRegressionScreenshot(CaptureToolWindow* captureTool);
 
 private:
@@ -83,7 +88,7 @@ private:
         std::string enemyType;
         std::string gimmickType;
         std::string itemType;
-        Object3d::ReplayState state;
+        engine::Object3d::ReplayState state;
     };
 
     // Sprite を再特定するキーと再生状態の値コピー。Sprite 本体の所有権は持たない。
@@ -92,7 +97,7 @@ private:
         std::string bindingKey;
         std::string textureName;
         std::string name;
-        Sprite::ReplayState state;
+        engine::Sprite::ReplayState state;
     };
 
     // 記録フレームの差分件数。再生状態そのものではなく、変更箇所を探すための統計。
@@ -110,9 +115,9 @@ private:
     // 記録した視点・注視点と投影設定。valid が false のときは復元可能なカメラ情報がない。
     struct CameraSnapshot {
         bool valid = false;
-        Vector3 eye = { 0.0f, 0.0f, 0.0f };
-        Vector3 target = { 0.0f, 0.0f, 1.0f };
-        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 eye = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 target = { 0.0f, 0.0f, 1.0f };
+        engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
         float fovY = 0.45f;
         float nearClip = 0.1f;
         float farClip = 1000.0f;
@@ -194,71 +199,136 @@ private:
         std::vector<InputSample> inputSamples;
     };
 
+    /// <summary>指定シーンを対象に入力と状態の記録を始める。</summary>
     void BeginRecording(BaseScene* scene);
+    /// <summary>指定時刻のシーン・Object・Sprite・Camera状態を保存する。</summary>
     void CaptureFrame(double time);
+    /// <summary>指定番号の記録フレームを現在シーンへ適用する。</summary>
     void ApplyFrame(std::size_t index);
+    /// <summary>指定フレームを適用してシミュレーションを停止する。</summary>
     void PauseAt(std::size_t index);
+    /// <summary>現在のカーソルから履歴再生を開始する。</summary>
     void StartPlayback();
+    /// <summary>選択時点の状態からシミュレーションを再開する。</summary>
     void ResumeFromCursor();
+    /// <summary>カーソルを指定方向へ一フレーム動かす。</summary>
     void StepCursor(int direction);
+    /// <summary>履歴を破棄し、必要なら記録を続ける。</summary>
     void ClearHistory(bool continueRecording);
+    /// <summary>世代と遷移状態を確認して有効な対象シーンを返す。</summary>
     BaseScene* GetValidatedActiveScene(bool allowTransition = false) const;
+    /// <summary>Replay用に保持したオブジェクトを通常管理へ戻す。</summary>
     void ReleaseRetainedObjects();
+    /// <summary>再生に使う一時的な実行状態を解除する。</summary>
     void ClearTransientRuntime();
+    /// <summary>時間と件数の上限を超えた古い履歴を削除する。</summary>
     void TrimToCapacity();
+    /// <summary>フレーム間の変化と生成・削除件数を集計する。</summary>
     void BuildFrameDiagnostics(FrameSnapshot& frame) const;
+    /// <summary>保持中の履歴が使用する概算メモリ量を再計算する。</summary>
     void RecalculateMemoryEstimate();
+    /// <summary>指定フレームの概算メモリ使用量を返す。</summary>
     std::size_t EstimateFrameBytes(const FrameSnapshot& frame) const;
+    /// <summary>設定された履歴秒数と記録頻度から最大フレーム数を返す。</summary>
     std::size_t GetMaxFrameCount() const;
+    /// <summary>現在のモードをUI表示用の文字列で返す。</summary>
     const char* GetModeLabel() const;
 
+    /// <summary>現在の履歴を再利用できるReplayアーカイブへ保存する。</summary>
+    /// <returns>保存に成功した場合はtrue。</returns>
     bool SaveCurrentReplayArchive();
+    /// <summary>保存済みReplayアーカイブの一覧と診断情報を更新する。</summary>
     void RefreshReplayArchiveList();
+    /// <summary>指定アーカイブの読み込みを予約する。</summary>
     bool RequestLoadReplayArchive(std::size_t archiveIndex);
+    /// <summary>アーカイブに記録されたシーンへの遷移を要求する。</summary>
     bool RequestPendingArchiveScene();
+    /// <summary>遷移先の準備ができたら保留中のアーカイブを読み込む。</summary>
     bool TryCompletePendingArchiveLoad(bool isPlaying);
+    /// <summary>現在シーンが保留中アーカイブの対象シーンか返す。</summary>
     bool IsPendingArchiveSceneCurrent() const;
+    /// <summary>保留中アーカイブのObject・Sprite参照を現在シーンへ結び直す。</summary>
     void RebindPendingArchiveToCurrentScene(BaseScene* scene);
+    /// <summary>読み込んだアーカイブの選択時点から再開できるか返す。</summary>
+    /// <param name="reason">再開できない場合の理由を受け取る任意の出力先。</param>
     bool CanResumeLoadedArchive(std::string* reason = nullptr) const;
+    /// <summary>フレーム時刻を先頭からの相対値にしてJSONへ保存する。</summary>
     json SerializeFrame(const FrameSnapshot& frame, double firstFrameTime) const;
+    /// <summary>JSONからフレームを復元し、不正データなら理由を返す。</summary>
     bool DeserializeFrame(const json& data, FrameSnapshot& frame, std::string& error) const;
 
+    /// <summary>ゲーム入力のReplay状態をJSONへ変換する。</summary>
     json SerializeInputState(const InputManager::ReplayState& state) const;
+    /// <summary>JSONからゲーム入力のReplay状態を復元する。</summary>
     bool DeserializeInputState(const json& data, InputManager::ReplayState& state, std::string& error) const;
+    /// <summary>入力サンプルを先頭からの相対時刻でJSONへ保存する。</summary>
     json SerializeInputSample(const InputSample& sample, double firstFrameTime) const;
+    /// <summary>JSONから時刻と入力を持つサンプルを復元する。</summary>
     bool DeserializeInputSample(const json& data, InputSample& sample, std::string& error) const;
 
+    /// <summary>指定アーカイブによる回帰再生を予約する。</summary>
     bool RequestStartRegression(std::size_t archiveIndex);
+    /// <summary>予約した回帰再生を開始し、比較結果を初期化する。</summary>
     bool StartRegression();
+    /// <summary>次の記録入力をゲーム更新前に適用する。</summary>
     void UpdateRegressionBeforeSimulation();
+    /// <summary>ゲーム更新後の実行状態と性能計測値を取得する。</summary>
     void CaptureRegressionAfterSimulation();
+    /// <summary>実行結果を記録済みフレームと比較し、不一致を収集する。</summary>
     void CompareRegressionFrame(const FrameSnapshot& expected);
+    /// <summary>回帰再生を止め、比較結果を確定する。</summary>
     void FinishRegression();
+    /// <summary>回帰比較の診断と画像パスをレポートへ書き出す。</summary>
     void FinalizeRegressionReport();
+    /// <summary>回帰再生中に撮るGame View画像の時刻を予約する。</summary>
     void QueueRegressionScreenshots();
+    /// <summary>フレーム内のプレイヤー記録を探す。見つからなければnullptr。</summary>
     const ObjectSnapshot* FindPlayerSnapshot(const FrameSnapshot& frame) const;
+    /// <summary>記録されたシーン状態がゴール到達を示すか返す。</summary>
     static bool IsGoalReached(const json& sceneState);
     // ReplayDebugger.Ui.cpp
+    /// <summary>記録・停止・再生の操作列を描画する。</summary>
     void DrawToolbar();
+    /// <summary>履歴件数やメモリ量などの概要カードを描画する。</summary>
     void DrawSummaryCards();
+    /// <summary>記録時刻の選択と移動を行うタイムラインを描画する。</summary>
     void DrawTimelineEditor();
+    /// <summary>記録済みObjectの一覧と検索UIを描画する。</summary>
     void DrawObjectBrowser();
+    /// <summary>選択中Objectの記録状態を表示する。</summary>
     void DrawObjectInspector();
+    /// <summary>記録済みSpriteの一覧を描画する。</summary>
     void DrawSpriteBrowser();
+    /// <summary>選択中Spriteの記録状態を表示する。</summary>
     void DrawSpriteInspector();
+    /// <summary>記録頻度、履歴長、再生速度などの設定を描画する。</summary>
     void DrawSettingsPanel();
+    /// <summary>保存済みアーカイブの一覧と読み込み操作を描画する。</summary>
     void DrawArchivePanel();
+    /// <summary>Replay画面のキーボード操作を処理する。</summary>
     void HandleEditorShortcuts();
+    /// <summary>指定時刻に最も近い記録フレームへカーソルを移す。</summary>
     void SelectFrameFromTimeline(double time);
+    /// <summary>回帰再生の設定、結果、失敗一覧を描画する。</summary>
     void DrawRegressionPanel();
+    /// <summary>Replay IDに対応するシーンObjectを選択する。</summary>
     void SelectSceneObject(uint64_t replayId);
+    /// <summary>現在の選択Objectが変化した前後のフレームへ移動する。</summary>
     void JumpToObjectChange(int direction);
+    /// <summary>前後のObject記録に表示すべき差があるか返す。</summary>
     bool HasMeaningfulChange(const ObjectSnapshot& lhs, const ObjectSnapshot& rhs) const;
+    /// <summary>前後のSprite記録に表示すべき差があるか返す。</summary>
     bool HasMeaningfulChange(const SpriteSnapshot& lhs, const SpriteSnapshot& rhs) const;
+    /// <summary>指定Replay IDのObjectをフレームから探す。</summary>
     const ObjectSnapshot* FindObjectSnapshot(const FrameSnapshot& frame, uint64_t replayId) const;
+    /// <summary>指定Replay IDのSpriteをフレームから探す。</summary>
     const SpriteSnapshot* FindSpriteSnapshot(const FrameSnapshot& frame, uint64_t replayId) const;
+    /// <summary>選択フレームより前にある指定Objectの直近状態を探す。</summary>
     const ObjectSnapshot* FindPreviousObjectSnapshot(uint64_t replayId) const;
+    /// <summary>履歴内で指定Objectが最後に記録された状態を探す。</summary>
     const ObjectSnapshot* FindLatestObjectSnapshot(uint64_t replayId) const;
+    /// <summary>バイト数を読みやすい単位へ整形し、渡されたバッファーへ書く。</summary>
+    /// <returns>整形後の文字列を指すポインター。</returns>
     static const char* FormatBytes(std::size_t bytes, char* buffer, std::size_t bufferSize);
 
 private:

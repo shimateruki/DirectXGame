@@ -68,8 +68,8 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         if (!breathMotionActive_) {
             breathMotionActive_ = player.PlaySlimeAbilityMotion("player_ability_fire_breath", true, 1.0f, 0.05f, 0.08f);
         }
-        const Vector3 direction = NormalizePlanar(player.GetLockOnAttackDirection());
-        const Vector3 origin = player.GetWorldPosition() + Vector3{0.0f, 0.78f, 0.0f};
+        const engine::Vector3 direction = NormalizePlanar(player.GetLockOnAttackDirection());
+        const engine::Vector3 origin = player.GetWorldPosition() + engine::Vector3{0.0f, 0.78f, 0.0f};
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, direction);
         UpdateBreathVisuals(player, origin, direction, deltaTime);
         if (breathEffectTimer_ <= 0.0f) {
@@ -147,7 +147,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             auto* scene = SceneManager::GetInstance()->GetCurrentScene();
             if (!scene || !scene->GetObject3dCommon())
                 return;
-            headVisual_ = std::make_unique<Object3d>();
+            headVisual_ = std::make_unique<engine::Object3d>();
             headVisual_->Initialize(scene->GetObject3dCommon());
             headVisual_->SetModel("Primitives/sphere");
             headVisual_->SetColliderType(ColliderType::kNone);
@@ -180,17 +180,17 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
     void SyncHeadVisualTransform(Player& player) {
         // スライム本体の拡縮に追従させ、頭上の相対位置を維持する。
-        const Vector3 scale = player.GetScale();
+        const engine::Vector3 scale = player.GetScale();
         const float bodyScale = (std::max)({0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
-        const Vector3 position =
-            player.GetWorldPosition() + Vector3{0.0f, 0.95f * (std::max)(0.65f, std::abs(scale.y)), 0.0f};
+        const engine::Vector3 position =
+            player.GetWorldPosition() + engine::Vector3{0.0f, 0.95f * (std::max)(0.65f, std::abs(scale.y)), 0.0f};
         headVisual_->SetTranslate(position);
         headVisual_->SetRotation({0.0f, player.GetMoveYaw(), 0.0f});
         headVisual_->SetScale({0.73f * bodyScale, 0.70f * bodyScale, 0.73f * bodyScale});
         headVisual_->UpdateWorldMatrix(true);
     }
 
-    void UpdateBreathVisuals(Player& player, const Vector3& origin, const Vector3& direction, float dt) {
+    void UpdateBreathVisuals(Player& player, const engine::Vector3& origin, const engine::Vector3& direction, float dt) {
         if (player.isDead || player.IsCinematicLocked())
             return;
         if (breathVisuals_.empty()) {
@@ -199,7 +199,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
                 return;
             // 立体ブレスは能力側で所有し、能力解除時にまとめて破棄します。
             for (int i = 0; i < 7; ++i) {
-                auto flame = std::make_unique<Object3d>();
+                auto flame = std::make_unique<engine::Object3d>();
                 flame->Initialize(scene->GetObject3dCommon());
                 flame->SetModel("Primitives/sphere");
                 flame->SetColliderType(ColliderType::kNone);
@@ -295,13 +295,13 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         dashGroundWakeTimer_ = 0.0f;
         actionMotionTimer_ = 0.0f;
         hitTargets_.clear();
-        const Vector3 position = player.GetWorldPosition();
+        const engine::Vector3 position = player.GetWorldPosition();
         SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_burst.json",
-                          position + Vector3{0.0f, 0.18f, 0.0f});
+                          position + engine::Vector3{0.0f, 0.18f, 0.0f});
         SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_body.json",
-                          position + Vector3{0.0f, 0.60f, 0.0f},
+                          position + engine::Vector3{0.0f, 0.60f, 0.0f},
                           {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f});
-        EmitPreset("player_fire_blaze_burst", position + Vector3{0.0f, 0.42f, 0.0f});
+        EmitPreset("player_fire_blaze_burst", position + engine::Vector3{0.0f, 0.42f, 0.0f});
         player.SetVelocity(
             {dashDirection_.x * 38.0f, std::max(player.GetVelocity().y, 0.0f), dashDirection_.z * 38.0f});
         player.SetMoveYaw(std::atan2(dashDirection_.x, dashDirection_.z));
@@ -316,7 +316,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         dashTimer_ = std::max(0.0f, dashTimer_ - deltaTime);
         const float progress = 1.0f - dashTimer_ / 0.44f;
         const float speed = 38.0f * (1.0f - progress * 0.36f);
-        Vector3 velocity = player.GetVelocity();
+        engine::Vector3 velocity = player.GetVelocity();
         velocity.x = dashDirection_.x * speed;
         velocity.z = dashDirection_.z * speed;
         if (player.IsGrounded() && velocity.y < 0.0f)
@@ -328,16 +328,16 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::BlazeDash);
         DamageDash(player);
         if (dashEffectTimer_ <= 0.0f) {
-            const Vector3 trail = player.GetWorldPosition() - dashDirection_ * 0.72f + Vector3{0.0f, 0.12f, 0.0f};
+            const engine::Vector3 trail = player.GetWorldPosition() - dashDirection_ * 0.72f + engine::Vector3{0.0f, 0.12f, 0.0f};
             SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_trail.json", trail,
                               {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f});
             SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_core.json",
-                              trail + Vector3{0.0f, 0.36f, 0.0f});
+                              trail + engine::Vector3{0.0f, 0.36f, 0.0f});
             EmitDirectedPreset("player_fire_blaze_trail", trail, dashDirection_ * -1.0f, 0.85f);
             dashEffectTimer_ = 0.055f;
         }
         if (player.IsGrounded() && dashGroundWakeTimer_ <= 0.0f) {
-            const Vector3 wake = player.GetWorldPosition() - dashDirection_ * 0.42f + Vector3{0.0f, 0.04f, 0.0f};
+            const engine::Vector3 wake = player.GetWorldPosition() - dashDirection_ * 0.42f + engine::Vector3{0.0f, 0.04f, 0.0f};
             SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_ground_wake.json", wake,
                               {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f}, {0.92f, 0.92f, 1.16f});
             dashGroundWakeTimer_ = 0.10f;
@@ -352,7 +352,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             velocity.z *= 0.30f;
             player.SetVelocity(velocity);
             hitTargets_.clear();
-            EmitPreset("player_fire_blaze_burst", player.GetWorldPosition() + Vector3{0.0f, 0.20f, 0.0f});
+            EmitPreset("player_fire_blaze_burst", player.GetWorldPosition() + engine::Vector3{0.0f, 0.20f, 0.0f});
         }
     }
 
@@ -378,9 +378,9 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
-        const Vector3 center = player.GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f};
+        const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
         for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.55f, filter)) {
-            Object3d* target = FindEnemyRoot(hit.object);
+            engine::Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !hitTargets_.insert(target).second)
                 continue;
             EnemyAttackDefinition fallback;
@@ -388,11 +388,11 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             DamageEnemy(player, target, 12.0f, DamageType::Fire,
                         {dashDirection_.x * 11.0f, 5.5f, dashDirection_.z * 11.0f}, MakeBurnStatus(attack));
             VFXSequencer::PlayOneShot("player_fire_dash_hit_cue",
-                                      target->GetWorldPosition() + Vector3{0.0f, 0.58f, 0.0f});
+                                      target->GetWorldPosition() + engine::Vector3{0.0f, 0.58f, 0.0f});
         }
     }
 
-    void DamageBreath(Player& player, const Vector3& origin, const Vector3& direction) {
+    void DamageBreath(Player& player, const engine::Vector3& origin, const engine::Vector3& direction) {
         // 見た目に沿うカプセル形状で敵を探し、同じ更新内の多重ヒットを除く。
         EnemyAttackDefinition fallback;
         fallback.maxRange = 8.0f;
@@ -402,11 +402,11 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
-        std::unordered_set<Object3d*> damaged;
-        const Vector3 end = origin + direction * std::max(attack.maxRange, 4.0f);
+        std::unordered_set<engine::Object3d*> damaged;
+        const engine::Vector3 end = origin + direction * std::max(attack.maxRange, 4.0f);
         for (const PhysicsOverlapHit& hit :
              CollisionManager::GetInstance()->OverlapCapsule(origin, end, std::max(attack.radius, 1.0f), filter)) {
-            Object3d* target = FindEnemyRoot(hit.object);
+            engine::Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !damaged.insert(target).second)
                 continue;
             DamageEnemy(player, target, std::max(attack.damage, 2.5f), DamageType::Fire,
@@ -414,14 +414,14 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         }
     }
 
-    Vector3 dashDirection_{0.0f, 0.0f, 1.0f};
+    engine::Vector3 dashDirection_{0.0f, 0.0f, 1.0f};
     AttackSequence fireballSequence_;
     std::string previewAttackId_;
-    std::unique_ptr<Object3d> headVisual_;
-    std::vector<std::unique_ptr<Object3d>> breathVisuals_;
+    std::unique_ptr<engine::Object3d> headVisual_;
+    std::vector<std::unique_ptr<engine::Object3d>> breathVisuals_;
     bool breathVisible_ = false;
     float breathVisualTime_ = 0.0f;
-    std::unordered_set<Object3d*> hitTargets_;
+    std::unordered_set<engine::Object3d*> hitTargets_;
     float fireballCooldown_ = 0.0f;
     float dashCooldown_ = 0.0f;
     float dashTimer_ = 0.0f;

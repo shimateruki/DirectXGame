@@ -24,19 +24,19 @@ class PlayerSlimeAnimator {
 
     /// <summary>基準スケールと前フレームの姿勢を初期化します。</summary>
     /// <param name="player">設定時に現在姿勢を同期する対象。省略できます。</param>
-    void Reset(const Vector3& baseScale, Player* player = nullptr);
+    void Reset(const engine::Vector3& baseScale, Player* player = nullptr);
     void SetMode(Mode mode);
     Mode GetMode() const { return mode_; }
     // ワールド座標の進行方向。ゼロ長の場合は前方向を使う。
-    void SetMotionDirection(const Vector3& direction);
+    void SetMotionDirection(const engine::Vector3& direction);
     // 引き寄せ演出の向きと進行率。進行率は 0～1 に丸める。
-    void SetPullDirection(const Vector3& direction);
+    void SetPullDirection(const engine::Vector3& direction);
     void SetPullProgress(float progress);
     // 溜め率と姿勢の強さは 0～1 に丸める。
     void SetJumpCharge(float chargeRate);
     void SetAbilityPose(AbilityPose pose, float strength = 1.0f);
     // 指定スケールへの短い反動を重ねる。duration の単位は秒。
-    void TriggerImpulse(const Vector3& scale, float duration);
+    void TriggerImpulse(const engine::Vector3& scale, float duration);
     // Animation Workbenchで編集できる能力モーションを、通常移動とは別レイヤーで再生します。
     /// <summary>通常移動と別レイヤーで能力モーションを再生します。</summary>
     /// <param name="clipName">Animation Workbench で編集したクリップ名</param>
@@ -58,14 +58,14 @@ class PlayerSlimeAnimator {
 
   private:
     // 状態に応じたスケールと回転を計算し、作成済みクリップを優先して適用します。
-    Vector3 NormalizeOrForward(const Vector3& direction) const;
-    Vector3 BuildModeScale(Player* player, float deltaTime) const;
-    Vector3 BuildModeRotation(Player* player) const;
-    bool TryBuildAuthoredBodyPose(Player* player, Vector3& scaleOut, Vector3& rotationOut,
-                                  Vector3& visualOffsetOut) const;
-    void UpdateAbilityMotion(float deltaTime, Vector3& visualScale, Vector3& visualRotation, Vector3& visualOffset,
-                             Vector3& visualShear, float& shearPivotY);
-    void ApplyAbilityPose(Vector3& scale, Vector3& rotation) const;
+    engine::Vector3 NormalizeOrForward(const engine::Vector3& direction) const;
+    engine::Vector3 BuildModeScale(Player* player, float deltaTime) const;
+    engine::Vector3 BuildModeRotation(Player* player) const;
+    bool TryBuildAuthoredBodyPose(Player* player, engine::Vector3& scaleOut, engine::Vector3& rotationOut,
+                                  engine::Vector3& visualOffsetOut) const;
+    void UpdateAbilityMotion(float deltaTime, engine::Vector3& visualScale, engine::Vector3& visualRotation, engine::Vector3& visualOffset,
+                             engine::Vector3& visualShear, float& shearPivotY);
+    void ApplyAbilityPose(engine::Vector3& scale, engine::Vector3& rotation) const;
     void ReloadBodyClips();
     static const char* GetStateName(Mode mode);
 
@@ -80,8 +80,8 @@ class PlayerSlimeAnimator {
     float impulseDuration_ = 0.0f;
     float modeTransitionTimer_ = 0.0f;
     bool modeTransitionCapturePending_ = false;
-    Vector3 modeTransitionStartScale_ = {2.0f, 2.0f, 2.0f};
-    Vector3 modeTransitionStartRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 modeTransitionStartScale_ = {2.0f, 2.0f, 2.0f};
+    engine::Vector3 modeTransitionStartRotation_ = {0.0f, 0.0f, 0.0f};
     float jumpTakeoffStretchTimer_ = 0.0f;
     float landingHoldTimer_ = 0.0f;
     float landingSquashTimer_ = 0.0f;
@@ -89,10 +89,10 @@ class PlayerSlimeAnimator {
     float landingImpactRate_ = 1.0f;
     float previousVelocityY_ = 0.0f;
     bool wasGrounded_ = true;
-    Vector3 baseScale_ = {2.0f, 2.0f, 2.0f};
-    Vector3 motionDirection_ = {0.0f, 0.0f, 1.0f};
-    Vector3 pullDirection_ = {0.0f, 0.0f, 1.0f};
-    Vector3 impulseScale_ = {2.0f, 2.0f, 2.0f};
+    engine::Vector3 baseScale_ = {2.0f, 2.0f, 2.0f};
+    engine::Vector3 motionDirection_ = {0.0f, 0.0f, 1.0f};
+    engine::Vector3 pullDirection_ = {0.0f, 0.0f, 1.0f};
+    engine::Vector3 impulseScale_ = {2.0f, 2.0f, 2.0f};
     // 読み込んだ Controller と BodyClip。ファイル再読み込み時に差し替えます。
     AnimatorControllerAsset controllerAsset_;
     AnimatorControllerRuntime controllerRuntime_;

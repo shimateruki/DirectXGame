@@ -22,11 +22,13 @@ constexpr const char* kDeathSplashArcEffect = "Resources/json/effect/effect_play
 constexpr const char* kDeathSplashStreakPreset = "player_death_slime_splash_streaks";
 constexpr const char* kDeathSoftMistPreset = "player_death_slime_soft_mist";
 
+// 死亡演出の補間率を0～1へ制限します。
 float Clamp01(float value) {
     // 演出時計を曲線の有効区間へ収める。
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// 死亡演出の終点で減速する補間率を返します。
 float EaseOutCubic(float value) {
     // 破裂直前の動きを終点へ向けて減速させる。
     value = Clamp01(value);
@@ -34,13 +36,14 @@ float EaseOutCubic(float value) {
     return 1.0f - inv * inv * inv;
 }
 
+// 死亡演出の始点と終点を滑らかにつなぎます。
 float EaseInOut(float value) {
     // 前後で速度が急変しないよう、滑らかな曲線へ変換する。
     value = Clamp01(value);
     return value * value * (3.0f - 2.0f * value);
 }
 
-Vector3 MakeSafeScale(const Vector3& scale) {
+engine::Vector3 MakeSafeScale(const engine::Vector3& scale) {
     // ほぼゼロの軸を既定値へ置き換え、死亡演出の拡縮が消失しないようにする。
     return {std::abs(scale.x) > 0.001f ? scale.x : 1.0f, std::abs(scale.y) > 0.001f ? scale.y : 1.0f,
             std::abs(scale.z) > 0.001f ? scale.z : 1.0f};
@@ -71,12 +74,12 @@ void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
     player->SetCollisionMask(0);
 
     childVisible_.reserve(player->GetChildren().size());
-    for (Object3d* child : player->GetChildren()) {
+    for (engine::Object3d* child : player->GetChildren()) {
         childVisible_.push_back(child ? child->GetIsVisible() : false);
     }
 
     player->SetIsVisible(true);
-    for (Object3d* child : player->GetChildren()) {
+    for (engine::Object3d* child : player->GetChildren()) {
         if (child) {
             child->SetIsVisible(true);
         }
@@ -122,7 +125,7 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
     player->SetIsVisible(baseVisible_);
     const auto& children = player->GetChildren();
     for (size_t i = 0; i < children.size(); ++i) {
-        Object3d* child = children[i];
+        engine::Object3d* child = children[i];
         if (!child) {
             continue;
         }
@@ -164,7 +167,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
     const float pulse = std::sin(chargeT * kPi);
     const float tinyShake = std::sin(timer_ * 84.0f) * (1.0f - chargeT) * 0.035f;
 
-    Vector3 scale = baseScale_;
+    engine::Vector3 scale = baseScale_;
     if (timer_ < kHitStopTime) {
         const float flashPulse = std::sin(hitT * kPi);
         scale.x *= 1.0f + flashPulse * 0.10f;
@@ -176,17 +179,17 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
         scale.z *= 1.0f + charge * 0.38f + pulse * 0.06f;
     }
 
-    Vector3 rotation = baseRotation_;
+    engine::Vector3 rotation = baseRotation_;
     rotation.z += tinyShake;
     rotation.x += std::sin(timer_ * 50.0f) * (1.0f - chargeT) * 0.025f;
 
     const float flash = std::max(0.0f, 1.0f - timer_ / 0.20f);
-    const Vector4 color = {0.42f + flash * 0.58f, 0.92f + flash * 0.08f, 1.00f, 1.0f};
+    const engine::Vector4 color = {0.42f + flash * 0.58f, 0.92f + flash * 0.08f, 1.00f, 1.0f};
 
     player->SetScale(scale);
     player->SetRotation(rotation);
     player->SetColor(color);
-    for (Object3d* child : player->GetChildren()) {
+    for (engine::Object3d* child : player->GetChildren()) {
         if (child) {
             child->SetColor(color);
         }
@@ -202,21 +205,21 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
     }
 
     ParticleSystem* particle = player->GetParticleSystem();
-    const Vector3 origin = player->GetWorldPosition();
-    const Vector3 center = origin + Vector3{0.0f, baseScale_.y * 0.45f, 0.0f};
-    const Vector3 foot = origin + Vector3{0.0f, 0.08f, 0.0f};
+    const engine::Vector3 origin = player->GetWorldPosition();
+    const engine::Vector3 center = origin + engine::Vector3{0.0f, baseScale_.y * 0.45f, 0.0f};
+    const engine::Vector3 foot = origin + engine::Vector3{0.0f, 0.08f, 0.0f};
 
     if (particle) {
-        Vector3 up = {0.0f, 1.0f, 0.0f};
+        engine::Vector3 up = {0.0f, 1.0f, 0.0f};
         particle->SpawnParticles(center, finalDeath_ ? 24 : 18, finalDeath_ ? 5.6f : 4.8f, &up, 124.0f,
-                                 finalDeath_ ? Vector4{0.38f, 0.72f, 0.95f, 0.98f} : Vector4{0.38f, 0.95f, 1.0f, 0.96f},
-                                 finalDeath_ ? Vector4{0.02f, 0.10f, 0.18f, 0.0f} : Vector4{0.08f, 0.42f, 0.72f, 0.0f},
+                                 finalDeath_ ? engine::Vector4{0.38f, 0.72f, 0.95f, 0.98f} : engine::Vector4{0.38f, 0.95f, 1.0f, 0.96f},
+                                 finalDeath_ ? engine::Vector4{0.02f, 0.10f, 0.18f, 0.0f} : engine::Vector4{0.08f, 0.42f, 0.72f, 0.0f},
                                  0.22f, finalDeath_ ? 0.82f : 0.68f, 0.30f, 0.035f);
 
-        Vector3 low = {0.0f, 0.08f, 0.0f};
+        engine::Vector3 low = {0.0f, 0.08f, 0.0f};
         particle->SpawnParticles(foot, finalDeath_ ? 14 : 10, finalDeath_ ? 2.7f : 2.25f, &low, 178.0f,
-                                 finalDeath_ ? Vector4{0.25f, 0.58f, 0.78f, 0.80f} : Vector4{0.26f, 0.88f, 1.0f, 0.78f},
-                                 Vector4{0.04f, 0.22f, 0.34f, 0.0f}, 0.38f, 0.92f, 0.20f, 0.055f);
+                                 finalDeath_ ? engine::Vector4{0.25f, 0.58f, 0.78f, 0.80f} : engine::Vector4{0.26f, 0.88f, 1.0f, 0.78f},
+                                 engine::Vector4{0.04f, 0.22f, 0.34f, 0.0f}, 0.38f, 0.92f, 0.20f, 0.055f);
     }
 
     if (MeshEffectManager::GetInstance()) {
@@ -229,12 +232,12 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
         for (int i = 0; i < arcCount; ++i) {
             const float ratio = static_cast<float>(i) / static_cast<float>(arcCount);
             const float angle = ratio * kTwoPi + (finalDeath_ ? 0.23f : 0.0f);
-            Vector3 arcPos = center;
+            engine::Vector3 arcPos = center;
             arcPos.x += std::cos(angle) * 0.20f;
             arcPos.y += 0.08f + 0.05f * static_cast<float>(i % 2);
             arcPos.z += std::sin(angle) * 0.20f;
 
-            Vector3 arcRot = {0.32f + 0.08f * static_cast<float>(i % 2), angle, (i % 2 == 0 ? 0.26f : -0.22f)};
+            engine::Vector3 arcRot = {0.32f + 0.08f * static_cast<float>(i % 2), angle, (i % 2 == 0 ? 0.26f : -0.22f)};
             const float arcScale = finalDeath_ ? 1.18f : 1.0f;
             meshEffects->SpawnEffectAt(kDeathSplashArcEffect, arcPos, arcRot, {arcScale, arcScale, arcScale});
         }
@@ -243,7 +246,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
     GPUParticleManager* gpuParticles = GPUParticleManager::GetInstance();
     if (gpuParticles && gpuParticles->IsInitialized()) {
         gpuParticles->Emit(kDeathSplashStreakPreset, center);
-        gpuParticles->Emit(kDeathSplashStreakPreset, center + Vector3{0.0f, 0.22f, 0.0f});
+        gpuParticles->Emit(kDeathSplashStreakPreset, center + engine::Vector3{0.0f, 0.22f, 0.0f});
         gpuParticles->Emit(kDeathSoftMistPreset, foot);
     }
 }
@@ -254,12 +257,12 @@ void PlayerDeathAnimation::EmitPuddle(Player* player) {
         return;
     }
 
-    Vector3 low = {0.0f, 0.05f, 0.0f};
-    const Vector3 foot = player->GetWorldPosition() + Vector3{0.0f, 0.06f, 0.0f};
+    engine::Vector3 low = {0.0f, 0.05f, 0.0f};
+    const engine::Vector3 foot = player->GetWorldPosition() + engine::Vector3{0.0f, 0.06f, 0.0f};
     player->GetParticleSystem()->SpawnParticles(foot, finalDeath_ ? 6 : 5, finalDeath_ ? 1.25f : 1.05f, &low, 175.0f,
-                                                finalDeath_ ? Vector4{0.18f, 0.48f, 0.70f, 0.44f}
-                                                            : Vector4{0.20f, 0.82f, 1.0f, 0.46f},
-                                                Vector4{0.04f, 0.18f, 0.28f, 0.0f}, 0.34f, 0.76f, 0.22f, 0.04f);
+                                                finalDeath_ ? engine::Vector4{0.18f, 0.48f, 0.70f, 0.44f}
+                                                            : engine::Vector4{0.20f, 0.82f, 1.0f, 0.46f},
+                                                engine::Vector4{0.04f, 0.18f, 0.28f, 0.0f}, 0.34f, 0.76f, 0.22f, 0.04f);
 }
 
 void PlayerDeathAnimation::HidePlayerBody(Player* player) {
@@ -269,7 +272,7 @@ void PlayerDeathAnimation::HidePlayerBody(Player* player) {
     }
 
     player->SetIsVisible(false);
-    for (Object3d* child : player->GetChildren()) {
+    for (engine::Object3d* child : player->GetChildren()) {
         if (child) {
             child->SetIsVisible(false);
         }

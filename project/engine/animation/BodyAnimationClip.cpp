@@ -16,7 +16,7 @@ constexpr const char* kBodyAnimationDirectory = "Resources/json/animation_clip/"
 constexpr const char* kLegacyAnimationDirectory = "Resources/json/enemy_animation/";
 constexpr float kTimeEpsilon = 0.0001f;
 
-Vector3 ReadVector3(const json& object, const char* key, const Vector3& fallback) {
+engine::Vector3 ReadVector3(const json& object, const char* key, const engine::Vector3& fallback) {
     // 古いClipに成分が無い場合は、その姿勢要素の既定値を使う。
     if (!object.contains(key) || !object[key].is_array() || object[key].size() < 3) {
         return fallback;
@@ -139,7 +139,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
         sampleOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
         sampleOut.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
         sampleOut.shear = AnimationInterpolation::Lerp(from.shear, to.shear, rate);
-        sampleOut.shearPivotY = Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
+        sampleOut.shearPivotY = engine::Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
         return true;
     }
 

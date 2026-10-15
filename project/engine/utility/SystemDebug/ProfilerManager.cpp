@@ -63,6 +63,7 @@ void ProfilerManager::RecordGpuTime(const std::string& name, float timeMs) {
 }
 
 void ProfilerManager::RecordCpuTime(const std::string& name, float timeMs) {
+    // 直近値、平滑値、リング履歴を同じ計測値から更新する。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto& data = cpuDataMap_[name];
@@ -168,9 +169,6 @@ void ProfilerManager::DrawImGui() {
             }
         }
         else if (selectedIndex_ == 1) {
-            // ---------------------------------------------------------
-            // 処理時間表示 (Timeline) - GPU + CPU
-            // ---------------------------------------------------------
 
             // ============================
             // GPU セクション
@@ -356,12 +354,12 @@ void ProfilerManager::DrawImGui() {
                     ImGui::TableHeadersRow();
 
                     auto& objects = *currentObjects_;
-                    std::vector<Object3d*> sortedList;
+                    std::vector<engine::Object3d*> sortedList;
                     for (auto& obj : objects) sortedList.push_back(obj.get());
 
                     ImGuiTableSortSpecs* sort_specs = ImGui::TableGetSortSpecs();
                     if (sort_specs && sort_specs->SpecsDirty) {
-                        std::sort(sortedList.begin(), sortedList.end(), [&](Object3d* a, Object3d* b) {
+                        std::sort(sortedList.begin(), sortedList.end(), [&](engine::Object3d* a, engine::Object3d* b) {
                             for (int n = 0; n < sort_specs->SpecsCount; n++) {
                                 const ImGuiTableColumnSortSpecs* spec = &sort_specs->Specs[n];
                                 

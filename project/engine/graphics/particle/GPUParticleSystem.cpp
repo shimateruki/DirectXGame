@@ -129,17 +129,17 @@ void GPUParticleSystem::CreateBuffer() {
     cameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
 
     dummyVertexBuffer_ = dxCommon_->CreateBufferResource(64);
-    Vector3 dummyPos = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 dummyPos = { 0.0f, 0.0f, 0.0f };
     void* mapped = nullptr;
     dummyVertexBuffer_->Map(0, nullptr, &mapped);
-    memcpy(mapped, &dummyPos, sizeof(Vector3));
+    memcpy(mapped, &dummyPos, sizeof(engine::Vector3));
     dummyVertexBuffer_->Unmap(0, nullptr);
 
-    dummyBoneBuffer_ = dxCommon_->CreateBufferResource(sizeof(Matrix4x4));
-    Matrix4x4 identityMat = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
+    dummyBoneBuffer_ = dxCommon_->CreateBufferResource(sizeof(engine::Matrix4x4));
+    engine::Matrix4x4 identityMat = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
     void* boneMapped = nullptr;
     dummyBoneBuffer_->Map(0, nullptr, &boneMapped);
-    memcpy(boneMapped, &identityMat, sizeof(Matrix4x4));
+    memcpy(boneMapped, &identityMat, sizeof(engine::Matrix4x4));
     dummyBoneBuffer_->Unmap(0, nullptr);
 
     D3D12_SHADER_RESOURCE_VIEW_DESC boneSrvDesc{};
@@ -148,7 +148,7 @@ void GPUParticleSystem::CreateBuffer() {
     boneSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
     boneSrvDesc.Buffer.FirstElement = 0;
     boneSrvDesc.Buffer.NumElements = 1;
-    boneSrvDesc.Buffer.StructureByteStride = sizeof(Matrix4x4);
+    boneSrvDesc.Buffer.StructureByteStride = sizeof(engine::Matrix4x4);
     boneSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
     dummyBoneSrvIndex_ = SRVManager::GetInstance()->Allocate();
@@ -283,6 +283,7 @@ void GPUParticleSystem::Update(float deltaTime) {
 }
 
 void GPUParticleSystem::RequestSimulationReset() {
+    // プリセット再利用時は次回のウォームアップを残し、粒子の時刻だけ初期状態へ戻す。
     emitRequests_.clear();
     emitCountThisFrame_ = 0;
     lastConfig_ = {};
@@ -294,6 +295,7 @@ void GPUParticleSystem::RequestSimulationReset() {
 }
 
 void GPUParticleSystem::ResetForSceneTransition() {
+    // シーン切替時は旧シーンの発生要求を破棄し、自動ウォームアップも持ち越さない。
     emitRequests_.clear();
     emitCountThisFrame_ = 0;
     lastConfig_ = {};
@@ -304,7 +306,7 @@ void GPUParticleSystem::ResetForSceneTransition() {
     warmupRequested_ = false;
 }
 
-void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
+void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
     if (!commandList) return;
 
     // 最後に発生した粒子の寿命が終わったSystemは、Computeと描画を完全にスキップします。
@@ -328,7 +330,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
         commandList->SetComputeRootConstantBufferView(1, configBuffer_->GetGPUVirtualAddress());
         UINT groupCountInit = (maxParticles_ + 1023) / 1024;
         commandList->Dispatch(groupCountInit, 1, 1);
-        RenderStats::GetInstance()->RecordComputeDispatch(groupCountInit);
+        engine::RenderStats::GetInstance()->RecordComputeDispatch(groupCountInit);
         
         D3D12_RESOURCE_BARRIER barriers[3] = {};
         barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
@@ -348,8 +350,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
         // 初回だけ0粒子のIndirect Drawまで通し、実戦前に全GPUリソースを準備します。
     }
 
-    static Math math;
-    Matrix4x4 vp = math.Multiply(viewMatrix, projectionMatrix);
+    static engine::Math math;
+    engine::Matrix4x4 vp = math.Multiply(viewMatrix, projectionMatrix);
 
     D3D12_RESOURCE_BARRIER resetArgumentBarrier{};
     resetArgumentBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
@@ -371,7 +373,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     const auto rebuildAliveParticleList = [&](float simulationDeltaTime) {
         commandList->SetPipelineState(computePipelineStateResetDrawArguments_.Get());
         commandList->Dispatch(1, 1, 1);
-        RenderStats::GetInstance()->RecordComputeDispatch(1);
+        engine::RenderStats::GetInstance()->RecordComputeDispatch(1);
         commandList->ResourceBarrier(1, &resetArgumentBarrier);
 
         commandList->SetPipelineState(computePipelineStateUpdate_.Get());
@@ -396,7 +398,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
 
         const UINT groupCountUpdate = (maxParticles_ + 255) / 256;
         commandList->Dispatch(groupCountUpdate, 1, 1);
-        RenderStats::GetInstance()->RecordComputeDispatch(groupCountUpdate);
+        engine::RenderStats::GetInstance()->RecordComputeDispatch(groupCountUpdate);
         commandList->ResourceBarrier(5, updateBarriers);
     };
 
@@ -419,7 +421,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
             req.config.initialAge = rebuiltSimulationThisDraw ?
                 (std::max)(0.0f, totalTime_ - req.config.time) : 0.0f;
             req.config.meshVertexCount = req.vb ? req.vCount : 1;
-            req.config.meshVertexStride = req.vb ? req.vStride : sizeof(Vector3);
+            req.config.meshVertexStride = req.vb ? req.vStride : sizeof(engine::Vector3);
             req.config.maxParticles = maxParticles_;
 
             // Start storing configs at index 1 since index 0 is used by Update Pass
@@ -441,7 +443,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
 
             UINT groupCountEmit = (req.config.emitCount + 255) / 256;
             commandList->Dispatch(groupCountEmit, 1, 1);
-            RenderStats::GetInstance()->RecordComputeDispatch(groupCountEmit);
+            engine::RenderStats::GetInstance()->RecordComputeDispatch(groupCountEmit);
 
             commandList->ResourceBarrier(5, updateBarriers);
         }
@@ -461,7 +463,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     frameDeltaTime_ = 0.0f;
 
     // --- Graphics Shader ---
-    Matrix4x4 billboard = math.Inverse(viewMatrix);
+    engine::Matrix4x4 billboard = math.Inverse(viewMatrix);
     billboard.m[3][0] = 0.0f; billboard.m[3][1] = 0.0f; billboard.m[3][2] = 0.0f;
 
     cameraData_->viewProj = vp;
@@ -553,8 +555,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
         0,
         nullptr,
         0);
-    RenderStats::GetInstance()->RecordNonIndexedIndirectDraw();
-    RenderStats::GetInstance()->RecordGpuParticleSystem(maxParticles_);
+    engine::RenderStats::GetInstance()->RecordNonIndexedIndirectDraw();
+    engine::RenderStats::GetInstance()->RecordGpuParticleSystem(maxParticles_);
 
     for (D3D12_RESOURCE_BARRIER& barrier : drawBarriers) {
         std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
@@ -640,6 +642,7 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
 }
 
 size_t GPUParticleSystem::GetEstimatedMemoryBytes() const {
+    // CPU側の放出要求とGPUリソースの確保幅を合算し、診断表示用の概算値にする。
     size_t bytes = emitRequests_.capacity() * sizeof(EmitRequest);
     ID3D12Resource* resources[] = {
         particleBuffer_.Get(),

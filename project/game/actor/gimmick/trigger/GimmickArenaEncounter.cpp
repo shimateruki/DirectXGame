@@ -39,7 +39,7 @@ void GimmickArenaEncounter::Initialize(Object3dCommon* common, const std::string
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
 
-    Object3d::ColliderConfig collider;
+    engine::Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 1.5f, 0.0f};
     collider.size = {3.0f, 3.0f, 8.0f};
@@ -89,7 +89,7 @@ void GimmickArenaEncounter::Draw(ID3D12Resource* pointLightResource, ID3D12Resou
     }
 }
 
-bool GimmickArenaEncounter::OnCollision(Object3d* other) {
+bool GimmickArenaEncounter::OnCollision(engine::Object3d* other) {
     // 待機中に有効な入場範囲へプレイヤーが触れた時だけ戦闘を開始します。
     if (state_ != State::Waiting || !other || other->GetClassName() != "Player") {
         return false;
@@ -111,7 +111,7 @@ void GimmickArenaEncounter::OnTrigger() {
     }
 }
 
-std::unique_ptr<Object3d> GimmickArenaEncounter::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickArenaEncounter::Clone() const {
     // 進行状態は持ち込まず、配置とイベント設定を複製します。
     auto clone = std::make_unique<GimmickArenaEncounter>();
     assert(common_ != nullptr);
@@ -174,12 +174,12 @@ void GimmickArenaEncounter::CompleteEncounter() {
     } else {
         SetBarriersActive(false);
     }
-    Vector3 cuePosition = GetWorldPosition();
+    engine::Vector3 cuePosition = GetWorldPosition();
     if (IsHighCrownMode()) {
         BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
         const int rewardEventID = GetTargetID() + GetBarrierCount() + 1;
         if (scene) {
-            if (Object3d* reward = scene->FindObjectByEventID(rewardEventID)) {
+            if (engine::Object3d* reward = scene->FindObjectByEventID(rewardEventID)) {
                 cuePosition = reward->GetTranslate();
                 if (auto* gameplay = dynamic_cast<GamePlayScene*>(scene)) {
                     gameplay->StartArenaBossDefeatReward(reward);
@@ -189,7 +189,7 @@ void GimmickArenaEncounter::CompleteEncounter() {
     }
     VFXSequencer::PlayOneShot(
         IsHighCrownMode() ? kHighCrownReleaseSequence : (IsMagmaMode() ? kMagmaReleaseSequence : kReleaseSequence),
-        cuePosition, IsHighCrownMode() ? Vector3{1.25f, 1.25f, 1.25f} : Vector3{4.0f, 1.0f, 4.0f});
+        cuePosition, IsHighCrownMode() ? engine::Vector3{1.25f, 1.25f, 1.25f} : engine::Vector3{4.0f, 1.0f, 4.0f});
 }
 
 bool GimmickArenaEncounter::IsBossDefeated() const {
@@ -250,8 +250,8 @@ void GimmickArenaEncounter::StartBossPresentation() {
     if (!gameplay) {
         return;
     }
-    Object3d* boss = scene->FindObjectByEventID(GetTargetID());
-    Object3d* gate = scene->FindObjectByEventID(GetTargetID() + 1);
+    engine::Object3d* boss = scene->FindObjectByEventID(GetTargetID());
+    engine::Object3d* gate = scene->FindObjectByEventID(GetTargetID() + 1);
     gameplay->StartArenaBossIntro(boss, gate, GetBossRevealDelay());
 }
 
@@ -273,7 +273,7 @@ bool GimmickArenaEncounter::IsHighCrownMode() const {
 bool GimmickArenaEncounter::IsMagmaMode() const {
     // 配置先ボスの型から封鎖・解放 VFX を選びます。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
-    const Object3d* boss = scene && GetTargetID() > 0 ? scene->FindObjectByEventID(GetTargetID()) : nullptr;
+    const engine::Object3d* boss = scene && GetTargetID() > 0 ? scene->FindObjectByEventID(GetTargetID()) : nullptr;
     return boss && boss->GetEnemyType() == "MagmaSlime";
 }
 

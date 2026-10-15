@@ -6,7 +6,8 @@
 #include"DebugConsole.h"
 
 namespace {
-Vector2 NormalizeStick(SHORT rawX, SHORT rawY, SHORT deadZone) {
+// 円形デッドゾーンを除いたスティック入力を長さ0～1のベクトルへ変換します。
+engine::Vector2 NormalizeStick(SHORT rawX, SHORT rawY, SHORT deadZone) {
     const float x = static_cast<float>(rawX) / 32768.0f;
     const float y = static_cast<float>(rawY) / 32768.0f;
     const float length = std::hypot(x, y);
@@ -24,6 +25,7 @@ InputManager* InputManager::GetInstance() {
 }
 
 void InputManager::OpenFirstAvailableSdlController() {
+    // 接続済みコントローラーを先頭から探し、メニュー入力に使うデバイスを開く。
     for (int i = 0; i < SDL_NumJoysticks(); ++i) {
         if (!SDL_IsGameController(i)) continue;
         sdlController_ = SDL_GameControllerOpen(i);
@@ -37,8 +39,9 @@ void InputManager::OpenFirstAvailableSdlController() {
 }
 
 void InputManager::UpdateMenuStickNavigation() {
+    // スティックを方向入力へ変換し、押し始めと長押しで異なる間隔のリピートを発生させる。
     menuStickTriggered_.fill(false);
-    const Vector2 stick = GetLeftStick();
+    const engine::Vector2 stick = GetLeftStick();
     int direction = 0;
     if (std::max(std::abs(stick.x), std::abs(stick.y)) >= 0.45f) {
         direction = std::abs(stick.y) >= std::abs(stick.x) ? (stick.y > 0 ? 1 : 2) : (stick.x < 0 ? 3 : 4);
@@ -436,20 +439,21 @@ bool InputManager::IsMouseButtonTriggered(int button) const {
 }
 
 // マウスの移動量を取得
-Vector2 InputManager::GetMouseMoveDelta() const {
+engine::Vector2 InputManager::GetMouseMoveDelta() const {
     // DIMOUSESTATE構造体から相対移動量を取得する
     return { (float)mouseState.lX, (float)mouseState.lY };
 }
 
-Vector2 InputManager::GetCameraLookDelta(float deltaTime) const {
-    const Vector2 mouse = GetMouseMoveDelta();
-    const Vector2 stick = GetRightStick();
+engine::Vector2 InputManager::GetCameraLookDelta(float deltaTime) const {
+    const engine::Vector2 mouse = GetMouseMoveDelta();
+    const engine::Vector2 stick = GetRightStick();
     // カメラ設定の感度と反転を Camera::AddRotation 側で共通適用します。
     const float step = 360.0f * std::clamp(deltaTime, 0.0f, 0.05f);
     return {mouse.x + stick.x * step, mouse.y - stick.y * step};
 }
 
 bool InputManager::IsMenuStickTriggered(WORD dpadDirection) const {
+    // 左スティックの反復判定結果を十字キー方向と同じ入口から返す。
     switch (dpadDirection) {
     case XINPUT_GAMEPAD_DPAD_UP: return menuStickTriggered_[0];
     case XINPUT_GAMEPAD_DPAD_DOWN: return menuStickTriggered_[1];
@@ -460,13 +464,13 @@ bool InputManager::IsMenuStickTriggered(WORD dpadDirection) const {
 }
 
 // ゲームパッドの左スティックの入力を取得
-Vector2 InputManager::GetGamepadLeftStick() const {
+engine::Vector2 InputManager::GetGamepadLeftStick() const {
     return NormalizeStick(gamepadState.Gamepad.sThumbLX, gamepadState.Gamepad.sThumbLY,
                           XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 }
 
 // ゲームパッドの右スティックの入力を取得
-Vector2 InputManager::GetGamepadRightStick() const {
+engine::Vector2 InputManager::GetGamepadRightStick() const {
     return NormalizeStick(gamepadState.Gamepad.sThumbRX, gamepadState.Gamepad.sThumbRY,
                           XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 }
@@ -486,7 +490,7 @@ float InputManager::GetMouseWheelDelta() const {
 /// <summary>
 /// マウスカーソルの「絶対座標」（ウィンドウ内）を取得する
 /// </summary>
-Vector2 InputManager::GetMousePosition() const {
+engine::Vector2 InputManager::GetMousePosition() const {
 
     // (1) Windows API で「スクリーン全体」のカーソル位置を取得
     POINT screenPos;
@@ -532,6 +536,7 @@ void InputManager::PlayRumble(float lowFrequency, float highFrequency, float dur
 }
 
 void InputManager::UpdateRumble(float unscaledDeltaTime) {
+    // 一時停止中も振動の残り時間を進め、終了時に出力を止める。
     const float timeStep = std::max(unscaledDeltaTime, 0.0f);
     for (RumbleRequest& request : rumbleRequests_) {
         request.remaining -= timeStep;
@@ -610,7 +615,7 @@ void InputManager::Finalize() {
     SDL_Quit();
 }
 
-Vector2 InputManager::GetRightStick() const {
+engine::Vector2 InputManager::GetRightStick() const {
     return GetGamepadRightStick();
 }
 
@@ -619,7 +624,7 @@ bool InputManager::IsGamepadButtonTriggered(WORD button) const {
     return (gamepadState.Gamepad.wButtons & button) && !(prevGamepadState.Gamepad.wButtons & button);
 }
 
-Vector2 InputManager::GetLeftStick() const {
+engine::Vector2 InputManager::GetLeftStick() const {
     return GetGamepadLeftStick();
 }
 

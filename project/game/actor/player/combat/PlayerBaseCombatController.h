@@ -3,7 +3,7 @@
 #include "engine/utility/math/Math.h"
 #include <unordered_set>
 
-class Object3d;
+namespace engine { class Object3d; }
 class Player;
 
 // 通常スライムでも敵へ対抗できる、形態に依存しない基礎攻撃を管理します。
@@ -23,7 +23,7 @@ class PlayerBaseCombatController {
     // 再生位置の復元に必要な数値状態。ポインタ集合 hitTargets_ は保存対象外です。
     struct ReplayState {
         int phase = 0;
-        Vector3 direction{0.0f, 0.0f, 1.0f};
+        engine::Vector3 direction{0.0f, 0.0f, 1.0f};
         float timer = 0.0f;
         float effectTimer = 0.0f;
         float inputBufferTimer = 0.0f;
@@ -45,8 +45,8 @@ class PlayerBaseCombatController {
     void Finish(Player& player);
 
     Phase phase_ = Phase::Idle;
-    Vector3 direction_{0.0f, 0.0f, 1.0f};
-    std::unordered_set<Object3d*> hitTargets_;
+    engine::Vector3 direction_{0.0f, 0.0f, 1.0f};
+    std::unordered_set<engine::Object3d*> hitTargets_;
     float timer_ = 0.0f;
     float effectTimer_ = 0.0f;
     float inputBufferTimer_ = 0.0f;

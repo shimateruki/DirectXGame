@@ -55,7 +55,7 @@ void GameClearScene::Initialize() {
     object3dCommon_ = std::make_unique<Object3dCommon>();
     object3dCommon_->Initialize(dxCommon_);
 
-    spriteCommon_ = std::make_unique<SpriteCommon>();
+    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
 
     particleCommon_ = std::make_unique<ParticleCommon>();
@@ -85,8 +85,8 @@ void GameClearScene::Initialize() {
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
     // --- 5. 固定スプライトの生成 (必要であれば) ---
-    uint32_t monsterBallHandle = Sprite::LoadTexture("ui/result/monsterBall.png");
-    auto monsterBallSprite = std::make_unique<Sprite>();
+    uint32_t monsterBallHandle = engine::Sprite::LoadTexture("ui/result/monsterBall.png");
+    auto monsterBallSprite = std::make_unique<engine::Sprite>();
     monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
     monsterBallSprite->SetPosition({200.0f, 360.0f});
     monsterBallSprite->SetSize({100.0f, 100.0f});
@@ -153,13 +153,8 @@ void GameClearScene::Draw() {
     auto& objects = objectManager_->GetObjects();
 
     // --- 1. 不透明描画 ---
-    for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_)
-            continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType()))
-            continue; // フォグ(7)も不透明パスから除外
-        obj->Draw(pointLightRes, spotLightRes);
-    }
+    DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Opaque, pointLightRes, spotLightRes,
+        player_, isFirstPerson, false, {});
 
     // --- 2. 中間描画 (弾・デバッグ) ---
     DrawEnemyTelegraphs(*this, pointLightRes, spotLightRes);
@@ -167,13 +162,8 @@ void GameClearScene::Draw() {
     LightEditor::GetInstance()->Draw3D();
 
     // --- 3. 透明描画 ---
-    for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_)
-            continue;
-        if (obj->GetMaterialType() == 1) { // 透明のみ描画
-            obj->Draw(pointLightRes, spotLightRes);
-        }
-    }
+    DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Transparent, pointLightRes, spotLightRes,
+        player_, isFirstPerson, false, {});
     particleSystem_->Draw();
 
     // =======================================================

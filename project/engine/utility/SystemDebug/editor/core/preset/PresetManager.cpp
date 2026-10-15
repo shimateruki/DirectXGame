@@ -76,17 +76,17 @@ void PresetManager::SavePresets(const std::string& filename) {
     }
 }
 
-void PresetManager::AddPresetFromObject(const std::string& presetName, Object3d* obj) {
+void PresetManager::AddPresetFromObject(const std::string& presetName, engine::Object3d* obj) {
     // 巡回集合を渡して階層を複製し、循環参照をたどり続けない。
     if (!obj || presetName.empty()) {
         return;
     }
-    std::unordered_set<const Object3d*> visited;
+    std::unordered_set<const engine::Object3d*> visited;
     presets_[presetName] = BuildPresetNode(obj, visited);
     SaveAll();
 }
 
-void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d* obj) {
+void PresetManager::ApplyPresetToObject(const std::string& presetName, engine::Object3d* obj) {
     // 保存元の GUID を除いて属性を反映した後、管理対象ステータスを再適用する。
     auto it = presets_.find(presetName);
     if (it == presets_.end() || !obj) {
@@ -104,11 +104,11 @@ void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d*
     }
 }
 
-std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPreset(
+std::vector<std::unique_ptr<engine::Object3d>> PresetManager::CreateObjectsFromPreset(
     const std::string& presetName,
     Object3dCommon* common) const {
     // 部分生成で例外が出た場合は返却配列を空にし、不完全な階層を配置させない。
-    std::vector<std::unique_ptr<Object3d>> objects;
+    std::vector<std::unique_ptr<engine::Object3d>> objects;
     auto it = presets_.find(presetName);
     if (it == presets_.end() || !common) {
         return objects;
@@ -123,10 +123,16 @@ std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPreset(
 }
 
 void PresetManager::RemovePreset(const std::string& presetName) {
-    // 実際に登録が消えた場合だけ JSON を書き直す。
-    if (presets_.erase(presetName) > 0) {
-        SaveAll();
+    RemovePresets({ presetName });
+}
+
+void PresetManager::RemovePresets(const std::vector<std::string>& presetNames) {
+    // 大量選択時もJSONを書き直すのは一回だけにして、エディターの停止を避ける。
+    std::size_t removed = 0;
+    for (const std::string& name : presetNames) {
+        removed += presets_.erase(name);
     }
+    if (removed != 0) SavePresets();
 }
 
 void PresetManager::RenamePreset(const std::string& oldName, const std::string& newName) {
@@ -297,11 +303,11 @@ PresetManager::PrefabStructureOverrideSummary PresetManager::GetPrefabStructureO
     return summary;
 }
 
-std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPrefab(
+std::vector<std::unique_ptr<engine::Object3d>> PresetManager::CreateObjectsFromPrefab(
     const std::string& prefabName,
     Object3dCommon* common) const {
     // assetId は元データへのリンクに保ち、配置ごとに別の instanceId を発行する。
-    std::vector<std::unique_ptr<Object3d>> result;
+    std::vector<std::unique_ptr<engine::Object3d>> result;
     auto it = prefabs_.find(prefabName);
     if (it == prefabs_.end() || !common) {
         return result;
@@ -320,7 +326,7 @@ std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPrefab(
     return result;
 }
 
-json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& info) {
+json* PresetManager::FindPrefabSourceNode(const engine::Object3d::PrefabInstanceInfo& info) {
     // 配置済み Object が記録した assetId と sourceObjectId の両方で元ノードを特定する。
     if (!info.IsLinked()) {
         return nullptr;
@@ -335,7 +341,7 @@ json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& in
     return nullptr;
 }
 
-const json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& info) const {
+const json* PresetManager::FindPrefabSourceNode(const engine::Object3d::PrefabInstanceInfo& info) const {
     // const 経路でも同じ ID 対応で検索し、呼び出し元に編集権限を渡さない。
     if (!info.IsLinked()) {
         return nullptr;
@@ -350,10 +356,10 @@ const json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceIn
     return nullptr;
 }
 
-void PresetManager::AssignNewPrefabInstanceId(const std::vector<Object3d*>& objects) const {
+void PresetManager::AssignNewPrefabInstanceId(const std::vector<engine::Object3d*>& objects) const {
     // 同じ旧 instanceId を持つ複製群には同じ新 ID を割り当て、群のまとまりを保つ。
     std::unordered_map<std::string, std::string> replacementIds;
-    for (Object3d* object : objects) {
+    for (engine::Object3d* object : objects) {
         if (!object || !object->IsPrefabInstance()) {
             continue;
         }

@@ -9,10 +9,10 @@ class GimmickBossGate final : public BaseGimmick {
     void Update(float deltaTime) override;
     void OnTrigger() override;
     void OnSwitchEvent(bool active) override;
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
     // 開門中の退避座標ではなく、シーンで編集した閉鎖位置を返します。
-    Vector3 GetClosedPosition();
+    engine::Vector3 GetClosedPosition();
 
     // 崩壊演出中はシーン側に配置制御を渡し、開閉状態は保持します。
     void SetCinematicOverride(bool enabled) { cinematicOverride_ = enabled; }
@@ -25,8 +25,8 @@ class GimmickBossGate final : public BaseGimmick {
     float GetTransitionDuration() const;
     float GetTravelDistance() const;
 
-    Vector3 authoredPosition_{};
-    Vector3 authoredScale_{1.0f, 1.0f, 1.0f};
+    engine::Vector3 authoredPosition_{};
+    engine::Vector3 authoredScale_{1.0f, 1.0f, 1.0f};
     uint32_t authoredCollisionAttribute_ = 0;
     uint32_t authoredCollisionMask_ = 0;
     float closure_ = 0.0f;

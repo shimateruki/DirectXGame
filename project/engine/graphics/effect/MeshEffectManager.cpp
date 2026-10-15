@@ -23,6 +23,7 @@ struct EffectJsonCacheEntry {
 };
 
 bool LoadEffectJsonCached(const std::string& jsonFilePath, json& outJson) {
+    // 更新時刻が同じ設定は解析済みJSONを再利用し、エフェクト生成時のI/Oを減らす。
     static std::unordered_map<std::string, EffectJsonCacheEntry> cache;
 
     std::error_code ec;
@@ -93,6 +94,7 @@ void MeshEffectManager::BeginFrame() {
 }
 
 void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
+    // 同じ設定を複数回GPUへ準備しないよう、ロード済みパスを先に確認する。
     if (preloadedEffects_.find(jsonFilePath) != preloadedEffects_.end()) {
         return;
     }
@@ -124,6 +126,7 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
     }
 
     auto effect = std::make_unique<EffectObject3d>();
+    // 設定ファイルに値がない項目は安全な初期値に戻してから、存在する項目だけ適用する。
     effect->Initialize(common_);
     effect->SetProceduralType(0);
     effect->SetEnableNoiseTexture(false);
@@ -149,6 +152,7 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
         }
     }
     if (j.contains("NoiseTexturePath")) {
+        // ノイズは線形値、Rampは表示色として読み込み、用途に応じた色空間を使う。
         const std::string texturePath = j["NoiseTexturePath"].get<std::string>();
         if (!texturePath.empty()) {
             effect->SetNoiseTexture(TextureManager::GetInstance()->Load(
@@ -166,6 +170,7 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
     }
 
     if (j.contains("ProceduralType")) {
+        // プロシージャル形状だけは全パラメータを反映した後に一度生成する。
         int procType = j["ProceduralType"];
         effect->SetProceduralType(procType);
         if (procType >= 1) {
@@ -198,6 +203,7 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
     preloadedEffects_.insert(jsonFilePath);
 }
 
+// 同じフレームの二重更新を避け、タイムライン管理外のエフェクトの寿命を進めます。
 void MeshEffectManager::Update(float deltaTime) {
     if (updatedThisFrame_) {
         return;
@@ -235,6 +241,7 @@ void MeshEffectManager::Update(float deltaTime) {
     }
 }
 
+// Editorの単独ステップではフレーム済みフラグを戻してから更新します。
 void MeshEffectManager::UpdateEditorPreviewStep(float deltaTime) {
     updatedThisFrame_ = false;
     Update(deltaTime);
@@ -251,6 +258,7 @@ void MeshEffectManager::Draw(ID3D12Resource* pLight, ID3D12Resource* sLight) {
     }
 }
 
+// 再生中の歪みエフェクトがあれば、背景色テクスチャの複製が必要と返します。
 bool MeshEffectManager::RequiresSceneColorCopy() const {
     return std::any_of(
         activeEffects_.begin(),
@@ -260,6 +268,7 @@ bool MeshEffectManager::RequiresSceneColorCopy() const {
         });
 }
 
+// 個別停止に使うIDを払い出し、無効値は飛ばします。
 MeshEffectManager::EffectScopeId MeshEffectManager::CreateEffectScope() {
     EffectScopeId scopeId = nextEffectScopeId_++;
     if (scopeId == kInvalidEffectScope) {
@@ -269,6 +278,7 @@ MeshEffectManager::EffectScopeId MeshEffectManager::CreateEffectScope() {
 }
 
 void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
+    // 指定タイムラインに属するエフェクトだけを削除し、別スコープの演出は保持する。
     if (scopeId == kInvalidEffectScope) {
         return;
     }
@@ -283,6 +293,7 @@ void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
         }
 
         if (effect && effect->editHasCollision_) {
+            // 見た目の削除と同時に衝突Managerの登録も外す。
             CollisionManager::GetInstance()->RemoveObject(effect);
         }
         if (previewEffectForDebug_ == effect) {
@@ -294,6 +305,8 @@ void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
     }
 }
 
+// 同じScopeの旧演出を止めてから生成し、攻撃判定は別トラックに任せます。
+// 生成に失敗した場合は追加した演出を破棄してfalseを返します。
 bool MeshEffectManager::StartTimelineEffect(EffectScopeId scopeId, const std::string& path) {
     if (scopeId == kInvalidEffectScope) return false;
     StopEffectScope(scopeId);
@@ -326,7 +339,7 @@ bool MeshEffectManager::StartTimelineEffect(EffectScopeId scopeId, const std::st
 }
 
 void MeshEffectManager::EvaluateTimelineEffect(EffectScopeId scopeId, float time, float duration,
-    const Vector3& position, const Vector3& rotation, const Vector3& scale) {
+    const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale) {
     if (!timelineScopes_.count(scopeId)) return;
     for (auto& effect : activeEffects_) {
         const auto it = effectScopes_.find(effect.get());
@@ -336,7 +349,7 @@ void MeshEffectManager::EvaluateTimelineEffect(EffectScopeId scopeId, float time
         // プリセット内部の位置・スケールアニメーションに重ねず、制作者のキーを優先します。
         const auto& offset = timelineOffsets_.at(effect.get());
         // VolumeModeの交差面・厚み用の相対配置を残して、部品全体を動かします。
-        effect->SetTranslate(Math::Transform(offset.position, Math::MakeAffineMatrix(scale, rotation, position)));
+        effect->SetTranslate(engine::Math::Transform(offset.position, engine::Math::MakeAffineMatrix(scale, rotation, position)));
         effect->SetRotation(rotation + offset.rotation);
         effect->SetScale(scale);
         effect->UpdateLocalMatrix();
@@ -344,7 +357,7 @@ void MeshEffectManager::EvaluateTimelineEffect(EffectScopeId scopeId, float time
     }
 }
 
-void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject, const Vector3& extOffset, const Vector3& extRot, const Vector3& extScale) {
+void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Object3d* baseObject, const engine::Vector3& extOffset, const engine::Vector3& extRot, const engine::Vector3& extScale) {
     // common_ が null のとき、現在シーンから自動取得を試みる（Initialize呼び忘れ対策）
     if (!common_) {
         SceneManager* sm = SceneManager::GetInstance();
@@ -371,11 +384,11 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     // ==========================================
     // ★ 1. 基準となるターゲットの取得（位置と向きを分離！）
     // ==========================================
-    Vector3 basePos = { 0, 0, 0 };
+    engine::Vector3 basePos = { 0, 0, 0 };
     float targetWorldY = 0.0f; // ★プレイヤーの「向き」
 
-    Object3d* posTarget = baseObject; // 位置の基準
-    Object3d* rotTarget = baseObject; // 向きの基準
+    engine::Object3d* posTarget = baseObject; // 位置の基準
+    engine::Object3d* rotTarget = baseObject; // 向きの基準
 
     // JSONでTargetNameが指定されている場合、特定のボーンなどを探す
     if (j.contains("TargetName")) {
@@ -384,17 +397,17 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
             SceneManager* sm = SceneManager::GetInstance();
             if (sm && sm->GetCurrentScene()) {
                 auto& objects = sm->GetCurrentScene()->GetObjects();
-                std::function<Object3d* (Object3d*, const std::string&)> findObj = [&](Object3d* obj, const std::string& name) -> Object3d* {
+                std::function<engine::Object3d* (engine::Object3d*, const std::string&)> findObj = [&](engine::Object3d* obj, const std::string& name) -> engine::Object3d* {
                     if (!obj) return nullptr;
                     if (obj->GetName() == name) return obj;
                     for (auto* child : obj->GetChildren()) {
-                        Object3d* found = findObj(child, name);
+                        engine::Object3d* found = findObj(child, name);
                         if (found) return found;
                     }
                     return nullptr;
                     };
                 for (auto& obj : objects) {
-                    Object3d* found = findObj(obj.get(), targetName);
+                    engine::Object3d* found = findObj(obj.get(), targetName);
                     if (found) {
                         posTarget = found; // 見つかったボーンを位置の基準にする
                         // rotTarget が null の場合のみ、見つけたオブジェクトをセットする
@@ -413,7 +426,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
 
     // ② 向き（Y回転）はボーンのねじれを完全に無視し、一番大元（ルート）の向きだけを取る！
     if (rotTarget) {
-        Object3d* rootObj = rotTarget;
+        engine::Object3d* rootObj = rotTarget;
         // 親を辿って一番上のノード（プレイヤー本体など）を見つける
         while (rootObj && rootObj->GetParent()) {
             rootObj = rootObj->GetParent();
@@ -426,8 +439,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     // ==========================================
     // ★ 2. オフセットの読み込みと「回転計算」
     // ==========================================
-    Vector3 offsetPos = { 0, 0, 0 };
-    Vector3 offsetRot = { 0, 0, 0 };
+    engine::Vector3 offsetPos = { 0, 0, 0 };
+    engine::Vector3 offsetRot = { 0, 0, 0 };
     if (j.contains("Position")) offsetPos = { j["Position"][0], j["Position"][1], j["Position"][2] };
     if (j.contains("Rotation")) offsetRot = { j["Rotation"][0], j["Rotation"][1], j["Rotation"][2] };
 
@@ -443,7 +456,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     // ★超重要：エディタで作った「右側」などのオフセット位置を、プレイヤーの大元の向きに合わせて回転させる！
     float s = sinf(targetWorldY);
     float c = cosf(targetWorldY);
-    Vector3 rotatedOffset;
+    engine::Vector3 rotatedOffset;
     rotatedOffset.x = offsetPos.x * c + offsetPos.z * s;
     rotatedOffset.y = offsetPos.y;
     rotatedOffset.z = -offsetPos.x * s + offsetPos.z * c;
@@ -539,7 +552,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                 // =======================================================
                 // ★ 修正箇所: 現在の設定を取り出して、正しく上書きする！
                 // =======================================================
-                Object3d::ColliderConfig cConfig = effect->GetColliderConfig();
+                engine::Object3d::ColliderConfig cConfig = effect->GetColliderConfig();
                 cConfig.type = cType;
                 cConfig.size = effect->editCollisionSize_;
                 cConfig.center = effect->editCollisionOffset_;
@@ -554,12 +567,12 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         }
 
         // --- ★ 4. 立体化のための座標・回転適用 ---
-        Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
+        engine::Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
 
         // ★回転はシンプルにY軸だけを足す！（行列バグ防止）
-        Vector3 finalRot = { offsetRot.x, offsetRot.y + targetWorldY, offsetRot.z };
+        engine::Vector3 finalRot = { offsetRot.x, offsetRot.y + targetWorldY, offsetRot.z };
 
-        Vector3 localZ;
+        engine::Vector3 localZ;
         localZ.x = sinf(finalRot.y) * cosf(finalRot.x);
         localZ.y = -sinf(finalRot.x);
         localZ.z = cosf(finalRot.y) * cosf(finalRot.x);
@@ -595,7 +608,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
 //  JSONの Position / Rotation フィールドを無視し、
 //  worldPos / worldRot をそのまま最終座標として使う
 // ==========================================================
-void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale) {
+void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const engine::Vector3& worldPos, const engine::Vector3& worldRot, const engine::Vector3& scale) {
     // common_ が null なら現在シーンから自己修復
     if (!common_) {
         SceneManager* sm = SceneManager::GetInstance();
@@ -621,7 +634,7 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
     float lifetime = j.contains("Lifetime") ? (float)j["Lifetime"] : 1.0f;
 
     // localZ ベクトル (volumeMode 2 の立体化オフセット計算用)
-    Vector3 localZ;
+    engine::Vector3 localZ;
     localZ.x = sinf(worldRot.y) * cosf(worldRot.x);
     localZ.y = -sinf(worldRot.x);
     localZ.z = cosf(worldRot.y) * cosf(worldRot.x);
@@ -688,8 +701,8 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
         }
 
         // --- 座標・回転を直接適用 (JSONのPosition/Rotationは無視) ---
-        Vector3 finalPos = worldPos;
-        Vector3 finalRot = worldRot;
+        engine::Vector3 finalPos = worldPos;
+        engine::Vector3 finalRot = worldRot;
 
         // VolumeMode 対応
         if (volumeMode == 1 && i == 1) {
@@ -714,9 +727,9 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
 void MeshEffectManager::SpawnEffectAtScoped(
     EffectScopeId scopeId,
     const std::string& jsonFilePath,
-    const Vector3& worldPos,
-    const Vector3& worldRot,
-    const Vector3& scale) {
+    const engine::Vector3& worldPos,
+    const engine::Vector3& worldRot,
+    const engine::Vector3& scale) {
     const size_t firstNewEffect = activeEffects_.size();
     SpawnEffectAt(jsonFilePath, worldPos, worldRot, scale);
 
@@ -728,7 +741,8 @@ void MeshEffectManager::SpawnEffectAtScoped(
     }
 }
 
-void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
+// 指定位置へ拡大・減衰する加算合成のリング波紋を生成します。
+void MeshEffectManager::SpawnRingWaveEffect(const engine::Vector3& position) {
     if (!common_) {
         auto sm = SceneManager::GetInstance();
         if (sm->GetCurrentScene()) {
@@ -803,7 +817,7 @@ void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
 //   - alphaReference = 0.0 なのでテクスチャのαが0以外なら描画
 //   - Culling=NONE, DepthWrite=ZERO (パイプライン側で設定済み)
 // ==========================================================
-void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetime) {
+void MeshEffectManager::SpawnPortalEffect(const engine::Vector3& position, float lifetime) {
     if (!common_) {
         auto sm = SceneManager::GetInstance();
         if (sm->GetCurrentScene()) {

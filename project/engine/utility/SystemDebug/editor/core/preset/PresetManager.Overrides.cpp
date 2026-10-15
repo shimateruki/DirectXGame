@@ -3,7 +3,7 @@
 using namespace PresetManagerImplementation;
 
 // Prefabの差分適用と取り消し。
-std::vector<PresetManager::PrefabPropertyOverride> PresetManager::GetPrefabOverrides(const Object3d* object) const {
+std::vector<PresetManager::PrefabPropertyOverride> PresetManager::GetPrefabOverrides(const engine::Object3d* object) const {
     // 配置位置と名前は個体固有として除き、元ノードと異なる編集可能 Property だけ拾う。
     std::vector<PrefabPropertyOverride> overrides;
     if (!object || !object->IsPrefabInstance()) {
@@ -46,7 +46,7 @@ std::vector<PresetManager::PrefabPropertyOverride> PresetManager::GetPrefabOverr
 }
 
 std::vector<PresetManager::PrefabComponentOverride> PresetManager::GetPrefabComponentOverrides(
-    const Object3d* object) const {
+    const engine::Object3d* object) const {
     // Component の有無は内部 Property とは別の構造差分として返す。
     std::vector<PrefabComponentOverride> overrides;
     if (!object || !object->IsPrefabInstance()) {
@@ -80,7 +80,7 @@ std::vector<PresetManager::PrefabComponentOverride> PresetManager::GetPrefabComp
 }
 
 std::vector<PresetManager::PrefabVariantOverride> PresetManager::GetPrefabVariantOverrides(
-    const Object3d* object) const {
+    const engine::Object3d* object) const {
     // 派生 Prefab と元 Prefab の同じ sourceObjectId を比較し、明示された差分を列挙する。
     std::vector<PrefabVariantOverride> overrides;
     if (!object || !object->IsPrefabInstance()) {
@@ -141,7 +141,7 @@ std::vector<PresetManager::PrefabVariantOverride> PresetManager::GetPrefabVarian
 }
 
 std::vector<PresetManager::PrefabVariantComponentOverride>
-PresetManager::GetPrefabVariantComponentOverrides(const Object3d* object) const {
+PresetManager::GetPrefabVariantComponentOverrides(const engine::Object3d* object) const {
     // 派生側の Component 上書きだけを、元と派生の存在状態を添えて返す。
     std::vector<PrefabVariantComponentOverride> overrides;
     if (!object || !object->IsPrefabInstance()) {
@@ -197,16 +197,16 @@ PresetManager::GetPrefabVariantComponentOverrides(const Object3d* object) const 
     return overrides;
 }
 
-bool PresetManager::HasValidPrefabSource(const Object3d* object) const {
+bool PresetManager::HasValidPrefabSource(const engine::Object3d* object) const {
     // リンク情報があっても元ノードを解決できなければ編集対象にしない。
     return object && object->IsPrefabInstance() &&
         FindPrefabSourceNode(object->GetPrefabInstanceInfo()) != nullptr;
 }
 
 bool PresetManager::ApplyPrefabProperty(
-    Object3d* object,
+    engine::Object3d* object,
     const std::string& propertyPath,
-    const std::vector<Object3d*>& sceneObjects) {
+    const std::vector<engine::Object3d*>& sceneObjects) {
     // 個体固有の配置値は共有元へ書かず、差分のある Property だけ Asset へ反映する。
     if (!object || !object->IsPrefabInstance()) {
         return false;
@@ -282,7 +282,7 @@ bool PresetManager::ApplyPrefabProperty(
 
     // 同じ元ノードを共有する配置のうち、旧値のままのものだけ新値へ追従させる。
     // 個体側で上書きした値は変更しない。
-    for (Object3d* candidate : sceneObjects) {
+    for (engine::Object3d* candidate : sceneObjects) {
         if (!candidate || candidate == object || !candidate->IsPrefabInstance()) {
             continue;
         }
@@ -308,9 +308,9 @@ bool PresetManager::ApplyPrefabProperty(
 }
 
 bool PresetManager::ApplyPrefabComponent(
-    Object3d* object,
+    engine::Object3d* object,
     const std::string& componentTypeId,
-    const std::vector<Object3d*>& sceneObjects) {
+    const std::vector<engine::Object3d*>& sceneObjects) {
     // Component の追加・削除を構造差分へ保存し、必要なら内部 Property も維持する。
     if (!object || !object->IsPrefabInstance()) {
         return false;
@@ -409,7 +409,7 @@ bool PresetManager::ApplyPrefabComponent(
 
     RefreshPrefabInheritance();
     // 派生関係を再計算し、明示的に構造を変更していない配置だけ同期する。
-    for (Object3d* candidate : sceneObjects) {
+    for (engine::Object3d* candidate : sceneObjects) {
         if (!candidate || candidate == object || !candidate->IsPrefabInstance()) {
             continue;
         }
@@ -442,7 +442,7 @@ bool PresetManager::ApplyPrefabComponent(
     return true;
 }
 
-bool PresetManager::RevertPrefabComponent(Object3d* object, const std::string& componentTypeId) {
+bool PresetManager::RevertPrefabComponent(engine::Object3d* object, const std::string& componentTypeId) {
     // 配置個体の Component 有無を、解決済みの Prefab 元ノードへ戻す。
     if (!object || !object->IsPrefabInstance()) {
         return false;
@@ -467,9 +467,9 @@ bool PresetManager::RevertPrefabComponent(Object3d* object, const std::string& c
 }
 
 bool PresetManager::RevertPrefabVariantProperty(
-    Object3d* object,
+    engine::Object3d* object,
     const std::string& propertyPath,
-    const std::vector<Object3d*>& sceneObjects) {
+    const std::vector<engine::Object3d*>& sceneObjects) {
     // 派生側の明示的な Property 上書きを外し、元 Prefab の有効値を再継承する。
     if (!object || !object->IsPrefabInstance()) {
         return false;
@@ -510,7 +510,7 @@ bool PresetManager::RevertPrefabVariantProperty(
     RefreshPrefabInheritance();
 
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
-    for (Object3d* candidate : sceneObjects) {
+    for (engine::Object3d* candidate : sceneObjects) {
         if (!candidate || !candidate->IsPrefabInstance() ||
             candidate->GetPrefabInstanceInfo().sourceObjectId != info.sourceObjectId) {
             continue;
@@ -532,9 +532,9 @@ bool PresetManager::RevertPrefabVariantProperty(
 }
 
 bool PresetManager::RevertPrefabVariantComponent(
-    Object3d* object,
+    engine::Object3d* object,
     const std::string& componentTypeId,
-    const std::vector<Object3d*>& sceneObjects) {
+    const std::vector<engine::Object3d*>& sceneObjects) {
     // 派生 Component の存在差分と内部 Property 差分を消し、元構造へ戻す。
     if (!object || !object->IsPrefabInstance()) {
         return false;
@@ -583,7 +583,7 @@ bool PresetManager::RevertPrefabVariantComponent(
     // 存在差分を消すと内部Propertyも意味を失うため、両方取り除いて継承を再計算する。
     RefreshPrefabInheritance();
 
-    for (Object3d* candidate : sceneObjects) {
+    for (engine::Object3d* candidate : sceneObjects) {
         if (!candidate || !candidate->IsPrefabInstance() ||
             candidate->GetPrefabInstanceInfo().sourceObjectId != info.sourceObjectId) {
             continue;
@@ -609,7 +609,7 @@ bool PresetManager::RevertPrefabVariantComponent(
     return true;
 }
 
-bool PresetManager::RevertPrefabProperty(Object3d* object, const std::string& propertyPath) {
+bool PresetManager::RevertPrefabProperty(engine::Object3d* object, const std::string& propertyPath) {
     // インスタンス固有の名前・配置値を避け、元ノードの値だけ復元する。
     if (!object || !object->IsPrefabInstance()) {
         return false;
@@ -630,7 +630,7 @@ bool PresetManager::RevertPrefabProperty(Object3d* object, const std::string& pr
     return EditorPropertyRegistry::GetInstance()->SetValue(object, propertyPath, value);
 }
 
-int PresetManager::ApplyAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects) {
+int PresetManager::ApplyAllPrefabOverrides(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects) {
     // 一配置群の構造差分を先に適用し、Component内部のProperty差分を後から処理する。
     if (!object || !object->IsPrefabInstance()) {
         return 0;
@@ -653,7 +653,7 @@ int PresetManager::ApplyAllPrefabOverrides(Object3d* object, const std::vector<O
     int applied = 0;
     // 各PropertyごとのUndo履歴を抑え、階層全体のApplyを一操作として登録する。
     suppressPrefabAssetTransaction_ = true;
-    for (Object3d* candidate : sceneObjects) {
+    for (engine::Object3d* candidate : sceneObjects) {
         if (!candidate || !candidate->IsPrefabInstance() ||
             candidate->GetPrefabInstanceInfo().instanceId != instanceId) {
             continue;
@@ -679,14 +679,14 @@ int PresetManager::ApplyAllPrefabOverrides(Object3d* object, const std::vector<O
     return applied;
 }
 
-int PresetManager::RevertAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects) {
+int PresetManager::RevertAllPrefabOverrides(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects) {
     // 同じ instanceId の階層を回り、構造差分と Property 差分を元へ戻す。
     if (!object || !object->IsPrefabInstance()) {
         return 0;
     }
     const std::string instanceId = object->GetPrefabInstanceInfo().instanceId;
     int reverted = 0;
-    for (Object3d* candidate : sceneObjects) {
+    for (engine::Object3d* candidate : sceneObjects) {
         if (!candidate || !candidate->IsPrefabInstance() ||
             candidate->GetPrefabInstanceInfo().instanceId != instanceId) {
             continue;
@@ -707,14 +707,14 @@ int PresetManager::RevertAllPrefabOverrides(Object3d* object, const std::vector<
     return reverted;
 }
 
-int PresetManager::UnpackPrefabInstance(Object3d* object, const std::vector<Object3d*>& sceneObjects) {
+int PresetManager::UnpackPrefabInstance(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects) {
     // 同じ配置群のリンク情報を外し、見た目は残したまま独立 Object にする。
     if (!object || !object->IsPrefabInstance()) {
         return 0;
     }
     const std::string instanceId = object->GetPrefabInstanceInfo().instanceId;
     int unpacked = 0;
-    for (Object3d* candidate : sceneObjects) {
+    for (engine::Object3d* candidate : sceneObjects) {
         if (candidate && candidate->IsPrefabInstance() &&
             candidate->GetPrefabInstanceInfo().instanceId == instanceId) {
             candidate->ClearPrefabInstanceInfo();

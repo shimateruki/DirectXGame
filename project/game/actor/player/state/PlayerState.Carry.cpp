@@ -23,12 +23,10 @@ void PlayerStateCarry::Enter(Player* player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Carry);
         struggleTimer_ = 0.0f;
 
-        Object3d* enemy = player->GetCarriedEnemy();
+        engine::Object3d* enemy = player->GetCarriedEnemy();
         if (enemy) {
+            // 抵抗演出の基準サイズを保持し、持ち運び終了時に元へ戻せるようにする。
             carriedBaseScale_ = enemy->GetScale();
-            // 敵の衝突判定を無効化（kNone等）して無力化する
-            // ※ColliderのSetAttribute等があればここで当たり判定を無効化します
-            // enemy->GetCollider()->SetAttribute(0);
         }
     }
 }
@@ -39,9 +37,9 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
 
     struggleTimer_ += deltaTime;
 
-    Object3d* enemy = player->GetCarriedEnemy();
+    engine::Object3d* enemy = player->GetCarriedEnemy();
     if (enemy) {
-        Vector3 playerPos = player->GetWorldPosition();
+        engine::Vector3 playerPos = player->GetWorldPosition();
 
         // 【抗っている感の演出（汎用プロシージャルアニメーション）】
         // 1. 座標の揺れ（ジタバタと細かく暴れる）
@@ -53,7 +51,7 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
                                             playerPos.z + offsetZ});
 
         // 2. 回転の揺れ（体をよじる、イヤイヤと暴れる動き）
-        Vector3 rot;
+        engine::Vector3 rot;
         rot.x = std::sin(struggleTimer_ * 20.0f) * 0.2f;
         // プレイヤーの現在のY軸回転を基準に、首振り角度をオフセットとして適用する
         rot.y = player->GetRotation().y + std::sin(struggleTimer_ * 15.0f) * 0.4f;
@@ -77,7 +75,7 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
 void PlayerStateCarry::Exit(Player* player) {
     // 投げた時などに呼ばれる
     if (player) {
-        Object3d* enemy = player->GetCarriedEnemy();
+        engine::Object3d* enemy = player->GetCarriedEnemy();
         if (enemy) {
             // 持ち運びが終わったら（投げる等）、姿勢とスケールを元に戻す
             enemy->SetScale(carriedBaseScale_);

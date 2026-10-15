@@ -5,6 +5,7 @@
 
 namespace EditorWindowsText {
 
+// Win32の広文字APIへ渡すためUTF-8を変換し、無効な入力では空文字を返します。
 std::wstring Utf8ToWide(const std::string& text) {
     if (text.empty()) {
         return {};

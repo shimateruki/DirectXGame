@@ -18,7 +18,7 @@ namespace fs = std::filesystem;
 
 #ifdef USE_IMGUI
 
-void InspectorWindow::DrawPathMoverSection(Object3d *selectedObject) {
+void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
   if (!selectedObject) {
     return;
   }
@@ -130,7 +130,7 @@ void InspectorWindow::DrawPathMoverSection(Object3d *selectedObject) {
   }
 }
 
-void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
+void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) {
   // 選択物のイベント、生成種別、型固有パラメータを同じInspectorへ表示します。
   // Scene JSONに保存される値を直接編集するため、型変更時だけ必要な初期値もここで補います。
   if (!selectedObject) {
@@ -165,7 +165,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
 
         if (selectedObject->GetColliderType() == ColliderType::kNone) {
-          Object3d::ColliderConfig colConfig;
+          engine::Object3d::ColliderConfig colConfig;
           colConfig.type = ColliderType::kSphere;
           colConfig.size = {1.2f, 1.2f, 1.2f};
           selectedObject->SetColliderConfig(colConfig);
@@ -213,7 +213,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
         selectedObject->SetStatic(false);
 
-        Object3d::ColliderConfig colConfig;
+        engine::Object3d::ColliderConfig colConfig;
         colConfig.type = ColliderType::kSphere;
         colConfig.size = {1.2f, 1.2f, 1.2f};
         selectedObject->SetColliderConfig(colConfig);
@@ -717,7 +717,7 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
 
 #else
 
-void InspectorWindow::DrawPathMoverSection(Object3d *) {}
-void InspectorWindow::DrawGameplayDataSection(Object3d *) {}
+void InspectorWindow::DrawPathMoverSection(engine::Object3d *) {}
+void InspectorWindow::DrawGameplayDataSection(engine::Object3d *) {}
 
 #endif

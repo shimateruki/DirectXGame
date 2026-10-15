@@ -16,13 +16,13 @@
 #include <cstdlib>
 #include <memory>
 namespace {
-Vector3 GetStablePullEnemyScale(Object3d* enemy) {
+engine::Vector3 GetStablePullEnemyScale(engine::Object3d* enemy) {
     // 引き伸ばし中の一時的な縦横比ではなく、体積を保つ基準尺度で捕獲演出を始める。
     if (!enemy) {
         return {1.0f, 1.0f, 1.0f};
     }
 
-    const Vector3 scale = enemy->GetScale();
+    const engine::Vector3 scale = enemy->GetScale();
     if (!dynamic_cast<BaseEnemy*>(enemy)) {
         return scale;
     }
@@ -68,7 +68,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     normalPullBasePlayerPos_ = hookTipPos_;
     hasNormalPullBasePlayerPos_ = false;
 
-    Object3d* marker = player->GetHookMarker();
+    engine::Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(true);
         marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
@@ -86,21 +86,21 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         return;
     }
 
-    Vector3 playerPos = player->GetWorldPosition();
+    engine::Vector3 playerPos = player->GetWorldPosition();
 
     if (phase_ == Phase::kShootHook) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
         player->SetSlimeAnimationDirection(targetEnemy_->GetWorldPosition() - playerPos);
         // フックの先端を対象へ進め、到達した時点で引き寄せ可否を判定します。
-        Vector3 enemyPos = targetEnemy_->GetTransform()->translate;
-        Vector3 toTarget = enemyPos - hookTipPos_;
-        float dist = Math::Length(toTarget);
+        engine::Vector3 enemyPos = targetEnemy_->GetTransform()->translate;
+        engine::Vector3 toTarget = enemyPos - hookTipPos_;
+        float dist = engine::Math::Length(toTarget);
 
         if (dist < 5.0f) {
             hookTipPos_ = enemyPos;
             if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_); enemyBase && enemyBase->IsPullImmune()) {
                 HitEffectDirector::SpawnPullBindHit(enemyPos);
-                if (Object3d* marker = player->GetHookMarker()) {
+                if (engine::Object3d* marker = player->GetHookMarker()) {
                     marker->SetIsVisible(false);
                 }
                 player->SetSlimePullProgress(0.0f);
@@ -128,26 +128,26 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
             // 命中演出は拘束状態へ切り替えた後に発生させます。
             if (player->GetParticleSystem()) {
-                Vector3 toPlayer = Math::Normalize(playerPos - enemyPos);
+                engine::Vector3 toPlayer = engine::Math::Normalize(playerPos - enemyPos);
                 player->GetParticleSystem()->SpawnParticles(enemyPos, 30, 2.0f, &toPlayer, 30.0f,
                                                             {0.55f, 0.95f, 1.0f, 1.0f}, {0.25f, 0.75f, 1.0f, 0.0f},
                                                             0.2f, 0.4f, 0.8f, 0.1f);
             }
         } else {
-            Vector3 dir = Math::Normalize(toTarget);
+            engine::Vector3 dir = engine::Math::Normalize(toTarget);
             hookTipPos_ = hookTipPos_ + dir * (150.0f * deltaTime);
         }
 
-        Object3d* marker = player->GetHookMarker();
+        engine::Object3d* marker = player->GetHookMarker();
         if (marker) {
-            Vector3 diff = hookTipPos_ - playerPos;
+            engine::Vector3 diff = hookTipPos_ - playerPos;
             marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
                                                  playerPos.z + diff.z * 0.5f});
             float angleY = std::atan2(diff.x, diff.z);
             float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
             marker->SetEulerAngles({angleX, angleY, 0.0f});
             marker->SetQuaternionMaster(false);
-            marker->SetScale({0.5f, 0.5f, Math::Length(diff)});
+            marker->SetScale({0.5f, 0.5f, engine::Math::Length(diff)});
             marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
 
             // 長さと向きを更新した後にワールド行列を確定します。
@@ -163,7 +163,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
         // タイマーが負の間は引き寄せを止め、拘束の反動だけ見せます。
         if (pullTimer_ < 0.0f) {
-            Vector3 tetherEnemyPos = targetEnemy_->GetWorldPosition();
+            engine::Vector3 tetherEnemyPos = targetEnemy_->GetWorldPosition();
             float shakeX = 0.0f;
             float shakeY = 0.0f;
             float shakeZ = 0.0f;
@@ -184,13 +184,13 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 targetEnemy_->UpdateWorldMatrix();
             }
 
-            Object3d* marker = player->GetHookMarker();
+            engine::Object3d* marker = player->GetHookMarker();
             if (marker) {
-                Vector3 diff = tetherEnemyPos - playerPos;
+                engine::Vector3 diff = tetherEnemyPos - playerPos;
                 marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
                                                      playerPos.z + diff.z * 0.5f});
                 // ヒットストップ中は「ピンッ」と極限まで細く張り詰める
-                float len = Math::Length(diff);
+                float len = engine::Math::Length(diff);
                 marker->SetScale({0.13f, 0.10f, len});
                 marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
 
@@ -214,15 +214,15 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 hasHeavyPullBasePlayerPos_ = true;
             }
 
-            Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
-            const Vector3 hookAttachmentPos = giantSlime->GetHookAttachmentPosition();
-            Vector3 playerToEnemy = enemyCurrentPos - heavyPullBasePlayerPos_;
-            Vector3 pullDir = {playerToEnemy.x, 0.0f, playerToEnemy.z};
-            float pullDirLength = Math::Length(pullDir);
-            pullDir = pullDirLength > 0.001f ? pullDir / pullDirLength : Vector3{0.0f, 0.0f, 1.0f};
+            engine::Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
+            const engine::Vector3 hookAttachmentPos = giantSlime->GetHookAttachmentPosition();
+            engine::Vector3 playerToEnemy = enemyCurrentPos - heavyPullBasePlayerPos_;
+            engine::Vector3 pullDir = {playerToEnemy.x, 0.0f, playerToEnemy.z};
+            float pullDirLength = engine::Math::Length(pullDir);
+            pullDir = pullDirLength > 0.001f ? pullDir / pullDirLength : engine::Vector3{0.0f, 0.0f, 1.0f};
             const float bracePulse = std::abs(std::sin(pullTimer_ * 38.0f));
             const float braceAmount = (0.10f + bracePulse * 0.16f) * (1.0f - progress * 0.25f);
-            Vector3 visualPlayerPos = heavyPullBasePlayerPos_ - pullDir * braceAmount;
+            engine::Vector3 visualPlayerPos = heavyPullBasePlayerPos_ - pullDir * braceAmount;
             visualPlayerPos.y += std::sin(pullTimer_ * 52.0f) * 0.035f * (1.0f - progress * 0.25f);
             player->SetTranslate(visualPlayerPos);
             playerPos = visualPlayerPos;
@@ -230,10 +230,10 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             player->SetSlimePullDirection(hookAttachmentPos - playerPos);
             player->SetSlimePullProgress(progress);
 
-            Object3d* marker = player->GetHookMarker();
+            engine::Object3d* marker = player->GetHookMarker();
             if (marker) {
-                Vector3 diff = hookAttachmentPos - playerPos;
-                float len = Math::Length(diff);
+                engine::Vector3 diff = hookAttachmentPos - playerPos;
+                float len = engine::Math::Length(diff);
                 if (len < 0.01f)
                     len = 0.01f;
 
@@ -244,7 +244,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
                 float pulse = std::sin(pullTimer_ * 72.0f);
                 float tension = pulse * (1.0f - progress * 0.35f) * 0.22f;
-                float thickness = Math::Lerp(0.30f, 0.12f, progress);
+                float thickness = engine::Math::Lerp(0.30f, 0.12f, progress);
                 marker->SetScale({(std::max)(0.06f, thickness + tension),
                                                  (std::max)(0.06f, thickness - tension * 0.55f),
                                                  len * (1.0f + std::abs(pulse) * 0.018f)});
@@ -277,15 +277,15 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             normalPullBasePlayerPos_ = playerPos;
             hasNormalPullBasePlayerPos_ = true;
         }
-        Vector3 flatPullDir = enemyStartPos_ - normalPullBasePlayerPos_;
+        engine::Vector3 flatPullDir = enemyStartPos_ - normalPullBasePlayerPos_;
         flatPullDir.y = 0.0f;
-        float flatPullLength = Math::Length(flatPullDir);
-        flatPullDir = flatPullLength > 0.001f ? flatPullDir / flatPullLength : Vector3{0.0f, 0.0f, 1.0f};
+        float flatPullLength = engine::Math::Length(flatPullDir);
+        flatPullDir = flatPullLength > 0.001f ? flatPullDir / flatPullLength : engine::Vector3{0.0f, 0.0f, 1.0f};
         const float bracePulse = std::abs(std::sin(pullTimer_ * 36.0f));
         const float yankWave = (std::max)(0.0f, std::sin(pullTimer_ * 22.0f));
         const float yankPulse = yankWave * yankWave * (1.0f - t * 0.35f);
         const float braceAmount = (0.20f + bracePulse * 0.24f + yankPulse * 0.28f) * (1.0f - t * 0.45f);
-        Vector3 bracedPlayerPos = normalPullBasePlayerPos_ - flatPullDir * braceAmount;
+        engine::Vector3 bracedPlayerPos = normalPullBasePlayerPos_ - flatPullDir * braceAmount;
         bracedPlayerPos.y = normalPullBasePlayerPos_.y;
         player->SetTranslate(bracedPlayerPos);
         player->UpdateLocalMatrix();
@@ -296,7 +296,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         float easeT = t * t * t;
 
         // 【演出2】敵の回転：引き寄せられながら超高速できりもみ回転する
-        Vector3 rot = targetEnemy_->GetTransform()->rotate;
+        engine::Vector3 rot = targetEnemy_->GetTransform()->rotate;
         rot.x += 20.0f * deltaTime;
         rot.y += 35.0f * deltaTime;
         rot.z += 15.0f * deltaTime;
@@ -304,17 +304,17 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         targetEnemy_->SetQuaternionMaster(false); // 追加: クォータニオンを無視してオイラー角回転を適用
 
         // 【演出3】敵の縮小：敵本来の大きさを基準に、手元で少しだけ圧縮する
-        const float scaleRate = Math::Lerp(1.0f, 0.82f, easeT);
+        const float scaleRate = engine::Math::Lerp(1.0f, 0.82f, easeT);
         targetEnemy_->SetScale({enemyBaseScale_.x * scaleRate, enemyBaseScale_.y * scaleRate,
                                                enemyBaseScale_.z * scaleRate});
 
         // 目標位置（プレイヤーの頭上）
-        Vector3 headPos = {playerPos.x, playerPos.y + 1.55f, playerPos.z};
+        engine::Vector3 headPos = {playerPos.x, playerPos.y + 1.55f, playerPos.z};
 
         // easeTを使って開始位置から目標位置への線形補間
-        Vector3 basePos = {Math::Lerp(enemyStartPos_.x, headPos.x, easeT),
-                           Math::Lerp(enemyStartPos_.y, headPos.y, easeT),
-                           Math::Lerp(enemyStartPos_.z, headPos.z, easeT)};
+        engine::Vector3 basePos = {engine::Math::Lerp(enemyStartPos_.x, headPos.x, easeT),
+                           engine::Math::Lerp(enemyStartPos_.y, headPos.y, easeT),
+                           engine::Math::Lerp(enemyStartPos_.z, headPos.z, easeT)};
 
         // サイン波でY軸に放物線のアーチを加える（easeTではなく純粋なtで綺麗なアーチにする）
         float arcHeight = 7.8f;
@@ -328,7 +328,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
             // 【演出】頭に乗った（キャッチした）瞬間の衝撃エフェクト
             if (player->GetParticleSystem()) {
-                Vector3 headPos = {playerPos.x, playerPos.y + 1.55f, playerPos.z};
+                engine::Vector3 headPos = {playerPos.x, playerPos.y + 1.55f, playerPos.z};
                 player->GetParticleSystem()->SpawnParticles(headPos, 20, 1.5f, nullptr, 20.0f,
                                                             {0.55f, 0.95f, 1.0f, 1.0f}, {0.25f, 0.75f, 1.0f, 0.0f},
                                                             0.2f, 0.4f, 0.6f, 0.05f);
@@ -347,10 +347,10 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             return;
         }
 
-        Object3d* marker = player->GetHookMarker();
+        engine::Object3d* marker = player->GetHookMarker();
         if (marker) {
-            Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
-            Vector3 diff = enemyCurrentPos - playerPos;
+            engine::Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
+            engine::Vector3 diff = enemyCurrentPos - playerPos;
             marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
                                                  playerPos.z + diff.z * 0.5f});
             float angleY = std::atan2(diff.x, diff.z);
@@ -358,8 +358,8 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             marker->SetEulerAngles({angleX, angleY, 0.0f});
             marker->SetQuaternionMaster(false);
             // 手元に近づくにつれて太く戻る（イージングを利用）
-            float len = Math::Length(diff);
-            float thickness = Math::Lerp(0.12f, 0.22f, easeT);
+            float len = engine::Math::Length(diff);
+            float thickness = engine::Math::Lerp(0.12f, 0.22f, easeT);
             // 引っ張る反動でブルンブルン震える（近づくと収まる）
             float wobble = std::sin(pullTimer_ * 58.0f) * (1.0f - easeT) * 0.050f;
             float tensionPulse = std::abs(std::sin(pullTimer_ * 44.0f)) * (1.0f - easeT) * 0.040f;
@@ -413,7 +413,7 @@ void PlayerStatePullEnemy::Exit(Player* player) {
             player->UpdateWorldMatrix();
         }
 
-        Object3d* marker = player->GetHookMarker();
+        engine::Object3d* marker = player->GetHookMarker();
         if (marker) {
             marker->SetIsVisible(false);
             marker->SetScale({1.0f, 1.0f, 1.0f});

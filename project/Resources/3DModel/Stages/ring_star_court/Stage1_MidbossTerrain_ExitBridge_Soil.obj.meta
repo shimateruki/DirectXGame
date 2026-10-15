@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "38295c20fdbc5e07927f841639a9f1c4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_ExitBridge_Soil.obj",
+  "version": 1
+}

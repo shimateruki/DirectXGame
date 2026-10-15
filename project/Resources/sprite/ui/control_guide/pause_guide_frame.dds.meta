@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "dc10073861ff417773c48cff40e448c0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/pause_guide_frame.dds",
+  "version": 1
+}

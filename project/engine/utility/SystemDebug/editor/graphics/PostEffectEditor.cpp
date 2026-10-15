@@ -22,9 +22,9 @@ void PostEffectEditor::DrawImGui() {
     auto* params = targetEffect_->GetParams();
 
     ImGui::Text("Color Workflow");
-    bool linearWorkflow = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled();
+    bool linearWorkflow = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled();
     if (ImGui::Checkbox("リニアワークフローを使用", &linearWorkflow)) {
-        ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(linearWorkflow);
+        engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(linearWorkflow);
         LightManager::GetInstance()->ApplySceneClearColor();
         if (linearWorkflow && params->enableToneMapping == 0) {
             params->enableToneMapping = 1;
@@ -231,7 +231,7 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["bloomIntensity"] = params->bloomIntensity;
     j["spread"] = params->spread;
     j["enableToneMapping"] = params->enableToneMapping;
-    j["linearWorkflowEnabled"] = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled();
+    j["linearWorkflowEnabled"] = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled();
     j["vignetteIntensity"] = params->vignetteIntensity;
     j["vignettePower"] = params->vignettePower;
     j["chromaticAberration"] = params->chromaticAberration;
@@ -293,7 +293,7 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
 		}
 
         if (j.contains("linearWorkflowEnabled")) {
-            ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
+            engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
                 j["linearWorkflowEnabled"].get<bool>());
             LightManager::GetInstance()->ApplySceneClearColor();
         }

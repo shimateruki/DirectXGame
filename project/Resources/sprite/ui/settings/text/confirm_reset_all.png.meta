@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5f32aec0250c50bbae6b96342761a426",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/confirm_reset_all.png",
+  "version": 1
+}

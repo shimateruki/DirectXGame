@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "cda65e2e010d54fbbbfab2e071eed218",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_EntryBridge_Soil.obj",
+  "version": 1
+}

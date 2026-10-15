@@ -20,7 +20,7 @@ bool Player::IsPinkSlimeMorphed() const {
     return isEnemyMorphed_ && enemyMorphType_ == EnemyMorphType::Slime;
 }
 
-void Player::ActivateCheckpoint(const Vector3& position, const std::string& checkpointObjectName) {
+void Player::ActivateCheckpoint(const engine::Vector3& position, const std::string& checkpointObjectName) {
     // 復活位置と同時に現在のコピーを記録し、再開時の能力を再現する。
     respawnPosition_ = position;
     checkpointActivated_ = true;
@@ -123,7 +123,7 @@ void Player::RefreshCheckpointMorphSnapshot() {
     if (!checkpointActivated_) {
         return;
     }
-    const Vector3 position = respawnPosition_;
+    const engine::Vector3 position = respawnPosition_;
     GameDataManager::GetInstance()->RequestStageCheckpointRespawn(StageManager::GetInstance()->GetCurrentStageIndex(),
                                                                   position.x, position.y, position.z,
                                                                   checkpointMorphEnemyType_, checkpointObjectName_);
@@ -180,7 +180,7 @@ void Player::EmitEnemyMorphReleaseBurst() {
 
     enemyMorphReleaseBurstStarted_ = true;
     enemyMorphReleaseParticleTimer_ = 0.0f;
-    enemyMorphReleaseStartPosition_ = GetWorldPosition() + Vector3{0.0f, 0.82f, 0.0f};
+    enemyMorphReleaseStartPosition_ = GetWorldPosition() + engine::Vector3{0.0f, 0.82f, 0.0f};
 
     if (enemyMorphReleaseVisual_) {
         enemyMorphReleaseVisual_->SetTranslate(enemyMorphReleaseStartPosition_);
@@ -194,8 +194,8 @@ void Player::EmitEnemyMorphReleaseBurst() {
         enemyMorphReleaseVisual_->UpdateWorldMatrix();
     }
 
-    Vector3 burstDirection = {enemyMorphReleaseDirection_.x, 0.42f, enemyMorphReleaseDirection_.z};
-    const float burstLength = Math::Length(burstDirection);
+    engine::Vector3 burstDirection = {enemyMorphReleaseDirection_.x, 0.42f, enemyMorphReleaseDirection_.z};
+    const float burstLength = engine::Math::Length(burstDirection);
     if (burstLength > 0.001f) {
         burstDirection = burstDirection / burstLength;
     }
@@ -227,7 +227,7 @@ void Player::EmitEnemyMorphReleaseBurst() {
     auto* sceneManager = SceneManager::GetInstance();
     if (!enemyMorphReleaseExpired_ && !droppedType.empty() && common_ && sceneManager && sceneManager->IsPlaying() &&
         sceneManager->GetCurrentScene()) {
-        Vector3 landing = GetWorldPosition() + enemyMorphReleaseDirection_ * 2.25f;
+        engine::Vector3 landing = GetWorldPosition() + enemyMorphReleaseDirection_ * 2.25f;
         landing = CombatGroundQuery::FindGroundPoint(landing, this, {16.0f, 34.0f}, GetWorldPosition().y);
         landing.y += 0.85f;
         auto star = std::make_unique<DroppedCopyStar>();
@@ -255,7 +255,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
         SetScale({enemyMorphReleasePlayerScale_.x * (1.0f + eased * 0.18f),
                   enemyMorphReleasePlayerScale_.y * (1.0f - eased * 0.38f),
                   enemyMorphReleasePlayerScale_.z * (1.0f + eased * 0.18f)});
-        SetColor(Math::Lerp(GetColor(), {1.0f, 1.0f, 1.0f, 1.0f}, eased * 0.22f));
+        SetColor(engine::Math::Lerp(GetColor(), {1.0f, 1.0f, 1.0f, 1.0f}, eased * 0.22f));
         UpdateLocalMatrix();
         UpdateWorldMatrix();
         return;
@@ -277,7 +277,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
     UpdateWorldMatrix();
 
     if (enemyMorphReleaseVisual_) {
-        Vector3 position = enemyMorphReleaseStartPosition_;
+        engine::Vector3 position = enemyMorphReleaseStartPosition_;
         position.x += enemyMorphReleaseDirection_.x * 2.25f * eased;
         position.z += enemyMorphReleaseDirection_.z * 2.25f * eased;
         position.y += std::sin(t * kPi) * 0.92f - t * 0.34f;
@@ -304,8 +304,8 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
     if (enemyMorphReleaseParticleTimer_ <= 0.0f && t < 0.82f) {
         if (enemyMorphReleaseExpired_ || t > 0.18f) {
             if (particleSystem_) {
-                Vector3 trailDirection = {-enemyMorphReleaseDirection_.x, 0.12f, -enemyMorphReleaseDirection_.z};
-                Vector3 trailPosition = enemyMorphReleaseVisual_ ? enemyMorphReleaseVisual_->GetWorldPosition()
+                engine::Vector3 trailDirection = {-enemyMorphReleaseDirection_.x, 0.12f, -enemyMorphReleaseDirection_.z};
+                engine::Vector3 trailPosition = enemyMorphReleaseVisual_ ? enemyMorphReleaseVisual_->GetWorldPosition()
                                                                  : enemyMorphReleaseStartPosition_;
                 particleSystem_->SpawnParticles(
                     trailPosition, 4, 0.55f, &trailDirection, 6.0f, enemyMorphReleaseTint_,
@@ -317,7 +317,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
     }
 
     if (enemyMorphReleaseTimer_ >= enemyMorphReleaseDuration_) {
-        const Vector3 reboundScale = {savedMorphScale_.x * 1.08f, savedMorphScale_.y * 0.92f,
+        const engine::Vector3 reboundScale = {savedMorphScale_.x * 1.08f, savedMorphScale_.y * 0.92f,
                                       savedMorphScale_.z * 1.08f};
         ResetEnemyMorphRelease();
         TriggerSlimeImpulse(reboundScale, 0.16f);
@@ -355,7 +355,7 @@ void Player::RestoreEnemyMorphAppearance() {
 
     const auto& children = GetChildren();
     for (size_t i = 0; i < children.size(); ++i) {
-        Object3d* child = children[i];
+        engine::Object3d* child = children[i];
         if (child) {
             child->SetColor(savedMorphColor_);
             if (i < savedMorphChildVisible_.size()) {
@@ -497,7 +497,7 @@ void Player::DebugPrepareForTeleport() {
     slimeAnimator_.Reset(managedBaseScale_, this);
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Idle);
 
-    Vector3 stableRotation = GetRotation();
+    engine::Vector3 stableRotation = GetRotation();
     stableRotation.x = baseRotation_.x;
     stableRotation.z = baseRotation_.z;
     SetScale(managedBaseScale_);

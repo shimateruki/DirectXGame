@@ -1,6 +1,5 @@
 #include "Log.h"
 #include <fstream>
-#include <iostream>
 #include <Windows.h>
 
 const std::string kLogFileName = "GameLog.txt";
@@ -33,6 +32,5 @@ void Log::WriteInternal(LogLevel level, const std::string& file, int line, const
     // 2. Visual Studioの出力ウィンドウへ 
     OutputDebugStringA(formattedLog.c_str());
 
-    // 3. 標準出力へ
-    std::cout << formattedLog;
+    // GUIアプリの通常起動では標準出力へ流さず、デバッガと任意のファイル記録を使う。
 }

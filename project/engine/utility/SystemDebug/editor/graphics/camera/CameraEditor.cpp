@@ -36,7 +36,7 @@ void CameraEditor::SetObject3dCommon(Object3dCommon* common) {
     gameCameraModelGizmo_.reset();
 }
 
-void CameraEditor::EnsureCameraModelGizmo(std::unique_ptr<Object3d>& gizmo, const std::string& name) {
+void CameraEditor::EnsureCameraModelGizmo(std::unique_ptr<engine::Object3d>& gizmo, const std::string& name) {
     // ガイド用模型は必要になったときだけ生成し、同じインスタンスを使い回す。
     if (!object3dCommon_) {
         return;
@@ -46,7 +46,7 @@ void CameraEditor::EnsureCameraModelGizmo(std::unique_ptr<Object3d>& gizmo, cons
         return;
     }
 
-    gizmo = std::make_unique<Object3d>();
+    gizmo = std::make_unique<engine::Object3d>();
     gizmo->Initialize(object3dCommon_);
     gizmo->SetModel(kCameraModelGizmoName);
     gizmo->SetName(name);
@@ -56,14 +56,14 @@ void CameraEditor::EnsureCameraModelGizmo(std::unique_ptr<Object3d>& gizmo, cons
     gizmo->SetIsVisible(true);
 }
 
-void CameraEditor::ApplyCameraModelGizmo(Object3d* gizmo, const Vector3& eye, const Vector3& forward, float sizeScale, const Vector4& color) {
+void CameraEditor::ApplyCameraModelGizmo(engine::Object3d* gizmo, const engine::Vector3& eye, const engine::Vector3& forward, float sizeScale, const engine::Vector4& color) {
     if (!gizmo) {
         return;
     }
 
     const float baseSize = (std::max)(0.05f, settings_.cameraGuideSize);
-    const Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
-    const Vector3 rotation = MakeRotationFromForward(safeForward);
+    const engine::Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+    const engine::Vector3 rotation = MakeRotationFromForward(safeForward);
     const float modelScale = baseSize * sizeScale;
 
     // CameraEditorの可視化も、演出用カメラObjectと同じモデルを使って位置と向きを表示します。
@@ -96,8 +96,8 @@ void CameraEditor::DrawCameraModelGizmos(ID3D12Resource* pointLightResource, ID3
     }
 
     if (!ShouldHideGameCameraGuideDuringPlay()) {
-        const Vector3 gameEye = GetConfiguredCameraEye();
-        const Vector3 gameForward = GetConfiguredCameraForward();
+        const engine::Vector3 gameEye = GetConfiguredCameraEye();
+        const engine::Vector3 gameForward = GetConfiguredCameraForward();
         EnsureCameraModelGizmo(gameCameraModelGizmo_, "CameraEditor_GameCameraGizmo");
         ApplyCameraModelGizmo(gameCameraModelGizmo_.get(), gameEye, gameForward, 0.85f, { 1.0f, 0.82f, 0.18f, 1.0f });
         if (gameCameraModelGizmo_) {
@@ -109,7 +109,7 @@ void CameraEditor::DrawCameraModelGizmos(ID3D12Resource* pointLightResource, ID3
 
 }
 
-void CameraEditor::Update(Object3d* player, bool isLockingOn) {
+void CameraEditor::Update(engine::Object3d* player, bool isLockingOn) {
     // ロックオン中のカメラはゲーム側が制御するので、エディター設定で上書きしない。
     targetPlayer_ = player;
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -138,11 +138,11 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             // 入力状態のチェック
             // =========================================================
             // マウスの移動量チェック
-            Vector2 mouseDelta = input->GetMouseMoveDelta();
+            engine::Vector2 mouseDelta = input->GetMouseMoveDelta();
             bool isMouseMoving = (std::abs(mouseDelta.x) > 0.0f || std::abs(mouseDelta.y) > 0.0f);
 
             // ジャイロ入力チェック (感度 0.05f)
-            Vector3 gyro = input->GetGyroscope();
+            engine::Vector3 gyro = input->GetGyroscope();
             bool isGyroActive = (std::abs(gyro.x) > 0.05f || std::abs(gyro.y) > 0.05f || std::abs(gyro.z) > 0.05f);
 
             // =========================================================
@@ -161,7 +161,7 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
                 if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
                     settings_.gameFollowMode == Camera::FollowMode::kFirstPerson) {
 
-                    Vector3 currentRot = camera->GetRotation();
+                    engine::Vector3 currentRot = camera->GetRotation();
                     float toDeg = 180.0f / 3.14159265f;
 
                     settings_.angle.x = currentRot.x * toDeg;
@@ -196,14 +196,14 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     InputManager* input = InputManager::GetInstance();
 
     // 現在のカメラ情報を取得
-    Vector3 eye = camera->GetEye();
-    Vector3 rotation = camera->GetRotation();
+    engine::Vector3 eye = camera->GetEye();
+    engine::Vector3 rotation = camera->GetRotation();
 
     // ----------------------------------------------------------
     // 1. 回転処理 (右クリック中のみ)
     // ----------------------------------------------------------
     if (input->IsMouseButtonPressed(1)) { // 1 = Right Click
-        Vector2 mouseDelta = input->GetMouseMoveDelta();
+        engine::Vector2 mouseDelta = input->GetMouseMoveDelta();
 
         // 感度をかけて加算
         rotation.y += mouseDelta.x * settings_.mouseSensitivity;
@@ -220,7 +220,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ----------------------------------------------------------
     // 2. カメラの向き(ローカル軸)の計算
     // ----------------------------------------------------------
-    Vector3 forward, right, up;
+    engine::Vector3 forward, right, up;
 
     // 前方ベクトル (カメラが向いている方向)
     forward.x = std::sin(rotation.y) * std::cos(rotation.x);
@@ -240,7 +240,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ----------------------------------------------------------
     // 3. 移動・ズーム処理
     // ----------------------------------------------------------
-    Vector3 moveVelocity = { 0, 0, 0 };
+    engine::Vector3 moveVelocity = { 0, 0, 0 };
 
     // GameViewをホバーしているか、右クリック中のみ移動・ズームを許可
     if (isGameViewHovered_ || input->IsMouseButtonPressed(1)) {
@@ -298,7 +298,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // GameViewホバー中、または中クリック押下中のみ許可
     if (isGameViewHovered_ || input->IsMouseButtonPressed(2)) {
         if (input->IsMouseButtonPressed(2)) { // 2 = Middle Click
-            Vector2 mouseDelta = input->GetMouseMoveDelta();
+            engine::Vector2 mouseDelta = input->GetMouseMoveDelta();
             float panSpeed = settings_.moveSpeed * 0.1f;
 
             // X移動: マウスの動きと逆方向に右ベクトルを使って移動
@@ -341,7 +341,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ----------------------------------------------------------
     // 4. ターゲットの更新
     // ----------------------------------------------------------
-    Vector3 newTarget;
+    engine::Vector3 newTarget;
     newTarget.x = eye.x + forward.x * 10.0f;
     newTarget.y = eye.y + forward.y * 10.0f;
     newTarget.z = eye.z + forward.z * 10.0f;
@@ -362,8 +362,8 @@ void CameraEditor::SetSceneCameraPreviewWindowVisible(bool visible) {
 
 bool CameraEditor::HasSceneCameraPreviewTarget() const {
     // 選択中の Camera Object が現シーンに存在し、姿勢を解決できる場合だけ描画する。
-    Vector3 eye{};
-    Vector3 target{};
+    engine::Vector3 eye{};
+    engine::Vector3 target{};
     return GetSelectedCameraObject() != nullptr && ResolveCinematicPreviewPose(eye, target);
 }
 
@@ -422,8 +422,8 @@ void CameraEditor::InvalidateCameraPreviews() {
 
 Camera* CameraEditor::PreparePreviewCamera(float aspectRatio) {
     // ゲームカメラの投影条件を借り、エディターの視点だけを専用カメラに設定する。
-    const Vector3 eye = GetPreviewCameraEye();
-    const Vector3 target = eye + GetPreviewCameraForward() * 10.0f;
+    const engine::Vector3 eye = GetPreviewCameraEye();
+    const engine::Vector3 target = eye + GetPreviewCameraForward() * 10.0f;
     float fovY = 0.45f;
     float nearClip = 0.1f;
     float farClip = 1000.0f;
@@ -437,8 +437,8 @@ Camera* CameraEditor::PreparePreviewCamera(float aspectRatio) {
 
 Camera* CameraEditor::PrepareCinematicPreviewCamera(float aspectRatio) {
     // 選択した Camera Object の画角とクリップ距離で独立したプレビューを作る。
-    Vector3 eye{};
-    Vector3 target{};
+    engine::Vector3 eye{};
+    engine::Vector3 target{};
     if (!ResolveCinematicPreviewPose(eye, target)) {
         return nullptr;
     }
@@ -446,7 +446,7 @@ Camera* CameraEditor::PrepareCinematicPreviewCamera(float aspectRatio) {
     float fovY = 0.45f;
     float nearClip = 0.1f;
     float farClip = 1000.0f;
-    if (Object3d* selectedCamera = GetSelectedCameraObject()) {
+    if (engine::Object3d* selectedCamera = GetSelectedCameraObject()) {
         const SceneCameraSettings& settings = selectedCamera->GetSceneCameraSettings();
         fovY = settings.fovY;
         nearClip = settings.nearClip;
@@ -462,8 +462,8 @@ Camera* CameraEditor::PrepareCinematicPreviewCamera(float aspectRatio) {
 }
 
 Camera* CameraEditor::ConfigurePreviewCamera(
-    const Vector3& eye,
-    const Vector3& target,
+    const engine::Vector3& eye,
+    const engine::Vector3& target,
     float aspectRatio,
     float fovY,
     float nearClip,
@@ -474,8 +474,8 @@ Camera* CameraEditor::ConfigurePreviewCamera(
         previewCameraInitialized_ = true;
     }
 
-    const Vector3 forward = NormalizeSafe(target - eye, { 0.0f, 0.0f, 1.0f });
-    const Vector3 rotation = MakeRotationFromForward(forward);
+    const engine::Vector3 forward = NormalizeSafe(target - eye, { 0.0f, 0.0f, 1.0f });
+    const engine::Vector3 rotation = MakeRotationFromForward(forward);
     previewCamera_.SetInputEnabled(false);
     previewCamera_.SetFollowTarget(nullptr);
     previewCamera_.SetFollowMode(Camera::FollowMode::kFixedPoint);
@@ -495,9 +495,9 @@ void CameraEditor::ApplyConfiguredCameraPreview(Camera* camera) const {
         return;
     }
 
-    const Vector3 eye = GetConfiguredCameraEye();
-    const Vector3 forward = GetConfiguredCameraForward();
-    const Vector3 rotation = MakeRotationFromForward(forward);
+    const engine::Vector3 eye = GetConfiguredCameraEye();
+    const engine::Vector3 forward = GetConfiguredCameraForward();
+    const engine::Vector3 rotation = MakeRotationFromForward(forward);
 
     camera->SetFollowTarget(nullptr);
     camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
@@ -522,7 +522,7 @@ void CameraEditor::SetEditorStateSaveBlocker(uint32_t blocker, bool enabled) {
     }
 }
 
-void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vector3& rotation) {
+void CameraEditor::SetEditorCameraTransform(const engine::Vector3& position, const engine::Vector3& rotation) {
     const bool stateChanged =
         position.x != settings_.editorCameraPos.x ||
         position.y != settings_.editorCameraPos.y ||
@@ -544,7 +544,7 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
     if (camera) {
         camera->SetEye(position);
         camera->SetRotation(rotation);
-        Vector3 forward;
+        engine::Vector3 forward;
         forward.x = std::sin(rotation.y) * std::cos(rotation.x);
         forward.y = -std::sin(rotation.x);
         forward.z = std::cos(rotation.y) * std::cos(rotation.x);
@@ -554,7 +554,7 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
     }
 }
 
-bool CameraEditor::FocusSceneObject(Object3d* object) {
+bool CameraEditor::FocusSceneObject(engine::Object3d* object) {
     // モデルの外接範囲を基準に画角を決め、表示モデルのない物体は判定範囲を使う。
     if (!object || !IsObjectInCurrentScene(object)) {
         return false;
@@ -573,26 +573,26 @@ bool CameraEditor::FocusSceneObject(Object3d* object) {
         return false;
     }
 
-    const Vector3 focusTarget = {
+    const engine::Vector3 focusTarget = {
         (focusBounds.min.x + focusBounds.max.x) * 0.5f,
         (focusBounds.min.y + focusBounds.max.y) * 0.5f,
         (focusBounds.min.z + focusBounds.max.z) * 0.5f,
     };
-    const Vector3 halfExtent = {
+    const engine::Vector3 halfExtent = {
         (focusBounds.max.x - focusBounds.min.x) * 0.5f,
         (focusBounds.max.y - focusBounds.min.y) * 0.5f,
         (focusBounds.max.z - focusBounds.min.z) * 0.5f,
     };
     const float objectRadius = (std::max)({ halfExtent.x, halfExtent.y, halfExtent.z, 0.5f });
 
-    const Vector3 worldForward = GetObjectWorldForward(object);
-    const Vector3 frontDirection = NormalizeSafe(
+    const engine::Vector3 worldForward = GetObjectWorldForward(object);
+    const engine::Vector3 frontDirection = NormalizeSafe(
         { worldForward.x, 0.0f, worldForward.z },
         { 0.0f, 0.0f, 1.0f });
     const float focusDistance = std::clamp(objectRadius * 2.8f + 2.0f, 8.0f, 120.0f);
     const float focusHeight = std::clamp(objectRadius * 0.3f, 2.0f, 24.0f);
-    const Vector3 focusEye = focusTarget + frontDirection * focusDistance + Vector3{ 0.0f, focusHeight, 0.0f };
-    const Vector3 rotation = MakeRotationFromForward(
+    const engine::Vector3 focusEye = focusTarget + frontDirection * focusDistance + engine::Vector3{ 0.0f, focusHeight, 0.0f };
+    const engine::Vector3 rotation = MakeRotationFromForward(
         NormalizeSafe(focusTarget - focusEye, { 0.0f, 0.0f, -1.0f }));
 
     settings_.editorCameraPos = focusEye;
@@ -611,21 +611,21 @@ bool CameraEditor::FocusSceneObject(Object3d* object) {
 }
 
 bool CameraEditor::FocusSelectedCameraObject() {
-    Object3d* cameraObject = GetSelectedCameraObject();
-    Vector3 eye{};
-    Vector3 target{};
+    engine::Object3d* cameraObject = GetSelectedCameraObject();
+    engine::Vector3 eye{};
+    engine::Vector3 target{};
     if (!cameraObject || !ResolveSceneCameraPose(cameraObject, eye, target)) {
         return false;
     }
 
-    const Vector3 forward = NormalizeSafe(target - eye, { 0.0f, 0.0f, 1.0f });
-    const Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
+    const engine::Vector3 forward = NormalizeSafe(target - eye, { 0.0f, 0.0f, 1.0f });
+    const engine::Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
     const float focusDistance = (std::max)(4.0f, settings_.cameraGuideSize * 8.0f);
     const float focusHeight = (std::max)(2.0f, settings_.cameraGuideSize * 4.0f);
-    const Vector3 focusTarget = eye + worldUp * (settings_.cameraGuideSize * 0.6f);
-    const Vector3 focusEye = eye - forward * focusDistance + worldUp * focusHeight;
-    const Vector3 focusForward = NormalizeSafe(focusTarget - focusEye, forward);
-    const Vector3 rotation = MakeRotationFromForward(focusForward);
+    const engine::Vector3 focusTarget = eye + worldUp * (settings_.cameraGuideSize * 0.6f);
+    const engine::Vector3 focusEye = eye - forward * focusDistance + worldUp * focusHeight;
+    const engine::Vector3 focusForward = NormalizeSafe(focusTarget - focusEye, forward);
+    const engine::Vector3 rotation = MakeRotationFromForward(focusForward);
 
     // Camera Object本体を確認できるように、実カメラ位置より少し後ろ上へ寄せる。
     settings_.editorCameraPos = focusEye;
@@ -661,8 +661,8 @@ void CameraEditor::CaptureOrbitStartFromCurrentCamera(Camera* camera) {
     // 現在位置を中心との差分に変換して、再現可能な半径・高さ・開始角として保存する。
     if (!camera) return;
 
-    const Vector3 center = GetOrbitCenter();
-    const Vector3 diff = camera->GetEye() - center;
+    const engine::Vector3 center = GetOrbitCenter();
+    const engine::Vector3 diff = camera->GetEye() - center;
     const float horizontalDistance = std::sqrt(diff.x * diff.x + diff.z * diff.z);
 
     if (horizontalDistance > 0.001f) {
@@ -679,10 +679,10 @@ void CameraEditor::CaptureOrbitStartFromCurrentCamera(Camera* camera) {
     DebugConsole::GetInstance()->AddLog("Orbit camera start position captured from current camera.");
 }
 
-void CameraEditor::SetOrbitCenterFromWorld(const Vector3& center) {
+void CameraEditor::SetOrbitCenterFromWorld(const engine::Vector3& center) {
     // プレイヤー追従時はワールド位置をプレイヤー相対オフセットに変換する。
     if (targetPlayer_) {
-        Vector3 targetPos = targetPlayer_->GetWorldPosition();
+        engine::Vector3 targetPos = targetPlayer_->GetWorldPosition();
         settings_.orbitCenterOffset = center - targetPos;
         settings_.orbitCenterOffset.y -= settings_.orbitCenterHeight;
         return;
@@ -691,10 +691,10 @@ void CameraEditor::SetOrbitCenterFromWorld(const Vector3& center) {
     settings_.fixedPointPos = center - settings_.orbitCenterOffset;
 }
 
-void CameraEditor::SetOrbitStartFromWorld(const Vector3& startEye) {
+void CameraEditor::SetOrbitStartFromWorld(const engine::Vector3& startEye) {
     // ワールド座標の開始視点から周回半径と角度を逆算する。
-    const Vector3 center = GetOrbitCenter();
-    const Vector3 diff = startEye - center;
+    const engine::Vector3 center = GetOrbitCenter();
+    const engine::Vector3 diff = startEye - center;
     const float horizontalDistance = std::sqrt(diff.x * diff.x + diff.z * diff.z);
 
     if (horizontalDistance > 0.001f) {
@@ -705,10 +705,10 @@ void CameraEditor::SetOrbitStartFromWorld(const Vector3& startEye) {
     settings_.orbitHeight = diff.y;
 }
 
-Vector3 CameraEditor::GetOrbitCenter() const {
+engine::Vector3 CameraEditor::GetOrbitCenter() const {
     // プレイヤーがある場合だけ追従中心を使い、編集画面では固定点に戻す。
     if (targetPlayer_) {
-        Vector3 center = targetPlayer_->GetWorldPosition();
+        engine::Vector3 center = targetPlayer_->GetWorldPosition();
         center.x += settings_.orbitCenterOffset.x;
         center.y += settings_.orbitCenterHeight + settings_.orbitCenterOffset.y;
         center.z += settings_.orbitCenterOffset.z;
@@ -717,9 +717,9 @@ Vector3 CameraEditor::GetOrbitCenter() const {
     return settings_.fixedPointPos + settings_.orbitCenterOffset;
 }
 
-Vector3 CameraEditor::GetOrbitStartEye() const {
+engine::Vector3 CameraEditor::GetOrbitStartEye() const {
     // 保存した半径・高さ・角度から周回開始時のワールド視点を復元する。
-    const Vector3 center = GetOrbitCenter();
+    const engine::Vector3 center = GetOrbitCenter();
     const float startAngle = DegToRad(settings_.orbitStartAngleDeg);
     return {
         center.x + settings_.orbitRadius * std::cos(startAngle),
@@ -728,7 +728,7 @@ Vector3 CameraEditor::GetOrbitStartEye() const {
     };
 }
 
-Vector3 CameraEditor::GetConfiguredCameraEye() const {
+engine::Vector3 CameraEditor::GetConfiguredCameraEye() const {
     // 固定・周回・追従で視点の算出方法が異なり、対象不在時は現在視点を維持する。
     if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
         return settings_.fixedPointPos;
@@ -739,18 +739,18 @@ Vector3 CameraEditor::GetConfiguredCameraEye() const {
     }
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    const Vector3 fallback = camera ? camera->GetEye() : settings_.fixedPointPos;
+    const engine::Vector3 fallback = camera ? camera->GetEye() : settings_.fixedPointPos;
     if (!targetPlayer_) {
         return fallback;
     }
 
-    Vector3 target = targetPlayer_->GetWorldPosition();
+    engine::Vector3 target = targetPlayer_->GetWorldPosition();
     target.y += settings_.height;
-    Vector3 forward = GetConfiguredCameraForward();
+    engine::Vector3 forward = GetConfiguredCameraForward();
     return target - forward * settings_.distance;
 }
 
-Vector3 CameraEditor::GetConfiguredCameraForward() const {
+engine::Vector3 CameraEditor::GetConfiguredCameraForward() const {
     // 固定・周回・通常追従の各設定からプレビュー用の前方を揃えて返す。
     if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
         return NormalizeSafe(CalculateEditorForward(settings_.fixedPointAngle), { 0.0f, 0.0f, 1.0f });
@@ -760,7 +760,7 @@ Vector3 CameraEditor::GetConfiguredCameraForward() const {
         return NormalizeSafe(GetOrbitCenter() - GetOrbitStartEye(), { 0.0f, 0.0f, 1.0f });
     }
 
-    Vector3 rotation = {
+    engine::Vector3 rotation = {
         DegToRad(settings_.angle.x),
         DegToRad(settings_.angle.y),
         DegToRad(settings_.angle.z)
@@ -768,7 +768,7 @@ Vector3 CameraEditor::GetConfiguredCameraForward() const {
     return NormalizeSafe(CalculateEditorForward(rotation), { 0.0f, 0.0f, 1.0f });
 }
 
-Vector3 CameraEditor::GetPreviewCameraEye() const {
+engine::Vector3 CameraEditor::GetPreviewCameraEye() const {
     // ゲーム実行中はエディター自由カメラを映し、編集時はゲームカメラ設定を映す。
     if (settings_.currentMode == Mode::Game) {
         return settings_.editorCameraPos;
@@ -776,7 +776,7 @@ Vector3 CameraEditor::GetPreviewCameraEye() const {
     return GetConfiguredCameraEye();
 }
 
-Vector3 CameraEditor::GetPreviewCameraForward() const {
+engine::Vector3 CameraEditor::GetPreviewCameraForward() const {
     // 視点と同じモード切り替えで向きを選び、混在したプレビューを防ぐ。
     if (settings_.currentMode == Mode::Game) {
         return NormalizeSafe(CalculateEditorForward(settings_.editorCameraAngle), { 0.0f, 0.0f, 1.0f });
@@ -789,7 +789,7 @@ const char* CameraEditor::GetPreviewCameraLabel() const {
     return settings_.currentMode == Mode::Game ? "自由カメラ" : "ゲームカメラ";
 }
 
-Object3d* CameraEditor::FindSceneObjectByName(const std::string& name) const {
+engine::Object3d* CameraEditor::FindSceneObjectByName(const std::string& name) const {
     // 保存済みの名前から現シーンの実体を探し、シーン切り替え後の古いポインタを使わない。
     if (name.empty()) {
         return nullptr;
@@ -808,9 +808,9 @@ Object3d* CameraEditor::FindSceneObjectByName(const std::string& name) const {
     return nullptr;
 }
 
-void CameraEditor::SetSelectedCameraObject(Object3d* cameraObject) {
+void CameraEditor::SetSelectedCameraObject(engine::Object3d* cameraObject) {
     // 現シーンの Camera Object だけを保持し、選択変更時はプレビューを無効化する。
-    Object3d* newSelection = cameraObject &&
+    engine::Object3d* newSelection = cameraObject &&
         cameraObject->IsCameraObject() &&
         IsObjectInCurrentScene(cameraObject)
         ? cameraObject
@@ -821,7 +821,7 @@ void CameraEditor::SetSelectedCameraObject(Object3d* cameraObject) {
     }
 }
 
-Object3d* CameraEditor::GetSelectedCameraObject() const {
+engine::Object3d* CameraEditor::GetSelectedCameraObject() const {
     // 以前のシーンの選択ポインタは返さない。
     if (!selectedCameraObject_ || !IsObjectInCurrentScene(selectedCameraObject_)) {
         return nullptr;
@@ -829,16 +829,16 @@ Object3d* CameraEditor::GetSelectedCameraObject() const {
     return selectedCameraObject_->IsCameraObject() ? selectedCameraObject_ : nullptr;
 }
 
-bool CameraEditor::ResolveSceneCameraPose(const Object3d* cameraObject, Vector3& eye, Vector3& target) const {
+bool CameraEditor::ResolveSceneCameraPose(const engine::Object3d* cameraObject, engine::Vector3& eye, engine::Vector3& target) const {
     // eye と target の参照名を毎回現シーンで解決し、対象が消えた場合は前方へ退避する。
     if (!cameraObject || !cameraObject->IsCameraObject()) {
         return false;
     }
 
     const SceneCameraSettings& settings = cameraObject->GetSceneCameraSettings();
-    const Object3d* eyeObject = cameraObject;
+    const engine::Object3d* eyeObject = cameraObject;
     if (settings.eyeSource == SceneCameraEyeSource::kSceneObject) {
-        if (Object3d* resolvedEyeObject = FindSceneObjectByName(settings.eyeObjectName)) {
+        if (engine::Object3d* resolvedEyeObject = FindSceneObjectByName(settings.eyeObjectName)) {
             eyeObject = resolvedEyeObject;
         }
     }
@@ -849,7 +849,7 @@ bool CameraEditor::ResolveSceneCameraPose(const Object3d* cameraObject, Vector3&
         target = settings.fixedTarget;
         break;
     case SceneCameraTargetMode::kSceneObject:
-        if (Object3d* targetObject = FindSceneObjectByName(settings.targetObjectName)) {
+        if (engine::Object3d* targetObject = FindSceneObjectByName(settings.targetObjectName)) {
             target = targetObject->GetWorldPosition() + settings.targetOffset;
         }
         else {
@@ -864,7 +864,7 @@ bool CameraEditor::ResolveSceneCameraPose(const Object3d* cameraObject, Vector3&
     return true;
 }
 
-Camera::CameraOverrideParams CameraEditor::MakeRuntimeOverrideParams(const Object3d* cameraObject) const {
+Camera::CameraOverrideParams CameraEditor::MakeRuntimeOverrideParams(const engine::Object3d* cameraObject) const {
     // 編集用設定を Camera の実行用形式へ変換し、追従対象の名前を現シーンで解決する。
     Camera::CameraOverrideParams runtime;
     if (!cameraObject) {
@@ -876,11 +876,11 @@ Camera::CameraOverrideParams CameraEditor::MakeRuntimeOverrideParams(const Objec
     runtime.exitDuration = settings.blendOutDuration;
     runtime.easing = static_cast<Camera::OverrideEasing>(settings.easing);
     runtime.eyeSource = Camera::OverrideEyeSource::kSceneObject;
-    runtime.eyeObject = const_cast<Object3d*>(cameraObject);
+    runtime.eyeObject = const_cast<engine::Object3d*>(cameraObject);
     runtime.eyeObjectName = cameraObject->GetName();
     if (settings.eyeSource == SceneCameraEyeSource::kSceneObject) {
         runtime.eyeObjectName = settings.eyeObjectName;
-        if (Object3d* eyeObject = FindSceneObjectByName(settings.eyeObjectName)) {
+        if (engine::Object3d* eyeObject = FindSceneObjectByName(settings.eyeObjectName)) {
             runtime.eyeObject = eyeObject;
         }
     }
@@ -916,7 +916,7 @@ Camera::CameraOverrideParams CameraEditor::MakeRuntimeOverrideParams(const Objec
 
 Camera::CameraOverrideParams CameraEditor::MakeRuntimeOverrideParams(
     const Camera::CameraOverrideParams& params,
-    Object3d* fallbackEyeObject) const {
+    engine::Object3d* fallbackEyeObject) const {
     // 保存されたポインタを破棄して名前から再解決し、視点だけは予備対象を使えるようにする。
     Camera::CameraOverrideParams runtime = params;
     runtime.eyeObject = nullptr;
@@ -934,7 +934,7 @@ Camera::CameraOverrideParams CameraEditor::MakeRuntimeOverrideParams(
     return runtime;
 }
 
-Vector3 CameraEditor::ResolveOverrideEye(const Camera::CameraOverrideParams& params) const {
+engine::Vector3 CameraEditor::ResolveOverrideEye(const Camera::CameraOverrideParams& params) const {
     // 動的な視点対象が見つからなければ保存された固定座標を使う。
     const Camera::CameraOverrideParams runtime = MakeRuntimeOverrideParams(params);
     if (runtime.eyeSource == Camera::OverrideEyeSource::kSceneObject && runtime.eyeObject) {
@@ -943,14 +943,14 @@ Vector3 CameraEditor::ResolveOverrideEye(const Camera::CameraOverrideParams& par
     return params.fixedEyePos;
 }
 
-Vector3 CameraEditor::ResolveOverrideTarget(const Camera::CameraOverrideParams& params) const {
+engine::Vector3 CameraEditor::ResolveOverrideTarget(const Camera::CameraOverrideParams& params) const {
     // ターゲットの種類に応じて追従対象・視点前方・固定点を選ぶ。
     const Camera::CameraOverrideParams runtime = MakeRuntimeOverrideParams(params);
     if (runtime.targetSource == Camera::OverrideTargetSource::kSceneObject && runtime.targetFollowObject) {
         return runtime.targetFollowObject->GetWorldPosition() + runtime.targetObjectOffset;
     }
     if (runtime.targetSource == Camera::OverrideTargetSource::kEyeObjectForward && runtime.eyeObject) {
-        const Vector3 eye = runtime.eyeObject->GetWorldPosition() + runtime.eyeObjectOffset;
+        const engine::Vector3 eye = runtime.eyeObject->GetWorldPosition() + runtime.eyeObjectOffset;
         return eye
             + GetObjectWorldForward(runtime.eyeObject) * (std::max)(runtime.eyeForwardDistance, 0.01f)
             + runtime.targetObjectOffset;
@@ -958,44 +958,44 @@ Vector3 CameraEditor::ResolveOverrideTarget(const Camera::CameraOverrideParams& 
     return params.fixedTargetPos;
 }
 
-bool CameraEditor::ResolveCinematicPreviewPose(Vector3& eye, Vector3& target) const {
+bool CameraEditor::ResolveCinematicPreviewPose(engine::Vector3& eye, engine::Vector3& target) const {
     // 演出プレビューは現シーンで選択中の Camera Object の姿勢だけを使用する。
-    Object3d* selectedCamera = GetSelectedCameraObject();
+    engine::Object3d* selectedCamera = GetSelectedCameraObject();
     return selectedCamera && ResolveSceneCameraPose(selectedCamera, eye, target);
 }
 
-Vector3 CameraEditor::GetConfiguredCameraRight(const Vector3& forward) const {
+engine::Vector3 CameraEditor::GetConfiguredCameraRight(const engine::Vector3& forward) const {
     // 真上を向いて外積がゼロに近い場合はワールド X を代替軸とする。
-    const Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
-    Vector3 right = Cross(worldUp, forward);
+    const engine::Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
+    engine::Vector3 right = Cross(worldUp, forward);
     if (Length(right) < 0.0001f) {
         right = { 1.0f, 0.0f, 0.0f };
     }
     return NormalizeSafe(right, { 1.0f, 0.0f, 0.0f });
 }
 
-Vector3 CameraEditor::GetConfiguredCameraUp(const Vector3& forward, const Vector3& right) const {
+engine::Vector3 CameraEditor::GetConfiguredCameraUp(const engine::Vector3& forward, const engine::Vector3& right) const {
     // 前方と右方向から直交する上方向を求める。
     return NormalizeSafe(Cross(forward, right), { 0.0f, 1.0f, 0.0f });
 }
 
-Matrix4x4 CameraEditor::MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness) const {
+engine::Matrix4x4 CameraEditor::MakeLineBoxMatrix(const engine::Vector3& start, const engine::Vector3& end, float thickness) const {
     // 線分を細い箱で描くため、中点・長さ・向きからワールド行列を組む。
-    Math math;
-    Vector3 diff = end - start;
+    engine::Math math;
+    engine::Vector3 diff = end - start;
     float length = Length(diff);
     if (length < 0.001f) {
         length = 0.001f;
     }
 
-    Vector3 center = (start + end) * 0.5f;
+    engine::Vector3 center = (start + end) * 0.5f;
     float yaw = std::atan2(diff.x, diff.z);
     float horizontalLength = std::sqrt(diff.x * diff.x + diff.z * diff.z);
     float pitch = std::atan2(-diff.y, horizontalLength);
 
-    Matrix4x4 scale = math.MakeScaleMatrix({ thickness, thickness, length });
-    Matrix4x4 rotate = math.Multiply(math.MakeRotateXMatrix(pitch), math.MakeRotateYMatrix(yaw));
-    Matrix4x4 translate = math.MakeTranslateMatrix(center);
+    engine::Matrix4x4 scale = math.MakeScaleMatrix({ thickness, thickness, length });
+    engine::Matrix4x4 rotate = math.Multiply(math.MakeRotateXMatrix(pitch), math.MakeRotateYMatrix(yaw));
+    engine::Matrix4x4 translate = math.MakeTranslateMatrix(center);
     return math.Multiply(math.Multiply(scale, rotate), translate);
 }
 
@@ -1015,7 +1015,7 @@ bool CameraEditor::PlayOverrideCamera(Camera* camera, const std::string& cameraN
     return false;
 }
 
-bool CameraEditor::PlaySceneObjectCamera(Camera* camera, Object3d* cameraObject) {
+bool CameraEditor::PlaySceneObjectCamera(Camera* camera, engine::Object3d* cameraObject) {
     // 個別指定がない場合は Camera Object に保存された補間条件で再生する。
     if (!cameraObject) {
         return false;
@@ -1031,7 +1031,7 @@ bool CameraEditor::PlaySceneObjectCamera(Camera* camera, Object3d* cameraObject)
 
 bool CameraEditor::PlaySceneObjectCamera(
     Camera* camera,
-    Object3d* cameraObject,
+    engine::Object3d* cameraObject,
     float blendInDuration,
     float blendOutDuration,
     int easing) {

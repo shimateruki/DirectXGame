@@ -19,20 +19,21 @@ constexpr float kGateReturnSlimeDuration = 1.12f;
 constexpr const char* kPlayerSlimeControllerPath = "Resources/json/animator/player_slime.json";
 constexpr const char* kLocomotionModeParameter = "LocomotionMode";
 
+// プレイヤーのスライム姿勢を終点で減速させる補間率を返します。
 float EaseOut(float t) {
     // 補間率の外挿を防ぎ、終点へ向かって減速する二次曲線にする。
     t = std::clamp(t, 0.0f, 1.0f);
     return 1.0f - (1.0f - t) * (1.0f - t);
 }
 
-float HorizontalLength(const Vector3& v) {
+float HorizontalLength(const engine::Vector3& v) {
     // ジャンプ速度に影響されず走行アニメーションを選ぶため、XZ成分だけを測る。
     return std::sqrt(v.x * v.x + v.z * v.z);
 }
 
 } // namespace
 
-void PlayerSlimeAnimator::Reset(const Vector3& baseScale, Player* player) {
+void PlayerSlimeAnimator::Reset(const engine::Vector3& baseScale, Player* player) {
     // モード・着地反応・能力モーションを同じ初期姿勢へ戻す。
     if (!controllerLoaded_) {
         ReloadController();
@@ -93,12 +94,12 @@ void PlayerSlimeAnimator::SetMode(Mode mode) {
     jumpChargeRate_ = 0.0f;
 }
 
-void PlayerSlimeAnimator::SetMotionDirection(const Vector3& direction) {
+void PlayerSlimeAnimator::SetMotionDirection(const engine::Vector3& direction) {
     // 縦方向を除いた単位ベクトルを保持し、停止時の向きにも再利用する。
     motionDirection_ = NormalizeOrForward(direction);
 }
 
-void PlayerSlimeAnimator::SetPullDirection(const Vector3& direction) {
+void PlayerSlimeAnimator::SetPullDirection(const engine::Vector3& direction) {
     // フックの方向は水平面で正規化し、引き寄せ姿勢の向きに使う。
     pullDirection_ = NormalizeOrForward(direction);
 }
@@ -119,7 +120,7 @@ void PlayerSlimeAnimator::SetAbilityPose(AbilityPose pose, float strength) {
     abilityPoseStrength_ = std::clamp(strength, 0.0f, 1.0f);
 }
 
-void PlayerSlimeAnimator::TriggerImpulse(const Vector3& scale, float duration) {
+void PlayerSlimeAnimator::TriggerImpulse(const engine::Vector3& scale, float duration) {
     // 短い入力でもゼロ秒の衝撃にならないよう、最小継続時間を設ける。
     impulseScale_ = scale;
     impulseDuration_ = (std::max)(duration, 0.01f);
@@ -249,9 +250,9 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     }
     previousVelocityY_ = verticalVelocity;
 
-    Vector3 targetScale;
-    Vector3 targetRotation;
-    Vector3 visualOffset{};
+    engine::Vector3 targetScale;
+    engine::Vector3 targetRotation;
+    engine::Vector3 visualOffset{};
     const bool usesAuthoredBodyClip = TryBuildAuthoredBodyPose(player, targetScale, targetRotation, visualOffset);
     if (!usesAuthoredBodyClip) {
         targetScale = BuildModeScale(player, deltaTime);
@@ -274,9 +275,9 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         impulseTimer_ = (std::max)(0.0f, impulseTimer_ - deltaTime);
         const float t = impulseTimer_ / (std::max)(impulseDuration_, 0.01f);
         const float rate = EaseOut(t);
-        targetScale = {Math::Lerp(targetScale.x, impulseScale_.x, rate),
-                       Math::Lerp(targetScale.y, impulseScale_.y, rate),
-                       Math::Lerp(targetScale.z, impulseScale_.z, rate)};
+        targetScale = {engine::Math::Lerp(targetScale.x, impulseScale_.x, rate),
+                       engine::Math::Lerp(targetScale.y, impulseScale_.y, rate),
+                       engine::Math::Lerp(targetScale.z, impulseScale_.z, rate)};
     }
 
     // ガードと近接は専用キーだけで形を作り、待機の弾み・旧ガード姿勢を二重に重ねません。
@@ -293,9 +294,9 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         ApplyAbilityPose(targetScale, targetRotation);
     }
 
-    Vector3 abilityVisualScale{1.0f, 1.0f, 1.0f};
-    Vector3 abilityVisualRotation{};
-    Vector3 abilityVisualShear{};
+    engine::Vector3 abilityVisualScale{1.0f, 1.0f, 1.0f};
+    engine::Vector3 abilityVisualRotation{};
+    engine::Vector3 abilityVisualShear{};
     float abilityShearPivotY = 0.0f;
     UpdateAbilityMotion(deltaTime, abilityVisualScale, abilityVisualRotation, visualOffset, abilityVisualShear,
                         abilityShearPivotY);
@@ -340,7 +341,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     player->UpdateWorldMatrix();
 }
 
-void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) const {
+void PlayerSlimeAnimator::ApplyAbilityPose(engine::Vector3& scale, engine::Vector3& rotation) const {
     // ガードなどの一時姿勢を基本モードの姿勢へ強度付きで重ねる。
     const float strength = std::clamp(abilityPoseStrength_, 0.0f, 1.0f);
     if (abilityPose_ == AbilityPose::None || strength <= 0.0f) {
@@ -355,7 +356,7 @@ void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) co
         scale.y *= 1.0f - (0.30f + std::abs(bracePulse) * 0.55f) * strength;
         scale.z *= 1.0f + (0.30f - bracePulse * 0.55f) * strength;
         rotation.x *= 1.0f - strength * 0.82f;
-        rotation.z = Math::Lerp(rotation.z, shellWobble, strength);
+        rotation.z = engine::Math::Lerp(rotation.z, shellWobble, strength);
         break;
     }
     case AbilityPose::BlazeDash: {
@@ -373,8 +374,8 @@ void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) co
         scale.x *= 1.0f + (0.34f + canopyWave) * strength;
         scale.y *= 1.0f - (0.28f + std::abs(canopyWave) * 0.35f) * strength;
         scale.z *= 1.0f + (0.31f - canopyWave * 0.65f) * strength;
-        rotation.x = Math::Lerp(rotation.x, canopyWave * 0.65f, strength);
-        rotation.z = Math::Lerp(rotation.z, sideWave, strength);
+        rotation.x = engine::Math::Lerp(rotation.x, canopyWave * 0.65f, strength);
+        rotation.z = engine::Math::Lerp(rotation.z, sideWave, strength);
         break;
     }
     case AbilityPose::None:
@@ -383,8 +384,8 @@ void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) co
     }
 }
 
-void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualScale, Vector3& visualRotation,
-                                              Vector3& visualOffset, Vector3& visualShear, float& shearPivotY) {
+void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, engine::Vector3& visualScale, engine::Vector3& visualRotation,
+                                              engine::Vector3& visualOffset, engine::Vector3& visualShear, float& shearPivotY) {
     // Clipを評価した後に開始・終了時の重みを掛け、基本姿勢へ滑らかに戻す。
     if (!abilityMotionActive_ || !abilityMotionClip_.IsValid()) {
         return;
@@ -408,8 +409,8 @@ void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualSc
         weight *= std::clamp(remainingSeconds / abilityMotionBlendOutDuration_, 0.0f, 1.0f);
     }
 
-    visualScale = {Math::Lerp(1.0f, sample.scale.x, weight), Math::Lerp(1.0f, sample.scale.y, weight),
-                   Math::Lerp(1.0f, sample.scale.z, weight)};
+    visualScale = {engine::Math::Lerp(1.0f, sample.scale.x, weight), engine::Math::Lerp(1.0f, sample.scale.y, weight),
+                   engine::Math::Lerp(1.0f, sample.scale.z, weight)};
     visualRotation = sample.rotate * weight;
     visualOffset += sample.translate * weight;
     visualShear = sample.shear * weight;
@@ -465,8 +466,8 @@ void PlayerSlimeAnimator::ReloadBodyClips() {
     }
 }
 
-bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, Vector3& scaleOut, Vector3& rotationOut,
-                                                   Vector3& visualOffsetOut) const {
+bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, engine::Vector3& scaleOut, engine::Vector3& rotationOut,
+                                                   engine::Vector3& visualOffsetOut) const {
     if (!player || !controllerLoaded_) {
         return false;
     }
@@ -503,7 +504,7 @@ bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, Vector3& scal
     }
 
     scaleOut = {baseScale_.x * sample.scale.x, baseScale_.y * sample.scale.y, baseScale_.z * sample.scale.z};
-    const Vector3 proceduralRotation = BuildModeRotation(player);
+    const engine::Vector3 proceduralRotation = BuildModeRotation(player);
     rotationOut = {proceduralRotation.x + sample.rotate.x, proceduralRotation.y + sample.rotate.y,
                    proceduralRotation.z + sample.rotate.z};
     // 位置キーは物理座標ではなく描画専用Transformへ渡します。
@@ -538,9 +539,9 @@ const char* PlayerSlimeAnimator::GetStateName(Mode mode) {
     return "Idle";
 }
 
-Vector3 PlayerSlimeAnimator::NormalizeOrForward(const Vector3& direction) const {
+engine::Vector3 PlayerSlimeAnimator::NormalizeOrForward(const engine::Vector3& direction) const {
     // 入力方向がほぼゼロでも、向き計算にゼロベクトルを渡さない。
-    Vector3 flat = {direction.x, 0.0f, direction.z};
+    engine::Vector3 flat = {direction.x, 0.0f, direction.z};
     const float length = HorizontalLength(flat);
     if (length <= 0.001f) {
         return {0.0f, 0.0f, 1.0f};
@@ -548,14 +549,14 @@ Vector3 PlayerSlimeAnimator::NormalizeOrForward(const Vector3& direction) const 
     return {flat.x / length, 0.0f, flat.z / length};
 }
 
-Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) const {
+engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) const {
     // 速度とモード時計から伸縮を作り、Idle・Run・Jumpなどの質感を分ける。
     (void)deltaTime;
-    const Vector3 velocity = player ? player->GetVelocity() : Vector3{};
+    const engine::Vector3 velocity = player ? player->GetVelocity() : engine::Vector3{};
     const float speed = HorizontalLength(velocity);
     const float moveSpeed = player ? (std::max)(player->GetMoveSpeed(), 0.01f) : 1.0f;
     const float speedRate = std::clamp(speed / moveSpeed, 0.0f, 1.8f);
-    Vector3 scale = baseScale_;
+    engine::Vector3 scale = baseScale_;
 
     switch (mode_) {
     case Mode::Idle: {
@@ -699,11 +700,11 @@ Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) con
     return scale;
 }
 
-Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
+engine::Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
     // 移動中は進行方向へ傾け、停止中は小さな揺れだけを残す。
-    Vector3 current = player ? player->GetRotation() : Vector3{};
-    Vector3 rotation = {0.0f, current.y, 0.0f};
-    const Vector3 velocity = player ? player->GetVelocity() : Vector3{};
+    engine::Vector3 current = player ? player->GetRotation() : engine::Vector3{};
+    engine::Vector3 rotation = {0.0f, current.y, 0.0f};
+    const engine::Vector3 velocity = player ? player->GetVelocity() : engine::Vector3{};
     const float speed = HorizontalLength(velocity);
 
     switch (mode_) {
@@ -713,14 +714,14 @@ Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
         break;
     case Mode::Run:
     case Mode::Dash: {
-        Vector3 dir = speed > 0.01f ? NormalizeOrForward(velocity) : motionDirection_;
+        engine::Vector3 dir = speed > 0.01f ? NormalizeOrForward(velocity) : motionDirection_;
         const float lean = mode_ == Mode::Dash ? 0.18f : std::clamp(speed * 0.016f, 0.0f, 0.16f);
         rotation.x = -dir.z * lean;
         rotation.z = dir.x * lean;
         break;
     }
     case Mode::Jump: {
-        Vector3 dir = speed > 0.01f ? NormalizeOrForward(velocity) : motionDirection_;
+        engine::Vector3 dir = speed > 0.01f ? NormalizeOrForward(velocity) : motionDirection_;
         const float lean = std::clamp(speed * 0.008f, 0.0f, 0.12f);
         const float airTilt = 1.0f - std::clamp(std::abs(velocity.y) / 24.0f, 0.0f, 1.0f);
         rotation.x = -dir.z * lean + std::sin(modeTimer_ * 7.0f) * (0.038f + airTilt * 0.040f);

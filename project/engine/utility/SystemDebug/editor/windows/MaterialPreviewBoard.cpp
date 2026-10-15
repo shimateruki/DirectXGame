@@ -1,4 +1,5 @@
 #include "MaterialPreviewBoard.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 
 #include "BaseScene.h"
 #include "DebugConsole.h"
@@ -23,11 +24,12 @@ namespace {
 constexpr const char* kPreviewPrefix = "__Editor_MaterialPreview_";
 constexpr const char* kModelRoot = "Resources/3DModel";
 
-bool IsPreviewObject(const Object3d* object) {
+bool IsPreviewObject(const engine::Object3d* object) {
     return object && object->GetName().rfind(kPreviewPrefix, 0) == 0;
 }
 
 bool IsModelFolder(const std::filesystem::path& folder) {
+    // フォルダ内に読み込めるモデル形式が少なくとも１つあるか確認する。
     std::error_code ec;
     if (!std::filesystem::is_directory(folder, ec)) return false;
 
@@ -46,10 +48,6 @@ bool IsModelFolder(const std::filesystem::path& folder) {
     return false;
 }
 
-bool IsSpecialMaterialType(int materialType) {
-    return (materialType >= 8 && materialType <= 22) || materialType == 26;
-}
-
 std::string ToModelName(const std::filesystem::path& folder) {
     std::error_code ec;
     std::filesystem::path relative = std::filesystem::relative(folder, kModelRoot, ec);
@@ -61,7 +59,7 @@ const char* GetPreviewNote(int materialType) {
     if (materialType == 13 || materialType == 16) {
         return "モデル形状に重ねて確認";
     }
-    return IsSpecialMaterialType(materialType) ? "専用描画パスで確認" : "通常描画パスで確認";
+    return MaterialRenderPolicy::IsSpecial(materialType) ? "専用描画パスで確認" : "通常描画パスで確認";
 }
 }
 
@@ -196,7 +194,7 @@ void MaterialPreviewBoard::CreateBoard() {
     std::vector<MaterialPreviewEntry> entries = GetEntries();
     int columnCount = (std::max)(1, columns_);
 
-    Vector3 origin = { 0.0f, 2.0f, 0.0f };
+    engine::Vector3 origin = { 0.0f, 2.0f, 0.0f };
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     // 隔離ステージでは列全体を中央寄せし、通常配置では選択Objectの横を起点にする。
     bool placedInEffectStage = useEffectPreviewStage_ && previewStage && previewStage->IsEnabled();
@@ -206,7 +204,7 @@ void MaterialPreviewBoard::CreateBoard() {
         origin.x -= static_cast<float>(visibleColumns - 1) * spacing_ * 0.5f;
         previewStage->RequestCameraRecenter();
     } else if (placeNearSelected_) {
-        if (Object3d* selected = editor_ ? editor_->GetSelectedObject() : nullptr) {
+        if (engine::Object3d* selected = editor_ ? editor_->GetSelectedObject() : nullptr) {
             origin = selected->GetTranslate();
             origin.x += spacing_ * 1.5f;
         }
@@ -214,7 +212,7 @@ void MaterialPreviewBoard::CreateBoard() {
 
     for (size_t i = 0; i < entries.size(); ++i) {
         const MaterialPreviewEntry& entry = entries[i];
-        auto object = std::make_unique<Object3d>();
+        auto object = std::make_unique<engine::Object3d>();
         object->Initialize(common);
         object->SetModel(modelName);
         object->SetName(std::string(kPreviewPrefix) + std::to_string(entry.materialType) + "_" + entry.shortLabel);
@@ -228,7 +226,7 @@ void MaterialPreviewBoard::CreateBoard() {
 
         int col = static_cast<int>(i) % columnCount;
         int row = static_cast<int>(i) / columnCount;
-        Vector3 previewPosition = {
+        engine::Vector3 previewPosition = {
             origin.x + static_cast<float>(col) * spacing_,
             origin.y,
             origin.z + static_cast<float>(row) * spacing_
@@ -261,14 +259,14 @@ void MaterialPreviewBoard::RemoveBoard() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
-    std::vector<Object3d*> targets;
+    std::vector<engine::Object3d*> targets;
     for (auto& object : scene->GetObjects()) {
         if (IsPreviewObject(object.get())) {
             targets.push_back(object.get());
         }
     }
 
-    for (Object3d* object : targets) {
+    for (engine::Object3d* object : targets) {
         scene->RequestRemoveObject(object);
     }
 
@@ -342,7 +340,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
 
     std::vector<MaterialPreviewEntry> entries;
     for (const BaseEntry& base : baseEntries) {
-        if (showOnlySpecialMaterials_ && !IsSpecialMaterialType(base.type)) continue;
+        if (showOnlySpecialMaterials_ && !MaterialRenderPolicy::IsSpecial(base.type)) continue;
 
         if (expandModeVariants_ && !base.modes.empty()) {
             // effectTypeを持つ材質は各モードを別Objectへ展開して比較する。
@@ -414,12 +412,12 @@ void MaterialPreviewBoard::SetPreviewModel(const std::string& modelName) {
     selectedModelIndex_ = static_cast<int>(modelCandidates_.size()) - 1;
 }
 
-void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const MaterialPreviewEntry& entry) const {
+void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const MaterialPreviewEntry& entry) const {
     // 材質種別ごとのBlendとPBR既定値を同じモデルへ適用し、比較条件を揃えます。
     if (!object) return;
 
     object->SetMaterialType(entry.materialType);
-    object->SetBlendMode(entry.materialType == 1 || entry.materialType == 3 || IsSpecialMaterialType(entry.materialType) ? BlendMode::kNormal : BlendMode::kNone);
+    object->SetBlendMode(entry.materialType == 1 || entry.materialType == 3 || MaterialRenderPolicy::IsSpecial(entry.materialType) ? BlendMode::kNormal : BlendMode::kNone);
     object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     object->SetEmissive(entry.materialType == 3 ? 2.5f : 1.0f);
     if (entry.materialType == 23) {

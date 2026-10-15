@@ -1,11 +1,42 @@
 {
-  "title": "冒険のきほん",
-  "intro": "ぷにっと動いて、ぽんっとジャンプ！\nまずは移動とカメラに慣れていこう。",
-  "note": "操作アイコンは現在のキー設定に合わせて切り替わります。",
+  "title": "操作説明",
+  "intro": "移動・ジャンプ・カメラ操作を確認しよう。\nボタン表示は使う機器に合わせて変わる。",
+  "note": "操作アイコンはキーボード／ゲームパッドに合わせて切り替わります。",
   "moves": [
-    { "name": "移動", "condition": "移動ボタン・左スティック", "description": "進みたい方向へ動こう。足場の端では慎重に。", "glyph": "ui/input/combo/combo_wasd.png", "glyphSize": [132, 89] },
-    { "name": "ジャンプ", "condition": "ジャンプボタン", "description": "移動しながら跳んで、次の足場を目指そう。", "glyph": "ui/input/keyboard/key_space.png", "glyphSize": [145, 64] },
-    { "name": "カメラ", "condition": "マウス移動 ・ 右スティック", "description": "周りを見渡して、進む先や着地点を確かめよう。", "glyph": "ui/input/mouse/mouse_move.png", "glyphSize": [92, 92] }
+    {
+      "name": "移動",
+      "condition": "W・A・S・D キー",
+      "description": "進みたい方向へ動こう。足場の端では慎重に。",
+      "glyph": "ui/input/combo/combo_wasd.png",
+      "glyphSize": [
+        132,
+        89
+      ],
+      "conditionGamepad": "左スティック"
+    },
+    {
+      "name": "ジャンプ",
+      "condition": "Space キー",
+      "description": "移動しながら跳んで、次の足場を目指そう。",
+      "glyph": "ui/input/keyboard/key_space.png",
+      "glyphSize": [
+        145,
+        64
+      ],
+      "conditionGamepad": "ジャンプボタン"
+    },
+    {
+      "name": "カメラ",
+      "condition": "マウス移動",
+      "description": "周りを見渡して、進む先や着地点を確かめよう。",
+      "glyph": "ui/input/mouse/mouse_move.png",
+      "glyphSize": [
+        92,
+        92
+      ],
+      "conditionGamepad": "右スティック"
+    }
   ],
-  "footer": "← → / A・D：ページ切替    Tab / パッド B：もどる"
+  "footer": "→ ワザ図鑑    Tab：とじる",
+  "footerGamepad": "→ ワザ図鑑    B：とじる"
 }

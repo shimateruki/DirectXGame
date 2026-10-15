@@ -23,16 +23,16 @@ void PlayerStateDamage::Enter(Player* player) {
         baseRotation_ = player->GetRotation();
 
         knockbackDir_.y = 0.0f;
-        float dirLength = Math::Length(knockbackDir_);
+        float dirLength = engine::Math::Length(knockbackDir_);
         if (dirLength > 0.001f) {
             knockbackDir_ = knockbackDir_ * (1.0f / dirLength);
         } else {
-            Vector3 forward = player->GetForwardDirection();
+            engine::Vector3 forward = player->GetForwardDirection();
             knockbackDir_ = {-forward.x, 0.0f, -forward.z};
         }
 
         float force = 18.0f;
-        Vector3 v = knockbackDir_ * force;
+        engine::Vector3 v = knockbackDir_ * force;
         v.y = 9.0f;
         player->SetVelocity(v);
     }
@@ -48,8 +48,8 @@ void PlayerStateDamage::Update(Player* player, float deltaTime) {
     if (t > 1.0f)
         t = 1.0f;
 
-    Vector3 targetScale = baseScale_;
-    Vector3 targetRotation = baseRotation_;
+    engine::Vector3 targetScale = baseScale_;
+    engine::Vector3 targetRotation = baseRotation_;
     const float roll = t * 6.28318531f;
     const float rollEaseOut = 1.0f - (1.0f - t) * (1.0f - t);
 
@@ -61,9 +61,9 @@ void PlayerStateDamage::Update(Player* player, float deltaTime) {
     } else if (t < 0.48f) {
         float p = (t - 0.16f) / 0.32f;
         float ease = 1.0f - (1.0f - p) * (1.0f - p);
-        targetScale = {Math::Lerp(baseScale_.x * 1.62f, baseScale_.x * 0.72f, ease),
-                       Math::Lerp(baseScale_.y * 0.48f, baseScale_.y * 1.48f, ease),
-                       Math::Lerp(baseScale_.z * 1.62f, baseScale_.z * 0.72f, ease)};
+        targetScale = {engine::Math::Lerp(baseScale_.x * 1.62f, baseScale_.x * 0.72f, ease),
+                       engine::Math::Lerp(baseScale_.y * 0.48f, baseScale_.y * 1.48f, ease),
+                       engine::Math::Lerp(baseScale_.z * 1.62f, baseScale_.z * 0.72f, ease)};
     } else {
         float p = (t - 0.48f) / 0.52f;
         if (p > 1.0f)

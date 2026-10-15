@@ -25,6 +25,7 @@ bool IsSlimeEnemyType(const std::string& enemyType) {
            enemyType == "MagmaSlime" || enemyType == "FalseKingSlime";
 }
 
+// 明示された材質を尊重し、標準材質のスライムだけ軟質表現を適用します。
 void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
     if (!enemy || !IsSlimeEnemyType(enemy->GetEnemyType())) {
         return;

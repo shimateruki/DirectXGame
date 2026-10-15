@@ -20,9 +20,9 @@
 #include <dwrite.h>
 #include <objbase.h>
 #include <wincodec.h>
+#include <wrl/implements.h>
 
 #include <algorithm>
-#include <atomic>
 #include <cctype>
 #include <cfloat>
 #include <cmath>
@@ -47,10 +47,14 @@ constexpr const char* kToolRequestPath = "Resources/generated/editor/text_png_re
 constexpr const char* kToolReportPath = "Resources/generated/editor/text_png_result.json";
 
 // 独自フォント集合のキーに並んだパスを列挙する COM オブジェクト。参照数で寿命を管理する。
-class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
+class ResourceFontFileEnumerator final
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IDWriteFontFileEnumerator> {
 public:
     ResourceFontFileEnumerator(IDWriteFactory* factory, const void* collectionKey, UINT32 collectionKeySize)
         : factory_(factory) {
+        // DirectWriteのコレクションキーを終端付きパス列として復元する。
         const wchar_t* cursor = static_cast<const wchar_t*>(collectionKey);
         const wchar_t* end = cursor + collectionKeySize / sizeof(wchar_t);
         while (cursor && cursor < end && *cursor != L'\0') {
@@ -60,30 +64,8 @@ public:
         }
     }
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
-        if (!object) return E_POINTER;
-        *object = nullptr;
-        if (iid == IID_IUnknown || iid == __uuidof(IDWriteFontFileEnumerator)) {
-            *object = this;
-            AddRef();
-            return S_OK;
-        }
-        return E_NOINTERFACE;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef() override {
-        return ++refCount_;
-    }
-
-    ULONG STDMETHODCALLTYPE Release() override {
-        ULONG count = --refCount_;
-        if (count == 0) {
-            delete this;
-        }
-        return count;
-    }
-
     HRESULT STDMETHODCALLTYPE MoveNext(BOOL* hasCurrentFile) override {
+        // 参照できないフォントは飛ばし、次に開けたファイルだけ列挙する。
         if (!hasCurrentFile) return E_POINTER;
         *hasCurrentFile = FALSE;
         currentFile_.Reset();
@@ -106,7 +88,6 @@ public:
     }
 
 private:
-    std::atomic<ULONG> refCount_{ 1 };
     Microsoft::WRL::ComPtr<IDWriteFactory> factory_;
     std::vector<std::wstring> fontPaths_;
     size_t nextIndex_ = 0;
@@ -114,43 +95,22 @@ private:
 };
 
 // DirectWrite に独自フォントの列挙器を提供する COM 実装。OS 全体へのフォント登録は行わない。
-class ResourceFontCollectionLoader final : public IDWriteFontCollectionLoader {
+class ResourceFontCollectionLoader final
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IDWriteFontCollectionLoader> {
 public:
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
-        if (!object) return E_POINTER;
-        *object = nullptr;
-        if (iid == IID_IUnknown || iid == __uuidof(IDWriteFontCollectionLoader)) {
-            *object = this;
-            AddRef();
-            return S_OK;
-        }
-        return E_NOINTERFACE;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef() override {
-        return ++refCount_;
-    }
-
-    ULONG STDMETHODCALLTYPE Release() override {
-        ULONG count = --refCount_;
-        if (count == 0) {
-            delete this;
-        }
-        return count;
-    }
-
     HRESULT STDMETHODCALLTYPE CreateEnumeratorFromKey(
         IDWriteFactory* factory,
         const void* collectionKey,
         UINT32 collectionKeySize,
         IDWriteFontFileEnumerator** fontFileEnumerator) override {
         if (!factory || !collectionKey || !fontFileEnumerator) return E_INVALIDARG;
-        *fontFileEnumerator = new ResourceFontFileEnumerator(factory, collectionKey, collectionKeySize);
+        auto enumerator = Microsoft::WRL::Make<ResourceFontFileEnumerator>(factory, collectionKey, collectionKeySize);
+        if (!enumerator) return E_OUTOFMEMORY;
+        *fontFileEnumerator = enumerator.Detach();
         return S_OK;
     }
-
-private:
-    std::atomic<ULONG> refCount_{ 1 };
 };
 
 using EditorWindowsText::Utf8ToWide;
@@ -164,6 +124,7 @@ std::string ToLowerAscii(std::string text) {
 }
 
 std::string SanitizeOutputName(const char* name) {
+    // Windowsで使えない文字を置き換え、生成画像の拡張子をPNGへ統一する。
     std::string result = (name && name[0] != '\0') ? name : "generated_text.png";
     for (char& c : result) {
         if (c == '\\' || c == '/' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
@@ -196,6 +157,7 @@ uint32_t Fnv1aHash(const std::string& text) {
 }
 
 std::string MakeOutputNameFromText(const char* text) {
+    // 一行目のASCII部分だけを人が読める名前に使い、全文のハッシュで同名衝突を避ける。
     std::string source = text ? text : "";
     std::string firstLine;
     for (char c : source) {
@@ -208,6 +170,7 @@ std::string MakeOutputNameFromText(const char* text) {
     firstLine = (begin == std::string::npos) ? "" : firstLine.substr(begin, end - begin + 1);
 
     std::string slug;
+    // ファイル名に使えない文字は落とし、連続区切りと長さを制限する。
     bool previousUnderscore = false;
     for (unsigned char c : firstLine) {
         char out = '\0';
@@ -242,14 +205,17 @@ std::string MakeOutputNameFromText(const char* text) {
     return "text_" + slug + "_" + hashText + ".png";
 }
 
+// RGBA配列をDirect2D用の色へ変換します。
 D2D1_COLOR_F ToD2DColor(const float color[4]) {
     return D2D1::ColorF(color[0], color[1], color[2], color[3]);
 }
 
+// 同じRGBA配列をImGuiの32bit色へ変換します。
 ImU32 ToImGuiColor(const float color[4]) {
     return ImGui::ColorConvertFloat4ToU32(ImVec4(color[0], color[1], color[2], color[3]));
 }
 
+// 画像キャンバスの寸法を切り上げ、1～4096画素へ制限します。
 int ClampCanvasSize(float value) {
     return std::clamp(static_cast<int>(std::ceil(value)), 1, 4096);
 }
@@ -265,6 +231,7 @@ bool IsFontFile(const std::filesystem::path& path) {
 }
 
 std::vector<std::wstring> CollectResourceFontPaths() {
+    // リソース内のフォントを収集し、旧配置のMeiryoも既存データとの互換用に含める。
     std::vector<std::wstring> paths;
     std::error_code ec;
     if (std::filesystem::exists(kFontDirectory, ec)) {
@@ -294,6 +261,7 @@ std::vector<std::wstring> CollectResourceFontPaths() {
 }
 
 std::wstring MakeFontCollectionKey(const std::vector<std::wstring>& paths) {
+    // DirectWriteの列挙器へ渡すため、各パスと列全体をNULで終端する。
     std::wstring key;
     for (const std::wstring& path : paths) {
         key += path;
@@ -304,6 +272,7 @@ std::wstring MakeFontCollectionKey(const std::vector<std::wstring>& paths) {
 }
 
 std::wstring GetLocalizedString(IDWriteLocalizedStrings* strings, const wchar_t* fallback) {
+    // 日本語名を優先し、未収録フォントでは英語名・先頭要素の順にフォールバックする。
     if (!strings) {
         return fallback ? fallback : L"";
     }
@@ -332,6 +301,7 @@ std::wstring GetLocalizedString(IDWriteLocalizedStrings* strings, const wchar_t*
 }
 
 std::string GetFontFilePathFromFont(IDWriteFont* font) {
+    // DirectWriteのFontからローカルファイルの参照キーを辿り、再利用可能なパスに戻す。
     if (!font) {
         return {};
     }
@@ -347,6 +317,7 @@ std::string GetFontFilePathFromFont(IDWriteFont* font) {
     }
 
     std::vector<IDWriteFontFile*> files(fileCount, nullptr);
+    // GetFilesが返す生COM参照は全て解放する。先頭だけComPtrへ所有権を移す。
     if (FAILED(fontFace->GetFiles(&fileCount, files.data())) || !files[0]) {
         for (IDWriteFontFile* file : files) {
             if (file) {
@@ -376,6 +347,7 @@ std::string GetFontFilePathFromFont(IDWriteFont* font) {
     }
 
     Microsoft::WRL::ComPtr<IDWriteLocalFontFileLoader> localLoader;
+    // システム由来のフォントなど、ローカルパスを持たないLoaderは対象外とする。
     if (FAILED(loader.As(&localLoader)) || !localLoader) {
         return {};
     }
@@ -394,6 +366,7 @@ std::string GetFontFilePathFromFont(IDWriteFont* font) {
 }
 
 std::string MakeRelativeSpritePath(const std::string& fullPath) {
+    // 出力先からSpriteルートへの相対化に失敗した場合はファイル名だけ採用する。
     std::filesystem::path base = "Resources/sprite";
     std::filesystem::path path = fullPath;
     std::error_code ec;
@@ -405,6 +378,7 @@ std::string MakeRelativeSpritePath(const std::string& fullPath) {
 }
 
 std::string EscapeJsonString(const std::string& text) {
+    // 制御文字と引用符をエスケープし、日本語のUTF-8バイト列はそのまま保持する。
     std::ostringstream stream;
     for (unsigned char c : text) {
         switch (c) {
@@ -446,6 +420,7 @@ std::filesystem::path GetModuleDirectory() {
 }
 
 std::filesystem::path FindTextPngToolExecutable() {
+    // 実行ファイルの隣を優先し、開発中は各構成のビルド出力も探す。
     std::vector<std::filesystem::path> candidates;
     const std::filesystem::path moduleDir = GetModuleDirectory();
     const std::filesystem::path currentDir = std::filesystem::current_path();
@@ -468,6 +443,7 @@ std::filesystem::path FindTextPngToolExecutable() {
 }
 
 std::wstring QuoteCommandArg(const std::wstring& value) {
+    // TextPngTool起動時に空白や引用符を含むパスを１引数として渡す。
     std::wstring result = L"\"";
     for (wchar_t c : value) {
         if (c == L'"') {
@@ -481,6 +457,7 @@ std::wstring QuoteCommandArg(const std::wstring& value) {
 }
 
 bool RunProcessAndWait(const std::wstring& commandLine, DWORD timeoutMs, DWORD& exitCode) {
+    // 外部ツールの停止を待ち、期限超過時は子プロセスとハンドルを確実に閉じる。
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION process{};
@@ -508,6 +485,7 @@ bool RunProcessAndWait(const std::wstring& commandLine, DWORD timeoutMs, DWORD& 
 }
 
 bool ReadJsonIntField(const std::string& json, const std::string& fieldName, int& outValue) {
+    // 生成ツールの寸法レポートから指定された正の整数だけを取り出す。
     const std::string key = "\"" + fieldName + "\"";
     size_t pos = json.find(key);
     if (pos == std::string::npos) return false;
@@ -526,6 +504,7 @@ bool ReadJsonIntField(const std::string& json, const std::string& fieldName, int
     return true;
 }
 
+// 外部レンダラーの結果JSONから実際の画像寸法を読み、欠損時は出力値を変えず失敗を返します。
 bool ReadRenderReport(const std::filesystem::path& reportPath, int& outWidth, int& outHeight) {
     std::ifstream file(reportPath, std::ios::binary);
     if (!file.is_open()) return false;
@@ -541,6 +520,7 @@ bool ReadRenderReport(const std::filesystem::path& reportPath, int& outWidth, in
 }
 
 TextSpriteGenerator::~TextSpriteGenerator() {
+    // 登録したローダーをFactoryより先に外し、自分が初期化したCOMだけ終了する。
     if (dwriteFactory_ && resourceFontLoader_) {
         dwriteFactory_->UnregisterFontCollectionLoader(resourceFontLoader_.Get());
     }
@@ -672,7 +652,7 @@ void TextSpriteGenerator::DrawPreview() {
 #endif
 }
 
-void TextSpriteGenerator::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+void TextSpriteGenerator::SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
     // Previewの投影基準をGame Viewの現在の位置・大きさへ更新します。
     gameViewOffset_ = offset;
     gameViewSize_ = size;
@@ -901,9 +881,10 @@ void TextSpriteGenerator::RefreshFonts() {
 
     // Collection Key はフォントPathの集合から作り、Loaderの寿命をCollectionより長く保ちます。
     resourceFontCollectionKey_ = MakeFontCollectionKey(resourceFontPaths);
-    resourceFontLoader_.Reset();
-    resourceFontLoader_.Attach(new ResourceFontCollectionLoader());
-    HRESULT hr = dwriteFactory_->RegisterFontCollectionLoader(resourceFontLoader_.Get());
+    resourceFontLoader_ = Microsoft::WRL::Make<ResourceFontCollectionLoader>();
+    HRESULT hr = resourceFontLoader_
+        ? dwriteFactory_->RegisterFontCollectionLoader(resourceFontLoader_.Get())
+        : E_OUTOFMEMORY;
     if (SUCCEEDED(hr)) {
         hr = dwriteFactory_->CreateCustomFontCollection(
             resourceFontLoader_.Get(),
@@ -1071,6 +1052,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
     return true;
 }
 
+// 文字入力中の連続再生成を避け、変更が落ち着いてからプレビューPNGを更新します。
 void TextSpriteGenerator::TickPreviewAutoUpdate() {
 #ifdef USE_IMGUI
     if (!previewAutoUpdate_ || !previewEnabled_ || !previewDirty_) {
@@ -1173,7 +1155,7 @@ void TextSpriteGenerator::AddPendingSpriteToScene() {
     uint32_t handle = TextureManager::GetInstance()->Load(pendingSpriteFullPath_, false, false, true);
     if (handle == 0) return;
 
-    auto sprite = std::make_unique<Sprite>();
+    auto sprite = std::make_unique<engine::Sprite>();
     sprite->Initialize(scene->GetSpriteCommon(), handle);
     sprite->SetTextureName(pendingSpriteRelativePath_);
     sprite->SetName(std::filesystem::path(pendingSpriteRelativePath_).stem().generic_string());
@@ -1183,7 +1165,7 @@ void TextSpriteGenerator::AddPendingSpriteToScene() {
     sprite->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     sprite->Update();
 
-    Sprite* addedSprite = sprite.get();
+    engine::Sprite* addedSprite = sprite.get();
     scene->AddSprite(std::move(sprite));
 
     if (editor_ && editor_->GetSpriteDebugEditor()) {

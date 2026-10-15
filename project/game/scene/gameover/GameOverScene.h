@@ -40,7 +40,9 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     /// 初期化
     /// </summary>
     void Initialize() override;
+    /// シーン切り替え後の演出と選択状態を開始する。
     void OnActivated() override;
+    /// ゲームオーバー表示に必要なアセットを列挙する。
     SceneLoadManifest BuildAsyncLoadManifest() const override;
 
     /// <summary>
@@ -57,23 +59,25 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     /// 描画
     /// </summary>
     void Draw() override;
+    /// 背景、タイトル文字、選択メニューを描画する。
     void DrawUI() override;
+    /// ゲームオーバーシーンの開発用設定を表示する。
     void DrawImGui() override;
 
     //  シャドウマップ描画のオーバーライド
     void DrawShadow() override;
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
-    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
-    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
-    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
-    void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
-    void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
+    const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
+    void AddObject(std::unique_ptr<engine::Object3d> object) override { objectManager_->AddObject(std::move(object)); }
+    void RequestRemoveObject(engine::Object3d* object) override { objectManager_->RequestRemove(object); }
 
     // 各種マネージャ・コモンの取得
-    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
+    const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
-    SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
+    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
     // プレイヤー連携
@@ -81,22 +85,22 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     void SetPlayer(Player* player) override { player_ = player; }
 
   private:
-    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
+    std::vector<std::unique_ptr<engine::Sprite>>* GetMutableSprites() override { return &sprites_; }
     enum class MenuItem { Retry, Title, Count };
 
     // メニュー行の背景・ラベルを借用する。基準サイズを残し、選択演出の拡縮を累積させない。
     struct MenuRow {
-        Sprite* backdrop = nullptr;
-        Sprite* label = nullptr;
-        Vector2 backdropBaseSize = {0.0f, 0.0f};
-        Vector2 labelBaseSize = {0.0f, 0.0f};
+        engine::Sprite* backdrop = nullptr;
+        engine::Sprite* label = nullptr;
+        engine::Vector2 backdropBaseSize = {0.0f, 0.0f};
+        engine::Vector2 labelBaseSize = {0.0f, 0.0f};
     };
 
     // 背景王冠 Sprite の借用参照と落下周期。基準位置から毎回評価し、流れ続ける表示を作る。
     struct FallingCrown {
-        Sprite* sprite = nullptr;
-        Vector2 basePosition = {0.0f, 0.0f};
-        Vector2 size = {0.0f, 0.0f};
+        engine::Sprite* sprite = nullptr;
+        engine::Vector2 basePosition = {0.0f, 0.0f};
+        engine::Vector2 size = {0.0f, 0.0f};
         float timeOffset = 0.0f;
         float cycleDuration = 1.0f;
         float fallDistance = 0.0f;
@@ -109,7 +113,7 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
 
     // 頭上を回る星の借用 Sprite と位相差。depthOffset は重なりの見せ方に使う。
     struct DizzyStar {
-        Sprite* sprite = nullptr;
+        engine::Sprite* sprite = nullptr;
         float baseAngle = 0.0f;
         float size = 0.0f;
         float depthOffset = 0.0f;
@@ -119,38 +123,60 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     struct PresentationTuning {
         float cameraSettleTime = 1.55f;
         float titleRevealStartTime = 0.15f;
-        Vector3 introEyeOffset = {0.75f, 1.28f, -5.10f};
-        Vector3 impactEyeOffset = {0.34f, 1.04f, -4.25f};
-        Vector3 settleEyeOffset = {-0.82f, 1.05f, -5.20f};
-        Vector3 introTargetOffset = {0.0f, 0.50f, 0.0f};
-        Vector3 settleTargetOffset = {-0.82f, 1.05f, 0.0f};
+        engine::Vector3 introEyeOffset = {0.75f, 1.28f, -5.10f};
+        engine::Vector3 impactEyeOffset = {0.34f, 1.04f, -4.25f};
+        engine::Vector3 settleEyeOffset = {-0.82f, 1.05f, -5.20f};
+        engine::Vector3 introTargetOffset = {0.0f, 0.50f, 0.0f};
+        engine::Vector3 settleTargetOffset = {-0.82f, 1.05f, 0.0f};
         float introFov = 0.50f;
         float impactFov = 0.43f;
         float settleFov = 0.58f;
         float impactShake = 0.085f;
     };
 
+    /// レイアウトからメニューや背景のスプライト参照を取得する。
     void BindLayoutSprites();
+    /// レイアウト更新後に保持しているスプライト参照を取り直す。
     void RefreshLayoutSpritePointers();
-    Sprite* FindSprite(const std::string& name) const;
+    /// レイアウト上の名前からスプライトを探す。
+    engine::Sprite* FindSprite(const std::string& name) const;
+    /// 背景で落下する王冠の初期位置と周期を設定する。
     void InitializeFallingCrowns();
+    /// 王冠の落下位置と回転を時間から評価する。
     void UpdateFallingCrowns(float deltaTime);
+    /// スライムの頭上を回る星の初期位相を設定する。
     void InitializeDizzyStars();
+    /// 星の周回位置と表示を更新する。
     void UpdateDizzyStars(float deltaTime);
+    /// リトライ選択後の退出演出を開始する。
     void StartRetryExit();
+    /// 退出演出を進め、完了後にシーン変更を要求する。
     void UpdateRetryExit(float deltaTime);
+    /// メニューの上下移動と決定入力を処理する。
     void UpdateMenuInput();
+    /// 現在の選択に合わせてメニューの見た目を更新する。
     void UpdateMenuSprites(float deltaTime);
+    /// 選択行を指定方向へ進める。
     void ChangeSelection(int direction);
+    /// 選択中のリトライまたはタイトル移動を実行する。
     void ConfirmSelection();
+    /// タイトル文字の表示演出が終わったか返す。
     bool IsTitleRevealComplete() const;
+    /// カメラ、モデル、画面効果の開始状態を設定する。
     void InitializeGameOverPresentation();
+    /// 演出対象のスライムを配置オブジェクトから探す。
     void FindGameOverSlimeObject();
+    /// スライムの動きとカメラ演出を時間に沿って進める。
     void UpdateGameOverPresentation(float deltaTime);
+    /// 現在の演出段階に合わせてカメラ位置と注視点を更新する。
     void UpdateGameOverCamera();
+    /// 衝撃と復帰に合わせて画面効果を設定する。
     void UpdateGameOverPostEffects();
+    /// 演出中の衝撃音と視覚効果を一度だけ発生させる。
     void EmitGameOverImpactCue();
+    /// ゲームオーバー用の画面効果を解除する。
     void ResetGameOverPostEffects();
+    /// UI の背後に置く背景スプライトを描画する。
     void DrawBackgroundSprite();
 
     // --- エンジン基盤 ---
@@ -164,15 +190,15 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
 
     // --- 共通基盤クラス ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
-    std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
+    std::unique_ptr<engine::SpriteCommon> spriteCommon_ = nullptr;
     std::unique_ptr<ParticleCommon> particleCommon_ = nullptr;
 
     // --- オブジェクト・リソース ---
-    std::vector<std::unique_ptr<Sprite>> sprites_;
-    Object3d* gameOverSlimeObject_ = nullptr;
+    std::vector<std::unique_ptr<engine::Sprite>> sprites_;
+    engine::Object3d* gameOverSlimeObject_ = nullptr;
     GameOverSlimeAnimator gameOverSlimeAnimator_;
-    Vector3 gameOverSlimeBasePosition_ = {0.0f, 0.0f, 0.0f};
-    Vector3 gameOverSlimeBaseScale_ = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 gameOverSlimeBasePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 gameOverSlimeBaseScale_ = {1.0f, 1.0f, 1.0f};
     float gameOverPresentationTimer_ = 0.0f;
     PresentationTuning presentationTuning_;
     bool gameOverImpactCuePlayed_ = false;
@@ -188,10 +214,10 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
 
-    Sprite* backgroundSprite_ = nullptr;
-    std::array<Sprite*, 8> titleLetters_ = {};
-    std::array<Vector2, 8> titleLetterBasePositions_ = {};
-    std::array<Vector2, 8> titleLetterBaseSizes_ = {};
+    engine::Sprite* backgroundSprite_ = nullptr;
+    std::array<engine::Sprite*, 8> titleLetters_ = {};
+    std::array<engine::Vector2, 8> titleLetterBasePositions_ = {};
+    std::array<engine::Vector2, 8> titleLetterBaseSizes_ = {};
     std::array<MenuRow, static_cast<size_t>(MenuItem::Count)> menuRows_ = {};
     std::vector<FallingCrown> fallingCrowns_;
     std::vector<DizzyStar> dizzyStars_;

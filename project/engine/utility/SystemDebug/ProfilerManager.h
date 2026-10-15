@@ -7,7 +7,7 @@
 #include <memory>
 #include <mutex>
 
-class Object3d;
+namespace engine { class Object3d; }
 
 #ifdef USE_IMGUI
 #include "imgui.h"
@@ -56,7 +56,7 @@ public:
 
     /// <summary>オブジェクト別計測の表示対象を設定する。</summary>
     /// <remarks>リストは所有しないため、表示中は呼び出し側で保持する。</remarks>
-    void SetObjectList(const std::vector<std::unique_ptr<Object3d>>* objects) { currentObjects_ = objects; }
+    void SetObjectList(const std::vector<std::unique_ptr<engine::Object3d>>* objects) { currentObjects_ = objects; }
 
     /// <summary>GPU計測のサンプリング中かを返す。</summary>
     bool IsGpuSampling() const { return isGpuSampling_; }
@@ -98,7 +98,7 @@ private:
     std::map<std::string, TimelineData> cpuDataMap_;
     std::map<std::string, float> latestGpuTimeMap_;
     mutable std::recursive_mutex mutex_;
-    const std::vector<std::unique_ptr<Object3d>>* currentObjects_ = nullptr;
+    const std::vector<std::unique_ptr<engine::Object3d>>* currentObjects_ = nullptr;
     bool isOpen_ = false;
     int selectedIndex_ = 0;
 

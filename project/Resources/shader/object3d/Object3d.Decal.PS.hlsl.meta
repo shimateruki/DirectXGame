@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "74c46b7d65a4dbda3ad668b868d9ead5",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/object3d/Object3d.Decal.PS.hlsl",
+  "version": 1
+}

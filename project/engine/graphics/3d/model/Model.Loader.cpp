@@ -115,6 +115,7 @@ bool ContainsAny(std::string_view text, std::initializer_list<std::string_view> 
 
 // マテリアルに書かれたテクスチャパスを、モデルフォルダ基準の実在パスへ解決する。
 std::string ResolveMaterialTexturePath(const std::string& directoryPath, const std::string& rawPath) {
+    // 絶対パス、モデル基準の相対パス、同じフォルダ内のファイル名の順で探す。
     if (rawPath.empty()) {
         return "";
     }
@@ -148,6 +149,7 @@ bool TryGetMaterialTexture(aiMaterial* material, const std::vector<aiTextureType
 
 // 種別情報が曖昧なテクスチャから用途に合う候補を探し、補助的に採用する。
 bool TryFindUnknownTexture(aiMaterial* material, std::initializer_list<std::string_view> keywords, aiString& outPath) {
+    // 用途未設定のテクスチャからファイル名のキーワードで代替候補を拾う。
     if (!material) {
         return false;
     }
@@ -168,6 +170,7 @@ bool TryFindUnknownTexture(aiMaterial* material, std::initializer_list<std::stri
 
 // モデルファイル名から対応する独自キャッシュファイルの保存先パスを作成する。
 std::filesystem::path MakeModelCachePath(const std::filesystem::path& sourcePath) {
+    // 可能な限り元モデルの相対パスを維持し、同名ファイルのキャッシュ衝突を避ける。
     std::error_code ec;
     const std::filesystem::path root = std::filesystem::current_path(ec).lexically_normal();
     std::filesystem::path absoluteSource = std::filesystem::absolute(sourcePath, ec).lexically_normal();
@@ -183,6 +186,7 @@ std::filesystem::path MakeModelCachePath(const std::filesystem::path& sourcePath
 
 // モデル本体と依存ファイルの更新時刻を調べ、キャッシュの新しさ判定に使う。
 std::filesystem::file_time_type GetLatestModelDependencyTime(const std::filesystem::path& sourcePath) {
+    // 本体の時刻を基準にし、同じディレクトリにある外部メッシュ・材質も更新判定へ含める。
     std::error_code ec;
     auto latest = std::filesystem::last_write_time(sourcePath, ec);
     if (ec) {
@@ -216,6 +220,7 @@ std::filesystem::file_time_type GetLatestModelDependencyTime(const std::filesyst
 
 // キャッシュファイルがモデルや依存ファイルより新しいかを確認し、再読み込みの要否を決める。
 bool IsModelCacheUpToDate(const std::filesystem::path& sourcePath, const std::filesystem::path& cachePath) {
+    // キャッシュの時刻を元モデルと比較し、古いデータを読み込まない。
     std::error_code ec;
     if (!std::filesystem::exists(sourcePath, ec) || !std::filesystem::exists(cachePath, ec)) {
         return false;
@@ -231,6 +236,7 @@ bool IsModelCacheUpToDate(const std::filesystem::path& sourcePath, const std::fi
 
 // ノードの変換行列と子階層を再帰的に書き込み、階層構造をキャッシュへ保存する。
 bool WriteNode(std::ostream& os, const Model::Node& node) {
+    // ノードの変換情報を先に保存し、子を再帰的に続けて階層順を維持する。
     if (!WritePod(os, node.transform) ||
         !WritePod(os, node.localMatrix) ||
         !WriteString(os, node.name)) {
@@ -251,6 +257,7 @@ bool WriteNode(std::ostream& os, const Model::Node& node) {
 
 // キャッシュからノード階層を再帰的に読み戻し、モデルの親子構造を復元する。
 bool ReadNode(std::istream& is, Model::Node& node) {
+    // 子数を上限で検証してから再帰し、壊れたキャッシュによる巨大な確保を防ぐ。
     if (!ReadPod(is, node.transform) ||
         !ReadPod(is, node.localMatrix) ||
         !ReadString(is, node.name)) {
@@ -281,6 +288,7 @@ void CollectNodes(const Model::Node& node, std::vector<Model::Node>& nodes) {
 
 // アニメーション名・時間・各ノードのキー情報をキャッシュへ保存する。
 bool WriteAnimation(std::ostream& os, const Model::Animation& animation) {
+    // ノード別の3種のキーを読み込み側と同じ順序で記録する。
     if (!WriteString(os, animation.name) ||
         !WritePod(os, animation.duration) ||
         !WritePod(os, animation.ticksPerSecond)) {
@@ -304,6 +312,7 @@ bool WriteAnimation(std::ostream& os, const Model::Animation& animation) {
 
 // キャッシュからアニメーション情報を読み戻し、再生に使える形へ復元する。
 bool ReadAnimation(std::istream& is, Model::Animation& animation) {
+    // ノード数を検証してからキー配列を復元し、途中失敗はキャッシュ無効として返す。
     if (!ReadString(is, animation.name) ||
         !ReadPod(is, animation.duration) ||
         !ReadPod(is, animation.ticksPerSecond)) {
@@ -328,6 +337,7 @@ bool ReadAnimation(std::istream& is, Model::Animation& animation) {
 
 // 読み込み済みModelData全体を独自キャッシュとして保存し、次回起動時の読み込みを軽くする。
 bool WriteModelCache(const std::filesystem::path& sourcePath, const Model::ModelData& data) {
+    // 読み込み側と同じ順序で記録し、途中で書き込めなければキャッシュを採用しない。
     const std::filesystem::path cachePath = MakeModelCachePath(sourcePath);
     std::error_code ec;
     std::filesystem::create_directories(cachePath.parent_path(), ec);
@@ -352,6 +362,7 @@ bool WriteModelCache(const std::filesystem::path& sourcePath, const Model::Model
     }
 
     const uint32_t materialCount = static_cast<uint32_t>(data.materials.size());
+    // GPUハンドルは実行ごとに変わるため、ここでは再構築に必要な材質値だけ保存する。
     if (!WritePod(os, materialCount)) {
         return false;
     }
@@ -373,6 +384,7 @@ bool WriteModelCache(const std::filesystem::path& sourcePath, const Model::Model
     }
 
     const uint32_t meshCount = static_cast<uint32_t>(data.meshes.size());
+    // メッシュ本体の頂点・インデックスは保存し、GPUバッファは復元時に作り直す。
     if (!WritePod(os, meshCount)) {
         return false;
     }
@@ -399,6 +411,7 @@ bool WriteModelCache(const std::filesystem::path& sourcePath, const Model::Model
     }
 
     const uint32_t animationCount = static_cast<uint32_t>(data.animations.size());
+    // 階層の後にアニメーションを書き、読み込み側でも同じ順番で復元する。
     if (!WritePod(os, animationCount)) {
         return false;
     }
@@ -413,6 +426,7 @@ bool WriteModelCache(const std::filesystem::path& sourcePath, const Model::Model
 
 // 独自キャッシュからModelData全体を復元し、通常読み込みを省略できるか確認する。
 bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& data) {
+    // 依存ファイルが新しい場合や形式が違う場合は失敗として扱い、Assimp読込へ戻す。
     const std::filesystem::path cachePath = MakeModelCachePath(sourcePath);
     if (!IsModelCacheUpToDate(sourcePath, cachePath)) {
         return false;
@@ -439,6 +453,7 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
     data.usesNodeAnimationProxy = usesNodeAnimationProxy != 0;
 
     uint32_t materialCount = 0;
+    // ファイル由来の件数を制限し、異常なキャッシュで巨大な配列を確保しない。
     if (!ReadPod(is, materialCount) || materialCount > kMaxCacheVectorCount) {
         return false;
     }
@@ -459,6 +474,7 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
             return false;
         }
         material.hasNormalMap = hasNormalMap != 0;
+        // 保存しないGPU資源の参照は明示的に外し、後段の初期化で再生成する。
         material.hasOrmMap = hasOrmMap != 0;
         material.doubleSided = doubleSided != 0;
         material.textureHandle = 0;
@@ -480,6 +496,7 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
             return false;
         }
         mesh.vertexResource.Reset();
+        // 読み込んだCPUデータに対応する描画バッファはModel初期化時に作り直す。
         mesh.indexResource.Reset();
         mesh.vertexBufferView = {};
         mesh.indexBufferView = {};
@@ -500,6 +517,7 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
         return false;
     }
     data.nodes.clear();
+    // 保存した親子ツリーから、名前検索とアニメーション適用に使う平坦な一覧を再構築する。
     CollectNodes(data.rootNode, data.nodes);
 
     uint32_t animationCount = 0;
@@ -719,7 +737,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         } else {
             dummyBone.name = "__StaticMeshIdentityBone";
         }
-        Math math;
+        engine::Math math;
         dummyBone.inverseBindPoseMatrix = math.MakeIdentity4x4();
         modelData.bones.push_back(dummyBone);
 
@@ -802,6 +820,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
 // ノード読み込み
 // Assimpのノード階層をゲーム側のNode構造へ再帰的に変換する。
 Model::Node Model::ReadNode(aiNode* node, std::vector<Node>& nodes) {
+    // Assimpの行列をエンジンの行列形式へ写し、分解したTransformも保持する。
     Node result;
     result.name = node->mName.C_Str();
     aiMatrix4x4 transform = node->mTransformation;

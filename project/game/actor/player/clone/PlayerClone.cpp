@@ -1,7 +1,7 @@
 ﻿#include "PlayerClone.h"
 #include "engine/graphics/3d/model/ModelManager.h"
 
-void PlayerClone::Initialize(Object3dCommon* common, const Vector3& position, const Vector3& velocity) {
+void PlayerClone::Initialize(Object3dCommon* common, const engine::Vector3& position, const engine::Vector3& velocity) {
     Character::Initialize(common);
     SetClassName("PlayerClone"); // カメラフェード等の例外処理用
 

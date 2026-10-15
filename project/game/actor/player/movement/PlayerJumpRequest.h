@@ -14,6 +14,7 @@ class PlayerJumpRequest {
     /// <param name="grounded">このフレームの接地状態</param>
     /// <param name="pink">溜めジャンプが使えるコピー状態か</param>
     void Advance(float dt, bool pressed, bool triggered, bool grounded, bool pink) {
+        // 入力バッファと接地猶予は別々に減らし、着地時だけジャンプ権を回復する。
         const float elapsed = (std::max)(0.0f, dt);
         buffer_ = (std::max)(0.0f, buffer_ - elapsed);
         grace_ = (std::max)(0.0f, grace_ - elapsed);
@@ -25,6 +26,7 @@ class PlayerJumpRequest {
             grace_ = kGroundGraceSeconds;
         }
         if (pink != pink_) {
+            // コピー状態の切替で旧能力の溜め入力を次のジャンプへ持ち越さない。
             buffer_ = charge_ = pendingCharge_ = 0.0f;
             charging_ = false;
         }
@@ -42,6 +44,7 @@ class PlayerJumpRequest {
         if (charging_ && pressed)
             charge_ = (std::min)(kMaxChargeSeconds, charge_ + elapsed);
         if (charging_ && !pressed) {
+            // ピンク時は押し始めではなく離した時点で溜め量と発動要求を確定する。
             pendingCharge_ = charge_;
             buffer_ = kInputBufferSeconds;
             charging_ = false;

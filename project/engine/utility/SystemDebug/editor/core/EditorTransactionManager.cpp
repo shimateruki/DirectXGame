@@ -69,6 +69,7 @@ void EditorTransactionManager::CancelInteractive(std::uint64_t itemId) {
 }
 
 void EditorTransactionManager::BeginGroup(const std::string& label) {
+    // ネストされたグループでは最外層の名称と収集済み履歴を維持する。
     if (isApplying_) {
         return;
     }
@@ -132,6 +133,7 @@ bool EditorTransactionManager::Undo() {
 }
 
 bool EditorTransactionManager::Redo() {
+    // 取り消した操作を順に再適用し、履歴の現在位置を進める。
     if (redoStack_.empty() || isApplying_) {
         return false;
     }
@@ -146,6 +148,7 @@ bool EditorTransactionManager::Redo() {
 }
 
 void EditorTransactionManager::Clear() {
+    // シーン切替などで旧対象を参照するUndo/Redoと編集中の操作をまとめて破棄する。
     if (isApplying_) {
         return;
     }

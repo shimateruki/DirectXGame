@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "16cf1cebaba64a75bf6ec6e1b3aedeaf",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/footer_confirm_frame.png",
+  "version": 1
+}

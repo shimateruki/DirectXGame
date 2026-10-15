@@ -5,7 +5,7 @@
 #include <vector>
 
 class SceneManager;
-class Object3d;
+namespace engine { class Object3d; }
 class BaseScene;
 
 /// <summary>
@@ -37,7 +37,7 @@ private:
     TrailEmitter emitter_;
 
     // シーン内オブジェクトへの追従状態。
-    Object3d* targetObject_ = nullptr;
+    engine::Object3d* targetObject_ = nullptr;
     bool isTracking_ = false;
 
     char configNameBuf_[64] = "myTrail";
@@ -47,8 +47,8 @@ private:
     float previewTime_ = 0.0f;
     float previewDuration_ = 2.0f;
     float previewRange_ = 5.0f;
-    Vector3 dummyPos_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 lastDummyPos_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 dummyPos_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 lastDummyPos_ = { 0.0f, 0.0f, 0.0f };
     bool dummyFirstFrame_ = true;
     int lastStagePlayRequestSerial_ = 0;
     int lastStageStopRequestSerial_ = 0;

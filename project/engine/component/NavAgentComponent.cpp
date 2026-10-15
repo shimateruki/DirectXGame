@@ -7,13 +7,13 @@
 #include <cmath>
 
 namespace {
-float PlanarDistanceSquared(const Vector3& lhs, const Vector3& rhs) {
+float PlanarDistanceSquared(const engine::Vector3& lhs, const engine::Vector3& rhs) {
     const float dx = lhs.x - rhs.x;
     const float dz = lhs.z - rhs.z;
     return dx * dx + dz * dz;
 }
 
-Vector3 NormalizePlanar(const Vector3& value) {
+engine::Vector3 NormalizePlanar(const engine::Vector3& value) {
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.000001f) return { 0.0f, 0.0f, 0.0f };
     return { value.x / length, 0.0f, value.z / length };
@@ -57,10 +57,10 @@ void NavAgentComponent::InvalidatePath() {
     lastPathSucceeded_ = false;
 }
 
-Vector3 NavAgentComponent::CalculateDirection(
-    Object3d* owner, const Vector3& currentPosition,
-    const Vector3& targetPosition, float deltaTime) {
-    Vector3 direct = targetPosition - currentPosition;
+engine::Vector3 NavAgentComponent::CalculateDirection(
+    engine::Object3d* owner, const engine::Vector3& currentPosition,
+    const engine::Vector3& targetPosition, float deltaTime) {
+    engine::Vector3 direct = targetPosition - currentPosition;
     direct.y = 0.0f;
     if (!enabled_ || !owner) return NormalizePlanar(direct);
 
@@ -88,7 +88,7 @@ Vector3 NavAgentComponent::CalculateDirection(
 }
 
 bool NavAgentComponent::RebuildPath(
-    Object3d* owner, const Vector3& currentPosition, const Vector3& targetPosition) {
+    engine::Object3d* owner, const engine::Vector3& currentPosition, const engine::Vector3& targetPosition) {
     const float padding = (std::max)(searchPadding_, cellSize_ * 2.0f);
     NavGridBuildSettings settings;
     settings.boundsMin = {

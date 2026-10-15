@@ -7,7 +7,7 @@
 #include <vector>
 
 class DirectXCommon;
-class Object3d;
+namespace engine { class Object3d; }
 class SceneManager;
 
 /// パーティクルやメッシュエフェクトを安全に確認するための隔離プレビュー空間を管理する。
@@ -29,7 +29,7 @@ public:
         // プレビュー開始からの秒数。終了時刻は開始時刻以上を想定する。
         float startTime = 0.0f;
         float endTime = 0.0f;
-        Vector4 color = { 0.35f, 0.75f, 1.0f, 1.0f };
+        engine::Vector4 color = { 0.35f, 0.75f, 1.0f, 1.0f };
     };
 
     // 呼出元が提供したプレビュー計測値。CPU/GPU はミリ秒、frameDeltaSeconds は秒。
@@ -49,8 +49,11 @@ public:
 
     /// プレビュー用Object生成に必要なシーンと描画共通参照を保持する。
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+    // プレビュー空間と再生状態を更新する。
     void Update();
+    // 床、カメラ、照明などのプレビュー設定画面を描画する。
     void DrawImGui() override;
+    // 各ツールが報告したイベントと再生操作を時間軸に表示する。
     void DrawTimelineWindow();
     std::string GetName() override { return "Effect Preview Stage"; }
 
@@ -64,9 +67,9 @@ public:
     float GetConfiguredPlaybackSpeed() const { return playbackSpeed_; }
     bool IsTransportPlaying() const { return transportPlaying_; }
     /// 床、グリッド、接地型プレビューが共有する基準位置を返す。
-    Vector3 GetGroundPosition() const;
+    engine::Vector3 GetGroundPosition() const;
     /// Mesh EffectやParticleを半分埋めずに確認するため、床から中心高さを加えた位置を返す。
-    Vector3 GetPreviewPosition() const;
+    engine::Vector3 GetPreviewPosition() const;
     // 各番号は対応する操作要求のたびに増える。ツール側は前回見た番号との差で新しい要求を検出する。
     int GetPlayRequestSerial() const { return playRequestSerial_; }
     int GetStopRequestSerial() const { return stopRequestSerial_; }
@@ -101,20 +104,29 @@ private:
 private:
     /// エフェクトの接地感や大きさを確認するための床Objectを作成する。
     void CreateFloor();
+    // プレビュー空間の終了時に専用床を除去する。
     void RemoveFloor();
-    Object3d* FindFloor() const;
-    Object3d* FindEnvironmentObject(const std::string& name) const;
+    // 専用床と環境Objectを名前から探す。見つからない場合は nullptr。
+    engine::Object3d* FindFloor() const;
+    engine::Object3d* FindEnvironmentObject(const std::string& name) const;
+    // 背景用Objectの生成、姿勢・色・表示状態の反映。
     void CreateEnvironmentObject(const std::string& name);
-    void UpdateEnvironmentObject(const std::string& name, const Vector3& translate, const Vector3& scale, const Vector4& color);
+    void UpdateEnvironmentObject(const std::string& name, const engine::Vector3& translate, const engine::Vector3& scale, const engine::Vector4& color);
     void SetEnvironmentObjectVisible(const std::string& name, bool visible);
+    // 選択したスタジオ背景と照明のプリセットを反映する。
     void ApplyStudioPreset(int presetIndex);
+    // プレビュー用照明を適用し、終了時には退避した照明へ戻す。
     void ApplyStudioLighting();
     void RestoreStudioLighting();
+    // プレビュー背景色を描画基盤へ反映する。
     void ApplyBackgroundColor();
+    // シーンのカメラ状態をプレビュー入場時に保存する。
     void CaptureCameraState();
     /// プレビュー開始前に保存したカメラ状態へ戻す。
     void RestoreCameraState();
+    // プレビュー対象が見える位置と方向へカメラを置く。
     void PlaceCameraAtPreview();
+    // ツールが報告した計測値を蓄積／リセットする。
     void UpdatePerformanceMeasurement(const PerformanceMetrics& performance);
     void ResetPerformanceMeasurement(bool clearResult);
 
@@ -148,23 +160,23 @@ private:
     float cameraTargetHeight_ = 1.5f;
     float studioLightIntensity_ = 1.35f;
     float studioAmbientIntensity_ = 0.42f;
-    Vector3 origin_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 isolatedBase_ = { 2048.0f, 2048.0f, 2048.0f };
-    Vector3 storedEye_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 storedTarget_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 storedRotation_ = { 0.0f, 0.0f, 0.0f };
-    Vector4 backgroundColor_ = { 0.095f, 0.105f, 0.125f, 1.0f };
-    Vector4 floorColor_ = { 0.20f, 0.215f, 0.24f, 1.0f };
-    Vector4 minorGridColor_ = { 0.30f, 0.32f, 0.35f, 1.0f };
-    Vector4 majorGridColor_ = { 0.46f, 0.49f, 0.54f, 1.0f };
-    Vector4 xAxisColor_ = { 0.82f, 0.22f, 0.20f, 1.0f };
-    Vector4 yAxisColor_ = { 0.32f, 0.75f, 0.32f, 1.0f };
-    Vector4 zAxisColor_ = { 0.22f, 0.42f, 0.88f, 1.0f };
-    Vector4 studioLightColor_ = { 1.0f, 0.965f, 0.90f, 1.0f };
-    Vector3 studioLightDirection_ = { -0.45f, -1.0f, 0.35f };
-    Vector4 storedDirectionalColor_ = {};
-    Vector3 storedDirectionalDirection_ = {};
-    Vector3 storedAmbientColor_ = {};
+    engine::Vector3 origin_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 isolatedBase_ = { 2048.0f, 2048.0f, 2048.0f };
+    engine::Vector3 storedEye_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 storedTarget_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 storedRotation_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector4 backgroundColor_ = { 0.095f, 0.105f, 0.125f, 1.0f };
+    engine::Vector4 floorColor_ = { 0.20f, 0.215f, 0.24f, 1.0f };
+    engine::Vector4 minorGridColor_ = { 0.30f, 0.32f, 0.35f, 1.0f };
+    engine::Vector4 majorGridColor_ = { 0.46f, 0.49f, 0.54f, 1.0f };
+    engine::Vector4 xAxisColor_ = { 0.82f, 0.22f, 0.20f, 1.0f };
+    engine::Vector4 yAxisColor_ = { 0.32f, 0.75f, 0.32f, 1.0f };
+    engine::Vector4 zAxisColor_ = { 0.22f, 0.42f, 0.88f, 1.0f };
+    engine::Vector4 studioLightColor_ = { 1.0f, 0.965f, 0.90f, 1.0f };
+    engine::Vector3 studioLightDirection_ = { -0.45f, -1.0f, 0.35f };
+    engine::Vector4 storedDirectionalColor_ = {};
+    engine::Vector3 storedDirectionalDirection_ = {};
+    engine::Vector3 storedAmbientColor_ = {};
     float storedDirectionalIntensity_ = 0.0f;
     float storedVolumetricIntensity_ = 0.0f;
     int storedEnableFog_ = 0;

@@ -54,168 +54,13 @@
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
-namespace {
-std::string ToLowerForGroundDefault(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return value;
-}
 
-bool ContainsGroundKeywordForDefault(const std::string& value) {
-    return value.find("block") != std::string::npos ||
-        value.find("floor") != std::string::npos ||
-        value.find("ground") != std::string::npos ||
-        value.find("platform") != std::string::npos ||
-        value.find("terrain") != std::string::npos ||
-        value.find("wall") != std::string::npos;
-}
 
-bool ShouldApplyGroundDefaults(Object3d* object) {
-    if (!object) {
-        return false;
-    }
-
-    const std::string className = ToLowerForGroundDefault(object->GetClassName());
-    if (className == "enemy" || className == "player" || className == "gimmick" ||
-        className == "item" || className == "gpuparticle" || className == "cinematiccamera" ||
-        className == "spritecard" || className == "meshroot" || className == "meshpart") {
-        return false;
-    }
-
-    const std::string modelName = ToLowerForGroundDefault(object->GetModelName());
-    if (modelName.empty()) {
-        return false;
-    }
-    if (modelName.rfind("characters/", 0) == 0 || modelName.rfind("item/", 0) == 0) {
-        return false;
-    }
-    if (modelName == "primitives/plane" || modelName.find("portal") != std::string::npos) {
-        return false;
-    }
-
-    return modelName.rfind("stages/", 0) == 0 ||
-        modelName == "primitives/cube" ||
-        ContainsGroundKeywordForDefault(modelName);
-}
-
-void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
-    if (!ShouldApplyGroundDefaults(object)) {
-        return;
-    }
-
-    auto colliderConfig = object->GetColliderConfig();
-    if (colliderConfig.type == ColliderType::kNone) {
-        colliderConfig.type = ColliderType::kAABB;
-        object->SetColliderConfig(colliderConfig);
-    }
-    if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
-    }
-    if (object->GetCollisionMask() == 0) {
-        object->SetCollisionMask(0xFFFFFFFFu);
-    }
-}
-}
-
-static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
-static float ToDegrees(float radians) { return radians * (180.0f / PI); }
 
 namespace {
-    constexpr float kCrashRecoveryAutosaveInterval = 3.0f;
-    constexpr float kCrashRecoveryHeartbeatInterval = 5.0f;
-    constexpr const char* kCrashRecoveryRoot = "Resources/.backup/crash_recovery";
-    constexpr const char* kCrashRecoverySessionFile = "session.json";
-
-    std::string ToGenericPath(const fs::path& path) {
-        return path.generic_string();
-    }
-
-    std::string NowIsoString() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
-        return out.str();
-    }
-
-    std::string MakeCrashRecoveryStamp() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y%m%d_%H%M%S") << "_" << std::setw(3) << std::setfill('0') << millis;
-        return out.str();
-    }
-
-    bool ReadJsonFileSafe(const fs::path& path, nlohmann::json& outJson) {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        try {
-            file >> outJson;
-            return outJson.is_object();
-        }
-        catch (...) {
-            return false;
-        }
-    }
-
-    bool WriteJsonFileSafe(const fs::path& path, const nlohmann::json& data) {
-        std::error_code ec;
-        fs::create_directories(path.parent_path(), ec);
-        if (ec) {
-            return false;
-        }
-
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        file << data.dump(4);
-        return file.good();
-    }
-
-    bool IsPathInside(const fs::path& child, const fs::path& parent) {
-        std::error_code ec;
-        const fs::path childAbs = fs::absolute(child, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-        const fs::path parentAbs = fs::absolute(parent, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-
-        std::wstring childText = childAbs.native();
-        std::wstring parentText = parentAbs.native();
-        std::transform(childText.begin(), childText.end(), childText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        std::transform(parentText.begin(), parentText.end(), parentText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        if (!parentText.empty() && parentText.back() != L'\\' && parentText.back() != L'/') {
-            parentText.push_back(fs::path::preferred_separator);
-        }
-        return childText.rfind(parentText, 0) == 0;
-    }
-
-    bool IsCrashRecoverySourcePathAllowed(const fs::path& path) {
-        const std::string generic = path.lexically_normal().generic_string();
-        const std::string lower = [&generic]() {
-            std::string value = generic;
-            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return value;
-        }();
-        return lower.rfind("resources/json/", 0) == 0 &&
-            lower.find("/../") == std::string::npos &&
-            lower.find("resources/.backup/") != 0 &&
-            lower.find("resources/.cache/") != 0;
-    }
-
-    float GetCreateYOffsetForObject(const Object3d* object) {
+    // 新規配置位置の持ち上げ量をCollider優先、次にTransformから求めます。
+    float GetCreateYOffsetForObject(const engine::Object3d* object) {
+        // 当たり判定の高さを優先し、未設定ならモデルの倍率から置く高さを推定する。
         if (!object) return 1.0f;
 
         const auto& collider = object->GetColliderConfig();
@@ -227,7 +72,8 @@ namespace {
         return 1.0f;
     }
 
-    Vector3 GetPlacementExtents(const Object3d* object) {
+    engine::Vector3 GetPlacementExtents(const engine::Object3d* object) {
+        // 接地位置の計算には軸ごとに当たり判定を優先し、未設定軸だけ倍率を使う。
         if (!object) return { 1.0f, 1.0f, 1.0f };
 
         const auto& collider = object->GetColliderConfig();
@@ -239,20 +85,21 @@ namespace {
         };
     }
 
-    bool IsNearlyZero(const Vector3& value) {
+    bool IsNearlyZero(const engine::Vector3& value) {
         return std::abs(value.x) < 0.0001f &&
             std::abs(value.y) < 0.0001f &&
             std::abs(value.z) < 0.0001f;
     }
 
-    Vector3 NormalizeOrUp(const Vector3& value) {
+    engine::Vector3 NormalizeOrUp(const engine::Vector3& value) {
         if (IsNearlyZero(value)) {
             return { 0.0f, 1.0f, 0.0f };
         }
-        return Math::Normalize(value);
+        return engine::Math::Normalize(value);
     }
 
-    void ApplyEditorPreviewLightOverride(Object3d* object) {
+    void ApplyEditorPreviewLightOverride(engine::Object3d* object) {
+        // 配置プレビューはシーン照明の暗さに埋もれないよう自己発光で表示する。
         if (!object) {
             return;
         }
@@ -264,12 +111,13 @@ namespace {
         }
     }
 
-    float GetSurfaceOffset(const Object3d* object, const Vector3& normal) {
+    float GetSurfaceOffset(const engine::Object3d* object, const engine::Vector3& normal) {
+        // 配置物の半寸法と衝突形状の中心を面法線へ投影し、面へ埋まらない距離を求める。
         if (object && object->IsDecal()) {
             return object->GetDecalSettings().depthOffset;
         }
-        Vector3 extents = GetPlacementExtents(object);
-        Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
+        engine::Vector3 extents = GetPlacementExtents(object);
+        engine::Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
         float extentOnNormal = extents.x * absNormal.x + extents.y * absNormal.y + extents.z * absNormal.z;
         if (!object) return extentOnNormal;
 
@@ -281,9 +129,10 @@ namespace {
         return std::max(extentOnNormal - centerOnNormal, 0.0f);
     }
 
-    Vector3 GetSurfaceAlignedRotation(const Vector3& currentRotation, const Vector3& normal) {
+    engine::Vector3 GetSurfaceAlignedRotation(const engine::Vector3& currentRotation, const engine::Vector3& normal) {
+        // 面法線の主軸に合わせて設置物を回し、水平面では現在の向きを残す。
         constexpr float kHalfPi = PI * 0.5f;
-        Vector3 n = NormalizeOrUp(normal);
+        engine::Vector3 n = NormalizeOrUp(normal);
 
         if (std::abs(n.y) >= std::abs(n.x) && std::abs(n.y) >= std::abs(n.z)) {
             if (n.y < 0.0f) {
@@ -299,7 +148,8 @@ namespace {
         return { n.z > 0.0f ? kHalfPi : -kHalfPi, currentRotation.y, 0.0f };
     }
 
-    void ApplyGridSnap(Vector3& position, const Vector3& normal, bool hasSurface, bool enabled, float snapValue) {
+    void ApplyGridSnap(engine::Vector3& position, const engine::Vector3& normal, bool hasSurface, bool enabled, float snapValue) {
+        // 接地面に垂直な軸は動かさず、面に沿う座標だけ格子へ吸着させる。
         if (!enabled || snapValue <= 0.0f) return;
 
         if (!hasSurface || std::abs(normal.x) < 0.5f) {
@@ -313,105 +163,19 @@ namespace {
         }
     }
 
-    bool ShouldUsePreviewDrawClassOverride(const Object3d* object) {
-        if (!object) return false;
-
-        const std::string className = object->GetClassName();
-        return object->IsCameraObject() ||
-            className == "GPUParticle" ||
-            className == "InvisibleBox";
-    }
-
-    bool IsValidAabb(const AABB& aabb) {
-        return aabb.max.x > aabb.min.x &&
-            aabb.max.y > aabb.min.y &&
-            aabb.max.z > aabb.min.z;
-    }
-
-    Vector3 GetAabbCenter(const AABB& aabb) {
-        return {
-            (aabb.min.x + aabb.max.x) * 0.5f,
-            (aabb.min.y + aabb.max.y) * 0.5f,
-            (aabb.min.z + aabb.max.z) * 0.5f
-        };
-    }
-
-    float Distance(const Vector3& a, const Vector3& b) {
+    float Distance(const engine::Vector3& a, const engine::Vector3& b) {
         float dx = a.x - b.x;
         float dy = a.y - b.y;
         float dz = a.z - b.z;
         return std::sqrt(dx * dx + dy * dy + dz * dz);
     }
-
-    std::string GetLeafName(const std::string& path) {
-        size_t slash = path.find_last_of("/\\");
-        if (slash == std::string::npos) {
-            return path.empty() ? "Preset" : path;
-        }
-        std::string leaf = path.substr(slash + 1);
-        return leaf.empty() ? "Preset" : leaf;
-    }
-
-    bool SceneHasObjectName(BaseScene* scene, const std::string& name) {
-        if (!scene) return false;
-
-        for (const auto& object : scene->GetObjects()) {
-            if (object && object->GetName() == name) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool ReservedHasName(const std::vector<std::string>& reservedNames, const std::string& name) {
-        return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
-    }
-
-    std::string MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
-        std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
-        if (!SceneHasObjectName(scene, base) && !ReservedHasName(reservedNames, base)) {
-            return base;
-        }
-
-        for (int index = 1; index < 10000; ++index) {
-            std::string candidate = base + "_" + std::to_string(index);
-            if (!SceneHasObjectName(scene, candidate) && !ReservedHasName(reservedNames, candidate)) {
-                return candidate;
-            }
-        }
-        return base + "_New";
-    }
-
-    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
-        if (objects.empty()) return;
-
-        std::vector<std::string> reservedNames;
-        const json& preset = PresetManager::GetInstance()->GetPreset(presetName);
-        const std::string displayName = preset.value("presetDisplayName", GetLeafName(presetName));
-        std::string rootName = MakeUniquePresetObjectName(scene, displayName, reservedNames);
-        objects.front()->SetName(rootName);
-        reservedNames.push_back(rootName);
-
-        for (size_t index = 1; index < objects.size(); ++index) {
-            if (!objects[index]) continue;
-
-            std::string baseName = objects[index]->GetName();
-            if (baseName.empty()) {
-                baseName = rootName + "_Child";
-            }
-            std::string uniqueName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
-            objects[index]->SetName(uniqueName);
-            reservedNames.push_back(uniqueName);
-        }
-    }
-
 }
 
 // ========================================================================
 // 初期化
 // ========================================================================
 
-void DebugEditor::SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label) {
+void DebugEditor::SetPreviewObject(std::unique_ptr<engine::Object3d> obj, const std::string& label) {
     // 前のプレビューの子と見た目を捨て、新しい候補の元状態を確定前に退避する。
     previewChildObjects_.clear();
     previewVisualStates_.clear();
@@ -470,7 +234,7 @@ void DebugEditor::OpenGameViewCreateContextMenu() {
 #endif
 }
 
-void DebugEditor::StartGameViewCreatePreview(std::unique_ptr<Object3d> object, const std::string& label) {
+void DebugEditor::StartGameViewCreatePreview(std::unique_ptr<engine::Object3d> object, const std::string& label) {
 #ifdef USE_IMGUI
     // メニューを開いた位置へ初回の候補を置き、次フレーム以降はマウスへ追従させる。
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
@@ -495,12 +259,12 @@ void DebugEditor::StartGameViewCreatePreview(std::unique_ptr<Object3d> object, c
 #endif
 }
 
-void DebugEditor::StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label) {
+void DebugEditor::StartGameViewCreatePreview(std::vector<std::unique_ptr<engine::Object3d>> objects, const std::string& label) {
 #ifdef USE_IMGUI
     // 複合プリセットの先頭を配置基準とし、残りも確定までプレビュー所有にする。
     if (objects.empty()) return;
 
-    std::unique_ptr<Object3d> root = std::move(objects.front());
+    std::unique_ptr<engine::Object3d> root = std::move(objects.front());
     StartGameViewCreatePreview(std::move(root), label);
     if (!previewObject_) return;
 
@@ -540,12 +304,12 @@ void DebugEditor::DrawGameViewCreateContextMenu() {
         if (playFromPositionCallback_) {
             ImGui::Separator();
             if (ImGui::MenuItem("プレイヤーをここから開始")) {
-                Vector3 position = CalculateGameViewCreatePosition(nullptr);
+                engine::Vector3 position = CalculateGameViewCreatePosition(nullptr);
                 position.y += 1.0f;
                 playFromPositionCallback_(position, "GameView指定位置");
             }
             if (selectedObject_ && ImGui::MenuItem("選択Object付近から開始")) {
-                Vector3 position = selectedObject_->GetWorldPosition();
+                engine::Vector3 position = selectedObject_->GetWorldPosition();
                 position.y += 1.0f;
                 position.z += 2.0f;
                 playFromPositionCallback_(position, "選択Object: " + selectedObject_->GetName());
@@ -555,7 +319,7 @@ void DebugEditor::DrawGameViewCreateContextMenu() {
                 for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
                     if (!object || object->GetEventType() != EventType::Checkpoint) continue;
                     found = true;
-                    Vector3 position = object->GetWorldPosition();
+                    engine::Vector3 position = object->GetWorldPosition();
                     position.y += 1.0f;
                     if (ImGui::MenuItem(object->GetName().c_str())) {
                         playFromPositionCallback_(position, "Checkpoint: " + object->GetName());
@@ -570,14 +334,14 @@ void DebugEditor::DrawGameViewCreateContextMenu() {
 #endif
 }
 
-Vector3 DebugEditor::CalculateGameViewCreatePosition(const Object3d* object) {
+engine::Vector3 DebugEditor::CalculateGameViewCreatePosition(const engine::Object3d* object) {
     // レイで配置先を得られない場合だけ、Object 固有の生成高さへ戻す。
     PlacementResult placement = CalculateGameViewPlacement(object, gameViewCreateMenuMousePos_, false);
     if (placement.found) return placement.position;
     return { 0.0f, GetCreateYOffsetForObject(object), 0.0f };
 }
 
-DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const Object3d* object, const Vector2& mousePos, bool useGridSnap) {
+DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engine::Object3d* object, const engine::Vector2& mousePos, bool useGridSnap) {
     // 画面座標のレイから最も手前の可視 AABB を選び、配置面を決める。
     PlacementResult result;
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
@@ -586,14 +350,14 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const Objec
         return result;
     }
 
-    Math math;
-    Ray ray = ScreenPointToRay(mousePos);
+    engine::Math math;
+    engine::Ray ray = ScreenPointToRay(mousePos);
     if (IsNearlyZero(ray.diff)) {
         return result;
     }
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
-    RayResult best;
+    engine::RayResult best;
     best.isHit = false;
     best.distance = 1e5f;
 
@@ -604,7 +368,7 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const Objec
         if (!obj->GetIsVisible()) continue;
 
         AABB aabb = obj->GetAABB();
-        RayResult tmp;
+        engine::RayResult tmp;
         if (math.IntersectRayAABB(ray, aabb.min, aabb.max, &tmp)) {
             if (tmp.distance < best.distance) {
                 best = tmp;
@@ -644,7 +408,7 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const Objec
     return result;
 }
 
-void DebugEditor::ApplyGameViewPlacement(Object3d* object, const PlacementResult& placement, bool alignToSurface) {
+void DebugEditor::ApplyGameViewPlacement(engine::Object3d* object, const PlacementResult& placement, bool alignToSurface) {
     // デカールは専用の面合わせを使い、通常 Object は法線に応じた回転だけ適用する。
     if (!object || !placement.found) return;
 
@@ -694,7 +458,7 @@ void DebugEditor::ConfirmPreviewPlacement() {
     previewObject_->UpdateLocalMatrix();
     previewObject_->UpdateWorldMatrix();
 
-    std::vector<std::unique_ptr<Object3d>> createdObjects;
+    std::vector<std::unique_ptr<engine::Object3d>> createdObjects;
     createdObjects.reserve(previewChildObjects_.size() + 1);
     createdObjects.push_back(std::move(previewObject_));
     for (auto& child : previewChildObjects_) {
@@ -772,7 +536,7 @@ void DebugEditor::RebuildPresetBrushPreview() {
         return;
     }
 
-    AssignPresetInstanceNames(scene, brushPresetName_, brushPreviewObjects_);
+    AssignPresetInstanceNames(scene, brushPresetName_, brushPreviewObjects_, PresetRootName::DisplayName);
     for (auto& object : brushPreviewObjects_) {
         ApplyBrushPreviewVisual(object.get());
     }
@@ -802,7 +566,7 @@ void DebugEditor::UpdatePresetBrush() {
     }
     if (brushPreviewObjects_.empty()) return;
 
-    Object3d* root = brushPreviewObjects_.front().get();
+    engine::Object3d* root = brushPreviewObjects_.front().get();
     PlacementResult placement = CalculateGameViewPlacement(root, gameViewMousePos_, true);
     ApplyGameViewPlacement(root, placement, true);
     for (auto& object : brushPreviewObjects_) {
@@ -817,7 +581,7 @@ void DebugEditor::UpdatePresetBrush() {
     bool dragging = ImGui::IsMouseDown(ImGuiMouseButton_Left);
     if (!clicked && !dragging) return;
 
-    Vector3 stampPosition = root->GetWorldPosition();
+    engine::Vector3 stampPosition = root->GetWorldPosition();
     float spacing = std::max(brushSpacing_, 0.0f);
     bool farEnough = !hasLastBrushStamp_ || Distance(stampPosition, lastBrushStampPosition_) >= spacing;
     // ドラッグ中は前回位置との距離で間引き、クリック時は必ず一つ置く。
@@ -838,10 +602,10 @@ void DebugEditor::StampPresetBrush() {
     auto objects = PresetManager::GetInstance()->CreateObjectsFromPreset(brushPresetName_, common);
     if (objects.empty()) return;
 
-    AssignPresetInstanceNames(scene, brushPresetName_, objects);
-    Object3d* root = objects.front().get();
-    Object3d* previewRoot = brushPreviewObjects_.front().get();
-    Vector3 stampPosition = previewRoot->GetWorldPosition();
+    AssignPresetInstanceNames(scene, brushPresetName_, objects, PresetRootName::DisplayName);
+    engine::Object3d* root = objects.front().get();
+    engine::Object3d* previewRoot = brushPreviewObjects_.front().get();
+    engine::Vector3 stampPosition = previewRoot->GetWorldPosition();
 
     root->SetTranslate(previewRoot->GetTranslate());
     root->SetRotation(previewRoot->GetRotation());
@@ -877,7 +641,7 @@ void DebugEditor::DrawPresetBrushOverlay() {
 #endif
 }
 
-void DebugEditor::ApplyBrushPreviewVisual(Object3d* object) {
+void DebugEditor::ApplyBrushPreviewVisual(engine::Object3d* object) {
     // 元プリセットを編集せず、見本の Object だけ半透明・高輝度で表示する。
     if (!object) return;
 
@@ -887,7 +651,7 @@ void DebugEditor::ApplyBrushPreviewVisual(Object3d* object) {
     object->SetClassName("Model");
     object->SetMaterialType(0);
     object->SetBlendMode(BlendMode::kNormal);
-    Vector4 color = object->GetColor();
+    engine::Vector4 color = object->GetColor();
     object->SetColor({ color.x, color.y, color.z, 0.45f });
     object->SetEmissive(std::max(object->GetEmissive(), 1.4f));
     ApplyEditorPreviewLightOverride(object);
@@ -898,7 +662,7 @@ void DebugEditor::ApplyBrushPreviewVisual(Object3d* object) {
     }
 }
 
-void DebugEditor::ApplyPreviewVisual(Object3d* object) {
+void DebugEditor::ApplyPreviewVisual(engine::Object3d* object) {
     // 初回だけ元の材質状態を保存し、毎フレームの着色で退避値を上書きしない。
     if (!object) return;
 
@@ -929,7 +693,7 @@ void DebugEditor::ApplyPreviewVisual(Object3d* object) {
     ApplyEditorPreviewLightOverride(object);
 }
 
-void DebugEditor::RestorePreviewVisual(Object3d* object) {
+void DebugEditor::RestorePreviewVisual(engine::Object3d* object) {
     // 確定時には仮モデルとプレビュー用の材質設定を外し、作成前の見た目へ戻す。
     if (!object) return;
 
@@ -980,11 +744,11 @@ void DebugEditor::DrawPreviewWire(ID3D12GraphicsCommandList* commandList, int& i
     }
     if (!IsValidAabb(aabb)) return;
 
-    Vector3 size = aabb.max - aabb.min;
-    Vector3 center = (aabb.max + aabb.min) * 0.5f;
+    engine::Vector3 size = aabb.max - aabb.min;
+    engine::Vector3 center = (aabb.max + aabb.min) * 0.5f;
 
-    Math math;
-    Matrix4x4 world =
+    engine::Math math;
+    engine::Matrix4x4 world =
         math.Multiply(
             math.MakeScaleMatrix(size),
             math.MakeTranslateMatrix(center));
@@ -998,13 +762,13 @@ void DebugEditor::DrawPreviewMarker() {
     // Object 中心ではなく配置面の接点を示し、浮き上がり量を線で確認できるようにする。
     if (!previewObject_) return;
 
-    Vector3 markerWorld = hasPreviewPlacementContact_
+    engine::Vector3 markerWorld = hasPreviewPlacementContact_
         ? previewPlacementContactPosition_
         : previewObject_->GetWorldPosition();
-    Vector3 screen = WorldToScreen(markerWorld);
+    engine::Vector3 screen = WorldToScreen(markerWorld);
     if (screen.z < 0.0f) return;
 
-    Vector3 objectScreen = WorldToScreen(previewObject_->GetWorldPosition());
+    engine::Vector3 objectScreen = WorldToScreen(previewObject_->GetWorldPosition());
     bool canDrawObjectLine = objectScreen.z >= 0.0f;
 
     ImDrawList* drawList = ImGui::GetForegroundDrawList();

@@ -23,7 +23,7 @@ PlayerMover::~PlayerMover() {
     // 念のためデストラクタでも子の衝突属性を復帰する
     if (player_) {
         for (auto& kv : childOriginalAttributes_) {
-            Object3d* child = kv.first;
+            engine::Object3d* child = kv.first;
             uint32_t attr = kv.second;
             if (child)
                 child->SetCollisionAttribute(attr);
@@ -45,7 +45,7 @@ void PlayerMover::StopDashOnImpact() {
     }
 
     for (auto& kv : childOriginalAttributes_) {
-        Object3d* child = kv.first;
+        engine::Object3d* child = kv.first;
         if (child) {
             child->SetCollisionAttribute(kv.second);
         }
@@ -125,15 +125,15 @@ void PlayerMover::SampleJumpInput(float deltaTime, bool discard) {
 #endif
 }
 
-Vector3 PlayerMover::GetMoveInputDirection() {
+engine::Vector3 PlayerMover::GetMoveInputDirection() {
     // 速度を適用せず、現在の移動戦略と同じカメラ基準の向きだけを攻撃側へ渡す。
     if (!player_ || !strategy_) {
         return {};
     }
-    Vector3 input = strategy_->CalculateVelocity(player_);
+    engine::Vector3 input = strategy_->CalculateVelocity(player_);
     input.y = 0.0f;
     const float length = std::sqrt(input.x * input.x + input.z * input.z);
-    return length > 0.001f ? input / length : Vector3{};
+    return length > 0.001f ? input / length : engine::Vector3{};
 }
 
 // 水平移動とジャンプ要求を確定します。重力・衝突を含む Character の更新は呼び出し側で行います。
@@ -143,14 +143,14 @@ void PlayerMover::Update(float deltaTime) {
 
     // 死亡時も落下速度は維持し、水平移動だけ止めます。
     if (player_->param_.has_value() && player_->param_->hp <= 0.0f) {
-        Vector3 v = player_->GetVelocity();
+        engine::Vector3 v = player_->GetVelocity();
         player_->SetVelocity({0.0f, v.y, 0.0f});
         return;
     }
 
-    Vector3 velocity = player_->GetVelocity();
+    engine::Vector3 velocity = player_->GetVelocity();
 
-    Vector3 inputMove = strategy_->CalculateVelocity(player_);
+    engine::Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
     bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
 
@@ -179,13 +179,19 @@ void PlayerMover::Update(float deltaTime) {
         }
     } else {
         // 通常移動は入力速度を直接適用します。
-        const Vector3 targetMove = inputMove * moveSpeedMultiplier;
+        const engine::Vector3 targetMove = inputMove * moveSpeedMultiplier;
         velocity.x = targetMove.x;
         velocity.z = targetMove.z;
     }
 
-    // 表示方向は実際の水平速度を追従し、ダッシュパネルの応答倍率を反映します。
-    if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f) {
+    // ロック中は横移動・後退しても敵を正面に捉えます。遮蔽で照準が無効なら通常の移動方向へ戻します。
+    if (player_->HasLockOnAimPoint()) {
+        const engine::Vector3 facing = player_->GetLockOnAttackDirection();
+        const float targetAngle = std::atan2(facing.x, facing.z);
+        const float currentY = player_->GetMoveYaw();
+        player_->SetMoveYaw(AnimationInterpolation::DampAngle(currentY, targetAngle, 18.0f, deltaTime));
+    } else if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f) {
+        // ロックしていない時の旋回とダッシュパネルの応答は従来どおりにします。
         const float targetAngle = std::atan2(velocity.x, velocity.z);
         const float currentY = player_->GetMoveYaw();
         const float turnResponse = 6.5f * turnMultiplier;
@@ -229,7 +235,7 @@ void PlayerMover::Update(float deltaTime) {
         player_->SetSlimeJumpCharge(0.0f);
 
         if (usePinkSlimeJumpAbility && MeshEffectManager::GetInstance()) {
-            Vector3 effectPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
+            engine::Vector3 effectPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
             effectPos.y += 0.08f;
             MeshEffectManager::GetInstance()->SpawnEffectAt(
                 "Resources/json/effect/effect_pink_slime_launch_kick_ring.json", effectPos, {0.0f, 0.0f, 0.0f},
@@ -284,7 +290,7 @@ void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const {
     if (!particleManager || !particleManager->IsInitialized())
         return;
 
-    Vector3 emitPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
+    engine::Vector3 emitPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
     emitPos.y += yOffset;
     particleManager->Emit(presetName, emitPos);
 }
@@ -303,13 +309,13 @@ void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, flo
     if (!player_)
         return;
 
-    Vector3 velocity = player_->GetVelocity();
+    engine::Vector3 velocity = player_->GetVelocity();
     float horizontalSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
     float targetSpeed = player_->GetMoveSpeed() * dashPanelSpeedMultiplier_;
     if (horizontalSpeed >= targetSpeed)
         return;
 
-    Vector3 dir{};
+    engine::Vector3 dir{};
     if (horizontalSpeed > 0.05f) {
         dir.x = velocity.x / horizontalSpeed;
         dir.z = velocity.z / horizontalSpeed;

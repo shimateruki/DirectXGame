@@ -12,23 +12,11 @@
 #include <filesystem>
 
 namespace {
-constexpr const char* kActions[] = {"Forward",       "Backward",        "Left",    "Right",        "Jump",
-                                    "PrimaryAttack", "SecondaryAction", "Ability", "MorphRelease", "LockOn",
-                                    "LockOnNext",    "Attack"};
-constexpr int kDefaultKeys[] = {DIK_W, DIK_S, DIK_A, DIK_D, DIK_SPACE, 0, 0, DIK_E, DIK_R, DIK_Q, DIK_G, DIK_Z};
-constexpr WORD kDefaultPads[] = {XINPUT_GAMEPAD_DPAD_UP,       XINPUT_GAMEPAD_DPAD_DOWN,  XINPUT_GAMEPAD_DPAD_LEFT,
-                                 XINPUT_GAMEPAD_DPAD_RIGHT,    XINPUT_GAMEPAD_A,          XINPUT_GAMEPAD_X,
-                                 XINPUT_GAMEPAD_LEFT_SHOULDER, XINPUT_GAMEPAD_Y,          XINPUT_GAMEPAD_B,
-                                 XINPUT_GAMEPAD_RIGHT_THUMB,   XINPUT_GAMEPAD_LEFT_THUMB, 0};
-constexpr int kVisibleRows = 6;
-constexpr Vector4 kInk{.07f, .17f, .21f, 1};
-constexpr Vector4 kAccent{.04f, .58f, .63f, 1};
-bool Same(const BindData& a, const BindData& b) {
-    // 入力デバイスごとの割当をまとめて比較し、未保存変更を判定する。
-    return a.keyCode == b.keyCode && a.mouseButton == b.mouseButton && a.padCode == b.padCode;
-}
-
-bool Inside(Vector2 p, float x, float y, float w, float h) {
+constexpr int kVisibleRows = 3;
+constexpr engine::Vector4 kInk{.07f, .17f, .21f, 1};
+constexpr engine::Vector4 kAccent{.04f, .58f, .63f, 1};
+// ポインターが半開区間の矩形内にあるか判定し、隣接項目の境界で二重選択を防ぎます。
+bool Inside(engine::Vector2 p, float x, float y, float w, float h) {
     // 右端と下端を含めず、隣接する操作領域への二重ヒットを避ける。
     return p.x >= x && p.x < x + w && p.y >= y && p.y < y + h;
 }
@@ -46,19 +34,19 @@ SettingsMenuOverlay::~SettingsMenuOverlay() {
     // メニューを開いたまま破棄してもカーソル状態を戻す。
     Finalize();
 }
-void SettingsMenuOverlay::Initialize(SpriteCommon* common, const std::string&) {
+void SettingsMenuOverlay::Initialize(engine::SpriteCommon* common, const std::string& layoutPath) {
     common_ = common;
     input_ = InputManager::GetInstance();
     // 色と行間はJSONで調整可能。従来のレイアウトは移行用に残します。
     try {
-        std::ifstream file("Resources/json/ui/settingsMenu.json");
+        std::ifstream file(layoutPath);
         nlohmann::json j;
         if (file >> j; j.is_object()) {
-            rowHeight_ = std::clamp(j.value("rowHeight", 56.0f), 48.0f, 58.0f);
-            auto read = [](const nlohmann::json& v, Vector4 fallback) {
+            rowHeight_ = std::clamp(j.value("rowHeight", 90.0f), 72.0f, 94.0f);
+            auto read = [](const nlohmann::json& v, engine::Vector4 fallback) {
                 if (!v.is_array() || v.size() != 4)
                     return fallback;
-                return Vector4{v[0].get<float>(), v[1].get<float>(), v[2].get<float>(), v[3].get<float>()};
+                return engine::Vector4{v[0].get<float>(), v[1].get<float>(), v[2].get<float>(), v[3].get<float>()};
             };
             panelColor_ = read(j.value("panelColor", nlohmann::json()), panelColor_);
             selectedColor_ = read(j.value("selectedColor", nlohmann::json()), selectedColor_);
@@ -77,19 +65,11 @@ void SettingsMenuOverlay::Finalize() {
 }
 
 void SettingsMenuOverlay::ReadValues() {
-    // 編集開始時点の設定と実ウィンドウ状態を退避し、キャンセル時の基準にする。
+    // 編集開始時点の音量と感度を退避し、キャンセル時の基準にする。
     auto* s = GameSettingsManager::GetInstance();
     original_.bgm = s->GetBGMVolume();
     original_.se = s->GetSEVolume();
     original_.sensitivity = s->GetCameraSensitivity();
-    original_.invertX = s->GetCameraInvertX();
-    original_.invertY = s->GetCameraInvertY();
-    original_.bindings = KeyConfig::GetInstance()->GetBindings();
-    RECT rc{};
-    GetClientRect(Window()->GetHwnd(), &rc);
-    original_.width = rc.right;
-    original_.height = rc.bottom;
-    original_.borderless = (GetWindowLongPtr(Window()->GetHwnd(), GWL_STYLE) & WS_OVERLAPPEDWINDOW) == 0;
     draft_ = original_;
 }
 
@@ -108,6 +88,10 @@ void SettingsMenuOverlay::SetActive(bool active) {
         ++activeCount_;
         Window()->SetCursorRecenteringSuppressed(true);
         ReadValues();
+        animationTime_ = 0.0f;
+        horizontalHeldDirection_ = 0;
+        horizontalNextRepeatMs_ = 0;
+        horizontalHoldStartMs_ = 0;
         category_ = row_ = scroll_ = 0;
         footer_ = -1;
         modal_ = Modal::None;
@@ -123,7 +107,6 @@ void SettingsMenuOverlay::SetActive(bool active) {
             WinApp::SetCursorVisibility(previousCursorVisible);
         }
         if (!replayOnly_) {
-            RollbackDisplay();
             draft_ = original_;
             PreviewAudio();
         }
@@ -137,18 +120,9 @@ void SettingsMenuOverlay::SetActive(bool active) {
 }
 
 bool SettingsMenuOverlay::IsDirty() const {
-    // 保存済みの値と編集中の値を、入力割当も含めて比較する。
-    if (original_.bgm != draft_.bgm || original_.se != draft_.se || original_.sensitivity != draft_.sensitivity ||
-        original_.width != draft_.width || original_.height != draft_.height ||
-        original_.borderless != draft_.borderless || original_.invertX != draft_.invertX ||
-        original_.invertY != draft_.invertY)
-        return true;
-    for (const auto& [name, b] : draft_.bindings) {
-        auto old = original_.bindings.find(name);
-        if (old == original_.bindings.end() || !Same(b, old->second))
-            return true;
-    }
-    return false;
+    // 公開している三項目だけを比較し、未適用の変更を判定する。
+    return original_.bgm != draft_.bgm || original_.se != draft_.se ||
+           original_.sensitivity != draft_.sensitivity;
 }
 
 void SettingsMenuOverlay::PreviewAudio() {
@@ -159,40 +133,23 @@ void SettingsMenuOverlay::PreviewAudio() {
 }
 
 void SettingsMenuOverlay::Apply() {
-    // 画面設定の変更は一時適用して確認を待ち、それ以外は直接保存する。
-    if (!IsDirty())
-        return;
-    if (original_.width != draft_.width || original_.height != draft_.height ||
-        original_.borderless != draft_.borderless) {
-        previousDisplay_ = Window()->CaptureDisplayState();
-        if (!Window()->SetDisplayMode(draft_.width, draft_.height, draft_.borderless)) {
-            Window()->RestoreDisplayState(previousDisplay_);
-            status_ = "display_error";
-            return;
-        }
-        displayTrial_ = true;
-        modal_ = Modal::Display;
-        modalSelection_ = 1;
-        displayDeadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(15);
-    } else
-        Commit();
+    // 音量と感度だけを保存し、表示モードや反転設定には触れない。
+    if (IsDirty()) Commit();
 }
 
 // プレビュー中の値を確定し、保存が成功した設定だけ次回起動へ引き継ぎます。
 void SettingsMenuOverlay::Commit() {
     const auto fail = [this]() {
-        RollbackDisplay();
         status_ = "save_error";
     };
-    // 保存完了まで入力設定を公開しない。既存ファイルは一時ファイルから置換します。
+    // 保存完了までカメラ感度を確定しない。既存ファイルは一時ファイルから置換する。
     try {
         namespace fs = std::filesystem;
-        const fs::path userPath = "Resources/json/user_config.json", keyPath = "Resources/json/key/keyconfig.json";
+        const fs::path userPath = "Resources/json/user_config.json";
         auto read = [](const fs::path& path) {
             std::ifstream f(path);
             return std::string(std::istreambuf_iterator<char>(f), {});
         };
-        const bool hadUser = fs::exists(userPath);
         const std::string oldUser = read(userPath);
         auto j = oldUser.empty() ? nlohmann::json::object() : nlohmann::json::parse(oldUser);
         if (!j.is_object())
@@ -200,13 +157,7 @@ void SettingsMenuOverlay::Commit() {
         j["bgmVolume"] = draft_.bgm;
         j["seVolume"] = draft_.se;
         j["cameraSensitivity"] = draft_.sensitivity;
-        j["cameraInvertX"] = draft_.invertX;
-        j["cameraInvertY"] = draft_.invertY;
-        if (displayTrial_)
-            j["display"] = {{"width", draft_.width}, {"height", draft_.height}, {"borderless", draft_.borderless}};
-        nlohmann::json keys = nlohmann::json::object();
-        for (const auto& [name, b] : draft_.bindings)
-            keys[name] = {{"key", b.keyCode}, {"mouse", b.mouseButton}, {"pad", b.padCode}};
+
         auto replace = [](const fs::path& path, const std::string& text) {
             fs::create_directories(path.parent_path());
             // 前回失敗で残ったファイルや他の保存処理を上書きしないよう固有名を使います。
@@ -232,139 +183,44 @@ void SettingsMenuOverlay::Commit() {
             fail();
             return;
         }
-        if (!replace(keyPath, keys.dump(4))) {
-            if (hadUser)
-                replace(userPath, oldUser);
-            else
-                fs::remove(userPath);
-            fail();
-            return;
-        }
     } catch (...) {
         fail();
         return;
     }
-    auto* keys = KeyConfig::GetInstance();
-    for (const auto& [name, b] : draft_.bindings)
-        keys->SetBinding(name, b);
     auto* s = GameSettingsManager::GetInstance();
     PreviewAudio();
     s->SetCameraSensitivity(draft_.sensitivity);
-    s->SetCameraInversion(draft_.invertX, draft_.invertY);
+
     original_ = draft_;
-    displayTrial_ = false;
     modal_ = Modal::None;
     status_ = "saved";
 }
 
-void SettingsMenuOverlay::RollbackDisplay() {
-    // 確認期限切れやキャンセル時は、OS側の表示状態も編集値も元に戻す。
-    if (!displayTrial_)
-        return;
-    Window()->RestoreDisplayState(previousDisplay_);
-    displayTrial_ = false;
-    draft_.width = original_.width;
-    draft_.height = original_.height;
-    draft_.borderless = original_.borderless;
-    modal_ = Modal::None;
-    status_ = "display_restored";
-}
-
 void SettingsMenuOverlay::ResetCategory() {
-    // 現在のカテゴリだけを初期値へ戻し、他カテゴリの編集中の値は保つ。
-    if (category_ == 0) {
-        draft_.bgm = .8f;
-        draft_.se = .8f;
-        PreviewAudio();
-    }
-    if (category_ == 1) {
-        for (int i = 0; i < 12; ++i) {
-            auto& b = draft_.bindings[kActions[i]];
-            if (device_ == 0) {
-                b.keyCode = kDefaultKeys[i];
-                b.mouseButton = i == 5 ? 0 : i == 6 ? 1 : -1;
-            } else
-                b.padCode = kDefaultPads[i];
-        }
-    }
-    if (category_ == 2) {
-        draft_.sensitivity = 1;
-        draft_.invertX = draft_.invertY = false;
-    }
-    if (category_ == 3) {
-        draft_.width = 1280;
-        draft_.height = 720;
-        draft_.borderless = false;
-    }
+    // この画面にある三項目だけを初期値へ戻す。保存は適用時に行う。
+    draft_.bgm = draft_.se = .8f;
+    draft_.sensitivity = 1.0f;
+    PreviewAudio();
 }
 
 int SettingsMenuOverlay::RowCount() const {
-    // 操作設定のみデバイス切替行と12個の割当行を持つ。
-    return category_ == 0 ? 2 : category_ == 1 ? 13 : category_ == 2 ? 3 : 2;
-}
-void SettingsMenuOverlay::ChangeCategory(int category) {
-    // タブ移動後の行選択やドラッグを持ち越さない。
-    category_ = (category + 4) % 4;
-    row_ = scroll_ = 0;
-    footer_ = -1;
-    dragging_ = false;
-    status_.clear();
+    // カテゴリを分けず、音量二項目とカメラ感度を並べる。
+    return 3;
 }
 
 void SettingsMenuOverlay::Adjust(int direction) {
-    // 解像度候補は現在のモニターの作業領域に収まるものだけ提示する。
+    // 表示している百分率を整数で動かし、浮動小数点の誤差で1刻みが飛ばないようにする。
     status_.clear();
-    if (category_ == 0) {
-        float& value = row_ == 0 ? draft_.bgm : draft_.se;
-        value = std::clamp(value + direction * .05f, 0.f, 1.f);
+    float& value = row_ == 0 ? draft_.bgm : row_ == 1 ? draft_.se : draft_.sensitivity;
+    const int minimum = row_ == 2 ? 20 : 0;
+    const int percent = std::clamp(static_cast<int>(std::lround(value * 100.f)) + direction,
+                                   minimum, 100);
+    value = percent / 100.f;
+    if (row_ < 2)
         PreviewAudio();
-    }
-    if (category_ == 2) {
-        if (row_ == 0)
-            draft_.sensitivity = std::clamp(draft_.sensitivity + direction * .05f, .2f, 1.f);
-        else if (row_ == 1)
-            draft_.invertX = !draft_.invertX;
-        else
-            draft_.invertY = !draft_.invertY;
-    }
-    if (category_ == 1 && row_ == 0)
-        device_ = 1 - device_;
-    if (category_ == 3 && row_ == 0)
-        draft_.borderless = !draft_.borderless;
-    if (category_ == 3 && row_ == 1 && !draft_.borderless) {
-        constexpr int widths[] = {960, 1280, 1600, 1920, 2560};
-        constexpr int heights[] = {540, 720, 900, 1080, 1440};
-        MONITORINFO monitor{sizeof(MONITORINFO)};
-        GetMonitorInfo(MonitorFromWindow(Window()->GetHwnd(), MONITOR_DEFAULTTONEAREST), &monitor);
-        std::vector<int> choices;
-        for (int i = 0; i < 5; ++i) {
-            RECT r{0, 0, widths[i], heights[i]};
-            AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
-            if (r.right - r.left <= monitor.rcWork.right - monitor.rcWork.left &&
-                r.bottom - r.top <= monitor.rcWork.bottom - monitor.rcWork.top)
-                choices.push_back(i);
-        }
-        if (choices.empty()) {
-            status_ = "display_error";
-            return;
-        }
-        int index = direction > 0 ? -1 : 0;
-        for (int i = 0; i < static_cast<int>(choices.size()); ++i)
-            if (widths[choices[i]] == draft_.width)
-                index = i;
-        index = (index + direction + static_cast<int>(choices.size())) % static_cast<int>(choices.size());
-        draft_.width = widths[choices[index]];
-        draft_.height = heights[choices[index]];
-    }
 }
 
 void SettingsMenuOverlay::ActivateRow() {
-    // 割当行は新しい入力待ちを開き、通常の設定行は右方向に調整する。
-    if (category_ == 1 && row_ > 0) {
-        modal_ = Modal::Binding;
-        bindingArmed_ = false;
-        return;
-    }
     Adjust(1);
 }
 
@@ -384,124 +240,17 @@ void SettingsMenuOverlay::ActivateFooter(int index) {
         Apply();
 }
 
-void SettingsMenuOverlay::CaptureBinding() {
-    // 決定に使ったキーやクリックをそのまま割り当てないよう、一度離すまで待ちます。
-    if (!bindingArmed_) {
-        if (input_->GetPressedKeys().empty() && input_->GetPressedMouseButton() < 0 &&
-            input_->GetPressedGamepadButton() == 0)
-            bindingArmed_ = true;
-        return;
-    }
-    auto& b = draft_.bindings[kActions[row_ - 1]];
-    candidate_ = b;
-    bool found = false;
-    if (device_ == 0) {
-        for (int key = 1; key < 256; ++key)
-            if (input_->IsKeyTriggered(static_cast<BYTE>(key))) {
-                if (key == DIK_ESCAPE || key == DIK_RETURN || key == DIK_TAB || key == DIK_F1 || key == DIK_LWIN ||
-                    key == DIK_RWIN || key == DIK_LALT || key == DIK_RALT) {
-                    status_ = "reserved";
-                    return;
-                }
-                candidate_.keyCode = key;
-                candidate_.mouseButton = -1;
-                found = true;
-                break;
-            }
-        for (int mouse = 0; mouse < 4; ++mouse)
-            if (input_->IsMouseButtonTriggered(mouse)) {
-                candidate_.keyCode = 0;
-                candidate_.mouseButton = mouse;
-                found = true;
-                break;
-            }
-    } else {
-        WORD pressed = input_->GetPressedGamepadButton();
-        if (pressed && input_->IsGamepadButtonTriggered(pressed)) {
-            if (pressed & (XINPUT_GAMEPAD_START | XINPUT_GAMEPAD_BACK)) {
-                status_ = "reserved";
-                return;
-            }
-            if ((pressed & (pressed - 1)) != 0)
-                return;
-            candidate_.padCode = pressed;
-            found = true;
-        }
-    }
-    if (!found)
-        return;
-    conflictAction_.clear();
-    for (const auto& [name, other] : draft_.bindings) {
-        if (name == kActions[row_ - 1])
-            continue;
-        bool conflict = device_ == 1 ? candidate_.padCode != 0 && candidate_.padCode == other.padCode
-                                     : (candidate_.keyCode != 0 && candidate_.keyCode == other.keyCode) ||
-                                           (candidate_.mouseButton >= 0 && candidate_.mouseButton == other.mouseButton);
-        if (conflict) {
-            conflictAction_ = name;
-            break;
-        }
-    }
-    if (conflictAction_.empty())
-        AcceptBinding(false);
-    else {
-        modal_ = Modal::Conflict;
-        modalSelection_ = 1;
-    }
-}
-
-void SettingsMenuOverlay::AcceptBinding(bool swap) {
-    // 衝突を許可した場合は旧割当を相手へ移し、操作の欠落を防ぐ。
-    auto& current = draft_.bindings[kActions[row_ - 1]];
-    if (swap && !conflictAction_.empty()) {
-        auto& other = draft_.bindings[conflictAction_];
-        if (device_ == 1)
-            other.padCode = current.padCode;
-        else {
-            other.keyCode = current.keyCode;
-            other.mouseButton = current.mouseButton;
-        }
-    }
-    current = candidate_;
-    modal_ = Modal::None;
-    status_.clear();
-    suppressInput_ = true;
-}
-
 void SettingsMenuOverlay::HandleModal(bool accept, bool back) {
-    // 表示設定は期限切れやフォーカス喪失でも自動復旧できるようにする。
-    if (modal_ == Modal::Display &&
-        (std::chrono::steady_clock::now() >= displayDeadline_ || GetForegroundWindow() != Window()->GetHwnd())) {
-        RollbackDisplay();
-        return;
-    }
-    if (modal_ == Modal::Binding) {
-        if (input_->IsKeyTriggered(DIK_ESCAPE) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_BACK)) {
-            modal_ = Modal::None;
-            status_.clear();
-        } else
-            CaptureBinding();
-        return;
-    }
+    // 確定したときだけ初期化または破棄を実行し、キャンセル時は編集値を保つ。
     if (back || (accept && modalSelection_ == 1)) {
-        if (modal_ == Modal::Display)
-            RollbackDisplay();
-        else
-            modal_ = Modal::None;
+        modal_ = Modal::None;
         return;
     }
-    if (!accept)
-        return;
+    if (!accept) return;
     const Modal mode = modal_;
     modal_ = Modal::None;
-    if (mode == Modal::Discard)
-        SetActive(false);
-    if (mode == Modal::Reset)
-        ResetCategory();
-    if (mode == Modal::Conflict)
-        AcceptBinding(true);
-    if (mode == Modal::Display)
-        Commit();
+    if (mode == Modal::Discard) SetActive(false);
+    if (mode == Modal::Reset) ResetCategory();
 }
 
 void SettingsMenuOverlay::SetEditorViewport(int left, int top, int right, int bottom) {
@@ -510,8 +259,8 @@ void SettingsMenuOverlay::SetEditorViewport(int left, int top, int right, int bo
     hasEditorViewport_ = right > left && bottom > top;
 }
 
-Vector2 SettingsMenuOverlay::Pointer() const {
-    Vector2 p = input_->GetMousePosition();
+engine::Vector2 SettingsMenuOverlay::Pointer() const {
+    engine::Vector2 p = input_->GetMousePosition();
     float w = static_cast<float>(WinApp::kClientWidth), h = static_cast<float>(WinApp::kClientHeight);
 #ifdef USE_IMGUI
     if (hasEditorViewport_) {
@@ -522,15 +271,15 @@ Vector2 SettingsMenuOverlay::Pointer() const {
         h = static_cast<float>(editorViewport_.bottom - editorViewport_.top);
     }
 #endif
-    // 描画と同じ等倍拡縮・余白を逆変換し、文字や当たり判定の比率を保ちます。
-    const float scale = std::min(w / 1280.f, h / 720.f);
-    return {(p.x - (w - 1280 * scale) * .5f) / std::max(.001f, scale),
-            (p.y - (h - 720 * scale) * .5f) / std::max(.001f, scale)};
+    // 描画先の矩形をそのまま設計座標へ戻す。Game Viewへの再拡縮も同じ比率で扱う。
+    return {p.x * 1280.f / std::max(1.f, w), p.y * 720.f / std::max(1.f, h)};
 }
 
-SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
+SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
     if (!active_)
         return Result::None;
+    // ポーズ中でもUIへ渡される時間で、既存ポーズと同じ周期のカーソルを動かす。
+    animationTime_ = std::fmod(animationTime_ + std::max(0.f, deltaTime), 120.f);
     if (replayOnly_) {
         // 通常更新が再開したら履歴の編集値は破棄し、現在の設定から開き直します。
         replayOnly_ = false;
@@ -548,20 +297,21 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
     }
     const bool accept = input_->IsKeyTriggered(DIK_RETURN) || input_->IsKeyTriggered(DIK_SPACE) ||
                         input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A);
-    const bool back = input_->IsKeyTriggered(DIK_ESCAPE) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B);
-    const int horizontal =
-        (input_->IsKeyTriggered(DIK_RIGHT) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ? 1 : 0) -
-        (input_->IsKeyTriggered(DIK_LEFT) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ? 1 : 0);
+    const bool back = input_->IsKeyTriggered(DIK_ESCAPE) || input_->IsKeyTriggered(DIK_TAB) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B);
+    int horizontal =
+        (input_->IsKeyTriggered(DIK_RIGHT) || input_->IsKeyTriggered(DIK_D) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ? 1 : 0) -
+        (input_->IsKeyTriggered(DIK_LEFT) || input_->IsKeyTriggered(DIK_A) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ? 1 : 0);
     const int vertical =
-        (input_->IsKeyTriggered(DIK_DOWN) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN) ? 1 : 0) -
-        (input_->IsKeyTriggered(DIK_UP) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP) ? 1 : 0);
-    Vector2 p = Pointer();
+        (input_->IsKeyTriggered(DIK_DOWN) || input_->IsKeyTriggered(DIK_S) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN) ? 1 : 0) -
+        (input_->IsKeyTriggered(DIK_UP) || input_->IsKeyTriggered(DIK_W) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP) ? 1 : 0);
+    engine::Vector2 p = Pointer();
     const bool click = input_->IsMouseButtonTriggered(0);
     if (modal_ != Modal::None) {
+        horizontalHeldDirection_ = 0;
         if (horizontal)
             modalSelection_ = 1 - modalSelection_;
         bool choose = accept;
-        if (modal_ != Modal::Binding && click) {
+        if (click) {
             if (Inside(p, 365, 405, 255, 52)) {
                 modalSelection_ = 0;
                 choose = true;
@@ -573,12 +323,6 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
         }
         HandleModal(choose, back);
     } else {
-        if (input_->IsKeyTriggered(DIK_TAB))
-            ChangeCategory(category_ + (input_->IsKeyPressed(DIK_LSHIFT) ? -1 : 1));
-        if (input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_LEFT_SHOULDER))
-            ChangeCategory(category_ - 1);
-        if (input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_RIGHT_SHOULDER))
-            ChangeCategory(category_ + 1);
         if (vertical) {
             if (footer_ >= 0) {
                 footer_ = -1;
@@ -587,6 +331,34 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
                 footer_ = 0;
             else
                 row_ += vertical;
+        }
+        // 項目の値だけは押し続けても動かせるようにする。短押しは1、長押し開始後は一定間隔で1ずつ進める。
+        if (footer_ < 0) {
+            const engine::Vector2 stick = input_->GetLeftStick();
+            const bool stickRight = stick.x >= .45f && std::abs(stick.x) >= std::abs(stick.y);
+            const bool stickLeft = stick.x <= -.45f && std::abs(stick.x) >= std::abs(stick.y);
+            const int held =
+                (input_->IsKeyPressed(DIK_RIGHT) || input_->IsKeyPressed(DIK_D) ||
+                 input_->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_RIGHT) || stickRight ? 1 : 0) -
+                (input_->IsKeyPressed(DIK_LEFT) || input_->IsKeyPressed(DIK_A) ||
+                 input_->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_LEFT) || stickLeft ? 1 : 0);
+            const uint64_t now = GetTickCount64();
+            if (held == 0) {
+                horizontalHeldDirection_ = 0;
+            } else if (held != horizontalHeldDirection_) {
+                horizontalHeldDirection_ = held;
+                horizontalHoldStartMs_ = now;
+                horizontalNextRepeatMs_ = now + 320;
+                horizontal = held;
+            } else if (now >= horizontalNextRepeatMs_) {
+                horizontal = held;
+                horizontalNextRepeatMs_ = now + (now - horizontalHoldStartMs_ >= 1200 ? 35 : 65);
+            } else {
+                // スティック側の既存リピート通知と二重に増加しないよう、この画面で一元管理する。
+                horizontal = 0;
+            }
+        } else {
+            horizontalHeldDirection_ = 0;
         }
         if (horizontal) {
             if (footer_ >= 0)
@@ -603,33 +375,24 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
                 ActivateRow();
         }
         if (click && modal_ == Modal::None) {
-            for (int c = 0; c < 4; ++c)
-                if (Inside(p, 88, 170 + c * 65.f, 210, 54))
-                    ChangeCategory(c);
             for (int f = 0; f < 3; ++f)
-                if (Inside(p, 350 + f * 280.f, 605, 258, 48)) {
+                if (Inside(p, 240 + f * 280.f, 554, 240, 48)) {
                     footer_ = f;
                     ActivateFooter(f);
                 }
             for (int n = 0; n < kVisibleRows && n + scroll_ < RowCount(); ++n)
-                if (Inside(p, 350, 170 + n * rowHeight_, 825, rowHeight_ - 6)) {
+                if (Inside(p, 240, 230 + n * rowHeight_, 800, rowHeight_ - 12)) {
                     row_ = scroll_ + n;
                     footer_ = -1;
-                    if (category_ == 0 || (category_ == 2 && row_ == 0))
-                        dragging_ = p.x >= 755 && p.x <= 1055;
-                    else if (p.x >= 720) {
-                        if (category_ == 1 && row_ > 0)
-                            ActivateRow();
-                        else
-                            Adjust(p.x < 900 ? -1 : 1);
-                    }
+                    // つまみはバー端から半幅だけはみ出すため、その部分もつかめるようにする。
+                    dragging_ = p.x >= 644 && p.x <= 926;
                 }
         }
         if (!input_->IsMouseButtonPressed(0))
             dragging_ = false;
-        if (dragging_ && modal_ == Modal::None && (category_ == 0 || (category_ == 2 && row_ == 0))) {
-            float t = std::clamp((p.x - 755) / 300.f, 0.f, 1.f);
-            if (category_ == 0) {
+        if (dragging_ && modal_ == Modal::None && (row_ >= 0 && row_ < 3)) {
+            float t = std::clamp((p.x - 650) / 270.f, 0.f, 1.f);
+            if (row_ < 2) {
                 if (row_ == 0)
                     draft_.bgm = t;
                 else
@@ -638,7 +401,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
             } else
                 draft_.sensitivity = .2f + t * .8f;
         }
-        if (Inside(p, 350, 170, 825, 350) && input_->GetMouseWheelDelta() != 0) {
+        if (Inside(p, 240, 230, 800, 3 * rowHeight_) && input_->GetMouseWheelDelta() != 0) {
             row_ = std::clamp(row_ + (input_->GetMouseWheelDelta() > 0 ? -1 : 1), 0, RowCount() - 1);
             footer_ = -1;
         }
@@ -650,31 +413,31 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
 }
 
 void SettingsMenuOverlay::Picture(const std::string& texture, float x, float y, float w, float h,
-                                  const Vector4& color) {
+                                  const engine::Vector4& color) {
     // Spriteをフレーム間で再利用し、テクスチャ切替時は切り出し範囲を全体へ戻す。
     if (usedSprites_ == sprites_.size()) {
-        auto s = std::make_unique<Sprite>();
-        s->Initialize(common_, Sprite::LoadTexture(texture));
+        auto s = std::make_unique<engine::Sprite>();
+        s->Initialize(common_, engine::Sprite::LoadTexture(texture));
         sprites_.push_back(std::move(s));
     }
     auto& s = sprites_[usedSprites_++];
-    const auto handle = Sprite::LoadTexture(texture);
+    const auto handle = engine::Sprite::LoadTexture(texture);
     const auto& meta = TextureManager::GetInstance()->GetMetadata(handle);
     s->SetTextureHandle(handle);
     s->SetTextureName(texture);
     s->SetTextureRect({0, 0}, {static_cast<float>(meta.width), static_cast<float>(meta.height)});
-    const float scale = std::min(WinApp::kClientWidth / 1280.f, WinApp::kClientHeight / 720.f);
+    // Spriteの投影サイズと一致させ、表示とPointerの逆変換で余白の差を作らない。
+    const engine::Vector2 scale{WinApp::kClientWidth / 1280.f, WinApp::kClientHeight / 720.f};
     s->SetAnchorPoint({0, 0});
-    s->SetPosition({(WinApp::kClientWidth - 1280 * scale) * .5f + x * scale,
-                    (WinApp::kClientHeight - 720 * scale) * .5f + y * scale});
-    s->SetSize({w * scale, h * scale});
+    s->SetPosition({x * scale.x, y * scale.y});
+    s->SetSize({w * scale.x, h * scale.y});
     s->SetColor(color);
     s->SetEmissive(1);
     s->SetVisible(true);
     s->Update();
 }
 
-void SettingsMenuOverlay::Rect(float x, float y, float w, float h, const Vector4& color) {
+void SettingsMenuOverlay::Rect(float x, float y, float w, float h, const engine::Vector4& color) {
     // 単色矩形もSprite描画へ寄せ、他のUIと同じ拡縮を適用する。
     Picture("common/white.png", x, y, w, h, color);
 }
@@ -682,7 +445,7 @@ void SettingsMenuOverlay::Rect(float x, float y, float w, float h, const Vector4
 void SettingsMenuOverlay::Label(const std::string& id, float x, float y, float height) {
     // 事前生成した文字画像の縦横比を保ち、指定した高さに合わせる。
     const std::string path = "ui/settings/text/" + id + ".png";
-    const auto& m = TextureManager::GetInstance()->GetMetadata(Sprite::LoadTexture(path));
+    const auto& m = TextureManager::GetInstance()->GetMetadata(engine::Sprite::LoadTexture(path));
     Picture(path, x, y, height * static_cast<float>(m.width) / std::max(1.f, static_cast<float>(m.height)), height,
             kInk);
 }
@@ -695,122 +458,72 @@ void SettingsMenuOverlay::Number(int value, float x, float y, float height) {
     }
 }
 
+void SettingsMenuOverlay::DrawCursor(float x, float y) {
+    // タイトル・ポーズと同じ上下の弾みと矢印の横揺れを、選択先すべてに適用する。
+    const float bob = std::sin(animationTime_ * 7.5f) * 2.f;
+    Picture("title/slime_save_icon.png", x, y + bob, 36, 30, {1,1,1,1});
+    sprites_[usedSprites_ - 1]->SetTextureRect({115,218}, {1024,827});
+    sprites_[usedSprites_ - 1]->Update();
+    Picture("ui/title/title_menu_arrow.png", x + 41 + std::sin(animationTime_ * 8.f) * 2.f,
+            y + 4, 24, 24, {1,1,1,1});
+}
+
 void SettingsMenuOverlay::BuildFrame() {
-    if (!common_)
-        return;
+    // ポーズと同じ背景・枠・選択行を使い、三項目を一画面に収める。
+    if (!common_) return;
     usedSprites_ = 0;
-    // 外側は暗くし、設定欄は不透明にして背景の動きから情報を分離します。
-    Rect(-1280, -720, 3840, 2160, {.015f, .035f, .055f, .90f});
-    Rect(62, 52, 1156, 622, kAccent);
-    Rect(66, 56, 1148, 614, panelColor_);
-    Label("title", 94, 78, 34);
-    Label(IsDirty() ? "dirty" : "clean", 940, 90, 18);
-    Picture("title/slime_save_icon.png", 1135, 76, 49, 40, {1, 1, 1, 1});
-    Rect(86, 132, 1106, 2, {.69f, .79f, .78f, 1});
-    constexpr const char* tabs[] = {"sound", "controls", "camera", "display"};
-    for (int c = 0; c < 4; ++c) {
-        Rect(88, 170 + c * 65.f, 210, 54, c == category_ ? selectedColor_ : Vector4{.85f, .89f, .87f, 1});
-        if (c == category_)
-            Rect(88, 170 + c * 65.f, 5, 54, kAccent);
-        Label(tabs[c], 110, 183 + c * 65.f, 25);
+    Picture("ui/control_guide/pause_fullscreen_background.png", 0, 0, 1280, 720, {1,1,1,1});
+    Picture("ui/control_guide/pause_guide_frame.png", 53.333f, 30, 1173.333f, 660, {1,1,1,1});
+    auto centeredLabel = [this](const std::string& id, float center, float y, float height) {
+        const auto& m = TextureManager::GetInstance()->GetMetadata(engine::Sprite::LoadTexture("ui/settings/text/" + id + ".png"));
+        const float width = height * static_cast<float>(m.width) / std::max(1.f, static_cast<float>(m.height));
+        Label(id, center - width * .5f, y, height);
+    };
+    centeredLabel("title", 640, 78, 32);
+    constexpr const char* labels[] = {"bgm", "se", "sensitivity"};
+    for (int r = 0; r < 3; ++r) {
+        const float y = 230 + r * rowHeight_;
+        const bool selected = row_ == r && footer_ < 0;
+        Picture(selected ? "ui/settings/settings_row_selected.png" : "ui/settings/settings_row.png",
+                240, y, 800, rowHeight_ - 12, {1,1,1,1});
+        Label(labels[r], 275, y + 24, 24);
+        const float value = r == 0 ? draft_.bgm : r == 1 ? draft_.se : draft_.sensitivity;
+        const float t = std::clamp(r == 2 ? (value - .2f) / .8f : value, 0.f, 1.f);
+        Rect(650, y + 36, 270, 8, {.70f,.79f,.78f,1});
+        Rect(650, y + 36, std::max(1.f, t * 270), 8, kAccent);
+        Rect(644 + t * 270, y + 27, 12, 26, kAccent);
+        Number(static_cast<int>(std::round(value * 100)), 945, y + 24, 24);
+        if (selected && modal_ == Modal::None) DrawCursor(166, y + 22);
     }
-    for (int n = 0; n < kVisibleRows && scroll_ + n < RowCount(); ++n) {
-        int r = scroll_ + n;
-        float y = 170 + n * rowHeight_;
-        Rect(350, y, 825, rowHeight_ - 6, r == row_ && footer_ < 0 ? selectedColor_ : Vector4{1, 1, 1, 1});
-        if (r == row_ && footer_ < 0)
-            Rect(350, y, 4, rowHeight_ - 6, kAccent);
-        std::string label = category_ == 0   ? (r == 0 ? "bgm" : "se")
-                            : category_ == 1 ? (r == 0 ? "device" : "action_" + std::to_string(r - 1))
-                            : category_ == 2 ? (r == 0   ? "sensitivity"
-                                                : r == 1 ? "invert_x"
-                                                         : "invert_y")
-                            : r == 0         ? "window_mode"
-                                             : "resolution";
-        Label(label, 370, y + 13, 22);
-        if (category_ == 0 || (category_ == 2 && r == 0)) {
-            float value = category_ == 0 ? (r == 0 ? draft_.bgm : draft_.se) : draft_.sensitivity;
-            float t = category_ == 2 ? (value - .2f) / .8f : value;
-            Rect(755, y + 22, 300, 7, {.70f, .79f, .78f, 1});
-            Rect(755, y + 22, std::max(1.f, t * 300), 7, kAccent);
-            Rect(750 + t * 300, y + 15, 10, 21, kAccent);
-            Number(static_cast<int>(std::round(value * 100)), 1080, y + 13);
-        } else {
-            if (category_ == 1 && r > 0) {
-                const auto& b = draft_.bindings[kActions[r - 1]];
-                const std::string value = device_ == 1         ? "pad_" + std::to_string(b.padCode)
-                                          : b.mouseButton >= 0 ? "mouse_" + std::to_string(b.mouseButton)
-                                                               : "key_" + std::to_string(b.keyCode);
-                Label(value, 815, y + 13, 22);
-                Label("change", 1080, y + 15, 18);
-            } else if (category_ == 3 && r == 1) {
-                if (draft_.borderless)
-                    Label("desktop", 785, y + 13);
-                else {
-                    Number(draft_.width, 798, y + 13);
-                    Label("times", 862, y + 13);
-                    Number(draft_.height, 885, y + 13);
-                }
-            } else if (category_ == 2)
-                Label((r == 1 ? draft_.invertX : draft_.invertY) ? "on" : "off", 800, y + 13, 22);
-            else
-                Label(category_ == 1      ? (device_ == 0 ? "keyboard" : "pad")
-                      : draft_.borderless ? "borderless"
-                                          : "windowed",
-                      800, y + 13, 22);
-            if (!(category_ == 1 && r > 0)) {
-                Label("left", 730, y + 12);
-                Label("right", 1128, y + 12);
-            }
-        }
-    }
-    if (category_ == 1) {
-        Label("scroll", 1000, 519, 16);
-        Number(row_ + 1, 1140, 519, 16);
-    }
-    const char* description = category_ == 0   ? "help_sound"
-                              : category_ == 1 ? "help_controls"
-                              : category_ == 2 ? "help_camera"
-                                               : "help_display";
-    Label(status_.empty() ? description : status_, 350, 548, 18);
+    centeredLabel(status_.empty() ? (IsDirty() ? "dirty" : "clean") : status_, 640, 514, 18);
     for (int f = 0; f < 3; ++f) {
-        Rect(350 + f * 280.f, 605, 258, 48, footer_ == f ? selectedColor_ : Vector4{.82f, .89f, .87f, 1});
-        Label(f == 0 ? "back" : f == 1 ? "reset" : "apply", 374 + f * 280.f, 618, 22);
+        Picture(footer_ == f ? "ui/settings/settings_row_selected.png" : "ui/settings/settings_row.png",
+                240 + f * 280.f, 554, 240, 48, {1,1,1,1});
+        if (footer_ == f && modal_ == Modal::None)
+            Picture("ui/title/title_menu_arrow.png", 248 + f * 280.f + std::sin(animationTime_ * 8.f) * 2.f,
+                    570, 16, 16, {1,1,1,1});
+        centeredLabel(f == 0 ? "back" : f == 1 ? "reset_all" : "apply", 360 + f * 280.f, 566, 20);
     }
-    Label("hints", 350, 577, 17);
     if (modal_ != Modal::None) {
-        Rect(62, 52, 1156, 622, {.01f, .04f, .06f, .70f});
-        Rect(320, 238, 640, 255, panelColor_);
-        const char* message = modal_ == Modal::Discard    ? "confirm_discard"
-                              : modal_ == Modal::Reset    ? "confirm_reset"
-                              : modal_ == Modal::Binding  ? "capture"
-                              : modal_ == Modal::Conflict ? "conflict"
-                                                          : "confirm_display";
-        Label(message, 350, 270, 26);
-        if (modal_ == Modal::Binding) {
-            Label(status_.empty() ? "capture_help" : status_, 350, 330, 20);
-        } else {
-            if (modal_ == Modal::Display) {
-                Label("timeout", 350, 329, 21);
-                Number(std::max(0, static_cast<int>(std::ceil(
-                                       std::chrono::duration<float>(displayDeadline_ - std::chrono::steady_clock::now())
-                                           .count()))),
-                       820, 329, 24);
-            }
-            if (modal_ == Modal::Conflict) {
-                for (int i = 0; i < 12; ++i)
-                    if (conflictAction_ == kActions[i])
-                        Label("action_" + std::to_string(i), 350, 330, 22);
-            }
-            for (int b = 0; b < 2; ++b) {
-                Rect(365 + b * 295.f, 405, 255, 52,
-                     b == modalSelection_ ? selectedColor_ : Vector4{.82f, .88f, .87f, 1});
-                Label(b == 0 ? "yes" : "cancel", 395 + b * 295.f, 420, 23);
-            }
+        Rect(0, 0, 1280, 720, {.01f,.04f,.06f,.70f});
+        Picture("ui/settings/settings_row.png", 280, 238, 720, 255, {1,1,1,1});
+        centeredLabel(modal_ == Modal::Discard ? "confirm_discard" : "confirm_reset_all", 640, 285, 24);
+        for (int b = 0; b < 2; ++b) {
+            Picture(b == modalSelection_ ? "ui/settings/settings_row_selected.png" : "ui/settings/settings_row.png",
+                    365 + b * 295.f, 405, 255, 52, {1,1,1,1});
+            if (b == modalSelection_)
+                Picture("ui/title/title_menu_arrow.png", 377 + b * 295.f + std::sin(animationTime_ * 8.f) * 2.f,
+                        423, 16, 16, {1,1,1,1});
+            centeredLabel(b == 0 ? "yes" : "cancel", 492.5f + b * 295.f, 420, 23);
         }
     }
-    for (size_t i = usedSprites_; i < sprites_.size(); ++i)
-        sprites_[i]->SetVisible(false);
+    // 確認ダイアログを開いた時も、実際に使える閉じる・決定を両端に表示する。
+    const std::string suffix = input_ && input_->IsGamepadMode() ? "gamepad.png" : "keyboard.png";
+    Picture("ui/control_guide/footer_close_frame.png", 62, 624, 280, 58, {1,1,1,1});
+    Picture("generated/text/pause_guide/footer_close_" + suffix, 72, 629, 260, 48, {1,1,1,1});
+    Picture("ui/control_guide/footer_confirm_frame.png", 938, 624, 280, 58, {1,1,1,1});
+    Picture("generated/text/pause_guide/footer_confirm_" + suffix, 948, 629, 260, 48, {1,1,1,1});
+    for (size_t i = usedSprites_; i < sprites_.size(); ++i) sprites_[i]->SetVisible(false);
 }
 
 void SettingsMenuOverlay::Draw() {
@@ -820,7 +533,7 @@ void SettingsMenuOverlay::Draw() {
             s->Draw();
 }
 
-void SettingsMenuOverlay::CollectReplaySprites(std::vector<Sprite*>& out) const {
+void SettingsMenuOverlay::CollectReplaySprites(std::vector<engine::Sprite*>& out) const {
     // リプレイ描画が所有Spriteを参照できるよう、非所有ポインタだけ渡す。
     for (const auto& s : sprites_)
         out.push_back(s.get());
@@ -829,14 +542,12 @@ void SettingsMenuOverlay::CollectReplaySprites(std::vector<Sprite*>& out) const 
 void SettingsMenuOverlay::CaptureReplayState(nlohmann::json& state) const {
     // 表示中の選択位置と編集中の値を記録し、再生画面で同じUIを組み立てる。
     state = {{"active", active_}, {"category", category_}, {"row", row_},
-             {"scroll", scroll_}, {"footer", footer_},     {"device", device_}};
-    state["values"] = {{"bgm", draft_.bgm},         {"se", draft_.se},          {"sensitivity", draft_.sensitivity},
-                       {"width", draft_.width},     {"height", draft_.height},  {"borderless", draft_.borderless},
-                       {"invertX", draft_.invertX}, {"invertY", draft_.invertY}};
-    for (const auto& [name, b] : draft_.bindings)
-        state["bindings"][name] = {{"key", b.keyCode}, {"mouse", b.mouseButton}, {"pad", b.padCode}};
+             {"scroll", scroll_}, {"footer", footer_},     {"layoutVersion", 3}, {"animationTime", animationTime_}};
+    state["values"] = {{"bgm", draft_.bgm}, {"se", draft_.se}, {"sensitivity", draft_.sensitivity}};
 }
 
+// 表示位置と編集中の値を再現し、旧レイアウトの行番号も現行項目へ読み替えます。
+// リプレイ専用状態にするため実設定の保存とウィンドウ操作は行いません。
 void SettingsMenuOverlay::RestoreReplayState(const nlohmann::json& state) {
     if (!state.is_object())
         return;
@@ -853,29 +564,19 @@ void SettingsMenuOverlay::RestoreReplayState(const nlohmann::json& state) {
         draft_.bgm = std::clamp(v.value("bgm", .8f), 0.f, 1.f);
         draft_.se = std::clamp(v.value("se", .8f), 0.f, 1.f);
         draft_.sensitivity = std::clamp(v.value("sensitivity", 1.f), .2f, 1.f);
-        draft_.width = std::clamp(v.value("width", 1280), 960, 7680);
-        draft_.height = std::clamp(v.value("height", 720), 540, 4320);
-        draft_.borderless = v.value("borderless", false);
-        draft_.invertX = v.value("invertX", false);
-        draft_.invertY = v.value("invertY", false);
+
     }
-    draft_.bindings = KeyConfig::GetInstance()->GetBindings();
-    if (state.contains("bindings") && state["bindings"].is_object())
-        for (auto& [name, b] : draft_.bindings) {
-            if (!state["bindings"].contains(name))
-                continue;
-            const auto& v = state["bindings"][name];
-            if (!v.is_object())
-                continue;
-            b.keyCode = std::clamp(v.value("key", 0), 0, 255);
-            b.mouseButton = std::clamp(v.value("mouse", -1), -1, 3);
-            b.padCode = static_cast<WORD>(v.value("pad", 0));
-        }
-    category_ = std::clamp(state.value("category", 0), 0, 3);
-    row_ = std::clamp(state.value("row", 0), 0, RowCount() - 1);
-    scroll_ = std::clamp(state.value("scroll", 0), 0, row_);
+    // 旧カテゴリ形式の履歴は三項目の対応する行に移し、隠れた項目は先頭へ戻す。
+    int savedRow = state.value("row", 0);
+    if (state.value("layoutVersion", 1) < 3) {
+        int category = state.value("category", 0);
+        if (state.value("layoutVersion", 1) < 2) category = category >= 2 ? category - 1 : 0;
+        savedRow = category == 0 ? std::min(savedRow, 1) : category == 1 ? 2 : 0;
+    }
+    animationTime_ = state.value("animationTime", 0.f);
+    category_ = scroll_ = 0;
+    row_ = std::clamp(savedRow, 0, 2);
     footer_ = std::clamp(state.value("footer", -1), -1, 2);
-    device_ = std::clamp(state.value("device", 0), 0, 1);
     // リプレイ復元では実際の設定保存・ウィンドウ変更を行いません。
     if (active_)
         BuildFrame();

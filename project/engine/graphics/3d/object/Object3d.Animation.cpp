@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <utility>
 
+namespace engine {
+
 namespace {
 std::string ResolveAnimatorControllerPath(const std::string& assetPath) {
     // 名前だけの指定は標準の Animator ディレクトリへ解決し、保存時の短い参照を許す。
@@ -153,7 +155,7 @@ void Object3d::RestoreAnimationPlayback(const std::string& animationName, float 
     }
 }
 
-bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, Matrix4x4& outMatrix) const {
+bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, engine::Matrix4x4& outMatrix) const {
     // ボーンの局所姿勢と Object3d のワールド行列を合成して装着位置を得る。
     Model* model = GetModel();
     if (!model || jointName.empty()) {
@@ -166,13 +168,13 @@ bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, Matrix4x4& o
         return false;
     }
 
-    outMatrix = Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, GetWorldMatrix());
+    outMatrix = engine::Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, GetWorldMatrix());
     return true;
 }
 
-bool Object3d::TryGetJointWorldPosition(const std::string& jointName, Vector3& outPosition) const {
+bool Object3d::TryGetJointWorldPosition(const std::string& jointName, engine::Vector3& outPosition) const {
     // ジョイントが見つからない場合は出力位置を変更しない。
-    Matrix4x4 jointWorld = Math::MakeIdentity4x4();
+    engine::Matrix4x4 jointWorld = engine::Math::MakeIdentity4x4();
     if (!TryGetJointWorldMatrix(jointName, jointWorld)) {
         return false;
     }
@@ -230,14 +232,14 @@ bool Object3d::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
             ? sampleBody(previousState, animatorControllerRuntime_.GetPreviousTime()) : current;
         const float weight = transitioning ? animatorControllerRuntime_.GetTransitionWeight() : 1.0f;
         const auto blendAngle = [weight](float from, float to) {
-            return Math::LerpShortAngle(from, to, weight);
+            return engine::Math::LerpShortAngle(from, to, weight);
         };
-        meshRenderer_->SetVisualTransform(Math::Lerp(previous.scale, current.scale, weight),
+        meshRenderer_->SetVisualTransform(engine::Math::Lerp(previous.scale, current.scale, weight),
             {blendAngle(previous.rotate.x, current.rotate.x), blendAngle(previous.rotate.y, current.rotate.y),
              blendAngle(previous.rotate.z, current.rotate.z)},
-            Math::Lerp(previous.translate, current.translate, weight));
-        meshRenderer_->SetVisualShear(Math::Lerp(previous.shear, current.shear, weight),
-            Math::Lerp(previous.shearPivotY, current.shearPivotY, weight));
+            engine::Math::Lerp(previous.translate, current.translate, weight));
+        meshRenderer_->SetVisualShear(engine::Math::Lerp(previous.shear, current.shear, weight),
+            engine::Math::Lerp(previous.shearPivotY, current.shearPivotY, weight));
         animatorBodyPoseApplied_ = true;
     } else if (animatorBodyPoseApplied_ && meshRenderer_) {
         meshRenderer_->ResetVisualTransform();
@@ -265,3 +267,5 @@ bool Object3d::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
     model->Update(forceModelUpdate || currentAnimation != nullptr);
     return true;
 }
+
+} // namespace engine

@@ -2,9 +2,9 @@
 #include "SpriteCommon.h"
 #include "TextureManager.h" // GetMetadata用
 
-void Text::Initialize(SpriteCommon* common, const std::string& fontTextureName) {
+void Text::Initialize(engine::SpriteCommon* common, const std::string& fontTextureName) {
     common_ = common;
-    fontTextureHandle_ = Sprite::LoadTexture(fontTextureName);
+    fontTextureHandle_ = engine::Sprite::LoadTexture(fontTextureName);
 
 }
 
@@ -17,7 +17,7 @@ void Text::SetString(const std::string& str) {
 
     for (size_t i = 0; i < text_.length(); ++i) {
         if (!sprites_[i]) {
-            sprites_[i] = std::make_unique<Sprite>();
+            sprites_[i] = std::make_unique<engine::Sprite>();
             sprites_[i]->Initialize(common_, fontTextureHandle_);
         }
 
@@ -42,12 +42,12 @@ void Text::SetString(const std::string& str) {
     Update();
 }
 
-void Text::SetPosition(const Vector2& position) {
+void Text::SetPosition(const engine::Vector2& position) {
     position_ = position;
     Update();
 }
 
-void Text::SetScale(const Vector2& scale) {
+void Text::SetScale(const engine::Vector2& scale) {
     scale_ = scale;
     Update();
 }

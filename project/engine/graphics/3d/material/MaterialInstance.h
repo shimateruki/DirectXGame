@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-class Object3d;
+namespace engine { class Object3d; }
 
 // MaterialInstanceDataは、Object3dの描画設定を共有Assetとして再利用するための解決済みデータです。
 struct MaterialInstanceData {
@@ -13,7 +13,7 @@ struct MaterialInstanceData {
     std::string displayName;
     std::string baseAsset;
 
-    Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
     int blendMode = 1;
     int materialType = 0;
     float metallic = 0.0f;
@@ -27,7 +27,7 @@ struct MaterialInstanceData {
     std::string texturePath;
     std::string normalMapPath;
     std::string ormMapPath;
-    Vector2 textureTiling = { 1.0f, 1.0f };
+    engine::Vector2 textureTiling = { 1.0f, 1.0f };
     bool autoTextureTiling = false;
 
     // 既存の特殊Materialが共有している調整値もInstanceへ含めます。
@@ -50,10 +50,10 @@ struct MaterialInstanceData {
 class MaterialInstanceAsset final {
 public:
     /// <summary>オブジェクトの現在のマテリアル設定を共有アセット用データに取り出す。</summary>
-    static MaterialInstanceData Capture(const Object3d& object);
+    static MaterialInstanceData Capture(const engine::Object3d& object);
 
     /// <summary>共有アセットのマテリアル設定をオブジェクトへ適用する。</summary>
-    static void Apply(const MaterialInstanceData& material, Object3d& object);
+    static void Apply(const MaterialInstanceData& material, engine::Object3d& object);
 
     // baseAsset を親から先に読み、子 JSON にある値だけ上書きする。
     // 循環参照と 16 段を超える継承は失敗する。失敗時の material は部分的に更新され得る。

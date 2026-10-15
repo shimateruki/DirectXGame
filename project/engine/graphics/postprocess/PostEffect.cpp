@@ -12,13 +12,15 @@
 #include <cmath>
 
 namespace {
+// 効果解除時にも前フレームの値が残らないよう、表示を変えない設定で全項目を初期化します。
 PostEffect::Params MakeNeutralPostEffectParams(float time) {
+    // 表示色を変えない値で全効果を初期化し、個別エフェクトの解除時に残留値を作らない。
     PostEffect::Params params{};
     params.time = time;
     params.threshold = 1.0f;
     params.bloomIntensity = 0.0f;
     params.spread = 1.0f;
-    params.enableToneMapping = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1 : 0;
+    params.enableToneMapping = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1 : 0;
     params.vignetteIntensity = 0.0f;
     params.chromaticAberration = 0.0f;
     params.filmGrainIntensity = 0.0f;
@@ -50,9 +52,9 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
     params.dissolveThreshold = 0.0f;
     params.dissolveEdgeWidth = 0.02f;
     params.randomIntensity = 0.0f;
-    params.linearWorkflowEnabled = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
+    params.linearWorkflowEnabled = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
     params.dissolveEdgeColor = { 1.0f, 0.4f, 0.3f };
-    params.projectionInverse = Math::MakeIdentity4x4();
+    params.projectionInverse = engine::Math::MakeIdentity4x4();
     params.slimeFadeIntensity = 0.0f;
     params.slimeDensity = 1.0f;
     params.slimeColor = { 0.18f, 0.8f, 0.44f };
@@ -63,6 +65,7 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
 }
 }
 
+// HDR描画先、縮小Bloom用描画先、プレビュー用描画先と共通GPU定数を準備します。
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
@@ -96,7 +99,7 @@ void PostEffect::Update(float deltaTime) {
     // 時間を進める（ノイズのアニメーション用）
     paramsData_->time += deltaTime;
     paramsData_->linearWorkflowEnabled =
-        ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
+        engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
 }
 
 bool PostEffect::SetLUTTexturePath(const std::string& path) {
@@ -176,6 +179,7 @@ void PostEffect::SetCameraPreviewResolutionScale(float scale) {
     }
 }
 
+// 画面サイズに合わせてフル解像度と段階縮小の描画先を作り直します。
 void PostEffect::ResizeRenderTextures(int width, int height) {
     if (!dxCommon_ || renderTextures_.size() < 8) {
         return;
@@ -347,6 +351,7 @@ void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int tex
     rt.currentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 }
 
+// 次の描画パスが結果をサンプルできるよう、描画先をSRV状態へ遷移します。
 void PostEffect::TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex) {
     RenderTexture& rt = renderTextures_[texIndex];
     if (rt.currentState == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) return; // 既にSRVなら何もしない
@@ -396,7 +401,7 @@ void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, i
     commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
     if (clear) {
-        const Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        const engine::Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
         float clearColor[] = {
             sceneClearColor.x,
             sceneClearColor.y,
@@ -496,7 +501,7 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
     commandList->SetPipelineState(pipelineStates_[psoIndex].Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 3頂点で全画面を覆う
-    // commandList->IASetVertexBuffers() はいらない！
+    // 全画面三角形の頂点はShader側で生成するため、頂点バッファを設定しない。
     commandList->SetGraphicsRootConstantBufferView(0, constBuffer_->GetGPUVirtualAddress());
 
     // [1] t0 のセット (メイン画像)
@@ -514,8 +519,8 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, currentNoiseHandle);
 
     commandList->DrawInstanced(3, 1, 0, 0); // 3頂点に変更
-    RenderStats::GetInstance()->RecordNonIndexedDraw(3, 1, 1);
-    RenderStats::GetInstance()->RecordPostProcessPass();
+    engine::RenderStats::GetInstance()->RecordNonIndexedDraw(3, 1, 1);
+    engine::RenderStats::GetInstance()->RecordPostProcessPass();
 }
 
 void PostEffect::CreateConstBuffer() {
@@ -525,6 +530,7 @@ void PostEffect::CreateConstBuffer() {
     *paramsData_ = MakeNeutralPostEffectParams(0.0f);
 }
 
+// 指定サイズの描画先と深度・参照用Viewを作成し、完了後に保持先を差し替えます。
 void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_FORMAT format) {
     ID3D12Device* device = dxCommon_->GetDevice();
 

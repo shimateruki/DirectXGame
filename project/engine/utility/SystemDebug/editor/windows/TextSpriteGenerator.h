@@ -17,8 +17,8 @@
 
 class DebugEditor;
 class SceneManager;
-class Sprite;
-class SpriteCommon;
+namespace engine { class Sprite; }
+namespace engine { class SpriteCommon; }
 
 /// <summary>入力テキストを透明 PNG にし、Sprite としてプレビュー・配置する編集ツール。</summary>
 class TextSpriteGenerator : public IEditable {
@@ -32,7 +32,7 @@ public:
     void Update();
     /// Game View上に生成予定のテキストSpriteをプレビュー表示する。
     void DrawPreview();
-    void SetGameViewRegion(const Vector2& offset, const Vector2& size);
+    void SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size);
     /// 文字列、フォント、縁取り、影、出力先などの編集UIを描画する。
     void DrawImGui() override;
     std::string GetName() override { return "Text PNG Generator"; }
@@ -95,7 +95,7 @@ private:
     bool previewEnabled_ = true;
     bool previewBoundsEnabled_ = true;
     bool previewAutoUpdate_ = true;
-    Vector2 previewPosition_ = { 640.0f, 360.0f };
+    engine::Vector2 previewPosition_ = { 640.0f, 360.0f };
     float previewScale_ = 1.0f;
     bool previewDirty_ = false;
     bool previewRequestPending_ = false;
@@ -104,8 +104,8 @@ private:
     int previewWidth_ = 1;
     int previewHeight_ = 1;
     uint32_t previewTextureHandle_ = 0;
-    Vector2 gameViewOffset_ = { 0.0f, 0.0f };
-    Vector2 gameViewSize_ = { 0.0f, 0.0f };
+    engine::Vector2 gameViewOffset_ = { 0.0f, 0.0f };
+    engine::Vector2 gameViewSize_ = { 0.0f, 0.0f };
 
     // 書き出し後にシーンへ追加するSprite情報。
     bool pendingAddSprite_ = false;

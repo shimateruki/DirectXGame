@@ -77,7 +77,7 @@ void GimmickBlinkBlock::UpdateAppearance() {
     }
 }
 
-std::unique_ptr<Object3d> GimmickBlinkBlock::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickBlinkBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     auto newObj = std::make_unique<GimmickBlinkBlock>();
     assert(common_ != nullptr);

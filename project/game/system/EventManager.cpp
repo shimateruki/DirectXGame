@@ -7,6 +7,7 @@ EventManager* EventManager::GetInstance() {
 }
 
 template <typename Event>
+// 空のCallbackは登録せず、解除に使う一意のIDを返します。
 EventManager::SubscriptionId EventManager::SubscribeTo(
     ListenerList<Event>& listeners, std::function<void(const Event&)> callback) {
     if (!callback) return kInvalidSubscriptionId;
@@ -16,6 +17,7 @@ EventManager::SubscriptionId EventManager::SubscribeTo(
 }
 
 template <typename Event>
+// 配信開始時点の購読だけへ通知し、配信中の解除は最外層の終了まで遅延します。
 void EventManager::DispatchTo(ListenerList<Event>& listeners, const Event& event) {
     // 配信中に追加された購読は次のイベントから通知します。
     const SubscriptionId lastExistingId = nextSubscriptionId_ - 1;
@@ -34,6 +36,7 @@ void EventManager::DispatchTo(ListenerList<Event>& listeners, const Event& event
 }
 
 template <typename Event>
+// 配信中でもイテレータを無効にしないよう、対象を削除せず非アクティブにします。
 void EventManager::MarkInactive(ListenerList<Event>& listeners, SubscriptionId id) {
     for (auto& listener : listeners) {
         if (listener.id == id) {
@@ -48,6 +51,7 @@ void EventManager::PruneInactive(ListenerList<Event>& listeners) {
     listeners.remove_if([](const Listener<Event>& listener) { return !listener.active; });
 }
 
+// すべてのイベント種別から無効な購読を除去します。配信の最外層が終わってから呼びます。
 void EventManager::PruneInactiveListeners() {
     PruneInactive(playerHitListeners_);
     PruneInactive(bulletHitListeners_);
@@ -96,6 +100,7 @@ void EventManager::Dispatch(const PlayerJumpEvent& event) {
     DispatchTo(playerJumpListeners_, event);
 }
 
+// 指定IDを全種別から無効化し、配信中でなければ直ちに整理します。
 void EventManager::Unsubscribe(SubscriptionId id) {
     if (id == kInvalidSubscriptionId) return;
     MarkInactive(playerHitListeners_, id);
@@ -106,6 +111,7 @@ void EventManager::Unsubscribe(SubscriptionId id) {
     if (dispatchDepth_ == 0) PruneInactiveListeners();
 }
 
+// 全種別の購読を無効化し、進行中の配信があれば実削除を後回しにします。
 void EventManager::ClearAllListeners() {
     for (auto& listener : playerHitListeners_) listener.active = false;
     for (auto& listener : bulletHitListeners_) listener.active = false;

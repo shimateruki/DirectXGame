@@ -122,7 +122,7 @@ using CombatMath::NormalizePlanar;
 using CombatMath::SmoothStep01;
 
 // 水平方向の攻撃基準ベクトルを指定角度だけ回転します。
-inline Vector3 RotatePlanar(const Vector3& direction, float angle) {
+inline engine::Vector3 RotatePlanar(const engine::Vector3& direction, float angle) {
     const float cosine = std::cos(angle);
     const float sine = std::sin(angle);
     return NormalizePlanar({
@@ -133,8 +133,8 @@ inline Vector3 RotatePlanar(const Vector3& direction, float angle) {
 }
 
 // 上向きのモデル軸を進行方向へ向ける Euler 角を返します。
-inline Vector3 MakeUpAxisAimRotation(const Vector3& direction) {
-    const Vector3 normalized = Math::Normalize(direction);
+inline engine::Vector3 MakeUpAxisAimRotation(const engine::Vector3& direction) {
+    const engine::Vector3 normalized = engine::Math::Normalize(direction);
     const float horizontalLength = std::sqrt(normalized.x * normalized.x + normalized.z * normalized.z);
     return {
         std::atan2(horizontalLength, normalized.y),
@@ -144,17 +144,17 @@ inline Vector3 MakeUpAxisAimRotation(const Vector3& direction) {
 }
 
 // 線分から点までの最短距離の二乗。射線との衝突判定に使用します。
-inline float DistanceSquaredToSegment(const Vector3& point, const Vector3& start, const Vector3& end) {
-    const Vector3 segment = end - start;
-    const float lengthSquared = Math::Dot(segment, segment);
+inline float DistanceSquaredToSegment(const engine::Vector3& point, const engine::Vector3& start, const engine::Vector3& end) {
+    const engine::Vector3 segment = end - start;
+    const float lengthSquared = engine::Math::Dot(segment, segment);
     if (lengthSquared <= 0.000001f) {
-        const Vector3 difference = point - start;
-        return Math::Dot(difference, difference);
+        const engine::Vector3 difference = point - start;
+        return engine::Math::Dot(difference, difference);
     }
-    const float rate = std::clamp(Math::Dot(point - start, segment) / lengthSquared, 0.0f, 1.0f);
-    const Vector3 nearest = start + segment * rate;
-    const Vector3 difference = point - nearest;
-    return Math::Dot(difference, difference);
+    const float rate = std::clamp(engine::Math::Dot(point - start, segment) / lengthSquared, 0.0f, 1.0f);
+    const engine::Vector3 nearest = start + segment * rate;
+    const engine::Vector3 difference = point - nearest;
+    return engine::Math::Dot(difference, difference);
 }
 
 // プリズムが放つ火球の素材、軌跡、命中時の表示設定をまとめます。

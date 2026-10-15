@@ -157,7 +157,7 @@ void EnemyPrismSlime::BeginEncounterAppearance() {
     ClearPrismAttackVisuals();
     HideAttackTelegraph();
 
-    Vector3 effectPosition = encounterBasePosition_;
+    engine::Vector3 effectPosition = encounterBasePosition_;
     effectPosition.y += 0.15f;
     VFXSequencer::PlayOneShot(kEncounterAppearanceSequence, effectPosition, {1.65f, 1.65f, 1.65f});
 }

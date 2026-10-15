@@ -7,7 +7,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
 #ifdef USE_IMGUI
     // このUIは配置済みObjectの種別と初期見た目を直接変更します。
     // Factoryで再生成する経路ではないため、モデル・当たり判定・paramの初期値をここで揃えます。
-    Object3d* selectedObject = editor_->GetSelectedObject();
+    engine::Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
     // 型名はScene JSONにも保存される識別子です。表示名との件数・順序の不整合は
@@ -101,7 +101,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->maxCount = 4;
             selectedObject->param_->actionMode = 0;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.center = { 0.0f, -0.55f, 0.0f };
             colConfig.size = { 6.8f, 0.65f, 5.6f };
@@ -127,7 +127,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -143,7 +143,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
             selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kSphere;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -159,7 +159,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -174,7 +174,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -197,7 +197,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -212,7 +212,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -227,7 +227,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -247,7 +247,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->switchMode = 0;
             selectedObject->param_->interval = 3.0f;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -270,7 +270,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = false;
             selectedObject->param_->returnOnOff = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -292,7 +292,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->gravity = 50.0f;
             selectedObject->param_->maxFallSpeed = 60.0f;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -316,7 +316,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = false;
             selectedObject->param_->returnOnOff = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -340,7 +340,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->speed = 12.0f;
             selectedObject->param_->interval = 0.8f;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -374,7 +374,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = true;
             selectedObject->param_->returnOnOff = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kCylinder;
             colConfig.center = { 0.0f, 5.47f, 0.0f };
             colConfig.size = { 2.15f, 4.75f, 2.15f };
@@ -397,7 +397,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = true;
             selectedObject->param_->returnOnOff = false;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.center = { 0.0f, 1.5f, 0.0f };
             colConfig.size = { 3.0f, 3.0f, 8.0f };
@@ -424,7 +424,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = true;
             selectedObject->param_->returnOnOff = false;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.center = { 0.0f, 0.0f, 0.0f };
             colConfig.size = { 1.0f, 1.0f, 1.0f };
@@ -453,7 +453,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->copyMemoryUnlimitedDuration = true;
             selectedObject->param_->startActive = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.center = { 0.0f, 0.95f, 0.0f };
             colConfig.size = { 3.1f, 1.6f, 1.85f };
@@ -485,7 +485,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
                 renderer->GetWaterParamData()->effectIntensity = 1.78f;
             }
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.center = { 0.0f, 0.0f, 0.0f };
             colConfig.size = { 1.0f, 1.0f, 0.45f };
@@ -508,7 +508,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->interval = 0.18f;
             selectedObject->param_->gravity = 48.0f;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -529,7 +529,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = true;
             selectedObject->param_->returnOnOff = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -550,7 +550,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = true;
             selectedObject->param_->returnOnOff = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -571,7 +571,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->interval = 1.0f;
             selectedObject->param_->startActive = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -600,7 +600,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->startActive = true;
             selectedObject->param_->returnOnOff = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
@@ -626,7 +626,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->targetScene = "SELECT";
             selectedObject->param_->startActive = true;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kSphere;
             colConfig.size = { 4.0f, 4.0f, 4.0f };
             selectedObject->SetColliderConfig(colConfig);

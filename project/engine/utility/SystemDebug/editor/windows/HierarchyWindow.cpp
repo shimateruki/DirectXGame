@@ -42,7 +42,9 @@
 #define M_PI 3.14159265358979323846
 #endif
 static const float PI = (float)M_PI;
+// ImGuizmoの角度表示は度、Object3dの回転値はラジアンなので変換します。
 static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
+// 回転値をInspectorへ表示するときにラジアンから度へ戻します。
 static float ToDegrees(float radians) { return radians * (180.0f / PI); }
 
 static std::string ToLowerAscii(std::string text) {
@@ -56,7 +58,9 @@ static bool ContainsLower(const std::string& text, const std::string& lowerNeedl
     return ToLowerAscii(text).find(lowerNeedle) != std::string::npos;
 }
 
-static bool MatchesHierarchySearch(Object3d* object, const std::string& lowerFilter) {
+static bool MatchesHierarchySearch(engine::Object3d* object, const std::string& lowerFilter) {
+    // 名前だけでなく種別・タグ・レイヤーも階層検索の対象にする。
+    // 名前だけでなく種別・タグ・レイヤーも階層検索の対象にする。
     if (!object) {
         return false;
     }
@@ -93,7 +97,7 @@ namespace {
         "プレイヤー", "敵", "カメラ", "地形・背景", "ギミック", "エフェクト", "オブジェクト", "その他"
     };
 
-    HierarchyDisplayGroup GetHierarchyDisplayGroup(const Object3d* object) {
+    HierarchyDisplayGroup GetHierarchyDisplayGroup(const engine::Object3d* object) {
         const std::string& category = object->GetSaveCategory();
         const std::string& className = object->GetClassName();
         const std::string modelName = object->GetModelName();
@@ -105,16 +109,28 @@ namespace {
         }
         if (className == "Gimmick") return HierarchyDisplayGroup::Gimmick;
         if (modelName.rfind("Stages/", 0) == 0) return HierarchyDisplayGroup::Stage;
+        // モデルを持たない地形用の親も、子の地形と同じ分類で表示する。
+        if (modelName.empty() && category == "Object") {
+            for (const engine::Object3d* child : object->GetChildren()) {
+                if (child && child->GetModelName().rfind("Stages/", 0) == 0) {
+                    return HierarchyDisplayGroup::Stage;
+                }
+            }
+        }
         if (category == "Object" || className == "Model") return HierarchyDisplayGroup::Object;
         return HierarchyDisplayGroup::Other;
     }
 
-    std::string GetHierarchyDisplaySubtype(const Object3d* object) {
+    std::string GetHierarchyDisplaySubtype(const engine::Object3d* object) {
+        // タグやゲーム種別を優先し、設定がなければモデル名で階層内の識別を助ける。
         if (!object->GetTag().empty()) return "#" + object->GetTag();
         if (!object->GetGimmickType().empty()) return object->GetGimmickType();
         if (!object->GetEnemyType().empty()) return object->GetEnemyType();
         if (!object->GetItemType().empty()) return object->GetItemType();
         const std::string modelName = object->GetModelName();
+        if (modelName.empty() && GetHierarchyDisplayGroup(object) == HierarchyDisplayGroup::Stage) {
+            return "地形グループ";
+        }
         if (!modelName.empty()) {
             const size_t separator = modelName.find_last_of("/\\");
             return modelName.substr(separator == std::string::npos ? 0 : separator + 1);
@@ -123,6 +139,7 @@ namespace {
     }
 
     std::string MakeUniqueName(BaseScene* scene, const std::string& baseName) {
+        // シーン内で同名があれば連番を付け、既存オブジェクト名を変えずに追加する。
         if (!scene) return baseName;
 
         auto exists = [&](const std::string& name) {
@@ -155,6 +172,7 @@ namespace {
     }
 
     std::string MakeUniquePresetName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
+        // 配置済みオブジェクトに加え、今回生成する兄弟の予約名とも衝突させない。
         std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
         std::string uniqueName = MakeUniqueName(scene, base);
         if (!ReservedHasName(reservedNames, uniqueName)) {
@@ -170,7 +188,8 @@ namespace {
         return base + "_New";
     }
 
-    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
+    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<engine::Object3d>>& objects) {
+        // 同一プリセットの複数配置でも、ルートと子の名前がシーン内で衝突しないようにする。
         if (objects.empty()) return;
 
         std::vector<std::string> reservedNames;
@@ -191,16 +210,16 @@ namespace {
         }
     }
 
-    float GetObjectYOffset(const Object3d* object) {
+    float GetObjectYOffset(const engine::Object3d* object) {
         if (!object) return 1.0f;
 
-        Object3d::ColliderConfig colConfig = object->GetColliderConfig();
+        engine::Object3d::ColliderConfig colConfig = object->GetColliderConfig();
         if (colConfig.size.y > 0.0f) return colConfig.size.y;
         if (object->GetTransform().scale.y > 0.0f) return object->GetTransform().scale.y;
         return 1.0f;
     }
 
-    Vector3 CalculateCameraForward(const Vector3& rotation) {
+    engine::Vector3 CalculateCameraForward(const engine::Vector3& rotation) {
         return {
             std::sin(rotation.y) * std::cos(rotation.x),
             -std::sin(rotation.x),
@@ -208,12 +227,12 @@ namespace {
         };
     }
 
-    Vector3 GetDefaultCreatePosition(DebugEditor* editor, const Object3d* object) {
+    engine::Vector3 GetDefaultCreatePosition(DebugEditor* editor, const engine::Object3d* object) {
         if (!editor) return { 0.0f, 1.0f, 0.0f };
 
-        Object3d* selected = editor->GetSelectedObject();
+        engine::Object3d* selected = editor->GetSelectedObject();
         if (selected) {
-            Matrix4x4 world = selected->GetWorldMatrix();
+            engine::Matrix4x4 world = selected->GetWorldMatrix();
             return { world.m[3][0] + 2.0f, world.m[3][1], world.m[3][2] };
         }
 
@@ -222,9 +241,9 @@ namespace {
             return { 0.0f, GetObjectYOffset(object), 0.0f };
         }
 
-        Vector3 eye = camera->GetEye();
-        Vector3 forward = CalculateCameraForward(camera->GetRotation());
-        Vector3 position = {
+        engine::Vector3 eye = camera->GetEye();
+        engine::Vector3 forward = CalculateCameraForward(camera->GetRotation());
+        engine::Vector3 position = {
             eye.x + forward.x * 10.0f,
             eye.y + forward.y * 10.0f,
             eye.z + forward.z * 10.0f
@@ -246,7 +265,8 @@ namespace {
         return position;
     }
 
-    void AddCreatedObject(DebugEditor* editor, BaseScene* scene, std::unique_ptr<Object3d> object, const std::string& baseName, const std::string& commandLabel, bool useGameViewCursor) {
+    void AddCreatedObject(DebugEditor* editor, BaseScene* scene, std::unique_ptr<engine::Object3d> object, const std::string& baseName, const std::string& commandLabel, bool useGameViewCursor) {
+        // ゲームビュー配置だけは確定を遅らせ、半透明プレビューで位置を選ばせる。
         if (!editor || !scene || !object) return;
 
         object->SetName(MakeUniqueName(scene, baseName));
@@ -255,7 +275,7 @@ namespace {
             return;
         }
 
-        Vector3 createPosition = useGameViewCursor
+        engine::Vector3 createPosition = useGameViewCursor
             ? editor->CalculateGameViewCreatePosition(object.get())
             : GetDefaultCreatePosition(editor, object.get());
         object->SetTranslate(createPosition);
@@ -267,11 +287,12 @@ namespace {
         DebugConsole::GetInstance()->AddLog("Create: " + createdName);
     }
 
-    void AddCreatedObjects(DebugEditor* editor, BaseScene* scene, std::vector<std::unique_ptr<Object3d>> objects, const std::string& baseName, const std::string& commandLabel, bool useGameViewCursor) {
+    void AddCreatedObjects(DebugEditor* editor, BaseScene* scene, std::vector<std::unique_ptr<engine::Object3d>> objects, const std::string& baseName, const std::string& commandLabel, bool useGameViewCursor) {
+        // 複数Objectはルートだけを移動し、親子の相対位置を保ったまま一括で追加する。
         if (!editor || !scene || objects.empty()) return;
 
         AssignPresetInstanceNames(scene, baseName, objects);
-        Object3d* rootObject = objects.front().get();
+        engine::Object3d* rootObject = objects.front().get();
         if (!rootObject) return;
 
         if (useGameViewCursor) {
@@ -279,7 +300,7 @@ namespace {
             return;
         }
 
-        Vector3 createPosition = GetDefaultCreatePosition(editor, rootObject);
+        engine::Vector3 createPosition = GetDefaultCreatePosition(editor, rootObject);
         rootObject->SetTranslate(createPosition);
         rootObject->UpdateLocalMatrix();
         rootObject->UpdateWorldMatrix();
@@ -289,10 +310,11 @@ namespace {
         DebugConsole::GetInstance()->AddLog("Create: " + createdName);
     }
 
-    void CreatePrimitive(DebugEditor* editor, BaseScene* scene, const std::string& modelName, const std::string& baseName, bool useGameViewCursor, const Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
+    void CreatePrimitive(DebugEditor* editor, BaseScene* scene, const std::string& modelName, const std::string& baseName, bool useGameViewCursor, const engine::Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
+        // モデルと初期倍率を決めたら、追加位置・命名・Undoは共通の配置経路に任せる。
         if (!scene || !scene->GetObject3dCommon()) return;
 
-        auto object = std::make_unique<Object3d>();
+        auto object = std::make_unique<engine::Object3d>();
         object->Initialize(scene->GetObject3dCommon());
         ModelManager::GetInstance()->LoadModel(modelName);
         object->SetModel(modelName);
@@ -302,14 +324,15 @@ namespace {
     }
 
     void CreateTriggerBox(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        // 見た目のないAABBをトリガー属性で登録し、イベント用の判定領域を作る。
         if (!scene || !scene->GetObject3dCommon()) return;
 
-        auto object = std::make_unique<Object3d>();
+        auto object = std::make_unique<engine::Object3d>();
         object->Initialize(scene->GetObject3dCommon());
         object->SetModel(nullptr);
         object->SetIsVisible(true);
         object->SetClassName("InvisibleBox");
-        Object3d::ColliderConfig colConfig;
+        engine::Object3d::ColliderConfig colConfig;
         colConfig.type = ColliderType::kAABB;
         colConfig.size = { 1.0f, 1.0f, 1.0f };
         object->SetColliderConfig(colConfig);
@@ -318,14 +341,15 @@ namespace {
     }
 
     void CreateCollisionBox(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        // 見た目のないAABBを地面属性で登録し、足場用の判定領域を作る。
         if (!scene || !scene->GetObject3dCommon()) return;
 
-        auto object = std::make_unique<Object3d>();
+        auto object = std::make_unique<engine::Object3d>();
         object->Initialize(scene->GetObject3dCommon());
         object->SetModel(nullptr);
         object->SetIsVisible(true);
         object->SetClassName("InvisibleBox");
-        Object3d::ColliderConfig colConfig;
+        engine::Object3d::ColliderConfig colConfig;
         colConfig.type = ColliderType::kAABB;
         colConfig.size = { 1.0f, 1.0f, 1.0f };
         object->SetColliderConfig(colConfig);
@@ -334,9 +358,10 @@ namespace {
     }
 
     void CreateCinematicCamera(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        // 演出カメラを編集しやすい可視モデルとして作り、保存分類をカメラへ固定する。
         if (!scene || !scene->GetObject3dCommon()) return;
 
-        auto object = std::make_unique<Object3d>();
+        auto object = std::make_unique<engine::Object3d>();
         object->Initialize(scene->GetObject3dCommon());
         object->SetModel(kCinematicCameraModel);
         object->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
@@ -349,13 +374,14 @@ namespace {
     }
 
     void CreateDecal(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        // 生成時は基準姿勢だけ指定し、画面上の配置位置は共通の配置経路へ任せる。
         if (!scene || !scene->GetObject3dCommon()) return;
 
         DecalSpawnDesc desc;
         desc.name = "Surface_Decal";
         desc.lifetime = 0.0f;
         desc.transient = false;
-        std::unique_ptr<Object3d> decal = DecalSystem::Create(
+        std::unique_ptr<engine::Object3d> decal = DecalSystem::Create(
             scene->GetObject3dCommon(), { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, desc);
         AddCreatedObject(editor, scene, std::move(decal), "Surface_Decal", "Create Surface Decal", useGameViewCursor);
     }
@@ -383,6 +409,7 @@ namespace {
 
     void DrawCreateContextMenu(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
 #ifdef USE_IMGUI
+        // ゲームビュー上の配置はプレビューで位置を決め、Hierarchy側は選択位置を基準に作る。
         if (!editor || !scene) return;
 
         if (useGameViewCursor) {
@@ -454,6 +481,7 @@ namespace {
         }
 
         if (ImGui::BeginMenu(ICON_FA_SAVE " プリセット")) {
+            // 登録済みプリセットは生成Factoryと同じ導線へ渡し、まとめてUndoできるようにする。
             const auto& presets = PresetManager::GetInstance()->GetPresets();
             if (presets.empty()) {
                 ImGui::TextDisabled("プリセットがありません");
@@ -526,10 +554,6 @@ void HierarchyWindow::Draw() {
         }
         if (editor_->GetPostEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " ポストエフェクト (Post Effect)", currentObj == editor_->GetPostEffectEditor())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetPostEffectEditor());
-        }
-        if (ImGui::Selectable("  " ICON_FA_KEYBOARD " キーコンフィグ (Key Config)", currentObj == KeyConfig::GetInstance())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(KeyConfig::GetInstance());
         }
         if (editor_->GetGPUParticleEditor() && ImGui::Selectable("  " ICON_FA_FIRE " GPUパーティクル (GPU Particle)", currentObj == editor_->GetGPUParticleEditor())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGPUParticleEditor());
@@ -677,7 +701,7 @@ void HierarchyWindow::Draw() {
     ImGui::PopItemWidth();
 
     const auto& selectedObjects = editor_->GetSelectedObjects();
-    Object3d* primaryObject = editor_->GetSelectedObject();
+    engine::Object3d* primaryObject = editor_->GetSelectedObject();
     if (!selectedObjects.empty() && primaryObject) {
         const std::string primaryName = primaryObject->GetName().empty() ? "Selected" : primaryObject->GetName();
         ImGui::Text("選択: %zu個 / 操作: %s", selectedObjects.size(), primaryName.c_str());
@@ -744,7 +768,7 @@ void HierarchyWindow::Draw() {
                 Object3dCommon* common = currentScene->GetObject3dCommon();
                 if (common && !modelName.empty()) {
                     ModelManager::GetInstance()->LoadModel(modelName);
-                    auto newObj = std::make_unique<Object3d>();
+                    auto newObj = std::make_unique<engine::Object3d>();
                     newObj->Initialize(common); newObj->SetModel(modelName); newObj->SetClassName("Model"); newObj->SetName("Preview_" + modelName);
                     newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
                     editor_->SetPreviewObject(std::move(newObj));
@@ -764,7 +788,7 @@ void HierarchyWindow::Draw() {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CINEMATIC_CAMERA_ASSET")) {
                 Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
                 if (common) {
-                    auto newObj = std::make_unique<Object3d>();
+                    auto newObj = std::make_unique<engine::Object3d>();
                     newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("Camera"); newObj->SetSaveCategory("Camera"); newObj->SetCastShadow(false);
                     newObj->SetTranslate({ 0.0f, 5.0f, -10.0f }); newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
                     editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");
@@ -774,7 +798,7 @@ void HierarchyWindow::Draw() {
                 const char* presetName = (const char*)payload->Data;
                 Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
                 if (common) {
-                    auto newObj = std::make_unique<Object3d>();
+                    auto newObj = std::make_unique<engine::Object3d>();
                     newObj->Initialize(common); 
                     newObj->SetModel("Stages/block"); 
                     newObj->SetName("VFX_" + std::string(presetName)); 
@@ -799,7 +823,7 @@ void HierarchyWindow::Draw() {
         // グループ表示はルートObjectだけを分類し、親子関係そのものは変えない。
         if (groupHierarchy_) {
             // 親を持つObjectは既存のツリー内に表示する。ここではルートだけを仮想フォルダへ振り分ける。
-            std::array<std::vector<Object3d*>, static_cast<size_t>(HierarchyDisplayGroup::Count)> groups;
+            std::array<std::vector<engine::Object3d*>, static_cast<size_t>(HierarchyDisplayGroup::Count)> groups;
             for (auto& obj : objects) {
                 if (!obj || obj->GetParent() || !HasMatchingCategory(obj.get())) continue;
                 if (editor_->IsPrefabEditMode() && !editor_->IsPrefabEditObject(obj.get())) continue;
@@ -813,8 +837,8 @@ void HierarchyWindow::Draw() {
                 const bool groupOpen = ImGui::TreeNodeEx("Group", ImGuiTreeNodeFlags_DefaultOpen,
                     "%s (%zu)", kHierarchyGroupNames[groupIndex], rows.size());
                 if (groupOpen) {
-                    std::map<std::string, std::vector<Object3d*>> subgroups;
-                    for (Object3d* object : rows) {
+                    std::map<std::string, std::vector<engine::Object3d*>> subgroups;
+                    for (engine::Object3d* object : rows) {
                         subgroups[GetHierarchyDisplaySubtype(object)].push_back(object);
                     }
                     if (subgroups.size() == 1 && rows.size() == 1) {
@@ -824,7 +848,7 @@ void HierarchyWindow::Draw() {
                             const bool subtypeOpen = ImGui::TreeNodeEx(subtype.c_str(), 0,
                                 "%s (%zu)", subtype.c_str(), members.size());
                             if (subtypeOpen) {
-                                for (Object3d* object : members) DrawHierarchyNode(object);
+                                for (engine::Object3d* object : members) DrawHierarchyNode(object);
                                 ImGui::TreePop();
                             }
                         }
@@ -849,9 +873,9 @@ void HierarchyWindow::Draw() {
     if (ImGui::Button(ICON_FA_BOLT " 透明ボックス生成 (トリガー用)", ImVec2(-1, 40))) {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
-            auto newObj = std::make_unique<Object3d>();
+            auto newObj = std::make_unique<engine::Object3d>();
             newObj->Initialize(common); newObj->SetModel(nullptr); newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("Trigger_Box");
-            Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
+            engine::Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionCategories::Get("trigger")); newObj->SetTranslate({ 0, 2.0f, 0 });
             editor_->AddEditorObject(std::move(newObj), "Create Trigger Box");
         }
@@ -859,9 +883,9 @@ void HierarchyWindow::Draw() {
     if (ImGui::Button(ICON_FA_SHIELD_ALT " 透明ボックス生成 (当たり判定用)", ImVec2(-1, 40))) {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
-            auto newObj = std::make_unique<Object3d>();
+            auto newObj = std::make_unique<engine::Object3d>();
             newObj->Initialize(common); newObj->SetModel(nullptr);newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("collision_Box");
-            Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
+            engine::Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionCategories::Get("ground")); newObj->SetTranslate({ 0, 2.0f, 0 });
             editor_->AddEditorObject(std::move(newObj), "Create Collision Box");
         }
@@ -869,7 +893,7 @@ void HierarchyWindow::Draw() {
     if (ImGui::Button(ICON_FA_VIDEO " 演出用カメラ生成 (Cinematic)", ImVec2(-1, 40))) {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
-            auto newObj = std::make_unique<Object3d>();
+            auto newObj = std::make_unique<engine::Object3d>();
             newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("Camera"); newObj->SetSaveCategory("Camera"); newObj->SetCastShadow(false); newObj->SetName("Cinematic_Camera_01");
             newObj->SetTranslate({ 0, 5.0f, -10.0f }); newObj->UpdateWorldMatrix();
             editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");
@@ -882,12 +906,12 @@ void HierarchyWindow::Draw() {
     // 親解除時は元のワールド姿勢を保持し、結果を編集履歴へ登録する。
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
-            Object3d* sourceObj = *(Object3d**)payload->Data;
+            engine::Object3d* sourceObj = *(engine::Object3d**)payload->Data;
             if (sourceObj->GetParent() != nullptr) {
                 nlohmann::json beforeState = editor_->CaptureObjectState(sourceObj);
-                Matrix4x4 worldMat = sourceObj->GetWorldMatrix();
+                engine::Matrix4x4 worldMat = sourceObj->GetWorldMatrix();
                 sourceObj->SetParent(nullptr, true);
-                Vector3 t, rDeg, s;
+                engine::Vector3 t, rDeg, s;
                 ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &t.x, &rDeg.x, &s.x);
                 sourceObj->SetTranslate(t);
                 sourceObj->SetEulerAngles({ ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
@@ -1526,7 +1550,7 @@ void HierarchyWindow::DrawCreateContextMenu(BaseScene* scene, bool useGameViewCu
 #endif
 }
 
-void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
+void HierarchyWindow::DrawHierarchyNode(engine::Object3d* obj) {
 #ifdef USE_IMGUI
     if (!obj) return;
     if (!HasMatchingCategory(obj)) return;
@@ -1566,13 +1590,13 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 
     // --- ドラッグ＆ドロップ処理 ---
     if (ImGui::BeginDragDropSource()) {
-        ImGui::SetDragDropPayload("HIERARCHY_OBJ", &obj, sizeof(Object3d*));
+        ImGui::SetDragDropPayload("HIERARCHY_OBJ", &obj, sizeof(engine::Object3d*));
         ImGui::Text("Move %s", name.c_str());
         ImGui::EndDragDropSource();
     }
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
-            Object3d* sourceObj = *(Object3d**)payload->Data;
+            engine::Object3d* sourceObj = *(engine::Object3d**)payload->Data;
             if (sourceObj != obj && sourceObj->GetParent() != obj) {
                 nlohmann::json beforeState = editor_->CaptureObjectState(sourceObj);
                 sourceObj->SetParent(obj, true);
@@ -1625,7 +1649,7 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 #endif
 }
 
-bool HierarchyWindow::HasMatchingCategory(Object3d* obj) {
+bool HierarchyWindow::HasMatchingCategory(engine::Object3d* obj) {
     // 表示カテゴリとLayerの条件を共に満たすObjectだけHierarchyへ出します。
     if (!obj || obj->IsEditorInternal()) return false;
 
@@ -1653,7 +1677,7 @@ bool HierarchyWindow::HasMatchingCategory(Object3d* obj) {
 
     if (categoryMatches && layerMatches) return true;
 
-    for (Object3d* child : obj->GetChildren()) {
+    for (engine::Object3d* child : obj->GetChildren()) {
         if (HasMatchingCategory(child)) return true;
     }
 

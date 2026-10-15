@@ -2,7 +2,7 @@
 #include "engine/utility/math/Math.h"
 #include <cstdint>
 #include <string>
-class Object3d;
+namespace engine { class Object3d; }
 
 // ステージセレクト内部の共通計算。状態やObjectの所有権は保持しない。
 // 定数値と呼び出し側の時間換算を維持する。
@@ -92,29 +92,36 @@ constexpr float kGateCinematicBarCloseSpeed = 4.2f;
 
 // ゲート面から中心を経て奥へ抜ける三点。すべてワールド座標です。
 struct SelectGateEntryRoute {
-    Vector3 surface;
-    Vector3 center;
-    Vector3 inside;
+    engine::Vector3 surface;
+    engine::Vector3 center;
+    engine::Vector3 inside;
 };
 
+// 演出補間用の 0～1 制限とイージング関数。
 float SelectClamp01(float value);
 float SelectEaseOutCubic(float value);
-Vector3 SelectLookAtRotation(const Vector3& eye, const Vector3& target);
-Vector3 SelectNormalizeGateDirectionXZ(const Vector3& value, const Vector3& fallback);
-float SelectResolveGateReturnGroundY(const Vector3& probePosition, const Vector3& gatePos,
-                                     const Vector3& stageNodePosition, const Vector3& playerPosition,
-                                     const Object3d* ignoredObject);
-Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDirection);
-SelectGateEntryRoute SelectBuildGateEntryRoute(const Vector3& gatePos, const Vector3& direction, float entryY);
+// 視点から対象を向くカメラ回転と、水平ゲート方向の正規化を求める。
+engine::Vector3 SelectLookAtRotation(const engine::Vector3& eye, const engine::Vector3& target);
+engine::Vector3 SelectNormalizeGateDirectionXZ(const engine::Vector3& value, const engine::Vector3& fallback);
+// 帰還地点の地面を調べ、安全に配置できる高さを返す。
+float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const engine::Vector3& gatePos,
+                                     const engine::Vector3& stageNodePosition, const engine::Vector3& playerPosition,
+                                     const engine::Object3d* ignoredObject);
+// ゲートの向きから突入方向と通過用の三点経路を組み立てる。
+engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const engine::Vector3& fallbackDirection);
+SelectGateEntryRoute SelectBuildGateEntryRoute(const engine::Vector3& gatePos, const engine::Vector3& direction, float entryY);
+// ゲートと帰還演出の補間に使うイージング、線形補間、ベジェ補間。
 float SelectEaseInOutCubic(float value);
-Vector3 SelectLerpVector3(const Vector3& a, const Vector3& b, float t);
-Vector3 SelectBezierVector3(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t);
-Vector3 SelectNormalizeXZ(const Vector3& value, const Vector3& fallback);
+engine::Vector3 SelectLerpVector3(const engine::Vector3& a, const engine::Vector3& b, float t);
+engine::Vector3 SelectBezierVector3(const engine::Vector3& p0, const engine::Vector3& p1, const engine::Vector3& p2, const engine::Vector3& p3, float t);
+engine::Vector3 SelectNormalizeXZ(const engine::Vector3& value, const engine::Vector3& fallback);
 float SelectEaseOutBack(float value);
-Vector3 SelectLerp(const Vector3& a, const Vector3& b, float t);
-Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool unlocking, float pulse);
+engine::Vector3 SelectLerp(const engine::Vector3& a, const engine::Vector3& b, float t);
+// 開放・選択・解放演出の状態から島とゲートの表示色・発光量を算出する。
+engine::Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool unlocking, float pulse);
 float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float pulse);
-Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse);
+engine::Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse);
 float GetStageGateModelEmissive(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse);
+// ステージ番号に対応する王冠Object名を生成する。
 std::string MakeStageClearCrownName(int stageIndex);
 } // namespace StageSelectDetail

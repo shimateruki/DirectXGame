@@ -18,7 +18,7 @@
 #include <utility>
 
 namespace {
-bool IsEditorOnlyObject(const Object3d& object) {
+bool IsEditorOnlyObject(const engine::Object3d& object) {
     // 編集用オブジェクトは配置数や分類の集計に含めません。
     const std::string& name = object.GetName();
     return object.IsEditorInternal() || name.rfind("__Editor_", 0) == 0 || object.GetClassName() == "EditorOnly";
@@ -31,6 +31,7 @@ std::string ToLowerAscii(std::string value) {
     return value;
 }
 
+// 一覧検索ではASCIIの大文字小文字を無視し、空の検索語は全件一致とします。
 bool ContainsInsensitive(const std::string& text, const std::string& query) {
     if (query.empty()) return true;
     return ToLowerAscii(text).find(ToLowerAscii(query)) != std::string::npos;
@@ -44,7 +45,8 @@ bool ContainsAny(const std::string& text, std::initializer_list<const char*> wor
     return false;
 }
 
-bool IsTerrainVisual(const Object3d& object) {
+// 名前とモデル名から暫定的に地形を分類し、装飾語を優先して除外します。
+bool IsTerrainVisual(const engine::Object3d& object) {
     // 名前からの暫定分類です。背景装飾を先に除いて地形の誤判定を抑えます。
     const std::string identity = object.GetName() + " " + object.GetModelName();
     if (ContainsAny(identity, { "backdrop", "background", "decor", "tree", "pillar", "brazier", "sign", "marker" })) {
@@ -58,6 +60,7 @@ bool IsTerrainVisual(const Object3d& object) {
 }
 
 std::string GetTypeDisplayName(const std::string& type) {
+    // 保存データの内部型IDを一覧向けの日本語名へ置き換え、未知の型はIDを残す。
     static const std::unordered_map<std::string, std::string> kNames = {
         { "AppearingFloor", "出現床" },
         { "BlinkBlock", "点滅ブロック" },
@@ -101,6 +104,7 @@ std::string GetTypeDisplayName(const std::string& type) {
 }
 
 const char* GetColliderShapeName(ColliderType type) {
+    // シーン一覧では内部の衝突形状を短い表示名に変換する。
     switch (type) {
     case ColliderType::kNone: return "なし";
     case ColliderType::kSphere: return "Sphere";
@@ -183,7 +187,7 @@ void SceneInventoryWindow::RebuildEntries() {
     entries_.reserve(objects.size());
 
     for (const auto& objectPtr : objects) {
-        Object3d* object = objectPtr.get();
+        engine::Object3d* object = objectPtr.get();
         if (!object) continue;
 
         const bool editorOnly = IsEditorOnlyObject(*object);
@@ -382,7 +386,7 @@ bool SceneInventoryWindow::MatchesSearch(const Entry& entry, const std::string& 
         ContainsInsensitive(entry.object->GetTag(), query);
 }
 
-std::string SceneInventoryWindow::ClassifyCategory(const Object3d& object) const {
+std::string SceneInventoryWindow::ClassifyCategory(const engine::Object3d& object) const {
     // 複数の属性を持つObjectが二重計上されないよう、用途の優先順位を固定します。
     const std::string className = object.GetClassName();
     const std::string saveCategory = object.GetSaveCategory();
@@ -413,7 +417,7 @@ std::string SceneInventoryWindow::ClassifyCategory(const Object3d& object) const
     return "その他";
 }
 
-std::string SceneInventoryWindow::ClassifyType(const Object3d& object, const std::string& category) const {
+std::string SceneInventoryWindow::ClassifyType(const engine::Object3d& object, const std::string& category) const {
     // 用途が決まった後に、その用途内で意味のある細分類へ変換します。
     if (category == "当たり判定のみ") return ClassifyCollision(object);
     if (category == "敵" && !object.GetEnemyType().empty()) return GetTypeDisplayName(object.GetEnemyType());
@@ -434,7 +438,7 @@ std::string SceneInventoryWindow::ClassifyType(const Object3d& object, const std
     return object.GetClassName().empty() ? "未分類" : object.GetClassName();
 }
 
-std::string SceneInventoryWindow::ClassifyCollision(const Object3d& object) const {
+std::string SceneInventoryWindow::ClassifyCollision(const engine::Object3d& object) const {
     // 形状だけでは用途が分からないため、カテゴリ・名前・縦横比から表示名を推定します。
     const ColliderConfig& config = object.GetColliderConfig();
     const uint32_t attribute = object.GetCollisionAttribute();

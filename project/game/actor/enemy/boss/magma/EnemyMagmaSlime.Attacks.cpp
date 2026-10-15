@@ -20,12 +20,13 @@
 
 using namespace EnemyMagmaSlimeImplementation;
 
+// 予兆と着弾が一致するよう、攻撃開始時の位相から全着弾点を先に確定します。
 void EnemyMagmaSlime::PrepareMortarTargets() {
     // 毎回ランダム生成せず、攻撃開始時の位相と番号から散布位置を固定する。
     // 予兆を見た位置と着弾位置が途中でずれないようにするため。
     constexpr float kGoldenAngle = 2.39996323f;
-    const Vector3 origin = FindGroundPoint(GetTranslate());
-    const Vector3 spreadCenter = LerpVector3(origin, lockedTargetPosition_, 0.54f);
+    const engine::Vector3 origin = FindGroundPoint(GetTranslate());
+    const engine::Vector3 spreadCenter = LerpVector3(origin, lockedTargetPosition_, 0.54f);
     for (std::size_t index = 0; index < mortarTargets_.size(); ++index) {
         const float indexValue = static_cast<float>(index + 1);
         const float rawNoise = std::sin(indexValue * 12.9898f + mortarPatternPhase_ * 31.733f) * 43758.5453f;
@@ -34,7 +35,7 @@ void EnemyMagmaSlime::PrepareMortarTargets() {
         const float secondary01 = secondaryNoise - std::floor(secondaryNoise);
         const float angle = mortarPatternPhase_ + kGoldenAngle * static_cast<float>(index) + (random01 - 0.5f) * 1.08f;
         const float radius = 2.8f + random01 * 5.7f + secondary01 * 1.35f;
-        const Vector3 scatterDirection = {std::sin(angle), 0.0f, std::cos(angle)};
+        const engine::Vector3 scatterDirection = {std::sin(angle), 0.0f, std::cos(angle)};
         mortarTargets_[index] = FindGroundPoint(spreadCenter + scatterDirection * radius);
     }
 }
@@ -52,17 +53,17 @@ void EnemyMagmaSlime::LaunchNextMagmaBlob() {
         return;
     }
 
-    const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
+    const engine::Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
     // 5発ごとに発射位置と滞空時間をずらし、同時着弾を避ける。
     const int withinWave = actionIndex_ % 5;
     const int wave = actionIndex_ / 5;
     const float sideOffset = (static_cast<float>(withinWave) - 2.0f) * 0.46f;
     blob.start = GetWorldPosition() + side * sideOffset +
-                 Vector3{0.0f, baseScale_.y * 0.68f + 0.72f + static_cast<float>(wave) * 0.18f, 0.0f};
+                 engine::Vector3{0.0f, baseScale_.y * 0.68f + 0.72f + static_cast<float>(wave) * 0.18f, 0.0f};
     blob.target = mortarTargets_[static_cast<std::size_t>(actionIndex_)];
-    const Vector3 launchDirection = NormalizePlanar(blob.target - blob.start);
+    const engine::Vector3 launchDirection = NormalizePlanar(blob.target - blob.start);
     blob.control = blob.start + launchDirection * (2.2f + static_cast<float>(wave) * 0.55f) +
-                   Vector3{0.0f, 21.0f + static_cast<float>(wave) * 1.65f, 0.0f};
+                   engine::Vector3{0.0f, 21.0f + static_cast<float>(wave) * 1.65f, 0.0f};
     blob.flightDuration = 1.18f + static_cast<float>(withinWave) * 0.04f + static_cast<float>(wave) * 0.10f;
     blob.visual->SetTranslate(blob.start);
     blob.visual->SetScale({0.92f, 0.92f, 0.92f});
@@ -70,7 +71,7 @@ void EnemyMagmaSlime::LaunchNextMagmaBlob() {
 
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const char* activePreset = attack.activeVfx.empty() ? kMortarTrailPreset : attack.activeVfx.c_str();
-    EmitDirectedPreset(activePreset, blob.start, lockedDirection_ + Vector3{0.0f, 1.0f, 0.0f}, 1.18f);
+    EmitDirectedPreset(activePreset, blob.start, lockedDirection_ + engine::Vector3{0.0f, 1.0f, 0.0f}, 1.18f);
     magmaBlobs_.push_back(std::move(blob));
 }
 
@@ -86,7 +87,7 @@ void EnemyMagmaSlime::UpdateMagmaBlobs(float deltaTime) {
         blob->age += (std::max)(deltaTime, 0.0f);
         const float progress = std::clamp(blob->age / (std::max)(blob->flightDuration, 0.01f), 0.0f, 1.0f);
         const float inverse = 1.0f - progress;
-        Vector3 position = blob->start * (inverse * inverse) + blob->control * (2.0f * inverse * progress) +
+        engine::Vector3 position = blob->start * (inverse * inverse) + blob->control * (2.0f * inverse * progress) +
                            blob->target * (progress * progress);
         blob->spin += deltaTime * (7.0f + progress * 3.0f);
         const float pulse = 1.0f + std::sin(blob->age * 18.0f) * 0.075f;
@@ -116,14 +117,14 @@ void EnemyMagmaSlime::ImpactMagmaBlob(MagmaBlob& blob) {
     // 着弾時の即時ダメージと、後から残るマグマ床を別々に発生させる。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kMagmaMortarAttackId);
     const char* impactPreset = attack.impactVfx.empty() ? kImpactPreset : attack.impactVfx.c_str();
-    EmitDirectedPreset(impactPreset, blob.target + Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.48f);
+    EmitDirectedPreset(impactPreset, blob.target + engine::Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.48f);
     SpawnMagmaPool(blob.target, (std::max)(1.05f, attack.radius * 0.58f), 2.85f);
     DamageTargetAt(blob.target, attack.radius, attack.damage,
                    {lockedDirection_.x * 4.0f, 5.4f, lockedDirection_.z * 4.0f}, attack.statusDuration,
                    attack.statusTickInterval, attack.statusTickDamage);
 }
 
-void EnemyMagmaSlime::SpawnMagmaPool(const Vector3& position, float radius, float lifetime) {
+void EnemyMagmaSlime::SpawnMagmaPool(const engine::Vector3& position, float radius, float lifetime) {
     // 地面の高さを取得し、薄い円盤と継続ダメージの中心を同じ位置に置く。
     MagmaPool pool;
     pool.visual = CreateMagmaVisual("MagmaSlime_Pool_" + std::to_string(magmaPools_.size()), "Primitives/cylinder",
@@ -168,7 +169,7 @@ void EnemyMagmaSlime::UpdateMagmaPools(float deltaTime) {
 
         // 見た目の円盤は薄いが、上下に離れた相手へ床ダメージを与えない。
         if (pool->damageTimer <= 0.0f && target_) {
-            const Vector3 targetPosition = target_->GetWorldPosition();
+            const engine::Vector3 targetPosition = target_->GetWorldPosition();
             if (std::abs(targetPosition.y - pool->position.y) <= kPoolVerticalTolerance &&
                 PlanarDistance(targetPosition, pool->position) <= pool->radius + 0.55f) {
                 DamageTargetAt(pool->position, pool->radius + 0.55f, 0.55f, {0.0f, 2.2f, 0.0f}, 2.2f, 0.55f, 0.22f);
@@ -200,15 +201,15 @@ void EnemyMagmaSlime::BeginRush() {
     EnsureRushFlameVisuals();
     UpdateRushFlameVisuals(attackStartPosition_, 0.0f, 0.0f);
     EmitDirectedPreset(attack.activeVfx.empty() ? kRushWakePreset : attack.activeVfx.c_str(),
-                       attackStartPosition_ + Vector3{0.0f, 0.24f, 0.0f}, lockedDirection_ * -1.0f, 1.42f);
+                       attackStartPosition_ + engine::Vector3{0.0f, 0.24f, 0.0f}, lockedDirection_ * -1.0f, 1.42f);
 }
 
-void EnemyMagmaSlime::UpdateRush(float deltaTime, float, Vector3& velocity) {
+void EnemyMagmaSlime::UpdateRush(float deltaTime, float, engine::Vector3& velocity) {
     // 突進距離は開始時に固定し、VFX・床・接触判定を進行率に同期させる。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
     const float travelRate = SmoothStep01(std::clamp(progress / 0.82f, 0.0f, 1.0f));
-    Vector3 position = LerpVector3(attackStartPosition_, attackEndPosition_, travelRate);
+    engine::Vector3 position = LerpVector3(attackStartPosition_, attackEndPosition_, travelRate);
     position.y += std::sin(travelRate * kPi) * 0.32f;
     SetTranslate(position);
     SetGrounded(true);
@@ -217,14 +218,14 @@ void EnemyMagmaSlime::UpdateRush(float deltaTime, float, Vector3& velocity) {
     UpdateRushFlameVisuals(position, progress, deltaTime);
 
     if (effectTimer_ <= 0.0f && progress <= 0.90f) {
-        const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
+        const engine::Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
         EmitDirectedPreset(attack.activeVfx.empty() ? kRushWakePreset : attack.activeVfx.c_str(),
-                           position + Vector3{0.0f, 0.20f, 0.0f}, lockedDirection_ * -1.0f + Vector3{0.0f, 0.18f, 0.0f},
+                           position + engine::Vector3{0.0f, 0.20f, 0.0f}, lockedDirection_ * -1.0f + engine::Vector3{0.0f, 0.18f, 0.0f},
                            1.25f + progress * 0.52f);
-        EmitDirectedPreset(kRushSplashPreset, position + side * attack.radius * 0.56f + Vector3{0.0f, 0.18f, 0.0f},
-                           side + Vector3{0.0f, 0.52f, 0.0f}, 1.15f + progress * 0.38f);
-        EmitDirectedPreset(kRushSplashPreset, position - side * attack.radius * 0.56f + Vector3{0.0f, 0.18f, 0.0f},
-                           side * -1.0f + Vector3{0.0f, 0.52f, 0.0f}, 1.15f + progress * 0.38f);
+        EmitDirectedPreset(kRushSplashPreset, position + side * attack.radius * 0.56f + engine::Vector3{0.0f, 0.18f, 0.0f},
+                           side + engine::Vector3{0.0f, 0.52f, 0.0f}, 1.15f + progress * 0.38f);
+        EmitDirectedPreset(kRushSplashPreset, position - side * attack.radius * 0.56f + engine::Vector3{0.0f, 0.18f, 0.0f},
+                           side * -1.0f + engine::Vector3{0.0f, 0.52f, 0.0f}, 1.15f + progress * 0.38f);
         effectTimer_ += kRushWakeInterval;
     }
 
@@ -250,13 +251,13 @@ void EnemyMagmaSlime::FinishRush() {
     rushImpactSpawned_ = true;
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     EmitDirectedPreset(attack.impactVfx.empty() ? kImpactPreset : attack.impactVfx.c_str(),
-                       attackEndPosition_ + Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.35f);
-    const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
+                       attackEndPosition_ + engine::Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.35f);
+    const engine::Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
     SpawnMagmaPool(attackEndPosition_, (std::max)(1.55f, attack.radius * 0.86f), 3.1f);
     SpawnMagmaPool(attackEndPosition_ + side * attack.radius * 0.88f, attack.radius * 0.48f, 2.5f);
     SpawnMagmaPool(attackEndPosition_ - side * attack.radius * 0.88f, attack.radius * 0.48f, 2.5f);
-    EmitDirectedPreset(kRushSplashPreset, attackEndPosition_, side + Vector3{0.0f, 0.72f, 0.0f}, 1.62f);
-    EmitDirectedPreset(kRushSplashPreset, attackEndPosition_, side * -1.0f + Vector3{0.0f, 0.72f, 0.0f}, 1.62f);
+    EmitDirectedPreset(kRushSplashPreset, attackEndPosition_, side + engine::Vector3{0.0f, 0.72f, 0.0f}, 1.62f);
+    EmitDirectedPreset(kRushSplashPreset, attackEndPosition_, side * -1.0f + engine::Vector3{0.0f, 0.72f, 0.0f}, 1.62f);
     ClearRushFlameVisuals();
 }
 
@@ -269,7 +270,7 @@ void EnemyMagmaSlime::EnsureRushFlameVisuals() {
         rushFlameVisuals_[index] =
             CreateMagmaVisual("MagmaSlime_RushFlame_" + std::to_string(index), "Primitives/sphere", kFireMaterialType,
                               {1.0f, 0.19f, 0.018f, 0.78f}, 2.9f);
-        Object3d* flame = rushFlameVisuals_[index].get();
+        engine::Object3d* flame = rushFlameVisuals_[index].get();
         if (!flame) {
             continue;
         }
@@ -290,13 +291,13 @@ void EnemyMagmaSlime::EnsureRushFlameVisuals() {
     }
 }
 
-void EnemyMagmaSlime::UpdateRushFlameVisuals(const Vector3& position, float progress, float deltaTime) {
+void EnemyMagmaSlime::UpdateRushFlameVisuals(const engine::Vector3& position, float progress, float deltaTime) {
     // 本体の前後左右へ炎を追従させ、突進の開始と終了では明るさを弱める。
     constexpr std::array<float, 5> sideOffsets = {-0.74f, 0.0f, 0.74f, -0.42f, 0.42f};
     constexpr std::array<float, 5> backOffsets = {0.20f, -0.08f, 0.20f, 0.92f, 0.92f};
     constexpr std::array<float, 5> heightOffsets = {0.52f, 0.70f, 0.52f, 0.36f, 0.36f};
     constexpr std::array<float, 5> sizeMultipliers = {1.04f, 1.34f, 1.04f, 0.82f, 0.82f};
-    const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
+    const engine::Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
     const float horizontalScale = (std::max)(1.0f, (std::abs(baseScale_.x) + std::abs(baseScale_.z)) * 0.5f);
     const float verticalScale = (std::max)(1.0f, std::abs(baseScale_.y));
     const float speedPulse = 1.0f + std::sin(idleTimer_ * 22.0f) * 0.08f;
@@ -304,11 +305,11 @@ void EnemyMagmaSlime::UpdateRushFlameVisuals(const Vector3& position, float prog
                            SmoothStep01(std::clamp((1.0f - progress) / 0.10f, 0.0f, 1.0f));
 
     for (std::size_t index = 0; index < rushFlameVisuals_.size(); ++index) {
-        Object3d* flame = rushFlameVisuals_[index].get();
+        engine::Object3d* flame = rushFlameVisuals_[index].get();
         if (!flame) {
             continue;
         }
-        Vector3 flamePosition = position;
+        engine::Vector3 flamePosition = position;
         flamePosition = flamePosition + side * (sideOffsets[index] * horizontalScale);
         flamePosition = flamePosition - lockedDirection_ * (backOffsets[index] * horizontalScale);
         flamePosition.y += heightOffsets[index] * verticalScale;
@@ -336,7 +337,7 @@ void EnemyMagmaSlime::UpdateRushFlameVisuals(const Vector3& position, float prog
 
 void EnemyMagmaSlime::ClearRushFlameVisuals() {
     // 次回の突進で古い炎が出現位置に残らないよう、所有するメッシュを解放する。
-    for (std::unique_ptr<Object3d>& flame : rushFlameVisuals_) {
+    for (std::unique_ptr<engine::Object3d>& flame : rushFlameVisuals_) {
         flame.reset();
     }
 }
@@ -345,7 +346,7 @@ void EnemyMagmaSlime::BeginVolcanicSlam() {
     // 跳躍先を最大射程内の地面へ制限し、空中移動の開始点を固定する。
     attackStartPosition_ = GetTranslate();
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    Vector3 toTarget = lockedTargetPosition_ - attackStartPosition_;
+    engine::Vector3 toTarget = lockedTargetPosition_ - attackStartPosition_;
     const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
     if (distance > attack.maxRange && distance > 0.001f) {
         lockedTargetPosition_ = attackStartPosition_ + NormalizePlanar(toTarget) * attack.maxRange;
@@ -353,15 +354,15 @@ void EnemyMagmaSlime::BeginVolcanicSlam() {
     attackEndPosition_ = FindGroundPoint(lockedTargetPosition_);
     SetGrounded(false);
     EmitDirectedPreset(attack.activeVfx.empty() ? kChargePreset : attack.activeVfx.c_str(),
-                       attackStartPosition_ + Vector3{0.0f, baseScale_.y * 0.55f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.46f);
+                       attackStartPosition_ + engine::Vector3{0.0f, baseScale_.y * 0.55f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.46f);
 }
 
-void EnemyMagmaSlime::UpdateVolcanicSlam(float, Vector3& velocity) {
+void EnemyMagmaSlime::UpdateVolcanicSlam(float, engine::Vector3& velocity) {
     // 水平移動に正弦波の高さを重ね、着地直前に一回だけ衝撃を出す。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
     const float travelRate = SmoothStep01(progress);
-    Vector3 position = LerpVector3(attackStartPosition_, attackEndPosition_, travelRate);
+    engine::Vector3 position = LerpVector3(attackStartPosition_, attackEndPosition_, travelRate);
     position.y += std::sin(progress * kPi) * (6.8f + PlanarDistance(attackStartPosition_, attackEndPosition_) * 0.08f);
     SetTranslate(position);
     velocity = {0.0f, 0.0f, 0.0f};
@@ -369,7 +370,7 @@ void EnemyMagmaSlime::UpdateVolcanicSlam(float, Vector3& velocity) {
 
     if (effectTimer_ <= 0.0f && progress < 0.90f) {
         EmitDirectedPreset(attack.activeVfx.empty() ? kMortarTrailPreset : attack.activeVfx.c_str(),
-                           position + Vector3{0.0f, 0.20f, 0.0f},
+                           position + engine::Vector3{0.0f, 0.20f, 0.0f},
                            {-lockedDirection_.x * 0.22f, -1.0f, -lockedDirection_.z * 0.22f}, 1.18f);
         effectTimer_ += 0.058f;
     }
@@ -386,7 +387,7 @@ void EnemyMagmaSlime::ImpactVolcanicSlam() {
     landingPulseTimer_ = 0.42f;
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     EmitDirectedPreset(attack.impactVfx.empty() ? kSlamBurstPreset : attack.impactVfx.c_str(),
-                       attackEndPosition_ + Vector3{0.0f, 0.15f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.52f);
+                       attackEndPosition_ + engine::Vector3{0.0f, 0.15f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.52f);
     SpawnMagmaPool(attackEndPosition_, (std::max)(1.7f, attack.radius * 0.52f), 3.0f);
     SpawnSlamRings(attackEndPosition_);
     for (int ringIndex = 0; ringIndex < 2; ++ringIndex) {
@@ -394,7 +395,7 @@ void EnemyMagmaSlime::ImpactVolcanicSlam() {
         const float angleOffset = ringIndex == 0 ? 0.0f : kPi / 6.0f;
         for (int index = 0; index < 6; ++index) {
             const float angle = angleOffset + static_cast<float>(index) * kPi / 3.0f;
-            const Vector3 direction = {std::sin(angle), 0.0f, std::cos(angle)};
+            const engine::Vector3 direction = {std::sin(angle), 0.0f, std::cos(angle)};
             SpawnMagmaPillar(
                 attackEndPosition_ + direction * eruptionRadius, 1.15f + static_cast<float>(ringIndex) * 0.18f,
                 5.8f + static_cast<float>(ringIndex) * 1.15f, 0.84f,
@@ -406,7 +407,7 @@ void EnemyMagmaSlime::ImpactVolcanicSlam() {
                    attack.statusTickInterval, attack.statusTickDamage);
 }
 
-void EnemyMagmaSlime::SpawnSlamRings(const Vector3& position) {
+void EnemyMagmaSlime::SpawnSlamRings(const engine::Vector3& position) {
     // 三つの波紋を時間差で準備し、前の波紋の外周から順に広げる。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     constexpr std::array<float, 3> delays = {0.0f, 0.14f, 0.29f};
@@ -449,7 +450,7 @@ void EnemyMagmaSlime::UpdateMagmaRings(float deltaTime) {
         }
 
         const float progress = std::clamp(localAge / (std::max)(ring->lifetime, 0.01f), 0.0f, 1.0f);
-        const float radius = Math::Lerp(ring->startRadius, ring->endRadius, EaseOutCubic(progress));
+        const float radius = engine::Math::Lerp(ring->startRadius, ring->endRadius, EaseOutCubic(progress));
         const float thickness = 0.16f + (1.0f - progress) * 0.09f;
         ring->visual->SetIsVisible(progress < 1.0f);
         ring->visual->SetScale({radius, thickness, radius});
@@ -464,7 +465,7 @@ void EnemyMagmaSlime::UpdateMagmaRings(float deltaTime) {
             if (targetDistance >= ring->previousRadius - hitPadding && targetDistance <= radius + hitPadding &&
                 std::abs(target_->GetWorldPosition().y - ring->position.y) <= 3.0f) {
                 const EnemyAttackDefinition& attack = GetAttackDefinition(kVolcanicSlamAttackId);
-                const Vector3 knockbackDirection = NormalizePlanar(target_->GetWorldPosition() - ring->position);
+                const engine::Vector3 knockbackDirection = NormalizePlanar(target_->GetWorldPosition() - ring->position);
                 DamageEvent event;
                 event.target = target_;
                 event.attacker = this;
@@ -493,8 +494,8 @@ void EnemyMagmaSlime::UpdateMagmaRings(float deltaTime) {
 
 void EnemyMagmaSlime::PrepareEruptionTargets() {
     // 中心・前後・左右・斜めを攻撃開始時の向きで固定し、地面に投影する。
-    const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
-    const std::array<Vector3, 9> pattern = {
+    const engine::Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
+    const std::array<engine::Vector3, 9> pattern = {
         lockedTargetPosition_,
         lockedTargetPosition_ + lockedDirection_ * 3.0f,
         lockedTargetPosition_ - lockedDirection_ * 2.7f,
@@ -522,7 +523,7 @@ void EnemyMagmaSlime::SpawnNextMagmaPillar() {
                      6.8f + std::fmod(step, 3.0f) * 0.72f, 0.92f, 0.0f, kEruptionFieldAttackId);
 }
 
-void EnemyMagmaSlime::SpawnMagmaPillar(const Vector3& position, float radius, float height, float lifetime, float delay,
+void EnemyMagmaSlime::SpawnMagmaPillar(const engine::Vector3& position, float radius, float height, float lifetime, float delay,
                                        const char* attackId) {
     // 噴出遅延と攻撃 ID を柱ごとに保持し、着地衝撃と通常噴火で威力を分ける。
     MagmaPillar pillar;
@@ -575,7 +576,7 @@ void EnemyMagmaSlime::UpdateMagmaPillars(float deltaTime) {
         const float activeHeight = (std::max)(0.16f, pillar->height * envelope);
         const float halfHeight = activeHeight * 0.5f;
         const float radiusPulse = 0.92f + std::sin(localAge * 19.0f) * 0.08f;
-        pillar->visual->SetTranslate(pillar->position + Vector3{0.0f, halfHeight, 0.0f});
+        pillar->visual->SetTranslate(pillar->position + engine::Vector3{0.0f, halfHeight, 0.0f});
         pillar->visual->SetScale({halfHeight, halfHeight, halfHeight});
         pillar->visual->SetColor({1.0f, 0.12f + envelope * 0.13f, 0.006f, 0.62f + envelope * 0.34f});
         pillar->visual->SetIsVisible(envelope > 0.015f);
@@ -592,7 +593,7 @@ void EnemyMagmaSlime::UpdateMagmaPillars(float deltaTime) {
 
         pillar->particleTimer -= deltaTime;
         if (pillar->particleTimer <= 0.0f && envelope > 0.18f) {
-            EmitDirectedPreset(kGeyserStreamPreset, pillar->position + Vector3{0.0f, activeHeight * 0.56f, 0.0f},
+            EmitDirectedPreset(kGeyserStreamPreset, pillar->position + engine::Vector3{0.0f, activeHeight * 0.56f, 0.0f},
                                {0.0f, 1.0f, 0.0f}, 0.72f + envelope * 0.54f);
             pillar->particleTimer += 0.075f;
         }
@@ -600,7 +601,7 @@ void EnemyMagmaSlime::UpdateMagmaPillars(float deltaTime) {
         // 柱が十分に伸びた一度だけ判定し、見た目の立ち上がり前の被弾と多重ヒットを避ける。
         if (!pillar->damageApplied && envelope >= 0.62f) {
             const EnemyAttackDefinition& attack = GetAttackDefinition(pillar->attackId);
-            Vector3 knockbackDirection =
+            engine::Vector3 knockbackDirection =
                 target_ ? NormalizePlanar(target_->GetWorldPosition() - pillar->position) : lockedDirection_;
             const float damageScale = pillar->attackId == kVolcanicSlamAttackId ? 0.28f : 0.78f;
             DamageTargetAt(pillar->position, pillar->radius + (target_ ? target_->GetCollisionRadius() : 0.0f),
@@ -621,7 +622,7 @@ void EnemyMagmaSlime::UpdateMagmaPillars(float deltaTime) {
 void EnemyMagmaSlime::BeginLavaSpiral() {
     // 三波を六方向へずらして配置し、波ごとに曲がる向きと発生時刻を変える。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kLavaSpiralAttackId);
-    const Vector3 origin = FindGroundPoint(GetTranslate());
+    const engine::Vector3 origin = FindGroundPoint(GetTranslate());
     const float baseAngle = std::atan2(lockedDirection_.x, lockedDirection_.z);
     constexpr int kWaveCount = 3;
     constexpr int kSpokesPerWave = 6;
@@ -647,13 +648,13 @@ void EnemyMagmaSlime::BeginLavaSpiral() {
             surge.radius = (std::max)(0.85f, attack.radius * (0.70f + static_cast<float>(wave) * 0.05f));
             surge.curveAmount = (wave % 2 == 0 ? 1.0f : -1.0f) * (0.28f + static_cast<float>(wave) * 0.06f);
             surge.leavesPool = spoke % 2 == 0;
-            surge.visual->SetTranslate(origin + Vector3{0.0f, 0.07f, 0.0f});
+            surge.visual->SetTranslate(origin + engine::Vector3{0.0f, 0.07f, 0.0f});
             surge.visual->SetRotationY(angle);
             surge.visual->SetScale({surge.radius * 2.35f, 0.24f, surge.radius * 1.72f});
             surge.visual->SetIsVisible(false);
             surge.visual->UpdateWorldMatrix(true);
             if (surge.crestVisual) {
-                surge.crestVisual->SetTranslate(origin + Vector3{0.0f, surge.radius * 0.46f, 0.0f});
+                surge.crestVisual->SetTranslate(origin + engine::Vector3{0.0f, surge.radius * 0.46f, 0.0f});
                 surge.crestVisual->SetScale({surge.radius * 1.54f, surge.radius * 1.05f, surge.radius * 1.54f});
                 surge.crestVisual->SetIsVisible(false);
                 if (MeshRenderer* renderer = surge.crestVisual->GetMeshRenderer()) {
@@ -697,9 +698,9 @@ void EnemyMagmaSlime::UpdateMagmaSurges(float deltaTime) {
         const float progress = std::clamp(localAge / (std::max)(surge->lifetime, 0.01f), 0.0f, 1.0f);
         const float baseAngle = std::atan2(surge->direction.x, surge->direction.z);
         const float curvedAngle = baseAngle + surge->curveAmount * SmoothStep01(progress);
-        const Vector3 curvedDirection = {std::sin(curvedAngle), 0.0f, std::cos(curvedAngle)};
+        const engine::Vector3 curvedDirection = {std::sin(curvedAngle), 0.0f, std::cos(curvedAngle)};
         const float distance = EaseOutCubic(progress) * surge->maxDistance;
-        Vector3 position = FindGroundPoint(surge->origin + curvedDirection * distance);
+        engine::Vector3 position = FindGroundPoint(surge->origin + curvedDirection * distance);
         position.y += 0.075f;
         const float fade = std::clamp((1.0f - progress) / 0.18f, 0.0f, 1.0f);
         const float pulse = 1.0f + std::sin(localAge * 21.0f) * 0.12f;
@@ -717,7 +718,7 @@ void EnemyMagmaSlime::UpdateMagmaSurges(float deltaTime) {
         if (surge->crestVisual) {
             const float crestScale = surge->radius * (1.34f + (1.0f - progress) * 0.30f) * pulse;
             surge->crestVisual->SetTranslate(position - curvedDirection * (surge->radius * 0.12f) +
-                                             Vector3{0.0f, surge->radius * (0.48f + (1.0f - progress) * 0.12f), 0.0f});
+                                             engine::Vector3{0.0f, surge->radius * (0.48f + (1.0f - progress) * 0.12f), 0.0f});
             surge->crestVisual->SetScale({crestScale * 1.26f, crestScale * 0.86f, crestScale * 1.26f});
             surge->crestVisual->SetColor({
                 1.0f,
@@ -739,7 +740,7 @@ void EnemyMagmaSlime::UpdateMagmaSurges(float deltaTime) {
 
         surge->trailTimer -= deltaTime;
         if (surge->trailTimer <= 0.0f && progress < 0.92f) {
-            EmitDirectedPreset(kSpiralTrailPreset, position, curvedDirection * -1.0f + Vector3{0.0f, 0.28f, 0.0f},
+            EmitDirectedPreset(kSpiralTrailPreset, position, curvedDirection * -1.0f + engine::Vector3{0.0f, 0.28f, 0.0f},
                                0.92f + progress * 0.38f);
             surge->trailTimer += 0.065f;
         }
@@ -767,10 +768,10 @@ void EnemyMagmaSlime::UpdateMagmaSurges(float deltaTime) {
 
 void EnemyMagmaSlime::PrepareFireColumnTargets() {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kFireColumnAttackId);
-    const Vector3 casterGround = FindGroundPoint(GetTranslate());
-    Vector3 toTarget = lockedTargetPosition_ - casterGround;
+    const engine::Vector3 casterGround = FindGroundPoint(GetTranslate());
+    engine::Vector3 toTarget = lockedTargetPosition_ - casterGround;
     const float targetDistance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
-    const Vector3 forward = NormalizePlanar(lockedDirection_);
+    const engine::Vector3 forward = NormalizePlanar(lockedDirection_);
     // 炎柱の外周は中央の攻撃半径より広く取り、3本の柱と線を読み分けやすくします。
     const float orbitRadius = attack.radius * 1.6f;
     const AABB bounds = GetModelWorldAABB();
@@ -781,8 +782,8 @@ void EnemyMagmaSlime::PrepareFireColumnTargets() {
         (std::min)(maxDistance, (std::max)(attack.minRange, bossRadius + orbitRadius * 0.5f + attack.radius + 0.6f));
     const float distance = std::clamp(targetDistance, minimumDistance, maxDistance);
     toTarget = (targetDistance > 0.001f ? NormalizePlanar(toTarget) : forward) * distance;
-    fireColumnCenter_ = FindGroundPoint(casterGround + Vector3{toTarget.x, 0.0f, toTarget.z});
-    const Vector3 side = {forward.z, 0.0f, -forward.x};
+    fireColumnCenter_ = FindGroundPoint(casterGround + engine::Vector3{toTarget.x, 0.0f, toTarget.z});
+    const engine::Vector3 side = {forward.z, 0.0f, -forward.x};
     for (std::size_t index = 0; index < fireColumnOuterPositions_.size(); ++index) {
         const float angle = static_cast<float>(index) * (2.0f * kPi / 3.0f);
         fireColumnOuterPositions_[index] = FindGroundPoint(
@@ -838,13 +839,13 @@ void EnemyMagmaSlime::UpdateFireColumnSigils(float deltaTime) {
                           ? 0.0f
                           : SmoothStep01(std::clamp((elapsed - circleStart) / (blastStart - circleStart), 0.0f, 1.0f)))
                    : SmoothStep01(std::clamp((windupProgress - index * 0.15f) / 0.55f, 0.0f, 1.0f));
-        const Vector3 ground = center ? fireColumnCenter_ : fireColumnOuterPositions_[index];
+        const engine::Vector3 ground = center ? fireColumnCenter_ : fireColumnOuterPositions_[index];
         // 元の平面は2.4m幅なので、魔法陣の半径を炎柱と判定の半径に揃えます。
         const float scale = attack.radius * (center ? (1.0f / 1.2f) : 0.31f);
         sigil->Update(deltaTime);
         sigil->SetRevealProgress(assembly);
         sigil->SetIsVisible(assembly > 0.005f && fade > 0.01f);
-        sigil->SetTranslate(ground + Vector3{0.0f, 0.09f, 0.0f});
+        sigil->SetTranslate(ground + engine::Vector3{0.0f, 0.09f, 0.0f});
         sigil->SetRotation({0.0f, idleTimer_ * (center ? 0.38f : -0.24f), 0.0f});
         sigil->SetScale({scale, 1.0f, scale});
         sigil->SetColor({1.0f, 0.75f, 0.36f, (0.28f + assembly * 0.45f) * fade});
@@ -857,9 +858,9 @@ void EnemyMagmaSlime::UpdateFireColumnSigils(float deltaTime) {
         EffectObject3d* link = fireColumnLinks_[index].get();
         if (!link)
             continue;
-        const Vector3& a = fireColumnOuterPositions_[index];
-        const Vector3& b = fireColumnOuterPositions_[(index + 1) % fireColumnOuterPositions_.size()];
-        const Vector3 delta = b - a;
+        const engine::Vector3& a = fireColumnOuterPositions_[index];
+        const engine::Vector3& b = fireColumnOuterPositions_[(index + 1) % fireColumnOuterPositions_.size()];
+        const engine::Vector3 delta = b - a;
         const float length = std::sqrt(delta.x * delta.x + delta.z * delta.z);
         const float yaw = std::atan2(-delta.z, delta.x);
         link->Update(deltaTime);
@@ -917,7 +918,7 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
 
     // 三本を順に立て、中央の紋章が完成してから主柱を噴き上げます。
     for (std::size_t index = 0; index < fireColumnVisuals_.size(); ++index) {
-        Object3d* flame = fireColumnVisuals_[index].get();
+        engine::Object3d* flame = fireColumnVisuals_[index].get();
         if (!flame)
             continue;
         const bool center = index == fireColumnOuterPositions_.size();
@@ -928,14 +929,14 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
         // シェーダー内の実際の炎半径は立体メッシュ半幅のおよそ0.62倍です。
         const float radius = attack.radius * (center ? 0.81f : 0.31f);
         const float height = center ? 18.0f : 12.5f;
-        const Vector3 ground = center ? fireColumnCenter_ : fireColumnOuterPositions_[index];
+        const engine::Vector3 ground = center ? fireColumnCenter_ : fireColumnOuterPositions_[index];
         if (age > 0.0f && age - deltaTime <= 0.0f) {
-            EmitDirectedPreset(kImpactPreset, ground + Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f},
+            EmitDirectedPreset(kImpactPreset, ground + engine::Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f},
                                center ? 1.75f : 0.90f);
         }
         const float activeHeight = height * rise;
         const float flicker = 1.0f + 0.035f * std::sin(idleTimer_ * 12.0f + index * 1.7f);
-        flame->SetTranslate(ground + Vector3{0.0f, activeHeight * 0.5f, 0.0f});
+        flame->SetTranslate(ground + engine::Vector3{0.0f, activeHeight * 0.5f, 0.0f});
         flame->SetScale({radius * 2.0f * flicker, activeHeight * 0.5f, radius * 2.0f * flicker});
         flame->SetColor({1.0f, center ? 0.58f : 0.38f, 0.035f, (center ? 0.94f : 0.75f) * envelope});
         if (MeshRenderer* renderer = flame->GetMeshRenderer()) {
@@ -957,15 +958,15 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
         for (std::size_t index = 0; index < fireColumnOuterPositions_.size(); ++index) {
             if (elapsed <= static_cast<float>(index) * outerSpacing)
                 continue;
-            EmitDirectedPreset(kFireColumnStreamPreset, fireColumnOuterPositions_[index] + Vector3{0.0f, layerY, 0.0f},
+            EmitDirectedPreset(kFireColumnStreamPreset, fireColumnOuterPositions_[index] + engine::Vector3{0.0f, layerY, 0.0f},
                                {0.0f, 1.0f, 0.0f}, 0.82f);
         }
         if (elapsed >= blastStart) {
-            EmitDirectedPreset(kFireColumnStreamPreset, fireColumnCenter_ + Vector3{0.0f, layerY + 1.0f, 0.0f},
+            EmitDirectedPreset(kFireColumnStreamPreset, fireColumnCenter_ + engine::Vector3{0.0f, layerY + 1.0f, 0.0f},
                                {0.0f, 1.0f, 0.0f}, 1.16f);
             for (int sparkIndex = 0; sparkIndex < 3; ++sparkIndex) {
                 const float angle = idleTimer_ * 0.95f + static_cast<float>(sparkIndex) * (2.0f * kPi / 3.0f);
-                const Vector3 rim = {
+                const engine::Vector3 rim = {
                     std::cos(angle) * attack.radius * 0.77f,
                     layerY + 0.8f,
                     std::sin(angle) * attack.radius * 0.77f,
@@ -987,8 +988,8 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
 void EnemyMagmaSlime::BeginMagmaFlood() {
     // 攻撃方向に十個のセルを時間差で並べ、途中のセルだけ残留床を作る。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kMagmaFloodAttackId);
-    const Vector3 origin = FindGroundPoint(GetTranslate());
-    const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
+    const engine::Vector3 origin = FindGroundPoint(GetTranslate());
+    const engine::Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
     floodDamageTimer_ = 0.0f;
     constexpr int kCellCount = 10;
     for (int index = 0; index < kCellCount; ++index) {
@@ -1027,7 +1028,7 @@ void EnemyMagmaSlime::UpdateMagmaFlood(float deltaTime) {
             continue;
         }
         if (!cell->burstSpawned) {
-            EmitDirectedPreset(kFloodSplashPreset, cell->position, cell->direction + Vector3{0.0f, 0.72f, 0.0f}, 1.2f);
+            EmitDirectedPreset(kFloodSplashPreset, cell->position, cell->direction + engine::Vector3{0.0f, 0.72f, 0.0f}, 1.2f);
             if (cell->leavesPool) {
                 SpawnMagmaPool(cell->position, cell->radius * 0.82f, 2.75f);
             }
@@ -1038,7 +1039,7 @@ void EnemyMagmaSlime::UpdateMagmaFlood(float deltaTime) {
         const float surge = std::exp(-localAge * 3.2f);
         const float pulse = 1.0f + std::sin(localAge * 5.0f) * 0.035f;
         const float yaw = std::atan2(cell->direction.x, cell->direction.z);
-        cell->surface->SetTranslate(cell->position + Vector3{0.0f, 0.18f * appear, 0.0f});
+        cell->surface->SetTranslate(cell->position + engine::Vector3{0.0f, 0.18f * appear, 0.0f});
         cell->surface->SetRotationY(yaw);
         cell->surface->SetScale(
             {cell->radius * 1.12f * appear * pulse, 0.16f + 0.12f * surge, cell->radius * 1.15f * appear / pulse});
@@ -1048,7 +1049,7 @@ void EnemyMagmaSlime::UpdateMagmaFlood(float deltaTime) {
         cell->surface->UpdateWorldMatrix(true);
         if (cell->crest) {
             cell->crest->SetTranslate(cell->position + cell->direction * (cell->radius * 0.52f) +
-                                      Vector3{0.0f, 0.35f + surge * 0.55f, 0.0f});
+                                      engine::Vector3{0.0f, 0.35f + surge * 0.55f, 0.0f});
             cell->crest->SetScale(
                 {cell->radius * 0.95f * appear, (0.23f + surge * 0.45f) * appear, cell->radius * 0.70f * appear});
             cell->crest->SetColor({1.0f, 0.25f, 0.02f, 0.82f * fade * appear});
@@ -1086,7 +1087,7 @@ void EnemyMagmaSlime::UpdateChantVisual(float deltaTime) {
     frame.casterHeight = (std::max)(bounds.max.y - bounds.min.y, baseScale_.y * 1.2f);
     frame.sigilCenter =
         frame.casterPosition + lockedDirection_ * std::clamp(frame.casterRadius * 1.55f, 2.4f, 5.0f) +
-        Vector3{0.0f,
+        engine::Vector3{0.0f,
                 currentAttack_ == AttackKind::MagmaFlood ? frame.casterHeight * 0.35f : frame.casterHeight * 0.58f,
                 0.0f};
     frame.forward = lockedDirection_;

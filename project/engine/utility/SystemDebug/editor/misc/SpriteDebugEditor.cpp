@@ -64,7 +64,7 @@ void SpriteDebugEditor::ClearSceneSelection() {
 	gizmoArrowY_.reset();
 }
 
-void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
+void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHovered) {
 #ifdef USE_IMGUI
 	if (sceneManager_ == nullptr) return;
 
@@ -84,7 +84,7 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 	}
 	auto& currentSprites = currentScene->GetSprites();
 	if (selectedSprite_ &&
-		std::none_of(currentSprites.begin(), currentSprites.end(), [this](const std::unique_ptr<Sprite>& spritePtr) {
+		std::none_of(currentSprites.begin(), currentSprites.end(), [this](const std::unique_ptr<engine::Sprite>& spritePtr) {
 			return spritePtr && spritePtr.get() == selectedSprite_;
 		})) {
 		selectedSprite_ = nullptr;
@@ -119,7 +119,7 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 			// Ctrl + C (コピー) または Ctrl + D (複製)
 			if (isCtrlDown && (inputManager_->IsKeyTriggered(DIK_C) || inputManager_->IsKeyTriggered(DIK_D))) {
 
-				auto newSprite = std::make_unique<Sprite>();
+				auto newSprite = std::make_unique<engine::Sprite>();
 
 				// 元のスプライトからテクスチャを取得して初期化
 				uint32_t handle = selectedSprite_->GetTextureHandle();
@@ -128,7 +128,7 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 				// 元のスプライトのパラメータを丸コピー
 				newSprite->SetName(selectedSprite_->GetName() + "_Copy");
 				// ※完全に重なると見えないので、少しズラして配置する
-				Vector2 selectedWorldPos = selectedSprite_->GetWorldPosition();
+				engine::Vector2 selectedWorldPos = selectedSprite_->GetWorldPosition();
 				newSprite->SetPosition({ selectedWorldPos.x + 20.0f, selectedWorldPos.y + 20.0f });
 				newSprite->SetSize(selectedSprite_->GetSize());
 				newSprite->SetAnchorPoint(selectedSprite_->GetAnchorPoint());
@@ -146,7 +146,7 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 				// 通常時は 0.5 ピクセル/フレームの微細な移動にします。
 				float nudgeStep = (inputManager_->IsKeyPressed(DIK_LSHIFT) || inputManager_->IsKeyPressed(DIK_RSHIFT)) ? 5.0f : 0.5f;
 
-				Vector2 pos = selectedSprite_->GetPosition();
+				engine::Vector2 pos = selectedSprite_->GetPosition();
 				bool isNudged = false;
 
 				if (inputManager_->IsKeyPressed(DIK_UP)) { pos.y -= nudgeStep; isNudged = true; }
@@ -178,8 +178,8 @@ SKIP_SHORTCUTS:
 
 			// ドラッグ中
 			if (inputManager_->IsMouseButtonPressed(0) && (isMovingX_ || isMovingY_)) {
-				Vector2 delta = { localMousePos.x - dragStartMousePos_.x, localMousePos.y - dragStartMousePos_.y };
-				Vector2 newPos = { dragStartSpritePos_.x + delta.x, dragStartSpritePos_.y + delta.y };
+				engine::Vector2 delta = { localMousePos.x - dragStartMousePos_.x, localMousePos.y - dragStartMousePos_.y };
+				engine::Vector2 newPos = { dragStartSpritePos_.x + delta.x, dragStartSpritePos_.y + delta.y };
 
 				// Shiftキーを押している間は10ピクセル単位でスナップ
 				if (inputManager_->IsKeyPressed(DIK_LSHIFT) || inputManager_->IsKeyPressed(DIK_RSHIFT)) {
@@ -205,7 +205,7 @@ SKIP_SHORTCUTS:
 		bool hit = false;
 		// 重なり順を考慮して逆順（手前）からチェック
 		for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
-			Sprite* sprite = it->get();
+			engine::Sprite* sprite = it->get();
 			// ロックされていないスプライトのみ選択可能にする
 			if (sprite && !sprite->IsLocked() && IsMouseOver(sprite, localMousePos)) {
 				selectedSprite_ = sprite;
@@ -240,7 +240,7 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
 	if (!currentScene) return;
 
-	SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
+	engine::SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
 	if (!spriteCommon) return;
 	auto& sprites = currentScene->GetSprites();
 
@@ -274,11 +274,6 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 			std::string fullPath = directoryPath + std::string(currentSpriteFilename_);
 			SaveSpriteLayout(fullPath);
 		}
-		ImGui::SameLine();
-		if (ImGui::Button(ICON_FA_UPLOAD " 読み込み (Load)")) {
-			std::string fullPath = directoryPath + std::string(currentSpriteFilename_);
-			// LoadSpriteLayout(fullPath); // 実装に合わせて呼び出し
-		}
 	}
 
 	ImGui::Separator();
@@ -294,7 +289,7 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 	}
 
 	for (const auto& spritePtr : sprites) {
-		Sprite* sprite = spritePtr.get();
+		engine::Sprite* sprite = spritePtr.get();
 		if (!sprite) continue;
 		if (sprite->GetParent() != nullptr) continue;
 		DrawSpriteNode(sprite);
@@ -342,15 +337,15 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 	if (ImGui::BeginDragDropTarget()) {
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
 			const char* droppedFilename = (const char*)payload->Data;
-			auto newSprite = std::make_unique<Sprite>();
-			uint32_t handle = Sprite::LoadTexture(droppedFilename);
+			auto newSprite = std::make_unique<engine::Sprite>();
+			uint32_t handle = engine::Sprite::LoadTexture(droppedFilename);
 			newSprite->Initialize(spriteCommon, handle);
 			newSprite->SetName(droppedFilename);
 			newSprite->SetTextureName(droppedFilename);
 			selectedSprite_ = currentScene->AddSprite(std::move(newSprite));
 		}
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_NODE")) {
-			Sprite* sourceSprite = *(Sprite**)payload->Data;
+			engine::Sprite* sourceSprite = *(engine::Sprite**)payload->Data;
 			if (sourceSprite) {
 				sourceSprite->SetParent(nullptr);
 			}
@@ -365,7 +360,7 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 // =========================================================================
 // 2. Inspector (右パネル) の描画
 // =========================================================================
-void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
+void SpriteDebugEditor::DrawSpriteNode(engine::Sprite* sprite) {
 #ifdef USE_IMGUI
     // Sprite自身をImGui IDに使い、同名Spriteの表示・選択が衝突しないようにします。
 	if (!sprite) return;
@@ -403,15 +398,15 @@ void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
 	}
 
 	if (ImGui::BeginDragDropSource()) {
-		Sprite* payloadSprite = sprite;
-		ImGui::SetDragDropPayload("SPRITE_NODE", &payloadSprite, sizeof(Sprite*));
+		engine::Sprite* payloadSprite = sprite;
+		ImGui::SetDragDropPayload("SPRITE_NODE", &payloadSprite, sizeof(engine::Sprite*));
 		ImGui::Text("Sprite: %s", label.c_str());
 		ImGui::EndDragDropSource();
 	}
 
 	if (ImGui::BeginDragDropTarget()) {
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_NODE")) {
-			Sprite* sourceSprite = *(Sprite**)payload->Data;
+			engine::Sprite* sourceSprite = *(engine::Sprite**)payload->Data;
 			if (sourceSprite && sourceSprite != sprite) {
 				sourceSprite->SetParent(sprite);
 			}
@@ -420,7 +415,7 @@ void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
 	}
 
 	if (nodeOpen) {
-		for (Sprite* child : sprite->GetChildren()) {
+		for (engine::Sprite* child : sprite->GetChildren()) {
 			if (child && child->GetParent() == sprite) {
 				DrawSpriteNode(child);
 			}
@@ -432,7 +427,7 @@ void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
 #endif
 }
 
-bool SpriteDebugEditor::TryGetTexturePixelSize(Sprite* sprite, Vector2& outSize) const {
+bool SpriteDebugEditor::TryGetTexturePixelSize(engine::Sprite* sprite, engine::Vector2& outSize) const {
     // 画像の実ピクセル寸法を取得できないSpriteは縦横比調整から除きます。
 	if (!sprite) {
 		return false;
@@ -452,7 +447,7 @@ bool SpriteDebugEditor::TryGetTexturePixelSize(Sprite* sprite, Vector2& outSize)
 	return true;
 }
 
-bool SpriteDebugEditor::IsGeneratedTextSprite(Sprite* sprite) const {
+bool SpriteDebugEditor::IsGeneratedTextSprite(engine::Sprite* sprite) const {
     // 自動生成した文字PNGだけに一括補正を限定するため、参照パスで判別します。
 	if (!sprite) {
 		return false;
@@ -462,13 +457,13 @@ bool SpriteDebugEditor::IsGeneratedTextSprite(Sprite* sprite) const {
 	return textureName.find("generated/text/") != std::string::npos;
 }
 
-float SpriteDebugEditor::CalcAspectError(Sprite* sprite, const Vector2& textureSize) const {
+float SpriteDebugEditor::CalcAspectError(engine::Sprite* sprite, const engine::Vector2& textureSize) const {
     // 画像とSpriteの比率差を測り、補正対象を判定します。
 	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
 		return 0.0f;
 	}
 
-	const Vector2 size = sprite->GetSize();
+	const engine::Vector2 size = sprite->GetSize();
 	if (size.x <= 0.0f || size.y <= 0.0f) {
 		return 0.0f;
 	}
@@ -482,13 +477,13 @@ float SpriteDebugEditor::CalcAspectError(Sprite* sprite, const Vector2& textureS
 	return std::fabs((spriteAspect / textureAspect) - 1.0f);
 }
 
-Vector2 SpriteDebugEditor::MakeAspectFixedSize(Sprite* sprite, const Vector2& textureSize, bool keepWidth) const {
+engine::Vector2 SpriteDebugEditor::MakeAspectFixedSize(engine::Sprite* sprite, const engine::Vector2& textureSize, bool keepWidth) const {
     // 幅か高さの選択軸を維持して、もう一方だけ画像比率へ合わせます。
 	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
 		return { 0.0f, 0.0f };
 	}
 
-	const Vector2 currentSize = sprite->GetSize();
+	const engine::Vector2 currentSize = sprite->GetSize();
 	const float textureAspect = textureSize.x / textureSize.y;
 	if (keepWidth) {
 		return { currentSize.x, currentSize.x / textureAspect };
@@ -496,13 +491,13 @@ Vector2 SpriteDebugEditor::MakeAspectFixedSize(Sprite* sprite, const Vector2& te
 	return { currentSize.y * textureAspect, currentSize.y };
 }
 
-Vector2 SpriteDebugEditor::MakeNearestIntegerScaleSize(Sprite* sprite, const Vector2& textureSize) const {
+engine::Vector2 SpriteDebugEditor::MakeNearestIntegerScaleSize(engine::Sprite* sprite, const engine::Vector2& textureSize) const {
     // 元画像との倍率を四分の一刻みへ丸め、細かすぎる縮小を避けます。
 	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
 		return { 0.0f, 0.0f };
 	}
 
-	const Vector2 currentSize = sprite->GetSize();
+	const engine::Vector2 currentSize = sprite->GetSize();
 	float scale = ((currentSize.x / textureSize.x) + (currentSize.y / textureSize.y)) * 0.5f;
 	scale = std::round(scale * 4.0f) / 4.0f;
 	scale = std::max(0.25f, scale);
@@ -521,8 +516,8 @@ int SpriteDebugEditor::FixSpriteAspectInCurrentScene(bool textOnly, bool keepWid
 	}
 
 	int fixedCount = 0;
-	for (const std::unique_ptr<Sprite>& spritePtr : currentScene->GetSprites()) {
-		Sprite* sprite = spritePtr.get();
+	for (const std::unique_ptr<engine::Sprite>& spritePtr : currentScene->GetSprites()) {
+		engine::Sprite* sprite = spritePtr.get();
 		if (!sprite) {
 			continue;
 		}
@@ -530,7 +525,7 @@ int SpriteDebugEditor::FixSpriteAspectInCurrentScene(bool textOnly, bool keepWid
 			continue;
 		}
 
-		Vector2 textureSize{};
+		engine::Vector2 textureSize{};
 		if (!TryGetTexturePixelSize(sprite, textureSize)) {
 			continue;
 		}
@@ -601,16 +596,16 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		ImGui::Separator();
 
 		// 基本パラメータ
-		Vector2 pos = selectedSprite_->GetPosition();
-		Vector2 size = selectedSprite_->GetSize();
-		Vector2 anchor = selectedSprite_->GetAnchorPoint();
-		Vector4 color = selectedSprite_->GetColor();
+		engine::Vector2 pos = selectedSprite_->GetPosition();
+		engine::Vector2 size = selectedSprite_->GetSize();
+		engine::Vector2 anchor = selectedSprite_->GetAnchorPoint();
+		engine::Vector4 color = selectedSprite_->GetColor();
 		float emissive = selectedSprite_->GetEmissive();
 		if (ImGui::DragFloat2(ICON_FA_ARROWS_ALT " 座標 (Pos)", &pos.x, 1.0f)) selectedSprite_->SetPosition(pos);
 		if (ImGui::DragFloat2(ICON_FA_EXPAND_ARROWS_ALT " サイズ (Size)", &size.x, 1.0f)) selectedSprite_->SetSize(size);
-		Vector2 texturePixelSize{};
+		engine::Vector2 texturePixelSize{};
 		if (TryGetTexturePixelSize(selectedSprite_, texturePixelSize)) {
-			const Vector2 currentSize = selectedSprite_->GetSize();
+			const engine::Vector2 currentSize = selectedSprite_->GetSize();
 			const float scaleX = texturePixelSize.x > 0.0f ? currentSize.x / texturePixelSize.x : 0.0f;
 			const float scaleY = texturePixelSize.y > 0.0f ? currentSize.y / texturePixelSize.y : 0.0f;
 			const float aspectError = CalcAspectError(selectedSprite_, texturePixelSize);
@@ -672,7 +667,7 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		if (ImGui::BeginDragDropTarget()) {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
 				const char* droppedFilename = (const char*)payload->Data;
-				uint32_t newHandle = Sprite::LoadTexture(droppedFilename);
+				uint32_t newHandle = engine::Sprite::LoadTexture(droppedFilename);
 				selectedSprite_->SetTextureHandle(newHandle);
 				selectedSprite_->SetTextureName(droppedFilename);
 			}
@@ -855,13 +850,25 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
 	if (currentScene == nullptr) return;
 
-	json root;
+	// 未知の画面参照も残し、Editorで保存しても事前ロードの依存を失わないようにする。
+	json root = json::object();
+	{
+		std::ifstream existing(filename);
+		if (existing.is_open()) {
+			try {
+				existing >> root;
+				if (!root.is_object()) return;
+			} catch (const json::exception&) {
+				return;
+			}
+		}
+	}
 	json spriteArray = json::array();
 
 	auto& sprites = currentScene->GetSprites();
 
 	for (const auto& spritePtr : sprites) {
-		Sprite* sprite = spritePtr.get();
+		engine::Sprite* sprite = spritePtr.get();
 		if (sprite == nullptr) continue;
 
 		json spriteData;
@@ -873,10 +880,10 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 			spriteData["name"] = "NoName_" + std::to_string((size_t)sprite);
 		}
 
-		Vector2 pos = sprite->GetPosition();
-		Vector2 size = sprite->GetSize();
-		Vector2 anchor = sprite->GetAnchorPoint();
-		Vector4 color = sprite->GetColor();
+		engine::Vector2 pos = sprite->GetPosition();
+		engine::Vector2 size = sprite->GetSize();
+		engine::Vector2 anchor = sprite->GetAnchorPoint();
+		engine::Vector4 color = sprite->GetColor();
 		spriteData["position"] = { pos.x, pos.y };
 		spriteData["size"] = { size.x, size.y };
 		spriteData["anchor"] = { anchor.x, anchor.y };
@@ -900,12 +907,12 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 	}
 }
 
-bool SpriteDebugEditor::IsMouseOver(Sprite* sprite, const Vector2& localMousePos) const {
+bool SpriteDebugEditor::IsMouseOver(engine::Sprite* sprite, const engine::Vector2& localMousePos) const {
 	if (sprite == nullptr) return false;
 
-	Vector2 pos = sprite->GetWorldPosition();
-	Vector2 size = sprite->GetSize();
-	Vector2 anchor = sprite->GetAnchorPoint();
+	engine::Vector2 pos = sprite->GetWorldPosition();
+	engine::Vector2 size = sprite->GetSize();
+	engine::Vector2 anchor = sprite->GetAnchorPoint();
 
 	// スプライトの描画範囲を計算
 	float minX = pos.x - (anchor.x * size.x);
@@ -937,22 +944,22 @@ void SpriteDebugEditor::Draw() {
 	if (currentScene == nullptr) {
 		return;
 	}
-	SpriteCommon* currentSpriteCommon = currentScene->GetSpriteCommon();
+	engine::SpriteCommon* currentSpriteCommon = currentScene->GetSpriteCommon();
 	if (currentSpriteCommon == nullptr) {
 		return;
 	}
 	if (gizmoArrowX_ == nullptr || initializedSpriteCommon_ != currentSpriteCommon) {
 
 		// ギズモを「現在のシーンの Common」で再作成
-		gizmoTextureHandle_ = Sprite::LoadTexture("common/white.png");
+		gizmoTextureHandle_ = engine::Sprite::LoadTexture("common/white.png");
 
-		gizmoArrowX_ = std::make_unique<Sprite>();
+		gizmoArrowX_ = std::make_unique<engine::Sprite>();
 		gizmoArrowX_->Initialize(currentSpriteCommon, gizmoTextureHandle_);
 		gizmoArrowX_->SetSize({ 50.0f, 10.0f });
 		gizmoArrowX_->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
 		gizmoArrowX_->SetAnchorPoint({ 0.0f, 0.5f });
 
-		gizmoArrowY_ = std::make_unique<Sprite>();
+		gizmoArrowY_ = std::make_unique<engine::Sprite>();
 		gizmoArrowY_->Initialize(currentSpriteCommon, gizmoTextureHandle_);
 		gizmoArrowY_->SetSize({ 10.0f, 50.0f });
 		gizmoArrowY_->SetColor({ 0.0f, 1.0f, 0.0f, 0.8f });
@@ -963,7 +970,7 @@ void SpriteDebugEditor::Draw() {
 	}
 
 	// --- ギズモの描画 ---
-	Vector2 pos = selectedSprite_->GetWorldPosition();
+	engine::Vector2 pos = selectedSprite_->GetWorldPosition();
 	gizmoArrowX_->SetPosition(pos);
 	gizmoArrowY_->SetPosition(pos);
 

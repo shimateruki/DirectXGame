@@ -23,28 +23,29 @@ constexpr const char* kDebrisPresetDirectory = "Resources/json/debris/";
 constexpr size_t kMaxActiveDebrisPieces = 96;
 constexpr bool kEnableDebrisShadowWvp = true;
 
-Vector3 ReadVector3(const json& j, const char* key, const Vector3& fallback) {
+engine::Vector3 ReadVector3(const json& j, const char* key, const engine::Vector3& fallback) {
     if (!j.contains(key) || !j[key].is_array() || j[key].size() < 3) {
         return fallback;
     }
     return { j[key][0].get<float>(), j[key][1].get<float>(), j[key][2].get<float>() };
 }
 
-Vector4 ReadVector4(const json& j, const char* key, const Vector4& fallback) {
+engine::Vector4 ReadVector4(const json& j, const char* key, const engine::Vector4& fallback) {
     if (!j.contains(key) || !j[key].is_array() || j[key].size() < 4) {
         return fallback;
     }
     return { j[key][0].get<float>(), j[key][1].get<float>(), j[key][2].get<float>(), j[key][3].get<float>() };
 }
 
-void WriteVector3(json& j, const char* key, const Vector3& value) {
+void WriteVector3(json& j, const char* key, const engine::Vector3& value) {
     j[key] = { value.x, value.y, value.z };
 }
 
-void WriteVector4(json& j, const char* key, const Vector4& value) {
+void WriteVector4(json& j, const char* key, const engine::Vector4& value) {
     j[key] = { value.x, value.y, value.z, value.w };
 }
 
+// 最大値がほぼゼロの場合は比率1として扱います。
 float SafeRatio(float value, float maxValue) {
     if (maxValue <= 0.0001f) {
         return 1.0f;
@@ -113,8 +114,8 @@ void DebrisEffectManager::Update(float deltaTime) {
         return;
     }
 
-    Math math;
-    Matrix4x4 viewProjection = Math::MakeIdentity4x4();
+    engine::Math math;
+    engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (camera) {
         viewProjection = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
@@ -122,8 +123,8 @@ void DebrisEffectManager::Update(float deltaTime) {
             cameraData_->worldPosition = camera->GetEye();
         }
     }
-    Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
-    const Matrix4x4* lightViewProjectionPtr = kEnableDebrisShadowWvp ? &lightViewProjection : nullptr;
+    engine::Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
+    const engine::Matrix4x4* lightViewProjectionPtr = kEnableDebrisShadowWvp ? &lightViewProjection : nullptr;
 
     for (size_t index = 0; index < activePieces_.size();) {
         DebrisPiece& piece = activePieces_[index];
@@ -143,8 +144,8 @@ void DebrisEffectManager::Update(float deltaTime) {
             piece.velocity.y *= drag;
             piece.velocity.z *= drag;
 
-            Vector3 position = piece.position + piece.velocity * deltaTime;
-            Vector3 rotation = piece.rotation + piece.angularVelocity * deltaTime;
+            engine::Vector3 position = piece.position + piece.velocity * deltaTime;
+            engine::Vector3 rotation = piece.rotation + piece.angularVelocity * deltaTime;
 
             if (piece.collideGround && position.y <= piece.groundY && piece.velocity.y < 0.0f) {
                 position.y = piece.groundY;
@@ -152,7 +153,7 @@ void DebrisEffectManager::Update(float deltaTime) {
                 piece.velocity.x *= piece.friction;
                 piece.velocity.z *= piece.friction;
                 piece.angularVelocity = piece.angularVelocity * piece.friction;
-                if (std::abs(piece.velocity.y) < 0.7f && Math::Length(piece.velocity) < 2.0f) {
+                if (std::abs(piece.velocity.y) < 0.7f && engine::Math::Length(piece.velocity) < 2.0f) {
                     // 小さな跳ね返りをいつまでも計算しないよう、十分遅くなった破片を休止する。
                     piece.sleeping = true;
                 }
@@ -428,7 +429,7 @@ void DebrisEffectManager::PrewarmPresets(const std::vector<std::string>& presetN
     }
 }
 
-void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& position) {
+void DebrisEffectManager::Spawn(const std::string& presetName, const engine::Vector3& position) {
     // 登録済み設定を優先し、無いときだけ JSON を読んでキャッシュする。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -448,7 +449,7 @@ void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& po
     }
 }
 
-void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const Vector3& position, float groundY) {
+void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const engine::Vector3& position, float groundY) {
     // プリセット本体は変更せず、今回の発生に限って衝突面の高さを差し替える。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -471,7 +472,7 @@ void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const Vec
     }
 }
 
-void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, const Vector3& position) {
+void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, const engine::Vector3& position) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     Object3dCommon* common = ResolveCommon();
@@ -521,7 +522,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         piece.age = 0.0f;
         piece.sleeping = false;
         piece.matrixDirty = true;
-        piece.position = position + config.spawnOffset + Vector3{
+        piece.position = position + config.spawnOffset + engine::Vector3{
             RandomRange(-std::abs(config.spawnBoxHalfExtents.x), std::abs(config.spawnBoxHalfExtents.x)),
             RandomRange(-std::abs(config.spawnBoxHalfExtents.y), std::abs(config.spawnBoxHalfExtents.y)),
             RandomRange(-std::abs(config.spawnBoxHalfExtents.z), std::abs(config.spawnBoxHalfExtents.z))
@@ -555,11 +556,11 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         }
 
         Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-        Matrix4x4 viewProjection = Math::MakeIdentity4x4();
+        engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
         if (camera) {
-            viewProjection = Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+            viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
         }
-        Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
+        engine::Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
         UpdatePieceMatrix(piece, viewProjection, kEnableDebrisShadowWvp ? &lightViewProjection : nullptr);
         piece.matrixDirty = false;
         activePieces_.push_back(std::move(piece));
@@ -644,20 +645,20 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
         return false;
     }
 
-    piece.wvpData->WVP = Math::MakeIdentity4x4();
-    piece.wvpData->world = Math::MakeIdentity4x4();
-    piece.wvpData->WorldInverseTranspose = Math::MakeIdentity4x4();
+    piece.wvpData->WVP = engine::Math::MakeIdentity4x4();
+    piece.wvpData->world = engine::Math::MakeIdentity4x4();
+    piece.wvpData->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
     if (piece.shadowWvpData) {
-        piece.shadowWvpData->WVP = Math::MakeIdentity4x4();
-        piece.shadowWvpData->world = Math::MakeIdentity4x4();
-        piece.shadowWvpData->WorldInverseTranspose = Math::MakeIdentity4x4();
+        piece.shadowWvpData->WVP = engine::Math::MakeIdentity4x4();
+        piece.shadowWvpData->world = engine::Math::MakeIdentity4x4();
+        piece.shadowWvpData->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
     }
 
     // 以前の材質値が混ざらないよう、今回のプリセット値で全体を初期化する。
     std::memset(piece.materialData, 0, sizeof(MeshRenderer::MaterialData));
     piece.materialData->color = config.color;
     piece.materialData->enableLighting = 1;
-    piece.materialData->uvTransform = Math::MakeIdentity4x4();
+    piece.materialData->uvTransform = engine::Math::MakeIdentity4x4();
     piece.materialData->selectedLighting = 2;
     piece.materialData->shininess = 20.0f;
     piece.materialData->materialType = config.materialType;
@@ -670,23 +671,23 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     return true;
 }
 
-void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4* lightViewProjection) {
+void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const engine::Matrix4x4& viewProjection, const engine::Matrix4x4* lightViewProjection) {
     // 通常描画と影描画へ同じ world 行列を渡し、破片の向きを一致させる。
     if (!piece.wvpData) {
         return;
     }
 
-    Vector3 scale = { piece.currentScale, piece.currentScale, piece.currentScale };
-    Matrix4x4 world = Math::MakeAffineMatrix(scale, piece.rotation, piece.position);
-    piece.wvpData->WVP = Math::Multiply(world, viewProjection);
+    engine::Vector3 scale = { piece.currentScale, piece.currentScale, piece.currentScale };
+    engine::Matrix4x4 world = engine::Math::MakeAffineMatrix(scale, piece.rotation, piece.position);
+    piece.wvpData->WVP = engine::Math::Multiply(world, viewProjection);
     piece.wvpData->world = world;
-    piece.wvpData->WorldInverseTranspose = Math::Transpose(Math::Inverse(world));
+    piece.wvpData->WorldInverseTranspose = engine::Math::Transpose(engine::Math::Inverse(world));
     if (piece.materialData) {
         piece.materialData->time = piece.age;
     }
 
     if (piece.shadowWvpData && lightViewProjection) {
-        piece.shadowWvpData->WVP = Math::Multiply(world, *lightViewProjection);
+        piece.shadowWvpData->WVP = engine::Math::Multiply(world, *lightViewProjection);
         piece.shadowWvpData->world = world;
         piece.shadowWvpData->WorldInverseTranspose = piece.wvpData->WorldInverseTranspose;
     }
@@ -710,22 +711,22 @@ int DebrisEffectManager::RandomIndex(int maxExclusive) {
     return distribution(randomEngine_);
 }
 
-Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& config) {
+engine::Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& config) {
     // 基準方向へ水平拡散と垂直範囲を加え、最後に単位方向へ正規化する。
-    Vector3 base = Math::Normalize(config.baseDirection);
-    if (Math::Length(base) < 0.001f) {
+    engine::Vector3 base = engine::Math::Normalize(config.baseDirection);
+    if (engine::Math::Length(base) < 0.001f) {
         base = { 0.0f, 0.0f, 1.0f };
     }
 
     float angle = RandomRange(-3.141592f, 3.141592f);
     float spread = (std::max)(0.0f, config.horizontalSpread);
-    Vector3 randomHorizontal = { std::cos(angle) * spread, 0.0f, std::sin(angle) * spread };
-    Vector3 direction = {
+    engine::Vector3 randomHorizontal = { std::cos(angle) * spread, 0.0f, std::sin(angle) * spread };
+    engine::Vector3 direction = {
         base.x + randomHorizontal.x,
         RandomRange(config.verticalMin, config.verticalMax),
         base.z + randomHorizontal.z
     };
-    return Math::Normalize(direction);
+    return engine::Math::Normalize(direction);
 }
 
 std::string DebrisEffectManager::ResolvePresetPath(const std::string& presetName) const {

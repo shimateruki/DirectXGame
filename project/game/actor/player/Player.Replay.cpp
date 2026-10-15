@@ -2,17 +2,17 @@
 #include "game/actor/player/copy/PlayerCopyAbilityController.h"
 
 namespace {
-json ToJson(const Vector3& value) {
+json ToJson(const engine::Vector3& value) {
     // 要素順を復元側と揃え、リプレイの古い配列形式を維持する。
     return json::array({value.x, value.y, value.z});
 }
 
-json ToJson(const Vector4& value) {
+json ToJson(const engine::Vector4& value) {
     // 色と姿勢の四成分を固定順で保存する。
     return json::array({value.x, value.y, value.z, value.w});
 }
 
-Vector3 ReadVector3(const json& value, const Vector3& fallback) {
+engine::Vector3 ReadVector3(const json& value, const engine::Vector3& fallback) {
     // 古いリプレイに項目がない場合は現在値を壊さず再生を続ける。
     if (!value.is_array() || value.size() < 3) {
         return fallback;
@@ -20,7 +20,7 @@ Vector3 ReadVector3(const json& value, const Vector3& fallback) {
     return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
 
-Vector4 ReadVector4(const json& value, const Vector4& fallback) {
+engine::Vector4 ReadVector4(const json& value, const engine::Vector4& fallback) {
     // 成分不足のデータで色などの既存値を上書きしない。
     if (!value.is_array() || value.size() < 4) {
         return fallback;
@@ -28,6 +28,7 @@ Vector4 ReadVector4(const json& value, const Vector4& fallback) {
     return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
 }
 
+// Replayで復元できるコピー形態の数値範囲か検査します。
 bool IsSupportedMorphTypeValue(int value) {
     // 保存時の整数は現行のコピー種別だけ許可し、廃止値を安全に除外する。
     switch (static_cast<Player::EnemyMorphType>(value)) {

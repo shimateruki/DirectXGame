@@ -13,21 +13,22 @@ std::string ToLowerAscii(std::string text) {
     return text;
 }
 
-std::vector<Object3d*> CollectInspectorTargets(DebugEditor* editor, Object3d* primary) {
+// 主選択を必ず含め、複数選択から重複とnullを除いた編集対象を返します。
+std::vector<engine::Object3d*> CollectInspectorTargets(DebugEditor* editor, engine::Object3d* primary) {
     // 複数選択の重複を除き、主選択Objectが選択一覧から漏れても編集対象へ含める。
-    std::vector<Object3d*> targets;
+    std::vector<engine::Object3d*> targets;
     if (!primary) {
         return targets;
     }
 
-    const std::vector<Object3d*>& selectedObjects = editor->GetSelectedObjects();
+    const std::vector<engine::Object3d*>& selectedObjects = editor->GetSelectedObjects();
     if (selectedObjects.empty()) {
         targets.push_back(primary);
         return targets;
     }
 
     targets.reserve(selectedObjects.size());
-    for (Object3d* object : selectedObjects) {
+    for (engine::Object3d* object : selectedObjects) {
         if (!object) {
             continue;
         }
@@ -43,11 +44,13 @@ std::vector<Object3d*> CollectInspectorTargets(DebugEditor* editor, Object3d* pr
     return targets;
 }
 
-void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<Object3d*>& targets) {
+// Inspectorで変更したObjectをScene保存の変更対象として記録します。
+void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<engine::Object3d*>& targets) {
+    // 複数選択の編集を保存対象へ反映するため、生存しているObjectだけ変更済みにする。
     if (!editor) {
         return;
     }
-    for (Object3d* object : targets) {
+    for (engine::Object3d* object : targets) {
         if (!object) {
             continue;
         }
@@ -55,8 +58,9 @@ void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<Object3d*>
     }
 }
 
-void RefreshInspectorTargetMatrices(const std::vector<Object3d*>& targets) {
-    for (Object3d* object : targets) {
+// Transform編集後、対象のローカル行列とワールド行列を更新します。
+void RefreshInspectorTargetMatrices(const std::vector<engine::Object3d*>& targets) {
+    for (engine::Object3d* object : targets) {
         if (!object) {
             continue;
         }
@@ -65,6 +69,7 @@ void RefreshInspectorTargetMatrices(const std::vector<Object3d*>& targets) {
     }
 }
 
+// 元の倍率がほぼゼロの場合は拡縮比1を返し、ゼロ除算を避けます。
 float SafeScaleRatio(float after, float before) {
     if (std::fabs(before) < 0.0001f) {
         return 1.0f;
@@ -72,15 +77,16 @@ float SafeScaleRatio(float after, float before) {
     return after / before;
 }
 
+// 主選択の移動・回転・拡縮差分を、他の選択Objectにも反映します。
 void ApplyPrimaryTransformDeltaToTargets(
-    const std::vector<Object3d*>& targets,
-    Object3d* primary,
-    const Vector3& beforePosition,
-    const Vector3& afterPosition,
-    const Vector3& beforeRotation,
-    const Vector3& afterRotation,
-    const Vector3& beforeScale,
-    const Vector3& afterScale,
+    const std::vector<engine::Object3d*>& targets,
+    engine::Object3d* primary,
+    const engine::Vector3& beforePosition,
+    const engine::Vector3& afterPosition,
+    const engine::Vector3& beforeRotation,
+    const engine::Vector3& afterRotation,
+    const engine::Vector3& beforeScale,
+    const engine::Vector3& afterScale,
     bool applyPosition,
     bool applyRotation,
     bool applyScale) {
@@ -90,24 +96,24 @@ void ApplyPrimaryTransformDeltaToTargets(
     }
 
     // 主選択の絶対値ではなく差分を他の対象へ渡し、相対的な配置を保つ。
-    const Vector3 positionDelta = {
+    const engine::Vector3 positionDelta = {
         afterPosition.x - beforePosition.x,
         afterPosition.y - beforePosition.y,
         afterPosition.z - beforePosition.z,
     };
-    const Vector3 rotationDelta = {
+    const engine::Vector3 rotationDelta = {
         afterRotation.x - beforeRotation.x,
         afterRotation.y - beforeRotation.y,
         afterRotation.z - beforeRotation.z,
     };
-    const Vector3 scaleRatio = {
+    const engine::Vector3 scaleRatio = {
         SafeScaleRatio(afterScale.x, beforeScale.x),
         SafeScaleRatio(afterScale.y, beforeScale.y),
         SafeScaleRatio(afterScale.z, beforeScale.z),
     };
 
     // 主選択は既にUIで変更済みなので、それ以外だけローカルTransformへ差分を適用する。
-    for (Object3d* object : targets) {
+    for (engine::Object3d* object : targets) {
         if (!object || object == primary) {
             continue;
         }
@@ -138,7 +144,8 @@ void ApplyPrimaryTransformDeltaToTargets(
     }
 }
 
-bool IsSpriteCardObject(const Object3d* object) {
+// 2.5D表示用のSprite Cardとして扱うObjectか判定します。
+bool IsSpriteCardObject(const engine::Object3d* object) {
     if (!object) {
         return false;
     }
@@ -151,7 +158,8 @@ bool IsSpriteCardObject(const Object3d* object) {
         name.find("2.5D") != std::string::npos;
 }
 
-void ConfigureSpriteCardObject(Object3d* object) {
+// Sprite Cardの表示に必要な描画・衝突設定をObjectへ適用します。
+void ConfigureSpriteCardObject(engine::Object3d* object) {
     if (!object) {
         return;
     }
@@ -179,20 +187,21 @@ void ConfigureSpriteCardObject(Object3d* object) {
     object->SetCollisionAttribute(0);
     object->SetCollisionMask(0);
 
-    Object3d::ColliderConfig colliderConfig = object->GetColliderConfig();
+    engine::Object3d::ColliderConfig colliderConfig = object->GetColliderConfig();
     colliderConfig.type = ColliderType::kNone;
     object->SetColliderConfig(colliderConfig);
 }
 
+// RegistryのComponent操作を選択対象へまとめて適用します。
 void ApplyRegisteredComponentToTargets(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
+    const std::vector<engine::Object3d*>& targets,
     const std::string& componentTypeId,
     bool add) {
     // 複数選択へ同じComponent操作を適用し、変更があったときだけDirtyと行列を更新する。
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     bool changed = false;
-    for (Object3d* target : targets) {
+    for (engine::Object3d* target : targets) {
         if (!target) {
             continue;
         }
@@ -206,14 +215,15 @@ void ApplyRegisteredComponentToTargets(
     }
 }
 
+// 選択対象へComponentプリセットの値をまとめて適用します。
 void ApplyRegisteredComponentPresetToTargets(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
+    const std::vector<engine::Object3d*>& targets,
     const std::string& componentTypeId,
     const std::string& presetId) {
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     bool changed = false;
-    for (Object3d* target : targets) {
+    for (engine::Object3d* target : targets) {
         changed |= registry->ApplyComponentPreset(target, componentTypeId, presetId);
     }
     if (changed) {
@@ -222,9 +232,10 @@ void ApplyRegisteredComponentPresetToTargets(
     }
 }
 
+// 登録済みComponentの有無と編集入口をInspectorの一行へ描画します。
 void DrawRegisteredComponentRow(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
+    const std::vector<engine::Object3d*>& targets,
     const EditorComponentDescriptor& component) {
     ImGui::PushID(component.typeId.c_str());
     ImGui::BeginGroup();
@@ -246,10 +257,11 @@ void DrawRegisteredComponentRow(
     ImGui::PopID();
 }
 
+// 現在の対象へ追加できるComponentをメニューに列挙します。
 void DrawRegisteredAddComponentMenu(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
-    Object3d* primary) {
+    const std::vector<engine::Object3d*>& targets,
+    engine::Object3d* primary) {
     if (!ImGui::BeginPopup("AddRegisteredComponentMenu")) {
         return;
     }
@@ -300,19 +312,20 @@ void DrawRegisteredAddComponentMenu(
     ImGui::EndPopup();
 }
 
-bool HasRegisteredComponent(const Object3d* object, const char* componentTypeId) {
+// Registryで定義されたComponentがObjectに存在するかを返します。
+bool HasRegisteredComponent(const engine::Object3d* object, const char* componentTypeId) {
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     registry->InitializeBuiltInProperties();
     return registry->IsComponentPresent(object, componentTypeId);
 }
 
-std::vector<Object3d*> CollectRegisteredComponentTargets(
-    const std::vector<Object3d*>& targets,
+std::vector<engine::Object3d*> CollectRegisteredComponentTargets(
+    const std::vector<engine::Object3d*>& targets,
     const char* componentTypeId) {
-    std::vector<Object3d*> result;
+    std::vector<engine::Object3d*> result;
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     registry->InitializeBuiltInProperties();
-    for (Object3d* target : targets) {
+    for (engine::Object3d* target : targets) {
         if (target && registry->IsComponentPresent(target, componentTypeId)) {
             result.push_back(target);
         }
@@ -320,7 +333,9 @@ std::vector<Object3d*> CollectRegisteredComponentTargets(
     return result;
 }
 
-bool IsPrefabPropertyOverridden(const Object3d* object, const std::string& propertyPath) {
+// 選択Objectで指定プロパティがPrefab元から上書きされているか調べます。
+bool IsPrefabPropertyOverridden(const engine::Object3d* object, const std::string& propertyPath) {
+    // Prefabインスタンスに限って差分一覧を参照し、通常Objectでは上書き扱いにしない。
     if (!object || !object->IsPrefabInstance()) {
         return false;
     }
@@ -332,10 +347,11 @@ bool IsPrefabPropertyOverridden(const Object3d* object, const std::string& prope
     return false;
 }
 
+// Registryのプロパティ定義からComponentの編集UIを組み立てます。
 void DrawAutomaticComponentProperties(
     DebugEditor* editor,
-    Object3d* primary,
-    const std::vector<Object3d*>& targets,
+    engine::Object3d* primary,
+    const std::vector<engine::Object3d*>& targets,
     const EditorComponentDescriptor& component) {
     if (!editor || !primary ||
         component.inspectorMode != EditorComponentInspectorMode::Automatic) {
@@ -350,9 +366,9 @@ void DrawAutomaticComponentProperties(
     }
 
     // 複数選択の中から実際にこのComponentを持つObjectだけを編集対象へ絞る。
-    std::vector<Object3d*> componentTargets;
+    std::vector<engine::Object3d*> componentTargets;
     componentTargets.reserve(targets.size());
-    for (Object3d* target : targets) {
+    for (engine::Object3d* target : targets) {
         if (!target || (component.applicable && !component.applicable(*target)) ||
             (component.present && !component.present(*target))) {
             continue;
@@ -429,7 +445,7 @@ void DrawAutomaticComponentProperties(
 
             // MultiEditでないPropertyは主選択だけへ書き、対象外Objectには適用しない。
             if (changed && !readOnly) {
-                for (Object3d* target : componentTargets) {
+                for (engine::Object3d* target : componentTargets) {
                     if (!target || (!multiEditable && target != primary) ||
                         !registry->IsApplicable(target, property->path)) {
                         continue;
@@ -445,7 +461,9 @@ void DrawAutomaticComponentProperties(
     ImGui::Unindent();
 }
 
-void DrawComponentPanel(DebugEditor* editor, Object3d* primary, const std::vector<Object3d*>& targets) {
+// 主選択と複数選択に共通するComponent欄を描画します。
+void DrawComponentPanel(DebugEditor* editor, engine::Object3d* primary, const std::vector<engine::Object3d*>& targets) {
+    // 共通Component定義を用いて単体・複数選択のInspectorを同じ手順で描画する。
     if (!primary) {
         return;
     }
@@ -479,7 +497,9 @@ void DrawComponentPanel(DebugEditor* editor, Object3d* primary, const std::vecto
     }
 }
 
-bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, Object3d* cameraObject, std::string& objectName) {
+// カメラ自身とEditor専用Objectを除いた注視対象候補を表示します。選択変更時にtrueを返します。
+bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, engine::Object3d* cameraObject, std::string& objectName) {
+    // カメラ自身とEditor専用Objectを除き、注視対象として有効な名前だけ列挙する。
     bool changed = false;
     const char* preview = objectName.empty() ? "(未選択)" : objectName.c_str();
     if (!ImGui::BeginCombo(label, preview)) {
@@ -509,10 +529,11 @@ bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, Object3d* cam
     return changed;
 }
 
-bool HasMixedInspectorValue(const std::vector<Object3d*>& targets, const char* propertyPath) {
+bool HasMixedInspectorValue(const std::vector<engine::Object3d*>& targets, const char* propertyPath) {
     return EditorPropertyRegistry::GetInstance()->HasMixedValue(targets, propertyPath);
 }
 
+// 複数選択で値が異なる場合にだけ、混在表示の注記を描きます。
 void DrawMixedValueHint(bool mixed) {
     if (!mixed) {
         return;
@@ -521,15 +542,18 @@ void DrawMixedValueHint(bool mixed) {
     ImGui::TextDisabled("— 複数の値");
 }
 
+// ImGuiのチェック項目に複数値混在フラグを設定／解除します。
 void PushMixedCheckbox(bool mixed) {
     ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, mixed);
 }
 
+// 複数選択時だけ有効化した混在表示フラグを戻し、後続の項目へ漏らしません。
 void PopMixedCheckbox() {
     ImGui::PopItemFlag();
 }
 
-void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* cameraObject) {
+// シーンカメラObject固有の追従・投影・注視対象設定を描画します。
+void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Object3d* cameraObject) {
     if (!editor || !cameraObject) {
         return;
     }
@@ -557,7 +581,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
     Transform transformValue = *cameraObject->GetTransform();
     Transform* transform = &transformValue;
     if (ImGui::DragFloat3("位置", &transform->translate.x, 0.1f)) changed = true;
-    Vector3 rotationDegrees = {
+    engine::Vector3 rotationDegrees = {
         ToDegrees(transform->rotate.x),
         ToDegrees(transform->rotate.y),
         ToDegrees(transform->rotate.z),
@@ -708,8 +732,9 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
     }
 }
 
-std::vector<Object3d*> CollectSceneObjects(BaseScene* scene) {
-    std::vector<Object3d*> objects;
+std::vector<engine::Object3d*> CollectSceneObjects(BaseScene* scene) {
+    // インスペクターの対象を現シーンの所有オブジェクトから集める。
+    std::vector<engine::Object3d*> objects;
     if (!scene) {
         return objects;
     }
@@ -722,8 +747,9 @@ std::vector<Object3d*> CollectSceneObjects(BaseScene* scene) {
     return objects;
 }
 
-std::vector<Object3d*> CollectPrefabInstanceObjects(BaseScene* scene, const std::string& instanceId) {
-    std::vector<Object3d*> objects;
+std::vector<engine::Object3d*> CollectPrefabInstanceObjects(BaseScene* scene, const std::string& instanceId) {
+    // 同一Prefabインスタンスに属する子だけを編集対象として集める。
+    std::vector<engine::Object3d*> objects;
     if (!scene || instanceId.empty()) {
         return objects;
     }
@@ -736,7 +762,8 @@ std::vector<Object3d*> CollectPrefabInstanceObjects(BaseScene* scene, const std:
     return objects;
 }
 
-void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* object) {
+// Prefabインスタンスの差分、適用、復元、元Assetへの操作を表示します。
+void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, engine::Object3d* object) {
     if (!editor || !scene || !object || !object->IsPrefabInstance()) {
         return;
     }
@@ -784,8 +811,8 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
         }
     }
 
-    const std::vector<Object3d*> sceneObjects = CollectSceneObjects(scene);
-    const std::vector<Object3d*> instanceObjects = CollectPrefabInstanceObjects(scene, info.instanceId);
+    const std::vector<engine::Object3d*> sceneObjects = CollectSceneObjects(scene);
+    const std::vector<engine::Object3d*> instanceObjects = CollectPrefabInstanceObjects(scene, info.instanceId);
 
     // 全件Applyは参照するScene内Objectへの伝播を一つのUndoグループへまとめる。
     if (ImGui::Button(ICON_FA_UPLOAD " Apply All", ImVec2(112.0f, 0.0f))) {
@@ -938,10 +965,11 @@ std::string NormalizeMaterialInstanceSavePath(const char* text) {
     return path.lexically_normal().generic_string();
 }
 
+// 選択ObjectのMaterial Instanceと複数選択時の編集状態を表示します。
 void DrawMaterialInstancePanel(
     DebugEditor* editor,
-    Object3d* selectedObject,
-    const std::vector<Object3d*>& targets) {
+    engine::Object3d* selectedObject,
+    const std::vector<engine::Object3d*>& targets) {
     if (!editor || !selectedObject) return;
 
     ImGui::SeparatorText("Material Instance");
@@ -961,7 +989,7 @@ void DrawMaterialInstancePanel(
             if (ImGui::Selectable(asset.c_str(), selected)) {
                 std::string error;
                 bool applied = false;
-                for (Object3d* target : targets) {
+                for (engine::Object3d* target : targets) {
                     applied |= target && target->ApplyMaterialInstance(asset, &error);
                 }
                 if (applied) {
@@ -981,7 +1009,7 @@ void DrawMaterialInstancePanel(
         if (ImGui::Button(ICON_FA_SYNC " 再読込##MaterialInstance")) {
             std::string error;
             bool applied = false;
-            for (Object3d* target : targets) {
+            for (engine::Object3d* target : targets) {
                 if (!target) continue;
                 const std::string path = target->GetMaterialInstancePath().empty()
                     ? linkedPath : target->GetMaterialInstancePath();
@@ -992,7 +1020,7 @@ void DrawMaterialInstancePanel(
         }
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_UNLINK " リンク解除##MaterialInstance")) {
-            for (Object3d* target : targets) if (target) target->ClearMaterialInstanceLink();
+            for (engine::Object3d* target : targets) if (target) target->ClearMaterialInstanceLink();
             MarkInspectorTargetsDirty(editor, targets);
         }
     }
@@ -1005,7 +1033,7 @@ void DrawMaterialInstancePanel(
         const std::string path = NormalizeMaterialInstanceSavePath(savePath);
         std::string error;
         if (selectedObject->SaveMaterialInstance(path, &error)) {
-            for (Object3d* target : targets) {
+            for (engine::Object3d* target : targets) {
                 if (target && target != selectedObject) target->ApplyMaterialInstance(path, nullptr);
             }
             assets = MaterialInstanceAsset::Discover();
@@ -1017,14 +1045,15 @@ void DrawMaterialInstancePanel(
     }
 }
 
+// Decal設定の編集欄を選択Objectへ表示します。
 void DrawDecalPanel(
     DebugEditor* editor,
-    Object3d* selectedObject,
-    const std::vector<Object3d*>& targets) {
+    engine::Object3d* selectedObject,
+    const std::vector<engine::Object3d*>& targets) {
     if (!editor || !selectedObject || !selectedObject->IsDecal()) return;
     if (!ImGui::CollapsingHeader("Surface Decal", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
-    Object3d::DecalSettings settings = selectedObject->GetDecalSettings();
+    engine::Object3d::DecalSettings settings = selectedObject->GetDecalSettings();
     bool changed = false;
     changed |= ImGui::DragFloat2("投影サイズ", &settings.size.x, 0.05f, 0.01f, 100.0f);
     changed |= ImGui::DragFloat("面オフセット", &settings.depthOffset, 0.001f, 0.0001f, 0.2f, "%.4f");
@@ -1034,15 +1063,15 @@ void DrawDecalPanel(
     changed |= ImGui::Checkbox("寿命後に削除対象", &settings.transient);
 
     if (changed) {
-        for (Object3d* target : targets) {
+        for (engine::Object3d* target : targets) {
             if (!target || !target->IsDecal()) continue;
-            const Object3d::DecalSettings oldSettings = target->GetDecalSettings();
+            const engine::Object3d::DecalSettings oldSettings = target->GetDecalSettings();
             target->SetDecalSettings(settings);
             const Transform* transform = target->GetTransform();
-            const Matrix4x4 rotation = transform->isQuaternionMaster
-                ? Math::MakeRotateQuaternionMatrix(transform->quaternion)
-                : Math::MakeRotateMatrix(transform->rotate);
-            const Vector3 normal = { -rotation.m[2][0], -rotation.m[2][1], -rotation.m[2][2] };
+            const engine::Matrix4x4 rotation = transform->isQuaternionMaster
+                ? engine::Math::MakeRotateQuaternionMatrix(transform->quaternion)
+                : engine::Math::MakeRotateMatrix(transform->rotate);
+            const engine::Vector3 normal = { -rotation.m[2][0], -rotation.m[2][1], -rotation.m[2][2] };
             target->SetTranslate(transform->translate + normal * (settings.depthOffset - oldSettings.depthOffset));
             target->SetScale({ settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f });
             target->UpdateLocalMatrix();
@@ -1052,7 +1081,7 @@ void DrawDecalPanel(
     }
 
     if (ImGui::Button(ICON_FA_PLAY " Fadeを最初から確認")) {
-        for (Object3d* target : targets) if (target && target->IsDecal()) target->RestartDecalPlayback();
+        for (engine::Object3d* target : targets) if (target && target->IsDecal()) target->RestartDecalPlayback();
     }
     ImGui::TextDisabled("Game View配置では地面・壁の法線へ自動整列します。回転はTransformで調整できます。");
 }

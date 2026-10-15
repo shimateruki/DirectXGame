@@ -6,18 +6,18 @@
 
 namespace {
 // エミッターが空の親に付いていても、子階層にある描画メッシュを使う。
-Object3d* FindModelObject(Object3d* obj) {
+engine::Object3d* FindModelObject(engine::Object3d* obj) {
     if (!obj) return nullptr;
     if (obj->GetModel()) return obj;
     for (auto child : obj->GetChildren()) {
-        Object3d* found = FindModelObject(child);
+        engine::Object3d* found = FindModelObject(child);
         if (found) return found;
     }
     return nullptr;
 }
 } // namespace
 
-void GPUParticleEmitter::Initialize(const std::string& presetName, Object3d* targetObject) {
+void GPUParticleEmitter::Initialize(const std::string& presetName, engine::Object3d* targetObject) {
     presetName_ = presetName; targetObject_ = targetObject; isPlaying_ = false; emitTimer_ = 0.0f;
 }
 
@@ -38,15 +38,16 @@ void GPUParticleEmitter::Update(float deltaTime) {
 void GPUParticleEmitter::Play() { isPlaying_ = true; emitTimer_ = emitInterval_; }
 void GPUParticleEmitter::Stop() { isPlaying_ = false; emitTimer_ = 0.0f; }
 
+// 発生元Objectのモデル情報と姿勢を収集し、設定済みSystemへ一回分の粒子を発生させます。
 void GPUParticleEmitter::EmitOnce() {
-    Vector3 spawnPos = { 0, 0, 0 };
+    engine::Vector3 spawnPos = { 0, 0, 0 };
     ID3D12Resource* vb = nullptr;
     uint32_t vCount = 0; uint32_t vStride = 0; uint32_t boneSrv = 0;
-    Matrix4x4 worldMat = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
+    engine::Matrix4x4 worldMat = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
 
     if (targetObject_) {
         // ルートにメッシュがない場合は、子階層のモデルを発生元として使う。
-        Object3d* modelObj = FindModelObject(targetObject_);
+        engine::Object3d* modelObj = FindModelObject(targetObject_);
         if (modelObj && modelObj->GetModel()) {
             worldMat = modelObj->GetWorldMatrix();
             Model* model = modelObj->GetModel();
@@ -61,8 +62,8 @@ void GPUParticleEmitter::EmitOnce() {
         else {
             worldMat = targetObject_->GetWorldMatrix();
         }
-        Math math;
-        Vector3 worldOffset = math.TransformNormal(offset_, worldMat);
+        engine::Math math;
+        engine::Vector3 worldOffset = math.TransformNormal(offset_, worldMat);
         spawnPos.x = worldMat.m[3][0] + worldOffset.x;
         spawnPos.y = worldMat.m[3][1] + worldOffset.y;
         spawnPos.z = worldMat.m[3][2] + worldOffset.z;

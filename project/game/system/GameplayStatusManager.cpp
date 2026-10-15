@@ -18,7 +18,7 @@ constexpr const char* kLegacySettingsPath = "Resources/json/gameplay/status_pres
 
 GameplayStatusManager::CharacterStatus MakeStatus(float maxHp, float attackPower, float speed, float gravity,
                                                   float maxFallSpeed, float jumpPower, float detectionRange,
-                                                  const Vector3& scale, const char* modelName, bool morphLimited,
+                                                  const engine::Vector3& scale, const char* modelName, bool morphLimited,
                                                   float morphDuration) {
     // 敵タイプごとの初期値を一つの構造体へ揃え、JSON未設定項目の基準にする。
     GameplayStatusManager::CharacterStatus status;
@@ -36,6 +36,7 @@ GameplayStatusManager::CharacterStatus MakeStatus(float maxHp, float attackPower
     return status;
 }
 
+// 設定JSONに数値項目がある場合だけ既存の値を更新します。
 void ReadFloat(const json& source, const char* key, float& value) {
     // 数値として読める項目だけを上書きし、欠落・型違いでは初期値を保つ。
     if (source.is_object() && source.contains(key) && source.at(key).is_number()) {
@@ -43,6 +44,7 @@ void ReadFloat(const json& source, const char* key, float& value) {
     }
 }
 
+// 設定JSONに真偽値項目がある場合だけ既存の値を更新します。
 void ReadBool(const json& source, const char* key, bool& value) {
     // Bool型が確認できた場合だけ既定値を変更する。
     if (source.is_object() && source.contains(key) && source.at(key).is_boolean()) {
@@ -60,7 +62,7 @@ void ReadString(const json& source, const char* key, std::string& value) {
     }
 }
 
-void ReadScale(const json& source, Vector3& value) {
+void ReadScale(const json& source, engine::Vector3& value) {
     if (!source.is_object() || !source.contains("scale") || !source.at("scale").is_array()) {
         return;
     }
@@ -70,7 +72,7 @@ void ReadScale(const json& source, Vector3& value) {
         return;
     }
 
-    const Vector3 candidate = {array[0].get<float>(), array[1].get<float>(), array[2].get<float>()};
+    const engine::Vector3 candidate = {array[0].get<float>(), array[1].get<float>(), array[2].get<float>()};
     // 旧設定の0スケールは「クラス側の値を維持」という意味だったため、
     // 一元管理移行後はタイプ標準値を残します。
     if (candidate.x > 0.0f && candidate.y > 0.0f && candidate.z > 0.0f) {
@@ -214,30 +216,30 @@ void GameplayStatusManager::ResetToDefaults() {
         MakeStatus(5.0f, 1.0f, 27.7f, 50.0f, 60.0f, 24.0f, 20.0f, {2.0f, 2.0f, 2.0f}, "Characters/slime", false, 5.0f);
 
     enemyStatuses_.clear();
-    enemyStatuses_.emplace("Slime", MakeStatus(50.0f, 1.0f, 0.1f, 60.0f, 60.0f, 18.0f, 20.0f, Vector3{2.0f, 2.0f, 2.0f},
+    enemyStatuses_.emplace("Slime", MakeStatus(50.0f, 1.0f, 0.1f, 60.0f, 60.0f, 18.0f, 20.0f, engine::Vector3{2.0f, 2.0f, 2.0f},
                                                "Characters/slime_pink", false, 5.0f));
     enemyStatuses_.emplace("Bomb", MakeStatus(30.0f, 1.0f, 0.04f, 60.0f, 60.0f, 16.0f, 20.0f,
-                                              Vector3{0.16f, 0.16f, 0.16f}, "Gimmicks/blob", true, 5.0f));
+                                              engine::Vector3{0.16f, 0.16f, 0.16f}, "Gimmicks/blob", true, 5.0f));
     enemyStatuses_.emplace("Bomber", MakeStatus(60.0f, 1.15f, 0.0f, 60.0f, 60.0f, 16.0f, 32.0f,
-                                                Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_black", true, 5.0f));
+                                                engine::Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_black", true, 5.0f));
     enemyStatuses_.emplace("FireSlime", MakeStatus(45.0f, 1.0f, 2.35f, 60.0f, 60.0f, 18.0f, 24.0f,
-                                                   Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_red", true, 5.0f));
+                                                   engine::Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_red", true, 5.0f));
     enemyStatuses_.emplace("ThunderSlime",
-                           MakeStatus(45.0f, 1.0f, 3.0f, 62.0f, 60.0f, 18.0f, 20.0f, Vector3{2.0f, 2.0f, 2.0f},
+                           MakeStatus(45.0f, 1.0f, 3.0f, 62.0f, 60.0f, 18.0f, 20.0f, engine::Vector3{2.0f, 2.0f, 2.0f},
                                       "Characters/slime_yellow", true, 5.0f));
     enemyStatuses_.emplace("WindSlime", MakeStatus(42.0f, 0.9f, 3.4f, 54.0f, 58.0f, 19.0f, 22.0f,
-                                                   Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_wind", false, 5.0f));
+                                                   engine::Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_wind", false, 5.0f));
     enemyStatuses_.emplace("GiantSlime", MakeStatus(160.0f, 1.25f, 0.0f, 70.0f, 60.0f, 24.0f, 26.0f,
-                                                    Vector3{3.6f, 3.6f, 3.6f}, "Characters/slime_pink", true, 5.0f));
+                                                    engine::Vector3{3.6f, 3.6f, 3.6f}, "Characters/slime_pink", true, 5.0f));
     enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 90.0f,
-                                                    Vector3{4.2f, 4.2f, 4.2f}, "Characters/prism_slime", true, 5.0f));
+                                                    engine::Vector3{4.2f, 4.2f, 4.2f}, "Characters/prism_slime", true, 5.0f));
     enemyStatuses_.emplace("MagmaSlime", MakeStatus(360.0f, 1.45f, 1.45f, 72.0f, 62.0f, 22.0f, 90.0f,
-                                                    Vector3{3.8f, 3.8f, 3.8f}, "Characters/magma_slime", true, 5.0f));
+                                                    engine::Vector3{3.8f, 3.8f, 3.8f}, "Characters/magma_slime", true, 5.0f));
     enemyStatuses_.emplace("FalseKingSlime",
-                           MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f, Vector3{1.3f, 1.3f, 1.3f},
+                           MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f, engine::Vector3{1.3f, 1.3f, 1.3f},
                                       "Characters/false_king_slime", true, 5.0f));
     enemyStatuses_.emplace("RingBurner", MakeStatus(180.0f, 1.0f, 0.0f, 0.0f, 60.0f, 10.0f, 30.0f,
-                                                    Vector3{1.0f, 1.0f, 1.0f}, "Characters/ring_burner", true, 5.0f));
+                                                    engine::Vector3{1.0f, 1.0f, 1.0f}, "Characters/ring_burner", true, 5.0f));
 
     dirty_ = true;
 }
@@ -261,7 +263,7 @@ bool GameplayStatusManager::SaveIfDirty() {
     return !dirty_ || Save();
 }
 
-bool GameplayStatusManager::ApplyPlayerStatus(Object3d* object, bool resetCurrentHp) const {
+bool GameplayStatusManager::ApplyPlayerStatus(engine::Object3d* object, bool resetCurrentHp) const {
     // Player以外には適用せず、HPを全快させるかは呼び出し側の指定を守る。
     if (!object || object->GetClassName() != "Player") {
         return false;
@@ -270,7 +272,7 @@ bool GameplayStatusManager::ApplyPlayerStatus(Object3d* object, bool resetCurren
     return true;
 }
 
-bool GameplayStatusManager::ApplyEnemyStatus(Object3d* object, bool resetCurrentHp) const {
+bool GameplayStatusManager::ApplyEnemyStatus(engine::Object3d* object, bool resetCurrentHp) const {
     // 敵タイプに対応する設定だけを適用し、旧データではParam内のタイプ名も参照する。
     if (!object || object->GetClassName() != "Enemy") {
         return false;
@@ -294,7 +296,7 @@ bool GameplayStatusManager::ApplyEnemyStatus(Object3d* object, bool resetCurrent
     return true;
 }
 
-bool GameplayStatusManager::ApplyManagedStatus(Object3d* object, bool resetCurrentHp) const {
+bool GameplayStatusManager::ApplyManagedStatus(engine::Object3d* object, bool resetCurrentHp) const {
     // クラス名でプレイヤー・敵を振り分け、それ以外のシーン物体には値を適用しない。
     if (!object) {
         return false;
@@ -308,7 +310,7 @@ bool GameplayStatusManager::ApplyManagedStatus(Object3d* object, bool resetCurre
     return false;
 }
 
-bool GameplayStatusManager::IsManagedCharacter(const Object3d* object) {
+bool GameplayStatusManager::IsManagedCharacter(const engine::Object3d* object) {
     // 共通ステータス管理の対象はPlayerとEnemyに限定する。
     if (!object) {
         return false;
@@ -375,7 +377,7 @@ void GameplayStatusManager::Normalize(CharacterStatus& status) {
 }
 
 // 最大 HP の変更時は現在の残量比を保ち、全快中または明示的なリセット時だけ全快させます。
-void GameplayStatusManager::ApplyStatus(Object3d* object, const CharacterStatus& source, bool resetCurrentHp) {
+void GameplayStatusManager::ApplyStatus(engine::Object3d* object, const CharacterStatus& source, bool resetCurrentHp) {
     // HP以外の値は正規化済み設定へ揃え、HPだけは残量比または明示リセットを基準にする。
     if (!object) {
         return;
@@ -419,7 +421,7 @@ void GameplayStatusManager::ApplyStatus(Object3d* object, const CharacterStatus&
         object->SetModel(status.modelName);
     }
 
-    const Vector3 currentScale = object->GetScale();
+    const engine::Vector3 currentScale = object->GetScale();
     if (!NearlyEqual(currentScale.x, status.scale.x) || !NearlyEqual(currentScale.y, status.scale.y) ||
         !NearlyEqual(currentScale.z, status.scale.z)) {
         object->ApplyManagedScale(status.scale);

@@ -98,13 +98,13 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
     }
     SetColor(GetPhaseColor(1.0f));
 
-    Vector3 rot = baseRotation_;
+    engine::Vector3 rot = baseRotation_;
     rot.x += direction * turn * 3.14159265f;
     SetEulerAngles(rot);
     SetQuaternionMaster(false);
 }
 
-Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {
+engine::Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {
     // 最大四つの位相を色で識別できるようにします。
     switch (GetPhaseIndex() % 4) {
     case 0:
@@ -143,7 +143,7 @@ float GimmickPhaseFlipFloor::SmoothStep(float t) const {
     return t * t * (3.0f - 2.0f * t);
 }
 
-std::unique_ptr<Object3d> GimmickPhaseFlipFloor::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickPhaseFlipFloor::Clone() const {
     // 複製先の基本資源を作ってから配置と周期設定を移します。
     auto newObj = std::make_unique<GimmickPhaseFlipFloor>();
     assert(common_ != nullptr);

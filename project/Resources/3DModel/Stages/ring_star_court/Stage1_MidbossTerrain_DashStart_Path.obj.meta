@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "393b0937db8c5818a1724c6400ca6ed0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_DashStart_Path.obj",
+  "version": 1
+}

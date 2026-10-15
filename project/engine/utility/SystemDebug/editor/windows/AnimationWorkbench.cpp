@@ -165,7 +165,7 @@ void AnimationWorkbench::StopPreview() {
         RemovePreviewObject();
         if (storedCameraValid_) {
             if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
-                Object3d* follow = nullptr;
+                engine::Object3d* follow = nullptr;
                 for (const auto& object : previewScene_->GetObjects())
                     if (object.get() == storedFollow_) follow = object.get();
                 camera->SetFollowTarget(follow);
@@ -424,7 +424,7 @@ void AnimationWorkbench::DrawBodyControls() {
             ImGui::TableSetColumnIndex(1);
             ImGui::Text("%.2f %.2f %.2f", key.translate.x, key.translate.y, key.translate.z);
             ImGui::TableSetColumnIndex(2);
-            const Vector3 rotateDeg = ToDegrees(key.rotate);
+            const engine::Vector3 rotateDeg = ToDegrees(key.rotate);
             ImGui::Text("%.1f %.1f %.1f", rotateDeg.x, rotateDeg.y, rotateDeg.z);
             ImGui::TableSetColumnIndex(3);
             ImGui::Text("%.2f %.2f %.2f", key.scale.x, key.scale.y, key.scale.z);
@@ -551,7 +551,7 @@ void AnimationWorkbench::DrawKeyframeControls() {
             ImGui::TableSetColumnIndex(2);
             ImGui::Text("%.2f %.2f %.2f", key.translate.x, key.translate.y, key.translate.z);
             ImGui::TableSetColumnIndex(3);
-            Vector3 rotDeg = ToDegrees(key.rotate);
+            engine::Vector3 rotDeg = ToDegrees(key.rotate);
             ImGui::Text("%.1f %.1f %.1f", rotDeg.x, rotDeg.y, rotDeg.z);
             ImGui::TableSetColumnIndex(4);
             ImGui::Text("%.2f %.2f %.2f", key.scale.x, key.scale.y, key.scale.z);
@@ -680,11 +680,11 @@ void AnimationWorkbench::CreatePreviewObject() {
     BaseScene* scene = sceneManager_->GetCurrentScene();
     if (!scene->GetObject3dCommon()) return;
 
-    Object3d* existing = FindPreviewObject();
+    engine::Object3d* existing = FindPreviewObject();
     if (existing) {
         previewObject_ = existing;
     } else {
-        auto object = std::make_unique<Object3d>();
+        auto object = std::make_unique<engine::Object3d>();
         object->Initialize(scene->GetObject3dCommon());
         object->SetName(kPreviewObjectName);
         object->SetClassName("EditorOnly");
@@ -712,7 +712,7 @@ void AnimationWorkbench::RemovePreviewObject() {
         previewObject_ = nullptr;
         return;
     }
-    if (Object3d* object = FindPreviewObject()) {
+    if (engine::Object3d* object = FindPreviewObject()) {
         object->SetIsVisible(false);
         object->SetName("__Editor_AnimationWorkbenchRetired");
         sceneManager_->GetCurrentScene()->RequestRemoveObject(object);
@@ -720,7 +720,7 @@ void AnimationWorkbench::RemovePreviewObject() {
     previewObject_ = nullptr;
 }
 
-Object3d* AnimationWorkbench::FindPreviewObject() const {
+engine::Object3d* AnimationWorkbench::FindPreviewObject() const {
     // シーン切り替え後は保持ポインタを信用せず、現シーン内で名前から探す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
@@ -760,7 +760,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
     previewObject_->UpdateWorldMatrix();
 
     if (auto* renderer = previewObject_->GetMeshRenderer()) {
-        renderer->SetVisualShear(hasBodyPose ? bodyPose.shear : Vector3{}, hasBodyPose ? bodyPose.shearPivotY : 0.0f);
+        renderer->SetVisualShear(hasBodyPose ? bodyPose.shear : engine::Vector3{}, hasBodyPose ? bodyPose.shearPivotY : 0.0f);
     }
 
     // 毎フレーム基準姿勢から組み立て直し、前フレームの関節回転を蓄積させない。
@@ -883,7 +883,7 @@ bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip
         keyOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
         keyOut.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
         keyOut.shear = AnimationInterpolation::Lerp(from.shear, to.shear, rate);
-        keyOut.shearPivotY = Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
+        keyOut.shearPivotY = engine::Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
         return true;
     }
     keyOut = bodyKeys_.back();
@@ -928,7 +928,7 @@ void AnimationWorkbench::ApplyPoseKey(const PoseKey& key) {
     if (!previewModel_) return;
     previewModel_->SetJointTransform(key.jointIndex, {
         key.scale,
-        Math::EulerToQuaternion(key.rotate),
+        engine::Math::EulerToQuaternion(key.rotate),
         key.translate
     });
 }
@@ -1006,11 +1006,11 @@ bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseK
             float t = (time - a.time) / (b.time - a.time);
             keyOut = a;
             keyOut.time = time;
-            keyOut.translate = Math::Lerp(a.translate, b.translate, t);
-            Quaternion qA = Math::EulerToQuaternion(a.rotate);
-            Quaternion qB = Math::EulerToQuaternion(b.rotate);
-            keyOut.rotate = Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(Math::Slerp(qA, qB, t)));
-            keyOut.scale = Math::Lerp(a.scale, b.scale, t);
+            keyOut.translate = engine::Math::Lerp(a.translate, b.translate, t);
+            engine::Quaternion qA = engine::Math::EulerToQuaternion(a.rotate);
+            engine::Quaternion qB = engine::Math::EulerToQuaternion(b.rotate);
+            keyOut.rotate = engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(engine::Math::Slerp(qA, qB, t)));
+            keyOut.scale = engine::Math::Lerp(a.scale, b.scale, t);
             return true;
         }
     }
@@ -1022,7 +1022,7 @@ void AnimationWorkbench::SyncUiFromJoint(int jointIndex) {
     if (!previewModel_) return;
     Model::QuaternionTransform transform = previewModel_->GetJointTransform(jointIndex);
     jointTranslateUi_ = transform.translate;
-    jointRotateDegUi_ = ToDegrees(Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(transform.rotate)));
+    jointRotateDegUi_ = ToDegrees(engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(transform.rotate)));
     jointScaleUi_ = transform.scale;
 }
 
@@ -1303,7 +1303,7 @@ std::string AnimationWorkbench::FormatEventMarker(const EventMarker& marker) con
     return buffer;
 }
 
-Vector3 AnimationWorkbench::ToDegrees(const Vector3& radians) const {
+engine::Vector3 AnimationWorkbench::ToDegrees(const engine::Vector3& radians) const {
     // 保存と骨格で使うラジアンを UI の度へ戻す。
     return {
         radians.x * 180.0f / kPi,
@@ -1312,7 +1312,7 @@ Vector3 AnimationWorkbench::ToDegrees(const Vector3& radians) const {
     };
 }
 
-Vector3 AnimationWorkbench::ToRadians(const Vector3& degrees) const {
+engine::Vector3 AnimationWorkbench::ToRadians(const engine::Vector3& degrees) const {
     // UI で入力した度を保存と骨格で使うラジアンへ変換する。
     return {
         degrees.x * kPi / 180.0f,
@@ -1321,7 +1321,7 @@ Vector3 AnimationWorkbench::ToRadians(const Vector3& degrees) const {
     };
 }
 
-void AnimationWorkbench::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+void AnimationWorkbench::SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
     // 3D ギズモの入力と投影を Game View の表示矩形に合わせる。
     gameViewOffset_ = offset;
     gameViewSize_ = size;
@@ -1337,9 +1337,9 @@ void AnimationWorkbench::DrawBodyGizmo() {
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return;
 
-    Matrix4x4 view = camera->GetViewMatrix();
-    Matrix4x4 projection = camera->GetProjectionMatrix();
-    Matrix4x4 bodyWorld = previewObject_->GetWorldMatrix();
+    engine::Matrix4x4 view = camera->GetViewMatrix();
+    engine::Matrix4x4 projection = camera->GetProjectionMatrix();
+    engine::Matrix4x4 bodyWorld = previewObject_->GetWorldMatrix();
 
     ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
     ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
@@ -1359,9 +1359,9 @@ void AnimationWorkbench::DrawBodyGizmo() {
 
     if (!ImGuizmo::IsUsing()) return;
 
-    Vector3 worldScale;
-    Vector3 worldRotateDeg;
-    Vector3 worldTranslate;
+    engine::Vector3 worldScale;
+    engine::Vector3 worldRotateDeg;
+    engine::Vector3 worldTranslate;
     ImGuizmo::DecomposeMatrixToComponents(
         &bodyWorld.m[0][0],
         &worldTranslate.x,
@@ -1441,10 +1441,10 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     for (const auto& joint : joints) {
         if (!joint.parent || *joint.parent < 0 || *joint.parent >= static_cast<int>(joints.size())) continue;
 
-        const Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
-        const Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joint.parent));
-        Vector2 jointScreen{};
-        Vector2 parentScreen{};
+        const engine::Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
+        const engine::Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joint.parent));
+        engine::Vector2 jointScreen{};
+        engine::Vector2 parentScreen{};
         if (!ProjectWorldToGameView(jointWorld, jointScreen) || !ProjectWorldToGameView(parentWorld, parentScreen)) continue;
 
         const bool selectedChain = joint.index == selectedJointIndex_ ||
@@ -1467,8 +1467,8 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     }
 
     for (const auto& joint : joints) {
-        const Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
-        Vector2 jointScreen{};
+        const engine::Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
+        engine::Vector2 jointScreen{};
         if (!ProjectWorldToGameView(jointWorld, jointScreen)) continue;
 
         const float dx = mouseScreen.x - jointScreen.x;
@@ -1500,19 +1500,19 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     }
 
     if (showBoneAxes_ && selectedJointIndex_ >= 0 && selectedJointIndex_ < static_cast<int>(joints.size())) {
-        const Matrix4x4 selectedWorld = GetJointWorldMatrix(selectedJointIndex_);
-        const Vector3 originWorld = GetMatrixTranslation(selectedWorld);
-        Vector2 originScreen{};
+        const engine::Matrix4x4 selectedWorld = GetJointWorldMatrix(selectedJointIndex_);
+        const engine::Vector3 originWorld = GetMatrixTranslation(selectedWorld);
+        engine::Vector2 originScreen{};
         if (ProjectWorldToGameView(originWorld, originScreen)) {
             float axisLength = 0.5f;
             if (joints[selectedJointIndex_].parent) {
-                const Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joints[selectedJointIndex_].parent));
-                axisLength = std::clamp(Math::Length(originWorld - parentWorld) * 0.45f, 0.2f, 0.85f);
+                const engine::Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joints[selectedJointIndex_].parent));
+                axisLength = std::clamp(engine::Math::Length(originWorld - parentWorld) * 0.45f, 0.2f, 0.85f);
             }
-            const Vector3 axes[] = {
-                Math::Normalize(Math::TransformNormal({ 1.0f, 0.0f, 0.0f }, selectedWorld)),
-                Math::Normalize(Math::TransformNormal({ 0.0f, 1.0f, 0.0f }, selectedWorld)),
-                Math::Normalize(Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, selectedWorld)),
+            const engine::Vector3 axes[] = {
+                engine::Math::Normalize(engine::Math::TransformNormal({ 1.0f, 0.0f, 0.0f }, selectedWorld)),
+                engine::Math::Normalize(engine::Math::TransformNormal({ 0.0f, 1.0f, 0.0f }, selectedWorld)),
+                engine::Math::Normalize(engine::Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, selectedWorld)),
             };
             const ImU32 axisColors[] = {
                 IM_COL32(255, 82, 82, 255),
@@ -1520,7 +1520,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
                 IM_COL32(84, 145, 255, 255),
             };
             for (int axisIndex = 0; axisIndex < 3; ++axisIndex) {
-                Vector2 axisScreen{};
+                engine::Vector2 axisScreen{};
                 if (ProjectWorldToGameView(originWorld + axes[axisIndex] * axisLength, axisScreen)) {
                     drawList->AddLine(
                         ImVec2(originScreen.x, originScreen.y),
@@ -1544,9 +1544,9 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return;
 
-    Matrix4x4 view = camera->GetViewMatrix();
-    Matrix4x4 proj = camera->GetProjectionMatrix();
-    Matrix4x4 jointWorld = GetJointWorldMatrix(selectedJointIndex_);
+    engine::Matrix4x4 view = camera->GetViewMatrix();
+    engine::Matrix4x4 proj = camera->GetProjectionMatrix();
+    engine::Matrix4x4 jointWorld = GetJointWorldMatrix(selectedJointIndex_);
 
     ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
     ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
@@ -1559,15 +1559,15 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 
     if (ImGuizmo::IsUsing()) {
         const auto& selectedJoint = joints[selectedJointIndex_];
-        Matrix4x4 parentWorld = previewObject_->GetWorldMatrix();
+        engine::Matrix4x4 parentWorld = previewObject_->GetWorldMatrix();
         if (selectedJoint.parent) {
             parentWorld = GetJointWorldMatrix(*selectedJoint.parent);
         }
-        Matrix4x4 localMatrix = Math::Multiply(jointWorld, Math::Inverse(parentWorld));
+        engine::Matrix4x4 localMatrix = engine::Math::Multiply(jointWorld, engine::Math::Inverse(parentWorld));
 
-        Vector3 scale;
-        Vector3 rotateDeg;
-        Vector3 translate;
+        engine::Vector3 scale;
+        engine::Vector3 rotateDeg;
+        engine::Vector3 translate;
         ImGuizmo::DecomposeMatrixToComponents(&localMatrix.m[0][0], &translate.x, &rotateDeg.x, &scale.x);
 
         jointTranslateUi_ = translate;
@@ -1584,13 +1584,13 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 #endif
 }
 
-bool AnimationWorkbench::ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const {
+bool AnimationWorkbench::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
     // 骨格のワールド位置を Game View 内のピクセル座標へ変換する。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return false;
 
-    Matrix4x4 viewProjection = Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
-    Vector3 ndc = Math::Transform(world, viewProjection);
+    engine::Matrix4x4 viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    engine::Vector3 ndc = engine::Math::Transform(world, viewProjection);
     if (ndc.z < 0.0f || ndc.z > 1.0f) return false;
 
     screenOut.x = gameViewOffset_.x + (ndc.x + 1.0f) * 0.5f * gameViewSize_.x;
@@ -1601,19 +1601,19 @@ bool AnimationWorkbench::ProjectWorldToGameView(const Vector3& world, Vector2& s
            screenOut.y <= gameViewOffset_.y + gameViewSize_.y + 64.0f;
 }
 
-Matrix4x4 AnimationWorkbench::GetJointWorldMatrix(int jointIndex) const {
+engine::Matrix4x4 AnimationWorkbench::GetJointWorldMatrix(int jointIndex) const {
     // 骨格空間の行列へプレビュー Object のワールド行列を重ねる。
     if (!previewModel_ || !previewObject_) {
-        return Math::MakeIdentity4x4();
+        return engine::Math::MakeIdentity4x4();
     }
     const auto& joints = previewModel_->GetJoints();
     if (jointIndex < 0 || jointIndex >= static_cast<int>(joints.size())) {
         return previewObject_->GetWorldMatrix();
     }
-    return Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, previewObject_->GetWorldMatrix());
+    return engine::Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, previewObject_->GetWorldMatrix());
 }
 
-Vector3 AnimationWorkbench::GetMatrixTranslation(const Matrix4x4& matrix) const {
+engine::Vector3 AnimationWorkbench::GetMatrixTranslation(const engine::Matrix4x4& matrix) const {
     // 行列の平行移動成分を骨表示の起点として取り出す。
     return { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
 }
@@ -1626,8 +1626,8 @@ void AnimationWorkbench::ApplyCameraOverride() {
     if ((!hasPlacedCamera_ && cameraMoveOnEnter_) || recenterCameraRequested_) {
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (camera) {
-            Vector3 target = previewOrigin_;
-            Vector3 eye = {
+            engine::Vector3 target = previewOrigin_;
+            engine::Vector3 eye = {
                 target.x,
                 target.y + cameraHeight_,
                 target.z - cameraDistance_

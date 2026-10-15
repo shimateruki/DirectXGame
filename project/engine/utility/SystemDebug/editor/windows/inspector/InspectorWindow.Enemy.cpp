@@ -6,7 +6,7 @@
 void InspectorWindow::DrawEnemyTypeSelector() {
     // 種別変更時は、生成時に必要なモデル・当たり判定の初期値も同時に揃えます。
 #ifdef USE_IMGUI
-    Object3d* selectedObject = editor_->GetSelectedObject();
+    engine::Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
     const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime" };

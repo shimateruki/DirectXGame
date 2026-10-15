@@ -6,6 +6,8 @@ Resources/json/user_config.json
 /output/
 /docs/
 /Saved/
+# 個人用の学習・調査資料はローカルに残し、Git では追跡しない。
+/engine-study/
 Resources/.backup/
 !Resources/**/*.meta
 .git.vs-invalid-backup_*

@@ -331,64 +331,6 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 }
 
 // --- 既存のWAV再生関数（変更なし） ---
-SoundData AudioPlayer::SoundLoadWave(const char* filename)
-{
-	// RIFF/WAVE、fmt、任意の JUNK、data の順を想定する簡易読込。任意のチャンク列を走査する実装ではない。
-	std::ifstream file;
-	file.open(filename, std::ios::binary);
-	assert(file.is_open());
-	RiffHeader riff;
-	file.read((char*)&riff, sizeof(riff));
-	if (strncmp(riff.chunk.id, "RIFF", 4) != 0) { assert(0); }
-	if (strncmp(riff.type, "WAVE", 4) != 0) { assert(0); }
-	FormatChunk format = {};
-	file.read((char*)&format, sizeof(ChunkHeader));
-	if (strncmp(format.chunk.id, "fmt ", 4) != 0) { assert(0); }
-	assert(format.chunk.size <= sizeof(format.format));
-	file.read((char*)&format.format, format.chunk.size);
-	ChunkHeader data;
-	file.read((char*)&data, sizeof(data));
-	if (strncmp(data.id, "JUNK", 4) == 0) {
-		file.seekg(data.size, std::ios_base::cur);
-		file.read((char*)&data, sizeof(data));
-	}
-	if (strncmp(data.id, "data", 4) != 0) { assert(0); }
-	char* pBuffer = new char[data.size];
-	file.read(pBuffer, data.size);
-	file.close();
-	SoundData soundData = {};
-	soundData.wfex = format.format;
-	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
-	soundData.bufferSize = data.size;
-	return soundData;
-}
-
-// SoundLoadWave が確保した音声を解放する。再生側がバッファを参照しなくなってから呼ぶ。
-void AudioPlayer::SoundUnload(SoundData* soundData) {
-	delete[] soundData->pBuffer;
-	soundData->pBuffer = 0;
-	soundData->bufferSize = 0;
-	soundData->wfex = {};
-}
-
-void AudioPlayer::SoundPlayWave(const SoundData& soundData, bool loop)
-{
-	// SubmitSourceBuffer は音声データを後から参照するため、再生中は soundData のバッファを保持する。
-	HRESULT result;
-	IXAudio2SourceVoice* pSourceVoice = nullptr;
-	result = xAudio2_->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
-	assert(SUCCEEDED(result));
-	XAUDIO2_BUFFER buf{};
-	buf.pAudioData = soundData.pBuffer;
-	buf.AudioBytes = soundData.bufferSize;
-	buf.Flags = XAUDIO2_END_OF_STREAM;
-	if (loop) {
-		buf.LoopCount = XAUDIO2_LOOP_INFINITE;
-	}
-	result = pSourceVoice->SubmitSourceBuffer(&buf);
-	result = pSourceVoice->Start(0);
-}
-
 /// <summary>
 /// BGMを再生（または継続）します。
 /// </summary>
@@ -522,6 +464,7 @@ void AudioPlayer::Update() {
 }
 
 namespace {
+// 音声の検索キーを揃えるため、区切り文字と先頭の相対パス表記を正規化します。
 std::string NormalizeAudioPath(std::string path) {
 	std::replace(path.begin(), path.end(), '\\', '/');
 	while (path.rfind("./", 0) == 0) {
@@ -531,6 +474,7 @@ std::string NormalizeAudioPath(std::string path) {
 }
 
 bool IsAudioFilePath(const std::filesystem::path& path) {
+	// 拡張子の大文字小文字に依存せず、再生対象にできる形式だけ受け付ける。
 	std::string extension = path.extension().string();
 	std::transform(
 		extension.begin(),
@@ -736,7 +680,7 @@ bool AudioEventSystem::Prewarm(
 
 AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 	const std::string& eventPath,
-	const Vector3* worldPosition,
+	const engine::Vector3* worldPosition,
 	float volumeScale) {
 	// 同一イベントの同時発音数を制限してから候補を選び、直前の音を可能なら避ける。
 	Update();
@@ -782,7 +726,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 
 	if (definition.spatial && worldPosition) {
 		if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
-			const float distance = Math::Length(*worldPosition - camera->GetEye());
+			const float distance = engine::Math::Length(*worldPosition - camera->GetEye());
 			const float attenuation = 1.0f - std::clamp(
 				(distance - definition.minDistance) /
 					(definition.maxDistance - definition.minDistance),
@@ -805,7 +749,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 
 AudioPlayer::PlaybackHandle AudioEventSystem::PlayReference(
 	const std::string& reference,
-	const Vector3* worldPosition,
+	const engine::Vector3* worldPosition,
 	float volumeScale) {
 	// 参照先がイベント JSON なら設定に従い、音声ファイルなら直接再生する。
 	const std::string eventPath = ResolveEventPath(reference);

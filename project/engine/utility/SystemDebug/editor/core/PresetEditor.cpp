@@ -2,11 +2,13 @@
 
 #include "ModelManager.h"
 #include "imgui.h"
+#include "IconsFontAwesome5.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 #include <filesystem>
 #include <utility>
 
@@ -44,6 +46,10 @@ void PresetEditor::SetBrushPresetCallback(std::function<void(const std::string&)
 void PresetEditor::SetThumbnailProvider(std::function<uint64_t(const std::string&)> provider) {
     // サムネイルの描画資源は外部が所有し、ここでは取得手段だけ保持する。
     thumbnailProvider_ = std::move(provider);
+}
+
+void PresetEditor::SetPreviewProvider(std::function<uint64_t(const std::string&, float, float, float)> provider) {
+    previewProvider_ = std::move(provider);
 }
 
 void PresetEditor::SetSelectionCallback(std::function<void()> callback) {
@@ -114,6 +120,28 @@ void PresetEditor::DrawLibrary(bool fromProject) {
         if (ImGui::Button("モデル一覧更新")) RefreshModelList();
         ImGui::EndPopup();
     }
+    const ImVec4 dangerColor(0.90f, 0.27f, 0.30f, 1.0f);
+    bool openBulkDeleteConfirmation = false;
+    if (!bulkDeleteMode_) {
+        ImGui::PushStyleColor(ImGuiCol_Text, dangerColor);
+        if (ImGui::Button(ICON_FA_TRASH_ALT " まとめて削除")) {
+            bulkDeleteMode_ = true;
+            bulkDeleteSelection_.clear();
+        }
+        ImGui::PopStyleColor();
+    } else {
+        ImGui::TextColored(dangerColor, "削除モード: %d件選択", static_cast<int>(bulkDeleteSelection_.size()));
+        ImGui::SameLine();
+        ImGui::BeginDisabled(bulkDeleteSelection_.empty());
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.15f, 0.18f, 1.0f));
+        if (ImGui::Button(ICON_FA_TRASH_ALT " 選択したプリセットを削除...")) openBulkDeleteConfirmation = true;
+        ImGui::PopStyleColor();
+        ImGui::EndDisabled();
+        if (width < 660.0f) ImGui::NewLine(); else ImGui::SameLine();
+        if (ImGui::Button("選択解除")) bulkDeleteSelection_.clear();
+        ImGui::SameLine();
+        if (ImGui::Button("終了")) { bulkDeleteSelection_.clear(); bulkDeleteMode_ = false; }
+    }
     const char* collections[] = {"", "Tutorial", "Stage1", "Stage2", "Stage3", "Stage4", "Stage5", "StageSelect"};
     const char* labels[] = {"全ステージ", "チュートリアル", "ステージ1", "ステージ2", "ステージ3", "ステージ4", "ステージ5", "ステージ選択"};
     int stage = 0;
@@ -160,12 +188,31 @@ void PresetEditor::DrawLibrary(bool fromProject) {
         if (lc != rc) return !lc;
         return GetDisplayName(a, left) < GetDisplayName(b, right);
     });
+    // 絞り込みを跨いで候補を保持するが、一括選択は現在表示中の結果だけを対象にする。
+    bulkDeleteSelection_.erase(std::remove_if(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(),
+        [&](const std::string& key) { return presets.find(key) == presets.end(); }), bulkDeleteSelection_.end());
     ImGui::TextDisabled("表示中 %d件 / 全%d件", static_cast<int>(entries.size()), static_cast<int>(presets.size()));
-    ImGui::SameLine(); ImGui::TextDisabled("クリックで詳細 / ドラッグで配置");
+    ImGui::SameLine();
+    ImGui::TextDisabled(bulkDeleteMode_ ? "クリックで削除候補を選択" : "クリックで詳細 / ドラッグで配置");
+    if (bulkDeleteMode_) {
+        if (ImGui::Button("表示中をすべて選択")) {
+            for (const std::string& key : entries) {
+                if (std::find(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(), key) == bulkDeleteSelection_.end())
+                    bulkDeleteSelection_.push_back(key);
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("表示中を選択解除")) {
+            for (const std::string& key : entries) {
+                bulkDeleteSelection_.erase(std::remove(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(), key), bulkDeleteSelection_.end());
+            }
+        }
+    }
     if (entries.empty()) ImGui::TextWrapped("条件に合うプリセットがありません。検索やステージ・用途の条件を変更してください。");
     const float tile = static_cast<float>(thumbnailSize_);
     const int columns = listView_ ? 1 : (std::max)(1, static_cast<int>(ImGui::GetContentRegionAvail().x / (tile + 18.0f)));
     const float rowHeight = tile + ImGui::GetTextLineHeightWithSpacing() * (listView_ ? 1.0f : 3.0f) + 14.0f;
+    bool openLibraryDeleteConfirmation = false;
     ImGuiListClipper clipper;
     clipper.Begin(static_cast<int>((entries.size() + columns - 1) / columns), rowHeight);
     while (clipper.Step()) {
@@ -179,16 +226,26 @@ void PresetEditor::DrawLibrary(bool fromProject) {
                 ImGui::SetCursorPos(ImVec2(origin.x + col * (tile + 18.0f), origin.y));
                 ImGui::PushID(key.c_str());
                 ImGui::BeginGroup();
-                const bool selected = selectedName_ == key;
-                ImGui::PushStyleColor(ImGuiCol_Button, selected ? ImVec4(0.18f,0.38f,0.60f,1.0f) : ImVec4(0.14f,0.15f,0.18f,1.0f));
+                const bool selected = bulkDeleteMode_
+                    ? std::find(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(), key) != bulkDeleteSelection_.end()
+                    : selectedName_ == key;
+                const ImVec4 selectionColor = bulkDeleteMode_ ? ImVec4(0.58f,0.16f,0.19f,1.0f) : ImVec4(0.18f,0.38f,0.60f,1.0f);
+                ImGui::PushStyleColor(ImGuiCol_Button, selected ? selectionColor : ImVec4(0.14f,0.15f,0.18f,1.0f));
                 DrawThumbnailButton(key, GetCategoryColor(DetectCategory(data)), tile);
                 ImGui::PopStyleColor();
-                if (selected) ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(80,180,255,255), 2.0f, 0, 2.0f);
-                if (ImGui::IsItemClicked()) SelectPreset(key, fromProject);
-                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && placePresetCallback_) {
+                if (selected) ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
+                    bulkDeleteMode_ ? IM_COL32(255,75,82,255) : IM_COL32(80,180,255,255), 2.0f, 0, 2.0f);
+                if (ImGui::IsItemClicked()) {
+                    if (bulkDeleteMode_) {
+                        const auto it = std::find(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(), key);
+                        if (it == bulkDeleteSelection_.end()) bulkDeleteSelection_.push_back(key);
+                        else bulkDeleteSelection_.erase(it);
+                    } else SelectPreset(key, fromProject);
+                }
+                if (!bulkDeleteMode_ && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && placePresetCallback_) {
                     NotifyPresetUsed(key); placePresetCallback_(key);
                 }
-                if (ImGui::BeginDragDropSource()) {
+                if (!bulkDeleteMode_ && ImGui::BeginDragDropSource()) {
                     ImGui::SetDragDropPayload("PRESET_ASSET", key.c_str(), key.size() + 1);
                     ImGui::TextUnformatted(display.c_str());
                     NotifyPresetUsed(key);
@@ -198,21 +255,35 @@ void PresetEditor::DrawLibrary(bool fromProject) {
                     ImGui::BeginTooltip();
                     ImGui::TextUnformatted(display.c_str());
                     ImGui::TextUnformatted(ReadString(data, "presetDescription", "").c_str());
-                    const Vector3 scale = ReadVector3(data, "scale", {1,1,1});
+                    const engine::Vector3 scale = ReadVector3(data, "scale", {1,1,1});
                     ImGui::Text("スケール: %.2f / %.2f / %.2f", scale.x,scale.y,scale.z);
                     ImGui::TextDisabled("元の名前: %s", ReadString(data,"name",key).c_str());
                     ImGui::TextDisabled("%s", key.c_str());
                     ImGui::EndTooltip();
                 }
                 if (ImGui::BeginPopupContextItem("LibraryPresetMenu")) {
-                    if (ImGui::MenuItem("詳細・表示名を編集")) SelectPreset(key, fromProject);
-                    if (ImGui::MenuItem(ReadBool(data,"presetFavorite",false) ? "お気に入りから外す" : "お気に入りに追加")) {
-                        PresetManager::GetInstance()->GetPreset(key)["presetFavorite"] = !ReadBool(data,"presetFavorite",false);
-                        PresetManager::GetInstance()->SaveAll();
+                    if (bulkDeleteMode_) {
+                        if (ImGui::MenuItem(selected ? "削除候補から外す" : "削除候補に追加")) {
+                            const auto it = std::find(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(), key);
+                            if (it == bulkDeleteSelection_.end()) bulkDeleteSelection_.push_back(key);
+                            else bulkDeleteSelection_.erase(it);
+                        }
+                    } else {
+                        if (ImGui::MenuItem("詳細・表示名を編集")) SelectPreset(key, fromProject);
+                        if (ImGui::MenuItem(ReadBool(data,"presetFavorite",false) ? "お気に入りから外す" : "お気に入りに追加")) {
+                            PresetManager::GetInstance()->GetPreset(key)["presetFavorite"] = !ReadBool(data,"presetFavorite",false);
+                            PresetManager::GetInstance()->SaveAll();
+                        }
+                        if (ImGui::MenuItem("配置プレビュー") && placePresetCallback_) { NotifyPresetUsed(key); placePresetCallback_(key); }
+                        if (ImGui::MenuItem("ブラシ配置") && brushPresetCallback_) { NotifyPresetUsed(key); brushPresetCallback_(key); }
+                        if (ImGui::MenuItem("サムネイルを再撮影") && thumbnailInvalidator_) thumbnailInvalidator_(key);
                     }
-                    if (ImGui::MenuItem("配置プレビュー") && placePresetCallback_) { NotifyPresetUsed(key); placePresetCallback_(key); }
-                    if (ImGui::MenuItem("ブラシ配置") && brushPresetCallback_) { NotifyPresetUsed(key); brushPresetCallback_(key); }
-                    if (ImGui::MenuItem("サムネイルを再撮影") && thumbnailInvalidator_) thumbnailInvalidator_(key);
+                    ImGui::PushStyleColor(ImGuiCol_Text, dangerColor);
+                    if (ImGui::MenuItem(ICON_FA_TRASH_ALT " このプリセットを削除...")) {
+                        pendingLibraryDeleteName_ = key;
+                        openLibraryDeleteConfirmation = true;
+                    }
+                    ImGui::PopStyleColor();
                     ImGui::EndPopup();
                 }
                 if (listView_) ImGui::SameLine();
@@ -237,6 +308,54 @@ void PresetEditor::DrawLibrary(bool fromProject) {
         }
     }
     ImGui::EndChild();
+    if (openBulkDeleteConfirmation) ImGui::OpenPopup("選択したプリセットをまとめて削除");
+    if (ImGui::BeginPopupModal("選択したプリセットをまとめて削除", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextColored(dangerColor, "次の%d件を登録一覧から削除します。", static_cast<int>(bulkDeleteSelection_.size()));
+        ImGui::TextDisabled("配置済みのObjectとモデルファイルは残ります。");
+        ImGui::BeginChild("削除対象一覧", ImVec2(440.0f, 200.0f), true);
+        for (const std::string& key : bulkDeleteSelection_) {
+            const auto it = presets.find(key);
+            if (it != presets.end()) ImGui::TextUnformatted(GetDisplayName(key, it->second).c_str());
+        }
+        ImGui::EndChild();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.15f, 0.18f, 1.0f));
+        if (ImGui::Button(ICON_FA_TRASH_ALT " まとめて削除する")) {
+            const bool selectedPresetRemoved = std::find(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(), selectedName_) != bulkDeleteSelection_.end();
+            PresetManager::GetInstance()->RemovePresets(bulkDeleteSelection_);
+            if (selectedPresetRemoved) selectedName_.clear();
+            for (const std::string& key : bulkDeleteSelection_) {
+                recentPresets_.erase(std::remove(recentPresets_.begin(), recentPresets_.end(), key), recentPresets_.end());
+            }
+            bulkDeleteSelection_.clear();
+            bulkDeleteMode_ = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        if (ImGui::Button("キャンセル")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+    // 反復中にプリセット集合を変更すると一覧の参照が無効になるため、削除は一覧の後で確定する。
+    if (openLibraryDeleteConfirmation) ImGui::OpenPopup("一覧からプリセットを削除");
+    if (ImGui::BeginPopupModal("一覧からプリセットを削除", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("「%s」を登録一覧から削除します。", pendingLibraryDeleteName_.c_str());
+        ImGui::TextDisabled("配置済みのObjectとモデルファイルは残ります。");
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.15f, 0.18f, 1.0f));
+        if (ImGui::Button(ICON_FA_TRASH_ALT " 削除する")) {
+            PresetManager::GetInstance()->RemovePreset(pendingLibraryDeleteName_);
+            if (selectedName_ == pendingLibraryDeleteName_) selectedName_.clear();
+            recentPresets_.erase(std::remove(recentPresets_.begin(), recentPresets_.end(), pendingLibraryDeleteName_), recentPresets_.end());
+            pendingLibraryDeleteName_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        if (ImGui::Button("キャンセル")) {
+            pendingLibraryDeleteName_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
     ImGui::PopID();
 }
 
@@ -385,7 +504,7 @@ void PresetEditor::DrawPresetListItem(const std::string& name, const json& data)
         ImGui::TextDisabled("%s", ReadString(data, "presetDescription", "").c_str());
         ImGui::PopTextWrapPos();
     } else {
-        Vector3 scale = ReadVector3(data, "scale", { 1.0f, 1.0f, 1.0f });
+        engine::Vector3 scale = ReadVector3(data, "scale", { 1.0f, 1.0f, 1.0f });
         ImGui::TextDisabled("Scale: %.2f / %.2f / %.2f", scale.x, scale.y, scale.z);
     }
     ImGui::EndGroup();
@@ -434,8 +553,46 @@ void PresetEditor::DrawSettingsPane() {
 
     std::string displayName = GetDisplayName(selectedName_, data);
     ImGui::TextColored(GetCategoryColor(category), "%s", displayName.c_str());
+    if (previewSelectionName_ != selectedName_) {
+        previewSelectionName_ = selectedName_;
+        previewYaw_ = 0.0f;
+        previewPitch_ = 0.0f;
+        previewZoom_ = 1.0f;
+    }
     const float previewSize = (std::min)(300.0f, ImGui::GetContentRegionAvail().x - 12.0f);
-    if (previewSize > 48.0f) DrawThumbnailButton(selectedName_, GetCategoryColor(category), previewSize);
+    if (previewSize > 48.0f) {
+        const bool colliderOnly = ReadString(data, "presetUsage", "") == "当たり判定";
+        const uint64_t texture = !colliderOnly && previewProvider_
+            ? previewProvider_(selectedName_, previewYaw_, previewPitch_, previewZoom_) : 0;
+        if (texture) {
+            ImGui::ImageButton("##Preset3dPreview", ImTextureRef(static_cast<ImTextureID>(texture)),
+                ImVec2(previewSize, previewSize));
+            // 画像上の操作は視点だけに適用し、配置済みObjectとJSONの回転を変えない。
+            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                previewYaw_ = std::remainder(previewYaw_ + delta.x * 0.01f, 6.2831853f);
+                previewPitch_ = std::clamp(previewPitch_ + delta.y * 0.01f, -1.2f, 1.2f);
+            }
+            if (ImGui::IsItemHovered() && ImGui::GetIO().MouseWheel != 0.0f) {
+                previewZoom_ = std::clamp(previewZoom_ + ImGui::GetIO().MouseWheel * 0.1f, 0.5f, 2.5f);
+            }
+        } else {
+            ImGui::Button(colliderOnly ? "判定のみ##Preset3dPreview" : "モデルを読み込み中##Preset3dPreview",
+                ImVec2(previewSize, previewSize));
+        }
+        if (!colliderOnly) {
+            ImGui::TextDisabled("左ドラッグ: 視点を回す / ホイール: 拡大縮小");
+            ImGui::SliderAngle("水平角##PresetPreview", &previewYaw_, -180.0f, 180.0f);
+            ImGui::SliderAngle("上下角##PresetPreview", &previewPitch_, -68.0f, 68.0f);
+            ImGui::SliderFloat("拡大率##PresetPreview", &previewZoom_, 0.5f, 2.5f, "%.1f 倍");
+            if (ImGui::SmallButton("視点を初期位置へ")) {
+                previewYaw_ = 0.0f;
+                previewPitch_ = 0.0f;
+                previewZoom_ = 1.0f;
+            }
+            ImGui::TextDisabled("配置時の向きは下の「回転」で編集・保存します。");
+        }
+    }
     ImGui::TextDisabled("%s", ReadString(data, "presetUsage", GetCategoryLabel(category)).c_str());
     bool favorite = ReadBool(data, "presetFavorite", false);
     if (ImGui::Checkbox("お気に入り", &favorite)) { data["presetFavorite"] = favorite; manager->SaveAll(); }
@@ -458,8 +615,17 @@ void PresetEditor::DrawSettingsPane() {
         manager->SaveAll();
     }
     ImGui::SameLine();
-    if (ImGui::Button("削除")) {
-        requestDelete_ = true;
+    if (ImGui::Button("このプリセットを削除...")) ImGui::OpenPopup("プリセット削除の確認");
+    if (ImGui::BeginPopupModal("プリセット削除の確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("「%s」を登録一覧から削除します。", displayName.c_str());
+        ImGui::TextDisabled("配置済みのObjectとモデルファイルは残ります。");
+        if (ImGui::Button("削除する")) {
+            requestDelete_ = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("キャンセル")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
     }
 
     ImGui::Separator();
@@ -471,20 +637,56 @@ void PresetEditor::DrawSettingsPane() {
         for (const char* label : usageLabels) if (ImGui::Selectable(label, usage == label)) { data["presetUsage"] = label; changed = true; }
         ImGui::EndCombo();
     }
+    // 保存済みのPBR値をInspectorから見直せるよう、親と子で同じ入力欄を使う。
+    const auto drawMaterialFields = [&](json& material) {
+        bool fieldChanged = false;
+        fieldChanged |= DrawColorField(material, "色", "color", {1.0f, 1.0f, 1.0f, 1.0f});
+        fieldChanged |= DrawIntField(material, "マテリアルタイプ", "materialType", 0);
+        fieldChanged |= DrawFloatField(material, "金属度", "metallic", 0.0f, 0.01f);
+        fieldChanged |= DrawFloatField(material, "粗さ", "roughness", 0.5f, 0.01f);
+        fieldChanged |= DrawFloatField(material, "発光", "emissive", 1.0f, 0.05f);
+        const auto drawBool = [&](const char* label, const char* key, bool fallback) {
+            bool value = ReadBool(material, key, fallback);
+            if (ImGui::Checkbox(label, &value)) { material[key] = value; return true; }
+            return false;
+        };
+        fieldChanged |= drawBool("ライティング", "enableLighting", true);
+        fieldChanged |= drawBool("環境マップ", "enableEnvMap", false);
+        fieldChanged |= DrawFloatField(material, "環境マップ強度", "envIntensity", 1.0f, 0.01f);
+        fieldChanged |= DrawStringField(material, "カラーテクスチャ", "texturePath", "");
+        fieldChanged |= drawBool("法線マップを使う", "enableNormalMap", false);
+        fieldChanged |= DrawStringField(material, "法線マップ", "normalMapPath", "");
+        fieldChanged |= DrawStringField(material, "ORMマップ", "ormMapPath", "");
+        fieldChanged |= DrawStringField(material, "マテリアルアセット", "materialInstance", "");
+        if (!ReadString(material, "materialInstance", "").empty()) {
+            ImGui::TextDisabled("アセット参照がある場合、配置時はアセットの値が優先されます。");
+        }
+        return fieldChanged;
+    };
     if (ImGui::CollapsingHeader("材質・モデル")) {
         if (category == Category::Enemy) {
             ImGui::TextDisabled("敵のモデルとタイプ共通スケールはステータス管理で設定します。");
         } else {
             changed |= DrawModelField(data);
         }
-        changed |= DrawColorField(data, "色", "color", { 1.0f, 1.0f, 1.0f, 1.0f });
-        changed |= DrawIntField(data, "マテリアルタイプ", "materialType", 0);
-        changed |= DrawFloatField(data, "発光", "emissive", 1.0f, 0.05f);
+        changed |= drawMaterialFields(data);
     }
+
+    const auto drawRotationDegrees = [&](json& node, const char* label) {
+        constexpr float toDegrees = 57.2957795f;
+        constexpr float toRadians = 0.0174532925f;
+        const engine::Vector3 radians = ReadVector3(node, "rotate", {0.0f, 0.0f, 0.0f});
+        float degrees[3] = {radians.x * toDegrees, radians.y * toDegrees, radians.z * toDegrees};
+        if (!ImGui::DragFloat3(label, degrees, 1.0f, 0.0f, 0.0f, "%.1f°")) return false;
+        // JSONと実行時のTransformはラジアンを使うため、表示単位だけ度へ変換する。
+        node["rotate"] = {degrees[0] * toRadians, degrees[1] * toRadians, degrees[2] * toRadians};
+        node.erase("quaternion");
+        return true;
+    };
 
     if (ImGui::CollapsingHeader("配置時Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
         changed |= DrawVector3Field(data, "位置オフセット", "translate", { 0.0f, 0.0f, 0.0f }, 0.1f);
-        changed |= DrawVector3Field(data, "回転", "rotate", { 0.0f, 0.0f, 0.0f }, 0.01f);
+        changed |= drawRotationDegrees(data, "回転 (度)");
         if (category == Category::Enemy) {
             ImGui::TextDisabled("スケールはステータス管理の敵タイプ共通値を使用します。");
         } else {
@@ -527,11 +729,9 @@ void PresetEditor::DrawSettingsPane() {
                 if (ImGui::TreeNode(GetDisplayName("子オブジェクト", child).c_str())) {
                     changed |= DrawModelField(child);
                     changed |= DrawVector3Field(child, "相対位置", "translate", {}, 0.05f);
-                    changed |= DrawVector3Field(child, "相対回転", "rotate", {}, 0.01f);
+                    changed |= drawRotationDegrees(child, "相対回転 (度)");
                     changed |= DrawVector3Field(child, "相対スケール", "scale", {1.0f, 1.0f, 1.0f}, 0.02f);
-                    changed |= DrawColorField(child, "色", "color", {1.0f, 1.0f, 1.0f, 1.0f});
-                    changed |= DrawIntField(child, "マテリアルタイプ", "materialType", 0);
-                    changed |= DrawFloatField(child, "発光", "emissive", 1.0f, 0.05f);
+                    changed |= drawMaterialFields(child);
                     changed |= DrawCollider(child);
                     if (DetectCategory(child) == Category::Gimmick) changed |= DrawGimmickSettings(child);
                     drawChildren(child, depth + 1);
@@ -559,6 +759,7 @@ void PresetEditor::SetPlacePresetCallback(std::function<void(const std::string&)
 void PresetEditor::SetBrushPresetCallback(std::function<void(const std::string&)>) {}
 
 void PresetEditor::SetThumbnailProvider(std::function<uint64_t(const std::string&)>) {}
+void PresetEditor::SetPreviewProvider(std::function<uint64_t(const std::string&, float, float, float)>) {}
 
 void PresetEditor::DrawImGui() {}
 void PresetEditor::DrawLibrary(bool) {}

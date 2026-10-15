@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a9d1df4c2d39489d857c83ffa1c5d355",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/keyboard_hint.png",
+  "version": 1
+}

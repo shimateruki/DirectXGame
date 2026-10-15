@@ -10,7 +10,7 @@ class Skybox {
 public:
     /// <summary>背景用キューブメッシュの頂点位置。</summary>
     struct VertexData {
-        Vector4 position;
+        engine::Vector4 position;
     };
 
     /// <summary>共通描画機能とキューブマップテクスチャで初期化する。</summary>

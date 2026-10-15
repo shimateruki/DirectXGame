@@ -27,7 +27,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
             return;
         blastElapsed_ += deltaTime;
         if (trailTimer_ <= 0.0f) {
-            const Vector3 position = player.GetWorldPosition() - blastDirection_ * 0.32f + Vector3{0.0f, 0.12f, 0.0f};
+            const engine::Vector3 position = player.GetWorldPosition() - blastDirection_ * 0.32f + engine::Vector3{0.0f, 0.12f, 0.0f};
             SpawnEffect("Resources/json/effect/effect_player_bomb_blast_jump_trail.json", position);
             EmitDirectedPreset("player_bomb_blast_jump", position, {0.0f, -1.0f, 0.0f}, 0.62f);
             trailTimer_ = 0.055f;
@@ -49,8 +49,8 @@ class BomberCopyAbility final : public ICopyAbilitySession {
         auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", scene->GetObject3dCommon());
         if (!bomb)
             return;
-        const Vector3 forward = NormalizePlanar(player.GetLockOnAttackDirection());
-        Vector3 position = player.GetWorldPosition() + forward * (placed ? 1.55f : 2.1f);
+        const engine::Vector3 forward = NormalizePlanar(player.GetLockOnAttackDirection());
+        engine::Vector3 position = player.GetWorldPosition() + forward * (placed ? 1.55f : 2.1f);
         position.y += placed ? 0.42f : 2.15f;
         bomb->SetTranslate(position);
         bomb->SetRotationY(std::atan2(forward.x, forward.z));
@@ -65,7 +65,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
             enemyBomb->Ignite(placed ? 1.35f : 2.25f);
         }
         bomb->SetCarried(false);
-        bomb->SetVelocity(placed ? Vector3{0.0f, 1.8f, 0.0f} : Vector3{forward.x * 24.0f, 8.0f, forward.z * 24.0f});
+        bomb->SetVelocity(placed ? engine::Vector3{0.0f, 1.8f, 0.0f} : engine::Vector3{forward.x * 24.0f, 8.0f, forward.z * 24.0f});
         SpawnEffect(placed ? "Resources/json/effect/effect_player_bomb_place.json"
                            : "Resources/json/effect/effect_carry_bomber_throw_burst.json",
                     position);
@@ -86,13 +86,13 @@ class BomberCopyAbility final : public ICopyAbilitySession {
     void BlastJump(Player& player) {
         // 現在の向きへ跳ね出し、爆発直後だけ回避無敵を与える。
         blastDirection_ = NormalizePlanar(player.GetForwardDirection());
-        const Vector3 center = player.GetWorldPosition();
+        const engine::Vector3 center = player.GetWorldPosition();
         player.SetVelocity({blastDirection_.x * 8.5f, 18.0f, blastDirection_.z * 8.5f});
         player.StartEvasionInvincibility(0.32f);
         player.SetMoveYaw(std::atan2(blastDirection_.x, blastDirection_.z));
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, blastDirection_);
         player.TriggerSlimeImpulse({2.55f, 0.62f, 2.55f}, 0.17f);
-        DamageSphere(player, center + Vector3{0.0f, 0.58f, 0.0f}, 3.2f, 8.0f, DamageType::Explosion, 13.0f, 9.5f);
+        DamageSphere(player, center + engine::Vector3{0.0f, 0.58f, 0.0f}, 3.2f, 8.0f, DamageType::Explosion, 13.0f, 9.5f);
         SpawnEffect("Resources/json/effect/effect_player_bomb_blast_jump.json", center);
         EmitPreset("player_bomb_blast_jump", center);
         blastCooldown_ = 1.10f;
@@ -101,7 +101,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
         blastActive_ = true;
     }
 
-    Vector3 blastDirection_{0.0f, 0.0f, 1.0f};
+    engine::Vector3 blastDirection_{0.0f, 0.0f, 1.0f};
     float throwCooldown_ = 0.0f;
     float placeCooldown_ = 0.0f;
     float blastCooldown_ = 0.0f;

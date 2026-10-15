@@ -10,6 +10,7 @@ namespace {
 
 using json = nlohmann::json;
 
+// 複数選択の混在判定用にJSONを比較し、数値の小さい保存誤差を許容します。
 bool JsonValuesEqual(const json& lhs, const json& rhs) {
     // 複数選択の混在判定では、編集時の浮動小数点誤差を差分として扱わないようにします。
     if (lhs.is_number() && rhs.is_number()) {
@@ -54,6 +55,7 @@ const json* FindSerializedPath(const json& source, const std::string& path) {
     return current;
 }
 
+// 保存JSONに明示されたComponent存在フラグを読み、未指定ならfalseを返します。
 bool TryReadSerializedPresenceMarker(
     const json& source,
     const std::string& componentTypeId,
@@ -68,11 +70,13 @@ bool TryReadSerializedPresenceMarker(
     return true;
 }
 
+// 旧形式の指定保存Pathに空でない文字列があるか調べます。
 bool HasNonEmptySerializedString(const json& source, const char* path) {
     const json* value = FindSerializedPath(source, path);
     return value && value->is_string() && !value->get_ref<const std::string&>().empty();
 }
 
+// 旧形式の指定保存Pathに0以外の整数があるか調べます。
 bool HasNonZeroSerializedInteger(const json& source, const char* path) {
     const json* value = FindSerializedPath(source, path);
     if (!value || (!value->is_number_integer() && !value->is_number_unsigned())) {
@@ -125,6 +129,7 @@ bool ResolveSerializedComponentPresence(const json& source, const std::string& c
     return false;
 }
 
+// Componentの存在マーカーを書き、削除時は旧形式の実行時フィールドも消します。
 void SetSerializedComponentPresence(
     json& source,
     const std::string& componentTypeId,
@@ -268,6 +273,7 @@ std::string ResolveSerializedPath(const std::string& path) {
 }
 
 json ResolveDefaultValue(const std::string& path) {
+    // 型に応じた空値を返し、未設定プロパティが型違いのJSONにならないようにする。
     if (path == "component.collision.static" ||
         path == "component.lod.enabled" ||
         path == "component.path.loop" ||
@@ -421,7 +427,7 @@ const EditorComponentPresetDescriptor* EditorPropertyRegistry::FindComponentPres
 }
 
 std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetApplicableComponentsForObject(
-    const Object3d* object) const {
+    const engine::Object3d* object) const {
     std::vector<const EditorComponentDescriptor*> result;
     if (!object) {
         return result;
@@ -439,7 +445,7 @@ std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetApplica
 }
 
 std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetComponentsForObject(
-    const Object3d* object) const {
+    const engine::Object3d* object) const {
     std::vector<const EditorComponentDescriptor*> result;
     for (const EditorComponentDescriptor* component : GetApplicableComponentsForObject(object)) {
         if (component && (!component->present || component->present(*object))) {
@@ -459,14 +465,14 @@ std::vector<const EditorPropertyDescriptor*> EditorPropertyRegistry::GetProperti
 }
 
 bool EditorPropertyRegistry::IsComponentApplicable(
-    const Object3d* object,
+    const engine::Object3d* object,
     const std::string& typeId) const {
     const EditorComponentDescriptor* component = FindComponent(typeId);
     return object && component && (!component->applicable || component->applicable(*object));
 }
 
 bool EditorPropertyRegistry::IsComponentPresent(
-    const Object3d* object,
+    const engine::Object3d* object,
     const std::string& typeId) const {
     const EditorComponentDescriptor* component = FindComponent(typeId);
     if (!IsComponentApplicable(object, typeId) || !component) {
@@ -494,7 +500,8 @@ bool EditorPropertyRegistry::SetComponentPresent(
     return true;
 }
 
-bool EditorPropertyRegistry::AddComponent(Object3d* object, const std::string& typeId) const {
+bool EditorPropertyRegistry::AddComponent(engine::Object3d* object, const std::string& typeId) const {
+    // 対象に適用でき、まだ存在しない Component だけ追加する。
     const EditorComponentDescriptor* component = FindComponent(typeId);
     if (!object || !component || !component->add ||
         !IsComponentApplicable(object, typeId) || IsComponentPresent(object, typeId)) {
@@ -504,7 +511,7 @@ bool EditorPropertyRegistry::AddComponent(Object3d* object, const std::string& t
 }
 
 bool EditorPropertyRegistry::ApplyComponentPreset(
-    Object3d* object,
+    engine::Object3d* object,
     const std::string& typeId,
     const std::string& presetId) const {
     const EditorComponentPresetDescriptor* preset = FindComponentPreset(typeId, presetId);
@@ -514,7 +521,8 @@ bool EditorPropertyRegistry::ApplyComponentPreset(
     return preset->apply(*object);
 }
 
-bool EditorPropertyRegistry::RemoveComponent(Object3d* object, const std::string& typeId) const {
+bool EditorPropertyRegistry::RemoveComponent(engine::Object3d* object, const std::string& typeId) const {
+    // 削除許可と存在確認を通った Component だけ実体から外す。
     const EditorComponentDescriptor* component = FindComponent(typeId);
     if (!object || !component || !component->removable || !component->remove ||
         !IsComponentPresent(object, typeId)) {
@@ -523,7 +531,8 @@ bool EditorPropertyRegistry::RemoveComponent(Object3d* object, const std::string
     return component->remove(*object);
 }
 
-bool EditorPropertyRegistry::IsApplicable(const Object3d* object, const std::string& path) const {
+bool EditorPropertyRegistry::IsApplicable(const engine::Object3d* object, const std::string& path) const {
+    // 個別の適用条件が登録されていなければ、存在するプロパティは全対象で有効にする。
     const EditorPropertyDescriptor* property = Find(path);
     if (!object || !property) {
         return false;
@@ -539,7 +548,8 @@ const EditorPropertyDescriptor* EditorPropertyRegistry::Find(const std::string& 
     return &properties_[it->second];
 }
 
-json EditorPropertyRegistry::GetValue(const Object3d* object, const std::string& path) const {
+json EditorPropertyRegistry::GetValue(const engine::Object3d* object, const std::string& path) const {
+    // 不適用または読取関数のない項目は空 JSON として UI に返す。
     const EditorPropertyDescriptor* property = Find(path);
     if (!object || !property || !property->getter || !IsApplicable(object, path)) {
         return json();
@@ -547,7 +557,7 @@ json EditorPropertyRegistry::GetValue(const Object3d* object, const std::string&
     return property->getter(*object);
 }
 
-bool EditorPropertyRegistry::SetValue(Object3d* object, const std::string& path, const json& value) const {
+bool EditorPropertyRegistry::SetValue(engine::Object3d* object, const std::string& path, const json& value) const {
     // Inspector以外からの呼び出しでもReadOnlyと適用条件を守る。
     const EditorPropertyDescriptor* property = Find(path);
     if (!object || !property || !property->setter || !IsApplicable(object, path) ||
@@ -557,15 +567,15 @@ bool EditorPropertyRegistry::SetValue(Object3d* object, const std::string& path,
     return property->setter(*object, value);
 }
 
-bool EditorPropertyRegistry::HasMixedValue(const std::vector<Object3d*>& objects, const std::string& path) const {
+bool EditorPropertyRegistry::HasMixedValue(const std::vector<engine::Object3d*>& objects, const std::string& path) const {
     const EditorPropertyDescriptor* property = Find(path);
     if (!property || !property->getter || objects.size() < 2) {
         return false;
     }
 
     // 適用できない Object は比較から除き、最初の適用可能値を基準にします。
-    const Object3d* first = nullptr;
-    for (Object3d* object : objects) {
+    const engine::Object3d* first = nullptr;
+    for (engine::Object3d* object : objects) {
         if (object && IsApplicable(object, path)) {
             first = object;
             break;
@@ -576,7 +586,7 @@ bool EditorPropertyRegistry::HasMixedValue(const std::vector<Object3d*>& objects
     }
 
     const json reference = property->getter(*first);
-    for (Object3d* object : objects) {
+    for (engine::Object3d* object : objects) {
         if (object && IsApplicable(object, path) && !JsonValuesEqual(reference, property->getter(*object))) {
             return true;
         }

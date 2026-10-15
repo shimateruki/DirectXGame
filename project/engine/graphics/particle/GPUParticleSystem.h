@@ -15,19 +15,19 @@ class GPUParticleSystem {
 public:
     // GPUとの共有レイアウト。フィールド順とアラインメントは対応するHLSLに合わせる。
     struct Particle {
-        Vector3 position;
+        engine::Vector3 position;
         float life;
-        Vector3 velocity;
+        engine::Vector3 velocity;
         float maxLife;
-        Vector4 color;
+        engine::Vector4 color;
         float scale;
         float rotation;
         float rotSpeed;
         uint32_t configIndex;
 
-        Vector4 memBaseColor;
-        Vector4 memMidColor;
-        Vector4 memEndColor;
+        engine::Vector4 memBaseColor;
+        engine::Vector4 memMidColor;
+        engine::Vector4 memEndColor;
         float memBaseSize;
         float memMidSize;
         float memEndSize;
@@ -36,15 +36,15 @@ public:
         uint32_t memColorEaseType;
         uint32_t memSizeEaseType;
         float memColorIntensity;
-        Vector3 memGravity;
+        engine::Vector3 memGravity;
         float memDrag;
-        Vector3 memWind;
+        engine::Vector3 memWind;
         float memTurbulence;
         uint32_t memFieldType;
         float memFieldStrength;
         float memFieldRadius;
         float memFieldFalloff;
-        Vector3 memFieldPosition;
+        engine::Vector3 memFieldPosition;
         float memFieldPadding;
     };
 
@@ -55,20 +55,20 @@ public:
         uint32_t startIndex;
         uint32_t emitCount;
 
-        Vector3 emitPos;
+        engine::Vector3 emitPos;
         float emitLife;
-        Vector3 emitArea;
+        engine::Vector3 emitArea;
         float padding1;
 
-        Vector3 emitVelocity;
+        engine::Vector3 emitVelocity;
         float velocityVariance;
 
-        Vector4 baseColor;
+        engine::Vector4 baseColor;
 
-        Vector3 gravity;
+        engine::Vector3 gravity;
         float drag;
 
-        Vector3 wind;
+        engine::Vector3 wind;
         float turbulence;
 
         float baseSize;
@@ -76,13 +76,13 @@ public:
         float endSize;
         float sizeMidTime;
 
-        Vector4 midColor;
+        engine::Vector4 midColor;
 
         float colorMidTime;
         float rotSpeedVariance;
-        Vector2 padding2;
+        engine::Vector2 padding2;
 
-        Vector4 endColor;
+        engine::Vector4 endColor;
 
         uint32_t shapeType;
         float shapeRadius;
@@ -94,10 +94,10 @@ public:
         uint32_t meshVertexCount;
         uint32_t meshVertexStride;
 
-        Matrix4x4 emitterWorldMatrix;
-        Matrix4x4 viewProj;
-        Matrix4x4 inverseViewProj;
-        Vector2 screenSize;
+        engine::Matrix4x4 emitterWorldMatrix;
+        engine::Matrix4x4 viewProj;
+        engine::Matrix4x4 inverseViewProj;
+        engine::Vector2 screenSize;
 
         uint32_t enableCollision;
         float restitution;
@@ -110,7 +110,7 @@ public:
         float fieldStrength;
         float fieldRadius;
         float fieldFalloff;
-        Vector3 fieldPosition;
+        engine::Vector3 fieldPosition;
         float fieldPadding;
     };
 
@@ -125,12 +125,12 @@ public:
 
     /// <summary>描画シェーダーに渡すカメラとSprite表示設定。</summary>
     struct alignas(256) CameraData {
-        Matrix4x4 viewProj;
-        Matrix4x4 billboardMatrix;
-        Matrix4x4 projection;
+        engine::Matrix4x4 viewProj;
+        engine::Matrix4x4 billboardMatrix;
+        engine::Matrix4x4 projection;
         float softParticleFade;
         int blendMode;
-        Vector2 screenSize;
+        engine::Vector2 screenSize;
         uint32_t spriteSheetColumns;
         uint32_t spriteSheetRows;
         uint32_t spriteSheetFrameCount;
@@ -143,9 +143,9 @@ public:
         float trailLength;
         uint32_t receiveLighting;
         float lightingStrength;
-        Vector3 lightDirection;
+        engine::Vector3 lightDirection;
         float cameraPadding0;
-        Vector3 lightColor;
+        engine::Vector3 lightColor;
         float cameraPadding1;
     };
 
@@ -169,7 +169,7 @@ public:
     /// <param name="dummyTex">テクスチャ未指定時に使用するSRV。</param>
     /// <param name="depthSrvHandle">現カメラの深度SRV。画面深度衝突、遮蔽、Soft Particleに使う。</param>
     /// <remarks>コマンド記録後に発生要求と蓄積秒を消費する。Updateだけの反復はGPUの固定刻み再計算ではない。</remarks>
-    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex = 0, uint32_t depthSrvHandle = 0);
+    void Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummyTex = 0, uint32_t depthSrvHandle = 0);
 
     /// <summary>設定をコピーし、次のDrawで発生させる。要求が256件に達した場合は追加しない。</summary>
     /// <remarks>頂点バッファは借用。描画設定はSystemで共有するため、Managerの共有キーが一致する設定を渡す。</remarks>
@@ -288,8 +288,8 @@ private:
     float trailLength_ = 0.15f;
     uint32_t receiveLighting_ = 0;
     float lightingStrength_ = 1.0f;
-    Vector3 lightDirection_ = { -0.4f, -1.0f, 0.3f };
-    Vector3 lightColor_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 lightDirection_ = { -0.4f, -1.0f, 0.3f };
+    engine::Vector3 lightColor_ = { 1.0f, 1.0f, 1.0f };
 
     uint32_t currentTextureHandle_ = 0;
 

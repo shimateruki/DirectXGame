@@ -1,4 +1,42 @@
 {
+  "spriteAssets": [
+    "ui/control_guide/portraits/pink_slime.png",
+    "ui/control_guide/portraits/bomb_slime.png",
+    "ui/control_guide/portraits/wind_slime.png",
+    "ui/control_guide/portraits/fire_slime.png",
+    "ui/control_guide/portraits/thunder_slime.png",
+    "ui/control_guide/labels/absorb.png",
+    "ui/control_guide/labels/throw.png",
+    "ui/control_guide/labels/slime_attack.png",
+    "ui/control_guide/labels/hook_aim.png",
+    "ui/control_guide/labels/slime_dive.png",
+    "ui/control_guide/labels/puni_straight.png",
+    "ui/control_guide/labels/puni_guard.png",
+    "ui/control_guide/labels/bomb_throw.png",
+    "ui/control_guide/labels/bomb_place.png",
+    "ui/control_guide/labels/blast_jump.png",
+    "ui/control_guide/labels/fireball.png",
+    "ui/control_guide/labels/flame_breath.png",
+    "ui/control_guide/labels/blaze_step.png",
+    "ui/control_guide/labels/thunder_chain.png",
+    "ui/control_guide/labels/charged_discharge.png",
+    "ui/control_guide/labels/thunder_step.png",
+    "ui/control_guide/labels/updraft.png",
+    "ui/control_guide/labels/wind_breath.png",
+    "ui/control_guide/labels/wind_dash.png",
+    "ui/hud/copy_style/pink.png",
+    "ui/hud/copy_style/fire.png",
+    "ui/hud/copy_style/thunder.png",
+    "ui/hud/copy_style/wind.png",
+    "ui/hud/copy_style/bomb.png",
+    "ui/hud/copy_style/crown.png",
+    "ui/control_guide/footer_close_frame.png",
+    "ui/control_guide/footer_confirm_frame.png",
+    "generated/text/pause_guide/footer_close_keyboard.png",
+    "generated/text/pause_guide/footer_close_gamepad.png",
+    "generated/text/pause_guide/footer_confirm_keyboard.png",
+    "generated/text/pause_guide/footer_confirm_gamepad.png"
+  ],
   "designResolution": [
     1920.0,
     1080.0
@@ -7,7 +45,7 @@
   "sprites": [
     {
       "name": "controls_guide_background",
-      "texture": "common/white.png",
+      "texture": "ui/control_guide/pause_fullscreen_background.png",
       "position": [
         960.0,
         540.0
@@ -21,10 +59,10 @@
         0.5
       ],
       "color": [
-        0.02,
-        0.045,
-        0.08,
-        0.62
+        1.0,
+        1.0,
+        1.0,
+        1.0
       ],
       "emissive": 1.0
     },
@@ -32,12 +70,12 @@
       "name": "controls_guide_left_arrow",
       "texture": "ui/settings/settings_arrow_left.png",
       "position": [
-        124.0,
-        540.0
+        115,
+        530
       ],
       "size": [
-        82.0,
-        82.0
+        78,
+        78
       ],
       "anchor": [
         0.5,
@@ -55,12 +93,12 @@
       "name": "controls_guide_right_arrow",
       "texture": "ui/settings/settings_arrow_right.png",
       "position": [
-        1796.0,
-        540.0
+        1805,
+        530
       ],
       "size": [
-        82.0,
-        82.0
+        78,
+        78
       ],
       "anchor": [
         0.5,
@@ -78,12 +116,12 @@
       "name": "controls_guide_page_dot_0",
       "texture": "ui/settings/settings_slider_knob.png",
       "position": [
-        938.0,
-        968.0
+        1490,
+        990
       ],
       "size": [
-        24.0,
-        24.0
+        22,
+        22
       ],
       "anchor": [
         0.5,
@@ -101,12 +139,12 @@
       "name": "controls_guide_page_dot_1",
       "texture": "ui/settings/settings_slider_knob.png",
       "position": [
-        982.0,
-        968.0
+        1530,
+        990
       ],
       "size": [
-        24.0,
-        24.0
+        22,
+        22
       ],
       "anchor": [
         0.5,
@@ -124,8 +162,8 @@
       "name": "controls_guide_page_1_panel",
       "texture": "ui/control_guide/book/scroll_panel.png",
       "position": [
-        200,
-        34
+        192,
+        28
       ],
       "size": [
         1536,
@@ -147,12 +185,12 @@
       "name": "controls_guide_page_1_portrait",
       "texture": "ui/control_guide/book/portraits/normal.png",
       "position": [
-        352,
-        114
+        1125,
+        295
       ],
       "size": [
-        380,
-        380
+        430,
+        430
       ],
       "anchor": [
         0.0,
@@ -170,7 +208,7 @@
       "name": "controls_guide_page_1_book_title",
       "texture": "ui/control_guide/book/normal/title.png",
       "position": [
-        930,
+        912,
         132
       ],
       "size": [
@@ -197,12 +235,12 @@
       "name": "controls_guide_page_1_book_intro",
       "texture": "ui/control_guide/book/normal/intro.png",
       "position": [
-        762,
-        277
+        420,
+        284
       ],
       "size": [
-        850,
-        106
+        720,
+        96
       ],
       "anchor": [
         0.0,
@@ -221,69 +259,15 @@
       "bookRow": -1
     },
     {
-      "name": "controls_guide_page_1_book_role",
-      "texture": "ui/control_guide/book/normal/role.png",
-      "position": [
-        762,
-        402
-      ],
-      "size": [
-        850,
-        49
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "role",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_traits_heading",
-      "texture": "ui/control_guide/book/traits_heading.png",
-      "position": [
-        406,
-        460
-      ],
-      "size": [
-        1120,
-        57
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": true,
-      "bookRow": -1
-    },
-    {
       "name": "controls_guide_page_1_book_traits",
       "texture": "ui/control_guide/book/normal/traits.png",
       "position": [
-        406,
-        514
+        420,
+        410
       ],
       "size": [
-        1120,
-        91
+        720,
+        88
       ],
       "anchor": [
         0.0,
@@ -298,19 +282,19 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "traits",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": -1
     },
     {
       "name": "controls_guide_page_1_book_moves_heading",
       "texture": "ui/control_guide/book/moves_heading.png",
       "position": [
-        406,
-        616
+        420,
+        538
       ],
       "size": [
-        1120,
-        57
+        594,
+        54
       ],
       "anchor": [
         0.0,
@@ -325,52 +309,19 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_move_0_card",
-      "texture": "ui/control_guide/book/technique_row.png",
-      "position": [
-        395,
-        681
-      ],
-      "size": [
-        1180,
-        193
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": true,
-      "bookRow": 0,
-      "textureCrop": [
-        0,
-        125,
-        2172,
-        460
-      ]
     },
     {
       "name": "controls_guide_page_1_book_move_0_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        418,
-        705
+        428,
+        610
       ],
       "size": [
-        100,
-        100
+        70,
+        60
       ],
       "anchor": [
         0.0,
@@ -385,19 +336,19 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "glyph_0",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": 0
     },
     {
       "name": "controls_guide_page_1_book_move_0_name",
       "texture": "ui/control_guide/book/normal/move_0_name.png",
       "position": [
-        556,
-        694
+        530,
+        616
       ],
       "size": [
-        800,
-        55
+        400,
+        50
       ],
       "anchor": [
         0.0,
@@ -412,106 +363,19 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "move_0_name",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": 0
-    },
-    {
-      "name": "controls_guide_page_1_book_move_0_condition",
-      "texture": "ui/control_guide/book/normal/move_0_condition.png",
-      "position": [
-        556,
-        746
-      ],
-      "size": [
-        950,
-        40
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "move_0_condition",
-      "bookScroll": true,
-      "bookRow": 0
-    },
-    {
-      "name": "controls_guide_page_1_book_move_0_description",
-      "texture": "ui/control_guide/book/normal/move_0_description.png",
-      "position": [
-        556,
-        786
-      ],
-      "size": [
-        1000,
-        76
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "move_0_description",
-      "bookScroll": true,
-      "bookRow": 0
-    },
-    {
-      "name": "controls_guide_page_1_book_move_1_card",
-      "texture": "ui/control_guide/book/technique_row.png",
-      "position": [
-        395,
-        879
-      ],
-      "size": [
-        1180,
-        193
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": true,
-      "bookRow": 1,
-      "textureCrop": [
-        0,
-        125,
-        2172,
-        460
-      ]
     },
     {
       "name": "controls_guide_page_1_book_move_1_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        418,
-        903
+        428,
+        690
       ],
       "size": [
-        100,
-        100
+        70,
+        60
       ],
       "anchor": [
         0.0,
@@ -526,19 +390,19 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "glyph_1",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": 1
     },
     {
       "name": "controls_guide_page_1_book_move_1_name",
       "texture": "ui/control_guide/book/normal/move_1_name.png",
       "position": [
-        556,
-        892
+        530,
+        696
       ],
       "size": [
-        800,
-        55
+        400,
+        50
       ],
       "anchor": [
         0.0,
@@ -553,106 +417,19 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "move_1_name",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": 1
-    },
-    {
-      "name": "controls_guide_page_1_book_move_1_condition",
-      "texture": "ui/control_guide/book/normal/move_1_condition.png",
-      "position": [
-        556,
-        944
-      ],
-      "size": [
-        950,
-        40
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "move_1_condition",
-      "bookScroll": true,
-      "bookRow": 1
-    },
-    {
-      "name": "controls_guide_page_1_book_move_1_description",
-      "texture": "ui/control_guide/book/normal/move_1_description.png",
-      "position": [
-        556,
-        984
-      ],
-      "size": [
-        1000,
-        76
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "move_1_description",
-      "bookScroll": true,
-      "bookRow": 1
-    },
-    {
-      "name": "controls_guide_page_1_book_move_2_card",
-      "texture": "ui/control_guide/book/technique_row.png",
-      "position": [
-        395,
-        1077
-      ],
-      "size": [
-        1180,
-        193
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": true,
-      "bookRow": 2,
-      "textureCrop": [
-        0,
-        125,
-        2172,
-        460
-      ]
     },
     {
       "name": "controls_guide_page_1_book_move_2_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        418,
-        1101
+        428,
+        770
       ],
       "size": [
-        100,
-        100
+        70,
+        60
       ],
       "anchor": [
         0.0,
@@ -667,19 +444,19 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "glyph_2",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": 2
     },
     {
       "name": "controls_guide_page_1_book_move_2_name",
       "texture": "ui/control_guide/book/normal/move_2_name.png",
       "position": [
-        556,
-        1090
+        530,
+        776
       ],
       "size": [
-        800,
-        55
+        400,
+        50
       ],
       "anchor": [
         0.0,
@@ -694,258 +471,15 @@
       "emissive": 1.0,
       "bookElement": true,
       "bookSlot": "move_2_name",
-      "bookScroll": true,
+      "bookScroll": false,
       "bookRow": 2
-    },
-    {
-      "name": "controls_guide_page_1_book_move_2_condition",
-      "texture": "ui/control_guide/book/normal/move_2_condition.png",
-      "position": [
-        556,
-        1142
-      ],
-      "size": [
-        950,
-        40
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "move_2_condition",
-      "bookScroll": true,
-      "bookRow": 2
-    },
-    {
-      "name": "controls_guide_page_1_book_move_2_description",
-      "texture": "ui/control_guide/book/normal/move_2_description.png",
-      "position": [
-        556,
-        1182
-      ],
-      "size": [
-        1000,
-        76
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "move_2_description",
-      "bookScroll": true,
-      "bookRow": 2
-    },
-    {
-      "name": "controls_guide_page_1_book_tip_heading",
-      "texture": "ui/control_guide/book/tip_heading.png",
-      "position": [
-        406,
-        1302
-      ],
-      "size": [
-        1120,
-        57
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": true,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_tip",
-      "texture": "ui/control_guide/book/normal/tip.png",
-      "position": [
-        406,
-        1365
-      ],
-      "size": [
-        1120,
-        99
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "tip",
-      "bookScroll": true,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_footer",
-      "texture": "ui/control_guide/book/footer.png",
-      "position": [
-        407,
-        959
-      ],
-      "size": [
-        1180,
-        49
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_navigation",
-      "texture": "ui/control_guide/book/navigation.png",
-      "position": [
-        762,
-        42
-      ],
-      "size": [
-        760,
-        51
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_continue",
-      "texture": "ui/control_guide/book/continue.png",
-      "position": [
-        1426,
-        886
-      ],
-      "size": [
-        160,
-        35
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_scroll_track",
-      "texture": "common/white.png",
-      "position": [
-        1604,
-        463
-      ],
-      "size": [
-        4,
-        385
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        0.35,
-        0.66,
-        0.75,
-        0.38
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_scroll_thumb",
-      "texture": "ui/settings/settings_slider_knob.png",
-      "position": [
-        1591,
-        463
-      ],
-      "size": [
-        30,
-        30
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        0.36,
-        0.68,
-        1.0
-      ],
-      "emissive": 1.0,
-      "bookElement": true,
-      "bookSlot": "",
-      "bookScroll": false,
-      "bookRow": -1
     },
     {
       "name": "controls_guide_page_0_panel",
       "texture": "ui/control_guide/book/scroll_panel.png",
       "position": [
-        200,
-        34
+        192,
+        28
       ],
       "size": [
         1536,
@@ -964,33 +498,10 @@
       "emissive": 1.0
     },
     {
-      "name": "controls_guide_page_0_portrait",
-      "texture": "ui/control_guide/book/portraits/normal.png",
-      "position": [
-        352,
-        114
-      ],
-      "size": [
-        380,
-        380
-      ],
-      "anchor": [
-        0.0,
-        0.0
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "emissive": 1.0
-    },
-    {
       "name": "controls_guide_page_0_detail_title",
       "texture": "ui/control_guide/book/basics/title.png",
       "position": [
-        930,
+        912,
         132
       ],
       "size": [
@@ -1013,12 +524,12 @@
       "name": "controls_guide_page_0_detail_intro",
       "texture": "ui/control_guide/book/basics/intro.png",
       "position": [
-        762,
-        277
+        420,
+        252
       ],
       "size": [
-        850,
-        106
+        900,
+        112
       ],
       "anchor": [
         0.0,
@@ -1036,12 +547,12 @@
       "name": "controls_guide_page_0_detail_card_0",
       "texture": "ui/control_guide/book/technique_row.png",
       "position": [
-        395,
-        452
+        420,
+        390
       ],
       "size": [
-        1180,
-        142
+        1100,
+        150
       ],
       "anchor": [
         0.0,
@@ -1065,12 +576,12 @@
       "name": "controls_guide_page_0_action_0",
       "texture": "ui/input/combo/combo_wasd.png",
       "position": [
-        419,
-        478.5
+        448,
+        420
       ],
       "size": [
-        132,
-        89
+        136,
+        102
       ],
       "anchor": [
         0.0,
@@ -1088,12 +599,12 @@
       "name": "controls_guide_page_0_detail_name_0",
       "texture": "ui/control_guide/book/basics/move_0_name.png",
       "position": [
-        585,
-        462
+        600,
+        396
       ],
       "size": [
         900,
-        45
+        50
       ],
       "anchor": [
         0.0,
@@ -1111,12 +622,12 @@
       "name": "controls_guide_page_0_detail_condition_0",
       "texture": "ui/control_guide/book/basics/move_0_condition.png",
       "position": [
-        585,
-        500
+        600,
+        442
       ],
       "size": [
         950,
-        38
+        42
       ],
       "anchor": [
         0.0,
@@ -1134,12 +645,12 @@
       "name": "controls_guide_page_0_detail_description_0",
       "texture": "ui/control_guide/book/basics/move_0_description.png",
       "position": [
-        585,
-        536
+        600,
+        486
       ],
       "size": [
-        950,
-        40
+        900,
+        39.6
       ],
       "anchor": [
         0.0,
@@ -1157,12 +668,12 @@
       "name": "controls_guide_page_0_detail_card_1",
       "texture": "ui/control_guide/book/technique_row.png",
       "position": [
-        395,
-        597
+        420,
+        550
       ],
       "size": [
-        1180,
-        142
+        1100,
+        150
       ],
       "anchor": [
         0.0,
@@ -1186,8 +697,8 @@
       "name": "controls_guide_page_0_action_1",
       "texture": "ui/input/keyboard/key_space.png",
       "position": [
-        412.5,
-        636
+        443.5,
+        594
       ],
       "size": [
         145,
@@ -1209,12 +720,12 @@
       "name": "controls_guide_page_0_detail_name_1",
       "texture": "ui/control_guide/book/basics/move_1_name.png",
       "position": [
-        585,
-        607
+        600,
+        556
       ],
       "size": [
         900,
-        45
+        50
       ],
       "anchor": [
         0.0,
@@ -1232,12 +743,12 @@
       "name": "controls_guide_page_0_detail_condition_1",
       "texture": "ui/control_guide/book/basics/move_1_condition.png",
       "position": [
-        585,
-        645
+        600,
+        602
       ],
       "size": [
         950,
-        38
+        42
       ],
       "anchor": [
         0.0,
@@ -1255,12 +766,12 @@
       "name": "controls_guide_page_0_detail_description_1",
       "texture": "ui/control_guide/book/basics/move_1_description.png",
       "position": [
-        585,
-        681
+        600,
+        646
       ],
       "size": [
-        950,
-        40
+        900,
+        39.6
       ],
       "anchor": [
         0.0,
@@ -1278,12 +789,12 @@
       "name": "controls_guide_page_0_detail_card_2",
       "texture": "ui/control_guide/book/technique_row.png",
       "position": [
-        395,
-        742
+        420,
+        710
       ],
       "size": [
-        1180,
-        142
+        1100,
+        150
       ],
       "anchor": [
         0.0,
@@ -1307,8 +818,8 @@
       "name": "controls_guide_page_0_action_2",
       "texture": "ui/input/mouse/mouse_move.png",
       "position": [
-        439,
-        767
+        470,
+        740
       ],
       "size": [
         92,
@@ -1330,12 +841,12 @@
       "name": "controls_guide_page_0_detail_name_2",
       "texture": "ui/control_guide/book/basics/move_2_name.png",
       "position": [
-        585,
-        752
+        600,
+        716
       ],
       "size": [
         900,
-        45
+        50
       ],
       "anchor": [
         0.0,
@@ -1353,12 +864,12 @@
       "name": "controls_guide_page_0_detail_condition_2",
       "texture": "ui/control_guide/book/basics/move_2_condition.png",
       "position": [
-        585,
-        790
+        600,
+        762
       ],
       "size": [
         950,
-        38
+        42
       ],
       "anchor": [
         0.0,
@@ -1376,12 +887,12 @@
       "name": "controls_guide_page_0_detail_description_2",
       "texture": "ui/control_guide/book/basics/move_2_description.png",
       "position": [
-        585,
-        826
+        600,
+        806
       ],
       "size": [
-        950,
-        40
+        900,
+        39.6
       ],
       "anchor": [
         0.0,
@@ -1396,19 +907,19 @@
       "emissive": 1.0
     },
     {
-      "name": "controls_guide_page_0_detail_note",
-      "texture": "ui/control_guide/book/basics/note.png",
+      "name": "controls_guide_footer_close_frame",
+      "texture": "ui/control_guide/footer_close_frame.png",
       "position": [
-        406,
-        405
+        245,
+        980
       ],
       "size": [
-        1180,
-        40
+        440,
+        86
       ],
       "anchor": [
-        0.0,
-        0.0
+        0.5,
+        0.5
       ],
       "color": [
         1.0,
@@ -1416,22 +927,23 @@
         1.0,
         1.0
       ],
-      "emissive": 1.0
+      "emissive": 1.0,
+      "parentName": ""
     },
     {
-      "name": "controls_guide_page_0_detail_footer",
-      "texture": "ui/control_guide/book/basics/footer.png",
+      "name": "controls_guide_footer_close_text",
+      "texture": "generated/text/pause_guide/footer_close_keyboard.png",
       "position": [
-        407,
-        959
+        245,
+        980
       ],
       "size": [
-        1180,
-        49
+        370,
+        57
       ],
       "anchor": [
-        0.0,
-        0.0
+        0.5,
+        0.5
       ],
       "color": [
         1.0,
@@ -1439,22 +951,23 @@
         1.0,
         1.0
       ],
-      "emissive": 1.0
+      "emissive": 1.0,
+      "parentName": ""
     },
     {
-      "name": "controls_guide_page_0_detail_navigation",
-      "texture": "ui/control_guide/book/navigation.png",
+      "name": "controls_guide_footer_confirm_frame",
+      "texture": "ui/control_guide/footer_confirm_frame.png",
       "position": [
-        762,
-        42
+        1675,
+        980
       ],
       "size": [
-        760,
-        51
+        440,
+        86
       ],
       "anchor": [
-        0.0,
-        0.0
+        0.5,
+        0.5
       ],
       "color": [
         1.0,
@@ -1462,14 +975,39 @@
         1.0,
         1.0
       ],
-      "emissive": 1.0
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "controls_guide_footer_confirm_text",
+      "texture": "generated/text/pause_guide/footer_confirm_keyboard.png",
+      "position": [
+        1675,
+        980
+      ],
+      "size": [
+        370,
+        57
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "parentName": ""
     }
   ],
   "abilityBook": {
     "enabled": true,
-    "viewportTop": 458,
-    "viewportBottom": 878,
-    "contentBottom": 1466,
+    "viewportTop": 0,
+    "viewportBottom": 1080,
+    "contentBottom": 1080,
     "scrollSpeed": 650,
     "wheelStep": 125,
     "portraitBob": 4,

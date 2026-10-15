@@ -61,27 +61,29 @@ PreviewScene::~PreviewScene() {
 }
 
 namespace {
-Vector2 PreviewUiPosition(const Vector2& value) {
+engine::Vector2 PreviewUiPosition(const engine::Vector2& value) {
     // HUDの設計座標を現在の描画解像度へ変換する。
     return SpriteLayoutScaler::ScaleDesignPosition(value);
 }
 
-Vector2 PreviewUiSize(const Vector2& value) {
+engine::Vector2 PreviewUiSize(const engine::Vector2& value) {
     // 位置と同じ倍率でHUDの寸法を調整する。
     return SpriteLayoutScaler::ScaleDesignSize(value);
 }
 
+// Preview Sceneの横座標へ設計解像度の倍率を適用します。
 float PreviewUiX(float value) {
     // 数字の横幅にも共通の解像度倍率を使う。
     return SpriteLayoutScaler::ScaleDesignX(value);
 }
 
+// Preview Sceneの縦座標へ設計解像度の倍率を適用します。
 float PreviewUiY(float value) {
     // HUDの高さと縦位置を同じ設計基準で扱う。
     return SpriteLayoutScaler::ScaleDesignY(value);
 }
 
-void SetPreviewFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
+void SetPreviewFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
     // 差し替え後に前の画像の切り出し範囲が残らないよう、全領域へ戻す。
     if (!sprite || textureHandle == 0) {
         return;
@@ -114,7 +116,7 @@ const char* ResolvePreviewHpIconTexture(const Player* player, bool showHurtIcon)
     return showHurtIcon ? "ui/portraits/player_hurt.png" : "ui/portraits/player.png";
 }
 
-Vector2 PreviewWorldToScreen(const Vector3& worldPosition) {
+engine::Vector2 PreviewWorldToScreen(const engine::Vector3& worldPosition) {
     // カメラがない場合や射影値が不正な場合も、HUDを画面内に収める。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     const float screenW = static_cast<float>(WinApp::kClientWidth);
@@ -123,7 +125,7 @@ Vector2 PreviewWorldToScreen(const Vector3& worldPosition) {
         return {screenW * 0.5f, screenH * 0.5f};
     }
 
-    Vector3 ndc = Math::Transform(worldPosition, camera->GetViewProjectionMatrix());
+    engine::Vector3 ndc = engine::Math::Transform(worldPosition, camera->GetViewProjectionMatrix());
     if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
         return {screenW * 0.5f, screenH * 0.5f};
     }
@@ -179,7 +181,7 @@ void PreviewScene::Initialize() {
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    spriteCommon_ = std::make_unique<SpriteCommon>();
+    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
 
     object3dCommon_ = std::make_unique<Object3dCommon>();
@@ -204,7 +206,7 @@ void PreviewScene::Initialize() {
     lockOnSystem_ = std::make_unique<LockOnSystem>();
     lockOnSystem_->Initialize(inputManager_);
     uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
-    lockOnSprite_ = std::make_unique<Sprite>();
+    lockOnSprite_ = std::make_unique<engine::Sprite>();
     lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
     lockOnSprite_->SetAnchorPoint({0.5f, 0.5f});
     lockOnSprite_->SetSize({64.0f, 64.0f});
@@ -233,7 +235,7 @@ void PreviewScene::Initialize() {
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
     if (!HasSceneAssetContext()) {
-        animatedCube_ = std::make_unique<Object3d>();
+        animatedCube_ = std::make_unique<engine::Object3d>();
         animatedCube_->Initialize(object3dCommon_.get());
         animatedCube_->SetModel("Samples/walk");
 
@@ -299,10 +301,10 @@ void PreviewScene::Update(float deltaTime) {
     PostEffect::GetInstance()->Update(deltaTime);
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
     if (activeCamera) {
-        PostEffect::GetInstance()->GetParams()->projectionInverse = Math::Inverse(activeCamera->GetProjectionMatrix());
+        PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
     }
 
-    static Math math;
+    static engine::Math math;
     LightEditor::GetInstance()->Update();
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -311,22 +313,22 @@ void PreviewScene::Update(float deltaTime) {
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_, deltaTime);
     CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
 
-    Object3d* target = lockOnSystem_->GetTarget();
+    engine::Object3d* target = lockOnSystem_->GetTarget();
 
     if (target && lockOnSystem_->IsLockingOn()) {
         isDrawLockOn_ = true;
         AABB aabb = target->GetAABB();
-        Vector3 targetCenter;
+        engine::Vector3 targetCenter;
         targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
         targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
         targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
 
-        Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+        engine::Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
         float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] +
                   targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
         if (w > 0.001f) {
-            Vector3 ndc;
+            engine::Vector3 ndc;
             ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] +
                      targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) /
                     w;
@@ -366,7 +368,7 @@ void PreviewScene::Update(float deltaTime) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
-            Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
+            engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }
@@ -403,10 +405,10 @@ void PreviewScene::Draw() {
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (!isFirstPerson && player_ && camera) {
-        Vector3 pPos = player_->GetWorldPosition();
+        engine::Vector3 pPos = player_->GetWorldPosition();
         pPos.y += 1.0f;
-        Vector3 cPos = camera->GetEye();
-        Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
+        engine::Vector3 cPos = camera->GetEye();
+        engine::Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
         float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
         if (dist < 3.0f) {
             isFirstPerson = true;
@@ -427,26 +429,8 @@ void PreviewScene::Draw() {
     object3dCommon_->SetGraphicsCommand();
     object3dCommon_->SetPipelineState(BlendMode::kNone);
 
-    for (auto& obj : objects) {
-        if (!IsVisible(obj.get()))
-            continue;
-        bool isPlayerPart = false;
-        if (isFirstPerson) {
-            Object3d* current = obj.get();
-            while (current) {
-                if (current == player_) {
-                    isPlayerPart = true;
-                    break;
-                }
-                current = current->GetParent();
-            }
-        }
-        if (isPlayerPart)
-            continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType()))
-            continue;
-        obj->Draw(pointLightRes, spotLightRes);
-    }
+    DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Opaque, pointLightRes, spotLightRes,
+        player_, isFirstPerson, true, [this](engine::Object3d* object) { return IsVisible(object); });
 
     if (player_ && player_->GetHookMarker()) {
         player_->GetHookMarker()->Draw(pointLightRes, spotLightRes);
@@ -461,24 +445,8 @@ void PreviewScene::Draw() {
     LightEditor::GetInstance()->Draw3D();
 
     // 4. 半透明モデル描画
-    for (auto& obj : objects) {
-        bool isPlayerPart = false;
-        if (isFirstPerson) {
-            Object3d* current = obj.get();
-            while (current) {
-                if (current == player_) {
-                    isPlayerPart = true;
-                    break;
-                }
-                current = current->GetParent();
-            }
-        }
-        if (isPlayerPart)
-            continue;
-        if (obj->GetMaterialType() == 1) {
-            obj->Draw(pointLightRes, spotLightRes);
-        }
-    }
+    DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Transparent, pointLightRes, spotLightRes,
+        player_, isFirstPerson, true, {});
     particleSystem_->Draw();
 
     // 5. ローカルフォグ
@@ -545,11 +513,11 @@ void PreviewScene::UpdateUI(float deltaTime) {
     UpdatePreviewHUD(deltaTime);
 }
 
-std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position,
-                                                             const Vector2& size, const Vector2& anchor,
-                                                             const Vector4& color) {
+std::unique_ptr<engine::Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& texturePath, const engine::Vector2& position,
+                                                             const engine::Vector2& size, const engine::Vector2& anchor,
+                                                             const engine::Vector4& color) {
     // プレビューHUDも設計座標から生成し、実画面との倍率差を吸収する。
-    auto sprite = std::make_unique<Sprite>();
+    auto sprite = std::make_unique<engine::Sprite>();
     sprite->Initialize(spriteCommon_.get(), texturePath);
     sprite->SetPosition(PreviewUiPosition(position));
     sprite->SetSize(PreviewUiSize(size));
@@ -563,7 +531,7 @@ std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& 
 void PreviewScene::InitializePreviewHUD() {
     // 表示差分だけ更新できるよう、ゲージの層と数字を個別Spriteで用意する。
     for (const char* path : CopyStyleHud::kTexturePaths) {
-        Sprite::LoadTexture(path);
+        engine::Sprite::LoadTexture(path);
     }
     hudHpIcon_ = CreatePreviewHUDSprite("Resources/sprite/ui/portraits/player.png", {116.0f, 988.0f}, {78.0f, 78.0f},
                                         {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 1.0f});
@@ -626,8 +594,8 @@ void PreviewScene::InitializePreviewHUD() {
     UpdatePreviewHUD(0.0f);
 }
 
-void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value,
-                                       const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color,
+void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<engine::Sprite>, 2>& digits, int value,
+                                       const engine::Vector2& rightAlignedPosition, float digitHeight, const engine::Vector4& color,
                                        bool visible) {
     // 数字は2桁に制限し、桁数が変わっても右端の位置を維持する。
     value = std::clamp(value, 0, 99);
@@ -640,7 +608,7 @@ void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& d
     const float startX = rightAlignedPosition.x - totalWidth + digitWidth * 0.5f;
 
     for (int i = 0; i < 2; ++i) {
-        Sprite* sprite = digits[i].get();
+        engine::Sprite* sprite = digits[i].get();
         if (!sprite)
             continue;
 
@@ -652,7 +620,7 @@ void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& d
 
         const int sourceIndex = digitCount == 2 ? i : 1;
         const int digit = digitValues[sourceIndex];
-        const uint32_t handle = Sprite::LoadTexture("number/" + std::to_string(digit) + ".png");
+        const uint32_t handle = engine::Sprite::LoadTexture("number/" + std::to_string(digit) + ".png");
         sprite->SetTextureHandle(handle);
         sprite->SetPosition({startX + (sourceIndex - (2 - digitCount)) * spacing, rightAlignedPosition.y});
         sprite->SetSize({digitWidth, digitHeight});
@@ -702,7 +670,7 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
     const float hpIconPulse = idleIconPulse + std::abs(pulse) * damageRate * 0.07f;
     const float barShake =
         damageRate > 0.0f ? std::sin(hudDamagePulseTimer_ * 92.0f) * PreviewUiX(3.2f) * damageRate : 0.0f;
-    const Vector2 liquidOffset = {barShake, 0.0f};
+    const engine::Vector2 liquidOffset = {barShake, 0.0f};
     const float liquidHeightScale = 1.0f + damageImpact * 0.07f;
 
     const bool damageReacting = hudHurtIconTimer_ > 0.0f;
@@ -711,10 +679,10 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
     const float hpIconRotation =
         damageReacting ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.055f : liquidWave * lowHpRate * 0.012f;
     if (hudHpIcon_) {
-        const uint32_t handle = Sprite::LoadTexture(ResolvePreviewHpIconTexture(player_, damageReacting));
+        const uint32_t handle = engine::Sprite::LoadTexture(ResolvePreviewHpIconTexture(player_, damageReacting));
         SetPreviewFullTextureRect(hudHpIcon_.get(), handle);
         hudHpIcon_->SetVisible(visible);
-        const Vector2 hpIconPosition = PreviewUiPosition({116.0f, 988.0f});
+        const engine::Vector2 hpIconPosition = PreviewUiPosition({116.0f, 988.0f});
         hudHpIcon_->SetPosition({hpIconPosition.x + hpIconShakeX, hpIconPosition.y + hpIconShakeY});
         hudHpIcon_->SetSize(PreviewUiSize({78.0f * hpIconPulse, 78.0f * hpIconPulse}));
         hudHpIcon_->SetRotation(hpIconRotation);
@@ -724,7 +692,7 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
     if (hudHpDamageFill_) {
         const float rate = std::clamp(hudHpDelayedRate_, 0.0f, 1.0f);
         hudHpDamageFill_->SetVisible(visible && rate > 0.001f);
-        const Vector2 basePosition = PreviewUiPosition({162.0f, 988.0f});
+        const engine::Vector2 basePosition = PreviewUiPosition({162.0f, 988.0f});
         hudHpDamageFill_->SetPosition({basePosition.x + liquidOffset.x, basePosition.y + liquidOffset.y});
         hudHpDamageFill_->SetSize(PreviewUiSize({298.0f * rate, 16.0f * liquidHeightScale}));
         hudHpDamageFill_->SetColor({1.0f, 1.0f, 1.0f, visible ? 0.92f * (0.88f + damageRate * 0.12f) : 0.0f});
@@ -732,7 +700,7 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
     }
     if (hudHpFill_) {
         hudHpFill_->SetVisible(visible && hpRate > 0.001f);
-        const Vector2 basePosition = PreviewUiPosition({162.0f, 988.0f});
+        const engine::Vector2 basePosition = PreviewUiPosition({162.0f, 988.0f});
         hudHpFill_->SetPosition({basePosition.x + liquidOffset.x, basePosition.y + liquidOffset.y});
         hudHpFill_->SetSize(PreviewUiSize({298.0f * hpRate, 16.0f * liquidHeightScale}));
         hudHpFill_->SetColor({1.0f, 1.0f - lowHpPulse * 0.08f, 1.0f - lowHpPulse * 0.14f, visible ? 1.0f : 0.0f});
@@ -742,7 +710,7 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
         const float shimmer = 0.78f + hpRate * 0.10f + damageImpact * 0.12f;
         const float alpha = visible && hpRate > 0.001f ? 0.38f * shimmer : 0.0f;
         hudHpHighlight_->SetVisible(visible && hpRate > 0.001f);
-        const Vector2 basePosition = PreviewUiPosition({162.0f, 988.0f});
+        const engine::Vector2 basePosition = PreviewUiPosition({162.0f, 988.0f});
         hudHpHighlight_->SetPosition({basePosition.x + liquidOffset.x, basePosition.y - PreviewUiY(0.35f)});
         hudHpHighlight_->SetSize(PreviewUiSize({298.0f * hpRate, 16.0f * liquidHeightScale}));
         hudHpHighlight_->SetColor({1.0f, 1.0f, 1.0f, alpha});
@@ -750,7 +718,7 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
     }
     if (hudHpFrame_) {
         hudHpFrame_->SetVisible(visible);
-        const Vector2 basePosition = PreviewUiPosition({72.0f, 988.0f});
+        const engine::Vector2 basePosition = PreviewUiPosition({72.0f, 988.0f});
         hudHpFrame_->SetPosition({basePosition.x + barShake, basePosition.y});
         hudHpFrame_->SetSize(
             PreviewUiSize({410.0f * (1.0f + damageImpact * 0.012f), 88.0f * (1.0f + damageImpact * 0.055f)}));
@@ -771,17 +739,17 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
     const bool morphVisible = morphActive || hudMorphGaugeVisibleTimer_ > 0.0f;
     const float morphRate = morphActive ? player_->GetEnemyMorphRate() : 0.0f;
     hudMorphGaugeTimer_ = morphVisible ? hudMorphGaugeTimer_ + deltaTime : 0.0f;
-    Vector2 morphGaugeSize = PreviewUiSize({132.0f, 132.0f});
-    Vector2 morphIconSize = PreviewUiSize({92.0f, 92.0f});
-    Vector2 morphGaugePosition = PreviewUiPosition({530.0f, 988.0f});
+    engine::Vector2 morphGaugeSize = PreviewUiSize({132.0f, 132.0f});
+    engine::Vector2 morphIconSize = PreviewUiSize({92.0f, 92.0f});
+    engine::Vector2 morphGaugePosition = PreviewUiPosition({530.0f, 988.0f});
     if (player_) {
-        Vector3 headWorld = player_->GetWorldPosition();
+        engine::Vector3 headWorld = player_->GetWorldPosition();
         headWorld.y += 2.55f;
-        Vector3 bodyWorld = player_->GetWorldPosition();
+        engine::Vector3 bodyWorld = player_->GetWorldPosition();
         bodyWorld.y += 0.65f;
 
-        const Vector2 headScreen = PreviewWorldToScreen(headWorld);
-        const Vector2 bodyScreen = PreviewWorldToScreen(bodyWorld);
+        const engine::Vector2 headScreen = PreviewWorldToScreen(headWorld);
+        const engine::Vector2 bodyScreen = PreviewWorldToScreen(bodyWorld);
         const float bodyHeightOnScreen = std::abs(bodyScreen.y - headScreen.y);
         const float perspectiveScale = std::clamp(bodyHeightOnScreen / PreviewUiY(96.0f), 0.72f, 1.18f);
         morphGaugeSize = {morphGaugeSize.x * perspectiveScale, morphGaugeSize.y * perspectiveScale};
@@ -800,14 +768,14 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
     const float lowBlink =
         lowRate > 0.0f ? 0.5f + 0.5f * std::sin(hudMorphGaugeTimer_ * (18.0f + lowRate * 20.0f)) : 0.0f;
     const float warningPulse = lowRate * (0.08f + lowBlink * 0.20f);
-    const Vector2 warningOffset = {lowRate * std::sin(hudMorphGaugeTimer_ * 42.0f) * PreviewUiX(2.2f),
+    const engine::Vector2 warningOffset = {lowRate * std::sin(hudMorphGaugeTimer_ * 42.0f) * PreviewUiX(2.2f),
                                    lowRate * std::sin(hudMorphGaugeTimer_ * 31.0f) * PreviewUiY(0.9f)};
     int visibleMorphFrame = morphFrame;
     if (lowRate > 0.0f && lowBlink > 0.68f) {
         visibleMorphFrame = std::max(0, morphFrame - 1);
     }
-    const auto updateMorphSprite = [&](std::unique_ptr<Sprite>& sprite, const Vector2& baseSize, float alphaScale,
-                                       float scale, float rotation, Vector2 offset, float colorBoost) {
+    const auto updateMorphSprite = [&](std::unique_ptr<engine::Sprite>& sprite, const engine::Vector2& baseSize, float alphaScale,
+                                       float scale, float rotation, engine::Vector2 offset, float colorBoost) {
         if (!sprite) {
             return;
         }
@@ -821,7 +789,7 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
         sprite->Update();
     };
     if (hudMorphGaugeFill_) {
-        const uint32_t handle = Sprite::LoadTexture("ui/hud/morph_gauge/fill_" +
+        const uint32_t handle = engine::Sprite::LoadTexture("ui/hud/morph_gauge/fill_" +
                                                     (visibleMorphFrame < 10 ? std::string("0") : std::string()) +
                                                     std::to_string(visibleMorphFrame) + ".png");
         hudMorphGaugeFill_->SetTextureHandle(handle);
@@ -950,7 +918,7 @@ void PreviewScene::DrawImGui() {
 #endif
 }
 
-bool PreviewScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
+bool PreviewScene::TryStartGoalFromContact(engine::Object3d* actor, engine::Object3d* goal) {
     // プレビューでは通常のクリア処理を省き、演出と選択画面への移動だけ確認する。
     (void)actor;
     if (IsGoal()) return false;
@@ -960,7 +928,7 @@ bool PreviewScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
     return true;
 }
 
-void PreviewScene::CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) {
+void PreviewScene::CollectStarCoinFromContact(int coinIndex, const engine::Vector3& worldPosition) {
     // 取得結果だけ記録し、プレビュー内の収集イベントを確認可能にする。
     (void)worldPosition;
     CollectStarCoin(coinIndex);
@@ -971,23 +939,6 @@ void PreviewScene::StartBridgeDropMovie() {
     // プレビューには橋落下のシネマティックを持たせない。
 }
 
-bool PreviewScene::IsVisible(Object3d* obj) {
-    // 近距離はカリングせず、離れた物体だけ視錐台で描画を間引く。
-    if (!obj || !obj->GetIsVisible())
-        return false;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera)
-        return true;
-    AABB worldAabb = obj->GetModelWorldAABB();
-    constexpr float kNearObjectCullBypassDistance = 24.0f;
-    const Vector3& cameraPosition = camera->GetEye();
-    if (Math::DistanceSquaredPointAABB(cameraPosition, worldAabb.min, worldAabb.max) <=
-        kNearObjectCullBypassDistance * kNearObjectCullBypassDistance) {
-        return true;
-    }
-    const bool visible = Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
-    if (!visible) {
-        RenderStats::GetInstance()->RecordCulledObject();
-    }
-    return visible;
+bool PreviewScene::IsVisible(engine::Object3d* obj) {
+    return IsSceneObjectVisibleByFrustum(obj, CameraManager::GetInstance()->GetActiveCamera());
 }

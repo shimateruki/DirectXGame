@@ -21,7 +21,7 @@ void RefreshFileList();
     void RequestOpenSequence(const std::string& name);
 
 private:
-    Vector3 ResolvePreviewPosition() const;
+    engine::Vector3 ResolvePreviewPosition() const;
         // 現在編集中のシーケンスをプレビュー再生します。
 void PlayPreview();
         // VFXイベントの発生タイミングをタイムラインとして表示します。

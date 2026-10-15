@@ -9,28 +9,29 @@
 #include <cmath>
 
 namespace {
-Vector3 SafeNormal(const Vector3& value) {
-    const float length = Math::Length(value);
+// 面法線がほぼゼロでもデカールの基底を作れるよう、上向きの既定法線を返します。
+engine::Vector3 SafeNormal(const engine::Vector3& value) {
+    const float length = engine::Math::Length(value);
     if (length <= 0.0001f) return { 0.0f, 1.0f, 0.0f };
     return value * (1.0f / length);
 }
 
-Quaternion BuildSurfaceQuaternion(const Vector3& normal, float rotationRadians) {
+engine::Quaternion BuildSurfaceQuaternion(const engine::Vector3& normal, float rotationRadians) {
     // Planeのローカル-Zを面法線へ合わせ、面上の回転も含む直交基底を作る。
-    const Vector3 zAxis = -SafeNormal(normal);
-    const Vector3 helper = std::abs(Math::Dot(zAxis, { 0.0f, 1.0f, 0.0f })) > 0.98f
-        ? Vector3{ 1.0f, 0.0f, 0.0f }
-        : Vector3{ 0.0f, 1.0f, 0.0f };
-    Vector3 xAxis = SafeNormal(Math::Cross(helper, zAxis));
-    Vector3 yAxis = SafeNormal(Math::Cross(zAxis, xAxis));
+    const engine::Vector3 zAxis = -SafeNormal(normal);
+    const engine::Vector3 helper = std::abs(engine::Math::Dot(zAxis, { 0.0f, 1.0f, 0.0f })) > 0.98f
+        ? engine::Vector3{ 1.0f, 0.0f, 0.0f }
+        : engine::Vector3{ 0.0f, 1.0f, 0.0f };
+    engine::Vector3 xAxis = SafeNormal(engine::Math::Cross(helper, zAxis));
+    engine::Vector3 yAxis = SafeNormal(engine::Math::Cross(zAxis, xAxis));
 
     // 接地面の法線は固定し、面内のX・Y軸だけを指定角度で回す。
     const float cosine = std::cos(rotationRadians);
     const float sine = std::sin(rotationRadians);
-    const Vector3 rotatedX = xAxis * cosine + yAxis * sine;
-    const Vector3 rotatedY = yAxis * cosine - xAxis * sine;
+    const engine::Vector3 rotatedX = xAxis * cosine + yAxis * sine;
+    const engine::Vector3 rotatedY = yAxis * cosine - xAxis * sine;
 
-    Matrix4x4 rotation = Math::MakeIdentity4x4();
+    engine::Matrix4x4 rotation = engine::Math::MakeIdentity4x4();
     rotation.m[0][0] = rotatedX.x;
     rotation.m[0][1] = rotatedX.y;
     rotation.m[0][2] = rotatedX.z;
@@ -40,19 +41,19 @@ Quaternion BuildSurfaceQuaternion(const Vector3& normal, float rotationRadians) 
     rotation.m[2][0] = zAxis.x;
     rotation.m[2][1] = zAxis.y;
     rotation.m[2][2] = zAxis.z;
-    return Math::MatrixToQuaternion(rotation);
+    return engine::Math::MatrixToQuaternion(rotation);
 }
 }
 
-std::unique_ptr<Object3d> DecalSystem::Create(
+std::unique_ptr<engine::Object3d> DecalSystem::Create(
     Object3dCommon* common,
-    const Vector3& surfacePoint,
-    const Vector3& surfaceNormal,
+    const engine::Vector3& surfacePoint,
+    const engine::Vector3& surfaceNormal,
     const DecalSpawnDesc& desc) {
     if (!common) return nullptr;
 
     // Decalは通常のObject3dをPlaneとして生成し、照明・影・衝突を無効にする。
-    auto decal = std::make_unique<Object3d>();
+    auto decal = std::make_unique<engine::Object3d>();
     decal->Initialize(common);
     ModelManager::GetInstance()->LoadModel("Primitives/plane");
     decal->SetModel("Primitives/plane");
@@ -70,12 +71,12 @@ std::unique_ptr<Object3d> DecalSystem::Create(
     decal->SetCollisionAttribute(0);
     decal->SetCollisionMask(0);
 
-    Object3d::ColliderConfig collider = decal->GetColliderConfig();
+    engine::Object3d::ColliderConfig collider = decal->GetColliderConfig();
     collider.type = ColliderType::kNone;
     decal->SetColliderConfig(collider);
 
     // 尺寸や時間を有効範囲へ揃え、再生状態を初期化してから面に置く。
-    Object3d::DecalSettings settings;
+    engine::Object3d::DecalSettings settings;
     settings.enabled = true;
     settings.size = {
         (std::max)(desc.size.x, 0.01f),
@@ -92,18 +93,18 @@ std::unique_ptr<Object3d> DecalSystem::Create(
     return decal;
 }
 
-Object3d* DecalSystem::Spawn(
+engine::Object3d* DecalSystem::Spawn(
     BaseScene& scene,
-    const Vector3& surfacePoint,
-    const Vector3& surfaceNormal,
+    const engine::Vector3& surfacePoint,
+    const engine::Vector3& surfaceNormal,
     const DecalSpawnDesc& desc) {
-    std::unique_ptr<Object3d> decal = Create(
+    std::unique_ptr<engine::Object3d> decal = Create(
         scene.GetObject3dCommon(), surfacePoint, surfaceNormal, desc);
     if (!decal) return nullptr;
     // 所有権をSceneへ移したあと、実際にSceneへ保持されたときだけ非所有ポインタを返す。
-    Object3d* result = decal.get();
+    engine::Object3d* result = decal.get();
     scene.AddObject(std::move(decal));
-    for (const std::unique_ptr<Object3d>& ownedObject : scene.GetObjects()) {
+    for (const std::unique_ptr<engine::Object3d>& ownedObject : scene.GetObjects()) {
         if (ownedObject.get() == result) {
             return result;
         }
@@ -111,14 +112,14 @@ Object3d* DecalSystem::Spawn(
     return nullptr;
 }
 
-Object3d* DecalSystem::SpawnFromRaycast(
+engine::Object3d* DecalSystem::SpawnFromRaycast(
     BaseScene& scene,
-    const Vector3& rayStart,
-    const Vector3& rayDirection,
+    const engine::Vector3& rayStart,
+    const engine::Vector3& rayDirection,
     float maxDistance,
     uint32_t collisionMask,
     const DecalSpawnDesc& desc) {
-    if (maxDistance <= 0.0f || Math::Length(rayDirection) <= 0.0001f) return nullptr;
+    if (maxDistance <= 0.0f || engine::Math::Length(rayDirection) <= 0.0001f) return nullptr;
     const RaycastHit hit = CollisionManager::GetInstance()->Raycast(
         rayStart, SafeNormal(rayDirection), maxDistance, collisionMask);
     if (!hit.isHit) return nullptr;
@@ -126,26 +127,27 @@ Object3d* DecalSystem::SpawnFromRaycast(
 }
 
 void DecalSystem::AlignToSurface(
-    Object3d& object,
-    const Vector3& surfacePoint,
-    const Vector3& surfaceNormal,
+    engine::Object3d& object,
+    const engine::Vector3& surfacePoint,
+    const engine::Vector3& surfaceNormal,
     float rotationRadians,
     float depthOffset) {
     // Z-fightingを避けるため法線方向へ少し浮かせ、Planeの寸法と向きを接地面に揃える。
-    const Vector3 normal = SafeNormal(surfaceNormal);
-    Object3d::DecalSettings settings = object.GetDecalSettings();
+    const engine::Vector3 normal = SafeNormal(surfaceNormal);
+    engine::Object3d::DecalSettings settings = object.GetDecalSettings();
     settings.depthOffset = (std::max)(depthOffset, 0.0001f);
     object.SetDecalSettings(settings);
     object.SetTranslate(surfacePoint + normal * settings.depthOffset);
     object.SetScale({ settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f });
-    const Quaternion rotation = BuildSurfaceQuaternion(normal, rotationRadians);
+    const engine::Quaternion rotation = BuildSurfaceQuaternion(normal, rotationRadians);
     object.SetQuaternion(rotation);
-    object.SetEulerAngles(Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(rotation)));
+    object.SetEulerAngles(engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(rotation)));
     object.UpdateLocalMatrix();
     object.UpdateWorldMatrix();
 }
 
-void Object3d::SetDecalSettings(const DecalSettings& settings) {
+void engine::Object3d::SetDecalSettings(const DecalSettings& settings) {
+    // デカールの寸法と演出時間を安全な範囲へ丸め、無効化時は経過時間を戻す。
     decalSettings_ = settings;
     decalSettings_.size.x = (std::max)(decalSettings_.size.x, 0.01f);
     decalSettings_.size.y = (std::max)(decalSettings_.size.y, 0.01f);
@@ -158,7 +160,7 @@ void Object3d::SetDecalSettings(const DecalSettings& settings) {
     }
 }
 
-void Object3d::RestartDecalPlayback() {
+void engine::Object3d::RestartDecalPlayback() {
     decalElapsedTime_ = 0.0f;
     decalAuthoredAlpha_ = GetColor().w;
     if (decalSettings_.enabled) {

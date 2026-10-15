@@ -42,29 +42,32 @@ private:
     BaseScene* lastScene_ = nullptr;
     std::unique_ptr<EffectObject3d> previewEffect_;
     std::vector<std::string> textureFileList_;
-    Object3d* targetObject_ = nullptr;
+    engine::Object3d* targetObject_ = nullptr;
     int currentTextureIndex_ = 0;
+    char textureSearch_[3][128] = {};
+    char modelSearch_[128] = {};
+    char jsonSearch_[128] = {};
 
     // 基本Transform。
-    Vector3 editPosition_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 editRotation_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 editScale_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 editPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 editRotation_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 editScale_ = { 1.0f, 1.0f, 1.0f };
 
     // 表示素材と見た目。
     char editModelName_[128] = "Primitives/plane";
     char editTexturePath_[256] = "";
-    Vector4 editColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    Vector2 editScrollSpeed_ = { 0.0f, -1.0f };
+    engine::Vector4 editColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector2 editScrollSpeed_ = { 0.0f, -1.0f };
     float editIntensity_ = 2.0f;
 
     // 寿命と補間。
     bool isAutoLoop_ = true;
     float editLifetime_ = 1.0f;
-    Vector3 editStartScale_ = { 0.1f, 0.1f, 0.1f };
-    Vector3 editEndScale_ = { 3.0f, 3.0f, 3.0f };
+    engine::Vector3 editStartScale_ = { 0.1f, 0.1f, 0.1f };
+    engine::Vector3 editEndScale_ = { 3.0f, 3.0f, 3.0f };
 
-    Vector4 editStartColor_ = { 2.0f, 2.0f, 2.0f, 1.0f };
-    Vector4 editEndColor_ = { 0.5f, 0.0f, 1.0f, 0.0f };
+    engine::Vector4 editStartColor_ = { 2.0f, 2.0f, 2.0f, 1.0f };
+    engine::Vector4 editEndColor_ = { 0.5f, 0.0f, 1.0f, 0.0f };
     bool editEnableDistortion_ = false;
     float editAlphaReference_ = 0.0f;
 

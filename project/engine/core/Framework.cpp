@@ -4,15 +4,20 @@
 #include "SRVManager.h" 
 #include"ImguiManager.h"
 #include"LightManager.h"
+#include "engine/system/scene/LoadingProfiler.h"
 void Framework::Initialize() {
 	// ウィンドウ、DirectX、入力、音声、ImGui、各種マネージャを起動順に初期化する。
+    StartupProfileScope frameworkProfile("Framework::Initialize");
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     winApp_ = std::make_unique<WinApp>();
     winApp_->Initialize(L"スライムの大冒険", WinApp::kClientWidth, WinApp::kClientHeight);
 
     dxCommon_ = DirectXCommon::GetInstance();
-    dxCommon_->Initialize(winApp_.get());
+    {
+        StartupProfileScope phase("DirectX device");
+        dxCommon_->Initialize(winApp_.get());
+    }
 
     InputManager::GetInstance()->Initialize(winApp_->GetHwnd());
 
@@ -24,7 +29,10 @@ void Framework::Initialize() {
     dxCommon_->CreateShadowMap();
     ImGuiManager::GetInstance()->Initialize(winApp_.get(), dxCommon_);
     // ModelManagerとTextureManagerの初期化
-    ModelManager::GetInstance()->Initialize(dxCommon_);
+    {
+        StartupProfileScope phase("ModelManager::Initialize");
+        ModelManager::GetInstance()->Initialize(dxCommon_);
+    }
     TextureManager::GetInstance()->Initialize(dxCommon_);
     LightManager::GetInstance()->Initialize(dxCommon_);
 

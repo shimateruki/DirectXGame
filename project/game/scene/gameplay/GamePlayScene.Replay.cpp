@@ -1,5 +1,9 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/ui/ControlsGuideOverlay.h"
+#include "game/ui/PauseMenuOverlay.h"
+#include "game/ui/SettingsMenuOverlay.h"
+#include "game/ui/SaveIndicatorOverlay.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "GimmickFactory.h"
 #include "ItemFactory.h"
@@ -11,7 +15,7 @@
 #include <numbers>
 
 // リプレイの再生成・状態退避・復元。JSONキーと復元順を維持し、保存形式は変更しない。
-std::unique_ptr<Object3d> GamePlayScene::CreateReplayObject(const json& descriptor) {
+std::unique_ptr<engine::Object3d> GamePlayScene::CreateReplayObject(const json& descriptor) {
     // 記録された型情報から実体を作り直し、シーンの描画基盤がない場合は復元しない。
     Object3dCommon* common = GetObject3dCommon();
     if (!common || !descriptor.is_object()) {
@@ -22,7 +26,7 @@ std::unique_ptr<Object3d> GamePlayScene::CreateReplayObject(const json& descript
     const std::string enemyType = descriptor.value("enemyType", std::string{});
     const std::string gimmickType = descriptor.value("gimmickType", std::string{});
     const std::string itemType = descriptor.value("itemType", std::string{});
-    std::unique_ptr<Object3d> object;
+    std::unique_ptr<engine::Object3d> object;
 
     if (!enemyType.empty()) {
         object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
@@ -37,7 +41,7 @@ std::unique_ptr<Object3d> GamePlayScene::CreateReplayObject(const json& descript
             return nullptr;
         }
     } else if (className == "Model" || className == "Object") {
-        object = std::make_unique<Object3d>();
+        object = std::make_unique<engine::Object3d>();
         object->Initialize(common);
     }
 
@@ -62,10 +66,10 @@ void GamePlayScene::OnReplayObjectsRecreated() {
     LevelLoader::ConfigureEnemyRuntimeReferences(this);
 }
 
-void GamePlayScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+void GamePlayScene::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) {
     // 共通Spriteに加え、ゲーム中のUIも記録対象へ含める。
     BaseScene::CollectReplaySprites(replaySprites);
-    auto add = [&replaySprites](Sprite* sprite) {
+    auto add = [&replaySprites](engine::Sprite* sprite) {
         if (sprite) {
             replaySprites.push_back(sprite);
         }
@@ -150,6 +154,10 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
         {"lifeLost", lifeLostState_.CaptureReplay()},
         {"overlays",
          {{"pause", std::move(pauseState)},
+          {"pauseGuideSession", pauseGuideSession_},
+          {"pausePageSliding", pausePageSliding_},
+          {"pausePageToMenu", pausePageToMenu_},
+          {"pausePageSlideTime", pausePageSlideTime_},
           {"controlsGuide", std::move(controlsGuideState)},
           {"settings", std::move(settingsState)},
           {"saveIndicator", std::move(saveIndicatorState)}}}};
@@ -162,7 +170,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         return;
     }
 
-    auto restoreVector3 = [](const json& object, const char* key, Vector3& value) {
+    auto restoreVector3 = [](const json& object, const char* key, engine::Vector3& value) {
         const auto found = object.find(key);
         if (found != object.end() && found->is_array() && found->size() >= 3) {
             value = {(*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>()};
@@ -233,12 +241,17 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 
     if (const auto found = state.find("overlays"); found != state.end() && found->is_object()) {
         const json& overlays = *found;
+        pauseGuideSession_ = overlays.value("pauseGuideSession", overlays.value("returnToPauseAfterGuide", false));
         if (pauseMenuOverlay_ && overlays.contains("pause")) {
             pauseMenuOverlay_->RestoreReplayState(overlays["pause"]);
         }
         if (controlsGuideOverlay_ && overlays.contains("controlsGuide")) {
             controlsGuideOverlay_->RestoreReplayState(overlays["controlsGuide"]);
         }
+        pausePageSliding_ = overlays.value("pausePageSliding", false);
+        pausePageToMenu_ = overlays.value("pausePageToMenu", true);
+        pausePageSlideTime_ = std::clamp(overlays.value("pausePageSlideTime", 0.0f), 0.0f, 0.34f);
+        if (pausePageSliding_) UpdatePausePageSlide(0.0f);
         if (settingsOverlay_ && overlays.contains("settings")) {
             settingsOverlay_->RestoreReplayState(overlays["settings"]);
         }

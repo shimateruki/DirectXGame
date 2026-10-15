@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/ui/SaveIndicatorOverlay.h"
 
 #include "CameraManager.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
@@ -28,23 +29,24 @@ constexpr float kCoinPulseDuration = 0.24f;
 constexpr float kMorphGaugeHoldDuration = 0.20f;
 constexpr int kMorphGaugeLastFrame = 32;
 
+// HUDの表示率を0～1へ収め、両端を滑らかにつなぎます。
 float SmoothStep(float value) {
     // 星がHUDへ飛ぶ移動の両端を滑らかにし、急な開始・停止を防ぐ。
     value = std::clamp(value, 0.0f, 1.0f);
     return value * value * (3.0f - 2.0f * value);
 }
 
-Vector2 Lerp(const Vector2& a, const Vector2& b, float t) {
+engine::Vector2 Lerp(const engine::Vector2& a, const engine::Vector2& b, float t) {
     // HUDの二点間移動に共通の補間率を使う。
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t};
 }
 
-Vector2 QuadraticBezier(const Vector2& start, const Vector2& control, const Vector2& end, float t) {
+engine::Vector2 QuadraticBezier(const engine::Vector2& start, const engine::Vector2& control, const engine::Vector2& end, float t) {
     // 取得した星を画面上で弧を描かせ、HUDの枠へ導く。
     return Lerp(Lerp(start, control, t), Lerp(control, end, t), t);
 }
 
-void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
+void SetFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
     // アイコン差し替え時に画像全体を使い、旧画像のUV領域を残さない。
     if (!sprite || textureHandle == 0) {
         return;
@@ -91,12 +93,12 @@ void GamePlayScene::UpdateUI(float deltaTime) {
 
 GamePlayScene::HudSpriteState GamePlayScene::BindGameplayHUDSprite(const std::string& name,
                                                                    const std::string& texturePath,
-                                                                   const Vector2& position, const Vector2& size,
-                                                                   const Vector2& anchor, const Vector4& color) {
-    Sprite* sprite = GetSpriteByName(name);
+                                                                   const engine::Vector2& position, const engine::Vector2& size,
+                                                                   const engine::Vector2& anchor, const engine::Vector4& color) {
+    engine::Sprite* sprite = GetSpriteByName(name);
     bool createdFromFallback = false;
     if (!sprite) {
-        auto newSprite = std::make_unique<Sprite>();
+        auto newSprite = std::make_unique<engine::Sprite>();
         newSprite->Initialize(spriteCommon_.get(), texturePath);
         newSprite->SetName(name);
         newSprite->SetTextureName(texturePath.rfind("Resources/sprite/", 0) == 0
@@ -136,7 +138,7 @@ void GamePlayScene::DrawGameplayHUDSprite(const HudSpriteState& state) {
     }
 }
 
-bool GamePlayScene::IsGameplayHUDSprite(const Sprite* sprite) const {
+bool GamePlayScene::IsGameplayHUDSprite(const engine::Sprite* sprite) const {
     // 通常シーンのSpriteとHUD管理下のSpriteを区別し、二重描画を防ぐ。
     if (!sprite) {
         return false;
@@ -228,9 +230,9 @@ void GamePlayScene::InitializeGameplayHUD() {
         BindGameplayHUDSprite("hud_boss_prism_name", "Resources/sprite/ui/hud/boss/prism_slime_name.png",
                               {960.0f, 84.0f}, {400.0f, 84.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 1.0f});
     // 装飾の位置は各Spriteの基準位置として保持し、更新時の揺れを加算する。
-    const std::array<Vector2, 6> bossGlintPositions = {
-        Vector2{742.0f, 76.0f},   Vector2{1178.0f, 76.0f}, Vector2{568.0f, 132.0f},
-        Vector2{1352.0f, 132.0f}, Vector2{960.0f, 118.0f}, Vector2{595.0f, 152.0f},
+    const std::array<engine::Vector2, 6> bossGlintPositions = {
+        engine::Vector2{742.0f, 76.0f},   engine::Vector2{1178.0f, 76.0f}, engine::Vector2{568.0f, 132.0f},
+        engine::Vector2{1352.0f, 132.0f}, engine::Vector2{960.0f, 118.0f}, engine::Vector2{595.0f, 152.0f},
     };
     for (size_t i = 0; i < prismBossHudGlints_.size(); ++i) {
         prismBossHudGlints_[i] = BindGameplayHUDSprite(
@@ -239,19 +241,19 @@ void GamePlayScene::InitializeGameplayHUD() {
             {0.82f, 0.98f, 1.0f, 1.0f});
     }
     // 偽王専用の段階表示と詠唱ゲージも先に生成し、他のボスでは非表示にする。
-    const std::array<Vector2, 3> falseKingPhaseCrownPositions = {
-        Vector2{716.0f, 194.0f},
-        Vector2{960.0f, 194.0f},
-        Vector2{1204.0f, 194.0f},
+    const std::array<engine::Vector2, 3> falseKingPhaseCrownPositions = {
+        engine::Vector2{716.0f, 194.0f},
+        engine::Vector2{960.0f, 194.0f},
+        engine::Vector2{1204.0f, 194.0f},
     };
     for (size_t i = 0; i < falseKingBossHudPhaseCrowns_.size(); ++i) {
         falseKingBossHudPhaseCrowns_[i] = BindGameplayHUDSprite(
             "hud_boss_false_king_phase_crown_" + std::to_string(i), "Resources/sprite/ui/title/crown_progress_icon.png",
             falseKingPhaseCrownPositions[i], {38.0f, 38.0f}, {0.5f, 0.5f}, {1.0f, 0.78f, 0.20f, 0.0f});
     }
-    const std::array<Vector2, 2> falseKingPhaseDividerPositions = {
-        Vector2{838.0f, 152.0f},
-        Vector2{1082.0f, 152.0f},
+    const std::array<engine::Vector2, 2> falseKingPhaseDividerPositions = {
+        engine::Vector2{838.0f, 152.0f},
+        engine::Vector2{1082.0f, 152.0f},
     };
     for (size_t i = 0; i < falseKingBossHudPhaseDividers_.size(); ++i) {
         falseKingBossHudPhaseDividers_[i] = BindGameplayHUDSprite(
@@ -350,7 +352,7 @@ void GamePlayScene::InitializeGameplayHUD() {
 }
 
 void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, int value,
-                                         const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color,
+                                         const engine::Vector2& rightAlignedPosition, float digitHeight, const engine::Vector4& color,
                                          bool visible) {
     // 一桁・二桁の数字を右揃えで描き、値の桁数で他のHUD要素を動かさない。
     value = std::clamp(value, 0, 99);
@@ -363,7 +365,7 @@ void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, 
     const float startX = rightAlignedPosition.x - totalWidth + digitWidth * 0.5f;
 
     for (int i = 0; i < 2; ++i) {
-        Sprite* sprite = digits[i].sprite;
+        engine::Sprite* sprite = digits[i].sprite;
         if (!sprite)
             continue;
 
@@ -375,7 +377,7 @@ void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, 
 
         const int sourceIndex = digitCount == 2 ? i : 1;
         const int digit = digitValues[sourceIndex];
-        const uint32_t handle = Sprite::LoadTexture("number/" + std::to_string(digit) + ".png");
+        const uint32_t handle = engine::Sprite::LoadTexture("number/" + std::to_string(digit) + ".png");
         sprite->SetTextureHandle(handle);
         sprite->SetPosition({startX + (sourceIndex - (2 - digitCount)) * spacing, rightAlignedPosition.y});
         sprite->SetSize({digitWidth, digitHeight});
@@ -395,7 +397,7 @@ void GamePlayScene::CollectStarCoin(int coinIndex) {
     hudStageStarPulseTimers_[coinIndex] = 0.45f;
 }
 
-void GamePlayScene::CollectStarCoin(int coinIndex, const Vector3& worldPosition) {
+void GamePlayScene::CollectStarCoin(int coinIndex, const engine::Vector3& worldPosition) {
     // 初回取得だけワールド位置からHUDへ飛ばし、再取得は即時表示にする。
     if (coinIndex < 0 || coinIndex >= 3) {
         return;
@@ -416,7 +418,7 @@ void GamePlayScene::CollectStarCoin(int coinIndex, const Vector3& worldPosition)
     StartStageStarHUDCollectEffect(coinIndex, worldPosition);
 }
 
-Vector2 GamePlayScene::ProjectWorldToScreen(const Vector3& worldPosition) const {
+engine::Vector2 GamePlayScene::ProjectWorldToScreen(const engine::Vector3& worldPosition) const {
     // ワールド上の取得位置を画面座標へ変換し、カメラ不在や異常値では中央を使う。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     const float screenW = static_cast<float>(WinApp::kClientWidth);
@@ -425,7 +427,7 @@ Vector2 GamePlayScene::ProjectWorldToScreen(const Vector3& worldPosition) const 
         return {screenW * 0.5f, screenH * 0.5f};
     }
 
-    Vector3 ndc = Math::Transform(worldPosition, camera->GetViewProjectionMatrix());
+    engine::Vector3 ndc = engine::Math::Transform(worldPosition, camera->GetViewProjectionMatrix());
     if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
         return {screenW * 0.5f, screenH * 0.5f};
     }
@@ -434,7 +436,7 @@ Vector2 GamePlayScene::ProjectWorldToScreen(const Vector3& worldPosition) const 
             std::clamp((1.0f - ndc.y) * 0.5f * screenH, 24.0f, screenH - 24.0f)};
 }
 
-void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const Vector3& worldPosition) {
+void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::Vector3& worldPosition) {
     // 星本体と火花を取得位置からHUD枠へ飛ばし、到着時に取得済み表示へ切り替える。
     if (starIndex < 0 || starIndex >= static_cast<int>(hudStageStarSlots_.size()) || !spriteCommon_) {
         if (starIndex >= 0 && starIndex < 3) {
@@ -444,16 +446,16 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const Vector3&
         return;
     }
 
-    const Vector2 start = ProjectWorldToScreen(worldPosition);
-    const Vector2 end = hudStageStarSlots_[starIndex].sprite
+    const engine::Vector2 start = ProjectWorldToScreen(worldPosition);
+    const engine::Vector2 end = hudStageStarSlots_[starIndex].sprite
                             ? hudStageStarSlots_[starIndex].basePosition
-                            : Vector2{52.0f + 48.0f * static_cast<float>(starIndex), 214.0f};
+                            : engine::Vector2{52.0f + 48.0f * static_cast<float>(starIndex), 214.0f};
 
-    auto addParticle = [&](const std::string& texturePath, const Vector2& particleStart, const Vector2& particleEnd,
-                           const Vector2& control, float duration, float baseSize, float rotationSpeed,
+    auto addParticle = [&](const std::string& texturePath, const engine::Vector2& particleStart, const engine::Vector2& particleEnd,
+                           const engine::Vector2& control, float duration, float baseSize, float rotationSpeed,
                            bool fillsSlot) {
         StageStarUIFlyParticle particle;
-        particle.sprite = std::make_unique<Sprite>();
+        particle.sprite = std::make_unique<engine::Sprite>();
         particle.sprite->Initialize(spriteCommon_.get(), texturePath);
         particle.sprite->SetAnchorPoint({0.5f, 0.5f});
         particle.sprite->SetPosition(particleStart);
@@ -472,19 +474,19 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const Vector3&
         hudStageStarFlyParticles_.push_back(std::move(particle));
     };
 
-    const Vector2 mainControl = {(start.x + end.x) * 0.5f,
+    const engine::Vector2 mainControl = {(start.x + end.x) * 0.5f,
                                  std::min(start.y, end.y) - 135.0f - 18.0f * static_cast<float>(starIndex)};
     addParticle("Resources/sprite/ui/hud/stage_star_filled.png", start, end, mainControl, 0.72f, 44.0f, 5.6f, true);
 
     for (int i = 0; i < 10; ++i) {
         const float angle = static_cast<float>(i) / 10.0f * kPi * 2.0f;
         const float radius = 18.0f + static_cast<float>((i % 3) * 7);
-        const Vector2 startOffset = {static_cast<float>(std::cos(angle) * radius),
+        const engine::Vector2 startOffset = {static_cast<float>(std::cos(angle) * radius),
                                      static_cast<float>(std::sin(angle) * radius)};
-        const Vector2 endOffset = {static_cast<float>(std::cos(angle + 0.9f) * 14.0f),
+        const engine::Vector2 endOffset = {static_cast<float>(std::cos(angle + 0.9f) * 14.0f),
                                    static_cast<float>(std::sin(angle + 0.9f) * 14.0f)};
         const float lane = static_cast<float>(i - 5);
-        const Vector2 control = {(start.x + end.x) * 0.5f + lane * 14.0f,
+        const engine::Vector2 control = {(start.x + end.x) * 0.5f + lane * 14.0f,
                                  std::min(start.y, end.y) - 82.0f - std::abs(lane) * 4.0f};
         addParticle("Resources/sprite/ui/hud/stage_star_spark.png", {start.x + startOffset.x, start.y + startOffset.y},
                     {end.x + endOffset.x, end.y + endOffset.y}, control, 0.48f + 0.035f * static_cast<float>(i % 4),
@@ -501,7 +503,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
         particle.timer += deltaTime;
         const float t = particle.duration > 0.0f ? std::clamp(particle.timer / particle.duration, 0.0f, 1.0f) : 1.0f;
         const float eased = SmoothStep(t);
-        const Vector2 position = QuadraticBezier(particle.start, particle.control, particle.end, eased);
+        const engine::Vector2 position = QuadraticBezier(particle.start, particle.control, particle.end, eased);
         const float fade = particle.fillsSlot ? 1.0f : std::clamp(1.0f - (t - 0.62f) / 0.38f, 0.0f, 1.0f);
         const float size = particle.baseSize * (particle.fillsSlot ? (1.0f + (1.0f - t) * 0.20f) : (1.0f - t * 0.38f));
 
@@ -549,7 +551,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
         hudStageStarPulseTimers_[i] = std::max(0.0f, hudStageStarPulseTimers_[i] - deltaTime);
         const bool collected = hudStageStarVisualCollected_[i];
         const uint32_t handle =
-            Sprite::LoadTexture(collected ? "ui/hud/stage_star_filled.png" : "ui/hud/stage_star_empty.png");
+            engine::Sprite::LoadTexture(collected ? "ui/hud/stage_star_filled.png" : "ui/hud/stage_star_empty.png");
         const float pulseT = hudStageStarPulseTimers_[i] > 0.0f ? hudStageStarPulseTimers_[i] / 0.65f : 0.0f;
         const float scale = 1.0f + std::sin((1.0f - pulseT) * kPi) * pulseT * 0.28f;
         const float alpha = visible ? (collected ? slot.baseColor.w : slot.baseColor.w * 0.78f) : 0.0f;
@@ -622,7 +624,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     const float barShake =
         damageRate > 0.0f ? std::sin(hudDamagePulseTimer_ * 92.0f) * SpriteLayoutScaler::ScaleDesignX(3.2f) * damageRate
                           : 0.0f;
-    const Vector2 liquidOffset = {barShake, 0.0f};
+    const engine::Vector2 liquidOffset = {barShake, 0.0f};
     const float liquidHeightScale = 1.0f + damageImpact * 0.07f;
     const float lifeGainRate =
         hudLifeGainPulseTimer_ > 0.0f ? hudLifeGainPulseTimer_ / kLifeGainPulseDuration : 0.0f;
@@ -646,7 +648,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         damageReacting ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.055f : liquidWave * lowHpRate * 0.012f;
     // HP 表示は実値と遅れて追うダメージ量を別レイヤーにし、被弾量を読めるようにします。
     if (hudHpIcon_.sprite) {
-        const uint32_t handle = Sprite::LoadTexture(ResolveHpIconTexture(player_, damageReacting));
+        const uint32_t handle = engine::Sprite::LoadTexture(ResolveHpIconTexture(player_, damageReacting));
         SetFullTextureRect(hudHpIcon_.sprite, handle);
         hudHpIcon_.sprite->SetVisible(visible);
         hudHpIcon_.sprite->SetPosition(
@@ -714,22 +716,22 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     const bool morphVisible = morphActive || hudMorphGaugeVisibleTimer_ > 0.0f;
     const float morphRate = morphActive ? player_->GetEnemyMorphRate() : 0.0f;
     hudMorphGaugeTimer_ = morphVisible ? hudMorphGaugeTimer_ + deltaTime : 0.0f;
-    Vector2 morphGaugeSize = SpriteLayoutScaler::ScaleDesignSize({132.0f, 132.0f});
-    Vector2 morphIconSize = SpriteLayoutScaler::ScaleDesignSize({92.0f, 92.0f});
-    Vector2 morphGaugePosition = SpriteLayoutScaler::ScaleDesignPosition({530.0f, 988.0f});
+    engine::Vector2 morphGaugeSize = SpriteLayoutScaler::ScaleDesignSize({132.0f, 132.0f});
+    engine::Vector2 morphIconSize = SpriteLayoutScaler::ScaleDesignSize({92.0f, 92.0f});
+    engine::Vector2 morphGaugePosition = SpriteLayoutScaler::ScaleDesignPosition({530.0f, 988.0f});
     if (hudHpFrame_.sprite) {
         morphGaugePosition = {hudHpFrame_.basePosition.x + hudHpFrame_.baseSize.x +
                                   SpriteLayoutScaler::ScaleDesignX(66.0f),
                               hudHpFrame_.basePosition.y};
     }
     if (player_) {
-        Vector3 headWorld = player_->GetWorldPosition();
+        engine::Vector3 headWorld = player_->GetWorldPosition();
         headWorld.y += 2.55f;
-        Vector3 bodyWorld = player_->GetWorldPosition();
+        engine::Vector3 bodyWorld = player_->GetWorldPosition();
         bodyWorld.y += 0.65f;
 
-        const Vector2 headScreen = ProjectWorldToScreen(headWorld);
-        const Vector2 bodyScreen = ProjectWorldToScreen(bodyWorld);
+        const engine::Vector2 headScreen = ProjectWorldToScreen(headWorld);
+        const engine::Vector2 bodyScreen = ProjectWorldToScreen(bodyWorld);
         const float bodyHeightOnScreen = std::abs(bodyScreen.y - headScreen.y);
         const float perspectiveScale =
             std::clamp(bodyHeightOnScreen / SpriteLayoutScaler::ScaleDesignY(96.0f), 0.72f, 1.18f);
@@ -750,14 +752,14 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     const float lowBlink =
         lowRate > 0.0f ? 0.5f + 0.5f * std::sin(hudMorphGaugeTimer_ * (18.0f + lowRate * 20.0f)) : 0.0f;
     const float warningPulse = lowRate * (0.08f + lowBlink * 0.20f);
-    const Vector2 warningOffset = {lowRate * std::sin(hudMorphGaugeTimer_ * 42.0f) * 2.2f,
+    const engine::Vector2 warningOffset = {lowRate * std::sin(hudMorphGaugeTimer_ * 42.0f) * 2.2f,
                                    lowRate * std::sin(hudMorphGaugeTimer_ * 31.0f) * 0.9f};
     int visibleMorphFrame = morphFrame;
     if (lowRate > 0.0f && lowBlink > 0.68f) {
         visibleMorphFrame = std::max(0, morphFrame - 1);
     }
-    const auto updateMorphSprite = [&](HudSpriteState& state, const Vector2& baseSize, float alphaScale, float scale,
-                                       float rotation, Vector2 offset, float colorBoost) {
+    const auto updateMorphSprite = [&](HudSpriteState& state, const engine::Vector2& baseSize, float alphaScale, float scale,
+                                       float rotation, engine::Vector2 offset, float colorBoost) {
         if (!state.sprite) {
             return;
         }
@@ -772,7 +774,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         state.sprite->Update();
     };
     if (hudMorphGaugeFill_.sprite) {
-        const uint32_t handle = Sprite::LoadTexture("ui/hud/morph_gauge/fill_" +
+        const uint32_t handle = engine::Sprite::LoadTexture("ui/hud/morph_gauge/fill_" +
                                                     (visibleMorphFrame < 10 ? std::string("0") : std::string()) +
                                                     std::to_string(visibleMorphFrame) + ".png");
         hudMorphGaugeFill_.sprite->SetTextureHandle(handle);
@@ -807,7 +809,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         hudLifeXIcon_.sprite->Update();
     }
 
-    const Vector2 lifeNumberRight = hudLifeDigits_[1].sprite ? hudLifeDigits_[1].basePosition : Vector2{162.0f, 100.0f};
+    const engine::Vector2 lifeNumberRight = hudLifeDigits_[1].sprite ? hudLifeDigits_[1].basePosition : engine::Vector2{162.0f, 100.0f};
     const float lifeDigitHeight = hudLifeDigits_[1].baseSize.y > 0.0f ? hudLifeDigits_[1].baseSize.y : 40.0f;
     SetGameplayHUDNumber(hudLifeDigits_, lives, lifeNumberRight, lifeDigitHeight * (1.0f + lifeGainRate * 0.12f),
                          hudLifeDigits_[1].baseColor, visible);
@@ -833,7 +835,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         hudCoinXIcon_.sprite->Update();
     }
 
-    const Vector2 coinNumberRight = hudCoinDigits_[1].sprite ? hudCoinDigits_[1].basePosition : Vector2{162.0f, 154.0f};
+    const engine::Vector2 coinNumberRight = hudCoinDigits_[1].sprite ? hudCoinDigits_[1].basePosition : engine::Vector2{162.0f, 154.0f};
     const float coinDigitHeight = hudCoinDigits_[1].baseSize.y > 0.0f ? hudCoinDigits_[1].baseSize.y : 40.0f;
     SetGameplayHUDNumber(hudCoinDigits_, coins, {coinNumberRight.x, coinNumberRight.y + coinBounceOffsetY * 0.55f},
                          coinDigitHeight * coinCountScale, hudCoinDigits_[1].baseColor, visible);
@@ -847,7 +849,7 @@ EnemyPrismSlime* GamePlayScene::FindPrismBossForHUD() {
         return nullptr;
     }
 
-    for (const std::unique_ptr<Object3d>& object : objectManager_->GetObjects()) {
+    for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
         auto* boss = dynamic_cast<EnemyPrismSlime*>(object.get());
         if (boss && boss->IsEncounterHudActive()) {
             return boss;
@@ -862,7 +864,7 @@ EnemyMagmaSlime* GamePlayScene::FindMagmaBossForHUD() {
         return nullptr;
     }
 
-    for (const std::unique_ptr<Object3d>& object : objectManager_->GetObjects()) {
+    for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
         auto* boss = dynamic_cast<EnemyMagmaSlime*>(object.get());
         if (boss && boss->IsEncounterHudActive()) {
             return boss;
@@ -877,7 +879,7 @@ EnemyFalseKingSlime* GamePlayScene::FindFalseKingBossForHUD() {
         return nullptr;
     }
 
-    for (const std::unique_ptr<Object3d>& object : objectManager_->GetObjects()) {
+    for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
         auto* boss = dynamic_cast<EnemyFalseKingSlime*>(object.get());
         if (boss && boss->IsEncounterHudActive()) {
             return boss;
@@ -922,8 +924,8 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
                                                      : (usesMagmaTheme ? "ui/hud/boss/magma_slime_name.png"
                                                                        : "ui/hud/boss/prism_slime_name.png");
         const char* sideDecorationTexture = usesMagmaTheme ? "particle/flame_soft.png" : "particle/diamond_shard.png";
-        SetFullTextureRect(prismBossHudName_.sprite, Sprite::LoadTexture(nameTexture));
-        const uint32_t sideDecorationHandle = Sprite::LoadTexture(sideDecorationTexture);
+        SetFullTextureRect(prismBossHudName_.sprite, engine::Sprite::LoadTexture(nameTexture));
+        const uint32_t sideDecorationHandle = engine::Sprite::LoadTexture(sideDecorationTexture);
         SetFullTextureRect(prismBossHudShardLeft_.sprite, sideDecorationHandle);
         SetFullTextureRect(prismBossHudShardRight_.sprite, sideDecorationHandle);
     }
@@ -1034,8 +1036,8 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
     const float lowHpPulse = lowHpRate * (0.5f + 0.5f * std::sin(prismBossHudAnimationTimer_ * 7.0f));
 
     // 各部品の可視性・位置・大きさ・色を同じ手順で反映する。
-    auto updateSprite = [](HudSpriteState& state, bool visible, const Vector2& position, const Vector2& size,
-                           const Vector4& color, float rotation = 0.0f) {
+    auto updateSprite = [](HudSpriteState& state, bool visible, const engine::Vector2& position, const engine::Vector2& size,
+                           const engine::Vector4& color, float rotation = 0.0f) {
         if (!state.sprite) {
             return;
         }
@@ -1051,33 +1053,33 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
     const float phasePulseRate = (std::clamp)(falseKingBossHudPhasePulseTimer_ / 0.82f, 0.0f, 1.0f);
     const float phaseImpact = std::sin((1.0f - phasePulseRate) * kPi) * phasePulseRate;
     const float glowPulse = 0.82f + std::sin(prismBossHudAnimationTimer_ * 3.6f) * 0.18f + phaseImpact * 0.34f;
-    const Vector3 glowColor =
+    const engine::Vector3 glowColor =
         usesFalseKingTheme
-            ? (falseKingPhase >= 3 ? Vector3{0.72f, 0.22f + phaseImpact * 0.28f, 1.0f}
-                                   : (falseKingPhase == 2 ? Vector3{1.0f, 0.28f + phaseImpact * 0.22f, 0.72f}
-                                                          : Vector3{1.0f, 0.54f + lowHpPulse * 0.22f, 0.18f}))
-            : (usesMagmaTheme ? Vector3{1.0f, 0.26f + lowHpPulse * 0.14f, 0.025f}
-                              : Vector3{0.34f + lowHpPulse * 0.30f, 0.58f, 1.0f});
-    const Vector3 fillColor =
+            ? (falseKingPhase >= 3 ? engine::Vector3{0.72f, 0.22f + phaseImpact * 0.28f, 1.0f}
+                                   : (falseKingPhase == 2 ? engine::Vector3{1.0f, 0.28f + phaseImpact * 0.22f, 0.72f}
+                                                          : engine::Vector3{1.0f, 0.54f + lowHpPulse * 0.22f, 0.18f}))
+            : (usesMagmaTheme ? engine::Vector3{1.0f, 0.26f + lowHpPulse * 0.14f, 0.025f}
+                              : engine::Vector3{0.34f + lowHpPulse * 0.30f, 0.58f, 1.0f});
+    const engine::Vector3 fillColor =
         usesFalseKingTheme
             ? (falseKingPhase >= 3
-                   ? Vector3{0.72f + phaseImpact * 0.22f, 0.16f, 1.0f}
-                   : (falseKingPhase == 2 ? Vector3{1.0f, 0.34f, 0.72f + phaseImpact * 0.20f}
-                                          : Vector3{1.0f, 0.72f - lowHpPulse * 0.32f, 0.12f + lowHpPulse * 0.18f}))
-            : (usesMagmaTheme ? Vector3{1.0f, 0.48f - lowHpPulse * 0.30f, 0.035f}
-                              : Vector3{0.16f + lowHpPulse * 0.58f, 0.84f - lowHpPulse * 0.34f, 1.0f});
-    const Vector3 frameTopColor =
+                   ? engine::Vector3{0.72f + phaseImpact * 0.22f, 0.16f, 1.0f}
+                   : (falseKingPhase == 2 ? engine::Vector3{1.0f, 0.34f, 0.72f + phaseImpact * 0.20f}
+                                          : engine::Vector3{1.0f, 0.72f - lowHpPulse * 0.32f, 0.12f + lowHpPulse * 0.18f}))
+            : (usesMagmaTheme ? engine::Vector3{1.0f, 0.48f - lowHpPulse * 0.30f, 0.035f}
+                              : engine::Vector3{0.16f + lowHpPulse * 0.58f, 0.84f - lowHpPulse * 0.34f, 1.0f});
+    const engine::Vector3 frameTopColor =
         usesFalseKingTheme
-            ? (falseKingPhase >= 3 ? Vector3{0.88f, 0.52f, 1.0f}
-                                   : (falseKingPhase == 2 ? Vector3{1.0f, 0.54f, 0.86f} : Vector3{1.0f, 0.90f, 0.42f}))
-            : (usesMagmaTheme ? Vector3{1.0f, 0.88f, 0.32f} : Vector3{0.54f + lowHpPulse * 0.30f, 0.94f, 1.0f});
-    const Vector3 frameBottomColor =
+            ? (falseKingPhase >= 3 ? engine::Vector3{0.88f, 0.52f, 1.0f}
+                                   : (falseKingPhase == 2 ? engine::Vector3{1.0f, 0.54f, 0.86f} : engine::Vector3{1.0f, 0.90f, 0.42f}))
+            : (usesMagmaTheme ? engine::Vector3{1.0f, 0.88f, 0.32f} : engine::Vector3{0.54f + lowHpPulse * 0.30f, 0.94f, 1.0f});
+    const engine::Vector3 frameBottomColor =
         usesFalseKingTheme
-            ? (falseKingPhase >= 3 ? Vector3{0.32f, 0.72f, 1.0f}
-                                   : (falseKingPhase == 2 ? Vector3{0.72f, 0.20f, 1.0f}
-                                                          : Vector3{0.62f + lowHpPulse * 0.20f, 0.22f, 0.92f}))
-            : (usesMagmaTheme ? Vector3{0.62f + lowHpPulse * 0.30f, 0.045f, 0.015f}
-                              : Vector3{0.66f + lowHpPulse * 0.24f, 0.44f, 1.0f});
+            ? (falseKingPhase >= 3 ? engine::Vector3{0.32f, 0.72f, 1.0f}
+                                   : (falseKingPhase == 2 ? engine::Vector3{0.72f, 0.20f, 1.0f}
+                                                          : engine::Vector3{0.62f + lowHpPulse * 0.20f, 0.22f, 0.92f}))
+            : (usesMagmaTheme ? engine::Vector3{0.62f + lowHpPulse * 0.30f, 0.045f, 0.015f}
+                              : engine::Vector3{0.66f + lowHpPulse * 0.24f, 0.44f, 1.0f});
     // 背景と枠は出現率で横幅を開き、被弾時だけ短く揺らす。
     updateSprite(prismBossHudGlow_, hudVisible,
                  {prismBossHudGlow_.basePosition.x + barShake, prismBossHudGlow_.basePosition.y},
@@ -1178,11 +1180,11 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         const float transitionPulse = currentPhase ? phaseImpact + (1.0f - falseKingPhaseTransition) * 0.12f : 0.0f;
         const float markerScale = (currentPhase ? 1.0f + markerPulse * 0.10f + transitionPulse * 0.26f : 0.76f) *
                                   (0.72f + nameReveal * 0.28f);
-        Vector4 markerColor;
+        engine::Vector4 markerColor;
         if (currentPhase) {
             markerColor = falseKingPhase >= 3
-                              ? Vector4{0.88f, 0.48f, 1.0f, visualAlpha * (0.86f + markerPulse * 0.14f)}
-                              : Vector4{1.0f, 0.82f, 0.24f, visualAlpha * (0.86f + markerPulse * 0.14f)};
+                              ? engine::Vector4{0.88f, 0.48f, 1.0f, visualAlpha * (0.86f + markerPulse * 0.14f)}
+                              : engine::Vector4{1.0f, 0.82f, 0.24f, visualAlpha * (0.86f + markerPulse * 0.14f)};
         } else if (clearedPhase) {
             markerColor = {0.72f, 0.44f, 0.92f, visualAlpha * 0.54f};
         } else {
@@ -1213,7 +1215,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         const float phase =
             prismBossHudAnimationTimer_ * (3.2f + static_cast<float>(i) * 0.17f) + static_cast<float>(i) * 1.31f;
         const float sparkle = std::pow((std::max)(0.0f, std::sin(phase)), 7.0f);
-        Vector2 position = glint.basePosition;
+        engine::Vector2 position = glint.basePosition;
         if (i == prismBossHudGlints_.size() - 1) {
             position.x = fullFillLeft + fullFillWidth * displayedRate;
             position.y = prismBossHudFill_.basePosition.y;

@@ -20,9 +20,14 @@ public:
     /// <summary>DirectX基盤を受け取り、3D描画用の各パイプラインを作成する。</summary>
     void Initialize(DirectXCommon* dxCommon);
 
+    /// <summary>タイトルの初回表示に必要な描画経路を先に作り、残りは初回使用時に作る。</summary>
+    void InitializeForTitle(DirectXCommon* dxCommon);
+
     /// <summary>ロード画面を描画しながらパイプラインを一種類ずつ準備する。</summary>
     void BeginInitialize(DirectXCommon* dxCommon);
+    /// 次の描画パイプラインを一段だけ作る。すべて済めば true を返す。
     bool InitializeStep();
+    /// 段階的な描画パイプライン初期化の進捗率を返す。
     float GetInitializationProgress() const;
 
     /// <summary>通常の3Dモデル描画用ルートシグネチャとパイプラインを設定する。</summary>
@@ -33,6 +38,9 @@ public:
 
     /// <summary>指定ブレンドモードの通常描画パイプラインを設定する。</summary>
     void SetPipelineState(BlendMode blendMode);
+
+    /// <summary>材質に専用シェーダがある場合はそれを、なければ通常描画パイプラインを設定する。</summary>
+    void SetMaterialPipelineState(BlendMode blendMode, int materialType);
 
     /// <summary>所有しないDirectX基盤への参照を返す。</summary>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
@@ -106,6 +114,14 @@ private:
     /// <param name="outPipelineState">生成したパイプラインの出力先。</param>
     void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState, bool shaderDepthTest = false);
 
+    /// <summary>タイトルで先送りした特殊材質のパイプラインを初回使用時に作る。</summary>
+    void EnsurePipelineState(Microsoft::WRL::ComPtr<ID3D12PipelineState>& state,
+                             void (Object3dCommon::*createPipeline)());
+    void CreatePipelineStatesInternal(bool titleBlendModesOnly);
+
+    /// <summary>通常描画と同じルート・深度・合成設定で材質専用のピクセルシェーダを組み込む。</summary>
+    void CreateMaterialVariantPipeline(const wchar_t* pixelShaderPath, BlendMode blendMode, ID3D12PipelineState** outPipelineState);
+
 private:
     static constexpr size_t kInitializationStepCount = 24;
     size_t initializationStep_ = 0;
@@ -116,6 +132,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
     std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> graphicsPipelineStates_;
+    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> dashPanelPipelineStates_;
+    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> decalPipelineStates_;
 
     // 影、フォグ、エフェクト、水面用の描画リソース。
     Microsoft::WRL::ComPtr<ID3D12PipelineState> shadowPipelineState_;

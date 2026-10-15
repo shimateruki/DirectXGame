@@ -66,10 +66,10 @@ void GimmickLiquidLevel::Update(float deltaTime) {
     // 指数補間を使い、フレーム時間が変わっても目標位置への追従を安定させます。
     float speed = (std::max)(0.01f, param_->moveSpeed);
     float t = 1.0f - std::exp(-speed * deltaTime);
-    Vector3 pos = GetTransform()->translate;
-    pos.x = Math::Lerp(pos.x, targetPosition_.x, t);
-    pos.y = Math::Lerp(pos.y, targetPosition_.y, t);
-    pos.z = Math::Lerp(pos.z, targetPosition_.z, t);
+    engine::Vector3 pos = GetTransform()->translate;
+    pos.x = engine::Math::Lerp(pos.x, targetPosition_.x, t);
+    pos.y = engine::Math::Lerp(pos.y, targetPosition_.y, t);
+    pos.z = engine::Math::Lerp(pos.z, targetPosition_.z, t);
     SetTranslate(pos);
 
     ApplyLiquidVisual();
@@ -98,7 +98,7 @@ void GimmickLiquidLevel::ApplyTarget(bool active) {
     // 配置時の高さを基準に、設定した距離だけ上下させます。
     active_ = active;
     float amount = param_.has_value() ? param_->moveAmount : 6.0f;
-    targetPosition_ = active ? basePosition_ + Vector3{0.0f, amount, 0.0f} : basePosition_;
+    targetPosition_ = active ? basePosition_ + engine::Vector3{0.0f, amount, 0.0f} : basePosition_;
 }
 
 void GimmickLiquidLevel::ApplyLiquidVisual() {
@@ -113,7 +113,7 @@ void GimmickLiquidLevel::ApplyLiquidVisual() {
     }
 }
 
-std::unique_ptr<Object3d> GimmickLiquidLevel::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickLiquidLevel::Clone() const {
     // 複製先の描画資源を作った後で、液面の設定を引き継ぎます。
     auto newObj = std::make_unique<GimmickLiquidLevel>();
     assert(common_ != nullptr);
@@ -151,11 +151,11 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
     auto* start = scene->FindObjectByEventID(GetTargetID());
     auto* finish = scene->FindObjectByEventID(GetTargetID() + 1);
     auto* checkpoint = scene->FindObjectByEventID(GetTargetID() + 2);
-    const auto inside = [&](Object3d* marker) {
+    const auto inside = [&](engine::Object3d* marker) {
         if (!marker || !player)
             return false;
-        const Vector3 p = player->GetTranslate() - marker->GetTranslate();
-        const Vector3 radius = marker->GetScale();
+        const engine::Vector3 p = player->GetTranslate() - marker->GetTranslate();
+        const engine::Vector3 radius = marker->GetScale();
         return std::abs(p.x) <= radius.x && std::abs(p.y) <= radius.y && std::abs(p.z) <= radius.z;
     };
     if (player && !player->isDead && player->IsControlActive()) {
@@ -187,7 +187,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         const float elapsed = (std::max)(0.0f, escapeTime_ - param_->shakeDuration);
         const float rise =
             (std::min)((std::max)(0.0f, param_->moveAmount), elapsed * (std::max)(0.01f, param_->moveSpeed));
-        SetTranslate(basePosition_ + Vector3{0.0f, rise, 0.0f});
+        SetTranslate(basePosition_ + engine::Vector3{0.0f, rise, 0.0f});
     }
     // 接触判定はPlayerが現在の液面を読むため、ここで行列まで確定します。
     SetMaterialType(9);

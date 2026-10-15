@@ -35,15 +35,15 @@ void GimmickHookPullBlock::Update(float deltaTime) {
     pullTimer_ = std::max(0.0f, pullTimer_ - deltaTime);
 
     if (pullTimer_ > 0.0f) {
-        Vector3 toTarget = pullTarget_ - GetWorldPosition();
+        engine::Vector3 toTarget = pullTarget_ - GetWorldPosition();
         toTarget.y = 0.0f;
 
-        float dist = Math::Length(toTarget);
+        float dist = engine::Math::Length(toTarget);
         if (dist > 0.05f) {
-            Vector3 dir = Math::Normalize(toTarget);
+            engine::Vector3 dir = engine::Math::Normalize(toTarget);
             float pullSpeed = std::max(1.0f, param_->speed);
-            velocity_.x = Math::Lerp(velocity_.x, dir.x * pullSpeed, 0.18f);
-            velocity_.z = Math::Lerp(velocity_.z, dir.z * pullSpeed, 0.18f);
+            velocity_.x = engine::Math::Lerp(velocity_.x, dir.x * pullSpeed, 0.18f);
+            velocity_.z = engine::Math::Lerp(velocity_.z, dir.z * pullSpeed, 0.18f);
         }
     } else {
         velocity_.x *= 0.86f;
@@ -63,7 +63,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
 
     float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
     if (speedXZ > 0.05f) {
-        Vector3 rot = GetRotation();
+        engine::Vector3 rot = GetRotation();
         rot.x += velocity_.z * deltaTime * 0.35f;
         rot.z -= velocity_.x * deltaTime * 0.35f;
         SetRotation(rot);
@@ -72,7 +72,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickHookPullBlock::OnCollision(Object3d* other) {
+bool GimmickHookPullBlock::OnCollision(engine::Object3d* other) {
     // 地面属性以外との接触では引き寄せ中の位置補正を行わない。
     if (!other || other == this)
         return false;
@@ -87,7 +87,7 @@ bool GimmickHookPullBlock::OnCollision(Object3d* other) {
 
     SetTranslate(GetTranslate() + info.normal * info.penetration);
 
-    float dot = Math::Dot(velocity_, info.normal);
+    float dot = engine::Math::Dot(velocity_, info.normal);
     if (dot < 0.0f) {
         velocity_ = velocity_ - info.normal * dot;
     }
@@ -99,14 +99,14 @@ bool GimmickHookPullBlock::OnCollision(Object3d* other) {
     return true;
 }
 
-void GimmickHookPullBlock::StartHookPull(const Vector3& hookOwnerPos) {
+void GimmickHookPullBlock::StartHookPull(const engine::Vector3& hookOwnerPos) {
     // フックを掴んだ瞬間の使用者位置を固定し、移動中に目標が揺れないようにします。
-    Vector3 toOwner = hookOwnerPos - GetWorldPosition();
+    engine::Vector3 toOwner = hookOwnerPos - GetWorldPosition();
     toOwner.y = 0.0f;
-    if (Math::Length(toOwner) < 0.05f)
+    if (engine::Math::Length(toOwner) < 0.05f)
         return;
 
-    Vector3 dir = Math::Normalize(toOwner);
+    engine::Vector3 dir = engine::Math::Normalize(toOwner);
     pullTarget_ = hookOwnerPos - dir * 4.0f;
     pullTarget_.y = GetWorldPosition().y;
     pullTimer_ = 0.45f;
@@ -120,7 +120,7 @@ void GimmickHookPullBlock::StartHookPull(const Vector3& hookOwnerPos) {
     DebugConsole::GetInstance()->AddLog("HookPullBlock pulled");
 }
 
-std::unique_ptr<Object3d> GimmickHookPullBlock::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickHookPullBlock::Clone() const {
     // 新しい実体を初期化してから配置とフック設定を引き継ぐ。
     auto newObj = std::make_unique<GimmickHookPullBlock>();
     assert(common_ != nullptr);

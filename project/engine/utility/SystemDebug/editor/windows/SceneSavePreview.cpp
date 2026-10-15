@@ -13,6 +13,7 @@ using json = nlohmann::json;
 
 namespace {
 bool ReadJsonFile(const std::string& path, json& outJson) {
+    // 空ファイルは空オブジェクトとして扱い、構文エラーは保存差分の検証失敗として返す。
     std::ifstream file(path);
     if (!file.is_open()) {
         return false;
@@ -33,15 +34,18 @@ bool ReadJsonFile(const std::string& path, json& outJson) {
     }
 }
 
+// Scene保存JSONにObject一覧が含まれるかを確認します。
 bool HasObjectList(const json& value) {
     return value.is_object() && value.contains("objects") && value["objects"].is_array();
 }
 
+// JSONの子フィールドを差分一覧に表示するため、ドット区切りの位置を作ります。
 std::string JoinPath(const std::string& parent, const std::string& child) {
     if (parent.empty()) return child;
     return parent + "." + child;
 }
 
+// 配列要素の差分を識別できるよう、親の位置へ添字を付けます。
 std::string MakeArrayPath(const std::string& parent, size_t index) {
     std::ostringstream oss;
     oss << parent << "[" << index << "]";
@@ -68,11 +72,13 @@ void SceneSavePreview::Build(const std::vector<SceneSerializer::SaveTarget>& tar
     UpdateSummary();
 }
 
+// 次のImGui描画時に保存確認のポップアップを開く要求を立てます。
 void SceneSavePreview::Open() {
     isOpen_ = true;
     requestOpenPopup_ = true;
 }
 
+// 表示状態と未処理のポップアップ開始要求をともに解除します。
 void SceneSavePreview::Close() {
     isOpen_ = false;
     requestOpenPopup_ = false;
@@ -242,6 +248,7 @@ std::string SceneSavePreview::GetObjectCategory(const json& obj) {
 }
 
 std::string SceneSavePreview::JsonValueToText(const json& value) {
+    // 差分一覧に収まるよう短い配列は展開し、大きい配列やObjectは件数で要約する。
     if (value.is_null()) return "null";
     if (value.is_string()) return "\"" + value.get<std::string>() + "\"";
     if (value.is_boolean()) return value.get<bool>() ? "true" : "false";

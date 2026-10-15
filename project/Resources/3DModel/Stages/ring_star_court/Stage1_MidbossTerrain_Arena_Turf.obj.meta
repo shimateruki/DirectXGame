@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "3949ce09abd057a79b4dc793dd484c59",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_Arena_Turf.obj",
+  "version": 1
+}

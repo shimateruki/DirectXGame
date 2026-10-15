@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ef42652583005ea599b18aa592b4c83e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_ExitBridge_Path.obj",
+  "version": 1
+}

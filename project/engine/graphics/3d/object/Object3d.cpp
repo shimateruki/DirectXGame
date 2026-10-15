@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include "Object3dTransformUtils.h"
 #include "EditorToolSettings.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
@@ -19,6 +20,8 @@
 #include <fstream>
 #include <filesystem>
 
+namespace engine {
+
 namespace {
 
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
@@ -36,6 +39,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     return filePath;
 }
 
+// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
     // 親の祖先に自分がいれば循環になるため、設定前に階層を調べる。
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
@@ -46,37 +50,6 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
     return false;
 }
 
-void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
-    // 行列から倍率を分離して回転を求め、親変更後のワールド姿勢を保持する。
-    const float epsilon = 0.0001f;
-
-    Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
-    Vector3 rowY = { matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] };
-    Vector3 rowZ = { matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] };
-
-    transform.scale = {
-        std::max(Math::Length(rowX), epsilon),
-        std::max(Math::Length(rowY), epsilon),
-        std::max(Math::Length(rowZ), epsilon),
-    };
-    transform.translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
-
-    Matrix4x4 rotateMatrix = Math::MakeIdentity4x4();
-    rotateMatrix.m[0][0] = matrix.m[0][0] / transform.scale.x;
-    rotateMatrix.m[0][1] = matrix.m[0][1] / transform.scale.x;
-    rotateMatrix.m[0][2] = matrix.m[0][2] / transform.scale.x;
-    rotateMatrix.m[1][0] = matrix.m[1][0] / transform.scale.y;
-    rotateMatrix.m[1][1] = matrix.m[1][1] / transform.scale.y;
-    rotateMatrix.m[1][2] = matrix.m[1][2] / transform.scale.y;
-    rotateMatrix.m[2][0] = matrix.m[2][0] / transform.scale.z;
-    rotateMatrix.m[2][1] = matrix.m[2][1] / transform.scale.z;
-    rotateMatrix.m[2][2] = matrix.m[2][2] / transform.scale.z;
-
-    transform.quaternion = Math::MatrixToQuaternion(rotateMatrix);
-    transform.rotate = Math::MatrixToEuler(rotateMatrix);
-    transform.isQuaternionMaster = true;
-}
-
 }
 
 // ========================================================================
@@ -85,12 +58,12 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 // 生成、毎フレーム更新、親子Transform、MeshRendererへの基本委譲を担当する。
 // コリジョン、JSON、付属エフェクトは別ファイルに分離して見通しを保つ。
 // ========================================================================
+Object3d::Object3d() = default;
+
 Object3d::~Object3d() {
-    if (recorder_) {
-        delete recorder_;
-        recorder_ = nullptr;
-    }
-    
+    // 他のメンバを片付ける前に、記録器の接続を解放する。
+    recorder_.reset();
+
     // 親がいる場合、親の子供リストから自分自身を取り除く
     if (parent_) {
         std::vector<Object3d*>& kids = parent_->children_;
@@ -185,7 +158,7 @@ void Object3d::Update(float deltaTime) {
         if (decalSettings_.fadeOut > 0.0f) {
             alphaFactor = std::min(alphaFactor, remaining / decalSettings_.fadeOut);
         }
-        Vector4 color = GetColor();
+        engine::Vector4 color = GetColor();
         color.w = decalAuthoredAlpha_ * std::clamp(alphaFactor, 0.0f, 1.0f);
         SetColor(color);
         if (decalElapsedTime_ >= decalSettings_.lifetime) {
@@ -284,7 +257,7 @@ void Object3d::UpdateParticle() {
 
     // 1. CPUパーティクル (旧仕様)
     if (!particle->GetCpuParticle().empty()) {
-        Vector3 pos = GetWorldPosition();
+        engine::Vector3 pos = GetWorldPosition();
         ParticleManager::GetInstance()->Emit(
             particle->GetCpuParticle(),
             pos,
@@ -420,9 +393,9 @@ void Object3d::SetParent(Object3d* parent, bool keepWorldTransform) {
         parent->UpdateWorldMatrix();
     }
 
-    Math math;
-    Matrix4x4 worldBefore = transform_.matWorld;
-    Matrix4x4 parentWorld = parent ? parent->GetWorldMatrix() : Math::MakeIdentity4x4();
+    engine::Math math;
+    engine::Matrix4x4 worldBefore = transform_.matWorld;
+    engine::Matrix4x4 parentWorld = parent ? parent->GetWorldMatrix() : engine::Math::MakeIdentity4x4();
 
     if (parent_) {
         std::vector<Object3d*>& kids = parent_->children_;
@@ -441,11 +414,11 @@ void Object3d::SetParent(Object3d* parent, bool keepWorldTransform) {
     }
 
     if (keepWorldTransform) {
-        Matrix4x4 localMatrix = worldBefore;
+        engine::Matrix4x4 localMatrix = worldBefore;
         if (parent_) {
             localMatrix = math.Multiply(worldBefore, math.Inverse(parentWorld));
         }
-        ApplyMatrixToTransform(transform_, localMatrix);
+        Object3dTransformUtils::ApplyMatrixToTransform(transform_, localMatrix);
     }
 
     UpdateWorldMatrix();
@@ -464,12 +437,13 @@ void Object3d::SetModel(Model* model) {
         // =======================================================
         if (model && collider_) {
             ColliderConfig config = collider_->GetConfig();
-            Vector3 fullSize = model->GetSize();
+            engine::Vector3 fullSize = model->GetSize();
             config.size = { fullSize.x / 2.0f, fullSize.y / 2.0f, fullSize.z / 2.0f };
 
             config.center = model->GetCenter();
             collider_->SetConfig(config);
         }
+        RefreshModelSurfaceCollision();
     }
 }
 
@@ -487,12 +461,20 @@ void Object3d::SetModel(const std::string& modelName) {
         // =======================================================
         if (model && collider_) {
             ColliderConfig config = collider_->GetConfig();
-            Vector3 fullSize = model->GetSize();
+            engine::Vector3 fullSize = model->GetSize();
             config.size = { fullSize.x / 2.0f, fullSize.y / 2.0f, fullSize.z / 2.0f };
 
             config.center = model->GetCenter();
             collider_->SetConfig(config);
         }
+        RefreshModelSurfaceCollision();
+    }
+}
+
+void Object3d::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // シーンや弾の管理者は材質番号を知らず、描画コンポーネントに選択を委ねる。
+    if (GetIsRenderVisible() && meshRenderer_) {
+        meshRenderer_->DrawSpecialMaterial(depthSrvHandle, grabSrvHandle);
     }
 }
 
@@ -710,12 +692,12 @@ float Object3d::GetLodCameraDistance() const {
     return meshRenderer_ ? meshRenderer_->GetCameraDistanceToObject() : 0.0f;
 }
 
-Vector4 Object3d::GetColor() const {
+engine::Vector4 Object3d::GetColor() const {
     // 材質が無い場合は不透明な白を既定色として返す。
-    return meshRenderer_ ? meshRenderer_->GetColor() : Vector4{ 1,1,1,1 };
+    return meshRenderer_ ? meshRenderer_->GetColor() : engine::Vector4{ 1,1,1,1 };
 }
 
-void Object3d::SetColor(const Vector4& color) {
+void Object3d::SetColor(const engine::Vector4& color) {
     // 表示色は実際の材質を持つレンダラーへだけ反映する。
     if (meshRenderer_) meshRenderer_->SetColor(color);
 }
@@ -780,3 +762,5 @@ void Object3d::SetSelectedLighting(int32_t type) {
 
 // ========================================================================
 // 衝突判定 (Colliderへの委譲)
+
+} // namespace engine

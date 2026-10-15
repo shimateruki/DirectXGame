@@ -11,11 +11,11 @@
 #include <initializer_list>
 
 void Bullet::Initialize(Object3dCommon* common) {
-    Object3d::Initialize(common);
+    engine::Object3d::Initialize(common);
     // 属性は Fire() 側で設定する
 }
 
-void Bullet::Fire(const Vector3& position, const Vector3& velocity, float life, uint32_t attribute, uint32_t mask,
+void Bullet::Fire(const engine::Vector3& position, const engine::Vector3& velocity, float life, uint32_t attribute, uint32_t mask,
                   float damage, const StatusEffectApplication& statusEffect, DamageType damageType) {
     // プールから再利用しても前回の爆発半径や演出状態を引き継がないよう、発射単位で初期化する。
     SetTranslate(position);
@@ -81,16 +81,16 @@ void Bullet::Update(float deltaTime) {
         const float width = 1.0f / std::sqrt(stretch);
         SetScale({base * width, base * stretch, base * width});
         if (auto* camera = CameraManager::GetInstance()->GetActiveCamera()) {
-            const Vector3 towardCamera = camera->GetEye() - GetTranslate();
+            const engine::Vector3 towardCamera = camera->GetEye() - GetTranslate();
             if (towardCamera.x * towardCamera.x + towardCamera.z * towardCamera.z > 0.001f)
                 SetRotation({0.0f, std::atan2(-towardCamera.x, -towardCamera.z), 0.0f});
         }
     }
 
     // 放物線のフレーム間変位を計算し、既存のSphereCastで地形との衝突を調べる。
-    const Vector3 displacement = velocity_ * deltaTime + Vector3{0.0f, -0.5f * gravity_ * deltaTime * deltaTime, 0.0f};
+    const engine::Vector3 displacement = velocity_ * deltaTime + engine::Vector3{0.0f, -0.5f * gravity_ * deltaTime * deltaTime, 0.0f};
     velocity_.y -= gravity_ * deltaTime;
-    const float travelDistance = Math::Length(displacement);
+    const float travelDistance = engine::Math::Length(displacement);
     if (travelDistance <= 0.000001f) {
         return;
     }
@@ -102,7 +102,7 @@ void Bullet::Update(float deltaTime) {
     filter.ignoreDescendants = true;
     filter.includeTriggers = true;
 
-    const Vector3 direction = displacement / travelDistance;
+    const engine::Vector3 direction = displacement / travelDistance;
     const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(GetTranslate(), GetCollisionRadius(),
                                                                        direction, travelDistance, filter);
     if (hit.isHit && hit.hitObject) {
@@ -116,7 +116,7 @@ void Bullet::Update(float deltaTime) {
     SetTranslate(GetTranslate() + displacement);
 }
 
-bool Bullet::OnCollision(Object3d* other) {
+bool Bullet::OnCollision(engine::Object3d* other) {
     // 爆発弾は範囲判定へ移し、通常弾だけ直接命中イベントを送る。
     if (isDead_ || !other)
         return false;
@@ -146,11 +146,11 @@ void Bullet::EmitTrailVfx() {
     if (!particles || !particles->IsInitialized()) {
         return;
     }
-    Vector3 direction = velocity_;
-    if (Math::Length(direction) <= 0.001f) {
+    engine::Vector3 direction = velocity_;
+    if (engine::Math::Length(direction) <= 0.001f) {
         direction = {0.0f, 0.0f, 1.0f};
     } else {
-        direction = Math::Normalize(direction);
+        direction = engine::Math::Normalize(direction);
     }
     if (trailReverseDirection_) {
         direction = direction * -1.0f;
@@ -173,11 +173,11 @@ void Bullet::EmitImpactVfx() {
     if (!particles || !particles->IsInitialized()) {
         return;
     }
-    Vector3 direction = velocity_;
-    if (Math::Length(direction) <= 0.001f) {
+    engine::Vector3 direction = velocity_;
+    if (engine::Math::Length(direction) <= 0.001f) {
         direction = {0.0f, 1.0f, 0.0f};
     } else {
-        direction = Math::Normalize(direction);
+        direction = engine::Math::Normalize(direction);
     }
     for (const std::string* preset : {&impactPreset_, &impactSecondaryPreset_}) {
         if (preset->empty()) {
@@ -198,7 +198,7 @@ void Bullet::Explode() {
     isDead_ = true;
     SetCollisionAttribute(0);
     SetCollisionMask(0);
-    const Vector3 center = GetTranslate();
+    const engine::Vector3 center = GetTranslate();
     if (auto* effects = MeshEffectManager::GetInstance()) {
         const float core = explosionRadius_ / 3.0f;
         const float ring = explosionRadius_ / 5.8f;
@@ -209,7 +209,7 @@ void Bullet::Explode() {
         groundFilter.ignoredObject = this;
         const auto ground =
             CollisionManager::GetInstance()->Raycast(center, {0, -1, 0}, explosionRadius_ + 1.0f, groundFilter);
-        const Vector3 ringPosition = ground.isHit ? ground.hitPoint + Vector3{0, 0.06f, 0} : center;
+        const engine::Vector3 ringPosition = ground.isHit ? ground.hitPoint + engine::Vector3{0, 0.06f, 0} : center;
         effects->SpawnEffectAt("Resources/json/effect/effect_bomb_shockwave_ring.json", ringPosition, {0, 0, 0},
                                {ring, ring, ring});
     }
@@ -221,15 +221,15 @@ void Bullet::Explode() {
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("player");
     filter.ignoredObject = this;
-    std::unordered_set<Object3d*> damaged;
+    std::unordered_set<engine::Object3d*> damaged;
     for (const auto& hit : CollisionManager::GetInstance()->OverlapSphere(center, explosionRadius_, filter)) {
         if (!hit.object || !damaged.insert(hit.object).second)
             continue;
-        Vector3 delta = hit.object->GetWorldPosition() - center;
+        engine::Vector3 delta = hit.object->GetWorldPosition() - center;
         PhysicsQueryFilter wallFilter;
         wallFilter.mask = CollisionCategories::Get("ground");
         wallFilter.ignoredObject = this;
-        const float distance = Math::Length(delta);
+        const float distance = engine::Math::Length(delta);
         if (distance > 0.05f) {
             const auto wall = CollisionManager::GetInstance()->Raycast(center, delta / distance, distance, wallFilter);
             if (wall.isHit && wall.distance > 0.05f && wall.distance < distance - 0.1f)

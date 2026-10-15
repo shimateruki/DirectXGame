@@ -18,6 +18,9 @@ public:
     /// <summary>描画と Compute に必要な DirectX リソースを準備します。</summary>
     void Initialize(DirectXCommon* dxCommon);
 
+    /// <summary>タイトルで参照するプリセットだけを読み込み、描画基盤を初期化します。</summary>
+    void InitializeForTitle(DirectXCommon* dxCommon, const std::vector<std::string>& presetNames);
+
     /// <summary>フレーム内の更新済み状態を初期化します。</summary>
     void BeginFrame();
 
@@ -28,7 +31,7 @@ public:
     void UpdateEditorPreviewStep(float deltaTime);
 
     /// <summary>カメラ行列と深度情報に合わせて全 GPU パーティクルを描画します。</summary>
-    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
+    void Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
 
     /// <summary>指定ディレクトリのプリセットを読み込みます。</summary>
     void LoadAllPresets(const std::string& directoryPath);
@@ -43,19 +46,19 @@ public:
     void PreloadPresetSystems(const std::vector<std::string>& presetNames);
 
     /// <summary>プリセットから指定位置へ粒子を発生させます。</summary>
-    void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
+    void Emit(const std::string& presetName, const engine::Vector3& position, const engine::Matrix4x4& emitterWorldMatrix = engine::Math::MakeIdentity4x4());
 
     /// <summary>速度の大きさを保ち、粒子の進行方向を指定方向へ合わせて発生させます。</summary>
-    void EmitDirected(const std::string& presetName, const Vector3& position, const Vector3& direction,
-        float speedScale = 1.0f, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
+    void EmitDirected(const std::string& presetName, const engine::Vector3& position, const engine::Vector3& direction,
+        float speedScale = 1.0f, const engine::Matrix4x4& emitterWorldMatrix = engine::Math::MakeIdentity4x4());
 
     /// <summary>一時的な設定から直接粒子を発生させます。</summary>
     void EmitFromConfig(const GPUParticleConfig& config);
 
     // 攻撃エディターの単独配置確認。通常の粒子とはGPUバッファと時間を分離します。
     void ClearAuthoringPreview();
-    bool ShowAuthoringPreview(const std::string& preset, const Vector3& position,
-        const Vector3& direction, bool directed, float speedScale, float age);
+    bool ShowAuthoringPreview(const std::string& preset, const engine::Vector3& position,
+        const engine::Vector3& direction, bool directed, float speedScale, float age);
 
     /// <summary>シミュレーションの時間倍率を返します。</summary>
     float GetTimeScale() const { return timeScale_; }
@@ -73,10 +76,10 @@ public:
     const std::map<std::string, GPUParticleConfig>& GetPresets() const { return presets_; }
 
     /// <summary>自動発生エミッターを開始し、停止用 ID を返します。</summary>
-    uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position);
+    uint32_t PlayAutoEmitter(const std::string& presetName, const engine::Vector3& position);
 
     /// <summary>ワールド変換を指定して自動発生エミッターを開始します。</summary>
-    uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
+    uint32_t PlayAutoEmitter(const std::string& presetName, const engine::Vector3& position, const engine::Matrix4x4& transform);
 
     /// <summary>ID で指定した自動発生エミッターを停止します。</summary>
     void StopAutoEmitter(uint32_t id);
@@ -114,6 +117,8 @@ public:
     }
 
 private:
+    void LoadPresetFiles(const std::string& directoryPath, const std::vector<std::string>& presetNames);
+
     DirectXCommon* dxCommon_ = nullptr;
 
     // プリセット名から設定を引き、必要な GPU システムを共有します。
@@ -131,8 +136,8 @@ private:
     struct AutoEmitter {
         uint32_t id;
         std::string presetName;
-        Vector3 position;
-        Matrix4x4 transform;
+        engine::Vector3 position;
+        engine::Matrix4x4 transform;
         float timer;
     };
     std::vector<AutoEmitter> autoEmitters_;

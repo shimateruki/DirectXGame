@@ -9,16 +9,13 @@
 
 
 // 静的メンバ変数の実体定義
-// シングルトンインスタンスと既定のモデル検索設定を保持する。
-ModelManager* ModelManager::instance = nullptr;
+// 既定のモデル検索設定を保持する。
 const std::string ModelManager::kDefaultBaseDirectory = "Resources/3DModel/";
 const std::string ModelManager::kDefaultModelExtension = ".obj";
 ModelManager* ModelManager::GetInstance() {
-    // ModelManagerのシングルトンインスタンスを生成または取得する。
-    if (instance == nullptr) {
-        instance = new ModelManager();
-    }
-    return instance;
+    // 関数内 static の寿命管理に任せ、明示的な終了処理ではGPUリソースだけ解放する。
+    static ModelManager instance;
+    return &instance;
 }
 
 void ModelManager::Initialize(DirectXCommon* dxCommon) {
@@ -29,12 +26,10 @@ void ModelManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 void ModelManager::Finalize() {
-    // 読み込み済みモデルと共通リソースを解放し、シングルトンを破棄する。
+    // 読み込み済みモデルと共通リソースを、DirectXの終了前に解放する。
     models_.clear(); // 読み込み済みモデルをすべて解放する。
     preparedModels_.clear();
     modelCommon_.reset(); // ModelCommonを先に破棄し、GPU関連の参照を残さない。
-    delete instance;
-    instance = nullptr;
 }
 
 // モデル名から実ファイルを解決して読み込み、同じキーのモデルは再利用する。
@@ -324,6 +319,7 @@ std::vector<std::string> ModelManager::GetAvailableModelNames() const {
              error), end;
          iterator != end;
          iterator.increment(error)) {
+        // アクセス不能ファイルは飛ばし、走査できる他のモデルを候補へ残す。
         if (error) {
             error.clear();
             continue;

@@ -21,7 +21,9 @@ constexpr std::array<std::pair<const char*, unsigned>, 9> kLegacyCategories = {{
     {"enemy_attack", 7}, {"hook_anchor", 8},
 }};
 
+/// <summary>衝突カテゴリの定義とIDからビット値への検索表を保持する。</summary>
 struct CategoryState {
+    /// <summary>カテゴリIDを一時文字列なしで検索するためのハッシュ関数。</summary>
     struct StringHash {
         using is_transparent = void;
         size_t operator()(std::string_view value) const noexcept {
@@ -33,6 +35,7 @@ struct CategoryState {
     bool loadedFromJson = false;
 };
 
+// カテゴリ一覧からIDと衝突ビットの検索表を作り直します。
 void RebuildLookup(CategoryState& state) {
     state.bitsById.clear();
     for (const auto& definition : state.definitions) {
@@ -41,13 +44,16 @@ void RebuildLookup(CategoryState& state) {
 }
 
 bool IsValidId(const std::string& id) {
+    // カテゴリ ID は小文字で始め、以降も英小文字・数字・下線に限定する。
     if (id.empty() || !std::islower(static_cast<unsigned char>(id[0]))) return false;
     return std::all_of(id.begin() + 1, id.end(), [](unsigned char ch) {
         return std::islower(ch) || std::isdigit(ch) || ch == '_';
     });
 }
 
+// JSONの形式・ID・ビット重複を検証して衝突カテゴリを読み込みます。
 bool LoadCategories(CategoryState& state) {
+    // IDとビット位置の重複を拒否し、壊れた定義で衝突Maskを組み替えない。
     std::ifstream file(kCategoryPath, std::ios::binary);
     if (!file) return false;
     try {
@@ -72,6 +78,7 @@ bool LoadCategories(CategoryState& state) {
             parsed.push_back({id, name, bit});
         }
         for (const auto& [id, ignoredIndex] : kLegacyCategories) {
+            // 旧Maskとの互換変換に必要なカテゴリは削除を許さない。
             if (ids.count(id) == 0) return false;
         }
         state.definitions = std::move(parsed);
@@ -99,6 +106,7 @@ CategoryState& Categories() {
 }
 
 bool SaveCategories(const std::vector<CollisionCategoryDefinition>& definitions) {
+    // 一時ファイルを完成させてから置き換え、書き込み途中のJSONを残さない。
     namespace fs = std::filesystem;
     const fs::path path(kCategoryPath);
     std::error_code ec;
@@ -145,6 +153,7 @@ bool CollisionCategories::IsDefinitionLoaded() {
 }
 
 bool CollisionCategories::Add(const std::string& id, const std::string& displayName, std::string* error) {
+    // 使用中ビットを飛ばして最初の空きを割り当て、保存成功後にメモリ上の索引を更新する。
     auto fail = [error](const char* message) {
         if (error) *error = message;
         return false;
@@ -171,6 +180,7 @@ bool CollisionCategories::Add(const std::string& id, const std::string& displayN
 }
 
 uint32_t CollisionCategories::FromLegacyMask(uint32_t legacyMask) {
+    // 旧カテゴリの下位ビットだけを現在の ID 定義へ置き換え、拡張ビットは保持する。
     uint32_t resolved = legacyMask & ~((uint32_t{1} << 9) - 1);
     for (const auto& [id, index] : kLegacyCategories) {
         if ((legacyMask & (uint32_t{1} << index)) != 0) resolved |= Get(id);
@@ -179,6 +189,7 @@ uint32_t CollisionCategories::FromLegacyMask(uint32_t legacyMask) {
 }
 
 std::vector<std::string> CollisionCategories::GetIds(uint32_t mask) {
+    // 現在登録されているカテゴリだけを ID 一覧へ戻す。
     std::vector<std::string> ids;
     for (const auto& definition : Categories().definitions) {
         if ((mask & definition.bit) != 0) ids.push_back(definition.id);
@@ -199,6 +210,7 @@ uint32_t CollisionCategories::GetKnownMask() {
 }
 
 uint32_t CollisionCategories::GetDefaultGameplayMask() {
+    // 旧データと同じ基本カテゴリだけを初期のゲーム用マスクへ含める。
     uint32_t mask = 0;
     for (const auto& [id, index] : kLegacyCategories) {
         if (index < 8) mask |= Get(id);
@@ -212,15 +224,15 @@ CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
     info.isColliding = false; // 初期化
 
     // 各軸の中心座標
-    Vector3 centerA = (a.min + a.max) * 0.5f;
-    Vector3 centerB = (b.min + b.max) * 0.5f;
+    engine::Vector3 centerA = (a.min + a.max) * 0.5f;
+    engine::Vector3 centerB = (b.min + b.max) * 0.5f;
 
     // 各軸の(半分の)サイズ
-    Vector3 sizeA = (a.max - a.min) * 0.5f;
-    Vector3 sizeB = (b.max - b.min) * 0.5f; // 正しい計算
+    engine::Vector3 sizeA = (a.max - a.min) * 0.5f;
+    engine::Vector3 sizeB = (b.max - b.min) * 0.5f; // 正しい計算
 
     // 中心間の距離ベクトル
-    Vector3 distanceVec = centerA - centerB;
+    engine::Vector3 distanceVec = centerA - centerB;
 
     // 各軸でのめり込み量を計算
     // (サイズの合計) - (中心間距離の絶対値) が正なら重なっている
@@ -241,17 +253,17 @@ CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
         // --- Y軸 (上下) が最小 ---
         info.penetration = overlapY;
         // A(Player)がB(Block)より上なら、上(+Y)方向の法線
-        info.normal = (distanceVec.y > 0.0f) ? Vector3{ 0, 1, 0 } : Vector3{ 0, -1, 0 };
+        info.normal = (distanceVec.y > 0.0f) ? engine::Vector3{ 0, 1, 0 } : engine::Vector3{ 0, -1, 0 };
     } else if (overlapX < overlapZ) {
         // --- X軸 (左右) が最小 ---
         info.penetration = overlapX;
         // A(Player)がB(Block)より右(+X)なら、右(+X)方向の法線
-        info.normal = (distanceVec.x > 0.0f) ? Vector3{ 1, 0, 0 } : Vector3{ -1, 0, 0 };
+        info.normal = (distanceVec.x > 0.0f) ? engine::Vector3{ 1, 0, 0 } : engine::Vector3{ -1, 0, 0 };
     } else {
         // --- Z軸 (前後) が最小 ---
         info.penetration = overlapZ;
         // A(Player)がB(Block)より手前(+Z)なら、手前(+Z)方向の法線
-        info.normal = (distanceVec.z > 0.0f) ? Vector3{ 0, 0, 1 } : Vector3{ 0, 0, -1 };
+        info.normal = (distanceVec.z > 0.0f) ? engine::Vector3{ 0, 0, 1 } : engine::Vector3{ 0, 0, -1 };
     }
 
     return info;
@@ -260,11 +272,11 @@ CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
 
 // [2] Sphere vs Sphere 判定 
 CollisionInfo CheckSphereCollision(
-    const Vector3& posA, float rA, const Vector3& posB, float rB) {
+    const engine::Vector3& posA, float rA, const engine::Vector3& posB, float rB) {
     // (以前のコードのまま)
     CollisionInfo info;
-    Math math;
-    Vector3 vecAtoB = posB - posA;
+    engine::Math math;
+    engine::Vector3 vecAtoB = posB - posA;
     float distance = math.Length(vecAtoB);
     float totalRadius = rA + rB;
     float penetration = totalRadius - distance;
@@ -285,17 +297,17 @@ CollisionInfo CheckSphereCollision(
 
 // [3] Sphere vs AABB 判定 
 CollisionInfo CheckSphereAABBCollision(
-    const Vector3& spherePos, float sphereRadius, const AABB& aabb) {
+    const engine::Vector3& spherePos, float sphereRadius, const AABB& aabb) {
     // (以前のコードのまま)
     CollisionInfo info;
-    Math math;
+    engine::Math math;
 
-    Vector3 closestPoint = {
+    engine::Vector3 closestPoint = {
         math.Clamp(spherePos.x, aabb.min.x, aabb.max.x),
         math.Clamp(spherePos.y, aabb.min.y, aabb.max.y),
         math.Clamp(spherePos.z, aabb.min.z, aabb.max.z)
     };
-    const Vector3 difference = spherePos - closestPoint;
+    const engine::Vector3 difference = spherePos - closestPoint;
     const float distanceSq = math.Dot(difference, difference);
 
     if (distanceSq < (sphereRadius * sphereRadius)) {
@@ -305,8 +317,8 @@ CollisionInfo CheckSphereAABBCollision(
             info.penetration = sphereRadius - distance;
             info.normal = (spherePos - closestPoint) / distance;
         } else {
-            Vector3 aabbCenter = (aabb.min + aabb.max) * 0.5f;
-            Vector3 vecToCenter = aabbCenter - spherePos;
+            engine::Vector3 aabbCenter = (aabb.min + aabb.max) * 0.5f;
+            engine::Vector3 vecToCenter = aabbCenter - spherePos;
             if (math.Length(vecToCenter) < 0.001f) {
                 info.normal = { 1, 0, 0 };
             } else {
@@ -321,7 +333,7 @@ CollisionInfo CheckSphereAABBCollision(
 }
 
 
-CollisionFace GetCollisionFace(const Vector3& normal, float threshold) {
+CollisionFace GetCollisionFace(const engine::Vector3& normal, float threshold) {
     // Y軸 (上下) の判定を優先
     if (normal.y > threshold) { return CollisionFace::kTop; }
     if (normal.y < -threshold) { return CollisionFace::kBottom; }
@@ -341,15 +353,15 @@ CollisionFace GetCollisionFace(const Vector3& normal, float threshold) {
 // ------------------------------------------------------------
 //  Sphere vs OBB
 // ------------------------------------------------------------
-CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadius, const OBB& obb) {
+CollisionInfo CheckSphereOBBCollision(const engine::Vector3& spherePos, float sphereRadius, const OBB& obb) {
     CollisionInfo info = { false, {0,0,0}, 0.0f };
 
     // 球の中心をOBBのローカル空間に変換するイメージで、
     // OBB上の「球に一番近い点」を探す
-    Vector3 centerToSphere = spherePos - obb.center;
-    Vector3 closestPoint = obb.center;
+    engine::Vector3 centerToSphere = spherePos - obb.center;
+    engine::Vector3 closestPoint = obb.center;
 
-    Math math; // Mathクラスのインスタンス (Dot計算用)
+    engine::Math math; // Mathクラスのインスタンス (Dot計算用)
 
     // 各軸(X, Y, Z)について投影してクランプ
     for (int i = 0; i < 3; ++i) {
@@ -367,7 +379,7 @@ CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadi
     }
 
     // 最短点と球の中心との距離をチェック
-    Vector3 diff = spherePos - closestPoint;
+    engine::Vector3 diff = spherePos - closestPoint;
     float distanceSq = math.Dot(diff, diff);
 
     if (distanceSq <= (sphereRadius * sphereRadius)) {
@@ -394,7 +406,7 @@ CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadi
 // -----------------------------------------------------------------
 CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     CollisionInfo info = { false, {0,0,0}, 0.0f };
-    Math math;
+    engine::Math math;
 
     const float aH[3] = { a.size.x, a.size.y, a.size.z };
     const float bH[3] = { b.size.x, b.size.y, b.size.z };
@@ -411,7 +423,7 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
         }
     }
 
-    Vector3 tVec = b.center - a.center;
+    engine::Vector3 tVec = b.center - a.center;
     float tA[3] = {
         math.Dot(tVec, a.orientations[0]),
         math.Dot(tVec, a.orientations[1]),
@@ -419,7 +431,7 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     };
 
     float minOverlap = std::numeric_limits<float>::infinity();
-    Vector3 minAxis = { 0,0,0 };
+    engine::Vector3 minAxis = { 0,0,0 };
 
     // --- 1) Aの3軸をテスト ---
     for (int i = 0; i < 3; ++i) {
@@ -452,7 +464,7 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     // --- 3) 9つの外積軸 (Ai x Bj) をテスト ---
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
-            Vector3 axis = math.Cross(a.orientations[i], b.orientations[j]);
+            engine::Vector3 axis = math.Cross(a.orientations[i], b.orientations[j]);
             float axisLen = math.Length(axis);
             if (axisLen < 1e-6f) continue; // ここで弾いているので EPS 不要
             axis = axis / axisLen;
@@ -506,14 +518,14 @@ CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b) {
 // -----------------------------------------------------------------
 // Ring vs Sphere
 // -----------------------------------------------------------------
-CollisionInfo CheckRingSphereCollision(const Ring& ring, const Vector3& spherePos, float sphereRadius) {
+CollisionInfo CheckRingSphereCollision(const Ring& ring, const engine::Vector3& spherePos, float sphereRadius) {
     CollisionInfo info = { false, {0,0,0}, 0.0f };
-    Math math;
+    engine::Math math;
 
     // 1. 球の中心からリング平面への垂直距離と、平面上の投影点Pを求める
-    Vector3 v = spherePos - ring.center;
+    engine::Vector3 v = spherePos - ring.center;
     float distPlane = math.Dot(v, ring.normal); // 平面からの垂直距離
-    Vector3 P = spherePos - ring.normal * distPlane; // 平面上の投影点
+    engine::Vector3 P = spherePos - ring.normal * distPlane; // 平面上の投影点
 
     // 2. 厚み（高さ）の考慮
     // 平面からの距離を高さの範囲にクランプ
@@ -521,17 +533,17 @@ CollisionInfo CheckRingSphereCollision(const Ring& ring, const Vector3& spherePo
     float clampedH = std::clamp(distPlane, -halfH, halfH);
     
     // 3. 平面上の点Pからリング中心までの距離を求める
-    Vector3 centerToP = P - ring.center;
+    engine::Vector3 centerToP = P - ring.center;
     float distCenterToP = math.Length(centerToP);
 
-    Vector3 closestPointOnAnnulus;
+    engine::Vector3 closestPointOnAnnulus;
     if (distCenterToP < 0.0001f) {
         // 中心と重なっている場合
         closestPointOnAnnulus = ring.center;
         if (ring.innerRadius > 0.0f) {
-            Vector3 axis = { 1, 0, 0 };
+            engine::Vector3 axis = { 1, 0, 0 };
             if (std::abs(math.Dot(axis, ring.normal)) > 0.99f) axis = { 0, 0, 1 };
-            Vector3 dir = math.Normalize(math.Cross(ring.normal, axis));
+            engine::Vector3 dir = math.Normalize(math.Cross(ring.normal, axis));
             closestPointOnAnnulus += dir * ring.innerRadius;
         }
     } else {
@@ -544,7 +556,7 @@ CollisionInfo CheckRingSphereCollision(const Ring& ring, const Vector3& spherePo
     closestPointOnAnnulus += ring.normal * clampedH;
 
     // 4. リング上の最短点と球の中心との距離をチェック
-    Vector3 diff = spherePos - closestPointOnAnnulus;
+    engine::Vector3 diff = spherePos - closestPointOnAnnulus;
     float distance = math.Length(diff);
 
     if (distance <= sphereRadius) {
@@ -569,27 +581,27 @@ CollisionInfo CheckRingOBBCollision(const Ring& ring, const OBB& obb) {
     // 簡易化：OBBの中心に対してリング上の最短点を求め、その点がOBB内部にあるか判定
     // あるいは、球としての判定に飛ばす（OBBのサイズを考慮した球として）
     // ここでは一番シンプルな「中心点への最短距離」ベース
-    Math math;
+    engine::Math math;
     return CheckRingSphereCollision(ring, obb.center, math.Length(obb.size)); 
 }
 
 // -----------------------------------------------------------------
 // Cylinder vs Sphere
 // -----------------------------------------------------------------
-CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const Vector3& spherePos, float sphereRadius) {
+CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const engine::Vector3& spherePos, float sphereRadius) {
     CollisionInfo info = { false, {0,0,0}, 0.0f };
-    Math math;
+    engine::Math math;
 
     // 円柱の中心軸上の最短点 P を求める
-    Vector3 d = spherePos - cyl.center;
+    engine::Vector3 d = spherePos - cyl.center;
     float distOnAxis = math.Dot(d, cyl.axis);
     
     // 高さ方向にクランプ
     float clampedH = std::clamp(distOnAxis, -cyl.height * 0.5f, cyl.height * 0.5f);
-    Vector3 P = cyl.center + cyl.axis * clampedH;
+    engine::Vector3 P = cyl.center + cyl.axis * clampedH;
 
     // P から球の中心への距離
-    Vector3 diff = spherePos - P;
+    engine::Vector3 diff = spherePos - P;
     float dist = math.Length(diff);
 
     if (dist <= cyl.radius + sphereRadius) {
@@ -610,13 +622,13 @@ CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const Vector3& s
 CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb) {
     // 簡易化：円柱をOBBに変換して判定するか、中心点ベースで判定
     // ここでは円柱をその向きのOBBとして近似して判定に投げる
-    Math math;
+    engine::Math math;
     OBB cylObb;
     cylObb.center = cyl.center;
     cylObb.orientations[1] = cyl.axis;
     
     // axisと直交する2軸を作る
-    Vector3 axisX = { 1, 0, 0 };
+    engine::Vector3 axisX = { 1, 0, 0 };
     if (std::abs(math.Dot(axisX, cyl.axis)) > 0.99f) axisX = { 0, 0, 1 };
     cylObb.orientations[0] = math.Normalize(math.Cross(cyl.axis, axisX));
     cylObb.orientations[2] = math.Normalize(math.Cross(cylObb.orientations[0], cyl.axis));

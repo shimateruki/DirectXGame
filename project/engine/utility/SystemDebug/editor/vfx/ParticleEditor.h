@@ -25,4 +25,7 @@ private:
     int lastStagePlayRequestSerial_ = 0;
     int lastStageStopRequestSerial_ = 0;
     int lastStageSeekRequestSerial_ = 0;
+    char textureSearch_[128] = {};
+    char presetSearch_[128] = {};
+    char saveName_[64] = "NewEffect";
 };

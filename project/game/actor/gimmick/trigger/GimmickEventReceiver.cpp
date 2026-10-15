@@ -65,22 +65,22 @@ void GimmickEventReceiver::Update(float deltaTime) {
     if (actionMode >= 1 && actionMode <= 3) {
         float speed = (std::max)(0.01f, param_->moveSpeed);
         float t = 1.0f - std::exp(-speed * deltaTime);
-        Vector3 pos = GetTransform()->translate;
-        pos.x = Math::Lerp(pos.x, targetPosition_.x, t);
-        pos.y = Math::Lerp(pos.y, targetPosition_.y, t);
-        pos.z = Math::Lerp(pos.z, targetPosition_.z, t);
+        engine::Vector3 pos = GetTransform()->translate;
+        pos.x = engine::Math::Lerp(pos.x, targetPosition_.x, t);
+        pos.y = engine::Math::Lerp(pos.y, targetPosition_.y, t);
+        pos.z = engine::Math::Lerp(pos.z, targetPosition_.z, t);
         SetTranslate(pos);
     } else if (actionMode == 6 && active_) {
         activationTimer_ += (std::max)(0.0f, deltaTime);
         const float duration = (std::max)(0.35f, param_->fallDuration);
         const float progress = (std::clamp)(activationTimer_ / duration, 0.0f, 1.0f);
         const float eased = progress * progress * (3.0f - 2.0f * progress);
-        const Vector3 startPosition = basePosition_ + Vector3{0.0f, 4.05f, -param_->moveAmount};
-        Vector3 position = startPosition * (1.0f - eased) + basePosition_ * eased;
+        const engine::Vector3 startPosition = basePosition_ + engine::Vector3{0.0f, 4.05f, -param_->moveAmount};
+        engine::Vector3 position = startPosition * (1.0f - eased) + basePosition_ * eased;
         position.y += std::sin(progress * 3.1415926535f) * (std::max)(0.0f, param_->jumpPower);
         SetTranslate(position);
 
-        Vector3 rotation = baseRotation_;
+        engine::Vector3 rotation = baseRotation_;
         rotation.y += activationTimer_ * param_->moveSpeed;
         rotation.z += std::sin(progress * 3.1415926535f) * 0.52f;
         SetRotation(rotation);
@@ -94,9 +94,9 @@ void GimmickEventReceiver::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickEventReceiver::RelocateRuntimeBase(const Vector3& position) {
+void GimmickEventReceiver::RelocateRuntimeBase(const engine::Vector3& position) {
     // 実行中の相対移動量を保ったまま、演出全体の基準位置だけを移します。
-    const Vector3 offset = position - (initializedForPlay_ ? basePosition_ : GetTranslate());
+    const engine::Vector3 offset = position - (initializedForPlay_ ? basePosition_ : GetTranslate());
     basePosition_ = position;
     targetPosition_ = initializedForPlay_ ? targetPosition_ + offset : position;
     SetTranslate(GetTranslate() + offset);
@@ -136,7 +136,7 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
         // エディタで設定した色を尊重し、報酬王冠などを汎用緑色へ上書きしません。
         SetColor(originalColor_);
     } else if (actionMode >= 1 && actionMode <= 3) {
-        Vector3 offset{};
+        engine::Vector3 offset{};
         if (actionMode == 1)
             offset.y = moveAmount;
         if (actionMode == 2)
@@ -156,7 +156,7 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
         SetScale(baseScale_);
         SetRotation(baseRotation_);
         if (active) {
-            SetTranslate(basePosition_ + Vector3{0.0f, 4.05f, -moveAmount});
+            SetTranslate(basePosition_ + engine::Vector3{0.0f, 4.05f, -moveAmount});
             SetIsVisible(true);
             SetCollisionEnabled(false);
         } else {
@@ -178,7 +178,7 @@ void GimmickEventReceiver::SetCollisionEnabled(bool enabled) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickEventReceiver::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickEventReceiver::Clone() const {
     // 複製先を初期化してから、イベント設定と配置をコピーします。
     auto newObj = std::make_unique<GimmickEventReceiver>();
     assert(common_ != nullptr);

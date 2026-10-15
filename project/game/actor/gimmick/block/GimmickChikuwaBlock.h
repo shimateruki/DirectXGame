@@ -13,16 +13,16 @@ class GimmickChikuwaBlock : public BaseGimmick {
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
-    bool OnCollision(Object3d* other) override;
+    bool OnCollision(engine::Object3d* other) override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     void ChangeState(State newState);
 
     State state_ = State::Idle;
     float timer_ = 0.0f;
-    Vector3 startPos_;
+    engine::Vector3 startPos_;
     float velocityY_ = 0.0f;
 
     // 秒単位の各段階の長さと、ワールド単位/秒² の落下加速度です。

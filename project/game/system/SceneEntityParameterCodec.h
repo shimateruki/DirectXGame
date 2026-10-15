@@ -9,11 +9,14 @@
 // Scene JSON の param と実行時設定の対応を保存・読込で共有します。
 namespace SceneEntityParameterCodec {
 
-inline nlohmann::json Serialize(const Object3d& object) {
+// 配置Objectの param をScene JSONへ変換する。
+// 共通ステータス管理対象は個体値を出力せず、敵種別とボス固有の動作設定だけを残す。
+inline nlohmann::json Serialize(const engine::Object3d& object) {
     if (!object.param_) return nlohmann::json();
     const auto& p = *object.param_;
     nlohmann::json result = nlohmann::json::object();
     const std::string className = object.GetClassName();
+    // 共通ステータスを参照するキャラクターのHP等はSceneへ複製せず、個体固有値だけ残す。
     if (GameplayStatusManager::IsManagedCharacter(&object)) {
         if (className == "Enemy" && !p.enemyType.empty()) {
             result["enemyType"] = p.enemyType;
@@ -26,6 +29,7 @@ inline nlohmann::json Serialize(const Object3d& object) {
         return result;
     }
 
+    // 非管理Objectはシーンで調整した全項目を往復できるよう、同じキー集合で保存する。
 #define SCENE_PARAM_WRITE(field) result[#field] = p.field
     SCENE_PARAM_WRITE(hp); SCENE_PARAM_WRITE(maxHp); SCENE_PARAM_WRITE(attackPower);
     SCENE_PARAM_WRITE(speed); SCENE_PARAM_WRITE(gravity); SCENE_PARAM_WRITE(jumpPower);
@@ -48,7 +52,9 @@ inline nlohmann::json Serialize(const Object3d& object) {
     return result;
 }
 
-inline void Apply(Object3d& object, const nlohmann::json& source) {
+// Scene JSON の既存項目だけを param に反映する。
+// 共通ステータス管理対象のHPや移動値を上書きせず、個体値は有効範囲へ補正する。
+inline void Apply(engine::Object3d& object, const nlohmann::json& source) {
     if (!source.is_object()) return;
     if (!object.param_) object.param_.emplace();
     auto& p = *object.param_;
@@ -56,6 +62,7 @@ inline void Apply(Object3d& object, const nlohmann::json& source) {
     const bool hasHp = !managed && source.contains("hp");
     const bool hasMaxHp = !managed && source.contains("maxHp");
 
+    // 管理対象では共通ステータスを優先し、Scene JSONによる旧個体値の上書きを避ける。
 #define SCENE_PARAM_READ(field) if (source.contains(#field)) p.field = source[#field].get<decltype(p.field)>()
 #define SCENE_PARAM_READ_UNMANAGED(field) if (!managed) { SCENE_PARAM_READ(field); }
     SCENE_PARAM_READ_UNMANAGED(hp); SCENE_PARAM_READ_UNMANAGED(maxHp);
@@ -87,6 +94,7 @@ inline void Apply(Object3d& object, const nlohmann::json& source) {
 #undef SCENE_PARAM_READ_UNMANAGED
 #undef SCENE_PARAM_READ
 
+    // 保存済みの旧値が範囲外でも、実行時の時間・体力計算を壊さない値へ補正する。
     if (source.contains("volumeRearmDelay")) p.volumeRearmDelay = (std::max)(0.0f, p.volumeRearmDelay);
     if (source.contains("volumeBlendDuration")) p.volumeBlendDuration = (std::max)(0.0f, p.volumeBlendDuration);
     if (source.contains("copyMemoryActivationRadius"))

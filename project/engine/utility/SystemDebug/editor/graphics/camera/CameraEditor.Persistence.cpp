@@ -39,7 +39,6 @@ void CameraEditor::SaveSettings() {
   std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
 
   json j;
-  // j["mode"] = static_cast<int>(settings_.currentMode);
   j["gameFollowMode"] = static_cast<int>(settings_.gameFollowMode);
   j["distance"] = settings_.distance;
   j["height"] = settings_.height;
@@ -319,6 +318,7 @@ void CameraEditor::LoadFile(const std::string &fileName) {
 }
 
 void CameraEditor::SaveEditorState() {
+  // カメラ操作中の一時状態はゲーム設定と分けて保存し、保存禁止期間は書き換えない。
   if (IsEditorStateSaveBlocked())
     return;
 

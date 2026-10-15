@@ -1,0 +1,41 @@
+newmtl stem_base
+Ka 0.34 0.18 0.18
+Kd 0.72 0.42 0.43
+Ks 0.15 0.10 0.10
+Ns 25
+illum 2
+
+newmtl stem_cream
+Ka 0.32 0.29 0.20
+Kd 0.99 0.88 0.67
+Ks 0.20 0.17 0.13
+Ns 38
+illum 2
+
+newmtl gills
+Ka 0.30 0.24 0.19
+Kd 0.93 0.75 0.62
+Ks 0.19 0.14 0.11
+Ns 25
+illum 2
+
+newmtl gold_rim
+Ka 0.39 0.23 0.06
+Kd 1.00 0.71 0.25
+Ks 0.42 0.31 0.12
+Ns 75
+illum 2
+
+newmtl coral_cap
+Ka 0.38 0.08 0.17
+Kd 0.97 0.30 0.48
+Ks 0.45 0.22 0.28
+Ns 76
+illum 2
+
+newmtl ivory_spots
+Ka 0.36 0.34 0.27
+Kd 1.00 0.98 0.83
+Ks 0.26 0.25 0.22
+Ns 48
+illum 2

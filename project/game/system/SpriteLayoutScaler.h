@@ -15,8 +15,8 @@ namespace SpriteLayoutScaler {
 
 // 有効時のみ ratio を適用し、既存 JSON の絶対座標もそのまま利用できます。
 struct LayoutScale {
-    Vector2 designResolution = {1920.0f, 1080.0f};
-    Vector2 ratio = {1.0f, 1.0f};
+    engine::Vector2 designResolution = {1920.0f, 1080.0f};
+    engine::Vector2 ratio = {1.0f, 1.0f};
     bool enabled = false;
 };
 
@@ -40,6 +40,7 @@ inline float ReadFloat(const nlohmann::json& object, const char* key, float fall
 }
 
 inline int ReadInt(const nlohmann::json& object, const char* key, int fallback) {
+    // セーブされた整数がint範囲外なら、画面座標の計算に渡さず既定値へ戻す。
     if (!object.is_object() || !object.contains(key) || !object[key].is_number_integer()) {
         return fallback;
     }
@@ -55,16 +56,17 @@ inline int ReadInt(const nlohmann::json& object, const char* key, int fallback) 
                : fallback;
 }
 
-inline Vector2 ReadVector2(const nlohmann::json& value, const Vector2& fallback) {
+inline engine::Vector2 ReadVector2(const nlohmann::json& value, const engine::Vector2& fallback) {
     if (!value.is_array() || value.size() < 2 || !value[0].is_number() || !value[1].is_number()) {
         return fallback;
     }
 
-    const Vector2 result = {value[0].get<float>(), value[1].get<float>()};
+    const engine::Vector2 result = {value[0].get<float>(), value[1].get<float>()};
     return std::isfinite(result.x) && std::isfinite(result.y) ? result : fallback;
 }
 
-inline Vector4 ReadColor(const nlohmann::json& value, const Vector4& fallback) {
+inline engine::Vector4 ReadColor(const nlohmann::json& value, const engine::Vector4& fallback) {
+    // RGBだけの旧データでは既存の不透明度を維持し、NaNや無限大は採用しない。
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
@@ -74,7 +76,7 @@ inline Vector4 ReadColor(const nlohmann::json& value, const Vector4& fallback) {
             return fallback;
         }
     }
-    Vector4 color = {value[0].get<float>(), value[1].get<float>(), value[2].get<float>(),
+    engine::Vector4 color = {value[0].get<float>(), value[1].get<float>(), value[2].get<float>(),
                      count == 4 ? value[3].get<float>() : fallback.w};
     return std::isfinite(color.x) && std::isfinite(color.y) && std::isfinite(color.z) && std::isfinite(color.w)
                ? color
@@ -105,7 +107,7 @@ inline LayoutScale Make(const nlohmann::json& root) {
 }
 
 // 位置とサイズは X/Y を別々の倍率で伸縮します。縦横比は維持しません。
-inline Vector2 ScalePosition(const Vector2& value, const LayoutScale& scale) {
+inline engine::Vector2 ScalePosition(const engine::Vector2& value, const LayoutScale& scale) {
     if (!scale.enabled) {
         return value;
     }
@@ -113,7 +115,7 @@ inline Vector2 ScalePosition(const Vector2& value, const LayoutScale& scale) {
     return {value.x * scale.ratio.x, value.y * scale.ratio.y};
 }
 
-inline Vector2 ScaleSize(const Vector2& value, const LayoutScale& scale) {
+inline engine::Vector2 ScaleSize(const engine::Vector2& value, const LayoutScale& scale) {
     if (!scale.enabled) {
         return value;
     }
@@ -122,7 +124,7 @@ inline Vector2 ScaleSize(const Vector2& value, const LayoutScale& scale) {
 }
 
 // JSON の有効フラグに関係なく設計座標を実画面へ変換します。
-inline Vector2 ScaleDesignPosition(const Vector2& value, const Vector2& designResolution = {1920.0f, 1080.0f}) {
+inline engine::Vector2 ScaleDesignPosition(const engine::Vector2& value, const engine::Vector2& designResolution = {1920.0f, 1080.0f}) {
     LayoutScale scale;
     scale.enabled = true;
     scale.designResolution = designResolution;
@@ -133,7 +135,8 @@ inline Vector2 ScaleDesignPosition(const Vector2& value, const Vector2& designRe
     return ScalePosition(value, scale);
 }
 
-inline Vector2 ScaleDesignSize(const Vector2& value, const Vector2& designResolution = {1920.0f, 1080.0f}) {
+inline engine::Vector2 ScaleDesignSize(const engine::Vector2& value, const engine::Vector2& designResolution = {1920.0f, 1080.0f}) {
+    // 保存済みの設計解像度を実クライアント寸法へ換算し、ゼロ寸法は1として扱う。
     LayoutScale scale;
     scale.enabled = true;
     scale.designResolution = designResolution;

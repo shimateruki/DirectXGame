@@ -7,6 +7,7 @@
 #include "Sprite.h"
 #include "SpriteCommon.h"
 #include "SpriteLayoutScaler.h"
+#include "SpriteLayoutFactory.h"
 #include "TextureManager.h"
 
 #include <algorithm>
@@ -21,6 +22,7 @@
 using json = nlohmann::json;
 
 namespace {
+// ページ移動の補間率を0～1へ収め、両端の速度を滑らかにします。
 float SmoothStep(float value) {
     // ページ移動の端で速度が急変しないよう、補間率を滑らかにする。
     value = std::clamp(value, 0.0f, 1.0f);
@@ -54,6 +56,7 @@ const char* ResolveBookKey(const Player* player) {
     }
 }
 
+// 現在のコピー能力に対応する三行の操作説明画像を選びます。
 AbilityGuideVisual ResolveAbilityGuide(const Player* player) {
     // 現在のコピー能力に対応する三つの操作説明画像を選ぶ。
     if (!player) {
@@ -109,7 +112,7 @@ const char* ResolvePortraitTexture(const Player* player) {
     }
 }
 
-void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
+void SetFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
     // 差し替え画像の元サイズをUV範囲へ反映し、旧画像の切り抜きが残らないようにする。
     if (!sprite || textureHandle == 0) {
         return;
@@ -120,9 +123,9 @@ void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
     sprite->SetTextureRect({0.0f, 0.0f}, {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
 }
 
-Vector2 SetGlyphTexture(Sprite* sprite, const InputGlyphSpec& glyph) {
+engine::Vector2 SetGlyphTexture(engine::Sprite* sprite, const InputGlyphSpec& glyph) {
     // アトラス画像は全体の大きさではなく、該当キーの領域だけをSpriteへ渡す。
-    const uint32_t handle = Sprite::LoadTexture(glyph.path);
+    const uint32_t handle = engine::Sprite::LoadTexture(glyph.path);
     SetFullTextureRect(sprite, handle);
     sprite->SetTextureName(glyph.path);
     if (glyph.useCrop) {
@@ -135,25 +138,13 @@ Vector2 SetGlyphTexture(Sprite* sprite, const InputGlyphSpec& glyph) {
 } // namespace
 
 // レイアウト生成後に能力内容と入力表示を反映し、初期状態では全ページを隠します。
-void ControlsGuideOverlay::Initialize(SpriteCommon* spriteCommon, Player* player, const std::string& layoutPath) {
+void ControlsGuideOverlay::Initialize(engine::SpriteCommon* spriteCommon, Player* player, const std::string& layoutPath) {
     // レイアウト読込後に現在能力と入力機器を反映し、表示は閉じた状態から始める。
     spriteCommon_ = spriteCommon;
     inputManager_ = InputManager::GetInstance();
     player_ = player;
     LoadLayout(layoutPath);
     BindLayoutSprites();
-    if (spriteCommon_ && pages_[0].actionGlyphs[0].sprite) {
-        for (size_t i = 0; i < extraMoveGlyphs_.size(); ++i) {
-            auto sprite = std::make_unique<Sprite>();
-            sprite->Initialize(spriteCommon_, Sprite::LoadTexture("ui/input/keyboard/key_scan_atlas.png"));
-            sprite->SetName("controls_guide_move_key_" + std::to_string(i + 1));
-            sprite->SetVisible(false);
-            Sprite* raw = sprite.get();
-            sprites_.push_back(std::move(sprite));
-            extraMoveGlyphs_[i].sprite = raw;
-            extraMoveGlyphs_[i].baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
-        }
-    }
     RefreshAbilityVisuals();
     RefreshInputGlyphs(true);
     SetAllVisible(false);
@@ -199,11 +190,12 @@ void ControlsGuideOverlay::Finalize() {
     rightArrow_ = {};
     pageDots_ = {};
     pages_ = {};
-    extraMoveGlyphs_ = {};
     spriteCommon_ = nullptr;
     inputManager_ = nullptr;
     player_ = nullptr;
     isActive_ = false;
+    pauseMode_ = false;
+    menuPageRequested_ = false;
     isSliding_ = false;
     portraitTexturePath_.clear();
     abilityLabelTexturePaths_ = {};
@@ -220,6 +212,7 @@ void ControlsGuideOverlay::SetActive(bool active) {
     }
 
     isActive_ = active;
+    menuPageRequested_ = false;
     if (!active)
         bookPreviewKey_.clear();
     suppressToggleInput_ = active;
@@ -238,8 +231,33 @@ void ControlsGuideOverlay::SetActive(bool active) {
     }
 }
 
+void ControlsGuideOverlay::SetPauseMode(bool pauseMode) {
+    // 独立ガイドとポーズ内の能力ページで、閉じ方を示すフッターだけ切り替える。
+    if (pauseMode_ == pauseMode) {
+        return;
+    }
+    pauseMode_ = pauseMode;
+    RefreshInputGlyphs(true);
+}
+
+void ControlsGuideOverlay::OpenAbilityPage(bool resetScroll) {
+    // 前回見ていた基本操作ページが残っていても、ポーズからは現在能力を直接確認する。
+    currentPage_ = 1;
+    isSliding_ = false;
+    if (resetScroll) {
+        bookTargetScroll_ = bookScroll_ = 0.0f;
+    }
+    SetActive(true);
+}
+
+bool ControlsGuideOverlay::ConsumeMenuPageRequest() {
+    const bool requested = menuPageRequested_;
+    menuPageRequested_ = false;
+    return requested;
+}
+
 // ページ入力より先に能力と入力機器の変化を反映します。閉じても選択ページは保持します。
-void ControlsGuideOverlay::Update(float deltaTime) {
+void ControlsGuideOverlay::Update(float deltaTime, bool acceptInput) {
     if (!isActive_) {
         return;
     }
@@ -253,12 +271,12 @@ void ControlsGuideOverlay::Update(float deltaTime) {
         if (!IsToggleHeld()) {
             suppressToggleInput_ = false;
         }
-    } else if (inputManager_
+    } else if (acceptInput && inputManager_
 #ifdef USE_IMGUI
                && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantTextInput)
 #endif
     ) {
-        if (inputManager_->IsKeyTriggered(DIK_TAB) || inputManager_->IsKeyTriggered(DIK_BACK) ||
+        if (inputManager_->IsKeyTriggered(DIK_TAB) ||
             inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) ||
             inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_BACK)) {
             SetActive(false);
@@ -271,8 +289,20 @@ void ControlsGuideOverlay::Update(float deltaTime) {
             const bool right = inputManager_->IsKeyTriggered(DIK_RIGHT) || inputManager_->IsKeyTriggered(DIK_D) ||
                                inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
 
-            if (left != right) {
-                StartSlide(left ? -1 : 1);
+            const bool confirm = inputManager_->IsKeyTriggered(DIK_SPACE) ||
+                                 inputManager_->IsKeyTriggered(DIK_RETURN) ||
+                                 inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A);
+            if (confirm) {
+                // 基本操作は能力ページへ進み、能力ページからはポーズメニューへ進む。
+                if (pauseMode_ && currentPage_ == 1) menuPageRequested_ = true;
+                else StartSlide(1);
+            } else if (left != right) {
+                // ポーズでは能力→メニューが連続した次ページ。基本操作へは左で戻れる。
+                if (pauseMode_ && currentPage_ == 1 && right) {
+                    menuPageRequested_ = true;
+                } else if (!(pauseMode_ && currentPage_ == 0 && left)) {
+                    StartSlide(left ? -1 : 1);
+                }
             }
         }
     }
@@ -288,6 +318,15 @@ void ControlsGuideOverlay::Update(float deltaTime) {
     }
 }
 
+void ControlsGuideOverlay::SetMenuTransitionOffset(float offsetX, bool transitioning) {
+    // 移動中の矢印とページ点は重複表示させず、背景だけを固定する。
+    SetPageOffset(currentPage_, offsetX);
+    for (Element* element : {&leftArrow_, &rightArrow_, &pageDots_[0], &pageDots_[1]})
+        if (element->sprite) element->sprite->SetVisible(isActive_ && !transitioning);
+    for (auto& sprite : sprites_)
+        if (sprite && sprite->IsVisible()) sprite->Update();
+}
+
 void ControlsGuideOverlay::Draw() {
     // ガイドが閉じている間は所有スプライトの描画を全て省く。
     if (!isActive_) {
@@ -301,7 +340,7 @@ void ControlsGuideOverlay::Draw() {
     }
 }
 
-void ControlsGuideOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+void ControlsGuideOverlay::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) const {
     // リプレイへは所有権を移さず、既存スプライトの参照だけ渡す。
     replaySprites.reserve(replaySprites.size() + sprites_.size());
     for (const auto& sprite : sprites_) {
@@ -314,6 +353,7 @@ void ControlsGuideOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySpri
 void ControlsGuideOverlay::CaptureReplayState(json& state) const {
     // 開閉、ページ移動、図鑑スクロールを同じフレームへ戻せるよう記録する。
     state = {{"active", isActive_},
+             {"pauseMode", pauseMode_},
              {"suppressInput", suppressToggleInput_},
              {"sliding", isSliding_},
              {"currentPage", currentPage_},
@@ -334,6 +374,7 @@ void ControlsGuideOverlay::RestoreReplayState(const json& state) {
     }
 
     isActive_ = state.value("active", isActive_);
+    pauseMode_ = state.value("pauseMode", pauseMode_);
     suppressToggleInput_ = state.value("suppressInput", suppressToggleInput_);
     isSliding_ = state.value("sliding", isSliding_);
     currentPage_ = std::clamp(state.value("currentPage", currentPage_), 0, kPageCount - 1);
@@ -344,6 +385,7 @@ void ControlsGuideOverlay::RestoreReplayState(const json& state) {
     time_ = state.value("time", time_);
 
     RefreshAbilityVisuals();
+    RefreshInputGlyphs(true);
     bookScroll_ = std::clamp(state.value("bookScroll", 0.0f), 0.0f, bookMaxScroll_);
     bookTargetScroll_ = std::clamp(state.value("bookTargetScroll", bookScroll_), 0.0f, bookMaxScroll_);
     SetAllVisible(isActive_);
@@ -382,7 +424,7 @@ void ControlsGuideOverlay::LoadLayout(const std::string& layoutPath) {
     }
 
     const auto layoutScale = SpriteLayoutScaler::Make(root);
-    layoutRatio_ = layoutScale.enabled ? layoutScale.ratio : Vector2{1.0f, 1.0f};
+    layoutRatio_ = layoutScale.enabled ? layoutScale.ratio : engine::Vector2{1.0f, 1.0f};
     if (root.contains("abilityBook") && root["abilityBook"].is_object()) {
         const auto& book = root["abilityBook"];
         const float scaleY = layoutScale.enabled ? layoutScale.ratio.y : 1.0f;
@@ -408,14 +450,10 @@ void ControlsGuideOverlay::LoadLayout(const std::string& layoutPath) {
         if (!spriteData.is_object()) {
             continue;
         }
-        const std::string name = SpriteLayoutScaler::ReadString(spriteData, "name", "controls_guide_sprite");
-        const std::string texture = SpriteLayoutScaler::ReadString(spriteData, "texture", "common/white.png");
-        const uint32_t textureHandle = Sprite::LoadTexture(texture.empty() ? "common/white.png" : texture);
-
         // 任意の切り抜き領域は4つの有限な数値がそろった場合だけ適用します。
         bool hasTextureCrop = false;
-        Vector2 textureOrigin{};
-        Vector2 textureSize{};
+        engine::Vector2 textureOrigin{};
+        engine::Vector2 textureSize{};
         if (spriteData.contains("textureCrop")) {
             const auto& crop = spriteData["textureCrop"];
             if (crop.is_array() && crop.size() >= 4 && crop[0].is_number() && crop[1].is_number() &&
@@ -427,20 +465,9 @@ void ControlsGuideOverlay::LoadLayout(const std::string& layoutPath) {
             }
         }
 
-        auto sprite = std::make_unique<Sprite>();
-        sprite->Initialize(spriteCommon_, textureHandle);
-        sprite->SetName(name);
-        sprite->SetTextureName(texture);
-        sprite->SetPosition(SpriteLayoutScaler::ScalePosition(
-            SpriteLayoutScaler::ReadVector2(spriteData.value("position", json::array()), sprite->GetPosition()),
-            layoutScale));
-        sprite->SetSize(SpriteLayoutScaler::ScaleSize(
-            SpriteLayoutScaler::ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()), layoutScale));
-        sprite->SetAnchorPoint(
-            SpriteLayoutScaler::ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
-        sprite->SetColor(SpriteLayoutScaler::ReadColor(spriteData.value("color", json::array()), sprite->GetColor()));
-        sprite->SetEmissive(SpriteLayoutScaler::ReadFloat(spriteData, "emissive", 1.0f));
-        sprite->SetVisible(false);
+        auto sprite = SpriteLayoutFactory::Create(spriteCommon_, spriteData, layoutScale, "controls_guide_sprite");
+        const std::string name = sprite->GetName();
+        const uint32_t textureHandle = sprite->GetTextureHandle();
         if (hasTextureCrop) {
             sprite->SetTextureRect(textureOrigin, textureSize);
         }
@@ -491,7 +518,7 @@ void ControlsGuideOverlay::BindLayoutSprites() {
     }
 }
 
-Sprite* ControlsGuideOverlay::FindSprite(const std::string& name) const {
+engine::Sprite* ControlsGuideOverlay::FindSprite(const std::string& name) const {
     // レイアウト名が一致する所有Spriteを探し、未定義ならnullptrを返す。
     for (const auto& sprite : sprites_) {
         if (sprite && sprite->GetName() == name) {
@@ -559,10 +586,7 @@ void ControlsGuideOverlay::SetPageVisible(int pageIndex, bool visible) {
         if (label.sprite)
             label.sprite->SetVisible(actionVisible);
     }
-    if (pageIndex == 0) {
-        for (Element& glyph : extraMoveGlyphs_)
-            if (glyph.sprite) glyph.sprite->SetVisible(visible && !inputGlyphGamepadMode_);
-    }
+
 }
 
 void ControlsGuideOverlay::SetPageOffset(int pageIndex, float offsetX) {
@@ -582,14 +606,24 @@ void ControlsGuideOverlay::SetPageOffset(int pageIndex, float offsetX) {
     applyOffset(page.portrait);
     for (Element& detail : page.details)
         applyOffset(detail);
-    for (Element& glyph : page.actionGlyphs) {
+    for (size_t index = 0; index < page.actionGlyphs.size(); ++index) {
+        Element& glyph = page.actionGlyphs[index];
         applyOffset(glyph);
+        const engine::Vector2 textureSize = basicGlyphTextureSizes_[index];
+        if (pageIndex == 0 && glyph.sprite && textureSize.x > 0.0f && textureSize.y > 0.0f) {
+            // 縮小によって生じる余白を両側へ配分する。左上寄せではSpaceやパッドだけ中心がずれる。
+            const float fit = (std::min)(glyph.baseSize.x / textureSize.x, glyph.baseSize.y / textureSize.y);
+            const engine::Vector2 size = {textureSize.x * fit, textureSize.y * fit};
+            const engine::Vector2 anchor = glyph.sprite->GetAnchorPoint();
+            glyph.sprite->SetSize(size);
+            glyph.sprite->SetPosition({
+                glyph.basePosition.x + offsetX + (glyph.baseSize.x - size.x) * (0.5f - anchor.x),
+                glyph.basePosition.y + (glyph.baseSize.y - size.y) * (0.5f - anchor.y)});
+        }
     }
     for (Element& label : page.actionLabels) {
         applyOffset(label);
     }
-    if (pageIndex == 0)
-        for (Element& glyph : extraMoveGlyphs_) applyOffset(glyph);
     if (pageIndex == 1 && bookEnabled_)
         LayoutBook(offsetX);
 }
@@ -660,7 +694,7 @@ void ControlsGuideOverlay::UpdateStaticVisuals() {
         const bool selected = page == currentPage_ || (isSliding_ && page == incomingPage_);
         const float scale = selected ? 1.16f : 0.82f;
         dot.sprite->SetSize({dot.baseSize.x * scale, dot.baseSize.y * scale});
-        dot.sprite->SetColor(selected ? Vector4{1.0f, 0.86f, 0.28f, 1.0f} : Vector4{0.65f, 0.90f, 1.0f, 0.72f});
+        dot.sprite->SetColor(selected ? engine::Vector4{1.0f, 0.86f, 0.28f, 1.0f} : engine::Vector4{0.65f, 0.90f, 1.0f, 0.72f});
     }
 }
 
@@ -674,9 +708,9 @@ void ControlsGuideOverlay::RefreshAbilityVisuals() {
     const std::string nextPath = ResolvePortraitTexture(player_);
     if (nextPath != portraitTexturePath_) {
         portraitTexturePath_ = nextPath;
-        Sprite* portrait = pages_[1].portrait.sprite;
+        engine::Sprite* portrait = pages_[1].portrait.sprite;
         if (portrait) {
-            const uint32_t textureHandle = Sprite::LoadTexture(nextPath);
+            const uint32_t textureHandle = engine::Sprite::LoadTexture(nextPath);
             SetFullTextureRect(portrait, textureHandle);
             portrait->SetTextureName(nextPath);
         }
@@ -698,9 +732,9 @@ void ControlsGuideOverlay::RefreshAbilityVisuals() {
 
         guideChanged = true;
         abilityLabelTexturePaths_[static_cast<size_t>(action)] = nextLabelPath;
-        Sprite* label = pages_[1].actionLabels[static_cast<size_t>(action)].sprite;
+        engine::Sprite* label = pages_[1].actionLabels[static_cast<size_t>(action)].sprite;
         if (label && available) {
-            const uint32_t textureHandle = Sprite::LoadTexture(nextLabelPath);
+            const uint32_t textureHandle = engine::Sprite::LoadTexture(nextLabelPath);
             SetFullTextureRect(label, textureHandle);
             label->SetTextureName(nextLabelPath);
         }
@@ -724,56 +758,68 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
     inputGlyphGamepadMode_ = gamepadMode;
     inputGlyphBindingSignature_ = std::move(signature);
 
+    // ページ共通の操作案内を差し替え、キーボードとパッドの表記を同時に出さない。
+    const std::string footerSuffix = gamepadMode ? "gamepad.png" : "keyboard.png";
+    for (const char* action : {"close", "confirm"}) {
+        engine::Sprite* footer = FindSprite(std::string("controls_guide_footer_") + action + "_text");
+        if (!footer) continue;
+        const std::string path = "generated/text/pause_guide/footer_" + std::string(action) + "_" + footerSuffix;
+        if (footer->GetTextureName() != path) {
+            SetFullTextureRect(footer, engine::Sprite::LoadTexture(path));
+            footer->SetTextureName(path);
+        }
+    }
+
+    // 操作画像だけを切り替えると説明文に別の入力機器が残るため、短い案内も同時に更新する。
+    for (int action = 0; action < kActionCount; ++action) {
+        if (engine::Sprite* condition = FindSprite("controls_guide_page_0_detail_condition_" + std::to_string(action))) {
+            const std::string path = "ui/control_guide/book/basics/move_" + std::to_string(action) +
+                                     (gamepadMode ? "_condition_gamepad.png" : "_condition.png");
+            if (condition->GetTextureName() != path) {
+                SetFullTextureRect(condition, engine::Sprite::LoadTexture(path));
+                condition->SetTextureName(path);
+            }
+        }
+    }
+    if (engine::Sprite* footer = FindSprite("controls_guide_page_0_detail_footer")) {
+        const std::string path = pauseMode_
+                                     ? (gamepadMode ? "generated/text/pause_guide/basic_footer_gamepad.png"
+                                                    : "generated/text/pause_guide/basic_footer_keyboard.png")
+                                     : (gamepadMode ? "ui/control_guide/book/basics/footer_gamepad.png"
+                                                    : "ui/control_guide/book/basics/footer.png");
+        if (footer->GetTextureName() != path) {
+            SetFullTextureRect(footer, engine::Sprite::LoadTexture(path));
+            footer->SetTextureName(path);
+        }
+    }
+
     constexpr std::array<const char*, kActionCount> basicGlyphs = {
         "ui/input/combo/combo_wasd.png", "ui/input/keyboard/key_space.png", "ui/input/mouse/mouse_move.png"};
     for (int action = 0; action < kActionCount; ++action) {
         Element& visual = pages_[0].actionGlyphs[static_cast<size_t>(action)];
         if (!visual.sprite)
             continue;
-        const Vector2 glyphSize = SetGlyphTexture(
+        basicGlyphTextureSizes_[static_cast<size_t>(action)] = SetGlyphTexture(
             visual.sprite, ResolveInputGlyph(basicGlyphs[static_cast<size_t>(action)], gamepadMode));
-        const float width = (std::max)(glyphSize.x, 1.0f);
-        const float height = (std::max)(glyphSize.y, 1.0f);
-        const float fit = (std::min)(visual.baseSize.x / width, visual.baseSize.y / height);
-        visual.sprite->SetSize({width * fit, height * fit});
     }
-    if (Element& first = pages_[0].actionGlyphs[0]; first.sprite) {
-        const Vector2 area = first.basePosition;
-        if (gamepadMode) {
-            first.baseSize = {132.0f * layoutRatio_.x, 89.0f * layoutRatio_.y};
-            const Vector2 padSize = SetGlyphTexture(first.sprite, ResolveInputGlyph(basicGlyphs[0], true));
-            const float fit = (std::min)(first.baseSize.x / (std::max)(padSize.x, 1.0f),
-                                        first.baseSize.y / (std::max)(padSize.y, 1.0f));
-            first.sprite->SetSize({padSize.x * fit, padSize.y * fit});
-            for (Element& glyph : extraMoveGlyphs_)
-                if (glyph.sprite) glyph.sprite->SetVisible(false);
-        } else {
-            const char* directions[] = {"Forward", "Backward", "Left", "Right"};
-            const Vector2 tileSize = {56.0f * layoutRatio_.x, 38.0f * layoutRatio_.y};
-            first.basePosition = {area.x, area.y};
-            first.baseSize = tileSize;
-            first.sprite->SetSize(tileSize);
-            for (size_t i = 0; i < extraMoveGlyphs_.size(); ++i) {
-                Element& glyph = extraMoveGlyphs_[i];
-                if (!glyph.sprite) continue;
-                SetGlyphTexture(glyph.sprite, ResolveActionGlyph(directions[i + 1], false));
-                const int slot = static_cast<int>(i + 1);
-                glyph.basePosition = {area.x + static_cast<float>(slot % 2) * 66.0f * layoutRatio_.x,
-                                      area.y + static_cast<float>(slot / 2) * 44.0f * layoutRatio_.y};
-                glyph.baseSize = tileSize;
-                glyph.sprite->SetSize(tileSize);
-                glyph.sprite->SetVisible(pages_[0].panel.sprite && pages_[0].panel.sprite->IsVisible());
-            }
-        }
-        if (!gamepadMode) {
-            first.basePosition = area;
-        }
-        SetPageOffset(0, 0.0f);
-    }
-
     const json fallback = json::object();
     const json& entry = bookData_.contains(bookKey_) ? bookData_[bookKey_] : fallback;
     for (BookElement& item : bookElements_) {
+        if (item.visual.sprite && item.visual.sprite->GetName() == "controls_guide_page_1_book_footer") {
+            const std::string path = pauseMode_
+                                         ? (gamepadMode ? "generated/text/pause_guide/page_footer_gamepad.png"
+                                                        : "generated/text/pause_guide/page_footer_keyboard.png")
+                                         : (gamepadMode ? "ui/control_guide/book/footer_gamepad.png"
+                                                        : "ui/control_guide/book/footer.png");
+            if (item.visual.sprite->GetTextureName() != path) {
+                const uint32_t handle = engine::Sprite::LoadTexture(path);
+                SetFullTextureRect(item.visual.sprite, handle);
+                item.visual.sprite->SetTextureName(path);
+                const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
+                item.textureOrigin = {};
+                item.textureSize = {static_cast<float>(metadata.width), static_cast<float>(metadata.height)};
+            }
+        }
         if (item.slot.rfind("glyph_", 0) != 0 || !item.visual.sprite)
             continue;
         const std::string keyboardPath =
@@ -782,7 +828,7 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
                 : "ui/input/keyboard/key_e.png";
         const InputGlyphSpec glyph = ResolveInputGlyph(keyboardPath, gamepadMode);
         item.textureSize = SetGlyphTexture(item.visual.sprite, glyph);
-        item.textureOrigin = glyph.useCrop ? Vector2{glyph.cropX, glyph.cropY} : Vector2{};
+        item.textureOrigin = glyph.useCrop ? engine::Vector2{glyph.cropX, glyph.cropY} : engine::Vector2{};
     }
     if (bookEnabled_)
         LayoutBook(bookOffsetX_);
@@ -809,10 +855,10 @@ void ControlsGuideOverlay::RefreshBook() {
                        : "ui/input/keyboard/key_e.png";
             const InputGlyphSpec glyph = ResolveInputGlyph(path, inputManager_ && inputManager_->IsGamepadMode());
             item.textureSize = SetGlyphTexture(item.visual.sprite, glyph);
-            item.textureOrigin = glyph.useCrop ? Vector2{glyph.cropX, glyph.cropY} : Vector2{};
+            item.textureOrigin = glyph.useCrop ? engine::Vector2{glyph.cropX, glyph.cropY} : engine::Vector2{};
             continue;
         }
-        const uint32_t handle = Sprite::LoadTexture(path);
+        const uint32_t handle = engine::Sprite::LoadTexture(path);
         SetFullTextureRect(item.visual.sprite, handle);
         item.visual.sprite->SetTextureName(path);
         const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
@@ -820,61 +866,37 @@ void ControlsGuideOverlay::RefreshBook() {
     }
     portraitTexturePath_ =
         nextKey == "other" ? ResolvePortraitTexture(player_) : "ui/control_guide/book/portraits/" + nextKey + ".png";
-    if (Sprite* portrait = pages_[1].portrait.sprite) {
-        SetFullTextureRect(portrait, Sprite::LoadTexture(portraitTexturePath_));
+    if (engine::Sprite* portrait = pages_[1].portrait.sprite) {
+        SetFullTextureRect(portrait, engine::Sprite::LoadTexture(portraitTexturePath_));
         portrait->SetTextureName(portraitTexturePath_);
     }
     LayoutBook(bookOffsetX_);
 }
 
 void ControlsGuideOverlay::UpdateBook(float deltaTime) {
-    // 入力に応じた目標位置へ図鑑を滑らかにスクロールする。
+    // 能力と技の説明は一画面に収める。古いリプレイのスクロール値も表示へ影響させない。
     if (!bookEnabled_)
         return;
-    const float dt = std::clamp(deltaTime, 0.0f, 0.1f);
-    bool editorEditing = false;
-#ifdef USE_IMGUI
-    editorEditing = ImGui::GetCurrentContext() && (ImGui::GetIO().WantTextInput || ImGui::IsAnyItemActive());
-#endif
-    if (currentPage_ == 1 && !isSliding_ && !suppressToggleInput_ && inputManager_ && !editorEditing) {
-        float direction = 0.0f;
-        if (inputManager_->IsKeyPressed(DIK_S) || inputManager_->IsKeyPressed(DIK_DOWN) ||
-            inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_DOWN))
-            direction += 1.0f;
-        if (inputManager_->IsKeyPressed(DIK_W) || inputManager_->IsKeyPressed(DIK_UP) ||
-            inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_UP))
-            direction -= 1.0f;
-        const float stick = inputManager_->GetGamepadLeftStick().y;
-        if (std::abs(stick) > 0.25f)
-            direction -= stick;
-        bookTargetScroll_ += std::clamp(direction, -1.0f, 1.0f) * bookScrollSpeed_ * dt;
-        bookTargetScroll_ -= inputManager_->GetMouseWheelDelta() / 120.0f * bookWheelStep_;
-        if (inputManager_->IsKeyTriggered(DIK_HOME))
-            bookTargetScroll_ = 0.0f;
-        if (inputManager_->IsKeyTriggered(DIK_END))
-            bookTargetScroll_ = bookMaxScroll_;
-        bookTargetScroll_ = std::clamp(bookTargetScroll_, 0.0f, bookMaxScroll_);
-    }
-    bookScroll_ += (bookTargetScroll_ - bookScroll_) * (1.0f - std::exp(-16.0f * dt));
-    if (std::abs(bookTargetScroll_ - bookScroll_) < 0.1f)
-        bookScroll_ = bookTargetScroll_;
+    (void)deltaTime;
+    bookScroll_ = bookTargetScroll_ = 0.0f;
     LayoutBook(bookOffsetX_);
 }
 
+// 図鑑内のSpriteをページ移動量に合わせ、キー画像は枠内へ縮小します。
+// スクロール領域はUVも一緒に切り取り、見切れた文字が枠外へ出ないようにします。
 void ControlsGuideOverlay::LayoutBook(float offsetX) {
     bookOffsetX_ = offsetX;
-    const float progress = bookMaxScroll_ > 0.0f ? bookScroll_ / bookMaxScroll_ : 0.0f;
     for (BookElement& item : bookElements_) {
         Element& element = item.visual;
-        Sprite* sprite = element.sprite;
+        engine::Sprite* sprite = element.sprite;
         if (!sprite)
             continue;
         const bool available = item.row < 0 || item.row < bookMoveCount_;
         sprite->SetVisible(bookVisible_ && available);
-        Vector2 position = {element.basePosition.x + offsetX, element.basePosition.y};
-        Vector2 size = element.baseSize;
-        Vector2 uv = item.textureOrigin;
-        Vector2 uvSize = item.textureSize;
+        engine::Vector2 position = {element.basePosition.x + offsetX, element.basePosition.y};
+        engine::Vector2 size = element.baseSize;
+        engine::Vector2 uv = item.textureOrigin;
+        engine::Vector2 uvSize = item.textureSize;
         if (item.slot.rfind("glyph_", 0) == 0 && item.textureSize.x > 0.0f && item.textureSize.y > 0.0f) {
             const float fit =
                 (std::min)(element.baseSize.x / item.textureSize.x, element.baseSize.y / item.textureSize.y);
@@ -896,26 +918,19 @@ void ControlsGuideOverlay::LayoutBook(float offsetX) {
             position.y = top;
             size.y = bottom - top;
         }
-        if (sprite->GetName() == "controls_guide_page_1_book_scroll_thumb") {
-            position.y += progress * std::max(0.0f, bookBottom_ - bookTop_ - size.y - 20.0f);
-        }
-        if (sprite->GetName() == "controls_guide_page_1_book_continue") {
-            const std::string path =
-                progress > 0.99f ? "ui/control_guide/book/end.png" : "ui/control_guide/book/continue.png";
-            if (sprite->GetTextureName() != path) {
-                const uint32_t handle = Sprite::LoadTexture(path);
-                SetFullTextureRect(sprite, handle);
-                sprite->SetTextureName(path);
-            }
-        }
         sprite->SetPosition(position);
         sprite->SetSize(size);
         sprite->SetTextureRect(uv, uvSize);
     }
-    if (Sprite* portrait = pages_[1].portrait.sprite) {
+    if (engine::Sprite* portrait = pages_[1].portrait.sprite) {
         const Element& element = pages_[1].portrait;
-        portrait->SetPosition(
-            {element.basePosition.x + offsetX, element.basePosition.y + std::sin(time_ * 2.0f) * bookBob_});
+        // 立ち絵を小さく呼吸させ、説明を読む間も現在の能力が生きて見えるようにする。
+        const float breath = 1.0f + std::sin(time_ * 2.4f) * 0.025f;
+        const engine::Vector2 size{element.baseSize.x * breath, element.baseSize.y * breath};
+        portrait->SetSize(size);
+        portrait->SetPosition({element.basePosition.x + offsetX - (size.x - element.baseSize.x) * 0.5f,
+                               element.basePosition.y + std::sin(time_ * 2.0f) * bookBob_ -
+                                   (size.y - element.baseSize.y) * 0.5f});
     }
 }
 
@@ -945,8 +960,6 @@ void ControlsGuideOverlay::DrawImGui() {
         bookPreviewKey_.clear();
         SetActive(false);
     }
-    ImGui::SliderFloat("スクロール位置", &bookTargetScroll_, 0.0f, bookMaxScroll_, "%.0f");
-    ImGui::DragFloat("スクロール速度", &bookScrollSpeed_, 5.0f, 50.0f, 2000.0f);
     ImGui::DragFloat("肖像の上下揺れ", &bookBob_, 0.1f, 0.0f, 12.0f * layoutRatio_.y);
     const auto editElement = [](const char* label, Element& element) {
         if (!element.sprite || !ImGui::TreeNode(label))
@@ -976,7 +989,7 @@ void ControlsGuideOverlay::DrawImGui() {
         }
         ImGui::TreePop();
     }
-    if (ImGui::TreeNode("文字とスクロール部品の配置")) {
+    if (ImGui::TreeNode("能力ページの文字配置")) {
         for (BookElement& item : bookElements_) {
             editElement(item.visual.sprite->GetName().c_str(), item.visual);
         }
@@ -1010,7 +1023,6 @@ void ControlsGuideOverlay::DrawImGui() {
                 saveElement(glyph);
             for (const BookElement& item : bookElements_)
                 saveElement(item.visual);
-            layout["abilityBook"]["scrollSpeed"] = bookScrollSpeed_ / layoutRatio_.y;
             layout["abilityBook"]["portraitBob"] = bookBob_ / layoutRatio_.y;
             std::ofstream output(layoutPath_);
             output << layout.dump(2) << '\n';
@@ -1035,7 +1047,7 @@ bool ControlsGuideOverlay::IsToggleHeld() const {
         return false;
     }
 
-    return inputManager_->IsKeyPressed(DIK_TAB) || inputManager_->IsKeyPressed(DIK_BACK) ||
+    return inputManager_->IsKeyPressed(DIK_TAB) ||
            inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_B) ||
            inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_BACK);
 }

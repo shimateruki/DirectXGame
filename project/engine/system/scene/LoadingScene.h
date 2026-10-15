@@ -30,8 +30,8 @@ public:
     /// <summary>ロード画面で保持した描画資源を解放する。</summary>
     void Finalize() override;
 
-    SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
-    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
+    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
+    const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
 
     /// <summary>
     /// ロード進捗を0.0から1.0の範囲で設定する。
@@ -39,9 +39,9 @@ public:
     void SetProgress(float progress);
 
 private:
-    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
+    std::vector<std::unique_ptr<engine::Sprite>>* GetMutableSprites() override { return &sprites_; }
     // Sprite を生成して所有リストに登録する。
-    Sprite* CreateSprite(uint32_t textureHandle, const Vector2& position, const Vector2& size, const Vector4& color);
+    engine::Sprite* CreateSprite(uint32_t textureHandle, const engine::Vector2& position, const engine::Vector2& size, const engine::Vector4& color);
 
     // ロード中のスライム・点滅ドット・進捗ゲージをそれぞれ更新する。
     void UpdateSlimeRunAnimation();
@@ -49,23 +49,23 @@ private:
     void UpdateProgressGauge();
 
 private:
-    std::unique_ptr<SpriteCommon> spriteCommon_;
-    std::vector<std::unique_ptr<Sprite>> sprites_;
+    std::unique_ptr<engine::SpriteCommon> spriteCommon_;
+    std::vector<std::unique_ptr<engine::Sprite>> sprites_;
 
-    Sprite* background_ = nullptr;
-    Sprite* loadingText_ = nullptr;
-    Sprite* slime_ = nullptr;
-    Sprite* shadow_ = nullptr;
-    Sprite* hintText_ = nullptr;
-    std::vector<Sprite*> dots_;
+    engine::Sprite* background_ = nullptr;
+    engine::Sprite* loadingText_ = nullptr;
+    engine::Sprite* slime_ = nullptr;
+    engine::Sprite* shadow_ = nullptr;
+    engine::Sprite* hintText_ = nullptr;
+    std::vector<engine::Sprite*> dots_;
 
-    Sprite* gaugeShadow_ = nullptr;
-    Sprite* gaugeFrame_ = nullptr;
-    Sprite* gaugeTrack_ = nullptr;
-    Sprite* gaugeFill_ = nullptr;
-    Sprite* gaugeHighlight_ = nullptr;
-    Sprite* gaugeGlow_ = nullptr;
-    std::vector<Sprite*> gaugeBubbles_;
+    engine::Sprite* gaugeShadow_ = nullptr;
+    engine::Sprite* gaugeFrame_ = nullptr;
+    engine::Sprite* gaugeTrack_ = nullptr;
+    engine::Sprite* gaugeFill_ = nullptr;
+    engine::Sprite* gaugeHighlight_ = nullptr;
+    engine::Sprite* gaugeGlow_ = nullptr;
+    std::vector<engine::Sprite*> gaugeBubbles_;
 
     float timer_ = 0.0f;
     float targetProgress_ = 0.0f;

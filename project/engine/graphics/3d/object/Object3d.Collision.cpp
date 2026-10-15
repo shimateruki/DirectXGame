@@ -10,6 +10,8 @@
 #include "CollisionManager.h"
 #include <cassert>
 #include <algorithm> // min, max
+#include <cmath>
+#include <utility>
 #include <ParticleManager.h>
 #include <GPUParticleManager.h>
 #include <GPUParticleEmitter.h>
@@ -17,6 +19,8 @@
 #include <ProfilerManager.h>
 #include <fstream>
 #include <filesystem>
+
+namespace engine {
 
 namespace {
 
@@ -35,6 +39,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     return filePath;
 }
 
+// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
     // 親の祖先をたどり、循環する親子付けを拒否するための判定を返す。
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
@@ -43,37 +48,6 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
         }
     }
     return false;
-}
-
-void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
-    // 行列を移動・倍率・回転へ分離し、親の変更後も見た目の姿勢を維持する。
-    const float epsilon = 0.0001f;
-
-    Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
-    Vector3 rowY = { matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] };
-    Vector3 rowZ = { matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] };
-
-    transform.scale = {
-        std::max(Math::Length(rowX), epsilon),
-        std::max(Math::Length(rowY), epsilon),
-        std::max(Math::Length(rowZ), epsilon),
-    };
-    transform.translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
-
-    Matrix4x4 rotateMatrix = Math::MakeIdentity4x4();
-    rotateMatrix.m[0][0] = matrix.m[0][0] / transform.scale.x;
-    rotateMatrix.m[0][1] = matrix.m[0][1] / transform.scale.x;
-    rotateMatrix.m[0][2] = matrix.m[0][2] / transform.scale.x;
-    rotateMatrix.m[1][0] = matrix.m[1][0] / transform.scale.y;
-    rotateMatrix.m[1][1] = matrix.m[1][1] / transform.scale.y;
-    rotateMatrix.m[1][2] = matrix.m[1][2] / transform.scale.y;
-    rotateMatrix.m[2][0] = matrix.m[2][0] / transform.scale.z;
-    rotateMatrix.m[2][1] = matrix.m[2][1] / transform.scale.z;
-    rotateMatrix.m[2][2] = matrix.m[2][2] / transform.scale.z;
-
-    transform.quaternion = Math::MatrixToQuaternion(rotateMatrix);
-    transform.rotate = Math::MatrixToEuler(rotateMatrix);
-    transform.isQuaternionMaster = true;
 }
 
 }
@@ -90,8 +64,41 @@ void Object3d::SetColliderConfig(const ColliderConfig& config) {
     // 静的オブジェクトの形状変更は空間グリッドの再構築を要求する。
     if (collider_) {
         collider_->SetConfig(config);
+        RefreshModelSurfaceCollision();
         if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
     }
+}
+
+void Object3d::RefreshModelSurfaceCollision() {
+    // 接地用の面は描画モデルから一度だけ抽出し、毎フレームの衝突判定では再生成しない。
+    if (!collider_) return;
+    std::vector<ModelSurfaceTriangle> triangles;
+    Model* model = collider_->GetConfig().useModelSurface ? GetModel() : nullptr;
+    if (model) {
+        for (const Model::Mesh& mesh : model->GetModelData().meshes) {
+            for (size_t index = 0; index + 2 < mesh.indices.size(); index += 3) {
+                const uint32_t ia = mesh.indices[index];
+                const uint32_t ib = mesh.indices[index + 1];
+                const uint32_t ic = mesh.indices[index + 2];
+                if (ia >= mesh.vertices.size() || ib >= mesh.vertices.size() || ic >= mesh.vertices.size()) continue;
+                const auto& pa = mesh.vertices[ia].position;
+                const auto& pb = mesh.vertices[ib].position;
+                const auto& pc = mesh.vertices[ic].position;
+                const engine::Vector3 a{pa.x, pa.y, pa.z};
+                const engine::Vector3 b{pb.x, pb.y, pb.z};
+                const engine::Vector3 c{pc.x, pc.y, pc.z};
+                const engine::Vector3 ab = b - a;
+                const engine::Vector3 ac = c - a;
+                const engine::Vector3 normal{ab.y * ac.z - ab.z * ac.y,
+                                             ab.z * ac.x - ab.x * ac.z,
+                                             ab.x * ac.y - ab.y * ac.x};
+                const float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+                if (length < 0.000001f || std::abs(normal.y) / length < 0.45f) continue;
+                triangles.push_back({a, b, c});
+            }
+        }
+    }
+    collider_->SetModelSurface(std::move(triangles));
 }
 
 const Object3d::ColliderConfig& Object3d::GetColliderConfig() const {
@@ -113,7 +120,7 @@ ColliderType Object3d::GetColliderType() const {
     return collider_ ? collider_->GetType() : ColliderType::kNone;
 }
 
-void Object3d::SetCollisionSize(const Vector3& size) {
+void Object3d::SetCollisionSize(const engine::Vector3& size) {
     // 大きさを変更した静的物体は衝突グリッドへ再登録する。
     if (!collider_) return;
     ColliderConfig config = collider_->GetConfig();
@@ -122,9 +129,9 @@ void Object3d::SetCollisionSize(const Vector3& size) {
     if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
-Vector3 Object3d::GetCollisionSize() const {
+engine::Vector3 Object3d::GetCollisionSize() const {
     // Collider未作成時は各軸0の範囲を返す。
-    return collider_ ? collider_->GetSize() : Vector3{ 0,0,0 };
+    return collider_ ? collider_->GetSize() : engine::Vector3{ 0,0,0 };
 }
 
 void Object3d::SetCollisionRadius(float radius) {
@@ -249,11 +256,11 @@ AABB Object3d::GetModelWorldAABB() const {
                  {transform_.translate.x + 0.5f, transform_.translate.y + 0.5f, transform_.translate.z + 0.5f} };
     }
 
-    Vector3 min = model->GetLocalAabbMin();
-    Vector3 max = model->GetLocalAabbMax();
+    engine::Vector3 min = model->GetLocalAabbMin();
+    engine::Vector3 max = model->GetLocalAabbMax();
 
     // 8つの頂点をトランスフォーム
-    Vector3 corners[8] = {
+    engine::Vector3 corners[8] = {
         {min.x, min.y, min.z},
         {min.x, min.y, max.z},
         {min.x, max.y, min.z},
@@ -269,7 +276,7 @@ AABB Object3d::GetModelWorldAABB() const {
     worldAABB.max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 
     for (int i = 0; i < 8; ++i) {
-        Vector3 worldPos = Math::Transform(corners[i], transform_.matWorld);
+        engine::Vector3 worldPos = engine::Math::Transform(corners[i], transform_.matWorld);
         worldAABB.min.x = (std::min)(worldAABB.min.x, worldPos.x);
         worldAABB.min.y = (std::min)(worldAABB.min.y, worldPos.y);
         worldAABB.min.z = (std::min)(worldAABB.min.z, worldPos.z);
@@ -303,3 +310,5 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
 // その他 (コピー、保存、レコーダー等)
 // ========================================================================
 
+
+} // namespace engine

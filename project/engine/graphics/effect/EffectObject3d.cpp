@@ -21,12 +21,13 @@ uint32_t GetDefaultWhiteTextureHandle() {
     return handle;
 }
 
-float ResolveTargetRootYaw(Object3d* targetObject) {
+float ResolveTargetRootYaw(engine::Object3d* targetObject) {
+    // エフェクトの追従向きを、対象のルートが持つ水平方向の角度から決める。
     if (!targetObject) {
         return 0.0f;
     }
 
-    Object3d* rootObject = targetObject;
+    engine::Object3d* rootObject = targetObject;
     while (rootObject && rootObject->GetParent()) {
         rootObject = rootObject->GetParent();
     }
@@ -35,7 +36,9 @@ float ResolveTargetRootYaw(Object3d* targetObject) {
 }
 }
 
+// 数値で保存された補間方式を評価し、未知の番号は線形補間に戻します。
 float ApplyEasing1(int type, float t) {
+    // エディターの数値設定を補間関数へ対応付け、不明な番号は線形補間へ戻す。
     switch (type) {
     case 0: return Easing::Linear(t);
     case 1: return Easing::InSine(t);    case 2: return Easing::OutSine(t);    case 3: return Easing::InOutSine(t);
@@ -52,6 +55,7 @@ float ApplyEasing1(int type, float t) {
     }
 }
 
+// Object3dの描画基盤を確認してから、エフェクト専用マテリアル定数を準備します。
 void EffectObject3d::Initialize(Object3dCommon* common) {
     if (!common || !common->GetDxCommon() || !common->GetDxCommon()->GetDevice()) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] Initialize failed: invalid Object3dCommon.");
@@ -59,12 +63,14 @@ void EffectObject3d::Initialize(Object3dCommon* common) {
     }
 
     // 親クラスの初期化
-    Object3d::Initialize(common);
+    engine::Object3d::Initialize(common);
 
     // エフェクト用マテリアルバッファの生成
     CreateMaterialBuffer(common->GetDxCommon()->GetDevice());
 }
 
+// GPU定数バッファを256バイト境界で作成・Mapし、各効果を中立値から初期化します。
+// 作成またはMapに失敗したら参照を空へ戻してfalseを返します。
 bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
     materialBuffer_.Reset();
     materialData_ = nullptr;
@@ -148,13 +154,13 @@ void EffectObject3d::Update(float deltaTime) {
     materialData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
 
     // 指定した開始・終了のスケールと色を、同じ進捗で補間する。
-    Vector3 currentScale;
+    engine::Vector3 currentScale;
     currentScale.x = std::lerp(startScale_.x, endScale_.x, easeProgress);
     currentScale.y = std::lerp(startScale_.y, endScale_.y, easeProgress);
     currentScale.z = std::lerp(startScale_.z, endScale_.z, easeProgress);
     SetScale(currentScale);
 
-    Vector4 currentColor;
+    engine::Vector4 currentColor;
     currentColor.x = std::lerp(startColor_.x, endColor_.x, easeProgress);
     currentColor.y = std::lerp(startColor_.y, endColor_.y, easeProgress);
     currentColor.z = std::lerp(startColor_.z, endColor_.z, easeProgress);
@@ -163,8 +169,8 @@ void EffectObject3d::Update(float deltaTime) {
 
     // 対象に付く場合はローカルオフセットを対象のワールド行列へ通し、根元のYawを合成する。
     if (targetObject_) {
-        Matrix4x4 worldMat = targetObject_->GetWorldMatrix();
-        Vector3 followPos = Math::TransformNormal(offsetPos_, worldMat);
+        engine::Matrix4x4 worldMat = targetObject_->GetWorldMatrix();
+        engine::Vector3 followPos = engine::Math::TransformNormal(offsetPos_, worldMat);
         followPos.x += worldMat.m[3][0];
         followPos.y += worldMat.m[3][1];
         followPos.z += worldMat.m[3][2];
@@ -192,6 +198,7 @@ void EffectObject3d::Update(float deltaTime) {
     }
 }
 
+// 専用パイプラインと必要なSRVを束ねて描画し、未設定素材には白画像を代用します。
 void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 
     if (!common_ || !GetMeshRenderer()) return;
@@ -243,6 +250,7 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     model->DrawMeshOnly();
 }
 
+// 弧の内外径と厚みからSlash形状を組み、三日月形では両端を細く絞ります。
 void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
@@ -402,6 +410,7 @@ void EffectObject3d::ExportToObj(const std::string& filePath) const {
 }
 
 void EffectObject3d::GenerateSphereVertices(float radius, int segments, int rings) {
+    // 緯度ごとのリングを作り、UVの継ぎ目用に各リングの端点を重複させる。
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
@@ -420,7 +429,7 @@ void EffectObject3d::GenerateSphereVertices(float radius, int segments, int ring
             Model::VertexData vertex;
             vertex.position = {x, y, z, 1.0f};
             vertex.texcoord = {u, v};
-            Vector3 norm = {x, y, z};
+            engine::Vector3 norm = {x, y, z};
             float len = sqrtf(x*x + y*y + z*z);
             if (len > 0.0001f) { norm.x /= len; norm.y /= len; norm.z /= len; }
             vertex.normal = norm;
@@ -429,6 +438,7 @@ void EffectObject3d::GenerateSphereVertices(float radius, int segments, int ring
     }
 
     for (int r = 0; r < rings; ++r) {
+        // 隣り合うリングを2枚の三角形でつなぎ、球の表面を構成する。
         for (int s = 0; s < segments; ++s) {
             uint32_t curr = r * (segments + 1) + s;
             uint32_t next = curr + (segments + 1);
@@ -522,13 +532,14 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
     }
 }
 
-void EffectObject3d::GenerateBoxVertices(const Vector3& size) {
+void EffectObject3d::GenerateBoxVertices(const engine::Vector3& size) {
+    // 各面に独立した法線とUVを持たせ、箱の角が滑らかに補間されないようにする。
     proceduralVertices_.clear(); proceduralIndices_.clear();
     float x = size.x / 2.0f; float y = size.y / 2.0f; float z = size.z / 2.0f;
-    Vector3 p[] = { {-x,-y,z}, {x,-y,z}, {-x,y,z}, {x,y,z}, {-x,-y,-z}, {x,-y,-z}, {-x,y,-z}, {x,y,-z} };
+    engine::Vector3 p[] = { {-x,-y,z}, {x,-y,z}, {-x,y,z}, {x,y,z}, {-x,-y,-z}, {x,-y,-z}, {-x,y,-z}, {x,y,-z} };
     int faces[6][4] = {{0,1,2,3}, {5,4,7,6}, {2,3,6,7}, {4,5,0,1}, {1,5,3,7}, {4,0,6,2}};
-    Vector3 n[6] = {{0,0,1}, {0,0,-1}, {0,1,0}, {0,-1,0}, {1,0,0}, {-1,0,0}};
-    Vector2 uv[4] = {{0,1}, {1,1}, {0,0}, {1,0}};
+    engine::Vector3 n[6] = {{0,0,1}, {0,0,-1}, {0,1,0}, {0,-1,0}, {1,0,0}, {-1,0,0}};
+    engine::Vector2 uv[4] = {{0,1}, {1,1}, {0,0}, {1,0}};
     for(int i=0; i<6; ++i) {
         uint32_t base = i * 4;
         for(int j=0; j<4; ++j) {
@@ -542,7 +553,8 @@ void EffectObject3d::GenerateBoxVertices(const Vector3& size) {
     }
 }
 
-void EffectObject3d::GeneratePlaneVertices(const Vector2& size, int subdivisions) {
+void EffectObject3d::GeneratePlaneVertices(const engine::Vector2& size, int subdivisions) {
+    // 平面を等間隔の格子に分け、変形可能な頂点とUVを生成する。
     proceduralVertices_.clear(); proceduralIndices_.clear();
     float hw = size.x / 2.0f; float hd = size.y / 2.0f;
     int xSegments = subdivisions; int zSegments = subdivisions;
@@ -566,6 +578,7 @@ void EffectObject3d::GeneratePlaneVertices(const Vector2& size, int subdivisions
 }
 
 void EffectObject3d::GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings) {
+    // 大円に沿って小円を並べ、継ぎ目のUVを複製して輪状Meshを作る。
     proceduralVertices_.clear(); proceduralIndices_.clear();
     for (int r = 0; r <= rings; ++r) {
         float v = (float)r / rings; float phi = v * 2.0f * 3.14159265f;
@@ -578,8 +591,8 @@ void EffectObject3d::GenerateTorusVertices(float majorRad, float minorRad, int s
             float z = (majorRad + minorRad * cosPhi) * sinTheta;
             Model::VertexData vert;
             vert.position = {x, y, z, 1.0f}; vert.texcoord = {u, v};
-            Vector3 center = {majorRad * cosTheta, 0, majorRad * sinTheta};
-            Vector3 norm = {x - center.x, y - center.y, z - center.z};
+            engine::Vector3 center = {majorRad * cosTheta, 0, majorRad * sinTheta};
+            engine::Vector3 norm = {x - center.x, y - center.y, z - center.z};
             float len = sqrtf(norm.x*norm.x + norm.y*norm.y + norm.z*norm.z);
             if(len>0) { norm.x/=len; norm.y/=len; norm.z/=len; }
             vert.normal = norm;
@@ -606,7 +619,7 @@ void EffectObject3d::GenerateConeVertices(float radius, float height, int segmen
         float u = (float)s / segments; float theta = u * 2.0f * 3.14159265f;
         float x = sinf(theta) * radius; float z = cosf(theta) * radius;
         Model::VertexData v; v.position = {x, -halfH, z, 1.0f}; v.texcoord = {u, 1.0f};
-        Vector3 norm = {sinf(theta), radius/height, cosf(theta)};
+        engine::Vector3 norm = {sinf(theta), radius/height, cosf(theta)};
         float len = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
         if(len>0){norm.x/=len;norm.y/=len;norm.z/=len;} v.normal = norm;
         proceduralVertices_.push_back(v);
@@ -649,6 +662,7 @@ void EffectObject3d::GenerateRingVertices(float outerRad, float innerRad, int se
 }
 
 void EffectObject3d::GenerateTriangleVertices(float size) {
+    // 重心が原点に来る正三角形をXZ平面へ作り、法線を上向きに揃える。
     proceduralVertices_.clear(); proceduralIndices_.clear();
     float r = size / sqrtf(3.0f);
     Model::VertexData v0, v1, v2;
@@ -701,6 +715,7 @@ void EffectObject3d::GenerateLanceVertices(float radius, float height, int segme
     }
 }
 
+// 形状番号に対応する頂点を再生成し、共通UV倍率を掛けて動的Modelへ反映します。
 void EffectObject3d::UpdateProceduralMesh() {
     if (!dynamicModel_) { dynamicModel_ = std::make_unique<Model>(); }
     if (GetMeshRenderer()) { GetMeshRenderer()->SetModel(dynamicModel_.get()); }
@@ -755,6 +770,8 @@ void EffectObject3d::UpdateProceduralMesh() {
     dynamicModel_->CreateFromVertices(ModelManager::GetInstance()->GetModelCommon(), proceduralVertices_, proceduralIndices_);
 }
 
+// エフェクト設定を読み込み、前回の特殊効果を初期化してから存在する項目を適用します。
+// ファイルを開けない場合やJSON構文が不正な場合はfalseを返します。
 bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     std::ifstream file(jsonFilePath);
     if (!file.is_open()) {
@@ -819,7 +836,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     }
 
     // スケール・カラーアニメーション範囲
-    Vector3 scaleFactor = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 scaleFactor = { 1.0f, 1.0f, 1.0f };
     if (j.contains("StartScale")) {
         SetStartScale({ j["StartScale"][0] * scaleFactor.x, j["StartScale"][1] * scaleFactor.y, j["StartScale"][2] * scaleFactor.z });
     }
@@ -939,8 +956,8 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     if (j.contains("Position") && j.contains("Rotation")) {
         auto posVal = j["Position"];
         auto rotVal = j["Rotation"];
-        Vector3 offsetPos = { 0, 0, 0 };
-        Vector3 offsetRot = { 0, 0, 0 };
+        engine::Vector3 offsetPos = { 0, 0, 0 };
+        engine::Vector3 offsetRot = { 0, 0, 0 };
         if (posVal.is_array() && posVal.size() >= 3) {
             offsetPos = { posVal[0].get<float>(), posVal[1].get<float>(), posVal[2].get<float>() };
         }

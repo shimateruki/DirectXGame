@@ -19,88 +19,13 @@
 namespace {
 namespace fs = std::filesystem;
 
-// 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
-struct BakedShaderTextureSet {
-    uint32_t slot0 = 0;
-    uint32_t slot1 = 0;
-    uint32_t slot2 = 0;
-};
-
-// 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
-struct BakedShaderTextureCache {
-    BakedShaderTextureSet fallback;
-    BakedShaderTextureSet water;
-    BakedShaderTextureSet fire;
-    BakedShaderTextureSet gatePortal;
-    bool loaded = false;
-};
-
 std::string NormalizeSlashes(std::string text) {
     std::replace(text.begin(), text.end(), '\\', '/');
     return text;
 }
 
-BakedShaderTextureCache& GetBakedShaderTextureCache() {
-    static BakedShaderTextureCache cache;
-    return cache;
-}
-
-uint32_t LoadTextureWithFallback(const char* texturePath) {
-    const char* fallbackPath = "Resources/sprite/common/white.dds";
-    const char* pathToLoad = fs::exists(texturePath) ? texturePath : fallbackPath;
-    return TextureManager::GetInstance()->Load(pathToLoad, true);
-}
-
-void EnsureBakedShaderTexturesLoaded() {
-    BakedShaderTextureCache& cache = GetBakedShaderTextureCache();
-    if (cache.loaded) {
-        return;
-    }
-
-    const uint32_t fallback = LoadTextureWithFallback("Resources/sprite/common/white.dds");
-    cache.fallback = { fallback, fallback, fallback };
-    cache.water = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/water_foam_mask.dds"),
-        LoadTextureWithFallback("Resources/texture/BakedShader/water_flow_noise.dds"),
-        fallback
-    };
-    cache.fire = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/fire_flame_mask.dds"),
-        LoadTextureWithFallback("Resources/texture/BakedShader/fire_orb_mask.dds"),
-        fallback
-    };
-    cache.gatePortal = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/gate_swirl_mask.dds"),
-        fallback,
-        fallback
-    };
-    cache.loaded = true;
-}
-
-const BakedShaderTextureSet& GetDefaultBakedShaderTextures() {
-    return GetBakedShaderTextureCache().fallback;
-}
-
-const BakedShaderTextureSet& GetWaterBakedShaderTextures() {
-    return GetBakedShaderTextureCache().water;
-}
-
-const BakedShaderTextureSet& GetFireBakedShaderTextures() {
-    return GetBakedShaderTextureCache().fire;
-}
-
-const BakedShaderTextureSet& GetGatePortalBakedShaderTextures() {
-    return GetBakedShaderTextureCache().gatePortal;
-}
-
-void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const BakedShaderTextureSet& textures) {
-    EnsureBakedShaderTexturesLoaded();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, textures.slot0);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, textures.slot1);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, textures.slot2);
-}
-
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
+    // モデル名がファイル指定かフォルダ指定かによって、LOD定義の候補順を切り替える。
     std::vector<fs::path> candidates;
     if (modelName.empty()) {
         return candidates;
@@ -124,6 +49,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 }
 
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
+    // 設定JSONが読めない場合は呼び出し元へ失敗を返し、描画設定の適用を止める。
     std::ifstream file(path);
     if (!file) {
         return false;
@@ -138,6 +64,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     }
 }
 
+// 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
 float ClampTextureTiling(float value) {
     if (!std::isfinite(value)) {
         return 1.0f;
@@ -145,7 +72,8 @@ float ClampTextureTiling(float value) {
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
-Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
+engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
+    // 壁と床のどちらでも面積の大きい二軸をUV繰り返し量に使う。
     float a = std::abs(scale.x);
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
@@ -159,6 +87,7 @@ Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
 
 template <typename T>
 bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
+    // 作成・Mapの片方でも失敗した場合は両方を空へ戻し、不完全なGPU定数を使わない。
     data = nullptr;
     resource.Reset();
     if (!dxCommon) {
@@ -204,8 +133,8 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
-    wvpData_->WVP = Math::MakeIdentity4x4();
-    wvpData_->world = Math::MakeIdentity4x4();
+    wvpData_->WVP = engine::Math::MakeIdentity4x4();
+    wvpData_->world = engine::Math::MakeIdentity4x4();
 
     // 3. Cameraバッファ
     if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGPU), cameraResource_, cameraData_, "Camera")) {
@@ -221,9 +150,9 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
             common_ = nullptr;
             return;
         }
-        previewWvpData_[i]->WVP = Math::MakeIdentity4x4();
-        previewWvpData_[i]->world = Math::MakeIdentity4x4();
-        previewWvpData_[i]->WorldInverseTranspose = Math::MakeIdentity4x4();
+        previewWvpData_[i]->WVP = engine::Math::MakeIdentity4x4();
+        previewWvpData_[i]->world = engine::Math::MakeIdentity4x4();
+        previewWvpData_[i]->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
 
         if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGPU), previewCameraResources_[i], previewCameraData_[i], "PreviewCamera")) {
             common_ = nullptr;
@@ -238,9 +167,9 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         return;
     }
     materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    materialData_->color = ColorSpace::AuthoringToWorking(materialColor_);
+    materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
     materialData_->enableLighting = 1;
-    materialData_->uvTransform = Math::MakeIdentity4x4();
+    materialData_->uvTransform = engine::Math::MakeIdentity4x4();
     materialData_->selectedLighting = 2;
     materialData_->shininess = 20.0f;
     materialData_->materialType = 0;
@@ -262,9 +191,9 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
-    shadowWvpData_->WVP = Math::MakeIdentity4x4();
-    shadowWvpData_->world = Math::MakeIdentity4x4();
-    shadowWvpData_->WorldInverseTranspose = Math::MakeIdentity4x4();
+    shadowWvpData_->WVP = engine::Math::MakeIdentity4x4();
+    shadowWvpData_->world = engine::Math::MakeIdentity4x4();
+    shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
 
     if (!CreateMappedBuffer(dxCommon, sizeof(LocalFogData), localFogResource_, localFogData_, "LocalFog")) {
         common_ = nullptr;
@@ -299,8 +228,8 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->waterLightDirection = { -0.35f, -0.82f, 0.45f };
     waterParamData_->waterLightIntensity = 1.0f;
     waterParamData_->waterLightColor = { 1.0f, 0.96f, 0.88f };
-    waterParamData_->waterParamPadding1 = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
-    waterParamData_->waterInverseViewProjection = Math::MakeIdentity4x4();
+    waterParamData_->waterParamPadding1 = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
+    waterParamData_->waterInverseViewProjection = engine::Math::MakeIdentity4x4();
     waterParamData_->waterDebugView = 0.0f;
     for (float& padding : waterParamData_->waterDebugPadding) padding = 0.0f;
     for (int i = 0; i < kPreviewBufferCount; ++i) {
@@ -311,7 +240,6 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         }
         *previewWaterData_[i] = *waterParamData_;
     }
-    EnsureBakedShaderTexturesLoaded();
     
 }
 
@@ -321,14 +249,14 @@ bool MeshRenderer::HasRequiredBuffers() const {
         materialResource_ && materialData_;
 }
 
-void MeshRenderer::SetVisualTransform(const Vector3& scale, const Vector3& rotation, const Vector3& offset) {
+void MeshRenderer::SetVisualTransform(const engine::Vector3& scale, const engine::Vector3& rotation, const engine::Vector3& offset) {
     visualScale_ = scale;
     visualRotation_ = rotation;
     visualOffset_ = offset;
     worldInverseTransposeCacheValid_ = false;
 }
 
-void MeshRenderer::SetVisualShear(const Vector3& horizontalShear, float pivotY) {
+void MeshRenderer::SetVisualShear(const engine::Vector3& horizontalShear, float pivotY) {
     visualShear_ = { horizontalShear.x, 0.0f, horizontalShear.z };
     visualShearPivotY_ = pivotY;
     worldInverseTransposeCacheValid_ = false;
@@ -339,44 +267,47 @@ void MeshRenderer::ResetVisualTransform() {
     SetVisualShear({ 0.0f, 0.0f, 0.0f }, 0.0f);
 }
 
-Matrix4x4 MeshRenderer::BuildRenderWorldMatrix() const {
+engine::Matrix4x4 MeshRenderer::BuildRenderWorldMatrix() const {
+    // 表示専用の傾きと姿勢をローカルで合成してから、通常のワールド変換へ重ねる。
     if (!transform_) {
-        return Math::MakeIdentity4x4();
+        return engine::Math::MakeIdentity4x4();
     }
 
-    Matrix4x4 shearLocal = Math::MakeIdentity4x4();
+    engine::Matrix4x4 shearLocal = engine::Math::MakeIdentity4x4();
     shearLocal.m[1][0] = visualShear_.x;
     shearLocal.m[1][2] = visualShear_.z;
     shearLocal.m[3][0] = -visualShearPivotY_ * visualShear_.x;
     shearLocal.m[3][2] = -visualShearPivotY_ * visualShear_.z;
 
-    const Matrix4x4 visualAffine = Math::MakeAffineMatrix(visualScale_, visualRotation_, visualOffset_);
-    Matrix4x4 visualLocal = Math::Multiply(shearLocal, visualAffine);
-    if (const auto timelinePose = timelineVisualPose_.lock()) visualLocal = Math::Multiply(*timelinePose, visualLocal);
-    return Math::Multiply(visualLocal, transform_->matWorld);
+    const engine::Matrix4x4 visualAffine = engine::Math::MakeAffineMatrix(visualScale_, visualRotation_, visualOffset_);
+    engine::Matrix4x4 visualLocal = engine::Math::Multiply(shearLocal, visualAffine);
+    if (const auto timelinePose = timelineVisualPose_.lock()) visualLocal = engine::Math::Multiply(*timelinePose, visualLocal);
+    return engine::Math::Multiply(visualLocal, transform_->matWorld);
 }
 
-const Matrix4x4& MeshRenderer::GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix) {
+const engine::Matrix4x4& MeshRenderer::GetCachedWorldInverseTranspose(const engine::Matrix4x4& worldMatrix) {
+    // 法線変換行列はワールド行列が変わったフレームだけ計算し直す。
     if (!worldInverseTransposeCacheValid_ ||
-        std::memcmp(&cachedWorldMatrix_, &worldMatrix, sizeof(Matrix4x4)) != 0) {
+        std::memcmp(&cachedWorldMatrix_, &worldMatrix, sizeof(engine::Matrix4x4)) != 0) {
         cachedWorldMatrix_ = worldMatrix;
-        cachedWorldInverseTranspose_ = Math::Transpose(Math::Inverse(worldMatrix));
+        cachedWorldInverseTranspose_ = engine::Math::Transpose(engine::Math::Inverse(worldMatrix));
         worldInverseTransposeCacheValid_ = true;
     }
     return cachedWorldInverseTranspose_;
 }
 
 void MeshRenderer::RefreshCameraDependentData() {
+    // カメラ切り替え後はWVPだけでなく、水面・霧の逆ViewProjectionも同じ視点へ揃える。
     if (!common_ || !HasRequiredBuffers() || !shadowWvpData_ || !localFogData_ || !waterParamData_ || !transform_) {
         return;
     }
 
-    Math math;
+    engine::Math math;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (camera) {
-        const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
-        const Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
+        const engine::Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
+        const engine::Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
 
         wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
         wvpData_->world = worldMatrix;
@@ -387,20 +318,21 @@ void MeshRenderer::RefreshCameraDependentData() {
         localFogData_->cameraPos = camera->GetEye();
         localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
     } else {
-        wvpData_->WVP = Math::MakeIdentity4x4();
-        wvpData_->world = Math::MakeIdentity4x4();
+        wvpData_->WVP = engine::Math::MakeIdentity4x4();
+        wvpData_->world = engine::Math::MakeIdentity4x4();
     }
 
     if (isUIPreview_) {
-        shadowWvpData_->WVP = Math::MakeIdentity4x4();
-        shadowWvpData_->world = Math::MakeIdentity4x4();
-        shadowWvpData_->WorldInverseTranspose = Math::MakeIdentity4x4();
+        // UIプレビューにはワールド影を投影しない。
+        shadowWvpData_->WVP = engine::Math::MakeIdentity4x4();
+        shadowWvpData_->world = engine::Math::MakeIdentity4x4();
+        shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
         return;
     }
 
-    const Matrix4x4& lightVP =
+    const engine::Matrix4x4& lightVP =
         LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
-    const Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
+    const engine::Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
     shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
     shadowWvpData_->world = shadowWorld;
     shadowWvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
@@ -424,7 +356,7 @@ void MeshRenderer::Update() {
         if (materialData_->materialType != 30 && materialData_->materialType != 31) {
             materialData_->time = time_;
         }
-        materialData_->color = ColorSpace::AuthoringToWorking(materialColor_);
+        materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
     }
     UpdateUvTransform();
 
@@ -437,8 +369,8 @@ void MeshRenderer::Update() {
         }
 
         auto& sun = LightManager::GetInstance()->GetDirectionalLight();
-        waterParamData_->waterParamPadding1 = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
-        const Vector4 sunColor = ColorSpace::AuthoringToWorking(sun.color);
+        waterParamData_->waterParamPadding1 = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
+        const engine::Vector4 sunColor = engine::ColorSpace::AuthoringToWorking(sun.color);
         waterParamData_->waterLightDirection = sun.direction;
         waterParamData_->waterLightIntensity = sun.intensity;
         waterParamData_->waterLightColor = { sunColor.x, sunColor.y, sunColor.z };
@@ -449,7 +381,7 @@ void MeshRenderer::Update() {
         localFogData_->lightDirection = sun.direction;
 
         // 光の色に「輝度(intensity)」を掛け合わせて、より強い光にする
-        const Vector4 sunColor = ColorSpace::AuthoringToWorking(sun.color);
+        const engine::Vector4 sunColor = engine::ColorSpace::AuthoringToWorking(sun.color);
         localFogData_->lightColor = {
             sunColor.x * sun.intensity,
             sunColor.y * sun.intensity,
@@ -459,14 +391,14 @@ void MeshRenderer::Update() {
     }
     // Transformの計算結果 (matWorld) をGPUに転送する
     if (wvpData_ && transform_) {
-        Math math;
+        engine::Math math;
         Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
         if (camera) {
-            const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
+            const engine::Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
 
             // Transform側ですでに計算されたワールド行列を使う
-            const Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
+            const engine::Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
 
             wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
             wvpData_->world = worldMatrix;
@@ -479,22 +411,22 @@ void MeshRenderer::Update() {
             localFogData_->cameraPos = camera->GetEye();
             localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
         } else {
-            wvpData_->WVP = Math::MakeIdentity4x4();
-            wvpData_->world = Math::MakeIdentity4x4();
+            wvpData_->WVP = engine::Math::MakeIdentity4x4();
+            wvpData_->world = engine::Math::MakeIdentity4x4();
         }
         if (isUIPreview_) {
             if (shadowWvpData_) {
                 // 影マップの影響を受けないように、行列を初期化しておく
-                shadowWvpData_->WVP = Math::MakeIdentity4x4();
-                shadowWvpData_->world = Math::MakeIdentity4x4();
-                shadowWvpData_->WorldInverseTranspose = Math::MakeIdentity4x4();
+                shadowWvpData_->WVP = engine::Math::MakeIdentity4x4();
+                shadowWvpData_->world = engine::Math::MakeIdentity4x4();
+                shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
             }
             return; 
         }
         if (shadowWvpData_ && transform_) {
-            const Matrix4x4& lightVP =
+            const engine::Matrix4x4& lightVP =
                 LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
-            const Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
+            const engine::Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
             shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
             shadowWvpData_->world = shadowWorld;
             shadowWvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);

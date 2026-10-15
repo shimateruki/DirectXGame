@@ -9,12 +9,15 @@
 #include <algorithm>
 #include <atomic>
 
+namespace engine {
+
 namespace {
 std::atomic<uint64_t> gNextSpriteReplayId{ 0x8000000000000001ull };
 
-Matrix4x4 MakeSpriteLocalMatrix(const Sprite* sprite) {
-	Math math;
-	Vector2 position = sprite ? sprite->GetPosition() : Vector2{ 0.0f, 0.0f };
+engine::Matrix4x4 MakeSpriteLocalMatrix(const Sprite* sprite) {
+	// Sprite未指定時も親子行列の計算に使える単位姿勢を返す。
+	engine::Math math;
+	engine::Vector2 position = sprite ? sprite->GetPosition() : engine::Vector2{ 0.0f, 0.0f };
 	float rotation = sprite ? sprite->GetRotation() : 0.0f;
 	return math.MakeAffineMatrix(
 		{ 1.0f, 1.0f, 1.0f },
@@ -22,10 +25,10 @@ Matrix4x4 MakeSpriteLocalMatrix(const Sprite* sprite) {
 		{ position.x, position.y, 0.0f });
 }
 
-Matrix4x4 MakeSpriteWorldMatrix(const Sprite* sprite) {
+engine::Matrix4x4 MakeSpriteWorldMatrix(const Sprite* sprite) {
 	// 親の行列を再帰的に掛け、子のローカル座標を描画時のワールド座標へ変換する。
-	Math math;
-	Matrix4x4 localMatrix = MakeSpriteLocalMatrix(sprite);
+	engine::Math math;
+	engine::Matrix4x4 localMatrix = MakeSpriteLocalMatrix(sprite);
 	Sprite* parent = sprite ? sprite->GetParent() : nullptr;
 	if (!parent) {
 		return localMatrix;
@@ -33,6 +36,7 @@ Matrix4x4 MakeSpriteWorldMatrix(const Sprite* sprite) {
 	return math.Multiply(localMatrix, MakeSpriteWorldMatrix(parent));
 }
 
+// 親Spriteの連鎖に指定対象が含まれるか確認し、親子循環を防ぎます。
 bool HasParentInChain(Sprite* sprite, const Sprite* parent) {
 	for (Sprite* current = sprite; current != nullptr; current = current->GetParent()) {
 		if (current == parent) {
@@ -42,6 +46,7 @@ bool HasParentInChain(Sprite* sprite, const Sprite* parent) {
 	return false;
 }
 
+// テクスチャ未指定時は白DDS、取得できなければ白PNGのハンドルを返します。
 uint32_t ResolveSpriteTextureHandle(uint32_t textureHandle) {
 	if (textureHandle != 0) {
 		return textureHandle;
@@ -71,7 +76,7 @@ Sprite::~Sprite() {
 /// <summary>
 /// 初期化 (ファイルパス指定)
 /// </summary>
-void Sprite::Initialize(SpriteCommon* common, const std::string& textureFilePath) {
+void Sprite::Initialize(engine::SpriteCommon* common, const std::string& textureFilePath) {
 	uint32_t handle = TextureManager::GetInstance()->Load(textureFilePath);
 	Initialize(common, handle);
 }
@@ -79,7 +84,7 @@ void Sprite::Initialize(SpriteCommon* common, const std::string& textureFilePath
 /// <summary>
 /// 初期化 (テクスチャハンドル指定)
 /// </summary>
-void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
+void Sprite::Initialize(engine::SpriteCommon* common, uint32_t textureHandle) {
 	assert(common);
 	common_ = common;
 	dxCommon_ = common_->GetDxCommon();
@@ -111,14 +116,14 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 	// 頂点位置と別に、階層変換・投影とマテリアル色をGPUへ渡す。
 	wvpResource_ = dxCommon_->CreateBufferResource(sizeof(TransformationMatrix));
 	wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
-	Math math;
+	engine::Math math;
 	wvpData_->WVP = math.MakeIdentity4x4();
 	wvpData_->World = math.MakeIdentity4x4();
 
 	materialResource_ = dxCommon_->CreateBufferResource(sizeof(Material));
 	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
 	color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-	materialData_->color = ColorSpace::AuthoringToWorking(color_);
+	materialData_->color = engine::ColorSpace::AuthoringToWorking(color_);
 	materialData_->emissive = 1.0f;
 }
 
@@ -128,7 +133,7 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 void Sprite::Update() {
 	// 編集用の色を作業色空間へ変換してからGPUデータへ反映する。
 	if (materialData_) {
-		materialData_->color = ColorSpace::AuthoringToWorking(color_);
+		materialData_->color = engine::ColorSpace::AuthoringToWorking(color_);
 	}
 	// 横一列のスプライトシートを想定し、現在フレームのUV範囲を更新する。
 	if (isPlaying_) {
@@ -198,11 +203,11 @@ void Sprite::Update() {
 	}
 
 	// 親子変換を含むワールド行列へ画面の正射影を掛ける。
-	Math math;
-	Matrix4x4 worldMatrix = MakeSpriteWorldMatrix(this);
-	Matrix4x4 viewMatrix = math.MakeIdentity4x4();
-	Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 100.0f);
-	Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
+	engine::Math math;
+	engine::Matrix4x4 worldMatrix = MakeSpriteWorldMatrix(this);
+	engine::Matrix4x4 viewMatrix = math.MakeIdentity4x4();
+	engine::Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 100.0f);
+	engine::Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
 
 	wvpData_->WVP = worldViewProjectionMatrix;
 	wvpData_->World = worldMatrix;
@@ -210,10 +215,10 @@ void Sprite::Update() {
 	materialData_->uvTransform = math.MakeIdentity4x4();
 }
 
-void Sprite::SetColor(const Vector4& color) {
+void Sprite::SetColor(const engine::Vector4& color) {
 	color_ = color;
 	if (materialData_) {
-		materialData_->color = ColorSpace::AuthoringToWorking(color_);
+		materialData_->color = engine::ColorSpace::AuthoringToWorking(color_);
 	}
 }
 
@@ -237,13 +242,14 @@ void Sprite::Draw() {
 	commandList->SetGraphicsRootConstantBufferView(1, materialResource_->GetGPUVirtualAddress());
 	SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle_);
 	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-	RenderStats::GetInstance()->RecordIndexedDraw(6);
+	engine::RenderStats::GetInstance()->RecordIndexedDraw(6);
 }
 
 /// <summary>
 /// テクスチャサイズに合わせてスプライトのサイズを調整する
 /// </summary>
 void Sprite::AdjustTextureSize() {
+	// 未設定のテクスチャでも後続のUV計算がゼロ除算にならない寸法を保持する。
 	if (textureHandle_ == 0) {
 		size_ = { 1.0f, 1.0f };
 		textureSize_ = { 1.0f, 1.0f };
@@ -258,9 +264,17 @@ void Sprite::AdjustTextureSize() {
 /// テクスチャ読み込みの静的ラッパー関数 (ファイルパス省略版)
 /// </summary>
 uint32_t Sprite::LoadTexture(const std::string& fileName) {
-	const std::string baseDirectory = "Resources/sprite/";
-	const std::string fullPath = baseDirectory + fileName;
-	return TextureManager::GetInstance()->Load(fullPath);
+	return TextureManager::GetInstance()->Load(ResolveTexturePath(fileName));
+}
+
+std::string Sprite::ResolveTexturePath(const std::string& fileName) {
+	// 配置JSONはSpriteディレクトリ相対、実行時コードはResourcesからのパスも許容する。
+	std::string path = fileName;
+	std::replace(path.begin(), path.end(), '\\', '/');
+	while (path.rfind("./", 0) == 0) {
+		path.erase(0, 2);
+	}
+	return path.rfind("Resources/", 0) == 0 ? path : "Resources/sprite/" + path;
 }
 
 
@@ -385,7 +399,7 @@ void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {
 	}
 
 	// 親変更前の表示位置を保存し、必要なら新しい親のローカル座標へ換算する。
-	Vector2 worldPosition = GetWorldPosition();
+	engine::Vector2 worldPosition = GetWorldPosition();
 
 	if (parent_) {
 		auto& siblings = parent_->children_;
@@ -403,10 +417,10 @@ void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {
 
 	if (keepWorldPosition) {
 		if (parent_) {
-			Math math;
-			Matrix4x4 parentWorld = MakeSpriteWorldMatrix(parent_);
-			Matrix4x4 inverseParent = math.Inverse(parentWorld);
-			Vector3 local = math.Transform({ worldPosition.x, worldPosition.y, 0.0f }, inverseParent);
+			engine::Math math;
+			engine::Matrix4x4 parentWorld = MakeSpriteWorldMatrix(parent_);
+			engine::Matrix4x4 inverseParent = math.Inverse(parentWorld);
+			engine::Vector3 local = math.Transform({ worldPosition.x, worldPosition.y, 0.0f }, inverseParent);
 			position_ = { local.x, local.y };
 		} else {
 			position_ = worldPosition;
@@ -414,8 +428,10 @@ void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {
 	}
 }
 
-Vector2 Sprite::GetWorldPosition() const {
-	Math math;
-	Vector3 world = math.Transform({ 0.0f, 0.0f, 0.0f }, MakeSpriteWorldMatrix(this));
+engine::Vector2 Sprite::GetWorldPosition() const {
+	engine::Math math;
+	engine::Vector3 world = math.Transform({ 0.0f, 0.0f, 0.0f }, MakeSpriteWorldMatrix(this));
 	return { world.x, world.y };
 }
+
+} // namespace engine

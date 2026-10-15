@@ -65,7 +65,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			}
 
             if (spriteDebugEditor_ && canEditViewport && !attackPlacement && EditorToolSettings::Get().IsVisible("spriteGuides")) {
-				const Vector2 spriteLocalPos = {
+				const engine::Vector2 spriteLocalPos = {
 					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::kClientWidth) / area.width),
 					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::kClientHeight) / area.height),
 				};
@@ -76,7 +76,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			if (canEditViewport) {
 				DrawGhostPreview(false, area);
 				Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
-				Object3d* selectedObject = debugEditor_ && !attackPlacement ? debugEditor_->GetSelectedObject() : nullptr;
+				engine::Object3d* selectedObject = debugEditor_ && !attackPlacement ? debugEditor_->GetSelectedObject() : nullptr;
 				if (!IsObjectInCurrentScene(sceneManager, selectedObject)) {
 					selectedObject = nullptr;
 				}
@@ -112,9 +112,10 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 
 // 選択中のCamera Objectが実際に描画する画面を、通常のEditorウィンドウとして表示する。
 void DrawCameraObjectPreviewWindow() {
+    // シーンカメラが選択され、プレビュー用の描画先がある間だけ専用ウィンドウを出す。
     if (!EditorToolSettings::Get().IsVisible("sceneCameraPreview")) return;
 	CameraEditor* cameraEditor = CameraEditor::GetInstance();
-	Object3d* cameraObject = cameraEditor ? cameraEditor->GetSelectedCameraObject() : nullptr;
+	engine::Object3d* cameraObject = cameraEditor ? cameraEditor->GetSelectedCameraObject() : nullptr;
 	if (!cameraObject || !cameraEditor->HasSceneCameraPreviewTarget()) {
 		return;
 	}
@@ -141,6 +142,7 @@ void DrawCameraObjectPreviewWindow() {
 			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
 			const ImVec2 canvasSize = ImGui::GetContentRegionAvail();
 			if (canvasSize.x > 1.0f && canvasSize.y > 1.0f) {
+				// 描画結果の16:9比率を保ち、余白はキャンバス中央へ均等に置く。
 				constexpr float kAspect = 16.0f / 9.0f;
 				float previewWidth = canvasSize.x;
 				float previewHeight = previewWidth / kAspect;
@@ -173,6 +175,7 @@ void DrawCameraObjectPreviewWindow() {
 }
 
 void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area) {
+	// ドロップ座標はImGuiの画面座標なので、Sprite配置時だけゲームの設計解像度へ戻す。
 	if (!ImGui::BeginDragDropTarget()) {
 		return;
 	}
@@ -181,16 +184,16 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 		const char* droppedFilename = static_cast<const char*>(payload->Data);
 		if (sceneManager && droppedFilename) {
 			if (BaseScene* currentScene = sceneManager->GetCurrentScene()) {
-				SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
+				engine::SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
 
 				ImVec2 mousePos = ImGui::GetIO().MousePos;
-				Vector2 dropPos = {
+				engine::Vector2 dropPos = {
 					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::kClientWidth) / area.width),
 					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::kClientHeight) / area.height),
 				};
 
 				std::string fullPath = "Resources/sprite/" + std::string(droppedFilename);
-				auto newSprite = std::make_unique<Sprite>();
+				auto newSprite = std::make_unique<engine::Sprite>();
 				uint32_t handle = TextureManager::GetInstance()->Load(fullPath);
 
 				newSprite->Initialize(spriteCommon, handle);
@@ -198,7 +201,7 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 				newSprite->SetTextureName(droppedFilename);
 				newSprite->SetPosition(dropPos);
 
-				Sprite* addedSprite = currentScene->AddSprite(std::move(newSprite));
+				engine::Sprite* addedSprite = currentScene->AddSprite(std::move(newSprite));
 
 				if (spriteDebugEditor_) {
 					spriteDebugEditor_->SetSelectedSprite(addedSprite);
@@ -209,6 +212,7 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 	}
 
 	if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+		// 3D素材はEditor側のレイキャスト配置へ渡し、Spriteとは別経路で位置を決める。
 		const std::string droppedModelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
 		if (debugEditor_ && !droppedModelName.empty()) {
 			ImVec2 mousePos = ImGui::GetIO().MousePos;
@@ -218,6 +222,7 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 	}
 
 	if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+		// 複数Objectを持つプリセットはルート位置をEditor側で決めてから一括生成する。
 		const char* droppedPresetName = static_cast<const char*>(payload->Data);
 		if (debugEditor_ && droppedPresetName) {
 			ImVec2 mousePos = ImGui::GetIO().MousePos;
@@ -259,11 +264,11 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 	if (ghostRecorder_ && EditorManager::GetInstance()->GetSelectedObject() == ghostRecorder_.get()) {
 		ghostRecorder_->DrawPreview(
 			camera->GetViewProjectionMatrix(),
-			Vector2{ area.screenX, area.screenY },
-			Vector2{ area.width, area.height });
+			engine::Vector2{ area.screenX, area.screenY },
+			engine::Vector2{ area.width, area.height });
 	}
 	if (debugEditor_) {
-		Object3d* selectedObject = debugEditor_->GetSelectedObject();
+		engine::Object3d* selectedObject = debugEditor_->GetSelectedObject();
 		SceneManager* editorSceneManager = debugEditor_->GetSceneManager();
 		if (selectedObject && !IsObjectInCurrentScene(editorSceneManager, selectedObject)) {
 			debugEditor_->SetSelectedObject(nullptr);
@@ -279,8 +284,8 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 				if (!object->recorder_->HasPreviewData()) continue;
 				object->recorder_->DrawPreview(
 					camera->GetViewProjectionMatrix(),
-					Vector2{ area.screenX, area.screenY },
-					Vector2{ area.width, area.height }, true);
+					engine::Vector2{ area.screenX, area.screenY },
+					engine::Vector2{ area.width, area.height }, true);
 			}
 		}
 		// Path未割当でも、選択中のObjectで編集中の経路は表示する。
@@ -289,8 +294,8 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 			if (selectedObject->recorder_->HasPreviewData()) {
 				selectedObject->recorder_->DrawPreview(
 					camera->GetViewProjectionMatrix(),
-					Vector2{ area.screenX, area.screenY },
-					Vector2{ area.width, area.height }, true);
+					engine::Vector2{ area.screenX, area.screenY },
+					engine::Vector2{ area.width, area.height }, true);
 			}
 		}
 	}
@@ -298,8 +303,8 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 	if (ghostDirector_ && EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_.get()) {
 		ghostDirector_->DrawPreview(
 			camera->GetViewProjectionMatrix(),
-			Vector2{ area.screenX, area.screenY },
-			Vector2{ area.width, area.height });
+			engine::Vector2{ area.screenX, area.screenY },
+			engine::Vector2{ area.width, area.height });
 	}
 }
 

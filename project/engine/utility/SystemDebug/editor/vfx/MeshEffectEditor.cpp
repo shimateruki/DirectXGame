@@ -13,6 +13,7 @@
 #include <MeshEffectManager.h>
 #include "EffectPreviewStage.h"
 #include "EditorManager.h"
+#include "VFXAssetPicker.h"
 
 using json = nlohmann::json;
 static const char* kEasingNames[] = {
@@ -52,6 +53,7 @@ void MeshEffectEditor::RefreshTextureList() {
 
         textureFileList_.push_back(std::filesystem::relative(entry.path(), path).generic_string());
     }
+    std::sort(textureFileList_.begin(), textureFileList_.end());
 
     // currentTextureIndex_ の安全対策
     if (textureFileList_.empty()) {
@@ -86,6 +88,7 @@ void MeshEffectEditor::RefreshJsonFileList() {
             jsonFileList_.push_back(entry.path().filename().string());
         }
     }
+    std::sort(jsonFileList_.begin(), jsonFileList_.end());
 
     currentJsonIndex_ = -1; // 初期状態は未選択（新規作成）
 }
@@ -186,19 +189,19 @@ void MeshEffectEditor::Update(float deltaTime) {
         }
     }
 
-    Vector3 basePos = usePreviewStage ? previewStage->GetPreviewPosition() : editPosition_;
+    engine::Vector3 basePos = usePreviewStage ? previewStage->GetPreviewPosition() : editPosition_;
     if (usePreviewStage) {
         basePos.x += editPosition_.x;
         basePos.y += editPosition_.y;
         basePos.z += editPosition_.z;
     }
-    Vector3 baseRot = editRotation_;
+    engine::Vector3 baseRot = editRotation_;
     float targetWorldY = 0.0f;
     if (targetObject_) {
-        Vector3 targetPos = targetObject_->GetWorldPosition();
+        engine::Vector3 targetPos = targetObject_->GetWorldPosition();
 
         // ターゲットのボーン構造を無視し、ルートノードの向きを優先
-        Object3d* rootObj = targetObject_;
+        engine::Object3d* rootObj = targetObject_;
         while (rootObj && rootObj->GetParent()) {
             rootObj = rootObj->GetParent(); // 一番上の親（プレイヤー本体など）まで遡る
         }
@@ -209,7 +212,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         // 位置のオフセット計算（sin/cosを使う元の計算が一番安全）
         float s = sinf(targetWorldY);
         float c = cosf(targetWorldY);
-        Vector3 rotatedOffset;
+        engine::Vector3 rotatedOffset;
         rotatedOffset.x = editPosition_.x * c + editPosition_.z * s;
         rotatedOffset.y = editPosition_.y;
         rotatedOffset.z = -editPosition_.x * s + editPosition_.z * c;
@@ -232,7 +235,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         forcePlayRequest_ = false; // フラグを消化
     }
 
-    Vector3 localZ;
+    engine::Vector3 localZ;
     localZ.x = sinf(baseRot.y) * cosf(baseRot.x);
     localZ.y = -sinf(baseRot.x);
     localZ.z = cosf(baseRot.y) * cosf(baseRot.x);
@@ -284,8 +287,8 @@ void MeshEffectEditor::Update(float deltaTime) {
         if (useNoise) fx->SetNoiseTexture(TextureManager::GetInstance()->Load(editNoiseTexturePath_));
         if (useRamp) fx->SetRampTexture(TextureManager::GetInstance()->Load(editRampTexturePath_));
 
-        Vector3 finalPos = basePos;
-        Vector3 finalRot = baseRot;
+        engine::Vector3 finalPos = basePos;
+        engine::Vector3 finalRot = baseRot;
 
         if (editVolumeMode_ == 1 && i == 1) {
             finalRot.x += 1.570796f;
@@ -309,8 +312,8 @@ void MeshEffectEditor::Update(float deltaTime) {
         const float currentTime = previewEffect_ ?
             std::clamp(previewEffect_->GetCurrentTime(), 0.0f, duration) : 0.0f;
         std::vector<EffectPreviewStage::TimelineEvent> events;
-        events.push_back({ "Scale / color", 0.0f, duration, Vector4{ 0.9f, 0.45f, 1.0f, 1.0f } });
-        events.push_back({ "Reveal", 0.0f, duration, Vector4{ 0.35f, 0.8f, 1.0f, 1.0f } });
+        events.push_back({ "Scale / color", 0.0f, duration, engine::Vector4{ 0.9f, 0.45f, 1.0f, 1.0f } });
+        events.push_back({ "Reveal", 0.0f, duration, engine::Vector4{ 0.35f, 0.8f, 1.0f, 1.0f } });
         previewStage->ReportToolState(
             EffectPreviewStage::ToolKind::MeshEffect,
             "Mesh Effect",
@@ -550,43 +553,30 @@ void MeshEffectEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_CUBES " リソース設定 (Resources)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         // --- 共通のテクスチャ選択ヘルパー (ラムダ式) ---
-        auto TextureCombo = [&](const char* label, int& currentIndex, char* targetPath, auto callback) {
-            const char* previewName = (currentIndex >= 0 && currentIndex < (int)textureFileList_.size())
-                ? textureFileList_[currentIndex].c_str() : "なし (None)";
-
-            if (ImGui::BeginCombo(label, previewName)) {
-                // 「なし」の選択
-                if (ImGui::Selectable("なし (None)", currentIndex == -1)) {
-                    currentIndex = -1;
-                    targetPath[0] = '\0';
-                    callback("");
-                }
-                // リストから選択
-                for (int i = 0; i < (int)textureFileList_.size(); ++i) {
-                    if (ImGui::Selectable(textureFileList_[i].c_str(), currentIndex == i)) {
-                        currentIndex = i;
-                        std::string fullPath = "Resources/sprite/" + textureFileList_[i];
-                        strncpy_s(targetPath, 256, fullPath.c_str(), _TRUNCATE);
-                        callback(fullPath);
-                    }
-                }
-                ImGui::EndCombo();
+        auto TextureCombo = [&](const char* label, int& currentIndex, char* targetPath,
+                                char* query, auto callback) {
+            if (VFXAssetPicker::DrawCombo(label, textureFileList_, currentIndex,
+                                          query, 128, "なし (None)", true)) {
+                const std::string fullPath = currentIndex >= 0
+                    ? "Resources/sprite/" + textureFileList_[currentIndex] : "";
+                strncpy_s(targetPath, 256, fullPath.c_str(), _TRUNCATE);
+                callback(fullPath);
             }
-            };
+        };
 
         // --- メッシュ選択 (UI修正) ---
         if (editProceduralType_ == 0) {
             std::vector<std::string> modelNames = ModelManager::GetInstance()->GetAvailableModelNames();
-            if (ImGui::BeginCombo(ICON_FA_CUBE " メッシュ選択", editModelName_)) {
-                for (const auto& name : modelNames) {
-                    bool isSelected = (name == editModelName_);
-                    if (ImGui::Selectable(name.c_str(), isSelected)) {
-                        strncpy_s(editModelName_, name.c_str(), sizeof(editModelName_) - 1);
-                        previewEffect_->SetModel(editModelName_);
-                    }
-                }
-                ImGui::EndCombo();
+            int selectedModel = -1;
+            for (int i = 0; i < static_cast<int>(modelNames.size()); ++i) {
+                if (modelNames[i] == editModelName_) { selectedModel = i; break; }
             }
+            if (VFXAssetPicker::DrawCombo(ICON_FA_CUBE " メッシュ選択", modelNames,
+                                          selectedModel, modelSearch_, sizeof(modelSearch_))) {
+                strcpy_s(editModelName_, sizeof(editModelName_), modelNames[selectedModel].c_str());
+                previewEffect_->SetModel(editModelName_);
+            }
+            if (selectedModel < 0) ImGui::TextDisabled("現在のモデル: %s", editModelName_);
         }
         else {
             // プロシージャル使用時は無効化されていることを明記する
@@ -595,7 +585,7 @@ void MeshEffectEditor::DrawImGui() {
         }
 
         // --- ① メインテクスチャ (t0) ---
-        TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
+        TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, textureSearch_[0], [&](const std::string& path) {
             if (auto renderer = previewEffect_->GetMeshRenderer()) {
                 renderer->SetTexture(path);
             }
@@ -607,7 +597,7 @@ void MeshEffectEditor::DrawImGui() {
         // --- ② ノイズテクスチャ (t2) ---
 
         if (editProceduralType_ != 1) {
-            TextureCombo(ICON_FA_WIND " ノイズテクスチャ", currentNoiseTextureIndex_, editNoiseTexturePath_, [&](const std::string& path) {
+            TextureCombo(ICON_FA_WIND " ノイズテクスチャ", currentNoiseTextureIndex_, editNoiseTexturePath_, textureSearch_[1], [&](const std::string& path) {
                 uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
                 previewEffect_->SetNoiseTexture(handle);
                 });
@@ -618,7 +608,7 @@ void MeshEffectEditor::DrawImGui() {
         }
 
         // --- ③ カラーランプ (t3) ---
-        TextureCombo(ICON_FA_PALETTE " カラーランプ", currentRampTextureIndex_, editRampTexturePath_, [&](const std::string& path) {
+        TextureCombo(ICON_FA_PALETTE " カラーランプ", currentRampTextureIndex_, editRampTexturePath_, textureSearch_[2], [&](const std::string& path) {
             uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
             previewEffect_->SetRampTexture(handle);
             });
@@ -706,7 +696,7 @@ void MeshEffectEditor::DrawImGui() {
             // =======================================================
             //  現在の設定を取り出して、正しく上書きする！
             // =======================================================
-            Object3d::ColliderConfig cConfig = previewEffect_->GetColliderConfig();
+            engine::Object3d::ColliderConfig cConfig = previewEffect_->GetColliderConfig();
             cConfig.type = cType; // ここで確実に Sphere や Cylinder をセット！
             cConfig.size = previewEffect_->editCollisionSize_;
             cConfig.center = previewEffect_->editCollisionOffset_;
@@ -726,31 +716,20 @@ void MeshEffectEditor::DrawImGui() {
        // ==========================================
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        // ：既存ファイルのプルダウン選択
-        const char* previewValue = (currentJsonIndex_ >= 0 && currentJsonIndex_ < (int)jsonFileList_.size())
-            ? jsonFileList_[currentJsonIndex_].c_str() : "新規作成 (New File)";
-
-        if (ImGui::BeginCombo(ICON_FA_FILE_ALT " 既存ファイル", previewValue)) {
-            // 「新規作成」を選ぶと入力欄をクリアする
-            if (ImGui::Selectable("新規作成 (New File)", currentJsonIndex_ == -1)) {
-                currentJsonIndex_ = -1;
-                saveFileName_[0] = '\0'; // ファイル名を空にする
-            }
-
-            // 既存ファイル一覧
-            for (int i = 0; i < (int)jsonFileList_.size(); ++i) {
-                if (ImGui::Selectable(jsonFileList_[i].c_str(), currentJsonIndex_ == i)) {
-                    currentJsonIndex_ = i;
-                    // 選択したファイル名をテキスト入力欄に自動でコピー
-                    strncpy_s(saveFileName_, jsonFileList_[i].c_str(), sizeof(saveFileName_) - 1);
-                }
-            }
-            ImGui::EndCombo();
+        currentJsonIndex_ = -1;
+        for (int i = 0; i < static_cast<int>(jsonFileList_.size()); ++i) {
+            if (jsonFileList_[i] == saveFileName_) { currentJsonIndex_ = i; break; }
+        }
+        if (VFXAssetPicker::DrawCombo(ICON_FA_FILE_ALT " 保存済みメッシュ設定", jsonFileList_,
+                                      currentJsonIndex_, jsonSearch_, sizeof(jsonSearch_),
+                                      "新規作成", true)) {
+            if (currentJsonIndex_ < 0) saveFileName_[0] = '\0';
+            else strcpy_s(saveFileName_, sizeof(saveFileName_), jsonFileList_[currentJsonIndex_].c_str());
         }
 
         ImGui::Spacing();
 
-        // ここは今まで通り（プルダウンと連動して文字が入ります）
+        ImGui::TextDisabled("一覧選択はファイル名のみ変更します。反映には JSON 読込を押します。");
         ImGui::InputText("ファイル名", saveFileName_, sizeof(saveFileName_));
 
         float halfWidth = (availWidth - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
@@ -1052,11 +1031,11 @@ void MeshEffectEditor::LoadFromJson() {
             auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
             // シーン内を再帰的に探すヘルパー関数
-            std::function<Object3d* (Object3d*, const std::string&)> findObj = [&](Object3d* obj, const std::string& name) -> Object3d* {
+            std::function<engine::Object3d* (engine::Object3d*, const std::string&)> findObj = [&](engine::Object3d* obj, const std::string& name) -> engine::Object3d* {
                 if (!obj) return nullptr;
                 if (obj->GetName() == name) return obj;
                 for (auto* child : obj->GetChildren()) {
-                    Object3d* found = findObj(child, name);
+                    engine::Object3d* found = findObj(child, name);
                     if (found) return found;
                 }
                 return nullptr;
@@ -1097,6 +1076,7 @@ void MeshEffectEditor::LoadFromJson() {
 
 
 void MeshEffectEditor::SyncTextureIndices() {
+    // 保存済みパスの表記ゆれを吸収し、画像一覧の選択位置へ戻す。
     auto findIndex = [&](const std::string& path) -> int {
         if (path.empty()) return -1;
         for (int i = 0; i < (int)textureFileList_.size(); ++i) {

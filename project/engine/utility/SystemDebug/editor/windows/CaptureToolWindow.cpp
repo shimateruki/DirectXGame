@@ -50,6 +50,7 @@ std::string HresultToString(HRESULT hr) {
 }
 
 std::string WideToUtf8(const std::wstring& text) {
+    // Windows APIから得た文字列を画面やレポートで使うUTF-8へ変換する。
     if (text.empty()) {
         return {};
     }
@@ -69,6 +70,7 @@ std::string PathToUtf8(const fs::path& path) {
 }
 
 std::string MakeTimestamp() {
+    // 撮影ファイルを時刻順に並べられる固定幅のローカル時刻を作る。
     std::time_t now = std::time(nullptr);
     std::tm localTime{};
     localtime_s(&localTime, &now);
@@ -79,6 +81,7 @@ std::string MakeTimestamp() {
 }
 
 fs::path GetCaptureRoot() {
+    // プロジェクト直下から起動した場合は成果物を親階層へ分けて保存する。
     std::error_code ec;
     fs::path root = fs::current_path(ec);
     if (ec || root.empty()) {
@@ -90,7 +93,9 @@ fs::path GetCaptureRoot() {
     return root / "captures";
 }
 
+// 撮影矩形を全モニターを含む仮想画面の範囲へ収めます。
 RECT ClampRectToVirtualScreen(const RECT& source) {
+    // 複数モニターを含む仮想画面の外へ撮影矩形がはみ出さないようにする。
     RECT screen{
         GetSystemMetrics(SM_XVIRTUALSCREEN),
         GetSystemMetrics(SM_YVIRTUALSCREEN),
@@ -107,7 +112,9 @@ RECT ClampRectToVirtualScreen(const RECT& source) {
     return result;
 }
 
+// 動画エンコーダーに渡す矩形の幅・高さを偶数へ揃えます。
 RECT MakeEvenSizedRect(const RECT& source) {
+    // 動画エンコーダーに渡す幅と高さを偶数へ揃える。
     RECT result = source;
     int width = static_cast<int>(result.right - result.left);
     int height = static_cast<int>(result.bottom - result.top);
@@ -122,7 +129,9 @@ RECT MakeEvenSizedRect(const RECT& source) {
     return result;
 }
 
+// エンジンのメインウィンドウを優先して撮影対象のハンドルを取得します。
 HWND GetMainWindowHandle() {
+    // エンジンのメインウィンドウを優先し、取得前だけアクティブウィンドウへ後退する。
     DirectXCommon* dxCommon = DirectXCommon::GetInstance();
     if (dxCommon && dxCommon->GetWinApp()) {
         HWND hwnd = dxCommon->GetWinApp()->GetHwnd();
@@ -139,6 +148,7 @@ HWND GetMainWindowHandle() {
 }
 
 bool ResolveClientRect(RECT& outRect, std::string& errorMessage) {
+    // クライアント座標を画面座標へ変換し、ウィンドウ枠を撮影範囲に含めない。
     HWND hwnd = GetMainWindowHandle();
     if (!hwnd || !::IsWindow(hwnd)) {
         errorMessage = "メインウィンドウを取得できませんでした。";

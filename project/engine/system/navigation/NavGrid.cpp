@@ -21,14 +21,14 @@ struct OpenNodeGreater {
     }
 };
 
-float PlanarDistanceSquared(const Vector3& lhs, const Vector3& rhs) {
+float PlanarDistanceSquared(const engine::Vector3& lhs, const engine::Vector3& rhs) {
     // 経路探索は地面のXZ平面で行い、高さ差を距離に含めない。
     const float dx = lhs.x - rhs.x;
     const float dz = lhs.z - rhs.z;
     return dx * dx + dz * dz;
 }
 
-Vector3 NormalizePlanar(const Vector3& value) {
+engine::Vector3 NormalizePlanar(const engine::Vector3& value) {
     // 連続する経路点の向きをXZのみで比較し、縦方向のぶれを無視する。
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.000001f) return { 0.0f, 0.0f, 0.0f };
@@ -104,7 +104,7 @@ bool NavGrid::IsBlocked(int x, int z) const {
     return blocked_[static_cast<std::size_t>(ToIndex(x, z))] != 0;
 }
 
-Vector3 NavGrid::GetCellCenter(int x, int z) const {
+engine::Vector3 NavGrid::GetCellCenter(int x, int z) const {
     // セル番号をワールド座標へ戻し、Yには探索平面の高さを使う。
     return {
         settings_.boundsMin.x + static_cast<float>(x) * settings_.cellSize,
@@ -113,7 +113,7 @@ Vector3 NavGrid::GetCellCenter(int x, int z) const {
     };
 }
 
-bool NavGrid::WorldToCell(const Vector3& position, int& outX, int& outZ) const {
+bool NavGrid::WorldToCell(const engine::Vector3& position, int& outX, int& outZ) const {
     // 境界外の目標も最寄りセルへ寄せ、後続の配列参照を範囲内に保つ。
     if (!IsBuilt()) return false;
     outX = static_cast<int>(std::round((position.x - settings_.boundsMin.x) / settings_.cellSize));
@@ -147,7 +147,7 @@ bool NavGrid::FindNearestWalkable(int sourceX, int sourceZ, int& outX, int& outZ
     return false;
 }
 
-bool NavGrid::FindPath(const Vector3& start, const Vector3& goal, std::vector<Vector3>& outPath) const {
+bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal, std::vector<engine::Vector3>& outPath) const {
     // A*でセル列を求め、折れ点だけ残して移動用の経路へ変換する。
     outPath.clear();
     int startX = 0;
@@ -220,22 +220,22 @@ bool NavGrid::FindPath(const Vector3& start, const Vector3& goal, std::vector<Ve
     // 目標セルが元から通行可能なら、セル中心で止めず入力された XZ 位置まで伸ばします。
     if (exactGoalIsWalkable &&
         (outPath.empty() || PlanarDistanceSquared(outPath.back(), goal) > 0.0001f)) {
-        Vector3 exactGoal = goal;
+        engine::Vector3 exactGoal = goal;
         exactGoal.y = settings_.planeY;
         outPath.push_back(exactGoal);
     }
     return true;
 }
 
-void NavGrid::SimplifyPath(std::vector<Vector3>& path) const {
+void NavGrid::SimplifyPath(std::vector<engine::Vector3>& path) const {
     // 同じ向きが続く中間セルを省き、移動方向が変わる点だけ残す。
     if (path.size() < 3) return;
-    std::vector<Vector3> simplified;
+    std::vector<engine::Vector3> simplified;
     simplified.reserve(path.size());
     simplified.push_back(path.front());
     for (std::size_t index = 1; index + 1 < path.size(); ++index) {
-        const Vector3 previousDirection = NormalizePlanar(path[index] - path[index - 1]);
-        const Vector3 nextDirection = NormalizePlanar(path[index + 1] - path[index]);
+        const engine::Vector3 previousDirection = NormalizePlanar(path[index] - path[index - 1]);
+        const engine::Vector3 nextDirection = NormalizePlanar(path[index + 1] - path[index]);
         if (std::abs(previousDirection.x - nextDirection.x) > 0.01f ||
             std::abs(previousDirection.z - nextDirection.z) > 0.01f) {
             simplified.push_back(path[index]);

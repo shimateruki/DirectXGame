@@ -20,8 +20,8 @@ class RidingPlatformController {
     // 敵の初期座標から床への移乗を補間する一時状態。attribute/mask は解放時の復元用です。
     struct Boarder {
         std::string name;
-        Vector3 origin{};
-        Vector3 offset{};
+        engine::Vector3 origin{};
+        engine::Vector3 offset{};
         float duration = 1.1f;
         float height = 6.0f;
         float elapsed = 0.0f;
@@ -34,6 +34,6 @@ class RidingPlatformController {
     CinematicPlayer player_;
     std::vector<Boarder> boarders_;
     std::string loadedPath_;
-    Vector3 start_{};
+    engine::Vector3 start_{};
     bool ready_ = false, running_ = false, wasPlaying_ = false;
 };

@@ -15,12 +15,12 @@ class GimmickBreakableBlock : public BaseGimmick {
     void Update(float deltaTime) override;
 
     // 衝突判定
-    bool OnCollision(Object3d* other) override;
+    bool OnCollision(engine::Object3d* other) override;
 
     // actionMode=6は汎用衝撃、7はピンクのバウンド落下だけで破壊します。
     bool TryBreakByPlayerImpact(const Player* player);
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     void Break(); // 破壊処理

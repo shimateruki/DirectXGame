@@ -8,7 +8,7 @@
 #endif
 
 // UIの順序・ID・設定値は従来と同じ。既存の変更フラグを参照で受け、先行する編集結果も保持する。
-void InspectorWindow::DrawEffectMaterialSettings(Object3d* selectedObject, int currentMatType, bool& isGraphicsChanged) {
+void InspectorWindow::DrawEffectMaterialSettings(engine::Object3d* selectedObject, int currentMatType, bool& isGraphicsChanged) {
 #ifdef USE_IMGUI
     // 特殊材質の各 Shader は WaterParamData を共用し、同じフィールドを材質ごとに別の意味で使います。
     // 編集フラグは呼び出し元から受けた値へ加算し、このパネルより前の変更を消しません。

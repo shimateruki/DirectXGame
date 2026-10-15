@@ -16,7 +16,7 @@ void InspectorWindow::Draw() {
     if (currentScene == nullptr) return;
 
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(editor_->GetCurrentSceneFilenameBuffer());
-    Object3d* selectedObject = editor_->GetSelectedObject();
+    engine::Object3d* selectedObject = editor_->GetSelectedObject();
     const std::size_t selectedCount = editor_->GetSelectedObjectCount();
 
     // ---------------------------------------------------------
@@ -31,7 +31,7 @@ void InspectorWindow::Draw() {
         ImGui::Checkbox(ICON_FA_FINGERPRINT " イベントIDを表示", editor_->GetDrawEventIDsPtr());
     }
     else {
-        std::vector<Object3d*> inspectorTargets = CollectInspectorTargets(editor_, selectedObject);
+        std::vector<engine::Object3d*> inspectorTargets = CollectInspectorTargets(editor_, selectedObject);
         const bool isMultiSelection = inspectorTargets.size() > 1;
 
         if (isMultiSelection) {
@@ -102,7 +102,7 @@ void InspectorWindow::Draw() {
 
         const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(selectedObject);
 
-        static Object3d* tagLayerBufferOwner = nullptr;
+        static engine::Object3d* tagLayerBufferOwner = nullptr;
         // テキスト入力の編集中バッファは選択Objectが変わった時だけ同期し、毎フレーム上書きしない。
         static char tagBuffer[128] = {};
         static char layerBuffer[128] = {};
@@ -118,7 +118,7 @@ void InspectorWindow::Draw() {
         const bool mixedTag = HasMixedInspectorValue(inspectorTargets, "identity.tag");
         if (ImGui::InputText("Tag", tagBuffer, sizeof(tagBuffer))) {
             const std::string newTag = tagBuffer;
-            for (Object3d* target : inspectorTargets) {
+            for (engine::Object3d* target : inspectorTargets) {
                 if (target) {
                     target->SetTag(newTag);
                 }
@@ -148,7 +148,7 @@ void InspectorWindow::Draw() {
         if (ImGui::Combo("Layer Preset", &layerPresetIndex, layerPresets, IM_ARRAYSIZE(layerPresets))) {
             strcpy_s(layerBuffer, layerPresets[layerPresetIndex]);
             const std::string newLayer = layerBuffer;
-            for (Object3d* target : inspectorTargets) {
+            for (engine::Object3d* target : inspectorTargets) {
                 if (target) {
                     target->SetLayer(newLayer);
                 }
@@ -161,7 +161,7 @@ void InspectorWindow::Draw() {
             if (layerBuffer[0] == '\0') {
                 strcpy_s(layerBuffer, "Default");
             }
-            for (Object3d* target : inspectorTargets) {
+            for (engine::Object3d* target : inspectorTargets) {
                 if (target) {
                     target->SetLayer(newLayer);
                 }
@@ -181,7 +181,7 @@ void InspectorWindow::Draw() {
 
         const bool mixedSaveCategory = HasMixedInspectorValue(inspectorTargets, "identity.saveCategory");
         if (ImGui::Combo(ICON_FA_FOLDER " 保存先カテゴリ", &catIndex, saveCategories, IM_ARRAYSIZE(saveCategories))) {
-            for (Object3d* object : inspectorTargets) {
+            for (engine::Object3d* object : inspectorTargets) {
                 if (!object) continue;
                 object->SetSaveCategory(saveCategories[catIndex]);
             }
@@ -253,7 +253,7 @@ void InspectorWindow::Draw() {
         const bool mixedVisible = HasMixedInspectorValue(inspectorTargets, "rendering.visible");
         PushMixedCheckbox(mixedVisible);
         if (ImGui::Checkbox(ICON_FA_EYE " 表示 (ゲーム内)", &isVisible)) {
-            for (Object3d* object : inspectorTargets) {
+            for (engine::Object3d* object : inspectorTargets) {
                 if (!object) continue;
                 object->SetIsVisible(isVisible);
             }
@@ -264,7 +264,7 @@ void InspectorWindow::Draw() {
         const bool mixedLocked = HasMixedInspectorValue(inspectorTargets, "editor.locked");
         PushMixedCheckbox(mixedLocked);
         if (ImGui::Checkbox(ICON_FA_LOCK " ロック (編集保護)", &isLocked)) {
-            for (Object3d* object : inspectorTargets) {
+            for (engine::Object3d* object : inspectorTargets) {
                 if (!object) continue;
                 object->SetIsLocked(isLocked);
             }
@@ -275,7 +275,7 @@ void InspectorWindow::Draw() {
         const bool mixedCastShadow = HasMixedInspectorValue(inspectorTargets, "rendering.castShadow");
         PushMixedCheckbox(mixedCastShadow);
         if (ImGui::Checkbox(ICON_FA_LIGHTBULB " 影を落とす", &castShadow)) {
-            for (Object3d* object : inspectorTargets) {
+            for (engine::Object3d* object : inspectorTargets) {
                 if (!object) continue;
                 object->SetCastShadow(castShadow);
             }
@@ -291,7 +291,7 @@ void InspectorWindow::Draw() {
         Transform* transform = &transformValue;
         bool isTransformChanged = false;
 
-        const Vector3 beforePos = transform->translate;
+        const engine::Vector3 beforePos = transform->translate;
         const bool mixedPosition = HasMixedInspectorValue(inspectorTargets, "transform.position");
         if (ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 座標 (Pos)", &transform->translate.x, 0.1f)) {
             ApplyPrimaryTransformDeltaToTargets(
@@ -310,8 +310,8 @@ void InspectorWindow::Draw() {
         }
         DrawMixedValueHint(mixedPosition);
 
-        Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
-        const Vector3 beforeRot = transform->rotate;
+        engine::Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
+        const engine::Vector3 beforeRot = transform->rotate;
         const bool mixedRotation = HasMixedInspectorValue(inspectorTargets, "transform.rotation");
         if (ImGui::DragFloat3(ICON_FA_SYNC " 回転 (Rot)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
@@ -331,7 +331,7 @@ void InspectorWindow::Draw() {
             isTransformChanged = true;
         }
         DrawMixedValueHint(mixedRotation);
-        const Vector3 beforeScale = transform->scale;
+        const engine::Vector3 beforeScale = transform->scale;
         if (isManagedCharacter) {
             ImGui::TextDisabled(ICON_FA_EXPAND_ARROWS_ALT " スケール: %.3f, %.3f, %.3f（ステータス管理）",
                 transform->scale.x, transform->scale.y, transform->scale.z);
@@ -368,7 +368,7 @@ void InspectorWindow::Draw() {
         if (ImGui::CollapsingHeader(ICON_FA_SHIELD_ALT " コリジョン設定 (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
             // 現状のスコープではMaterial・LOD・Particle等もこのヘッダー内に含まれる。
             // Collisionを閉じると後続UIも隠れる構造であり、独立化は別の改修として扱う。
-            Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
+            engine::Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
             bool isColChanged = false;
 
             const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)", "円柱 (Cylinder)", "リング (Ring)", "地形 (Terrain)" };
@@ -380,6 +380,7 @@ void InspectorWindow::Draw() {
                 }
                 if (colConfig.type != ColliderType::kAABB && colConfig.type != ColliderType::kOBB) {
                     colConfig.footprint.clear();
+                    colConfig.useModelSurface = false;
                 }
                 isColChanged = true;
             }
@@ -403,8 +404,14 @@ void InspectorWindow::Draw() {
                     if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
 
+                if ((colConfig.type == ColliderType::kAABB || colConfig.type == ColliderType::kOBB) &&
+                    selectedObject->GetModel()) {
+                    if (ImGui::Checkbox("モデル上面で接地判定", &colConfig.useModelSurface)) isColChanged = true;
+                    ImGui::TextDisabled("上面のみモデル形状。側面は箱と輪郭で判定します。");
+                }
+
                 if (colConfig.type == ColliderType::kOBB || colConfig.type == ColliderType::kRing) {
-                    Vector3 rotDegObj = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
+                    engine::Vector3 rotDegObj = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
                     if (ImGui::DragFloat3("回転 (Rotation)", &rotDegObj.x, 1.0f, -360.0f, 360.0f)) {
                         colConfig.rotation = { ToRadians(rotDegObj.x), ToRadians(rotDegObj.y), ToRadians(rotDegObj.z) };
                         isColChanged = true;
@@ -416,14 +423,14 @@ void InspectorWindow::Draw() {
                     ImGui::TextUnformatted("凸形状の輪郭です。移動床の乗車判定にも使います。");
                     for (size_t index = 0; index < colConfig.footprint.size(); ++index) {
                         ImGui::PushID(static_cast<int>(index));
-                        const Vector2 previous = colConfig.footprint[index];
+                        const engine::Vector2 previous = colConfig.footprint[index];
                         if (ImGui::DragFloat2("頂点", &colConfig.footprint[index].x, 0.01f)) {
                             int winding = 0;
                             bool convex = true;
                             for (size_t i = 0; i < colConfig.footprint.size(); ++i) {
-                                const Vector2& a = colConfig.footprint[i];
-                                const Vector2& b = colConfig.footprint[(i + 1) % colConfig.footprint.size()];
-                                const Vector2& c = colConfig.footprint[(i + 2) % colConfig.footprint.size()];
+                                const engine::Vector2& a = colConfig.footprint[i];
+                                const engine::Vector2& b = colConfig.footprint[(i + 1) % colConfig.footprint.size()];
+                                const engine::Vector2& c = colConfig.footprint[(i + 2) % colConfig.footprint.size()];
                                 const float cross = (b.x - a.x) * (c.y - b.y) -
                                                     (b.y - a.y) * (c.x - b.x);
                                 if (std::abs(cross) < 0.00001f) continue;
@@ -439,7 +446,7 @@ void InspectorWindow::Draw() {
                     ImGui::TreePop();
                 }
                 if (isColChanged) {
-                    for (Object3d* object : inspectorTargets) {
+                    for (engine::Object3d* object : inspectorTargets) {
                         if (!object) continue;
                         object->SetColliderConfig(colConfig);
                     }
@@ -449,7 +456,7 @@ void InspectorWindow::Draw() {
             else {
                 // なしの時も一応反映
                 if (isColChanged) {
-                    for (Object3d* object : inspectorTargets) {
+                    for (engine::Object3d* object : inspectorTargets) {
                         if (!object) continue;
                         object->SetColliderConfig(colConfig);
                     }
@@ -489,7 +496,7 @@ void InspectorWindow::Draw() {
                 if (currentMatType < 0) currentMatType = 0;
                 if (currentMatType > 35) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
-                    for (Object3d* object : inspectorTargets) {
+                    for (engine::Object3d* object : inspectorTargets) {
                         if (!object) continue;
                         object->SetMaterialType(currentMatType);
                     }
@@ -500,7 +507,7 @@ void InspectorWindow::Draw() {
                 if (currentMatType == 32) {
                     float pathWidth = selectedObject->GetEnvIntensity();
                     if (ImGui::SliderFloat("土の道の半幅（44m幅の地面用）", &pathWidth, 1.0f, 8.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (object) object->SetEnvIntensity(pathWidth);
                         }
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -510,7 +517,7 @@ void InspectorWindow::Draw() {
                 if (currentMatType == 30 || currentMatType == 31) {
                     float wind = selectedObject->GetEnvIntensity();
                     if (ImGui::SliderFloat("草木の風の強さ", &wind, 0.0f, 2.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (object) object->SetEnvIntensity(wind);
                         }
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -521,7 +528,7 @@ void InspectorWindow::Draw() {
                 if (currentMatType == 0 || (currentMatType >= 29 && currentMatType <= 35)) {
                     float metallic = selectedObject->GetMetallic();
                     if (ImGui::SliderFloat("金属度 (Metallic)", &metallic, 0.0f, 1.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (!object) continue;
                             object->SetMetallic(metallic);
                         }
@@ -530,7 +537,7 @@ void InspectorWindow::Draw() {
                     }
                     float roughness = selectedObject->GetRoughness();
                     if (ImGui::SliderFloat("粗さ (Roughness)", &roughness, 0.0f, 1.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (!object) continue;
                             object->SetRoughness(roughness);
                         }
@@ -541,9 +548,9 @@ void InspectorWindow::Draw() {
                 else if (currentMatType == 23) {
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.45f, 1.0f), ICON_FA_TREE " --- Stylized Terrain Settings ---");
-                    Vector4 terrainColor = selectedObject->GetColor();
+                    engine::Vector4 terrainColor = selectedObject->GetColor();
                     if (ImGui::ColorEdit4("差し色 (Accent Color)", &terrainColor.x)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (!object) continue;
                             object->SetColor(terrainColor);
                         }
@@ -552,7 +559,7 @@ void InspectorWindow::Draw() {
                     }
                     float textureBlend = selectedObject->GetRoughness();
                     if (ImGui::SliderFloat("テクスチャ反映量 (Texture Blend)", &textureBlend, 0.0f, 1.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (object) object->SetRoughness(textureBlend);
                         }
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -560,7 +567,7 @@ void InspectorWindow::Draw() {
                     }
                     float paintStrength = selectedObject->GetMetallic();
                     if (ImGui::SliderFloat("塗りの濃さ / 色ムラ (Paint Strength)", &paintStrength, 0.0f, 1.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (object) object->SetMetallic(paintStrength);
                         }
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -568,7 +575,7 @@ void InspectorWindow::Draw() {
                     }
                     float reliefStrength = selectedObject->GetEnvIntensity();
                     if (ImGui::SliderFloat("立体感 / 凹凸強度 (Relief)", &reliefStrength, 0.0f, 2.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (object) object->SetEnvIntensity(reliefStrength);
                         }
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -593,21 +600,21 @@ void InspectorWindow::Draw() {
                     ImGui::TextColored(ImVec4(0.72f, 0.92f, 1.0f, 1.0f), ICON_FA_GEM " --- Prism Crystal Settings ---");
                     float facetSoftness = selectedObject->GetRoughness();
                     if (ImGui::SliderFloat("面反射の柔らかさ (Facet Softness)", &facetSoftness, 0.02f, 0.70f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (object) object->SetRoughness(facetSoftness);
                         }
                         isGraphicsChanged = true;
                     }
                     float dispersionStrength = selectedObject->GetMetallic();
                     if (ImGui::SliderFloat("分光の強さ (Dispersion)", &dispersionStrength, 0.0f, 1.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (object) object->SetMetallic(dispersionStrength);
                         }
                         isGraphicsChanged = true;
                     }
                     float environmentIntensity = selectedObject->GetEnvIntensity();
                     if (ImGui::SliderFloat("環境反射の強さ (Environment)", &environmentIntensity, 0.0f, 3.0f)) {
-                        for (Object3d* object : inspectorTargets) {
+                        for (engine::Object3d* object : inspectorTargets) {
                             if (!object) continue;
                             object->SetEnableEnvMap(true);
                             object->SetEnvIntensity(environmentIntensity);
@@ -618,7 +625,7 @@ void InspectorWindow::Draw() {
 
                 ImGui::Separator();
                 ImGui::Text(ICON_FA_EXPAND_ARROWS_ALT " PBRテクスチャ繰り返し");
-                Vector2 textureTiling = selectedObject->GetTextureTiling();
+                engine::Vector2 textureTiling = selectedObject->GetTextureTiling();
                 if (ImGui::DragFloat2("繰り返し倍率 (Tiling)", &textureTiling.x, 0.05f, 0.01f, 100.0f, "%.2f")) {
                     selectedObject->SetTextureTiling(textureTiling);
                     isGraphicsChanged = true;
@@ -705,7 +712,7 @@ void InspectorWindow::Draw() {
 
                 // 文字一覧と球ギャラリーで同じ適用処理を使い、複数選択にも同じ結果を渡す。
                 const auto applyPbrPreset = [&](const InspectorTextureCatalog::PbrPreset& preset) {
-                    for (Object3d* target : inspectorTargets) {
+                    for (engine::Object3d* target : inspectorTargets) {
                         if (!target) continue;
                         target->SetTexture(preset.albedoPath);
                         target->SetNormalMap(preset.normalPath);
@@ -850,7 +857,7 @@ void InspectorWindow::Draw() {
                         }
 
                         const Transform* cardTransform = selectedObject->GetTransform();
-                        Vector2 cardSize = { cardTransform->scale.x, cardTransform->scale.y };
+                        engine::Vector2 cardSize = { cardTransform->scale.x, cardTransform->scale.y };
                         if (ImGui::DragFloat2("表示サイズ (幅 / 高さ)", &cardSize.x, 0.02f, 0.01f, 100.0f, "%.2f")) {
                             selectedObject->SetScale({ (std::max)(0.01f, cardSize.x), (std::max)(0.01f, cardSize.y), 1.0f });
                             isTransformChanged = true;
@@ -862,7 +869,7 @@ void InspectorWindow::Draw() {
                         }
                         ImGui::SameLine();
                         if (ImGui::Button(ICON_FA_SHIELD_ALT " 当たり判定なし")) {
-                            Object3d::ColliderConfig colliderConfig = selectedObject->GetColliderConfig();
+                            engine::Object3d::ColliderConfig colliderConfig = selectedObject->GetColliderConfig();
                             colliderConfig.type = ColliderType::kNone;
                             selectedObject->SetColliderConfig(colliderConfig);
                         }
@@ -915,7 +922,7 @@ void InspectorWindow::Draw() {
                 }
 
                 if (currentMatType != 23) {
-                    Vector4 color = selectedObject->GetColor();
+                    engine::Vector4 color = selectedObject->GetColor();
                     if (ImGui::ColorEdit4(ICON_FA_FILL_DRIP " 色 (Color)", &color.x)) {
                         selectedObject->SetColor(color); isGraphicsChanged = true;
                     }
@@ -1127,12 +1134,12 @@ void InspectorWindow::Draw() {
             // ==========================================
             ImGui::Separator();
             ImGui::Text(ICON_FA_BONE " 【ボーンアニメーション】");
-            const std::vector<Object3d*> animatorTargets =
+            const std::vector<engine::Object3d*> animatorTargets =
                 CollectRegisteredComponentTargets(inspectorTargets, "Animator");
 
         std::string controllerPath = selectedObject->GetAnimatorControllerPath();
         bool hasMixedController = false;
-        for (Object3d* target : animatorTargets) {
+        for (engine::Object3d* target : animatorTargets) {
             if (target && target->GetAnimatorControllerPath() != controllerPath) {
                 hasMixedController = true;
                 break;
@@ -1148,7 +1155,7 @@ void InspectorWindow::Draw() {
             const bool noneSelected = !hasMixedController && controllerPath.empty();
             if (ImGui::Selectable("(なし)", noneSelected)) {
                 const auto beforeStates = editor_->CaptureObjectStates(animatorTargets);
-                for (Object3d* target : animatorTargets) {
+                for (engine::Object3d* target : animatorTargets) {
                     if (target) {
                         target->ClearAnimatorController();
                     }
@@ -1171,7 +1178,7 @@ void InspectorWindow::Draw() {
                 if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                     const auto beforeStates = editor_->CaptureObjectStates(animatorTargets);
                     bool assigned = false;
-                    for (Object3d* target : animatorTargets) {
+                    for (engine::Object3d* target : animatorTargets) {
                         if (target && target->SetAnimatorController(fileName)) {
                             assigned = true;
                         }

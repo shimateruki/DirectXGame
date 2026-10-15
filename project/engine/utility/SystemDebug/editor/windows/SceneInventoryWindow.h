@@ -6,7 +6,7 @@
 #include <vector>
 
 class DebugEditor;
-class Object3d;
+namespace engine { class Object3d; }
 class SceneManager;
 
 /// <summary>
@@ -33,7 +33,7 @@ private:
 
     /// 一つの配置オブジェクトから表示・分類に必要な情報を抜き出した行。
     struct Entry {
-        Object3d* object = nullptr;
+        engine::Object3d* object = nullptr;
         std::string category;
         std::string type;
         std::string model;
@@ -59,9 +59,9 @@ private:
     // 名前に基づく暫定分類を含むため、分類規則はここにまとめます。
     std::vector<Group> BuildGroups(GroupMode mode) const;
     bool MatchesSearch(const Entry& entry, const std::string& groupLabel = {}) const;
-    std::string ClassifyCategory(const Object3d& object) const;
-    std::string ClassifyType(const Object3d& object, const std::string& category) const;
-    std::string ClassifyCollision(const Object3d& object) const;
+    std::string ClassifyCategory(const engine::Object3d& object) const;
+    std::string ClassifyType(const engine::Object3d& object, const std::string& category) const;
+    std::string ClassifyCollision(const engine::Object3d& object) const;
 
 private:
     // SceneManagerとDebugEditorは所有せず、現在シーンの走査とSceneカメラのフォーカスにのみ利用します。

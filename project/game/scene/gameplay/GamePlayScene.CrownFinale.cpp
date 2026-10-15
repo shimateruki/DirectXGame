@@ -1,5 +1,7 @@
 ﻿#define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/ui/ControlsGuideOverlay.h"
+#include "game/ui/PauseMenuOverlay.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "GimmickEventReceiver.h"
 #include "GimmickBossGate.h"
@@ -19,26 +21,27 @@
 #include <cstdio>
 
 namespace {
+// 王冠演出の始点と終点を滑らかにつなぐ補間率を返します。
 float CrownEase(float t) {
     // 前後の速度が急変しないよう、0〜1の区間で滑らかな曲線にする。
     t = std::clamp(t, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 
-Vector3 CrownLerp(const Vector3& a, const Vector3& b, float t) {
+engine::Vector3 CrownLerp(const engine::Vector3& a, const engine::Vector3& b, float t) {
     // 演出側で決めた補間率をそのまま使い、位置の行き過ぎも表現できる。
     return a + (b - a) * t;
 }
-Vector3 CrownLook(const Vector3& eye, const Vector3& target) {
+engine::Vector3 CrownLook(const engine::Vector3& eye, const engine::Vector3& target) {
     // カメラから注視点への俯角と水平方向の角度を作る。
-    const Vector3 d = target - eye;
+    const engine::Vector3 d = target - eye;
     return {-std::atan2(d.y, std::sqrt(d.x * d.x + d.z * d.z)), std::atan2(d.x, d.z), 0.0f};
 }
 } // namespace
 
 // 王冠決着の専用進行です。通常戦闘を止めた後、演出用状態を更新し、終了時にワールドを復元します。
 
-bool GamePlayScene::StartSealBarrageMovie(EnemyFalseKingSlime* boss, const Vector3& strike) {
+bool GamePlayScene::StartSealBarrageMovie(EnemyFalseKingSlime* boss, const engine::Vector3& strike) {
     if (!SceneManager::GetInstance()->IsPlaying() || !boss || !player_ || player_->isDead ||
         player_->IsCinematicLocked() || crownFinale_.active || sealBarrageMovie_.active ||
         isGoal_)
@@ -171,7 +174,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     s.playerScale = player_->GetScale();
     s.playerModel = player_->GetModelName(); s.playerColor = player_->GetColor();
     s.playerMaterial = player_->GetMaterialType();
-    std::vector<std::unique_ptr<Object3d>> previewArenaCopies;
+    std::vector<std::unique_ptr<engine::Object3d>> previewArenaCopies;
     for (const auto& object : GetObjects()) {
         // プレビューでは複製だけを崩壊させ、編集対象のTransformを変更しません。
         if (crownMoviePreview_.active &&
@@ -208,7 +211,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
                 chunk->SetModel(model); chunk->SetName("CrownFracture_" + std::to_string(i));
                 chunk->ClearEditorHiddenReasons(); chunk->SetEditorInternal(crownMoviePreview_.active);
                 chunk->SetEventID(-1); chunk->SetTargetID(-1); chunk->SetCollisionAttribute(0); chunk->SetCollisionMask(0);
-                const Vector3 position = Math::Transform({-35.0f + x * 10.0f, 0.0f, 35.0f - z * 10.0f}, object->GetWorldMatrix());
+                const engine::Vector3 position = engine::Math::Transform({-35.0f + x * 10.0f, 0.0f, 35.0f - z * 10.0f}, object->GetWorldMatrix());
                 chunk->SetTranslate(position); chunk->SetIsVisible(false); chunk->UpdateWorldMatrix(true);
                 s.fractureChunks.push_back({chunk.get(), position, chunk->GetRotation(), 0, 0, false});
                 s.generatedObjects.push_back(chunk.get()); previewArenaCopies.push_back(std::move(chunk));
@@ -239,7 +242,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     for (auto& copy : previewArenaCopies) AddObjectImmediate(std::move(copy));
     // 元モデルから分離した中央装飾を同じ位置へ配置し、破断前後の形状を連続させます。
     auto makeVisual = [&](const char* model) {
-        auto visual = std::make_unique<Object3d>();
+        auto visual = std::make_unique<engine::Object3d>();
         visual->Initialize(GetObject3dCommon());
         visual->SetModel(model);
         visual->SetMaterialType(0);
@@ -264,13 +267,13 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     boss->SetModel("Characters/false_king_slime/false_king_slime_without_emblem.obj");
     boss->SetColliderConfig(bossCollider);
     boss->UpdateWorldMatrix(true);
-    s.fragmentStart = Math::Transform({0.0f, 3.44f, -1.76f}, boss->GetWorldMatrix());
-    const Vector3 towardBoss = s.bossStart - s.start;
+    s.fragmentStart = engine::Math::Transform({0.0f, 3.44f, -1.76f}, boss->GetWorldMatrix());
+    const engine::Vector3 towardBoss = s.bossStart - s.start;
     const float planarLength = std::sqrt(towardBoss.x * towardBoss.x + towardBoss.z * towardBoss.z);
-    const Vector3 direction = planarLength > 0.01f
-                                  ? Vector3{towardBoss.x / planarLength, 0.0f, towardBoss.z / planarLength}
-                                  : Vector3{std::sin(s.playerYaw), 0.0f, std::cos(s.playerYaw)};
-    const Vector3 sample = s.start + direction * tuning.movieFragmentDistance;
+    const engine::Vector3 direction = planarLength > 0.01f
+                                  ? engine::Vector3{towardBoss.x / planarLength, 0.0f, towardBoss.z / planarLength}
+                                  : engine::Vector3{std::sin(s.playerYaw), 0.0f, std::cos(s.playerYaw)};
+    const engine::Vector3 sample = s.start + direction * tuning.movieFragmentDistance;
     s.fragmentGround = CombatGroundQuery::FindGroundPoint(sample, player_, {8.0f, 24.0f}, s.start.y - 0.75f);
     s.fragmentGround.y += 0.51f * s.bossScale.y * tuning.movieFragmentScale;
     s.fragment->SetTranslate(s.fragmentStart);
@@ -290,7 +293,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     s.goldBody->SetColor({1,.77f,.25f,1});
     s.regalia = makeVisual("Characters/slime_crown/slime_crown_regalia.gltf");
     s.regalia->SetColor({1,.68f,.12f,1});
-    for (Object3d* wing : {s.wings.get(),s.rightWing.get()}) {
+    for (engine::Object3d* wing : {s.wings.get(),s.rightWing.get()}) {
         // SetModelで取得した基準材質を保ち、白い羽と金の軸をそれぞれ描きます。
         wing->SetEnableLighting(false); wing->SetEmissive(1.1f);
     }
@@ -327,7 +330,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     const float crownTime = tuning.movieCrownTime, wingsTime = tuning.movieWingsTime;
     const float escapeTime = tuning.movieEscapeTime, arriveTime = tuning.movieArriveTime;
     const float bodyEnd = crownTime - 0.012f, crownEnd = wingsTime - 0.012f;
-    const Vector3 destination = s.offset + Vector3{0.0f, 0.82f, 12.0f};
+    const engine::Vector3 destination = s.offset + engine::Vector3{0.0f, 0.82f, 12.0f};
     const float flightYaw = std::atan2(destination.x - s.start.x, destination.z - s.start.z);
     auto crossed = [&](float when) { return previousTime < when * s.duration && s.time >= when * s.duration; };
     auto periodic = [&](float rate) { return dt > 0.0f && static_cast<int>(s.time * rate) != static_cast<int>(previousTime * rate); };
@@ -338,7 +341,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     s.lastSeal->SetScale({1,1,1}); s.lastSeal->SetIsVisible(s.time<.58f);
     auto* sealMaterial=s.lastSeal->GetMaterialData();
     sealMaterial->portalClipEnabled=1; sealMaterial->portalClipProgress=0;
-    sealMaterial->portalClipCenter=s.lastSealPosition+Vector3{0,3.0f-6.0f*sealDisappear-.52f,0};
+    sealMaterial->portalClipCenter=s.lastSealPosition+engine::Vector3{0,3.0f-6.0f*sealDisappear-.52f,0};
     sealMaterial->portalClipNormal={0,1,0};sealMaterial->portalClipEdgeWidth=.10f;
     sealMaterial->portalClipDissolve=.18f;sealMaterial->portalClipColor={1,.85f,1,1};
     if (crossed(.005f)) {
@@ -354,34 +357,34 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         const float crack = time < breakTime ? std::sin(time * 320.0f) * CrownEase(time / breakTime) * 0.025f : 0.0f;
         const float rage = CrownEase((time - rageTime + 0.018f) / 0.04f);
         const float throb = time < escapeTime ? std::sin(time * s.duration * 15.0f) * rage * 0.075f : 0.0f;
-        return Vector3{s.bossScale.x * (1.0f + rage * 0.08f + throb),
+        return engine::Vector3{s.bossScale.x * (1.0f + rage * 0.08f + throb),
                        s.bossScale.y * (1.0f - crack - rage * 0.09f - throb), s.bossScale.z * (1.0f + rage * 0.08f)};
     };
     s.boss->SetScale(bossPose(t)); s.boss->SetTranslate(s.bossStart); s.boss->UpdateWorldMatrix(false);
-    const Vector3 release = Math::Transform({0.0f, 3.44f, -1.76f}, Math::MakeAffineMatrix(bossPose(breakTime), s.bossRotation, s.bossStart));
-    const Vector3 towardFragment = s.fragmentGround - s.start;
+    const engine::Vector3 release = engine::Math::Transform({0.0f, 3.44f, -1.76f}, engine::Math::MakeAffineMatrix(bossPose(breakTime), s.bossRotation, s.bossStart));
+    const engine::Vector3 towardFragment = s.fragmentGround - s.start;
     const float pullYaw = std::atan2(towardFragment.x, towardFragment.z);
-    const Vector3 pullDirection{std::sin(pullYaw), 0.0f, std::cos(pullYaw)};
-    const Vector3 mouth = s.start + pullDirection * 0.70f + Vector3{0.0f, 0.22f, 0.0f};
-    Vector3 fragmentPosition = release, fragmentRotation = s.bossRotation, fragmentScale = s.bossScale;
+    const engine::Vector3 pullDirection{std::sin(pullYaw), 0.0f, std::cos(pullYaw)};
+    const engine::Vector3 mouth = s.start + pullDirection * 0.70f + engine::Vector3{0.0f, 0.22f, 0.0f};
+    engine::Vector3 fragmentPosition = release, fragmentRotation = s.bossRotation, fragmentScale = s.bossScale;
     if (t < breakTime) {
-        fragmentPosition = Math::Transform({0.0f, 3.44f, -1.76f}, s.boss->GetWorldMatrix()); fragmentScale = bossPose(t);
+        fragmentPosition = engine::Math::Transform({0.0f, 3.44f, -1.76f}, s.boss->GetWorldMatrix()); fragmentScale = bossPose(t);
     } else if (t < landTime) {
         const float fall = (t - breakTime) / (landTime - breakTime);
         fragmentPosition = CrownLerp(release, s.fragmentGround, fall);
         fragmentPosition.y += std::sin(fall * 3.14159265f) * tuning.movieFragmentFallArc;
-        fragmentRotation = s.bossRotation + Vector3{std::sin(fall * 3.14159265f) * 0.55f, fall * 6.2831853f, fall * 0.16f};
+        fragmentRotation = s.bossRotation + engine::Vector3{std::sin(fall * 3.14159265f) * 0.55f, fall * 6.2831853f, fall * 0.16f};
         fragmentScale = s.bossScale * (1.0f + (tuning.movieFragmentScale - 1.0f) * CrownEase(fall));
     } else if (t < pullTime) {
         const float settle = std::clamp((t - landTime) / 0.04f, 0.0f, 1.0f);
-        fragmentPosition = s.fragmentGround + Vector3{0.0f, std::fabs(std::sin(settle * 6.2831853f)) * (1.0f - settle) * 0.25f, 0.0f};
-        fragmentRotation = s.bossRotation + Vector3{0.0f, 6.2831853f, 0.16f}; fragmentScale = s.bossScale * tuning.movieFragmentScale;
+        fragmentPosition = s.fragmentGround + engine::Vector3{0.0f, std::fabs(std::sin(settle * 6.2831853f)) * (1.0f - settle) * 0.25f, 0.0f};
+        fragmentRotation = s.bossRotation + engine::Vector3{0.0f, 6.2831853f, 0.16f}; fragmentScale = s.bossScale * tuning.movieFragmentScale;
     } else {
         const float receive = CrownEase((t - pullTime) / (absorbTime - pullTime));
         fragmentPosition = CrownLerp(s.fragmentGround, mouth, receive);
         fragmentPosition.y += std::sin(receive * 3.14159265f) * 0.22f;
         fragmentScale = s.bossScale * (tuning.movieFragmentScale * std::max(0.001f, 1.0f - CrownEase((receive - 0.65f) / 0.35f)));
-        fragmentRotation = s.bossRotation + Vector3{0.0f, 6.2831853f + receive * 1.2f, 0.16f};
+        fragmentRotation = s.bossRotation + engine::Vector3{0.0f, 6.2831853f + receive * 1.2f, 0.16f};
     }
     s.fragment->SetIsVisible(t < absorbTime); s.fragment->SetTranslate(fragmentPosition);
     s.fragment->SetScale(fragmentScale); s.fragment->SetRotation(fragmentRotation);
@@ -396,7 +399,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     for (size_t i=0; i<s.fragmentChips.size(); ++i) {
         auto& chip=s.fragmentChips[i]; const float age=(t-breakTime)*s.duration, angle=i*2.3999632f;
         chip->SetIsVisible(age>=0.0f && age<1.3f);
-        chip->SetTranslate(release + Vector3{std::cos(angle)*age*2.5f,age*(1.6f+i*.18f)-4.9f*age*age,std::sin(angle)*age*2.5f});
+        chip->SetTranslate(release + engine::Vector3{std::cos(angle)*age*2.5f,age*(1.6f+i*.18f)-4.9f*age*age,std::sin(angle)*age*2.5f});
         chip->SetScale(s.bossScale);chip->SetRotation({age*3.0f,angle+age*4.0f,age*2.0f});
     }
     if (t>=landTime && !s.fragmentLanded) {
@@ -408,7 +411,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     // 寄りで欠片を確認した後、ボスの圧力面・粉塵・地割れが外周へ走ります。
     const float shock = std::clamp((t-rageTime)/.07f,0.0f,1.0f);
     s.shockwave->SetIsVisible(t>=rageTime && t<rageTime+.07f);
-    s.shockwave->SetTranslate(s.bossStart+Vector3{0,.18f,0});
+    s.shockwave->SetTranslate(s.bossStart+engine::Vector3{0,.18f,0});
     s.shockwave->SetScale({1+shock*47,.42f+std::sin(shock*3.14159265f)*.7f,1+shock*40});
     s.shockwave->SetColor({1,.91f,.76f,(1-shock)*.85f});
     if (t>=rageTime && !s.impacted) {
@@ -418,7 +421,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     s.groundFractures->SetTranslate({0,.89f,0}); s.groundFractures->SetScale({1,1,1});
     s.groundFractures->SetEmissive(1.0f + 1.8f*CrownEase((t-rageTime)/.07f));
 
-    Vector3 playerPosition=s.start, eye{},target{};
+    engine::Vector3 playerPosition=s.start, eye{},target{};
     const float notice=CrownEase((t-rageTime-.03f)/(pullTime-rageTime-.03f));
     const float turnDelta=std::atan2(std::sin(pullYaw-s.playerYaw),std::cos(pullYaw-s.playerYaw));
     if (t<pullTime) player_->SetMoveYaw(s.playerYaw+turnDelta*notice);
@@ -426,13 +429,13 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         const float receive=std::clamp((t-pullTime)/(absorbTime-pullTime),0.0f,1.0f);
         player_->SetMoveYaw(pullYaw);
         player_->StepCinematicPullVisual(dt,towardFragment,receive);
-        if (Object3d* marker=player_->GetHookMarker()) {
+        if (engine::Object3d* marker=player_->GetHookMarker()) {
             const float shot=CrownEase((t-pullTime)/.012f);
-            const Vector3 tip=CrownLerp(mouth,fragmentPosition,shot),diff=tip-mouth;
+            const engine::Vector3 tip=CrownLerp(mouth,fragmentPosition,shot),diff=tip-mouth;
             marker->SetIsVisible(true);marker->SetColor({.10f,.82f,1,1});
             marker->SetTranslate(mouth+diff*.5f);
             marker->SetRotation({std::atan2(-diff.y,std::sqrt(diff.x*diff.x+diff.z*diff.z)),std::atan2(diff.x,diff.z),0});
-            marker->SetScale({.10f,.10f,std::max(.01f,Math::Length(diff))}); marker->UpdateWorldMatrix(true);
+            marker->SetScale({.10f,.10f,std::max(.01f,engine::Math::Length(diff))}); marker->UpdateWorldMatrix(true);
         }
         if (!s.pullStarted) {s.pullStarted=true;VFXSequencer::PlayOneShot("pull_bind_cue",s.fragmentGround,{.65f,.65f,.65f});}
     }
@@ -449,14 +452,14 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     if (t>=absorbTime && t<bodyTime) {
         player_->SetMaterialType(1);player_->SetColor({.72f,.95f,1,.48f});
         player_->SetScale(s.playerScale*(1+.04f*std::sin(s.time*11)));
-        if (periodic(8)) GPUParticleManager::GetInstance()->EmitDirected("goal_clear_gold_motes",s.start+Vector3{0,.8f,0},{0,1,0},.45f);
+        if (periodic(8)) GPUParticleManager::GetInstance()->EmitDirected("goal_clear_gold_motes",s.start+engine::Vector3{0,.8f,0},{0,1,0},.45f);
     }
-    auto formFromBottom=[&](Object3d* object,float progress,float low,float high,bool reverse) {
+    auto formFromBottom=[&](engine::Object3d* object,float progress,float low,float high,bool reverse) {
         auto* material=object->GetMeshRenderer()->GetMaterialData();
         material->portalClipEnabled=progress<.999f?1.0f:0.0f;
         material->portalClipProgress=0;
         const float height=low+(high-low)*progress;
-        material->portalClipCenter=s.start+Vector3{0,height+(reverse?.52f:-.52f),0};
+        material->portalClipCenter=s.start+engine::Vector3{0,height+(reverse?.52f:-.52f),0};
         material->portalClipNormal={0,reverse?-1.0f:1.0f,0};
         material->portalClipEdgeWidth=.035f;material->portalClipDissolve=.055f;
         material->portalClipColor={1,.85f,.3f,1};
@@ -479,7 +482,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     s.regalia->SetTranslate(s.start);s.regalia->SetScale(s.playerScale);s.regalia->SetRotation(player_->GetRotation());
     formFromBottom(s.regalia.get(),crownProgress,0,2.2f,false);
     if (t>=crownTime && !s.crownStarted) {
-        s.crownStarted=true;VFXSequencer::PlayOneShot("crown_get_cue",s.start+Vector3{0,1.5f,0},{.45f,.45f,.45f});
+        s.crownStarted=true;VFXSequencer::PlayOneShot("crown_get_cue",s.start+engine::Vector3{0,1.5f,0},{.45f,.45f,.45f});
     }
     // 能力付与は見た目の形成完了と一致させ、初めから装備済みに見えないようにします。
     if (t>=crownEnd && !s.granted) {
@@ -488,7 +491,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->SetScale(s.playerScale);player_->SetMoveYaw(pullYaw);
     }
     if (t>=wingsTime && !s.wingsStarted) {
-        s.wingsStarted=true;VFXSequencer::PlayOneShot("crown_get_cue",s.start+Vector3{0,1,0},{.45f,.45f,.45f});
+        s.wingsStarted=true;VFXSequencer::PlayOneShot("crown_get_cue",s.start+engine::Vector3{0,1,0},{.45f,.45f,.45f});
     }
     const float wingOpen=CrownEase((t-wingsTime)/(escapeTime-wingsTime-.02f));
     const float wingFold=1-CrownEase((t-arriveTime)/std::max(.02f,1-arriveTime));
@@ -513,42 +516,42 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->SetScale({s.playerScale.x*(1+squash*.23f),s.playerScale.y*(1-squash*.30f),s.playerScale.z*(1+squash*.18f)});
         player_->SetMoveYaw(3.14159265f);player_->SetRotation({0,3.14159265f+player_->GetVisualYawOffset(),0});
         if (!s.landed) {s.landed=true;VFXSequencer::PlayOneShot("crown_victory_land_cue",destination);}
-        s.boss->SetTranslate(s.offset+Vector3{0,.82f+(1-CrownEase((t-arriveTime)/.065f))*8,-12});
+        s.boss->SetTranslate(s.offset+engine::Vector3{0,.82f+(1-CrownEase((t-arriveTime)/.065f))*8,-12});
     }
     player_->SetTranslate(playerPosition);player_->SetVelocity({});player_->UpdateWorldMatrix(false);
     const float flap=t>=escapeTime && t<arriveTime?std::sin((t-escapeTime)*s.duration*9):0;
     const float yaw=player_->GetRotation().y;
-    for (Object3d* wing:{s.wings.get(),s.rightWing.get()}) {
+    for (engine::Object3d* wing:{s.wings.get(),s.rightWing.get()}) {
         wing->SetIsVisible(t>=wingsTime && wingFold>.001f);
-        wing->SetTranslate(playerPosition+Vector3{0,.35f,0});
+        wing->SetTranslate(playerPosition+engine::Vector3{0,.35f,0});
         wing->SetScale(s.playerScale*(tuning.movieWingScale*wingFold));
         const float side=wing==s.wings.get()?-1.0f:1.0f;
         wing->SetRotation({0,yaw,side*((1-wingOpen)*1.15f+flap*.22f)});
         wing->SetEmissive(1.0f+(1-wingOpen)*1.6f);
         auto* mat=wing->GetMeshRenderer()->GetMaterialData();
         mat->portalClipEnabled=wingOpen<.999f?1.0f:0.0f;mat->portalClipProgress=0;
-        mat->portalClipCenter=playerPosition+Vector3{0,.35f+(-.1f+2.9f*wingOpen)-.52f,0};
+        mat->portalClipCenter=playerPosition+engine::Vector3{0,.35f+(-.1f+2.9f*wingOpen)-.52f,0};
         mat->portalClipNormal={0,1,0};mat->portalClipEdgeWidth=.04f;mat->portalClipDissolve=.06f;mat->portalClipColor={1,.9f,.4f,1};
     }
 
     // 表示メッシュを実際に分割した床片です。外周から割れ、最後に足元が抜けます。
     size_t crackIndex=0;
     for (auto& pose:s.fractureChunks) {
-        const Vector3 delta=pose.position-s.start;
+        const engine::Vector3 delta=pose.position-s.start;
         const float distance=std::sqrt(delta.x*delta.x+delta.z*delta.z);
         const float delay=1-std::clamp(distance/48.0f,0.0f,1.0f);
         const bool supportsPlayer=std::abs(delta.x)<=5.1f && std::abs(delta.z)<=5.1f;
         const float begin=supportsPlayer?escapeTime+.004f:rageTime+.02f+delay*(escapeTime-rageTime-.01f);
         const float age=std::max(0.0f,(t-begin)*s.duration);
         pose.object->SetIsVisible(t>=rageTime && age<4.0f);
-        pose.object->SetTranslate(pose.position+Vector3{std::sin(age*2+pose.position.x)*age*.6f,-4.9f*age*age,0});
-        pose.object->SetRotation(pose.rotation+Vector3{age*.18f,age*.04f,age*.13f});pose.object->UpdateWorldMatrix(false);
+        pose.object->SetTranslate(pose.position+engine::Vector3{std::sin(age*2+pose.position.x)*age*.6f,-4.9f*age*age,0});
+        pose.object->SetRotation(pose.rotation+engine::Vector3{age*.18f,age*.04f,age*.13f});pose.object->UpdateWorldMatrix(false);
         // 床の姿勢を共有し、亀裂の発光だけを衝撃後に減衰させます。
         auto& crack=s.floorCracks[crackIndex++];
         if (crack) {crack->SetTranslate(pose.object->GetTranslate());crack->SetRotation(pose.object->GetRotation());
         crack->SetIsVisible(pose.object->GetIsVisible());
         crack->SetEmissive(1.0f+1.5f*std::exp(-(t-rageTime)*12));}
-        if (crossed(begin) && distance>10) VFXSequencer::PlayOneShot("crown_inheritance_floor_break_cue",pose.position+Vector3{0,.8f,0});
+        if (crossed(begin) && distance>10) VFXSequencer::PlayOneShot("crown_inheritance_floor_break_cue",pose.position+engine::Vector3{0,.8f,0});
     }
     size_t index=0;
     for (auto& pose:s.originalObjects) {
@@ -558,35 +561,35 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         const bool floor=name.find("ArenaFloor_")!=std::string::npos;
         const float begin=floor?escapeTime+.005f:rageTime+.02f+(index++%9)*.012f;
         const float age=std::max(0.0f,(t-begin)*s.duration);
-        pose.object->SetTranslate(pose.position+Vector3{0,-4.9f*age*age,0});
-        pose.object->SetRotation(pose.rotation+Vector3{age*.07f,0,age*.055f});
+        pose.object->SetTranslate(pose.position+engine::Vector3{0,-4.9f*age*age,0});
+        pose.object->SetRotation(pose.rotation+engine::Vector3{age*.07f,0,age*.055f});
         if (age>0) {pose.object->SetCollisionAttribute(0);pose.object->SetCollisionMask(0);}
         pose.object->UpdateWorldMatrix(false);
     }
 
     // カットごとに主役を一つに絞る。欠片の着地を見せてから暴走の全景へ切り替えます。
-    if (t<.035f) {target=s.lastSealPosition;eye=target+Vector3{3.2f,1.0f,5.5f};}
-    else if (t<breakTime) {target=fragmentPosition;eye=target+Vector3{2.4f,.7f,4.8f}*tuning.movieFragmentCameraDistance;}
+    if (t<.035f) {target=s.lastSealPosition;eye=target+engine::Vector3{3.2f,1.0f,5.5f};}
+    else if (t<breakTime) {target=fragmentPosition;eye=target+engine::Vector3{2.4f,.7f,4.8f}*tuning.movieFragmentCameraDistance;}
     else if (t<landTime) {
         const float follow=CrownEase((t-breakTime)/(landTime-breakTime));target=fragmentPosition;
         eye=target+CrownLerp({2.4f,.7f,4.8f},{2.6f,1.2f,4.2f},follow)*tuning.movieFragmentCameraDistance;
-    } else if (t<rageTime) {target=s.fragmentGround;eye=target+Vector3{2.5f,1,4.0f}*tuning.movieFragmentCameraDistance;}
-    else if (t<rageTime+.04f) {target=s.bossStart+Vector3{0,1.8f,0};eye=target+Vector3{13,7,24};}
-    else if (t<pullTime) {target=CrownLerp(s.start+Vector3{0,.8f,0},s.fragmentGround,.45f);eye=target+Vector3{5,2.6f,7};}
-    else if (t<absorbTime) {target=CrownLerp(mouth,s.fragmentGround,.38f);eye=target+Vector3{4.0f,1.8f,5.8f}*tuning.movieFragmentCameraDistance;}
+    } else if (t<rageTime) {target=s.fragmentGround;eye=target+engine::Vector3{2.5f,1,4.0f}*tuning.movieFragmentCameraDistance;}
+    else if (t<rageTime+.04f) {target=s.bossStart+engine::Vector3{0,1.8f,0};eye=target+engine::Vector3{13,7,24};}
+    else if (t<pullTime) {target=CrownLerp(s.start+engine::Vector3{0,.8f,0},s.fragmentGround,.45f);eye=target+engine::Vector3{5,2.6f,7};}
+    else if (t<absorbTime) {target=CrownLerp(mouth,s.fragmentGround,.38f);eye=target+engine::Vector3{4.0f,1.8f,5.8f}*tuning.movieFragmentCameraDistance;}
     else if (t<wingsTime) {
-        target=s.start+Vector3{0,1,0};const Vector3 front{std::sin(pullYaw),0,std::cos(pullYaw)};
-        eye=target+front*5.5f+Vector3{1.6f,1.1f,0};
-    } else if (t<escapeTime) {target=s.start+Vector3{0,1.3f,0};eye=target+Vector3{-7,3,9};}
+        target=s.start+engine::Vector3{0,1,0};const engine::Vector3 front{std::sin(pullYaw),0,std::cos(pullYaw)};
+        eye=target+front*5.5f+engine::Vector3{1.6f,1.1f,0};
+    } else if (t<escapeTime) {target=s.start+engine::Vector3{0,1.3f,0};eye=target+engine::Vector3{-7,3,9};}
     else if (t<arriveTime) {
-        target=playerPosition+Vector3{0,.9f,0};
+        target=playerPosition+engine::Vector3{0,.9f,0};
         const float travel=(t-escapeTime)/(arriveTime-escapeTime);
         eye=target+CrownLerp({-14,7,24},{-9,5,15},CrownEase(travel));
-    } else {target=CrownLerp(destination+Vector3{0,1.2f,0},s.offset+Vector3{0,3,0},.5f*CrownEase((t-arriveTime)/(1-arriveTime)));eye=target+Vector3{8,10,32};}
+    } else {target=CrownLerp(destination+engine::Vector3{0,1.2f,0},s.offset+engine::Vector3{0,3,0},.5f*CrownEase((t-arriveTime)/(1-arriveTime)));eye=target+engine::Vector3{8,10,32};}
     const float impact=t>=rageTime?.25f*std::exp(-(t-rageTime)*48):0;
     const float tremor=t>=rageTime && t<escapeTime?.055f:0;
     const float shake=(impact+tremor)*tuning.movieShake;
-    const Vector3 jitter{std::sin(s.time*47)*shake,std::sin(s.time*61)*shake*.65f,0};
+    const engine::Vector3 jitter{std::sin(s.time*47)*shake,std::sin(s.time*61)*shake*.65f,0};
     eye=eye+jitter;target=target+jitter*.35f;
     camera->SetFollowTarget(nullptr);camera->SetLockOnTarget(nullptr);camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
     camera->SetEye(eye);camera->SetTarget(target);camera->SetRotation(CrownLook(eye,target));
@@ -596,7 +599,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     CameraManager::GetInstance()->SetActiveCamera(camera);
     // 通常Updateもカメラ変更前にモデルを更新していました。最後に全描画定数を揃えます。
     for (auto& object:GetObjects()) if (object && !object->IsReplayRemoved()) object->UpdateWorldMatrix(true);
-    if (Object3d* marker=player_->GetHookMarker()) marker->UpdateWorldMatrix(true);
+    if (engine::Object3d* marker=player_->GetHookMarker()) marker->UpdateWorldMatrix(true);
     if (auto* params=PostEffect::GetInstance()->GetParams())
         params->cinemaBarHeight=s.bars+.075f*CrownEase(t/.04f)*(1-CrownEase((t-.96f)/.04f));
     if (t>=1 && !crownMoviePreview_.active) FinishCrownFinale(true);
@@ -619,7 +622,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         auto rotation = player_->GetRotation();
         rotation.x = rotation.z = 0.0f;
         player_->SetRotation(rotation);
-        player_->SetTranslate(completed ? s.offset + Vector3{0.0f, 0.82f, 12.0f} : s.start);
+        player_->SetTranslate(completed ? s.offset + engine::Vector3{0.0f, 0.82f, 12.0f} : s.start);
         player_->SetVelocity({});
         player_->SetGrounded(true);
         player_->UpdateWorldMatrix(true);
@@ -630,7 +633,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         }
     }
     if (completed && s.boss) {
-        s.boss->BeginFinalArena(s.offset + Vector3{0.0f, 0.82f, -12.0f});
+        s.boss->BeginFinalArena(s.offset + engine::Vector3{0.0f, 0.82f, -12.0f});
         for (auto& pose : s.originalObjects) {
             if (pose.object->GetName() == "Stage3_HighCrown_VictoryCrown") {
                 if (auto* receiver = dynamic_cast<GimmickEventReceiver*>(pose.object))
@@ -766,8 +769,8 @@ void GamePlayScene::DrawCrownFinaleUI() {
         const char* paths[] = {"ui/crown_finale/seals.png",    "ui/crown_finale/inherit.png",
                                "ui/crown_finale/controls.png", "ui/crown_finale/boss_intro.png",
                                "ui/crown_finale/release.png",  "ui/crown_finale/awaken.png"};
-        crownFinaleMessages_[index] = std::make_unique<Sprite>();
-        const uint32_t texture = Sprite::LoadTexture(paths[index]);
+        crownFinaleMessages_[index] = std::make_unique<engine::Sprite>();
+        const uint32_t texture = engine::Sprite::LoadTexture(paths[index]);
         crownFinaleMessages_[index]->Initialize(spriteCommon_.get(), texture);
         crownFinaleMessages_[index]->SetTextureName(paths[index]);
         crownFinaleMessages_[index]->SetAnchorPoint({0.5f, 0.5f});

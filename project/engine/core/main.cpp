@@ -1,9 +1,12 @@
 #include "Game.h"
 #include "Framework.h" // Frameworkをインクルード
+#include "engine/system/scene/LoadingProfiler.h"
 #include <memory>
 
 // Windowsアプリでのエントリーポイント
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+
+    BeginStartupProfile();
 
     // Frameworkクラスのポインタで、Gameクラスのインスタンスを生成
     std::unique_ptr<Framework> game = std::make_unique<Game>();

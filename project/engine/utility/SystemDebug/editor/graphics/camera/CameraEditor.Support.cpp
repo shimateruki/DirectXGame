@@ -14,12 +14,13 @@ namespace CameraEditorImplementation {
         return sceneManager ? sceneManager->GetCurrentScene() : nullptr;
     }
 
-    bool IsObjectInCurrentScene(const Object3d* target) {
+    bool IsObjectInCurrentScene(const engine::Object3d* target) {
+        // 生ポインターの参照先がシーン切替で失効していないか、現所有一覧と照合する。
         BaseScene* scene = GetCurrentScene();
         if (!scene || !target) {
             return false;
         }
-        return std::any_of(scene->GetObjects().begin(), scene->GetObjects().end(), [target](const std::unique_ptr<Object3d>& object) {
+        return std::any_of(scene->GetObjects().begin(), scene->GetObjects().end(), [target](const std::unique_ptr<engine::Object3d>& object) {
             return object.get() == target;
         });
     }
@@ -32,26 +33,27 @@ namespace CameraEditorImplementation {
         return radians * 180.0f / kPi;
     }
 
-    Matrix4x4 MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness) {
-        Math math;
-        Vector3 diff = end - start;
+    engine::Matrix4x4 MakeLineBoxMatrix(const engine::Vector3& start, const engine::Vector3& end, float thickness) {
+        // 始点と終点を結ぶ細い箱を作るため、長さ・向き・中心位置から変換行列を組み立てる。
+        engine::Math math;
+        engine::Vector3 diff = end - start;
         float length = math.Length(diff);
         if (length < 0.001f) {
             length = 0.001f;
         }
 
-        Vector3 center = (start + end) * 0.5f;
+        engine::Vector3 center = (start + end) * 0.5f;
         float yaw = std::atan2(diff.x, diff.z);
         float horizontalLength = std::sqrt(diff.x * diff.x + diff.z * diff.z);
         float pitch = std::atan2(-diff.y, horizontalLength);
 
-        Matrix4x4 scale = math.MakeScaleMatrix({ thickness, thickness, length });
-        Matrix4x4 rotate = math.Multiply(math.MakeRotateXMatrix(pitch), math.MakeRotateYMatrix(yaw));
-        Matrix4x4 translate = math.MakeTranslateMatrix(center);
+        engine::Matrix4x4 scale = math.MakeScaleMatrix({ thickness, thickness, length });
+        engine::Matrix4x4 rotate = math.Multiply(math.MakeRotateXMatrix(pitch), math.MakeRotateYMatrix(yaw));
+        engine::Matrix4x4 translate = math.MakeTranslateMatrix(center);
         return math.Multiply(math.Multiply(scale, rotate), translate);
     }
 
-    Vector3 CalculateForward(const Vector3& rotation) {
+    engine::Vector3 CalculateForward(const engine::Vector3& rotation) {
         // rotation.x = Pitch, rotation.y = Yaw
         float x = std::sin(rotation.y) * std::cos(rotation.x);
         float y = std::sin(rotation.x); // Y-Upの場合、Pitch上がプラスならsin(x)ではなく-sin(x)の場合も
@@ -59,14 +61,14 @@ namespace CameraEditorImplementation {
         return { x, y, z };
     }
 
-    Vector3 CalculateEditorForward(const Vector3& rotation) {
+    engine::Vector3 CalculateEditorForward(const engine::Vector3& rotation) {
         float x = std::sin(rotation.y) * std::cos(rotation.x);
         float y = -std::sin(rotation.x);
         float z = std::cos(rotation.y) * std::cos(rotation.x);
         return { x, y, z };
     }
 
-    Vector3 Cross(const Vector3& a, const Vector3& b) {
+    engine::Vector3 Cross(const engine::Vector3& a, const engine::Vector3& b) {
         return {
             a.y * b.z - a.z * b.y,
             a.z * b.x - a.x * b.z,
@@ -74,11 +76,11 @@ namespace CameraEditorImplementation {
         };
     }
 
-    float Length(const Vector3& v) {
+    float Length(const engine::Vector3& v) {
         return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
     }
 
-    Vector3 NormalizeSafe(const Vector3& v, const Vector3& fallback) {
+    engine::Vector3 NormalizeSafe(const engine::Vector3& v, const engine::Vector3& fallback) {
         float length = Length(v);
         if (length < 0.0001f) {
             return fallback;
@@ -86,18 +88,18 @@ namespace CameraEditorImplementation {
         return { v.x / length, v.y / length, v.z / length };
     }
 
-    Vector3 MakeRotationFromForward(const Vector3& forward) {
-        Vector3 normalized = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+    engine::Vector3 MakeRotationFromForward(const engine::Vector3& forward) {
+        engine::Vector3 normalized = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
         float pitch = std::asin(std::clamp(-normalized.y, -1.0f, 1.0f));
         float yaw = std::atan2(normalized.x, normalized.z);
         return { pitch, yaw, 0.0f };
     }
 
-    Vector3 GetObjectWorldForward(const Object3d* object) {
+    engine::Vector3 GetObjectWorldForward(const engine::Object3d* object) {
         if (!object) {
             return { 0.0f, 0.0f, 1.0f };
         }
-        Vector3 forward = Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, object->GetWorldMatrix());
+        engine::Vector3 forward = engine::Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, object->GetWorldMatrix());
         return NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
     }
 

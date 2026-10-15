@@ -6,15 +6,15 @@
 class Player;
 
 // プレイヤーが拾って効果を発動するアイテムの基底クラス
-class BaseItem : public Object3d {
+class BaseItem : public engine::Object3d {
   public:
     virtual ~BaseItem() = default;
 
     virtual void Initialize(Object3dCommon* common, const std::string& modelName);
     void Update(float deltaTime) override;
-    bool OnCollision(Object3d* other) override;
+    bool OnCollision(engine::Object3d* other) override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   protected:
     // 派生アイテムで取得効果を実装し、MarkCollected で重複取得を防ぎます。

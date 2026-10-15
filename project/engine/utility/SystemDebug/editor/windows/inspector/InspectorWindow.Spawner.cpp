@@ -6,7 +6,7 @@
 void InspectorWindow::DrawSpawnerSettings() {
     // スポナーの種別と発生条件を、選択中オブジェクトのパラメータへ反映します。
 #ifdef USE_IMGUI
-    Object3d* selectedObject = editor_->GetSelectedObject();
+    engine::Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
     ImGui::Separator();

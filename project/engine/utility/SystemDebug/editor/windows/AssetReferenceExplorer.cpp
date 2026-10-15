@@ -51,6 +51,7 @@ void AssetReferenceExplorer::Initialize(DebugEditor* editor) {
 }
 
 void AssetReferenceExplorer::Finalize() {
+    // Editor への参照と探索結果をまとめて破棄し、再オープン時に古い一覧を見せない。
     editor_ = nullptr;
     open_ = false;
     aliasToAssetIndices_.clear();
@@ -59,6 +60,7 @@ void AssetReferenceExplorer::Finalize() {
 }
 
 void AssetReferenceExplorer::Open(const std::string& assetPath) {
+    // 対象を指定した場合は保持し、表示開始後の更新で参照一覧を再走査する。
     open_ = true;
     if (!assetPath.empty()) {
         requestedAssetPath_ = assetPath;
@@ -67,6 +69,7 @@ void AssetReferenceExplorer::Open(const std::string& assetPath) {
 }
 
 std::string AssetReferenceExplorer::Normalize(std::string value) {
+    // 区切り文字と大文字小文字を統一し、同一アセットの表記揺れを吸収する。
     std::replace(value.begin(), value.end(), '\\', '/');
     while (value.rfind("./", 0) == 0) {
         value.erase(0, 2);
@@ -78,6 +81,7 @@ std::string AssetReferenceExplorer::Normalize(std::string value) {
 }
 
 std::string AssetReferenceExplorer::EscapeJsonPointerToken(const std::string& token) {
+    // JSON Pointerの特別文字は規約の順にエスケープして参照先を一意にする。
     std::string result;
     result.reserve(token.size());
     for (char character : token) {
@@ -89,6 +93,7 @@ std::string AssetReferenceExplorer::EscapeJsonPointerToken(const std::string& to
 }
 
 std::string AssetReferenceExplorer::GetOwnerCategory(const std::string& path) {
+    // 保存場所から参照元の種類を推定し、一覧上の分類に使う。
     const std::string lower = Normalize(path);
     if (lower.find("/3dobject/") != std::string::npos || lower.find("/scene/") != std::string::npos) return "Scene";
     if (lower.find("/prefab/") != std::string::npos || lower.find("/preset/") != std::string::npos) return "Prefab/Preset";
@@ -97,6 +102,7 @@ std::string AssetReferenceExplorer::GetOwnerCategory(const std::string& path) {
 }
 
 bool AssetReferenceExplorer::IsReferenceLikeKey(const std::string& key) {
+    // JSON全項目ではなく、アセット参照を表しやすい名前だけ探索候補にする。
     const std::string lower = Normalize(key);
     static constexpr const char* hints[] = {
         "asset", "model", "texture", "normalmap", "ormmap", "shader", "effect",
@@ -232,6 +238,7 @@ void AssetReferenceExplorer::VisitJson(
 }
 
 void AssetReferenceExplorer::ScanJsonAsset(const EditorAssetRecord& owner) {
+    // 壊れたJSON一件で探索全体を止めず、そのアセットだけを読み飛ばす。
     std::ifstream stream(owner.sourcePath);
     if (!stream.is_open()) return;
     nlohmann::json data;
@@ -270,6 +277,7 @@ std::vector<std::size_t> AssetReferenceExplorer::FindRepairCandidates(const Miss
 }
 
 std::string AssetReferenceExplorer::MakeReferenceValue(const EditorAssetRecord& asset, const std::string& key) const {
+    // モデル参照のキーにはモデルルートからのフォルダ名を、それ以外は元パスを返す。
     const std::string lowerKey = Normalize(key);
     const std::string lowerPath = Normalize(asset.sourcePath);
     if (lowerKey.find("model") != std::string::npos && lowerPath.rfind("resources/3dmodel/", 0) == 0) {

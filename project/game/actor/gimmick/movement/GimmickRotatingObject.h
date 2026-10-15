@@ -11,7 +11,7 @@ class GimmickRotatingObject : public BaseGimmick {
     void OnTrigger() override;
     void OnSwitchEvent(bool active) override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     bool initializedForPlay_ = false;

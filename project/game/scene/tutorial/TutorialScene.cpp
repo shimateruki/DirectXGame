@@ -61,34 +61,6 @@
 #include <iterator>
 
 namespace {
-constexpr const char* kControlsGuidePortraitsToPreload[] = {
-    "Resources/sprite/ui/control_guide/portraits/pink_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/bomb_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/wind_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/fire_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/thunder_slime.png"};
-
-constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
-    "Resources/sprite/ui/control_guide/labels/absorb.png",
-    "Resources/sprite/ui/control_guide/labels/throw.png",
-    "Resources/sprite/ui/control_guide/labels/slime_attack.png",
-    "Resources/sprite/ui/control_guide/labels/hook_aim.png",
-    "Resources/sprite/ui/control_guide/labels/slime_dive.png",
-    "Resources/sprite/ui/control_guide/labels/puni_straight.png",
-    "Resources/sprite/ui/control_guide/labels/puni_guard.png",
-    "Resources/sprite/ui/control_guide/labels/bomb_throw.png",
-    "Resources/sprite/ui/control_guide/labels/bomb_place.png",
-    "Resources/sprite/ui/control_guide/labels/blast_jump.png",
-    "Resources/sprite/ui/control_guide/labels/fireball.png",
-    "Resources/sprite/ui/control_guide/labels/flame_breath.png",
-    "Resources/sprite/ui/control_guide/labels/blaze_step.png",
-    "Resources/sprite/ui/control_guide/labels/thunder_chain.png",
-    "Resources/sprite/ui/control_guide/labels/charged_discharge.png",
-    "Resources/sprite/ui/control_guide/labels/thunder_step.png",
-    "Resources/sprite/ui/control_guide/labels/updraft.png",
-    "Resources/sprite/ui/control_guide/labels/wind_breath.png",
-    "Resources/sprite/ui/control_guide/labels/wind_dash.png"};
-
 constexpr const char* kTutorialMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
     "Resources/json/effect/effect_pink_slime_charge_core_flash.json",
@@ -167,7 +139,7 @@ void TutorialScene::SetIsGoal(bool isGoal) {
     }
 }
 
-void TutorialScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+void TutorialScene::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) {
     // チュートリアル専用の案内と保存表示もリプレイの描画対象へ加える。
     BaseScene::CollectReplaySprites(replaySprites);
     if (lockOnSprite_) {
@@ -212,7 +184,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
         return;
     }
 
-    auto restoreVector3 = [](const json& object, const char* key, Vector3& value) {
+    auto restoreVector3 = [](const json& object, const char* key, engine::Vector3& value) {
         const auto found = object.find(key);
         if (found != object.end() && found->is_array() && found->size() >= 3) {
             value = {(*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>()};
@@ -259,15 +231,7 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
                                  ? GetSceneLoadContext().spriteLayoutPath
                                  : "Resources/json/sprite/tutorialScene.json");
     manifest.AddSpriteLayout("Resources/json/sprite/controlsGuide.json");
-    for (const char* path : kControlsGuidePortraitsToPreload) {
-        manifest.AddTexture(path);
-    }
-    for (const char* path : kControlsGuideAbilityLabelsToPreload) {
-        manifest.AddTexture(path);
-    }
-    for (const char* path : CopyStyleHud::kTexturePaths) {
-        manifest.AddTexture("Resources/sprite/" + std::string(path));
-    }
+    // 操作ガイドとコピー能力HUDの画像はcontrolsGuide.jsonの参照から収集します。
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
@@ -325,7 +289,7 @@ bool TutorialScene::InitializeLoadingStep() {
             return false;
         }
         case 1:
-            spriteCommon_ = std::make_unique<SpriteCommon>();
+            spriteCommon_ = std::make_unique<engine::SpriteCommon>();
             spriteCommon_->Initialize(dxCommon_);
             object3dCommon_ = std::make_unique<Object3dCommon>();
             object3dCommon_->Initialize(dxCommon_);
@@ -346,7 +310,7 @@ bool TutorialScene::InitializeLoadingStep() {
             lockOnSystem_ = std::make_unique<LockOnSystem>();
             lockOnSystem_->Initialize(inputManager_);
             const uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
-            lockOnSprite_ = std::make_unique<Sprite>();
+            lockOnSprite_ = std::make_unique<engine::Sprite>();
             lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
             lockOnSprite_->SetAnchorPoint({0.5f, 0.5f});
             lockOnSprite_->SetSize({64.0f, 64.0f});
@@ -547,10 +511,10 @@ void TutorialScene::Update(float deltaTime) {
     PostEffect::GetInstance()->Update(deltaTime);
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
     if (activeCamera) {
-        PostEffect::GetInstance()->GetParams()->projectionInverse = Math::Inverse(activeCamera->GetProjectionMatrix());
+        PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
     }
 
-    static Math math;
+    static engine::Math math;
     LightEditor::GetInstance()->Update();
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -558,23 +522,23 @@ void TutorialScene::Update(float deltaTime) {
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_, deltaTime);
     CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
 
-    Object3d* target = lockOnSystem_->GetTarget();
+    engine::Object3d* target = lockOnSystem_->GetTarget();
 
     if (target && lockOnSystem_->IsLockingOn()) {
         isDrawLockOn_ = true;
         AABB aabb = target->GetAABB();
 
-        Vector3 targetCenter;
+        engine::Vector3 targetCenter;
         targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
         targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
         targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
 
-        Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+        engine::Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
         float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] +
                   targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
         if (w > 0.001f) {
-            Vector3 ndc;
+            engine::Vector3 ndc;
             ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] +
                      targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) /
                     w;
@@ -615,7 +579,7 @@ void TutorialScene::Update(float deltaTime) {
 
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
-            Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
+            engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }
@@ -653,10 +617,10 @@ void TutorialScene::Draw() {
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (player_ && camera) {
-        Vector3 pPos = player_->GetWorldPosition();
+        engine::Vector3 pPos = player_->GetWorldPosition();
         pPos.y += 1.0f;
-        Vector3 cPos = camera->GetEye();
-        Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
+        engine::Vector3 cPos = camera->GetEye();
+        engine::Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
         float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
         if (dist < 3.0f) {
@@ -678,29 +642,8 @@ void TutorialScene::Draw() {
     object3dCommon_->SetGraphicsCommand();
     object3dCommon_->SetPipelineState(BlendMode::kNone);
 
-    for (auto& obj : objects) {
-        if (!IsVisible(obj.get()))
-            continue;
-
-        bool isPlayerPart = false;
-        if (isFirstPerson) {
-            Object3d* current = obj.get();
-            while (current) {
-                if (current == player_) {
-                    isPlayerPart = true;
-                    break;
-                }
-                current = current->GetParent();
-            }
-        }
-
-        if (isPlayerPart)
-            continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType()))
-            continue;
-
-        obj->Draw(pointLightRes, spotLightRes);
-    }
+    DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Opaque, pointLightRes, spotLightRes,
+        player_, isFirstPerson, true, [this](engine::Object3d* object) { return IsVisible(object); });
 
     // 身体を隠した近距離でも、操作の目印であるフックマーカーは残します。
     if (player_ && player_->GetHookMarker()) {
@@ -712,25 +655,8 @@ void TutorialScene::Draw() {
     LightEditor::GetInstance()->Draw3D();
 
     // 半透明は不透明パスから外しておき、地形の後に重ねます。
-    for (auto& obj : objects) {
-        bool isPlayerPart = false;
-        if (isFirstPerson) {
-            Object3d* current = obj.get();
-            while (current) {
-                if (current == player_) {
-                    isPlayerPart = true;
-                    break;
-                }
-                current = current->GetParent();
-            }
-        }
-        if (isPlayerPart)
-            continue;
-
-        if (obj->GetMaterialType() == 1) {
-            obj->Draw(pointLightRes, spotLightRes);
-        }
-    }
+    DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Transparent, pointLightRes, spotLightRes,
+        player_, isFirstPerson, true, {});
     particleSystem_->Draw();
 
     // 霧と特殊材質は画面色・深度を読むため、通常のObject描画とは分けます。
@@ -748,6 +674,10 @@ void TutorialScene::DrawUI() {
     // 背景Sprite→照準→プレイヤーUI→操作案内→保存通知の順で重ねます。
     // 案内と保存通知はゲーム本体のSpriteより手前に置き、表示中に読めるようにします。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    // チュートリアルのムービー中は画面上の操作UIを描かず、終了後に戻します。
+    if (tutorialDirector_ && tutorialDirector_->IsCinematicPlaying()) {
+        return;
+    }
     for (auto& sprite : sprites_)
         sprite->Draw();
     if (isDrawLockOn_ && lockOnSprite_)
@@ -857,23 +787,6 @@ void TutorialScene::HandleTutorialFlowCompleted() {
     }
 }
 
-bool TutorialScene::IsVisible(Object3d* obj) {
-    // カメラ近傍は描画を残し、遠い物体だけ視錐台判定で間引く。
-    if (!obj || !obj->GetIsVisible())
-        return false;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera)
-        return true;
-    AABB worldAabb = obj->GetModelWorldAABB();
-    constexpr float kNearObjectCullBypassDistance = 24.0f;
-    const Vector3& cameraPosition = camera->GetEye();
-    if (Math::DistanceSquaredPointAABB(cameraPosition, worldAabb.min, worldAabb.max) <=
-        kNearObjectCullBypassDistance * kNearObjectCullBypassDistance) {
-        return true;
-    }
-    const bool visible = Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
-    if (!visible) {
-        RenderStats::GetInstance()->RecordCulledObject();
-    }
-    return visible;
+bool TutorialScene::IsVisible(engine::Object3d* obj) {
+    return IsSceneObjectVisibleByFrustum(obj, CameraManager::GetInstance()->GetActiveCamera());
 }

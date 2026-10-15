@@ -40,7 +40,7 @@ constexpr float kIdleSparkInterval = 0.095f;
 constexpr float kTwoPi = 6.283185307f;
 constexpr float kHalfPi = 1.570796327f;
 
-Vector3 NormalizePlanar(Vector3 value) {
+engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     // 落雷列の向きは水平面に固定し、対象と重なるときは前方を使う。
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
@@ -50,9 +50,9 @@ Vector3 NormalizePlanar(Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
-Object3d* FindEnemyDamageTarget(Object3d* object) {
+engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
     // 子メッシュとの接触を本体の敵へたどり、被弾対象を統一する。
-    for (Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3d* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -91,7 +91,7 @@ void EnemyThunderSlime::Update(float deltaTime) {
     EnsureBaseScale();
     UpdateWildTimers(deltaTime);
 
-    Vector3 velocity = GetVelocity();
+    engine::Vector3 velocity = GetVelocity();
     velocity.x = 0.0f;
     velocity.z = 0.0f;
 
@@ -162,7 +162,7 @@ void EnemyThunderSlime::UpdateWildTimers(float deltaTime) {
     attackCooldown_ = (std::max)(0.0f, attackCooldown_ - deltaTime);
 }
 
-void EnemyThunderSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
+void EnemyThunderSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& velocity) {
     // 連続落雷中は新しい攻撃を選ばず、固定した方向への落雷を完了させる。
     if (wildLightningState_ != WildLightningState::Idle) {
         UpdateFacing(wildLightningDirection_);
@@ -171,8 +171,8 @@ void EnemyThunderSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
     }
 
     if (target_ && param_.has_value()) {
-        Vector3 toTarget = target_->GetTranslate() - GetTranslate();
-        Vector3 direction = NormalizePlanar(toTarget);
+        engine::Vector3 toTarget = target_->GetTranslate() - GetTranslate();
+        engine::Vector3 direction = NormalizePlanar(toTarget);
         const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
         UpdateFacing(direction);
@@ -183,7 +183,7 @@ void EnemyThunderSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
     }
 }
 
-void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction,
+void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction,
                                              float distance) {
     // 近距離放電・中距離落雷・追跡・巡回を射程と待機時間で振り分ける。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kShockAttackId);
@@ -245,7 +245,7 @@ const char* EnemyThunderSlime::GetDebugAttackPhaseName() const {
 }
 
 // 中距離では、狙った方向へ予告を並べてから連続落雷を走らせます。
-void EnemyThunderSlime::StartWildLightning(const Vector3& direction) {
+void EnemyThunderSlime::StartWildLightning(const engine::Vector3& direction) {
     // 射線上の着地点を先に固定し、予告と実際の雷が同じ地面を指すようにする。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kWildLineAttackId);
     wildLightningState_ = WildLightningState::Charging;
@@ -258,20 +258,20 @@ void EnemyThunderSlime::StartWildLightning(const Vector3& direction) {
     attackCooldown_ = (std::max)(0.1f, attack.cooldown);
     HideAttackTelegraph();
 
-    const Vector3 origin = GetWorldPosition();
+    const engine::Vector3 origin = GetWorldPosition();
     MeshEffectManager* meshEffects = MeshEffectManager::GetInstance();
     for (std::size_t index = 0; index < wildStrikePositions_.size(); ++index) {
         const float distance = kWildStrikeStartDistance + kWildStrikeSpacing * static_cast<float>(index);
-        const Vector3 samplePosition = origin + wildLightningDirection_ * distance;
+        const engine::Vector3 samplePosition = origin + wildLightningDirection_ * distance;
         wildStrikePositions_[index] = FindStrikeGround(samplePosition, this, origin.y);
         if (meshEffects) {
-            Vector3 warningPosition = wildStrikePositions_[index];
+            engine::Vector3 warningPosition = wildStrikePositions_[index];
             warningPosition.y += 0.045f;
             meshEffects->SpawnEffectAt(kLightningWarningEffectPath, warningPosition, {0.0f, 0.0f, 0.0f});
         }
     }
 
-    const Vector3 chargeGround = FindStrikeGround(origin, this, origin.y);
+    const engine::Vector3 chargeGround = FindStrikeGround(origin, this, origin.y);
     SpawnChargeGroundEffect(chargeGround, 1.12f);
     EmitLineChargeEffect(attack.windupVfx.empty() ? kLineChargePreset : attack.windupVfx.c_str(), 0.0f);
 }
@@ -330,27 +330,27 @@ void EnemyThunderSlime::UpdateWildLightning(float deltaTime) {
     }
 }
 
-void EnemyThunderSlime::SpawnWildLightningStrike(const Vector3& groundPosition) {
+void EnemyThunderSlime::SpawnWildLightningStrike(const engine::Vector3& groundPosition) {
     // 一つの着弾点で表示とダメージ判定を同時に発生させる。
     SpawnLightningStrikeVisual(groundPosition, wildLightningDirection_);
     DispatchWildLightningDamage(groundPosition);
 }
 
-void EnemyThunderSlime::DispatchWildLightningDamage(const Vector3& groundPosition) {
+void EnemyThunderSlime::DispatchWildLightningDamage(const engine::Vector3& groundPosition) {
     // 一連の落雷で同じ対象を二度傷つけず、水平半径と高さを別々に判定する。
     if (!target_ || wildLightningHitTarget_) {
         return;
     }
 
     const EnemyAttackDefinition& attack = GetAttackDefinition(kWildLineAttackId);
-    const Vector3 targetPosition = target_->GetWorldPosition();
-    const Vector3 horizontal = {
+    const engine::Vector3 targetPosition = target_->GetWorldPosition();
+    const engine::Vector3 horizontal = {
         targetPosition.x - groundPosition.x,
         0.0f,
         targetPosition.z - groundPosition.z,
     };
     const float verticalDistance = targetPosition.y - groundPosition.y;
-    if (Math::Length(horizontal) > attack.radius || verticalDistance < -0.65f ||
+    if (engine::Math::Length(horizontal) > attack.radius || verticalDistance < -0.65f ||
         verticalDistance > kLightningStrikeHeight) {
         return;
     }
@@ -378,14 +378,14 @@ void EnemyThunderSlime::ResetWildLightning() {
     wildLightningHitTarget_ = false;
 }
 
-void EnemyThunderSlime::UpdateWanderBehavior(float deltaTime, Vector3& velocity) {
+void EnemyThunderSlime::UpdateWanderBehavior(float deltaTime, engine::Vector3& velocity) {
     // 検知範囲外では共通巡回速度を使い、移動方向へモデルを向ける。
     const float speed = (std::max)(0.65f, param_->speed * 0.48f);
     velocity = CalculateWanderVelocity(deltaTime, speed, 0.68f);
     UpdateFacing({velocity.x, 0.0f, velocity.z});
 }
 
-void EnemyThunderSlime::ApplyGroundMovementAndAnimation(float deltaTime, Vector3& velocity) {
+void EnemyThunderSlime::ApplyGroundMovementAndAnimation(float deltaTime, engine::Vector3& velocity) {
     // 詠唱中は足踏みを止め、移動中だけ跳ねる速度と地上判定半径を反映する。
     velocity.y = (std::min)(GetVelocity().y, 0.0f);
     if (isCharging_ || wildLightningState_ != WildLightningState::Idle) {
@@ -409,7 +409,7 @@ void EnemyThunderSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource*
     }
 }
 
-std::unique_ptr<Object3d> EnemyThunderSlime::Clone() const {
+std::unique_ptr<engine::Object3d> EnemyThunderSlime::Clone() const {
     // シーン上の複製では固有エフェクトを再初期化し、配置設定と対象を引き継ぐ。
     auto clone = std::make_unique<EnemyThunderSlime>();
     assert(common_ != nullptr);
@@ -420,7 +420,7 @@ std::unique_ptr<Object3d> EnemyThunderSlime::Clone() const {
     return clone;
 }
 
-void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
+void EnemyThunderSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     // 雷攻撃を中断して予兆を消し、投擲中だけ広い接触半径に切り替える。
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
@@ -443,10 +443,10 @@ void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
     BaseEnemy::BeginThrown(initialVelocity);
 }
 
-Vector3 EnemyThunderSlime::FindStrikeGround(const Vector3& samplePosition, Object3d* ignoredObject,
+engine::Vector3 EnemyThunderSlime::FindStrikeGround(const engine::Vector3& samplePosition, engine::Object3d* ignoredObject,
                                             float fallbackHeight) const {
     // 上から地形を探して雷を接地させ、地形がなければ指定高さを使う。
-    Vector3 rayStart = samplePosition;
+    engine::Vector3 rayStart = samplePosition;
     rayStart.y += 10.0f;
 
     PhysicsQueryFilter filter;
@@ -457,14 +457,14 @@ Vector3 EnemyThunderSlime::FindStrikeGround(const Vector3& samplePosition, Objec
         return hit.hitPoint;
     }
 
-    Vector3 fallback = samplePosition;
+    engine::Vector3 fallback = samplePosition;
     fallback.y = fallbackHeight;
     return fallback;
 }
 
-void EnemyThunderSlime::SpawnLightningStrikeVisual(const Vector3& groundPosition, const Vector3& direction) {
+void EnemyThunderSlime::SpawnLightningStrikeVisual(const engine::Vector3& groundPosition, const engine::Vector3& direction) {
     // 柱状の雷は着地点を基準に上へ伸ばし、床の閃光と焦げ跡は地面へ置く。
-    Vector3 strikeCenter = groundPosition;
+    engine::Vector3 strikeCenter = groundPosition;
     strikeCenter.y += kLightningStrikeHeight * 0.5f;
     const float strikeYaw = std::atan2(direction.x, direction.z);
 
@@ -472,33 +472,33 @@ void EnemyThunderSlime::SpawnLightningStrikeVisual(const Vector3& groundPosition
         meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter, {kHalfPi, strikeYaw, 0.0f});
         meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter, {kHalfPi, strikeYaw + kHalfPi, 0.0f},
                                    {0.82f, 1.0f, 0.94f});
-        const Vector3 branchSide = {direction.z, 0.0f, -direction.x};
+        const engine::Vector3 branchSide = {direction.z, 0.0f, -direction.x};
         meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter + branchSide * 0.34f + direction * 0.18f,
                                    {kHalfPi, strikeYaw + 0.31f, 0.0f}, {0.46f, 1.0f, 0.76f});
         meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter - branchSide * 0.30f - direction * 0.14f,
                                    {kHalfPi, strikeYaw - 0.27f, 0.0f}, {0.38f, 1.0f, 0.68f});
         meshEffects->SpawnEffectAt(kLightningCoreEffectPath, strikeCenter, {0.0f, 0.0f, 0.0f});
 
-        Vector3 impactPosition = groundPosition;
+        engine::Vector3 impactPosition = groundPosition;
         impactPosition.y += 0.055f;
         meshEffects->SpawnEffectAt(kLightningImpactEffectPath, impactPosition, {0.0f, 0.0f, 0.0f});
-        meshEffects->SpawnEffectAt(kLightningImpactEffectPath, impactPosition + Vector3{0.0f, 0.025f, 0.0f},
+        meshEffects->SpawnEffectAt(kLightningImpactEffectPath, impactPosition + engine::Vector3{0.0f, 0.025f, 0.0f},
                                    {0.0f, strikeYaw + 0.35f, 0.0f}, {1.32f, 1.0f, 1.32f});
-        meshEffects->SpawnEffectAt(kScorchMarkEffectPath, impactPosition + Vector3{0.0f, 0.012f, 0.0f},
+        meshEffects->SpawnEffectAt(kScorchMarkEffectPath, impactPosition + engine::Vector3{0.0f, 0.012f, 0.0f},
                                    {0.0f, strikeYaw, 0.0f});
     }
 
-    Vector3 particlePosition = groundPosition;
+    engine::Vector3 particlePosition = groundPosition;
     particlePosition.y += 0.22f;
     EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition);
-    EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition + Vector3{0.22f, 0.08f, -0.18f});
+    EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition + engine::Vector3{0.22f, 0.08f, -0.18f});
     EmitThunderPreset(kDischargePreset, particlePosition);
 }
 
-void EnemyThunderSlime::SpawnChargeGroundEffect(const Vector3& groundPosition, float scale) {
+void EnemyThunderSlime::SpawnChargeGroundEffect(const engine::Vector3& groundPosition, float scale) {
     // 地面との重なりを避ける小さな高さ補正を加えて詠唱模様を置く。
     if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        Vector3 effectPosition = groundPosition;
+        engine::Vector3 effectPosition = groundPosition;
         effectPosition.y += 0.035f;
         meshEffects->SpawnEffectAt(kChargeGroundEffectPath, effectPosition, {0.0f, idleTimer_ * 0.8f, 0.0f},
                                    {scale, 1.0f, scale});
@@ -506,13 +506,13 @@ void EnemyThunderSlime::SpawnChargeGroundEffect(const Vector3& groundPosition, f
 }
 
 // 放電攻撃と火花演出
-void EnemyThunderSlime::UpdateFacing(const Vector3& direction) {
+void EnemyThunderSlime::UpdateFacing(const engine::Vector3& direction) {
     // モデルの正面補正を加え、最短角で標的へ向ける。
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq <= 0.0001f)
         return;
     const float targetYaw = std::atan2(direction.x, direction.z) + kThunderSlimeModelYawOffset;
-    SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f));
+    SetRotationY(engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f));
 }
 
 void EnemyThunderSlime::StartCharge() {
@@ -527,13 +527,13 @@ void EnemyThunderSlime::StartCharge() {
     chargeTimer_ = attack.windupDuration;
     chargeParticleTimer_ = 0.0f;
     attackCooldown_ = attack.cooldown;
-    const Vector3 origin = GetWorldPosition();
+    const engine::Vector3 origin = GetWorldPosition();
     SpawnChargeGroundEffect(FindStrikeGround(origin, this, origin.y), 1.18f);
     EmitOuterThunderEffect(attack.windupVfx.empty() ? kRadialChargePreset : attack.windupVfx.c_str(), 2, 0.18f);
     SyncGroundCollisionRadius();
 }
 
-void EnemyThunderSlime::UpdateCharge(float deltaTime, const Vector3& direction) {
+void EnemyThunderSlime::UpdateCharge(float deltaTime, const engine::Vector3& direction) {
     // 残り時間で円形予兆と電弧を強め、終了時に一度だけ放電する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kShockAttackId);
     lastShockDirection_ = direction;
@@ -560,7 +560,7 @@ void EnemyThunderSlime::UpdateCharge(float deltaTime, const Vector3& direction) 
     }
 }
 
-void EnemyThunderSlime::ReleaseShock(const Vector3& direction) {
+void EnemyThunderSlime::ReleaseShock(const engine::Vector3& direction) {
     // 放電時に予兆を消し、範囲内ダメージと反動姿勢を開始する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kShockAttackId);
     isCharging_ = false;
@@ -572,12 +572,12 @@ void EnemyThunderSlime::ReleaseShock(const Vector3& direction) {
     shockSquashTimer_ = attack.recoveryDuration;
     SyncGroundCollisionRadius();
 
-    Vector3 center = GetTranslate();
+    engine::Vector3 center = GetTranslate();
     center.y += (std::max)(0.5f, baseScale_.y * 0.22f);
     EmitOuterThunderEffect(attack.activeVfx.empty() ? kDischargePreset : attack.activeVfx.c_str(), 5, 0.35f);
     if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        const Vector3 origin = GetWorldPosition();
-        Vector3 scorchPosition = FindStrikeGround(origin, this, origin.y);
+        const engine::Vector3 origin = GetWorldPosition();
+        engine::Vector3 scorchPosition = FindStrikeGround(origin, this, origin.y);
         scorchPosition.y += 0.045f;
         meshEffects->SpawnEffectAt(kScorchMarkEffectPath, scorchPosition, {0.0f, GetRotation().y, 0.0f},
                                    {1.25f, 1.0f, 1.25f});
@@ -585,16 +585,16 @@ void EnemyThunderSlime::ReleaseShock(const Vector3& direction) {
     DispatchShockDamage(center, direction, attack.radius, attack.damage);
 }
 
-void EnemyThunderSlime::DispatchShockDamage(const Vector3& center, const Vector3& direction, float radius,
+void EnemyThunderSlime::DispatchShockDamage(const engine::Vector3& center, const engine::Vector3& direction, float radius,
                                             float damage) {
     // 高さ方向の差を軽く見て球状範囲を判定し、中心に近いほど押し出しを強める。
     if (!target_) {
         return;
     }
 
-    Vector3 diff = target_->GetTranslate() - center;
+    engine::Vector3 diff = target_->GetTranslate() - center;
     diff.y *= 0.45f;
-    const float distance = Math::Length(diff);
+    const float distance = engine::Math::Length(diff);
     if (distance > radius) {
         return;
     }
@@ -669,7 +669,7 @@ void EnemyThunderSlime::UpdateAuraEffect(float deltaTime) {
         hasBaseScale_ = true;
     }
 
-    Vector3 auraPos{};
+    engine::Vector3 auraPos{};
     float horizontalDiameter = 1.0f;
     float verticalDiameter = 1.0f;
     CalculateAuraShape(auraPos, horizontalDiameter, verticalDiameter);
@@ -677,7 +677,7 @@ void EnemyThunderSlime::UpdateAuraEffect(float deltaTime) {
     float yaw = GetRotation().y;
     Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
     if (camera) {
-        const Vector3 toCamera = camera->GetEye() - auraPos;
+        const engine::Vector3 toCamera = camera->GetEye() - auraPos;
         if (std::abs(toCamera.x) + std::abs(toCamera.z) > 0.001f) {
             yaw = std::atan2(toCamera.x, toCamera.z);
         }
@@ -699,9 +699,9 @@ void EnemyThunderSlime::HideAuraEffect() {
     }
 }
 
-void EnemyThunderSlime::CalculateAuraShape(Vector3& center, float& horizontalDiameter, float& verticalDiameter) const {
+void EnemyThunderSlime::CalculateAuraShape(engine::Vector3& center, float& horizontalDiameter, float& verticalDiameter) const {
     // 横幅と高さを本体スケールから別々に求め、つぶれた姿勢にも追従する。
-    const Vector3 scale = GetScale();
+    const engine::Vector3 scale = GetScale();
     const float maxXZ = (std::max)({std::abs(scale.x), std::abs(scale.z), 1.0f});
     const float yScale = (std::max)(std::abs(scale.y), 0.18f);
 
@@ -718,7 +718,7 @@ void EnemyThunderSlime::EmitOuterThunderEffect(const char* presetName, int count
         return;
     }
 
-    Vector3 center{};
+    engine::Vector3 center{};
     float horizontalDiameter = 1.0f;
     float verticalDiameter = 1.0f;
     CalculateAuraShape(center, horizontalDiameter, verticalDiameter);
@@ -728,7 +728,7 @@ void EnemyThunderSlime::EmitOuterThunderEffect(const char* presetName, int count
     const float phase = idleTimer_ * 3.4f + phaseOffset;
     for (int i = 0; i < count; ++i) {
         const float angle = phase + (kTwoPi * static_cast<float>(i) / static_cast<float>(count));
-        Vector3 pos = center;
+        engine::Vector3 pos = center;
         pos.x += std::cos(angle) * horizontalRadius;
         pos.z += std::sin(angle) * horizontalRadius;
         pos.y += std::sin(angle * 1.37f) * verticalRadius;
@@ -743,7 +743,7 @@ void EnemyThunderSlime::EmitLineChargeEffect(const char* presetName, float progr
         return;
     }
 
-    Vector3 center{};
+    engine::Vector3 center{};
     float horizontalDiameter = 1.0f;
     float verticalDiameter = 1.0f;
     CalculateAuraShape(center, horizontalDiameter, verticalDiameter);
@@ -754,7 +754,7 @@ void EnemyThunderSlime::EmitLineChargeEffect(const char* presetName, float progr
     const float phase = idleTimer_ * 4.8f + clampedProgress * 2.3f;
     for (int index = 0; index < arcCount; ++index) {
         const float angle = phase + kTwoPi * static_cast<float>(index) / static_cast<float>(arcCount);
-        Vector3 position = center;
+        engine::Vector3 position = center;
         position.x += std::cos(angle) * radius;
         position.z += std::sin(angle) * radius;
         position.y += verticalDiameter * (0.24f + 0.16f * std::sin(angle * 1.7f));
@@ -763,13 +763,13 @@ void EnemyThunderSlime::EmitLineChargeEffect(const char* presetName, float progr
     }
 
     if (clampedProgress >= 0.74f) {
-        Vector3 crownPosition = center;
+        engine::Vector3 crownPosition = center;
         crownPosition.y += verticalDiameter * 0.58f + 0.54f + clampedProgress * 0.42f;
         EmitThunderPreset(presetName, crownPosition);
     }
 }
 
-void EnemyThunderSlime::EmitThunderPreset(const char* presetName, const Vector3& position) {
+void EnemyThunderSlime::EmitThunderPreset(const char* presetName, const engine::Vector3& position) {
     // GPU粒子が未初期化のプレビューでも本体の攻撃は継続する。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (!particles || !particles->IsInitialized()) {
@@ -780,8 +780,8 @@ void EnemyThunderSlime::EmitThunderPreset(const char* presetName, const Vector3&
 
 void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
     // 放電・落雷・反動で異なる目標姿勢を作り、通常時は跳ねる変形へ戻す。
-    Vector3 targetScale = baseScale_;
-    Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
+    engine::Vector3 targetScale = baseScale_;
+    engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
     if (isCharging_) {
         const float windupDuration = (std::max)(0.01f, GetAttackDefinition(kShockAttackId).windupDuration);
         const float t = std::clamp(1.0f - (chargeTimer_ / windupDuration), 0.0f, 1.0f);
@@ -817,7 +817,7 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
         const float recoveryDuration = (std::max)(0.01f, GetAttackDefinition(kShockAttackId).recoveryDuration);
         const float remaining = (std::clamp)(shockSquashTimer_ / recoveryDuration, 0.0f, 1.0f);
         const float elapsed = 1.0f - remaining;
-        Vector3 multiplier = {1.0f, 1.0f, 1.0f};
+        engine::Vector3 multiplier = {1.0f, 1.0f, 1.0f};
         if (elapsed < 0.28f) {
             const float phase = elapsed / 0.28f;
             const float eased = phase * phase * (3.0f - 2.0f * phase);
@@ -851,20 +851,20 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
     }
 
     ApplyDamageReactionPose(targetScale, targetRotation);
-    Vector3 scale = GetScale();
+    engine::Vector3 scale = GetScale();
     const float lerpRate = isCharging_ || wildLightningState_ != WildLightningState::Idle || shockSquashTimer_ > 0.0f
                                ? (std::min)(1.0f, deltaTime * 24.0f)
                                : (std::min)(1.0f, deltaTime * 11.0f);
-    scale = Math::Lerp(scale, targetScale, lerpRate);
+    scale = engine::Math::Lerp(scale, targetScale, lerpRate);
     SetScale(scale);
-    const Vector3 currentRotation = GetRotation();
+    const engine::Vector3 currentRotation = GetRotation();
     SetRotation({currentRotation.x + (targetRotation.x - currentRotation.x) * lerpRate, currentRotation.y,
                  currentRotation.z + (targetRotation.z - currentRotation.z) * lerpRate});
 }
 
 void EnemyThunderSlime::SyncWorldCollisionRadius(float worldRadius) {
     // 見た目のスケール変化に左右されないワールド半径になるよう局所半径へ換算する。
-    const Vector3 scale = GetScale();
+    const engine::Vector3 scale = GetScale();
     const float maxScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     SetCollisionRadius(worldRadius / maxScale);
 }

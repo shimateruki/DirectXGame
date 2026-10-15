@@ -57,7 +57,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         return;
     }
 
-    const Vector3 previousPosition = GetTransform()->translate;
+    const engine::Vector3 previousPosition = GetTransform()->translate;
     stateTimer_ += deltaTime;
 
     switch (state_) {
@@ -91,7 +91,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
 
     case State::Warning: {
         const float intensity = 0.04f + (std::min)(stateTimer_ / GetEndWarningDuration(), 1.0f) * 0.08f;
-        const Vector3 endPosition = startPosition_ + GetTravelDirection() * GetTravelDistance();
+        const engine::Vector3 endPosition = startPosition_ + GetTravelDirection() * GetTravelDistance();
         SetTranslate(endPosition);
         SetTranslateX(GetTranslate().x + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity);
         SetTranslateZ(GetTranslate().z + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity);
@@ -124,7 +124,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickHazardRideFloor::OnCollision(Object3d* other) {
+bool GimmickHazardRideFloor::OnCollision(engine::Object3d* other) {
     // 上面へ乗ったプレイヤーだけを運び、横からの接触では発進させません。
     if (!other || other->GetClassName() != "Player") {
         return true;
@@ -150,7 +150,7 @@ void GimmickHazardRideFloor::OnTrigger() {
     BeginRide();
 }
 
-std::unique_ptr<Object3d> GimmickHazardRideFloor::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickHazardRideFloor::Clone() const {
     // 複製先を初期化してから走行設定と配置を引き継ぎます。
     auto clone = std::make_unique<GimmickHazardRideFloor>();
     assert(common_ != nullptr);
@@ -233,10 +233,10 @@ bool GimmickHazardRideFloor::ShouldReturnAfterRide() const {
     return param_.has_value() && param_->returnOnOff;
 }
 
-Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
+engine::Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
     // 配置時のヨー角を進行方向に変え、逆走モードでは符号を反転します。
     const float yaw = startRotation_.y;
-    Vector3 direction = {std::cos(yaw), 0.0f, std::sin(yaw)};
+    engine::Vector3 direction = {std::cos(yaw), 0.0f, std::sin(yaw)};
     if (param_.has_value() && param_->actionMode == 1) {
         direction = direction * -1.0f;
     }

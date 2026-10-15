@@ -69,6 +69,7 @@ class GameDataManager {
         std::vector<int> clearedEncounterIds;
     };
 
+    /// セーブ状態を共有する唯一のインスタンスを返す。
     static GameDataManager* GetInstance() {
         static GameDataManager instance;
         return &instance;
@@ -91,10 +92,13 @@ class GameDataManager {
         Load();
     }
 
+    /// 現在選択中の0始まりのセーブスロット番号を返す。
     int GetActiveSlot() const { return activeSlot_; }
 
+    /// 現在のスロットの保存ファイルパスを返す。
     std::string GetSaveFilePath() const { return GetSaveFilePath(activeSlot_); }
 
+    /// 指定スロットの保存ファイルパスを返す。範囲外番号は端へ丸める。
     std::string GetSaveFilePath(int slotIndex) const {
         if (slotIndex < 0)
             slotIndex = 0;
@@ -235,6 +239,7 @@ class GameDataManager {
 
     /// <summary>ゴールでクリア記録と今回のスターコインを一度に確定します。</summary>
     bool CommitStageClear(int stageIdx, const std::array<bool, kStarCoinsPerStage>& collected) {
+        // 保存失敗時はクリア記録と今回のスターコインを揃って巻き戻す。
         const auto oldCleared = clearedStages_;
         const auto oldCoins = stageStarCoins_;
         if (!IsStageCleared(stageIdx)) clearedStages_.push_back(stageIdx);
@@ -249,6 +254,7 @@ class GameDataManager {
 
     // ファイルがないか壊れている場合は、新規ゲームの初期値へ戻します。
     void Load() {
+        // 以前のスロットから持ち越す値を消し、読込失敗時も新規ゲームの状態へ戻す。
         dirty_ = false;
         saveDelaySeconds_ = 0.0f;
         playTimeRemainder_ = 0.0f;
@@ -271,6 +277,7 @@ class GameDataManager {
         stageStarCoins_.clear();
 
         lives_ = std::clamp(ReadInteger(data, "lives", kStartingLives), 0, kMaxLives);
+        // 個別項目の破損は既定値へ戻し、読める進行データまで捨てない。
         coins_ = std::clamp(ReadInteger(data, "coins", 0), 0, kMaxCoins);
         playTimeSeconds_ = (std::max)(0, ReadInteger(data, "playTimeSeconds", 0));
 
@@ -289,6 +296,7 @@ class GameDataManager {
         readStageIndices("seenUnlockedStages", seenUnlockedStages_);
 
         if (data.contains("starCoins") && data["starCoins"].is_object()) {
+            // ステージ番号と各コインの真偽を検証し、壊れた項目だけ読み飛ばす。
             for (auto it = data["starCoins"].begin(); it != data["starCoins"].end(); ++it) {
                 int stageIdx = 0;
                 const std::string& key = it.key();
@@ -314,6 +322,7 @@ class GameDataManager {
         Save();
     }
     void SubtractLife() {
+        // 残機はゼロで止め、減少結果を即座に保存する。
         lives_--;
         if (lives_ < 0)
             lives_ = 0;
@@ -427,6 +436,7 @@ class GameDataManager {
         pendingStageClearReward_.newCrownCount = std::clamp(newCrownCount, 0, 999);
     }
 
+    /// 王冠報酬の演出予約を取り出し、同時に予約を空にする。
     StageClearRewardPresentation ConsumeStageClearRewardPresentation() {
         StageClearRewardPresentation request = pendingStageClearReward_;
         pendingStageClearReward_ = {};
@@ -447,6 +457,7 @@ class GameDataManager {
         pendingStageSelectReturn_.newStarCoinIndices = newStarCoinIndices;
     }
 
+    /// ゲートから帰還する演出予約を取り出し、同時に予約を空にする。
     StageSelectReturnPresentation ConsumeStageSelectReturnPresentation() {
         StageSelectReturnPresentation request = pendingStageSelectReturn_;
         pendingStageSelectReturn_ = {};
@@ -461,6 +472,7 @@ class GameDataManager {
         }
     }
 
+    /// ステージのクリア記録を設定する。状態が変わった場合だけ保存する。
     void SetStageCleared(int index, bool cleared) {
         auto it = std::find(clearedStages_.begin(), clearedStages_.end(), index);
         if (cleared) {
@@ -477,17 +489,20 @@ class GameDataManager {
         }
     }
 
+    /// 指定ステージがクリア済みか返す。
     bool IsStageCleared(int index) const {
         return std::find(clearedStages_.begin(), clearedStages_.end(), index) != clearedStages_.end();
     }
 
     void MarkStageUnlockSeen(int index) {
+        // 同じ解放通知を再表示しないよう、未登録のステージだけ記録する。
         if (std::find(seenUnlockedStages_.begin(), seenUnlockedStages_.end(), index) == seenUnlockedStages_.end()) {
             seenUnlockedStages_.push_back(index);
             Save();
         }
     }
 
+    /// ステージ解放の確認済み状態を設定し、変化時だけ保存する。
     void SetStageUnlockSeen(int index, bool seen) {
         auto it = std::find(seenUnlockedStages_.begin(), seenUnlockedStages_.end(), index);
         if (seen) {
@@ -504,6 +519,7 @@ class GameDataManager {
         }
     }
 
+    /// ステージ解放を確認済みか返す。
     bool IsStageUnlockSeen(int index) const {
         return std::find(seenUnlockedStages_.begin(), seenUnlockedStages_.end(), index) != seenUnlockedStages_.end();
     }
@@ -515,6 +531,7 @@ class GameDataManager {
         SetStarCoinCollected(stageIdx, coinIdx, true);
     }
 
+    /// ステージ内のスターコイン取得状態を設定する。番号が無効なら何もしない。
     void SetStarCoinCollected(int stageIdx, int coinIdx, bool collected) {
         if (coinIdx < 0 || coinIdx >= kStarCoinsPerStage)
             return;
@@ -526,6 +543,7 @@ class GameDataManager {
         Save();
     }
 
+    /// 指定ステージのコインを取得済みか返す。未登録や無効番号は false。
     bool IsStarCoinCollected(int stageIdx, int coinIdx) const {
         if (stageStarCoins_.find(stageIdx) == stageStarCoins_.end())
             return false;
@@ -534,6 +552,7 @@ class GameDataManager {
         return stageStarCoins_.at(stageIdx)[coinIdx];
     }
 
+    /// チュートリアルを除くクリア済みステージ数を返す。
     int GetClearedStageCount() const {
         int count = 0;
         for (int stageIndex : clearedStages_) {
@@ -544,6 +563,7 @@ class GameDataManager {
         return count;
     }
 
+    /// 全ステージで取得済みのスターコイン数を返す。
     int GetCollectedStarCoinCount() const {
         int count = 0;
         for (const auto& [stageIndex, coins] : stageStarCoins_) {
@@ -557,6 +577,7 @@ class GameDataManager {
         return count;
     }
 
+    /// 現在のスロットの進行・残機・コイン・時間を初期値に戻して保存する。
     void ResetAll() {
         lives_ = kStartingLives;
         coins_ = 0;
@@ -645,6 +666,7 @@ class GameDataManager {
         return outData.is_object();
     }
 
+    /// 本体、バックアップ、旧形式の順にスロットの保存JSONを探す。
     bool ReadSaveJson(int slotIndex, nlohmann::json& outData) const {
         const std::string path = GetSaveFilePath(slotIndex);
         if (ReadJsonFile(path, outData)) return true;
@@ -652,6 +674,7 @@ class GameDataManager {
         return slotIndex == 0 && ReadJsonFile(GetLegacySaveFilePath(), outData);
     }
 
+    /// ステージの取得フラグ配列を三枠に整えて返す。未登録なら作成する。
     std::vector<bool>& GetOrCreateStarCoins(int stageIdx) {
         auto& coins = stageStarCoins_[stageIdx];
         coins.resize(kStarCoinsPerStage, false);

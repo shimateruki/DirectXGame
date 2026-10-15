@@ -25,6 +25,7 @@ struct AttackProjectileComponent {
     std::string trail = "fireball_trail_flame", secondaryTrail = "fireball_trail_embers";
     std::string impact = "fireball_impact_flame", secondaryImpact = "fireball_impact_sparks";
     bool Validate() const {
+        // 未設定の弾は使わず、有効時だけ描画値と速度の範囲を検証する。
         if (!configured) return true;
         if (model.empty() || (style != "fire" && style != "plain")) return false;
         for (float value : {radius, lifetime, minSpeed, maxSpeed, damage, visualScale})
@@ -79,6 +80,7 @@ struct AttackActorControl {
     std::array<float, 4> color{1, 0.72f, 0.48f, 1};
     std::array<float, 4> telegraphColor{1, 0.34f, 0.06f, 0.8f};
     bool Validate(float duration) const {
+        // 予告と照準の時刻は攻撃全体の長さ以内、色成分は0～1に制限する。
         if (!enabled) return true;
         for (float v : {aimLockTime, telegraphEnd, cueTime})
             if (!std::isfinite(v) || v < 0 || v > duration) return false;
@@ -90,6 +92,7 @@ struct AttackActorControl {
     }
 };
 
+/// <summary>攻撃シーケンスの実行条件と、時間順のイベント・トラック設定をまとめる。</summary>
 struct AttackSequenceDefinition {
     AttackActorControl actorControl;
     std::string assetPath; // 空なら埋め込み。設定時はこのJSONを正本としてプロファイル読込時に解決します。

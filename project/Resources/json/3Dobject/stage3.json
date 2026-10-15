@@ -1,5 +1,5 @@
 {
-    "_comment": "Actual data is in _player, _enemy, and _object.json",
+    "_comment": "Actual data is in _player, _enemy, _object, and _camera.json",
     "_sceneAsset": {
         "controller": "DEFAULT",
         "displayName": "stage3",

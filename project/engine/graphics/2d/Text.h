@@ -4,7 +4,7 @@
 #include <vector>
 #include <memory>
 
-class SpriteCommon;
+namespace engine { class SpriteCommon; }
 
 /// <summary>
 /// フォント画像を文字ごとのSpriteへ分けて描画する。
@@ -12,7 +12,7 @@ class SpriteCommon;
 class Text {
 public:
     /// <summary>フォント画像を読み込み、文字Spriteを生成できる状態にする。</summary>
-    void Initialize(SpriteCommon* common, const std::string& fontTextureName);
+    void Initialize(engine::SpriteCommon* common, const std::string& fontTextureName);
 
     /// <summary>文字列、座標、スケールの変更を各文字Spriteへ反映する。</summary>
     void Update();
@@ -28,24 +28,24 @@ public:
     /// <summary>
     /// テキスト全体の左上基準位置を設定する。
     /// </summary>
-    void SetPosition(const Vector2& position);
+    void SetPosition(const engine::Vector2& position);
 
     /// <summary>
     /// 各文字Spriteに適用する表示倍率を設定する。
     /// </summary>
-    void SetScale(const Vector2& scale);
+    void SetScale(const engine::Vector2& scale);
 
 
 private:
-    SpriteCommon* common_ = nullptr;
+    engine::SpriteCommon* common_ = nullptr;
     uint32_t fontTextureHandle_ = 0;
 
     // 1文字あたりのスプライトを保持する
-    std::vector<std::unique_ptr<Sprite>> sprites_;
+    std::vector<std::unique_ptr<engine::Sprite>> sprites_;
 
     std::string text_ = "";
-    Vector2 position_ = { 0.0f, 0.0f };
-    Vector2 scale_ = { 1.0f, 1.0f };
+    engine::Vector2 position_ = { 0.0f, 0.0f };
+    engine::Vector2 scale_ = { 1.0f, 1.0f };
 
     // フォントテクスチャの1文字分のサイズ
     int fontWidth_ = 16;

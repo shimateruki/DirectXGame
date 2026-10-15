@@ -73,6 +73,7 @@ using EditorWindowsText::Utf8ToWide;
 
 // PowerShell実行コマンドへ安全に渡せるよう、引数を引用符で囲んでエスケープする。
 std::string QuoteCommandArg(const std::string& value) {
+    // 外部監査コマンドの引数を引用符で囲み、途中の引用符をエスケープする。
     std::string escaped;
     escaped.reserve(value.size() + 2);
     escaped.push_back('"');
@@ -97,6 +98,7 @@ bool OpenShellPath(const fs::path& path) {
 
 // 監査スクリプトを裏で実行し、UIを固めないために終了コードだけ受け取る。
 bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
+    // UIスレッドからは呼ばず、監査ワーカー内で子プロセスの終了を待つ。
     std::wstring command = Utf8ToWide(commandLine);
     if (command.empty()) {
         return false;
@@ -124,6 +126,7 @@ bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
         return false;
     }
 
+    // プロセスハンドルは終了コード取得後に閉じ、呼び出し側へ結果を渡す。
     WaitForSingleObject(processInfo.hProcess, INFINITE);
     DWORD code = 1;
     GetExitCodeProcess(processInfo.hProcess, &code);
@@ -137,6 +140,7 @@ bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
 
 // 監査レポートJSONを読み込み、壊れている場合はfalseで呼び出し側へ返す。
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
+    // 監査レポートを安全に読み、失敗時は画面へ前回結果を新規結果として渡さない。
     std::ifstream file(path);
     if (!file) {
         return false;
@@ -152,6 +156,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
 
 // JSON値を文字列として安全に取り出し、数値でも表示できるように吸収する。
 std::string JsonString(const nlohmann::json& item, const char* key, const std::string& fallback = "") {
+    // レポートの文字列・整数・小数を一覧表示用の文字列へ統一する。
     if (!item.is_object() || !item.contains(key)) {
         return fallback;
     }
@@ -173,6 +178,7 @@ std::string JsonString(const nlohmann::json& item, const char* key, const std::s
 
 // JSON値を64bit整数として取り出し、容量集計で型違いに引っかからないようにする。
 std::int64_t JsonInt64(const nlohmann::json& item, const char* key) {
+    // 監査レポートの容量値を整数へ揃え、型違いはゼロとして扱う。
     if (!item.is_object() || !item.contains(key)) {
         return 0;
     }
@@ -189,6 +195,7 @@ std::int64_t JsonInt64(const nlohmann::json& item, const char* key) {
 
 // バイト数をKB/MB表記へ変換し、テーブル上で読みやすくする。
 std::string FormatSizeText(std::int64_t bytes) {
+    // 容量の桁に応じて単位を切り替え、一覧では小数１桁まで表示する。
     static constexpr const char* kUnits[] = { "B", "KB", "MB", "GB" };
     double value = static_cast<double>(std::max<std::int64_t>(0, bytes));
     int unitIndex = 0;
@@ -212,6 +219,7 @@ int JsonInt(const nlohmann::json& item, const char* key) {
 
 // JSON配列の文字列を1行表示へまとめ、pairedFilesなどを簡単に表示できる形にする。
 std::string JoinStringArray(const nlohmann::json& arrayValue, const char* fallback = "-") {
+    // 文字列以外の要素を飛ばし、一覧セルで読める一行へ結合する。
     if (!arrayValue.is_array() || arrayValue.empty()) {
         return fallback;
     }
@@ -250,6 +258,7 @@ std::string TimestampText() {
 
 // 削除対象がResources配下から外れていないか確認し、誤削除を防ぐ。
 bool IsPathInside(const fs::path& child, const fs::path& parent) {
+    // 大文字小文字を正規化した絶対パスで境界を比較し、兄弟フォルダを誤認しない。
     const fs::path childAbs = fs::absolute(child).lexically_normal();
     const fs::path parentAbs = fs::absolute(parent).lexically_normal();
 
@@ -287,6 +296,7 @@ std::string RelativeToProjectSlash(const fs::path& fullPath) {
 
 // 同名ファイル退避時に衝突しない名前を作るための補助関数。
 fs::path UniqueTrashPath(const fs::path& targetPath) {
+    // ゴミ箱内で同名ファイルが衝突した場合は連番を付け、既存データを上書きしない。
     if (!fs::exists(targetPath)) {
         return targetPath;
     }
@@ -305,6 +315,7 @@ fs::path UniqueTrashPath(const fs::path& targetPath) {
 
 // 実在・Resources配下・保護対象外を満たすファイルだけ削除対象リストへ追加する。
 void AddIfDeletable(std::vector<fs::path>& targets, const fs::path& path, const fs::path& resourcesRoot) {
+    // パス境界と保護リストを再確認し、ペア探索中も削除範囲を広げない。
     if (!fs::exists(path) || !fs::is_regular_file(path)) {
         return;
     }
@@ -338,6 +349,7 @@ bool IsTextureSourceExtensionForDDS(const std::string& extension) {
 
 // 選択したアセット本体に加えて、同名DDSやbin/mtlなど相方ファイルも削除対象へまとめる。
 std::vector<fs::path> BuildDeleteTargets(const fs::path& mainPath, const fs::path& resourcesRoot) {
+    // 拡張子ごとに補助ファイルを探し、実在する許可済みパスだけを対象にする。
     std::vector<fs::path> targets;
     AddIfDeletable(targets, mainPath, resourcesRoot);
 
@@ -403,6 +415,7 @@ constexpr int kAssetFilterAudio = 4;
 constexpr int kAssetFilterCount = 5;
 
 const char* GetAssetFilterLabel(int filter) {
+    // 監査一覧のカテゴリ番号を日本語の表示名へ対応付ける。
     switch (filter) {
     case kAssetFilterModel:
         return "モデル";
@@ -418,6 +431,7 @@ const char* GetAssetFilterLabel(int filter) {
 }
 
 int GetAssetFilterIndex(const nlohmann::json& item) {
+    // 監査レポートの分類名が揺れる場合も拡張子から表示カテゴリを補う。
     const std::string category = JsonString(item, "category");
     const std::string path = JsonString(item, "path");
     if (category == "Model" || category == "ModelData" || IsModelAssetPath(path)) {
@@ -440,7 +454,9 @@ bool PassesAssetFilter(const nlohmann::json& item, int filter) {
     return filter == kAssetFilterAll || GetAssetFilterIndex(item) == filter;
 }
 
+// アセット種別に共通の監査表示色を返します。
 ImVec4 GetAssetFilterColor(int filter) {
+    // カテゴリごとの色を固定し、複数の一覧で識別方法を揃える。
     switch (filter) {
     case kAssetFilterModel:
         return ImVec4(0.52f, 0.82f, 1.0f, 1.0f);
@@ -478,6 +494,7 @@ bool IsBgmCategory(const std::string& category, const std::string& path) {
 
 // 大きすぎる画像を一覧内で直接読み込まないよう、軽いものだけインライン表示する。
 bool IsSafeInlineTexturePreview(const nlohmann::json& item) {
+    // 巨大画像を一覧内で読み込まないよう、プレビュー可能な条件を絞る。
     const std::int64_t sizeBytes = JsonInt64(item, "sizeBytes");
     const int width = JsonInt(item, "width");
     const int height = JsonInt(item, "height");
@@ -493,6 +510,7 @@ bool IsSafeInlineTexturePreview(const nlohmann::json& item) {
 
 // 重いアセット一覧に、解像度や頂点数など原因を短く表示する。
 std::string BuildHeavyAssetDetailText(const nlohmann::json& item) {
+    // 画像は寸法、モデルは頂点・三角形数を優先して詳細欄へ示す。
     const int width = JsonInt(item, "width");
     const int height = JsonInt(item, "height");
     const int vertices = JsonInt(item, "vertices");
@@ -534,6 +552,7 @@ std::string GetCategoryLabel(const std::string& category) {
 
 // Resources/3DModel配下のパスから、エンジンがロードするモデル名を組み立てる。
 std::string GetModelNameFromAssetPath(const std::string& relativePath) {
+    // モデルファイルの親フォルダが同名なら、モデル管理で使うフォルダ名へ戻す。
     std::string path = NormalizeSlash(relativePath);
     const std::string prefix = "Resources/3DModel/";
     if (path.rfind(prefix, 0) == 0) {
@@ -554,7 +573,7 @@ std::string GetModelNameFromAssetPath(const std::string& relativePath) {
 constexpr const char* kAssetAuditPreviewPrefix = "__Editor_AssetAuditPreview_";
 
 // アセット監査が作った一時プレビューObjectだけを識別し、まとめて消せるようにする。
-bool IsAssetAuditPreviewObject(const Object3d* object) {
+bool IsAssetAuditPreviewObject(const engine::Object3d* object) {
     if (!object) return false;
     return object->GetName().rfind(kAssetAuditPreviewPrefix, 0) == 0 ||
         object->GetClassName() == "EditorOnly_AssetAuditPreview";
@@ -1105,7 +1124,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
         return;
     }
 
-    Vector3 origin = { 0.0f, 2.0f, 0.0f };
+    engine::Vector3 origin = { 0.0f, 2.0f, 0.0f };
     EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
     if (stage) {
         stage->EnableForToolPreview();
@@ -1115,7 +1134,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
 
     const int previewIndex = CountModelPreviews();
     const std::string modelName = GetModelNameFromAssetPath(normalizedPath);
-    auto object = std::make_unique<Object3d>();
+    auto object = std::make_unique<engine::Object3d>();
     object->Initialize(common);
     object->SetName(std::string(kAssetAuditPreviewPrefix) + std::to_string(previewIndex) + "_" + modelName);
     // 専用クラス名で一時配置を識別し、衝突を無効にして通常の操作を妨げない。
@@ -1134,7 +1153,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
     object->UpdateLocalMatrix();
     object->UpdateWorldMatrix();
 
-    Object3d* rawObject = object.get();
+    engine::Object3d* rawObject = object.get();
     scene->AddObjectImmediate(std::move(object));
     editor_->SetSelectedObject(rawObject);
     EditorManager::GetInstance()->SetSelectedObject(editor_);
@@ -1151,14 +1170,14 @@ void AssetAuditWindow::RemoveModelPreviews() {
     }
 
     BaseScene* scene = editor_->GetSceneManager()->GetCurrentScene();
-    std::vector<Object3d*> targets;
+    std::vector<engine::Object3d*> targets;
     for (auto& object : scene->GetObjects()) {
         if (IsAssetAuditPreviewObject(object.get())) {
             targets.push_back(object.get());
         }
     }
 
-    for (Object3d* object : targets) {
+    for (engine::Object3d* object : targets) {
         scene->RequestRemoveObject(object);
     }
 

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "84f998c1237e4a748eed9252fc42bef6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/resume.png",
+  "version": 1
+}

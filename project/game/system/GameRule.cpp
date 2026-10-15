@@ -24,6 +24,7 @@ constexpr const char* kCheckpointLoweredModel = "Gimmicks/checkpoint_flag";
 constexpr const char* kCheckpointRaisedModel = "Gimmicks/checkpoint_beacon_active";
 constexpr float kCheckpointFlagRaiseDelay = 0.14f;
 
+// 属性を省略した旧攻撃だけ、攻撃者の敵種別から炎・雷・爆発属性を補います。
 DamageType ResolveDamageType(const DamageEvent& event) {
     // 旧攻撃が属性を省略していても、敵の種類に合う耐性・状態異常判定へ渡す。
     if (event.damageType != DamageType::Physical || !event.attacker) {
@@ -57,14 +58,14 @@ class CheckpointRule {
         checkpointAmbientRingTimer_ = 0.0f;
         checkpointRaiseDelay_ = 0.0f;
     }
-    void Activate(Player* player, Object3d* checkpoint);
+    void Activate(Player* player, engine::Object3d* checkpoint);
     void Restore(const std::string& checkpointObjectName);
     void Update(float deltaTime);
 
   private:
     BaseScene* scene_ = nullptr;
-    Object3d* activeCheckpoint_ = nullptr;
-    Object3d* raisingCheckpoint_ = nullptr;
+    engine::Object3d* activeCheckpoint_ = nullptr;
+    engine::Object3d* raisingCheckpoint_ = nullptr;
     float checkpointBaseEmissive_ = 1.0f;
     float checkpointPresentationTimer_ = 0.0f;
     float checkpointParticleTimer_ = 0.0f;
@@ -83,6 +84,7 @@ GameRule::~GameRule() {
     }
 }
 
+// 前Sceneのイベント購読を解除し、現在Sceneの接触・被弾・死亡イベントへ登録し直します。
 void GameRule::Initialize(BaseScene* scene) {
     for (auto& id : eventSubscriptions_) {
         EventManager::GetInstance()->Unsubscribe(id);
@@ -95,8 +97,8 @@ void GameRule::Initialize(BaseScene* scene) {
 
     // 接触イベントでは対象の EventType を優先し、汎用 TargetID は個別処理の後に使う。
     eventSubscriptions_[0] = EventManager::GetInstance()->Subscribe([this](const PlayerHitEvent& event) {
-        Object3d* whoHit = event.me;           // プレイヤー
-        Object3d* objectHit = event.hitObject; // 当たった物
+        engine::Object3d* whoHit = event.me;           // プレイヤー
+        engine::Object3d* objectHit = event.hitObject; // 当たった物
 
         if (!whoHit || !objectHit)
             return;
@@ -107,9 +109,9 @@ void GameRule::Initialize(BaseScene* scene) {
         case EventType::Warp: {
             int targetID = objectHit->GetTargetID();
             if (scene_ && targetID != -1) {
-                Object3d* exitPoint = scene_->FindObjectByEventID(targetID);
+                engine::Object3d* exitPoint = scene_->FindObjectByEventID(targetID);
                 if (exitPoint) {
-                    Vector3 destPos = exitPoint->GetTransform()->translate;
+                    engine::Vector3 destPos = exitPoint->GetTransform()->translate;
                     whoHit->SetTranslate(destPos);
                     DebugConsole::GetInstance()->AddLog("Warped to ID: " + std::to_string(targetID));
                 }
@@ -170,26 +172,6 @@ void GameRule::Initialize(BaseScene* scene) {
             break;
         }
 
-        // 跳ね返りは TargetID のイベントとは独立した接触法線で判定する。
-        std::string gimmickType = objectHit->GetGimmickType();
-        if (gimmickType == "Trampoline") {
-            if (Player* player = dynamic_cast<Player*>(whoHit)) {
-                // 上から踏んだ（地面からの押し返しが上方向）場合に発動
-                if (event.normal.y > 0.5f) {
-                    float jumpPower = 20.0f; // デフォルト値
-                    if (objectHit->param_.has_value()) {
-                        jumpPower = objectHit->param_->jumpPower;
-                    }
-
-                    Vector3 vel = player->GetVelocity();
-                    vel.y = jumpPower;
-                    player->SetVelocity(vel);
-                    player->ChangeState(std::make_unique<PlayerStateJump>());
-
-                    DebugConsole::GetInstance()->AddLog("Trampoline Jump!");
-                }
-            }
-        }
     });
 
     // HP 減算が成立したときだけ、打撃演出・状態異常・ノックバックへ進む。
@@ -237,9 +219,9 @@ void GameRule::Initialize(BaseScene* scene) {
                                       std::abs(event.knockbackVelocity.y) > 0.001f ||
                                       std::abs(event.knockbackVelocity.z) > 0.001f;
             if (hasKnockback || damageType != DamageType::Physical) {
-                Vector3 reactionDirection = event.knockbackVelocity;
+                engine::Vector3 reactionDirection = event.knockbackVelocity;
                 reactionDirection.y = 0.0f;
-                if (Math::Length(reactionDirection) <= 0.001f && event.attacker) {
+                if (engine::Math::Length(reactionDirection) <= 0.001f && event.attacker) {
                     reactionDirection = event.target->GetWorldPosition() - event.attacker->GetWorldPosition();
                     reactionDirection.y = 0.0f;
                 }
@@ -279,6 +261,8 @@ void GameRule::Initialize(BaseScene* scene) {
     });
 }
 
+// チェックポイント演出と継続効果を進め、死亡・消失した対象を解除します。
+// 1フレームの継続ダメージ回数には上限を置きます。
 void GameRule::Update(float deltaTime) {
     if (!scene_ || deltaTime <= 0.0f) {
         return;
@@ -318,7 +302,9 @@ void GameRule::Update(float deltaTime) {
     }
 }
 
-void CheckpointRule::Activate(Player* player, Object3d* checkpoint) {
+// 新しいチェックポイントを復帰地点にし、初回取得時だけ残機とHPを補充します。
+// 取得後のモデル切替と発光演出もここで開始します。
+void CheckpointRule::Activate(Player* player, engine::Object3d* checkpoint) {
     if (!player || !checkpoint) {
         return;
     }
@@ -327,7 +313,16 @@ void CheckpointRule::Activate(Player* player, Object3d* checkpoint) {
         return;
     }
 
-    player->ActivateCheckpoint(checkpoint->GetWorldPosition() + Vector3{0.0f, 0.35f, 0.0f}, checkpoint->GetName());
+    const bool firstActivation = checkpoint->GetModelName() == kCheckpointLoweredModel;
+    player->ActivateCheckpoint(checkpoint->GetWorldPosition() + engine::Vector3{0.0f, 0.35f, 0.0f}, checkpoint->GetName());
+    if (firstActivation && !player->IsEditorInternal()) {
+        // 取得済みの旗への再接触と死亡後の復元では、残機を重ねて付与しません。
+        GameDataManager* gameData = GameDataManager::GetInstance();
+        if (gameData->GetLives() < GameDataManager::kMaxLives) {
+            gameData->SetLives(gameData->GetLives() + 1);
+        }
+        player->RestoreHpToFull();
+    }
 
     if (activeCheckpoint_ && scene_ && scene_->IsAlive(activeCheckpoint_)) {
         activeCheckpoint_->SetEmissive(checkpointBaseEmissive_);
@@ -352,18 +347,19 @@ void GameRule::RestoreCheckpointPresentation(const std::string& checkpointObject
     if (checkpointRule_) checkpointRule_->Restore(checkpointObjectName);
 }
 
+// セーブ済みの旗をSceneから探し、取得済みモデルと待機アニメーションへ復元します。
 void CheckpointRule::Restore(const std::string& checkpointObjectName) {
     if (!scene_ || checkpointObjectName.empty()) return;
 
     for (const auto& owned : scene_->GetObjects()) {
-        Object3d* checkpoint = owned.get();
+        engine::Object3d* checkpoint = owned.get();
         if (!checkpoint || checkpoint->GetName() != checkpointObjectName) continue;
 
         const std::string modelName = checkpoint->GetModelName();
         if (modelName != kCheckpointLoweredModel && modelName != kCheckpointRaisedModel) return;
 
         // SetModelによるコライダー自動調整を戻し、取得済みの待機モーションから再開する。
-        const Object3d::ColliderConfig collider = checkpoint->GetColliderConfig();
+        const engine::Object3d::ColliderConfig collider = checkpoint->GetColliderConfig();
         if (modelName == kCheckpointLoweredModel) checkpoint->SetModel(kCheckpointRaisedModel);
         checkpoint->RestoreAnimationPlayback("Idle", 0.0f, true);
         checkpoint->SetColliderConfig(collider);
@@ -386,7 +382,7 @@ void CheckpointRule::Update(float deltaTime) {
         const bool emitMotes = checkpointParticleTimer_ <= 0.0f;
         const bool emitRing = checkpointAmbientRingTimer_ <= 0.0f;
         for (const auto& owned : scene_->GetObjects()) {
-            Object3d* checkpoint = owned.get();
+            engine::Object3d* checkpoint = owned.get();
             if (!checkpoint || !checkpoint->GetIsVisible()) {
                 continue;
             }
@@ -398,7 +394,7 @@ void CheckpointRule::Update(float deltaTime) {
             if (emitMotes) {
                 if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
                     particles->Emit("checkpoint_active_motes",
-                                    Math::Transform(Vector3{0.0f, 0.55f, 0.0f}, checkpoint->GetWorldMatrix()));
+                                    engine::Math::Transform(engine::Vector3{0.0f, 0.55f, 0.0f}, checkpoint->GetWorldMatrix()));
                 }
             }
             if (emitRing) {
@@ -419,7 +415,7 @@ void CheckpointRule::Update(float deltaTime) {
             checkpointRaiseDelay_ -= deltaTime;
             if (checkpointRaiseDelay_ <= 0.0f) {
                 // SetModelはコライダーを自動調整するため、起動前の当たり判定を復元します。
-                const Object3d::ColliderConfig collider = raisingCheckpoint_->GetColliderConfig();
+                const engine::Object3d::ColliderConfig collider = raisingCheckpoint_->GetColliderConfig();
                 raisingCheckpoint_->SetModel(kCheckpointRaisedModel);
                 raisingCheckpoint_->RestoreAnimationPlayback("Activate", 0.0f, false);
                 raisingCheckpoint_->SetColliderConfig(collider);
@@ -447,7 +443,8 @@ void CheckpointRule::Update(float deltaTime) {
     activeCheckpoint_->SetEmissive((std::max)(checkpointBaseEmissive_, emissivePulse));
 }
 
-void GameRule::ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale) {
+// 同じ対象・同じ種類の状態異常は重ねず、残り時間と威力を弱めないよう更新します。
+void GameRule::ApplyStatusEffect(engine::Object3d* target, const StatusEffectApplication& application, float damageScale) {
     if (!target || !application.IsValid()) {
         return;
     }
@@ -483,7 +480,7 @@ void GameRule::ApplyStatusEffect(Object3d* target, const StatusEffectApplication
     activeStatusEffects_.push_back(std::move(status));
 }
 
-bool GameRule::IsStatusTargetAlive(Object3d* target) const {
+bool GameRule::IsStatusTargetAlive(engine::Object3d* target) const {
     // シーンから消えた対象へ継続ダメージやパーティクルを送らない。
     if (!target || !scene_) {
         return false;
@@ -497,7 +494,7 @@ bool GameRule::IsStatusTargetAlive(Object3d* target) const {
     return !target->param_.has_value() || target->param_->hp > 0.0f;
 }
 
-void GameRule::EmitStatusVisual(Object3d* target, const std::string& presetName) const {
+void GameRule::EmitStatusVisual(engine::Object3d* target, const std::string& presetName) const {
     // 身体の高さから中心を求め、サイズの異なる敵でも状態異常が体に重なるようにする。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (!target || !particles || !particles->IsInitialized()) {
@@ -505,14 +502,14 @@ void GameRule::EmitStatusVisual(Object3d* target, const std::string& presetName)
     }
 
     const AABB aabb = target->GetAABB();
-    Vector3 position = target->GetWorldPosition();
+    engine::Vector3 position = target->GetWorldPosition();
     const float height = (std::max)(0.25f, aabb.max.y - aabb.min.y);
     position.y = aabb.min.y + height * 0.48f;
     particles->EmitDirected(presetName, position, {0.0f, 1.0f, 0.0f}, 1.0f);
 }
 
 // ボス固有の軽減とプレイヤーの無敵判定を通した後、共通 HP を更新します。
-bool GameRule::ApplyDamage(Object3d* target, float damage, bool bypassPlayerInvincibility) {
+bool GameRule::ApplyDamage(engine::Object3d* target, float damage, bool bypassPlayerInvincibility) {
     if (!target) {
         return false;
     }

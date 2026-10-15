@@ -31,7 +31,7 @@ constexpr float kArenaBossRewardCinemaBarHeight = 0.115f;
 } // namespace
 
 // ボス登場・撃破報酬演出。ロック開始と復帰処理を対で管理し、進行フラグの更新順を維持する。
-void GamePlayScene::StartArenaBossIntro(Object3d* bossObject, Object3d* gateObject, float bossRevealDelay) {
+void GamePlayScene::StartArenaBossIntro(engine::Object3d* bossObject, engine::Object3d* gateObject, float bossRevealDelay) {
     if (arenaBossIntroActive_ || isGoal_ || !player_ || !bossObject || !gateObject) {
         return;
     }
@@ -54,28 +54,28 @@ void GamePlayScene::StartArenaBossIntro(Object3d* bossObject, Object3d* gateObje
     arenaBossIntroGameplayTarget_ = camera->GetTargetPoint();
     arenaBossIntroBaseFov_ = camera->GetFovY();
 
-    const Vector3 playerPosition = player_->GetWorldPosition();
-    const Vector3 bossPosition = bossObject->GetWorldPosition();
-    Vector3 gatePosition = gateObject->GetWorldPosition();
+    const engine::Vector3 playerPosition = player_->GetWorldPosition();
+    const engine::Vector3 bossPosition = bossObject->GetWorldPosition();
+    engine::Vector3 gatePosition = gateObject->GetWorldPosition();
     if (auto* bossGate = dynamic_cast<GimmickBossGate*>(gateObject)) {
         gatePosition = bossGate->GetClosedPosition();
     }
-    const Vector3 bossToPlayer = NormalizePlanarDirection(playerPosition - bossPosition, {0.0f, 0.0f, 1.0f});
-    const Vector3 right = {bossToPlayer.z, 0.0f, -bossToPlayer.x};
+    const engine::Vector3 bossToPlayer = NormalizePlanarDirection(playerPosition - bossPosition, {0.0f, 0.0f, 1.0f});
+    const engine::Vector3 right = {bossToPlayer.z, 0.0f, -bossToPlayer.x};
 
     // 閉じた格子より内側へ収まる戦闘用構図を別に保持し、入口直前の
     // カメラ衝突状態へ戻してしまわないようにします。
-    arenaBossIntroRestoreTarget_ = playerPosition + Vector3{0.0f, kArenaBossGameplayCameraHeight, 0.0f};
+    arenaBossIntroRestoreTarget_ = playerPosition + engine::Vector3{0.0f, kArenaBossGameplayCameraHeight, 0.0f};
     arenaBossIntroRestoreEye_ =
-        arenaBossIntroRestoreTarget_ + bossToPlayer * kArenaBossGameplayCameraDistance + Vector3{0.0f, 3.7f, 0.0f};
+        arenaBossIntroRestoreTarget_ + bossToPlayer * kArenaBossGameplayCameraDistance + engine::Vector3{0.0f, 3.7f, 0.0f};
 
     // 最初に背後の格子ゲートを見せ、封鎖されたことを一目で理解できる構図にします。
-    arenaBossIntroGateTarget_ = gatePosition + Vector3{0.0f, 3.85f, 0.0f};
-    arenaBossIntroGateEye_ = gatePosition - bossToPlayer * 22.0f + right * 2.6f + Vector3{0.0f, 5.35f, 0.0f};
+    arenaBossIntroGateTarget_ = gatePosition + engine::Vector3{0.0f, 3.85f, 0.0f};
+    arenaBossIntroGateEye_ = gatePosition - bossToPlayer * 22.0f + right * 2.6f + engine::Vector3{0.0f, 5.35f, 0.0f};
 
     // 正面全身を画面中央へ収め、登場時の落下、潰れ、跳ね返りを見せます。
-    arenaBossIntroBossTarget_ = bossPosition + Vector3{0.0f, 4.70f, 0.0f};
-    arenaBossIntroBossEye_ = bossPosition + bossToPlayer * 31.0f + right * 2.6f + Vector3{0.0f, 5.8f, 0.0f};
+    arenaBossIntroBossTarget_ = bossPosition + engine::Vector3{0.0f, 4.70f, 0.0f};
+    arenaBossIntroBossEye_ = bossPosition + bossToPlayer * 31.0f + right * 2.6f + engine::Vector3{0.0f, 5.8f, 0.0f};
 
     // 動画中はプレイヤーの速度とカメラ追従を止め、各ショットの固定視点を使います。
     player_->BeginCinematicLock(true);
@@ -129,22 +129,22 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
     }
 
     // 落下・跳ね返り中のボスの動きに合わせて注視点だけを少し追従させます。
-    const Vector3 currentBossPosition = arenaBossIntroBoss_->GetWorldPosition();
+    const engine::Vector3 currentBossPosition = arenaBossIntroBoss_->GetWorldPosition();
     const float authoredBossY = arenaBossIntroBossTarget_.y - 4.70f;
     const float bossRise = std::clamp(currentBossPosition.y - authoredBossY, -0.4f, 3.6f);
-    const Vector3 trackedBossTarget = arenaBossIntroBossTarget_ + Vector3{0.0f, bossRise * 0.35f, 0.0f};
+    const engine::Vector3 trackedBossTarget = arenaBossIntroBossTarget_ + engine::Vector3{0.0f, bossRise * 0.35f, 0.0f};
 
-    Vector3 eye = arenaBossIntroGameplayEye_;
-    Vector3 target = arenaBossIntroGameplayTarget_;
+    engine::Vector3 eye = arenaBossIntroGameplayEye_;
+    engine::Vector3 target = arenaBossIntroGameplayTarget_;
     float fov = arenaBossIntroBaseFov_;
     // ゲート寄り → ゲート保持 → ボスへ移動 → ボス保持 → 戦闘構図への復帰を時刻で選びます。
     if (arenaBossIntroTimer_ < kArenaBossIntroGateShotEnd) {
         const float rate = AnimationInterpolation::ApplyEasing(
             AnimationInterpolation::SegmentRate(arenaBossIntroTimer_, 0.0f, kArenaBossIntroGateShotEnd),
             AnimationInterpolation::EasingType::SmootherStep);
-        const Vector3 gateRetreatDirection =
+        const engine::Vector3 gateRetreatDirection =
             NormalizePlanarDirection(arenaBossIntroGateEye_ - arenaBossIntroGateTarget_, {0.0f, 0.0f, -1.0f});
-        const Vector3 gateDollyStartEye = arenaBossIntroGateEye_ + gateRetreatDirection * 2.8f;
+        const engine::Vector3 gateDollyStartEye = arenaBossIntroGateEye_ + gateRetreatDirection * 2.8f;
         eye = AnimationInterpolation::Lerp(gateDollyStartEye, arenaBossIntroGateEye_, rate);
         target = arenaBossIntroGateTarget_;
         fov = AnimationInterpolation::Lerp(0.55f, 0.52f, rate);
@@ -165,7 +165,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
             AnimationInterpolation::SegmentRate(arenaBossIntroTimer_, kArenaBossIntroBossFocusEnd,
                                                 kArenaBossIntroBossHoldEnd),
             AnimationInterpolation::EasingType::SmootherStep);
-        const Vector3 heroEye = arenaBossIntroBossEye_ + Vector3{-2.4f * rate, -0.8f * rate, -2.0f * rate};
+        const engine::Vector3 heroEye = arenaBossIntroBossEye_ + engine::Vector3{-2.4f * rate, -0.8f * rate, -2.0f * rate};
         eye = heroEye;
         target = trackedBossTarget;
         fov = AnimationInterpolation::Lerp(0.51f, 0.48f, rate);
@@ -174,7 +174,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
             AnimationInterpolation::SegmentRate(arenaBossIntroTimer_, kArenaBossIntroBossHoldEnd,
                                                 kArenaBossIntroDuration),
             AnimationInterpolation::EasingType::SmootherStep);
-        const Vector3 heroEye = arenaBossIntroBossEye_ + Vector3{-2.4f, -0.8f, -2.0f};
+        const engine::Vector3 heroEye = arenaBossIntroBossEye_ + engine::Vector3{-2.4f, -0.8f, -2.0f};
         eye = AnimationInterpolation::Lerp(heroEye, arenaBossIntroRestoreEye_, rate);
         target = AnimationInterpolation::Lerp(trackedBossTarget, arenaBossIntroRestoreTarget_, rate);
         fov = AnimationInterpolation::Lerp(0.48f, arenaBossIntroBaseFov_, rate);
@@ -186,7 +186,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
     camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
     camera->SetEye(eye);
     camera->SetTarget(target);
-    const Vector3 rotation = MakeLookAtEuler(eye, target);
+    const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
     camera->SetRotation(rotation);
     camera->ConfigFixedPoint(eye, rotation);
     camera->SetFovY(fov);
@@ -238,7 +238,7 @@ void GamePlayScene::FinishArenaBossIntro() {
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
 }
 
-void GamePlayScene::StartArenaBossDefeatReward(Object3d* rewardObject) {
+void GamePlayScene::StartArenaBossDefeatReward(engine::Object3d* rewardObject) {
     if (crownDefeat_.active || crownDefeat_.completed || arenaBossRewardActive_ || isGoal_ || !player_ || !rewardObject) {
         return;
     }
@@ -258,12 +258,12 @@ void GamePlayScene::StartArenaBossDefeatReward(Object3d* rewardObject) {
     arenaBossRewardBaseFov_ = camera->GetFovY();
 
     // EventReceiverの起動直後はWorld行列更新前なので、親を持たない報酬王冠の編集値を直接使います。
-    const Vector3 crownPosition = rewardObject->GetTranslate();
-    const Vector3 playerPosition = player_->GetWorldPosition();
-    const Vector3 crownToPlayer = NormalizePlanarDirection(playerPosition - crownPosition, {0.0f, 0.0f, 1.0f});
-    const Vector3 right = {crownToPlayer.z, 0.0f, -crownToPlayer.x};
-    arenaBossRewardFocusTarget_ = crownPosition + Vector3{0.0f, 1.15f, 0.0f};
-    arenaBossRewardFocusEye_ = crownPosition + crownToPlayer * 7.4f + right * 2.9f + Vector3{0.0f, 3.4f, 0.0f};
+    const engine::Vector3 crownPosition = rewardObject->GetTranslate();
+    const engine::Vector3 playerPosition = player_->GetWorldPosition();
+    const engine::Vector3 crownToPlayer = NormalizePlanarDirection(playerPosition - crownPosition, {0.0f, 0.0f, 1.0f});
+    const engine::Vector3 right = {crownToPlayer.z, 0.0f, -crownToPlayer.x};
+    arenaBossRewardFocusTarget_ = crownPosition + engine::Vector3{0.0f, 1.15f, 0.0f};
+    arenaBossRewardFocusEye_ = crownPosition + crownToPlayer * 7.4f + right * 2.9f + engine::Vector3{0.0f, 3.4f, 0.0f};
 
     // 王冠の受け取り中はプレイヤーの移動を止め、カメラを固定ショットへ切り替えます。
     player_->BeginCinematicLock();
@@ -316,9 +316,9 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
         return;
     }
 
-    const Vector3 crownPosition = arenaBossRewardObject_->GetTranslate();
-    Vector3 eye = arenaBossRewardGameplayEye_;
-    Vector3 target = arenaBossRewardGameplayTarget_;
+    const engine::Vector3 crownPosition = arenaBossRewardObject_->GetTranslate();
+    engine::Vector3 eye = arenaBossRewardGameplayEye_;
+    engine::Vector3 target = arenaBossRewardGameplayTarget_;
     float fov = arenaBossRewardBaseFov_;
     // 報酬へ寄る → 移動中の王冠を追う → 元の視点へ戻る、の順に構図を補間します。
     if (arenaBossRewardTimer_ < kArenaBossRewardFocusInEnd) {
@@ -333,8 +333,8 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
             AnimationInterpolation::SegmentRate(arenaBossRewardTimer_, kArenaBossRewardFocusInEnd,
                                                 kArenaBossRewardTrackEnd),
             AnimationInterpolation::EasingType::SmootherStep);
-        const Vector3 trackedTarget = crownPosition + Vector3{0.0f, 1.0f, 0.0f};
-        const Vector3 trackedEye = crownPosition + Vector3{6.2f, 3.3f, 7.4f};
+        const engine::Vector3 trackedTarget = crownPosition + engine::Vector3{0.0f, 1.0f, 0.0f};
+        const engine::Vector3 trackedEye = crownPosition + engine::Vector3{6.2f, 3.3f, 7.4f};
         eye = AnimationInterpolation::Lerp(arenaBossRewardFocusEye_, trackedEye, rate);
         target = AnimationInterpolation::Lerp(arenaBossRewardFocusTarget_, trackedTarget, rate);
         fov = AnimationInterpolation::Lerp(0.42f, 0.47f, rate);
@@ -343,8 +343,8 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
             AnimationInterpolation::SegmentRate(arenaBossRewardTimer_, kArenaBossRewardTrackEnd,
                                                 kArenaBossRewardDuration),
             AnimationInterpolation::EasingType::SmootherStep);
-        const Vector3 settleTarget = crownPosition + Vector3{0.0f, 1.0f, 0.0f};
-        const Vector3 settleEye = crownPosition + Vector3{6.2f, 3.3f, 7.4f};
+        const engine::Vector3 settleTarget = crownPosition + engine::Vector3{0.0f, 1.0f, 0.0f};
+        const engine::Vector3 settleEye = crownPosition + engine::Vector3{6.2f, 3.3f, 7.4f};
         eye = AnimationInterpolation::Lerp(settleEye, arenaBossRewardGameplayEye_, rate);
         target = AnimationInterpolation::Lerp(settleTarget, arenaBossRewardGameplayTarget_, rate);
         fov = AnimationInterpolation::Lerp(0.47f, arenaBossRewardBaseFov_, rate);
@@ -356,7 +356,7 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
     camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
     camera->SetEye(eye);
     camera->SetTarget(target);
-    const Vector3 rotation = MakeLookAtEuler(eye, target);
+    const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
     camera->SetRotation(rotation);
     camera->ConfigFixedPoint(eye, rotation);
     camera->SetFovY(fov);

@@ -31,9 +31,9 @@ void PlayerStateIdle::Update(Player* player, float deltaTime) {
     }
 
     // 速度があれば Run へ遷移
-    Vector3 vel = player->GetVelocity();
+    engine::Vector3 vel = player->GetVelocity();
     vel.y = 0.0f;
-    if (Math::Length(vel) > 0.1f) {
+    if (engine::Math::Length(vel) > 0.1f) {
         player->ChangeState(std::make_unique<PlayerStateRun>());
     }
 }
@@ -66,9 +66,9 @@ void PlayerStateRun::Update(Player* player, float deltaTime) {
     }
 
     // 速度が落ちたら Idle へ遷移
-    Vector3 vel = player->GetVelocity();
+    engine::Vector3 vel = player->GetVelocity();
     vel.y = 0.0f;
-    if (Math::Length(vel) <= 0.1f) {
+    if (engine::Math::Length(vel) <= 0.1f) {
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     }
 }

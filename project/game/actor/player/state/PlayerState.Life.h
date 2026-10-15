@@ -16,7 +16,7 @@ class PlayerStateDead : public IAnimationState {
     bool sceneChangeRequested_ = false;
     bool lifePresentationStarted_ = false;
     bool finalDeath_ = false;
-    Vector2 irisCenter_ = {0.5f, 0.5f};
+    engine::Vector2 irisCenter_ = {0.5f, 0.5f};
     PlayerDeathAnimation deathAnimation_;
 };
 
@@ -32,5 +32,5 @@ class PlayerStateFallingOut : public IAnimationState {
 
     Phase phase_ = Phase::Waiting;
     float waitTimer_ = 0.0f;
-    Vector2 irisCenter_ = {0.5f, 0.5f};
+    engine::Vector2 irisCenter_ = {0.5f, 0.5f};
 };

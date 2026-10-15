@@ -83,7 +83,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
     // Ghost RecorderのPathが割り当てられている床は、記録済みの軌道を唯一の移動元にする。
     // 手続き的な往復移動を先に重ねると、Editorで調整したPathと乗り移り判定がずれる。
     if (!GetRecordPathName().empty()) {
-        const Vector3 previousPosition = GetTransform()->translate;
+        const engine::Vector3 previousPosition = GetTransform()->translate;
         BaseGimmick::Update(deltaTime);
         frameDelta_ = GetTransform()->translate - previousPosition;
         // RecorderはObject更新の終盤で座標を変える。乗員の接地照会より前に反映する。
@@ -101,7 +101,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         hasCapturedStartTransform_ = true;
     }
 
-    const Vector3 previousPosition = GetTransform()->translate;
+    const engine::Vector3 previousPosition = GetTransform()->translate;
     time_ += deltaTime;
 
     const float speed = param_.has_value() ? (std::max)(param_->speed, 0.0f) : 0.0f;
@@ -151,7 +151,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         transform->translate.y += std::sin(waveTime) * kLegacyMoveRange;
     }
 
-    frameDelta_ = hasCapturedStartTransform_ ? transform->translate - previousPosition : Vector3{};
+    frameDelta_ = hasCapturedStartTransform_ ? transform->translate - previousPosition : engine::Vector3{};
     SetLocalTransform(transformValue);
 
     // 移動後のTransformを同じフレームで行列と当たり判定へ反映する。
@@ -159,13 +159,13 @@ void GimmickMovingFloor::Update(float deltaTime) {
     carryPassengers();
 }
 
-bool GimmickMovingFloor::OnCollision(Object3d* other) {
+bool GimmickMovingFloor::OnCollision(engine::Object3d* other) {
     // 全移動床で更新前に乗員を運ぶ。衝突処理は押し戻しだけにする。
     (void)other;
     return true;
 }
 
-std::unique_ptr<Object3d> GimmickMovingFloor::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickMovingFloor::Clone() const {
     // 複製時は配置と設定だけを引き継ぎ、乗員・周期・原点は再生時に再取得する。
     auto clone = std::make_unique<GimmickMovingFloor>();
     clone->Initialize(common_, GetModelName());

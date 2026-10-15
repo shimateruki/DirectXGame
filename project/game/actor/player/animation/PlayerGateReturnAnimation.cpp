@@ -66,9 +66,9 @@ void PlayerGateReturnAnimation::Stop(Player* player, bool restoreControl) {
     ApplyFinishedPose(player, restoreControl);
 }
 
-Vector3 PlayerGateReturnAnimation::NormalizeDirection(const Vector3& direction) const {
+engine::Vector3 PlayerGateReturnAnimation::NormalizeDirection(const engine::Vector3& direction) const {
     // 経路の向きは水平面に限定し、ゼロ入力には前方向を使う。
-    Vector3 flat{direction.x, 0.0f, direction.z};
+    engine::Vector3 flat{direction.x, 0.0f, direction.z};
     const float lengthSq = flat.x * flat.x + flat.z * flat.z;
     if (lengthSq <= 0.000001f) {
         return {0.0f, 0.0f, 1.0f};
@@ -78,13 +78,13 @@ Vector3 PlayerGateReturnAnimation::NormalizeDirection(const Vector3& direction) 
     return {flat.x * invLength, 0.0f, flat.z * invLength};
 }
 
-Vector3 PlayerGateReturnAnimation::Lerp(const Vector3& a, const Vector3& b, float t) const {
+engine::Vector3 PlayerGateReturnAnimation::Lerp(const engine::Vector3& a, const engine::Vector3& b, float t) const {
     // 経路の端を越えないよう、補間率を0〜1に制限する。
     t = Clamp01(t);
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
-Vector3 PlayerGateReturnAnimation::Bezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3,
+engine::Vector3 PlayerGateReturnAnimation::Bezier(const engine::Vector3& p0, const engine::Vector3& p1, const engine::Vector3& p2, const engine::Vector3& p3,
                                           float t) const {
     // 四点の三次Bezierでゲートへの曲線経路を作る。
     t = Clamp01(t);
@@ -124,21 +124,21 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
         return;
     }
 
-    Vector3 landing = Lerp(route_.gateCenter, route_.end, 0.38f);
+    engine::Vector3 landing = Lerp(route_.gateCenter, route_.end, 0.38f);
     landing.y = route_.end.y;
-    Vector3 firstBounceEnd = Lerp(landing, route_.end, 0.55f);
+    engine::Vector3 firstBounceEnd = Lerp(landing, route_.end, 0.55f);
     firstBounceEnd.y = route_.end.y;
 
-    Vector3 position = route_.start;
-    Vector3 scale = route_.baseScale;
+    engine::Vector3 position = route_.start;
+    engine::Vector3 scale = route_.baseScale;
     float pitch = 0.0f;
     float roll = 0.0f;
 
     if (normalizedTime < kLandingPhaseEnd) {
         const float phaseT = Clamp01(normalizedTime / kLandingPhaseEnd);
         const float moveT = EaseOutCubic(phaseT);
-        const Vector3 controlA = Lerp(route_.start, route_.gateCenter, 0.46f);
-        const Vector3 controlB = Lerp(route_.gateCenter, landing, 0.58f);
+        const engine::Vector3 controlA = Lerp(route_.start, route_.gateCenter, 0.46f);
+        const engine::Vector3 controlB = Lerp(route_.gateCenter, landing, 0.58f);
         position = Bezier(route_.start, {controlA.x, controlA.y + 0.30f, controlA.z},
                           {controlB.x, controlB.y + 0.55f, controlB.z}, landing, moveT);
         const float groundY = route_.end.y;

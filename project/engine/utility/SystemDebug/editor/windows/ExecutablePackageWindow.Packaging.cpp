@@ -81,6 +81,7 @@ private:
 };
 
 std::wstring Utf8ToWide(const std::string& text) {
+    // UTF-8 を優先し、旧来のANSI文字列だけ既定コードページで読み直す。
     if (text.empty()) {
         return {};
     }
@@ -103,6 +104,7 @@ std::wstring Utf8ToWide(const std::string& text) {
 }
 
 std::string WideToUtf8(const std::wstring& text) {
+    // 配布ファイル名をWindowsのワイド文字列からUTF-8へ変換する。
     if (text.empty()) {
         return {};
     }
@@ -126,6 +128,7 @@ fs::path PathFromUtf8(const std::string& text) {
 }
 
 std::string TrimAscii(const std::string& text) {
+    // 配布物名の前後に混入したASCII空白だけを除く。
     size_t begin = 0;
     while (begin < text.size() && static_cast<unsigned char>(text[begin]) <= 0x20) {
         ++begin;
@@ -149,6 +152,7 @@ std::string ToUpperAscii(std::string text) {
 }
 
 bool IsReservedWindowsName(const std::string& name) {
+    // 拡張子があってもWindowsの予約名はファイル名として使えないため先頭部分で判定する。
     std::string stem = name;
     const size_t dot = stem.find('.');
     if (dot != std::string::npos) {
@@ -197,6 +201,7 @@ std::string SanitizePackageName(const std::string& input) {
 }
 
 fs::path GetExecutableDirectory() {
+    // 実行中のEXEを基準に付属ファイルの配置先を決める。
     std::wstring buffer(MAX_PATH, L'\0');
     DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
     while (length == buffer.size()) {
@@ -249,6 +254,7 @@ fs::path FindProjectRoot() {
 }
 
 bool IsInsideDirectory(const fs::path& root, const fs::path& target) {
+    // 正規化後の相対パスで親への脱出を検出し、出力先の誤削除を防ぐ。
     std::error_code ec;
     fs::path canonicalRoot = fs::weakly_canonical(root, ec);
     if (ec) {
@@ -334,6 +340,7 @@ bool IsProjectDirectoryExcluded(const fs::path& relative) {
 }
 
 bool IsProjectFileExcluded(const fs::path& relative, uint64_t fileBytes, ProjectCopyStats& stats) {
+    // 配布に不要な端末固有ファイルと一時生成物を除外し、除外量も集計する。
     const std::wstring fileName = ToLowerWide(relative.filename().wstring());
     const std::wstring extension = ToLowerWide(relative.extension().wstring());
     const bool rootLocalState = relative.parent_path().empty() &&
@@ -447,6 +454,7 @@ bool CopyProjectFiltered(
 }
 
 void AccumulateSkippedDirectory(const fs::path& directory, ResourceCopyStats& stats) {
+    // 丸ごと除外したディレクトリも元容量へ算入し、削減量を正しく示す。
     std::error_code ec;
     fs::recursive_directory_iterator it(directory, fs::directory_options::skip_permission_denied, ec);
     const fs::recursive_directory_iterator end;
@@ -475,6 +483,7 @@ void AccumulateSkippedDirectory(const fs::path& directory, ResourceCopyStats& st
     }
 }
 
+// Editor上の数値を有効なテクスチャ梱包モードへ丸めて変換します。
 TexturePackageMode ToTexturePackageMode(int value) {
     return static_cast<TexturePackageMode>(std::clamp(value, 0, static_cast<int>(TexturePackageMode::Complete)));
 }
@@ -690,6 +699,7 @@ bool CopyDirectoryFiltered(
 }
 
 fs::path FindMSBuildPath() {
+    // 既知のVisual Studio構成を順に探し、見つからなければPATH上の実行ファイルを使う。
     const std::array<fs::path, 4> candidates = {
         fs::path(L"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe"),
         fs::path(L"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe"),
@@ -814,6 +824,7 @@ bool RunMSBuild(const fs::path& projectRoot, const std::string& configuration, s
 }
 
 bool WriteLaunchBatch(const fs::path& destination, const std::string& exeName, std::string& errorMessage) {
+    // 配布先自身を作業ディレクトリにして起動し、日本語を含むパスもUTF-8で扱う。
     const fs::path batchPath = destination / "launch.bat";
     std::ofstream file(batchPath, std::ios::binary);
     if (!file) {
@@ -913,6 +924,7 @@ bool WritePackageManifest(
 }
 
 std::wstring QuotePowerShellLiteral(const std::wstring& value) {
+    // PowerShellへ渡すパスの引用符を処理し、文字列として扱える形にする。
     std::wstring escaped;
     escaped.reserve(value.size() + 2);
     escaped.push_back(L'\'');
@@ -1113,6 +1125,16 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         if (copiedDlls == 0) {
             return makeResult(false, "DLLが見つかりません: " + PathToUtf8(outputRoot));
+        }
+
+        // Releaseの初回起動でDXCを待たないよう、ビルド済みShader Model 6を実行セットへ含める。
+        const fs::path startupShaderCache = outputRoot / "StartupShaderCache";
+        if (request.configuration == "Release" && fs::is_directory(startupShaderCache, ec)) {
+            fs::copy(startupShaderCache, runtimeDestination / "StartupShaderCache",
+                     fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
+            if (ec) {
+                return makeResult(false, "シェーダーのコピーに失敗: " + PathToUtf8(startupShaderCache));
+            }
         }
 
         ResourceCopyStats resourceStats;

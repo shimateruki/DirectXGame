@@ -138,6 +138,7 @@ bool AssetDatabase::PollDDSCacheBuild() {
 }
 
 void AssetDatabase::CloseDDSCacheProcessHandle() {
+    // 終了済みの変換プロセスのハンドルだけ閉じ、重複解放を避ける。
     if (!ddsCacheProcessHandle_) {
         return;
     }

@@ -94,7 +94,7 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickChainCollapseFloor::OnCollision(Object3d* other) {
+bool GimmickChainCollapseFloor::OnCollision(engine::Object3d* other) {
     // 横から触れただけでは崩れず、プレイヤーが上面に乗った場合に始動します。
     if (state_ == State::Idle && other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
@@ -218,7 +218,7 @@ float GimmickChainCollapseFloor::GetGravity() const {
     return param_.has_value() ? param_->gravity : 48.0f;
 }
 
-std::unique_ptr<Object3d> GimmickChainCollapseFloor::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickChainCollapseFloor::Clone() const {
     // 複製先を初期化し、連鎖の設定と元の配置を引き継ぎます。
     auto newObj = std::make_unique<GimmickChainCollapseFloor>();
     assert(common_ != nullptr);

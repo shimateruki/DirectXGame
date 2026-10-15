@@ -67,7 +67,7 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickChikuwaBlock::OnCollision(Object3d* other) {
+bool GimmickChikuwaBlock::OnCollision(engine::Object3d* other) {
     // 待機中のみプレイヤーの搭乗を判定
     if (state_ == State::Idle) {
         if (other->GetClassName() == "Player") {
@@ -112,7 +112,7 @@ void GimmickChikuwaBlock::ChangeState(State newState) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickChikuwaBlock::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickChikuwaBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     auto newObj = std::make_unique<GimmickChikuwaBlock>();
     assert(common_ != nullptr);

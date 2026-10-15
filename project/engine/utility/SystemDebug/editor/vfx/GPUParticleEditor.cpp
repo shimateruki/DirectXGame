@@ -12,6 +12,7 @@
 #include "ProfilerManager.h"
 #include <algorithm>
 #include "VFXAuthoringEditor.h"
+#include "VFXAssetPicker.h"
 #include <vector>
 
 using json = nlohmann::json;
@@ -102,10 +103,10 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
     // タイムラインと性能表示は実GPUの粒子数でなく設定からの生存数見積もりを使う。
     std::vector<EffectPreviewStage::TimelineEvent> events;
-    events.push_back({ "Spawn", 0.0f, 0.05f, Vector4{ 0.35f, 0.85f, 1.0f, 1.0f } });
-    events.push_back({ "Particle life", 0.0f, (std::min)(config_.emitLife, previewDuration), Vector4{ 0.25f, 0.65f, 1.0f, 1.0f } });
+    events.push_back({ "Spawn", 0.0f, 0.05f, engine::Vector4{ 0.35f, 0.85f, 1.0f, 1.0f } });
+    events.push_back({ "Particle life", 0.0f, (std::min)(config_.emitLife, previewDuration), engine::Vector4{ 0.25f, 0.65f, 1.0f, 1.0f } });
     if (config_.isLooping) {
-        events.push_back({ "Emit interval", 0.0f, (std::min)((std::max)(config_.emitInterval, 0.01f), previewDuration), Vector4{ 0.55f, 0.95f, 0.75f, 1.0f } });
+        events.push_back({ "Emit interval", 0.0f, (std::min)((std::max)(config_.emitInterval, 0.01f), previewDuration), engine::Vector4{ 0.55f, 0.95f, 0.75f, 1.0f } });
     }
     const uint32_t capacity = GPUParticleManager::ResolveParticleCapacity(config_);
     uint64_t estimatedParticleCount = static_cast<uint64_t>((std::max)(config_.emitCount, 0));
@@ -254,34 +255,29 @@ void GPUParticleEditor::DrawImGui() {
 
         // 発生用テクスチャの候補だけに絞る。選択値はEmit時に適用する。
         std::vector<std::string> allPaths = TextureManager::GetInstance()->GetAvailableTexturePaths();
-        static std::vector<std::string> filteredPaths;
-        static std::vector<std::string> fileNames;
-        filteredPaths.clear();
-        fileNames.clear();
+        std::vector<std::string> filteredPaths;
 
         for (const auto& path : allPaths) {
             // spriteフォルダの中の particle フォルダのみを参照するように絞り込み
             if (path.find("Resources/sprite/particle/") != std::string::npos) {
                 filteredPaths.push_back(path);
-                fileNames.push_back(std::filesystem::path(path).filename().string());
             }
         }
-
-        std::vector<const char*> texNames;
-        int currentIndex = 0;
-        for (int i = 0; i < filteredPaths.size(); ++i) {
-            texNames.push_back(fileNames[i].c_str());
+        std::sort(filteredPaths.begin(), filteredPaths.end());
+        int currentIndex = -1;
+        for (int i = 0; i < static_cast<int>(filteredPaths.size()); ++i) {
             if (config_.texturePath == filteredPaths[i]) {
                 currentIndex = i;
+                break;
             }
         }
-
-        if (!texNames.empty()) {
-            if (ImGui::Combo(ICON_FA_IMAGE " テクスチャ画像", &currentIndex, texNames.data(), static_cast<int>(texNames.size()))) {
-                config_.texturePath = filteredPaths[currentIndex];
-                // ここで無理に SetTexture を呼ばなくても、EmitFromConfig 時に
-                // 新しいテクスチャ用のシステムが自動で選択・更新されるようになります。
-            }
+        if (VFXAssetPicker::DrawCombo(ICON_FA_IMAGE " テクスチャ画像", filteredPaths,
+                                      currentIndex, textureSearch_, sizeof(textureSearch_))) {
+            // テクスチャは次回の発生時に適用される。
+            config_.texturePath = filteredPaths[currentIndex];
+        }
+        if (currentIndex < 0 && !config_.texturePath.empty()) {
+            ImGui::TextDisabled("現在の画像: %s", config_.texturePath.c_str());
         }
 
         ImGui::DragFloat("中間の大きさ (Mid Size)", &config_.midSize, 0.1f, 0.0f, 50.0f);
@@ -544,36 +540,24 @@ void GPUParticleEditor::DrawImGui() {
             }
         }
 
-        static int selectedIndex = 0;
-        std::vector<const char*> presetNamesCStr;
-        for (int i = 0; i < presetList.size(); ++i) {
-            presetNamesCStr.push_back(presetList[i].c_str());
+        std::sort(presetList.begin(), presetList.end());
+        int selectedIndex = -1;
+        for (int i = 0; i < static_cast<int>(presetList.size()); ++i) {
             if (presetList[i] == presetNameInput_) {
                 selectedIndex = i;
+                break;
             }
         }
-
-        if (!presetNamesCStr.empty()) {
-            if (ImGui::Combo(ICON_FA_FOLDER_OPEN " 既存ファイル一覧", &selectedIndex, presetNamesCStr.data(), static_cast<int>(presetNamesCStr.size()))) {
-                strcpy_s(presetNameInput_, sizeof(presetNameInput_), presetList[selectedIndex].c_str());
-            }
+        if (VFXAssetPicker::DrawCombo(ICON_FA_FOLDER_OPEN " 保存済みGPU設定", presetList,
+                                      selectedIndex, presetSearch_, sizeof(presetSearch_))) {
+            strcpy_s(presetNameInput_, sizeof(presetNameInput_), presetList[selectedIndex].c_str());
         }
-        else {
-            ImGui::Text("※保存されたプリセットがありません");
+        if (presetList.empty()) ImGui::TextDisabled("保存済み設定はありません");
+        ImGui::TextDisabled("一覧の選択は名前だけを変更します。読み込み後にプレビューできます。");
+        if (selectedIndex >= 0 && ImGui::Button(ICON_FA_PLAY " 選択した設定をプレビュー")) {
+            Load(presetList[selectedIndex]);
+            EmitWithPreview();
         }
-
-        ImGui::Separator();
-        ImGui::Text(ICON_FA_IMAGES " プリセットギャラリー (Click to Preview)");
-        ImGui::BeginChild("Gallery", ImVec2(0, 150), true);
-        for (int i = 0; i < presetList.size(); ++i) {
-            if (ImGui::Button(presetList[i].c_str(), ImVec2(140, 30))) {
-                Load(presetList[i]);
-                strcpy_s(presetNameInput_, sizeof(presetNameInput_), presetList[i].c_str());
-                EmitWithPreview();
-            }
-            if ((i % 3) != 2) ImGui::SameLine();
-        }
-        ImGui::EndChild();
 
         ImGui::Separator();
 
@@ -642,11 +626,11 @@ void GPUParticleEditor::EmitWithPreview() {
     else if (isPreviewMode_) {
         const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
         if (camera) {
-            Vector3 camEye = camera->GetEye();
-            Vector3 camTarget = camera->GetTargetPoint();
-            Vector3 dir = { camTarget.x - camEye.x, camTarget.y - camEye.y, camTarget.z - camEye.z };
+            engine::Vector3 camEye = camera->GetEye();
+            engine::Vector3 camTarget = camera->GetTargetPoint();
+            engine::Vector3 dir = { camTarget.x - camEye.x, camTarget.y - camEye.y, camTarget.z - camEye.z };
             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-            Vector3 forward = { 0, 0, 1 };
+            engine::Vector3 forward = { 0, 0, 1 };
             if (length > 0.0001f) {
                 forward = { dir.x / length, dir.y / length, dir.z / length };
             }

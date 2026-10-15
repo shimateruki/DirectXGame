@@ -9,7 +9,7 @@
 #include <vector>
 
 class DebugEditor;
-class Object3d;
+namespace engine { class Object3d; }
 class SceneManager;
 
 // PlayModeChangeTrackerは、Play中の編集可能な変更だけを停止後に選択して持ち帰ります。
@@ -49,8 +49,8 @@ private:
         bool applyProperties = true;
     };
 
-    bool IsEligible(const Object3d* object) const;
-    bool IsRuntimeDrivenTransform(const Object3d* object) const;
+    bool IsEligible(const engine::Object3d* object) const;
+    bool IsRuntimeDrivenTransform(const engine::Object3d* object) const;
     static nlohmann::json ExtractTransform(const nlohmann::json& state);
     static nlohmann::json ExtractProperties(const nlohmann::json& state);
     static bool IsIdentityKey(const std::string& key);

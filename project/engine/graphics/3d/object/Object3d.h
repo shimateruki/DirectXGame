@@ -34,13 +34,15 @@ class Camera;
 #include "GPUParticleEmitter.h"
 class EffectObject3d;
 
+namespace engine {
+
 // Object3dは、Transform、階層、描画、衝突、エフェクト連携を持つ3Dオブジェクトの基本クラスです。
 class Object3d {
 public:
     // DecalSettingsは、通常のObject3dを地面・壁へ沿う永続/一時Decalとして扱う設定です。
     struct DecalSettings {
         bool enabled = false;
-        Vector2 size = { 2.0f, 2.0f };
+        engine::Vector2 size = { 2.0f, 2.0f };
         float depthOffset = 0.012f;
         float lifetime = 0.0f;
         float fadeIn = 0.0f;
@@ -128,10 +130,10 @@ public:
     // デバッグリプレイで1フレーム分の実行状態を保持します。
     // シーン保存用JSONとは分離し、実行中だけ変化するHPやアニメーション時刻も扱います。
     struct ReplayState {
-        Vector3 scale = { 1.0f, 1.0f, 1.0f };
-        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
-        Vector3 translation = { 0.0f, 0.0f, 0.0f };
-        Quaternion quaternion = { 0.0f, 0.0f, 0.0f, 1.0f };
+        engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
+        engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 translation = { 0.0f, 0.0f, 0.0f };
+        engine::Quaternion quaternion = { 0.0f, 0.0f, 0.0f, 1.0f };
         bool quaternionMaster = true;
 
         bool visible = true;
@@ -152,7 +154,7 @@ public:
         std::string modelName;
         std::string texturePath;
         int32_t materialType = 0;
-        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
         float emissive = 1.0f;
 
         // 実体Componentの有無と実行状態も巻き戻し対象にします。
@@ -175,6 +177,7 @@ public:
         std::string sourceObjectId;
         bool isRoot = false;
 
+        /// <summary>Prefab Asset、配置Instance、元ObjectのIDがそろっているか返す。</summary>
         bool IsLinked() const {
             return !assetId.empty() && !instanceId.empty() && !sourceObjectId.empty();
         }
@@ -183,6 +186,9 @@ public:
     using ColliderConfig = ::ColliderConfig;
 
 public:
+    /// <summary>描画や衝突の実行基盤をInitializeで受け取る前の状態を作る。</summary>
+    Object3d();
+
     /// <summary>所有する描画・衝突コンポーネントを破棄する。</summary>
     virtual ~Object3d();
 
@@ -192,13 +198,12 @@ public:
     /// <summary>1フレーム分のアニメーション、移動、付随効果を更新する。</summary>
     virtual void Update(float deltaTime);
 
-    // 物理や決定論的なゲーム処理向けの固定刻み更新です。
-    // 既存のUpdate互換性を壊さないよう、既定実装は何もしません。
+    /// <summary>派生クラスが固定刻みの物理・ゲーム処理を行う拡張点。基底では何もしない。</summary>
     virtual void FixedUpdate(float fixedDeltaTime) { (void)fixedDeltaTime; }
 
     /// <summary>ステータス管理からタイプ共通スケールを反映する。</summary>
     /// <remarks>伸縮アニメーションを持つ派生クラスは基準スケールも更新すること。</remarks>
-    virtual void ApplyManagedScale(const Vector3& scale) { SetScale(scale); }
+    virtual void ApplyManagedScale(const engine::Vector3& scale) { SetScale(scale); }
 
     /// <summary>このオブジェクトに接続されたパーティクルの状態を更新する。</summary>
     void UpdateParticle();
@@ -211,6 +216,9 @@ public:
 
     /// <summary>指定カメラのプレビューに特殊マテリアルを描画する。</summary>
     virtual void DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0);
+
+    /// <summary>現在の材質に対応する特殊描画を、深度と画面色を使う描画区間で行う。</summary>
+    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
     /// <summary>このオブジェクトの影マップ用形状を描画する。</summary>
     void DrawShadow();
@@ -230,8 +238,8 @@ public:
     /// <summary>このオブジェクトの複製を作る。</summary>
     virtual std::unique_ptr<Object3d> Clone() const;
 
-    // Scene保存、Prefab Instance、EditorのUndo/Redoで共通利用する永続GUIDです。
-    // Replay IDやPrefab内Source ID、ゲームイベントIDとは別の識別子です。
+    /// <summary>Scene保存・Prefab・Undoで共通利用する永続GUIDを新規発行する。</summary>
+    /// <remarks>Replay ID、Prefab内のSource ID、ゲームイベントIDとは別の識別子。</remarks>
     static std::string GeneratePersistentGuid();
 
     /// <summary>永続GUIDが想定する形式か確認する。</summary>
@@ -239,6 +247,7 @@ public:
 
     /// <summary>未設定なら永続GUIDを生成し、現在の値を返す。</summary>
     const std::string& EnsurePersistentGuid();
+    /// <summary>現在の永続GUIDを返す。未設定なら空文字列。</summary>
     const std::string& GetPersistentGuid() const { return persistentGuid_; }
 
     /// <summary>検証済みGUIDを設定する。形式が不正ならfalse。</summary>
@@ -259,8 +268,9 @@ public:
     /// <summary>指定型の内蔵コンポーネントを読み取り専用で探す。</summary>
     const void* FindBuiltInComponent(std::string_view typeId) const;
 
-    // デバッグリプレイ専用の安定IDと実行状態を扱います。
+    /// <summary>未発行ならReplay用の安定IDを割り当てて返す。</summary>
     uint64_t EnsureReplayId();
+    /// <summary>現在のReplay用IDを返す。未発行なら0。</summary>
     uint64_t GetReplayId() const { return replayId_; }
 
     /// <summary>巻き戻しに必要な実行状態を記録する。</summary>
@@ -268,8 +278,10 @@ public:
 
     /// <summary>記録済みの実行状態を復元する。</summary>
     void RestoreReplayState(const ReplayState& state);
+    /// <summary>Replayの巻き戻し中もこのObjectを保持する設定を取得・変更する。</summary>
     void SetReplayRetained(bool retained) { replayRetained_ = retained; }
     bool IsReplayRetained() const { return replayRetained_; }
+    /// <summary>Replay上で削除済みかどうかを取得・変更する。</summary>
     void SetReplayRemoved(bool removed) { replayRemoved_ = removed; }
     bool IsReplayRemoved() const { return replayRemoved_; }
 
@@ -277,43 +289,56 @@ public:
     /// <summary>ローカルの拡縮、回転、移動から変換行列を更新する。</summary>
     void UpdateLocalMatrix();
 
-    // 階層のワールド行列を更新します。ゲームの一括更新中はfalseを指定し、
-    // 全オブジェクトのロジック更新後に描画定数を一度だけ確定できます。
+    /// <summary>親階層を含むワールド行列を更新する。</summary>
+    /// <param name="refreshRenderer">falseなら描画定数の反映を後の一括更新まで遅らせる。</param>
     void UpdateWorldMatrix(bool refreshRenderer = true);
 
     /// <summary>現在のカメラに合わせて描画定数だけを更新する。</summary>
     void RefreshRenderCameraData();
 
+    /// <summary>ローカル姿勢と計算済み行列を読み取り専用で返す。</summary>
     const Transform* GetTransform() { return &transform_; }
     const Transform& GetTransform() const { return transform_; }
 
     /// <summary>現在のワールド行列から位置を取り出す。</summary>
-    Vector3 GetWorldPosition() const {
+    engine::Vector3 GetWorldPosition() const {
         return {
             transform_.matWorld.m[3][0],
             transform_.matWorld.m[3][1],
             transform_.matWorld.m[3][2],
         };
     }
-    const Matrix4x4& GetWorldMatrix() const { return transform_.matWorld; }
-    const Vector3& GetScale() const { return transform_.scale; }
-    const Vector3& GetRotation() const { return transform_.rotate; }
-    const Vector3& GetTranslate() const { return transform_.translate; }
+    /// <summary>最後に計算した親階層込みのワールド行列を返す。</summary>
+    const engine::Matrix4x4& GetWorldMatrix() const { return transform_.matWorld; }
+    /// <summary>ローカル空間での拡縮値を返す。</summary>
+    const engine::Vector3& GetScale() const { return transform_.scale; }
+    /// <summary>ローカル空間でのEuler回転角を返す。</summary>
+    const engine::Vector3& GetRotation() const { return transform_.rotate; }
+    /// <summary>ローカル空間での移動量を返す。</summary>
+    const engine::Vector3& GetTranslate() const { return transform_.translate; }
 
-    void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
+    /// <summary>ローカル空間の移動量を設定する。行列への反映は次の更新時に行う。</summary>
+    void SetTranslate(const engine::Vector3& translate) { transform_.translate = translate; }
+    /// <summary>ローカル移動量のX成分を設定する。</summary>
     void SetTranslateX(float x) { transform_.translate.x = x; }
+    /// <summary>ローカル移動量のY成分を設定する。</summary>
     void SetTranslateY(float y) { transform_.translate.y = y; }
+    /// <summary>ローカル移動量のZ成分を設定する。</summary>
     void SetTranslateZ(float z) { transform_.translate.z = z; }
-    void SetScale(const Vector3& scale) { transform_.scale = scale; }
+    /// <summary>ローカル空間の拡縮値を設定する。</summary>
+    void SetScale(const engine::Vector3& scale) { transform_.scale = scale; }
 
     /// <summary>表示用のEuler角を更新する。回転モードは変更しない。</summary>
-    void SetEulerAngles(const Vector3& rotate) { transform_.rotate = rotate; }
+    void SetEulerAngles(const engine::Vector3& rotate) { transform_.rotate = rotate; }
+    /// <summary>表示用Euler角のX成分だけを変更し、回転モードは維持する。</summary>
     void SetEulerX(float x) { transform_.rotate.x = x; }
+    /// <summary>表示用Euler角のY成分だけを変更し、回転モードは維持する。</summary>
     void SetEulerY(float y) { transform_.rotate.y = y; }
+    /// <summary>表示用Euler角のZ成分だけを変更し、回転モードは維持する。</summary>
     void SetEulerZ(float z) { transform_.rotate.z = z; }
 
     /// <summary>Quaternionを設定し、次の行列更新で優先する。</summary>
-    void SetQuaternion(const Quaternion& quaternion) { transform_.quaternion = quaternion; transform_.isQuaternionMaster = true; }
+    void SetQuaternion(const engine::Quaternion& quaternion) { transform_.quaternion = quaternion; transform_.isQuaternionMaster = true; }
 
     /// <summary>falseを指定すると次の行列更新でEuler角からQuaternionを作る。</summary>
     void SetQuaternionMaster(bool isQuaternionMaster) { transform_.isQuaternionMaster = isQuaternionMaster; }
@@ -331,7 +356,7 @@ public:
     void SetTransformAnchor(const Transform* anchor) { transform_.parent = anchor; }
 
     /// <summary>Euler角を設定し、回転の主表現をEuler角へ切り替える。</summary>
-    void SetRotation(const Vector3& rotate) { transform_.rotate = rotate; transform_.isQuaternionMaster = false;
+    void SetRotation(const engine::Vector3& rotate) { transform_.rotate = rotate; transform_.isQuaternionMaster = false;
     }
 
     /// <summary>Euler角のY成分を設定し、回転の主表現をEuler角へ切り替える。</summary>
@@ -340,6 +365,7 @@ public:
 
     /// <summary>親オブジェクトを設定する。keepWorldTransformが真なら現在の世界姿勢を維持する。</summary>
     void SetParent(Object3d* parent, bool keepWorldTransform = false);
+    /// <summary>現在の親Objectへの非所有参照を返す。親がなければnullptr。</summary>
     Object3d* GetParent() const { return parent_; }
 
     // 以下のモデル、LOD、マテリアル操作はMeshRendererへ委譲する。
@@ -401,10 +427,10 @@ public:
     float GetLodCameraDistance() const;
 
     /// <summary>描画マテリアルの色を返す。</summary>
-    Vector4 GetColor() const;
+    engine::Vector4 GetColor() const;
 
     /// <summary>描画マテリアルの色を設定する。</summary>
-    void SetColor(const Vector4& color);
+    void SetColor(const engine::Vector4& color);
 
     /// <summary>描画時のブレンドモードを設定する。</summary>
     void SetBlendMode(BlendMode blendMode);
@@ -412,7 +438,10 @@ public:
     /// <summary>現在のブレンドモードを返す。</summary>
     BlendMode GetBlendMode() const;
 
-    // 共有Material Instanceを適用し、Scene再読込時にも同じAssetへ追従させます。
+    /// <summary>共有Material Instanceを適用し、Scene再読込時も同じAssetへ追従させる。</summary>
+    /// <param name="assetPath">適用する材質Assetのパス。</param>
+    /// <param name="errorMessage">失敗理由を受け取る任意の出力先。</param>
+    /// <returns>材質Assetを読み込み、レンダラーへ適用できた場合はtrue。</returns>
     bool ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage = nullptr);
 
     /// <summary>現在のマテリアル設定を共有Material Instanceとして保存する。</summary>
@@ -420,15 +449,19 @@ public:
 
     /// <summary>マテリアルインスタンスとの参照を解除する。</summary>
     void ClearMaterialInstanceLink() { materialInstancePath_.clear(); }
+    /// <summary>現在リンクしているMaterial Instance Assetのパスを返す。</summary>
     const std::string& GetMaterialInstancePath() const { return materialInstancePath_; }
 
     /// <summary>デカールの投影範囲と再生時間を設定する。</summary>
     void SetDecalSettings(const DecalSettings& settings);
+    /// <summary>現在のデカール投影・再生設定を返す。</summary>
     const DecalSettings& GetDecalSettings() const { return decalSettings_; }
+    /// <summary>設定または互換用クラス名でデカールとして扱うObjectか返す。</summary>
     bool IsDecal() const { return decalSettings_.enabled || className_ == "Decal"; }
 
     /// <summary>デカールの経過時間を戻して再生し直す。</summary>
     void RestartDecalPlayback();
+    /// <summary>デカール再生の経過秒数を返す。</summary>
     float GetDecalElapsedTime() const { return decalElapsedTime_; }
 
     /// <summary>平行光源の強度を設定する。</summary>
@@ -437,7 +470,7 @@ public:
     /// <summary>平行光源の強度を返す。</summary>
     float GetIntensity() const;
 
-    // データアクセッサ (互換性維持)
+    /// <summary>互換用の平行光源データへの非所有参照を返す。</summary>
     DirectionalLight* GetDirectionalLightData();
 
     /// <summary>描画マテリアルの編集可能なデータを取得する。</summary>
@@ -455,14 +488,19 @@ public:
     /// <summary>適用するライティング方式を設定する。</summary>
     void SetSelectedLighting(int32_t type);
 
+    /// <summary>SceneとEditorで使うObject名を設定・取得する。</summary>
     void SetName(const std::string& name) { name_ = name; }
     const std::string& GetName() const { return name_; }
+
+    /// <summary>Prefab Assetの元Objectと配置Instanceを結び付ける情報を取得・設定する。</summary>
     const PrefabInstanceInfo& GetPrefabInstanceInfo() const { return prefabInstanceInfo_; }
     void SetPrefabInstanceInfo(const PrefabInstanceInfo& info) { prefabInstanceInfo_ = info; }
+    /// <summary>Prefabとの接続情報をすべて解除する。</summary>
     void ClearPrefabInstanceInfo() { prefabInstanceInfo_ = PrefabInstanceInfo{}; }
+    /// <summary>有効なPrefab Instance接続情報があるか返す。</summary>
     bool IsPrefabInstance() const { return prefabInstanceInfo_.IsLinked(); }
 
-    // 衝突判定 (Colliderへ委譲)
+    /// <summary>このObjectが所有するColliderへの非所有参照を返す。</summary>
     Collider* GetCollider() const { return collider_.get(); }
 
     /// <summary>衝突形状と判定設定をまとめて変更する。</summary>
@@ -478,10 +516,10 @@ public:
     ColliderType GetColliderType() const;
 
     /// <summary>箱型衝突形状の大きさを設定する。</summary>
-    void SetCollisionSize(const Vector3& size);
+    void SetCollisionSize(const engine::Vector3& size);
 
     /// <summary>衝突形状の大きさを返す。</summary>
-    Vector3 GetCollisionSize() const;
+    engine::Vector3 GetCollisionSize() const;
 
     /// <summary>球型衝突形状の半径を設定する。</summary>
     void SetCollisionRadius(float radius);
@@ -509,10 +547,16 @@ public:
 
     /// <summary>地形の衝突データを返す。未設定ならnullptr。</summary>
     const TerrainCollisionData* GetTerrainCollisionData() const;
+
+    /// <summary>地形衝突データの参照元パスを設定・取得する。データの読込は行わない。</summary>
     void SetTerrainCollisionPath(const std::string& path) { terrainCollisionPath_ = path; }
     const std::string& GetTerrainCollisionPath() const { return terrainCollisionPath_; }
+
+    /// <summary>金属度を描画レンダラーへ設定・取得する。未初期化時の取得値は0。</summary>
     void SetMetallic(float metallic) { if (meshRenderer_) meshRenderer_->SetMetallic(metallic); }
     float GetMetallic() const { return meshRenderer_ ? meshRenderer_->GetMetallic() : 0.0f; }
+
+    /// <summary>粗さを描画レンダラーへ設定・取得する。未初期化時の取得値は0.3。</summary>
     void SetRoughness(float roughness) { if (meshRenderer_) meshRenderer_->SetRoughness(roughness); }
     float GetRoughness() const { return meshRenderer_ ? meshRenderer_->GetRoughness() : 0.3f; }
 
@@ -527,14 +571,23 @@ public:
 
     /// <summary>指定オブジェクトとの衝突状態を調べる。</summary>
     CollisionInfo CheckCollision(Object3d* other);
+
+    /// <summary>衝突時に派生クラスの応答を受け取る拡張点。基底では未処理を返す。</summary>
     virtual bool OnCollision(Object3d* other) { (void)other; return false; }
+    /// <summary>衝突開始フレームのイベントを派生クラスへ通知する。</summary>
     virtual void OnCollisionEnter(const CollisionEvent& event) { (void)event; }
+    /// <summary>衝突継続中のイベントを派生クラスへ通知する。</summary>
     virtual void OnCollisionStay(const CollisionEvent& event) { (void)event; }
+    /// <summary>衝突終了フレームのイベントを派生クラスへ通知する。</summary>
     virtual void OnCollisionExit(const CollisionEvent& event) { (void)event; }
+    /// <summary>トリガー侵入時のイベントを派生クラスへ通知する。</summary>
     virtual void OnTriggerEnter(const CollisionEvent& event) { (void)event; }
+    /// <summary>トリガー内にいる間のイベントを派生クラスへ通知する。</summary>
     virtual void OnTriggerStay(const CollisionEvent& event) { (void)event; }
+    /// <summary>トリガー退出時のイベントを派生クラスへ通知する。</summary>
     virtual void OnTriggerExit(const CollisionEvent& event) { (void)event; }
 
+    /// <summary>静的Objectとして扱う設定を取得・変更する。</summary>
     void SetStatic(bool isStatic) { isStatic_ = isStatic; }
     bool IsStatic() const { return isStatic_; }
 
@@ -543,26 +596,37 @@ public:
     bool isDead = false;
     EventType eventType_ = EventType::None;
 
+    /// <summary>ゲームイベントの種別を設定・取得する。</summary>
     void SetEventType(EventType type) { eventType_ = type; }
     EventType GetEventType() const { return eventType_; }
+    /// <summary>子Objectへの非所有参照一覧を返す。</summary>
     const std::vector<Object3d*>& GetChildren() const { return children_; }
 
+    /// <summary>Scene保存や生成処理で使うObjectクラス名を設定・取得する。</summary>
     void SetClassName(const std::string& name) { className_ = name; }
     std::string GetClassName() const { return className_; }
+    /// <summary>クラス名が通常または演出用カメラを示すか返す。</summary>
     bool IsCameraObject() const { return className_ == "Camera" || className_ == "CinematicCamera"; }
+    /// <summary>Scene Cameraの設定を編集用または読み取り専用で返す。</summary>
     SceneCameraSettings& GetSceneCameraSettings() { return sceneCameraSettings_; }
     const SceneCameraSettings& GetSceneCameraSettings() const { return sceneCameraSettings_; }
+    /// <summary>Scene Cameraの設定をまとめて置き換える。</summary>
     void SetSceneCameraSettings(const SceneCameraSettings& settings) { sceneCameraSettings_ = settings; }
+    /// <summary>Editorやゲーム条件で使う単一タグを設定・取得する。</summary>
     void SetTag(const std::string& tag) { tag_ = tag; }
     const std::string& GetTag() const { return tag_; }
+    /// <summary>設定中のタグと指定文字列が一致するか返す。</summary>
     bool HasTag(const std::string& tag) const { return tag_ == tag; }
+    /// <summary>所属レイヤーを設定・取得する。空文字の設定はDefaultへ戻す。</summary>
     void SetLayer(const std::string& layer) { layer_ = layer.empty() ? "Default" : layer; }
     const std::string& GetLayer() const { return layer_; }
+    /// <summary>所属レイヤーと指定文字列が一致するか返す。</summary>
     bool IsLayer(const std::string& layer) const { return layer_ == layer; }
+    /// <summary>Scene上の基本表示状態を設定・取得する。</summary>
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
 
-    // Editorの隔離表示はScene保存値と分離し、複数の一時非表示理由を合成します。
+    /// <summary>Editorでの一時非表示理由をビット単位で追加・解除する。Scene保存値は変えない。</summary>
     void SetEditorHiddenReason(std::uint32_t reasonMask, bool hidden) {
         if (hidden) {
             editorHiddenReasonMask_ |= reasonMask;
@@ -571,9 +635,13 @@ public:
             editorHiddenReasonMask_ &= ~reasonMask;
         }
     }
+    /// <summary>Editorで一時的に隠した理由をすべて解除する。</summary>
     void ClearEditorHiddenReasons() { editorHiddenReasonMask_ = 0; }
+    /// <summary>Editor側の理由で一時的に非表示になっているか返す。</summary>
     bool IsEditorTemporarilyHidden() const { return editorHiddenReasonMask_ != 0; }
+    /// <summary>Sceneの表示設定とEditorの一時非表示理由を合わせた描画可否を返す。</summary>
     bool GetIsRenderVisible() const { return isVisible_ && !IsEditorTemporarilyHidden(); }
+    /// <summary>影を落とす設定を取得・変更する。</summary>
     void SetCastShadow(bool enabled) { castShadow_ = enabled; }
     bool GetCastShadow() const { return castShadow_; }
 
@@ -582,6 +650,7 @@ public:
 
     /// <summary>ゲームイベント連携コンポーネントを取り外す。</summary>
     bool RemoveGameplayLinkComponent();
+    /// <summary>ゲームイベント連携コンポーネントが追加済みか返す。</summary>
     bool HasGameplayLinkComponent() const { return gameplayLinkComponent_.has_value(); }
 
     /// <summary>ゲームイベント連携コンポーネントを返す。なければnullptr。</summary>
@@ -595,6 +664,7 @@ public:
 
     /// <summary>ナビゲーションコンポーネントを取り外す。</summary>
     bool RemoveNavAgentComponent();
+    /// <summary>ナビゲーションコンポーネントが追加済みか返す。</summary>
     bool HasNavAgentComponent() const { return navAgentComponent_.has_value(); }
 
     /// <summary>ナビゲーションコンポーネントを返す。なければnullptr。</summary>
@@ -620,6 +690,7 @@ public:
 
     /// <summary>パーティクル発生器を取り外す。</summary>
     bool RemoveParticleEmitterComponent();
+    /// <summary>パーティクル発生器コンポーネントが追加済みか返す。</summary>
     bool HasParticleEmitterComponent() const { return particleEmitterComponent_.has_value(); }
 
     /// <summary>パーティクル発生器を返す。なければnullptr。</summary>
@@ -645,6 +716,7 @@ public:
 
     /// <summary>メッシュエフェクトを取り外す。</summary>
     bool RemoveMeshEffectComponent();
+    /// <summary>メッシュエフェクトコンポーネントが追加済みか返す。</summary>
     bool HasMeshEffectComponent() const { return meshEffectComponent_.has_value(); }
 
     /// <summary>メッシュエフェクトを返す。なければnullptr。</summary>
@@ -670,6 +742,7 @@ public:
 
     /// <summary>経路移動コンポーネントを取り外す。</summary>
     bool RemovePathMoverComponent();
+    /// <summary>経路移動コンポーネントが追加済みか返す。</summary>
     bool HasPathMoverComponent() const { return pathMoverComponent_.has_value(); }
 
     /// <summary>経路移動コンポーネントを返す。なければnullptr。</summary>
@@ -704,6 +777,7 @@ public:
 
     /// <summary>取得時のアニメーションを先頭から開始する。</summary>
     void StartCollectionAnimation() { isCollecting_ = true; collectTimer_ = 0.0f; }
+    /// <summary>取得アニメーションを再生中か返す。</summary>
     bool IsCollecting() const { return isCollecting_; }
 
     // Animator Controllerは状態、条件、補間を管理し、Model Animationを滑らかに切り替えます。
@@ -714,14 +788,22 @@ public:
 
     /// <summary>アニメーター定義と実行状態を解除する。</summary>
     void ClearAnimatorController();
+    /// <summary>読み込んだAnimator Controller Assetのパスを返す。</summary>
     const std::string& GetAnimatorControllerPath() const { return animatorControllerPath_; }
+    /// <summary>Animator Controllerの読み込みが成功しているか返す。</summary>
     bool HasAnimatorController() const { return animatorControllerLoaded_; }
+    /// <summary>読み込み済みAnimator Controller定義を返す。未読込ならnullptr。</summary>
     AnimatorControllerAsset* GetAnimatorControllerAsset() { return animatorControllerLoaded_ ? &animatorControllerAsset_ : nullptr; }
+    /// <summary>Animator Controllerの可変実行状態を返す。未読込ならnullptr。</summary>
     AnimatorControllerRuntime* GetAnimatorControllerRuntime() { return animatorControllerLoaded_ ? &animatorControllerRuntime_ : nullptr; }
+    /// <summary>Animator Controllerの実行状態を読み取り専用で返す。</summary>
     const AnimatorControllerRuntime* GetAnimatorControllerRuntime() const { return animatorControllerLoaded_ ? &animatorControllerRuntime_ : nullptr; }
 
     /// <summary>指定状態へ遷移する。負の補間時間・イージング値なら定義側の設定を使う。</summary>
     bool PlayAnimatorState(const std::string& stateName, float blendDuration = -1.0f, int easing = -1);
+    /// <summary>指定Animator状態を任意時刻で評価し、Editorプレビューや再生姿勢へ反映する。</summary>
+    /// <param name="exactPreview">trueなら状態遷移ではなく指定時刻の姿勢を正確に評価する。</param>
+    /// <returns>指定状態の評価と反映に成功した場合はtrue。</returns>
     bool EvaluateAnimatorState(
         const std::string& stateName,
         float timeSeconds,
@@ -732,6 +814,7 @@ public:
 
     /// <summary>現在再生中のアニメーター状態名を返す。</summary>
     std::string GetAnimatorCurrentStateName() const;
+    /// <summary>アニメーターのイベント発火時に呼ぶ関数を登録する。</summary>
     void SetAnimatorEventCallback(const AnimatorEventCallback& callback) { animatorEventCallback_ = callback; }
 
     /// <summary>アニメーターの再生時刻と遷移状態を保存する。</summary>
@@ -739,19 +822,20 @@ public:
 
     /// <summary>保存したアニメーター状態を復元する。</summary>
     void RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot& snapshot);
+    /// <summary>モデルアニメーションの現在の再生時刻を秒で返す。</summary>
     float GetAnimationTime() const { return animationTime_; }
 
     /// <summary>モデルアニメーションの名前、再生秒、ループ設定を復元する。</summary>
     void RestoreAnimationPlayback(const std::string& animationName, float timeSeconds, bool loop);
 
     // 現在のスケルトン姿勢から、指定ジョイントのワールド行列を取得します。
-    bool TryGetJointWorldMatrix(const std::string& jointName, Matrix4x4& outMatrix) const;
+    bool TryGetJointWorldMatrix(const std::string& jointName, engine::Matrix4x4& outMatrix) const;
 
     /// <summary>指定ジョイントのワールド位置を取得する。見つからなければfalse。</summary>
-    bool TryGetJointWorldPosition(const std::string& jointName, Vector3& outPosition) const;
+    bool TryGetJointWorldPosition(const std::string& jointName, engine::Vector3& outPosition) const;
 
     // ボーンソケットなど、外部で求めたワールド行列をTransformへ反映します。
-    void ApplyWorldMatrix(const Matrix4x4& worldMatrix);
+    void ApplyWorldMatrix(const engine::Matrix4x4& worldMatrix);
 
     /// <summary>シーン保存に使うオブジェクト設定をJSONへ書き出す。</summary>
     json ExportToJson();
@@ -764,6 +848,7 @@ public:
 
     /// <summary>components Payloadを優先し、旧Top-Level JSONも読み込む。</summary>
     void DeserializeFeatureComponents(const json& objectData);
+    /// <summary>解釈できなかったComponentのJSONを再保存用に返す。</summary>
     const json& GetOpaqueComponents() const { return opaqueComponents_; }
 
     /// <summary>未解釈のコンポーネント情報をオブジェクト形式で保持する。</summary>
@@ -777,7 +862,9 @@ public:
     /// <summary>Componentの有無だけを更新し、未知のComponentデータは保持する。</summary>
     void SetComponentPresenceMarker(const std::string& componentTypeId, bool present);
 
+    /// <summary>イベント発火時に派生クラスが応答する拡張点。基底では非表示にする。</summary>
     virtual void OnTrigger() { isVisible_ = false; }
+    /// <summary>スイッチの有効化を通知する。基底では有効時だけOnTriggerを呼ぶ。</summary>
     virtual void OnSwitchEvent(bool active) { if (active) OnTrigger(); }
 
     /// <summary>シーンに接続したデバッグリプレイ記録を初期化する。</summary>
@@ -785,35 +872,49 @@ public:
 
     /// <summary>別オブジェクトから複製対象の設定をコピーする。</summary>
     void CopyFrom(const Object3d* other);
+    /// <summary>シーン保存や生成に使う敵の種別名を設定・取得する。</summary>
     void SetEnemyType(const std::string& type) { enemyType_ = type; }
     std::string GetEnemyType() const { return enemyType_; }
+    /// <summary>シーン保存や生成に使うギミックの種別名を設定・取得する。</summary>
     void SetGimmickType(const std::string& type) { gimmickType_ = type; }
     std::string GetGimmickType() const { return gimmickType_; }
+    /// <summary>シーン保存や生成に使うアイテムの種別名を設定・取得する。</summary>
     void SetItemType(const std::string& type) { itemType_ = type; }
     std::string GetItemType() const { return itemType_; }
+    /// <summary>録画イベントを派生クラスへ通知する拡張点。基底では何もしない。</summary>
     virtual void OnRecordEvent(int eventID) {}
 
-    // ゲッター・セッター
+    /// <summary>法線マップの使用状態をレンダラーへ設定・取得する。未初期化時は無効。</summary>
     void SetEnableNormalMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableNormalMap(enable); }
     bool GetEnableNormalMap() const { return meshRenderer_ ? meshRenderer_->GetEnableNormalMap() : false; }
+    /// <summary>法線マップ画像のパスを設定・取得する。</summary>
     void SetNormalMap(const std::string& texturePath) { if (meshRenderer_) meshRenderer_->SetNormalMap(texturePath); }
     std::string GetNormalMapPath() const { return meshRenderer_ ? meshRenderer_->GetNormalMapPath() : ""; }
+    /// <summary>Occlusion・Roughness・Metallic画像のパスを設定・取得する。</summary>
     void SetOrmMap(const std::string& texturePath) { if (meshRenderer_) meshRenderer_->SetOrmMap(texturePath); }
     std::string GetOrmMapPath() const { return meshRenderer_ ? meshRenderer_->GetOrmMapPath() : ""; }
 
+    /// <summary>基本テクスチャのパスをレンダラーへ設定・取得する。</summary>
     void SetTexture(const std::string& texturePath) { if (meshRenderer_) meshRenderer_->SetTexture(texturePath); }
     std::string GetTexturePath() const { return meshRenderer_ ? meshRenderer_->GetTexturePath() : ""; }
-    void SetTextureTiling(const Vector2& tiling) { if (meshRenderer_) meshRenderer_->SetTextureTiling(tiling); }
-    Vector2 GetTextureTiling() const { return meshRenderer_ ? meshRenderer_->GetTextureTiling() : Vector2{ 1.0f, 1.0f }; }
+    /// <summary>基本テクスチャのUV繰り返し倍率を設定・取得する。</summary>
+    void SetTextureTiling(const engine::Vector2& tiling) { if (meshRenderer_) meshRenderer_->SetTextureTiling(tiling); }
+    engine::Vector2 GetTextureTiling() const { return meshRenderer_ ? meshRenderer_->GetTextureTiling() : engine::Vector2{ 1.0f, 1.0f }; }
+    /// <summary>モデル形状に合わせたUV繰り返しの自動設定を取得・変更する。</summary>
     void SetAutoTextureTiling(bool enabled) { if (meshRenderer_) meshRenderer_->SetAutoTextureTiling(enabled); }
     bool GetAutoTextureTiling() const { return meshRenderer_ ? meshRenderer_->GetAutoTextureTiling() : false; }
+    /// <summary>マテリアルのライティング計算を有効・無効にする。</summary>
     void SetEnableLighting(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableLighting(enable); }
+    /// <summary>環境マップの使用状態をレンダラーへ設定・取得する。</summary>
     void SetEnableEnvMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableEnvMap(enable); }
     bool GetEnableEnvMap() const { return meshRenderer_ ? meshRenderer_->GetEnableEnvMap() : true; }
+    /// <summary>ライティング計算の有効状態を返す。レンダラー未初期化時はfalse。</summary>
     bool GetEnableLighting() const { return meshRenderer_ ? meshRenderer_->GetEnableLighting() : false; }
 
+    /// <summary>環境マップの反映強度を設定・取得する。未初期化時の取得値は1。</summary>
     void SetEnvIntensity(float intensity) { if (meshRenderer_) meshRenderer_->SetEnvIntensity(intensity); }
     float GetEnvIntensity() const { return meshRenderer_ ? meshRenderer_->GetEnvIntensity() : 1.0f; }
+    /// <summary>マテリアルの発光量を設定・取得する。未初期化時の取得値は1。</summary>
     void SetEmissive(float emissive) { if (meshRenderer_) meshRenderer_->SetEmissive(emissive); }
     float GetEmissive() const { return meshRenderer_ ? meshRenderer_->GetEmissive() : 1.0f; }
 
@@ -871,6 +972,7 @@ public:
 
     /// <summary>風の球の特殊マテリアルで描画する。</summary>
     void DrawWindOrb(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    /// <summary>派生クラスが独自の特殊マテリアル表示を所有するか返す。基底ではfalse。</summary>
     virtual bool HasOwnedSpecialMaterialVisuals() const { return false; }
 
     /// <summary>派生クラスが所有する特殊マテリアル演出を描画する拡張点。</summary>
@@ -878,6 +980,7 @@ public:
         (void)depthSrvHandle;
         (void)grabSrvHandle;
     }
+    /// <summary>指定カメラのプレビューへ、派生クラス所有の特殊材質演出を描く拡張点。</summary>
     virtual void DrawOwnedSpecialMaterialVisualsForCamera(
         Camera* camera,
         uint32_t depthSrvHandle,
@@ -894,13 +997,15 @@ public:
     bool isAnimLoop_ = true;
 
     // GhostRecorder本体はPathMoverComponentの再生Runtimeとして段階的に分離します。
-    GhostRecorder* recorder_ = nullptr;
+    std::unique_ptr<GhostRecorder> recorder_;
+    /// <summary>Scene保存先のカテゴリ名を設定・取得する。</summary>
     void SetSaveCategory(const std::string& category) { saveCategory_ = category; }
     std::string GetSaveCategory() const { return saveCategory_; }
+    /// <summary>Editor上での編集ロック状態を取得・変更する。</summary>
     bool GetIsLocked() const { return isLocked_; }
     void SetIsLocked(bool locked) { isLocked_ = locked; }
 
-    // Editorの描画補助専用Object。Sceneには存在するが通常の選択・一覧・保存対象にはしない。
+    /// <summary>Editor専用の補助Objectか設定・取得する。通常の選択・保存対象から除外する。</summary>
     void SetEditorInternal(bool editorInternal) { isEditorInternal_ = editorInternal; }
     bool IsEditorInternal() const { return isEditorInternal_; }
 
@@ -940,14 +1045,18 @@ private:
     bool animatorControllerLoaded_ = false;
     bool animatorBodyPoseApplied_ = false;
 
-    // Animator Controllerの状態進行と、得られた姿勢のモデル反映は別段階で行う。
+    /// <summary>Animator Controllerの状態時刻と遷移を進める。</summary>
     bool UpdateAnimatorController(float deltaTime, Model* model);
+    /// <summary>評価済みのAnimator姿勢をモデルへ反映する。</summary>
     bool ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate);
 
     // コンポーネント化された機能
     std::unique_ptr<Collider> collider_;
     std::unique_ptr<MeshRenderer> meshRenderer_;
     std::string terrainCollisionPath_;
+
+    // モデル変更やCollider設定変更時に上面判定用の三角形を更新する。
+    void RefreshModelSurfaceCollision();
 
     bool isStatic_ = false;
     std::vector<Object3d*> children_;
@@ -996,8 +1105,14 @@ private:
     float cpuMatrixTimeMs_ = 0.0f;
 
 public:
+    /// <summary>直近フレームのObject更新に使ったCPU時間をミリ秒で返す。</summary>
     float GetCpuUpdateTimeMs() const { return cpuUpdateTimeMs_; }
+    /// <summary>直近フレームのObject描画に使ったCPU時間をミリ秒で返す。</summary>
     float GetCpuDrawTimeMs() const { return cpuDrawTimeMs_; }
+    /// <summary>直近フレームのアニメーション計算に使ったCPU時間をミリ秒で返す。</summary>
     float GetCpuAnimTimeMs() const { return cpuAnimTimeMs_; }
+    /// <summary>直近フレームの行列計算に使ったCPU時間をミリ秒で返す。</summary>
     float GetCpuMatrixTimeMs() const { return cpuMatrixTimeMs_; }
 };
+
+} // namespace engine

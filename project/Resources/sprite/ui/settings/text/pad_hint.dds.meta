@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0bd50dda814a948809d5ffe4fe0d7934",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/pad_hint.dds",
+  "version": 1
+}

@@ -6,7 +6,7 @@
 
 class SceneManager;
 class DebugEditor;
-class Object3d;
+namespace engine { class Object3d; }
 
 /// 各マテリアルタイプや特殊表現を同じ条件で並べ、見た目を比較するためのプレビュー板。
 class MaterialPreviewBoard : public IEditable {
@@ -36,7 +36,7 @@ private:
     void SetPreviewModel(const std::string& modelName);
     void DrawModelSelector();
     /// 各プレビューObjectへマテリアル番号、色、特殊効果の初期値を設定する。
-    void ApplyPreviewDefaults(Object3d* object, const MaterialPreviewEntry& entry) const;
+    void ApplyPreviewDefaults(engine::Object3d* object, const MaterialPreviewEntry& entry) const;
 
 private:
     SceneManager* sceneManager_ = nullptr;

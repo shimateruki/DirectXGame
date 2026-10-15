@@ -5,6 +5,8 @@
 #include <cmath> // C++ の数学ライブラリ
 #include <algorithm> // std::max, std::min用
 
+namespace engine {
+
 
 Vector3 operator-(const Vector3& v1, const Vector3& v2)
 {
@@ -766,3 +768,5 @@ float Math::DistanceSquaredPointAABB(const Vector3& point, const Vector3& minBox
 	const float dz = point.z < minBox.z ? minBox.z - point.z : (point.z > maxBox.z ? point.z - maxBox.z : 0.0f);
 	return dx * dx + dy * dy + dz * dz;
 }
+
+} // namespace engine

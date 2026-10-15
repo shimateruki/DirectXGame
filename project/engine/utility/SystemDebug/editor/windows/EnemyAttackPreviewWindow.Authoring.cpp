@@ -31,6 +31,7 @@ bool EditText(const char* label, std::string& text) {
     return true;
 }
 bool SelectJson(const char* label, const char* directory, std::string& path, ProjectWindow* assets = nullptr) {
+    // JSONを名前で絞り込み、表示範囲に入った候補だけサムネイルを要求する。
     bool changed = false;
     const std::string selectedName = path.empty() ? "選択してください" : std::filesystem::path(path).stem().string();
     if (ImGui::BeginCombo(label, selectedName.c_str())) {
@@ -123,17 +124,17 @@ void EnemyAttackPreviewWindow::UpdatePlacementPreview() {
         StopPlacementPreview();
         return;
     }
-    Object3d* actor = playerCopyMode_ ? static_cast<Object3d*>(previewPlayer_) : static_cast<Object3d*>(previewEnemy_);
+    engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
     if (actor) actor->SetIsVisible(!hidePlacementActor_);
     if (previewTarget_) previewTarget_->SetIsVisible(!hidePlacementActor_ && showTarget_);
-    Vector3 position, rotation, scale;
+    engine::Vector3 position, rotation, scale;
     if (!GetPlacementTransform(position, rotation, scale)) { StopPlacementPreview(); return; }
     if (selectedTrack_ <= -2) {
         const auto& event = attack->sequence.events[-2 - selectedTrack_];
         const auto part = ResolveProjectileComponent(*attack, event);
         if (event.operation == "projectile") {
             if (!placementObject_) {
-                auto object = std::make_unique<Object3d>();
+                auto object = std::make_unique<engine::Object3d>();
                 object->Initialize(previewScene_->GetObject3dCommon());
                 object->SetName("AttackPlacementObject");
                 object->SetClassName("EditorOnly"); object->SetEditorInternal(true);
@@ -160,12 +161,12 @@ void EnemyAttackPreviewWindow::UpdatePlacementPreview() {
         const std::string secondary = event.operation == "gpu_vfx" ? "" :
             projectileSection_ == 3 ? part.secondaryTrail : projectileSection_ == 4 ? part.secondaryImpact : "";
         AttackSequenceContext context;
-        context.position = actor ? actor->GetTranslate() : Vector3{};
+        context.position = actor ? actor->GetTranslate() : engine::Vector3{};
         const float baseYaw = rotation.y - event.yawDegrees * 0.01745329252f;
         context.forward = {std::sin(baseYaw),0,std::cos(baseYaw)};
         context.ownerSize = previewBaseScale_; context.hasTarget = previewTarget_ != nullptr;
         if (previewTarget_) context.targetPosition = previewTarget_->GetTranslate();
-        Vector3 direction = ResolveAttackSequenceEmission(event,context,0,0).direction;
+        engine::Vector3 direction = ResolveAttackSequenceEmission(event,context,0,0).direction;
         const bool directed = event.operation == "gpu_vfx" ? event.directed : projectileSection_ == 3 && part.style == "fire";
         const float speed = event.operation == "gpu_vfx" ? event.particleSpeedScale : part.appearance.trailSpeedScale;
         if (event.operation == "projectile" && projectileSection_ == 3 && part.style == "fire") direction = direction * -1;
@@ -201,7 +202,7 @@ void EnemyAttackPreviewWindow::UpdatePlacementPreview() {
         }
         profileStatus_ = "配置確認中: 位置・回転・大きさを変更できます。ファイルはまだ保存していません。";
     }
-    Object3d* owner = playerCopyMode_ ? static_cast<Object3d*>(previewPlayer_) : static_cast<Object3d*>(previewEnemy_);
+    engine::Object3d* owner = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
     if (!owner) return;
     const float duration = (std::max)(0.01f, track.end - track.begin);
     placementTime_ = std::clamp(placementTime_, 0.0f, duration);
@@ -212,14 +213,14 @@ void EnemyAttackPreviewWindow::UpdatePlacementPreview() {
     }
     auto key = track.Evaluate(placementTime_);
     if (track.motion != "keyframed") key.position = track.keys.front().position;
-    Vector3 forward{0, 0, 1};
+    engine::Vector3 forward{0, 0, 1};
     if (previewTarget_) {
-        Vector3 offset = previewTarget_->GetTranslate() - owner->GetTranslate();
+        engine::Vector3 offset = previewTarget_->GetTranslate() - owner->GetTranslate();
         offset.y = 0;
-        if (Math::Length(offset) > 0.0001f) forward = Math::Normalize(offset);
+        if (engine::Math::Length(offset) > 0.0001f) forward = engine::Math::Normalize(offset);
     }
-    const Vector3 right{forward.z, 0, -forward.x};
-    const Vector3 worldPosition = owner->GetTranslate() + right * key.position[0] + Vector3{0, key.position[1], 0} + forward * key.position[2];
+    const engine::Vector3 right{forward.z, 0, -forward.x};
+    const engine::Vector3 worldPosition = owner->GetTranslate() + right * key.position[0] + engine::Vector3{0, key.position[1], 0} + forward * key.position[2];
     effects->EvaluateTimelineEffect(placementScope_, placementTime_, duration, worldPosition,
         {key.rotation[0], key.rotation[1] + std::atan2(forward.x, forward.z), key.rotation[2]},
         {key.scale[0], key.scale[1], key.scale[2]});
@@ -1026,7 +1027,7 @@ void EnemyAttackPreviewWindow::DrawAttackOverlay(float x, float y, float width, 
     const auto* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera || width <= 0 || height <= 0) return;
     const auto& matrix = camera->GetViewProjectionMatrix();
-    auto project = [&](Vector3 p, ImVec2& screen) {
+    auto project = [&](engine::Vector3 p, ImVec2& screen) {
         const auto& m = matrix.m;
         const float w = p.x*m[0][3] + p.y*m[1][3] + p.z*m[2][3] + m[3][3];
         if (w <= 0.001f) return false;
@@ -1049,14 +1050,14 @@ void EnemyAttackPreviewWindow::DrawAttackOverlay(float x, float y, float width, 
                 auto point = [&](int segment) {
                     const float angle = segment * 6.28318530718f / 48;
                     const float a = radius * std::cos(angle), b = radius * std::sin(angle);
-                    return position + (plane == 0 ? Vector3{a,b,0} : plane == 1 ? Vector3{a,0,b} : Vector3{0,a,b});
+                    return position + (plane == 0 ? engine::Vector3{a,b,0} : plane == 1 ? engine::Vector3{a,0,b} : engine::Vector3{0,a,b});
                 };
                 ImVec2 a, b;
                 if (project(point(i), a) && project(point(i+1), b)) draw->AddLine(a, b, color, 1.5f);
             }
         }
         ImVec2 screen;
-        if (project(position + Vector3{0, radius, 0}, screen)) {
+        if (project(position + engine::Vector3{0, radius, 0}, screen)) {
             const std::string label = bullet->GetName() + (bullet->GetCollisionMask() ? " [判定ON]" : " [判定OFF]");
             draw->AddText(screen, color, label.c_str());
         }
@@ -1082,15 +1083,15 @@ bool EnemyAttackPreviewWindow::IsAuthoringViewportActive() const {
 #endif
 }
 
-bool EnemyAttackPreviewWindow::GetPlacementTransform(Vector3& position, Vector3& rotation, Vector3& scale) {
+bool EnemyAttackPreviewWindow::GetPlacementTransform(engine::Vector3& position, engine::Vector3& rotation, engine::Vector3& scale) {
     // 術者と標的からローカル基準を作り、選択した構成のギズモ位置に変換します。
     const auto* attack = GetSelectedAttackDefinition();
-    Object3d* actor = playerCopyMode_ ? static_cast<Object3d*>(previewPlayer_) : static_cast<Object3d*>(previewEnemy_);
+    engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
     if (!attack || !actor || GetAuthoringSelectionKind() == AuthoringSelectionKind::Actor || selectedTrack_ == -1) return false;
-    Vector3 forward{0,0,1};
+    engine::Vector3 forward{0,0,1};
     if (previewTarget_) { auto delta = previewTarget_->GetTranslate() - actor->GetTranslate(); delta.y = 0;
-        if (Math::Length(delta) > 0.001f) forward = Math::Normalize(delta); }
-    Vector3 origin = actor->GetTranslate();
+        if (engine::Math::Length(delta) > 0.001f) forward = engine::Math::Normalize(delta); }
+    engine::Vector3 origin = actor->GetTranslate();
     rotation = {}; scale = {1,1,1};
     if (selectedTrack_ <= -2) {
         const int index = -2 - selectedTrack_;
@@ -1112,25 +1113,25 @@ bool EnemyAttackPreviewWindow::GetPlacementTransform(Vector3& position, Vector3&
     if (track.parentTrack >= 0 && track.parentTrack < static_cast<int>(attack->sequence.tracks.size())) {
         const auto& parent = attack->sequence.tracks[track.parentTrack];
         const auto parentKey = parent.Evaluate(track.begin + placementTime_ - parent.begin);
-        const Vector3 right{forward.z,0,-forward.x};
-        origin = origin + right * parentKey.position[0] + Vector3{0,parentKey.position[1],0} + forward * parentKey.position[2];
+        const engine::Vector3 right{forward.z,0,-forward.x};
+        origin = origin + right * parentKey.position[0] + engine::Vector3{0,parentKey.position[1],0} + forward * parentKey.position[2];
         const float yaw = std::atan2(forward.x,forward.z) + parentKey.rotation[1];
         forward = {std::sin(yaw),0,std::cos(yaw)};
     }
     const auto key = track.Evaluate(track.motion == "keyframed" ? placementTime_ : 0);
-    position = origin + Vector3{forward.z,0,-forward.x} * key.position[0] + Vector3{0,key.position[1],0} + forward * key.position[2];
+    position = origin + engine::Vector3{forward.z,0,-forward.x} * key.position[0] + engine::Vector3{0,key.position[1],0} + forward * key.position[2];
     rotation = {key.rotation[0],key.rotation[1] + std::atan2(forward.x,forward.z),key.rotation[2]};
     scale = {key.scale[0],key.scale[1],key.scale[2]};
     return true;
 }
 
-void EnemyAttackPreviewWindow::ApplyPlacementTransform(const Vector3& position, const Vector3& rotation, const Vector3& scale) {
+void EnemyAttackPreviewWindow::ApplyPlacementTransform(const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale) {
     auto* attack = GetSelectedAttackDefinition();
-    Vector3 previous, oldRotation, oldScale;
+    engine::Vector3 previous, oldRotation, oldScale;
     if (!attack || !GetPlacementTransform(previous, oldRotation, oldScale)) return;
     if (selectedTrack_ <= -2) {
         auto& event = attack->sequence.events[-2 - selectedTrack_];
-        const Vector3 delta = position - previous;
+        const engine::Vector3 delta = position - previous;
         if (placementOperation_ == 0) {
             const auto local = AttackPlacementMath::ToLocalDelta(delta,oldRotation.y);
             event.right += local.x; event.up += local.y; event.forward += local.z;
@@ -1148,7 +1149,7 @@ void EnemyAttackPreviewWindow::ApplyPlacementTransform(const Vector3& position, 
         auto& track = attack->sequence.tracks[selectedTrack_];
         const float time = track.motion == "keyframed" ? std::clamp(placementTime_,0.0f,track.end-track.begin) : 0;
         auto key = track.Evaluate(time); key.time = time;
-        const Vector3 delta = position - previous;
+        const engine::Vector3 delta = position - previous;
         const float yaw = oldRotation.y - key.rotation[1];
         if (placementOperation_ == 0) {
             const auto local = AttackPlacementMath::ToLocalDelta(delta,yaw);
@@ -1195,7 +1196,7 @@ void EnemyAttackPreviewWindow::DrawPlacementControls() {
     if (!gpu && !hitbox) ImGui::RadioButton(event ? "弾の表示倍率" : "拡縮",&placementOperation_,2);
     if ((gpu && placementOperation_ == 2) || hitbox) placementOperation_ = 0;
     if (ImGui::Button("選択位置へカメラを寄せる")) {
-        Vector3 p,r,s;
+        engine::Vector3 p,r,s;
         if (GetPlacementTransform(p,r,s)) if (auto* camera = CameraManager::GetInstance()->GetActiveCamera()) {
             const auto delta = camera->GetEye() - camera->GetTargetPoint();
             camera->SetFollowTarget(nullptr); camera->SetTarget(p); camera->SetEye(p + delta); camera->Update();
@@ -1210,7 +1211,7 @@ void EnemyAttackPreviewWindow::DrawPlacementGizmo(float x,float y,float width,fl
 #ifdef USE_IMGUI
     // Game Viewの矩形へ投影した位置にギズモを重ね、Scene上の選択物を操作します。
     if (!placementPreview_) return;
-    Vector3 position, rotation, scale;
+    engine::Vector3 position, rotation, scale;
     if (!GetPlacementTransform(position,rotation,scale)) return;
     auto* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return;
@@ -1225,27 +1226,27 @@ void EnemyAttackPreviewWindow::DrawPlacementGizmo(float x,float y,float width,fl
     if (selectedTrack_ <= -2 && projectileSection_ == 2)
         radius = ResolveProjectileComponent(*attack,attack->sequence.events[-2-selectedTrack_]).radius;
     if (radius > 0) {
-        auto project = [&](Vector3 p, ImVec2& screen) {
+        auto project = [&](engine::Vector3 p, ImVec2& screen) {
             const float cw=p.x*vp.m[0][3]+p.y*vp.m[1][3]+p.z*vp.m[2][3]+vp.m[3][3];
             if(cw<=0.001f) return false;
-            auto q=Math::Transform(p,vp); screen={x+(q.x+1)*width*0.5f,y+(1-q.y)*height*0.5f}; return true;
+            auto q=engine::Math::Transform(p,vp); screen={x+(q.x+1)*width*0.5f,y+(1-q.y)*height*0.5f}; return true;
         };
         for(int plane=0;plane<3;++plane) for(int i=0;i<48;++i) {
             auto point=[&](int n) {float a=n*6.28318530718f/48;float c=radius*std::cos(a),s=radius*std::sin(a);
-                return position+(plane==0?Vector3{c,s,0}:plane==1?Vector3{c,0,s}:Vector3{0,c,s});};
+                return position+(plane==0?engine::Vector3{c,s,0}:plane==1?engine::Vector3{c,0,s}:engine::Vector3{0,c,s});};
             ImVec2 a,b; if(project(point(i),a)&&project(point(i+1),b)) draw->AddLine(a,b,IM_COL32(255,180,50,255),2);
         }
     }
     if (w > 0.001f) {
-        const auto p = Math::Transform(position,vp);
+        const auto p = engine::Math::Transform(position,vp);
         ImVec2 screen{x+(p.x+1)*width*0.5f,y+(1-p.y)*height*0.5f};
         draw->AddCircle(screen,12,IM_COL32(255,210,60,255),24,2);
         const std::string label = selectedTrack_ <= -2 ? attack->sequence.events[-2-selectedTrack_].name : attack->sequence.tracks[selectedTrack_].name;
         draw->AddText({screen.x+16,screen.y},IM_COL32(255,230,110,255),label.c_str());
     }
     draw->PopClipRect();
-    Math math;
-    Matrix4x4 world = math.Multiply(math.Multiply(math.MakeScaleMatrix(scale),math.MakeRotateQuaternionMatrix(math.EulerToQuaternion(rotation))),math.MakeTranslateMatrix(position));
+    engine::Math math;
+    engine::Matrix4x4 world = math.Multiply(math.Multiply(math.MakeScaleMatrix(scale),math.MakeRotateQuaternionMatrix(math.EulerToQuaternion(rotation))),math.MakeTranslateMatrix(position));
     auto view = camera->GetViewMatrix(); auto projection = camera->GetProjectionMatrix();
     ImGuizmo::SetDrawlist(draw); ImGuizmo::SetRect(x,y,width,height); ImGuizmo::SetOrthographic(false);
     ImGuizmo::PushID(9021);

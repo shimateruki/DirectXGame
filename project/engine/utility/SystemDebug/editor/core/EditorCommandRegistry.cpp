@@ -32,6 +32,7 @@ bool EditorCommandRegistry::Register(EditorCommand command) {
 }
 
 bool EditorCommandRegistry::Unregister(std::string_view id, const void* owner) {
+    // 登録者が一致するコマンドだけを解除し、他のツールの登録を保持する。
     const std::string key(id);
     auto it = commands_.find(key);
     if (it == commands_.end() || (owner && it->second.owner != owner)) {
@@ -77,6 +78,7 @@ void EditorCommandRegistry::UnregisterOwner(const void* owner) {
 }
 
 void EditorCommandRegistry::Clear() {
+    // 空の一覧では改訂番号を進めず、実際に一覧が変わった場合だけ通知する。
     if (commands_.empty() && registrationOrder_.empty()) {
         return;
     }
@@ -95,6 +97,7 @@ bool EditorCommandRegistry::Contains(std::string_view id) const {
 }
 
 bool EditorCommandRegistry::CanExecute(std::string_view id) const {
+    // 実行関数のないコマンドは無効とし、条件関数がなければ実行可能とする。
     const EditorCommand* command = Find(id);
     if (!command || !command->execute) {
         return false;
@@ -103,6 +106,7 @@ bool EditorCommandRegistry::CanExecute(std::string_view id) const {
 }
 
 bool EditorCommandRegistry::Execute(std::string_view id) const {
+    // UI 側と同じ実行条件を直前にも評価し、無効になった操作を実行しない。
     const EditorCommand* command = Find(id);
     if (!command || !command->execute || (command->canExecute && !command->canExecute())) {
         return false;
@@ -112,6 +116,7 @@ bool EditorCommandRegistry::Execute(std::string_view id) const {
 }
 
 std::vector<const EditorCommand*> EditorCommandRegistry::GetCommands() const {
+    // ハッシュ表の走査順ではなく登録時の順番で、エディターへ表示する。
     std::vector<const EditorCommand*> result;
     result.reserve(registrationOrder_.size());
     for (const std::string& id : registrationOrder_) {

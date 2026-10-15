@@ -52,361 +52,17 @@
 #include <unordered_map>
 #include <utility>
 namespace fs = std::filesystem;
-const float PI = (float)M_PI;
 
-namespace {
-std::string ToLowerForGroundDefault(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return value;
-}
 
-bool ContainsGroundKeywordForDefault(const std::string& value) {
-    return value.find("block") != std::string::npos ||
-        value.find("floor") != std::string::npos ||
-        value.find("ground") != std::string::npos ||
-        value.find("platform") != std::string::npos ||
-        value.find("terrain") != std::string::npos ||
-        value.find("wall") != std::string::npos;
-}
 
-bool ShouldApplyGroundDefaults(Object3d* object) {
-    if (!object) {
-        return false;
-    }
 
-    const std::string className = ToLowerForGroundDefault(object->GetClassName());
-    if (className == "enemy" || className == "player" || className == "gimmick" ||
-        className == "item" || className == "gpuparticle" || className == "cinematiccamera" ||
-        className == "spritecard" || className == "meshroot" || className == "meshpart") {
-        return false;
-    }
 
-    const std::string modelName = ToLowerForGroundDefault(object->GetModelName());
-    if (modelName.empty()) {
-        return false;
-    }
-    if (modelName.rfind("characters/", 0) == 0 || modelName.rfind("item/", 0) == 0) {
-        return false;
-    }
-    if (modelName == "primitives/plane" || modelName.find("portal") != std::string::npos) {
-        return false;
-    }
-
-    return modelName.rfind("stages/", 0) == 0 ||
-        modelName == "primitives/cube" ||
-        ContainsGroundKeywordForDefault(modelName);
-}
-
-void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
-    if (!ShouldApplyGroundDefaults(object)) {
-        return;
-    }
-
-    auto colliderConfig = object->GetColliderConfig();
-    if (colliderConfig.type == ColliderType::kNone) {
-        colliderConfig.type = ColliderType::kAABB;
-        object->SetColliderConfig(colliderConfig);
-    }
-    if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
-    }
-    if (object->GetCollisionMask() == 0) {
-        object->SetCollisionMask(0xFFFFFFFFu);
-    }
-}
-}
-
-static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
-static float ToDegrees(float radians) { return radians * (180.0f / PI); }
-
-namespace {
-    constexpr float kCrashRecoveryAutosaveInterval = 3.0f;
-    constexpr float kCrashRecoveryHeartbeatInterval = 5.0f;
-    constexpr const char* kCrashRecoveryRoot = "Resources/.backup/crash_recovery";
-    constexpr const char* kCrashRecoverySessionFile = "session.json";
-
-    std::string ToGenericPath(const fs::path& path) {
-        return path.generic_string();
-    }
-
-    std::string NowIsoString() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
-        return out.str();
-    }
-
-    std::string MakeCrashRecoveryStamp() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y%m%d_%H%M%S") << "_" << std::setw(3) << std::setfill('0') << millis;
-        return out.str();
-    }
-
-    bool ReadJsonFileSafe(const fs::path& path, nlohmann::json& outJson) {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        try {
-            file >> outJson;
-            return outJson.is_object();
-        }
-        catch (...) {
-            return false;
-        }
-    }
-
-    bool WriteJsonFileSafe(const fs::path& path, const nlohmann::json& data) {
-        std::error_code ec;
-        fs::create_directories(path.parent_path(), ec);
-        if (ec) {
-            return false;
-        }
-
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        file << data.dump(4);
-        return file.good();
-    }
-
-    bool IsPathInside(const fs::path& child, const fs::path& parent) {
-        std::error_code ec;
-        const fs::path childAbs = fs::absolute(child, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-        const fs::path parentAbs = fs::absolute(parent, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-
-        std::wstring childText = childAbs.native();
-        std::wstring parentText = parentAbs.native();
-        std::transform(childText.begin(), childText.end(), childText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        std::transform(parentText.begin(), parentText.end(), parentText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        if (!parentText.empty() && parentText.back() != L'\\' && parentText.back() != L'/') {
-            parentText.push_back(fs::path::preferred_separator);
-        }
-        return childText.rfind(parentText, 0) == 0;
-    }
-
-    bool IsCrashRecoverySourcePathAllowed(const fs::path& path) {
-        const std::string generic = path.lexically_normal().generic_string();
-        const std::string lower = [&generic]() {
-            std::string value = generic;
-            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return value;
-        }();
-        return lower.rfind("resources/json/", 0) == 0 &&
-            lower.find("/../") == std::string::npos &&
-            lower.find("resources/.backup/") != 0 &&
-            lower.find("resources/.cache/") != 0;
-    }
-
-    float GetCreateYOffsetForObject(const Object3d* object) {
-        if (!object) return 1.0f;
-
-        const auto& collider = object->GetColliderConfig();
-        if (collider.size.y > 0.0f) return collider.size.y;
-        if (collider.size.x > 0.0f) return collider.size.x;
-
-        const Transform& transform = object->GetTransform();
-        if (transform.scale.y > 0.0f) return transform.scale.y;
-        return 1.0f;
-    }
-
-    Vector3 GetPlacementExtents(const Object3d* object) {
-        if (!object) return { 1.0f, 1.0f, 1.0f };
-
-        const auto& collider = object->GetColliderConfig();
-        const Transform& transform = object->GetTransform();
-        return {
-            collider.size.x > 0.0f ? collider.size.x : std::abs(transform.scale.x),
-            collider.size.y > 0.0f ? collider.size.y : std::abs(transform.scale.y),
-            collider.size.z > 0.0f ? collider.size.z : std::abs(transform.scale.z)
-        };
-    }
-
-    bool IsNearlyZero(const Vector3& value) {
-        return std::abs(value.x) < 0.0001f &&
-            std::abs(value.y) < 0.0001f &&
-            std::abs(value.z) < 0.0001f;
-    }
-
-    Vector3 NormalizeOrUp(const Vector3& value) {
-        if (IsNearlyZero(value)) {
-            return { 0.0f, 1.0f, 0.0f };
-        }
-        return Math::Normalize(value);
-    }
-
-    void ApplyEditorPreviewLightOverride(Object3d* object) {
-        if (!object) {
-            return;
-        }
-
-        if (auto* material = object->GetMaterialData()) {
-            material->enableLighting = 0;
-            material->selectedLighting = 0;
-            material->emissive = (std::max)(material->emissive, 1.0f);
-        }
-    }
-
-    float GetSurfaceOffset(const Object3d* object, const Vector3& normal) {
-        Vector3 extents = GetPlacementExtents(object);
-        Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
-        float extentOnNormal = extents.x * absNormal.x + extents.y * absNormal.y + extents.z * absNormal.z;
-        if (!object) return extentOnNormal;
-
-        const auto& collider = object->GetColliderConfig();
-        float centerOnNormal =
-            collider.center.x * normal.x +
-            collider.center.y * normal.y +
-            collider.center.z * normal.z;
-        return std::max(extentOnNormal - centerOnNormal, 0.0f);
-    }
-
-    Vector3 GetSurfaceAlignedRotation(const Vector3& currentRotation, const Vector3& normal) {
-        constexpr float kHalfPi = PI * 0.5f;
-        Vector3 n = NormalizeOrUp(normal);
-
-        if (std::abs(n.y) >= std::abs(n.x) && std::abs(n.y) >= std::abs(n.z)) {
-            if (n.y < 0.0f) {
-                return { PI, currentRotation.y, 0.0f };
-            }
-            return { 0.0f, currentRotation.y, 0.0f };
-        }
-
-        if (std::abs(n.x) >= std::abs(n.z)) {
-            return { 0.0f, currentRotation.y, n.x > 0.0f ? -kHalfPi : kHalfPi };
-        }
-
-        return { n.z > 0.0f ? kHalfPi : -kHalfPi, currentRotation.y, 0.0f };
-    }
-
-    void ApplyGridSnap(Vector3& position, const Vector3& normal, bool hasSurface, bool enabled, float snapValue) {
-        if (!enabled || snapValue <= 0.0f) return;
-
-        if (!hasSurface || std::abs(normal.x) < 0.5f) {
-            position.x = std::round(position.x / snapValue) * snapValue;
-        }
-        if (hasSurface && std::abs(normal.y) < 0.5f) {
-            position.y = std::round(position.y / snapValue) * snapValue;
-        }
-        if (!hasSurface || std::abs(normal.z) < 0.5f) {
-            position.z = std::round(position.z / snapValue) * snapValue;
-        }
-    }
-
-    bool ShouldUsePreviewDrawClassOverride(const Object3d* object) {
-        if (!object) return false;
-
-        const std::string className = object->GetClassName();
-        return object->IsCameraObject() ||
-            className == "GPUParticle" ||
-            className == "InvisibleBox";
-    }
-
-    bool IsValidAabb(const AABB& aabb) {
-        return aabb.max.x > aabb.min.x &&
-            aabb.max.y > aabb.min.y &&
-            aabb.max.z > aabb.min.z;
-    }
-
-    Vector3 GetAabbCenter(const AABB& aabb) {
-        return {
-            (aabb.min.x + aabb.max.x) * 0.5f,
-            (aabb.min.y + aabb.max.y) * 0.5f,
-            (aabb.min.z + aabb.max.z) * 0.5f
-        };
-    }
-
-    float Distance(const Vector3& a, const Vector3& b) {
-        float dx = a.x - b.x;
-        float dy = a.y - b.y;
-        float dz = a.z - b.z;
-        return std::sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    std::string GetLeafName(const std::string& path) {
-        size_t slash = path.find_last_of("/\\");
-        if (slash == std::string::npos) {
-            return path.empty() ? "Preset" : path;
-        }
-        std::string leaf = path.substr(slash + 1);
-        return leaf.empty() ? "Preset" : leaf;
-    }
-
-    bool SceneHasObjectName(BaseScene* scene, const std::string& name) {
-        if (!scene) return false;
-
-        for (const auto& object : scene->GetObjects()) {
-            if (object && object->GetName() == name) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool ReservedHasName(const std::vector<std::string>& reservedNames, const std::string& name) {
-        return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
-    }
-
-    std::string MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
-        std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
-        if (!SceneHasObjectName(scene, base) && !ReservedHasName(reservedNames, base)) {
-            return base;
-        }
-
-        for (int index = 1; index < 10000; ++index) {
-            std::string candidate = base + "_" + std::to_string(index);
-            if (!SceneHasObjectName(scene, candidate) && !ReservedHasName(reservedNames, candidate)) {
-                return candidate;
-            }
-        }
-        return base + "_New";
-    }
-
-    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
-        if (objects.empty()) return;
-
-        std::vector<std::string> reservedNames;
-        std::string rootName = MakeUniquePresetObjectName(scene, GetLeafName(presetName), reservedNames);
-        objects.front()->SetName(rootName);
-        reservedNames.push_back(rootName);
-
-        for (size_t index = 1; index < objects.size(); ++index) {
-            if (!objects[index]) continue;
-
-            std::string baseName = objects[index]->GetName();
-            if (baseName.empty()) {
-                baseName = rootName + "_Child";
-            }
-            std::string uniqueName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
-            objects[index]->SetName(uniqueName);
-            reservedNames.push_back(uniqueName);
-        }
-    }
-
-}
 
 // ========================================================================
 // 初期化
 // ========================================================================
 
-void DebugEditor::SetSelectedObject(Object3d* obj) {
+void DebugEditor::SetSelectedObject(engine::Object3d* obj) {
     // 現在のSceneに属するObjectだけ選択し、古いSceneのポインタは保持しません。
     selectedObjects_.clear();
     if (obj && IsObjectInCurrentScene(obj)) {
@@ -432,7 +88,7 @@ void DebugEditor::SyncObjectSelectionToInspector() {
     }
 }
 
-bool DebugEditor::FocusSceneObject(Object3d* object) {
+bool DebugEditor::FocusSceneObject(engine::Object3d* object) {
     // フォーカス対象が現行Sceneに残っていることを確認してからカメラへ渡します。
     if (!object || !IsObjectInCurrentScene(object)) {
         return false;
@@ -440,11 +96,11 @@ bool DebugEditor::FocusSceneObject(Object3d* object) {
     return CameraEditor::GetInstance()->FocusSceneObject(object);
 }
 
-bool DebugEditor::IsObjectSelected(const Object3d* object) const {
+bool DebugEditor::IsObjectSelected(const engine::Object3d* object) const {
     // 選択配列に残った古いポインタを肯定しないようScene所属も調べます。
     if (!object || !IsObjectInCurrentScene(object)) return false;
 
-    for (Object3d* selected : selectedObjects_) {
+    for (engine::Object3d* selected : selectedObjects_) {
         if (selected == object) return true;
     }
     return false;
@@ -471,11 +127,11 @@ void DebugEditor::ClearObjectSelection() {
     groupTransformStartStates_.clear();
 }
 
-void DebugEditor::AddSelectedObject(Object3d* object) {
+void DebugEditor::AddSelectedObject(engine::Object3d* object) {
     // 同じObjectを重複登録せず、最後に追加したものを主選択にします。
     if (!object || !IsObjectInCurrentScene(object)) return;
 
-    for (Object3d* selected : selectedObjects_) {
+    for (engine::Object3d* selected : selectedObjects_) {
         if (selected == object) {
             selectedObject_ = object;
             return;
@@ -486,7 +142,7 @@ void DebugEditor::AddSelectedObject(Object3d* object) {
     selectedObject_ = object;
 }
 
-void DebugEditor::ToggleSelectedObject(Object3d* object) {
+void DebugEditor::ToggleSelectedObject(engine::Object3d* object) {
     // 除外後の主選択を最後の残存Objectへ移し、選択配列と同期します。
     if (!object || !IsObjectInCurrentScene(object)) return;
 
@@ -503,14 +159,14 @@ void DebugEditor::ToggleSelectedObject(Object3d* object) {
 
 void DebugEditor::PruneInvalidSelectedObjects() {
     // Sceneの再読込や削除で無効になった選択を除き、重複も整理します。
-    std::vector<Object3d*> validObjects;
+    std::vector<engine::Object3d*> validObjects;
     validObjects.reserve(selectedObjects_.size());
 
-    for (Object3d* object : selectedObjects_) {
+    for (engine::Object3d* object : selectedObjects_) {
         if (!object || !IsObjectInCurrentScene(object)) continue;
 
         bool alreadyAdded = false;
-        for (Object3d* added : validObjects) {
+        for (engine::Object3d* added : validObjects) {
             if (added == object) {
                 alreadyAdded = true;
                 break;
@@ -527,13 +183,13 @@ void DebugEditor::PruneInvalidSelectedObjects() {
     }
 }
 
-Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
+engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mousePos) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
 
-    Ray ray = ScreenPointToRay(mousePos);
-    if (Math::Dot(ray.diff, ray.diff) < 1e-12f) return nullptr;
+    engine::Ray ray = ScreenPointToRay(mousePos);
+    if (engine::Math::Dot(ray.diff, ray.diff) < 1e-12f) return nullptr;
     float bestDistance = 1.0f;
-    Object3d* hit = nullptr;
+    engine::Object3d* hit = nullptr;
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
     for (auto& obj : objects) {
@@ -541,24 +197,24 @@ Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
         if (!obj->GetIsRenderVisible() || obj->GetIsLocked()) continue;
 
-        const Matrix4x4 worldMatrix = obj->GetWorldMatrix();
+        const engine::Matrix4x4 worldMatrix = obj->GetWorldMatrix();
         // ゼロスケールの変換行列は逆変換できないため、選択判定から除外する。
-        const Vector3 axisX = { worldMatrix.m[0][0], worldMatrix.m[0][1], worldMatrix.m[0][2] };
-        const Vector3 axisY = { worldMatrix.m[1][0], worldMatrix.m[1][1], worldMatrix.m[1][2] };
-        const Vector3 axisZ = { worldMatrix.m[2][0], worldMatrix.m[2][1], worldMatrix.m[2][2] };
-        if (Math::Dot(axisX, axisX) < 1e-12f ||
-            Math::Dot(axisY, axisY) < 1e-12f ||
-            Math::Dot(axisZ, axisZ) < 1e-12f) continue;
+        const engine::Vector3 axisX = { worldMatrix.m[0][0], worldMatrix.m[0][1], worldMatrix.m[0][2] };
+        const engine::Vector3 axisY = { worldMatrix.m[1][0], worldMatrix.m[1][1], worldMatrix.m[1][2] };
+        const engine::Vector3 axisZ = { worldMatrix.m[2][0], worldMatrix.m[2][1], worldMatrix.m[2][2] };
+        if (engine::Math::Dot(axisX, axisX) < 1e-12f ||
+            engine::Math::Dot(axisY, axisY) < 1e-12f ||
+            engine::Math::Dot(axisZ, axisZ) < 1e-12f) continue;
 
-        const Matrix4x4 inverseWorld = Math::Inverse(worldMatrix);
-        const Ray localRay = {
-            Math::Transform(ray.origin, inverseWorld),
-            Math::TransformNormal(ray.diff, inverseWorld)
+        const engine::Matrix4x4 inverseWorld = engine::Math::Inverse(worldMatrix);
+        const engine::Ray localRay = {
+            engine::Math::Transform(ray.origin, inverseWorld),
+            engine::Math::TransformNormal(ray.diff, inverseWorld)
         };
         if (!std::isfinite(localRay.origin.x) || !std::isfinite(localRay.origin.y) || !std::isfinite(localRay.origin.z) ||
             !std::isfinite(localRay.diff.x) || !std::isfinite(localRay.diff.y) || !std::isfinite(localRay.diff.z)) continue;
-        Vector3 localMin = { -0.5f, -0.5f, -0.5f };
-        Vector3 localMax = { 0.5f, 0.5f, 0.5f };
+        engine::Vector3 localMin = { -0.5f, -0.5f, -0.5f };
+        engine::Vector3 localMax = { 0.5f, 0.5f, 0.5f };
         Model* model = obj->GetModel();
         if (model) {
             localMin = model->GetLocalAabbMin();
@@ -612,19 +268,19 @@ Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
                     const auto& a = mesh.vertices[i0].position;
                     const auto& b = mesh.vertices[i1].position;
                     const auto& c = mesh.vertices[i2].position;
-                    const Vector3 edge1 = { b.x - a.x, b.y - a.y, b.z - a.z };
-                    const Vector3 edge2 = { c.x - a.x, c.y - a.y, c.z - a.z };
-                    const Vector3 p = Math::Cross(localRay.diff, edge2);
-                    const float determinant = Math::Dot(edge1, p);
+                    const engine::Vector3 edge1 = { b.x - a.x, b.y - a.y, b.z - a.z };
+                    const engine::Vector3 edge2 = { c.x - a.x, c.y - a.y, c.z - a.z };
+                    const engine::Vector3 p = engine::Math::Cross(localRay.diff, edge2);
+                    const float determinant = engine::Math::Dot(edge1, p);
                     if (std::abs(determinant) < 1e-8f) continue;
                     const float inverseDeterminant = 1.0f / determinant;
-                    const Vector3 fromA = { localRay.origin.x - a.x, localRay.origin.y - a.y, localRay.origin.z - a.z };
-                    const float u = Math::Dot(fromA, p) * inverseDeterminant;
+                    const engine::Vector3 fromA = { localRay.origin.x - a.x, localRay.origin.y - a.y, localRay.origin.z - a.z };
+                    const float u = engine::Math::Dot(fromA, p) * inverseDeterminant;
                     if (u < 0.0f || u > 1.0f) continue;
-                    const Vector3 q = Math::Cross(fromA, edge1);
-                    const float v = Math::Dot(localRay.diff, q) * inverseDeterminant;
+                    const engine::Vector3 q = engine::Math::Cross(fromA, edge1);
+                    const float v = engine::Math::Dot(localRay.diff, q) * inverseDeterminant;
                     if (v < 0.0f || u + v > 1.0f) continue;
-                    const float distance = Math::Dot(edge2, q) * inverseDeterminant;
+                    const float distance = engine::Math::Dot(edge2, q) * inverseDeterminant;
                     if (distance >= 0.0f && distance <= 1.0f && distance < bestDistance) {
                         bestDistance = distance;
                         hit = obj.get();
@@ -641,10 +297,15 @@ Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
         }
     }
 
+    // 地形編集グループは見た目の子をクリックしても、当たり判定を含む区画単位で選択する。
+    // 子メッシュだけを調整したい場合はHierarchyから直接選択できる。
+    if (hit && hit->GetParent() && hit->GetParent()->GetTag() == "TerrainEditGroup") {
+        return hit->GetParent();
+    }
     return hit;
 }
 
-Vector3 DebugEditor::GetObjectWorldPositionForSelection(Object3d* object) {
+engine::Vector3 DebugEditor::GetObjectWorldPositionForSelection(engine::Object3d* object) {
     // モデルのワールドAABBが有効なら、その中心を画面選択の代表点にします。
     if (!object) return { 0.0f, 0.0f, 0.0f };
 
@@ -657,11 +318,11 @@ Vector3 DebugEditor::GetObjectWorldPositionForSelection(Object3d* object) {
         };
     }
 
-    Matrix4x4 worldMatrix = object->GetWorldMatrix();
+    engine::Matrix4x4 worldMatrix = object->GetWorldMatrix();
     return { worldMatrix.m[3][0], worldMatrix.m[3][1], worldMatrix.m[3][2] };
 }
 
-void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector2& end, bool additive) {
+void DebugEditor::SelectObjectsInGameViewRect(const engine::Vector2& start, const engine::Vector2& end, bool additive) {
     // Game View内のドラッグ矩形を画面座標へ変換してObjectの投影位置と比べます。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
@@ -685,7 +346,7 @@ void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
         if (!obj->GetIsRenderVisible() || obj->GetIsLocked()) continue;
 
-        Vector3 screenPosition = WorldToScreen(GetObjectWorldPositionForSelection(obj.get()));
+        engine::Vector3 screenPosition = WorldToScreen(GetObjectWorldPositionForSelection(obj.get()));
         if (screenPosition.z < 0.0f) continue;
 
         if (screenPosition.x >= screenLeft && screenPosition.x <= screenRight &&
@@ -781,23 +442,23 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 
     drawList->PushClipRect(viewMin, viewMax, true);
 
-    for (Object3d* object : selectedObjects_) {
+    for (engine::Object3d* object : selectedObjects_) {
         if (!object || !IsObjectInCurrentScene(object)) continue;
 
-        Vector3 corners[8] = {};
-        Vector3 center = GetObjectWorldPositionForSelection(object);
+        engine::Vector3 corners[8] = {};
+        engine::Vector3 center = GetObjectWorldPositionForSelection(object);
         bool hasOrientedModelBounds = false;
 
         // ワールドAABBを再投影せず、ローカル境界を直接変換して回転物の過剰な膨らみを防ぐ。
         if (Model* model = object->GetModel()) {
-            const Vector3 localMin = model->GetLocalAabbMin();
-            const Vector3 localMax = model->GetLocalAabbMax();
+            const engine::Vector3 localMin = model->GetLocalAabbMin();
+            const engine::Vector3 localMax = model->GetLocalAabbMax();
             const bool isFiniteBounds =
                 std::isfinite(localMin.x) && std::isfinite(localMin.y) && std::isfinite(localMin.z) &&
                 std::isfinite(localMax.x) && std::isfinite(localMax.y) && std::isfinite(localMax.z);
             if (isFiniteBounds &&
                 localMax.x >= localMin.x && localMax.y >= localMin.y && localMax.z >= localMin.z) {
-                const Vector3 localCorners[8] = {
+                const engine::Vector3 localCorners[8] = {
                     { localMin.x, localMin.y, localMin.z },
                     { localMax.x, localMin.y, localMin.z },
                     { localMin.x, localMax.y, localMin.z },
@@ -807,16 +468,16 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
                     { localMin.x, localMax.y, localMax.z },
                     { localMax.x, localMax.y, localMax.z }
                 };
-                const Matrix4x4 worldMatrix = object->GetWorldMatrix();
+                const engine::Matrix4x4 worldMatrix = object->GetWorldMatrix();
                 for (int i = 0; i < 8; ++i) {
-                    corners[i] = Math::Transform(localCorners[i], worldMatrix);
+                    corners[i] = engine::Math::Transform(localCorners[i], worldMatrix);
                 }
-                const Vector3 localCenter = {
+                const engine::Vector3 localCenter = {
                     (localMin.x + localMax.x) * 0.5f,
                     (localMin.y + localMax.y) * 0.5f,
                     (localMin.z + localMax.z) * 0.5f
                 };
-                center = Math::Transform(localCenter, worldMatrix);
+                center = engine::Math::Transform(localCenter, worldMatrix);
                 hasOrientedModelBounds = true;
             }
         }
@@ -824,8 +485,8 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         if (!hasOrientedModelBounds) {
             AABB aabb = object->GetModelWorldAABB();
             if (!IsValidAabb(aabb)) {
-                const Vector3 scale = object->GetTransform()->scale;
-                const Vector3 halfSize = {
+                const engine::Vector3 scale = object->GetTransform()->scale;
+                const engine::Vector3 halfSize = {
                     (std::max)(std::abs(scale.x), 0.5f),
                     (std::max)(std::abs(scale.y), 0.5f),
                     (std::max)(std::abs(scale.z), 0.5f)
@@ -852,7 +513,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             showTemporaryDetails;
 
         if (!showBounds) {
-            const Vector3 screen = WorldToScreen(center);
+            const engine::Vector3 screen = WorldToScreen(center);
             if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) continue;
 
             const ImVec2 markerCenter = ImVec2(
@@ -864,14 +525,14 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 
         bool hasScreenPoint = false;
         int visibleCornerCount = 0;
-        Vector3 projectedCorners[8] = {};
+        engine::Vector3 projectedCorners[8] = {};
         bool cornerVisible[8] = {};
         ImVec2 rectMin = ImVec2(0.0f, 0.0f);
         ImVec2 rectMax = ImVec2(0.0f, 0.0f);
 
         for (int i = 0; i < 8; ++i) {
             projectedCorners[i] = WorldToScreen(corners[i]);
-            const Vector3& screen = projectedCorners[i];
+            const engine::Vector3& screen = projectedCorners[i];
             if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) continue;
 
             cornerVisible[i] = true;
@@ -888,7 +549,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             }
         }
 
-        const Vector3 centerScreen = WorldToScreen(center);
+        const engine::Vector3 centerScreen = WorldToScreen(center);
         const bool hasCenterScreen = centerScreen.z >= 0.0f &&
             std::isfinite(centerScreen.x) && std::isfinite(centerScreen.y);
         if (!hasScreenPoint && !hasCenterScreen) continue;
@@ -1013,7 +674,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 #endif
 }
 
-bool DebugEditor::IsObjectInCurrentScene(const Object3d* object) const {
+bool DebugEditor::IsObjectInCurrentScene(const engine::Object3d* object) const {
     // 生ポインタの逆参照前に、現行Sceneの所有Objectとアドレスを照合します。
     if (!object || object->IsEditorInternal() || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return false;

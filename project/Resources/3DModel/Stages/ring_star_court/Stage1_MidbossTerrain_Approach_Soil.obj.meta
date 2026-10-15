@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b398b3b238cf5166a22152791133624a",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_Approach_Soil.obj",
+  "version": 1
+}

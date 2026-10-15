@@ -15,6 +15,7 @@ Player* DebugHealthPlayer(SceneManager* manager) {
     return GetScenePlayer(scene);
 }
 
+// 大量HPデバッグを解除し、現在HPを通常の最大HPへ収めます。
 void DisableDebugHugeHealth(SceneManager* manager) {
     // 無敵デバッグを解除する際は、通常の最大HPを超えた値も戻す。
     if (debugHugeHealth) {
@@ -225,7 +226,7 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
     playModeChangeTracker_ = std::make_unique<PlayModeChangeTracker>();
     playModeChangeTracker_->Initialize(sceneManager_, debugEditor_.get());
     debugEditor_->SetPlayFromPositionCallback(
-        [this](const Vector3& position, const std::string& label) {
+        [this](const engine::Vector3& position, const std::string& label) {
             RequestPlayFromPosition(position, label);
         });
 
@@ -609,7 +610,7 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 // GameView等で指定された地点を保持し、そのままPlayを開始します。
 
 
-void GameEditorController::RequestPlayFromPosition(const Vector3& position, const std::string& label) {
+void GameEditorController::RequestPlayFromPosition(const engine::Vector3& position, const std::string& label) {
 	// Play開始後のPlayer生成を待って位置を適用するため、要求を保持する。
 	if (!activePlayState_ || *activePlayState_ || !sceneManager_ || sceneManager_->IsTransitioning()) {
 		return;
@@ -951,7 +952,7 @@ void GameEditorController::DrawStatusWindow(
 
 	ImGui::Separator();
 	if (ImGui::CollapsingHeader("描画統計 (Render Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
-		const RenderFrameStats& frame = RenderStats::GetInstance()->GetLastCompletedFrame();
+		const engine::RenderFrameStats& frame = engine::RenderStats::GetInstance()->GetLastCompletedFrame();
 		uint64_t totalDrawCalls = 0;
 		uint64_t totalIndirectDrawCalls = 0;
 		uint64_t totalObjects = 0;
@@ -961,7 +962,7 @@ void GameEditorController::DrawStatusWindow(
 		uint64_t totalDispatches = 0;
 		uint64_t totalThreadGroups = 0;
 
-		for (const RenderPassStats& pass : frame.passes) {
+		for (const engine::RenderPassStats& pass : frame.passes) {
 			totalDrawCalls += pass.drawCalls;
 			totalIndirectDrawCalls += pass.indirectDrawCalls;
 			totalObjects += pass.submittedObjects;
@@ -999,12 +1000,12 @@ void GameEditorController::DrawStatusWindow(
 				ImGui::TableSetupColumn("Instance");
 				ImGui::TableHeadersRow();
 
-				for (size_t passIndex = 0; passIndex < kRenderPassCount; ++passIndex) {
-					const RenderPass passType = static_cast<RenderPass>(passIndex);
-					const RenderPassStats& pass = frame.passes[passIndex];
+				for (size_t passIndex = 0; passIndex < engine::kRenderPassCount; ++passIndex) {
+					const engine::RenderPass passType = static_cast<engine::RenderPass>(passIndex);
+					const engine::RenderPassStats& pass = frame.passes[passIndex];
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
-					ImGui::TextUnformatted(RenderStats::GetPassDisplayName(passType));
+					ImGui::TextUnformatted(engine::RenderStats::GetPassDisplayName(passType));
 					ImGui::TableSetColumnIndex(1);
 					ImGui::Text("%llu", static_cast<unsigned long long>(pass.drawCalls));
 					ImGui::TableSetColumnIndex(2);
@@ -1072,7 +1073,7 @@ void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, 
 		SceneManager* editorSceneManager = debugEditor_->GetSceneManager();
 		const bool isPlaying = editorSceneManager && editorSceneManager->IsPlaying();
 		if (!isPlaying) {
-			Object3d* selectedObject = debugEditor_->GetSelectedObject();
+			engine::Object3d* selectedObject = debugEditor_->GetSelectedObject();
 			if (selectedObject && !IsObjectInCurrentScene(editorSceneManager, selectedObject)) {
 				debugEditor_->SetSelectedObject(nullptr);
 				if (EditorManager::GetInstance()->GetSelectedObject() == debugEditor_.get()) {

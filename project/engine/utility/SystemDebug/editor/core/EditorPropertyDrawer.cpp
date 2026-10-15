@@ -19,6 +19,7 @@ using json = nlohmann::json;
 constexpr float kRadiansToDegrees = 57.29577951308232f;
 constexpr float kDegreesToRadians = 0.017453292519943295f;
 
+// 数値以外の旧データや未設定値でも編集UIを開けるよう、既定値へ置き換えます。
 float ReadNumber(const json& value, float fallback = 0.0f) {
     return value.is_number() ? value.get<float>() : fallback;
 }

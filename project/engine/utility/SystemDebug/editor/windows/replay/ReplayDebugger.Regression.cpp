@@ -133,7 +133,7 @@ void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
         return;
     }
 
-    Object3d* currentPlayer = nullptr;
+    engine::Object3d* currentPlayer = nullptr;
     // Replay IDを優先し、旧記録などで一致しないときだけ永続GUID・種別と名前へ後退する。
     for (const auto& object : scene->GetObjects()) {
         if (!object || object->IsReplayRemoved()) {
@@ -155,8 +155,8 @@ void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
     }
 
     // 位置の差は各軸の合計でなく三次元距離で評価し、全比較フレームの最大値を残す。
-    const Vector3 actual = currentPlayer->CaptureReplayState().translation;
-    const Vector3 reference = expectedPlayer->state.translation;
+    const engine::Vector3 actual = currentPlayer->CaptureReplayState().translation;
+    const engine::Vector3 reference = expectedPlayer->state.translation;
     const float dx = actual.x - reference.x;
     const float dy = actual.y - reference.y;
     const float dz = actual.z - reference.z;
@@ -185,6 +185,7 @@ bool ReplayDebugger::IsGoalReached(const json& sceneState) {
 }
 
 void ReplayDebugger::QueueRegressionScreenshots() {
+    // 経過時刻を越えた撮影点をすべて予約し、フレーム遅延でも取りこぼさない。
     while (regressionNextScreenshotIndex_ < regressionScreenshotTimes_.size() &&
         regressionElapsedTime_ + 0.0001 >= regressionScreenshotTimes_[regressionNextScreenshotIndex_]) {
         const std::string fileName = "checkpoint_" +

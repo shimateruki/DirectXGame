@@ -39,7 +39,7 @@ class RuntimePresetCatalog {
         }
     }
 
-    void ApplyToObject(const std::string& name, Object3d* object) const {
+    void ApplyToObject(const std::string& name, engine::Object3d* object) const {
         const auto it = presets_.find(name);
         if (!object || it == presets_.end()) return;
         try {

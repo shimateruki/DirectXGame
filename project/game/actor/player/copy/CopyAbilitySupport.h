@@ -38,28 +38,29 @@ using CombatMath::NormalizePlanar;
 
 inline float SmoothStep(float value) { return CombatMath::SmoothStep01(value); }
 
-inline void SpawnEffect(const char* path, const Vector3& position, const Vector3& rotation = {},
-                        const Vector3& scale = {1.0f, 1.0f, 1.0f}) {
+inline void SpawnEffect(const char* path, const engine::Vector3& position, const engine::Vector3& rotation = {},
+                        const engine::Vector3& scale = {1.0f, 1.0f, 1.0f}) {
     if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
         effects->SpawnEffectAt(path, position, rotation, scale);
     }
 }
 
-inline void SpawnScopedEffect(MeshEffectManager::EffectScopeId scopeId, const char* path, const Vector3& position,
-                              const Vector3& rotation = {}, const Vector3& scale = {1.0f, 1.0f, 1.0f}) {
+inline void SpawnScopedEffect(MeshEffectManager::EffectScopeId scopeId, const char* path, const engine::Vector3& position,
+                              const engine::Vector3& rotation = {}, const engine::Vector3& scale = {1.0f, 1.0f, 1.0f}) {
     if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
         effects->SpawnEffectAtScoped(scopeId, path, position, rotation, scale);
     }
 }
 
-inline void EmitPreset(const char* preset, const Vector3& position) {
+inline void EmitPreset(const char* preset, const engine::Vector3& position) {
+    // 初期化前に能力演出が要求されても GPU エミッタへは渡さない。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized()) {
         particles->Emit(preset, position);
     }
 }
 
-inline void EmitDirectedPreset(const char* preset, const Vector3& position, const Vector3& direction,
+inline void EmitDirectedPreset(const char* preset, const engine::Vector3& position, const engine::Vector3& direction,
                                float scale = 1.0f) {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized()) {
@@ -67,17 +68,19 @@ inline void EmitDirectedPreset(const char* preset, const Vector3& position, cons
     }
 }
 
-inline void SpawnDebrisOnGround(const char* presetName, const Vector3& position, float lift = 0.04f) {
-    const Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(position);
-    Vector3 effectPosition = groundPosition;
+inline void SpawnDebrisOnGround(const char* presetName, const engine::Vector3& position, float lift = 0.04f) {
+    // 地面を標本化して破片を少し浮かせ、床への埋まり込みを避ける。
+    const engine::Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(position);
+    engine::Vector3 effectPosition = groundPosition;
     effectPosition.y += lift;
     if (DebrisEffectManager* debris = DebrisEffectManager::GetInstance()) {
         debris->SpawnOnGround(presetName, effectPosition, groundPosition.y);
     }
 }
 
-inline Object3d* FindEnemyRoot(Object3d* object) {
-    for (Object3d* current = object; current; current = current->GetParent()) {
+inline engine::Object3d* FindEnemyRoot(engine::Object3d* object) {
+    // 当たった子オブジェクトから親をたどり、ダメージを受ける敵本体を返す。
+    for (engine::Object3d* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -85,7 +88,7 @@ inline Object3d* FindEnemyRoot(Object3d* object) {
     return nullptr;
 }
 
-inline void DamageEnemy(Player& player, Object3d* target, float damage, DamageType type, const Vector3& knockback,
+inline void DamageEnemy(Player& player, engine::Object3d* target, float damage, DamageType type, const engine::Vector3& knockback,
                         const StatusEffectApplication& status = {}) {
     if (!target) {
         return;
@@ -101,18 +104,18 @@ inline void DamageEnemy(Player& player, Object3d* target, float damage, DamageTy
 }
 
 // 重複 Collider を持つ敵には一度だけダメージを送ります。
-inline void DamageSphere(Player& player, const Vector3& center, float radius, float damage, DamageType type,
+inline void DamageSphere(Player& player, const engine::Vector3& center, float radius, float damage, DamageType type,
                          float horizontalKnockback, float verticalKnockback) {
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("enemy");
     filter.ignoredObject = &player;
-    std::unordered_set<Object3d*> damaged;
+    std::unordered_set<engine::Object3d*> damaged;
     for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, radius, filter)) {
-        Object3d* target = FindEnemyRoot(hit.object);
+        engine::Object3d* target = FindEnemyRoot(hit.object);
         if (!target || !damaged.insert(target).second) {
             continue;
         }
-        const Vector3 direction = NormalizePlanar(target->GetWorldPosition() - center);
+        const engine::Vector3 direction = NormalizePlanar(target->GetWorldPosition() - center);
         DamageEnemy(player, target, damage, type,
                     {direction.x * horizontalKnockback, verticalKnockback, direction.z * horizontalKnockback});
     }
@@ -125,6 +128,7 @@ inline const EnemyAttackDefinition& FindAttackOrFallback(const EnemyAttackProfil
 }
 
 inline StatusEffectApplication MakeBurnStatus(const EnemyAttackDefinition& attack) {
+    // 攻撃定義の継続ダメージ設定をコピーし、燃焼指定時だけ状態異常の種類を立てる。
     StatusEffectApplication status;
     if (attack.statusEffectType == "burning") {
         status.type = StatusEffectType::Burning;

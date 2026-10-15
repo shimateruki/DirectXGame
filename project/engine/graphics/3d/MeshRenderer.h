@@ -9,7 +9,7 @@
 #include <vector>
 #include <wrl.h>
 
-class Object3d;
+namespace engine { class Object3d; }
 class Camera;
 
 /// <summary>Object3dのモデル描画、マテリアル、LOD、特殊マテリアル描画を担当する。</summary>
@@ -17,29 +17,29 @@ class MeshRenderer {
 public:
     /// <summary>モデル描画時にGPUへ渡す座標変換行列。</summary>
     struct TransformationMatrix {
-        Matrix4x4 WVP;
-        Matrix4x4 world;
-        Matrix4x4 WorldInverseTranspose;
+        engine::Matrix4x4 WVP;
+        engine::Matrix4x4 world;
+        engine::Matrix4x4 WorldInverseTranspose;
     };
 
     /// <summary>GPUへ渡す平行光源の色、向き、強度。</summary>
     struct DirectionalLight {
-        Vector4 color;
-        Vector3 direction;
+        engine::Vector4 color;
+        engine::Vector3 direction;
         float intensity;
     };
 
     /// <summary>GPUへ渡すカメラのワールド位置。</summary>
     struct CameraForGPU {
-        Vector3 worldPosition;
+        engine::Vector3 worldPosition;
     };
 
     /// <summary>色、PBR、ポータル演出を含むGPUマテリアル定数。</summary>
     struct MaterialData {
-        Vector4 color;
+        engine::Vector4 color;
         int32_t enableLighting;
         float padding1[3];
-        Matrix4x4 uvTransform;
+        engine::Matrix4x4 uvTransform;
         int32_t selectedLighting;
         float shininess;
         int32_t materialType;
@@ -52,17 +52,17 @@ public:
         float time;
         float portalClipEnabled;
         float portalClipProgress;
-        Vector3 portalClipCenter;
+        engine::Vector3 portalClipCenter;
         float portalClipEdgeWidth;
-        Vector3 portalClipNormal;
+        engine::Vector3 portalClipNormal;
         float portalClipDissolve;
-        Vector4 portalClipColor;
+        engine::Vector4 portalClipColor;
     };
 
     /// <summary>GPUへ渡す点光源の位置、色、減衰パラメータ。</summary>
     struct PointLight {
-        Vector4 color;
-        Vector3 position;
+        engine::Vector4 color;
+        engine::Vector3 position;
         float intensity;
         float radius;
         float decay;
@@ -71,10 +71,10 @@ public:
 
     /// <summary>GPUへ渡すスポットライトの位置、方向、照射角と減衰。</summary>
     struct SpotLight {
-        Vector4 color;
-        Vector3 position;
+        engine::Vector4 color;
+        engine::Vector3 position;
         float intensity;
-        Vector3 direction;
+        engine::Vector3 direction;
         float distance;
         float decay;
         float cosAngle;
@@ -84,17 +84,17 @@ public:
 
     /// <summary>ローカルフォグの密度、光散乱、カメラ逆行列などのGPU定数。</summary>
     struct LocalFogData {
-        Vector4 fogColor = { 0.2f, 0.8f, 0.5f, 1.0f };
-        Vector3 cameraPos;
+        engine::Vector4 fogColor = { 0.2f, 0.8f, 0.5f, 1.0f };
+        engine::Vector3 cameraPos;
         float fogDensity = 0.5f;
-        Matrix4x4 inverseViewProj;
+        engine::Matrix4x4 inverseViewProj;
         float time = 0.0f;
         float edgeFade = 0.1f;
         float noiseSpeed = 0.5f;
         float noiseScale = 0.2f;
-        Vector3 lightDirection;
+        engine::Vector3 lightDirection;
         float scatteringIntensity = 0.4f;
-        Vector3 lightColor;
+        engine::Vector3 lightColor;
         float scatteringG = 0.6f;
     };
 
@@ -112,17 +112,17 @@ public:
         float effectScale;
         float effectSoftness;
         float effectIntensity;
-        Vector3 cameraWorldPosition;
+        engine::Vector3 cameraWorldPosition;
         float billboardScale;
         float effectScaleX;
         float effectScaleY;
         float effectScaleZ;
         float topDownDetail;
-        Vector3 waterLightDirection;
+        engine::Vector3 waterLightDirection;
         float waterLightIntensity;
-        Vector3 waterLightColor;
+        engine::Vector3 waterLightColor;
         float waterParamPadding1;
-        Matrix4x4 waterInverseViewProjection;
+        engine::Matrix4x4 waterInverseViewProjection;
 
         // 描画の切り分け専用。マテリアルやシーンには保存しません。
         float waterDebugView = 0.0f;
@@ -162,6 +162,9 @@ public:
 
     // 特殊マテリアルも通常描画用WVPを上書きせず、Camera Preview専用定数で描画します。
     void DrawSpecialMaterialForCamera(int materialType, Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex = 0);
+
+    /// <summary>現在の材質番号に対応する特殊描画を、通常カメラの定数で実行する。</summary>
+    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     // モデルとLOD設定。
     /// <summary>既存のModelを描画対象に設定する。</summary>
@@ -220,7 +223,7 @@ public:
 
     // マテリアル設定。
     /// <summary>描画マテリアルの色を設定する。</summary>
-    void SetColor(const Vector4& color);
+    void SetColor(const engine::Vector4& color);
 
     /// <summary>描画時のブレンドモードを設定する。</summary>
     void SetBlendMode(BlendMode blendMode) { blendMode_ = blendMode; }
@@ -232,7 +235,7 @@ public:
     void SetIntensity(float intensity);
 
     /// <summary>描画マテリアルの色を返す。</summary>
-    Vector4 GetColor() const;
+    engine::Vector4 GetColor() const;
 
     /// <summary>現在のマテリアル種類を返す。</summary>
     int32_t GetMaterialType() const;
@@ -293,10 +296,10 @@ public:
     uint32_t GetTextureHandle() const { return textureHandle_; }
 
     /// <summary>UVの繰り返し倍率を設定する。</summary>
-    void SetTextureTiling(const Vector2& tiling);
+    void SetTextureTiling(const engine::Vector2& tiling);
 
     /// <summary>現在のUV繰り返し倍率を返す。</summary>
-    Vector2 GetTextureTiling() const { return textureTiling_; }
+    engine::Vector2 GetTextureTiling() const { return textureTiling_; }
 
     /// <summary>モデル寸法に応じたUV繰り返しを切り替える。</summary>
     void SetAutoTextureTiling(bool enabled);
@@ -345,14 +348,14 @@ public:
     void SetPreviewDirectionalLightResource(ID3D12Resource* resource) { previewDirectionalLightResource_ = resource; }
 
     /// <summary>ゲーム進行用Transformを変えず、描画時だけローカル姿勢を重ねる。</summary>
-    void SetVisualTransform(const Vector3& scale, const Vector3& rotation, const Vector3& offset);
-    const Vector3& GetVisualScale() const { return visualScale_; }
-    const Vector3& GetVisualRotation() const { return visualRotation_; }
-    const Vector3& GetVisualOffset() const { return visualOffset_; }
+    void SetVisualTransform(const engine::Vector3& scale, const engine::Vector3& rotation, const engine::Vector3& offset);
+    const engine::Vector3& GetVisualScale() const { return visualScale_; }
+    const engine::Vector3& GetVisualRotation() const { return visualRotation_; }
+    const engine::Vector3& GetVisualOffset() const { return visualOffset_; }
 
     // 指定したローカルY座標を支点に、上側だけを水平方向へ傾けます。
-    void SetVisualShear(const Vector3& horizontalShear, float pivotY);
-    const Vector3& GetVisualShear() const { return visualShear_; }
+    void SetVisualShear(const engine::Vector3& horizontalShear, float pivotY);
+    const engine::Vector3& GetVisualShear() const { return visualShear_; }
     float GetVisualShearPivotY() const { return visualShearPivotY_; }
 
     /// <summary>描画専用姿勢とシアーを初期値へ戻す。</summary>
@@ -360,7 +363,7 @@ public:
 
     // 共通タイムラインが所有する描画専用の追加姿勢。所有元の終了・破棄で自動解除します。
     // 通常アニメーションのSetVisualTransformとは別レイヤーなので更新順で消えません。
-    void SetTimelineVisualTransform(const std::shared_ptr<Matrix4x4>& pose) { timelineVisualPose_ = pose; }
+    void SetTimelineVisualTransform(const std::shared_ptr<engine::Matrix4x4>& pose) { timelineVisualPose_ = pose; }
 
     // 以下の特殊マテリアル描画は、depthSrvHandle にシーン深度、colorSrvHandle にシーンカラーのSRV番号を受け取る。
     // 個々の関数は対応する描画パイプラインを選び、必要なGPUバッファがなければ描画をスキップする。
@@ -418,7 +421,7 @@ private:
     bool HasRequiredBuffers() const;
 
     // ゲーム進行用Transformに描画専用の姿勢補正を重ねたワールド行列を作る。
-    Matrix4x4 BuildRenderWorldMatrix() const;
+    engine::Matrix4x4 BuildRenderWorldMatrix() const;
 
     // プレビュー用の独立したWVP・カメラ定数を更新し、リソースを出力する。
     // カメラやバッファ番号が無効な場合はfalseを返す。
@@ -439,7 +442,7 @@ private:
     void DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
 
     // ワールド行列が前回と同じなら法線変換行列のキャッシュを返す。
-    const Matrix4x4& GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix);
+    const engine::Matrix4x4& GetCachedWorldInverseTranspose(const engine::Matrix4x4& worldMatrix);
 
     // 特殊マテリアル用の代理形状を必要になったときに作る。
     void InitializeWaterProxyModel();
@@ -460,12 +463,12 @@ private:
     // 外部オブジェクトへの参照。MeshRendererは所有しない。
     Object3dCommon* common_ = nullptr;
     Transform* transform_ = nullptr;
-    Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 visualRotation_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 visualOffset_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 visualShear_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 visualRotation_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 visualOffset_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 visualShear_ = { 0.0f, 0.0f, 0.0f };
     float visualShearPivotY_ = 0.0f;
-    std::weak_ptr<Matrix4x4> timelineVisualPose_;
+    std::weak_ptr<engine::Matrix4x4> timelineVisualPose_;
 
     // 描画モデルとLOD状態。
     Model* model_ = nullptr;
@@ -481,8 +484,8 @@ private:
     // 通常描画用GPUリソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
     TransformationMatrix* wvpData_ = nullptr;
-    Matrix4x4 cachedWorldMatrix_ = Math::MakeIdentity4x4();
-    Matrix4x4 cachedWorldInverseTranspose_ = Math::MakeIdentity4x4();
+    engine::Matrix4x4 cachedWorldMatrix_ = engine::Math::MakeIdentity4x4();
+    engine::Matrix4x4 cachedWorldInverseTranspose_ = engine::Math::MakeIdentity4x4();
     bool worldInverseTransposeCacheValid_ = false;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
@@ -502,7 +505,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;
-    Vector4 materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     // テクスチャとPBR補助マップ。
     std::string normalMapPath_ = "";
@@ -511,7 +514,7 @@ private:
     uint32_t ormMapHandle_ = 0;
     std::string texturePath_ = "";
     uint32_t textureHandle_ = 0;
-    Vector2 textureTiling_ = { 1.0f, 1.0f };
+    engine::Vector2 textureTiling_ = { 1.0f, 1.0f };
     bool autoTextureTiling_ = false;
 
     // 水面、火、影、ローカルフォグ用リソース。

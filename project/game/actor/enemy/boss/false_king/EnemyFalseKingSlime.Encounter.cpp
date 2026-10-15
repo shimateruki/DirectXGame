@@ -43,23 +43,23 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
     float heightOffset = 0.0f;
     if (progress < 0.45f) {
         const float rate = SmoothStep01(progress / 0.45f);
-        horizontal = Math::Lerp(0.88f, 1.32f, rate);
-        vertical = Math::Lerp(1.20f, 0.58f, rate);
+        horizontal = engine::Math::Lerp(0.88f, 1.32f, rate);
+        vertical = engine::Math::Lerp(1.20f, 0.58f, rate);
         heightOffset = (1.0f - rate) * kAppearanceRise;
     } else if (progress < 0.68f) {
         const float rate = SmoothStep01((progress - 0.45f) / 0.23f);
-        horizontal = Math::Lerp(1.32f, 0.86f, rate);
-        vertical = Math::Lerp(0.58f, 1.25f, rate);
+        horizontal = engine::Math::Lerp(1.32f, 0.86f, rate);
+        vertical = engine::Math::Lerp(0.58f, 1.25f, rate);
         heightOffset = std::sin(rate * kPi) * 0.48f;
     } else if (progress < 0.88f) {
         const float rate = SmoothStep01((progress - 0.68f) / 0.20f);
-        horizontal = Math::Lerp(0.86f, 1.08f, rate);
-        vertical = Math::Lerp(1.25f, 0.90f, rate);
+        horizontal = engine::Math::Lerp(0.86f, 1.08f, rate);
+        vertical = engine::Math::Lerp(1.25f, 0.90f, rate);
         heightOffset = std::sin(rate * kPi) * 0.16f;
     } else {
         const float rate = SmoothStep01((progress - 0.88f) / 0.12f);
-        horizontal = Math::Lerp(1.08f, 1.0f, rate);
-        vertical = Math::Lerp(0.90f, 1.0f, rate);
+        horizontal = engine::Math::Lerp(1.08f, 1.0f, rate);
+        vertical = engine::Math::Lerp(0.90f, 1.0f, rate);
     }
 
     // 元の配置姿勢を基準に補間し、演出を繰り返しても誤差を蓄積させません。
@@ -176,7 +176,7 @@ void EnemyFalseKingSlime::BeginAppearance() {
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetVelocity({0.0f, 0.0f, 0.0f});
-    Vector3 effectPosition = authoredPosition_;
+    engine::Vector3 effectPosition = authoredPosition_;
     effectPosition.y += 0.2f;
     VFXSequencer::PlayOneShot(kAppearanceSequence, effectPosition, {2.4f, 2.4f, 2.4f});
 }
@@ -220,7 +220,7 @@ void EnemyFalseKingSlime::FinishAppearance() {
 
 void EnemyFalseKingSlime::SyncCollisionBounds() {
     // 登場時の伸縮中も本体用 OBB の基準寸法を設定します。
-    Object3d::ColliderConfig collider = GetColliderConfig();
+    engine::Object3d::ColliderConfig collider = GetColliderConfig();
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 1.48f, 0.0f};
     collider.size = {2.82f, 1.46f, 2.28f};

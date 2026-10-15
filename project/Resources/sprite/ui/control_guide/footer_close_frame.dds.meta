@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "65c3c999303bbdd24896b443211bcf23",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/footer_close_frame.dds",
+  "version": 1
+}

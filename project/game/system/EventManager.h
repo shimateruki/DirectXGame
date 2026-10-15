@@ -10,6 +10,7 @@ class EventManager {
   public:
     using SubscriptionId = uint64_t;
     static constexpr SubscriptionId kInvalidSubscriptionId = 0;
+    /// 同期イベントの購読と配信を共有するインスタンスを返す。
     static EventManager* GetInstance();
 
     // --- PlayerHitEvent 関連 ---
@@ -51,11 +52,16 @@ class EventManager {
     };
     template <typename Event> using ListenerList = std::list<Listener<Event>>;
 
+    /// リスナーへ個別解除用 ID を付けて登録する。
     template <typename Event>
     SubscriptionId SubscribeTo(ListenerList<Event>& listeners, std::function<void(const Event&)> callback);
+    /// 同種イベントの有効なリスナーへ同期配信する。
     template <typename Event> void DispatchTo(ListenerList<Event>& listeners, const Event& event);
+    /// 配信中でも安全に個別 ID を無効化する。
     template <typename Event> void MarkInactive(ListenerList<Event>& listeners, SubscriptionId id);
+    /// 無効化済みリスナーを一覧から除去する。
     template <typename Event> void PruneInactive(ListenerList<Event>& listeners);
+    /// 全イベント種別の無効化済みリスナーを整理する。
     void PruneInactiveListeners();
 
     ListenerList<PlayerHitEvent> playerHitListeners_;

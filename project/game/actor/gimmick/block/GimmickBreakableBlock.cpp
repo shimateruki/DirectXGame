@@ -49,7 +49,7 @@ void GimmickBreakableBlock::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickBreakableBlock::OnCollision(Object3d* other) {
+bool GimmickBreakableBlock::OnCollision(engine::Object3d* other) {
     if (isBroken_)
         return false;
 
@@ -100,7 +100,7 @@ void GimmickBreakableBlock::Break() {
     SetIsVisible(false);
     isDead = true;
 
-    Vector3 myPos = GetTranslate();
+    engine::Vector3 myPos = GetTranslate();
 
     // 屈折マテリアルのガラスは、炎を残さず透明破片と短い閃光で割れた瞬間を見せる。
     if (GetMaterialType() == 10 || GetModelName() == "Stages/star_garden_glass_panel") {
@@ -131,7 +131,7 @@ void GimmickBreakableBlock::Break() {
     }
 }
 
-std::unique_ptr<Object3d> GimmickBreakableBlock::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickBreakableBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と破壊設定を複製する。
     auto newObj = std::make_unique<GimmickBreakableBlock>();
     assert(common_ != nullptr);

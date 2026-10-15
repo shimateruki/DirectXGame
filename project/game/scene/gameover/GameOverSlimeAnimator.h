@@ -7,7 +7,9 @@
 // 倒れ姿勢 → 起き上がり → 画面右への退場を一つの状態機械で管理する。
 class GameOverSlimeAnimator {
   public:
-    void Reset(Object3d* slime) {
+    // 倒れたスライムの基準姿勢と床の高さを記録し、演出を最初から始めます。
+    void Reset(engine::Object3d* slime) {
+        // 現在のモデルAABBから床の高さを取って、形状の違うスライムも接地させる。
         timer_ = exitTimer_ = 0.0f;
         phase_ = Phase::Downed;
         hasBaseTransform_ = false;
@@ -24,7 +26,8 @@ class GameOverSlimeAnimator {
         hasBaseTransform_ = true;
         Update(slime, 0.0f);
     }
-    void Update(Object3d* slime, float deltaTime) {
+    // 倒れ姿勢または退場モーションを進め、床に接する姿勢を反映します。
+    void Update(engine::Object3d* slime, float deltaTime) {
         if (!slime || !hasBaseTransform_)
             return;
         const float dt = std::isfinite(deltaTime) ? (std::max)(deltaTime, 0.0f) : 0.0f;
@@ -42,7 +45,10 @@ class GameOverSlimeAnimator {
         currentRotation_ = {-kPi * 0.5f, baseRotation_.y, 0.0f};
         ApplyGroundedPose(slime, 0.0f);
     }
-    void StartExitRight(Object3d* slime, const Vector3& direction, float distance) {
+    // 倒れ状態から起き上がり、水平の指定方向へ退場する動きを開始します。
+    // 方向が無効なら +X、距離が無効なら 10 を採用します。
+    void StartExitRight(engine::Object3d* slime, const engine::Vector3& direction, float distance) {
+        // 退場方向は水平面へ投影し、ゼロ方向だけ固定の右方向へ置き換える。
         if (phase_ != Phase::Downed)
             return;
         if (!slime || !hasBaseTransform_) {
@@ -67,7 +73,7 @@ class GameOverSlimeAnimator {
     float GetDizzyAlpha() const {
         return phase_ == Phase::Downed ? 0.70f : 0.70f * (1.0f - Clamp01(exitTimer_ / 0.22f));
     }
-    Vector3 GetDizzyAnchorWorld() const { return dizzyAnchor_; }
+    engine::Vector3 GetDizzyAnchorWorld() const { return dizzyAnchor_; }
     float GetTimer() const { return timer_; }
     static constexpr float GetImpactTime() { return 0.0f; }
     bool HasBaseTransform() const { return hasBaseTransform_; }
@@ -80,7 +86,8 @@ class GameOverSlimeAnimator {
         v = Clamp01(v);
         return v * v * (3.0f - 2.0f * v);
     }
-    void ApplyGroundedPose(Object3d* slime, float hop) {
+    // 現在の変形を反映し、モデル境界の最下点を床面と跳ね高さに合わせます。
+    void ApplyGroundedPose(engine::Object3d* slime, float hop) {
         slime->SetScale(currentScale_);
         slime->SetRotation(currentRotation_);
         slime->SetTranslate(currentPosition_);
@@ -98,7 +105,8 @@ class GameOverSlimeAnimator {
                         (bounds.min.z + bounds.max.z) * 0.5f};
         slime->RefreshRenderCameraData();
     }
-    void UpdateExitRight(Object3d* slime, float dt) {
+    // 起き上がり、進行方向への旋回、加速移動の順に退場姿勢を更新します。
+    void UpdateExitRight(engine::Object3d* slime, float dt) {
         if (phase_ == Phase::ExitFinished)
             return;
         exitTimer_ += dt;
@@ -109,8 +117,8 @@ class GameOverSlimeAnimator {
         currentPosition_ = basePosition_;
         if (exitTimer_ < standDuration) {
             const float u = Smooth(exitTimer_ / standDuration);
-            currentRotation_ = Math::Lerp(exitStartRotation_, baseRotation_, u);
-            currentScale_ = Math::Lerp(exitStartScale_, baseScale_, u);
+            currentRotation_ = engine::Math::Lerp(exitStartRotation_, baseRotation_, u);
+            currentScale_ = engine::Math::Lerp(exitStartScale_, baseScale_, u);
             hop = std::sin(u * kPi) * 0.08f;
         } else {
             const float turn = Smooth((exitTimer_ - standDuration) / turnDuration);
@@ -132,9 +140,9 @@ class GameOverSlimeAnimator {
         if (exitTimer_ >= standDuration + turnDuration + runDuration)
             phase_ = Phase::ExitFinished;
     }
-    Vector3 basePosition_{}, baseScale_{1, 1, 1}, baseRotation_{};
-    Vector3 currentPosition_{}, currentScale_{1, 1, 1}, currentRotation_{}, dizzyAnchor_{};
-    Vector3 exitStartScale_{1, 1, 1}, exitStartRotation_{}, exitDirection_{1, 0, 0};
+    engine::Vector3 basePosition_{}, baseScale_{1, 1, 1}, baseRotation_{};
+    engine::Vector3 currentPosition_{}, currentScale_{1, 1, 1}, currentRotation_{}, dizzyAnchor_{};
+    engine::Vector3 exitStartScale_{1, 1, 1}, exitStartRotation_{}, exitDirection_{1, 0, 0};
     float floorY_ = 0.0f, exitDistance_ = 10.0f, timer_ = 0.0f, exitTimer_ = 0.0f;
     bool hasBaseTransform_ = false;
     Phase phase_ = Phase::Downed;

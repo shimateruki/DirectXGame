@@ -3,7 +3,7 @@
 #include <memory>
 
 // 前方宣言
-class Object3d;
+namespace engine { class Object3d; }
 class Camera;
 class Player;
 class InputManager;
@@ -26,7 +26,7 @@ class LockOnSystem {
     /// <param name="camera">メインカメラ</param>
     /// <param name="player">操作中のプレイヤー</param>
     /// <param name="deltaTime">前フレームからの経過秒数</param>
-    void Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player, float deltaTime);
+    void Update(const std::vector<std::unique_ptr<engine::Object3d>>& objects, Camera* camera, Player* player, float deltaTime);
 
     /// <summary>
     /// 現在ロックオン中かどうか
@@ -36,7 +36,7 @@ class LockOnSystem {
     /// <summary>
     /// 現在の対象を返す。対象はシーン所有で、ロック解除後は保持しない。
     /// </summary>
-    Object3d* GetTarget() const { return lockOnTarget_; }
+    engine::Object3d* GetTarget() const { return lockOnTarget_; }
 
     /// <summary>
     /// 保持中の対象を外し、ロック用カメラを通常の照準モードへ戻す。
@@ -47,12 +47,12 @@ class LockOnSystem {
     /// <summary>
     /// 最も適したターゲットを検索する内部関数
     /// </summary>
-    Object3d* FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player,
+    engine::Object3d* FindBestTarget(const std::vector<std::unique_ptr<engine::Object3d>>& objects, Camera* camera, Player* player,
                              bool next = false);
 
   private:
     InputManager* inputManager_ = nullptr;
-    Object3d* lockOnTarget_ = nullptr; // ロックオン対象
+    engine::Object3d* lockOnTarget_ = nullptr; // ロックオン対象
     bool isLockingOn_ = false;         // ロックオン中フラグ
 
     // 定数パラメータ

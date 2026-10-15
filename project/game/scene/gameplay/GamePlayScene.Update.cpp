@@ -1,5 +1,9 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/ui/ControlsGuideOverlay.h"
+#include "game/ui/PauseMenuOverlay.h"
+#include "game/ui/SettingsMenuOverlay.h"
+#include "game/ui/SaveIndicatorOverlay.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "SceneController.h"
 
@@ -72,6 +76,7 @@ GoalCrownPhysicsTuning& GetGoalCrownPhysicsTuning() {
 }
 
 #ifdef USE_IMGUI
+// 開発時だけ王冠のばね、着地、変形の調整UIを表示します。
 void DrawGoalCrownPhysicsTuning() {
     // 診断表示が有効なときだけ王冠のばね・着地係数を調整可能にする。
     if (!EditorToolSettings::Get().IsVisible("diagnosticWindows"))
@@ -105,13 +110,14 @@ void DrawGoalCrownPhysicsTuning() {
 }
 #endif
 
-Vector3 QuadraticBezier(const Vector3& start, const Vector3& control, const Vector3& end, float rate) {
+engine::Vector3 QuadraticBezier(const engine::Vector3& start, const engine::Vector3& control, const engine::Vector3& end, float rate) {
     // 始点と終点を正確に通る二次曲線で、王冠の移動に弧を付ける。
     const float t = std::clamp(rate, 0.0f, 1.0f);
     const float inv = 1.0f - t;
     return start * (inv * inv) + control * (2.0f * inv * t) + end * (t * t);
 }
 
+// 回転補間が大回りしないようYawを±πへ折り返します。
 float NormalizeYaw(float yaw) {
     // 回転差の補間で大回りしないよう角度を±πへ折り返す。
     while (yaw > kPi)
@@ -124,7 +130,7 @@ float NormalizeYaw(float yaw) {
 } // namespace
 
 // ゴール状態を解除する際は、プレイヤー・王冠・カメラの演出前の状態を戻します。
-bool GamePlayScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
+bool GamePlayScene::TryStartGoalFromContact(engine::Object3d* actor, engine::Object3d* goal) {
     // 生存中のプレイヤーが触れた場合だけクリア演出を開始し、重複開始は避ける。
     Player* player = dynamic_cast<Player*>(actor);
     if (!player || player->isDead || player->GetHp() <= 0.0f) {
@@ -137,7 +143,7 @@ bool GamePlayScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
     return true;
 }
 
-void GamePlayScene::CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) {
+void GamePlayScene::CollectStarCoinFromContact(int coinIndex, const engine::Vector3& worldPosition) {
     // 接触で得た番号と位置を収集管理へ渡し、取得履歴をログへ残す。
     CollectStarCoin(coinIndex, worldPosition);
     DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIndex) + " Collected!");
@@ -196,7 +202,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
 }
 
 // ゴール演出の入力ロックと初期姿勢を確定してから、演出用カメラへ制御を渡します。
-void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
+void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
     // プレイヤーと王冠の初期姿勢を保存し、初回クリアか再クリアかで演出素材を選ぶ。
     if (isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
         return;
@@ -220,7 +226,7 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
     goalResultCuePlayed_ = false;
     goalCrownObject_ = crownObject;
     goalCrownPosition_ = crownObject ? crownObject->GetWorldPosition()
-                                     : (player_ ? player_->GetWorldPosition() : Vector3{0.0f, 0.0f, 0.0f});
+                                     : (player_ ? player_->GetWorldPosition() : engine::Vector3{0.0f, 0.0f, 0.0f});
     goalCrownSnapshotValid_ = false;
     goalCrownSpringInitialized_ = false;
     goalCrownSpringPosition_ = goalCrownPosition_;
@@ -235,12 +241,12 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
         goalCrownSnapshotValid_ = true;
     }
 
-    Vector3 preferredForward = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 preferredForward = {0.0f, 0.0f, 0.0f};
     if (player_) {
         Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
         if (activeCamera) {
-            const Vector3 playerPosition = player_->GetWorldPosition();
-            const Vector3 toCamera = {activeCamera->GetEye().x - playerPosition.x, 0.0f,
+            const engine::Vector3 playerPosition = player_->GetWorldPosition();
+            const engine::Vector3 toCamera = {activeCamera->GetEye().x - playerPosition.x, 0.0f,
                                       activeCamera->GetEye().z - playerPosition.z};
             preferredForward = NormalizePlanarDirection(toCamera, preferredForward);
         }
@@ -280,7 +286,7 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
             }
             const bool followsCrown =
                 track.sequenceName.rfind("crown_focus", 0) == 0 || track.sequenceName.rfind("crown_get", 0) == 0;
-            Object3d* target = followsCrown ? crownObject : player_;
+            engine::Object3d* target = followsCrown ? crownObject : player_;
             if (target) {
                 track.binding.targetName = target->GetName();
                 track.binding.targetEventId = target->GetEventID();
@@ -476,10 +482,10 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
     constexpr float kNearSparkleInterval = 0.18f;
     constexpr float kNearDistance = 6.0f;
     constexpr float kFarDistance = 18.0f;
-    constexpr std::array<Vector3, 8> kSparkleOffsets = {Vector3{0.00f, 0.52f, -0.05f}, Vector3{-0.58f, 0.39f, -0.08f},
-                                                        Vector3{0.58f, 0.39f, -0.08f}, Vector3{-0.92f, 0.05f, -0.10f},
-                                                        Vector3{0.92f, 0.05f, -0.10f}, Vector3{-0.70f, -0.20f, 0.16f},
-                                                        Vector3{0.70f, -0.20f, 0.16f}, Vector3{0.00f, 0.28f, 0.58f}};
+    constexpr std::array<engine::Vector3, 8> kSparkleOffsets = {engine::Vector3{0.00f, 0.52f, -0.05f}, engine::Vector3{-0.58f, 0.39f, -0.08f},
+                                                        engine::Vector3{0.58f, 0.39f, -0.08f}, engine::Vector3{-0.92f, 0.05f, -0.10f},
+                                                        engine::Vector3{0.92f, 0.05f, -0.10f}, engine::Vector3{-0.70f, -0.20f, 0.16f},
+                                                        engine::Vector3{0.70f, -0.20f, 0.16f}, engine::Vector3{0.00f, 0.28f, 0.58f}};
 
     const float previousTime = goalCrownIdleTime_;
     goalCrownIdleTime_ += deltaTime;
@@ -503,17 +509,17 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
 
         float nearRate = 0.0f;
         if (player_) {
-            const Vector3 toCrown = object->GetWorldPosition() - player_->GetWorldPosition();
+            const engine::Vector3 toCrown = object->GetWorldPosition() - player_->GetWorldPosition();
             const float distance = std::sqrt(toCrown.x * toCrown.x + toCrown.y * toCrown.y + toCrown.z * toCrown.z);
             nearRate = 1.0f - std::clamp((distance - kNearDistance) / (kFarDistance - kNearDistance), 0.0f, 1.0f);
             strongestNearRate = std::max(strongestNearRate, nearRate);
         }
 
-        Vector3 position = object->GetTranslate();
+        engine::Vector3 position = object->GetTranslate();
         position.y += bobDelta;
         object->SetTranslate(position);
 
-        Vector3 rotation = object->GetRotation();
+        engine::Vector3 rotation = object->GetRotation();
         rotation.y += kRotationSpeed * deltaTime;
         object->SetRotation(rotation);
         object->SetEmissive(isCleared ? 1.20f + emissivePulse * 0.38f + nearRate * 0.14f
@@ -521,18 +527,18 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
 
-        const Matrix4x4& crownWorld = object->GetWorldMatrix();
+        const engine::Matrix4x4& crownWorld = object->GetWorldMatrix();
         if (emitSparkle) {
-            const Vector3& localOffset = kSparkleOffsets[goalCrownSparklePatternIndex_ % kSparkleOffsets.size()];
-            GPUParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, Math::Transform(localOffset, crownWorld));
+            const engine::Vector3& localOffset = kSparkleOffsets[goalCrownSparklePatternIndex_ % kSparkleOffsets.size()];
+            GPUParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, engine::Math::Transform(localOffset, crownWorld));
 
             const bool emitHeroTwinkle =
                 goalCrownSparklePatternIndex_ % 4 == 0 || (nearRate >= 0.55f && goalCrownSparklePatternIndex_ % 2 == 0);
             if (emitHeroTwinkle) {
-                const Vector3& twinkleOffset =
+                const engine::Vector3& twinkleOffset =
                     kSparkleOffsets[(goalCrownSparklePatternIndex_ + 3) % kSparkleOffsets.size()];
                 GPUParticleManager::GetInstance()->Emit(kGoalCrownTwinklePreset,
-                                                        Math::Transform(twinkleOffset, crownWorld));
+                                                        engine::Math::Transform(twinkleOffset, crownWorld));
             }
         }
     }
@@ -548,17 +554,26 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
 }
 
 bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
-    // 操作ガイドが開いている間はゲーム入力を消費し、通常の行動更新へ通さない。
-    if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
-        controlsGuideOverlay_->SetPlayer(player_);
-        controlsGuideOverlay_->Update(deltaTime);
+    if (pausePageSliding_) {
+        UpdatePausePageSlide(deltaTime);
         return true;
     }
-
-    if (IsControlsGuideOpenTriggered()) {
-        if (controlsGuideOverlay_) {
-            controlsGuideOverlay_->SetPlayer(player_);
-            controlsGuideOverlay_->SetActive(true);
+    // 操作ガイドが開いている間はゲーム入力を消費し、通常の行動更新へ通さない。
+    if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
+        if (pauseGuideSession_ && inputManager_ &&
+            inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
+            controlsGuideOverlay_->SetActive(false);
+            pauseGuideSession_ = false;
+            return true;
+        }
+        controlsGuideOverlay_->SetPlayer(player_);
+        controlsGuideOverlay_->Update(deltaTime);
+        if (pauseGuideSession_ && controlsGuideOverlay_->ConsumeMenuPageRequest()) {
+            BeginPausePageSlide(true);
+            return true;
+        }
+        if (!controlsGuideOverlay_->IsActive()) {
+            pauseGuideSession_ = false;
         }
         return true;
     }
@@ -566,25 +581,38 @@ bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
     return false;
 }
 
-bool GamePlayScene::IsControlsGuideOpenTriggered() const {
-    // キーボードとゲームパッドのガイド呼出し入力を一つの判定にまとめる。
-    if (!inputManager_) {
-        return false;
-    }
+void GamePlayScene::BeginPausePageSlide(bool toMenu) {
+    // 遷移先を先に開き、初回フレームから両ページの位置を同期させる。
+    if (!controlsGuideOverlay_ || !pauseMenuOverlay_) return;
+    pausePageSliding_ = true;
+    pausePageToMenu_ = toMenu;
+    pausePageSlideTime_ = 0.0f;
+    if (toMenu) pauseMenuOverlay_->SetActive(true);
+    else controlsGuideOverlay_->OpenAbilityPage(false);
+    UpdatePausePageSlide(0.0f);
+}
 
-#ifdef USE_IMGUI
-    ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureKeyboard || io.WantTextInput) {
-        return false;
+void GamePlayScene::UpdatePausePageSlide(float deltaTime) {
+    if (!controlsGuideOverlay_ || !pauseMenuOverlay_) {
+        pausePageSliding_ = false;
+        return;
     }
-#endif
-
-    if (lifeLostState_.IsActive() || lifeLostState_.HoldsBlack() || isGoal_ ||
-        (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) || (settingsOverlay_ && settingsOverlay_->IsActive())) {
-        return false;
+    // 操作説明と能力ページと同じ0.34秒。遷移中は入力を受けず二重決定を防ぐ。
+    pausePageSlideTime_ += std::max(0.0f, deltaTime);
+    const float t = std::clamp(pausePageSlideTime_ / 0.34f, 0.0f, 1.0f);
+    const float eased = t * t * (3.0f - 2.0f * t);
+    const float distance = static_cast<float>(WinApp::kClientWidth) * 0.86f;
+    controlsGuideOverlay_->Update(deltaTime, false);
+    pauseMenuOverlay_->Update(deltaTime, false);
+    controlsGuideOverlay_->SetMenuTransitionOffset(-distance * (pausePageToMenu_ ? eased : 1.0f - eased), true);
+    pauseMenuOverlay_->SetGuideTransitionOffset(distance * (pausePageToMenu_ ? 1.0f - eased : eased), true);
+    if (t >= 1.0f) {
+        pausePageSliding_ = false;
+        controlsGuideOverlay_->SetMenuTransitionOffset(0.0f, false);
+        pauseMenuOverlay_->SetGuideTransitionOffset(0.0f, false);
+        if (pausePageToMenu_) controlsGuideOverlay_->SetActive(false);
+        else pauseMenuOverlay_->SetActive(false);
     }
-
-    return inputManager_->IsKeyTriggered(DIK_TAB) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_BACK);
 }
 
 bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
@@ -599,6 +627,15 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
         switch (action) {
         case PauseMenuOverlay::Action::Resume:
             pauseMenuOverlay_->SetActive(false);
+            pauseGuideSession_ = false;
+            break;
+        case PauseMenuOverlay::Action::OpenGuide:
+            if (controlsGuideOverlay_) {
+                controlsGuideOverlay_->SetPlayer(player_);
+                controlsGuideOverlay_->SetPauseMode(true);
+                BeginPausePageSlide(false);
+                pauseGuideSession_ = true;
+            }
             break;
         case PauseMenuOverlay::Action::Retry:
             pauseMenuOverlay_->SetActive(false);
@@ -625,7 +662,12 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
     }
 
     if (IsPauseOpenTriggered()) {
-        if (pauseMenuOverlay_) {
+        if (controlsGuideOverlay_) {
+            controlsGuideOverlay_->SetPlayer(player_);
+            controlsGuideOverlay_->SetPauseMode(true);
+            controlsGuideOverlay_->OpenAbilityPage();
+            pauseGuideSession_ = true;
+        } else if (pauseMenuOverlay_) {
             pauseMenuOverlay_->SetActive(true);
         }
         return true;
@@ -651,10 +693,7 @@ bool GamePlayScene::IsPauseOpenTriggered() const {
         return false;
     }
 
-    // P がゲーム操作へ割り当てられている場合はその操作を優先し、既存のユーザー設定を保持する。
-    const bool pAssignedToGameplay = KeyConfig::GetInstance()->IsKeyAssigned(DIK_P);
-    return (!pAssignedToGameplay && inputManager_->IsKeyTriggered(DIK_P)) ||
-           inputManager_->IsKeyTriggered(DIK_ESCAPE) ||
+    return inputManager_->IsKeyTriggered(DIK_TAB) ||
            inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START);
 }
 
@@ -807,8 +846,8 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& presentation = goalPresentationTuning_;
     const float t = goalPresentationTimer_;
-    const Vector3 playerScale = goalClearPlayerAnimator_.GetCurrentScale();
-    const Vector3 playerRotation = player_ ? player_->GetRotation() : goalPlayerBaseRotation_;
+    const engine::Vector3 playerScale = goalClearPlayerAnimator_.GetCurrentScale();
+    const engine::Vector3 playerRotation = player_ ? player_->GetRotation() : goalPlayerBaseRotation_;
     const float baseScaleY = std::max(std::abs(goalPlayerBaseScale_.y), 0.001f);
     const float squashRate = std::clamp((goalPlayerBaseScale_.y - playerScale.y) / baseScaleY, -0.35f, 0.35f);
     const float stretchRate = std::max(0.0f, -squashRate);
@@ -821,14 +860,14 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     }
     const float seatDepth = presentation.crownSeatDepth + std::max(0.0f, squashRate) * 0.10f - stretchRate * 0.035f;
     const float crownPivotHeight = std::max(0.72f, slimeSurfaceHeight - seatDepth + crownPivotFromBottom);
-    const Matrix4x4 playerRotationMatrix = Math::MakeRotateMatrix(playerRotation);
-    const Vector3 headOffset = Math::TransformNormal({0.0f, crownPivotHeight, 0.0f}, playerRotationMatrix);
-    const Vector3 headPosition = goalPlayerPosePosition_ + headOffset;
-    const Vector3 dropStartPosition = headPosition + Vector3{0.0f, presentation.crownDropHeight, 0.0f};
+    const engine::Matrix4x4 playerRotationMatrix = engine::Math::MakeRotateMatrix(playerRotation);
+    const engine::Vector3 headOffset = engine::Math::TransformNormal({0.0f, crownPivotHeight, 0.0f}, playerRotationMatrix);
+    const engine::Vector3 headPosition = goalPlayerPosePosition_ + headOffset;
+    const engine::Vector3 dropStartPosition = headPosition + engine::Vector3{0.0f, presentation.crownDropHeight, 0.0f};
 
-    Vector3 crownPosition = goalCrownBasePosition_;
-    Vector3 crownScale = goalCrownBaseScale_;
-    Vector3 crownRotation = goalCrownBaseRotation_;
+    engine::Vector3 crownPosition = goalCrownBasePosition_;
+    engine::Vector3 crownScale = goalCrownBaseScale_;
+    engine::Vector3 crownRotation = goalCrownBaseRotation_;
 
     // 視線誘導中はその場で見せ、次に弧を描いて頭上へ運び、着地後はバネで追従させる。
     if (t < presentation.crownMoveStartTime) {
@@ -849,7 +888,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             const float approach = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(t, presentation.crownMoveStartTime, approachEndTime),
                 AnimationInterpolation::EasingType::SmootherStep);
-            Vector3 control = AnimationInterpolation::Lerp(goalCrownBasePosition_, dropStartPosition, 0.52f);
+            engine::Vector3 control = AnimationInterpolation::Lerp(goalCrownBasePosition_, dropStartPosition, 0.52f);
             control.y = std::max(goalCrownBasePosition_.y, dropStartPosition.y) + presentation.crownDropHeight * 0.34f;
             control = control + goalMoveRight_ * 0.28f;
             crownPosition = QuadraticBezier(goalCrownBasePosition_, control, dropStartPosition, approach);
@@ -882,7 +921,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         goalCrownSpringRotation_ = crownRotation;
         goalCrownSpringRotationVelocity_ = {};
     } else {
-        Vector3 targetPosition = headPosition + goalMoveForward_ * (squashRate * 0.055f);
+        engine::Vector3 targetPosition = headPosition + goalMoveForward_ * (squashRate * 0.055f);
         float motionEnergy = 0.0f;
         if (t >= animation.jumpStartTime && t < animation.victoryLandTime) {
             const float jumpRate =
@@ -891,8 +930,8 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         }
 
         if (!goalCrownSpringInitialized_) {
-            goalCrownSpringPosition_ = targetPosition + Vector3{0.0f, -0.08f, 0.0f};
-            goalCrownSpringVelocity_ = goalMoveForward_ * -0.18f + Vector3{0.0f, physics.landingDownVelocity, 0.0f};
+            goalCrownSpringPosition_ = targetPosition + engine::Vector3{0.0f, -0.08f, 0.0f};
+            goalCrownSpringVelocity_ = goalMoveForward_ * -0.18f + engine::Vector3{0.0f, physics.landingDownVelocity, 0.0f};
             goalCrownSpringRotation_ = {goalCrownBaseRotation_.x + 0.10f, goalCrownBaseRotation_.y + 0.52f,
                                         goalCrownBaseRotation_.z - 0.12f};
             goalCrownSpringRotationVelocity_ = {0.0f, 0.0f, physics.landingRollVelocity};
@@ -904,15 +943,15 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         const int substepCount = std::max(1, static_cast<int>(std::ceil(dt / (1.0f / 120.0f))));
         const float substep = dt / static_cast<float>(substepCount);
         for (int step = 0; step < substepCount; ++step) {
-            const Vector3 springDelta = targetPosition - goalCrownSpringPosition_;
-            const Vector3 acceleration = springDelta * (physics.positionStiffness + motionEnergy * 8.0f) -
+            const engine::Vector3 springDelta = targetPosition - goalCrownSpringPosition_;
+            const engine::Vector3 acceleration = springDelta * (physics.positionStiffness + motionEnergy * 8.0f) -
                                          goalCrownSpringVelocity_ * physics.positionDamping;
             goalCrownSpringVelocity_ = goalCrownSpringVelocity_ + acceleration * substep;
             goalCrownSpringPosition_ = goalCrownSpringPosition_ + goalCrownSpringVelocity_ * substep;
         }
 
         // バネが跳ね過ぎても頭から大きく外れないよう、水平と上下の偏差を別々に制限する。
-        Vector3 crownOffset = goalCrownSpringPosition_ - targetPosition;
+        engine::Vector3 crownOffset = goalCrownSpringPosition_ - targetPosition;
         const float maxPlanarOffset = physics.maxPlanarOffset + motionEnergy * 0.05f;
         const float planarLength = std::sqrt(crownOffset.x * crownOffset.x + crownOffset.z * crownOffset.z);
         if (planarLength > maxPlanarOffset && planarLength > 0.0001f) {
@@ -931,11 +970,11 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         goalCrownSpringPosition_ = crownPosition;
 
         // 王冠の位置ずれと速度から前後・左右の傾きを求め、プレイヤー本体の傾きも加える。
-        const float forwardOffset = Math::Dot(crownOffset, goalMoveForward_);
-        const float rightOffset = Math::Dot(crownOffset, goalMoveRight_);
-        const float forwardSpeed = Math::Dot(goalCrownSpringVelocity_, goalMoveForward_);
-        const float rightSpeed = Math::Dot(goalCrownSpringVelocity_, goalMoveRight_);
-        Vector3 targetRotation = goalCrownBaseRotation_;
+        const float forwardOffset = engine::Math::Dot(crownOffset, goalMoveForward_);
+        const float rightOffset = engine::Math::Dot(crownOffset, goalMoveRight_);
+        const float forwardSpeed = engine::Math::Dot(goalCrownSpringVelocity_, goalMoveForward_);
+        const float rightSpeed = engine::Math::Dot(goalCrownSpringVelocity_, goalMoveRight_);
+        engine::Vector3 targetRotation = goalCrownBaseRotation_;
         targetRotation.x += (playerRotation.x - goalPlayerBaseRotation_.x) * physics.bodyTiltFollow -
                             forwardOffset * physics.tiltFromOffset - forwardSpeed * physics.tiltFromVelocity;
         targetRotation.z += (playerRotation.z - goalPlayerBaseRotation_.z) * physics.bodyTiltFollow +
@@ -949,9 +988,9 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
 
         // Yaw差を最短角へ畳んでから回転バネを積分する。
         for (int step = 0; step < substepCount; ++step) {
-            Vector3 rotationDelta = targetRotation - goalCrownSpringRotation_;
+            engine::Vector3 rotationDelta = targetRotation - goalCrownSpringRotation_;
             rotationDelta.y = NormalizeYaw(rotationDelta.y);
-            const Vector3 acceleration =
+            const engine::Vector3 acceleration =
                 rotationDelta * physics.angularStiffness - goalCrownSpringRotationVelocity_ * physics.angularDamping;
             goalCrownSpringRotationVelocity_ = goalCrownSpringRotationVelocity_ + acceleration * substep;
             goalCrownSpringRotation_ = goalCrownSpringRotation_ + goalCrownSpringRotationVelocity_ * substep;
@@ -992,7 +1031,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
     }
 
     if (!goalResultCuePlayed_ && t >= animation.apexTime) {
-        Vector3 resultPosition = goalPlayerPosePosition_;
+        engine::Vector3 resultPosition = goalPlayerPosePosition_;
         resultPosition.y += std::max(1.25f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.50f);
         VFXSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue",
                                   resultPosition);
@@ -1013,33 +1052,33 @@ void GamePlayScene::SetupGoalPresentationCamera() {
     const GoalPresentationTuning& camera = goalPresentationTuning_;
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     goalCameraGameplayEye_ =
-        sourceCamera ? sourceCamera->GetEye() : goalPlayerBasePosition_ + Vector3{0.0f, 3.0f, 8.0f};
+        sourceCamera ? sourceCamera->GetEye() : goalPlayerBasePosition_ + engine::Vector3{0.0f, 3.0f, 8.0f};
     goalCameraGameplayTarget_ =
-        sourceCamera ? sourceCamera->GetTargetPoint() : goalPlayerBasePosition_ + Vector3{0.0f, 1.0f, 0.0f};
+        sourceCamera ? sourceCamera->GetTargetPoint() : goalPlayerBasePosition_ + engine::Vector3{0.0f, 1.0f, 0.0f};
     goalCameraGameplayFov_ = sourceCamera ? sourceCamera->GetFovY() : camera.landingFov;
 
-    goalCameraFocusTarget_ = goalCrownPosition_ + Vector3{0.0f, 0.18f, 0.0f};
+    goalCameraFocusTarget_ = goalCrownPosition_ + engine::Vector3{0.0f, 0.18f, 0.0f};
     goalCameraFocusEye_ = goalCameraFocusTarget_ + goalMoveForward_ * camera.crownFocusDistance +
-                          goalMoveRight_ * camera.crownFocusSide + Vector3{0.0f, camera.crownFocusHeight, 0.0f};
+                          goalMoveRight_ * camera.crownFocusSide + engine::Vector3{0.0f, camera.crownFocusHeight, 0.0f};
 
-    const Vector3 landingPlayerTarget =
-        goalPlayerBasePosition_ + Vector3{0.0f, std::max(1.15f, goalPlayerBaseScale_.y * 0.62f), 0.0f};
+    const engine::Vector3 landingPlayerTarget =
+        goalPlayerBasePosition_ + engine::Vector3{0.0f, std::max(1.15f, goalPlayerBaseScale_.y * 0.62f), 0.0f};
     goalCameraLandingTarget_ = landingPlayerTarget;
     goalCameraLandingEye_ = landingPlayerTarget + goalMoveForward_ * camera.landingCameraDistance +
-                            goalMoveRight_ * camera.landingCameraSide + Vector3{0.0f, camera.landingCameraHeight, 0.0f};
+                            goalMoveRight_ * camera.landingCameraSide + engine::Vector3{0.0f, camera.landingCameraHeight, 0.0f};
 
     const float anticipationScaleY = goalPlayerBaseScale_.y * (1.0f - animation.anticipationSquash * 0.92f);
     goalCameraJumpTarget_ =
         goalPlayerBasePosition_ +
-        Vector3{0.0f, -animation.anticipationDepth + std::max(0.82f, anticipationScaleY * 0.46f), 0.0f};
+        engine::Vector3{0.0f, -animation.anticipationDepth + std::max(0.82f, anticipationScaleY * 0.46f), 0.0f};
     goalCameraJumpEye_ = goalCameraJumpTarget_ + goalMoveForward_ * camera.jumpCameraDistance +
-                         goalMoveRight_ * camera.jumpCameraSide + Vector3{0.0f, camera.jumpCameraHeight, 0.0f};
+                         goalMoveRight_ * camera.jumpCameraSide + engine::Vector3{0.0f, camera.jumpCameraHeight, 0.0f};
 
-    const Vector3 finalPosePosition = goalPlayerBasePosition_ + goalMoveForward_ * animation.forwardDistance;
+    const engine::Vector3 finalPosePosition = goalPlayerBasePosition_ + goalMoveForward_ * animation.forwardDistance;
     goalCameraResultTarget_ = finalPosePosition + goalMoveRight_ * camera.resultTargetSide +
-                              Vector3{0.0f, std::max(0.72f, goalPlayerBaseScale_.y * 0.46f), 0.0f};
+                              engine::Vector3{0.0f, std::max(0.72f, goalPlayerBaseScale_.y * 0.46f), 0.0f};
     goalCameraResultEye_ = goalCameraResultTarget_ + goalMoveForward_ * camera.resultCameraDistance +
-                           goalMoveRight_ * camera.resultCameraSide + Vector3{0.0f, camera.resultCameraHeight, 0.0f};
+                           goalMoveRight_ * camera.resultCameraSide + engine::Vector3{0.0f, camera.resultCameraHeight, 0.0f};
 
     goalPresentationCamera_ = std::make_unique<Camera>();
     goalPresentationCamera_->Initialize();
@@ -1072,13 +1111,13 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
     const float t = goalPresentationTimer_;
     const GoalPresentationTuning& camera = goalPresentationTuning_;
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
-    Vector3 eye = goalCameraGameplayEye_;
-    Vector3 target = goalCameraGameplayTarget_;
+    engine::Vector3 eye = goalCameraGameplayEye_;
+    engine::Vector3 target = goalCameraGameplayTarget_;
     float fov = goalCameraGameplayFov_;
 
-    Vector3 movingCrownTarget = goalCrownPosition_ + Vector3{0.0f, 0.18f, 0.0f};
-    Vector3 movingCrownEye = movingCrownTarget + goalMoveForward_ * camera.crownFocusDistance +
-                             goalMoveRight_ * camera.crownFocusSide + Vector3{0.0f, camera.crownFocusHeight, 0.0f};
+    engine::Vector3 movingCrownTarget = goalCrownPosition_ + engine::Vector3{0.0f, 0.18f, 0.0f};
+    engine::Vector3 movingCrownEye = movingCrownTarget + goalMoveForward_ * camera.crownFocusDistance +
+                             goalMoveRight_ * camera.crownFocusSide + engine::Vector3{0.0f, camera.crownFocusHeight, 0.0f};
 
     if (t < camera.crownFocusEndTime) {
         const float p =
@@ -1092,7 +1131,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         const float moveRate =
             AnimationInterpolation::SegmentRate(t, camera.crownMoveStartTime, animation.crownLandTime);
         const float orbit = std::sin(moveRate * kPi);
-        movingCrownEye = movingCrownEye + goalMoveRight_ * (orbit * 0.35f) + Vector3{0.0f, orbit * 0.12f, 0.0f};
+        movingCrownEye = movingCrownEye + goalMoveRight_ * (orbit * 0.35f) + engine::Vector3{0.0f, orbit * 0.12f, 0.0f};
         const float handoffRaw = std::clamp((moveRate - 0.52f) / 0.48f, 0.0f, 1.0f);
         const float handoff =
             AnimationInterpolation::ApplyEasing(handoffRaw, AnimationInterpolation::EasingType::SmootherStep);
@@ -1107,14 +1146,14 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         target = AnimationInterpolation::Lerp(goalCameraLandingTarget_, goalCameraJumpTarget_, p);
         fov = AnimationInterpolation::Lerp(camera.landingFov, camera.jumpFov, p);
     } else if (t < animation.victoryLandTime) {
-        Vector3 jumpTarget = goalPlayerPosePosition_ +
-                             Vector3{0.0f, std::max(0.82f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.46f), 0.0f};
+        engine::Vector3 jumpTarget = goalPlayerPosePosition_ +
+                             engine::Vector3{0.0f, std::max(0.82f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.46f), 0.0f};
         const float airborneRate =
             AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.victoryLandTime);
         const float cameraArc = std::sin(airborneRate * kPi);
-        Vector3 jumpEye = jumpTarget + goalMoveForward_ * camera.jumpCameraDistance +
+        engine::Vector3 jumpEye = jumpTarget + goalMoveForward_ * camera.jumpCameraDistance +
                           goalMoveRight_ * (camera.jumpCameraSide + cameraArc * 0.55f) +
-                          Vector3{0.0f, camera.jumpCameraHeight + cameraArc * 0.30f, 0.0f};
+                          engine::Vector3{0.0f, camera.jumpCameraHeight + cameraArc * 0.30f, 0.0f};
 
         float settle = 0.0f;
         if (t >= animation.apexTime) {
@@ -1133,7 +1172,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
     }
 
     presentationCamera->SetFovY(fov);
-    const Vector3 rotation = MakeLookAtEuler(eye, target);
+    const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
     presentationCamera->SetEye(eye);
     presentationCamera->SetTarget(target);
     presentationCamera->SetRotation(rotation);
@@ -1198,7 +1237,7 @@ void GamePlayScene::UpdatePostEffectState(float deltaTime) {
 
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
     if (activeCamera) {
-        PostEffect::GetInstance()->GetParams()->projectionInverse = Math::Inverse(activeCamera->GetProjectionMatrix());
+        PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
     }
 }
 
@@ -1219,7 +1258,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
-            Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
+            engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }
@@ -1227,7 +1266,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     }
 }
 
-void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float deltaTime) {
+void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3d* target, float deltaTime) {
     isDrawLockOn_ = false;
     if (lockOnSprite_)
         lockOnSprite_->SetVisible(false);
@@ -1244,13 +1283,13 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float d
         return;
 
     const AABB aabb = target->GetAABB();
-    Vector3 targetCenter;
+    engine::Vector3 targetCenter;
     targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
     targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
     targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
 
-    Math math;
-    const Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    engine::Math math;
+    const engine::Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
     const float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] +
                     targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
@@ -1259,7 +1298,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float d
         return;
     }
 
-    Vector3 ndc;
+    engine::Vector3 ndc;
     ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] +
              viewProj.m[3][0]) /
             w;
@@ -1333,36 +1372,36 @@ void GamePlayScene::UpdateEffectDebugShortcuts() {
 #endif
 
     if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
-        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
+        engine::Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         particleSystem_->SpawnStarHitEffect(effectPos);
         particleSystem_->SpawnSlashEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_RETURN)) {
-        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
+        engine::Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         particleSystem_->SpawnStarHitEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_E)) {
-        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
+        engine::Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         particleSystem_->SpawnSlashEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_R)) {
-        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
+        engine::Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         MeshEffectManager::GetInstance()->SpawnRingWaveEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_T)) {
-        Vector3 effectPos = {0.0f, 1.5f, 0.0f};
+        engine::Vector3 effectPos = {0.0f, 1.5f, 0.0f};
         MeshEffectManager::GetInstance()->SpawnPortalEffect(effectPos, 5.0f);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_Y)) {
-        Vector3 spawnPos = {0.0f, 0.01f, 10.0f};
+        engine::Vector3 spawnPos = {0.0f, 0.01f, 10.0f};
         if (player_) {
-            Vector3 playerPos = player_->GetWorldPosition();
-            Vector3 forward = player_->GetForwardDirection();
+            engine::Vector3 playerPos = player_->GetWorldPosition();
+            engine::Vector3 forward = player_->GetForwardDirection();
             spawnPos = {playerPos.x + forward.x * 3.0f, playerPos.y, playerPos.z + forward.z * 3.0f};
         }
 

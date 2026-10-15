@@ -8,7 +8,7 @@
 
 // 前方宣言
 class BaseScene;
-class Object3d;
+namespace engine { class Object3d; }
 
 // JSON に保存されたステージ配置データを、シーン上のオブジェクトへ復元するローダー
 class LevelLoader {
@@ -33,10 +33,12 @@ class LevelLoader {
     /// </summary>
     void LoadSpriteLayout(BaseScene* scene, const std::string& filename);
 
-    // Replay から敵を再生成した後、Player 参照と派生敵の Spawn callback を接続し直す。
+    /// <summary>Replay復元後の敵へ、Player参照と派生敵の生成Callbackを接続し直す。</summary>
     static void ConfigureEnemyRuntimeReferences(BaseScene* scene);
 
   private:
+    /// <summary>現在の配置JSONから残り件数内のObjectを生成する。</summary>
+    /// <returns>ファイルの読み取りとObject生成を続行できた場合はtrue。</returns>
     bool LoadSingleJson(BaseScene* scene, const std::string& filename, size_t& remainingObjects);
 
   private:
@@ -47,7 +49,7 @@ class LevelLoader {
     };
 
     // 子オブジェクト読み込み後に親子関係を解決するための待機リスト。
-    std::map<Object3d*, PendingParentReference> parentPendingList_;
+    std::map<engine::Object3d*, PendingParentReference> parentPendingList_;
     std::vector<std::string> pendingObjectFiles_;
     size_t pendingFileIndex_ = 0;
     size_t pendingObjectIndex_ = 0;

@@ -9,7 +9,7 @@
 
 class DebugEditor;
 class DirectXCommon;
-class Object3d;
+namespace engine { class Object3d; }
 class Object3dCommon;
 
 /// <summary>
@@ -28,11 +28,18 @@ struct ThumbnailData {
     float portraitPitch = -0.2f;
     float portraitScale = 1.0f;
     float portraitOffsetY = 0.0f;
-    std::shared_ptr<Object3d> previewObject;
+    float previewYaw = 0.0f;
+    float previewPitch = 0.0f;
+    float previewZoom = 1.0f;
+    engine::Vector3 previewCenter{};
+    engine::Vector3 previewExtent{};
+    bool previewHasBounds = false;
+    bool contentDirty = true;
+    std::shared_ptr<engine::Object3d> previewObject;
     // セットの各ノードを所有し、親子関係と元の相対サイズを保持します。
-    std::vector<std::shared_ptr<Object3d>> previewObjects;
+    std::vector<std::shared_ptr<engine::Object3d>> previewObjects;
     // 再撮影直前のGPU参照が残り得るため、旧プレビューはGPUの処理完了まで保持します。
-    std::vector<std::shared_ptr<Object3d>> retiredPreviewObjects;
+    std::vector<std::shared_ptr<engine::Object3d>> retiredPreviewObjects;
     uint64_t retiredPreviewFence = 0;
 };
 
@@ -69,6 +76,8 @@ public:
     void ExportCapturedHudPortraits();
 
     uint64_t GetPresetThumbnailGpuPtr(const std::string& presetName);
+    /// 選択中プリセットの視点だけを変えて再撮影する。配置Transformは変更しない。
+    uint64_t GetPresetPreviewGpuPtr(const std::string& presetName, float yaw, float pitch, float zoom);
     // エフェクトJSONを独立した描画Objectで撮影します。ゲームのSceneへは登録しません。
     uint64_t GetEffectThumbnailGpuPtr(const std::string& path) { return GetPresetThumbnailGpuPtr("@effect:" + path); }
     void InvalidatePresetThumbnail(const std::string& presetName);
@@ -94,6 +103,9 @@ private:
     // モデル/プリセット名からサムネイル情報を引くキャッシュ。
     std::map<std::string, ThumbnailData> thumbnailAlbum_;
     std::map<std::string, ThumbnailData> presetThumbnailAlbum_;
+    // 削除対象は確認ダイアログが閉じるまで保持し、一覧の描画中には消さない。
+    std::string pendingDeletePresetName_;
+    /// <summary>PBRプリセットの画像パスと、描画完了まで必要なサムネイル情報を保持する。</summary>
     struct PbrThumbnailData {
         ThumbnailData thumbnail;
         std::string albedoPath;

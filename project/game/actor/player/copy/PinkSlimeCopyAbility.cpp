@@ -107,7 +107,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         if (state_ == State::Idle && storedBouncePower_ > 0.0f && storedPowerEffectTimer_ <= 0.0f) {
             const float effectScale = 0.56f + storedBouncePower_ * 0.34f;
             SpawnEffect("Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
-                        player.GetWorldPosition() + Vector3{0.0f, 0.62f, 0.0f}, {},
+                        player.GetWorldPosition() + engine::Vector3{0.0f, 0.62f, 0.0f}, {},
                         {effectScale, effectScale, effectScale});
             storedPowerEffectTimer_ = 0.32f;
         }
@@ -136,7 +136,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             if (effectTimer_ <= 0.0f) {
                 const float pulseScale = 0.72f + activeBouncePower_ * 0.28f;
                 SpawnEffect("Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
-                            player.GetWorldPosition() + Vector3{0.0f, 0.12f, 0.0f}, {},
+                            player.GetWorldPosition() + engine::Vector3{0.0f, 0.12f, 0.0f}, {},
                             {pulseScale, pulseScale, pulseScale});
                 effectTimer_ = 0.065f;
             }
@@ -148,7 +148,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
 
         if (state_ == State::BounceRise) {
             timer_ = std::max(0.0f, timer_ - deltaTime);
-            Vector3 velocity = player.GetVelocity();
+            engine::Vector3 velocity = player.GetVelocity();
             const float riseForwardSpeed = 6.2f + activeBouncePower_ * 1.4f;
             velocity.x = direction_.x * riseForwardSpeed;
             velocity.z = direction_.z * riseForwardSpeed;
@@ -167,7 +167,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             timer_ = std::max(0.0f, timer_ - deltaTime);
             const float rushProgress = 1.0f - timer_ / std::max(duration_, 0.001f);
             const float rushSpeed = (34.0f + activeBouncePower_ * 6.0f) * (1.0f - SmoothStep(rushProgress) * 0.24f);
-            Vector3 velocity = player.GetVelocity();
+            engine::Vector3 velocity = player.GetVelocity();
             velocity.x = direction_.x * rushSpeed;
             velocity.z = direction_.z * rushSpeed;
             const float rushGravity = 68.0f + activeBouncePower_ * 12.0f;
@@ -180,12 +180,12 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             DamageRush(player);
 
             if (effectTimer_ <= 0.0f) {
-                const Vector3 trailPosition =
-                    player.GetWorldPosition() - direction_ * 0.62f + Vector3{0.0f, 0.52f, 0.0f};
+                const engine::Vector3 trailPosition =
+                    player.GetWorldPosition() - direction_ * 0.62f + engine::Vector3{0.0f, 0.52f, 0.0f};
                 SpawnEffect("Resources/json/effect/effect_player_pink_straight_arc.json", trailPosition,
                             {0.0f, std::atan2(direction_.x, direction_.z), 0.0f}, {0.88f, 0.78f, 1.12f});
                 EmitDirectedPreset("player_pink_bounce_droplets", trailPosition,
-                                   direction_ * -1.0f + Vector3{0.0f, 0.16f, 0.0f}, 0.82f);
+                                   direction_ * -1.0f + engine::Vector3{0.0f, 0.16f, 0.0f}, 0.82f);
                 effectTimer_ = 0.055f;
             }
 
@@ -215,7 +215,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const float elapsed = duration_ - timer_;
         // 攻撃中は移動を止めたまま、方向入力だけを受け付ける。
         // 見た目・踏み込み・エフェクト・攻撃判定が別方向にならないよう、共通の方向を更新する。
-        const Vector3 moveInput = player.GetMoveInputDirection();
+        const engine::Vector3 moveInput = player.GetMoveInputDirection();
         if (moveInput.x * moveInput.x + moveInput.z * moveInput.z > 0.001f) {
             const float currentYaw = std::atan2(direction_.x, direction_.z);
             const float targetYaw = std::atan2(moveInput.x, moveInput.z);
@@ -227,7 +227,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         // 位置の直接書き換えはせず、通常の移動・壁衝突を通す短い踏み込み。
         const float stepOverlap = std::max(0.0f, std::min(elapsed, 0.34f) - std::max(previousElapsed, 0.18f));
         const float stepSpeed = (comboStage_ == 2 ? 0.0f : 8.0f) * stepOverlap / std::max(deltaTime, 0.0001f);
-        Vector3 velocity = player.GetVelocity();
+        engine::Vector3 velocity = player.GetVelocity();
         velocity.x = direction_.x * stepSpeed;
         velocity.z = direction_.z * stepSpeed;
         if (player.IsGrounded() && velocity.y < 0.0f)
@@ -239,14 +239,14 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         if (!strikeDidDamage_ && elapsed >= hitStart && player.IsGrounded()) {
             strikeDidDamage_ = true;
             // 空振りでは振り抜きの軌跡のみ。命中の閃光は実際のダメージ処理に任せます。
-            const Vector3 origin =
-                player.GetWorldPosition() + direction_ * 0.55f + Vector3{0.0f, comboStage_ == 2 ? 0.08f : 0.65f, 0.0f};
+            const engine::Vector3 origin =
+                player.GetWorldPosition() + direction_ * 0.55f + engine::Vector3{0.0f, comboStage_ == 2 ? 0.08f : 0.65f, 0.0f};
             const float effectYaw = std::atan2(direction_.x, direction_.z);
             if (comboStage_ == 2) {
                 // 閉じた輪ではなく、打点から地面を叩き散らす短い立体の衝撃線。
                 for (int i = 0; i < 7; ++i) {
                     const float yaw = effectYaw + (static_cast<float>(i) - 3.0f) * 0.48f;
-                    const Vector3 offset{std::sin(yaw) * 0.30f, 0.05f, std::cos(yaw) * 0.30f};
+                    const engine::Vector3 offset{std::sin(yaw) * 0.30f, 0.05f, std::cos(yaw) * 0.30f};
                     SpawnEffect("Resources/json/effect/effect_player_pink_combo_press.json", origin + offset,
                                 {-0.20f - 0.08f * static_cast<float>(i % 2), yaw, 0.0f});
                 }
@@ -267,19 +267,19 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         }
         if (elapsed >= hitStart && previousElapsed <= hitEnd && player.IsGrounded()) {
             // 有効時間中の前方薙ぎ払い。同じ敵には1振りにつき1回だけ命中します。
-            const Vector3 scale = player.GetScale();
+            const engine::Vector3 scale = player.GetScale();
             const float bodySize = std::max(0.1f, std::max(std::abs(scale.x), std::abs(scale.z)));
-            const Vector3 center = player.GetWorldPosition() + direction_ * (bodySize * 0.70f) +
-                                   Vector3{0.0f, std::abs(scale.y) * 0.34f, 0.0f};
+            const engine::Vector3 center = player.GetWorldPosition() + direction_ * (bodySize * 0.70f) +
+                                   engine::Vector3{0.0f, std::abs(scale.y) * 0.34f, 0.0f};
             PhysicsQueryFilter filter;
             filter.mask = CollisionCategories::Get("enemy");
             filter.ignoredObject = &player;
             for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
                      center, bodySize * (comboStage_ == 2 ? 1.05f : 0.78f), filter)) {
-                Object3d* target = FindEnemyRoot(hit.object);
+                engine::Object3d* target = FindEnemyRoot(hit.object);
                 if (!target || !hitTargets_.insert(target).second)
                     continue;
-                const Vector3 push = NormalizePlanar(target->GetWorldPosition() - player.GetWorldPosition());
+                const engine::Vector3 push = NormalizePlanar(target->GetWorldPosition() - player.GetWorldPosition());
                 DamageEnemy(player, target, rushDamage_, DamageType::Physical,
                             {push.x * (comboStage_ == 2 ? 10.0f : 4.0f), comboStage_ == 2 ? 5.0f : 1.0f,
                              push.z * (comboStage_ == 2 ? 10.0f : 4.0f)});
@@ -320,7 +320,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         return state_ == State::BounceRush;
     }
 
-    bool NotifyGuardedHit(Player& player, const Vector3& sourcePosition) override {
+    bool NotifyGuardedHit(Player& player, const engine::Vector3& sourcePosition) override {
         // 同じ接触の連続通知で反撃エフェクトと蓄積値が重複しないよう間隔を置く。
         if (state_ != State::Guard || guardImpactCooldown_ > 0.0f) {
             return false;
@@ -334,8 +334,8 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.PlaySlimeAbilityMotion("player_ability_pink_guard_hit", false, 1.0f, 0.015f, 0.045f);
         const AABB bounds = player.GetAABB();
         const float radius = std::max(0.35f, (bounds.max.x - bounds.min.x) * 0.5f);
-        const Vector3 contact = player.GetWorldPosition() + direction_ * radius +
-                                Vector3{0.0f, (bounds.max.y - bounds.min.y) * 0.32f, 0.0f};
+        const engine::Vector3 contact = player.GetWorldPosition() + direction_ * radius +
+                                engine::Vector3{0.0f, (bounds.max.y - bounds.min.y) * 0.32f, 0.0f};
         const float yaw = std::atan2(direction_.x, direction_.z);
         for (int i = -1; i <= 1; ++i) {
             SpawnEffect("Resources/json/effect/effect_player_pink_guard_impact.json", contact,
@@ -361,9 +361,9 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const float radius = std::max(0.35f, std::max(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z) * 0.5f);
         const float height = bounds.max.y - bounds.min.y;
         const float yaw = std::atan2(direction_.x, direction_.z);
-        const Vector3 position{(bounds.min.x + bounds.max.x) * 0.5f, bounds.min.y + height * 0.34f,
+        const engine::Vector3 position{(bounds.min.x + bounds.max.x) * 0.5f, bounds.min.y + height * 0.34f,
                                (bounds.min.z + bounds.max.z) * 0.5f};
-        const Vector3 size{radius * 1.62f, std::max(height * 0.64f, radius), radius * 1.62f};
+        const engine::Vector3 size{radius * 1.62f, std::max(height * 0.64f, radius), radius * 1.62f};
         SpawnScopedEffect(guardScope_, "Resources/json/effect/effect_player_pink_guard_barrier.json", position, {},
                           size);
         SpawnScopedEffect(guardScope_, "Resources/json/effect/effect_player_pink_guard_barrier_rim.json", position,
@@ -440,9 +440,9 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.TriggerSlimeImpulse({0.72f, 1.70f, 0.72f}, 0.16f);
         SpawnEffect(
             "Resources/json/effect/effect_player_pink_bounce_launch.json",
-            player.GetWorldPosition() + Vector3{0.0f, 0.08f, 0.0f}, {},
+            player.GetWorldPosition() + engine::Vector3{0.0f, 0.08f, 0.0f}, {},
             {1.0f + activeBouncePower_ * 0.24f, 1.0f + activeBouncePower_ * 0.24f, 1.0f + activeBouncePower_ * 0.24f});
-        EmitDirectedPreset("player_pink_bounce_droplets", player.GetWorldPosition() + Vector3{0.0f, 0.15f, 0.0f},
+        EmitDirectedPreset("player_pink_bounce_droplets", player.GetWorldPosition() + engine::Vector3{0.0f, 0.15f, 0.0f},
                            {0.0f, -1.0f, 0.0f}, 0.78f + activeBouncePower_ * 0.28f);
     }
 
@@ -454,7 +454,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         effectTimer_ = 0.0f;
         rushDamage_ = 16.0f + activeBouncePower_ * 5.0f;
         hitTargets_.clear();
-        Vector3 velocity = player.GetVelocity();
+        engine::Vector3 velocity = player.GetVelocity();
         const float launchSpeed = 34.0f + activeBouncePower_ * 6.0f;
         velocity.x = direction_.x * launchSpeed;
         velocity.z = direction_.z * launchSpeed;
@@ -468,16 +468,16 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.PlaySlimeAbilityMotion("player_ability_pink_rush", false, 0.78f / duration_, 0.02f, 0.05f);
         player.TriggerSlimeImpulse({1.56f, 1.04f, 1.56f}, 0.12f);
         SpawnEffect("Resources/json/effect/effect_pink_slime_apex_focus_flash.json",
-                    player.GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f}, {}, {0.82f, 0.82f, 0.82f});
+                    player.GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f}, {}, {0.82f, 0.82f, 0.82f});
     }
 
     void FinishBounceRush(Player& player) {
         // 地面に届いた場合だけ着地演出を出し、短い硬直を経て操作を返す。
-        const Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(player.GetWorldPosition());
+        const engine::Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(player.GetWorldPosition());
         if (player.IsGrounded()) {
             SpawnDebrisOnGround("pink_slime_landing_pebble_burst", groundPosition);
             SpawnEffect("Resources/json/effect/effect_player_pink_straight_impact.json",
-                        groundPosition + Vector3{0.0f, 0.10f, 0.0f}, {}, {0.72f, 0.72f, 0.72f});
+                        groundPosition + engine::Vector3{0.0f, 0.10f, 0.0f}, {}, {0.72f, 0.72f, 0.72f});
             player.TriggerSlimeImpulse({2.36f, 0.42f, 2.36f}, 0.12f);
         }
         state_ = State::BounceRecovery;
@@ -489,16 +489,16 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
-        const Vector3 center = player.GetWorldPosition() + Vector3{0.0f, 0.68f, 0.0f};
+        const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.68f, 0.0f};
         for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.35f, filter)) {
-            Object3d* target = FindEnemyRoot(hit.object);
+            engine::Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !hitTargets_.insert(target).second) {
                 continue;
             }
             DamageEnemy(player, target, rushDamage_, DamageType::Physical,
                         {direction_.x * 12.0f, 5.5f, direction_.z * 12.0f});
             SpawnEffect("Resources/json/effect/effect_player_pink_straight_impact.json",
-                        target->GetWorldPosition() + Vector3{0.0f, 0.55f, 0.0f});
+                        target->GetWorldPosition() + engine::Vector3{0.0f, 0.55f, 0.0f});
         }
     }
 
@@ -516,7 +516,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
         player.StopSlimeAbilityMotion(0.06f);
         player.SetIsControlActive(true);
-        Vector3 velocity = player.GetVelocity();
+        engine::Vector3 velocity = player.GetVelocity();
         velocity.x *= 0.30f;
         velocity.z *= 0.30f;
         player.SetVelocity(velocity);
@@ -531,8 +531,8 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
 
     State state_ = State::Idle;
     MeshEffectManager::EffectScopeId guardScope_ = 0;
-    Vector3 direction_{0.0f, 0.0f, 1.0f};
-    std::unordered_set<Object3d*> hitTargets_;
+    engine::Vector3 direction_{0.0f, 0.0f, 1.0f};
+    std::unordered_set<engine::Object3d*> hitTargets_;
     float timer_ = 0.0f;
     float duration_ = 0.0f;
     float startSpeed_ = 0.0f;

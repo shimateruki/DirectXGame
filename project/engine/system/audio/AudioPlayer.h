@@ -27,18 +27,6 @@
 #pragma comment(lib, "mfuuid.lib")
 #pragma comment(lib, "uuid.lib")
 
-/// <summary>旧形式の WAV 一括読み込みで使用する音声データです。</summary>
-struct SoundData { WAVEFORMATEX wfex; BYTE* pBuffer; unsigned int bufferSize; };
-
-/// <summary>WAVの基本チャンク識別子とサイズ。</summary>
-struct ChunkHeader { char id[4]; int32_t size; };
-
-/// <summary>WAVのRIFFヘッダー。</summary>
-struct RiffHeader { ChunkHeader chunk; char type[4]; };
-
-/// <summary>WAVの音声フォーマットチャンク。</summary>
-struct FormatChunk { ChunkHeader chunk; WAVEFORMATEX format; };
-
 /// <summary>XAudio2 のバッファ再生完了をデコードスレッドへ通知します。</summary>
 class AudioVoiceCallback : public IXAudio2VoiceCallback {
 public:
@@ -97,16 +85,6 @@ public:
 
 	/// <summary>再生を停止し、音声関連リソースを解放します。</summary>
 	void Finalize();
-
-	// 旧形式の WAV 一括読み込み API です。
-	/// <summary>WAV ファイルをメモリへ読み込みます。</summary>
-	SoundData SoundLoadWave(const char* filename);
-
-	/// <summary>一括読み込みした WAV バッファを解放します。</summary>
-	void SoundUnload(SoundData* soundData);
-
-	/// <summary>一括読み込みした WAV データを再生します。</summary>
-	void SoundPlayWave(const SoundData& soundData, bool loop = false);
 
 	/// <summary>ファイルをロードし、以後の再生に使うハンドルを返します。</summary>
 	/// <returns>成功時は音声ハンドル、失敗時は kInvalidAudioHandle。</returns>
@@ -189,8 +167,6 @@ private:
 	Microsoft::WRL::ComPtr<IXAudio2> xAudio2_;
 	IXAudio2MasteringVoice* masteringVoice_ = nullptr;
 
-	std::map<std::string, SoundData> legacySoundDatas_;
-
 	// ファイル単位のハンドルと、同時再生できる一時的なインスタンスを分けて保持します。
 	std::map<AudioHandle, std::unique_ptr<SoundDataStreaming>> streamingSoundDatas_;
 	std::map<std::string, AudioHandle> audioHandleMap_; // ファイルパスからハンドルを引くためのマップ
@@ -241,13 +217,13 @@ public:
 	/// <summary>イベント定義から SE を選び、必要なら距離減衰を適用して再生します。</summary>
     AudioPlayer::PlaybackHandle Play(
         const std::string& eventPath,
-        const Vector3* worldPosition = nullptr,
+        const engine::Vector3* worldPosition = nullptr,
         float volumeScale = 1.0f);
 
 	/// <summary>イベント名または音声パスから再生対象を解決して再生します。</summary>
     AudioPlayer::PlaybackHandle PlayReference(
         const std::string& reference,
-        const Vector3* worldPosition = nullptr,
+        const engine::Vector3* worldPosition = nullptr,
         float volumeScale = 1.0f);
 
 	/// <summary>終了した音声イベントのインスタンスを回収します。</summary>

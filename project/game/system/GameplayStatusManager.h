@@ -18,7 +18,7 @@ class GameplayStatusManager {
         float maxFallSpeed = 60.0f;
         float jumpPower = 10.0f;
         float detectionRange = 20.0f;
-        Vector3 scale = {1.0f, 1.0f, 1.0f};
+        engine::Vector3 scale = {1.0f, 1.0f, 1.0f};
         std::string modelName;
         bool morphLimited = true;
         float morphDuration = 5.0f;
@@ -30,6 +30,7 @@ class GameplayStatusManager {
         float motorSkinWidth = 0.025f;
     };
 
+    // 共有設定マネージャーのインスタンスを返す。
     static GameplayStatusManager* GetInstance();
     ~GameplayStatusManager();
 
@@ -55,11 +56,11 @@ class GameplayStatusManager {
     bool SaveIfDirty();
 
     /// resetCurrentHpがtrueなら出現時として全回復し、falseなら現在HP率を維持します。
-    bool ApplyPlayerStatus(Object3d* object, bool resetCurrentHp) const;
-    bool ApplyEnemyStatus(Object3d* object, bool resetCurrentHp) const;
-    bool ApplyManagedStatus(Object3d* object, bool resetCurrentHp) const;
+    bool ApplyPlayerStatus(engine::Object3d* object, bool resetCurrentHp) const;
+    bool ApplyEnemyStatus(engine::Object3d* object, bool resetCurrentHp) const;
+    bool ApplyManagedStatus(engine::Object3d* object, bool resetCurrentHp) const;
 
-    static bool IsManagedCharacter(const Object3d* object);
+    static bool IsManagedCharacter(const engine::Object3d* object);
     static const char* GetSettingsPath();
 
   private:
@@ -67,9 +68,11 @@ class GameplayStatusManager {
     GameplayStatusManager(const GameplayStatusManager&) = delete;
     GameplayStatusManager& operator=(const GameplayStatusManager&) = delete;
 
+    // 指定した設定JSONを読み込み、現在の調整値へ反映する。
     bool LoadFromFile(const std::string& path);
+    // 読み込んだ値の範囲を調整し、Objectへ基本ステータスを適用する。
     static void Normalize(CharacterStatus& status);
-    static void ApplyStatus(Object3d* object, const CharacterStatus& status, bool resetCurrentHp);
+    static void ApplyStatus(engine::Object3d* object, const CharacterStatus& status, bool resetCurrentHp);
 
   private:
     CharacterStatus playerStatus_;

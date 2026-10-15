@@ -32,9 +32,9 @@ void GimmickSeesawFloor::Update(float deltaTime) {
     }
 
     float t = 1.0f - std::exp(-tiltSpeed_ * deltaTime);
-    Vector3 rot = GetTransform()->rotate;
-    rot.x = Math::Lerp(rot.x, baseRotation_.x, t);
-    rot.z = Math::Lerp(rot.z, baseRotation_.z + targetTilt_, t);
+    engine::Vector3 rot = GetTransform()->rotate;
+    rot.x = engine::Math::Lerp(rot.x, baseRotation_.x, t);
+    rot.z = engine::Math::Lerp(rot.z, baseRotation_.z + targetTilt_, t);
     SetEulerAngles(rot);
     SetQuaternionMaster(false);
 
@@ -42,12 +42,12 @@ void GimmickSeesawFloor::Update(float deltaTime) {
 }
 
 // プレイヤーの接触位置を床のローカル左右方向へ変換して傾きを決めます。
-bool GimmickSeesawFloor::OnCollision(Object3d* other) {
+bool GimmickSeesawFloor::OnCollision(engine::Object3d* other) {
     // 上面に乗ったPlayerの位置から左右どちらへ傾けるかを決める。
     if (other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
         if (info.isColliding && info.normal.y < -0.5f) {
-            Vector3 diff = other->GetWorldPosition() - GetWorldPosition();
+            engine::Vector3 diff = other->GetWorldPosition() - GetWorldPosition();
             float yaw = GetTransform()->rotate.y;
             float localX = diff.x * std::cos(yaw) - diff.z * std::sin(yaw);
             float amount = std::clamp(localX / halfLength_, -1.0f, 1.0f);
@@ -59,7 +59,7 @@ bool GimmickSeesawFloor::OnCollision(Object3d* other) {
     return true;
 }
 
-std::unique_ptr<Object3d> GimmickSeesawFloor::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickSeesawFloor::Clone() const {
     // 揺れの途中状態は持ち越さず、配置と設定から新しい床を作る。
     auto newObj = std::make_unique<GimmickSeesawFloor>();
     assert(common_ != nullptr);

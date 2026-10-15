@@ -16,17 +16,17 @@
 // 死亡と落下復帰の演出状態をまとめています。
 
 namespace {
-Vector2 CalculatePlayerIrisCenter(Player* player) {
+engine::Vector2 CalculatePlayerIrisCenter(Player* player) {
     // プレイヤーが画面内にいる時だけ投影位置を使い、画面外なら中央から閉じる。
-    Vector2 irisCenter = {0.5f, 0.5f};
+    engine::Vector2 irisCenter = {0.5f, 0.5f};
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
     if (!player || !cam) {
         return irisCenter;
     }
 
-    Vector3 worldPos = player->GetWorldPosition();
+    engine::Vector3 worldPos = player->GetWorldPosition();
     worldPos.y += 1.0f;
-    Vector3 ndc = Math::Transform(worldPos, cam->GetViewProjectionMatrix());
+    engine::Vector3 ndc = engine::Math::Transform(worldPos, cam->GetViewProjectionMatrix());
     const bool isOnScreen = std::isfinite(ndc.x) && std::isfinite(ndc.y) && std::isfinite(ndc.z) && ndc.z >= 0.0f &&
                             std::abs(ndc.x) <= 1.15f && std::abs(ndc.y) <= 1.15f;
     if (isOnScreen) {
@@ -44,6 +44,7 @@ GamePlayScene* GetCurrentGamePlayScene() {
     return dynamic_cast<GamePlayScene*>(sceneManager->GetCurrentScene());
 }
 
+// 現在のGamePlaySceneへ残機減少前後の値を渡し、死亡演出を開始します。
 void StartLifeLostPresentationOnScene() {
     // 減少後の残機に対し、演出には減少前後の値を渡す。
     if (GamePlayScene* scene = GetCurrentGamePlayScene()) {
@@ -72,15 +73,15 @@ void PlayerStateDead::Enter(Player* player) {
     if (player) {
         player->SetDamageInvincible(false);
         deathAnimation_.Start(player, finalDeath_);
-        if (Object3d* hookMarker = player->GetHookMarker()) {
+        if (engine::Object3d* hookMarker = player->GetHookMarker()) {
             hookMarker->SetIsVisible(false);
         }
         Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
         if (cam && !(GetCurrentGamePlayScene() && GetCurrentGamePlayScene()->IsSealBarrageMovieActive())) {
             cam->SetFreezeEye(true);
             if (finalDeath_) {
-                const Vector3 focus = player->GetWorldPosition() + Vector3{0.0f, 0.58f, 0.0f};
-                Vector3 focusEye = Math::Lerp(cam->GetEye(), focus, 0.16f);
+                const engine::Vector3 focus = player->GetWorldPosition() + engine::Vector3{0.0f, 0.58f, 0.0f};
+                engine::Vector3 focusEye = engine::Math::Lerp(cam->GetEye(), focus, 0.16f);
                 focusEye.y += 0.10f;
 
                 Camera::CameraOverrideParams cameraOverride;

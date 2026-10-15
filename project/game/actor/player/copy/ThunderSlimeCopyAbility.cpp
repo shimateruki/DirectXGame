@@ -54,7 +54,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         lineTimer_ = std::max(0.0f, lineTimer_ - deltaTime);
         const float elapsed = 0.50f - lineTimer_;
         while (strikeIndex_ < 5 && elapsed >= 0.10f + static_cast<float>(strikeIndex_) * 0.075f) {
-            const Vector3 ground =
+            const engine::Vector3 ground =
                 player.GetWorldPosition() + lineDirection_ * (2.8f + 2.2f * static_cast<float>(strikeIndex_));
             SpawnStrike(player, ground);
             ++strikeIndex_;
@@ -89,10 +89,10 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         chargeTime_ = std::min(1.0f, chargeTime_ + dt);
         sparkEffectTimer_ -= dt;
         sparkDamageTimer_ -= dt;
-        const Vector3 center = player.GetWorldPosition() + Vector3{0.0f, 0.85f, 0.0f};
+        const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.85f, 0.0f};
         if (!primaryHeld_) {
             // 弾の寿命と衝突は共通BulletManagerに任せ、能力解除後も安全に完走させます。
-            const Vector3 direction = NormalizePlanar(player.GetLockOnAttackDirection());
+            const engine::Vector3 direction = NormalizePlanar(player.GetLockOnAttackDirection());
             BulletVisualConfig visual;
             visual.materialType = 18;
             visual.effectType = 2.0f;
@@ -125,14 +125,14 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
                 const float flicker = std::sin(phase * 1.7f + i * 2.3f);
                 SpawnScopedEffect(
                     sparkScope_, "Resources/json/effect/effect_player_thunder_spark_arc.json",
-                    center + Vector3{std::sin(angle) * radius, 0.10f + flicker * 0.20f, std::cos(angle) * radius},
+                    center + engine::Vector3{std::sin(angle) * radius, 0.10f + flicker * 0.20f, std::cos(angle) * radius},
                     {0.12f * flicker, angle, kPi * 0.5f + flicker * 0.28f},
                     {0.8f + pulse * 0.12f, 0.85f + chargeTime_ * 0.15f, 1.0f});
             }
             // 完了時も大きく増殖させず、頭上の小さな明滅だけで知らせる。
             if (chargeTime_ >= 1.0f && pulse > 0.70f) {
                 SpawnScopedEffect(sparkScope_, "Resources/json/effect/effect_player_thunder_spark_arc.json",
-                                  center + Vector3{0.0f, 0.65f, 0.0f}, {kPi * 0.5f, phase * 1.3f, 0.0f},
+                                  center + engine::Vector3{0.0f, 0.65f, 0.0f}, {kPi * 0.5f, phase * 1.3f, 0.0f},
                                   {0.75f, 0.85f, 1.0f});
             }
             sparkEffectTimer_ = 0.10f;
@@ -142,20 +142,20 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             sparkDamageTimer_ = 0.28f;
         }
     }
-    void SpawnStrike(Player& player, const Vector3& ground) {
+    void SpawnStrike(Player& player, const engine::Vector3& ground) {
         // 見た目と球状判定を同じ着地点へ置き、連続落雷中は敵ごとに一度だけ当てる。
         const float yaw = std::atan2(lineDirection_.x, lineDirection_.z);
-        SpawnEffect("Resources/json/effect/effect_player_thunder_bolt.json", ground + Vector3{0.0f, 4.75f, 0.0f},
+        SpawnEffect("Resources/json/effect/effect_player_thunder_bolt.json", ground + engine::Vector3{0.0f, 4.75f, 0.0f},
                     {kPi * 0.5f, yaw, 0.0f});
         SpawnEffect("Resources/json/effect/effect_player_thunder_impact_ring.json",
-                    ground + Vector3{0.0f, 0.06f, 0.0f});
-        EmitPreset("player_thunder_strike_impact", ground + Vector3{0.0f, 0.22f, 0.0f});
+                    ground + engine::Vector3{0.0f, 0.06f, 0.0f});
+        EmitPreset("player_thunder_strike_impact", ground + engine::Vector3{0.0f, 0.22f, 0.0f});
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
         for (const PhysicsOverlapHit& hit :
-             CollisionManager::GetInstance()->OverlapSphere(ground + Vector3{0.0f, 1.1f, 0.0f}, 1.45f, filter)) {
-            Object3d* target = FindEnemyRoot(hit.object);
+             CollisionManager::GetInstance()->OverlapSphere(ground + engine::Vector3{0.0f, 1.1f, 0.0f}, 1.45f, filter)) {
+            engine::Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !lineHitTargets_.insert(target).second)
                 continue;
             DamageEnemy(player, target, 10.0f, DamageType::Electric,
@@ -165,30 +165,30 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
 
     void Evade(Player& player) {
         // 地面へのSphereCastで障害物までの距離を求め、そこを越えない位置へ移す。
-        const Vector3 direction = NormalizePlanar(player.GetForwardDirection());
-        const Vector3 start = player.GetWorldPosition();
+        const engine::Vector3 direction = NormalizePlanar(player.GetForwardDirection());
+        const engine::Vector3 start = player.GetWorldPosition();
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("ground");
         filter.ignoredObject = &player;
-        const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(start + Vector3{0.0f, 0.65f, 0.0f}, 0.48f,
+        const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(start + engine::Vector3{0.0f, 0.65f, 0.0f}, 0.48f,
                                                                            direction, 9.5f, filter);
         const float distance = hit.isHit ? std::max(1.15f, hit.distance - 0.75f) : 9.5f;
-        const Vector3 destination = start + direction * distance;
-        SpawnEffect("Resources/json/effect/effect_player_thunder_evade_cross.json", start + Vector3{0.0f, 0.62f, 0.0f});
+        const engine::Vector3 destination = start + direction * distance;
+        SpawnEffect("Resources/json/effect/effect_player_thunder_evade_cross.json", start + engine::Vector3{0.0f, 0.62f, 0.0f});
         SpawnEffect("Resources/json/effect/effect_player_thunder_evade_seal.json",
-                    destination + Vector3{0.0f, 0.08f, 0.0f});
+                    destination + engine::Vector3{0.0f, 0.08f, 0.0f});
         EmitDirectedPreset("player_thunder_evade_sparks", start, direction, 1.0f);
         player.SetTranslate(destination);
         player.SetMoveYaw(std::atan2(direction.x, direction.z));
         player.PlaySlimeAbilityMotion("player_ability_thunder_evade", false, 1.0f, 0.02f, 0.06f);
         player.StartEvasionInvincibility(0.24f);
         player.TriggerSlimeImpulse({1.95f, 0.68f, 1.95f}, 0.13f);
-        DamageSphere(player, destination + Vector3{0.0f, 0.55f, 0.0f}, 2.25f, 5.0f, DamageType::Electric, 9.0f, 5.0f);
+        DamageSphere(player, destination + engine::Vector3{0.0f, 0.55f, 0.0f}, 2.25f, 5.0f, DamageType::Electric, 9.0f, 5.0f);
         evadeCooldown_ = 0.85f;
     }
 
-    Vector3 lineDirection_{0.0f, 0.0f, 1.0f};
-    std::unordered_set<Object3d*> lineHitTargets_;
+    engine::Vector3 lineDirection_{0.0f, 0.0f, 1.0f};
+    std::unordered_set<engine::Object3d*> lineHitTargets_;
     float lineCooldown_ = 0.0f;
     float dischargeCooldown_ = 0.0f;
     float evadeCooldown_ = 0.0f;

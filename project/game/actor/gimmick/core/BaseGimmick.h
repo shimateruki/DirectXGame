@@ -3,7 +3,7 @@
 #include <string>
 
 // 全てのギミックが共有する初期化、更新、衝突処理の基底クラス
-class BaseGimmick : public Object3d {
+class BaseGimmick : public engine::Object3d {
   public:
     virtual ~BaseGimmick() = default;
 
@@ -14,7 +14,7 @@ class BaseGimmick : public Object3d {
     virtual void Update(float deltaTime) override;
 
     // ギミック共通の衝突処理
-    virtual bool OnCollision(Object3d* other) override;
+    virtual bool OnCollision(engine::Object3d* other) override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 };

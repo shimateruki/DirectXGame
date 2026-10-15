@@ -72,8 +72,6 @@ private:
     bool ResolveModelPath(const std::string& modelName, std::string& directoryPath, std::string& fileName) const;
 
 private:
-    static ModelManager* instance;
-
     // モデル描画共通情報と読み込み済みモデルのキャッシュ。
     std::unique_ptr<ModelCommon> modelCommon_;
     std::map<std::string, std::unique_ptr<Model>> models_;

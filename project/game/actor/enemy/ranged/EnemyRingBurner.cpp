@@ -32,6 +32,7 @@ constexpr const char* kWaveHeatEffect = "Resources/json/effect/effect_ring_burne
 constexpr const char* kChargeParticle = "ring_burner_charge_sparks";
 constexpr const char* kFireParticle = "ring_burner_discharge_embers";
 
+// 熱輪演出の終点へ向けて強く減速する補間率を返します。
 float EaseOutQuint(float value) {
     // 発射前の予兆が終盤で急に跳ねないよう、半径の変化を滑らかに収束させる。
     const float t = (std::clamp)(value, 0.0f, 1.0f);
@@ -39,14 +40,14 @@ float EaseOutQuint(float value) {
     return 1.0f - inverse * inverse * inverse * inverse * inverse;
 }
 
-float PlanarDistance(const Vector3& first, const Vector3& second) {
+float PlanarDistance(const engine::Vector3& first, const engine::Vector3& second) {
     // 床を伝う輪の判定では高さを距離から除き、高さは別条件で調べる。
     const float x = first.x - second.x;
     const float z = first.z - second.z;
     return std::sqrt(x * x + z * z);
 }
 
-Vector3 NormalizePlanar(const Vector3& value) {
+engine::Vector3 NormalizePlanar(const engine::Vector3& value) {
     // 完全に重なった対象にも一定方向の押し出しを与える。
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
@@ -64,13 +65,14 @@ class EnemyRingBurner::StateBehavior {
         // 入場処理がない状態では何も変更しない。
     }
     virtual void Update(EnemyRingBurner& owner, float deltaTime, float targetDistance, float detectRange) const = 0;
-    virtual void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
+    virtual void ApplyVisualPose(const EnemyRingBurner& owner, engine::Vector3& scale, engine::Vector4& color,
                                  float& emissive) const = 0;
     virtual void Exit(EnemyRingBurner&) const {
         // 退出処理が必要な状態だけで演出を回収する。
     }
 };
 
+/// <summary>待機中の呼吸演出を行い、対象が射程に入ると充填状態へ移る。</summary>
 class EnemyRingBurner::IdleBehavior final : public StateBehavior {
   public:
     void Update(EnemyRingBurner& owner, float deltaTime, float targetDistance, float detectRange) const override {
@@ -82,7 +84,7 @@ class EnemyRingBurner::IdleBehavior final : public StateBehavior {
         }
     }
 
-    void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4&, float& emissive) const override {
+    void ApplyVisualPose(const EnemyRingBurner& owner, engine::Vector3& scale, engine::Vector4&, float& emissive) const override {
         // 待機中は元の大きさを基準に弱い呼吸と発光だけを与える。
         const float breathe = std::sin(owner.idleTimer_ * 2.8f) * 0.025f;
         scale.x *= 1.0f + breathe;
@@ -92,6 +94,7 @@ class EnemyRingBurner::IdleBehavior final : public StateBehavior {
     }
 };
 
+/// <summary>床の予兆と充填演出を進め、充填完了時に攻撃の輪を放つ。</summary>
 class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
   public:
     void Enter(EnemyRingBurner& owner) const override {
@@ -105,14 +108,14 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
         // 充填の進行率で予兆半径を広げ、期限が来た時だけ輪を放出する。
         owner.stateTimer_ -= deltaTime;
         const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
-        const float pulseRadius = Math::Lerp(1.05f, 1.72f, EaseOutQuint(progress));
-        owner.ShowAttackTelegraphCircle(owner.GetWorldPosition() + Vector3{0.0f, 0.06f, 0.0f},
+        const float pulseRadius = engine::Math::Lerp(1.05f, 1.72f, EaseOutQuint(progress));
+        owner.ShowAttackTelegraphCircle(owner.GetWorldPosition() + engine::Vector3{0.0f, 0.06f, 0.0f},
                                         pulseRadius * (std::max)(owner.baseScale_.x, owner.baseScale_.z), progress,
                                         {1.0f, 0.20f, 0.025f, 0.92f});
         if (owner.particleTimer_ <= 0.0f) {
             if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
                 particles->Emit(kChargeParticle, owner.GetWorldPosition() +
-                                                 Vector3{0.0f, 1.12f * owner.baseScale_.y, 0.0f});
+                                                 engine::Vector3{0.0f, 1.12f * owner.baseScale_.y, 0.0f});
             }
             owner.particleTimer_ = 0.12f;
         }
@@ -121,7 +124,7 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
         }
     }
 
-    void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
+    void ApplyVisualPose(const EnemyRingBurner& owner, engine::Vector3& scale, engine::Vector4& color,
                          float& emissive) const override {
         // 発射前に押し潰しと発光を強め、床の予兆と本体の状態を一致させる。
         const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
@@ -139,6 +142,7 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
     }
 };
 
+/// <summary>広がる攻撃の輪と当たり判定を同期し、終了後に硬直へ移る。</summary>
 class EnemyRingBurner::WaveBehavior final : public StateBehavior {
   public:
     void Enter(EnemyRingBurner& owner) const override {
@@ -154,14 +158,14 @@ class EnemyRingBurner::WaveBehavior final : public StateBehavior {
         const float maximumRadius = owner.GetWaveMaximumRadius();
         const float previousRadius = owner.waveRadius_;
         // 発射直後に最大半径へ飛ばず、見た目と同じ等速で一周の輪を広げます。
-        owner.waveRadius_ = Math::Lerp(maximumRadius * kWaveStartRadiusRatio, maximumRadius, progress);
+        owner.waveRadius_ = engine::Math::Lerp(maximumRadius * kWaveStartRadiusRatio, maximumRadius, progress);
         owner.UpdateWaveDamage(previousRadius);
         if (owner.stateTimer_ <= 0.0f) {
             owner.EnterState(State::Recovery, kRecoveryDuration);
         }
     }
 
-    void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
+    void ApplyVisualPose(const EnemyRingBurner& owner, engine::Vector3& scale, engine::Vector4& color,
                          float& emissive) const override {
         // 放出直後だけ反動を大きくし、輪の拡散とともに元の姿勢へ戻す。
         const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
@@ -179,6 +183,7 @@ class EnemyRingBurner::WaveBehavior final : public StateBehavior {
     }
 };
 
+/// <summary>放出後の硬直と姿勢を維持し、終了時に待機へ戻す。</summary>
 class EnemyRingBurner::RecoveryBehavior final : public StateBehavior {
   public:
     void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
@@ -190,13 +195,14 @@ class EnemyRingBurner::RecoveryBehavior final : public StateBehavior {
         }
     }
 
-    void ApplyVisualPose(const EnemyRingBurner&, Vector3& scale, Vector4&, float& emissive) const override {
+    void ApplyVisualPose(const EnemyRingBurner&, engine::Vector3& scale, engine::Vector4&, float& emissive) const override {
         // 放出後の低い姿勢と弱い光を保ち、待機状態との差を出す。
         scale.y *= 0.94f;
         emissive = 1.05f;
     }
 };
 
+/// <summary>踏まれている間の攻撃と演出を止め、抑制が解けると硬直へ移る。</summary>
 class EnemyRingBurner::SuppressedBehavior final : public StateBehavior {
   public:
     void Enter(EnemyRingBurner& owner) const override {
@@ -213,7 +219,7 @@ class EnemyRingBurner::SuppressedBehavior final : public StateBehavior {
         }
     }
 
-    void ApplyVisualPose(const EnemyRingBurner&, Vector3& scale, Vector4& color,
+    void ApplyVisualPose(const EnemyRingBurner&, engine::Vector3& scale, engine::Vector4& color,
                          float& emissive) const override {
         // 停止状態は低い姿勢と寒色で攻撃不能と分かるようにする。
         scale.x *= 1.05f;
@@ -345,8 +351,8 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
         return;
     }
 
-    const Vector3 origin = GetWorldPosition();
-    const Vector3 targetPosition = target_->GetWorldPosition();
+    const engine::Vector3 origin = GetWorldPosition();
+    const engine::Vector3 targetPosition = target_->GetWorldPosition();
     const float targetDistance = PlanarDistance(origin, targetPosition);
     const float targetRelativeHeight = targetPosition.y - origin.y;
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
@@ -360,7 +366,7 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
         return;
     }
 
-    const Vector3 knockbackDirection = NormalizePlanar(targetPosition - origin);
+    const engine::Vector3 knockbackDirection = NormalizePlanar(targetPosition - origin);
     DamageEvent damageEvent;
     damageEvent.target = target_;
     damageEvent.attacker = this;
@@ -368,20 +374,20 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
     damageEvent.damageType = DamageType::Fire;
     damageEvent.knockbackVelocity = {knockbackDirection.x * 13.0f, 6.0f, knockbackDirection.z * 13.0f};
     EventManager::GetInstance()->Dispatch(damageEvent);
-    HitEffectDirector::SpawnEnemyAbilityHit(targetPosition + Vector3{0.0f, 0.55f, 0.0f});
+    HitEffectDirector::SpawnEnemyAbilityHit(targetPosition + engine::Vector3{0.0f, 0.55f, 0.0f});
     waveDamageDone_ = true;
 }
 
 void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
     // 各状態が決める目標姿勢を基準スケールから作り、急な切替を補間する。
-    Vector3 targetScale = baseScale_;
-    Vector4 targetColor = defaultColor_;
+    engine::Vector3 targetScale = baseScale_;
+    engine::Vector4 targetColor = defaultColor_;
     float emissive = 1.35f;
 
     BehaviorFor(state_).ApplyVisualPose(*this, targetScale, targetColor, emissive);
 
-    Vector3 currentScale = GetScale();
-    currentScale = Math::Lerp(currentScale, targetScale, (std::min)(1.0f, deltaTime * 12.0f));
+    engine::Vector3 currentScale = GetScale();
+    currentScale = engine::Math::Lerp(currentScale, targetScale, (std::min)(1.0f, deltaTime * 12.0f));
     SetScale(currentScale);
     SetColor(targetColor);
     SetEmissive(emissive);
@@ -394,8 +400,8 @@ bool EnemyRingBurner::IsTargetStandingOnTop() const {
         return false;
     }
 
-    const Vector3 origin = GetWorldPosition();
-    const Vector3 targetPosition = player->GetWorldPosition();
+    const engine::Vector3 origin = GetWorldPosition();
+    const engine::Vector3 targetPosition = player->GetWorldPosition();
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
     const float distance = PlanarDistance(origin, targetPosition);
     const float relativeHeight = targetPosition.y - origin.y;
@@ -427,30 +433,30 @@ float EnemyRingBurner::GetWaveMaximumRadius() const {
 
 void EnemyRingBurner::SpawnChargeEffects() {
     // 充填のメッシュ演出と火花を本体の高さ・大きさに合わせて置く。
-    const Vector3 origin = GetWorldPosition() + Vector3{0.0f, 0.18f * baseScale_.y, 0.0f};
+    const engine::Vector3 origin = GetWorldPosition() + engine::Vector3{0.0f, 0.18f * baseScale_.y, 0.0f};
     const float scale = (std::max)(baseScale_.x, baseScale_.z);
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
         meshEffects->SpawnEffectAt(kChargeEffect, origin, {0.0f, 0.0f, 0.0f}, {scale, baseScale_.y, scale});
     }
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
-        particles->Emit(kChargeParticle, origin + Vector3{0.0f, 1.12f * baseScale_.y, 0.0f});
+        particles->Emit(kChargeParticle, origin + engine::Vector3{0.0f, 1.12f * baseScale_.y, 0.0f});
     }
 }
 
 void EnemyRingBurner::SpawnWaveEffects() {
     // 作成時の半径11を基準に表示を拡縮し、判定の最大半径と揃える。
-    const Vector3 origin = GetWorldPosition() + Vector3{0.0f, 0.34f * baseScale_.y, 0.0f};
+    const engine::Vector3 origin = GetWorldPosition() + engine::Vector3{0.0f, 0.34f * baseScale_.y, 0.0f};
     const float authoredRadius = 11.0f;
     const float effectScale = GetWaveMaximumRadius() / authoredRadius;
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
         StopWaveEffects();
         waveEffectScope_ = meshEffects->CreateEffectScope();
-        const Vector3 scale = {effectScale, baseScale_.y * 3.0f, effectScale};
+        const engine::Vector3 scale = {effectScale, baseScale_.y * 3.0f, effectScale};
         meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveHeatEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
         meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
     }
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
-        particles->Emit(kFireParticle, origin + Vector3{0.0f, 1.05f * baseScale_.y, 0.0f});
+        particles->Emit(kFireParticle, origin + engine::Vector3{0.0f, 1.05f * baseScale_.y, 0.0f});
     }
 }
 
@@ -462,7 +468,7 @@ void EnemyRingBurner::StopWaveEffects() {
     }
 }
 
-std::unique_ptr<Object3d> EnemyRingBurner::Clone() const {
+std::unique_ptr<engine::Object3d> EnemyRingBurner::Clone() const {
     // シーン配置を複製するときも固有AIを新規生成し、対象と調整済みスケールを引き継ぐ。
     auto clone = std::make_unique<EnemyRingBurner>();
     assert(common_ != nullptr);
@@ -480,7 +486,7 @@ void EnemyRingBurner::SetCarried(bool isCarried) {
     (void)isCarried;
 }
 
-void EnemyRingBurner::ApplyManagedScale(const Vector3& scale) {
+void EnemyRingBurner::ApplyManagedScale(const engine::Vector3& scale) {
     // エディターで指定した大きさを、輪の半径と姿勢補間の基準にも反映する。
     baseScale_ = scale;
     hasBaseScale_ = true;

@@ -13,7 +13,7 @@
 #include <map>
 #include <optional>
 
-class Object3d;
+namespace engine { class Object3d; }
 
 /// <summary>モデルのCPU側データと描画用GPUリソースを保持する。</summary>
 class Model {
@@ -21,7 +21,7 @@ public:
     /// <summary>スキニングに使うボーンと逆バインド姿勢。</summary>
     struct Bone {
         std::string name;
-        Matrix4x4 inverseBindPoseMatrix; // メッシュの初期姿勢へ戻す行列。
+        engine::Matrix4x4 inverseBindPoseMatrix; // メッシュの初期姿勢へ戻す行列。
     };
 
     /// <summary>アニメーションの時刻（秒）と、その時点の値を保持する。</summary>
@@ -30,8 +30,8 @@ public:
         float time;
         T value;
     };
-    using KeyframeVector3 = Keyframe<Vector3>;
-    using KeyframeQuaternion = Keyframe<Quaternion>;
+    using KeyframeVector3 = Keyframe<engine::Vector3>;
+    using KeyframeQuaternion = Keyframe<engine::Quaternion>;
 
     /// <summary>一つのノードに適用する拡縮・回転・移動のキーフレーム群。</summary>
     struct NodeAnimation {
@@ -51,10 +51,10 @@ public:
 
     /// <summary>モデル用シェーダーへ渡すマテリアル定数。GPU側のレイアウトと一致させる。</summary>
     struct Material {
-        Vector4 color;
+        engine::Vector4 color;
         int32_t enableLighting;
         float padding1[3];
-        Matrix4x4 uvTransform;
+        engine::Matrix4x4 uvTransform;
         int32_t selectedLighting;
         float shininess;
         int32_t materialType;
@@ -67,26 +67,26 @@ public:
         float time; // シェーダー内の時間演出に使う値。
         float portalClipEnabled;
         float portalClipProgress;
-        Vector3 portalClipCenter;
+        engine::Vector3 portalClipCenter;
         float portalClipEdgeWidth;
-        Vector3 portalClipNormal;
+        engine::Vector3 portalClipNormal;
         float portalClipDissolve;
-        Vector4 portalClipColor;
+        engine::Vector4 portalClipColor;
 
     };
 
     /// <summary>ノードやジョイントのローカル姿勢を拡縮・クォータニオン・移動で表す。</summary>
     struct QuaternionTransform {
-        Vector3 scale = {1.0f, 1.0f, 1.0f};
-        Quaternion rotate = {0.0f, 0.0f, 0.0f, 1.0f};
-        Vector3 translate = {0.0f, 0.0f, 0.0f};
+        engine::Vector3 scale = {1.0f, 1.0f, 1.0f};
+        engine::Quaternion rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        engine::Vector3 translate = {0.0f, 0.0f, 0.0f};
     };
 
     /// <summary>スケルトン内の一関節と、親子関係および計算済み行列を保持する。</summary>
     struct Joint {
         QuaternionTransform transform;
-        Matrix4x4 localMatrix;
-        Matrix4x4 skeletonSpaceMatrix;
+        engine::Matrix4x4 localMatrix;
+        engine::Matrix4x4 skeletonSpaceMatrix;
         std::string name;
         std::vector<int32_t> children;
         int32_t index;
@@ -103,20 +103,20 @@ public:
     /// <summary>読み込んだモデルの階層ノード。親から累積した変換も保持する。</summary>
     struct Node {
         QuaternionTransform transform;
-        Matrix4x4 localMatrix;
-        Matrix4x4 globalMatrix; // 親から累積したノード変換。
+        engine::Matrix4x4 localMatrix;
+        engine::Matrix4x4 globalMatrix; // 親から累積したノード変換。
         std::string name;
         std::vector<Node> children;
     };
 
     /// <summary>モデルメッシュ1頂点分の属性。</summary>
     struct VertexData {
-        Vector4 position;
-        Vector2 texcoord;
-        Vector3 normal;
-        Vector3 tangent;
-        Vector4 boneWeights; // スキニングの重み。
-        Vector4 boneIndices; // 参照するボーン番号。
+        engine::Vector4 position;
+        engine::Vector2 texcoord;
+        engine::Vector3 normal;
+        engine::Vector3 tangent;
+        engine::Vector4 boneWeights; // スキニングの重み。
+        engine::Vector4 boneIndices; // 参照するボーン番号。
 
     };
 
@@ -129,7 +129,7 @@ public:
         uint32_t textureHandle = 0;
         uint32_t normalMapHandle = 0;
         uint32_t ormMapHandle = 0;
-        Vector4 baseColorFactor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        engine::Vector4 baseColorFactor = { 1.0f, 1.0f, 1.0f, 1.0f };
         float roughness = 0.5f;
         float metallic = 0.0f;
         bool hasNormalMap = false;
@@ -168,7 +168,7 @@ public:
 
     /// <summary>スキニング用にGPUへ転送するボーンの最終変換行列。</summary>
     struct BoneForGPU {
-        Matrix4x4 finalMatrix;
+        engine::Matrix4x4 finalMatrix;
     };
 
 public:
@@ -252,10 +252,10 @@ public:
     }
 
     /// <summary>モデルのローカル空間での大きさを返す。</summary>
-    Vector3 GetSize() const { return size_; }
+    engine::Vector3 GetSize() const { return size_; }
 
     /// <summary>モデルのローカル空間での中心を返す。</summary>
-    Vector3 GetCenter() const { return center_; }
+    engine::Vector3 GetCenter() const { return center_; }
 
     /// <summary>指定秒のアニメーション姿勢をモデルへ適用する。</summary>
     void ApplyAnimation(const Animation& animation, float time);
@@ -297,10 +297,10 @@ public:
     uint32_t GetBoneSrvIndex() const { return boneSrvIndex_; }
 
     /// <summary>モデルのローカル空間AABBの最小点を返す。</summary>
-    Vector3 GetLocalAabbMin() const { return localAabbMin_; }
+    engine::Vector3 GetLocalAabbMin() const { return localAabbMin_; }
 
     /// <summary>モデルのローカル空間AABBの最大点を返す。</summary>
-    Vector3 GetLocalAabbMax() const { return localAabbMax_; }
+    engine::Vector3 GetLocalAabbMax() const { return localAabbMax_; }
 
     /// <summary>マテリアル設定を行わず、指定メッシュの頂点・インデックスを描画する。</summary>
     void DrawMeshOnly(int meshDrawIndex = -1);
@@ -330,8 +330,8 @@ private:
     Node* FindNode(Node& node, const std::string& name);
 
     // 指定秒を挟むキーフレームから値を補間する。
-    static Vector3 CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time);
-    static Quaternion CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time);
+    static engine::Vector3 CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time);
+    static engine::Quaternion CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time);
 
     // 読み込んだノード階層から関節一覧と名前索引を組み立てる。
     static int32_t CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints);
@@ -360,9 +360,9 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
 
-    Math math_;
-    Vector3 size_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 center_ = { 0.0f, 0.0f, 0.0f };
+    engine::Math math_;
+    engine::Vector3 size_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 center_ = { 0.0f, 0.0f, 0.0f };
 
     // ボーン行列のGPU転送状態。
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
@@ -373,7 +373,7 @@ private:
     bool computeSkinningDirty_ = true;
     bool computeSkinningOutputReady_ = false;
 
-    Vector3 localAabbMin_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 localAabbMax_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 localAabbMin_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 localAabbMax_ = { 0.0f, 0.0f, 0.0f };
 };
 

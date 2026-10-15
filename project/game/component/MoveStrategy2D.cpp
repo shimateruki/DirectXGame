@@ -3,8 +3,8 @@
 #include "InputManager.h"
 #include "engine/utility/math/Math.h"
 
-Vector3 MoveStrategy2D::CalculateVelocity(Player* player) {
-    Vector3 move = {0.0f, 0.0f, 0.0f};
+engine::Vector3 MoveStrategy2D::CalculateVelocity(Player* player) {
+    engine::Vector3 move = {0.0f, 0.0f, 0.0f};
     float moveSpeed = player->GetMoveSpeed();
 
     InputManager* inputManager = player->GetInputManager();

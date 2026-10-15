@@ -15,9 +15,9 @@ struct CinematicObjectBinding {
 // 一つの時刻における位置・回転・拡縮と、次のキーまでの補間方法です。
 struct CinematicTransformKey {
     float time = 0.0f;
-    Vector3 position = {0.0f, 0.0f, 0.0f};
-    Vector3 rotation = {0.0f, 0.0f, 0.0f};
-    Vector3 scale = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 position = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 rotation = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 scale = {1.0f, 1.0f, 1.0f};
     int easingToNext = 4;
 };
 
@@ -154,5 +154,5 @@ class CinematicSequence {
 };
 
 // エディターの軌跡表示・キー記録と再生器で同じ座標変換を使用する。
-Vector3 CinematicAnchorPosition(const Vector3& local, const Vector3& origin, float yaw);
-Vector3 CinematicAnchorLocalPosition(const Vector3& world, const Vector3& origin, float yaw);
+engine::Vector3 CinematicAnchorPosition(const engine::Vector3& local, const engine::Vector3& origin, float yaw);
+engine::Vector3 CinematicAnchorLocalPosition(const engine::Vector3& world, const engine::Vector3& origin, float yaw);

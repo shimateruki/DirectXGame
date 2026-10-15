@@ -58,7 +58,7 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         newGimmick = std::move(floor);
     } else if (gimmickName == "Trampoline") {
         auto trampoline = std::make_unique<GimmickTrampoline>();
-        trampoline->Initialize(common, "Primitives/cube"); // とりあえず立方体
+        trampoline->Initialize(common, "Gimmicks/mushroom_trampoline");
         newGimmick = std::move(trampoline);
     } else if (gimmickName == "ChikuwaBlock") {
         auto chikuwa = std::make_unique<GimmickChikuwaBlock>();

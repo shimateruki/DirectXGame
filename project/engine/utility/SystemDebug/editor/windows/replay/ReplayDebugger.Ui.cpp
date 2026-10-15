@@ -20,14 +20,14 @@ constexpr float kTimelineHeaderHeight = 30.0f;
 constexpr float kTimelineLaneHeight = 25.0f;
 constexpr float kTimelineBottomPadding = 10.0f;
 
-float DistanceSquared(const Vector3& lhs, const Vector3& rhs) {
+float DistanceSquared(const engine::Vector3& lhs, const engine::Vector3& rhs) {
     const float x = lhs.x - rhs.x;
     const float y = lhs.y - rhs.y;
     const float z = lhs.z - rhs.z;
     return x * x + y * y + z * z;
 }
 
-float DistanceSquared(const Vector2& lhs, const Vector2& rhs) {
+float DistanceSquared(const engine::Vector2& lhs, const engine::Vector2& rhs) {
     const float x = lhs.x - rhs.x;
     const float y = lhs.y - rhs.y;
     return x * x + y * y;
@@ -40,7 +40,8 @@ std::string ToLower(std::string value) {
     return value;
 }
 
-bool ReadCustomVector3(const json& custom, const char* key, Vector3& result) {
+// リプレイのカスタム状態に3成分がある場合だけ結果を書き換えます。
+bool ReadCustomVector3(const json& custom, const char* key, engine::Vector3& result) {
     if (!custom.contains(key)) {
         return false;
     }
@@ -52,7 +53,8 @@ bool ReadCustomVector3(const json& custom, const char* key, Vector3& result) {
     return true;
 }
 
-void DrawVector3Row(const char* label, const Vector3& value, const Vector3* previous) {
+void DrawVector3Row(const char* label, const engine::Vector3& value, const engine::Vector3* previous) {
+    // 現在値に加え、比較元がある場合だけ各軸の差分を表示する。
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::TextUnformatted(label);
@@ -70,7 +72,8 @@ void DrawVector3Row(const char* label, const Vector3& value, const Vector3* prev
     }
 }
 
-void DrawVector2Row(const char* label, const Vector2& value, const Vector2* previous) {
+void DrawVector2Row(const char* label, const engine::Vector2& value, const engine::Vector2* previous) {
+    // ２軸の現在値と、比較元がある場合の変化量を表示する。
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::TextUnformatted(label);
@@ -84,27 +87,29 @@ void DrawVector2Row(const char* label, const Vector2& value, const Vector2* prev
     }
 }
 
-const char* GetObjectStateLabel(const Object3d::ReplayState& state) {
+// 削除・死亡・非表示の優先順でObjectの再生状態を表示します。
+const char* GetObjectStateLabel(const engine::Object3d::ReplayState& state) {
     if (state.replayRemoved) return "削除済み";
     if (state.dead) return "死亡";
     if (!state.visible) return "非表示";
     return "有効";
 }
 
-ImVec4 GetObjectStateColor(const Object3d::ReplayState& state) {
+ImVec4 GetObjectStateColor(const engine::Object3d::ReplayState& state) {
     if (state.replayRemoved) return ImVec4(0.95f, 0.42f, 0.24f, 1.0f);
     if (state.dead) return ImVec4(0.95f, 0.28f, 0.38f, 1.0f);
     if (!state.visible) return ImVec4(0.62f, 0.66f, 0.72f, 1.0f);
     return ImVec4(0.38f, 0.88f, 0.52f, 1.0f);
 }
 
-const char* GetSpriteStateLabel(const Sprite::ReplayState& state) {
+// リプレイから削除されたSpriteと一時的な非表示を区別します。
+const char* GetSpriteStateLabel(const engine::Sprite::ReplayState& state) {
     if (state.replayRemoved) return "削除済み";
     if (!state.visible) return "非表示";
     return "表示中";
 }
 
-ImVec4 GetSpriteStateColor(const Sprite::ReplayState& state) {
+ImVec4 GetSpriteStateColor(const engine::Sprite::ReplayState& state) {
     if (state.replayRemoved) return ImVec4(0.95f, 0.42f, 0.24f, 1.0f);
     if (!state.visible) return ImVec4(0.62f, 0.66f, 0.72f, 1.0f);
     return ImVec4(0.38f, 0.78f, 1.0f, 1.0f);
@@ -903,7 +908,7 @@ void ReplayDebugger::DrawObjectInspector() {
         ImGui::TextDisabled("前Frame %+.1f / 最新との差 %+.1f", current->state.parameter.hp - previousHp, current->state.parameter.hp - latestHp);
     }
 
-    Vector3 velocity;
+    engine::Vector3 velocity;
     if (ReadCustomVector3(current->state.custom, "characterVelocity", velocity)) {
         ImGui::Text("速度: %.2f, %.2f, %.2f", velocity.x, velocity.y, velocity.z);
         ImGui::TextDisabled("速さ: %.2f", std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z));
@@ -1121,8 +1126,8 @@ bool ReplayDebugger::HasMeaningfulChange(const SpriteSnapshot& lhs, const Sprite
         std::abs(lhs.state.emissive - rhs.state.emissive) > 0.001f) {
         return true;
     }
-    const Vector4& a = lhs.state.color;
-    const Vector4& b = rhs.state.color;
+    const engine::Vector4& a = lhs.state.color;
+    const engine::Vector4& b = rhs.state.color;
     return std::abs(a.x - b.x) > 0.001f ||
         std::abs(a.y - b.y) > 0.001f ||
         std::abs(a.z - b.z) > 0.001f ||

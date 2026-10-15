@@ -33,6 +33,98 @@ def mesh_file(mesh, name):
     (MODELS/(name+'.obj')).write_text('\n'.join(lines)+'\n',encoding='utf-8')
     return 'Stages/coaster/'+name+'.obj'
 
+
+def rebuild_visual_models():
+    """配置・当たり判定には触れず、終盤の乗車床と中継島の見た目だけを更新する。"""
+    MODELS.mkdir(parents=True, exist_ok=True)
+    palette = {
+        # 旧プリセットの高台モデルも同じMTLを読むため、既存の材質名を残す。
+        'Stone': ((.62, .63, .49), (.10, .10, .10), 16),
+        'Hull': ((.31, .32, .32), (.08, .08, .08), 12),
+        'HullEdge': ((.46, .43, .34), (.07, .07, .06), 16),
+        'Wood': ((.65, .43, .24), (.07, .05, .03), 18),
+        'WoodLight': ((.76, .54, .30), (.08, .06, .04), 18),
+        'WoodDark': ((.39, .25, .15), (.05, .04, .03), 12),
+        'Gold': ((1.00, .82, .38), (.18, .15, .07), 36),
+        'Cyan': ((.20, .84, .91), (.11, .20, .21), 28),
+        'Soil': ((.48, .32, .21), (.03, .03, .02), 10),
+        'SoilLight': ((.59, .40, .26), (.03, .03, .02), 10),
+        'SoilDark': ((.35, .25, .19), (.03, .02, .02), 10),
+        'Turf': ((.35, .62, .23), (.04, .06, .03), 14),
+        'TurfLight': ((.48, .72, .29), (.04, .06, .03), 14),
+    }
+    materials = []
+    for name, (diffuse, specular, shininess) in palette.items():
+        materials.extend((f'newmtl {name}',
+                          'Kd ' + ' '.join(map(str, diffuse)),
+                          'Ks ' + ' '.join(map(str, specular)),
+                          f'Ns {shininess}', 'illum 2', ''))
+    (MODELS/'coaster.mtl').write_text('\n'.join(materials), encoding='utf-8')
+
+    # 乗車面の上端を従来の y=0.60 に固定する。足元の判定と移動経路は変更しない。
+    deck = Mesh()
+    deck.block((0, -1.18, 0), (17.6, .44, 11.6), 'Hull')
+    deck.block((0, -.79, 0), (19.1, .50, 13.1), 'HullEdge')
+    deck.block((0, -.08, 0), (20, 1.36, 14), 'WoodDark')
+    deck.block((0, .565, 0), (19.7, .07, 13.7), 'Gold')
+    deck.block((0, .591, 0), (18.95, .018, 12.95), 'Wood')
+    # 木板の色差を抑え、細い目地と縁の金色で乗れる範囲を読み取りやすくする。
+    for index in range(9):
+        x = -8.2 + index * 2.05
+        deck.block((x, .599, 0), (1.94, .018, 12.55),
+                   'WoodLight' if index % 3 == 1 else 'Wood')
+    for z in (-6.65, 6.65):
+        deck.block((0, .535, z), (19.7, .12, .30), 'Gold')
+        deck.block((0, .29, z * 1.058), (19.15, .10, .07), 'Gold')
+        deck.block((0, -.08, z * 1.058), (18.7, .12, .07), 'Cyan')
+    for x in (-9.65, 9.65):
+        deck.block((x, .535, 0), (.30, .12, 13.1), 'Gold')
+    # 中央の低い目印と側面の灯りで移動床だと分かるようにし、ジャンプの邪魔をしない。
+    for radius, y, material in ((2.25, .613, 'Gold'), (1.40, .617, 'Cyan')):
+        ring = []
+        for index in range(8):
+            angle = math.tau * index / 8
+            reach = radius if index % 2 == 0 else radius * .44
+            ring.append((math.cos(angle) * reach, y, math.sin(angle) * reach))
+        for index in range(8):
+            deck.triangle((0, y, 0), ring[index], ring[(index + 1) % 8], material, True)
+    for x in (-7.5, -3.75, 3.75, 7.5):
+        for z in (-6.87, 6.87):
+            deck.block((x, .05, z * 1.03), (.64, .23, .10), 'Cyan')
+    mesh_file(deck, 'deck')
+
+    # 中継島はスター島と同じ草・土の色に寄せる。外形と頂面の高さは旧モデルを維持する。
+    for name, hx, hz in (('EnemyPerch', 7, 6),):
+        island = Mesh()
+        # 上面は矩形の判定範囲を覆い、側面だけを段差のある土の断面にする。
+        outline = [(-hx, -hz), (-hx, 0), (-hx, hz), (0, hz),
+                   (hx, hz), (hx, 0), (hx, -hz), (0, -hz)]
+        rings = []
+        for height, scale in ((-4.0, .82), (-2.70, .94),
+                              (-1.35, .88), (-.20, 1.01), (0, 1)):
+            rings.append([(x * scale, height, z * scale) for x, z in outline])
+        for row in range(len(rings) - 1):
+            for index in range(len(outline)):
+                following = (index + 1) % len(outline)
+                a, b = rings[row][index], rings[row + 1][index]
+                c, d = rings[row + 1][following], rings[row][following]
+                material = ('SoilDark', 'Soil', 'SoilLight')[(row + index) % 3]
+                island.triangle(a, c, b, material)
+                island.triangle(a, d, c, material)
+        for index in range(len(outline)):
+            island.triangle((0, -4.0, 0), rings[0][index],
+                            rings[0][(index + 1) % len(outline)], 'SoilDark')
+        island.block((0, .012, 0), (hx * 2, .024, hz * 2), 'Turf')
+        # 草の濃淡は低い面に収め、キャラクターの足元を遮らない。
+        for index, (x, z) in enumerate(((-.60, -.55), (.55, -.65),
+                                        (-.62, .60), (.58, .52))):
+            x, z = x * hx, z * hz
+            points = ((x - .9, .025, z - .35), (x + .6, .025, z - .50),
+                      (x + 1.05, .025, z + .20), (x - .3, .025, z + .55))
+            island.triangle(points[0], points[1], points[2], 'TurfLight', True)
+            island.triangle(points[0], points[2], points[3], 'TurfLight', True)
+        mesh_file(island, name)
+
 def sample(keys,t):
     for a,b in zip(keys,keys[1:]):
         if t<=b['time']:
@@ -117,6 +209,10 @@ def validate(scene,enemies,sequence):
         print(f'Star jump at {fps}fps: {min(reachable):.3f} - {max(reachable):.3f}')
 
 def main():
+    if '--rebuild-models' in sys.argv:
+        rebuild_visual_models()
+        print('ステージ1終盤のモデルのみ更新しました。シーン配置は変更していません。')
+        return
     scene,enemies=read(SCENE),read(ENEMIES)
     if '--validate' in sys.argv:
         validate(scene,enemies,read(ASSET));return

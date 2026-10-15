@@ -7,10 +7,11 @@
 // 文字列のギミックタイプ名から、対応するギミックを生成するファクトリ
 class GimmickFactory {
   public:
-    // シングルトンインスタンスを取得する
+    /// <summary>共有のギミックファクトリを返す。</summary>
     static GimmickFactory* GetInstance();
 
-    // gimmickName に対応するギミックを生成し、基本初期化まで行う
+    /// <summary>種別名に対応するギミックを生成し、基本初期化する。</summary>
+    /// <returns>未対応の種別名では仮表示用のBaseGimmickを返す。</returns>
     std::unique_ptr<BaseGimmick> CreateGimmick(const std::string& gimmickName, Object3dCommon* common);
 
   private:

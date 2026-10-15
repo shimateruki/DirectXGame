@@ -9,12 +9,12 @@
 // 斬撃・魔法陣などのメッシュエフェクト専用クラス
 // ========================================================
 // EffectObject3dは、メッシュベースのVFXをObject3dとして扱い、寿命、色、拡大、ディゾルブを制御します。
-class EffectObject3d : public Object3d {
+class EffectObject3d : public engine::Object3d {
 public:
     /// <summary>エフェクトシェーダーの cbuffer と一致する描画パラメータ。</summary>
     struct EffectMaterial {
-        Vector4 color;
-        Vector2 scrollSpeed;
+        engine::Vector4 color;
+        engine::Vector2 scrollSpeed;
         float time;
         float intensity;
         float dissolveFade;   // 4バイト (0.0:完全な状態 ～ 1.0:完全に消滅)
@@ -23,7 +23,7 @@ public:
         float distortionSpeed;
         float edgeFadeStrength;
         float alphaReference; // ★discardの閾値 (シェーダー側の padding1 と一致)
-        Vector2 screenSize;
+        engine::Vector2 screenSize;
         int enableDistortion; // 0: 加算/通常, 1: 背景歪みモード
         int enableColorRamp;  //カラーランプ有効フラグ
         int enableNoiseTexture; //ノイズテクスチャ有効フラグ
@@ -46,8 +46,8 @@ public:
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr) override;
 
     // エフェクト用マテリアルの描画値。バッファ未作成時の設定は反映されない。
-    void SetColor(const Vector4& color) { if (materialData_) materialData_->color = color; }
-    void SetScrollSpeed(const Vector2& speed) { if (materialData_) materialData_->scrollSpeed = speed; }
+    void SetColor(const engine::Vector4& color) { if (materialData_) materialData_->color = color; }
+    void SetScrollSpeed(const engine::Vector2& speed) { if (materialData_) materialData_->scrollSpeed = speed; }
     void SetIntensity(float intensity) { if (materialData_) materialData_->intensity = intensity; }
     void ResetTime() { if (materialData_) materialData_->time = 0.0f; }
 
@@ -76,10 +76,10 @@ public:
         return lifetime_ > 0.0f ? std::clamp(currentTime_ / lifetime_, 0.0f, 1.0f) : 1.0f;
     }
 
-    void SetStartScale(const Vector3& s) { startScale_ = s; }
-    void SetEndScale(const Vector3& s) { endScale_ = s; }
-    void SetStartColor(const Vector4& c) { startColor_ = c; }
-    void SetEndColor(const Vector4& c) { endColor_ = c; }
+    void SetStartScale(const engine::Vector3& s) { startScale_ = s; }
+    void SetEndScale(const engine::Vector3& s) { endScale_ = s; }
+    void SetStartColor(const engine::Vector4& c) { startColor_ = c; }
+    void SetEndColor(const engine::Vector4& c) { endColor_ = c; }
     void SetDistortionStrength(float strength) { if (materialData_) materialData_->distortionStrength = (std::max)(0.0f, strength); }
     void SetDistortionSpeed(float s) { if (materialData_) materialData_->distortionSpeed = s; }
     void SetEdgeFadeStrength(float s) { if (materialData_) materialData_->edgeFadeStrength = s; }
@@ -113,9 +113,9 @@ public:
     /// <summary>JSONプリセットから形状とマテリアル設定を読み込む。</summary>
     bool LoadFromJson(const std::string& jsonFilePath);
 
-    void SetTargetObject(Object3d* target) { targetObject_ = target; }
-    void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
-    Object3d* GetTargetObject() const { return targetObject_; }
+    void SetTargetObject(engine::Object3d* target) { targetObject_ = target; }
+    void SetOffsets(const engine::Vector3& pos, const engine::Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
+    engine::Object3d* GetTargetObject() const { return targetObject_; }
     void SetProceduralType(int type) { if (materialData_) materialData_->proceduralType = type; }
 
     /// <summary>編集パラメータから手続き生成メッシュを再構築する。</summary>
@@ -139,8 +139,8 @@ public:
     int   editSphereRings_ = 16;
     float editCylinderRadius_ = 1.0f;
     float editCylinderHeight_ = 2.0f;
-    Vector3 editBoxSize_ = {1.0f, 1.0f, 1.0f};
-    Vector2 editPlaneSize_ = {2.0f, 2.0f};
+    engine::Vector3 editBoxSize_ = {1.0f, 1.0f, 1.0f};
+    engine::Vector2 editPlaneSize_ = {2.0f, 2.0f};
     int   editPlaneSubdivisions_ = 1;
     float editTorusMajorRadius_ = 1.0f;
     float editTorusMinorRadius_ = 0.3f;
@@ -149,19 +149,19 @@ public:
     float editRingOuterRadius_ = 1.0f;
     float editRingInnerRadius_ = 0.5f;
     float editTriangleSize_ = 1.0f;
-    Vector2 editUvTiling_ = {1.0f, 1.0f};
+    engine::Vector2 editUvTiling_ = {1.0f, 1.0f};
 
     bool editHasCollision_ = false;
     int editCollisionShape_ = 0; // 0:Sphere, 1:AABB, 2:OBB, 3:Cylinder
-    Vector3 editCollisionSize_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 editCollisionOffset_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 editCollisionSize_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 editCollisionOffset_ = { 0.0f, 0.0f, 0.0f };
 private:
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
     EffectMaterial* materialData_ = nullptr;
-    Object3d* targetObject_ = nullptr;
-    Vector3 offsetPos_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 offsetRot_ = { 0.0f, 0.0f, 0.0f };
+    engine::Object3d* targetObject_ = nullptr;
+    engine::Vector3 offsetPos_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 offsetRot_ = { 0.0f, 0.0f, 0.0f };
 
     // エフェクト用マテリアルをGPUへ渡す定数バッファを作る。
     bool CreateMaterialBuffer(ID3D12Device* device);
@@ -171,10 +171,10 @@ private:
     bool isPlaying_ = false;
     uint32_t noiseTextureHandle_ = 0;
     uint32_t rampTextureHandle_ = 0;
-    Vector3 startScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 endScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector4 startColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector3 startScale_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 endScale_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector4 startColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     int easingType_ = 0; // デフォルトは 0 (Linear)
     bool isAutoLoop_ = false;
 
@@ -188,8 +188,8 @@ private:
     void GenerateThrustVertices(float length, float radius, int segments);
     void GenerateSphereVertices(float radius, int segments, int rings);
     void GenerateCylinderVertices(float radius, float height, int segments);
-    void GenerateBoxVertices(const Vector3& size);
-    void GeneratePlaneVertices(const Vector2& size, int subdivisions);
+    void GenerateBoxVertices(const engine::Vector3& size);
+    void GeneratePlaneVertices(const engine::Vector2& size, int subdivisions);
     void GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings);
     void GenerateConeVertices(float radius, float height, int segments);
     // 円錐一枚では表現できない刃・鍔・柄の輪郭を持つ槍を生成します。

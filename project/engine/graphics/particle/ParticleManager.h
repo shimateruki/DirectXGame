@@ -30,7 +30,7 @@ public:
     /// <param name="position">発生の中心位置。</param>
     /// <param name="timer">発生間隔の経過時間。呼び出し元で保持する。</param>
     /// <remarks>この経路は呼び出し1回を1/60秒として扱う。</remarks>
-    void Emit(const std::string& name, const Vector3& position, float& timer);
+    void Emit(const std::string& name, const engine::Vector3& position, float& timer);
 
     /// <summary>エディタ表示用に、読み込み済み設定の一覧を返す。</summary>
     const std::map<std::string, ParticleSystem::EmitterParams>& GetParamsMap() const { return paramsMap_; }

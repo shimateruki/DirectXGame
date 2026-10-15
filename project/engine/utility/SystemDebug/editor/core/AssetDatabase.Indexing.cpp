@@ -23,6 +23,7 @@ using json = nlohmann::json;
 
 using namespace AssetDatabaseInternal;
 
+// Resources配下の変更通知を登録し、監視できないディレクトリは登録せず結果を返します。
 bool AssetDatabase::StartFilesystemWatcher() {
     // Resources 配下の変更を通知で受け、頻繁な全走査を避けます。
     if (!initialized_ || resourcesRoot_.empty()) {
@@ -71,6 +72,7 @@ bool AssetDatabase::StartFilesystemWatcher() {
 }
 
 void AssetDatabase::StopFilesystemWatcher() {
+    // OS の変更通知ハンドルをすべて閉じ、古い通知を次の監視へ持ち越さない。
     for (void* rawHandle : changeNotificationHandles_) {
         FindCloseChangeNotification(static_cast<HANDLE>(rawHandle));
     }

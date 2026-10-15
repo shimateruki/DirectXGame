@@ -13,23 +13,28 @@
 #include <utility>
 
 namespace {
+// フェード演出に使う画面の設計幅と高さを返します。
 float ScreenW() {
     return static_cast<float>(WinApp::kClientWidth);
 }
 
+// フェード演出に使う画面の設計高さを返します。
 float ScreenH() {
     return static_cast<float>(WinApp::kClientHeight);
 }
 
+// 補間値を0～1へ制限します。
 float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// フェードの始点と終点を滑らかにつなぐ補間率を返します。
 float EaseInOut(float t) {
     t = Clamp01(t);
     return t * t * (3.0f - 2.0f * t);
 }
 
+// フェード用連番画像の番号を2桁に揃えてファイルパスを作ります。
 std::string MakeFramePath(const std::string& directory, int index) {
     char buffer[256] = {};
     std::snprintf(buffer, sizeof(buffer), "%s/frame_%02d.png", directory.c_str(), index);
@@ -42,19 +47,21 @@ Fade* Fade::GetInstance() {
     return &instance;
 }
 
+// ノイズ素材とSpriteを準備し、旧PostEffectのフェード値を解除します。
 void Fade::Initialize() {
     ResolveNoiseTexture();
     ResetPostEffectFade();
     InitializeSprites();
 }
 
+// 描画基盤と黒画面用Spriteを一度だけ作り、画像列が欠けても暗転できるようにします。
 void Fade::InitializeSprites() {
     if (fallbackBlack_) {
         return;
     }
 
     if (!spriteCommon_) {
-        spriteCommon_ = std::make_unique<SpriteCommon>();
+        spriteCommon_ = std::make_unique<engine::SpriteCommon>();
         spriteCommon_->Initialize(DirectXCommon::GetInstance());
     }
 
@@ -63,7 +70,7 @@ void Fade::InitializeSprites() {
     if (whiteHandle == 0) {
         return;
     }
-    fallbackBlack_ = std::make_unique<Sprite>();
+    fallbackBlack_ = std::make_unique<engine::Sprite>();
     fallbackBlack_->Initialize(spriteCommon_.get(), whiteHandle);
     fallbackBlack_->SetAnchorPoint({ 0.5f, 0.5f });
 }
@@ -88,13 +95,14 @@ void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, i
     sequence.textureHandles = std::move(resolvedHandles);
 
     if (!sequence.textureHandles.empty()) {
-        sequence.sprite = std::make_unique<Sprite>();
+        sequence.sprite = std::make_unique<engine::Sprite>();
         sequence.sprite->Initialize(spriteCommon_.get(), sequence.textureHandles.front());
         sequence.sprite->SetAnchorPoint({ 0.5f, 0.5f });
     }
 }
 
 void Fade::ResolveNoiseTexture() {
+    // ノイズ素材が使える場合だけSRVを解決し、フェード描画に渡す。
     if (noiseTextureResolved_) {
         return;
     }
@@ -107,6 +115,7 @@ void Fade::ResolveNoiseTexture() {
     noiseTextureResolved_ = true;
 }
 
+// 開閉方向から被覆率を計算し、演出時間を使い切ったらFinishedへ進めます。
 void Fade::Update(float deltaTime) {
     ResolveNoiseTexture();
     if (status_ == Status::None || status_ == Status::Finished) {
@@ -127,6 +136,7 @@ void Fade::Update(float deltaTime) {
     }
 }
 
+// スタイルに応じた連番画像を描き、画像が使えない場合は黒画面で被覆します。
 void Fade::Draw() {
     if (coverage_ <= 0.001f) {
         return;
@@ -144,22 +154,27 @@ void Fade::Draw() {
     }
 }
 
+// 王冠アイリスを閉状態から開くフェードを開始します。
 void Fade::StartFadeIn(float duration) {
     Begin(Status::FadeIn, VisualStyle::CrownIris, duration, { 0.5f, 0.5f }, 1.0f);
 }
 
+// 王冠アイリスを開状態から閉じるフェードを開始します。
 void Fade::StartFadeOut(float duration) {
     Begin(Status::FadeOut, VisualStyle::CrownIris, duration, { 0.5f, 0.5f }, 0.0f);
 }
 
-void Fade::StartIrisOut(float duration, const Vector2& center) {
+// 指定中心から画面を閉じるアイリス演出を開始します。
+void Fade::StartIrisOut(float duration, const engine::Vector2& center) {
     Begin(Status::IrisOut, VisualStyle::CrownIris, duration, center, 0.0f);
 }
 
-void Fade::StartIrisIn(float duration, const Vector2& center) {
+// 指定中心へ向けて画面を開くアイリス演出を開始します。
+void Fade::StartIrisIn(float duration, const engine::Vector2& center) {
     Begin(Status::IrisIn, VisualStyle::CrownIris, duration, center, 1.0f);
 }
 
+// 進行中の演出と被覆率を消し、旧PostEffectのフェード値も解除します。
 void Fade::Stop() {
     status_ = Status::None;
     counter_ = 0.0f;
@@ -167,7 +182,8 @@ void Fade::Stop() {
     ResetPostEffectFade();
 }
 
-void Fade::Begin(Status status, VisualStyle style, float duration, const Vector2& center, float initialCoverage) {
+void Fade::Begin(Status status, VisualStyle style, float duration, const engine::Vector2& center, float initialCoverage) {
+    // 再開時にも前回のポストエフェクト量が残らないよう、開始値を確定してからリセットする。
     InitializeSprites();
     status_ = status;
     style_ = style;
@@ -178,6 +194,7 @@ void Fade::Begin(Status status, VisualStyle style, float duration, const Vector2
     ResetPostEffectFade();
 }
 
+// 被覆率から対応フレームを選び、画像列が未準備なら黒画面へ切り替えます。
 void Fade::DrawFrameSequence(FrameSequence& sequence, float coverage) {
     if (!sequence.sprite || sequence.textureHandles.empty()) {
         DrawFallbackBlack(coverage);
@@ -198,6 +215,7 @@ void Fade::DrawFrameSequence(FrameSequence& sequence, float coverage) {
     sequence.sprite->Draw();
 }
 
+// 画面端に隙間を作らない大きさで黒Spriteを描きます。
 void Fade::DrawFallbackBlack(float alpha) {
     if (!fallbackBlack_) {
         return;
@@ -212,14 +230,17 @@ void Fade::DrawFallbackBlack(float alpha) {
     fallbackBlack_->Draw();
 }
 
+// 0秒指定でも除算が破綻しないよう、経過率を0～1へ収めます。
 float Fade::GetNormalizedTime() const {
     return Clamp01(counter_ / (std::max)(duration_, 0.001f));
 }
 
+// 現在の状態が被覆率を増やす方向か判定します。
 bool Fade::IsClosing() const {
     return status_ == Status::FadeOut || status_ == Status::IrisOut;
 }
 
+// Sprite描画へ移したフェードと旧PostEffectの値が重複しないようにします。
 void Fade::ResetPostEffectFade() {
     if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
         params->slimeFadeIntensity = 0.0f;

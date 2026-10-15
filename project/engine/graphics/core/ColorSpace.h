@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace ColorSpace {
+namespace engine::ColorSpace {
 
 /// <summary>Editor の sRGB 入力を、GPU に渡す直前に変換するか管理します。</summary>
 class WorkflowSettings {
@@ -36,7 +36,7 @@ inline float SRGBToLinearChannel(float value) {
 }
 
 /// <summary>RGB を sRGB から線形値へ変換します。</summary>
-inline Vector3 SRGBToLinear(const Vector3& color) {
+inline engine::Vector3 SRGBToLinear(const engine::Vector3& color) {
     return {
         SRGBToLinearChannel(color.x),
         SRGBToLinearChannel(color.y),
@@ -45,7 +45,7 @@ inline Vector3 SRGBToLinear(const Vector3& color) {
 }
 
 /// <summary>RGB のみを線形値へ変換し、アルファはそのまま保持します。</summary>
-inline Vector4 SRGBToLinear(const Vector4& color) {
+inline engine::Vector4 SRGBToLinear(const engine::Vector4& color) {
     return {
         SRGBToLinearChannel(color.x),
         SRGBToLinearChannel(color.y),
@@ -55,17 +55,17 @@ inline Vector4 SRGBToLinear(const Vector4& color) {
 }
 
 /// <summary>現在の作業色空間に合わせて、Editor の RGB 入力を変換します。</summary>
-inline Vector3 AuthoringToWorking(const Vector3& color) {
+inline engine::Vector3 AuthoringToWorking(const engine::Vector3& color) {
     return WorkflowSettings::GetInstance().IsLinearWorkflowEnabled()
         ? SRGBToLinear(color)
         : color;
 }
 
 /// <summary>現在の作業色空間に合わせて、Editor の RGBA 入力を変換します。</summary>
-inline Vector4 AuthoringToWorking(const Vector4& color) {
+inline engine::Vector4 AuthoringToWorking(const engine::Vector4& color) {
     return WorkflowSettings::GetInstance().IsLinearWorkflowEnabled()
         ? SRGBToLinear(color)
         : color;
 }
 
-} // namespace ColorSpace
+} // namespace engine::ColorSpace

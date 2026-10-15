@@ -8,9 +8,9 @@ class GimmickSwitch : public BaseGimmick {
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
-    bool OnCollision(Object3d* other) override;
+    bool OnCollision(engine::Object3d* other) override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
     // 脱出ギミックを再実行できるよう、出力と接触履歴を初期化します。
     void ResetEscapeCycle();

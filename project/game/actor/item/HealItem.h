@@ -7,7 +7,7 @@ class HealItem : public BaseItem {
     virtual ~HealItem() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   protected:
     void Collect(Player* player) override;

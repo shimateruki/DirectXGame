@@ -6,15 +6,16 @@
 #include "GameSettingsManager.h"
 
 SceneLoadManifest SettingsScene::BuildAsyncLoadManifest() const {
-    // 設定画面には先読み対象のシーンAssetを持たせない。
+    // 設定画面のUIデータから表示素材を自動収集する。
     SceneLoadManifest manifest;
+    manifest.AddJson("Resources/json/ui/settingsMenu.json");
     return manifest;
 }
 
 void SettingsScene::Initialize() {
     // 保存済み設定を読み込んでからSpriteメニューへ反映する。
     GameSettingsManager::GetInstance()->Load();
-    spriteCommon_ = std::make_unique<SpriteCommon>();
+    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
     spriteCommon_->Initialize(DirectXCommon::GetInstance());
     menu_.Initialize(spriteCommon_.get());
     menu_.SetActive(true);

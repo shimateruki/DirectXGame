@@ -1,4 +1,4 @@
-﻿#include "engine/core/editor/GameEditorController.Internal.h"
+#include "engine/core/editor/GameEditorController.Internal.h"
 
 #ifdef USE_IMGUI
 using namespace GameEditorControllerImplementation;
@@ -186,7 +186,6 @@ void GameEditorController::RegisterEditorTools() {
     add("camera", "カメラ設定", "ステージ", CameraEditor::GetInstance());
     add("light", "ライティング設定", "ステージ", LightEditor::GetInstance());
     add("post", "ポストエフェクト", "演出", postEffectEditor_.get());
-    add("key", "ゲーム操作キーコンフィグ", "検証・設定", KeyConfig::GetInstance());
     add("gpu", "GPUパーティクル", "演出", gpuParticleEditor_.get());
     add("particle", "通常パーティクル", "演出", particleEditor_.get());
     add("vfx", "VFXシーケンサー", "演出", vfxSequencerEditor_.get());

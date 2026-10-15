@@ -45,6 +45,7 @@ BakedShaderTextureCache& GetBakedShaderTextureCache() {
     return cache;
 }
 
+// 焼き込み画像が欠けている場合は白画像へ退避してSRVを必ず取得します。
 uint32_t LoadTextureWithFallback(const char* texturePath, bool isLinearData = true) {
     // 焼き込み画像が欠けていても白画像へ退避し、SRV の未束縛を避ける。
     const char* fallbackPath = "Resources/sprite/common/white.dds";
@@ -53,6 +54,7 @@ uint32_t LoadTextureWithFallback(const char* texturePath, bool isLinearData = tr
         isLinearData ? TextureManager::TextureColorSpace::Linear : TextureManager::TextureColorSpace::SRGB);
 }
 
+// 特殊材質が共有するマスク・色画像を色空間別に一度だけ読み込みます。
 void EnsureBakedShaderTexturesLoaded() {
     // マスクは線形値、色画像は sRGB として読み込み、シェーダーへの解釈を揃える。
     BakedShaderTextureCache& cache = GetBakedShaderTextureCache();
@@ -96,6 +98,7 @@ const BakedShaderTextureSet& GetGatePortalBakedShaderTextures() {
     return GetBakedShaderTextureCache().gatePortal;
 }
 
+// 特殊材質用の三つのテクスチャSRVを共通ルートスロットへ束縛します。
 void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const BakedShaderTextureSet& textures) {
     // 水系の共有ルートにある t2～t4 相当の三スロットを常に埋める。
     EnsureBakedShaderTexturesLoaded();
@@ -144,6 +147,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     }
 }
 
+// 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
 float ClampTextureTiling(float value) {
     // 非有限値や極端な繰り返し値を材質定数に渡さない。
     if (!std::isfinite(value)) {
@@ -152,7 +156,7 @@ float ClampTextureTiling(float value) {
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
-Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
+engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
     // 物体の大きい二軸を使い、向きに依らず面積に合った繰り返し量を作る。
     float a = std::abs(scale.x);
     float b = std::abs(scale.y);
@@ -203,7 +207,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
     if (!drawModel || !common_ || !HasRequiredBuffers()) return;
     drawModel->PrepareComputeSkinning();
     common_->SetGraphicsCommand();
-    common_->SetPipelineState(blendMode_);
+    common_->SetMaterialPipelineState(blendMode_, GetMaterialType());
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     // [11] 影用のWVP行列 (b1) をセット
@@ -239,7 +243,7 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
 
     drawModel->PrepareComputeSkinning();
     common_->SetGraphicsCommand();
-    common_->SetPipelineState(blendMode_);
+    common_->SetMaterialPipelineState(blendMode_, GetMaterialType());
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     if (shadowWvpResource_) {
@@ -278,13 +282,36 @@ bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferInd
         return false;
     }
 
-    Math math;
-    const Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
+    engine::Math math;
+    const engine::Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
     previewWvpData->WVP = math.Multiply(worldMatrix, camera->GetViewProjectionMatrix());
     previewWvpData->world = worldMatrix;
     previewWvpData->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
     previewCameraData->worldPosition = camera->GetEye();
     return true;
+}
+
+void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 通常画面の材質選択を描画コンポーネントへ集約する。各描画関数は既存のPSOを使う。
+    switch (GetMaterialType()) {
+    case 8: DrawWater(depthSrvHandle, colorSrvHandle); break;
+    case 9: DrawMagma(depthSrvHandle, colorSrvHandle); break;
+    case 10: DrawIce(depthSrvHandle, colorSrvHandle); break;
+    case 11: DrawFire(depthSrvHandle, colorSrvHandle); break;
+    case 12: DrawLaser(depthSrvHandle, colorSrvHandle); break;
+    case 13: DrawSlimeGel(depthSrvHandle, colorSrvHandle); break;
+    case 14: DrawShockwave(depthSrvHandle, colorSrvHandle); break;
+    case 15: DrawLiquidContact(depthSrvHandle, colorSrvHandle); break;
+    case 16: DrawDamageCrack(depthSrvHandle, colorSrvHandle); break;
+    case 17: DrawUpdraft(depthSrvHandle, colorSrvHandle); break;
+    case 18: DrawStunBind(depthSrvHandle, colorSrvHandle); break;
+    case 19: DrawCrownUnlock(depthSrvHandle, colorSrvHandle); break;
+    case 20: DrawPoisonSpore(depthSrvHandle, colorSrvHandle); break;
+    case 21: DrawCloud(depthSrvHandle, colorSrvHandle); break;
+    case 22: DrawGatePortal(depthSrvHandle, colorSrvHandle); break;
+    case 26: DrawWindOrb(depthSrvHandle, colorSrvHandle); break;
+    default: break;
+    }
 }
 
 void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex) {

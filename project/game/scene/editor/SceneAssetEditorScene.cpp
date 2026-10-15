@@ -34,6 +34,7 @@
 
 namespace fs = std::filesystem;
 
+// SceneAssetが指定した配置JSONと表示用の共通画像を非同期先読み対象に登録します。
 SceneLoadManifest SceneAssetEditorScene::BuildAsyncLoadManifest() const {
     // SceneAssetが指定した配置JSONだけを先読み対象へ登録する。
     SceneLoadManifest manifest;
@@ -59,7 +60,7 @@ void SceneAssetEditorScene::Initialize() {
 
     object3dCommon_ = std::make_unique<Object3dCommon>();
     object3dCommon_->Initialize(dxCommon_);
-    spriteCommon_ = std::make_unique<SpriteCommon>();
+    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
     particleCommon_ = std::make_unique<ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
@@ -209,28 +210,28 @@ void SceneAssetEditorScene::DrawShadow() {
     }
 }
 
-const std::vector<std::unique_ptr<Object3d>>& SceneAssetEditorScene::GetObjects() const {
+const std::vector<std::unique_ptr<engine::Object3d>>& SceneAssetEditorScene::GetObjects() const {
     // 編集ツールへ現在の配置集合を参照で公開し、所有権は移さない。
     return objectManager_->GetObjects();
 }
 
 
-Object3d* SceneAssetEditorScene::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+engine::Object3d* SceneAssetEditorScene::AddObjectImmediate(std::unique_ptr<engine::Object3d> object) {
     // 編集操作の直後に選択できるよう、即時登録した実体を返す。
     return objectManager_->AddObjectImmediate(std::move(object));
 }
 
-std::unique_ptr<Object3d> SceneAssetEditorScene::TakeObjectImmediate(Object3d* object) {
+std::unique_ptr<engine::Object3d> SceneAssetEditorScene::TakeObjectImmediate(engine::Object3d* object) {
     // Undoなどが所有権を保持できるよう、実体を配置集合から取り出す。
     return objectManager_->TakeObjectImmediate(object);
 }
 
-void SceneAssetEditorScene::AddObject(std::unique_ptr<Object3d> object) {
+void SceneAssetEditorScene::AddObject(std::unique_ptr<engine::Object3d> object) {
     // 通常の追加は管理側の追加処理へ渡し、ここで所有し続けない。
     objectManager_->AddObject(std::move(object));
 }
 
-void SceneAssetEditorScene::RequestRemoveObject(Object3d* object) {
+void SceneAssetEditorScene::RequestRemoveObject(engine::Object3d* object) {
     // 更新中の走査を壊さないよう、削除要求を管理側へ預ける。
     objectManager_->RequestRemove(object);
 }

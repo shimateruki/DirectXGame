@@ -17,88 +17,13 @@
 namespace {
 namespace fs = std::filesystem;
 
-// 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
-struct BakedShaderTextureSet {
-    uint32_t slot0 = 0;
-    uint32_t slot1 = 0;
-    uint32_t slot2 = 0;
-};
-
-// 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
-struct BakedShaderTextureCache {
-    BakedShaderTextureSet fallback;
-    BakedShaderTextureSet water;
-    BakedShaderTextureSet fire;
-    BakedShaderTextureSet gatePortal;
-    bool loaded = false;
-};
-
 std::string NormalizeSlashes(std::string text) {
     std::replace(text.begin(), text.end(), '\\', '/');
     return text;
 }
 
-BakedShaderTextureCache& GetBakedShaderTextureCache() {
-    static BakedShaderTextureCache cache;
-    return cache;
-}
-
-uint32_t LoadTextureWithFallback(const char* texturePath) {
-    const char* fallbackPath = "Resources/sprite/common/white.dds";
-    const char* pathToLoad = fs::exists(texturePath) ? texturePath : fallbackPath;
-    return TextureManager::GetInstance()->Load(pathToLoad, true);
-}
-
-void EnsureBakedShaderTexturesLoaded() {
-    BakedShaderTextureCache& cache = GetBakedShaderTextureCache();
-    if (cache.loaded) {
-        return;
-    }
-
-    const uint32_t fallback = LoadTextureWithFallback("Resources/sprite/common/white.dds");
-    cache.fallback = { fallback, fallback, fallback };
-    cache.water = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/water_foam_mask.dds"),
-        LoadTextureWithFallback("Resources/texture/BakedShader/water_flow_noise.dds"),
-        fallback
-    };
-    cache.fire = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/fire_flame_mask.dds"),
-        LoadTextureWithFallback("Resources/texture/BakedShader/fire_orb_mask.dds"),
-        fallback
-    };
-    cache.gatePortal = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/gate_swirl_mask.dds"),
-        fallback,
-        fallback
-    };
-    cache.loaded = true;
-}
-
-const BakedShaderTextureSet& GetDefaultBakedShaderTextures() {
-    return GetBakedShaderTextureCache().fallback;
-}
-
-const BakedShaderTextureSet& GetWaterBakedShaderTextures() {
-    return GetBakedShaderTextureCache().water;
-}
-
-const BakedShaderTextureSet& GetFireBakedShaderTextures() {
-    return GetBakedShaderTextureCache().fire;
-}
-
-const BakedShaderTextureSet& GetGatePortalBakedShaderTextures() {
-    return GetBakedShaderTextureCache().gatePortal;
-}
-
-void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const BakedShaderTextureSet& textures) {
-    EnsureBakedShaderTexturesLoaded();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, textures.slot0);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, textures.slot1);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, textures.slot2);
-}
-
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
+    // モデル名の拡張子有無を吸収してLOD定義の候補を列挙する。
     std::vector<fs::path> candidates;
     if (modelName.empty()) {
         return candidates;
@@ -122,6 +47,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 }
 
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
+    // LOD設定の構文が不正な場合は失敗を返し、呼び出し元で適用を止められるようにする。
     std::ifstream file(path);
     if (!file) {
         return false;
@@ -136,6 +62,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     }
 }
 
+// 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
 float ClampTextureTiling(float value) {
     if (!std::isfinite(value)) {
         return 1.0f;
@@ -143,7 +70,8 @@ float ClampTextureTiling(float value) {
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
-Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
+engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
+    // LOD描画でも通常描画と同じ二軸を選び、距離切替で模様の密度を変えない。
     float a = std::abs(scale.x);
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
@@ -157,6 +85,7 @@ Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
 
 template <typename T>
 bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
+    // Resource生成かMapに失敗した場合は参照を初期化し、LOD描画へ不正なGPU値を渡さない。
     data = nullptr;
     resource.Reset();
     if (!dxCommon) {
@@ -331,8 +260,8 @@ float MeshRenderer::GetCameraDistanceToObject() const {
         return 0.0f;
     }
 
-    const Vector3 cameraPos = camera->GetEye();
-    const Vector3 objectPos = {
+    const engine::Vector3 cameraPos = camera->GetEye();
+    const engine::Vector3 objectPos = {
         transform_->matWorld.m[3][0],
         transform_->matWorld.m[3][1],
         transform_->matWorld.m[3][2]

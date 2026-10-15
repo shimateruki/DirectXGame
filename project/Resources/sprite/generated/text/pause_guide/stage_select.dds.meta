@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8fbe36de857d87e6ef5c32d64d9305c7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/stage_select.dds",
+  "version": 1
+}

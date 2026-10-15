@@ -26,6 +26,7 @@ void TrailEmitterEditor::Initialize(SceneManager* sceneManager) {
 }
 
 void TrailEmitterEditor::ResetDummyPreview(bool clearEffects) {
+    // 再生時計は常に戻し、既存の効果を消すかは呼び出し側の指定に従う。
     previewTime_ = 0.0f;
     dummyFirstFrame_ = true;
     isDummyRunning_ = true;
@@ -36,6 +37,7 @@ void TrailEmitterEditor::ResetDummyPreview(bool clearEffects) {
 }
 
 void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
+    // 実キャラクターがいなくても往復するダミーを動かし、Trail発生条件を確認する。
     if (!isDummyRunning_) {
         return;
     }
@@ -51,7 +53,7 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
         }
     }
 
-    Vector3 origin = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 origin = { 0.0f, 0.0f, 0.0f };
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     if (previewStage && previewStage->IsEnabled() &&
         EditorManager::GetInstance()->GetSelectedObject() == this) {
@@ -63,28 +65,31 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
     dummyPos_.x += sinf(t * 3.14159f * 2.0f) * previewRange_;
 
     if (dummyFirstFrame_) {
+        // 初回やループ直後の座標差で長いTrailを誤発生させない。
         lastDummyPos_ = dummyPos_;
         dummyFirstFrame_ = false;
         return;
     }
 
-    Vector3 diff = dummyPos_ - lastDummyPos_;
-    const float dist = Math::Length(diff);
+    engine::Vector3 diff = dummyPos_ - lastDummyPos_;
+    const float dist = engine::Math::Length(diff);
     const TrailEmitterConfig& cfg = emitter_.GetConfig();
     if (dist < cfg.emitDistance) {
+        // 設定距離に達するまで基準点を保持し、短い移動で発生数が増えすぎないようにする。
         return;
     }
 
-    Vector3 dir = Math::Normalize(diff);
+    engine::Vector3 dir = engine::Math::Normalize(diff);
     const float rotY = atan2f(dir.x, dir.z);
-    Vector3 spawnPos = {
+    engine::Vector3 spawnPos = {
         (lastDummyPos_.x + dummyPos_.x) * 0.5f,
         (lastDummyPos_.y + dummyPos_.y) * 0.5f,
         (lastDummyPos_.z + dummyPos_.z) * 0.5f
     };
-    const Vector3 rotation = cfg.autoOrient ? Vector3{ 0.0f, rotY, 0.0f } : Vector3{ 0.0f, 0.0f, 0.0f };
+    const engine::Vector3 rotation = cfg.autoOrient ? engine::Vector3{ 0.0f, rotY, 0.0f } : engine::Vector3{ 0.0f, 0.0f, 0.0f };
 
     if (cfg.emitMesh && !cfg.meshEffectPreset.empty()) {
+        // MeshとGPU粒子は同じ中点を使い、複合Trailの見た目を合わせる。
         MeshEffectManager::GetInstance()->SpawnEffectAt(
             "Resources/json/effect/" + cfg.meshEffectPreset + ".json",
             spawnPos,
@@ -92,7 +97,7 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
             cfg.scale);
     }
     if (cfg.emitParticle && !cfg.gpuParticlePreset.empty()) {
-        Matrix4x4 transform = Math::MakeIdentity4x4();
+        engine::Matrix4x4 transform = engine::Math::MakeIdentity4x4();
         transform.m[3][0] = spawnPos.x;
         transform.m[3][1] = spawnPos.y;
         transform.m[3][2] = spawnPos.z;
@@ -227,12 +232,12 @@ void TrailEmitterEditor::Update(float deltaTime) {
         const float duration = (std::max)(previewDuration_, 0.01f);
         const TrailEmitterConfig& config = emitter_.GetConfig();
         std::vector<EffectPreviewStage::TimelineEvent> events;
-        events.push_back({ "Motion path", 0.0f, duration, Vector4{ 0.65f, 0.45f, 1.0f, 1.0f } });
+        events.push_back({ "Motion path", 0.0f, duration, engine::Vector4{ 0.65f, 0.45f, 1.0f, 1.0f } });
         if (config.emitMesh) {
-            events.push_back({ "Mesh emit", 0.0f, duration, Vector4{ 0.25f, 0.8f, 1.0f, 1.0f } });
+            events.push_back({ "Mesh emit", 0.0f, duration, engine::Vector4{ 0.25f, 0.8f, 1.0f, 1.0f } });
         }
         if (config.emitParticle) {
-            events.push_back({ "Particle emit", 0.0f, duration, Vector4{ 1.0f, 0.55f, 0.2f, 1.0f } });
+            events.push_back({ "Particle emit", 0.0f, duration, engine::Vector4{ 1.0f, 0.55f, 0.2f, 1.0f } });
         }
         previewStage->ReportToolState(
             EffectPreviewStage::ToolKind::Trail,
@@ -311,7 +316,7 @@ void TrailEmitterEditor::DrawImGui() {
 
     // 選択中オブジェクトの情報表示
     if (targetObject_) {
-        Vector3 pos = targetObject_->GetWorldPosition();
+        engine::Vector3 pos = targetObject_->GetWorldPosition();
         ImGui::TextDisabled("  位置: (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z);
     }
     ImGui::Separator();
@@ -391,9 +396,9 @@ void TrailEmitterEditor::DrawImGui() {
             ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f),
                 ICON_FA_CIRCLE " 追従中: %s", targetObject_->GetName().c_str());
 
-            Vector3 curPos  = targetObject_->GetWorldPosition();
-            Vector3 lastPos = emitter_.GetLastEmitPos();
-            Vector3 diff    = { curPos.x - lastPos.x, curPos.y - lastPos.y, curPos.z - lastPos.z };
+            engine::Vector3 curPos  = targetObject_->GetWorldPosition();
+            engine::Vector3 lastPos = emitter_.GetLastEmitPos();
+            engine::Vector3 diff    = { curPos.x - lastPos.x, curPos.y - lastPos.y, curPos.z - lastPos.z };
             float dist = sqrtf(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
 
             ImGui::TextDisabled("  現在位置: (%.2f, %.2f, %.2f)", curPos.x, curPos.y, curPos.z);
@@ -456,6 +461,7 @@ void TrailEmitterEditor::DrawImGui() {
 //  RefreshFileLists
 // ============================================================
 void TrailEmitterEditor::RefreshFileLists() {
+    // 選択欄には実在するJSONの名前だけを並べ、保存後も同じ一覧を更新する。
     meshEffectList_.clear();
     gpuParticleList_.clear();
     savedConfigList_.clear();
@@ -477,6 +483,7 @@ void TrailEmitterEditor::RefreshFileLists() {
 //  Save
 // ============================================================
 void TrailEmitterEditor::Save(const std::string& name) {
+    // 軌跡の参照プリセットと放出条件をJSONに書き出し、一覧へ即時反映する。
     if (name.empty()) return;
     fs::create_directories("Resources/json/trail_emitter/");
 
@@ -499,6 +506,7 @@ void TrailEmitterEditor::Save(const std::string& name) {
 //  Load
 // ============================================================
 void TrailEmitterEditor::Load(const std::string& name) {
+    // 保存された放出条件をエミッターへ反映し、参照する素材名も復元する。
     std::ifstream f("Resources/json/trail_emitter/" + name + ".json");
     if (!f.is_open()) return;
     json j; f >> j; f.close();

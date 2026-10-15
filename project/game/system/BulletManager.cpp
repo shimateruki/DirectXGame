@@ -1,74 +1,8 @@
 #include "BulletManager.h"
 #include "CollisionManager.h"
 #include "Object3dCommon.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include <algorithm>
-
-namespace {
-bool IsSpecialMaterial(int32_t materialType) {
-    // 深度や画面コピーを使う弾を通常の不透明描画から分ける。
-    return (materialType >= 8 && materialType <= 22) || materialType == 26;
-}
-
-void DrawSpecialBullet(Bullet* bullet, uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    // 素材ごとの描画経路に深度・画面コピーを渡す。
-    if (!bullet || bullet->IsDead()) {
-        return;
-    }
-
-    switch (bullet->GetMaterialType()) {
-    case 8:
-        bullet->DrawWater(depthSrvHandle, grabSrvHandle);
-        break;
-    case 9:
-        bullet->DrawMagma(depthSrvHandle, grabSrvHandle);
-        break;
-    case 10:
-        bullet->DrawIce(depthSrvHandle, grabSrvHandle);
-        break;
-    case 11:
-        bullet->DrawFire(depthSrvHandle, grabSrvHandle);
-        break;
-    case 12:
-        bullet->DrawLaser(depthSrvHandle, grabSrvHandle);
-        break;
-    case 13:
-        bullet->DrawSlimeGel(depthSrvHandle, grabSrvHandle);
-        break;
-    case 14:
-        bullet->DrawShockwave(depthSrvHandle, grabSrvHandle);
-        break;
-    case 15:
-        bullet->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
-        break;
-    case 16:
-        bullet->DrawDamageCrack(depthSrvHandle, grabSrvHandle);
-        break;
-    case 17:
-        bullet->DrawUpdraft(depthSrvHandle, grabSrvHandle);
-        break;
-    case 18:
-        bullet->DrawStunBind(depthSrvHandle, grabSrvHandle);
-        break;
-    case 19:
-        bullet->DrawCrownUnlock(depthSrvHandle, grabSrvHandle);
-        break;
-    case 20:
-        bullet->DrawPoisonSpore(depthSrvHandle, grabSrvHandle);
-        break;
-    case 21:
-        bullet->DrawCloud(depthSrvHandle, grabSrvHandle);
-        break;
-    case 22:
-        bullet->DrawGatePortal(depthSrvHandle, grabSrvHandle);
-        break;
-    case 26:
-        bullet->DrawWindOrb(depthSrvHandle, grabSrvHandle);
-        break;
-    default:
-        break;
-    }
-}
-} // namespace
 
 BulletManager* BulletManager::GetInstance() {
     // 弾リストと衝突登録をシーン内で一箇所に集約する。
@@ -102,7 +36,7 @@ void BulletManager::Clear() {
     bullets_.clear();
 }
 
-void BulletManager::Fire(const Vector3& pos, const Vector3& vel, uint32_t attr, uint32_t mask, const std::string& model,
+void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel, uint32_t attr, uint32_t mask, const std::string& model,
                          float radius, float life, const BulletVisualConfig& visualConfig, float damage,
                          const StatusEffectApplication& statusEffect, DamageType damageType, float gravity) {
 
@@ -188,7 +122,7 @@ void BulletManager::Update(float deltaTime) {
 void BulletManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 特殊マテリアル弾は後段で描くため、この不透明描画から除く。
     for (auto& bullet : bullets_) {
-        if (IsSpecialMaterial(bullet->GetMaterialType())) {
+        if (MaterialRenderPolicy::IsSpecial(bullet->GetMaterialType())) {
             continue;
         }
         bullet->Draw(pointLightResource, spotLightResource);
@@ -198,7 +132,7 @@ void BulletManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spo
 bool BulletManager::HasSpecialMaterialBullets() const {
     // 専用描画パスが必要な生存弾の有無を問い合わせる。
     for (const auto& bullet : bullets_) {
-        if (!bullet->IsDead() && IsSpecialMaterial(bullet->GetMaterialType())) {
+        if (!bullet->IsDead() && MaterialRenderPolicy::IsSpecial(bullet->GetMaterialType())) {
             return true;
         }
     }
@@ -208,9 +142,9 @@ bool BulletManager::HasSpecialMaterialBullets() const {
 void BulletManager::DrawSpecial(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     // 深度や画面コピーが揃った段階で特殊マテリアル弾だけ描く。
     for (auto& bullet : bullets_) {
-        if (!IsSpecialMaterial(bullet->GetMaterialType())) {
+        if (bullet->IsDead() || !MaterialRenderPolicy::IsSpecial(bullet->GetMaterialType())) {
             continue;
         }
-        DrawSpecialBullet(bullet.get(), depthSrvHandle, grabSrvHandle);
+        bullet->DrawSpecialMaterial(depthSrvHandle, grabSrvHandle);
     }
 }

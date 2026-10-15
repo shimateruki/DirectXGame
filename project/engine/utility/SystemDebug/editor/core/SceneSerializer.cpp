@@ -1,4 +1,6 @@
 #include "SceneSerializer.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
+#include "engine/graphics/3d/material/WaterParamJsonCodec.h"
 #include "game/system/SceneEntityParameterCodec.h"
 #include "DebugEditor.h"
 #include "Object3d.h"
@@ -29,6 +31,7 @@ constexpr const char* kSceneCategorySuffixes[] = {
 };
 
 std::string GetSceneBaseName(std::string filename) {
+    // ディレクトリと拡張子を除き、分割されたScene JSONに共通のIDを取り出す。
     const size_t slash = filename.find_last_of("/\\");
     if (slash != std::string::npos) {
         filename = filename.substr(slash + 1);
@@ -40,6 +43,7 @@ std::string GetSceneBaseName(std::string filename) {
 }
 
 bool HasSceneCategorySuffix(const std::string& filename) {
+    // 分割ファイルを独立したシーンとして一覧へ重複登録しないための判定。
     for (const char* suffix : kSceneCategorySuffixes) {
         const size_t suffixLength = std::char_traits<char>::length(suffix);
         if (filename.size() >= suffixLength &&
@@ -51,6 +55,7 @@ bool HasSceneCategorySuffix(const std::string& filename) {
 }
 
 bool IsValidSceneId(const std::string& sceneId, std::string& errorMessage) {
+    // ファイル名として安全な文字だけ許し、カテゴリ別JSONの接尾辞とも衝突させない。
     if (sceneId.empty()) {
         errorMessage = "Scene IDを入力してください。";
         return false;
@@ -74,6 +79,7 @@ bool IsValidSceneId(const std::string& sceneId, std::string& errorMessage) {
 }
 
 json ReadJsonObject(const fs::path& path) {
+    // シーンデータをオブジェクト型のJSONとして読み、不正な内容は空値へ戻す。
     std::ifstream stream(path);
     if (!stream.is_open()) {
         return json::object();
@@ -89,6 +95,7 @@ json ReadJsonObject(const fs::path& path) {
 }
 
 bool WriteJsonObject(const fs::path& path, const json& data, std::string& errorMessage) {
+    // 保存先を用意してからJSONを書き、失敗理由をEditorへ返す。
     std::error_code error;
     fs::create_directories(path.parent_path(), error);
     if (error) {
@@ -109,6 +116,7 @@ bool WriteJsonObject(const fs::path& path, const json& data, std::string& errorM
     return true;
 }
 
+// 複製したSceneの全Objectに新GUIDを振り、親GUID参照も同じ対応表で更新します。
 bool RegenerateCopiedSceneObjectGuids(
     const std::vector<fs::path>& paths,
     std::string& errorMessage) {
@@ -131,9 +139,9 @@ bool RegenerateCopiedSceneObjectGuids(
             if (!object.is_object()) continue;
 
             const std::string oldGuid = object.value("guid", std::string());
-            const std::string newGuid = Object3d::GeneratePersistentGuid();
+            const std::string newGuid = engine::Object3d::GeneratePersistentGuid();
             object["guid"] = newGuid;
-            if (Object3d::IsPersistentGuidValid(oldGuid)) {
+            if (engine::Object3d::IsPersistentGuidValid(oldGuid)) {
                 guidRemap.emplace(oldGuid, newGuid);
             }
         }
@@ -158,12 +166,14 @@ bool RegenerateCopiedSceneObjectGuids(
     return true;
 }
 
+// 新規Scene用の空のObject配置JSONを作ります。
 json MakeEmptyObjectLayout() {
     json data;
     data["objects"] = json::array();
     return data;
 }
 
+// 設計解像度を含む空のSprite配置JSONを作ります。
 json MakeEmptySpriteLayout() {
     json data;
     data["designResolution"] = { 1920.0f, 1080.0f };
@@ -172,6 +182,7 @@ json MakeEmptySpriteLayout() {
     return data;
 }
 
+// Scene Assetの識別子、実行クラス、参照リソースの既定値を保存JSONへ補います。
 void ApplySceneAssetMetadata(
     json& data,
     const std::string& sceneId,
@@ -200,6 +211,7 @@ void ApplySceneAssetMetadata(
 }
 
 std::vector<fs::path> BuildObjectAssetPaths(const std::string& sceneId) {
+    // 単一ファイルと種類別ファイルを同じ順序で列挙し、複製・削除で取りこぼさない。
     const fs::path base = fs::path(kSceneObjectDirectory) / sceneId;
     return {
         fs::path(base.string() + ".json"),
@@ -211,6 +223,7 @@ std::vector<fs::path> BuildObjectAssetPaths(const std::string& sceneId) {
 }
 
 bool AnySceneDestinationExists(const std::string& sceneId) {
+    // ObjectとSpriteの両形式を調べ、作成・複製で既存ファイルを上書きしない。
     for (const fs::path& path : BuildObjectAssetPaths(sceneId)) {
         if (fs::exists(path)) {
             return true;
@@ -221,6 +234,7 @@ bool AnySceneDestinationExists(const std::string& sceneId) {
 }
 
 std::string ResolveExistingSpritePath(const std::string& sceneId) {
+    // 現行の接尾辞付きSprite配置を優先し、旧形式も参照可能にする。
     const fs::path standard = fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json");
     if (fs::exists(standard)) {
         return standard.generic_string();
@@ -233,6 +247,7 @@ std::string ResolveExistingSpritePath(const std::string& sceneId) {
 }
 
 bool IsRuntimeReferencedScene(const std::string& sceneId, std::string& referenceDescription) {
+    // 固定名で参照されるゲーム用シーンは、エディターからの削除候補にしない。
     static const char* kFixedRuntimeScenes[] = {
         "titleScene",
         "stageSelect",
@@ -261,6 +276,7 @@ bool IsRuntimeReferencedScene(const std::string& sceneId, std::string& reference
 
     const std::string expectedLevelPath =
         (fs::path(kSceneObjectDirectory) / (sceneId + ".json")).generic_string();
+    // ステージ定義に採用されたJSONも、固定名以外であっても保護する。
     for (const json& stage : root["stages"]) {
         if (!stage.is_object()) {
             continue;
@@ -275,6 +291,7 @@ bool IsRuntimeReferencedScene(const std::string& sceneId, std::string& reference
 }
 
 std::string InferLegacyRuntimeScene(const std::string& sceneId) {
+    // 旧シーン名を実行クラスへ対応させ、ステージ定義からもゲーム用シーンを判別する。
     if (sceneId == "titleScene") return "TITLE";
     if (sceneId == "stageSelect") return "SELECT";
     if (sceneId == "gameOverScene") return "GAMEOVER";
@@ -371,7 +388,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     return targets;
 }
 
-std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveTargets(Object3d* object, const std::string& filename) {
+std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveTargets(engine::Object3d* object, const std::string& filename) {
     std::vector<SaveTarget> targets;
     if (!object) return targets;
 
@@ -455,7 +472,7 @@ std::string SceneSerializer::SaveScene(const std::string& currentFilename, SaveM
     return SaveTargets(BuildSceneSaveTargets(currentFilename, mode));
 }
 
-nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
+nlohmann::json SceneSerializer::SerializeObject(engine::Object3d* obj) {
     json d;
     d["guid"] = obj->EnsurePersistentGuid();
     d["name"] = obj->GetName();
@@ -517,14 +534,15 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     }
 
     // 4. Collider
-    Object3d::ColliderConfig c = obj->GetColliderConfig();
+    engine::Object3d::ColliderConfig c = obj->GetColliderConfig();
     d["collider"]["type"] = (int)c.type;
     d["collider"]["center"] = { c.center.x, c.center.y, c.center.z };
     d["collider"]["size"] = { c.size.x, c.size.y, c.size.z };
     d["collider"]["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
+    if (c.useModelSurface) d["collider"]["useModelSurface"] = true;
     if (!c.footprint.empty()) {
         d["collider"]["footprint"] = nlohmann::json::array();
-        for (const Vector2& point : c.footprint) {
+        for (const engine::Vector2& point : c.footprint) {
             d["collider"]["footprint"].push_back({ point.x, point.y });
         }
     }
@@ -550,7 +568,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     if (!parameter.empty()) d["param"] = parameter;
 
     // 8. グラフィックス
-    Vector4 color = obj->GetColor();
+    engine::Vector4 color = obj->GetColor();
     d["color"] = { color.x, color.y, color.z, color.w };
     d["blendMode"] = static_cast<int>(obj->GetBlendMode());
     d["materialType"] = obj->GetMaterialType();
@@ -561,7 +579,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["normalMapPath"] = obj->GetNormalMapPath();
     d["ormMapPath"] = obj->GetOrmMapPath();
     d["texturePath"] = obj->GetTexturePath();
-    Vector2 tiling = obj->GetTextureTiling();
+    engine::Vector2 tiling = obj->GetTextureTiling();
     d["textureTiling"] = { tiling.x, tiling.y };
     d["autoTextureTiling"] = obj->GetAutoTextureTiling();
     d["enableLighting"] = obj->GetEnableLighting();
@@ -607,25 +625,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["localFog"]["scatteringG"] = fogData->scatteringG;
         d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
     }
-    if (((obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) || obj->GetMaterialType() == 26) && obj->GetMeshRenderer() && obj->GetMeshRenderer()->GetWaterParamData()) {
+    if (MaterialRenderPolicy::IsSpecial(obj->GetMaterialType()) && obj->GetMeshRenderer() && obj->GetMeshRenderer()->GetWaterParamData()) {
         auto* water = obj->GetMeshRenderer()->GetWaterParamData();
-        json jw;
-        jw["waveSpeed"] = water->waveSpeed;
-        jw["waveHeight"] = water->waveHeight;
-        jw["waveFrequency"] = water->waveFrequency;
-        jw["flowSpeedX"] = water->flowSpeedX;
-        jw["flowSpeedY"] = water->flowSpeedY;
-        jw["effectType"] = water->effectType;
-        jw["effectScale"] = water->effectScale;
-        jw["effectScaleX"] = water->effectScaleX;
-        jw["effectScaleY"] = water->effectScaleY;
-        jw["effectScaleZ"] = water->effectScaleZ;
-        jw["topDownDetail"] = water->topDownDetail;
-        jw["effectSoftness"] = water->effectSoftness;
-        jw["effectIntensity"] = water->effectIntensity;
-        jw["billboardScale"] = water->billboardScale;
-
-        d["waterParam"] = jw;
+        d["waterParam"] = WaterParamJsonCodec::Write(*water);
     }
     return d;
 }
@@ -633,7 +635,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
 // =========================================================
 // 単体オブジェクトの更新保存 (UpdateObjectInSceneJSON)
 // =========================================================
-void SceneSerializer::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
+void SceneSerializer::UpdateObjectInSceneJSON(engine::Object3d* object, const std::string& filename) {
     // 単一Objectの差分だけを保存対象にし、Scene全体の再保存を避けます。
     if (!object) return;
 

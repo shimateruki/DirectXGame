@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "32f46dda3f9f2878173dde0333915a28",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/basics/move_0_condition_gamepad.png",
+  "version": 1
+}

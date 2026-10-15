@@ -33,7 +33,7 @@ void AnimatorControllerEditor::Initialize(SceneManager* sceneManager, DebugEdito
     RefreshFiles();
 }
 
-void AnimatorControllerEditor::SetPreviewTarget(Object3d* target) {
+void AnimatorControllerEditor::SetPreviewTarget(engine::Object3d* target) {
     // Scene再読込後に古いポインタを持たないよう、対象は名前で記録します。
     previewTargetName_ = target ? target->GetName() : std::string{};
 }
@@ -127,7 +127,7 @@ void AnimatorControllerEditor::SaveController() {
     if (controller_.Save(path)) {
         DebugConsole::GetInstance()->AddLog("Animator Controller saved: " + path);
         RefreshFiles();
-        if (Object3d* target = ResolvePreviewTarget()) {
+        if (engine::Object3d* target = ResolvePreviewTarget()) {
             if (target->GetAnimatorControllerPath() == fileNameBuffer_ || target->GetAnimatorControllerPath() == path) {
                 target->SetAnimatorController(fileNameBuffer_);
             }
@@ -148,7 +148,7 @@ std::string AnimatorControllerEditor::GetAssetPath() const {
     return std::string(kAnimatorDirectory) + fileNameBuffer_ + ".json";
 }
 
-Object3d* AnimatorControllerEditor::ResolvePreviewTarget() const {
+engine::Object3d* AnimatorControllerEditor::ResolvePreviewTarget() const {
     // 対象名を毎回現行Sceneから解決し、Scene切り替え後の不正参照を避けます。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || previewTargetName_.empty()) {
         return nullptr;
@@ -214,7 +214,7 @@ void AnimatorControllerEditor::DrawPreviewTargetControls() {
         }
         ImGui::EndCombo();
     }
-    Object3d* target = ResolvePreviewTarget();
+    engine::Object3d* target = ResolvePreviewTarget();
     if (target) {
         // Player用Controllerはゲームの行動Stateが主導するため、能力モーションだけ別経路で試す。
         if (Player* player = dynamic_cast<Player*>(target);
@@ -289,7 +289,7 @@ void AnimatorControllerEditor::DrawStateEditor() {
         if (ImGui::InputText("State名", stateName, sizeof(stateName))) {
             RenameState(oldName, stateName);
         }
-        Object3d* target = ResolvePreviewTarget();
+        engine::Object3d* target = ResolvePreviewTarget();
         const char* clipLabel = state.clipName.empty() ? "(なし)" : state.clipName.c_str();
         if (ImGui::BeginCombo("Model Animation Clip", clipLabel)) {
             if (ImGui::Selectable("(なし)", state.clipName.empty())) state.clipName.clear();
@@ -401,7 +401,7 @@ void AnimatorControllerEditor::DrawParameterEditor() {
     if (parameter.type == AnimatorParameterType::Float) ImGui::DragFloat("Default", &parameter.defaultFloat, 0.01f);
     if (parameter.type == AnimatorParameterType::Int) ImGui::DragInt("Default", &parameter.defaultInt);
     if (parameter.type == AnimatorParameterType::Bool) ImGui::Checkbox("Default", &parameter.defaultBool);
-    if (Object3d* target = ResolvePreviewTarget()) {
+    if (engine::Object3d* target = ResolvePreviewTarget()) {
         // DefaultはAssetの値、Runtime Valueは現在再生中のObjectへの一時入力として分ける。
         Player* player = dynamic_cast<Player*>(target);
         const bool isSlimeController = player && std::string(fileNameBuffer_) == "player_slime";

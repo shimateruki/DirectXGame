@@ -10,24 +10,25 @@
 #include <algorithm>
 #include <cmath>
 namespace {
-Vector3 AimCenter(Object3d* object) {
+// ロックオンの照準点として、ワールドAABBの中心を返します。
+engine::Vector3 AimCenter(engine::Object3d* object) {
     // 原点や固定の高さではなく、サイズ・オフセットを反映した判定中心を狙います。
     const AABB bounds = object->GetAABB();
     return (bounds.min + bounds.max) * 0.5f;
 }
 
-bool Available(Object3d* object) {
+bool Available(engine::Object3d* object) {
     // 倒れた敵・運搬中の敵・不可視の敵は照準候補から外す。
     auto* enemy = dynamic_cast<BaseEnemy*>(object);
     return enemy && !enemy->isDead && enemy->GetIsVisible() && (enemy->GetCollisionAttribute() & CollisionCategories::Get("enemy")) &&
            !enemy->IsCarried() && !enemy->IsDefeatEffectPlaying();
 }
 
-bool Visible(Player* player, Object3d* target) {
+bool Visible(Player* player, engine::Object3d* target) {
     // 照準中心間の遮蔽物を確認し、距離がほぼ0なら方向計算を避ける。
-    const Vector3 start = AimCenter(player);
-    const Vector3 delta = AimCenter(target) - start;
-    const float distance = Math::Length(delta);
+    const engine::Vector3 start = AimCenter(player);
+    const engine::Vector3 delta = AimCenter(target) - start;
+    const float distance = engine::Math::Length(delta);
     if (distance < 0.001f)
         return true;
     PhysicsQueryFilter filter;
@@ -58,7 +59,7 @@ void LockOnSystem::ResetLockOn(Camera* camera) {
     }
 }
 
-void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player,
+void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3d>>& objects, Camera* camera, Player* player,
                           float deltaTime) {
     if (!player || !camera || !inputManager_)
         return;
@@ -76,7 +77,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
         const bool exists = std::any_of(objects.begin(), objects.end(),
                                         [&](const auto& object) { return object.get() == lockOnTarget_; });
         if (!exists || !Available(lockOnTarget_) ||
-            Math::Length(lockOnTarget_->GetWorldPosition() - player->GetWorldPosition()) >
+            engine::Math::Length(lockOnTarget_->GetWorldPosition() - player->GetWorldPosition()) >
                 kMaxLockOnDistance_ * 1.25f) {
             ResetLockOn(camera);
             return;
@@ -111,17 +112,17 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
     player->SetLockOnAimPoint(AimCenter(lockOnTarget_), visible);
 }
 
-Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera,
+engine::Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<engine::Object3d>>& objects, Camera* camera,
                                        Player* player, bool next) {
     // ロックオン候補の借用参照と選択用スコア。候補を集めてから順序付けする。
     struct Candidate {
-        Object3d* object;
+        engine::Object3d* object;
         float score;
     };
     std::vector<Candidate> candidates;
-    Vector3 forward = camera->GetTargetPoint() - camera->GetEye();
-    const float length = Math::Length(forward);
-    forward = length > 0.001f ? forward / length : Vector3{0, 0, 1};
+    engine::Vector3 forward = camera->GetTargetPoint() - camera->GetEye();
+    const float length = engine::Math::Length(forward);
+    forward = length > 0.001f ? forward / length : engine::Vector3{0, 0, 1};
     for (const auto& object : objects) {
         if (!Available(object.get()))
             continue;
@@ -133,14 +134,14 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
             }
         if (owned)
             continue;
-        const float distance = Math::Length(object->GetWorldPosition() - player->GetWorldPosition());
+        const float distance = engine::Math::Length(object->GetWorldPosition() - player->GetWorldPosition());
         if (distance > kMaxLockOnDistance_ || distance < 0.1f)
             continue;
-        const Vector3 delta = object->GetWorldPosition() - camera->GetEye();
-        const float cameraDistance = Math::Length(delta);
+        const engine::Vector3 delta = object->GetWorldPosition() - camera->GetEye();
+        const float cameraDistance = engine::Math::Length(delta);
         if (cameraDistance < 0.001f)
             continue;
-        const float dot = Math::Dot(forward, delta / cameraDistance);
+        const float dot = engine::Math::Dot(forward, delta / cameraDistance);
         if (dot < 0.5f || !Visible(player, object.get()))
             continue;
         candidates.push_back({object.get(), (1 - dot) * 2 + distance / kMaxLockOnDistance_});

@@ -8,6 +8,7 @@ class EnemyAttackAction : public AttackSequence {
 public:
     ~EnemyAttackAction() { Cancel(); }
     bool Start(const EnemyAttackDefinition& definition, const AttackSequenceContext& context) {
+        // 前回の色と予告表示を戻してから、新しい攻撃の照準を固定する。
         if (IsRunning()) return false;
         Restore();
         owner_ = dynamic_cast<BaseEnemy*>(context.owner);
@@ -47,8 +48,9 @@ public:
     void Cancel() { AttackSequence::Cancel(); Restore(); }
     bool ControlsActor() const { return controlled_ && IsRunning(); }
 private:
-    static Vector4 ToColor(const std::array<float, 4>& c) { return {c[0], c[1], c[2], c[3]}; }
+    static engine::Vector4 ToColor(const std::array<float, 4>& c) { return {c[0], c[1], c[2], c[3]}; }
     void ApplyPresentation(const AttackSequenceContext& context) {
+        // 判定の進行とは別に、移動停止・向き・予告線を現在の攻撃時刻から反映する。
         if (!controlled_ || !owner_ || !IsRunning()) return;
         const auto& c = GetDefinition().sequence.actorControl;
         if (c.stopMovement) {
@@ -69,7 +71,7 @@ private:
         controlled_ = false;
     }
     BaseEnemy* owner_ = nullptr;
-    Vector4 originalColor_{1, 1, 1, 1};
+    engine::Vector4 originalColor_{1, 1, 1, 1};
     AttackSequenceContext aim_;
     bool controlled_ = false, cuePlayed_ = false;
 };

@@ -3,6 +3,7 @@
 #include"SrvManager.h"
 #include <cassert>
 
+namespace engine {
 
 /// <summary>
 /// 初期化
@@ -141,3 +142,5 @@ void SpriteCommon::CreatePipeline() {
     HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState_));
     assert(SUCCEEDED(hr));
 }
+
+} // namespace engine

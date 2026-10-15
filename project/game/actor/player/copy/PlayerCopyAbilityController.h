@@ -47,7 +47,7 @@ class PlayerCopyAbilityController {
     void Cancel(Player& player);
     // ガード中に攻撃を受け止めたことを能力へ通知します。
     // ダメージ判定とコピー固有の反応を分離し、敵クラスへ能力処理を戻しません。
-    bool NotifyGuardedHit(Player& player, const Vector3& sourcePosition);
+    bool NotifyGuardedHit(Player& player, const engine::Vector3& sourcePosition);
 
     bool HandlesMorphType(int morphType) const;
     bool IsActive() const;

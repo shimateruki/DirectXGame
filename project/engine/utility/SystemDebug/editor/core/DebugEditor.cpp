@@ -59,292 +59,12 @@
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
-namespace {
-std::string ToLowerForGroundDefault(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return value;
-}
 
-bool ContainsGroundKeywordForDefault(const std::string& value) {
-    return value.find("block") != std::string::npos ||
-        value.find("floor") != std::string::npos ||
-        value.find("ground") != std::string::npos ||
-        value.find("platform") != std::string::npos ||
-        value.find("terrain") != std::string::npos ||
-        value.find("wall") != std::string::npos;
-}
 
-bool ShouldApplyGroundDefaults(Object3d* object) {
-    if (!object) {
-        return false;
-    }
-
-    const std::string className = ToLowerForGroundDefault(object->GetClassName());
-    if (className == "enemy" || className == "player" || className == "gimmick" ||
-        className == "item" || className == "gpuparticle" || className == "cinematiccamera" ||
-        className == "spritecard" || className == "meshroot" || className == "meshpart") {
-        return false;
-    }
-
-    const std::string modelName = ToLowerForGroundDefault(object->GetModelName());
-    if (modelName.empty()) {
-        return false;
-    }
-    if (modelName.rfind("characters/", 0) == 0 || modelName.rfind("item/", 0) == 0) {
-        return false;
-    }
-    if (modelName == "primitives/plane" || modelName.find("portal") != std::string::npos) {
-        return false;
-    }
-
-    return modelName.rfind("stages/", 0) == 0 ||
-        modelName == "primitives/cube" ||
-        ContainsGroundKeywordForDefault(modelName);
-}
-
-void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
-    if (!ShouldApplyGroundDefaults(object)) {
-        return;
-    }
-
-    auto colliderConfig = object->GetColliderConfig();
-    if (colliderConfig.type == ColliderType::kNone) {
-        colliderConfig.type = ColliderType::kAABB;
-        object->SetColliderConfig(colliderConfig);
-    }
-    if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
-    }
-    if (object->GetCollisionMask() == 0) {
-        object->SetCollisionMask(0xFFFFFFFFu);
-    }
-}
-}
-
+// Gizmoが返す度単位の回転を、Object3dへ渡すラジアン値に変換します。
 float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
-float ToDegrees(float radians) { return radians * (180.0f / PI); }
 
 namespace {
-    constexpr float kCrashRecoveryAutosaveInterval = 3.0f;
-    constexpr float kCrashRecoveryHeartbeatInterval = 5.0f;
-    constexpr const char* kCrashRecoveryRoot = "Resources/.backup/crash_recovery";
-    constexpr const char* kCrashRecoverySessionFile = "session.json";
-
-    std::string ToGenericPath(const fs::path& path) {
-        return path.generic_string();
-    }
-
-    std::string NowIsoString() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
-        return out.str();
-    }
-
-    std::string MakeCrashRecoveryStamp() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y%m%d_%H%M%S") << "_" << std::setw(3) << std::setfill('0') << millis;
-        return out.str();
-    }
-
-    bool ReadJsonFileSafe(const fs::path& path, nlohmann::json& outJson) {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        try {
-            file >> outJson;
-            return outJson.is_object();
-        }
-        catch (...) {
-            return false;
-        }
-    }
-
-    bool WriteJsonFileSafe(const fs::path& path, const nlohmann::json& data) {
-        std::error_code ec;
-        fs::create_directories(path.parent_path(), ec);
-        if (ec) {
-            return false;
-        }
-
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        file << data.dump(4);
-        return file.good();
-    }
-
-    bool IsPathInside(const fs::path& child, const fs::path& parent) {
-        std::error_code ec;
-        const fs::path childAbs = fs::absolute(child, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-        const fs::path parentAbs = fs::absolute(parent, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-
-        std::wstring childText = childAbs.native();
-        std::wstring parentText = parentAbs.native();
-        std::transform(childText.begin(), childText.end(), childText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        std::transform(parentText.begin(), parentText.end(), parentText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        if (!parentText.empty() && parentText.back() != L'\\' && parentText.back() != L'/') {
-            parentText.push_back(fs::path::preferred_separator);
-        }
-        return childText.rfind(parentText, 0) == 0;
-    }
-
-    bool IsCrashRecoverySourcePathAllowed(const fs::path& path) {
-        const std::string generic = path.lexically_normal().generic_string();
-        const std::string lower = [&generic]() {
-            std::string value = generic;
-            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return value;
-        }();
-        return lower.rfind("resources/json/", 0) == 0 &&
-            lower.find("/../") == std::string::npos &&
-            lower.find("resources/.backup/") != 0 &&
-            lower.find("resources/.cache/") != 0;
-    }
-
-    float GetCreateYOffsetForObject(const Object3d* object) {
-        if (!object) return 1.0f;
-
-        const auto& collider = object->GetColliderConfig();
-        if (collider.size.y > 0.0f) return collider.size.y;
-        if (collider.size.x > 0.0f) return collider.size.x;
-
-        const Transform& transform = object->GetTransform();
-        if (transform.scale.y > 0.0f) return transform.scale.y;
-        return 1.0f;
-    }
-
-    Vector3 GetPlacementExtents(const Object3d* object) {
-        if (!object) return { 1.0f, 1.0f, 1.0f };
-
-        const auto& collider = object->GetColliderConfig();
-        const Transform& transform = object->GetTransform();
-        return {
-            collider.size.x > 0.0f ? collider.size.x : std::abs(transform.scale.x),
-            collider.size.y > 0.0f ? collider.size.y : std::abs(transform.scale.y),
-            collider.size.z > 0.0f ? collider.size.z : std::abs(transform.scale.z)
-        };
-    }
-
-    bool IsNearlyZero(const Vector3& value) {
-        return std::abs(value.x) < 0.0001f &&
-            std::abs(value.y) < 0.0001f &&
-            std::abs(value.z) < 0.0001f;
-    }
-
-    Vector3 NormalizeOrUp(const Vector3& value) {
-        if (IsNearlyZero(value)) {
-            return { 0.0f, 1.0f, 0.0f };
-        }
-        return Math::Normalize(value);
-    }
-
-    void ApplyEditorPreviewLightOverride(Object3d* object) {
-        if (!object) {
-            return;
-        }
-
-        if (auto* material = object->GetMaterialData()) {
-            material->enableLighting = 0;
-            material->selectedLighting = 0;
-            material->emissive = (std::max)(material->emissive, 1.0f);
-        }
-    }
-
-    float GetSurfaceOffset(const Object3d* object, const Vector3& normal) {
-        Vector3 extents = GetPlacementExtents(object);
-        Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
-        float extentOnNormal = extents.x * absNormal.x + extents.y * absNormal.y + extents.z * absNormal.z;
-        if (!object) return extentOnNormal;
-
-        const auto& collider = object->GetColliderConfig();
-        float centerOnNormal =
-            collider.center.x * normal.x +
-            collider.center.y * normal.y +
-            collider.center.z * normal.z;
-        return std::max(extentOnNormal - centerOnNormal, 0.0f);
-    }
-
-    Vector3 GetSurfaceAlignedRotation(const Vector3& currentRotation, const Vector3& normal) {
-        constexpr float kHalfPi = PI * 0.5f;
-        Vector3 n = NormalizeOrUp(normal);
-
-        if (std::abs(n.y) >= std::abs(n.x) && std::abs(n.y) >= std::abs(n.z)) {
-            if (n.y < 0.0f) {
-                return { PI, currentRotation.y, 0.0f };
-            }
-            return { 0.0f, currentRotation.y, 0.0f };
-        }
-
-        if (std::abs(n.x) >= std::abs(n.z)) {
-            return { 0.0f, currentRotation.y, n.x > 0.0f ? -kHalfPi : kHalfPi };
-        }
-
-        return { n.z > 0.0f ? kHalfPi : -kHalfPi, currentRotation.y, 0.0f };
-    }
-
-    void ApplyGridSnap(Vector3& position, const Vector3& normal, bool hasSurface, bool enabled, float snapValue) {
-        if (!enabled || snapValue <= 0.0f) return;
-
-        if (!hasSurface || std::abs(normal.x) < 0.5f) {
-            position.x = std::round(position.x / snapValue) * snapValue;
-        }
-        if (hasSurface && std::abs(normal.y) < 0.5f) {
-            position.y = std::round(position.y / snapValue) * snapValue;
-        }
-        if (!hasSurface || std::abs(normal.z) < 0.5f) {
-            position.z = std::round(position.z / snapValue) * snapValue;
-        }
-    }
-
-    bool ShouldUsePreviewDrawClassOverride(const Object3d* object) {
-        if (!object) return false;
-
-        const std::string className = object->GetClassName();
-        return object->IsCameraObject() ||
-            className == "GPUParticle" ||
-            className == "InvisibleBox";
-    }
-
-    bool IsValidAabb(const AABB& aabb) {
-        return aabb.max.x > aabb.min.x &&
-            aabb.max.y > aabb.min.y &&
-            aabb.max.z > aabb.min.z;
-    }
-
-    Vector3 GetAabbCenter(const AABB& aabb) {
-        return {
-            (aabb.min.x + aabb.max.x) * 0.5f,
-            (aabb.min.y + aabb.max.y) * 0.5f,
-            (aabb.min.z + aabb.max.z) * 0.5f
-        };
-    }
-
-    float Distance(const Vector3& a, const Vector3& b) {
-        float dx = a.x - b.x;
-        float dy = a.y - b.y;
-        float dz = a.z - b.z;
-        return std::sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
     std::string GetLeafName(const std::string& path) {
         size_t slash = path.find_last_of("/\\");
         if (slash == std::string::npos) {
@@ -355,6 +75,7 @@ namespace {
     }
 
     bool SceneHasObjectName(BaseScene* scene, const std::string& name) {
+        // 現在シーン内だけを調べ、別シーンの同名Objectは配置名の衝突としない。
         if (!scene) return false;
 
         for (const auto& object : scene->GetObjects()) {
@@ -369,7 +90,8 @@ namespace {
         return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
     }
 
-    std::string MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
+    std::string MakeUniquePresetObjectNameImpl(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
+    // シーンと今回の配置候補の両方を調べ、衝突しない名前を作る。
         std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
         if (!SceneHasObjectName(scene, base) && !ReservedHasName(reservedNames, base)) {
             return base;
@@ -383,30 +105,53 @@ namespace {
         }
         return base + "_New";
     }
+}
 
-    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
-        if (objects.empty()) return;
+std::string DebugEditor::MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName,
+    const std::vector<std::string>& reservedNames) {
+    return MakeUniquePresetObjectNameImpl(scene, baseName, reservedNames);
+}
 
-        std::vector<std::string> reservedNames;
+bool DebugEditor::IsValidAabb(const AABB& aabb) {
+    return aabb.max.x > aabb.min.x &&
+        aabb.max.y > aabb.min.y &&
+        aabb.max.z > aabb.min.z;
+}
+
+engine::Vector3 DebugEditor::GetAabbCenter(const AABB& aabb) {
+    return {
+        (aabb.min.x + aabb.max.x) * 0.5f,
+        (aabb.min.y + aabb.max.y) * 0.5f,
+        (aabb.min.z + aabb.max.z) * 0.5f
+    };
+}
+
+void DebugEditor::AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName,
+    std::vector<std::unique_ptr<engine::Object3d>>& objects, PresetRootName rootNameSource) {
+    if (objects.empty()) return;
+
+    std::vector<std::string> reservedNames;
+    std::string baseName = GetLeafName(presetName);
+    if (rootNameSource == PresetRootName::DisplayName) {
         const json& preset = PresetManager::GetInstance()->GetPreset(presetName);
-        const std::string displayName = preset.value("presetDisplayName", GetLeafName(presetName));
-        std::string rootName = MakeUniquePresetObjectName(scene, displayName, reservedNames);
-        objects.front()->SetName(rootName);
-        reservedNames.push_back(rootName);
-
-        for (size_t index = 1; index < objects.size(); ++index) {
-            if (!objects[index]) continue;
-
-            std::string baseName = objects[index]->GetName();
-            if (baseName.empty()) {
-                baseName = rootName + "_Child";
-            }
-            std::string uniqueName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
-            objects[index]->SetName(uniqueName);
-            reservedNames.push_back(uniqueName);
-        }
+        baseName = preset.value("presetDisplayName", baseName);
     }
 
+    const std::string rootName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
+    objects.front()->SetName(rootName);
+    reservedNames.push_back(rootName);
+
+    for (size_t index = 1; index < objects.size(); ++index) {
+        if (!objects[index]) continue;
+
+        std::string childBaseName = objects[index]->GetName();
+        if (childBaseName.empty()) {
+            childBaseName = rootName + "_Child";
+        }
+        const std::string uniqueName = MakeUniquePresetObjectName(scene, childBaseName, reservedNames);
+        objects[index]->SetName(uniqueName);
+        reservedNames.push_back(uniqueName);
+    }
 }
 
 // ========================================================================
@@ -441,7 +186,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
         auto objects = PresetManager::GetInstance()->CreateObjectsFromPreset(presetName, common);
         if (objects.empty()) return;
 
-        AssignPresetInstanceNames(currentScene, presetName, objects);
+        AssignPresetInstanceNames(currentScene, presetName, objects, PresetRootName::DisplayName);
 
         gameViewCreateMenuMousePos_ = gameViewMousePos_;
         StartGameViewCreatePreview(std::move(objects), "Create Preset: " + presetName);
@@ -453,6 +198,9 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     projectWindow_.Initialize(this, dxCommon);
     PresetEditor::GetInstance()->SetThumbnailProvider([this](const std::string& presetName) {
         return projectWindow_.GetPresetThumbnailGpuPtr(presetName);
+    });
+    PresetEditor::GetInstance()->SetPreviewProvider([this](const std::string& presetName, float yaw, float pitch, float zoom) {
+        return projectWindow_.GetPresetPreviewGpuPtr(presetName, yaw, pitch, zoom);
     });
     PresetEditor::GetInstance()->SetSelectionCallback([this]() {
         SetSelectedObject(nullptr);
@@ -594,13 +342,13 @@ void DebugEditor::CancelPrefabEditSession() {
     DebugConsole::GetInstance()->AddLog("Discarded Prefab Mode: " + cancelledPrefabName);
 }
 
-bool DebugEditor::IsPrefabEditObject(const Object3d* object) const {
+bool DebugEditor::IsPrefabEditObject(const engine::Object3d* object) const {
     // 編集ルートの子孫だけを対象にし、外側のScene Objectを誤保存しません。
     if (!prefabEditMode_ || !object || !prefabEditRoot_) {
         return false;
     }
 
-    const Object3d* current = object;
+    const engine::Object3d* current = object;
     for (int depth = 0; current && depth < 512; ++depth) {
         if (current == prefabEditRoot_) {
             return true;
@@ -613,16 +361,16 @@ bool DebugEditor::IsPrefabEditObject(const Object3d* object) const {
 void DebugEditor::EndPrefabEditSession(bool clearTransactions) {
     // 一時Objectと可視状態を復元し、必要なら専用Undo履歴も破棄します。
     BaseScene* scene = prefabEditScene_;
-    std::unordered_set<Object3d*> editObjects;
+    std::unordered_set<engine::Object3d*> editObjects;
     if (scene) {
         for (auto& object : scene->GetObjects()) {
             if (object && IsPrefabEditObject(object.get())) {
                 editObjects.insert(object.get());
             }
         }
-        std::vector<std::unique_ptr<Object3d>> removedObjects;
+        std::vector<std::unique_ptr<engine::Object3d>> removedObjects;
         removedObjects.reserve(editObjects.size());
-        for (Object3d* object : editObjects) {
+        for (engine::Object3d* object : editObjects) {
             if (auto removed = scene->TakeObjectImmediate(object)) {
                 removedObjects.push_back(std::move(removed));
             }
@@ -677,7 +425,7 @@ void DebugEditor::Update() {
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     InputManager* input = InputManager::GetInstance();
-    Math math;
+    engine::Math math;
 
     // =========================================================
     // 1. シーン変更リセット (最優先で行う: ダングリングポインタ防止)
@@ -730,7 +478,7 @@ void DebugEditor::Update() {
 
     // 選択対象が「DebugEditor自身」である間は、以前選んだオブジェクトを保持し続ける
     if (current != nullptr && current != this) {
-        Object3d* obj = dynamic_cast<Object3d*>(current);
+        engine::Object3d* obj = dynamic_cast<engine::Object3d*>(current);
         if (obj) {
             SetSelectedObject(obj);
         }
@@ -846,7 +594,7 @@ void DebugEditor::Update() {
                 if (isSelectionRectReady_) {
                     SelectObjectsInGameViewRect(selectionRectStart_, selectionRectEnd_, isShiftPressed);
                 } else {
-                    Object3d* hit = PickObjectAtGameViewPos(selectionRectStart_);
+                    engine::Object3d* hit = PickObjectAtGameViewPos(selectionRectStart_);
                     if (hit) {
                         if (isShiftPressed) {
                             ToggleSelectedObject(hit);
@@ -880,18 +628,18 @@ void DebugEditor::Update() {
                     ImGuizmo::SetDrawlist();
                     ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
 
-                    Matrix4x4 view = cam->GetViewMatrix();
-                    Matrix4x4 proj = cam->GetProjectionMatrix();
+                    engine::Matrix4x4 view = cam->GetViewMatrix();
+                    engine::Matrix4x4 proj = cam->GetProjectionMatrix();
                     const Transform* tr = selectedObject_->GetTransform();
 
                     selectedObject_->UpdateWorldMatrix();
-                    Matrix4x4 world = selectedObject_->GetWorldMatrix();
+                    engine::Matrix4x4 world = selectedObject_->GetWorldMatrix();
 
                     float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
                     float snapArr[3] = { snapVal, snapVal, snapVal };
 
-                    Matrix4x4 gizmoWorld = world;
-                    Vector3 gizmoPivotWorld = { world.m[3][0], world.m[3][1], world.m[3][2] };
+                    engine::Matrix4x4 gizmoWorld = world;
+                    engine::Vector3 gizmoPivotWorld = { world.m[3][0], world.m[3][1], world.m[3][2] };
                     bool useTranslatedPivot = curOp == ImGuizmo::TRANSLATE && gizmoPivotMode_ != 0;
 
                     if (useTranslatedPivot) {
@@ -926,7 +674,7 @@ void DebugEditor::Update() {
                             tempTransformStart_ = *tr;
                             tempObjectStateStart_ = CaptureObjectState(selectedObject_);
                             groupTransformStartStates_.clear();
-                            for (Object3d* object : selectedObjects_) {
+                            for (engine::Object3d* object : selectedObjects_) {
                                 if (!object || !IsObjectInCurrentScene(object)) continue;
                                 ObjectStateSnapshot snapshot;
                                 snapshot.object = object;
@@ -935,15 +683,15 @@ void DebugEditor::Update() {
                             }
                         }
 
-                        Matrix4x4 primaryWorldBefore = world;
-                        Matrix4x4 editedWorld = gizmoWorld;
+                        engine::Matrix4x4 primaryWorldBefore = world;
+                        engine::Matrix4x4 editedWorld = gizmoWorld;
                         if (useTranslatedPivot) {
-                            Vector3 editedPivotWorld = {
+                            engine::Vector3 editedPivotWorld = {
                                 gizmoWorld.m[3][0],
                                 gizmoWorld.m[3][1],
                                 gizmoWorld.m[3][2]
                             };
-                            Vector3 pivotDelta = {
+                            engine::Vector3 pivotDelta = {
                                 editedPivotWorld.x - gizmoPivotWorld.x,
                                 editedPivotWorld.y - gizmoPivotWorld.y,
                                 editedPivotWorld.z - gizmoPivotWorld.z
@@ -955,13 +703,13 @@ void DebugEditor::Update() {
                             editedWorld.m[3][2] += pivotDelta.z;
                         }
 
-                        Matrix4x4 newLocalMat = editedWorld;
+                        engine::Matrix4x4 newLocalMat = editedWorld;
                         if (selectedObject_->GetParent()) {
-                            Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
+                            engine::Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
                             newLocalMat = math.Multiply(editedWorld, parentWorldInv);
                         }
 
-                        Vector3 s, rDeg, t;
+                        engine::Vector3 s, rDeg, t;
                         ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
 
                         selectedObject_->SetTranslate(t);
@@ -972,14 +720,14 @@ void DebugEditor::Update() {
                         selectedObject_->UpdateLocalMatrix();
                         selectedObject_->UpdateWorldMatrix();
 
-                        Matrix4x4 primaryWorldAfter = selectedObject_->GetWorldMatrix();
-                        Matrix4x4 groupDelta = math.Multiply(math.Inverse(primaryWorldBefore), primaryWorldAfter);
+                        engine::Matrix4x4 primaryWorldAfter = selectedObject_->GetWorldMatrix();
+                        engine::Matrix4x4 groupDelta = math.Multiply(math.Inverse(primaryWorldBefore), primaryWorldAfter);
 
-                        for (Object3d* object : selectedObjects_) {
+                        for (engine::Object3d* object : selectedObjects_) {
                             if (!object || object == selectedObject_ || !IsObjectInCurrentScene(object) || object->GetIsLocked()) continue;
 
                             bool hasSelectedAncestor = false;
-                            for (Object3d* parent = object->GetParent(); parent != nullptr; parent = parent->GetParent()) {
+                            for (engine::Object3d* parent = object->GetParent(); parent != nullptr; parent = parent->GetParent()) {
                                 if (IsObjectSelected(parent)) {
                                     hasSelectedAncestor = true;
                                     break;
@@ -990,15 +738,15 @@ void DebugEditor::Update() {
                             }
 
                             object->UpdateWorldMatrix();
-                            Matrix4x4 objectWorldBefore = object->GetWorldMatrix();
-                            Matrix4x4 objectWorldAfter = math.Multiply(objectWorldBefore, groupDelta);
-                            Matrix4x4 objectLocalAfter = objectWorldAfter;
+                            engine::Matrix4x4 objectWorldBefore = object->GetWorldMatrix();
+                            engine::Matrix4x4 objectWorldAfter = math.Multiply(objectWorldBefore, groupDelta);
+                            engine::Matrix4x4 objectLocalAfter = objectWorldAfter;
                             if (object->GetParent()) {
-                                Matrix4x4 parentWorldInv = math.Inverse(object->GetParent()->GetWorldMatrix());
+                                engine::Matrix4x4 parentWorldInv = math.Inverse(object->GetParent()->GetWorldMatrix());
                                 objectLocalAfter = math.Multiply(objectWorldAfter, parentWorldInv);
                             }
 
-                            Vector3 otherScale, otherRotDeg, otherTranslate;
+                            engine::Vector3 otherScale, otherRotDeg, otherTranslate;
                             ImGuizmo::DecomposeMatrixToComponents(&objectLocalAfter.m[0][0], &otherTranslate.x, &otherRotDeg.x, &otherScale.x);
 
                             object->SetTranslate(otherTranslate);
@@ -1022,7 +770,7 @@ void DebugEditor::Update() {
                         if (ghostDirector_ &&
                             EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_ &&
                             ghostDirector_->IsAutoKeyEnabled()) {
-                            for (Object3d* object : selectedObjects_) {
+                            for (engine::Object3d* object : selectedObjects_) {
                                 if (object && IsObjectInCurrentScene(object)) {
                                     ghostDirector_->RecordTransformKey(object);
                                 }
@@ -1095,7 +843,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
     int instanceCount = 0;
     const int kMaxDrawLimit = 2048; // 描画上限（PrimitiveDrawerのバッファサイズと合わせる）
-    Math math;
+    engine::Math math;
 
     // =========================================================
     // 1. シーン内のオブジェクトを描画 (統合版)
@@ -1123,48 +871,48 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 #endif
 
         // --- 行列計算 (サイズと位置) ---
-        Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+        engine::Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
 
         // コライダーがある場合は、その形状データ(Size/Center/Rotation)に合わせて枠を変形させる
         if (type != ColliderType::kNone) {
             // コライダー設定を直接取得 (ImGuiでの変更を即座に反映させるため)
-            Object3d::ColliderConfig config = obj->GetColliderConfig();
+            engine::Object3d::ColliderConfig config = obj->GetColliderConfig();
 
             if (type == ColliderType::kOBB) {
                 // OBB (回転ありボックス) の計算
-                Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
-                Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
-                Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
-                Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
-                Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                engine::Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
+                engine::Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
+                engine::Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
+                engine::Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
                 drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
 
             }
             else if (type == ColliderType::kAABB || type == ColliderType::kTerrain) {
                 // AABB (軸平行ボックス) の計算
-                Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                 drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
 
             }
             else if (type == ColliderType::kSphere) {
                 // Sphere (球) の計算
                 float radius = config.size.x; // Sphereはxを半径とする
-                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                 drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
             }
             else if (type == ColliderType::kCylinder) {
                 // size.x を半径、size.y を高さ(の半分)として扱っている想定
                 float radius = config.size.x;
                 float height = config.size.y;
-                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                 drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
             }
 
@@ -1176,7 +924,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         }
 
         // --- 色の決定 ---
-        Vector4 color;
+        engine::Vector4 color;
         if (isInvisibleObj) { // isInvisible ではなく isInvisibleObj を使用
             // 見えないオブジェクトは「紫」固定
             color = { 0.6f, 0.0f, 0.8f, 1.0f };
@@ -1198,13 +946,13 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         if (obj->GetCollider() && obj->GetColliderConfig().footprint.size() >= 3) {
             const Collider* collider = obj->GetCollider();
             const auto top = collider->GetFootprintWorldVertices(obj->GetColliderConfig().size.y);
-            const auto drawSegment = [&](const Vector3& from, const Vector3& to) {
+            const auto drawSegment = [&](const engine::Vector3& from, const engine::Vector3& to) {
                 if (instanceCount >= kMaxDrawLimit) return;
-                const Vector3 delta = to - from;
+                const engine::Vector3 delta = to - from;
                 const float horizontal = std::sqrt(delta.x * delta.x + delta.z * delta.z);
                 const float length = math.Length(delta);
                 if (length < 0.0001f) return;
-                const Matrix4x4 world = math.Multiply(
+                const engine::Matrix4x4 world = math.Multiply(
                     math.Multiply(math.MakeScaleMatrix({ 0.04f, 0.04f, length }),
                                   math.Multiply(math.MakeRotateXMatrix(-std::atan2(delta.y, horizontal)),
                                                 math.MakeRotateYMatrix(std::atan2(delta.x, delta.z)))),
@@ -1235,27 +983,27 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             halfH *= std::abs(obj->GetTransform()->scale.y);
 
             // 基準行列 (回転 * 平行移動 * オブジェクトのワールド(スケール抜き))
-            Matrix4x4 matRotX = math.MakeRotateXMatrix(obj->GetColliderConfig().rotation.x);
-            Matrix4x4 matRotY = math.MakeRotateYMatrix(obj->GetColliderConfig().rotation.y);
-            Matrix4x4 matRotZ = math.MakeRotateZMatrix(obj->GetColliderConfig().rotation.z);
-            Matrix4x4 matCollRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+            engine::Matrix4x4 matRotX = math.MakeRotateXMatrix(obj->GetColliderConfig().rotation.x);
+            engine::Matrix4x4 matRotY = math.MakeRotateYMatrix(obj->GetColliderConfig().rotation.y);
+            engine::Matrix4x4 matRotZ = math.MakeRotateZMatrix(obj->GetColliderConfig().rotation.z);
+            engine::Matrix4x4 matCollRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
             
-            Matrix4x4 matObjWorldNoScale = obj->GetWorldMatrix();
+            engine::Matrix4x4 matObjWorldNoScale = obj->GetWorldMatrix();
             for (int i = 0; i < 3; ++i) {
-                Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                engine::Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
                 matObjWorldNoScale.m[i][0] = axis.x; matObjWorldNoScale.m[i][1] = axis.y; matObjWorldNoScale.m[i][2] = axis.z;
             }
-            Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(obj->GetColliderConfig().center)), matObjWorldNoScale);
+            engine::Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(obj->GetColliderConfig().center)), matObjWorldNoScale);
 
             // 1. 外周・内周のワイヤーフレーム (上下の円)
             if (instanceCount < kMaxDrawLimit) {
                 // 外周
-                Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                engine::Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
                 primitiveDrawer_.DrawWireCylinder(commandList, matOuter, color, instanceCount++);
             }
             if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
                 // 内周
-                Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                engine::Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
                 primitiveDrawer_.DrawWireCylinder(commandList, matInner, { color.x, color.y * 0.5f, 0, 1 }, instanceCount++);
             }
 
@@ -1268,18 +1016,18 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
                 // 上下の断面をつなぐ線 (内径から外径へ)
                 for (float h : {-halfH, halfH}) {
-                    Vector3 pInner = { innerR * c, h, innerR * s };
-                    Vector3 pOuter = { outerR * c, h, outerR * s };
+                    engine::Vector3 pInner = { innerR * c, h, innerR * s };
+                    engine::Vector3 pOuter = { outerR * c, h, outerR * s };
                     
                     // 線を細い箱で代用 (PrimitiveDrawerにDrawLineがあればそちらが良いが、無ければ極小Box)
-                    Vector3 center = (pInner + pOuter) * 0.5f;
-                    Vector3 diff = pOuter - pInner;
+                    engine::Vector3 center = (pInner + pOuter) * 0.5f;
+                    engine::Vector3 diff = pOuter - pInner;
                     float len = math.Length(diff);
                     
-                    Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
-                    Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
-                    Matrix4x4 matLT = math.MakeTranslateMatrix(center);
-                    Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+                    engine::Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
+                    engine::Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                    engine::Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                    engine::Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
                     
                     primitiveDrawer_.DrawWireCube(commandList, lineWorld, color, instanceCount++);
                 }
@@ -1300,12 +1048,12 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
             // インスタンス描画の上限チェック
             if (instanceCount < kMaxDrawLimit && range > 0.0f) {
-                Matrix4x4 matScale = math.MakeScaleMatrix({ range * 2.0f, range * 2.0f, range * 2.0f });
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(obj->GetWorldPosition());
-                Matrix4x4 rangeWorldMatrix = math.Multiply(matScale, matTrans);
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ range * 2.0f, range * 2.0f, range * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(obj->GetWorldPosition());
+                engine::Matrix4x4 rangeWorldMatrix = math.Multiply(matScale, matTrans);
                 
                 // 検知範囲は薄い赤色
-                Vector4 rangeColor = { 1.0f, 0.0f, 0.0f, 0.3f };
+                engine::Vector4 rangeColor = { 1.0f, 0.0f, 0.0f, 0.3f };
                 primitiveDrawer_.DrawWireSphere(commandList, rangeWorldMatrix, rangeColor, instanceCount);
                 instanceCount++; // 検知範囲を描画したのでカウントを進める
             }
@@ -1314,29 +1062,29 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     }
 
     // 選択中のNav Agentが計算した経路を、Scene上で確認できるようにします。
-    Object3d* navObject = GetSelectedObject3D();
+    engine::Object3d* navObject = GetSelectedObject3D();
     if (navObject) {
         if (const NavAgentComponent* navAgent = navObject->GetNavAgentComponent()) {
-            const std::vector<Vector3>& path = navAgent->GetCurrentPath();
+            const std::vector<engine::Vector3>& path = navAgent->GetCurrentPath();
             for (std::size_t index = 0; index < path.size() && instanceCount < kMaxDrawLimit; ++index) {
                 const bool isCurrent = index == navAgent->GetCurrentWaypointIndex();
-                const Vector4 pointColor = isCurrent
-                    ? Vector4{ 1.0f, 0.85f, 0.15f, 1.0f }
-                    : Vector4{ 0.10f, 0.95f, 1.0f, 1.0f };
-                const Vector3 point = path[index] + Vector3{ 0.0f, 0.12f, 0.0f };
-                const Matrix4x4 pointWorld = math.Multiply(
+                const engine::Vector4 pointColor = isCurrent
+                    ? engine::Vector4{ 1.0f, 0.85f, 0.15f, 1.0f }
+                    : engine::Vector4{ 0.10f, 0.95f, 1.0f, 1.0f };
+                const engine::Vector3 point = path[index] + engine::Vector3{ 0.0f, 0.12f, 0.0f };
+                const engine::Matrix4x4 pointWorld = math.Multiply(
                     math.MakeScaleMatrix({ 0.20f, 0.20f, 0.20f }),
                     math.MakeTranslateMatrix(point));
                 primitiveDrawer_.DrawWireSphere(commandList, pointWorld, pointColor, instanceCount++);
 
                 if (index == 0 || instanceCount >= kMaxDrawLimit) continue;
-                const Vector3 previous = path[index - 1] + Vector3{ 0.0f, 0.12f, 0.0f };
-                const Vector3 difference = point - previous;
+                const engine::Vector3 previous = path[index - 1] + engine::Vector3{ 0.0f, 0.12f, 0.0f };
+                const engine::Vector3 difference = point - previous;
                 const float length = std::sqrt(difference.x * difference.x + difference.z * difference.z);
                 if (length <= 0.001f) continue;
                 const float yaw = std::atan2(difference.x, difference.z);
-                const Vector3 center = (previous + point) * 0.5f;
-                const Matrix4x4 lineWorld = math.Multiply(
+                const engine::Vector3 center = (previous + point) * 0.5f;
+                const engine::Matrix4x4 lineWorld = math.Multiply(
                     math.MakeScaleMatrix({ 0.05f, 0.05f, length }),
                     math.Multiply(math.MakeRotateYMatrix(yaw), math.MakeTranslateMatrix(center)));
                 primitiveDrawer_.DrawWireCube(
@@ -1365,38 +1113,38 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             if (type == ColliderType::kNone) continue;
 
             // 弾は黄色固定
-            Vector4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
-            Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+            engine::Vector4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
+            engine::Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
 
             // 弾の場合は物理挙動の結果(GetOBB)をそのまま信じて描画する
             if (type == ColliderType::kOBB) {
                 OBB obb = bullet->GetOBB();
-                Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
 
                 // OBBの軸から回転行列を復元
-                Matrix4x4 matRot = math.MakeIdentity4x4();
+                engine::Matrix4x4 matRot = math.MakeIdentity4x4();
                 matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
                 matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
                 matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
 
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
                 drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
 
             }
             else if (type == ColliderType::kAABB) {
                 AABB aabb = bullet->GetAABB();
-                Vector3 center = (aabb.min + aabb.max) * 0.5f;
-                Vector3 size = aabb.max - aabb.min;
-                Matrix4x4 matScale = math.MakeScaleMatrix(size);
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                engine::Vector3 center = (aabb.min + aabb.max) * 0.5f;
+                engine::Vector3 size = aabb.max - aabb.min;
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(size);
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
                 drawWorldMatrix = math.Multiply(matScale, matTrans);
 
             }
             else if (type == ColliderType::kSphere) {
                 float radius = bullet->GetCollisionRadius();
-                Vector3 center = bullet->GetWorldPosition();
-                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                engine::Vector3 center = bullet->GetWorldPosition();
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
                 drawWorldMatrix = math.Multiply(matScale, matTrans);
             }
 
@@ -1434,43 +1182,43 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 if (type == ColliderType::kNone) continue;
 
                 // エフェクトの判定枠はシアン（水色）にして区別
-                Vector4 color = { 0.0f, 1.0f, 1.0f, 1.0f };
-                Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+                engine::Vector4 color = { 0.0f, 1.0f, 1.0f, 1.0f };
+                engine::Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
 
-                Object3d::ColliderConfig config = effect->GetColliderConfig();
+                engine::Object3d::ColliderConfig config = effect->GetColliderConfig();
 
                 if (type == ColliderType::kOBB) {
-                    Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
-                    Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
-                    Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
-                    Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
-                    Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
-                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                    Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    engine::Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
+                    engine::Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
+                    engine::Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
+                    engine::Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
 
                 }
                 else if (type == ColliderType::kAABB) {
-                    Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
-                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
 
                 }
                 else if (type == ColliderType::kSphere) {
                     float radius = config.size.x;
-                    Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
-                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
 
                 }
                 else if (type == ColliderType::kCylinder) {
                     float radius = config.size.x;
                     float height = config.size.y;
-                    Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
-                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
-                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
                 }
 
@@ -1494,30 +1242,30 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     halfH *= std::abs(effect->GetTransform()->scale.y);
 
                     // リングの基準行列
-                    Matrix4x4 matCollRot = math.MakeIdentity4x4();
+                    engine::Matrix4x4 matCollRot = math.MakeIdentity4x4();
                     if (effect->GetCollider()) {
-                        Matrix4x4 mRX = math.MakeRotateXMatrix(config.rotation.x);
-                        Matrix4x4 mRY = math.MakeRotateYMatrix(config.rotation.y);
-                        Matrix4x4 mRZ = math.MakeRotateZMatrix(config.rotation.z);
+                        engine::Matrix4x4 mRX = math.MakeRotateXMatrix(config.rotation.x);
+                        engine::Matrix4x4 mRY = math.MakeRotateYMatrix(config.rotation.y);
+                        engine::Matrix4x4 mRZ = math.MakeRotateZMatrix(config.rotation.z);
                         matCollRot = math.Multiply(mRZ, math.Multiply(mRX, mRY));
                     }
                     
-                    Matrix4x4 matObjWorldNoScale = effect->GetWorldMatrix();
+                    engine::Matrix4x4 matObjWorldNoScale = effect->GetWorldMatrix();
                     for (int i = 0; i < 3; ++i) {
-                        Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                        engine::Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
                         matObjWorldNoScale.m[i][0] = axis.x; matObjWorldNoScale.m[i][1] = axis.y; matObjWorldNoScale.m[i][2] = axis.z;
                     }
-                    Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(config.center)), matObjWorldNoScale);
+                    engine::Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(config.center)), matObjWorldNoScale);
 
-                    Vector4 ringColor = { 1.0f, 1.0f, 0.0f, 1.0f };
+                    engine::Vector4 ringColor = { 1.0f, 1.0f, 0.0f, 1.0f };
 
                     // 1. シリンダー (外周・内周)
                     if (instanceCount < kMaxDrawLimit) {
-                        Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                        engine::Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
                         primitiveDrawer_.DrawWireCylinder(commandList, matOuter, { 1.0f, 0.9f, 0.0f, 0.8f }, instanceCount++);
                     }
                     if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
-                        Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                        engine::Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
                         primitiveDrawer_.DrawWireCylinder(commandList, matInner, { 1.0f, 0.5f, 0.0f, 0.8f }, instanceCount++);
                     }
 
@@ -1528,15 +1276,15 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                         float s = std::sin(angle);
                         float c = std::cos(angle);
                         for (float h : { -halfH, halfH }) {
-                            Vector3 pInner = { innerR * c, h, innerR * s };
-                            Vector3 pOuter = { outerR * c, h, outerR * s };
-                            Vector3 center = (pInner + pOuter) * 0.5f;
-                            Vector3 diff = pOuter - pInner;
+                            engine::Vector3 pInner = { innerR * c, h, innerR * s };
+                            engine::Vector3 pOuter = { outerR * c, h, outerR * s };
+                            engine::Vector3 center = (pInner + pOuter) * 0.5f;
+                            engine::Vector3 diff = pOuter - pInner;
                             float len = math.Length(diff);
-                            Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
-                            Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
-                            Matrix4x4 matLT = math.MakeTranslateMatrix(center);
-                            Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+                            engine::Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
+                            engine::Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                            engine::Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                            engine::Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
                             primitiveDrawer_.DrawWireCube(commandList, lineWorld, ringColor, instanceCount++);
                         }
                     }

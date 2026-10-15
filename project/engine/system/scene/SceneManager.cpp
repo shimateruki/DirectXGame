@@ -651,32 +651,32 @@ void SceneManager::StartPreparedAssetsAsync() {
         std::launch::async,
         [this, loadData, recordDeferredUploads]() {
             SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-            const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-            TextureManager::GetInstance()->SetAsyncUploadRecording(recordDeferredUploads);
-            try {
-                for (const SceneLoadManifest::TextureRequest& texture : loadData->textures) {
-                    TextureManager::GetInstance()->Load(
-                        texture.path,
-                        texture.linear ? TextureManager::TextureColorSpace::Linear
-                                       : TextureManager::TextureColorSpace::Auto);
-                    preparedTextureIndex_.fetch_add(1, std::memory_order_relaxed);
-                }
-                for (const std::string& modelName : loadData->modelNames) {
-                    ModelManager::GetInstance()->LoadModel(modelName);
-                    preparedModelIndex_.fetch_add(1, std::memory_order_relaxed);
-                }
-            }
-            catch (...) {
-                TextureManager::GetInstance()->SetAsyncUploadRecording(false);
-                if (SUCCEEDED(comResult)) {
-                    CoUninitialize();
-                }
-                throw;
-            }
-            TextureManager::GetInstance()->SetAsyncUploadRecording(false);
-            if (SUCCEEDED(comResult)) {
-                CoUninitialize();
-            }
+              const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+              TextureManager::GetInstance()->SetAsyncUploadRecording(recordDeferredUploads);
+              try {
+                  for (const SceneLoadManifest::TextureRequest& texture : loadData->textures) {
+                      TextureManager::GetInstance()->Load(
+                          texture.path,
+                          texture.linear ? TextureManager::TextureColorSpace::Linear
+                                         : TextureManager::TextureColorSpace::Auto);
+                      preparedTextureIndex_.fetch_add(1, std::memory_order_relaxed);
+                  }
+                  for (const std::string& modelName : loadData->modelNames) {
+                      ModelManager::GetInstance()->LoadModel(modelName);
+                      preparedModelIndex_.fetch_add(1, std::memory_order_relaxed);
+                  }
+              }
+              catch (...) {
+                  TextureManager::GetInstance()->SetAsyncUploadRecording(false);
+                  if (SUCCEEDED(comResult)) {
+                      CoUninitialize();
+                  }
+                  throw;
+              }
+              TextureManager::GetInstance()->SetAsyncUploadRecording(false);
+              if (SUCCEEDED(comResult)) {
+                  CoUninitialize();
+              }
         });
     assetCreationStarted_ = true;
 }

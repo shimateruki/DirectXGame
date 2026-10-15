@@ -357,6 +357,7 @@ void AudioSettingsWindow::DrawImGui() {
 }
 
 bool AudioSettingsWindow::MatchesSearch(const std::string& text) const {
+    // 検索欄が空なら全件を表示し、入力時だけASCIIの大小文字を揃えて比較する。
     if (searchBuffer_[0] == '\0') {
         return true;
     }

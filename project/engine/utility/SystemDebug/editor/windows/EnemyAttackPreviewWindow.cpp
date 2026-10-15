@@ -62,7 +62,7 @@ constexpr const char* kPreviewNamePrefix = "__Editor_EnemyAttackPreview_";
 constexpr const char* kPreviewEnemyName = "__Editor_EnemyAttackPreview_Enemy";
 constexpr const char* kPreviewTargetName = "__Editor_EnemyAttackPreview_Target";
 
-bool HasPreviewPrefix(const Object3d* object) {
+bool HasPreviewPrefix(const engine::Object3d* object) {
     return object && object->GetName().rfind(kPreviewNamePrefix, 0) == 0;
 }
 
@@ -215,7 +215,7 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
     previewScene_ = scene;
-    const Vector3 ground = previewStage->GetGroundPosition();
+    const engine::Vector3 ground = previewStage->GetGroundPosition();
 
     previewPlayer_ = nullptr;
     if (playerCopyMode_ || (usePlayerTarget_ && !IsGiantHookSplitPreview())) {
@@ -258,7 +258,7 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
         scene->AddObject(std::move(player));
     }
     else {
-        auto target = std::make_unique<Object3d>();
+        auto target = std::make_unique<engine::Object3d>();
         target->Initialize(scene->GetObject3dCommon());
         target->SetName(kPreviewTargetName);
         target->SetClassName("EditorOnly");
@@ -298,7 +298,7 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
                 dummy->SetName(kPreviewEnemyName);
                 dummy->SetEditorInternal(true);
                 dummy->SetIsLocked(true);
-                dummy->SetTranslate(ground + Vector3{0,0,targetDistance_});
+                dummy->SetTranslate(ground + engine::Vector3{0,0,targetDistance_});
                 dummy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
                 dummy->SetCollisionMask(0);
                 if (dummy->param_) { dummy->param_->maxHp = dummy->param_->hp = 100000.0f; }
@@ -346,10 +346,10 @@ void EnemyAttackPreviewWindow::RemovePreviewObjects() {
     }
     crownMoviePrepared_ = false;
     if (currentScene && currentScene == previewScene_) {
-        std::unordered_set<Object3d*> removalTargets;
+        std::unordered_set<engine::Object3d*> removalTargets;
         if (previewEnemy_) removalTargets.insert(previewEnemy_);
         if (previewTarget_) removalTargets.insert(previewTarget_);
-        for (Object3d* object : spawnedPreviewObjects_) {
+        for (engine::Object3d* object : spawnedPreviewObjects_) {
             if (object) removalTargets.insert(object);
         }
         for (const auto& object : currentScene->GetObjects()) {
@@ -357,7 +357,7 @@ void EnemyAttackPreviewWindow::RemovePreviewObjects() {
                 removalTargets.insert(object.get());
             }
         }
-        for (Object3d* object : removalTargets) {
+        for (engine::Object3d* object : removalTargets) {
             object->SetCollisionAttribute(0);
             object->SetCollisionMask(0);
             currentScene->RequestRemoveObject(object);
@@ -484,18 +484,18 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
 
     SetEffectSimulationScale(1.0f);
 
-    const Vector3 ground = EffectPreviewStage::GetInstance()->GetGroundPosition();
+    const engine::Vector3 ground = EffectPreviewStage::GetInstance()->GetGroundPosition();
     BaseEnemy* primaryEnemy = playerCopyMode_ ? nullptr : previewEnemy_;
     if (playerCopyMode_ && previewEnemy_) {
         previewEnemy_->BaseEnemy::Update(deltaTime);
-        previewEnemy_->SetTranslate(ground + Vector3{0,0,targetDistance_});
+        previewEnemy_->SetTranslate(ground + engine::Vector3{0,0,targetDistance_});
         previewEnemy_->SetVelocity({});
         previewEnemy_->SetGrounded(true);
         previewEnemy_->UpdateWorldMatrix(true);
     }
     if (primaryEnemy) {
         if (previewHitReaction_ && !previewHitTriggered_ && elapsedTime_ >= previewHitTime_) {
-            Vector3 knockback = primaryEnemy->GetWorldPosition() - previewTarget_->GetWorldPosition();
+            engine::Vector3 knockback = primaryEnemy->GetWorldPosition() - previewTarget_->GetWorldPosition();
             knockback.y = 0.0f;
             const float planarLength = std::sqrt(knockback.x * knockback.x + knockback.z * knockback.z);
             if (planarLength > 0.001f) {
@@ -532,7 +532,7 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
         }
     }
 
-    for (Object3d* object : spawnedPreviewObjects_) {
+    for (engine::Object3d* object : spawnedPreviewObjects_) {
         BaseEnemy* spawnedEnemy = dynamic_cast<BaseEnemy*>(object);
         if (spawnedEnemy) {
             MaintainGrounding(spawnedEnemy, ground.y);
@@ -572,8 +572,8 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
         if (playerCopyMode_) {
             // プレビュー用PlayerはColliderを無効化しているため、入力処理より先に
             // 簡易床との接地状態を確定させます。E技とガードの地上条件を実ゲームと揃えます。
-            Vector3 previewPosition = previewPlayer_->GetTranslate();
-            Vector3 previewVelocity = previewPlayer_->GetVelocity();
+            engine::Vector3 previewPosition = previewPlayer_->GetTranslate();
+            engine::Vector3 previewVelocity = previewPlayer_->GetVelocity();
             const bool touchingPreviewGround =
                 previewPosition.y <= ground.y + 0.001f && previewVelocity.y <= 0.0f;
             if (touchingPreviewGround) {
@@ -611,10 +611,10 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
         previewPlayer_->Update(deltaTime);
         if (playerCopyMode_) previewPlayer_->StepCopyPreviewObjects(deltaTime, ground.y);
         if (previewPlayer_->GetTranslate().y < ground.y) {
-            Vector3 playerPosition = previewPlayer_->GetTranslate();
+            engine::Vector3 playerPosition = previewPlayer_->GetTranslate();
             playerPosition.y = ground.y;
             previewPlayer_->SetTranslate(playerPosition);
-            Vector3 velocity = previewPlayer_->GetVelocity();
+            engine::Vector3 velocity = previewPlayer_->GetVelocity();
             velocity.y = 0;
             previewPlayer_->SetVelocity(velocity);
         }
@@ -641,7 +641,7 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
                 enemy->SetCollisionMask(enemyMask);
             };
             resolveBodyHit(previewEnemy_);
-            for (Object3d* object : spawnedPreviewObjects_) {
+            for (engine::Object3d* object : spawnedPreviewObjects_) {
                 resolveBodyHit(dynamic_cast<BaseEnemy*>(object));
             }
         }
@@ -682,7 +682,7 @@ void EnemyAttackPreviewWindow::ApplySealBarrageMovieCamera() {
     const auto& tuning = CrownFinaleTuning::Get();
     const CrownBarrageCameraPose pose = EvaluateCrownBarrageCamera(
         movieTime, previewEnemy_->GetWorldPosition(), previewTarget_->GetWorldPosition(), tuning);
-    const Vector3 direction = pose.target - pose.eye;
+    const engine::Vector3 direction = pose.target - pose.eye;
     const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     camera->SetFollowTarget(nullptr);
     camera->SetEye(pose.eye);
@@ -697,7 +697,7 @@ void EnemyAttackPreviewWindow::ResolvePreviewProjectileHits() {
         return;
     }
 
-    const Vector3 targetPosition = previewPlayer_->GetTranslate();
+    const engine::Vector3 targetPosition = previewPlayer_->GetTranslate();
     for (const auto& bulletPtr : BulletManager::GetInstance()->GetBullets()) {
         Bullet* bullet = bulletPtr.get();
         if (!bullet || bullet->IsDead() ||
@@ -706,7 +706,7 @@ void EnemyAttackPreviewWindow::ResolvePreviewProjectileHits() {
             continue;
         }
 
-        const Vector3 difference = targetPosition - bullet->GetTranslate();
+        const engine::Vector3 difference = targetPosition - bullet->GetTranslate();
         // Bullet::UpdateのSphereCastと同じ実Colliderで命中を確認します。
         // 原点中心の簡易球だと、中心がずれた標的の手前で弾だけが停止し、ダメージが発生しません。
         // 標的のmask=0は隔離用のため、Object3d::CheckCollisionによる応答除外は適用しません。
@@ -715,16 +715,16 @@ void EnemyAttackPreviewWindow::ResolvePreviewProjectileHits() {
             continue;
         }
 
-        Vector3 hitDirection = bullet->GetVelocity();
+        engine::Vector3 hitDirection = bullet->GetVelocity();
         hitDirection.y = 0.0f;
-        if (Math::Length(hitDirection) <= 0.001f) {
+        if (engine::Math::Length(hitDirection) <= 0.001f) {
             hitDirection = difference;
             hitDirection.y = 0.0f;
         }
-        if (Math::Length(hitDirection) <= 0.001f) {
+        if (engine::Math::Length(hitDirection) <= 0.001f) {
             hitDirection = { 0.0f, 0.0f, 1.0f };
         }
-        hitDirection = Math::Normalize(hitDirection);
+        hitDirection = engine::Math::Normalize(hitDirection);
 
         DamageEvent event;
         event.target = previewPlayer_;
@@ -743,12 +743,12 @@ void EnemyAttackPreviewWindow::TriggerPreviewPlayerDamage() {
         return;
     }
 
-    Vector3 direction = previewPlayer_->GetTranslate() - previewEnemy_->GetTranslate();
+    engine::Vector3 direction = previewPlayer_->GetTranslate() - previewEnemy_->GetTranslate();
     direction.y = 0.0f;
-    if (Math::Length(direction) <= 0.001f) {
+    if (engine::Math::Length(direction) <= 0.001f) {
         direction = { 0.0f, 0.0f, 1.0f };
     }
-    direction = Math::Normalize(direction);
+    direction = engine::Math::Normalize(direction);
 
     const EnemyAttackDefinition* attack = GetSelectedAttackDefinition();
     DamageEvent event;
@@ -757,11 +757,11 @@ void EnemyAttackPreviewWindow::TriggerPreviewPlayerDamage() {
     event.damageAmount = attack ? attack->damage : 1.0f;
     event.damageType = GetPreviewDamageType();
     event.statusEffect = GetPreviewStatusEffect();
-    if (attack && Math::Length(attack->knockbackVelocity) > 0.001f) {
-        const Vector3 right = { direction.z, 0.0f, -direction.x };
+    if (attack && engine::Math::Length(attack->knockbackVelocity) > 0.001f) {
+        const engine::Vector3 right = { direction.z, 0.0f, -direction.x };
         event.knockbackVelocity =
             right * attack->knockbackVelocity.x +
-            Vector3{ 0.0f, attack->knockbackVelocity.y, 0.0f } +
+            engine::Vector3{ 0.0f, attack->knockbackVelocity.y, 0.0f } +
             direction * attack->knockbackVelocity.z;
     } else {
         // Existing profiles keep the legacy preview knockback.
@@ -808,13 +808,13 @@ StatusEffectApplication EnemyAttackPreviewWindow::GetPreviewStatusEffect() const
 
 void EnemyAttackPreviewWindow::RecordTimelineSample() {
     // 実際のプレビュー対象から速度・高さ・変形量・演出数を取得し、同時刻の標本は置換する。
-    Object3d* actor = playerCopyMode_ ? static_cast<Object3d*>(previewPlayer_) : static_cast<Object3d*>(previewEnemy_);
+    engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
     if (!actor) {
         return;
     }
 
-    const Vector3 velocity = playerCopyMode_ ? previewPlayer_->GetVelocity() : previewEnemy_->GetVelocity();
-    const Vector3 position = actor->GetTranslate();
+    const engine::Vector3 velocity = playerCopyMode_ ? previewPlayer_->GetVelocity() : previewEnemy_->GetVelocity();
+    const engine::Vector3 position = actor->GetTranslate();
     const float groundY = EffectPreviewStage::GetInstance()->GetGroundPosition().y;
 
     TimelineSample sample;
@@ -824,13 +824,13 @@ void EnemyAttackPreviewWindow::RecordTimelineSample() {
         velocity.y * velocity.y +
         velocity.z * velocity.z);
     sample.height = (std::max)(0.0f, position.y - groundY);
-    Vector3 scaleMultiplier = {
+    engine::Vector3 scaleMultiplier = {
         std::abs(previewBaseScale_.x) > 0.0001f ? std::abs(actor->GetScale().x / previewBaseScale_.x) : 1.0f,
         std::abs(previewBaseScale_.y) > 0.0001f ? std::abs(actor->GetScale().y / previewBaseScale_.y) : 1.0f,
         std::abs(previewBaseScale_.z) > 0.0001f ? std::abs(actor->GetScale().z / previewBaseScale_.z) : 1.0f
     };
     if (const MeshRenderer* renderer = actor->GetMeshRenderer()) {
-        const Vector3& visualScale = renderer->GetVisualScale();
+        const engine::Vector3& visualScale = renderer->GetVisualScale();
         scaleMultiplier.x *= std::abs(visualScale.x);
         scaleMultiplier.y *= std::abs(visualScale.y);
         scaleMultiplier.z *= std::abs(visualScale.z);
@@ -904,8 +904,8 @@ void EnemyAttackPreviewWindow::MaintainGrounding(BaseEnemy* enemy, float groundY
         return;
     }
 
-    Vector3 position = enemy->GetTranslate();
-    Vector3 velocity = enemy->GetVelocity();
+    engine::Vector3 position = enemy->GetTranslate();
+    engine::Vector3 velocity = enemy->GetVelocity();
     if (position.y <= groundY && velocity.y <= 0.0f) {
         position.y = groundY;
         velocity.y = 0.0f;
@@ -924,7 +924,7 @@ void EnemyAttackPreviewWindow::SyncTargetTransform() {
         return;
     }
 
-    const Vector3 ground = EffectPreviewStage::GetInstance()->GetGroundPosition();
+    const engine::Vector3 ground = EffectPreviewStage::GetInstance()->GetGroundPosition();
     const float targetY = previewPlayer_ ? ground.y : ground.y + 0.72f;
     previewTarget_->SetTranslate({ ground.x, targetY, ground.z + targetDistance_ });
     previewTarget_->SetIsVisible(showTarget_);
@@ -963,7 +963,7 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
         return;
     }
 
-    const Vector3 ground = EffectPreviewStage::GetInstance()->GetGroundPosition();
+    const engine::Vector3 ground = EffectPreviewStage::GetInstance()->GetGroundPosition();
     enemy->SetName(std::string(kPreviewEnemyName) + "_" + GetSelectedEnemyType());
     enemy->SetClassName("EditorOnly");
     enemy->SetEditorInternal(true);
@@ -992,6 +992,7 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
     if (auto* prismSlime = dynamic_cast<EnemyPrismSlime*>(enemy)) {
         prismSlime->SetDebugPreviewChantOnly(prismChantOnly_);
         prismSlime->SetSpawnCallback([this](std::unique_ptr<BaseEnemy> spawnedEnemy) {
+            // 召喚された敵を現在のプレビューシーンだけへ置き、通常のシーン編集対象から除外する。
             if (!spawnedEnemy || !sceneManager_ || sceneManager_->GetCurrentScene() != previewScene_) {
                 return;
             }
@@ -1006,6 +1007,7 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
             spawnedEnemy->SetTarget(previewTarget_);
 
             if (auto* summonedBomber = dynamic_cast<EnemyBomber*>(spawnedEnemy.get())) {
+                // ボマーが生成した爆弾も同じプレビュー専用属性で登録する。
                 summonedBomber->SetSpawnCallback([this](std::unique_ptr<BaseEnemy> spawnedBomb) {
                     if (!spawnedBomb || !sceneManager_ || sceneManager_->GetCurrentScene() != previewScene_) {
                         return;
@@ -1018,13 +1020,13 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
                     spawnedBomb->SetCollisionAttribute(0);
                     spawnedBomb->SetCollisionMask(0);
                     spawnedBomb->SetTarget(previewTarget_);
-                    Object3d* rawBomb = spawnedBomb.get();
+                    engine::Object3d* rawBomb = spawnedBomb.get();
                     spawnedPreviewObjects_.push_back(rawBomb);
                     previewScene_->AddObject(std::move(spawnedBomb));
                 });
             }
 
-            Object3d* rawObject = spawnedEnemy.get();
+            engine::Object3d* rawObject = spawnedEnemy.get();
             spawnedPreviewObjects_.push_back(rawObject);
             previewScene_->AddObject(std::move(spawnedEnemy));
         });
@@ -1061,7 +1063,7 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
             spawnedEnemy->SetCollisionAttribute(0);
             spawnedEnemy->SetCollisionMask(0);
             spawnedEnemy->SetTarget(previewTarget_);
-            Object3d* rawObject = spawnedEnemy.get();
+            engine::Object3d* rawObject = spawnedEnemy.get();
             spawnedPreviewObjects_.push_back(rawObject);
             previewScene_->AddObject(std::move(spawnedEnemy));
         });

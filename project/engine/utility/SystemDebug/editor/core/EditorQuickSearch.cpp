@@ -66,11 +66,12 @@ std::string GetPathLeaf(const std::string& path) {
     return leaf.empty() ? path : leaf;
 }
 
-std::string MakeObjectDetail(Object3d* object) {
+std::string MakeObjectDetail(engine::Object3d* object) {
+    // 検索候補に種別・Layer・ワールド位置を付け、同名Objectを見分けられるようにする。
     if (!object) {
         return {};
     }
-    const Vector3 position = object->GetWorldPosition();
+    const engine::Vector3 position = object->GetWorldPosition();
     std::ostringstream stream;
     stream << object->GetClassName() << " / Layer " << object->GetLayer()
            << " / (" << std::fixed << std::setprecision(1)
@@ -324,10 +325,10 @@ void EditorQuickSearch::CollectObjects(std::vector<SearchItem>& items) const {
         if (!object || object->IsEditorInternal()) {
             continue;
         }
-        Object3d* raw = object.get();
+        engine::Object3d* raw = object.get();
         SearchItem item;
         const std::string guid = raw->GetPersistentGuid();
-        item.id = Object3d::IsPersistentGuidValid(guid)
+        item.id = engine::Object3d::IsPersistentGuidValid(guid)
             ? "object:" + guid
             : "object:fallback:" + std::to_string(fallbackIndex++);
         item.label = raw->GetName().empty() ? "NoName Object" : raw->GetName();
@@ -456,7 +457,6 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
     };
     const WindowTarget targets[] = {
         { "camera", "カメラ設定", "camera view", CameraEditor::GetInstance() },
-        { "keyconfig", "キーコンフィグ", "key input", KeyConfig::GetInstance() },
         { "sceneInventory", "配置物集計", "scene inventory", editor_->GetSceneInventoryWindow() },
         { "materialPreview", "マテリアル確認", "material pbr", editor_->GetMaterialPreviewBoard() },
         { "effectPreview", "エフェクト確認ステージ", "effect vfx preview", editor_->GetEffectPreviewStage() },

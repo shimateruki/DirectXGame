@@ -23,7 +23,7 @@ class ICopyAbilitySession {
     virtual void SetPreviewAttackId(const std::string&) {}
     virtual void DrawOwnedVisuals(Player&, uint32_t, uint32_t, Camera*, int) {}
     // ガード成立時の追加演出を処理した場合のみ true を返します。
-    virtual bool NotifyGuardedHit(Player&, const Vector3&) { return false; }
+    virtual bool NotifyGuardedHit(Player&, const engine::Vector3&) { return false; }
     virtual bool CanBreakImpactGate() const { return false; }
     virtual bool IsPinkBounceSlamImpactActive() const { return false; }
 

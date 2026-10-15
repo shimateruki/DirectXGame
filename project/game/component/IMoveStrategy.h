@@ -19,5 +19,5 @@ class IMoveStrategy {
     /// </summary>
     /// <param name="Characters/player">操作対象のプレイヤー</param>
     /// <returns>移動速度ベクトル (X, Z)</returns>
-    virtual Vector3 CalculateVelocity(Player* player) = 0; // 純粋仮想関数
+    virtual engine::Vector3 CalculateVelocity(Player* player) = 0; // 純粋仮想関数
 };

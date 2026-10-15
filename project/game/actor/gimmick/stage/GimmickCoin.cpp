@@ -17,12 +17,12 @@ constexpr float kDropBounceRate = 0.42f;
 constexpr float kDropGroundFriction = 0.86f;
 constexpr float kDropStopSpeed = 0.45f;
 
-json Vector3ToReplayJson(const Vector3& value) {
+json Vector3ToReplayJson(const engine::Vector3& value) {
     // Replay の保存形式を三要素配列に揃えます。
     return json::array({value.x, value.y, value.z});
 }
 
-Vector3 ReplayJsonToVector3(const json& value, const Vector3& fallback) {
+engine::Vector3 ReplayJsonToVector3(const json& value, const engine::Vector3& fallback) {
     // 旧記録や欠損データでは現在の値を維持します。
     if (!value.is_array() || value.size() < 3) {
         return fallback;
@@ -61,7 +61,7 @@ void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelNam
 
 void GimmickCoin::Update(float deltaTime) {
     // 取得時の跳ね上がりと、一時ドロップの落下・寿命は通常の回転より優先します。
-    Vector3 rotate = GetRotation();
+    engine::Vector3 rotate = GetRotation();
 
     if (isCollected_) {
         collectAnimationTimer_ += deltaTime;
@@ -69,7 +69,7 @@ void GimmickCoin::Update(float deltaTime) {
         const float easeOut = 1.0f - (1.0f - t) * (1.0f - t);
         const float hop = std::sin(t * kPi);
 
-        Vector3 position = collectStartPosition_;
+        engine::Vector3 position = collectStartPosition_;
         position.y += 1.25f * easeOut + 0.25f * hop;
         SetTranslate(position);
 
@@ -110,7 +110,7 @@ void GimmickCoin::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickCoin::ConfigureTemporaryDrop(const Vector3& initialVelocity, float lifetime, float blinkStartTime,
+void GimmickCoin::ConfigureTemporaryDrop(const engine::Vector3& initialVelocity, float lifetime, float blinkStartTime,
                                          float groundY) {
     // モデルの底面と地面を揃え、落下中の見た目が地形へ埋まらないようにします。
     isTemporaryDrop_ = true;
@@ -141,8 +141,8 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
         return;
     }
 
-    Vector3 position = GetTranslate();
-    const Vector3 groundSample = {position.x, dropGroundY_ - dropGroundOffset_, position.z};
+    engine::Vector3 position = GetTranslate();
+    const engine::Vector3 groundSample = {position.x, dropGroundY_ - dropGroundOffset_, position.z};
     dropGroundY_ = GroundEffectLocator::ResolveGroundPosition(groundSample).y + dropGroundOffset_;
     if (dropSettleTimer_ <= 0.0f) {
         dropVelocity_.y -= kDropGravity * deltaTime;
@@ -182,7 +182,7 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
     }
 }
 
-bool GimmickCoin::OnCollision(Object3d* other) {
+bool GimmickCoin::OnCollision(engine::Object3d* other) {
     // 取得済みなら同じ接触から枚数を二度加算しません。
     if (isCollected_) {
         return false;
@@ -267,7 +267,7 @@ void GimmickCoin::RestoreReplayCustomState(const json& state) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickCoin::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickCoin::Clone() const {
     // 複製先の描画資源を初期化した上で、設定されたコインの見た目を引き継ぎます。
     auto newObj = std::make_unique<GimmickCoin>();
     assert(common_ != nullptr);

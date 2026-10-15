@@ -22,14 +22,19 @@ void ParticleManager::Initialize(ParticleSystem* particleSystem) {
 // ---------------------------------------------------------
 // JSON変換ヘルパー関数
 // ---------------------------------------------------------
+namespace engine {
+
 // Vector3
-void to_json(json& j, const Vector3& v) { j = json{ {"x", v.x}, {"y", v.y}, {"z", v.z} }; }
-void from_json(const json& j, Vector3& v) { j.at("x").get_to(v.x); j.at("y").get_to(v.y); j.at("z").get_to(v.z); }
+void to_json(json& j, const engine::Vector3& v) { j = json{ {"x", v.x}, {"y", v.y}, {"z", v.z} }; }
+void from_json(const json& j, engine::Vector3& v) { j.at("x").get_to(v.x); j.at("y").get_to(v.y); j.at("z").get_to(v.z); }
 // Vector4
-void to_json(json& j, const Vector4& v) { j = json{ {"x", v.x}, {"y", v.y}, {"z", v.z}, {"w", v.w} }; }
-void from_json(const json& j, Vector4& v) { j.at("x").get_to(v.x); j.at("y").get_to(v.y); j.at("z").get_to(v.z); j.at("w").get_to(v.w); }
+void to_json(json& j, const engine::Vector4& v) { j = json{ {"x", v.x}, {"y", v.y}, {"z", v.z}, {"w", v.w} }; }
+void from_json(const json& j, engine::Vector4& v) { j.at("x").get_to(v.x); j.at("y").get_to(v.y); j.at("z").get_to(v.z); j.at("w").get_to(v.w); }
+
+} // namespace engine
 
 namespace {
+// 時刻と値のキー列をParticle保存JSONへ変換します。
 json WriteFloatCurve(const VFXFloatCurve& curve) {
     json result = json::array();
     for (const VFXFloatCurveKey& key : curve.keys) {
@@ -42,6 +47,7 @@ json WriteFloatCurve(const VFXFloatCurve& curve) {
     return result;
 }
 
+// 時刻と色のキー列をParticle保存JSONへ変換します。
 json WriteColorGradient(const VFXColorGradient& gradient) {
     json result = json::array();
     for (const VFXColorGradientKey& key : gradient.keys) {
@@ -54,7 +60,9 @@ json WriteColorGradient(const VFXColorGradient& gradient) {
     return result;
 }
 
+// 保存済みの数値カーブキーをEmitter設定へ復元します。
 void ReadFloatCurve(const json& source, VFXFloatCurve& curve) {
+    // 保存値を曲線キーへ戻し、時刻順や境界値はNormalizeで整える。
     if (!source.is_array()) return;
     curve.keys.clear();
     for (const json& item : source) {
@@ -69,7 +77,9 @@ void ReadFloatCurve(const json& source, VFXFloatCurve& curve) {
     curve.Normalize();
 }
 
+// 保存済みの色グラデーションキーをEmitter設定へ復元します。
 void ReadColorGradient(const json& source, VFXColorGradient& gradient) {
+    // 色キーと補間方法を読み戻し、不正な補間番号は有効範囲へ丸める。
     if (!source.is_array()) return;
     gradient.keys.clear();
     for (const json& item : source) {
@@ -86,6 +96,7 @@ void ReadColorGradient(const json& source, VFXColorGradient& gradient) {
     gradient.Normalize();
 }
 
+// VFXの距離別詳細度設定を保存JSONへ変換します。
 json WriteLod(const VFXLodSettings& lod) {
     return {
         { "enabled", lod.enabled },
@@ -96,6 +107,7 @@ json WriteLod(const VFXLodSettings& lod) {
     };
 }
 
+// 保存JSONで指定された距離別詳細度設定を復元します。
 void ReadLod(const json& source, VFXLodSettings& lod) {
     if (!source.is_object()) return;
     lod.enabled = source.value("enabled", false);
@@ -146,6 +158,7 @@ void to_json(json& j, const ParticleSystem::EmitterParams& p) {
 }
 
 void from_json(const json& j, ParticleSystem::EmitterParams& p) {
+    // 旧JSONで欠けている項目は既定値を維持し、存在する設定だけ取り込む。
     if (j.contains("textureName")) {
         p.textureName = j.at("textureName").get<std::string>();
     }
@@ -169,6 +182,7 @@ void from_json(const json& j, ParticleSystem::EmitterParams& p) {
     p.blendMode = (ParticleBlendMode)j.value("blendMode", (int)ParticleBlendMode::kAlpha);
 
     if (j.contains("legacySizeCurve") && j["legacySizeCurve"].is_array()) {
+        // 古いサイズカーブは固定長なので配列境界で切って読み込む。
         const json& values = j["legacySizeCurve"];
         const std::size_t count = (std::min)(values.size(), static_cast<std::size_t>(10));
         for (std::size_t index = 0; index < count; ++index) {
@@ -176,6 +190,7 @@ void from_json(const json& j, ParticleSystem::EmitterParams& p) {
         }
     }
     if (j.contains("authoring") && j["authoring"].is_object()) {
+        // 編集用カーブのキーが不足する設定は有効扱いにしない。
         const json& authoring = j["authoring"];
         p.useAuthoringCurves = authoring.value("enabled", false);
         if (authoring.contains("sizeOverLife")) {
@@ -226,6 +241,7 @@ void ParticleManager::LoadAllParams() {
     }
 }
 
+// 名前に対応するEmitter設定を読み、成功したものだけ登録済みパラメータへ反映します。
 void ParticleManager::LoadParam(const std::string& name) {
     std::string filePath = kDirectoryPath + name + ".json";
     std::ifstream i(filePath);
@@ -238,7 +254,7 @@ void ParticleManager::LoadParam(const std::string& name) {
     }
 }
 
-void ParticleManager::Emit(const std::string& name, const Vector3& position, float& timer) {
+void ParticleManager::Emit(const std::string& name, const engine::Vector3& position, float& timer) {
     // 登録されていない名前なら何もしない
     if (paramsMap_.find(name) == paramsMap_.end()) return;
 

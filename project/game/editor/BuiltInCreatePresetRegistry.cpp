@@ -23,7 +23,7 @@ void PreservePresetCatalogFields(const json& current, json& replacement) {
     }
 }
 
-bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr<Object3d> object, const std::string& displayName) {
+bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr<engine::Object3d> object, const std::string& displayName) {
     if (!object) {
         return false;
     }
@@ -55,7 +55,8 @@ bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr
     return true;
 }
 
-bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<Object3d> object, const std::string& displayName) {
+bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<engine::Object3d> object, const std::string& displayName) {
+    // 既存のユーザープリセットを保護し、未登録の内蔵テンプレートだけ追加する。
     if (!object || PresetManager::GetInstance()->HasPreset(presetName)) {
         return false;
     }
@@ -72,6 +73,7 @@ bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<Object3d>
 }
 
 bool RegisterOrRefreshPresetData(const std::string& presetName, json data) {
+    // 内蔵テンプレートだけ更新し、カタログ側の表示情報は維持する。
     PresetManager* manager = PresetManager::GetInstance();
     if (manager->HasPreset(presetName)) {
         const json& current = manager->GetPreset(presetName);
@@ -136,6 +138,8 @@ std::unordered_map<std::string, json> LoadStage1PresetSources() {
     return sources;
 }
 
+// ステージ1の実配置からScene固有IDと位置を外し、再配置可能な内蔵Presetへ変換します。
+// 経路とリンク先IDだけは定義側の指定に従って保持します。
 json BuildStage1PresetData(const json& source, const Stage1PresetDefinition& definition) {
     json data = source;
 
@@ -198,6 +202,7 @@ json BuildStage1PresetData(const json& source, const Stage1PresetDefinition& def
     return data;
 }
 
+// 元配置が存在する定義だけ登録・更新し、保存が必要な変更の有無を返します。
 bool RegisterStage1LibraryPresets() {
     const std::unordered_map<std::string, json> sources = LoadStage1PresetSources();
     if (sources.empty()) {
@@ -386,8 +391,8 @@ bool RegisterStage1LibraryPresets() {
     return changed;
 }
 
-std::unique_ptr<Object3d> CreateSpriteCardPreset(Object3dCommon* common) {
-    auto object = std::make_unique<Object3d>();
+std::unique_ptr<engine::Object3d> CreateSpriteCardPreset(Object3dCommon* common) {
+    auto object = std::make_unique<engine::Object3d>();
     object->Initialize(common);
     object->SetClassName("Model");
     object->SetModel("Primitives/plane");

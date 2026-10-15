@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9557513ad3bd51758a5dd3d348914ca2",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_DashStart_Turf.obj",
+  "version": 1
+}

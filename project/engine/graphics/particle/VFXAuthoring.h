@@ -19,6 +19,7 @@ enum class VFXCurveEasing : int {
 
 /// <summary>0～1の入力を指定のイージングで変換する。</summary>
 inline float ApplyVFXCurveEasing(VFXCurveEasing easing, float value) {
+    // 補間割合を先に0～1へ収め、曲線ごとの式が区間外へはみ出さないようにする。
     const float t = std::clamp(value, 0.0f, 1.0f);
     switch (easing) {
     case VFXCurveEasing::EaseIn:
@@ -45,7 +46,7 @@ struct VFXFloatCurveKey {
 /// <summary>寿命に対する色グラデーションのキー。timeは0～1の再生割合。</summary>
 struct VFXColorGradientKey {
     float time = 0.0f;
-    Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
     VFXCurveEasing easing = VFXCurveEasing::Linear;
 };
 
@@ -75,6 +76,7 @@ public:
     /// <summary>指定した再生割合で値を評価する。キーがなければfallbackを返す。</summary>
     /// <remarks>keysはNormalize等で昇順にしておく。範囲外は端の値、区間の補間には左側キーのイージングを使う。</remarks>
     float Evaluate(float time, float fallback = 1.0f) const {
+        // 左側キーのイージングを、そのキーから次のキーへ向かう区間に適用する。
         if (keys.empty()) return fallback;
         if (keys.size() == 1 || time <= keys.front().time) return keys.front().value;
         if (time >= keys.back().time) return keys.back().value;
@@ -135,7 +137,8 @@ public:
 
     /// <summary>指定した再生割合で色を評価する。キーがなければfallbackを返す。</summary>
     /// <remarks>keysはNormalize等で昇順にしておく。RGBA各成分を補間し、色空間変換は行わない。</remarks>
-    Vector4 Evaluate(float time, const Vector4& fallback = { 1.0f, 1.0f, 1.0f, 1.0f }) const {
+    engine::Vector4 Evaluate(float time, const engine::Vector4& fallback = { 1.0f, 1.0f, 1.0f, 1.0f }) const {
+        // RGBAを同じ時刻割合で補間し、キーがない場合だけ呼び出し側の色へ戻す。
         if (keys.empty()) return fallback;
         if (keys.size() == 1 || time <= keys.front().time) return keys.front().color;
         if (time >= keys.back().time) return keys.back().color;
@@ -157,7 +160,7 @@ public:
     }
 
     /// <summary>開始色と終了色を線形補間するグラデーションを作る。</summary>
-    static VFXColorGradient FromTwoColors(const Vector4& startColor, const Vector4& endColor) {
+    static VFXColorGradient FromTwoColors(const engine::Vector4& startColor, const engine::Vector4& endColor) {
         VFXColorGradient gradient;
         gradient.keys = {
             { 0.0f, startColor, VFXCurveEasing::Linear },
@@ -169,10 +172,10 @@ public:
     /// <summary>開始・中間・終了の三色を補間するグラデーションを作る。</summary>
     /// <param name="middleTime">中間キーの寿命割合。0.01～0.99に収められる。</param>
     static VFXColorGradient FromThreeColors(
-        const Vector4& startColor,
+        const engine::Vector4& startColor,
         float middleTime,
-        const Vector4& middleColor,
-        const Vector4& endColor,
+        const engine::Vector4& middleColor,
+        const engine::Vector4& endColor,
         VFXCurveEasing easing = VFXCurveEasing::Linear) {
         VFXColorGradient gradient;
         gradient.keys = {
@@ -202,10 +205,10 @@ struct VFXBakedFloatCurve {
 
 /// <summary>実行時に線形補間する色グラデーションの固定サンプル。</summary>
 struct VFXBakedColorGradient {
-    std::array<Vector4, kVFXBakedSampleCount> samples{};
+    std::array<engine::Vector4, kVFXBakedSampleCount> samples{};
 
     /// <summary>寿命割合から固定サンプル間を補間し、色を返す。</summary>
-    Vector4 Evaluate(float time) const {
+    engine::Vector4 Evaluate(float time) const {
         const float scaled = std::clamp(time, 0.0f, 1.0f) * static_cast<float>(samples.size() - 1);
         const std::size_t left = static_cast<std::size_t>(scaled);
         const std::size_t right = (std::min)(left + 1, samples.size() - 1);
@@ -233,7 +236,7 @@ inline VFXBakedFloatCurve BakeVFXCurve(const VFXFloatCurve& curve, float fallbac
 /// <summary>編集用色グラデーションを実行時に使う固定サンプルへ焼き込む。</summary>
 inline VFXBakedColorGradient BakeVFXGradient(
     const VFXColorGradient& gradient,
-    const Vector4& fallback = { 1.0f, 1.0f, 1.0f, 1.0f }) {
+    const engine::Vector4& fallback = { 1.0f, 1.0f, 1.0f, 1.0f }) {
     VFXBakedColorGradient baked;
     for (std::size_t index = 0; index < baked.samples.size(); ++index) {
         baked.samples[index] = gradient.Evaluate(

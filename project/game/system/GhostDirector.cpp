@@ -50,7 +50,7 @@ void AddDebugLog(const std::string& text) {
     }
 }
 
-std::string BuildTrackName(Object3d* object) {
+std::string BuildTrackName(engine::Object3d* object) {
     // 対象名が未設定のトラックにも編集画面で読める仮名を付ける。
     if (!object || object->GetName().empty()) {
         return "Transform Track";
@@ -58,24 +58,24 @@ std::string BuildTrackName(Object3d* object) {
     return object->GetName();
 }
 
-Vector3 SubtractVector3(const Vector3& a, const Vector3& b) {
+engine::Vector3 SubtractVector3(const engine::Vector3& a, const engine::Vector3& b) {
     // 相対キーへ変換するため各軸の差分を取る。
     return {a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-Vector3 AddVector3(const Vector3& a, const Vector3& b) {
+engine::Vector3 AddVector3(const engine::Vector3& a, const engine::Vector3& b) {
     // 基準姿勢へ相対キーの移動量を戻す。
     return {a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-Vector3 DivideScale(const Vector3& value, const Vector3& base) {
+engine::Vector3 DivideScale(const engine::Vector3& value, const engine::Vector3& base) {
     // 基準スケールがゼロに近い軸は倍率1として扱い、キー記録時のゼロ除算を防ぐ。
     constexpr float epsilon = 0.00001f;
     return {std::abs(base.x) > epsilon ? value.x / base.x : 1.0f, std::abs(base.y) > epsilon ? value.y / base.y : 1.0f,
             std::abs(base.z) > epsilon ? value.z / base.z : 1.0f};
 }
 
-Vector3 MultiplyScale(const Vector3& value, const Vector3& base) {
+engine::Vector3 MultiplyScale(const engine::Vector3& value, const engine::Vector3& base) {
     // 保存した相対倍率をプレビュー対象の元スケールへ戻す。
     return {value.x * base.x, value.y * base.y, value.z * base.z};
 }
@@ -85,6 +85,7 @@ AnimationInterpolation::EasingType ToPreviewEasingType(int value) {
     return static_cast<AnimationInterpolation::EasingType>(std::clamp(value, 0, 4));
 }
 
+// 指定時刻の前後キーを探し、位置・回転・倍率を同じ補間率で評価します。
 CinematicTransformKey EvaluateInlineTransform(const CinematicTransformTrack& track, float localTime) {
     // 前後のキーを探し、位置・回転・倍率を同じイージング率で評価する。
     if (track.keys.empty()) {
@@ -253,7 +254,7 @@ void GhostDirector::DrawAuthoringGuide() {
                 ImGui::TextWrapped("%s", text.c_str());
             };
             auto checkTarget = [&](const std::string& name, const CinematicObjectBinding& binding, bool camera) {
-                Object3d* target = ResolveTrackTarget(binding);
+                engine::Object3d* target = ResolveTrackTarget(binding);
                 if (!target)
                     warn(name + ": 対象が見つかりません。対象リストから割り当ててください。");
                 else if (camera && !target->IsCameraObject())
@@ -365,7 +366,7 @@ void GhostDirector::DrawAnchorTemplateEditor() {
             settings.targetMode != SceneCameraTargetMode::kCameraForward)
             problem = "カメラは有効・Eye=Camera Object・Target=Camera "
                       "Forwardの専用Objectを選んでください。既存設定は自動変更しません。";
-        const auto nonzero = [](const Vector3& v) { return std::abs(v.x) + std::abs(v.y) + std::abs(v.z) > 0.0001f; };
+        const auto nonzero = [](const engine::Vector3& v) { return std::abs(v.x) + std::abs(v.y) + std::abs(v.z) > 0.0001f; };
         if (nonzero(settings.eyeOffset) || nonzero(settings.targetOffset) ||
             settings.eyeFollowMode != SceneCameraFollowMode::kSnap ||
             settings.targetFollowMode != SceneCameraFollowMode::kSnap)
@@ -400,8 +401,8 @@ void GhostDirector::DrawAnchorTemplateEditor() {
             CinematicTransformKey view;
             view.time = key.time;
             view.position = {-6.0f + rates[index] * 2.0f, 4.0f, -10.0f + rates[index] * 3.0f};
-            const Vector3 focus = key.position + Vector3{0.0f, 1.0f, 0.0f};
-            const Vector3 direction = focus - view.position;
+            const engine::Vector3 focus = key.position + engine::Vector3{0.0f, 1.0f, 0.0f};
+            const engine::Vector3 direction = focus - view.position;
             view.rotation = {-std::atan2(direction.y, std::sqrt(direction.x * direction.x + direction.z * direction.z)),
                              std::atan2(direction.x, direction.z), 0.0f};
             view.scale = camera->GetScale();
@@ -447,7 +448,7 @@ void GhostDirector::StopScenario() {
     AddDebugLog("Cinematic Director: Stop");
 }
 
-void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
+void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const engine::Vector2& offset, const engine::Vector2& size) {
     // 選択した移動トラックを現在のシーン上へ重ね、基準姿勢と相対キーをワールド座標へ戻して描く。
 #ifdef USE_IMGUI
     if (!showSelectedTrackPreview_ || !sceneManager_ || !sceneManager_->GetCurrentScene() || selectedTrackKind_ != 0 ||
@@ -456,7 +457,7 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     }
 
     const CinematicTransformTrack& track = sequence_.transformTracks[selectedTrackIndex_];
-    Object3d* target = ResolveTrackTarget(track.binding);
+    engine::Object3d* target = ResolveTrackTarget(track.binding);
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
     const ImVec2 clipMin(offset.x, offset.y);
     const ImVec2 clipMax(offset.x + size.x, offset.y + size.y);
@@ -504,15 +505,15 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         return;
     }
 
-    Vector3 basePosition = target->GetTranslate();
-    Vector3 baseRotation = target->GetRotation();
-    Vector3 baseScale = target->GetScale();
+    engine::Vector3 basePosition = target->GetTranslate();
+    engine::Vector3 baseRotation = target->GetRotation();
+    engine::Vector3 baseScale = target->GetScale();
     player_.GetBasePose(target, basePosition, baseRotation, baseScale);
 
     auto ResolveLocalPose = [&](const CinematicTransformKey& key) {
         CinematicTransformKey pose = key;
         if (track.anchorRelative) {
-            Vector3 origin;
+            engine::Vector3 origin;
             float yaw = 0.0f;
             if (player_.GetAnchorPose(origin, yaw)) {
                 pose.position = CinematicAnchorPosition(key.position, origin, yaw);
@@ -527,22 +528,22 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     };
 
     auto MakePoseWorldMatrix = [&](const CinematicTransformKey& localPose) {
-        Matrix4x4 world = Math::MakeAffineMatrix(localPose.scale, localPose.rotation, localPose.position);
+        engine::Matrix4x4 world = engine::Math::MakeAffineMatrix(localPose.scale, localPose.rotation, localPose.position);
         if (target->GetParent()) {
-            world = Math::Multiply(world, target->GetParent()->GetWorldMatrix());
+            world = engine::Math::Multiply(world, target->GetParent()->GetWorldMatrix());
         }
         return world;
     };
 
-    auto LocalPositionToWorld = [&](const Vector3& localPosition) {
+    auto LocalPositionToWorld = [&](const engine::Vector3& localPosition) {
         if (!target->GetParent()) {
             return localPosition;
         }
-        return Math::Transform(localPosition, target->GetParent()->GetWorldMatrix());
+        return engine::Math::Transform(localPosition, target->GetParent()->GetWorldMatrix());
     };
 
-    auto WorldToScreen = [&](const Vector3& worldPosition, ImVec2& screenPosition) {
-        const Vector3 ndc = Math::Transform(worldPosition, viewProjection);
+    auto WorldToScreen = [&](const engine::Vector3& worldPosition, ImVec2& screenPosition) {
+        const engine::Vector3 ndc = engine::Math::Transform(worldPosition, viewProjection);
         if (ndc.z < 0.0f || ndc.z > 1.0f) {
             return false;
         }
@@ -568,8 +569,8 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     };
 
     auto DrawWirePose = [&](const CinematicTransformKey& localPose, ImU32 color, float thickness) {
-        const Matrix4x4 world = MakePoseWorldMatrix(localPose);
-        const Vector3 corners[8] = {
+        const engine::Matrix4x4 world = MakePoseWorldMatrix(localPose);
+        const engine::Vector3 corners[8] = {
             {-0.5f, -0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}, {-0.5f, 0.5f, -0.5f}, {0.5f, 0.5f, -0.5f},
             {-0.5f, -0.5f, 0.5f},  {0.5f, -0.5f, 0.5f},  {-0.5f, 0.5f, 0.5f},  {0.5f, 0.5f, 0.5f},
         };
@@ -579,7 +580,7 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         ImVec2 screenCorners[8]{};
         bool visible[8]{};
         for (int index = 0; index < 8; ++index) {
-            visible[index] = WorldToScreen(Math::Transform(corners[index], world), screenCorners[index]);
+            visible[index] = WorldToScreen(engine::Math::Transform(corners[index], world), screenCorners[index]);
         }
         for (const auto& edge : edges) {
             if (visible[edge[0]] && visible[edge[1]]) {
@@ -589,15 +590,15 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     };
 
     auto DrawForwardGuide = [&](const CinematicTransformKey& localPose, ImU32 color) {
-        const Matrix4x4 world = MakePoseWorldMatrix(localPose);
-        const Vector3 origin = Math::Transform({0.0f, 0.0f, 0.0f}, world);
-        Vector3 forward = Math::TransformNormal({0.0f, 0.0f, 1.0f}, world);
+        const engine::Matrix4x4 world = MakePoseWorldMatrix(localPose);
+        const engine::Vector3 origin = engine::Math::Transform({0.0f, 0.0f, 0.0f}, world);
+        engine::Vector3 forward = engine::Math::TransformNormal({0.0f, 0.0f, 1.0f}, world);
         const float length = std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
         if (length <= 0.0001f) {
             return;
         }
         forward = {forward.x / length, forward.y / length, forward.z / length};
-        const Vector3 tip = {
+        const engine::Vector3 tip = {
             origin.x + forward.x * 1.8f,
             origin.y + forward.y * 1.8f,
             origin.z + forward.z * 1.8f,
@@ -612,7 +613,7 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
     // 経路プレビュー用のワールド位置と画面投影結果。投影できない点は visible で区別する。
     struct PreviewSample {
-        Vector3 worldPosition{};
+        engine::Vector3 worldPosition{};
         ImVec2 screenPosition{};
         bool visible = false;
     };
@@ -791,7 +792,7 @@ void GhostDirector::AdvanceTime(float deltaTime) {
     Update(deltaTime);
 }
 
-void GhostDirector::RecordTransformKey(Object3d* object, bool force) {
+void GhostDirector::RecordTransformKey(engine::Object3d* object, bool force) {
     // 対象の現在姿勢をトラックの基準形式に変換し、同時刻のキーは重複させず更新する。
     if (!object || (!force && !autoKeyEnabled_)) {
         return;
@@ -820,16 +821,16 @@ void GhostDirector::RecordTransformKey(Object3d* object, bool force) {
     key.rotation = object->GetRotation();
     key.scale = object->GetScale();
     if (track.anchorRelative) {
-        Vector3 origin;
+        engine::Vector3 origin;
         float yaw = 0.0f;
         if (object->GetParent() || !player_.GetAnchorPose(origin, yaw))
             return;
         key.position = CinematicAnchorLocalPosition(key.position, origin, yaw);
         key.rotation.y -= yaw;
     } else if (track.relative) {
-        Vector3 basePosition = object->GetTranslate();
-        Vector3 baseRotation = object->GetRotation();
-        Vector3 baseScale = object->GetScale();
+        engine::Vector3 basePosition = object->GetTranslate();
+        engine::Vector3 baseRotation = object->GetRotation();
+        engine::Vector3 baseScale = object->GetScale();
         player_.GetBasePose(object, basePosition, baseRotation, baseScale);
         key.position = SubtractVector3(key.position, basePosition);
         key.rotation = SubtractVector3(key.rotation, baseRotation);
@@ -852,7 +853,7 @@ void GhostDirector::RecordTransformKey(Object3d* object, bool force) {
     }
 }
 
-int GhostDirector::FindTransformTrack(Object3d* object) const {
+int GhostDirector::FindTransformTrack(engine::Object3d* object) const {
     // シーン内の同じ対象に既存トラックがあるか、バインディング情報で探す。
     if (!object) {
         return -1;
@@ -872,7 +873,7 @@ int GhostDirector::FindTransformTrack(Object3d* object) const {
     return -1;
 }
 
-int GhostDirector::AddTransformTrack(Object3d* object) {
+int GhostDirector::AddTransformTrack(engine::Object3d* object) {
     // 重複トラックを避け、対象の現在姿勢を新しい移動トラックの初期値にする。
     if (!object) {
         return -1;
@@ -901,7 +902,7 @@ int GhostDirector::AddTransformTrack(Object3d* object) {
     track.keys.push_back(key);
     if (studioEnabled_) {
         sequence_.anchor = {"$Gate", -1};
-        Vector3 origin;
+        engine::Vector3 origin;
         float yaw = 0;
         if (player_.GetAnchorPose(origin, yaw)) {
             track.anchorRelative = true;
@@ -924,14 +925,14 @@ void GhostDirector::AddSelectedObjectsAsTracks() {
     }
     const auto selectedObjects = editor_->GetSelectedObjects();
     bool changed = false;
-    for (Object3d* object : selectedObjects) {
+    for (engine::Object3d* object : selectedObjects) {
         if (FindTransformTrack(object) < 0) {
             AddTransformTrack(object);
             changed = true;
         }
     }
     if (!changed) {
-        if (Object3d* object = editor_->GetSelectedObject()) {
+        if (engine::Object3d* object = editor_->GetSelectedObject()) {
             if (FindTransformTrack(object) < 0) {
                 AddTransformTrack(object);
                 changed = true;
@@ -1008,12 +1009,12 @@ void GhostDirector::SelectTrackTarget(int trackIndex) {
         trackIndex >= static_cast<int>(sequence_.transformTracks.size())) {
         return;
     }
-    if (Object3d* target = ResolveTrackTarget(sequence_.transformTracks[trackIndex].binding)) {
+    if (engine::Object3d* target = ResolveTrackTarget(sequence_.transformTracks[trackIndex].binding)) {
         editor_->SetSelectedObject(target);
     }
 }
 
-Object3d* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding& binding) const {
+engine::Object3d* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding& binding) const {
     // バインディングに保存された識別情報を現在の制作シーンで解決する。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return nullptr;
@@ -1022,7 +1023,7 @@ Object3d* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding& bindin
     if (studioEnabled_)
         return role >= 0 ? FindStudioObject(role) : nullptr;
     const auto& resolved = role >= 0 ? sequence_.roleBindings[role] : binding;
-    Object3d* nameMatch = nullptr;
+    engine::Object3d* nameMatch = nullptr;
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (!object) {
             continue;
@@ -1221,11 +1222,11 @@ void GhostDirector::DrawTransformTrackEditor() {
     const bool wasRelative = track.relative;
     ImGui::BeginDisabled(track.anchorRelative);
     if (ImGui::Checkbox("相対Transform", &track.relative) && wasRelative != track.relative) {
-        Object3d* target = ResolveTrackTarget(track.binding);
+        engine::Object3d* target = ResolveTrackTarget(track.binding);
         if (target && FindTransformTrack(target) == selectedTrackIndex_) {
-            Vector3 basePosition = target->GetTranslate();
-            Vector3 baseRotation = target->GetRotation();
-            Vector3 baseScale = target->GetScale();
+            engine::Vector3 basePosition = target->GetTranslate();
+            engine::Vector3 baseRotation = target->GetRotation();
+            engine::Vector3 baseScale = target->GetScale();
             player_.GetBasePose(target, basePosition, baseRotation, baseScale);
             for (auto& key : track.keys) {
                 if (track.relative) {
@@ -1440,7 +1441,7 @@ void GhostDirector::DrawCameraShotEditor() {
         shot.name = "Camera Shot";
         shot.startTime = currentScrubTime_;
         if (editor_) {
-            Object3d* selected = editor_->GetSelectedObject();
+            engine::Object3d* selected = editor_->GetSelectedObject();
             if (selected && selected->IsCameraObject()) {
                 shot.name = selected->GetName();
                 shot.binding.targetName = selected->GetName();
@@ -1470,7 +1471,7 @@ void GhostDirector::DrawCameraShotEditor() {
             selectedTrackIndex_ = index;
             selectedKeyIndex_ = -1;
             if (editor_) {
-                if (Object3d* target = ResolveTrackTarget(shot.binding)) {
+                if (engine::Object3d* target = ResolveTrackTarget(shot.binding)) {
                     editor_->SetSelectedObject(target);
                 }
             }
@@ -1516,7 +1517,7 @@ void GhostDirector::DrawAnimationClipEditor() {
         clip.name = "Animation Clip";
         clip.startTime = currentScrubTime_;
         if (editor_) {
-            if (Object3d* selected = editor_->GetSelectedObject()) {
+            if (engine::Object3d* selected = editor_->GetSelectedObject()) {
                 clip.binding.targetName = selected->GetName();
                 clip.binding.targetEventId = selected->GetEventID();
             }
@@ -1894,7 +1895,7 @@ void GhostDirector::DrawTimelineCanvas() {
                 selectedTrackIndex_ = row - transformCount;
                 selectedKeyIndex_ = -1;
                 if (editor_) {
-                    if (Object3d* target = ResolveTrackTarget(sequence_.cameraShots[selectedTrackIndex_].binding)) {
+                    if (engine::Object3d* target = ResolveTrackTarget(sequence_.cameraShots[selectedTrackIndex_].binding)) {
                         editor_->SetSelectedObject(target);
                     }
                 }

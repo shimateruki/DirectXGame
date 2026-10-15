@@ -150,7 +150,7 @@ void PresetManager::RefreshPrefabInheritance() {
     }
 }
 
-void PresetManager::AddPrefabFromObject(const std::string& prefabName, Object3d* obj) {
+void PresetManager::AddPrefabFromObject(const std::string& prefabName, engine::Object3d* obj) {
     // 同名Assetがあれば新規IDを発行せず更新し、既存Instanceのリンクを保つ。
     if (!obj || prefabName.empty()) {
         return;
@@ -167,7 +167,7 @@ void PresetManager::AddPrefabFromObject(const std::string& prefabName, Object3d*
         assetId = MakeUniqueId("prefab");
     }
 
-    std::unordered_set<const Object3d*> visited;
+    std::unordered_set<const engine::Object3d*> visited;
     json asset;
     asset["version"] = 3;
     asset["assetId"] = assetId;
@@ -179,7 +179,7 @@ void PresetManager::AddPrefabFromObject(const std::string& prefabName, Object3d*
     SavePrefabs();
 }
 
-bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object3d* obj) {
+bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, engine::Object3d* obj) {
     auto assetIt = prefabs_.find(prefabName);
     if (assetIt == prefabs_.end() || !obj) {
         return false;
@@ -191,7 +191,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
         return false;
     }
 
-    std::unordered_set<const Object3d*> visited;
+    std::unordered_set<const engine::Object3d*> visited;
     json editedRoot = BuildPrefabNode(obj, assetId, visited);
     if (!editedRoot.is_object()) {
         return false;
@@ -384,7 +384,7 @@ int PresetManager::SynchronizePrefabInstances(
         return "";
     };
 
-    std::unordered_map<std::string, std::vector<Object3d*>> instances;
+    std::unordered_map<std::string, std::vector<engine::Object3d*>> instances;
     // 同じPrefab配置に属するObjectをInstance IDでまとめ、他の配置へ波及させない。
     for (const auto& object : sceneObjects) {
         if (!object || !object->IsPrefabInstance()) continue;
@@ -415,8 +415,8 @@ int PresetManager::SynchronizePrefabInstances(
         CollectPrefabNodeLocations(oldRoot, "", 0, oldLocations);
         CollectPrefabNodeLocations(newRoot, "", 0, newLocations);
 
-        std::unordered_map<std::string, Object3d*> instanceObjects;
-        for (Object3d* object : objects) {
+        std::unordered_map<std::string, engine::Object3d*> instanceObjects;
+        for (engine::Object3d* object : objects) {
             if (object) {
                 instanceObjects[object->GetPrefabInstanceInfo().sourceObjectId] = object;
             }
@@ -432,7 +432,7 @@ int PresetManager::SynchronizePrefabInstances(
             }
 
             std::string currentParentSourceId;
-            if (Object3d* currentParent = object->GetParent(); currentParent && currentParent->IsPrefabInstance() &&
+            if (engine::Object3d* currentParent = object->GetParent(); currentParent && currentParent->IsPrefabInstance() &&
                 currentParent->GetPrefabInstanceInfo().instanceId == instanceId) {
                 currentParentSourceId = currentParent->GetPrefabInstanceInfo().sourceObjectId;
             }
@@ -491,7 +491,7 @@ int PresetManager::SynchronizePrefabInstances(
             context.prefabName = findAssetNameById(prefabs_, rootInfo.assetId);
             context.assetId = rootInfo.assetId;
             context.instanceId = instanceId;
-            std::vector<std::unique_ptr<Object3d>> created;
+            std::vector<std::unique_ptr<engine::Object3d>> created;
             CreateObjectFromPresetNode(*locationIt->second.node, common, parentIt->second, created, &context);
             for (auto& createdObject : created) {
                 if (!createdObject) continue;
@@ -510,7 +510,7 @@ int PresetManager::SynchronizePrefabInstances(
                 continue;
             }
             std::string currentParentSourceId;
-            if (Object3d* currentParent = object->GetParent(); currentParent && currentParent->IsPrefabInstance() &&
+            if (engine::Object3d* currentParent = object->GetParent(); currentParent && currentParent->IsPrefabInstance() &&
                 currentParent->GetPrefabInstanceInfo().instanceId == instanceId) {
                 currentParentSourceId = currentParent->GetPrefabInstanceInfo().sourceObjectId;
             }
@@ -521,7 +521,7 @@ int PresetManager::SynchronizePrefabInstances(
         }
 
         // Sourceから削除されたObjectは除去します。非Prefabの子はScene Rootへ退避します。
-        std::unordered_set<Object3d*> removedObjects;
+        std::unordered_set<engine::Object3d*> removedObjects;
         for (const auto& [sourceObjectId, object] : instanceObjects) {
             if (object && oldLocations.find(sourceObjectId) != oldLocations.end() &&
                 newLocations.find(sourceObjectId) == newLocations.end()) {
@@ -535,9 +535,9 @@ int PresetManager::SynchronizePrefabInstances(
                     candidate->SetParent(nullptr, true);
                 }
             }
-            std::vector<std::unique_ptr<Object3d>> detachedObjects;
+            std::vector<std::unique_ptr<engine::Object3d>> detachedObjects;
             detachedObjects.reserve(removedObjects.size());
-            for (Object3d* removed : removedObjects) {
+            for (engine::Object3d* removed : removedObjects) {
                 if (auto detached = scene.TakeObjectImmediate(removed)) {
                     detachedObjects.push_back(std::move(detached));
                 }

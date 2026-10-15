@@ -7,9 +7,11 @@
 // 文字列のアイテムタイプ名から、対応するアイテムを生成するファクトリ
 class ItemFactory {
   public:
+    /// <summary>共有のアイテムファクトリを返す。</summary>
     static ItemFactory* GetInstance();
 
-    // itemName に対応するアイテムを生成し、基本初期化まで行う
+    /// <summary>種別名に対応するアイテムを生成し、基本初期化する。</summary>
+    /// <returns>未対応の種別名では仮表示用のBaseItemを返す。</returns>
     std::unique_ptr<BaseItem> CreateItem(const std::string& itemName, Object3dCommon* common);
 
   private:

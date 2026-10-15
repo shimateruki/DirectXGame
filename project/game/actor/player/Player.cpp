@@ -1,4 +1,5 @@
 #include "game/actor/player/Player.Internal.h"
+#include "game/actor/gimmick/movement/GimmickTrampoline.h"
 
 using namespace PlayerImplementation;
 
@@ -17,7 +18,7 @@ bool Player::IsPinkBounceSlamImpactActive() const {
 }
 
 void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem,
-                        SpriteCommon* spriteCommon) {
+                        engine::SpriteCommon* spriteCommon) {
     // 親クラス(Character)の初期化
     Character::Initialize(common);
 
@@ -54,7 +55,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
     // フック用の到達地点マーカーを初期化
     if (common) {
-        hookMarker_ = std::make_unique<Object3d>();
+        hookMarker_ = std::make_unique<engine::Object3d>();
         hookMarker_->Initialize(common);
         hookMarker_->SetModel("Characters/slimeBody");
         // スライムっぽい半透明な緑色
@@ -67,7 +68,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         hookMarker_->SetScale({0.5f, 0.5f, 0.5f});
 
         // 解除時に排出するスライム成分。シーンへ登録せず、Playerが描画まで管理します。
-        enemyMorphReleaseVisual_ = std::make_unique<Object3d>();
+        enemyMorphReleaseVisual_ = std::make_unique<engine::Object3d>();
         enemyMorphReleaseVisual_->Initialize(common);
         enemyMorphReleaseVisual_->SetName("EnemyMorphReleaseResidue");
         enemyMorphReleaseVisual_->SetClassName("Effect");
@@ -81,7 +82,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     }
 }
 
-void Player::ApplyManagedScale(const Vector3& scale) {
+void Player::ApplyManagedScale(const engine::Vector3& scale) {
     // 見た目、衝突形状、アニメーションの基準スケールを同時に更新する。
     managedBaseScale_ = scale;
     SetScale(scale);
@@ -91,19 +92,19 @@ void Player::ApplyManagedScale(const Vector3& scale) {
     slimeAnimator_.Reset(scale, this);
 }
 
-Vector3 Player::GetLockOnAttackDirection() const {
+engine::Vector3 Player::GetLockOnAttackDirection() const {
     // 演出中や照準が無効な間は、前回のロックオン位置を攻撃に使わない。
     if (!isLockingOn_ || !lockOnAimValid_ || isDead || isCinematicLocked_)
         return GetForwardDirection();
-    Vector3 direction = lockOnAimPoint_ - GetWorldPosition();
+    engine::Vector3 direction = lockOnAimPoint_ - GetWorldPosition();
     direction.y = 0.0f;
-    const float length = Math::Length(direction);
+    const float length = engine::Math::Length(direction);
     return length > 0.001f ? direction / length : GetForwardDirection();
 }
 
-Vector3 Player::GetMoveInputDirection() {
+engine::Vector3 Player::GetMoveInputDirection() {
     // 攻撃中の方向転換にも通常移動と同じ入力解釈を使う。
-    return mover_ ? mover_->GetMoveInputDirection() : Vector3{};
+    return mover_ ? mover_->GetMoveInputDirection() : engine::Vector3{};
 }
 
 // 入力、状態、移動、見た目の順に更新します。演出が操作権を持つ間は通常操作へ流しません。
@@ -186,20 +187,20 @@ void Player::Update(float deltaTime) {
             // 右クリック中は移動入力を受け付けず、水平移動を停止させる
             if (hookAimHeld) {
                 SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::AimHook);
-                Vector3 v = GetVelocity();
+                engine::Vector3 v = GetVelocity();
                 SetVelocity({0.0f, v.y, 0.0f});
 
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                 if (camera) {
-                    Vector3 camRot = camera->GetRotation();
+                    engine::Vector3 camRot = camera->GetRotation();
                     SetRotation(
                         {baseRotation_.x + camRot.x, NormalizeYaw(camRot.y + GetVisualYawOffset()), baseRotation_.z});
 
                     // --- フック到達地点の計算とマーカー表示 ---
                     if (hookMarker_) {
-                        Vector3 start = camera->GetEye();
+                        engine::Vector3 start = camera->GetEye();
 
-                        Vector3 dir;
+                        engine::Vector3 dir;
                         dir.x = std::sin(camRot.y) * std::cos(camRot.x);
                         dir.y = -std::sin(camRot.x);
                         dir.z = std::cos(camRot.y) * std::cos(camRot.x);
@@ -216,9 +217,9 @@ void Player::Update(float deltaTime) {
                         if (isLockingOn_ && lockOnAimValid_) {
                             const AABB bounds = GetAABB();
                             start = (bounds.min + bounds.max) * 0.5f;
-                            const Vector3 toTarget = lockOnAimPoint_ - start;
-                            if (Math::Length(toTarget) > 0.001f)
-                                dir = Math::Normalize(toTarget);
+                            const engine::Vector3 toTarget = lockOnAimPoint_ - start;
+                            if (engine::Math::Length(toTarget) > 0.001f)
+                                dir = engine::Math::Normalize(toTarget);
                             const float planarLength = std::sqrt(dir.x * dir.x + dir.z * dir.z);
                             SetRotation({baseRotation_.x - std::atan2(dir.y, planarLength),
                                          NormalizeYaw(std::atan2(dir.x, dir.z) + GetVisualYawOffset()),
@@ -274,7 +275,7 @@ void Player::Update(float deltaTime) {
                 // 右クリック解除時にフックアクションへ移行
                 if (hookMarker_) {
                     if (hookMarker_->GetIsVisible()) {
-                        Vector3 targetPos = hookMarker_->GetTransform()->translate;
+                        engine::Vector3 targetPos = hookMarker_->GetTransform()->translate;
 
                         if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
                             ChangeState(std::make_unique<PlayerStatePullObject>(aimTargetObject_, targetPos));
@@ -288,7 +289,7 @@ void Player::Update(float deltaTime) {
                 }
 
                 // 通常移動時はX軸（ピッチ）とZ軸（ロール）の回転を初期値に戻す
-                Vector3 rot = GetRotation();
+                engine::Vector3 rot = GetRotation();
                 rot.x = baseRotation_.x;
                 rot.z = baseRotation_.z;
                 SetRotation(rot);
@@ -312,7 +313,7 @@ void Player::Update(float deltaTime) {
         if (!isDead && !tutorialSafetyEnabled_ && !dynamic_cast<PlayerStateFallingOut*>(state_.get()) &&
             FindLethalLiquidSurface(*this, liquidY) && param_.has_value()) {
             const float footY = GetModelWorldAABB().min.y;
-            Vector3 position = GetTranslate();
+            engine::Vector3 position = GetTranslate();
             position.y += liquidY - footY + 0.04f;
             SetTranslate(position);
             UpdateLocalMatrix();
@@ -381,9 +382,17 @@ void Player::Update(float deltaTime) {
     // 破裂中は物理移動を止め、液面に残して演出を見せます。
     if (isDead) {
         SetVelocity({0.0f, 0.0f, 0.0f});
-        Object3d::Update(deltaTime);
+        engine::Object3d::Update(deltaTime);
     } else {
         Character::Update(deltaTime);
+        // Sweep 移動で着地面の手前に停止すると重なり判定が発生しないため、
+        // Motor が確定した接地相手からもキノコの反発を受け取る。
+        const CharacterMotorResult& motorResult = GetCharacterMotor().GetResult();
+        if (!copyPreviewActive_ && motorResult.grounded && motorResult.groundObject) {
+            if (auto* trampoline = dynamic_cast<GimmickTrampoline*>(motorResult.groundObject)) {
+                trampoline->TryBounce(this, motorResult.groundNormal);
+            }
+        }
         // 互換モーターは接地をリセットし、シーン末尾の衝突解決まで未接地になります。
         // 能力判定より先に実際の足元接触を確認します。押し戻し・衝突イベントは
         // 従来のCollisionManagerに任せ、ここでは位置や速度を変更しません。
@@ -439,18 +448,18 @@ void Player::Update(float deltaTime) {
 
     if (electricShockFeedbackTimer_ <= 0.0f && hasVisibleInvincibility && deltaTime > 0.0f) {
         const float blink = 0.5f + 0.5f * std::sin(invincibleBlinkTimer_ * 42.0f);
-        const Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{1.0f, 1.0f, 1.0f, 1.0f};
-        const Vector4 flash = isGuardInvincible_
-                                  ? Vector4{1.0f, 0.42f, 0.84f, 1.0f}
-                                  : ((isDashInvincible_ || isEvasionInvincible_) ? Vector4{0.34f, 0.74f, 1.0f, 1.0f}
-                                                                                 : Vector4{1.0f, 0.78f, 0.32f, 1.0f});
+        const engine::Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : engine::Vector4{1.0f, 1.0f, 1.0f, 1.0f};
+        const engine::Vector4 flash = isGuardInvincible_
+                                  ? engine::Vector4{1.0f, 0.42f, 0.84f, 1.0f}
+                                  : ((isDashInvincible_ || isEvasionInvincible_) ? engine::Vector4{0.34f, 0.74f, 1.0f, 1.0f}
+                                                                                 : engine::Vector4{1.0f, 0.78f, 0.32f, 1.0f});
         const float flashRate = blink > 0.48f ? 0.72f : 0.12f;
-        const Vector4 color = {base.x * (1.0f - flashRate) + flash.x * flashRate,
+        const engine::Vector4 color = {base.x * (1.0f - flashRate) + flash.x * flashRate,
                                base.y * (1.0f - flashRate) + flash.y * flashRate,
                                base.z * (1.0f - flashRate) + flash.z * flashRate, 1.0f};
         SetColor(color);
         if (!isEnemyMorphed_) {
-            for (Object3d* child : GetChildren()) {
+            for (engine::Object3d* child : GetChildren()) {
                 if (child) {
                     child->SetColor(color);
                 }
@@ -501,10 +510,10 @@ void Player::Update(float deltaTime) {
 
             // カメラの水平方向を投擲方向に使い、見下ろし角に応じて上向きの初速を調整します。
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-            Vector3 throwForward = GetForwardDirection();
+            engine::Vector3 throwForward = GetForwardDirection();
             float throwUpSpeed = 17.0f;
             if (camera) {
-                Vector3 camRot = camera->GetRotation();
+                engine::Vector3 camRot = camera->GetRotation();
                 throwForward = {std::sin(camRot.y), 0.0f, std::cos(camRot.y)};
                 throwUpSpeed = (std::clamp)(17.0f - std::sin(camRot.x) * 7.0f, 10.0f, 21.0f);
             }
@@ -517,7 +526,7 @@ void Player::Update(float deltaTime) {
             }
 
             // 解除直後の当たり判定がプレイヤーに重ならないよう、前方に離してから投げます。
-            Vector3 playerPos = GetWorldPosition();
+            engine::Vector3 playerPos = GetWorldPosition();
             enemyBase->SetTranslate({playerPos.x + throwForward.x * 2.2f, playerPos.y + 2.2f,
                                                     playerPos.z + throwForward.z * 2.2f});
 
@@ -529,19 +538,19 @@ void Player::Update(float deltaTime) {
             enemyBase->SetEulerAngles({0.0f, 0.0f, 0.0f});
             enemyBase->SetQuaternionMaster(true);
 
-            Vector3 throwVelocity = {throwForward.x * 32.0f, throwUpSpeed, throwForward.z * 32.0f};
+            engine::Vector3 throwVelocity = {throwForward.x * 32.0f, throwUpSpeed, throwForward.z * 32.0f};
             enemyBase->BeginThrown(throwVelocity);
 
             TriggerSlimeImpulse({1.4f, 3.6f, 1.4f}, 0.18f);
             // 投擲方向へ衝撃粒子を飛ばし、操作の結果をすぐに示します。
             if (particleSystem_) {
-                Vector3 effectDir = {throwForward.x, 0.35f, throwForward.z};
+                engine::Vector3 effectDir = {throwForward.x, 0.35f, throwForward.z};
                 float effectDirLength =
                     std::sqrt(effectDir.x * effectDir.x + effectDir.y * effectDir.y + effectDir.z * effectDir.z);
                 if (effectDirLength > 0.001f) {
                     effectDir = effectDir / effectDirLength;
                 }
-                particleSystem_->SpawnParticles(playerPos + Vector3{0.0f, 2.5f, 0.0f}, 24, 1.6f, &effectDir, 32.0f,
+                particleSystem_->SpawnParticles(playerPos + engine::Vector3{0.0f, 2.5f, 0.0f}, 24, 1.6f, &effectDir, 32.0f,
                                                 {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.0f}, 0.1f, 0.3f, 0.8f,
                                                 0.1f);
             }
@@ -589,7 +598,7 @@ void Player::Update(float deltaTime) {
         carriedEnemy_->SetCollisionAttribute(0);
         carriedEnemy_->SetCollisionMask(0);
 
-        Vector3 playerPos = GetWorldPosition();
+        engine::Vector3 playerPos = GetWorldPosition();
 
         static float struggleTimer_ = 0.0f;
         struggleTimer_ += deltaTime;
@@ -602,7 +611,7 @@ void Player::Update(float deltaTime) {
         carriedEnemy_->SetTranslate({playerPos.x + offsetX, playerPos.y + 1.55f + offsetY,
                                                     playerPos.z + offsetZ});
 
-        Vector3 rot;
+        engine::Vector3 rot;
         rot.x = std::sin(struggleTimer_ * 20.0f) * 0.2f;
         rot.y = GetRotation().y + std::sin(struggleTimer_ * 15.0f) * 0.4f;
         rot.z = std::cos(struggleTimer_ * 22.0f) * 0.2f;
@@ -614,10 +623,10 @@ void Player::Update(float deltaTime) {
             hasCarriedEnemyBaseScale_ = true;
         }
         float stretch = std::sin(struggleTimer_ * 25.0f) * 0.05f;
-        const Vector3 targetScale = {carriedEnemyBaseScale_.x * (1.0f - stretch),
+        const engine::Vector3 targetScale = {carriedEnemyBaseScale_.x * (1.0f - stretch),
                                      carriedEnemyBaseScale_.y * (1.0f + stretch),
                                      carriedEnemyBaseScale_.z * (1.0f - stretch)};
-        carriedEnemy_->SetScale(Math::Lerp(carriedEnemy_->GetScale(), targetScale, std::clamp(deltaTime * 10.0f, 0.0f, 1.0f)));
+        carriedEnemy_->SetScale(engine::Math::Lerp(carriedEnemy_->GetScale(), targetScale, std::clamp(deltaTime * 10.0f, 0.0f, 1.0f)));
 
         // 親の更新を待たずに行列を確定し、手元への追従を1フレーム遅らせません。
         carriedEnemy_->UpdateLocalMatrix();
@@ -692,7 +701,7 @@ float Player::GetMoveYaw() const {
     return NormalizeYaw(GetRotation().y - GetVisualYawOffset());
 }
 
-Vector3 Player::GetForwardDirection() const {
+engine::Vector3 Player::GetForwardDirection() const {
     // 上下成分を持たない方向にし、地上攻撃の照準に使う。
     const float yaw = GetMoveYaw();
     return {std::sin(yaw), 0.0f, std::cos(yaw)};
@@ -710,8 +719,8 @@ void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
     for (auto& object : copyPreviewObjects_) {
         object->Update(deltaTime);
         if (auto* enemy = dynamic_cast<BaseEnemy*>(object.get())) {
-            Vector3 position = enemy->GetTranslate();
-            Vector3 velocity = enemy->GetVelocity();
+            engine::Vector3 position = enemy->GetTranslate();
+            engine::Vector3 velocity = enemy->GetVelocity();
             if (position.y < groundY + 0.48f && velocity.y <= 0) {
                 position.y = groundY + 0.48f;
                 velocity.y = 0;
@@ -756,7 +765,7 @@ void Player::UpdateCopyAdornment() {
         return;
     }
     if (!copyAdornment_) {
-        copyAdornment_ = std::make_unique<Object3d>();
+        copyAdornment_ = std::make_unique<engine::Object3d>();
         copyAdornment_->Initialize(common_);
         copyAdornment_->SetColliderType(ColliderType::kNone);
         copyAdornment_->SetCollisionAttribute(0);
@@ -855,7 +864,7 @@ void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightR
 // 衝突処理
 // =================================================================
 
-bool Player::OnCollision(Object3d* other) {
+bool Player::OnCollision(engine::Object3d* other) {
     if (isDead || isCinematicLocked_) {
         return false;
     }
@@ -885,7 +894,7 @@ bool Player::OnCollision(Object3d* other) {
     CollisionInfo info = CheckCollision(other);
 
     // ② 子オブジェクト（パーツ）の当たり判定も全てチェックする
-    for (Object3d* child : GetChildren()) {
+    for (engine::Object3d* child : GetChildren()) {
         if (!child)
             continue;
         CollisionInfo childInfo = child->CheckCollision(other);
@@ -913,8 +922,12 @@ bool Player::OnCollision(Object3d* other) {
 
     // =======================================================
     // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
-    // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
+    // 無敵中でも壁抜けは厳禁。反発床だけ先に上向き速度へ切り替えます。
     // =======================================================
+    if (auto* trampoline = dynamic_cast<GimmickTrampoline*>(other)) {
+        // 通常の床解決より先に着地を反発へ変える。呼び出し順に依存しないようにする。
+        trampoline->TryBounce(this, info.normal);
+    }
     if (attribute & CollisionCategories::Get("ground")) {
         ApplyPhysicsCollision(info, attribute);
     }
@@ -993,7 +1006,7 @@ void Player::ApplyDashPanelBoost(float duration, float speedMultiplier, float tu
     }
 }
 
-void Player::SetPlatformMotion(const Vector3& velocity) {
+void Player::SetPlatformMotion(const engine::Vector3& velocity) {
     // 床から受けた速度を次の移動更新で一度だけ合成する。
     if (mover_)
         mover_->SetPlatformMotion(velocity);
@@ -1033,12 +1046,12 @@ void Player::SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode) {
     slimeAnimator_.SetMode(mode);
 }
 
-void Player::SetSlimeAnimationDirection(const Vector3& direction) {
+void Player::SetSlimeAnimationDirection(const engine::Vector3& direction) {
     // 移動方向は変形アニメーションの傾きにも使う。
     slimeAnimator_.SetMotionDirection(direction);
 }
 
-void Player::SetSlimePullDirection(const Vector3& direction) {
+void Player::SetSlimePullDirection(const engine::Vector3& direction) {
     // 引き寄せ演出の向きだけを Animator へ渡す。
     slimeAnimator_.SetPullDirection(direction);
 }
@@ -1058,7 +1071,7 @@ void Player::SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float st
     slimeAnimator_.SetAbilityPose(pose, strength);
 }
 
-void Player::TriggerSlimeImpulse(const Vector3& scale, float duration) {
+void Player::TriggerSlimeImpulse(const engine::Vector3& scale, float duration) {
     // 命中時などの一時的な伸縮は基準スケールへ書き込まない。
     slimeAnimator_.TriggerImpulse(scale, duration);
 }
@@ -1079,7 +1092,7 @@ void Player::ClearSlimeAbilityMotion() {
     slimeAnimator_.ClearAbilityMotion(this);
 }
 
-void Player::ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction) {
+void Player::ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const engine::Vector3& direction) {
     // 能力側の姿勢指定を、次回の通常 Animator 更新に限って優先する。
     forcedSlimeAnimationModeActive_ = true;
     forcedSlimeAnimationMode_ = mode;
@@ -1106,7 +1119,7 @@ void Player::StopGateReturnAnimation(bool restoreControl) {
     gateReturnAnimation_.Stop(this, restoreControl);
 }
 
-void Player::StepCinematicPullVisual(float deltaTime, const Vector3& direction, float progress) {
+void Player::StepCinematicPullVisual(float deltaTime, const engine::Vector3& direction, float progress) {
     // 操作ロック中だけ、引き寄せの見た目を演出タイムラインから進める。
     if (!isCinematicLocked_) return;
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::PullEnemy);
@@ -1161,7 +1174,7 @@ void Player::BeginCinematicLock(bool preserveCopyAbility) {
     slimeAnimator_.Reset(managedBaseScale_, this);
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Disabled);
 
-    Vector3 stableRotation = GetRotation();
+    engine::Vector3 stableRotation = GetRotation();
     stableRotation.x = baseRotation_.x;
     stableRotation.z = baseRotation_.z;
     if (!preserveCopyAbility || !isEnemyMorphed_) {
@@ -1223,6 +1236,15 @@ void Player::SetTutorialSafetyEnabled(bool enabled) {
     }
 }
 
+void Player::RestoreHpToFull() {
+    // 最大HPは現在のプレイヤー設定を使い、取得時に即座にHUDへ反映します。
+    if (!param_.has_value() || isDead) {
+        return;
+    }
+    param_->maxHp = (std::max)(param_->maxHp, 1.0f);
+    param_->hp = param_->maxHp;
+}
+
 void Player::SetTutorialCarryActionPermissions(bool allowThrow, bool allowAbsorb) {
     tutorialCarryThrowEnabled_ = allowThrow;
     tutorialCarryAbsorbEnabled_ = allowAbsorb;
@@ -1256,7 +1278,7 @@ void Player::RestoreDamageBlinkVisibility() {
     if (!isEnemyMorphed_) {
         const auto& children = GetChildren();
         for (size_t i = 0; i < children.size(); ++i) {
-            Object3d* child = children[i];
+            engine::Object3d* child = children[i];
             if (!child) {
                 continue;
             }
@@ -1285,7 +1307,7 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
             damageBlinkChildVisible_.clear();
             if (!isEnemyMorphed_) {
                 damageBlinkChildVisible_.reserve(GetChildren().size());
-                for (Object3d* child : GetChildren()) {
+                for (engine::Object3d* child : GetChildren()) {
                     damageBlinkChildVisible_.push_back(child ? child->GetIsVisible() : false);
                 }
             }
@@ -1297,7 +1319,7 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
         if (!isEnemyMorphed_) {
             const auto& children = GetChildren();
             for (size_t i = 0; i < children.size(); ++i) {
-                Object3d* child = children[i];
+                engine::Object3d* child = children[i];
                 if (!child) {
                     continue;
                 }
@@ -1317,8 +1339,8 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
 }
 
 void Player::UpdateColor() {
-    Vector4 targetColor =
-        isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{1.0f, 1.0f, 1.0f, 1.0f}; // 基本は白(通常色)
+    engine::Vector4 targetColor =
+        isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : engine::Vector4{1.0f, 1.0f, 1.0f, 1.0f}; // 基本は白(通常色)
 
     if (isGuardInvincible_) {
         // 通常のピンクと区別できる、身を固めた濃いローズ色。
@@ -1330,7 +1352,7 @@ void Player::UpdateColor() {
     // 本体と子パーツの色を一括変更
     SetColor(targetColor);
     if (!isEnemyMorphed_) {
-        for (Object3d* child : GetChildren()) {
+        for (engine::Object3d* child : GetChildren()) {
             if (child)
                 child->SetColor(targetColor);
         }

@@ -7,9 +7,9 @@ class GimmickMagmaHazard : public BaseGimmick {
   public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
-    bool OnCollision(Object3d* other) override;
+    bool OnCollision(engine::Object3d* other) override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     // エディター設定から接触ダメージと再適用間隔を解決します。

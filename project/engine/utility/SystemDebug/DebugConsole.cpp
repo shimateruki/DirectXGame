@@ -24,6 +24,7 @@ void DebugConsole::Finalize() {
 
 void DebugConsole::AddLog(const std::string& log) {
 #ifdef USE_IMGUI
+    // 既存の文字列ログを接頭辞で分類し、型付きログと同じ保存経路へ流す。
     LogLevel level = LogLevel::Info;
     if (log.find("[ERROR]") != std::string::npos) level = LogLevel::Error;
     else if (log.find("[WARN]") != std::string::npos) level = LogLevel::Warning;
@@ -34,6 +35,7 @@ void DebugConsole::AddLog(const std::string& log) {
 
 void DebugConsole::AddLog(LogLevel level, const std::string& log) {
 #ifdef USE_IMGUI
+    // ログ数を上限に保ち、表示とVisual Studioの出力へ同じ本文を渡す。
     std::lock_guard<std::mutex> lock(logMutex_);
     if (level == LogLevel::Error) {
         errorCount_.fetch_add(1, std::memory_order_relaxed);
@@ -110,7 +112,7 @@ void DebugConsole::DrawImGui() {
             // フィルタ適用
             if (!filter_.PassFilter(entry.message.c_str())) continue;
 
-            // ★追加: チェックが外れているレベルのログはスキップ！
+            //  チェックが外れているレベルのログはスキップ！
             if (entry.level == LogLevel::Info && !showInfo_) continue;
             if (entry.level == LogLevel::Warning && !showWarn_) continue;
             if (entry.level == LogLevel::Error && !showError_) continue;

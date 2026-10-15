@@ -12,16 +12,19 @@ constexpr int kGateModeSceneTransition = 1;
 constexpr int kGateModeStageTransition = 2;
 constexpr int kGatePortalMaterialType = 22;
 
+// ゲート演出の進行率を0～1へ制限します。
 float Clamp01(float value) {
     // 補間係数が範囲を超えてゲートの演出値を壊さないようにします。
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// ゲート演出の二値を進行率で線形補間します。
 float Lerp(float a, float b, float t) {
     // 開放演出の各値を同じ割合で遷移させます。
     return a + (b - a) * t;
 }
 
+// 指定した開始・終了位置の間で滑らかなゲート進行率を返します。
 float Smoothstep(float edge0, float edge1, float value) {
     // 閾値の重複時もゼロ除算せず、境界で滑らかに変化させます。
     const float rawWidth = edge1 - edge0;
@@ -74,10 +77,10 @@ void GimmickStageGate::Update(float deltaTime) {
     const float visibleActivation = isUnlocked_ ? activation_ : 0.06f;
 
     lastAppliedPulse_ = 1.0f;
-    Vector4 gateColor = GetTargetColor();
+    engine::Vector4 gateColor = GetTargetColor();
     if (activationBurst_ > 0.0f && isUnlocked_) {
         const float burstTint = Clamp01(activationBurst_ * 0.82f);
-        const Vector4 burstColor = isCleared_ ? Vector4{0.58f, 1.0f, 1.0f, 1.0f} : Vector4{1.0f, 0.88f, 0.40f, 1.0f};
+        const engine::Vector4 burstColor = isCleared_ ? engine::Vector4{0.58f, 1.0f, 1.0f, 1.0f} : engine::Vector4{1.0f, 0.88f, 0.40f, 1.0f};
         gateColor.x = Lerp(gateColor.x, burstColor.x, burstTint);
         gateColor.y = Lerp(gateColor.y, burstColor.y, burstTint);
         gateColor.z = Lerp(gateColor.z, burstColor.z, burstTint);
@@ -100,7 +103,7 @@ void GimmickStageGate::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickStageGate::OnCollision(Object3d* other) {
+bool GimmickStageGate::OnCollision(engine::Object3d* other) {
     // ステージ選択用の展示ノードは、触れてもシーン遷移を起こしません。
     if (!other || !(other->GetCollisionAttribute() & CollisionCategories::Get("player"))) {
         return false;
@@ -113,7 +116,7 @@ bool GimmickStageGate::OnCollision(Object3d* other) {
     return true;
 }
 
-std::unique_ptr<Object3d> GimmickStageGate::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickStageGate::Clone() const {
     // 複製先の描画資源を初期化した後で、ゲート設定をコピーします。
     auto newObj = std::make_unique<GimmickStageGate>();
     assert(common_ != nullptr);
@@ -242,7 +245,7 @@ void GimmickStageGate::CaptureBaseScale() {
     hasBaseScale_ = true;
 }
 
-Vector4 GimmickStageGate::GetTargetColor() const {
+engine::Vector4 GimmickStageGate::GetTargetColor() const {
     // 開放・クリア・選択の優先順位で色を決めます。
     if (!isUnlocked_) {
         // 未解放でもゲートの輪郭は残し、鎖と南京錠で封鎖状態を示します。

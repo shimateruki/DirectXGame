@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
+#include "engine/graphics/3d/material/WaterParamJsonCodec.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "EffectObject3d.h"
@@ -19,6 +21,8 @@
 #include <filesystem>
 #include <initializer_list>
 
+namespace engine {
+
 namespace {
 
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
@@ -36,6 +40,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     return filePath;
 }
 
+// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
     // 親子付け時に循環参照ができないよう、候補の祖先を先にたどる。
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
@@ -44,37 +49,6 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
         }
     }
     return false;
-}
-
-void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
-    // 保存された行列をスケール・回転・位置へ分解し、Quaternion を回転の基準にする。
-    const float epsilon = 0.0001f;
-
-    Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
-    Vector3 rowY = { matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] };
-    Vector3 rowZ = { matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] };
-
-    transform.scale = {
-        std::max(Math::Length(rowX), epsilon),
-        std::max(Math::Length(rowY), epsilon),
-        std::max(Math::Length(rowZ), epsilon),
-    };
-    transform.translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
-
-    Matrix4x4 rotateMatrix = Math::MakeIdentity4x4();
-    rotateMatrix.m[0][0] = matrix.m[0][0] / transform.scale.x;
-    rotateMatrix.m[0][1] = matrix.m[0][1] / transform.scale.x;
-    rotateMatrix.m[0][2] = matrix.m[0][2] / transform.scale.x;
-    rotateMatrix.m[1][0] = matrix.m[1][0] / transform.scale.y;
-    rotateMatrix.m[1][1] = matrix.m[1][1] / transform.scale.y;
-    rotateMatrix.m[1][2] = matrix.m[1][2] / transform.scale.y;
-    rotateMatrix.m[2][0] = matrix.m[2][0] / transform.scale.z;
-    rotateMatrix.m[2][1] = matrix.m[2][1] / transform.scale.z;
-    rotateMatrix.m[2][2] = matrix.m[2][2] / transform.scale.z;
-
-    transform.quaternion = Math::MatrixToQuaternion(rotateMatrix);
-    transform.rotate = Math::MatrixToEuler(rotateMatrix);
-    transform.isQuaternionMaster = true;
 }
 
 }
@@ -385,9 +359,10 @@ json Object3d::ExportToJson() {
         d["collider"]["size"] = { c.size.x, c.size.y, c.size.z };
         d["collider"]["center"] = { c.center.x, c.center.y, c.center.z };
         d["collider"]["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
+        if (c.useModelSurface) d["collider"]["useModelSurface"] = true;
         if (!c.footprint.empty()) {
             d["collider"]["footprint"] = nlohmann::json::array();
-            for (const Vector2& point : c.footprint) {
+            for (const engine::Vector2& point : c.footprint) {
                 d["collider"]["footprint"].push_back({ point.x, point.y });
             }
         }
@@ -473,7 +448,7 @@ json Object3d::ExportToJson() {
     if (!materialInstancePath_.empty()) {
         d["materialInstance"] = materialInstancePath_;
     }
-    Vector4 col = GetColor();
+    engine::Vector4 col = GetColor();
     d["color"] = { col.x, col.y, col.z, col.w };
     d["blendMode"] = static_cast<int>(GetBlendMode());
     d["materialType"] = GetMaterialType();
@@ -492,7 +467,7 @@ json Object3d::ExportToJson() {
     d["normalMapPath"] = GetNormalMapPath();
     d["ormMapPath"] = GetOrmMapPath();
     d["texturePath"] = GetTexturePath();
-    Vector2 tiling = GetTextureTiling();
+    engine::Vector2 tiling = GetTextureTiling();
     d["textureTiling"] = { tiling.x, tiling.y };
     d["autoTextureTiling"] = GetAutoTextureTiling();
     d["enableLighting"] = GetEnableLighting();
@@ -523,24 +498,9 @@ json Object3d::ExportToJson() {
         }
         d["lod"] = lodJson;
     }
-    if (((GetMaterialType() >= 8 && GetMaterialType() <= 22) || GetMaterialType() == 26) && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+    if (MaterialRenderPolicy::IsSpecial(GetMaterialType()) && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
-        json jw;
-        jw["waveSpeed"] = water->waveSpeed;
-        jw["waveHeight"] = water->waveHeight;
-        jw["waveFrequency"] = water->waveFrequency;
-        jw["flowSpeedX"] = water->flowSpeedX;
-        jw["flowSpeedY"] = water->flowSpeedY;
-        jw["effectType"] = water->effectType;
-        jw["effectScale"] = water->effectScale;
-        jw["effectScaleX"] = water->effectScaleX;
-        jw["effectScaleY"] = water->effectScaleY;
-        jw["effectScaleZ"] = water->effectScaleZ;
-        jw["effectSoftness"] = water->effectSoftness;
-        jw["effectIntensity"] = water->effectIntensity;
-        jw["billboardScale"] = water->billboardScale;
-        jw["topDownDetail"] = water->topDownDetail;
-        d["waterParam"] = jw;
+        d["waterParam"] = WaterParamJsonCodec::Write(*water);
     }
     // 7. アニメーション
     d["animation"]["animName"] = animName_;
@@ -637,6 +597,7 @@ void Object3d::ImportFromJson(const json& j) {
         if (col.contains("size")) config.size = { col["size"][0], col["size"][1], col["size"][2] };
         if (col.contains("center")) config.center = { col["center"][0], col["center"][1], col["center"][2] };
         if (col.contains("rotation")) config.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
+        config.useModelSurface = col.value("useModelSurface", false);
         config.footprint.clear();
         if (col.contains("footprint") && col["footprint"].is_array()) {
             for (const auto& point : col["footprint"]) {
@@ -646,7 +607,7 @@ void Object3d::ImportFromJson(const json& j) {
                 }
             }
         }
-        collider_->SetConfig(config);
+        SetColliderConfig(config);
     }
     auto loadCategoryMask = [&j](const char* idsKey, const char* legacyKey, uint32_t fallback) {
         if (j.contains(idsKey) && j[idsKey].is_array()) {
@@ -773,24 +734,10 @@ void Object3d::ImportFromJson(const json& j) {
         }
         SetLodEnabled(enabled);
     }
-    if (j.contains("waterParam") && ((GetMaterialType() >= 8 && GetMaterialType() <= 22) || GetMaterialType() == 26)) {
+    if (j.contains("waterParam") && MaterialRenderPolicy::IsSpecial(GetMaterialType())) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();
-            const auto& jw = j["waterParam"];
-            if (jw.contains("waveSpeed")) water->waveSpeed = jw["waveSpeed"];
-            if (jw.contains("waveHeight")) water->waveHeight = jw["waveHeight"];
-            if (jw.contains("waveFrequency")) water->waveFrequency = jw["waveFrequency"];
-            if (jw.contains("flowSpeedX")) water->flowSpeedX = jw["flowSpeedX"];
-            if (jw.contains("flowSpeedY")) water->flowSpeedY = jw["flowSpeedY"];
-            if (jw.contains("effectType")) water->effectType = jw["effectType"];
-            if (jw.contains("effectScale")) water->effectScale = jw["effectScale"];
-            if (jw.contains("effectScaleX")) water->effectScaleX = jw["effectScaleX"];
-            if (jw.contains("effectScaleY")) water->effectScaleY = jw["effectScaleY"];
-            if (jw.contains("effectScaleZ")) water->effectScaleZ = jw["effectScaleZ"];
-            if (jw.contains("topDownDetail")) water->topDownDetail = jw["topDownDetail"];
-            if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
-            if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
-            if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];
+            WaterParamJsonCodec::Read(j["waterParam"], *water);
         }
     }
 
@@ -852,3 +799,5 @@ void Object3d::ImportFromJson(const json& j) {
         }
     }
 }
+
+} // namespace engine

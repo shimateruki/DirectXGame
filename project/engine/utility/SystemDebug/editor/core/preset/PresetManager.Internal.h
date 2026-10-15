@@ -33,9 +33,9 @@ std::string ToLowerAscii(std::string value);
 
 bool ContainsGroundKeyword(const std::string& value);
 
-bool ShouldApplyGroundDefaults(Object3d* object);
+bool ShouldApplyGroundDefaults(engine::Object3d* object);
 
-void ApplyGroundDefaultsIfNeeded(Object3d* object);
+void ApplyGroundDefaultsIfNeeded(engine::Object3d* object);
 
 std::string ResolveEnemyType(const json& node);
 
@@ -54,12 +54,12 @@ bool JsonValuesEqual(const json& lhs, const json& rhs);
 
 void RemoveSceneObjectGuids(json& node);
 
-json BuildPresetNode(Object3d* object, std::unordered_set<const Object3d*>& visited);
+json BuildPresetNode(engine::Object3d* object, std::unordered_set<const engine::Object3d*>& visited);
 
 json BuildPrefabNode(
-    Object3d* object,
+    engine::Object3d* object,
     const std::string& assetId,
-    std::unordered_set<const Object3d*>& visited);
+    std::unordered_set<const engine::Object3d*>& visited);
 
 void EnsurePrefabObjectIds(json& node, const std::string& assetId, const std::string& hierarchyPath);
 
@@ -108,8 +108,8 @@ struct PrefabCreationContext {
 void CreateObjectFromPresetNode(
     const json& node,
     Object3dCommon* common,
-    Object3d* parent,
-    std::vector<std::unique_ptr<Object3d>>& outObjects,
+    engine::Object3d* parent,
+    std::vector<std::unique_ptr<engine::Object3d>>& outObjects,
     const PrefabCreationContext* prefabContext = nullptr);
 
 json* FindSourceNodeRecursive(json& node, const std::string& sourceObjectId);
@@ -139,18 +139,18 @@ void RemoveComponentPropertyOverrides(
 
 bool WriteComponentStateFromObject(
     json& sourceNode,
-    Object3d* object,
+    engine::Object3d* object,
     const EditorComponentDescriptor& component,
     bool present);
 
 bool ApplySerializedComponentState(
-    Object3d* object,
+    engine::Object3d* object,
     const json& sourceNode,
     const EditorComponentDescriptor& component);
 
 void RemoveKnownComponentPresenceMarkers(json& node);
 
-bool IsInstancePlacementProperty(const Object3d::PrefabInstanceInfo& info, const std::string& propertyPath);
+bool IsInstancePlacementProperty(const engine::Object3d::PrefabInstanceInfo& info, const std::string& propertyPath);
 
 void RegisterPrefabAssetTransaction(
     PresetManager* manager,

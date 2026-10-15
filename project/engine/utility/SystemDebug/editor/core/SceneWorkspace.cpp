@@ -28,7 +28,8 @@ const ImGuiKey kBookmarkKeys[9] = {
     ImGuiKey_7, ImGuiKey_8, ImGuiKey_9,
 };
 
-bool ReadVector3(const json& value, Vector3& outValue) {
+bool ReadVector3(const json& value, engine::Vector3& outValue) {
+    // 要素数が違うブックマーク値では出力を変更せず、読込失敗として返す。
     if (!value.is_array() || value.size() != 3) {
         return false;
     }
@@ -194,8 +195,8 @@ void SceneWorkspace::IsolateSelection() {
         return;
     }
 
-    std::unordered_set<Object3d*> visibleObjects;
-    for (Object3d* object : editor_->GetSelectedObjects()) {
+    std::unordered_set<engine::Object3d*> visibleObjects;
+    for (engine::Object3d* object : editor_->GetSelectedObjects()) {
         CollectHierarchy(object, visibleObjects);
     }
     if (visibleObjects.empty()) {
@@ -221,7 +222,7 @@ void SceneWorkspace::HideSelectionTemporarily() {
     if (!editor_) {
         return;
     }
-    for (Object3d* object : editor_->GetSelectedObjects()) {
+    for (engine::Object3d* object : editor_->GetSelectedObjects()) {
         if (object) {
             object->SetEditorHiddenReason(kManualReason, true);
         }
@@ -233,7 +234,7 @@ void SceneWorkspace::ShowSelectionTemporarily() {
     if (!editor_) {
         return;
     }
-    for (Object3d* object : editor_->GetSelectedObjects()) {
+    for (engine::Object3d* object : editor_->GetSelectedObjects()) {
         if (object) {
             object->SetEditorHiddenReason(kIsolationReason | kLayerReason | kManualReason, false);
         }
@@ -284,7 +285,7 @@ std::size_t SceneWorkspace::GetTemporaryHiddenCount() const {
     return static_cast<std::size_t>(std::count_if(
         sceneManager_->GetCurrentScene()->GetObjects().begin(),
         sceneManager_->GetCurrentScene()->GetObjects().end(),
-        [](const std::unique_ptr<Object3d>& object) {
+        [](const std::unique_ptr<engine::Object3d>& object) {
             return object && object->IsEditorTemporarilyHidden();
         }));
 }
@@ -328,7 +329,7 @@ void SceneWorkspace::CaptureBookmark(std::size_t index) {
     bookmark.objectGuid.clear();
     bookmark.objectName.clear();
     if (editor_) {
-        if (Object3d* selected = editor_->GetSelectedObject()) {
+        if (engine::Object3d* selected = editor_->GetSelectedObject()) {
             bookmark.objectGuid = selected->GetPersistentGuid();
             bookmark.objectName = selected->GetName();
         }
@@ -355,8 +356,8 @@ void SceneWorkspace::RecallBookmark(std::size_t index) {
 
     // 名前が重複・変更されても同じObjectを選べるよう、永続GUIDで再選択する。
     if (editor_ && sceneManager_->GetCurrentScene() &&
-        Object3d::IsPersistentGuidValid(bookmark.objectGuid)) {
-        if (Object3d* object = sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(bookmark.objectGuid)) {
+        engine::Object3d::IsPersistentGuidValid(bookmark.objectGuid)) {
+        if (engine::Object3d* object = sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(bookmark.objectGuid)) {
             editor_->SetSelectedObject(object);
             editor_->SyncObjectSelectionToInspector();
         }
@@ -459,12 +460,12 @@ std::vector<std::string> SceneWorkspace::CollectSceneLayers() const {
     return { layers.begin(), layers.end() };
 }
 
-void SceneWorkspace::CollectHierarchy(Object3d* root, std::unordered_set<Object3d*>& objects) const {
+void SceneWorkspace::CollectHierarchy(engine::Object3d* root, std::unordered_set<engine::Object3d*>& objects) const {
     // 集合への挿入結果で循環・重複を止めながら子階層をたどります。
     if (!root || !objects.insert(root).second) {
         return;
     }
-    for (Object3d* child : root->GetChildren()) {
+    for (engine::Object3d* child : root->GetChildren()) {
         CollectHierarchy(child, objects);
     }
 }

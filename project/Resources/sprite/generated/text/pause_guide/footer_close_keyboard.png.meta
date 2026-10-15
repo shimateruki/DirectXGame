@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3b3059d2421a4eefbad4133aacbed092",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/footer_close_keyboard.png",
+  "version": 1
+}

@@ -58,6 +58,7 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
 }
 
 void GameEditorController::SaveWorkspacePreset(WorkspacePreset preset) {
+    // 各用途のDockレイアウトを別名で保存し、切り替え時の配置を再現できるようにする。
     const char* key = "vfx";
     const char* displayName = "VFX編集";
     switch (preset) {
@@ -107,6 +108,7 @@ void GameEditorController::ProcessPendingWorkspaceLayout() {
 }
 
 void GameEditorController::DrawWorkspaceMenu() {
+    // 保存先が決まるのは既存ワークスペースを選択している場合だけ。
     if (!ImGui::BeginMenu(ICON_FA_COLUMNS " ワークスペース")) {
         return;
     }

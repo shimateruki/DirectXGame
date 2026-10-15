@@ -23,6 +23,7 @@ namespace fs = std::filesystem;
 
 namespace {
     ImVec4 GetEventColor(VFXEventType type) {
+        // タイムライン上のイベント種別を色で区別できるようにする。
         switch (type) {
         case VFXEventType::GPUParticle:
             return ImVec4(1.0f, 0.55f, 0.12f, 1.0f);
@@ -54,6 +55,7 @@ namespace {
     }
 
     float GetEventEndTime(const VFXEvent& event) {
+        // 持続型イベントは設定した長さを、瞬間イベントは編集しやすい表示幅を使う。
         if (event.type == VFXEventType::MovingParticle ||
             event.type == VFXEventType::CameraShake ||
             event.type == VFXEventType::PostEffectPulse ||
@@ -79,7 +81,7 @@ void VFXSequencerEditor::RequestOpenSequence(const std::string& name) {
     openRequested_ = true;
 }
 
-Vector3 VFXSequencerEditor::ResolvePreviewPosition() const {
+engine::Vector3 VFXSequencerEditor::ResolvePreviewPosition() const {
     // 専用Stageを優先し、通常画面ではカメラ基準の再生位置へ戻します。
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     if (previewStage && previewStage->IsEnabled()) {
@@ -89,15 +91,15 @@ Vector3 VFXSequencerEditor::ResolvePreviewPosition() const {
     if (isPreviewMode_) {
         const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
         if (camera) {
-            Vector3 camEye = camera->GetEye();
-            Vector3 camTarget = camera->GetTargetPoint();
-            Vector3 dir = {
+            engine::Vector3 camEye = camera->GetEye();
+            engine::Vector3 camTarget = camera->GetTargetPoint();
+            engine::Vector3 dir = {
                 camTarget.x - camEye.x,
                 camTarget.y - camEye.y,
                 camTarget.z - camEye.z
             };
             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-            Vector3 forward = { 0.0f, 0.0f, 1.0f };
+            engine::Vector3 forward = { 0.0f, 0.0f, 1.0f };
             if (length > 0.0001f) {
                 forward = { dir.x / length, dir.y / length, dir.z / length };
             }
@@ -216,7 +218,7 @@ void VFXSequencerEditor::Update(float deltaTime) {
                 GetEventTypeName(event.type),
                 event.triggerTime,
                 (std::min)(GetEventEndTime(event), duration),
-                Vector4{ color.x, color.y, color.z, color.w }
+                engine::Vector4{ color.x, color.y, color.z, color.w }
             });
         }
         previewStage->ReportToolState(

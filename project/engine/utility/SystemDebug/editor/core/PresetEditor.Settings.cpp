@@ -361,7 +361,7 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
     }
 }
 
-void PresetEditor::SetColliderDefaults(json& data, int type, const Vector3& size) {
+void PresetEditor::SetColliderDefaults(json& data, int type, const engine::Vector3& size) {
     // 形状と大きさだけ更新し、調整済みの中心・回転は残します。
     if (!data.contains("collider") || !data["collider"].is_object()) {
         data["collider"] = json::object();
@@ -446,7 +446,7 @@ bool PresetEditor::DrawIntField(json& data, const char* label, const char* key, 
     return false;
 }
 
-bool PresetEditor::DrawColorField(json& data, const char* label, const char* key, const Vector4& defaultValue) {
+bool PresetEditor::DrawColorField(json& data, const char* label, const char* key, const engine::Vector4& defaultValue) {
     // 壊れた配列要素は既定色を保ち、編集時にRGBA配列へ正規化します。
     float color[4] = { defaultValue.x, defaultValue.y, defaultValue.z, defaultValue.w };
     if (data.contains(key) && data[key].is_array() && data[key].size() >= 4) {
@@ -463,8 +463,8 @@ bool PresetEditor::DrawColorField(json& data, const char* label, const char* key
     return false;
 }
 
-bool PresetEditor::DrawVector3Field(json& data, const char* label, const char* key, const Vector3& defaultValue, float speed) {
-    Vector3 value = ReadVector3(data, key, defaultValue);
+bool PresetEditor::DrawVector3Field(json& data, const char* label, const char* key, const engine::Vector3& defaultValue, float speed) {
+    engine::Vector3 value = ReadVector3(data, key, defaultValue);
     float values[3] = { value.x, value.y, value.z };
     if (ImGui::DragFloat3(label, values, speed)) {
         data[key] = { values[0], values[1], values[2] };
@@ -543,7 +543,14 @@ json PresetEditor::BuildBlankPreset(const std::string& name, Category category) 
     }
     data["color"] = { 1.0f, 1.0f, 1.0f, 1.0f };
     data["materialType"] = 0;
+    // 描画側の初期値と一致させ、作成直後からPBR設定をJSON上で確認できるようにします。
+    data["metallic"] = 0.0f;
+    data["roughness"] = 0.5f;
     data["emissive"] = 1.0f;
+    data["enableLighting"] = true;
+    data["enableEnvMap"] = false;
+    data["envIntensity"] = 1.0f;
+    data["enableNormalMap"] = false;
     data["myEventID"] = -1;
     data["targetID"] = -1;
     data["eventType"] = 0;

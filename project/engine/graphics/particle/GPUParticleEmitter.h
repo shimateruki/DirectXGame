@@ -2,7 +2,7 @@
 #include <string>
 #include "engine/utility/math/Math.h"
 
-class Object3d;
+namespace engine { class Object3d; }
 
 /// <summary>Object3dに追従してGPUパーティクルを定期発生させる。</summary>
 class GPUParticleEmitter {
@@ -13,7 +13,7 @@ public:
     /// <summary>使用するプリセット名と追従対象を設定する。</summary>
     /// <param name="presetName">GPUParticleManagerに登録されたプリセット名。</param>
     /// <param name="targetObject">発生元のObject3d。所有しない。未指定時はオフセットをワールド座標として使う。</param>
-    void Initialize(const std::string& presetName, Object3d* targetObject = nullptr);
+    void Initialize(const std::string& presetName, engine::Object3d* targetObject = nullptr);
 
     /// <summary>再生中なら経過時間に応じて粒子を発生させる。</summary>
     /// <param name="deltaTime">前回更新からの経過秒数。</param>
@@ -29,7 +29,7 @@ public:
     void EmitOnce();
 
     /// <summary>発生元からの位置オフセットを指定する。</summary>
-    void SetOffset(const Vector3& offset) { offset_ = offset; }
+    void SetOffset(const engine::Vector3& offset) { offset_ = offset; }
 
     /// <summary>発生間隔を秒単位で指定する。0以下は更新ごとに一度発生させる。</summary>
     void SetInterval(float interval) { emitInterval_ = interval; }
@@ -45,8 +45,8 @@ public:
 
 private:
     std::string presetName_ = "";
-    Object3d* targetObject_ = nullptr; // 所有しない追従先。
-    Vector3 offset_ = { 0.0f, 0.0f, 0.0f };
+    engine::Object3d* targetObject_ = nullptr; // 所有しない追従先。
+    engine::Vector3 offset_ = { 0.0f, 0.0f, 0.0f };
 
     bool isPlaying_ = false;
     float emitTimer_ = 0.0f;

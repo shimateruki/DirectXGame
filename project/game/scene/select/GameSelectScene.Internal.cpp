@@ -7,11 +7,13 @@
 #include <cmath>
 
 namespace StageSelectDetail {
+// ステージ選択演出の補間率を0～1へ制限します。
 float SelectClamp01(float value) {
     // ゲート演出の曲線を定義域の外へ延ばさない。
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// ゲート演出の終点で減速する補間率を返します。
 float SelectEaseOutCubic(float value) {
     // ゲートへの接近を終点付近で減速させる。
     value = SelectClamp01(value);
@@ -19,9 +21,9 @@ float SelectEaseOutCubic(float value) {
     return 1.0f - inv * inv * inv;
 }
 
-Vector3 SelectLookAtRotation(const Vector3& eye, const Vector3& target) {
+engine::Vector3 SelectLookAtRotation(const engine::Vector3& eye, const engine::Vector3& target) {
     // カメラから目標への角度を求め、同一点なら回転をゼロへ戻す。
-    Vector3 direction{target.x - eye.x, target.y - eye.y, target.z - eye.z};
+    engine::Vector3 direction{target.x - eye.x, target.y - eye.y, target.z - eye.z};
     const float lengthSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
     if (lengthSq <= 0.000001f) {
         return {0.0f, 0.0f, 0.0f};
@@ -37,9 +39,9 @@ Vector3 SelectLookAtRotation(const Vector3& eye, const Vector3& target) {
     return {pitch, yaw, 0.0f};
 }
 
-Vector3 SelectNormalizeGateDirectionXZ(const Vector3& value, const Vector3& fallback) {
+engine::Vector3 SelectNormalizeGateDirectionXZ(const engine::Vector3& value, const engine::Vector3& fallback) {
     // ゲートの向きは水平面へ投影し、無効なら代替方向を使う。
-    Vector3 direction{value.x, 0.0f, value.z};
+    engine::Vector3 direction{value.x, 0.0f, value.z};
     float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq <= 0.000001f) {
         direction = {fallback.x, 0.0f, fallback.z};
@@ -55,22 +57,22 @@ Vector3 SelectNormalizeGateDirectionXZ(const Vector3& value, const Vector3& fall
     return direction;
 }
 
-float SelectResolveGateReturnGroundY(const Vector3& probePosition, const Vector3& gatePos,
-                                     const Vector3& stageNodePosition, const Vector3& playerPosition,
-                                     const Object3d* ignoredObject) {
+float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const engine::Vector3& gatePos,
+                                     const engine::Vector3& stageNodePosition, const engine::Vector3& playerPosition,
+                                     const engine::Object3d* ignoredObject) {
     // ゲートの原点や縁は浮いていることがあるため、帰還演出の接地Yにはそのまま使いません。
     // まず着地予定XZから下向きレイを飛ばし、本当に床として登録されている位置を優先します。
     const float gateBasedGroundY = gatePos.y - kGateReturnGroundOffsetFromGateOrigin;
     const float fallbackGroundY = (std::min)({stageNodePosition.y, playerPosition.y, gateBasedGroundY});
     const float rayStartY =
         (std::max)({gatePos.y, stageNodePosition.y, playerPosition.y, fallbackGroundY}) + kGateReturnGroundProbeHeight;
-    const Vector3 sampleOffsets[] = {
+    const engine::Vector3 sampleOffsets[] = {
         {0.0f, 0.0f, 0.0f}, {0.65f, 0.0f, 0.0f}, {-0.65f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.65f}, {0.0f, 0.0f, -0.65f}};
 
     bool foundGround = false;
     float resolvedGroundY = fallbackGroundY;
-    for (const Vector3& offset : sampleOffsets) {
-        const Vector3 rayStart = {probePosition.x + offset.x, rayStartY, probePosition.z + offset.z};
+    for (const engine::Vector3& offset : sampleOffsets) {
+        const engine::Vector3 rayStart = {probePosition.x + offset.x, rayStartY, probePosition.z + offset.z};
         const RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, {0.0f, -1.0f, 0.0f},
                                                                         kGateReturnGroundProbeDistance, CollisionCategories::Get("ground"));
         if (!hit.isHit || hit.hitObject == ignoredObject) {
@@ -86,9 +88,9 @@ float SelectResolveGateReturnGroundY(const Vector3& probePosition, const Vector3
     return resolvedGroundY;
 }
 
-Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDirection) {
+engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const engine::Vector3& fallbackDirection) {
     // 配置されたゲートの回転から入場方向を得て、欠けた場合は指定方向へ戻す。
-    const Vector3 fallback = SelectNormalizeGateDirectionXZ(fallbackDirection, {0.0f, 0.0f, 1.0f});
+    const engine::Vector3 fallback = SelectNormalizeGateDirectionXZ(fallbackDirection, {0.0f, 0.0f, 1.0f});
     if (!gateObject) {
         return fallback;
     }
@@ -98,14 +100,14 @@ Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDi
         return fallback;
     }
 
-    const Matrix4x4& world = transform->matWorld;
-    Vector3 candidates[] = {SelectNormalizeGateDirectionXZ({world.m[0][0], world.m[0][1], world.m[0][2]}, fallback),
+    const engine::Matrix4x4& world = transform->matWorld;
+    engine::Vector3 candidates[] = {SelectNormalizeGateDirectionXZ({world.m[0][0], world.m[0][1], world.m[0][2]}, fallback),
                             SelectNormalizeGateDirectionXZ({world.m[1][0], world.m[1][1], world.m[1][2]}, fallback),
                             SelectNormalizeGateDirectionXZ({world.m[2][0], world.m[2][1], world.m[2][2]}, fallback)};
 
-    Vector3 gateAxis = fallback;
+    engine::Vector3 gateAxis = fallback;
     float bestDot = -1.0f;
-    for (const Vector3& candidate : candidates) {
+    for (const engine::Vector3& candidate : candidates) {
         const float dot = std::fabs(candidate.x * fallback.x + candidate.z * fallback.z);
         if (dot > bestDot) {
             bestDot = dot;
@@ -121,9 +123,9 @@ Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDi
     return gateAxis;
 }
 
-SelectGateEntryRoute SelectBuildGateEntryRoute(const Vector3& gatePos, const Vector3& direction, float entryY) {
+SelectGateEntryRoute SelectBuildGateEntryRoute(const engine::Vector3& gatePos, const engine::Vector3& direction, float entryY) {
     // ゲート面を基準に前後の通過点を作り、入場経路を配置向きへ合わせる。
-    const Vector3 entryDirection = SelectNormalizeGateDirectionXZ(direction, {0.0f, 0.0f, 1.0f});
+    const engine::Vector3 entryDirection = SelectNormalizeGateDirectionXZ(direction, {0.0f, 0.0f, 1.0f});
     return {{gatePos.x - entryDirection.x * kGateEntrySurfaceOffset, entryY,
              gatePos.z - entryDirection.z * kGateEntrySurfaceOffset},
             {gatePos.x, entryY, gatePos.z},
@@ -131,6 +133,7 @@ SelectGateEntryRoute SelectBuildGateEntryRoute(const Vector3& gatePos, const Vec
              gatePos.z + entryDirection.z * kGateEntryInsideDepth}};
 }
 
+// ゲート演出の始点と終点を滑らかにつなぎます。
 float SelectEaseInOutCubic(float value) {
     // 入場の前半を加速・後半を減速し、切替点の速度をつなぐ。
     value = SelectClamp01(value);
@@ -141,13 +144,13 @@ float SelectEaseInOutCubic(float value) {
     return 1.0f - (f * f * f) * 0.5f;
 }
 
-Vector3 SelectLerpVector3(const Vector3& a, const Vector3& b, float t) {
+engine::Vector3 SelectLerpVector3(const engine::Vector3& a, const engine::Vector3& b, float t) {
     // 経路の端を越えないよう補間率を制限する。
     t = SelectClamp01(t);
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
-Vector3 SelectBezierVector3(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) {
+engine::Vector3 SelectBezierVector3(const engine::Vector3& p0, const engine::Vector3& p1, const engine::Vector3& p2, const engine::Vector3& p3, float t) {
     // 四点の三次Bezierでゲートへ吸い込まれる曲線を作る。
     t = SelectClamp01(t);
     const float inv = 1.0f - t;
@@ -159,7 +162,7 @@ Vector3 SelectBezierVector3(const Vector3& p0, const Vector3& p1, const Vector3&
             p0.z * b0 + p1.z * b1 + p2.z * b2 + p3.z * b3};
 }
 
-Vector3 SelectNormalizeXZ(const Vector3& value, const Vector3& fallback) {
+engine::Vector3 SelectNormalizeXZ(const engine::Vector3& value, const engine::Vector3& fallback) {
     // 高さを除いた方向がほぼゼロなら、呼び出し側の代替方向を保つ。
     const float lengthSq = value.x * value.x + value.z * value.z;
     if (lengthSq <= 0.0001f) {
@@ -169,6 +172,7 @@ Vector3 SelectNormalizeXZ(const Vector3& value, const Vector3& fallback) {
     return {value.x * invLength, 0.0f, value.z * invLength};
 }
 
+// 解放演出の終点を少し越えて戻る補間率を返します。
 float SelectEaseOutBack(float value) {
     // 解放表示の登場時だけ少し行き過ぎて戻る曲線を作る。
     value = SelectClamp01(value);
@@ -178,13 +182,13 @@ float SelectEaseOutBack(float value) {
     return 1.0f + c3 * x * x * x + c1 * x * x;
 }
 
-Vector3 SelectLerp(const Vector3& a, const Vector3& b, float t) {
+engine::Vector3 SelectLerp(const engine::Vector3& a, const engine::Vector3& b, float t) {
     // 入場経路の区間外を参照しないよう補間率を制限する。
     t = SelectClamp01(t);
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
-Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool unlocking, float pulse) {
+engine::Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool unlocking, float pulse) {
     // 島の解放・選択状態を色へ反映し、未解放は暗く抑える。
     if (!unlocked && !unlocking) {
         return {0.16f, 0.17f, 0.20f, 0.78f};
@@ -216,6 +220,7 @@ Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool u
     }
 }
 
+// 島の解放・選択状態から発光量を決め、解放中だけ脈動を強めます。
 float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float pulse) {
     // 解放演出中の発光だけを脈動させ、通常時の明るさと区別する。
     if (unlocking) {
@@ -227,7 +232,7 @@ float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float
     return selected ? 1.05f + pulse * 0.45f : 0.72f;
 }
 
-Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse) {
+engine::Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse) {
     // ゲートの進行状態をモデル色へ反映し、クリア済みも区別する。
     if (!unlocked && !unlocking) {
         return {0.20f, 0.20f, 0.24f, 0.82f};
@@ -244,6 +249,7 @@ Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool 
     return {0.86f, 0.95f, 1.0f, 1.0f};
 }
 
+// ゲートの解放・選択・クリア状態から発光量を決めます。
 float GetStageGateModelEmissive(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse) {
     // 選択・解放・クリア状態を発光強度へ変換する。
     if (unlocking) {

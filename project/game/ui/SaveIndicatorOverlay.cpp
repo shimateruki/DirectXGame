@@ -4,6 +4,7 @@
 #include "Sprite.h"
 #include "SpriteCommon.h"
 #include "SpriteLayoutScaler.h"
+#include "SpriteLayoutFactory.h"
 #include "TextureManager.h"
 #include "json.hpp"
 
@@ -22,6 +23,7 @@ constexpr float kFadeInDuration = 0.16f;
 constexpr float kFadeOutDuration = 0.30f;
 constexpr float kPi = 3.1415926535f;
 
+// 保存通知の登場時に終点を少し越えて戻る補間率を返します。
 float EaseOutBack(float value) {
     // 登場時に一度だけ行き過ぎて戻る曲線を、0〜1の時間から作る。
     value = std::clamp(value, 0.0f, 1.0f);
@@ -31,7 +33,7 @@ float EaseOutBack(float value) {
 }
 } // namespace
 
-void SaveIndicatorOverlay::Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath) {
+void SaveIndicatorOverlay::Initialize(engine::SpriteCommon* spriteCommon, const std::string& layoutPath) {
     // レイアウト読込後に役割別Spriteを結び付け、開始時は非表示にする。
     spriteCommon_ = spriteCommon;
     LoadLayout(layoutPath);
@@ -107,7 +109,7 @@ void SaveIndicatorOverlay::Draw() {
     }
 }
 
-void SaveIndicatorOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+void SaveIndicatorOverlay::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) const {
     // リプレイ復元で通知の見た目も同じフレームへ戻せるよう登録する。
     replaySprites.reserve(replaySprites.size() + sprites_.size());
     for (const auto& sprite : sprites_) {
@@ -182,24 +184,7 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
         if (!spriteData.is_object()) {
             continue;
         }
-        const std::string name = SpriteLayoutScaler::ReadString(spriteData, "name", "save_indicator_sprite");
-        const std::string texture = SpriteLayoutScaler::ReadString(spriteData, "texture", "common/white.png");
-        const uint32_t textureHandle = Sprite::LoadTexture(texture.empty() ? "common/white.png" : texture);
-
-        auto sprite = std::make_unique<Sprite>();
-        sprite->Initialize(spriteCommon_, textureHandle);
-        sprite->SetName(name);
-        sprite->SetTextureName(texture);
-        sprite->SetPosition(SpriteLayoutScaler::ScalePosition(
-            SpriteLayoutScaler::ReadVector2(spriteData.value("position", json::array()), sprite->GetPosition()),
-            layoutScale));
-        sprite->SetSize(SpriteLayoutScaler::ScaleSize(
-            SpriteLayoutScaler::ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()), layoutScale));
-        sprite->SetAnchorPoint(
-            SpriteLayoutScaler::ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
-        sprite->SetColor(SpriteLayoutScaler::ReadColor(spriteData.value("color", json::array()), sprite->GetColor()));
-        sprite->SetEmissive(SpriteLayoutScaler::ReadFloat(spriteData, "emissive", 1.0f));
-        sprite->SetVisible(false);
+        auto sprite = SpriteLayoutFactory::Create(spriteCommon_, spriteData, layoutScale, "save_indicator_sprite");
         sprite->Update();
         sprites_.push_back(std::move(sprite));
     }
@@ -216,7 +201,7 @@ void SaveIndicatorOverlay::BindSprites() {
     CaptureBaseState(text_);
 }
 
-Sprite* SaveIndicatorOverlay::FindSprite(const std::string& name) const {
+engine::Sprite* SaveIndicatorOverlay::FindSprite(const std::string& name) const {
     // 未定義の要素はnullptrを返し、部分的なレイアウトでも描けるようにする。
     for (const auto& sprite : sprites_) {
         if (sprite && sprite->GetName() == name) {
@@ -253,7 +238,7 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
     const float pulse = std::sin(timer_ * 5.0f);
 
     if (panel_.sprite) {
-        Vector4 color = panel_.baseColor;
+        engine::Vector4 color = panel_.baseColor;
         color.w *= alpha;
         panel_.sprite->SetColor(color);
         panel_.sprite->SetSize(
@@ -263,7 +248,7 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
 
     if (icon_.sprite) {
         const float iconScale = (0.82f + 0.18f * appear) * (1.0f + 0.045f * pulse);
-        Vector4 color = icon_.baseColor;
+        engine::Vector4 color = icon_.baseColor;
         color.w *= alpha;
         icon_.sprite->SetColor(color);
         icon_.sprite->SetSize({icon_.baseSize.x * iconScale, icon_.baseSize.y * iconScale});
@@ -272,7 +257,7 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
     }
 
     if (text_.sprite) {
-        Vector4 color = text_.baseColor;
+        engine::Vector4 color = text_.baseColor;
         color.w *= alpha * (0.88f + 0.12f * std::sin(timer_ * 7.0f));
         text_.sprite->SetColor(color);
         text_.sprite->SetSize(

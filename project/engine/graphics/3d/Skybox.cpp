@@ -7,6 +7,7 @@
 #include <cassert>
 
 void Skybox::Initialize(Object3dCommon* common, uint32_t textureHandle) {
+    // 描画基盤とテクスチャを確定してから、空を囲むメッシュを一度だけ作る。
     assert(common);
     common_ = common;
     textureHandle_ = textureHandle;
@@ -108,5 +109,5 @@ void Skybox::Draw(ID3D12Resource* vpResource) {
 
     // 描画実行
     commandList->DrawIndexedInstanced(36, 1, 0, 0, 0);
-    RenderStats::GetInstance()->RecordIndexedDraw(36);
+    engine::RenderStats::GetInstance()->RecordIndexedDraw(36);
 }

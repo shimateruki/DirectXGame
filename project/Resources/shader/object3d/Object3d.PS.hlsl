@@ -95,6 +95,11 @@ struct SpotLightConstData
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
+
+// Specialized shader files supply a fixed material ID; the general shader reads the constant buffer.
+#ifndef OBJECT3D_MATERIAL_TYPE
+#define OBJECT3D_MATERIAL_TYPE gMaterial.materialType
+#endif
 ConstantBuffer<DirectionalLight> gDirectionalLight : register(b1);
 ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<PointLightConstData> gPointLights : register(b3);
@@ -458,18 +463,20 @@ float3 BuildDashPanelColor(float2 uv, float3 textureBase, float3 normal, float s
     return lerp(sideColor, topColor, topMask) * emissiveGain;
 }
 
+#include "Object3d.MaterialVariants.hlsli"
+
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
 
-    if (gMaterial.materialType == 25)
+    if (OBJECT3D_MATERIAL_TYPE == 25)
     {
         textureColor.rgb = BuildSlimeSoftTexture(transformedUV.xy, textureColor.rgb);
     }
 
-    if (gMaterial.portalClipEnabled > 0.5f && gMaterial.materialType != 4)
+    if (gMaterial.portalClipEnabled > 0.5f && OBJECT3D_MATERIAL_TYPE != 4)
     {
         float clipProgress = saturate(gMaterial.portalClipProgress);
         float normalLength = max(length(gMaterial.portalClipNormal), 0.0001f);
@@ -490,7 +497,7 @@ PixelShaderOutput main(VertexShaderOutput input)
         textureColor.a *= 1.0f - portalEdge * 0.22f;
     }
     
-    if ((gMaterial.materialType == 0 || gMaterial.materialType == 25 || gMaterial.materialType == 27) && textureColor.a <= 0.5)
+    if ((OBJECT3D_MATERIAL_TYPE == 0 || OBJECT3D_MATERIAL_TYPE == 25 || OBJECT3D_MATERIAL_TYPE == 27) && textureColor.a <= 0.5)
     {
         discard;
     }
@@ -514,7 +521,7 @@ PixelShaderOutput main(VertexShaderOutput input)
         float bias = 0.005f;
         // The legacy bias spans about two metres over the 399m shadow depth range.
         // Garden receivers need a centimetre-scale bias to retain contact shadows.
-        if (gMaterial.materialType >= 29 && gMaterial.materialType <= 34) {
+        if (OBJECT3D_MATERIAL_TYPE >= 29 && OBJECT3D_MATERIAL_TYPE <= 34) {
             float grazing = 1.0f - saturate(dot(normalize(input.normal), normalize(-gDirectionalLight.direction)));
             bias = 0.00012f + grazing * 0.00018f;
         }
@@ -566,7 +573,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // ガラスシェーダー
             // ===========================================================
-                if (gMaterial.materialType == 1)
+                if (OBJECT3D_MATERIAL_TYPE == 1)
                 {
                     float NdotV = saturate(dot(N, V));
                     float iorRatio = 1.0f / 1.52f;
@@ -615,7 +622,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // 氷シェーダー
             // ===========================================================
-                else if (gMaterial.materialType == 2)
+                else if (OBJECT3D_MATERIAL_TYPE == 2)
                 {
                     float NdotV = saturate(dot(N, V));
                     float iorRatio = 1.0f / 1.31f;
@@ -651,7 +658,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // ホログラム・バリア
             // ===========================================================
-                else if (gMaterial.materialType == 3)
+                else if (OBJECT3D_MATERIAL_TYPE == 3)
                 {
                     float NdotV = saturate(dot(N, V));
                     float rimLight = pow(1.0f - NdotV, 3.0f);
@@ -665,7 +672,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // 消滅 (Dissolve)
             // ===========================================================
-                else if (gMaterial.materialType == 4)
+                else if (OBJECT3D_MATERIAL_TYPE == 4)
                 {
                     float progress = saturate(1.0f - MATERIAL_COLOR.a);
                     float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
@@ -749,7 +756,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // マグマ・覚醒 (Emissive)
             // ===========================================================
-                else if (gMaterial.materialType == 5)
+                else if (OBJECT3D_MATERIAL_TYPE == 5)
                 {
                     float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                 
@@ -766,7 +773,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // トゥーン調 (Cel Shaded)
             // ===========================================================
-                else if (gMaterial.materialType == 6)
+                else if (OBJECT3D_MATERIAL_TYPE == 6)
                 {
                     float3 N = normalize(input.normal);
                     float3 L = normalize(-gDirectionalLight.direction);
@@ -787,7 +794,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // Slime Soft
             // ===========================================================
-                else if (gMaterial.materialType == 25)
+                else if (OBJECT3D_MATERIAL_TYPE == 25)
                 {
                     float3 ormColor = gOrmMap.Sample(gSampler, transformedUV.xy).rgb;
                     float materialRoughness = MATERIAL_ROUGHNESS;
@@ -883,7 +890,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // Prism Crystal
             // ===========================================================
-                else if (gMaterial.materialType == 27)
+                else if (OBJECT3D_MATERIAL_TYPE == 27)
                 {
                     float3 prismNormal = normalize(input.normal);
                     if (gMaterial.enableNormalMap == 1)
@@ -952,7 +959,7 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // Stylized terrain
             // ===========================================================
-                else if (gMaterial.materialType == 23)
+                else if (OBJECT3D_MATERIAL_TYPE == 23)
                 {
                     float3 terrainNormal = normalize(input.normal);
 
@@ -977,16 +984,14 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // Dash panel
             // ===========================================================
-                else if (gMaterial.materialType == 24)
+                else if (OBJECT3D_MATERIAL_TYPE == 24)
                 {
-                    float3 dashNormal = normalize(input.normal);
-                    output.color.rgb = BuildDashPanelColor(transformedUV.xy, textureColor.rgb, dashNormal, shadowFactor);
-                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
+                    output.color = ShadeDashPanel(input, transformedUV.xy, textureColor, shadowFactor);
                 }
             // ===========================================================
             // Laser beam
             // ===========================================================
-                else if (gMaterial.materialType == 12)
+                else if (OBJECT3D_MATERIAL_TYPE == 12)
                 {
                     float2 uv = input.texcoord;
                     float radial = abs(uv.x - 0.5f) * 2.0f;
@@ -1006,10 +1011,9 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
             // Surface decal (unlit alpha)
             // ===========================================================
-                else if (gMaterial.materialType == 28)
+                else if (OBJECT3D_MATERIAL_TYPE == 28)
                 {
-                    output.color = MATERIAL_COLOR * textureColor;
-                    output.color.rgb *= gMaterial.emissive;
+                    output.color = ShadeSurfaceDecal(textureColor);
                 }
             // ===========================================================
             // 通常のPBRマテリアル
@@ -1034,7 +1038,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                     }
 
                     float3 albedo = MATERIAL_COLOR.rgb * textureColor.rgb;
-                    if (gMaterial.materialType == 29 || gMaterial.materialType == 32) {
+                    if (OBJECT3D_MATERIAL_TYPE == 29 || OBJECT3D_MATERIAL_TYPE == 32) {
                         // Soft painted turf evaluated before the normal PBR lighting.
                         // Blend rotated scales to avoid visible square noise cells.
                         float2 turfUV = float2(input.worldPosition.x * 0.83f - input.worldPosition.z * 0.56f,
@@ -1048,7 +1052,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         float3 turf = lerp(float3(0.22f, 0.32f, 0.105f),
                             float3(0.31f, 0.42f, 0.16f), broad);
                         albedo = turf * (0.94f + detail * 0.12f) * MATERIAL_COLOR.rgb;
-                        if (gMaterial.materialType == 32) {
+                        if (OBJECT3D_MATERIAL_TYPE == 32) {
                             // UV cross-section defines the path; noise softens the soil/turf boundary.
                             float acrossPath = abs(input.texcoord.y - 0.5f) * 44.0f;
                             float edgeNoise = ValueNoise2D(input.worldPosition.xz * 0.65f);
@@ -1065,7 +1069,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         metallic = 0.0f;
                         roughness = max(roughness, 0.85f);
                     }
-                    if (gMaterial.materialType == 33) {
+                    if (OBJECT3D_MATERIAL_TYPE == 33) {
                         // Entrance soil sides: path-related earth colors, softly eroded strata.
                         float2 soilUV = float2(input.worldPosition.x + input.worldPosition.z, input.worldPosition.y);
                         float macro = ValueNoise2D(soilUV * float2(0.22f, 0.32f));
@@ -1082,7 +1086,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         roughness = 0.95f;
                         metallic = 0.0f;
                     }
-                    if (gMaterial.materialType == 30) {
+                    if (OBJECT3D_MATERIAL_TYPE == 30) {
                         // Geometric blades retain opaque silhouettes and a soft root-to-tip gradient.
                         float tip = saturate(input.texcoord.y);
                         albedo = lerp(float3(0.09f, 0.18f, 0.045f),
@@ -1091,7 +1095,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         metallic = 0.0f;
                         roughness = max(roughness, 0.85f);
                     }
-                    if (gMaterial.materialType == 31) {
+                    if (OBJECT3D_MATERIAL_TYPE == 31) {
                         float leafMask = step(0.5f, input.texcoord.y);
                         // Coplanar two-sided leaf triangles must agree on the visible side normal.
                         if (leafMask > 0.5f && dot(N, V) < 0.0f) N = -N;
@@ -1106,7 +1110,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         roughness = lerp(max(roughness, 0.85f), clamp(roughness, 0.45f, 1.0f), leafMask);
                     }
 
-                    if (gMaterial.materialType == 35) {
+                    if (OBJECT3D_MATERIAL_TYPE == 35) {
                         // Object UVs keep the rock surface attached while the lift moves.
                         float2 uv = input.texcoord;
                         float macro = ValueNoise2D(uv * 0.29f);
@@ -1161,8 +1165,8 @@ PixelShaderOutput main(VertexShaderOutput input)
                     Lo += CalcPBRLight(L_dir, V, N, radiance_dir, albedo, roughness, metallic, F0);
                     // Thin-leaf transmission is driven by sunlight, never by emission.
                     // Shadowing still suppresses it under the canopy; bark stays opaque.
-                    if (gMaterial.materialType == 30 || gMaterial.materialType == 31) {
-                        float leaf = gMaterial.materialType == 30 ? saturate(input.texcoord.y)
+                    if (OBJECT3D_MATERIAL_TYPE == 30 || OBJECT3D_MATERIAL_TYPE == 31) {
+                        float leaf = OBJECT3D_MATERIAL_TYPE == 30 ? saturate(input.texcoord.y)
                             : step(0.5f, input.texcoord.y);
                         float backLight = saturate(dot(-N, L_dir));
                         float forwardLight = pow(saturate(dot(V, -L_dir)), 3.0f);
@@ -1230,7 +1234,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         ambient = gDirectionalLight.ambientColor * albedo * (1.0f - metallic);
                     }
 
-                    if (gMaterial.materialType >= 29 && gMaterial.materialType <= 34) {
+                    if (OBJECT3D_MATERIAL_TYPE >= 29 && OBJECT3D_MATERIAL_TYPE <= 34) {
                         // Keep indirect fill, but do not let it erase the shadowed side of foliage.
                         ambient *= lerp(0.78f, 1.0f, shadowFactor);
                     }

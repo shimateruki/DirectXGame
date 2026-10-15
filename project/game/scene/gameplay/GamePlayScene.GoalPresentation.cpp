@@ -22,11 +22,13 @@ namespace {
 constexpr const char* kGoalPresentationTuningPath = "Resources/json/cinematic/goal_clear.json";
 constexpr const char* kGoalCinematicTimelinePath = "Resources/json/scenario/goal_clear_timeline.json";
 
+// ゴール演出の補間率を0～1へ制限します。
 float GoalClamp01(float value) {
     // 演出曲線を0〜1の時間区間に収める。
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+// ゴール演出の終点へ向けて減速する補間率を返します。
 float GoalEaseOut(float value) {
     // 王冠やUIの移動を終点へ向けて減速させる。
     value = GoalClamp01(value);
@@ -34,6 +36,7 @@ float GoalEaseOut(float value) {
     return 1.0f - inv * inv * inv;
 }
 
+// ゴール演出の始点と終点を滑らかにつなぐ補間率を返します。
 float GoalEaseInOut(float value) {
     // 前後の速度が急変しない滑らかな補間率を作る。
     value = GoalClamp01(value);
@@ -46,11 +49,11 @@ void GamePlayScene::InitializeGoalCinematicTimeline() {
     // タイムラインのアニメーションと合図をPlayer用処理へ結び付けてから読込む。
     goalCinematicPlayer_.Initialize(SceneManager::GetInstance());
     goalCinematicPlayer_.SetAnimationCallback(
-        [this](Object3d* target, const CinematicAnimationClipData& clip, float localTime, bool isPreview) {
+        [this](engine::Object3d* target, const CinematicAnimationClipData& clip, float localTime, bool isPreview) {
             HandleGoalCinematicAnimation(target, clip, localTime, isPreview);
         });
     goalCinematicPlayer_.SetSignalCallback(
-        [this](Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
+        [this](engine::Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
             HandleGoalCinematicSignal(target, signal, isPreview);
         });
 
@@ -169,7 +172,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
             hasVictoryLandVfx = true;
         }
     }
-    Object3d* crown = FindGoalCrownObject();
+    engine::Object3d* crown = FindGoalCrownObject();
     if (!hasCrownFocusVfx) {
         CinematicVFXTrackData track;
         track.name = "Crown Focus VFX";
@@ -211,7 +214,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
     goalCinematicSequence_.Sort();
 }
 
-void GamePlayScene::HandleGoalCinematicAnimation(Object3d* target, const CinematicAnimationClipData& clip,
+void GamePlayScene::HandleGoalCinematicAnimation(engine::Object3d* target, const CinematicAnimationClipData& clip,
                                                  float localTime, bool isPreview) {
     // GoalClearPlayerドライバだけをPlayerへ適用し、他の対象のClipは無視する。
     (void)isPreview;
@@ -222,7 +225,7 @@ void GamePlayScene::HandleGoalCinematicAnimation(Object3d* target, const Cinemat
     goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
 }
 
-void GamePlayScene::HandleGoalCinematicSignal(Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
+void GamePlayScene::HandleGoalCinematicSignal(engine::Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
     // goal.readyの合図で帰還可能状態へ進み、時計だけに依存しない。
     (void)target;
     (void)isPreview;
@@ -242,7 +245,7 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
     const uint32_t returnTextHandle =
         TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/returning_select_text.png");
 
-    goalOverlayFlash_ = std::make_unique<Sprite>();
+    goalOverlayFlash_ = std::make_unique<engine::Sprite>();
     goalOverlayFlash_->Initialize(spriteCommon_.get(), whiteHandle);
     goalOverlayFlash_->SetName("GoalClear_Flash");
     goalOverlayFlash_->SetAnchorPoint({0.5f, 0.5f});
@@ -260,20 +263,20 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
         "Resources/sprite/ui/result/clear/slime_letters/letter_r.png"};
     for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
         auto& letter = goalOverlayStageClearLetters_[i];
-        letter = std::make_unique<Sprite>();
+        letter = std::make_unique<engine::Sprite>();
         letter->Initialize(spriteCommon_.get(), TextureManager::GetInstance()->Load(kLetterTexturePaths[i]));
         letter->SetName("GoalClear_Letter_" + std::to_string(i));
         letter->SetAnchorPoint({0.5f, 0.5f});
     }
 
-    goalOverlayReturnText_ = std::make_unique<Sprite>();
+    goalOverlayReturnText_ = std::make_unique<engine::Sprite>();
     goalOverlayReturnText_->Initialize(spriteCommon_.get(), returnTextHandle);
     goalOverlayReturnText_->SetName("GoalClear_ReturnText");
     goalOverlayReturnText_->SetAnchorPoint({0.5f, 0.5f});
 
     for (size_t i = 0; i < goalOverlaySparkles_.size(); ++i) {
         auto& sparkle = goalOverlaySparkles_[i];
-        sparkle = std::make_unique<Sprite>();
+        sparkle = std::make_unique<engine::Sprite>();
         sparkle->Initialize(spriteCommon_.get(), splashHandle);
         sparkle->SetName("GoalClear_LetterSplash_" + std::to_string(i));
         sparkle->SetAnchorPoint({0.5f, 0.5f});
@@ -291,8 +294,8 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& presentation = goalPresentationTuning_;
     const bool replayClear = goalWasStageCleared_;
-    const Vector3 themePrimary = replayClear ? Vector3{0.90f, 0.92f, 0.96f} : Vector3{1.0f, 0.72f, 0.12f};
-    const Vector3 themeSecondary = replayClear ? Vector3{0.58f, 0.64f, 0.74f} : Vector3{1.0f, 0.34f, 0.06f};
+    const engine::Vector3 themePrimary = replayClear ? engine::Vector3{0.90f, 0.92f, 0.96f} : engine::Vector3{1.0f, 0.72f, 0.12f};
+    const engine::Vector3 themeSecondary = replayClear ? engine::Vector3{0.58f, 0.64f, 0.74f} : engine::Vector3{1.0f, 0.34f, 0.06f};
     const float baseScale = (std::min)(screenW / 1280.0f, screenH / 720.0f);
     const float uiScale = baseScale * presentation.resultUiScale;
     const float centerX = screenW * presentation.resultUiCenterX;
@@ -324,8 +327,8 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
     float cursorX = centerX - totalWidth * 0.5f * uiScale;
 
     for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
-        Sprite* letter = goalOverlayStageClearLetters_[i].get();
-        Sprite* splash = goalOverlaySparkles_[i].get();
+        engine::Sprite* letter = goalOverlayStageClearLetters_[i].get();
+        engine::Sprite* splash = goalOverlaySparkles_[i].get();
         const float letterCenterX = cursorX + kAdvanceWidths[i] * 0.5f * uiScale;
         const float localTime = t - animation.resultUiTime - static_cast<float>(i) * presentation.resultLetterStagger;
         float letterY = baselineY - presentation.resultLetterDropHeight * uiScale;
@@ -725,7 +728,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
 #endif
 }
 
-Object3d* GamePlayScene::FindGoalCrownObject() const {
+engine::Object3d* GamePlayScene::FindGoalCrownObject() const {
     // シーン内のゴールイベントを持つ王冠を、プレビュー対象として探す。
     if (!objectManager_) {
         return nullptr;
@@ -747,7 +750,7 @@ void GamePlayScene::StartGoalPresentationPreview() {
         }
         StopGoalPresentationPreview();
     }
-    Object3d* crown = FindGoalCrownObject();
+    engine::Object3d* crown = FindGoalCrownObject();
     if (!crown || !player_) {
         DebugConsole::GetInstance()->AddLog("Goal presentation preview requires player and crown.");
         return;

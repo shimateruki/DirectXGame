@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "1253d381de724995904f138204588265",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/footer_confirm_keyboard.png",
+  "version": 1
+}

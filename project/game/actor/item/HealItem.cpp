@@ -49,7 +49,7 @@ void HealItem::Collect(Player* player) {
     MarkCollected();
 }
 
-std::unique_ptr<Object3d> HealItem::Clone() const {
+std::unique_ptr<engine::Object3d> HealItem::Clone() const {
     // 同じモデルで生成し直した後に、配置と回復設定を複製する。
     auto newObj = std::make_unique<HealItem>();
     assert(common_ != nullptr);

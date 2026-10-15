@@ -20,7 +20,7 @@ struct BossChantStyle {
     std::string motePreset;
     std::string glintPreset;
     std::string releasePreset;
-    Vector4 accentColor = {0.42f, 0.78f, 1.0f, 1.0f};
+    engine::Vector4 accentColor = {0.42f, 0.78f, 1.0f, 1.0f};
     float radius = 2.4f;
     float fadeStart = 0.30f;
     bool completeAtRelease = false; // trueなら詠唱時間全体で紋章を形成します。
@@ -28,12 +28,12 @@ struct BossChantStyle {
 
 // 1 フレーム分の術者姿勢と詠唱進行率。座標はすべてワールド空間です。
 struct BossChantFrame {
-    Vector3 casterPosition{};
-    Vector3 groundPosition{};
-    Vector3 sigilCenter{};
+    engine::Vector3 casterPosition{};
+    engine::Vector3 groundPosition{};
+    engine::Vector3 sigilCenter{};
     float casterRadius = 1.0f;
     float casterHeight = 1.5f;
-    Vector3 forward = {0.0f, 0.0f, 1.0f};
+    engine::Vector3 forward = {0.0f, 0.0f, 1.0f};
     float windupProgress = 0.0f;
     float activeElapsed = 0.0f;
     float time = 0.0f;
@@ -50,6 +50,7 @@ class BossChantVisual {
     /// <param name="style">魔法陣のパス、色、半径、粒子プリセット。</param>
     /// <returns>必須の魔法陣を生成できた場合は true。</returns>
     bool Start(Object3dCommon* common, BossChantStyle style) {
+        // 必須の魔法陣三層を先に検証し、任意の光の層だけ欠けても演出を続ける。
         Reset();
         if (!common || style.sigilEffectPath.empty()) {
             return false;
@@ -93,6 +94,7 @@ class BossChantVisual {
             footRibbonIntensity_ = material->intensity;
         }
 
+        // プリセットの明るさを記録した後、初期表示は透明にして詠唱進行で立ち上げる。
         sigil_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         glow_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         floor_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
@@ -127,6 +129,7 @@ class BossChantVisual {
 
     // 攻撃中断やモデル再生成時は、前の描画層とタイマーを破棄します。
     void Reset() {
+        // 一時生成した描画層の所有権を破棄し、次の詠唱へ色倍率を持ち越さない。
         sigil_.reset();
         glow_.reset();
         floor_.reset();
@@ -152,6 +155,7 @@ class BossChantVisual {
     /// <summary>詠唱進行率から魔法陣・足元の光・収束粒子を更新します。</summary>
     /// <param name="frame">術者位置、詠唱進行率、攻撃開始後の経過時間。</param>
     void Update(const BossChantFrame& frame) {
+        // 詠唱も解放もしていないフレームでは全層を隠し、前回の光を残さない。
         if (!sigil_) {
             return;
         }
@@ -178,10 +182,10 @@ class BossChantVisual {
                           : 1.0f - SmoothStep(std::clamp((frame.activeElapsed - style_.fadeStart) / 0.24f, 0.0f, 1.0f));
         const float releaseFlash = frame.releasing ? std::exp(-frame.activeElapsed * 14.0f) : 0.0f;
         const float pulse = 1.0f + std::sin(frame.time * (3.0f + charge * 3.0f)) * 0.025f * assembly;
-        const Vector3 forward = ResolveForward(frame.forward);
-        const Vector3 side = {forward.z, 0.0f, -forward.x};
+        const engine::Vector3 forward = ResolveForward(frame.forward);
+        const engine::Vector3 side = {forward.z, 0.0f, -forward.x};
         // 紋章は視点ではなく攻撃方向に向け、術者の動きと整合させます。
-        const Vector3 uprightRotation = MakeUprightRotation(forward);
+        const engine::Vector3 uprightRotation = MakeUprightRotation(forward);
         const float radius = style_.radius;
         const float casterRadius = (std::max)(frame.casterRadius, radius * 0.75f);
         const float casterHeight = (std::max)(frame.casterHeight, casterRadius * 1.2f);
@@ -212,7 +216,7 @@ class BossChantVisual {
         glow_->SetTranslate(frame.sigilCenter + forward * 0.012f);
         glow_->SetRotation(uprightRotation);
         glow_->SetScale({sigilRadius * pulse * 1.02f, 1.0f, sigilRadius * pulse * 1.02f});
-        Vector4 glowColor = style_.accentColor;
+        engine::Vector4 glowColor = style_.accentColor;
         glowColor.w = (0.08f + assembly * 0.11f + charge * 0.09f + releaseFlash * 0.15f) * fade * presetAlpha_;
         glow_->SetColor(glowColor);
         glow_->SetIntensity(presetIntensity_ * (1.30f + releaseFlash * 0.44f));
@@ -224,7 +228,7 @@ class BossChantVisual {
         floor_->SetRevealProgress(style_.completeAtRelease ? progress
             : SmoothStep(std::clamp(progress / 0.72f, 0.0f, 1.0f)));
         floor_->SetIsVisible(fade > 0.01f && assembly > 0.04f);
-        floor_->SetTranslate(frame.groundPosition + Vector3{0.0f, 0.075f, 0.0f});
+        floor_->SetTranslate(frame.groundPosition + engine::Vector3{0.0f, 0.075f, 0.0f});
         floor_->SetRotation({0.0f, frame.time * 0.24f, 0.0f});
         const float floorRadius = casterRadius * (1.25f + assembly * 0.10f);
         floor_->SetScale({floorRadius, 1.0f, floorRadius});
@@ -237,7 +241,7 @@ class BossChantVisual {
         // 術者の輪郭が読めるよう、光の幅・高さ・重なりを分けます。
         const float aura = SmoothStep(std::clamp((progress - 0.02f) / 0.50f, 0.0f, 1.0f));
         const float auraScale = casterRadius * (1.72f + aura * 0.10f);
-        UpdateLightLayer(groundLight_.get(), frame.deltaTime, frame.groundPosition + Vector3{0.0f, 0.16f, 0.0f},
+        UpdateLightLayer(groundLight_.get(), frame.deltaTime, frame.groundPosition + engine::Vector3{0.0f, 0.16f, 0.0f},
                          {0.0f, frame.time * 0.70f, 0.0f},
                          {auraScale * (1.03f + std::sin(frame.time * 5.0f) * 0.025f), 1.0f,
                           auraScale * (1.03f + std::sin(frame.time * 5.0f) * 0.025f)},
@@ -245,7 +249,7 @@ class BossChantVisual {
                          (0.32f + charge * 0.12f + releaseFlash * 0.08f) * aura * fade * groundLightAlpha_,
                          groundLightIntensity_);
         UpdateLightLayer(
-            groundCore_.get(), frame.deltaTime, frame.groundPosition + Vector3{0.0f, 0.17f, 0.0f},
+            groundCore_.get(), frame.deltaTime, frame.groundPosition + engine::Vector3{0.0f, 0.17f, 0.0f},
             {0.0f, -frame.time * 0.38f, 0.0f}, {auraScale * 0.91f, 1.0f, auraScale * 0.91f}, style_.accentColor,
             (0.26f + charge * 0.10f + releaseFlash * 0.09f) * aura * fade * groundCoreAlpha_, groundCoreIntensity_);
 
@@ -253,11 +257,11 @@ class BossChantVisual {
         const float footRadius = casterRadius * (1.14f + charge * 0.03f);
         const float footSpan = casterHeight * 0.23f;
         UpdateLightLayer(
-            footRibbon_.get(), frame.deltaTime, frame.groundPosition + Vector3{0.0f, footSpan * 0.5f + 0.12f, 0.0f},
+            footRibbon_.get(), frame.deltaTime, frame.groundPosition + engine::Vector3{0.0f, footSpan * 0.5f + 0.12f, 0.0f},
             {0.0f, -frame.time * 0.95f, 0.0f}, {footRadius, footSpan, footRadius}, style_.accentColor,
             (0.34f + charge * 0.10f + releaseFlash * 0.06f) * aura * fade * footRibbonAlpha_, footRibbonIntensity_);
 
-        const Vector3 risingCenter = frame.groundPosition + Vector3{0.0f, casterHeight * 0.37f, 0.0f};
+        const engine::Vector3 risingCenter = frame.groundPosition + engine::Vector3{0.0f, casterHeight * 0.37f, 0.0f};
         // 上昇する残光は外縁をかすめる程度にして、顔を覆わないようにします。
         const float risingRadius = casterRadius * (1.17f + charge * 0.03f);
         const float risingHeightScale = casterHeight * 0.58f / 2.65f;
@@ -265,7 +269,7 @@ class BossChantVisual {
                          {risingRadius, risingHeightScale, risingRadius}, style_.accentColor,
                          (0.25f + charge * 0.08f) * aura * fade * risingLightAlpha_, risingLightIntensity_);
         UpdateLightLayer(risingLightCounter_.get(), frame.deltaTime,
-                         risingCenter + Vector3{0.0f, -casterHeight * 0.04f, 0.0f},
+                         risingCenter + engine::Vector3{0.0f, -casterHeight * 0.04f, 0.0f},
                          {0.0f, -frame.time * 1.20f + 2.3f, 0.0f},
                          {risingRadius * 0.97f, risingHeightScale * 0.92f, risingRadius * 0.97f}, style_.accentColor,
                          (0.10f + charge * 0.04f) * aura * fade * risingLightAlpha_, risingLightIntensity_ * 0.65f);
@@ -295,13 +299,13 @@ class BossChantVisual {
     static float SmoothStep(float value) { return value * value * (3.0f - 2.0f * value); }
 
     // 水平方向だけで正規化し、方向が取れないときは前方を使います。
-    static Vector3 ResolveForward(const Vector3& direction) {
+    static engine::Vector3 ResolveForward(const engine::Vector3& direction) {
         const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-        return length > 0.001f ? Vector3{direction.x / length, 0.0f, direction.z / length} : Vector3{0.0f, 0.0f, 1.0f};
+        return length > 0.001f ? engine::Vector3{direction.x / length, 0.0f, direction.z / length} : engine::Vector3{0.0f, 0.0f, 1.0f};
     }
 
     // 地面用の平面エフェクトを、術者の正面に立てる回転です。
-    static Vector3 MakeUprightRotation(const Vector3& forward) {
+    static engine::Vector3 MakeUprightRotation(const engine::Vector3& forward) {
         constexpr float kHalfPi = 1.5707963268f;
         return {kHalfPi, std::atan2(forward.x, forward.z), 0.0f};
     }
@@ -330,8 +334,8 @@ class BossChantVisual {
     /// <summary>任意の発光層へ位置、透明度、強度を反映します。</summary>
     /// <param name="alpha">表示判定にも使う最終透明度。</param>
     /// <param name="intensity">プリセットの強度を加味した発光強度。</param>
-    static void UpdateLightLayer(EffectObject3d* effect, float deltaTime, const Vector3& position,
-                                 const Vector3& rotation, const Vector3& scale, Vector4 color, float alpha,
+    static void UpdateLightLayer(EffectObject3d* effect, float deltaTime, const engine::Vector3& position,
+                                 const engine::Vector3& rotation, const engine::Vector3& scale, engine::Vector4 color, float alpha,
                                  float intensity) {
         if (!effect) {
             return;
@@ -349,51 +353,51 @@ class BossChantVisual {
     }
 
     // 足元と胴体の外周に粒子を散らし、術者の顔を覆わずに収束感を出します。
-    void EmitGatheringMotes(const BossChantFrame& frame, const Vector3& side, float casterRadius, float casterHeight,
+    void EmitGatheringMotes(const BossChantFrame& frame, const engine::Vector3& side, float casterRadius, float casterHeight,
                             float charge) {
         GPUParticleManager* particles = GPUParticleManager::GetInstance();
         if (!particles || !particles->IsInitialized() || style_.motePreset.empty()) {
             return;
         }
         const float orbit = frame.time * 5.0f;
-        const Vector3 forward = ResolveForward(frame.forward);
+        const engine::Vector3 forward = ResolveForward(frame.forward);
         const float orbitRadius = casterRadius * (1.22f + charge * 0.04f);
         const float riseRange = casterHeight * 0.76f;
-        const Vector3 ringPosition = frame.groundPosition + side * (std::cos(orbit) * orbitRadius) +
+        const engine::Vector3 ringPosition = frame.groundPosition + side * (std::cos(orbit) * orbitRadius) +
                                      forward * (std::sin(orbit) * orbitRadius) +
-                                     Vector3{0.0f, 0.35f + std::fmod(frame.time * 1.6f, riseRange), 0.0f};
-        const Vector3 tangent = side * -std::sin(orbit) + forward * std::cos(orbit);
-        particles->EmitDirected(style_.motePreset, ringPosition, tangent + Vector3{0.0f, 0.6f, 0.0f},
+                                     engine::Vector3{0.0f, 0.35f + std::fmod(frame.time * 1.6f, riseRange), 0.0f};
+        const engine::Vector3 tangent = side * -std::sin(orbit) + forward * std::cos(orbit);
+        particles->EmitDirected(style_.motePreset, ringPosition, tangent + engine::Vector3{0.0f, 0.6f, 0.0f},
                                 1.4f + charge * 0.4f);
 
         // 反対側の軌道も使い、片側だけに粒子が偏らないようにします。
         const float secondOrbit = orbit + 3.14159265f;
-        const Vector3 upperPosition =
+        const engine::Vector3 upperPosition =
             frame.groundPosition + side * (std::cos(secondOrbit) * orbitRadius) +
             forward * (std::sin(secondOrbit) * orbitRadius) +
-            Vector3{0.0f, 0.35f + std::fmod(frame.time * 1.5f + riseRange * 0.55f, riseRange), 0.0f};
-        const Vector3 upperTangent = side * -std::sin(secondOrbit) + forward * std::cos(secondOrbit);
-        particles->EmitDirected(style_.motePreset, upperPosition, upperTangent + Vector3{0.0f, 0.45f, 0.0f},
+            engine::Vector3{0.0f, 0.35f + std::fmod(frame.time * 1.5f + riseRange * 0.55f, riseRange), 0.0f};
+        const engine::Vector3 upperTangent = side * -std::sin(secondOrbit) + forward * std::cos(secondOrbit);
+        particles->EmitDirected(style_.motePreset, upperPosition, upperTangent + engine::Vector3{0.0f, 0.45f, 0.0f},
                                 1.1f + charge * 0.3f);
         if (!style_.glintPreset.empty()) {
-            particles->EmitDirected(style_.glintPreset, upperPosition, upperTangent + Vector3{0.0f, 0.55f, 0.0f}, 1.0f);
+            particles->EmitDirected(style_.glintPreset, upperPosition, upperTangent + engine::Vector3{0.0f, 0.55f, 0.0f}, 1.0f);
         }
 
         // 地面の粒子は低く保ち、胴体のリングとは別の高さで回します。
-        const Vector3 floorPosition = frame.groundPosition + side * (std::cos(orbit + 2.1f) * orbitRadius) +
-                                      forward * (std::sin(orbit + 2.1f) * orbitRadius) + Vector3{0.0f, 0.12f, 0.0f};
+        const engine::Vector3 floorPosition = frame.groundPosition + side * (std::cos(orbit + 2.1f) * orbitRadius) +
+                                      forward * (std::sin(orbit + 2.1f) * orbitRadius) + engine::Vector3{0.0f, 0.12f, 0.0f};
         particles->EmitDirected(style_.motePreset, floorPosition,
                                 side * -std::sin(orbit + 2.1f) + forward * std::cos(orbit + 2.1f) +
-                                    Vector3{0.0f, 0.55f, 0.0f},
+                                    engine::Vector3{0.0f, 0.55f, 0.0f},
                                 1.1f + charge * 0.35f);
         if (!style_.glintPreset.empty()) {
-            particles->EmitDirected(style_.glintPreset, floorPosition, Vector3{0.0f, 1.0f, 0.0f}, 0.9f);
+            particles->EmitDirected(style_.glintPreset, floorPosition, engine::Vector3{0.0f, 1.0f, 0.0f}, 0.9f);
         }
-        const Vector3 oppositePosition = frame.groundPosition + side * (std::cos(orbit + 4.2f) * orbitRadius) +
-                                         forward * (std::sin(orbit + 4.2f) * orbitRadius) + Vector3{0.0f, 0.12f, 0.0f};
+        const engine::Vector3 oppositePosition = frame.groundPosition + side * (std::cos(orbit + 4.2f) * orbitRadius) +
+                                         forward * (std::sin(orbit + 4.2f) * orbitRadius) + engine::Vector3{0.0f, 0.12f, 0.0f};
         particles->EmitDirected(style_.motePreset, oppositePosition,
                                 side * -std::sin(orbit + 4.2f) + forward * std::cos(orbit + 4.2f) +
-                                    Vector3{0.0f, 0.55f, 0.0f},
+                                    engine::Vector3{0.0f, 0.55f, 0.0f},
                                 1.1f + charge * 0.35f);
     }
 

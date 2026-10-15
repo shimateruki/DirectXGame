@@ -7,7 +7,7 @@
   "sprites": [
     {
       "name": "pause_background",
-      "texture": "common/white.png",
+      "texture": "ui/control_guide/pause_fullscreen_background.png",
       "position": [
         960.0,
         540.0
@@ -15,54 +15,6 @@
       "size": [
         1920.0,
         1080.0
-      ],
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "color": [
-        0.01,
-        0.05,
-        0.07,
-        0.56
-      ],
-      "emissive": 1.0,
-      "parentName": ""
-    },
-    {
-      "name": "pause_panel",
-      "texture": "ui/settings/settings_panel.png",
-      "position": [
-        960.0,
-        460.0
-      ],
-      "size": [
-        760.0,
-        610.0
-      ],
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        0.96
-      ],
-      "emissive": 1.0,
-      "parentName": ""
-    },
-    {
-      "name": "pause_title_plate",
-      "texture": "ui/settings/settings_title_plate.png",
-      "position": [
-        960.0,
-        212.0
-      ],
-      "size": [
-        430.0,
-        96.0
       ],
       "anchor": [
         0.5,
@@ -78,15 +30,39 @@
       "parentName": ""
     },
     {
-      "name": "pause_title",
-      "texture": "generated/text/pause/pause_text_title.png",
+      "name": "pause_panel",
+      "texture": "ui/control_guide/pause_guide_frame.png",
       "position": [
-        960.0,
-        202.0
+        960,
+        540
       ],
       "size": [
-        250.0,
-        108.0
+        1760,
+        990
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "pause_title",
+      "texture": "generated/text/pause_guide/title.png",
+      "position": [
+        960,
+        140
+      ],
+      "size": [
+        680,
+        96
       ],
       "anchor": [
         0.5,
@@ -105,46 +81,46 @@
       "name": "pause_resume_row",
       "texture": "ui/settings/settings_row_selected.png",
       "position": [
-        960.0,
-        345.0
+        960,
+        420
       ],
       "size": [
-        560.0,
-        78.0
+        760,
+        82
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        0.72,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        0.9
       ],
       "emissive": 1.0,
       "parentName": ""
     },
     {
       "name": "pause_resume_label",
-      "texture": "generated/text/pause/pause_text_resume.png",
+      "texture": "generated/text/pause_guide/resume.png",
       "position": [
-        960.0,
-        345.0
+        960,
+        420
       ],
       "size": [
-        208.0,
-        74.0
+        620,
+        74
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
       "emissive": 1.0,
       "parentName": ""
@@ -153,46 +129,46 @@
       "name": "pause_settings_row",
       "texture": "ui/settings/settings_row.png",
       "position": [
-        960.0,
-        440.0
+        960,
+        530
       ],
       "size": [
-        560.0,
-        78.0
+        760,
+        82
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        0.95,
-        0.9,
-        0.78,
-        0.88
+        1,
+        1,
+        1,
+        0.9
       ],
       "emissive": 1.0,
       "parentName": ""
     },
     {
       "name": "pause_settings_label",
-      "texture": "generated/text/pause/pause_text_settings.png",
+      "texture": "generated/text/pause_guide/settings.png",
       "position": [
-        960.0,
-        440.0
+        960,
+        530
       ],
       "size": [
-        122.0,
-        75.0
+        620,
+        74
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        0.48,
-        0.36,
-        0.24,
-        0.9
+        1,
+        1,
+        1,
+        1
       ],
       "emissive": 1.0,
       "parentName": ""
@@ -201,60 +177,60 @@
       "name": "pause_title_return_row",
       "texture": "ui/settings/settings_row.png",
       "position": [
-        960.0,
-        535.0
+        960,
+        640
       ],
       "size": [
-        560.0,
-        78.0
+        760,
+        82
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        0.95,
-        0.9,
-        0.78,
-        0.88
-      ],
-      "emissive": 1.0,
-      "parentName": ""
-    },
-    {
-      "name": "pause_title_return_label",
-      "texture": "generated/text/pause/pause_text_title_return.png",
-      "position": [
-        960.0,
-        535.0
-      ],
-      "size": [
-        302.0,
-        70.0
-      ],
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "color": [
-        0.48,
-        0.36,
-        0.24,
+        1,
+        1,
+        1,
         0.9
       ],
       "emissive": 1.0,
       "parentName": ""
     },
     {
-      "name": "pause_cursor_arrow",
-      "texture": "ui/settings/settings_category_pointer.png",
+      "name": "pause_title_return_label",
+      "texture": "generated/text/pause_guide/title_return.png",
       "position": [
-        652.0,
-        345.0
+        960,
+        640
       ],
       "size": [
-        56.0,
-        50.0
+        620,
+        74
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "pause_cursor_arrow",
+      "texture": "ui/title/title_menu_arrow.png",
+      "position": [
+        590,
+        375
+      ],
+      "size": [
+        32,
+        32
       ],
       "anchor": [
         0.5,
@@ -262,8 +238,8 @@
       ],
       "color": [
         1.0,
-        0.9,
-        0.35,
+        1.0,
+        1.0,
         1.0
       ],
       "emissive": 1.0,
@@ -271,14 +247,14 @@
     },
     {
       "name": "pause_cursor_slime",
-      "texture": "ui/settings/settings_icon_slime.png",
+      "texture": "title/slime_save_icon.png",
       "position": [
-        556.0,
-        343.0
+        520,
+        375
       ],
       "size": [
-        70.0,
-        70.0
+        54,
+        44
       ],
       "anchor": [
         0.5,
@@ -294,39 +270,39 @@
       "parentName": ""
     },
     {
-      "name": "pause_hint_back",
-      "texture": "common/white.png",
+      "name": "pause_footer_close_frame",
+      "texture": "ui/control_guide/footer_close_frame.png",
       "position": [
-        960.0,
-        648.0
+        245,
+        980
       ],
       "size": [
-        560.0,
-        38.0
+        440,
+        86
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        0.0,
-        0.14,
-        0.2,
-        0.34
+        1.0,
+        1.0,
+        1.0,
+        1.0
       ],
       "emissive": 1.0,
       "parentName": ""
     },
     {
-      "name": "pause_hint_text",
-      "texture": "generated/text/pause/pause_text_hint.png",
+      "name": "pause_footer_close_text",
+      "texture": "generated/text/pause_guide/footer_close_keyboard.png",
       "position": [
-        960.0,
-        648.0
+        245,
+        980
       ],
       "size": [
-        434.0,
-        47.0
+        370,
+        57
       ],
       "anchor": [
         0.5,
@@ -336,10 +312,66 @@
         1.0,
         1.0,
         1.0,
-        0.92
+        1.0
+      ],
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "pause_footer_confirm_frame",
+      "texture": "ui/control_guide/footer_confirm_frame.png",
+      "position": [
+        1675,
+        980
+      ],
+      "size": [
+        440,
+        86
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "pause_footer_confirm_text",
+      "texture": "generated/text/pause_guide/footer_confirm_keyboard.png",
+      "position": [
+        1675,
+        980
+      ],
+      "size": [
+        370,
+        57
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
       ],
       "emissive": 1.0,
       "parentName": ""
     }
+  ],
+  "spriteAssets": [
+    "ui/control_guide/footer_close_frame.png",
+    "ui/control_guide/footer_confirm_frame.png",
+    "generated/text/pause_guide/footer_close_keyboard.png",
+    "generated/text/pause_guide/footer_close_gamepad.png",
+    "generated/text/pause_guide/footer_confirm_keyboard.png",
+    "generated/text/pause_guide/footer_confirm_gamepad.png"
   ]
 }

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "de01bb6b535a5a639a8f1266aecf1166",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_MidbossTerrain_Approach_Turf.obj",
+  "version": 1
+}

@@ -11,11 +11,11 @@ class PlayerGateReturnAnimation {
     // ゲート帰還の始点・通過点・終点と基準姿勢。通常移動を再開するまでの専用経路。
     struct Route {
         // 全点はワールド座標。direction は水平面の進行方向で、ゼロ長なら +Z を使う。
-        Vector3 start{};
-        Vector3 gateCenter{};
-        Vector3 end{};
-        Vector3 direction{0.0f, 0.0f, 1.0f};
-        Vector3 baseScale{2.0f, 2.0f, 2.0f};
+        engine::Vector3 start{};
+        engine::Vector3 gateCenter{};
+        engine::Vector3 end{};
+        engine::Vector3 direction{0.0f, 0.0f, 1.0f};
+        engine::Vector3 baseScale{2.0f, 2.0f, 2.0f};
     };
 
     // 操作と衝突判定を一時停止し、指定経路の先頭から演出を始める。player は所有しない。
@@ -27,12 +27,12 @@ class PlayerGateReturnAnimation {
 
     bool IsActive() const { return active_; }
     bool IsFinished() const { return finished_; }
-    const Vector3& GetEndPosition() const { return route_.end; }
+    const engine::Vector3& GetEndPosition() const { return route_.end; }
 
   private:
-    Vector3 NormalizeDirection(const Vector3& direction) const;
-    Vector3 Lerp(const Vector3& a, const Vector3& b, float t) const;
-    Vector3 Bezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) const;
+    engine::Vector3 NormalizeDirection(const engine::Vector3& direction) const;
+    engine::Vector3 Lerp(const engine::Vector3& a, const engine::Vector3& b, float t) const;
+    engine::Vector3 Bezier(const engine::Vector3& p0, const engine::Vector3& p1, const engine::Vector3& p2, const engine::Vector3& p3, float t) const;
     float Clamp01(float value) const;
     float EaseOutCubic(float value) const;
     float EaseInOutCubic(float value) const;

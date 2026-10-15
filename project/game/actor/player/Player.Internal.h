@@ -103,7 +103,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
     // 胴体中心と足元の四隅。足場の端から触れた場合も拾います。
     const float rx = (body.max.x - body.min.x) * .3f;
     const float rz = (body.max.z - body.min.z) * .3f;
-    const Vector3 probes[] = {{cx, body.min.y, cz},
+    const engine::Vector3 probes[] = {{cx, body.min.y, cz},
                               {cx - rx, body.min.y, cz - rz},
                               {cx + rx, body.min.y, cz - rz},
                               {cx - rx, body.min.y, cz + rz},
@@ -111,7 +111,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
     bool touched = false;
     contactY = -1.0e30f;
     for (const auto& owned : manager->GetCurrentScene()->GetObjects()) {
-        Object3d* liquid = owned.get();
+        engine::Object3d* liquid = owned.get();
         if (!liquid || liquid == &player || !liquid->GetIsVisible())
             continue;
         const int material = liquid->GetMaterialType();
@@ -131,10 +131,10 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
         // 海・溶岩池の水平面を対象にし、傾けた演出用モデルは除外します。
         if (std::abs(world.m[1][0]) > .001f || std::abs(world.m[1][2]) > .001f || world.m[1][1] <= .001f)
             continue;
-        const Matrix4x4 inverse = Math::Inverse(world);
+        const engine::Matrix4x4 inverse = engine::Math::Inverse(world);
         const AABB bounds = liquid->GetModelWorldAABB();
-        for (const Vector3& probe : probes) {
-            const Vector3 local = Math::Transform(probe, inverse);
+        for (const engine::Vector3& probe : probes) {
+            const engine::Vector3 local = engine::Math::Transform(probe, inverse);
             float surface = 0.0f;
             if (material == 8) {
                 if (std::abs(local.x) > 1.0f || std::abs(local.z) > 1.0f)
@@ -163,12 +163,13 @@ inline float NormalizeYaw(float yaw) {
     return yaw;
 }
 
-inline Vector3 GetStableEnemyCarryScale(Object3d* enemy) {
+inline engine::Vector3 GetStableEnemyCarryScale(engine::Object3d* enemy) {
+    // 敵の大きな縦横変形だけ体積相当の等方倍率に戻し、運搬姿勢の暴れを抑える。
     if (!enemy) {
         return {1.0f, 1.0f, 1.0f};
     }
 
-    const Vector3 scale = enemy->GetScale();
+    const engine::Vector3 scale = enemy->GetScale();
     if (!dynamic_cast<BaseEnemy*>(enemy)) {
         return scale;
     }
@@ -186,15 +187,15 @@ inline Vector3 GetStableEnemyCarryScale(Object3d* enemy) {
     return {stableScale, stableScale, stableScale};
 }
 
-inline Vector3 ResolveTransformEuler(const Transform& transform) {
+inline engine::Vector3 ResolveTransformEuler(const Transform& transform) {
     if (!transform.isQuaternionMaster) {
         return transform.rotate;
     }
 
-    return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(transform.quaternion));
+    return engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(transform.quaternion));
 }
 
-inline void CalculateThunderAuraShape(const Vector3& position, const Vector3& scale, Vector3& center,
+inline void CalculateThunderAuraShape(const engine::Vector3& position, const engine::Vector3& scale, engine::Vector3& center,
                                       float& horizontalDiameter, float& verticalDiameter) {
     const float maxXZ = (std::max)({std::abs(scale.x), std::abs(scale.z), 1.0f});
     const float yScale = (std::max)(std::abs(scale.y), 0.18f);
@@ -206,14 +207,14 @@ inline void CalculateThunderAuraShape(const Vector3& position, const Vector3& sc
     center.y += (std::max)(0.22f, yScale * 0.43f);
 }
 
-inline void EmitOuterThunderParticles(const Vector3& position, const Vector3& scale, float phase, int count,
+inline void EmitOuterThunderParticles(const engine::Vector3& position, const engine::Vector3& scale, float phase, int count,
                                       const char* presetName = "thunder_slime_idle_spark") {
     auto* gpuParticleManager = GPUParticleManager::GetInstance();
     if (!gpuParticleManager || !gpuParticleManager->IsInitialized() || count <= 0) {
         return;
     }
 
-    Vector3 center{};
+    engine::Vector3 center{};
     float horizontalDiameter = 1.0f;
     float verticalDiameter = 1.0f;
     CalculateThunderAuraShape(position, scale, center, horizontalDiameter, verticalDiameter);
@@ -223,7 +224,7 @@ inline void EmitOuterThunderParticles(const Vector3& position, const Vector3& sc
 
     for (int i = 0; i < count; ++i) {
         const float angle = phase + kTwoPi * static_cast<float>(i) / static_cast<float>(count);
-        Vector3 emitPos = center;
+        engine::Vector3 emitPos = center;
         emitPos.x += std::cos(angle) * horizontalRadius;
         emitPos.z += std::sin(angle) * horizontalRadius;
         emitPos.y += std::sin(angle * 1.37f) * verticalRadius;
@@ -231,19 +232,19 @@ inline void EmitOuterThunderParticles(const Vector3& position, const Vector3& sc
     }
 }
 
-inline void EmitThunderMorphBurst(const Vector3& position, const Vector3& scale) {
+inline void EmitThunderMorphBurst(const engine::Vector3& position, const engine::Vector3& scale) {
     EmitOuterThunderParticles(position, scale, 0.35f, 4);
 }
 
-inline void EmitCopyMorphPreset(const char* presetName, const Vector3& position) {
+inline void EmitCopyMorphPreset(const char* presetName, const engine::Vector3& position) {
     auto* gpuParticleManager = GPUParticleManager::GetInstance();
     if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
         gpuParticleManager->Emit(presetName, position);
     }
 }
 
-inline void SpawnCopyMorphPulse(const char* effectPath, const Vector3& position,
-                                const Vector3& scale = {1.0f, 1.0f, 1.0f}) {
+inline void SpawnCopyMorphPulse(const char* effectPath, const engine::Vector3& position,
+                                const engine::Vector3& scale = {1.0f, 1.0f, 1.0f}) {
     auto* meshEffects = MeshEffectManager::GetInstance();
     if (meshEffects) {
         meshEffects->SpawnEffectAt(effectPath, position, {0.0f, 0.0f, 0.0f}, scale);

@@ -12,7 +12,8 @@ namespace {
 constexpr float kGroundRayStartHeight = 6.0f;
 constexpr float kGroundRayDistance = 16.0f;
 
-bool SampleTerrainSurface(Object3d* terrainObject, const Vector3& worldPosition, Vector3& outPoint) {
+// 地形の高さ配列をワールドXZ座標で標本化し、範囲外や無効データなら失敗を返します。
+bool SampleTerrainSurface(engine::Object3d* terrainObject, const engine::Vector3& worldPosition, engine::Vector3& outPoint) {
     if (!terrainObject || terrainObject->GetColliderType() != ColliderType::kTerrain) {
         return false;
     }
@@ -27,8 +28,8 @@ bool SampleTerrainSurface(Object3d* terrainObject, const Vector3& worldPosition,
         return false;
     }
 
-    const Vector3 terrainPos = terrainObject->GetTranslate();
-    const Vector3 terrainScale = terrainObject->GetScale();
+    const engine::Vector3 terrainPos = terrainObject->GetTranslate();
+    const engine::Vector3 terrainScale = terrainObject->GetScale();
     const float scaleX = (std::max)(0.0001f, std::abs(terrainScale.x));
     const float scaleY = (std::max)(0.0001f, std::abs(terrainScale.y));
     const float scaleZ = (std::max)(0.0001f, std::abs(terrainScale.z));
@@ -64,17 +65,17 @@ bool SampleTerrainSurface(Object3d* terrainObject, const Vector3& worldPosition,
 }
 } // namespace
 
-Vector3 GroundEffectLocator::ResolveGroundPosition(const Vector3& position) {
+engine::Vector3 GroundEffectLocator::ResolveGroundPosition(const engine::Vector3& position) {
     CollisionManager* collisionManager = CollisionManager::GetInstance();
     if (!collisionManager) {
         return position;
     }
 
     // 通常の床・マップブロックを先に調べ、Terrain と結果を距離で比較する。
-    const Vector3 rayStart = position + Vector3{0.0f, kGroundRayStartHeight, 0.0f};
+    const engine::Vector3 rayStart = position + engine::Vector3{0.0f, kGroundRayStartHeight, 0.0f};
     RaycastHit hit = collisionManager->Raycast(rayStart, {0.0f, -1.0f, 0.0f}, kGroundRayDistance, CollisionCategories::Get("ground") | CollisionCategories::Get("map_block"));
 
-    Vector3 bestPoint = position;
+    engine::Vector3 bestPoint = position;
     float bestDrop = (std::numeric_limits<float>::max)();
     if (hit.isHit) {
         bestPoint = hit.hitPoint;
@@ -82,11 +83,11 @@ Vector3 GroundEffectLocator::ResolveGroundPosition(const Vector3& position) {
     }
 
     // Terrain は高さマップで管理されるため、レイキャストとは別に表面高度を求める。
-    for (Object3d* object : collisionManager->GetObjects()) {
+    for (engine::Object3d* object : collisionManager->GetObjects()) {
         if (!object || !(object->GetCollisionAttribute() & CollisionCategories::Get("ground"))) {
             continue;
         }
-        Vector3 terrainPoint;
+        engine::Vector3 terrainPoint;
         if (!SampleTerrainSurface(object, position, terrainPoint)) {
             continue;
         }

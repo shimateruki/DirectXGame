@@ -43,75 +43,75 @@ namespace InspectorWindowImplementation {
 std::string ToLowerAscii(std::string text);
 
 // 複数選択を含む現在の編集対象を集めます。戻り値はシーン所有オブジェクトへの非所有参照です。
-std::vector<Object3d*> CollectInspectorTargets(DebugEditor* editor, Object3d* primary);
+std::vector<engine::Object3d*> CollectInspectorTargets(DebugEditor* editor, engine::Object3d* primary);
 
-void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<Object3d*>& targets);
+void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<engine::Object3d*>& targets);
 
-void RefreshInspectorTargetMatrices(const std::vector<Object3d*>& targets);
+void RefreshInspectorTargetMatrices(const std::vector<engine::Object3d*>& targets);
 
 float SafeScaleRatio(float after, float before);
 
 // 主対象で行った移動・回転・拡大率の差分を、他の選択対象へ相対的に適用します。
 void ApplyPrimaryTransformDeltaToTargets(
-    const std::vector<Object3d*>& targets,
-    Object3d* primary,
-    const Vector3& beforePosition,
-    const Vector3& afterPosition,
-    const Vector3& beforeRotation,
-    const Vector3& afterRotation,
-    const Vector3& beforeScale,
-    const Vector3& afterScale,
+    const std::vector<engine::Object3d*>& targets,
+    engine::Object3d* primary,
+    const engine::Vector3& beforePosition,
+    const engine::Vector3& afterPosition,
+    const engine::Vector3& beforeRotation,
+    const engine::Vector3& afterRotation,
+    const engine::Vector3& beforeScale,
+    const engine::Vector3& afterScale,
     bool applyPosition,
     bool applyRotation,
     bool applyScale);
 
-bool IsSpriteCardObject(const Object3d* object);
+bool IsSpriteCardObject(const engine::Object3d* object);
 
-void ConfigureSpriteCardObject(Object3d* object);
+void ConfigureSpriteCardObject(engine::Object3d* object);
 
 void ApplyRegisteredComponentToTargets(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
+    const std::vector<engine::Object3d*>& targets,
     const std::string& componentTypeId,
     bool add);
 
 void ApplyRegisteredComponentPresetToTargets(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
+    const std::vector<engine::Object3d*>& targets,
     const std::string& componentTypeId,
     const std::string& presetId);
 
 void DrawRegisteredComponentRow(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
+    const std::vector<engine::Object3d*>& targets,
     const EditorComponentDescriptor& component);
 
 void DrawRegisteredAddComponentMenu(
     DebugEditor* editor,
-    const std::vector<Object3d*>& targets,
-    Object3d* primary);
+    const std::vector<engine::Object3d*>& targets,
+    engine::Object3d* primary);
 
-bool HasRegisteredComponent(const Object3d* object, const char* componentTypeId);
+bool HasRegisteredComponent(const engine::Object3d* object, const char* componentTypeId);
 
-std::vector<Object3d*> CollectRegisteredComponentTargets(
-    const std::vector<Object3d*>& targets,
+std::vector<engine::Object3d*> CollectRegisteredComponentTargets(
+    const std::vector<engine::Object3d*>& targets,
     const char* componentTypeId);
 
-bool IsPrefabPropertyOverridden(const Object3d* object, const std::string& propertyPath);
+bool IsPrefabPropertyOverridden(const engine::Object3d* object, const std::string& propertyPath);
 
 void DrawAutomaticComponentProperties(
     DebugEditor* editor,
-    Object3d* primary,
-    const std::vector<Object3d*>& targets,
+    engine::Object3d* primary,
+    const std::vector<engine::Object3d*>& targets,
     const EditorComponentDescriptor& component);
 
-void DrawComponentPanel(DebugEditor* editor, Object3d* primary, const std::vector<Object3d*>& targets);}
+void DrawComponentPanel(DebugEditor* editor, engine::Object3d* primary, const std::vector<engine::Object3d*>& targets);}
 
 namespace InspectorWindowImplementation {
 
-bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, Object3d* cameraObject, std::string& objectName);
+bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, engine::Object3d* cameraObject, std::string& objectName);
 
-bool HasMixedInspectorValue(const std::vector<Object3d*>& targets, const char* propertyPath);
+bool HasMixedInspectorValue(const std::vector<engine::Object3d*>& targets, const char* propertyPath);
 
 void DrawMixedValueHint(bool mixed);
 
@@ -119,24 +119,24 @@ void PushMixedCheckbox(bool mixed);
 
 void PopMixedCheckbox();
 
-void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* cameraObject);
+void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Object3d* cameraObject);
 
-std::vector<Object3d*> CollectSceneObjects(BaseScene* scene);
+std::vector<engine::Object3d*> CollectSceneObjects(BaseScene* scene);
 
-std::vector<Object3d*> CollectPrefabInstanceObjects(BaseScene* scene, const std::string& instanceId);
+std::vector<engine::Object3d*> CollectPrefabInstanceObjects(BaseScene* scene, const std::string& instanceId);
 
-void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* object);
+void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, engine::Object3d* object);
 
 std::string NormalizeMaterialInstanceSavePath(const char* text);
 
 void DrawMaterialInstancePanel(
     DebugEditor* editor,
-    Object3d* selectedObject,
-    const std::vector<Object3d*>& targets);
+    engine::Object3d* selectedObject,
+    const std::vector<engine::Object3d*>& targets);
 
 void DrawDecalPanel(
     DebugEditor* editor,
-    Object3d* selectedObject,
-    const std::vector<Object3d*>& targets);
+    engine::Object3d* selectedObject,
+    const std::vector<engine::Object3d*>& targets);
 
 }

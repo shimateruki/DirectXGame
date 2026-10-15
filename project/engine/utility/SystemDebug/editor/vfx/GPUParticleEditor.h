@@ -27,6 +27,8 @@ private:
     // Editor内プレビューと保存名入力の状態。
     float emitTimer_ = 0.0f;
     char presetNameInput_[64] = "FirePreset";
+    char presetSearch_[128] = {};
+    char textureSearch_[128] = {};
     bool isPreviewMode_ = true;
     float previewDistance_ = 5.0f;
     float previewTime_ = 0.0f;

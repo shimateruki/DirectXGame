@@ -5,7 +5,7 @@
 #include <vector>
 
 class DebugEditor;
-class Object3d;
+namespace engine { class Object3d; }
 
 /// <summary>Editor の Object3d をカテゴリ別 JSON と Scene Asset メタデータへ変換する。</summary>
 class SceneSerializer {
@@ -60,14 +60,14 @@ public:
     // 現在のシーンから保存候補を作る。この時点で永続 GUID の重複は解消される。
     std::vector<SaveTarget> BuildSceneSaveTargets(const std::string& currentFilename, SaveMode mode);
     // GUID が一致する既存行を更新し、旧データで GUID がなければ名前で照合する。
-    std::vector<SaveTarget> BuildSingleObjectSaveTargets(Object3d* object, const std::string& filename);
+    std::vector<SaveTarget> BuildSingleObjectSaveTargets(engine::Object3d* object, const std::string& filename);
     // 返り値は保存対象ラベルの一覧であり、書き込み成功の保証ではない。
     std::string SaveTargets(const std::vector<SaveTarget>& targets);
 
     // 現在のシーンをシリアライズして保存する。戻り値は保存対象ラベルで、成功判定には使わない。
     std::string SaveScene(const std::string& currentFilename, SaveMode mode);
     // 同じ GUID の行を優先して既存 JSON 内の単一 Object を更新する。
-    void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
+    void UpdateObjectInSceneJSON(engine::Object3d* object, const std::string& filename);
 
     // Scene Asset は分割 Object JSON と Sprite JSON を一つの単位として扱う。
     std::vector<SceneAssetInfo> DiscoverSceneAssets() const;
@@ -112,7 +112,7 @@ public:
     std::string ResolveSceneAssetSpritePath(const std::string& filename) const;
 
 private:
-    nlohmann::json SerializeObject(Object3d* obj);
+    nlohmann::json SerializeObject(engine::Object3d* obj);
     void SaveToFile(const std::string& path, const nlohmann::json& data);
 
     // DebugEditor本体への参照。SceneSerializerは所有しない。

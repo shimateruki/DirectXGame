@@ -141,6 +141,7 @@ struct CrownFinaleTuning {
 
     // 設定ファイルを読み込みます。存在しない場合は既定値を維持します。
     bool Load() {
+        // 省略された調整項目は現行の既定値を維持し、読み込み後に安全な範囲へ直す。
         std::ifstream stream(Path);
         if (!stream)
             return false;
@@ -206,6 +207,7 @@ struct CrownFinaleTuning {
 
     // 現在の調整値をエディターから再利用できる JSON に保存します。
     bool Save() const {
+        // 読み込み側と同じキー名で全項目を書き、エディターでの調整値を再現する。
         nlohmann::json data = {{"sealRadius", sealRadius},
                                {"sealHitRadius", sealHitRadius},
                                {"sealAimTime", sealAimTime},

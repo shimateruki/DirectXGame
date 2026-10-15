@@ -5,13 +5,14 @@
 #include <dwrite.h>
 #include <wincodec.h>
 #include <wrl/client.h>
+#include <wrl/implements.h>
 
 #include <algorithm>
-#include <atomic>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <new>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -28,10 +29,14 @@ namespace fs = std::filesystem;
 namespace {
 
 // 独自フォントのパス列を DirectWrite へ順に渡す COM 列挙器。参照数で寿命を管理する。
-class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
+class ResourceFontFileEnumerator final
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IDWriteFontFileEnumerator> {
 public:
     ResourceFontFileEnumerator(IDWriteFactory* factory, const void* collectionKey, UINT32 collectionKeySize)
         : factory_(factory) {
+        // DirectWriteから渡されたNUL区切りのフォントパスを列挙対象へ分解する。
         const wchar_t* cursor = static_cast<const wchar_t*>(collectionKey);
         const wchar_t* end = cursor + collectionKeySize / sizeof(wchar_t);
         while (cursor && cursor < end && *cursor != L'\0') {
@@ -41,30 +46,8 @@ public:
         }
     }
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
-        if (!object) return E_POINTER;
-        *object = nullptr;
-        if (iid == IID_IUnknown || iid == __uuidof(IDWriteFontFileEnumerator)) {
-            *object = this;
-            AddRef();
-            return S_OK;
-        }
-        return E_NOINTERFACE;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef() override {
-        return ++refCount_;
-    }
-
-    ULONG STDMETHODCALLTYPE Release() override {
-        ULONG count = --refCount_;
-        if (count == 0) {
-            delete this;
-        }
-        return count;
-    }
-
     HRESULT STDMETHODCALLTYPE MoveNext(BOOL* hasCurrentFile) override {
+        // 開けないフォントファイルは飛ばし、次に有効な参照だけ返す。
         if (!hasCurrentFile) return E_POINTER;
         *hasCurrentFile = FALSE;
         currentFile_.Reset();
@@ -87,7 +70,6 @@ public:
     }
 
 private:
-    std::atomic<ULONG> refCount_{ 1 };
     ComPtr<IDWriteFactory> factory_;
     std::vector<std::wstring> fontPaths_;
     size_t nextIndex_ = 0;
@@ -95,43 +77,22 @@ private:
 };
 
 // 指定フォント集合の列挙器を生成する。OS 全体へのインストールをせず、生成処理内だけで使う。
-class ResourceFontCollectionLoader final : public IDWriteFontCollectionLoader {
+class ResourceFontCollectionLoader final
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IDWriteFontCollectionLoader> {
 public:
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
-        if (!object) return E_POINTER;
-        *object = nullptr;
-        if (iid == IID_IUnknown || iid == __uuidof(IDWriteFontCollectionLoader)) {
-            *object = this;
-            AddRef();
-            return S_OK;
-        }
-        return E_NOINTERFACE;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef() override {
-        return ++refCount_;
-    }
-
-    ULONG STDMETHODCALLTYPE Release() override {
-        ULONG count = --refCount_;
-        if (count == 0) {
-            delete this;
-        }
-        return count;
-    }
-
     HRESULT STDMETHODCALLTYPE CreateEnumeratorFromKey(
         IDWriteFactory* factory,
         const void* collectionKey,
         UINT32 collectionKeySize,
         IDWriteFontFileEnumerator** fontFileEnumerator) override {
         if (!factory || !collectionKey || !fontFileEnumerator) return E_INVALIDARG;
-        *fontFileEnumerator = new ResourceFontFileEnumerator(factory, collectionKey, collectionKeySize);
+        auto enumerator = Microsoft::WRL::Make<ResourceFontFileEnumerator>(factory, collectionKey, collectionKeySize);
+        if (!enumerator) return E_OUTOFMEMORY;
+        *fontFileEnumerator = enumerator.Detach();
         return S_OK;
     }
-
-private:
-    std::atomic<ULONG> refCount_{ 1 };
 };
 
 // 文字 PNG 一枚の生成条件。自動キャンバスの可否と装飾を保持し、結果は RenderResult へ分ける。
@@ -195,6 +156,7 @@ std::wstring MakeFontCollectionKey(const std::wstring& path) {
 }
 
 std::wstring GetLocalizedString(IDWriteLocalizedStrings* strings, const wchar_t* fallback) {
+    // フォント名は日本語、英語、先頭ロケールの順で取得する。
     if (!strings) return fallback ? fallback : L"";
     UINT32 index = 0;
     BOOL exists = FALSE;
@@ -238,6 +200,7 @@ std::wstring ReadWideString(const nlohmann::json& json, const char* name, const 
 }
 
 D2D1_COLOR_F ReadColor(const nlohmann::json& json, const char* name, D2D1_COLOR_F fallback) {
+    // RGBAがそろわない設定は既定色を使い、各成分は描画可能な範囲へ収める。
     if (!json.contains(name) || !json[name].is_array() || json[name].size() < 4) {
         return fallback;
     }
@@ -479,7 +442,8 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     if (FAILED(hr)) throw std::runtime_error("DirectWrite factory create failed");
 
     ComPtr<ResourceFontCollectionLoader> loader;
-    loader.Attach(new ResourceFontCollectionLoader());
+    loader = Microsoft::WRL::Make<ResourceFontCollectionLoader>();
+    if (!loader) throw std::bad_alloc();
     dwriteFactory->RegisterFontCollectionLoader(loader.Get());
 
     // 独自フォントを一時コレクションとして登録し、使用したファミリー名を結果に残す。
@@ -642,6 +606,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
 }
 
 void WriteReport(const fs::path& reportPath, const RenderResult& result, const fs::path& outputPath) {
+    // 生成画像のサイズと使用フォントを呼び出し元が読めるJSONレポートへ書く。
     if (reportPath.empty()) return;
     fs::create_directories(reportPath.parent_path());
 
@@ -669,6 +634,7 @@ fs::path GetOptionValue(int argc, wchar_t** argv, const wchar_t* optionName) {
 
 int wmain(int argc, wchar_t** argv) {
     try {
+        // 設定JSONからPNGを生成し、結果レポートを出力して呼び出し元へ終了状態を返す。
         if (argc < 2 || _wcsicmp(argv[1], L"render") != 0) {
             std::wcerr << L"Usage: TextPngTool.exe render -config <path> -out <path>\n";
             return 2;

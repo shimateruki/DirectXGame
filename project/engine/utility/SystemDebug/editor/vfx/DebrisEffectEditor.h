@@ -26,7 +26,7 @@ void RefreshLists();
     void Load(const std::string& presetName);
         // 現在の設定で破片エフェクトを発生させ、見た目を確認します。
 void Preview();
-    Vector3 GetPreviewPosition() const;
+    engine::Vector3 GetPreviewPosition() const;
         // 設定データからUI編集用のモデルバッファへ内容を反映します。
 void SyncModelBuffersFromConfig();
     void SyncConfigFromModelBuffers();

@@ -53,265 +53,13 @@
 #include <unordered_map>
 #include <utility>
 namespace fs = std::filesystem;
-const float PI = (float)M_PI;
+
+
+
 
 namespace {
-std::string ToLowerForGroundDefault(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return value;
-}
-
-bool ContainsGroundKeywordForDefault(const std::string& value) {
-    return value.find("block") != std::string::npos ||
-        value.find("floor") != std::string::npos ||
-        value.find("ground") != std::string::npos ||
-        value.find("platform") != std::string::npos ||
-        value.find("terrain") != std::string::npos ||
-        value.find("wall") != std::string::npos;
-}
-
-bool ShouldApplyGroundDefaults(Object3d* object) {
-    if (!object) {
-        return false;
-    }
-
-    const std::string className = ToLowerForGroundDefault(object->GetClassName());
-    if (className == "enemy" || className == "player" || className == "gimmick" ||
-        className == "item" || className == "gpuparticle" || className == "cinematiccamera" ||
-        className == "spritecard" || className == "meshroot" || className == "meshpart") {
-        return false;
-    }
-
-    const std::string modelName = ToLowerForGroundDefault(object->GetModelName());
-    if (modelName.empty()) {
-        return false;
-    }
-    if (modelName.rfind("characters/", 0) == 0 || modelName.rfind("item/", 0) == 0) {
-        return false;
-    }
-    if (modelName == "primitives/plane" || modelName.find("portal") != std::string::npos) {
-        return false;
-    }
-
-    return modelName.rfind("stages/", 0) == 0 ||
-        modelName == "primitives/cube" ||
-        ContainsGroundKeywordForDefault(modelName);
-}
-
-void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
-    if (!ShouldApplyGroundDefaults(object)) {
-        return;
-    }
-
-    auto colliderConfig = object->GetColliderConfig();
-    if (colliderConfig.type == ColliderType::kNone) {
-        colliderConfig.type = ColliderType::kAABB;
-        object->SetColliderConfig(colliderConfig);
-    }
-    if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
-    }
-    if (object->GetCollisionMask() == 0) {
-        object->SetCollisionMask(0xFFFFFFFFu);
-    }
-}
-}
-
-static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
-static float ToDegrees(float radians) { return radians * (180.0f / PI); }
-
-namespace {
-    constexpr float kCrashRecoveryAutosaveInterval = 3.0f;
-    constexpr float kCrashRecoveryHeartbeatInterval = 5.0f;
-    constexpr const char* kCrashRecoveryRoot = "Resources/.backup/crash_recovery";
-    constexpr const char* kCrashRecoverySessionFile = "session.json";
-
-    std::string ToGenericPath(const fs::path& path) {
-        return path.generic_string();
-    }
-
-    std::string NowIsoString() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
-        return out.str();
-    }
-
-    std::string MakeCrashRecoveryStamp() {
-        const auto now = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(now);
-        const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
-        std::tm tm{};
-        localtime_s(&tm, &time);
-        std::ostringstream out;
-        out << std::put_time(&tm, "%Y%m%d_%H%M%S") << "_" << std::setw(3) << std::setfill('0') << millis;
-        return out.str();
-    }
-
-    bool ReadJsonFileSafe(const fs::path& path, nlohmann::json& outJson) {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        try {
-            file >> outJson;
-            return outJson.is_object();
-        }
-        catch (...) {
-            return false;
-        }
-    }
-
-    bool WriteJsonFileSafe(const fs::path& path, const nlohmann::json& data) {
-        std::error_code ec;
-        fs::create_directories(path.parent_path(), ec);
-        if (ec) {
-            return false;
-        }
-
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            return false;
-        }
-        file << data.dump(4);
-        return file.good();
-    }
-
-    bool IsPathInside(const fs::path& child, const fs::path& parent) {
-        std::error_code ec;
-        const fs::path childAbs = fs::absolute(child, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-        const fs::path parentAbs = fs::absolute(parent, ec).lexically_normal();
-        if (ec) {
-            return false;
-        }
-
-        std::wstring childText = childAbs.native();
-        std::wstring parentText = parentAbs.native();
-        std::transform(childText.begin(), childText.end(), childText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        std::transform(parentText.begin(), parentText.end(), parentText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
-        if (!parentText.empty() && parentText.back() != L'\\' && parentText.back() != L'/') {
-            parentText.push_back(fs::path::preferred_separator);
-        }
-        return childText.rfind(parentText, 0) == 0;
-    }
-
-    bool IsCrashRecoverySourcePathAllowed(const fs::path& path) {
-        const std::string generic = path.lexically_normal().generic_string();
-        const std::string lower = [&generic]() {
-            std::string value = generic;
-            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return value;
-        }();
-        return lower.rfind("resources/json/", 0) == 0 &&
-            lower.find("/../") == std::string::npos &&
-            lower.find("resources/.backup/") != 0 &&
-            lower.find("resources/.cache/") != 0;
-    }
-
-    float GetCreateYOffsetForObject(const Object3d* object) {
-        if (!object) return 1.0f;
-
-        const auto& collider = object->GetColliderConfig();
-        if (collider.size.y > 0.0f) return collider.size.y;
-        if (collider.size.x > 0.0f) return collider.size.x;
-
-        const Transform& transform = object->GetTransform();
-        if (transform.scale.y > 0.0f) return transform.scale.y;
-        return 1.0f;
-    }
-
-    Vector3 GetPlacementExtents(const Object3d* object) {
-        if (!object) return { 1.0f, 1.0f, 1.0f };
-
-        const auto& collider = object->GetColliderConfig();
-        const Transform& transform = object->GetTransform();
-        return {
-            collider.size.x > 0.0f ? collider.size.x : std::abs(transform.scale.x),
-            collider.size.y > 0.0f ? collider.size.y : std::abs(transform.scale.y),
-            collider.size.z > 0.0f ? collider.size.z : std::abs(transform.scale.z)
-        };
-    }
-
-    bool IsNearlyZero(const Vector3& value) {
-        return std::abs(value.x) < 0.0001f &&
-            std::abs(value.y) < 0.0001f &&
-            std::abs(value.z) < 0.0001f;
-    }
-
-    Vector3 NormalizeOrUp(const Vector3& value) {
-        if (IsNearlyZero(value)) {
-            return { 0.0f, 1.0f, 0.0f };
-        }
-        return Math::Normalize(value);
-    }
-
-    void ApplyEditorPreviewLightOverride(Object3d* object) {
-        if (!object) {
-            return;
-        }
-
-        if (auto* material = object->GetMaterialData()) {
-            material->enableLighting = 0;
-            material->selectedLighting = 0;
-            material->emissive = (std::max)(material->emissive, 1.0f);
-        }
-    }
-
-    float GetSurfaceOffset(const Object3d* object, const Vector3& normal) {
-        Vector3 extents = GetPlacementExtents(object);
-        Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
-        float extentOnNormal = extents.x * absNormal.x + extents.y * absNormal.y + extents.z * absNormal.z;
-        if (!object) return extentOnNormal;
-
-        const auto& collider = object->GetColliderConfig();
-        float centerOnNormal =
-            collider.center.x * normal.x +
-            collider.center.y * normal.y +
-            collider.center.z * normal.z;
-        return std::max(extentOnNormal - centerOnNormal, 0.0f);
-    }
-
-    Vector3 GetSurfaceAlignedRotation(const Vector3& currentRotation, const Vector3& normal) {
-        constexpr float kHalfPi = PI * 0.5f;
-        Vector3 n = NormalizeOrUp(normal);
-
-        if (std::abs(n.y) >= std::abs(n.x) && std::abs(n.y) >= std::abs(n.z)) {
-            if (n.y < 0.0f) {
-                return { PI, currentRotation.y, 0.0f };
-            }
-            return { 0.0f, currentRotation.y, 0.0f };
-        }
-
-        if (std::abs(n.x) >= std::abs(n.z)) {
-            return { 0.0f, currentRotation.y, n.x > 0.0f ? -kHalfPi : kHalfPi };
-        }
-
-        return { n.z > 0.0f ? kHalfPi : -kHalfPi, currentRotation.y, 0.0f };
-    }
-
-    void ApplyGridSnap(Vector3& position, const Vector3& normal, bool hasSurface, bool enabled, float snapValue) {
-        if (!enabled || snapValue <= 0.0f) return;
-
-        if (!hasSurface || std::abs(normal.x) < 0.5f) {
-            position.x = std::round(position.x / snapValue) * snapValue;
-        }
-        if (hasSurface && std::abs(normal.y) < 0.5f) {
-            position.y = std::round(position.y / snapValue) * snapValue;
-        }
-        if (!hasSurface || std::abs(normal.z) < 0.5f) {
-            position.z = std::round(position.z / snapValue) * snapValue;
-        }
-    }
-
-    bool ShouldUsePreviewDrawClassOverride(const Object3d* object) {
+    // 実ゲームでは不可視のカメラ等も、Editorのプレビューでは識別できる描画クラスへ切り替えます。
+    bool ShouldUsePreviewDrawClassOverride(const engine::Object3d* object) {
         if (!object) return false;
 
         const std::string className = object->GetClassName();
@@ -319,102 +67,20 @@ namespace {
             className == "GPUParticle" ||
             className == "InvisibleBox";
     }
-
-    bool IsValidAabb(const AABB& aabb) {
-        return aabb.max.x > aabb.min.x &&
-            aabb.max.y > aabb.min.y &&
-            aabb.max.z > aabb.min.z;
-    }
-
-    Vector3 GetAabbCenter(const AABB& aabb) {
-        return {
-            (aabb.min.x + aabb.max.x) * 0.5f,
-            (aabb.min.y + aabb.max.y) * 0.5f,
-            (aabb.min.z + aabb.max.z) * 0.5f
-        };
-    }
-
-    float Distance(const Vector3& a, const Vector3& b) {
-        float dx = a.x - b.x;
-        float dy = a.y - b.y;
-        float dz = a.z - b.z;
-        return std::sqrt(dx * dx + dy * dy + dz * dz);
-    }
-
-    std::string GetLeafName(const std::string& path) {
-        size_t slash = path.find_last_of("/\\");
-        if (slash == std::string::npos) {
-            return path.empty() ? "Preset" : path;
-        }
-        std::string leaf = path.substr(slash + 1);
-        return leaf.empty() ? "Preset" : leaf;
-    }
-
-    bool SceneHasObjectName(BaseScene* scene, const std::string& name) {
-        if (!scene) return false;
-
-        for (const auto& object : scene->GetObjects()) {
-            if (object && object->GetName() == name) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool ReservedHasName(const std::vector<std::string>& reservedNames, const std::string& name) {
-        return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
-    }
-
-    std::string MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
-        std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
-        if (!SceneHasObjectName(scene, base) && !ReservedHasName(reservedNames, base)) {
-            return base;
-        }
-
-        for (int index = 1; index < 10000; ++index) {
-            std::string candidate = base + "_" + std::to_string(index);
-            if (!SceneHasObjectName(scene, candidate) && !ReservedHasName(reservedNames, candidate)) {
-                return candidate;
-            }
-        }
-        return base + "_New";
-    }
-
-    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
-        if (objects.empty()) return;
-
-        std::vector<std::string> reservedNames;
-        std::string rootName = MakeUniquePresetObjectName(scene, GetLeafName(presetName), reservedNames);
-        objects.front()->SetName(rootName);
-        reservedNames.push_back(rootName);
-
-        for (size_t index = 1; index < objects.size(); ++index) {
-            if (!objects[index]) continue;
-
-            std::string baseName = objects[index]->GetName();
-            if (baseName.empty()) {
-                baseName = rootName + "_Child";
-            }
-            std::string uniqueName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
-            objects[index]->SetName(uniqueName);
-            reservedNames.push_back(uniqueName);
-        }
-    }
-
 }
 
 // ========================================================================
 // 初期化
 // ========================================================================
 
-Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
+engine::Ray DebugEditor::ScreenPointToRay(const engine::Vector2& mousePos) {
     const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera) return Ray{};
+    if (!camera) return engine::Ray{};
 
-    Matrix4x4 matView = camera->GetViewMatrix();
-    Matrix4x4 matProj = camera->GetProjectionMatrix();
-    Matrix4x4 matViewProj = math_.Multiply(matView, matProj);
-    Matrix4x4 matInverseVP = math_.Inverse(matViewProj);
+    engine::Matrix4x4 matView = camera->GetViewMatrix();
+    engine::Matrix4x4 matProj = camera->GetProjectionMatrix();
+    engine::Matrix4x4 matViewProj = math_.Multiply(matView, matProj);
+    engine::Matrix4x4 matInverseVP = math_.Inverse(matViewProj);
 
 
     float localMouseX = mousePos.x;
@@ -423,11 +89,11 @@ Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
     // 2. 範囲外チェック
     if (localMouseX < 0 || localMouseX > gameViewSize_.x ||
         localMouseY < 0 || localMouseY > gameViewSize_.y) {
-        return Ray{ {0,0,0}, {0,0,0} };
+        return engine::Ray{ {0,0,0}, {0,0,0} };
     }
 
     // 3. NDC変換
-    Vector3 nearPos, farPos;
+    engine::Vector3 nearPos, farPos;
     nearPos.x = (2.0f * localMouseX) / gameViewSize_.x - 1.0f;
     nearPos.y = 1.0f - (2.0f * localMouseY) / gameViewSize_.y;
     nearPos.z = 0.0f;
@@ -436,10 +102,10 @@ Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
     farPos.z = 1.0f;
 
     // 4. ワールド変換
-    Vector3 worldNear = math_.Transform(nearPos, matInverseVP);
-    Vector3 worldFar = math_.Transform(farPos, matInverseVP);
+    engine::Vector3 worldNear = math_.Transform(nearPos, matInverseVP);
+    engine::Vector3 worldFar = math_.Transform(farPos, matInverseVP);
 
-    Ray ray;
+    engine::Ray ray;
     ray.origin = worldNear;
     ray.diff = worldFar - worldNear;
 
@@ -450,12 +116,12 @@ Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
 // レイと平面(Y=0)の交点を計算する関数
 // 戻り値: 交差したら true, その座標を intersectOut に入れる
 // ---------------------------------------------------------
-bool DebugEditor::IntersectRayPlane(const Ray& ray, Vector3& intersectOut) {
+bool DebugEditor::IntersectRayPlane(const engine::Ray& ray, engine::Vector3& intersectOut) {
     // 計算用のMathクラス
-    Math math;
+    engine::Math math;
 
     // 平面の定義（上向きの法線, 高さ0）
-    Vector3 planeNormal = { 0.0f, 1.0f, 0.0f };
+    engine::Vector3 planeNormal = { 0.0f, 1.0f, 0.0f };
     float planeHeight = 0.0f;
 
     // 平行かどうかチェック (内積が0に近い＝平行)
@@ -471,7 +137,7 @@ bool DebugEditor::IntersectRayPlane(const Ray& ray, Vector3& intersectOut) {
     // t = (PlaneHeight - Dot(RayOrigin, PlaneNormal)) / Dot(RayDir, PlaneNormal)
 
     // まずレイの方向を正規化する
-    Vector3 rayDir = math.Normalize(ray.diff);
+    engine::Vector3 rayDir = math.Normalize(ray.diff);
     float dotDir = math.Dot(rayDir, planeNormal);
 
     // 念のため再チェック
@@ -487,14 +153,15 @@ bool DebugEditor::IntersectRayPlane(const Ray& ray, Vector3& intersectOut) {
 
     // 交点座標 = 原点 + 方向 * 距離
     // intersectOut = ray.origin + (rayDir * t)
-    Vector3 travel = { rayDir.x * t, rayDir.y * t, rayDir.z * t };
+    engine::Vector3 travel = { rayDir.x * t, rayDir.y * t, rayDir.z * t };
     intersectOut = { ray.origin.x + travel.x, ray.origin.y + travel.y, ray.origin.z + travel.z };
 
     return true;
 }
 
 void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    auto drawPreviewObject = [&](Object3d* object) {
+    // 編集プレビューの描画時は、現在のライト定数を表示専用の描画経路へ渡す。
+    auto drawPreviewObject = [&](engine::Object3d* object) {
         if (!object) return;
 
         std::string originalClassName;
@@ -534,6 +201,7 @@ void DebugEditor::TriggerSaveNotification(const std::string& filename) {
 
 void DebugEditor::PollDDSCacheNotifications() {
 #ifdef USE_IMGUI
+    // 変換ツールの追記ログを前回の読み取り位置から読み、完了通知だけを表示する。
     const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
     if (!fs::exists(notificationLog)) {
         ddsCacheNotificationReadOffset_ = 0;
@@ -546,6 +214,7 @@ void DebugEditor::PollDDSCacheNotifications() {
         return;
     }
     if (fileSize < ddsCacheNotificationReadOffset_) {
+        // ログのローテートや作り直しでサイズが縮んだ場合は先頭から読み直す。
         ddsCacheNotificationReadOffset_ = 0;
     }
     if (fileSize == ddsCacheNotificationReadOffset_) {
@@ -567,6 +236,7 @@ void DebugEditor::PollDDSCacheNotifications() {
         }
 
         try {
+            // 途中書き込みなどで壊れた行があっても、次の通知の読み取りを続ける。
             nlohmann::json j = nlohmann::json::parse(line);
             if (j.value("status", "") != "built") {
                 continue;
@@ -634,14 +304,14 @@ void DebugEditor::DrawSaveNotification() {
 // ========================================================================
 // 3D座標をGameViewのスクリーン座標に変換
 // ========================================================================
-Vector3 DebugEditor::WorldToScreen(const Vector3& worldPos) {
+engine::Vector3 DebugEditor::WorldToScreen(const engine::Vector3& worldPos) {
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
     if (!cam) return { 0, 0, -1 }; // カメラが無い場合はZを-1(無効)にして返す
 
-    Matrix4x4 viewProj = math_.Multiply(cam->GetViewMatrix(), cam->GetProjectionMatrix());
+    engine::Matrix4x4 viewProj = math_.Multiply(cam->GetViewMatrix(), cam->GetProjectionMatrix());
 
     // NDC座標系（-1.0 ～ 1.0）への変換
-    Vector3 ndc = math_.Transform(worldPos, viewProj);
+    engine::Vector3 ndc = math_.Transform(worldPos, viewProj);
 
     // カメラの「後ろ」にある場合はZが0未満、またはW除算の関係で範囲外になる
     if (ndc.z < 0.0f || ndc.z > 1.0f) {
@@ -707,7 +377,7 @@ void DebugEditor::Draw3DIcons() {
         // アイコンが設定されたオブジェクトのみ処理
         if (iconStr) {
             // オブジェクトのワールド座標を取得
-            Vector3 worldPos = { obj->GetWorldMatrix().m[3][0], obj->GetWorldMatrix().m[3][1], obj->GetWorldMatrix().m[3][2] };
+            engine::Vector3 worldPos = { obj->GetWorldMatrix().m[3][0], obj->GetWorldMatrix().m[3][1], obj->GetWorldMatrix().m[3][2] };
 
             // カメラの場合は、頭上にアイコンを出すためにY軸を少し上げる
             if (obj->IsCameraObject()) {
@@ -715,7 +385,7 @@ void DebugEditor::Draw3DIcons() {
             }
 
             // 3D -> 2D 変換
-            Vector3 screenPos = WorldToScreen(worldPos);
+            engine::Vector3 screenPos = WorldToScreen(worldPos);
 
             // Zが0以上の時だけ（カメラの前にいる時だけ）描画
             if (screenPos.z >= 0.0f) {
@@ -751,7 +421,7 @@ void DebugEditor::DrawEventIDOverlay() {
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     // 1. EventIDを持つオブジェクトをマップに集める (線を描画するため)
-    std::unordered_map<int, std::vector<Object3d*>> eventMap;
+    std::unordered_map<int, std::vector<engine::Object3d*>> eventMap;
     for (const auto& obj : objects) {
         int eID = obj->GetEventID();
         if (eID != -1) eventMap[eID].push_back(obj.get());
@@ -766,13 +436,13 @@ void DebugEditor::DrawEventIDOverlay() {
 
         // --- 2. ID間のリレーション線を描画 ---
         if (targetID != -1 && eventMap.count(targetID)) {
-            Vector3 startPos = obj->GetWorldPosition();
-            Vector3 startScreen = WorldToScreen(startPos);
+            engine::Vector3 startPos = obj->GetWorldPosition();
+            engine::Vector3 startScreen = WorldToScreen(startPos);
 
             if (startScreen.z >= 0.0f) {
-                for (Object3d* targetObj : eventMap[targetID]) {
-                    Vector3 endPos = targetObj->GetWorldPosition();
-                    Vector3 endScreen = WorldToScreen(endPos);
+                for (engine::Object3d* targetObj : eventMap[targetID]) {
+                    engine::Vector3 endPos = targetObj->GetWorldPosition();
+                    engine::Vector3 endScreen = WorldToScreen(endPos);
 
                     if (endScreen.z >= 0.0f) {
                         // 線を描画 (少し透明な水色)
@@ -798,10 +468,10 @@ void DebugEditor::DrawEventIDOverlay() {
         if (label.empty()) continue;
 
         // 3D座標の取得と変換（頭上に表示）
-        Vector3 worldPos = obj->GetWorldPosition();
+        engine::Vector3 worldPos = obj->GetWorldPosition();
         worldPos.y += obj->GetTransform()->scale.y + 0.5f;
 
-        Vector3 screenPos = WorldToScreen(worldPos);
+        engine::Vector3 screenPos = WorldToScreen(worldPos);
 
         if (screenPos.z >= 0.0f) {
             ImVec2 pos = ImVec2(screenPos.x, screenPos.y);

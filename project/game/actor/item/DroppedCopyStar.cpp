@@ -13,7 +13,7 @@ constexpr float kPickupDelay = 0.70f;
 } // namespace
 
 void DroppedCopyStar::InitializeDrop(Object3dCommon* common, const std::string& enemyType, bool unlimitedDuration,
-                                     const Vector3& start, const Vector3& destination) {
+                                     const engine::Vector3& start, const engine::Vector3& destination) {
     // 投下中の移動を再現できるよう、起点と到達点を生成時に固定する。
     enemyType_ = enemyType;
     unlimitedDuration_ = unlimitedDuration;
@@ -52,7 +52,7 @@ void DroppedCopyStar::Update(float deltaTime) {
         return;
     }
     const float t = std::clamp(elapsed_ / kFlightDuration, 0.0f, 1.0f);
-    Vector3 position = start_ * (1.0f - t) + destination_ * t;
+    engine::Vector3 position = start_ * (1.0f - t) + destination_ * t;
     position.y += std::sin(t * 3.14159265f) * 0.85f;
     if (t >= 1.0f)
         position.y += std::sin((elapsed_ - kFlightDuration) * 2.15f) * 0.10f;
@@ -77,7 +77,7 @@ void DroppedCopyStar::Collect(Player* player) {
     VFXSequencer::PlayOneShot("copy_memory_station_activate_cue", player->GetWorldPosition(), {0.65f, 0.65f, 0.65f});
 }
 
-std::unique_ptr<Object3d> DroppedCopyStar::Clone() const {
+std::unique_ptr<engine::Object3d> DroppedCopyStar::Clone() const {
     // 軌道と経過時間を引き継ぎ、複製直後の位置が巻き戻らないようにする。
     auto copy = std::make_unique<DroppedCopyStar>();
     copy->InitializeDrop(common_, enemyType_, unlimitedDuration_, start_, destination_);
@@ -91,7 +91,7 @@ std::unique_ptr<Object3d> DroppedCopyStar::Clone() const {
 
 void DroppedCopyStar::CaptureReplayCustomState(json& state) const {
     // コピー能力の種類と投下時計を、共通の位置情報に追加して記録する。
-    Object3d::CaptureReplayCustomState(state);
+    engine::Object3d::CaptureReplayCustomState(state);
     state["copyDropType"] = enemyType_;
     state["copyDropUnlimited"] = unlimitedDuration_;
     state["copyDropElapsed"] = elapsed_;
@@ -104,14 +104,14 @@ void DroppedCopyStar::CaptureReplayCustomState(json& state) const {
 
 void DroppedCopyStar::RestoreReplayCustomState(const json& state) {
     // 旧記録に項目がない場合は現在値を保持して復元する。
-    Object3d::RestoreReplayCustomState(state);
+    engine::Object3d::RestoreReplayCustomState(state);
     enemyType_ = state.value("copyDropType", enemyType_);
     unlimitedDuration_ = state.value("copyDropUnlimited", unlimitedDuration_);
     elapsed_ = state.value("copyDropElapsed", elapsed_);
     isCollected_ = state.value("copyDropCollected", isCollected_);
     lifetime_ = state.value("copyDropLifetime", lifetime_);
     blinkDuration_ = state.value("copyDropBlink", blinkDuration_);
-    auto restoreVector = [&](const char* key, Vector3& value) {
+    auto restoreVector = [&](const char* key, engine::Vector3& value) {
         if (state.contains(key) && state[key].is_array() && state[key].size() == 3) {
             value = {state[key][0].get<float>(), state[key][1].get<float>(), state[key][2].get<float>()};
         }

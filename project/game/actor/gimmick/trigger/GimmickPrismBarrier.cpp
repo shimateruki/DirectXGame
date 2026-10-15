@@ -11,6 +11,7 @@
 namespace {
 constexpr float kDefaultTransitionDuration = 0.42f;
 
+// 結界の出現・消失率を両端で滑らかにつなぎます。
 float SmoothStep01(float value) {
     // 壁の出現・消滅で高さの変化が急に止まらないようにします。
     value = (std::clamp)(value, 0.0f, 1.0f);
@@ -35,7 +36,7 @@ void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& 
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(0xffffffffu);
 
-    Object3d::ColliderConfig collider;
+    engine::Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 0.0f, 0.0f};
     collider.size = {1.0f, 1.0f, 0.45f};
@@ -118,7 +119,7 @@ void GimmickPrismBarrier::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<Object3d> GimmickPrismBarrier::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickPrismBarrier::Clone() const {
     // 初期化後に編集設定を移し、壁の材質と判定を複製先で作り直します。
     auto clone = std::make_unique<GimmickPrismBarrier>();
     assert(common_ != nullptr);
@@ -171,7 +172,7 @@ void GimmickPrismBarrier::ApplyRuntimeVisual() {
     // 壁の底辺を固定して上へ伸ばし、開閉中の見た目と衝突を同期します。
     const float eased = SmoothStep01(activation_);
     const float minimumScaleY = (std::max)(0.015f, authoredScale_.y * 0.012f);
-    const float currentScaleY = Math::Lerp(minimumScaleY, authoredScale_.y, eased);
+    const float currentScaleY = engine::Math::Lerp(minimumScaleY, authoredScale_.y, eased);
     const float authoredBottom = authoredPosition_.y - authoredScale_.y;
     SetTranslate({authoredPosition_.x, authoredBottom + currentScaleY, authoredPosition_.z});
     SetScale({authoredScale_.x, currentScaleY, authoredScale_.z});

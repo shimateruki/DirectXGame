@@ -18,16 +18,19 @@ int ToInt(AnimatorParameterType type) {
     return static_cast<int>(type);
 }
 
+// 遷移条件の比較種別を保存用の整数へ変換します。
 int ToInt(AnimatorConditionMode mode) {
     // 遷移条件の比較種別をJSONで扱える整数へ変換する。
     return static_cast<int>(mode);
 }
 
+// 保存値を有効範囲に丸めてAnimatorのパラメータ型へ戻します。
 AnimatorParameterType ToParameterType(int value) {
     // 保存値を定義済みのパラメータ型の範囲に収める。
     return static_cast<AnimatorParameterType>(std::clamp(value, 0, 3));
 }
 
+// 保存値を有効範囲に丸めて遷移条件の比較種別へ戻します。
 AnimatorConditionMode ToConditionMode(int value) {
     // 未知の比較種別は定義済みの範囲へ丸めてから読み込む。
     return static_cast<AnimatorConditionMode>(std::clamp(value, 0, 6));

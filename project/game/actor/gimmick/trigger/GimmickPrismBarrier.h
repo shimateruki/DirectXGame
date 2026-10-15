@@ -10,7 +10,7 @@ class GimmickPrismBarrier : public BaseGimmick {
     void OnTrigger() override;
     void OnSwitchEvent(bool active) override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     void CaptureAuthoredState(bool force = false);
@@ -19,9 +19,9 @@ class GimmickPrismBarrier : public BaseGimmick {
     void SetCollisionEnabled(bool enabled);
     float GetTransitionDuration() const;
 
-    Vector3 authoredPosition_{};
-    Vector3 authoredScale_{1.0f, 1.0f, 1.0f};
-    Vector4 authoredColor_{0.30f, 0.86f, 1.0f, 0.84f};
+    engine::Vector3 authoredPosition_{};
+    engine::Vector3 authoredScale_{1.0f, 1.0f, 1.0f};
+    engine::Vector4 authoredColor_{0.30f, 0.86f, 1.0f, 0.84f};
     uint32_t authoredCollisionAttribute_ = 0;
     uint32_t authoredCollisionMask_ = 0;
     float activation_ = 0.0f;

@@ -174,7 +174,7 @@ void EnemyMagmaSlime::BeginEncounterAppearance() {
     SetVelocity({0.0f, 0.0f, 0.0f});
     ClearTransientVisuals();
     HideAttackTelegraph();
-    VFXSequencer::PlayOneShot(kEncounterAppearanceSequence, encounterBasePosition_ + Vector3{0.0f, 0.18f, 0.0f},
+    VFXSequencer::PlayOneShot(kEncounterAppearanceSequence, encounterBasePosition_ + engine::Vector3{0.0f, 0.18f, 0.0f},
                               {1.55f, 1.55f, 1.55f});
 }
 

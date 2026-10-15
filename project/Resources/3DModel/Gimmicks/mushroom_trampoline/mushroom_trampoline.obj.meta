@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b60a1a15ee584ab89aa26cab52072a8b",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/mushroom_trampoline/mushroom_trampoline.obj",
+  "version": 1
+}

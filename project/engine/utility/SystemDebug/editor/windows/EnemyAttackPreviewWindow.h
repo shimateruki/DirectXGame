@@ -11,7 +11,7 @@
 
 class BaseEnemy;
 class BaseScene;
-class Object3d;
+namespace engine { class Object3d; }
 class Player;
 class SceneManager;
 class ProjectWindow;
@@ -31,16 +31,23 @@ public:
     void DrawImGui() override;
     /// <summary>選択中だけ下段へ表示する再生・スクラブ用タイムラインを描画します。</summary>
     void DrawTimelineWindow();
+    /// 攻撃構成の階層を描画し、選択が変わったか返す。
     bool DrawAttackAuthoringHierarchy();
+    /// 素材一覧への非所有参照を設定する。
     void SetAuthoringAssets(ProjectWindow* assets) { authoringAssets_ = assets; }
+    /// Game View 上へ攻撃範囲と操作ガイドを重ねて描く。
     void DrawAttackOverlay(float x, float y, float width, float height);
+    /// 攻撃配置用のビューポートが操作対象か返す。
     bool IsAuthoringViewportActive() const;
     std::string GetName() override { return crownMovieMode_ ? "Crown Movie Preview" : (playerCopyMode_ ? "Player Ability Preview" : "Enemy Attack Preview"); }
     bool IsEnabled() const { return enabled_; }
     bool IsPlayerCopyMode() const { return playerCopyMode_; }
+    /// プレイヤーのコピー能力プレビューへ切り替える。
     void SetPlayerCopyMode(bool enabled);
     bool IsCrownMovieMode() const { return crownMovieMode_; }
+    /// 王冠ムービー確認モードへ切り替える。
     void SetCrownMovieMode();
+    /// 再生中の攻撃と一時演出を停止する。
     void StopPreview();
     // 他のVFXツールが設定した時間倍率より後に、敵プレビューの停止状態を優先適用します。
     void ApplyEffectPlaybackState();
@@ -54,22 +61,34 @@ private:
     bool HasPreviewActor() const { return crownMovieMode_ ? crownMoviePrepared_ : (playerCopyMode_ ? previewPlayer_ != nullptr : previewEnemy_ != nullptr); }
     /// <summary>コピー能力に固有の入力と動作を設定するUIを描画します。</summary>
     void DrawPlayerCopySettings();
+    /// 攻撃プロファイルの数値とシーケンス設定を編集する。
     void DrawAttackProfileEditor();
+    /// 選択中トラックの詳細を編集する。
     void DrawTrackInspector();
+    /// シーケンストラックと再生位置を描画する。
     void DrawTrackTimeline();
+    /// 編集前のシーケンスを Undo 用に記録する。
     void RememberSequenceEdit(const AttackSequenceDefinition& before);
     // 保存前の表示部品だけを隔離ステージに配置します。AI・接触判定は実行しません。
     void BeginPlacementPreview();
     void UpdatePlacementPreview();
     void StopPlacementPreview();
+    /// 編集中の攻撃プロファイルを保存元から読み直す。
     void ReloadAuthoringProfile();
+    /// 弾の発射・飛翔・着弾設定を編集する。
     void DrawProjectileInspector();
+    /// 編集中のドラフトを指定再生位置でプレビューへ反映する。
     void PreviewDraft(bool keepTime);
+    /// ドラフト変更のプレビュー再生成を予約する。
     void RequestDraftRefresh();
+    /// 攻撃部品の配置操作を表示する。
     void DrawPlacementControls();
+    /// Game View 内で攻撃部品の変換ギズモを操作する。
     void DrawPlacementGizmo(float x, float y, float width, float height);
-    bool GetPlacementTransform(Vector3& position, Vector3& rotation, Vector3& scale);
-    void ApplyPlacementTransform(const Vector3& position, const Vector3& rotation, const Vector3& scale);
+    /// 選択部品の位置、回転、大きさを取得できたか返す。
+    bool GetPlacementTransform(engine::Vector3& position, engine::Vector3& rotation, engine::Vector3& scale);
+    /// 編集した変換を選択部品へ適用する。
+    void ApplyPlacementTransform(const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale);
     // 術者はSceneの参照、生成Objectは攻撃データの選択。既存JSONの番号とは分けます。
     enum class AuthoringSelectionKind { Attack, Actor, Event, Track };
     AuthoringSelectionKind GetAuthoringSelectionKind() const;
@@ -78,7 +97,7 @@ private:
     int placementOperation_ = 0; // 0=移動、1=回転、2=大きさ
     bool placementGizmoUsing_ = false;
     AttackSequenceDefinition placementGestureBefore_;
-    Object3d* placementObject_ = nullptr; // Sceneが所有する無害な弾モデルの表示用Object。
+    engine::Object3d* placementObject_ = nullptr; // Sceneが所有する無害な弾モデルの表示用Object。
     std::string placementGpuSignature_;
     std::string placementMessage_;
     bool useDraftProfile_ = false;
@@ -98,8 +117,11 @@ private:
     bool crownMovieMode_ = false;
     bool crownMoviePrepared_ = false;
     bool crownDefeatMode_ = false;
+    /// 王冠撃破ムービーの再生設定を表示する。
     void DrawCrownDefeatSettings();
+    /// 王冠ムービーの対象と再生設定を表示する。
     void DrawCrownMovieSettings();
+    /// 王冠ムービーの時間軸を表示する。
     void DrawCrownMovieTimeline();
     bool playerCopyMode_ = false;
     int copyTypeIndex_ = 0;
@@ -161,7 +183,9 @@ private:
     void ApplyRecommendedSettings();
     /// <summary>攻撃プロファイルの読込・保存・編集破棄を行います。</summary>
     void LoadSelectedProfile();
+    /// 選択攻撃の設定を保存し、必要ならプレビューを再開する。
     void SaveSelectedProfile(bool restartPreview = true);
+    /// 選択攻撃の編集値を保存済み状態へ戻す。
     void ResetSelectedProfile();
     /// <summary>選択中の攻撃定義を参照します。存在しない場合はnullptrです。</summary>
     const EnemyAttackDefinition* GetSelectedAttackDefinition() const;
@@ -178,9 +202,9 @@ private:
     SceneManager* sceneManager_ = nullptr;
     BaseScene* previewScene_ = nullptr;
     BaseEnemy* previewEnemy_ = nullptr;
-    Object3d* previewTarget_ = nullptr;
+    engine::Object3d* previewTarget_ = nullptr;
     Player* previewPlayer_ = nullptr;
-    std::vector<Object3d*> spawnedPreviewObjects_;
+    std::vector<engine::Object3d*> spawnedPreviewObjects_;
 
     bool enabled_ = false;
     bool playing_ = true;
@@ -204,7 +228,7 @@ private:
     bool previewHitReaction_ = false;
     bool previewHitTriggered_ = false;
     float previewHitTime_ = 1.0f;
-    Vector3 previewBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 previewBaseScale_ = { 1.0f, 1.0f, 1.0f };
     std::vector<TimelineSample> timelineSamples_;
     EnemyAttackProfile editableProfile_;
     std::string profileStatus_;

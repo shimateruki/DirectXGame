@@ -9,6 +9,7 @@
 #include "EditorManager.h"
 #include "ProfilerManager.h"
 #include "VFXAuthoringEditor.h"
+#include "VFXAssetPicker.h"
 #include <algorithm>
 #include <vector>
 namespace fs = std::filesystem;
@@ -17,6 +18,7 @@ void ParticleEditor::Initialize(SceneManager* sceneManager) {
 }
 
 void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
+    // シーンを切り替えた場合は古いParticleSystemを参照せず、毎フレーム現在のシーンから取り直す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         targetSystem_ = nullptr;
         return;
@@ -30,6 +32,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     const bool isSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
     if (!isSelected || !previewStage || !previewStage->IsEnabled()) {
+        // プレビュー解除時はゲーム側の発生位置・時間倍率へ戻す。
         targetSystem_->SetEditorPreviewOffset({ 0.0f, 0.0f, 0.0f });
         targetSystem_->SetSimulationTimeScale(1.0f);
         return;
@@ -40,6 +43,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     const float duration = (std::max)(3.0f, params.particleLifetime + 0.75f);
 
     const auto restartPreview = [&](float seekTime) {
+        // 粒子の履歴を直接戻せないため、固定刻みで先頭から再計算してシーク位置を再現する。
         targetSystem_->ResetSimulation();
         previewTime_ = 0.0f;
         if (!params.isEmitting) {
@@ -60,6 +64,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     };
 
     if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+        // リクエスト番号の変化だけを処理し、同じ再生・停止命令を毎フレーム繰り返さない。
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         restartPreview(0.0f);
     }
@@ -89,6 +94,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     }
 
     std::vector<EffectPreviewStage::TimelineEvent> events;
+    // 発生期間と粒子寿命を別レーンとして示し、設定と実際の生存時間を比較できるようにする。
     events.push_back({
         params.isEmitting ? "連続発生" : "単発発生",
         0.0f,
@@ -119,6 +125,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         performance);
 }
 
+// 数値列をグラフに描き、ドラッグ位置から該当サンプルの値だけを編集します。
 void EditCurve(const char* label, float* values, int count, float minVal, float maxVal) {
 #ifdef USE_IMGUI
     ImGui::Text("%s", label);
@@ -208,7 +215,7 @@ void ParticleEditor::DrawImGui() {
             params.emitCount = std::clamp(params.emitCount, 1, ParticleSystem::GetMaxParticles());
             if (!params.isEmitting) {
                 targetSystem->ResetSimulation();
-                Vector3 origin = params.spawnPosition;
+                engine::Vector3 origin = params.spawnPosition;
                 if (EffectPreviewStage* stage = EffectPreviewStage::GetInstance(); stage && stage->IsEnabled()) {
                     origin += stage->GetPreviewPosition();
                 }
@@ -302,10 +309,8 @@ void ParticleEditor::DrawImGui() {
 
         ImGui::Spacing();
         ImGui::Text(ICON_FA_IMAGE " テクスチャ (Texture)");
-        std::string directoryPath = "Resources/sprite/";
+        const std::string directoryPath = "Resources/sprite/";
         std::vector<std::string> files;
-        int currentItem = 0;
-        int index = 0;
 
         if (fs::exists(directoryPath)) {
             for (const auto& entry : fs::recursive_directory_iterator(directoryPath)) {
@@ -315,23 +320,21 @@ void ParticleEditor::DrawImGui() {
 
                 std::string relativePath = fs::relative(entry.path(), directoryPath).generic_string();
                 files.push_back(relativePath);
-                if (params.textureName.find(relativePath) != std::string::npos ||
-                    params.textureName.find(entry.path().filename().string()) != std::string::npos) {
-                    currentItem = index;
-                }
-                index++;
             }
         }
-
-        std::vector<const char*> filePtrs;
-        for (const auto& f : files) filePtrs.push_back(f.c_str());
-
-        if (!filePtrs.empty()) {
-            if (ImGui::Combo(ICON_FA_FILE_IMAGE " Texture File", &currentItem, filePtrs.data(), (int)filePtrs.size())) {
-                std::string fullPath = directoryPath + files[currentItem];
-                targetSystem->SetTexture(fullPath);
+        std::sort(files.begin(), files.end());
+        int currentItem = -1;
+        for (int i = 0; i < static_cast<int>(files.size()); ++i) {
+            if (params.textureName == directoryPath + files[i] || params.textureName == files[i]) {
+                currentItem = i;
+                break;
             }
         }
+        if (VFXAssetPicker::DrawCombo(ICON_FA_FILE_IMAGE " Texture File", files,
+                                      currentItem, textureSearch_, sizeof(textureSearch_))) {
+            targetSystem->SetTexture(directoryPath + files[currentItem]);
+        }
+        if (currentItem < 0 && !params.textureName.empty()) ImGui::TextDisabled("現在の画像: %s", params.textureName.c_str());
     }
 
     if (ImGui::CollapsingHeader("距離LOD / Budget", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -354,17 +357,43 @@ void ParticleEditor::DrawImGui() {
     // -------------------------------------------------------------
     ImGui::Separator();
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        static char saveName[64] = "NewEffect";
-        ImGui::InputText(ICON_FA_FILE_SIGNATURE " Name", saveName, sizeof(saveName));
+        std::vector<std::string> savedNames;
+        const fs::path presetDirectory = "Resources/json/particle";
+        if (fs::exists(presetDirectory)) {
+            for (const auto& entry : fs::directory_iterator(presetDirectory)) {
+                if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                    savedNames.push_back(entry.path().stem().string());
+                }
+            }
+        }
+        std::sort(savedNames.begin(), savedNames.end());
+        int selectedPreset = -1;
+        for (int i = 0; i < static_cast<int>(savedNames.size()); ++i) {
+            if (savedNames[i] == saveName_) { selectedPreset = i; break; }
+        }
+        if (VFXAssetPicker::DrawCombo(ICON_FA_FOLDER_OPEN " 保存済み設定", savedNames,
+                                      selectedPreset, presetSearch_, sizeof(presetSearch_))) {
+            strcpy_s(saveName_, sizeof(saveName_), savedNames[selectedPreset].c_str());
+        }
+        ImGui::TextDisabled("一覧で選んだ後、「読み込み」で設定を反映します");
+        ImGui::InputText(ICON_FA_FILE_SIGNATURE " Name", saveName_, sizeof(saveName_));
 
         if (ImGui::Button(ICON_FA_DOWNLOAD " Save JSON", ImVec2(120, 0))) {
-            ParticleManager::GetInstance()->SaveParam(std::string(saveName), params);
+            ParticleManager::GetInstance()->SaveParam(std::string(saveName_), params);
         }
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_UPLOAD " Load JSON", ImVec2(120, 0))) {
-            ParticleManager::GetInstance()->LoadParam(std::string(saveName));
-            params = ParticleManager::GetInstance()->GetParam(std::string(saveName));
-            targetSystem->SetTexture(params.textureName);
+            if (fs::exists(presetDirectory / (std::string(saveName_) + ".json"))) {
+                ParticleManager::GetInstance()->LoadParam(std::string(saveName_));
+                params = ParticleManager::GetInstance()->GetParam(std::string(saveName_));
+                targetSystem->SetTexture(params.textureName);
+            } else {
+                ImGui::OpenPopup("通常パーティクル設定が見つかりません");
+            }
+        }
+        if (ImGui::BeginPopup("通常パーティクル設定が見つかりません")) {
+            ImGui::TextUnformatted("読み込む JSON がありません。保存済み設定から選んでください。");
+            ImGui::EndPopup();
         }
     }
 

@@ -30,28 +30,33 @@ struct ManualPage {
     ManualSpecial special = ManualSpecial::None;
 };
 
+// 手引き内の節見出しを区切り線付きで描画します。
 void SectionTitle(const char* title) {
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.42f, 0.82f, 1.0f, 1.0f), "%s", title);
     ImGui::Separator();
 }
 
+// 本文を領域の幅に合わせて折り返します。
 void Paragraph(const char* text) {
     ImGui::TextWrapped("%s", text);
 }
 
+// 箇条書きと番号付き手順を共通の見た目で描画します。
 void ManualBullet(const char* text) {
     ImGui::Bullet();
     ImGui::SameLine();
     ImGui::TextWrapped("%s", text);
 }
 
+// 手順番号と説明文を同じ行に描画します。
 void ManualStep(int index, const char* text) {
     ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.28f, 1.0f), "%d.", index);
     ImGui::SameLine();
     ImGui::TextWrapped("%s", text);
 }
 
+// 注意事項を強調色の子領域へ表示します。
 void ManualNote(const char* text) {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.28f, 0.22f, 0.08f, 0.45f));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.88f, 0.45f, 1.0f));
@@ -61,6 +66,7 @@ void ManualNote(const char* text) {
     ImGui::PopStyleColor(2);
 }
 
+// 操作キーと用途を現在のショートカット表に一行追加します。
 void AddShortcutRow(const char* key, const char* action) {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
@@ -69,7 +75,9 @@ void AddShortcutRow(const char* key, const char* action) {
     ImGui::TextWrapped("%s", action);
 }
 
+// Editor操作のショートカット一覧を二列表で表示します。
 void DrawShortcutTable() {
+    // 手引きのショートカット一覧は操作と説明を同じ列幅で表示する。
     if (!ImGui::BeginTable("EngineManualShortcutTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         return;
     }
@@ -98,6 +106,7 @@ void DrawShortcutTable() {
     ImGui::EndTable();
 }
 
+// 材質番号、名称、用途を現在の材質表に一行追加します。
 void AddMaterialRow(const char* type, const char* name, const char* use) {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
@@ -108,7 +117,9 @@ void AddMaterialRow(const char* type, const char* name, const char* use) {
     ImGui::TextWrapped("%s", use);
 }
 
+// Material Typeの番号と用途を三列表で表示します。
 void DrawMaterialTable() {
+    // Inspectorで選べるMaterial Typeと用途を一つの表で確認できるようにする。
     if (!ImGui::BeginTable("EngineManualMaterialTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         return;
     }
@@ -487,26 +498,6 @@ const std::vector<ManualPage>& GetManualPages() {
                 "演出終了時にパラメータが基準値へ戻る。",
             },
             "派手さをBloomだけで作ると画面全体の情報量が失われます。発光元のMaterial、Particle、Lightと役割を分けて調整してください。",
-        },
-        {
-            "02 描画・入力",
-            "キーコンフィグ (Key Config)",
-            "Input Action keyboard mouse binding",
-            "ゲーム内Action名とキーボード・マウス入力の対応を編集します。",
-            "Hierarchy最上部の「キーコンフィグ (Key Config)」を選びます。",
-            {
-                "既存Action一覧から編集対象を選ぶか、新しいAction名を追加します。",
-                "入力追加を開始し、割り当てたいキーまたはマウスボタンを押します。",
-                "不要なBindingまたはActionを削除し、重複や操作不能になる割り当てがないか確認します。",
-                "Save後にゲームを実行し、押下・長押し・同時押しを確認します。",
-            },
-            "Resources/json/key/keyconfig.jsonへSaveし、Loadでディスク上の設定へ戻します。",
-            {
-                "決定とキャンセル、移動とカメラなど必須Actionが未割当になっていない。",
-                "同じキーの重複がゲーム仕様上問題ない。",
-                "Editor操作中ではなく実ゲーム入力として確認した。",
-            },
-            "Loadは未保存の変更を破棄します。必須Actionを削除すると操作不能になるため、変更前の設定を残してから試してください。",
         },
         {
             "03 VFX",
@@ -1177,6 +1168,7 @@ const std::vector<ManualPage>& GetManualPages() {
 }
 
 std::string ToLowerAscii(std::string value) {
+    // UTF-8の日本語バイトは変えず、英数字の検索部分だけ大文字小文字を揃える。
     for (char& c : value) {
         const unsigned char byte = static_cast<unsigned char>(c);
         if (byte < 0x80) {
@@ -1186,6 +1178,7 @@ std::string ToLowerAscii(std::string value) {
     return value;
 }
 
+// 大文字小文字を無視して手引きの項目文に検索語が含まれるかを調べます。
 bool ContainsSearchText(const char* text, const std::string& query) {
     if (!text || query.empty()) {
         return query.empty();
@@ -1194,6 +1187,7 @@ bool ContainsSearchText(const char* text, const std::string& query) {
 }
 
 bool MatchesPage(const ManualPage& page, const std::string& query) {
+    // 見出しだけでなく手順と確認項目も検索対象に含める。
     if (query.empty()) {
         return true;
     }
@@ -1219,7 +1213,9 @@ bool MatchesPage(const ManualPage& page, const std::string& query) {
     return false;
 }
 
+// 手引きページの見出し、操作手順、保存先、確認項目を共通構成で描画します。
 void DrawManualPage(const ManualPage& page) {
+    // ページの共通構成を固定し、操作一覧や素材表だけ種類に応じて差し込む。
     ImGui::TextColored(ImVec4(0.35f, 0.9f, 1.0f, 1.0f), "%s", page.title);
     ImGui::SameLine();
     ImGui::TextDisabled("  %s", page.category);

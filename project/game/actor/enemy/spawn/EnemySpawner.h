@@ -7,7 +7,7 @@
 class Object3dCommon;
 
 // 一定間隔で敵を発生させるための配置用オブジェクト
-class EnemySpawner : public Object3d {
+class EnemySpawner : public engine::Object3d {
   public:
     /// <summary>
     /// スポナーの初期化
@@ -17,11 +17,12 @@ class EnemySpawner : public Object3d {
     // タイマーを進め、条件を満たしたらスポーン通知を出す
     void Update(float deltaTime) override;
 
-    using SpawnCallback = std::function<void(const Vector3&)>;
+    using SpawnCallback = std::function<void(const engine::Vector3&)>;
     // 実際の敵生成はシーン側へ任せるため、座標だけコールバックで通知する
     void SetOnSpawnCallback(SpawnCallback callback) { onSpawnCallback_ = callback; }
 
   private:
+    /// コールバックが設定されていれば、現在位置を生成先へ通知する。
     void Spawn();
 
   private:

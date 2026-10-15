@@ -336,9 +336,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.9070512056350708,
+                0.4687263071537018,
                 0.0,
-                0.4210203289985657
+                0.8833434581756592
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -347,7 +347,7 @@
             },
             "rotation": [
                 0.0,
-                2.2724528312683105,
+                0.9756966829299927,
                 0.0
             ],
             "roughness": 0.5,
@@ -701,6 +701,246 @@
                 62.240394592285156,
                 8.208473205566406,
                 -24.04391860961914
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.23999999463558197,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.7300000190734863,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.25,
+                    0.7300000190734863,
+                    1.25
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 6,
+            "collisionAttributeIds": [
+                "enemy",
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 73,
+            "collisionMaskIds": [
+                "player",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.5500000715255737,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "RingBurner",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "44fa8dcc-0f7f-4328-bdc7-9b5dbf45070d",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.7200000286102295,
+            "myEventID": -1,
+            "name": "Stage1_Enemy_RingBurner_BlinkJunction_Copy0_Copy0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "RingBurner"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                28.575279235839844,
+                8.250540733337402,
+                -18.13249397277832
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.23999999463558197,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.7300000190734863,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.25,
+                    0.7300000190734863,
+                    1.25
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 6,
+            "collisionAttributeIds": [
+                "enemy",
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 73,
+            "collisionMaskIds": [
+                "player",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.5500000715255737,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "RingBurner",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "08d2067e-4195-4982-933a-9710793d65ce",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.7200000286102295,
+            "myEventID": -1,
+            "name": "Stage1_Enemy_RingBurner_BlinkJunction_Copy0_Copy0_Copy1",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "RingBurner"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                34.48298645019531,
+                8.269510269165039,
+                -1.8616864681243896
             ],
             "quaternion": [
                 0.0,

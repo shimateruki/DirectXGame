@@ -56,11 +56,11 @@ inline float Lerp(float start, float end, float rate) {
 /// <summary>Euler 角の単一軸を最短経路で補間します。</summary>
 /// <remarks>180 度付近でも遠回りしないため、キャラクターの旋回に使用できます。</remarks>
 inline float LerpAngle(float start, float end, float rate) {
-    return Math::LerpShortAngle(start, end, Clamp01(rate));
+    return engine::Math::LerpShortAngle(start, end, Clamp01(rate));
 }
 
 /// <summary>2 つの座標を線形補間します。rate は 0～1 に収めます。</summary>
-inline Vector3 Lerp(const Vector3& start, const Vector3& end, float rate) {
+inline engine::Vector3 Lerp(const engine::Vector3& start, const engine::Vector3& end, float rate) {
     const float t = Clamp01(rate);
     return {
         start.x + (end.x - start.x) * t,
@@ -86,13 +86,13 @@ inline float DampAngle(float current, float target, float response, float deltaT
 }
 
 /// <summary>座標を時間刻みに依存しない速度で追従させます。</summary>
-inline Vector3 Damp(const Vector3& current, const Vector3& target, float response, float deltaTime) {
+inline engine::Vector3 Damp(const engine::Vector3& current, const engine::Vector3& target, float response, float deltaTime) {
     return Lerp(current, target, FollowAlpha(response, deltaTime));
 }
 
 /// <summary>Euler の各軸を独立に最短経路で補間します。</summary>
 /// <remarks>小さな傾きと Y 旋回を混ぜる場合、Quaternion から Euler へ戻す際の折り返しを避けられます。</remarks>
-inline Vector3 LerpEulerAxes(const Vector3& startEuler, const Vector3& endEuler, float rate) {
+inline engine::Vector3 LerpEulerAxes(const engine::Vector3& startEuler, const engine::Vector3& endEuler, float rate) {
     const float t = Clamp01(rate);
     return {
         LerpAngle(startEuler.x, endEuler.x, t),
@@ -102,24 +102,24 @@ inline Vector3 LerpEulerAxes(const Vector3& startEuler, const Vector3& endEuler,
 }
 
 /// <summary>Euler の各軸を独立に、時間刻みに依存しない速度で追従させます。</summary>
-inline Vector3 DampEulerAxes(
-    const Vector3& currentEuler,
-    const Vector3& targetEuler,
+inline engine::Vector3 DampEulerAxes(
+    const engine::Vector3& currentEuler,
+    const engine::Vector3& targetEuler,
     float response,
     float deltaTime) {
     return LerpEulerAxes(currentEuler, targetEuler, FollowAlpha(response, deltaTime));
 }
 
 /// <summary>Euler 角を Quaternion に変換して球面線形補間します。</summary>
-inline Vector3 SlerpEuler(const Vector3& startEuler, const Vector3& endEuler, float rate) {
-    const Quaternion start = Math::EulerToQuaternion(startEuler);
-    const Quaternion end = Math::EulerToQuaternion(endEuler);
-    const Quaternion result = Math::Slerp(start, end, Clamp01(rate));
-    return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(result));
+inline engine::Vector3 SlerpEuler(const engine::Vector3& startEuler, const engine::Vector3& endEuler, float rate) {
+    const engine::Quaternion start = engine::Math::EulerToQuaternion(startEuler);
+    const engine::Quaternion end = engine::Math::EulerToQuaternion(endEuler);
+    const engine::Quaternion result = engine::Math::Slerp(start, end, Clamp01(rate));
+    return engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(result));
 }
 
 /// <summary>Euler 角を Quaternion 経由で追従させます。</summary>
-inline Vector3 DampEuler(const Vector3& currentEuler, const Vector3& targetEuler, float response, float deltaTime) {
+inline engine::Vector3 DampEuler(const engine::Vector3& currentEuler, const engine::Vector3& targetEuler, float response, float deltaTime) {
     return SlerpEuler(currentEuler, targetEuler, FollowAlpha(response, deltaTime));
 }
 

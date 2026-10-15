@@ -40,7 +40,7 @@ void GimmickFireCannon::Initialize(Object3dCommon* common, const std::string& mo
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetStatic(false);
 
-    Object3d::ColliderConfig colConfig;
+    engine::Object3d::ColliderConfig colConfig;
     colConfig.type = ColliderType::kOBB;
     colConfig.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(colConfig);
@@ -96,7 +96,7 @@ void GimmickFireCannon::Update(float deltaTime) {
         return;
     }
     landingWarning_.Hide();
-    Vector3 fireDirection = {};
+    engine::Vector3 fireDirection = {};
     const bool canFire = active_ && FindFireDirection(fireDirection);
     if (canFire && param_->actionMode == 1) {
         RotateToward(fireDirection, deltaTime);
@@ -142,7 +142,7 @@ bool GimmickFireCannon::IsPlaying() const {
     return sceneManager && sceneManager->IsPlaying();
 }
 
-bool GimmickFireCannon::FindFireDirection(Vector3& outDirection) const {
+bool GimmickFireCannon::FindFireDirection(engine::Vector3& outDirection) const {
     // 固定砲は前方へ、追尾砲は射程内のプレイヤー中心へ照準を向けます。
     if (!param_.has_value() || param_->actionMode == 0) {
         outDirection = GetForwardDirection();
@@ -164,43 +164,43 @@ bool GimmickFireCannon::FindFireDirection(Vector3& outDirection) const {
         return false;
     }
 
-    Vector3 target = player->GetWorldPosition();
+    engine::Vector3 target = player->GetWorldPosition();
     target.y += 0.65f;
 
-    const Vector3 muzzle = GetMuzzlePosition(GetForwardDirection());
-    Vector3 diff = target - muzzle;
-    const float distance = Math::Length(diff);
+    const engine::Vector3 muzzle = GetMuzzlePosition(GetForwardDirection());
+    engine::Vector3 diff = target - muzzle;
+    const float distance = engine::Math::Length(diff);
     const float range = (param_->detectionRange > 0.0f) ? param_->detectionRange : kDefaultDetectionRange;
     if (distance > range || distance < 0.001f) {
         return false;
     }
 
-    outDirection = Math::Normalize(diff);
+    outDirection = engine::Math::Normalize(diff);
     return true;
 }
 
-Vector3 GimmickFireCannon::GetForwardDirection() const {
+engine::Vector3 GimmickFireCannon::GetForwardDirection() const {
     // ピッチとヨーから発射方向を作り、零ベクトル時は前方を既定にします。
-    const Vector3 rot = GetRotation();
+    const engine::Vector3 rot = GetRotation();
     const float cosPitch = std::cos(rot.x);
-    Vector3 forward = {std::sin(rot.y) * cosPitch, -std::sin(rot.x), std::cos(rot.y) * cosPitch};
+    engine::Vector3 forward = {std::sin(rot.y) * cosPitch, -std::sin(rot.x), std::cos(rot.y) * cosPitch};
 
-    if (Math::Length(forward) < 0.001f) {
+    if (engine::Math::Length(forward) < 0.001f) {
         return {0.0f, 0.0f, 1.0f};
     }
-    return Math::Normalize(forward);
+    return engine::Math::Normalize(forward);
 }
 
-Vector3 GimmickFireCannon::GetMuzzlePosition(const Vector3& direction) const {
+engine::Vector3 GimmickFireCannon::GetMuzzlePosition(const engine::Vector3& direction) const {
     // モデルの大きさに応じて砲口を前上方へずらし、本体から弾が出るようにします。
-    const Vector3 scale = GetScale();
-    Vector3 muzzle = GetWorldPosition();
+    const engine::Vector3 scale = GetScale();
+    engine::Vector3 muzzle = GetWorldPosition();
     muzzle += direction * ((std::max)(scale.z, 0.5f) * 0.95f);
     muzzle.y += (std::max)(scale.y, 0.5f) * 0.18f;
     return muzzle;
 }
 
-void GimmickFireCannon::RotateToward(const Vector3& direction, float deltaTime) {
+void GimmickFireCannon::RotateToward(const engine::Vector3& direction, float deltaTime) {
     // 短い角度の経路で回転し、角度境界をまたいでも大回りしません。
     const float horizontalLength = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     if (horizontalLength < 0.001f) {
@@ -211,13 +211,13 @@ void GimmickFireCannon::RotateToward(const Vector3& direction, float deltaTime) 
     const float targetPitch = std::atan2(-direction.y, horizontalLength);
     const float t = std::clamp(GetTurnSpeedRadians() * deltaTime, 0.0f, 1.0f);
 
-    Vector3 rot = GetRotation();
-    rot.y = Math::LerpShortAngle(rot.y, targetYaw, t);
-    rot.x = Math::LerpShortAngle(rot.x, targetPitch, t);
+    engine::Vector3 rot = GetRotation();
+    rot.y = engine::Math::LerpShortAngle(rot.y, targetYaw, t);
+    rot.x = engine::Math::LerpShortAngle(rot.x, targetPitch, t);
     SetRotation(rot);
 }
 
-void GimmickFireCannon::FireProjectile(const Vector3& direction) {
+void GimmickFireCannon::FireProjectile(const engine::Vector3& direction) {
     // 弾の寿命は射程と速度から求め、飛び過ぎや途中消滅を抑えます。
     const float radius = GetProjectileRadius();
     const float speed = GetProjectileSpeed();
@@ -264,7 +264,7 @@ float GimmickFireCannon::GetTurnSpeedRadians() const {
     return degrees * (kPi / 180.0f);
 }
 
-std::unique_ptr<Object3d> GimmickFireCannon::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickFireCannon::Clone() const {
     // 複製先の予告表示と判定資源を初期化してから設定をコピーします。
     auto newObj = std::make_unique<GimmickFireCannon>();
     assert(common_ != nullptr);
@@ -309,18 +309,18 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
         auto* player = GetScenePlayer(scene);
         if (!player)
             return;
-        const Vector3 target = player->GetWorldPosition();
-        if (Math::Length(target - GetWorldPosition()) > param_->detectionRange)
+        const engine::Vector3 target = player->GetWorldPosition();
+        if (engine::Math::Length(target - GetWorldPosition()) > param_->detectionRange)
             return;
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("ground");
         filter.ignoredObject = this;
         const auto ground =
-            CollisionManager::GetInstance()->Raycast(target + Vector3{0, 1, 0}, {0, -1, 0}, 18.0f, filter);
+            CollisionManager::GetInstance()->Raycast(target + engine::Vector3{0, 1, 0}, {0, -1, 0}, 18.0f, filter);
         if (!ground.isHit)
             return;
         lockedTarget_ = ground.hitPoint;
-        Vector3 direction = lockedTarget_ - GetWorldPosition();
+        engine::Vector3 direction = lockedTarget_ - GetWorldPosition();
         if (direction.x * direction.x + direction.z * direction.z < 100.0f)
             return;
         // 予告開始時に狙いを固定し、回避後のプレイヤーを追いかけない。
@@ -329,18 +329,18 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
         warningTimer_ = warning;
     }
     warningTimer_ -= dt;
-    landingWarning_.ShowCircle(lockedTarget_ + Vector3{0, 0.08f, 0}, blast,
+    landingWarning_.ShowCircle(lockedTarget_ + engine::Vector3{0, 0.08f, 0}, blast,
                                std::clamp(1.0f - warningTimer_ / warning, 0.0f, 1.0f), {1.0f, 0.34f, 0.05f, 0.65f});
     if (warningTimer_ > 0.0f)
         return;
-    const Vector3 forward = GetForwardDirection();
-    const Vector3 muzzle = GetWorldPosition() + forward * (2.55f * baseScale_.z) + Vector3{0, 2.73f * baseScale_.y, 0};
-    const Vector3 target = lockedTarget_ + Vector3{0, radius + 0.03f, 0};
+    const engine::Vector3 forward = GetForwardDirection();
+    const engine::Vector3 muzzle = GetWorldPosition() + forward * (2.55f * baseScale_.z) + engine::Vector3{0, 2.73f * baseScale_.y, 0};
+    const engine::Vector3 target = lockedTarget_ + engine::Vector3{0, radius + 0.03f, 0};
     // 頂点高度から上向き初速と飛行時間を逆算し、水平速度をロック済み着弾点へ合わせます。
     const float apex = (std::max)(muzzle.y, target.y) + std::clamp(param_->jumpPower, 3.0f, 20.0f);
     const float vy = std::sqrt(2.0f * gravity * (apex - muzzle.y));
     const float flight = vy / gravity + std::sqrt(2.0f * (apex - target.y) / gravity);
-    const Vector3 velocity = {(target.x - muzzle.x) / flight, vy, (target.z - muzzle.z) / flight};
+    const engine::Vector3 velocity = {(target.x - muzzle.x) / flight, vy, (target.z - muzzle.z) / flight};
     BulletVisualConfig visual;
     visual.visualScale = radius;
     visual.explosionRadius = blast;

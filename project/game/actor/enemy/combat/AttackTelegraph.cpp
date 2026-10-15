@@ -23,7 +23,7 @@ constexpr const char* kAttackWarningEffectPath = "Resources/json/effect/effect_a
 constexpr const char* kAttackWarningTexturePath = "Resources/sprite/effect/attack_warning_flash.dds";
 constexpr const char* kWhiteTexturePath = "Resources/sprite/common/white.dds";
 
-Vector3 NormalizePlanar(Vector3 direction) {
+engine::Vector3 NormalizePlanar(engine::Vector3 direction) {
     // 目標と同座標でも予告の向きを失わないよう、ゼロ長には固定の前方を使う。
     direction.y = 0.0f;
     const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
@@ -33,6 +33,7 @@ Vector3 NormalizePlanar(Vector3 direction) {
     return {direction.x / length, 0.0f, direction.z / length};
 }
 
+// 攻撃予兆の終点で減速する補間率を返します。
 float EaseOut(float t) {
     // 発生直後を速く、終端を緩くして警告の拡大を読み取りやすくする。
     t = std::clamp(t, 0.0f, 1.0f);
@@ -300,7 +301,7 @@ void AttackTelegraph::ConfigureCueShape(Shape shape) {
     ConfigureEffectShape(cueEffect_.get(), cueShape_);
 }
 
-Vector4 AttackTelegraph::MakeDisplayColor(const Vector4& color, float progress) const {
+engine::Vector4 AttackTelegraph::MakeDisplayColor(const engine::Vector4& color, float progress) const {
     // 発生までの進行率を点滅速度と透明度へ反映する。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float pulse = 0.55f + std::sin(pulseTimer_ * (8.0f + progress * 8.0f)) * 0.45f;
@@ -310,7 +311,7 @@ Vector4 AttackTelegraph::MakeDisplayColor(const Vector4& color, float progress) 
             std::clamp(color.z * (1.0f - progress * 0.20f), 0.0f, 1.0f), alpha};
 }
 
-Vector4 AttackTelegraph::MakeDecalColor(const Vector4& color, float progress) const {
+engine::Vector4 AttackTelegraph::MakeDecalColor(const engine::Vector4& color, float progress) const {
     // デカールは地面との重なりを保ちつつ、発生が近いほど目立たせる。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float pulse = 0.5f + std::sin(pulseTimer_ * (5.0f + progress * 3.0f)) * 0.5f;
@@ -318,7 +319,7 @@ Vector4 AttackTelegraph::MakeDecalColor(const Vector4& color, float progress) co
     return {color.x, color.y, color.z, alpha};
 }
 
-Vector4 AttackTelegraph::MakeCueColor(const Vector4& color, float progress) const {
+engine::Vector4 AttackTelegraph::MakeCueColor(const engine::Vector4& color, float progress) const {
     // 命中合図を短時間で消し、次の警告と混ざらないようにする。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float flash = 1.0f - progress;
@@ -327,8 +328,8 @@ Vector4 AttackTelegraph::MakeCueColor(const Vector4& color, float progress) cons
             std::clamp(color.z * 0.22f + flash * 0.20f, 0.0f, 1.0f), alpha};
 }
 
-void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress,
-                                  const Vector4& color, float scaleMultiplier) const {
+void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress,
+                                  const engine::Vector4& color, float scaleMultiplier) const {
     // 警告範囲の中心は動かさず、進行率によって半径だけ実判定へ近づける。
     if (!effect) {
         return;
@@ -338,7 +339,7 @@ void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center,
     radius = (std::max)(radius, 0.05f);
     const float scaleRate = (0.58f + EaseOut(progress) * 0.42f) * (std::max)(scaleMultiplier, 0.01f);
 
-    Vector3 pos = center;
+    engine::Vector3 pos = center;
     pos.y += kGroundLift;
     effect->SetTranslate(pos);
     effect->SetRotation({0.0f, 0.0f, 0.0f});
@@ -348,8 +349,8 @@ void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center,
     effect->UpdateWorldMatrix();
 }
 
-void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress,
-                                       const Vector4& color, float scaleMultiplier) const {
+void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress,
+                                       const engine::Vector4& color, float scaleMultiplier) const {
     // 地面から僅かに浮かせ、深度競合でデカールがちらつくのを避ける。
     if (!effect) {
         return;
@@ -359,7 +360,7 @@ void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& ce
     radius = (std::max)(radius, 0.05f);
     scaleMultiplier = (std::max)(scaleMultiplier, 0.01f);
 
-    Vector3 position = center;
+    engine::Vector3 position = center;
     position.y += kGroundLift + 0.006f;
     effect->SetTranslate(position);
     effect->SetRotation({0.0f, pulseTimer_ * 0.12f + progress * 0.08f, 0.0f});
@@ -369,7 +370,7 @@ void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& ce
     effect->UpdateWorldMatrix();
 }
 
-Vector4 AttackTelegraph::MakeTimingColor(const Vector4& color, float progress) const {
+engine::Vector4 AttackTelegraph::MakeTimingColor(const engine::Vector4& color, float progress) const {
     // 発生が近づく後半ほど色を強め、攻撃の直前を判別しやすくする。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float urgency = std::clamp((progress - 0.56f) / 0.44f, 0.0f, 1.0f);
@@ -382,8 +383,8 @@ Vector4 AttackTelegraph::MakeTimingColor(const Vector4& color, float progress) c
             std::clamp(color.w * (0.72f + urgencySmooth * 0.18f + pulse * 0.10f), 0.0f, 1.0f)};
 }
 
-void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, const Vector3& direction, float length,
-                                float width, float progress, const Vector4& color, float scaleMultiplier) const {
+void AttackTelegraph::ApplyLine(EffectObject3d* effect, const engine::Vector3& center, const engine::Vector3& direction, float length,
+                                float width, float progress, const engine::Vector4& color, float scaleMultiplier) const {
     // 始点を固定したまま前方へ伸ばし、射線の向きを予告から読めるようにする。
     if (!effect) {
         return;
@@ -392,11 +393,11 @@ void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, c
     progress = std::clamp(progress, 0.0f, 1.0f);
     length = (std::max)(length, 0.05f);
     width = (std::max)(width, 0.05f);
-    const Vector3 dir = NormalizePlanar(direction);
+    const engine::Vector3 dir = NormalizePlanar(direction);
     const float yaw = std::atan2(dir.x, dir.z);
     const float scaleRate = (0.50f + EaseOut(progress) * 0.50f) * (std::max)(scaleMultiplier, 0.01f);
 
-    Vector3 pos = center + dir * (length * 0.5f * scaleRate);
+    engine::Vector3 pos = center + dir * (length * 0.5f * scaleRate);
     pos.y += kGroundLift;
     effect->SetTranslate(pos);
     effect->SetRotation({0.0f, yaw, 0.0f});
@@ -406,8 +407,8 @@ void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, c
     effect->UpdateWorldMatrix();
 }
 
-void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const Vector3& origin, const Vector3& direction,
-                                            float length, float width, float progress, const Vector4& color) const {
+void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const engine::Vector3& origin, const engine::Vector3& direction,
+                                            float length, float width, float progress, const engine::Vector4& color) const {
     // 残り時間を線上の移動マーカーに変え、端を越えないよう位置を制限する。
     if (!effect) {
         return;
@@ -416,7 +417,7 @@ void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const Vector
     length = (std::max)(length, 0.05f);
     width = (std::max)(width, 0.05f);
     progress = std::clamp(progress, 0.0f, 1.0f);
-    const Vector3 normalizedDirection = NormalizePlanar(direction);
+    const engine::Vector3 normalizedDirection = NormalizePlanar(direction);
     const float markerLength = std::clamp(length * 0.075f, kTimingMarkerMinLength, kTimingMarkerMaxLength);
     const float startDistance =
         std::clamp(length * progress - markerLength * 0.5f, 0.0f, (std::max)(0.0f, length - markerLength));
@@ -424,28 +425,28 @@ void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const Vector
               1.0f, color, 1.0f);
 }
 
-void AttackTelegraph::ShowCircleTiming(const Vector3& center, float radius, float progress, const Vector4& color) {
+void AttackTelegraph::ShowCircleTiming(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color) {
     // 予告の外周を攻撃発生時に実半径へ収束させる。
     progress = std::clamp(progress, 0.0f, 1.0f);
     BeginTiming(Shape::Circle, 1);
     const float countdownScale = kCountdownOuterScale - (kCountdownOuterScale - 1.0f) * progress;
-    Vector3 timingCenter = center;
+    engine::Vector3 timingCenter = center;
     timingCenter.y += kTimingLayerLift;
     ApplyCircle(timingEffects_[0].get(), timingCenter, radius, 1.0f, MakeTimingColor(color, progress), countdownScale);
 }
 
-void AttackTelegraph::ShowLineTiming(const Vector3& origin, const Vector3& direction, float length, float width,
-                                     float progress, const Vector4& color) {
+void AttackTelegraph::ShowLineTiming(const engine::Vector3& origin, const engine::Vector3& direction, float length, float width,
+                                     float progress, const engine::Vector4& color) {
     // 射線上を進むマーカーで、線状攻撃の発生までの時間を示す。
     BeginTiming(Shape::Line, 1);
-    Vector3 timingOrigin = origin;
+    engine::Vector3 timingOrigin = origin;
     timingOrigin.y += kTimingLayerLift;
     ApplyLineTimingMarker(timingEffects_[0].get(), timingOrigin, direction, length, width, progress,
                           MakeTimingColor(color, progress));
 }
 
 // 予兆の形と進行率を描画へ渡します。攻撃判定の半径は呼び出し側が同じ値で管理します。
-void AttackTelegraph::ShowCircle(const Vector3& center, float radius, float progress, const Vector4& color) {
+void AttackTelegraph::ShowCircle(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color) {
     // 複数地点の表示を解除し、この一箇所の範囲と時間だけ表示する。
     EnsureEffect(common_);
     if (!effect_) {
@@ -465,7 +466,7 @@ void AttackTelegraph::ShowCircle(const Vector3& center, float radius, float prog
     lastColor_ = color;
 }
 
-void AttackTelegraph::ShowDecalCircle(const Vector3& center, float radius, float progress, const Vector4& color,
+void AttackTelegraph::ShowDecalCircle(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color,
                                       const std::string& texturePath) {
     // 画像が変わった時だけ形状設定を更新し、古いデカールを使い回さない。
     EnsureEffect(common_);
@@ -491,8 +492,8 @@ void AttackTelegraph::ShowDecalCircle(const Vector3& center, float radius, float
     lastColor_ = color;
 }
 
-void AttackTelegraph::ShowLine(const Vector3& center, const Vector3& direction, float length, float width,
-                               float progress, const Vector4& color) {
+void AttackTelegraph::ShowLine(const engine::Vector3& center, const engine::Vector3& direction, float length, float width,
+                               float progress, const engine::Vector4& color) {
     // 射線の最後の形状を覚え、命中直前の合図を同じ位置へ出せるようにする。
     EnsureEffect(common_);
     if (!effect_) {
@@ -514,8 +515,8 @@ void AttackTelegraph::ShowLine(const Vector3& center, const Vector3& direction, 
     lastColor_ = color;
 }
 
-void AttackTelegraph::ShowCone(const Vector3& origin, const Vector3& direction, float length, float startWidth,
-                               float endWidth, float progress, const Vector4& color) {
+void AttackTelegraph::ShowCone(const engine::Vector3& origin, const engine::Vector3& direction, float length, float startWidth,
+                               float endWidth, float progress, const engine::Vector4& color) {
     // 扇形を長さ方向の複数区間で近似し、先端へ向けた幅の変化を見せる。
     length = (std::max)(length, 0.05f);
     startWidth = (std::max)(startWidth, 0.05f);
@@ -523,16 +524,16 @@ void AttackTelegraph::ShowCone(const Vector3& origin, const Vector3& direction, 
     progress = std::clamp(progress, 0.0f, 1.0f);
 
     BeginPattern(Shape::Line, kConeSegmentCount);
-    const Vector3 normalizedDirection = NormalizePlanar(direction);
+    const engine::Vector3 normalizedDirection = NormalizePlanar(direction);
     const float segmentLength = length / static_cast<float>(kConeSegmentCount);
-    const Vector4 displayColor = MakeDisplayColor(color, progress);
+    const engine::Vector4 displayColor = MakeDisplayColor(color, progress);
 
     for (std::size_t index = 0; index < kConeSegmentCount; ++index) {
         EffectObject3d* segment = patternEffects_[index].get();
         const float startRate = static_cast<float>(index) / static_cast<float>(kConeSegmentCount);
         const float centerRate = (static_cast<float>(index) + 0.5f) / static_cast<float>(kConeSegmentCount);
         const float segmentWidth = startWidth + (endWidth - startWidth) * centerRate;
-        Vector4 segmentColor = displayColor;
+        engine::Vector4 segmentColor = displayColor;
         segmentColor.w *= 0.72f + centerRate * 0.28f;
         ApplyLine(segment, origin + normalizedDirection * (length * startRate), normalizedDirection,
                   segmentLength * 1.08f, segmentWidth, 1.0f, segmentColor, 1.0f);
@@ -543,8 +544,8 @@ void AttackTelegraph::ShowCone(const Vector3& origin, const Vector3& direction, 
     ShowLineTiming(origin, normalizedDirection, length, timingWidth, progress, color);
 }
 
-void AttackTelegraph::ShowImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress,
-                                      const Vector4& color) {
+void AttackTelegraph::ShowImpactAreas(const engine::Vector3* centers, std::size_t centerCount, float radius, float progress,
+                                      const engine::Vector4& color) {
     // 複数の着弾地点を同じ進行率で示し、各地点に時間表示を重ねる。
     if (!centers || centerCount == 0) {
         Hide();
@@ -555,27 +556,27 @@ void AttackTelegraph::ShowImpactAreas(const Vector3* centers, std::size_t center
     progress = std::clamp(progress, 0.0f, 1.0f);
     BeginPattern(Shape::Circle, centerCount);
     BeginTiming(Shape::Circle, centerCount);
-    const Vector4 displayColor = MakeDisplayColor(color, progress);
+    const engine::Vector4 displayColor = MakeDisplayColor(color, progress);
     const float sequenceStep = centerCount > 1 ? (std::min)(0.105f, 0.38f / static_cast<float>(centerCount - 1)) : 0.0f;
 
     for (std::size_t index = 0; index < centerCount; ++index) {
         const float localProgress = std::clamp(progress - static_cast<float>(index) * sequenceStep, 0.0f, 1.0f);
         EffectObject3d* area = patternEffects_[index].get();
-        Vector4 areaColor = displayColor;
+        engine::Vector4 areaColor = displayColor;
         areaColor.w *= 0.68f + localProgress * 0.32f;
         ApplyCircle(area, centers[index], radius, 1.0f, areaColor, 1.0f);
         area->SetIsVisible(true);
 
         const float countdownScale = kCountdownOuterScale - (kCountdownOuterScale - 1.0f) * localProgress;
-        Vector3 timingCenter = centers[index];
+        engine::Vector3 timingCenter = centers[index];
         timingCenter.y += kTimingLayerLift;
         ApplyCircle(timingEffects_[index].get(), timingCenter, radius, 1.0f, MakeTimingColor(color, localProgress),
                     countdownScale);
     }
 }
 
-void AttackTelegraph::ShowReadableImpactAreas(const Vector3* centers, std::size_t centerCount, float radius,
-                                              float progress, const Vector4& color) {
+void AttackTelegraph::ShowReadableImpactAreas(const engine::Vector3* centers, std::size_t centerCount, float radius,
+                                              float progress, const engine::Vector4& color) {
     if (!centers || centerCount == 0) {
         Hide();
         return;
@@ -593,7 +594,7 @@ void AttackTelegraph::ShowReadableImpactAreas(const Vector3* centers, std::size_
         const float urgency = urgencyT * urgencyT * (3.0f - 2.0f * urgencyT);
 
         // 面は攻撃範囲だけを静かに伝え、重なっても白飛びしない通常合成にします。
-        Vector4 discColor = color;
+        engine::Vector4 discColor = color;
         discColor.x = std::clamp(discColor.x * 0.82f, 0.0f, 1.0f);
         discColor.y = std::clamp(discColor.y * 0.54f, 0.0f, 1.0f);
         discColor.z = std::clamp(discColor.z * 0.48f, 0.0f, 1.0f);
@@ -602,17 +603,17 @@ void AttackTelegraph::ShowReadableImpactAreas(const Vector3* centers, std::size_
 
         // 外周は着弾時だけ実半径へ収束し、順番も明るさで判別できるようにします。
         const float countdownScale = 1.46f - 0.46f * localProgress;
-        Vector4 timingColor = MakeTimingColor(color, localProgress);
+        engine::Vector4 timingColor = MakeTimingColor(color, localProgress);
         timingColor.w *= 0.38f + localProgress * 0.54f;
-        Vector3 timingCenter = centers[index];
+        engine::Vector3 timingCenter = centers[index];
         timingCenter.y += kTimingLayerLift;
         ApplyCircle(timingEffects_[index].get(), timingCenter, radius, 1.0f, timingColor, countdownScale);
     }
 }
 
-void AttackTelegraph::ShowLaneFan(const Vector3& origin, const Vector3& direction, float length, float width,
+void AttackTelegraph::ShowLaneFan(const engine::Vector3& origin, const engine::Vector3& direction, float length, float width,
                                   int laneCount, float lateralSpacing, float angleStep, float progress,
-                                  const Vector4& color) {
+                                  const engine::Vector4& color) {
     // 本数の中央を基準に左右へ射線を広げ、入力順で見た目が偏らないようにする。
     laneCount = (std::max)(1, laneCount);
     length = (std::max)(length, 0.05f);
@@ -621,17 +622,17 @@ void AttackTelegraph::ShowLaneFan(const Vector3& origin, const Vector3& directio
 
     BeginPattern(Shape::Line, static_cast<std::size_t>(laneCount));
     BeginTiming(Shape::Line, static_cast<std::size_t>(laneCount));
-    const Vector3 baseDirection = NormalizePlanar(direction);
-    const Vector3 side = {baseDirection.z, 0.0f, -baseDirection.x};
+    const engine::Vector3 baseDirection = NormalizePlanar(direction);
+    const engine::Vector3 side = {baseDirection.z, 0.0f, -baseDirection.x};
     const float centerIndex = static_cast<float>(laneCount - 1) * 0.5f;
-    const Vector4 displayColor = MakeDisplayColor(color, progress);
+    const engine::Vector4 displayColor = MakeDisplayColor(color, progress);
 
     for (int index = 0; index < laneCount; ++index) {
         const float centeredIndex = static_cast<float>(index) - centerIndex;
         const float angle = centeredIndex * angleStep;
         const float cosine = std::cos(angle);
         const float sine = std::sin(angle);
-        const Vector3 laneDirection = NormalizePlanar({
+        const engine::Vector3 laneDirection = NormalizePlanar({
             baseDirection.x * cosine + baseDirection.z * sine,
             0.0f,
             -baseDirection.x * sine + baseDirection.z * cosine,
@@ -640,12 +641,12 @@ void AttackTelegraph::ShowLaneFan(const Vector3& origin, const Vector3& directio
                   origin + side * (centeredIndex * lateralSpacing), laneDirection, length, width, 1.0f, displayColor,
                   1.0f);
         ApplyLineTimingMarker(timingEffects_[static_cast<std::size_t>(index)].get(),
-                              origin + side * (centeredIndex * lateralSpacing) + Vector3{0.0f, kTimingLayerLift, 0.0f},
+                              origin + side * (centeredIndex * lateralSpacing) + engine::Vector3{0.0f, kTimingLayerLift, 0.0f},
                               laneDirection, length, width, progress, MakeTimingColor(color, progress));
     }
 }
 
-void AttackTelegraph::TriggerCue(const Vector4& color) {
+void AttackTelegraph::TriggerCue(const engine::Vector4& color) {
     // 直近の範囲形状を使って、攻撃が始まる瞬間だけ別の強調表示を出す。
     if (patternActiveCount_ > 0) {
         patternCueTimer_ = cueDuration_;
@@ -663,7 +664,7 @@ void AttackTelegraph::TriggerCue(const Vector4& color) {
     cueTimer_ = cueDuration_;
     cueColor_ = color;
     ConfigureCueShape(lastShape_);
-    const Vector4 cueColor = MakeCueColor(color, 0.0f);
+    const engine::Vector4 cueColor = MakeCueColor(color, 0.0f);
     if (lastShape_ == Shape::Circle) {
         ApplyCircle(cueEffect_.get(), lastCenter_, lastRadius_, 1.0f, cueColor, 1.0f);
     } else if (lastShape_ == Shape::DecalCircle) {
@@ -674,7 +675,7 @@ void AttackTelegraph::TriggerCue(const Vector4& color) {
     cueEffect_->SetIsVisible(true);
 }
 
-void AttackTelegraph::TriggerCueAt(const Vector3& center, float radius, const Vector4& color) {
+void AttackTelegraph::TriggerCueAt(const engine::Vector3& center, float radius, const engine::Vector4& color) {
     // 汎用の円形合図は、事前の予告がなくても指定地点に生成できる。
     EnsureCueEffect(common_);
     if (!cueEffect_) {
@@ -694,8 +695,8 @@ void AttackTelegraph::TriggerCueAt(const Vector3& center, float radius, const Ve
     cueEffect_->SetIsVisible(true);
 }
 
-void AttackTelegraph::TriggerWarningCue(Object3d* target, const Vector3& offset, float size,
-                                        const Vector4& accentColor) {
+void AttackTelegraph::TriggerWarningCue(engine::Object3d* target, const engine::Vector3& offset, float size,
+                                        const engine::Vector4& accentColor) {
     // 対象へ追従する警告を開始し、移動中も本体の近くに保持する。
     EnsureWarningEffect(common_);
     if (!warningEffect_) {
@@ -744,7 +745,7 @@ void AttackTelegraph::Update(float deltaTime) {
     if (patternCueTimer_ > 0.0f && patternActiveCount_ > 0) {
         patternCueTimer_ = (std::max)(0.0f, patternCueTimer_ - (std::max)(deltaTime, 0.0f));
         const float progress = 1.0f - std::clamp(patternCueTimer_ / cueDuration_, 0.0f, 1.0f);
-        const Vector4 cueColor = MakeCueColor(patternCueColor_, progress);
+        const engine::Vector4 cueColor = MakeCueColor(patternCueColor_, progress);
         for (std::size_t index = 0; index < patternActiveCount_; ++index) {
             if (patternEffects_[index]->GetIsVisible()) {
                 patternEffects_[index]->SetColor(cueColor);
@@ -755,7 +756,7 @@ void AttackTelegraph::Update(float deltaTime) {
         cueTimer_ = (std::max)(0.0f, cueTimer_ - (std::max)(deltaTime, 0.0f));
         const float progress = 1.0f - std::clamp(cueTimer_ / cueDuration_, 0.0f, 1.0f);
         const float scaleMultiplier = 1.0f + (kCueOuterScale - 1.0f) * EaseOut(progress);
-        const Vector4 cueColor = MakeCueColor(cueColor_, progress);
+        const engine::Vector4 cueColor = MakeCueColor(cueColor_, progress);
         if (lastShape_ == Shape::Circle) {
             ApplyCircle(cueEffect_.get(), lastCenter_, lastRadius_, 1.0f, cueColor, scaleMultiplier);
         } else if (lastShape_ == Shape::DecalCircle) {
@@ -783,24 +784,24 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
         return;
     }
 
-    const Vector3 presetScale = warningEffect_->GetScale();
+    const engine::Vector3 presetScale = warningEffect_->GetScale();
     const auto* material = warningEffect_->GetMaterialData();
-    const Vector4 presetColor = material ? material->color : Vector4{1.0f, 1.0f, 1.0f, 1.0f - progress};
+    const engine::Vector4 presetColor = material ? material->color : engine::Vector4{1.0f, 1.0f, 1.0f, 1.0f - progress};
 
     // 最初は全敵共通の白金色、消える直前だけ属性色を残して判別しやすくします。
     const float accentRate = progress * progress;
-    const Vector4 commonColor = {1.0f, 0.96f, 0.64f, 1.0f};
-    const Vector4 tint = {commonColor.x + (warningAccentColor_.x - commonColor.x) * accentRate,
+    const engine::Vector4 commonColor = {1.0f, 0.96f, 0.64f, 1.0f};
+    const engine::Vector4 tint = {commonColor.x + (warningAccentColor_.x - commonColor.x) * accentRate,
                           commonColor.y + (warningAccentColor_.y - commonColor.y) * accentRate,
                           commonColor.z + (warningAccentColor_.z - commonColor.z) * accentRate, warningAccentColor_.w};
 
     warningCenter_ = warningTarget_ ? warningTarget_->GetWorldPosition() + warningOffset_ : warningCenter_;
-    Vector3 position = warningCenter_;
+    engine::Vector3 position = warningCenter_;
     float yaw = 0.0f;
     float pitch = 0.0f;
     Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
     if (camera) {
-        Vector3 toCamera = camera->GetEye() - position;
+        engine::Vector3 toCamera = camera->GetEye() - position;
         const float length = std::sqrt(toCamera.x * toCamera.x + toCamera.y * toCamera.y + toCamera.z * toCamera.z);
         if (length > 0.001f) {
             toCamera = toCamera / length;

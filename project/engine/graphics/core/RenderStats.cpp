@@ -2,12 +2,15 @@
 
 #include <algorithm>
 
+namespace engine {
+
 RenderStats* RenderStats::GetInstance() {
     static RenderStats instance;
     return &instance;
 }
 
 void RenderStats::BeginFrame() {
+    // 完了済みの集計とは別に、次のフレームを空の集計領域から始める。
     currentFrame_ = {};
     currentFrame_.frameNumber = nextFrameNumber_++;
     currentPass_ = RenderPass::Other;
@@ -30,6 +33,7 @@ void RenderStats::SetCurrentPass(RenderPass pass) {
 }
 
 void RenderStats::RecordIndexedDraw(uint32_t indexCount, uint32_t instanceCount, uint32_t trianglesPerInstance) {
+    // 描画呼び出しと推定三角形数を、現在の計測区間へ加算する。
     RenderPassStats* stats = GetCurrentPassStats();
     if (!stats || indexCount == 0 || instanceCount == 0) {
         return;
@@ -45,6 +49,7 @@ void RenderStats::RecordIndexedDraw(uint32_t indexCount, uint32_t instanceCount,
 }
 
 void RenderStats::RecordNonIndexedDraw(uint32_t vertexCount, uint32_t instanceCount, uint32_t trianglesPerInstance) {
+    // インデックスを使わない描画も同じ計測区間へ加算する。
     RenderPassStats* stats = GetCurrentPassStats();
     if (!stats || vertexCount == 0 || instanceCount == 0) {
         return;
@@ -59,6 +64,7 @@ void RenderStats::RecordNonIndexedDraw(uint32_t vertexCount, uint32_t instanceCo
 }
 
 void RenderStats::RecordNonIndexedIndirectDraw() {
+    // 間接描画は頂点数をここで取得できないため、呼び出し回数だけ記録する。
     if (RenderPassStats* stats = GetCurrentPassStats()) {
         ++stats->drawCalls;
         ++stats->indirectDrawCalls;
@@ -66,6 +72,7 @@ void RenderStats::RecordNonIndexedIndirectDraw() {
 }
 
 void RenderStats::RecordComputeDispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // 空のディスパッチは実際のGPU仕事量に含めない。
     RenderPassStats* stats = GetCurrentPassStats();
     if (!stats || groupCountX == 0 || groupCountY == 0 || groupCountZ == 0) {
         return;
@@ -89,6 +96,7 @@ void RenderStats::RecordCulledObject() {
 }
 
 void RenderStats::RecordGpuParticleSystem(uint32_t capacity) {
+    // フレーム外の登録は前後の計測結果へ混ぜない。
     if (!frameActive_) {
         return;
     }
@@ -109,6 +117,7 @@ void RenderStats::RecordPostProcessPass() {
 }
 
 void RenderStats::SetActiveLightCounts(uint32_t pointLights, uint32_t spotLights) {
+    // 描画中に適用したライト数だけを当該フレームの値として残す。
     if (!frameActive_) {
         return;
     }
@@ -117,6 +126,7 @@ void RenderStats::SetActiveLightCounts(uint32_t pointLights, uint32_t spotLights
 }
 
 const char* RenderStats::GetPassDisplayName(RenderPass pass) {
+    // 計測した描画区間の種別をデバッグ画面へ表示する名称へ変換する。
     switch (pass) {
     case RenderPass::MainScene: return "メイン3D";
     case RenderPass::Shadow: return "影";
@@ -151,3 +161,5 @@ ScopedRenderPass::ScopedRenderPass(RenderPass pass) {
 ScopedRenderPass::~ScopedRenderPass() {
     RenderStats::GetInstance()->SetCurrentPass(previousPass_);
 }
+
+} // namespace engine

@@ -36,7 +36,7 @@ void GimmickTimedSwitch::Update(float deltaTime) {
 }
 
 // 上面への接触中だけタイマーを更新し、接続先イベントを通知します。
-bool GimmickTimedSwitch::OnCollision(Object3d* other) {
+bool GimmickTimedSwitch::OnCollision(engine::Object3d* other) {
     // 上面から踏まれた間だけ指定 EventID へ通知する。
     if (!other || other->GetClassName() != "Player")
         return true;
@@ -56,7 +56,7 @@ bool GimmickTimedSwitch::OnCollision(Object3d* other) {
     return true;
 }
 
-std::unique_ptr<Object3d> GimmickTimedSwitch::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickTimedSwitch::Clone() const {
     // 押下タイマーは持ち込まず、配置と接続先の設定だけを複製する。
     auto newObj = std::make_unique<GimmickTimedSwitch>();
     assert(common_ != nullptr);

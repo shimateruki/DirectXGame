@@ -69,9 +69,6 @@
     <ClCompile Include="engine\system\audio\AudioPlayer.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\audio</Filter>
     </ClCompile>
-    <ClCompile Include="engine\graphics\3d\camera\debugCamera.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
-    </ClCompile>
     <ClCompile Include="engine\graphics\core\DirectXCommon.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\base</Filter>
     </ClCompile>
@@ -871,9 +868,6 @@
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\D3DResouceLeakChecKer.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\base</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\camera\debugCamera.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\core\DirectXCommon.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\base</Filter>

@@ -66,6 +66,7 @@ std::string GetBufferText(const std::array<char, 128>& buffer) {
 
 void DrawModelCombo(const char* label, std::array<char, 128>& buffer, const std::vector<std::string>& modelList) {
 #ifdef USE_IMGUI
+    // 登録済みモデルの選択とパスの直接入力を両立し、未登録素材も試せるようにする。
     int currentIndex = -1;
     std::string current = GetBufferText(buffer);
     for (int i = 0; i < static_cast<int>(modelList.size()); ++i) {
@@ -96,8 +97,10 @@ void DrawModelCombo(const char* label, std::array<char, 128>& buffer, const std:
 #endif
 }
 
+// 定義済み材質を選択肢に出し、未知の番号も数値編集で保持します。
 void DrawMaterialTypeCombo(int& materialType) {
 #ifdef USE_IMGUI
+    // 定義済みタイプは選択式にし、未知値は失わず直接調整できるようにする。
     constexpr int materialTypeCount = static_cast<int>(std::size(kMaterialTypeNames));
     int currentMaterialType = materialType;
     if (currentMaterialType < 0 || currentMaterialType >= materialTypeCount) {
@@ -201,9 +204,9 @@ void DebrisEffectEditor::Update(float deltaTime) {
 
     // 発生・生存・縮小開始を共通Timelineへ送り、現在の破片数をプレビュー情報にする。
     std::vector<EffectPreviewStage::TimelineEvent> events;
-    events.push_back({ "Burst", 0.0f, 0.06f, Vector4{ 1.0f, 0.65f, 0.25f, 1.0f } });
-    events.push_back({ "Debris lifetime", 0.0f, previewDuration, Vector4{ 0.75f, 0.55f, 0.35f, 1.0f } });
-    events.push_back({ "Fade", previewDuration * std::clamp(config_.fadeStartRatio, 0.0f, 1.0f), previewDuration, Vector4{ 0.9f, 0.45f, 0.25f, 1.0f } });
+    events.push_back({ "Burst", 0.0f, 0.06f, engine::Vector4{ 1.0f, 0.65f, 0.25f, 1.0f } });
+    events.push_back({ "Debris lifetime", 0.0f, previewDuration, engine::Vector4{ 0.75f, 0.55f, 0.35f, 1.0f } });
+    events.push_back({ "Fade", previewDuration * std::clamp(config_.fadeStartRatio, 0.0f, 1.0f), previewDuration, engine::Vector4{ 0.9f, 0.45f, 0.25f, 1.0f } });
     previewStage->ReportToolState(
         EffectPreviewStage::ToolKind::Debris,
         "Debris",
@@ -395,7 +398,7 @@ void DebrisEffectEditor::Preview() {
     DebrisEffectManager::GetInstance()->SpawnFromConfig(config_, GetPreviewPosition());
 }
 
-Vector3 DebrisEffectEditor::GetPreviewPosition() const {
+engine::Vector3 DebrisEffectEditor::GetPreviewPosition() const {
     // 専用Stageが有効ならその中心を優先し、なければ現在カメラから位置を決めます。
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     if (previewStage && previewStage->IsEnabled()) {
@@ -407,10 +410,10 @@ Vector3 DebrisEffectEditor::GetPreviewPosition() const {
         return { 0.0f, 2.0f, 0.0f };
     }
 
-    Vector3 eye = camera->GetEye();
-    Vector3 target = camera->GetTargetPoint();
-    Vector3 forward = Math::Normalize(target - eye);
-    if (Math::Length(forward) < 0.001f) {
+    engine::Vector3 eye = camera->GetEye();
+    engine::Vector3 target = camera->GetTargetPoint();
+    engine::Vector3 forward = engine::Math::Normalize(target - eye);
+    if (engine::Math::Length(forward) < 0.001f) {
         forward = { 0.0f, 0.0f, 1.0f };
     }
     return eye + forward * previewDistance_;

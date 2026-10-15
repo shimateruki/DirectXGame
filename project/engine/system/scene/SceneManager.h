@@ -18,7 +18,9 @@ public:
     /// <summary>エンジン全体で共有するシーン管理インスタンスを返す。</summary>
     static SceneManager* GetInstance();
 
+    /// <summary>シーン遷移の初期状態を作る。</summary>
     SceneManager();
+    /// <summary>保留中の非同期処理を終了し、保持するシーンを破棄する。</summary>
     ~SceneManager();
 
     /// <summary>シーン生成ファクトリを登録し、最初のシーンを作って初期化する。</summary>
@@ -47,11 +49,11 @@ public:
     /// <summary>シーン名を指定し、ロード画面を挟む遷移を開始する。</summary>
     void ChangeScene(const std::string& sceneName);
 
-    // 死亡復帰など、ロード画面を介さず暗転中に直接シーンを作り直します。
-    // 復帰先がアイリスを開始する場合だけ destinationHandlesReveal を true にします。
+    /// <summary>ロード画面を挟まず、暗転中にシーンを直接作り直す。</summary>
+    /// <param name="destinationHandlesReveal">遷移先がアイリスなどの明転を担当する場合はtrue。</param>
     void ChangeSceneWithoutLoading(const std::string& sceneName, bool destinationHandlesReveal = false);
 
-    // 呼び出し元でフェードアウトを完了済みの場合に、暗転を再開せず遷移します。
+    /// <summary>呼び出し元がフェードアウトを終えた状態から遷移を開始する。</summary>
     void ChangeSceneAfterFade(const std::string& sceneName);
 
     /// <summary>現在のシーンを再読み込みする。</summary>
@@ -68,36 +70,49 @@ public:
 
     /// <summary>最後に使用したシーン名をユーザー設定へ保存する。</summary>
     void SaveLastSceneName(const std::string& sceneName);
+    /// <summary>現在の実行時シーン名を返す。未設定なら空文字列。</summary>
     const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
     /// <summary>現在のシーンを返す。未設定ならnullptr。</summary>
     BaseScene* GetCurrentScene() const;
 
-    // Sceneインスタンスが差し替わるたびに増加します。ポインタのアドレス再利用による誤判定を防ぎます。
+    /// <summary>シーンインスタンスの差し替えごとに増える世代番号を返す。</summary>
+    /// <remarks>ポインターのアドレスが再利用されてもシーン変更を判定できる。</remarks>
     uint64_t GetSceneGeneration() const { return sceneGeneration_; }
+    /// <summary>シーン管理と連携するEditorを登録する。所有権は受け取らない。</summary>
     void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
+    /// <summary>ゲームを再生中か取得・設定する。</summary>
     bool IsPlaying() const { return isPlaying_; }
     void SetIsPlaying(bool isPlaying) { isPlaying_ = isPlaying; }
+    /// <summary>シーン遷移のいずれかの段階を実行中か返す。</summary>
     bool IsTransitioning() const { return transitionPhase_ != TransitionPhase::Idle; }
+    /// <summary>シーン初期化を非同期で進めているか返す。</summary>
     bool IsSceneInitializingAsync() const {
         return sceneInitializationStarted_ && !sceneInitializationFinished_;
     }
 
-    // 以下はEditor用Scene Assetの切り替え。実行時シーン型とは別にレイアウトを管理する。
-    // Play中・遷移中・未登録の実行時シーン名では開けず false を返す。
+    /// <summary>Editorの3D・Spriteレイアウトと実行時シーン名を組にして開く。</summary>
+    /// <returns>再生中・遷移中・未登録のシーン名ならfalse。</returns>
     bool OpenSceneAsset(
         const std::string& objectLayoutPath,
         const std::string& spriteLayoutPath,
         const std::string& runtimeSceneName);
+    /// <summary>SceneLoadContextに指定されたScene Assetを開く。</summary>
+    /// <returns>指定を受理して遷移を始めた場合はtrue。</returns>
     bool OpenSceneAsset(const SceneLoadContext& context);
-    // 実行時シーン名を SCENE_EDITOR に固定して開く。
+    /// <summary>実行時シーン名をSCENE_EDITORに固定してレイアウトを開く。</summary>
     bool OpenEditorSceneAsset(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
-    // 現在の編集対象パスだけを更新する。シーンの再読込や保存は行わない。
+    /// <summary>編集対象のパスだけを更新する。シーンの再読込と保存はしない。</summary>
     void SetEditorSceneAssetPaths(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
+    /// <summary>現在のScene Assetの3D配置パスを返す。</summary>
     const std::string& GetEditorSceneAssetObjectPath() const { return activeSceneLoadContext_.objectLayoutPath; }
+    /// <summary>現在のScene AssetのSprite配置パスを返す。</summary>
     const std::string& GetEditorSceneAssetSpritePath() const { return activeSceneLoadContext_.spriteLayoutPath; }
+    /// <summary>現在のScene Assetに結び付く実行時シーン名を返す。</summary>
     const std::string& GetActiveSceneAssetRuntimeScene() const { return activeSceneLoadContext_.runtimeScene; }
+    /// <summary>現在のScene Asset読み込み設定を返す。</summary>
     const SceneLoadContext& GetActiveSceneLoadContext() const { return activeSceneLoadContext_; }
+    /// <summary>開いているScene Assetがあるか返す。</summary>
     bool HasActiveSceneAsset() const { return activeSceneLoadContext_.IsSceneAsset(); }
 
     /// <summary>現在のScene Asset指定を解除する。</summary>
@@ -112,19 +127,28 @@ private:
         FadingOutLoading
     };
 
-    // ロード画面を開始し、次シーンの生成・素材準備・メインスレッド反映を順に進める。
+    /// <summary>ロード画面を開始し、次シーンの非同期準備へ移る。</summary>
     void BeginLoadingTransition();
+    /// <summary>遷移先とフェード・ロードの方式を内部キューへ登録する。</summary>
     void QueueSceneChange(const std::string& sceneName, bool startFadeOut, bool skipLoading = false, bool destinationHandlesReveal = false);
+    /// <summary>次シーンの生成を非同期タスクに依頼する。</summary>
     void StartAsyncSceneCreate();
+    /// <summary>非同期のシーン生成が完了したか返す。</summary>
     bool IsAsyncSceneReady() const;
+    /// <summary>生成済みシーンをメインスレッドで初期化する。</summary>
     void PrepareLoadedSceneOnMainThread();
+    /// <summary>事前抽出した素材の読み込みを非同期で開始する。</summary>
     void StartPreparedAssetsAsync();
+    /// <summary>シーン生成と素材準備を合わせたロード進捗を返す。</summary>
     float CalculateLoadingProgress() const;
 
-    // 準備済みシーンを現在シーンへ差し替え、遷移状態を更新する。
+    /// <summary>準備済みシーンを現在シーンへ差し替える。</summary>
     void SwapToPreparedScene();
+    /// <summary>ロード画面を経ない次シーンを現在シーンへ差し替える。</summary>
     void SwapToDirectNextScene();
+    /// <summary>ロード画面に表示する進捗値を更新する。</summary>
     void SetLoadingProgress(float progress);
+    /// <summary>ロード・フェードを含む遷移が進行中か返す。</summary>
     bool IsTransitionBusy() const;
 
 private:

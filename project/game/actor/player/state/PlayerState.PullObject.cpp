@@ -31,7 +31,7 @@ void PlayerStatePullObject::Enter(Player* player) {
     timer_ = 0.0f;
     pullStarted_ = false;
 
-    Object3d* marker = player->GetHookMarker();
+    engine::Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(true);
         marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
@@ -48,9 +48,9 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
 
     timer_ += deltaTime;
 
-    Vector3 targetPos = targetObject_->GetWorldPosition();
-    Vector3 toTarget = targetPos - hookTipPos_;
-    float dist = Math::Length(toTarget);
+    engine::Vector3 targetPos = targetObject_->GetWorldPosition();
+    engine::Vector3 toTarget = targetPos - hookTipPos_;
+    float dist = engine::Math::Length(toTarget);
 
     if (!pullStarted_) {
         // フック先端が対象に十分近付くまでは、対象の引き寄せを開始しない。
@@ -65,7 +65,7 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
             pullStarted_ = true;
             timer_ = 0.0f;
         } else {
-            Vector3 dir = Math::Normalize(toTarget);
+            engine::Vector3 dir = engine::Math::Normalize(toTarget);
             hookTipPos_ = hookTipPos_ + dir * (180.0f * deltaTime);
         }
         UpdateRopeMarker(player, hookTipPos_, 0.22f);
@@ -89,7 +89,7 @@ void PlayerStatePullObject::Exit(Player* player) {
         return;
 
     player->SetIsControlActive(true);
-    Object3d* marker = player->GetHookMarker();
+    engine::Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(false);
         marker->SetScale({1.0f, 1.0f, 1.0f});
@@ -100,18 +100,18 @@ void PlayerStatePullObject::Exit(Player* player) {
     }
 }
 
-void PlayerStatePullObject::UpdateRopeMarker(Player* player, const Vector3& endPos, float thickness) {
+void PlayerStatePullObject::UpdateRopeMarker(Player* player, const engine::Vector3& endPos, float thickness) {
     // 両端の中点・方向・距離から細長い表示モデルの Transform を作る。
     if (!player)
         return;
 
-    Object3d* marker = player->GetHookMarker();
+    engine::Object3d* marker = player->GetHookMarker();
     if (!marker)
         return;
 
-    Vector3 startPos = player->GetWorldPosition();
-    Vector3 diff = endPos - startPos;
-    float len = Math::Length(diff);
+    engine::Vector3 startPos = player->GetWorldPosition();
+    engine::Vector3 diff = endPos - startPos;
+    float len = engine::Math::Length(diff);
     if (len < 0.01f)
         len = 0.01f;
 

@@ -7,14 +7,14 @@ class DirectXCommon;
 
 // 定数バッファの一スロットを 256 バイトにするための余白付き行列。要素を並べても CBV の間隔を保つ。
 struct AlignedMatrix4x4 {
-    Matrix4x4 matrix;
-    char padding[256 - sizeof(Matrix4x4)];
+    engine::Matrix4x4 matrix;
+    char padding[256 - sizeof(engine::Matrix4x4)];
 };
 
 // 定数バッファの一スロットを 256 バイトにするための余白付き Vector4。
 struct AlignedVector4 {
-    Vector4 vector;
-    char padding[256 - sizeof(Vector4)];
+    engine::Vector4 vector;
+    char padding[256 - sizeof(engine::Vector4)];
 };
 
 // ワイヤーフレームの描画を専門に行うクラス
@@ -30,9 +30,9 @@ public:
     void PreDraw(ID3D12GraphicsCommandList* commandList);
 
     // キューブの描画
-    void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
-    void DrawWireSphere(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
-    void DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
+    void DrawWireCube(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex);
+    void DrawWireSphere(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex);
+    void DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex);
 private:
     DirectXCommon* dxCommon_ = nullptr;
     static const int kMaxInstances = 2048;

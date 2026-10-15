@@ -25,7 +25,7 @@ void GimmickMagmaHazard::Initialize(Object3dCommon* common, const std::string& m
     // マグマ面は移動しないため、巨大Colliderを静的グリッドへ一度だけ登録する。
     SetStatic(true);
 
-    Object3d::ColliderConfig collider;
+    engine::Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 0.0f, 0.0f};
     collider.size = {1.0f, 1.0f, 1.0f};
@@ -68,7 +68,7 @@ void GimmickMagmaHazard::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickMagmaHazard::OnCollision(Object3d* /*other*/) {
+bool GimmickMagmaHazard::OnCollision(engine::Object3d* /*other*/) {
     // 液面接触による死亡はPlayer側で波の高さも含めて判定します。
     // 旧Colliderによるダメージ・炎上・ノックバックを重ねないようにします。
     return true;
@@ -84,7 +84,7 @@ float GimmickMagmaHazard::GetDamageInterval() const {
     return param_.has_value() ? (std::max)(0.1f, param_->interval) : 0.8f;
 }
 
-std::unique_ptr<Object3d> GimmickMagmaHazard::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickMagmaHazard::Clone() const {
     // 複製先を初期化してから危険域の設定と配置を移す。
     auto clone = std::make_unique<GimmickMagmaHazard>();
     assert(common_ != nullptr);

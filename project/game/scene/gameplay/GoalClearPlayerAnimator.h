@@ -29,7 +29,9 @@ class GoalClearPlayerAnimator {
         float resultYawBias = 0.12f;
     };
 
-    bool Start(Player* player, const Vector3& crownPosition, const Vector3& preferredForward = Vector3{}) {
+    // プレイヤーの操作権と開始姿勢を保存し、王冠または指定方向へ向けて勝利演出を開始します。
+    // player がない場合は開始せず false を返します。
+    bool Start(Player* player, const engine::Vector3& crownPosition, const engine::Vector3& preferredForward = engine::Vector3{}) {
         player_ = player;
         if (!player_) {
             isActive_ = false;
@@ -48,10 +50,10 @@ class GoalClearPlayerAnimator {
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
         // 指定された前方がない場合は王冠へ向きます。Visual Yaw の差を含めてモデル正面を合わせます。
-        const Vector3 crownForward =
+        const engine::Vector3 crownForward =
             NormalizePlanarDirection({crownPosition.x - basePosition_.x, 0.0f, crownPosition.z - basePosition_.z},
                                      DirectionFromYaw(baseRotation_.y - player_->GetVisualYawOffset()));
-        const Vector3 desiredForward = NormalizePlanarDirection(preferredForward, crownForward);
+        const engine::Vector3 desiredForward = NormalizePlanarDirection(preferredForward, crownForward);
         const float faceYaw = std::atan2(desiredForward.x, desiredForward.z);
         baseRotation_.y = NormalizeYaw(faceYaw + player_->GetVisualYawOffset());
         resultRotation_ = baseRotation_;
@@ -64,6 +66,7 @@ class GoalClearPlayerAnimator {
         return true;
     }
 
+    // 保持している演出状態を初期化します。プレイヤーの姿勢は復元しません。
     void Reset() {
         player_ = nullptr;
         isActive_ = false;
@@ -78,6 +81,7 @@ class GoalClearPlayerAnimator {
         moveRight_ = {1.0f, 0.0f, 0.0f};
     }
 
+    // 中断時に保存済みの開始姿勢をモデルへ戻し、ワールド行列まで更新します。
     void RestoreInitialPose() {
         if (!player_ || !isActive_) {
             return;
@@ -91,6 +95,7 @@ class GoalClearPlayerAnimator {
         player_->UpdateWorldMatrix();
     }
 
+    // 演出開始前の操作可能状態を戻します。
     void RestoreControl() {
         // 演出前に操作不能だった状態も尊重し、無条件に操作を有効にはしません。
         if (player_) {
@@ -98,6 +103,7 @@ class GoalClearPlayerAnimator {
         }
     }
 
+    // 演出開始からの絶対時刻で姿勢を評価します。シークしても前フレームには依存しません。
     void Update(float time) {
         if (!player_ || !isActive_) {
             return;
@@ -105,9 +111,9 @@ class GoalClearPlayerAnimator {
 
         // 絶対時刻からポーズを計算し、シークやプレビューで前のフレームに依存しないようにします。
         const Tuning& c = tuning_;
-        Vector3 position = basePosition_;
-        Vector3 scale = baseScale_;
-        Vector3 rotation = baseRotation_;
+        engine::Vector3 position = basePosition_;
+        engine::Vector3 scale = baseScale_;
+        engine::Vector3 rotation = baseRotation_;
 
         if (time < c.crownLandTime) {
             // 王冠へ注目している間も、ごく弱い呼吸で静止画に見えないようにします。
@@ -146,13 +152,13 @@ class GoalClearPlayerAnimator {
             position.z += moveRight_.z * sideArc;
             position.y += AnimationInterpolation::Lerp(-c.anticipationDepth, c.jumpHeight, travel);
 
-            Vector3 squashScale = {baseScale_.x * (1.0f + c.anticipationSquash),
+            engine::Vector3 squashScale = {baseScale_.x * (1.0f + c.anticipationSquash),
                                    baseScale_.y * (1.0f - c.anticipationSquash * 0.92f),
                                    baseScale_.z * (1.0f + c.anticipationSquash)};
-            Vector3 stretchScale = {baseScale_.x * (1.0f - c.takeoffStretch * 0.48f),
+            engine::Vector3 stretchScale = {baseScale_.x * (1.0f - c.takeoffStretch * 0.48f),
                                     baseScale_.y * (1.0f + c.takeoffStretch),
                                     baseScale_.z * (1.0f - c.takeoffStretch * 0.48f)};
-            Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f),
+            engine::Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f),
                                    baseScale_.y * (1.0f + c.resultStretch),
                                    baseScale_.z * (1.0f - c.resultStretch * 0.36f)};
 
@@ -189,10 +195,10 @@ class GoalClearPlayerAnimator {
             position.y += AnimationInterpolation::Lerp(c.jumpHeight, 0.0f, fall);
             position.y -= c.landingSquash * 0.08f * fall;
 
-            const Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f),
+            const engine::Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f),
                                          baseScale_.y * (1.0f + c.resultStretch),
                                          baseScale_.z * (1.0f - c.resultStretch * 0.36f)};
-            const Vector3 landingScale = {baseScale_.x * (1.0f + c.landingSquash * 0.45f),
+            const engine::Vector3 landingScale = {baseScale_.x * (1.0f + c.landingSquash * 0.45f),
                                           baseScale_.y * (1.0f - c.landingSquash * 0.40f),
                                           baseScale_.z * (1.0f + c.landingSquash * 0.45f)};
             scale = AnimationInterpolation::Lerp(resultScale, landingScale, fall);
@@ -241,13 +247,13 @@ class GoalClearPlayerAnimator {
     Tuning& EditTuning() { return tuning_; }
     bool IsActive() const { return isActive_; }
     bool WasControlActive() const { return savedControlActive_; }
-    const Vector3& GetBasePosition() const { return basePosition_; }
-    const Vector3& GetBaseScale() const { return baseScale_; }
-    const Vector3& GetBaseRotation() const { return baseRotation_; }
-    const Vector3& GetPosePosition() const { return posePosition_; }
-    const Vector3& GetCurrentScale() const { return currentScale_; }
-    const Vector3& GetMoveForward() const { return moveForward_; }
-    const Vector3& GetMoveRight() const { return moveRight_; }
+    const engine::Vector3& GetBasePosition() const { return basePosition_; }
+    const engine::Vector3& GetBaseScale() const { return baseScale_; }
+    const engine::Vector3& GetBaseRotation() const { return baseRotation_; }
+    const engine::Vector3& GetPosePosition() const { return posePosition_; }
+    const engine::Vector3& GetCurrentScale() const { return currentScale_; }
+    const engine::Vector3& GetMoveForward() const { return moveForward_; }
+    const engine::Vector3& GetMoveRight() const { return moveRight_; }
 
   private:
     static constexpr float kPi = 3.1415926535f;
@@ -261,10 +267,10 @@ class GoalClearPlayerAnimator {
         return yaw;
     }
 
-    static Vector3 DirectionFromYaw(float yaw) { return {std::sin(yaw), 0.0f, std::cos(yaw)}; }
+    static engine::Vector3 DirectionFromYaw(float yaw) { return {std::sin(yaw), 0.0f, std::cos(yaw)}; }
 
-    static Vector3 NormalizePlanarDirection(const Vector3& direction, const Vector3& fallback) {
-        Vector3 result = {direction.x, 0.0f, direction.z};
+    static engine::Vector3 NormalizePlanarDirection(const engine::Vector3& direction, const engine::Vector3& fallback) {
+        engine::Vector3 result = {direction.x, 0.0f, direction.z};
         const float length = std::sqrt(result.x * result.x + result.z * result.z);
         if (length <= 0.0001f) {
             return fallback;
@@ -272,19 +278,19 @@ class GoalClearPlayerAnimator {
         return {result.x / length, 0.0f, result.z / length};
     }
 
-    static Vector3 RightFromForward(const Vector3& forward) { return {forward.z, 0.0f, -forward.x}; }
+    static engine::Vector3 RightFromForward(const engine::Vector3& forward) { return {forward.z, 0.0f, -forward.x}; }
 
   private:
     Player* player_ = nullptr;
     Tuning tuning_{};
     bool isActive_ = false;
     bool savedControlActive_ = true;
-    Vector3 basePosition_{};
-    Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
-    Vector3 baseRotation_{};
-    Vector3 resultRotation_{};
-    Vector3 posePosition_{};
-    Vector3 currentScale_ = {1.0f, 1.0f, 1.0f};
-    Vector3 moveForward_ = {0.0f, 0.0f, 1.0f};
-    Vector3 moveRight_ = {1.0f, 0.0f, 0.0f};
+    engine::Vector3 basePosition_{};
+    engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 baseRotation_{};
+    engine::Vector3 resultRotation_{};
+    engine::Vector3 posePosition_{};
+    engine::Vector3 currentScale_ = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 moveForward_ = {0.0f, 0.0f, 1.0f};
+    engine::Vector3 moveRight_ = {1.0f, 0.0f, 0.0f};
 };

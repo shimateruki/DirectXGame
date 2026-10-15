@@ -167,7 +167,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     const std::array<int, 2> values = {tens, ones};
 
     for (int i = 0; i < 2; ++i) {
-        Sprite* digit = lifeLostDigits_[i].sprite;
+        engine::Sprite* digit = lifeLostDigits_[i].sprite;
         if (!digit)
             continue;
 
@@ -177,12 +177,12 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
             continue;
 
         const int sourceIndex = showTens ? i : 1;
-        const uint32_t handle = Sprite::LoadTexture("number/big" + std::to_string(values[sourceIndex]) + ".png");
+        const uint32_t handle = engine::Sprite::LoadTexture("number/big" + std::to_string(values[sourceIndex]) + ".png");
         digit->SetTextureHandle(handle);
         digit->SetPosition({startX + (sourceIndex - (2 - (showTens ? 2 : 1))) * spacing, digitY});
         digit->SetSize({digitWidth, digitHeight});
-        digit->SetColor(lifeLostState_.DidDropNumber() ? Vector4{1.0f, 0.65f, 0.22f, alpha}
-                                               : Vector4{1.0f, 0.92f, 0.38f, alpha});
+        digit->SetColor(lifeLostState_.DidDropNumber() ? engine::Vector4{1.0f, 0.65f, 0.22f, alpha}
+                                               : engine::Vector4{1.0f, 0.92f, 0.38f, alpha});
         digit->Update();
     }
 }
@@ -219,7 +219,7 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
     lifeLostCamera_->ConfigFixedPoint({0.0f, 2.25f, -7.2f}, {0.10f, 0.0f, 0.0f});
     lifeLostCamera_->Update();
 
-    lifeLostSlimeObject_ = std::make_unique<Object3d>();
+    lifeLostSlimeObject_ = std::make_unique<engine::Object3d>();
     lifeLostSlimeObject_->Initialize(object3dCommon_.get());
     lifeLostSlimeObject_->SetName("LifeLostSlime");
     lifeLostSlimeObject_->SetModel("Characters/slime");
@@ -229,7 +229,7 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
     lifeLostSlimeObject_->SetColor({0.38f, 0.92f, 1.0f, 1.0f});
     lifeLostSlimeObject_->SetIsVisible(false);
 
-    lifeLostStunObject_ = std::make_unique<Object3d>();
+    lifeLostStunObject_ = std::make_unique<engine::Object3d>();
     lifeLostStunObject_->Initialize(object3dCommon_.get());
     lifeLostStunObject_->SetName("LifeLostStun");
     lifeLostStunObject_->SetModel("Primitives/sphere");

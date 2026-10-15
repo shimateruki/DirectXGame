@@ -10,7 +10,7 @@ class GimmickAppearingFloor : public BaseGimmick {
     void Update(float deltaTime) override;
     void OnTrigger() override;
 
-    std::unique_ptr<Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     // 表示だけでなく衝突判定も同時に切り替えます。

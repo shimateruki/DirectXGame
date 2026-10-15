@@ -38,6 +38,7 @@ void AssignPreferredTexture(std::string &slot, const std::string &candidate) {
 
 // 解像度やマップ種別の接尾辞を除き、3枚セット共通のキーを作る。
 std::string BuildPbrPresetKey(const fs::path &path) {
+  // 解像度と用途を示す語を除き、同じ素材の3種類のマップを同じキーへ寄せる。
   std::string stem = ToLowerAscii(path.stem().string());
   for (char &c : stem) {
     if (c == '-' || c == ' ') {
@@ -73,6 +74,7 @@ std::string BuildPbrPresetKey(const fs::path &path) {
 }
 
 std::string BuildPbrPresetName(const std::string &key) {
+    // テクスチャ組のキーを人が読みやすい表示名へ整える。
   std::string name = key;
   for (char &c : name) {
     if (c == '_') {
@@ -100,6 +102,7 @@ void InspectorTextureCatalog::EnsureLoaded() {
 void InspectorTextureCatalog::Refresh() { Rebuild(); }
 
 void InspectorTextureCatalog::Rebuild() {
+  // 古い索引を残さず、ディスク上のPBR素材とSpriteから候補を作り直す。
   albedoPaths_.clear();
   normalPaths_.clear();
   ormPaths_.clear();
@@ -113,6 +116,7 @@ void InspectorTextureCatalog::Rebuild() {
     std::map<std::string, PbrPreset> presetMap;
 
     for (const auto &entry : fs::recursive_directory_iterator(pbrDir)) {
+      // 同名のPNG/DDSがある場合はDDSを優先するため、先に組を記録する。
       if (!entry.is_regular_file()) {
         continue;
       }
@@ -130,6 +134,7 @@ void InspectorTextureCatalog::Rebuild() {
     }
 
     for (const std::string &pathString : allFiles) {
+      // Albedo・Normal・ARMを同じ素材キーへ集約し、Inspectorで一組として選べるようにする。
       const fs::path path(pathString);
       const std::string ext = ToLowerAscii(path.extension().string());
       const std::string base =
@@ -172,6 +177,7 @@ void InspectorTextureCatalog::Rebuild() {
     }
 
     for (const auto &[key, preset] : presetMap) {
+      // 不完全なPBRセットは誤適用を避けるため候補に含めない。
       if (preset.IsComplete()) {
         pbrPresets_.push_back(preset);
       }

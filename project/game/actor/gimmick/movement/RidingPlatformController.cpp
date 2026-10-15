@@ -15,7 +15,7 @@
 #include <cmath>
 
 namespace {
-float DistanceXZ(const Vector3& a, const Vector3& b) {
+float DistanceXZ(const engine::Vector3& a, const engine::Vector3& b) {
     // 乗り場との近さは高さを除いた水平面で判定する。
     const float x = a.x - b.x, z = a.z - b.z;
     return std::sqrt(x * x + z * z);
@@ -110,7 +110,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             }
             boarders_.push_back(boarder);
         }
-        player_.SetSignalCallback([this, &floor](Object3d* target, const CinematicSignalMarker& signal, bool preview) {
+        player_.SetSignalCallback([this, &floor](engine::Object3d* target, const CinematicSignalMarker& signal, bool preview) {
             if (preview || !target)
                 return;
             if (signal.signal == "ride.fireball") {
@@ -146,7 +146,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
     auto* rider = GetScenePlayer(scene);
     if (!rider || deltaTime <= 0)
         return;
-    const Vector3 previous = floor.GetTranslate();
+    const engine::Vector3 previous = floor.GetTranslate();
     const bool riderOnDeck = IsStandingOnMovingFloor(floor, *rider);
     // 落下は通常のミス。復活して乗り場へ戻った時だけ床を再準備する。
     if (running_ && !riderOnDeck &&
@@ -223,9 +223,9 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         boarder.elapsed += deltaTime;
         const float t = std::clamp(boarder.elapsed / boarder.duration, 0.0f, 1.0f);
         const auto c = floor.GetColliderConfig();
-        Vector3 destination = floor.GetTranslate() + boarder.offset;
+        engine::Vector3 destination = floor.GetTranslate() + boarder.offset;
         destination.y += (c.center.y + c.size.y) * floor.GetScale().y;
-        auto position = Math::Lerp(boarder.origin, destination, t);
+        auto position = engine::Math::Lerp(boarder.origin, destination, t);
         position.y += 4.0f * boarder.height * t * (1.0f - t);
         enemy->SetTranslate(position);
         if (t >= 1) {

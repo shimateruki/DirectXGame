@@ -11,6 +11,7 @@ class SceneFactory : public AbstractSceneFactory {
 public:
     using SceneCreator = std::function<std::unique_ptr<BaseScene>()>;
 
+    /// <summary>空の登録表を持つシーンファクトリを作る。</summary>
     SceneFactory() = default;
 
     /// <summary>名前に対応するシーンインスタンスを生成する。未登録ならnullptr。</summary>
@@ -19,7 +20,8 @@ public:
     /// <summary>登録順にシーン名を返す。</summary>
     std::vector<std::string> GetRegisteredSceneNames() const override;
 
-    // 新しいBaseScene派生クラスはここへ登録すると、Editorの候補へ自動反映されます。
+    /// <summary>実行時シーン名と生成関数を登録し、Editorの候補にも加える。</summary>
+    /// <returns>名前と生成関数が有効ならtrue。同名の場合は生成関数を置き換える。</returns>
     bool RegisterScene(const std::string& sceneName, SceneCreator creator);
 
 private:

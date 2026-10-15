@@ -5,7 +5,7 @@
 #include <cassert>
 
 void BaseItem::Initialize(Object3dCommon* common, const std::string& modelName) {
-    Object3d::Initialize(common);
+    engine::Object3d::Initialize(common);
 
     // アイテムの見た目は派生型ごとに選び、取得判定の土台だけを共通化します。
     ModelManager::GetInstance()->LoadModel(modelName);
@@ -38,18 +38,18 @@ void BaseItem::Update(float deltaTime) {
     }
 
     // 待機中は経過秒数に応じて回転し、フレームレートによる速度差をなくします。
-    Vector3 rotate = GetRotation();
+    engine::Vector3 rotate = GetRotation();
     rotate.y += rotationSpeed_ * deltaTime;
     if (rotate.y > 6.283185f) {
         rotate.y -= 6.283185f;
     }
     SetRotation(rotate);
 
-    Object3d::Update(deltaTime);
+    engine::Object3d::Update(deltaTime);
 }
 
 // 対象がプレイヤーで実際に重なった時だけ、派生クラスの取得処理を呼びます。
-bool BaseItem::OnCollision(Object3d* other) {
+bool BaseItem::OnCollision(engine::Object3d* other) {
     // 属性だけで確定せず、相手の型と実際の重なりを確認してから取得します。
     if (isCollected_ || !other) {
         return false;
@@ -85,7 +85,7 @@ void BaseItem::MarkCollected() {
     isDead = true;
 }
 
-std::unique_ptr<Object3d> BaseItem::Clone() const {
+std::unique_ptr<engine::Object3d> BaseItem::Clone() const {
     // 初期化で描画・判定資源を作り直してから、編集可能な設定値を引き継ぎます。
     auto newObj = std::make_unique<BaseItem>();
     assert(common_ != nullptr);

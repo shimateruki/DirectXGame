@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7445377099b17041696fe2d5b9cf1ea7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause_guide/select_keyboard_hint.dds",
+  "version": 1
+}

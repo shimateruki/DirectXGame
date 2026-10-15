@@ -94,7 +94,7 @@ bool ReplayDebugger::RestorePlayInEditorSnapshot() {
         baselineObjectIds.insert(snapshot.replayId);
     }
 
-    std::vector<Object3d*> runtimeObjects;
+    std::vector<engine::Object3d*> runtimeObjects;
     for (auto& object : scene->GetObjects()) {
         if (!object || object->IsEditorInternal()) {
             continue;
@@ -103,7 +103,7 @@ bool ReplayDebugger::RestorePlayInEditorSnapshot() {
             runtimeObjects.push_back(object.get());
         }
     }
-    for (Object3d* object : runtimeObjects) {
+    for (engine::Object3d* object : runtimeObjects) {
         if (!object->IsReplayRetained()) {
             scene->DestroyObject(object);
         }
@@ -116,11 +116,11 @@ bool ReplayDebugger::RestorePlayInEditorSnapshot() {
         baselineSpriteIds.insert(snapshot.replayId);
     }
 
-    std::vector<Sprite*> currentSprites;
+    std::vector<engine::Sprite*> currentSprites;
     scene->CollectReplaySprites(currentSprites);
-    std::unordered_set<Sprite*> uniqueSprites;
-    std::vector<Sprite*> runtimeSprites;
-    for (Sprite* sprite : currentSprites) {
+    std::unordered_set<engine::Sprite*> uniqueSprites;
+    std::vector<engine::Sprite*> runtimeSprites;
+    for (engine::Sprite* sprite : currentSprites) {
         if (!sprite || !uniqueSprites.insert(sprite).second) {
             continue;
         }
@@ -128,7 +128,7 @@ bool ReplayDebugger::RestorePlayInEditorSnapshot() {
             runtimeSprites.push_back(sprite);
         }
     }
-    for (Sprite* sprite : runtimeSprites) {
+    for (engine::Sprite* sprite : runtimeSprites) {
         if (sprite->IsReplayRetained()) {
             continue;
         }
@@ -343,14 +343,14 @@ void ReplayDebugger::CaptureFrame(double time) {
         frame.objects.push_back(std::move(snapshot));
     }
 
-    std::vector<Sprite*> replaySprites;
+    std::vector<engine::Sprite*> replaySprites;
     scene->CollectReplaySprites(replaySprites);
     frame.sprites.reserve(replaySprites.size());
-    std::unordered_set<Sprite*> capturedSprites;
+    std::unordered_set<engine::Sprite*> capturedSprites;
     capturedSprites.reserve(replaySprites.size());
     // 同名・同画像の Sprite が複数あっても、出現順を付けて保存データと対応付ける。
     std::unordered_map<std::string, std::size_t> spriteBindingOccurrences;
-    for (Sprite* sprite : replaySprites) {
+    for (engine::Sprite* sprite : replaySprites) {
         if (!sprite || !capturedSprites.insert(sprite).second) {
             continue;
         }
@@ -411,7 +411,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
     scene->RestoreReplaySceneState(frame.sceneState);
     auto& objects = scene->GetObjects();
 
-    std::unordered_map<uint64_t, Object3d*> currentObjects;
+    std::unordered_map<uint64_t, engine::Object3d*> currentObjects;
     currentObjects.reserve(objects.size());
     for (auto& object : objects) {
         if (object) {
@@ -419,11 +419,11 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
         }
     }
 
-    std::vector<Sprite*> replaySprites;
+    std::vector<engine::Sprite*> replaySprites;
     scene->CollectReplaySprites(replaySprites);
-    std::unordered_map<uint64_t, Sprite*> currentSprites;
+    std::unordered_map<uint64_t, engine::Sprite*> currentSprites;
     currentSprites.reserve(replaySprites.size());
-    for (Sprite* sprite : replaySprites) {
+    for (engine::Sprite* sprite : replaySprites) {
         if (sprite) {
             currentSprites[sprite->EnsureReplayId()] = sprite;
         }
@@ -455,7 +455,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
             ++lastMissingSpriteCount_;
             continue;
         }
-        Sprite* sprite = found->second;
+        engine::Sprite* sprite = found->second;
         sprite->RestoreReplayState(snapshot.state);
         sprite->SetReplayRetained(true);
     }
@@ -466,8 +466,8 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
         if (found == currentSprites.end()) {
             continue;
         }
-        Sprite* sprite = found->second;
-        Sprite* parent = nullptr;
+        engine::Sprite* sprite = found->second;
+        engine::Sprite* parent = nullptr;
         if (snapshot.state.parentReplayId != 0) {
             const auto parentFound = currentSprites.find(snapshot.state.parentReplayId);
             if (parentFound != currentSprites.end()) {
@@ -500,7 +500,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
             continue;
         }
 
-        Object3d* object = found->second;
+        engine::Object3d* object = found->second;
         const bool wasRemoved = object->IsReplayRemoved();
         object->RestoreReplayState(snapshot.state);
         object->SetReplayRetained(true);
@@ -513,7 +513,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
     }
 
     // 親子関係を持つObjectは、全ローカル状態を戻した後にルートから行列を確定します。
-    std::unordered_set<Object3d*> managedObjects;
+    std::unordered_set<engine::Object3d*> managedObjects;
     managedObjects.reserve(objects.size());
     for (const auto& object : objects) {
         if (object && !object->IsReplayRemoved()) {
@@ -524,7 +524,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
         if (!object || object->IsReplayRemoved()) {
             continue;
         }
-        Object3d* parent = object->GetParent();
+        engine::Object3d* parent = object->GetParent();
         if (!parent || !managedObjects.contains(parent)) {
             object->UpdateWorldMatrix();
         }
@@ -919,8 +919,8 @@ void ReplayDebugger::RebindPendingArchiveToCurrentScene(BaseScene* scene) {
     if (!pendingReplayArchive_ || !scene) return;
 
     recreatedArchiveObjectCount_ = 0;
-    std::unordered_map<std::string, Object3d*> objectsByGuid;
-    std::unordered_map<std::string, std::vector<Object3d*>> objectsBySignature;
+    std::unordered_map<std::string, engine::Object3d*> objectsByGuid;
+    std::unordered_map<std::string, std::vector<engine::Object3d*>> objectsBySignature;
     std::unordered_set<uint64_t> currentObjectIds;
     for (auto& object : scene->GetObjects()) {
         if (!object || object->IsEditorInternal()) continue;
@@ -936,7 +936,7 @@ void ReplayDebugger::RebindPendingArchiveToCurrentScene(BaseScene* scene) {
     for (FrameSnapshot& frame : pendingReplayArchive_->frames) {
         for (ObjectSnapshot& snapshot : frame.objects) {
             if (objectIdMap.contains(snapshot.replayId)) continue;
-            Object3d* current = nullptr;
+            engine::Object3d* current = nullptr;
             if (!snapshot.persistentGuid.empty()) {
                 const auto guidMatch = objectsByGuid.find(snapshot.persistentGuid);
                 if (guidMatch != objectsByGuid.end()) current = guidMatch->second;
@@ -961,7 +961,7 @@ void ReplayDebugger::RebindPendingArchiveToCurrentScene(BaseScene* scene) {
                     { "itemType", snapshot.itemType },
                     { "modelName", snapshot.state.modelName },
                 };
-                std::unique_ptr<Object3d> recreated = scene->CreateReplayObject(descriptor);
+                std::unique_ptr<engine::Object3d> recreated = scene->CreateReplayObject(descriptor);
                 if (recreated &&
                     (snapshot.persistentGuid.empty() ||
                         recreated->SetPersistentGuid(snapshot.persistentGuid))) {
@@ -995,13 +995,13 @@ void ReplayDebugger::RebindPendingArchiveToCurrentScene(BaseScene* scene) {
         }
     }
 
-    std::vector<Sprite*> currentSprites;
+    std::vector<engine::Sprite*> currentSprites;
     scene->CollectReplaySprites(currentSprites);
-    std::unordered_set<Sprite*> uniqueSprites;
-    std::unordered_map<std::string, Sprite*> spritesByBindingKey;
+    std::unordered_set<engine::Sprite*> uniqueSprites;
+    std::unordered_map<std::string, engine::Sprite*> spritesByBindingKey;
     std::unordered_map<std::string, std::size_t> bindingOccurrences;
     std::unordered_set<uint64_t> currentSpriteIds;
-    for (Sprite* sprite : currentSprites) {
+    for (engine::Sprite* sprite : currentSprites) {
         if (!sprite || !uniqueSprites.insert(sprite).second) continue;
         const std::string name = sprite->GetName().empty() ? "Sprite" : sprite->GetName();
         const std::string base = name + "|" + sprite->GetTextureName();
@@ -1018,7 +1018,7 @@ void ReplayDebugger::RebindPendingArchiveToCurrentScene(BaseScene* scene) {
             if (spriteIdMap.contains(snapshot.replayId)) continue;
             const auto match = spritesByBindingKey.find(snapshot.bindingKey);
             if (match != spritesByBindingKey.end()) {
-                Sprite* current = match->second;
+                engine::Sprite* current = match->second;
                 const uint64_t currentId = current->EnsureReplayId();
                 spriteIdMap[snapshot.replayId] = currentId;
                 spriteTextureHandles[currentId] = current->GetTextureHandle();
@@ -1050,6 +1050,7 @@ std::size_t ReplayDebugger::GetMaxFrameCount() const {
 }
 
 const char* ReplayDebugger::GetModeLabel() const {
+    // 記録・再生・回帰検査の状態をデバッグUI向けの短い表示名へ写す。
     switch (mode_) {
     case Mode::Recording: return "記録中";
     case Mode::Paused: return "停止中";

@@ -298,7 +298,7 @@ int main(int argc, char** argv) {
         motionTrack.motion = "aim_launch";
         AttackMotionState straight;
         straight.Advance(motionTrack, 0.5f, {0, 0, 100}, true);
-        Check(Math::Length(straight.position) == 0, "projectile moved before launch");
+        Check(engine::Math::Length(straight.position) == 0, "projectile moved before launch");
         straight.Advance(motionTrack, 1.5f, {100, 0, 0}, true);
         Check(std::abs(straight.position.z - 4) < 0.001f && std::abs(straight.position.x) < 0.001f,
             "locked aim changed after launch");
@@ -310,11 +310,11 @@ int main(int argc, char** argv) {
             "homing exceeded angular speed or did not turn");
         const auto locked = seeking.direction;
         seeking.Advance(motionTrack, 2.0f, {-100, 0, 0}, true);
-        Check(Math::Length(seeking.direction - locked) < 0.00001f, "homing continued after tracking window");
+        Check(engine::Math::Length(seeking.direction - locked) < 0.00001f, "homing continued after tracking window");
         AttackMotionState reverse;
         reverse.launched = true; reverse.elapsed = 0.5f;
         reverse.Advance(motionTrack, 0.75f, {0, 0, -100}, true);
-        Check(std::isfinite(reverse.direction.x) && std::abs(Math::Length(reverse.direction) - 1) < 0.0001f,
+        Check(std::isfinite(reverse.direction.x) && std::abs(engine::Math::Length(reverse.direction) - 1) < 0.0001f,
             "opposite target broke homing rotation");
         AttackMotionState missingTargetMotion;
         missingTargetMotion.Advance(motionTrack, 1.5f, {}, false);
@@ -437,11 +437,11 @@ int main(int argc, char** argv) {
         const auto initialPosition = ResolveAttackSequenceEmission(placed,placementContext,0,0).position;
         AttackPlacementMath::RotateEvent(placed,placementContext.ownerSize,1.2f);
         const auto rotatedPosition = ResolveAttackSequenceEmission(placed,placementContext,0,0).position;
-        Check(Math::Length(rotatedPosition-initialPosition)<0.0001f,"gizmo rotation moved emission position");
-        const Vector3 worldDelta{3,1,-2};
+        Check(engine::Math::Length(rotatedPosition-initialPosition)<0.0001f,"gizmo rotation moved emission position");
+        const engine::Vector3 worldDelta{3,1,-2};
         const auto localDelta = AttackPlacementMath::ToLocalDelta(worldDelta,1.57079632679f+placed.yawDegrees*0.01745329252f);
         placed.right += localDelta.x; placed.up += localDelta.y; placed.forward += localDelta.z;
-        Check(Math::Length(ResolveAttackSequenceEmission(placed,placementContext,0,0).position-initialPosition-worldDelta)<0.0001f,
+        Check(engine::Math::Length(ResolveAttackSequenceEmission(placed,placementContext,0,0).position-initialPosition-worldDelta)<0.0001f,
             "gizmo translation did not preserve world delta");
         AttackSequenceTrack keyed;
         auto endKey = keyed.keys.front(); endKey.time = 1; endKey.position = {2,4,6}; keyed.keys.push_back(endKey);
@@ -458,7 +458,7 @@ int main(int argc, char** argv) {
         Check(components.SaveToFile(componentsPath,&error),error);
         Check(reopenedComponents.LoadFromFile(componentsPath,&error),error);
         const auto& placedSaved = reopenedComponents.attacks.front().sequence;
-        Check(Math::Length(ResolveAttackSequenceEmission(placedSaved.events.front(),placementContext,0,0).position-initialPosition-worldDelta)<0.0001f &&
+        Check(engine::Math::Length(ResolveAttackSequenceEmission(placedSaved.events.front(),placementContext,0,0).position-initialPosition-worldDelta)<0.0001f &&
             placedSaved.tracks.front().keys[1].position[0]==8,"placement save/reopen changed transform");
         std::cout << "Placement tests passed: rotated offset basis, size offsets, rotation pivot, current-time keys, save/reopen\n";
         // Actor側の照準固定時間と予告幅も、保存後の定義に残ることを確認する。

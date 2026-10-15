@@ -76,7 +76,7 @@ void DrawViewportLetterbox(const ImVec2& canvasScreenPos, const ImVec2& canvasSi
 
 // 選択中オブジェクトが現在シーンにまだ存在しているか確認する。
 
-bool IsObjectInCurrentScene(SceneManager* sceneManager, Object3d* object);
+bool IsObjectInCurrentScene(SceneManager* sceneManager, engine::Object3d* object);
 // 2Dベクトルの長さを計算する。
 
 float Length2D(const ImVec2& value);
@@ -85,13 +85,13 @@ float Length2D(const ImVec2& value);
 ImVec2 Normalize2D(const ImVec2& value);
 // 原点から方向ベクトルへ指定距離だけ進めた3D座標を返す。
 
-Vector3 AddScaled(const Vector3& origin, const Vector3& direction, float scale);
+engine::Vector3 AddScaled(const engine::Vector3& origin, const engine::Vector3& direction, float scale);
 // 3軸スケールの中で最も大きい絶対値を返し、ギズモ表示サイズの基準にする。
 
-float GetLargestAbsScale(const Vector3& scale);
+float GetLargestAbsScale(const engine::Vector3& scale);
 // 3Dワールド座標をゲームビュー上の2D座標へ投影する。
 
-bool ProjectWorldToGameView(const Vector3& worldPos, const Matrix4x4& viewProjection, const GameViewArea& area, ImVec2& outScreen);
+bool ProjectWorldToGameView(const engine::Vector3& worldPos, const engine::Matrix4x4& viewProjection, const GameViewArea& area, ImVec2& outScreen);
 // 2D線分の先端に矢印を付けて描画する。
 
 void DrawArrow2D(ImDrawList* drawList, const ImVec2& start, const ImVec2& end, ImU32 color, float thickness);
@@ -103,7 +103,7 @@ void DrawTextWithOutline(ImDrawList* drawList, const ImVec2& pos, ImU32 color, c
 void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera);
 // 選択オブジェクトのローカル軸をゲームビュー上に重ねて描画する。
 
-void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, Object3d* selectedObject);
+void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, engine::Object3d* selectedObject);
 
 }
 

@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace engine {
+
 /// <summary>描画命令を 1 フレーム内の用途別に分類します。</summary>
 enum class RenderPass : uint8_t {
     MainScene,
@@ -132,3 +134,5 @@ public:
 private:
     RenderPass previousPass_ = RenderPass::Other;
 };
+
+} // namespace engine

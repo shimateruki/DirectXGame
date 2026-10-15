@@ -9,20 +9,21 @@
 #include "SceneManager.h"
 #include "ScenePreloader.h"
 #include "Skybox.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include <algorithm>
 #include <stdexcept>
 #include <unordered_set>
 
-Sprite* BaseScene::AddSprite(std::unique_ptr<Sprite> sprite) {
+engine::Sprite* BaseScene::AddSprite(std::unique_ptr<engine::Sprite> sprite) {
     // 所有権をシーンへ移した後、編集用の非所有ポインタを返します。
     auto* sprites = GetMutableSprites();
     if (!sprites || !sprite) return nullptr;
-    Sprite* raw = sprite.get();
+    engine::Sprite* raw = sprite.get();
     sprites->push_back(std::move(sprite));
     return raw;
 }
 
-bool BaseScene::MoveSprite(Sprite* sprite, int offset) {
+bool BaseScene::MoveSprite(engine::Sprite* sprite, int offset) {
     // 前後一つの入れ替えだけを許可し、描画順と UI 上の並びを揃えます。
     auto* sprites = GetMutableSprites();
     if (!sprites || !sprite || (offset != -1 && offset != 1)) return false;
@@ -37,19 +38,19 @@ bool BaseScene::MoveSprite(Sprite* sprite, int offset) {
     return true;
 }
 
-void BaseScene::AddObject(std::unique_ptr<Object3d> object) {
+void BaseScene::AddObject(std::unique_ptr<engine::Object3d> object) {
     // オブジェクトを持たない派生シーンは、この操作を明示的に拒否します。
     (void)object;
     throw std::logic_error("This scene does not own Object3d objects");
 }
 
-Object3d* BaseScene::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+engine::Object3d* BaseScene::AddObjectImmediate(std::unique_ptr<engine::Object3d> object) {
     // 即時追加も所有権を持つ派生シーンだけが実装します。
     (void)object;
     throw std::logic_error("This scene does not own Object3d objects");
 }
 
-std::unique_ptr<Object3d> BaseScene::TakeObjectImmediate(Object3d* object) {
+std::unique_ptr<engine::Object3d> BaseScene::TakeObjectImmediate(engine::Object3d* object) {
     // 所有権のない基底シーンでは持ち出す対象がありません。
     (void)object;
     return nullptr;
@@ -115,17 +116,17 @@ std::string BaseScene::ResolvePrimarySpriteLayoutPath(const std::string& default
     return assetPath.empty() ? defaultPath : assetPath;
 }
 
-bool BaseScene::Destroy(Object3d* object) {
+bool BaseScene::Destroy(engine::Object3d* object) {
     // 3D オブジェクトの削除は生存確認と遅延破棄を行う共通経路へ渡します。
     return DestroyObject(object);
 }
 
-bool BaseScene::Destroy(Sprite* sprite) {
+bool BaseScene::Destroy(engine::Sprite* sprite) {
     // Sprite の削除は Replay 保持状態に応じた共通経路へ渡します。
     return DestroySprite(sprite);
 }
 
-void BaseScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+void BaseScene::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) {
     // Replay に現在の Sprite を非所有参照として渡します。
     auto& sprites = GetSprites();
     replaySprites.reserve(replaySprites.size() + sprites.size());
@@ -148,9 +149,9 @@ void BaseScene::RestoreReplaySceneState(const json& state) {
 
 void BaseScene::ReleaseReplaySprites() {
     // Replay が保持していた Sprite を解放し、削除保留の子参照も切ります。
-    std::vector<Sprite*> replaySprites;
+    std::vector<engine::Sprite*> replaySprites;
     CollectReplaySprites(replaySprites);
-    for (Sprite* sprite : replaySprites) {
+    for (engine::Sprite* sprite : replaySprites) {
         if (sprite) {
             sprite->SetReplayRetained(false);
         }
@@ -159,7 +160,7 @@ void BaseScene::ReleaseReplaySprites() {
     auto* sprites = GetMutableSprites();
     if (!sprites) return;
     sprites->erase(
-        std::remove_if(sprites->begin(), sprites->end(), [](const std::unique_ptr<Sprite>& sprite) {
+        std::remove_if(sprites->begin(), sprites->end(), [](const std::unique_ptr<engine::Sprite>& sprite) {
             if (!sprite || !sprite->IsReplayRemoved()) {
                 return false;
             }
@@ -195,7 +196,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
         skybox->Draw(camera->GetConstantBuffer());
     }
 
-    auto drawObject = [&](Object3d* object, bool transparentPass) {
+    auto drawObject = [&](engine::Object3d* object, bool transparentPass) {
         if (!object || !object->GetIsRenderVisible()) {
             return;
         }
@@ -266,7 +267,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     postEffect->EndCameraPreviewSpecialPass(commandList, targetTextureIndex);
 }
 
-bool BaseScene::DestroyObject(Object3d* object) {
+bool BaseScene::DestroyObject(engine::Object3d* object) {
     // 走査中の即時破棄を避け、先に非表示にして削除を予約します。
     if (!IsAlive(object)) {
         return false;
@@ -277,11 +278,11 @@ bool BaseScene::DestroyObject(Object3d* object) {
     return true;
 }
 
-bool BaseScene::DestroySprite(Sprite* sprite) {
+bool BaseScene::DestroySprite(engine::Sprite* sprite) {
     // Replay が保持する Sprite は実破棄せず、記録上の削除として隠します。
     auto* sprites = GetMutableSprites();
     if (!sprites) return false;
-    auto it = std::find_if(sprites->begin(), sprites->end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
+    auto it = std::find_if(sprites->begin(), sprites->end(), [sprite](const std::unique_ptr<engine::Sprite>& candidate) {
         return candidate && candidate.get() == sprite;
     });
     if (it == sprites->end()) {
@@ -289,8 +290,8 @@ bool BaseScene::DestroySprite(Sprite* sprite) {
     }
 
     if (sprite->IsReplayRetained()) {
-        std::vector<Sprite*> children = sprite->GetChildren();
-        for (Sprite* child : children) {
+        std::vector<engine::Sprite*> children = sprite->GetChildren();
+        for (engine::Sprite* child : children) {
             if (child) {
                 child->SetParent(nullptr);
             }
@@ -301,8 +302,8 @@ bool BaseScene::DestroySprite(Sprite* sprite) {
         return true;
     }
 
-    std::vector<Sprite*> children = sprite->GetChildren();
-    for (Sprite* child : children) {
+    std::vector<engine::Sprite*> children = sprite->GetChildren();
+    for (engine::Sprite* child : children) {
         if (child) {
             child->SetParent(nullptr);
         }
@@ -313,42 +314,42 @@ bool BaseScene::DestroySprite(Sprite* sprite) {
     return true;
 }
 
-bool BaseScene::IsAlive(Object3d* object) {
+bool BaseScene::IsAlive(engine::Object3d* object) {
     // 生存判定は所有配列内に同じポインタがあるかで確認します。
     if (!object) {
         return false;
     }
 
     auto& objects = GetObjects();
-    return std::any_of(objects.begin(), objects.end(), [object](const std::unique_ptr<Object3d>& candidate) {
+    return std::any_of(objects.begin(), objects.end(), [object](const std::unique_ptr<engine::Object3d>& candidate) {
         return candidate && candidate.get() == object;
     });
 }
 
-bool BaseScene::IsAlive(Sprite* sprite) {
+bool BaseScene::IsAlive(engine::Sprite* sprite) {
     // Replay 上で削除済みの Sprite は所有配列にあっても生存扱いにしません。
     if (!sprite) {
         return false;
     }
 
     auto& sprites = GetSprites();
-    return std::any_of(sprites.begin(), sprites.end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
+    return std::any_of(sprites.begin(), sprites.end(), [sprite](const std::unique_ptr<engine::Sprite>& candidate) {
         return candidate && candidate.get() == sprite && !candidate->IsReplayRemoved();
     });
 }
 
 bool BaseScene::IsSpecialMaterialType(int materialType) const {
     // Scene Color や深度を参照する材質を専用パスへ振り分けます。
-    return (materialType >= 8 && materialType <= 22) || materialType == 26;
+    return MaterialRenderPolicy::IsSpecial(materialType);
 }
 
-bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Object3d* viewActor, bool isFirstPerson) const {
+bool BaseScene::IsHiddenByFirstPerson(engine::Object3d* object, engine::Object3d* viewActor, bool isFirstPerson) const {
     // 一人称視点では視点の主体とその子オブジェクトを隠します。
     if (!isFirstPerson || !object || !viewActor) {
         return false;
     }
 
-    Object3d* current = object;
+    engine::Object3d* current = object;
     while (current) {
         if (current == viewActor) {
             return true;
@@ -358,7 +359,7 @@ bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Object3d* viewActor, boo
     return false;
 }
 
-bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Object3d* viewActor, bool isFirstPerson) {
+bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<engine::Object3d>>& objects, DirectXCommon* dxCommon, engine::Object3d* viewActor, bool isFirstPerson) {
     // 対象がないフレームは専用パスの開始と終了を省略します。
     if (!dxCommon) {
         return false;
@@ -388,7 +389,7 @@ bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>
     return true;
 }
 
-bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Object3d* viewActor, bool isFirstPerson) {
+bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<engine::Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, engine::Object3d* viewActor, bool isFirstPerson) {
     // 深度・背景色を読む材質をまとめ、必要な時だけ Grab Texture を更新します。
     if (!dxCommon) {
         return false;
@@ -422,58 +423,7 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Obj
                 continue;
             }
 
-            switch (obj->GetMaterialType()) {
-            case 8:
-                obj->DrawWater(depthSrvHandle, grabSrvHandle);
-                break;
-            case 9:
-                obj->DrawMagma(depthSrvHandle, grabSrvHandle);
-                break;
-            case 10:
-                obj->DrawIce(depthSrvHandle, grabSrvHandle);
-                break;
-            case 11:
-                obj->DrawFire(depthSrvHandle, grabSrvHandle);
-                break;
-            case 12:
-                obj->DrawLaser(depthSrvHandle, grabSrvHandle);
-                break;
-            case 13:
-                obj->DrawSlimeGel(depthSrvHandle, grabSrvHandle);
-                break;
-            case 14:
-                obj->DrawShockwave(depthSrvHandle, grabSrvHandle);
-                break;
-            case 15:
-                obj->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
-                break;
-            case 16:
-                obj->DrawDamageCrack(depthSrvHandle, grabSrvHandle);
-                break;
-            case 17:
-                obj->DrawUpdraft(depthSrvHandle, grabSrvHandle);
-                break;
-            case 18:
-                obj->DrawStunBind(depthSrvHandle, grabSrvHandle);
-                break;
-            case 19:
-                obj->DrawCrownUnlock(depthSrvHandle, grabSrvHandle);
-                break;
-            case 20:
-                obj->DrawPoisonSpore(depthSrvHandle, grabSrvHandle);
-                break;
-            case 21:
-                obj->DrawCloud(depthSrvHandle, grabSrvHandle);
-                break;
-            case 22:
-                obj->DrawGatePortal(depthSrvHandle, grabSrvHandle);
-                break;
-            case 26:
-                obj->DrawWindOrb(depthSrvHandle, grabSrvHandle);
-                break;
-            default:
-                break;
-            }
+            obj->DrawSpecialMaterial(depthSrvHandle, grabSrvHandle);
             obj->DrawOwnedSpecialMaterialVisuals(depthSrvHandle, grabSrvHandle);
         }
     }
@@ -541,7 +491,7 @@ void BaseScene::SetEventActive(int targetID, bool active) {
     }
 }
 
-Object3d* BaseScene::FindObjectByEventID(int eventID) {
+engine::Object3d* BaseScene::FindObjectByEventID(int eventID) {
     // IDなしなら無視
     if (eventID == -1) return nullptr;
 
@@ -554,9 +504,9 @@ Object3d* BaseScene::FindObjectByEventID(int eventID) {
     return nullptr;
 }
 
-Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
+engine::Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
     // 保存用 GUID の形式を確かめてからシーン内を探索します。
-    if (!Object3d::IsPersistentGuidValid(guid)) {
+    if (!engine::Object3d::IsPersistentGuidValid(guid)) {
         return nullptr;
     }
     for (const auto& object : GetObjects()) {
@@ -567,7 +517,7 @@ Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
     return nullptr;
 }
 
-const Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) const {
+const engine::Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) const {
     // 読み取り側も同じ GUID 探索規則を使います。
     return const_cast<BaseScene*>(this)->FindObjectByPersistentGuid(guid);
 }
@@ -595,7 +545,7 @@ std::size_t BaseScene::EnsureUniquePersistentObjectGuids() {
 }
 
 // 名前からスプライトを取得する
-Sprite* BaseScene::GetSpriteByName(const std::string& name) {
+engine::Sprite* BaseScene::GetSpriteByName(const std::string& name) {
     auto& sprites = GetSprites();
     for (auto& sprite : sprites) {
         if (sprite && sprite->GetName() == name) {

@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include "Object3dTransformUtils.h"
 #include "engine/graphics/3d/material/MaterialInstance.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
@@ -25,6 +26,8 @@
 #include <sstream>
 #include <typeinfo>
 
+namespace engine {
+
 namespace {
 
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
@@ -42,6 +45,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     return filePath;
 }
 
+// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
     // 親子付け時の循環参照を防ぐため、祖先を根までたどる。
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
@@ -50,37 +54,6 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
         }
     }
     return false;
-}
-
-void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
-    // ワールド行列から移動・倍率・回転を分離し、親を付け替えても見た目の姿勢を保つ。
-    const float epsilon = 0.0001f;
-
-    Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
-    Vector3 rowY = { matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] };
-    Vector3 rowZ = { matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] };
-
-    transform.scale = {
-        std::max(Math::Length(rowX), epsilon),
-        std::max(Math::Length(rowY), epsilon),
-        std::max(Math::Length(rowZ), epsilon),
-    };
-    transform.translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
-
-    Matrix4x4 rotateMatrix = Math::MakeIdentity4x4();
-    rotateMatrix.m[0][0] = matrix.m[0][0] / transform.scale.x;
-    rotateMatrix.m[0][1] = matrix.m[0][1] / transform.scale.x;
-    rotateMatrix.m[0][2] = matrix.m[0][2] / transform.scale.x;
-    rotateMatrix.m[1][0] = matrix.m[1][0] / transform.scale.y;
-    rotateMatrix.m[1][1] = matrix.m[1][1] / transform.scale.y;
-    rotateMatrix.m[1][2] = matrix.m[1][2] / transform.scale.y;
-    rotateMatrix.m[2][0] = matrix.m[2][0] / transform.scale.z;
-    rotateMatrix.m[2][1] = matrix.m[2][1] / transform.scale.z;
-    rotateMatrix.m[2][2] = matrix.m[2][2] / transform.scale.z;
-
-    transform.quaternion = Math::MatrixToQuaternion(rotateMatrix);
-    transform.rotate = Math::MatrixToEuler(rotateMatrix);
-    transform.isQuaternionMaster = true;
 }
 
 }
@@ -92,11 +65,9 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 // 生成済みオブジェクトの複製やランタイム補助はここにまとめる。
 // ========================================================================
 void Object3d::InitializeRecorder(SceneManager* sceneManager) {
-    // 古い記録器を破棄してから、このオブジェクトを新しい再生対象へ結び直す。
-    if (recorder_) {
-        delete recorder_;
-    }
-    recorder_ = new GhostRecorder();
+    // 古い記録器の接続を先に解放し、このオブジェクトを新しい再生対象へ結び直す。
+    recorder_.reset();
+    recorder_ = std::make_unique<GhostRecorder>();
     recorder_->Initialize(sceneManager);
     recorder_->SetTarget(this);
 }
@@ -382,9 +353,9 @@ const GameplayLinkComponent* Object3d::GetGameplayLinkComponent() const {
     return gameplayLinkComponent_ ? &*gameplayLinkComponent_ : nullptr;
 }
 
-void Object3d::ApplyWorldMatrix(const Matrix4x4& worldMatrix) {
+void Object3d::ApplyWorldMatrix(const engine::Matrix4x4& worldMatrix) {
     // 受け取ったワールド姿勢をTransformへ分解し、描画用行列を再計算する。
-    ApplyMatrixToTransform(transform_, worldMatrix);
+    Object3dTransformUtils::ApplyMatrixToTransform(transform_, worldMatrix);
     UpdateLocalMatrix();
     UpdateWorldMatrix();
 }
@@ -607,3 +578,5 @@ void Object3d::CopyFrom(const Object3d* other) {
         *myFog = *otherFog;
     }
 }
+
+} // namespace engine

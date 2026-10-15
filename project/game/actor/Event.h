@@ -1,21 +1,21 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 #include <string>
-class Object3d;
+namespace engine { class Object3d; }
 class Bullet;
 /// <summary>
 /// プレイヤーが何かに衝突したときに発行されるイベント
 /// </summary>
 // PlayerHitEventは、プレイヤーが何かに接触したときの通知データです。
 struct PlayerHitEvent {
-    Object3d* me = nullptr;
-    Object3d* hitObject = nullptr; // ぶつかった相手（罠、アイテムなど）
-    Vector3 normal = {0, 0, 0};
+    engine::Object3d* me = nullptr;
+    engine::Object3d* hitObject = nullptr; // ぶつかった相手（罠、アイテムなど）
+    engine::Vector3 normal = {0, 0, 0};
 };
 
 // BulletHitEventは、弾がObject3dへ当たったときの通知データです。
 struct BulletHitEvent {
-    Object3d* hitObject; // 衝突した相手
+    engine::Object3d* hitObject; // 衝突した相手
     Bullet* bullet;      // 衝突した弾
 };
 
@@ -48,10 +48,10 @@ struct StatusEffectApplication {
 
 // DamageEventは、ダメージ対象、攻撃者、ダメージ量、ノックバックをまとめます。
 struct DamageEvent {
-    Object3d* target = nullptr;            // ダメージを受ける人
-    Object3d* attacker = nullptr;          // 攻撃した人
+    engine::Object3d* target = nullptr;            // ダメージを受ける人
+    engine::Object3d* attacker = nullptr;          // 攻撃した人
     float damageAmount = 0.0f;             // ダメージ量
-    Vector3 knockbackVelocity = {0, 0, 0}; // 追加：吹き飛ばしベクトル
+    engine::Vector3 knockbackVelocity = {0, 0, 0}; // 追加：吹き飛ばしベクトル
     float invincibilityDuration = 1.0f;    // 被弾後に操作を守る無敵時間
     bool bypassPlayerInvincibility = false; // 強制攻撃だけ回避・被弾無敵を貫通します。演出中は引き続き無効です。
     // プレイヤー専用の即死攻撃。攻撃力倍率によらず残りHPを全て減らします。

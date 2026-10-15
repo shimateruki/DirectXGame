@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+namespace engine {
+
 /// <summary>二次元の座標や方向を表す浮動小数ベクトル。</summary>
 struct Vector2
 {
@@ -224,3 +226,5 @@ public:
 	/// <summary>点から軸平行ボックスまでの最短距離の二乗を返します。</summary>
 	static float DistanceSquaredPointAABB(const Vector3& point, const Vector3& minBox, const Vector3& maxBox);
 };
+
+} // namespace engine

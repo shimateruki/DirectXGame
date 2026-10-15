@@ -18,88 +18,13 @@
 namespace {
 namespace fs = std::filesystem;
 
-// 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
-struct BakedShaderTextureSet {
-    uint32_t slot0 = 0;
-    uint32_t slot1 = 0;
-    uint32_t slot2 = 0;
-};
-
-// 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
-struct BakedShaderTextureCache {
-    BakedShaderTextureSet fallback;
-    BakedShaderTextureSet water;
-    BakedShaderTextureSet fire;
-    BakedShaderTextureSet gatePortal;
-    bool loaded = false;
-};
-
 std::string NormalizeSlashes(std::string text) {
     std::replace(text.begin(), text.end(), '\\', '/');
     return text;
 }
 
-BakedShaderTextureCache& GetBakedShaderTextureCache() {
-    static BakedShaderTextureCache cache;
-    return cache;
-}
-
-uint32_t LoadTextureWithFallback(const char* texturePath) {
-    const char* fallbackPath = "Resources/sprite/common/white.dds";
-    const char* pathToLoad = fs::exists(texturePath) ? texturePath : fallbackPath;
-    return TextureManager::GetInstance()->Load(pathToLoad, TextureManager::TextureColorSpace::Linear);
-}
-
-void EnsureBakedShaderTexturesLoaded() {
-    BakedShaderTextureCache& cache = GetBakedShaderTextureCache();
-    if (cache.loaded) {
-        return;
-    }
-
-    const uint32_t fallback = LoadTextureWithFallback("Resources/sprite/common/white.dds");
-    cache.fallback = { fallback, fallback, fallback };
-    cache.water = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/water_foam_mask.dds"),
-        LoadTextureWithFallback("Resources/texture/BakedShader/water_flow_noise.dds"),
-        fallback
-    };
-    cache.fire = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/fire_flame_mask.dds"),
-        LoadTextureWithFallback("Resources/texture/BakedShader/fire_orb_mask.dds"),
-        fallback
-    };
-    cache.gatePortal = {
-        LoadTextureWithFallback("Resources/texture/BakedShader/gate_swirl_mask.dds"),
-        fallback,
-        fallback
-    };
-    cache.loaded = true;
-}
-
-const BakedShaderTextureSet& GetDefaultBakedShaderTextures() {
-    return GetBakedShaderTextureCache().fallback;
-}
-
-const BakedShaderTextureSet& GetWaterBakedShaderTextures() {
-    return GetBakedShaderTextureCache().water;
-}
-
-const BakedShaderTextureSet& GetFireBakedShaderTextures() {
-    return GetBakedShaderTextureCache().fire;
-}
-
-const BakedShaderTextureSet& GetGatePortalBakedShaderTextures() {
-    return GetBakedShaderTextureCache().gatePortal;
-}
-
-void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const BakedShaderTextureSet& textures) {
-    EnsureBakedShaderTexturesLoaded();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, textures.slot0);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, textures.slot1);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, textures.slot2);
-}
-
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
+    // モデルの配置形式に応じて、LOD定義を探索する二つのパスを用意する。
     std::vector<fs::path> candidates;
     if (modelName.empty()) {
         return candidates;
@@ -123,6 +48,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 }
 
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
+    // マテリアル設定の読み込み可否を返し、不正なJSONを適用しない。
     std::ifstream file(path);
     if (!file) {
         return false;
@@ -137,6 +63,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     }
 }
 
+// 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
 float ClampTextureTiling(float value) {
     if (!std::isfinite(value)) {
         return 1.0f;
@@ -144,7 +71,8 @@ float ClampTextureTiling(float value) {
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
-Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
+engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
+    // 材質設定のUV倍率はスケールの絶対値から大きい二軸を採用する。
     float a = std::abs(scale.x);
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
@@ -158,6 +86,7 @@ Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
 
 template <typename T>
 bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
+    // 定数バッファの確保とMapを一組として扱い、失敗時は参照を残さない。
     data = nullptr;
     resource.Reset();
     if (!dxCommon) {
@@ -188,9 +117,9 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 // 色、PBR値、通常/ORM/アルベドテクスチャ、UVタイリング、環境反射を担当する。
 // Inspectorから編集される見た目の値は、基本的にこのファイルへ集める。
 // ========================================================================
-void MeshRenderer::SetColor(const Vector4& color) {
+void MeshRenderer::SetColor(const engine::Vector4& color) {
     materialColor_ = color;
-    if (materialData_) materialData_->color = ColorSpace::AuthoringToWorking(materialColor_);
+    if (materialData_) materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
 }
 
 void MeshRenderer::SetMaterialType(int32_t type) {
@@ -201,7 +130,7 @@ void MeshRenderer::SetIntensity(float intensity) {
     if (directionalLightData_) directionalLightData_->intensity = intensity;
 }
 
-Vector4 MeshRenderer::GetColor() const {
+engine::Vector4 MeshRenderer::GetColor() const {
     return materialColor_;
 }
 
@@ -234,6 +163,7 @@ bool MeshRenderer::GetEnableNormalMap() const {
 }
 
 void MeshRenderer::SetNormalMap(const std::string& texturePath) {
+    // 法線テクスチャは色変換せず線形空間で読み、解除時は旧ハンドルを使わない。
     normalMapPath_ = texturePath;
     if (!texturePath.empty()) {
         normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::Linear);
@@ -243,6 +173,7 @@ void MeshRenderer::SetNormalMap(const std::string& texturePath) {
 }
 
 void MeshRenderer::SetOrmMap(const std::string& texturePath) {
+    // ORM の各成分は色ではなく係数なので線形空間で読み込む。
     ormMapPath_ = texturePath;
     if (!texturePath.empty()) {
         ormMapHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::Linear);
@@ -253,6 +184,7 @@ void MeshRenderer::SetOrmMap(const std::string& texturePath) {
 
 
 void MeshRenderer::SetTexture(const std::string& texturePath) {
+    // ベースカラーだけは sRGB として読み込み、空パスで参照を解除する。
     texturePath_ = texturePath;
     if (!texturePath.empty()) {
         textureHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::SRGB);
@@ -261,7 +193,8 @@ void MeshRenderer::SetTexture(const std::string& texturePath) {
     }
 }
 
-void MeshRenderer::SetTextureTiling(const Vector2& tiling) {
+void MeshRenderer::SetTextureTiling(const engine::Vector2& tiling) {
+    // 無効な繰り返し率を補正してから UV 行列へ反映する。
     textureTiling_ = {
         ClampTextureTiling(tiling.x),
         ClampTextureTiling(tiling.y)
@@ -275,22 +208,23 @@ void MeshRenderer::SetAutoTextureTiling(bool enabled) {
 }
 
 void MeshRenderer::UpdateUvTransform() {
+    // 手動タイリングへ必要に応じてオブジェクトの大きさを掛け、見た目の密度を保つ。
     if (!materialData_) {
         return;
     }
 
-    Vector2 effectiveTiling = {
+    engine::Vector2 effectiveTiling = {
         ClampTextureTiling(textureTiling_.x),
         ClampTextureTiling(textureTiling_.y)
     };
 
     if (autoTextureTiling_ && transform_) {
-        Vector2 scaleTiling = MakeAutoTilingFromScale(transform_->scale);
+        engine::Vector2 scaleTiling = MakeAutoTilingFromScale(transform_->scale);
         effectiveTiling.x *= scaleTiling.x;
         effectiveTiling.y *= scaleTiling.y;
     }
 
-    materialData_->uvTransform = Math::MakeScaleMatrix({ effectiveTiling.x, effectiveTiling.y, 1.0f });
+    materialData_->uvTransform = engine::Math::MakeScaleMatrix({ effectiveTiling.x, effectiveTiling.y, 1.0f });
 }
 
 void MeshRenderer::SetEnableEnvMap(bool enable) {

@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <string>
 
-// 固定の操作画像を、現在のキー設定と1枚の透過アトラスの切り抜きへ変換する。
+// 固定の操作画像を、固定の操作表と1枚の透過アトラスの切り抜きへ変換する。
 struct InputGlyphSpec {
     std::string path;
     bool useCrop = false;
@@ -17,7 +17,7 @@ struct InputGlyphSpec {
 };
 
 inline std::string GetInputGlyphBindingSignature() {
-    // ガイド表示中のキー再割当に気づけるよう、見せている操作の設定だけ比較する。
+    // 表示に使う固定操作表の署名。初期化前後の切替も検出する。
     std::string signature;
     for (const char* action : {"Forward", "Backward", "Left", "Right", "Jump", "Ability",
                                "PrimaryAttack", "SecondaryAction", "LockOn", "MorphRelease"}) {
@@ -74,6 +74,7 @@ inline InputGlyphSpec ResolveActionGlyph(const std::string& action, bool gamepad
 }
 
 inline InputGlyphSpec ResolveInputGlyph(const std::string& authoredPath, bool gamepadMode) {
+    // 保存済みのキーボード画像を操作名へ変換し、現在の入力機器に対応する絵柄を選ぶ。
     const char* action = nullptr;
     if (authoredPath == "ui/input/keyboard/key_space.png") action = "Jump";
     else if (authoredPath == "ui/input/keyboard/key_e.png") action = "Ability";
@@ -83,7 +84,7 @@ inline InputGlyphSpec ResolveInputGlyph(const std::string& authoredPath, bool ga
     else if (authoredPath == "ui/input/mouse/mouse_right.png") action = "SecondaryAction";
     else if (authoredPath == "ui/input/combo/combo_wasd.png") {
         if (gamepadMode) return {"ui/input/controller/pad_l_stick.png"};
-        return ResolveActionGlyph("Forward", false);
+        return {"ui/input/combo/combo_wasd.png"};
     }
     if (action) return ResolveActionGlyph(action, gamepadMode);
     if (gamepadMode && authoredPath == "ui/input/mouse/mouse_move.png")

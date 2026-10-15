@@ -34,7 +34,7 @@ public:
     void SetActiveCamera(Camera* camera) { activeCamera_ = camera; }
 
     /// <summary>有効カメラへ画面揺れを要求する。</summary>
-    void PlayShake(float duration, float amplitude, float frequency = 24.0f, const Vector3& axisWeight = { 1.0f, 1.0f, 0.5f });
+    void PlayShake(float duration, float amplitude, float frequency = 24.0f, const engine::Vector3& axisWeight = { 1.0f, 1.0f, 0.5f });
 
     /// <summary>有効カメラへ視野角のパルス演出を要求する。</summary>
     void PlayFovPulse(float duration, float amountRadians, float attackRatio = 0.12f);

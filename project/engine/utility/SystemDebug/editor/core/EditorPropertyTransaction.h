@@ -21,6 +21,7 @@ void TrackLastItem(
     const TValue& valueAfterDraw,
     TApply apply) {
 #ifdef USE_IMGUI
+    // ドラッグ中の細かな変化を、項目の有効化から編集終了まで一件の履歴にする。
     const std::uint64_t itemId = static_cast<std::uint64_t>(ImGui::GetItemID());
     EditorTransactionManager* transactions = EditorTransactionManager::GetInstance();
     if (ImGui::IsItemActivated()) {

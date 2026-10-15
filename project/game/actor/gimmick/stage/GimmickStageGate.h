@@ -9,8 +9,8 @@ class GimmickStageGate : public BaseGimmick {
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
-    bool OnCollision(Object3d* other) override;
-    std::unique_ptr<Object3d> Clone() const override;
+    bool OnCollision(engine::Object3d* other) override;
+    std::unique_ptr<engine::Object3d> Clone() const override;
 
     // エディターで設定された行き先情報とノードの動作モードを取得します。
     int GetStageIndex() const;
@@ -40,9 +40,9 @@ class GimmickStageGate : public BaseGimmick {
     // 選択状態と演出状態を満たした場合にだけシーン遷移します。
     bool CanTriggerTransition() const;
     void TriggerTransition();
-    Vector4 GetTargetColor() const;
+    engine::Vector4 GetTargetColor() const;
 
-    Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     float pulseTimer_ = 0.0f;
     float activation_ = 1.0f;
     float targetActivation_ = 1.0f;

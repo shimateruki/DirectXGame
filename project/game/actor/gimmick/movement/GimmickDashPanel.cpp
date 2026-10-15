@@ -42,7 +42,7 @@ void GimmickDashPanel::Update(float deltaTime) {
     SetEmissive(baseEmissive_ + idlePulse + easedPulse * 3.4f);
 
     const float flashBlend = easedPulse * 0.62f;
-    const Vector4 flashColor = {1.0f, 0.86f, 0.30f, baseColor_.w};
+    const engine::Vector4 flashColor = {1.0f, 0.86f, 0.30f, baseColor_.w};
     SetColor({
         baseColor_.x + (flashColor.x - baseColor_.x) * flashBlend,
         baseColor_.y + (flashColor.y - baseColor_.y) * flashBlend,
@@ -54,7 +54,7 @@ void GimmickDashPanel::Update(float deltaTime) {
 }
 
 // 上面に乗ったプレイヤーへ加速を与え、発光パルスは短いクールダウンで抑えます。
-bool GimmickDashPanel::OnCollision(Object3d* other) {
+bool GimmickDashPanel::OnCollision(engine::Object3d* other) {
     // 上面から踏んだプレイヤーだけを加速し、接触し続けても発光を連射しない。
     Player* player = dynamic_cast<Player*>(other);
     if (!player)
@@ -72,7 +72,7 @@ bool GimmickDashPanel::OnCollision(Object3d* other) {
     return true;
 }
 
-std::unique_ptr<Object3d> GimmickDashPanel::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickDashPanel::Clone() const {
     // 配置と調整値を複製し、実行時のパルス時計は新しい床に持ち込まない。
     auto newObj = std::make_unique<GimmickDashPanel>();
     assert(common_ != nullptr);

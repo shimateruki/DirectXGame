@@ -15,23 +15,24 @@
 #include <cmath>
 
 namespace {
+// 保存された整数を補間方式の有効範囲へ収めて変換します。
 AnimationInterpolation::EasingType ToEasingType(int value) {
     // 保存された番号を有効な補間方式へ制限する。
     value = std::clamp(value, 0, 4);
     return static_cast<AnimationInterpolation::EasingType>(value);
 }
 
-Vector3 AddVector3(const Vector3& a, const Vector3& b) {
+engine::Vector3 AddVector3(const engine::Vector3& a, const engine::Vector3& b) {
     // 相対トラックの位置・回転を基準姿勢へ加える。
     return {a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-Vector3 MultiplyVector3(const Vector3& a, const Vector3& b) {
+engine::Vector3 MultiplyVector3(const engine::Vector3& a, const engine::Vector3& b) {
     // 相対トラックの拡大率は基準スケールとの成分積で扱う。
     return {a.x * b.x, a.y * b.y, a.z * b.z};
 }
 
-void ApplyPose(Object3d* object, const Vector3& position, const Vector3& rotation, const Vector3& scale) {
+void ApplyPose(engine::Object3d* object, const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale) {
     // 設定値とワールド行列を同じフレームで揃え、表示の遅れを防ぐ。
     if (!object) {
         return;
@@ -290,7 +291,7 @@ float CinematicPlayer::GetDuration() const {
     return std::max(result, 0.1f);
 }
 
-bool CinematicPlayer::GetBasePose(Object3d* object, Vector3& position, Vector3& rotation, Vector3& scale) const {
+bool CinematicPlayer::GetBasePose(engine::Object3d* object, engine::Vector3& position, engine::Vector3& rotation, engine::Vector3& scale) const {
     // 編集前に取得した姿勢だけ返し、未束縛Objectの値は触らない。
     if (!object) {
         return false;
@@ -306,7 +307,7 @@ bool CinematicPlayer::GetBasePose(Object3d* object, Vector3& position, Vector3& 
     return false;
 }
 
-Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) const {
+engine::Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) const {
     // 専用Resolverを優先し、通常はEvent IDを名前より優先して現シーン内を探す。
     if (bindingResolver_)
         return bindingResolver_(binding);
@@ -314,7 +315,7 @@ Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) 
         return nullptr;
     }
 
-    Object3d* nameMatch = nullptr;
+    engine::Object3d* nameMatch = nullptr;
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (!object) {
             continue;
@@ -388,7 +389,7 @@ void CinematicPlayer::RestoreBasePoses() {
     // 編集でクリップが削除・並べ替えされても、保存した対象から復元する。
     if (!sceneManager_ || sceneManager_->GetCurrentScene() != boundScene_ || !boundScene_)
         return;
-    const auto isAlive = [this](Object3d* target) {
+    const auto isAlive = [this](engine::Object3d* target) {
         for (const auto& object : boundScene_->GetObjects()) {
             if (object.get() == target)
                 return true;
@@ -451,7 +452,7 @@ void CinematicPlayer::Evaluate(float timeSeconds, float previousTimeSeconds, boo
     if (dispatchEvents) {
         for (const auto& marker : sequence_->events) {
             if (marker.time > previousTimeSeconds && marker.time <= timeSeconds) {
-                Object3d* target = ResolveTarget(marker.binding);
+                engine::Object3d* target = ResolveTarget(marker.binding);
                 if (target && marker.eventId != 0) {
                     target->OnRecordEvent(marker.eventId);
                 }
@@ -541,7 +542,7 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
     }
 
     if (track.anchorRelative) {
-        Vector3 origin;
+        engine::Vector3 origin;
         float yaw = 0.0f;
         // 親付き対象はローカル座標と混同しないよう、明示的に非対応とする。
         if (runtime.target->GetParent() || !GetAnchorPose(origin, yaw))
@@ -568,14 +569,14 @@ void CinematicPlayer::ApplyBodyPose() {
     }
 }
 
-bool CinematicPlayer::GetAnchorPose(Vector3& position, float& yaw) const {
+bool CinematicPlayer::GetAnchorPose(engine::Vector3& position, float& yaw) const {
     // 再生開始時に固定したアンカーを優先し、無ければ現シーンのObjectから求める。
     if (anchorCaptured_) {
         position = anchorPosition_;
         yaw = anchorYaw_;
         return true;
     }
-    Object3d* anchor = sequence_ ? ResolveTarget(sequence_->anchor) : nullptr;
+    engine::Object3d* anchor = sequence_ ? ResolveTarget(sequence_->anchor) : nullptr;
     if (!anchor || anchor->GetParent())
         return false;
     position = anchor->GetTranslate();
@@ -619,7 +620,7 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
         if (clip.driver != "Body" && clip.loop && duration > 0.0f) {
             localTime = std::fmod(localTime, duration);
         }
-        Object3d* target =
+        engine::Object3d* target =
             index < animationRuntime_.size() ? animationRuntime_[index].target : ResolveTarget(clip.binding);
         if (target != ResolveTarget(clip.binding))
             continue;
@@ -740,7 +741,7 @@ void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
         return;
     }
 
-    Object3d* requestedCamera = nullptr;
+    engine::Object3d* requestedCamera = nullptr;
     float requestedStartTime = -1.0f;
     int requestedShotIndex = -1;
     if (!sequence_->cameraShots.empty()) {
@@ -751,7 +752,7 @@ void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
             }
             const float endTime = shot.startTime + std::max(0.05f, shot.duration);
             if (timeSeconds >= shot.startTime && timeSeconds <= endTime && shot.startTime >= requestedStartTime) {
-                Object3d* target = ResolveTarget(shot.binding);
+                engine::Object3d* target = ResolveTarget(shot.binding);
                 if (target && target->IsCameraObject()) {
                     requestedCamera = target;
                     requestedStartTime = shot.startTime;
@@ -763,7 +764,7 @@ void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
         // v3以前のSequenceはCamera ObjectのTransform Trackをカメラカットとして扱います。
         for (size_t index = 0; index < sequence_->transformTracks.size() && index < transformRuntime_.size(); ++index) {
             const auto& track = sequence_->transformTracks[index];
-            Object3d* target = transformRuntime_[index].target;
+            engine::Object3d* target = transformRuntime_[index].target;
             if (!track.enabled || track.muted || !target || !target->IsCameraObject()) {
                 continue;
             }

@@ -3,7 +3,7 @@
 using namespace PlayerImplementation;
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
-void Player::StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration) {
+void Player::StartDamageFeedback(const engine::Vector3& knockbackDirection, float invincibleDuration) {
     // 被弾で通常攻撃を中断し、重なった無敵時間は短くしない。
     if (tutorialSafetyEnabled_ || isDead || isCinematicLocked_ || electricShockControlLocked_) {
         return;
@@ -66,13 +66,13 @@ void Player::UpdateElectricShockFeedback(float deltaTime) {
     const float totalDuration = (std::max)(electricShockFeedbackTotalDuration_, 0.001f);
     const float elapsed = (std::max)(0.0f, totalDuration - electricShockFeedbackTimer_);
     const float flicker = std::sin(elapsed * 74.0f);
-    const Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{1.0f, 1.0f, 1.0f, 1.0f};
+    const engine::Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : engine::Vector4{1.0f, 1.0f, 1.0f, 1.0f};
     SetColor({(std::clamp)(base.x + 0.24f * std::max(0.0f, flicker), 0.0f, 1.0f),
               (std::clamp)(base.y + 0.18f, 0.0f, 1.0f),
               (std::clamp)(base.z + 0.42f * std::max(0.0f, -flicker), 0.0f, 1.0f), base.w});
 
     if (electricShockControlLocked_) {
-        Vector3 shockPosition = electricShockLockedPosition_;
+        engine::Vector3 shockPosition = electricShockLockedPosition_;
         shockPosition.x += std::sin(elapsed * 94.0f) * kElectricShockShakeAmount;
         shockPosition.z += std::cos(elapsed * 83.0f) * kElectricShockShakeAmount * 0.75f;
         SetTranslate(shockPosition);
@@ -82,7 +82,7 @@ void Player::UpdateElectricShockFeedback(float deltaTime) {
         SetScale({electricShockBaseScale_.x * (1.0f + squash), electricShockBaseScale_.y * (1.0f - squash * 0.65f),
                   electricShockBaseScale_.z * (1.0f + squash * 0.9f)});
 
-        Vector3 shockRotation = electricShockBaseRotation_;
+        engine::Vector3 shockRotation = electricShockBaseRotation_;
         shockRotation.x += std::sin(elapsed * 67.0f) * 0.045f;
         shockRotation.z += std::sin(elapsed * 89.0f) * 0.075f;
         SetRotation(shockRotation);
@@ -152,7 +152,7 @@ void Player::UpdateElectricShockAuraEffect(float deltaTime) {
         return;
     }
 
-    Vector3 auraPos{};
+    engine::Vector3 auraPos{};
     float horizontalDiameter = 1.0f;
     float verticalDiameter = 1.0f;
     CalculateElectricShockAuraShape(auraPos, horizontalDiameter, verticalDiameter);
@@ -160,7 +160,7 @@ void Player::UpdateElectricShockAuraEffect(float deltaTime) {
     float yaw = GetRotation().y;
     Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
     if (camera) {
-        const Vector3 toCamera = camera->GetEye() - auraPos;
+        const engine::Vector3 toCamera = camera->GetEye() - auraPos;
         if (std::abs(toCamera.x) + std::abs(toCamera.z) > 0.001f) {
             yaw = std::atan2(toCamera.x, toCamera.z);
         }
@@ -182,10 +182,10 @@ void Player::HideElectricShockAuraEffect() {
     }
 }
 
-void Player::CalculateElectricShockAuraShape(Vector3& center, float& horizontalDiameter,
+void Player::CalculateElectricShockAuraShape(engine::Vector3& center, float& horizontalDiameter,
                                              float& verticalDiameter) const {
     // 変身中の拡縮を反映しつつ、極小サイズでもオーラが消えない下限を使う。
-    const Vector3 scale = GetScale();
+    const engine::Vector3 scale = GetScale();
     const float maxXZ = (std::max)({std::abs(scale.x), std::abs(scale.z), 1.0f});
     const float yScale = (std::max)(std::abs(scale.y), 0.18f);
 
@@ -215,7 +215,7 @@ Player::EnemyMorphType Player::ResolveEnemyMorphType(const std::string& enemyTyp
     return EnemyMorphType::None;
 }
 
-Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const {
+engine::Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const {
     // 感電点滅の基準色を能力ごとに変え、解除後の外観と一致させる。
     switch (type) {
     case EnemyMorphType::Crown:

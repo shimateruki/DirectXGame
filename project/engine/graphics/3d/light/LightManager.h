@@ -8,7 +8,7 @@
 #include "Light.h"
 
 // 前方宣言
-class Object3d;
+namespace engine { class Object3d; }
 class Camera;
 
 /// <summary>
@@ -40,7 +40,7 @@ public:
     /// <summary>ライト、空、色調補正をまとめて保存・補間する設定。</summary>
     struct EnvironmentProfileState {
         DirectionalLight directionalLight{};
-        Vector4 clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
+        engine::Vector4 clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
         int shadowMapResolution = 2048;
         float shadowAreaSize = 80.0f;
         bool skyboxEnabled = true;
@@ -72,8 +72,8 @@ public:
         // エディタ・制御用データ
         std::string name = "PointLight";   // 識別名
         LightMode mode = LightMode::None;  // 現在の挙動モード
-        Object3d* target = nullptr;        // 追従対象のオブジェクト（nullptrなら追従なし）
-        Vector3 offset = { 0.0f, 0.0f, 0.0f }; // 追従時の位置ズレ補正
+        engine::Object3d* target = nullptr;        // 追従対象のオブジェクト（nullptrなら追従なし）
+        engine::Vector3 offset = { 0.0f, 0.0f, 0.0f }; // 追従時の位置ズレ補正
 
         // アニメーション用パラメータ
         float baseIntensity = 1.0f;        // 点滅時の基準となる明るさ
@@ -91,8 +91,8 @@ public:
         // エディタ・制御用データ
         std::string name = "SpotLight";
         LightMode mode = LightMode::None;
-        Object3d* target = nullptr;
-        Vector3 offset = { 0.0f, 0.0f, 0.0f };
+        engine::Object3d* target = nullptr;
+        engine::Vector3 offset = { 0.0f, 0.0f, 0.0f };
 
         // アニメーション用パラメータ
         float baseIntensity = 1.0f;
@@ -176,14 +176,14 @@ public:
     }
 
     /// <summary>指定カメラに対する平行光源の影用ビュー投影行列を取得する。</summary>
-    const Matrix4x4& GetDirectionalShadowViewProjection(const Camera* camera);
+    const engine::Matrix4x4& GetDirectionalShadowViewProjection(const Camera* camera);
 
     // シャドウマップ解像度と影を描く領域の大きさ。
     int GetShadowMapResolution() const;
     void SetShadowMapResolution(int resolution);
     float GetShadowAreaSize() const { return shadowAreaSize_; }
     void SetShadowAreaSize(float size);
-    Vector4& GetSceneClearColor() { return sceneClearColor_; }
+    engine::Vector4& GetSceneClearColor() { return sceneClearColor_; }
 
     /// <summary>保持しているシーンのクリア色を描画設定へ反映する。</summary>
     void ApplySceneClearColor();
@@ -211,8 +211,8 @@ public:
     /// <summary>登録された点光源、スポットライト、一時点光源をすべて削除する。</summary>
     void ClearAllLights();
     void PlayPointLightPulse(
-        const Vector3& position,
-        const Vector4& color,
+        const engine::Vector3& position,
+        const engine::Vector4& color,
         float intensity,
         float radius,
         float duration,
@@ -271,10 +271,10 @@ private:
     uint32_t environmentMapHandle_ = 0;
     float shadowAreaSize_ = 80.0f;
     bool shadowMatrixCacheValid_ = false;
-    Vector3 cachedShadowEye_{};
-    Vector3 cachedShadowDirection_{};
+    engine::Vector3 cachedShadowEye_{};
+    engine::Vector3 cachedShadowDirection_{};
     float cachedShadowAreaSize_ = 0.0f;
-    Vector4 sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
+    engine::Vector4 sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
     bool skyboxEnabled_ = true;
     std::string skyboxTexturePath_ = "Resources/output_skybox.dds";
     uint32_t skyboxTextureHandle_ = 0;

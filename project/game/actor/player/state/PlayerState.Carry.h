@@ -12,5 +12,5 @@ class PlayerStateCarry : public IAnimationState {
 
   private:
     float struggleTimer_ = 0.0f;
-    Vector3 carriedBaseScale_ = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 carriedBaseScale_ = {1.0f, 1.0f, 1.0f};
 };

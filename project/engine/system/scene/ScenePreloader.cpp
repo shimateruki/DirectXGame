@@ -3,6 +3,7 @@
 #include "ModelManager.h"
 #include "AudioPlayer.h"
 #include "TextureManager.h"
+#include "Sprite.h"
 
 #include <algorithm>
 #include <cctype>
@@ -84,6 +85,7 @@ bool IsAudioFile(const std::filesystem::path& path) {
         extension == ".ogg" || extension == ".flac";
 }
 
+// 依存ファイルを種別ごとに記録し、必要なら実ファイルの欠落も報告します。
 void RecordDependency(
     ScenePreloadData& data,
     SceneDependencyType type,
@@ -132,6 +134,7 @@ void AddAudioDependency(ScenePreloadData& data, std::string path) {
     RecordDependency(data, SceneDependencyType::Audio, path);
 }
 
+// 共通のParticle画像ディレクトリを走査し、起動後に使う画像を先読み対象へ加えます。
 void CollectSharedParticleTextures(ScenePreloadData& data) {
     // パーティクルが実行中に初めて使う画像も、シーン開始前にまとめて準備する。
     const std::filesystem::path directory = "Resources/sprite/particle";
@@ -163,6 +166,7 @@ void CollectSharedParticleTextures(ScenePreloadData& data) {
     }
 }
 
+// 画面遷移の王冠アイリス画像を共有の先読み対象へ加えます。
 void CollectSharedFadeTextures(ScenePreloadData& data) {
     // 画面遷移中の王冠アイリス素材をシーン共通の先読み対象へ加える。
     const std::filesystem::path directory = "Resources/sprite/fade/crown_iris";
@@ -194,6 +198,7 @@ void CollectSharedFadeTextures(ScenePreloadData& data) {
     }
 }
 
+// 色空間の違いも識別して共有画像パスの重複を避けます。
 void AddSharedTexture(
     ScenePreloadData& data,
     const std::string& path,
@@ -205,10 +210,12 @@ void AddSharedTexture(
     });
 }
 
+// JSONを再帰的に走査し、画像・音声・JSONなどの参照先を種別ごとに集めます。
 void CollectDependencies(
     const nlohmann::json& value,
     const std::string& propertyName,
-    ScenePreloadData& data) {
+    ScenePreloadData& data,
+    bool spriteTexturePaths) {
     // ネストしたJSONを再帰走査し、モデル・画像・音声・演出プリセットを抽出する。
     if (value.is_object()) {
         if (value.contains("type") && value["type"].is_number_integer() &&
@@ -244,13 +251,13 @@ void CollectDependencies(
         }
 
         for (auto iterator = value.begin(); iterator != value.end(); ++iterator) {
-            CollectDependencies(iterator.value(), iterator.key(), data);
+            CollectDependencies(iterator.value(), iterator.key(), data, spriteTexturePaths);
         }
         return;
     }
     if (value.is_array()) {
         for (const auto& element : value) {
-            CollectDependencies(element, propertyName, data);
+            CollectDependencies(element, propertyName, data, spriteTexturePaths);
         }
         return;
     }
@@ -264,6 +271,11 @@ void CollectDependencies(
     }
 
     const std::string lowerKey = ToLower(propertyName);
+    if (lowerKey == "gpuparticlename") {
+        AddUniquePath(data.gpuParticlePresetNames, stringValue);
+        AddJsonDependency(data, "Resources/json/gpu_particles/" + stringValue + ".json");
+        return;
+    }
     if (lowerKey == "modelname") {
         AddUniquePath(data.modelNames, stringValue);
         RecordDependency(data, SceneDependencyType::Model, stringValue, false);
@@ -291,7 +303,7 @@ void CollectDependencies(
     }
     if (IsTextureFile(path) || IsTextureKey(lowerKey)) {
         SceneLoadManifest::TextureRequest request;
-        request.path = stringValue;
+        request.path = spriteTexturePaths ? engine::Sprite::ResolveTexturePath(stringValue) : stringValue;
         request.linear = IsLinearTextureKey(lowerKey);
         AddUnique(data.textures, request, [](const SceneLoadManifest::TextureRequest& item) {
             return item.path + (item.linear ? "|linear" : "|color");
@@ -510,7 +522,11 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         nlohmann::json document;
         std::string warning;
         if (LoadJsonDocument(path, document, warning)) {
-            CollectDependencies(document, "", *result);
+            // Sprite配置の画像参照には、実際のSprite生成と同じパス変換を適用する。
+            const bool spriteAssetPaths =
+                (document.contains("sprites") && document["sprites"].is_array()) ||
+                (document.contains("labelTextures") && document["labelTextures"].is_object());
+            CollectDependencies(document, "", *result, spriteAssetPaths);
             result->jsonDocuments.emplace(NormalizePath(path), std::move(document));
 
             // 参照先JSONが増えた分だけ進捗の総数を伸ばし、割合が早く100%にならないようにする。
@@ -552,7 +568,9 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
     for (const SceneLoadManifest::TextureRequest& texture : result->textures) {
         RecordDependency(*result, SceneDependencyType::Texture, texture.path);
     }
-    CollectSharedParticleTextures(*result);
+    if (manifest.includeSharedParticleTextures) {
+        CollectSharedParticleTextures(*result);
+    }
     CollectSharedFadeTextures(*result);
     AddSharedTexture(*result, "Resources/sprite/effect/noise0.png", true);
     AddSharedTexture(*result, "Resources/texture/lut/soft_adventure_lut.png");

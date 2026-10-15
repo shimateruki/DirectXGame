@@ -22,9 +22,9 @@ struct DebrisEffectConfig {
     std::string name = "rock_burst";
     std::vector<std::string> modelNames = { "Primitives/cube" };
     int spawnCount = 18;
-    Vector3 spawnOffset = { 0.0f, 0.4f, 0.0f };
-    Vector3 spawnBoxHalfExtents = { 0.0f, 0.0f, 0.0f };
-    Vector3 baseDirection = { 0.0f, 0.0f, 1.0f };
+    engine::Vector3 spawnOffset = { 0.0f, 0.4f, 0.0f };
+    engine::Vector3 spawnBoxHalfExtents = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 baseDirection = { 0.0f, 0.0f, 1.0f };
     float horizontalSpread = 1.0f;
     float verticalMin = 0.25f;
     float verticalMax = 0.9f;
@@ -42,7 +42,7 @@ struct DebrisEffectConfig {
     float friction = 0.78f;
     float groundY = 0.0f;
     float fadeStartRatio = 0.72f;
-    Vector4 color = { 0.62f, 0.55f, 0.48f, 1.0f };
+    engine::Vector4 color = { 0.62f, 0.55f, 0.48f, 1.0f };
     int materialType = 0;
     float roughness = 0.5f;
     float metallic = 0.0f;
@@ -105,28 +105,28 @@ public:
     void PrewarmPresets(const std::vector<std::string>& presetNames);
 
     /// <summary>プリセット名と発生位置を指定して破片を出す。</summary>
-    void Spawn(const std::string& presetName, const Vector3& position);
+    void Spawn(const std::string& presetName, const engine::Vector3& position);
 
     /// <summary>指定した地面高を衝突位置として破片を出す。</summary>
-    void SpawnOnGround(const std::string& presetName, const Vector3& position, float groundY);
+    void SpawnOnGround(const std::string& presetName, const engine::Vector3& position, float groundY);
 
     /// <summary>プリセット登録を介さず設定値から破片を出す。</summary>
-    void SpawnFromConfig(const DebrisEffectConfig& config, const Vector3& position);
+    void SpawnFromConfig(const DebrisEffectConfig& config, const engine::Vector3& position);
 
 private:
     /// <summary>飛散中の破片一個の物理状態と描画用リソース。</summary>
     struct DebrisPiece {
         Model* model = nullptr;
-        Vector3 position = { 0.0f, 0.0f, 0.0f };
-        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 position = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
         Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource;
         Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource;
         Microsoft::WRL::ComPtr<ID3D12Resource> materialResource;
         MeshRenderer::TransformationMatrix* wvpData = nullptr;
         MeshRenderer::TransformationMatrix* shadowWvpData = nullptr;
         MeshRenderer::MaterialData* materialData = nullptr;
-        Vector3 velocity = { 0.0f, 0.0f, 0.0f };
-        Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 velocity = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
         float age = 0.0f;
         float lifetime = 1.0f;
         float baseScale = 1.0f;
@@ -152,12 +152,12 @@ private:
 
     // 確保した破片のGPU定数を準備し、移動後の描画行列を更新する。
     bool InitializePieceResources(DebrisPiece& piece, const DebrisEffectConfig& config);
-    void UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4* lightViewProjection);
+    void UpdatePieceMatrix(DebrisPiece& piece, const engine::Matrix4x4& viewProjection, const engine::Matrix4x4* lightViewProjection);
 
     // プリセットの乱数範囲、方向、読み込みパスを決める。
     float RandomRange(float minValue, float maxValue);
     int RandomIndex(int maxExclusive);
-    Vector3 RandomDirection(const DebrisEffectConfig& config);
+    engine::Vector3 RandomDirection(const DebrisEffectConfig& config);
     std::string ResolvePresetPath(const std::string& presetName) const;
 
     Object3dCommon* common_ = nullptr;

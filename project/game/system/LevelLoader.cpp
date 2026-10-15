@@ -1,4 +1,6 @@
 #include "LevelLoader.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
+#include "engine/graphics/3d/material/WaterParamJsonCodec.h"
 #include "game/system/SceneEntityParameterCodec.h"
 #include "BaseScene.h"
 #include "game/system/SceneGameplayAccess.h"
@@ -40,6 +42,7 @@ namespace {
 constexpr int kSlimeSoftMaterialType = 25;
 constexpr int kPrismCrystalMaterialType = 27;
 
+// 配置Objectをすべて生成した後で敵へシーン参照を結び、読込順の影響を除きます。
 void ConfigureEnemyRuntimeReferencesInternal(BaseScene* scene) {
     // 全配置物の生成後に敵の参照を結び、読み込み順による未解決を防ぐ。
     if (!scene) {
@@ -70,14 +73,14 @@ bool IsSlimeModelName(std::string modelName) {
     return modelName.find("Characters/slime") != std::string::npos;
 }
 
-void ApplySlimeSoftMaterialIfStandard(Object3d* object) {
+void ApplySlimeSoftMaterialIfStandard(engine::Object3d* object) {
     // エディターで明示した材質は尊重し、標準材質の時だけ柔らかい見た目へ変える。
     if (object && object->GetMaterialType() == 0) {
         object->SetMaterialType(kSlimeSoftMaterialType);
     }
 }
 
-void ApplySlimeMaterialDefault(Object3d* object) {
+void ApplySlimeMaterialDefault(engine::Object3d* object) {
     if (!object) {
         return;
     }
@@ -106,21 +109,21 @@ void ApplySlimeMaterialDefault(Object3d* object) {
     ApplySlimeSoftMaterialIfStandard(object);
 }
 
-void ApplyLodConfig(Object3d* object, const json& objData) {
+void ApplyLodConfig(engine::Object3d* object, const json& objData) {
     // 個々の配置物の LOD 設定を読み、未設定なら既存の描画設定を保つ。
     if (!object || !objData.contains("lod") || !objData["lod"].is_object()) {
         return;
     }
 
     const auto& lodJson = objData["lod"];
-    std::vector<Object3d::LodLevel> levels;
+    std::vector<engine::Object3d::LodLevel> levels;
     if (lodJson.contains("levels") && lodJson["levels"].is_array()) {
         for (const auto& levelJson : lodJson["levels"]) {
             if (!levelJson.is_object()) {
                 continue;
             }
 
-            Object3d::LodLevel level;
+            engine::Object3d::LodLevel level;
             level.level = levelJson.value("level", 0);
             level.modelName = levelJson.value("modelName", "");
             level.distance = levelJson.value("distance", 0.0f);
@@ -136,6 +139,7 @@ void ApplyLodConfig(Object3d* object, const json& objData) {
     object->SetLodEnabled(lodJson.value("enabled", true));
 }
 
+// 3数値の配列だけを読みます。形式が違う場合は出力値を維持してfalseを返します。
 bool TryReadVector3(const json& value, float& x, float& y, float& z) {
     // 形式が異なる旧データでは出力引数を変更せず、呼び出し側へ失敗を返す。
     if (!value.is_array() || value.size() < 3 || !value[0].is_number() || !value[1].is_number() ||
@@ -149,6 +153,7 @@ bool TryReadVector3(const json& value, float& x, float& y, float& z) {
     return true;
 }
 
+// Blenderの軸順からゲーム用の軸順へ変換し、必要な場合は符号を反転します。
 json ConvertBlenderVector(const json& value, bool negate) {
     // Blender 側の軸順をゲーム側へ揃え、回転だけ符号を反転する。
     float x = 0.0f;
@@ -235,6 +240,7 @@ json NormalizeLevelObject(const json& source, const std::string& inheritedParent
     return normalized;
 }
 
+// 旧形式の親子配置を現行形式へ変換し、destinationへ平坦に追加します。
 void AppendNormalizedLevelObjects(const json& sourceObjects, json& destination,
                                   const std::string& inheritedParentName = "") {
     if (!sourceObjects.is_array()) {
@@ -256,6 +262,7 @@ void AppendNormalizedLevelObjects(const json& sourceObjects, json& destination,
     }
 }
 
+// 旧形式の配置項目がある場合だけ変換が必要と判定します。
 bool RequiresLevelObjectNormalization(const json& sourceObjects) {
     // 旧形式の印がある時だけ変換し、現行の配置値を二重変換しない。
     if (!sourceObjects.is_array()) {
@@ -293,12 +300,15 @@ void LevelLoader::ConfigureEnemyRuntimeReferences(BaseScene* scene) {
     ConfigureEnemyRuntimeReferencesInternal(scene);
 }
 
+// 分割読込APIを完了まで進める同期入口です。全Objectと参照の準備が終わるまで戻りません。
 void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename, bool resolveSceneAssetPath) {
     BeginObjectLayoutLoad(scene, filename, resolveSceneAssetPath);
     while (!ContinueObjectLayoutLoad(scene, (std::numeric_limits<size_t>::max)())) {
     }
 }
 
+// SceneAssetの参照を解決し、分割JSONの存在を調べて段階読込の対象一覧を作ります。
+// 親子リンクは全ファイルのObject生成後まで保留します。
 void LevelLoader::BeginObjectLayoutLoad(BaseScene* scene, const std::string& filename, bool resolveSceneAssetPath) {
     const std::string resolvedFilename =
         scene && resolveSceneAssetPath ? scene->ResolvePrimaryObjectLayoutPath(filename) : filename;
@@ -399,7 +409,7 @@ bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) 
     auto& objects = scene->GetObjects();
     scene->EnsureUniquePersistentObjectGuids();
     for (auto const& [childObj, parentReference] : parentPendingList_) {
-        Object3d* parentObj = scene->FindObjectByPersistentGuid(parentReference.guid);
+        engine::Object3d* parentObj = scene->FindObjectByPersistentGuid(parentReference.guid);
         if (!parentObj && !parentReference.legacyName.empty()) {
             for (auto& obj : objects) {
                 if (obj && obj->GetName() == parentReference.legacyName) {
@@ -420,6 +430,7 @@ bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) 
 }
 
 float LevelLoader::GetObjectLayoutLoadProgress() const {
+    // 完了ファイル数に現在ファイル内の生成済み割合を加えて全体進捗へ換算する。
     if (!objectLayoutLoading_ || pendingObjectFiles_.empty()) {
         return 1.0f;
     }
@@ -466,7 +477,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 std::string name = objData["name"].get<std::string>();
 
                 // 1. 既存チェック
-                Object3d* targetObject = nullptr;
+                engine::Object3d* targetObject = nullptr;
                 for (auto& obj : objects) {
                     if (obj && !obj->GetName().empty() && obj->GetName() == name) {
                         targetObject = obj.get();
@@ -476,7 +487,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                 // 2. 新規生成
                 if (!targetObject && object3dCommon) {
-                    std::unique_ptr<Object3d> newObj = nullptr;
+                    std::unique_ptr<engine::Object3d> newObj = nullptr;
 
                     std::string enemyType = "";
                     if (objData.contains("enemyType") && objData["enemyType"].is_string()) {
@@ -545,7 +556,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                         spawner->SetIsVisible(false);
 
                         // スポーン時のコールバック
-                        spawner->SetOnSpawnCallback([scene, spawnEnemyType](const Vector3& spawnPos) {
+                        spawner->SetOnSpawnCallback([scene, spawnEnemyType](const engine::Vector3& spawnPos) {
                             auto newEnemy =
                                 EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, scene->GetObject3dCommon());
                             if (newEnemy) {
@@ -584,7 +595,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                     }
                     // パターンF: 通常オブジェクト
                     else {
-                        newObj = std::make_unique<Object3d>();
+                        newObj = std::make_unique<engine::Object3d>();
                         newObj->Initialize(object3dCommon);
                     }
 
@@ -633,7 +644,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                 if (objData.contains("prefabInstance") && objData["prefabInstance"].is_object()) {
                     const auto& prefab = objData["prefabInstance"];
-                    Object3d::PrefabInstanceInfo info;
+                    engine::Object3d::PrefabInstanceInfo info;
                     info.assetId = prefab.value("assetId", "");
                     info.prefabName = prefab.value("prefabName", "");
                     info.instanceId = prefab.value("instanceId", "");
@@ -648,7 +659,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                     targetObject->SetModel("Editor/camera_gizmo");
                     targetObject->SetColor({0.25f, 0.75f, 1.0f, 1.0f});
                     targetObject->SetCastShadow(false);
-                    Object3d::ColliderConfig cameraCollider;
+                    engine::Object3d::ColliderConfig cameraCollider;
                     cameraCollider.type = ColliderType::kNone;
                     targetObject->SetColliderConfig(cameraCollider);
                     if (objData.contains("camera")) {
@@ -784,46 +795,16 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                     }
                 }
                 if (objData.contains("waterParam") &&
-                    ((targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 22) ||
-                     targetObject->GetMaterialType() == 26)) {
+                    MaterialRenderPolicy::IsSpecial(targetObject->GetMaterialType())) {
                     if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
                         auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
-                        const auto& jw = objData["waterParam"];
-
-                        if (jw.contains("waveSpeed"))
-                            water->waveSpeed = jw["waveSpeed"];
-                        if (jw.contains("waveHeight"))
-                            water->waveHeight = jw["waveHeight"];
-                        if (jw.contains("waveFrequency"))
-                            water->waveFrequency = jw["waveFrequency"];
-                        if (jw.contains("flowSpeedX"))
-                            water->flowSpeedX = jw["flowSpeedX"];
-                        if (jw.contains("flowSpeedY"))
-                            water->flowSpeedY = jw["flowSpeedY"];
-                        if (jw.contains("effectType"))
-                            water->effectType = jw["effectType"];
-                        if (jw.contains("effectScale"))
-                            water->effectScale = jw["effectScale"];
-                        if (jw.contains("effectScaleX"))
-                            water->effectScaleX = jw["effectScaleX"];
-                        if (jw.contains("effectScaleY"))
-                            water->effectScaleY = jw["effectScaleY"];
-                        if (jw.contains("effectScaleZ"))
-                            water->effectScaleZ = jw["effectScaleZ"];
-                        if (jw.contains("topDownDetail"))
-                            water->topDownDetail = jw["topDownDetail"];
-                        if (jw.contains("effectSoftness"))
-                            water->effectSoftness = jw["effectSoftness"];
-                        if (jw.contains("effectIntensity"))
-                            water->effectIntensity = jw["effectIntensity"];
-                        if (jw.contains("billboardScale"))
-                            water->billboardScale = jw["billboardScale"];
+                        WaterParamJsonCodec::Read(objData["waterParam"], *water);
                     }
                 }
                 // 5. Collider
                 if (!targetObject->IsCameraObject() && objData.contains("collider")) {
                     json colData = objData["collider"];
-                    Object3d::ColliderConfig config = targetObject->GetColliderConfig();
+                    engine::Object3d::ColliderConfig config = targetObject->GetColliderConfig();
                     if (colData.contains("type"))
                         config.type = (ColliderType)colData["type"].get<int>();
                     if (colData.contains("center")) {
@@ -841,6 +822,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                         config.rotation.y = colData["rotation"][1];
                         config.rotation.z = colData["rotation"][2];
                     }
+                    config.useModelSurface = colData.value("useModelSurface", false);
                     config.footprint.clear();
                     if (colData.contains("footprint") && colData["footprint"].is_array()) {
                         for (const auto& point : colData["footprint"]) {
@@ -960,6 +942,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 }
 
 void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename) {
+    // シーンごとの優先レイアウトを解決し、保存時に使うファイル名をシーンへ通知する。
     const std::string resolvedFilename = scene ? scene->ResolvePrimarySpriteLayoutPath(filename) : filename;
     std::string justName = resolvedFilename;
     size_t slashPos = justName.find_last_of("/\\");
@@ -968,10 +951,11 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
     }
     scene->SetLoadedSpriteFilename(justName);
     auto& sprites = scene->GetSprites();
-    SpriteCommon* spriteCommon = scene->GetSpriteCommon();
+    engine::SpriteCommon* spriteCommon = scene->GetSpriteCommon();
 
     json layoutData;
     try {
+        // 先読み済みJSONを優先し、ない場合だけディスクから読む。
         if (!scene->TakePreparedJson(resolvedFilename, layoutData)) {
             std::ifstream file(resolvedFilename);
             if (!file.is_open()) {
@@ -981,13 +965,14 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
         }
         const auto layoutScale = SpriteLayoutScaler::Make(layoutData);
         if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
-            std::vector<std::pair<Sprite*, std::string>> spriteParentPending;
+            std::vector<std::pair<engine::Sprite*, std::string>> spriteParentPending;
             for (const auto& spriteData : layoutData["sprites"]) {
                 if (!spriteData.contains("name"))
                     continue;
                 std::string name = spriteData["name"];
 
-                Sprite* targetSprite = nullptr;
+                engine::Sprite* targetSprite = nullptr;
+                // 同名Spriteは更新し、新規名だけ生成して既存Scene固有のSpriteを重複させない。
                 for (auto& sprite : sprites) {
                     if (sprite && sprite->GetName() == name) {
                         targetSprite = sprite.get();
@@ -999,9 +984,9 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     std::string textureFile = "";
                     if (spriteData.contains("texture"))
                         textureFile = spriteData["texture"];
-                    uint32_t handle = textureFile.empty() ? 0 : Sprite::LoadTexture(textureFile);
+                    uint32_t handle = textureFile.empty() ? 0 : engine::Sprite::LoadTexture(textureFile);
 
-                    auto newSprite = std::make_unique<Sprite>();
+                    auto newSprite = std::make_unique<engine::Sprite>();
                     newSprite->Initialize(spriteCommon, handle);
                     newSprite->SetName(name);
                     newSprite->SetTextureName(textureFile);
@@ -1010,6 +995,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                 }
 
                 if (targetSprite) {
+                    // レイアウトの基準解像度を現在のGame Viewへ変換してから配置する。
                     if (spriteData.contains("position")) {
                         targetSprite->SetPosition(SpriteLayoutScaler::ScalePosition(
                             SpriteLayoutScaler::ReadVector2(spriteData["position"], targetSprite->GetPosition()),
@@ -1022,7 +1008,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     if (spriteData.contains("anchor"))
                         targetSprite->SetAnchorPoint({spriteData["anchor"][0], spriteData["anchor"][1]});
                     if (spriteData.contains("color")) {
-                        Vector4 currentColor = targetSprite->GetColor();
+                        engine::Vector4 currentColor = targetSprite->GetColor();
                         float alpha = currentColor.w;
                         if (spriteData["color"].is_array() && spriteData["color"].size() >= 4) {
                             alpha = spriteData["color"][3];
@@ -1043,11 +1029,12 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     targetSprite->Update();
                 }
             }
+            // 子が親より先に定義されていても結び付けられるよう、全Sprite生成後に親を解決する。
             for (const auto& [sprite, parentName] : spriteParentPending) {
                 if (!sprite)
                     continue;
 
-                Sprite* parentSprite = nullptr;
+                engine::Sprite* parentSprite = nullptr;
                 if (!parentName.empty()) {
                     for (auto& candidate : sprites) {
                         if (candidate && candidate.get() != sprite && candidate->GetName() == parentName) {
@@ -1061,5 +1048,6 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
             }
         }
     } catch (...) {
+        // レイアウト不正でもシーン本体の読み込みを止めず、配置済みSpriteは維持する。
     }
 }

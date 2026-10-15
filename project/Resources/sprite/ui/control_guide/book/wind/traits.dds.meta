@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4b5f65c28a97dddfddf417b732d8956c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/wind/traits.dds",
+  "version": 1
+}

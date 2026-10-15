@@ -3,10 +3,12 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     -0.001757591962814331,
@@ -26,7 +28,23 @@
                 "type": 2
             },
             "collisionAttribute": 1,
+            "collisionAttributeIds": [
+                "player"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -35,13 +53,17 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
+            "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "guid": "b4b12ae7-dd23-5253-abc7-d07626a62b46",
+            "isStatic": false,
             "itemType": "",
+            "layer": "Default",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -71,54 +93,28 @@
                     }
                 ]
             },
-            "materialType": 0,
+            "materialType": 25,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Characters/slime",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Player",
             "normalMapPath": "",
             "ormMapPath": "",
-            "param": {
-                "actionMode": 0,
-                "attackPower": 1.0,
-                "colorType": 0,
-                "detectionRange": 20.0,
-                "enemyType": "",
-                "fallDuration": 2.0,
-                "gimmickType": "",
-                "gravity": 50.0,
-                "healAmount": 1.0,
-                "hp": 2.0,
-                "interval": 3.0,
-                "itemType": "",
-                "jumpPower": 24.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 2.0,
-                "moveAmount": 10.0,
-                "moveSpeed": 6.0,
-                "returnOnOff": true,
-                "shakeDuration": 1.0,
-                "speed": 27.700000762939453,
-                "startActive": false,
-                "switchMode": 0,
-                "targetScene": "SELECT"
-            },
+            "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
                 0.0,
-                -1.48,
-                73.7
+                -1.4800000190734863,
+                73.69999694824219
             ],
             "quaternion": [
                 0.0,
-                1.0,
+                -1.0,
                 0.0,
-                6.123233995736766e-17
+                7.549790126404332e-08
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -127,25 +123,19 @@
             },
             "rotation": [
                 0.0,
-                3.141592653589793,
+                -3.141592502593994,
                 0.0
             ],
             "roughness": 0.6000000238418579,
             "saveCategory": "Player",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
+            "tag": "",
             "targetID": -1,
             "texturePath": "",
             "textureTiling": [
                 1.0,
                 1.0
             ],
-            "type": "Player",
-            "guid": "b4b12ae7-dd23-5253-abc7-d07626a62b46",
-            "parentGuid": ""
+            "type": "Player"
         }
     ]
 }

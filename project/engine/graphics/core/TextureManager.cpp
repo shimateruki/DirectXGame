@@ -73,6 +73,7 @@ bool IsSourceTextureExtension(const std::string& ext) {
            lowerExt == ".hdr";
 }
 
+// 開発用フラグファイルの有無からDDSキャッシュ停止を判定します。
 bool IsDDSCacheDisabled() {
     // 原因調査用に、フラグファイルだけでDDSキャッシュの使用を一時停止できるようにする。
     std::error_code ec;
@@ -127,6 +128,7 @@ std::string GetDDSFormat(const std::string& filePath, bool isLinearTexture) {
     return "BC7_UNORM_SRGB";
 }
 
+// DDS生成要求用の監視スクリプトを最初の必要時に一度だけ起動します。
 void StartDDSCacheWatcherIfNeeded() {
     // DDS生成要求を処理する監視スクリプトを、必要になったタイミングで一度だけ起動する。
     static bool watcherStartTried = false;
@@ -277,6 +279,7 @@ struct ResolvedTexturePath {
     bool ddsIsUpToDate = false;
 };
 
+// 元画像とDDSの有無・更新時刻・色空間から実際の読込先とキャッシュキーを決めます。
 ResolvedTexturePath ResolveTexturePath(
     const std::string& filePath,
     TextureManager::TextureColorSpace colorSpace,
@@ -495,6 +498,7 @@ bool TextureManager::BeginAsyncUploadBatch() {
 
 thread_local bool TextureManager::asyncUploadRecording_ = false;
 
+// 転送バッチが有効で未提出の期間に限って非同期アップロードの記録を許可します。
 void TextureManager::SetAsyncUploadRecording(bool enabled) {
     // 提出済みバッチへ後からコマンドを追加しないよう、記録可能期間に制限する。
     asyncUploadRecording_ = enabled && asyncUploadBatchActive_ && !asyncUploadBatchSubmitted_;

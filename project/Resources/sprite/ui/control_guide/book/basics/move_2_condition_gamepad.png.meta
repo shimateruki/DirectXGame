@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c72613d23a2b76cc16d34ceabb0c24c3",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/basics/move_2_condition_gamepad.png",
+  "version": 1
+}

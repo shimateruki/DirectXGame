@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-class Object3d;
+namespace engine { class Object3d; }
 
 /// <summary>周辺の衝突形状から局所グリッドを作り、A*経路に沿う移動方向を返す。</summary>
 class NavAgentComponent final : public ObjectComponent {
@@ -25,9 +25,9 @@ public:
     /// <param name="deltaTime">前回更新からの経過秒数。</param>
     /// <returns>XZ 平面の単位方向。到着時はゼロ、無効時や探索失敗時は目標への直接方向。</returns>
     /// <remarks>速度や位置は変更しない。返した方向の先が安全とは限らず、移動側で衝突を解決する。</remarks>
-    Vector3 CalculateDirection(
-        Object3d* owner, const Vector3& currentPosition,
-        const Vector3& targetPosition, float deltaTime);
+    engine::Vector3 CalculateDirection(
+        engine::Object3d* owner, const engine::Vector3& currentPosition,
+        const engine::Vector3& targetPosition, float deltaTime);
 
     /// <summary>保持中の経路を破棄し、次回の計算で再探索する。</summary>
     void InvalidatePath();
@@ -87,7 +87,7 @@ public:
     void SetAllowDiagonal(bool value) { allowDiagonal_ = value; InvalidatePath(); }
 
     /// <summary>現在の経路を返す。</summary>
-    const std::vector<Vector3>& GetCurrentPath() const { return currentPath_; }
+    const std::vector<engine::Vector3>& GetCurrentPath() const { return currentPath_; }
 
     /// <summary>現在追跡しているウェイポイント番号を返す。</summary>
     std::size_t GetCurrentWaypointIndex() const { return waypointIndex_; }
@@ -97,7 +97,7 @@ public:
 
 private:
     // 障害物を再取得し、現在地から目標までの局所経路を作り直す。
-    bool RebuildPath(Object3d* owner, const Vector3& currentPosition, const Vector3& targetPosition);
+    bool RebuildPath(engine::Object3d* owner, const engine::Vector3& currentPosition, const engine::Vector3& targetPosition);
 
     bool enabled_ = true;
     float cellSize_ = 1.0f;
@@ -111,10 +111,10 @@ private:
 
     // 再探索間隔中は前回のグリッドと経路を再利用する。
     NavGrid grid_;
-    std::vector<Vector3> currentPath_;
+    std::vector<engine::Vector3> currentPath_;
     std::size_t waypointIndex_ = 0;
     float repathTimer_ = 0.0f;
-    Vector3 lastTargetPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 lastTargetPosition_ = { 0.0f, 0.0f, 0.0f };
     bool hasLastTarget_ = false;
     bool lastPathSucceeded_ = false;
 };

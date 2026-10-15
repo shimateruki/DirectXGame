@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bcde8330d9826b6d1caf4bc163dcfa35",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/thunder/role.dds",
+  "version": 1
+}

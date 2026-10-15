@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "235c5fdab773a51255a32c9618c5eb41",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/pause_fullscreen_background.dds",
+  "version": 1
+}

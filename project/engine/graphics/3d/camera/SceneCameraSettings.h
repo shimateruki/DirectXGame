@@ -56,15 +56,15 @@ struct SceneCameraSettings {
     SceneCameraEyeSource eyeSource = SceneCameraEyeSource::kCameraObject;
     // kSceneObjectのときだけ名前で参照先を探す。オフセットは参照先の位置へ加算する。
     std::string eyeObjectName;
-    Vector3 eyeOffset = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 eyeOffset = { 0.0f, 0.0f, 0.0f };
     SceneCameraFollowMode eyeFollowMode = SceneCameraFollowMode::kSnap;
     float eyeFollowResponse = 12.0f;
 
     SceneCameraTargetMode targetMode = SceneCameraTargetMode::kCameraForward;
     // kSceneObjectでは名前とオフセット、kFixedPointでは固定のワールド座標を使用する。
     std::string targetObjectName;
-    Vector3 targetOffset = { 0.0f, 0.0f, 0.0f };
-    Vector3 fixedTarget = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 targetOffset = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 fixedTarget = { 0.0f, 0.0f, 0.0f };
     float forwardDistance = 10.0f;
     SceneCameraFollowMode targetFollowMode = SceneCameraFollowMode::kSnap;
     float targetFollowResponse = 14.0f;
@@ -77,6 +77,7 @@ struct SceneCameraSettings {
 
 /// <summary>シーンカメラの設定を保存用JSONへ変換する。</summary>
 inline nlohmann::json SerializeSceneCameraSettings(const SceneCameraSettings& settings) {
+    // 保存形式では列挙値を数値にし、視点と注視点の追従設定を同じ階層に揃える。
     nlohmann::json camera;
     camera["version"] = settings.version;
     camera["enabled"] = settings.enabled;
@@ -105,11 +106,12 @@ inline nlohmann::json SerializeSceneCameraSettings(const SceneCameraSettings& se
 /// <summary>JSONにある項目だけを既存設定へ読み込み、数値を有効範囲に収める。</summary>
 /// <remarks>入力がオブジェクトでなければ何もしない。欠けた項目はsettingsの現在値を維持する。</remarks>
 inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCameraSettings& settings) {
+    // 部分的な設定変更を許すため、存在しない項目は既存値のままにする。
     if (!camera.is_object()) {
         return;
     }
 
-    auto readVector3 = [&camera](const char* key, Vector3& value) {
+    auto readVector3 = [&camera](const char* key, engine::Vector3& value) {
         if (camera.contains(key) && camera[key].is_array() && camera[key].size() >= 3) {
             value = { camera[key][0], camera[key][1], camera[key][2] };
         }
@@ -137,6 +139,7 @@ inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCa
     if (camera.contains("blendOutDuration")) settings.blendOutDuration = camera["blendOutDuration"].get<float>();
     if (camera.contains("easing")) settings.easing = static_cast<SceneCameraEasing>(std::clamp(camera["easing"].get<int>(), 0, 4));
 
+    // 射影行列や追従補間が破綻しない範囲へ、読み取り後にまとめて補正する。
     settings.fovY = std::clamp(settings.fovY, 0.05f, 3.0f);
     settings.nearClip = (std::max)(settings.nearClip, 0.001f);
     settings.farClip = (std::max)(settings.farClip, settings.nearClip + 0.01f);

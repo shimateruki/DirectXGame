@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
+#include "Camera.h"
+#include "Player.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "StageManager.h"
@@ -29,9 +31,9 @@ void GameSelectScene::BeginUnlockPresentation() {
     unlockLockObject_ = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(unlockingStageIndex_));
 
     // ゲートが見つからない場合もステージ配置座標を基準に演出位置を計算する。
-    const Vector3 gatePosition =
+    const engine::Vector3 gatePosition =
         unlockTargetGate_ ? unlockTargetGate_->GetWorldPosition() : GetStageNodePosition(unlockingStageIndex_);
-    const Vector3 towardHub = {-gatePosition.x, 0.0f, -gatePosition.z};
+    const engine::Vector3 towardHub = {-gatePosition.x, 0.0f, -gatePosition.z};
     unlockGateDirection_ = SelectGateEntryDirection(unlockTargetGate_, towardHub);
 
     if (unlockKeyObject_) {
@@ -60,7 +62,7 @@ void GameSelectScene::BeginUnlockPresentation() {
 
     // 注視点は錠、ゲート、ステージ節点の優先順で選び、元の視点を復帰用に保存する。
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        Vector3 focus = gatePosition + Vector3{0.0f, 1.10f, 0.0f};
+        engine::Vector3 focus = gatePosition + engine::Vector3{0.0f, 1.10f, 0.0f};
         if (unlockTargetGate_) {
             const AABB gateBounds = unlockTargetGate_->GetAABB();
             focus = (gateBounds.min + gateBounds.max) * 0.5f;
@@ -71,7 +73,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         }
         unlockCameraStartEye_ = camera->GetEye();
         unlockCameraStartTarget_ = camera->GetTargetPoint();
-        unlockCameraCinematicTarget_ = focus + Vector3{0.0f, 0.08f, 0.0f};
+        unlockCameraCinematicTarget_ = focus + engine::Vector3{0.0f, 0.08f, 0.0f};
         unlockCameraCinematicEye_ = {focus.x + unlockGateDirection_.x * 8.4f, focus.y + 1.10f,
                                      focus.z + unlockGateDirection_.z * 8.4f};
         camera->SetInputEnabled(false);
@@ -97,9 +99,9 @@ void GameSelectScene::StartDebugUnlockPresentation(int stageIndex) {
         return;
     }
 
-    Object3d* gate = FindStageGateByIndex(stageIndex);
-    Object3d* key = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex));
-    Object3d* lock = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex));
+    engine::Object3d* gate = FindStageGateByIndex(stageIndex);
+    engine::Object3d* key = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex));
+    engine::Object3d* lock = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex));
     if (!gate || !key || !lock) {
         DebugConsole::GetInstance()->AddLog("Stage Select: debug crown unlock cinematic assets are missing.");
         return;
@@ -132,11 +134,11 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
     unlockParticleTimer_ -= deltaTime;
     selectedStageIndex_ = unlockingStageIndex_;
     const float time = unlockPresentationTimer_;
-    const Vector3 side = {unlockGateDirection_.z, 0.0f, -unlockGateDirection_.x};
-    const Vector3 lockPosition = unlockLockObject_
+    const engine::Vector3 side = {unlockGateDirection_.z, 0.0f, -unlockGateDirection_.x};
+    const engine::Vector3 lockPosition = unlockLockObject_
                                      ? unlockLockBasePosition_
-                                     : GetStageNodePosition(unlockingStageIndex_) + Vector3{0.0f, 0.35f, 0.0f};
-    Vector3 gateCorePosition = lockPosition;
+                                     : GetStageNodePosition(unlockingStageIndex_) + engine::Vector3{0.0f, 0.35f, 0.0f};
+    engine::Vector3 gateCorePosition = lockPosition;
     if (unlockTargetGate_) {
         const AABB gateBounds = unlockTargetGate_->GetAABB();
         gateCorePosition = (gateBounds.min + gateBounds.max) * 0.5f;
@@ -152,8 +154,8 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
         camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-        Vector3 eye = unlockCameraCinematicEye_;
-        Vector3 target = unlockCameraCinematicTarget_;
+        engine::Vector3 eye = unlockCameraCinematicEye_;
+        engine::Vector3 target = unlockCameraCinematicTarget_;
         if (time < kUnlockCameraIntroDuration) {
             const float cameraT = SelectEaseInOutCubic(SelectClamp01(time / kUnlockCameraIntroDuration));
             eye = SelectLerpVector3(unlockCameraStartEye_, unlockCameraCinematicEye_, cameraT);
@@ -169,23 +171,23 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
 
     // 鍵は登場、曲線での接近、回転、離脱を同じ時間軸上で組み立てる。
     if (unlockKeyObject_) {
-        const Vector3 startPosition = {lockPosition.x + unlockGateDirection_.x * 5.45f + side.x * 1.30f,
+        const engine::Vector3 startPosition = {lockPosition.x + unlockGateDirection_.x * 5.45f + side.x * 1.30f,
                                        lockPosition.y + 1.65f,
                                        lockPosition.z + unlockGateDirection_.z * 5.45f + side.z * 1.30f};
-        const Vector3 insertPosition = {lockPosition.x + unlockGateDirection_.x * 0.88f, lockPosition.y,
+        const engine::Vector3 insertPosition = {lockPosition.x + unlockGateDirection_.x * 0.88f, lockPosition.y,
                                         lockPosition.z + unlockGateDirection_.z * 0.88f};
         const float appearT =
             SelectEaseOutBack(SelectClamp01((time - kUnlockKeyAppearStartTime) / kUnlockKeyAppearDuration));
         const float approachT = SelectEaseInOutCubic(
             SelectClamp01((time - kUnlockKeyApproachStartTime) /
                           std::max(kUnlockKeyApproachEndTime - kUnlockKeyApproachStartTime, 0.001f)));
-        const Vector3 controlPosition = {(startPosition.x + insertPosition.x) * 0.5f + side.x * 1.15f,
+        const engine::Vector3 controlPosition = {(startPosition.x + insertPosition.x) * 0.5f + side.x * 1.15f,
                                          std::max(startPosition.y, insertPosition.y) + 1.25f,
                                          (startPosition.z + insertPosition.z) * 0.5f + side.z * 1.15f};
         // 二回の線形補間で二次ベジェ曲線上の接近位置を求める。
-        const Vector3 firstCurve = SelectLerpVector3(startPosition, controlPosition, approachT);
-        const Vector3 secondCurve = SelectLerpVector3(controlPosition, insertPosition, approachT);
-        Vector3 keyPosition = SelectLerpVector3(firstCurve, secondCurve, approachT);
+        const engine::Vector3 firstCurve = SelectLerpVector3(startPosition, controlPosition, approachT);
+        const engine::Vector3 secondCurve = SelectLerpVector3(controlPosition, insertPosition, approachT);
+        engine::Vector3 keyPosition = SelectLerpVector3(firstCurve, secondCurve, approachT);
         float keyScaleRate = appearT;
         float keyRoll = (1.0f - approachT) * std::sin(time * 8.0f) * 0.16f;
         // 錠に差し込んだ後は位置を固定し、回転だけを進める。
@@ -217,9 +219,9 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
 
     // 錠は鍵の回転に反応して揺れ、解放時に落下して画面から外れる。
     if (unlockLockObject_) {
-        Vector3 position = unlockLockBasePosition_;
-        Vector3 rotation = unlockLockBaseRotation_;
-        Vector3 scale = unlockLockBaseScale_;
+        engine::Vector3 position = unlockLockBasePosition_;
+        engine::Vector3 rotation = unlockLockBaseRotation_;
+        engine::Vector3 scale = unlockLockBaseScale_;
         if (time >= kUnlockKeyTurnStartTime && time < kUnlockLockReleaseTime) {
             const float shakeT = SelectClamp01((time - kUnlockKeyTurnStartTime) /
                                                std::max(kUnlockLockReleaseTime - kUnlockKeyTurnStartTime, 0.001f));
@@ -249,7 +251,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
     // 各節目の効果はフラグで一回だけ発火させ、フレーム落ちでも二重再生しない。
     if (!unlockKeyAppearImpactPlayed_ && time >= kUnlockKeyAppearStartTime) {
         unlockKeyAppearImpactPlayed_ = true;
-        const Vector3 keyPosition =
+        const engine::Vector3 keyPosition =
             unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition + unlockGateDirection_ * 4.0f;
         MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, keyPosition,
                                                         {0.0f, 0.0f, 0.0f}, {0.30f, 0.30f, 0.30f});
@@ -288,7 +290,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
     // 接近中の残光だけは一定間隔で追加し、節目の単発演出と分ける。
     if (unlockParticleTimer_ <= 0.0f && time >= kUnlockKeyAppearStartTime && time < kUnlockLockReleaseTime) {
         unlockParticleTimer_ = 0.15f;
-        const Vector3 particlePosition = unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition;
+        const engine::Vector3 particlePosition = unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition;
         GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, particlePosition);
     }
 

@@ -35,6 +35,7 @@ float MaxScaleComponent(const nlohmann::json& values) {
     return std::max({values[0].get<float>(), values[1].get<float>(), values[2].get<float>()});
 }
 
+// 爆発エフェクトの衝突半径を読み、失敗時は既定半径へ戻します。
 float LoadExplosionRadiusFromEffectJson() {
     // 表示用エフェクトの設定から半径を求め、読めない場合は既定半径へ戻す。
     std::ifstream file(kExplosionEffectPath);
@@ -82,7 +83,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
 }
 
-void EnemyBomb::ApplyManagedScale(const Vector3& scale) {
+void EnemyBomb::ApplyManagedScale(const engine::Vector3& scale) {
     // 点滅による一時変形と区別できるよう、通常時の基準スケールを保持する。
     managedBaseScale_ = scale;
     SetScale(scale);
@@ -99,7 +100,7 @@ void EnemyBomb::Update(float deltaTime) {
         return;
     }
 
-    const Vector3 previousPosition = GetTranslate();
+    const engine::Vector3 previousPosition = GetTranslate();
 
     // 運搬が始まった瞬間だけ点火し、毎フレーム導火線を戻さないようにします。
     if (isCarried_ && state_ != State::Ignited) {
@@ -155,7 +156,7 @@ void EnemyBomb::Update(float deltaTime) {
                 // 水平移動距離に応じて転がりの角度を進めます。
                 // モデルのピッチだけを変え、衝突半径には影響させません。
                 float rollDelta = speedXZ * deltaTime * 0.5f; // 転がり角度は速度と経過時間に比例します。
-                Vector3 rot = GetRotation();
+                engine::Vector3 rot = GetRotation();
                 rot.x += rollDelta;
                 SetRotation(rot);
             }
@@ -172,10 +173,10 @@ void EnemyBomb::Update(float deltaTime) {
         }
 
         if (state_ == State::Chase) {
-            Vector3 targetScale = managedBaseScale_;
-            Vector3 reactionRotation = {0.0f, 0.0f, 0.0f};
+            engine::Vector3 targetScale = managedBaseScale_;
+            engine::Vector3 reactionRotation = {0.0f, 0.0f, 0.0f};
             ApplyDamageReactionPose(targetScale, reactionRotation, nullptr, 0.90f);
-            SetScale(Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 15.0f)));
+            SetScale(engine::Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 15.0f)));
         }
 
         // 共通の敵更新で移動を確定してから、掃引で床や壁との衝突を補正します。
@@ -187,9 +188,9 @@ void EnemyBomb::Update(float deltaTime) {
     if (state_ == State::Ignited && !isCarried_ && !playerOwned_ && isGrounded_) {
         const float progress = std::clamp(1.0f - fuseTimer_ / 2.8f, 0.0f, 1.0f);
         // 爆弾の中心は床より高い。予告円だけ足元の接地面へ投影する。
-        const Vector3 bombPosition = GetTranslate();
+        const engine::Vector3 bombPosition = GetTranslate();
         const RaycastHit ground = CollisionManager::GetInstance()->Raycast(
-            bombPosition + Vector3{0.0f, 1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, 4.0f,
+            bombPosition + engine::Vector3{0.0f, 1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, 4.0f,
             CollisionCategories::Get("ground"));
         if (ground.isHit) {
             ShowAttackTelegraphCircle({bombPosition.x, ground.hitPoint.y + 0.02f, bombPosition.z},
@@ -203,7 +204,7 @@ void EnemyBomb::Update(float deltaTime) {
 }
 
 // 前フレームからの移動区間を掃引し、高速の投擲体が薄い床や壁を抜けるのを防ぎます。
-void EnemyBomb::ResolveSweptCollision(const Vector3& previousPosition) {
+void EnemyBomb::ResolveSweptCollision(const engine::Vector3& previousPosition) {
     // 現在位置だけの重なり判定では取り逃す床・壁を移動線分から探す。
     if (state_ == State::Exploded || isCarried_) {
         return;
@@ -214,8 +215,8 @@ void EnemyBomb::ResolveSweptCollision(const Vector3& previousPosition) {
         return;
     }
 
-    const Vector3 currentPosition = GetTranslate();
-    Vector3 movement = {currentPosition.x - previousPosition.x, currentPosition.y - previousPosition.y,
+    const engine::Vector3 currentPosition = GetTranslate();
+    engine::Vector3 movement = {currentPosition.x - previousPosition.x, currentPosition.y - previousPosition.y,
                         currentPosition.z - previousPosition.z};
 
     const float movementLength = std::sqrt(movement.x * movement.x + movement.y * movement.y + movement.z * movement.z);
@@ -223,7 +224,7 @@ void EnemyBomb::ResolveSweptCollision(const Vector3& previousPosition) {
         return;
     }
 
-    Vector3 direction = {movement.x / movementLength, movement.y / movementLength, movement.z / movementLength};
+    engine::Vector3 direction = {movement.x / movementLength, movement.y / movementLength, movement.z / movementLength};
 
     const float sweepLength = movementLength + kBombWorldCollisionRadius + kBombSweepSkin;
     RaycastHit hit = collisionManager->Raycast(previousPosition, direction, sweepLength, CollisionCategories::Get("ground"));
@@ -231,7 +232,7 @@ void EnemyBomb::ResolveSweptCollision(const Vector3& previousPosition) {
         return;
     }
 
-    Vector3 normal = hit.normal;
+    engine::Vector3 normal = hit.normal;
     float normalLength = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
     if (normalLength <= 0.001f) {
         if (direction.y < -0.15f) {
@@ -278,9 +279,9 @@ void EnemyBomb::ResolveSweptCollision(const Vector3& previousPosition) {
 void EnemyBomb::UpdateChase(float deltaTime) {
     if (!target_)
         return;
-    Vector3 playerPos = target_->GetTranslate();
-    Vector3 myPos = GetTranslate();
-    Vector3 toPlayer = playerPos - myPos;
+    engine::Vector3 playerPos = target_->GetTranslate();
+    engine::Vector3 myPos = GetTranslate();
+    engine::Vector3 toPlayer = playerPos - myPos;
     toPlayer.y = 0.0f; // 追跡は水平面で行い、高低差では点火距離を変えません。
 
     float distance = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
@@ -296,7 +297,7 @@ void EnemyBomb::UpdateChase(float deltaTime) {
 
     if (distance > detectionRange_) {
         const float wanderSpeed = param_.has_value() ? (std::max)(0.35f, param_.value().speed * 4.0f) : 0.55f;
-        Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
+        engine::Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
         velocity_.x = wanderVelocity.x;
         velocity_.z = wanderVelocity.z;
 
@@ -379,9 +380,9 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
     const float scaleRate = 1.0f + offset;
 
     // 見た目のスケールだけを変え、衝突半径を揺らしません。
-    Vector3 targetScale = {managedBaseScale_.x * scaleRate, managedBaseScale_.y * scaleRate,
+    engine::Vector3 targetScale = {managedBaseScale_.x * scaleRate, managedBaseScale_.y * scaleRate,
                            managedBaseScale_.z * scaleRate};
-    Vector3 reactionRotation = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 reactionRotation = {0.0f, 0.0f, 0.0f};
     ApplyDamageReactionPose(targetScale, reactionRotation, nullptr, 0.90f);
     SetScale(targetScale);
 }
@@ -409,7 +410,7 @@ void EnemyBomb::Explode() {
     }
 
     // 命中演出とメッシュエフェクトは同じ爆発位置から発生させます。
-    Vector3 myPos = GetTranslate();
+    engine::Vector3 myPos = GetTranslate();
     HitEffectDirector::SpawnBombExplosionHit(myPos);
     if (MeshEffectManager::GetInstance()) {
         MeshEffectManager::GetInstance()->SpawnEffectAt(kExplosionEffectPath, myPos, {0.0f, 0.0f, 0.0f},
@@ -474,11 +475,11 @@ void EnemyBomb::ExecuteAbility(Player* player) {
     isAbilityExecuted_ = true;
 
     // ボムを吸い込んだ際の能力は、プレイヤーを巻き込む自爆です。
-    Vector3 myPos = GetTranslate();
-    Vector3 playerPos = player->GetTranslate();
+    engine::Vector3 myPos = GetTranslate();
+    engine::Vector3 playerPos = player->GetTranslate();
 
     // 爆発時のノックバック方向をボムからプレイヤーへ向けます。
-    Vector3 throwBackDir = playerPos - myPos;
+    engine::Vector3 throwBackDir = playerPos - myPos;
     throwBackDir.y = 0.0f;
     float dist = std::sqrt(throwBackDir.x * throwBackDir.x + throwBackDir.z * throwBackDir.z);
     if (dist > 0.001f) {
@@ -496,7 +497,7 @@ void EnemyBomb::ExecuteAbility(Player* player) {
     Explode();
 }
 
-bool EnemyBomb::OnCollision(Object3d* other) {
+bool EnemyBomb::OnCollision(engine::Object3d* other) {
     // 投擲物理の床・壁反射はBaseEnemyと掃引処理が担当します。
     // ここでは共通の接触処理だけを呼び、爆発の多重発動を避けます。
     return BaseEnemy::OnCollision(other);

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bdbd876d3919005c2ac54a05fa3455e1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/thunder/traits.dds",
+  "version": 1
+}

@@ -5,7 +5,7 @@
 // 通常移動の着地だけに使う短い粉塵。攻撃の予告リングとは見分けられる形にします。
 namespace BossGroundHopVfx {
 
-inline void EmitPuff(const Vector3& groundPosition, const Vector4& color, float radius, bool landing) {
+inline void EmitPuff(const engine::Vector3& groundPosition, const engine::Vector4& color, float radius, bool landing) {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (!particles || !particles->IsInitialized()) {
         return;

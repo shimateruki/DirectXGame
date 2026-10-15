@@ -93,17 +93,17 @@ public:
         float randomIntensity = 0.0f;       // GPUによる乱数生成の強度
         float linearWorkflowEnabled = 0.0f; // 1: Editor色をsRGBからリニアへ変換
 
-        Vector3 dissolveEdgeColor = { 1.0f, 0.4f, 0.3f }; // エッジの色
+        engine::Vector3 dissolveEdgeColor = { 1.0f, 0.4f, 0.3f }; // エッジの色
         float padding_m2 = 0.0f;            // 144バイト境界に合わせる
         
-        Matrix4x4 projectionInverse;            // 深度復元用の逆行列
+        engine::Matrix4x4 projectionInverse;            // 深度復元用の逆行列
 
         // --- Slime Fade ---
         float slimeFadeIntensity = 0.0f;    // スライムフェードの進捗 (0.0 - 1.0)
         float slimeDensity = 1.0f;          // スライムの密度（ノイズのスケール）
         float padding_s1 = 0.0f;
         float padding_s2 = 0.0f;
-        Vector3 slimeColor = { 0.18f, 0.8f, 0.44f }; // スライムの色 (Emerald Green)
+        engine::Vector3 slimeColor = { 0.18f, 0.8f, 0.44f }; // スライムの色 (Emerald Green)
         float padding_s3 = 0.0f;
 
         // --- Iris Out ---
@@ -224,8 +224,8 @@ private:
 
     /// <summary>全画面矩形一頂点分の位置とUV。</summary>
     struct VertexPosUv {
-        Vector3 pos;
-        Vector2 uv;
+        engine::Vector3 pos;
+        engine::Vector2 uv;
     };
 
     // カラーグレーディング用LUTのSRVハンドル

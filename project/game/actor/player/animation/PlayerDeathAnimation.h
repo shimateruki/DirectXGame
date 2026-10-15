@@ -32,7 +32,7 @@ class PlayerDeathAnimation {
     bool collisionStored_ = false;
     uint32_t baseCollisionAttribute_ = 0;
     uint32_t baseCollisionMask_ = 0xFFFFFFFF;
-    Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
-    Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
+    engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
     std::vector<bool> childVisible_;
 };

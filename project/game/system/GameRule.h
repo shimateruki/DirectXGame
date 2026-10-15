@@ -15,30 +15,37 @@ class CheckpointRule;
 // 衝突イベントからダメージ、ゴール、クリア演出などのゲームルールを処理するクラス
 class GameRule {
   public:
+    /// <summary>ゲームルールの初期状態を作る。</summary>
     GameRule();
+    /// <summary>購読したイベントを解除し、状態異常を片付ける。</summary>
     ~GameRule();
     GameRule(const GameRule&) = delete;
     GameRule& operator=(const GameRule&) = delete;
-    // 監視対象のシーンを登録し、接触・ダメージ・死亡イベントを購読する。
-    // EventManager が購読を保持する間は、この GameRule と scene を存続させる。
+    /// <summary>監視対象シーンを借用し、接触・ダメージ・死亡イベントを購読する。</summary>
+    /// <remarks>購読中はGameRuleとシーンの両方が有効である必要がある。</remarks>
     void Initialize(BaseScene* scene);
-    // deltaTime は秒。チェックポイント演出と時間経過型の状態異常を更新する。
+    /// <summary>チェックポイント演出と継続型状態異常を更新する。</summary>
+    /// <param name="deltaTime">経過秒数。</param>
     void Update(float deltaTime);
 
-    // 死亡後のシーン再生成では取得演出を再生せず、旗を取得済みの姿に戻す。
+    /// <summary>死亡後のシーン再生成で、旗を取得済みの姿へ戻す。</summary>
     void RestoreCheckpointPresentation(const std::string& checkpointObjectName);
 
   private:
     std::array<EventManager::SubscriptionId, 3> eventSubscriptions_{};
-    // DamageEvent から HP 減算や撃破判定を行う
-    bool ApplyDamage(Object3d* target, float damage, bool bypassPlayerInvincibility = false);
-    void ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale);
-    bool IsStatusTargetAlive(Object3d* target) const;
-    void EmitStatusVisual(Object3d* target, const std::string& presetName) const;
+    /// <summary>指定対象へダメージを適用し、HP減少と撃破を判定する。</summary>
+    /// <returns>ダメージを適用できた場合はtrue。</returns>
+    bool ApplyDamage(engine::Object3d* target, float damage, bool bypassPlayerInvincibility = false);
+    /// <summary>ダメージに伴う状態異常を対象へ付与する。</summary>
+    void ApplyStatusEffect(engine::Object3d* target, const StatusEffectApplication& application, float damageScale);
+    /// <summary>対象が状態異常を受けられる生存状態か返す。</summary>
+    bool IsStatusTargetAlive(engine::Object3d* target) const;
+    /// <summary>指定対象の位置へ状態異常の演出を発生させる。</summary>
+    void EmitStatusVisual(engine::Object3d* target, const std::string& presetName) const;
 
     // 状態異常の残り秒と継続ダメージ・演出の独立した時計。target はシーン内 Object の借用参照。
     struct ActiveStatusEffect {
-        Object3d* target = nullptr;
+        engine::Object3d* target = nullptr;
         StatusEffectType type = StatusEffectType::None;
         float remainingTime = 0.0f;
         float tickTimer = 0.0f;

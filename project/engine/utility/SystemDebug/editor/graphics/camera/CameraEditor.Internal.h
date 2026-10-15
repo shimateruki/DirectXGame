@@ -27,28 +27,28 @@ namespace CameraEditorImplementation {
 
     BaseScene* GetCurrentScene();
 
-    bool IsObjectInCurrentScene(const Object3d* target);
+    bool IsObjectInCurrentScene(const engine::Object3d* target);
 
     float DegToRad(float degrees);
 
     float RadToDeg(float radians);
 
-    Matrix4x4 MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness);
+    engine::Matrix4x4 MakeLineBoxMatrix(const engine::Vector3& start, const engine::Vector3& end, float thickness);
 
     // クォータニオンを使わず、オイラー角から前方ベクトルなどを求める簡易計算
-    Vector3 CalculateForward(const Vector3& rotation);
+    engine::Vector3 CalculateForward(const engine::Vector3& rotation);
 
-    Vector3 CalculateEditorForward(const Vector3& rotation);
+    engine::Vector3 CalculateEditorForward(const engine::Vector3& rotation);
 
-    Vector3 Cross(const Vector3& a, const Vector3& b);
+    engine::Vector3 Cross(const engine::Vector3& a, const engine::Vector3& b);
 
-    float Length(const Vector3& v);
+    float Length(const engine::Vector3& v);
 
-    Vector3 NormalizeSafe(const Vector3& v, const Vector3& fallback);
+    engine::Vector3 NormalizeSafe(const engine::Vector3& v, const engine::Vector3& fallback);
 
-    Vector3 MakeRotationFromForward(const Vector3& forward);
+    engine::Vector3 MakeRotationFromForward(const engine::Vector3& forward);
 
-    Vector3 GetObjectWorldForward(const Object3d* object);
+    engine::Vector3 GetObjectWorldForward(const engine::Object3d* object);
 
     bool IsValidFocusBounds(const AABB& bounds);
 }

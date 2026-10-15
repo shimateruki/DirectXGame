@@ -37,6 +37,7 @@ class GameClearScene : public BaseScene, public ISceneGameplayAccess {
     /// 初期化
     /// </summary>
     void Initialize() override;
+    /// ゲームクリア画面で使用するアセットを列挙する。
     SceneLoadManifest BuildAsyncLoadManifest() const override;
 
     /// <summary>
@@ -53,6 +54,7 @@ class GameClearScene : public BaseScene, public ISceneGameplayAccess {
     /// 描画
     /// </summary>
     void Draw() override;
+    /// クリア画面の HUD とスプライトを描画する。
     void DrawUI() override;
 
     // シャドウマップ描画のオーバーライド
@@ -60,16 +62,16 @@ class GameClearScene : public BaseScene, public ISceneGameplayAccess {
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
 
-    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
-    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
-    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
-    void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
-    void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
+    const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
+    void AddObject(std::unique_ptr<engine::Object3d> object) override { objectManager_->AddObject(std::move(object)); }
+    void RequestRemoveObject(engine::Object3d* object) override { objectManager_->RequestRemove(object); }
 
     // スプライト・共通クラスの取得
-    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
+    const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
-    SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
+    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
     // プレイヤー関連
@@ -77,7 +79,7 @@ class GameClearScene : public BaseScene, public ISceneGameplayAccess {
     void SetPlayer(Player* player) override { player_ = player; }
 
   private:
-    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
+    std::vector<std::unique_ptr<engine::Sprite>>* GetMutableSprites() override { return &sprites_; }
     // --- エンジンシステム ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -89,11 +91,11 @@ class GameClearScene : public BaseScene, public ISceneGameplayAccess {
 
     // --- 共通基盤クラス ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
-    std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
+    std::unique_ptr<engine::SpriteCommon> spriteCommon_ = nullptr;
     std::unique_ptr<ParticleCommon> particleCommon_ = nullptr;
 
     // --- オブジェクト・リソース ---
-    std::vector<std::unique_ptr<Sprite>> sprites_;
+    std::vector<std::unique_ptr<engine::Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     Player* player_ = nullptr;
 

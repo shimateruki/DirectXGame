@@ -9,7 +9,8 @@
 // 一時ドロップの星は実体の寿命だけを調整し、通常アイテムは初回選択時に必要な外観と判定を補います。
 void InspectorWindow::DrawItemTypeSelector() {
 #ifdef USE_IMGUI
-    Object3d* selectedObject = editor_->GetSelectedObject();
+    // 一時ドロップ星は通常アイテムと設定項目が異なるため先に分岐する。
+    engine::Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
     if (auto* star = dynamic_cast<DroppedCopyStar*>(selectedObject)) {
@@ -29,6 +30,7 @@ void InspectorWindow::DrawItemTypeSelector() {
     const char* itemTypeLabels[] = { "体力回復" };
     std::string currentType = selectedObject->GetItemType();
     if (currentType.empty()) {
+        // 旧データで種類が空なら、回復アイテムとしてモデルと判定を補完する。
         currentType = "Heal";
         selectedObject->SetItemType(currentType);
         if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -43,7 +45,7 @@ void InspectorWindow::DrawItemTypeSelector() {
         selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
         selectedObject->SetStatic(false);
 
-        Object3d::ColliderConfig colConfig;
+        engine::Object3d::ColliderConfig colConfig;
         colConfig.type = ColliderType::kSphere;
         colConfig.size = { 1.2f, 1.2f, 1.2f };
         selectedObject->SetColliderConfig(colConfig);
@@ -59,6 +61,7 @@ void InspectorWindow::DrawItemTypeSelector() {
     }
 
     if (ImGui::Combo("アイテムの種類", &currentIndex, itemTypeLabels, IM_ARRAYSIZE(itemTypeLabels))) {
+        // 種類だけでなく見た目とColliderも同時に更新し、編集内容との不一致を防ぐ。
         std::string selectedItemType = itemTypes[currentIndex];
         selectedObject->SetClassName("Item");
         selectedObject->SetItemType(selectedItemType);
@@ -78,7 +81,7 @@ void InspectorWindow::DrawItemTypeSelector() {
 
             selectedObject->param_->healAmount = 1.0f;
 
-            Object3d::ColliderConfig colConfig;
+            engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kSphere;
             colConfig.size = { 1.2f, 1.2f, 1.2f };
             selectedObject->SetColliderConfig(colConfig);
@@ -93,6 +96,7 @@ void InspectorWindow::DrawItemTypeSelector() {
 // JSONのカテゴリ一覧で既知ビットを編集し、未登録ビットは変更せず保持します。
 void InspectorWindow::DrawAttributeSelector(const char* label, uint32_t* attribute) {
 #ifdef USE_IMGUI
+    // 定義済みビットだけをUIへ並べ、既存の属性値をCheckboxFlagsで編集する。
     if (ImGui::TreeNode(label)) {
         if (!CollisionCategories::IsDefinitionLoaded()) {
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f),
@@ -112,6 +116,7 @@ void InspectorWindow::DrawAttributeSelector(const char* label, uint32_t* attribu
             ImGui::InputText("ID (英小文字)", idBuffer, sizeof(idBuffer));
             ImGui::InputText("表示名", nameBuffer, sizeof(nameBuffer));
             const bool isPlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
+            // Play中はJSONを書き換えず、停止後に新しいカテゴリを登録させる。
             ImGui::BeginDisabled(isPlaying);
             if (ImGui::Button("追加してJSONへ保存")) {
                 if (CollisionCategories::Add(idBuffer, nameBuffer, &error)) {

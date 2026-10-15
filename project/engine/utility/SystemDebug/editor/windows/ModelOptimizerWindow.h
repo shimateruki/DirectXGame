@@ -7,9 +7,9 @@
 #include <vector>
 
 class DebugEditor;
-class Object3d;
-struct Vector2;
-struct Vector3;
+namespace engine { class Object3d; }
+namespace engine { struct Vector2; }
+namespace engine { struct Vector3; }
 
 /// モデルの解析、LOD生成、生成結果レビュー、シーンへのLOD設定反映を行うエディタウィンドウ。
 class ModelOptimizerWindow : public IEditable {
@@ -21,7 +21,7 @@ public:
     void DrawImGui() override;
 
     /// ラベル投影に使うゲーム画面の位置と大きさを更新します。
-    void SetGameViewRegion(const Vector2& offset, const Vector2& size);
+    void SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size);
     std::string GetName() override { return "モデル最適化 (Model Optimizer)"; }
 
 private:
@@ -38,12 +38,12 @@ private:
     // 生成された LOD をエディター専用オブジェクトとして段階的に配置します。
     void UpdatePreviewCreation();
     void DrawPreviewLabels();
-    bool ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const;
+    bool ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const;
     /// 生成ツールが出力した最新レポートを読み込みます。
     bool LoadLatestReport();
     /// 生成レポートのLOD設定を現在選択中のObjectへ適用する。
     bool ApplyLodConfigToSelected();
-    bool ApplyLodConfigToObject(Object3d* object);
+    bool ApplyLodConfigToObject(engine::Object3d* object);
     /// 生成したLODファイルを採用し、対象モデルのLOD manifestとして使える状態にする。
     bool AcceptGeneratedLods();
     /// 生成物を採用せず、安全性検証を通った生成ファイルだけを取り除きます。
@@ -84,14 +84,14 @@ private:
     std::vector<PendingPreviewItem> pendingPreviewItems_;
     size_t pendingPreviewIndex_ = 0;
     bool previewCreationActive_ = false;
-    Object3d* firstPendingPreview_ = nullptr;
+    engine::Object3d* firstPendingPreview_ = nullptr;
     // ゲーム画面の投影領域と、生成結果の採否待ち状態。
     float gameViewOffsetX_ = 0.0f;
     float gameViewOffsetY_ = 0.0f;
     float gameViewWidth_ = 1280.0f;
     float gameViewHeight_ = 720.0f;
     bool hasPendingGeneratedReview_ = false;
-    Object3d* pendingApplyTarget_ = nullptr;
+    engine::Object3d* pendingApplyTarget_ = nullptr;
     nlohmann::json latestReport_;
     bool hasReport_ = false;
     std::string lastStatus_ = "モデルを選んで解析またはLOD生成を実行してください。";

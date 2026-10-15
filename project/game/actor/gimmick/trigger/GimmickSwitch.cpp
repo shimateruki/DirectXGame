@@ -72,7 +72,7 @@ void GimmickSwitch::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickSwitch::OnCollision(Object3d* other) {
+bool GimmickSwitch::OnCollision(engine::Object3d* other) {
     // プレイヤーが上から踏んだ接触だけ押下に数え、側面衝突を除外する。
     if (!other || other->GetClassName() != "Player")
         return true;
@@ -105,7 +105,7 @@ int GimmickSwitch::GetSwitchMode() const {
     return param_.has_value() ? param_->switchMode : 0;
 }
 
-std::unique_ptr<Object3d> GimmickSwitch::Clone() const {
+std::unique_ptr<engine::Object3d> GimmickSwitch::Clone() const {
     // スイッチ固有の設定も含めて配置物を複製する。
     auto newObj = std::make_unique<GimmickSwitch>();
     assert(common_ != nullptr);
