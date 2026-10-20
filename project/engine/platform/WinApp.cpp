@@ -30,21 +30,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         if (LOWORD(wparam) == WA_INACTIVE) {
             ClipCursor(nullptr); // 解放
         }
+
         break;
+
     case WM_SIZE:
         if (wparam != SIZE_MINIMIZED) {
             const int32_t width = LOWORD(lparam);
             const int32_t height = HIWORD(lparam);
+
             if (DirectXCommon::GetInstance()->GetDevice()) {
                 DirectXCommon::GetInstance()->RequestResize(width, height);
             }
         }
+
         return 0;
 
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
     }
+
     return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
@@ -82,10 +87,12 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     kClientHeight = clientRect.bottom - clientRect.top;
 
     ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
+
     // 保存済み表示設定のみ起動時に反映。破損した設定では従来の起動を維持します。
     try {
         std::ifstream file("Resources/json/user_config.json");
         nlohmann::json config;
+
         if (file >> config; config.contains("display")) {
             const auto& d = config.at("display");
             SetDisplayMode(d.value("width", 1280), d.value("height", 720), d.value("borderless", false));
@@ -106,20 +113,26 @@ WinApp::DisplayState WinApp::CaptureDisplayState() const {
 
 bool WinApp::SetDisplayMode(int width, int height, bool borderless) {
     // 対応解像度とモニターの作業領域を確認してからウィンドウ様式を変更する。
-    if (!hwnd_ || width < 960 || height < 540 || width > 7680 || height > 4320) return false;
+    if (!hwnd_ || width < 960 || height < 540 || width > 7680 || height > 4320)
+        return false;
     MONITORINFO monitor{ sizeof(MONITORINFO) };
-    if (!GetMonitorInfo(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST), &monitor)) return false;
+    if (!GetMonitorInfo(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST), &monitor))
+        return false;
     RECT rect{0, 0, width, height};
     const LONG style = borderless ? WS_POPUP : WS_OVERLAPPEDWINDOW;
-    if (borderless) rect = monitor.rcMonitor;
+    if (borderless)
+        rect = monitor.rcMonitor;
     else {
         AdjustWindowRect(&rect, style, FALSE);
-        width = rect.right - rect.left; height = rect.bottom - rect.top;
+        width = rect.right - rect.left;
+        height = rect.bottom - rect.top;
         const auto& work = monitor.rcWork;
-        if (width > work.right-work.left || height > work.bottom-work.top) return false;
+        if (width > work.right-work.left || height > work.bottom-work.top)
+            return false;
         rect = {work.left + (work.right-work.left-width)/2, work.top + (work.bottom-work.top-height)/2,
                 work.left + (work.right-work.left+width)/2, work.top + (work.bottom-work.top+height)/2};
     }
+
     ShowWindow(hwnd_, SW_RESTORE);
     SetWindowLongPtr(hwnd_, GWL_STYLE, style | WS_VISIBLE);
     return SetWindowPos(hwnd_, nullptr, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top,
@@ -143,9 +156,11 @@ bool WinApp::Update() {
         if (msg.message == WM_QUIT) {
             return true;
         }
+
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
     if (isCursorLocked_ && !cursorRecenteringSuppressed_) {
         // 他のアプリ（ブラウザ等）を操作している時にマウスが奪われないよう、
         // 自分のゲーム画面がアクティブ（最前面）の時だけ固定する！
@@ -164,6 +179,7 @@ bool WinApp::Update() {
             SetCursorPos(center.x, center.y);
         }
     }
+
     // 続ける場合はfalseを返す
     return false;
 }
@@ -178,6 +194,7 @@ bool WinApp::ConsumeCloseRequest() {
     if (!closeRequested_) {
         return false;
     }
+
     closeRequested_ = false;
     return true;
 }
@@ -205,6 +222,7 @@ void WinApp::SetCursorVisibility(bool isVisible) {
 
 void WinApp::SetCursorClipping(bool isClipping) {
     isCursorClipping_ = isClipping;
+
     if (isClipping) {
         // ウィンドウのクライアント領域（描画エリア）を取得
         RECT rect;

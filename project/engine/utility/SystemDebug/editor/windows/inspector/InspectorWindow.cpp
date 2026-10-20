@@ -11,9 +11,11 @@ void InspectorWindow::Initialize(DebugEditor* editor) {
 void InspectorWindow::Draw() {
 #ifdef USE_IMGUI
     // Sceneと代表選択Objectを確定し、複数選択時は共通項目だけ対象群へ反映する。
-    if (editor_->GetSceneManager() == nullptr) return;
+    if (editor_->GetSceneManager() == nullptr)
+        return;
     BaseScene* currentScene = editor_->GetSceneManager()->GetCurrentScene();
-    if (currentScene == nullptr) return;
+    if (currentScene == nullptr)
+        return;
 
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(editor_->GetCurrentSceneFilenameBuffer());
     engine::Object3d* selectedObject = editor_->GetSelectedObject();
@@ -26,6 +28,7 @@ void InspectorWindow::Draw() {
         ImGui::TextDisabled(ICON_FA_EXCLAMATION_CIRCLE " オブジェクトが選択されていません");
         ImGui::TextDisabled("Hierarchyから選択してください");
         ImGui::Separator();
+
         // ゲッター経由での描画フラグ制御
         ImGui::Checkbox(ICON_FA_EYE " コライダー枠を描画", editor_->GetDrawCollidersPtr());
         ImGui::Checkbox(ICON_FA_FINGERPRINT " イベントIDを表示", editor_->GetDrawEventIDsPtr());
@@ -47,22 +50,27 @@ void InspectorWindow::Draw() {
         // --- 名前表示 ---
         char nameBuffer[256];
         std::string currentName = selectedObject->GetName();
-        if (currentName.empty()) currentName = "NoName";
+        if (currentName.empty())
+            currentName = "NoName";
         strcpy_s(nameBuffer, currentName.c_str());
 
         if (ImGui::InputText(ICON_FA_TAG " 名前", nameBuffer, sizeof(nameBuffer))) {
             selectedObject->SetName(std::string(nameBuffer));
         }
+
         ImGui::Spacing();
 
         if (editor_->GetIsPathEditMode()) {
             // 編集モード中は目立つ色（オレンジ）にして警告を表示
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
+
             if (ImGui::Button(ICON_FA_CHECK_CIRCLE " パス編集を完了してロックを解除 (Exit Edit Mode)", ImVec2(-1, 45))) {
                 editor_->SetIsPathEditMode(false);
-                if (selectedObject->recorder_) selectedObject->recorder_->DeselectPin();
+                if (selectedObject->recorder_)
+                    selectedObject->recorder_->DeselectPin();
             }
+
             ImGui::PopStyleColor(2);
             ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " 現在パスを編集中です。");
             ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "    本体の移動・選択・削除はロックされています。");
@@ -72,22 +80,27 @@ void InspectorWindow::Draw() {
                 editor_->SetIsPathEditMode(true);
             }
         }
+
         ImGui::Separator();
 
         // =========================================================================
         // 🚨 ここから下は「パス編集中」はロック（操作不能）にするエリア
         // =========================================================================
         ImGui::BeginDisabled(editor_->GetIsPathEditMode());
+
         // パス編集中に本体を変形・削除しないため、以降の通常Inspectorを一括で無効化する。
         ImGui::Spacing();
 
         if (ImGui::Button(ICON_FA_COPY " 複製 (Duplicate)")) {
             EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDuplicate);
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button(ICON_FA_DOWNLOAD " 単体保存 (JSON更新)")) {
             editor_->SaveSingleObject();
         }
+
         ImGui::Spacing();
 
         // --- クラス名表示 ---
@@ -103,9 +116,11 @@ void InspectorWindow::Draw() {
         const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(selectedObject);
 
         static engine::Object3d* tagLayerBufferOwner = nullptr;
+
         // テキスト入力の編集中バッファは選択Objectが変わった時だけ同期し、毎フレーム上書きしない。
         static char tagBuffer[128] = {};
         static char layerBuffer[128] = {};
+
         if (tagLayerBufferOwner != selectedObject) {
             tagLayerBufferOwner = selectedObject;
             strcpy_s(tagBuffer, selectedObject->GetTag().c_str());
@@ -116,15 +131,19 @@ void InspectorWindow::Draw() {
         ImGui::SeparatorText("Tag / Layer");
         ImGui::TextDisabled("Tagは役割名、Layerは処理対象の分類として使います。");
         const bool mixedTag = HasMixedInspectorValue(inspectorTargets, "identity.tag");
+
         if (ImGui::InputText("Tag", tagBuffer, sizeof(tagBuffer))) {
             const std::string newTag = tagBuffer;
+
             for (engine::Object3d* target : inspectorTargets) {
                 if (target) {
                     target->SetTag(newTag);
                 }
             }
+
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+
         DrawMixedValueHint(mixedTag);
 
         const char* layerPresets[] = {
@@ -136,38 +155,50 @@ void InspectorWindow::Draw() {
             "Effect",
             "EditorOnly"
         };
+
         int layerPresetIndex = 0;
         const std::string selectedLayer = selectedObject->GetLayer().empty() ? "Default" : selectedObject->GetLayer();
+
         for (int i = 0; i < IM_ARRAYSIZE(layerPresets); ++i) {
             if (selectedLayer == layerPresets[i]) {
                 layerPresetIndex = i;
                 break;
             }
         }
+
         const bool mixedLayer = HasMixedInspectorValue(inspectorTargets, "identity.layer");
+
         if (ImGui::Combo("Layer Preset", &layerPresetIndex, layerPresets, IM_ARRAYSIZE(layerPresets))) {
             strcpy_s(layerBuffer, layerPresets[layerPresetIndex]);
             const std::string newLayer = layerBuffer;
+
             for (engine::Object3d* target : inspectorTargets) {
                 if (target) {
                     target->SetLayer(newLayer);
                 }
             }
+
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+
         DrawMixedValueHint(mixedLayer);
+
         if (ImGui::InputText("Layer", layerBuffer, sizeof(layerBuffer))) {
             const std::string newLayer = layerBuffer[0] == '\0' ? "Default" : std::string(layerBuffer);
+
             if (layerBuffer[0] == '\0') {
                 strcpy_s(layerBuffer, "Default");
             }
+
             for (engine::Object3d* target : inspectorTargets) {
                 if (target) {
                     target->SetLayer(newLayer);
                 }
             }
+
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+
         DrawMixedValueHint(mixedLayer);
 
 
@@ -176,22 +207,28 @@ void InspectorWindow::Draw() {
         const char* saveCategories[] = { "Object", "Player", "Enemy" };
         std::string currentCat = selectedObject->GetSaveCategory();
         int catIndex = 0;
-        if (currentCat == "Player") catIndex = 1;
+        if (currentCat == "Player")
+            catIndex = 1;
         else if (currentCat == "Enemy") catIndex = 2;
 
         const bool mixedSaveCategory = HasMixedInspectorValue(inspectorTargets, "identity.saveCategory");
+
         if (ImGui::Combo(ICON_FA_FOLDER " 保存先カテゴリ", &catIndex, saveCategories, IM_ARRAYSIZE(saveCategories))) {
             for (engine::Object3d* object : inspectorTargets) {
-                if (!object) continue;
+                if (!object)
+                    continue;
                 object->SetSaveCategory(saveCategories[catIndex]);
             }
+
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+
         DrawMixedValueHint(mixedSaveCategory);
 
         // --- 親の名前表示 ---
         if (selectedObject->GetParent()) {
             ImGui::TextDisabled(ICON_FA_SITEMAP " 親: %s", selectedObject->GetParent()->GetName().c_str());
+
             if (ImGui::Button(ICON_FA_UNLINK " 親を解除 (Unparent)")) {
                 selectedObject->SetParent(nullptr, true);
             }
@@ -204,8 +241,10 @@ void InspectorWindow::Draw() {
         if (selectedObject->GetClassName() != "InvisibleBox") {
             ImGui::Separator();
             ImGui::Text(ICON_FA_CUBE " モデルアセット: %s", selectedObject->GetModelName().c_str());
+
             if (isManagedCharacter) {
                 ImGui::TextDisabled("Player/Enemyのモデルはステータス管理のタイプ共通設定です。");
+
                 if (ImGui::Button(ICON_FA_SLIDERS_H " ステータス管理を開く##ModelStatus", ImVec2(-1, 0)) && editor_->GetStatusTuningWindow()) {
                     EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
                 }
@@ -215,6 +254,7 @@ void InspectorWindow::Draw() {
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
                         const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
+
                         if (!modelName.empty()) {
                             ModelManager::GetInstance()->LoadModel(modelName);
                             selectedObject->SetModel(modelName);
@@ -228,17 +268,21 @@ void InspectorWindow::Draw() {
                         PresetManager::GetInstance()->ApplyPresetToObject(presetName, selectedObject);
                         DebugConsole::GetInstance()->AddLog("Applied preset: " + std::string(presetName));
                     }
+
                     ImGui::EndDragDropTarget();
                 }
             }
 
             Model* currentModel = selectedObject->GetModel();
             const int meshCount = currentModel ? static_cast<int>(currentModel->GetMeshCount()) : 0;
+
             if (selectedObject->IsMeshDrawFiltered()) {
                 ImGui::TextDisabled("描画Mesh: %d", selectedObject->GetMeshDrawIndex());
             }
+
             if (meshCount > 1 && !selectedObject->IsMeshDrawFiltered()) {
                 ImGui::TextDisabled("Mesh数: %d", meshCount);
+
                 if (ImGui::Button(ICON_FA_CUBE " メッシュを子Objectに分割", ImVec2(-1, 28))) {
                     editor_->SplitSelectedModelIntoMeshChildren();
                 }
@@ -252,47 +296,61 @@ void InspectorWindow::Draw() {
         bool isVisible = selectedObject->GetIsVisible();
         const bool mixedVisible = HasMixedInspectorValue(inspectorTargets, "rendering.visible");
         PushMixedCheckbox(mixedVisible);
+
         if (ImGui::Checkbox(ICON_FA_EYE " 表示 (ゲーム内)", &isVisible)) {
             for (engine::Object3d* object : inspectorTargets) {
-                if (!object) continue;
+                if (!object)
+                    continue;
                 object->SetIsVisible(isVisible);
             }
+
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+
         PopMixedCheckbox();
         bool isLocked = selectedObject->GetIsLocked();
         const bool mixedLocked = HasMixedInspectorValue(inspectorTargets, "editor.locked");
         PushMixedCheckbox(mixedLocked);
+
         if (ImGui::Checkbox(ICON_FA_LOCK " ロック (編集保護)", &isLocked)) {
             for (engine::Object3d* object : inspectorTargets) {
-                if (!object) continue;
+                if (!object)
+                    continue;
                 object->SetIsLocked(isLocked);
             }
+
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+
         PopMixedCheckbox();
         bool castShadow = selectedObject->GetCastShadow();
         const bool mixedCastShadow = HasMixedInspectorValue(inspectorTargets, "rendering.castShadow");
         PushMixedCheckbox(mixedCastShadow);
+
         if (ImGui::Checkbox(ICON_FA_LIGHTBULB " 影を落とす", &castShadow)) {
             for (engine::Object3d* object : inspectorTargets) {
-                if (!object) continue;
+                if (!object)
+                    continue;
                 object->SetCastShadow(castShadow);
             }
+
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+
         PopMixedCheckbox();
 
         // --- Transform編集 ---
         ImGui::Separator();
         ImGui::Text(ICON_FA_ARROWS_ALT " トランスフォーム (Transform)");
         Transform transformValue = *selectedObject->GetTransform();
+
         // 代表Objectの値を一時編集し、他の選択Objectへは移動・回転・拡縮の差分を適用する。
         Transform* transform = &transformValue;
         bool isTransformChanged = false;
 
         const engine::Vector3 beforePos = transform->translate;
         const bool mixedPosition = HasMixedInspectorValue(inspectorTargets, "transform.position");
+
         if (ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 座標 (Pos)", &transform->translate.x, 0.1f)) {
             ApplyPrimaryTransformDeltaToTargets(
                 inspectorTargets,
@@ -308,11 +366,13 @@ void InspectorWindow::Draw() {
                 false);
             isTransformChanged = true;
         }
+
         DrawMixedValueHint(mixedPosition);
 
         engine::Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
         const engine::Vector3 beforeRot = transform->rotate;
         const bool mixedRotation = HasMixedInspectorValue(inspectorTargets, "transform.rotation");
+
         if (ImGui::DragFloat3(ICON_FA_SYNC " 回転 (Rot)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
             transform->isQuaternionMaster = false;
@@ -330,13 +390,16 @@ void InspectorWindow::Draw() {
                 false);
             isTransformChanged = true;
         }
+
         DrawMixedValueHint(mixedRotation);
         const engine::Vector3 beforeScale = transform->scale;
+
         if (isManagedCharacter) {
             ImGui::TextDisabled(ICON_FA_EXPAND_ARROWS_ALT " スケール: %.3f, %.3f, %.3f（ステータス管理）",
                 transform->scale.x, transform->scale.y, transform->scale.z);
         } else {
             const bool mixedScale = HasMixedInspectorValue(inspectorTargets, "transform.scale");
+
             if (ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール (Scale)", &transform->scale.x, 0.05f)) {
                 ApplyPrimaryTransformDeltaToTargets(
                     inspectorTargets,
@@ -352,6 +415,7 @@ void InspectorWindow::Draw() {
                     true);
                 isTransformChanged = true;
             }
+
             DrawMixedValueHint(mixedScale);
         }
 
@@ -365,28 +429,67 @@ void InspectorWindow::Draw() {
 
         // --- コライダー設定 ---
         ImGui::Separator();
+
         if (ImGui::CollapsingHeader(ICON_FA_SHIELD_ALT " コリジョン設定 (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
             // 現状のスコープではMaterial・LOD・Particle等もこのヘッダー内に含まれる。
             // Collisionを閉じると後続UIも隠れる構造であり、独立化は別の改修として扱う。
             engine::Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
             bool isColChanged = false;
 
+            if (!isMultiSelection && selectedObject->GetModel()) {
+                // 単体モデルのローカル頂点範囲から箱を合わせる。複数の足場を含むモデルは個別に分割してから使う。
+                if (ImGui::Button("モデル外形からAABBを設定")) {
+                    const Model* model = selectedObject->GetModel();
+                    const engine::Vector3 localMin = model->GetLocalAabbMin();
+                    const engine::Vector3 localMax = model->GetLocalAabbMax();
+                    const engine::Vector3 halfSize = (localMax - localMin) * 0.5f;
+
+                    if (halfSize.x > 0.001f && halfSize.y > 0.001f && halfSize.z > 0.001f) {
+                        colConfig.type = ColliderType::kAABB;
+                        colConfig.center = (localMin + localMax) * 0.5f;
+                        colConfig.size = halfSize;
+                        colConfig.rotation = {0.0f, 0.0f, 0.0f};
+                        colConfig.footprint.clear();
+                        colConfig.useModelSurface = false;
+                        colConfig.useModelVolume = false;
+
+                        if (selectedObject->GetCollisionAttribute() == 0) {
+                            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+                        }
+
+                        if (selectedObject->GetCollisionMask() == 0) {
+                            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+                        }
+
+                        isColChanged = true;
+                    }
+                }
+
+                ImGui::TextDisabled("箱形の単体モデル向け。離れた地形は分割して設定してください。");
+            }
+
             const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)", "円柱 (Cylinder)", "リング (Ring)", "地形 (Terrain)" };
             int currentTypeIndex = (int)colConfig.type;
+
             if (ImGui::Combo(ICON_FA_SHAPES " 形状タイプ", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
                 colConfig.type = (ColliderType)currentTypeIndex;
+
                 if ((colConfig.type == ColliderType::kOBB || colConfig.type == ColliderType::kRing) && colConfig.size.x == 0.0f) {
                     colConfig.size = { 1.0f, 1.0f, 1.0f };
                 }
+
                 if (colConfig.type != ColliderType::kAABB && colConfig.type != ColliderType::kOBB) {
                     colConfig.footprint.clear();
                     colConfig.useModelSurface = false;
+                    colConfig.useModelVolume = false;
                 }
+
                 isColChanged = true;
             }
 
             if (colConfig.type != ColliderType::kNone) {
-                if (ImGui::DragFloat3("中心オフセット", &colConfig.center.x, 0.05f)) isColChanged = true;
+                if (ImGui::DragFloat3("中心オフセット", &colConfig.center.x, 0.05f))
+                    isColChanged = true;
 
                 if (colConfig.type == ColliderType::kSphere) {
                     if (ImGui::DragFloat("半径 (Radius)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
@@ -395,61 +498,95 @@ void InspectorWindow::Draw() {
                     }
                 }
                 else if (colConfig.type == ColliderType::kRing) {
-                    if (ImGui::DragFloat("外径 (Outer Radius)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
-                    if (ImGui::DragFloat("内径 (Inner Radius)", &colConfig.size.z, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                    if (ImGui::DragFloat("外径 (Outer Radius)", &colConfig.size.x, 0.05f, 0.0f, 100.0f))
+                        isColChanged = true;
+                    if (ImGui::DragFloat("内径 (Inner Radius)", &colConfig.size.z, 0.05f, 0.0f, 100.0f))
+                        isColChanged = true;
+
                     // 厚み(Y)
-                    if (ImGui::DragFloat("厚み (Thickness)", &colConfig.size.y, 0.05f, 0.0f, 10.0f)) isColChanged = true;
+                    if (ImGui::DragFloat("厚み (Thickness)", &colConfig.size.y, 0.05f, 0.0f, 10.0f))
+                        isColChanged = true;
                 }
                 else {
-                    if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                    if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f))
+                        isColChanged = true;
                 }
 
                 if ((colConfig.type == ColliderType::kAABB || colConfig.type == ColliderType::kOBB) &&
                     selectedObject->GetModel()) {
-                    if (ImGui::Checkbox("モデル上面で接地判定", &colConfig.useModelSurface)) isColChanged = true;
+                    if (ImGui::Checkbox("モデル全体の凸形状で判定", &colConfig.useModelVolume)) {
+                        if (colConfig.useModelVolume) {
+                            colConfig.useModelSurface = false;
+                            colConfig.footprint.clear();
+                        }
+                        isColChanged = true;
+                    }
+
+                    ImGui::TextDisabled("側面・底面も自動生成。門などの凹形状は部品ごとに分けます。");
+                    ImGui::BeginDisabled(colConfig.useModelVolume);
+                    if (ImGui::Checkbox("モデル上面で接地判定", &colConfig.useModelSurface))
+                        isColChanged = true;
                     ImGui::TextDisabled("上面のみモデル形状。側面は箱と輪郭で判定します。");
+                    ImGui::EndDisabled();
                 }
 
                 if (colConfig.type == ColliderType::kOBB || colConfig.type == ColliderType::kRing) {
                     engine::Vector3 rotDegObj = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
+
                     if (ImGui::DragFloat3("回転 (Rotation)", &rotDegObj.x, 1.0f, -360.0f, 360.0f)) {
                         colConfig.rotation = { ToRadians(rotDegObj.x), ToRadians(rotDegObj.y), ToRadians(rotDegObj.z) };
                         isColChanged = true;
                     }
                 }
+
                 if (colConfig.footprint.size() >= 3 &&
                     ImGui::TreeNode("上面の輪郭 (XZ・ローカル座標)")) {
                     // 凸輪郭だけを受け付ける。編集中に凹形状になった頂点は直前値へ戻す。
                     ImGui::TextUnformatted("凸形状の輪郭です。移動床の乗車判定にも使います。");
+
                     for (size_t index = 0; index < colConfig.footprint.size(); ++index) {
                         ImGui::PushID(static_cast<int>(index));
                         const engine::Vector2 previous = colConfig.footprint[index];
+
                         if (ImGui::DragFloat2("頂点", &colConfig.footprint[index].x, 0.01f)) {
                             int winding = 0;
                             bool convex = true;
+
                             for (size_t i = 0; i < colConfig.footprint.size(); ++i) {
                                 const engine::Vector2& a = colConfig.footprint[i];
                                 const engine::Vector2& b = colConfig.footprint[(i + 1) % colConfig.footprint.size()];
                                 const engine::Vector2& c = colConfig.footprint[(i + 2) % colConfig.footprint.size()];
                                 const float cross = (b.x - a.x) * (c.y - b.y) -
                                                     (b.y - a.y) * (c.x - b.x);
-                                if (std::abs(cross) < 0.00001f) continue;
+                                if (std::abs(cross) < 0.00001f)
+                                    continue;
                                 const int sign = cross > 0.0f ? 1 : -1;
-                                if (winding != 0 && sign != winding) { convex = false; break; }
+
+                                if (winding != 0 && sign != winding) {
+                                    convex = false;
+                                    break;
+                                }
                                 winding = sign;
                             }
-                            if (convex && winding != 0) isColChanged = true;
+
+                            if (convex && winding != 0)
+                                isColChanged = true;
                             else colConfig.footprint[index] = previous;
                         }
+
                         ImGui::PopID();
                     }
+
                     ImGui::TreePop();
                 }
+
                 if (isColChanged) {
                     for (engine::Object3d* object : inspectorTargets) {
-                        if (!object) continue;
+                        if (!object)
+                            continue;
                         object->SetColliderConfig(colConfig);
                     }
+
                     MarkInspectorTargetsDirty(editor_, inspectorTargets);
                 }
             }
@@ -457,13 +594,17 @@ void InspectorWindow::Draw() {
                 // なしの時も一応反映
                 if (isColChanged) {
                     for (engine::Object3d* object : inspectorTargets) {
-                        if (!object) continue;
+                        if (!object)
+                            continue;
                         object->SetColliderConfig(colConfig);
                     }
+
                     MarkInspectorTargetsDirty(editor_, inspectorTargets);
                 }
             }
+
             ImGui::Separator();
+
             if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 // 材質種別ごとに同じPBRフィールドを別の意味で使う項目がある。
                 bool isGraphicsChanged = false;
@@ -492,133 +633,192 @@ void InspectorWindow::Draw() {
                                          "庭の景物 PBR (Garden Prop)",
                                          "火山岩 PBR (Basalt)"
                 };
+
                 int currentMatType = selectedObject->GetMaterialType();
-                if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 35) currentMatType = 0;
+                // 未知の材質番号では Combo の配列外を参照しないよう標準材質へ表示を戻す。
+                if (currentMatType < 0)
+                    currentMatType = 0;
+                if (currentMatType > 35)
+                    currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     for (engine::Object3d* object : inspectorTargets) {
-                        if (!object) continue;
+                        if (!object)
+                            continue;
                         object->SetMaterialType(currentMatType);
                     }
+
                     MarkInspectorTargetsDirty(editor_, inspectorTargets);
                     isGraphicsChanged = true;
                 }
 
                 if (currentMatType == 32) {
+                    // 専用材質では EnvIntensity を道の幅として解釈する。共通PBR項目と意味が異なる。
                     float pathWidth = selectedObject->GetEnvIntensity();
+
                     if (ImGui::SliderFloat("土の道の半幅（44m幅の地面用）", &pathWidth, 1.0f, 8.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (object) object->SetEnvIntensity(pathWidth);
+                            if (object)
+                                object->SetEnvIntensity(pathWidth);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
                 }
+
                 if (currentMatType == 30 || currentMatType == 31) {
+                    // 草・樹木では同じ保存フィールドを風揺れの強さとして使う。
                     float wind = selectedObject->GetEnvIntensity();
+
                     if (ImGui::SliderFloat("草木の風の強さ", &wind, 0.0f, 2.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (object) object->SetEnvIntensity(wind);
+                            if (object)
+                                object->SetEnvIntensity(wind);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
+
                     ImGui::TextWrapped("根元を固定して葉先だけ揺らします。色・スケールで草の色と丈を調整できます。");
                 }
+
                 if (currentMatType == 0 || (currentMatType >= 29 && currentMatType <= 35)) {
                     float metallic = selectedObject->GetMetallic();
+
                     if (ImGui::SliderFloat("金属度 (Metallic)", &metallic, 0.0f, 1.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (!object) continue;
+                            if (!object)
+                                continue;
                             object->SetMetallic(metallic);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
+
                     float roughness = selectedObject->GetRoughness();
+
                     if (ImGui::SliderFloat("粗さ (Roughness)", &roughness, 0.0f, 1.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (!object) continue;
+                            if (!object)
+                                continue;
                             object->SetRoughness(roughness);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
                 }
                 else if (currentMatType == 23) {
+                    // 地形材質は PBR の数値スロットを塗りと凹凸の調整値に転用する。
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.45f, 1.0f), ICON_FA_TREE " --- Stylized Terrain Settings ---");
                     engine::Vector4 terrainColor = selectedObject->GetColor();
+
                     if (ImGui::ColorEdit4("差し色 (Accent Color)", &terrainColor.x)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (!object) continue;
+                            if (!object)
+                                continue;
                             object->SetColor(terrainColor);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
+
                     float textureBlend = selectedObject->GetRoughness();
+
                     if (ImGui::SliderFloat("テクスチャ反映量 (Texture Blend)", &textureBlend, 0.0f, 1.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (object) object->SetRoughness(textureBlend);
+                            if (object)
+                                object->SetRoughness(textureBlend);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
+
                     float paintStrength = selectedObject->GetMetallic();
+
                     if (ImGui::SliderFloat("塗りの濃さ / 色ムラ (Paint Strength)", &paintStrength, 0.0f, 1.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (object) object->SetMetallic(paintStrength);
+                            if (object)
+                                object->SetMetallic(paintStrength);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
+
                     float reliefStrength = selectedObject->GetEnvIntensity();
+
                     if (ImGui::SliderFloat("立体感 / 凹凸強度 (Relief)", &reliefStrength, 0.0f, 2.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (object) object->SetEnvIntensity(reliefStrength);
+                            if (object)
+                                object->SetEnvIntensity(reliefStrength);
                         }
+
                         MarkInspectorTargetsDirty(editor_, inspectorTargets);
                         isGraphicsChanged = true;
                     }
+
                     ImGui::TextDisabled("側面の陰影・色面の差・法線マップ強度をまとめて調整します");
                 }
                 else if (currentMatType == 24) {
+                    // ダッシュパネルの専用シェーダーへ渡す速度と密度を既存の材質値で保持する。
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.35f, 0.95f, 1.0f, 1.0f), ICON_FA_FORWARD " --- Dash Panel Settings ---");
                     float flowSpeed = selectedObject->GetRoughness();
+
                     if (ImGui::SliderFloat("流れる速さ (Flow Speed)", &flowSpeed, 0.0f, 1.0f)) {
-                        selectedObject->SetRoughness(flowSpeed); isGraphicsChanged = true;
+                        selectedObject->SetRoughness(flowSpeed);
+                        isGraphicsChanged = true;
                     }
+
                     float lineDensity = selectedObject->GetMetallic();
+
                     if (ImGui::SliderFloat("ライン密度 (Line Density)", &lineDensity, 0.0f, 1.0f)) {
-                        selectedObject->SetMetallic(lineDensity); isGraphicsChanged = true;
+                        selectedObject->SetMetallic(lineDensity);
+                        isGraphicsChanged = true;
                     }
                 }
                 else if (currentMatType == 27) {
+                    // 結晶材質では反射・分光の調整値を個別の意味で表示する。
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.72f, 0.92f, 1.0f, 1.0f), ICON_FA_GEM " --- Prism Crystal Settings ---");
                     float facetSoftness = selectedObject->GetRoughness();
+
                     if (ImGui::SliderFloat("面反射の柔らかさ (Facet Softness)", &facetSoftness, 0.02f, 0.70f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (object) object->SetRoughness(facetSoftness);
+                            if (object)
+                                object->SetRoughness(facetSoftness);
                         }
+
                         isGraphicsChanged = true;
                     }
+
                     float dispersionStrength = selectedObject->GetMetallic();
+
                     if (ImGui::SliderFloat("分光の強さ (Dispersion)", &dispersionStrength, 0.0f, 1.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (object) object->SetMetallic(dispersionStrength);
+                            if (object)
+                                object->SetMetallic(dispersionStrength);
                         }
+
                         isGraphicsChanged = true;
                     }
+
                     float environmentIntensity = selectedObject->GetEnvIntensity();
+
                     if (ImGui::SliderFloat("環境反射の強さ (Environment)", &environmentIntensity, 0.0f, 3.0f)) {
                         for (engine::Object3d* object : inspectorTargets) {
-                            if (!object) continue;
+                            if (!object)
+                                continue;
                             object->SetEnableEnvMap(true);
                             object->SetEnvIntensity(environmentIntensity);
                         }
+
                         isGraphicsChanged = true;
                     }
                 }
@@ -626,21 +826,26 @@ void InspectorWindow::Draw() {
                 ImGui::Separator();
                 ImGui::Text(ICON_FA_EXPAND_ARROWS_ALT " PBRテクスチャ繰り返し");
                 engine::Vector2 textureTiling = selectedObject->GetTextureTiling();
+
                 if (ImGui::DragFloat2("繰り返し倍率 (Tiling)", &textureTiling.x, 0.05f, 0.01f, 100.0f, "%.2f")) {
                     selectedObject->SetTextureTiling(textureTiling);
                     isGraphicsChanged = true;
                 }
+
                 bool autoTextureTiling = selectedObject->GetAutoTextureTiling();
+
                 if (ImGui::Checkbox("スケールに合わせて自動繰り返し", &autoTextureTiling)) {
                     selectedObject->SetAutoTextureTiling(autoTextureTiling);
                     isGraphicsChanged = true;
                 }
+
                 ImGui::TextDisabled("大きい床や壁でPBRテクスチャが伸びる時に使います");
 
                 if (currentMatType == 7) {
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.5f, 1.0f), ICON_FA_SMOG " --- Local Fog Settings ---");
                     auto* fogData = selectedObject->GetLocalFogData();
+
                     if (fogData) {
                         ImGui::ColorEdit4("Fog Color (霧の色)", &fogData->fogColor.x);
                         ImGui::DragFloat("Density (濃さ)", &fogData->fogDensity, 0.01f, 0.0f, 10.0f);
@@ -653,36 +858,47 @@ void InspectorWindow::Draw() {
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
+
                 DrawEffectMaterialSettings(selectedObject, currentMatType, isGraphicsChanged);
                 ImGui::Separator();
                 bool enableNormal = selectedObject->GetEnableNormalMap();
+
                 if (ImGui::Checkbox(ICON_FA_MAP " 法線マップ (Normal Map) 有効化", &enableNormal)) {
-                    selectedObject->SetEnableNormalMap(enableNormal); isGraphicsChanged = true;
+                    selectedObject->SetEnableNormalMap(enableNormal);
+                    isGraphicsChanged = true;
                 }
 
                 ImGui::Separator();
                 bool enableEnv = selectedObject->GetEnableEnvMap();
+
                 if (ImGui::Checkbox(ICON_FA_GLOBE " 環境マップ (IBL) 有効化", &enableEnv)) {
-                    selectedObject->SetEnableEnvMap(enableEnv); isGraphicsChanged = true;
+                    selectedObject->SetEnableEnvMap(enableEnv);
+                    isGraphicsChanged = true;
                 }
+
                 if (enableEnv) {
                     float envIntensity = selectedObject->GetEnvIntensity();
+
                     if (ImGui::SliderFloat("環境マップ強度", &envIntensity, 0.0f, 5.0f)) {
-                        selectedObject->SetEnvIntensity(envIntensity); isGraphicsChanged = true;
+                        selectedObject->SetEnvIntensity(envIntensity);
+                        isGraphicsChanged = true;
                     }
                 }
 
                 bool enableLighting = selectedObject->GetEnableLighting();
+
                 if (ImGui::Checkbox(ICON_FA_LIGHTBULB " ライト影響を受ける", &enableLighting)) {
                     selectedObject->SetEnableLighting(enableLighting);
                     isGraphicsChanged = true;
                 }
 
                 bool castShadow = selectedObject->GetCastShadow();
+
                 if (ImGui::Checkbox("影を落とす (Cast Shadow)", &castShadow)) {
                     selectedObject->SetCastShadow(castShadow);
                     isGraphicsChanged = true;
                 }
+
                 if (!castShadow) {
                     ImGui::TextDisabled("影マップ描画だけを無効化します。ライト影響は別設定です。");
                 }
@@ -701,6 +917,7 @@ void InspectorWindow::Draw() {
                 std::string currentOrmPathForPreset = selectedObject->GetOrmMapPath();
 
                 std::string currentPresetName = "未設定 (3枚セットを選択)";
+
                 for (const InspectorTextureCatalog::PbrPreset& preset : pbrPresets) {
                     if (preset.albedoPath == currentTexturePath &&
                         preset.normalPath == currentNormalPath &&
@@ -713,12 +930,14 @@ void InspectorWindow::Draw() {
                 // 文字一覧と球ギャラリーで同じ適用処理を使い、複数選択にも同じ結果を渡す。
                 const auto applyPbrPreset = [&](const InspectorTextureCatalog::PbrPreset& preset) {
                     for (engine::Object3d* target : inspectorTargets) {
-                        if (!target) continue;
+                        if (!target)
+                            continue;
                         target->SetTexture(preset.albedoPath);
                         target->SetNormalMap(preset.normalPath);
                         target->SetOrmMap(preset.ormPath);
                         target->SetEnableNormalMap(true);
                     }
+
                     MarkInspectorTargetsDirty(editor_, inspectorTargets);
                     DebugConsole::GetInstance()->AddLog("PBR preset applied: " + preset.name);
                     isGraphicsChanged = true;
@@ -728,6 +947,7 @@ void InspectorWindow::Draw() {
                     if (pbrPresets.empty()) {
                         ImGui::TextDisabled("同名の3枚セットが見つかりません。");
                     }
+
                     for (const InspectorTextureCatalog::PbrPreset& preset : pbrPresets) {
                         const bool isSelected =
                             preset.albedoPath == currentTexturePath &&
@@ -736,28 +956,38 @@ void InspectorWindow::Draw() {
                         if (ImGui::Selectable(preset.name.c_str(), isSelected)) {
                             applyPbrPreset(preset);
                         }
+
                         if (isSelected) {
                             ImGui::SetItemDefaultFocus();
                         }
                     }
+
                     ImGui::EndCombo();
                 }
+
                 if (ImGui::Button(ICON_FA_IMAGES " 球プレビューから選ぶ")) {
                     ImGui::OpenPopup("PBR球プレビュー");
                 }
+
                 ImGui::SetNextWindowSize(ImVec2(510.0f, 430.0f), ImGuiCond_Appearing);
+
                 if (ImGui::BeginPopup("PBR球プレビュー")) {
                     ProjectWindow* projectWindow = editor_->GetProjectWindow();
+
                     if (ImGui::Button(ICON_FA_SYNC " 素材を再読込")) {
                         textureCatalog.Refresh();
-                        if (projectWindow) projectWindow->InvalidatePbrThumbnails();
+                        if (projectWindow)
+                            projectWindow->InvalidatePbrThumbnails();
                     }
+
                     ImGui::SameLine();
                     ImGui::TextDisabled("同じ照明で球に貼った見た目を比較します");
                     ImGui::Separator();
-                    if (pbrPresets.empty()) ImGui::TextDisabled("Albedo・Normal・ORMの3枚セットがありません。");
+                    if (pbrPresets.empty())
+                        ImGui::TextDisabled("Albedo・Normal・ORMの3枚セットがありません。");
                     const float cardWidth = 112.0f;
                     const int columns = (std::max)(1, static_cast<int>(ImGui::GetContentRegionAvail().x / cardWidth));
+
                     if (ImGui::BeginTable("PbrSphereGrid", columns)) {
                         for (const auto& preset : pbrPresets) {
                             ImGui::TableNextColumn();
@@ -767,15 +997,18 @@ void InspectorWindow::Draw() {
                                     preset.albedoPath, preset.normalPath, preset.ormPath) : 0;
                             const bool selected = preset.albedoPath == currentTexturePath &&
                                 preset.normalPath == currentNormalPath && preset.ormPath == currentOrmPathForPreset;
-                            if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.38f, 0.60f, 1.0f));
+                            if (selected)
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.38f, 0.60f, 1.0f));
                             const bool clicked = thumbnail
                                 ? ImGui::ImageButton("##sphere", (ImTextureID)(uintptr_t)thumbnail, ImVec2(96.0f, 96.0f))
                                 : ImGui::Button("撮影中...", ImVec2(96.0f, 96.0f));
-                            if (selected) ImGui::PopStyleColor();
+                            if (selected)
+                                ImGui::PopStyleColor();
                             if (clicked) {
                                 applyPbrPreset(preset);
                                 ImGui::CloseCurrentPopup();
                             }
+
                             if (ImGui::IsItemHovered()) {
                                 ImGui::BeginTooltip();
                                 ImGui::TextUnformatted(preset.name.c_str());
@@ -784,15 +1017,19 @@ void InspectorWindow::Draw() {
                                 ImGui::TextDisabled("ORM: %s", preset.ormPath.c_str());
                                 ImGui::EndTooltip();
                             }
+
                             ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 100.0f);
                             ImGui::TextWrapped("%s", preset.name.c_str());
                             ImGui::PopTextWrapPos();
                             ImGui::PopID();
                         }
+
                         ImGui::EndTable();
                     }
+
                     ImGui::EndPopup();
                 }
+
                 if (!pbrPresets.empty()) {
                     ImGui::TextDisabled("同じベース名の3枚をまとめて適用します。");
                 }
@@ -802,54 +1039,73 @@ void InspectorWindow::Draw() {
                 if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse / Sprite)", previewTextureValue)) {
                     if (!spriteTexturePaths.empty()) {
                         ImGui::TextDisabled("Sprite");
+
                         for (const std::string& path : spriteTexturePaths) {
                             bool isSelected = (currentTexturePath == path);
+
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
-                                selectedObject->SetTexture(path); isGraphicsChanged = true;
+                                selectedObject->SetTexture(path);
+                                isGraphicsChanged = true;
                             }
-                            if (isSelected) ImGui::SetItemDefaultFocus();
+
+                            if (isSelected)
+                                ImGui::SetItemDefaultFocus();
                         }
+
                         ImGui::Separator();
                     }
 
                     if (!albedoPaths.empty()) {
                         ImGui::TextDisabled("PBR Albedo");
+
                         for (const std::string& path : albedoPaths) {
                             bool isSelected = (currentTexturePath == path);
+
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
-                                selectedObject->SetTexture(path); isGraphicsChanged = true;
+                                selectedObject->SetTexture(path);
+                                isGraphicsChanged = true;
                             }
-                            if (isSelected) ImGui::SetItemDefaultFocus();
+
+                            if (isSelected)
+                                ImGui::SetItemDefaultFocus();
                         }
+
                         ImGui::Separator();
                     }
 
                     if (ImGui::Selectable("デフォルトに戻す", currentTexturePath.empty())) {
-                        selectedObject->SetTexture(""); isGraphicsChanged = true;
+                        selectedObject->SetTexture("");
+                        isGraphicsChanged = true;
                     }
+
                     ImGui::EndCombo();
                 }
 
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
                         const char* spritePath = static_cast<const char*>(payload->Data);
+
                         if (spritePath) {
                             selectedObject->SetTexture("Resources/sprite/" + std::string(spritePath));
                             isGraphicsChanged = true;
                         }
                     }
+
                     ImGui::EndDragDropTarget();
                 }
 
                 ImGui::SameLine();
+
                 if (ImGui::Button(ICON_FA_SYNC_ALT " 更新##TextureList")) {
                     textureCatalog.Refresh();
                 }
 
                 if (IsSpriteCardObject(selectedObject)) {
                     ImGui::Separator();
+
                     if (ImGui::CollapsingHeader(ICON_FA_IMAGE " 2.5Dスプライト板", ImGuiTreeNodeFlags_DefaultOpen)) {
                         ImGui::TextDisabled("3D空間にSprite画像を置くための板です。画像は上の基本画像から変更できます。");
+
                         if (ImGui::Button(ICON_FA_MAGIC " 2.5D用に整える", ImVec2(-1, 28))) {
                             ConfigureSpriteCardObject(selectedObject);
                             currentMatType = 0;
@@ -858,6 +1114,7 @@ void InspectorWindow::Draw() {
 
                         const Transform* cardTransform = selectedObject->GetTransform();
                         engine::Vector2 cardSize = { cardTransform->scale.x, cardTransform->scale.y };
+
                         if (ImGui::DragFloat2("表示サイズ (幅 / 高さ)", &cardSize.x, 0.02f, 0.01f, 100.0f, "%.2f")) {
                             selectedObject->SetScale({ (std::max)(0.01f, cardSize.x), (std::max)(0.01f, cardSize.y), 1.0f });
                             isTransformChanged = true;
@@ -867,7 +1124,9 @@ void InspectorWindow::Draw() {
                             selectedObject->SetRotation({ 0.0f, 0.0f, 0.0f });
                             isTransformChanged = true;
                         }
+
                         ImGui::SameLine();
+
                         if (ImGui::Button(ICON_FA_SHIELD_ALT " 当たり判定なし")) {
                             engine::Object3d::ColliderConfig colliderConfig = selectedObject->GetColliderConfig();
                             colliderConfig.type = ColliderType::kNone;
@@ -883,15 +1142,23 @@ void InspectorWindow::Draw() {
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " ノーマル画像", previewValue)) {
                         for (const std::string& path : normalPaths) {
                             bool isSelected = (currentPath == path);
+
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
-                                selectedObject->SetNormalMap(path); isGraphicsChanged = true;
+                                selectedObject->SetNormalMap(path);
+                                isGraphicsChanged = true;
                             }
-                            if (isSelected) ImGui::SetItemDefaultFocus();
+
+                            if (isSelected)
+                                ImGui::SetItemDefaultFocus();
                         }
+
                         ImGui::Separator();
+
                         if (ImGui::Selectable("なし (クリア)", currentPath.empty())) {
-                            selectedObject->SetNormalMap(""); isGraphicsChanged = true;
+                            selectedObject->SetNormalMap("");
+                            isGraphicsChanged = true;
                         }
+
                         ImGui::EndCombo();
                     }
 
@@ -901,35 +1168,48 @@ void InspectorWindow::Draw() {
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " ORMマップ (AO/粗さ/金属)", previewOrmValue)) {
                         for (const std::string& path : armPaths) {
                             bool isSelected = (currentOrmPath == path);
+
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
-                                selectedObject->SetOrmMap(path); isGraphicsChanged = true;
+                                selectedObject->SetOrmMap(path);
+                                isGraphicsChanged = true;
                             }
-                            if (isSelected) ImGui::SetItemDefaultFocus();
+
+                            if (isSelected)
+                                ImGui::SetItemDefaultFocus();
                         }
+
                         ImGui::Separator();
+
                         if (ImGui::Selectable("なし (クリア)", currentOrmPath.empty())) {
-                            selectedObject->SetOrmMap(""); isGraphicsChanged = true;
+                            selectedObject->SetOrmMap("");
+                            isGraphicsChanged = true;
                         }
+
                         ImGui::EndCombo();
                     }
                 }
+
                 ImGui::Separator();
                 const char* blendModes[] = { "なし (None)", "通常 (Normal)", "加算 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
                 int currentBlend = static_cast<int>(selectedObject->GetBlendMode());
 
                 if (ImGui::Combo(ICON_FA_ADJUST " 合成 (Blend Mode)", &currentBlend, blendModes, IM_ARRAYSIZE(blendModes))) {
-                    selectedObject->SetBlendMode(static_cast<BlendMode>(currentBlend)); isGraphicsChanged = true;
+                    selectedObject->SetBlendMode(static_cast<BlendMode>(currentBlend));
+                    isGraphicsChanged = true;
                 }
 
                 if (currentMatType != 23) {
                     engine::Vector4 color = selectedObject->GetColor();
+
                     if (ImGui::ColorEdit4(ICON_FA_FILL_DRIP " 色 (Color)", &color.x)) {
-                        selectedObject->SetColor(color); isGraphicsChanged = true;
+                        selectedObject->SetColor(color);
+                        isGraphicsChanged = true;
                     }
                 }
 
                 ImGui::Spacing();
                 float emissive = selectedObject->GetEmissive();
+
                 // 1.0 で光なし。HDR空間で限界突破させるため最大値は大きめ(50.0等)にしておく
                 if (ImGui::DragFloat(ICON_FA_SUN " 発光強度 (Emissive)", &emissive, 0.1f, 1.0f, 50.0f, "%.1f")) {
                     selectedObject->SetEmissive(emissive);
@@ -942,11 +1222,13 @@ void InspectorWindow::Draw() {
                 ImGui::CollapsingHeader(ICON_FA_COMPRESS_ARROWS_ALT " LOD / 軽量モデル")) {
                 // 現在の描画LODを表示しつつ、モデルに付いた各距離の切替点を編集する。
                 MeshRenderer* renderer = selectedObject->GetMeshRenderer();
+
                 if (!renderer || selectedObject->GetModelName().empty()) {
                     ImGui::TextDisabled("モデルが設定されていません。");
                 }
                 else {
                     bool lodEnabled = selectedObject->IsLodEnabled();
+
                     if (ImGui::Checkbox("距離LODを使う", &lodEnabled)) {
                         selectedObject->SetLodEnabled(lodEnabled);
                     }
@@ -969,12 +1251,15 @@ void InspectorWindow::Draw() {
                             DebugConsole::GetInstance()->AddLog("LOD manifest not found: " + selectedObject->GetModelName());
                         }
                     }
+
                     ImGui::SameLine();
+
                     if (ImGui::Button(ICON_FA_TRASH " LODを解除")) {
                         selectedObject->ClearLodLevels();
                     }
 
                     const auto& lodLevels = selectedObject->GetLodLevels();
+
                     if (lodLevels.empty()) {
                         ImGui::TextWrapped("LOD設定がありません。モデル最適化ツールでLODを生成するか、*_lod.jsonを配置してください。");
                     }
@@ -986,15 +1271,18 @@ void InspectorWindow::Draw() {
 
                         for (const auto& lod : lodLevels) {
                             ImGui::TableNextRow();
+
                             if (lod.level == activeLodLevel) {
                                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(75, 160, 95, 95));
                             }
+
                             ImGui::TableSetColumnIndex(0);
                             ImGui::Text("LOD%d", lod.level);
 
                             ImGui::TableSetColumnIndex(1);
                             float distance = lod.distance;
                             const std::string distanceLabel = "##lod_distance_" + std::to_string(lod.level);
+
                             if (ImGui::DragFloat(distanceLabel.c_str(), &distance, 0.5f, 0.0f, 5000.0f, "%.1f")) {
                                 selectedObject->SetLodLevelDistance(lod.level, distance);
                             }
@@ -1002,6 +1290,7 @@ void InspectorWindow::Draw() {
                             ImGui::TableSetColumnIndex(2);
                             ImGui::TextWrapped("%s", lod.modelName.c_str());
                         }
+
                         ImGui::EndTable();
                     }
                 }
@@ -1014,20 +1303,24 @@ void InspectorWindow::Draw() {
                 // --- CPU Particle (Old) ---
                 const auto& cpuParamsMap = ParticleManager::GetInstance()->GetParamsMap();
                 std::vector<const char*> cpuItemNames;
-                int currentCpuIndex = 0; int cpuIdx = 0;
+                int currentCpuIndex = 0;
+                int cpuIdx = 0;
                 cpuItemNames.push_back("None (CPU)");
 
                 std::string currentCpuName = selectedObject->GetParticleName();
-                if (currentCpuName.empty()) currentCpuIndex = 0;
+                if (currentCpuName.empty())
+                    currentCpuIndex = 0;
 
                 for (const auto& [name, param] : cpuParamsMap) {
                     cpuItemNames.push_back(name.c_str());
-                    if (name == currentCpuName) currentCpuIndex = cpuIdx + 1;
+                    if (name == currentCpuName)
+                        currentCpuIndex = cpuIdx + 1;
                     cpuIdx++;
                 }
 
                 if (ImGui::Combo("CPU Effect", &currentCpuIndex, cpuItemNames.data(), (int)cpuItemNames.size())) {
-                    if (currentCpuIndex == 0) selectedObject->SetParticleName("");
+                    if (currentCpuIndex == 0)
+                        selectedObject->SetParticleName("");
                     else selectedObject->SetParticleName(cpuItemNames[currentCpuIndex]);
                 }
 
@@ -1036,20 +1329,24 @@ void InspectorWindow::Draw() {
                 // --- GPU Particle (New) ---
                 const auto& gpuPresets = GPUParticleManager::GetInstance()->GetPresets();
                 std::vector<const char*> gpuItemNames;
-                int currentGpuIndex = 0; int gpuIdx = 0;
+                int currentGpuIndex = 0;
+                int gpuIdx = 0;
                 gpuItemNames.push_back("None (GPU)");
 
                 std::string currentGpuName = selectedObject->GetGPUParticleName();
-                if (currentGpuName.empty()) currentGpuIndex = 0;
+                if (currentGpuName.empty())
+                    currentGpuIndex = 0;
 
                 for (const auto& [name, config] : gpuPresets) {
                     gpuItemNames.push_back(name.c_str());
-                    if (name == currentGpuName) currentGpuIndex = gpuIdx + 1;
+                    if (name == currentGpuName)
+                        currentGpuIndex = gpuIdx + 1;
                     gpuIdx++;
                 }
 
                 if (ImGui::Combo("GPU Effect", &currentGpuIndex, gpuItemNames.data(), (int)gpuItemNames.size())) {
-                    if (currentGpuIndex == 0) selectedObject->SetGPUParticleName("");
+                    if (currentGpuIndex == 0)
+                        selectedObject->SetGPUParticleName("");
                     else selectedObject->SetGPUParticleName(gpuItemNames[currentGpuIndex]);
                 }
 
@@ -1069,6 +1366,7 @@ void InspectorWindow::Draw() {
                 effectDisplayNames.push_back("None");
 
                 std::string effectDir = "Resources/json/effect";
+
                 if (fs::exists(effectDir) && fs::is_directory(effectDir)) {
                     for (const auto& entry : fs::directory_iterator(effectDir)) {
                         if (entry.is_regular_file() && entry.path().extension() == ".json") {
@@ -1079,6 +1377,7 @@ void InspectorWindow::Draw() {
                 }
 
                 std::vector<const char*> itemNames;
+
                 for (const auto& displayName : effectDisplayNames) {
                     itemNames.push_back(displayName.c_str());
                 }
@@ -1086,6 +1385,7 @@ void InspectorWindow::Draw() {
                 // --- スロット1 ---
                 std::string currentEff1 = selectedObject->GetMeshEffect1Name();
                 int selectIdx1 = 0;
+
                 for (size_t i = 0; i < effectPaths.size(); ++i) {
                     if (effectPaths[i] == currentEff1) {
                         selectIdx1 = static_cast<int>(i);
@@ -1100,6 +1400,7 @@ void InspectorWindow::Draw() {
                 // --- スロット2 ---
                 std::string currentEff2 = selectedObject->GetMeshEffect2Name();
                 int selectIdx2 = 0;
+
                 for (size_t i = 0; i < effectPaths.size(); ++i) {
                     if (effectPaths[i] == currentEff2) {
                         selectIdx2 = static_cast<int>(i);
@@ -1115,6 +1416,7 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             uint32_t currentAttr = selectedObject->GetCollisionAttribute();
             DrawAttributeSelector(ICON_FA_TAGS " 自分の属性 (Attribute)", &currentAttr);
+
             if (currentAttr != selectedObject->GetCollisionAttribute()) {
                 selectedObject->SetCollisionAttribute(currentAttr);
                 MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -1122,6 +1424,7 @@ void InspectorWindow::Draw() {
 
             uint32_t currentMask = selectedObject->GetCollisionMask();
             DrawAttributeSelector(ICON_FA_TAGS " 衝突対象 (Mask)", &currentMask);
+
             if (currentMask != selectedObject->GetCollisionMask()) {
                 selectedObject->SetCollisionMask(currentMask);
                 MarkInspectorTargetsDirty(editor_, inspectorTargets);
@@ -1139,32 +1442,40 @@ void InspectorWindow::Draw() {
 
         std::string controllerPath = selectedObject->GetAnimatorControllerPath();
         bool hasMixedController = false;
+
         for (engine::Object3d* target : animatorTargets) {
             if (target && target->GetAnimatorControllerPath() != controllerPath) {
                 hasMixedController = true;
                 break;
             }
         }
+
         std::string controllerPreview = "(なし)";
+
         if (hasMixedController) {
             controllerPreview = "(複数値)";
         } else if (!controllerPath.empty()) {
             controllerPreview = fs::path(controllerPath).stem().string();
         }
+
         if (ImGui::BeginCombo("Animator Controller##BoneAnim", controllerPreview.c_str())) {
             const bool noneSelected = !hasMixedController && controllerPath.empty();
+
             if (ImGui::Selectable("(なし)", noneSelected)) {
                 const auto beforeStates = editor_->CaptureObjectStates(animatorTargets);
+
                 for (engine::Object3d* target : animatorTargets) {
                     if (target) {
                         target->ClearAnimatorController();
                     }
                 }
+
                 editor_->RegisterObjectsEdited(beforeStates, "Animator Controller Clear");
             }
 
             std::vector<std::string> controllerFiles;
             const fs::path controllerDirectory = "Resources/json/animator";
+
             if (fs::exists(controllerDirectory) && fs::is_directory(controllerDirectory)) {
                 for (const auto& entry : fs::directory_iterator(controllerDirectory)) {
                     if (entry.is_regular_file() && ToLowerAscii(entry.path().extension().string()) == ".json") {
@@ -1172,44 +1483,56 @@ void InspectorWindow::Draw() {
                     }
                 }
             }
+
             std::sort(controllerFiles.begin(), controllerFiles.end());
+
             for (const std::string& fileName : controllerFiles) {
                 const bool isSelected = !hasMixedController && fs::path(controllerPath).stem().string() == fileName;
+
                 if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                     const auto beforeStates = editor_->CaptureObjectStates(animatorTargets);
                     bool assigned = false;
+
                     for (engine::Object3d* target : animatorTargets) {
                         if (target && target->SetAnimatorController(fileName)) {
                             assigned = true;
                         }
                     }
+
                     if (assigned) {
                         editor_->RegisterObjectsEdited(beforeStates, "Animator Controller Assign");
                     } else {
                         DebugConsole::GetInstance()->AddLog("Animator Controllerの読み込みに失敗しました: " + fileName);
                     }
                 }
+
                 if (isSelected) {
                     ImGui::SetItemDefaultFocus();
                 }
             }
+
             ImGui::EndCombo();
         }
+
         if (selectedObject->HasAnimatorController()) {
             const std::string currentState = selectedObject->GetAnimatorCurrentStateName();
             ImGui::TextDisabled("現在State: %s", currentState.empty() ? "(未再生)" : currentState.c_str());
         }
+
         if (ImGui::Button("Animator Controller Editorを開く##BoneAnim")) {
             editor_->GetAnimatorControllerEditor()->SetPreviewTarget(selectedObject);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimatorControllerEditor());
         }
+
         ImGui::TextDisabled("Controller未設定時は下の旧単発クリップ設定を使用します。現行制作ではControllerを推奨します。");
 
         char animNameBuf[64];
         strncpy_s(animNameBuf, selectedObject->animName_.c_str(), sizeof(animNameBuf));
+
         if (ImGui::InputText("アニメ名##BoneAnim", animNameBuf, sizeof(animNameBuf))) {
             selectedObject->animName_ = animNameBuf;
         }
+
             ImGui::Checkbox("ループ再生##BoneAnim", &selectedObject->isAnimLoop_);
         }
 
@@ -1230,14 +1553,24 @@ void InspectorWindow::Draw() {
         ImGui::Separator();
         ImGui::Text(ICON_FA_HAND_POINTER " ギズモ操作モード:");
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
+
         if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
-            if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
-            if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
-            if (ImGui::IsKeyPressed(ImGuiKey_S)) currentOperation = ImGuizmo::SCALE;
+            if (ImGui::IsKeyPressed(ImGuiKey_T))
+                currentOperation = ImGuizmo::TRANSLATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_R))
+                currentOperation = ImGuizmo::ROTATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_S))
+                currentOperation = ImGuizmo::SCALE;
         }
-        if (ImGui::RadioButton("移動", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
-        if (ImGui::RadioButton("回転", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
-        if (ImGui::RadioButton("拡大縮小", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
+
+        if (ImGui::RadioButton("移動", currentOperation == ImGuizmo::TRANSLATE))
+            currentOperation = ImGuizmo::TRANSLATE;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("回転", currentOperation == ImGuizmo::ROTATE))
+            currentOperation = ImGuizmo::ROTATE;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("拡大縮小", currentOperation == ImGuizmo::SCALE))
+            currentOperation = ImGuizmo::SCALE;
     }
 #endif
 }

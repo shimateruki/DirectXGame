@@ -6,12 +6,13 @@
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "game/actor/enemy/boss/magma/EnemyMagmaSlime.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
-#include "game/system/CrownFinaleTuning.h"
-#include "GameDataManager.h"
-#include "LevelLoader.h"
+#include "game/crown/CrownFinaleTuning.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/scene/LevelLoader.h"
+#include "Log.h"
 #include "Sprite.h"
-#include "SpriteLayoutScaler.h"
-#include "StageManager.h"
+#include "game/ui/SpriteLayoutScaler.h"
+#include "game/system/progress/StageManager.h"
 #include "TextureManager.h"
 #include "WinApp.h"
 
@@ -26,8 +27,6 @@ constexpr float kHurtIconDuration = 0.48f;
 constexpr float kHpDamageHoldDuration = 0.18f;
 constexpr float kLifeGainPulseDuration = 0.62f;
 constexpr float kCoinPulseDuration = 0.24f;
-constexpr float kMorphGaugeHoldDuration = 0.20f;
-constexpr int kMorphGaugeLastFrame = 32;
 
 // HUDの表示率を0～1へ収め、両端を滑らかにつなぎます。
 float SmoothStep(float value) {
@@ -63,14 +62,19 @@ const char* ResolveHpIconTexture(const Player* player, bool showHurtIcon) {
         switch (player->GetEnemyMorphType()) {
         case Player::EnemyMorphType::Slime:
             return showHurtIcon ? "ui/portraits/slime_hurt.png" : "ui/portraits/slime.png";
+
         case Player::EnemyMorphType::Bomber:
             return showHurtIcon ? "ui/portraits/bomber_hurt.png" : "ui/portraits/bomber.png";
+
         case Player::EnemyMorphType::FireSlime:
             return showHurtIcon ? "ui/portraits/fire_slime_hurt.png" : "ui/portraits/fire_slime.png";
+
         case Player::EnemyMorphType::ThunderSlime:
             return showHurtIcon ? "ui/portraits/thunder_slime_hurt.png" : "ui/portraits/thunder_slime.png";
+
         case Player::EnemyMorphType::WindSlime:
             return showHurtIcon ? "ui/portraits/wind_slime_hurt.png" : "ui/portraits/wind_slime.png";
+
         default:
             break;
         }
@@ -86,45 +90,20 @@ void GamePlayScene::UpdateUI(float deltaTime) {
     // ゲーム進行に合わせて通常HUDとボスHUDの表示を更新する。
     UpdateGameplayHUD(deltaTime);
     UpdateLifeLostPresentation(deltaTime);
+
     if (saveIndicatorOverlay_) {
         saveIndicatorOverlay_->Update(deltaTime);
     }
 }
 
-GamePlayScene::HudSpriteState GamePlayScene::BindGameplayHUDSprite(const std::string& name,
-                                                                   const std::string& texturePath,
-                                                                   const engine::Vector2& position, const engine::Vector2& size,
-                                                                   const engine::Vector2& anchor, const engine::Vector4& color) {
+GamePlayScene::HudSpriteState GamePlayScene::BindHud(const std::string& name) {
     engine::Sprite* sprite = GetSpriteByName(name);
-    bool createdFromFallback = false;
     if (!sprite) {
-        auto newSprite = std::make_unique<engine::Sprite>();
-        newSprite->Initialize(spriteCommon_.get(), texturePath);
-        newSprite->SetName(name);
-        newSprite->SetTextureName(texturePath.rfind("Resources/sprite/", 0) == 0
-                                      ? texturePath.substr(std::string("Resources/sprite/").size())
-                                      : texturePath);
-        sprite = newSprite.get();
-        sprites_.push_back(std::move(newSprite));
-        createdFromFallback = true;
+        // 配置漏れを静かに隠さず、Editorで修正できるよう名前をログに残す。
+        LOG_ERROR("gameplayHUD.json: Sprite '{}' was not found", name);
+        return {};
     }
 
-    if (sprite->GetSize().x <= 0.0f || sprite->GetSize().y <= 0.0f) {
-        sprite->SetSize(size);
-    }
-    if (sprite->GetTextureName().empty()) {
-        sprite->SetTextureName(texturePath.rfind("Resources/sprite/", 0) == 0
-                                   ? texturePath.substr(std::string("Resources/sprite/").size())
-                                   : texturePath);
-    }
-
-    // JSONに存在しない場合だけフォールバック値で配置します。
-    if (createdFromFallback) {
-        sprite->SetPosition(SpriteLayoutScaler::ScaleDesignPosition(position));
-        sprite->SetSize(SpriteLayoutScaler::ScaleDesignSize(size));
-        sprite->SetAnchorPoint(anchor);
-        sprite->SetColor(color);
-    }
     sprite->SetVisible(true);
     sprite->Update();
 
@@ -149,178 +128,101 @@ bool GamePlayScene::IsGameplayHUDSprite(const engine::Sprite* sprite) const {
 }
 
 void GamePlayScene::InitializeGameplayHUD() {
-    // レイアウト上に同名Spriteがあればそれを使い、足りない表示だけ既定値で補う。
+    // 静的な画像・配置・色はレイアウトから読み、ここでは演出用の参照だけ結び付ける。
     if (levelLoader_) {
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameplayHUD.json");
     }
 
     // プレイヤーHPは現在値、遅れて追うダメージ量、枠と光を別Spriteで重ねる。
-    hudHpIcon_ = BindGameplayHUDSprite("hud_hp_icon", "Resources/sprite/ui/portraits/player.png", {116.0f, 988.0f},
-                                       {78.0f, 78.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 1.0f});
-    hudCopyStyle_ = BindGameplayHUDSprite("hud_copy_style", "Resources/sprite/ui/hud/copy_style/pink.png",
-                                          {92.0f, 834.0f}, {390.0f, 98.0f}, {0.0f, 0.0f},
-                                          {1.0f, 1.0f, 1.0f, 0.0f});
+    hudHpIcon_ = BindHud("hud_hp_icon");
+    hudCopyStyle_ = BindHud("hud_copy_style");
     copyStyleHud_.Bind(hudCopyStyle_.sprite);
-    hudHpDamageFill_ =
-        BindGameplayHUDSprite("hud_hp_damage_fill", "Resources/sprite/ui/hud/hp_damage_fill.png", {162.0f, 988.0f},
-                              {298.0f, 16.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.92f});
-    hudHpFill_ = BindGameplayHUDSprite("hud_hp_fill", "Resources/sprite/ui/hud/hp_fill.png", {162.0f, 988.0f},
-                                       {298.0f, 16.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 1.0f});
+    hudHpDamageFill_ = BindHud("hud_hp_damage_fill");
+    hudHpFill_ = BindHud("hud_hp_fill");
     if (hudHpFill_.sprite) {
         hudHpFill_.sprite->SetAnimation(8, 0.08f, true);
         hudHpFill_.sprite->Play();
         hudHpFill_.sprite->SetSize(hudHpFill_.baseSize);
         hudHpFill_.sprite->Update();
     }
-    hudHpHighlight_ = BindGameplayHUDSprite("hud_hp_highlight", "Resources/sprite/ui/hud/hp_highlight.png",
-                                            {162.0f, 988.0f}, {298.0f, 16.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.38f});
+
+    hudHpHighlight_ = BindHud("hud_hp_highlight");
     if (hudHpHighlight_.sprite) {
         hudHpHighlight_.sprite->SetAnimation(6, 0.10f, true);
         hudHpHighlight_.sprite->Play();
         hudHpHighlight_.sprite->SetSize(hudHpHighlight_.baseSize);
         hudHpHighlight_.sprite->Update();
     }
-    hudHpFrame_ = BindGameplayHUDSprite("hud_hp_frame", "Resources/sprite/ui/hud/hp_bar_frame.png", {72.0f, 988.0f},
-                                        {410.0f, 88.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.98f});
-    // 変身ゲージは通常時に透明で生成し、更新処理で必要なときだけ表示する。
-    hudMorphGaugeBack_ =
-        BindGameplayHUDSprite("hud_morph_gauge_back", "Resources/sprite/ui/hud/morph_gauge/back.png", {1456.0f, 194.0f},
-                              {112.0f, 112.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.0f});
-    hudMorphGaugeFill_ =
-        BindGameplayHUDSprite("hud_morph_gauge_fill", "Resources/sprite/ui/hud/morph_gauge/fill_32.png",
-                              {1456.0f, 194.0f}, {112.0f, 112.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.0f});
-    hudMorphGaugeIcon_ =
-        BindGameplayHUDSprite("hud_morph_gauge_icon", "Resources/sprite/ui/hud/morph_gauge/icon.png", {1456.0f, 194.0f},
-                              {78.0f, 78.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.0f});
-    hudMorphGaugeFrame_ =
-        BindGameplayHUDSprite("hud_morph_gauge_frame", "Resources/sprite/ui/hud/morph_gauge/frame.png",
-                              {1456.0f, 194.0f}, {112.0f, 112.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.0f});
+
+    hudHpFrame_ = BindHud("hud_hp_frame");
+
     // ボスHUDは共通の表示部品を使い、戦闘相手に応じて後から色と名前を替える。
-    prismBossHudGlow_ =
-        BindGameplayHUDSprite("hud_boss_prism_glow", "Resources/sprite/common/white.png", {960.0f, 152.0f},
-                              {800.0f, 54.0f}, {0.5f, 0.5f}, {0.36f, 0.64f, 1.0f, 0.34f});
-    prismBossHudBack_ =
-        BindGameplayHUDSprite("hud_boss_prism_back", "Resources/sprite/common/white.png", {960.0f, 152.0f},
-                              {770.0f, 40.0f}, {0.5f, 0.5f}, {0.015f, 0.012f, 0.055f, 0.94f});
-    prismBossHudTrack_ =
-        BindGameplayHUDSprite("hud_boss_prism_track", "Resources/sprite/common/white.png", {960.0f, 152.0f},
-                              {730.0f, 20.0f}, {0.5f, 0.5f}, {0.025f, 0.055f, 0.12f, 0.98f});
-    prismBossHudDamageFill_ =
-        BindGameplayHUDSprite("hud_boss_prism_damage_fill", "Resources/sprite/common/white.png", {595.0f, 152.0f},
-                              {730.0f, 18.0f}, {0.0f, 0.5f}, {1.0f, 0.28f, 0.90f, 0.90f});
-    prismBossHudFill_ =
-        BindGameplayHUDSprite("hud_boss_prism_fill", "Resources/sprite/common/white.png", {595.0f, 152.0f},
-                              {730.0f, 18.0f}, {0.0f, 0.5f}, {0.18f, 0.86f, 1.0f, 1.0f});
-    prismBossHudHighlight_ =
-        BindGameplayHUDSprite("hud_boss_prism_highlight", "Resources/sprite/common/white.png", {595.0f, 148.0f},
-                              {730.0f, 5.0f}, {0.0f, 0.5f}, {0.88f, 1.0f, 1.0f, 0.70f});
-    prismBossHudFrameTop_ =
-        BindGameplayHUDSprite("hud_boss_prism_frame_top", "Resources/sprite/common/white.png", {960.0f, 139.0f},
-                              {770.0f, 4.0f}, {0.5f, 0.5f}, {0.58f, 0.94f, 1.0f, 1.0f});
-    prismBossHudFrameBottom_ =
-        BindGameplayHUDSprite("hud_boss_prism_frame_bottom", "Resources/sprite/common/white.png", {960.0f, 165.0f},
-                              {770.0f, 4.0f}, {0.5f, 0.5f}, {0.66f, 0.48f, 1.0f, 1.0f});
-    prismBossHudShardLeft_ =
-        BindGameplayHUDSprite("hud_boss_prism_shard_left", "Resources/sprite/particle/diamond_shard.png",
-                              {566.0f, 152.0f}, {68.0f, 80.0f}, {0.5f, 0.5f}, {0.48f, 0.92f, 1.0f, 0.96f});
-    prismBossHudShardRight_ =
-        BindGameplayHUDSprite("hud_boss_prism_shard_right", "Resources/sprite/particle/diamond_shard.png",
-                              {1354.0f, 152.0f}, {68.0f, 80.0f}, {0.5f, 0.5f}, {0.78f, 0.48f, 1.0f, 0.96f});
-    prismBossHudName_ =
-        BindGameplayHUDSprite("hud_boss_prism_name", "Resources/sprite/ui/hud/boss/prism_slime_name.png",
-                              {960.0f, 84.0f}, {400.0f, 84.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 1.0f});
-    // 装飾の位置は各Spriteの基準位置として保持し、更新時の揺れを加算する。
-    const std::array<engine::Vector2, 6> bossGlintPositions = {
-        engine::Vector2{742.0f, 76.0f},   engine::Vector2{1178.0f, 76.0f}, engine::Vector2{568.0f, 132.0f},
-        engine::Vector2{1352.0f, 132.0f}, engine::Vector2{960.0f, 118.0f}, engine::Vector2{595.0f, 152.0f},
-    };
+    prismBossHudGlow_ = BindHud("hud_boss_prism_glow");
+    prismBossHudBack_ = BindHud("hud_boss_prism_back");
+    prismBossHudTrack_ = BindHud("hud_boss_prism_track");
+    prismBossHudDamageFill_ = BindHud("hud_boss_prism_damage_fill");
+    prismBossHudFill_ = BindHud("hud_boss_prism_fill");
+    prismBossHudHighlight_ = BindHud("hud_boss_prism_highlight");
+    prismBossHudFrameTop_ = BindHud("hud_boss_prism_frame_top");
+    prismBossHudFrameBottom_ = BindHud("hud_boss_prism_frame_bottom");
+    prismBossHudShardLeft_ = BindHud("hud_boss_prism_shard_left");
+    prismBossHudShardRight_ = BindHud("hud_boss_prism_shard_right");
+    prismBossHudName_ = BindHud("hud_boss_prism_name");
+
+    // 装飾はJSONの基準位置を保持し、更新時に揺れを加算する。
     for (size_t i = 0; i < prismBossHudGlints_.size(); ++i) {
-        prismBossHudGlints_[i] = BindGameplayHUDSprite(
-            "hud_boss_prism_glint_" + std::to_string(i), "Resources/sprite/particle/spark_star.png",
-            bossGlintPositions[i], {i == 4 ? 24.0f : 20.0f, i == 4 ? 24.0f : 20.0f}, {0.5f, 0.5f},
-            {0.82f, 0.98f, 1.0f, 1.0f});
+        prismBossHudGlints_[i] = BindHud("hud_boss_prism_glint_" + std::to_string(i));
     }
+
     // 偽王専用の段階表示と詠唱ゲージも先に生成し、他のボスでは非表示にする。
-    const std::array<engine::Vector2, 3> falseKingPhaseCrownPositions = {
-        engine::Vector2{716.0f, 194.0f},
-        engine::Vector2{960.0f, 194.0f},
-        engine::Vector2{1204.0f, 194.0f},
-    };
     for (size_t i = 0; i < falseKingBossHudPhaseCrowns_.size(); ++i) {
-        falseKingBossHudPhaseCrowns_[i] = BindGameplayHUDSprite(
-            "hud_boss_false_king_phase_crown_" + std::to_string(i), "Resources/sprite/ui/title/crown_progress_icon.png",
-            falseKingPhaseCrownPositions[i], {38.0f, 38.0f}, {0.5f, 0.5f}, {1.0f, 0.78f, 0.20f, 0.0f});
+        falseKingBossHudPhaseCrowns_[i] = BindHud("hud_boss_false_king_phase_crown_" + std::to_string(i));
     }
-    const std::array<engine::Vector2, 2> falseKingPhaseDividerPositions = {
-        engine::Vector2{838.0f, 152.0f},
-        engine::Vector2{1082.0f, 152.0f},
-    };
+
     for (size_t i = 0; i < falseKingBossHudPhaseDividers_.size(); ++i) {
-        falseKingBossHudPhaseDividers_[i] = BindGameplayHUDSprite(
-            "hud_boss_false_king_phase_divider_" + std::to_string(i), "Resources/sprite/common/white.png",
-            falseKingPhaseDividerPositions[i], {5.0f, 28.0f}, {0.5f, 0.5f}, {1.0f, 0.84f, 0.28f, 0.0f});
+        falseKingBossHudPhaseDividers_[i] = BindHud("hud_boss_false_king_phase_divider_" + std::to_string(i));
     }
-    falseKingCastTrack_ = BindGameplayHUDSprite(
-        "hud_false_king_cast_track", "Resources/sprite/common/white.png",
-        {960.0f, 230.0f}, {330.0f, 12.0f}, {0.5f, 0.5f}, {0.19f, 0.08f, 0.28f, 0.0f});
-    falseKingCastFill_ = BindGameplayHUDSprite(
-        "hud_false_king_cast_fill", "Resources/sprite/common/white.png",
-        {798.0f, 230.0f}, {324.0f, 8.0f}, {0.0f, 0.5f}, {0.74f, 0.30f, 1.0f, 0.0f});
+
+    falseKingCastTrack_ = BindHud("hud_false_king_cast_track");
+    falseKingCastFill_ = BindHud("hud_false_king_cast_fill");
+
     // 残機・コインは数字を桁ごとに持ち、収集スターは保存済み状態と今回の取得を合わせて初期化する。
-    hudLifeIcon_ = BindGameplayHUDSprite("hud_life_icon", "Resources/sprite/title/slime_save_icon.png", {38.0f, 100.0f},
-                                         {50.0f, 50.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.96f});
-    hudLifeXIcon_ = BindGameplayHUDSprite("hud_life_x", "Resources/sprite/ui/hud/xUi.png", {92.0f, 100.0f},
-                                          {44.0f, 44.0f}, {0.5f, 0.5f}, {1.0f, 0.96f, 0.62f, 0.96f});
+    hudLifeIcon_ = BindHud("hud_life_icon");
+    hudLifeXIcon_ = BindHud("hud_life_x");
 
     for (size_t i = 0; i < hudLifeDigits_.size(); ++i) {
-        hudLifeDigits_[i] =
-            BindGameplayHUDSprite("hud_life_digit_" + std::to_string(i), "Resources/sprite/number/0.png",
-                                  {162.0f, 100.0f}, {26.0f, 38.0f}, {0.5f, 0.5f}, {1.0f, 0.95f, 0.56f, 1.0f});
+        hudLifeDigits_[i] = BindHud("hud_life_digit_" + std::to_string(i));
     }
 
-    hudCoinIcon_ = BindGameplayHUDSprite("hud_coin_icon", "Resources/sprite/ui/hud/coin_icon.png", {38.0f, 154.0f},
-                                         {48.0f, 48.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.96f});
-    hudCoinXIcon_ = BindGameplayHUDSprite("hud_coin_x", "Resources/sprite/ui/hud/xUi.png", {92.0f, 154.0f},
-                                          {44.0f, 44.0f}, {0.5f, 0.5f}, {1.0f, 0.90f, 0.42f, 0.96f});
+    hudCoinIcon_ = BindHud("hud_coin_icon");
+    hudCoinXIcon_ = BindHud("hud_coin_x");
     for (size_t i = 0; i < hudCoinDigits_.size(); ++i) {
-        hudCoinDigits_[i] =
-            BindGameplayHUDSprite("hud_coin_digit_" + std::to_string(i), "Resources/sprite/number/0.png",
-                                  {162.0f, 154.0f}, {26.0f, 38.0f}, {0.5f, 0.5f}, {1.0f, 0.86f, 0.28f, 1.0f});
+        hudCoinDigits_[i] = BindHud("hud_coin_digit_" + std::to_string(i));
     }
+
     const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+
     for (size_t i = 0; i < hudStageStarSlots_.size(); ++i) {
-        hudStageStarSlots_[i] = BindGameplayHUDSprite(
-            "hud_stage_star_slot_" + std::to_string(i), "Resources/sprite/ui/hud/stage_star_empty.png",
-            {52.0f + 48.0f * static_cast<float>(i), 214.0f}, {42.0f, 42.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.94f});
+        hudStageStarSlots_[i] = BindHud("hud_stage_star_slot_" + std::to_string(i));
         hudStageStarVisualCollected_[i] = sessionStarCoins_[i] || GameDataManager::GetInstance()->IsStarCoinCollected(
                                                                       stageIndex, static_cast<int>(i));
         hudStageStarPulseTimers_[i] = 0.0f;
     }
+
     hudStageStarFlyParticles_.clear();
     hudPreviousLives_ = GameDataManager::GetInstance()->GetLives();
     hudPreviousCoins_ = GameDataManager::GetInstance()->GetCoins();
     hudLifeGainPulseTimer_ = 0.0f;
     hudCoinPulseTimer_ = 0.0f;
+
     // 残機減少の演出は通常HUDと独立した全画面レイヤーとして用意する。
-    lifeLostIcon_ = BindGameplayHUDSprite(
-        "life_lost_icon", "Resources/sprite/title/slime_save_icon.png",
-        {static_cast<float>(WinApp::kClientWidth) * 0.5f - 78.0f, static_cast<float>(WinApp::kClientHeight) * 0.5f},
-        {96.0f, 96.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.0f});
-    lifeLostXIcon_ = BindGameplayHUDSprite(
-        "life_lost_x", "Resources/sprite/ui/hud/xUi.png",
-        {static_cast<float>(WinApp::kClientWidth) * 0.5f + 10.0f, static_cast<float>(WinApp::kClientHeight) * 0.5f},
-        {72.0f, 72.0f}, {0.5f, 0.5f}, {1.0f, 0.96f, 0.62f, 0.0f});
+    lifeLostIcon_ = BindHud("life_lost_icon");
+    lifeLostXIcon_ = BindHud("life_lost_x");
     for (size_t i = 0; i < lifeLostDigits_.size(); ++i) {
-        lifeLostDigits_[i] = BindGameplayHUDSprite(
-            "life_lost_digit_" + std::to_string(i), "Resources/sprite/number/big0.png",
-            {static_cast<float>(WinApp::kClientWidth) * 0.5f + 88.0f, static_cast<float>(WinApp::kClientHeight) * 0.5f},
-            {56.0f, 82.0f}, {0.5f, 0.5f}, {1.0f, 0.92f, 0.38f, 0.0f});
+        lifeLostDigits_[i] = BindHud("life_lost_digit_" + std::to_string(i));
     }
-    lifeLostBackdrop_ = BindGameplayHUDSprite(
-        "life_lost_backdrop", "Resources/sprite/common/white.png",
-        {static_cast<float>(WinApp::kClientWidth) * 0.5f, static_cast<float>(WinApp::kClientHeight) * 0.5f},
-        {static_cast<float>(WinApp::kClientWidth), static_cast<float>(WinApp::kClientHeight)}, {0.5f, 0.5f},
-        {0.0f, 0.0f, 0.0f, 0.0f});
+
+    lifeLostBackdrop_ = BindHud("life_lost_backdrop");
     InitializeLifeLostPresentationObjects();
 
     // 最初のフレームでダメージ演出が発生しないよう、比較に使う前回値を現在値へ揃える。
@@ -331,12 +233,11 @@ void GamePlayScene::InitializeGameplayHUD() {
         const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
         hudHpDelayedRate_ = player_ ? std::clamp(hudPreviousHp_ / maxHp, 0.0f, 1.0f) : 0.0f;
     }
+
     hudDamagePulseTimer_ = 0.0f;
     hudHurtIconTimer_ = 0.0f;
     hudHpDamageHoldTimer_ = 0.0f;
     hudHpAnimationTimer_ = 0.0f;
-    hudMorphGaugeTimer_ = 0.0f;
-    hudMorphGaugeVisibleTimer_ = 0.0f;
     prismBossHudPhase_ = PrismBossHudPhase::Hidden;
     prismBossHudTimer_ = 0.0f;
     prismBossHudDisplayedRate_ = 0.0f;
@@ -371,6 +272,7 @@ void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, 
 
         const bool digitVisible = visible && (digitCount == 2 || i == 1);
         sprite->SetVisible(digitVisible);
+
         if (!digitVisible) {
             continue;
         }
@@ -408,6 +310,7 @@ void GamePlayScene::CollectStarCoin(int coinIndex, const engine::Vector3& worldP
         sessionStarCoins_[coinIndex] || GameDataManager::GetInstance()->IsStarCoinCollected(stageIndex, coinIndex);
 
     sessionStarCoins_[coinIndex] = true;
+
     if (alreadyCollected) {
         hudStageStarVisualCollected_[coinIndex] = true;
         hudStageStarPulseTimers_[coinIndex] = 0.45f;
@@ -423,11 +326,13 @@ engine::Vector2 GamePlayScene::ProjectWorldToScreen(const engine::Vector3& world
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     const float screenW = static_cast<float>(WinApp::kClientWidth);
     const float screenH = static_cast<float>(WinApp::kClientHeight);
+
     if (!camera) {
         return {screenW * 0.5f, screenH * 0.5f};
     }
 
     engine::Vector3 ndc = engine::Math::Transform(worldPosition, camera->GetViewProjectionMatrix());
+
     if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
         return {screenW * 0.5f, screenH * 0.5f};
     }
@@ -443,6 +348,7 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::
             hudStageStarVisualCollected_[starIndex] = true;
             hudStageStarPulseTimers_[starIndex] = 0.45f;
         }
+
         return;
     }
 
@@ -496,6 +402,7 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::
 
 void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
     // 飛行中の星を進め、到着後は保存済みの取得状態と枠の表示を同期する。
+    visible = visible && StageManager::GetInstance()->GetCurrentStage().hasStarCoins;
     const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
 
     for (auto it = hudStageStarFlyParticles_.begin(); it != hudStageStarFlyParticles_.end();) {
@@ -521,6 +428,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
                 hudStageStarVisualCollected_[particle.starIndex] = true;
                 hudStageStarPulseTimers_[particle.starIndex] = 0.65f;
             }
+
             it = hudStageStarFlyParticles_.erase(it);
         } else {
             ++it;
@@ -529,6 +437,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
 
     for (int i = 0; i < static_cast<int>(hudStageStarSlots_.size()); ++i) {
         bool hasActiveFill = false;
+
         for (const auto& particle : hudStageStarFlyParticles_) {
             if (particle.fillsSlot && particle.starIndex == i) {
                 hasActiveFill = true;
@@ -539,11 +448,13 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
         if (sessionStarCoins_[i] && !hasActiveFill && !hudStageStarVisualCollected_[i]) {
             hudStageStarVisualCollected_[i] = true;
         }
+
         if (GameDataManager::GetInstance()->IsStarCoinCollected(stageIndex, i)) {
             hudStageStarVisualCollected_[i] = true;
         }
 
         HudSpriteState& slot = hudStageStarSlots_[i];
+
         if (!slot.sprite) {
             continue;
         }
@@ -582,22 +493,27 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     if (visible && lives > hudPreviousLives_) {
         hudLifeGainPulseTimer_ = kLifeGainPulseDuration;
     }
+
     if (visible && coins != hudPreviousCoins_) {
         hudCoinPulseTimer_ = kCoinPulseDuration;
     }
+
     hudPreviousLives_ = lives;
     hudPreviousCoins_ = coins;
 
     const bool tookDamage = visible && hp < hudPreviousHp_ - 0.01f;
+
     if (tookDamage) {
         hudDamagePulseTimer_ = kDamagePulseDuration;
         hudHurtIconTimer_ = kHurtIconDuration;
         hudHpDamageHoldTimer_ = kHpDamageHoldDuration;
         hudHpDelayedRate_ = std::max(hudHpDelayedRate_, previousHpRate);
     }
+
     hudPreviousHp_ = hp;
     hudDamagePulseTimer_ = std::max(0.0f, hudDamagePulseTimer_ - deltaTime);
     hudHurtIconTimer_ = std::max(0.0f, hudHurtIconTimer_ - deltaTime);
+
     if (!visible) {
         hudHpDelayedRate_ = 0.0f;
         hudHpDamageHoldTimer_ = 0.0f;
@@ -609,6 +525,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     } else {
         hudHpDelayedRate_ = std::max(hpRate, hudHpDelayedRate_ - deltaTime * 0.62f);
     }
+
     hudLifeGainPulseTimer_ = std::max(0.0f, hudLifeGainPulseTimer_ - deltaTime);
     hudCoinPulseTimer_ = std::max(0.0f, hudCoinPulseTimer_ - deltaTime);
     hudHpAnimationTimer_ = std::fmod(hudHpAnimationTimer_ + std::max(deltaTime, 0.0f), 1000.0f);
@@ -646,6 +563,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         damageReacting ? std::sin(hudHurtIconTimer_ * 61.0f) * SpriteLayoutScaler::ScaleDesignY(1.2f) : 0.0f;
     const float hpIconRotation =
         damageReacting ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.055f : liquidWave * lowHpRate * 0.012f;
+
     // HP 表示は実値と遅れて追うダメージ量を別レイヤーにし、被弾量を読めるようにします。
     if (hudHpIcon_.sprite) {
         const uint32_t handle = engine::Sprite::LoadTexture(ResolveHpIconTexture(player_, damageReacting));
@@ -659,6 +577,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
                                      visible ? hudHpIcon_.baseColor.w : 0.0f});
         hudHpIcon_.sprite->Update();
     }
+
     if (hudHpDamageFill_.sprite) {
         const float rate = std::clamp(hudHpDelayedRate_, 0.0f, 1.0f);
         hudHpDamageFill_.sprite->SetVisible(visible && rate > 0.001f);
@@ -671,6 +590,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
              visible ? hudHpDamageFill_.baseColor.w * (0.88f + damageRate * 0.12f) : 0.0f});
         hudHpDamageFill_.sprite->Update();
     }
+
     if (hudHpFill_.sprite) {
         hudHpFill_.sprite->SetVisible(visible && hpRate > 0.001f);
         hudHpFill_.sprite->SetPosition(
@@ -680,6 +600,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
             {1.0f, 1.0f - lowHpPulse * 0.08f, 1.0f - lowHpPulse * 0.14f, visible ? hudHpFill_.baseColor.w : 0.0f});
         hudHpFill_.sprite->Update();
     }
+
     if (hudHpHighlight_.sprite) {
         const float shimmer = 0.78f + hpRate * 0.10f + damageImpact * 0.12f;
         const float alpha = visible && hpRate > 0.001f ? hudHpHighlight_.baseColor.w * shimmer : 0.0f;
@@ -692,6 +613,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
             {hudHpHighlight_.baseColor.x, hudHpHighlight_.baseColor.y, hudHpHighlight_.baseColor.z, alpha});
         hudHpHighlight_.sprite->Update();
     }
+
     if (hudHpFrame_.sprite) {
         hudHpFrame_.sprite->SetVisible(visible);
         hudHpFrame_.sprite->SetPosition({hudHpFrame_.basePosition.x + barShake, hudHpFrame_.basePosition.y});
@@ -701,93 +623,6 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
             {1.0f, 1.0f - lowHpPulse * 0.10f, 1.0f - lowHpPulse * 0.16f, visible ? hudHpFrame_.baseColor.w : 0.0f});
         hudHpFrame_.sprite->Update();
     }
-
-    const bool morphActive = visible && player_ && player_->HasEnemyMorphTimeLimit();
-    const bool suppressMorphGauge =
-        visible && player_ && player_->IsEnemyMorphed() && !player_->HasEnemyMorphTimeLimit();
-    // コピー残り時間の円形ゲージをプレイヤーの頭上へ投影します。
-    if (morphActive) {
-        hudMorphGaugeVisibleTimer_ = kMorphGaugeHoldDuration;
-    } else if (suppressMorphGauge) {
-        hudMorphGaugeVisibleTimer_ = 0.0f;
-    } else {
-        hudMorphGaugeVisibleTimer_ = std::max(0.0f, hudMorphGaugeVisibleTimer_ - deltaTime);
-    }
-    const bool morphVisible = morphActive || hudMorphGaugeVisibleTimer_ > 0.0f;
-    const float morphRate = morphActive ? player_->GetEnemyMorphRate() : 0.0f;
-    hudMorphGaugeTimer_ = morphVisible ? hudMorphGaugeTimer_ + deltaTime : 0.0f;
-    engine::Vector2 morphGaugeSize = SpriteLayoutScaler::ScaleDesignSize({132.0f, 132.0f});
-    engine::Vector2 morphIconSize = SpriteLayoutScaler::ScaleDesignSize({92.0f, 92.0f});
-    engine::Vector2 morphGaugePosition = SpriteLayoutScaler::ScaleDesignPosition({530.0f, 988.0f});
-    if (hudHpFrame_.sprite) {
-        morphGaugePosition = {hudHpFrame_.basePosition.x + hudHpFrame_.baseSize.x +
-                                  SpriteLayoutScaler::ScaleDesignX(66.0f),
-                              hudHpFrame_.basePosition.y};
-    }
-    if (player_) {
-        engine::Vector3 headWorld = player_->GetWorldPosition();
-        headWorld.y += 2.55f;
-        engine::Vector3 bodyWorld = player_->GetWorldPosition();
-        bodyWorld.y += 0.65f;
-
-        const engine::Vector2 headScreen = ProjectWorldToScreen(headWorld);
-        const engine::Vector2 bodyScreen = ProjectWorldToScreen(bodyWorld);
-        const float bodyHeightOnScreen = std::abs(bodyScreen.y - headScreen.y);
-        const float perspectiveScale =
-            std::clamp(bodyHeightOnScreen / SpriteLayoutScaler::ScaleDesignY(96.0f), 0.72f, 1.18f);
-        morphGaugeSize = {morphGaugeSize.x * perspectiveScale, morphGaugeSize.y * perspectiveScale};
-        morphIconSize = {morphIconSize.x * perspectiveScale, morphIconSize.y * perspectiveScale};
-        morphGaugePosition = {headScreen.x + morphGaugeSize.x * 0.44f,
-                              headScreen.y - morphGaugeSize.y * (0.10f + 0.03f * std::sin(hudMorphGaugeTimer_ * 5.2f))};
-    }
-    const float gaugeHalfX = morphGaugeSize.x * 0.55f;
-    const float gaugeHalfY = morphGaugeSize.y * 0.55f;
-    morphGaugePosition.x =
-        std::clamp(morphGaugePosition.x, gaugeHalfX, static_cast<float>(WinApp::kClientWidth) - gaugeHalfX);
-    morphGaugePosition.y =
-        std::clamp(morphGaugePosition.y, gaugeHalfY, static_cast<float>(WinApp::kClientHeight) - gaugeHalfY);
-    const int morphFrame = std::clamp(static_cast<int>(std::round(morphRate * kMorphGaugeLastFrame)), 0,
-                                      kMorphGaugeLastFrame);
-    const float lowRate = morphVisible ? std::clamp((0.34f - morphRate) / 0.34f, 0.0f, 1.0f) : 0.0f;
-    const float lowBlink =
-        lowRate > 0.0f ? 0.5f + 0.5f * std::sin(hudMorphGaugeTimer_ * (18.0f + lowRate * 20.0f)) : 0.0f;
-    const float warningPulse = lowRate * (0.08f + lowBlink * 0.20f);
-    const engine::Vector2 warningOffset = {lowRate * std::sin(hudMorphGaugeTimer_ * 42.0f) * 2.2f,
-                                   lowRate * std::sin(hudMorphGaugeTimer_ * 31.0f) * 0.9f};
-    int visibleMorphFrame = morphFrame;
-    if (lowRate > 0.0f && lowBlink > 0.68f) {
-        visibleMorphFrame = std::max(0, morphFrame - 1);
-    }
-    const auto updateMorphSprite = [&](HudSpriteState& state, const engine::Vector2& baseSize, float alphaScale, float scale,
-                                       float rotation, engine::Vector2 offset, float colorBoost) {
-        if (!state.sprite) {
-            return;
-        }
-        const float alpha = morphVisible ? std::clamp(alphaScale, 0.0f, 1.0f) : 0.0f;
-        state.sprite->SetVisible(morphVisible);
-        state.sprite->SetPosition({morphGaugePosition.x + offset.x, morphGaugePosition.y + offset.y});
-        state.sprite->SetSize({baseSize.x * scale, baseSize.y * scale});
-        state.sprite->SetRotation(rotation);
-        state.sprite->SetColor({std::clamp(state.baseColor.x + colorBoost, 0.0f, 1.0f),
-                                std::clamp(state.baseColor.y + colorBoost, 0.0f, 1.0f),
-                                std::clamp(state.baseColor.z + colorBoost, 0.0f, 1.0f), alpha});
-        state.sprite->Update();
-    };
-    if (hudMorphGaugeFill_.sprite) {
-        const uint32_t handle = engine::Sprite::LoadTexture("ui/hud/morph_gauge/fill_" +
-                                                    (visibleMorphFrame < 10 ? std::string("0") : std::string()) +
-                                                    std::to_string(visibleMorphFrame) + ".png");
-        hudMorphGaugeFill_.sprite->SetTextureHandle(handle);
-    }
-    const float gaugeScale = 1.0f + warningPulse;
-    updateMorphSprite(hudMorphGaugeBack_, morphGaugeSize, 0.82f, gaugeScale, 0.0f, warningOffset, warningPulse * 0.25f);
-    updateMorphSprite(hudMorphGaugeFill_, morphGaugeSize, 1.0f, gaugeScale, 0.0f, warningOffset, warningPulse * 0.85f);
-    updateMorphSprite(hudMorphGaugeIcon_, morphIconSize, 0.95f + lowBlink * lowRate * 0.05f, 1.0f + warningPulse * 0.7f,
-                      std::sin(hudMorphGaugeTimer_ * 18.0f) * warningPulse * 0.9f, warningOffset, warningPulse * 0.45f);
-    updateMorphSprite(
-        hudMorphGaugeFrame_, morphGaugeSize, 1.0f, gaugeScale,
-        morphVisible ? (1.0f - morphRate) * 0.10f + std::sin(hudMorphGaugeTimer_ * 20.0f) * warningPulse * 0.35f : 0.0f,
-        warningOffset, warningPulse * 0.35f);
 
     // 残機とコインの取得反応を更新した後、数字の桁を描画状態へ反映します。
     if (hudLifeIcon_.sprite) {
@@ -799,6 +634,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
                                        visible ? hudLifeIcon_.baseColor.w : 0.0f});
         hudLifeIcon_.sprite->Update();
     }
+
     if (hudLifeXIcon_.sprite) {
         hudLifeXIcon_.sprite->SetVisible(visible);
         hudLifeXIcon_.sprite->SetPosition(hudLifeXIcon_.basePosition);
@@ -824,6 +660,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
                                        visible ? hudCoinIcon_.baseColor.w : 0.0f});
         hudCoinIcon_.sprite->Update();
     }
+
     if (hudCoinXIcon_.sprite) {
         hudCoinXIcon_.sprite->SetVisible(visible);
         hudCoinXIcon_.sprite->SetPosition(
@@ -851,10 +688,12 @@ EnemyPrismSlime* GamePlayScene::FindPrismBossForHUD() {
 
     for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
         auto* boss = dynamic_cast<EnemyPrismSlime*>(object.get());
+
         if (boss && boss->IsEncounterHudActive()) {
             return boss;
         }
     }
+
     return nullptr;
 }
 
@@ -866,10 +705,12 @@ EnemyMagmaSlime* GamePlayScene::FindMagmaBossForHUD() {
 
     for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
         auto* boss = dynamic_cast<EnemyMagmaSlime*>(object.get());
+
         if (boss && boss->IsEncounterHudActive()) {
             return boss;
         }
     }
+
     return nullptr;
 }
 
@@ -881,10 +722,12 @@ EnemyFalseKingSlime* GamePlayScene::FindFalseKingBossForHUD() {
 
     for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
         auto* boss = dynamic_cast<EnemyFalseKingSlime*>(object.get());
+
         if (boss && boss->IsEncounterHudActive()) {
             return boss;
         }
     }
+
     return nullptr;
 }
 
@@ -952,9 +795,11 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
     float frameReveal = 0.0f;
     float nameReveal = 0.0f;
     float visualAlpha = 0.0f;
+
     switch (prismBossHudPhase_) {
     case PrismBossHudPhase::Hidden:
         break;
+
     case PrismBossHudPhase::Introducing: {
         // ボス本体の登場進捗も枠の開きに反映し、HPバーは名前より遅れて見せる。
         prismBossHudTimer_ += deltaTime;
@@ -968,14 +813,17 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         prismBossHudDelayedRate_ = prismBossHudDisplayedRate_;
         prismBossHudPreviousHp_ = currentHp;
         visualAlpha = 1.0f;
+
         if (prismBossHudTimer_ >= kIntroDuration) {
             prismBossHudPhase_ = PrismBossHudPhase::Active;
             prismBossHudTimer_ = 0.0f;
             prismBossHudDisplayedRate_ = actualRate;
             prismBossHudDelayedRate_ = actualRate;
         }
+
         break;
     }
+
     case PrismBossHudPhase::Active: {
         frameReveal = 1.0f;
         nameReveal = 1.0f;
@@ -983,15 +831,18 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
 
         // HP減少直後は旧HPの帯を短時間残し、その後に遅れて現在HPまで縮める。
         const bool tookDamage = currentHp < prismBossHudPreviousHp_ - 0.01f;
+
         if (tookDamage) {
             const float previousRate = (std::clamp)(prismBossHudPreviousHp_ / maximumHp, 0.0f, 1.0f);
             prismBossHudDamagePulseTimer_ = 0.44f;
             prismBossHudDamageHoldTimer_ = 0.20f;
             prismBossHudDelayedRate_ = (std::max)(prismBossHudDelayedRate_, previousRate);
         }
+
         prismBossHudPreviousHp_ = currentHp;
         const float follow = 1.0f - std::exp(-deltaTime * 13.0f);
         prismBossHudDisplayedRate_ += (actualRate - prismBossHudDisplayedRate_) * follow;
+
         if (actualRate >= prismBossHudDelayedRate_) {
             prismBossHudDelayedRate_ = actualRate;
             prismBossHudDamageHoldTimer_ = 0.0f;
@@ -1000,28 +851,34 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         } else {
             prismBossHudDelayedRate_ = (std::max)(actualRate, prismBossHudDelayedRate_ - deltaTime * 0.36f);
         }
+
         break;
     }
+
     case PrismBossHudPhase::Dismissing:
         // 対象が消えたときは急に非表示にせず、全体の透明度を落とす。
         prismBossHudTimer_ += deltaTime;
         frameReveal = 1.0f;
         nameReveal = 1.0f;
         visualAlpha = 1.0f - SmoothStep(prismBossHudTimer_ / kDismissDuration);
+
         if (prismBossHudTimer_ >= kDismissDuration) {
             prismBossHudPhase_ = PrismBossHudPhase::Hidden;
             visualAlpha = 0.0f;
         }
+
         break;
     }
 
     // 被弾とフェーズ移行の光り方は別タイマーで管理する。
     prismBossHudDamagePulseTimer_ = (std::max)(0.0f, prismBossHudDamagePulseTimer_ - deltaTime);
     falseKingBossHudPhasePulseTimer_ = (std::max)(0.0f, falseKingBossHudPhasePulseTimer_ - deltaTime);
+
     if (usesFalseKingTheme && falseKingPhase != falseKingBossHudPreviousPhase_) {
         falseKingBossHudPreviousPhase_ = falseKingPhase;
         falseKingBossHudPhasePulseTimer_ = 0.82f;
     }
+
     // 状態から描画に渡す共通の揺れ・拡大・低HP点滅の係数を作る。
     const bool hudVisible = visualAlpha > 0.001f && prismBossHudPhase_ != PrismBossHudPhase::Hidden;
     const float damagePulseRate = (std::clamp)(prismBossHudDamagePulseTimer_ / 0.44f, 0.0f, 1.0f);
@@ -1041,6 +898,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         if (!state.sprite) {
             return;
         }
+
         state.sprite->SetVisible(visible);
         state.sprite->SetPosition(position);
         state.sprite->SetSize(size);
@@ -1080,6 +938,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
                                                           : engine::Vector3{0.62f + lowHpPulse * 0.20f, 0.22f, 0.92f}))
             : (usesMagmaTheme ? engine::Vector3{0.62f + lowHpPulse * 0.30f, 0.045f, 0.015f}
                               : engine::Vector3{0.66f + lowHpPulse * 0.24f, 0.44f, 1.0f});
+
     // 背景と枠は出現率で横幅を開き、被弾時だけ短く揺らす。
     updateSprite(prismBossHudGlow_, hudVisible,
                  {prismBossHudGlow_.basePosition.x + barShake, prismBossHudGlow_.basePosition.y},
@@ -1164,6 +1023,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
 
     // 偽王だけに段階境界と王冠を重ね、現在・通過済み・未到達を色と動きで区別する。
     const bool showFalseKingPhases = hudVisible && usesFalseKingTheme && frameReveal > 0.10f;
+
     for (HudSpriteState& divider : falseKingBossHudPhaseDividers_) {
         const float dividerGlow = 0.72f + std::sin(prismBossHudAnimationTimer_ * 4.2f) * 0.18f;
         updateSprite(divider, showFalseKingPhases, {divider.basePosition.x + barShake, divider.basePosition.y},
@@ -1171,6 +1031,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
                      {1.0f, falseKingPhase >= 3 ? 0.54f : 0.84f, falseKingPhase >= 3 ? 1.0f : 0.28f,
                       visualAlpha * frameReveal * dividerGlow});
     }
+
     for (size_t i = 0; i < falseKingBossHudPhaseCrowns_.size(); ++i) {
         HudSpriteState& crown = falseKingBossHudPhaseCrowns_[i];
         const int markerPhase = static_cast<int>(i) + 1;
@@ -1181,6 +1042,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         const float markerScale = (currentPhase ? 1.0f + markerPulse * 0.10f + transitionPulse * 0.26f : 0.76f) *
                                   (0.72f + nameReveal * 0.28f);
         engine::Vector4 markerColor;
+
         if (currentPhase) {
             markerColor = falseKingPhase >= 3
                               ? engine::Vector4{0.88f, 0.48f, 1.0f, visualAlpha * (0.86f + markerPulse * 0.14f)}
@@ -1190,6 +1052,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         } else {
             markerColor = {0.22f, 0.10f, 0.34f, visualAlpha * 0.46f};
         }
+
         updateSprite(crown, showFalseKingPhases,
                      {crown.basePosition.x + barShake,
                       crown.basePosition.y - markerPulse * SpriteLayoutScaler::ScaleDesignY(2.5f)},
@@ -1216,10 +1079,12 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
             prismBossHudAnimationTimer_ * (3.2f + static_cast<float>(i) * 0.17f) + static_cast<float>(i) * 1.31f;
         const float sparkle = std::pow((std::max)(0.0f, std::sin(phase)), 7.0f);
         engine::Vector2 position = glint.basePosition;
+
         if (i == prismBossHudGlints_.size() - 1) {
             position.x = fullFillLeft + fullFillWidth * displayedRate;
             position.y = prismBossHudFill_.basePosition.y;
         }
+
         position.x += barShake;
         const float glintScale = 0.55f + sparkle * 1.15f + (i == prismBossHudGlints_.size() - 1 ? 0.30f : 0.0f);
         const float glintAlpha = visualAlpha * frameReveal * (0.08f + sparkle * 0.92f);
@@ -1242,14 +1107,18 @@ void GamePlayScene::DrawGameplayHUD() {
     // 収集数、スター、ボス表示を先に描き、プレイヤーHPとコピー表示を上に重ねる。
     DrawGameplayHUDSprite(hudLifeIcon_);
     DrawGameplayHUDSprite(hudLifeXIcon_);
+
     for (auto& digit : hudLifeDigits_) {
         DrawGameplayHUDSprite(digit);
     }
+
     DrawGameplayHUDSprite(hudCoinIcon_);
     DrawGameplayHUDSprite(hudCoinXIcon_);
+
     for (auto& digit : hudCoinDigits_) {
         DrawGameplayHUDSprite(digit);
     }
+
     DrawStageStarHUD();
     DrawPrismBossHUD();
 
@@ -1260,11 +1129,7 @@ void GamePlayScene::DrawGameplayHUD() {
     DrawGameplayHUDSprite(hudHpHighlight_);
     DrawGameplayHUDSprite(hudHpIcon_);
     DrawGameplayHUDSprite(hudCopyStyle_);
-    // 変身ゲージは背景から枠へ積み、最後に残機演出の前景を描く。
-    DrawGameplayHUDSprite(hudMorphGaugeBack_);
-    DrawGameplayHUDSprite(hudMorphGaugeFill_);
-    DrawGameplayHUDSprite(hudMorphGaugeIcon_);
-    DrawGameplayHUDSprite(hudMorphGaugeFrame_);
+
     DrawLifeLostPresentation();
 }
 
@@ -1273,6 +1138,7 @@ void GamePlayScene::DrawPrismBossHUD() {
     DrawGameplayHUDSprite(prismBossHudGlow_);
     DrawGameplayHUDSprite(prismBossHudBack_);
     DrawGameplayHUDSprite(prismBossHudTrack_);
+
     // 遅延ダメージ帯の上に現在HPを置き、光と枠で輪郭を作る。
     DrawGameplayHUDSprite(prismBossHudDamageFill_);
     DrawGameplayHUDSprite(prismBossHudFill_);
@@ -1282,15 +1148,19 @@ void GamePlayScene::DrawPrismBossHUD() {
     DrawGameplayHUDSprite(prismBossHudShardLeft_);
     DrawGameplayHUDSprite(prismBossHudShardRight_);
     DrawGameplayHUDSprite(prismBossHudName_);
+
     // 偽王専用の段階表示と詠唱表示は、共通の名前・HPバーより前面に置く。
     for (const HudSpriteState& divider : falseKingBossHudPhaseDividers_) {
         DrawGameplayHUDSprite(divider);
     }
+
     for (const HudSpriteState& crown : falseKingBossHudPhaseCrowns_) {
         DrawGameplayHUDSprite(crown);
     }
+
     DrawGameplayHUDSprite(falseKingCastTrack_);
     DrawGameplayHUDSprite(falseKingCastFill_);
+
     // 光点はすべての表示部品の最後に描き、ゲージ末端も隠れないようにする。
     for (const HudSpriteState& glint : prismBossHudGlints_) {
         DrawGameplayHUDSprite(glint);
@@ -1302,6 +1172,7 @@ void GamePlayScene::DrawStageStarHUD() {
     for (const auto& slot : hudStageStarSlots_) {
         DrawGameplayHUDSprite(slot);
     }
+
     for (const auto& particle : hudStageStarFlyParticles_) {
         if (particle.sprite) {
             particle.sprite->Draw();

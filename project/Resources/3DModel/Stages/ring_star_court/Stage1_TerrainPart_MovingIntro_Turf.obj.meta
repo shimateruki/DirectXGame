@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b7aef64cf89954cbbdd379ad7f18df8c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_MovingIntro_Turf.obj",
+  "version": 1
+}

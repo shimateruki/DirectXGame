@@ -6,7 +6,7 @@
 
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
 #include "MeshRenderer.h"
 #include "SceneManager.h"
@@ -25,7 +25,7 @@ using namespace EnemyMagmaSlimeImplementation;
 EnemyMagmaSlime::EnemyMagmaSlime() = default;
 EnemyMagmaSlime::~EnemyMagmaSlime() = default;
 
-void EnemyMagmaSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
+void EnemyMagmaSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_MagmaSlime");
     SetEnemyType("MagmaSlime");
@@ -45,6 +45,14 @@ void EnemyMagmaSlime::Initialize(Object3dCommon* common, const std::string& mode
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kSphere);
     SyncCollisionRadius();
+
+    // Body Clipは描画メッシュだけに掛け、物理座標と攻撃判定には混ぜない。
+    const EnemyAttackDefinition* slamAttack = attackProfile_.FindAttack(kVolcanicSlamAttackId);
+    if (slamAttack && !slamAttack->animation.empty() &&
+        slamBodyClip_.Load(BodyAnimationClip::ResolveAssetPath(slamAttack->animation))) {
+        slamVisualPose_ = std::make_shared<engine::Matrix4x4>(engine::Math::MakeIdentity4x4());
+        if (GetMeshRenderer()) GetMeshRenderer()->SetTimelineVisualTransform(slamVisualPose_);
+    }
 }
 
 void EnemyMagmaSlime::Update(float deltaTime) {
@@ -61,6 +69,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     UpdateMagmaFlood(deltaTime);
 
     if (isDead || !GetIsVisible()) {
+        locomotion_.Reset();
         HideAttackTelegraph();
         ClearTransientVisuals();
         BaseEnemy::Update(deltaTime);
@@ -68,24 +77,29 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     }
 
     if (IsDormant() || IsThrowRecovering() || ShouldHandleDefeatEffect()) {
+        locomotion_.Reset();
         HideAttackTelegraph();
+        if (slamVisualPose_) *slamVisualPose_ = engine::Math::MakeIdentity4x4();
         BaseEnemy::Update(deltaTime);
         return;
     }
 
     EnsureBaseScale();
+    scriptedMovementThisFrame_ = false;
     idleTimer_ += deltaTime;
-    locomotionLandingTimer_ = (std::max)(0.0f, locomotionLandingTimer_ - deltaTime);
+    locomotion_.TickCooldown(deltaTime);
     attackCooldown_ = (std::max)(0.0f, attackCooldown_ - deltaTime);
     landingPulseTimer_ = (std::max)(0.0f, landingPulseTimer_ - deltaTime);
 
     engine::Vector3 targetDirection = lockedDirection_;
     float targetDistance = 9999.0f;
+
     if (target_) {
         const engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
         targetDirection = NormalizePlanar(toTarget);
         targetDistance = PlanarDistance(target_->GetWorldPosition(), GetWorldPosition());
     }
+
     UpdateBossTargetEngagement(targetDistance);
 
     const engine::Vector3 previousVelocity = GetVelocity();
@@ -93,63 +107,63 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     velocity.x = 0.0f;
     velocity.z = 0.0f;
     UpdateBehavior(deltaTime, targetDirection, targetDistance, velocity);
-    const float locomotionIntentSpeed = SlimeBounceAnimator::PlanarSpeed(velocity);
-    if (attackState_ == AttackState::Idle && target_ && param_.has_value()) {
-        velocity = CombatMath::SmoothPlanarVelocity(previousVelocity, velocity, deltaTime, 5.0f);
-        const engine::Vector3 candidate = GetTranslate() + engine::Vector3{velocity.x * 0.42f, 0.0f, velocity.z * 0.42f};
-        if (isGrounded_ && !CombatGroundQuery::CanWalkTo(GetTranslate(), candidate, this, {4.0f, 12.0f}, 1.2f)) {
-            velocity.x = 0.0f;
-            velocity.z = 0.0f;
-        }
-    }
-    if (attackState_ == AttackState::Idle) {
-        if (locomotionAirborne_ && isGrounded_) {
-            locomotionLandingTimer_ = kLocomotionLandingDuration;
-            locomotionAirborne_ = false;
-            BossGroundHopVfx::EmitPuff(
-                CombatGroundQuery::FindGroundPoint(GetTranslate(), this, {4.0f, 12.0f}, GetTranslate().y) +
-                    engine::Vector3{0.0f, 0.04f, 0.0f},
-                {1.0f, 0.52f, 0.18f, 0.78f}, 2.6f, true);
-        }
-        if (SlimeBounceAnimator::StepBossGroundHop(locomotionHopTimer_, velocity, locomotionIntentSpeed,
-                                                   isGrounded_ && param_.has_value(), deltaTime, kLocomotionHopInterval,
-                                                   kLocomotionAnticipationDuration, 0.22f)) {
-            velocity.y = (std::max)(velocity.y, std::clamp(param_->jumpPower * kLocomotionHopPowerScale, 9.0f, 15.0f));
-            locomotionAirborne_ = true;
-            BossGroundHopVfx::EmitPuff(
-                CombatGroundQuery::FindGroundPoint(GetTranslate(), this, {4.0f, 12.0f}, GetTranslate().y) +
-                    engine::Vector3{0.0f, 0.04f, 0.0f},
-                {1.0f, 0.52f, 0.18f, 0.62f}, 2.3f, false);
-        }
-    } else {
-        locomotionHopTimer_ = 0.0f;
-        locomotionLandingTimer_ = 0.0f;
-        locomotionAirborne_ = false;
-    }
+
     SetVelocity(velocity);
     ApplySlimeAnimation(deltaTime);
+    UpdateSlamBodyPose();
     UpdateBodyHeat(deltaTime);
     SyncCollisionRadius();
+    SetMotorSuspended(scriptedMovementThisFrame_);
     BaseEnemy::Update(deltaTime);
+    SetMotorSuspended(false);
     UpdateChantVisual(deltaTime);
 }
 
 void EnemyMagmaSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    // シーン管理外の詠唱陣と火柱の補助表示も本体と同じ描画順で出す。
+    // 不透明な本体を先に描き、加算の詠唱陣は地形の後へ送る。
     BaseEnemy::Draw(pointLightResource, spotLightResource);
+}
+
+void EnemyMagmaSlime::DrawOwnedTransparentVisuals(ID3D12Resource* pointLightResource,
+                                                    ID3D12Resource* spotLightResource) {
+    if (!GetIsRenderVisible()) return;
     if (chantVisual_) {
         chantVisual_->Draw(pointLightResource, spotLightResource);
     }
+
     for (const auto& sigil : fireColumnSigils_) {
         if (sigil && sigil->GetIsVisible()) {
             sigil->RefreshRenderCameraData();
             sigil->Draw(pointLightResource, spotLightResource);
         }
     }
+
     for (const auto& link : fireColumnLinks_) {
         if (link && link->GetIsVisible()) {
             link->RefreshRenderCameraData();
             link->Draw(pointLightResource, spotLightResource);
+        }
+    }
+}
+
+void EnemyMagmaSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+                                    ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    if (!camera || !GetIsRenderVisible()) return;
+    engine::Object3d::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+}
+
+void EnemyMagmaSlime::DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+                                                            ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    if (!camera || !GetIsRenderVisible()) return;
+    if (chantVisual_) chantVisual_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    for (const auto& sigil : fireColumnSigils_) {
+        if (sigil && sigil->GetIsVisible()) {
+            sigil->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+        }
+    }
+    for (const auto& link : fireColumnLinks_) {
+        if (link && link->GetIsVisible()) {
+            link->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     }
 }
@@ -162,9 +176,11 @@ void EnemyMagmaSlime::OnSwitchEvent(bool active) {
     }
 
     encounterRequestedActive_ = active;
+
     if (!encounterInitializedForPlay_) {
         InitializeEncounterState();
     }
+
     if (active && encounterState_ == EncounterState::Dormant) {
         BeginEncounterAppearance();
     } else if (!active && encounterState_ != EncounterState::Dormant) {
@@ -198,6 +214,7 @@ bool EnemyMagmaSlime::HasOwnedSpecialMaterialVisuals() const {
     if (!GetIsVisible()) {
         return false;
     }
+
     return !magmaBlobs_.empty() || !magmaPools_.empty() || !magmaRings_.empty() || !magmaPillars_.empty() ||
            !magmaSurges_.empty() || !magmaFloodCells_.empty() || rushFlameVisuals_[0] != nullptr ||
            fireColumnVisuals_[0] != nullptr;
@@ -211,51 +228,60 @@ void EnemyMagmaSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, u
             blob.visual->DrawMagma(depthSrvHandle, grabSrvHandle);
         }
     }
+
     for (const MagmaPool& pool : magmaPools_) {
         if (pool.visual && pool.visual->GetIsVisible()) {
             pool.visual->RefreshRenderCameraData();
             pool.visual->DrawMagma(depthSrvHandle, grabSrvHandle);
         }
     }
+
     for (const MagmaRing& ring : magmaRings_) {
         if (ring.visual && ring.visual->GetIsVisible()) {
             ring.visual->RefreshRenderCameraData();
             ring.visual->DrawShockwave(depthSrvHandle, grabSrvHandle);
         }
     }
+
     for (const MagmaPillar& pillar : magmaPillars_) {
         if (pillar.visual && pillar.visual->GetIsVisible()) {
             pillar.visual->RefreshRenderCameraData();
             pillar.visual->DrawFire(depthSrvHandle, grabSrvHandle);
         }
     }
+
     for (const MagmaSurge& surge : magmaSurges_) {
         if (surge.visual && surge.visual->GetIsVisible()) {
             surge.visual->RefreshRenderCameraData();
             surge.visual->DrawMagma(depthSrvHandle, grabSrvHandle);
         }
+
         if (surge.crestVisual && surge.crestVisual->GetIsVisible()) {
             surge.crestVisual->RefreshRenderCameraData();
             surge.crestVisual->DrawFire(depthSrvHandle, grabSrvHandle);
         }
     }
+
     for (const std::unique_ptr<engine::Object3d>& flame : rushFlameVisuals_) {
         if (flame && flame->GetIsVisible()) {
             flame->RefreshRenderCameraData();
             flame->DrawFire(depthSrvHandle, grabSrvHandle);
         }
     }
+
     for (const std::unique_ptr<engine::Object3d>& flame : fireColumnVisuals_) {
         if (flame && flame->GetIsVisible()) {
             flame->RefreshRenderCameraData();
             flame->DrawFire(depthSrvHandle, grabSrvHandle);
         }
     }
+
     for (const MagmaFloodCell& cell : magmaFloodCells_) {
         if (cell.surface && cell.surface->GetIsVisible()) {
             cell.surface->RefreshRenderCameraData();
             cell.surface->DrawMagma(depthSrvHandle, grabSrvHandle);
         }
+
         if (cell.crest && cell.crest->GetIsVisible()) {
             cell.crest->RefreshRenderCameraData();
             cell.crest->DrawMagma(depthSrvHandle, grabSrvHandle);
@@ -266,6 +292,7 @@ void EnemyMagmaSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, u
 void EnemyMagmaSlime::SetDebugPreviewAttackId(const std::string& attackId) {
     // プレビューの技を変える際に、旧技の予告と残存エフェクトを消す。
     debugPreviewAttackId_ = attackId;
+    locomotion_.Reset();
     currentAttack_ = AttackKind::None;
     attackState_ = AttackState::Idle;
     attackCooldown_ = 0.05f;
@@ -279,10 +306,13 @@ const char* EnemyMagmaSlime::GetDebugAttackPhaseName() const {
     switch (attackState_) {
     case AttackState::Windup:
         return "予兆";
+
     case AttackState::Active:
         return "攻撃";
+
     case AttackState::Recovery:
         return "硬直";
+
     default:
         return "待機";
     }
@@ -293,6 +323,7 @@ void EnemyMagmaSlime::EnsureBaseScale() {
     if (hasBaseScale_) {
         return;
     }
+
     baseScale_ = GetScale();
     hasBaseScale_ = true;
 }
@@ -305,6 +336,11 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
         return;
     }
 
+    if (locomotion_.IsActive()) {
+        UpdateLocomotion(deltaTime, targetDirection, velocity);
+        return;
+    }
+
     if (!target_ || !param_.has_value()) {
         const float verticalVelocity = velocity.y;
         velocity = CalculateWanderVelocity(deltaTime, 0.48f, 0.38f);
@@ -314,6 +350,7 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
     }
 
     UpdateFacing(targetDirection);
+
     if (UpdateNoticeReaction(deltaTime, targetDistance, detectionRange_, targetDirection)) {
         return;
     }
@@ -323,20 +360,62 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
         debugAttack != AttackKind::None ? debugAttack : ResolveAutomaticAttack(targetDistance);
     const EnemyAttackDefinition& planned = GetAttackDefinition(GetAttackId(plannedAttack));
     const bool inRange = targetDistance >= planned.minRange && targetDistance <= planned.maxRange;
-    if ((!locomotionAirborne_ || isGrounded_) && IsBossTargetEngaged() && attackCooldown_ <= 0.0f && inRange) {
+
+    if (isGrounded_ && IsBossTargetEngaged() && attackCooldown_ <= 0.0f && inRange) {
         StartAttack(plannedAttack, targetDirection);
         return;
     }
 
-    // 射程外では次の技を待ち続けず、攻撃できる距離まで素早く近づきます。
-    const float moveSpeed = targetDistance > planned.maxRange ? (std::max)(5.5f, param_->speed * 3.0f)
-                                                              : (std::max)(0.70f, param_->speed * 0.82f);
-    const float preferredDistance = (std::clamp)(planned.recommendedTargetDistance, 4.5f, 11.0f);
-    const engine::Vector3 spacing =
-        CombatMath::MakePacedSpacingVelocity(targetDirection, targetDistance, preferredDistance - 1.2f,
-                                             preferredDistance + 1.4f, moveSpeed, 0.48f, 0.36f, idleTimer_, 6.2f);
-    velocity.x = spacing.x;
-    velocity.z = spacing.z;
+    if (!debugPreviewAttackId_.empty() || !isGrounded_ || !locomotion_.CanBegin()) return;
+
+    // 重い身体は長く溜めて短めに跳び、近距離では地面を離れず小さく位置を変える。
+    const float preferredDistance = std::clamp(planned.recommendedTargetDistance, 4.5f, 11.0f);
+    const bool farAway = targetDistance > preferredDistance + 2.3f;
+    const bool tooClose = targetDistance < preferredDistance - 2.3f;
+    const float side = (locomotionStepSerial_ & 1u) == 0u ? 1.0f : -1.0f;
+    const engine::Vector3 lateral = {targetDirection.z * side, 0.0f, -targetDirection.x * side};
+    const engine::Vector3 movement = farAway ? NormalizePlanar(targetDirection + lateral * 0.20f)
+        : (tooClose ? NormalizePlanar(targetDirection * -1.0f + lateral * 0.18f) : lateral);
+    const float stepDistance = farAway ? std::clamp(targetDistance - preferredDistance, 1.9f, 3.4f)
+                                       : std::clamp(param_->speed * 0.55f, 0.65f, 1.15f);
+    ++locomotionStepSerial_;
+
+    BossGroundLocomotion::Style style;
+    style.windup = farAway ? 0.25f : 0.18f;
+    style.travelSpeed = farAway ? std::clamp(param_->speed * 3.8f, 3.7f, 7.5f)
+                                  : std::clamp(param_->speed * 1.9f, 2.2f, 4.5f);
+    style.minimumTravelTime = farAway ? 0.50f : 0.27f;
+    style.maximumTravelTime = farAway ? 0.72f : 0.44f;
+    style.landing = farAway ? 0.30f : 0.21f;
+    style.cooldown = farAway ? 0.90f : 1.10f;
+    style.arcHeight = farAway ? std::clamp(param_->jumpPower * 0.035f, 0.70f, 1.08f) : 0.0f;
+    style.maximumHeightDifference = 1.2f;
+
+    const engine::Vector3 current = GetTranslate();
+    if (!locomotion_.Begin(current, current + movement * stepDistance, farAway, this, style)) {
+        locomotion_.Delay(0.38f);
+    }
+}
+
+void EnemyMagmaSlime::UpdateLocomotion(float deltaTime, const engine::Vector3& targetDirection,
+                                      engine::Vector3& velocity) {
+    const BossGroundLocomotion::Frame frame = locomotion_.Advance(deltaTime);
+    if (!frame.scripted) return;
+
+    SetTranslate(frame.position);
+    SetGrounded(!frame.airborne);
+    scriptedMovementThisFrame_ = true;
+    velocity = {};
+    const bool landing = locomotion_.GetPhase() == BossGroundLocomotion::Phase::Landing;
+    UpdateFacing(locomotion_.IsLeap() && !landing ? locomotion_.GetDirection() : targetDirection);
+
+    if (frame.takeoff || frame.landed) {
+        const engine::Vector3 ground = CombatGroundQuery::FindGroundPoint(
+            frame.position, this, {4.0f, 12.0f}, frame.position.y) + engine::Vector3{0.0f, 0.04f, 0.0f};
+        BossGroundHopVfx::EmitPuff(ground, frame.landed ? engine::Vector4{1.0f, 0.52f, 0.18f, 0.78f}
+                                                         : engine::Vector4{1.0f, 0.52f, 0.18f, 0.62f},
+                                   frame.landed ? 2.6f : 2.3f, frame.landed);
+    }
 }
 
 // 照準と攻撃タイマーを確定し、設置技の予告位置と詠唱演出を準備します。
@@ -344,6 +423,8 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
     if (kind == AttackKind::None) {
         return;
     }
+
+    locomotion_.Reset();
 
     currentAttack_ = kind;
     attackState_ = AttackState::Windup;
@@ -371,10 +452,12 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
     } else if (kind == AttackKind::EruptionField) {
         PrepareEruptionTargets();
     }
+
     if (kind == AttackKind::FireColumn) {
         PrepareFireColumnTargets();
         CreateFireColumnSigils();
     }
+
     // 突進とプレス以外の術式には、共通の術者中心の詠唱演出を使います。
     if (kind == AttackKind::MagmaMortar || kind == AttackKind::EruptionField || kind == AttackKind::LavaSpiral ||
         kind == AttackKind::FireColumn || kind == AttackKind::MagmaFlood) {
@@ -387,10 +470,12 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
         style.radius = std::clamp(baseScale_.x * 1.35f, 2.4f, 4.0f);
         style.fadeStart = (std::max)(0.0f, attack.activeDuration - 0.22f);
         chantVisual_ = std::make_unique<BossChantVisual>();
+
         if (!chantVisual_->Start(common_, std::move(style))) {
             chantVisual_.reset();
         }
     }
+
     if (debugPreviewAttackId_.empty()) {
         lastAutomaticAttack_ = kind;
         ++attackCycleIndex_;
@@ -405,29 +490,57 @@ void EnemyMagmaSlime::UpdateAttack(float deltaTime, const engine::Vector3& targe
         if (attackTimer_ > GetCurrentAttackDefinition().warningLeadTime && target_) {
             lockedDirection_ = NormalizePlanar(targetDirection);
             lockedTargetPosition_ = FindGroundPoint(target_->GetWorldPosition());
+
             if (currentAttack_ == AttackKind::MagmaMortar) {
                 PrepareMortarTargets();
             } else if (currentAttack_ == AttackKind::EruptionField) {
                 PrepareEruptionTargets();
             }
         }
+
         UpdateFacing(lockedDirection_);
         UpdateWindup(deltaTime, targetDirection);
         return;
     }
+
     if (attackState_ == AttackState::Active) {
         UpdateActive(deltaTime, targetDistance, velocity);
         return;
     }
+
     if (attackState_ == AttackState::Recovery) {
         attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         HideAttackTelegraph();
+
         if (attackTimer_ <= 0.0f) {
             FinishAttack();
         }
     }
+}
+
+void EnemyMagmaSlime::UpdateSlamBodyPose() {
+    if (!slamVisualPose_) return;
+    *slamVisualPose_ = engine::Math::MakeIdentity4x4();
+    if (currentAttack_ != AttackKind::VolcanicSlam) return;
+
+    float phaseTime = 0.0f;
+    const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
+    if (attackState_ == AttackState::Windup) phaseTime = progress;
+    else if (attackState_ == AttackState::Active) phaseTime = 1.0f + progress;
+    else if (attackState_ == AttackState::Recovery) phaseTime = 2.0f + progress;
+    else return;
+
+    BodyAnimationClip::Sample pose;
+    if (!slamBodyClip_.Evaluate(phaseTime, false, pose)) return;
+    engine::Matrix4x4 shear = engine::Math::MakeIdentity4x4();
+    shear.m[1][0] = pose.shear.x;
+    shear.m[1][2] = pose.shear.z;
+    shear.m[3][0] = -pose.shearPivotY * pose.shear.x;
+    shear.m[3][2] = -pose.shearPivotY * pose.shear.z;
+    *slamVisualPose_ = engine::Math::Multiply(
+        shear, engine::Math::MakeAffineMatrix(pose.scale, pose.rotate, pose.translate));
 }
 
 void EnemyMagmaSlime::UpdateWindup(float deltaTime, const engine::Vector3&) {
@@ -443,26 +556,33 @@ void EnemyMagmaSlime::UpdateWindup(float deltaTime, const engine::Vector3&) {
         ShowAttackTelegraphImpactAreas(mortarTargets_.data(), mortarTargets_.size(), attack.radius, progress,
                                        warningColor);
         break;
+
     case AttackKind::LavaRush:
         ShowAttackTelegraphLine(GetTranslate(), lockedDirection_, attack.maxRange, attack.radius * 2.0f, progress,
                                 warningColor);
         break;
+
     case AttackKind::VolcanicSlam:
         ShowAttackTelegraphCircle(lockedTargetPosition_, attack.radius, progress, warningColor);
         break;
+
     case AttackKind::EruptionField:
         ShowAttackTelegraphImpactAreas(eruptionTargets_.data(), eruptionTargets_.size(), attack.radius, progress,
                                        warningColor);
         break;
+
     case AttackKind::LavaSpiral:
         ShowAttackTelegraphCircle(GetTranslate(), attack.maxRange, progress, warningColor);
         break;
+
     case AttackKind::FireColumn:
         break;
+
     case AttackKind::MagmaFlood:
         ShowAttackTelegraphLine(GetTranslate(), lockedDirection_, attack.maxRange, attack.radius * 2.0f, progress,
                                 warningColor);
         break;
+
     default:
         break;
     }
@@ -483,8 +603,10 @@ void EnemyMagmaSlime::UpdateWindup(float deltaTime, const engine::Vector3&) {
         if (currentAttack_ != AttackKind::FireColumn) {
             TriggerAttackTelegraphCue({1.0f, 0.18f, 0.015f, 1.0f});
         }
+
         warningTriggered_ = true;
     }
+
     if (attackTimer_ <= 0.0f) {
         BeginActive();
     }
@@ -527,33 +649,42 @@ void EnemyMagmaSlime::UpdateActive(float deltaTime, float targetDistance, engine
             ++actionIndex_;
             actionTimer_ += kMortarInterval;
         }
+
         break;
+
     case AttackKind::LavaRush:
         UpdateRush(deltaTime, targetDistance, velocity);
         break;
+
     case AttackKind::VolcanicSlam:
         UpdateVolcanicSlam(deltaTime, velocity);
         break;
+
     case AttackKind::EruptionField:
         while (actionIndex_ < static_cast<int>(eruptionTargets_.size()) && actionTimer_ <= 0.0f) {
             SpawnNextMagmaPillar();
             ++actionIndex_;
             actionTimer_ += kEruptionInterval;
         }
+
         break;
+
     case AttackKind::LavaSpiral:
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         break;
+
     case AttackKind::FireColumn:
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         UpdateFireColumn(deltaTime);
         break;
+
     case AttackKind::MagmaFlood:
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         break;
+
     default:
         break;
     }
@@ -573,6 +704,7 @@ void EnemyMagmaSlime::BeginRecovery() {
     landingPulseTimer_ = 0.34f;
     SetGrounded(true);
     HideAttackTelegraph();
+
     for (auto& flame : fireColumnVisuals_)
         flame.reset();
     for (auto& sigil : fireColumnSigils_)
@@ -602,10 +734,13 @@ void EnemyMagmaSlime::PrepareAttackCycle() {
         AttackKind::MagmaMortar, AttackKind::LavaRush,   AttackKind::VolcanicSlam, AttackKind::EruptionField,
         AttackKind::LavaSpiral,  AttackKind::FireColumn, AttackKind::MagmaFlood,
     };
+
     std::shuffle(attackCycle_.begin(), attackCycle_.end(), attackRandom_);
+
     if (attackCycle_[0] == lastAutomaticAttack_) {
         std::swap(attackCycle_[0], attackCycle_[1]);
     }
+
     attackCycleIndex_ = 0;
 }
 
@@ -614,16 +749,20 @@ EnemyMagmaSlime::AttackKind EnemyMagmaSlime::ResolveAutomaticAttack(float target
     if (attackCycleIndex_ >= attackCycle_.size()) {
         PrepareAttackCycle();
     }
+
     for (std::size_t index = attackCycleIndex_; index < attackCycle_.size(); ++index) {
         if (attackCycleIndex_ == 0 && attackCycle_[index] == lastAutomaticAttack_) {
             continue;
         }
+
         const EnemyAttackDefinition& attack = GetAttackDefinition(GetAttackId(attackCycle_[index]));
+
         if (targetDistance >= attack.minRange && targetDistance <= attack.maxRange) {
             std::swap(attackCycle_[attackCycleIndex_], attackCycle_[index]);
             break;
         }
     }
+
     return attackCycle_[attackCycleIndex_];
 }
 
@@ -651,18 +790,25 @@ const char* EnemyMagmaSlime::GetAttackId(AttackKind kind) const {
     switch (kind) {
     case AttackKind::MagmaMortar:
         return kMagmaMortarAttackId;
+
     case AttackKind::LavaRush:
         return kLavaRushAttackId;
+
     case AttackKind::VolcanicSlam:
         return kVolcanicSlamAttackId;
+
     case AttackKind::EruptionField:
         return kEruptionFieldAttackId;
+
     case AttackKind::LavaSpiral:
         return kLavaSpiralAttackId;
+
     case AttackKind::FireColumn:
         return kFireColumnAttackId;
+
     case AttackKind::MagmaFlood:
         return kMagmaFloodAttackId;
+
     default:
         return "";
     }
@@ -713,6 +859,7 @@ std::unique_ptr<engine::Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::
             parameter->effectSoftness = isFire ? 0.48f : 0.36f;
             parameter->effectIntensity = isShockwave ? 1.55f : (isFire ? 1.48f : 1.34f);
             parameter->billboardScale = 1.0f;
+
             if (isFire) {
                 parameter->effectScaleX = 0.46f;
                 parameter->effectScaleY = 1.0f;
@@ -722,6 +869,7 @@ std::unique_ptr<engine::Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::
             }
         }
     }
+
     return visual;
 }
 
@@ -767,9 +915,44 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
     engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
     engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
 
-    if (attackState_ == AttackState::Windup) {
+    if (attackState_ == AttackState::Idle && locomotion_.IsActive()) {
+        const float progress = locomotion_.GetProgress();
+        if (locomotion_.GetPhase() == BossGroundLocomotion::Phase::Windup) {
+            const float squash = SmoothStep01(progress) * (locomotion_.IsLeap() ? 0.24f : 0.10f);
+            targetScale = {baseScale_.x * (1.0f + squash * 0.65f), baseScale_.y * (1.0f - squash),
+                           baseScale_.z * (1.0f + squash * 0.65f)};
+            targetRotation.x -= squash * 0.30f;
+        } else if (locomotion_.GetPhase() == BossGroundLocomotion::Phase::Travel) {
+            const float arc = std::sin(progress * kPi);
+            if (locomotion_.IsLeap()) {
+                targetScale = {baseScale_.x * 0.96f, baseScale_.y * (1.07f + arc * 0.05f), baseScale_.z * 0.96f};
+                targetRotation.x -= arc * 0.055f;
+            } else {
+                targetScale = {baseScale_.x * (1.0f + arc * 0.035f), baseScale_.y,
+                               baseScale_.z * (1.0f - arc * 0.020f)};
+                targetRotation.z -= arc * 0.06f;
+            }
+        } else {
+            const float squash = (1.0f - SmoothStep01(progress)) * (locomotion_.IsLeap() ? 0.30f : 0.11f);
+            targetScale = {baseScale_.x * (1.0f + squash * 0.75f), baseScale_.y * (1.0f - squash),
+                           baseScale_.z * (1.0f + squash * 0.75f)};
+        }
+    } else if (attackState_ == AttackState::Idle && isGrounded_) {
+        // 停止中は縦倍率を固定し、呼吸だけで足元が上下しないようにする。
+        const float speedRate = std::clamp(SlimeBounceAnimator::PlanarSpeed(GetVelocity()) / 2.8f, 0.0f, 1.0f);
+        const float breath = std::sin(idleTimer_ * 1.8f) * 0.020f * (1.0f - speedRate);
+        targetScale = {baseScale_.x * (1.0f + breath * 0.5f), baseScale_.y,
+                       baseScale_.z * (1.0f + breath * 0.5f)};
+    }
+
+    // 予備動作は技ごとに異なる圧縮と震えを作り、攻撃前の種類を見分けられるようにする。
+    if (slamVisualPose_ && currentAttack_ == AttackKind::VolcanicSlam && attackState_ != AttackState::Idle) {
+        // 火山プレスはBody Clipを唯一の姿勢源にし、コード側の伸縮を重ねない。
+        targetScale = baseScale_;
+    } else if (attackState_ == AttackState::Windup) {
         const float progress = SmoothStep01(1.0f - attackTimer_ / (std::max)(attackStateDuration_, 0.01f));
         const float tremble = std::sin(progress * kPi * 15.0f) * progress * 0.035f;
+
         if (currentAttack_ == AttackKind::VolcanicSlam) {
             targetScale = {
                 baseScale_.x * (1.0f + progress * 0.42f + tremble),
@@ -782,6 +965,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.y * (1.0f - progress * 0.29f),
                 baseScale_.z * (1.0f + progress * 0.18f - tremble),
             };
+
             targetRotation.x = -progress * 0.10f;
         } else if (currentAttack_ == AttackKind::EruptionField) {
             targetScale = {
@@ -789,6 +973,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.y * (1.0f - progress * 0.30f),
                 baseScale_.z * (1.0f + progress * 0.34f - tremble),
             };
+
             targetRotation.z = tremble * 1.8f;
         } else if (currentAttack_ == AttackKind::LavaSpiral) {
             const float coil = std::sin(progress * kPi * 6.0f) * progress;
@@ -797,13 +982,16 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.y * (1.0f - progress * 0.18f),
                 baseScale_.z * (1.0f + progress * 0.22f - coil * 0.06f),
             };
+
             targetRotation.z = coil * 0.12f;
         } else {
             targetScale = SlimeBounceAnimator::MakeChargeSquash(baseScale_, progress, idleTimer_, 0.92f);
             targetRotation.z = tremble * 1.2f;
         }
     } else if (attackState_ == AttackState::Active) {
+        // 発動中は着地・突進・連射の動きに合わせた形へ切り替える。
         const float progress = 1.0f - attackTimer_ / (std::max)(attackStateDuration_, 0.01f);
+
         if (currentAttack_ == AttackKind::MagmaMortar) {
             const float recoil = std::sin(progress * kPi * 6.0f);
             targetScale = {
@@ -818,6 +1006,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.y * 0.72f,
                 baseScale_.z * (1.42f - speedPulse),
             };
+
             targetRotation.x = -0.12f;
         } else if (currentAttack_ == AttackKind::VolcanicSlam) {
             const float airborne = std::sin(progress * kPi);
@@ -827,6 +1016,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.y * (1.34f + airborne * 0.22f - landing * 0.62f),
                 baseScale_.z * (0.88f + landing * 0.45f),
             };
+
             targetRotation.x = -airborne * 0.075f;
         } else if (currentAttack_ == AttackKind::EruptionField) {
             const float eruptionPulse = std::sin(progress * kPi * 18.0f);
@@ -835,6 +1025,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.y * (0.78f - eruptionPulse * 0.08f),
                 baseScale_.z * (1.18f + std::abs(eruptionPulse) * 0.09f),
             };
+
             targetRotation.z = eruptionPulse * 0.065f;
         } else if (currentAttack_ == AttackKind::LavaSpiral) {
             const float spiralPulse = std::sin(progress * kPi * 12.0f);
@@ -843,9 +1034,11 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.y * (0.76f - std::abs(spiralPulse) * 0.06f),
                 baseScale_.z * (1.22f - spiralPulse * 0.08f),
             };
+
             targetRotation.z = std::sin(progress * kPi * 4.0f) * 0.16f;
         }
     } else if (attackState_ == AttackState::Recovery || landingPulseTimer_ > 0.0f) {
+        // 硬直と着地後の反動を同じ減衰で処理し、通常形状へ戻す。
         const float remaining = attackState_ == AttackState::Recovery
                                     ? std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f)
                                     : std::clamp(landingPulseTimer_ / 0.34f, 0.0f, 1.0f);
@@ -857,13 +1050,11 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
         };
     }
 
-    if (attackState_ == AttackState::Idle) {
+    if (attackState_ == AttackState::Idle && !locomotion_.IsActive()) {
         SlimeBounceAnimator::ApplyTravelPose(targetScale, targetRotation, baseScale_, GetVelocity(),
                                              GetRotation().y - kMagmaSlimeModelYawOffset, 3.4f, 0.065f, 0.045f);
-        SlimeBounceAnimator::ApplyGroundHopPose(targetScale, baseScale_, isGrounded_, locomotionHopTimer_,
-                                                kLocomotionHopInterval, kLocomotionAnticipationDuration,
-                                                locomotionLandingTimer_, kLocomotionLandingDuration);
     }
+
     ApplyDamageReactionPose(targetScale, targetRotation);
     const float rate = 1.0f - std::exp(-deltaTime * 12.0f);
     const engine::Vector3 currentScale = GetScale();
@@ -885,6 +1076,7 @@ void EnemyMagmaSlime::UpdateFacing(const engine::Vector3& direction) {
     if (direction.x * direction.x + direction.z * direction.z <= 0.0001f) {
         return;
     }
+
     const float targetYaw = std::atan2(direction.x, direction.z) + kMagmaSlimeModelYawOffset;
     SetRotationY(engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.10f));
 }
@@ -902,6 +1094,7 @@ void EnemyMagmaSlime::UpdateBodyHeat(float deltaTime) {
         0.84f + attackGlow * 0.07f + pulse * 0.04f,
         1.0f,
     };
+
     SetColor(defaultColor_);
 
     if (ambientEmberTimer_ <= 0.0f) {
@@ -914,6 +1107,7 @@ void EnemyMagmaSlime::UpdateBodyHeat(float deltaTime) {
 void EnemyMagmaSlime::EmitPreset(const char* presetName, const engine::Vector3& position) const {
     // GPU粒子が利用できる場合だけ指定プリセットを発生させる。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
+
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->Emit(presetName, position);
     }
@@ -923,6 +1117,7 @@ void EnemyMagmaSlime::EmitDirectedPreset(const char* presetName, const engine::V
                                          float speedScale) const {
     // 発射方向と速度倍率を持つ粒子だけを、GPU粒子管理器が有効な場合に放出する。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
+
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);
     }
@@ -937,7 +1132,9 @@ void EnemyMagmaSlime::SyncCollisionRadius() {
 
 void EnemyMagmaSlime::ClearTransientVisuals() {
     // 敗北や技切替の後に設置物・火柱・詠唱陣が残らないよう、一時演出を消す。
+    if (slamVisualPose_) *slamVisualPose_ = engine::Math::MakeIdentity4x4();
     ClearRushFlameVisuals();
+
     for (auto& flame : fireColumnVisuals_)
         flame.reset();
     for (auto& sigil : fireColumnSigils_)

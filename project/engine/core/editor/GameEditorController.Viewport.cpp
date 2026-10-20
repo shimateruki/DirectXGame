@@ -42,10 +42,12 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 
 			if (debugEditor_) {
 				debugEditor_->SetGameViewScreenRect(imageMin.x, imageMin.y, imageMax.x, imageMax.y);
+
 				if (!sceneTransitioning) {
 					debugEditor_->SetGameViewRegion({ area.screenX, area.screenY }, { area.width, area.height });
 					debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 					debugEditor_->SetGameViewHovered(canEditViewport && imageHovered);
+
                     // 攻撃編集中も再生時計・隔離ステージを更新します。
                     // 通常Sceneへの入力だけをDebugEditor側で止めます。
                     debugEditor_->Update();
@@ -54,9 +56,11 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 					if (canEditViewport && !attackPlacement && imageHovered && !ImGuizmo::IsOver() && openCreateMenu) {
 						debugEditor_->OpenGameViewCreateContextMenu();
 					}
+
 					if (canEditViewport && !attackPlacement) {
 						debugEditor_->DrawGameViewCreateContextMenu();
 					}
+
 					frameState.gizmoBusy = canEditViewport && ImGuizmo::IsUsing();
 				}
 				else {
@@ -69,6 +73,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::kClientWidth) / area.width),
 					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::kClientHeight) / area.height),
 				};
+
 				spriteDebugEditor_->Update(spriteLocalPos, imageHovered);
 				frameState.spriteEditorBusy = spriteDebugEditor_->IsMouseBusy();
 			}
@@ -77,21 +82,28 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 				DrawGhostPreview(false, area);
 				Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
 				engine::Object3d* selectedObject = debugEditor_ && !attackPlacement ? debugEditor_->GetSelectedObject() : nullptr;
+
 				if (!IsObjectInCurrentScene(sceneManager, selectedObject)) {
 					selectedObject = nullptr;
 				}
+
 				CameraEditor* cameraEditor = CameraEditor::GetInstance();
+
 				if (selectedObject && selectedObject->IsCameraObject()) {
 					cameraEditor->SetSelectedCameraObject(selectedObject);
 				}
 				else if (EditorManager::GetInstance()->GetSelectedObject() != cameraEditor) {
 					cameraEditor->SetSelectedCameraObject(nullptr);
 				}
-                if (EditorToolSettings::Get().IsVisible("objectOrientation")) DrawSelectedObjectOrientation(area, activeCamera, selectedObject);
-                    if (EditorToolSettings::Get().IsVisible("direction")) DrawSceneDirectionGizmo(area, activeCamera);
+
+                if (EditorToolSettings::Get().IsVisible("objectOrientation"))
+                    DrawSelectedObjectOrientation(area, activeCamera, selectedObject);
+                    if (EditorToolSettings::Get().IsVisible("direction"))
+                        DrawSceneDirectionGizmo(area, activeCamera);
 			}
 		}
 	}
+
 	ImGui::End();
 	ImGui::PopStyleVar();
 
@@ -113,15 +125,18 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 // 選択中のCamera Objectが実際に描画する画面を、通常のEditorウィンドウとして表示する。
 void DrawCameraObjectPreviewWindow() {
     // シーンカメラが選択され、プレビュー用の描画先がある間だけ専用ウィンドウを出す。
-    if (!EditorToolSettings::Get().IsVisible("sceneCameraPreview")) return;
+    if (!EditorToolSettings::Get().IsVisible("sceneCameraPreview"))
+        return;
 	CameraEditor* cameraEditor = CameraEditor::GetInstance();
 	engine::Object3d* cameraObject = cameraEditor ? cameraEditor->GetSelectedCameraObject() : nullptr;
+
 	if (!cameraObject || !cameraEditor->HasSceneCameraPreviewTarget()) {
 		return;
 	}
 
 	ImGui::SetNextWindowSize(ImVec2(560.0f, 390.0f), ImGuiCond_FirstUseEver);
 	const ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+
 	if (ImGui::Begin("Camera Object Preview", nullptr, flags)) {
 		const SceneCameraSettings& settings = cameraObject->GetSceneCameraSettings();
 		const char* roleLabel = settings.role == SceneCameraRole::kMain ? "Main" : "Cinematic";
@@ -141,11 +156,13 @@ void DrawCameraObjectPreviewWindow() {
 			true,
 			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
 			const ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+
 			if (canvasSize.x > 1.0f && canvasSize.y > 1.0f) {
 				// 描画結果の16:9比率を保ち、余白はキャンバス中央へ均等に置く。
 				constexpr float kAspect = 16.0f / 9.0f;
 				float previewWidth = canvasSize.x;
 				float previewHeight = previewWidth / kAspect;
+
 				if (previewHeight > canvasSize.y) {
 					previewHeight = canvasSize.y;
 					previewWidth = previewHeight * kAspect;
@@ -169,8 +186,10 @@ void DrawCameraObjectPreviewWindow() {
 				cameraEditor->SetSceneCameraPreviewWindowVisible(ImGui::IsItemVisible());
 			}
 		}
+
 		ImGui::EndChild();
 	}
+
 	ImGui::End();
 }
 
@@ -182,6 +201,7 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 
 	if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
 		const char* droppedFilename = static_cast<const char*>(payload->Data);
+
 		if (sceneManager && droppedFilename) {
 			if (BaseScene* currentScene = sceneManager->GetCurrentScene()) {
 				engine::SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
@@ -206,6 +226,7 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 				if (spriteDebugEditor_) {
 					spriteDebugEditor_->SetSelectedSprite(addedSprite);
 				}
+
 				DebugConsole::GetInstance()->AddLog("Dropped Sprite: " + std::string(droppedFilename));
 			}
 		}
@@ -214,6 +235,7 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 	if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
 		// 3D素材はEditor側のレイキャスト配置へ渡し、Spriteとは別経路で位置を決める。
 		const std::string droppedModelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
+
 		if (debugEditor_ && !droppedModelName.empty()) {
 			ImVec2 mousePos = ImGui::GetIO().MousePos;
 			debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
@@ -224,6 +246,7 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 	if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
 		// 複数Objectを持つプリセットはルート位置をEditor側で決めてから一括生成する。
 		const char* droppedPresetName = static_cast<const char*>(payload->Data);
+
 		if (debugEditor_ && droppedPresetName) {
 			ImVec2 mousePos = ImGui::GetIO().MousePos;
 			debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
@@ -233,12 +256,15 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 
 	            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PREFAB_ASSET")) {
                 const char* prefabName = static_cast<const char*>(payload->Data);
+
                 if (debugEditor_ && prefabName) {
                     debugEditor_->InstantiatePrefabAtCursor(prefabName);
                 }
             }
+
 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PARTICLE_ASSET")) {
 		const char* droppedParticleName = static_cast<const char*>(payload->Data);
+
 		if (debugEditor_ && droppedParticleName) {
 			ImVec2 mousePos = ImGui::GetIO().MousePos;
 			debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
@@ -257,6 +283,7 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 	}
 
 	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
 	if (!camera) {
 		return;
 	}
@@ -267,30 +294,39 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 			engine::Vector2{ area.screenX, area.screenY },
 			engine::Vector2{ area.width, area.height });
 	}
+
 	if (debugEditor_) {
 		engine::Object3d* selectedObject = debugEditor_->GetSelectedObject();
 		SceneManager* editorSceneManager = debugEditor_->GetSceneManager();
+
 		if (selectedObject && !IsObjectInCurrentScene(editorSceneManager, selectedObject)) {
 			debugEditor_->SetSelectedObject(nullptr);
+
 			if (EditorManager::GetInstance()->GetSelectedObject() == debugEditor_.get()) {
 				EditorManager::GetInstance()->ClearSelection();
 			}
+
 			selectedObject = nullptr;
 		}
+
 		if (editorSceneManager && editorSceneManager->GetCurrentScene()) {
 			for (const auto& object : editorSceneManager->GetCurrentScene()->GetObjects()) {
-				if (!object || object->GetRecordPathName().empty() || !object->recorder_) continue;
+				if (!object || object->GetRecordPathName().empty() || !object->recorder_)
+					continue;
 				object->recorder_->SetSceneManager(editorSceneManager);
-				if (!object->recorder_->HasPreviewData()) continue;
+				if (!object->recorder_->HasPreviewData())
+					continue;
 				object->recorder_->DrawPreview(
 					camera->GetViewProjectionMatrix(),
 					engine::Vector2{ area.screenX, area.screenY },
 					engine::Vector2{ area.width, area.height }, true);
 			}
 		}
+
 		// Path未割当でも、選択中のObjectで編集中の経路は表示する。
 		if (selectedObject && selectedObject->GetRecordPathName().empty() && selectedObject->recorder_) {
 			selectedObject->recorder_->SetSceneManager(editorSceneManager);
+
 			if (selectedObject->recorder_->HasPreviewData()) {
 				selectedObject->recorder_->DrawPreview(
 					camera->GetViewProjectionMatrix(),

@@ -22,10 +22,12 @@ void GraphicsPipelineBuilder::SetInputLayout(const D3D12_INPUT_ELEMENT_DESC* inp
 
 void GraphicsPipelineBuilder::SetShaders(IDxcBlob* vsBlob, IDxcBlob* psBlob) {
     // 頂点シェーダーとピクセルシェーダーのバイナリをPSOへ設定する。
-    if (vsBlob) desc_.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
+    if (vsBlob)
+        desc_.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     else desc_.VS = { nullptr, 0 };
 
-    if (psBlob) desc_.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
+    if (psBlob)
+        desc_.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
     else desc_.PS = { nullptr, 0 };
 }
 
@@ -57,9 +59,11 @@ void GraphicsPipelineBuilder::SetDepthStencilState(bool depthEnable, D3D12_DEPTH
 void GraphicsPipelineBuilder::SetRenderTargets(UINT numRenderTargets, const DXGI_FORMAT* rtvFormats, DXGI_FORMAT dsvFormat) {
     // 出力先RTV/DSVフォーマットを設定し、PSOと描画先の互換性を取る。
     desc_.NumRenderTargets = numRenderTargets;
+
     for (UINT i = 0; i < numRenderTargets; ++i) {
         desc_.RTVFormats[i] = rtvFormats[i];
     }
+
     desc_.DSVFormat = dsvFormat;
 }
 
@@ -73,6 +77,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         blendDesc.RenderTarget[0].BlendEnable = FALSE;
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
         break;
+
     case BlendMode::kNormal:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -83,6 +88,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
         break;
+
     case BlendMode::kAdd:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -93,6 +99,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO; // 深度書き込みOFF
         break;
+
     case BlendMode::kSubtract:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -103,6 +110,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         break;
+
     case BlendMode::kMultiply:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_ZERO;
@@ -113,6 +121,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         break;
+
     case BlendMode::kScreen:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_INV_DEST_COLOR;
@@ -124,6 +133,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         break;
     }
+
     desc_.BlendState = blendDesc;
 }
 

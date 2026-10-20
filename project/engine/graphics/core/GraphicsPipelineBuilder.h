@@ -10,6 +10,7 @@ class GraphicsPipelineBuilder {
 public:
     /// <summary>共通の初期値でパイプライン記述を作ります。</summary>
     GraphicsPipelineBuilder();
+
     ~GraphicsPipelineBuilder() = default;
 
     /// <summary>このパイプラインで使用するルートシグネチャを設定します。</summary>

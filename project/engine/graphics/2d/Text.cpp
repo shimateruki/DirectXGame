@@ -9,7 +9,8 @@ void Text::Initialize(engine::SpriteCommon* common, const std::string& fontTextu
 }
 
 void Text::SetString(const std::string& str) {
-    if (text_ == str) return; // 文字列が変わってなければ何もしない
+    if (text_ == str)
+        return; // 文字列が変わってなければ何もしない
     text_ = str;
 
     // 必要なスプライト数（文字数）に合わせて sprites_ を調整

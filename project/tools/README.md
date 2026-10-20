@@ -632,7 +632,6 @@ SDL2の `.lib/.dll/include` をリポジトリへ直接持ち続けず、必要�
 | --- | --- |
 | `generate_electric_particle_sprites.py` | 電撃系Particle Sprite生成。 |
 | `generate_input_ui_sprites.py` | 入力UI用Sprite生成。 |
-| `generate_morph_gauge_sprites.py` | モーフゲージ用Sprite生成。 |
 | `generate_simple_pop_fade_frames.py` | ポップ/フェード系フレーム生成。 |
 
 ### docs

@@ -38,12 +38,16 @@ struct EditorComponentDescriptor {
     EditorComponentInspectorMode inspectorMode = EditorComponentInspectorMode::Automatic;
     std::function<bool(engine::Object3d&)> add;
     std::function<bool(engine::Object3d&)> remove;
+
     /// Prefab/Scene JSONからComponentの存在状態を判定します。旧形式は値から推測し、明示Markerを優先します。
     std::function<bool(const nlohmann::json&)> serializedPresent;
+
     /// Prefab継承用にComponentの存在状態をJSONへ明示します。削除時は実行時機能も無効化します。
     std::function<void(nlohmann::json&, bool)> setSerializedPresent;
+
     /// Collider Presetなど、Component固有の追加候補です。
     std::vector<EditorComponentPresetDescriptor> presets;
+
     /// 専用Inspectorだけで扱う内部Componentはfalseにします。
     bool showInInspector = true;
 };
@@ -98,16 +102,22 @@ struct EditorPropertyDescriptor {
     EditorPropertyFlags flags = EditorPropertyFlags::None;
     std::function<nlohmann::json(const engine::Object3d&)> getter;
     std::function<bool(engine::Object3d&, const nlohmann::json&)> setter;
+
     /// ObjectのClassやComponent状態に応じて、このPropertyを表示できるか判定します。
     std::function<bool(const engine::Object3d&)> applicable;
+
     /// Integer PropertyをCombo表示する場合の選択肢です。
     std::vector<std::string> enumLabels;
+
     /// Propertyが属する安定したComponent Type IDです。
     std::string componentTypeId;
+
     /// Scene/Prefab JSONで使う保存パスです。空なら保存対象外です。
     std::string serializedPath;
+
     /// 旧Assetに値が存在しない場合の既定値です。nullは未定義を表します。
     nlohmann::json defaultValue;
+
     /// Inspectorなどの編集画面で共有するUI表示情報です。
     EditorPropertyUiHints ui;
 };
@@ -142,6 +152,7 @@ public:
 
     /// <summary>登録順のコンポーネント定義とプロパティ定義を返します。</summary>
     const std::vector<EditorComponentDescriptor>& GetComponents() const { return components_; }
+
     const std::vector<EditorPropertyDescriptor>& GetProperties() const { return properties_; }
 
     /// <summary>対象に適用できるコンポーネントを表示順で返します。</summary>
@@ -158,6 +169,7 @@ public:
 
     /// <summary>実体または保存JSONにコンポーネントが存在するか調べます。</summary>
     bool IsComponentPresent(const engine::Object3d* object, const std::string& typeId) const;
+
     bool IsComponentPresent(const nlohmann::json& serializedObject, const std::string& typeId) const;
 
     /// <summary>保存JSONのコンポーネント存在マーカーを更新します。</summary>
@@ -177,6 +189,7 @@ public:
 
     /// <summary>対象のプロパティ値を取得・設定します。</summary>
     nlohmann::json GetValue(const engine::Object3d* object, const std::string& path) const;
+
     bool SetValue(engine::Object3d* object, const std::string& path, const nlohmann::json& value) const;
 
     /// <summary>対象にプロパティを表示・編集できるか調べます。</summary>
@@ -188,8 +201,11 @@ public:
 private:
     /// <summary>標準定義を所有領域ごとに登録します。登録順はInspectorの表示順に影響します。</summary>
     void RegisterBuiltInComponents();
+
     void RegisterBuiltInBaseProperties();
+
     void RegisterBuiltInRenderAndComponentProperties();
+
     void RegisterBuiltInCameraAndGameplayProperties();
 
     // 重複登録を防ぎ、各種IDから定義を定数時間で探すための索引を保持します。

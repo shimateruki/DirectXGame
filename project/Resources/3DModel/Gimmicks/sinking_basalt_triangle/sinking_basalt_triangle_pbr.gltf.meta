@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "20187e21b5445b9093362fc08feeafcd",
+  "importer": "ModelImporter",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "source": "Resources/3DModel/Gimmicks/sinking_basalt_triangle/sinking_basalt_triangle_pbr.gltf",
+  "version": 1
+}

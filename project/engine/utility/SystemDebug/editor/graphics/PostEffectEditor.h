@@ -19,6 +19,7 @@ void DrawImGui() override;
 
     // パラメータの保存と読み込み
     void SaveParams(const std::string& filename = "Resources/json/post_effect.json");
+
     void LoadParams(const std::string& filename = "Resources/json/post_effect.json");
 
 private:

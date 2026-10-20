@@ -3,7 +3,7 @@
 #include "Math.h"
 #include <random>
 
-void GimmickChikuwaBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickChikuwaBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("ChikuwaBlock");
@@ -27,6 +27,7 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
 
     case State::Shaking:
         timer_ += deltaTime;
+
         // ランダムな微振動を加える
         {
             float intensity = 0.05f;
@@ -39,6 +40,7 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
         if (timer_ >= GetShakeDuration()) {
             ChangeState(State::Falling);
         }
+
         break;
 
     case State::Falling:
@@ -53,13 +55,16 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
         if (timer_ >= GetFallDuration()) {
             ChangeState(State::Hidden);
         }
+
         break;
 
     case State::Hidden:
         timer_ += deltaTime;
+
         if (timer_ >= GetRespawnDuration()) {
             ChangeState(State::Idle);
         }
+
         break;
     }
 
@@ -72,6 +77,7 @@ bool GimmickChikuwaBlock::OnCollision(engine::Object3d* other) {
     if (state_ == State::Idle) {
         if (other->GetClassName() == "Player") {
             CollisionInfo info = CheckCollision(other);
+
             if (info.isColliding) {
                 // プレイヤーが上に乗ったら（ブロックが押し出される法線が下向きなら）震え開始
                 if (info.normal.y < -0.5f) {
@@ -80,6 +86,7 @@ bool GimmickChikuwaBlock::OnCollision(engine::Object3d* other) {
             }
         }
     }
+
     return true;
 }
 

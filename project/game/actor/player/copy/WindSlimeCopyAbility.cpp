@@ -2,6 +2,7 @@
 
 namespace {
 using namespace CopyAbilityDetail;
+
 // 竜巻・上昇・緩やかな落下を制御する。空中の追加上昇は消費状態を持ち、接地で再使用可能にする。
 class WindSlimeCopyAbility final : public ICopyAbilitySession {
   public:
@@ -9,10 +10,12 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         // 竜巻の再生成を一つの演出スコープへ束ね、終了時に残像を回収する。
         scope_ = MeshEffectManager::GetInstance()->CreateEffectScope();
     }
+
     ~WindSlimeCopyAbility() override {
         // コピー能力の破棄だけでも竜巻のメッシュ演出を止める。
         ClearTornadoEffects();
     }
+
     const char* GetStateLabel() const override {
         // 竜巻の実行中と再使用待ちを区別して操作案内へ渡す。
         return tornadoActive_ ? "竜巻攻撃" : (tornadoCooldown_ > 0.0f ? "竜巻・復帰待ち" : "風能力");
@@ -28,6 +31,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             effectTimer_ = pushTimer_ = 0.0f;
             player.PlaySlimeAbilityMotion("player_ability_wind_tornado", true, 1.0f, 0.04f, 0.10f);
         }
+
         if (input.secondaryTriggered && player.IsGrounded() && !soarActive_ && soarCooldown_ <= 0.0f) {
             BeginSoar(player);
         } else if (input.specialTriggered && !updraftConsumed_ && updraftCooldown_ <= 0.0f) {
@@ -43,11 +47,14 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         effectTimer_ -= deltaTime;
         pushTimer_ -= deltaTime;
         actionMotionTimer_ = std::max(0.0f, actionMotionTimer_ - deltaTime);
+
         if (!soarActive_ && player.IsGrounded() && player.GetVelocity().y <= 0.1f) {
             updraftConsumed_ = false;
         }
+
         if (soarActive_) {
             engine::Vector3 velocity = player.GetVelocity();
+
             if (velocity.y < 0.0f) {
                 if (!descending_) {
                     player.PlaySlimeAbilityMotion("player_ability_wind_slow_fall", true, 1.0f, 0.10f, 0.10f);
@@ -57,10 +64,12 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
                     player.TriggerSlimeImpulse({2.24f, 0.72f, 2.24f}, 0.12f);
                     effectTimer_ = 0.11f;
                 }
+
                 descending_ = true;
                 velocity.y = std::max(velocity.y, -5.2f);
                 player.SetVelocity(velocity);
                 player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::SlowFall);
+
                 if (effectTimer_ <= 0.0f) {
                     const engine::Vector3 position = player.GetWorldPosition() + engine::Vector3{0.0f, 0.58f, 0.0f};
                     SpawnEffect("Resources/json/effect/effect_player_wind_slow_fall.json", position);
@@ -68,20 +77,26 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
                     effectTimer_ = 0.11f;
                 }
             }
+
             player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, soarDirection_);
+
             // 落下速度低下は時間切れで空中解除せず、着地するまで維持します。
             if (descending_ && player.IsGrounded()) {
                 FinishSoar(player);
             }
+
             return;
         }
+
         if (actionMotionTimer_ > 0.0f) {
             return;
         }
+
         if (!tornadoActive_)
             return;
         tornadoTime_ += deltaTime;
         const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 1.0f, 0.0f};
+
         if ((!primaryHeld_ && tornadoTime_ >= 0.20f) || tornadoTime_ >= 1.60f) {
             // 終了時だけ外へ吹き飛ばす。持続中は弱く巻き込み、攻撃範囲から逃がさない。
             DamageSphere(player, center, 3.3f, 8.0f, DamageType::Physical, 13.0f, 6.0f);
@@ -93,14 +108,17 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             player.TriggerSlimeImpulse({1.7f, 0.55f, 1.7f}, 0.15f);
             return;
         }
+
         if (effectTimer_ <= 0.0f) {
             ClearTornadoEffects();
+
             for (int i = 0; i < 5; ++i) {
                 const float radius = 1.10f + i * 0.45f;
                 SpawnScopedEffect(scope_, "Resources/json/effect/effect_player_wind_tornado.json",
                                   player.GetWorldPosition() + engine::Vector3{0.0f, 0.18f + i * 0.64f, 0.0f},
                                   {0.0f, tornadoTime_ * 18.0f + i * 1.8f, 0.0f}, {radius, 0.95f, radius});
             }
+
             // 太い主流の内側を細い逆流が走り、単なる輪の積み重ねに見せない。
             for (int i = 0; i < 2; ++i) {
                 SpawnScopedEffect(scope_, "Resources/json/effect/effect_player_wind_tornado_inner.json",
@@ -108,8 +126,10 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
                                   {0.15f, -tornadoTime_ * 23.0f + i * kPi, 0.08f},
                                   {1.6f + i * 0.4f, 1.0f, 1.6f + i * 0.4f});
             }
+
             effectTimer_ = 0.045f;
         }
+
         if (pushTimer_ <= 0.0f) {
             DamageSphere(player, center, 3.0f, 3.0f, DamageType::Physical, -2.0f, 1.0f);
             pushTimer_ = 0.20f;
@@ -156,9 +176,11 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         // 水平移動が小さい時は現在の向きを使い、飛翔方向を確定する。
         StopBreathMotion(player);
         soarDirection_ = NormalizePlanar(player.GetVelocity());
+
         if (std::abs(player.GetVelocity().x) + std::abs(player.GetVelocity().z) < 1.2f) {
             soarDirection_ = NormalizePlanar(player.GetForwardDirection());
         }
+
         soarActive_ = true;
         descending_ = false;
         soarCooldown_ = 1.15f;
@@ -193,9 +215,11 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             ClearTornadoEffects();
             player.StopSlimeAbilityMotion(0.10f);
         }
+
         if (!breathMotionActive_) {
             return;
         }
+
         player.StopSlimeAbilityMotion(0.08f);
         breathMotionActive_ = false;
     }

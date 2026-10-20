@@ -21,6 +21,8 @@ enum class EmitterType {
 /// <summary>
 /// CPUで粒子を更新し、GPUインスタンシングで描画する。
 /// </summary>
+namespace engine {
+
 class ParticleSystem {
 private:
     // 1粒分のシミュレーション状態。描画用データとは分けて保持する。
@@ -97,7 +99,7 @@ public:
     /// <summary>粒子の描画リソースと初期テクスチャを用意する。</summary>
     /// <param name="common">描画中に有効な共通リソース。</param>
     /// <param name="texturePath">初期テクスチャのパス。</param>
-    void Initialize(ParticleCommon* common, const std::string& texturePath);
+    void Initialize(engine::ParticleCommon* common, const std::string& texturePath);
 
     /// <summary>自動発生と生存粒子のシミュレーションを進める。</summary>
     /// <param name="deltaTime">前回更新からの経過秒数。</param>
@@ -172,6 +174,7 @@ public:
         engine::Vector4 color,
         float lifeTimeMin, float lifeTimeMax,
         engine::Vector2 baseScale);
+
 private:
     // 初期化時に描画用バッファを作成する。
     void CreateResources();
@@ -187,31 +190,56 @@ private:
 
     /// <summary>設定とLODに基づく生存粒子数の上限を決める。</summary>
     std::size_t ResolveParticleLimit(const EmitterParams& params) const;
+
+    // CPUで保持し、描画インスタンスとして転送できる粒子数の上限。
     static const int kMaxParticles = 1024;
-    ParticleCommon* common_ = nullptr;
+
+    // ParticleCommonの描画PSOを借用する。寿命は呼び出し側が保証する。
+    engine::ParticleCommon* common_ = nullptr;
+
+    // 現在の粒子画像をTextureManagerから参照するハンドル。
     uint32_t textureHandle_ = 0;
 
+    // 粒子1枚の板ポリゴンを描く頂点・インデックスと、そのD3D12ビュー。
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
     D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
-    // インスタンスデータ用のリソース
+    // 生存粒子ごとの行列と色をGPUへ渡すバッファとビュー。
     Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource_;
     D3D12_VERTEX_BUFFER_VIEW instancingBufferView_{};
+
+    // instancingResource_のマップ済み書込先。単独では所有しない。
     ParticleForGPU* instancingData_ = nullptr;
 
-    // カメラ行列用リソース
+    // 粒子描画に使用するViewProjection行列の定数バッファ。
     Microsoft::WRL::ComPtr<ID3D12Resource> matrixResource_;
+
+    // matrixResource_のマップ済み書込先。単独では所有しない。
     TransformationMatrix* matrixData_ = nullptr;
 
-    std::vector<Particle> particles_; 
+    // CPU側で更新中の生存粒子。寿命が尽きるとUpdateで取り除く。
+    std::vector<Particle> particles_;
+
+    // 粒子位置・速度・寿命のばらつきを作る乱数系列。
     std::mt19937 randomEngine_;
+
+    // 今回の描画へ転送する生存粒子数。GPUインスタンス数にも使う。
     UINT particleCount_ = 0;
 
+    // 自動発生の端数秒。発生間隔をまたいだ余りを次フレームへ引き継ぐ。
     float spawnTimer_ = 0.0f;
+
+    // 粒子更新にだけ掛ける時間倍率。プレビューの一時停止にも使う。
     float simulationTimeScale_ = 1.0f;
+
+    // エディタプレビューだけで加算する表示位置の差分。
     engine::Vector3 editorPreviewOffset_ = { 0.0f, 0.0f, 0.0f };
+
+    // 直近のUpdateとDrawで測ったCPU処理時間（ミリ秒）。
     float lastUpdateCpuTimeMs_ = 0.0f;
     float lastDrawCpuTimeMs_ = 0.0f;
 };
+
+} // namespace engine

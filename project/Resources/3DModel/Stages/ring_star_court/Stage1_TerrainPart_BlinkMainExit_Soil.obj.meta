@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "fe6fe327556751a3b7ce0db9afd4a405",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_BlinkMainExit_Soil.obj",
+  "version": 1
+}

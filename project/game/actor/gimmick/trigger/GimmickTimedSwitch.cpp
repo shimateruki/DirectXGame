@@ -3,7 +3,7 @@
 #include "SceneManager.h"
 #include <cmath>
 
-void GimmickTimedSwitch::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickTimedSwitch::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 上面を踏める地面として登録し、待機時の色を設定する。
     BaseGimmick::Initialize(common, modelName);
 
@@ -25,6 +25,7 @@ void GimmickTimedSwitch::Update(float deltaTime) {
     }
 
     bool isPressed = contactTimer_ > 0.0f;
+
     if (isPressed) {
         float pulse = 0.85f + std::sin(contactTimer_ * 35.0f) * 0.15f;
         SetColor({0.2f, 1.0f, 0.45f + pulse * 0.2f, 1.0f});
@@ -42,10 +43,12 @@ bool GimmickTimedSwitch::OnCollision(engine::Object3d* other) {
         return true;
 
     CollisionInfo info = CheckCollision(other);
+
     if (info.isColliding && info.normal.y < -0.5f) {
         contactTimer_ = 0.12f;
 
         int targetID = GetTargetID();
+
         if (targetID != -1) {
             if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
                 scene->TriggerEvent(targetID);

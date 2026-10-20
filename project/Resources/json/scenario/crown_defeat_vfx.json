@@ -1,0 +1,39 @@
+{
+  "version": 6,
+  "name": "crown_defeat_vfx",
+  "duration": 12.0,
+  "tracks": [],
+  "vfxCues": [
+    {
+      "name": "rupture",
+      "targetName": "defeat_ring",
+      "targetEventId": -1,
+      "sequenceName": "crown_defeat_rupture_cue",
+      "startTime": 3.36,
+      "duration": 0.1,
+      "snapshotTargetPosition": true,
+      "rootOffset": [0.0, 0.0, 0.0],
+      "rootScale": [1.0, 1.0, 1.0],
+      "enabled": true,
+      "muted": false
+    },
+    {
+      "name": "victory_land",
+      "targetName": "player",
+      "targetEventId": -1,
+      "sequenceName": "crown_victory_land_cue",
+      "startTime": 10.44,
+      "duration": 0.1,
+      "snapshotTargetPosition": true,
+      "rootOffset": [0.0, 0.0, 0.0],
+      "rootScale": [0.7, 0.7, 0.7],
+      "enabled": true,
+      "muted": false
+    }
+  ],
+  "cameraShots": [],
+  "animationClips": [],
+  "audioClips": [],
+  "signals": [],
+  "events": []
+}

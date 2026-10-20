@@ -21,23 +21,32 @@ class SceneWorkspace {
 public:
     // SceneManager と DebugEditor を借用し、編集用ブックマークを読み込む。
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
+
     void Finalize();
+
     void Update();
+
     // Play 中は編集地点の記録・復帰を行わない。
     void HandleHotkeys();
+
     void DrawHierarchyPanel();
 
     // 選択階層以外を一時的に隠す。選択階層のレイヤー・手動非表示は解除する。
     void IsolateSelection();
+
     void HideSelectionTemporarily();
+
     // 選択対象の隔離・レイヤー・手動非表示理由をすべて解除する。
     void ShowSelectionTemporarily();
+
     // 隔離・手動非表示・レイヤー非表示を解除する。保存済み可視性は変更しない。
     void RestoreAllTemporaryVisibility();
+
     // 指定レイヤーのEditor上の可視性だけを切り替える。Sceneの保存データは変更しない。
     void SetLayerVisible(const std::string& layer, bool visible);
 
     bool IsIsolationActive() const { return isolationActive_; }
+
     std::size_t GetTemporaryHiddenCount() const;
 
 private:
@@ -56,15 +65,25 @@ private:
     static constexpr std::size_t kBookmarkCount = 9;
 
     std::string GetCurrentSceneKey() const;
+
     std::array<CameraBookmark, kBookmarkCount>& GetCurrentBookmarks();
+
     const std::array<CameraBookmark, kBookmarkCount>* FindCurrentBookmarks() const;
+
     void CaptureBookmark(std::size_t index);
+
     void RecallBookmark(std::size_t index);
+
     void ClearBookmark(std::size_t index);
+
     void LoadBookmarks();
+
     void SaveBookmarks() const;
+
     std::vector<std::string> CollectSceneLayers() const;
+
     void CollectHierarchy(engine::Object3d* root, std::unordered_set<engine::Object3d*>& objects) const;
+
     void ResetSceneRuntimeState();
 
 private:

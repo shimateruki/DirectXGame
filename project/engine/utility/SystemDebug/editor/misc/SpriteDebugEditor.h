@@ -15,7 +15,8 @@ class BaseScene;
 class SpriteDebugEditor : public IEditable {
 public:
     // 依存マネージャーの注入と初期化
-    void Initialize(SceneManager* sceneManager, InputManager* inputManager);
+    void Initialize(SceneManager* sceneManager, engine::InputManager* inputManager);
+
     void Finalize();
 
     // 毎フレームのロジック更新（選択判定・ギズモ操作）
@@ -40,30 +41,45 @@ void DrawImGui() override;
 
     // ギズモ操作中など、エディタがマウス入力を占有しているか
     bool IsMouseBusy() const;
+
     void DrawHierarchyWindow();
+
     void DrawSpriteNode(engine::Sprite* sprite);
+
     void DrawInspectorWindow();
+
     void DrawProjectWindow();
+
     void SetSelectedSprite(engine::Sprite* sprite) { selectedSprite_ = sprite; }
+
     void SetSpriteFilename(const std::string& filepath) {
         std::string name = filepath;
+
         // パスからファイル名だけを抜き出す
         size_t pos = name.find_last_of("/\\");
-        if (pos != std::string::npos) name = name.substr(pos + 1);
+        if (pos != std::string::npos)
+            name = name.substr(pos + 1);
         strcpy_s(currentSpriteFilename_, sizeof(currentSpriteFilename_), name.c_str());
     }
+
 private:
     // レイアウト保存
     void SaveSpriteLayout(const std::string& filename);
+
     bool TryGetTexturePixelSize(engine::Sprite* sprite, engine::Vector2& outSize) const;
+
     bool IsGeneratedTextSprite(engine::Sprite* sprite) const;
+
     float CalcAspectError(engine::Sprite* sprite, const engine::Vector2& textureSize) const;
+
     engine::Vector2 MakeAspectFixedSize(engine::Sprite* sprite, const engine::Vector2& textureSize, bool keepWidth) const;
+
     engine::Vector2 MakeNearestIntegerScaleSize(engine::Sprite* sprite, const engine::Vector2& textureSize) const;
+
     int FixSpriteAspectInCurrentScene(bool textOnly, bool keepWidth);
 
     SceneManager* sceneManager_ = nullptr;
-    InputManager* inputManager_ = nullptr;
+    engine::InputManager* inputManager_ = nullptr;
     BaseScene* lastUpdatedScene_ = nullptr;
     engine::SpriteCommon* initializedSpriteCommon_ = nullptr;
 

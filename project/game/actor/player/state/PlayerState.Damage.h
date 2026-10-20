@@ -7,8 +7,11 @@
 class PlayerStateDamage : public IAnimationState {
   public:
     explicit PlayerStateDamage(const engine::Vector3& knockbackDir) : knockbackDir_(knockbackDir) {}
+
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 
   private:
@@ -16,6 +19,7 @@ class PlayerStateDamage : public IAnimationState {
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
     float timer_ = 0.0f;
+
     // 被弾状態を継続する秒数。
     const float duration_ = 0.58f;
 };

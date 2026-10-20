@@ -7,4 +7,6 @@ struct VertexShaderOutput
     float32_t3 smoothNormal : NORMAL1;
     float32_t3 tangent : TANGENT0;
     float32_t4 shadowPosition : TEXCOORD1;
+    float32_t3 localPosition : TEXCOORD2;
+    float32_t3 localNormal : TEXCOORD3;
 };

@@ -1,4 +1,5 @@
-﻿#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.Internal.h"
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.Internal.h"
+#include "game/system/scene/GimmickFactory.h"
 
 using namespace PresetManagerImplementation;
 
@@ -8,6 +9,7 @@ std::string ReadString(const json& source, const char* key, const std::string& f
     if (source.is_object() && source.contains(key) && source.at(key).is_string()) {
         return source.at(key).get<std::string>();
     }
+
     return fallback;
 }
 
@@ -43,12 +45,15 @@ bool ShouldApplyGroundDefaults(engine::Object3d* object) {
     }
 
     const std::string modelName = ToLowerAscii(object->GetModelName());
+
     if (modelName.empty()) {
         return false;
     }
+
     if (modelName.rfind("characters/", 0) == 0 || modelName.rfind("item/", 0) == 0) {
         return false;
     }
+
     if (modelName == "primitives/plane" || modelName.find("portal") != std::string::npos) {
         return false;
     }
@@ -65,13 +70,16 @@ void ApplyGroundDefaultsIfNeeded(engine::Object3d* object) {
     }
 
     auto colliderConfig = object->GetColliderConfig();
+
     if (colliderConfig.type == ColliderType::kNone) {
         colliderConfig.type = ColliderType::kAABB;
         object->SetColliderConfig(colliderConfig);
     }
+
     if (object->GetCollisionAttribute() == 0) {
         object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
+
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
     }
@@ -83,18 +91,22 @@ std::string ResolveEnemyType(const json& node) {
     if (!type.empty() && type != "Enemy")
         return {};
     std::string enemyType = ReadString(node, "enemyType");
+
     if (enemyType.empty() && node.contains("param") && node["param"].is_object()) {
         enemyType = ReadString(node["param"], "enemyType");
     }
+
     return enemyType;
 }
 
 std::uint64_t HashText(const std::string& text) {
     std::uint64_t hash = 1469598103934665603ull;
+
     for (unsigned char value : text) {
         hash ^= value;
         hash *= 1099511628211ull;
     }
+
     return hash;
 }
 
@@ -121,25 +133,31 @@ bool JsonValuesEqual(const json& lhs, const json& rhs) {
     if (lhs.is_number() && rhs.is_number()) {
         return std::fabs(lhs.get<double>() - rhs.get<double>()) <= 0.00001;
     }
+
     if (lhs.is_array() && rhs.is_array()) {
         if (lhs.size() != rhs.size()) {
             return false;
         }
+
         for (std::size_t index = 0; index < lhs.size(); ++index) {
             if (!JsonValuesEqual(lhs[index], rhs[index])) {
                 return false;
             }
         }
+
         return true;
     }
+
     return lhs == rhs;
 }
 
 // Assetへ移すノードと子孫から、シーン固有のGUIDを除きます。
 void RemoveSceneObjectGuids(json& node) {
-    if (!node.is_object()) return;
+    if (!node.is_object())
+        return;
     node.erase("guid");
-    if (!node.contains("children") || !node["children"].is_array()) return;
+    if (!node.contains("children") || !node["children"].is_array())
+        return;
     for (json& child : node["children"]) {
         RemoveSceneObjectGuids(child);
     }
@@ -161,6 +179,7 @@ json BuildPresetNode(engine::Object3d* object, std::unordered_set<const engine::
 
     for (engine::Object3d* child : object->GetChildren()) {
         json childNode = BuildPresetNode(child, visited);
+
         if (!childNode.empty()) {
             children.push_back(std::move(childNode));
         }
@@ -169,6 +188,7 @@ json BuildPresetNode(engine::Object3d* object, std::unordered_set<const engine::
     if (!children.empty()) {
         node["children"] = std::move(children);
     }
+
     return node;
 }
 
@@ -188,6 +208,7 @@ json BuildPrefabNode(
     node.erase("prefabInstance");
 
     const auto& instance = object->GetPrefabInstanceInfo();
+
     if (instance.assetId == assetId && !instance.sourceObjectId.empty()) {
         node["prefabObjectId"] = instance.sourceObjectId;
     } else {
@@ -195,15 +216,19 @@ json BuildPrefabNode(
     }
 
     json children = json::array();
+
     for (engine::Object3d* child : object->GetChildren()) {
         json childNode = BuildPrefabNode(child, assetId, visited);
+
         if (!childNode.empty()) {
             children.push_back(std::move(childNode));
         }
     }
+
     if (!children.empty()) {
         node["children"] = std::move(children);
     }
+
     return node;
 }
 
@@ -212,18 +237,22 @@ void EnsurePrefabObjectIds(json& node, const std::string& assetId, const std::st
     if (!node.is_object()) {
         return;
     }
+
     // 旧AssetでIDが欠ける場合だけ、Asset IDと階層位置から再現可能なIDを補います。
     if (!node.contains("prefabObjectId") || !node["prefabObjectId"].is_string() ||
         node["prefabObjectId"].get<std::string>().empty()) {
         node["prefabObjectId"] = MakeStableId("object", assetId + ':' + hierarchyPath);
     }
+
     node.erase("prefabInstance");
+
     // Prefab AssetはScene上の実体GUIDを所有しません。
     node.erase("guid");
 
     if (!node.contains("children") || !node["children"].is_array()) {
         return;
     }
+
     for (std::size_t index = 0; index < node["children"].size(); ++index) {
         EnsurePrefabObjectIds(node["children"][index], assetId,
             hierarchyPath + '/' + std::to_string(index));
@@ -236,15 +265,19 @@ void EnsurePrefabVariantFields(json& asset) {
     if (!asset.contains("removedObjectIds") || !asset["removedObjectIds"].is_array()) {
         asset["removedObjectIds"] = json::array();
     }
+
     if (!asset.contains("addedChildren") || !asset["addedChildren"].is_array()) {
         asset["addedChildren"] = json::array();
     }
+
     if (!asset.contains("reparentedObjects") || !asset["reparentedObjects"].is_array()) {
         asset["reparentedObjects"] = json::array();
     }
+
     if (!asset.contains("nodeOverrides") || !asset["nodeOverrides"].is_object()) {
         asset["nodeOverrides"] = json::object();
     }
+
     if (!asset.contains("componentOverrides") || !asset["componentOverrides"].is_object()) {
         asset["componentOverrides"] = json::object();
     }
@@ -261,6 +294,7 @@ void CollectPrefabNodeLocations(
     }
 
     const std::string objectId = node.value("prefabObjectId", "");
+
     if (!objectId.empty()) {
         locations[objectId] = { &node, parentObjectId, order };
     }
@@ -268,6 +302,7 @@ void CollectPrefabNodeLocations(
     if (!node.contains("children") || !node["children"].is_array()) {
         return;
     }
+
     for (std::size_t childIndex = 0; childIndex < node["children"].size(); ++childIndex) {
         CollectPrefabNodeLocations(node["children"][childIndex], objectId, childIndex, locations);
     }
@@ -279,12 +314,15 @@ int CountPrefabNodes(const json& node) {
     if (!node.is_object()) {
         return 0;
     }
+
     int count = 1;
+
     if (node.contains("children") && node["children"].is_array()) {
         for (const auto& child : node["children"]) {
             count += CountPrefabNodes(child);
         }
     }
+
     return count;
 }
 
@@ -296,8 +334,10 @@ void RemovePrefabChildrenWithKnownIds(json& node, const std::unordered_set<std::
     }
 
     auto& children = node["children"];
+
     for (auto it = children.begin(); it != children.end();) {
         const std::string childId = it->is_object() ? it->value("prefabObjectId", "") : "";
+
         if (!childId.empty() && knownIds.find(childId) != knownIds.end()) {
             it = children.erase(it);
         } else {
@@ -305,6 +345,7 @@ void RemovePrefabChildrenWithKnownIds(json& node, const std::unordered_set<std::
             ++it;
         }
     }
+
     if (children.empty()) {
         node.erase("children");
     }
@@ -318,15 +359,18 @@ bool RemovePrefabNodeRecursive(json& root, const std::string& sourceObjectId) {
     }
 
     auto& children = root["children"];
+
     for (auto childIt = children.begin(); childIt != children.end(); ++childIt) {
         if (childIt->is_object() && childIt->value("prefabObjectId", "") == sourceObjectId) {
             children.erase(childIt);
             return true;
         }
+
         if (RemovePrefabNodeRecursive(*childIt, sourceObjectId)) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -338,16 +382,19 @@ bool TakePrefabNodeRecursive(json& root, const std::string& sourceObjectId, json
     }
 
     auto& children = root["children"];
+
     for (auto childIt = children.begin(); childIt != children.end(); ++childIt) {
         if (childIt->is_object() && childIt->value("prefabObjectId", "") == sourceObjectId) {
             removedNode = std::move(*childIt);
             children.erase(childIt);
             return true;
         }
+
         if (TakePrefabNodeRecursive(*childIt, sourceObjectId, removedNode)) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -355,9 +402,11 @@ bool TakePrefabNodeRecursive(json& root, const std::string& sourceObjectId, json
 bool InsertPrefabChild(json& root, const std::string& parentObjectId, std::size_t order, json child) {
     // 指定順が子の総数を超える場合は末尾へ追加する。
     json* parent = FindSourceNodeRecursive(root, parentObjectId);
+
     if (!parent) {
         return false;
     }
+
     if (!parent->contains("children") || !(*parent)["children"].is_array()) {
         (*parent)["children"] = json::array();
     }
@@ -375,6 +424,7 @@ void ApplyJsonMergePatch(json& target, const json& patch) {
         target = patch;
         return;
     }
+
     if (!target.is_object()) {
         target = json::object();
     }
@@ -395,30 +445,36 @@ json BuildJsonMergePatch(const json& base, const json& edited, bool& changed) {
         changed = false;
         return json::object();
     }
+
     if (!base.is_object() || !edited.is_object()) {
         changed = true;
         return edited;
     }
 
     json patch = json::object();
+
     // 元にあって編集後にないキーはnullを削除命令として記録する。
     for (auto baseIt = base.begin(); baseIt != base.end(); ++baseIt) {
         if (!edited.contains(baseIt.key())) {
             patch[baseIt.key()] = nullptr;
         }
     }
+
     for (auto editedIt = edited.begin(); editedIt != edited.end(); ++editedIt) {
         // オブジェクトの子要素だけ再帰的に比較し、値全体の複製を抑える。
         if (!base.contains(editedIt.key())) {
             patch[editedIt.key()] = editedIt.value();
             continue;
         }
+
         bool childChanged = false;
         json childPatch = BuildJsonMergePatch(base.at(editedIt.key()), editedIt.value(), childChanged);
+
         if (childChanged) {
             patch[editedIt.key()] = std::move(childPatch);
         }
     }
+
     changed = !patch.empty();
     return patch;
 }
@@ -427,17 +483,23 @@ json BuildJsonMergePatch(const json& base, const json& edited, bool& changed) {
 bool EraseJsonPath(json& source, const std::string& path) {
     // 子の差分を消した結果、空になった親オブジェクトも畳む。
     const std::size_t separator = path.find('.');
+
     if (separator == std::string::npos) {
         return source.is_object() && source.erase(path) > 0;
     }
+
     const std::string head = path.substr(0, separator);
+
     if (!source.is_object() || !source.contains(head)) {
         return false;
     }
+
     const bool erased = EraseJsonPath(source[head], path.substr(separator + 1));
+
     if (erased && source.contains(head) && source[head].is_object() && source[head].empty()) {
         source.erase(head);
     }
+
     return erased;
 }
 
@@ -446,20 +508,24 @@ void MigrateLegacyComponentOverrides(json& asset) {
     // 旧nodeOverrides内の存在フラグを新しいcomponentOverridesへ移し、差分の意味を保つ。
     EnsurePrefabVariantFields(asset);
     json& nodeOverrides = asset["nodeOverrides"];
+
     if (!nodeOverrides.is_object()) {
         return;
     }
 
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     registry->InitializeBuiltInProperties();
+
     for (auto nodeIt = nodeOverrides.begin(); nodeIt != nodeOverrides.end();) {
         json& patch = nodeIt.value();
+
         if (!patch.is_object() || !patch.contains("components") || !patch["components"].is_object()) {
             ++nodeIt;
             continue;
         }
 
         json& serializedComponents = patch["components"];
+
         // 取り外し可能なComponentだけを対象にし、プロパティ差分は元のノードに残す。
         for (const EditorComponentDescriptor& component : registry->GetComponents()) {
             if (!component.removable || !component.serializedPresent || !component.setSerializedPresent ||
@@ -467,6 +533,7 @@ void MigrateLegacyComponentOverrides(json& asset) {
                 !serializedComponents[component.typeId].is_object()) {
                 continue;
             }
+
             json& componentPatch = serializedComponents[component.typeId];
             if (componentPatch.contains("_editorPresent") &&
                 componentPatch["_editorPresent"].is_boolean()) {
@@ -474,13 +541,16 @@ void MigrateLegacyComponentOverrides(json& asset) {
                     componentPatch["_editorPresent"];
                 componentPatch.erase("_editorPresent");
             }
+
             if (componentPatch.empty()) {
                 serializedComponents.erase(component.typeId);
             }
         }
+
         if (serializedComponents.empty()) {
             patch.erase("components");
         }
+
         if (patch.empty()) {
             nodeIt = nodeOverrides.erase(nodeIt);
         } else {
@@ -493,6 +563,7 @@ void MigrateLegacyComponentOverrides(json& asset) {
 json NormalizePrefabAsset(const std::string& prefabName, const json& value) {
     // 旧形式のルート直書きを包み、以後の処理が単一のPrefab形式を読めるようにする。
     json asset;
+
     if (value.is_object() && value.contains("root") && value["root"].is_object()) {
         asset = value;
     } else {
@@ -501,36 +572,45 @@ json NormalizePrefabAsset(const std::string& prefabName, const json& value) {
 
     asset["version"] = 3;
     std::string assetId = asset.value("assetId", "");
+
     if (assetId.empty()) {
         assetId = MakeStableId("prefab", prefabName);
         asset["assetId"] = assetId;
     }
+
     if (!asset.contains("root") || !asset["root"].is_object()) {
         asset["root"] = json::object();
     }
+
     if (!asset.contains("baseAssetId") || !asset["baseAssetId"].is_string()) {
         asset["baseAssetId"] = "";
     }
+
     if (!asset.contains("propertyOverrides") || !asset["propertyOverrides"].is_object()) {
         asset["propertyOverrides"] = json::object();
     }
+
     EnsurePrefabVariantFields(asset);
+
     // 旧Component形式を変換してから、親子ノードの安定IDを補う。
     MigrateLegacyComponentOverrides(asset);
     EnsurePrefabObjectIds(asset["root"], assetId, "root");
+
     for (std::size_t index = 0; index < asset["addedChildren"].size(); ++index) {
         json& entry = asset["addedChildren"][index];
+
         if (entry.is_object() && entry.contains("node") && entry["node"].is_object()) {
             EnsurePrefabObjectIds(entry["node"], assetId, "added/" + std::to_string(index));
         }
     }
+
     return asset;
 }
 
 // Preset/Prefabノードから実体と子孫を生成し、所有権をoutObjectsへ移します。
 void CreateObjectFromPresetNode(
     const json& node,
-    Object3dCommon* common,
+    engine::Object3dCommon* common,
     engine::Object3d* parent,
     std::vector<std::unique_ptr<engine::Object3d>>& outObjects,
     const PrefabCreationContext* prefabContext) {
@@ -538,31 +618,46 @@ void CreateObjectFromPresetNode(
         return;
     }
 
-    // EnemyはFactoryで派生型を生成し、それ以外は通常Objectとして作ります。
+    // EnemyとGimmickはFactoryで派生型を生成し、配置直後から固有の更新処理を有効にする。
     const std::string enemyType = ResolveEnemyType(node);
     std::unique_ptr<engine::Object3d> object;
+
     if (!enemyType.empty()) {
         object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
     }
+
+    // 移動床を通常Objectとして生成すると、録画は動いても乗員を運ぶ処理が欠落する。
+    std::string gimmickType = node.value("gimmickType", std::string{});
+    if (gimmickType.empty() && node.contains("param") && node["param"].is_object())
+        gimmickType = node["param"].value("gimmickType", std::string{});
+    if (!object && node.value("type", std::string{}) == "Gimmick" && !gimmickType.empty())
+        object = GimmickFactory::GetInstance()->CreateGimmick(gimmickType, common);
+
     if (!object) {
         object = std::make_unique<engine::Object3d>();
         object->Initialize(common);
     }
+
     object->ImportFromJson(node);
+
     // Preset/Prefabの生成物は、Asset内データとは別のScene実体です。
     object->RegeneratePersistentGuid();
+
     // JSON読込後に敵種別とStatusを再適用し、生成した実体の戦闘値を揃えます。
     if (!enemyType.empty()) {
         object->SetClassName("Enemy");
         object->SetEnemyType(enemyType);
+
         if (!object->param_.has_value()) {
             object->param_.emplace();
         }
+
         object->param_->enemyType = enemyType;
         auto* statusManager = GameplayStatusManager::GetInstance();
         statusManager->Initialize();
         statusManager->ApplyEnemyStatus(object.get(), true);
     }
+
     // 明示された当たり判定と衝突属性を優先し、旧テンプレートの省略値だけ補完します。
     if (!node.contains("collider") && !node.contains("collisionAttribute") && !node.contains("collisionMask"))
         ApplyGroundDefaultsIfNeeded(object.get());
@@ -583,9 +678,11 @@ void CreateObjectFromPresetNode(
 
     // 親子関係と行列を確定してから所有権を出力配列へ移し、子ノードを再帰生成します。
     engine::Object3d* raw = object.get();
+
     if (parent) {
         raw->SetParent(parent);
     }
+
     raw->UpdateLocalMatrix();
     raw->UpdateWorldMatrix();
     outObjects.push_back(std::move(object));
@@ -593,6 +690,7 @@ void CreateObjectFromPresetNode(
     if (!node.contains("children") || !node["children"].is_array()) {
         return;
     }
+
     for (const auto& childNode : node["children"]) {
         CreateObjectFromPresetNode(childNode, common, raw, outObjects, prefabContext);
     }
@@ -603,9 +701,11 @@ json* FindSourceNodeRecursive(json& node, const std::string& sourceObjectId) {
     if (!node.is_object()) {
         return nullptr;
     }
+
     if (node.value("prefabObjectId", "") == sourceObjectId) {
         return &node;
     }
+
     if (node.contains("children") && node["children"].is_array()) {
         for (auto& child : node["children"]) {
             if (json* result = FindSourceNodeRecursive(child, sourceObjectId)) {
@@ -613,6 +713,7 @@ json* FindSourceNodeRecursive(json& node, const std::string& sourceObjectId) {
             }
         }
     }
+
     return nullptr;
 }
 
@@ -621,9 +722,11 @@ const json* FindSourceNodeRecursive(const json& node, const std::string& sourceO
     if (!node.is_object()) {
         return nullptr;
     }
+
     if (node.value("prefabObjectId", "") == sourceObjectId) {
         return &node;
     }
+
     if (node.contains("children") && node["children"].is_array()) {
         for (const auto& child : node["children"]) {
             if (const json* result = FindSourceNodeRecursive(child, sourceObjectId)) {
@@ -631,113 +734,209 @@ const json* FindSourceNodeRecursive(const json& node, const std::string& sourceO
             }
         }
     }
+
     return nullptr;
 }
 
 const char* GetSerializedPropertyKey(const std::string& propertyPath) {
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     registry->InitializeBuiltInProperties();
+
     if (const EditorPropertyDescriptor* descriptor = registry->Find(propertyPath)) {
         return descriptor->serializedPath.empty() ? nullptr : descriptor->serializedPath.c_str();
     }
 
     // Registry導入前の外部Propertyに対する移行期間用Fallbackです。
     // カメラとGameplayの古い保存キーもここで読み書きできる状態を保ちます。
-    if (propertyPath == "identity.name") return "name";
-    if (propertyPath == "identity.tag") return "tag";
-    if (propertyPath == "identity.layer") return "layer";
-    if (propertyPath == "identity.saveCategory") return "saveCategory";
-    if (propertyPath == "transform.position") return "translate";
-    if (propertyPath == "transform.rotation") return "rotate";
-    if (propertyPath == "transform.scale") return "scale";
-    if (propertyPath == "rendering.visible") return "isVisible";
-    if (propertyPath == "rendering.castShadow") return "castShadow";
-    if (propertyPath == "rendering.color") return "color";
-    if (propertyPath == "rendering.metallic") return "metallic";
-    if (propertyPath == "rendering.roughness") return "roughness";
-    if (propertyPath == "rendering.emissive") return "emissive";
-    if (propertyPath == "editor.locked") return "isLocked";
-    if (propertyPath == "collision.attribute") return "collisionAttribute";
-    if (propertyPath == "collision.mask") return "collisionMask";
-    if (propertyPath == "rendering.model") return "modelName";
-    if (propertyPath == "rendering.blendMode") return "blendMode";
-    if (propertyPath == "rendering.materialType") return "materialType";
-    if (propertyPath == "rendering.texture") return "texturePath";
-    if (propertyPath == "rendering.textureTiling") return "textureTiling";
-    if (propertyPath == "rendering.autoTextureTiling") return "autoTextureTiling";
-    if (propertyPath == "rendering.lighting") return "enableLighting";
-    if (propertyPath == "rendering.environmentMap") return "enableEnvMap";
-    if (propertyPath == "rendering.environmentIntensity") return "envIntensity";
-    if (propertyPath == "rendering.normalMapEnabled") return "enableNormalMap";
-    if (propertyPath == "rendering.normalMap") return "normalMapPath";
-    if (propertyPath == "rendering.ormMap") return "ormMapPath";
-    if (propertyPath == "component.collision.type") return "collider.type";
-    if (propertyPath == "component.collision.center") return "collider.center";
-    if (propertyPath == "component.collision.size") return "collider.size";
-    if (propertyPath == "component.collision.rotation") return "collider.rotation";
-    if (propertyPath == "component.collision.static") return "isStatic";
-    if (propertyPath == "component.particle.cpu") return "particleName";
-    if (propertyPath == "component.particle.gpu") return "gpuParticleName";
-    if (propertyPath == "component.lod.enabled") return "lod.enabled";
-    if (propertyPath == "component.lod.levels") return "lod.levels";
-    if (propertyPath == "component.meshEffect.primary") return "meshEffect1";
-    if (propertyPath == "component.meshEffect.secondary") return "meshEffect2";
-    if (propertyPath == "component.animation.name") return "animation.animName";
-    if (propertyPath == "component.animation.loop") return "animation.isAnimLoop";
-    if (propertyPath == "component.animation.controller") return "animation.animatorController";
-    if (propertyPath == "component.path.name") return "recorder.recordPathName";
-    if (propertyPath == "component.path.loop") return "recorder.isRecordLoop";
-    if (propertyPath == "component.path.relative") return "recorder.isRecordRelative";
-    if (propertyPath == "component.link.eventId") return "myEventID";
-    if (propertyPath == "component.link.targetId") return "targetID";
-    if (propertyPath == "camera.enabled") return "camera.enabled";
-    if (propertyPath == "camera.role") return "camera.role";
-    if (propertyPath == "camera.fov") return "camera.fovY";
-    if (propertyPath == "camera.nearClip") return "camera.nearClip";
-    if (propertyPath == "camera.farClip") return "camera.farClip";
-    if (propertyPath == "camera.eyeSource") return "camera.eyeSource";
-    if (propertyPath == "camera.eyeObject") return "camera.eyeObjectName";
-    if (propertyPath == "camera.eyeOffset") return "camera.eyeOffset";
-    if (propertyPath == "camera.eyeFollowMode") return "camera.eyeFollowMode";
-    if (propertyPath == "camera.eyeFollowResponse") return "camera.eyeFollowResponse";
-    if (propertyPath == "camera.targetMode") return "camera.targetMode";
-    if (propertyPath == "camera.targetObject") return "camera.targetObjectName";
-    if (propertyPath == "camera.targetOffset") return "camera.targetOffset";
-    if (propertyPath == "camera.fixedTarget") return "camera.fixedTarget";
-    if (propertyPath == "camera.forwardDistance") return "camera.forwardDistance";
-    if (propertyPath == "camera.targetFollowMode") return "camera.targetFollowMode";
-    if (propertyPath == "camera.targetFollowResponse") return "camera.targetFollowResponse";
-    if (propertyPath == "camera.blendIn") return "camera.blendInDuration";
-    if (propertyPath == "camera.blendOut") return "camera.blendOutDuration";
-    if (propertyPath == "camera.easing") return "camera.easing";
-    if (propertyPath == "gameplay.healAmount") return "param.healAmount";
-    if (propertyPath == "gameplay.interval") return "param.interval";
-    if (propertyPath == "gameplay.maxCount") return "param.maxCount";
-    if (propertyPath == "gameplay.detectionRange") return "param.detectionRange";
-    if (propertyPath == "gameplay.shakeDuration") return "param.shakeDuration";
-    if (propertyPath == "gameplay.fallDuration") return "param.fallDuration";
-    if (propertyPath == "gameplay.colorType") return "param.colorType";
-    if (propertyPath == "gameplay.switchMode") return "param.switchMode";
-    if (propertyPath == "gameplay.actionMode") return "param.actionMode";
-    if (propertyPath == "gameplay.targetScene") return "param.targetScene";
-    if (propertyPath == "gameplay.moveAmount") return "param.moveAmount";
-    if (propertyPath == "gameplay.moveSpeed") return "param.moveSpeed";
-    if (propertyPath == "gameplay.startActive") return "param.startActive";
-    if (propertyPath == "gameplay.returnOnOff") return "param.returnOnOff";
+    if (propertyPath == "identity.name")
+        return "name";
+    if (propertyPath == "identity.tag")
+        return "tag";
+    if (propertyPath == "identity.layer")
+        return "layer";
+    if (propertyPath == "identity.saveCategory")
+        return "saveCategory";
+    if (propertyPath == "transform.position")
+        return "translate";
+    if (propertyPath == "transform.rotation")
+        return "rotate";
+    if (propertyPath == "transform.scale")
+        return "scale";
+    if (propertyPath == "rendering.visible")
+        return "isVisible";
+    if (propertyPath == "rendering.castShadow")
+        return "castShadow";
+    if (propertyPath == "rendering.color")
+        return "color";
+    if (propertyPath == "rendering.metallic")
+        return "metallic";
+    if (propertyPath == "rendering.roughness")
+        return "roughness";
+    if (propertyPath == "rendering.emissive")
+        return "emissive";
+    if (propertyPath == "editor.locked")
+        return "isLocked";
+    if (propertyPath == "collision.attribute")
+        return "collisionAttribute";
+    if (propertyPath == "collision.mask")
+        return "collisionMask";
+    if (propertyPath == "rendering.model")
+        return "modelName";
+    if (propertyPath == "rendering.blendMode")
+        return "blendMode";
+    if (propertyPath == "rendering.materialType")
+        return "materialType";
+    if (propertyPath == "rendering.texture")
+        return "texturePath";
+    if (propertyPath == "rendering.textureTiling")
+        return "textureTiling";
+    if (propertyPath == "rendering.autoTextureTiling")
+        return "autoTextureTiling";
+    if (propertyPath == "rendering.lighting")
+        return "enableLighting";
+    if (propertyPath == "rendering.environmentMap")
+        return "enableEnvMap";
+    if (propertyPath == "rendering.environmentIntensity")
+        return "envIntensity";
+    if (propertyPath == "rendering.normalMapEnabled")
+        return "enableNormalMap";
+    if (propertyPath == "rendering.normalMap")
+        return "normalMapPath";
+    if (propertyPath == "rendering.ormMap")
+        return "ormMapPath";
+    if (propertyPath == "component.collision.type")
+        return "collider.type";
+    if (propertyPath == "component.collision.center")
+        return "collider.center";
+    if (propertyPath == "component.collision.size")
+        return "collider.size";
+    if (propertyPath == "component.collision.rotation")
+        return "collider.rotation";
+    if (propertyPath == "component.collision.static")
+        return "isStatic";
+    if (propertyPath == "component.particle.cpu")
+        return "particleName";
+    if (propertyPath == "component.particle.gpu")
+        return "gpuParticleName";
+    if (propertyPath == "component.lod.enabled")
+        return "lod.enabled";
+    if (propertyPath == "component.lod.levels")
+        return "lod.levels";
+    if (propertyPath == "component.meshEffect.primary")
+        return "meshEffect1";
+    if (propertyPath == "component.meshEffect.secondary")
+        return "meshEffect2";
+    if (propertyPath == "component.animation.name")
+        return "animation.animName";
+    if (propertyPath == "component.animation.loop")
+        return "animation.isAnimLoop";
+    if (propertyPath == "component.animation.controller")
+        return "animation.animatorController";
+    if (propertyPath == "component.path.name")
+        return "recorder.recordPathName";
+    if (propertyPath == "component.path.loop")
+        return "recorder.isRecordLoop";
+    if (propertyPath == "component.path.playbackMode")
+        return "components.PathMover.playbackMode";
+    if (propertyPath == "component.path.relative")
+        return "recorder.isRecordRelative";
+    if (propertyPath == "component.link.eventId")
+        return "myEventID";
+    if (propertyPath == "component.link.targetId")
+        return "targetID";
+    if (propertyPath == "camera.enabled")
+        return "camera.enabled";
+    if (propertyPath == "camera.role")
+        return "camera.role";
+    if (propertyPath == "camera.fov")
+        return "camera.fovY";
+    if (propertyPath == "camera.nearClip")
+        return "camera.nearClip";
+    if (propertyPath == "camera.farClip")
+        return "camera.farClip";
+    if (propertyPath == "camera.eyeSource")
+        return "camera.eyeSource";
+    if (propertyPath == "camera.eyeObject")
+        return "camera.eyeObjectName";
+    if (propertyPath == "camera.eyeOffset")
+        return "camera.eyeOffset";
+    if (propertyPath == "camera.eyeFollowMode")
+        return "camera.eyeFollowMode";
+    if (propertyPath == "camera.eyeFollowResponse")
+        return "camera.eyeFollowResponse";
+    if (propertyPath == "camera.targetMode")
+        return "camera.targetMode";
+    if (propertyPath == "camera.targetObject")
+        return "camera.targetObjectName";
+    if (propertyPath == "camera.targetOffset")
+        return "camera.targetOffset";
+    if (propertyPath == "camera.fixedTarget")
+        return "camera.fixedTarget";
+    if (propertyPath == "camera.forwardDistance")
+        return "camera.forwardDistance";
+    if (propertyPath == "camera.targetFollowMode")
+        return "camera.targetFollowMode";
+    if (propertyPath == "camera.targetFollowResponse")
+        return "camera.targetFollowResponse";
+    if (propertyPath == "camera.blendIn")
+        return "camera.blendInDuration";
+    if (propertyPath == "camera.blendOut")
+        return "camera.blendOutDuration";
+    if (propertyPath == "camera.easing")
+        return "camera.easing";
+    if (propertyPath == "gameplay.healAmount")
+        return "param.healAmount";
+    if (propertyPath == "gameplay.interval")
+        return "param.interval";
+    if (propertyPath == "gameplay.maxCount")
+        return "param.maxCount";
+    if (propertyPath == "gameplay.detectionRange")
+        return "param.detectionRange";
+    if (propertyPath == "gameplay.shakeDuration")
+        return "param.shakeDuration";
+    if (propertyPath == "gameplay.fallDuration")
+        return "param.fallDuration";
+    if (propertyPath == "gameplay.colorType")
+        return "param.colorType";
+    if (propertyPath == "gameplay.switchMode")
+        return "param.switchMode";
+    if (propertyPath == "gameplay.actionMode")
+        return "param.actionMode";
+    if (propertyPath == "gameplay.targetScene")
+        return "param.targetScene";
+    if (propertyPath == "gameplay.moveAmount")
+        return "param.moveAmount";
+    if (propertyPath == "gameplay.moveSpeed")
+        return "param.moveSpeed";
+    if (propertyPath == "gameplay.startActive")
+        return "param.startActive";
+    if (propertyPath == "gameplay.returnOnOff")
+        return "param.returnOnOff";
     return nullptr;
 }
 
 const char* GetCanonicalComponentPropertyKey(const std::string& propertyPath) {
     // 旧形式の編集プロパティ名を現行Componentの保存パスへ写す。
-    if (propertyPath == "component.particle.cpu") return "components.ParticleEmitter.cpuParticle";
-    if (propertyPath == "component.particle.gpu") return "components.ParticleEmitter.gpuParticle";
-    if (propertyPath == "component.meshEffect.primary") return "components.MeshEffect.primary";
-    if (propertyPath == "component.meshEffect.secondary") return "components.MeshEffect.secondary";
-    if (propertyPath == "component.path.name") return "components.PathMover.path";
-    if (propertyPath == "component.path.loop") return "components.PathMover.loop";
-    if (propertyPath == "component.path.relative") return "components.PathMover.relative";
-    if (propertyPath == "component.link.eventId") return "components.GameplayLink.eventId";
-    if (propertyPath == "component.link.targetId") return "components.GameplayLink.targetId";
+    if (propertyPath == "component.particle.cpu")
+        return "components.ParticleEmitter.cpuParticle";
+    if (propertyPath == "component.particle.gpu")
+        return "components.ParticleEmitter.gpuParticle";
+    if (propertyPath == "component.meshEffect.primary")
+        return "components.MeshEffect.primary";
+    if (propertyPath == "component.meshEffect.secondary")
+        return "components.MeshEffect.secondary";
+    if (propertyPath == "component.path.name")
+        return "components.PathMover.path";
+    if (propertyPath == "component.path.loop")
+        return "components.PathMover.loop";
+    if (propertyPath == "component.path.playbackMode")
+        return "components.PathMover.playbackMode";
+    if (propertyPath == "component.path.relative")
+        return "components.PathMover.relative";
+    if (propertyPath == "component.link.eventId")
+        return "components.GameplayLink.eventId";
+    if (propertyPath == "component.link.targetId")
+        return "components.GameplayLink.targetId";
     return nullptr;
 }
 
@@ -745,18 +944,24 @@ const json* FindJsonPath(const json& source, const std::string& path) {
     // ドット区切りのパスを段階的にたどり、途中でキーが欠けたら探索を止める。
     const json* current = &source;
     std::size_t begin = 0;
+
     while (begin < path.size()) {
         const std::size_t separator = path.find('.', begin);
         const std::string key = path.substr(begin, separator == std::string::npos ? std::string::npos : separator - begin);
+
         if (!current->is_object() || !current->contains(key)) {
             return nullptr;
         }
+
         current = &current->at(key);
+
         if (separator == std::string::npos) {
             return current;
         }
+
         begin = separator + 1;
     }
+
     return current;
 }
 
@@ -764,19 +969,25 @@ json* EnsureJsonPath(json& source, const std::string& path) {
     // Prefab差分を保存するため、途中のObjectがない場合は生成して末端の値を返します。
     json* current = &source;
     std::size_t begin = 0;
+
     while (begin < path.size()) {
         const std::size_t separator = path.find('.', begin);
         const std::string key = path.substr(begin, separator == std::string::npos ? std::string::npos : separator - begin);
+
         if (separator == std::string::npos) {
             return &(*current)[key];
         }
+
         json& next = (*current)[key];
+
         if (!next.is_object()) {
             next = json::object();
         }
+
         current = &next;
         begin = separator + 1;
     }
+
     return nullptr;
 }
 
@@ -784,6 +995,7 @@ json* EnsureJsonPath(json& source, const std::string& path) {
 json GetMissingSourceDefault(const std::string& propertyPath) {
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     registry->InitializeBuiltInProperties();
+
     if (const EditorPropertyDescriptor* descriptor = registry->Find(propertyPath)) {
         return descriptor->defaultValue;
     }
@@ -795,9 +1007,11 @@ json GetMissingSourceDefault(const std::string& propertyPath) {
         propertyPath == "component.path.relative") {
         return false;
     }
+
     if (propertyPath == "component.lod.levels") {
         return json::array();
     }
+
     if (propertyPath == "component.particle.cpu" ||
         propertyPath == "component.particle.gpu" ||
         propertyPath == "component.meshEffect.primary" ||
@@ -807,15 +1021,18 @@ json GetMissingSourceDefault(const std::string& propertyPath) {
         propertyPath == "component.path.name") {
         return "";
     }
+
     return json();
 }
 
 json ReadSourceProperty(const json& sourceNode, const std::string& propertyPath) {
     // Registryで決まる保存Pathを解決し、旧Assetで省略された値は型ごとの既定値に戻します。
     const char* key = GetSerializedPropertyKey(propertyPath);
+
     if (!key) {
         return json();
     }
+
     const json* value = FindJsonPath(sourceNode, key);
     return value ? *value : GetMissingSourceDefault(propertyPath);
 }
@@ -823,23 +1040,30 @@ json ReadSourceProperty(const json& sourceNode, const std::string& propertyPath)
 // Registryの保存Pathへ値を書き、必要なら正規のComponentキーにも同期します。
 bool WriteSourceProperty(json& sourceNode, const std::string& propertyPath, const json& value) {
     const char* key = GetSerializedPropertyKey(propertyPath);
+
     if (!key) {
         return false;
     }
+
     json* target = EnsureJsonPath(sourceNode, key);
+
     if (!target) {
         return false;
     }
+
     *target = value;
+
     if (const char* canonicalKey = GetCanonicalComponentPropertyKey(propertyPath)) {
         if (json* canonicalTarget = EnsureJsonPath(sourceNode, canonicalKey)) {
             *canonicalTarget = value;
         }
     }
+
     if (propertyPath == "transform.rotation") {
         // Euler角のOverrideを適用した時は、古いQuaternionが優先されないようにします。
         sourceNode.erase("quaternion");
     }
+
     return true;
 }
 
@@ -861,11 +1085,13 @@ void RemoveComponentPropertyOverrides(
 
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     json& objectOverrides = asset["propertyOverrides"][sourceObjectId];
+
     for (const EditorPropertyDescriptor* property : registry->GetPropertiesForComponent(componentTypeId)) {
         if (property) {
             objectOverrides.erase(property->path);
         }
     }
+
     if (objectOverrides.empty()) {
         asset["propertyOverrides"].erase(sourceObjectId);
     }
@@ -882,6 +1108,7 @@ bool WriteComponentStateFromObject(
     }
 
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+
     if (present) {
         // 追加したComponentのPrefab上書き対象だけを保存し、実行時専用値を混ぜない。
         for (const EditorPropertyDescriptor* property : registry->GetPropertiesForComponent(component.typeId)) {
@@ -889,12 +1116,15 @@ bool WriteComponentStateFromObject(
                 property->serializedPath.empty()) {
                 continue;
             }
+
             const json value = registry->GetValue(object, property->path);
+
             if (!value.is_null()) {
                 WriteSourceProperty(sourceNode, property->path, value);
             }
         }
     }
+
     component.setSerializedPresent(sourceNode, present);
     return true;
 }
@@ -911,6 +1141,7 @@ bool ApplySerializedComponentState(
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     const bool desiredPresent = component.serializedPresent(sourceNode);
     const bool currentPresent = registry->IsComponentPresent(object, component.typeId);
+
     // 値の適用より先にComponentの有無を揃え、存在しないComponentへの書き込みを避ける。
     if (desiredPresent != currentPresent) {
         const bool changed = desiredPresent
@@ -926,18 +1157,22 @@ bool ApplySerializedComponentState(
             if (!property || property->serializedPath.empty()) {
                 continue;
             }
+
             const json value = ReadSourceProperty(sourceNode, property->path);
+
             if (!value.is_null()) {
                 registry->SetValue(object, property->path, value);
             }
         }
     }
+
     return true;
 }
 
 // Registryで扱うComponentの旧存在マーカーを保存ノードから取り除きます。
 void RemoveKnownComponentPresenceMarkers(json& node) {
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+
     for (const EditorComponentDescriptor& component : registry->GetComponents()) {
         if (IsPrefabComponentDescriptor(component)) {
             EraseJsonPath(node, "components." + component.typeId + "._editorPresent");
@@ -970,11 +1205,13 @@ void RegisterPrefabAssetTransaction(
         manager->RefreshPrefabInheritance();
         manager->SavePrefabs();
     };
+
     transaction.redo = [manager, prefabName, after]() {
         manager->GetPrefab(prefabName) = after;
         manager->RefreshPrefabInheritance();
         manager->SavePrefabs();
     };
+
     EditorTransactionManager::GetInstance()->Register(std::move(transaction));
 }
 }

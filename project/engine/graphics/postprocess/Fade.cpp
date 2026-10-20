@@ -67,9 +67,11 @@ void Fade::InitializeSprites() {
 
     // 連番画像を読み込めない場合も画面を覆えるよう、白一枚を黒く着色するSpriteを持つ。
     const uint32_t whiteHandle = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/common/white.png");
+
     if (whiteHandle == 0) {
         return;
     }
+
     fallbackBlack_ = std::make_unique<engine::Sprite>();
     fallbackBlack_->Initialize(spriteCommon_.get(), whiteHandle);
     fallbackBlack_->SetAnchorPoint({ 0.5f, 0.5f });
@@ -83,11 +85,14 @@ void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, i
     // 1枚でも欠けていたら系列を確定せず、描画側の黒フェードに任せる。
     std::vector<uint32_t> resolvedHandles;
     resolvedHandles.reserve(frameCount);
+
     for (int i = 0; i < frameCount; ++i) {
         const uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(MakeFramePath(directory, i));
+
         if (handle == 0) {
             return;
         }
+
         resolvedHandles.push_back(handle);
     }
 
@@ -106,11 +111,13 @@ void Fade::ResolveNoiseTexture() {
     if (noiseTextureResolved_) {
         return;
     }
+
     const uint32_t noiseHandle = TextureManager::GetInstance()->GetSrvHandle(
         "Resources/sprite/effect/noise0.png");
     if (noiseHandle == 0) {
         return;
     }
+
     PostEffect::GetInstance()->SetNoiseTexture(noiseHandle);
     noiseTextureResolved_ = true;
 }
@@ -118,12 +125,14 @@ void Fade::ResolveNoiseTexture() {
 // 開閉方向から被覆率を計算し、演出時間を使い切ったらFinishedへ進めます。
 void Fade::Update(float deltaTime) {
     ResolveNoiseTexture();
+
     if (status_ == Status::None || status_ == Status::Finished) {
         return;
     }
 
     counter_ += deltaTime;
     const float t = GetNormalizedTime();
+
     // 開閉を同じ被覆率で表し、連番画像のフレーム選択に使う。
     coverage_ = IsClosing() ? EaseInOut(t) : 1.0f - EaseInOut(t);
 
@@ -222,6 +231,7 @@ void Fade::DrawFallbackBlack(float alpha) {
     }
 
     fallbackBlack_->SetPosition({ ScreenW() * 0.5f, ScreenH() * 0.5f });
+
     // 画面端に隙間が出ないよう、フォールバックの黒板だけ少し大きく描く。
     fallbackBlack_->SetSize({ ScreenW() + 8.0f, ScreenH() + 8.0f });
     fallbackBlack_->SetRotation(0.0f);

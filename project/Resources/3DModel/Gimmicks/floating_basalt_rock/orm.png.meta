@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "08dac1683f1df5332480f23d4a44d729",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/floating_basalt_rock/orm.png",
+  "version": 1
+}

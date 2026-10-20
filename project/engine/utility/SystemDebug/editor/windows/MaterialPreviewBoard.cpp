@@ -31,27 +31,34 @@ bool IsPreviewObject(const engine::Object3d* object) {
 bool IsModelFolder(const std::filesystem::path& folder) {
     // フォルダ内に読み込めるモデル形式が少なくとも１つあるか確認する。
     std::error_code ec;
-    if (!std::filesystem::is_directory(folder, ec)) return false;
+    if (!std::filesystem::is_directory(folder, ec))
+        return false;
 
     for (const auto& entry : std::filesystem::directory_iterator(folder, ec)) {
-        if (ec) break;
-        if (!entry.is_regular_file(ec)) continue;
+        if (ec)
+            break;
+        if (!entry.is_regular_file(ec))
+            continue;
 
         std::string ext = entry.path().extension().string();
         std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
             return static_cast<char>(std::tolower(c));
         });
+
         if (ext == ".obj" || ext == ".gltf" || ext == ".glb") {
             return true;
         }
     }
+
     return false;
 }
 
 std::string ToModelName(const std::filesystem::path& folder) {
     std::error_code ec;
     std::filesystem::path relative = std::filesystem::relative(folder, kModelRoot, ec);
-    if (ec) return {};
+
+    if (ec)
+        return {};
     return relative.generic_string();
 }
 
@@ -59,6 +66,7 @@ const char* GetPreviewNote(int materialType) {
     if (materialType == 13 || materialType == 16) {
         return "モデル形状に重ねて確認";
     }
+
     return MaterialRenderPolicy::IsSpecial(materialType) ? "専用描画パスで確認" : "通常描画パスで確認";
 }
 }
@@ -87,6 +95,7 @@ void MaterialPreviewBoard::DrawImGui() {
 
     if (useEffectPreviewStage_) {
         EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
+
         if (stage && stage->IsEnabled()) {
             ImGui::TextDisabled("Effect Preview Stageの隔離空間に生成します。");
         } else {
@@ -142,33 +151,42 @@ void MaterialPreviewBoard::DrawModelSelector() {
     ImGui::Text(ICON_FA_CUBE " 表示モデル");
 
     const char* previewText = modelNameBuffer_[0] != '\0' ? modelNameBuffer_ : "Primitives/sphere";
+
     if (ImGui::BeginCombo("モデルリスト", previewText)) {
         for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
             const bool selected = (i == selectedModelIndex_);
+
             if (ImGui::Selectable(modelCandidates_[i].c_str(), selected)) {
                 selectedModelIndex_ = i;
                 SetPreviewModel(modelCandidates_[i]);
             }
-            if (selected) ImGui::SetItemDefaultFocus();
+
+            if (selected)
+                ImGui::SetItemDefaultFocus();
         }
+
         ImGui::EndCombo();
     }
 
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_SYNC_ALT " 更新")) {
         RefreshModelCandidates();
     }
 
     ImGui::Button(ICON_FA_BOX_OPEN " Projectからモデルをドロップ", ImVec2(-1, 30));
+
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
             const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
+
             if (!modelName.empty()) {
                 SetPreviewModel(modelName);
                 RefreshModelCandidates();
                 DebugConsole::GetInstance()->AddLog("Material preview model: " + modelName);
             }
         }
+
         ImGui::EndDragDropTarget();
     }
 
@@ -178,17 +196,20 @@ void MaterialPreviewBoard::DrawModelSelector() {
 
 void MaterialPreviewBoard::CreateBoard() {
     // 比較対象をエディター専用オブジェクトとして並べ、シーンの保存対象から分離します。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
-    Object3dCommon* common = scene->GetObject3dCommon();
-    if (!common) return;
+    engine::Object3dCommon* common = scene->GetObject3dCommon();
+    if (!common)
+        return;
 
     RemoveBoard();
 
     // 既存ボードを消してから同一モデルを読み込み、材質差だけを比較できるようにする。
     std::string modelName = modelNameBuffer_;
-    if (modelName.empty()) modelName = "Primitives/sphere";
+    if (modelName.empty())
+        modelName = "Primitives/sphere";
     ModelManager::GetInstance()->LoadModel(modelName);
 
     std::vector<MaterialPreviewEntry> entries = GetEntries();
@@ -196,8 +217,10 @@ void MaterialPreviewBoard::CreateBoard() {
 
     engine::Vector3 origin = { 0.0f, 2.0f, 0.0f };
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+
     // 隔離ステージでは列全体を中央寄せし、通常配置では選択Objectの横を起点にする。
     bool placedInEffectStage = useEffectPreviewStage_ && previewStage && previewStage->IsEnabled();
+
     if (placedInEffectStage) {
         origin = previewStage->GetGroundPosition();
         int visibleColumns = (std::min)(columnCount, static_cast<int>(entries.size()));
@@ -216,6 +239,7 @@ void MaterialPreviewBoard::CreateBoard() {
         object->Initialize(common);
         object->SetModel(modelName);
         object->SetName(std::string(kPreviewPrefix) + std::to_string(entry.materialType) + "_" + entry.shortLabel);
+
         // Preview専用の名前とClassを付け、衝突・保存操作に通常Objectとして混ざらないようにする。
         object->SetClassName("EditorOnly");
         object->SetSaveCategory("Object");
@@ -231,13 +255,16 @@ void MaterialPreviewBoard::CreateBoard() {
             origin.y,
             origin.z + static_cast<float>(row) * spacing_
         };
+
         object->SetTranslate(previewPosition);
         object->SetScale({ 1.0f, 1.0f, 1.0f });
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
+
         if (placedInEffectStage) {
             // モデル形状の下端を地面へ合わせるため、ワールドAABBから高さを補正する。
             const AABB bounds = object->GetModelWorldAABB();
+
             if (std::isfinite(bounds.min.y)) {
                 constexpr float kGroundClearance = 0.02f;
                 previewPosition.y += origin.y - bounds.min.y + kGroundClearance;
@@ -246,6 +273,7 @@ void MaterialPreviewBoard::CreateBoard() {
                 object->UpdateWorldMatrix();
             }
         }
+
         scene->AddObject(std::move(object));
     }
 
@@ -256,10 +284,12 @@ void MaterialPreviewBoard::CreateBoard() {
 
 void MaterialPreviewBoard::RemoveBoard() {
     // このボードが作ったオブジェクトだけを削除します。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
     std::vector<engine::Object3d*> targets;
+
     for (auto& object : scene->GetObjects()) {
         if (IsPreviewObject(object.get())) {
             targets.push_back(object.get());
@@ -277,12 +307,16 @@ void MaterialPreviewBoard::RemoveBoard() {
 
 int MaterialPreviewBoard::CountBoardObjects() const {
     // 現行Scene内のプレビュー専用Objectだけを数え、通常配置は含めません。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return 0;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return 0;
 
     int count = 0;
+
     for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-        if (IsPreviewObject(object.get())) ++count;
+        if (IsPreviewObject(object.get()))
+            ++count;
     }
+
     return count;
 }
 
@@ -293,6 +327,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         const char* label;
         const char* shortLabel;
     };
+
     // 比較ボードに並べる MaterialType と、その材質内で切り替えるモード一覧。
     struct BaseEntry {
         int type;
@@ -339,8 +374,10 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
     };
 
     std::vector<MaterialPreviewEntry> entries;
+
     for (const BaseEntry& base : baseEntries) {
-        if (showOnlySpecialMaterials_ && !MaterialRenderPolicy::IsSpecial(base.type)) continue;
+        if (showOnlySpecialMaterials_ && !MaterialRenderPolicy::IsSpecial(base.type))
+            continue;
 
         if (expandModeVariants_ && !base.modes.empty()) {
             // effectTypeを持つ材質は各モードを別Objectへ展開して比較する。
@@ -359,6 +396,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
             entries.push_back({ base.type, effectType, base.label, base.shortLabel, modeLabel });
         }
     }
+
     return entries;
 }
 
@@ -375,13 +413,18 @@ void MaterialPreviewBoard::RefreshModelCandidates() {
 
     std::error_code ec;
     const std::filesystem::path root(kModelRoot);
+
     if (std::filesystem::exists(root, ec)) {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(root, ec)) {
-            if (ec) break;
-            if (!entry.is_directory(ec)) continue;
-            if (!IsModelFolder(entry.path())) continue;
+            if (ec)
+                break;
+            if (!entry.is_directory(ec))
+                continue;
+            if (!IsModelFolder(entry.path()))
+                continue;
 
             std::string modelName = ToModelName(entry.path());
+
             if (!modelName.empty()) {
                 uniqueModels.insert(modelName);
             }
@@ -390,6 +433,7 @@ void MaterialPreviewBoard::RefreshModelCandidates() {
 
     modelCandidates_.assign(uniqueModels.begin(), uniqueModels.end());
     selectedModelIndex_ = 0;
+
     for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
         if (modelCandidates_[i] == modelNameBuffer_) {
             selectedModelIndex_ = i;
@@ -400,26 +444,31 @@ void MaterialPreviewBoard::RefreshModelCandidates() {
 
 void MaterialPreviewBoard::SetPreviewModel(const std::string& modelName) {
     // リスト外の指定も候補へ追加して、外部から選んだモデルを保持します。
-    if (modelName.empty()) return;
+    if (modelName.empty())
+        return;
     strncpy_s(modelNameBuffer_, modelName.c_str(), _TRUNCATE);
+
     for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
         if (modelCandidates_[i] == modelName) {
             selectedModelIndex_ = i;
             return;
         }
     }
+
     modelCandidates_.push_back(modelName);
     selectedModelIndex_ = static_cast<int>(modelCandidates_.size()) - 1;
 }
 
 void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const MaterialPreviewEntry& entry) const {
     // 材質種別ごとのBlendとPBR既定値を同じモデルへ適用し、比較条件を揃えます。
-    if (!object) return;
+    if (!object)
+        return;
 
     object->SetMaterialType(entry.materialType);
     object->SetBlendMode(entry.materialType == 1 || entry.materialType == 3 || MaterialRenderPolicy::IsSpecial(entry.materialType) ? BlendMode::kNormal : BlendMode::kNone);
     object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     object->SetEmissive(entry.materialType == 3 ? 2.5f : 1.0f);
+
     if (entry.materialType == 23) {
         object->SetRoughness(0.24f);
         object->SetMetallic(0.62f);
@@ -447,9 +496,11 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
 
     MeshRenderer* renderer = object->GetMeshRenderer();
     auto* water = renderer ? renderer->GetWaterParamData() : nullptr;
-    if (!water) return;
+    if (!water)
+        return;
 
     water->effectType = entry.effectType;
+
     // 共通のWaterParamDataを特殊材質ごとに再解釈するため、まず比較用の基準値を揃える。
     water->waveSpeed = 2.0f;
     water->waveHeight = 1.0f;
@@ -479,6 +530,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectScaleY = 0.35f;
         water->effectScaleZ = 1.15f;
         break;
+
     case 9:
         object->SetBlendMode(BlendMode::kNone);
         object->SetColor({ 1.0f, 0.12f, 0.02f, 1.0f });
@@ -492,6 +544,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectSoftness = 0.62f;
         water->effectIntensity = 1.35f;
         break;
+
     case 11:
         object->SetBlendMode(BlendMode::kNormal);
         water->waveSpeed = 2.0f;
@@ -500,6 +553,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->billboardScale = 1.05f;
         water->effectIntensity = 1.2f;
         break;
+
     case 12:
         object->SetBlendMode(BlendMode::kAdd);
         object->SetEmissive(6.0f);
@@ -509,6 +563,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectSoftness = 0.35f;
         water->effectIntensity = 3.2f;
         break;
+
     case 13:
         water->waveSpeed = 1.7f;
         water->waveHeight = 0.55f;
@@ -516,12 +571,14 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectScale = 0.55f;
         water->effectIntensity = 0.75f;
         break;
+
     case 14:
         water->waveSpeed = 3.0f;
         water->waveFrequency = 12.0f;
         water->effectScale = 2.6f;
         water->effectIntensity = 1.6f;
         break;
+
     case 16:
         water->waveSpeed = 1.6f;
         water->waveHeight = 1.0f;
@@ -530,6 +587,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectSoftness = 0.38f;
         water->effectIntensity = 1.0f;
         break;
+
     case 17:
         water->waveSpeed = 2.4f;
         water->waveHeight = 1.0f;
@@ -537,6 +595,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectScale = 1.2f;
         water->effectIntensity = 0.9f;
         break;
+
     case 18:
         object->SetBlendMode(BlendMode::kAdd);
         water->waveSpeed = 3.5f;
@@ -545,6 +604,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectSoftness = 0.35f;
         water->effectIntensity = 0.9f;
         break;
+
     case 19:
         object->SetBlendMode(BlendMode::kAdd);
         water->waveSpeed = 2.4f;
@@ -552,6 +612,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectScale = 1.35f;
         water->effectIntensity = 1.6f;
         break;
+
     case 20:
         water->waveSpeed = 1.5f;
         water->waveHeight = 1.1f;
@@ -559,6 +620,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectScale = 1.5f;
         water->effectIntensity = 1.15f;
         break;
+
     case 21:
         water->waveSpeed = 0.85f;
         water->waveHeight = 1.35f;
@@ -568,6 +630,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectIntensity = 0.95f;
         water->billboardScale = 1.35f;
         break;
+
     case 22:
         object->SetBlendMode(BlendMode::kNormal);
         object->SetEmissive(3.2f);
@@ -579,6 +642,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectIntensity = 2.2f;
         water->billboardScale = 1.15f;
         break;
+
     case 26:
         object->SetBlendMode(BlendMode::kNormal);
         object->SetColor({ 0.42f, 1.0f, 0.80f, 0.96f });
@@ -591,6 +655,7 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(engine::Object3d* object, const 
         water->effectIntensity = 1.72f;
         water->billboardScale = 1.0f;
         break;
+
     default:
         break;
     }

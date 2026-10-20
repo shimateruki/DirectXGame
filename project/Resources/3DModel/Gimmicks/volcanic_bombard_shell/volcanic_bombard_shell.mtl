@@ -1,0 +1,12 @@
+newmtl magma_shell
+Ka 0.12 0.07 0.07
+Kd 1 1 1
+Ks 0.17 0.13 0.11
+Ns 24
+Pr 0.82
+Pm 0
+illum 2
+map_Kd basecolor.png
+norm normal.png
+map_Bump normal.png
+map_Pr orm.png

@@ -6,7 +6,8 @@ class GimmickPhaseFlipFloor : public BaseGimmick {
   public:
     virtual ~GimmickPhaseFlipFloor() = default;
 
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
 
     std::unique_ptr<engine::Object3d> Clone() const override;
@@ -14,10 +15,15 @@ class GimmickPhaseFlipFloor : public BaseGimmick {
   private:
     // 現在のフェーズに属する時だけ、足場として踏める状態にします。
     void ApplyState(bool isOwnPhase, float phaseProgress);
+
     engine::Vector4 GetPhaseColor(float alpha) const;
+
     int GetPhaseIndex() const;
+
     int GetPhaseCount() const;
+
     float GetPhaseDuration() const;
+
     float SmoothStep(float t) const;
 
     uint32_t originalCollisionAttribute_ = 0;

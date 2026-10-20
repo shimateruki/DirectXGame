@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "665a2ed0c3c65f57b10f2b23d936fe8c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_DashRunA_Soil.obj",
+  "version": 1
+}

@@ -33,11 +33,13 @@ namespace {
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     // 保存済みのパスを優先し、相対パスならResources配下も探して旧データを読めるようにする。
     std::filesystem::path filePath(path);
+
     if (std::filesystem::exists(filePath)) {
         return filePath;
     }
 
     std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
+
     if (std::filesystem::exists(resourcesPath)) {
         return resourcesPath;
     }
@@ -53,6 +55,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -78,6 +81,7 @@ std::unique_ptr<Object3d> Object3d::Clone() const {
     if (typeid(*this) != typeid(Object3d)) {
         return nullptr;
     }
+
     auto newObj = std::make_unique<Object3d>();
     assert(common_ != nullptr);
     newObj->Initialize(common_);
@@ -88,6 +92,7 @@ std::unique_ptr<Object3d> Object3d::Clone() const {
 std::string Object3d::GeneratePersistentGuid() {
     std::array<unsigned char, 16> bytes{};
     std::random_device random;
+
     for (unsigned char& value : bytes) {
         value = static_cast<unsigned char>(random());
     }
@@ -98,12 +103,15 @@ std::string Object3d::GeneratePersistentGuid() {
 
     std::ostringstream stream;
     stream << std::hex << std::setfill('0');
+
     for (std::size_t index = 0; index < bytes.size(); ++index) {
         if (index == 4 || index == 6 || index == 8 || index == 10) {
             stream << '-';
         }
+
         stream << std::setw(2) << static_cast<unsigned int>(bytes[index]);
     }
+
     return stream.str();
 }
 
@@ -112,16 +120,21 @@ bool Object3d::IsPersistentGuidValid(std::string_view guid) {
     if (guid.size() != 36) {
         return false;
     }
+
     for (std::size_t index = 0; index < guid.size(); ++index) {
         const bool isSeparator = index == 8 || index == 13 || index == 18 || index == 23;
+
         if (isSeparator) {
-            if (guid[index] != '-') return false;
+            if (guid[index] != '-')
+                return false;
             continue;
         }
+
         if (std::isxdigit(static_cast<unsigned char>(guid[index])) == 0) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -130,6 +143,7 @@ const std::string& Object3d::EnsurePersistentGuid() {
     if (!IsPersistentGuidValid(persistentGuid_)) {
         persistentGuid_ = GeneratePersistentGuid();
     }
+
     return persistentGuid_;
 }
 
@@ -138,6 +152,7 @@ bool Object3d::SetPersistentGuid(const std::string& guid) {
     if (!IsPersistentGuidValid(guid)) {
         return false;
     }
+
     persistentGuid_ = guid;
     return true;
 }
@@ -152,6 +167,7 @@ ParticleEmitterComponent* Object3d::EnsureParticleEmitterComponent() {
     if (!particleEmitterComponent_) {
         particleEmitterComponent_.emplace();
     }
+
     SetComponentPresenceMarker(std::string(kParticleEmitterComponentType), true);
     return &*particleEmitterComponent_;
 }
@@ -161,6 +177,7 @@ bool Object3d::RemoveParticleEmitterComponent() {
     if (!particleEmitterComponent_) {
         return false;
     }
+
     particleEmitterComponent_.reset();
     gpuEmitter_.reset();
     SetComponentPresenceMarker(std::string(kParticleEmitterComponentType), false);
@@ -179,7 +196,8 @@ const ParticleEmitterComponent* Object3d::GetParticleEmitterComponent() const {
 
 void Object3d::SetParticleName(const std::string& name) {
     // 空文字で未追加の場合はComponentを増やさず、実際の設定時だけ生成する。
-    if (!particleEmitterComponent_ && name.empty()) return;
+    if (!particleEmitterComponent_ && name.empty())
+        return;
     EnsureParticleEmitterComponent()->SetCpuParticle(name);
 }
 
@@ -191,7 +209,8 @@ const std::string& Object3d::GetParticleName() const {
 
 void Object3d::SetGPUParticleName(const std::string& name) {
     // GPUプリセットが指定された場合だけ粒子Componentを実体化する。
-    if (!particleEmitterComponent_ && name.empty()) return;
+    if (!particleEmitterComponent_ && name.empty())
+        return;
     EnsureParticleEmitterComponent()->SetGpuParticle(name);
 }
 
@@ -206,6 +225,7 @@ MeshEffectComponent* Object3d::EnsureMeshEffectComponent() {
     if (!meshEffectComponent_) {
         meshEffectComponent_.emplace();
     }
+
     SetComponentPresenceMarker(std::string(kMeshEffectComponentType), true);
     return &*meshEffectComponent_;
 }
@@ -215,6 +235,7 @@ bool Object3d::RemoveMeshEffectComponent() {
     if (!meshEffectComponent_) {
         return false;
     }
+
     meshEffectComponent_.reset();
     currentMeshEffect1_.clear();
     currentMeshEffect2_.clear();
@@ -236,7 +257,8 @@ const MeshEffectComponent* Object3d::GetMeshEffectComponent() const {
 
 void Object3d::SetMeshEffect1Name(const std::string& name) {
     // 主効果を指定するときだけComponentを確保し、空設定では余分な項目を増やさない。
-    if (!meshEffectComponent_ && name.empty()) return;
+    if (!meshEffectComponent_ && name.empty())
+        return;
     EnsureMeshEffectComponent()->SetPrimaryEffect(name);
 }
 
@@ -248,7 +270,8 @@ const std::string& Object3d::GetMeshEffect1Name() const {
 
 void Object3d::SetMeshEffect2Name(const std::string& name) {
     // 副効果を設定した場合だけComponentを作成する。
-    if (!meshEffectComponent_ && name.empty()) return;
+    if (!meshEffectComponent_ && name.empty())
+        return;
     EnsureMeshEffectComponent()->SetSecondaryEffect(name);
 }
 
@@ -263,6 +286,7 @@ PathMoverComponent* Object3d::EnsurePathMoverComponent() {
     if (!pathMoverComponent_) {
         pathMoverComponent_.emplace();
     }
+
     SetComponentPresenceMarker(std::string(kPathMoverComponentType), true);
     return &*pathMoverComponent_;
 }
@@ -272,10 +296,13 @@ bool Object3d::RemovePathMoverComponent() {
     if (!pathMoverComponent_) {
         return false;
     }
+
     pathMoverComponent_.reset();
+
     if (recorder_) {
         recorder_->Stop();
     }
+
     SetComponentPresenceMarker(std::string(kPathMoverComponentType), false);
     return true;
 }
@@ -292,7 +319,8 @@ const PathMoverComponent* Object3d::GetPathMoverComponent() const {
 
 void Object3d::SetRecordPathName(const std::string& name) {
     // 実際に経路名を指定した場合だけ移動Componentを作成する。
-    if (!pathMoverComponent_ && name.empty()) return;
+    if (!pathMoverComponent_ && name.empty())
+        return;
     EnsurePathMoverComponent()->SetPathName(name);
 }
 
@@ -304,7 +332,8 @@ const std::string& Object3d::GetRecordPathName() const {
 
 void Object3d::SetRecordLoop(bool loop) {
     // 未追加のオブジェクトへfalseを設定しても、空の経路Componentは作らない。
-    if (!pathMoverComponent_ && !loop) return;
+    if (!pathMoverComponent_ && !loop)
+        return;
     EnsurePathMoverComponent()->SetLoop(loop);
 }
 
@@ -315,7 +344,8 @@ bool Object3d::IsRecordLoop() const {
 
 void Object3d::SetRecordRelative(bool relative) {
     // 未追加状態のfalseは省き、相対経路を使うときだけComponentを作る。
-    if (!pathMoverComponent_ && !relative) return;
+    if (!pathMoverComponent_ && !relative)
+        return;
     EnsurePathMoverComponent()->SetRelative(relative);
 }
 
@@ -329,6 +359,7 @@ GameplayLinkComponent* Object3d::EnsureGameplayLinkComponent() {
     if (!gameplayLinkComponent_) {
         gameplayLinkComponent_.emplace();
     }
+
     SetComponentPresenceMarker(std::string(kGameplayLinkComponentType), true);
     return &*gameplayLinkComponent_;
 }
@@ -338,6 +369,7 @@ bool Object3d::RemoveGameplayLinkComponent() {
     if (!gameplayLinkComponent_) {
         return false;
     }
+
     gameplayLinkComponent_.reset();
     SetComponentPresenceMarker(std::string(kGameplayLinkComponentType), false);
     return true;
@@ -365,13 +397,15 @@ NavAgentComponent* Object3d::EnsureNavAgentComponent() {
     if (!navAgentComponent_) {
         navAgentComponent_.emplace();
     }
+
     SetComponentPresenceMarker(std::string(kNavAgentComponentType), true);
     return &*navAgentComponent_;
 }
 
 bool Object3d::RemoveNavAgentComponent() {
     // 経路探索設定を消し、シーン保存上の存在情報も解除する。
-    if (!navAgentComponent_) return false;
+    if (!navAgentComponent_)
+        return false;
     navAgentComponent_.reset();
     SetComponentPresenceMarker(std::string(kNavAgentComponentType), false);
     return true;
@@ -389,7 +423,8 @@ const NavAgentComponent* Object3d::GetNavAgentComponent() const {
 
 void Object3d::SetEventID(int id) {
     // 無効IDだけのオブジェクトには空の接続Componentを作らない。
-    if (!gameplayLinkComponent_ && id < 0) return;
+    if (!gameplayLinkComponent_ && id < 0)
+        return;
     EnsureGameplayLinkComponent()->SetEventId(id);
 }
 
@@ -400,7 +435,8 @@ int Object3d::GetEventID() const {
 
 void Object3d::SetTargetID(int id) {
     // 有効な接続先があるときだけComponentを確保する。
-    if (!gameplayLinkComponent_ && id < 0) return;
+    if (!gameplayLinkComponent_ && id < 0)
+        return;
     EnsureGameplayLinkComponent()->SetTargetId(id);
 }
 
@@ -435,21 +471,30 @@ void* Object3d::FindBuiltInComponent(std::string_view typeId) {
 
 const void* Object3d::FindBuiltInComponent(std::string_view typeId) const {
     // 編集用の型IDから組み込みComponent実体へ対応付ける。
-    if (typeId == kTransformComponentType) return &transform_;
-    if (typeId == kMeshRendererComponentType) return meshRenderer_.get();
-    if (typeId == kColliderComponentType) return collider_.get();
-    if (typeId == kParticleEmitterComponentType) return GetParticleEmitterComponent();
-    if (typeId == kMeshEffectComponentType) return GetMeshEffectComponent();
-    if (typeId == kPathMoverComponentType) return GetPathMoverComponent();
-    if (typeId == kGameplayLinkComponentType) return GetGameplayLinkComponent();
-    if (typeId == kNavAgentComponentType) return GetNavAgentComponent();
+    if (typeId == kTransformComponentType)
+        return &transform_;
+    if (typeId == kMeshRendererComponentType)
+        return meshRenderer_.get();
+    if (typeId == kColliderComponentType)
+        return collider_.get();
+    if (typeId == kParticleEmitterComponentType)
+        return GetParticleEmitterComponent();
+    if (typeId == kMeshEffectComponentType)
+        return GetMeshEffectComponent();
+    if (typeId == kPathMoverComponentType)
+        return GetPathMoverComponent();
+    if (typeId == kGameplayLinkComponentType)
+        return GetGameplayLinkComponent();
+    if (typeId == kNavAgentComponentType)
+        return GetNavAgentComponent();
     return nullptr;
 }
 
 
 void Object3d::DrawShadow() {
     // 非表示とカメラオブジェクトは影パスへ送らない。
-    if (!GetIsRenderVisible() || IsCameraObject()) return;
+    if (!GetIsRenderVisible() || IsCameraObject())
+        return;
     if (meshRenderer_) {
         meshRenderer_->DrawShadow();
     }
@@ -464,7 +509,8 @@ void Object3d::SetShadowCommonState() {
 
 void Object3d::DrawShadowOnly() {
     // 影だけの描画でも可視性とカメラ除外の条件を本体描画と揃える。
-    if (!GetIsRenderVisible() || IsCameraObject()) return;
+    if (!GetIsRenderVisible() || IsCameraObject())
+        return;
     if (meshRenderer_) {
         meshRenderer_->DrawShadowOnly();
     }
@@ -483,10 +529,12 @@ MeshRenderer::LocalFogData* Object3d::GetLocalFogData() {
 }
 
 void Object3d::CopyFrom(const Object3d* other) {
-    if (!other) return;
+    if (!other)
+        return;
 
     // 1. 基本設定・識別子
     this->name_ = other->name_;
+
     // 複製先にはInitialize時に発行した別GUIDを維持します。
     this->opaqueComponents_ = other->opaqueComponents_;
     this->className_ = other->className_;
@@ -505,6 +553,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->isLocked_ = other->isLocked_;
     this->castShadow_ = other->castShadow_;
     this->prefabInstanceInfo_ = other->prefabInstanceInfo_;
+
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
     }
@@ -517,6 +566,7 @@ void Object3d::CopyFrom(const Object3d* other) {
         this->SetColliderConfig(other->GetColliderConfig());
         this->SetCollisionAttribute(other->GetCollisionAttribute());
         this->SetCollisionMask(other->GetCollisionMask());
+
         if (const TerrainCollisionData* terrain = other->GetTerrainCollisionData()) {
             this->SetTerrainCollisionData(*terrain, other->GetTerrainCollisionPath());
         } else {
@@ -545,6 +595,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 7. アニメーション
     this->animName_ = other->animName_;
     this->isAnimLoop_ = other->isAnimLoop_;
+
     if (!other->GetAnimatorControllerPath().empty()) {
         this->SetAnimatorController(other->GetAnimatorControllerPath());
     } else {
@@ -562,6 +613,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->attachedEffects2_.clear();
 
     this->InitializeRecorder(nullptr);
+
     if (!this->GetRecordPathName().empty() && this->recorder_) {
         bool isCinematic = this->IsCameraObject();
         this->recorder_->Play(
@@ -574,6 +626,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 9. ローカルフォグ (もし両方にフォグデータがあれば構造体ごとコピー)
     auto myFog = this->GetLocalFogData();
     auto otherFog = const_cast<Object3d*>(other)->GetLocalFogData();
+
     if (myFog && otherFog) {
         *myFog = *otherFog;
     }

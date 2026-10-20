@@ -24,17 +24,20 @@ void SetError(std::string* destination, const std::string& message) {
 }
 
 bool ReadVector2(const json& value, engine::Vector2& destination) {
-    if (!value.is_array() || value.size() < 2) return false;
+    if (!value.is_array() || value.size() < 2)
+        return false;
     destination = { value[0].get<float>(), value[1].get<float>() };
     return true;
 }
 
 bool ReadVector4(const json& value, engine::Vector4& destination) {
-    if (!value.is_array() || value.size() < 4) return false;
+    if (!value.is_array() || value.size() < 4)
+        return false;
     destination = {
         value[0].get<float>(), value[1].get<float>(),
         value[2].get<float>(), value[3].get<float>()
     };
+
     return true;
 }
 
@@ -50,7 +53,8 @@ void ReadValue(const json& source, const char* key, T& destination) {
 void OverlayMaterial(const json& source, MaterialInstanceData& material) {
     // 親から受け継いだ値は残し、子JSONに書かれた項目だけ上書きする。
     ReadValue(source, "displayName", material.displayName);
-    if (source.contains("color")) ReadVector4(source["color"], material.color);
+    if (source.contains("color"))
+        ReadVector4(source["color"], material.color);
     ReadValue(source, "blendMode", material.blendMode);
     ReadValue(source, "materialType", material.materialType);
     ReadValue(source, "metallic", material.metallic);
@@ -63,11 +67,13 @@ void OverlayMaterial(const json& source, MaterialInstanceData& material) {
     ReadValue(source, "texturePath", material.texturePath);
     ReadValue(source, "normalMapPath", material.normalMapPath);
     ReadValue(source, "ormMapPath", material.ormMapPath);
-    if (source.contains("textureTiling")) ReadVector2(source["textureTiling"], material.textureTiling);
+    if (source.contains("textureTiling"))
+        ReadVector2(source["textureTiling"], material.textureTiling);
     ReadValue(source, "autoTextureTiling", material.autoTextureTiling);
 
     // 水面・特殊エフェクト固有の設定は通常のマテリアル項目とは別階層にある。
-    if (!source.contains("special") || !source["special"].is_object()) return;
+    if (!source.contains("special") || !source["special"].is_object())
+        return;
     const json& special = source["special"];
     ReadValue(special, "waveSpeed", material.waveSpeed);
     ReadValue(special, "waveHeight", material.waveHeight);
@@ -87,9 +93,11 @@ void OverlayMaterial(const json& source, MaterialInstanceData& material) {
 fs::path ResolveBasePath(const fs::path& ownerPath, const std::string& baseAsset) {
     // 作業ディレクトリから参照できるパスを優先し、次に子アセットからの相対パスを試す。
     fs::path basePath(baseAsset);
-    if (basePath.is_absolute() || fs::exists(basePath)) return basePath;
+    if (basePath.is_absolute() || fs::exists(basePath))
+        return basePath;
     const fs::path relativeToOwner = ownerPath.parent_path() / basePath;
-    if (fs::exists(relativeToOwner)) return relativeToOwner;
+    if (fs::exists(relativeToOwner))
+        return relativeToOwner;
     return basePath;
 }
 
@@ -107,6 +115,7 @@ bool LoadResolvedInternal(
     }
 
     const std::string normalizedPath = NormalizePath(assetPath);
+
     // 現在の再帰経路だけを記録し、親子の循環参照を検出する。
     if (!loading.insert(normalizedPath).second) {
         SetError(errorMessage, "Material Instanceの継承が循環しています: " + normalizedPath);
@@ -115,6 +124,7 @@ bool LoadResolvedInternal(
 
     // 途中で失敗したときは経路集合から現在のパスを外し、次回の読み込みに影響させない。
     std::ifstream file(assetPath);
+
     if (!file) {
         loading.erase(normalizedPath);
         SetError(errorMessage, "Material Instanceを開けません: " + normalizedPath);
@@ -138,6 +148,7 @@ bool LoadResolvedInternal(
     }
 
     const std::string baseAsset = root.value("baseAsset", "");
+
     // 親の解決済み値へ子の明示フィールドを重ねる。
     if (!baseAsset.empty()) {
         if (!LoadResolvedInternal(ResolveBasePath(assetPath, baseAsset), material, loading, depth + 1, errorMessage)) {
@@ -159,6 +170,7 @@ bool LoadResolvedInternal(
 
 MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3d& object) {
     MaterialInstanceData material;
+
     // まずObject3dの共通マテリアル値を取り出す。
     material.color = object.GetColor();
     material.blendMode = static_cast<int>(object.GetBlendMode());
@@ -194,6 +206,7 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3d& obje
             material.effectScaleZ = special->effectScaleZ;
         }
     }
+
     return material;
 }
 
@@ -243,6 +256,7 @@ bool MaterialInstanceAsset::LoadResolved(
         SetError(errorMessage, "Material Instanceのパスが空です。");
         return false;
     }
+
     material = MaterialInstanceData{};
     std::unordered_set<std::string> loading;
     return LoadResolvedInternal(fs::path(assetPath), material, loading, 0, errorMessage);
@@ -260,9 +274,11 @@ bool MaterialInstanceAsset::Save(
     // 保存先の階層を作ってから、通常項目と特殊項目をJSONにまとめる。
     const fs::path path(assetPath);
     std::error_code error;
+
     if (!path.parent_path().empty()) {
         fs::create_directories(path.parent_path(), error);
     }
+
     if (error) {
         SetError(errorMessage, "Material Instanceの保存フォルダーを作れません: " + error.message());
         return false;
@@ -305,14 +321,17 @@ bool MaterialInstanceAsset::Save(
     json root;
     root["assetType"] = "MaterialInstance";
     root["version"] = material.version;
-    if (!material.baseAsset.empty()) root["baseAsset"] = material.baseAsset;
+    if (!material.baseAsset.empty())
+        root["baseAsset"] = material.baseAsset;
     root["properties"] = std::move(properties);
 
     std::ofstream file(path);
+
     if (!file) {
         SetError(errorMessage, "Material Instanceを書き込めません: " + NormalizePath(path));
         return false;
     }
+
     file << root.dump(2) << '\n';
     return true;
 }
@@ -321,13 +340,16 @@ std::vector<std::string> MaterialInstanceAsset::Discover(const std::string& root
     std::vector<std::string> assets;
     std::error_code error;
     const fs::path root(rootDirectory);
-    if (!fs::exists(root, error)) return assets;
+    if (!fs::exists(root, error))
+        return assets;
 
     // 拡張子で候補だけを集め、内容がMaterialInstanceかどうかはここでは判定しない。
     for (fs::recursive_directory_iterator iterator(root, error), end; iterator != end && !error; iterator.increment(error)) {
-        if (!iterator->is_regular_file() || iterator->path().extension() != ".json") continue;
+        if (!iterator->is_regular_file() || iterator->path().extension() != ".json")
+            continue;
         assets.push_back(NormalizePath(iterator->path()));
     }
+
     std::sort(assets.begin(), assets.end());
     return assets;
 }
@@ -335,9 +357,11 @@ std::vector<std::string> MaterialInstanceAsset::Discover(const std::string& root
 bool engine::Object3d::ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
     // 継承を解決した材質が読めた場合だけ適用し、参照パスを更新する。
     MaterialInstanceData material;
+
     if (!MaterialInstanceAsset::LoadResolved(assetPath, material, errorMessage)) {
         return false;
     }
+
     MaterialInstanceAsset::Apply(material, *this);
     materialInstancePath_ = std::filesystem::path(assetPath).lexically_normal().generic_string();
     return true;
@@ -347,9 +371,11 @@ bool engine::Object3d::SaveMaterialInstance(const std::string& assetPath, std::s
     // 現在の材質を保存できた場合だけ、Objectの参照先を新しいアセットへ切り替える。
     MaterialInstanceData material = MaterialInstanceAsset::Capture(*this);
     material.displayName = std::filesystem::path(assetPath).stem().string();
+
     if (!MaterialInstanceAsset::Save(assetPath, material, errorMessage)) {
         return false;
     }
+
     materialInstancePath_ = std::filesystem::path(assetPath).lexically_normal().generic_string();
     return true;
 }

@@ -68,6 +68,8 @@ VertexShaderOutput main(VertexShaderInput input)
         (float32_t3x3)gTransformationMatrix.World));
     output.worldPosition = mul(skinnedPosition, gTransformationMatrix.World).xyz;
     output.shadowPosition = mul(skinnedPosition, gShadowMatrix.WVP);
+    output.localPosition = skinnedPosition.xyz;
+    output.localNormal = normalize(skinnedNormal);
 
     return output;
 }

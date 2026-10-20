@@ -44,17 +44,21 @@ engine::Object3d* GamePlayScene::FindStageEntryGate() const {
     }
 
     engine::Object3d* nameMatchedGate = nullptr;
+
     for (const auto& object : objectManager_->GetObjects()) {
         if (!object || object->GetName().find("_EntranceGate") == std::string::npos) {
             continue;
         }
+
         if (object->GetGimmickType() == "StageGate") {
             return object.get();
         }
+
         if (!nameMatchedGate && dynamic_cast<GimmickStageGate*>(object.get())) {
             nameMatchedGate = object.get();
         }
     }
+
     return nameMatchedGate;
 }
 
@@ -66,6 +70,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
 
     stageEntryGate_ = FindStageEntryGate();
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (!stageEntryGate_ || !player_ || !camera) {
         stageEntryGate_ = nullptr;
         return false;
@@ -74,9 +79,11 @@ bool GamePlayScene::StartStageEntryPresentation() {
     // OnActivated直後は、ロードしたTransformのワールド行列がまだ更新されていない場合があります。
     // 親階層を含めて確定してから入口演出の基準座標を取得します。
     engine::Object3d* gateTransformRoot = stageEntryGate_;
+
     while (gateTransformRoot->GetParent()) {
         gateTransformRoot = gateTransformRoot->GetParent();
     }
+
     gateTransformRoot->UpdateWorldMatrix(false);
 
     // 初期スポーン地点をリスポーン地点として確定させてから、演出用の位置へ移動します。
@@ -93,6 +100,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     route.direction = stageEntryDirection_;
     route.baseScale = player_->GetScale();
     player_->StartGateReturnAnimation(route);
+
     // ゲートの反応を先に見せ、内部から出始める瞬間までプレイヤーを隠します。
     player_->SetIsVisible(false);
     stageEntryPlayerEmergenceStarted_ = false;
@@ -112,6 +120,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     const engine::Vector3 landingFocus = playerSpawn + engine::Vector3{0.0f, kStageEntryCameraFocusHeight, 0.0f};
     stageEntryCameraFocusTarget_ =
         AnimationInterpolation::Lerp(gateFocus, landingFocus, kStageEntryCameraLandingFocusRate);
+
     // ステージ内部の中庭へ直進すると地形内へ入るため、入口の外側から斜めに見ます。
     const float thirdPersonYaw =
         std::atan2(stageEntryDirection_.x, stageEntryDirection_.z) + kStageEntryCameraYawOffset;
@@ -120,12 +129,14 @@ bool GamePlayScene::StartStageEntryPresentation() {
         stageEntryCameraFocusTarget_ +
         engine::Math::TransformNormal({0.0f, 0.0f, -kStageEntryCameraBackDistance}, cinematicYawRotation) +
         engine::Vector3{0.0f, kStageEntryCameraHeight, 0.0f};
+
     // 編集中の自由カメラ位置を引き継がず、毎回ゲートを読める決定的な導入ショットから始めます。
     const engine::Vector3 cinematicBackDirection =
         NormalizePlanarDirection(stageEntryCameraFocusEye_ - stageEntryCameraFocusTarget_,
                                  {-stageEntryDirection_.x, 0.0f, -stageEntryDirection_.z});
     stageEntryCameraStartTarget_ = gateFocus;
     stageEntryCameraStartEye_ = stageEntryCameraFocusEye_ + cinematicBackDirection * 2.0f + engine::Vector3{0.0f, 0.6f, 0.0f};
+
     // 復帰先はSnapToThirdPersonと同じ式で作り、演出終了フレームの段差をなくします。
     const engine::Matrix4x4 thirdPersonRotation =
         engine::Math::MakeRotateXMatrix(kStageEntryThirdPersonPitch) * engine::Math::MakeRotateYMatrix(thirdPersonYaw);
@@ -139,46 +150,58 @@ bool GamePlayScene::StartStageEntryPresentation() {
     engine::Object3d* authoredEntryCamera = nullptr;
     engine::Object3d* fallbackEntryCamera = nullptr;
     float nearestCameraDistanceSq = (std::numeric_limits<float>::max)();
+
     if (objectManager_) {
         for (const auto& object : objectManager_->GetObjects()) {
             if (!object || !object->IsCameraObject()) {
                 continue;
             }
+
             if (object->GetName() == kStageEntryCameraObjectName) {
                 authoredEntryCamera = object.get();
                 break;
             }
+
             if (object->GetName() != kStageEntryCameraFallbackObjectName) {
                 continue;
             }
+
             engine::Object3d* candidateTransformRoot = object.get();
+
             while (candidateTransformRoot->GetParent()) {
                 candidateTransformRoot = candidateTransformRoot->GetParent();
             }
+
             candidateTransformRoot->UpdateWorldMatrix(false);
             const engine::Vector3 offset = object->GetWorldPosition() - gatePosition;
             const float distanceSq = offset.x * offset.x + offset.y * offset.y + offset.z * offset.z;
+
             if (distanceSq < nearestCameraDistanceSq) {
                 nearestCameraDistanceSq = distanceSq;
                 fallbackEntryCamera = object.get();
             }
         }
     }
+
     if (!authoredEntryCamera) {
         authoredEntryCamera = fallbackEntryCamera;
     }
 
     stageEntryCameraBaseFov_ = camera->GetFovY();
     stageEntryCameraFocusFov_ = stageEntryCameraBaseFov_;
+
     if (authoredEntryCamera) {
         engine::Object3d* cameraTransformRoot = authoredEntryCamera;
+
         while (cameraTransformRoot->GetParent()) {
             cameraTransformRoot = cameraTransformRoot->GetParent();
         }
+
         cameraTransformRoot->UpdateWorldMatrix(false);
 
         engine::Vector3 authoredEye{};
         engine::Vector3 authoredTarget{};
+
         if (CameraEditor::GetInstance()->ResolveSceneCameraPose(authoredEntryCamera, authoredEye, authoredTarget)) {
             stageEntryCameraStartEye_ = authoredEye;
             stageEntryCameraStartTarget_ = authoredTarget;
@@ -188,6 +211,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
             DebugConsole::GetInstance()->AddLog("Stage Entry: using authored camera for Stage1_EntranceGate.");
         }
     }
+
     // Game Viewが別の一時カメラを参照していても、入口演出中は必ずこのメインカメラを描画します。
     CameraManager::GetInstance()->SetActiveCamera(camera);
     camera->SetInputEnabled(false);
@@ -217,10 +241,12 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     }
 
     stageEntryPresentationTimer_ += std::max(deltaTime, 0.0f);
+
     if (!stageEntryPlayerEmergenceStarted_ && stageEntryPresentationTimer_ >= kStageEntryGateOpenLeadTime) {
         stageEntryPlayerEmergenceStarted_ = true;
         player_->SetIsVisible(true);
     }
+
     if (stageEntryPlayerEmergenceStarted_) {
         player_->Update(deltaTime);
     } else {
@@ -228,6 +254,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         player_->SetIsControlActive(false);
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
+
     if (stageEntryGate_) {
         stageEntryGate_->Update(deltaTime);
     }
@@ -250,11 +277,13 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     }
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (camera) {
         CameraManager::GetInstance()->SetActiveCamera(camera);
         engine::Vector3 eye = stageEntryCameraFocusEye_;
         engine::Vector3 target = stageEntryCameraFocusTarget_;
         float fov = stageEntryCameraFocusFov_;
+
         if (stageEntryPresentationTimer_ < kStageEntryCameraRestoreStartTime) {
             const float introRate = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, 0.0f, kStageEntryCameraIntroDuration),
@@ -276,6 +305,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
         camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+
         // 追従対象がない演出カメラでは、固定点設定ではなく実際の視点を直接更新します。
         camera->SetEye(eye);
         camera->SetTarget(target);
@@ -291,9 +321,11 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     if (objectManager_) {
         objectManager_->Update(0.0f);
     }
+
     if (particleSystem_) {
         particleSystem_->Update(deltaTime);
     }
+
     GPUParticleManager::GetInstance()->Update(deltaTime);
 
     if (stageEntryPresentationTimer_ >= kStageEntryPresentationDuration) {
@@ -314,17 +346,22 @@ void GamePlayScene::FinishStageEntryPresentation() {
     stageEntryPlayerEmergenceStarted_ = false;
     stageEntryPresentationTimer_ = 0.0f;
     stageEntryPresentationRetryTimer_ = 0.0f;
+
     if (auto* gate = dynamic_cast<GimmickStageGate*>(stageEntryGate_)) {
         gate->SetTransitionEnabled(true);
     }
+
     stageEntryGate_ = nullptr;
+
     if (stageEntryCinemaBarOverrideActive_) {
         if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
             params->cinemaBarHeight = stageEntryCinemaBarBaseHeight_;
         }
+
         stageEntryCinemaBarOverrideActive_ = false;
         stageEntryCinemaBarBaseHeight_ = 0.0f;
     }
+
     if (player_) {
         player_->StopGateReturnAnimation(stageEntryHadPlayerControl_);
         player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
@@ -349,8 +386,10 @@ void GamePlayScene::FinishStageEntryPresentation() {
                 camera->SnapToThirdPerson(kStageEntryThirdPersonDistance, kStageEntryThirdPersonHeight,
                                           kStageEntryThirdPersonPitch);
             }
+
             camera->SetInputEnabled(true);
         }
     }
+
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
 }

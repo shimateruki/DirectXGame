@@ -49,10 +49,13 @@ void Model::DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex) {
         if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
             continue;
         }
+
         auto& mesh = modelData_.meshes[meshIndex];
+
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
+
         const D3D12_VERTEX_BUFFER_VIEW& activeVertexBufferView = GetActiveVertexBufferView(mesh);
         commandList->IASetVertexBuffers(0, 1, &activeVertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
@@ -71,10 +74,13 @@ void Model::DrawMeshOnly(int meshDrawIndex) {
         if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
             continue;
         }
+
         const auto& mesh = modelData_.meshes[meshIndex];
+
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
+
         // 頂点バッファをセット
         const D3D12_VERTEX_BUFFER_VIEW& activeVertexBufferView = GetActiveVertexBufferView(mesh);
         commandList->IASetVertexBuffers(0, 1, &activeVertexBufferView);
@@ -89,20 +95,25 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     computeSkinningAvailable_ = false;
     computeSkinningDirty_ = true;
     computeSkinningOutputReady_ = false;
+
     if (!common || vertices.empty() || indices.empty()) {
         modelData_.meshes.clear();
         return;
     }
+
     assert(common);
 
     common_ = common;
     DirectXCommon* dxCommon = common_->GetDxCommon();
+
     if (!dxCommon) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: DirectX device is null.");
         modelData_.meshes.clear();
         return;
     }
+
     ID3D12Device* device = dxCommon->GetDevice();
+
     if (!device) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: DirectX device is null.");
         modelData_.meshes.clear();
@@ -147,6 +158,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
         nullptr,
         IID_PPV_ARGS(&mesh.vertexResource)
     );
+
     if (FAILED(hr) || !mesh.vertexResource) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to create vertex buffer.");
         modelData_.meshes.clear();
@@ -156,11 +168,13 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     // ★ 修正: vertexResource に対してマップしてデータを流し込む
     void* mappedVerts = nullptr;
     hr = mesh.vertexResource->Map(0, nullptr, &mappedVerts);
+
     if (FAILED(hr) || !mappedVerts) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to map vertex buffer.");
         modelData_.meshes.clear();
         return;
     }
+
     memcpy(mappedVerts, vertices.data(), vbSize);
     mesh.vertexResource->Unmap(0, nullptr);
 
@@ -186,6 +200,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
         nullptr,
         IID_PPV_ARGS(&mesh.indexResource)
     );
+
     if (FAILED(hr) || !mesh.indexResource) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to create index buffer.");
         modelData_.meshes.clear();
@@ -195,11 +210,13 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     // ★ 修正: indexResource に対してマップしてデータを流し込む
     void* mappedIndices = nullptr;
     hr = mesh.indexResource->Map(0, nullptr, &mappedIndices);
+
     if (FAILED(hr) || !mappedIndices) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to map index buffer.");
         modelData_.meshes.clear();
         return;
     }
+
     memcpy(mappedIndices, indices.data(), ibSize);
     mesh.indexResource->Unmap(0, nullptr);
 

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "403306af3903574f95c6f355781e2108",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_BlinkMainExit_Turf.obj",
+  "version": 1
+}

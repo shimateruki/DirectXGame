@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "5ece7300b4c55a34abc2df85fb34136d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_DashRunC_Turf.obj",
+  "version": 1
+}

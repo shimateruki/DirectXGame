@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "33d253400f5b55de864ddfabd9b3064b",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_MovingIntro_Detail.obj",
+  "version": 1
+}

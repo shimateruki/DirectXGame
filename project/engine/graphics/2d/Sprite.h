@@ -55,9 +55,11 @@ public:
         engine::Vector2 anchorPoint = { 0.5f, 0.5f };
         bool flipX = false;
         bool flipY = false;
+
         engine::Vector2 textureLeftTop = { 0.0f, 0.0f };
         engine::Vector2 textureSize = { 100.0f, 100.0f };
         uint32_t textureHandle = 0;
+
         float emissive = 1.0f;
         bool visible = true;
         bool locked = false;
@@ -93,14 +95,17 @@ public:
 
     /// <summary>親を基準としたローカル位置を取得・設定する。</summary>
     const engine::Vector2& GetPosition() const { return position_; }
+
     void SetPosition(const engine::Vector2& position) { position_ = position; }
 
     /// <summary>画面内の回転角を取得・設定する。</summary>
     float GetRotation() const { return rotation_; }
+
     void SetRotation(float rotation) { rotation_ = rotation; }
 
     /// <summary>描画矩形の幅と高さを取得・設定する。</summary>
     const engine::Vector2& GetSize() const { return size_; }
+
     void SetSize(const engine::Vector2& size) { size_ = size; }
 
     /// <summary>現在指定されている描画色を返す。</summary>
@@ -111,14 +116,17 @@ public:
 
     /// <summary>描画矩形内の基準点を設定・取得する。値は各軸の割合で表す。</summary>
     void SetAnchorPoint(const engine::Vector2& anchorPoint) { anchorPoint_ = anchorPoint; }
+
     const engine::Vector2& GetAnchorPoint() const { return anchorPoint_; }
 
     /// <summary>テクスチャを左右反転する設定を取得・変更する。</summary>
     void SetIsFlipX(bool isFlipX) { isFlipX_ = isFlipX; }
+
     bool GetIsFlipX() const { return isFlipX_; }
 
     /// <summary>テクスチャを上下反転する設定を取得・変更する。</summary>
     void SetIsFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
+
     bool GetIsFlipY() const { return isFlipY_; }
 
     /// <summary>テクスチャから表示するUV範囲をピクセル単位で指定する。</summary>
@@ -129,6 +137,7 @@ public:
 
     /// <summary>初期化済みの描画マテリアルの発光量を変更する。未初期化時は設定を保持しない。</summary>
     void SetEmissive(float emissive) { if (materialData_) materialData_->emissive = emissive; }
+
     /// <summary>発光量を返す。未初期化時は既定値の1を返す。</summary>
     float GetEmissive() const { return materialData_ ? materialData_->emissive : 1.0f; }
 
@@ -159,6 +168,7 @@ public:
 
     /// <summary>エディターで表示するSprite名を設定・取得する。</summary>
     void SetName(const std::string& name) { name_ = name; }
+
     const std::string& GetName() const { return name_; }
 
     /// <summary>
@@ -173,14 +183,17 @@ public:
 
     /// <summary>Spriteの表示可否を取得・変更する。</summary>
     bool IsVisible() const { return isVisible_; }
+
     void SetVisible(bool isVisible) { isVisible_ = isVisible; }
 
     /// <summary>エディター上での編集ロック状態を取得・変更する。</summary>
     bool IsLocked() const { return isLocked_; }
+
     void SetLocked(bool isLocked) { isLocked_ = isLocked; }
 
     /// <summary>エディターで保持する画像名を取得・変更する。画像の再読込は行わない。</summary>
     const std::string& GetTextureName() const { return textureName_; }
+
     void SetTextureName(const std::string& name) { textureName_ = name; }
 
     /// <summary>親Spriteを設定し、必要なら表示上の位置を維持する。</summary>
@@ -190,6 +203,7 @@ public:
 
     /// <summary>親と子の非所有参照を取得する。</summary>
     Sprite* GetParent() const { return parent_; }
+
     const std::vector<Sprite*>& GetChildren() const { return children_; }
 
     /// <summary>親Spriteの変換を反映した画面上の位置を返す。</summary>
@@ -197,6 +211,7 @@ public:
 
     /// <summary>ReplayDebugger用IDが未発行なら割り当て、同じIDを返す。</summary>
     uint64_t EnsureReplayId();
+
     /// <summary>現在のReplayDebugger用IDを返す。未発行なら0。</summary>
     uint64_t GetReplayId() const { return replayId_; }
 
@@ -211,10 +226,12 @@ public:
 
     /// <summary>リプレイの保持対象かどうかを取得・設定する。</summary>
     bool IsReplayRetained() const { return replayRetained_; }
+
     void SetReplayRetained(bool retained) { replayRetained_ = retained; }
 
     /// <summary>リプレイ再現上で削除済みかどうかを取得・設定する。</summary>
     bool IsReplayRemoved() const { return replayRemoved_; }
+
     void SetReplayRemoved(bool removed) { replayRemoved_ = removed; }
 
 private:

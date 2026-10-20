@@ -9,6 +9,7 @@
 class RootSignatureBuilder {
 public:
     RootSignatureBuilder() = default;
+
     ~RootSignatureBuilder() = default;
 
     /// <summary>指定レジスタを直接参照する CBV を追加します。</summary>

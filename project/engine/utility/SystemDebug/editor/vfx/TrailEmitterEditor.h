@@ -15,10 +15,13 @@ class BaseScene;
 class TrailEmitterEditor : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager);
+
         // プレビュー中のトレイル発生や寿命を更新します。
 void Update(float deltaTime);
+
         // トレイルの幅、色、寿命、保存読み込みUIを描画します。
 void DrawImGui() override;
+
     std::string GetName() override { return "Trail Emitter Editor"; }
 
         // 保存済み設定や利用可能リソースの一覧を更新します。
@@ -26,8 +29,11 @@ void RefreshFileLists();
 
 private:
     void Save(const std::string& name);
+
     void Load(const std::string& name);
+
     void ResetDummyPreview(bool clearEffects);
+
     void StepDummyPreview(float deltaTime, bool allowLoop);
 
     SceneManager* sceneManager_ = nullptr;

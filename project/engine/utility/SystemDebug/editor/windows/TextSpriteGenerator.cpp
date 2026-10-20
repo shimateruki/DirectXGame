@@ -57,6 +57,7 @@ public:
         // DirectWriteのコレクションキーを終端付きパス列として復元する。
         const wchar_t* cursor = static_cast<const wchar_t*>(collectionKey);
         const wchar_t* end = cursor + collectionKeySize / sizeof(wchar_t);
+
         while (cursor && cursor < end && *cursor != L'\0') {
             std::wstring path(cursor);
             fontPaths_.push_back(path);
@@ -66,24 +67,29 @@ public:
 
     HRESULT STDMETHODCALLTYPE MoveNext(BOOL* hasCurrentFile) override {
         // 参照できないフォントは飛ばし、次に開けたファイルだけ列挙する。
-        if (!hasCurrentFile) return E_POINTER;
+        if (!hasCurrentFile)
+            return E_POINTER;
         *hasCurrentFile = FALSE;
         currentFile_.Reset();
 
         while (nextIndex_ < fontPaths_.size()) {
             HRESULT hr = factory_->CreateFontFileReference(fontPaths_[nextIndex_].c_str(), nullptr, currentFile_.GetAddressOf());
             ++nextIndex_;
+
             if (SUCCEEDED(hr) && currentFile_) {
                 *hasCurrentFile = TRUE;
                 return S_OK;
             }
         }
+
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetCurrentFontFile(IDWriteFontFile** fontFile) override {
-        if (!fontFile) return E_POINTER;
-        if (!currentFile_) return E_FAIL;
+        if (!fontFile)
+            return E_POINTER;
+        if (!currentFile_)
+            return E_FAIL;
         return currentFile_.CopyTo(fontFile);
     }
 
@@ -105,9 +111,11 @@ public:
         const void* collectionKey,
         UINT32 collectionKeySize,
         IDWriteFontFileEnumerator** fontFileEnumerator) override {
-        if (!factory || !collectionKey || !fontFileEnumerator) return E_INVALIDARG;
+        if (!factory || !collectionKey || !fontFileEnumerator)
+            return E_INVALIDARG;
         auto enumerator = Microsoft::WRL::Make<ResourceFontFileEnumerator>(factory, collectionKey, collectionKeySize);
-        if (!enumerator) return E_OUTOFMEMORY;
+        if (!enumerator)
+            return E_OUTOFMEMORY;
         *fontFileEnumerator = enumerator.Detach();
         return S_OK;
     }
@@ -126,6 +134,7 @@ std::string ToLowerAscii(std::string text) {
 std::string SanitizeOutputName(const char* name) {
     // Windowsで使えない文字を置き換え、生成画像の拡張子をPNGへ統一する。
     std::string result = (name && name[0] != '\0') ? name : "generated_text.png";
+
     for (char& c : result) {
         if (c == '\\' || c == '/' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
             c = '_';
@@ -133,26 +142,31 @@ std::string SanitizeOutputName(const char* name) {
     }
 
     std::filesystem::path path(result);
+
     if (path.extension().empty()) {
         result += ".png";
     } else if (ToLowerAscii(path.extension().string()) != ".png") {
         path.replace_extension(".png");
         result = path.generic_string();
     }
+
     return result;
 }
 
 void CopyToBuffer(char* buffer, size_t bufferSize, const std::string& text) {
-    if (!buffer || bufferSize == 0) return;
+    if (!buffer || bufferSize == 0)
+        return;
     std::snprintf(buffer, bufferSize, "%s", text.c_str());
 }
 
 uint32_t Fnv1aHash(const std::string& text) {
     uint32_t hash = 2166136261u;
+
     for (unsigned char c : text) {
         hash ^= c;
         hash *= 16777619u;
     }
+
     return hash;
 }
 
@@ -160,8 +174,10 @@ std::string MakeOutputNameFromText(const char* text) {
     // 一行目のASCII部分だけを人が読める名前に使い、全文のハッシュで同名衝突を避ける。
     std::string source = text ? text : "";
     std::string firstLine;
+
     for (char c : source) {
-        if (c == '\r' || c == '\n') break;
+        if (c == '\r' || c == '\n')
+            break;
         firstLine.push_back(c);
     }
 
@@ -170,10 +186,13 @@ std::string MakeOutputNameFromText(const char* text) {
     firstLine = (begin == std::string::npos) ? "" : firstLine.substr(begin, end - begin + 1);
 
     std::string slug;
+
     // ファイル名に使えない文字は落とし、連続区切りと長さを制限する。
     bool previousUnderscore = false;
+
     for (unsigned char c : firstLine) {
         char out = '\0';
+
         if (std::isalnum(c)) {
             out = static_cast<char>(std::tolower(c));
         } else if (c == ' ' || c == '_' || c == '-') {
@@ -181,7 +200,8 @@ std::string MakeOutputNameFromText(const char* text) {
         }
 
         if (out == '_') {
-            if (previousUnderscore) continue;
+            if (previousUnderscore)
+                continue;
             previousUnderscore = true;
         } else if (out != '\0') {
             previousUnderscore = false;
@@ -189,13 +209,15 @@ std::string MakeOutputNameFromText(const char* text) {
 
         if (out != '\0') {
             slug.push_back(out);
-            if (slug.size() >= 32) break;
+            if (slug.size() >= 32)
+                break;
         }
     }
 
     while (!slug.empty() && slug.back() == '_') {
         slug.pop_back();
     }
+
     if (slug.empty()) {
         slug = "text";
     }
@@ -221,7 +243,8 @@ int ClampCanvasSize(float value) {
 }
 
 bool ContainsFilter(const std::string& text, const std::string& filter) {
-    if (filter.empty()) return true;
+    if (filter.empty())
+        return true;
     return ToLowerAscii(text).find(ToLowerAscii(filter)) != std::string::npos;
 }
 
@@ -234,12 +257,17 @@ std::vector<std::wstring> CollectResourceFontPaths() {
     // リソース内のフォントを収集し、旧配置のMeiryoも既存データとの互換用に含める。
     std::vector<std::wstring> paths;
     std::error_code ec;
+
     if (std::filesystem::exists(kFontDirectory, ec)) {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(kFontDirectory, ec)) {
-            if (ec) break;
-            if (!entry.is_regular_file(ec)) continue;
-            if (!IsFontFile(entry.path())) continue;
+            if (ec)
+                break;
+            if (!entry.is_regular_file(ec))
+                continue;
+            if (!IsFontFile(entry.path()))
+                continue;
             const std::wstring path = std::filesystem::absolute(entry.path(), ec).wstring();
+
             if (std::find(paths.begin(), paths.end(), path) == paths.end()) {
                 paths.push_back(path);
             }
@@ -248,8 +276,10 @@ std::vector<std::wstring> CollectResourceFontPaths() {
 
     ec.clear();
     std::filesystem::path legacyMeiryoPath(kLegacyMeiryoFontPath);
+
     if (std::filesystem::exists(legacyMeiryoPath, ec) && IsFontFile(legacyMeiryoPath)) {
         const std::wstring path = std::filesystem::absolute(legacyMeiryoPath, ec).wstring();
+
         if (std::find(paths.begin(), paths.end(), path) == paths.end()) {
             paths.push_back(path);
         }
@@ -263,10 +293,12 @@ std::vector<std::wstring> CollectResourceFontPaths() {
 std::wstring MakeFontCollectionKey(const std::vector<std::wstring>& paths) {
     // DirectWriteの列挙器へ渡すため、各パスと列全体をNULで終端する。
     std::wstring key;
+
     for (const std::wstring& path : paths) {
         key += path;
         key.push_back(L'\0');
     }
+
     key.push_back(L'\0');
     return key;
 }
@@ -280,22 +312,27 @@ std::wstring GetLocalizedString(IDWriteLocalizedStrings* strings, const wchar_t*
     UINT32 index = 0;
     BOOL exists = FALSE;
     strings->FindLocaleName(L"ja-jp", &index, &exists);
+
     if (!exists) {
         strings->FindLocaleName(L"en-us", &index, &exists);
     }
+
     if (!exists) {
         index = 0;
     }
 
     UINT32 length = 0;
+
     if (FAILED(strings->GetStringLength(index, &length))) {
         return fallback ? fallback : L"";
     }
 
     std::wstring value(length + 1, L'\0');
+
     if (FAILED(strings->GetString(index, value.data(), length + 1))) {
         return fallback ? fallback : L"";
     }
+
     value.resize(length);
     return value;
 }
@@ -307,16 +344,19 @@ std::string GetFontFilePathFromFont(IDWriteFont* font) {
     }
 
     Microsoft::WRL::ComPtr<IDWriteFontFace> fontFace;
+
     if (FAILED(font->CreateFontFace(&fontFace)) || !fontFace) {
         return {};
     }
 
     UINT32 fileCount = 0;
+
     if (FAILED(fontFace->GetFiles(&fileCount, nullptr)) || fileCount == 0) {
         return {};
     }
 
     std::vector<IDWriteFontFile*> files(fileCount, nullptr);
+
     // GetFilesが返す生COM参照は全て解放する。先頭だけComPtrへ所有権を移す。
     if (FAILED(fontFace->GetFiles(&fileCount, files.data())) || !files[0]) {
         for (IDWriteFontFile* file : files) {
@@ -324,11 +364,13 @@ std::string GetFontFilePathFromFont(IDWriteFont* font) {
                 file->Release();
             }
         }
+
         return {};
     }
 
     Microsoft::WRL::ComPtr<IDWriteFontFile> fontFile;
     fontFile.Attach(files[0]);
+
     for (UINT32 i = 1; i < fileCount; ++i) {
         if (files[i]) {
             files[i]->Release();
@@ -337,30 +379,36 @@ std::string GetFontFilePathFromFont(IDWriteFont* font) {
 
     const void* referenceKey = nullptr;
     UINT32 referenceKeySize = 0;
+
     if (FAILED(fontFile->GetReferenceKey(&referenceKey, &referenceKeySize))) {
         return {};
     }
 
     Microsoft::WRL::ComPtr<IDWriteFontFileLoader> loader;
+
     if (FAILED(fontFile->GetLoader(&loader)) || !loader) {
         return {};
     }
 
     Microsoft::WRL::ComPtr<IDWriteLocalFontFileLoader> localLoader;
+
     // システム由来のフォントなど、ローカルパスを持たないLoaderは対象外とする。
     if (FAILED(loader.As(&localLoader)) || !localLoader) {
         return {};
     }
 
     UINT32 pathLength = 0;
+
     if (FAILED(localLoader->GetFilePathLengthFromKey(referenceKey, referenceKeySize, &pathLength))) {
         return {};
     }
 
     std::wstring path(pathLength + 1, L'\0');
+
     if (FAILED(localLoader->GetFilePathFromKey(referenceKey, referenceKeySize, path.data(), pathLength + 1))) {
         return {};
     }
+
     path.resize(pathLength);
     return WideToUtf8(path);
 }
@@ -371,24 +419,41 @@ std::string MakeRelativeSpritePath(const std::string& fullPath) {
     std::filesystem::path path = fullPath;
     std::error_code ec;
     std::filesystem::path relative = std::filesystem::relative(path, base, ec);
+
     if (ec) {
         return path.filename().generic_string();
     }
+
     return relative.generic_string();
 }
 
 std::string EscapeJsonString(const std::string& text) {
     // 制御文字と引用符をエスケープし、日本語のUTF-8バイト列はそのまま保持する。
     std::ostringstream stream;
+
     for (unsigned char c : text) {
         switch (c) {
-        case '\\': stream << "\\\\"; break;
-        case '"': stream << "\\\""; break;
-        case '\b': stream << "\\b"; break;
-        case '\f': stream << "\\f"; break;
-        case '\n': stream << "\\n"; break;
-        case '\r': stream << "\\r"; break;
-        case '\t': stream << "\\t"; break;
+        case '\\': stream << "\\\\";
+        break;
+
+        case '"': stream << "\\\"";
+        break;
+
+        case '\b': stream << "\\b";
+        break;
+
+        case '\f': stream << "\\f";
+        break;
+
+        case '\n': stream << "\\n";
+        break;
+
+        case '\r': stream << "\\r";
+        break;
+
+        case '\t': stream << "\\t";
+        break;
+
         default:
             if (c < 0x20) {
                 stream << "\\u";
@@ -397,15 +462,18 @@ std::string EscapeJsonString(const std::string& text) {
             } else {
                 stream << static_cast<char>(c);
             }
+
             break;
         }
     }
+
     return stream.str();
 }
 
 std::string ToAbsoluteGenericPath(const std::filesystem::path& path) {
     std::error_code ec;
     std::filesystem::path absolute = std::filesystem::absolute(path, ec);
+
     // 日本語を含むプロジェクトパスでもJSONを壊さないよう、必ずUTF-8へ変換して渡す。
     return WideToUtf8((ec ? path : absolute).generic_wstring());
 }
@@ -413,9 +481,11 @@ std::string ToAbsoluteGenericPath(const std::filesystem::path& path) {
 std::filesystem::path GetModuleDirectory() {
     wchar_t buffer[MAX_PATH]{};
     const DWORD length = GetModuleFileNameW(nullptr, buffer, static_cast<DWORD>(std::size(buffer)));
+
     if (length == 0 || length >= std::size(buffer)) {
         return std::filesystem::current_path();
     }
+
     return std::filesystem::path(buffer).parent_path();
 }
 
@@ -432,10 +502,12 @@ std::filesystem::path FindTextPngToolExecutable() {
     candidates.push_back(currentDir / ".." / "generated" / "outputs" / "Release" / kToolExeName);
 
     std::error_code ec;
+
     for (const std::filesystem::path& candidate : candidates) {
         if (std::filesystem::exists(candidate, ec)) {
             return std::filesystem::absolute(candidate, ec);
         }
+
         ec.clear();
     }
 
@@ -445,6 +517,7 @@ std::filesystem::path FindTextPngToolExecutable() {
 std::wstring QuoteCommandArg(const std::wstring& value) {
     // TextPngTool起動時に空白や引用符を含むパスを１引数として渡す。
     std::wstring result = L"\"";
+
     for (wchar_t c : value) {
         if (c == L'"') {
             result += L"\\\"";
@@ -452,6 +525,7 @@ std::wstring QuoteCommandArg(const std::wstring& value) {
             result += c;
         }
     }
+
     result += L"\"";
     return result;
 }
@@ -462,12 +536,14 @@ bool RunProcessAndWait(const std::wstring& commandLine, DWORD timeoutMs, DWORD& 
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION process{};
     std::wstring mutableCommand = commandLine;
+
     if (!CreateProcessW(nullptr, mutableCommand.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process)) {
         exitCode = GetLastError();
         return false;
     }
 
     const DWORD waitResult = WaitForSingleObject(process.hProcess, timeoutMs);
+
     if (waitResult == WAIT_TIMEOUT) {
         TerminateProcess(process.hProcess, 1);
         CloseHandle(process.hThread);
@@ -488,18 +564,25 @@ bool ReadJsonIntField(const std::string& json, const std::string& fieldName, int
     // 生成ツールの寸法レポートから指定された正の整数だけを取り出す。
     const std::string key = "\"" + fieldName + "\"";
     size_t pos = json.find(key);
-    if (pos == std::string::npos) return false;
+    if (pos == std::string::npos)
+        return false;
     pos = json.find(':', pos + key.size());
-    if (pos == std::string::npos) return false;
+    if (pos == std::string::npos)
+        return false;
     ++pos;
+
     while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
         ++pos;
     }
+
     size_t end = pos;
+
     while (end < json.size() && std::isdigit(static_cast<unsigned char>(json[end]))) {
         ++end;
     }
-    if (end == pos) return false;
+
+    if (end == pos)
+        return false;
     outValue = std::max(1, std::atoi(json.substr(pos, end - pos).c_str()));
     return true;
 }
@@ -507,12 +590,15 @@ bool ReadJsonIntField(const std::string& json, const std::string& fieldName, int
 // 外部レンダラーの結果JSONから実際の画像寸法を読み、欠損時は出力値を変えず失敗を返します。
 bool ReadRenderReport(const std::filesystem::path& reportPath, int& outWidth, int& outHeight) {
     std::ifstream file(reportPath, std::ios::binary);
-    if (!file.is_open()) return false;
+    if (!file.is_open())
+        return false;
     std::string json((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     int width = 1;
     int height = 1;
-    if (!ReadJsonIntField(json, "width", width)) return false;
-    if (!ReadJsonIntField(json, "height", height)) return false;
+    if (!ReadJsonIntField(json, "width", width))
+        return false;
+    if (!ReadJsonIntField(json, "height", height))
+        return false;
     outWidth = width;
     outHeight = height;
     return true;
@@ -524,11 +610,13 @@ TextSpriteGenerator::~TextSpriteGenerator() {
     if (dwriteFactory_ && resourceFontLoader_) {
         dwriteFactory_->UnregisterFontCollectionLoader(resourceFontLoader_.Get());
     }
+
     resourceFontCollection_.Reset();
     resourceFontLoader_.Reset();
     dwriteFactory_.Reset();
     d2dFactory_.Reset();
     wicFactory_.Reset();
+
     if (ownsCom_) {
         CoUninitialize();
         ownsCom_ = false;
@@ -562,10 +650,14 @@ void TextSpriteGenerator::Update() {
 void TextSpriteGenerator::DrawPreview() {
 #ifdef USE_IMGUI
     // 固定解像度の配置をGame Viewの実表示領域へ縮尺変換して重ねます。
-    if (!previewEnabled_) return;
-    if (EditorManager::GetInstance()->GetSelectedObject() != this) return;
-    if (textBuffer_[0] == '\0') return;
-    if (gameViewSize_.x <= 0.0f || gameViewSize_.y <= 0.0f) return;
+    if (!previewEnabled_)
+        return;
+    if (EditorManager::GetInstance()->GetSelectedObject() != this)
+        return;
+    if (textBuffer_[0] == '\0')
+        return;
+    if (gameViewSize_.x <= 0.0f || gameViewSize_.y <= 0.0f)
+        return;
 
     float scaleX = gameViewSize_.x / static_cast<float>(WinApp::kClientWidth);
     float scaleY = gameViewSize_.y / static_cast<float>(WinApp::kClientHeight);
@@ -584,6 +676,7 @@ void TextSpriteGenerator::DrawPreview() {
             std::max(1.0f, static_cast<float>(previewWidth_)) * drawScale,
             std::max(1.0f, static_cast<float>(previewHeight_)) * drawScale,
         };
+
         ImVec2 canvasMin = { center.x - canvasSize.x * 0.5f, center.y - canvasSize.y * 0.5f };
         ImVec2 canvasMax = { canvasMin.x + canvasSize.x, canvasMin.y + canvasSize.y };
         ImDrawList* drawList = ImGui::GetForegroundDrawList();
@@ -612,12 +705,14 @@ void TextSpriteGenerator::DrawPreview() {
         static_cast<float>(sourceCanvasWidth) * drawScale,
         static_cast<float>(sourceCanvasHeight) * drawScale,
     };
+
     ImVec2 canvasMin = { center.x - canvasSize.x * 0.5f, center.y - canvasSize.y * 0.5f };
     ImVec2 canvasMax = { canvasMin.x + canvasSize.x, canvasMin.y + canvasSize.y };
     ImVec2 pos = {
         canvasMin.x + (padding_ + outlinePad + (shadowEnabled_ ? std::max(0.0f, -shadowOffset_[0]) : 0.0f)) * drawScale,
         canvasMin.y + (padding_ + outlinePad + (shadowEnabled_ ? std::max(0.0f, -shadowOffset_[1]) : 0.0f)) * drawScale,
     };
+
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
 
     if (previewBoundsEnabled_) {
@@ -632,16 +727,20 @@ void TextSpriteGenerator::DrawPreview() {
             pos.x + shadowOffset_[0] * drawScale,
             pos.y + shadowOffset_[1] * drawScale,
         };
+
         drawList->AddText(font, previewFontSize, shadowPos, ToImGuiColor(shadowColor_), textBuffer_);
     }
 
     if (outlineEnabled_ && outlineWidth_ > 0.0f) {
         int radius = std::clamp(static_cast<int>(std::ceil(outlineWidth_ * drawScale)), 1, 16);
         ImU32 outlineColor = ToImGuiColor(outlineColor_);
+
         for (int y = -radius; y <= radius; ++y) {
             for (int x = -radius; x <= radius; ++x) {
-                if (x == 0 && y == 0) continue;
-                if ((x * x + y * y) > radius * radius) continue;
+                if (x == 0 && y == 0)
+                    continue;
+                if ((x * x + y * y) > radius * radius)
+                    continue;
                 drawList->AddText(font, previewFontSize, { pos.x + static_cast<float>(x), pos.y + static_cast<float>(y) }, outlineColor, textBuffer_);
             }
         }
@@ -670,7 +769,10 @@ void TextSpriteGenerator::DrawImGui() {
     // Game View 上の配置値は正式PNGの内容には含めず、編集時の見え方だけを調整します。
     ImGui::Checkbox("Game Viewにプレビュー", &previewEnabled_);
     ImGui::SameLine();
-    if (ImGui::Checkbox("PNG自動更新", &previewAutoUpdate_) && previewAutoUpdate_) { MarkPreviewDirty(); }
+
+    if (ImGui::Checkbox("PNG自動更新", &previewAutoUpdate_) && previewAutoUpdate_) {
+        MarkPreviewDirty();
+    }
     ImGui::Checkbox("透明PNG範囲を表示", &previewBoundsEnabled_);
     ImGui::DragFloat2("プレビュー位置", &previewPosition_.x, 1.0f, -4096.0f, 4096.0f);
     ImGui::DragFloat("プレビュー倍率", &previewScale_, 0.01f, 0.05f, 8.0f, "%.2f");
@@ -679,6 +781,7 @@ void TextSpriteGenerator::DrawImGui() {
     // 文字を変えたときは名前の自動生成も更新し、プレビューを後段で無効化します。
     if (ImGui::InputTextMultiline("文字", textBuffer_, sizeof(textBuffer_), ImVec2(-1.0f, 96.0f))) {
         textureChanged = true;
+
         if (autoOutputName_) {
             UpdateOutputNameFromText();
         }
@@ -688,23 +791,31 @@ void TextSpriteGenerator::DrawImGui() {
         RefreshFonts();
         textureChanged = true;
     }
+
     ImGui::SameLine();
     ImGui::SetNextItemWidth(180.0f);
     ImGui::InputText("フォント検索", fontFilterBuffer_, sizeof(fontFilterBuffer_));
 
     // フォント一覧はリソースから取得した実パスと表示名が同じ添字で対応します。
     const char* selectedFont = fontNamesUtf8_.empty() ? "Meiryo" : fontNamesUtf8_[selectedFontIndex_].c_str();
+
     if (ImGui::BeginCombo("フォント", selectedFont)) {
         std::string filter = fontFilterBuffer_;
+
         for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
-            if (!ContainsFilter(fontNamesUtf8_[i], filter)) continue;
+            if (!ContainsFilter(fontNamesUtf8_[i], filter))
+                continue;
             bool selected = (i == selectedFontIndex_);
+
             if (ImGui::Selectable(fontNamesUtf8_[i].c_str(), selected)) {
                 selectedFontIndex_ = i;
                 textureChanged = true;
             }
-            if (selected) ImGui::SetItemDefaultFocus();
+
+            if (selected)
+                ImGui::SetItemDefaultFocus();
         }
+
         ImGui::EndCombo();
     }
 
@@ -714,33 +825,40 @@ void TextSpriteGenerator::DrawImGui() {
     textureChanged |= ImGui::DragFloat("余白", &padding_, 1.0f, 0.0f, 256.0f, "%.0f");
     textureChanged |= ImGui::ColorEdit4("文字色", textColor_);
     textureChanged |= ImGui::Checkbox("自動キャンバス", &autoCanvas_);
+
     if (!autoCanvas_) {
         textureChanged |= ImGui::DragInt("幅", &canvasWidth_, 1.0f, 1, 4096);
         textureChanged |= ImGui::DragInt("高さ", &canvasHeight_, 1.0f, 1, 4096);
     }
 
     ImGui::Separator();
+
     // アウトラインと影は透明PNG内へ焼き込まれるため、切替時もプレビューを更新します。
     textureChanged |= ImGui::Checkbox("アウトライン", &outlineEnabled_);
+
     if (outlineEnabled_) {
         textureChanged |= ImGui::DragFloat("アウトライン幅", &outlineWidth_, 0.25f, 0.0f, 32.0f, "%.2f");
         textureChanged |= ImGui::ColorEdit4("アウトライン色", outlineColor_);
     }
 
     textureChanged |= ImGui::Checkbox("影", &shadowEnabled_);
+
     if (shadowEnabled_) {
         textureChanged |= ImGui::DragFloat2("影オフセット", shadowOffset_, 0.5f, -128.0f, 128.0f);
         textureChanged |= ImGui::ColorEdit4("影色", shadowColor_);
     }
 
     ImGui::Separator();
+
     // 外部ツールによるPNG生成は明示操作か自動更新タイマーからだけ実行します。
     if (ImGui::Button("PNGプレビュー更新")) {
         MarkPreviewDirty();
         previewRequestPending_ = true;
         previewDelayTimer_ = 0.0f;
     }
+
     ImGui::SameLine();
+
     if (previewTextureHandle_ != 0 && !previewDirty_) {
         ImGui::TextDisabled("外部ツールPNG: %d x %d", previewWidth_, previewHeight_);
     }
@@ -752,16 +870,20 @@ void TextSpriteGenerator::DrawImGui() {
     }
 
     ImGui::Separator();
+
     // 手動で出力名を編集したら自動命名を解除し、次の文字変更で上書きしません。
     if (ImGui::Checkbox("出力名を文字から自動生成", &autoOutputName_)) {
         if (autoOutputName_) {
             UpdateOutputNameFromText();
         }
     }
+
     if (ImGui::InputText("出力名", outputNameBuffer_, sizeof(outputNameBuffer_))) {
         autoOutputName_ = false;
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("文字から更新")) {
         autoOutputName_ = true;
         UpdateOutputNameFromText();
@@ -771,10 +893,13 @@ void TextSpriteGenerator::DrawImGui() {
     if (ImGui::Button(ICON_FA_FILE_EXPORT " PNG出力")) {
         ExportToFile();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_PLUS " Spriteとして追加")) {
         std::string fullPath;
         std::string relativePath;
+
         if (ExportToFile(&fullPath, &relativePath)) {
             pendingSpriteFullPath_ = fullPath;
             pendingSpriteRelativePath_ = relativePath;
@@ -804,6 +929,7 @@ bool TextSpriteGenerator::EnsureFactories() {
     // COMを既存のスレッド初期化と共存させ、必要なWICだけ遅延生成します。
     if (!wicFactory_) {
         HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
         if (hr == S_OK || hr == S_FALSE) {
             ownsCom_ = true;
         } else if (hr != RPC_E_CHANGED_MODE) {
@@ -812,6 +938,7 @@ bool TextSpriteGenerator::EnsureFactories() {
         }
 
         hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(wicFactory_.GetAddressOf()));
+
         if (FAILED(hr)) {
             DebugConsole::GetInstance()->AddLog("Text PNG: WIC factory failed.");
             return false;
@@ -820,6 +947,7 @@ bool TextSpriteGenerator::EnsureFactories() {
 
     if (!d2dFactory_) {
         HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, d2dFactory_.GetAddressOf());
+
         if (FAILED(hr)) {
             DebugConsole::GetInstance()->AddLog("Text PNG: D2D factory failed.");
             return false;
@@ -844,6 +972,7 @@ void TextSpriteGenerator::RefreshFonts() {
     // 一覧を再取得しても選択中のフォントをパスとファミリー名で探し直します。
     std::string previousPath;
     std::string previousFamily;
+
     if (!fontPaths_.empty() && selectedFontIndex_ >= 0 && selectedFontIndex_ < static_cast<int>(fontPaths_.size())) {
         previousPath = fontPaths_[selectedFontIndex_];
         previousFamily = fontNamesUtf8_[selectedFontIndex_];
@@ -865,11 +994,13 @@ void TextSpriteGenerator::RefreshFonts() {
     if (dwriteFactory_ && resourceFontLoader_) {
         dwriteFactory_->UnregisterFontCollectionLoader(resourceFontLoader_.Get());
     }
+
     resourceFontCollection_.Reset();
     resourceFontLoader_.Reset();
     resourceFontCollectionKey_.clear();
 
     std::vector<std::wstring> resourceFontPaths = CollectResourceFontPaths();
+
     if (resourceFontPaths.empty()) {
         DebugConsole::GetInstance()->AddLog("Text PNG: no font files found in Resources/font or Resources/sprite/meiryo.ttc.");
         fontNamesWide_.push_back(L"Meiryo UI");
@@ -904,19 +1035,23 @@ void TextSpriteGenerator::RefreshFonts() {
 
     // Family名と実ファイルPathを同じ順に保存し、同名Familyでも別Pathなら区別します。
     const UINT32 familyCount = resourceFontCollection_->GetFontFamilyCount();
+
     for (UINT32 familyIndex = 0; familyIndex < familyCount; ++familyIndex) {
         Microsoft::WRL::ComPtr<IDWriteFontFamily> family;
+
         if (FAILED(resourceFontCollection_->GetFontFamily(familyIndex, family.GetAddressOf())) || !family) {
             continue;
         }
 
         Microsoft::WRL::ComPtr<IDWriteLocalizedStrings> names;
+
         if (FAILED(family->GetFamilyNames(names.GetAddressOf())) || !names) {
             continue;
         }
 
         const std::wstring familyNameWide = GetLocalizedString(names.Get(), L"");
         const std::string familyNameUtf8 = WideToUtf8(familyNameWide);
+
         if (familyNameUtf8.empty()) {
             continue;
         }
@@ -932,12 +1067,14 @@ void TextSpriteGenerator::RefreshFonts() {
 
         std::string fontPath = GetFontFilePathFromFont(font.Get());
         bool duplicate = false;
+
         for (size_t i = 0; i < fontNamesUtf8_.size(); ++i) {
             if (fontNamesUtf8_[i] == familyNameUtf8 && i < fontPaths_.size() && fontPaths_[i] == fontPath) {
                 duplicate = true;
                 break;
             }
         }
+
         if (duplicate) {
             continue;
         }
@@ -955,6 +1092,7 @@ void TextSpriteGenerator::RefreshFonts() {
 
     // 再取得前と同じFamily/Pathが残っていれば選択を戻します。
     selectedFontIndex_ = 0;
+
     if (!previousFamily.empty()) {
         for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
             if (fontNamesUtf8_[i] == previousFamily && (previousPath.empty() || fontPaths_[i] == previousPath)) {
@@ -967,17 +1105,20 @@ void TextSpriteGenerator::RefreshFonts() {
 
     for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
         std::string lower = ToLowerAscii(fontNamesUtf8_[i]);
+
         if (lower.find("mplus") != std::string::npos || lower.find("m plus") != std::string::npos || lower.find("meiryo") != std::string::npos) {
             selectedFontIndex_ = i;
             break;
         }
     }
+
     MarkPreviewDirty();
 }
 
 bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidth, int& outHeight) {
     // TextPngToolへ要求ファイルを渡し、生成されたPNGの寸法を結果として受け取ります。
     const std::filesystem::path toolExe = FindTextPngToolExecutable();
+
     if (toolExe.empty()) {
         DebugConsole::GetInstance()->AddLog("Text PNG: TextPngTool.exe not found. Build the solution first.");
         return false;
@@ -1000,6 +1141,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
 
     // 文字や日本語PathはJSONへエスケープし、外部CLIへの入力を一つの要求ファイルにまとめます。
     std::ofstream request(requestPath, std::ios::binary | std::ios::trunc);
+
     if (!request.is_open()) {
         DebugConsole::GetInstance()->AddLog("Text PNG: request file create failed.");
         return false;
@@ -1034,6 +1176,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
 
     // 外部プロセスの終了とPNGの存在を別々に確認します。
     DWORD exitCode = 1;
+
     if (!RunProcessAndWait(commandLine, 15000, exitCode)) {
         DebugConsole::GetInstance()->AddLog("Text PNG: external tool failed. exit=" + std::to_string(exitCode));
         return false;
@@ -1049,6 +1192,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
         outWidth = autoCanvas_ ? std::max(1, canvasWidth_) : std::clamp(canvasWidth_, 1, 4096);
         outHeight = autoCanvas_ ? std::max(1, canvasHeight_) : std::clamp(canvasHeight_, 1, 4096);
     }
+
     return true;
 }
 
@@ -1058,6 +1202,7 @@ void TextSpriteGenerator::TickPreviewAutoUpdate() {
     if (!previewAutoUpdate_ || !previewEnabled_ || !previewDirty_) {
         return;
     }
+
     if (textBuffer_[0] == '\0') {
         UpdatePreviewTexture();
         return;
@@ -1070,6 +1215,7 @@ void TextSpriteGenerator::TickPreviewAutoUpdate() {
     }
 
     previewDelayTimer_ = std::max(0.0f, previewDelayTimer_ - (1.0f / 60.0f));
+
     if (previewDelayTimer_ <= 0.0f) {
         previewRequestPending_ = false;
         UpdatePreviewTexture();
@@ -1079,7 +1225,8 @@ void TextSpriteGenerator::TickPreviewAutoUpdate() {
 
 void TextSpriteGenerator::UpdatePreviewTexture() {
     // 編集中のPNGは4つの仮ファイル名を循環利用し、プレビュー用ファイルの増加を抑えます。
-    if (!previewDirty_) return;
+    if (!previewDirty_)
+        return;
     if (textBuffer_[0] == '\0') {
         previewTextureHandle_ = 0;
         previewWidth_ = 1;
@@ -1094,6 +1241,7 @@ void TextSpriteGenerator::UpdatePreviewTexture() {
 
     int width = 1;
     int height = 1;
+
     if (!RenderToFile(path.generic_string(), width, height)) {
         DebugConsole::GetInstance()->AddLog("Text PNG: preview render failed.");
         previewRequestPending_ = true;
@@ -1102,6 +1250,7 @@ void TextSpriteGenerator::UpdatePreviewTexture() {
     }
 
     uint32_t handle = TextureManager::GetInstance()->Load(path.generic_string(), false, false, true);
+
     if (handle == 0) {
         previewRequestPending_ = true;
         previewDelayTimer_ = 1.0f;
@@ -1123,6 +1272,7 @@ bool TextSpriteGenerator::ExportToFile(std::string* outFullPath, std::string* ou
 
     int width = 1;
     int height = 1;
+
     if (!RenderToFile(fullPath.generic_string(), width, height)) {
         DebugConsole::GetInstance()->AddLog("Text PNG: export failed.");
         exportNoticeSuccess_ = false;
@@ -1134,8 +1284,10 @@ bool TextSpriteGenerator::ExportToFile(std::string* outFullPath, std::string* ou
     pendingSpriteWidth_ = width;
     pendingSpriteHeight_ = height;
 
-    if (outFullPath) *outFullPath = fullPath.generic_string();
-    if (outRelativePath) *outRelativePath = MakeRelativeSpritePath(fullPath.generic_string());
+    if (outFullPath)
+        *outFullPath = fullPath.generic_string();
+    if (outRelativePath)
+        *outRelativePath = MakeRelativeSpritePath(fullPath.generic_string());
 
     DebugConsole::GetInstance()->AddLog("Text PNG exported: " + fullPath.generic_string());
     exportNoticeSuccess_ = true;
@@ -1148,12 +1300,15 @@ void TextSpriteGenerator::AddPendingSpriteToScene() {
     // 出力後の追加要求を一度だけ処理し、Sceneが閉じている場合は生成しません。
     pendingAddSprite_ = false;
 
-    if (!sceneManager_) return;
+    if (!sceneManager_)
+        return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
-    if (!scene || !scene->GetSpriteCommon()) return;
+    if (!scene || !scene->GetSpriteCommon())
+        return;
 
     uint32_t handle = TextureManager::GetInstance()->Load(pendingSpriteFullPath_, false, false, true);
-    if (handle == 0) return;
+    if (handle == 0)
+        return;
 
     auto sprite = std::make_unique<engine::Sprite>();
     sprite->Initialize(scene->GetSpriteCommon(), handle);

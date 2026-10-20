@@ -27,6 +27,7 @@ engine::Vector3 ReadVector3(const json& j, const char* key, const engine::Vector
     if (!j.contains(key) || !j[key].is_array() || j[key].size() < 3) {
         return fallback;
     }
+
     return { j[key][0].get<float>(), j[key][1].get<float>(), j[key][2].get<float>() };
 }
 
@@ -34,6 +35,7 @@ engine::Vector4 ReadVector4(const json& j, const char* key, const engine::Vector
     if (!j.contains(key) || !j[key].is_array() || j[key].size() < 4) {
         return fallback;
     }
+
     return { j[key][0].get<float>(), j[key][1].get<float>(), j[key][2].get<float>(), j[key][3].get<float>() };
 }
 
@@ -50,6 +52,7 @@ float SafeRatio(float value, float maxValue) {
     if (maxValue <= 0.0001f) {
         return 1.0f;
     }
+
     return value / maxValue;
 }
 }
@@ -64,7 +67,7 @@ DebrisEffectManager::DebrisEffectManager()
     : randomEngine_(std::random_device{}()) {
 }
 
-void DebrisEffectManager::Initialize(Object3dCommon* common) {
+void DebrisEffectManager::Initialize(engine::Object3dCommon* common) {
     // 描画共通資源が切り替わったときは旧 GPU バッファを再利用せず作り直す。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -74,35 +77,41 @@ void DebrisEffectManager::Initialize(Object3dCommon* common) {
         common_ = common;
         cameraResource_.Reset();
         cameraData_ = nullptr;
+
         if (common_ && common_->GetDxCommon()) {
             cameraResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(MeshRenderer::CameraForGPU));
+
             if (!cameraResource_) {
                 DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] camera buffer creation failed.");
                 return;
             }
 
             HRESULT hr = cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+
             if (FAILED(hr) || !cameraData_) {
                 DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] camera buffer map failed.");
                 cameraResource_.Reset();
                 cameraData_ = nullptr;
                 return;
             }
+
             cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
         }
     }
 }
 
-Object3dCommon* DebrisEffectManager::ResolveCommon() {
+engine::Object3dCommon* DebrisEffectManager::ResolveCommon() {
     // 現在 Scene の描画資源へ追従し、前 Scene のリソース参照を残さない。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
-    Object3dCommon* sceneCommon = scene ? scene->GetObject3dCommon() : nullptr;
+    engine::Object3dCommon* sceneCommon = scene ? scene->GetObject3dCommon() : nullptr;
+
     if (sceneCommon && sceneCommon != common_) {
         Initialize(sceneCommon);
     }
+
     return common_;
 }
 
@@ -117,18 +126,22 @@ void DebrisEffectManager::Update(float deltaTime) {
     engine::Math math;
     engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (camera) {
         viewProjection = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+
         if (cameraData_) {
             cameraData_->worldPosition = camera->GetEye();
         }
     }
+
     engine::Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
     const engine::Matrix4x4* lightViewProjectionPtr = kEnableDebrisShadowWvp ? &lightViewProjection : nullptr;
 
     for (size_t index = 0; index < activePieces_.size();) {
         DebrisPiece& piece = activePieces_[index];
         piece.age += deltaTime;
+
         if (piece.age >= piece.lifetime) {
             // RecyclePieceは末尾の要素を現在位置へ移すため、ここではindexを進めない。
             RecyclePiece(index);
@@ -137,6 +150,7 @@ void DebrisEffectManager::Update(float deltaTime) {
 
         float lifeRatio = SafeRatio(piece.age, piece.lifetime);
         bool transformDirty = false;
+
         if (!piece.sleeping) {
             piece.velocity.y -= piece.gravity * deltaTime;
             float drag = (std::max)(0.0f, 1.0f - piece.airDrag * deltaTime);
@@ -153,6 +167,7 @@ void DebrisEffectManager::Update(float deltaTime) {
                 piece.velocity.x *= piece.friction;
                 piece.velocity.z *= piece.friction;
                 piece.angularVelocity = piece.angularVelocity * piece.friction;
+
                 if (std::abs(piece.velocity.y) < 0.7f && engine::Math::Length(piece.velocity) < 2.0f) {
                     // 小さな跳ね返りをいつまでも計算しないよう、十分遅くなった破片を休止する。
                     piece.sleeping = true;
@@ -165,13 +180,16 @@ void DebrisEffectManager::Update(float deltaTime) {
         }
 
         float scale = piece.baseScale;
+
         if (piece.shrinkOnFade && lifeRatio > piece.fadeStartRatio) {
             float fadeT = (lifeRatio - piece.fadeStartRatio) / (std::max)(0.001f, 1.0f - piece.fadeStartRatio);
             scale *= (std::max)(0.001f, 1.0f - fadeT);
         }
+
         if (std::abs(scale - piece.currentScale) > 0.0001f) {
             transformDirty = true;
         }
+
         piece.currentScale = scale;
         piece.matrixDirty = piece.matrixDirty || transformDirty;
         UpdatePieceMatrix(piece, viewProjection, lightViewProjectionPtr);
@@ -197,9 +215,11 @@ void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resourc
         if (!piece.model || !piece.wvpResource || !piece.materialResource) {
             continue;
         }
+
         if (piece.shadowWvpResource) {
             commandList->SetGraphicsRootConstantBufferView(11, piece.shadowWvpResource->GetGPUVirtualAddress());
         }
+
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
         piece.model->Draw(
             piece.wvpResource.Get(),
@@ -242,6 +262,7 @@ void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     namespace fs = std::filesystem;
+
     if (!fs::exists(directoryPath)) {
         return;
     }
@@ -250,7 +271,9 @@ void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
         if (!entry.is_regular_file() || entry.path().extension() != ".json") {
             continue;
         }
+
         DebrisEffectConfig config;
+
         if (LoadConfig(entry.path().generic_string(), config)) {
             presets_[entry.path().stem().string()] = config;
         }
@@ -260,6 +283,7 @@ void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
 bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectConfig& outConfig) const {
     // 欠けた項目は Config の初期値を使い、古い JSON も読めるようにする。
     std::ifstream file(filePath);
+
     if (!file.is_open()) {
         return false;
     }
@@ -268,49 +292,79 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
     file >> j;
 
     DebrisEffectConfig config;
-    if (j.contains("name")) config.name = j["name"].get<std::string>();
+    if (j.contains("name"))
+        config.name = j["name"].get<std::string>();
     if (j.contains("modelNames") && j["modelNames"].is_array()) {
         config.modelNames.clear();
+
         for (const auto& model : j["modelNames"]) {
             if (model.is_string() && !model.get<std::string>().empty()) {
                 config.modelNames.push_back(model.get<std::string>());
             }
         }
     }
+
     // モデル配列が空でも、発生処理へ空集合を渡さない。
     if (config.modelNames.empty()) {
         config.modelNames.push_back("Primitives/cube");
     }
-    if (j.contains("spawnCount")) config.spawnCount = j["spawnCount"].get<int>();
+
+    if (j.contains("spawnCount"))
+        config.spawnCount = j["spawnCount"].get<int>();
     config.spawnOffset = ReadVector3(j, "spawnOffset", config.spawnOffset);
     config.spawnBoxHalfExtents = ReadVector3(j, "spawnBoxHalfExtents", config.spawnBoxHalfExtents);
     config.baseDirection = ReadVector3(j, "baseDirection", config.baseDirection);
-    if (j.contains("horizontalSpread")) config.horizontalSpread = j["horizontalSpread"].get<float>();
-    if (j.contains("verticalMin")) config.verticalMin = j["verticalMin"].get<float>();
-    if (j.contains("verticalMax")) config.verticalMax = j["verticalMax"].get<float>();
-    if (j.contains("speedMin")) config.speedMin = j["speedMin"].get<float>();
-    if (j.contains("speedMax")) config.speedMax = j["speedMax"].get<float>();
-    if (j.contains("angularSpeedMin")) config.angularSpeedMin = j["angularSpeedMin"].get<float>();
-    if (j.contains("angularSpeedMax")) config.angularSpeedMax = j["angularSpeedMax"].get<float>();
-    if (j.contains("scaleMin")) config.scaleMin = j["scaleMin"].get<float>();
-    if (j.contains("scaleMax")) config.scaleMax = j["scaleMax"].get<float>();
-    if (j.contains("lifetimeMin")) config.lifetimeMin = j["lifetimeMin"].get<float>();
-    if (j.contains("lifetimeMax")) config.lifetimeMax = j["lifetimeMax"].get<float>();
-    if (j.contains("gravity")) config.gravity = j["gravity"].get<float>();
-    if (j.contains("airDrag")) config.airDrag = j["airDrag"].get<float>();
-    if (j.contains("restitution")) config.restitution = j["restitution"].get<float>();
-    if (j.contains("friction")) config.friction = j["friction"].get<float>();
-    if (j.contains("groundY")) config.groundY = j["groundY"].get<float>();
-    if (j.contains("fadeStartRatio")) config.fadeStartRatio = j["fadeStartRatio"].get<float>();
+    if (j.contains("horizontalSpread"))
+        config.horizontalSpread = j["horizontalSpread"].get<float>();
+    if (j.contains("verticalMin"))
+        config.verticalMin = j["verticalMin"].get<float>();
+    if (j.contains("verticalMax"))
+        config.verticalMax = j["verticalMax"].get<float>();
+    if (j.contains("speedMin"))
+        config.speedMin = j["speedMin"].get<float>();
+    if (j.contains("speedMax"))
+        config.speedMax = j["speedMax"].get<float>();
+    if (j.contains("angularSpeedMin"))
+        config.angularSpeedMin = j["angularSpeedMin"].get<float>();
+    if (j.contains("angularSpeedMax"))
+        config.angularSpeedMax = j["angularSpeedMax"].get<float>();
+    if (j.contains("scaleMin"))
+        config.scaleMin = j["scaleMin"].get<float>();
+    if (j.contains("scaleMax"))
+        config.scaleMax = j["scaleMax"].get<float>();
+    if (j.contains("lifetimeMin"))
+        config.lifetimeMin = j["lifetimeMin"].get<float>();
+    if (j.contains("lifetimeMax"))
+        config.lifetimeMax = j["lifetimeMax"].get<float>();
+    if (j.contains("gravity"))
+        config.gravity = j["gravity"].get<float>();
+    if (j.contains("airDrag"))
+        config.airDrag = j["airDrag"].get<float>();
+    if (j.contains("restitution"))
+        config.restitution = j["restitution"].get<float>();
+    if (j.contains("friction"))
+        config.friction = j["friction"].get<float>();
+    if (j.contains("groundY"))
+        config.groundY = j["groundY"].get<float>();
+    if (j.contains("fadeStartRatio"))
+        config.fadeStartRatio = j["fadeStartRatio"].get<float>();
     config.color = ReadVector4(j, "color", config.color);
-    if (j.contains("materialType")) config.materialType = j["materialType"].get<int>();
-    if (j.contains("roughness")) config.roughness = j["roughness"].get<float>();
-    if (j.contains("metallic")) config.metallic = j["metallic"].get<float>();
-    if (j.contains("enableEnvMap")) config.enableEnvMap = j["enableEnvMap"].get<bool>();
-    if (j.contains("envIntensity")) config.envIntensity = j["envIntensity"].get<float>();
-    if (j.contains("emissive")) config.emissive = j["emissive"].get<float>();
-    if (j.contains("collideGround")) config.collideGround = j["collideGround"].get<bool>();
-    if (j.contains("shrinkOnFade")) config.shrinkOnFade = j["shrinkOnFade"].get<bool>();
+    if (j.contains("materialType"))
+        config.materialType = j["materialType"].get<int>();
+    if (j.contains("roughness"))
+        config.roughness = j["roughness"].get<float>();
+    if (j.contains("metallic"))
+        config.metallic = j["metallic"].get<float>();
+    if (j.contains("enableEnvMap"))
+        config.enableEnvMap = j["enableEnvMap"].get<bool>();
+    if (j.contains("envIntensity"))
+        config.envIntensity = j["envIntensity"].get<float>();
+    if (j.contains("emissive"))
+        config.emissive = j["emissive"].get<float>();
+    if (j.contains("collideGround"))
+        config.collideGround = j["collideGround"].get<bool>();
+    if (j.contains("shrinkOnFade"))
+        config.shrinkOnFade = j["shrinkOnFade"].get<bool>();
 
     outConfig = config;
     return true;
@@ -356,9 +410,11 @@ bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEf
     j["shrinkOnFade"] = config.shrinkOnFade;
 
     std::ofstream file(filePath);
+
     if (!file.is_open()) {
         return false;
     }
+
     file << j.dump(4);
     return true;
 }
@@ -376,6 +432,7 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
 
     DebrisEffectConfig config;
     auto it = presets_.find(presetName);
+
     if (it != presets_.end()) {
         config = it->second;
     }
@@ -387,7 +444,8 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
         return;
     }
 
-    Object3dCommon* common = ResolveCommon();
+    engine::Object3dCommon* common = ResolveCommon();
+
     if (!common) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[DebrisEffect] prewarm skipped without Object3dCommon: " + presetName);
         return;
@@ -395,27 +453,34 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
 
     std::vector<std::string> modelNames;
     modelNames.reserve(config.modelNames.size());
+
     for (const std::string& modelName : config.modelNames) {
         if (modelName.empty()) {
             continue;
         }
+
         if (std::find(modelNames.begin(), modelNames.end(), modelName) != modelNames.end()) {
             continue;
         }
+
         ModelManager::GetInstance()->LoadModel(modelName);
         modelNames.push_back(modelName);
     }
+
     if (modelNames.empty()) {
         ModelManager::GetInstance()->LoadModel("Primitives/cube");
     }
 
     // 発生数を上限で制限し、足りない分だけプールを増やす。
     int count = std::clamp(config.spawnCount, 1, static_cast<int>(kMaxActiveDebrisPieces));
+
     while (pooledPieces_.size() < static_cast<size_t>(count)) {
         DebrisPiece piece;
+
         if (!InitializePieceResources(piece, config)) {
             break;
         }
+
         pooledPieces_.push_back(std::move(piece));
     }
 }
@@ -434,12 +499,14 @@ void DebrisEffectManager::Spawn(const std::string& presetName, const engine::Vec
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto it = presets_.find(presetName);
+
     if (it != presets_.end()) {
         SpawnFromConfig(it->second, position);
         return;
     }
 
     DebrisEffectConfig config;
+
     if (LoadConfig(ResolvePresetPath(presetName), config)) {
         presets_[presetName] = config;
         SpawnFromConfig(config, position);
@@ -454,6 +521,7 @@ void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const eng
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto it = presets_.find(presetName);
+
     if (it != presets_.end()) {
         DebrisEffectConfig config = it->second;
         config.groundY = groundY;
@@ -462,6 +530,7 @@ void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const eng
     }
 
     DebrisEffectConfig config;
+
     if (LoadConfig(ResolvePresetPath(presetName), config)) {
         presets_[presetName] = config;
         config.groundY = groundY;
@@ -475,7 +544,8 @@ void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const eng
 void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, const engine::Vector3& position) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    Object3dCommon* common = ResolveCommon();
+    engine::Object3dCommon* common = ResolveCommon();
+
     if (!common) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] Object3dCommon is null.");
         return;
@@ -483,36 +553,45 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
 
     std::vector<std::string> modelNames;
     modelNames.reserve(config.modelNames.size());
+
     for (const std::string& modelName : config.modelNames) {
         if (modelName.empty()) {
             continue;
         }
+
         if (std::find(modelNames.begin(), modelNames.end(), modelName) != modelNames.end()) {
             continue;
         }
+
         ModelManager::GetInstance()->LoadModel(modelName);
         modelNames.push_back(modelName);
     }
+
     if (modelNames.empty()) {
         modelNames.push_back("Primitives/cube");
         ModelManager::GetInstance()->LoadModel(modelNames.front());
     }
 
     int count = std::clamp(config.spawnCount, 1, 256);
+
     if (static_cast<size_t>(count) > kMaxActiveDebrisPieces) {
         count = static_cast<int>(kMaxActiveDebrisPieces);
     }
 
     size_t requiredRoom = activePieces_.size() + static_cast<size_t>(count);
+
     // 同時表示数の上限を守るため、既存の破片を再利用して新しい破片の枠を確保する。
     while (requiredRoom > kMaxActiveDebrisPieces && !activePieces_.empty()) {
         RecyclePiece(0);
         --requiredRoom;
     }
+
     activePieces_.reserve(activePieces_.size() + static_cast<size_t>(count));
+
     for (int i = 0; i < count; ++i) {
         const std::string& modelName = modelNames[RandomIndex(static_cast<int>(modelNames.size()))];
         Model* model = ModelManager::GetInstance()->LoadModel(modelName);
+
         if (!model) {
             continue;
         }
@@ -527,6 +606,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
             RandomRange(-std::abs(config.spawnBoxHalfExtents.y), std::abs(config.spawnBoxHalfExtents.y)),
             RandomRange(-std::abs(config.spawnBoxHalfExtents.z), std::abs(config.spawnBoxHalfExtents.z))
         };
+
         piece.rotation = {
             RandomRange(-3.141592f, 3.141592f),
             RandomRange(-3.141592f, 3.141592f),
@@ -541,6 +621,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
             RandomRange(config.angularSpeedMin, config.angularSpeedMax) * RandomRange(-1.0f, 1.0f),
             RandomRange(config.angularSpeedMin, config.angularSpeedMax) * RandomRange(-1.0f, 1.0f)
         };
+
         piece.lifetime = RandomRange(config.lifetimeMin, config.lifetimeMax);
         piece.baseScale = scale;
         piece.gravity = config.gravity;
@@ -551,15 +632,18 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         piece.fadeStartRatio = config.fadeStartRatio;
         piece.collideGround = config.collideGround;
         piece.shrinkOnFade = config.shrinkOnFade;
+
         if (!InitializePieceResources(piece, config)) {
             continue;
         }
 
         Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
         engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
+
         if (camera) {
             viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
         }
+
         engine::Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
         UpdatePieceMatrix(piece, viewProjection, kEnableDebrisShadowWvp ? &lightViewProjection : nullptr);
         piece.matrixDirty = false;
@@ -572,6 +656,7 @@ DebrisEffectManager::DebrisPiece DebrisEffectManager::AcquirePiece() {
     if (pooledPieces_.empty()) {
         return {};
     }
+
     DebrisPiece piece = std::move(pooledPieces_.back());
     pooledPieces_.pop_back();
     return piece;
@@ -583,15 +668,18 @@ void DebrisEffectManager::RecyclePiece(size_t index) {
     }
 
     activePieces_[index].model = nullptr;
+
     if (pooledPieces_.size() < kMaxActiveDebrisPieces) {
         pooledPieces_.push_back(std::move(activePieces_[index]));
     }
 
     size_t lastIndex = activePieces_.size() - 1;
+
     if (index != lastIndex) {
         // 順序を維持する必要がないため、末尾を詰めて削除コストを一定にする。
         activePieces_[index] = std::move(activePieces_[lastIndex]);
     }
+
     activePieces_.pop_back();
 }
 
@@ -602,45 +690,59 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     }
 
     DirectXCommon* dxCommon = common_->GetDxCommon();
+
     if (!piece.wvpResource) {
         piece.wvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
+
         if (!piece.wvpResource) {
             return false;
         }
+
         HRESULT hr = piece.wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.wvpData));
+
         if (FAILED(hr) || !piece.wvpData) {
             piece.wvpResource.Reset();
             piece.wvpData = nullptr;
             return false;
         }
     }
+
     if (kEnableDebrisShadowWvp && !piece.shadowWvpResource) {
         piece.shadowWvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
+
         if (!piece.shadowWvpResource) {
             return false;
         }
+
         HRESULT hr = piece.shadowWvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.shadowWvpData));
+
         if (FAILED(hr) || !piece.shadowWvpData) {
             piece.shadowWvpResource.Reset();
             piece.shadowWvpData = nullptr;
             return false;
         }
     }
+
     if (!piece.materialResource) {
         piece.materialResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::MaterialData));
+
         if (!piece.materialResource) {
             return false;
         }
+
         HRESULT hr = piece.materialResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.materialData));
+
         if (FAILED(hr) || !piece.materialData) {
             piece.materialResource.Reset();
             piece.materialData = nullptr;
             return false;
         }
     }
+
     if (!piece.wvpResource || !piece.materialResource) {
         return false;
     }
+
     if (!piece.wvpData || !piece.materialData) {
         return false;
     }
@@ -648,6 +750,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     piece.wvpData->WVP = engine::Math::MakeIdentity4x4();
     piece.wvpData->world = engine::Math::MakeIdentity4x4();
     piece.wvpData->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
+
     if (piece.shadowWvpData) {
         piece.shadowWvpData->WVP = engine::Math::MakeIdentity4x4();
         piece.shadowWvpData->world = engine::Math::MakeIdentity4x4();
@@ -682,6 +785,7 @@ void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const engine::Ma
     piece.wvpData->WVP = engine::Math::Multiply(world, viewProjection);
     piece.wvpData->world = world;
     piece.wvpData->WorldInverseTranspose = engine::Math::Transpose(engine::Math::Inverse(world));
+
     if (piece.materialData) {
         piece.materialData->time = piece.age;
     }
@@ -698,6 +802,7 @@ float DebrisEffectManager::RandomRange(float minValue, float maxValue) {
     if (minValue > maxValue) {
         std::swap(minValue, maxValue);
     }
+
     std::uniform_real_distribution<float> distribution(minValue, maxValue);
     return distribution(randomEngine_);
 }
@@ -707,6 +812,7 @@ int DebrisEffectManager::RandomIndex(int maxExclusive) {
     if (maxExclusive <= 1) {
         return 0;
     }
+
     std::uniform_int_distribution<int> distribution(0, maxExclusive - 1);
     return distribution(randomEngine_);
 }
@@ -714,6 +820,7 @@ int DebrisEffectManager::RandomIndex(int maxExclusive) {
 engine::Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& config) {
     // 基準方向へ水平拡散と垂直範囲を加え、最後に単位方向へ正規化する。
     engine::Vector3 base = engine::Math::Normalize(config.baseDirection);
+
     if (engine::Math::Length(base) < 0.001f) {
         base = { 0.0f, 0.0f, 1.0f };
     }
@@ -726,6 +833,7 @@ engine::Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& c
         RandomRange(config.verticalMin, config.verticalMax),
         base.z + randomHorizontal.z
     };
+
     return engine::Math::Normalize(direction);
 }
 
@@ -734,5 +842,6 @@ std::string DebrisEffectManager::ResolvePresetPath(const std::string& presetName
     if (presetName.find('/') != std::string::npos || presetName.find('\\') != std::string::npos) {
         return presetName;
     }
+
     return std::string(kDebrisPresetDirectory) + presetName + ".json";
 }

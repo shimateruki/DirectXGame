@@ -56,6 +56,7 @@ void CopyToBuffer(char* buffer, size_t bufferSize, const std::string& text) {
     if (!buffer || bufferSize == 0) {
         return;
     }
+
     buffer[0] = '\0';
     strncpy_s(buffer, bufferSize, text.c_str(), _TRUNCATE);
 }
@@ -69,6 +70,7 @@ void DrawModelCombo(const char* label, std::array<char, 128>& buffer, const std:
     // 登録済みモデルの選択とパスの直接入力を両立し、未登録素材も試せるようにする。
     int currentIndex = -1;
     std::string current = GetBufferText(buffer);
+
     for (int i = 0; i < static_cast<int>(modelList.size()); ++i) {
         if (modelList[i] == current) {
             currentIndex = i;
@@ -78,6 +80,7 @@ void DrawModelCombo(const char* label, std::array<char, 128>& buffer, const std:
 
     std::vector<const char*> names;
     names.reserve(modelList.size());
+
     for (const auto& modelName : modelList) {
         names.push_back(modelName.c_str());
     }
@@ -89,6 +92,7 @@ void DrawModelCombo(const char* label, std::array<char, 128>& buffer, const std:
             }
         }
     }
+
     ImGui::InputText((std::string(label) + " 直接入力").c_str(), buffer.data(), buffer.size());
 #else
     (void)label;
@@ -103,6 +107,7 @@ void DrawMaterialTypeCombo(int& materialType) {
     // 定義済みタイプは選択式にし、未知値は失わず直接調整できるようにする。
     constexpr int materialTypeCount = static_cast<int>(std::size(kMaterialTypeNames));
     int currentMaterialType = materialType;
+
     if (currentMaterialType < 0 || currentMaterialType >= materialTypeCount) {
         currentMaterialType = 0;
     }
@@ -137,6 +142,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
     DebrisEffectManager* manager = DebrisEffectManager::GetInstance();
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
     const bool usePreviewStage = previewStage && previewStage->IsEnabled() && isThisEditorSelected;
+
     if (!usePreviewStage) {
         manager->SetTimeScale(1.0f);
         return;
@@ -153,14 +159,17 @@ void DebrisEffectEditor::Update(float deltaTime) {
         const float targetTime = std::clamp(seekTime, 0.0f, previewDuration);
         const float previousScale = manager->GetTimeScale();
         manager->SetTimeScale(1.0f);
+
         while (previewTime_ + (1.0f / 60.0f) < targetTime) {
             manager->Update(1.0f / 60.0f);
             previewTime_ += 1.0f / 60.0f;
         }
+
         if (targetTime > previewTime_) {
             manager->Update(targetTime - previewTime_);
             previewTime_ = targetTime;
         }
+
         manager->SetTimeScale(previousScale);
     };
 
@@ -169,12 +178,14 @@ void DebrisEffectEditor::Update(float deltaTime) {
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         restartPreviewAt(0.0f);
     }
+
     if (previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
         lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
         manager->ResetEditorPreview();
         previewTime_ = 0.0f;
         loopTimer_ = 0.0f;
     }
+
     if (previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
         lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
         restartPreviewAt(previewStage->GetSeekTargetTime());
@@ -182,9 +193,11 @@ void DebrisEffectEditor::Update(float deltaTime) {
 
     manager->SetTimeScale(previewStage->GetPlaybackSpeed());
     const float scaledDelta = deltaTime * manager->GetTimeScale();
+
     // Editor固有のループ間隔とStage全体のループ設定を別々に判定する。
     if (loopPreview_ && scaledDelta > 0.0f) {
         loopTimer_ += scaledDelta;
+
         if (loopTimer_ >= loopInterval_) {
             loopTimer_ = 0.0f;
             restartPreviewAt(0.0f);
@@ -193,6 +206,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
 
     if (scaledDelta > 0.0f) {
         previewTime_ += scaledDelta;
+
         if (previewTime_ >= previewDuration) {
             if (previewStage->IsLoopEnabled()) {
                 restartPreviewAt(0.0f);
@@ -226,7 +240,9 @@ void DebrisEffectEditor::DrawImGui() {
     if (ImGui::Button(ICON_FA_SYNC " 一覧更新")) {
         RefreshLists();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_BROOM " 再生中の破片を消す")) {
         DebrisEffectManager::GetInstance()->Clear();
     }
@@ -239,16 +255,21 @@ void DebrisEffectEditor::DrawImGui() {
             ApplyQuickPresetRock();
             SyncModelBuffersFromConfig();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("木片の飛散", ImVec2(120.0f, 28.0f))) {
             ApplyQuickPresetWood();
             SyncModelBuffersFromConfig();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("小石の散り", ImVec2(120.0f, 28.0f))) {
             ApplyQuickPresetPebble();
             SyncModelBuffersFromConfig();
         }
+
         if (ImGui::Button("プリズム破砕", ImVec2(120.0f, 28.0f))) {
             Load("prism_crystal_shatter");
             CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), "prism_crystal_shatter");
@@ -298,9 +319,11 @@ void DebrisEffectEditor::DrawImGui() {
         ImGui::DragFloat("粗さ", &config_.roughness, 0.01f, 0.0f, 1.0f);
         ImGui::DragFloat("金属度", &config_.metallic, 0.01f, 0.0f, 1.0f);
         ImGui::Checkbox("環境反射を使う", &config_.enableEnvMap);
+
         if (config_.enableEnvMap) {
             ImGui::DragFloat("環境反射の強さ", &config_.envIntensity, 0.02f, 0.0f, 4.0f);
         }
+
         ImGui::DragFloat("発光", &config_.emissive, 0.05f, 0.0f, 20.0f);
     }
 
@@ -308,9 +331,11 @@ void DebrisEffectEditor::DrawImGui() {
         ImGui::DragFloat("カメラ前のプレビュー距離", &previewDistance_, 0.1f, 1.0f, 80.0f);
         ImGui::Checkbox("再生前に前回の破片を消す", &clearBeforePreview_);
         ImGui::Checkbox("ループ再生", &loopPreview_);
+
         if (loopPreview_) {
             ImGui::DragFloat("ループ間隔", &loopInterval_, 0.05f, 0.2f, 10.0f);
         }
+
         if (ImGui::Button(ICON_FA_PLAY " 1回再生", ImVec2(ImGui::GetContentRegionAvail().x, 30.0f))) {
             Preview();
         }
@@ -320,12 +345,15 @@ void DebrisEffectEditor::DrawImGui() {
         // 入力欄の文字列は保存・読込時に確定し、編集中だけなら既存Presetを上書きしない。
         if (!presetList_.empty()) {
             std::vector<const char*> presetNames;
+
             for (const auto& name : presetList_) {
                 presetNames.push_back(name.c_str());
             }
+
             if (selectedPresetIndex_ < 0 || selectedPresetIndex_ >= static_cast<int>(presetList_.size())) {
                 selectedPresetIndex_ = 0;
             }
+
             if (ImGui::Combo("既存プリセット", &selectedPresetIndex_, presetNames.data(), static_cast<int>(presetNames.size()))) {
                 CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), presetList_[selectedPresetIndex_]);
             }
@@ -334,10 +362,13 @@ void DebrisEffectEditor::DrawImGui() {
         }
 
         ImGui::InputText("保存名", presetNameBuffer_, sizeof(presetNameBuffer_));
+
         if (ImGui::Button(ICON_FA_DOWNLOAD " 保存", ImVec2(120.0f, 0.0f))) {
             Save(presetNameBuffer_);
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button(ICON_FA_UPLOAD " 読み込み", ImVec2(120.0f, 0.0f))) {
             Load(presetNameBuffer_);
         }
@@ -352,6 +383,7 @@ void DebrisEffectEditor::RefreshLists() {
 
     presetList_.clear();
     namespace fs = std::filesystem;
+
     if (fs::exists(kDebrisPresetDirectory)) {
         for (const auto& entry : fs::directory_iterator(kDebrisPresetDirectory)) {
             if (entry.is_regular_file() && entry.path().extension() == ".json") {
@@ -359,6 +391,7 @@ void DebrisEffectEditor::RefreshLists() {
             }
         }
     }
+
     std::sort(presetList_.begin(), presetList_.end());
     DebrisEffectManager::GetInstance()->LoadAllPresets(kDebrisPresetDirectory);
 }
@@ -368,6 +401,7 @@ void DebrisEffectEditor::Save(const std::string& presetName) {
     SyncConfigFromModelBuffers();
     config_.name = presetName.empty() ? "debris" : presetName;
     std::string filePath = std::string(kDebrisPresetDirectory) + config_.name + ".json";
+
     if (DebrisEffectManager::GetInstance()->SaveConfig(filePath, config_)) {
         DebrisEffectManager::GetInstance()->RegisterPreset(config_.name, config_);
         DebugConsole::GetInstance()->AddLog("Saved Debris Preset: " + config_.name);
@@ -380,8 +414,10 @@ void DebrisEffectEditor::Load(const std::string& presetName) {
     if (presetName.empty()) {
         return;
     }
+
     DebrisEffectConfig loaded;
     std::string filePath = std::string(kDebrisPresetDirectory) + presetName + ".json";
+
     if (DebrisEffectManager::GetInstance()->LoadConfig(filePath, loaded)) {
         config_ = loaded;
         SyncModelBuffersFromConfig();
@@ -392,20 +428,24 @@ void DebrisEffectEditor::Load(const std::string& presetName) {
 void DebrisEffectEditor::Preview() {
     // 必要なら前回の破片を消してから、現在の編集値を指定位置で一度再生します。
     SyncConfigFromModelBuffers();
+
     if (clearBeforePreview_) {
         DebrisEffectManager::GetInstance()->Clear();
     }
+
     DebrisEffectManager::GetInstance()->SpawnFromConfig(config_, GetPreviewPosition());
 }
 
 engine::Vector3 DebrisEffectEditor::GetPreviewPosition() const {
     // 専用Stageが有効ならその中心を優先し、なければ現在カメラから位置を決めます。
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+
     if (previewStage && previewStage->IsEnabled()) {
         return previewStage->GetPreviewPosition();
     }
 
     const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (!camera) {
         return { 0.0f, 2.0f, 0.0f };
     }
@@ -413,9 +453,11 @@ engine::Vector3 DebrisEffectEditor::GetPreviewPosition() const {
     engine::Vector3 eye = camera->GetEye();
     engine::Vector3 target = camera->GetTargetPoint();
     engine::Vector3 forward = engine::Math::Normalize(target - eye);
+
     if (engine::Math::Length(forward) < 0.001f) {
         forward = { 0.0f, 0.0f, 1.0f };
     }
+
     return eye + forward * previewDistance_;
 }
 
@@ -424,9 +466,11 @@ void DebrisEffectEditor::SyncModelBuffersFromConfig() {
     std::array<std::array<char, 128>*, 4> buffers = {
         &modelBuffer0_, &modelBuffer1_, &modelBuffer2_, &modelBuffer3_
     };
+
     for (auto* buffer : buffers) {
         CopyToBuffer(*buffer, "");
     }
+
     for (size_t i = 0; i < config_.modelNames.size() && i < buffers.size(); ++i) {
         CopyToBuffer(*buffers[i], config_.modelNames[i]);
     }
@@ -438,12 +482,15 @@ void DebrisEffectEditor::SyncConfigFromModelBuffers() {
     std::array<std::array<char, 128>*, 4> buffers = {
         &modelBuffer0_, &modelBuffer1_, &modelBuffer2_, &modelBuffer3_
     };
+
     for (const auto* buffer : buffers) {
         std::string modelName = GetBufferText(*buffer);
+
         if (!modelName.empty()) {
             config_.modelNames.push_back(modelName);
         }
     }
+
     if (config_.modelNames.empty()) {
         config_.modelNames.push_back("Primitives/cube");
         CopyToBuffer(modelBuffer0_, "Primitives/cube");

@@ -2,7 +2,7 @@
 #include "engine/utility/math/Math.h"
 
 // 前方宣言
-class InputManager;
+namespace engine { class InputManager; }
 class Camera;
 struct Transform;
 class Player;

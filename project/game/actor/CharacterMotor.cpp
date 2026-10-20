@@ -64,6 +64,7 @@ void CharacterMotor::BeginFrame(bool& grounded) {
 void CharacterMotor::ApplyGravity(engine::Vector3& velocity, float gravity, float maxFallSpeed, float deltaTime) const {
     // 落下速度の上限で長い落下後の Sweep 距離を抑える。
     velocity.y -= gravity * deltaTime;
+
     if (velocity.y < -maxFallSpeed) {
         velocity.y = -maxFallSpeed;
     }
@@ -75,6 +76,7 @@ void CharacterMotor::Move(engine::Object3d& owner, engine::Vector3& position, en
     }
 
     const engine::Vector3 displacement = velocity * deltaTime;
+
     if (!settings_.continuousCollision) {
         // 既存実装と同じ積分式を維持する互換経路です。
         position += displacement;
@@ -94,15 +96,18 @@ void CharacterMotor::ResolveCollision(engine::Vector3& position, engine::Vector3
     position += info.normal * info.penetration;
 
     const float velocityIntoSurface = Dot(velocity, info.normal);
+
     if (velocityIntoSurface < 0.0f) {
         velocity = velocity - info.normal * velocityIntoSurface;
     }
 
     result_.blocked = true;
+
     if (IsWalkable(info.normal)) {
         grounded = true;
         result_.grounded = true;
         result_.groundNormal = info.normal;
+
         if (velocity.y < 0.0f) {
             velocity.y = 0.0f;
         }
@@ -159,6 +164,7 @@ void CharacterMotor::MoveSwept(engine::Object3d& owner, engine::Vector3& positio
     const float queryRadius = ResolveQueryRadius(owner, settings_.skinWidth);
     const engine::Vector3 planarDisplacement = {displacement.x, 0.0f, displacement.z};
     const float planarDistance = Length(planarDisplacement);
+
     if (planarDistance > kMinimumDistance) {
         // 横移動を先に Sweep し、遮蔽物があれば段差越えを試してから表面方向へ逃がす。
         const engine::Vector3 planarDirection = planarDisplacement * (1.0f / planarDistance);
@@ -174,20 +180,25 @@ void CharacterMotor::MoveSwept(engine::Object3d& owner, engine::Vector3& positio
 
             engine::Vector3 remaining = planarDisplacement - planarDirection * travelledDistance;
             const float intoSurface = Dot(remaining, hit.normal);
+
             if (intoSurface < 0.0f) {
                 remaining = remaining - hit.normal * intoSurface;
             }
+
             position += remaining;
 
             const float velocityIntoSurface = Dot(velocity, hit.normal);
+
             if (velocityIntoSurface < 0.0f) {
                 velocity = velocity - hit.normal * velocityIntoSurface;
             }
+
             result_.blocked = true;
         }
     }
 
     const float verticalDistance = std::abs(displacement.y);
+
     if (verticalDistance > kMinimumDistance) {
         const engine::Vector3 verticalDirection = {0.0f, displacement.y > 0.0f ? 1.0f : -1.0f, 0.0f};
         const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(
@@ -198,12 +209,14 @@ void CharacterMotor::MoveSwept(engine::Object3d& owner, engine::Vector3& positio
         } else {
             const float safeDistance = (std::max)(0.0f, hit.distance - settings_.skinWidth);
             position.y += verticalDirection.y * (std::min)(safeDistance, verticalDistance);
+
             if (verticalDirection.y < 0.0f && IsWalkable(hit.normal)) {
                 grounded = true;
                 result_.grounded = true;
                 result_.groundNormal = hit.normal;
                 result_.groundObject = hit.hitObject;
             }
+
             velocity.y = 0.0f;
             result_.blocked = true;
         }
@@ -240,6 +253,7 @@ void CharacterMotor::SnapToGround(engine::Object3d& owner, engine::Vector3& posi
     result_.grounded = true;
     result_.groundNormal = hit.normal;
     result_.groundObject = hit.hitObject;
+
     if (velocity.y < 0.0f) {
         velocity.y = 0.0f;
     }

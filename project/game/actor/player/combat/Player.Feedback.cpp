@@ -119,6 +119,7 @@ void Player::EndElectricShockFeedback() {
 
     const float invincibleDuration = electricShockPendingInvincibleDuration_;
     electricShockPendingInvincibleDuration_ = 0.0f;
+
     if (invincibleDuration > 0.0f && !isDead) {
         damageCooldownTimer_ = (std::max)(damageCooldownTimer_, invincibleDuration);
         invincibleBlinkTimer_ = 0.0f;
@@ -135,10 +136,12 @@ void Player::InitializeElectricShockAuraEffect() {
     electricShockAuraEffect_ = std::make_unique<EffectObject3d>();
     electricShockAuraEffect_->Initialize(common_);
     electricShockAuraEffect_->SetName("Player_ElectricShockAura");
+
     if (!electricShockAuraEffect_->LoadFromJson(kElectricShockAuraEffectPath)) {
         electricShockAuraEffect_.reset();
         return;
     }
+
     electricShockAuraEffect_->SetIsVisible(false);
     electricShockAuraEffect_->Play(99999.0f);
 }
@@ -148,6 +151,7 @@ void Player::UpdateElectricShockAuraEffect(float deltaTime) {
     if (!electricShockAuraEffect_) {
         InitializeElectricShockAuraEffect();
     }
+
     if (!electricShockAuraEffect_) {
         return;
     }
@@ -159,8 +163,10 @@ void Player::UpdateElectricShockAuraEffect(float deltaTime) {
 
     float yaw = GetRotation().y;
     Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
+
     if (camera) {
         const engine::Vector3 toCamera = camera->GetEye() - auraPos;
+
         if (std::abs(toCamera.x) + std::abs(toCamera.z) > 0.001f) {
             yaw = std::atan2(toCamera.x, toCamera.z);
         }
@@ -201,6 +207,7 @@ Player::EnemyMorphType Player::ResolveEnemyMorphType(const std::string& enemyTyp
         return EnemyMorphType::Crown;
     if (enemyType == "Bomber")
         return EnemyMorphType::Bomber;
+
     // 巨大スライムはフックで分裂して小型化するため、直接コピー対象にはしません。
     if (enemyType == "GiantSlime")
         return EnemyMorphType::None;
@@ -220,16 +227,22 @@ engine::Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const {
     switch (type) {
     case EnemyMorphType::Crown:
         return {0.58f, 0.89f, 1.0f, 1.0f};
+
     case EnemyMorphType::Bomber:
         return {1.0f, 0.45f, 0.22f, 1.0f};
+
     case EnemyMorphType::FireSlime:
         return {1.0f, 0.24f, 0.16f, 1.0f};
+
     case EnemyMorphType::ThunderSlime:
         return {1.0f, 0.92f, 0.18f, 1.0f};
+
     case EnemyMorphType::WindSlime:
         return {0.42f, 1.0f, 0.82f, 1.0f};
+
     case EnemyMorphType::Slime:
         return {1.0f, 0.46f, 0.86f, 1.0f};
+
     default:
         return {1.0f, 1.0f, 1.0f, 1.0f};
     }

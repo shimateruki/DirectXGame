@@ -5,8 +5,10 @@
 /// <summary>マグマ上の継続ダメージと表面の発光を管理します。</summary>
 class GimmickMagmaHazard : public BaseGimmick {
   public:
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     bool OnCollision(engine::Object3d* other) override;
 
     std::unique_ptr<engine::Object3d> Clone() const override;
@@ -14,6 +16,7 @@ class GimmickMagmaHazard : public BaseGimmick {
   private:
     // エディター設定から接触ダメージと再適用間隔を解決します。
     float GetDamage() const;
+
     float GetDamageInterval() const;
 
     float damageCooldownTimer_ = 0.0f;

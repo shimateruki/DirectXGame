@@ -1,24 +1,24 @@
 #define NOMINMAX
 #include "game/scene/editor/SceneAssetEditorScene.h"
-#include "game/system/GameSceneDrawing.h"
+#include "game/scene/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "Camera.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "DirectXCommon.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
 #include "InputManager.h"
-#include "LevelLoader.h"
+#include "game/system/scene/LevelLoader.h"
 #include "LightEditor.h"
 #include "LightManager.h"
 #include "MeshEffectManager.h"
 #include "Object3d.h"
 #include "Object3dCommon.h"
-#include "ObjectManager.h"
+#include "game/system/scene/ObjectManager.h"
 #include "ParticleCommon.h"
 #include "ParticleManager.h"
 #include "ParticleSystem.h"
@@ -38,12 +38,15 @@ namespace fs = std::filesystem;
 SceneLoadManifest SceneAssetEditorScene::BuildAsyncLoadManifest() const {
     // SceneAssetが指定した配置JSONだけを先読み対象へ登録する。
     SceneLoadManifest manifest;
+
     if (!GetSceneLoadContext().objectLayoutPath.empty()) {
         manifest.AddObjectLayout(GetSceneLoadContext().objectLayoutPath);
     }
+
     if (!GetSceneLoadContext().spriteLayoutPath.empty()) {
         manifest.AddSpriteLayout(GetSceneLoadContext().spriteLayoutPath);
     }
+
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty() ? "Resources/output_skybox.dds"
                                                                  : GetSceneLoadContext().skyboxPath);
@@ -53,18 +56,18 @@ SceneLoadManifest SceneAssetEditorScene::BuildAsyncLoadManifest() const {
 void SceneAssetEditorScene::Initialize() {
     // シーン資産を単独で編集できるよう、ゲーム本編と同じ表示基盤をこの場で初期化します。
     dxCommon_ = DirectXCommon::GetInstance();
-    inputManager_ = InputManager::GetInstance();
+    inputManager_ = engine::InputManager::GetInstance();
 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    object3dCommon_ = std::make_unique<Object3dCommon>();
+    object3dCommon_ = std::make_unique<engine::Object3dCommon>();
     object3dCommon_->Initialize(dxCommon_);
     spriteCommon_ = std::make_unique<engine::SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
-    particleCommon_ = std::make_unique<ParticleCommon>();
+    particleCommon_ = std::make_unique<engine::ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
-    particleSystem_ = std::make_unique<ParticleSystem>();
+    particleSystem_ = std::make_unique<engine::ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
 
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
@@ -127,9 +130,11 @@ void SceneAssetEditorScene::Update(float deltaTime) {
     if (objectManager_) {
         objectManager_->Update(deltaTime);
     }
+
     if (particleSystem_) {
         particleSystem_->Update(deltaTime);
     }
+
     GPUParticleManager::GetInstance()->Update(deltaTime);
 
     for (auto& sprite : sprites_) {
@@ -149,6 +154,7 @@ void SceneAssetEditorScene::Draw() {
     }
 
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
         skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
@@ -172,16 +178,19 @@ void SceneAssetEditorScene::Draw() {
     grabUpdated = DrawGPUParticles(dxCommon_, camera, gpuParticleTextureHandle_, grabUpdated);
 
     bool hasAttachedEffects = false;
+
     for (const auto& object : objects) {
         if (object && (!object->GetMeshEffect1Name().empty() || !object->GetMeshEffect2Name().empty())) {
             hasAttachedEffects = true;
             break;
         }
     }
+
     if (!dxCommon_->IsCameraPreviewRendering() && hasAttachedEffects) {
         if (!grabUpdated) {
             dxCommon_->UpdateGrabTexture();
         }
+
         for (const auto& object : objects) {
             if (object && object->GetIsVisible()) {
                 object->DrawAttachedEffects(pointLight, spotLight);
@@ -195,7 +204,9 @@ void SceneAssetEditorScene::DrawUI() {
     if (!spriteCommon_) {
         return;
     }
+
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+
     for (const auto& sprite : sprites_) {
         if (sprite) {
             sprite->Draw();

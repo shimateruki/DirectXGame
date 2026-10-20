@@ -39,6 +39,7 @@ engine::Vector3 FinaleBillboardRotation(const engine::Vector3& center) {
         return {kPi * 0.5f - std::atan2(toEye.y, std::sqrt(toEye.x * toEye.x + toEye.z * toEye.z)),
                 std::atan2(toEye.x, toEye.z), 0.0f};
     }
+
     return {kPi * 0.5f, 0.0f, 0.0f};
 }
 } // namespace
@@ -54,9 +55,11 @@ float EnemyFalseKingSlime::FilterFinaleDamage(float damage) {
         // 王本体は障壁に守られる。3個の結晶を直接破壊するまでHPを減らしません。
         return 0.0f;
     }
+
     if (battlePhase_ == 1) {
         return std::clamp(damage, 0.0f, std::max(0.0f, GetEncounterCurrentHp() - GetEncounterMaximumHp() * 0.67f));
     }
+
     return std::max(0.0f, damage) * (armorOpenTimer_ > 0.0f ? 1.0f : 0.30f);
 }
 
@@ -81,6 +84,7 @@ void EnemyFalseKingSlime::ResetCrownFinale() {
     crownBarrageSkyOuterRing_.reset();
     crownBarrageSkyInnerRing_.reset();
     sealBarrage_.clear();
+
     for (auto& layer : crownBarrageLayers_)
         layer.reset();
     for (auto& seal : crownSeals_) {
@@ -88,6 +92,7 @@ void EnemyFalseKingSlime::ResetCrownFinale() {
             CollisionManager::GetInstance()->RemoveObject(seal.crystal.get());
         seal = CrownSeal{};
     }
+
     sealState_ = SealState::Reveal;
     sealStateTimer_ = sealVfxTimer_ = 0.0f;
     sealAttackStage_ = 0;
@@ -106,14 +111,17 @@ void EnemyFalseKingSlime::ResetCrownFinale() {
 void EnemyFalseKingSlime::InitializeCrownSeals() {
     // 三つの結晶を通常の敵判定経路へ登録し、攻撃・描画・演出層をまとめて準備します。
     const auto& tuning = CrownFinaleTuning::Get();
+
     for (auto& seal : crownSeals_) {
         if (seal.crystal)
             CollisionManager::GetInstance()->RemoveObject(seal.crystal.get());
         seal = CrownSeal{};
     }
+
     sealBarrage_.clear();
     sealBarrageDamageApplied_ = false;
     brokenSeals_ = 0;
+
     // 中央の王を囲む正三角形に配置し、3個を同時に攻撃可能にします。
     const engine::Vector3 center = debugPreviewAttackId_ == kSealBarragePreviewId
                                ? GetTranslate()
@@ -158,6 +166,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
             seal.link->SetEnableLighting(false);
         }
     }
+
     sealAttackTimer_ = 0.0f;
     sealPressureDamage_ = 0.0f;
     sealAttackSerial_ = 0;
@@ -187,12 +196,15 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
         effect->Play(100.0f);
         return effect;
     };
+
     for (auto& seal : crownSeals_) {
         for (auto& pulse : seal.energyPulses)
             pulse = makeShield(kCrownTransferPulseEffect, "FalseKing_CrownTransferPulse");
     }
+
     crownShieldRing_ = makeShield(kNightfallLancesRingEffect, "FalseKing_CrownShieldRing");
     crownShieldShell_ = makeShield(kAstralReaverOrbEffect, "FalseKing_CrownShieldShell");
+
     // 中ボスの封鎖壁と同じ GatePortal マテリアルを、円筒の代理形状で描画します。
     crownShieldBarrier_ = CreateRoyalVisual("FalseKing_CrownBarrier", "Gimmicks/portal_surface",
                                             kGatePortalMaterialType, {0.30f, 0.86f, 1.0f, 0.84f}, 2.4f);
@@ -200,6 +212,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
         crownShieldBarrier_->SetBlendMode(BlendMode::kNormal);
         crownShieldBarrier_->SetCastShadow(false);
         crownShieldBarrier_->SetIsVisible(false);
+
         if (MeshRenderer* renderer = crownShieldBarrier_->GetMeshRenderer()) {
             if (MeshRenderer::WaterParamForGPU* effect = renderer->GetWaterParamData()) {
                 effect->waveSpeed = 1.25f;
@@ -216,6 +229,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
             }
         }
     }
+
     crownCastFloor_ = makeShield(kUmbraFlameSigilEffect, "FalseKing_CrownCastFloor");
     crownArenaRing_ = makeShield("Resources/json/effect/effect_false_king_seal_ground_current.json", "FalseKing_CrownArenaCharge");
     crownBarrageFlash_ = makeShield("Resources/json/effect/effect_false_king_seal_ground_aura.json", "FalseKing_CrownBarrageFlash");
@@ -229,6 +243,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
         "Resources/json/effect/effect_false_king_seal_ground_current.json", "Resources/json/effect/effect_false_king_seal_ground_current.json",
         "Resources/json/effect/effect_false_king_seal_red_aura.json",
         "Resources/json/effect/effect_false_king_seal_red_aura.json"};
+
     for (size_t index = 0; index < crownBarrageLayers_.size(); ++index)
         crownBarrageLayers_[index] = makeShield(layerPaths[index], "FalseKing_SealBarrageLayer");
     DebrisEffectManager::GetInstance()->PrewarmPreset("false_king_seal_shatter");
@@ -241,8 +256,10 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
 engine::Vector3 EnemyFalseKingSlime::GetLastBrokenCrownSealPosition() const {
     // 最も最近壊れた結晶を復帰演出の基準にし、未破壊なら既定の位置を返します。
     const CrownSeal* latest = nullptr;
+
     for (const auto& seal : crownSeals_)
-        if (seal.broken && (!latest || seal.breakAge < latest->breakAge)) latest = &seal;
+        if (seal.broken && (!latest || seal.breakAge < latest->breakAge))
+            latest = &seal;
     return latest ? latest->position + engine::Vector3{0,2,0}
                   : GetTranslate() + engine::Vector3{-CrownFinaleTuning::Get().sealRadius,2,0};
 }
@@ -261,15 +278,18 @@ void EnemyFalseKingSlime::TryBreakCrownSeal(const engine::Vector3& impact, int a
         return;
     seal.broken = true;
     seal.breakAge = 0.0f;
+
     if (seal.crystal) {
         CollisionManager::GetInstance()->RemoveObject(seal.crystal.get());
         seal.crystal->SetCollisionAttribute(0);
         seal.crystal->SetCollisionMask(0);
     }
+
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera())
         camera->StartShake(0.32f, 0.11f + brokenSeals_ * 0.025f, 24.0f, {0.6f, 0.5f, 0.25f});
     EmitDirectedPreset(kLanceImpactPreset, seal.position, {0.0f, 1.0f, 0.0f}, 1.8f);
     ++brokenSeals_;
+
     if (brokenSeals_ == 3) {
         sealState_ = SealState::Broken;
         sealStateTimer_ = 0.0f;
@@ -305,6 +325,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         const float remaining = seal.broken ? std::max(0.0f, 1.0f - seal.breakAge / 0.60f) : 1.0f;
         const float pulse = 1.0f + 0.07f * std::sin(idleTimer_ * 4.0f + static_cast<float>(i));
         const engine::Vector3 crystalPosition = seal.position + engine::Vector3{0.0f, 2.0f + 0.15f * std::sin(idleTimer_ * 2.2f), 0.0f};
+
         if (seal.crystal) {
             seal.crystal->SetIsVisible(remaining > 0.0f);
             seal.crystal->SetTranslate(crystalPosition);
@@ -314,6 +335,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             seal.crystal->SetEmissive(1.65f + 0.35f * pulse);
             seal.crystal->Update(deltaTime);
         }
+
         if (seal.ring) {
             seal.ring->SetIsVisible(!seal.broken);
             seal.ring->SetTranslate(seal.position + engine::Vector3{0.0f, 0.10f, 0.0f});
@@ -322,9 +344,11 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             seal.ring->SetEmissive(1.75f + 0.25f * pulse);
             seal.ring->Update(deltaTime);
         }
+
         const engine::Vector3 crown = GetTranslate() + engine::Vector3{(i - 1) * 1.1f, baseScale_.y * 2.0f, 0.0f};
         const engine::Vector3 line = crown - crystalPosition;
         const float length = engine::Math::Length(line);
+
         if (seal.link) {
             seal.link->SetIsVisible(!seal.broken);
             seal.link->SetTranslate((crystalPosition + crown) * 0.5f);
@@ -335,6 +359,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             seal.link->SetEmissive(1.35f + 0.15f * pulse);
             seal.link->Update(deltaTime);
         }
+
         // 結晶から王へ向かう光点を時間差で流し、エネルギーの送り先を見せます。
         for (size_t pulseIndex = 0; pulseIndex < seal.energyPulses.size(); ++pulseIndex) {
             const float travel = std::fmod(idleTimer_ * 0.78f + static_cast<float>(pulseIndex) / 3.0f +
@@ -348,6 +373,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                               crystalPosition + line * travel, {size, size, size},
                               {0.60f, 0.22f, 0.88f, fade * 0.95f});
         }
+
         if (seal.gem) {
             seal.gem->SetIsVisible(!seal.broken);
             seal.gem->SetTranslate(crown);
@@ -367,6 +393,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
     const float barrierAlpha = barrierBuild *
                                (0.54f + 0.20f * crystalPower + 0.04f * std::sin(idleTimer_ * 5.0f));
     const engine::Vector3 ground = FindGroundPoint(GetTranslate());
+
     if (crownShieldBarrier_) {
         crownShieldBarrier_->SetIsVisible(barrierVisible);
         crownShieldBarrier_->SetTranslate(
@@ -383,8 +410,10 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                 effect->uvOffsetX = sealState_ == SealState::Reveal ? 1.0f - barrierBuild : 0.0f;
             }
         }
+
         crownShieldBarrier_->Update(deltaTime);
     }
+
     UpdateFinaleLayer(crownShieldShell_.get(), deltaTime, barrierVisible,
                       GetTranslate() + engine::Vector3{0.0f, baseScale_.y * 1.2f, 0.0f},
                       {baseScale_.x * 2.65f * barrierBuild, baseScale_.y * 2.65f * barrierBuild,
@@ -398,6 +427,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
     UpdateFinaleLayer(crownCastFloor_.get(), deltaTime, barrierVisible,
                       ground + engine::Vector3{0.0f, 0.12f, 0.0f}, {5.2f, 1.0f, 5.2f},
                       {0.76f, 0.34f, 1.0f, 0.66f});
+
     // 紋章の最後の一画は攻撃開始フレームで完成させます。
     const float chantProgress = sealState_ == SealState::Chant
         ? std::clamp(sealStateTimer_ / tuning.sealCastTime, 0.0f, 1.0f)
@@ -417,6 +447,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         ground + engine::Vector3{0.0f, 0.18f, 0.0f},
         {tuning.sealBarrageRadius, 1.0f, tuning.sealBarrageRadius},
         {1.0f, 1.0f, 1.0f, groundCharge * 0.80f * aftermath});
+
     // UVを移動させず、地表に固定した電流の分岐・明滅・走行で圧力を増します。
     UpdateFinaleLayer(crownBarrageLayers_[0].get(), deltaTime, groundCharge > 0.01f,
         ground + engine::Vector3{0.0f, 0.10f, 0.0f},
@@ -434,6 +465,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             ground + engine::Vector3{0.0f, 0.30f + index * 0.03f, 0.0f}, {radius, 1.0f, radius},
             {1.0f, 1.0f, 1.0f, discharge * 0.96f}, {0.0f, index * 1.7f, 0.0f});
     }
+
     const engine::Vector3 impactAura = strike + engine::Vector3{0.0f, 5.5f, 0.0f};
     UpdateFinaleLayer(crownBarrageLayers_[4].get(), deltaTime, discharge > 0.01f,
         impactAura, {13.0f, 1.0f, 14.0f},
@@ -480,22 +512,27 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
 
     if (sealState_ == SealState::Broken) {
         attackState_ = AttackState::Recovery;
+
         if (sealStateTimer_ >= 1.2f) {
             auto* scene = dynamic_cast<GamePlayScene*>(SceneManager::GetInstance()->GetCurrentScene());
+
             if (scene && scene->StartCrownFinale(this)) {
                 crownInterlude_ = true;
                 ClearTransientVisuals();
             }
         }
+
         return;
     }
 
     if (sealState_ == SealState::Reveal) {
         attackState_ = AttackState::Windup;
+
         if (sealStateTimer_ >= 1.25f) {
             sealState_ = SealState::Chant;
             sealStateTimer_ = 0.0f;
         }
+
         return;
     }
 
@@ -504,13 +541,16 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         currentAttack_ = AttackKind::NightfallLances;
         attackStateDuration_ = tuning.sealCastTime;
         attackTimer_ = std::max(0.0f, tuning.sealCastTime - sealStateTimer_);
+
         if (sealVfxTimer_ >= 0.18f) {
             sealVfxTimer_ = 0.0f;
             EmitDirectedPreset("false_king_seal_embers",
                                GetTranslate() + engine::Vector3{0.0f, baseScale_.y * 1.5f, 0.0f},
                                {0.0f, 1.0f, 0.0f}, 1.2f + sealStateTimer_ / tuning.sealCastTime);
+
             // 空間に散らした赤い火花も詠唱後半ほど密になります。
             const int emberSites = 2 + static_cast<int>(chantProgress * 7.0f);
+
             for (int index = 0; index < emberSites; ++index) {
                 const float angle = index * 2.4f + idleTimer_ * 0.47f;
                 const float radius = tuning.sealBarrageRadius * (0.18f + 0.09f * index);
@@ -518,7 +558,9 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                     ground + engine::Vector3{radius * std::cos(angle), 0.24f, radius * std::sin(angle)},
                     {0.0f, 1.0f, 0.0f}, 0.6f + chantProgress * 1.4f);
             }
+
             const int currentSites = 5 + static_cast<int>(chantProgress * 14.0f);
+
             for (int index = 0; index < currentSites; ++index) {
                 const float angle = index * 2.39996f + std::floor(idleTimer_ * 5.0f) * 0.23f;
                 const float radius = tuning.sealBarrageRadius * std::sqrt((index + 0.5f) / currentSites);
@@ -526,11 +568,13 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                     ground + engine::Vector3{radius * std::cos(angle), 0.28f, radius * std::sin(angle)},
                     {std::cos(angle + 1.5f), 0.025f, std::sin(angle + 1.5f)}, 6.0f + chantProgress * 8.0f);
             }
+
             for (const auto& seal : crownSeals_)
                 if (!seal.broken)
                     EmitDirectedPreset(kChargePreset, seal.position + engine::Vector3{0.0f, 1.3f, 0.0f},
                                        {0.0f, 1.0f, 0.0f}, 0.55f);
         }
+
         if (sealStateTimer_ < tuning.sealCastTime)
             return;
 
@@ -554,9 +598,11 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             effect->Play(8.0f);
             return effect;
         };
+
         for (int ring = 0; ring < 3; ++ring) {
             const int count = ring == 0 ? 1 : (ring == 1 ? 6 : 10);
             const float radius = ring == 0 ? 0.0f : tuning.sealBarrageRadius * (ring == 1 ? 0.42f : 0.83f);
+
             for (int index = 0; index < count; ++index) {
                 const float angle = count == 1 ? 0.0f : (static_cast<float>(index) + 0.5f * ring) * kTwoPi / count;
                 SealBarrageSpear spear;
@@ -572,6 +618,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                     spear.model->SetCastShadow(false);
                     spear.model->SetIsVisible(false);
                 }
+
                 spear.glow = makeEffect("Resources/json/effect/effect_false_king_seal_red_aura.json");
                 spear.portal = makeEffect(kNightfallLancesRingEffect);
                 spear.impactLightning = makeEffect("Resources/json/effect/effect_false_king_seal_discharge_burst.json");
@@ -592,8 +639,10 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         if (emitAirAura)
             sealVfxTimer_ = 0.0f;
         const float dissolveStart = tuning.sealBarrageMovieDuration - 0.80f;
+
         if (emitAirAura) {
             const int sites = discharge > 0.0f ? 36 : 20;
+
             for (int index = 0; index < sites; ++index) {
                 const float angle = index * 2.39996f + std::floor(idleTimer_ * 7.0f) * 0.31f;
                 const float radius = tuning.sealBarrageRadius * std::sqrt((index + 0.5f) / sites);
@@ -605,6 +654,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                         {0.0f, 1.0f, 0.0f}, 4.0f);
             }
         }
+
         for (auto& spear : sealBarrage_) {
             const float age = sealStateTimer_ - spear.delay;
             const float fall = std::pow(std::clamp(age / 0.63f, 0.0f, 1.0f), 1.55f);
@@ -616,12 +666,14 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             const float centerHeight = 4.90f * spearScale + tuning.sealBarrageSkyHeight * (1.0f - fall) - fall * 0.55f;
             const engine::Vector3 center = spear.ground + engine::Vector3{0.0f, centerHeight, 0.0f};
             const float spin = idleTimer_ * (spear.hero ? 0.40f : 0.78f) + spear.delay * 3.4f;
+
             if (spear.model) {
                 spear.model->SetIsVisible(visible);
                 spear.model->SetTranslate(center);
                 spear.model->SetRotation({0.0f, spin, 0.0f});
                 spear.model->SetScale({spearScale, spearScale, spearScale});
                 spear.model->SetEmissive((spear.hero ? 0.65f : 0.42f) + 0.35f * (1.0f - fall));
+
                 // 槍を上端からノイズ付きの赤い縁で崩し、破片と火花に引き継ぎます。
                 if (auto* material = spear.model->GetMaterialData()) {
                     material->time = idleTimer_;
@@ -634,9 +686,11 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                     material->portalClipDissolve = 0.7f;
                     material->portalClipColor = {4.0f, 0.20f, 0.025f, 1.0f};
                 }
+
                 spear.model->UpdateLocalMatrix();
                 spear.model->UpdateWorldMatrix(true);
             }
+
             // 着地を条件にせず、空中の形成段階から槍全体を赤いオーラで包みます。
             UpdateFinaleLayer(spear.glow.get(), deltaTime, visible, center,
                               {2.7f * spearScale, 1.0f, 6.4f * spearScale},
@@ -647,11 +701,13 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                     {0.0f, 1.0f, 0.0f}, 1.0f);
                 EmitPreset("false_king_seal_embers", center);
             }
+
             const float portalFade = reveal * (1.0f - SmoothStep01(age / 0.45f));
             UpdateFinaleLayer(spear.portal.get(), deltaTime, portalFade > 0.01f,
                               spear.ground + engine::Vector3{0.0f, tuning.sealBarrageSkyHeight - 0.08f, 0.0f},
                               {spear.hero ? 4.1f : 2.4f, 1.0f, spear.hero ? 4.1f : 2.4f},
                               {1.0f, 0.20f, 0.40f, portalFade * 0.82f});
+
             // 予測線は使わず、地表を這う電流が時刻とともに広がります。
             const float charge = SmoothStep01(sealStateTimer_ / 2.35f);
             const float chargeRadius = (spear.hero ? 5.4f : 2.8f) * (0.96f + charge * 0.04f);
@@ -692,6 +748,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                 EmitPreset("false_king_seal_embers", spear.ground + engine::Vector3{0.0f, 0.24f, 0.0f});
             }
         }
+
         if (sealStateTimer_ >= dissolveStart && sealStateTimer_ - deltaTime < dissolveStart) {
             for (const auto& spear : sealBarrage_) {
                 const engine::Vector3 breakup = spear.ground + engine::Vector3{0.0f, 3.4f * spear.size, 0.0f};
@@ -699,8 +756,10 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                 EmitPreset("false_king_seal_dissolve", breakup);
             }
         }
+
         if (!sealBarrageDamageApplied_ && sealStateTimer_ >= 2.76f) {
             sealBarrageDamageApplied_ = true;
+
             if (target_) {
                 // 結晶を守れなかった場合だけ、移動と回避の無敵時間を貫く全域攻撃です。
                 DamageEvent event;
@@ -713,6 +772,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                 event.bypassPlayerInvincibility = true;
                 EventManager::GetInstance()->Dispatch(event);
             }
+
             // 主槍の着弾を合図に、全ての接地点から同時に放電粒子を噴き上げます。
             for (const auto& spear : sealBarrage_)
                 EmitDirectedPreset("false_king_seal_impact", spear.ground + engine::Vector3{0.0f, 0.2f, 0.0f},
@@ -720,11 +780,13 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera())
                 camera->StartShake(0.65f, 0.22f, 23.0f, {0.7f, 0.7f, 0.35f});
         }
+
         if (sealStateTimer_ >= tuning.sealBarrageMovieDuration) {
             sealState_ = SealState::Recover;
             sealStateTimer_ = 0.0f;
             sealBarrage_.clear();
         }
+
         return;
     }
 
@@ -804,6 +866,7 @@ void EnemyFalseKingSlime::DrawFinaleEditor() {
         if (ImGui::SliderFloat(label, &seconds, lo * t.movieDuration, hi * t.movieDuration, "%.2f 秒"))
             ratio = seconds / t.movieDuration;
     };
+
     editMovieTime("装飾が折れる時刻", t.movieFragmentBreakTime, 0.03f, 0.10f);
     editMovieTime("欠片が着地する時刻", t.movieFragmentLandTime, 0.14f, 0.28f);
     editMovieTime("吸い込み開始時刻", t.movieFragmentPullTime, 0.28f, 0.40f);

@@ -41,21 +41,26 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
     // 元ファイルの印を記録し、次回の永続索引が流用できるか判断する材料にします。
     std::error_code error;
     result.record.fileSize = fs::file_size(sourcePath, error);
+
     if (error) {
         result.record.fileSize = 0;
         error.clear();
     }
+
     result.record.lastWriteTime = fs::last_write_time(sourcePath, error);
 
     json metadata;
     bool metadataExists = fs::exists(metaPath, error);
+
     if (metadataExists) {
         // 既存のImport設定は既定値より優先し、壊れた.metaは自動上書きしません。
         try {
             std::ifstream input(metaPath, std::ios::binary);
+
             if (!input.is_open()) {
                 throw std::runtime_error("ファイルを開けません");
             }
+
             input >> metadata;
         }
         catch (const std::exception& exception) {
@@ -67,6 +72,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
         }
 
         result.record.guid = ToLowerAscii(metadata.value("guid", std::string()));
+
         if (!IsGuidValid(result.record.guid)) {
             AddIssue(
                 AssetDatabaseIssueSeverity::Error,
@@ -75,6 +81,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
             result.record.guid.clear();
             return result;
         }
+
         if (metadata.contains("importSettings") && metadata["importSettings"].is_object()) {
             result.record.importSettings = metadata["importSettings"];
         }
@@ -83,11 +90,13 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
         // 初回索引作成で許可された場合だけ新しいGUIDを発行します。
         result.record.guid = GenerateGuid();
         std::string writeError;
+
         if (!WriteMeta(result.record, &writeError)) {
             AddIssue(AssetDatabaseIssueSeverity::Error, result.record.metaPath, writeError);
             result.record.guid.clear();
             return result;
         }
+
         result.created = true;
     }
     else {
@@ -101,6 +110,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
     // 同一走査でGUIDが重複した場合、通常の索引更新では元.metaを保護します。
     // 新規作成モードでだけ新GUIDを書き、既存参照との衝突を解消します。
     const auto owner = guidOwners.find(result.record.guid);
+
     if (!result.record.guid.empty() && owner != guidOwners.end()) {
         if (!createMissingMeta) {
             AddIssue(
@@ -110,14 +120,17 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
             result.record.guid.clear();
             return result;
         }
+
         const std::string duplicateGuid = result.record.guid;
         result.record.guid = GenerateGuid();
         std::string writeError;
+
         if (!WriteMeta(result.record, &writeError)) {
             AddIssue(AssetDatabaseIssueSeverity::Error, result.record.metaPath, writeError);
             result.record.guid.clear();
             return result;
         }
+
         result.updated = true;
         AddIssue(
             AssetDatabaseIssueSeverity::Warning,
@@ -137,6 +150,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
             metadata.value("importer", std::string()) != result.record.importer;
         if (needsUpdate) {
             std::string writeError;
+
             if (WriteMeta(result.record, &writeError)) {
                 result.updated = true;
             }
@@ -145,6 +159,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
             }
         }
     }
+
     return result;
 }
 
@@ -154,6 +169,7 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
         if (errorMessage) {
             *errorMessage = "無効なGUIDのため.metaを書き込めません。";
         }
+
         return false;
     }
 
@@ -173,27 +189,34 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
     temporaryPath += ".tmp";
     std::error_code error;
     fs::create_directories(metaPath.parent_path(), error);
+
     if (error) {
         if (errorMessage) {
             *errorMessage = ".metaフォルダを作成できません: " + error.message();
         }
+
         return false;
     }
 
     {
         std::ofstream output(temporaryPath, std::ios::binary | std::ios::trunc);
+
         if (!output.is_open()) {
             if (errorMessage) {
                 *errorMessage = ".meta一時ファイルを開けません。";
             }
+
             return false;
         }
+
         output << metadata.dump(2) << '\n';
         output.flush();
+
         if (!output.good()) {
             if (errorMessage) {
                 *errorMessage = ".meta一時ファイルの書き込みに失敗しました。";
             }
+
             return false;
         }
     }
@@ -205,11 +228,14 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
         MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
         const DWORD windowsError = GetLastError();
         fs::remove(temporaryPath, error);
+
         if (errorMessage) {
             *errorMessage = ".metaを確定できません。Windows Error: " + std::to_string(windowsError);
         }
+
         return false;
     }
+
     return true;
 }
 
@@ -220,12 +246,14 @@ bool AssetDatabase::LoadPersistentIndexCache() {
 
     const fs::path cachePath = resourcesRoot_ / kPersistentIndexCachePath;
     std::error_code error;
+
     if (!fs::exists(cachePath, error) || error) {
         return false;
     }
 
     try {
         std::ifstream input(cachePath, std::ios::binary);
+
         if (!input.is_open()) {
             throw std::runtime_error("キャッシュファイルを開けません");
         }
@@ -245,6 +273,7 @@ bool AssetDatabase::LoadPersistentIndexCache() {
         // 全項目を一時Mapに検証してから採用し、途中で不正データが出たら一件も流用しません。
         std::unordered_map<std::string, PersistentAssetEntry> loadedAssets;
         loadedAssets.reserve(document["assets"].size());
+
         for (const json& item : document["assets"]) {
             if (!item.is_object()) {
                 throw std::runtime_error("Asset項目がObjectではありません");
@@ -270,6 +299,7 @@ bool AssetDatabase::LoadPersistentIndexCache() {
                 assetType > static_cast<int>(EditorAssetType::Binary)) {
                 throw std::runtime_error("Asset種別が範囲外です");
             }
+
             entry.record.type = static_cast<EditorAssetType>(assetType);
 
             if (entry.record.sourcePath.empty() ||
@@ -289,6 +319,7 @@ bool AssetDatabase::LoadPersistentIndexCache() {
             }
 
             const std::string key = ToLowerAscii(entry.record.sourcePath);
+
             if (!loadedAssets.emplace(key, std::move(entry)).second) {
                 throw std::runtime_error("同じAssetパスが重複しています");
             }
@@ -317,9 +348,11 @@ bool AssetDatabase::SavePersistentIndexCache() {
     // Mapの列挙順に依存しない安定したJSONを作り、差分と再現性を保ちます。
     std::vector<const PersistentAssetEntry*> sortedEntries;
     sortedEntries.reserve(persistentAssetsByPath_.size());
+
     for (const auto& pair : persistentAssetsByPath_) {
         sortedEntries.push_back(&pair.second);
     }
+
     std::sort(
         sortedEntries.begin(),
         sortedEntries.end(),
@@ -332,6 +365,7 @@ bool AssetDatabase::SavePersistentIndexCache() {
     document["assetMetaVersion"] = kAssetMetaVersion;
     document["resourcesRoot"] = resourcesRootPath_;
     document["assets"] = json::array();
+
     for (const PersistentAssetEntry* entry : sortedEntries) {
         json item;
         item["guid"] = entry->record.guid;
@@ -352,6 +386,7 @@ bool AssetDatabase::SavePersistentIndexCache() {
 
     std::error_code error;
     fs::create_directories(cachePath.parent_path(), error);
+
     if (error) {
         AddIssue(
             AssetDatabaseIssueSeverity::Warning,
@@ -362,6 +397,7 @@ bool AssetDatabase::SavePersistentIndexCache() {
 
     {
         std::ofstream output(temporaryPath, std::ios::binary | std::ios::trunc);
+
         if (!output.is_open()) {
             AddIssue(
                 AssetDatabaseIssueSeverity::Warning,
@@ -369,8 +405,10 @@ bool AssetDatabase::SavePersistentIndexCache() {
                 "永続索引の一時ファイルを開けません。");
             return false;
         }
+
         output << document.dump() << '\n';
         output.flush();
+
         if (!output.good()) {
             AddIssue(
                 AssetDatabaseIssueSeverity::Warning,
@@ -393,6 +431,7 @@ bool AssetDatabase::SavePersistentIndexCache() {
             "永続索引を確定できません。Windows Error: " + std::to_string(windowsError));
         return false;
     }
+
     return true;
 }
 
@@ -409,6 +448,7 @@ bool AssetDatabase::TryReusePersistentAsset(
     const std::string normalizedSource = NormalizeProjectPath(sourcePath);
     const std::string key = ToLowerAscii(normalizedSource);
     const auto cached = persistentAssetsByPath_.find(key);
+
     if (cached == persistentAssetsByPath_.end()) {
         return false;
     }
@@ -449,6 +489,7 @@ bool AssetDatabase::TryReusePersistentAsset(
     }
 
     const auto owner = guidOwners.find(entry.record.guid);
+
     if (!entry.record.guid.empty() && owner != guidOwners.end()) {
         return false;
     }
@@ -456,6 +497,7 @@ bool AssetDatabase::TryReusePersistentAsset(
     *reusedRecord = entry.record;
     reusedRecord->fileSize = sourceFileSize;
     reusedRecord->lastWriteTime = sourceWriteTime;
+
     if (!reusedRecord->guid.empty()) {
         guidOwners[reusedRecord->guid] = reusedRecord->sourcePath;
     }
@@ -471,6 +513,7 @@ void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record)
     const fs::path sourcePath = ResolveAbsolutePath(record.sourcePath);
     std::uintmax_t sourceFileSize = 0;
     fs::file_time_type sourceWriteTime{};
+
     if (!ReadFileStamp(sourcePath, &sourceFileSize, &sourceWriteTime)) {
         return;
     }
@@ -484,14 +527,18 @@ void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record)
     const fs::path metaPath = ResolveAbsolutePath(record.metaPath);
     std::error_code error;
     entry.metaExists = fs::exists(metaPath, error) && !error;
+
     if (error) {
         return;
     }
+
     if (entry.metaExists) {
         fs::file_time_type metaWriteTime{};
+
         if (!ReadFileStamp(metaPath, &entry.metaFileSize, &metaWriteTime)) {
             return;
         }
+
         entry.metaWriteTimeTicks = FileTimeToTicks(metaWriteTime);
     }
 
@@ -501,28 +548,36 @@ void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record)
 EditorAssetType AssetDatabase::DetectAssetType(const fs::path& path) {
     // 拡張子からImporterの初期値に使う型だけを推定します。
     const std::string extension = ToLowerAscii(path.extension().string());
+
     if (extension == ".obj" || extension == ".gltf" || extension == ".glb" || extension == ".fbx") {
         return EditorAssetType::Model;
     }
+
     if (extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".dds" ||
         extension == ".tga" || extension == ".bmp" || extension == ".hdr") {
         return EditorAssetType::Texture;
     }
+
     if (extension == ".json") {
         return EditorAssetType::Json;
     }
+
     if (extension == ".wav" || extension == ".mp3" || extension == ".ogg" || extension == ".flac") {
         return EditorAssetType::Audio;
     }
+
     if (extension == ".hlsl" || extension == ".hlsli" || extension == ".cso") {
         return EditorAssetType::Shader;
     }
+
     if (extension == ".ttf" || extension == ".otf") {
         return EditorAssetType::Font;
     }
+
     if (!extension.empty()) {
         return EditorAssetType::Binary;
     }
+
     return EditorAssetType::Unknown;
 }
 
@@ -530,12 +585,19 @@ std::string AssetDatabase::GetDefaultImporter(EditorAssetType type) {
     // .metaが未作成でも型ごとに同じImporter名へ収束させます。
     switch (type) {
     case EditorAssetType::Model: return "ModelImporter";
+
     case EditorAssetType::Texture: return "TextureImporter";
+
     case EditorAssetType::Json: return "JsonImporter";
+
     case EditorAssetType::Audio: return "AudioImporter";
+
     case EditorAssetType::Shader: return "ShaderImporter";
+
     case EditorAssetType::Font: return "FontImporter";
+
     case EditorAssetType::Binary: return "BinaryImporter";
+
     case EditorAssetType::Unknown:
     default: return "DefaultImporter";
     }
@@ -546,10 +608,13 @@ json AssetDatabase::GetDefaultImportSettings(EditorAssetType type) {
     switch (type) {
     case EditorAssetType::Model:
         return { { "scale", 1.0 }, { "generateTangents", true } };
+
     case EditorAssetType::Texture:
         return { { "colorSpace", "Auto" }, { "generateMipmaps", true } };
+
     case EditorAssetType::Audio:
         return { { "streaming", false } };
+
     default:
         return json::object();
     }

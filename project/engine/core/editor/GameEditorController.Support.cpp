@@ -9,12 +9,14 @@ namespace GameEditorControllerImplementation {
 GameViewArea CalculateFixedAspectArea(const ImVec2& canvasScreenPos, const ImVec2& canvasSize) {
 	// キャンバス内に固定アスペクト比のゲーム画面を収め、余白を左右または上下へ均等に配分する。
 	GameViewArea area{};
+
 	if (canvasSize.x <= 0.0f || canvasSize.y <= 0.0f) {
 		return area;
 	}
 
 	float width = canvasSize.x;
 	float height = width / kEditorViewportAspect;
+
 	if (height > canvasSize.y) {
 		height = canvasSize.y;
 		width = height * kEditorViewportAspect;
@@ -41,7 +43,9 @@ bool IsObjectInCurrentScene(SceneManager* sceneManager, engine::Object3d* object
 	if (!object) {
 		return false;
 	}
+
 	BaseScene* currentScene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+
 	if (!currentScene) {
 		return false;
 	}
@@ -60,9 +64,11 @@ float Length2D(const ImVec2& value) {
 // ほぼゼロの方向はゼロのまま返し、それ以外は単位方向に直します。
 ImVec2 Normalize2D(const ImVec2& value) {
 	const float length = Length2D(value);
+
 	if (length <= 0.0001f) {
 		return ImVec2(0.0f, 0.0f);
 	}
+
 	return ImVec2(value.x / length, value.y / length);
 }
 
@@ -83,6 +89,7 @@ bool ProjectWorldToGameView(const engine::Vector3& worldPos, const engine::Matri
 	// ワールド座標をゲーム画面の固定比率領域へ投影し、画面外なら選択表示を省く。
 	engine::Math math;
 	const engine::Vector3 ndc = math.Transform(worldPos, viewProjection);
+
 	if (ndc.z < 0.0f || ndc.z > 1.0f) {
 		return false;
 	}
@@ -99,6 +106,7 @@ void DrawArrow2D(ImDrawList* drawList, const ImVec2& start, const ImVec2& end, I
 	drawList->AddLine(start, end, color, thickness);
 
 	const ImVec2 direction = Normalize2D(ImVec2(end.x - start.x, end.y - start.y));
+
 	if (Length2D(direction) <= 0.0001f) {
 		drawList->AddCircleFilled(end, thickness * 1.5f, color, 12);
 		return;
@@ -150,6 +158,7 @@ void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera) {
 	};
 
 	const engine::Matrix4x4& view = camera->GetViewMatrix();
+
 	for (const AxisInfo& axis : axes) {
 		const engine::Vector3 viewDir = math.TransformNormal(axis.worldAxis, view);
 		const ImVec2 screenDir = Normalize2D(ImVec2(viewDir.x, -viewDir.y));
@@ -182,6 +191,7 @@ void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, eng
 	const float axisLength = std::clamp(GetLargestAbsScale(selectedObject->GetScale()) * 1.35f, 0.85f, 4.0f);
 
 	ImVec2 originScreen;
+
 	if (!ProjectWorldToGameView(origin, viewProjection, area, originScreen)) {
 		return;
 	}
@@ -209,6 +219,7 @@ void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, eng
 		const engine::Vector3 endpoint = AddScaled(origin, worldDirection, axisLength * axis.lengthScale);
 
 		ImVec2 endpointScreen;
+
 		if (!ProjectWorldToGameView(endpoint, viewProjection, area, endpointScreen)) {
 			continue;
 		}

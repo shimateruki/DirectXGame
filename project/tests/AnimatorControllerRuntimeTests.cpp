@@ -26,6 +26,7 @@ int main() {
         constexpr std::array<const char*, 10> kModeStates = {
             "Idle", "Run", "Jump", "Dash", "AimHook", "ShootHook", "PullEnemy", "Carry", "GateReturn", "Disabled"
         };
+
         for (int mode = 1; mode < static_cast<int>(kModeStates.size()); ++mode) {
             runtime.SetInt("LocomotionMode", mode);
             runtime.Update(1.0f / 60.0f, {});
@@ -48,6 +49,7 @@ int main() {
             if (state.name.rfind("player_", 0) != 0) {
                 continue;
             }
+
             Check(!state.bodyClipName.empty(), "ability state has no Body Clip");
             Check(std::filesystem::exists(
                 std::filesystem::path("Resources/json/animation_clip") / (state.bodyClipName + ".json")),

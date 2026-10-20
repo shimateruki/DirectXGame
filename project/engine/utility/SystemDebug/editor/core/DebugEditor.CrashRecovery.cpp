@@ -44,7 +44,7 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
+#include <game/system/combat/BulletManager.h>
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -91,9 +91,11 @@ namespace {
     bool ReadJsonFileSafe(const fs::path& path, nlohmann::json& outJson) {
         // 復元データが存在しても不正なJSONなら採用しない。
         std::ifstream file(path, std::ios::binary);
+
         if (!file.is_open()) {
             return false;
         }
+
         try {
             file >> outJson;
             return outJson.is_object();
@@ -107,14 +109,17 @@ namespace {
         // クラッシュ復元用のJSONを書き出し、失敗は復元状態として残さない。
         std::error_code ec;
         fs::create_directories(path.parent_path(), ec);
+
         if (ec) {
             return false;
         }
 
         std::ofstream file(path, std::ios::binary);
+
         if (!file.is_open()) {
             return false;
         }
+
         file << data.dump(4);
         return file.good();
     }
@@ -123,10 +128,13 @@ namespace {
         // 回復対象は指定ルート配下だけに絞り、任意パスへの書き戻しを防ぐ。
         std::error_code ec;
         const fs::path childAbs = fs::absolute(child, ec).lexically_normal();
+
         if (ec) {
             return false;
         }
+
         const fs::path parentAbs = fs::absolute(parent, ec).lexically_normal();
+
         if (ec) {
             return false;
         }
@@ -135,9 +143,11 @@ namespace {
         std::wstring parentText = parentAbs.native();
         std::transform(childText.begin(), childText.end(), childText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
         std::transform(parentText.begin(), parentText.end(), parentText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
+
         if (!parentText.empty() && parentText.back() != L'\\' && parentText.back() != L'/') {
             parentText.push_back(fs::path::preferred_separator);
         }
+
         return childText.rfind(parentText, 0) == 0;
     }
 
@@ -183,6 +193,7 @@ void DebugEditor::UpdateCrashRecovery(float deltaTime) {
     }
 
     const bool dirty = HasAnyDirty();
+
     if (dirty && !crashRecoveryLastDirty_) {
         crashRecoveryAutosaveTimer_ = kCrashRecoveryAutosaveInterval;
     }
@@ -217,12 +228,14 @@ void DebugEditor::FinalizeCrashRecovery() {
 
 void DebugEditor::SaveCrashRecoveryDraft() {
     // シーン保存先のうち許可されたJSONだけをセッション専用領域へ複写します。
-    if (!crashRecoverySessionActive_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
+    if (!crashRecoverySessionActive_ || !sceneManager_ || !sceneManager_->GetCurrentScene() ||
+        currentSceneFilename_[0] == '\0') {
         return;
     }
 
     // 通常保存と同じシリアライザで全対象を作り、編集中Sceneの現在値をドラフトへ写します。
     auto targets = serializer_.BuildSceneSaveTargets(currentSceneFilename_, SaveMode::All);
+
     if (targets.empty()) {
         return;
     }
@@ -237,6 +250,7 @@ void DebugEditor::SaveCrashRecoveryDraft() {
         }
 
         const fs::path draftPath = draftRoot / fs::path(target.path);
+
         if (!IsPathInside(draftPath, draftRoot)) {
             continue;
         }
@@ -271,6 +285,7 @@ void DebugEditor::WriteCrashRecoverySession(bool cleanExit, bool dirty, const nl
     nlohmann::json session;
     const fs::path sessionPath = fs::path(crashRecoverySessionDir_) / kCrashRecoverySessionFile;
     ReadJsonFileSafe(sessionPath, session);
+
     if (!session.is_object()) {
         session = nlohmann::json::object();
     }
@@ -279,9 +294,11 @@ void DebugEditor::WriteCrashRecoverySession(bool cleanExit, bool dirty, const nl
     session["version"] = 1;
     session["sessionId"] = crashRecoverySessionId_;
     session["updatedAt"] = NowIsoString();
+
     if (!session.contains("startedAt")) {
         session["startedAt"] = NowIsoString();
     }
+
     session["cleanExit"] = cleanExit;
     session["dirty"] = dirty;
     session["dirtySummary"] = GetDirtySummaryText();
@@ -289,6 +306,7 @@ void DebugEditor::WriteCrashRecoverySession(bool cleanExit, bool dirty, const nl
     session["sessionDir"] = crashRecoverySessionDir_;
     session["draftRoot"] = crashRecoveryDraftDir_;
     session["files"] = files.is_array() ? files : nlohmann::json::array();
+
     if (!session.contains("resolved")) {
         session["resolved"] = false;
     }
@@ -304,6 +322,7 @@ void DebugEditor::LoadCrashRecoveryCandidate() {
 
     const fs::path root = kCrashRecoveryRoot;
     std::error_code ec;
+
     if (!fs::exists(root, ec)) {
         return;
     }
@@ -320,6 +339,7 @@ void DebugEditor::LoadCrashRecoveryCandidate() {
 
         const fs::path manifestPath = entry.path() / kCrashRecoverySessionFile;
         nlohmann::json manifest;
+
         if (!ReadJsonFileSafe(manifestPath, manifest)) {
             continue;
         }
@@ -334,9 +354,11 @@ void DebugEditor::LoadCrashRecoveryCandidate() {
         }
 
         const fs::file_time_type writeTime = fs::last_write_time(manifestPath, ec);
+
         if (ec) {
             continue;
         }
+
         if (!hasBest || writeTime > bestTime) {
             bestTime = writeTime;
             bestManifest = manifest;
@@ -360,6 +382,7 @@ void DebugEditor::DrawCrashRecoveryPrompt() {
     }
 
     const char* popupName = "クラッシュ復元###CrashRecoveryPrompt";
+
     if (!crashRecoveryPromptOpened_) {
         ImGui::OpenPopup(popupName);
         crashRecoveryPromptOpened_ = true;
@@ -374,10 +397,12 @@ void DebugEditor::DrawCrashRecoveryPrompt() {
         ImGui::Text("保存時刻: %s", crashRecoveryPendingManifest_.value("updatedAt", std::string("-")).c_str());
 
         const auto& files = crashRecoveryPendingManifest_.value("files", nlohmann::json::array());
+
         if (ImGui::BeginTable("CrashRecoveryFiles", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
             ImGui::TableSetupColumn("復元先");
             ImGui::TableSetupColumn("ドラフト");
             ImGui::TableHeadersRow();
+
             for (const auto& file : files) {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -385,6 +410,7 @@ void DebugEditor::DrawCrashRecoveryPrompt() {
                 ImGui::TableSetColumnIndex(1);
                 ImGui::TextWrapped("%s", file.value("draft", std::string("-")).c_str());
             }
+
             ImGui::EndTable();
         }
 
@@ -399,12 +425,15 @@ void DebugEditor::DrawCrashRecoveryPrompt() {
                 ImGui::CloseCurrentPopup();
             }
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("今回は使わない", ImVec2(140.0f, 0.0f))) {
             ResolveCrashRecoveryCandidate("dismissed");
             crashRecoveryPending_ = false;
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::EndPopup();
     }
 #endif
@@ -430,6 +459,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
     for (const auto& file : crashRecoveryPendingManifest_["files"]) {
         const std::string sourceText = file.value("source", std::string(""));
         const std::string draftText = file.value("draft", std::string(""));
+
         if (sourceText.empty() || draftText.empty() || !IsCrashRecoverySourcePathAllowed(sourceText)) {
             ++errorCount;
             continue;
@@ -450,10 +480,12 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
 
         // 上書きする現行JSONは先に別フォルダへ退避し、ファイルごとの失敗を数えます。
         std::error_code ec;
+
         if (fs::exists(source, ec)) {
             const fs::path currentBackup = backupRoot / fs::path(sourceText);
             fs::create_directories(currentBackup.parent_path(), ec);
             fs::copy_file(source, currentBackup, fs::copy_options::overwrite_existing, ec);
+
             if (ec) {
                 ++errorCount;
                 continue;
@@ -461,16 +493,19 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
         }
 
         fs::create_directories(source.parent_path(), ec);
+
         if (ec) {
             ++errorCount;
             continue;
         }
 
         fs::copy_file(draft, source, fs::copy_options::overwrite_existing, ec);
+
         if (ec) {
             ++errorCount;
             continue;
         }
+
         ++restoredCount;
     }
 
@@ -481,9 +516,11 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
     }
 
     crashRecoveryStatus_ = "クラッシュ復元: " + std::to_string(restoredCount) + "件を復元しました。";
+
     if (errorCount > 0) {
         crashRecoveryStatus_ += " " + std::to_string(errorCount) + "件は失敗しました。";
     }
+
     DebugConsole::GetInstance()->AddLog(crashRecoveryStatus_);
     TriggerSaveNotification(crashRecoveryStatus_);
 
@@ -491,6 +528,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
     if (sceneManager_ && !sceneManager_->GetCurrentSceneName().empty() && !sceneManager_->IsTransitioning()) {
         sceneManager_->ReloadCurrentScene();
     }
+
     return true;
 }
 
@@ -501,15 +539,18 @@ void DebugEditor::ResolveCrashRecoveryCandidate(const std::string& resolution) {
     }
 
     const std::string manifestPathText = crashRecoveryPendingManifest_.value("_manifestPath", std::string(""));
+
     if (manifestPathText.empty()) {
         return;
     }
 
     nlohmann::json manifest;
+
     if (!ReadJsonFileSafe(manifestPathText, manifest)) {
         manifest = crashRecoveryPendingManifest_;
         manifest.erase("_manifestPath");
     }
+
     manifest["resolved"] = true;
     manifest["resolution"] = resolution;
     manifest["resolvedAt"] = NowIsoString();

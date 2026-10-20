@@ -3,8 +3,8 @@
 
 #include "BaseScene.h"
 #include "CollisionConfig.h"
-#include "GameAudioSettings.h"
-#include "GameDataManager.h"
+#include "game/system/settings/GameAudioSettings.h"
+#include "game/system/progress/GameDataManager.h"
 #include "Player.h"
 #include "SceneManager.h"
 #include "VFXSequencer.h"
@@ -13,7 +13,7 @@
 #include <cassert>
 #include <cmath>
 
-void GimmickGameplayVolume::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickGameplayVolume::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // プレイヤーだけを検知する透明な OBB とし、用途は JSON の volumeMode で選ぶ。
     BaseGimmick::Initialize(common, modelName);
 
@@ -37,6 +37,7 @@ void GimmickGameplayVolume::Initialize(Object3dCommon* common, const std::string
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->gimmickType = "GameplayVolume";
     param_->volumeMode = static_cast<int>(Mode::Event);
     param_->volumePayload.clear();
@@ -52,6 +53,7 @@ void GimmickGameplayVolume::Update(float deltaTime) {
     // 衝突通知がないフレームを退出として扱い、再発動待ち時間を更新する。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
+
     if (!isPlaying) {
         ResetForEditor();
         BaseGimmick::Update(deltaTime);
@@ -63,9 +65,11 @@ void GimmickGameplayVolume::Update(float deltaTime) {
     }
 
     rearmTimer_ = (std::max)(0.0f, rearmTimer_ - (std::max)(0.0f, deltaTime));
+
     if (occupied_ && !collisionObserved_) {
         HandleExit(occupant_);
     }
+
     collisionObserved_ = false;
 
     BaseGimmick::Update(deltaTime);
@@ -74,6 +78,7 @@ void GimmickGameplayVolume::Update(float deltaTime) {
 void GimmickGameplayVolume::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 編集中は範囲を見せ、ゲーム再生中は検知形状を描画しない。
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager || !sceneManager->IsPlaying()) {
         BaseGimmick::Draw(pointLightResource, spotLightResource);
     }
@@ -82,19 +87,23 @@ void GimmickGameplayVolume::Draw(ID3D12Resource* pointLightResource, ID3D12Resou
 bool GimmickGameplayVolume::OnCollision(engine::Object3d* other) {
     // プレイヤーが入った最初のフレームだけ入場処理を呼び、物理的には押し戻さない。
     auto* player = dynamic_cast<Player*>(other);
+
     if (!player) {
         return false;
     }
+
     if (!runtimeEnabled_) {
         return false;
     }
 
     collisionObserved_ = true;
     occupant_ = player;
+
     if (!occupied_) {
         occupied_ = true;
         HandleEnter(player);
     }
+
     return false;
 }
 
@@ -106,10 +115,12 @@ void GimmickGameplayVolume::OnTrigger() {
 void GimmickGameplayVolume::OnSwitchEvent(bool active) {
     // 無効化時は占有を解き、設定によって有効化中の環境変更も戻す。
     runtimeEnabled_ = active;
+
     if (!runtimeEnabled_) {
         if (occupied_ && param_.has_value() && !param_->volumeTriggerOnExit && param_->returnOnOff) {
             Deactivate();
         }
+
         occupied_ = false;
         collisionObserved_ = false;
         occupant_ = nullptr;
@@ -158,6 +169,7 @@ void GimmickGameplayVolume::HandleEnter(Player* player) {
     if (!param_.has_value() || param_->volumeTriggerOnExit) {
         return;
     }
+
     Activate(player);
 }
 
@@ -168,6 +180,7 @@ void GimmickGameplayVolume::HandleExit(Player* player) {
     } else if (param_.has_value() && param_->returnOnOff) {
         Deactivate();
     }
+
     occupied_ = false;
     occupant_ = nullptr;
 }
@@ -179,6 +192,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
     }
 
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
+
     switch (GetMode()) {
     case Mode::Event:
         if (scene && GetTargetID() > 0) {
@@ -188,7 +202,9 @@ void GimmickGameplayVolume::Activate(Player* player) {
                 scene->TriggerEvent(GetTargetID());
             }
         }
+
         break;
+
     case Mode::Checkpoint:
         if (player) {
             const engine::Vector3 checkpointPosition = GetWorldPosition();
@@ -198,17 +214,23 @@ void GimmickGameplayVolume::Activate(Player* player) {
                 std::abs(previousRespawnPosition.y - checkpointPosition.y) < 0.01f &&
                 std::abs(previousRespawnPosition.z - checkpointPosition.z) < 0.01f;
             player->ActivateCheckpoint(checkpointPosition);
+
             if (!restoringSameCheckpoint && !player->IsEditorInternal()) {
                 // 領域型のチェックポイントも旗と同じ報酬を与え、復活直後の再進入は除外します。
                 GameDataManager* gameData = GameDataManager::GetInstance();
+
                 if (gameData->GetLives() < GameDataManager::kMaxLives) {
                     gameData->SetLives(gameData->GetLives() + 1);
                 }
+
                 player->RestoreHpToFull();
             }
+
             VFXSequencer::PlayOneShot("checkpoint_activate_cue", checkpointPosition);
         }
+
         break;
+
     case Mode::FallDeath:
         if (player && !player->isDead) {
             engine::Vector3 position = player->GetTranslate();
@@ -216,23 +238,30 @@ void GimmickGameplayVolume::Activate(Player* player) {
             player->SetTranslate(position);
             player->SetVelocity({0.0f, 0.0f, 0.0f});
         }
+
         break;
+
     case Mode::FeedbackCue:
         if (!param_->volumePayload.empty()) {
             VFXSequencer::PlayOneShot(param_->volumePayload, GetWorldPosition());
         }
+
         break;
+
     case Mode::Bgm:
         if (!param_->volumePayload.empty()) {
             GameAudioSettings::GetInstance()->PlayBGM(param_->volumePayload);
         }
+
         break;
+
     case Mode::Environment:
         if (!param_->volumePayload.empty()) {
             previousEnvironment_ = LightManager::GetInstance()->CaptureEnvironmentProfile();
             hasPreviousEnvironment_ = true;
             LightManager::GetInstance()->ApplyEnvironmentProfile(param_->volumePayload, param_->volumeBlendDuration);
         }
+
         break;
     }
 
@@ -247,6 +276,7 @@ void GimmickGameplayVolume::Deactivate() {
     }
 
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
+
     if (GetMode() == Mode::Event && scene && GetTargetID() > 0) {
         scene->SetEventActive(GetTargetID(), false);
     } else if (GetMode() == Mode::Bgm && !param_->volumePayload.empty()) {
@@ -262,6 +292,7 @@ bool GimmickGameplayVolume::CanActivate() const {
     if (!runtimeEnabled_ || !param_.has_value() || rearmTimer_ > 0.0f) {
         return false;
     }
+
     return !param_->volumeTriggerOnce || !triggered_;
 }
 

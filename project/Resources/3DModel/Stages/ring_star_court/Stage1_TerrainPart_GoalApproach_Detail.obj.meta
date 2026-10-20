@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "349754cb1d485345b636d7ad332fa2f0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_GoalApproach_Detail.obj",
+  "version": 1
+}

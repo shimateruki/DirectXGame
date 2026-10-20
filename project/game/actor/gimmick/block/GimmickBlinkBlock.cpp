@@ -6,7 +6,7 @@ GimmickBlinkBlock::~GimmickBlinkBlock() {
     EventManager::GetInstance()->Unsubscribe(jumpSubscription_);
 }
 
-void GimmickBlinkBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickBlinkBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("BlinkBlock");
@@ -56,6 +56,7 @@ void GimmickBlinkBlock::UpdateAppearance() {
     if (isActive_) {
         SetIsVisible(true);
         SetCollisionAttribute(CollisionCategories::Get("ground"));
+
         // 不透明
         if (colorType_ == 0) {
             // 青
@@ -67,6 +68,7 @@ void GimmickBlinkBlock::UpdateAppearance() {
     } else {
         // 非アクティブ時は衝突判定を消し、半透明にする
         SetCollisionAttribute(0);
+
         if (colorType_ == 0) {
             // 青（半透明）
             SetColor({0.2f, 0.6f, 1.0f, 0.2f});

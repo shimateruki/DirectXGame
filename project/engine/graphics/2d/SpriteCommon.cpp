@@ -22,9 +22,11 @@ void SpriteCommon::Initialize(DirectXCommon* dxCommon) {
 /// </summary>
 void SpriteCommon::SetPipeline(ID3D12GraphicsCommandList* commandList) {
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
+
     // 描画前にパイプラインとルートシグネチャを設定する
     commandList->SetPipelineState(pipelineState_.Get());
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
+
     // スプライト描画なので、プリミティブ形状は TRIANGLELIST に固定
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
@@ -81,9 +83,11 @@ void SpriteCommon::CreateRootSignature() {
     Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
     HRESULT hr = D3D12SerializeRootSignature(&descriptionRootSignature, D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
+
     if (FAILED(hr)) {
         assert(false);
     }
+
     hr = device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature_));
     assert(SUCCEEDED(hr));
 }

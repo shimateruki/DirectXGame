@@ -35,10 +35,15 @@ public:
 
     // DirectXの主要オブジェクト取得。
     ID3D12Device* GetDevice() const { return device_.Get(); }
+
     WinApp* GetWinApp() const { return winApp_; }
+
     ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
+
     DXGI_FORMAT GetRTVFormat() const { return rtvFormat_; }
+
     size_t GetBackBufferCount() const { return backBufferCount_; }
+
     uint32_t GetFrameCount() const { return frameCount_; }
 
     // SRVの最大数。
@@ -103,15 +108,22 @@ public:
     void WaitForGPUIdle();
 
     ID3D12CommandAllocator* GetCommandAllocator() const { return commandAllocator_.Get(); }
+
     ID3D12CommandQueue* GetCommandQueue() const { return commandQueue_.Get(); }
+
     ID3D12Fence* GetFence() const { return fence_.Get(); }
+
     uint64_t GetFenceValue() const { return fenceValue_; }
+
     HANDLE GetFenceEvent() const { return fenceEvent_; }
 
     // GameView用レンダーテクスチャの生成、描画開始・終了、SRV取得。
     void CreateRenderTexture();
+
     void PreDrawRenderTexture();
+
     void PostDrawRenderTexture();
+
     uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
 
     /// <summary>描画先をクリアするRGBA色を設定する。</summary>
@@ -122,10 +134,15 @@ public:
 
     // シャドウマップ描画。
     void CreateShadowMap();
+
     uint32_t GetShadowMapSrvHandle() const { return shadowMapSrvHandle_; }
+
     int GetShadowMapResolution() const { return shadowMapResolution_; }
+
     void SetShadowMapResolution(int resolution);
+
     void PreDrawShadow();
+
     void PostDrawShadow();
 
     /// <summary>直近のGPU描画時間をミリ秒で返す。</summary>
@@ -133,17 +150,23 @@ public:
 
     // GPU計測。
     void StartGpuProfile(const std::string& name = "Total");
+
     void EndGpuProfile(const std::string& name = "Total");
+
     void ResetGpuProfiles();
+
     void ReadAllGpuProfiles();
 
     /// <summary>深度テクスチャをシェーダーから参照するSRVを作る。</summary>
     void CreateDepthSrv();
+
     uint32_t GetDepthSrvHandle() const { return depthSrvHandle_; }
 
     // ローカルフォグや画面効果で使う描画先。
     void PreDrawLocalFog();
+
     void PostDrawLocalFog();
+
     uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
 
     /// <summary>現在の画面カラーをGrabTextureへコピーする。</summary>
@@ -152,6 +175,7 @@ public:
     // Camera Preview小窓の描画中かどうか。
     // Preview中は通常GameView用のGrabTexture更新を避ける。
     void SetCameraPreviewRendering(bool isRendering) { cameraPreviewRendering_ = isRendering; }
+
     bool IsCameraPreviewRendering() const { return cameraPreviewRendering_; }
 
     /// <summary>ウィンドウサイズに合わせてSwapChainとRTV/DSVを作り直す。</summary>
@@ -165,16 +189,24 @@ public:
 
 private:
     DirectXCommon() = default;
+
     ~DirectXCommon() = default;
+
     DirectXCommon(const DirectXCommon&) = delete;
+
     const DirectXCommon& operator=(const DirectXCommon&) = delete;
 
     // DirectX初期化の内部手順。依存するリソースを順に作る。
     void InitializeDXGIDevice();
+
     void CreateCommand();
+
     void CreateSwapChain();
+
     void CreateRTV();
+
     void CreateDSV();
+
     void CreateFence();
 
     /// <summary>
@@ -191,15 +223,19 @@ private:
     // DirectXの主要リソース。
     Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;
+
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList_ = nullptr;
+
     Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> swapChainResources_[2] = {};
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap_ = nullptr;
+
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_ = nullptr;
     uint32_t depthSrvHandle_ = 0;
+
     bool pendingResize_ = false;
     int32_t pendingResizeWidth_ = 0;
     int32_t pendingResizeHeight_ = 0;

@@ -4,7 +4,7 @@
 #include "BaseEnemy.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
 #include "MeshEffectManager.h"
 #include "game/actor/player/Player.h"
@@ -26,9 +26,11 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     // カメラの上下角を攻撃方向へ混ぜず、無入力なら前方向へ倒す。
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
+
     if (length <= 0.001f) {
         return {0.0f, 0.0f, 1.0f};
     }
+
     return {value.x / length, 0.0f, value.z / length};
 }
 
@@ -39,6 +41,7 @@ engine::Object3d* FindEnemyRoot(engine::Object3d* object) {
             return current;
         }
     }
+
     return nullptr;
 }
 
@@ -51,6 +54,7 @@ void SpawnEffect(const char* path, const engine::Vector3& position, const engine
 
 void EmitDirectedPreset(const char* preset, const engine::Vector3& position, const engine::Vector3& direction, float scale = 1.0f) {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
+
     if (particles && particles->IsInitialized()) {
         particles->EmitDirected(preset, position, direction, scale);
     }
@@ -108,11 +112,13 @@ void PlayerBaseCombatController::Update(Player& player, float deltaTime) {
     case Phase::BashRecovery:
         UpdateBash(player, deltaTime);
         break;
+
     case Phase::PressWindup:
     case Phase::PressFall:
     case Phase::PressRecovery:
         UpdatePress(player, deltaTime);
         break;
+
     case Phase::Idle:
     default:
         break;
@@ -124,11 +130,14 @@ void PlayerBaseCombatController::Cancel(Player& player, bool restoreControl) {
     if (!IsActive()) {
         return;
     }
+
     player.StopSlimeAbilityMotion(0.05f);
     player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
+
     if (restoreControl && !player.isDead && !player.IsCinematicLocked()) {
         player.SetIsControlActive(true);
     }
+
     phase_ = Phase::Idle;
     timer_ = 0.0f;
     effectTimer_ = 0.0f;
@@ -174,6 +183,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
 
     if (phase_ == Phase::BashWindup) {
         player.SetVelocity({0.0f, player.GetVelocity().y, 0.0f});
+
         if (timer_ <= 0.0f) {
             phase_ = Phase::BashActive;
             timer_ = kBashActiveDuration;
@@ -187,6 +197,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
                                direction_ * -1.0f, 0.78f);
             effectTimer_ = 0.08f;
         }
+
         return;
     }
 
@@ -198,12 +209,14 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction_);
         DamageBash(player);
         effectTimer_ -= deltaTime;
+
         if (effectTimer_ <= 0.0f) {
             EmitDirectedPreset("player_base_bash_droplets",
                                player.GetWorldPosition() - direction_ * 0.38f + engine::Vector3{0.0f, 0.30f, 0.0f},
                                direction_ * -1.0f, 0.46f);
             effectTimer_ = 0.085f;
         }
+
         if (timer_ <= 0.0f) {
             phase_ = Phase::BashRecovery;
             timer_ = kBashRecoveryDuration;
@@ -211,6 +224,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
             velocity.z *= 0.20f;
             player.SetVelocity(velocity);
         }
+
         return;
     }
 
@@ -231,6 +245,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
             player.SetVelocity({direction_.x * 3.0f, -25.0f, direction_.z * 3.0f});
             player.PlaySlimeAbilityMotion("player_base_press_fall", true, 1.0f, 0.025f, 0.04f);
         }
+
         return;
     }
 
@@ -258,6 +273,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
             player.PlaySlimeAbilityMotion("player_base_press_land", false, 1.0f, 0.02f, 0.05f);
             player.TriggerSlimeImpulse({1.85f, 0.52f, 1.85f}, 0.16f);
         }
+
         return;
     }
 
@@ -272,11 +288,14 @@ void PlayerBaseCombatController::DamageBash(Player& player) {
     filter.mask = CollisionCategories::Get("enemy");
     filter.ignoredObject = &player;
     const engine::Vector3 center = player.GetWorldPosition() + direction_ * 1.0f + engine::Vector3{0.0f, 0.62f, 0.0f};
+
     for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.38f, filter)) {
         engine::Object3d* target = FindEnemyRoot(hit.object);
+
         if (!target || !hitTargets_.insert(target).second) {
             continue;
         }
+
         DispatchDamage(player, target, 9.0f, {direction_.x * 10.0f, 4.5f, direction_.z * 10.0f});
         VFXSequencer::PlayOneShot("player_base_bash_hit_cue", target->GetWorldPosition() + engine::Vector3{0.0f, 0.55f, 0.0f});
     }
@@ -289,11 +308,14 @@ void PlayerBaseCombatController::DamagePress(Player& player, bool landingImpact)
     filter.ignoredObject = &player;
     const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, landingImpact ? 0.32f : -0.10f, 0.0f};
     const float radius = landingImpact ? 2.35f : 1.48f;
+
     for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, radius, filter)) {
         engine::Object3d* target = FindEnemyRoot(hit.object);
+
         if (!target || !hitTargets_.insert(target).second) {
             continue;
         }
+
         engine::Vector3 knockback = NormalizePlanar(target->GetWorldPosition() - center);
         DispatchDamage(player, target, landingImpact ? 8.0f : 12.0f,
                        {knockback.x * 7.5f, landingImpact ? 7.0f : 10.0f, knockback.z * 7.5f});
@@ -311,9 +333,11 @@ void PlayerBaseCombatController::Finish(Player& player) {
 
     player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
     player.StopSlimeAbilityMotion(0.06f);
+
     if (!player.isDead && !player.IsCinematicLocked()) {
         player.SetIsControlActive(true);
     }
+
     phase_ = Phase::Idle;
     timer_ = 0.0f;
     effectTimer_ = 0.0f;
@@ -355,6 +379,7 @@ void PlayerBaseCombatController::RestoreReplayState(const ReplayState& state) {
     effectTimer_ = state.effectTimer;
     inputBufferTimer_ = std::max(0.0f, state.inputBufferTimer);
     pressHitEnemy_ = state.pressHitEnemy;
+
     // リプレイ復元後に既に命中済みの実体参照を持ち越さないようにします。
     hitTargets_.clear();
 }

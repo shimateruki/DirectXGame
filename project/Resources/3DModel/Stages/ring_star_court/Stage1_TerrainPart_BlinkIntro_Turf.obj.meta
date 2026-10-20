@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "186a4f4416715fb9ba3434db62f90026",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_BlinkIntro_Turf.obj",
+  "version": 1
+}

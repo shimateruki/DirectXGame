@@ -136,16 +136,24 @@ public:
 
     // リソースバリア管理
     void TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex);
+
     void TransitionToRTV(ID3D12GraphicsCommandList* commandList, int texIndex);
 
     // アクセッサ
     uint32_t GetSRVHandle(int texIndex = 0) const { return renderTextures_[texIndex].srvHandle; }
+
     ID3D12Resource* GetRenderTexture(int texIndex = 0) const { return renderTextures_[texIndex].resource.Get(); }
+
     uint32_t GetDepthSRVHandle(int texIndex) const { return renderTextures_[texIndex].depthSrvHandle; }
+
     uint32_t GetGrabSRVHandle(int texIndex) const { return renderTextures_[texIndex].grabSrvHandle; }
+
     Params* GetParams() { return paramsData_; }
+
     bool IsBloomEnabled() const { return bloomEnabled_; }
+
     void SetBloomEnabled(bool enabled) { bloomEnabled_ = enabled; }
+
     BloomQuality GetBloomQuality() const { return bloomQuality_; }
 
     /// <summary>ブルームの縮小段数を決める品質を設定する。</summary>
@@ -159,16 +167,21 @@ public:
 
     /// <summary>現在の設定から見込まれる全画面描画パス数を返す。</summary>
     int GetExpectedPostEffectPassCount() const;
+
     float GetCameraPreviewResolutionScale() const { return cameraPreviewResolutionScale_; }
+
     int GetCameraPreviewWidth() const { return cameraPreviewWidth_; }
+
     int GetCameraPreviewHeight() const { return cameraPreviewHeight_; }
 
     /// <summary>カメラプレビューの内部解像度倍率を設定する。</summary>
     void SetCameraPreviewResolutionScale(float scale);
+
     void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
 
     /// <summary>カラーグレーディング用LUTをパスから読み込む。</summary>
     bool SetLUTTexturePath(const std::string& path);
+
     const std::string& GetLUTTexturePath() const { return lutTexturePath_; }
 
     void SetNoiseTexture(uint32_t srvHandle) { noiseSrvHandle_ = srvHandle; }
@@ -182,12 +195,16 @@ public:
 private:
     // 全画面矩形、共通ルートシグネチャ、画面効果の各パイプラインを作る。
     void CreateMesh();
+
     void CreateRootSignature();
+
     void CreatePipelineState();
 
     // 描画先テクスチャ、カメラプレビューと画面効果定数を準備・再生成する。
     void CreateRenderTexture(int texIndex, int width, int height, DXGI_FORMAT format);
+
     void ResizeCameraPreviewTextures();
+
     void CreateConstBuffer();
 
 private:

@@ -33,11 +33,13 @@ bool ReadVector3(const json& value, engine::Vector3& outValue) {
     if (!value.is_array() || value.size() != 3) {
         return false;
     }
+
     outValue = {
         value[0].get<float>(),
         value[1].get<float>(),
         value[2].get<float>(),
     };
+
     return true;
 }
 }
@@ -63,7 +65,9 @@ void SceneWorkspace::Update() {
     if (!sceneManager_) {
         return;
     }
+
     const std::uint64_t generation = sceneManager_->GetSceneGeneration();
+
     if (generation != observedSceneGeneration_) {
         observedSceneGeneration_ = generation;
         ResetSceneRuntimeState();
@@ -77,6 +81,7 @@ void SceneWorkspace::HandleHotkeys() {
     }
 
     const ImGuiIO& io = ImGui::GetIO();
+
     if (io.WantTextInput || !io.KeyCtrl || io.KeyAlt) {
         return;
     }
@@ -85,12 +90,14 @@ void SceneWorkspace::HandleHotkeys() {
         if (!ImGui::IsKeyPressed(kBookmarkKeys[index], false)) {
             continue;
         }
+
         if (io.KeyShift) {
             CaptureBookmark(index);
         }
         else {
             RecallBookmark(index);
         }
+
         break;
     }
 }
@@ -105,23 +112,30 @@ void SceneWorkspace::DrawHierarchyPanel() {
 
     const bool hasSelection = !editor_->GetSelectedObjects().empty();
     ImGui::BeginDisabled(!hasSelection || sceneManager_->IsPlaying());
+
     if (ImGui::Button(ICON_FA_LOW_VISION " 選択のみ表示")) {
         IsolateSelection();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_EYE_SLASH " 選択を隠す")) {
         HideSelectionTemporarily();
     }
+
     ImGui::EndDisabled();
 
     ImGui::SameLine();
     ImGui::BeginDisabled(GetTemporaryHiddenCount() == 0);
+
     if (ImGui::Button(ICON_FA_EYE " 全表示を復元")) {
         RestoreAllTemporaryVisibility();
     }
+
     ImGui::EndDisabled();
 
     const std::size_t hiddenCount = GetTemporaryHiddenCount();
+
     if (hiddenCount > 0) {
         ImGui::TextColored(
             ImVec4(0.35f, 0.82f, 1.0f, 1.0f),
@@ -135,10 +149,12 @@ void SceneWorkspace::DrawHierarchyPanel() {
         for (const std::string& layer : CollectSceneLayers()) {
             bool visible = hiddenLayers_.find(layer) == hiddenLayers_.end();
             const std::string label = layer + "##SceneWorkspaceLayer";
+
             if (ImGui::Checkbox(label.c_str(), &visible)) {
                 SetLayerVisible(layer, visible);
             }
         }
+
         ImGui::TreePop();
     }
 
@@ -153,6 +169,7 @@ void SceneWorkspace::DrawHierarchyPanel() {
             ImGui::TableSetupColumn("地点");
             ImGui::TableSetupColumn("保存", ImGuiTableColumnFlags_WidthFixed, 48.0f);
             ImGui::TableSetupColumn("削除", ImGuiTableColumnFlags_WidthFixed, 42.0f);
+
             for (std::size_t index = 0; index < kBookmarkCount; ++index) {
                 CameraBookmark& bookmark = bookmarks[index];
                 ImGui::PushID(static_cast<int>(index));
@@ -160,31 +177,41 @@ void SceneWorkspace::DrawHierarchyPanel() {
                 ImGui::TableSetColumnIndex(0);
                 ImGui::BeginDisabled(!bookmark.valid);
                 const std::string numberLabel = std::to_string(index + 1);
+
                 if (ImGui::SmallButton(numberLabel.c_str())) {
                     RecallBookmark(index);
                 }
+
                 ImGui::EndDisabled();
                 ImGui::TableSetColumnIndex(1);
+
                 if (bookmark.valid) {
                     ImGui::TextUnformatted(bookmark.objectName.empty() ? "カメラ地点" : bookmark.objectName.c_str());
                 }
                 else {
                     ImGui::TextDisabled("未登録");
                 }
+
                 ImGui::TableSetColumnIndex(2);
+
                 if (ImGui::SmallButton(ICON_FA_SAVE)) {
                     CaptureBookmark(index);
                 }
+
                 ImGui::TableSetColumnIndex(3);
                 ImGui::BeginDisabled(!bookmark.valid);
+
                 if (ImGui::SmallButton(ICON_FA_TIMES)) {
                     ClearBookmark(index);
                 }
+
                 ImGui::EndDisabled();
                 ImGui::PopID();
             }
+
             ImGui::EndTable();
         }
+
         ImGui::TreePop();
     }
 }
@@ -196,9 +223,11 @@ void SceneWorkspace::IsolateSelection() {
     }
 
     std::unordered_set<engine::Object3d*> visibleObjects;
+
     for (engine::Object3d* object : editor_->GetSelectedObjects()) {
         CollectHierarchy(object, visibleObjects);
     }
+
     if (visibleObjects.empty()) {
         return;
     }
@@ -207,12 +236,15 @@ void SceneWorkspace::IsolateSelection() {
         if (!object || object->IsEditorInternal()) {
             continue;
         }
+
         const bool keepVisible = visibleObjects.find(object.get()) != visibleObjects.end();
         object->SetEditorHiddenReason(kIsolationReason, !keepVisible);
+
         if (keepVisible) {
             object->SetEditorHiddenReason(kLayerReason | kManualReason, false);
         }
     }
+
     isolationActive_ = true;
     DebugConsole::GetInstance()->AddLog("Scene Workspace: 選択Objectを隔離表示しました。");
 }
@@ -222,6 +254,7 @@ void SceneWorkspace::HideSelectionTemporarily() {
     if (!editor_) {
         return;
     }
+
     for (engine::Object3d* object : editor_->GetSelectedObjects()) {
         if (object) {
             object->SetEditorHiddenReason(kManualReason, true);
@@ -234,6 +267,7 @@ void SceneWorkspace::ShowSelectionTemporarily() {
     if (!editor_) {
         return;
     }
+
     for (engine::Object3d* object : editor_->GetSelectedObjects()) {
         if (object) {
             object->SetEditorHiddenReason(kIsolationReason | kLayerReason | kManualReason, false);
@@ -250,6 +284,7 @@ void SceneWorkspace::RestoreAllTemporaryVisibility() {
             }
         }
     }
+
     isolationActive_ = false;
     hiddenLayers_.clear();
 }
@@ -266,11 +301,14 @@ void SceneWorkspace::SetLayerVisible(const std::string& layer, bool visible) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return;
     }
+
     for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (!object) {
             continue;
         }
+
         const std::string objectLayer = object->GetLayer().empty() ? "Default" : object->GetLayer();
+
         if (objectLayer == layer) {
             object->SetEditorHiddenReason(kLayerReason, !visible);
         }
@@ -282,6 +320,7 @@ std::size_t SceneWorkspace::GetTemporaryHiddenCount() const {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return 0;
     }
+
     return static_cast<std::size_t>(std::count_if(
         sceneManager_->GetCurrentScene()->GetObjects().begin(),
         sceneManager_->GetCurrentScene()->GetObjects().end(),
@@ -295,10 +334,13 @@ std::string SceneWorkspace::GetCurrentSceneKey() const {
     if (!sceneManager_) {
         return "scene:unknown";
     }
+
     const SceneLoadContext& context = sceneManager_->GetActiveSceneLoadContext();
+
     if (context.IsSceneAsset()) {
         return "asset:" + context.sceneAssetId;
     }
+
     const std::string& sceneName = sceneManager_->GetCurrentSceneName();
     return "runtime:" + (sceneName.empty() ? std::string("unknown") : sceneName);
 }
@@ -317,7 +359,9 @@ void SceneWorkspace::CaptureBookmark(std::size_t index) {
     if (index >= kBookmarkCount || !sceneManager_ || sceneManager_->IsPlaying()) {
         return;
     }
+
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (!camera) {
         return;
     }
@@ -328,12 +372,14 @@ void SceneWorkspace::CaptureBookmark(std::size_t index) {
     bookmark.rotation = camera->GetRotation();
     bookmark.objectGuid.clear();
     bookmark.objectName.clear();
+
     if (editor_) {
         if (engine::Object3d* selected = editor_->GetSelectedObject()) {
             bookmark.objectGuid = selected->GetPersistentGuid();
             bookmark.objectName = selected->GetName();
         }
     }
+
     SaveBookmarks();
     DebugConsole::GetInstance()->AddLog(
         "Scene Workspace: カメラ地点 " + std::to_string(index + 1) + " を保存しました。");
@@ -350,6 +396,7 @@ void SceneWorkspace::RecallBookmark(std::size_t index) {
     CameraEditor* cameraEditor = CameraEditor::GetInstance();
     cameraEditor->SetMode(CameraEditor::Mode::Editor);
     cameraEditor->SetEditorCameraTransform(bookmark.position, bookmark.rotation);
+
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->Update();
     }
@@ -362,6 +409,7 @@ void SceneWorkspace::RecallBookmark(std::size_t index) {
             editor_->SyncObjectSelectionToInspector();
         }
     }
+
     DebugConsole::GetInstance()->AddLog(
         "Scene Workspace: カメラ地点 " + std::to_string(index + 1) + " へ移動しました。");
 }
@@ -371,6 +419,7 @@ void SceneWorkspace::ClearBookmark(std::size_t index) {
     if (index >= kBookmarkCount) {
         return;
     }
+
     GetCurrentBookmarks()[index] = {};
     SaveBookmarks();
 }
@@ -379,27 +428,35 @@ void SceneWorkspace::LoadBookmarks() {
     // シーンごとのカメラ記憶位置を読み込み、別シーンの記録と混ぜません。
     bookmarksByScene_.clear();
     std::ifstream file(bookmarkStatePath_);
+
     if (!file.is_open()) {
         return;
     }
+
     try {
         json root;
         file >> root;
         const json& scenes = root.value("scenes", json::object());
+
         if (!scenes.is_object()) {
             return;
         }
+
         for (auto sceneIt = scenes.begin(); sceneIt != scenes.end(); ++sceneIt) {
             if (!sceneIt.value().is_array()) {
                 continue;
             }
+
             auto& bookmarks = bookmarksByScene_[sceneIt.key()];
             const std::size_t count = (std::min)(kBookmarkCount, sceneIt.value().size());
+
             for (std::size_t index = 0; index < count; ++index) {
                 const json& source = sceneIt.value()[index];
+
                 if (!source.is_object() || !source.value("valid", false)) {
                     continue;
                 }
+
                 CameraBookmark bookmark;
                 bookmark.valid = ReadVector3(source.value("position", json::array()), bookmark.position) &&
                     ReadVector3(source.value("rotation", json::array()), bookmark.rotation);
@@ -420,6 +477,7 @@ void SceneWorkspace::SaveBookmarks() const {
     std::error_code error;
     const fs::path statePath(bookmarkStatePath_);
     fs::create_directories(statePath.parent_path(), error);
+
     if (error) {
         return;
     }
@@ -427,8 +485,10 @@ void SceneWorkspace::SaveBookmarks() const {
     json root;
     root["version"] = 1;
     root["scenes"] = json::object();
+
     for (const auto& [sceneKey, bookmarks] : bookmarksByScene_) {
         json sceneBookmarks = json::array();
+
         for (const CameraBookmark& bookmark : bookmarks) {
             sceneBookmarks.push_back({
                 { "valid", bookmark.valid },
@@ -438,10 +498,12 @@ void SceneWorkspace::SaveBookmarks() const {
                 { "objectName", bookmark.objectName },
             });
         }
+
         root["scenes"][sceneKey] = std::move(sceneBookmarks);
     }
 
     std::ofstream file(statePath);
+
     if (file.is_open()) {
         file << root.dump(2);
     }
@@ -450,6 +512,7 @@ void SceneWorkspace::SaveBookmarks() const {
 std::vector<std::string> SceneWorkspace::CollectSceneLayers() const {
     // 内部補助Objectを除外し、空レイヤーはDefaultとして一覧化します。
     std::set<std::string> layers;
+
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
             if (object && !object->IsEditorInternal()) {
@@ -457,6 +520,7 @@ std::vector<std::string> SceneWorkspace::CollectSceneLayers() const {
             }
         }
     }
+
     return { layers.begin(), layers.end() };
 }
 
@@ -465,6 +529,7 @@ void SceneWorkspace::CollectHierarchy(engine::Object3d* root, std::unordered_set
     if (!root || !objects.insert(root).second) {
         return;
     }
+
     for (engine::Object3d* child : root->GetChildren()) {
         CollectHierarchy(child, objects);
     }
@@ -474,9 +539,11 @@ void SceneWorkspace::ResetSceneRuntimeState() {
     // Scene世代が変わった後は、一時非表示の理由を新Sceneへ持ち越しません。
     isolationActive_ = false;
     hiddenLayers_.clear();
+
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return;
     }
+
     for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (object) {
             object->ClearEditorHiddenReasons();

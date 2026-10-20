@@ -1,7 +1,7 @@
 #include "game/actor/enemy/spawn/EnemySpawner.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 
-void EnemySpawner::Initialize(Object3dCommon* common, const std::string& enemyType, float interval, int maxCount) {
+void EnemySpawner::Initialize(engine::Object3dCommon* common, const std::string& enemyType, float interval, int maxCount) {
     engine::Object3d::Initialize(common);
     common_ = common;
     enemyType_ = enemyType;
@@ -35,6 +35,7 @@ void EnemySpawner::Spawn() {
     if (onSpawnCallback_) {
         // 自分の配置座標をスポーン位置として使う
         engine::Vector3 spawnPos = {0, 0, 0};
+
         if (GetTransform()) {
             spawnPos = GetTransform()->translate;
         }

@@ -9,7 +9,8 @@
 
 // 実際のJSON読込・複製・保存を通し、描画を必要としない時計と条件分岐を検証します。
 void Check(bool result, const std::string& message) {
-    if (!result) throw std::runtime_error(message);
+    if (!result)
+        throw std::runtime_error(message);
 }
 
 int main(int argc, char** argv) {
@@ -18,10 +19,12 @@ int main(int argc, char** argv) {
         Check(argc == 2, "temporary output path required");
         EnemyAttackProfile profile;
         std::string error;
+
         for (const char* type : {"Slime", "FireSlime", "ThunderSlime", "WindSlime", "GiantSlime", "PrismSlime", "MagmaSlime", "FalseKingSlime"}) {
             EnemyAttackProfile existing;
             Check(existing.LoadForEnemy(type, &error), error);
         }
+
         Check(profile.LoadForEnemy("FireSlime", &error), error);
         EnemyAttackProfile missing;
         Check(!missing.LoadForEnemy("Bomber", &error) && missing.enemyType == "Bomber", "missing file fallback failed");
@@ -34,6 +37,7 @@ int main(int argc, char** argv) {
         auto copy = *enemy;
         Check(copy.sequence.actorControl.enabled && copy.sequence.tracks.size() == 1,
             "fireball lifecycle and body clip missing");
+
         // この後の時計単体テストでは、独立した予備動作・姿勢区間を持ち込みません。
         copy.sequence.actorControl = {};
         copy.sequence.tracks.clear();
@@ -41,7 +45,9 @@ int main(int argc, char** argv) {
         copy.sequence.duration = 1.0f;
         copy.sequence.events.clear();
         AttackSequenceEvent first, last, middle;
-        first.time = 0; middle.time = 0.5f; last.time = 1;
+        first.time = 0;
+        middle.time = 0.5f;
+        last.time = 1;
         middle.count = 3;
         copy.sequence.events = {last, first, middle}; // 保存順に依存しないことを確認します。
         profile.attacks.push_back(copy);
@@ -50,6 +56,7 @@ int main(int argc, char** argv) {
         Check(reloaded.LoadFromFile(argv[1], &error), error);
         const auto* saved = reloaded.FindAttack(copy.id);
         Check(saved && saved->sequence.events.size() == 3, "clone round trip failed");
+
         // 同時刻・途中・終端のイベントが、保存順に依存せず時刻順で一度ずつ発火する。
         AttackSequenceClock clock;
         Check(clock.Start(saved->sequence), "start failed");
@@ -88,7 +95,9 @@ int main(int argc, char** argv) {
         clock.Update(2, always, execute);
         Check(fired.empty(), "cancel failed");
         Check(clock.Start(saved->sequence), "seek restart failed");
-        for (int i = 0; i < 60; ++i) clock.Update(1.0f / 60, always, execute);
+
+        for (int i = 0; i < 60; ++i)
+            clock.Update(1.0f / 60, always, execute);
         Check(fired.size() == 3, "fixed step replay differs");
         auto invalid = saved->sequence;
         invalid.events[0].operation = "unknown";
@@ -101,14 +110,17 @@ int main(int argc, char** argv) {
         Check(!reloaded.SaveToFile(argv[1], &error), "invalid sequence overwrote saved asset");
         EnemyAttackProfile intact;
         Check(intact.LoadFromFile(argv[1], &error) && intact.FindAttack(copy.id)->sequence.Validate(), "failed save damaged asset");
+
         // 旧Prism専用式と同じ位置・速度・角度になり、5発と発射光が各一回実行されることを確認します。
         EnemyAttackProfile prism;
         Check(prism.LoadForEnemy("PrismSlime", &error), error);
         const auto* fan = prism.FindAttack("fire_fan");
         Check(fan && fan->sequence.enabled && fan->sequence.events.size() == 10, "prism volley missing");
         AttackSequenceContext context;
-        context.position = {1, 2, 3}; context.ownerSize = {2, 3, 2};
-        context.hasTarget = true; context.targetDistance = 9;
+        context.position = {1, 2, 3};
+        context.ownerSize = {2, 3, 2};
+        context.hasTarget = true;
+        context.targetDistance = 9;
         int shots = 0, flashes = 0;
         Check(clock.Start(fan->sequence), "prism clock failed");
         auto verifyFan = [&](const AttackSequenceEvent& event) {
@@ -121,9 +133,11 @@ int main(int argc, char** argv) {
                 near(emission.position.y, 2 + 1.44f + std::abs(index - 2) * 0.1f) &&
                 near(emission.position.z, 3 + std::cos(angle) * 0.96f), "fan spawn changed");
             Check(near(emission.speed, 17.95f), "fan speed changed");
-            if (event.operation == "projectile") ++shots;
+            if (event.operation == "projectile")
+                ++shots;
             else { ++flashes; Check(event.directed && event.particleSpeedScale == 1.15f, "directed flash lost"); }
         };
+
         clock.Update(0, always, verifyFan);
         Check(shots == 1 && flashes == 1, "prism first shot delayed");
         clock.Update(0.30f, always, verifyFan);
@@ -131,18 +145,21 @@ int main(int argc, char** argv) {
         clock.Update(1, always, verifyFan);
         clock.Update(1, always, verifyFan);
         Check(shots == 5 && flashes == 5 && !clock.IsRunning(), "prism shot count incorrect");
+
         // 同じ発射式の端値と、対象が一致した場合の退避方向を確認する。
         context.targetDistance = 100;
         Check(ResolveAttackSequenceEmission(fan->sequence.events[0], context, 13, 28).speed == 28, "maximum speed clamp failed");
         context.targetDistance = 0;
         Check(ResolveAttackSequenceEmission(fan->sequence.events[0], context, 13, 28).speed == 13, "minimum speed clamp failed");
         AttackSequenceContext coincident;
-        coincident.forward = {}; coincident.hasTarget = true;
+        coincident.forward = {};
+        coincident.hasTarget = true;
         AttackSequenceEvent coincidentShot;
         coincidentShot.up = coincidentShot.forward = coincidentShot.targetHeight = 0;
         const auto fallback = ResolveAttackSequenceEmission(coincidentShot, coincident, 13, 28);
         Check(fallback.direction.x == 0 && fallback.direction.y == 0 && fallback.direction.z == 1,
             "coincident target lost fallback direction");
+
         // 見た目の設定を含めて保存し直し、壊れた値を受け付けないことを確認する。
         auto prismCopy = *fan;
         prismCopy.id = "prism_variant";
@@ -165,18 +182,22 @@ int main(int argc, char** argv) {
         std::cout << "Prism sequence tests passed: 5 staggered shots, directed flashes, legacy position/speed/angle equivalence, appearance round trip\n";
         std::cout << "Attack sequence tests passed: JSON round trip, clone, ordering, zero/boundary time, branch skip/stop, cancel, replay, validation\n";
         AttackSequenceDefinition authored;
+
         for (const char* sample : {"Resources/json/attack_assets/authoring_sweep.json", "Resources/json/attack_assets/authoring_double_sweep.json"}) {
             AttackSequenceDefinition example;
             Check(EnemyAttackProfile::LoadSequenceAsset(sample, example, &error), error);
             Check(example.events.empty() && example.tracks.size() >= 2, "authoring example did not contain independent visual/hitbox tracks");
         }
+
         authored.enabled = true;
         authored.duration = 2;
         AttackSequenceTrack hitbox;
         hitbox.type = "hitbox";
-        hitbox.begin = 0.25f; hitbox.end = 1.25f;
+        hitbox.begin = 0.25f;
+        hitbox.end = 1.25f;
         auto secondKey = hitbox.keys.front();
-        secondKey.time = 1; secondKey.position = {2, 3, 4};
+        secondKey.time = 1;
+        secondKey.position = {2, 3, 4};
         hitbox.keys.push_back(secondKey);
         authored.tracks.push_back(hitbox);
         Check(authored.Validate(&error), error);
@@ -197,7 +218,8 @@ int main(int argc, char** argv) {
         const std::string assetPath = std::string(argv[1]) + ".asset.json";
         Check(EnemyAttackProfile::SaveSequenceAsset(assetPath, authored, &error), error);
         AttackSequenceDefinition reference;
-        reference.binding = "player_special"; reference.priority = 23;
+        reference.binding = "player_special";
+        reference.priority = 23;
         Check(EnemyAttackProfile::LoadSequenceAsset(assetPath, reference, &error), error);
         Check(reference.assetPath == assetPath && reference.binding == "player_special" && reference.priority == 23,
             "shared asset overwrote local binding");
@@ -205,7 +227,8 @@ int main(int argc, char** argv) {
         EnemyAttackProfile assetProfile;
         assetProfile.enemyType = "AuthoringTest";
         EnemyAttackDefinition assetAttack;
-        assetAttack.id = "authored"; assetAttack.sequence = reference;
+        assetAttack.id = "authored";
+        assetAttack.sequence = reference;
         assetProfile.attacks.push_back(assetAttack);
         const std::string profilePath = std::string(argv[1]) + ".asset-profile.json";
         Check(assetProfile.SaveToFile(profilePath, &error), error);
@@ -253,11 +276,14 @@ int main(int argc, char** argv) {
         invalidCombo = combo;
         invalidCombo.tracks[4].blendOut = std::numeric_limits<float>::infinity();
         Check(!invalidCombo.Validate(), "nonfinite animation blend accepted");
+
         // 配列順を逆にしても参照と時間が正しければ保存可能。実行時は開始時刻順で評価します。
         auto reorderedCombo = combo;
         std::reverse(reorderedCombo.tracks.begin(), reorderedCombo.tracks.end());
+
         for (auto& track : reorderedCombo.tracks)
-            if (track.conditionTrack >= 0) track.conditionTrack = static_cast<int>(reorderedCombo.tracks.size()) - 1 - track.conditionTrack;
+            if (track.conditionTrack >= 0)
+                track.conditionTrack = static_cast<int>(reorderedCombo.tracks.size()) - 1 - track.conditionTrack;
         Check(reorderedCombo.Validate(&error), error);
         const std::string comboPath = std::string(argv[1]) + ".combo.json";
         combo.tracks[4].clipOffset = 0.15f;
@@ -302,7 +328,9 @@ int main(int argc, char** argv) {
         straight.Advance(motionTrack, 1.5f, {100, 0, 0}, true);
         Check(std::abs(straight.position.z - 4) < 0.001f && std::abs(straight.position.x) < 0.001f,
             "locked aim changed after launch");
-        motionTrack.motion = "homing"; motionTrack.turnDegreesPerSecond = 90; motionTrack.homingDuration = 0.5f;
+        motionTrack.motion = "homing";
+        motionTrack.turnDegreesPerSecond = 90;
+        motionTrack.homingDuration = 0.5f;
         AttackMotionState seeking;
         seeking.Advance(motionTrack, 0.5f, {0, 0, 100}, true);
         seeking.Advance(motionTrack, 1.0f, {100, 0, 0}, true);
@@ -312,7 +340,8 @@ int main(int argc, char** argv) {
         seeking.Advance(motionTrack, 2.0f, {-100, 0, 0}, true);
         Check(engine::Math::Length(seeking.direction - locked) < 0.00001f, "homing continued after tracking window");
         AttackMotionState reverse;
-        reverse.launched = true; reverse.elapsed = 0.5f;
+        reverse.launched = true;
+        reverse.elapsed = 0.5f;
         reverse.Advance(motionTrack, 0.75f, {0, 0, -100}, true);
         Check(std::isfinite(reverse.direction.x) && std::abs(engine::Math::Length(reverse.direction) - 1) < 0.0001f,
             "opposite target broke homing rotation");
@@ -325,18 +354,30 @@ int main(int argc, char** argv) {
         Check(EnemyAttackProfile::LoadSequenceAsset(motionPath, loadedMotion, &error), error);
         Check(loadedMotion.tracks[0].turnDegreesPerSecond == 100 && loadedMotion.tracks[0].homingDuration == 1.2f &&
             loadedMotion.tracks[1].parentTrack == 0, "motion round trip lost settings");
+
         // 優先度・重み・均等抽選と、距離制限による候補除外を確認する。
         EnemyAttackProfile lottery;
         lottery.enemyType = "SelectionTest";
         EnemyAttackDefinition a, b;
-        a.id = "a"; a.sequence = homing; a.minRange = 0; a.maxRange = 10; a.selectionWeight = 1; a.sequence.priority = 3;
+        a.id = "a";
+        a.sequence = homing;
+        a.minRange = 0;
+        a.maxRange = 10;
+        a.selectionWeight = 1;
+        a.sequence.priority = 3;
         a.sequence.assetPath.clear(); // エディターの新規作成・複製と同じ独立した攻撃を検証します。
-        b = a; b.id = "b"; b.selectionWeight = 3; b.sequence.priority = 1;
+        b = a;
+        b.id = "b";
+        b.selectionWeight = 3;
+        b.sequence.priority = 1;
         lottery.attacks = {a, b};
         Check(lottery.SelectSequence(2, 10, {}, 0.9f)->id == "a", "priority selection changed");
         lottery.selectionMode = "weighted";
         int countA = 0;
-        for (int i = 0; i < 100; ++i) if (lottery.SelectSequence(2, 10, {}, (i + 0.5f) / 100)->id == "a") ++countA;
+
+        for (int i = 0; i < 100; ++i)
+            if (lottery.SelectSequence(2, 10, {}, (i + 0.5f) / 100)->id == "a")
+                ++countA;
         Check(countA == 25, "weighted selection probabilities incorrect");
         lottery.attacks[0].selectionWeight = 0;
         Check(lottery.SelectSequence(2, 10, {}, 0)->id == "b", "zero weight remained eligible");
@@ -353,6 +394,7 @@ int main(int argc, char** argv) {
         Check(loadedLottery.LoadFromFile(lotteryPath, &error), error);
         Check(loadedLottery.selectionMode == "uniform" && loadedLottery.FindAttack("b")->selectionWeight == 3,
             "selection round trip lost settings");
+
         // 既存IDの上書き編集で攻撃が増殖せず、選択していない攻撃も保持されることを確認します。
         // 同じIDへの再編集では別の攻撃を増殖・変更させない。
         const auto originalCount = loadedLottery.attacks.size();
@@ -373,6 +415,7 @@ int main(int argc, char** argv) {
             "re-edit lost placement, interval or parent relationship");
         Check(reopened.FindAttack("b")->sequence.tracks[0].keys.front().position == b.sequence.tracks[0].keys.front().position,
             "re-edit changed a different attack");
+
         // 壊れたファイルを開いた場合、読込対象が持っていた有効な編集を残します。
         const std::string brokenPath = std::string(argv[1]) + ".broken.json";
         { std::ofstream broken(brokenPath); broken << "{ invalid json"; }
@@ -381,6 +424,7 @@ int main(int argc, char** argv) {
             "failed reload destroyed edited profile");
         std::cout << "Re-edit tests passed: stable IDs/count, placement, timing, parent, unrelated attack and failed reload preservation\n";
         std::cout << "Motion/selection tests passed: locked aim, turn limit, opposite/missing target, tracking end, parent validation, JSON round trip, weighted/uniform selection\n";
+
         // 弾ごとの設定を再編集して保存しても、隣の弾と旧形式の互換性を保ちます。
         EnemyAttackDefinition legacy = *reloaded.FindAttack("fireball");
         AttackSequenceEvent legacyEvent;
@@ -392,7 +436,9 @@ int main(int argc, char** argv) {
         legacy.id = "components";
         legacy.sequence.assetPath.clear();
         legacy.sequence.events = {legacyEvent, legacyEvent};
-        for (auto& event : legacy.sequence.events) event.projectile = componentFallback;
+
+        for (auto& event : legacy.sequence.events)
+            event.projectile = componentFallback;
         auto& part = legacy.sequence.events.front();
         part.name = "火球・当たり判定なし";
         part.enabled = false;
@@ -422,9 +468,11 @@ int main(int argc, char** argv) {
         auto badComponent = componentFallback;
         badComponent.radius = std::numeric_limits<float>::quiet_NaN();
         Check(!badComponent.Validate(), "non-finite projectile radius accepted");
-        badComponent = componentFallback; badComponent.minSpeed = badComponent.maxSpeed + 1;
+        badComponent = componentFallback;
+        badComponent.minSpeed = badComponent.maxSpeed + 1;
         Check(!badComponent.Validate(), "inverted projectile speed range accepted");
         std::cout << "Projectile component tests passed: legacy radius, independent edits, JSON round trip, disabled events, invalid values\n";
+
         // 配置ギズモの編集値を実ランタイムの座標解決へ渡して往復を確認します。
         // ギズモで回転・移動した値を、ランタイムの発射座標へ戻して比較する。
         AttackSequenceContext placementContext;
@@ -432,20 +480,31 @@ int main(int argc, char** argv) {
         placementContext.forward = {1,0,0};
         placementContext.ownerSize = {2,3,4};
         AttackSequenceEvent placed;
-        placed.right = 1.3f; placed.up = 2; placed.forward = -0.7f;
-        placed.sizeRight = 0.4f; placed.sizeForward = 0.8f; placed.yawDegrees = 35;
+        placed.right = 1.3f;
+        placed.up = 2;
+        placed.forward = -0.7f;
+        placed.sizeRight = 0.4f;
+        placed.sizeForward = 0.8f;
+        placed.yawDegrees = 35;
         const auto initialPosition = ResolveAttackSequenceEmission(placed,placementContext,0,0).position;
         AttackPlacementMath::RotateEvent(placed,placementContext.ownerSize,1.2f);
         const auto rotatedPosition = ResolveAttackSequenceEmission(placed,placementContext,0,0).position;
         Check(engine::Math::Length(rotatedPosition-initialPosition)<0.0001f,"gizmo rotation moved emission position");
         const engine::Vector3 worldDelta{3,1,-2};
         const auto localDelta = AttackPlacementMath::ToLocalDelta(worldDelta,1.57079632679f+placed.yawDegrees*0.01745329252f);
-        placed.right += localDelta.x; placed.up += localDelta.y; placed.forward += localDelta.z;
+        placed.right += localDelta.x;
+        placed.up += localDelta.y;
+        placed.forward += localDelta.z;
         Check(engine::Math::Length(ResolveAttackSequenceEmission(placed,placementContext,0,0).position-initialPosition-worldDelta)<0.0001f,
             "gizmo translation did not preserve world delta");
         AttackSequenceTrack keyed;
-        auto endKey = keyed.keys.front(); endKey.time = 1; endKey.position = {2,4,6}; keyed.keys.push_back(endKey);
-        auto midKey = keyed.Evaluate(0.5f); midKey.time = 0.5f; midKey.position[0] = 9;
+        auto endKey = keyed.keys.front();
+        endKey.time = 1;
+        endKey.position = {2,4,6};
+        keyed.keys.push_back(endKey);
+        auto midKey = keyed.Evaluate(0.5f);
+        midKey.time = 0.5f;
+        midKey.position[0] = 9;
         Check(AttackPlacementMath::PutKey(keyed,midKey) && keyed.keys.size()==3 && keyed.keys[1].position[0]==9,
             "gizmo did not insert interpolated key at current time");
         midKey.position[0] = 8;
@@ -461,6 +520,7 @@ int main(int argc, char** argv) {
         Check(engine::Math::Length(ResolveAttackSequenceEmission(placedSaved.events.front(),placementContext,0,0).position-initialPosition-worldDelta)<0.0001f &&
             placedSaved.tracks.front().keys[1].position[0]==8,"placement save/reopen changed transform");
         std::cout << "Placement tests passed: rotated offset basis, size offsets, rotation pivot, current-time keys, save/reopen\n";
+
         // Actor側の照準固定時間と予告幅も、保存後の定義に残ることを確認する。
         auto lifecycle = *profile.FindAttack("fireball");
         lifecycle.sequence.actorControl.aimLockTime = 0.19f;

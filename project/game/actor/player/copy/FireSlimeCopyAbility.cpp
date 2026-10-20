@@ -6,6 +6,7 @@
 
 namespace {
 using namespace CopyAbilityDetail;
+
 // 炎コピーの入力と継続攻撃を管理し、専用 EffectScope で所有エフェクトをまとめて片付ける。
 class FireSlimeCopyAbility final : public ICopyAbilitySession {
   public:
@@ -20,12 +21,16 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         // セッションの破棄だけでも突進演出が残らないようにする。
         StopDashEffects();
     }
+
     const char* GetStateLabel() const override {
         // 優先度の高い継続行動を表示し、それ以外は単発攻撃の状態を使う。
-        if (dashActive_) return "炎ダッシュ";
-        if (breathMotionActive_) return "炎ブレス";
+        if (dashActive_)
+            return "炎ダッシュ";
+        if (breathMotionActive_)
+            return "炎ブレス";
         return fireballSequence_.GetStateLabel();
     }
+
     void SetPreviewAttackId(const std::string& id) override {
         // プレビューでは指定IDの単発攻撃だけを選択候補にする。
         previewAttackId_ = id;
@@ -34,6 +39,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
         // ブレスの押し続け状態を保存し、突進中は火球の開始を受け付けない。
         primaryHeld_ = input.primaryHeld;
+
         if (input.secondaryTriggered && !dashActive_ && dashCooldown_ <= 0.0f) {
             BeginDash(player);
         } else if (input.specialTriggered && fireballCooldown_ <= 0.0f && !dashActive_) {
@@ -43,8 +49,10 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
     void Update(Player& player, float deltaTime) override {
         // 単発攻撃、突進、継続ブレスの順に更新し、同時実行を避ける。
-        if (player.isDead || player.IsCinematicLocked()) fireballSequence_.Cancel();
-        if (fireballSequence_.IsRunning()) fireballSequence_.Update(deltaTime, MakeSequenceContext(player));
+        if (player.isDead || player.IsCinematicLocked())
+            fireballSequence_.Cancel();
+        if (fireballSequence_.IsRunning())
+            fireballSequence_.Update(deltaTime, MakeSequenceContext(player));
         breathVisible_ = false;
         UpdateHeadVisual(player, deltaTime);
         fireballCooldown_ = std::max(0.0f, fireballCooldown_ - deltaTime);
@@ -54,29 +62,36 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         dashEffectTimer_ -= deltaTime;
         dashGroundWakeTimer_ -= deltaTime;
         actionMotionTimer_ = std::max(0.0f, actionMotionTimer_ - deltaTime);
+
         if (dashActive_) {
             UpdateDash(player, deltaTime);
             return;
         }
+
         if (actionMotionTimer_ > 0.0f) {
             return;
         }
+
         if (!primaryHeld_) {
             StopBreathMotion(player);
             return;
         }
+
         if (!breathMotionActive_) {
             breathMotionActive_ = player.PlaySlimeAbilityMotion("player_ability_fire_breath", true, 1.0f, 0.05f, 0.08f);
         }
+
         const engine::Vector3 direction = NormalizePlanar(player.GetLockOnAttackDirection());
         const engine::Vector3 origin = player.GetWorldPosition() + engine::Vector3{0.0f, 0.78f, 0.0f};
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, direction);
         UpdateBreathVisuals(player, origin, direction, deltaTime);
+
         if (breathEffectTimer_ <= 0.0f) {
             EmitDirectedPreset("fire_slime_breath", origin, direction, 1.0f);
             EmitDirectedPreset("fire_slime_breath_embers", origin, direction, 0.85f);
             breathEffectTimer_ = 0.065f;
         }
+
         if (breathDamageTimer_ <= 0.0f) {
             DamageBreath(player, origin, direction);
             breathDamageTimer_ = 0.22f;
@@ -127,6 +142,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             SyncHeadVisualTransform(player);
             headVisual_->DrawSpecialMaterialForCamera(camera, depth, grab, bufferIndex);
         }
+
         if (!breathVisible_)
             return;
         for (auto& flame : breathVisuals_) {
@@ -143,6 +159,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
                 headVisual_->SetIsVisible(false);
             return;
         }
+
         if (!headVisual_) {
             auto* scene = SceneManager::GetInstance()->GetCurrentScene();
             if (!scene || !scene->GetObject3dCommon())
@@ -157,6 +174,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             headVisual_->SetBlendMode(BlendMode::kNormal);
             headVisual_->SetEnableLighting(false);
             headVisual_->SetEmissive(1.7f);
+
             if (auto* p = headVisual_->GetMeshRenderer()->GetWaterParamData()) {
                 p->effectType = 2.0f;
                 p->waveSpeed = 1.75f;
@@ -197,6 +215,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             auto* scene = SceneManager::GetInstance()->GetCurrentScene();
             if (!scene || !scene->GetObject3dCommon())
                 return;
+
             // 立体ブレスは能力側で所有し、能力解除時にまとめて破棄します。
             for (int i = 0; i < 7; ++i) {
                 auto flame = std::make_unique<engine::Object3d>();
@@ -209,6 +228,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
                 flame->SetBlendMode(BlendMode::kNormal);
                 flame->SetEnableLighting(false);
                 flame->SetEmissive(1.8f);
+
                 if (auto* p = flame->GetMeshRenderer()->GetWaterParamData()) {
                     p->effectType = 5.0f;
                     p->waveSpeed = 2.45f;
@@ -222,9 +242,11 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
                     p->uvOffsetX = 3.71f * (i + 1);
                     p->uvOffsetY = 6.13f * (i + 1);
                 }
+
                 breathVisuals_.push_back(std::move(flame));
             }
         }
+
         EnemyAttackDefinition fallback;
         fallback.maxRange = 8.0f;
         fallback.radius = 1.4f;
@@ -233,6 +255,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         const float radius = std::max(attack.radius, 1.0f);
         breathVisible_ = true;
         breathVisualTime_ += dt;
+
         for (size_t i = 0; i < breathVisuals_.size(); ++i) {
             auto& flame = breathVisuals_[i];
             const float step = (static_cast<float>(i) + 0.5f) / breathVisuals_.size();
@@ -242,12 +265,14 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             flame->SetRotation({0.0f, std::atan2(direction.x, direction.z), 0.0f});
             flame->SetScale({width, (std::max)(radius * (0.48f + step * 0.22f + pulse), width * 0.68f), width * 1.12f});
             flame->SetColor({1.0f, 0.30f + step * 0.06f, 0.045f, 0.82f - step * 0.12f});
+
             if (auto* p = flame->GetMeshRenderer()->GetWaterParamData()) {
                 p->flowSpeedY = 0.82f + step * 0.42f;
                 p->effectScaleX = 1.08f + step * 0.56f;
                 p->effectScaleY = 0.90f;
                 p->effectScaleZ = 1.15f;
             }
+
             flame->Update(dt);
         }
     }
@@ -255,17 +280,25 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     void Fireball(Player& player) {
         // player_specialに紐づく攻撃から優先度最大の定義を選び、シーケンスを開始する。
         const EnemyAttackDefinition* selected = nullptr;
+
         for (const auto& candidate : profile_.attacks) {
-            if (!candidate.sequence.enabled || candidate.sequence.binding != "player_special") continue;
-            if (!previewAttackId_.empty() && candidate.id != previewAttackId_) continue;
-            if (!selected || candidate.sequence.priority > selected->sequence.priority) selected = &candidate;
+            if (!candidate.sequence.enabled || candidate.sequence.binding != "player_special")
+                continue;
+            if (!previewAttackId_.empty() && candidate.id != previewAttackId_)
+                continue;
+            if (!selected || candidate.sequence.priority > selected->sequence.priority)
+                selected = &candidate;
         }
-        if (!selected || !fireballSequence_.Start(*selected, MakeSequenceContext(player))) return;
+
+        if (!selected || !fireballSequence_.Start(*selected, MakeSequenceContext(player)))
+            return;
         StopBreathMotion(player);
         const bool authoredBody = std::any_of(selected->sequence.tracks.begin(), selected->sequence.tracks.end(),
             [](const auto& track) { return track.enabled && track.type == "body_animation"; });
+
         // 本体トラックがある攻撃では旧単発モーションを重ねて二重に変形させません。
-        if (!authoredBody && !selected->animation.empty()) player.PlaySlimeAbilityMotion(selected->animation, false, 1.0f, 0.035f, 0.08f);
+        if (!authoredBody && !selected->animation.empty())
+            player.PlaySlimeAbilityMotion(selected->animation, false, 1.0f, 0.035f, 0.08f);
         actionMotionTimer_ = selected->sequence.duration;
         fireballCooldown_ = (std::max)(selected->cooldown, selected->sequence.duration);
     }
@@ -283,6 +316,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
     void BeginDash(Player& player) {
         fireballSequence_.Cancel();
+
         // 前回の突進が異常終了していても、新しい炎を重ねる前に必ず回収します。
         StopDashEffects();
         StopBreathMotion(player);
@@ -327,6 +361,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, dashDirection_);
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::BlazeDash);
         DamageDash(player);
+
         if (dashEffectTimer_ <= 0.0f) {
             const engine::Vector3 trail = player.GetWorldPosition() - dashDirection_ * 0.72f + engine::Vector3{0.0f, 0.12f, 0.0f};
             SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_trail.json", trail,
@@ -336,12 +371,14 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             EmitDirectedPreset("player_fire_blaze_trail", trail, dashDirection_ * -1.0f, 0.85f);
             dashEffectTimer_ = 0.055f;
         }
+
         if (player.IsGrounded() && dashGroundWakeTimer_ <= 0.0f) {
             const engine::Vector3 wake = player.GetWorldPosition() - dashDirection_ * 0.42f + engine::Vector3{0.0f, 0.04f, 0.0f};
             SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_ground_wake.json", wake,
                               {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f}, {0.92f, 0.92f, 1.16f});
             dashGroundWakeTimer_ = 0.10f;
         }
+
         if (dashTimer_ <= 0.0f) {
             StopDashEffects();
             dashActive_ = false;
@@ -366,9 +403,11 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     void StopBreathMotion(Player& player) {
         // 押し続け解除時は見た目とループモーションを同時に止める。
         breathVisible_ = false;
+
         if (!breathMotionActive_) {
             return;
         }
+
         player.StopSlimeAbilityMotion(0.08f);
         breathMotionActive_ = false;
     }
@@ -379,6 +418,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
         const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
+
         for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.55f, filter)) {
             engine::Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !hitTargets_.insert(target).second)
@@ -404,6 +444,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         filter.ignoredObject = &player;
         std::unordered_set<engine::Object3d*> damaged;
         const engine::Vector3 end = origin + direction * std::max(attack.maxRange, 4.0f);
+
         for (const PhysicsOverlapHit& hit :
              CollisionManager::GetInstance()->OverlapCapsule(origin, end, std::max(attack.radius, 1.0f), filter)) {
             engine::Object3d* target = FindEnemyRoot(hit.object);

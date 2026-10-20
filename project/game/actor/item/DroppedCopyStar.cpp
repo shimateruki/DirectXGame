@@ -12,7 +12,7 @@ constexpr float kFlightDuration = 0.45f;
 constexpr float kPickupDelay = 0.70f;
 } // namespace
 
-void DroppedCopyStar::InitializeDrop(Object3dCommon* common, const std::string& enemyType, bool unlimitedDuration,
+void DroppedCopyStar::InitializeDrop(engine::Object3dCommon* common, const std::string& enemyType, bool unlimitedDuration,
                                      const engine::Vector3& start, const engine::Vector3& destination) {
     // 投下中の移動を再現できるよう、起点と到達点を生成時に固定する。
     enemyType_ = enemyType;
@@ -47,10 +47,12 @@ void DroppedCopyStar::Update(float deltaTime) {
         return;
     deltaTime = std::isfinite(deltaTime) ? (std::max)(0.0f, deltaTime) : 0.0f;
     elapsed_ += deltaTime;
+
     if (elapsed_ >= lifetime_) {
         MarkCollected();
         return;
     }
+
     const float t = std::clamp(elapsed_ / kFlightDuration, 0.0f, 1.0f);
     engine::Vector3 position = start_ * (1.0f - t) + destination_ * t;
     position.y += std::sin(t * 3.14159265f) * 0.85f;
@@ -58,6 +60,7 @@ void DroppedCopyStar::Update(float deltaTime) {
         position.y += std::sin((elapsed_ - kFlightDuration) * 2.15f) * 0.10f;
     SetTranslate(position);
     const float remaining = lifetime_ - elapsed_;
+
     // 点滅中も拾える判定は維持し、消える瞬間にだけ判定も取り除きます。
     const float period = remaining < 1.0f ? 0.14f : 0.30f;
     SetIsVisible(remaining > blinkDuration_ || std::fmod(elapsed_, period) < period * 0.60f);
@@ -72,6 +75,7 @@ void DroppedCopyStar::Collect(Player* player) {
         return;
     if (!player->ApplyStoredCopy(enemyType_, unlimitedDuration_))
         return;
+
     // 成功した瞬間に消費し、同フレームの重複衝突でも二重取得させません。
     MarkCollected();
     VFXSequencer::PlayOneShot("copy_memory_station_activate_cue", player->GetWorldPosition(), {0.65f, 0.65f, 0.65f});
@@ -116,6 +120,7 @@ void DroppedCopyStar::RestoreReplayCustomState(const json& state) {
             value = {state[key][0].get<float>(), state[key][1].get<float>(), state[key][2].get<float>()};
         }
     };
+
     restoreVector("copyDropStart", start_);
     restoreVector("copyDropDestination", destination_);
 }

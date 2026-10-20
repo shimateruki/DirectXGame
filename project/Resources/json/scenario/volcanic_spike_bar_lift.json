@@ -1,0 +1,76 @@
+{
+    "version": 6,
+    "name": "volcanic_spike_bar_lift",
+    "duration": 3,
+    "tracks": [
+        {
+            "name": "棘バー：上下往復",
+            "targetName": "VolcanicSpikeBar",
+            "targetEventId": -1,
+            "startTime": 0,
+            "enabled": true,
+            "muted": false,
+            "relative": true,
+            "holdLast": true,
+            "keys": [
+                {
+                    "time": 0,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 3
+                },
+                {
+                    "time": 1.5,
+                    "position": [
+                        0,
+                        3,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 3
+                },
+                {
+                    "time": 3,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 3
+                }
+            ]
+        }
+    ]
+}

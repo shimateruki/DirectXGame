@@ -25,20 +25,25 @@ bool SceneControllerFactory::RegisterController(const std::string& name, Creator
     if (name.empty() || !creator) {
         return false;
     }
+
     const bool isNew = creators_.find(name) == creators_.end();
     creators_[name] = std::move(creator);
+
     if (isNew) {
         registrationOrder_.push_back(name);
     }
+
     return true;
 }
 
 std::unique_ptr<ISceneController> SceneControllerFactory::Create(const std::string& name) const {
     // 未登録または無効な生成関数はnullptrで通知する。
     const auto found = creators_.find(name);
+
     if (found == creators_.end() || !found->second) {
         return nullptr;
     }
+
     return found->second();
 }
 

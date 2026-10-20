@@ -31,7 +31,9 @@ float PlanarDistanceSquared(const engine::Vector3& lhs, const engine::Vector3& r
 engine::Vector3 NormalizePlanar(const engine::Vector3& value) {
     // 連続する経路点の向きをXZのみで比較し、縦方向のぶれを無視する。
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
-    if (length <= 0.000001f) return { 0.0f, 0.0f, 0.0f };
+
+    if (length <= 0.000001f)
+        return { 0.0f, 0.0f, 0.0f };
     return { value.x / length, 0.0f, value.z / length };
 }
 }
@@ -44,8 +46,10 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
     settings_.agentHeight = (std::max)(settings_.agentRadius * 2.0f, settings_.agentHeight);
     settings_.maxCellsPerAxis = (std::clamp)(settings_.maxCellsPerAxis, 4, 512);
 
-    if (settings_.boundsMin.x > settings_.boundsMax.x) std::swap(settings_.boundsMin.x, settings_.boundsMax.x);
-    if (settings_.boundsMin.z > settings_.boundsMax.z) std::swap(settings_.boundsMin.z, settings_.boundsMax.z);
+    if (settings_.boundsMin.x > settings_.boundsMax.x)
+        std::swap(settings_.boundsMin.x, settings_.boundsMax.x);
+    if (settings_.boundsMin.z > settings_.boundsMax.z)
+        std::swap(settings_.boundsMin.z, settings_.boundsMax.z);
 
     const float spanX = (std::max)(settings_.cellSize, settings_.boundsMax.x - settings_.boundsMin.x);
     const float spanZ = (std::max)(settings_.cellSize, settings_.boundsMax.z - settings_.boundsMin.z);
@@ -62,10 +66,14 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
         { settings_.boundsMin.x, settings_.planeY - 0.05f, settings_.boundsMin.z },
         { settings_.boundsMax.x, settings_.planeY + settings_.agentHeight, settings_.boundsMax.z },
     };
+
     const auto obstacles = physics->OverlapAABB(queryBounds, filter);
+
     for (const PhysicsOverlapHit& hit : obstacles) {
-        if (!hit.object) continue;
+        if (!hit.object)
+            continue;
         AABB obstacle = hit.object->GetAABB();
+
         // 足元より低い床面は障害物にせず、進行を遮る高さの形状だけを採用します。
         if (obstacle.max.y <= blockingHeight ||
             obstacle.min.y >= settings_.planeY + settings_.agentHeight) {
@@ -95,12 +103,14 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
             }
         }
     }
+
     return IsBuilt();
 }
 
 bool NavGrid::IsBlocked(int x, int z) const {
     // 探索中に境界外へ踏み出せないよう、外側は障害物として扱います。
-    if (x < 0 || z < 0 || x >= width_ || z >= depth_) return true;
+    if (x < 0 || z < 0 || x >= width_ || z >= depth_)
+        return true;
     return blocked_[static_cast<std::size_t>(ToIndex(x, z))] != 0;
 }
 
@@ -115,7 +125,8 @@ engine::Vector3 NavGrid::GetCellCenter(int x, int z) const {
 
 bool NavGrid::WorldToCell(const engine::Vector3& position, int& outX, int& outZ) const {
     // 境界外の目標も最寄りセルへ寄せ、後続の配列参照を範囲内に保つ。
-    if (!IsBuilt()) return false;
+    if (!IsBuilt())
+        return false;
     outX = static_cast<int>(std::round((position.x - settings_.boundsMin.x) / settings_.cellSize));
     outZ = static_cast<int>(std::round((position.z - settings_.boundsMin.z) / settings_.cellSize));
     outX = (std::clamp)(outX, 0, width_ - 1);
@@ -132,10 +143,12 @@ bool NavGrid::FindNearestWalkable(int sourceX, int sourceZ, int& outX, int& outZ
 
     // プレイヤーや目標が障害物に重なっていても、近い通行可能セルへ補正します。
     const int maxRadius = (std::max)(width_, depth_);
+
     for (int radius = 1; radius < maxRadius; ++radius) {
         for (int z = sourceZ - radius; z <= sourceZ + radius; ++z) {
             for (int x = sourceX - radius; x <= sourceX + radius; ++x) {
-                if (std::abs(x - sourceX) != radius && std::abs(z - sourceZ) != radius) continue;
+                if (std::abs(x - sourceX) != radius && std::abs(z - sourceZ) != radius)
+                    continue;
                 if (!IsBlocked(x, z)) {
                     outX = x;
                     outZ = z;
@@ -144,6 +157,7 @@ bool NavGrid::FindNearestWalkable(int sourceX, int sourceZ, int& outX, int& outZ
             }
         }
     }
+
     return false;
 }
 
@@ -154,7 +168,8 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
     int startZ = 0;
     int goalX = 0;
     int goalZ = 0;
-    if (!WorldToCell(start, startX, startZ) || !WorldToCell(goal, goalX, goalZ)) return false;
+    if (!WorldToCell(start, startX, startZ) || !WorldToCell(goal, goalX, goalZ))
+        return false;
     const bool exactGoalIsWalkable = !IsBlocked(goalX, goalZ);
     if (!FindNearestWalkable(startX, startZ, startX, startZ) ||
         !FindNearestWalkable(goalX, goalZ, goalX, goalZ)) return false;
@@ -180,43 +195,55 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
         { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 },
         { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 },
     };
+
     const int directionCount = settings_.allowDiagonal ? 8 : 4;
 
     while (!open.empty()) {
         const int index = open.top().index;
         open.pop();
-        if (closed[static_cast<std::size_t>(index)] != 0) continue;
+        if (closed[static_cast<std::size_t>(index)] != 0)
+            continue;
         closed[static_cast<std::size_t>(index)] = 1;
-        if (index == goalIndex) break;
+        if (index == goalIndex)
+            break;
 
         const int x = index % width_;
         const int z = index / width_;
+
         for (int directionIndex = 0; directionIndex < directionCount; ++directionIndex) {
             const int dx = directions[directionIndex][0];
             const int dz = directions[directionIndex][1];
             const int nextX = x + dx;
             const int nextZ = z + dz;
-            if (IsBlocked(nextX, nextZ)) continue;
+            if (IsBlocked(nextX, nextZ))
+                continue;
+
             // 斜め移動で障害物の角をすり抜けないよう、隣接する直交セルも確認します。
-            if (dx != 0 && dz != 0 && (IsBlocked(x + dx, z) || IsBlocked(x, z + dz))) continue;
+            if (dx != 0 && dz != 0 && (IsBlocked(x + dx, z) || IsBlocked(x, z + dz)))
+                continue;
 
             const int nextIndex = ToIndex(nextX, nextZ);
             const float stepCost = dx != 0 && dz != 0 ? 1.41421356f : 1.0f;
             const float nextCost = cost[static_cast<std::size_t>(index)] + stepCost;
-            if (nextCost >= cost[static_cast<std::size_t>(nextIndex)]) continue;
+            if (nextCost >= cost[static_cast<std::size_t>(nextIndex)])
+                continue;
             cost[static_cast<std::size_t>(nextIndex)] = nextCost;
             parent[static_cast<std::size_t>(nextIndex)] = index;
             open.push({ nextIndex, nextCost + heuristic(nextX, nextZ) });
         }
     }
 
-    if (startIndex != goalIndex && parent[static_cast<std::size_t>(goalIndex)] < 0) return false;
+    if (startIndex != goalIndex && parent[static_cast<std::size_t>(goalIndex)] < 0)
+        return false;
     for (int index = goalIndex; index >= 0; index = parent[static_cast<std::size_t>(index)]) {
         outPath.push_back(GetCellCenter(index % width_, index / width_));
-        if (index == startIndex) break;
+        if (index == startIndex)
+            break;
     }
+
     std::reverse(outPath.begin(), outPath.end());
     SimplifyPath(outPath);
+
     // 目標セルが元から通行可能なら、セル中心で止めず入力された XZ 位置まで伸ばします。
     if (exactGoalIsWalkable &&
         (outPath.empty() || PlanarDistanceSquared(outPath.back(), goal) > 0.0001f)) {
@@ -224,15 +251,18 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
         exactGoal.y = settings_.planeY;
         outPath.push_back(exactGoal);
     }
+
     return true;
 }
 
 void NavGrid::SimplifyPath(std::vector<engine::Vector3>& path) const {
     // 同じ向きが続く中間セルを省き、移動方向が変わる点だけ残す。
-    if (path.size() < 3) return;
+    if (path.size() < 3)
+        return;
     std::vector<engine::Vector3> simplified;
     simplified.reserve(path.size());
     simplified.push_back(path.front());
+
     for (std::size_t index = 1; index + 1 < path.size(); ++index) {
         const engine::Vector3 previousDirection = NormalizePlanar(path[index] - path[index - 1]);
         const engine::Vector3 nextDirection = NormalizePlanar(path[index + 1] - path[index]);
@@ -241,6 +271,7 @@ void NavGrid::SimplifyPath(std::vector<engine::Vector3>& path) const {
             simplified.push_back(path[index]);
         }
     }
+
     simplified.push_back(path.back());
     path = std::move(simplified);
 }

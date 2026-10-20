@@ -46,7 +46,7 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
+#include <game/system/combat/BulletManager.h>
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -60,7 +60,8 @@ namespace fs = std::filesystem;
 namespace {
     // 実ゲームでは不可視のカメラ等も、Editorのプレビューでは識別できる描画クラスへ切り替えます。
     bool ShouldUsePreviewDrawClassOverride(const engine::Object3d* object) {
-        if (!object) return false;
+        if (!object)
+            return false;
 
         const std::string className = object->GetClassName();
         return object->IsCameraObject() ||
@@ -75,12 +76,18 @@ namespace {
 
 engine::Ray DebugEditor::ScreenPointToRay(const engine::Vector2& mousePos) {
     const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera) return engine::Ray{};
 
-    engine::Matrix4x4 matView = camera->GetViewMatrix();
-    engine::Matrix4x4 matProj = camera->GetProjectionMatrix();
-    engine::Matrix4x4 matViewProj = math_.Multiply(matView, matProj);
-    engine::Matrix4x4 matInverseVP = math_.Inverse(matViewProj);
+    if (!camera)
+        return engine::Ray{};
+
+    // 大きな平行移動を含むViewProjectionをfloatで直接反転すると桁落ちする。
+    // 投影の逆変換をカメラ空間で済ませ、その後にワールドへ移す。
+    const engine::Matrix4x4 inverseProjection = math_.Inverse(camera->GetProjectionMatrix());
+    const engine::Matrix4x4 inverseView = math_.Inverse(camera->GetViewMatrix());
+    if (!std::isfinite(gameViewSize_.x) || !std::isfinite(gameViewSize_.y) ||
+        gameViewSize_.x <= 0.0f || gameViewSize_.y <= 0.0f ||
+        !std::isfinite(mousePos.x) || !std::isfinite(mousePos.y))
+        return engine::Ray{};
 
 
     float localMouseX = mousePos.x;
@@ -101,13 +108,16 @@ engine::Ray DebugEditor::ScreenPointToRay(const engine::Vector2& mousePos) {
     farPos = nearPos;
     farPos.z = 1.0f;
 
-    // 4. ワールド変換
-    engine::Vector3 worldNear = math_.Transform(nearPos, matInverseVP);
-    engine::Vector3 worldFar = math_.Transform(farPos, matInverseVP);
-
+    // 方向は座標変換後の2点を引かず、平行移動を除いた変換で求める。
+    // near→farの長さを保持し、選択処理が使う交差パラメータ0～1と一致させる。
+    const engine::Vector3 cameraNear = math_.Transform(nearPos, inverseProjection);
+    const engine::Vector3 cameraFar = math_.Transform(farPos, inverseProjection);
     engine::Ray ray;
-    ray.origin = worldNear;
-    ray.diff = worldFar - worldNear;
+    ray.origin = math_.Transform(cameraNear, inverseView);
+    ray.diff = math_.TransformNormal(cameraFar - cameraNear, inverseView);
+    if (!std::isfinite(ray.origin.x) || !std::isfinite(ray.origin.y) || !std::isfinite(ray.origin.z) ||
+        !std::isfinite(ray.diff.x) || !std::isfinite(ray.diff.y) || !std::isfinite(ray.diff.z))
+        return engine::Ray{};
 
     return ray;
 }
@@ -141,7 +151,8 @@ bool DebugEditor::IntersectRayPlane(const engine::Ray& ray, engine::Vector3& int
     float dotDir = math.Dot(rayDir, planeNormal);
 
     // 念のため再チェック
-    if (std::abs(dotDir) < 0.0001f) return false;
+    if (std::abs(dotDir) < 0.0001f)
+        return false;
 
     // 距離tの計算
     float t = (planeHeight - math.Dot(ray.origin, planeNormal)) / dotDir;
@@ -162,15 +173,19 @@ bool DebugEditor::IntersectRayPlane(const engine::Ray& ray, engine::Vector3& int
 void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 編集プレビューの描画時は、現在のライト定数を表示専用の描画経路へ渡す。
     auto drawPreviewObject = [&](engine::Object3d* object) {
-        if (!object) return;
+        if (!object)
+            return;
 
         std::string originalClassName;
         bool useClassOverride = ShouldUsePreviewDrawClassOverride(object);
+
         if (useClassOverride) {
             originalClassName = object->GetClassName();
             object->SetClassName("Model");
         }
+
         object->Draw(pointLightResource, spotLightResource);
+
         if (useClassOverride) {
             object->SetClassName(originalClassName);
         }
@@ -178,6 +193,7 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
 
     if (previewObject_) {
         drawPreviewObject(previewObject_.get());
+
         for (auto& child : previewChildObjects_) {
             drawPreviewObject(child.get());
         }
@@ -203,6 +219,7 @@ void DebugEditor::PollDDSCacheNotifications() {
 #ifdef USE_IMGUI
     // 変換ツールの追記ログを前回の読み取り位置から読み、完了通知だけを表示する。
     const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
+
     if (!fs::exists(notificationLog)) {
         ddsCacheNotificationReadOffset_ = 0;
         return;
@@ -210,18 +227,22 @@ void DebugEditor::PollDDSCacheNotifications() {
 
     std::error_code ec;
     const std::uintmax_t fileSize = fs::file_size(notificationLog, ec);
+
     if (ec) {
         return;
     }
+
     if (fileSize < ddsCacheNotificationReadOffset_) {
         // ログのローテートや作り直しでサイズが縮んだ場合は先頭から読み直す。
         ddsCacheNotificationReadOffset_ = 0;
     }
+
     if (fileSize == ddsCacheNotificationReadOffset_) {
         return;
     }
 
     std::ifstream ifs(notificationLog, std::ios::binary);
+
     if (!ifs) {
         return;
     }
@@ -230,6 +251,7 @@ void DebugEditor::PollDDSCacheNotifications() {
 
     std::string line;
     bool hasCompletedConversion = false;
+
     while (std::getline(ifs, line)) {
         if (line.empty()) {
             continue;
@@ -238,6 +260,7 @@ void DebugEditor::PollDDSCacheNotifications() {
         try {
             // 途中書き込みなどで壊れた行があっても、次の通知の読み取りを続ける。
             nlohmann::json j = nlohmann::json::parse(line);
+
             if (j.value("status", "") != "built") {
                 continue;
             }
@@ -249,6 +272,7 @@ void DebugEditor::PollDDSCacheNotifications() {
     }
 
     ddsCacheNotificationReadOffset_ = fileSize;
+
     if (hasCompletedConversion) {
         saveNotificationTimer_ = 1.5f;
         saveNotificationMsg_ = "DDS変換が完了しました";
@@ -262,14 +286,16 @@ void DebugEditor::PollDDSCacheNotifications() {
 // ========================================================================
 void DebugEditor::DrawSaveNotification() {
 #ifdef USE_IMGUI
-    if (saveNotificationTimer_ <= 0.0f) return;
+    if (saveNotificationTimer_ <= 0.0f)
+        return;
 
     // タイマー減算 (ImGuiのDeltaTimeを利用してフレームレート非依存に)
     saveNotificationTimer_ -= ImGui::GetIO().DeltaTime;
 
     // フェードアウトの割合 (1.0 -> 0.0 に向かって減っていく)
     float fadeRatio = saveNotificationTimer_ / 1.5f;
-    if (fadeRatio > 1.0f) fadeRatio = 1.0f;
+    if (fadeRatio > 1.0f)
+        fadeRatio = 1.0f;
 
     // 最前面レイヤーを取得
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
@@ -295,6 +321,7 @@ void DebugEditor::DrawSaveNotification() {
 
     // 少し文字を見やすくするために白い縁取り（シャドウ）を先に描画
     drawList->AddText(ImGui::GetFont(), fontSize, ImVec2(textPos.x + 2, textPos.y + 2), outlineColor, text);
+
     // メインの文字を描画
     drawList->AddText(ImGui::GetFont(), fontSize, textPos, textColor, text);
 #endif
@@ -306,7 +333,9 @@ void DebugEditor::DrawSaveNotification() {
 // ========================================================================
 engine::Vector3 DebugEditor::WorldToScreen(const engine::Vector3& worldPos) {
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-    if (!cam) return { 0, 0, -1 }; // カメラが無い場合はZを-1(無効)にして返す
+
+    if (!cam)
+        return { 0, 0, -1 }; // カメラが無い場合はZを-1(無効)にして返す
 
     engine::Matrix4x4 viewProj = math_.Multiply(cam->GetViewMatrix(), cam->GetProjectionMatrix());
 
@@ -332,23 +361,28 @@ void DebugEditor::Draw3DIcons() {
     int left=0,top=0,right=0,bottom=0;
     GetGameViewScreenRect(left,top,right,bottom);
     SettingsMenuOverlay::SetEditorViewport(left,top,right,bottom);
-    if (SettingsMenuOverlay::IsAnyActive()) return;
+    if (SettingsMenuOverlay::IsAnyActive())
+        return;
 #ifdef USE_IMGUI
-    if (!drawSceneIcons_) return;
+    if (!drawSceneIcons_)
+        return;
 #endif
 #ifdef USE_IMGUI
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
 
     // 最前面に描画するためのImGuiレイヤーを取得
     // Game Viewの描画レイヤーに載せ、別ウィンドウの上へアイコンを重ねません。
     ImGuiWindow* viewWindow = ImGui::FindWindowByName("Game View");
-    if (!viewWindow || !viewWindow->Active) return;
+    if (!viewWindow || !viewWindow->Active)
+        return;
     ImDrawList* drawList = viewWindow->DrawList;
     drawList->PushClipRect(ImVec2(gameViewOffset_.x, gameViewOffset_.y), ImVec2(gameViewOffset_.x + gameViewSize_.x, gameViewOffset_.y + gameViewSize_.y), true);
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     for (const auto& obj : objects) {
-        if (!obj->GetIsRenderVisible()) continue;
+        if (!obj->GetIsRenderVisible())
+            continue;
         std::string className = obj->GetClassName();
         const char* iconStr = nullptr;
         ImU32 iconColor = IM_COL32(255, 255, 255, 200); // デフォルト白（半透明）
@@ -392,16 +426,19 @@ void DebugEditor::Draw3DIcons() {
                 // 選択中のオブジェクトはアイコンを少し大きく、不透明にする
                 const bool isSelected = IsObjectSelected(obj.get());
                 float fontSize = isSelected ? ImGui::GetFontSize() * 1.5f : ImGui::GetFontSize() * 1.2f;
-                if (isSelected) iconColor = IM_COL32(255, 255, 0, 255); // 選択中は黄色
+                if (isSelected)
+                    iconColor = IM_COL32(255, 255, 0, 255); // 選択中は黄色
 
                 // 影（アウトライン）を黒で描画して見やすくする
                 ImVec2 pos = ImVec2(screenPos.x, screenPos.y);
                 drawList->AddText(ImGui::GetFont(), fontSize, ImVec2(pos.x + 1, pos.y + 1), IM_COL32(0, 0, 0, 255), iconStr);
+
                 // 本体の描画
                 drawList->AddText(ImGui::GetFont(), fontSize, pos, iconColor, iconStr);
             }
         }
     }
+
     drawList->PopClipRect();
 #endif
 }
@@ -411,24 +448,29 @@ void DebugEditor::Draw3DIcons() {
 // ========================================================================
 void DebugEditor::DrawEventIDOverlay() {
 #ifdef USE_IMGUI
-    if (!drawEventIDs_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!drawEventIDs_ || !sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
 
     // Game Viewの描画レイヤーに載せ、別ウィンドウの上へアイコンを重ねません。
     ImGuiWindow* viewWindow = ImGui::FindWindowByName("Game View");
-    if (!viewWindow || !viewWindow->Active) return;
+    if (!viewWindow || !viewWindow->Active)
+        return;
     ImDrawList* drawList = viewWindow->DrawList;
     drawList->PushClipRect(ImVec2(gameViewOffset_.x, gameViewOffset_.y), ImVec2(gameViewOffset_.x + gameViewSize_.x, gameViewOffset_.y + gameViewSize_.y), true);
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     // 1. EventIDを持つオブジェクトをマップに集める (線を描画するため)
     std::unordered_map<int, std::vector<engine::Object3d*>> eventMap;
+
     for (const auto& obj : objects) {
         int eID = obj->GetEventID();
-        if (eID != -1) eventMap[eID].push_back(obj.get());
+        if (eID != -1)
+            eventMap[eID].push_back(obj.get());
     }
 
     for (const auto& obj : objects) {
-        if (!obj->GetIsRenderVisible()) continue;
+        if (!obj->GetIsRenderVisible())
+            continue;
 
         // イベント関連のIDを取得
         int myID = obj->GetEventID();
@@ -462,10 +504,13 @@ void DebugEditor::DrawEventIDOverlay() {
 
         // --- 3. IDラベルの描画 (既存処理) ---
         std::string label = "";
-        if (myID != -1) label += ICON_FA_FINGERPRINT " [ID: " + std::to_string(myID) + "] ";
-        if (targetID != -1) label += ICON_FA_BULLSEYE " [Target: " + std::to_string(targetID) + "]";
+        if (myID != -1)
+            label += ICON_FA_FINGERPRINT " [ID: " + std::to_string(myID) + "] ";
+        if (targetID != -1)
+            label += ICON_FA_BULLSEYE " [Target: " + std::to_string(targetID) + "]";
 
-        if (label.empty()) continue;
+        if (label.empty())
+            continue;
 
         // 3D座標の取得と変換（頭上に表示）
         engine::Vector3 worldPos = obj->GetWorldPosition();
@@ -476,14 +521,17 @@ void DebugEditor::DrawEventIDOverlay() {
         if (screenPos.z >= 0.0f) {
             ImVec2 pos = ImVec2(screenPos.x, screenPos.y);
             ImU32 color = (myID != -1) ? IM_COL32(255, 255, 0, 255) : IM_COL32(100, 200, 255, 255);
-            if (IsObjectSelected(obj.get())) color = IM_COL32(255, 255, 255, 255); // 選択中は白
+            if (IsObjectSelected(obj.get()))
+                color = IM_COL32(255, 255, 255, 255); // 選択中は白
 
             // アウトライン
             drawList->AddText(NULL, 0.0f, ImVec2(pos.x + 1, pos.y + 1), IM_COL32(0, 0, 0, 255), label.c_str());
+
             // 本体
             drawList->AddText(NULL, 0.0f, pos, color, label.c_str());
         }
     }
+
     drawList->PopClipRect();
 #endif
 }

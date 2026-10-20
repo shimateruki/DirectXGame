@@ -10,8 +10,11 @@ class PlayerStatePullObject : public IAnimationState {
   public:
     PlayerStatePullObject(engine::Object3d* targetObject, const engine::Vector3& targetPos)
         : targetObject_(targetObject), targetPos_(targetPos) {}
+
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 
   private:

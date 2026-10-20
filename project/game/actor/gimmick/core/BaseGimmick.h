@@ -8,7 +8,7 @@ class BaseGimmick : public engine::Object3d {
     virtual ~BaseGimmick() = default;
 
     // モデル名を指定してギミック本体を初期化する
-    virtual void Initialize(Object3dCommon* common, const std::string& modelName);
+    virtual void Initialize(engine::Object3dCommon* common, const std::string& modelName);
 
     // ギミック共通の更新処理
     virtual void Update(float deltaTime) override;

@@ -4,7 +4,7 @@
 #include "InputManager.h"
 #include "Sprite.h"
 #include "SpriteCommon.h"
-#include "SpriteLayoutScaler.h"
+#include "game/ui/SpriteLayoutScaler.h"
 #include "SpriteLayoutFactory.h"
 #include "TextureManager.h"
 #include "json.hpp"
@@ -18,7 +18,7 @@ using json = nlohmann::json;
 void PauseMenuOverlay::Initialize(engine::SpriteCommon* spriteCommon, const std::string& layoutPath, Mode mode) {
     // 共通レイアウトを読み込み、使用するシーンのモードに応じて項目を制御する。
     spriteCommon_ = spriteCommon;
-    inputManager_ = InputManager::GetInstance();
+    inputManager_ = engine::InputManager::GetInstance();
     mode_ = mode;
     LoadLayout(layoutPath);
     BindLayoutSprites();
@@ -45,6 +45,7 @@ void PauseMenuOverlay::Finalize() {
 
 void PauseMenuOverlay::SetActive(bool active) {
     SetGuideTransitionOffset(0.0f, false);
+
     // 開く操作を閉じる操作として再使用しないよう、キー解放まで入力を抑制する。
     if (isActive_ == active) {
         return;
@@ -53,14 +54,17 @@ void PauseMenuOverlay::SetActive(bool active) {
     isActive_ = active;
     suppressOpenCloseInput_ = active;
     selectedIndex_ = 0;
+
     if (active) {
         time_ = 0.0f;
     }
+
     SetAllVisible(active);
 }
 
 void PauseMenuOverlay::ReopenFromGuide() {
     SetActive(true);
+
     // 能力ページは左右操作で戻れるので、メニュー側の重複した項目は選択しない。
     selectedIndex_ = static_cast<int>(Item::Resume);
     UpdateSprites();
@@ -91,18 +95,24 @@ void PauseMenuOverlay::SetGuideTransitionOffset(float offsetX, bool transitionin
     // 前フレームとの差だけ移動し、繰り返しても基準位置がずれないようにする。
     const float delta = offsetX - guideTransitionOffset_;
     guideTransitionOffset_ = offsetX;
+
     for (auto& sprite : sprites_) {
-        if (!sprite || sprite.get() == background_) continue;
+        if (!sprite || sprite.get() == background_)
+            continue;
         engine::Vector2 position = sprite->GetPosition();
         position.x += delta;
         sprite->SetPosition(position);
         sprite->Update();
     }
-    if (background_) background_->SetVisible(isActive_ && !transitioning);
+
+    if (background_)
+        background_->SetVisible(isActive_ && !transitioning);
+
     // ページ遷移中の案内はガイド側に任せ、同じ二つの枠が重なるのを防ぐ。
     for (const char* name : {"pause_footer_close_frame", "pause_footer_close_text",
                              "pause_footer_confirm_frame", "pause_footer_confirm_text"}) {
-        if (engine::Sprite* footer = FindSprite(name)) footer->SetVisible(isActive_ && !transitioning);
+        if (engine::Sprite* footer = FindSprite(name))
+            footer->SetVisible(isActive_ && !transitioning);
     }
 }
 
@@ -122,6 +132,7 @@ void PauseMenuOverlay::Draw() {
 void PauseMenuOverlay::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) const {
     // リプレイ中の見た目復元に使うため、所有権を移さず参照だけ集める。
     replaySprites.reserve(replaySprites.size() + sprites_.size());
+
     for (const auto& sprite : sprites_) {
         if (sprite) {
             replaySprites.push_back(sprite.get());
@@ -142,6 +153,7 @@ void PauseMenuOverlay::RestoreReplayState(const json& state) {
     if (!state.is_object()) {
         return;
     }
+
     SetGuideTransitionOffset(0.0f, false);
     isActive_ = state.value("active", isActive_);
     suppressOpenCloseInput_ = state.value("suppressInput", suppressOpenCloseInput_);
@@ -151,8 +163,10 @@ void PauseMenuOverlay::RestoreReplayState(const json& state) {
                                        selectedIndex_ == static_cast<int>(Item::StageSelect)))) {
         selectedIndex_ = static_cast<int>(Item::Resume);
     }
+
     time_ = state.value("time", time_);
     SetAllVisible(isActive_);
+
     if (isActive_) {
         UpdateSprites();
     }
@@ -162,11 +176,13 @@ void PauseMenuOverlay::LoadLayout(const std::string& layoutPath) {
     // スプライトの配置は JSON を優先し、サイズだけ画面解像度へ換算します。
     guideTransitionOffset_ = 0.0f;
     sprites_.clear();
+
     if (!spriteCommon_) {
         return;
     }
 
     std::ifstream file(layoutPath);
+
     if (!file.is_open()) {
         return;
     }
@@ -184,10 +200,12 @@ void PauseMenuOverlay::LoadLayout(const std::string& layoutPath) {
 
     const auto layoutScale = SpriteLayoutScaler::Make(root);
     layoutRatio_ = layoutScale.enabled ? layoutScale.ratio : engine::Vector2{1.0f, 1.0f};
+
     for (const auto& spriteData : root["sprites"]) {
         if (!spriteData.is_object()) {
             continue;
         }
+
         auto sprite = SpriteLayoutFactory::Create(spriteCommon_, spriteData, layoutScale, "pause_sprite");
         sprite->Update();
         sprites_.push_back(std::move(sprite));
@@ -203,10 +221,12 @@ void PauseMenuOverlay::BindLayoutSprites() {
     confirmHintText_ = FindSprite("pause_footer_confirm_text");
     cursorArrow_ = FindSprite("pause_cursor_arrow");
     cursorSlime_ = FindSprite("pause_cursor_slime");
+
     if (cursorSlime_) {
         // タイトル画面と同じアイコンの透明余白を切り、選択行に寄せる。
         cursorSlime_->SetTextureRect({115.0f, 218.0f}, {1024.0f, 827.0f});
     }
+
     panelBaseSize_ = panel_ ? panel_->GetSize() : engine::Vector2{};
 
     constexpr std::array<const char*, 6> prefixes = {"pause_resume", "pause_guide", "pause_retry",
@@ -216,9 +236,11 @@ void PauseMenuOverlay::BindLayoutSprites() {
         const std::string prefix = prefixes[static_cast<size_t>(i)];
         rows_[static_cast<size_t>(i)].backdrop = FindSprite(prefix + "_row");
         rows_[static_cast<size_t>(i)].label = FindSprite(prefix + "_label");
+
         if (rows_[static_cast<size_t>(i)].backdrop) {
             rows_[static_cast<size_t>(i)].backdropBaseSize = rows_[static_cast<size_t>(i)].backdrop->GetSize();
         }
+
         if (rows_[static_cast<size_t>(i)].label) {
             rows_[static_cast<size_t>(i)].labelBaseSize = rows_[static_cast<size_t>(i)].label->GetSize();
         }
@@ -232,6 +254,7 @@ engine::Sprite* PauseMenuOverlay::FindSprite(const std::string& name) const {
             return sprite.get();
         }
     }
+
     return nullptr;
 }
 
@@ -264,6 +287,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         if (!IsOpenOrCloseHeld()) {
             suppressOpenCloseInput_ = false;
         }
+
         return Action::None;
     }
 
@@ -275,6 +299,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
     if (up) {
         ChangeSelection(-1);
     }
+
     if (down) {
         ChangeSelection(1);
     }
@@ -286,6 +311,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         // メニューは能力説明の次ページ。左送りで前ページへ戻す。
         return Action::OpenGuide;
     }
+
     if (inputManager_->IsKeyTriggered(DIK_TAB) ||
         inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) ||
         inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
@@ -297,16 +323,22 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         switch (static_cast<Item>(selectedIndex_)) {
         case Item::Resume:
             return Action::Resume;
+
         case Item::Guide:
             return Action::OpenGuide;
+
         case Item::Retry:
             return Action::Retry;
+
         case Item::StageSelect:
             return Action::StageSelect;
+
         case Item::Settings:
             return Action::OpenSettings;
+
         case Item::Title:
             return Action::ReturnTitle;
+
         default:
             break;
         }
@@ -333,9 +365,11 @@ void PauseMenuOverlay::UpdateSprites() {
         // 下端の二つの案内だけを入力機器に合わせて差し替える。
         const std::string suffix = inputManager_->IsGamepadMode() ? "gamepad.png" : "keyboard.png";
         const auto updateHint = [&suffix](engine::Sprite* sprite, const char* action) {
-            if (!sprite) return;
+            if (!sprite)
+                return;
             const std::string path = "generated/text/pause_guide/footer_" + std::string(action) + "_" + suffix;
-            if (sprite->GetTextureName() == path) return;
+            if (sprite->GetTextureName() == path)
+                return;
             const uint32_t handle = engine::Sprite::LoadTexture(path);
             sprite->SetTextureHandle(handle);
             const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
@@ -343,6 +377,7 @@ void PauseMenuOverlay::UpdateSprites() {
                                    {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
             sprite->SetTextureName(path);
         };
+
         updateHint(closeHintText_, "close");
         updateHint(confirmHintText_, "confirm");
     }
@@ -365,6 +400,7 @@ void PauseMenuOverlay::UpdateSprites() {
             row.backdrop->SetSize({row.backdropBaseSize.x * rowScale, row.backdropBaseSize.y * rowScale});
             row.backdrop->SetColor(selected ? engine::Vector4{0.95f, 1.0f, 1.0f, 1.0f} : normalRowColor);
         }
+
         if (row.label) {
             row.label->SetSize({row.labelBaseSize.x * labelScale, row.labelBaseSize.y * labelScale});
             row.label->SetColor(selected ? selectedText : normalText);
@@ -372,16 +408,19 @@ void PauseMenuOverlay::UpdateSprites() {
     }
 
     MenuRow& selectedRow = rows_[static_cast<size_t>(selectedIndex_)];
+
     if (selectedRow.backdrop) {
         const engine::Vector2 rowPosition = selectedRow.backdrop->GetPosition();
         const engine::Vector2 rowSize = selectedRow.backdrop->GetSize();
         const float pulse = 0.5f + 0.5f * std::sin(time_ * 5.6f);
         const float bob = std::sin(time_ * 7.5f) * 3.0f;
         const float rowLeft = rowPosition.x - rowSize.x * 0.5f;
+
         if (cursorSlime_) {
             cursorSlime_->SetPosition({rowLeft - 75.0f * layoutRatio_.x, rowPosition.y + bob});
             cursorSlime_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
         }
+
         if (cursorArrow_) {
             cursorArrow_->SetPosition({rowLeft - 27.0f * layoutRatio_.x + std::sin(time_ * 8.0f) * 3.0f,
                                        rowPosition.y});
@@ -401,6 +440,7 @@ void PauseMenuOverlay::ChangeSelection(int direction) {
                                                     static_cast<int>(kItems.size()))];
         return;
     }
+
     // 能力ページへの移動は左操作にまとめ、決定項目には表示しない。
     constexpr std::array<int, 5> kGameplayItems = {
         static_cast<int>(Item::Resume), static_cast<int>(Item::Retry), static_cast<int>(Item::StageSelect),

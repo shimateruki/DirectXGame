@@ -1,0 +1,11 @@
+newmtl floating_basalt_rock_PBR
+Kd 1 1 1
+Ks 0.04 0.04 0.04
+Ns 20
+Pr 1
+Pm 0
+illum 2
+map_Kd basecolor.png
+norm normal.png
+map_Bump normal.png
+map_Pr orm.png

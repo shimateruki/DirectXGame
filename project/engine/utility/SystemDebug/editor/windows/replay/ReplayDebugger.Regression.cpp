@@ -18,6 +18,7 @@ bool ReplayDebugger::StartRegression() {
     regressionResult_.running = true;
     regressionResult_.archiveName = loadedArchiveName_;
     regressionResult_.expectedGoal = IsGoalReached(frames_.back().sceneState);
+
     // 判定値は前回実行から引き継がず、入力・比較フレーム・計測の開始位置を揃える。
     regressionInputIndex_ = 0;
     regressionExpectedFrameIndex_ = 1;
@@ -39,16 +40,19 @@ bool ReplayDebugger::StartRegression() {
         std::filesystem::path("Saved") / "ReplayRegression" / outputName;
     std::error_code fileError;
     std::filesystem::create_directories(outputDirectory, fileError);
+
     if (fileError) {
         statusMessage_ = "回帰テスト出力フォルダーを作成できません: " + fileError.message();
         regressionResult_.running = false;
         return false;
     }
+
     regressionOutputDirectory_ = outputDirectory.string();
 
     // 記録入力の全長を等分し、実行中に通過した時点を撮影予約に変える。
     const double duration = inputSamples_.back().time;
     const int screenshotCount = (std::clamp)(regressionSettings_.screenshotCount, 0, 8);
+
     for (int index = 0; index < screenshotCount && duration > 0.0; ++index) {
         regressionScreenshotTimes_.push_back(
             duration * static_cast<double>(index + 1) / static_cast<double>(screenshotCount));
@@ -62,14 +66,17 @@ bool ReplayDebugger::StartRegression() {
 
 void ReplayDebugger::UpdateRegressionBeforeSimulation() {
     regressionStepPrepared_ = false;
+
     if (!regressionResult_.running) {
         return;
     }
+
     if (!GetValidatedActiveScene()) {
         regressionResult_.failures.push_back("テスト中に対象シーンが失われました。");
         FinishRegression();
         return;
     }
+
     if (regressionInputIndex_ >= inputSamples_.size()) {
         FinishRegression();
         return;
@@ -77,9 +84,10 @@ void ReplayDebugger::UpdateRegressionBeforeSimulation() {
 
     // シーン更新前に入力を適用する。時間刻みは異常値で物理更新が跳ばない範囲へ制限する。
     const InputSample& sample = inputSamples_[regressionInputIndex_];
+
     // 記録時の入力と時間刻みをGame更新の前に再現する。
     regressionStepDeltaTime_ = (std::clamp)(sample.deltaTime, 0.0001f, 0.25f);
-    InputManager::GetInstance()->ApplyReplayState(sample.state);
+    engine::InputManager::GetInstance()->ApplyReplayState(sample.state);
     regressionStepPrepared_ = true;
 }
 
@@ -106,10 +114,12 @@ void ReplayDebugger::CaptureRegressionAfterSimulation() {
         CompareRegressionFrame(frames_[regressionExpectedFrameIndex_]);
         ++regressionExpectedFrameIndex_;
     }
+
     QueueRegressionScreenshots();
 
     ++regressionInputIndex_;
     regressionStepPrepared_ = false;
+
     if (regressionInputIndex_ >= inputSamples_.size()) {
         FinishRegression();
     }
@@ -125,20 +135,24 @@ const ReplayDebugger::ObjectSnapshot* ReplayDebugger::FindPlayerSnapshot(const F
 void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
     BaseScene* scene = GetValidatedActiveScene();
     const ObjectSnapshot* expectedPlayer = FindPlayerSnapshot(expected);
+
     if (!scene || !expectedPlayer) {
         if (std::find(regressionResult_.failures.begin(), regressionResult_.failures.end(),
             "比較対象のプレイヤーをReplayから取得できません。") == regressionResult_.failures.end()) {
             regressionResult_.failures.push_back("比較対象のプレイヤーをReplayから取得できません。");
         }
+
         return;
     }
 
     engine::Object3d* currentPlayer = nullptr;
+
     // Replay IDを優先し、旧記録などで一致しないときだけ永続GUID・種別と名前へ後退する。
     for (const auto& object : scene->GetObjects()) {
         if (!object || object->IsReplayRemoved()) {
             continue;
         }
+
         if (object->EnsureReplayId() == expectedPlayer->replayId ||
             (!expectedPlayer->persistentGuid.empty() && object->GetPersistentGuid() == expectedPlayer->persistentGuid) ||
             (object->GetClassName() == expectedPlayer->className && object->GetName() == expectedPlayer->name)) {
@@ -146,11 +160,13 @@ void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
             break;
         }
     }
+
     if (!currentPlayer) {
         if (std::find(regressionResult_.failures.begin(), regressionResult_.failures.end(),
             "実行中シーンのプレイヤーを取得できません。") == regressionResult_.failures.end()) {
             regressionResult_.failures.push_back("実行中シーンのプレイヤーを取得できません。");
         }
+
         return;
     }
 
@@ -178,9 +194,11 @@ void ReplayDebugger::CompareRegressionFrame(const FrameSnapshot& expected) {
 
 bool ReplayDebugger::IsGoalReached(const json& sceneState) {
     const auto goal = sceneState.find("goal");
+
     if (goal == sceneState.end() || !goal->is_object()) {
         return false;
     }
+
     return goal->value("active", false) || goal->value("wasStageCleared", false) || goal->value("state", 0) > 0;
 }
 
@@ -205,10 +223,13 @@ void ReplayDebugger::FinishRegression() {
     if (regressionExpectedFrameIndex_ < frames_.size()) {
         CompareRegressionFrame(frames_.back());
     }
+
     json currentSceneState = json::object();
+
     if (BaseScene* scene = GetValidatedActiveScene()) {
         scene->CaptureReplaySceneState(currentSceneState);
     }
+
     regressionResult_.observedGoal = IsGoalReached(currentSceneState);
     regressionResult_.durationSeconds = regressionElapsedTime_;
     regressionResult_.newErrorLogs =
@@ -223,6 +244,7 @@ void ReplayDebugger::FinishRegression() {
     if (regressionResult_.comparedFrames == 0) {
         regressionResult_.failures.push_back("プレイヤー軌跡を比較できるReplayフレームがありませんでした。");
     }
+
     // 現状の軌跡判定はPlayerの最大位置誤差で行い、ゴール・Errorログ・任意の性能条件を別に評価する。
     if (regressionResult_.maxPositionError > regressionSettings_.maxPositionError) {
         std::ostringstream message;
@@ -231,17 +253,21 @@ void ReplayDebugger::FinishRegression() {
             << regressionSettings_.maxPositionError << " を超えました。";
         regressionResult_.failures.push_back(message.str());
     }
+
     if (regressionResult_.expectedGoal && !regressionResult_.observedGoal) {
         regressionResult_.failures.push_back("基準Replayではゴール済みですが、再実行ではゴールへ到達しませんでした。");
     }
+
     if (regressionResult_.newErrorLogs > 0) {
         regressionResult_.failures.push_back(
             "テスト中にErrorログが " + std::to_string(regressionResult_.newErrorLogs) + " 件発生しました。");
     }
+
     if (regressionSettings_.failOnPerformanceBudget) {
         if (regressionResult_.averageCpuMs > regressionSettings_.cpuBudgetMs) {
             regressionResult_.failures.push_back("平均CPU時間が設定Budgetを超えました。");
         }
+
         if (regressionResult_.averageGpuMs > regressionSettings_.gpuBudgetMs) {
             regressionResult_.failures.push_back("平均GPU時間が設定Budgetを超えました。");
         }
@@ -253,6 +279,7 @@ void ReplayDebugger::FinishRegression() {
     regressionStepPrepared_ = false;
     mode_ = Mode::Paused;
     regressionReportPending_ = true;
+
     if (pendingRegressionScreenshotPaths_.empty()) {
         FinalizeRegressionReport();
     } else {
@@ -265,6 +292,7 @@ void ReplayDebugger::CapturePendingRegressionScreenshot(CaptureToolWindow* captu
         if (regressionReportPending_) {
             FinalizeRegressionReport();
         }
+
         return;
     }
 
@@ -291,6 +319,7 @@ void ReplayDebugger::FinalizeRegressionReport() {
     if (!regressionReportPending_) {
         return;
     }
+
     regressionReportPending_ = false;
     regressionResult_.passed = regressionResult_.failures.empty();
 
@@ -330,18 +359,24 @@ void ReplayDebugger::FinalizeRegressionReport() {
     try {
         // 書き込み途中のJSONを完成済みレポートとして見せないため一時ファイルを経由する。
         std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
+
         if (!stream) {
             throw std::runtime_error("レポートファイルを開けません。");
         }
+
         stream << report.dump(2);
         stream.close();
+
         if (!stream) {
             throw std::runtime_error("レポートを書き込めません。");
         }
+
         std::filesystem::rename(temporaryPath, reportPath, fileError);
+
         if (fileError) {
             throw std::runtime_error(fileError.message());
         }
+
         regressionResult_.reportPath = reportPath.string();
         statusMessage_ = regressionResult_.passed
             ? "自動回帰テストに成功しました: " + regressionResult_.reportPath

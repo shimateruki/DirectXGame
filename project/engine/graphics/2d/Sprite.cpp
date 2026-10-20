@@ -30,9 +30,11 @@ engine::Matrix4x4 MakeSpriteWorldMatrix(const Sprite* sprite) {
 	engine::Math math;
 	engine::Matrix4x4 localMatrix = MakeSpriteLocalMatrix(sprite);
 	Sprite* parent = sprite ? sprite->GetParent() : nullptr;
+
 	if (!parent) {
 		return localMatrix;
 	}
+
 	return math.Multiply(localMatrix, MakeSpriteWorldMatrix(parent));
 }
 
@@ -43,6 +45,7 @@ bool HasParentInChain(Sprite* sprite, const Sprite* parent) {
 			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -55,9 +58,11 @@ uint32_t ResolveSpriteTextureHandle(uint32_t textureHandle) {
 	// 未指定テクスチャは白画像で描き、DDSがない環境ではPNGへフォールバックする。
 	TextureManager* textureManager = TextureManager::GetInstance();
 	uint32_t fallback = textureManager->Load("Resources/sprite/common/white.dds", false, false);
+
 	if (fallback == 0) {
 		fallback = textureManager->Load("Resources/sprite/common/white.png", false, false);
 	}
+
 	return fallback;
 }
 }
@@ -65,11 +70,13 @@ uint32_t ResolveSpriteTextureHandle(uint32_t textureHandle) {
 Sprite::~Sprite() {
 	// 親子は所有関係ではないため、破棄時には相互参照だけ外す。
 	SetParent(nullptr, false);
+
 	for (Sprite* child : children_) {
 		if (child) {
 			child->parent_ = nullptr;
 		}
 	}
+
 	children_.clear();
 }
 
@@ -90,6 +97,7 @@ void Sprite::Initialize(engine::SpriteCommon* common, uint32_t textureHandle) {
 	dxCommon_ = common_->GetDxCommon();
 
 	textureHandle_ = ResolveSpriteTextureHandle(textureHandle);
+
 	if (textureHandle_ != 0) {
 		AdjustTextureSize(); // テクスチャサイズに合わせてスプライトのサイズも調整
 	}
@@ -101,27 +109,47 @@ void Sprite::Initialize(engine::SpriteCommon* common, uint32_t textureHandle) {
 	}
 
 	// 四頂点と六インデックスの矩形を生成し、毎フレーム更新するバッファをマップする。
+	vertexData_ = nullptr;
+	wvpData_ = nullptr;
+	materialData_ = nullptr;
 	vertexResource_ = dxCommon_->CreateBufferResource(sizeof(VertexData) * 4);
+	if (!vertexResource_ || FAILED(vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_))) || !vertexData_) {
+		isVisible_ = false;
+		return;
+	}
 	vertexBufferView_ = { vertexResource_->GetGPUVirtualAddress(), sizeof(VertexData) * 4, sizeof(VertexData) };
-	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
 
 	indexResource_ = dxCommon_->CreateBufferResource(sizeof(uint32_t) * 6);
-	indexBufferView_ = { indexResource_->GetGPUVirtualAddress(), sizeof(uint32_t) * 6, DXGI_FORMAT_R32_UINT };
 	uint32_t* indexData = nullptr; // マッピング用のポインタ
-	indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-	indexData[0] = 0; indexData[1] = 1; indexData[2] = 2;
-	indexData[3] = 1; indexData[4] = 3; indexData[5] = 2;
+	if (!indexResource_ || FAILED(indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData))) || !indexData) {
+		isVisible_ = false;
+		return;
+	}
+	indexBufferView_ = { indexResource_->GetGPUVirtualAddress(), sizeof(uint32_t) * 6, DXGI_FORMAT_R32_UINT };
+	indexData[0] = 0;
+	indexData[1] = 1;
+	indexData[2] = 2;
+	indexData[3] = 1;
+	indexData[4] = 3;
+	indexData[5] = 2;
 	indexResource_->Unmap(0, nullptr); // アンマップ
 
 	// 頂点位置と別に、階層変換・投影とマテリアル色をGPUへ渡す。
 	wvpResource_ = dxCommon_->CreateBufferResource(sizeof(TransformationMatrix));
-	wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
+	if (!wvpResource_ || FAILED(wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_))) || !wvpData_) {
+		isVisible_ = false;
+		return;
+	}
+
 	engine::Math math;
 	wvpData_->WVP = math.MakeIdentity4x4();
 	wvpData_->World = math.MakeIdentity4x4();
 
 	materialResource_ = dxCommon_->CreateBufferResource(sizeof(Material));
-	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+	if (!materialResource_ || FAILED(materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_))) || !materialData_) {
+		isVisible_ = false;
+		return;
+	}
 	color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 	materialData_->color = engine::ColorSpace::AuthoringToWorking(color_);
 	materialData_->emissive = 1.0f;
@@ -131,10 +159,17 @@ void Sprite::Initialize(engine::SpriteCommon* common, uint32_t textureHandle) {
 /// 更新処理
 /// </summary>
 void Sprite::Update() {
+	// GPU資源の生成やMapが失敗したSpriteは頂点へ書き込めない。死亡演出などからの直接更新も安全に抜ける。
+	if (!vertexResource_ || !indexResource_ || !wvpResource_ || !materialResource_ ||
+		!vertexData_ || !wvpData_ || !materialData_) {
+		isVisible_ = false;
+		return;
+	}
 	// 編集用の色を作業色空間へ変換してからGPUデータへ反映する。
 	if (materialData_) {
 		materialData_->color = engine::ColorSpace::AuthoringToWorking(color_);
 	}
+
 	// 横一列のスプライトシートを想定し、現在フレームのUV範囲を更新する。
 	if (isPlaying_) {
 		// このアニメーションは呼び出し一回を1/60秒として進める。
@@ -172,6 +207,7 @@ void Sprite::Update() {
 		if (isFlipX_) {
 			std::swap(left, right);
 		}
+
 		if (isFlipY_) {
 			std::swap(top, bottom);
 		}
@@ -188,6 +224,7 @@ void Sprite::Update() {
 		if (textureHandle_ == 0) {
 			return;
 		}
+
 		const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle_);
 		float texWidth = (float)metadata.width;
 		float texHeight = (float)metadata.height;
@@ -217,6 +254,7 @@ void Sprite::Update() {
 
 void Sprite::SetColor(const engine::Vector4& color) {
 	color_ = color;
+
 	if (materialData_) {
 		materialData_->color = engine::ColorSpace::AuthoringToWorking(color_);
 	}
@@ -227,11 +265,15 @@ void Sprite::SetColor(const engine::Vector4& color) {
 /// </summary>
 void Sprite::Draw() {
 	// リプレイからの削除状態も含め、描画不能なSpriteはGPUコマンドを出さない。
-	if (!common_ || !dxCommon_) return;
+	if (!common_ || !dxCommon_)
+		return;
 	assert(common_);
-	if (!isVisible_ || replayRemoved_ || textureHandle_ == 0) return;
-	if (!vertexResource_ || !indexResource_ || !wvpResource_ || !materialResource_) return;
-	if (!vertexData_ || !materialData_) return;
+	if (!isVisible_ || replayRemoved_ || textureHandle_ == 0)
+		return;
+	if (!vertexResource_ || !indexResource_ || !wvpResource_ || !materialResource_)
+		return;
+	if (!vertexData_ || !materialData_)
+		return;
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 
 	// 更新済みの頂点、変換、マテリアル、テクスチャを束ねて一枚の矩形を描く。
@@ -255,6 +297,7 @@ void Sprite::AdjustTextureSize() {
 		textureSize_ = { 1.0f, 1.0f };
 		return;
 	}
+
 	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle_);
 	size_ = { (float)metadata.width, (float)metadata.height };
 	textureSize_ = { (float)metadata.width, (float)metadata.height };
@@ -271,9 +314,11 @@ std::string Sprite::ResolveTexturePath(const std::string& fileName) {
 	// 配置JSONはSpriteディレクトリ相対、実行時コードはResourcesからのパスも許容する。
 	std::string path = fileName;
 	std::replace(path.begin(), path.end(), '\\', '/');
+
 	while (path.rfind("./", 0) == 0) {
 		path.erase(0, 2);
 	}
+
 	return path.rfind("Resources/", 0) == 0 ? path : "Resources/sprite/" + path;
 }
 
@@ -282,7 +327,8 @@ std::string Sprite::ResolveTexturePath(const std::string& fileName) {
 /// アニメーションの設定
 /// </summary>
 void Sprite::SetAnimation(int frameCount, float duration, bool loop) {
-	if (textureHandle_ == 0) return;
+	if (textureHandle_ == 0)
+		return;
 
 	totalFrames_ = (frameCount > 0) ? frameCount : 1;
 	frameDuration_ = duration;
@@ -321,11 +367,13 @@ uint64_t Sprite::EnsureReplayId() {
 	if (replayId_ == 0) {
 		replayId_ = gNextSpriteReplayId.fetch_add(1, std::memory_order_relaxed);
 	}
+
 	return replayId_;
 }
 
 Sprite::ReplayState Sprite::CaptureReplayState() const {
 	ReplayState state;
+
 	// 見た目の状態だけでなく、アニメーション進行と親子関係のIDも保存する。
 	state.position = position_;
 	state.rotation = rotation_;
@@ -410,6 +458,7 @@ void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {
 
 	if (parent_) {
 		auto& siblings = parent_->children_;
+
 		if (std::find(siblings.begin(), siblings.end(), this) == siblings.end()) {
 			siblings.push_back(this);
 		}

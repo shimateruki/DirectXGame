@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f3de98747e4446deace548ed0c157b44",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/TutorialTerrain/tutorial_grass_orm.png",
+  "version": 1
+}

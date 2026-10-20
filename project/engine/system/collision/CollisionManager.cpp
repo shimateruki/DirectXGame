@@ -16,6 +16,7 @@ void CollisionManager::SetGridSize(float size) {
     if (!std::isfinite(size) || size <= 0.0f || size == gridSize_) {
         return;
     }
+
     // セル幅が変わると既存の静的オブジェクトのセル ID も変わります。
     gridSize_ = size;
     needsStaticGridRebuild_ = true;
@@ -28,12 +29,15 @@ bool IsCollisionActive(engine::Object3d* object) {
     if (!object || !object->GetCollider()) {
         return false;
     }
+
     if (object->GetColliderType() == ColliderType::kNone) {
         return false;
     }
+
     if (object->GetCollisionAttribute() == 0 || object->GetCollisionMask() == 0) {
         return false;
     }
+
     return true;
 }
 
@@ -42,6 +46,7 @@ std::pair<engine::Object3d*, engine::Object3d*> MakeContactPair(engine::Object3d
     if (std::less<engine::Object3d*>{}(objectB, objectA)) {
         std::swap(objectA, objectB);
     }
+
     return { objectA, objectB };
 }
 
@@ -57,15 +62,18 @@ bool IsInIgnoredHierarchy(engine::Object3d* object, engine::Object3d* ignoredRoo
             return true;
         }
     }
+
     return false;
 }
 
 engine::Vector3 SafeNormalize(const engine::Vector3& value) {
     // 長さゼロのレイで NaN を広めず、呼び出し側へ無効な方向を返す。
     const float length = std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
+
     if (length <= 0.000001f) {
         return { 0.0f, 0.0f, 0.0f };
     }
+
     return value / length;
 }
 }
@@ -74,15 +82,19 @@ void CollisionManager::AddObject(engine::Object3d* object) {
     if (!object || std::find(objects_.begin(), objects_.end(), object) != objects_.end()) {
         return;
     }
+
     objects_.push_back(object);
+
     // 静的グリッドの再構築が必要
     needsStaticGridRebuild_ = true;
 }
 
 void CollisionManager::RemoveObject(engine::Object3d* object) {
     auto it = std::find(objects_.begin(), objects_.end(), object);
+
     if (it != objects_.end()) {
         objects_.erase(it);
+
         // 静的グリッドの再構築が必要
         needsStaticGridRebuild_ = true;
     }
@@ -96,6 +108,7 @@ void CollisionManager::RemoveObject(engine::Object3d* object) {
             }
         }
     };
+
     removeContacts(previousContacts_);
     removeContacts(currentContacts_);
 }
@@ -246,11 +259,14 @@ void CollisionManager::Update() {
 
                     // --- 4a. 「動的 vs 動的」チェック ---
                     auto it_dynamic = grid_.find(cellID);
+
                     if (it_dynamic != grid_.end()) {
                         std::list<engine::Object3d*>& cellObjects = it_dynamic->second;
+
                         for (engine::Object3d* objB : cellObjects) {
 
-                            if (objA == objB || !IsCollisionActive(objB)) continue;
+                            if (objA == objB || !IsCollisionActive(objB))
+                                continue;
 
                             const auto pair = MakeContactPair(objA, objB);
                             engine::Object3d* pairA = pair.first;
@@ -267,10 +283,14 @@ void CollisionManager::Update() {
 
                     // --- 4b. 「動的 vs 静的」チェック ---
                     auto it_static = staticGrid_.find(cellID);
+
                     if (it_static != staticGrid_.end()) {
                         std::list<engine::Object3d*>& cellObjects = it_static->second;
+
                         for (engine::Object3d* objB : cellObjects) {
-                            if (!IsCollisionActive(objB)) continue;
+                            if (!IsCollisionActive(objB))
+                                continue;
+
                             // 既存の地形押し戻しは動的オブジェクトを先に通知し、
                             // 占有セルごとに再評価する順序を前提に調整されています。
                             CheckCollisionPair(objA, objB);
@@ -291,6 +311,7 @@ void CollisionManager::CheckCollisionPair(engine::Object3d* objA, engine::Object
     if (!IsCollisionActive(objA) || !IsCollisionActive(objB)) {
         return;
     }
+
     // 衝突フィルタリング
     if (!((objA->GetCollisionMask() & objB->GetCollisionAttribute()) &&
         (objB->GetCollisionMask() & objA->GetCollisionAttribute()))) {
@@ -300,11 +321,13 @@ void CollisionManager::CheckCollisionPair(engine::Object3d* objA, engine::Object
     // 実際に形状が重なっている場合だけOnCollisionを呼び出す
     Collider* colliderA = objA->GetCollider();
     Collider* colliderB = objB->GetCollider();
+
     if (!colliderA || !colliderB) {
         return;
     }
 
     const CollisionInfo collisionInfo = colliderA->CheckCollision(colliderB);
+
     if (!collisionInfo.isColliding) {
         return;
     }
@@ -315,9 +338,11 @@ void CollisionManager::CheckCollisionPair(engine::Object3d* objA, engine::Object
     const auto pair = MakeContactPair(objA, objB);
     ContactState state;
     state.firstInfo = collisionInfo;
+
     if (pair.first != objA) {
         state.firstInfo.normal = state.firstInfo.normal * -1.0f;
     }
+
     state.isTrigger = IsTriggerObject(objA) || IsTriggerObject(objB);
     currentContacts_[pair] = state;
 }
@@ -326,7 +351,8 @@ void CollisionManager::DispatchContactEvents() {
     // 前フレームとの集合差で Enter・Stay・Exit を決め、両当事者へ通知する。
     const auto dispatch = [](engine::Object3d* self, engine::Object3d* other, CollisionInfo info,
         CollisionEventPhase phase, bool isTrigger) {
-        if (!self || !other) return;
+        if (!self || !other)
+            return;
         CollisionEvent event;
         event.self = self;
         event.other = other;
@@ -335,11 +361,13 @@ void CollisionManager::DispatchContactEvents() {
         event.isTrigger = isTrigger;
 
         if (isTrigger) {
-            if (phase == CollisionEventPhase::Enter) self->OnTriggerEnter(event);
+            if (phase == CollisionEventPhase::Enter)
+                self->OnTriggerEnter(event);
             else if (phase == CollisionEventPhase::Stay) self->OnTriggerStay(event);
             else self->OnTriggerExit(event);
         } else {
-            if (phase == CollisionEventPhase::Enter) self->OnCollisionEnter(event);
+            if (phase == CollisionEventPhase::Enter)
+                self->OnCollisionEnter(event);
             else if (phase == CollisionEventPhase::Stay) self->OnCollisionStay(event);
             else self->OnCollisionExit(event);
         }
@@ -355,7 +383,8 @@ void CollisionManager::DispatchContactEvents() {
     }
 
     for (const auto& [pair, state] : previousContacts_) {
-        if (currentContacts_.count(pair)) continue;
+        if (currentContacts_.count(pair))
+            continue;
         dispatch(pair.first, pair.second, state.firstInfo, CollisionEventPhase::Exit, state.isTrigger);
         CollisionInfo secondInfo = state.firstInfo;
         secondInfo.normal = secondInfo.normal * -1.0f;
@@ -383,6 +412,7 @@ float IntersectRayAABB(const engine::Vector3& start, const engine::Vector3& dire
         (aabb.min.y - start.y) * invDir.y,
         (aabb.min.z - start.z) * invDir.z
     };
+
     engine::Vector3 tMax = {
         (aabb.max.x - start.x) * invDir.x,
         (aabb.max.y - start.y) * invDir.y,
@@ -395,6 +425,7 @@ float IntersectRayAABB(const engine::Vector3& start, const engine::Vector3& dire
         std::min(tMin.y, tMax.y),
         std::min(tMin.z, tMax.z)
     };
+
     engine::Vector3 tFar = {
         std::max(tMin.x, tMax.x),
         std::max(tMin.y, tMax.y),
@@ -444,13 +475,18 @@ float IntersectRayOBB(const engine::Vector3& start, const engine::Vector3& direc
             float t1 = (e + size) / f;
             float t2 = (e - size) / f;
 
-            if (t1 > t2) std::swap(t1, t2);
+            if (t1 > t2)
+                std::swap(t1, t2);
 
-            if (t1 > tMin) tMin = t1;
-            if (t2 < tMax) tMax = t2;
+            if (t1 > tMin)
+                tMin = t1;
+            if (t2 < tMax)
+                tMax = t2;
 
-            if (tMin > tMax) return std::numeric_limits<float>::max(); // 衝突しない
-            if (tMax < 0.0f) return std::numeric_limits<float>::max(); // OBBがカメラの後ろにある
+            if (tMin > tMax)
+                return std::numeric_limits<float>::max(); // 衝突しない
+            if (tMax < 0.0f)
+                return std::numeric_limits<float>::max(); // OBBがカメラの後ろにある
         }
         else {
             // レイが面とほぼ平行な場合、OBBの範囲外にいるなら当たらない
@@ -461,7 +497,8 @@ float IntersectRayOBB(const engine::Vector3& start, const engine::Vector3& direc
     }
 
     // カメラ(始点)がすでにOBBの中にめり込んでいる場合は即座に押し出す
-    if (tMin < 0.0f) return 0.0f;
+    if (tMin < 0.0f)
+        return 0.0f;
 
     return tMin;
 }
@@ -470,6 +507,7 @@ float IntersectRaySphere(const engine::Vector3& start, const engine::Vector3& di
     // 二次方程式の最小の非負解を採り、弾や視線が球へ入る最初の位置を返す。
     engine::Vector3 m = start - center;
     float a = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+
     if (a <= 1e-6f) {
         return std::numeric_limits<float>::max();
     }
@@ -477,6 +515,7 @@ float IntersectRaySphere(const engine::Vector3& start, const engine::Vector3& di
     float b = 2.0f * (m.x * direction.x + m.y * direction.y + m.z * direction.z);
     float c = (m.x * m.x + m.y * m.y + m.z * m.z) - radius * radius;
     float discriminant = b * b - 4.0f * a * c;
+
     if (discriminant < 0.0f) {
         return std::numeric_limits<float>::max();
     }
@@ -489,9 +528,11 @@ float IntersectRaySphere(const engine::Vector3& start, const engine::Vector3& di
     if (t0 >= 0.0f) {
         return t0;
     }
+
     if (t1 >= 0.0f) {
         return 0.0f;
     }
+
     return std::numeric_limits<float>::max();
 }
 
@@ -516,6 +557,7 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
         // =========================================================
         bool isPlayerPart = false;
         engine::Object3d* current = object;
+
         while (current) {
             // クラス名が "Player"、または名前(Name)に "Player" が含まれていたら除外
             if (current->GetClassName() == "Player" ||
@@ -523,6 +565,7 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
                 isPlayerPart = true;
                 break;
             }
+
             current = current->GetParent();
         }
 
@@ -535,6 +578,7 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
         if (!((object->GetCollisionAttribute()) & mask)) {
             continue; // 対象外 
         }
+
             // =========================================================
                // (2) 形状判定 (AABB と OBB に対応)
                // =========================================================
@@ -565,7 +609,11 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
             }
 
             engine::Vector3 surfaceNormal{};
+            const bool useModelVolume = object->GetCollider() && object->GetCollider()->HasModelVolume();
+            if (useModelVolume && !object->GetCollider()->RaycastModelVolume(
+                    start, direction, closestHit.distance, distance, surfaceNormal)) continue;
             const bool useModelSurface = object->GetCollider() && object->GetCollider()->HasModelSurface() &&
+                !useModelVolume &&
                 direction.y < 0.0f && -direction.y > std::sqrt(direction.x * direction.x + direction.z * direction.z);
             if (useModelSurface && !object->GetCollider()->RaycastModelSurface(
                     start, direction, closestHit.distance, distance, surfaceNormal)) {
@@ -574,18 +622,19 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
 
             // (4) 一番近いものを採用
             if (distance < closestHit.distance) {
-                if (object->GetCollider() && object->GetCollider()->GetConfig().footprint.size() >= 3 &&
+                if (!useModelVolume && object->GetCollider() && object->GetCollider()->GetConfig().footprint.size() >= 3 &&
                     !object->GetCollider()->ContainsFootprintPoint(start + direction * distance)) continue;
                 closestHit.isHit = true;
                 closestHit.distance = distance;
                 closestHit.hitObject = object;
                 closestHit.hitPoint = start + direction * distance;
 
-                if (useModelSurface) {
+                if (useModelSurface || useModelVolume) {
                     closestHit.normal = surfaceNormal;
                 } else if (colType == ColliderType::kSphere) {
                     engine::Vector3 normal = closestHit.hitPoint - object->GetWorldPosition();
                     float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+
                     if (length > 1e-6f) {
                         closestHit.normal = normal / length;
                     }
@@ -608,20 +657,27 @@ bool CollisionManager::PassesQueryFilter(engine::Object3d* object, const Physics
     if (!object || !object->GetCollider() || object->GetColliderType() == ColliderType::kNone) {
         return false;
     }
+
     if (!filter.includeDisabled && object->GetCollisionAttribute() == 0) {
         return false;
     }
+
     if (object->GetCollisionAttribute() != 0 &&
         (object->GetCollisionAttribute() & filter.mask) == 0) {
         return false;
     }
+
     if (!filter.includeTriggers && IsTriggerObject(object)) {
         return false;
     }
+
     if (filter.ignoredObject) {
-        if (object == filter.ignoredObject) return false;
-        if (filter.ignoreDescendants && IsInIgnoredHierarchy(object, filter.ignoredObject)) return false;
+        if (object == filter.ignoredObject)
+            return false;
+        if (filter.ignoreDescendants && IsInIgnoredHierarchy(object, filter.ignoredObject))
+            return false;
     }
+
     return true;
 }
 
@@ -632,13 +688,16 @@ RaycastHit CollisionManager::RaycastInternal(
     RaycastHit closestHit;
     closestHit.distance = (std::max)(0.0f, maxDistance);
     const engine::Vector3 rayDirection = SafeNormalize(direction);
-    if (engine::Math::Length(rayDirection) <= 0.000001f || maxDistance < 0.0f) return closestHit;
+    if (engine::Math::Length(rayDirection) <= 0.000001f || maxDistance < 0.0f)
+        return closestHit;
 
     for (engine::Object3d* object : objects_) {
-        if (!PassesQueryFilter(object, filter)) continue;
+        if (!PassesQueryFilter(object, filter))
+            continue;
 
         if (excludePlayerHierarchy) {
             bool isPlayerPart = false;
+
             for (engine::Object3d* current = object; current; current = current->GetParent()) {
                 if (current->GetClassName() == "Player" ||
                     current->GetName().find("Player") != std::string::npos) {
@@ -646,11 +705,14 @@ RaycastHit CollisionManager::RaycastInternal(
                     break;
                 }
             }
-            if (isPlayerPart) continue;
+
+            if (isPlayerPart)
+                continue;
         }
 
         const ColliderType colliderType = object->GetColliderType();
         float distance = std::numeric_limits<float>::max();
+
         if (colliderType == ColliderType::kAABB) {
             distance = IntersectRayAABB(start, rayDirection, object->GetAABB());
         } else if (colliderType == ColliderType::kOBB) {
@@ -663,14 +725,21 @@ RaycastHit CollisionManager::RaycastInternal(
         } else {
             continue;
         }
+
         engine::Vector3 surfaceNormal{};
+        // 外側の簡易形状で候補を絞り、モデル形状があるときだけ精密な交差で確定する。
+        const bool useModelVolume = object->GetCollider()->HasModelVolume();
+        if (useModelVolume && !object->GetCollider()->RaycastModelVolume(
+                start, rayDirection, closestHit.distance, distance, surfaceNormal)) continue;
         const bool useModelSurface = object->GetCollider()->HasModelSurface() &&
+            !useModelVolume &&
             rayDirection.y < 0.0f && -rayDirection.y >
             std::sqrt(rayDirection.x * rayDirection.x + rayDirection.z * rayDirection.z);
         if (useModelSurface && !object->GetCollider()->RaycastModelSurface(
                 start, rayDirection, closestHit.distance, distance, surfaceNormal)) continue;
-        if (distance > closestHit.distance) continue;
-        if (object->GetCollider() && object->GetCollider()->GetConfig().footprint.size() >= 3 &&
+        if (distance > closestHit.distance)
+            continue;
+        if (!useModelVolume && object->GetCollider() && object->GetCollider()->GetConfig().footprint.size() >= 3 &&
             !object->GetCollider()->ContainsFootprintPoint(start + rayDirection * distance)) continue;
 
         closestHit.isHit = true;
@@ -678,7 +747,8 @@ RaycastHit CollisionManager::RaycastInternal(
         closestHit.hitObject = object;
         closestHit.hitPoint = start + rayDirection * distance;
 
-        if (useModelSurface) {
+        // 精密形状が返した法線を優先し、簡易形状だけの場合は最も近い面から求める。
+        if (useModelSurface || useModelVolume) {
             closestHit.normal = surfaceNormal;
         } else if (colliderType == ColliderType::kSphere) {
             const AABB sphereBounds = object->GetAABB();
@@ -694,23 +764,30 @@ RaycastHit CollisionManager::RaycastInternal(
                 std::abs(closestHit.hitPoint.z - bounds.min.z),
                 std::abs(closestHit.hitPoint.z - bounds.max.z),
             };
+
             const engine::Vector3 normals[6] = {
                 { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 },
                 { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 },
             };
+
             int bestFace = 0;
+
             for (int face = 1; face < 6; ++face) {
-                if (faceDistances[face] < faceDistances[bestFace]) bestFace = face;
+                if (faceDistances[face] < faceDistances[bestFace])
+                    bestFace = face;
             }
+
             closestHit.normal = normals[bestFace];
         } else {
             const OBB bounds = object->GetOBB();
             const engine::Vector3 local = closestHit.hitPoint - bounds.center;
             float bestDistance = std::numeric_limits<float>::max();
+
             for (int axisIndex = 0; axisIndex < 3; ++axisIndex) {
                 const float halfSize = axisIndex == 0 ? bounds.size.x : axisIndex == 1 ? bounds.size.y : bounds.size.z;
                 const float projection = engine::Math::Dot(local, bounds.orientations[axisIndex]);
                 const float surfaceDistance = std::abs(halfSize - std::abs(projection));
+
                 if (surfaceDistance < bestDistance) {
                     bestDistance = surfaceDistance;
                     closestHit.normal = bounds.orientations[axisIndex] * (projection >= 0.0f ? 1.0f : -1.0f);
@@ -718,6 +795,7 @@ RaycastHit CollisionManager::RaycastInternal(
             }
         }
     }
+
     return closestHit;
 }
 
@@ -725,7 +803,8 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapSphere(
     const engine::Vector3& center, float radius, const PhysicsQueryFilter& filter) const {
     // 一時的な球コライダーで既存の形状判定を再利用し、重なった物を列挙する。
     std::vector<PhysicsOverlapHit> hits;
-    if (radius <= 0.0f) return hits;
+    if (radius <= 0.0f)
+        return hits;
 
     Transform queryTransform;
     queryTransform.translate = center;
@@ -737,10 +816,14 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapSphere(
     queryCollider.SetConfig(queryConfig);
 
     for (engine::Object3d* object : objects_) {
-        if (!PassesQueryFilter(object, filter)) continue;
+        if (!PassesQueryFilter(object, filter))
+            continue;
         CollisionInfo collision = queryCollider.CheckCollision(object->GetCollider());
-        if (collision.isColliding) hits.push_back({ object, collision });
+
+        if (collision.isColliding)
+            hits.push_back({ object, collision });
     }
+
     return hits;
 }
 
@@ -749,7 +832,8 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapAABB(
     // ワールド矩形の中心と半径を一時コライダーに変え、同じフィルタで問い合わせる。
     std::vector<PhysicsOverlapHit> hits;
     const engine::Vector3 halfSize = (bounds.max - bounds.min) * 0.5f;
-    if (halfSize.x < 0.0f || halfSize.y < 0.0f || halfSize.z < 0.0f) return hits;
+    if (halfSize.x < 0.0f || halfSize.y < 0.0f || halfSize.z < 0.0f)
+        return hits;
 
     Transform queryTransform;
     queryTransform.translate = (bounds.min + bounds.max) * 0.5f;
@@ -761,10 +845,14 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapAABB(
     queryCollider.SetConfig(queryConfig);
 
     for (engine::Object3d* object : objects_) {
-        if (!PassesQueryFilter(object, filter)) continue;
+        if (!PassesQueryFilter(object, filter))
+            continue;
         CollisionInfo collision = queryCollider.CheckCollision(object->GetCollider());
-        if (collision.isColliding) hits.push_back({ object, collision });
+
+        if (collision.isColliding)
+            hits.push_back({ object, collision });
     }
+
     return hits;
 }
 
@@ -773,15 +861,20 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapCapsule(
     const PhysicsQueryFilter& filter) const {
     // 線分上の球を重ねて近似し、同じ物への複数命中は最大侵入量にまとめる。
     std::unordered_map<engine::Object3d*, CollisionInfo> uniqueHits;
-    if (radius <= 0.0f) return {};
+
+    if (radius <= 0.0f)
+        return {};
 
     const engine::Vector3 segment = pointB - pointA;
     const float length = engine::Math::Length(segment);
     const int sampleCount = (std::max)(1, static_cast<int>(std::ceil(length / (std::max)(radius, 0.05f))));
+
     for (int sampleIndex = 0; sampleIndex <= sampleCount; ++sampleIndex) {
         const float t = static_cast<float>(sampleIndex) / static_cast<float>(sampleCount);
+
         for (const PhysicsOverlapHit& hit : OverlapSphere(pointA + segment * t, radius, filter)) {
             auto found = uniqueHits.find(hit.object);
+
             if (found == uniqueHits.end() || hit.collision.penetration > found->second.penetration) {
                 uniqueHits[hit.object] = hit.collision;
             }
@@ -790,7 +883,9 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapCapsule(
 
     std::vector<PhysicsOverlapHit> hits;
     hits.reserve(uniqueHits.size());
-    for (const auto& [object, collision] : uniqueHits) hits.push_back({ object, collision });
+
+    for (const auto& [object, collision] : uniqueHits)
+        hits.push_back({ object, collision });
     return hits;
 }
 
@@ -801,28 +896,37 @@ RaycastHit CollisionManager::SphereCast(
     RaycastHit hit;
     hit.distance = (std::max)(0.0f, maxDistance);
     const engine::Vector3 castDirection = SafeNormalize(direction);
-    if (radius <= 0.0f || engine::Math::Length(castDirection) <= 0.000001f || maxDistance < 0.0f) return hit;
+    if (radius <= 0.0f || engine::Math::Length(castDirection) <= 0.000001f || maxDistance < 0.0f)
+        return hit;
 
     const float stepLength = (std::max)(0.05f, radius * 0.5f);
     const int stepCount = (std::max)(1, static_cast<int>(std::ceil(maxDistance / stepLength)));
+
     for (int stepIndex = 0; stepIndex <= stepCount; ++stepIndex) {
         const float distance = (std::min)(maxDistance, stepLength * static_cast<float>(stepIndex));
         const engine::Vector3 center = start + castDirection * distance;
         const auto overlaps = OverlapSphere(center, radius, filter);
-        if (overlaps.empty()) continue;
+        if (overlaps.empty())
+            continue;
 
         const PhysicsOverlapHit* deepest = &overlaps.front();
+
         for (const PhysicsOverlapHit& overlap : overlaps) {
-            if (overlap.collision.penetration > deepest->collision.penetration) deepest = &overlap;
+            if (overlap.collision.penetration > deepest->collision.penetration)
+                deepest = &overlap;
         }
+
         PhysicsOverlapHit contact = *deepest;
         float hitDistance = distance;
         if (stepIndex > 0 && contact.object && contact.object->GetCollider() &&
-            contact.object->GetCollider()->HasModelSurface()) {
-            // 上面の高低差で粗い走査間隔のぶん沈まないよう、最初の接触位置を絞り込む。
+            (filter.refineSphereCastHit || contact.object->GetCollider()->HasModelSurface() ||
+             contact.object->GetCollider()->HasModelVolume())) {
+            // 弾はOBBの側面も絞り込み、最初に重なった粗い座標で壁へ埋まるのを防ぐ。
             float lower = stepLength * static_cast<float>(stepIndex - 1);
             float upper = distance;
-            for (int iteration = 0; iteration < 5; ++iteration) {
+
+            const int refinementCount = filter.refineSphereCastHit ? 8 : 5;
+            for (int iteration = 0; iteration < refinementCount; ++iteration) {
                 const float middle = (lower + upper) * 0.5f;
                 const auto refined = OverlapSphere(start + castDirection * middle, radius, filter);
                 const auto sameObject = std::find_if(refined.begin(), refined.end(),
@@ -834,8 +938,10 @@ RaycastHit CollisionManager::SphereCast(
                     contact = *sameObject;
                 }
             }
+
             hitDistance = upper;
         }
+
         hit.isHit = true;
         hit.hitObject = contact.object;
         hit.distance = hitDistance;
@@ -843,6 +949,7 @@ RaycastHit CollisionManager::SphereCast(
         hit.hitPoint = start + castDirection * hitDistance - hit.normal * radius;
         return hit;
     }
+
     return hit;
 }
 
@@ -854,20 +961,26 @@ RaycastHit CollisionManager::CapsuleCast(
     RaycastHit hit;
     hit.distance = (std::max)(0.0f, maxDistance);
     const engine::Vector3 castDirection = SafeNormalize(direction);
-    if (radius <= 0.0f || engine::Math::Length(castDirection) <= 0.000001f || maxDistance < 0.0f) return hit;
+    if (radius <= 0.0f || engine::Math::Length(castDirection) <= 0.000001f || maxDistance < 0.0f)
+        return hit;
 
     const float stepLength = (std::max)(0.05f, radius * 0.5f);
     const int stepCount = (std::max)(1, static_cast<int>(std::ceil(maxDistance / stepLength)));
+
     for (int stepIndex = 0; stepIndex <= stepCount; ++stepIndex) {
         const float distance = (std::min)(maxDistance, stepLength * static_cast<float>(stepIndex));
         const engine::Vector3 offset = castDirection * distance;
         const auto overlaps = OverlapCapsule(pointA + offset, pointB + offset, radius, filter);
-        if (overlaps.empty()) continue;
+        if (overlaps.empty())
+            continue;
 
         const PhysicsOverlapHit* deepest = &overlaps.front();
+
         for (const PhysicsOverlapHit& overlap : overlaps) {
-            if (overlap.collision.penetration > deepest->collision.penetration) deepest = &overlap;
+            if (overlap.collision.penetration > deepest->collision.penetration)
+                deepest = &overlap;
         }
+
         hit.isHit = true;
         hit.hitObject = deepest->object;
         hit.distance = distance;
@@ -875,5 +988,6 @@ RaycastHit CollisionManager::CapsuleCast(
         hit.hitPoint = (pointA + pointB) * 0.5f + offset - hit.normal * radius;
         return hit;
     }
+
     return hit;
 }

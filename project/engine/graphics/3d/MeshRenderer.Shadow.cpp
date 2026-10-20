@@ -26,6 +26,7 @@ std::string NormalizeSlashes(std::string text) {
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
     // モデル名の形式ごとに、隣接ファイルとモデル別フォルダのLOD定義を探す。
     std::vector<fs::path> candidates;
+
     if (modelName.empty()) {
         return candidates;
     }
@@ -50,6 +51,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     // 影の設定ファイルを検証し、失敗時は呼び出し元に読み込み失敗を伝える。
     std::ifstream file(path);
+
     if (!file) {
         return false;
     }
@@ -68,6 +70,7 @@ float ClampTextureTiling(float value) {
     if (!std::isfinite(value)) {
         return 1.0f;
     }
+
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
@@ -77,9 +80,12 @@ engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
 
-    if (a < b) std::swap(a, b);
-    if (a < c) std::swap(a, c);
-    if (b < c) std::swap(b, c);
+    if (a < b)
+        std::swap(a, b);
+    if (a < c)
+        std::swap(a, c);
+    if (b < c)
+        std::swap(b, c);
 
     return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
 }
@@ -89,17 +95,20 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
     // Map失敗時にリソースとポインタを破棄し、影用の不完全な定数バッファを残さない。
     data = nullptr;
     resource.Reset();
+
     if (!dxCommon) {
         return false;
     }
 
     resource = dxCommon->CreateBufferResource(size);
+
     if (!resource) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
         return false;
     }
 
     HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
+
     if (FAILED(hr) || !data) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
         resource.Reset();
@@ -122,15 +131,18 @@ void MeshRenderer::DrawShadow() {
 }
 
 void MeshRenderer::SetShadowCommonState() {
-    if (!common_) return;
+    if (!common_)
+        return;
     common_->SetShadowGraphicsCommand();
     common_->SetShadowPipelineState();
 }
 
 void MeshRenderer::DrawShadowOnly() {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !shadowWvpResource_ || !materialResource_ || !materialData_) return;
+    if (!drawModel || !common_ || !shadowWvpResource_ || !materialResource_ || !materialData_)
+        return;
     drawModel->PrepareComputeSkinning();
+
     // Compute実行でルートシグネチャとPSOが変わるため、影描画の状態を復元します。
     common_->SetShadowGraphicsCommand();
     const bool foliage = materialData_->materialType == 30 || materialData_->materialType == 31;
@@ -143,7 +155,8 @@ void MeshRenderer::DrawShadowOnly() {
 
 void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !HasRequiredBuffers() || !localFogResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !localFogResource_)
+        return;
 
     common_->SetLocalFogGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();

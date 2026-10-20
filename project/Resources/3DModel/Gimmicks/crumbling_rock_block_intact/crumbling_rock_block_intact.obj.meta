@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d51637a9ffad545890e1ae5d8ac4d2bd",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/crumbling_rock_block_intact/crumbling_rock_block_intact.obj",
+  "version": 1
+}

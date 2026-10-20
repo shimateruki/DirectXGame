@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e7becd262a445fc6a795c2a2ff757208",
+  "importer": "ModelImporter",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "source": "Resources/3DModel/Gimmicks/sinking_basalt_short/sinking_basalt_short_pbr.gltf",
+  "version": 1
+}

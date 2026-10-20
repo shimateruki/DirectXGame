@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickDashPanel::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickDashPanel::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 地面として接触し、踏んだ時の光が読める材質を既定にする。
     BaseGimmick::Initialize(common, modelName);
 
@@ -61,8 +61,10 @@ bool GimmickDashPanel::OnCollision(engine::Object3d* other) {
         return true;
 
     CollisionInfo info = CheckCollision(other);
+
     if (info.isColliding && info.normal.y < -0.5f) {
         player->ApplyDashPanelBoost(0.9f, 2.15f, 0.32f);
+
         if (activationCooldown_ <= 0.0f) {
             activationPulse_ = 1.0f;
             activationCooldown_ = 0.20f;

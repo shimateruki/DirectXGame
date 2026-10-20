@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "06413093c3c9533bb8086a6f7657ed56",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_BlinkIntro_Detail.obj",
+  "version": 1
+}

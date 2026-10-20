@@ -71,6 +71,28 @@ float4 main(VSOutput input) : SV_TARGET
     // SV_POSITION provides rasterized coordinates and depth without an extra divide.
     clip(rawSceneDepth - input.pos.z + 0.00001f);
 
+    // Water jets share the liquid mesh pass, but never use the lava palette.
+    // World-height flow avoids stretched noise as the lift extends the column.
+    if (effectType > 5.5f && effectType < 7.5f)
+    {
+        float3 n = MagmaUnit(input.normal, float3(0, 1, 0));
+        float3 v = MagmaUnit(cameraWorldPosition - input.worldPos, n);
+        float rim = pow(1.0f - saturate(dot(n, v)), 3.0f);
+        float2 p = float2(atan2(input.localPos.z, input.localPos.x) * 3.0f,
+                          input.worldPos.y * 0.45f - time * 5.0f);
+        float noise = MagmaNoise(p);
+        float strands = smoothstep(.60f, .83f, noise);
+        float3 water = lerp(MagmaLinearColor(float3(.06f, .56f, .78f)),
+                            MagmaLinearColor(float3(.38f, .87f, .98f)), .30f + .55f * rim);
+        float foam = strands * .55f + rim * .24f;
+        if (effectType > 6.5f)
+            foam = .15f + rim * .60f;
+        else
+            foam += smoothstep(.84f, 1.0f, input.localPos.y) * .35f;
+        water = lerp(water, MagmaLinearColor(float3(.90f, .99f, 1.0f)), saturate(foam));
+        return float4(water, saturate(color.a * (.72f + rim * .20f + strands * .08f)));
+    }
+
     // Living magma slime: the body uses local height, the geometric face uses a UV tag.
     // Keep the submerged portion hidden in both anticipation and airborne states.
     if (effectType > 4.5f && effectType < 5.5f)

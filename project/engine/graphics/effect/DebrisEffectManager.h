@@ -14,41 +14,52 @@
 #include <vector>
 #include <wrl.h>
 
-class Object3dCommon;
+namespace engine { class Object3dCommon; }
 struct ID3D12Resource;
 
 /// <summary>破片の発生数、飛散速度、重力、衝突、見た目をまとめたプリセット設定。</summary>
 struct DebrisEffectConfig {
     std::string name = "rock_burst";
     std::vector<std::string> modelNames = { "Primitives/cube" };
+
     int spawnCount = 18;
     engine::Vector3 spawnOffset = { 0.0f, 0.4f, 0.0f };
     engine::Vector3 spawnBoxHalfExtents = { 0.0f, 0.0f, 0.0f };
+
     engine::Vector3 baseDirection = { 0.0f, 0.0f, 1.0f };
     float horizontalSpread = 1.0f;
     float verticalMin = 0.25f;
     float verticalMax = 0.9f;
+
     float speedMin = 7.0f;
     float speedMax = 16.0f;
+
     float angularSpeedMin = 3.0f;
     float angularSpeedMax = 12.0f;
+
     float scaleMin = 0.15f;
     float scaleMax = 0.45f;
+
     float lifetimeMin = 1.0f;
     float lifetimeMax = 1.8f;
+
     float gravity = 28.0f;
     float airDrag = 0.08f;
     float restitution = 0.35f;
     float friction = 0.78f;
     float groundY = 0.0f;
+
     float fadeStartRatio = 0.72f;
+
     engine::Vector4 color = { 0.62f, 0.55f, 0.48f, 1.0f };
     int materialType = 0;
     float roughness = 0.5f;
     float metallic = 0.0f;
+
     bool enableEnvMap = false;
     float envIntensity = 1.0f;
     float emissive = 0.0f;
+
     bool collideGround = true;
     bool shrinkOnFade = true;
 };
@@ -60,7 +71,7 @@ public:
     static DebrisEffectManager* GetInstance();
 
     /// <summary>破片描画に必要な3D共通機能とGPUリソースを準備する。</summary>
-    void Initialize(Object3dCommon* common);
+    void Initialize(engine::Object3dCommon* common);
 
     /// <summary>生存中の破片の移動、回転、衝突とフェードを更新する。</summary>
     void Update(float deltaTime);
@@ -119,26 +130,35 @@ private:
         Model* model = nullptr;
         engine::Vector3 position = { 0.0f, 0.0f, 0.0f };
         engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+
         Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource;
         Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource;
         Microsoft::WRL::ComPtr<ID3D12Resource> materialResource;
+
         MeshRenderer::TransformationMatrix* wvpData = nullptr;
         MeshRenderer::TransformationMatrix* shadowWvpData = nullptr;
         MeshRenderer::MaterialData* materialData = nullptr;
+
         engine::Vector3 velocity = { 0.0f, 0.0f, 0.0f };
         engine::Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+
         float age = 0.0f;
         float lifetime = 1.0f;
+
         float baseScale = 1.0f;
         float currentScale = 1.0f;
+
         float gravity = 28.0f;
         float airDrag = 0.08f;
         float restitution = 0.35f;
         float friction = 0.78f;
         float groundY = 0.0f;
+
         float fadeStartRatio = 0.72f;
+
         bool collideGround = true;
         bool shrinkOnFade = true;
+
         bool sleeping = false;
         bool matrixDirty = true;
     };
@@ -146,21 +166,27 @@ private:
     DebrisEffectManager();
 
     // 描画基盤を解決し、プールから破片を確保・返却する。
-    Object3dCommon* ResolveCommon();
+    engine::Object3dCommon* ResolveCommon();
+
     DebrisPiece AcquirePiece();
+
     void RecyclePiece(size_t index);
 
     // 確保した破片のGPU定数を準備し、移動後の描画行列を更新する。
     bool InitializePieceResources(DebrisPiece& piece, const DebrisEffectConfig& config);
+
     void UpdatePieceMatrix(DebrisPiece& piece, const engine::Matrix4x4& viewProjection, const engine::Matrix4x4* lightViewProjection);
 
     // プリセットの乱数範囲、方向、読み込みパスを決める。
     float RandomRange(float minValue, float maxValue);
+
     int RandomIndex(int maxExclusive);
+
     engine::Vector3 RandomDirection(const DebrisEffectConfig& config);
+
     std::string ResolvePresetPath(const std::string& presetName) const;
 
-    Object3dCommon* common_ = nullptr;
+    engine::Object3dCommon* common_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
     MeshRenderer::CameraForGPU* cameraData_ = nullptr;
     std::vector<DebrisPiece> activePieces_;

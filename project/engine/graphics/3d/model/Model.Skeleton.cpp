@@ -43,9 +43,11 @@ const std::vector<Model::Joint>& Model::GetJoints() const {
 // ジョイント名からインデックスを探し、存在しない場合は-1を返す。
 int Model::FindJointIndex(const std::string& name) const {
     auto it = modelData_.skeleton.jointMap.find(name);
+
     if (it == modelData_.skeleton.jointMap.end()) {
         return -1;
     }
+
     return it->second;
 }
 
@@ -54,6 +56,7 @@ Model::QuaternionTransform Model::GetJointTransform(int jointIndex) const {
     if (jointIndex < 0 || jointIndex >= static_cast<int>(modelData_.skeleton.joints.size())) {
         return {};
     }
+
     return modelData_.skeleton.joints[jointIndex].transform;
 }
 
@@ -126,6 +129,7 @@ Model::Skeleton Model::CreateSkeleton(const Node& rootNode) {
 // 全ジョイントのローカル行列とスケルトン空間行列を親子順に更新する。
 void Model::UpdateSkeleton(Skeleton& skeleton) {
     engine::Math math;
+
     // すべてのJointを更新。親が若いので通常ループで処理可能になっている
     for (Joint& joint : skeleton.joints) {
         if (joint.parent) {
@@ -141,6 +145,7 @@ void Model::UpdateSkeleton(Skeleton& skeleton) {
 // アニメーションカーブをジョイントへ適用し、現在時刻の姿勢を作成する。
 void Model::ApplyAnimationToSkeleton(Skeleton& skeleton, const Animation& animation, float time) {
     engine::Math math;
+
     for (Joint& joint : skeleton.joints) {
         // 対象のJointのAnimationがあれば、値の適用を行う。
         auto it = std::find_if(animation.nodeAnimations.begin(), animation.nodeAnimations.end(),
@@ -170,6 +175,7 @@ void Model::ApplyBlendedAnimation(
     float blendWeight) {
     engine::Math math;
     const float weight = std::clamp(blendWeight, 0.0f, 1.0f);
+
     for (Joint& joint : modelData_.skeleton.joints) {
         const auto FindNodeAnimation = [&joint](const Animation& animation) -> const NodeAnimation* {
             const auto it = std::find_if(
@@ -177,8 +183,10 @@ void Model::ApplyBlendedAnimation(
                 [&joint](const NodeAnimation& node) { return node.name == joint.name; });
             return it == animation.nodeAnimations.end() ? nullptr : &(*it);
         };
+
         const NodeAnimation* fromNode = FindNodeAnimation(fromAnimation);
         const NodeAnimation* toNode = FindNodeAnimation(toAnimation);
+
         if (!fromNode && !toNode) {
             continue;
         }
@@ -186,9 +194,11 @@ void Model::ApplyBlendedAnimation(
         auto SampleScale = [](const NodeAnimation* node, float time, const engine::Vector3& fallback) {
             return node && !node->scale.empty() ? CalculateValue(node->scale, time) : fallback;
         };
+
         auto SampleTranslate = [](const NodeAnimation* node, float time, const engine::Vector3& fallback) {
             return node && !node->translate.empty() ? CalculateValue(node->translate, time) : fallback;
         };
+
         auto SampleRotate = [](const NodeAnimation* node, float time, const engine::Quaternion& fallback) {
             return node && !node->rotate.empty() ? CalculateValue(node->rotate, time) : fallback;
         };
@@ -205,11 +215,13 @@ void Model::ApplyBlendedAnimation(
             std::lerp(fromScale.y, toScale.y, weight),
             std::lerp(fromScale.z, toScale.z, weight)
         };
+
         joint.transform.translate = {
             std::lerp(fromTranslate.x, toTranslate.x, weight),
             std::lerp(fromTranslate.y, toTranslate.y, weight),
             std::lerp(fromTranslate.z, toTranslate.z, weight)
         };
+
         joint.transform.rotate = engine::Math::Slerp(fromRotate, toRotate, weight);
 
         const engine::Matrix4x4 scaleMatrix = math.MakeScaleMatrix(joint.transform.scale);

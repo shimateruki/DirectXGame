@@ -36,8 +36,11 @@ public:
 
 private:
     TextureManager() = default;
+
     ~TextureManager() = default;
+
     TextureManager(const TextureManager&) = delete;
+
     const TextureManager& operator=(const TextureManager&) = delete;
 
 public:

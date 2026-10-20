@@ -25,6 +25,7 @@ std::string NormalizeSlashes(std::string text) {
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
     // モデル名の拡張子有無を吸収してLOD定義の候補を列挙する。
     std::vector<fs::path> candidates;
+
     if (modelName.empty()) {
         return candidates;
     }
@@ -49,6 +50,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     // LOD設定の構文が不正な場合は失敗を返し、呼び出し元で適用を止められるようにする。
     std::ifstream file(path);
+
     if (!file) {
         return false;
     }
@@ -67,6 +69,7 @@ float ClampTextureTiling(float value) {
     if (!std::isfinite(value)) {
         return 1.0f;
     }
+
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
@@ -76,9 +79,12 @@ engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
 
-    if (a < b) std::swap(a, b);
-    if (a < c) std::swap(a, c);
-    if (b < c) std::swap(b, c);
+    if (a < b)
+        std::swap(a, b);
+    if (a < c)
+        std::swap(a, c);
+    if (b < c)
+        std::swap(b, c);
 
     return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
 }
@@ -88,17 +94,20 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
     // Resource生成かMapに失敗した場合は参照を初期化し、LOD描画へ不正なGPU値を渡さない。
     data = nullptr;
     resource.Reset();
+
     if (!dxCommon) {
         return false;
     }
 
     resource = dxCommon->CreateBufferResource(size);
+
     if (!resource) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
         return false;
     }
 
     HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
+
     if (FAILED(hr) || !data) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
         resource.Reset();
@@ -121,6 +130,7 @@ void MeshRenderer::SetModel(Model* model) {
     model_ = model;
     modelName_.clear();
     ClearLodLevels();
+
     if (model_ && materialData_) {
         if (const Model::MaterialData* material = model_->GetPrimaryMaterialData()) {
             SetColor(material->baseColorFactor);
@@ -135,6 +145,7 @@ void MeshRenderer::SetModel(const std::string& modelName) {
     // 基本モデルの材質を適用してから、同名モデルに付随するLOD定義を読み込みます。
     modelName_ = modelName;
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
+
     if (model_ && materialData_) {
         if (const Model::MaterialData* material = model_->GetPrimaryMaterialData()) {
             SetColor(material->baseColorFactor);
@@ -143,6 +154,7 @@ void MeshRenderer::SetModel(const std::string& modelName) {
             materialData_->enableNormalMap = material->hasNormalMap ? 1 : 0;
         }
     }
+
     LoadLodManifestForModel(modelName);
 }
 
@@ -154,9 +166,11 @@ void MeshRenderer::SetLodLevels(const std::vector<LodLevel>& levels) {
         if (level.level <= 0 || level.modelName.empty()) {
             continue;
         }
+
         if (!level.model) {
             level.model = ModelManager::GetInstance()->LoadModel(level.modelName);
         }
+
         if (level.model) {
             lodLevels_.push_back(level);
         }
@@ -177,6 +191,7 @@ void MeshRenderer::ClearLodLevels() {
 bool MeshRenderer::SetLodLevelDistance(int level, float distance) {
     // 距離を負にしないで、変更後は近い閾値から選択できる順序を保ちます。
     bool changed = false;
+
     for (auto& lod : lodLevels_) {
         if (lod.level == level) {
             lod.distance = (std::max)(0.0f, distance);
@@ -190,6 +205,7 @@ bool MeshRenderer::SetLodLevelDistance(int level, float distance) {
             return lhs.distance < rhs.distance;
         });
     }
+
     return changed;
 }
 
@@ -199,30 +215,37 @@ bool MeshRenderer::LoadLodManifestForModel(const std::string& modelName) {
 
     nlohmann::json manifest;
     bool loaded = false;
+
     for (const fs::path& candidate : MakeLodManifestCandidates(modelName)) {
         if (ReadJsonFile(candidate, manifest)) {
             loaded = true;
             break;
         }
     }
+
     if (!loaded || !manifest.contains("lods") || !manifest["lods"].is_array()) {
         return false;
     }
 
     std::vector<LodLevel> levels;
+
     for (const auto& lodJson : manifest["lods"]) {
-        if (!lodJson.is_object()) continue;
+        if (!lodJson.is_object())
+            continue;
         const int level = lodJson.value("level", 0);
-        if (level <= 0) continue;
+        if (level <= 0)
+            continue;
 
         const std::string lodModelName = lodJson.value("modelName", "");
-        if (lodModelName.empty()) continue;
+        if (lodModelName.empty())
+            continue;
 
         LodLevel levelData;
         levelData.level = level;
         levelData.modelName = NormalizeSlashes(lodModelName);
         levelData.distance = lodJson.value("distance", 0.0f);
         levelData.model = ModelManager::GetInstance()->LoadModel(levelData.modelName);
+
         if (levelData.model) {
             levels.push_back(levelData);
         }
@@ -241,6 +264,7 @@ int MeshRenderer::GetActiveLodLevel() const {
 std::string MeshRenderer::GetActiveModelName() const {
     // 実際に選ばれたLODの名前を返し、選択がなければ基本モデル名に戻します。
     ResolveDrawModel();
+
     if (activeLodLevel_ == 0) {
         return modelName_;
     }
@@ -250,12 +274,14 @@ std::string MeshRenderer::GetActiveModelName() const {
             return lod.modelName;
         }
     }
+
     return modelName_;
 }
 
 float MeshRenderer::GetCameraDistanceToObject() const {
     // ワールド行列の平行移動成分を使い、親Transformを含む実際の配置位置で測ります。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (!camera || !transform_) {
         return 0.0f;
     }
@@ -266,6 +292,7 @@ float MeshRenderer::GetCameraDistanceToObject() const {
         transform_->matWorld.m[3][1],
         transform_->matWorld.m[3][2]
     };
+
     const float dx = cameraPos.x - objectPos.x;
     const float dy = cameraPos.y - objectPos.y;
     const float dz = cameraPos.z - objectPos.z;
@@ -275,12 +302,14 @@ float MeshRenderer::GetCameraDistanceToObject() const {
 Model* MeshRenderer::ResolveDrawModel() const {
     // カメラ距離を満たした最後の閾値を選び、遠距離ほど低詳細モデルへ切り替えます。
     activeLodLevel_ = 0;
+
     if (!model_ || !lodEnabled_ || lodLevels_.empty()) {
         return model_;
     }
 
     const float distance = GetCameraDistanceToObject();
     Model* drawModel = model_;
+
     for (const auto& lod : lodLevels_) {
         if (distance >= lod.distance && lod.model) {
             drawModel = lod.model;

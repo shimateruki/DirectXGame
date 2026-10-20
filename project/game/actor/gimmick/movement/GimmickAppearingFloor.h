@@ -6,8 +6,10 @@ class GimmickAppearingFloor : public BaseGimmick {
   public:
     virtual ~GimmickAppearingFloor() = default;
 
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     void OnTrigger() override;
 
     std::unique_ptr<engine::Object3d> Clone() const override;

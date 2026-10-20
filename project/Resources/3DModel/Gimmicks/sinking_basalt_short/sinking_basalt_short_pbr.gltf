@@ -1,0 +1,175 @@
+{
+  "asset": {
+    "generator": "Khronos glTF Blender I/O v4.4.56",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "name": "sinking_basalt_short"
+    }
+  ],
+  "materials": [
+    {
+      "name": "sinking_basalt_short_PBR",
+      "normalTexture": {
+        "index": 0
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 1
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "occlusionTexture": {
+        "index": 2,
+        "strength": 1
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "sinking_basalt_short",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2,
+            "TANGENT": 3
+          },
+          "indices": 4,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ],
+  "images": [
+    {
+      "mimeType": "image/png",
+      "name": "normal",
+      "uri": "normal.png"
+    },
+    {
+      "mimeType": "image/png",
+      "name": "basecolor",
+      "uri": "basecolor.png"
+    },
+    {
+      "mimeType": "image/png",
+      "name": "orm",
+      "uri": "orm.png"
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 291,
+      "max": [
+        2.273981809616089,
+        0,
+        3.499885082244873
+      ],
+      "min": [
+        -2.2700676918029785,
+        -1.399999976158142,
+        -3.526278495788574
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 291,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 291,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 291,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5123,
+      "count": 1140,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 3492,
+      "byteOffset": 0,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 3492,
+      "byteOffset": 3492,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2328,
+      "byteOffset": 6984,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4656,
+      "byteOffset": 9312,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2280,
+      "byteOffset": 13968,
+      "target": 34963
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 16248,
+      "uri": "sinking_basalt_short_pbr.bin"
+    }
+  ]
+}

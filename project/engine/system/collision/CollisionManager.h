@@ -36,6 +36,7 @@ struct PhysicsQueryFilter {
     bool ignoreDescendants = true;
     bool includeTriggers = false;
     bool includeDisabled = false;
+    bool refineSphereCastHit = false; // 高速弾など、最初の接触位置を細かく求める場合に指定する。
 };
 
 /// <summary>Overlap Query の対象と、押し戻し情報です。</summary>
@@ -112,8 +113,11 @@ public:
 
 private:
     CollisionManager() = default;
+
     ~CollisionManager() = default;
+
     CollisionManager(const CollisionManager&) = delete;
+
     CollisionManager& operator=(const CollisionManager&) = delete;
 
     // セル幅と静的オブジェクト用の再構築フラグは同時に更新します。
@@ -124,6 +128,7 @@ private:
 
     // ワールド座標を整数のセル座標へ、またセル座標を格納用IDへ変換します。
     Vector3i GetGridIndices(const engine::Vector3& pos);
+
     int64_t GetGridIDFromIndices(int x, int y, int z);
 
     // 2 つの Collider を調べ、当フレームの接触ペアへ登録します。
@@ -157,6 +162,7 @@ private:
         CollisionInfo firstInfo;
         bool isTrigger = false;
     };
+
     std::unordered_map<std::pair<engine::Object3d*, engine::Object3d*>, ContactState, PairHash> previousContacts_;
     std::unordered_map<std::pair<engine::Object3d*, engine::Object3d*>, ContactState, PairHash> currentContacts_;
 };

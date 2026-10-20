@@ -12,13 +12,17 @@
 class GPUParticleEditor : public IEditable {
 public:
     void Initialize();
+
         // プレビュー再生やパラメータ変更をフレーム時間に合わせて更新します。
 void Update(float deltaTime, bool sceneIsPlaying = false);
+
         // 発生、速度、色、テクスチャなどの編集UIを描画します。
 void DrawImGui() override;
 
     void Save(const std::string& presetName);
+
     void Load(const std::string& presetName);
+
     std::string GetName() override { return "GPU Particle Editor"; }
 
 private:

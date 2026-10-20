@@ -1,4 +1,5 @@
 #include "GPUParticleEditor.h"
+#include "GPUParticlePresetJsonCodec.h"
 #include <imgui.h>
 #include <fstream>
 #include <json.hpp> // nlohmann/json
@@ -27,6 +28,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     const bool usePreviewStage = previewStage && previewStage->IsEnabled();
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
     GPUParticleManager* manager = GPUParticleManager::GetInstance();
+
     if (!usePreviewStage || !isThisEditorSelected) {
         manager->SetTimeScale(1.0f);
         return;
@@ -43,16 +45,19 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         const float clampedSeek = std::clamp(seekTime, 0.0f, previewDuration);
         const float previousScale = manager->GetTimeScale();
         manager->SetTimeScale(1.0f);
+
         // このループはManagerの時計を進める。GPU DispatchはDraw側であり、物理の固定刻み再計算ではない。
         // シーク後のGPU状態はEmit要求のinitialAgeで近似復元される。
         while (previewTime_ + (1.0f / 60.0f) < clampedSeek) {
             manager->UpdateEditorPreviewStep(1.0f / 60.0f);
             previewTime_ += 1.0f / 60.0f;
         }
+
         if (clampedSeek > previewTime_) {
             manager->UpdateEditorPreviewStep(clampedSeek - previewTime_);
             previewTime_ = clampedSeek;
         }
+
         manager->SetTimeScale(previousScale);
     };
 
@@ -61,12 +66,14 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         restartPreview(0.0f);
     }
+
     if (previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
         lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
         manager->ResetSimulation();
         previewTime_ = 0.0f;
         emitTimer_ = 0.0f;
     }
+
     if (previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
         lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
         restartPreview(previewStage->GetSeekTargetTime());
@@ -79,6 +86,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     // Loop発生の間隔もプレビュー速度に従わせる。
     if (config_.isLooping && scaledDelta > 0.0f) {
         emitTimer_ += scaledDelta;
+
         if (emitTimer_ >= (std::max)(0.01f, config_.emitInterval)) {
             EmitWithPreview();
             emitTimer_ = 0.0f;
@@ -87,6 +95,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
     if (scaledDelta > 0.0f) {
         previewTime_ += scaledDelta;
+
         if (previewTime_ >= previewDuration) {
             if (previewStage->IsLoopEnabled()) {
                 restartPreview(0.0f);
@@ -105,11 +114,14 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     std::vector<EffectPreviewStage::TimelineEvent> events;
     events.push_back({ "Spawn", 0.0f, 0.05f, engine::Vector4{ 0.35f, 0.85f, 1.0f, 1.0f } });
     events.push_back({ "Particle life", 0.0f, (std::min)(config_.emitLife, previewDuration), engine::Vector4{ 0.25f, 0.65f, 1.0f, 1.0f } });
+
     if (config_.isLooping) {
         events.push_back({ "Emit interval", 0.0f, (std::min)((std::max)(config_.emitInterval, 0.01f), previewDuration), engine::Vector4{ 0.55f, 0.95f, 0.75f, 1.0f } });
     }
+
     const uint32_t capacity = GPUParticleManager::ResolveParticleCapacity(config_);
     uint64_t estimatedParticleCount = static_cast<uint64_t>((std::max)(config_.emitCount, 0));
+
     if (config_.isLooping && config_.emitInterval > 0.0f) {
         const double batchesByLifetime = std::ceil(
             static_cast<double>(config_.emitLife) / config_.emitInterval);
@@ -149,9 +161,11 @@ void GPUParticleEditor::DrawImGui() {
     // ⚙️ システム設定
     if (ImGui::CollapsingHeader(ICON_FA_COGS " システム設定 (System)", ImGuiTreeNodeFlags_DefaultOpen)) {
         float timeScale = GPUParticleManager::GetInstance()->GetTimeScale();
+
         if (ImGui::DragFloat(ICON_FA_CLOCK " 全体再生速度 (Time Scale)", &timeScale, 0.05f, 0.0f, 5.0f)) {
             GPUParticleManager::GetInstance()->SetTimeScale(timeScale);
         }
+
         ImGui::Text("※0.5でスローモーション、2.0で倍速になります");
     }
 
@@ -159,12 +173,15 @@ void GPUParticleEditor::DrawImGui() {
         if (EffectPreviewStage::GetInstance()->IsEnabled()) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.7f, 1.0f), "Effect Preview Stage の原点を使用中");
         }
+
         ImGui::Checkbox("カメラの前に発生させる (Spawn in front of Camera)", &isPreviewMode_);
+
         if (isPreviewMode_) {
             ImGui::Indent();
             ImGui::DragFloat("カメラからの距離 (Distance)", &previewDistance_, 0.1f, 1.0f, 50.0f);
             ImGui::Unindent();
         }
+
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "※プレビュー用です。実際の座標は「発生位置(Position)」に保存されます");
     }
 
@@ -179,9 +196,11 @@ void GPUParticleEditor::DrawImGui() {
 
         if (ImGui::CollapsingHeader(ICON_FA_COMPRESS_ALT " コリジョン (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
             bool isCollide = config_.enableCollision != 0;
+
             if (ImGui::Checkbox("地形と衝突させる", &isCollide)) {
                 config_.enableCollision = isCollide ? 1 : 0;
             }
+
             if (isCollide) {
                 ImGui::DragFloat("跳ね返り係数 (Restitution)", &config_.restitution, 0.05f, 0.0f, 1.0f);
             }
@@ -224,6 +243,7 @@ void GPUParticleEditor::DrawImGui() {
             ImGui::DragFloat("厚み (Thickness)", &config_.emitArea.x, 0.1f, 0.0f, 50.0f);
             ImGui::DragFloat("輪郭の太さ (Line Thickness)", &config_.emitArea.y, 0.01f, 0.0f, 1.0f);
         }
+
         ImGui::Separator();
 
         ImGui::DragFloat3(ICON_FA_TACHOMETER_ALT " 初期速度 (Velocity)", &config_.emitVelocity.x, 0.1f);
@@ -233,16 +253,19 @@ void GPUParticleEditor::DrawImGui() {
         config_.maxParticles = (std::max)(config_.maxParticles, 0);
         const uint32_t resolvedCapacity = GPUParticleManager::ResolveParticleCapacity(config_);
         ImGui::TextDisabled("実行容量: %u particles / System", resolvedCapacity);
+
         if (config_.maxParticles > 0 && config_.maxParticles < config_.emitCount) {
             ImGui::TextColored(
                 ImVec4(1.0f, 0.55f, 0.2f, 1.0f),
                 "最大同時数が1回の発生数より小さいため、粒子が欠けます。");
         }
+
         if (config_.maxParticles == 0 && resolvedCapacity == GPUParticleSystem::kMaxParticles) {
             ImGui::TextColored(
                 ImVec4(1.0f, 0.55f, 0.2f, 1.0f),
                 "Auto容量が上限です。発生数・寿命を減らすか、Loop間隔を長くするとGPU負荷を下げられます。");
         }
+
         ImGui::TextDisabled("AutoはLoop時の同時生存数、単発時は6回分の重なりを見込んで計算します。");
         ImGui::DragFloat(ICON_FA_RANDOM " 速度のばらつき (Variance)", &config_.velocityVariance, 0.1f, 0.0f, 50.0f);
         ImGui::DragFloat(ICON_FA_SYNC " 回転スピード (Rot Speed)", &config_.rotSpeed, 0.05f, 0.0f, 20.0f);
@@ -263,19 +286,23 @@ void GPUParticleEditor::DrawImGui() {
                 filteredPaths.push_back(path);
             }
         }
+
         std::sort(filteredPaths.begin(), filteredPaths.end());
         int currentIndex = -1;
+
         for (int i = 0; i < static_cast<int>(filteredPaths.size()); ++i) {
             if (config_.texturePath == filteredPaths[i]) {
                 currentIndex = i;
                 break;
             }
         }
+
         if (VFXAssetPicker::DrawCombo(ICON_FA_IMAGE " テクスチャ画像", filteredPaths,
                                       currentIndex, textureSearch_, sizeof(textureSearch_))) {
             // テクスチャは次回の発生時に適用される。
             config_.texturePath = filteredPaths[currentIndex];
         }
+
         if (currentIndex < 0 && !config_.texturePath.empty()) {
             ImGui::TextDisabled("現在の画像: %s", config_.texturePath.c_str());
         }
@@ -301,7 +328,8 @@ void GPUParticleEditor::DrawImGui() {
             50.0f,
             3,
             [this](const VFXFloatCurve& value) {
-                if (value.keys.empty()) return;
+                if (value.keys.empty())
+                    return;
                 config_.baseSize = value.keys.front().value;
                 config_.endSize = value.keys.back().value;
                 if (value.keys.size() >= 3) {
@@ -327,7 +355,8 @@ void GPUParticleEditor::DrawImGui() {
             colorGradient,
             3,
             [this](const VFXColorGradient& value) {
-                if (value.keys.empty()) return;
+                if (value.keys.empty())
+                    return;
                 config_.baseColor = value.keys.front().color;
                 config_.endColor = value.keys.back().color;
                 if (value.keys.size() >= 3) {
@@ -363,6 +392,7 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::DragFloat("乱流・ノイズ (Turbulence)", &config_.envTurbulence, 0.1f, 0.0f, 100.0f);
         const char* fieldTypes[] = { "なし", "吸引 (Attract)", "渦 (Vortex)", "反発 (Repulse)" };
         ImGui::Combo("Fieldタイプ", &config_.fieldType, fieldTypes, IM_ARRAYSIZE(fieldTypes));
+
         if (config_.fieldType != 0) {
             ImGui::DragFloat3("Field位置（発生位置からの相対）", &config_.fieldPosition.x, 0.05f);
             ImGui::DragFloat("Field強度", &config_.fieldStrength, 0.1f, -100.0f, 100.0f);
@@ -370,8 +400,10 @@ void GPUParticleEditor::DrawImGui() {
             ImGui::DragFloat("Field減衰", &config_.fieldFalloff, 0.05f, 0.05f, 8.0f);
             ImGui::TextDisabled("吸引・渦・反発をGPU上で各粒子へ適用します。");
         }
+
         ImGui::DragFloat(ICON_FA_FEATHER " 地形との馴染み (Soft Fade)", &config_.softParticleFade, 0.1f, 0.1f, 20.0f);
     }
+
     ImGui::Separator();
 
     // 🎮 エディタ操作
@@ -381,6 +413,7 @@ void GPUParticleEditor::DrawImGui() {
         }
 
         ImGui::Checkbox(ICON_FA_REDO " 連続発生テスト (Loop Emit)", &config_.isLooping);
+
         if (config_.isLooping) {
             ImGui::Indent();
             ImGui::DragFloat("発生間隔 (Interval)", &config_.emitInterval, 0.01f, 0.01f, 2.0f);
@@ -413,7 +446,9 @@ void GPUParticleEditor::DrawImGui() {
             config_.texturePath = "Resources/sprite/particle/particle.png";
             config_.rotSpeed = 5.0f;
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("✨ コイン待機 (Idle)", ImVec2(150, 30))) {
             config_.blendModeIndex = 0; // Additive
             config_.shapeType = 1;      // Sphere
@@ -435,7 +470,9 @@ void GPUParticleEditor::DrawImGui() {
             config_.texturePath = "Resources/sprite/particle/particle.png";
             config_.rotSpeed = 2.0f;
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("🌟 コイン取得 (Burst)", ImVec2(150, 30))) {
             config_.blendModeIndex = 0; // Additive
             config_.shapeType = 1;      // Sphere
@@ -481,7 +518,9 @@ void GPUParticleEditor::DrawImGui() {
             config_.texturePath = "Resources/sprite/particle/white.png";
             config_.rotSpeed = 1.0f;
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("🔥 焚き火 (Fire)", ImVec2(120, 30))) {
             config_.blendModeIndex = 0; // Additive
             config_.shapeType = 1;      // Sphere
@@ -502,7 +541,9 @@ void GPUParticleEditor::DrawImGui() {
             config_.envGravity = { 0.0f, 2.0f, 0.0f };
             config_.texturePath = "Resources/sprite/particle/particle.png";
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("💨 煙 (Smoke)", ImVec2(120, 30))) {
             config_.blendModeIndex = 1; // Alpha
             config_.shapeType = 0;      // Box
@@ -532,6 +573,7 @@ void GPUParticleEditor::DrawImGui() {
         // 保存先JSONを毎回列挙し、名前入力とギャラリーを同じプリセット群に揃える。
         std::string dirPath = "Resources/json/gpu_particles/";
         std::vector<std::string> presetList;
+
         if (std::filesystem::exists(dirPath)) {
             for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
                 if (entry.path().extension() == ".json") {
@@ -542,18 +584,23 @@ void GPUParticleEditor::DrawImGui() {
 
         std::sort(presetList.begin(), presetList.end());
         int selectedIndex = -1;
+
         for (int i = 0; i < static_cast<int>(presetList.size()); ++i) {
             if (presetList[i] == presetNameInput_) {
                 selectedIndex = i;
                 break;
             }
         }
+
         if (VFXAssetPicker::DrawCombo(ICON_FA_FOLDER_OPEN " 保存済みGPU設定", presetList,
                                       selectedIndex, presetSearch_, sizeof(presetSearch_))) {
             strcpy_s(presetNameInput_, sizeof(presetNameInput_), presetList[selectedIndex].c_str());
         }
-        if (presetList.empty()) ImGui::TextDisabled("保存済み設定はありません");
+
+        if (presetList.empty())
+            ImGui::TextDisabled("保存済み設定はありません");
         ImGui::TextDisabled("一覧の選択は名前だけを変更します。読み込み後にプレビューできます。");
+
         if (selectedIndex >= 0 && ImGui::Button(ICON_FA_PLAY " 選択した設定をプレビュー")) {
             Load(presetList[selectedIndex]);
             EmitWithPreview();
@@ -566,24 +613,31 @@ void GPUParticleEditor::DrawImGui() {
         if (ImGui::Button(ICON_FA_DOWNLOAD " 保存 (Save)", ImVec2(120, 0))) {
             Save(presetNameInput_);
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button(ICON_FA_UPLOAD " 読み込み (Load)", ImVec2(120, 0))) {
             Load(presetNameInput_);
         }
     }
+
     ImGui::Separator();
+
     if (ImGui::CollapsingHeader("Sprite Sheet Animation")) {
         const char* particleTypes[] = { "Billboard", "Trail" };
         ImGui::Combo("Particle Type", &config_.particleType, particleTypes, IM_ARRAYSIZE(particleTypes));
+
         if (config_.particleType == 1) {
             ImGui::DragFloat("Trail Length", &config_.trailLength, 0.005f, 0.0f, 1.0f, "%.3f");
             ImGui::TextDisabled("速度方向へ自動整列し、移動量に応じて軌跡を伸ばします。");
         }
 
         bool receiveLighting = config_.receiveLighting != 0;
+
         if (ImGui::Checkbox("ライトの影響を受ける", &receiveLighting)) {
             config_.receiveLighting = receiveLighting ? 1 : 0;
         }
+
         if (receiveLighting) {
             ImGui::DragFloat3("ライト方向", &config_.lightDirection.x, 0.01f, -1.0f, 1.0f);
             ImGui::ColorEdit3("ライト色", &config_.lightColor.x);
@@ -597,19 +651,23 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::DragFloat("FPS", &config_.spriteSheetFps, 0.5f, 0.0f, 60.0f);
 
         bool loop = config_.spriteSheetLoop != 0;
+
         if (ImGui::Checkbox("Loop", &loop)) {
             config_.spriteSheetLoop = loop ? 1 : 0;
         }
 
         bool randomStart = config_.spriteSheetRandomStart != 0;
+
         if (ImGui::Checkbox("Random Start", &randomStart)) {
             config_.spriteSheetRandomStart = randomStart ? 1 : 0;
         }
 
         bool alignToVelocity = config_.alignToVelocity != 0;
+
         if (ImGui::Checkbox("速度方向へSpriteを整列", &alignToVelocity)) {
             config_.alignToVelocity = alignToVelocity ? 1 : 0;
         }
+
         ImGui::DragFloat("速度による横伸び", &config_.velocityStretch, 0.005f, 0.0f, 0.20f, "%.3f");
         ImGui::TextDisabled("横向きの風・斬撃・軌跡Spriteを移動方向へ揃える設定です。");
     }
@@ -620,20 +678,24 @@ void GPUParticleEditor::EmitWithPreview() {
     // 保存用の発生位置は保持し、プレビュー時だけ一時コピーの位置を差し替える。
     GPUParticleConfig tempConfig = config_;
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+
     if (previewStage && previewStage->IsEnabled()) {
         tempConfig.emitPos = previewStage->GetPreviewPosition();
     }
     else if (isPreviewMode_) {
         const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
         if (camera) {
             engine::Vector3 camEye = camera->GetEye();
             engine::Vector3 camTarget = camera->GetTargetPoint();
             engine::Vector3 dir = { camTarget.x - camEye.x, camTarget.y - camEye.y, camTarget.z - camEye.z };
             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
             engine::Vector3 forward = { 0, 0, 1 };
+
             if (length > 0.0001f) {
                 forward = { dir.x / length, dir.y / length, dir.z / length };
             }
+
             tempConfig.emitPos = {
                 camEye.x + forward.x * previewDistance_,
                 camEye.y + forward.y * previewDistance_,
@@ -641,78 +703,20 @@ void GPUParticleEditor::EmitWithPreview() {
             };
         }
     }
+
     GPUParticleManager::GetInstance()->EmitFromConfig(tempConfig);
 }
 
 void GPUParticleEditor::Save(const std::string& presetName) {
-    // 実行設定をJSONへ写す。Preview Stageの一時座標は保存しない。
-    json j;
-    j["emitPos"] = { config_.emitPos.x, config_.emitPos.y, config_.emitPos.z };
-    j["emitArea"] = { config_.emitArea.x, config_.emitArea.y, config_.emitArea.z };
-    j["emitVelocity"] = { config_.emitVelocity.x, config_.emitVelocity.y, config_.emitVelocity.z };
-    j["emitCount"] = config_.emitCount;
-    j["emitLife"] = config_.emitLife;
-    j["maxParticles"] = config_.maxParticles;
-    j["velocityVariance"] = config_.velocityVariance;
-    j["baseColor"] = { config_.baseColor.x, config_.baseColor.y, config_.baseColor.z, config_.baseColor.w };
-    j["envGravity"] = { config_.envGravity.x, config_.envGravity.y, config_.envGravity.z };
-    j["envDrag"] = config_.envDrag;
-    j["envWind"] = { config_.envWind.x, config_.envWind.y, config_.envWind.z };
-    j["envTurbulence"] = config_.envTurbulence;
-    j["fieldType"] = config_.fieldType;
-    j["fieldPosition"] = { config_.fieldPosition.x, config_.fieldPosition.y, config_.fieldPosition.z };
-    j["fieldStrength"] = config_.fieldStrength;
-    j["fieldRadius"] = config_.fieldRadius;
-    j["fieldFalloff"] = config_.fieldFalloff;
-    j["baseSize"] = config_.baseSize;
-    j["endSize"] = config_.endSize;
-    j["rotSpeed"] = config_.rotSpeed;
-    j["endColor"] = { config_.endColor.x, config_.endColor.y, config_.endColor.z, config_.endColor.w };
-    j["shapeType"] = config_.shapeType;
-    j["shapeRadius"] = config_.shapeRadius;
-    j["shapeAngle"] = config_.shapeAngle;
-    j["blendModeIndex"] = config_.blendModeIndex;
-    j["isLooping"] = config_.isLooping;
-    j["emitInterval"] = config_.emitInterval;
-    j["midColor"] = { config_.midColor.x, config_.midColor.y, config_.midColor.z, config_.midColor.w };
-    j["colorMidTime"] = config_.colorMidTime;
-    j["midSize"] = config_.midSize;
-    j["sizeMidTime"] = config_.sizeMidTime;
-    j["softParticleFade"] = config_.softParticleFade;
-    j["sizeEaseType"] = config_.sizeEaseType;
-    j["colorEaseType"] = config_.colorEaseType;
-    j["enableCollision"] = config_.enableCollision;
-    j["restitution"] = config_.restitution;
-    j["colorIntensity"] = config_.colorIntensity;
-    j["texturePath"] = config_.texturePath;
-    j["alignToVelocity"] = config_.alignToVelocity != 0;
-    j["velocityStretch"] = config_.velocityStretch;
-    j["particleType"] = config_.particleType;
-    j["trailLength"] = config_.trailLength;
-    j["receiveLighting"] = config_.receiveLighting != 0;
-    j["lightDirection"] = { config_.lightDirection.x, config_.lightDirection.y, config_.lightDirection.z };
-    j["lightColor"] = { config_.lightColor.x, config_.lightColor.y, config_.lightColor.z };
-    j["lightingStrength"] = config_.lightingStrength;
-    j["spriteAnimation"] = {
-        { "columns", config_.spriteSheetColumns },
-        { "rows", config_.spriteSheetRows },
-        { "frameCount", config_.spriteSheetFrameCount },
-        { "fps", config_.spriteSheetFps },
-        { "loop", config_.spriteSheetLoop != 0 },
-        { "randomStart", config_.spriteSheetRandomStart != 0 }
-    };
+    // Preview Stageの一時座標は保存せず、実行設定だけを共通形式へ変換する。
+    const json j = GPUParticlePresetJsonCodec::Write(config_);
+
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
-    j["lod"] = {
-        { "enabled", config_.lod.enabled },
-        { "nearDistance", config_.lod.nearDistance },
-        { "farDistance", config_.lod.farDistance },
-        { "farEmissionScale", config_.lod.farEmissionScale },
-        { "maxAliveParticles", config_.lod.maxAliveParticles }
-    };
     if (file.is_open()) {
         file << j.dump(4);
         file.close();
+
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Saved GPU Particle Preset: " + presetName);
         }
@@ -722,121 +726,38 @@ void GPUParticleEditor::Save(const std::string& presetName) {
 void GPUParticleEditor::Load(const std::string& presetName) {
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ifstream file(filepath);
+
     if (file.is_open()) {
         json j;
         file >> j;
         file.close();
 
-        // 追加された機能は旧プリセットにキーがないため、先に互換用の初期値を入れる。
-        config_.spriteSheetColumns = 1;
-        config_.spriteSheetRows = 1;
-        config_.spriteSheetFrameCount = 1;
-        config_.spriteSheetFps = 0.0f;
-        config_.spriteSheetLoop = 0;
-        config_.spriteSheetRandomStart = 0;
-        config_.alignToVelocity = 0;
-        config_.velocityStretch = 0.0f;
-        config_.particleType = 0;
-        config_.trailLength = 0.15f;
-        config_.receiveLighting = 0;
-        config_.lightDirection = { -0.4f, -1.0f, 0.3f };
-        config_.lightColor = { 1.0f, 1.0f, 1.0f };
-        config_.lightingStrength = 1.0f;
-        config_.fieldType = 0;
-        config_.fieldPosition = { 0.0f, 0.0f, 0.0f };
-        config_.fieldStrength = 0.0f;
-        config_.fieldRadius = 5.0f;
-        config_.fieldFalloff = 1.0f;
-        config_.maxParticles = 0;
+        // 旧プリセットで省略された項目は、従来どおりEditor用の既定値へ戻す。
+        const GPUParticleConfig defaults;
+        config_.spriteSheetColumns = defaults.spriteSheetColumns;
+        config_.spriteSheetRows = defaults.spriteSheetRows;
+        config_.spriteSheetFrameCount = defaults.spriteSheetFrameCount;
+        config_.spriteSheetFps = defaults.spriteSheetFps;
+        config_.spriteSheetLoop = defaults.spriteSheetLoop;
+        config_.spriteSheetRandomStart = defaults.spriteSheetRandomStart;
+        config_.alignToVelocity = defaults.alignToVelocity;
+        config_.velocityStretch = defaults.velocityStretch;
+        config_.particleType = defaults.particleType;
+        config_.trailLength = defaults.trailLength;
+        config_.receiveLighting = defaults.receiveLighting;
+        config_.lightDirection = defaults.lightDirection;
+        config_.lightColor = defaults.lightColor;
+        config_.lightingStrength = defaults.lightingStrength;
+        config_.fieldType = defaults.fieldType;
+        config_.fieldPosition = defaults.fieldPosition;
+        config_.fieldStrength = defaults.fieldStrength;
+        config_.fieldRadius = defaults.fieldRadius;
+        config_.fieldFalloff = defaults.fieldFalloff;
+        config_.maxParticles = defaults.maxParticles;
+        config_.lod = defaults.lod;
 
-        if (j.contains("emitPos")) { config_.emitPos.x = j["emitPos"][0]; config_.emitPos.y = j["emitPos"][1]; config_.emitPos.z = j["emitPos"][2]; }
-        if (j.contains("emitArea")) { config_.emitArea.x = j["emitArea"][0]; config_.emitArea.y = j["emitArea"][1]; config_.emitArea.z = j["emitArea"][2]; }
-        config_.lod = {};
-        if (j.contains("emitVelocity")) { config_.emitVelocity.x = j["emitVelocity"][0]; config_.emitVelocity.y = j["emitVelocity"][1]; config_.emitVelocity.z = j["emitVelocity"][2]; }
-        if (j.contains("emitCount")) config_.emitCount = j["emitCount"];
-        if (j.contains("emitLife")) config_.emitLife = j["emitLife"];
-        if (j.contains("maxParticles")) config_.maxParticles = j["maxParticles"];
-        if (j.contains("envGravity")) { config_.envGravity.x = j["envGravity"][0]; config_.envGravity.y = j["envGravity"][1]; config_.envGravity.z = j["envGravity"][2]; }
-        if (j.contains("envDrag")) config_.envDrag = j["envDrag"];
-        if (j.contains("envWind")) { config_.envWind.x = j["envWind"][0]; config_.envWind.y = j["envWind"][1]; config_.envWind.z = j["envWind"][2]; }
-        if (j.contains("envTurbulence")) config_.envTurbulence = j["envTurbulence"];
-        if (j.contains("fieldType")) config_.fieldType = j["fieldType"];
-        if (j.contains("fieldPosition")) { config_.fieldPosition.x = j["fieldPosition"][0]; config_.fieldPosition.y = j["fieldPosition"][1]; config_.fieldPosition.z = j["fieldPosition"][2]; }
-        if (j.contains("fieldStrength")) config_.fieldStrength = j["fieldStrength"];
-        if (j.contains("fieldRadius")) config_.fieldRadius = j["fieldRadius"];
-        if (j.contains("fieldFalloff")) config_.fieldFalloff = j["fieldFalloff"];
-        if (j.contains("velocityVariance")) config_.velocityVariance = j["velocityVariance"];
+        GPUParticlePresetJsonCodec::Read(j, config_);
 
-        if (j.contains("baseColor")) { config_.baseColor.x = j["baseColor"][0]; config_.baseColor.y = j["baseColor"][1]; config_.baseColor.z = j["baseColor"][2]; config_.baseColor.w = j["baseColor"][3]; }
-        if (j.contains("baseSize")) config_.baseSize = j["baseSize"];
-        if (j.contains("endSize")) config_.endSize = j["endSize"];
-        if (j.contains("rotSpeed")) config_.rotSpeed = j["rotSpeed"];
-        if (j.contains("endColor")) { config_.endColor.x = j["endColor"][0]; config_.endColor.y = j["endColor"][1]; config_.endColor.z = j["endColor"][2]; config_.endColor.w = j["endColor"][3]; }
-        if (j.contains("shapeType")) config_.shapeType = j["shapeType"];
-        if (j.contains("shapeRadius")) config_.shapeRadius = j["shapeRadius"];
-        if (j.contains("shapeAngle")) config_.shapeAngle = j["shapeAngle"];
-        // パラメータの読み込み反映
-        if (j.contains("blendModeIndex")) config_.blendModeIndex = j["blendModeIndex"];
-        if (j.contains("isLooping")) config_.isLooping = j["isLooping"];
-        if (j.contains("emitInterval")) config_.emitInterval = j["emitInterval"];
-        if (j.contains("midColor")) { config_.midColor.x = j["midColor"][0]; config_.midColor.y = j["midColor"][1]; config_.midColor.z = j["midColor"][2]; config_.midColor.w = j["midColor"][3]; }
-        if (j.contains("colorMidTime")) config_.colorMidTime = j["colorMidTime"];
-        if (j.contains("midSize")) config_.midSize = j["midSize"];
-        if (j.contains("sizeMidTime")) config_.sizeMidTime = j["sizeMidTime"];
-        if (j.contains("softParticleFade")) config_.softParticleFade = j["softParticleFade"];
-        if (j.contains("sizeEaseType")) config_.sizeEaseType = j["sizeEaseType"];
-        if (j.contains("colorEaseType")) config_.colorEaseType = j["colorEaseType"];
-        if (j.contains("enableCollision")) config_.enableCollision = j["enableCollision"];
-        if (j.contains("restitution")) config_.restitution = j["restitution"];
-        if (j.contains("colorIntensity")) config_.colorIntensity = j["colorIntensity"];
-        if (j.contains("texturePath")) {
-            config_.texturePath = j["texturePath"];
-        }
-        // 旧形式の平坦なSprite項目を読み、後段の新形式があればそちらで上書きする。
-        if (j.contains("spriteSheetColumns")) config_.spriteSheetColumns = j["spriteSheetColumns"];
-        if (j.contains("spriteSheetRows")) config_.spriteSheetRows = j["spriteSheetRows"];
-        if (j.contains("spriteSheetFrameCount")) config_.spriteSheetFrameCount = j["spriteSheetFrameCount"];
-        if (j.contains("spriteSheetFps")) config_.spriteSheetFps = j["spriteSheetFps"];
-        if (j.contains("spriteSheetLoop")) {
-            config_.spriteSheetLoop = j["spriteSheetLoop"].is_boolean() ? (j["spriteSheetLoop"].get<bool>() ? 1 : 0) : j["spriteSheetLoop"].get<int>();
-        }
-        if (j.contains("spriteSheetRandomStart")) {
-            config_.spriteSheetRandomStart = j["spriteSheetRandomStart"].is_boolean() ? (j["spriteSheetRandomStart"].get<bool>() ? 1 : 0) : j["spriteSheetRandomStart"].get<int>();
-        }
-        if (j.contains("alignToVelocity")) {
-            config_.alignToVelocity = j["alignToVelocity"].is_boolean() ? (j["alignToVelocity"].get<bool>() ? 1 : 0) : j["alignToVelocity"].get<int>();
-        }
-        if (j.contains("velocityStretch")) config_.velocityStretch = j["velocityStretch"];
-        if (j.contains("particleType")) config_.particleType = j["particleType"];
-        if (j.contains("trailLength")) config_.trailLength = j["trailLength"];
-        if (j.contains("receiveLighting")) {
-            config_.receiveLighting = j["receiveLighting"].is_boolean() ? (j["receiveLighting"].get<bool>() ? 1 : 0) : j["receiveLighting"].get<int>();
-        }
-        if (j.contains("lightDirection")) { config_.lightDirection.x = j["lightDirection"][0]; config_.lightDirection.y = j["lightDirection"][1]; config_.lightDirection.z = j["lightDirection"][2]; }
-        if (j.contains("lightColor")) { config_.lightColor.x = j["lightColor"][0]; config_.lightColor.y = j["lightColor"][1]; config_.lightColor.z = j["lightColor"][2]; }
-        if (j.contains("lightingStrength")) config_.lightingStrength = j["lightingStrength"];
-        if (j.contains("lod") && j["lod"].is_object()) {
-            const json& lod = j["lod"];
-            config_.lod.enabled = lod.value("enabled", false);
-            config_.lod.nearDistance = lod.value("nearDistance", 12.0f);
-            config_.lod.farDistance = lod.value("farDistance", 45.0f);
-            config_.lod.farEmissionScale = lod.value("farEmissionScale", 0.25f);
-            config_.lod.maxAliveParticles = lod.value("maxAliveParticles", 0);
-            config_.lod.Sanitize();
-        }
-        if (j.contains("spriteAnimation")) {
-            const auto& anim = j["spriteAnimation"];
-            if (anim.contains("columns")) config_.spriteSheetColumns = anim["columns"];
-            if (anim.contains("rows")) config_.spriteSheetRows = anim["rows"];
-            if (anim.contains("frameCount")) config_.spriteSheetFrameCount = anim["frameCount"];
-            if (anim.contains("fps")) config_.spriteSheetFps = anim["fps"];
-            if (anim.contains("loop")) {
-                config_.spriteSheetLoop = anim["loop"].is_boolean() ? (anim["loop"].get<bool>() ? 1 : 0) : anim["loop"].get<int>();
-            }
-            if (anim.contains("randomStart")) {
-                config_.spriteSheetRandomStart = anim["randomStart"].is_boolean() ? (anim["randomStart"].get<bool>() ? 1 : 0) : anim["randomStart"].get<int>();
-            }
-        }
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);
         }

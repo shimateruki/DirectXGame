@@ -4,16 +4,25 @@
 // 記憶台とは異なり、任意解除した能力を一度だけ回収できる一時アイテムです。
 class DroppedCopyStar final : public BaseItem {
   public:
-    void InitializeDrop(Object3dCommon* common, const std::string& enemyType, bool unlimitedDuration,
+    void InitializeDrop(engine::Object3dCommon* common, const std::string& enemyType, bool unlimitedDuration,
                         const engine::Vector3& start, const engine::Vector3& destination);
+
     void Update(float deltaTime) override;
+
     std::unique_ptr<engine::Object3d> Clone() const override;
+
     void CaptureReplayCustomState(json& state) const override;
+
     void RestoreReplayCustomState(const json& state) override;
+
     float GetLifetime() const { return lifetime_; }
+
     float GetBlinkDuration() const { return blinkDuration_; }
+
     float GetElapsed() const { return elapsed_; }
+
     void SetLifetime(float seconds) { lifetime_ = seconds; }
+
     void SetBlinkDuration(float seconds) { blinkDuration_ = seconds; }
 
   protected:

@@ -8,10 +8,10 @@
 #include <algorithm>
 #include <cmath>
 #include <game/actor/player/state/PlayerState.h>
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "DebugConsole.h"
 #include "GPUParticleManager.h"
-#include "GroundEffectLocator.h"
+#include "game/system/combat/GroundEffectLocator.h"
 #include "MeshEffectManager.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 
@@ -28,6 +28,7 @@ PlayerMover::~PlayerMover() {
             if (child)
                 child->SetCollisionAttribute(attr);
         }
+
         childOriginalAttributes_.clear();
     }
 }
@@ -40,16 +41,19 @@ void PlayerMover::StopDashOnImpact() {
 
     isDashing_ = false;
     dashTimer_ = 0.0f;
+
     if (player_) {
         player_->SetDashInvincible(false);
     }
 
     for (auto& kv : childOriginalAttributes_) {
         engine::Object3d* child = kv.first;
+
         if (child) {
             child->SetCollisionAttribute(kv.second);
         }
     }
+
     childOriginalAttributes_.clear();
 }
 
@@ -57,6 +61,7 @@ void PlayerMover::ResetTransientState() {
     // ワープ・演出復帰で前の足場やダッシュの補正を次の場面へ持ち込まない。
     platformVelocity_ = {};
     platformAirVelocity_ = {};
+    abilityAirVelocity_ = {};
     jumpRequest_.Reset();
     jumpStatus_ = "リセット";
     StopDashOnImpact();
@@ -72,6 +77,9 @@ void PlayerMover::ResetTransientState() {
     dashPanelTurnMultiplier_ = 1.0f;
     hasGroundedHistory_ = false;
     wasGroundedLastFrame_ = false;
+    airborneDuration_ = 0.0f;
+    airborneMaxDownSpeed_ = 0.0f;
+    landingDustCooldown_ = 0.0f;
 
     if (player_) {
         player_->SetSlimeJumpCharge(0.0f);
@@ -79,7 +87,7 @@ void PlayerMover::ResetTransientState() {
     }
 }
 
-void PlayerMover::Initialize(Player* player, InputManager* inputManager, ParticleSystem* particleSystem) {
+void PlayerMover::Initialize(Player* player, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem) {
     player_ = player;
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
@@ -104,6 +112,7 @@ void PlayerMover::SampleJumpInput(float deltaTime, bool discard) {
         jumpStatus_ = "死亡・演出・コピー切替中：予約破棄";
         return;
     }
+
     if (deltaTime <= 0.0f || !std::isfinite(deltaTime))
         return;
     const bool hadRequest = jumpRequest_.BufferRemaining() > 0.0f;
@@ -119,6 +128,7 @@ void PlayerMover::SampleJumpInput(float deltaTime, bool discard) {
                                             (player_->IsGrounded() ? "接地" : "空中") +
                                             (player_->IsControlActive() ? " / 操作有効" : " / 操作制限中"));
     }
+
     if (hadRequest && jumpRequest_.BufferRemaining() <= 0.0f) {
         DebugConsole::GetInstance()->AddLog("[Jump] 予約期限切れ：接地または操作復帰が間に合いませんでした");
     }
@@ -130,6 +140,7 @@ engine::Vector3 PlayerMover::GetMoveInputDirection() {
     if (!player_ || !strategy_) {
         return {};
     }
+
     engine::Vector3 input = strategy_->CalculateVelocity(player_);
     input.y = 0.0f;
     const float length = std::sqrt(input.x * input.x + input.z * input.z);
@@ -157,9 +168,6 @@ void PlayerMover::Update(float deltaTime) {
     if (dashPanelTimer_ > 0.0f) {
         dashPanelTimer_ = (std::max)(0.0f, dashPanelTimer_ - deltaTime);
     }
-    if (landingDustCooldown_ > 0.0f) {
-        landingDustCooldown_ = (std::max)(0.0f, landingDustCooldown_ - deltaTime);
-    }
 
     const bool isDashPanelActive = dashPanelTimer_ > 0.0f;
     const float moveSpeedMultiplier = isDashPanelActive ? dashPanelSpeedMultiplier_ : 1.0f;
@@ -174,6 +182,7 @@ void PlayerMover::Update(float deltaTime) {
         velocity.z = dashDirection_.z * currentSpeed;
 
         dashTimer_ -= deltaTime;
+
         if (dashTimer_ <= 0.0f) {
             StopDashOnImpact();
         }
@@ -198,14 +207,15 @@ void PlayerMover::Update(float deltaTime) {
         player_->SetMoveYaw(AnimationInterpolation::DampAngle(currentY, targetAngle, turnResponse, deltaTime));
     }
 
-    // 接地した瞬間に着地演出を出し、空中ダッシュ権を戻します。
+    // 空中ダッシュ権は現在の接地で戻し、着地演出は物理更新後に確定します。
     bool isGrounded = player_->IsGrounded();
-    if (hasGroundedHistory_ && isGrounded && !wasGroundedLastFrame_ && landingDustCooldown_ <= 0.0f) {
-        EmitGroundDust("player_land_dust", 0.035f);
-        landingDustCooldown_ = 0.12f;
-    }
+
     if (isGrounded) {
         platformAirVelocity_ = {};
+
+        // 離陸直後は接地情報が一フレーム残るため、上昇速度がある間は爆風を消さない。
+        if (velocity.y <= 0.0f)
+            abilityAirVelocity_ = {};
         hasAirDashed_ = false; // 地面に着いたら空中ダッシュ権をリセット
     }
 
@@ -213,8 +223,10 @@ void PlayerMover::Update(float deltaTime) {
     isJumpCharging_ = jumpRequest_.IsCharging();
     jumpChargeTimer_ = jumpRequest_.Charge();
     player_->SetSlimeJumpCharge(jumpChargeTimer_);
+
     if (isJumpCharging_) {
         player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
+
         if (!isDashing_) {
             velocity.x *= 0.2f;
             velocity.z *= 0.2f;
@@ -222,8 +234,10 @@ void PlayerMover::Update(float deltaTime) {
     }
 
     float chargeRatio = 0.0f;
+
     if (jumpRequest_.Consume(chargeRatio)) {
         velocity.y = player_->GetJumpPower() * (usePinkSlimeJumpAbility ? (1.0f + chargeRatio * 0.65f) : 1.0f);
+        player_->TriggerSlimeJumpTakeoff();
         player_->IncrementJumpCount();
         PlayerJumpEvent jumpEvent;
         jumpEvent.player = player_;
@@ -243,9 +257,11 @@ void PlayerMover::Update(float deltaTime) {
         } else {
             EmitGroundDust("player_jump_dust", 0.035f);
         }
+
         // 水平方向の操作感は今回変更しません。
         if (hasMoveInput) {
             const float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
+
             if (len > 0.001f) {
                 const float scale = player_->GetMoveSpeed() / len;
                 velocity.x = inputMove.x * scale;
@@ -256,6 +272,7 @@ void PlayerMover::Update(float deltaTime) {
             velocity.x = std::sin(yaw) * player_->GetMoveSpeed();
             velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
         }
+
         // 下降速度は渡さない。水平の勢いだけを残し、空中操作も維持する。
         platformAirVelocity_ = platformVelocity_ * 0.55f;
         platformAirVelocity_.y = 0.0f;
@@ -274,11 +291,49 @@ void PlayerMover::Update(float deltaTime) {
     if (!isDashing_) {
         velocity += platformAirVelocity_;
         platformAirVelocity_ = platformAirVelocity_ * std::exp(-0.8f * deltaTime);
+        velocity += abilityAirVelocity_;
     }
+
+    // 爆風の水平成分は急に切らずに減衰させ、空中の方向入力を妨げない。
+    abilityAirVelocity_ = abilityAirVelocity_ * std::exp(-8.0f * deltaTime);
     platformVelocity_ = {};
     player_->SetVelocity(velocity);
-    wasGroundedLastFrame_ = player_->IsGrounded();
+}
+
+float PlayerMover::UpdateLandingFeedback(float prePhysicsVelocityY, float deltaTime, bool allowFeedback) {
+    if (!player_ || deltaTime <= 0.0f) {
+        return 0.0f;
+    }
+
+    landingDustCooldown_ = (std::max)(0.0f, landingDustCooldown_ - deltaTime);
+    const bool grounded = player_->IsGrounded();
+    const float downwardSpeed = (std::max)({-prePhysicsVelocityY, -player_->GetVelocity().y, 0.0f});
+    if (!grounded) {
+        airborneDuration_ += deltaTime;
+        airborneMaxDownSpeed_ = (std::max)(airborneMaxDownSpeed_, downwardSpeed);
+    }
+
+    float impactRate = 0.0f;
+    if (allowFeedback && hasGroundedHistory_ && !wasGroundedLastFrame_ && grounded &&
+        airborneDuration_ >= 0.06f) {
+        // 衝突解決がPlayer更新後に行われても、前フレームの下降速度を失わないようにします。
+        const float impactSpeed = (std::max)(airborneMaxDownSpeed_, downwardSpeed);
+        const float jumpPower = (std::max)(player_->GetJumpPower(), 0.01f);
+        const float impactRange = (std::max)(jumpPower - 3.5f, 1.0f);
+        impactRate = std::clamp((impactSpeed - 3.5f) / impactRange, 0.0f, 1.65f);
+        if (impactRate >= 0.18f && landingDustCooldown_ <= 0.0f) {
+            EmitGroundDust("player_land_dust", 0.035f);
+            landingDustCooldown_ = 0.12f;
+        }
+    }
+
+    if (grounded) {
+        airborneDuration_ = 0.0f;
+        airborneMaxDownSpeed_ = 0.0f;
+    }
+    wasGroundedLastFrame_ = grounded;
     hasGroundedHistory_ = true;
+    return impactRate;
 }
 
 void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const {
@@ -316,6 +371,7 @@ void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, flo
         return;
 
     engine::Vector3 dir{};
+
     if (horizontalSpeed > 0.05f) {
         dir.x = velocity.x / horizontalSpeed;
         dir.z = velocity.z / horizontalSpeed;

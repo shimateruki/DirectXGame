@@ -8,9 +8,9 @@
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
 #include "EditorCommandRegistry.h"
-#include "GameAudioSettings.h"
-#include "GameDataManager.h"
-#include "GameSettingsManager.h"
+#include "game/system/settings/GameAudioSettings.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/settings/GameSettingsManager.h"
 #include "InputManager.h"
 #include "KeyConfig.h"
 #include "LightManager.h"
@@ -25,11 +25,13 @@
 #ifdef USE_IMGUI
 #include "game/editor/RegisterGameEditorFactories.h"
 #include "game/editor/BuiltInCreatePresetRegistry.h"
+#include "game/actor/gimmick/combat/GimmickFireCannon.h"
+#include "game/system/combat/BulletManager.h"
 #endif
 #include "SceneManager.h"
 #include "engine/system/scene/LoadingProfiler.h"
 #include "SrvManager.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include "TextureManager.h"
 #include "VFXSequencer.h"
 #include "WinApp.h"
@@ -56,6 +58,7 @@ constexpr int kHistorySampleCount = 120;
 // Post Effect設定から線形色空間の選択を読み、読込失敗時は現在値を維持します。
 void LoadColorWorkflowSetting() {
 	std::ifstream file("Resources/json/post_effect.json");
+
 	if (!file.is_open()) {
 		return;
 	}
@@ -63,6 +66,7 @@ void LoadColorWorkflowSetting() {
 	try {
 		nlohmann::json settings;
 		file >> settings;
+
 		if (settings.contains("linearWorkflowEnabled")) {
 			engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
 				settings["linearWorkflowEnabled"].get<bool>());
@@ -82,6 +86,7 @@ void RefreshSceneRenderCameraData(SceneManager* sceneManager) {
 	}
 
 	BaseScene* currentScene = sceneManager->GetCurrentScene();
+
 	if (!currentScene) {
 		return;
 	}
@@ -98,18 +103,22 @@ void Game::Initialize() {
 		StartupProfileScope phase("engine services");
 		InitializeEngineServices();
 	}
+
 	{
 		StartupProfileScope phase("post effects");
 		InitializePostProcess();
 	}
+
 	{
 		StartupProfileScope phase("first scene");
 		InitializeScene();
 	}
+
 	{
 		StartupProfileScope phase("editor tools");
 		InitializeEditorTools();
 	}
+
 	ConfigureInitialPlayState();
 
 	CameraEditor::GetInstance()->Initialize();
@@ -151,13 +160,15 @@ void Game::InitializeScene() {
 std::string Game::ResolveStartSceneName() const {
 	// ビルド設定やエディタの最終シーン情報から、起動時に開くシーン名を決める。
 #ifdef USE_IMGUI
-	if (SceneTransitionRuntimeProbe::Enabled()) return "TITLE";
+	if (SceneTransitionRuntimeProbe::Enabled())
+		return "TITLE";
 #endif
 	std::string startScene = "TITLE";
 
 #if defined(USE_IMGUI) && !defined(DD)
 	if (sceneManager_) {
 		std::string lastScene = sceneManager_->LoadLastSceneName();
+
 		if (!lastScene.empty()) {
 			startScene = lastScene;
 		}
@@ -174,6 +185,7 @@ void Game::ApplyInitialSceneOverrides() {
 	}
 
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
 	if (!currentScene) {
 		return;
 	}
@@ -187,6 +199,7 @@ void Game::ApplyInitialSceneOverrides() {
 			break;
 		}
 	}
+
 	initialSceneOverridesPending_ = false;
 }
 
@@ -210,6 +223,7 @@ void Game::InitializeEditorTools() {
 #ifdef USE_IMGUI
 	editorController_ = std::make_unique<GameEditorController>();
 	editorController_->Initialize(sceneManager_.get(), dxCommon_);
+
 	if (sceneManager_ && sceneManager_->GetCurrentScene()) {
 		BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
 	}
@@ -233,9 +247,11 @@ void Game::ConfigureInitialPlayState() {
 void Game::Finalize() {
 	// シーンとエディタを終了し、エンジン基盤を解放する。
 	GameDataManager::GetInstance()->FlushPendingSave();
+
 	if (sceneManager_) {
 		sceneManager_->Finalize();
 	}
+
 	DebrisEffectManager::GetInstance()->Clear();
 
 #ifdef USE_IMGUI
@@ -250,8 +266,9 @@ void Game::Finalize() {
 
 void Game::Update() {
 	// 入力、終了要求、リサイズ、エディタ、ゲームシステムを1フレーム分更新する。
-	InputManager::GetInstance()->Update();
-	if (InputManager::GetInstance()->IsKeyTriggered(DIK_ESCAPE)) {
+	engine::InputManager::GetInstance()->Update();
+
+	if (engine::InputManager::GetInstance()->IsKeyTriggered(DIK_ESCAPE)) {
 		WinApp::RequestClose();
 	}
 
@@ -274,20 +291,27 @@ void Game::Update() {
 
 	AudioEventSystem::GetInstance()->Update();
 	float deltaTime = CalculateDeltaTime();
-	InputManager::GetInstance()->UpdateRumble(deltaTime);
+	engine::InputManager::GetInstance()->UpdateRumble(deltaTime);
 	VFXSequencer::UpdateFeedbackRuntime(deltaTime);
 	const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
+
 	if (!sceneTransitioning) {
 		GPUParticleManager::GetInstance()->BeginFrame();
 		MeshEffectManager::GetInstance()->BeginFrame();
 	}
+
 	if (isPlaying_) {
 		GPUParticleManager::GetInstance()->SetTimeScale(1.0f);
 	}
 
 #ifdef USE_IMGUI
 	UpdateEditorFrame(deltaTime);
-	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get())) isPlaying_ = true;
+	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get()) || RaftRuntimeProbe::WantsPlay(sceneManager_.get())) {
+		// 検証起動ではScene側も同じフレームから再生へ揃える。
+		// Editorの停止状態だけが残ると、物理検証中にRecorderが停止し続ける。
+		isPlaying_ = true;
+		sceneManager_->SetIsPlaying(true);
+	}
 #endif
 
 	const float feedbackTimeScale = VFXSequencer::GetGameplayTimeScale();
@@ -296,14 +320,21 @@ void Game::Update() {
 	if (editorController_) {
 		finalDeltaTime = editorController_->ResolveReplaySimulationDeltaTime(finalDeltaTime);
 	}
-	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get())) finalDeltaTime = 1.0f / 60.0f;
+
+	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get()) || RaftRuntimeProbe::WantsPlay(sceneManager_.get()))
+		finalDeltaTime = 1.0f / 60.0f;
+	if (RaftRuntimeProbe::WantsPlay(sceneManager_.get()) && GetTickCount64() < RaftRuntimeProbe::pauseUntil)
+		finalDeltaTime = 0.0f;
 #endif
 	UpdateGameSystems(deltaTime, finalDeltaTime);
+
 	// コインの連続取得を短時間まとめ、シーン切替中は保留分を確定する。
 	GameDataManager::GetInstance()->TickAutosave(deltaTime);
+
 	if (sceneManager_ && sceneManager_->IsTransitioning()) {
 		GameDataManager::GetInstance()->FlushPendingSave();
 	}
+
 	ApplyInitialSceneOverrides();
 }
 
@@ -323,7 +354,7 @@ void Game::UpdateEditorFrame(float deltaTime) {
 		return;
 	}
 
-	if (InputManager::GetInstance()->IsKeyTriggered(DIK_F10)) {
+	if (engine::InputManager::GetInstance()->IsKeyTriggered(DIK_F10)) {
 		editorController_->ExecuteEditorCommand(EditorCommandId::ViewPortfolio);
 	}
 
@@ -336,9 +367,11 @@ void Game::UpdateEditorFrame(float deltaTime) {
 
 	editorController_->BeginFrame();
 	editorFrameState_ = editorController_->DrawGameView(sceneManager_.get(), isPlaying_);
+
 	if (sceneManager_ && !sceneManager_->GetCurrentSceneName().empty()) {
 		currentSceneName_ = sceneManager_->GetCurrentSceneName();
 	}
+
 	editorController_->DrawMainMenuBar(sceneManager_.get(), isPlaying_, currentSceneName_);
 	editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
 	editorController_->DrawToolWindows(
@@ -375,8 +408,10 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 
 	{
 		PROFILE_SCOPE("シーン");
+
 		if (sceneManager_) {
 			const float sceneDeltaTime = sceneManager_->IsTransitioning() ? deltaTime : finalDeltaTime;
+
 			if (!replayFrozen || sceneManager_->IsTransitioning()) {
 				sceneManager_->Update(sceneDeltaTime);
 #ifdef USE_IMGUI
@@ -388,18 +423,31 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		}
 	}
 #ifdef USE_IMGUI
-    // 編集中も環境の水・草木だけをプレビュー。ゲーム・リプレイの停止は維持します。
+    // 編集中は水と砲台プレビューだけ実時間で進め、他のゲーム挙動は停止させます。
     if (!isPlaying_ && !replayFrozen && !sceneTransitioning && sceneManager_) {
         if (BaseScene* scene = sceneManager_->GetCurrentScene()) {
             for (auto& object : scene->GetObjects()) {
+                if (auto* cannon = finalDeltaTime == 0.0f && object && !object->IsReplayRemoved()
+                    ? dynamic_cast<GimmickFireCannon*>(object.get()) : nullptr) {
+                    cannon->Update(deltaTime);
+                }
+
                 if (object && object->GetMaterialType() == 8 && object->GetMeshRenderer()) {
                     object->GetMeshRenderer()->AdvanceWaterAnimation(deltaTime);
                 }
+
                 if (object && (object->GetMaterialType() == 30 || object->GetMaterialType() == 31)
                     && object->GetMeshRenderer()) {
                     if (auto* material = object->GetMeshRenderer()->GetMaterialData()) {
                         material->time += deltaTime;
                     }
+                }
+            }
+            if (finalDeltaTime == 0.0f) {
+                BulletManager::GetInstance()->UpdatePreview(deltaTime);
+                if (BulletManager::GetInstance()->HasPreviewBullets()) {
+                    // シーン側の時間0更新後でも、このプレビューだけは粒子の寿命を進めます。
+                    GPUParticleManager::GetInstance()->UpdateEditorPreviewStep(deltaTime);
                 }
             }
         }
@@ -409,11 +457,14 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
     {
         static const BaseScene* foliageScene = nullptr;
         BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+
         if (scene != foliageScene || sceneTransitioning) {
             FoliageInteraction::Reset();
             foliageScene = scene;
         }
+
         bool found = false;
+
         if (scene && !sceneTransitioning) {
             for (auto& object : scene->GetObjects()) {
                 if (object && object->GetClassName() == "Player") {
@@ -425,12 +476,16 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
                 }
             }
         }
-        if (!found) FoliageInteraction::Reset();
+
+        if (!found)
+            FoliageInteraction::Reset();
     }
+
 	if (!sceneTransitioning) {
 		PROFILE_SCOPE("ライト");
 		LightManager::GetInstance()->Update();
 	}
+
 	if (!sceneTransitioning) {
 		PROFILE_SCOPE("パーティクル");
 		const float effectDeltaTime = isPlaying_ && !replayFrozen ? finalDeltaTime : 0.0f;
@@ -440,12 +495,15 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		MeshEffectManager::GetInstance()->Update(effectDeltaTime);
 #endif
 	}
+
 	if (sceneManager_ && !sceneManager_->IsTransitioning()) {
 		if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
 			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3dCommon());
 		}
+
 		DebrisEffectManager::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
 	}
+
 	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
 		PROFILE_SCOPE("フェード");
 		Fade::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
@@ -473,6 +531,7 @@ void Game::RunFixedUpdates(float finalDeltaTime, bool replayFrozen, bool sceneTr
 	}
 
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
 	if (!currentScene) {
 		fixedUpdateAccumulator_ = 0.0f;
 		return;
@@ -480,6 +539,7 @@ void Game::RunFixedUpdates(float finalDeltaTime, bool replayFrozen, bool sceneTr
 
 	fixedUpdateAccumulator_ += (std::min)(finalDeltaTime, kDeltaTimeClamp);
 	int stepCount = 0;
+
 	while (fixedUpdateAccumulator_ >= kFixedDeltaTime && stepCount < kMaxFixedStepsPerFrame) {
 		currentScene->FixedUpdate(kFixedDeltaTime);
 		fixedUpdateAccumulator_ -= kFixedDeltaTime;
@@ -513,17 +573,21 @@ void Game::Draw() {
 	static bool gpuTraceInitialized = false;
 	static std::ofstream gpuTrace;
 	static unsigned gpuTraceFrame = 0;
+
 	if (!gpuTraceInitialized) {
 		gpuTraceInitialized = true;
 		char tracePath[1024] = {};
 		const DWORD pathLength = GetEnvironmentVariableA("CG2_GPU_PROFILE_CSV", tracePath, sizeof(tracePath));
+
 		if (pathLength > 0 && pathLength < sizeof(tracePath)) {
 			gpuTrace.open(tracePath, std::ios::out | std::ios::trunc);
+
 			if (gpuTrace) {
 				gpuTrace << "frame,total_ms,thumbnail_ms,thumbnail_cpu_ms,shadow_ms,scene_ms,game_ui_ms,debug_ms,post_ms,editor_ui_ms\n";
 			}
 		}
 	}
+
 	if (gpuTrace && ++gpuTraceFrame % 30 == 0) {
 		const auto* profiler = ProfilerManager::GetInstance();
 		gpuTrace << gpuTraceFrame << ','
@@ -541,6 +605,7 @@ void Game::Draw() {
 #endif
 	engine::RenderStats* renderStats = engine::RenderStats::GetInstance();
 	renderStats->BeginFrame();
+
 	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
 		renderStats->SetActiveLightCounts(
 			LightManager::GetInstance()->GetActivePointLightCount(),
@@ -573,17 +638,21 @@ void Game::DrawEditorFrame(PostEffect* postEffect) {
 		DrawRuntimeFrame(postEffect);
 		return;
 	}
+
 	DrawSceneToRenderTexture(true);
 	ApplyPostEffectPipeline(postEffect, true);
+
 	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
 		DrawCameraEditorPreview(postEffect);
 	}
 
 	dxCommon_->StartGpuProfile("エディタUI");
 	dxCommon_->PreDrawBackBuffer();
+
 	if (editorController_) {
 		editorController_->DrawBackBufferUi();
 	}
+
 	dxCommon_->EndGpuProfile("エディタUI");
 
 	dxCommon_->EndGpuProfile("Total");
@@ -612,6 +681,7 @@ void Game::DrawRuntimeFrame(PostEffect* postEffect) {
 void Game::DrawSceneToRenderTexture(bool editorMode) {
 	// 影、3Dシーン、UI、フェードをレンダーテクスチャへまとめて描画する。
 	dxCommon_->PreDrawRenderTexture();
+
 	// サムネイル撮影も同じフレームのGPU仕事なので、Total計測に含めます。
 	dxCommon_->StartGpuProfile("Total");
 
@@ -634,10 +704,12 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	dxCommon_->StartGpuProfile("影描画");
 	{
 		engine::ScopedRenderPass renderPass(engine::RenderPass::Shadow);
+
 		if (sceneManager_) {
 			sceneManager_->DrawShadow();
 		}
 	}
+
 	dxCommon_->EndGpuProfile("影描画");
 	dxCommon_->PostDrawShadow();
 
@@ -645,64 +717,80 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 
 #ifdef USE_IMGUI
 	if (editorMode) {
+		// Editorではゲーム画面・UI・操作ハンドルを別パスに分け、表示先のテクスチャを保つ。
 		dxCommon_->StartGpuProfile("  3Dシーン");
 		{
 			engine::ScopedRenderPass renderPass(engine::RenderPass::MainScene);
 			const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
 			ID3D12Resource* pointLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetPointLightResource();
 			ID3D12Resource* spotLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetSpotLightResource();
+
 			if (sceneManager_) {
 				sceneManager_->Draw();
 			}
+
 			if (editorController_ && !sceneTransitioning) {
 				editorController_->DrawScenePreview(pointLight, spotLight);
 			}
+
 			if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
 				DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+
 				if (MeshEffectManager::GetInstance()->RequiresSceneColorCopy()) {
 					dxCommon_->UpdateGrabTexture();
 				}
+
 				MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 			}
 		}
+
 		dxCommon_->EndGpuProfile("  3Dシーン");
 
 		dxCommon_->StartGpuProfile("  ゲームUI");
 		{
 			engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
+
 			if (sceneManager_) {
 				sceneManager_->DrawUI();
 			}
 		}
+
 		dxCommon_->EndGpuProfile("  ゲームUI");
 
 		dxCommon_->StartGpuProfile("  デバッグ");
 		{
 			engine::ScopedRenderPass renderPass(engine::RenderPass::EditorOverlay);
+
 			if (editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
 				editorController_->DrawSceneDebug(dxCommon_->GetCommandList());
 			}
 		}
+
 		dxCommon_->EndGpuProfile("  デバッグ");
 	} else
 #endif
 	{
 		if (sceneManager_) {
+			// 配布実行時も描画順は3D→UI→Fade。Editor専用の重ね描きだけ省く。
 			{
 				engine::ScopedRenderPass renderPass(engine::RenderPass::MainScene);
 				sceneManager_->Draw();
 				ID3D12Resource* pointLight = nullptr;
 				ID3D12Resource* spotLight = nullptr;
+
 				if (!sceneManager_->IsTransitioning()) {
 					pointLight = LightManager::GetInstance()->GetPointLightResource();
 					spotLight = LightManager::GetInstance()->GetSpotLightResource();
 					DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+
 					if (MeshEffectManager::GetInstance()->RequiresSceneColorCopy()) {
 						dxCommon_->UpdateGrabTexture();
 					}
+
 					MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 				}
 			}
+
 			{
 				engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
 				sceneManager_->DrawUI();
@@ -711,10 +799,12 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	}
 
 	dxCommon_->StartGpuProfile("Fade");
+
 	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
 		engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
 		Fade::GetInstance()->Draw();
 	}
+
 	dxCommon_->EndGpuProfile("Fade");
 
 	dxCommon_->EndGpuProfile("メイン描画");
@@ -729,11 +819,14 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	}
 
 	CameraEditor* cameraEditor = CameraEditor::GetInstance();
+
 	if (!cameraEditor) {
 		return;
 	}
+
 	const bool renderEditorPreview = cameraEditor->ShouldRenderCameraPreview();
 	const bool renderSceneCameraPreview = cameraEditor->ShouldRenderSceneCameraPreview();
+
 	if (!renderEditorPreview && !renderSceneCameraPreview) {
 		return;
 	}
@@ -741,6 +834,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 	engine::ScopedRenderPass renderPass(engine::RenderPass::CameraPreview);
 	dxCommon_->SetCameraPreviewRendering(true);
+
 	if (renderEditorPreview) {
 		if (Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f)) {
 			postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCameraPreviewTextureIndex, true);
@@ -750,6 +844,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 			if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
 				currentScene->DrawCameraPreview(previewCamera, 0);
 			}
+
 			postEffect->TransitionToSRV(commandList, PostEffect::kCameraPreviewTextureIndex);
 			cameraEditor->NotifyCameraPreviewRendered(false);
 		}
@@ -757,11 +852,14 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 
 	if (renderSceneCameraPreview) {
 		Camera* cinematicPreviewCamera = cameraEditor->PrepareCinematicPreviewCamera(16.0f / 9.0f);
+
 		if (cinematicPreviewCamera) {
 			postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCinematicCameraPreviewTextureIndex, true);
+
 			if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
 				currentScene->DrawCameraPreview(cinematicPreviewCamera, 1);
 			}
+
 			postEffect->TransitionToSRV(commandList, PostEffect::kCinematicCameraPreviewTextureIndex);
 			cameraEditor->NotifyCameraPreviewRendered(true);
 		}
@@ -818,12 +916,14 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	postEffect->Draw(commandList, renderTextureHandle, PostEffect::kCopyPipeline);
 
 	postEffect->PreDrawScene(commandList, 0, false);
+
 	for (int level = 0; level < bloomLevelCount; ++level) {
 		postEffect->Draw(
 			commandList,
 			postEffect->GetSRVHandle(kBloomTextureIndices[level]),
 			PostEffect::kAddPipeline);
 	}
+
 	postEffect->TransitionToSRV(commandList, 0);
 
 	drawFinalComposite(postEffect->GetSRVHandle(0));
@@ -860,6 +960,7 @@ void Game::RecordFixedFpsProfile() {
 	static std::chrono::high_resolution_clock::time_point lastFrameStart;
 	float frameDelta = std::chrono::duration<float, std::milli>(postFixFPS - lastFrameStart).count();
 	lastFrameStart = postFixFPS;
+
 	if (frameDelta > 0.0f && frameDelta < 200.0f) {
 		ProfilerManager::GetInstance()->RecordCpuTime("フレーム間隔", frameDelta);
 	}

@@ -13,6 +13,7 @@
 class LoadingScene : public BaseScene {
 public:
     LoadingScene() = default;
+
     ~LoadingScene() override = default;
 
     /// <summary>ロード表示に使うSpriteと素材を準備する。</summary>
@@ -31,6 +32,7 @@ public:
     void Finalize() override;
 
     engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
+
     const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
 
     /// <summary>
@@ -40,12 +42,15 @@ public:
 
 private:
     std::vector<std::unique_ptr<engine::Sprite>>* GetMutableSprites() override { return &sprites_; }
+
     // Sprite を生成して所有リストに登録する。
     engine::Sprite* CreateSprite(uint32_t textureHandle, const engine::Vector2& position, const engine::Vector2& size, const engine::Vector4& color);
 
     // ロード中のスライム・点滅ドット・進捗ゲージをそれぞれ更新する。
     void UpdateSlimeRunAnimation();
+
     void UpdateDotAnimation();
+
     void UpdateProgressGauge();
 
 private:

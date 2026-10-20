@@ -57,6 +57,7 @@ D3D12_DESCRIPTOR_RANGE RootSignatureBuilder::MakeRange(D3D12_DESCRIPTOR_RANGE_TY
     range.NumDescriptors = numDescriptors;
     range.BaseShaderRegister = shaderRegister;
     range.RegisterSpace = registerSpace;
+
     // テーブル内の連続したメモリに配置されるよう自動設定
     range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     return range;
@@ -121,6 +122,7 @@ void RootSignatureBuilder::Build(ID3D12Device* device, ID3D12RootSignature** out
         assert(false && "Root signature build requires a device and output pointer");
         return;
     }
+
     *outRootSignature = nullptr;
 
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
@@ -140,7 +142,9 @@ void RootSignatureBuilder::Build(ID3D12Device* device, ID3D12RootSignature** out
         if (errorBlob) {
             OutputDebugStringA(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
         }
+
         assert(false && "Failed to serialize root signature!");
+
         // Release では assert が無効になるため、空の signatureBlob を参照せずに終了します。
         return;
     }

@@ -9,6 +9,7 @@ bool AttackAbilityRuntime::Start(const AttackAbilityDefinition& definition) {
     if (!IsReady()) {
         return false;
     }
+
     definition_ = definition;
     definition_.windupDuration = (std::max)(0.0f, definition_.windupDuration);
     definition_.activeDuration = (std::max)(0.0f, definition_.activeDuration);
@@ -25,14 +26,17 @@ AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
     AttackAbilityUpdateResult result;
     result.previousPhase = phase_;
     result.currentPhase = phase_;
+
     if (!hasDefinition_ || phase_ == AttackAbilityPhase::Ready) {
         return result;
     }
 
     float remainingTime = (std::max)(0.0f, deltaTime);
+
     for (int transitionCount = 0; transitionCount < 5; ++transitionCount) {
         const float duration = definition_.GetPhaseDuration(phase_);
         const float timeToBoundary = (std::max)(0.0f, duration - phaseTime_);
+
         if (duration > 0.0f && remainingTime < timeToBoundary) {
             phaseTime_ += remainingTime;
             remainingTime = 0.0f;
@@ -42,6 +46,7 @@ AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
         if (duration > 0.0f) {
             remainingTime = (std::max)(0.0f, remainingTime - timeToBoundary);
         }
+
         phase_ = NextPhase(phase_);
         phaseTime_ = 0.0f;
 
@@ -66,6 +71,7 @@ void AttackAbilityRuntime::Cancel(bool enterCooldown) {
         Reset();
         return;
     }
+
     phaseTime_ = 0.0f;
     phase_ = enterCooldown && definition_.cooldown > 0.0f ? AttackAbilityPhase::Cooldown : AttackAbilityPhase::Ready;
 }
@@ -88,15 +94,20 @@ float AttackAbilityRuntime::GetElapsedActionTime() const {
     if (!hasDefinition_) {
         return 0.0f;
     }
+
     switch (phase_) {
     case AttackAbilityPhase::Windup:
         return phaseTime_;
+
     case AttackAbilityPhase::Active:
         return definition_.windupDuration + phaseTime_;
+
     case AttackAbilityPhase::Recovery:
         return definition_.windupDuration + definition_.activeDuration + phaseTime_;
+
     case AttackAbilityPhase::Cooldown:
         return definition_.GetActionDuration();
+
     case AttackAbilityPhase::Ready:
     default:
         return 0.0f;
@@ -113,10 +124,13 @@ AttackAbilityPhase AttackAbilityRuntime::NextPhase(AttackAbilityPhase phase) con
     switch (phase) {
     case AttackAbilityPhase::Windup:
         return AttackAbilityPhase::Active;
+
     case AttackAbilityPhase::Active:
         return AttackAbilityPhase::Recovery;
+
     case AttackAbilityPhase::Recovery:
         return AttackAbilityPhase::Cooldown;
+
     case AttackAbilityPhase::Cooldown:
     case AttackAbilityPhase::Ready:
     default:

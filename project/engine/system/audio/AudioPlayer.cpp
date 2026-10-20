@@ -30,10 +30,12 @@ void AudioPlayer::Finalize() {
 	for (auto& [handle, data] : transientSoundDatas_) {
 		DestroyStreamingData(data.get());
 	}
+
 	transientSoundDatas_.clear();
 
 	for (auto const& [handle, dataPtr] : streamingSoundDatas_) {
 		SoundDataStreaming* data = dataPtr.get();
+
 		if (!data) {
 			continue;
 		}
@@ -42,16 +44,19 @@ void AudioPlayer::Finalize() {
 		if (data->isPlaying) {
 			StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
 		}
+
 		// 自然終了したワンショットにも Voice が残り得るため、終了後の分も回収します。
 		else if (data->sourceVoice) {
 			if (data->decodeThread.joinable()) {
 				data->decodeThread.join();
 			}
+
 			data->sourceVoice->Stop(0);
 			data->sourceVoice->FlushSourceBuffers();
 			data->sourceVoice->DestroyVoice();
 			data->sourceVoice = nullptr;
 		}
+
 		// Voice が先に解放されていても、残るデコードスレッドの終了を待ちます。
 		else if (data->decodeThread.joinable()) {
 			data->decodeThread.join();
@@ -67,6 +72,7 @@ void AudioPlayer::Finalize() {
 	streamingSoundDatas_.clear();
 
 	MFShutdown();
+
 	// xAudio2_ は ComPtr なので、この関数の後デストラクタで自動解放される
 }
 
@@ -80,6 +86,7 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 	if (stringSize <= 0) {
 		return nullptr;
 	}
+
 	std::wstring wideFilename(static_cast<std::size_t>(stringSize), L'\0');
 	MultiByteToWideChar(
 		CP_UTF8, 0, filename.c_str(), -1, wideFilename.data(), stringSize);
@@ -92,10 +99,13 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 
 	Microsoft::WRL::ComPtr<IMFMediaType> mediaType;
 	result = MFCreateMediaType(&mediaType);
+
 	if (FAILED(result)) {
 		return nullptr;
 	}
+
 	mediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+
 	// デコード結果を PCM に揃え、XAudio2 に渡す WAVEFORMATEX を取得する。
 	mediaType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
 	result = data->sourceReader->SetCurrentMediaType(
@@ -113,12 +123,14 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 	if (FAILED(result)) {
 		return nullptr;
 	}
+
 	UINT32 waveFormatSize = 0;
 	result = MFCreateWaveFormatExFromMFMediaType(
 		outputMediaType.Get(), &data->waveFormat, &waveFormatSize);
 	if (FAILED(result) || !data->waveFormat) {
 		return nullptr;
 	}
+
 	return data;
 }
 
@@ -127,17 +139,21 @@ void AudioPlayer::DestroyStreamingData(SoundDataStreaming* data) {
 	if (!data) {
 		return;
 	}
+
 	data->isPlaying = false;
 	data->cv.notify_one();
+
 	if (data->decodeThread.joinable()) {
 		data->decodeThread.join();
 	}
+
 	if (data->sourceVoice) {
 		data->sourceVoice->Stop(0);
 		data->sourceVoice->FlushSourceBuffers();
 		data->sourceVoice->DestroyVoice();
 		data->sourceVoice = nullptr;
 	}
+
 	data->sourceReader.Reset();
 }
 
@@ -145,11 +161,13 @@ AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename)
 	// 同じファイルは同じハンドルを返し、二重のソースリーダー生成を避ける。
 	std::lock_guard<std::mutex> lock(audioDataMutex_);
 	auto existing = audioHandleMap_.find(filename);
+
 	if (existing != audioHandleMap_.end()) {
 		return existing->second;
 	}
 
 	auto data = CreateStreamingData(filename);
+
 	if (!data) {
 		return kInvalidAudioHandle;
 	}
@@ -181,6 +199,7 @@ void AudioPlayer::SetBGMMasterVolume(float volume) {
 void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 {
 	auto it = streamingSoundDatas_.find(handle);
+
 	if (it == streamingSoundDatas_.end()) {
 		return; // 無効なハンドル
 	}
@@ -192,12 +211,14 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 	if (data->isPlaying) {
 		StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
 	}
+
 	// 自然終了後に残った Voice も使い回さず破棄します。
 	else if (data->sourceVoice) {
 		// 以前のデコードがまだ終了処理中なら、バッファ解放より先に待ちます。
 		if (data->decodeThread.joinable()) {
 			data->decodeThread.join();
 		}
+
 		data->sourceVoice->Stop(0);
 		data->sourceVoice->FlushSourceBuffers();
 		data->sourceVoice->DestroyVoice();
@@ -231,6 +252,7 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 void AudioPlayer::StopSe(AudioHandle handle) {
 	// デコード停止を通知し、スレッド終了後に Voice を破棄する。
 	auto it = streamingSoundDatas_.find(handle);
+
 	if (it == streamingSoundDatas_.end() || !it->second->isPlaying) {
 		return;
 	}
@@ -261,7 +283,8 @@ void AudioPlayer::StopSe(AudioHandle handle) {
 }
 
 void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
-	if (!data) return;
+	if (!data)
+		return;
 
 	while (data->isPlaying) {
 		XAUDIO2_VOICE_STATE state = {};
@@ -285,6 +308,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 					var.hVal.QuadPart = 0;
 					data->sourceReader->SetCurrentPosition(GUID_NULL, var);
 					PropVariantClear(&var);
+
 					// この後、次のループで通常通りデコード処理に進む
 				} else {
 					// ループしない: 再生キューが空になるのを待ってスレッド終了
@@ -292,6 +316,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 						data->sourceVoice->GetState(&state);
 						std::this_thread::sleep_for(std::chrono::milliseconds(10));
 					}
+
 					break;
 				}
 			}
@@ -326,6 +351,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 			data->cv.wait_for(lock, std::chrono::milliseconds(10));
 		}
 	}
+
 	// isPlayingがfalseになったらループを抜けてスレッド終了
 	data->isPlaying = false;
 }
@@ -368,9 +394,11 @@ void AudioPlayer::StopBGM() {
 /// </summary>
 bool AudioPlayer::IsPlaying(AudioHandle handle) const {
 	auto it = streamingSoundDatas_.find(handle);
+
 	if (it == streamingSoundDatas_.end()) {
 		return false; // ロードされていない
 	}
+
 	// スレッドが動作中か (isPlaying フラグ) で判断
 	return it->second->isPlaying;
 }
@@ -382,6 +410,7 @@ void AudioPlayer::ApplyCurrentBGMVolume() {
 	}
 
 	auto it = streamingSoundDatas_.find(currentBgmHandle_);
+
 	if (it == streamingSoundDatas_.end() || !it->second || !it->second->sourceVoice) {
 		return;
 	}
@@ -395,11 +424,13 @@ AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
 	float pitch) {
 	// 一時 SE は音源ハンドルを共有せず、同時発音ごとに独立した Voice を持つ。
 	Update();
+
 	if (!xAudio2_) {
 		return kInvalidPlaybackHandle;
 	}
 
 	auto data = CreateStreamingData(filename);
+
 	if (!data || !data->waveFormat) {
 		return kInvalidPlaybackHandle;
 	}
@@ -443,9 +474,11 @@ bool AudioPlayer::IsTransientPlaying(PlaybackHandle handle) const {
 void AudioPlayer::StopTransient(PlaybackHandle handle) {
 	// 先にスレッドと Voice を閉じてから所有するデータを消す。
 	auto found = transientSoundDatas_.find(handle);
+
 	if (found == transientSoundDatas_.end()) {
 		return;
 	}
+
 	DestroyStreamingData(found->second.get());
 	transientSoundDatas_.erase(found);
 }
@@ -458,6 +491,7 @@ void AudioPlayer::Update() {
 			++iterator;
 			continue;
 		}
+
 		DestroyStreamingData(iterator->second.get());
 		iterator = transientSoundDatas_.erase(iterator);
 	}
@@ -467,9 +501,11 @@ namespace {
 // 音声の検索キーを揃えるため、区切り文字と先頭の相対パス表記を正規化します。
 std::string NormalizeAudioPath(std::string path) {
 	std::replace(path.begin(), path.end(), '\\', '/');
+
 	while (path.rfind("./", 0) == 0) {
 		path.erase(0, 2);
 	}
+
 	return path;
 }
 
@@ -506,6 +542,7 @@ bool AudioEventSystem::LoadEvent(
 	// JSON の候補音源を検証し、相対パスはイベントの隣か SE ディレクトリから解決する。
 	const std::string normalizedPath = NormalizeAudioPath(eventPath);
 	std::ifstream file(normalizedPath, std::ios::binary);
+
 	if (!file) {
 		SetAudioEventError(errorMessage, "Audio Eventを開けません: " + normalizedPath);
 		return false;
@@ -520,17 +557,23 @@ bool AudioEventSystem::LoadEvent(
 			SetAudioEventError(errorMessage, "clips配列がありません: " + normalizedPath);
 			return false;
 		}
+
 		const std::filesystem::path parent =
 			std::filesystem::path(normalizedPath).parent_path();
 		for (const auto& value : root["clips"]) {
 			if (!value.is_string()) {
 				continue;
 			}
+
 			std::string clip = NormalizeAudioPath(value.get<std::string>());
+
 			if (clip.empty()) {
 				continue;
 			}
+
 			std::filesystem::path clipPath(clip);
+
+			// 相対名はEventファイルの隣を優先し、無ければ共通SEフォルダーから探す。
 			if (!clipPath.is_absolute() && clip.rfind("Resources/", 0) != 0) {
 				const std::filesystem::path besideEvent = parent / clipPath;
 				const std::filesystem::path underSe =
@@ -542,15 +585,18 @@ bool AudioEventSystem::LoadEvent(
 					clip = NormalizeAudioPath(underSe.generic_string());
 				}
 			}
+
 			if (IsAudioFilePath(std::filesystem::path(clip))) {
 				loaded.clips.push_back(std::move(clip));
 			}
 		}
+
 		if (loaded.clips.empty()) {
 			SetAudioEventError(errorMessage, "再生可能なclipがありません: " + normalizedPath);
 			return false;
 		}
 
+		// 逆順で書かれた範囲も正規化し、後段の乱数選択へ常に最小→最大を渡す。
 		const auto readRange = [&root](
 			const char* key,
 			float& minimum,
@@ -559,12 +605,15 @@ bool AudioEventSystem::LoadEvent(
 				root[key].size() < 2) {
 				return;
 			}
+
 			minimum = root[key][0].get<float>();
 			maximum = root[key][1].get<float>();
+
 			if (minimum > maximum) {
 				std::swap(minimum, maximum);
 			}
 		};
+
 		readRange("volumeRange", loaded.volumeMin, loaded.volumeMax);
 		readRange("pitchRange", loaded.pitchMin, loaded.pitchMax);
 		loaded.volumeMin = std::clamp(loaded.volumeMin, 0.0f, 1.0f);
@@ -604,8 +653,10 @@ bool AudioEventSystem::SaveEvent(
 
 	const std::filesystem::path path(NormalizeAudioPath(eventPath));
 	std::error_code error;
+
 	if (!path.parent_path().empty()) {
 		std::filesystem::create_directories(path.parent_path(), error);
+
 		if (error) {
 			SetAudioEventError(errorMessage, "保存フォルダを作成できません。");
 			return false;
@@ -613,12 +664,15 @@ bool AudioEventSystem::SaveEvent(
 	}
 
 	AudioEventDefinition sanitized = definition;
+
 	if (sanitized.volumeMin > sanitized.volumeMax) {
 		std::swap(sanitized.volumeMin, sanitized.volumeMax);
 	}
+
 	if (sanitized.pitchMin > sanitized.pitchMax) {
 		std::swap(sanitized.pitchMin, sanitized.pitchMax);
 	}
+
 	sanitized.volumeMin = std::clamp(sanitized.volumeMin, 0.0f, 1.0f);
 	sanitized.volumeMax = std::clamp(sanitized.volumeMax, 0.0f, 1.0f);
 	sanitized.pitchMin = std::clamp(sanitized.pitchMin, 0.5f, 2.0f);
@@ -640,11 +694,14 @@ bool AudioEventSystem::SaveEvent(
 	};
 
 	std::ofstream file(path, std::ios::binary);
+
 	if (!file) {
 		SetAudioEventError(errorMessage, "Audio Eventを保存できません。");
 		return false;
 	}
+
 	file << root.dump(2);
+
 	if (!file.good()) {
 		SetAudioEventError(errorMessage, "Audio Eventの書き込みに失敗しました。");
 		return false;
@@ -660,11 +717,13 @@ bool AudioEventSystem::Prewarm(
 	std::string* errorMessage) {
 	// 全候補の読み込みに成功したイベントだけをキャッシュに登録する。
 	AudioEventDefinition definition;
+
 	if (!LoadEvent(eventPath, definition, errorMessage)) {
 		return false;
 	}
 
 	bool succeeded = true;
+
 	for (const std::string& clip : definition.clips) {
 		if (AudioPlayer::GetInstance()->LoadSoundFile(clip) ==
 			AudioPlayer::kInvalidAudioHandle) {
@@ -672,9 +731,11 @@ bool AudioEventSystem::Prewarm(
 			SetAudioEventError(errorMessage, "音声を準備できません: " + clip);
 		}
 	}
+
 	if (succeeded) {
 		eventCache_[NormalizeAudioPath(eventPath)] = std::move(definition);
 	}
+
 	return succeeded;
 }
 
@@ -687,13 +748,17 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 	const std::string normalizedPath = NormalizeAudioPath(eventPath);
 
 	auto cached = eventCache_.find(normalizedPath);
+
 	if (cached == eventCache_.end()) {
 		AudioEventDefinition definition;
+
 		if (!LoadEvent(normalizedPath, definition, nullptr)) {
 			return AudioPlayer::kInvalidPlaybackHandle;
 		}
+
 		cached = eventCache_.emplace(normalizedPath, std::move(definition)).first;
 	}
+
 	const AudioEventDefinition& definition = cached->second;
 
 	const std::size_t activeCount = static_cast<std::size_t>(std::count_if(
@@ -715,6 +780,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 		clipIndex == last->second) {
 		clipIndex = (clipIndex + 1) % definition.clips.size();
 	}
+
 	lastClipByEvent_[normalizedPath] = clipIndex;
 
 	std::uniform_real_distribution<float> volumeDistribution(
@@ -744,6 +810,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 	if (handle != AudioPlayer::kInvalidPlaybackHandle) {
 		activeInstances_.push_back({ normalizedPath, handle });
 	}
+
 	return handle;
 }
 
@@ -753,19 +820,23 @@ AudioPlayer::PlaybackHandle AudioEventSystem::PlayReference(
 	float volumeScale) {
 	// 参照先がイベント JSON なら設定に従い、音声ファイルなら直接再生する。
 	const std::string eventPath = ResolveEventPath(reference);
+
 	if (!eventPath.empty()) {
 		return Play(eventPath, worldPosition, volumeScale);
 	}
 
 	std::string audioPath = NormalizeAudioPath(reference);
+
 	if (audioPath.rfind("Resources/", 0) != 0) {
 		audioPath = NormalizeAudioPath(
 			(std::filesystem::path("Resources/audio/se") / audioPath)
 				.generic_string());
 	}
+
 	if (!IsAudioFilePath(std::filesystem::path(audioPath))) {
 		return AudioPlayer::kInvalidPlaybackHandle;
 	}
+
 	return AudioPlayer::GetInstance()->PlayTransientSE(
 		audioPath,
 		std::clamp(volumeScale, 0.0f, 1.0f),
@@ -790,26 +861,32 @@ std::string AudioEventSystem::ResolveEventPath(
 	const std::string& reference) const {
 	// JSON の明示パスを優先し、短い名前は既定のイベント保存先で探す。
 	std::string normalized = NormalizeAudioPath(reference);
+
 	if (normalized.empty()) {
 		return {};
 	}
 
 	std::filesystem::path direct(normalized);
+
 	if (direct.extension() == ".json" && std::filesystem::exists(direct)) {
 		return NormalizeAudioPath(direct.generic_string());
 	}
 
 	std::filesystem::path fileName = direct.filename();
+
 	if (fileName.extension().empty()) {
 		fileName.replace_extension(".json");
 	}
+
 	for (const std::filesystem::path& directory : {
 		std::filesystem::path("Resources/json/audio_events"),
 		std::filesystem::path("Resources/json/audio") }) {
 		const std::filesystem::path candidate = directory / fileName;
+
 		if (std::filesystem::exists(candidate)) {
 			return NormalizeAudioPath(candidate.generic_string());
 		}
 	}
+
 	return {};
 }

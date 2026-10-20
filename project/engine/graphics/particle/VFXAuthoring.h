@@ -77,13 +77,17 @@ public:
     /// <remarks>keysはNormalize等で昇順にしておく。範囲外は端の値、区間の補間には左側キーのイージングを使う。</remarks>
     float Evaluate(float time, float fallback = 1.0f) const {
         // 左側キーのイージングを、そのキーから次のキーへ向かう区間に適用する。
-        if (keys.empty()) return fallback;
-        if (keys.size() == 1 || time <= keys.front().time) return keys.front().value;
-        if (time >= keys.back().time) return keys.back().value;
+        if (keys.empty())
+            return fallback;
+        if (keys.size() == 1 || time <= keys.front().time)
+            return keys.front().value;
+        if (time >= keys.back().time)
+            return keys.back().value;
 
         for (std::size_t index = 1; index < keys.size(); ++index) {
             const VFXFloatCurveKey& right = keys[index];
-            if (time > right.time) continue;
+            if (time > right.time)
+                continue;
             const VFXFloatCurveKey& left = keys[index - 1];
             const float duration = (std::max)(right.time - left.time, 0.0001f);
             const float localTime = ApplyVFXCurveEasing(left.easing, (time - left.time) / duration);
@@ -95,7 +99,8 @@ public:
     /// <summary>旧形式の等間隔サンプルを編集用キーへ変換する。</summary>
     static VFXFloatCurve FromLegacySamples(const float* values, std::size_t count) {
         VFXFloatCurve curve;
-        if (!values || count == 0) return curve;
+        if (!values || count == 0)
+            return curve;
         curve.keys.reserve(count);
         for (std::size_t index = 0; index < count; ++index) {
             const float time = count > 1 ? static_cast<float>(index) / static_cast<float>(count - 1) : 0.0f;
@@ -139,13 +144,17 @@ public:
     /// <remarks>keysはNormalize等で昇順にしておく。RGBA各成分を補間し、色空間変換は行わない。</remarks>
     engine::Vector4 Evaluate(float time, const engine::Vector4& fallback = { 1.0f, 1.0f, 1.0f, 1.0f }) const {
         // RGBAを同じ時刻割合で補間し、キーがない場合だけ呼び出し側の色へ戻す。
-        if (keys.empty()) return fallback;
-        if (keys.size() == 1 || time <= keys.front().time) return keys.front().color;
-        if (time >= keys.back().time) return keys.back().color;
+        if (keys.empty())
+            return fallback;
+        if (keys.size() == 1 || time <= keys.front().time)
+            return keys.front().color;
+        if (time >= keys.back().time)
+            return keys.back().color;
 
         for (std::size_t index = 1; index < keys.size(); ++index) {
             const VFXColorGradientKey& right = keys[index];
-            if (time > right.time) continue;
+            if (time > right.time)
+                continue;
             const VFXColorGradientKey& left = keys[index - 1];
             const float duration = (std::max)(right.time - left.time, 0.0001f);
             const float localTime = ApplyVFXCurveEasing(left.easing, (time - left.time) / duration);
@@ -264,8 +273,10 @@ struct VFXLodSettings {
 
     /// <summary>指定距離で使用する発生倍率を返す。</summary>
     float EvaluateEmissionScale(float distance) const {
-        if (!enabled || distance <= nearDistance) return 1.0f;
-        if (distance >= farDistance) return std::clamp(farEmissionScale, 0.0f, 1.0f);
+        if (!enabled || distance <= nearDistance)
+            return 1.0f;
+        if (distance >= farDistance)
+            return std::clamp(farEmissionScale, 0.0f, 1.0f);
         const float range = (std::max)(farDistance - nearDistance, 0.01f);
         const float ratio = (distance - nearDistance) / range;
         return std::lerp(1.0f, std::clamp(farEmissionScale, 0.0f, 1.0f), ratio);

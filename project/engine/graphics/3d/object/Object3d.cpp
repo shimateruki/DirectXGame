@@ -27,11 +27,13 @@ namespace {
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     // 保存済み相対パスはResources配下も試し、旧シーンの地形判定を解決する。
     std::filesystem::path filePath(path);
+
     if (std::filesystem::exists(filePath)) {
         return filePath;
     }
 
     std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
+
     if (std::filesystem::exists(resourcesPath)) {
         return resourcesPath;
     }
@@ -47,6 +49,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -78,13 +81,14 @@ Object3d::~Object3d() {
             child->transform_.parent = nullptr;
         }
     }
+
     children_.clear();
 }
 
 // ========================================================================
 // 初期化
 // ========================================================================
-void Object3d::Initialize(Object3dCommon* common) {
+void Object3d::Initialize(engine::Object3dCommon* common) {
     assert(common);
     common_ = common;
     EnsurePersistentGuid();
@@ -137,9 +141,11 @@ void Object3d::Update(float deltaTime) {
             material->time += deltaTime;
         }
     }
+
     if (meshRenderer_ && GetMaterialType() == 8) {
         meshRenderer_->AdvanceWaterAnimation(deltaTime);
     }
+
     auto startAll = std::chrono::high_resolution_clock::now();
     
     // 毎フレームリセット
@@ -151,18 +157,24 @@ void Object3d::Update(float deltaTime) {
     if (decalSettings_.enabled && decalSettings_.lifetime > 0.0f && isVisible_) {
         decalElapsedTime_ += std::max(deltaTime, 0.0f);
         float alphaFactor = 1.0f;
+
         if (decalSettings_.fadeIn > 0.0f) {
             alphaFactor = std::min(alphaFactor, decalElapsedTime_ / decalSettings_.fadeIn);
         }
+
         const float remaining = decalSettings_.lifetime - decalElapsedTime_;
+
         if (decalSettings_.fadeOut > 0.0f) {
             alphaFactor = std::min(alphaFactor, remaining / decalSettings_.fadeOut);
         }
+
         engine::Vector4 color = GetColor();
         color.w = decalAuthoredAlpha_ * std::clamp(alphaFactor, 0.0f, 1.0f);
         SetColor(color);
+
         if (decalElapsedTime_ >= decalSettings_.lifetime) {
             SetIsVisible(false);
+
             if (decalSettings_.transient) {
                 isDead = true;
             }
@@ -172,10 +184,12 @@ void Object3d::Update(float deltaTime) {
     // 収集アニメーション
     if (isCollecting_) {
         collectTimer_ += deltaTime;
+
         // 収集中だけ回転アニメーションへ切り替えます。
         transform_.isQuaternionMaster = false;
         transform_.translate.y += 10.0f * deltaTime; // 上昇
         transform_.rotate.y += 15.0f * deltaTime;    // 回転
+
         if (collectTimer_ >= 0.5f) {
             isCollecting_ = false;
             isVisible_ = false;
@@ -202,43 +216,52 @@ void Object3d::Update(float deltaTime) {
 
     // --- アニメーション計測 ---
     auto startAnim = std::chrono::high_resolution_clock::now();
+
     if (meshRenderer_ && meshRenderer_->GetModel()) {
         bool appliedAnimation = false;
         Model* model = meshRenderer_->GetModel();
         const bool controllerApplied = UpdateAnimatorController(deltaTime, model);
+
         if (controllerApplied) {
             appliedAnimation = true;
         } else if (!animName_.empty()) {
             const Model::Animation* anim = model->GetAnimation(animName_);
+
             if (anim) {
                 animationTime_ += deltaTime;
                 float time = animationTime_;
+
                 if (isAnimLoop_ && anim->duration > 0.0f) {
                     time = std::fmod(time, anim->duration);
                 } else {
                     time = std::min(time, anim->duration);
                 }
+
                 model->ApplyAnimation(*anim, time);
                 appliedAnimation = true;
             }
         }
+
         if (!controllerApplied) {
             model->Update(appliedAnimation);
         }
     }
+
     auto endAnim = std::chrono::high_resolution_clock::now();
     cpuAnimTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endAnim - startAnim).count()) / 1000.0f;
 
     // --- 行列・その他計測 ---
     auto startMat = std::chrono::high_resolution_clock::now();
+
     // 派生クラスがこの後Transformを変更する可能性があるため、ここでは
     // エフェクト追従に必要な行列だけを更新します。描画定数はObjectManagerが
     // 全オブジェクトのロジック更新後に一度だけ確定します。
     UpdateWorldMatrix(false);
 
     if (recorder_) {
-        recorder_->Update();
+        recorder_->Update(deltaTime);
     }
+
     UpdateParticle();
     UpdateAttachedEffects(deltaTime);
     auto endMat = std::chrono::high_resolution_clock::now();
@@ -250,6 +273,7 @@ void Object3d::Update(float deltaTime) {
 
 void Object3d::UpdateParticle() {
     ParticleEmitterComponent* particle = GetParticleEmitterComponent();
+
     if (!particle) {
         gpuEmitter_.reset();
         return;
@@ -272,6 +296,7 @@ void Object3d::UpdateParticle() {
             gpuEmitter_->Initialize(particle->GetGpuParticle(), this);
             gpuEmitter_->Play();
         }
+
         // 名前が不一致なら作り直し
         else if (gpuEmitter_->GetName() != particle->GetGpuParticle()) {
             gpuEmitter_->Initialize(particle->GetGpuParticle(), this);
@@ -287,14 +312,18 @@ void Object3d::UpdateParticle() {
 }
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (!GetIsRenderVisible()) return;
+    if (!GetIsRenderVisible())
+        return;
 #ifdef USE_IMGUI
     // シーン配置カメラも補助表示です。動作や保存データは変更せず描画だけを抑制します。
-    if (IsCameraObject() && !EditorToolSettings::Get().IsVisible("cameraBody")) return;
-    if ((className_ == "GPUParticle" || className_ == "InvisibleBox") && !EditorToolSettings::Get().IsVisible("helperModels")) return;
+    if (IsCameraObject() && !EditorToolSettings::Get().IsVisible("cameraBody"))
+        return;
+    if ((className_ == "GPUParticle" || className_ == "InvisibleBox") && !EditorToolSettings::Get().IsVisible("helperModels"))
+        return;
 #endif
     if (IsCameraObject()) {
         SceneManager* sceneManager = SceneManager::GetInstance();
+
         if ((sceneManager && sceneManager->IsPlaying()) || DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
             return;
         }
@@ -306,6 +335,7 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 #endif
     if (meshRenderer_) {
         bool sampling = ProfilerManager::GetInstance()->IsGpuSampling();
+
         if (sampling) {
             common_->GetDxCommon()->StartGpuProfile(name_);
         }
@@ -316,6 +346,7 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
             common_->GetDxCommon()->EndGpuProfile(name_);
         }
     }
+
     // ★ DrawAttachedEffects はここでは呼ばない！
     //    エフェクトの歪み(Distortion)がGrabTextureを参照するため、
     //    GrabTexture更新後の専用パスで描画する必要がある。
@@ -327,10 +358,13 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 
 void Object3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
     // プレビュー用カメラでは補助モデルの表示条件を揃え、通常描画と同じ可視性を守る。
-    if (!GetIsRenderVisible()) return;
+    if (!GetIsRenderVisible())
+        return;
 #ifdef USE_IMGUI
-    if (IsCameraObject() && !EditorToolSettings::Get().IsVisible("cameraBody")) return;
-    if ((className_ == "GPUParticle" || className_ == "InvisibleBox") && !EditorToolSettings::Get().IsVisible("helperModels")) return;
+    if (IsCameraObject() && !EditorToolSettings::Get().IsVisible("cameraBody"))
+        return;
+    if ((className_ == "GPUParticle" || className_ == "InvisibleBox") && !EditorToolSettings::Get().IsVisible("helperModels"))
+        return;
 #endif
     if (IsCameraObject() && DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
         return;
@@ -357,6 +391,7 @@ void Object3d::UpdateWorldMatrix(bool refreshRenderer) {
     if (refreshRenderer && meshRenderer_) {
         meshRenderer_->Update();
     }
+
     for (Object3d* child : children_) {
         if (child) {
             child->UpdateWorldMatrix(refreshRenderer);
@@ -371,6 +406,7 @@ void Object3d::RefreshRenderCameraData() {
     if (meshRenderer_) {
         meshRenderer_->RefreshCameraDependentData();
     }
+
     for (Object3d* child : children_) {
         if (child) {
             child->RefreshRenderCameraData();
@@ -389,6 +425,7 @@ void Object3d::SetParent(Object3d* parent, bool keepWorldTransform) {
     }
 
     UpdateWorldMatrix();
+
     if (parent) {
         parent->UpdateWorldMatrix();
     }
@@ -408,6 +445,7 @@ void Object3d::SetParent(Object3d* parent, bool keepWorldTransform) {
         if (std::find(parent_->children_.begin(), parent_->children_.end(), this) == parent_->children_.end()) {
             parent_->children_.push_back(this);
         }
+
         transform_.parent = parent_->GetTransform();
     } else {
         transform_.parent = nullptr;
@@ -415,9 +453,11 @@ void Object3d::SetParent(Object3d* parent, bool keepWorldTransform) {
 
     if (keepWorldTransform) {
         engine::Matrix4x4 localMatrix = worldBefore;
+
         if (parent_) {
             localMatrix = math.Multiply(worldBefore, math.Inverse(parentWorld));
         }
+
         Object3dTransformUtils::ApplyMatrixToTransform(transform_, localMatrix);
     }
 
@@ -443,6 +483,7 @@ void Object3d::SetModel(Model* model) {
             config.center = model->GetCenter();
             collider_->SetConfig(config);
         }
+
         RefreshModelSurfaceCollision();
     }
 }
@@ -452,6 +493,7 @@ void Object3d::SetModel(const std::string& modelName) {
         SetModel(nullptr);
         return;
     }
+
     if (meshRenderer_ && !modelName.empty()) {
         Model* model = ModelManager::GetInstance()->LoadModel(modelName);
         meshRenderer_->SetModel(modelName);
@@ -467,6 +509,7 @@ void Object3d::SetModel(const std::string& modelName) {
             config.center = model->GetCenter();
             collider_->SetConfig(config);
         }
+
         RefreshModelSurfaceCollision();
     }
 }
@@ -588,6 +631,7 @@ void Object3d::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHan
     if (!GetIsRenderVisible() || !meshRenderer_) {
         return;
     }
+
     meshRenderer_->DrawSpecialMaterialForCamera(
         GetMaterialType(),
         camera,
@@ -699,12 +743,14 @@ engine::Vector4 Object3d::GetColor() const {
 
 void Object3d::SetColor(const engine::Vector4& color) {
     // 表示色は実際の材質を持つレンダラーへだけ反映する。
-    if (meshRenderer_) meshRenderer_->SetColor(color);
+    if (meshRenderer_)
+        meshRenderer_->SetColor(color);
 }
 
 void Object3d::SetBlendMode(BlendMode blendMode) {
     // 透過の描画方式をレンダラーの材質設定へ渡す。
-    if (meshRenderer_) meshRenderer_->SetBlendMode(blendMode);
+    if (meshRenderer_)
+        meshRenderer_->SetBlendMode(blendMode);
 }
 
 BlendMode Object3d::GetBlendMode() const {
@@ -714,7 +760,8 @@ BlendMode Object3d::GetBlendMode() const {
 
 void Object3d::SetIntensity(float intensity) {
     // オブジェクトごとの照明強度をレンダラーへ反映する。
-    if (meshRenderer_) meshRenderer_->SetIntensity(intensity);
+    if (meshRenderer_)
+        meshRenderer_->SetIntensity(intensity);
 }
 
 float Object3d::GetIntensity() const {
@@ -722,6 +769,7 @@ float Object3d::GetIntensity() const {
     if (meshRenderer_ && meshRenderer_->GetLightData()) {
         return meshRenderer_->GetLightData()->intensity;
     }
+
     return 1.0f;
 }
 
@@ -738,7 +786,8 @@ Object3d::Material* Object3d::GetMaterialData() {
 
 void Object3d::SetMaterialType(int32_t type) {
     // 特殊材質の種類を描画側の設定へ渡す。
-    if (meshRenderer_) meshRenderer_->SetMaterialType(type);
+    if (meshRenderer_)
+        meshRenderer_->SetMaterialType(type);
 }
 
 void Object3d::SetShininess(float shininess) {

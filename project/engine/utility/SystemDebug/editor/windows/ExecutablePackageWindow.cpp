@@ -43,6 +43,7 @@ void ExecutablePackageWindow::PollTask() {
     if (!task_.valid()) {
         return;
     }
+
     if (task_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
         return;
     }
@@ -53,6 +54,7 @@ void ExecutablePackageWindow::PollTask() {
 }
 
 void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
+    // 連打で二つの出力処理が同じパッケージ先を書き換えないよう、実行中は開始しない。
     if (IsTaskRunning()) {
         return;
     }
@@ -65,6 +67,7 @@ void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
     request.textureMode = std::clamp(textureModeIndex_, 0, static_cast<int>(kTextureModeLabels.size()) - 1);
     request.createZip = createZip_;
     request.includeProject = includeProject_;
+    // ReadMeは提出形式にだけ付属させ、実行ファイルセット単体には混ぜない。
     request.includeReadMe = includeProject_ && includeReadMe_;
     request.excludeUnusedResources = excludeUnusedResources_;
 
@@ -72,6 +75,7 @@ void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
     statusText_ = buildBeforePackage
         ? std::string("ビルドしてから") + packageKind + "を作成しています..."
         : std::string("既存のビルド出力から") + packageKind + "を作成しています...";
+
     // ウィンドウの可変メンバーをワーカーから読まず、確定済み条件を値で渡します。
     task_ = std::async(std::launch::async, [request]() {
         return RunPackageTask(request);
@@ -89,6 +93,7 @@ void ExecutablePackageWindow::DrawImGui() {
     ImGui::InputTextWithHint("出力名", "例: LE3A_99_カマタ_タロウ", packageNameBuffer_, sizeof(packageNameBuffer_));
     ImGui::Combo("構成", &configurationIndex_, kConfigurations.data(), static_cast<int>(kConfigurations.size()));
     ImGui::Combo("テクスチャ構成", &textureModeIndex_, kTextureModeLabels.data(), static_cast<int>(kTextureModeLabels.size()));
+
     if (textureModeIndex_ == static_cast<int>(TexturePackageMode::CompactPng)) {
         ImGui::TextDisabled("同名DDS/PNGペアはPNGだけを残します。DDSしかないSkybox等は保持します。");
     } else if (textureModeIndex_ == static_cast<int>(TexturePackageMode::FastDds)) {
@@ -96,28 +101,35 @@ void ExecutablePackageWindow::DrawImGui() {
     } else {
         ImGui::TextDisabled("DDSとPNGを両方コピーします。容量は最大ですが、素材確認用に安全です。");
     }
+
     ImGui::Checkbox("Asset Auditの未使用候補を実行ファイルセットから除外", &excludeUnusedResources_);
+
     if (excludeUnusedResources_) {
         ImGui::TextColored(
             ImVec4(1.0f, 0.78f, 0.28f, 1.0f),
             "作成直前に監査します。動的なパスは判定できない場合があるため、完成後に全シーンを確認してください。");
     }
+
     ImGui::Checkbox("project一式も含める（提出形式）", &includeProject_);
+
     if (includeProject_) {
         ImGui::Indent();
         ImGui::Checkbox("プロジェクト外のReadMe.mdを同梱", &includeReadMe_);
         ImGui::TextDisabled("参照元: projectと同じ階層のReadMe.md（このツールでは内容を生成・変更しません）");
         ImGui::Unindent();
     }
+
     ImGui::Checkbox("提出用ZIPも作成", &createZip_);
 
     // プレビューと実作成で同じ検証・パス変換を通し、表示先の食い違いを防ぎます。
     const std::string sanitizedName = ExecutablePackageInternal::PreviewPackageName(packageNameBuffer_);
     const fs::path detectedProjectRoot = ExecutablePackageInternal::PreviewProjectRoot();
     const fs::path previewRoot = detectedProjectRoot.empty() ? fs::path{} : detectedProjectRoot.parent_path();
+
     if (!previewRoot.empty()) {
         const fs::path outputFolder = includeProject_ ? fs::path("SubmissionPackages") : fs::path("ExecutableSets");
         ImGui::TextWrapped("出力先: %s", ExecutablePackageInternal::PreviewPathToUtf8(previewRoot / outputFolder / ExecutablePackageInternal::PreviewPathFromUtf8(sanitizedName)).c_str());
+
         if (createZip_) {
             ImGui::TextWrapped("ZIP: %s", ExecutablePackageInternal::PreviewPathToUtf8(previewRoot / outputFolder / ExecutablePackageInternal::PreviewPathFromUtf8(sanitizedName + ".zip")).c_str());
         }
@@ -131,13 +143,17 @@ void ExecutablePackageWindow::DrawImGui() {
 
     const bool running = IsTaskRunning();
     ImGui::BeginDisabled(running);
+
     if (ImGui::Button(ICON_FA_ROCKET " ビルドして作成", ImVec2(180.0f, 0.0f))) {
         StartPackageTask(true);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_FOLDER_OPEN " 既存出力から作成", ImVec2(180.0f, 0.0f))) {
         StartPackageTask(false);
     }
+
     ImGui::EndDisabled();
 
     if (running) {
@@ -147,6 +163,7 @@ void ExecutablePackageWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::TextWrapped("%s", statusText_.c_str());
+
     if (includeProject_) {
         ImGui::BulletText("提出構成: 実行ファイルセット / project / ReadMe.md");
         ImGui::BulletText("project除外: .vs / .git / .agents / .codex / キャッシュ / バックアップ / 一時ファイル");
@@ -154,9 +171,11 @@ void ExecutablePackageWindow::DrawImGui() {
         ImGui::BulletText("コピー対象: exe / dll / Runtime Resources / package_manifest.json");
         ImGui::BulletText("除外対象: .cache / .backup / .trash / tools / generated/editor");
     }
+
     if (excludeUnusedResources_) {
         ImGui::BulletText("追加除外: Asset Auditが未使用候補と判定したRuntime Resources");
     }
+
     ImGui::BulletText("DDS/PNGは同一フォルダ・同一名のペアだけを安全に整理します。");
     ImGui::BulletText("作成失敗時は既存の完成済みSetを残し、一時フォルダだけを削除します。");
 #endif

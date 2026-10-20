@@ -28,11 +28,13 @@ namespace {
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     // 保存済みの相対パスと Resources 基準のパスをどちらも読み込めるようにする。
     std::filesystem::path filePath(path);
+
     if (std::filesystem::exists(filePath)) {
         return filePath;
     }
 
     std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
+
     if (std::filesystem::exists(resourcesPath)) {
         return resourcesPath;
     }
@@ -48,6 +50,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -64,6 +67,7 @@ bool Object3d::HasComponentPresenceMarker(const std::string& componentTypeId) co
     if (componentTypeId.empty()) {
         return false;
     }
+
     const auto component = opaqueComponents_.find(componentTypeId);
     return component != opaqueComponents_.end() && component->is_object() &&
         component->value("_editorPresent", false);
@@ -77,18 +81,23 @@ void Object3d::SetComponentPresenceMarker(const std::string& componentTypeId, bo
 
     if (present) {
         json& component = opaqueComponents_[componentTypeId];
+
         if (!component.is_object()) {
             component = json::object();
         }
+
         component["_editorPresent"] = true;
         return;
     }
 
     const auto component = opaqueComponents_.find(componentTypeId);
+
     if (component == opaqueComponents_.end() || !component->is_object()) {
         return;
     }
+
     component->erase("_editorPresent");
+
     if (component->empty()) {
         opaqueComponents_.erase(component);
     }
@@ -98,18 +107,22 @@ json Object3d::SerializeFeatureComponents() const {
     // 既知項目を現在の状態で書き直す前に、未知の拡張項目を残す。
     json components = opaqueComponents_.is_object() ? opaqueComponents_ : json::object();
 
+    // 削除された既知Componentの旧値だけ消し、同じJSONに残る未知フィールドは保持します。
     const auto clearKnownPayload = [&components](
         const std::string& typeId,
         std::initializer_list<const char*> knownKeys) {
         if (!components.contains(typeId) || !components[typeId].is_object()) {
             return;
         }
+
         json& payload = components[typeId];
         payload.erase("_editorPresent");
         payload.erase("version");
+
         for (const char* key : knownKeys) {
             payload.erase(key);
         }
+
         if (payload.empty()) {
             components.erase(typeId);
         } else {
@@ -119,7 +132,8 @@ json Object3d::SerializeFeatureComponents() const {
 
     if (particleEmitterComponent_) {
         json& payload = components[std::string(kParticleEmitterComponentType)];
-        if (!payload.is_object()) payload = json::object();
+        if (!payload.is_object())
+            payload = json::object();
         payload["version"] = 1;
         payload["_editorPresent"] = true;
         payload["cpuParticle"] = particleEmitterComponent_->GetCpuParticle();
@@ -130,7 +144,8 @@ json Object3d::SerializeFeatureComponents() const {
 
     if (meshEffectComponent_) {
         json& payload = components[std::string(kMeshEffectComponentType)];
-        if (!payload.is_object()) payload = json::object();
+        if (!payload.is_object())
+            payload = json::object();
         payload["version"] = 1;
         payload["_editorPresent"] = true;
         payload["primary"] = meshEffectComponent_->GetPrimaryEffect();
@@ -141,20 +156,24 @@ json Object3d::SerializeFeatureComponents() const {
 
     if (pathMoverComponent_) {
         json& payload = components[std::string(kPathMoverComponentType)];
-        if (!payload.is_object()) payload = json::object();
+        if (!payload.is_object())
+            payload = json::object();
         payload["version"] = 1;
         payload["_editorPresent"] = true;
         payload["path"] = pathMoverComponent_->GetPathName();
         payload["loop"] = pathMoverComponent_->IsLoop();
         payload["relative"] = pathMoverComponent_->IsRelative();
+        payload["phaseOffset"] = pathMoverComponent_->GetPhaseOffset();
         payload["rideSequence"] = pathMoverComponent_->GetRideSequence();
+        payload["playbackMode"] = pathMoverComponent_->GetPlaybackModeName();
     } else {
-        clearKnownPayload(std::string(kPathMoverComponentType), { "path", "loop", "relative", "rideSequence" });
+        clearKnownPayload(std::string(kPathMoverComponentType), { "path", "loop", "relative", "phaseOffset", "rideSequence", "playbackMode" });
     }
 
     if (gameplayLinkComponent_) {
         json& payload = components[std::string(kGameplayLinkComponentType)];
-        if (!payload.is_object()) payload = json::object();
+        if (!payload.is_object())
+            payload = json::object();
         payload["version"] = 1;
         payload["_editorPresent"] = true;
         payload["eventId"] = gameplayLinkComponent_->GetEventId();
@@ -165,7 +184,8 @@ json Object3d::SerializeFeatureComponents() const {
 
     if (navAgentComponent_) {
         json& payload = components[std::string(kNavAgentComponentType)];
-        if (!payload.is_object()) payload = json::object();
+        if (!payload.is_object())
+            payload = json::object();
         payload["version"] = 1;
         payload["_editorPresent"] = true;
         payload["enabled"] = navAgentComponent_->IsEnabled();
@@ -193,6 +213,7 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
         ? objectData["components"]
         : json::object();
 
+    // 先に現在の実体と再生中の派生物を破棄し、読み直すJSONの状態だけで再構成します。
     particleEmitterComponent_.reset();
     meshEffectComponent_.reset();
     pathMoverComponent_.reset();
@@ -203,7 +224,8 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     currentMeshEffect2_.clear();
     attachedEffects1_.clear();
     attachedEffects2_.clear();
-    if (recorder_) recorder_->Stop();
+    if (recorder_)
+        recorder_->Stop();
 
     const auto getPayload = [this](std::string_view typeId) -> const json* {
         const std::string key(typeId);
@@ -211,16 +233,21 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
             ? &opaqueComponents_[key]
             : nullptr;
     };
+
+    // 新形式の明示的な有無を優先し、旧形式のフラットな項目も読み込めるようにします。
     const auto resolvePresence = [](const json* payload, bool legacyPresent) {
         if (payload && payload->contains("_editorPresent") && (*payload)["_editorPresent"].is_boolean()) {
             return (*payload)["_editorPresent"].get<bool>();
         }
+
         return payload != nullptr || legacyPresent;
     };
 
     const json* particlePayload = getPayload(kParticleEmitterComponentType);
+    // Component形式があればそちらを優先し、古いScene JSONの直下フィールドも読み続ける。
     const std::string legacyCpu = objectData.value("particleName", "");
     const std::string legacyGpu = objectData.value("gpuParticleName", "");
+
     if (resolvePresence(particlePayload, !legacyCpu.empty() || !legacyGpu.empty())) {
         ParticleEmitterComponent* component = EnsureParticleEmitterComponent();
         component->SetCpuParticle(
@@ -234,6 +261,7 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     const json* meshEffectPayload = getPayload(kMeshEffectComponentType);
     const std::string legacyPrimary = objectData.value("meshEffect1", "");
     const std::string legacySecondary = objectData.value("meshEffect2", "");
+
     if (resolvePresence(meshEffectPayload, !legacyPrimary.empty() || !legacySecondary.empty())) {
         MeshEffectComponent* component = EnsureMeshEffectComponent();
         component->SetPrimaryEffect(
@@ -251,16 +279,23 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     std::string legacyPath;
     bool legacyLoop = false;
     bool legacyRelative = false;
+    float legacyPhaseOffset = 0.0f;
+
     if (animation) {
         legacyPath = animation->value("recordPathName", "");
         legacyRelative = animation->value("isAnimRelative", false);
     }
+
     if (recorder) {
+        // 同じ経路情報が両方ある場合は専用 recorder 側の値を優先する。
         legacyPath = recorder->value("recordPathName", legacyPath);
         legacyLoop = recorder->value("isRecordLoop", false);
         legacyRelative = recorder->value("isRecordRelative", legacyRelative);
+        legacyPhaseOffset = recorder->value("phaseOffset", 0.0f);
     }
+
     const json* pathPayload = getPayload(kPathMoverComponentType);
+
     if (resolvePresence(pathPayload, !legacyPath.empty())) {
         PathMoverComponent* component = EnsurePathMoverComponent();
         component->SetRideSequence(pathPayload ? pathPayload->value("rideSequence", "") : "");
@@ -270,14 +305,17 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
         component->SetLoop(
             pathPayload && pathPayload->contains("loop")
                 ? pathPayload->value("loop", false) : legacyLoop);
+        component->SetPlaybackModeName(pathPayload ? pathPayload->value("playbackMode", std::string{"always"}) : "always");
         component->SetRelative(
             pathPayload && pathPayload->contains("relative")
                 ? pathPayload->value("relative", false) : legacyRelative);
+        component->SetPhaseOffset(pathPayload ? pathPayload->value("phaseOffset", legacyPhaseOffset) : legacyPhaseOffset);
     }
 
     const int legacyEventId = objectData.value("myEventID", -1);
     const int legacyTargetId = objectData.value("targetID", -1);
     const json* linkPayload = getPayload(kGameplayLinkComponentType);
+
     if (resolvePresence(linkPayload, legacyEventId >= 0 || legacyTargetId >= 0)) {
         GameplayLinkComponent* component = EnsureGameplayLinkComponent();
         component->SetEventId(
@@ -289,8 +327,11 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     }
 
     const json* navPayload = getPayload(kNavAgentComponentType);
+
+    // NavAgentは旧形式の代替項目を持たず、Componentの存在が明示されたObjectだけへ追加する。
     if (resolvePresence(navPayload, false)) {
         NavAgentComponent* component = EnsureNavAgentComponent();
+
         if (navPayload) {
             component->SetCellSize(navPayload->value("cellSize", 1.0f));
             component->SetAgentRadius(navPayload->value("agentRadius", 0.55f));
@@ -313,12 +354,15 @@ json Object3d::ExportToJson() {
     d["guid"] = EnsurePersistentGuid();
     d["name"] = name_;
     const json components = SerializeFeatureComponents();
+
     if (!components.empty()) {
         d["components"] = components;
     }
+
     if (!isManagedCharacter) {
         d["modelName"] = GetModelName();
     }
+
     d["type"] = className_;
     d["tag"] = tag_;
     d["layer"] = layer_.empty() ? "Default" : layer_;
@@ -330,6 +374,7 @@ json Object3d::ExportToJson() {
     d["isLocked"] = isLocked_;
     d["isStatic"] = isStatic_;
     d["castShadow"] = castShadow_;
+
     if (prefabInstanceInfo_.IsLinked()) {
         d["prefabInstance"]["assetId"] = prefabInstanceInfo_.assetId;
         d["prefabInstance"]["prefabName"] = prefabInstanceInfo_.prefabName;
@@ -340,15 +385,18 @@ json Object3d::ExportToJson() {
         // EditorのUndoスナップショットでは、Unpack済み状態を明示的に表します。
         d["prefabInstance"] = nullptr;
     }
+
     if (IsCameraObject()) {
         d["camera"] = SerializeSceneCameraSettings(sceneCameraSettings_);
     }
 
     // 2. Transform
     d["translate"] = { transform_.translate.x, transform_.translate.y, transform_.translate.z };
+
     if (!isManagedCharacter) {
         d["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
     }
+
     d["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
     d["quaternion"] = { transform_.quaternion.x, transform_.quaternion.y, transform_.quaternion.z, transform_.quaternion.w };
 
@@ -359,20 +407,26 @@ json Object3d::ExportToJson() {
         d["collider"]["size"] = { c.size.x, c.size.y, c.size.z };
         d["collider"]["center"] = { c.center.x, c.center.y, c.center.z };
         d["collider"]["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
-        if (c.useModelSurface) d["collider"]["useModelSurface"] = true;
+        if (c.useModelSurface)
+            d["collider"]["useModelSurface"] = true;
+        if (c.useModelVolume)
+            d["collider"]["useModelVolume"] = true;
         if (!c.footprint.empty()) {
             d["collider"]["footprint"] = nlohmann::json::array();
+
             for (const engine::Vector2& point : c.footprint) {
                 d["collider"]["footprint"].push_back({ point.x, point.y });
             }
         }
     }
+
     d["collisionAttribute"] = GetCollisionAttribute();
     d["collisionMask"] = GetCollisionMask();
     d["collisionAttributeIds"] = CollisionCategories::GetIds(GetCollisionAttribute());
     d["collisionMaskIds"] = CollisionCategories::GetIds(GetCollisionMask());
     d["collisionAttributeUnknownBits"] = GetCollisionAttribute() & ~CollisionCategories::GetKnownMask();
     d["collisionMaskUnknownBits"] = GetCollisionMask() & ~CollisionCategories::GetKnownMask();
+
     if (!terrainCollisionPath_.empty()) {
         d["terrainCollisionPath"] = terrainCollisionPath_;
     }
@@ -386,15 +440,18 @@ json Object3d::ExportToJson() {
     if (param_.has_value()) {
         auto& p = param_.value();
         json jp;
+
         if (isManagedCharacter) {
             if (className_ == "Enemy" && !p.enemyType.empty()) {
                 jp["enemyType"] = p.enemyType;
+
                 // プリセットや再生開始時のスナップショットにも出現条件を保持します。
                 if (p.enemyType == "PrismSlime" || p.enemyType == "MagmaSlime" || p.enemyType == "FalseKingSlime") {
                     jp["actionMode"] = p.actionMode;
                     jp["shakeDuration"] = p.shakeDuration;
                     jp["startActive"] = p.startActive;
                 }
+
                 // リング攻撃の配置ごとの調整値は共通ステータスとは別に保持する。
                 if (p.enemyType == "RingBurner") {
                     jp["moveAmount"] = p.moveAmount;
@@ -419,6 +476,7 @@ json Object3d::ExportToJson() {
             jp["interval"] = p.interval;
             jp["maxCount"] = p.maxCount;
             jp["detectionRange"] = p.detectionRange;
+            jp["projectileLifetime"] = p.projectileLifetime;
             jp["colorType"] = p.colorType;
             jp["shakeDuration"] = p.shakeDuration;
             jp["fallDuration"] = p.fallDuration;
@@ -429,6 +487,8 @@ json Object3d::ExportToJson() {
             jp["moveSpeed"] = p.moveSpeed;
             jp["startActive"] = p.startActive;
             jp["returnOnOff"] = p.returnOnOff;
+            if (gimmickType_ == "FireCannon") jp["editorPreviewFiring"] = p.editorPreviewFiring;
+            if (!p.cinematicPath.empty()) jp["cinematicPath"] = p.cinematicPath;
             jp["copyMemoryTypeA"] = p.copyMemoryTypeA;
             jp["copyMemoryTypeB"] = p.copyMemoryTypeB;
             jp["copyMemoryTypeC"] = p.copyMemoryTypeC;
@@ -439,6 +499,7 @@ json Object3d::ExportToJson() {
             jp["copyMemoryGlow"] = p.copyMemoryGlow;
             jp["copyMemoryUnlimitedDuration"] = p.copyMemoryUnlimitedDuration;
         }
+
         if (!jp.empty()) {
             d["param"] = jp;
         }
@@ -448,6 +509,7 @@ json Object3d::ExportToJson() {
     if (!materialInstancePath_.empty()) {
         d["materialInstance"] = materialInstancePath_;
     }
+
     engine::Vector4 col = GetColor();
     d["color"] = { col.x, col.y, col.z, col.w };
     d["blendMode"] = static_cast<int>(GetBlendMode());
@@ -474,6 +536,7 @@ json Object3d::ExportToJson() {
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
+
     if (decalSettings_.enabled) {
         d["decal"] = {
             { "enabled", true },
@@ -485,10 +548,12 @@ json Object3d::ExportToJson() {
             { "transient", decalSettings_.transient }
         };
     }
+
     if (HasLodLevels()) {
         json lodJson;
         lodJson["enabled"] = IsLodEnabled();
         lodJson["levels"] = json::array();
+
         for (const auto& lod : GetLodLevels()) {
             json levelJson;
             levelJson["level"] = lod.level;
@@ -496,12 +561,15 @@ json Object3d::ExportToJson() {
             levelJson["distance"] = lod.distance;
             lodJson["levels"].push_back(levelJson);
         }
+
         d["lod"] = lodJson;
     }
+
     if (MaterialRenderPolicy::IsSpecial(GetMaterialType()) && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
         d["waterParam"] = WaterParamJsonCodec::Write(*water);
     }
+
     // 7. アニメーション
     d["animation"]["animName"] = animName_;
     d["animation"]["isAnimLoop"] = isAnimLoop_;
@@ -511,6 +579,7 @@ json Object3d::ExportToJson() {
     d["recorder"]["recordPathName"] = GetRecordPathName();
     d["recorder"]["isRecordLoop"] = IsRecordLoop();
     d["recorder"]["isRecordRelative"] = IsRecordRelative();
+    d["recorder"]["phaseOffset"] = pathMoverComponent_ ? pathMoverComponent_->GetPhaseOffset() : 0.0f;
 
     // 9. ローカルフォグ
     if (auto* fogData = GetLocalFogData()) {
@@ -531,28 +600,42 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("guid") && j["guid"].is_string()) {
         SetPersistentGuid(j["guid"].get<std::string>());
     }
+
     EnsurePersistentGuid();
+
     // 実体Componentと未知Payloadを一度に復元し、旧Top-Level形式も受け入れます。
     DeserializeFeatureComponents(j);
-    if (j.contains("type")) className_ = j["type"];
+    if (j.contains("type"))
+        className_ = j["type"];
     const bool isManagedCharacter = className_ == "Player" || className_ == "Enemy";
-    if (!isManagedCharacter && j.contains("modelName")) SetModel(j["modelName"].get<std::string>());
+    if (!isManagedCharacter && j.contains("modelName"))
+        SetModel(j["modelName"].get<std::string>());
     if (j.contains("tag") && j["tag"].is_string()) {
         tag_ = j["tag"].get<std::string>();
     }
+
     if (j.contains("layer") && j["layer"].is_string()) {
         SetLayer(j["layer"].get<std::string>());
     } else if (layer_.empty()) {
         layer_ = "Default";
     }
-    if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
-    if (j.contains("enemyType")) enemyType_ = j["enemyType"];
-    if (j.contains("gimmickType")) gimmickType_ = j["gimmickType"];
-    if (j.contains("itemType")) itemType_ = j["itemType"];
-    if (j.contains("isVisible")) isVisible_ = j["isVisible"];
-    if (j.contains("isLocked")) isLocked_ = j["isLocked"];
-    if (j.contains("isStatic")) isStatic_ = j["isStatic"];
-    if (j.contains("castShadow")) castShadow_ = j["castShadow"].get<bool>();
+
+    if (j.contains("saveCategory"))
+        saveCategory_ = j["saveCategory"];
+    if (j.contains("enemyType"))
+        enemyType_ = j["enemyType"];
+    if (j.contains("gimmickType"))
+        gimmickType_ = j["gimmickType"];
+    if (j.contains("itemType"))
+        itemType_ = j["itemType"];
+    if (j.contains("isVisible"))
+        isVisible_ = j["isVisible"];
+    if (j.contains("isLocked"))
+        isLocked_ = j["isLocked"];
+    if (j.contains("isStatic"))
+        isStatic_ = j["isStatic"];
+    if (j.contains("castShadow"))
+        castShadow_ = j["castShadow"].get<bool>();
     if (j.contains("prefabInstance")) {
         if (j["prefabInstance"].is_object()) {
             const auto& prefab = j["prefabInstance"];
@@ -565,40 +648,53 @@ void Object3d::ImportFromJson(const json& j) {
             prefabInstanceInfo_ = PrefabInstanceInfo{};
         }
     }
+
     if (IsCameraObject()) {
         // 旧CinematicCameraも読み込み時に新しいCamera Objectとして扱います。
         className_ = "Camera";
         saveCategory_ = "Camera";
+
         if (j.contains("camera")) {
             DeserializeSceneCameraSettings(j["camera"], sceneCameraSettings_);
         }
     }
 
     // 2. Transform
-    if (j.contains("translate")) transform_.translate = { j["translate"][0], j["translate"][1], j["translate"][2] };
-    if (!isManagedCharacter && j.contains("scale")) transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
+    if (j.contains("translate"))
+        transform_.translate = { j["translate"][0], j["translate"][1], j["translate"][2] };
+    if (!isManagedCharacter && j.contains("scale"))
+        transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
 
     if (j.contains("quaternion")) {
         transform_.quaternion = { j["quaternion"][0], j["quaternion"][1], j["quaternion"][2], j["quaternion"][3] };
         transform_.isQuaternionMaster = true;
-        if (j.contains("rotate")) transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
+
+        if (j.contains("rotate"))
+            transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
     }
     else if (j.contains("rotate")) {
         transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
         transform_.isQuaternionMaster = false;
     }
+
     transform_.UpdateMatrix();
 
     // 3. Collider ＆ 衝突属性
     if (j.contains("collider") && collider_) {
         const auto& col = j["collider"];
         ColliderConfig config = collider_->GetConfig();
-        if (col.contains("type")) config.type = static_cast<ColliderType>(col["type"]);
-        if (col.contains("size")) config.size = { col["size"][0], col["size"][1], col["size"][2] };
-        if (col.contains("center")) config.center = { col["center"][0], col["center"][1], col["center"][2] };
-        if (col.contains("rotation")) config.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
+        if (col.contains("type"))
+            config.type = static_cast<ColliderType>(col["type"]);
+        if (col.contains("size"))
+            config.size = { col["size"][0], col["size"][1], col["size"][2] };
+        if (col.contains("center"))
+            config.center = { col["center"][0], col["center"][1], col["center"][2] };
+        if (col.contains("rotation"))
+            config.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
         config.useModelSurface = col.value("useModelSurface", false);
+        config.useModelVolume = col.value("useModelVolume", false);
         config.footprint.clear();
+
         if (col.contains("footprint") && col["footprint"].is_array()) {
             for (const auto& point : col["footprint"]) {
                 if (point.is_array() && point.size() == 2 &&
@@ -607,35 +703,46 @@ void Object3d::ImportFromJson(const json& j) {
                 }
             }
         }
+
         SetColliderConfig(config);
     }
+
     auto loadCategoryMask = [&j](const char* idsKey, const char* legacyKey, uint32_t fallback) {
         if (j.contains(idsKey) && j[idsKey].is_array()) {
             std::vector<std::string> ids;
+
             for (const auto& id : j[idsKey]) {
-                if (id.is_string()) ids.push_back(id.get<std::string>());
+                if (id.is_string())
+                    ids.push_back(id.get<std::string>());
             }
+
             const std::string unknownKey = std::string(idsKey) == "collisionAttributeIds"
                 ? "collisionAttributeUnknownBits" : "collisionMaskUnknownBits";
             const uint32_t unknown = j.value(unknownKey, uint32_t{0});
             return CollisionCategories::FromIds(ids) | unknown;
         }
+
         if (j.contains(legacyKey) && j[legacyKey].is_number_unsigned()) {
             return CollisionCategories::FromLegacyMask(j[legacyKey].get<uint32_t>());
         }
+
         if (j.contains(legacyKey) && j[legacyKey].is_number_integer()) {
             return CollisionCategories::FromLegacyMask(static_cast<uint32_t>(j[legacyKey].get<int>()));
         }
+
         return fallback;
     };
+
     SetCollisionAttribute(loadCategoryMask("collisionAttributeIds", "collisionAttribute", GetCollisionAttribute()));
     SetCollisionMask(loadCategoryMask("collisionMaskIds", "collisionMask", GetCollisionMask()));
+
     if (j.contains("terrainCollisionPath") && j["terrainCollisionPath"].is_string()) {
         LoadTerrainCollisionFromFile(j["terrainCollisionPath"].get<std::string>());
     }
 
     // 4. イベント関連
-    if (j.contains("eventType")) eventType_ = static_cast<EventType>(j["eventType"]);
+    if (j.contains("eventType"))
+        eventType_ = static_cast<EventType>(j["eventType"]);
 
     // 5. Stats (Param)
     if (j.contains("param")) {
@@ -643,97 +750,166 @@ void Object3d::ImportFromJson(const json& j) {
         const auto& jp = j["param"];
         const bool hasHp = !isManagedCharacter && jp.contains("hp");
         const bool hasMaxHp = !isManagedCharacter && jp.contains("maxHp");
-        if (hasHp) p.hp = jp["hp"];
-        if (hasMaxHp) p.maxHp = jp["maxHp"];
-        if (!isManagedCharacter && jp.contains("attackPower")) p.attackPower = jp["attackPower"];
-        if (!isManagedCharacter && jp.contains("speed")) p.speed = jp["speed"];
-        if (!isManagedCharacter && jp.contains("gravity")) p.gravity = jp["gravity"];
-        if (!isManagedCharacter && jp.contains("jumpPower")) p.jumpPower = jp["jumpPower"];
-        if (!isManagedCharacter && jp.contains("maxFallSpeed")) p.maxFallSpeed = jp["maxFallSpeed"];
-        if (!isManagedCharacter && jp.contains("morphLimited")) p.morphLimited = jp["morphLimited"];
-        if (!isManagedCharacter && jp.contains("morphDuration")) p.morphDuration = jp["morphDuration"];
-        if (jp.contains("enemyType")) p.enemyType = jp["enemyType"];
-        if (jp.contains("gimmickType")) p.gimmickType = jp["gimmickType"];
-        if (jp.contains("itemType")) p.itemType = jp["itemType"];
-        if (jp.contains("healAmount")) p.healAmount = jp["healAmount"];
-        if (jp.contains("interval")) p.interval = jp["interval"];
-        if (jp.contains("maxCount")) p.maxCount = jp["maxCount"];
-        if (!isManagedCharacter && jp.contains("detectionRange")) p.detectionRange = jp["detectionRange"];
-        if (jp.contains("colorType")) p.colorType = jp["colorType"];
-        if (jp.contains("shakeDuration")) p.shakeDuration = jp["shakeDuration"];
-        if (jp.contains("fallDuration")) p.fallDuration = jp["fallDuration"];
-        if (jp.contains("switchMode")) p.switchMode = jp["switchMode"];
-        if (jp.contains("actionMode")) p.actionMode = jp["actionMode"];
-        if (jp.contains("targetScene")) p.targetScene = jp["targetScene"].get<std::string>();
-        if (jp.contains("moveAmount")) p.moveAmount = jp["moveAmount"];
-        if (jp.contains("moveSpeed")) p.moveSpeed = jp["moveSpeed"];
-        if (jp.contains("startActive")) p.startActive = jp["startActive"];
-        if (jp.contains("returnOnOff")) p.returnOnOff = jp["returnOnOff"];
-        if (jp.contains("copyMemoryTypeA")) p.copyMemoryTypeA = jp["copyMemoryTypeA"].get<std::string>();
-        if (jp.contains("copyMemoryTypeB")) p.copyMemoryTypeB = jp["copyMemoryTypeB"].get<std::string>();
-        if (jp.contains("copyMemoryTypeC")) p.copyMemoryTypeC = jp["copyMemoryTypeC"].get<std::string>();
-        if (jp.contains("copyMemoryTypeD")) p.copyMemoryTypeD = jp["copyMemoryTypeD"].get<std::string>();
-        if (jp.contains("copyMemoryActivationRadius")) p.copyMemoryActivationRadius = (std::max)(0.1f, jp["copyMemoryActivationRadius"].get<float>());
-        if (jp.contains("copyMemoryEssenceScale")) p.copyMemoryEssenceScale = jp["copyMemoryEssenceScale"].get<float>();
-        if (jp.contains("copyMemoryHoverAmount")) p.copyMemoryHoverAmount = jp["copyMemoryHoverAmount"].get<float>();
-        if (jp.contains("copyMemoryGlow")) p.copyMemoryGlow = jp["copyMemoryGlow"].get<float>();
-        if (jp.contains("copyMemoryUnlimitedDuration")) p.copyMemoryUnlimitedDuration = jp["copyMemoryUnlimitedDuration"];
+        if (hasHp)
+            p.hp = jp["hp"];
+        if (hasMaxHp)
+            p.maxHp = jp["maxHp"];
+        if (!isManagedCharacter && jp.contains("attackPower"))
+            p.attackPower = jp["attackPower"];
+        if (!isManagedCharacter && jp.contains("speed"))
+            p.speed = jp["speed"];
+        if (!isManagedCharacter && jp.contains("gravity"))
+            p.gravity = jp["gravity"];
+        if (!isManagedCharacter && jp.contains("jumpPower"))
+            p.jumpPower = jp["jumpPower"];
+        if (!isManagedCharacter && jp.contains("maxFallSpeed"))
+            p.maxFallSpeed = jp["maxFallSpeed"];
+        if (!isManagedCharacter && jp.contains("morphLimited"))
+            p.morphLimited = jp["morphLimited"];
+        if (!isManagedCharacter && jp.contains("morphDuration"))
+            p.morphDuration = jp["morphDuration"];
+        if (jp.contains("enemyType"))
+            p.enemyType = jp["enemyType"];
+        if (jp.contains("gimmickType"))
+            p.gimmickType = jp["gimmickType"];
+        if (jp.contains("itemType"))
+            p.itemType = jp["itemType"];
+        if (jp.contains("healAmount"))
+            p.healAmount = jp["healAmount"];
+        if (jp.contains("interval"))
+            p.interval = jp["interval"];
+        if (jp.contains("maxCount"))
+            p.maxCount = jp["maxCount"];
+        if (!isManagedCharacter && jp.contains("detectionRange"))
+            p.detectionRange = jp["detectionRange"];
+        if (jp.contains("projectileLifetime"))
+            p.projectileLifetime = jp["projectileLifetime"];
+        if (jp.contains("colorType"))
+            p.colorType = jp["colorType"];
+        if (jp.contains("shakeDuration"))
+            p.shakeDuration = jp["shakeDuration"];
+        if (jp.contains("fallDuration"))
+            p.fallDuration = jp["fallDuration"];
+        if (jp.contains("switchMode"))
+            p.switchMode = jp["switchMode"];
+        if (jp.contains("actionMode"))
+            p.actionMode = jp["actionMode"];
+        if (jp.contains("targetScene"))
+            p.targetScene = jp["targetScene"].get<std::string>();
+        if (jp.contains("cinematicPath"))
+            p.cinematicPath = jp["cinematicPath"].get<std::string>();
+        if (jp.contains("moveAmount"))
+            p.moveAmount = jp["moveAmount"];
+        if (jp.contains("moveSpeed"))
+            p.moveSpeed = jp["moveSpeed"];
+        if (jp.contains("startActive"))
+            p.startActive = jp["startActive"];
+        if (jp.contains("returnOnOff"))
+            p.returnOnOff = jp["returnOnOff"];
+        if (jp.contains("editorPreviewFiring") && jp["editorPreviewFiring"].is_boolean())
+            p.editorPreviewFiring = jp["editorPreviewFiring"].get<bool>();
+        if (jp.contains("copyMemoryTypeA"))
+            p.copyMemoryTypeA = jp["copyMemoryTypeA"].get<std::string>();
+        if (jp.contains("copyMemoryTypeB"))
+            p.copyMemoryTypeB = jp["copyMemoryTypeB"].get<std::string>();
+        if (jp.contains("copyMemoryTypeC"))
+            p.copyMemoryTypeC = jp["copyMemoryTypeC"].get<std::string>();
+        if (jp.contains("copyMemoryTypeD"))
+            p.copyMemoryTypeD = jp["copyMemoryTypeD"].get<std::string>();
+        if (jp.contains("copyMemoryActivationRadius"))
+            p.copyMemoryActivationRadius = (std::max)(0.1f, jp["copyMemoryActivationRadius"].get<float>());
+        if (jp.contains("copyMemoryEssenceScale"))
+            p.copyMemoryEssenceScale = jp["copyMemoryEssenceScale"].get<float>();
+        if (jp.contains("copyMemoryHoverAmount"))
+            p.copyMemoryHoverAmount = jp["copyMemoryHoverAmount"].get<float>();
+        if (jp.contains("copyMemoryGlow"))
+            p.copyMemoryGlow = jp["copyMemoryGlow"].get<float>();
+        if (jp.contains("copyMemoryUnlimitedDuration"))
+            p.copyMemoryUnlimitedDuration = jp["copyMemoryUnlimitedDuration"];
         if (!isManagedCharacter) {
             p.maxHp = (std::max)(p.maxHp, 1.0f);
+
             if (hasMaxHp && !hasHp) {
                 p.hp = p.maxHp;
             }
+
             p.hp = (std::max)(p.hp, 0.0f);
+
             if (p.hp > p.maxHp) {
                 p.maxHp = p.hp;
             }
+
             p.attackPower = (std::max)(p.attackPower, 0.0f);
         }
+
         param_ = p;
     }
 
     // 6. グラフィックス・マテリアル
-    if (j.contains("color")) SetColor({ j["color"][0], j["color"][1], j["color"][2], j["color"][3] });
-    if (j.contains("blendMode")) SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
-    if (j.contains("materialType")) SetMaterialType(j["materialType"]);
-    if (j.contains("meshDrawIndex")) SetMeshDrawIndex(j["meshDrawIndex"].get<int>());
+    if (j.contains("color"))
+        SetColor({ j["color"][0], j["color"][1], j["color"][2], j["color"][3] });
+    if (j.contains("blendMode"))
+        SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
+    if (j.contains("materialType"))
+        SetMaterialType(j["materialType"]);
+    if (j.contains("meshDrawIndex"))
+        SetMeshDrawIndex(j["meshDrawIndex"].get<int>());
 
     // ★追加: 金属度と粗さ
-    if (j.contains("metallic")) SetMetallic(j["metallic"].get<float>());
-    if (j.contains("roughness")) SetRoughness(j["roughness"].get<float>());
+    if (j.contains("metallic"))
+        SetMetallic(j["metallic"].get<float>());
+    if (j.contains("roughness"))
+        SetRoughness(j["roughness"].get<float>());
 
 
-    if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"]);
-    if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"]);
-    if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"]);
-    if (j.contains("texturePath")) SetTexture(j["texturePath"]);
+    if (j.contains("enableNormalMap"))
+        SetEnableNormalMap(j["enableNormalMap"]);
+    if (j.contains("normalMapPath"))
+        SetNormalMap(j["normalMapPath"]);
+    if (j.contains("ormMapPath"))
+        SetOrmMap(j["ormMapPath"]);
+    if (j.contains("texturePath"))
+        SetTexture(j["texturePath"]);
     if (j.contains("textureTiling") && j["textureTiling"].is_array() && j["textureTiling"].size() >= 2) {
         SetTextureTiling({ j["textureTiling"][0].get<float>(), j["textureTiling"][1].get<float>() });
     }
-    if (j.contains("autoTextureTiling")) SetAutoTextureTiling(j["autoTextureTiling"].get<bool>());
-    if (j.contains("enableLighting")) SetEnableLighting(j["enableLighting"].get<bool>());
-    if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
-    if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
-    if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());
+
+    if (j.contains("autoTextureTiling"))
+        SetAutoTextureTiling(j["autoTextureTiling"].get<bool>());
+    if (j.contains("enableLighting"))
+        SetEnableLighting(j["enableLighting"].get<bool>());
+    if (j.contains("enableEnvMap"))
+        SetEnableEnvMap(j["enableEnvMap"]);
+    if (j.contains("envIntensity"))
+        SetEnvIntensity(j["envIntensity"]);
+    if (j.contains("emissive"))
+        SetEmissive(j["emissive"].get<float>());
     if (j.contains("lod") && j["lod"].is_object()) {
         const auto& lodJson = j["lod"];
         const bool enabled = lodJson.value("enabled", true);
+
         if (lodJson.contains("levels") && lodJson["levels"].is_array()) {
             std::vector<LodLevel> levels;
+
             for (const auto& levelJson : lodJson["levels"]) {
-                if (!levelJson.is_object()) continue;
+                if (!levelJson.is_object())
+                    continue;
                 LodLevel level;
                 level.level = levelJson.value("level", 0);
                 level.modelName = levelJson.value("modelName", "");
                 level.distance = levelJson.value("distance", 0.0f);
+
                 if (level.level > 0 && !level.modelName.empty()) {
                     levels.push_back(level);
                 }
             }
+
             SetLodLevels(levels);
         }
+
         SetLodEnabled(enabled);
     }
+
     if (j.contains("waterParam") && MaterialRenderPolicy::IsSpecial(GetMaterialType())) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();
@@ -744,18 +920,22 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("materialInstance") && j["materialInstance"].is_string()) {
         const std::string assetPath = j["materialInstance"].get<std::string>();
         std::string materialError;
+
         if (!ApplyMaterialInstance(assetPath, &materialError)) {
             // Assetが一時的に見つからなくても、Scene内の解決済み値とリンク先は保持します。
             materialInstancePath_ = assetPath;
         }
     }
+
     if (j.contains("decal") && j["decal"].is_object()) {
         const auto& decal = j["decal"];
         DecalSettings settings;
         settings.enabled = decal.value("enabled", true);
+
         if (decal.contains("size") && decal["size"].is_array() && decal["size"].size() >= 2) {
             settings.size = { decal["size"][0].get<float>(), decal["size"][1].get<float>() };
         }
+
         settings.depthOffset = decal.value("depthOffset", 0.012f);
         settings.lifetime = decal.value("lifetime", 0.0f);
         settings.fadeIn = decal.value("fadeIn", 0.0f);
@@ -764,13 +944,17 @@ void Object3d::ImportFromJson(const json& j) {
         SetDecalSettings(settings);
         RestartDecalPlayback();
     }
+
     // 7. アニメーション
     if (j.contains("animation")) {
         const auto& anim = j["animation"];
-        if (anim.contains("animName")) animName_ = anim["animName"];
-        if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
+        if (anim.contains("animName"))
+            animName_ = anim["animName"];
+        if (anim.contains("isAnimLoop"))
+            isAnimLoop_ = anim["isAnimLoop"];
         if (anim.contains("animatorController")) {
             const std::string controller = anim.value("animatorController", "");
+
             if (!controller.empty()) {
                 SetAnimatorController(controller);
             } else {
@@ -789,13 +973,21 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("localFog")) {
         if (auto* fogData = GetLocalFogData()) {
             const auto& jf = j["localFog"];
-            if (jf.contains("color")) fogData->fogColor = { jf["color"][0], jf["color"][1], jf["color"][2], jf["color"][3] };
-            if (jf.contains("density")) fogData->fogDensity = jf["density"];
-            if (jf.contains("edgeFade")) fogData->edgeFade = jf["edgeFade"];
-            if (jf.contains("noiseSpeed")) fogData->noiseSpeed = jf["noiseSpeed"];
-            if (jf.contains("noiseScale")) fogData->noiseScale = jf["noiseScale"];
-            if (jf.contains("scatteringG")) fogData->scatteringG = jf["scatteringG"];
-            if (jf.contains("scatteringIntensity")) fogData->scatteringIntensity = jf["scatteringIntensity"];
+
+            if (jf.contains("color"))
+                fogData->fogColor = { jf["color"][0], jf["color"][1], jf["color"][2], jf["color"][3] };
+            if (jf.contains("density"))
+                fogData->fogDensity = jf["density"];
+            if (jf.contains("edgeFade"))
+                fogData->edgeFade = jf["edgeFade"];
+            if (jf.contains("noiseSpeed"))
+                fogData->noiseSpeed = jf["noiseSpeed"];
+            if (jf.contains("noiseScale"))
+                fogData->noiseScale = jf["noiseScale"];
+            if (jf.contains("scatteringG"))
+                fogData->scatteringG = jf["scatteringG"];
+            if (jf.contains("scatteringIntensity"))
+                fogData->scatteringIntensity = jf["scatteringIntensity"];
         }
     }
 }

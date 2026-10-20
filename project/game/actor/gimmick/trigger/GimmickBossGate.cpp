@@ -17,7 +17,7 @@ float SmoothStep01(float value) {
 }
 } // namespace
 
-void GimmickBossGate::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickBossGate::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 閉鎖中の門を壁として扱い、開く方向と所要時間の既定値を用意する。
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
@@ -47,6 +47,7 @@ void GimmickBossGate::Update(float deltaTime) {
     // エディターでは配置位置へ戻し、プレイ中のみ閉鎖率に応じて門を動かします。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
+
     if (!isPlaying) {
         ResetForEditor();
         BaseGimmick::Update(deltaTime);
@@ -54,11 +55,19 @@ void GimmickBossGate::Update(float deltaTime) {
     }
 
     if (cinematicOverride_) {
-        SetCollisionEnabled(false);
+        if (introTimelineControl_) {
+            // 見た目の移動はTimelineが担当し、接触判定だけ閉鎖位置への到達で決めます。
+            const float remaining = GetTranslate().y - authoredPosition_.y;
+            SetCollisionEnabled(targetClosure_ > 0.5f && remaining <= GetTravelDistance() * 0.18f);
+        } else {
+            SetCollisionEnabled(false);
+        }
         BaseGimmick::Update(deltaTime);
         return;
     }
+
     CaptureAuthoredState();
+
     if (!initializedForPlay_) {
         initializedForPlay_ = true;
         targetClosure_ = activationRequested_ || (param_.has_value() && param_->startActive) ? 1.0f : 0.0f;
@@ -68,11 +77,13 @@ void GimmickBossGate::Update(float deltaTime) {
 
     const float duration = GetTransitionDuration();
     const float step = duration > 0.0001f ? std::max(0.0f, deltaTime) / duration : 1.0f;
+
     if (closure_ < targetClosure_) {
         closure_ = std::min(targetClosure_, closure_ + step);
     } else if (closure_ > targetClosure_) {
         closure_ = std::max(targetClosure_, closure_ - step);
     }
+
     ApplyRuntimeState();
     BaseGimmick::Update(deltaTime);
 }
@@ -89,11 +100,14 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
     if (!active && param_.has_value() && !param_->returnOnOff) {
         return;
     }
+
     CaptureAuthoredState();
     activationRequested_ = active;
     targetClosure_ = active ? 1.0f : 0.0f;
+
     if (active) {
         SetIsVisible(true);
+
         if (closure_ <= 0.001f) {
             engine::Vector3 cue = authoredPosition_;
             cue.y += 0.1f;
@@ -119,11 +133,24 @@ engine::Vector3 GimmickBossGate::GetClosedPosition() {
     return authoredPosition_;
 }
 
+void GimmickBossGate::SetIntroTimelineControl(bool enabled) {
+    CaptureAuthoredState();
+    introTimelineControl_ = enabled;
+    cinematicOverride_ = enabled;
+
+    if (!enabled) {
+        // Timelineが初期姿勢へ復元した後も、封鎖済みの進行状態を保持します。
+        closure_ = targetClosure_;
+        ApplyRuntimeState();
+    }
+}
+
 void GimmickBossGate::CaptureAuthoredState(bool force) {
     // 実行時の移動や衝突切替で、編集時の Transform とマスクを失わないよう保存する。
     if (authoredStateCaptured_ && !force) {
         return;
     }
+
     authoredPosition_ = GetTranslate();
     authoredScale_ = GetScale();
     authoredCollisionAttribute_ = GetCollisionAttribute();
@@ -138,10 +165,13 @@ void GimmickBossGate::CaptureAuthoredState(bool force) {
 void GimmickBossGate::ResetForEditor() {
     // 再生停止時は演出上書きと閉鎖率を消し、編集で決めた位置を復元する。
     cinematicOverride_ = false;
+    introTimelineControl_ = false;
+
     if (initializedForPlay_) {
         SetTranslate(authoredPosition_);
         SetScale(authoredScale_);
     }
+
     CaptureAuthoredState(true);
     initializedForPlay_ = false;
     activationRequested_ = false;
@@ -162,6 +192,7 @@ void GimmickBossGate::ApplyRuntimeState() {
     SetScale(authoredScale_);
     SetIsVisible(closure_ > 0.001f || targetClosure_ > 0.0f);
     SetCollisionEnabled(targetClosure_ > 0.5f && closure_ >= 0.82f);
+
     if (closure_ <= 0.001f && targetClosure_ <= 0.0f) {
         SetIsVisible(false);
     }

@@ -7,7 +7,7 @@
 #include "EditorPropertyRegistry.h"
 #include "EditorTransactionManager.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
-#include "GameplayStatusManager.h"
+#include "game/system/rules/GameplayStatusManager.h"
 
 #include <algorithm>
 #include <atomic>
@@ -107,7 +107,7 @@ struct PrefabCreationContext {
 
 void CreateObjectFromPresetNode(
     const json& node,
-    Object3dCommon* common,
+    engine::Object3dCommon* common,
     engine::Object3d* parent,
     std::vector<std::unique_ptr<engine::Object3d>>& outObjects,
     const PrefabCreationContext* prefabContext = nullptr);

@@ -7,6 +7,7 @@
                 "isAnimLoop": true
             },
             "camera": {
+                "blendFov": false,
                 "blendInDuration": 0.30000001192092896,
                 "blendOutDuration": 0.30000001192092896,
                 "easing": 4,
@@ -19,6 +20,7 @@
                     0.0,
                     0.0
                 ],
+                "eyeReferenceObjectName": "",
                 "eyeSource": 0,
                 "farClip": 1000.0,
                 "fixedTarget": [

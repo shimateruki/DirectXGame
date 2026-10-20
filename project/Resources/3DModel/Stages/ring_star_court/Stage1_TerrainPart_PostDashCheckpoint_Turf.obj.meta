@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "de46a0da8e6057019ba40b3f5a8601fc",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_PostDashCheckpoint_Turf.obj",
+  "version": 1
+}

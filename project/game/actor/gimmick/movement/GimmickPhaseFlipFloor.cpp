@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickPhaseFlipFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickPhaseFlipFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 床の衝突を維持したまま、色別の順番で回転する初期値を用意します。
@@ -31,6 +31,7 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
         param_.emplace();
 
     bool isPlaying = false;
+
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
         isPlaying = sceneManager->IsPlaying();
     }
@@ -76,9 +77,11 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
     const int currentPhase = static_cast<int>(cycleTimer_ / phaseDuration) % phaseCount;
     const float phaseProgress = std::fmod(cycleTimer_, phaseDuration) / phaseDuration;
     const bool isOwnPhase = currentPhase == GetPhaseIndex();
+
     if (isOwnPhase && !wasOwnPhase_) {
         flipCount_++;
     }
+
     wasOwnPhase_ = isOwnPhase;
 
     ApplyState(isOwnPhase, phaseProgress);
@@ -93,9 +96,11 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
 
     const float direction = param_.has_value() && !param_->startActive ? -1.0f : 1.0f;
     float turn = static_cast<float>(flipCount_);
+
     if (isOwnPhase) {
         turn = static_cast<float>((std::max)(0, flipCount_ - 1)) + SmoothStep(phaseProgress);
     }
+
     SetColor(GetPhaseColor(1.0f));
 
     engine::Vector3 rot = baseRotation_;
@@ -109,10 +114,13 @@ engine::Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {
     switch (GetPhaseIndex() % 4) {
     case 0:
         return {0.35f, 0.75f, 1.0f, alpha};
+
     case 1:
         return {1.0f, 0.65f, 0.25f, alpha};
+
     case 2:
         return {0.45f, 1.0f, 0.45f, alpha};
+
     default:
         return {0.95f, 0.55f, 1.0f, alpha};
     }

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "82bd427c96fc5a28853ea47752503afd",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_GoalPlaza_Path.obj",
+  "version": 1
+}

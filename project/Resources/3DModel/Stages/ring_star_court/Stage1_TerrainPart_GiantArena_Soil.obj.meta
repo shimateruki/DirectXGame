@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "40275598b18959bba48a05f83fd00e6c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_GiantArena_Soil.obj",
+  "version": 1
+}

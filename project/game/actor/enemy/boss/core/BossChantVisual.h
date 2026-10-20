@@ -17,11 +17,14 @@ struct BossChantStyle {
     std::string groundCoreEffectPath = "Resources/json/effect/effect_boss_chant_ground_core.json";
     std::string footRibbonEffectPath = "Resources/json/effect/effect_boss_chant_foot_ribbon.json";
     std::string risingLightEffectPath = "Resources/json/effect/effect_boss_chant_rising_light.json";
+
     std::string motePreset;
     std::string glintPreset;
     std::string releasePreset;
+
     engine::Vector4 accentColor = {0.42f, 0.78f, 1.0f, 1.0f};
     float radius = 2.4f;
+
     float fadeStart = 0.30f;
     bool completeAtRelease = false; // trueなら詠唱時間全体で紋章を形成します。
 };
@@ -31,13 +34,17 @@ struct BossChantFrame {
     engine::Vector3 casterPosition{};
     engine::Vector3 groundPosition{};
     engine::Vector3 sigilCenter{};
+
     float casterRadius = 1.0f;
     float casterHeight = 1.5f;
     engine::Vector3 forward = {0.0f, 0.0f, 1.0f};
+
     float windupProgress = 0.0f;
     float activeElapsed = 0.0f;
+
     float time = 0.0f;
     float deltaTime = 0.0f;
+
     bool casting = false;
     bool releasing = false;
 };
@@ -49,7 +56,7 @@ class BossChantVisual {
     /// <param name="common">エフェクト生成に使う描画共通オブジェクト。</param>
     /// <param name="style">魔法陣のパス、色、半径、粒子プリセット。</param>
     /// <returns>必須の魔法陣を生成できた場合は true。</returns>
-    bool Start(Object3dCommon* common, BossChantStyle style) {
+    bool Start(engine::Object3dCommon* common, BossChantStyle style) {
         // 必須の魔法陣三層を先に検証し、任意の光の層だけ欠けても演出を続ける。
         Reset();
         if (!common || style.sigilEffectPath.empty()) {
@@ -184,6 +191,7 @@ class BossChantVisual {
         const float pulse = 1.0f + std::sin(frame.time * (3.0f + charge * 3.0f)) * 0.025f * assembly;
         const engine::Vector3 forward = ResolveForward(frame.forward);
         const engine::Vector3 side = {forward.z, 0.0f, -forward.x};
+
         // 紋章は視点ではなく攻撃方向に向け、術者の動きと整合させます。
         const engine::Vector3 uprightRotation = MakeUprightRotation(forward);
         const float radius = style_.radius;
@@ -262,6 +270,7 @@ class BossChantVisual {
             (0.34f + charge * 0.10f + releaseFlash * 0.06f) * aura * fade * footRibbonAlpha_, footRibbonIntensity_);
 
         const engine::Vector3 risingCenter = frame.groundPosition + engine::Vector3{0.0f, casterHeight * 0.37f, 0.0f};
+
         // 上昇する残光は外縁をかすめる程度にして、顔を覆わないようにします。
         const float risingRadius = casterRadius * (1.17f + charge * 0.03f);
         const float risingHeightScale = casterHeight * 0.58f / 2.65f;
@@ -295,6 +304,18 @@ class BossChantVisual {
         DrawEffect(glow_.get(), pointLightResource, spotLightResource);
     }
 
+    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+                       ID3D12Resource* spotLightResource, int previewBufferIndex) {
+        if (!camera) return;
+        // 本編と同じ層順で、Editorの表示カメラへ詠唱を描画する。
+        for (EffectObject3d* effect : {floor_.get(), groundLight_.get(), groundCore_.get(), footRibbon_.get(),
+                                       risingLight_.get(), risingLightCounter_.get(), sigil_.get(), glow_.get()}) {
+            if (effect && effect->GetIsVisible()) {
+                effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+            }
+        }
+    }
+
   private:
     static float SmoothStep(float value) { return value * value * (3.0f - 2.0f * value); }
 
@@ -311,7 +332,7 @@ class BossChantVisual {
     }
 
     // 必須・任意のどちらの層も、生成失敗時は nullptr を返して呼び出し側で判定します。
-    static std::unique_ptr<EffectObject3d> CreateEffect(Object3dCommon* common, const std::string& path,
+    static std::unique_ptr<EffectObject3d> CreateEffect(engine::Object3dCommon* common, const std::string& path,
                                                         const std::string& name) {
         auto effect = std::make_unique<EffectObject3d>();
         effect->Initialize(common);
@@ -402,24 +423,32 @@ class BossChantVisual {
     }
 
     BossChantStyle style_{};
+
     std::unique_ptr<EffectObject3d> sigil_;
     std::unique_ptr<EffectObject3d> glow_;
     std::unique_ptr<EffectObject3d> floor_;
+
     std::unique_ptr<EffectObject3d> groundLight_;
     std::unique_ptr<EffectObject3d> groundCore_;
     std::unique_ptr<EffectObject3d> footRibbon_;
     std::unique_ptr<EffectObject3d> risingLight_;
     std::unique_ptr<EffectObject3d> risingLightCounter_;
+
     float moteTimer_ = 0.0f;
     bool wasReleasing_ = false;
+
     float presetAlpha_ = 1.0f;
     float presetIntensity_ = 1.0f;
+
     float groundLightAlpha_ = 1.0f;
     float groundLightIntensity_ = 1.0f;
+
     float groundCoreAlpha_ = 1.0f;
     float groundCoreIntensity_ = 1.0f;
+
     float footRibbonAlpha_ = 1.0f;
     float footRibbonIntensity_ = 1.0f;
+
     float risingLightAlpha_ = 1.0f;
     float risingLightIntensity_ = 1.0f;
 };

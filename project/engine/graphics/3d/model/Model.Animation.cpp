@@ -38,9 +38,11 @@ void Model::Update() {
 // 再生状態や強制更新フラグに応じて、アニメーション時間・スケルトン・GPUバッファを更新する。
 void Model::Update(bool force) {
     uint32_t currentFrame = DirectXCommon::GetInstance()->GetFrameCount();
+
     if (!force && lastUpdateFrame_ == currentFrame) {
         return; // すでにこのフレームで更新済み
     }
+
     lastUpdateFrame_ = currentFrame;
 
     UpdateSkeleton(modelData_.skeleton);
@@ -59,6 +61,7 @@ engine::Vector3 Model::CalculateValue(const std::vector<KeyframeVector3>& keyfra
     if (keyframes.empty()) {
         return { 0.0f, 0.0f, 0.0f };
     }
+
     // キーが1つだけ、または時間が最初のキーより前の場合
     if (keyframes.size() == 1 || time <= keyframes[0].time) {
         return keyframes[0].value;
@@ -93,6 +96,7 @@ engine::Quaternion Model::CalculateValue(const std::vector<KeyframeQuaternion>& 
     if (keyframes.empty()) {
         return { 0.0f, 0.0f, 0.0f, 1.0f }; // 単位クォータニオン
     }
+
     // キーが1つ、または時間が最初より前
     if (keyframes.size() == 1 || time <= keyframes[0].time) {
         return keyframes[0].value;
@@ -113,11 +117,14 @@ engine::Quaternion Model::CalculateValue(const std::vector<KeyframeQuaternion>& 
 
 // ノード階層から指定名のノードを再帰的に探し、アニメーション適用先を見つける。
 Model::Node* Model::FindNode(Node& node, const std::string& name) {
-    if (node.name == name) return &node;
+    if (node.name == name)
+        return &node;
     for (auto& child : node.children) {
         Node* result = FindNode(child, name);
-        if (result) return result;
+        if (result)
+            return result;
     }
+
     return nullptr;
 }
 
@@ -133,6 +140,7 @@ const Model::Animation* Model::GetAnimation(const std::string& name) const {
             return &animation;
         }
     }
+
     // 見つからなければ nullptr
     return nullptr;
 }

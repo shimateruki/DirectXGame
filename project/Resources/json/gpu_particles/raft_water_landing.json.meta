@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "0590361ba3d6587b2e7d8a9e297fdf38",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/raft_water_landing.json",
+  "version": 1
+}

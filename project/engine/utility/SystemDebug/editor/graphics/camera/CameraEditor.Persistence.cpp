@@ -26,6 +26,7 @@ void CameraEditor::RefreshFileList() {
   for (const auto &entry : fs::directory_iterator(kDirectoryPath_)) {
     if (entry.path().extension() == ".json") {
       std::string fileName = entry.path().filename().string();
+
       // エディタ状態保存用のファイルはリストに表示しない
       if (fileName == "editor_camera_state.json")
         continue;
@@ -67,6 +68,7 @@ void CameraEditor::SaveSettings() {
   j["cameraGuideSize"] = settings_.cameraGuideSize;
   j["cameraFrustumLength"] = settings_.cameraFrustumLength;
   j["cameraPreviewHeight"] = settings_.cameraPreviewHeight;
+
   // エディタ設定
   j["moveSpeed"] = settings_.moveSpeed;
   j["boostSpeed"] = settings_.boostSpeed;
@@ -81,6 +83,7 @@ void CameraEditor::SaveSettings() {
   // (SaveEditorStateに移行)
 
   json overridesJson = json::object();
+
   for (const auto &[name, param] : overrideParamsMap_) {
     json p;
     p["duration"] = param.duration;
@@ -114,9 +117,11 @@ void CameraEditor::SaveSettings() {
 
     overridesJson[name] = p; // JSONオブジェクトに追加
   }
+
   j["Overrides"] =
       overridesJson; // 大元のJSONに「Overrides」という項目でまとめる
   std::ofstream file(filePath);
+
   if (file.is_open()) {
     file << j.dump(4);
   }
@@ -135,6 +140,7 @@ void CameraEditor::LoadSettings() {
   try {
     json j;
     file >> j;
+
     /*  if (j.contains("mode")) settings_.currentMode =
      * static_cast<Mode>(j["mode"]);*/
     if (j.contains("gameFollowMode"))
@@ -157,6 +163,7 @@ void CameraEditor::LoadSettings() {
         settings_.angle.z = 0.0f;
       }
     }
+
     if (j.contains("lockOnOffset") && j["lockOnOffset"].is_array()) {
       settings_.lockOnOffset.x = j["lockOnOffset"][0];
       settings_.lockOnOffset.y = j["lockOnOffset"][1];
@@ -172,6 +179,7 @@ void CameraEditor::LoadSettings() {
       settings_.orbitCenterOffset.y = j["orbitCenterOffset"][1];
       settings_.orbitCenterOffset.z = j["orbitCenterOffset"][2];
     }
+
     if (j.contains("orbitCenterHeight"))
       settings_.orbitCenterHeight = j["orbitCenterHeight"];
     if (j.contains("orbitHeight"))
@@ -200,6 +208,7 @@ void CameraEditor::LoadSettings() {
       settings_.cameraPreviewResolutionScale =
           j["cameraPreviewResolutionScale"];
     }
+
     settings_.cameraPreviewFps = std::clamp(settings_.cameraPreviewFps, 1, 60);
     settings_.cameraPreviewResolutionScale =
         std::clamp(settings_.cameraPreviewResolutionScale, 0.25f, 1.0f);
@@ -224,6 +233,7 @@ void CameraEditor::LoadSettings() {
       settings_.fixedPointPos.y = j["fixedPointPos"][1];
       settings_.fixedPointPos.z = j["fixedPointPos"][2];
     }
+
     if (j.contains("fixedPointAngle") && j["fixedPointAngle"].is_array()) {
       settings_.fixedPointAngle.x = j["fixedPointAngle"][0];
       settings_.fixedPointAngle.y = j["fixedPointAngle"][1];
@@ -233,6 +243,7 @@ void CameraEditor::LoadSettings() {
     // editorCameraPos, editorCameraAngle はここでは読み込まない
     // (LoadEditorStateに移行)
     overrideParamsMap_.clear();
+
     if (j.contains("Overrides")) {
       for (auto &[key, val] : j["Overrides"].items()) {
         Camera::CameraOverrideParams p;
@@ -250,16 +261,19 @@ void CameraEditor::LoadSettings() {
                                val["eyeObjectOffset"][1],
                                val["eyeObjectOffset"][2]};
         }
+
         p.eyeFollowMode = static_cast<Camera::OverrideFollowMode>(
             std::clamp(val.value("eyeFollowMode", 0), 0, 1));
         p.eyeFollowResponse = val.value("eyeFollowResponse", 12.0f);
         p.trackEyeX = val.value("trackEyeX", false);
         p.trackEyeY = val.value("trackEyeY", false);
         p.trackEyeZ = val.value("trackEyeZ", false);
+
         if (val.contains("fixedEyePos")) {
           p.fixedEyePos = {val["fixedEyePos"][0], val["fixedEyePos"][1],
                            val["fixedEyePos"][2]};
         }
+
         p.targetSource = static_cast<Camera::OverrideTargetSource>(
             std::clamp(val.value("targetSource", 0), 0, 2));
         p.targetObjectName = val.value("targetObjectName", "");
@@ -270,6 +284,7 @@ void CameraEditor::LoadSettings() {
                                   val["targetObjectOffset"][1],
                                   val["targetObjectOffset"][2]};
         }
+
         p.eyeForwardDistance = val.value("eyeForwardDistance", 10.0f);
         p.targetFollowMode = static_cast<Camera::OverrideFollowMode>(
             std::clamp(val.value("targetFollowMode", 0), 0, 1));
@@ -277,11 +292,13 @@ void CameraEditor::LoadSettings() {
         p.trackTargetX = val.value("trackTargetX", true);
         p.trackTargetY = val.value("trackTargetY", true);
         p.trackTargetZ = val.value("trackTargetZ", true);
+
         if (val.contains("fixedTargetPos")) {
           p.fixedTargetPos = {val["fixedTargetPos"][0],
                               val["fixedTargetPos"][1],
                               val["fixedTargetPos"][2]};
         }
+
         overrideParamsMap_[key] = p;
       }
     }
@@ -302,6 +319,7 @@ void CameraEditor::LoadFile(const std::string &fileName) {
   if (!fs::exists(filePath)) {
     const Mode selectedMode = settings_.currentMode;
     settings_ = Settings(); // デフォルトコンストラクタで初期化
+
     // シーン固有ファイルが未作成でも、利用中の自由カメラを解除しません。
     settings_.currentMode = selectedMode;
 
@@ -325,9 +343,11 @@ void CameraEditor::SaveEditorState() {
   const fs::path filePath(kEditorStatePath_);
   std::error_code error;
   fs::create_directories(filePath.parent_path(), error);
+
   if (error) {
     return;
   }
+
   json j;
   j["editorCameraPos"] = {settings_.editorCameraPos.x,
                           settings_.editorCameraPos.y,
@@ -336,8 +356,10 @@ void CameraEditor::SaveEditorState() {
                             settings_.editorCameraAngle.y,
                             settings_.editorCameraAngle.z};
   std::ofstream file(filePath);
+
   if (file.is_open()) {
     file << j.dump(4);
+
     if (file.good()) {
       editorStateDirty_ = false;
     }
@@ -346,26 +368,31 @@ void CameraEditor::SaveEditorState() {
 
 void CameraEditor::LoadEditorState() {
   fs::path filePath(kEditorStatePath_);
+
   if (!fs::exists(filePath)) {
     // 旧保存先から一度だけ読み込み、次回保存時にEditor専用領域へ移行します。
     filePath = fs::path(kDirectoryPath_) / "editor_camera_state.json";
   }
+
   std::ifstream file(filePath);
   if (!file.is_open())
     return;
   try {
     json j;
     file >> j;
+
     if (j.contains("editorCameraPos") && j["editorCameraPos"].is_array()) {
       settings_.editorCameraPos.x = j["editorCameraPos"][0];
       settings_.editorCameraPos.y = j["editorCameraPos"][1];
       settings_.editorCameraPos.z = j["editorCameraPos"][2];
     }
+
     if (j.contains("editorCameraAngle") && j["editorCameraAngle"].is_array()) {
       settings_.editorCameraAngle.x = j["editorCameraAngle"][0];
       settings_.editorCameraAngle.y = j["editorCameraAngle"][1];
       settings_.editorCameraAngle.z = j["editorCameraAngle"][2];
     }
+
     editorStateDirty_ = false;
   } catch (...) {
   }

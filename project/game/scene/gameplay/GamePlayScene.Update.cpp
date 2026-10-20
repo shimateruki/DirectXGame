@@ -7,27 +7,27 @@
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "SceneController.h"
 
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "DebugConsole.h"
 #include "Fade.h"
 #include "GPUParticleManager.h"
-#include "GameDataManager.h"
-#include "GameSettingsManager.h"
-#include "GameRule.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/settings/GameSettingsManager.h"
+#include "game/system/rules/GameRule.h"
 #include "InputManager.h"
 #include "KeyConfig.h"
 #include "LightEditor.h"
-#include "LockOnSystem.h"
+#include "game/system/combat/LockOnSystem.h"
 #include "MeshEffectManager.h"
-#include "ObjectManager.h"
+#include "game/system/scene/ObjectManager.h"
 #include "ParticleSystem.h"
 #include "PostEffect.h"
 #include "ProfilerManager.h"
 #include "SceneManager.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include "VFXSequencer.h"
 #include "WinApp.h"
 #include "game/actor/gimmick/stage/GimmickStageGate.h"
@@ -52,6 +52,7 @@ constexpr float kPi = 3.1415926535f;
 constexpr float kTwoPi = kPi * 2.0f;
 constexpr const char* kGoalCrownSparklePreset = "crown_goal_idle_sparkle";
 constexpr const char* kGoalCrownTwinklePreset = "crown_idle_twinkle";
+
 // 頭上の王冠のばね・減衰・移動上限。見た目の揺れを調整し、プレイヤーの物理位置とは分離する。
 struct GoalCrownPhysicsTuning {
     float positionStiffness = 76.0f;
@@ -82,6 +83,7 @@ void DrawGoalCrownPhysicsTuning() {
     if (!EditorToolSettings::Get().IsVisible("diagnosticWindows"))
         return;
     GoalCrownPhysicsTuning& tuning = GetGoalCrownPhysicsTuning();
+
     if (ImGui::Begin("ゴール王冠・疑似物理調整")) {
         ImGui::TextUnformatted("位置バネ");
         ImGui::SliderFloat("硬さ##CrownPosition", &tuning.positionStiffness, 20.0f, 180.0f, "%.1f");
@@ -106,6 +108,7 @@ void DrawGoalCrownPhysicsTuning() {
             tuning = GoalCrownPhysicsTuning{};
         }
     }
+
     ImGui::End();
 }
 #endif
@@ -133,12 +136,15 @@ float NormalizeYaw(float yaw) {
 bool GamePlayScene::TryStartGoalFromContact(engine::Object3d* actor, engine::Object3d* goal) {
     // 生存中のプレイヤーが触れた場合だけクリア演出を開始し、重複開始は避ける。
     Player* player = dynamic_cast<Player*>(actor);
+
     if (!player || player->isDead || player->GetHp() <= 0.0f) {
         return false;
     }
+
     if (!IsGoal()) {
         StartGoalPresentation(goal);
     }
+
     DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Returning to Select.");
     return true;
 }
@@ -156,11 +162,14 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
     }
 
     isGoal_ = isGoal;
+
     if (!isGoal_) {
         goalCinematicPlayer_.Stop(false);
         Camera* restoreCamera =
             goalLockedPrimaryCamera_ ? goalLockedPrimaryCamera_ : CameraManager::GetInstance()->GetMainCamera();
         goalClearPlayerAnimator_.RestoreInitialPose();
+
+        // 王冠だけはScene配置物を直接動かすので、演出開始前のTransformを復元します。
         if (goalCrownObject_ && goalCrownSnapshotValid_) {
             goalCrownObject_->SetTranslate(goalCrownBasePosition_);
             goalCrownObject_->SetScale(goalCrownBaseScale_);
@@ -168,9 +177,12 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
             goalCrownObject_->UpdateLocalMatrix();
             goalCrownObject_->UpdateWorldMatrix();
         }
+
         if (player_ && player_->IsCinematicLocked()) {
             player_->EndCinematicLock(true);
         }
+
+        // 次回のゴール判定に前回の演出時刻と一度きりの発火状態を持ち越しません。
         goalSavePerformed_ = false;
         goalWasStageCleared_ = false;
         goalPresentationState_ = GoalPresentationState::Inactive;
@@ -195,6 +207,8 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
             CameraManager::GetInstance()->GetActiveCamera() == goalPresentationCamera_.get()) {
             CameraManager::GetInstance()->SetActiveCamera(nullptr);
         }
+
+        // 演出用カメラを外した後で、元のカメラを最後に有効化します。
         if (restoreCamera) {
             CameraManager::GetInstance()->SetActiveCamera(restoreCamera);
         }
@@ -235,6 +249,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
     goalCrownSpringRotationVelocity_ = {};
 
     if (crownObject) {
+        // 演出で王冠を動かす前のTransformを控え、終了時に配置状態へ戻せるようにする。
         goalCrownBasePosition_ = crownObject->GetTranslate();
         goalCrownBaseScale_ = crownObject->GetScale();
         goalCrownBaseRotation_ = crownObject->GetRotation();
@@ -242,8 +257,10 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
     }
 
     engine::Vector3 preferredForward = {0.0f, 0.0f, 0.0f};
+
     if (player_) {
         Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+
         if (activeCamera) {
             const engine::Vector3 playerPosition = player_->GetWorldPosition();
             const engine::Vector3 toCamera = {activeCamera->GetEye().x - playerPosition.x, 0.0f,
@@ -264,16 +281,19 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
     } else {
         goalPlayerSnapshotValid_ = false;
     }
+
     LockGoalPresentationCameraInput();
     SetupGoalPresentationCamera();
 
     if (goalCinematicTimelineLoaded_) {
+        // 保存済み演出の役名を今のPlayerと王冠へ結び直す。再取得した王冠ではIDが変わり得る。
         for (auto& clip : goalCinematicSequence_.animationClips) {
             if (clip.driver == "GoalClearPlayer" && player_) {
                 clip.binding.targetName = player_->GetName();
                 clip.binding.targetEventId = player_->GetEventID();
             }
         }
+
         for (auto& track : goalCinematicSequence_.vfxTracks) {
             if (track.sequenceName.rfind("crown_focus", 0) == 0) {
                 track.sequenceName = goalWasStageCleared_ ? "crown_focus_silver_cue" : "crown_focus_cue";
@@ -284,14 +304,17 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
             } else if (track.sequenceName.rfind("crown_victory_land", 0) == 0) {
                 track.sequenceName = goalWasStageCleared_ ? "crown_victory_land_silver_cue" : "crown_victory_land_cue";
             }
+
             const bool followsCrown =
                 track.sequenceName.rfind("crown_focus", 0) == 0 || track.sequenceName.rfind("crown_get", 0) == 0;
             engine::Object3d* target = followsCrown ? crownObject : player_;
+
             if (target) {
                 track.binding.targetName = target->GetName();
                 track.binding.targetEventId = target->GetEventID();
             }
         }
+
         goalCinematicPlayer_.SetSequence(&goalCinematicSequence_);
         goalCinematicPlayer_.Play(false);
         goalPresentationTimer_ = goalCinematicPlayer_.GetCurrentTime();
@@ -308,26 +331,35 @@ void GamePlayScene::Update(float deltaTime) {
             StepCrownMoviePreview(0.0f);
             return;
         }
+
         EndCrownMoviePreview();
     }
-    if (!SceneManager::GetInstance()->IsPlaying() && (crownDefeat_.active || crownDefeat_.completed)) ResetCrownDefeat();
+
+    if (!SceneManager::GetInstance()->IsPlaying() && (crownDefeat_.active || crownDefeat_.completed))
+        ResetCrownDefeat();
     if (crownDefeat_.active) {
         UpdatePostEffectState(deltaTime);
         UpdateCrownDefeat(deltaTime);
+
         // 演出中は衝突・AIを進めず、描画と粒子だけを更新します。
         if (particleSystem_) {
             particleSystem_->Update(deltaTime);
         }
+
         GPUParticleManager::GetInstance()->Update(deltaTime);
+
         for (auto& object : GetObjects()) {
             object->UpdateWorldMatrix(true);
         }
+
         UpdateUI(deltaTime);
         return;
     }
+
     if (crownFinale_.prepared && !SceneManager::GetInstance()->IsPlaying()) {
         ResetCrownFinaleWorld();
     }
+
     if (crownFinale_.active) {
         UpdatePostEffectState(deltaTime);
         UpdateCrownFinale(deltaTime);
@@ -335,6 +367,7 @@ void GamePlayScene::Update(float deltaTime) {
         UpdateUI(deltaTime);
         return;
     }
+
     bool runtimePlaying = true;
 #ifdef USE_IMGUI
     if (SceneManager* sceneManager = GetSceneManager()) {
@@ -352,6 +385,7 @@ void GamePlayScene::Update(float deltaTime) {
     if (!runtimePlaying) {
         FinishSealBarrageMovie();
         stageEntryRuntimeWasPlaying_ = false;
+
         if (stageEntryPresentationActive_) {
             FinishStageEntryPresentation();
         }
@@ -369,6 +403,7 @@ void GamePlayScene::Update(float deltaTime) {
         if (stageEntryPresentationPending_ && !stageEntryPresentationActive_ && !stageEntryPresentationCompleted_) {
             if (!StartStageEntryPresentation()) {
                 stageEntryPresentationRetryTimer_ += std::max(deltaTime, 0.0f);
+
                 if (player_) {
                     player_->SetIsVisible(false);
                     player_->SetIsControlActive(false);
@@ -385,10 +420,12 @@ void GamePlayScene::Update(float deltaTime) {
                 stageEntryPresentationPending_ = false;
                 stageEntryPresentationCompleted_ = true;
                 stageEntryPresentationRetryTimer_ = 0.0f;
+
                 if (player_) {
                     player_->SetIsVisible(true);
                     player_->SetIsControlActive(stageEntryHadPlayerControl_);
                 }
+
                 DebugConsole::GetInstance()->AddLog(
                     "Stage Entry Warning: entrance gate presentation could not be prepared.");
             }
@@ -441,6 +478,7 @@ void GamePlayScene::Update(float deltaTime) {
     }
 
     UpdatePostEffectState(deltaTime);
+
     if (lifeLostState_.IsActive()) {
         UpdateUI(deltaTime);
         return;
@@ -450,18 +488,22 @@ void GamePlayScene::Update(float deltaTime) {
     UpdateLockOnAndCamera(deltaTime);
     UpdateGoalCrownIdleAnimation(deltaTime);
     UpdateSceneSystems(deltaTime);
+
     // 敵更新後にカメラを確定し、槍の位置とカットの時刻を同じフレームへ揃えます。
     UpdateSealBarrageMovie(deltaTime);
     UpdateUI(deltaTime);
+
     // 対象とカメラの更新が完了してから、実際に描画する視点へマーカーを投影します。
     if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
         UpdateLockOnSprite(CameraManager::GetInstance()->GetActiveCamera(), lockOnSystem_->GetTarget(), deltaTime);
     } else {
         isDrawLockOn_ = false;
+
         if (lockOnSprite_) {
             lockOnSprite_->SetVisible(false);
         }
     }
+
     UpdateEffectDebugShortcuts();
 
     if (animatedCube_) {
@@ -505,9 +547,11 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         if (!object || object->GetEventType() != EventType::Goal) {
             continue;
         }
+
         foundGoalCrown = true;
 
         float nearRate = 0.0f;
+
         if (player_) {
             const engine::Vector3 toCrown = object->GetWorldPosition() - player_->GetWorldPosition();
             const float distance = std::sqrt(toCrown.x * toCrown.x + toCrown.y * toCrown.y + toCrown.z * toCrown.z);
@@ -528,6 +572,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         object->UpdateWorldMatrix();
 
         const engine::Matrix4x4& crownWorld = object->GetWorldMatrix();
+
         if (emitSparkle) {
             const engine::Vector3& localOffset = kSparkleOffsets[goalCrownSparklePatternIndex_ % kSparkleOffsets.size()];
             GPUParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, engine::Math::Transform(localOffset, crownWorld));
@@ -546,6 +591,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
     if (!foundGoalCrown) {
         return;
     }
+
     if (emitSparkle) {
         goalCrownSparkleTimer_ +=
             kFarSparkleInterval + (kNearSparkleInterval - kFarSparkleInterval) * strongestNearRate;
@@ -558,6 +604,7 @@ bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
         UpdatePausePageSlide(deltaTime);
         return true;
     }
+
     // 操作ガイドが開いている間はゲーム入力を消費し、通常の行動更新へ通さない。
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
         if (pauseGuideSession_ && inputManager_ &&
@@ -566,15 +613,19 @@ bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
             pauseGuideSession_ = false;
             return true;
         }
+
         controlsGuideOverlay_->SetPlayer(player_);
         controlsGuideOverlay_->Update(deltaTime);
+
         if (pauseGuideSession_ && controlsGuideOverlay_->ConsumeMenuPageRequest()) {
             BeginPausePageSlide(true);
             return true;
         }
+
         if (!controlsGuideOverlay_->IsActive()) {
             pauseGuideSession_ = false;
         }
+
         return true;
     }
 
@@ -583,11 +634,13 @@ bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
 
 void GamePlayScene::BeginPausePageSlide(bool toMenu) {
     // 遷移先を先に開き、初回フレームから両ページの位置を同期させる。
-    if (!controlsGuideOverlay_ || !pauseMenuOverlay_) return;
+    if (!controlsGuideOverlay_ || !pauseMenuOverlay_)
+        return;
     pausePageSliding_ = true;
     pausePageToMenu_ = toMenu;
     pausePageSlideTime_ = 0.0f;
-    if (toMenu) pauseMenuOverlay_->SetActive(true);
+    if (toMenu)
+        pauseMenuOverlay_->SetActive(true);
     else controlsGuideOverlay_->OpenAbilityPage(false);
     UpdatePausePageSlide(0.0f);
 }
@@ -597,6 +650,7 @@ void GamePlayScene::UpdatePausePageSlide(float deltaTime) {
         pausePageSliding_ = false;
         return;
     }
+
     // 操作説明と能力ページと同じ0.34秒。遷移中は入力を受けず二重決定を防ぐ。
     pausePageSlideTime_ += std::max(0.0f, deltaTime);
     const float t = std::clamp(pausePageSlideTime_ / 0.34f, 0.0f, 1.0f);
@@ -606,11 +660,13 @@ void GamePlayScene::UpdatePausePageSlide(float deltaTime) {
     pauseMenuOverlay_->Update(deltaTime, false);
     controlsGuideOverlay_->SetMenuTransitionOffset(-distance * (pausePageToMenu_ ? eased : 1.0f - eased), true);
     pauseMenuOverlay_->SetGuideTransitionOffset(distance * (pausePageToMenu_ ? 1.0f - eased : eased), true);
+
     if (t >= 1.0f) {
         pausePageSliding_ = false;
         controlsGuideOverlay_->SetMenuTransitionOffset(0.0f, false);
         pauseMenuOverlay_->SetGuideTransitionOffset(0.0f, false);
-        if (pausePageToMenu_) controlsGuideOverlay_->SetActive(false);
+        if (pausePageToMenu_)
+            controlsGuideOverlay_->SetActive(false);
         else pauseMenuOverlay_->SetActive(false);
     }
 }
@@ -624,11 +680,13 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
 
     if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) {
         PauseMenuOverlay::Action action = pauseMenuOverlay_->Update(deltaTime);
+
         switch (action) {
         case PauseMenuOverlay::Action::Resume:
             pauseMenuOverlay_->SetActive(false);
             pauseGuideSession_ = false;
             break;
+
         case PauseMenuOverlay::Action::OpenGuide:
             if (controlsGuideOverlay_) {
                 controlsGuideOverlay_->SetPlayer(player_);
@@ -636,28 +694,36 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
                 BeginPausePageSlide(false);
                 pauseGuideSession_ = true;
             }
+
             break;
+
         case PauseMenuOverlay::Action::Retry:
             pauseMenuOverlay_->SetActive(false);
             SceneManager::GetInstance()->ChangeSceneWithoutLoading("GAMEPLAY");
             break;
+
         case PauseMenuOverlay::Action::StageSelect:
             pauseMenuOverlay_->SetActive(false);
             SceneManager::GetInstance()->ChangeScene("SELECT");
             break;
+
         case PauseMenuOverlay::Action::OpenSettings:
             if (settingsOverlay_) {
                 settingsOverlay_->SetActive(true);
             }
+
             break;
+
         case PauseMenuOverlay::Action::ReturnTitle:
             pauseMenuOverlay_->SetActive(false);
             SceneManager::GetInstance()->ChangeScene("TITLE");
             break;
+
         case PauseMenuOverlay::Action::None:
         default:
             break;
         }
+
         return true;
     }
 
@@ -670,6 +736,7 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
         } else if (pauseMenuOverlay_) {
             pauseMenuOverlay_->SetActive(true);
         }
+
         return true;
     }
 
@@ -684,6 +751,7 @@ bool GamePlayScene::IsPauseOpenTriggered() const {
 
 #ifdef USE_IMGUI
     ImGuiIO& io = ImGui::GetIO();
+
     if (io.WantCaptureKeyboard || io.WantTextInput) {
         return false;
     }
@@ -709,6 +777,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         const bool wasStageCleared = gameData->IsStageCleared(currentStage);
         const int previousCrownCount = gameData->GetClearedStageCount();
         std::vector<int> newStarCoinIndices;
+
         for (int i = 0; i < 3; i++) {
             if (sessionStarCoins_[i] && !gameData->IsStarCoinCollected(currentStage, i)) {
                 newStarCoinIndices.push_back(i);
@@ -730,6 +799,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
             }
         } else {
             const int newCrownCount = gameData->GetClearedStageCount();
+
             if (!wasStageCleared && newCrownCount > previousCrownCount) {
                 gameData->RequestStageClearRewardPresentation(currentStage, previousCrownCount, newCrownCount);
             }
@@ -740,6 +810,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
             if (saveIndicatorOverlay_) {
                 saveIndicatorOverlay_->Play(1.35f);
             }
+
             DebugConsole::GetInstance()->AddLog("Stage clear data saved.");
             goalSavePerformed_ = true;
         }
@@ -747,9 +818,11 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
 
     UpdateGoalPresentation(deltaTime);
     UpdatePostEffectState(deltaTime);
+
     if (particleSystem_) {
         particleSystem_->Update(deltaTime);
     }
+
     GPUParticleManager::GetInstance()->Update(deltaTime);
     UpdateUI(deltaTime);
 
@@ -767,6 +840,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         if (!goalReturnFadeStarted_ || Fade::GetInstance()->IsFinished()) {
             SceneManager::GetInstance()->ChangeSceneAfterFade("SELECT");
         }
+
         return true;
     }
 
@@ -782,12 +856,15 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
 void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     // 撃破の勝利カットから直接リザルトへ接続し、通常ゴールの王冠取得を重ねません。
     if (crownDefeat_.completed) {
-        if (goalPresentationState_ == GoalPresentationState::Returning) return;
+        if (goalPresentationState_ == GoalPresentationState::Returning)
+            return;
         goalPresentationTimer_ += deltaTime;
         if (goalPresentationTimer_ >= goalClearPlayerAnimator_.GetTuning().readyTime)
             goalPresentationState_ = GoalPresentationState::ReadyToReturn;
-        UpdateGoalPresentationOverlay();return;
+        UpdateGoalPresentationOverlay();
+        return;
     }
+
     if (goalPresentationState_ == GoalPresentationState::Inactive ||
         goalPresentationState_ == GoalPresentationState::Returning) {
         return;
@@ -796,6 +873,7 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     if (goalCinematicTimelineLoaded_) {
         const bool wasTimelinePlaying = goalCinematicPlayer_.IsPlaying();
         goalCinematicPlayer_.Update(deltaTime);
+
         if (wasTimelinePlaying) {
             goalPresentationTimer_ = goalCinematicPlayer_.GetCurrentTime();
         } else {
@@ -805,12 +883,15 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     } else {
         goalPresentationTimer_ += deltaTime;
     }
+
     UpdateGoalPlayerCelebration(deltaTime);
     UpdateGoalCrownMotion(deltaTime);
     UpdateGoalPresentationCamera();
+
     if (!goalCinematicTimelineLoaded_) {
         EmitGoalPresentationEffects(deltaTime);
     }
+
     UpdateGoalPresentationOverlay();
 
     if (goalPresentationState_ == GoalPresentationState::Celebrating &&
@@ -822,6 +903,7 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
 void GamePlayScene::UpdateGoalPlayerCelebration(float deltaTime) {
     // 演出タイムラインの段階に応じてプレイヤーの喜びモーションを更新する。
     (void)deltaTime;
+
     if (!player_ || !goalPlayerSnapshotValid_) {
         return;
     }
@@ -855,9 +937,11 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
 
     // モデル原点と見た目の下端の差を補正し、頭上へ置いたときに浮きや埋まりを防ぐ。
     float crownPivotFromBottom = 0.0f;
+
     if (Model* crownModel = goalCrownObject_->GetModel()) {
         crownPivotFromBottom = std::max(0.0f, -crownModel->GetLocalAabbMin().y * std::abs(goalCrownBaseScale_.y));
     }
+
     const float seatDepth = presentation.crownSeatDepth + std::max(0.0f, squashRate) * 0.10f - stretchRate * 0.035f;
     const float crownPivotHeight = std::max(0.72f, slimeSurfaceHeight - seatDepth + crownPivotFromBottom);
     const engine::Matrix4x4 playerRotationMatrix = engine::Math::MakeRotateMatrix(playerRotation);
@@ -914,6 +998,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             crownScale.y *= 1.0f + descentPulse * 0.010f;
             crownScale.z *= 1.0f + descentPulse * 0.016f;
         }
+
         // 着地前の毎フレームは王冠の見た目の位置をバネの初期値へ揃える。
         goalCrownSpringInitialized_ = false;
         goalCrownSpringPosition_ = crownPosition;
@@ -923,6 +1008,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     } else {
         engine::Vector3 targetPosition = headPosition + goalMoveForward_ * (squashRate * 0.055f);
         float motionEnergy = 0.0f;
+
         if (t >= animation.jumpStartTime && t < animation.victoryLandTime) {
             const float jumpRate =
                 AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.victoryLandTime);
@@ -942,6 +1028,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         const float dt = std::clamp(deltaTime, 0.0f, 1.0f / 30.0f);
         const int substepCount = std::max(1, static_cast<int>(std::ceil(dt / (1.0f / 120.0f))));
         const float substep = dt / static_cast<float>(substepCount);
+
         for (int step = 0; step < substepCount; ++step) {
             const engine::Vector3 springDelta = targetPosition - goalCrownSpringPosition_;
             const engine::Vector3 acceleration = springDelta * (physics.positionStiffness + motionEnergy * 8.0f) -
@@ -954,6 +1041,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         engine::Vector3 crownOffset = goalCrownSpringPosition_ - targetPosition;
         const float maxPlanarOffset = physics.maxPlanarOffset + motionEnergy * 0.05f;
         const float planarLength = std::sqrt(crownOffset.x * crownOffset.x + crownOffset.z * crownOffset.z);
+
         if (planarLength > maxPlanarOffset && planarLength > 0.0001f) {
             const float rate = maxPlanarOffset / planarLength;
             crownOffset.x *= rate;
@@ -961,11 +1049,14 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             goalCrownSpringVelocity_.x *= 0.55f;
             goalCrownSpringVelocity_.z *= 0.55f;
         }
+
         const float unclampedY = crownOffset.y;
         crownOffset.y = std::clamp(crownOffset.y, -physics.maxSink, physics.maxLift + motionEnergy * 0.04f);
+
         if (crownOffset.y != unclampedY) {
             goalCrownSpringVelocity_.y *= 0.32f;
         }
+
         crownPosition = targetPosition + crownOffset;
         goalCrownSpringPosition_ = crownPosition;
 
@@ -995,6 +1086,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             goalCrownSpringRotationVelocity_ = goalCrownSpringRotationVelocity_ + acceleration * substep;
             goalCrownSpringRotation_ = goalCrownSpringRotation_ + goalCrownSpringRotationVelocity_ * substep;
         }
+
         crownRotation = goalCrownSpringRotation_;
 
         // 下向きの偏差と速度が大きいときだけ、王冠を少し潰して着地感を出す。
@@ -1042,9 +1134,11 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
 void GamePlayScene::SetupGoalPresentationCamera() {
     // 通常カメラの姿勢を保存し、ゴール演出用カメラを王冠とプレイヤーへ向ける。
     Camera* sourceCamera = goalLockedPrimaryCamera_;
+
     if (!sourceCamera) {
         sourceCamera = CameraManager::GetInstance()->GetActiveCamera();
     }
+
     if (!sourceCamera) {
         sourceCamera = CameraManager::GetInstance()->GetMainCamera();
     }
@@ -1156,12 +1250,14 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
                           engine::Vector3{0.0f, camera.jumpCameraHeight + cameraArc * 0.30f, 0.0f};
 
         float settle = 0.0f;
+
         if (t >= animation.apexTime) {
             const float fallRate =
                 AnimationInterpolation::SegmentRate(t, animation.apexTime, animation.victoryLandTime);
             const float settleRaw = std::clamp((fallRate - 0.28f) / 0.72f, 0.0f, 1.0f);
             settle = AnimationInterpolation::ApplyEasing(settleRaw, AnimationInterpolation::EasingType::SmootherStep);
         }
+
         eye = AnimationInterpolation::Lerp(jumpEye, goalCameraResultEye_, settle);
         target = AnimationInterpolation::Lerp(jumpTarget, goalCameraResultTarget_, settle);
         fov = AnimationInterpolation::Lerp(camera.jumpFov, camera.resultFov, settle);
@@ -1185,15 +1281,19 @@ void GamePlayScene::LockGoalPresentationCameraInput() {
     RestoreGoalPresentationCameraInput();
 
     CameraManager* cameraManager = CameraManager::GetInstance();
+
     if (!cameraManager) {
         return;
     }
 
     goalLockedPrimaryCamera_ = cameraManager->GetActiveCamera();
+
     if (!goalLockedPrimaryCamera_) {
         goalLockedPrimaryCamera_ = cameraManager->GetMainCamera();
     }
+
     goalLockedSecondaryCamera_ = cameraManager->GetMainCamera();
+
     if (goalLockedSecondaryCamera_ == goalLockedPrimaryCamera_) {
         goalLockedSecondaryCamera_ = nullptr;
     }
@@ -1201,6 +1301,7 @@ void GamePlayScene::LockGoalPresentationCameraInput() {
     if (goalLockedPrimaryCamera_) {
         goalLockedPrimaryCamera_->SetInputEnabled(false);
     }
+
     if (goalLockedSecondaryCamera_) {
         goalLockedSecondaryCamera_->SetInputEnabled(false);
     }
@@ -1211,9 +1312,11 @@ void GamePlayScene::RestoreGoalPresentationCameraInput() {
     if (goalLockedPrimaryCamera_) {
         goalLockedPrimaryCamera_->SetInputEnabled(true);
     }
+
     if (goalLockedSecondaryCamera_) {
         goalLockedSecondaryCamera_->SetInputEnabled(true);
     }
+
     goalLockedPrimaryCamera_ = nullptr;
     goalLockedSecondaryCamera_ = nullptr;
 }
@@ -1236,6 +1339,7 @@ void GamePlayScene::UpdatePostEffectState(float deltaTime) {
     PostEffect::GetInstance()->Update(deltaTime);
 
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (activeCamera) {
         PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
     }
@@ -1246,6 +1350,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     LightEditor::GetInstance()->Update();
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (!camera) {
         isDrawLockOn_ = false;
         return;
@@ -1256,9 +1361,11 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
 
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
+
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
+
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }
@@ -1277,6 +1384,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3d* target,
 
     // 更新中に敵が削除されることもあるため、逆参照前に生存を再確認します。
     const auto& objects = objectManager_->GetObjects();
+
     if (std::none_of(objects.begin(), objects.end(), [target](const auto& object) { return object.get() == target; }))
         return;
     if (!target->GetIsVisible())
@@ -1324,6 +1432,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3d* target,
     const float maxObjSize = std::max({objSizeX, objSizeY, objSizeZ});
     const float baseSize = maxObjSize * 25.0f;
     const float distanceScale = 20.0f / w;
+
     // 元画像は64px。遠距離でも細い赤線が潰れず、近距離でも敵を覆いすぎないサイズ。
     const float finalSize = std::clamp(baseSize * distanceScale, 72.0f, 112.0f);
 
@@ -1341,9 +1450,11 @@ void GamePlayScene::UpdateSceneSystems(float deltaTime) {
     CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
     objectManager_->Update(deltaTime);
+
     if (gameRule_) {
         gameRule_->Update(deltaTime);
     }
+
     GPUParticleManager::GetInstance()->Update(deltaTime);
 
     for (auto& sprite : sprites_) {
@@ -1361,9 +1472,11 @@ void GamePlayScene::UpdateEffectDebugShortcuts() {
     // デバッグ用のエフェクト操作は通常のゲーム入力と分離して処理する。
 #ifdef USE_IMGUI
     ImGuiIO& io = ImGui::GetIO();
+
     if (io.WantCaptureKeyboard || io.WantTextInput) {
         return;
     }
+
     if (!inputManager_->IsKeyPressed(DIK_LCONTROL) && !inputManager_->IsKeyPressed(DIK_RCONTROL)) {
         return;
     }
@@ -1399,6 +1512,7 @@ void GamePlayScene::UpdateEffectDebugShortcuts() {
 
     if (inputManager_->IsKeyTriggered(DIK_Y)) {
         engine::Vector3 spawnPos = {0.0f, 0.01f, 10.0f};
+
         if (player_) {
             engine::Vector3 playerPos = player_->GetWorldPosition();
             engine::Vector3 forward = player_->GetForwardDirection();

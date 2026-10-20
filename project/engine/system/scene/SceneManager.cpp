@@ -26,7 +26,8 @@ namespace {
 // GPU待機後、SceneのObject3dCommonを破棄する前に呼びます。
 // LoadingSceneは描画基盤を持たないため、準備済みの次Sceneの演出は消しません。
 void ReleaseSceneMeshEffects(BaseScene* scene) {
-    if (scene && scene->GetObject3dCommon()) MeshEffectManager::GetInstance()->Clear();
+    if (scene && scene->GetObject3dCommon())
+        MeshEffectManager::GetInstance()->Clear();
 }
 
 void LogSlowLoadingStep(const char* operation, const std::string& sceneName,
@@ -65,6 +66,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
     assert(IsSceneRegistered(firstSceneName) && "Initial scene is not registered in SceneFactory.");
     currentScene_ = sceneFactory_->CreateScene(firstSceneName);
     assert(currentScene_ && "Initial scene creation failed.");
+
     if (!currentScene_) {
         currentSceneName_.clear();
         transitionPhase_ = TransitionPhase::Idle;
@@ -74,6 +76,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
     ++sceneGeneration_;
     currentScene_->SetSceneManager(this);
     currentScene_->SetSceneLoadContext(activeSceneLoadContext_);
+
     if (debugEditor_) {
         currentScene_->SetDebugEditor(debugEditor_);
     }
@@ -88,16 +91,20 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
     }
     catch (...) {
         textureManager->SetAsyncUploadRecording(false);
+
         if (initialUploadBatch) {
             textureManager->SubmitAsyncUploadBatch();
             textureManager->WaitForAsyncUploadBatch();
         }
+
         ReleaseSceneMeshEffects(currentScene_.get());
         currentScene_.reset();
         currentSceneName_.clear();
         throw;
     }
+
     textureManager->SetAsyncUploadRecording(false);
+
     if (initialUploadBatch) {
         textureManager->SubmitAsyncUploadBatch();
         textureManager->WaitForAsyncUploadBatch();
@@ -117,7 +124,9 @@ void SceneManager::Finalize() {
         catch (...) {
         }
     }
+
     TextureManager::GetInstance()->WaitForAsyncUploadBatch();
+
     if (loadingFuture_.valid()) {
         loadingFuture_.wait();
         try {
@@ -135,12 +144,15 @@ void SceneManager::Finalize() {
         currentScene_->Finalize();
         currentScene_.reset();
     }
+
     ++sceneGeneration_;
 
     ReleaseSceneMeshEffects(preparedScene_.get());
+
     if (preparedScene_ && preparedSceneInitialized_) {
         preparedScene_->Finalize();
     }
+
     preparedScene_.reset();
     preparedLoadData_.reset();
     preloadProgress_.reset();
@@ -170,32 +182,38 @@ void SceneManager::Update(float deltaTime) {
         if (Fade::GetInstance()->GetStatus() == Fade::Status::FadeOut && !Fade::GetInstance()->IsFinished()) {
             return;
         }
+
         if (directTransitionPending_) {
             // 暗転が完了してから旧シーンを破棄し、次のシーンを直接初期化する。
             // ロード画面の最低表示時間と追加の暗転を挟まない。
             nextScene_ = sceneFactory_->CreateScene(nextSceneName_);
             nextSceneName_.clear();
             assert(nextScene_ && "Direct scene creation failed.");
+
             if (!nextScene_) {
                 directTransitionPending_ = false;
                 transitionPhase_ = TransitionPhase::Idle;
                 return;
             }
+
             SwapToDirectNextScene();
             if (!directDestinationHandlesReveal_ ||
                 Fade::GetInstance()->GetStatus() != Fade::Status::IrisIn) {
                 Fade::GetInstance()->StartFadeIn(0.25f);
             }
+
             directTransitionPending_ = false;
             directDestinationHandlesReveal_ = false;
             transitionPhase_ = TransitionPhase::Idle;
             return;
         }
+
         BeginLoadingTransition();
         return;
 
     case TransitionPhase::Loading: {
         loadingElapsed_ += effectiveDeltaTime;
+
         if (currentScene_) {
             currentScene_->Update(effectiveDeltaTime);
         }
@@ -215,6 +233,7 @@ void SceneManager::Update(float deltaTime) {
             Fade::GetInstance()->StartFadeOut(0.35f);
             transitionPhase_ = TransitionPhase::FadingOutLoading;
         }
+
         return;
     }
 
@@ -222,11 +241,13 @@ void SceneManager::Update(float deltaTime) {
         if (currentScene_) {
             currentScene_->Update(effectiveDeltaTime);
         }
+
         SetLoadingProgress(1.0f);
 
         if (Fade::GetInstance()->GetStatus() == Fade::Status::FadeOut && !Fade::GetInstance()->IsFinished()) {
             return;
         }
+
         PrepareLoadedSceneOnMainThread();
         SwapToPreparedScene();
         return;
@@ -310,6 +331,7 @@ void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFade
     if (!preserveSceneAssetForNextChange_) {
         ClearActiveSceneAsset();
     }
+
     preserveSceneAssetForNextChange_ = false;
 
     nextSceneName_ = sceneName;
@@ -317,6 +339,7 @@ void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFade
     directTransitionPending_ = skipLoading;
     directDestinationHandlesReveal_ = skipLoading && destinationHandlesReveal;
     transitionPhase_ = TransitionPhase::FadingOutCurrent;
+
     if (startFadeOut) {
         Fade::GetInstance()->StartFadeOut(skipLoading ? 0.2f : 1.0f);
     }
@@ -392,12 +415,15 @@ void SceneManager::SetEditorSceneAssetPaths(
     activeSceneLoadContext_.spriteLayoutPath = spriteLayoutPath;
     std::string sceneAssetId = objectLayoutPath;
     const size_t slash = sceneAssetId.find_last_of("/\\");
+
     if (slash != std::string::npos) {
         sceneAssetId = sceneAssetId.substr(slash + 1);
     }
+
     if (sceneAssetId.size() >= 5 && sceneAssetId.substr(sceneAssetId.size() - 5) == ".json") {
         sceneAssetId.resize(sceneAssetId.size() - 5);
     }
+
     activeSceneLoadContext_.sceneAssetId = sceneAssetId;
 }
 
@@ -443,9 +469,11 @@ void SceneManager::BeginLoadingTransition() {
     CameraEditor::GetInstance()->InvalidatePreviewForSceneChange();
 #endif
     currentScene_->SetSceneManager(this);
+
     if (debugEditor_) {
         currentScene_->SetDebugEditor(debugEditor_);
     }
+
     currentScene_->Initialize();
     SetLoadingProgress(0.08f);
 
@@ -460,20 +488,24 @@ void SceneManager::StartAsyncSceneCreate() {
     const std::string targetName = loadingTargetSceneName_;
     preparedScene_ = sceneFactory_->CreateScene(targetName);
     assert(preparedScene_ && "Scene creation failed before async preload.");
+
     if (!preparedScene_) {
         return;
     }
 
     preparedScene_->SetSceneManager(this);
     preparedScene_->SetSceneLoadContext(activeSceneLoadContext_);
+
     if (debugEditor_) {
         preparedScene_->SetDebugEditor(debugEditor_);
     }
 
     SceneLoadManifest manifest = preparedScene_->BuildAsyncLoadManifest();
+
     if (!activeSceneLoadContext_.bgmPath.empty()) {
         manifest.AddAudio(activeSceneLoadContext_.bgmPath);
     }
+
     preloadProgress_ = std::make_shared<ScenePreloadProgress>();
     const std::shared_ptr<ScenePreloadProgress> progress = preloadProgress_;
 
@@ -521,35 +553,45 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
         if (!IsAsyncSceneReady()) {
             return;
         }
+
         preparedLoadData_ = loadingFuture_.get();
+
         if (!preparedLoadData_) {
             preparedLoadData_ = std::make_shared<ScenePreloadData>();
         }
+
         for (const std::string& warning : preparedLoadData_->warnings) {
             OutputDebugStringA((warning + "\n").c_str());
         }
+
         if (preparedScene_) {
             preparedScene_->SetPreparedLoadData(preparedLoadData_);
         }
+
         asyncUploadBatchStarted_ = TextureManager::GetInstance()->BeginAsyncUploadBatch();
     }
 
     assert(preparedScene_ && "Scene creation failed during loading transition.");
+
     if (!preparedScene_) {
         transitionPhase_ = TransitionPhase::Idle;
         return;
     }
 
     if (!preparedAssetsReady_) {
+        // Asset生成、転送バッチ投入、GPU側の完了をそれぞれ別フレームで監視する。
+        // どれかが残っている間はSceneのInitializeへ進まない。
         if (!assetCreationStarted_) {
             StartPreparedAssetsAsync();
             return;
         }
+
         if (!assetCreationFinished_) {
             if (!assetCreationFuture_.valid() ||
                 assetCreationFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
                 return;
             }
+
             try {
                 assetCreationFuture_.get();
             }
@@ -561,6 +603,7 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
                 OutputDebugStringA("Asset creation failed with an unknown exception.\n");
                 assert(false && "Asset creation failed.");
             }
+
             assetCreationFinished_ = true;
         }
 
@@ -571,11 +614,14 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
         }
 
         if (asyncUploadBatchStarted_ && !asyncUploadBatchSubmitted_) {
+            // 非同期Uploadの発行はAsset生成側の処理が終わってから一度だけ行う。
             asyncUploadBatchSubmitted_ = TextureManager::GetInstance()->SubmitAsyncUploadBatch();
+
             if (!asyncUploadBatchSubmitted_) {
                 return;
             }
         }
+
         if (asyncUploadBatchSubmitted_ &&
             !TextureManager::GetInstance()->PollAsyncUploadBatch()) {
             return;
@@ -589,6 +635,7 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
     if (!sceneInitializationStarted_) {
         preparedScene_->SetSceneManager(this);
         preparedScene_->SetSceneLoadContext(activeSceneLoadContext_);
+
         if (debugEditor_) {
             preparedScene_->SetDebugEditor(debugEditor_);
         }
@@ -618,7 +665,9 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
             TextureManager::GetInstance()->SetAsyncUploadRecording(false);
             throw;
         }
+
         TextureManager::GetInstance()->SetAsyncUploadRecording(false);
+
         if (!sceneInitializationFinished_) {
             return;
         }
@@ -626,10 +675,12 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
 
     if (asyncUploadBatchStarted_ && !asyncUploadBatchSubmitted_) {
         asyncUploadBatchSubmitted_ = TextureManager::GetInstance()->SubmitAsyncUploadBatch();
+
         if (!asyncUploadBatchSubmitted_) {
             return;
         }
     }
+
     if (asyncUploadBatchSubmitted_ &&
         !TextureManager::GetInstance()->PollAsyncUploadBatch()) {
         return;
@@ -688,6 +739,7 @@ float SceneManager::CalculateLoadingProgress() const {
     }
 
     const float workerRatio = preloadProgress_ ? preloadProgress_->GetRatio() : 0.0f;
+
     if (!preparedLoadData_) {
         return 0.08f + workerRatio * 0.52f;
     }
@@ -701,20 +753,24 @@ float SceneManager::CalculateLoadingProgress() const {
         ? 1.0f
         : static_cast<float>(completedAssets) / static_cast<float>(totalAssets);
     const float assetProgress = 0.60f + (std::min)(1.0f, assetRatio) * 0.36f;
+
     if (sceneInitializationStarted_ && !sceneInitializationFinished_) {
         const float initializeRatio = preparedScene_
             ? std::clamp(preparedScene_->GetLoadingInitializeProgress(), 0.0f, 1.0f)
             : 0.0f;
         return 0.96f + initializeRatio * 0.025f;
     }
+
     if (sceneInitializationFinished_ &&
         TextureManager::GetInstance()->IsAsyncUploadBatchPending()) {
         return 0.99f;
     }
+
     if (asyncUploadBatchSubmitted_ &&
         TextureManager::GetInstance()->IsAsyncUploadBatchPending()) {
         return 0.97f;
     }
+
     return assetProgress;
 }
 
@@ -750,10 +806,12 @@ void SceneManager::SwapToPreparedScene() {
     preparedAssetsReady_ = false;
     sceneInitializationStarted_ = false;
     sceneInitializationFinished_ = false;
+
     if (!pendingSceneNameForSwap_.empty()) {
         currentSceneName_ = pendingSceneNameForSwap_;
         pendingSceneNameForSwap_.clear();
     }
+
     loadingTargetSceneName_.clear();
 
     // 有効化処理は、SceneManager上でも現在シーンへ切り替わった後に行います。
@@ -782,6 +840,7 @@ void SceneManager::SwapToDirectNextScene() {
     CameraEditor::GetInstance()->InvalidatePreviewForSceneChange();
 #endif
     nextScene_ = nullptr;
+
     if (!pendingSceneNameForSwap_.empty()) {
         currentSceneName_ = pendingSceneNameForSwap_;
         pendingSceneNameForSwap_.clear();
@@ -790,9 +849,11 @@ void SceneManager::SwapToDirectNextScene() {
     if (currentScene_) {
         currentScene_->SetSceneManager(this);
         currentScene_->SetSceneLoadContext(activeSceneLoadContext_);
+
         if (debugEditor_) {
             currentScene_->SetDebugEditor(debugEditor_);
         }
+
         currentScene_->Initialize();
 #ifdef USE_IMGUI
         CameraEditor::GetInstance()->SetObject3dCommon(currentScene_->GetObject3dCommon());
@@ -822,6 +883,7 @@ void SceneManager::SaveLastSceneName(const std::string& sceneName) {
     json root;
     {
         std::ifstream input(kUserConfigPath);
+
         if (input.is_open()) {
             try {
                 input >> root;
@@ -838,6 +900,7 @@ void SceneManager::SaveLastSceneName(const std::string& sceneName) {
     root["lastScene"] = sceneName;
 
     std::ofstream file(kUserConfigPath);
+
     if (file.is_open()) {
         file << root.dump(4);
     }
@@ -846,6 +909,7 @@ void SceneManager::SaveLastSceneName(const std::string& sceneName) {
 std::string SceneManager::LoadLastSceneName() {
     // 設定ファイルがない場合やJSONが壊れている場合は空名で起動側へ任せる。
     std::ifstream file(kUserConfigPath);
+
     if (!file.is_open()) {
         return "";
     }
@@ -853,6 +917,7 @@ std::string SceneManager::LoadLastSceneName() {
     try {
         json root;
         file >> root;
+
         if (root.contains("lastScene")) {
             return root["lastScene"];
         }

@@ -14,7 +14,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "identity.name", "名前", "Identity", EditorPropertyType::String, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetName()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_string()) return false;
+            if (!value.is_string())
+                return false;
             object.SetName(value.get<std::string>());
             return true;
         },
@@ -29,7 +30,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "identity.tag", "Tag", "Identity", EditorPropertyType::String, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetTag()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_string()) return false;
+            if (!value.is_string())
+                return false;
             object.SetTag(value.get<std::string>());
             return true;
         },
@@ -38,7 +40,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "identity.layer", "Layer", "Identity", EditorPropertyType::String, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetLayer()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_string()) return false;
+            if (!value.is_string())
+                return false;
             object.SetLayer(value.get<std::string>());
             return true;
         },
@@ -47,11 +50,13 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "identity.saveCategory", "保存先カテゴリ", "Identity", EditorPropertyType::String, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSaveCategory()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_string()) return false;
+            if (!value.is_string())
+                return false;
             object.SetSaveCategory(value.get<std::string>());
             return true;
         },
     });
+
     // Transform の Setter 後に両行列を更新し、Inspector での変更を同フレームの表示へ反映します。
     Register({
         "transform.position", "座標", "Transform", EditorPropertyType::Vector3, CommonFlags(true),
@@ -60,7 +65,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return json::array({ value.x, value.y, value.z });
         },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_array() || value.size() < 3) return false;
+            if (!value.is_array() || value.size() < 3)
+                return false;
             object.SetTranslate({ value[0].get<float>(), value[1].get<float>(), value[2].get<float>() });
             object.UpdateLocalMatrix();
             object.UpdateWorldMatrix();
@@ -74,7 +80,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return json::array({ value.x, value.y, value.z });
         },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_array() || value.size() < 3) return false;
+            if (!value.is_array() || value.size() < 3)
+                return false;
             object.SetRotation({ value[0].get<float>(), value[1].get<float>(), value[2].get<float>() });
             object.UpdateLocalMatrix();
             object.UpdateWorldMatrix();
@@ -88,19 +95,22 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return json::array({ value.x, value.y, value.z });
         },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_array() || value.size() < 3) return false;
+            if (!value.is_array() || value.size() < 3)
+                return false;
             object.SetScale({ value[0].get<float>(), value[1].get<float>(), value[2].get<float>() });
             object.UpdateLocalMatrix();
             object.UpdateWorldMatrix();
             return true;
         },
     });
+
     // 表示や編集ロックは Object の状態として保存し、描画パラメータとは別に扱います。
     Register({
         "rendering.visible", "表示", "Rendering", EditorPropertyType::Bool, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetIsVisible()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_boolean()) return false;
+            if (!value.is_boolean())
+                return false;
             object.SetIsVisible(value.get<bool>());
             return true;
         },
@@ -109,7 +119,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "editor.locked", "編集ロック", "Editor", EditorPropertyType::Bool, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetIsLocked()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_boolean()) return false;
+            if (!value.is_boolean())
+                return false;
             object.SetIsLocked(value.get<bool>());
             return true;
         },
@@ -118,11 +129,13 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "rendering.castShadow", "影を落とす", "Rendering", EditorPropertyType::Bool, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetCastShadow()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_boolean()) return false;
+            if (!value.is_boolean())
+                return false;
             object.SetCastShadow(value.get<bool>());
             return true;
         },
     });
+
     // 色と PBR 値は既存の Object3d Setter を経由し、描画側の反映手順を共通化します。
     Register({
         "rendering.color", "色", "Rendering", EditorPropertyType::Vector4, CommonFlags(true),
@@ -131,7 +144,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
             return json::array({ value.x, value.y, value.z, value.w });
         },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_array() || value.size() < 4) return false;
+            if (!value.is_array() || value.size() < 4)
+                return false;
             object.SetColor({ value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>() });
             return true;
         },
@@ -140,7 +154,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "rendering.metallic", "金属度", "Rendering", EditorPropertyType::Number, CommonFlags(true),
         [](const engine::Object3d& object) { return json(object.GetMetallic()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.SetMetallic(value.get<float>());
             return true;
         },
@@ -149,7 +164,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "rendering.roughness", "粗さ", "Rendering", EditorPropertyType::Number, CommonFlags(true),
         [](const engine::Object3d& object) { return json(object.GetRoughness()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.SetRoughness(value.get<float>());
             return true;
         },
@@ -158,17 +174,20 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "rendering.emissive", "発光強度", "Rendering", EditorPropertyType::Number, CommonFlags(true),
         [](const engine::Object3d& object) { return json(object.GetEmissive()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.SetEmissive(value.get<float>());
             return true;
         },
     });
+
     // 衝突属性と Mask はビット列として保持するため、JSON からは整数だけ受け取ります。
     Register({
         "collision.attribute", "衝突属性", "Collision", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetCollisionAttribute()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_unsigned() && !value.is_number_integer()) return false;
+            if (!value.is_number_unsigned() && !value.is_number_integer())
+                return false;
             object.SetCollisionAttribute(value.get<std::uint32_t>());
             return true;
         },
@@ -177,7 +196,8 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         "collision.mask", "衝突対象", "Collision", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetCollisionMask()); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_unsigned() && !value.is_number_integer()) return false;
+            if (!value.is_number_unsigned() && !value.is_number_integer())
+                return false;
             object.SetCollisionMask(value.get<std::uint32_t>());
             return true;
         },

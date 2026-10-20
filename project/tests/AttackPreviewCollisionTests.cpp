@@ -8,7 +8,8 @@
 int main() {
     try {
         std::ifstream file("Resources/json/3Dobject/stage1_player.json");
-        nlohmann::json source; file >> source;
+        nlohmann::json source;
+        file >> source;
         const auto& saved = source.at("objects").at(0).at("collider");
         ColliderConfig targetConfig;
         targetConfig.type = static_cast<ColliderType>(saved.at("type").get<int>());
@@ -33,6 +34,7 @@ int main() {
         projectile.SetScaleOverride({1, 1, 1});
         if (!projectile.CheckCollision(&target).isColliding)
             throw std::runtime_error("actual player collider contact missing");
+
         // 見た目の倍率が2でも、旧式の原点中心球では接触が成立しない位置です。
         if (engine::Math::Length(projectileTransform.translate) <= 1.0f + projectile.GetRadius())
             throw std::runtime_error("old preview mismatch not reproduced");

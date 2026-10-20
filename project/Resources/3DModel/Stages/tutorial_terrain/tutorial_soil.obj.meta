@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "10211c96a147427199e61c30d294427a",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/tutorial_terrain/tutorial_soil.obj",
+  "version": 1
+}

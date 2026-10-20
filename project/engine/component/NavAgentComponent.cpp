@@ -15,17 +15,21 @@ float PlanarDistanceSquared(const engine::Vector3& lhs, const engine::Vector3& r
 
 engine::Vector3 NormalizePlanar(const engine::Vector3& value) {
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
-    if (length <= 0.000001f) return { 0.0f, 0.0f, 0.0f };
+
+    if (length <= 0.000001f)
+        return { 0.0f, 0.0f, 0.0f };
     return { value.x / length, 0.0f, value.z / length };
 }
 }
 
 void NavAgentComponent::SetCellSize(float value) {
+    // 探索解像度が変わると現在のWaypointは使えないため、次回の探索を強制する。
     cellSize_ = (std::clamp)(value, 0.2f, 10.0f);
     InvalidatePath();
 }
 
 void NavAgentComponent::SetAgentRadius(float value) {
+    // 半径より低い身長にならないよう合わせ、通行可能判定も作り直す。
     agentRadius_ = (std::clamp)(value, 0.05f, 10.0f);
     agentHeight_ = (std::max)(agentHeight_, agentRadius_ * 2.0f);
     InvalidatePath();
@@ -62,13 +66,15 @@ engine::Vector3 NavAgentComponent::CalculateDirection(
     const engine::Vector3& targetPosition, float deltaTime) {
     engine::Vector3 direct = targetPosition - currentPosition;
     direct.y = 0.0f;
-    if (!enabled_ || !owner) return NormalizePlanar(direct);
+    if (!enabled_ || !owner)
+        return NormalizePlanar(direct);
 
     if (PlanarDistanceSquared(currentPosition, targetPosition) <= stoppingDistance_ * stoppingDistance_) {
         return { 0.0f, 0.0f, 0.0f };
     }
 
     repathTimer_ -= (std::max)(0.0f, deltaTime);
+
     // 目標がセル幅の半分以上動いたら、再探索間隔を待たずに経路を更新する。
     const bool targetMoved = !hasLastTarget_ ||
         PlanarDistanceSquared(lastTargetPosition_, targetPosition) > cellSize_ * cellSize_ * 0.25f;
@@ -77,18 +83,21 @@ engine::Vector3 NavAgentComponent::CalculateDirection(
     }
 
     const float reachDistance = (std::max)(stoppingDistance_, cellSize_ * 0.35f);
+    // 到達済みの経由点を飛ばし、次の点へ向く。停止距離だけだと細かいセルで詰まりやすい。
     while (waypointIndex_ < currentPath_.size() &&
         PlanarDistanceSquared(currentPosition, currentPath_[waypointIndex_]) <= reachDistance * reachDistance) {
         ++waypointIndex_;
     }
 
     // 経路が作れない場合も追跡を止めず、目標への直接方向を返す。
-    if (waypointIndex_ >= currentPath_.size()) return NormalizePlanar(direct);
+    if (waypointIndex_ >= currentPath_.size())
+        return NormalizePlanar(direct);
     return NormalizePlanar(currentPath_[waypointIndex_] - currentPosition);
 }
 
 bool NavAgentComponent::RebuildPath(
     engine::Object3d* owner, const engine::Vector3& currentPosition, const engine::Vector3& targetPosition) {
+    // 全マップではなく現在地と目標を囲う領域だけを探索し、グリッドの生成量を抑える。
     const float padding = (std::max)(searchPadding_, cellSize_ * 2.0f);
     NavGridBuildSettings settings;
     settings.boundsMin = {
@@ -96,11 +105,13 @@ bool NavAgentComponent::RebuildPath(
         currentPosition.y,
         (std::min)(currentPosition.z, targetPosition.z) - padding,
     };
+
     settings.boundsMax = {
         (std::max)(currentPosition.x, targetPosition.x) + padding,
         currentPosition.y,
         (std::max)(currentPosition.z, targetPosition.z) + padding,
     };
+
     settings.planeY = currentPosition.y;
     settings.cellSize = cellSize_;
     settings.agentRadius = agentRadius_;
@@ -110,6 +121,7 @@ bool NavAgentComponent::RebuildPath(
 
     PhysicsQueryFilter filter;
     filter.mask = obstacleMask_;
+
     // 自分自身と子オブジェクトを障害物として取り込まない。
     filter.ignoredObject = owner;
     filter.ignoreDescendants = true;

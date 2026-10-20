@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickAppearingFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickAppearingFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 表示と当たり判定を同時に切り替える床として登録する。
     BaseGimmick::Initialize(common, modelName);
 
@@ -26,6 +26,7 @@ void GimmickAppearingFloor::Update(float deltaTime) {
     }
 
     bool isPlaying = false;
+
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
         isPlaying = sceneManager->IsPlaying();
     }
@@ -63,6 +64,7 @@ void GimmickAppearingFloor::Update(float deltaTime) {
     if (shouldBeActive) {
         // 消滅直前に点滅させ、プレイヤーに残り時間を知らせます。
         float warningTime = (std::min)(blinkWarningTime_, appearDuration_ * 0.5f);
+
         if (visibleTimer_ <= warningTime) {
             bool blinkOn = std::fmod(visibleTimer_, blinkInterval_ * 2.0f) >= blinkInterval_;
             SetIsVisible(blinkOn);

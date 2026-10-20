@@ -2,12 +2,13 @@
 #include "EnemyBomb.h"
 #include "game/actor/player/Player.h"
 #include "game/actor/player/state/PlayerState.h"
+#include "game/actor/gimmick/block/GimmickBreakableBlock.h"
 #include "Event.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "json.hpp"
-#include "HitEffectDirector.h"
+#include "game/system/combat/HitEffectDirector.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -50,19 +51,24 @@ float LoadExplosionRadiusFromEffectJson() {
     }
 
     const float endScale = effectJson.contains("EndScale") ? MaxScaleComponent(effectJson["EndScale"]) : 1.0f;
+
     if (effectJson.contains("Collision") && effectJson["Collision"].is_object()) {
         const auto& collision = effectJson["Collision"];
+
         if (collision.value("HasCollision", false) && collision.value("Shape", -1) == 0 && collision.contains("Size")) {
             return collision["Size"][0].get<float>() * endScale;
         }
     }
+
     if (effectJson.contains("SphereRadius")) {
         return effectJson["SphereRadius"].get<float>() * endScale;
     }
+
     return kFallbackExplosionRadius;
 }
 } // namespace
-void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName) {
+
+void EnemyBomb::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     managedBaseScale_ = {kBombVisualScale, kBombVisualScale, kBombVisualScale};
     SetScale(managedBaseScale_);
@@ -78,6 +84,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
 
     SetColliderType(ColliderType::kSphere);
     SetCollisionRadius(kBombCollisionRadius);
+
     // 通常時は敵として接触を受け付け、爆発時に属性を切り替えます。
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
@@ -112,6 +119,7 @@ void EnemyBomb::Update(float deltaTime) {
         UpdateIgnited(deltaTime);
     } else if (IsThrownPhysics()) {
         UpdateIgnited(deltaTime);
+
         if (state_ != State::Exploded) {
             BaseEnemy::Update(deltaTime);
             ResolveSweptCollision(previousPosition);
@@ -145,6 +153,7 @@ void EnemyBomb::Update(float deltaTime) {
 
             // 移動方向を向きに反映し、地面を転がる見た目だけを加えます。
             float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
+
             if (speedXZ > 0.05f) {
                 // 水平速度から進行方向を求めます。
                 float dirX = velocity_.x / speedXZ;
@@ -167,6 +176,7 @@ void EnemyBomb::Update(float deltaTime) {
         case State::Chase:
             UpdateChase(deltaTime);
             break;
+
         case State::Ignited:
             UpdateIgnited(deltaTime);
             break;
@@ -187,6 +197,7 @@ void EnemyBomb::Update(float deltaTime) {
     // 実際の爆発位置は接地後の移動で決まる。現在の爆弾を中心に判定半径を示す。
     if (state_ == State::Ignited && !isCarried_ && !playerOwned_ && isGrounded_) {
         const float progress = std::clamp(1.0f - fuseTimer_ / 2.8f, 0.0f, 1.0f);
+
         // 爆弾の中心は床より高い。予告円だけ足元の接地面へ投影する。
         const engine::Vector3 bombPosition = GetTranslate();
         const RaycastHit ground = CollisionManager::GetInstance()->Raycast(
@@ -211,6 +222,7 @@ void EnemyBomb::ResolveSweptCollision(const engine::Vector3& previousPosition) {
     }
 
     CollisionManager* collisionManager = CollisionManager::GetInstance();
+
     if (!collisionManager) {
         return;
     }
@@ -220,6 +232,7 @@ void EnemyBomb::ResolveSweptCollision(const engine::Vector3& previousPosition) {
                         currentPosition.z - previousPosition.z};
 
     const float movementLength = std::sqrt(movement.x * movement.x + movement.y * movement.y + movement.z * movement.z);
+
     if (movementLength <= 0.001f) {
         return;
     }
@@ -228,12 +241,14 @@ void EnemyBomb::ResolveSweptCollision(const engine::Vector3& previousPosition) {
 
     const float sweepLength = movementLength + kBombWorldCollisionRadius + kBombSweepSkin;
     RaycastHit hit = collisionManager->Raycast(previousPosition, direction, sweepLength, CollisionCategories::Get("ground"));
+
     if (!hit.isHit) {
         return;
     }
 
     engine::Vector3 normal = hit.normal;
     float normalLength = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+
     if (normalLength <= 0.001f) {
         if (direction.y < -0.15f) {
             normal = {0.0f, 1.0f, 0.0f};
@@ -241,6 +256,7 @@ void EnemyBomb::ResolveSweptCollision(const engine::Vector3& previousPosition) {
         } else {
             normal = {-direction.x, 0.0f, -direction.z};
             normalLength = std::sqrt(normal.x * normal.x + normal.z * normal.z);
+
             if (normalLength <= 0.001f) {
                 normal = {0.0f, 1.0f, 0.0f};
                 normalLength = 1.0f;
@@ -260,12 +276,15 @@ void EnemyBomb::ResolveSweptCollision(const engine::Vector3& previousPosition) {
 
     if (normal.y > 0.35f) {
         isGrounded_ = true;
+
         if (velocity_.y < 0.0f) {
             velocity_.y = -velocity_.y * kBombLandingBounce;
         }
+
         if (std::abs(velocity_.y) < 0.85f) {
             velocity_.y = 0.0f;
         }
+
         velocity_.x *= kBombLandingFriction;
         velocity_.z *= kBombLandingFriction;
     } else if (velocityAlongNormal < 0.0f) {
@@ -289,9 +308,11 @@ void EnemyBomb::UpdateChase(float deltaTime) {
     if (UpdateNoticeReaction(deltaTime, distance, detectionRange_, toPlayer)) {
         velocity_.x = 0.0f;
         velocity_.z = 0.0f;
+
         if (distance > 0.001f) {
             SetRotationY(std::atan2(toPlayer.x, toPlayer.z));
         }
+
         return;
     }
 
@@ -302,9 +323,11 @@ void EnemyBomb::UpdateChase(float deltaTime) {
         velocity_.z = wanderVelocity.z;
 
         const float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
+
         if (speedXZ > 0.05f) {
             SetRotationY(std::atan2(velocity_.x, velocity_.z));
         }
+
         return;
     }
 
@@ -349,8 +372,10 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
 
     // 残り時間が短いほど赤い点滅の間隔を詰め、爆発の近さを知らせます。
     flashTimer_ += deltaTime;
+
     // 導火線の残り時間から次の点滅までの間隔を決めます。
     float flashLimit = (fuseTimer_ / 3.0f) * 0.2f + 0.03f;
+
     if (flashTimer_ >= flashLimit) {
         flashTimer_ = 0.0f;
         flashState_ = !flashState_;
@@ -412,6 +437,7 @@ void EnemyBomb::Explode() {
     // 命中演出とメッシュエフェクトは同じ爆発位置から発生させます。
     engine::Vector3 myPos = GetTranslate();
     HitEffectDirector::SpawnBombExplosionHit(myPos);
+
     if (MeshEffectManager::GetInstance()) {
         MeshEffectManager::GetInstance()->SpawnEffectAt(kExplosionEffectPath, myPos, {0.0f, 0.0f, 0.0f},
                                                         {1.0f, 1.0f, 1.0f});
@@ -421,6 +447,7 @@ void EnemyBomb::Explode() {
     if (param_.has_value()) {
         param_.value().hp = 0.0f;
     }
+
     // 共通の敵管理にも死亡を知らせ、後続の更新対象から外します。
     isDead = true;
 }
@@ -437,6 +464,7 @@ void EnemyBomb::SetCarried(bool isCarried) {
         // 投げ返し後は所有者に応じて接触対象を更新します。
         isThrown_ = true;
         throwRecoveryTimer_ = 0.0f;
+
         if (playerOwned_) {
             SetCollisionAttribute(CollisionCategories::Get("player_attack"));
             SetCollisionMask(CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"));
@@ -450,6 +478,7 @@ void EnemyBomb::SetCarried(bool isCarried) {
 void EnemyBomb::SetPlayerOwned(bool playerOwned) {
     // 投げ返し後は攻撃の所有者に合わせ、接触属性と対象マスクを切り替える。
     playerOwned_ = playerOwned;
+
     if (playerOwned_) {
         SetCollisionAttribute(CollisionCategories::Get("player_attack"));
         SetCollisionMask(CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"));
@@ -482,12 +511,14 @@ void EnemyBomb::ExecuteAbility(Player* player) {
     engine::Vector3 throwBackDir = playerPos - myPos;
     throwBackDir.y = 0.0f;
     float dist = std::sqrt(throwBackDir.x * throwBackDir.x + throwBackDir.z * throwBackDir.z);
+
     if (dist > 0.001f) {
         throwBackDir.x /= dist;
         throwBackDir.z /= dist;
     } else {
         throwBackDir = {0.0f, 0.0f, -1.0f}; // 位置が重なる場合のノックバック方向です。
     }
+
     throwBackDir.y = 0.7f; // 少し上向きにして吹き飛びが見えるようにします。
 
     // ダメージ状態への遷移を先に通知します。
@@ -498,7 +529,31 @@ void EnemyBomb::ExecuteAbility(Player* player) {
 }
 
 bool EnemyBomb::OnCollision(engine::Object3d* other) {
+    // プレイヤーの爆弾は敵との実際の接触で導火線を待たずに爆発させます。
+    // 爆発後に同じフレームで再接触しても、演出や攻撃判定を作り直しません。
+    if (playerOwned_ && !isCarried_ && state_ == State::Ignited &&
+        dynamic_cast<BaseEnemy*>(other) && (other->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
+        Explode();
+
+        // 接触中に半径を広げても衝突管理の候補一覧は更新されないため、爆風内を即座に調べます。
+        // 通常の衝突コールバックと重なっても敵の被弾猶予と壁の破壊済み判定が重複を防ぎます。
+        PhysicsQueryFilter filter;
+        filter.mask = CollisionCategories::Get("enemy") | CollisionCategories::Get("ground");
+        filter.ignoredObject = this;
+
+        for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
+                 GetWorldPosition(), GetCollider()->GetRadius(), filter)) {
+            engine::Object3d* target = hit.object;
+            if ((dynamic_cast<BaseEnemy*>(target) || dynamic_cast<GimmickBreakableBlock*>(target)) &&
+                (GetCollisionMask() & target->GetCollisionAttribute()) &&
+                (target->GetCollisionMask() & GetCollisionAttribute())) {
+                target->OnCollision(this);
+            }
+        }
+
+        return true;
+    }
+
     // 投擲物理の床・壁反射はBaseEnemyと掃引処理が担当します。
-    // ここでは共通の接触処理だけを呼び、爆発の多重発動を避けます。
     return BaseEnemy::OnCollision(other);
 }

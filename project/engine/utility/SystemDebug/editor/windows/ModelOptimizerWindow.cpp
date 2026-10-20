@@ -63,28 +63,37 @@ bool IsInsideDirectory(const fs::path& path, const fs::path& root) {
     // 正規化したパスの境界を比較し、指定ディレクトリ外への出力を防ぐ。
     std::error_code ec;
     const fs::path fullPath = fs::absolute(path, ec).lexically_normal();
-    if (ec) return false;
+    if (ec)
+        return false;
     const fs::path fullRoot = fs::absolute(root, ec).lexically_normal();
-    if (ec) return false;
+    if (ec)
+        return false;
 
     const std::string normalizedPath = ToLowerAscii(NormalizeSlashes(fullPath.generic_string()));
     std::string normalizedRoot = ToLowerAscii(NormalizeSlashes(fullRoot.generic_string()));
+
     if (!normalizedRoot.empty() && normalizedRoot.back() != '/') {
         normalizedRoot.push_back('/');
     }
+
     return normalizedPath.rfind(normalizedRoot, 0) == 0;
 }
 
 bool SafeDeleteGeneratedLodFile(const fs::path& path) {
     // 元モデルを消さないよう、生成物の名前と許可された配置先を両方確認します。
-    if (path.empty()) return false;
-    if (!IsGeneratedLodFile(path)) return false;
-    if (!IsInsideDirectory(path, "Resources/3DModel")) return false;
+    if (path.empty())
+        return false;
+    if (!IsGeneratedLodFile(path))
+        return false;
+    if (!IsInsideDirectory(path, "Resources/3DModel"))
+        return false;
 
     std::error_code ec;
+
     if (!fs::exists(path, ec) || ec) {
         return false;
     }
+
     return fs::remove(path, ec) && !ec;
 }
 
@@ -92,12 +101,14 @@ std::string ToModelName(const fs::path& fullPath) {
     // 素材のフルパスをエンジン内で参照するモデル名へ変換する。
     std::error_code ec;
     fs::path relative = fs::relative(fullPath, "Resources/3DModel", ec);
+
     if (ec || relative.empty()) {
         return NormalizeSlashes(fullPath.generic_string());
     }
 
     const fs::path parent = relative.parent_path();
     const std::string stem = relative.stem().string();
+
     if (!parent.empty() && parent.filename().string() == stem) {
         return NormalizeSlashes(parent.generic_string());
     }
@@ -114,6 +125,7 @@ std::string QuoteCommandArg(const std::string& value) {
     std::string escaped;
     escaped.reserve(value.size() + 2);
     escaped.push_back('"');
+
     for (char c : value) {
         if (c == '"') {
             escaped += "\\\"";
@@ -122,6 +134,7 @@ std::string QuoteCommandArg(const std::string& value) {
             escaped.push_back(c);
         }
     }
+
     escaped.push_back('"');
     return escaped;
 }
@@ -137,18 +150,21 @@ std::string FormatByteSize(std::int64_t bytes) {
     const char* units[] = { "B", "KB", "MB", "GB" };
     double value = static_cast<double>((std::max)(std::int64_t{ 0 }, bytes));
     int unitIndex = 0;
+
     while (value >= 1024.0 && unitIndex < 3) {
         value /= 1024.0;
         ++unitIndex;
     }
 
     char buffer[64]{};
+
     if (unitIndex == 0) {
         std::snprintf(buffer, sizeof(buffer), "%lld %s", static_cast<long long>(bytes), units[unitIndex]);
     }
     else {
         std::snprintf(buffer, sizeof(buffer), "%.1f %s", value, units[unitIndex]);
     }
+
     return buffer;
 }
 
@@ -157,10 +173,13 @@ ImU32 GetPreviewLabelColor(int level) {
     switch (level) {
     case 0:
         return IM_COL32(255, 255, 255, 255);
+
     case 1:
         return IM_COL32(110, 220, 255, 255);
+
     case 2:
         return IM_COL32(255, 205, 95, 255);
+
     default:
         return IM_COL32(210, 210, 230, 255);
     }
@@ -173,6 +192,7 @@ std::string BuildPreviewLabelText(const nlohmann::json& lod) {
         : 0;
     std::ostringstream stream;
     stream << "LOD" << level;
+
     if (level == 0) {
         stream << " 元モデル";
     }
@@ -188,12 +208,14 @@ std::string BuildPreviewLabelText(const nlohmann::json& lod) {
             stream << " -" << static_cast<int>(std::round(reduction * 100.0f)) << "%";
         }
     }
+
     return stream.str();
 }
 
 bool StartHiddenProcess(const std::string& commandLine, PROCESS_INFORMATION& processInfo) {
     // 外部最適化ツールを非表示で起動し、終了待ちとハンドル解放は呼び出し側に委ねる。
     std::wstring command = Utf8ToWide(commandLine);
+
     if (command.empty()) {
         return false;
     }
@@ -227,9 +249,11 @@ bool StartHiddenProcess(const std::string& commandLine, PROCESS_INFORMATION& pro
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     // 最適化レポートの構文を確認し、読めない場合は結果を更新しない。
     std::ifstream file(path);
+
     if (!file) {
         return false;
     }
+
     try {
         file >> outJson;
         return true;
@@ -244,18 +268,22 @@ bool HasGltfUnsafeLodFeature(const nlohmann::json& gltf) {
     if (gltf.contains("skins") && gltf["skins"].is_array() && !gltf["skins"].empty()) {
         return true;
     }
+
     if (gltf.contains("animations") && gltf["animations"].is_array() && !gltf["animations"].empty()) {
         return true;
     }
 
     if (gltf.contains("nodes") && gltf["nodes"].is_array()) {
         for (const auto& node : gltf["nodes"]) {
-            if (!node.is_object()) continue;
+            if (!node.is_object())
+                continue;
             if (node.contains("skin")) {
                 return true;
             }
+
             if (node.contains("name") && node["name"].is_string()) {
                 std::string name = ToLowerAscii(node["name"].get<std::string>());
+
                 if (name.find("armature") != std::string::npos) {
                     return true;
                 }
@@ -265,18 +293,24 @@ bool HasGltfUnsafeLodFeature(const nlohmann::json& gltf) {
 
     if (gltf.contains("meshes") && gltf["meshes"].is_array()) {
         for (const auto& mesh : gltf["meshes"]) {
-            if (!mesh.is_object() || !mesh.contains("primitives") || !mesh["primitives"].is_array()) continue;
+            if (!mesh.is_object() || !mesh.contains("primitives") || !mesh["primitives"].is_array())
+                continue;
             for (const auto& primitive : mesh["primitives"]) {
-                if (!primitive.is_object()) continue;
+                if (!primitive.is_object())
+                    continue;
                 if (primitive.contains("targets")) {
                     return true;
                 }
+
                 const int mode = primitive.value("mode", 4);
+
                 if (mode != 4) {
                     return true;
                 }
+
                 if (primitive.contains("attributes") && primitive["attributes"].is_object()) {
                     const auto& attributes = primitive["attributes"];
+
                     if (attributes.contains("JOINTS_0") || attributes.contains("WEIGHTS_0")) {
                         return true;
                     }
@@ -291,43 +325,55 @@ bool HasGltfUnsafeLodFeature(const nlohmann::json& gltf) {
 bool IsSupportedOptimizerSource(const fs::path& path) {
     // glTFだけは既存のLOD拡張が競合する可能性を確認してから受け付ける。
     const std::string ext = ToLowerAscii(path.extension().string());
+
     if (ext == ".obj") {
         return true;
     }
+
     if (ext == ".glb") {
         return true;
     }
+
     if (ext != ".gltf") {
         return false;
     }
 
     nlohmann::json gltf;
+
     if (!ReadJsonFile(path, gltf)) {
         return false;
     }
+
     return !HasGltfUnsafeLodFeature(gltf);
 }
 
 int ReadIntOrZero(const nlohmann::json& value, const char* key) {
-    if (!value.is_object() || !value.contains(key)) return 0;
-    if (!value[key].is_number()) return 0;
+    if (!value.is_object() || !value.contains(key))
+        return 0;
+    if (!value[key].is_number())
+        return 0;
     return value[key].get<int>();
 }
 
 float ReadFloatOrZero(const nlohmann::json& value, const char* key) {
-    if (!value.is_object() || !value.contains(key)) return 0.0f;
-    if (!value[key].is_number()) return 0.0f;
+    if (!value.is_object() || !value.contains(key))
+        return 0.0f;
+    if (!value[key].is_number())
+        return 0.0f;
     return value[key].get<float>();
 }
 
 std::int64_t ReadInt64OrZero(const nlohmann::json& value, const char* key) {
-    if (!value.is_object() || !value.contains(key)) return 0;
-    if (!value[key].is_number_integer() && !value[key].is_number_unsigned()) return 0;
+    if (!value.is_object() || !value.contains(key))
+        return 0;
+    if (!value[key].is_number_integer() && !value[key].is_number_unsigned())
+        return 0;
     return value[key].get<std::int64_t>();
 }
 
 bool IsLodPreviewObject(const engine::Object3d* object) {
-    if (!object) return false;
+    if (!object)
+        return false;
     return object->GetName().rfind(kLodPreviewPrefix, 0) == 0 || object->GetClassName() == "EditorOnly_LODPreview";
 }
 }
@@ -364,33 +410,41 @@ void ModelOptimizerWindow::DrawImGui() {
     if (ImGui::Button(ICON_FA_SYNC " モデル一覧更新")) {
         RefreshModelList();
     }
+
     ImGui::SameLine();
+
     if (editor_ && editor_->GetSelectedObject3D() && ImGui::Button(ICON_FA_CROSSHAIRS " 選択Objectから取得")) {
         SetModelName(editor_->GetSelectedObject3D()->GetModelName());
     }
 
     ImGui::SetNextItemWidth(-1.0f);
+
     if (ImGui::BeginCombo("モデル", modelNameBuffer_[0] ? modelNameBuffer_ : "選択なし")) {
         for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
             const bool selected = i == selectedModelIndex_;
+
             if (ImGui::Selectable(modelCandidates_[i].c_str(), selected)) {
                 selectedModelIndex_ = i;
                 SetModelName(modelCandidates_[i]);
             }
+
             if (selected) {
                 ImGui::SetItemDefaultFocus();
             }
         }
+
         ImGui::EndCombo();
     }
 
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
             const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
+
             if (!modelName.empty()) {
                 SetModelName(modelName);
             }
         }
+
         ImGui::EndDragDropTarget();
     }
 
@@ -398,6 +452,7 @@ void ModelOptimizerWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::Text("LOD設定");
+
     // 生成候補の保持率と切替距離はビルダーへ渡す値であり、採用前はSceneへ反映しない。
     ImGui::DragFloat("LOD1 保持率（高いほど形を残す）", &lodRatios_[0], 0.01f, 0.05f, 0.95f, "%.2f");
     ImGui::DragFloat("LOD1 距離", &lodDistances_[0], 0.5f, 1.0f, 500.0f, "%.1f");
@@ -409,6 +464,7 @@ void ModelOptimizerWindow::DrawImGui() {
         "Blender CLI: 高品質LOD生成",
         "内蔵簡易: グリッド簡略化"
     };
+
     ImGui::Combo("生成方式", &selectedBackendIndex_, backendLabels, IM_ARRAYSIZE(backendLabels));
     ImGui::InputText("Blender.exe パス", blenderPathBuffer_, sizeof(blenderPathBuffer_));
     ImGui::TextDisabled("未指定なら tools/blender/blender.exe を優先し、無ければPATHから探します。Autoでは見つからない場合だけ内蔵簡易へ戻します。");
@@ -419,6 +475,7 @@ void ModelOptimizerWindow::DrawImGui() {
     if (builderRunning_) {
         ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "外部LODツールをバックグラウンド実行中... PID: %lu", builderProcessId_);
     }
+
     if (previewCreationActive_) {
         ImGui::TextColored(
             ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
@@ -430,17 +487,23 @@ void ModelOptimizerWindow::DrawImGui() {
     if (builderRunning_) {
         ImGui::BeginDisabled();
     }
+
     if (ImGui::Button(ICON_FA_SEARCH " 解析のみ")) {
         RunBuilder(true);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_COG " LOD生成")) {
         RunBuilder(false);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_FILE_IMPORT " レポート再読込")) {
         LoadLatestReport();
     }
+
     if (builderRunning_) {
         ImGui::EndDisabled();
     }
@@ -454,6 +517,7 @@ void ModelOptimizerWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::Text("レポート: %s", BuildReportSummary().c_str());
+
     if (latestReport_.contains("selectedBackend") && latestReport_["selectedBackend"].is_string()) {
         ImGui::TextDisabled("使用バックエンド: %s", latestReport_["selectedBackend"].get<std::string>().c_str());
     }
@@ -461,14 +525,19 @@ void ModelOptimizerWindow::DrawImGui() {
     if (ImGui::Button(ICON_FA_EYE " 生成LODを並べて確認")) {
         CreatePreviewObjects();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_CHECK " 選択ObjectにLOD設定を採用")) {
         ApplyLodConfigToSelected();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_TRASH " Preview削除")) {
         RemovePreviewObjects();
     }
+
     ImGui::TextDisabled("Preview数: %d / 採用すると元モデルを保ったまま、距離で軽量モデルへ切り替わります。", CountPreviewObjects());
 
     // 生成ファイルは自動採用せず、見た目を確認してから採用か破棄を選ぶ。
@@ -476,10 +545,13 @@ void ModelOptimizerWindow::DrawImGui() {
         ImGui::Separator();
         ImGui::TextColored(ImVec4(1.0f, 0.86f, 0.35f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " 生成したLODを確認中");
         ImGui::TextWrapped("見た目を確認して、問題なければ採用してください。違和感がある場合は破棄すると生成LODファイルを自動で削除します。");
+
         if (ImGui::Button(ICON_FA_CHECK " このLODを採用", ImVec2(180.0f, 0.0f))) {
             AcceptGeneratedLods();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button(ICON_FA_TRASH " 破棄して削除", ImVec2(180.0f, 0.0f))) {
             RejectGeneratedLods();
         }
@@ -487,6 +559,7 @@ void ModelOptimizerWindow::DrawImGui() {
 
     if (latestReport_.contains("warnings") && latestReport_["warnings"].is_array() && !latestReport_["warnings"].empty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.25f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " Warning");
+
         for (const auto& warning : latestReport_["warnings"]) {
             if (warning.is_string()) {
                 ImGui::BulletText("%s", warning.get<std::string>().c_str());
@@ -510,7 +583,8 @@ void ModelOptimizerWindow::DrawImGui() {
         ImGui::TableHeadersRow();
 
         for (const auto& lod : latestReport_["lods"]) {
-            if (!lod.is_object()) continue;
+            if (!lod.is_object())
+                continue;
             const int level = ReadIntOrZero(lod, "level");
             const std::string modelName = lod.value("modelName", "");
             const auto stats = lod.value("stats", nlohmann::json::object());
@@ -533,20 +607,25 @@ void ModelOptimizerWindow::DrawImGui() {
             ImGui::TableSetColumnIndex(4);
             ImGui::Text("%d", triangles);
             ImGui::TableSetColumnIndex(5);
+
             if (level == 0) {
                 ImGui::TextDisabled("-");
             }
             else {
                 ImGui::Text("%.0f%%", reduction * 100.0f);
             }
+
             ImGui::TableSetColumnIndex(6);
+
             if (level == 0) {
                 ImGui::TextDisabled("元");
             }
             else {
                 ImGui::TextDisabled("生成済み");
             }
+
             ImGui::TableSetColumnIndex(7);
+
             if (level == 0) {
                 ImGui::Text("%s", FormatByteSize(fileSize).c_str());
             }
@@ -559,6 +638,7 @@ void ModelOptimizerWindow::DrawImGui() {
                 ImGui::TextColored(color, "(%+lld)", static_cast<long long>(storageDelta));
             }
         }
+
         ImGui::EndTable();
     }
 #endif
@@ -569,18 +649,23 @@ void ModelOptimizerWindow::RefreshModelList() {
     modelCandidates_.clear();
 
     const fs::path root = "Resources/3DModel";
+
     if (!fs::exists(root)) {
         lastStatus_ = "Resources/3DModel が見つかりません。";
         return;
     }
 
     for (const auto& entry : fs::recursive_directory_iterator(root)) {
-        if (!entry.is_regular_file()) continue;
+        if (!entry.is_regular_file())
+            continue;
         const fs::path path = entry.path();
-        if (!IsModelSourceExtension(path) || IsGeneratedLodFile(path)) continue;
-        if (!IsSupportedOptimizerSource(path)) continue;
+        if (!IsModelSourceExtension(path) || IsGeneratedLodFile(path))
+            continue;
+        if (!IsSupportedOptimizerSource(path))
+            continue;
 
         const std::string modelName = ToModelName(path);
+
         if (std::find(modelCandidates_.begin(), modelCandidates_.end(), modelName) == modelCandidates_.end()) {
             modelCandidates_.push_back(modelName);
         }
@@ -589,6 +674,7 @@ void ModelOptimizerWindow::RefreshModelList() {
     std::sort(modelCandidates_.begin(), modelCandidates_.end());
 
     selectedModelIndex_ = -1;
+
     for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
         if (modelCandidates_[i] == modelNameBuffer_) {
             selectedModelIndex_ = i;
@@ -603,6 +689,7 @@ void ModelOptimizerWindow::SetModelName(const std::string& modelName) {
     // 直接入力やドラッグ操作でも、一覧に一致する場合は選択状態を同期する。
     strncpy_s(modelNameBuffer_, modelName.c_str(), _TRUNCATE);
     selectedModelIndex_ = -1;
+
     for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
         if (modelCandidates_[i] == modelName) {
             selectedModelIndex_ = i;
@@ -619,6 +706,7 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
     }
 
     const std::string modelName = modelNameBuffer_;
+
     if (modelName.empty()) {
         lastStatus_ = "モデルが選択されていません。";
         return false;
@@ -638,19 +726,25 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
     command += " -Ratio2 " + FormatFloat(lodRatios_[1]);
     command += " -Distance1 " + FormatFloat(lodDistances_[0]);
     command += " -Distance2 " + FormatFloat(lodDistances_[1]);
+
     if (!analyzeOnly || forceOverwrite_) {
         command += " -Force";
     }
+
     const char* backendArgs[] = { "auto", "blender", "native" };
     const int backendIndex = std::clamp(selectedBackendIndex_, 0, 2);
     command += " -Backend " + QuoteCommandArg(backendArgs[backendIndex]);
+
     if (blenderPathBuffer_[0] != '\0') {
         command += " -BlenderPath " + QuoteCommandArg(blenderPathBuffer_);
     }
+
     if (analyzeOnly) {
         command += " -AnalyzeOnly";
     }
+
     PROCESS_INFORMATION processInfo{};
+
     if (!StartHiddenProcess(command, processInfo)) {
         lastStatus_ = "外部LODツールを開始できませんでした。";
         DebugConsole::GetInstance()->AddLog(lastStatus_);
@@ -678,12 +772,14 @@ void ModelOptimizerWindow::UpdateBuilderProcess() {
 
     HANDLE processHandle = static_cast<HANDLE>(builderProcessHandle_);
     const DWORD waitResult = WaitForSingleObject(processHandle, 0);
+
     // 描画フレーム中は待機せず、終了時だけOSハンドルを閉じてレポートを読む。
     if (waitResult == WAIT_TIMEOUT) {
         return;
     }
 
     DWORD exitCode = 1;
+
     if (waitResult == WAIT_OBJECT_0) {
         GetExitCodeProcess(processHandle, &exitCode);
     }
@@ -715,6 +811,7 @@ void ModelOptimizerWindow::FinishBuilderProcess(unsigned long exitCode) {
     else {
         lastStatus_ = "モデル解析が完了しました。";
     }
+
     DebugConsole::GetInstance()->AddLog(lastStatus_);
 }
 
@@ -724,6 +821,7 @@ void ModelOptimizerWindow::CloseBuilderProcessHandles() {
         CloseHandle(static_cast<HANDLE>(builderThreadHandle_));
         builderThreadHandle_ = nullptr;
     }
+
     if (builderProcessHandle_) {
         CloseHandle(static_cast<HANDLE>(builderProcessHandle_));
         builderProcessHandle_ = nullptr;
@@ -735,6 +833,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     if (!previewCreationActive_) {
         return;
     }
+
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         pendingPreviewItems_.clear();
         pendingPreviewIndex_ = 0;
@@ -746,7 +845,8 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     }
 
     BaseScene* scene = editor_->GetSceneManager()->GetCurrentScene();
-    Object3dCommon* common = scene->GetObject3dCommon();
+    engine::Object3dCommon* common = scene->GetObject3dCommon();
+
     if (!common) {
         pendingPreviewItems_.clear();
         pendingPreviewIndex_ = 0;
@@ -762,10 +862,12 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
         previewCreationActive_ = false;
         pendingPreviewItems_.clear();
         pendingPreviewIndex_ = 0;
+
         if (firstPendingPreview_) {
             editor_->SetSelectedObject(firstPendingPreview_);
             EditorManager::GetInstance()->SetSelectedObject(this);
         }
+
         firstPendingPreview_ = nullptr;
         lastStatus_ = "生成LODのPreviewを配置しました。Hierarchyでは __Editor_LODPreview_ で確認できます。";
         DebugConsole::GetInstance()->AddLog(lastStatus_);
@@ -776,6 +878,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     auto object = std::make_unique<engine::Object3d>();
     object->Initialize(common);
     object->SetName(std::string(kLodPreviewPrefix) + "LOD" + std::to_string(item.level));
+
     // 専用名で試験配置を識別し、衝突を無効にして通常の Scene 操作を妨げない。
     object->SetClassName("EditorOnly_LODPreview");
     object->SetSaveCategory("Object");
@@ -790,9 +893,11 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
 
     engine::Object3d* rawPreview = object.get();
     scene->AddObjectImmediate(std::move(object));
+
     if (!firstPendingPreview_) {
         firstPendingPreview_ = rawPreview;
     }
+
     ++pendingPreviewIndex_;
 }
 
@@ -802,12 +907,15 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
     if (!showPreviewLabels_) {
         return;
     }
+
     if (gameViewWidth_ <= 1.0f || gameViewHeight_ <= 1.0f) {
         return;
     }
+
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         return;
     }
+
     if (!hasReport_ || !latestReport_.contains("lods") || !latestReport_["lods"].is_array()) {
         return;
     }
@@ -819,16 +927,19 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
         if (!lod.is_object()) {
             continue;
         }
+
         const int level = (lod.contains("level") && lod["level"].is_number()) ? lod["level"].get<int>() : 0;
         const std::string previewName = std::string(kLodPreviewPrefix) + "LOD" + std::to_string(level);
 
         engine::Object3d* previewObject = nullptr;
+
         for (auto& object : scene->GetObjects()) {
             if (object && object->GetName() == previewName) {
                 previewObject = object.get();
                 break;
             }
         }
+
         if (!previewObject) {
             continue;
         }
@@ -838,6 +949,7 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
         labelWorld.y = bounds.max.y + 0.75f;
 
         engine::Vector2 labelScreen;
+
         if (!ProjectWorldToGameView(labelWorld, labelScreen)) {
             continue;
         }
@@ -848,6 +960,7 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
             labelScreen.x - textSize.x * 0.5f,
             labelScreen.y - textSize.y * 0.5f
         };
+
         const ImVec2 rectMin = { textPos.x - 8.0f, textPos.y - 5.0f };
         const ImVec2 rectMax = { textPos.x + textSize.x + 8.0f, textPos.y + textSize.y + 5.0f };
         const ImU32 labelColor = GetPreviewLabelColor(level);
@@ -863,12 +976,14 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
 bool ModelOptimizerWindow::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
     // NDC から Game View の座標へ変換し、背面や画面外のラベルを省く。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (!camera) {
         return false;
     }
 
     engine::Matrix4x4 viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
     engine::Vector3 ndc = engine::Math::Transform(world, viewProjection);
+
     if (ndc.z < 0.0f || ndc.z > 1.0f) {
         return false;
     }
@@ -885,6 +1000,7 @@ bool ModelOptimizerWindow::LoadLatestReport() {
     // 読込失敗時は以前の結果を有効扱いせず、適用先との取り違えを避ける。
     nlohmann::json report;
     const fs::path reportPath = "Resources/.cache/model_lod/latest_report.json";
+
     if (!ReadJsonFile(reportPath, report)) {
         hasReport_ = false;
         return false;
@@ -892,9 +1008,11 @@ bool ModelOptimizerWindow::LoadLatestReport() {
 
     latestReport_ = std::move(report);
     hasReport_ = true;
+
     if (latestReport_.contains("sourceModel") && latestReport_["sourceModel"].is_string()) {
         SetModelName(latestReport_["sourceModel"].get<std::string>());
     }
+
     return true;
 }
 
@@ -916,22 +1034,27 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(engine::Object3d* object) {
     }
 
     const std::string sourceModel = latestReport_.value("sourceModel", "");
+
     if (sourceModel.empty()) {
         lastStatus_ = "元モデル名がレポートにありません。";
         return false;
     }
 
     std::vector<engine::Object3d::LodLevel> levels;
+
     // 失敗レコードとモデル名のない候補を除き、距離LODの設定だけ採用する。
     for (const auto& lod : latestReport_["lods"]) {
-        if (!lod.is_object()) continue;
+        if (!lod.is_object())
+            continue;
         const int level = ReadIntOrZero(lod, "level");
-        if (level <= 0) continue;
+        if (level <= 0)
+            continue;
 
         engine::Object3d::LodLevel levelData;
         levelData.level = level;
         levelData.modelName = lod.value("modelName", "");
         levelData.distance = ReadFloatOrZero(lod, "distance");
+
         if (!levelData.modelName.empty()) {
             levels.push_back(levelData);
         }
@@ -943,6 +1066,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(engine::Object3d* object) {
     }
 
     const nlohmann::json beforeState = editor_->CaptureObjectState(object);
+
     // 元モデルとLOD設定を一回のUndo対象として登録し、SceneをDirtyにする。
     object->SetModel(sourceModel);
     object->SetLodLevels(levels);
@@ -958,6 +1082,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(engine::Object3d* object) {
 bool ModelOptimizerWindow::AcceptGeneratedLods() {
     // 生成開始時の対象が残っていれば優先し、採用後に比較用 Object を撤去する。
     engine::Object3d* target = pendingApplyTarget_;
+
     if (!target && editor_) {
         target = editor_->GetSelectedObject3D();
     }
@@ -993,17 +1118,23 @@ int ModelOptimizerWindow::DeleteGeneratedLodFilesFromReport() {
     }
 
     std::set<std::string> deleteTargets;
+
     if (latestReport_.contains("lods") && latestReport_["lods"].is_array()) {
         for (const auto& lod : latestReport_["lods"]) {
-            if (!lod.is_object()) continue;
-            if (ReadIntOrZero(lod, "level") <= 0) continue;
-            if (!lod.value("generated", true)) continue;
+            if (!lod.is_object())
+                continue;
+            if (ReadIntOrZero(lod, "level") <= 0)
+                continue;
+            if (!lod.value("generated", true))
+                continue;
 
             const std::string file = lod.value("file", std::string{});
-            if (file.empty()) continue;
+            if (file.empty())
+                continue;
 
             fs::path lodPath = file;
             deleteTargets.insert(lodPath.generic_string());
+
             if (ToLowerAscii(lodPath.extension().string()) == ".gltf") {
                 deleteTargets.insert(lodPath.replace_extension(".bin").generic_string());
             }
@@ -1011,6 +1142,7 @@ int ModelOptimizerWindow::DeleteGeneratedLodFilesFromReport() {
     }
 
     const std::string sourceFile = latestReport_.value("sourceFile", std::string{});
+
     if (!sourceFile.empty()) {
         const fs::path sourcePath = sourceFile;
         const fs::path sourceDir = sourcePath.parent_path();
@@ -1020,17 +1152,20 @@ int ModelOptimizerWindow::DeleteGeneratedLodFilesFromReport() {
     }
 
     int deletedCount = 0;
+
     for (const std::string& target : deleteTargets) {
         if (SafeDeleteGeneratedLodFile(target)) {
             ++deletedCount;
         }
     }
+
     return deletedCount;
 }
 
 void ModelOptimizerWindow::CreatePreviewObjects() {
     // 古い試験配置を取り除き、新しいレポートの各 LOD を横並びの生成待ちへ積む。
     engine::Object3d* selectedBeforeRemove = editor_ ? editor_->GetSelectedObject3D() : nullptr;
+
     if (IsLodPreviewObject(selectedBeforeRemove)) {
         selectedBeforeRemove = nullptr;
     }
@@ -1046,19 +1181,22 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
         lastStatus_ = "LOD Previewを生成できるシーンがありません。";
         return;
     }
+
     if (!hasReport_ || !latestReport_.contains("lods") || !latestReport_["lods"].is_array()) {
         lastStatus_ = "LOD Preview用のレポートがありません。";
         return;
     }
 
     BaseScene* scene = editor_->GetSceneManager()->GetCurrentScene();
-    Object3dCommon* common = scene->GetObject3dCommon();
+    engine::Object3dCommon* common = scene->GetObject3dCommon();
+
     if (!common) {
         lastStatus_ = "Object3dCommonが取得できません。";
         return;
     }
 
     engine::Vector3 origin = { 0.0f, 2.0f, 0.0f };
+
     if (autoUseEffectPreviewStage_) {
         // 比較位置は隔離Stageを優先し、通常Sceneでは選択Objectの横に置く。
         EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
@@ -1072,8 +1210,10 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
     }
 
     int previewCount = 0;
+
     for (const auto& lod : latestReport_["lods"]) {
-        if (!lod.is_object()) continue;
+        if (!lod.is_object())
+            continue;
         if (!lod.value("modelName", std::string{}).empty()) {
             ++previewCount;
         }
@@ -1083,12 +1223,16 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
     const float spacing = 4.0f;
     const float startOffset = previewCount > 0 ? -spacing * static_cast<float>(previewCount - 1) * 0.5f : 0.0f;
     int previewIndex = 0;
+
     for (const auto& lod : latestReport_["lods"]) {
-        if (!lod.is_object()) continue;
+        if (!lod.is_object())
+            continue;
         const int level = ReadIntOrZero(lod, "level");
         const std::string modelName = lod.value("modelName", "");
-        if (modelName.empty()) continue;
+        if (modelName.empty())
+            continue;
         const std::string reportFilePath = lod.value("file", std::string{});
+
         if (!reportFilePath.empty() && !fs::exists(fs::path(reportFilePath))) {
             DebugConsole::GetInstance()->AddLog("LOD Preview skipped missing file: " + reportFilePath);
             continue;
@@ -1128,6 +1272,7 @@ void ModelOptimizerWindow::RemovePreviewObjects() {
 
     BaseScene* scene = editor_->GetSceneManager()->GetCurrentScene();
     std::vector<engine::Object3d*> targets;
+
     for (auto& object : scene->GetObjects()) {
         if (IsLodPreviewObject(object.get())) {
             targets.push_back(object.get());
@@ -1146,11 +1291,13 @@ int ModelOptimizerWindow::CountPreviewObjects() const {
     }
 
     int count = 0;
+
     for (const auto& object : editor_->GetSceneManager()->GetCurrentScene()->GetObjects()) {
         if (IsLodPreviewObject(object.get())) {
             ++count;
         }
     }
+
     return count;
 }
 
@@ -1162,14 +1309,17 @@ std::string ModelOptimizerWindow::BuildReportSummary() const {
 
     std::ostringstream stream;
     stream << latestReport_.value("sourceModel", "(unknown)");
+
     if (latestReport_.contains("source")) {
         const auto& source = latestReport_["source"];
         stream << " / 頂点 " << ReadIntOrZero(source, "vertices");
         stream << " / 三角形 " << ReadIntOrZero(source, "triangles");
     }
+
     if (latestReport_.contains("supportedForGeneration") && !latestReport_["supportedForGeneration"].get<bool>()) {
         stream << " / 生成非対応形式";
     }
+
     return stream.str();
 }
 
@@ -1180,10 +1330,12 @@ std::string ModelOptimizerWindow::GetLodModelName(int lodLevel) const {
     }
 
     for (const auto& lod : latestReport_["lods"]) {
-        if (!lod.is_object()) continue;
+        if (!lod.is_object())
+            continue;
         if (ReadIntOrZero(lod, "level") == lodLevel && lod.contains("modelName") && lod["modelName"].is_string()) {
             return lod["modelName"].get<std::string>();
         }
     }
+
     return "";
 }

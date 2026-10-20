@@ -10,7 +10,7 @@
       "light": "Resources/json/light/light_layout.json",
       "skybox": "Resources/output_skybox.dds"
     },
-    "runtimeScene": "PREVIEW",
+    "runtimeScene": "SCENE_EDITOR",
     "spriteLayout": "Resources/json/sprite/level_design_sample_sprite.json",
     "version": 3
   }

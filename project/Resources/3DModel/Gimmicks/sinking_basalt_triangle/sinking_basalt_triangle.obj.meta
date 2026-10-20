@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a9af7a9891cffd9090686218bfd0dcf3",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/sinking_basalt_triangle/sinking_basalt_triangle.obj",
+  "version": 1
+}

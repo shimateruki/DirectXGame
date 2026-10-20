@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f77e898ef7d45114b13e2e51dcf18874",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/crumbling_rock_block/crumbling_rock_block.obj",
+  "version": 1
+}

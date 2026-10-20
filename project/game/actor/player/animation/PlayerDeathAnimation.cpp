@@ -74,16 +74,19 @@ void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
     player->SetCollisionMask(0);
 
     childVisible_.reserve(player->GetChildren().size());
+
     for (engine::Object3d* child : player->GetChildren()) {
         childVisible_.push_back(child ? child->GetIsVisible() : false);
     }
 
     player->SetIsVisible(true);
+
     for (engine::Object3d* child : player->GetChildren()) {
         if (child) {
             child->SetIsVisible(true);
         }
     }
+
     player->SetVelocity({0.0f, 0.0f, 0.0f});
 }
 
@@ -109,6 +112,7 @@ void PlayerDeathAnimation::Update(Player* player, float deltaTime) {
     }
 
     puddleEmitTimer_ -= safeDeltaTime;
+
     if (timer_ < kFadeReadyTime && puddleEmitTimer_ <= 0.0f) {
         EmitPuddle(player);
         puddleEmitTimer_ = finalDeath_ ? 0.065f : 0.085f;
@@ -118,17 +122,21 @@ void PlayerDeathAnimation::Update(Player* player, float deltaTime) {
 void PlayerDeathAnimation::RestoreVisual(Player* player) {
     // 復活時に死亡演出が変更した表示状態を戻します。
     active_ = false;
+
     if (!player) {
         return;
     }
 
     player->SetIsVisible(baseVisible_);
     const auto& children = player->GetChildren();
+
     for (size_t i = 0; i < children.size(); ++i) {
         engine::Object3d* child = children[i];
+
         if (!child) {
             continue;
         }
+
         const bool visible = i < childVisible_.size() ? childVisible_[i] : true;
         child->SetIsVisible(visible);
         child->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
@@ -136,10 +144,12 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
 
     player->SetScale(baseScale_);
     player->SetRotation(baseRotation_);
+
     if (collisionStored_) {
         player->SetCollisionAttribute(baseCollisionAttribute_);
         player->SetCollisionMask(baseCollisionMask_);
     }
+
     player->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();
@@ -168,6 +178,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
     const float tinyShake = std::sin(timer_ * 84.0f) * (1.0f - chargeT) * 0.035f;
 
     engine::Vector3 scale = baseScale_;
+
     if (timer_ < kHitStopTime) {
         const float flashPulse = std::sin(hitT * kPi);
         scale.x *= 1.0f + flashPulse * 0.10f;
@@ -189,11 +200,13 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
     player->SetScale(scale);
     player->SetRotation(rotation);
     player->SetColor(color);
+
     for (engine::Object3d* child : player->GetChildren()) {
         if (child) {
             child->SetColor(color);
         }
     }
+
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();
 }
@@ -204,7 +217,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
         return;
     }
 
-    ParticleSystem* particle = player->GetParticleSystem();
+    engine::ParticleSystem* particle = player->GetParticleSystem();
     const engine::Vector3 origin = player->GetWorldPosition();
     const engine::Vector3 center = origin + engine::Vector3{0.0f, baseScale_.y * 0.45f, 0.0f};
     const engine::Vector3 foot = origin + engine::Vector3{0.0f, 0.08f, 0.0f};
@@ -229,6 +242,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
         meshEffects->SpawnRingWaveEffect(foot);
 
         const int arcCount = finalDeath_ ? 7 : 5;
+
         for (int i = 0; i < arcCount; ++i) {
             const float ratio = static_cast<float>(i) / static_cast<float>(arcCount);
             const float angle = ratio * kTwoPi + (finalDeath_ ? 0.23f : 0.0f);
@@ -244,6 +258,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
     }
 
     GPUParticleManager* gpuParticles = GPUParticleManager::GetInstance();
+
     if (gpuParticles && gpuParticles->IsInitialized()) {
         gpuParticles->Emit(kDeathSplashStreakPreset, center);
         gpuParticles->Emit(kDeathSplashStreakPreset, center + engine::Vector3{0.0f, 0.22f, 0.0f});
@@ -272,6 +287,7 @@ void PlayerDeathAnimation::HidePlayerBody(Player* player) {
     }
 
     player->SetIsVisible(false);
+
     for (engine::Object3d* child : player->GetChildren()) {
         if (child) {
             child->SetIsVisible(false);

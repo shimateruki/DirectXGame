@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "52251597b249fe7217ac76a5dac11bde",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/raft_water_spray.json",
+  "version": 1
+}

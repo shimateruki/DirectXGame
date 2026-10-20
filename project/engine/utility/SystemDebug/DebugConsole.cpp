@@ -26,7 +26,8 @@ void DebugConsole::AddLog(const std::string& log) {
 #ifdef USE_IMGUI
     // 既存の文字列ログを接頭辞で分類し、型付きログと同じ保存経路へ流す。
     LogLevel level = LogLevel::Info;
-    if (log.find("[ERROR]") != std::string::npos) level = LogLevel::Error;
+    if (log.find("[ERROR]") != std::string::npos)
+        level = LogLevel::Error;
     else if (log.find("[WARN]") != std::string::npos) level = LogLevel::Warning;
 
     AddLog(level, log);
@@ -37,6 +38,7 @@ void DebugConsole::AddLog(LogLevel level, const std::string& log) {
 #ifdef USE_IMGUI
     // ログ数を上限に保ち、表示とVisual Studioの出力へ同じ本文を渡す。
     std::lock_guard<std::mutex> lock(logMutex_);
+
     if (level == LogLevel::Error) {
         errorCount_.fetch_add(1, std::memory_order_relaxed);
     }
@@ -55,7 +57,8 @@ void DebugConsole::AddLog(LogLevel level, const std::string& log) {
     }
 
     std::string outStr = log;
-    if (outStr.empty() || outStr.back() != '\n') outStr += "\n";
+    if (outStr.empty() || outStr.back() != '\n')
+        outStr += "\n";
     OutputDebugStringA(outStr.c_str());
 #endif
 }
@@ -63,6 +66,7 @@ void DebugConsole::AddLog(LogLevel level, const std::string& log) {
 void DebugConsole::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
+
     if (!ImGui::Begin("Debug Console")) {
         ImGui::End();
         return;
@@ -73,6 +77,7 @@ void DebugConsole::DrawImGui() {
         std::lock_guard<std::mutex> lock(logMutex_);
         logs_.clear();
     }
+
     ImGui::SameLine();
     bool copy = ImGui::Button("Copy");
     ImGui::SameLine();
@@ -82,8 +87,10 @@ void DebugConsole::DrawImGui() {
 
     //  ログレベル・トグルボタン
     ImGui::SameLine();
-    ImGui::Checkbox("Info", &showInfo_); ImGui::SameLine();
-    ImGui::Checkbox("Warn", &showWarn_); ImGui::SameLine();
+    ImGui::Checkbox("Info", &showInfo_);
+    ImGui::SameLine();
+    ImGui::Checkbox("Warn", &showWarn_);
+    ImGui::SameLine();
     ImGui::Checkbox("Error", &showError_);
 
     ImGui::Separator();
@@ -96,39 +103,54 @@ void DebugConsole::DrawImGui() {
         // ★追加: コピー処理の完全版（表示中のログだけを結合してコピー）
         if (copy) {
             std::string clipboardText;
+
             for (const auto& entry : logs_) {
-                if (!filter_.PassFilter(entry.message.c_str())) continue;
-                if (entry.level == LogLevel::Info && !showInfo_) continue;
-                if (entry.level == LogLevel::Warning && !showWarn_) continue;
-                if (entry.level == LogLevel::Error && !showError_) continue;
+                if (!filter_.PassFilter(entry.message.c_str()))
+                    continue;
+                if (entry.level == LogLevel::Info && !showInfo_)
+                    continue;
+                if (entry.level == LogLevel::Warning && !showWarn_)
+                    continue;
+                if (entry.level == LogLevel::Error && !showError_)
+                    continue;
 
                 clipboardText += entry.message + "\n";
             }
+
             ImGui::SetClipboardText(clipboardText.c_str());
         }
 
         // ログ描画ループ
         for (const auto& entry : logs_) {
             // フィルタ適用
-            if (!filter_.PassFilter(entry.message.c_str())) continue;
+            if (!filter_.PassFilter(entry.message.c_str()))
+                continue;
 
             //  チェックが外れているレベルのログはスキップ！
-            if (entry.level == LogLevel::Info && !showInfo_) continue;
-            if (entry.level == LogLevel::Warning && !showWarn_) continue;
-            if (entry.level == LogLevel::Error && !showError_) continue;
+            if (entry.level == LogLevel::Info && !showInfo_)
+                continue;
+            if (entry.level == LogLevel::Warning && !showWarn_)
+                continue;
+            if (entry.level == LogLevel::Error && !showError_)
+                continue;
 
             // 色設定
             bool hasColor = true;
             ImVec4 color;
+
             switch (entry.level) {
             case LogLevel::Error:   color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); break; // 赤
+
             case LogLevel::Warning: color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); break; // 黄
+
             default:                hasColor = false; break; // 白
             }
 
-            if (hasColor) ImGui::PushStyleColor(ImGuiCol_Text, color);
+            if (hasColor)
+                ImGui::PushStyleColor(ImGuiCol_Text, color);
             ImGui::TextUnformatted(entry.message.c_str());
-            if (hasColor) ImGui::PopStyleColor();
+            if (hasColor)
+                ImGui::PopStyleColor();
         }
 
         // スクロール処理
@@ -137,6 +159,7 @@ void DebugConsole::DrawImGui() {
             scrollToBottom_ = false;
         }
     }
+
     ImGui::EndChild();
 
     // --- フッター ---

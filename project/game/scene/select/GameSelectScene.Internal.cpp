@@ -25,6 +25,7 @@ engine::Vector3 SelectLookAtRotation(const engine::Vector3& eye, const engine::V
     // カメラから目標への角度を求め、同一点なら回転をゼロへ戻す。
     engine::Vector3 direction{target.x - eye.x, target.y - eye.y, target.z - eye.z};
     const float lengthSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+
     if (lengthSq <= 0.000001f) {
         return {0.0f, 0.0f, 0.0f};
     }
@@ -43,9 +44,11 @@ engine::Vector3 SelectNormalizeGateDirectionXZ(const engine::Vector3& value, con
     // ゲートの向きは水平面へ投影し、無効なら代替方向を使う。
     engine::Vector3 direction{value.x, 0.0f, value.z};
     float lengthSq = direction.x * direction.x + direction.z * direction.z;
+
     if (lengthSq <= 0.000001f) {
         direction = {fallback.x, 0.0f, fallback.z};
         lengthSq = direction.x * direction.x + direction.z * direction.z;
+
         if (lengthSq <= 0.000001f) {
             return {0.0f, 0.0f, 1.0f};
         }
@@ -71,6 +74,7 @@ float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const
 
     bool foundGround = false;
     float resolvedGroundY = fallbackGroundY;
+
     for (const engine::Vector3& offset : sampleOffsets) {
         const engine::Vector3 rayStart = {probePosition.x + offset.x, rayStartY, probePosition.z + offset.z};
         const RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, {0.0f, -1.0f, 0.0f},
@@ -91,11 +95,13 @@ float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const
 engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const engine::Vector3& fallbackDirection) {
     // 配置されたゲートの回転から入場方向を得て、欠けた場合は指定方向へ戻す。
     const engine::Vector3 fallback = SelectNormalizeGateDirectionXZ(fallbackDirection, {0.0f, 0.0f, 1.0f});
+
     if (!gateObject) {
         return fallback;
     }
 
     const Transform* transform = gateObject->GetTransform();
+
     if (!transform) {
         return fallback;
     }
@@ -107,8 +113,10 @@ engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const eng
 
     engine::Vector3 gateAxis = fallback;
     float bestDot = -1.0f;
+
     for (const engine::Vector3& candidate : candidates) {
         const float dot = std::fabs(candidate.x * fallback.x + candidate.z * fallback.z);
+
         if (dot > bestDot) {
             bestDot = dot;
             gateAxis = candidate;
@@ -116,10 +124,12 @@ engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const eng
     }
 
     const float dot = gateAxis.x * fallback.x + gateAxis.z * fallback.z;
+
     if (dot < 0.0f) {
         gateAxis.x *= -1.0f;
         gateAxis.z *= -1.0f;
     }
+
     return gateAxis;
 }
 
@@ -137,9 +147,11 @@ SelectGateEntryRoute SelectBuildGateEntryRoute(const engine::Vector3& gatePos, c
 float SelectEaseInOutCubic(float value) {
     // 入場の前半を加速・後半を減速し、切替点の速度をつなぐ。
     value = SelectClamp01(value);
+
     if (value < 0.5f) {
         return 4.0f * value * value * value;
     }
+
     const float f = -2.0f * value + 2.0f;
     return 1.0f - (f * f * f) * 0.5f;
 }
@@ -165,9 +177,11 @@ engine::Vector3 SelectBezierVector3(const engine::Vector3& p0, const engine::Vec
 engine::Vector3 SelectNormalizeXZ(const engine::Vector3& value, const engine::Vector3& fallback) {
     // 高さを除いた方向がほぼゼロなら、呼び出し側の代替方向を保つ。
     const float lengthSq = value.x * value.x + value.z * value.z;
+
     if (lengthSq <= 0.0001f) {
         return fallback;
     }
+
     const float invLength = 1.0f / std::sqrt(lengthSq);
     return {value.x * invLength, 0.0f, value.z * invLength};
 }
@@ -193,28 +207,37 @@ engine::Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected
     if (!unlocked && !unlocking) {
         return {0.16f, 0.17f, 0.20f, 0.78f};
     }
+
     if (unlocking) {
         return {0.88f, 0.66f + pulse * 0.18f, 0.28f, 1.0f};
     }
+
     if (selected) {
         switch (stageIndex) {
         case 0:
             return {0.56f, 0.70f, 0.50f, 1.0f};
+
         case 1:
             return {0.48f, 0.58f, 0.72f, 1.0f};
+
         case 2:
             return {0.62f, 0.52f, 0.72f, 1.0f};
+
         default:
             return {0.54f, 0.64f, 0.58f, 1.0f};
         }
     }
+
     switch (stageIndex) {
     case 0:
         return {0.46f, 0.60f, 0.44f, 1.0f};
+
     case 1:
         return {0.38f, 0.48f, 0.62f, 1.0f};
+
     case 2:
         return {0.52f, 0.44f, 0.64f, 1.0f};
+
     default:
         return {0.40f, 0.52f, 0.48f, 1.0f};
     }
@@ -226,9 +249,11 @@ float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float
     if (unlocking) {
         return 1.8f + pulse * 1.2f;
     }
+
     if (!unlocked) {
         return 0.18f;
     }
+
     return selected ? 1.05f + pulse * 0.45f : 0.72f;
 }
 
@@ -237,15 +262,19 @@ engine::Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleare
     if (!unlocked && !unlocking) {
         return {0.20f, 0.20f, 0.24f, 0.82f};
     }
+
     if (unlocking) {
         return {1.0f, 0.82f + pulse * 0.10f, 0.28f, 1.0f};
     }
+
     if (selected) {
         return {1.0f, 0.92f, 0.42f, 1.0f};
     }
+
     if (cleared) {
         return {0.72f, 1.0f, 0.78f, 1.0f};
     }
+
     return {0.86f, 0.95f, 1.0f, 1.0f};
 }
 
@@ -255,12 +284,15 @@ float GetStageGateModelEmissive(bool unlocked, bool selected, bool cleared, bool
     if (unlocking) {
         return 2.7f + pulse * 1.2f;
     }
+
     if (!unlocked) {
         return 0.25f;
     }
+
     if (selected) {
         return 1.9f + pulse * 0.55f;
     }
+
     return cleared ? 1.35f : 1.0f;
 }
 

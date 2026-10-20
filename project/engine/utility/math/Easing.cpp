@@ -102,9 +102,12 @@ float Easing::OutExpo(float t) {
 
 float Easing::InOutExpo(float t) {
     // 始点・終点を厳密に固定し、前半加速と後半減速を指数曲線でつなぐ。
-    if (t == 0.0f) return 0.0f;
-    if (t == 1.0f) return 1.0f;
-    if ((t *= 2.0f) < 1.0f) return std::pow(2.0f, 10.0f * (t - 1.0f)) / 2.0f;
+    if (t == 0.0f)
+        return 0.0f;
+    if (t == 1.0f)
+        return 1.0f;
+    if ((t *= 2.0f) < 1.0f)
+        return std::pow(2.0f, 10.0f * (t - 1.0f)) / 2.0f;
     return (2.0f - std::pow(2.0f, -10.0f * (t - 1.0f))) / 2.0f;
 }
 
@@ -176,6 +179,7 @@ float Easing::OutBounce(float t) {
     // 衝突ごとに跳ね返り幅が小さくなる区分二次曲線を使う。
     const float n1 = 7.5625f;
     const float d1 = 2.75f;
+
     if (t < 1.0f / d1) {
         return n1 * t * t;
     } else if (t < 2.0f / d1) {

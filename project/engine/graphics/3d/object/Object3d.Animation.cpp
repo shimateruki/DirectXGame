@@ -15,13 +15,17 @@ std::string ResolveAnimatorControllerPath(const std::string& assetPath) {
     if (assetPath.empty()) {
         return {};
     }
+
     std::filesystem::path path(assetPath);
+
     if (!path.has_parent_path()) {
         path = std::filesystem::path("Resources/json/animator") / path;
     }
+
     if (!path.has_extension()) {
         path += ".json";
     }
+
     return path.generic_string();
 }
 }
@@ -32,18 +36,25 @@ bool Object3d::SetAnimatorController(const std::string& assetPath) {
         ClearAnimatorController();
         return true;
     }
+
     const std::string resolvedPath = ResolveAnimatorControllerPath(assetPath);
     AnimatorControllerAsset loadedAsset;
+
     if (!loadedAsset.Load(resolvedPath)) {
         return false;
     }
+
     std::unordered_map<std::string, BodyAnimationClip> loadedBodyClips;
+
     for (const auto& state : loadedAsset.states) {
-        if (state.bodyClipName.empty() || loadedBodyClips.contains(state.bodyClipName)) continue;
+        if (state.bodyClipName.empty() || loadedBodyClips.contains(state.bodyClipName))
+            continue;
         BodyAnimationClip clip;
-        if (!clip.Load(BodyAnimationClip::ResolveAssetPath(state.bodyClipName))) return false;
+        if (!clip.Load(BodyAnimationClip::ResolveAssetPath(state.bodyClipName)))
+            return false;
         loadedBodyClips.emplace(state.bodyClipName, std::move(clip));
     }
+
     animatorControllerPath_ = assetPath;
     animatorControllerAsset_ = std::move(loadedAsset);
     animatorBodyClips_ = std::move(loadedBodyClips);
@@ -54,7 +65,8 @@ bool Object3d::SetAnimatorController(const std::string& assetPath) {
 
 void Object3d::ClearAnimatorController() {
     // 身体補正を外してからアセットを破棄し、次のモデルへ変形を持ち越さない。
-    if (animatorBodyPoseApplied_ && meshRenderer_) meshRenderer_->ResetVisualTransform();
+    if (animatorBodyPoseApplied_ && meshRenderer_)
+        meshRenderer_->ResetVisualTransform();
     animatorBodyPoseApplied_ = false;
     animatorBodyClips_.clear();
     animatorControllerRuntime_.SetController(nullptr, false);
@@ -68,6 +80,7 @@ bool Object3d::PlayAnimatorState(const std::string& stateName, float blendDurati
     if (!animatorControllerLoaded_) {
         return false;
     }
+
     return animatorControllerRuntime_.CrossFade(stateName, blendDuration, easing);
 }
 
@@ -80,24 +93,29 @@ bool Object3d::EvaluateAnimatorState(
     bool exactPreview) {
     // 編集プレビューは時刻を直接指定し、実戦では Controller の補間経路を使う。
     Model* model = GetModel();
+
     if (!model) {
         return false;
     }
 
     if (!animatorControllerLoaded_) {
         const Model::Animation* animation = model->GetAnimation(stateName);
+
         if (!animation) {
             return false;
         }
+
         animName_ = stateName;
         isAnimLoop_ = loop;
         animationTime_ = std::max(0.0f, timeSeconds);
         float sampleTime = animationTime_;
+
         if (loop && animation->duration > 0.0f) {
             sampleTime = std::fmod(sampleTime, animation->duration);
         } else {
             sampleTime = std::min(sampleTime, animation->duration);
         }
+
         model->ApplyAnimation(*animation, sampleTime);
         model->Update(true);
         return true;
@@ -110,6 +128,7 @@ bool Object3d::EvaluateAnimatorState(
             animatorControllerRuntime_.CrossFade(stateName, blendDuration, easing);
         }
     }
+
     animatorControllerRuntime_.SetCurrentTime(std::max(0.0f, timeSeconds));
     return ApplyAnimatorControllerPose(model, true);
 }
@@ -130,6 +149,7 @@ void Object3d::RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot
     if (!animatorControllerLoaded_ || !snapshot.valid) {
         return;
     }
+
     animatorControllerRuntime_.RestoreSnapshot(snapshot);
     ApplyAnimatorControllerPose(GetModel(), true);
 }
@@ -140,16 +160,20 @@ void Object3d::RestoreAnimationPlayback(const std::string& animationName, float 
     animationTime_ = std::max(0.0f, timeSeconds);
     isAnimLoop_ = loop;
     Model* model = GetModel();
+
     if (!model || animationName.empty()) {
         return;
     }
+
     if (const Model::Animation* animation = model->GetAnimation(animationName)) {
         float sampleTime = animationTime_;
+
         if (loop && animation->duration > 0.0f) {
             sampleTime = std::fmod(sampleTime, animation->duration);
         } else {
             sampleTime = std::min(sampleTime, animation->duration);
         }
+
         model->ApplyAnimation(*animation, sampleTime);
         model->Update(true);
     }
@@ -158,12 +182,14 @@ void Object3d::RestoreAnimationPlayback(const std::string& animationName, float 
 bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, engine::Matrix4x4& outMatrix) const {
     // ボーンの局所姿勢と Object3d のワールド行列を合成して装着位置を得る。
     Model* model = GetModel();
+
     if (!model || jointName.empty()) {
         return false;
     }
 
     const int jointIndex = model->FindJointIndex(jointName);
     const auto& joints = model->GetJoints();
+
     if (jointIndex < 0 || jointIndex >= static_cast<int>(joints.size())) {
         return false;
     }
@@ -175,9 +201,11 @@ bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, engine::Matr
 bool Object3d::TryGetJointWorldPosition(const std::string& jointName, engine::Vector3& outPosition) const {
     // ジョイントが見つからない場合は出力位置を変更しない。
     engine::Matrix4x4 jointWorld = engine::Math::MakeIdentity4x4();
+
     if (!TryGetJointWorldMatrix(jointName, jointWorld)) {
         return false;
     }
+
     outPosition = { jointWorld.m[3][0], jointWorld.m[3][1], jointWorld.m[3][2] };
     return true;
 }
@@ -186,6 +214,7 @@ bool Object3d::UpdateAnimatorController(float deltaTime, Model* model) {
     if (!animatorControllerLoaded_ || !model) {
         return false;
     }
+
     animatorControllerRuntime_.Update(deltaTime, [this, model](const AnimatorStateDefinition& state) {
         if (const auto body = animatorBodyClips_.find(state.bodyClipName); body != animatorBodyClips_.end())
             return body->second.GetDuration();
@@ -198,10 +227,12 @@ bool Object3d::UpdateAnimatorController(float deltaTime, Model* model) {
         if (event.name == "FeedbackCue" && !event.payload.empty()) {
             VFXSequencer::PlayOneShotOnTarget(event.payload, this);
         }
+
         if (animatorEventCallback_) {
             animatorEventCallback_(event);
         }
     }
+
     return ApplyAnimatorControllerPose(model, false);
 }
 
@@ -210,20 +241,27 @@ bool Object3d::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
     if (!animatorControllerLoaded_ || !model) {
         return false;
     }
+
     const AnimatorStateDefinition* currentState = animatorControllerRuntime_.GetCurrentState();
+
     if (!currentState) {
         return false;
     }
+
     const AnimatorStateDefinition* previousState = animatorControllerRuntime_.GetPreviousState();
     const bool transitioning = previousState && animatorControllerRuntime_.IsTransitioning();
     const auto sampleBody = [this](const AnimatorStateDefinition* state, float time) {
         BodyAnimationClip::Sample sample;
+
         if (state) {
             const auto clip = animatorBodyClips_.find(state->bodyClipName);
-            if (clip != animatorBodyClips_.end()) clip->second.Evaluate(time, state->loop, sample);
+            if (clip != animatorBodyClips_.end())
+                clip->second.Evaluate(time, state->loop, sample);
         }
+
         return sample;
     };
+
     const bool hasBody = !currentState->bodyClipName.empty() ||
         (transitioning && !previousState->bodyClipName.empty());
     if (hasBody && meshRenderer_) {
@@ -234,6 +272,7 @@ bool Object3d::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
         const auto blendAngle = [weight](float from, float to) {
             return engine::Math::LerpShortAngle(from, to, weight);
         };
+
         meshRenderer_->SetVisualTransform(engine::Math::Lerp(previous.scale, current.scale, weight),
             {blendAngle(previous.rotate.x, current.rotate.x), blendAngle(previous.rotate.y, current.rotate.y),
              blendAngle(previous.rotate.z, current.rotate.z)},
@@ -260,7 +299,9 @@ bool Object3d::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
     } else if (currentAnimation) {
         model->ApplyAnimation(*currentAnimation, animatorControllerRuntime_.GetStateTime());
     }
-    if (!hasBody && !currentAnimation) return false;
+
+    if (!hasBody && !currentAnimation)
+        return false;
     animName_ = currentState->clipName;
     animationTime_ = animatorControllerRuntime_.GetStateTime();
     isAnimLoop_ = currentState->loop;

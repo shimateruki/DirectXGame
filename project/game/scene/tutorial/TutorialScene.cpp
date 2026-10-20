@@ -1,6 +1,6 @@
 #define NOMINMAX
 #include "game/scene/tutorial/TutorialScene.h"
-#include "game/system/GameSceneDrawing.h"
+#include "game/scene/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -16,19 +16,19 @@
 #include "ParticleSystem.h"
 #include "imgui.h"
 #include "LightManager.h"
-#include <EventManager.h>
+#include <game/system/rules/EventManager.h>
 #include "SceneManager.h"
 #include "DebugConsole.h"
 #include "ProfilerManager.h"
 #include "RenderStats.h"
 #include <cassert>
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "MoveStrategy3D.h"
 #include "MoveStrategy2D.h"
-#include "LevelLoader.h"
-#include "LockOnSystem.h"
-#include "GameRule.h"
-#include "ObjectManager.h"
+#include "game/system/scene/LevelLoader.h"
+#include "game/system/combat/LockOnSystem.h"
+#include "game/system/rules/GameRule.h"
+#include "game/system/scene/ObjectManager.h"
 #include "DebrisEffectManager.h"
 #include "MeshEffectManager.h"
 #include "VFXSequencer.h"
@@ -52,10 +52,10 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
-#include "StageManager.h"
-#include "GameDataManager.h"
-#include "GameSettingsManager.h"
-#include "TutorialDirector.h"
+#include "game/system/progress/StageManager.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/settings/GameSettingsManager.h"
+#include "game/system/tutorial/TutorialDirector.h"
 
 #include <algorithm>
 #include <iterator>
@@ -121,6 +121,7 @@ constexpr const char* kTutorialPromptTexturesToPreload[] = {
 TutorialScene::TutorialScene() {
     // 描画基盤の取得はシーン初期化まで遅らせる。
 }
+
 TutorialScene::~TutorialScene() {
     // シーン固有の解放はFinalizeへ集約する。
 }
@@ -132,6 +133,7 @@ void TutorialScene::SetIsGoal(bool isGoal) {
     }
 
     isGoal_ = isGoal;
+
     if (!isGoal_) {
         goalSavePerformed_ = false;
         goalSaveErrorShown_ = false;
@@ -142,12 +144,15 @@ void TutorialScene::SetIsGoal(bool isGoal) {
 void TutorialScene::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) {
     // チュートリアル専用の案内と保存表示もリプレイの描画対象へ加える。
     BaseScene::CollectReplaySprites(replaySprites);
+
     if (lockOnSprite_) {
         replaySprites.push_back(lockOnSprite_.get());
     }
+
     if (controlsGuideOverlay_) {
         controlsGuideOverlay_->CollectReplaySprites(replaySprites);
     }
+
     if (saveIndicatorOverlay_) {
         saveIndicatorOverlay_->CollectReplaySprites(replaySprites);
     }
@@ -186,6 +191,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
 
     auto restoreVector3 = [](const json& object, const char* key, engine::Vector3& value) {
         const auto found = object.find(key);
+
         if (found != object.end() && found->is_array() && found->size() >= 3) {
             value = {(*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>()};
         }
@@ -195,6 +201,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
         isGoal_ = found->value("active", false);
         goalSavePerformed_ = found->value("savePerformed", false);
     }
+
     if (const auto found = state.find("movie"); found != state.end() && found->is_object()) {
         const int movieState = (std::clamp)(found->value("state", 0), 0, 1);
         movieState_ = static_cast<MovieState>(movieState);
@@ -203,18 +210,22 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
         restoreVector3(*found, "startCameraTarget", movieStartCameraTarget_);
         hasBridgeDropped_ = found->value("bridgeDropped", false);
     }
+
     if (const auto found = state.find("sessionStarCoins"); found != state.end() && found->is_array()) {
         for (size_t index = 0; index < 3 && index < found->size(); ++index) {
             sessionStarCoins_[index] = (*found)[index].get<bool>();
         }
     }
+
     if (tutorialDirector_ && state.contains("tutorial")) {
         tutorialDirector_->RestoreReplayState(state["tutorial"]);
     }
+
     if (const auto found = state.find("overlays"); found != state.end() && found->is_object()) {
         if (controlsGuideOverlay_ && found->contains("controlsGuide")) {
             controlsGuideOverlay_->RestoreReplayState((*found)["controlsGuide"]);
         }
+
         if (saveIndicatorOverlay_ && found->contains("saveIndicator")) {
             saveIndicatorOverlay_->RestoreReplayState((*found)["saveIndicator"]);
         }
@@ -231,32 +242,40 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
                                  ? GetSceneLoadContext().spriteLayoutPath
                                  : "Resources/json/sprite/tutorialScene.json");
     manifest.AddSpriteLayout("Resources/json/sprite/controlsGuide.json");
+
     // 操作ガイドとコピー能力HUDの画像はcontrolsGuide.jsonの参照から収集します。
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
+
     for (const char* path : kTutorialPromptTexturesToPreload) {
         manifest.AddTexture(path);
     }
+
     manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty() ? "Resources/output_skybox.dds"
                                                                  : GetSceneLoadContext().skyboxPath);
     std::string preloadBgmPath = GetSceneLoadContext().bgmPath;
+
     if (preloadBgmPath.empty()) {
         const auto& preloadStages = StageManager::GetInstance()->GetStages();
         const int preloadStageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+
         if (preloadStageIndex >= 0 && preloadStageIndex < static_cast<int>(preloadStages.size())) {
             preloadBgmPath = preloadStages[preloadStageIndex].bgmPath;
         }
     }
+
     if (!preloadBgmPath.empty()) {
         manifest.AddAudio(preloadBgmPath);
     }
+
     return manifest;
 }
 
 void TutorialScene::Initialize() {
     // 同じ段階初期化を同期呼び出しでも使い、読込画面の有無で処理を分けない。
     BeginLoadingInitialize();
+
     while (!InitializeLoadingStep()) {
     }
 }
@@ -279,7 +298,7 @@ bool TutorialScene::InitializeLoadingStep() {
         switch (loadingInitializePhase_) {
         case 0: {
             dxCommon_ = DirectXCommon::GetInstance();
-            inputManager_ = InputManager::GetInstance();
+            inputManager_ = engine::InputManager::GetInstance();
             LOG("Tutorial Scene Initialized!");
             const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
             CameraManager::GetInstance()->Initialize();
@@ -288,15 +307,17 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
         }
+
         case 1:
+            // Sceneが所有する描画基盤を先に作る。各Managerにはその後で借用ポインタを渡す。
             spriteCommon_ = std::make_unique<engine::SpriteCommon>();
             spriteCommon_->Initialize(dxCommon_);
-            object3dCommon_ = std::make_unique<Object3dCommon>();
+            object3dCommon_ = std::make_unique<engine::Object3dCommon>();
             object3dCommon_->Initialize(dxCommon_);
             MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
-            particleCommon_ = std::make_unique<ParticleCommon>();
+            particleCommon_ = std::make_unique<engine::ParticleCommon>();
             particleCommon_->Initialize(dxCommon_);
-            particleSystem_ = std::make_unique<ParticleSystem>();
+            particleSystem_ = std::make_unique<engine::ParticleSystem>();
             particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
             ParticleManager::GetInstance()->Initialize(particleSystem_.get());
             gameRule_ = std::make_unique<GameRule>();
@@ -305,6 +326,7 @@ bool TutorialScene::InitializeLoadingStep() {
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 2: {
             objectManager_ = std::make_unique<ObjectManager>();
             lockOnSystem_ = std::make_unique<LockOnSystem>();
@@ -319,7 +341,9 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
         }
+
         case 3:
+            // プリセットの先読みより前にGPU粒子の管理器と共有テクスチャを用意する。
             GPUParticleManager::GetInstance()->Initialize(dxCommon_);
             GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
             gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
@@ -327,16 +351,20 @@ bool TutorialScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             completeUnit();
             return false;
+
         case 4:
+            // 重い先読みは一項目ずつ返し、ロード画面の描画機会を残す。
             if (loadingInitializeItemIndex_ < std::size(kTutorialGpuParticlePresetsToPreload)) {
                 GPUParticleManager::GetInstance()->PreloadPresetSystem(
                     kTutorialGpuParticlePresetsToPreload[loadingInitializeItemIndex_++]);
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             continue;
+
         case 5:
             if (loadingInitializeItemIndex_ < std::size(kTutorialMeshEffectsToPreload)) {
                 MeshEffectManager::GetInstance()->PreloadEffect(
@@ -344,9 +372,11 @@ bool TutorialScene::InitializeLoadingStep() {
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             continue;
+
         case 6:
             DebrisEffectManager::GetInstance()->Initialize(object3dCommon_.get());
             DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
@@ -354,6 +384,7 @@ bool TutorialScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             completeUnit();
             return false;
+
         case 7:
             if (loadingInitializeItemIndex_ < std::size(kTutorialDebrisPresetsToPreload)) {
                 DebrisEffectManager::GetInstance()->PrewarmPreset(
@@ -361,9 +392,11 @@ bool TutorialScene::InitializeLoadingStep() {
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             continue;
+
         case 8:
             if (loadingInitializeItemIndex_ < std::size(kTutorialVfxSequencesToPreload)) {
                 VFXSequencer sequence;
@@ -371,8 +404,10 @@ bool TutorialScene::InitializeLoadingStep() {
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             continue;
+
         case 9:
             skyboxTextureHandle_ =
                 TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
@@ -381,45 +416,57 @@ bool TutorialScene::InitializeLoadingStep() {
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 10:
             levelLoader_ = std::make_unique<LevelLoader>();
             levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/tutorial.json");
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 11:
             levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/tutorialScene.json");
             copyStyleHud_.Bind(GetSpriteByName("hud_copy_style"));
+
             if (player_) {
                 player_->SetTutorialSafetyEnabled(true);
             }
+
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 12:
             controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
             controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
             saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
             saveIndicatorOverlay_->Initialize(spriteCommon_.get());
             tutorialDirector_ = std::make_unique<TutorialDirector>();
+
             if (tutorialDirector_->Initialize(this, player_, inputManager_)) {
                 tutorialDirector_->SetCompletionCallback([this]() { HandleTutorialFlowCompleted(); });
             }
+
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 13:
             LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/light_layout.json"));
             CameraEditor::GetInstance()->Initialize();
+
             // 本編と同じ三人称カメラ設定を共有します。
             CameraEditor::GetInstance()->LoadFile("game_camera.json");
             CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 camera->ResetFollowSmoothing();
             }
+
             ++loadingInitializePhase_;
             completeUnit();
             return true;
+
         default:
             return true;
         }
@@ -439,10 +486,13 @@ void TutorialScene::Finalize() {
     if (tutorialDirector_) {
         tutorialDirector_->Finalize();
     }
+
     tutorialDirector_.reset();
+
     if (controlsGuideOverlay_) {
         controlsGuideOverlay_->Finalize();
     }
+
     controlsGuideOverlay_.reset();
     MeshEffectManager::GetInstance()->Clear();
     VFXSequencer::ClearOneShots();
@@ -464,17 +514,22 @@ void TutorialScene::Update(float deltaTime) {
     // 手順完了後に保存できなければ出口を閉じたまま、一定間隔で再試行する。
     if (!isGoal_ && tutorialDirector_ && tutorialDirector_->IsCompleted() && !goalSavePerformed_) {
         goalSaveRetryTimer_ = (std::max)(0.0f, goalSaveRetryTimer_ - deltaTime);
-        if (goalSaveRetryTimer_ <= 0.0f) HandleTutorialFlowCompleted();
+        if (goalSaveRetryTimer_ <= 0.0f)
+            HandleTutorialFlowCompleted();
     }
+
     // ゴール後はクリアを一度だけ保存し、保存演出が終わるまで選択画面へ進めない。
     if (isGoal_) {
         goalSaveRetryTimer_ = (std::max)(0.0f, goalSaveRetryTimer_ - deltaTime);
+
         if (!goalSavePerformed_ && goalSaveRetryTimer_ <= 0.0f) {
             if (GameDataManager::GetInstance()->CommitStageClear(-1, {})) {
-                if (saveIndicatorOverlay_) saveIndicatorOverlay_->Play(1.35f);
+                if (saveIndicatorOverlay_)
+                    saveIndicatorOverlay_->Play(1.35f);
                 goalSavePerformed_ = true;
             } else {
                 goalSaveRetryTimer_ = 5.0f;
+
                 if (!goalSaveErrorShown_) {
                     ::MessageBoxW(nullptr, L"セーブに失敗しました。保存先を確認してください。5秒後に再試行します。",
                                   L"セーブエラー", MB_OK | MB_ICONERROR);
@@ -500,6 +555,7 @@ void TutorialScene::Update(float deltaTime) {
         if (saveIndicatorOverlay_) {
             saveIndicatorOverlay_->Update(deltaTime);
         }
+
         return;
     }
 
@@ -510,6 +566,7 @@ void TutorialScene::Update(float deltaTime) {
     // --- ポストエフェクト更新 ---
     PostEffect::GetInstance()->Update(deltaTime);
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (activeCamera) {
         PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
     }
@@ -580,6 +637,7 @@ void TutorialScene::Update(float deltaTime) {
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
+
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
             }
@@ -589,22 +647,29 @@ void TutorialScene::Update(float deltaTime) {
     ProfilerManager::GetInstance()->SetObjectList(&objectManager_->GetObjects());
     CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
+
     if (tutorialDirector_) {
         tutorialDirector_->NotifyLockOnTarget(lockOnSystem_->IsLockingOn() ? lockOnSystem_->GetTarget() : nullptr);
         tutorialDirector_->Update(deltaTime);
     }
+
     objectManager_->Update(deltaTime);
+
     if (gameRule_) {
         gameRule_->Update(deltaTime);
     }
+
     GPUParticleManager::GetInstance()->Update(deltaTime);
     copyStyleHud_.Update(player_, deltaTime);
+
     for (auto& sprite : sprites_) {
         sprite->Update();
     }
+
     if (saveIndicatorOverlay_) {
         saveIndicatorOverlay_->Update(deltaTime);
     }
+
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
     UpdateUI();
@@ -674,10 +739,12 @@ void TutorialScene::DrawUI() {
     // 背景Sprite→照準→プレイヤーUI→操作案内→保存通知の順で重ねます。
     // 案内と保存通知はゲーム本体のSpriteより手前に置き、表示中に読めるようにします。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+
     // チュートリアルのムービー中は画面上の操作UIを描かず、終了後に戻します。
     if (tutorialDirector_ && tutorialDirector_->IsCinematicPlaying()) {
         return;
     }
+
     for (auto& sprite : sprites_)
         sprite->Draw();
     if (isDrawLockOn_ && lockOnSprite_)
@@ -687,6 +754,7 @@ void TutorialScene::DrawUI() {
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
         controlsGuideOverlay_->Draw();
     }
+
     if (saveIndicatorOverlay_ && saveIndicatorOverlay_->IsActive())
         saveIndicatorOverlay_->Draw();
 }
@@ -706,15 +774,19 @@ void TutorialScene::DrawImGui() {
     // 開発時だけ進行手順と保存演出を直接確認できるようにする。
     ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: Tutorial");
     ImGui::Separator();
+
     if (ImGui::Button("Back to SELECT")) {
         SceneManager::GetInstance()->ChangeScene("SELECT");
     }
+
     if (saveIndicatorOverlay_ && ImGui::CollapsingHeader("Save Indicator", ImGuiTreeNodeFlags_DefaultOpen)) {
         saveIndicatorOverlay_->DrawImGui();
     }
+
     if (tutorialDirector_ && ImGui::CollapsingHeader("Tutorial Flow", ImGuiTreeNodeFlags_DefaultOpen)) {
         tutorialDirector_->DrawImGui();
     }
+
     ImGui::Separator();
     ImGui::TextDisabled("※この項目は TutorialScene::DrawImGui() で編集可能です");
 #endif
@@ -743,9 +815,11 @@ bool TutorialScene::HandleControlsGuideOverlay(float deltaTime) {
         controlsGuideOverlay_->SetPlayer(player_);
         controlsGuideOverlay_->SetActive(true);
     }
+
     if (tutorialDirector_) {
         tutorialDirector_->NotifyControlsGuideOpened();
     }
+
     return true;
 }
 
@@ -757,6 +831,7 @@ bool TutorialScene::IsControlsGuideOpenTriggered() const {
 
 #ifdef USE_IMGUI
     ImGuiIO& io = ImGui::GetIO();
+
     if (io.WantCaptureKeyboard || io.WantTextInput) {
         return false;
     }
@@ -772,13 +847,17 @@ void TutorialScene::HandleTutorialFlowCompleted() {
     }
 
     if (GameDataManager::GetInstance()->CommitStageClear(-1, {})) {
-        if (tutorialDirector_) tutorialDirector_->SetCompletionGateEnabled(true);
-        if (saveIndicatorOverlay_) saveIndicatorOverlay_->Play(1.35f);
+        if (tutorialDirector_)
+            tutorialDirector_->SetCompletionGateEnabled(true);
+        if (saveIndicatorOverlay_)
+            saveIndicatorOverlay_->Play(1.35f);
         DebugConsole::GetInstance()->AddLog("Tutorial flow completed. Exit gate unlocked.");
         goalSavePerformed_ = true;
     } else {
-        if (tutorialDirector_) tutorialDirector_->SetCompletionGateEnabled(false);
+        if (tutorialDirector_)
+            tutorialDirector_->SetCompletionGateEnabled(false);
         goalSaveRetryTimer_ = 5.0f;
+
         if (!goalSaveErrorShown_) {
             ::MessageBoxW(nullptr, L"セーブに失敗しました。保存先を確認してください。ゴールで再試行します。",
                           L"セーブエラー", MB_OK | MB_ICONERROR);

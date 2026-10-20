@@ -296,7 +296,7 @@ const std::vector<ManualPage>& GetManualPages() {
             "Hierarchyの「Scene Asset」を開くか、上部メニューの「ファイル」から「新規Scene Asset」を選びます。作成済みAssetは上部の「シーン切り替え」にも自動表示されます。",
             {
                 "新規では半角英数字、_、-でScene IDを入力し、日本語を使える表示名を設定します。",
-                "実行クラスでGAMEPLAY、TITLE、PREVIEW、SCENE_EDITORなど、SceneFactoryへ登録済みのC++ Sceneを選びます。",
+                "実行クラスでGAMEPLAY、TITLE、SCENE_EDITORなど、SceneFactoryへ登録済みのC++ Sceneを選びます。",
                 "空のScene、または現在のSceneを複製するテンプレートを選びます。現在Sceneの複製はメモリ上のObjectも含めます。",
                 "Scene一覧から対象を選び、「開く」またはダブルクリックで、選択した実行クラスとAssetのJSONを同時に読み込みます。",
                 "既存Assetの実行クラスはScene Asset欄のコンボから変更できます。変更後はAssetを開き直すと反映されます。",
@@ -1036,16 +1036,16 @@ const std::vector<ManualPage>& GetManualPages() {
             "07 運用・データ",
             "キャプチャツール (Capture Tool)",
             "screenshot PNG recording MP4 GameView window desktop F10",
-            "Game View、Window、DesktopをPNG ScreenshotまたはMP4動画として記録します。",
+            "Game Viewの画像部分、Window、DesktopをPNG ScreenshotまたはMP4動画として記録します。",
             "Hierarchy最上部の「キャプチャツール (Capture Tool)」を選びます。F10でポートフォリオ撮影モードも切り替えられます。",
             {
                 "Capture範囲をGame View、Window、Desktopから選びます。",
                 "動画の場合は解像度とFPSを確認し、「録画開始」を押します。",
                 "演出を再生し、終了後に「録画停止」を押してEncode完了を待ちます。",
-                "静止画は表示を整えてから「スクリーンショット」を押します。",
+                "静止画はスライド用・デバッグ用を選び、「スクリーンショット」を押します。直前の画像は撮影後にも用途を変更できます。",
                 "出力ファイルを開き、欠け、黒画面、UI表示、音の有無、フレーム落ちを確認します。",
             },
-            "画面に表示されるCapture出力先へPNG / MP4を保存します。通常はプロジェクトと同階層のcapturesフォルダです。",
+            "MP4はcaptures直下、手動撮影したPNGはcaptures/slidesまたはcaptures/debugへ保存します。通常はプロジェクトと同階層のcapturesフォルダです。",
             {
                 "目的の範囲だけが写り、Editor補助線や不要UIが入っていない。",
                 "録画停止後にファイル書き込みが完了した。",
@@ -1164,6 +1164,7 @@ const std::vector<ManualPage>& GetManualPages() {
             "Editor Previewで一度見えただけでは完了ではありません。再読込、実ゲーム、終了処理、Buildまで通った状態を完成基準にしてください。",
         },
     };
+
     return pages;
 }
 
@@ -1171,10 +1172,12 @@ std::string ToLowerAscii(std::string value) {
     // UTF-8の日本語バイトは変えず、英数字の検索部分だけ大文字小文字を揃える。
     for (char& c : value) {
         const unsigned char byte = static_cast<unsigned char>(c);
+
         if (byte < 0x80) {
             c = static_cast<char>(std::tolower(byte));
         }
     }
+
     return value;
 }
 
@@ -1183,6 +1186,7 @@ bool ContainsSearchText(const char* text, const std::string& query) {
     if (!text || query.empty()) {
         return query.empty();
     }
+
     return ToLowerAscii(text).find(query) != std::string::npos;
 }
 
@@ -1191,6 +1195,7 @@ bool MatchesPage(const ManualPage& page, const std::string& query) {
     if (query.empty()) {
         return true;
     }
+
     if (ContainsSearchText(page.category, query) ||
         ContainsSearchText(page.title, query) ||
         ContainsSearchText(page.aliases, query) ||
@@ -1200,16 +1205,19 @@ bool MatchesPage(const ManualPage& page, const std::string& query) {
         ContainsSearchText(page.caution, query)) {
         return true;
     }
+
     for (const char* step : page.steps) {
         if (ContainsSearchText(step, query)) {
             return true;
         }
     }
+
     for (const char* check : page.checks) {
         if (ContainsSearchText(check, query)) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -1226,6 +1234,7 @@ void DrawManualPage(const ManualPage& page) {
     Paragraph(page.openGuide);
 
     SectionTitle("基本手順");
+
     for (size_t i = 0; i < page.steps.size(); ++i) {
         ManualStep(static_cast<int>(i + 1), page.steps[i]);
     }
@@ -1243,6 +1252,7 @@ void DrawManualPage(const ManualPage& page) {
     Paragraph(page.saveGuide);
 
     SectionTitle("完了前の確認");
+
     for (const char* check : page.checks) {
         ManualBullet(check);
     }
@@ -1264,11 +1274,13 @@ void EngineManualWindow::Draw() {
     }
 
     const auto& pages = GetManualPages();
+
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(pages.size())) {
         selectedIndex_ = 0;
     }
 
     ImGui::SetNextWindowSize(ImVec2(1180.0f, 760.0f), ImGuiCond_FirstUseEver);
+
     if (!ImGui::Begin(ICON_FA_BOOK " エンジン説明書 (Engine Manual)", &isOpen_)) {
         ImGui::End();
         return;
@@ -1279,17 +1291,20 @@ void EngineManualWindow::Draw() {
     ImGui::SetNextItemWidth(-34.0f);
     ImGui::InputTextWithHint("##EngineManualSearch", "名前・用途・保存先", searchBuffer_, sizeof(searchBuffer_));
     ImGui::SameLine();
+
     if (ImGui::SmallButton(ICON_FA_TIMES "##ClearManualSearch")) {
         searchBuffer_[0] = '\0';
     }
 
     const std::string query = ToLowerAscii(searchBuffer_);
     int visibleCount = 0;
+
     for (const ManualPage& page : pages) {
         if (MatchesPage(page, query)) {
             ++visibleCount;
         }
     }
+
     if (!query.empty() && visibleCount > 0 && !MatchesPage(pages[selectedIndex_], query)) {
         for (int i = 0; i < static_cast<int>(pages.size()); ++i) {
             if (MatchesPage(pages[i], query)) {
@@ -1298,12 +1313,15 @@ void EngineManualWindow::Draw() {
             }
         }
     }
+
     ImGui::TextDisabled("%d / %d ページ", visibleCount, static_cast<int>(pages.size()));
     ImGui::Separator();
 
     std::string lastCategory;
+
     for (int i = 0; i < static_cast<int>(pages.size()); ++i) {
         const ManualPage& page = pages[i];
+
         if (!MatchesPage(page, query)) {
             continue;
         }
@@ -1312,14 +1330,17 @@ void EngineManualWindow::Draw() {
             if (!lastCategory.empty()) {
                 ImGui::Spacing();
             }
+
             ImGui::TextColored(ImVec4(0.65f, 0.72f, 0.8f, 1.0f), "%s", page.category);
             lastCategory = page.category;
         }
 
         ImGui::PushID(i);
+
         if (ImGui::Selectable(page.title, selectedIndex_ == i)) {
             selectedIndex_ = i;
         }
+
         ImGui::PopID();
     }
 
@@ -1327,6 +1348,7 @@ void EngineManualWindow::Draw() {
         ImGui::Spacing();
         ImGui::TextWrapped("該当する説明がありません。日本語名、英語名、用途、保存先の一部で検索してください。");
     }
+
     ImGui::EndChild();
 
     ImGui::SameLine();

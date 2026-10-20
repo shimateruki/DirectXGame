@@ -24,6 +24,7 @@ struct SceneLoadManifest {
     std::vector<std::string> modelNames;
     std::vector<TextureRequest> textures;
     std::vector<std::string> audioPaths;
+
     // タイトルのように配置物が参照する粒子画像だけを読む場合は false にする。
     bool includeSharedParticleTextures = true;
 
@@ -115,6 +116,7 @@ public:
     std::vector<std::string> modelNames;
     std::vector<SceneLoadManifest::TextureRequest> textures;
     std::vector<std::string> audioPaths;
+
     // 配置JSONから参照された GPU パーティクルのプリセット名。
     std::vector<std::string> gpuParticlePresetNames;
     SceneDependencyReport dependencyReport;

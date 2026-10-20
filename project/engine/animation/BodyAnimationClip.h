@@ -42,10 +42,15 @@ public:
     bool Evaluate(float timeSeconds, bool loop, Sample& sampleOut) const;
 
     bool IsValid() const { return !keys_.empty() && duration_ > 0.0f; }
+
     float GetDuration() const { return duration_; }
+
     bool IsLoopDefault() const { return loopDefault_; }
+
     const std::string& GetName() const { return name_; }
+
     const std::string& GetModelName() const { return modelName_; }
+
     const std::vector<Key>& GetKeys() const { return keys_; }
 
     // 名前だけなら現行ディレクトリを優先し、なければ旧ディレクトリを探す。

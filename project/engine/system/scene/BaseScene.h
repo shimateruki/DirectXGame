@@ -10,9 +10,9 @@
 
 // 前方宣言
 class SceneManager;
-class Object3dCommon;
+namespace engine { class Object3dCommon; }
 namespace engine { class SpriteCommon; }
-class ParticleSystem;
+namespace engine { class ParticleSystem; }
 class DebugEditor;
 class Camera;
 class DirectXCommon;
@@ -69,10 +69,13 @@ public:
 
     /// <summary>シーン遷移を管理するSceneManagerの非所有参照を設定する。</summary>
     virtual void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
+
     /// <summary>シーン編集を行うDebugEditorの非所有参照を設定する。</summary>
     virtual void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
+
     /// <summary>Scene Assetと実行クラスの対応など、ロード時の文脈を設定する。</summary>
     virtual void SetSceneLoadContext(const SceneLoadContext& context) { sceneLoadContext_ = context; }
+
     /// <summary>非同期で準備したリソースへの共有参照を保持する。</summary>
     void SetPreparedLoadData(std::shared_ptr<ScenePreloadData> data) { preparedLoadData_ = std::move(data); }
 
@@ -81,10 +84,13 @@ public:
     /// <param name="destination">見つかったJSONの書き込み先。</param>
     /// <returns>対応する先読みデータを受け取れた場合はtrue。</returns>
     bool TakePreparedJson(const std::string& path, json& destination);
+
     /// <summary>このシーンへ設定されたSceneManagerの非所有参照を返す。</summary>
     SceneManager* GetSceneManager() const { return sceneManager_; }
+
     /// <summary>現在のScene Assetロード文脈を返す。</summary>
     const SceneLoadContext& GetSceneLoadContext() const { return sceneLoadContext_; }
+
     /// <summary>Scene Asset経由で開始したシーンかどうかを返す。</summary>
     bool HasSceneAssetContext() const { return sceneLoadContext_.IsSceneAsset(); }
 
@@ -92,14 +98,17 @@ public:
     std::string ResolveSceneBgmPath(const std::string& defaultPath) const {
         return sceneLoadContext_.bgmPath.empty() ? defaultPath : sceneLoadContext_.bgmPath;
     }
+
     /// <summary>Scene Assetのライト設定パスを優先し、未指定なら既定パスを返す。</summary>
     std::string ResolveSceneLightPath(const std::string& defaultPath) const {
         return sceneLoadContext_.lightPath.empty() ? defaultPath : sceneLoadContext_.lightPath;
     }
+
     /// <summary>Scene Assetのカメラ設定パスを優先し、未指定なら既定パスを返す。</summary>
     std::string ResolveSceneCameraPath(const std::string& defaultPath) const {
         return sceneLoadContext_.cameraPath.empty() ? defaultPath : sceneLoadContext_.cameraPath;
     }
+
     /// <summary>Scene Assetのスカイボックスパスを優先し、未指定なら既定パスを返す。</summary>
     std::string ResolveSceneSkyboxPath(const std::string& defaultPath) const {
         return sceneLoadContext_.skyboxPath.empty() ? defaultPath : sceneLoadContext_.skyboxPath;
@@ -193,11 +202,14 @@ public:
     virtual void RefreshRenderCameraData();
 
     /// <summary>派生シーンが所有する3D描画基盤への非所有参照を返す。</summary>
-    virtual Object3dCommon* GetObject3dCommon() { return nullptr; }
+    virtual engine::Object3dCommon* GetObject3dCommon() { return nullptr; }
+
     /// <summary>派生シーンが所有するSprite描画基盤への非所有参照を返す。</summary>
     virtual engine::SpriteCommon* GetSpriteCommon() { return nullptr; }
+
     /// <summary>派生シーンが所有する粒子システムへの非所有参照を返す。</summary>
-    virtual ParticleSystem* GetParticleSystem() { return nullptr; }
+    virtual engine::ParticleSystem* GetParticleSystem() { return nullptr; }
+
     /// <summary>派生シーンが所有するスカイボックスへの非所有参照を返す。</summary>
     virtual Skybox* GetSkybox() { return nullptr; }
 
@@ -228,14 +240,18 @@ public:
 
     /// <summary>現在読み込んだ3D配置ファイル名を設定・取得する。</summary>
     void SetLoadedFilename(const std::string& name) { loadedFilename_ = name; }
+
     std::string GetLoadedFilename() const { return loadedFilename_; }
+
     /// <summary>派生シーンが影用パスを描く拡張点。基底では何もしない。</summary>
     virtual void DrawShadow() {}
 
     /// <summary>名前に一致するシーン内スプライトを探す。</summary>
     engine::Sprite* GetSpriteByName(const std::string& name);
+
     /// <summary>現在読み込んだSprite配置ファイル名を設定・取得する。</summary>
     void SetLoadedSpriteFilename(const std::string& name) { loadedSpriteFilename_ = name; }
+
     std::string GetLoadedSpriteFilename() const { return loadedSpriteFilename_; }
 
 protected:
@@ -244,6 +260,7 @@ protected:
 
     /// <summary>通常の不透明パスから分けて描く材質か判定する。</summary>
     bool IsSpecialMaterialType(int materialType) const;
+
     /// <summary>一人称視点で視点Actorまたはその子として隠す対象か判定する。</summary>
     bool IsHiddenByFirstPerson(engine::Object3d* object, engine::Object3d* viewActor, bool isFirstPerson) const;
 
@@ -254,20 +271,35 @@ protected:
 
     /// <summary>水やポータルなどの特殊材質を描き、背景色コピーの有無を返す。</summary>
     /// <returns>特殊材質用の背景色をコピーして描画した場合はtrue。</returns>
-    bool DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<engine::Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, engine::Object3d* viewActor = nullptr, bool isFirstPerson = false);
+    bool DrawSpecialMaterialObjects(
+        const std::vector<std::unique_ptr<engine::Object3d>>& objects,
+        DirectXCommon* dxCommon,
+        BulletManager* bulletManager = nullptr,
+        engine::Object3d* viewActor = nullptr,
+        bool isFirstPerson = false);
 
     /// <summary>GPU粒子を描画し、背景色コピーが済んでいるか返す。</summary>
     /// <param name="grabAlreadyUpdated">先行する特殊材質パスで背景色をコピー済みならtrue。</param>
     /// <returns>呼び出し後に背景色コピーが済んでいればtrue。</returns>
     bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
 
-    // 各マネージャーは非所有、事前ロード結果はシーンで共有所有します。
+    // シーン切替を要求する先。BaseSceneは寿命を管理しない。
     SceneManager* sceneManager_ = nullptr;
+
+    // Editor表示と操作を受け持つ外部インスタンスへの非所有参照。
     DebugEditor* debugEditor_ = nullptr;
+
+    // 現在のシーン読込で使用した配置データと読込元の情報。
     SceneLoadContext sceneLoadContext_;
+
+    // 非同期の事前読込結果をシーン間の引き渡し中も生存させる共有所有権。
     std::shared_ptr<ScenePreloadData> preparedLoadData_;
-    std::string loadedFilename_ = "scene_layout.json";
+
+    // 直近に読み込んだ3D配置とSprite配置のファイル名。
+    std::string loadedFilename_;
     std::string loadedSpriteFilename_ = "sprite_layout.json";
+
+    // Scene Assetの配置を既に反映したか。重複読込を避けるために分けて保持する。
     bool sceneAssetObjectLayoutConsumed_ = false;
     bool sceneAssetSpriteLayoutConsumed_ = false;
 };

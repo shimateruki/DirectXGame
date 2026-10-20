@@ -183,8 +183,10 @@ void GPUParticleSystem::CreateComputePipeline() {
         std::lock_guard<std::mutex> lock(shaderCacheMutex);
         std::error_code timeError;
         const auto sourceTime = std::filesystem::last_write_time(kSourcePath, timeError);
+
         if (timeError || !cachedBlobs[0] || cachedSourceTime != sourceTime) {
             std::array<Microsoft::WRL::ComPtr<ID3DBlob>, 4> rebuiltBlobs;
+
             for (size_t index = 0; index < rebuiltBlobs.size(); ++index) {
                 Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
                 const HRESULT compileHr = D3DCompileFromFile(
@@ -198,10 +200,12 @@ void GPUParticleSystem::CreateComputePipeline() {
                     return;
                 }
             }
+
             if (!timeError) {
                 cachedSourceTime = sourceTime;
                 cachedBlobs = rebuiltBlobs;
             }
+
             shaderBlobs = std::move(rebuiltBlobs);
         } else {
             shaderBlobs = cachedBlobs;
@@ -248,6 +252,7 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
     psoBuilder.SetInputLayout(nullptr, 0);
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
+
     // 深度はSRVで参照するため、遮蔽判定はピクセルシェーダー側で行います。
     psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
     DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
@@ -307,13 +312,15 @@ void GPUParticleSystem::ResetForSceneTransition() {
 }
 
 void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
-    if (!commandList) return;
+    if (!commandList)
+        return;
 
     // 最後に発生した粒子の寿命が終わったSystemは、Computeと描画を完全にスキップします。
     if (lastEmitTimer_ > activeLifetimeWindow_ && !warmupRequested_) {
         frameDeltaTime_ = 0.0f;
         return;
     }
+
     const bool warmupOnly = warmupRequested_ && emitRequests_.empty();
     const bool rebuiltSimulationThisDraw = !isInitialized_;
 
@@ -347,6 +354,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     if (warmupOnly) {
         warmupRequested_ = false;
         lastEmitTimer_ = activeLifetimeWindow_ + 0.001f;
+
         // 初回だけ0粒子のIndirect Drawまで通し、実戦前に全GPUリソースを準備します。
     }
 
@@ -390,6 +398,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
         commandList->SetComputeRootShaderResourceView(2, dummyVertexBuffer_->GetGPUVirtualAddress());
         const uint32_t updateBoneSrv = (dummyBoneSrvIndex_ > 0) ? dummyBoneSrvIndex_ : 0;
         SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, updateBoneSrv);
+
         if (depthSrvHandle > 0) {
             SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
         } else {
@@ -407,6 +416,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
 
     // 3. Emit Pass
     const bool hasEmitRequests = !emitRequests_.empty();
+
     if (hasEmitRequests) {
         commandList->SetPipelineState(computePipelineStateEmit_.Get());
 
@@ -416,6 +426,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
             req.config.inverseViewProj = math.Inverse(vp);
             req.config.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
             req.config.deltaTime = 0.0f; // Emit pass does not progress physics
+
             // シーク中にCPU側へ溜めた要求は、初回Drawで年齢を付けて生成する。
             // Shaderは重力・風・減衰による近似復元で、途中の衝突やFieldの履歴を再実行しない。
             req.config.initialAge = rebuiltSimulationThisDraw ?
@@ -464,7 +475,9 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
 
     // --- Graphics Shader ---
     engine::Matrix4x4 billboard = math.Inverse(viewMatrix);
-    billboard.m[3][0] = 0.0f; billboard.m[3][1] = 0.0f; billboard.m[3][2] = 0.0f;
+    billboard.m[3][0] = 0.0f;
+    billboard.m[3][1] = 0.0f;
+    billboard.m[3][2] = 0.0f;
 
     cameraData_->viewProj = vp;
     cameraData_->billboardMatrix = billboard;
@@ -527,6 +540,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
 
 
     uint32_t texToUse = (currentTextureHandle_ > 0) ? currentTextureHandle_ : dummyTex;
+
     if (texToUse > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, texToUse);
     } else {
@@ -540,6 +554,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     }
 
     uint32_t grabSrvHandle = dxCommon_->GetGrabSrvHandle();
+
     if (grabSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
     } else {
@@ -561,20 +576,24 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     for (D3D12_RESOURCE_BARRIER& barrier : drawBarriers) {
         std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
     }
+
     commandList->ResourceBarrier(3, drawBarriers);
 }
 
 void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
-    if (emitRequests_.size() >= kMaxEmitRequests) return;
+    if (emitRequests_.size() >= kMaxEmitRequests)
+        return;
 
     // 寿命が2秒を超えるプリセットも途中で描画停止しないよう、活動期間を延長する。
     const float requestedLifetimeWindow = (std::max)(config.emitLife + 0.1f, 2.0f);
+
     if (lastEmitTimer_ > activeLifetimeWindow_) {
         activeLifetimeWindow_ = requestedLifetimeWindow;
     }
     else {
         activeLifetimeWindow_ = (std::max)(activeLifetimeWindow_, requestedLifetimeWindow);
     }
+
     lastEmitTimer_ = 0.0f;
 
     CSConfig reqConfig = {};
@@ -655,11 +674,13 @@ size_t GPUParticleSystem::GetEstimatedMemoryBytes() const {
         dummyVertexBuffer_.Get(),
         dummyBoneBuffer_.Get()
     };
+
     for (ID3D12Resource* resource : resources) {
         if (resource) {
             bytes += static_cast<size_t>(resource->GetDesc().Width);
         }
     }
+
     return bytes;
 }
 
@@ -667,17 +688,21 @@ void GPUParticleSystem::SetCurrentTexture(const std::string& path) {
     if (!path.empty()) {
         // 描画ループ中のLoadはGPUクラッシュを引き起こすため、GetSrvHandleを使用
         uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(path);
+
         if (handle == 0 && std::filesystem::exists(path)) {
             TextureManager::GetInstance()->Load(path);
             handle = TextureManager::GetInstance()->GetSrvHandle(path);
         }
+
         if (handle > 0) {
             currentTextureHandle_ = handle;
         } else {
             // ロードされていない場合は、安全な白画像またはparticle画像を使う
             uint32_t fallback = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/particle/particle.png");
-            if (fallback == 0) fallback = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/particle/white.png");
-            if (fallback > 0) currentTextureHandle_ = fallback;
+            if (fallback == 0)
+                fallback = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/particle/white.png");
+            if (fallback > 0)
+                currentTextureHandle_ = fallback;
         }
     }
 }

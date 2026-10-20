@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "7cb7b2bb9c365eeb8c297aa11cf58364",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/wooden_raft/wooden_raft.obj",
+  "version": 1
+}

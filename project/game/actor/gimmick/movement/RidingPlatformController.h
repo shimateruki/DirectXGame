@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "CinematicPlayer.h"
+#include "game/system/cinematic/CinematicPlayer.h"
 #include <string>
 #include <vector>
 
@@ -17,6 +17,7 @@ class RidingPlatformController {
     // この信号を持つ乗車床だけ、破壊待ちと乗り場への呼び戻しを使う。
     bool ferry_ = false;
     float absentTime_ = 0.0f;
+
     // 敵の初期座標から床への移乗を補間する一時状態。attribute/mask は解放時の復元用です。
     struct Boarder {
         std::string name;
@@ -27,13 +28,18 @@ class RidingPlatformController {
         float elapsed = 0.0f;
         uint32_t attribute = 0, mask = 0;
         bool active = false, released = false;
+        bool falling = false; // 高い島から降りる場合だけ、縦方向を加速落下にする。
     };
+
     BaseEnemy* FindEnemy(BaseScene& scene, const std::string& name) const;
+
     void Reset(GimmickMovingFloor& floor, BaseScene& scene);
+
     CinematicSequence sequence_;
     CinematicPlayer player_;
     std::vector<Boarder> boarders_;
     std::string loadedPath_;
     engine::Vector3 start_{};
     bool ready_ = false, running_ = false, wasPlaying_ = false;
+    bool riderWasDead_ = false;
 };

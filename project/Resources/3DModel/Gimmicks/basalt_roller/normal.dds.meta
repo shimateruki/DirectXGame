@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3e29beb4c12adf993ce4b382054ff6ab",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/basalt_roller/normal.dds",
+  "version": 1
+}

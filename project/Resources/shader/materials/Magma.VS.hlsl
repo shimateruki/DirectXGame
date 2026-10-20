@@ -31,7 +31,7 @@ VSOutput main(VSInput input)
     float viscosity = max(effectScale, 0.1f);
 
     // Dedicated geyser mode: pulses travel upward while both endpoints stay attached.
-    if (effectType > 2.5f && effectType < 3.5f)
+    if ((effectType > 2.5f && effectType < 3.5f) || (effectType > 5.5f && effectType < 6.5f))
     {
         float y = saturate(localPos.y);
         float pulse = sin(y * 25.0f - time * 12.0f);

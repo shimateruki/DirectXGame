@@ -23,6 +23,7 @@ void Log::WriteInternal(LogLevel level, const std::string& file, int line, const
         if (!ofs.is_open()) {
             ofs.open(kLogFileName, std::ios::out);
         }
+
         if (ofs.is_open()) {
             ofs << formattedLog;
             ofs.flush(); // 即座に書き出し

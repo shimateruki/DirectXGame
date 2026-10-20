@@ -45,18 +45,23 @@ std::string ToLowerAscii(std::string text) {
 std::vector<std::string> SplitWords(const std::string& text) {
     std::istringstream stream(text);
     std::vector<std::string> words;
+
     for (std::string word; stream >> word;) {
         words.push_back(std::move(word));
     }
+
     return words;
 }
 
 std::string JoinKeywords(const std::vector<std::string>& keywords) {
     std::string result;
+
     for (const std::string& keyword : keywords) {
-        if (!result.empty()) result += ' ';
+        if (!result.empty())
+            result += ' ';
         result += keyword;
     }
+
     return result;
 }
 
@@ -71,6 +76,7 @@ std::string MakeObjectDetail(engine::Object3d* object) {
     if (!object) {
         return {};
     }
+
     const engine::Vector3 position = object->GetWorldPosition();
     std::ostringstream stream;
     stream << object->GetClassName() << " / Layer " << object->GetLayer()
@@ -120,6 +126,7 @@ void EditorQuickSearch::HandleShortcut() {
 void EditorQuickSearch::Draw() {
     // 検索・実行を一つのモーダルで扱い、閉じる前に選択中の操作を確定します。
     const char* popupName = ICON_FA_SEARCH " 統合コマンドパレット###EditorQuickSearch";
+
     if (openRequested_) {
         ImGui::OpenPopup(popupName);
         openRequested_ = false;
@@ -159,24 +166,30 @@ void EditorQuickSearch::Draw() {
             if (item.favorite) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.78f, 0.24f, 1.0f));
             }
+
             if (ImGui::SmallButton(item.favorite ? ICON_FA_STAR : ICON_FA_STAR_OF_LIFE)) {
                 ToggleFavorite(item.id);
                 item.favorite = IsFavorite(item.id);
             }
+
             if (item.favorite) {
                 ImGui::PopStyleColor();
             }
+
             ImGui::SameLine();
 
             ImGui::BeginDisabled(!item.enabled);
             const bool selected = static_cast<int>(index) == selectedIndex_;
             const std::string label = item.label + "##result";
+
             if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0.0f, 38.0f))) {
                 selectedIndex_ = static_cast<int>(index);
+
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     ExecuteItem(index);
                 }
             }
+
             ImGui::EndDisabled();
 
             const ImVec2 rowMin = ImGui::GetItemRectMin();
@@ -192,25 +205,32 @@ void EditorQuickSearch::Draw() {
                     IM_COL32(165, 170, 180, item.enabled ? 230 : 100),
                     item.detail.c_str());
             }
+
             ImGui::PopID();
         }
+
         if (results_.empty()) {
             ImGui::TextDisabled("一致する項目がありません。");
         }
     }
+
     ImGui::EndChild();
 
     if (!results_.empty()) {
+        // マウスとキーボードの選択位置を同じindexに保ち、Enterで現在行だけを実行する。
         if (ImGui::IsKeyPressed(ImGuiKey_DownArrow, false)) {
             selectedIndex_ = (std::min)(selectedIndex_ + 1, static_cast<int>(results_.size()) - 1);
         }
+
         if (ImGui::IsKeyPressed(ImGuiKey_UpArrow, false)) {
             selectedIndex_ = (std::max)(selectedIndex_ - 1, 0);
         }
+
         if (submitted || ImGui::IsKeyPressed(ImGuiKey_Enter, false)) {
             ExecuteItem(static_cast<std::size_t>(selectedIndex_));
         }
     }
+
     if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
         ImGui::CloseCurrentPopup();
     }
@@ -258,14 +278,17 @@ void EditorQuickSearch::RefreshResults(bool force) {
 
     results_.clear();
     const bool hasHistory = !favoriteIds_.empty() || !recentIds_.empty();
+
     for (SearchItem& item : candidates) {
         item.favorite = IsFavorite(item.id);
         item.recentRank = FindRecentRank(item.id);
         item.score = ScoreItem(item, normalizedQuery);
+
         if (normalizedQuery.empty()) {
             if (hasHistory && !item.favorite && item.recentRank < 0) {
                 continue;
             }
+
             if (!hasHistory && item.kind != ItemKind::Command && item.kind != ItemKind::Window) {
                 continue;
             }
@@ -273,19 +296,25 @@ void EditorQuickSearch::RefreshResults(bool force) {
         else if (item.score < 0) {
             continue;
         }
+
         results_.push_back(std::move(item));
     }
 
     std::stable_sort(results_.begin(), results_.end(), [](const SearchItem& left, const SearchItem& right) {
-        if (left.score != right.score) return left.score > right.score;
-        if (left.enabled != right.enabled) return left.enabled;
-        if (left.category != right.category) return left.category < right.category;
+        if (left.score != right.score)
+            return left.score > right.score;
+        if (left.enabled != right.enabled)
+            return left.enabled;
+        if (left.category != right.category)
+            return left.category < right.category;
         return left.label < right.label;
     });
     constexpr std::size_t kMaximumResults = 160;
+
     if (results_.size() > kMaximumResults) {
         results_.resize(kMaximumResults);
     }
+
     selectedIndex_ = results_.empty()
         ? 0
         : std::clamp(selectedIndex_, 0, static_cast<int>(results_.size()) - 1);
@@ -294,8 +323,10 @@ void EditorQuickSearch::RefreshResults(bool force) {
 void EditorQuickSearch::CollectCommands(std::vector<SearchItem>& items) const {
     // コマンドの実行可否を収集時に評価し、無効な操作も検索結果に残します。
     EditorCommandRegistry* registry = EditorCommandRegistry::GetInstance();
+
     for (const EditorCommand* command : registry->GetCommands()) {
-        if (!command) continue;
+        if (!command)
+            continue;
         SearchItem item;
         item.id = "command:" + command->id;
         item.label = command->displayName;
@@ -310,6 +341,7 @@ void EditorQuickSearch::CollectCommands(std::vector<SearchItem>& items) const {
         item.execute = [commandId]() {
             EditorCommandRegistry::GetInstance()->Execute(commandId);
         };
+
         items.push_back(std::move(item));
     }
 }
@@ -317,14 +349,18 @@ void EditorQuickSearch::CollectCommands(std::vector<SearchItem>& items) const {
 void EditorQuickSearch::CollectObjects(std::vector<SearchItem>& items) const {
     // Scene内のObjectは永続GUIDを優先して識別し、Editor内部の補助Objectは除きます。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+
     if (!scene || !editor_) {
         return;
     }
+
     int fallbackIndex = 0;
+
     for (const auto& object : scene->GetObjects()) {
         if (!object || object->IsEditorInternal()) {
             continue;
         }
+
         engine::Object3d* raw = object.get();
         SearchItem item;
         const std::string guid = raw->GetPersistentGuid();
@@ -339,12 +375,15 @@ void EditorQuickSearch::CollectObjects(std::vector<SearchItem>& items) const {
         item.enabled = !sceneManager_->IsPlaying();
         item.execute = [this, raw]() {
             BaseScene* current = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
-            if (!current || !current->IsAlive(raw) || !editor_) return;
-            if (ensureEditorPanelsVisible_) ensureEditorPanelsVisible_();
+            if (!current || !current->IsAlive(raw) || !editor_)
+                return;
+            if (ensureEditorPanelsVisible_)
+                ensureEditorPanelsVisible_();
             editor_->SetSelectedObject(raw);
             editor_->SyncObjectSelectionToInspector();
             editor_->FocusSceneObject(raw);
         };
+
         items.push_back(std::move(item));
     }
 }
@@ -352,9 +391,11 @@ void EditorQuickSearch::CollectObjects(std::vector<SearchItem>& items) const {
 void EditorQuickSearch::CollectAssets(std::vector<SearchItem>& items) const {
     // 配置可能なモデルだけシーンへ生成し、その他のAssetはパスをコピーします。
     AssetDatabase* database = AssetDatabase::GetInstance();
+
     if (!database->IsInitialized() || !editor_) {
         return;
     }
+
     for (const EditorAssetRecord& asset : database->GetAssets()) {
         SearchItem item;
         item.id = asset.guid.empty() ? "asset:" + asset.sourcePath : "asset:" + asset.guid;
@@ -379,9 +420,11 @@ void EditorQuickSearch::CollectAssets(std::vector<SearchItem>& items) const {
                     return;
                 }
             }
+
             ImGui::SetClipboardText(assetPath.c_str());
             DebugConsole::GetInstance()->AddLog("Asset Path copied: " + assetPath);
         };
+
         items.push_back(std::move(item));
     }
 }
@@ -391,6 +434,7 @@ void EditorQuickSearch::CollectSceneAssets(std::vector<SearchItem>& items) const
     if (!editor_) {
         return;
     }
+
     for (const SceneSerializer::SceneAssetInfo& asset : editor_->GetSceneAssets()) {
         SearchItem item;
         item.id = "scene:" + asset.id;
@@ -402,10 +446,13 @@ void EditorQuickSearch::CollectSceneAssets(std::vector<SearchItem>& items) const
         item.enabled = sceneManager_ && !sceneManager_->IsPlaying() && !sceneManager_->IsTransitioning();
         const std::string filename = asset.filename;
         item.execute = [this, filename]() {
-            if (!editor_) return;
-            if (ensureEditorPanelsVisible_) ensureEditorPanelsVisible_();
+            if (!editor_)
+                return;
+            if (ensureEditorPanelsVisible_)
+                ensureEditorPanelsVisible_();
             editor_->RequestOpenSceneAssetFromMenu(filename);
         };
+
         items.push_back(std::move(item));
     }
 }
@@ -415,8 +462,10 @@ void EditorQuickSearch::CollectPresets(std::vector<SearchItem>& items) const {
     if (!editor_) {
         return;
     }
+
     PresetManager* manager = PresetManager::GetInstance();
     const bool canPlace = sceneManager_ && !sceneManager_->IsPlaying();
+
     for (const auto& [name, data] : manager->GetPresets()) {
         SearchItem item;
         item.id = "preset:" + name;
@@ -429,6 +478,7 @@ void EditorQuickSearch::CollectPresets(std::vector<SearchItem>& items) const {
         item.execute = [this, name]() { if (editor_) editor_->InstantiatePresetAtCursor(name); };
         items.push_back(std::move(item));
     }
+
     for (const auto& [name, data] : manager->GetPrefabs()) {
         SearchItem item;
         item.id = "prefab:" + name;
@@ -455,6 +505,7 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
         const char* keywords;
         IEditable* target;
     };
+
     const WindowTarget targets[] = {
         { "camera", "カメラ設定", "camera view", CameraEditor::GetInstance() },
         { "sceneInventory", "配置物集計", "scene inventory", editor_->GetSceneInventoryWindow() },
@@ -480,7 +531,8 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
     };
 
     for (const WindowTarget& target : targets) {
-        if (!target.target) continue;
+        if (!target.target)
+            continue;
         SearchItem item;
         item.id = std::string("window:") + target.id;
         item.label = target.label;
@@ -490,10 +542,13 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
         item.kind = ItemKind::Window;
         IEditable* editable = target.target;
         item.execute = [this, editable]() {
-            if (ensureEditorPanelsVisible_) ensureEditorPanelsVisible_();
-            if (editor_) editor_->SetSelectedObject(nullptr);
+            if (ensureEditorPanelsVisible_)
+                ensureEditorPanelsVisible_();
+            if (editor_)
+                editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editable);
         };
+
         items.push_back(std::move(item));
     }
 }
@@ -501,8 +556,10 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
 int EditorQuickSearch::ScoreItem(const SearchItem& item, const std::string& normalizedQuery) const {
     // 完全一致・先頭一致・語の一致に重みを付け、お気に入りと最近使った項目を補正します。
     int score = 0;
-    if (item.favorite) score += 300;
-    if (item.recentRank >= 0) score += (std::max)(0, 160 - item.recentRank * 10);
+    if (item.favorite)
+        score += 300;
+    if (item.recentRank >= 0)
+        score += (std::max)(0, 160 - item.recentRank * 10);
     if (normalizedQuery.empty()) {
         return score;
     }
@@ -510,8 +567,10 @@ int EditorQuickSearch::ScoreItem(const SearchItem& item, const std::string& norm
     const std::string label = ToLowerAscii(item.label);
     const std::string category = ToLowerAscii(item.category);
     const std::string searchable = ToLowerAscii(item.searchableText);
+
     for (const std::string& word : SplitWords(normalizedQuery)) {
-        if (word.empty()) continue;
+        if (word.empty())
+            continue;
         if (label == word) {
             score += 260;
         }
@@ -531,6 +590,7 @@ int EditorQuickSearch::ScoreItem(const SearchItem& item, const std::string& norm
             return -1;
         }
     }
+
     return score;
 }
 
@@ -539,6 +599,7 @@ void EditorQuickSearch::ExecuteItem(std::size_t index) {
     if (index >= results_.size() || !results_[index].enabled || !results_[index].execute) {
         return;
     }
+
     const std::string id = results_[index].id;
     const auto execute = results_[index].execute;
     ImGui::CloseCurrentPopup();
@@ -551,12 +612,14 @@ void EditorQuickSearch::ExecuteItem(std::size_t index) {
 void EditorQuickSearch::ToggleFavorite(const std::string& id) {
     // お気に入りの重複を避け、変更をすぐ保存します。
     const auto found = std::find(favoriteIds_.begin(), favoriteIds_.end(), id);
+
     if (found != favoriteIds_.end()) {
         favoriteIds_.erase(found);
     }
     else {
         favoriteIds_.insert(favoriteIds_.begin(), id);
     }
+
     SaveState();
 }
 
@@ -565,9 +628,11 @@ void EditorQuickSearch::TouchRecent(const std::string& id) {
     recentIds_.erase(std::remove(recentIds_.begin(), recentIds_.end(), id), recentIds_.end());
     recentIds_.insert(recentIds_.begin(), id);
     constexpr std::size_t kRecentLimit = 16;
+
     if (recentIds_.size() > kRecentLimit) {
         recentIds_.resize(kRecentLimit);
     }
+
     SaveState();
 }
 
@@ -587,7 +652,8 @@ void EditorQuickSearch::LoadState() {
     favoriteIds_.clear();
     recentIds_.clear();
     std::ifstream file(statePath_);
-    if (!file.is_open()) return;
+    if (!file.is_open())
+        return;
     try {
         json root;
         file >> root;
@@ -606,8 +672,10 @@ void EditorQuickSearch::SaveState() const {
     std::error_code error;
     const fs::path filePath(statePath_);
     fs::create_directories(filePath.parent_path(), error);
-    if (error) return;
+    if (error)
+        return;
     std::ofstream file(filePath);
+
     if (file.is_open()) {
         file << json{
             { "version", 1 },

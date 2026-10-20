@@ -12,25 +12,33 @@ void CameraEditor::DrawImGui() {
     // =========================================================
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File Manager)", ImGuiTreeNodeFlags_DefaultOpen)) {
         static int currentItem = -1;
+
         if (ImGui::BeginCombo(ICON_FA_HISTORY " ファイル選択", "Choose from list...")) {
             for (int i = 0; i < (int)fileList_.size(); i++) {
                 bool isSelected = (currentItem == i);
+
                 if (ImGui::Selectable(fileList_[i].c_str(), isSelected)) {
                     currentItem = i;
                     strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), fileList_[i].c_str());
                 }
-                if (isSelected) ImGui::SetItemDefaultFocus();
+
+                if (isSelected)
+                    ImGui::SetItemDefaultFocus();
             }
+
             ImGui::EndCombo();
         }
 
         ImGui::InputText(ICON_FA_FILE_SIGNATURE " ファイル名(.json)", fileNameBuffer_, sizeof(fileNameBuffer_));
 
-        if (ImGui::Button(ICON_FA_UPLOAD " ロード")) LoadSettings();
+        if (ImGui::Button(ICON_FA_UPLOAD " ロード"))
+            LoadSettings();
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_DOWNLOAD " セーブ")) SaveSettings();
+        if (ImGui::Button(ICON_FA_DOWNLOAD " セーブ"))
+            SaveSettings();
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_SYNC " 更新")) RefreshFileList();
+        if (ImGui::Button(ICON_FA_SYNC " 更新"))
+            RefreshFileList();
     }
 
     ImGui::Separator();
@@ -41,6 +49,7 @@ void CameraEditor::DrawImGui() {
     // =========================================================
     const char* modeNames[] = { "ゲームカメラ (Game)", "自由カメラ (Editor)" };
     int currentModeInt = static_cast<int>(settings_.currentMode);
+
     if (ImGui::Combo(ICON_FA_COGS " メインモード", &currentModeInt, modeNames, IM_ARRAYSIZE(modeNames))) {
         settings_.currentMode = static_cast<Mode>(currentModeInt);
     }
@@ -64,9 +73,12 @@ void CameraEditor::DrawImGui() {
             "周回 (Orbit)",
             "定点注視 (FixedPoint)"
         };
+
         int currentFollow = static_cast<int>(settings_.gameFollowMode);
+
         if (ImGui::Combo(ICON_FA_EYE " View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
             settings_.gameFollowMode = static_cast<Camera::FollowMode>(currentFollow);
+
             if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
                 ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
             }
@@ -96,34 +108,43 @@ void CameraEditor::DrawImGui() {
             ImGui::Combo("自由カメラ時のギズモ対象", &orbitEditGizmoTarget_, editGizmoTargets, IM_ARRAYSIZE(editGizmoTargets));
             ImGui::TextDisabled("自由カメラで外から見ながら、周回カメラの中心や開始位置を調整します。");
             ImGui::DragFloat("注視点の高さ", &settings_.orbitCenterHeight, 0.1f, -10.0f, 50.0f);
+
             if (ImGui::DragFloat3("周回中心オフセット", &settings_.orbitCenterOffset.x, 0.1f, -80.0f, 80.0f)) {
                 ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
             }
+
             if (ImGui::Button("周回中心オフセットをリセット")) {
                 settings_.orbitCenterOffset = { 0.0f, 0.0f, 0.0f };
                 ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
                 SaveSettings();
             }
+
             if (ImGui::DragFloat("開始角度", &settings_.orbitStartAngleDeg, 0.5f, -360.0f, 360.0f, "%.1f deg")) {
                 ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
             }
+
             ImGui::DragFloat("ガイド点の大きさ", &settings_.orbitGuideMarkerSize, 0.01f, 0.1f, 2.0f);
 
             engine::Vector3 center = GetOrbitCenter();
+
             if (ImGui::Button(ICON_FA_REDO " 現在位置を周回開始位置にセット")) {
                 CaptureOrbitStartFromCurrentCamera(CameraManager::GetInstance()->GetMainCamera());
             }
+
             ImGui::TextDisabled("周回中心: %.2f, %.2f, %.2f", center.x, center.y, center.z);
 
             if (ImGui::Button("現在の角度を開始角度にする")) {
                 Camera* cam = CameraManager::GetInstance()->GetMainCamera();
+
                 if (cam) {
                     engine::Vector3 diff = cam->GetEye() - center;
                     settings_.orbitStartAngleDeg = RadToDeg(std::atan2(diff.z, diff.x));
                     ApplyOrbitStartAngle(cam, true);
                 }
             }
+
             ImGui::SameLine();
+
             if (ImGui::Button("開始位置をプレビュー")) {
                 ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
             }
@@ -134,9 +155,11 @@ void CameraEditor::DrawImGui() {
             ImGui::Text(ICON_FA_MAP_MARKER_ALT " 定点カメラ設定");
             ImGui::DragFloat3(" カメラ座標", &settings_.fixedPointPos.x, 0.1f);
             ImGui::DragFloat3(" カメラ角度", &settings_.fixedPointAngle.x, 0.05f);
+
             if (ImGui::Button(ICON_FA_CROSSHAIRS " 現在のカメラ位置をセット")) {
                 Camera* cam = CameraManager::GetInstance()->GetMainCamera();
-                if (cam) settings_.fixedPointPos = cam->GetEye();
+                if (cam)
+                    settings_.fixedPointPos = cam->GetEye();
             }
         }
     }
@@ -151,6 +174,7 @@ void CameraEditor::DrawImGui() {
         ImGui::SliderFloat(ICON_FA_MOUSE " マウス感度", &settings_.mouseSensitivity, 0.001f, 0.05f);
 
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
         if (camera) {
             engine::Vector3 pos = camera->GetEye();
             engine::Vector3 rot = camera->GetRotation();
@@ -168,7 +192,9 @@ void CameraEditor::DrawImGui() {
                 SaveEditorState();
                 DebugConsole::GetInstance()->AddLog("Editor free camera position saved.");
             }
+
             ImGui::SameLine();
+
             if (ImGui::Button(ICON_FA_UNDO " 保存済み自由カメラへ戻す")) {
                 LoadEditorState();
                 SetEditorCameraTransform(settings_.editorCameraPos, settings_.editorCameraAngle);
@@ -177,9 +203,11 @@ void CameraEditor::DrawImGui() {
             }
 
             ImGui::Spacing();
+
             if (ImGui::Button(ICON_FA_REDO " 現在位置を「周回カメラ」の開始位置にセット")) {
                 CaptureOrbitStartFromCurrentCamera(camera);
             }
+
             if (ImGui::Button(ICON_FA_MAP_MARKER_ALT " 現在位置を「定点カメラ」の座標・角度にセット")) {
                 settings_.fixedPointPos = pos;
                 settings_.fixedPointAngle = rot; // 角度も記録
@@ -187,6 +215,7 @@ void CameraEditor::DrawImGui() {
             }
         }
     }
+
     ImGui::Spacing();
     ImGui::Separator();
 
@@ -195,23 +224,28 @@ void CameraEditor::DrawImGui() {
         SceneManager* sceneManager = SceneManager::GetInstance();
         BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
         int cameraCount = 0;
+
         if (scene && ImGui::BeginListBox("##SceneCameraObjectList", ImVec2(-FLT_MIN, 120.0f))) {
             for (const auto& object : scene->GetObjects()) {
                 if (!object || !object->IsCameraObject()) {
                     continue;
                 }
+
                 ++cameraCount;
                 const bool selected = object.get() == selectedCameraObject_;
                 const SceneCameraSettings& cameraSettings = object->GetSceneCameraSettings();
                 const char* roleLabel = cameraSettings.role == SceneCameraRole::kMain ? "Main" : "Cinematic";
                 const std::string label = object->GetName() + "  [" + roleLabel + "]";
+
                 if (ImGui::Selectable(label.c_str(), selected)) {
                     SetSelectedCameraObject(object.get());
                 }
+
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
                 }
             }
+
             ImGui::EndListBox();
         }
 
@@ -223,10 +257,13 @@ void CameraEditor::DrawImGui() {
             ImGui::TextColored(ImVec4(0.35f, 1.0f, 0.45f, 1.0f), "選択中: %s", selectedCameraObject->GetName().c_str());
             ImGui::TextDisabled("位置・注視・追従・EasingはCamera ObjectのInspectorで編集します。");
             ImGui::TextDisabled("Blend In %.2fs / Out %.2fs", cameraSettings.blendInDuration, cameraSettings.blendOutDuration);
+
             if (ImGui::Button(ICON_FA_PLAY " Camera Objectをテスト再生")) {
                 PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(), selectedCameraObject);
             }
+
             ImGui::SameLine();
+
             if (ImGui::Button(ICON_FA_STOP " 停止")) {
                 StopSceneObjectCamera(CameraManager::GetInstance()->GetMainCamera());
             }
@@ -244,8 +281,10 @@ void CameraEditor::DrawImGui() {
         // --- 新規カメラの作成 ---
         ImGui::InputText("新規カメラ名", newOverrideNameBuffer_, sizeof(newOverrideNameBuffer_));
         ImGui::SameLine();
+
         if (ImGui::Button(ICON_FA_PLUS " 追加")) {
             std::string nName = newOverrideNameBuffer_;
+
             if (!nName.empty() && overrideParamsMap_.find(nName) == overrideParamsMap_.end()) {
                 overrideParamsMap_[nName] = Camera::CameraOverrideParams(); // 新規作成
                 selectedOverrideName_ = nName;
@@ -258,8 +297,10 @@ void CameraEditor::DrawImGui() {
         ImGui::Text(ICON_FA_LIST " 保存済みカメラ一覧:");
         ImGui::TextDisabled("Scene上の番号タグと同じ順番です。緑が選択中、青が未選択です。");
         std::string deleteOverrideName;
+
         if (ImGui::BeginListBox("##CameraList", ImVec2(-FLT_MIN, 100))) {
             int cameraIndex = 1;
+
             for (auto& [name, param] : overrideParamsMap_) {
                 bool isSelected = (selectedOverrideName_ == name);
                 ImGui::PushID(name.c_str());
@@ -267,17 +308,21 @@ void CameraEditor::DrawImGui() {
                 const std::string listLabel = "#" + std::to_string(cameraIndex) + "  " + name + (isSelected ? "  [選択中]" : "");
                 const float deleteButtonWidth = 28.0f;
                 const float selectableWidth = (std::max)(80.0f, ImGui::GetContentRegionAvail().x - deleteButtonWidth - ImGui::GetStyle().ItemSpacing.x);
+
                 if (ImGui::Selectable(listLabel.c_str(), isSelected, 0, ImVec2(selectableWidth, 0.0f))) {
                     selectedOverrideName_ = name;
                 }
+
                 const bool rowHovered = ImGui::IsItemHovered();
                 ImGui::PopStyleColor();
 
                 ImGui::SameLine();
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.35f, 0.35f, 1.0f));
+
                 if (ImGui::SmallButton("X")) {
                     deleteOverrideName = name;
                 }
+
                 ImGui::PopStyleColor();
 
                 if (rowHovered) {
@@ -290,16 +335,21 @@ void CameraEditor::DrawImGui() {
                     ImGui::Text("移行時間: %.2f 秒", param.duration);
                     ImGui::EndTooltip();
                 }
+
                 ImGui::PopID();
                 ++cameraIndex;
             }
+
             ImGui::EndListBox();
         }
+
         if (!deleteOverrideName.empty()) {
             overrideParamsMap_.erase(deleteOverrideName);
+
             if (selectedOverrideName_ == deleteOverrideName) {
                 selectedOverrideName_.clear();
             }
+
             SaveSettings();
         }
 
@@ -311,8 +361,10 @@ void CameraEditor::DrawImGui() {
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "編集中: [%s]", selectedOverrideName_.c_str());
             ImGui::Indent();
             ImGui::Spacing();
+
             if (ImGui::Button(ICON_FA_CAMERA " 現在のカメラ視点をここにコピー (Copy Current View)")) {
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
                 if (camera) {
                     // 位置をそのままコピー
                     p.fixedEyePos = camera->GetEye();
@@ -321,18 +373,26 @@ void CameraEditor::DrawImGui() {
                     p.targetSource = Camera::OverrideTargetSource::kFixed;
 
                     // その場所・その角度に完全に固定するため、追従フラグはすべてOFFにする
-                    p.trackEyeX = false; p.trackEyeY = false; p.trackEyeZ = false;
-                    p.trackTargetX = false; p.trackTargetY = false; p.trackTargetZ = false;
+                    p.trackEyeX = false;
+                    p.trackEyeY = false;
+                    p.trackEyeZ = false;
+                    p.trackTargetX = false;
+                    p.trackTargetY = false;
+                    p.trackTargetZ = false;
 
                     changed = true; // セーブフラグを立てる
                 }
             }
+
             ImGui::Spacing();
             ImGui::Separator();
-            if (ImGui::DragFloat("開始ブレンド時間 (秒)", &p.duration, 0.05f, 0.0f, 10.0f)) changed = true;
-            if (ImGui::DragFloat("終了ブレンド時間 (秒)", &p.exitDuration, 0.05f, 0.0f, 10.0f)) changed = true;
+            if (ImGui::DragFloat("開始ブレンド時間 (秒)", &p.duration, 0.05f, 0.0f, 10.0f))
+                changed = true;
+            if (ImGui::DragFloat("終了ブレンド時間 (秒)", &p.exitDuration, 0.05f, 0.0f, 10.0f))
+                changed = true;
             const char* easingNames[] = { "Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step" };
             int easing = static_cast<int>(p.easing);
+
             if (ImGui::Combo("切替Easing", &easing, easingNames, IM_ARRAYSIZE(easingNames))) {
                 p.easing = static_cast<Camera::OverrideEasing>(easing);
                 changed = true;
@@ -340,42 +400,59 @@ void CameraEditor::DrawImGui() {
 
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_EYE " カメラ位置 (Eye)");
+            // Eyeの座標元を固定値とScene上のCamera Objectで切り替え、追従設定は選択した方式にだけ出す。
             const char* eyeSourceNames[] = { "固定座標", "Scene Camera Object" };
             int eyeSource = static_cast<int>(p.eyeSource);
+
             if (ImGui::Combo("Eye取得元", &eyeSource, eyeSourceNames, IM_ARRAYSIZE(eyeSourceNames))) {
                 p.eyeSource = static_cast<Camera::OverrideEyeSource>(eyeSource);
                 changed = true;
             }
 
             if (p.eyeSource == Camera::OverrideEyeSource::kFixed) {
-                if (ImGui::Checkbox("X軸追従##Eye", &p.trackEyeX)) changed = true; ImGui::SameLine();
-                if (ImGui::Checkbox("Y軸追従##Eye", &p.trackEyeY)) changed = true; ImGui::SameLine();
-                if (ImGui::Checkbox("Z軸追従##Eye", &p.trackEyeZ)) changed = true;
-                if (ImGui::DragFloat3("固定座標##Eye", &p.fixedEyePos.x, 0.1f)) changed = true;
+                if (ImGui::Checkbox("X軸追従##Eye", &p.trackEyeX))
+                    changed = true;
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Y軸追従##Eye", &p.trackEyeY))
+                    changed = true;
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Z軸追従##Eye", &p.trackEyeZ))
+                    changed = true;
+                if (ImGui::DragFloat3("固定座標##Eye", &p.fixedEyePos.x, 0.1f))
+                    changed = true;
             }
             else {
                 const char* eyeObjectLabel = p.eyeObjectName.empty() ? "(未選択)" : p.eyeObjectName.c_str();
+
                 if (ImGui::BeginCombo("Camera Object##Eye", eyeObjectLabel)) {
                     SceneManager* sceneManager = SceneManager::GetInstance();
+
                     if (sceneManager && sceneManager->GetCurrentScene()) {
                         for (const auto& object : sceneManager->GetCurrentScene()->GetObjects()) {
-                            if (!object || !object->IsCameraObject()) continue;
+                            if (!object || !object->IsCameraObject())
+                                continue;
                             const bool selected = p.eyeObjectName == object->GetName();
+
                             if (ImGui::Selectable(object->GetName().c_str(), selected)) {
                                 p.eyeObjectName = object->GetName();
                                 changed = true;
                             }
                         }
                     }
+
                     ImGui::EndCombo();
                 }
-                if (ImGui::DragFloat3("Objectオフセット##Eye", &p.eyeObjectOffset.x, 0.05f)) changed = true;
+
+                if (ImGui::DragFloat3("Objectオフセット##Eye", &p.eyeObjectOffset.x, 0.05f))
+                    changed = true;
                 const char* followModeNames[] = { "完全追従", "遅延追従" };
                 int followMode = static_cast<int>(p.eyeFollowMode);
+
                 if (ImGui::Combo("Eye追従", &followMode, followModeNames, IM_ARRAYSIZE(followModeNames))) {
                     p.eyeFollowMode = static_cast<Camera::OverrideFollowMode>(followMode);
                     changed = true;
                 }
+
                 if (p.eyeFollowMode == Camera::OverrideFollowMode::kSmooth &&
                     ImGui::DragFloat("Eye追従レスポンス", &p.eyeFollowResponse, 0.1f, 0.1f, 40.0f, "%.2f")) {
                     changed = true;
@@ -384,49 +461,68 @@ void CameraEditor::DrawImGui() {
 
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.4f, 1.0f), ICON_FA_CROSSHAIRS " 注視点 (Target)");
+            // TargetはEyeとは独立に選び、固定・Object・Cameraの前方を組み合わせられる。
             const char* targetSourceNames[] = { "固定座標", "Scene Objectを注視", "Camera Objectの前方" };
             int targetSource = static_cast<int>(p.targetSource);
+
             if (ImGui::Combo("Target取得元", &targetSource, targetSourceNames, IM_ARRAYSIZE(targetSourceNames))) {
                 p.targetSource = static_cast<Camera::OverrideTargetSource>(targetSource);
                 changed = true;
             }
 
             if (p.targetSource == Camera::OverrideTargetSource::kFixed) {
-                if (ImGui::Checkbox("X軸追従##Tgt", &p.trackTargetX)) changed = true; ImGui::SameLine();
-                if (ImGui::Checkbox("Y軸追従##Tgt", &p.trackTargetY)) changed = true; ImGui::SameLine();
-                if (ImGui::Checkbox("Z軸追従##Tgt", &p.trackTargetZ)) changed = true;
-                if (ImGui::DragFloat3("固定座標##Tgt", &p.fixedTargetPos.x, 0.1f)) changed = true;
+                if (ImGui::Checkbox("X軸追従##Tgt", &p.trackTargetX))
+                    changed = true;
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Y軸追従##Tgt", &p.trackTargetY))
+                    changed = true;
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Z軸追従##Tgt", &p.trackTargetZ))
+                    changed = true;
+                if (ImGui::DragFloat3("固定座標##Tgt", &p.fixedTargetPos.x, 0.1f))
+                    changed = true;
             }
             else if (p.targetSource == Camera::OverrideTargetSource::kSceneObject) {
                 const char* targetObjectLabel = p.targetObjectName.empty() ? "(未選択)" : p.targetObjectName.c_str();
+
                 if (ImGui::BeginCombo("追従Object##Target", targetObjectLabel)) {
                     SceneManager* sceneManager = SceneManager::GetInstance();
+
                     if (sceneManager && sceneManager->GetCurrentScene()) {
                         for (const auto& object : sceneManager->GetCurrentScene()->GetObjects()) {
-                            if (!object || object->IsEditorInternal() || object->GetName().empty()) continue;
+                            if (!object || object->IsEditorInternal() || object->GetName().empty())
+                                continue;
                             const bool selected = p.targetObjectName == object->GetName();
+
                             if (ImGui::Selectable(object->GetName().c_str(), selected)) {
                                 p.targetObjectName = object->GetName();
                                 changed = true;
                             }
                         }
                     }
+
                     ImGui::EndCombo();
                 }
-                if (ImGui::DragFloat3("注視オフセット##Target", &p.targetObjectOffset.x, 0.05f)) changed = true;
+
+                if (ImGui::DragFloat3("注視オフセット##Target", &p.targetObjectOffset.x, 0.05f))
+                    changed = true;
             }
             else {
-                if (ImGui::DragFloat("前方距離##Target", &p.eyeForwardDistance, 0.1f, 0.1f, 100.0f)) changed = true;
-                if (ImGui::DragFloat3("前方注視オフセット##Target", &p.targetObjectOffset.x, 0.05f)) changed = true;
+                if (ImGui::DragFloat("前方距離##Target", &p.eyeForwardDistance, 0.1f, 0.1f, 100.0f))
+                    changed = true;
+                if (ImGui::DragFloat3("前方注視オフセット##Target", &p.targetObjectOffset.x, 0.05f))
+                    changed = true;
             }
 
             if (p.targetSource != Camera::OverrideTargetSource::kFixed) {
                 const char* followModeNames[] = { "完全追従", "遅延追従" };
                 int followMode = static_cast<int>(p.targetFollowMode);
+
                 if (ImGui::Combo("Target追従", &followMode, followModeNames, IM_ARRAYSIZE(followModeNames))) {
                     p.targetFollowMode = static_cast<Camera::OverrideFollowMode>(followMode);
                     changed = true;
                 }
+
                 if (p.targetFollowMode == Camera::OverrideFollowMode::kSmooth &&
                     ImGui::DragFloat("Target追従レスポンス", &p.targetFollowResponse, 0.1f, 0.1f, 40.0f, "%.2f")) {
                     changed = true;
@@ -437,14 +533,19 @@ void CameraEditor::DrawImGui() {
 
             // エディタ上で動作を確認可能
             ImGui::Spacing();
+
             if (ImGui::Button(ICON_FA_PLAY " テスト再生 (Test Play)")) {
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-                if (camera) PlayOverrideCamera(camera, selectedOverrideName_);
+                if (camera)
+                    PlayOverrideCamera(camera, selectedOverrideName_);
             }
+
             ImGui::SameLine();
+
             if (ImGui::Button(ICON_FA_STOP " 停止 (Stop)")) {
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-                if (camera) camera->EndOverride(p.exitDuration);
+                if (camera)
+                    camera->EndOverride(p.exitDuration);
             }
 
             if (changed) {
@@ -453,11 +554,13 @@ void CameraEditor::DrawImGui() {
 
             ImGui::Spacing();
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+
             if (ImGui::Button(ICON_FA_TRASH " 選択中のカメラを削除")) {
                 overrideParamsMap_.erase(selectedOverrideName_);
                 selectedOverrideName_ = "";
                 SaveSettings();
             }
+
             ImGui::PopStyleColor();
         }
     }
@@ -475,9 +578,11 @@ void CameraEditor::DrawCameraPreviewPanel() {
     ImGui::SameLine();
     ImGui::Checkbox("カメラ本体モデルを表示", &settings_.cameraBodyVisible);
     ImGui::SameLine();
+
     if (ImGui::Checkbox("プレビュー枠を表示", &settings_.cameraPreviewVisible)) {
         InvalidateCameraPreviews();
     }
+
     ImGui::DragFloat("ガイド本体の大きさ", &settings_.cameraGuideSize, 0.01f, 0.1f, 3.0f, "%.2f");
     ImGui::DragFloat("視錐台の長さ", &settings_.cameraFrustumLength, 0.1f, 1.0f, 50.0f, "%.1f");
     ImGui::DragFloat("プレビュー高さ", &settings_.cameraPreviewHeight, 1.0f, 80.0f, 480.0f, "%.0f");
@@ -485,12 +590,14 @@ void CameraEditor::DrawCameraPreviewPanel() {
     constexpr int kPreviewFpsValues[] = { 10, 15, 30, 60 };
     const char* previewFpsLabels[] = { "10 FPS (軽量)", "15 FPS (推奨)", "30 FPS", "60 FPS" };
     int previewFpsIndex = 1;
+
     for (int i = 0; i < IM_ARRAYSIZE(kPreviewFpsValues); ++i) {
         if (settings_.cameraPreviewFps == kPreviewFpsValues[i]) {
             previewFpsIndex = i;
             break;
         }
     }
+
     if (ImGui::Combo("プレビュー更新頻度", &previewFpsIndex, previewFpsLabels, IM_ARRAYSIZE(previewFpsLabels))) {
         settings_.cameraPreviewFps = kPreviewFpsValues[previewFpsIndex];
         InvalidateCameraPreviews();
@@ -501,24 +608,29 @@ void CameraEditor::DrawCameraPreviewPanel() {
     const char* previewResolutionLabels[] = { "25% (軽量)", "50% (推奨)", "100% (高精細)" };
     int previewResolutionIndex = 1;
     float nearestScaleDistance = 10.0f;
+
     for (int i = 0; i < IM_ARRAYSIZE(kPreviewResolutionScales); ++i) {
         const float distance = std::abs(settings_.cameraPreviewResolutionScale - kPreviewResolutionScales[i]);
+
         if (distance < nearestScaleDistance) {
             nearestScaleDistance = distance;
             previewResolutionIndex = i;
         }
     }
+
     if (ImGui::Combo(
         "プレビュー解像度",
         &previewResolutionIndex,
         previewResolutionLabels,
         IM_ARRAYSIZE(previewResolutionLabels))) {
         settings_.cameraPreviewResolutionScale = kPreviewResolutionScales[previewResolutionIndex];
+
         // RenderTargetサイズの変更後は古いプレビューを無効化する。
         PostEffect::GetInstance()->SetCameraPreviewResolutionScale(settings_.cameraPreviewResolutionScale);
         InvalidateCameraPreviews();
         SaveSettings();
     }
+
     const PostEffect* postEffect = PostEffect::GetInstance();
     ImGui::TextDisabled(
         "実描画: %d x %d / 非表示・別タブ・折り畳み中は更新停止",
@@ -526,6 +638,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
         postEffect->GetCameraPreviewHeight());
 
     engine::Object3d* selectedCameraObject = GetSelectedCameraObject();
+
     if (selectedCameraObject) {
         ImGui::TextColored(
             ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
@@ -533,6 +646,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
             selectedCameraObject->GetName().c_str());
         engine::Vector3 selectedEye{};
         engine::Vector3 selectedTarget{};
+
         if (ResolveSceneCameraPose(selectedCameraObject, selectedEye, selectedTarget)) {
             ImGui::TextDisabled("Object Eye: %.2f, %.2f, %.2f", selectedEye.x, selectedEye.y, selectedEye.z);
             ImGui::TextDisabled("Object Target: %.2f, %.2f, %.2f", selectedTarget.x, selectedTarget.y, selectedTarget.z);
@@ -563,6 +677,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
     }
 
     ImGui::Spacing();
+
     if (settings_.currentMode == Mode::Game) {
         ImGui::TextDisabled("下の画像は自由カメラ視点です。ゲームカメラ調整中に、外側から構図を確認できます。");
     } else {
@@ -573,17 +688,21 @@ void CameraEditor::DrawCameraPreviewPanel() {
     const float aspect = 16.0f / 9.0f;
     float height = std::clamp(settings_.cameraPreviewHeight, 80.0f, 480.0f);
     float width = height * aspect;
+
     if (width > availableWidth) {
         // 縦横比を崩さずInspectorの幅に収める。
         width = availableWidth;
         height = width / aspect;
     }
+
     const float indent = (std::max)(0.0f, (availableWidth - width) * 0.5f);
     uint32_t textureHandle = PostEffect::GetInstance()->GetSRVHandle(PostEffect::kCameraPreviewTextureIndex);
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(textureHandle);
+
     if (indent > 0.0f) {
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indent);
     }
+
     ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(width, height));
     cameraPreviewPanelVisibleThisFrame_ = ImGui::IsItemVisible();
 #endif

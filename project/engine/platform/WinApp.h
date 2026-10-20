@@ -17,11 +17,13 @@ public:
 
     // アクセサ
     HWND GetHwnd() const { return hwnd_; }
+
     HINSTANCE GetHInstance() const { return hInstance_; }
 
     /// <summary>表示モード変更前のスタイルとウィンドウ位置を保持する。</summary>
     struct DisplayState {
         LONG_PTR style = 0;
+
         WINDOWPLACEMENT placement{ sizeof(WINDOWPLACEMENT) };
     };
 

@@ -1,7 +1,7 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
 #include "engine/system/scene/SceneEngineIncludes.h"
-#include "game/system/GameSceneDrawing.h"
+#include "game/scene/GameSceneDrawing.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SettingsMenuOverlay.h"
 #include "ScenePreloader.h"
@@ -13,16 +13,16 @@
 #include "Skybox.h"
 #include "Text.h"
 #include "imgui.h"
-#include <EventManager.h>
+#include <game/system/rules/EventManager.h>
 #include "DebugConsole.h"
 #include <cassert>
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "MoveStrategy3D.h"
 #include "MoveStrategy2D.h"
-#include "LevelLoader.h"
-#include "LockOnSystem.h"
-#include "GameRule.h"
-#include "ObjectManager.h"
+#include "game/system/scene/LevelLoader.h"
+#include "game/system/combat/LockOnSystem.h"
+#include "game/system/rules/GameRule.h"
+#include "game/system/scene/ObjectManager.h"
 #include "MeshEffectManager.h"
 #include "VFXSequencer.h"
 #include "WinApp.h"
@@ -44,10 +44,10 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
-#include "StageManager.h"
-#include "GameDataManager.h"
-#include "GameAudioSettings.h"
-#include "GameSettingsManager.h"
+#include "game/system/progress/StageManager.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/settings/GameAudioSettings.h"
+#include "game/system/settings/GameSettingsManager.h"
 #include "GimmickStageGate.h"
 #include "CollisionConfig.h"
 #include <algorithm>
@@ -64,6 +64,7 @@ using namespace StageSelectDetail;
 GameSelectScene::GameSelectScene() {
     // 共有システムの初期化は先読み段階まで遅らせる。
 }
+
 GameSelectScene::~GameSelectScene() {
     // シーン固有のリソース解放は Finalize にまとめる。
 }
@@ -95,6 +96,7 @@ SceneLoadManifest GameSelectScene::BuildAsyncLoadManifest() const {
 void GameSelectScene::Initialize() {
     // 同期初期化でも段階ロードと同じ順序を使用する。
     BeginLoadingInitialize();
+
     while (!InitializeLoadingStep()) {
     }
 }
@@ -113,7 +115,7 @@ bool GameSelectScene::InitializeLoadingStep() {
     switch (loadingInitializePhase_) {
     case 0:
         dxCommon_ = DirectXCommon::GetInstance();
-        inputManager_ = InputManager::GetInstance();
+        inputManager_ = engine::InputManager::GetInstance();
         LOG("Game Select Initialized!");
         StageManager::GetInstance()->Initialize();
         selectedStageIndex_ = StageManager::GetInstance()->GetCurrentStageIndex();
@@ -121,10 +123,12 @@ bool GameSelectScene::InitializeLoadingStep() {
             selectedStageIndex_ >= static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
             selectedStageIndex_ = 0;
         }
+
         if (GameDataManager::GetInstance()->IsStageCleared(selectedStageIndex_) &&
             IsStageUnlocked(selectedStageIndex_ + 1)) {
             ++selectedStageIndex_;
         }
+
         previousSelectedStageIndex_ = -1;
         stageDecisionCooldown_ = 0.0f;
         isChangingStage_ = false;
@@ -132,10 +136,6 @@ bool GameSelectScene::InitializeLoadingStep() {
         unlockPresentationTimer_ = 0.0f;
         unlockParticleTimer_ = 0.0f;
         unlockPresentationInitialized_ = false;
-        unlockKeyAppearImpactPlayed_ = false;
-        unlockTurnImpactPlayed_ = false;
-        unlockReleaseImpactPlayed_ = false;
-        unlockGateActivationImpactPlayed_ = false;
         unlockPresentationDebugReplay_ = false;
         unlockHadPlayerControl_ = true;
         unlockDebugPreviousSelectedStageIndex_ = -1;
@@ -158,17 +158,18 @@ bool GameSelectScene::InitializeLoadingStep() {
         ++loadingInitializePhase_;
         completeUnit();
         return false;
+
     case 1:
         CameraManager::GetInstance()->Initialize();
         CameraManager::GetInstance()->SetInputManager(inputManager_);
         spriteCommon_ = std::make_unique<engine::SpriteCommon>();
         spriteCommon_->Initialize(dxCommon_);
-        object3dCommon_ = std::make_unique<Object3dCommon>();
+        object3dCommon_ = std::make_unique<engine::Object3dCommon>();
         object3dCommon_->Initialize(dxCommon_);
         MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
-        particleCommon_ = std::make_unique<ParticleCommon>();
+        particleCommon_ = std::make_unique<engine::ParticleCommon>();
         particleCommon_->Initialize(dxCommon_);
-        particleSystem_ = std::make_unique<ParticleSystem>();
+        particleSystem_ = std::make_unique<engine::ParticleSystem>();
         particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
         ParticleManager::GetInstance()->Initialize(particleSystem_.get());
         gameRule_ = std::make_unique<GameRule>();
@@ -177,6 +178,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         ++loadingInitializePhase_;
         completeUnit();
         return false;
+
     case 2: {
         objectManager_ = std::make_unique<ObjectManager>();
         lockOnSystem_ = std::make_unique<LockOnSystem>();
@@ -196,6 +198,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         completeUnit();
         return false;
     }
+
     case 3:
         GPUParticleManager::GetInstance()->Initialize(dxCommon_);
         GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
@@ -206,6 +209,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         ++loadingInitializePhase_;
         completeUnit();
         return false;
+
     case 4:
         skyboxTextureHandle_ =
             TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
@@ -214,16 +218,20 @@ bool GameSelectScene::InitializeLoadingStep() {
         ++loadingInitializePhase_;
         completeUnit();
         return false;
+
     case 5:
         levelLoader_ = std::make_unique<LevelLoader>();
         levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/stageSelect.json");
+
         // 旧形式のSceneでPlayerが静的保存されていても、床との衝突解決対象に戻します。
         if (player_) {
             player_->SetStatic(false);
         }
+
         ++loadingInitializePhase_;
         completeUnit();
         return false;
+
     case 6:
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/stageSelect_sprite.json");
         InitializeStageSelectHUD();
@@ -236,12 +244,14 @@ bool GameSelectScene::InitializeLoadingStep() {
         ++loadingInitializePhase_;
         completeUnit();
         return false;
+
     case 7:
         CameraEditor::GetInstance()->Initialize();
         CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
         ++loadingInitializePhase_;
         completeUnit();
         return false;
+
     case 8: {
         auto* gameData = GameDataManager::GetInstance();
         gameData->MarkStageUnlockSeen(0);
@@ -252,18 +262,21 @@ bool GameSelectScene::InitializeLoadingStep() {
             StartStageClearRewardPresentation(pendingStageClearRewardPresentation_);
             pendingStageClearRewardPresentation_ = {};
         }
+
         unlockingStageIndex_ =
             (gateReturnPresentationActive_ || crownCountPresentationActive_) ? -1 : FindPendingUnlockStage();
         if (unlockingStageIndex_ >= 0) {
             selectedStageIndex_ = unlockingStageIndex_;
             DebugConsole::GetInstance()->AddLog("Stage Select: crown unlock presentation start.");
         }
+
         ApplyStageGateStates();
         UpdateStageSelectDecorations(0.0f);
         ++loadingInitializePhase_;
         completeUnit();
         return true;
     }
+
     default:
         return true;
     }
@@ -285,6 +298,8 @@ void GameSelectScene::OnActivated() {
 
 void GameSelectScene::Finalize() {
     // 共有マネージャーのシーン固有状態を消してから所有リソースを解放する。
+    unlockPlayer_.Stop(false);
+    unlockTimelineLoaded_ = false;
     MeshEffectManager::GetInstance()->Clear();
     VFXSequencer::ClearOneShots();
     GPUParticleManager::GetInstance()->ClearSceneRuntime();
@@ -295,14 +310,17 @@ void GameSelectScene::Finalize() {
     sprites_.clear();
     stageGateNameLabels_.clear();
     stageGateStarIcons_.clear();
+
     if (settingsOverlay_) {
         settingsOverlay_->Finalize();
         settingsOverlay_.reset();
     }
+
     if (pauseMenuOverlay_) {
         pauseMenuOverlay_->Finalize();
         pauseMenuOverlay_.reset();
     }
+
     spriteCommon_.reset();
     object3dCommon_.reset();
     objectManager_.reset();
@@ -320,6 +338,7 @@ void GameSelectScene::Update(float deltaTime) {
     // --- ポストエフェクト更新 ---
     PostEffect::GetInstance()->Update(deltaTime);
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (activeCamera) {
         PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
     }
@@ -331,12 +350,14 @@ void GameSelectScene::Update(float deltaTime) {
 
     // --- ロックオン & カメラ制御 ---
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_, deltaTime);
+
     if (unlockingStageIndex_ < 0) {
         CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
     }
 
     // ロックオンアイコン更新
     engine::Object3d* target = lockOnSystem_->GetTarget();
+
     if (target && lockOnSystem_->IsLockingOn()) {
         isDrawLockOn_ = true;
         AABB aabb = target->GetAABB();
@@ -383,6 +404,7 @@ void GameSelectScene::Update(float deltaTime) {
     // カメラ操作
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
+
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
@@ -395,6 +417,7 @@ void GameSelectScene::Update(float deltaTime) {
     if (gateEntryCinematicActive_) {
         UpdateGateEntryCinematic(deltaTime);
     }
+
     if (gateReturnPresentationActive_) {
         UpdateStageReturnPresentation(deltaTime);
     }
@@ -404,16 +427,20 @@ void GameSelectScene::Update(float deltaTime) {
     const bool hadUnlockPresentation = unlockingStageIndex_ >= 0;
     UpdateStageGateSelection(deltaTime);
     objectManager_->Update(deltaTime);
+
     if (hadUnlockPresentation || unlockingStageIndex_ >= 0) {
         // 解放演出の固定カメラは通常カメラ更新後に設定されるため、
         // 同じフレームでもう一度更新して描画へ確実に反映します。
         CameraManager::GetInstance()->Update(0.0f);
     }
+
     if (gateReturnPresentationActive_) {
         UpdateStageReturnPresentation(0.0f);
         CameraManager::GetInstance()->Update(0.0f);
     }
+
     GPUParticleManager::GetInstance()->Update(deltaTime);
+
     for (auto& sprite : sprites_)
         sprite->Update();
     BulletManager::GetInstance()->Update(deltaTime);
@@ -432,31 +459,39 @@ bool GameSelectScene::HandlePauseOverlay(float deltaTime) {
         settingsOverlay_->Update(deltaTime);
         return true;
     }
+
     if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) {
         switch (pauseMenuOverlay_->Update(deltaTime)) {
         case PauseMenuOverlay::Action::Resume:
             pauseMenuOverlay_->SetActive(false);
             break;
+
         case PauseMenuOverlay::Action::OpenSettings:
             if (settingsOverlay_) {
                 settingsOverlay_->SetActive(true);
             }
+
             break;
+
         case PauseMenuOverlay::Action::ReturnTitle:
             pauseMenuOverlay_->SetActive(false);
             SceneManager::GetInstance()->ChangeScene("TITLE");
             break;
+
         default:
             break;
         }
+
         return true;
     }
+
     if (!inputManager_ || isChangingStage_ || gateEntryCinematicActive_ || gateReturnPresentationActive_ ||
         crownCountPresentationActive_ || unlockingStageIndex_ >= 0) {
         return false;
     }
 #ifdef USE_IMGUI
     ImGuiIO& io = ImGui::GetIO();
+
     if (io.WantCaptureKeyboard || io.WantTextInput) {
         return false;
     }
@@ -466,6 +501,7 @@ bool GameSelectScene::HandlePauseOverlay(float deltaTime) {
         pauseMenuOverlay_->SetActive(true);
         return true;
     }
+
     return false;
 }
 
@@ -528,10 +564,12 @@ void GameSelectScene::DrawUI() {
     // ゲートの名札と収集済みスターは、3Dの投影後に画面座標へ重ねます。
     // 操作Spriteと照準の後、設定画面をポーズより前面に出します。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+
     // ゲート入退場と解放演出は、黒帯が閉じ終わるまで通常の案内を隠します。
     if (gateCinematicBarOverrideActive_) {
         return;
     }
+
     for (auto& sprite : sprites_)
         sprite->Draw();
     for (auto& label : stageGateNameLabels_) {
@@ -540,6 +578,7 @@ void GameSelectScene::DrawUI() {
             label->Draw();
         }
     }
+
     for (auto& stars : stageGateStarIcons_) {
         for (auto& star : stars) {
             if (star) {
@@ -547,6 +586,7 @@ void GameSelectScene::DrawUI() {
             }
         }
     }
+
     if (gatePromptSprite_)
         gatePromptSprite_->Draw();
     if (isDrawLockOn_ && lockOnSprite_)
@@ -569,6 +609,7 @@ void GameSelectScene::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text("ステージセレクト設定");
     ImGui::Separator();
+
     if (ImGui::CollapsingHeader("ゲート名札")) {
         ImGui::DragFloat("非表示になる距離 (m)", &gateNameHideDistance_, 0.5f, 5.0f, 100.0f);
         ImGui::DragFloat("フェード幅 (m)", &gateNameFadeDistance_, 0.5f, 1.0f, 40.0f);
@@ -586,6 +627,7 @@ void GameSelectScene::DrawImGui() {
         const bool canPlayDebug = hasValidGate && !gateEntryCinematicActive_ && !gateReturnPresentationActive_ &&
                                   !crownCountPresentationActive_ && unlockingStageIndex_ < 0;
 
+        // キーとボタンを同じ操作へ集約し、通常の接触判定を通さず演出だけ試せるようにする。
         if (hasValidGate) {
             ImGui::Text("対象ゲート: Stage %d", nearestGateStageIndex + 1);
             ImGui::Text("プレイヤーからの距離: %.2f", nearestDistance);
@@ -614,9 +656,11 @@ void GameSelectScene::DrawImGui() {
         if (!canPlayDebug) {
             ImGui::BeginDisabled();
         }
+
         if (ImGui::Button("最寄りゲートで突入演出を強制再生", ImVec2(-1.0f, 34.0f))) {
             playDebugGateEntry();
         }
+
         if (!canPlayDebug) {
             ImGui::EndDisabled();
         }
@@ -634,17 +678,21 @@ void GameSelectScene::DrawImGui() {
 
         if (maxUnlockStageIndex >= 1) {
             const std::string previewLabel = "Stage " + std::to_string(debugUnlockStageIndex + 1);
+
             if (ImGui::BeginCombo("再生対象", previewLabel.c_str())) {
                 for (int stageIndex = 1; stageIndex <= maxUnlockStageIndex; ++stageIndex) {
                     const bool selected = stageIndex == debugUnlockStageIndex;
                     const std::string label = "Stage " + std::to_string(stageIndex + 1);
+
                     if (ImGui::Selectable(label.c_str(), selected)) {
                         debugUnlockStageIndex = stageIndex;
                     }
+
                     if (selected) {
                         ImGui::SetItemDefaultFocus();
                     }
                 }
+
                 ImGui::EndCombo();
             }
         }
@@ -664,16 +712,20 @@ void GameSelectScene::DrawImGui() {
             maxUnlockStageIndex >= 1 && previewGate && previewKey && previewLock && !anotherCinematicActive;
 
         ImGui::TextDisabled("セーブデータを変更せず、南京錠と王冠鍵を一時表示して再生します。");
+
         if (!previewGate || !previewKey || !previewLock) {
             ImGui::TextColored(ImVec4(1.0f, 0.42f, 0.32f, 1.0f),
                                "対象ゲートの鍵・南京錠・ゲート本体が不足しています。");
         }
+
         if (!canPlayUnlockPreview) {
             ImGui::BeginDisabled();
         }
+
         if (ImGui::Button("王冠鍵の解放ムービーを再生", ImVec2(-1.0f, 38.0f))) {
             StartDebugUnlockPresentation(debugUnlockStageIndex);
         }
+
         if (!canPlayUnlockPreview) {
             ImGui::EndDisabled();
         }
@@ -722,8 +774,10 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
     float nearestDistance = std::numeric_limits<float>::max();
     engine::Object3d* nearestGate = FindNearestStageGate(&nearestDistance);
     bool canEnterGate = false;
+
     if (nearestGate && nearestDistance <= gateSelectRadius_) {
         int gateStageIndex = GetStageGateIndex(nearestGate);
+
         if (gateStageIndex >= 0 && gateStageIndex < static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
             selectedStageIndex_ = gateStageIndex;
             canEnterGate = IsStageUnlocked(gateStageIndex);
@@ -736,10 +790,12 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
 
     if (selectedStageIndex_ != previousSelectedStageIndex_) {
         const auto& stages = StageManager::GetInstance()->GetStages();
+
         if (selectedStageIndex_ >= 0 && selectedStageIndex_ < static_cast<int>(stages.size())) {
             const StageData& stage = stages[selectedStageIndex_];
             DebugConsole::GetInstance()->AddLog("Stage Select: " + stage.name);
         }
+
         previousSelectedStageIndex_ = selectedStageIndex_;
     }
 
@@ -763,6 +819,7 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3d* nearestGate, bool canEn
     }
 
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (!camera) {
         gatePromptSprite_->SetVisible(false);
         gatePromptSprite_->Update();
@@ -775,6 +832,7 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3d* nearestGate, bool canEn
     engine::Math math;
     const engine::Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
     const engine::Vector3 ndc = engine::Math::Transform(promptWorld, viewProj);
+
     if (ndc.z < 0.0f || ndc.z > 1.0f) {
         gatePromptSprite_->SetVisible(false);
         gatePromptSprite_->Update();
@@ -792,9 +850,11 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3d* nearestGate, bool canEn
 
     gatePromptTimer_ += deltaTime;
     screenY += std::sin(gatePromptTimer_ * 4.0f) * 3.0f;
+
     if (screenX > screenWidth - baseWidth * 0.5f - 16.0f) {
         screenX = playerScreenX - 104.0f;
     }
+
     screenX = engine::Math::Clamp(screenX, baseWidth * 0.5f + 12.0f, screenWidth - baseWidth * 0.5f - 12.0f);
     screenY = engine::Math::Clamp(screenY, baseHeight * 0.5f + 12.0f, screenHeight - baseHeight * 0.5f - 18.0f);
 
@@ -820,6 +880,7 @@ void GameSelectScene::ApplyStageGateStates() {
     }
 
     float pulse = (std::sin(stageSelectTime_ * 5.0f) + 1.0f) * 0.5f;
+
     for (auto& object : objectManager_->GetObjects()) {
         if (!object || !IsStageGateObject(object.get())) {
             continue;
@@ -827,6 +888,7 @@ void GameSelectScene::ApplyStageGateStates() {
 
         auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
         int stageIndex = GetStageGateIndex(object.get());
+
         if (stageIndex < 0 || stageIndex >= static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
             continue;
         }
@@ -838,19 +900,21 @@ void GameSelectScene::ApplyStageGateStates() {
         const bool unlockTimelineReady = unlocking && unlockPresentationInitialized_;
         const float gateUnlockT =
             unlockTimelineReady ? SelectEaseInOutCubic(SelectClamp01(
-                                      (unlockPresentationTimer_ - kUnlockGateActivationStartTime) /
-                                      std::max(kUnlockGateActivationEndTime - kUnlockGateActivationStartTime, 0.001f)))
+                                      (unlockPresentationTimer_ - unlockGateActivationTime_) /
+                                      std::max(unlockGateActivationEndTime_ - unlockGateActivationTime_, 0.001f)))
                                 : 0.0f;
+
         // カメラが正面へ到着するまでは、解放済みのセーブデータであっても閉じたゲートとして描画します。
         const bool gateVisualUnlocked =
-            unlocking ? (unlockTimelineReady && unlockPresentationTimer_ >= kUnlockGateActivationStartTime) : unlocked;
+            unlocking ? (unlockTimelineReady && unlockPresentationTimer_ >= unlockGateActivationTime_) : unlocked;
         if (engine::Object3d* lockSeal = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex))) {
             const bool showLock =
-                unlocking ? (!unlockPresentationInitialized_ || unlockPresentationTimer_ < kUnlockLockHideTime)
+                unlocking ? (!unlockPresentationInitialized_ || unlockPresentationTimer_ < unlockLockHideTime_)
                           : !unlocked;
+
             // 南京錠と鎖はゲートとは別サイズなので、Sceneで調整したTransformを維持します。
             lockSeal->SetIsVisible(showLock);
-            const bool keyEngaged = unlockTimelineReady && unlockPresentationTimer_ >= kUnlockKeyApproachEndTime;
+            const bool keyEngaged = unlockTimelineReady && unlockPresentationTimer_ >= unlockKeyApproachEndTime_;
             lockSeal->SetColor(unlocking && keyEngaged ? engine::Vector4{1.0f, 0.78f, 0.24f, 1.0f}
                                                        : (selected ? engine::Vector4{0.86f, 0.68f, 0.34f, 1.0f}
                                                                    : engine::Vector4{0.64f, 0.52f, 0.30f, 1.0f}));
@@ -859,15 +923,18 @@ void GameSelectScene::ApplyStageGateStates() {
             lockSeal->SetCollisionMask(0);
             lockSeal->SetColliderType(ColliderType::kNone);
         }
+
         if (engine::Object3d* crownKey = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex))) {
-            const bool showKey = unlockTimelineReady && unlockPresentationTimer_ >= kUnlockKeyAppearStartTime &&
-                                 unlockPresentationTimer_ < kUnlockLockReleaseTime + 0.88f;
+            const bool showKey = unlockTimelineReady && unlockPresentationTimer_ >= unlockKeyAppearTime_ &&
+                                 unlockPresentationTimer_ < unlockKeyHideTime_;
             crownKey->SetIsVisible(showKey);
             crownKey->SetCollisionAttribute(0);
             crownKey->SetCollisionMask(0);
             crownKey->SetColliderType(ColliderType::kNone);
         }
+
         float gateActivation = unlocking ? 1.0f : 0.0f;
+
         if (player_) {
             const engine::Vector3 playerPos = player_->GetWorldPosition();
             const engine::Vector3 gatePos = object->GetWorldPosition();
@@ -879,15 +946,18 @@ void GameSelectScene::ApplyStageGateStates() {
             gateActivation =
                 1.0f - engine::Math::Clamp((distance - nearRadius) / std::max(wakeRadius - nearRadius, 0.001f), 0.0f, 1.0f);
             gateActivation = gateActivation * gateActivation * (3.0f - 2.0f * gateActivation);
+
             if (!unlocked) {
                 gateActivation *= 0.18f;
             }
         }
+
         if ((gateEntryCinematicActive_ && object.get() == gateEntryTargetGate_) ||
             (gateReturnPresentationActive_ && object.get() == gateReturnTargetGate_)) {
             gateActivation = 1.0f;
             selected = true;
         }
+
         if (unlocking) {
             gateActivation = gateUnlockT;
             selected = true;
@@ -913,48 +983,21 @@ void GameSelectScene::ApplyStageGateStates() {
 void GameSelectScene::RefreshDebugStageStates() {
     // デバッグで進行を変更したら、途中演出のキー・カメラ・操作権を元に戻す。
     const auto& stages = StageManager::GetInstance()->GetStages();
+
     if (stages.empty()) {
         return;
     }
 
     // デバッグ操作で進行状態を変更した場合も、途中の解放演出を確実に片付けます。
     if (unlockPresentationInitialized_) {
-        if (unlockKeyObject_) {
-            unlockKeyObject_->SetTranslate(unlockKeyBasePosition_);
-            unlockKeyObject_->SetRotation(unlockKeyBaseRotation_);
-            unlockKeyObject_->SetScale(unlockKeyBaseScale_);
-            unlockKeyObject_->SetIsVisible(false);
-            unlockKeyObject_->SetGPUParticleName("");
-        }
-        if (unlockLockObject_) {
-            unlockLockObject_->SetTranslate(unlockLockBasePosition_);
-            unlockLockObject_->SetRotation(unlockLockBaseRotation_);
-            unlockLockObject_->SetScale(unlockLockBaseScale_);
-        }
-        if (player_) {
-            player_->SetIsControlActive(unlockHadPlayerControl_);
-            player_->SetVelocity({0.0f, 0.0f, 0.0f});
-        }
-        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-            camera->SetEye(unlockCameraStartEye_);
-            camera->SetTarget(unlockCameraStartTarget_);
-            camera->SyncRotationToCurrentView();
-            if (player_) {
-                camera->SetFollowTarget(player_);
-                camera->SetFollowMode(Camera::FollowMode::kAimable);
-                camera->ResetFollowSmoothing();
-            }
-            camera->SetInputEnabled(true);
-        }
+        RestoreUnlockPresentationState();
     }
+
     if (unlockPresentationDebugReplay_ && unlockDebugPreviousSelectedStageIndex_ >= 0) {
         selectedStageIndex_ = unlockDebugPreviousSelectedStageIndex_;
     }
+
     unlockPresentationInitialized_ = false;
-    unlockKeyAppearImpactPlayed_ = false;
-    unlockTurnImpactPlayed_ = false;
-    unlockReleaseImpactPlayed_ = false;
-    unlockGateActivationImpactPlayed_ = false;
     unlockPresentationDebugReplay_ = false;
     unlockDebugPreviousSelectedStageIndex_ = -1;
     unlockTargetGate_ = nullptr;
@@ -964,6 +1007,7 @@ void GameSelectScene::RefreshDebugStageStates() {
     if (selectedStageIndex_ < 0 || selectedStageIndex_ >= static_cast<int>(stages.size()) ||
         !IsStageUnlocked(selectedStageIndex_)) {
         selectedStageIndex_ = 0;
+
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             if (IsStageUnlocked(stageIndex)) {
                 selectedStageIndex_ = stageIndex;
@@ -983,17 +1027,21 @@ void GameSelectScene::RefreshDebugStageStates() {
 bool GameSelectScene::IsStageUnlocked(int stageIndex) const {
     // 初期解放か、前提ステージのクリア記録がある時だけ入場を許可する。
     const auto& stages = StageManager::GetInstance()->GetStages();
+
     if (stageIndex < 0 || stageIndex >= static_cast<int>(stages.size())) {
         return false;
     }
 
     const StageData& stage = stages[stageIndex];
+
     if (stage.defaultUnlocked || stageIndex == 0) {
         return true;
     }
+
     if (stage.unlockStageIndex < 0) {
         return false;
     }
+
     return GameDataManager::GetInstance()->IsStageCleared(stage.unlockStageIndex);
 }
 
@@ -1007,6 +1055,7 @@ int GameSelectScene::FindPendingUnlockStage() const {
             return stageIndex;
         }
     }
+
     return -1;
 }
 
@@ -1021,6 +1070,7 @@ engine::Object3d* GameSelectScene::FindObjectByName(const std::string& name) con
             return object.get();
         }
     }
+
     return nullptr;
 }
 
@@ -1039,10 +1089,13 @@ engine::Vector3 GameSelectScene::GetStageNodePosition(int stageIndex) const {
         {0.0f, 1.4f, -4.2f},
         {8.0f, 1.4f, 3.0f},
     };
+
     constexpr int fallbackCount = static_cast<int>(sizeof(fallbackPositions) / sizeof(fallbackPositions[0]));
+
     if (stageIndex >= 0 && stageIndex < fallbackCount) {
         return fallbackPositions[stageIndex];
     }
+
     return {0.0f, 1.4f, 0.0f};
 }
 
@@ -1053,11 +1106,13 @@ void GameSelectScene::EnterSelectedStage() {
     }
 
     const auto& stages = StageManager::GetInstance()->GetStages();
+
     if (selectedStageIndex_ < 0 || selectedStageIndex_ >= static_cast<int>(stages.size())) {
         return;
     }
 
     const StageData& stage = stages[selectedStageIndex_];
+
     if (!IsStageUnlocked(selectedStageIndex_)) {
         DebugConsole::GetInstance()->AddLog("Stage Select: " + stage.name + " is locked.");
         stageDecisionCooldown_ = 0.35f;
@@ -1074,13 +1129,16 @@ bool GameSelectScene::IsStageGateObject(const engine::Object3d* object) const {
     if (!object) {
         return false;
     }
+
     if (const auto* gate = dynamic_cast<const GimmickStageGate*>(object)) {
         return gate->IsStageSelectNodeMode();
     }
+
     if (object->GetGimmickType() == "StageGate") {
         if (!object->param_.has_value()) {
             return true;
         }
+
         return object->param_->actionMode == 0;
     }
 
@@ -1097,9 +1155,11 @@ int GameSelectScene::GetStageGateIndex(const engine::Object3d* object) const {
     if (!object) {
         return -1;
     }
+
     if (const auto* gate = dynamic_cast<const GimmickStageGate*>(object)) {
         return gate->GetStageIndex();
     }
+
     return object->GetTargetID();
 }
 
@@ -1108,14 +1168,17 @@ engine::Object3d* GameSelectScene::FindStageGateByIndex(int stageIndex) const {
     if (!objectManager_) {
         return nullptr;
     }
+
     for (const auto& object : objectManager_->GetObjects()) {
         if (!object || !IsStageGateObject(object.get())) {
             continue;
         }
+
         if (GetStageGateIndex(object.get()) == stageIndex) {
             return object.get();
         }
     }
+
     return nullptr;
 }
 
@@ -1124,6 +1187,7 @@ engine::Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) cons
     if (outDistance) {
         *outDistance = std::numeric_limits<float>::max();
     }
+
     if (!objectManager_ || !player_) {
         return nullptr;
     }
@@ -1136,6 +1200,7 @@ engine::Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) cons
         if (!object || !IsStageGateObject(object.get())) {
             continue;
         }
+
         if (GetStageGateIndex(object.get()) < 0) {
             continue;
         }
@@ -1144,6 +1209,7 @@ engine::Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) cons
         float dx = gatePos.x - playerPos.x;
         float dz = gatePos.z - playerPos.z;
         float distanceSq = dx * dx + dz * dz;
+
         if (distanceSq < nearestDistanceSq) {
             nearestDistanceSq = distanceSq;
             nearestGate = object.get();
@@ -1153,6 +1219,7 @@ engine::Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) cons
     if (outDistance && nearestGate) {
         *outDistance = std::sqrt(nearestDistanceSq);
     }
+
     return nearestGate;
 }
 
@@ -1175,6 +1242,7 @@ bool GameSelectScene::IsPlayerTouchingStageGate(engine::Object3d* gate) const {
         kGateEntryPlayerTouchRadius;
 
     float yaw = 0.0f;
+
     if (const Transform* transform = gate->GetTransform()) {
         yaw = transform->rotate.y;
     }

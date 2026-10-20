@@ -11,33 +11,33 @@
 #include "SceneManager.h"
 
 #include "AudioPlayer.h"
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "DebrisEffectManager.h"
 #include "DirectXCommon.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "Fade.h"
-#include "GameDataManager.h"
+#include "game/system/progress/GameDataManager.h"
 #include "game/actor/gimmick/trigger/GimmickArenaEncounter.h"
-#include "GameRule.h"
+#include "game/system/rules/GameRule.h"
 #include "GPUParticleManager.h"
-#include "LevelLoader.h"
+#include "game/system/scene/LevelLoader.h"
 #include "LightEditor.h"
 #include "LightManager.h"
 #include "Log.h"
-#include "LockOnSystem.h"
+#include "game/system/combat/LockOnSystem.h"
 #include "MeshEffectManager.h"
 #include "Object3d.h"
 #include "Object3dCommon.h"
-#include "ObjectManager.h"
+#include "game/system/scene/ObjectManager.h"
 #include "ParticleManager.h"
 #include "ParticleSystem.h"
 #include "Skybox.h"
 #include "Sprite.h"
 #include "SpriteCommon.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include "TextureManager.h"
 #include "VFXSequencer.h"
 
@@ -182,6 +182,9 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_c
                                                                 "hit_slime_elastic",
                                                                 "player_base_bash_droplets",
                                                                 "player_base_press_splash",
+                                                                // いかだの着水と水柱の飛沫。使うシーンで事前に確保する。
+                                                                "raft_water_landing",
+                                                                "raft_water_spray",
                                                                 "hit_throw_slam_dust",
                                                                 "carry_bomber_throw_sparks",
                                                                 "carry_eye_charge_sparks",
@@ -208,6 +211,7 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_c
                                                                 "fire_slime_breath_embers",
                                                                 "fire_slime_cast",
                                                                 "fireball_trail_flame",
+                                                                "cannon_burning_flame",
                                                                 "fireball_trail_embers",
                                                                 "fireball_impact_flame",
                                                                 "fireball_impact_sparks",
@@ -327,6 +331,8 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {"bomb_explosion_cue",
 
 // 破片はGPU粒子とは別のランタイムで生成され、最初の衝突で待たないよう予熱します。
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {"bomb_hit_fragment_burst",
+                                                           "cannon_shell_basalt_shatter",
+                                                           "cannon_shell_ember_shatter",
                                                            "prism_crystal_shatter",
                                                            "throw_slam_pebble_burst",
                                                            "pink_slime_charge_pebble_pull",
@@ -346,19 +352,23 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     std::string objectLayoutPath = "Resources/json/3Dobject/stage1.json";
     std::string spriteLayoutPath = "Resources/json/sprite/stage1_sprite.json";
     std::string skyboxPath = GetSceneLoadContext().skyboxPath;
+
     if (HasSceneAssetContext()) {
         if (!GetSceneLoadContext().objectLayoutPath.empty()) {
             objectLayoutPath = GetSceneLoadContext().objectLayoutPath;
         }
+
         if (!GetSceneLoadContext().spriteLayoutPath.empty()) {
             spriteLayoutPath = GetSceneLoadContext().spriteLayoutPath;
         }
     } else {
         const auto& stages = StageManager::GetInstance()->GetStages();
         const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+
         if (stageIndex >= 0 && stageIndex < static_cast<int>(stages.size())) {
             objectLayoutPath = stages[stageIndex].levelPath;
             spriteLayoutPath = stages[stageIndex].spritePath;
+
             if (skyboxPath.empty()) {
                 skyboxPath = stages[stageIndex].skyboxPath;
             }
@@ -372,19 +382,24 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     manifest.AddSpriteLayout("Resources/json/sprite/controlsGuide.json");
     manifest.AddJson("Resources/json/animator/player_slime.json");
     manifest.AddJson("Resources/json/cinematic/goal_clear.json");
+
     // 実行時の管理器ごとに読込APIが違うため、同じ演出でも種類別にManifestへ登録します。
     for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
         manifest.AddJson("Resources/json/gpu_particles/" + std::string(presetName) + ".json");
     }
+
     for (const char* path : kGameplayMeshEffectsToPreload) {
         manifest.AddJson(path);
     }
+
     for (const char* presetName : kGameplayDebrisPresetsToPreload) {
         manifest.AddJson("Resources/json/debris/" + std::string(presetName) + ".json");
     }
+
     for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
         manifest.AddJson("Resources/json/vfx_sequence/" + std::string(sequenceName) + ".json");
     }
+
     // 操作ガイドとコピー能力HUDの画像はcontrolsGuide.jsonの参照から収集します。
     // 演出カメラやゴール画面で使う固定素材は、Scene JSONに参照がなくても必要です。
     manifest.AddTexture("Resources/sprite/common/circle2.png");
@@ -410,24 +425,30 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_l.png");
     manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_r.png");
     manifest.AddTexture("Resources/sprite/ui/result/clear/returning_select_text.png");
+
     // BGMはScene Assetの明示指定が最優先。空欄の通常ステージだけStageManagerへ問い合わせます。
     std::string preloadBgmPath = GetSceneLoadContext().bgmPath;
+
     if (preloadBgmPath.empty()) {
         const auto& preloadStages = StageManager::GetInstance()->GetStages();
         const int preloadStageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+
         if (preloadStageIndex >= 0 && preloadStageIndex < static_cast<int>(preloadStages.size())) {
             preloadBgmPath = preloadStages[preloadStageIndex].bgmPath;
         }
     }
+
     if (!preloadBgmPath.empty()) {
         manifest.AddAudio(preloadBgmPath);
     }
+
     return manifest;
 }
 
 void GamePlayScene::Initialize() {
     // 同期起動時も段階ロードと同じ依存順を通す。
     BeginLoadingInitialize();
+
     while (!InitializeLoadingStep()) {
     }
 }
@@ -451,6 +472,7 @@ void GamePlayScene::BeginLoadingInitialize() {
     stageEntryPresentationTimer_ = 0.0f;
     stageEntryPresentationRetryTimer_ = 0.0f;
     stageEntryGate_ = nullptr;
+
     // 固定フェーズの完了通知13件と、実際に1件ずつ処理する素材数を足します。
     // フェーズ追加時はInitializeLoadingStepのcompleteUnitとの対応も更新が必要です。
     loadingInitializeTotalUnits_ =
@@ -471,27 +493,33 @@ bool GamePlayScene::InitializeLoadingStep() {
             if (HasSceneAssetContext()) {
                 StageManager::GetInstance()->SetCurrentStageById(GetSceneLoadContext().sceneAssetId);
             }
+
             LoadGoalPresentationTuning();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 1:
             InitializeCoreSystems(StageManager::GetInstance()->GetCurrentStage());
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 2:
             if (!InitializeRenderCommons()) {
                 return false;
             }
+
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 3:
             InitializeGameplayObjectSystems();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 4:
             // 管理器本体を初期化してから、各素材を1件ずつ登録します。
             InitializeGameplayParticleRuntime();
@@ -499,6 +527,7 @@ bool GamePlayScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             completeUnit();
             return false;
+
         case 5:
             if (loadingInitializeItemIndex_ < std::size(kGameplayGpuParticlePresetsToPreload)) {
                 GPUParticleManager::GetInstance()->PreloadPresetSystem(
@@ -506,9 +535,11 @@ bool GamePlayScene::InitializeLoadingStep() {
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             continue;
+
         case 6:
             if (loadingInitializeItemIndex_ < std::size(kGameplayMeshEffectsToPreload)) {
                 MeshEffectManager::GetInstance()->PreloadEffect(
@@ -516,15 +547,18 @@ bool GamePlayScene::InitializeLoadingStep() {
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             continue;
+
         case 7:
             InitializeGameplayDebrisRuntime();
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             completeUnit();
             return false;
+
         case 8:
             if (loadingInitializeItemIndex_ < std::size(kGameplayDebrisPresetsToPreload)) {
                 DebrisEffectManager::GetInstance()->PrewarmPreset(
@@ -532,9 +566,11 @@ bool GamePlayScene::InitializeLoadingStep() {
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             continue;
+
         case 9:
             if (loadingInitializeItemIndex_ < std::size(kGameplayVfxSequencesToPreload)) {
                 VFXSequencer sequence;
@@ -542,15 +578,18 @@ bool GamePlayScene::InitializeLoadingStep() {
                 completeUnit();
                 return false;
             }
+
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
             continue;
+
         case 10:
             // Skyboxと実配置は先読みが済んでから作ります。
             InitializeGameplaySkybox();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 11:
             // 参照元となるランタイムと演出を準備してから、ステージの実オブジェクトを生成します。
             if (!loadingStageObjectsStarted_) {
@@ -559,47 +598,57 @@ bool GamePlayScene::InitializeLoadingStep() {
                     this, StageManager::GetInstance()->GetCurrentStage().levelPath);
                 loadingStageObjectsStarted_ = true;
             }
+
             // 配置 JSON 全件を一度に生成するとロード画面の描画が止まるため、毎フレーム数件ずつ復元する。
             if (!levelLoader_->ContinueObjectLayoutLoad(this, 4)) {
                 return false;
             }
+
             ApplyGoalCrownState();
             ApplyStageStarCoinState();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 12:
             // Objectの生成完了後にSpriteとHUDを作ることで、Player参照とSceneの表示値を使えます。
             LoadCurrentStageSpritesAndView(StageManager::GetInstance()->GetCurrentStage());
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 13:
             InitializeGameplayHUD();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 14:
             InitializeGameplayOverlays();
             ++loadingInitializePhase_;
             completeUnit();
             return false;
+
         case 15: {
             // Scene Asset側の任意Controllerが未登録なら、操作不能を避けるためDEFAULTへ戻します。
             const std::string controllerName =
                 GetSceneLoadContext().controllerName.empty() ? "DEFAULT" : GetSceneLoadContext().controllerName;
             sceneController_ = SceneControllerFactory::GetInstance()->Create(controllerName);
+
             if (!sceneController_) {
                 LOG("Scene Controller not registered: " + controllerName + ". Falling back to DEFAULT.");
                 sceneController_ = SceneControllerFactory::GetInstance()->Create("DEFAULT");
             }
+
             if (sceneController_) {
                 sceneController_->OnInitialize(*this);
             }
+
             ++loadingInitializePhase_;
             completeUnit();
             return false;
         }
+
         case 16:
             // 最後に演出タイムラインを接続し、完了をLoadingSceneへ返します。
             InitializeGoalCinematicTimeline();
@@ -607,6 +656,7 @@ bool GamePlayScene::InitializeLoadingStep() {
             ++loadingInitializePhase_;
             completeUnit();
             return true;
+
         default:
             return true;
         }
@@ -618,6 +668,7 @@ float GamePlayScene::GetLoadingInitializeProgress() const {
     if (loadingInitializeTotalUnits_ == 0) {
         return 1.0f;
     }
+
     const float renderProgress = loadingInitializePhase_ == 2
         ? (loadingRenderCommonPhase_ == 2 && object3dCommon_
             ? (1.0f + object3dCommon_->GetInitializationProgress()) / 3.0f
@@ -642,6 +693,7 @@ void GamePlayScene::OnActivated() {
     // 編集停止中はdeltaTimeが0になるため、開始演出を再生するとカメラ固定が解除されません。
     // 残っている演出カメラも解除し、保存済みの自由カメラへ確実に戻します。
     SceneManager* sceneManager = GetSceneManager();
+
     if (sceneManager && !sceneManager->IsPlaying()) {
         if (stageEntryPresentationActive_) {
             FinishStageEntryPresentation();
@@ -665,6 +717,7 @@ void GamePlayScene::OnActivated() {
 #endif
 
     stageEntryRuntimeWasPlaying_ = true;
+
     if (StartRespawnIrisInIfNeeded()) {
         stageEntryPresentationPending_ = false;
     } else {
@@ -682,13 +735,14 @@ void GamePlayScene::Finalize() {
         sceneController_->OnFinalize(*this);
         sceneController_.reset();
     }
+
     FinalizeGameplayResources();
 }
 
 void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
     // シーン用のカメラ設定を初期化する。イベント購読は各所有者の破棄時に解除する。
     dxCommon_ = DirectXCommon::GetInstance();
-    inputManager_ = InputManager::GetInstance();
+    inputManager_ = engine::InputManager::GetInstance();
 
     LOG("Game Initialized!");
 
@@ -704,25 +758,28 @@ bool GamePlayScene::InitializeRenderCommons() {
         ++loadingRenderCommonPhase_;
         return false;
     }
+
     if (loadingRenderCommonPhase_ == 1) {
-        object3dCommon_ = std::make_unique<Object3dCommon>();
+        object3dCommon_ = std::make_unique<engine::Object3dCommon>();
         object3dCommon_->BeginInitialize(dxCommon_);
         ++loadingRenderCommonPhase_;
         return false;
     }
+
     if (loadingRenderCommonPhase_ == 2) {
         if (!object3dCommon_->InitializeStep()) {
             return false;
         }
+
         MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
         ++loadingRenderCommonPhase_;
         return false;
     }
 
-    particleCommon_ = std::make_unique<ParticleCommon>();
+    particleCommon_ = std::make_unique<engine::ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
 
-    particleSystem_ = std::make_unique<ParticleSystem>();
+    particleSystem_ = std::make_unique<engine::ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
 
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
@@ -739,20 +796,26 @@ void GamePlayScene::InitializeGameplaySystems() {
     // ゲーム中に使う演出を事前生成し、初回攻撃時の読み込み待ちを抑える。
     InitializeGameplayObjectSystems();
     InitializeGameplayParticleRuntime();
+
     for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
         GPUParticleManager::GetInstance()->PreloadPresetSystem(presetName);
     }
+
     for (const char* path : kGameplayMeshEffectsToPreload) {
         MeshEffectManager::GetInstance()->PreloadEffect(path);
     }
+
     InitializeGameplayDebrisRuntime();
+
     for (const char* presetName : kGameplayDebrisPresetsToPreload) {
         DebrisEffectManager::GetInstance()->PrewarmPreset(presetName);
     }
+
     for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
         VFXSequencer sequence;
         sequence.Load(sequenceName);
     }
+
     InitializeGameplaySkybox();
 }
 
@@ -791,10 +854,12 @@ void GamePlayScene::InitializeGameplayDebrisRuntime() {
 void GamePlayScene::InitializeGameplaySkybox() {
     // Scene Asset、ステージ定義、既定値の順で空のテクスチャ指定を補う。
     std::string skyboxPath = GetSceneLoadContext().skyboxPath;
+
     if (skyboxPath.empty()) {
         const StageData& stage = StageManager::GetInstance()->GetCurrentStage();
         skyboxPath = stage.skyboxPath;
     }
+
     if (skyboxPath.empty()) {
         skyboxPath = "Resources/output_skybox.dds";
     }
@@ -813,11 +878,13 @@ void GamePlayScene::ApplyGameplayRenderState(const StageData& currentStage) {
     lightManager->LoadState(ResolveSceneLightPath(defaultLightPath));
 
     std::string skyboxPath = ResolveSceneSkyboxPath(currentStage.skyboxPath);
+
     if (!skyboxPath.empty() && !lightManager->SetSkyboxTexturePath(skyboxPath)) {
         lightManager->SetSkyboxTexturePath("Resources/output_skybox.dds");
     }
 
     skyboxTextureHandle_ = lightManager->GetSkyboxTextureHandle();
+
     if (skybox_) {
         skybox_->SetTextureHandle(skyboxTextureHandle_);
     }
@@ -906,6 +973,7 @@ void GamePlayScene::ApplyStageStarCoinState() {
     }
 
     const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+
     for (auto& object : objectManager_->GetObjects()) {
         if (!object || object->GetEventType() != EventType::StarCoin) {
             continue;
@@ -913,6 +981,7 @@ void GamePlayScene::ApplyStageStarCoinState() {
 
         object->SetLodEnabled(false);
         const int starCoinIndex = object->GetTargetID();
+
         if (!GameDataManager::GetInstance()->IsStarCoinCollected(stageIndex, starCoinIndex)) {
             continue;
         }
@@ -936,14 +1005,17 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
         const engine::Vector3 respawnPosition{checkpoint.positionX, checkpoint.positionY, checkpoint.positionZ};
         player_->SetTranslate(respawnPosition);
         player_->ActivateCheckpoint(respawnPosition, checkpoint.checkpointObjectName);
+
         if (gameRule_) {
             gameRule_->RestoreCheckpointPresentation(checkpoint.checkpointObjectName);
         }
+
         for (int id : checkpoint.clearedEncounterIds) {
             GameDataManager::GetInstance()->RememberCheckpointEncounter(checkpoint.stageIndex, id);
             if (auto* encounter = dynamic_cast<GimmickArenaEncounter*>(FindObjectByEventID(id)))
                 encounter->RestoreCheckpointClear();
         }
+
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
         if (!checkpoint.morphEnemyType.empty()) {
@@ -954,6 +1026,7 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
 
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
     engine::Vector2 irisCenter = {0.5f, 0.5f};
+
     if (cam && player_) {
         cam->Update();
         engine::Vector3 worldPos = player_->GetWorldPosition();
@@ -981,6 +1054,7 @@ void GamePlayScene::FinalizeGameplayResources() {
     FinishSealBarrageMovie();
     ResetCrownDefeat();
     ResetCrownFinaleWorld();
+
     for (auto& message : crownFinaleMessages_)
         message.reset();
 #ifdef USE_IMGUI
@@ -989,38 +1063,51 @@ void GamePlayScene::FinalizeGameplayResources() {
     if (stageEntryPresentationActive_) {
         FinishStageEntryPresentation();
     }
+
     if (arenaBossIntroActive_) {
         FinishArenaBossIntro();
     }
+
     if (arenaBossRewardActive_) {
         FinishArenaBossDefeatReward();
     }
+
     stageEntryPresentationPending_ = false;
     stageEntryRuntimeWasPlaying_ = false;
     stageEntryPresentationRetryTimer_ = 0.0f;
+
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        // シーン演出が入力を止めたまま次のシーンへ渡さない。
         camera->SetInputEnabled(true);
     }
+
     goalCinematicPlayer_.Stop(false);
     goalCinematicTimelineLoaded_ = false;
     RestoreGoalPresentationCameraInput();
     goalPresentationCamera_.reset();
     goalCameraSnapshotValid_ = false;
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
+
     MeshEffectManager::GetInstance()->Clear();
     VFXSequencer::ClearOneShots();
     GPUParticleManager::GetInstance()->ClearSceneRuntime();
+
+    // Managerが保持する参照を先に外し、その後でScene所有のObjectとSpriteを破棄する。
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
+
     saveIndicatorOverlay_.reset();
     goalOverlayFlash_.reset();
     goalOverlayReturnText_.reset();
+
     for (auto& letter : goalOverlayStageClearLetters_) {
         letter.reset();
     }
+
     for (auto& sparkle : goalOverlaySparkles_) {
         sparkle.reset();
     }
+
     goalPresentationState_ = GoalPresentationState::Inactive;
     goalWasStageCleared_ = false;
     goalPresentationTimer_ = 0.0f;
@@ -1031,49 +1118,66 @@ void GamePlayScene::FinalizeGameplayResources() {
     goalReturnFadeStarted_ = false;
     goalCrownObject_ = nullptr;
     goalClearPlayerAnimator_.Reset();
+
     controlsGuideOverlay_.reset();
     settingsOverlay_.reset();
     pauseMenuOverlay_.reset();
+
+    // HUDはScene内Spriteへの非所有参照なので、レイアウト破棄前に参照と演出時間を無効化する。
     hudHpIcon_ = {};
     hudHpFrame_ = {};
     hudHpDamageFill_ = {};
     hudHpFill_ = {};
     hudHpHighlight_ = {};
     hudHpAnimationTimer_ = 0.0f;
+
     hudLifeIcon_ = {};
     hudLifeXIcon_ = {};
+
     for (auto& digit : hudLifeDigits_) {
         digit = {};
     }
+
     hudCoinIcon_ = {};
     hudCoinXIcon_ = {};
+
     for (auto& digit : hudCoinDigits_) {
         digit = {};
     }
+
     for (auto& slot : hudStageStarSlots_) {
         slot = {};
     }
+
     hudStageStarFlyParticles_.clear();
     hudStageStarPulseTimers_ = {0.0f, 0.0f, 0.0f};
     hudStageStarVisualCollected_ = {false, false, false};
+
     hudLifeGainPulseTimer_ = 0.0f;
     hudCoinPulseTimer_ = 0.0f;
     hudPreviousLives_ = 0;
     hudPreviousCoins_ = 0;
+
     lifeLostIcon_ = {};
     lifeLostXIcon_ = {};
+
     for (auto& digit : lifeLostDigits_) {
         digit = {};
     }
+
     lifeLostBackdrop_ = {};
     lifeLostSlimeObject_.reset();
     lifeLostStunObject_.reset();
     lifeLostCamera_.reset();
+
     particleSystem_.reset();
     particleCommon_.reset();
+
     sprites_.clear();
     spriteCommon_.reset();
+
     object3dCommon_.reset();
     objectManager_.reset();
+
     lockOnSystem_.reset();
 }

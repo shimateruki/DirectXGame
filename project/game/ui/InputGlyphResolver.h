@@ -43,18 +43,30 @@ inline InputGlyphSpec ResolveActionGlyph(const std::string& action, bool gamepad
     if (gamepadMode) {
         const char* path = nullptr;
         switch (binding->padCode) {
-        case XINPUT_GAMEPAD_A: path = "ui/input/controller/pad_a.png"; break;
-        case XINPUT_GAMEPAD_B: path = "ui/input/controller/pad_b.png"; break;
-        case XINPUT_GAMEPAD_X: path = "ui/input/controller/pad_x.png"; break;
-        case XINPUT_GAMEPAD_Y: path = "ui/input/controller/pad_y.png"; break;
-        case XINPUT_GAMEPAD_LEFT_SHOULDER: path = "ui/input/controller/pad_lb.png"; break;
-        case XINPUT_GAMEPAD_RIGHT_SHOULDER: path = "ui/input/controller/pad_rb.png"; break;
-        case XINPUT_GAMEPAD_DPAD_UP: path = "ui/input/controller/pad_dpad_up.png"; break;
-        case XINPUT_GAMEPAD_DPAD_DOWN: path = "ui/input/controller/pad_dpad_down.png"; break;
-        case XINPUT_GAMEPAD_DPAD_LEFT: path = "ui/input/controller/pad_dpad_left.png"; break;
-        case XINPUT_GAMEPAD_DPAD_RIGHT: path = "ui/input/controller/pad_dpad_right.png"; break;
-        case XINPUT_GAMEPAD_LEFT_THUMB: path = "ui/input/controller/pad_l3.png"; break;
-        case XINPUT_GAMEPAD_RIGHT_THUMB: path = "ui/input/controller/pad_r3.png"; break;
+        case XINPUT_GAMEPAD_A: path = "ui/input/controller/pad_a.png";
+        break;
+        case XINPUT_GAMEPAD_B: path = "ui/input/controller/pad_b.png";
+        break;
+        case XINPUT_GAMEPAD_X: path = "ui/input/controller/pad_x.png";
+        break;
+        case XINPUT_GAMEPAD_Y: path = "ui/input/controller/pad_y.png";
+        break;
+        case XINPUT_GAMEPAD_LEFT_SHOULDER: path = "ui/input/controller/pad_lb.png";
+        break;
+        case XINPUT_GAMEPAD_RIGHT_SHOULDER: path = "ui/input/controller/pad_rb.png";
+        break;
+        case XINPUT_GAMEPAD_DPAD_UP: path = "ui/input/controller/pad_dpad_up.png";
+        break;
+        case XINPUT_GAMEPAD_DPAD_DOWN: path = "ui/input/controller/pad_dpad_down.png";
+        break;
+        case XINPUT_GAMEPAD_DPAD_LEFT: path = "ui/input/controller/pad_dpad_left.png";
+        break;
+        case XINPUT_GAMEPAD_DPAD_RIGHT: path = "ui/input/controller/pad_dpad_right.png";
+        break;
+        case XINPUT_GAMEPAD_LEFT_THUMB: path = "ui/input/controller/pad_l3.png";
+        break;
+        case XINPUT_GAMEPAD_RIGHT_THUMB: path = "ui/input/controller/pad_r3.png";
+        break;
         default: break;
         }
         return path ? InputGlyphSpec{path} : MakeKeyboardGlyph(0);
@@ -67,6 +79,7 @@ inline InputGlyphSpec ResolveActionGlyph(const std::string& action, bool gamepad
         case 3: return {"ui/input/mouse/mouse_x1.png"};
         default: break;
         }
+
         // 拡張マウスボタンの画像がない場合は、識別できない画像を表示しない。
         return MakeKeyboardGlyph(0);
     }
@@ -76,17 +89,20 @@ inline InputGlyphSpec ResolveActionGlyph(const std::string& action, bool gamepad
 inline InputGlyphSpec ResolveInputGlyph(const std::string& authoredPath, bool gamepadMode) {
     // 保存済みのキーボード画像を操作名へ変換し、現在の入力機器に対応する絵柄を選ぶ。
     const char* action = nullptr;
-    if (authoredPath == "ui/input/keyboard/key_space.png") action = "Jump";
+    if (authoredPath == "ui/input/keyboard/key_space.png")
+        action = "Jump";
     else if (authoredPath == "ui/input/keyboard/key_e.png") action = "Ability";
     else if (authoredPath == "ui/input/keyboard/key_q.png") action = "LockOn";
     else if (authoredPath == "ui/input/keyboard/key_r.png") action = "MorphRelease";
     else if (authoredPath == "ui/input/mouse/mouse_left.png") action = "PrimaryAttack";
     else if (authoredPath == "ui/input/mouse/mouse_right.png") action = "SecondaryAction";
     else if (authoredPath == "ui/input/combo/combo_wasd.png") {
-        if (gamepadMode) return {"ui/input/controller/pad_l_stick.png"};
+        if (gamepadMode)
+            return {"ui/input/controller/pad_l_stick.png"};
         return {"ui/input/combo/combo_wasd.png"};
     }
-    if (action) return ResolveActionGlyph(action, gamepadMode);
+    if (action)
+        return ResolveActionGlyph(action, gamepadMode);
     if (gamepadMode && authoredPath == "ui/input/mouse/mouse_move.png")
         return {"ui/input/controller/pad_r_stick.png"};
     return {authoredPath};

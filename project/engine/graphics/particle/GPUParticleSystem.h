@@ -28,18 +28,24 @@ public:
         engine::Vector4 memBaseColor;
         engine::Vector4 memMidColor;
         engine::Vector4 memEndColor;
+
         float memBaseSize;
         float memMidSize;
         float memEndSize;
+
         float memColorMidTime;
         float memSizeMidTime;
+
         uint32_t memColorEaseType;
         uint32_t memSizeEaseType;
+
         float memColorIntensity;
+
         engine::Vector3 memGravity;
         float memDrag;
         engine::Vector3 memWind;
         float memTurbulence;
+
         uint32_t memFieldType;
         float memFieldStrength;
         float memFieldRadius;
@@ -128,19 +134,24 @@ public:
         engine::Matrix4x4 viewProj;
         engine::Matrix4x4 billboardMatrix;
         engine::Matrix4x4 projection;
+
         float softParticleFade;
         int blendMode;
         engine::Vector2 screenSize;
+
         uint32_t spriteSheetColumns;
         uint32_t spriteSheetRows;
         uint32_t spriteSheetFrameCount;
         float spriteSheetFps;
         uint32_t spriteSheetLoop;
         uint32_t spriteSheetRandomStart;
+
         uint32_t alignToVelocity;
         float velocityStretch;
+
         uint32_t particleType;
         float trailLength;
+
         uint32_t receiveLighting;
         float lightingStrength;
         engine::Vector3 lightDirection;
@@ -150,6 +161,7 @@ public:
     };
 
     GPUParticleSystem() = default;
+
     ~GPUParticleSystem() = default;
 
     /// <summary>粒子バッファとCompute/描画パイプラインを初期化する。</summary>
@@ -215,20 +227,26 @@ public:
     static constexpr uint32_t kMaxParticles = 10000;
     static constexpr uint32_t kMinParticles = 256;
     static const uint32_t kMaxEmitRequests = 256;
+
 private:
     // 初期化時に一度だけ作るGPUリソースとパイプライン。
     void CreateBuffer();
+
     void CreateComputePipeline();
+
     void CreateGraphicsPipeline();
 
+    // コマンド発行とリソース確保に使用するDirectX基盤への非所有参照。
     DirectXCommon* dxCommon_ = nullptr;
 
+    // 全粒子の構造化バッファと、Compute書込・描画読込用のDescriptor番号。
     Microsoft::WRL::ComPtr<ID3D12Resource> particleBuffer_;
     uint32_t uavIndex_ = 0;
     uint32_t freeListIndexUav_ = 0;
     uint32_t freeListUav_ = 0;
     uint32_t srvIndex_ = 0;
 
+    // 空き粒子番号、現在生存している粒子番号、間接描画引数のGPUバッファ。
     Microsoft::WRL::ComPtr<ID3D12Resource> freeListIndexBuffer_;
     Microsoft::WRL::ComPtr<ID3D12Resource> freeListBuffer_;
     Microsoft::WRL::ComPtr<ID3D12Resource> aliveParticleIndexBuffer_;
@@ -237,62 +255,82 @@ private:
     uint32_t indirectDrawArgumentUav_ = 0;
     uint32_t aliveParticleIndexSrv_ = 0;
 
+    // 発生・更新条件をCompute Shaderへ渡す定数バッファとマップ済み領域。
     Microsoft::WRL::ComPtr<ID3D12Resource> configBuffer_;
     CSConfig* configData_ = nullptr;
 
+    // GPU描画に必要な視点情報のバッファとマップ済み領域。
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraBuffer_;
     CameraData* cameraData_ = nullptr;
 
+    // 頂点・ボーン入力が必要な描画経路へ渡す代替バッファ。
     Microsoft::WRL::ComPtr<ID3D12Resource> dummyVertexBuffer_;
     Microsoft::WRL::ComPtr<ID3D12Resource> dummyBoneBuffer_;
     uint32_t dummyBoneSrvIndex_ = 0;
 
+    // 初期化、描画引数のリセット、粒子更新、発生のComputeパイプライン。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> computeRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateInit_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateResetDrawArguments_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateUpdate_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateEmit_;
 
+    // 加算・アルファ・歪みの描画パイプラインと間接描画コマンド形式。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> graphicsRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAdd_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAlpha_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateDistortion_;
     Microsoft::WRL::ComPtr<ID3D12CommandSignature> indirectDrawCommandSignature_;
 
+    // CPUがこのフレームに受け付けた発生要求。描画時にGPUへ渡す。
     std::vector<EmitRequest> emitRequests_;
+
+    // 直近の設定と、GPUバッファの初期化済み状態。
     CSConfig lastConfig_ = {};
     bool isInitialized_ = false;
 
+    // シミュレーションの総時刻、1フレームの秒数、再生倍率。
     float totalTime_ = 0.0f;
     float frameDeltaTime_ = 0.0f;
     float timeScale_ = 1.0f;
 
-    // 軽量化用: 最後にEmitしてからどれくらい経ったか
+    // 最後の発生からの秒数と、新規発生を要求した状態。
+    // 寿命の残存期間を過ぎたら更新・描画を省略する。
     float lastEmitTimer_ = 0.0f;
     bool warmupRequested_ = false;
     float activeLifetimeWindow_ = 2.0f;
     uint32_t maxParticles_ = kMaxParticles;
 
+    // このフレームの発生数と、粒子の描画・アニメーション設定。
     uint32_t emitCountThisFrame_ = 0;
+
     float softParticleFade_ = 5.0f;
     uint32_t blendModeIndex_ = 0;
+
     uint32_t spriteSheetColumns_ = 1;
     uint32_t spriteSheetRows_ = 1;
     uint32_t spriteSheetFrameCount_ = 1;
     float spriteSheetFps_ = 0.0f;
     uint32_t spriteSheetLoop_ = 0;
     uint32_t spriteSheetRandomStart_ = 0;
+
     uint32_t alignToVelocity_ = 0;
     float velocityStretch_ = 0.0f;
+
     uint32_t particleType_ = 0;
     float trailLength_ = 0.15f;
+
     uint32_t receiveLighting_ = 0;
     float lightingStrength_ = 1.0f;
+
+    // ライティング有効時に粒子へ適用する光の向きと色。
     engine::Vector3 lightDirection_ = { -0.4f, -1.0f, 0.3f };
     engine::Vector3 lightColor_ = { 1.0f, 1.0f, 1.0f };
 
+    // 現在描画に使う粒子画像のTextureManagerハンドル。
     uint32_t currentTextureHandle_ = 0;
 
+    // メッシュ表面から発生させるときの頂点情報。元バッファは借用する。
     ID3D12Resource* emitterVertexBuffer_ = nullptr;
     uint32_t emitterVertexCount_ = 0;
     uint32_t emitterVertexStride_ = 0;

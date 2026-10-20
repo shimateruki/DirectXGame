@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "6f444ec318c0427bb8819eabe06ddd91",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/volcanic_shell_fragment_b/volcanic_shell_fragment_b.obj",
+  "version": 1
+}

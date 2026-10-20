@@ -10,6 +10,7 @@
 #include "json.hpp"
 #include <cmath>
 #include <algorithm>
+#include <cctype>
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "DebugConsole.h"
 #include "Easing.h"
@@ -57,6 +58,7 @@ bool GenerationParamsEqual(const GhostRecorder::GenerationParams& lhs, const Gho
 			return false;
 		}
 	}
+
 	return true;
 }
 
@@ -65,6 +67,7 @@ bool IsObjectInScene(SceneManager* sceneManager, engine::Object3d* object) {
 	if (!object) {
 		return false;
 	}
+
 	if (!sceneManager || !sceneManager->GetCurrentScene()) {
 		return true;
 	}
@@ -74,17 +77,30 @@ bool IsObjectInScene(SceneManager* sceneManager, engine::Object3d* object) {
 			return true;
 		}
 	}
+
 	return false;
 }
 
 }
 
 // 親回転へローカル回転を合成する。
+namespace {
+engine::Vector3 RecorderQuaternionToEuler(const engine::Quaternion& rotation) {
+    // Transformの行ベクトル・ZXY順へ戻す。逆行列の成分を読むと回転が反転し、
+    // 振り子の支点補正と棒の姿勢が逆向きになって軸が移動してしまう。
+    const auto m = engine::Math::MakeRotateQuaternionMatrix(rotation);
+    const float x = std::asin(std::clamp(-m.m[2][1], -1.0f, 1.0f));
+    if (std::abs(m.m[2][1]) < 0.9999f)
+        return {x, std::atan2(m.m[2][0], m.m[2][2]), std::atan2(m.m[0][1], m.m[1][1])};
+    return {x, std::atan2(-m.m[0][2], m.m[0][0]), 0.0f};
+}
+}
+
 engine::Vector3 AddEuler(const engine::Vector3& eulerBase, const engine::Vector3& eulerAdd) {
 	engine::Quaternion qBase = engine::Math::EulerToQuaternion(eulerBase);
 	engine::Quaternion qAdd = engine::Math::EulerToQuaternion(eulerAdd);
 	engine::Quaternion qResult = qAdd * qBase;
-	return engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(qResult));
+	return RecorderQuaternionToEuler(qResult);
 }
 
 // ワールド回転から基準回転を除き、ローカル回転を求める。
@@ -93,7 +109,7 @@ engine::Vector3 SubEuler(const engine::Vector3& eulerCurrent, const engine::Vect
 	engine::Quaternion qCurrent = engine::Math::EulerToQuaternion(eulerCurrent);
 	engine::Quaternion qBaseInv = { -qBase.x, -qBase.y, -qBase.z, qBase.w };
 	engine::Quaternion qOffset = qCurrent * qBaseInv;
-	return engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(qOffset));
+	return RecorderQuaternionToEuler(qOffset);
 }
 
 // 保存済みEasing IDを補間関数へ対応させ、未知のIDは線形補間に戻します。
@@ -101,27 +117,49 @@ float ApplyEasing(int type, float t) {
 	// 保存済みの数値IDをEasing関数へ対応付け、未知のIDは線形補間に戻す。
 	switch (type) {
 	case 0: return Easing::Linear(t);
+
 	case 1: return Easing::InSine(t);
+
 	case 2: return Easing::OutSine(t);
+
 	case 3: return Easing::InOutSine(t);
+
 	case 4: return Easing::InQuad(t);
+
 	case 5: return Easing::OutQuad(t);
+
 	case 6: return Easing::InOutQuad(t);
+
 	case 7: return Easing::InCubic(t);
+
 	case 8: return Easing::OutCubic(t);
+
 	case 9: return Easing::InOutCubic(t);
+
 	case 10: return Easing::InQuart(t);
+
 	case 11: return Easing::OutQuart(t);
+
 	case 12: return Easing::InOutQuart(t);
+
 	case 13: return Easing::InQuint(t);
+
 	case 14: return Easing::OutQuint(t);
+
 	case 15: return Easing::InOutQuint(t);
+
 	case 16: return Easing::InExpo(t);
+
 	case 17: return Easing::OutExpo(t);
+
 	case 18: return Easing::InOutExpo(t);
+
 	case 19: return Easing::InCirc(t);
+
 	case 20: return Easing::OutCirc(t);
+
 	case 21: return Easing::InOutCirc(t);
+
 	default: return Easing::Linear(t);
 	}
 }
@@ -145,6 +183,9 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 	isRelative_ = true;
 	wasEditorPaused_ = false;
 	currentFrameIndex_ = 0;
+	playbackTimeSeconds_ = 0.0f;
+	firstPlaybackFramePending_ = false;
+	isLocalSpace_ = false;
 
 	genParams_ = GenerationParams();
 	isShowPreview_ = true; // デフォルトで表示
@@ -156,6 +197,8 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 
 void GhostRecorder::SetTarget(engine::Object3d* target) {
 	// 編集対象を変えたら、以前のアンカーと選択ピンを参照し続けない。
+	if (target_ != target)
+		Stop(false);
 	target_ = target;
 	anchor_ = nullptr;
 	DeselectPin();
@@ -176,6 +219,7 @@ int GhostRecorder::GetCurrentEventID() const {
 	if (state_ == State::Playing && currentFrameIndex_ < frames_.size()) {
 		return frames_[currentFrameIndex_].eventID;
 	}
+
 	return 0;
 }
 
@@ -190,11 +234,14 @@ void GhostRecorder::PlayFromMemory(bool loop, bool isCinematic) {
 	if (frames_.empty()) {
 		return;
 	}
+
 	isLoop_ = loop;
 	isOverrideCamera_ = isCinematic;
+
 	if (target_) {
 		target_->SetIsVisible(!isCinematic);
 	}
+
 	StartPlayingInternal();
 }
 
@@ -215,9 +262,10 @@ void GhostRecorder::ClearTargetIfMissingFromScene() {
 	}
 }
 
-void GhostRecorder::Update() {
+void GhostRecorder::Update(float deltaTime) {
 	ClearTargetIfMissingFromScene();
-	if (!target_) return;
+	if (!target_)
+		return;
 
 	// シーン配置オブジェクトのPathは編集停止中に再生しない。
 	// 編集後のPlay開始時は、移動した配置を相対再生の基準に取り直す。
@@ -225,11 +273,22 @@ void GhostRecorder::Update() {
 		wasEditorPaused_ = true;
 		return;
 	}
+
 	if (wasEditorPaused_) {
 		wasEditorPaused_ = false;
+
 		if (state_ == State::Playing) {
 			currentFrameIndex_ = 0;
-			if (isRelative_) CaptureBasePose();
+			playbackTimeSeconds_ = 0.0f;
+			if (isLoop_ && target_->GetPathMoverComponent()) {
+				const float phase = std::clamp(target_->GetPathMoverComponent()->GetPhaseOffset(), 0.0f, 0.99f);
+				playbackTimeSeconds_ = phase * GetDurationSeconds();
+			}
+			firstPlaybackFramePending_ = true;
+            ridePlaybackStarted_ = false;
+            playerRiding_ = false;
+			if (isRelative_)
+				CaptureBasePose();
 		}
 	}
 
@@ -241,48 +300,91 @@ void GhostRecorder::Update() {
 		frame.scale = target_->GetScale();
 		frames_.push_back(frame);
 	}
+
 	// 再生中
 	else if (state_ == State::Playing) {
+        // 本番Objectの再生だけ乗車条件を適用する。録画編集とカメラ演出は従来どおり。
+        const auto* path = target_->GetPathMoverComponent();
+        const auto mode = target_->recorder_.get() == this && !isOverrideCamera_ && path
+            ? path->GetPlaybackMode() : PathMoverComponent::PlaybackMode::Always;
+        if (playerRiding_ && !ridePlaybackStarted_) {
+            // 条件付き再生は初回乗車時の配置を基準にする。ロード中の仮座標や
+            // 待機中のEditor移動を原点に残して、乗った瞬間に飛ばさない。
+            if (mode != PathMoverComponent::PlaybackMode::Always && isRelative_)
+                CaptureBasePose();
+            ridePlaybackStarted_ = true;
+        }
+        if ((mode == PathMoverComponent::PlaybackMode::WhileRiding && !playerRiding_) ||
+            (mode == PathMoverComponent::PlaybackMode::RideToEnd && !ridePlaybackStarted_))
+            return;
+
 
 		if (frames_.empty()) {
 			Stop(false);
 			return;
 		}
 
-		if (currentFrameIndex_ < frames_.size()) {
-			const auto& frame = frames_[currentFrameIndex_];
-			ApplyFrameTransform(frame);
-			if (frame.eventID != 0) {
-				target_->OnRecordEvent(frame.eventID);
-			}
-			if (isOverrideCamera_) {
-				// Object更新後に時間を進めず行列だけ再計算し、完全追従時の1フレーム遅れをなくします。
+		if (firstPlaybackFramePending_) {
+			// 最初の描画では開始位相そのものを適用し、1フレーム先へ飛ばさない。
+			firstPlaybackFramePending_ = false;
+			EvaluateAtTime(playbackTimeSeconds_);
+			if (playbackTimeSeconds_ == 0.0f && frames_.front().eventID != 0)
+				target_->OnRecordEvent(frames_.front().eventID);
+			if (isOverrideCamera_)
 				CameraManager::GetInstance()->Update(0.0f);
-			}
-			currentFrameIndex_++;
+			return;
 		}
-		else {
 
-			if (isLoop_) {
-				currentFrameIndex_ = 0;
-			}
-			else {
-				Stop();
-			}
+		const float duration = GetDurationSeconds();
+		if (duration <= 0.0f) {
+			ApplyFrameTransform(frames_.front());
+			Stop(mode == PathMoverComponent::PlaybackMode::Always);
+			return;
 		}
+		const bool looping = isLoop_ && mode != PathMoverComponent::PlaybackMode::RideToEnd;
+		if (!looping && playbackTimeSeconds_ >= duration) {
+			// 終点を一度描画してから停止する。
+			Stop(mode == PathMoverComponent::PlaybackMode::Always);
+			return;
+		}
+
+		// FPSが落ちても経過秒から姿勢を評価する。無効なdeltaTimeは進行させない。
+		const float step = std::isfinite(deltaTime) ? std::clamp(deltaTime, 0.0f, 1.0f) : 0.0f;
+		float nextTime = playbackTimeSeconds_ + step;
+		if (looping) {
+			// 終点の時刻で折り返し、指定した区間時間に余分な1フレームを足さない。
+			while (nextTime >= duration) {
+				EvaluateAtTime(duration, true, playbackTimeSeconds_);
+				nextTime -= duration;
+				playbackTimeSeconds_ = 0.0f;
+				if (frames_.front().eventID != 0)
+					target_->OnRecordEvent(frames_.front().eventID);
+			}
+			EvaluateAtTime(std::min(nextTime, duration), true, playbackTimeSeconds_);
+			playbackTimeSeconds_ = nextTime;
+		} else {
+			EvaluateAtTime(std::min(nextTime, duration), true, playbackTimeSeconds_);
+			playbackTimeSeconds_ = std::min(nextTime, duration);
+		}
+
+		if (isOverrideCamera_)
+			CameraManager::GetInstance()->Update(0.0f);
 	}
 }
 
 void GhostRecorder::Play(const std::string& fileName, bool loop, bool isRelative, bool isCinematic) {
 	Load(fileName);
-	if (frames_.empty()) return;
+	if (frames_.empty())
+		return;
 
 	isLoop_ = loop;
 	isRelative_ = isRelative; // 渡された引数（Objectのチェックボックス）を優先
 	wasEditorPaused_ = false;
 	isOverrideCamera_ = isCinematic;
 
-	if (target_) { target_->SetIsVisible(!isCinematic); }
+	if (target_) {
+		target_->SetIsVisible(!isCinematic);
+	}
 
 	// 相対再生フラグが有効な場合、開始時のトランスフォームを基準として記憶
 	if (isRelative_) {
@@ -301,13 +403,16 @@ void GhostRecorder::Stop(bool autoReset) {
 
 	state_ = State::Idle;
 	currentFrameIndex_ = 0;
+	playbackTimeSeconds_ = 0.0f;
+	firstPlaybackFramePending_ = false;
 
 	StopCinematicPlayback();
 }
 
 void GhostRecorder::StartRecording() {
 	// 既存フレームを残すと新録画につながるため、開始時に消す。
-	if (!target_) return;
+	if (!target_)
+		return;
 	frames_.clear();
 	state_ = State::Recording;
 }
@@ -319,9 +424,18 @@ void GhostRecorder::StopRecording() {
 
 void GhostRecorder::StartPlayingInternal() {
 	// 先頭フレームから再生し、演出指定時だけカメラを切り替える。
-	if (!target_ || frames_.empty()) return;
+	if (!target_ || frames_.empty())
+		return;
 	state_ = State::Playing;
 	currentFrameIndex_ = 0;
+	playbackTimeSeconds_ = 0.0f;
+	if (target_ && target_->GetPathMoverComponent() && isLoop_) {
+		const float phase = std::clamp(target_->GetPathMoverComponent()->GetPhaseOffset(), 0.0f, 0.99f);
+		playbackTimeSeconds_ = phase * GetDurationSeconds();
+	}
+	firstPlaybackFramePending_ = true;
+    ridePlaybackStarted_ = false;
+    playerRiding_ = false;
 
 	StartCinematicPlayback();
 }
@@ -335,14 +449,26 @@ void GhostRecorder::ApplyFrameTransform(const GhostFrame& frame) {
 		// 相対生成済みのフレームはそのまま使用する。絶対記録は先頭フレームを原点に変換する。
 		const engine::Vector3 origin = (!genParams_.generateRelative && !frames_.empty()) ? frames_.front().position : engine::Vector3{};
 		const engine::Vector3 originRotation = (!genParams_.generateRelative && !frames_.empty()) ? frames_.front().rotation : engine::Vector3{};
-		target_->SetTranslate(basePosition_ + frame.position - origin);
+		const engine::Vector3 offset = frame.position - origin;
+		const engine::Vector3 worldOffset = isLocalSpace_
+			? engine::Math::TransformNormal(offset, engine::Math::MakeRotateQuaternionMatrix(engine::Math::EulerToQuaternion(baseRotation_)))
+			: offset;
+		target_->SetTranslate(basePosition_ + worldOffset);
 		target_->SetRotation(AddEuler(baseRotation_, SubEuler(frame.rotation, originRotation)));
 	}
 	else {
 		target_->SetTranslate(frame.position);
 		target_->SetRotation(frame.rotation);
 	}
-	target_->SetScale(frame.scale);
+
+	if (isRelative_) {
+		const engine::Vector3 firstScale = frames_.empty() ? engine::Vector3{ 1.0f, 1.0f, 1.0f } : frames_.front().scale;
+		const auto ratio = [](float value, float initial) { return std::abs(initial) > 0.00001f ? value / initial : 1.0f; };
+		target_->SetScale({ baseScale_.x * ratio(frame.scale.x, firstScale.x),
+			baseScale_.y * ratio(frame.scale.y, firstScale.y), baseScale_.z * ratio(frame.scale.z, firstScale.z) });
+	} else {
+		target_->SetScale(frame.scale);
+	}
 	target_->UpdateLocalMatrix();
 	target_->UpdateWorldMatrix();
 }
@@ -352,6 +478,7 @@ void GhostRecorder::StartCinematicPlayback() {
 	if (!isOverrideCamera_) {
 		return;
 	}
+
 	if (CameraEditor* cameraEditor = CameraEditor::GetInstance()) {
 		cameraEditor->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(), target_);
 	}
@@ -362,6 +489,7 @@ void GhostRecorder::StopCinematicPlayback() {
 	if (!isOverrideCamera_) {
 		return;
 	}
+
 	if (CameraEditor* cameraEditor = CameraEditor::GetInstance()) {
 		cameraEditor->StopSceneObjectCamera(CameraManager::GetInstance()->GetMainCamera());
 		DebugConsole::GetInstance()->AddLog("Cinematic camera returned to the previous view.");
@@ -385,8 +513,10 @@ engine::Vector3 GhostRecorder::CatmullRom(const engine::Vector3& p0, const engin
 
 engine::Vector3 GhostRecorder::GetSplinePoint(const std::vector<engine::Vector3>& points, float t) {
 	// 端点では参照番号を端に固定し、配列外の制御点を読まない。
-	if (points.empty()) return { 0,0,0 };
-	if (points.size() == 1) return points[0];
+	if (points.empty())
+		return { 0,0,0 };
+	if (points.size() == 1)
+		return points[0];
 
 	int numPoints = (int)points.size();
 	float p = t * (numPoints - 1);
@@ -403,9 +533,12 @@ engine::Vector3 GhostRecorder::GetSplinePoint(const std::vector<engine::Vector3>
 	int i2 = index + 1;
 	int i3 = index + 2;
 
-	if (i0 < 0) i0 = 0;
-	if (i2 >= numPoints) i2 = numPoints - 1;
-	if (i3 >= numPoints) i3 = numPoints - 1;
+	if (i0 < 0)
+		i0 = 0;
+	if (i2 >= numPoints)
+		i2 = numPoints - 1;
+	if (i3 >= numPoints)
+		i3 = numPoints - 1;
 
 	return CatmullRom(points[i0], points[i1], points[i2], points[i3], localT);
 }
@@ -416,12 +549,15 @@ bool GhostRecorder::HasPreviewData() const {
 	if (!target_) {
 		return false;
 	}
+
 	if (!IsTargetInCurrentScene()) {
 		return false;
 	}
+
 	if (frames_.size() >= 2) {
 		return true;
 	}
+
 	if (!genParams_.waypoints.empty()) {
 		return true;
 	}
@@ -442,6 +578,7 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 	// 録画済みならフレームを補間し、未録画なら編集用ウェイポイントから見本を作る。
 	std::vector<GhostFrame> samples;
 	ClearTargetIfMissingFromScene();
+
 	if (!target_) {
 		return samples;
 	}
@@ -453,14 +590,17 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 
 		engine::Vector3 basePos = target_->GetTranslate();
 		engine::Vector3 baseRot = target_->GetRotation();
+
 		if (isRelative_ || genParams_.generateRelative) {
 			FindAnchor();
+
 			if (anchor_) {
 				basePos = {
 					anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
 					anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 					anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 				};
+
 				baseRot = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
 			}
 		}
@@ -470,6 +610,7 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 			float p = t * static_cast<float>(frames_.size() - 1);
 			int index = static_cast<int>(p);
 			float localT = p - static_cast<float>(index);
+
 			if (index >= static_cast<int>(frames_.size()) - 1) {
 				index = static_cast<int>(frames_.size()) - 2;
 				localT = 1.0f;
@@ -485,15 +626,22 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 			if (isRelative_) {
 				const engine::Vector3 origin = genParams_.generateRelative ? engine::Vector3{} : frames_.front().position;
 				const engine::Vector3 originRotation = genParams_.generateRelative ? engine::Vector3{} : frames_.front().rotation;
-				sample.position = {
-					basePos.x + sample.position.x - origin.x,
-					basePos.y + sample.position.y - origin.y,
-					basePos.z + sample.position.z - origin.z
-				};
+				engine::Vector3 offset = sample.position - origin;
+				if (isLocalSpace_)
+					offset = engine::Math::TransformNormal(offset, engine::Math::MakeRotateQuaternionMatrix(engine::Math::EulerToQuaternion(baseRot)));
+				sample.position = basePos + offset;
+
 				sample.rotation = AddEuler(baseRot, SubEuler(sample.rotation, originRotation));
+				const engine::Vector3 firstScale = frames_.front().scale;
+				const engine::Vector3 baseScale = target_->GetScale();
+				const auto ratio = [](float value, float initial) { return std::abs(initial) > 0.00001f ? value / initial : 1.0f; };
+				sample.scale = { baseScale.x * ratio(sample.scale.x, firstScale.x),
+					baseScale.y * ratio(sample.scale.y, firstScale.y), baseScale.z * ratio(sample.scale.z, firstScale.z) };
 			}
+
 			samples.push_back(sample);
 		}
+
 		return samples;
 	}
 
@@ -506,29 +654,35 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 
 	engine::Vector3 drawOffset = { 0.0f, 0.0f, 0.0f };
 	engine::Vector3 drawRotOffset = { 0.0f, 0.0f, 0.0f };
+
 	if (genParams_.generateRelative) {
 		FindAnchor();
 		engine::Vector3 currentBase = target_->GetTranslate();
 		engine::Vector3 currentRot = target_->GetRotation();
+
 		if (anchor_) {
 			currentBase = {
 				anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
 				anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 				anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 			};
+
 			currentRot = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
 		}
+
 		drawOffset = {
 			currentBase.x - genParams_.startPos.x,
 			currentBase.y - genParams_.startPos.y,
 			currentBase.z - genParams_.startPos.z
 		};
+
 		drawRotOffset = SubEuler(currentRot, genParams_.startRot);
 	}
 
 	auto addPos = [&](const engine::Vector3& p) {
 		positions.push_back({ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z });
 		};
+
 	auto addRot = [&](const engine::Vector3& r) {
 		rotations.push_back(AddEuler(r, drawRotOffset));
 		};
@@ -536,11 +690,13 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 	addPos(genParams_.startPos);
 	addRot(genParams_.startRot);
 	scales.push_back(genParams_.startScale);
+
 	for (const auto& wp : genParams_.waypoints) {
 		addPos(wp.pos);
 		addRot(wp.rot);
 		scales.push_back(wp.scale);
 	}
+
 	addPos(genParams_.endPos);
 	addRot(genParams_.endRot);
 	scales.push_back(genParams_.endScale);
@@ -550,11 +706,13 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 	}
 
 	samples.reserve(count);
+
 	for (int i = 0; i < count; ++i) {
 		float t = (count <= 1) ? 0.0f : static_cast<float>(i) / static_cast<float>(count - 1);
 		float p = t * static_cast<float>(positions.size() - 1);
 		int index = static_cast<int>(p);
 		float localT = p - static_cast<float>(index);
+
 		if (index >= static_cast<int>(positions.size()) - 1) {
 			index = static_cast<int>(positions.size()) - 2;
 			localT = 1.0f;
@@ -574,14 +732,17 @@ void GhostRecorder::DrawObjectGhostPreview(ID3D12Resource* pointLightResource, I
 	// 対象 Object を一時的に各サンプル位置へ描き、最後に姿勢と描画状態を復元する。
 #ifdef USE_IMGUI
 	ClearTargetIfMissingFromScene();
+
 	if (!isShowPreview_ || !isShowObjectPreview_ || !target_ || state_ == State::Recording) {
 		return;
 	}
+
 	if (!target_->GetModel() || !HasPreviewData()) {
 		return;
 	}
 
 	std::vector<GhostFrame> samples = BuildPreviewSamples(objectPreviewSampleCount_);
+
 	if (samples.empty()) {
 		return;
 	}
@@ -634,6 +795,7 @@ engine::Vector3 GhostRecorder::TransformCoord(const engine::Vector3& vec, const 
 		result.y /= w;
 		result.z /= w;
 	}
+
 	return result;
 }
 
@@ -643,7 +805,8 @@ engine::Vector3 GhostRecorder::TransformCoord(const engine::Vector3& vec, const 
 void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const engine::Vector2& offset, const engine::Vector2& size, bool isReadOnly) {
 #ifdef USE_IMGUI
 	ClearTargetIfMissingFromScene();
-	if (!isShowPreview_ || !target_) return;
+	if (!isShowPreview_ || !target_)
+		return;
 
 	ImDrawList* drawList = ImGui::GetForegroundDrawList();
 	float time = (float)ImGui::GetTime();
@@ -651,14 +814,16 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	// --- 1. 座標変換用のヘルパー関数 ---
 	auto WorldToScreen = [&](const engine::Vector3& worldPos) -> ImVec2 {
 		engine::Vector3 clip = TransformCoord(worldPos, viewProjection);
-		if (clip.z < 0.0f || clip.z > 1.0f) return ImVec2(-10000.0f, -10000.0f);
+		if (clip.z < 0.0f || clip.z > 1.0f)
+			return ImVec2(-10000.0f, -10000.0f);
 		float screenX = offset.x + (clip.x + 1.0f) * 0.5f * size.x;
 		float screenY = offset.y + (1.0f - clip.y) * 0.5f * size.y;
 		return ImVec2(screenX, screenY);
 		};
 
 	auto LocalToWorld = [&](const engine::Vector3& localPos) -> engine::Vector3 {
-		if (!target_ || !target_->GetParent()) return localPos;
+		if (!target_ || !target_->GetParent())
+			return localPos;
 		const engine::Matrix4x4& pMat = target_->GetParent()->GetWorldMatrix();
 		engine::Vector3 res;
 		res.x = localPos.x * pMat.m[0][0] + localPos.y * pMat.m[1][0] + localPos.z * pMat.m[2][0] + pMat.m[3][0];
@@ -671,16 +836,25 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 		// 通常表示は編集用の始点・終点ではなく、再生に使う全フレームを描く。
 		// 往復パスでは始点と終点が重なるため、編集用の２点だけでは軌道を表せない。
 		std::vector<engine::Vector3> pathPositions;
+
 		if (frames_.size() >= 2) {
 			pathPositions.reserve(frames_.size());
 			engine::Vector3 basePosition = target_->GetTranslate();
+
 			if (isRelative_ && genParams_.generateRelative) {
 				FindAnchor();
-				if (anchor_) basePosition = anchor_->GetTranslate() + genParams_.anchorOffsetPos;
+				if (anchor_)
+					basePosition = anchor_->GetTranslate() + genParams_.anchorOffsetPos;
 			}
+
 			const engine::Vector3 origin = (isRelative_ && !genParams_.generateRelative) ? frames_.front().position : engine::Vector3{};
+
+			const auto rotationMatrix = engine::Math::MakeRotateQuaternionMatrix(engine::Math::EulerToQuaternion(target_->GetRotation()));
 			for (const GhostFrame& frame : frames_) {
-				const engine::Vector3 localPosition = isRelative_ ? basePosition + frame.position - origin : frame.position;
+				engine::Vector3 offset = frame.position - origin;
+				if (isRelative_ && isLocalSpace_)
+					offset = engine::Math::TransformNormal(offset, rotationMatrix);
+				const engine::Vector3 localPosition = isRelative_ ? basePosition + offset : frame.position;
 				pathPositions.push_back(LocalToWorld(localPosition));
 			}
 		}
@@ -689,44 +863,55 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 				pathPositions.push_back(LocalToWorld(sample.position));
 			}
 		}
-		if (pathPositions.size() < 2) return;
+
+		if (pathPositions.size() < 2)
+			return;
 
 		// Foreground描画でもGame Viewの外へはみ出さないように切り抜く。
 		drawList->PushClipRect(ImVec2(offset.x, offset.y), ImVec2(offset.x + size.x, offset.y + size.y), true);
 		const ImU32 outlineColor = IM_COL32(17, 18, 32, 230);
 		const ImU32 routeColor = IM_COL32(245, 105, 235, 235);
 		ImVec2 previous = WorldToScreen(pathPositions.front());
+
 		for (size_t index = 1; index < pathPositions.size(); ++index) {
 			const ImVec2 current = WorldToScreen(pathPositions[index]);
+
 			if (previous.x > -5000.0f && current.x > -5000.0f) {
 				drawList->AddLine(previous, current, outlineColor, 5.0f);
 				drawList->AddLine(previous, current, routeColor, 2.5f);
 			}
+
 			previous = current;
 		}
 
 		// ループ経路は終点が始点と重なるので、最も遠い点を折り返し目印にする。
 		size_t turnIndex = 0;
 		float farthestDistanceSquared = -1.0f;
+
 		for (size_t index = 0; index < pathPositions.size(); ++index) {
 			const engine::Vector3 delta = pathPositions[index] - pathPositions.front();
 			const float distanceSquared = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+
 			if (distanceSquared > farthestDistanceSquared) {
 				farthestDistanceSquared = distanceSquared;
 				turnIndex = index;
 			}
 		}
+
 		const ImVec2 start = WorldToScreen(pathPositions.front());
 		const ImVec2 turn = WorldToScreen(pathPositions[turnIndex]);
+
 		if (start.x > -5000.0f) {
 			drawList->AddCircleFilled(start, 6.0f, outlineColor);
 			drawList->AddCircleFilled(start, 4.0f, IM_COL32(108, 245, 145, 255));
 			drawList->AddText(ImVec2(start.x + 9.0f, start.y + 7.0f), IM_COL32(255, 255, 255, 240), target_->GetName().c_str());
 		}
+
 		if (turnIndex != 0 && turn.x > -5000.0f) {
 			drawList->AddCircleFilled(turn, 6.0f, outlineColor);
 			drawList->AddCircleFilled(turn, 4.0f, IM_COL32(255, 189, 78, 255));
 		}
+
 		drawList->PopClipRect();
 		return;
 	}
@@ -747,8 +932,10 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	}
 	else if (genParams_.generateRelative && target_) {
 		FindAnchor();
+
 		if (state_ == State::Playing || isScrubbing_ || isReadOnly) {
 			drawOffset = { basePosition_.x - genParams_.startPos.x, basePosition_.y - genParams_.startPos.y, basePosition_.z - genParams_.startPos.z };
+
 			// プレビュー時の回転オフセットをクォータニオンで算出
 			drawRotOffset = SubEuler(baseRotation_, genParams_.startRot);
 		}
@@ -762,6 +949,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 					anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 					anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 				};
+
 				// アンカー時の回転オフセットをクォータニオン合成
 				currentRot = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
 			}
@@ -775,6 +963,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 			}
 			else {
 				drawOffset = { currentBase.x - genParams_.startPos.x, currentBase.y - genParams_.startPos.y, currentBase.z - genParams_.startPos.z };
+
 				// クォータニオンによる差分計算
 				drawRotOffset = SubEuler(currentRot, genParams_.startRot);
 				s_cachedOffset = drawOffset;
@@ -784,6 +973,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	}
 
 	auto applyOffset = [&](const engine::Vector3& p) { return engine::Vector3{ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z }; };
+
 	// 回転の適用もクォータニオン合成で実行
 	auto applyRotOffset = [&](const engine::Vector3& r) { return AddEuler(r, drawRotOffset); };
 
@@ -792,6 +982,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
 	if (!isReadOnly && selectedPinType_ != SelectedPinType::None) {
 		Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+
 		if (cam) {
 			ImGui::PushID("GhostRecorderGizmo");
 			ImGuizmo::SetDrawlist();
@@ -822,6 +1013,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
 			if (targetPos && targetRot && targetScale) {
 				engine::Vector3 worldPos = { targetPos->x + drawOffset.x, targetPos->y + drawOffset.y, targetPos->z + drawOffset.z };
+
 				// ワールド回転を算出
 				engine::Vector3 worldRot = AddEuler(*targetRot, drawRotOffset);
 				engine::Vector3 worldScale = *targetScale;
@@ -832,10 +1024,14 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 				engine::Matrix4x4 worldMat = engine::Math::Multiply(matScale, engine::Math::Multiply(matRot, matTrans));
 
 				static ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
+
 				if (!ImGui::GetIO().WantTextInput) {
-					if (ImGui::IsKeyPressed(ImGuiKey_T)) op = ImGuizmo::TRANSLATE;
-					if (ImGui::IsKeyPressed(ImGuiKey_R)) op = ImGuizmo::ROTATE;
-					if (ImGui::IsKeyPressed(ImGuiKey_S)) op = ImGuizmo::SCALE;
+					if (ImGui::IsKeyPressed(ImGuiKey_T))
+						op = ImGuizmo::TRANSLATE;
+					if (ImGui::IsKeyPressed(ImGuiKey_R))
+						op = ImGuizmo::ROTATE;
+					if (ImGui::IsKeyPressed(ImGuiKey_S))
+						op = ImGuizmo::SCALE;
 				}
 
 				ImGuizmo::MODE mode = (op == ImGuizmo::TRANSLATE) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
@@ -846,7 +1042,10 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 				}
 
 				if (ImGuizmo::IsUsing()) {
-					if (!isDraggingGizmo_) { SaveHistory(); isDraggingGizmo_ = true; } // Undo対応
+					if (!isDraggingGizmo_) {
+						SaveHistory();
+						isDraggingGizmo_ = true;
+					} // Undo対応
 					engine::Vector3 newTrans, newRotDeg, newScale;
 					ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &newTrans.x, &newRotDeg.x, &newScale.x);
 
@@ -869,6 +1068,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 					CommitHistory("Ghost Recorder Gizmo");
 				}
 			}
+
 			ImGui::PopID();
 		}
 	}
@@ -876,10 +1076,17 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	// --- 3. パスを構成する全頂点のリストを作成 ---
 	std::vector<engine::Vector3> allPos;
 	std::vector<engine::Vector3> allRot;
-	allPos.push_back(applyOffset(genParams_.startPos)); allRot.push_back(applyRotOffset(genParams_.startRot));
-	for (const auto& wp : genParams_.waypoints) { allPos.push_back(applyOffset(wp.pos)); allRot.push_back(applyRotOffset(wp.rot)); }
-	allPos.push_back(applyOffset(genParams_.endPos)); allRot.push_back(applyRotOffset(genParams_.endRot));
-	if (allPos.size() < 2) return;
+	allPos.push_back(applyOffset(genParams_.startPos));
+	allRot.push_back(applyRotOffset(genParams_.startRot));
+
+	for (const auto& wp : genParams_.waypoints) {
+		allPos.push_back(applyOffset(wp.pos));
+		allRot.push_back(applyRotOffset(wp.rot));
+	}
+	allPos.push_back(applyOffset(genParams_.endPos));
+	allRot.push_back(applyRotOffset(genParams_.endRot));
+	if (allPos.size() < 2)
+		return;
 
 	ImVec2 mousePos = ImGui::GetMousePos();
 	bool isHoveredGameView = (mousePos.x >= offset.x && mousePos.x <= offset.x + size.x && mousePos.y >= offset.y && mousePos.y <= offset.y + size.y);
@@ -887,7 +1094,8 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
 	auto GetDistanceToSegment = [](ImVec2 p, ImVec2 a, ImVec2 b) {
 		float l2 = (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y);
-		if (l2 == 0.0f) return sqrtf((p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y));
+		if (l2 == 0.0f)
+			return sqrtf((p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y));
 		float t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
 		t = std::max(0.0f, std::min(1.0f, t));
 		ImVec2 proj = { a.x + t * (b.x - a.x), a.y + t * (b.y - a.y) };
@@ -905,13 +1113,24 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
 	for (int i = 1; i <= samples; ++i) {
 		float t = (float)i / (float)samples;
-		engine::Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return engine::Math::Lerp(allPos[idx], allPos[idx + 1], lt); }();
+		engine::Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() {
+			float p = t * (allPos.size() - 1);
+			int idx = (int)p;
+			float lt = p - idx;
+			if (idx >= (int)allPos.size() - 1) {
+				idx = (int)allPos.size() - 2;
+				lt = 1.0f;
+			}
+			return engine::Math::Lerp(allPos[idx], allPos[idx + 1], lt);
+		}();
 		ImVec2 screenPos = WorldToScreen(LocalToWorld(currentPos));
+
 		if (screenPos.x > -5000.0f && prevScreenPos.x > -5000.0f) {
 			drawList->AddLine(prevScreenPos, screenPos, IM_COL32(255, 255, 255, 100), 1.5f);
 
 			if (isMouseClicked && !isGizmoHovered && ImGui::GetIO().KeyCtrl) {
 				float dist = GetDistanceToSegment(mousePos, prevScreenPos, screenPos);
+
 				if (dist < minLineDist) {
 					minLineDist = dist;
 					float midT = (t + (float)(i - 1) / samples) * 0.5f;
@@ -920,33 +1139,51 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 				}
 			}
 		}
+
 		prevScreenPos = screenPos;
 	}
 
 	// --- 5. 進行方向を示す矢印の描画 ---
 	const int arrowSteps = 10;
+
 	for (int i = 0; i <= arrowSteps; ++i) {
 		float t = (float)i / (float)arrowSteps;
 		float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
 		engine::Vector3 pos = genParams_.useSpline ? GetSplinePoint(allPos, t) : engine::Math::Lerp(allPos[idx], allPos[idx + 1], lt);
+
 		// プレビュー矢印の向きをSlerpで補間
 		engine::Vector3 rot = AnimationInterpolation::SlerpEuler(allRot[idx], allRot[idx + 1], lt);
 
 		ImVec2 baseScr = WorldToScreen(LocalToWorld(pos));
-		if (baseScr.x < -5000.0f) continue;
+		if (baseScr.x < -5000.0f)
+			continue;
 		float cosX = cosf(rot.x);
 		engine::Vector3 forward = { cosX * sinf(rot.y), -sinf(rot.x), cosX * cosf(rot.y) };
 		engine::Vector3 lookTarget = { pos.x + forward.x * 3.0f, pos.y + forward.y * 3.0f, pos.z + forward.z * 3.0f };
 		ImVec2 lookScr = WorldToScreen(LocalToWorld(lookTarget));
-		if (lookScr.x > -5000.0f) { drawList->AddLine(baseScr, lookScr, IM_COL32(0, 255, 255, 200), 2.0f); drawList->AddCircleFilled(lookScr, 2.0f, IM_COL32(0, 255, 255, 255)); }
+
+		if (lookScr.x > -5000.0f) {
+			drawList->AddLine(baseScr, lookScr, IM_COL32(0, 255, 255, 200), 2.0f);
+			drawList->AddCircleFilled(lookScr, 2.0f, IM_COL32(0, 255, 255, 255));
+		}
 	}
 
 	// --- 6. アニメーションして流れる光点の描画 ---
 	for (int i = 0; i < 5; ++i) {
 		float t = fmodf(time * 0.4f + (float)i / 5.0f, 1.0f);
-		engine::Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return engine::Math::Lerp(allPos[idx], allPos[idx + 1], lt); }();
+		engine::Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() {
+			float p = t * (allPos.size() - 1);
+			int idx = (int)p;
+			float lt = p - idx;
+			if (idx >= (int)allPos.size() - 1) {
+				idx = (int)allPos.size() - 2;
+				lt = 1.0f;
+			}
+			return engine::Math::Lerp(allPos[idx], allPos[idx + 1], lt);
+		}();
 		ImVec2 pScr = WorldToScreen(LocalToWorld(pPos));
-		if (pScr.x > -5000.0f) drawList->AddCircleFilled(pScr, 3.0f, IM_COL32(255, 255, 0, 200));
+		if (pScr.x > -5000.0f)
+			drawList->AddCircleFilled(pScr, 3.0f, IM_COL32(255, 255, 0, 200));
 	}
 
 	// --- 7. ピンのクリック判定と描画 ---
@@ -955,10 +1192,17 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	int hitIndex = -1;
 
 	auto CheckClick = [&](ImVec2 pos, SelectedPinType type, int index) {
-		if (isReadOnly || !isMouseClicked) return;
-		float dx = mousePos.x - pos.x; float dy = mousePos.y - pos.y;
+		if (isReadOnly || !isMouseClicked)
+			return;
+		float dx = mousePos.x - pos.x;
+		float dy = mousePos.y - pos.y;
 		float dist = sqrtf(dx * dx + dy * dy);
-		if (dist < minHitDist) { minHitDist = dist; hitType = type; hitIndex = index; }
+
+		if (dist < minHitDist) {
+			minHitDist = dist;
+			hitType = type;
+			hitIndex = index;
+		}
 		};
 
 	auto DrawWireBox = [&](const engine::Vector3& pos, const engine::Vector3& rot, const engine::Vector3& scale, ImU32 color) {
@@ -966,12 +1210,14 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 			{-0.5f, -0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}, {-0.5f, 0.5f, -0.5f}, {0.5f, 0.5f, -0.5f},
 			{-0.5f, -0.5f,  0.5f}, {0.5f, -0.5f,  0.5f}, {-0.5f, 0.5f,  0.5f}, {0.5f, 0.5f,  0.5f}
 		};
+
 		engine::Matrix4x4 matTrans = engine::Math::MakeTranslateMatrix(pos);
 		engine::Matrix4x4 matRot = engine::Math::MakeRotateMatrix(rot);
 		engine::Matrix4x4 matScale = engine::Math::MakeScaleMatrix(scale);
 		engine::Matrix4x4 matPoint = engine::Math::Multiply(matScale, engine::Math::Multiply(matRot, matTrans));
 
 		ImVec2 screenVerts[8];
+
 		for (int i = 0; i < 8; ++i) {
 			engine::Vector3 p = engine::Math::Transform(localVerts[i], matPoint);
 			screenVerts[i] = WorldToScreen(LocalToWorld(p));
@@ -982,9 +1228,11 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 			{4,5}, {5,7}, {7,6}, {6,4},
 			{0,4}, {1,5}, {2,6}, {3,7}
 		};
+
 		for (int i = 0; i < 12; ++i) {
 			ImVec2 p1 = screenVerts[edges[i][0]];
 			ImVec2 p2 = screenVerts[edges[i][1]];
+
 			if (p1.x > -5000.0f && p2.x > -5000.0f) {
 				drawList->AddLine(p1, p2, color, 1.5f);
 			}
@@ -992,26 +1240,32 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 		};
 
 	ImVec2 startScr = WorldToScreen(LocalToWorld(allPos[0]));
+
 	if (startScr.x > -5000.0f) {
 		DrawWireBox(allPos[0], allRot[0], genParams_.startScale, IM_COL32(0, 255, 0, 100));
-		if (selectedPinType_ == SelectedPinType::Start) drawList->AddCircle(startScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
+		if (selectedPinType_ == SelectedPinType::Start)
+			drawList->AddCircle(startScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
 		drawList->AddCircleFilled(startScr, 6.0f, IM_COL32(0, 255, 0, 255));
 		CheckClick(startScr, SelectedPinType::Start, -1);
 	}
 
 	ImVec2 endScr = WorldToScreen(LocalToWorld(allPos.back()));
+
 	if (endScr.x > -5000.0f) {
 		DrawWireBox(allPos.back(), allRot.back(), genParams_.endScale, IM_COL32(100, 100, 255, 100));
-		if (selectedPinType_ == SelectedPinType::End) drawList->AddCircle(endScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
+		if (selectedPinType_ == SelectedPinType::End)
+			drawList->AddCircle(endScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
 		drawList->AddCircleFilled(endScr, 6.0f, IM_COL32(100, 100, 255, 255));
 		CheckClick(endScr, SelectedPinType::End, -1);
 	}
 
 	for (int i = 0; i < (int)genParams_.waypoints.size(); ++i) {
 		ImVec2 wpScr = WorldToScreen(LocalToWorld(allPos[i + 1]));
+
 		if (wpScr.x > -5000.0f) {
 			DrawWireBox(allPos[i + 1], allRot[i + 1], genParams_.waypoints[i].scale, IM_COL32(255, 165, 0, 100));
-			if (selectedPinType_ == SelectedPinType::Waypoint && selectedWaypointIndex_ == i) drawList->AddCircle(wpScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
+			if (selectedPinType_ == SelectedPinType::Waypoint && selectedWaypointIndex_ == i)
+				drawList->AddCircle(wpScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
 			drawList->AddCircleFilled(wpScr, 6.0f, IM_COL32(255, 165, 0, 255));
 			CheckClick(wpScr, SelectedPinType::Waypoint, i);
 		}
@@ -1036,12 +1290,14 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 			engine::Vector3 rayDir = engine::Math::Normalize({ rayEnd.x - rayOrigin.x, rayEnd.y - rayOrigin.y, rayEnd.z - rayOrigin.z });
 
 			engine::Vector3 currentBase = target_->GetTranslate();
+
 			if (anchor_) {
 				currentBase = { anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x, anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y, anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z };
 			}
 
 			// 基準点（最後に打ったWaypoint、またはStart位置）とのカメラ距離を維持して配置
 			engine::Vector3 refPos = currentBase;
+
 			if (!genParams_.waypoints.empty()) {
 				refPos = { genParams_.waypoints.back().pos.x + drawOffset.x, genParams_.waypoints.back().pos.y + drawOffset.y, genParams_.waypoints.back().pos.z + drawOffset.z };
 			}
@@ -1071,7 +1327,16 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 			if (hitSegmentIndex != -1) {
 				// 線の上をクリックした場合は、軌道上の3D座標を直接使う
 				engine::Vector3 onPathPos = genParams_.useSpline ? GetSplinePoint(allPos, bestHitT) :
-					[&]() { float p = bestHitT * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return engine::Math::Lerp(allPos[idx], allPos[idx + 1], lt); }();
+					[&]() {
+						float p = bestHitT * (allPos.size() - 1);
+						int idx = (int)p;
+						float lt = p - idx;
+						if (idx >= (int)allPos.size() - 1) {
+							idx = (int)allPos.size() - 2;
+							lt = 1.0f;
+						}
+						return engine::Math::Lerp(allPos[idx], allPos[idx + 1], lt);
+					}();
 
 				wp.pos = { onPathPos.x - drawOffset.x, onPathPos.y - drawOffset.y, onPathPos.z - drawOffset.z };
 				wp.rot = (hitSegmentIndex == 0) ? genParams_.startRot : genParams_.waypoints[hitSegmentIndex - 1].rot;
@@ -1090,6 +1355,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 				selectedWaypointIndex_ = static_cast<int>(genParams_.waypoints.size()) - 1;
 				DebugConsole::GetInstance()->AddLog("Waypoint Added at Camera Depth!");
 			}
+
 			CommitHistory("Ghost Recorder Add Waypoint");
 		}
 
@@ -1107,12 +1373,15 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
 void GhostRecorder::DrawImGui() {
 #ifdef USE_IMGUI
-	Update();
+	Update(ImGui::GetIO().DeltaTime);
 	historyRegisteredThisFrame_ = false;
 	const GenerationParams beforeUiState = genParams_;
+
 	if (!ImGui::GetIO().WantTextInput) {
-		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z)) PerformUndo();
-		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y)) PerformRedo();
+		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z))
+			PerformUndo();
+		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y))
+			PerformRedo();
 
 		if (ImGui::IsKeyPressed(ImGuiKey_Delete)) {
 			if (selectedPinType_ == SelectedPinType::Waypoint && selectedWaypointIndex_ >= 0 && selectedWaypointIndex_ < genParams_.waypoints.size()) {
@@ -1125,35 +1394,73 @@ void GhostRecorder::DrawImGui() {
 			}
 		}
 	}
+
 	static char fName[64] = "anim_path";
+	static engine::Object3d* fileTarget = nullptr;
+	if (fileTarget != target_) {
+		fileTarget = target_;
+		if (target_) {
+			const std::string assignedPath = target_->GetRecordPathName();
+			if (!assignedPath.empty() && assignedPath.size() < sizeof(fName) &&
+				std::filesystem::exists("Resources/json/animation/" + assignedPath + ".json")) {
+				strncpy_s(fName, sizeof(fName), assignedPath.c_str(), _TRUNCATE);
+				Load(fName);
+			} else {
+				// 新しい対象では、前のObjectの中継点やサンプルを引き継がない。
+				std::string newName = target_->GetName() + "_path";
+				for (char& character : newName) {
+					if (!std::isalnum(static_cast<unsigned char>(character)) && character != '_' && character != '-')
+						character = '_';
+				}
+				strncpy_s(fName, sizeof(fName), newName.c_str(), _TRUNCATE);
+				frames_.clear();
+				genParams_ = GenerationParams{};
+				genParams_.startPos = genParams_.endPos = target_->GetTranslate();
+				genParams_.startRot = genParams_.endRot = target_->GetRotation();
+				genParams_.startScale = genParams_.endScale = target_->GetScale();
+				isLocalSpace_ = false;
+			}
+			isLoop_ = target_->IsRecordLoop();
+			isRelative_ = target_->IsRecordRelative();
+		}
+	}
 
 	// -------------------------------------------------------------
 	// 1. ファイル管理
 	// -------------------------------------------------------------
 	if (ImGui::CollapsingHeader(ICON_FA_FOLDER_OPEN " ファイル管理 (File IO)", ImGuiTreeNodeFlags_DefaultOpen)) {
 		std::string dirPath = "Resources/json/animation/";
+
 		if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
 			if (ImGui::BeginCombo(ICON_FA_HISTORY " 既存データからロード", fName)) {
 				for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
 					if (entry.path().extension() == ".json") {
 						std::string fileName = entry.path().stem().string();
 						bool isSelected = (std::string(fName) == fileName);
+
 						if (ImGui::Selectable(fileName.c_str(), isSelected)) {
 							strncpy_s(fName, sizeof(fName), fileName.c_str(), _TRUNCATE);
 							Load(fName);
 						}
-						if (isSelected) ImGui::SetItemDefaultFocus();
+
+						if (isSelected)
+							ImGui::SetItemDefaultFocus();
 					}
 				}
+
 				ImGui::EndCombo();
 			}
 		}
+
 		ImGui::InputText(ICON_FA_FILE_SIGNATURE " ファイル名", fName, sizeof(fName));
 
-		if (ImGui::Button(ICON_FA_DOWNLOAD " Save")) Save(fName);
+		if (ImGui::Button(ICON_FA_DOWNLOAD " Save"))
+			Save(fName);
 		ImGui::SameLine();
-		if (ImGui::Button(ICON_FA_UPLOAD " Load")) Load(fName);
+		if (ImGui::Button(ICON_FA_UPLOAD " Load"))
+			Load(fName);
 	}
+
 	ImGui::Separator();
 
 	// -------------------------------------------------------------
@@ -1162,29 +1469,38 @@ void GhostRecorder::DrawImGui() {
 	if (ImGui::CollapsingHeader(ICON_FA_BULLSEYE " ターゲット設定", ImGuiTreeNodeFlags_DefaultOpen)) {
 		if (sceneManager_ && sceneManager_->GetCurrentScene()) {
 			std::string currentTargetName = target_ ? target_->GetName() : "(未選択)";
+
 			if (ImGui::BeginCombo(ICON_FA_CROSSHAIRS " ターゲット", currentTargetName.c_str())) {
 				for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
-					if (!obj || obj->IsEditorInternal()) continue;
+					if (!obj || obj->IsEditorInternal())
+						continue;
 					bool isSelected = (target_ == obj.get());
-					if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) SetTarget(obj.get());
+					if (ImGui::Selectable(obj->GetName().c_str(), isSelected))
+						SetTarget(obj.get());
 				}
+
 				ImGui::EndCombo();
 			}
 
 			std::string currentAnchorName = anchorName_.empty() ? "(なし: 自身を基準)" : anchorName_;
+
 			if (ImGui::BeginCombo(ICON_FA_LINK " アンカー(相対基準)", currentAnchorName.c_str())) {
 				if (ImGui::Selectable("(なし: 自身を基準)", anchorName_.empty())) {
 					anchorName_ = "";
 					anchor_ = nullptr;
 				}
+
 				for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
-					if (!obj || obj->IsEditorInternal()) continue;
+					if (!obj || obj->IsEditorInternal())
+						continue;
 					bool isSelected = (anchorName_ == obj->GetName());
+
 					if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
 						anchorName_ = obj->GetName();
 						anchor_ = obj.get();
 					}
 				}
+
 				ImGui::EndCombo();
 			}
 		}
@@ -1207,13 +1523,17 @@ void GhostRecorder::DrawImGui() {
 	// -------------------------------------------------------------
 	if (ImGui::CollapsingHeader(ICON_FA_VIDEO " 手動録画", ImGuiTreeNodeFlags_DefaultOpen)) {
 		if (state_ == State::Idle) {
-			if (!target_) ImGui::BeginDisabled();
-			if (ImGui::Button(ICON_FA_CIRCLE " ● 録画開始", ImVec2(-1, 0))) StartRecording();
-			if (!target_) ImGui::EndDisabled();
+			if (!target_)
+				ImGui::BeginDisabled();
+			if (ImGui::Button(ICON_FA_CIRCLE " ● 録画開始", ImVec2(-1, 0)))
+				StartRecording();
+			if (!target_)
+				ImGui::EndDisabled();
 		}
 		else if (state_ == State::Recording) {
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.0f, 0.0f, 1.0f));
-			if (ImGui::Button(ICON_FA_STOP " ■ 録画停止", ImVec2(-1, 0))) StopRecording();
+			if (ImGui::Button(ICON_FA_STOP " ■ 録画停止", ImVec2(-1, 0)))
+				StopRecording();
 			ImGui::PopStyleColor();
 		}
 	}
@@ -1223,10 +1543,20 @@ void GhostRecorder::DrawImGui() {
 	// -------------------------------------------------------------
 	if (ImGui::CollapsingHeader(ICON_FA_MAP_SIGNS " パス生成 (Path Editor)", ImGuiTreeNodeFlags_DefaultOpen)) {
 		if (target_) {
+			// Transformはラジアンで保持し、編集欄だけ馴染みのある度数に変換する。
+			const auto editRotationDegrees = [](const char* label, engine::Vector3& rotation) {
+				constexpr float toDegrees = 180.0f / 3.14159265358979323846f;
+				constexpr float toRadians = 1.0f / toDegrees;
+				float degrees[3] = { rotation.x * toDegrees, rotation.y * toDegrees, rotation.z * toDegrees };
+				if (ImGui::DragFloat3(label, degrees, 0.5f)) {
+					rotation = { degrees[0] * toRadians, degrees[1] * toRadians, degrees[2] * toRadians };
+				}
+			};
 			ImGui::Checkbox(ICON_FA_EYE " プレビュー線を表示", &isShowPreview_);
 
 			ImGui::SameLine();
 			ImGui::Checkbox("Object Ghost", &isShowObjectPreview_);
+
 			if (isShowObjectPreview_) {
 				ImGui::DragInt("Ghost Samples", &objectPreviewSampleCount_, 1.0f, 2, 16);
 				ImGui::SliderFloat("Ghost Alpha", &objectPreviewAlpha_, 0.05f, 0.60f);
@@ -1243,20 +1573,25 @@ void GhostRecorder::DrawImGui() {
 			ImGui::Spacing();
 			ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_CHEVRON_CIRCLE_RIGHT " [ START ]");
 			ImGui::SameLine();
+
 			if (ImGui::Button(ICON_FA_PENCIL_ALT " 上書き##Start")) {
 				genParams_.startPos = target_->GetTranslate();
 				genParams_.startRot = target_->GetRotation();
 				genParams_.startScale = target_->GetScale();
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::Button(ICON_FA_LOCATION_ARROW " ワープ##Start")) {
 				target_->SetTranslate(genParams_.startPos);
 				target_->SetRotation(genParams_.startRot);
 				target_->UpdateWorldMatrix();
 			}
+
 			ImGui::DragFloat3("Pos##Start", &genParams_.startPos.x, 0.1f);
-			ImGui::DragFloat3("Rot##Start", &genParams_.startRot.x, 1.0f);
+			editRotationDegrees("回転（度）##Start", genParams_.startRot);
 			ImGui::DragFloat("待機(sec)##Start", &genParams_.startWaitTime, 0.1f, 0.0f, 10.0f);
+			ImGui::DragFloat("次の点まで（秒）##Start", &genParams_.startDurationToNext, 0.05f, 1.0f / 60.0f, 60.0f);
 			ImGui::Combo("次へのEasing##Start", &genParams_.startEasingToNext, easingNames, IM_ARRAYSIZE(easingNames));
 
 			// --- Waypoints 設定 ---
@@ -1264,30 +1599,41 @@ void GhostRecorder::DrawImGui() {
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), ICON_FA_MAP_PIN " [ WAYPOINTS ]");
 
 			int waypointToDelete = -1;
+
 			for (int i = 0; i < (int)genParams_.waypoints.size(); ++i) {
 				ImGui::PushID(i);
+
 				if (ImGui::TreeNode("P", "Point %d", i + 1)) {
 					if (ImGui::Button(ICON_FA_LOCATION_ARROW " ワープ")) {
 						target_->SetTranslate(genParams_.waypoints[i].pos);
 						target_->SetRotation(genParams_.waypoints[i].rot);
 					}
+
 					ImGui::SameLine();
+
 					if (ImGui::Button(ICON_FA_PENCIL_ALT " 上書き")) {
 						genParams_.waypoints[i].pos = target_->GetTranslate();
 						genParams_.waypoints[i].rot = target_->GetRotation();
 					}
+
 					ImGui::SameLine();
+
 					if (ImGui::Button(ICON_FA_TRASH_ALT " 削除")) {
 						SaveHistory();
 						waypointToDelete = i;
 					}
+
 					ImGui::DragFloat3("Pos", &genParams_.waypoints[i].pos.x, 0.1f);
+					editRotationDegrees("回転（度）", genParams_.waypoints[i].rot);
 					ImGui::DragFloat("待機(sec)", &genParams_.waypoints[i].waitTime, 0.1f, 0.0f, 10.0f);
+					ImGui::DragFloat("次の点まで（秒）", &genParams_.waypoints[i].durationToNext, 0.05f, 1.0f / 60.0f, 60.0f);
 					ImGui::Combo("Easing", &genParams_.waypoints[i].easingToNext, easingNames, IM_ARRAYSIZE(easingNames));
 					ImGui::TreePop();
 				}
+
 				ImGui::PopID();
 			}
+
 			if (waypointToDelete >= 0) {
 				genParams_.waypoints.erase(genParams_.waypoints.begin() + waypointToDelete);
 				CommitHistory("Ghost Recorder Delete Waypoint");
@@ -1296,8 +1642,11 @@ void GhostRecorder::DrawImGui() {
 			if (ImGui::Button(ICON_FA_PLUS_CIRCLE " ＋ 現在地を追加", ImVec2(-1, 0))) {
 				SaveHistory();
 				GenerationParams::Waypoint wp;
-				wp.pos = target_->GetTranslate(); wp.rot = target_->GetRotation(); wp.scale = target_->GetScale();
-				wp.durationToNext = 1.0f; wp.easingToNext = 0;
+				wp.pos = target_->GetTranslate();
+				wp.rot = target_->GetRotation();
+				wp.scale = target_->GetScale();
+				wp.durationToNext = 1.0f;
+				wp.easingToNext = 0;
 				genParams_.waypoints.push_back(wp);
 				CommitHistory("Ghost Recorder Add Waypoint");
 			}
@@ -1306,32 +1655,45 @@ void GhostRecorder::DrawImGui() {
 			ImGui::Spacing();
 			ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), ICON_FA_FLAG_CHECKERED " [ END ]");
 			ImGui::SameLine();
+
 			if (ImGui::Button(ICON_FA_PENCIL_ALT " 上書き##End")) {
 				genParams_.endPos = target_->GetTranslate();
 				genParams_.endRot = target_->GetRotation();
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::Button(ICON_FA_SYNC " Loop同期##End")) {
-				genParams_.endPos = genParams_.startPos; genParams_.endRot = genParams_.startRot;
+				genParams_.endPos = genParams_.startPos;
+				genParams_.endRot = genParams_.startRot;
 			}
+
 			ImGui::DragFloat3("Pos##End", &genParams_.endPos.x, 0.1f);
+			editRotationDegrees("回転（度）##End", genParams_.endRot);
 			ImGui::DragFloat("待機(sec)##End", &genParams_.endWaitTime, 0.1f, 0.0f, 10.0f);
 
 			ImGui::Separator();
 			ImGui::Checkbox(ICON_FA_BEZIER_CURVE " スプライン曲線", &genParams_.useSpline);
 			ImGui::SameLine();
 			ImGui::Checkbox(ICON_FA_PROJECT_DIAGRAM " 相対データ化", &genParams_.generateRelative);
+			if (genParams_.generateRelative)
+				ImGui::Checkbox("配置した向きを基準に移動", &isLocalSpace_);
+			if (ImGui::Checkbox(ICON_FA_REDO " ループ再生##Path", &isLoop_))
+				target_->SetRecordLoop(isLoop_);
+			ImGui::TextDisabled("各点の到達時間は、その点から次の点までの移動時間です。");
 
 			// パス生成実行ロジック (クォータニオン対応)
 			if (ImGui::Button(ICON_FA_MAGIC " 生成実行 (Generate & AutoSave)", ImVec2(-1, 40))) {
 				frames_.clear();
 				FindAnchor();
+
 				if (anchor_ && genParams_.generateRelative) {
 					genParams_.anchorOffsetPos = {
 						genParams_.startPos.x - anchor_->GetTranslate().x,
 						genParams_.startPos.y - anchor_->GetTranslate().y,
 						genParams_.startPos.z - anchor_->GetTranslate().z
 					};
+
 					// クォータニオンでの差分計算（アンカー回転からのオフセット）
 					genParams_.anchorOffsetRot = SubEuler(genParams_.startRot, anchor_->GetRotation());
 				}
@@ -1342,83 +1704,86 @@ void GhostRecorder::DrawImGui() {
 
 				// 始点・中継点・終点を同じ生成ループで処理する一時データ。待機時間と区間時間は秒。
 				struct PointData {
-					engine::Vector3 pos, rot, scale; int eventID; float waitTime, durationToNext; int easingToNext;
+					engine::Vector3 pos, rot, scale;
+					int eventID;
+					float waitTime, durationToNext;
+					int easingToNext;
 				};
+
 				std::vector<PointData> pts;
 				pts.push_back({ genParams_.startPos, genParams_.startRot, genParams_.startScale, genParams_.startEventID, genParams_.startWaitTime, genParams_.startDurationToNext, genParams_.startEasingToNext });
+
 				for (const auto& wp : genParams_.waypoints) {
 					pts.push_back({ wp.pos, wp.rot, wp.scale, wp.eventID, wp.waitTime, wp.durationToNext, wp.easingToNext });
 				}
+
 				pts.push_back({ genParams_.endPos, genParams_.endRot, genParams_.endScale, genParams_.endEventID, genParams_.endWaitTime, 1.0f, 0 });
 
 				engine::Vector3 offset = genParams_.generateRelative ? genParams_.startPos : engine::Vector3{ 0,0,0 };
 				engine::Vector3 rotOffset = genParams_.generateRelative ? genParams_.startRot : engine::Vector3{ 0,0,0 };
-
-				for (int i = 0; i < (int)pts.size(); ++i) {
-					int waitFrames = static_cast<int>(pts[i].waitTime * 60.0f);
-					for (int w = 0; w < waitFrames; ++w) {
-						GhostFrame f;
-						f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
-						f.rotation = SubEuler(pts[i].rot, rotOffset); // クォータニオンによる差分計算
-						f.scale = pts[i].scale;
-						f.eventID = (w == 0) ? pts[i].eventID : 0;
-						frames_.push_back(f);
+				const auto relativePosition = [&](const engine::Vector3& position) {
+					engine::Vector3 delta = position - offset;
+					if (genParams_.generateRelative && isLocalSpace_) {
+						// Editor上の座標を基準姿勢のローカル差分へ戻して保存する。
+						const engine::Quaternion rotation = engine::Math::EulerToQuaternion(genParams_.startRot);
+						const engine::Quaternion inverse = { -rotation.x, -rotation.y, -rotation.z, rotation.w };
+						delta = engine::Math::TransformNormal(delta, engine::Math::MakeRotateQuaternionMatrix(inverse));
 					}
+					return delta;
+				};
 
-					if (i == (int)pts.size() - 1) {
-						if (waitFrames == 0) {
-							GhostFrame f;
-							f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
-							f.rotation = SubEuler(pts[i].rot, rotOffset); // クォータニオンによる差分計算
-							f.scale = pts[i].scale;
-							f.eventID = pts[i].eventID;
-							frames_.push_back(f);
-						}
+				const auto appendFrame = [&](const engine::Vector3& position, const engine::Vector3& rotation,
+					const engine::Vector3& scale, int eventID) {
+					GhostFrame frame;
+					frame.position = relativePosition(position);
+					frame.rotation = SubEuler(rotation, rotOffset);
+					frame.scale = scale;
+					frame.eventID = eventID;
+					frames_.push_back(frame);
+				};
+
+				// 始点を一度だけ記録し、各区間は指定秒数ぶん進んで次の点へ到達する。
+				appendFrame(pts.front().pos, pts.front().rot, pts.front().scale, pts.front().eventID);
+				for (int i = 0; i < static_cast<int>(pts.size()); ++i) {
+					const int waitFrames = std::max(0, static_cast<int>(std::lround(pts[i].waitTime * 60.0f)));
+					for (int wait = 0; wait < waitFrames; ++wait)
+						appendFrame(pts[i].pos, pts[i].rot, pts[i].scale, 0);
+
+					if (i + 1 == static_cast<int>(pts.size()))
 						break;
-					}
 
-					int travelFrames = static_cast<int>(pts[i].durationToNext * 60.0f);
-					if (travelFrames < 1) travelFrames = 1;
-
-					for (int f = 0; f < travelFrames; ++f) {
-						if (f == 0 && waitFrames > 0) continue;
-
-						float rawT = (float)f / (float)travelFrames;
-						float t = ApplyEasing(pts[i].easingToNext, rawT);
-
-						engine::Vector3 currentPos;
+					const int travelFrames = std::max(1, static_cast<int>(std::lround(pts[i].durationToNext * 60.0f)));
+					for (int step = 1; step <= travelFrames; ++step) {
+						const float t = ApplyEasing(pts[i].easingToNext, static_cast<float>(step) / travelFrames);
+						engine::Vector3 position;
 						if (genParams_.useSpline) {
-							engine::Vector3 p0 = pts[std::max(0, i - 1)].pos;
-							engine::Vector3 p1 = pts[i].pos;
-							engine::Vector3 p2 = pts[i + 1].pos;
-							engine::Vector3 p3 = pts[std::min((int)pts.size() - 1, i + 2)].pos;
-							currentPos = CatmullRom(p0, p1, p2, p3, t);
+							const engine::Vector3 p0 = pts[std::max(0, i - 1)].pos;
+							const engine::Vector3 p3 = pts[std::min(static_cast<int>(pts.size()) - 1, i + 2)].pos;
+							position = CatmullRom(p0, pts[i].pos, pts[i + 1].pos, p3, t);
+						} else {
+							position = engine::Math::Lerp(pts[i].pos, pts[i + 1].pos, t);
 						}
-						else {
-							currentPos = engine::Math::Lerp(pts[i].pos, pts[i + 1].pos, t);
-						}
-
-						// クォータニオンによる最短経路補間（Slerp）
-						engine::Vector3 currentRot = AnimationInterpolation::SlerpEuler(pts[i].rot, pts[i + 1].rot, t);
-						engine::Vector3 currentScale = engine::Math::Lerp(pts[i].scale, pts[i + 1].scale, t);
-
-						GhostFrame frame;
-						frame.position = { currentPos.x - offset.x, currentPos.y - offset.y, currentPos.z - offset.z };
-						frame.rotation = SubEuler(currentRot, rotOffset); // クォータニオンによる差分計算
-						frame.scale = currentScale;
-						frame.eventID = (f == 0 && waitFrames == 0) ? pts[i].eventID : 0;
-						frames_.push_back(frame);
+						const engine::Vector3 rotation = AnimationInterpolation::SlerpEuler(pts[i].rot, pts[i + 1].rot, t);
+						const engine::Vector3 scale = engine::Math::Lerp(pts[i].scale, pts[i + 1].scale, t);
+						appendFrame(position, rotation, scale, step == travelFrames ? pts[i + 1].eventID : 0);
 					}
 				}
 
 				isRelative_ = genParams_.generateRelative;
 				Stop();
 				Save(fName);
+				target_->SetRecordPathName(fName);
+				target_->SetRecordRelative(isRelative_);
+				target_->SetRecordLoop(isLoop_);
 				ImGui::OpenPopup("Done");
 			}
+
 			if (ImGui::BeginPopupModal("Done", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 				ImGui::Text("生成＆セーブ完了!");
-				if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+
+				if (ImGui::Button("OK", ImVec2(120, 0))) {
+					ImGui::CloseCurrentPopup();
+				}
 				ImGui::EndPopup();
 			}
 		}
@@ -1440,32 +1805,44 @@ void GhostRecorder::DrawImGui() {
 		ImGui::SetNextItemWidth(-1);
 		ImGui::SliderInt("##SeekBar", &displayFrame, 0, maxFrame, "Frame: %d");
 
-		if (ImGui::IsItemActivated()) { isScrubbing_ = true; state_ = State::Idle; FindAnchor(); }
-		if (ImGui::IsItemActive()) { currentFrameIndex_ = displayFrame; EvaluateAtFrame(displayFrame); }
-		if (ImGui::IsItemDeactivated()) isScrubbing_ = false;
-
-		ImGui::Checkbox(ICON_FA_REDO " Loop再生", &isLoop_);
-		ImGui::SameLine();
+		if (ImGui::IsItemActivated()) {
+			isScrubbing_ = true;
+			state_ = State::Idle;
+			FindAnchor();
+		}
+		if (ImGui::IsItemActive()) {
+			currentFrameIndex_ = displayFrame;
+			EvaluateAtFrame(displayFrame);
+		}
+		if (ImGui::IsItemDeactivated())
+			isScrubbing_ = false;
 
 		if (ImGui::Button(ICON_FA_PLAY " メモリから再生")) {
-			if (isRelative_) CaptureBasePose();
+			if (isRelative_)
+				CaptureBasePose();
 			StartPlayingInternal();
 		}
+
 		ImGui::SameLine();
+
 		if (ImGui::Button(ICON_FA_FILM " ファイルからPlay")) {
 			bool isCinematic = target_->IsCameraObject();
 			Play(fName, isLoop_, isRelative_, isCinematic);
 		}
 	}
+
 	ImGui::SameLine();
-	if (ImGui::Button(ICON_FA_STOP " 停止")) Stop();
+	if (ImGui::Button(ICON_FA_STOP " 停止"))
+		Stop();
 
 	const bool changedThisFrame = !GenerationParamsEqual(beforeUiState, genParams_);
+
 	if (!historyRegisteredThisFrame_) {
 		if (changedThisFrame && !hasUiEditStart_) {
 			uiEditStartState_ = beforeUiState;
 			hasUiEditStart_ = true;
 		}
+
 		if (!ImGui::IsAnyItemActive() && hasUiEditStart_) {
 			RegisterHistory(uiEditStartState_, genParams_, "Ghost Recorder Inspector Edit");
 			hasUiEditStart_ = false;
@@ -1476,10 +1853,13 @@ void GhostRecorder::DrawImGui() {
 
 void GhostRecorder::Save(const std::string& fileName) {
 	// 再生用フレームと編集用の経路設定を同じ JSON に保存する。
-	if (frames_.empty()) return;
+	if (frames_.empty())
+		return;
 	json root;
 	root["frames"] = json::array();
+
 	for (const auto& frame : frames_) {
+		// 再生に必要な確定フレームは、後で生成パラメータを変えても同じ姿勢を再現できるよう別保存する。
 		json frameJson;
 		frameJson["pos"] = { frame.position.x, frame.position.y, frame.position.z };
 		frameJson["rot"] = { frame.rotation.x, frame.rotation.y, frame.rotation.z };
@@ -1490,6 +1870,7 @@ void GhostRecorder::Save(const std::string& fileName) {
 
 
 	json paramsJson;
+	// 編集を再開できるよう、確定フレームとは別に生成元の始点・終点・経由点を保持する。
 	paramsJson["startPos"] = { genParams_.startPos.x, genParams_.startPos.y, genParams_.startPos.z };
 	paramsJson["startRot"] = { genParams_.startRot.x, genParams_.startRot.y, genParams_.startRot.z };
 	paramsJson["startScale"] = { genParams_.startScale.x, genParams_.startScale.y, genParams_.startScale.z };
@@ -1506,6 +1887,7 @@ void GhostRecorder::Save(const std::string& fileName) {
 	paramsJson["startDurationToNext"] = genParams_.startDurationToNext;
 	paramsJson["startEasingToNext"] = genParams_.startEasingToNext;
 	paramsJson["waypoints"] = json::array();
+
 	for (const auto& wp : genParams_.waypoints) {
 		paramsJson["waypoints"].push_back({
 			{"pos", {wp.pos.x, wp.pos.y, wp.pos.z}},
@@ -1524,20 +1906,29 @@ void GhostRecorder::Save(const std::string& fileName) {
 
 	root["genParams"] = paramsJson;
 	root["anchorName"] = anchorName_;
+	root["localSpace"] = isLocalSpace_;
 
 
 	std::string path = "Resources/json/animation/" + fileName + ".json";
 	std::ofstream file(path);
-	if (file.is_open()) { file << root.dump(4); file.close(); }
+
+	if (file.is_open()) {
+		file << root.dump(4);
+		file.close();
+	}
 }
 
 void GhostRecorder::Load(const std::string& fileName) {
 	std::string path = "Resources/json/animation/" + fileName + ".json";
 	std::ifstream file(path);
-	if (!file.is_open()) return;
-	json root; file >> root;
+	if (!file.is_open())
+		return;
+	json root;
+	file >> root;
 	frames_.clear();
+
 	if (root.contains("anchorName")) {
+		// 保存するのは名前だけ。以前のSceneのObjectポインタは使わず、読込後に接続し直す。
 		anchorName_ = root["anchorName"].get<std::string>();
 		anchor_ = nullptr;
 	}
@@ -1545,17 +1936,20 @@ void GhostRecorder::Load(const std::string& fileName) {
 		anchorName_ = "";
 		anchor_ = nullptr;
 	}
+	isLocalSpace_ = root.value("localSpace", false);
 	if (root.contains("frames")) {
 		for (const auto& j : root["frames"]) {
 			GhostFrame f;
 			f.position = { j["pos"][0], j["pos"][1], j["pos"][2] };
 			f.rotation = { j["rot"][0], j["rot"][1], j["rot"][2] };
+
 			if (j.contains("scale")) {
 				f.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
 			}
 			else {
 				f.scale = { 1.0f, 1.0f, 1.0f }; // デフォルト値
 			}
+
 			f.eventID = j.value("eventID", 0);
 			frames_.push_back(f);
 		}
@@ -1563,8 +1957,11 @@ void GhostRecorder::Load(const std::string& fileName) {
 
 	if (root.contains("genParams")) {
 		const auto& pj = root["genParams"];
-		if (pj.contains("startPos")) genParams_.startPos = { pj["startPos"][0], pj["startPos"][1], pj["startPos"][2] };
-		if (pj.contains("startRot")) genParams_.startRot = { pj["startRot"][0], pj["startRot"][1], pj["startRot"][2] };
+
+		if (pj.contains("startPos"))
+			genParams_.startPos = { pj["startPos"][0], pj["startPos"][1], pj["startPos"][2] };
+		if (pj.contains("startRot"))
+			genParams_.startRot = { pj["startRot"][0], pj["startRot"][1], pj["startRot"][2] };
 		if (pj.contains("startScale")) {
 			genParams_.startScale = { pj["startScale"][0], pj["startScale"][1], pj["startScale"][2] };
 		}
@@ -1576,42 +1973,51 @@ void GhostRecorder::Load(const std::string& fileName) {
 		genParams_.startWaitTime = pj.value("startWaitTime", 0.0f);
 
 
-		if (pj.contains("endPos"))   genParams_.endPos = { pj["endPos"][0], pj["endPos"][1], pj["endPos"][2] };
-		if (pj.contains("endRot"))   genParams_.endRot = { pj["endRot"][0], pj["endRot"][1], pj["endRot"][2] };
+		if (pj.contains("endPos"))
+			genParams_.endPos = { pj["endPos"][0], pj["endPos"][1], pj["endPos"][2] };
+		if (pj.contains("endRot"))
+			genParams_.endRot = { pj["endRot"][0], pj["endRot"][1], pj["endRot"][2] };
 		if (pj.contains("endScale")) {
 			genParams_.endScale = { pj["endScale"][0], pj["endScale"][1], pj["endScale"][2] };
 		}
 		else {
 			genParams_.endScale = { 1.0f, 1.0f, 1.0f };
 		}
+
 		if (pj.contains("anchorOffsetPos")) {
 			genParams_.anchorOffsetPos = { pj["anchorOffsetPos"][0], pj["anchorOffsetPos"][1], pj["anchorOffsetPos"][2] };
 		}
 		else {
 			genParams_.anchorOffsetPos = { 0.0f, 0.0f, 0.0f };
 		}
+
 		if (pj.contains("anchorOffsetRot")) {
 			genParams_.anchorOffsetRot = { pj["anchorOffsetRot"][0], pj["anchorOffsetRot"][1], pj["anchorOffsetRot"][2] };
 		}
 		else {
 			genParams_.anchorOffsetRot = { 0.0f, 0.0f, 0.0f };
 		}
+
 		genParams_.endEventID = pj.value("endEventID", 0);
 		genParams_.endWaitTime = pj.value("endWaitTime", 0.0f);
 		genParams_.startDurationToNext = pj.value("startDurationToNext", 1.0f);
 		genParams_.startEasingToNext = pj.value("startEasingToNext", 0);
+
 		if (pj.contains("waypoints") && pj["waypoints"].is_array()) {
 			genParams_.waypoints.clear();
+
 			for (const auto& wj : pj["waypoints"]) {
 				GenerationParams::Waypoint wp;
 				wp.pos = { wj["pos"][0], wj["pos"][1], wj["pos"][2] };
 				wp.rot = { wj["rot"][0], wj["rot"][1], wj["rot"][2] };
+
 				if (wj.contains("scale")) {
 					wp.scale = { wj["scale"][0], wj["scale"][1], wj["scale"][2] };
 				}
 				else {
 					wp.scale = { 1.0f, 1.0f, 1.0f };
 				}
+
 				wp.eventID = wj.value("eventID", 0);
 				wp.waitTime = wj.value("waitTime", 0.0f);
 				wp.durationToNext = wj.value("durationToNext", 1.0f);
@@ -1619,7 +2025,9 @@ void GhostRecorder::Load(const std::string& fileName) {
 				genParams_.waypoints.push_back(wp);
 			}
 		}
-		if (pj.contains("useSpline")) genParams_.useSpline = pj["useSpline"];
+
+		if (pj.contains("useSpline"))
+			genParams_.useSpline = pj["useSpline"];
 
 
 		if (pj.contains("generateRelative")) {
@@ -1634,7 +2042,8 @@ void GhostRecorder::Load(const std::string& fileName) {
 void GhostRecorder::EvaluateAtFrame(int frameIndex) {
 	// シーク先を有効範囲へ制限し、イベントは発火せず姿勢だけ適用する。
 	ClearTargetIfMissingFromScene();
-	if (frames_.empty() || !target_) return;
+	if (frames_.empty() || !target_)
+		return;
 
 	const int lastFrameIndex = static_cast<int>(frames_.size()) - 1;
 	frameIndex = std::clamp(frameIndex, 0, lastFrameIndex);
@@ -1647,12 +2056,14 @@ float GhostRecorder::GetDurationSeconds() const {
 	if (frames_.size() <= 1) {
 		return 0.0f;
 	}
+
 	return static_cast<float>(frames_.size() - 1) / 60.0f;
 }
 
 void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float previousTimeSeconds) {
 	// 姿勢はフレーム間補間し、イベントは前回から今回までに横切ったフレームだけ発火する。
 	ClearTargetIfMissingFromScene();
+
 	if (frames_.empty() || !target_) {
 		return;
 	}
@@ -1665,6 +2076,7 @@ void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float
 	const float blend = std::clamp(framePosition - static_cast<float>(frameIndex), 0.0f, 1.0f);
 
 	GhostFrame sample = frames_[frameIndex];
+
 	if (nextFrameIndex != frameIndex) {
 		const GhostFrame& next = frames_[nextFrameIndex];
 		sample.position = AnimationInterpolation::Lerp(sample.position, next.position, blend);
@@ -1682,6 +2094,7 @@ void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float
 
 	const int firstEventFrame = std::max(0, static_cast<int>(std::floor(previousTimeSeconds * 60.0f)) + 1);
 	const int lastEventFrame = std::min(lastFrameIndex, static_cast<int>(std::floor(clampedTime * 60.0f + 0.0001f)));
+
 	for (int index = firstEventFrame; index <= lastEventFrame; ++index) {
 		if (frames_[index].eventID != 0) {
 			target_->OnRecordEvent(frames_[index].eventID);
@@ -1691,10 +2104,13 @@ void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float
 
 void GhostRecorder::CaptureBasePose() {
 	ClearTargetIfMissingFromScene();
+
 	if (!target_) {
 		return;
 	}
+
 	FindAnchor();
+
 	if (anchor_ && genParams_.generateRelative) {
 
 		basePosition_ = {
@@ -1702,6 +2118,7 @@ void GhostRecorder::CaptureBasePose() {
 			anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 			anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 		};
+
 		// アンカーの回転にオフセットをクォータニオン合成
 		baseRotation_ = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
 		baseScale_ = target_->GetScale();
@@ -1715,6 +2132,7 @@ void GhostRecorder::CaptureBasePose() {
 
 void GhostRecorder::RestoreBasePose() {
 	ClearTargetIfMissingFromScene();
+
 	if (target_ && isRelative_) {
 		FindAnchor();
 
@@ -1724,6 +2142,7 @@ void GhostRecorder::RestoreBasePose() {
 				anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 				anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 				});
+
 			// アンカーの回転にオフセットをクォータニオン合成
 			target_->SetRotation(AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot));
 		}
@@ -1744,6 +2163,7 @@ void GhostRecorder::FindAnchor() {
 	if (anchor_ && !IsObjectInScene(sceneManager_, anchor_)) {
 		anchor_ = nullptr;
 	}
+
 	if (!anchorName_.empty() && !anchor_ && sceneManager_ && sceneManager_->GetCurrentScene()) {
 		for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
 			if (obj->GetName() == anchorName_) {
@@ -1777,6 +2197,7 @@ void GhostRecorder::CommitHistory(const std::string& label) {
 	if (!pendingHistoryState_.has_value()) {
 		return;
 	}
+
 	RegisterHistory(*pendingHistoryState_, genParams_, label);
 	pendingHistoryState_.reset();
 	historyRegisteredThisFrame_ = true;
@@ -1795,15 +2216,19 @@ void GhostRecorder::RegisterHistory(
 	EditorTransaction transaction;
 	transaction.label = label;
 	transaction.undo = [this, lifetime, before]() {
-		if (lifetime.expired()) return;
+		if (lifetime.expired())
+			return;
 		genParams_ = before;
 		DeselectPin();
 	};
+
 	transaction.redo = [this, lifetime, after]() {
-		if (lifetime.expired()) return;
+		if (lifetime.expired())
+			return;
 		genParams_ = after;
 		DeselectPin();
 	};
+
 	EditorTransactionManager::GetInstance()->Register(std::move(transaction));
 }
 

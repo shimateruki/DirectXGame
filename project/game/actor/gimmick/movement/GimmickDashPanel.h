@@ -6,8 +6,10 @@ class GimmickDashPanel : public BaseGimmick {
   public:
     virtual ~GimmickDashPanel() = default;
 
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     bool OnCollision(engine::Object3d* other) override;
 
     std::unique_ptr<engine::Object3d> Clone() const override;

@@ -29,6 +29,7 @@ static const char* kEasingNames[] = {
     "InElastic", "OutElastic", "InOutElastic",
     "InBounce", "OutBounce", "InOutBounce"
 };
+
 void MeshEffectEditor::Initialize(SceneManager* sceneManager) {
     // SceneManager のポインタを保持
     sceneManager_ = sceneManager;
@@ -47,12 +48,14 @@ void MeshEffectEditor::RefreshTextureList() {
         }
 
         const std::string ext = entry.path().extension().string();
+
         if (ext != ".png" && ext != ".dds" && ext != ".jpg") {
             continue;
         }
 
         textureFileList_.push_back(std::filesystem::relative(entry.path(), path).generic_string());
     }
+
     std::sort(textureFileList_.begin(), textureFileList_.end());
 
     // currentTextureIndex_ の安全対策
@@ -62,6 +65,7 @@ void MeshEffectEditor::RefreshTextureList() {
     else {
         // 現在の editTexturePath_ に一致するものを探してインデックスを合わせる
         currentTextureIndex_ = 0; // デフォルト
+
         for (int i = 0; i < textureFileList_.size(); ++i) {
             std::string fullPath = "Resources/sprite/" + textureFileList_[i];
             if (textureFileList_[i] == editTexturePath_ ||
@@ -72,6 +76,7 @@ void MeshEffectEditor::RefreshTextureList() {
             }
         }
     }
+
     SyncTextureIndices();
 }
 
@@ -88,13 +93,15 @@ void MeshEffectEditor::RefreshJsonFileList() {
             jsonFileList_.push_back(entry.path().filename().string());
         }
     }
+
     std::sort(jsonFileList_.begin(), jsonFileList_.end());
 
     currentJsonIndex_ = -1; // 初期状態は未選択（新規作成）
 }
 
 void MeshEffectEditor::Update(float deltaTime) {
-    if (!sceneManager_) return;
+    if (!sceneManager_)
+        return;
 
     if (sceneManager_->IsTransitioning()) {
         previewEffect_.reset();
@@ -107,25 +114,31 @@ void MeshEffectEditor::Update(float deltaTime) {
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
 
     if (lastScene_ != currentScene) {
+        // Scene切替後は借用していた描画基盤と対象Objectを再利用しない。
         previewEffect_.reset();
         extraPreviewEffects_.clear();
         lastScene_ = currentScene;
         targetObject_ = nullptr;
     }
 
-    Object3dCommon* objectCommon = currentScene ? currentScene->GetObject3dCommon() : nullptr;
+    engine::Object3dCommon* objectCommon = currentScene ? currentScene->GetObject3dCommon() : nullptr;
 
     if (!previewEffect_ && objectCommon) {
         auto previewEffect = std::make_unique<EffectObject3d>();
         previewEffect->Initialize(objectCommon);
+
         if (!previewEffect->GetMaterialData()) {
             return;
         }
+
         previewEffect_ = std::move(previewEffect);
         previewEffect_->SetModel(editModelName_);
+
         if (auto renderer = previewEffect_->GetMeshRenderer()) {
-            if (strlen(editTexturePath_) > 0) renderer->SetTexture(editTexturePath_);
+            if (strlen(editTexturePath_) > 0)
+                renderer->SetTexture(editTexturePath_);
         }
+
         previewEffect_->SetColor(editColor_);
         previewEffect_->SetScrollSpeed(editScrollSpeed_);
         previewEffect_->SetIntensity(editIntensity_);
@@ -136,29 +149,38 @@ void MeshEffectEditor::Update(float deltaTime) {
         previewEffect_->SetRingSpinSpeed(editRingSpinSpeed_);
     }
 
-    if (!previewEffect_) return;
+    if (!previewEffect_)
+        return;
 
     int neededExtras = 0;
-    if (editVolumeMode_ == 1) neededExtras = 1;
+    // ボリューム表現のモードに必要な追加レイヤーだけを所有する。
+    if (editVolumeMode_ == 1)
+        neededExtras = 1;
     else if (editVolumeMode_ == 2) neededExtras = 2;
 
     while (extraPreviewEffects_.size() < neededExtras) {
         auto extra = std::make_unique<EffectObject3d>();
+
         if (!objectCommon) {
             break;
         }
+
         extra->Initialize(objectCommon);
+
         if (!extra->GetMaterialData()) {
             break;
         }
+
         extraPreviewEffects_.push_back(std::move(extra));
     }
+
     while (extraPreviewEffects_.size() > neededExtras) {
         extraPreviewEffects_.pop_back();
     }
 
     std::vector<EffectObject3d*> activePreviews;
     activePreviews.push_back(previewEffect_.get());
+
     for (auto& ex : extraPreviewEffects_) {
         if (ex && ex->GetMaterialData()) {
             activePreviews.push_back(ex.get());
@@ -168,21 +190,28 @@ void MeshEffectEditor::Update(float deltaTime) {
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
     bool usePreviewStage = previewStage && previewStage->IsEnabled() && isThisEditorSelected;
+
     if (usePreviewStage && previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         forcePlayRequest_ = true;
     }
+
     if (usePreviewStage && previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
         lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
+
         for (auto* fx : activePreviews) {
             fx->Play(editLifetime_);
             fx->Update(editLifetime_);
         }
+
         forcePlayRequest_ = false;
     }
+
     if (usePreviewStage && previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
+        // 時刻を戻すときは再生を先頭から作り直し、過去フレームの残像を残さない。
         lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
         const float seekTime = std::clamp(previewStage->GetSeekTargetTime(), 0.0f, (std::max)(editLifetime_, 0.01f));
+
         for (auto* fx : activePreviews) {
             fx->Play(editLifetime_);
             fx->Update(seekTime);
@@ -190,21 +219,26 @@ void MeshEffectEditor::Update(float deltaTime) {
     }
 
     engine::Vector3 basePos = usePreviewStage ? previewStage->GetPreviewPosition() : editPosition_;
+
     if (usePreviewStage) {
         basePos.x += editPosition_.x;
         basePos.y += editPosition_.y;
         basePos.z += editPosition_.z;
     }
+
     engine::Vector3 baseRot = editRotation_;
     float targetWorldY = 0.0f;
+
     if (targetObject_) {
         engine::Vector3 targetPos = targetObject_->GetWorldPosition();
 
         // ターゲットのボーン構造を無視し、ルートノードの向きを優先
         engine::Object3d* rootObj = targetObject_;
+
         while (rootObj && rootObj->GetParent()) {
             rootObj = rootObj->GetParent(); // 一番上の親（プレイヤー本体など）まで遡る
         }
+
         if (rootObj) {
             targetWorldY = rootObj->GetRotation().y; // 本体の大元の向きだけを使う！
         }
@@ -225,6 +259,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         baseRot = editRotation_;
         baseRot.y += targetWorldY;
     }
+
     // 再生リクエストまたは自動ループの同期
     bool loopPreview = isAutoLoop_ ||
         (usePreviewStage && previewStage->IsLoopEnabled() && previewStage->IsTransportPlaying());
@@ -232,6 +267,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         for (auto* fx : activePreviews) {
             fx->Play(editLifetime_);
         }
+
         forcePlayRequest_ = false; // フラグを消化
     }
 
@@ -241,12 +277,14 @@ void MeshEffectEditor::Update(float deltaTime) {
     localZ.z = cosf(baseRot.y) * cosf(baseRot.x);
 
     float timeStep = (deltaTime <= 0.0001f) ? (1.0f / 60.0f) : deltaTime;
+
     if (usePreviewStage) {
         timeStep *= previewStage->GetPlaybackSpeed();
     }
 
     for (size_t i = 0; i < activePreviews.size(); ++i) {
         auto* fx = activePreviews[i];
+
         if (!fx || !fx->GetMaterialData()) {
             continue;
         }
@@ -254,9 +292,12 @@ void MeshEffectEditor::Update(float deltaTime) {
         if (editProceduralType_ == 0) {
             fx->SetModel(editModelName_);
         }
+
         if (auto renderer = fx->GetMeshRenderer()) {
-            if (strlen(editTexturePath_) > 0) renderer->SetTexture(editTexturePath_);
+            if (strlen(editTexturePath_) > 0)
+                renderer->SetTexture(editTexturePath_);
         }
+
         fx->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
         fx->SetStartScale(editStartScale_);
         fx->SetEndScale(editEndScale_);
@@ -284,8 +325,10 @@ void MeshEffectEditor::Update(float deltaTime) {
         fx->SetEnableColorRamp(useRamp);
         fx->SetEnableNoiseTexture(useNoise);
 
-        if (useNoise) fx->SetNoiseTexture(TextureManager::GetInstance()->Load(editNoiseTexturePath_));
-        if (useRamp) fx->SetRampTexture(TextureManager::GetInstance()->Load(editRampTexturePath_));
+        if (useNoise)
+            fx->SetNoiseTexture(TextureManager::GetInstance()->Load(editNoiseTexturePath_));
+        if (useRamp)
+            fx->SetRampTexture(TextureManager::GetInstance()->Load(editRampTexturePath_));
 
         engine::Vector3 finalPos = basePos;
         engine::Vector3 finalRot = baseRot;
@@ -295,8 +338,17 @@ void MeshEffectEditor::Update(float deltaTime) {
         }
         else if (editVolumeMode_ == 2) {
             float gap = 0.02f;
-            if (i == 1) { finalPos.x += localZ.x * gap; finalPos.y += localZ.y * gap; finalPos.z += localZ.z * gap; }
-            if (i == 2) { finalPos.x -= localZ.x * gap; finalPos.y -= localZ.y * gap; finalPos.z -= localZ.z * gap; }
+
+            if (i == 1) {
+                finalPos.x += localZ.x * gap;
+                finalPos.y += localZ.y * gap;
+                finalPos.z += localZ.z * gap;
+            }
+            if (i == 2) {
+                finalPos.x -= localZ.x * gap;
+                finalPos.y -= localZ.y * gap;
+                finalPos.z -= localZ.z * gap;
+            }
         }
 
         fx->SetTranslate(finalPos);
@@ -332,13 +384,16 @@ void MeshEffectEditor::Draw() {
 
     // シーン遷移やNULLチェック
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
     if (lastScene_ != currentScene || !currentScene) {
         return;
     }
+
     if (previewEffect_) {
         if (previewEffect_->GetMaterialData()) {
             previewEffect_->Draw();
         }
+
         for (auto& ex : extraPreviewEffects_) {
             if (ex && ex->GetMaterialData()) {
                 ex->Draw();
@@ -353,7 +408,8 @@ void MeshEffectEditor::Draw() {
 
 void MeshEffectEditor::DrawImGui() {
 #ifdef USE_IMGUI
-    if (!previewEffect_) return;
+    if (!previewEffect_)
+        return;
 
     // ウィンドウの横幅を取得
     float availWidth = ImGui::GetContentRegionAvail().x;
@@ -362,16 +418,21 @@ void MeshEffectEditor::DrawImGui() {
     // 1. エフェクト再生コントロール
     // ==========================================
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+
     if (ImGui::Button(ICON_FA_PLAY " エフェクト再生 (ATTACK!)", ImVec2(availWidth, 40))) {
         forcePlayRequest_ = true;
     }
+
     ImGui::PopStyleColor();
 
     ImGui::Checkbox("自動ループ (Auto Loop)", &isAutoLoop_);
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_UNDO " 時間リセット")) {
         previewEffect_->ResetTime();
-        for (auto& ex : extraPreviewEffects_) ex->ResetTime();
+
+        for (auto& ex : extraPreviewEffects_)
+            ex->ResetTime();
     }
 
     ImGui::Spacing();
@@ -394,46 +455,72 @@ void MeshEffectEditor::DrawImGui() {
 
             // シーン内の全オブジェクトをリストアップ
             for (auto& obj : objects) {
-                if (!obj || obj->IsEditorInternal()) continue;
+                if (!obj || obj->IsEditorInternal())
+                    continue;
                 bool isSelected = (targetObject_ == obj.get());
 
                 if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
                     targetObject_ = obj.get();
                 }
+
                 if (isSelected) {
                     ImGui::SetItemDefaultFocus();
                 }
             }
+
             ImGui::EndCombo();
         }
     }
+
     ImGui::Separator();
 
     // ==========================================
     // 2. ブレンドモード設定
     // ==========================================
     const char* blendModeNames[] = { "なし (None)", "通常 (半透明)", "加算発光 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
+
     if (ImGui::Combo(ICON_FA_ADJUST " ブレンドモード", &currentBlendModeIndex_, blendModeNames, IM_ARRAYSIZE(blendModeNames))) {
         previewEffect_->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
     }
+
     if (ImGui::Checkbox("画像のRGBを反映", &editUseTextureColor_)) {
         previewEffect_->SetUseTextureColor(editUseTextureColor_);
     }
+
     ImGui::Separator();
     ImGui::Text(ICON_FA_CUBES " [ 立体化モード (Volume Mode) ]");
     const char* volumeModes[] = { "0: なし (None)", "1: 十字クロス (Cross)", "2: 3枚重ね (Layer)" };
     ImGui::Combo("立体化", &editVolumeMode_, volumeModes, IM_ARRAYSIZE(volumeModes));
 
     ImGui::Checkbox(ICON_FA_RULER_HORIZONTAL " 伸びるアニメーション (Reveal Mode)", &editEnableReveal_);
+
     if (editEnableReveal_) {
         const char* revealModes[] = { "なし", "横方向", "円周方向" };
         ImGui::Combo("表示の組み立て方", &editRevealMode_, revealModes, IM_ARRAYSIZE(revealModes));
     }
+
     if (ImGui::Combo(ICON_FA_CHART_LINE " イージング (Easing)", &editEasingType_, kEasingNames, IM_ARRAYSIZE(kEasingNames))) {
         previewEffect_->SetEasingType(editEasingType_);
     }
+
     ImGui::Separator();
-    const char* procTypes[] = { "0: 外部モデル (Tex)", "1: 斜め切り (Slash)", "2: 回転切り (Spin)", "3: 突き (Thrust)", "4: 球 (Sphere)", "5: 円柱 (Cylinder)", "6: 箱 (Box)", "7: 平面 (Plane)", "8: トーラス (Torus)", "9: 円錐 (Cone)", "10: リング (Ring)", "11: 三角形 (Triangle)", "12: 槍 (Lance)", "13: 地表の全域放電", "14: 空間の雷撃バースト" };
+    const char* procTypes[] = {
+        "0: 外部モデル (Tex)",
+        "1: 斜め切り (Slash)",
+        "2: 回転切り (Spin)",
+        "3: 突き (Thrust)",
+        "4: 球 (Sphere)",
+        "5: 円柱 (Cylinder)",
+        "6: 箱 (Box)",
+        "7: 平面 (Plane)",
+        "8: トーラス (Torus)",
+        "9: 円錐 (Cone)",
+        "10: リング (Ring)",
+        "11: 三角形 (Triangle)",
+        "12: 槍 (Lance)",
+        "13: 地表の全域放電",
+        "14: 空間の雷撃バースト" };
+
     if (ImGui::Combo("エフェクト形状", &editProceduralType_, procTypes, IM_ARRAYSIZE(procTypes))) {
         previewEffect_->SetProceduralType(editProceduralType_);
 
@@ -443,6 +530,7 @@ void MeshEffectEditor::DrawImGui() {
         }
 
         previewEffect_->UpdateProceduralMesh();
+
         for (auto& ex : extraPreviewEffects_) {
             ex->SetProceduralType(editProceduralType_);
             ex->UpdateProceduralMesh();
@@ -508,6 +596,7 @@ void MeshEffectEditor::DrawImGui() {
 
         if (changed) {
             previewEffect_->UpdateProceduralMesh();
+
             for (auto& ex : extraPreviewEffects_) {
                 ex->editSlashAngle_ = previewEffect_->editSlashAngle_;
                 ex->editInnerRadius_ = previewEffect_->editInnerRadius_;
@@ -534,12 +623,14 @@ void MeshEffectEditor::DrawImGui() {
                 ex->UpdateProceduralMesh();
             }
         }
+
         ImGui::Unindent();
 
         // 外部OBJエクスポート機能
         ImGui::Spacing();
         static char objName[128] = "my_custom_primitive";
         ImGui::InputText("OBJファイル名", objName, sizeof(objName));
+
         if (ImGui::Button(ICON_FA_DOWNLOAD " この形状をOBJとして保存 (Export)", ImVec2(availWidth, 30))) {
             std::filesystem::create_directories("Resources/model");
             std::string path = "Resources/model/" + std::string(objName) + ".obj";
@@ -547,6 +638,7 @@ void MeshEffectEditor::DrawImGui() {
             DebugConsole::GetInstance()->AddLog("Exported OBJ to " + path);
         }
     }
+
     // ==========================================
     // 3. リソース設定 (メッシュ・テクスチャ)
     // ==========================================
@@ -568,15 +660,22 @@ void MeshEffectEditor::DrawImGui() {
         if (editProceduralType_ == 0) {
             std::vector<std::string> modelNames = ModelManager::GetInstance()->GetAvailableModelNames();
             int selectedModel = -1;
+
             for (int i = 0; i < static_cast<int>(modelNames.size()); ++i) {
-                if (modelNames[i] == editModelName_) { selectedModel = i; break; }
+                if (modelNames[i] == editModelName_) {
+                    selectedModel = i;
+                    break;
+                }
             }
+
             if (VFXAssetPicker::DrawCombo(ICON_FA_CUBE " メッシュ選択", modelNames,
                                           selectedModel, modelSearch_, sizeof(modelSearch_))) {
                 strcpy_s(editModelName_, sizeof(editModelName_), modelNames[selectedModel].c_str());
                 previewEffect_->SetModel(editModelName_);
             }
-            if (selectedModel < 0) ImGui::TextDisabled("現在のモデル: %s", editModelName_);
+
+            if (selectedModel < 0)
+                ImGui::TextDisabled("現在のモデル: %s", editModelName_);
         }
         else {
             // プロシージャル使用時は無効化されていることを明記する
@@ -677,11 +776,13 @@ void MeshEffectEditor::DrawImGui() {
         ImGui::SliderFloat("削り出しの強さ", &editEdgeFadeStrength_, 1.0f, 10.0f);
         ImGui::SliderFloat("透過足切り (AlphaReference)", &editAlphaReference_, 0.0f, 1.0f);
     }
+
     // ---------------------------------------------------------
     // 当たり判定 (Collision) の設定
     // ---------------------------------------------------------
     if (ImGui::CollapsingHeader("Collision Settings")) {
         ImGui::Checkbox("Has Collision", &previewEffect_->editHasCollision_);
+
         if (previewEffect_->editHasCollision_) {
             ImGui::Combo("Shape", &previewEffect_->editCollisionShape_, "Sphere\0AABB\0OBB\0Cylinder\0\0");
             ImGui::DragFloat3("Size/Radius", &previewEffect_->editCollisionSize_.x, 0.1f);
@@ -689,7 +790,8 @@ void MeshEffectEditor::DrawImGui() {
 
             // 型を決定
             ColliderType cType = ColliderType::kNone;
-            if (previewEffect_->editCollisionShape_ == 0) cType = ColliderType::kSphere;
+            if (previewEffect_->editCollisionShape_ == 0)
+                cType = ColliderType::kSphere;
             else if (previewEffect_->editCollisionShape_ == 1) cType = ColliderType::kAABB;
             else if (previewEffect_->editCollisionShape_ == 2) cType = ColliderType::kOBB;
 
@@ -711,19 +813,26 @@ void MeshEffectEditor::DrawImGui() {
 
         MeshEffectManager::GetInstance()->SetPreviewEffectForDebug(previewEffect_.get());
     }
+
     // ==========================================
        // 7. 保存と読み込み (Save & Load)
        // ==========================================
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         currentJsonIndex_ = -1;
+
         for (int i = 0; i < static_cast<int>(jsonFileList_.size()); ++i) {
-            if (jsonFileList_[i] == saveFileName_) { currentJsonIndex_ = i; break; }
+            if (jsonFileList_[i] == saveFileName_) {
+                currentJsonIndex_ = i;
+                break;
+            }
         }
+
         if (VFXAssetPicker::DrawCombo(ICON_FA_FILE_ALT " 保存済みメッシュ設定", jsonFileList_,
                                       currentJsonIndex_, jsonSearch_, sizeof(jsonSearch_),
                                       "新規作成", true)) {
-            if (currentJsonIndex_ < 0) saveFileName_[0] = '\0';
+            if (currentJsonIndex_ < 0)
+                saveFileName_[0] = '\0';
             else strcpy_s(saveFileName_, sizeof(saveFileName_), jsonFileList_[currentJsonIndex_].c_str());
         }
 
@@ -739,6 +848,7 @@ void MeshEffectEditor::DrawImGui() {
             SaveToJson();
             RefreshJsonFileList(); // 保存したらリストを最新に更新する！
         }
+
         ImGui::SameLine();
 
         // 読込ボタン
@@ -762,12 +872,14 @@ void MeshEffectEditor::SaveToJson() {
     std::string fullPath = directoryPath + saveFileName_;
 
     json j;
+
     if (targetObject_) {
         j["TargetName"] = targetObject_->GetName();
     }
     else {
         j["TargetName"] = "";
     }
+
     // --- リソース ---
     j["ModelName"] = editModelName_;
     j["TexturePath"] = editTexturePath_;
@@ -811,6 +923,7 @@ void MeshEffectEditor::SaveToJson() {
     // プロシージャルパラメータの保存
     // ==========================================
     j["ProceduralType"] = editProceduralType_;
+
     if (previewEffect_) {
         j["SlashAngle"] = previewEffect_->editSlashAngle_;
         j["InnerRadius"] = previewEffect_->editInnerRadius_;
@@ -835,11 +948,13 @@ void MeshEffectEditor::SaveToJson() {
         j["MeshSegments"] = previewEffect_->editMeshSegments_;
         j["UvTiling"] = {previewEffect_->editUvTiling_.x, previewEffect_->editUvTiling_.y};
     }
+
     j["Collision"]["HasCollision"] = previewEffect_->editHasCollision_;
     j["Collision"]["Shape"] = previewEffect_->editCollisionShape_;
     j["Collision"]["Size"] = { previewEffect_->editCollisionSize_.x, previewEffect_->editCollisionSize_.y, previewEffect_->editCollisionSize_.z };
     j["Collision"]["Offset"] = { previewEffect_->editCollisionOffset_.x, previewEffect_->editCollisionOffset_.y, previewEffect_->editCollisionOffset_.z };
     std::ofstream file(fullPath);
+
     if (file.is_open()) {
         file << j.dump(4);
         file.close();
@@ -857,6 +972,7 @@ void MeshEffectEditor::LoadFromJson() {
     std::string fullPath = "Resources/json/effect/" + std::string(saveFileName_);
 
     std::ifstream file(fullPath);
+
     if (!file.is_open()) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "Failed to load Effect JSON: " + fullPath);
         return;
@@ -879,6 +995,7 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("TexturePath")) {
         std::string texPath = j["TexturePath"];
         strncpy_s(editTexturePath_, texPath.c_str(), sizeof(editTexturePath_) - 1);
+
         if (auto renderer = previewEffect_->GetMeshRenderer()) {
             if (strlen(editTexturePath_) > 0) {
                 renderer->SetTexture(editTexturePath_);
@@ -889,6 +1006,7 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("NoiseTexturePath")) {
         std::string noisePath = j["NoiseTexturePath"];
         strncpy_s(editNoiseTexturePath_, noisePath.c_str(), sizeof(editNoiseTexturePath_) - 1);
+
         if (strlen(editNoiseTexturePath_) > 0) {
             uint32_t texHandle = TextureManager::GetInstance()->Load(editNoiseTexturePath_);
             previewEffect_->SetNoiseTexture(texHandle);
@@ -898,6 +1016,7 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("RampTexturePath")) {
         std::string rampPath = j["RampTexturePath"];
         strncpy_s(editRampTexturePath_, rampPath.c_str(), sizeof(editRampTexturePath_) - 1);
+
         if (strlen(editRampTexturePath_) > 0) {
             uint32_t texHandle = TextureManager::GetInstance()->Load(editRampTexturePath_);
             previewEffect_->SetRampTexture(texHandle);
@@ -909,6 +1028,7 @@ void MeshEffectEditor::LoadFromJson() {
         editPosition_.y = j["Position"][1];
         editPosition_.z = j["Position"][2];
     }
+
     if (j.contains("Rotation")) {
         editRotation_.x = j["Rotation"][0];
         editRotation_.y = j["Rotation"][1];
@@ -916,14 +1036,17 @@ void MeshEffectEditor::LoadFromJson() {
     }
 
     // アニメーション関連の読み込み
-    if (j.contains("Lifetime")) editLifetime_ = j["Lifetime"];
-    if (j.contains("AutoLoop")) isAutoLoop_ = j["AutoLoop"];
+    if (j.contains("Lifetime"))
+        editLifetime_ = j["Lifetime"];
+    if (j.contains("AutoLoop"))
+        isAutoLoop_ = j["AutoLoop"];
 
     if (j.contains("StartScale")) {
         editStartScale_.x = j["StartScale"][0];
         editStartScale_.y = j["StartScale"][1];
         editStartScale_.z = j["StartScale"][2];
     }
+
     if (j.contains("EndScale")) {
         editEndScale_.x = j["EndScale"][0];
         editEndScale_.y = j["EndScale"][1];
@@ -936,6 +1059,7 @@ void MeshEffectEditor::LoadFromJson() {
         editStartColor_.z = j["StartColor"][2];
         editStartColor_.w = j["StartColor"][3];
     }
+
     if (j.contains("EndColor")) {
         editEndColor_.x = j["EndColor"][0];
         editEndColor_.y = j["EndColor"][1];
@@ -953,16 +1077,24 @@ void MeshEffectEditor::LoadFromJson() {
         editIntensity_ = j["Intensity"];
         previewEffect_->SetIntensity(editIntensity_);
     }
-    if (j.contains("DistortionStrength")) editDistortionStrength_ = j["DistortionStrength"];
+
+    if (j.contains("DistortionStrength"))
+        editDistortionStrength_ = j["DistortionStrength"];
     else editDistortionStrength_ = 0.0f;
-    if (j.contains("DistortionSpeed")) editDistortionSpeed_ = j["DistortionSpeed"];
-    if (j.contains("EdgeFadeStrength")) editEdgeFadeStrength_ = j["EdgeFadeStrength"];
-    if (j.contains("AlphaReference")) editAlphaReference_ = j["AlphaReference"];
+    if (j.contains("DistortionSpeed"))
+        editDistortionSpeed_ = j["DistortionSpeed"];
+    if (j.contains("EdgeFadeStrength"))
+        editEdgeFadeStrength_ = j["EdgeFadeStrength"];
+    if (j.contains("AlphaReference"))
+        editAlphaReference_ = j["AlphaReference"];
     else editAlphaReference_ = 0.0f;
-    if (j.contains("EnableDistortion")) editEnableDistortion_ = j["EnableDistortion"];
+    if (j.contains("EnableDistortion"))
+        editEnableDistortion_ = j["EnableDistortion"];
     else editEnableDistortion_ = false;
-    if (j.contains("BlendMode")) currentBlendModeIndex_ = j["BlendMode"];
-    if (j.contains("UseTextureColor")) editUseTextureColor_ = j["UseTextureColor"].get<bool>();
+    if (j.contains("BlendMode"))
+        currentBlendModeIndex_ = j["BlendMode"];
+    if (j.contains("UseTextureColor"))
+        editUseTextureColor_ = j["UseTextureColor"].get<bool>();
     else editUseTextureColor_ = false;
     previewEffect_->SetUseTextureColor(editUseTextureColor_);
     editChantFlowStrength_ = j.value("ChantFlowStrength", 0.0f);
@@ -973,77 +1105,128 @@ void MeshEffectEditor::LoadFromJson() {
     previewEffect_->SetRingEnergyStrength(editRingEnergyStrength_);
     editRingSpinSpeed_ = j.value("RingSpinSpeed", 0.0f);
     previewEffect_->SetRingSpinSpeed(editRingSpinSpeed_);
-    if (j.contains("EnableReveal")) editEnableReveal_ = j["EnableReveal"];
+    if (j.contains("EnableReveal"))
+        editEnableReveal_ = j["EnableReveal"];
     else editEnableReveal_ = true;
-    if (j.contains("RevealMode")) editRevealMode_ = std::clamp(j["RevealMode"].get<int>(), 0, 2);
+    if (j.contains("RevealMode"))
+        editRevealMode_ = std::clamp(j["RevealMode"].get<int>(), 0, 2);
     else editRevealMode_ = editEnableReveal_ ? 1 : 0;
 
-    if (j.contains("EasingType")) editEasingType_ = j["EasingType"];
+    if (j.contains("EasingType"))
+        editEasingType_ = j["EasingType"];
     else editEasingType_ = 0;
 
-    if (j.contains("VolumeMode")) editVolumeMode_ = j["VolumeMode"];
+    if (j.contains("VolumeMode"))
+        editVolumeMode_ = j["VolumeMode"];
     else editVolumeMode_ = 0;
 
     // プロシージャルパラメータの読み込み
-    if (j.contains("ProceduralType")) editProceduralType_ = j["ProceduralType"];
+    if (j.contains("ProceduralType"))
+        editProceduralType_ = j["ProceduralType"];
     if (previewEffect_) {
-        if (j.contains("SlashAngle")) previewEffect_->editSlashAngle_ = j["SlashAngle"];
-        if (j.contains("InnerRadius")) previewEffect_->editInnerRadius_ = j["InnerRadius"];
-        if (j.contains("OuterRadius")) previewEffect_->editOuterRadius_ = j["OuterRadius"];
-        if (j.contains("Thickness")) previewEffect_->editThickness_ = j["Thickness"];
-        if (j.contains("SpiralPitch")) previewEffect_->editSpiralPitch_ = j["SpiralPitch"];
-        if (j.contains("ThrustLength")) previewEffect_->editThrustLength_ = j["ThrustLength"];
-        if (j.contains("ThrustRadius")) previewEffect_->editThrustRadius_ = j["ThrustRadius"];
-        if (j.contains("SphereRadius")) previewEffect_->editSphereRadius_ = j["SphereRadius"];
-        if (j.contains("SphereRings")) previewEffect_->editSphereRings_ = j["SphereRings"];
-        if (j.contains("CylinderRadius")) previewEffect_->editCylinderRadius_ = j["CylinderRadius"];
-        if (j.contains("CylinderHeight")) previewEffect_->editCylinderHeight_ = j["CylinderHeight"];
-        if (j.contains("BoxSize")) { previewEffect_->editBoxSize_.x = j["BoxSize"][0]; previewEffect_->editBoxSize_.y = j["BoxSize"][1]; previewEffect_->editBoxSize_.z = j["BoxSize"][2]; }
-        if (j.contains("PlaneSize")) { previewEffect_->editPlaneSize_.x = j["PlaneSize"][0]; previewEffect_->editPlaneSize_.y = j["PlaneSize"][1]; }
-        if (j.contains("TorusMajorRadius")) previewEffect_->editTorusMajorRadius_ = j["TorusMajorRadius"];
-        if (j.contains("TorusMinorRadius")) previewEffect_->editTorusMinorRadius_ = j["TorusMinorRadius"];
-        if (j.contains("ConeRadius")) previewEffect_->editConeRadius_ = j["ConeRadius"];
-        if (j.contains("ConeHeight")) previewEffect_->editConeHeight_ = j["ConeHeight"];
-        if (j.contains("RingOuterRadius")) previewEffect_->editRingOuterRadius_ = j["RingOuterRadius"];
-        if (j.contains("RingInnerRadius")) previewEffect_->editRingInnerRadius_ = j["RingInnerRadius"];
-        if (j.contains("TriangleSize")) previewEffect_->editTriangleSize_ = j["TriangleSize"];
-        if (j.contains("MeshSegments")) previewEffect_->editMeshSegments_ = j["MeshSegments"];
-        if (j.contains("UvTiling")) { previewEffect_->editUvTiling_.x = j["UvTiling"][0]; previewEffect_->editUvTiling_.y = j["UvTiling"][1]; }
-        if (j.contains("SlashAngle")) previewEffect_->editSlashAngle_ = j["SlashAngle"];
-        if (j.contains("InnerRadius")) previewEffect_->editInnerRadius_ = j["InnerRadius"];
-        if (j.contains("OuterRadius")) previewEffect_->editOuterRadius_ = j["OuterRadius"];
-        if (j.contains("Thickness")) previewEffect_->editThickness_ = j["Thickness"];
-        if (j.contains("SpiralPitch")) previewEffect_->editSpiralPitch_ = j["SpiralPitch"];
-        if (j.contains("ThrustLength")) previewEffect_->editThrustLength_ = j["ThrustLength"];
-        if (j.contains("ThrustRadius")) previewEffect_->editThrustRadius_ = j["ThrustRadius"];
-        if (j.contains("MeshSegments")) previewEffect_->editMeshSegments_ = j["MeshSegments"];
+        if (j.contains("SlashAngle"))
+            previewEffect_->editSlashAngle_ = j["SlashAngle"];
+        if (j.contains("InnerRadius"))
+            previewEffect_->editInnerRadius_ = j["InnerRadius"];
+        if (j.contains("OuterRadius"))
+            previewEffect_->editOuterRadius_ = j["OuterRadius"];
+        if (j.contains("Thickness"))
+            previewEffect_->editThickness_ = j["Thickness"];
+        if (j.contains("SpiralPitch"))
+            previewEffect_->editSpiralPitch_ = j["SpiralPitch"];
+        if (j.contains("ThrustLength"))
+            previewEffect_->editThrustLength_ = j["ThrustLength"];
+        if (j.contains("ThrustRadius"))
+            previewEffect_->editThrustRadius_ = j["ThrustRadius"];
+        if (j.contains("SphereRadius"))
+            previewEffect_->editSphereRadius_ = j["SphereRadius"];
+        if (j.contains("SphereRings"))
+            previewEffect_->editSphereRings_ = j["SphereRings"];
+        if (j.contains("CylinderRadius"))
+            previewEffect_->editCylinderRadius_ = j["CylinderRadius"];
+        if (j.contains("CylinderHeight"))
+            previewEffect_->editCylinderHeight_ = j["CylinderHeight"];
+        if (j.contains("BoxSize")) {
+            previewEffect_->editBoxSize_.x = j["BoxSize"][0];
+            previewEffect_->editBoxSize_.y = j["BoxSize"][1];
+            previewEffect_->editBoxSize_.z = j["BoxSize"][2];
+        }
+        if (j.contains("PlaneSize")) {
+            previewEffect_->editPlaneSize_.x = j["PlaneSize"][0];
+            previewEffect_->editPlaneSize_.y = j["PlaneSize"][1];
+        }
+        if (j.contains("TorusMajorRadius"))
+            previewEffect_->editTorusMajorRadius_ = j["TorusMajorRadius"];
+        if (j.contains("TorusMinorRadius"))
+            previewEffect_->editTorusMinorRadius_ = j["TorusMinorRadius"];
+        if (j.contains("ConeRadius"))
+            previewEffect_->editConeRadius_ = j["ConeRadius"];
+        if (j.contains("ConeHeight"))
+            previewEffect_->editConeHeight_ = j["ConeHeight"];
+        if (j.contains("RingOuterRadius"))
+            previewEffect_->editRingOuterRadius_ = j["RingOuterRadius"];
+        if (j.contains("RingInnerRadius"))
+            previewEffect_->editRingInnerRadius_ = j["RingInnerRadius"];
+        if (j.contains("TriangleSize"))
+            previewEffect_->editTriangleSize_ = j["TriangleSize"];
+        if (j.contains("MeshSegments"))
+            previewEffect_->editMeshSegments_ = j["MeshSegments"];
+        if (j.contains("UvTiling")) {
+            previewEffect_->editUvTiling_.x = j["UvTiling"][0];
+            previewEffect_->editUvTiling_.y = j["UvTiling"][1];
+        }
+        if (j.contains("SlashAngle"))
+            previewEffect_->editSlashAngle_ = j["SlashAngle"];
+        if (j.contains("InnerRadius"))
+            previewEffect_->editInnerRadius_ = j["InnerRadius"];
+        if (j.contains("OuterRadius"))
+            previewEffect_->editOuterRadius_ = j["OuterRadius"];
+        if (j.contains("Thickness"))
+            previewEffect_->editThickness_ = j["Thickness"];
+        if (j.contains("SpiralPitch"))
+            previewEffect_->editSpiralPitch_ = j["SpiralPitch"];
+        if (j.contains("ThrustLength"))
+            previewEffect_->editThrustLength_ = j["ThrustLength"];
+        if (j.contains("ThrustRadius"))
+            previewEffect_->editThrustRadius_ = j["ThrustRadius"];
+        if (j.contains("MeshSegments"))
+            previewEffect_->editMeshSegments_ = j["MeshSegments"];
     }
+
     if (j.contains("Collision")) {
         previewEffect_->editHasCollision_ = j["Collision"]["HasCollision"];
         previewEffect_->editCollisionShape_ = j["Collision"]["Shape"];
         previewEffect_->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
         previewEffect_->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
     }
+
     targetObject_ = nullptr;
+
     if (j.contains("TargetName")) {
         std::string targetName = j["TargetName"];
+
         if (!targetName.empty() && sceneManager_ && sceneManager_->GetCurrentScene()) {
             auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
             // シーン内を再帰的に探すヘルパー関数
             std::function<engine::Object3d* (engine::Object3d*, const std::string&)> findObj = [&](engine::Object3d* obj, const std::string& name) -> engine::Object3d* {
-                if (!obj) return nullptr;
-                if (obj->GetName() == name) return obj;
+                if (!obj)
+                    return nullptr;
+                if (obj->GetName() == name)
+                    return obj;
                 for (auto* child : obj->GetChildren()) {
                     engine::Object3d* found = findObj(child, name);
-                    if (found) return found;
+                    if (found)
+                        return found;
                 }
+
                 return nullptr;
                 };
 
             for (auto& obj : objects) {
                 targetObject_ = findObj(obj.get(), targetName);
-                if (targetObject_) break; // 見つけたら終了
+                if (targetObject_)
+                    break; // 見つけたら終了
             }
         }
     }
@@ -1059,6 +1242,7 @@ void MeshEffectEditor::LoadFromJson() {
 
         for (auto& ex : extraPreviewEffects_) {
             ex->SetProceduralType(editProceduralType_);
+
             // パラメータを同期
             ex->editSlashAngle_ = previewEffect_->editSlashAngle_;
             ex->editInnerRadius_ = previewEffect_->editInnerRadius_;
@@ -1078,7 +1262,8 @@ void MeshEffectEditor::LoadFromJson() {
 void MeshEffectEditor::SyncTextureIndices() {
     // 保存済みパスの表記ゆれを吸収し、画像一覧の選択位置へ戻す。
     auto findIndex = [&](const std::string& path) -> int {
-        if (path.empty()) return -1;
+        if (path.empty())
+            return -1;
         for (int i = 0; i < (int)textureFileList_.size(); ++i) {
             std::string fullPath = "Resources/sprite/" + textureFileList_[i];
             if (textureFileList_[i] == path ||
@@ -1087,8 +1272,10 @@ void MeshEffectEditor::SyncTextureIndices() {
                 return i;
             }
         }
+
         return -1;
         };
+
     currentTextureIndex_ = findIndex(editTexturePath_);
     currentNoiseTextureIndex_ = findIndex(editNoiseTexturePath_);
     currentRampTextureIndex_ = findIndex(editRampTexturePath_);

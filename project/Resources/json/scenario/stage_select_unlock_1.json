@@ -1,0 +1,524 @@
+{
+  "version": 6,
+  "name": "stage_select_unlock_1",
+  "duration": 5.9,
+  "tracks": [
+    {
+      "name": "王冠鍵の登場・挿入・回転・退場",
+      "targetName": "StageSelect_CrownKey_1",
+      "targetEventId": -1,
+      "startTime": 0,
+      "enabled": true,
+      "muted": false,
+      "relative": true,
+      "anchorRelative": false,
+      "holdLast": true,
+      "keys": [
+        {
+          "time": 0,
+          "position": [
+            -5.47585,
+            1.65,
+            -1.1864
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ],
+          "easingToNext": 0
+        },
+        {
+          "time": 1.18,
+          "position": [
+            -5.47585,
+            1.65,
+            -1.1864
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ],
+          "easingToNext": 2
+        },
+        {
+          "time": 1.28,
+          "position": [
+            -5.47585,
+            1.65,
+            -1.1864
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.6,
+            0.6,
+            0.6
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 1.64,
+          "position": [
+            -5.24037,
+            1.79,
+            -1.00682
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 2,
+          "position": [
+            -3.38342,
+            1.963,
+            -0.26523
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 2.36,
+          "position": [
+            -1.14638,
+            0.347,
+            -0.30623
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 2.72,
+          "position": [
+            -0.79334,
+            0,
+            -0.3808
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 2.82,
+          "position": [
+            -0.79334,
+            0,
+            -0.3808
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 3.12,
+          "position": [
+            -0.79334,
+            0,
+            -0.3808
+          ],
+          "rotation": [
+            0,
+            0,
+            0.7854
+          ],
+          "scale": [
+            1.12,
+            1.12,
+            1.12
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 3.42,
+          "position": [
+            -0.79334,
+            0,
+            -0.3808
+          ],
+          "rotation": [
+            0,
+            0,
+            1.5708
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 0
+        },
+        {
+          "time": 3.48,
+          "position": [
+            -0.79334,
+            0,
+            -0.3808
+          ],
+          "rotation": [
+            0,
+            0,
+            1.5708
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 3.92,
+          "position": [
+            -1.13141,
+            0.925,
+            -0.54308
+          ],
+          "rotation": [
+            0,
+            0,
+            1.8458
+          ],
+          "scale": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 4.36,
+          "position": [
+            -1.46948,
+            1.85,
+            -0.70535
+          ],
+          "rotation": [
+            0,
+            0,
+            2.1208
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ],
+          "easingToNext": 0
+        }
+      ]
+    },
+    {
+      "name": "南京錠の震えと落下",
+      "targetName": "StageSelect_LockSeal_1",
+      "targetEventId": -1,
+      "startTime": 0,
+      "enabled": true,
+      "muted": false,
+      "relative": true,
+      "anchorRelative": false,
+      "holdLast": true,
+      "keys": [
+        {
+          "time": 0,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 0
+        },
+        {
+          "time": 2.82,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 0
+        },
+        {
+          "time": 3,
+          "position": [
+            -0.03029,
+            0,
+            0.06311
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1.03,
+            0.985,
+            1.03
+          ],
+          "easingToNext": 0
+        },
+        {
+          "time": 3.18,
+          "position": [
+            0.03462,
+            0,
+            -0.07212
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1.04,
+            0.98,
+            1.04
+          ],
+          "easingToNext": 0
+        },
+        {
+          "time": 3.36,
+          "position": [
+            -0.02164,
+            0,
+            0.04508
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1.06,
+            0.97,
+            1.06
+          ],
+          "easingToNext": 0
+        },
+        {
+          "time": 3.48,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1.06,
+            0.97,
+            1.06
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 3.83,
+          "position": [
+            -0.16877,
+            -1.6,
+            0.35159
+          ],
+          "rotation": [
+            0,
+            0.225,
+            -0.71
+          ],
+          "scale": [
+            0.77,
+            0.77,
+            0.77
+          ],
+          "easingToNext": 3
+        },
+        {
+          "time": 4.18,
+          "position": [
+            -0.33753,
+            -3.2,
+            0.70319
+          ],
+          "rotation": [
+            0,
+            0.45,
+            -1.42
+          ],
+          "scale": [
+            0.54,
+            0.54,
+            0.54
+          ],
+          "easingToNext": 0
+        }
+      ]
+    }
+  ],
+  "cameraShots": [
+    {
+      "name": "ゲートの南京錠へ寄る",
+      "targetName": "StageSelect_UnlockCamera_1",
+      "targetEventId": -1,
+      "startTime": 0,
+      "duration": 4.72,
+      "blendInDuration": 1.05,
+      "blendOutDuration": 1.08,
+      "easing": 4,
+      "enabled": true,
+      "muted": false
+    }
+  ],
+  "vfxCues": [],
+  "animationClips": [],
+  "audioClips": [],
+  "signals": [
+    {
+      "time": 1.18,
+      "name": "王冠鍵が現れる",
+      "signal": "key_appear",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 2.72,
+      "name": "王冠鍵が錠へ到着",
+      "signal": "key_insert",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 2.82,
+      "name": "王冠鍵を回す",
+      "signal": "key_turn",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 3.48,
+      "name": "南京錠が外れる",
+      "signal": "lock_release",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 3.78,
+      "name": "ゲート点灯",
+      "signal": "gate_activate",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 4.18,
+      "name": "南京錠を隠す",
+      "signal": "lock_hide",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 4.36,
+      "name": "王冠鍵を隠す",
+      "signal": "key_hide",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 4.52,
+      "name": "ゲート点灯完了",
+      "signal": "gate_active_full",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    }
+  ],
+  "events": []
+}

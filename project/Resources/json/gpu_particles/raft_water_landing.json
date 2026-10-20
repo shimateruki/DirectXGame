@@ -1,0 +1,67 @@
+{
+    "emitPos": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emitArea": [
+        9,
+        0.2,
+        6
+    ],
+    "emitVelocity": [
+        0,
+        10,
+        0
+    ],
+    "emitCount": 72,
+    "emitLife": 1.1,
+    "velocityVariance": 5,
+    "baseColor": [
+        0.55,
+        0.94,
+        1,
+        0.9
+    ],
+    "midColor": [
+        0.8,
+        1,
+        1,
+        0.75
+    ],
+    "endColor": [
+        0.35,
+        0.8,
+        1,
+        0
+    ],
+    "colorMidTime": 0.24,
+    "baseSize": 0.3,
+    "midSize": 0.65,
+    "endSize": 0.08,
+    "sizeMidTime": 0.2,
+    "rotSpeed": 8.0,
+    "blendModeIndex": 1,
+    "envGravity": [
+        0,
+        -16,
+        0
+    ],
+    "envDrag": 0.18,
+    "envWind": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "envTurbulence": 0.56,
+    "isLooping": false,
+    "emitInterval": 0.001,
+    "shapeType": 0,
+    "shapeRadius": 0.6,
+    "shapeAngle": 74.0,
+    "sizeEaseType": 2,
+    "colorEaseType": 2,
+    "colorIntensity": 1.1,
+    "softParticleFade": 1.8,
+    "texturePath": "Resources/sprite/particle/jelly_blob.png"
+}

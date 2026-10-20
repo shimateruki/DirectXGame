@@ -63,8 +63,11 @@ public:
 
 private:
     SRVManager() = default;
+
     ~SRVManager() = default;
+
     SRVManager(const SRVManager&) = delete;
+
     SRVManager& operator=(const SRVManager&) = delete;
 
     Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;

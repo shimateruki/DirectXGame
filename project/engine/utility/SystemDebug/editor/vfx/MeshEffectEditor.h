@@ -16,25 +16,33 @@ class BaseScene;
 class MeshEffectEditor : public IEditable {
 public:
     MeshEffectEditor() = default;
+
     ~MeshEffectEditor() override = default;
 
     void Initialize(SceneManager* sceneManager);
 
         // プレビュー中のメッシュエフェクトを時間経過で更新します。
 void Update(float deltaTime);
+
     void Draw();
+
         // 色、サイズ、寿命、テクスチャなどの編集UIを描画します。
 void DrawImGui() override;
 
     std::string GetName() override { return "Mesh Effect Editor"; }
+
     EffectObject3d* GetPreviewEffect() const { return previewEffect_.get(); }
 
 private:
         // 選択可能なテクスチャ一覧を最新のアセット状態に更新します。
 void RefreshTextureList();
+
     void SyncTextureIndices();
+
     void RefreshJsonFileList();
+
     void SaveToJson();
+
     void LoadFromJson();
 
 private:
@@ -82,21 +90,30 @@ private:
 
     char editRampTexturePath_[256] = "";
     int currentRampTextureIndex_ = -1;
+
     int currentBlendModeIndex_ = 2;
+
     bool editEnableReveal_ = true;
     bool editUseTextureColor_ = false;
+
     float editChantFlowStrength_ = 0.0f;
     float editChantRibbonStrength_ = 0.0f;
+
     float editRingEnergyStrength_ = 0.0f;
     float editRingSpinSpeed_ = 0.0f;
+
     int editRevealMode_ = 1;
+
     std::vector<std::string> jsonFileList_;
     int currentJsonIndex_ = -1;
+
     int editEasingType_ = 0;
     int editProceduralType_ = 0;
     int editVolumeMode_ = 0;
+
     std::vector<std::unique_ptr<EffectObject3d>> extraPreviewEffects_;
     bool forcePlayRequest_ = false;
+
     int lastStagePlayRequestSerial_ = 0;
     int lastStageStopRequestSerial_ = 0;
     int lastStageSeekRequestSerial_ = 0;

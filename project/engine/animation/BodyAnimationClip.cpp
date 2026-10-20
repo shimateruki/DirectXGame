@@ -21,6 +21,7 @@ engine::Vector3 ReadVector3(const json& object, const char* key, const engine::V
     if (!object.contains(key) || !object[key].is_array() || object[key].size() < 3) {
         return fallback;
     }
+
     const auto& values = object[key];
     return {
         values[0].get<float>(),
@@ -48,6 +49,7 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
     Clear();
 
     std::ifstream file(filePath, std::ios::binary);
+
     if (!file.is_open()) {
         return false;
     }
@@ -62,6 +64,7 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
         loopDefault_ = root.value("loop", true);
 
         const json bodyKeys = root.value("bodyKeys", json::array());
+
         for (const auto& item : bodyKeys) {
             Key key;
             key.time = std::max(0.0f, item.value("time", 0.0f));
@@ -79,6 +82,7 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
         std::sort(keys_.begin(), keys_.end(), [](const Key& lhs, const Key& rhs) {
             return lhs.time < rhs.time;
         });
+
         if (!keys_.empty()) {
             duration_ = std::max(duration_, keys_.back().time);
         }
@@ -92,14 +96,17 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
 
 bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut) const {
     sampleOut = {};
+
     if (!IsValid()) {
         return false;
     }
 
     float sampleTime = std::max(0.0f, timeSeconds);
+
     // ループ時は duration を周期にし、単発時は末尾の姿勢を維持する。
     if (loop && duration_ > kTimeEpsilon) {
         sampleTime = std::fmod(sampleTime, duration_);
+
         if (sampleTime < 0.0f) {
             sampleTime += duration_;
         }
@@ -119,6 +126,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
         CopyKeyToSample(keys_.front());
         return true;
     }
+
     if (sampleTime >= keys_.back().time) {
         CopyKeyToSample(keys_.back());
         return true;
@@ -127,12 +135,14 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
     for (size_t index = 0; index + 1 < keys_.size(); ++index) {
         const Key& from = keys_[index];
         const Key& to = keys_[index + 1];
+
         if (sampleTime < from.time || sampleTime > to.time) {
             continue;
         }
 
         const float segmentDuration = std::max(kTimeEpsilon, to.time - from.time);
         const float rawRate = (sampleTime - from.time) / segmentDuration;
+
         // 補間方法は区間の開始キーに保存された設定を使う。
         const float rate = AnimationInterpolation::ApplyEasing(rawRate, ToEasing(from.easingToNext));
         sampleOut.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
@@ -154,26 +164,32 @@ std::string BodyAnimationClip::ResolveAssetPath(const std::string& assetNameOrPa
     }
 
     std::filesystem::path path(assetNameOrPath);
+
     if (path.has_parent_path()) {
         if (path.extension().empty()) {
             path += ".json";
         }
+
         return path.generic_string();
     }
 
     std::string fileName = path.string();
+
     if (path.extension().empty()) {
         fileName += ".json";
     }
 
     const std::filesystem::path primary = std::filesystem::path(kBodyAnimationDirectory) / fileName;
+
     if (std::filesystem::exists(primary)) {
         return primary.generic_string();
     }
 
     const std::filesystem::path legacy = std::filesystem::path(kLegacyAnimationDirectory) / fileName;
+
     if (std::filesystem::exists(legacy)) {
         return legacy.generic_string();
     }
+
     return primary.generic_string();
 }

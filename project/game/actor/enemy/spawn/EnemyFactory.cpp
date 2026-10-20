@@ -10,7 +10,7 @@
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "EnemyRingBurner.h"
 #include <EnemyBomber.h>
-#include "GameplayStatusManager.h"
+#include "game/system/rules/GameplayStatusManager.h"
 #include <algorithm>
 // 他の敵タイプを追加する場合は include と CreateEnemy の分岐を増やす
 
@@ -30,10 +30,12 @@ void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
     if (!enemy || !IsSlimeEnemyType(enemy->GetEnemyType())) {
         return;
     }
+
     // マグマスライムは複数のPBR材質で外皮と発光亀裂を描き分けます。
     if (enemy->GetEnemyType() == "MagmaSlime") {
         return;
     }
+
     enemy->SetMaterialType(enemy->GetEnemyType() == "PrismSlime" ? kPrismCrystalMaterialType : kSlimeSoftMaterialType);
 }
 } // namespace
@@ -45,8 +47,9 @@ EnemyFactory* EnemyFactory::GetInstance() {
 }
 
 // 敵タイプ名ごとに専用クラスを生成します。共通ステータスはGameplayStatusManagerが設定します。
-std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, Object3dCommon* common) {
+std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, engine::Object3dCommon* common) {
     std::unique_ptr<BaseEnemy> newEnemy = nullptr;
+
     if (enemyName == "Slime") {
         auto slime = std::make_unique<EnemySlime>();
 
@@ -108,6 +111,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
         newEnemy = std::move(ringBurner);
     }
+
     // 作った敵にタイプ名を保存し、タイプ共通設定を一元管理から適用します。
     if (newEnemy) {
         newEnemy->SetEnemyType(enemyName);

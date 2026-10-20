@@ -54,17 +54,23 @@ public:
         engine::Vector4 color;
         int32_t enableLighting;
         float padding1[3];
+
         engine::Matrix4x4 uvTransform;
+
         int32_t selectedLighting;
         float shininess;
+
         int32_t materialType;
         float roughness; // 粗さ。0で滑らか、1で粗い。
         float metallic; // 金属度。0で非金属、1で金属。
+
         int32_t enableNormalMap;
         int32_t enableEnvMap; // 環境マップの有効フラグ。
         float envIntensity; // 環境マップの強度。
+
         float emissive; // 自己発光の強度。
         float time; // シェーダー内の時間演出に使う値。
+
         float portalClipEnabled;
         float portalClipProgress;
         engine::Vector3 portalClipCenter;
@@ -126,15 +132,19 @@ public:
         std::string textureFilePath;
         std::string normalMapPath;
         std::string ormMapPath;
+
         uint32_t textureHandle = 0;
         uint32_t normalMapHandle = 0;
         uint32_t ormMapHandle = 0;
+
         engine::Vector4 baseColorFactor = { 1.0f, 1.0f, 1.0f, 1.0f };
         float roughness = 0.5f;
         float metallic = 0.0f;
+
         bool hasNormalMap = false;
         bool hasOrmMap = false;
         bool doubleSided = false;
+
         Microsoft::WRL::ComPtr<ID3D12Resource> materialResource;
         Material* materialData = nullptr;
     };
@@ -239,7 +249,8 @@ public:
 
     /// <summary>先頭マテリアルのテクスチャハンドルを返す。未設定時は0。</summary>
     uint32_t GetTextureHandle() const {
-        if (modelData_.materials.empty()) return 0;
+        if (modelData_.materials.empty())
+            return 0;
         return modelData_.materials[0].textureHandle;
     }
 
@@ -316,6 +327,7 @@ public:
 
     /// <summary>メッシュ数を返す。</summary>
     uint32_t GetMeshCount() const { return static_cast<uint32_t>(modelData_.meshes.size()); }
+
 private:
     // ファイルを解析し、モデルのCPU側表現へ変換する。
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
@@ -331,10 +343,12 @@ private:
 
     // 指定秒を挟むキーフレームから値を補間する。
     static engine::Vector3 CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time);
+
     static engine::Quaternion CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time);
 
     // 読み込んだノード階層から関節一覧と名前索引を組み立てる。
     static int32_t CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints);
+
     static Skeleton CreateSkeleton(const Node& rootNode);
 
     // 現在のローカル姿勢を親から積み上げ、スケルトン空間の行列を更新する。
@@ -345,6 +359,7 @@ private:
 
     // ボーン行列を格納するGPUバッファの生成・転送。
     void CreateBoneBuffer();
+
     void UpdateBoneBuffer();
 
     // Compute Skinning用の入出力バッファとディスクリプタを準備する。

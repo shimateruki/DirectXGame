@@ -26,7 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include "GhostRecorder.h" 
-#include "GhostDirector.h"
+#include "game/system/cinematic/GhostDirector.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
@@ -45,7 +45,7 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
+#include <game/system/combat/BulletManager.h>
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -65,6 +65,7 @@ namespace fs = std::filesystem;
 void DebugEditor::SetSelectedObject(engine::Object3d* obj) {
     // 現在のSceneに属するObjectだけ選択し、古いSceneのポインタは保持しません。
     selectedObjects_.clear();
+
     if (obj && IsObjectInCurrentScene(obj)) {
         selectedObject_ = obj;
         selectedObjects_.push_back(obj);
@@ -93,16 +94,20 @@ bool DebugEditor::FocusSceneObject(engine::Object3d* object) {
     if (!object || !IsObjectInCurrentScene(object)) {
         return false;
     }
+
     return CameraEditor::GetInstance()->FocusSceneObject(object);
 }
 
 bool DebugEditor::IsObjectSelected(const engine::Object3d* object) const {
     // 選択配列に残った古いポインタを肯定しないようScene所属も調べます。
-    if (!object || !IsObjectInCurrentScene(object)) return false;
+    if (!object || !IsObjectInCurrentScene(object))
+        return false;
 
     for (engine::Object3d* selected : selectedObjects_) {
-        if (selected == object) return true;
+        if (selected == object)
+            return true;
     }
+
     return false;
 }
 
@@ -117,6 +122,7 @@ void DebugEditor::SetSelectionOverlayMode(int mode) {
         mode > static_cast<int>(SelectionOverlayMode::Hidden)) {
         return;
     }
+
     selectionOverlayMode_ = static_cast<SelectionOverlayMode>(mode);
 }
 
@@ -129,7 +135,8 @@ void DebugEditor::ClearObjectSelection() {
 
 void DebugEditor::AddSelectedObject(engine::Object3d* object) {
     // 同じObjectを重複登録せず、最後に追加したものを主選択にします。
-    if (!object || !IsObjectInCurrentScene(object)) return;
+    if (!object || !IsObjectInCurrentScene(object))
+        return;
 
     for (engine::Object3d* selected : selectedObjects_) {
         if (selected == object) {
@@ -144,7 +151,8 @@ void DebugEditor::AddSelectedObject(engine::Object3d* object) {
 
 void DebugEditor::ToggleSelectedObject(engine::Object3d* object) {
     // 除外後の主選択を最後の残存Objectへ移し、選択配列と同期します。
-    if (!object || !IsObjectInCurrentScene(object)) return;
+    if (!object || !IsObjectInCurrentScene(object))
+        return;
 
     for (auto it = selectedObjects_.begin(); it != selectedObjects_.end(); ++it) {
         if (*it == object) {
@@ -163,41 +171,52 @@ void DebugEditor::PruneInvalidSelectedObjects() {
     validObjects.reserve(selectedObjects_.size());
 
     for (engine::Object3d* object : selectedObjects_) {
-        if (!object || !IsObjectInCurrentScene(object)) continue;
+        if (!object || !IsObjectInCurrentScene(object))
+            continue;
 
         bool alreadyAdded = false;
+
         for (engine::Object3d* added : validObjects) {
             if (added == object) {
                 alreadyAdded = true;
                 break;
             }
         }
+
         if (!alreadyAdded) {
             validObjects.push_back(object);
         }
     }
 
     selectedObjects_ = validObjects;
+
     if (!selectedObject_ || !IsObjectInCurrentScene(selectedObject_)) {
         selectedObject_ = selectedObjects_.empty() ? nullptr : selectedObjects_.back();
     }
 }
 
 engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mousePos) {
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return nullptr;
 
     engine::Ray ray = ScreenPointToRay(mousePos);
-    if (engine::Math::Dot(ray.diff, ray.diff) < 1e-12f) return nullptr;
+    if (engine::Math::Dot(ray.diff, ray.diff) < 1e-12f)
+        return nullptr;
     float bestDistance = 1.0f;
     engine::Object3d* hit = nullptr;
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
     for (auto& obj : objects) {
-        if (!obj || obj->IsEditorInternal()) continue;
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
-        if (!obj->GetIsRenderVisible() || obj->GetIsLocked()) continue;
+        if (!obj || obj->IsEditorInternal())
+            continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line")
+            continue;
+        if (!obj->GetIsRenderVisible() || obj->GetIsLocked())
+            continue;
 
         const engine::Matrix4x4 worldMatrix = obj->GetWorldMatrix();
+
         // ゼロスケールの変換行列は逆変換できないため、選択判定から除外する。
         const engine::Vector3 axisX = { worldMatrix.m[0][0], worldMatrix.m[0][1], worldMatrix.m[0][2] };
         const engine::Vector3 axisY = { worldMatrix.m[1][0], worldMatrix.m[1][1], worldMatrix.m[1][2] };
@@ -211,15 +230,18 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
             engine::Math::Transform(ray.origin, inverseWorld),
             engine::Math::TransformNormal(ray.diff, inverseWorld)
         };
+
         if (!std::isfinite(localRay.origin.x) || !std::isfinite(localRay.origin.y) || !std::isfinite(localRay.origin.z) ||
             !std::isfinite(localRay.diff.x) || !std::isfinite(localRay.diff.y) || !std::isfinite(localRay.diff.z)) continue;
         engine::Vector3 localMin = { -0.5f, -0.5f, -0.5f };
         engine::Vector3 localMax = { 0.5f, 0.5f, 0.5f };
         Model* model = obj->GetModel();
+
         if (model) {
             localMin = model->GetLocalAabbMin();
             localMax = model->GetLocalAabbMax();
         }
+
         if (!std::isfinite(localMin.x) || !std::isfinite(localMin.y) || !std::isfinite(localMin.z) ||
             !std::isfinite(localMax.x) || !std::isfinite(localMax.y) || !std::isfinite(localMax.z) ||
             localMin.x > localMax.x || localMin.y > localMax.y || localMin.z > localMax.z) continue;
@@ -231,24 +253,31 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
         float exit = 1.0f;
         bool startsInside = true;
         bool intersects = true;
+
         for (int axis = 0; axis < 3; ++axis) {
-            if (origins[axis] < mins[axis] || origins[axis] > maxs[axis]) startsInside = false;
+            if (origins[axis] < mins[axis] || origins[axis] > maxs[axis])
+                startsInside = false;
             if (std::abs(directions[axis]) < 1e-6f) {
-                if (origins[axis] < mins[axis] || origins[axis] > maxs[axis]) intersects = false;
+                if (origins[axis] < mins[axis] || origins[axis] > maxs[axis])
+                    intersects = false;
                 continue;
             }
+
             float nearT = (mins[axis] - origins[axis]) / directions[axis];
             float farT = (maxs[axis] - origins[axis]) / directions[axis];
-            if (nearT > farT) std::swap(nearT, farT);
+            if (nearT > farT)
+                std::swap(nearT, farT);
             entry = (std::max)(entry, nearT);
             exit = (std::min)(exit, farT);
+
             if (entry > exit) {
                 intersects = false;
                 break;
             }
         }
 
-        if (!intersects || entry > bestDistance) continue;
+        if (!intersects || entry > bestDistance)
+            continue;
 
         // 静的モデルは面との交差を調べ、AABB の空間部分で手前の物体を選ばない。
         // アニメーション中の頂点はCPU側と一致しないため、従来の箱判定を使う。
@@ -257,14 +286,18 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
         if (useMeshSurface) {
             const auto& meshes = model->GetModelData().meshes;
             const int drawIndex = obj->GetMeshDrawIndex();
+
             for (size_t meshIndex = 0; meshIndex < meshes.size(); ++meshIndex) {
-                if (drawIndex >= 0 && meshIndex != static_cast<size_t>(drawIndex)) continue;
+                if (drawIndex >= 0 && meshIndex != static_cast<size_t>(drawIndex))
+                    continue;
                 const auto& mesh = meshes[meshIndex];
+
                 for (size_t index = 0; index + 2 < mesh.indices.size(); index += 3) {
                     const uint32_t i0 = mesh.indices[index];
                     const uint32_t i1 = mesh.indices[index + 1];
                     const uint32_t i2 = mesh.indices[index + 2];
-                    if (i0 >= mesh.vertices.size() || i1 >= mesh.vertices.size() || i2 >= mesh.vertices.size()) continue;
+                    if (i0 >= mesh.vertices.size() || i1 >= mesh.vertices.size() || i2 >= mesh.vertices.size())
+                        continue;
                     const auto& a = mesh.vertices[i0].position;
                     const auto& b = mesh.vertices[i1].position;
                     const auto& c = mesh.vertices[i2].position;
@@ -272,15 +305,19 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
                     const engine::Vector3 edge2 = { c.x - a.x, c.y - a.y, c.z - a.z };
                     const engine::Vector3 p = engine::Math::Cross(localRay.diff, edge2);
                     const float determinant = engine::Math::Dot(edge1, p);
-                    if (std::abs(determinant) < 1e-8f) continue;
+                    if (std::abs(determinant) < 1e-8f)
+                        continue;
                     const float inverseDeterminant = 1.0f / determinant;
                     const engine::Vector3 fromA = { localRay.origin.x - a.x, localRay.origin.y - a.y, localRay.origin.z - a.z };
                     const float u = engine::Math::Dot(fromA, p) * inverseDeterminant;
-                    if (u < 0.0f || u > 1.0f) continue;
+                    if (u < 0.0f || u > 1.0f)
+                        continue;
                     const engine::Vector3 q = engine::Math::Cross(fromA, edge1);
                     const float v = engine::Math::Dot(localRay.diff, q) * inverseDeterminant;
-                    if (v < 0.0f || u + v > 1.0f) continue;
+                    if (v < 0.0f || u + v > 1.0f)
+                        continue;
                     const float distance = engine::Math::Dot(edge2, q) * inverseDeterminant;
+
                     if (distance >= 0.0f && distance <= 1.0f && distance < bestDistance) {
                         bestDistance = distance;
                         hit = obj.get();
@@ -290,6 +327,7 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
         } else {
             // 箱の内側から始まるレイは出口を比較し、周囲の大きなObjectを優先しない。
             const float distance = startsInside ? exit : entry;
+
             if (distance >= 0.0f && distance < bestDistance) {
                 bestDistance = distance;
                 hit = obj.get();
@@ -302,14 +340,17 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
     if (hit && hit->GetParent() && hit->GetParent()->GetTag() == "TerrainEditGroup") {
         return hit->GetParent();
     }
+
     return hit;
 }
 
 engine::Vector3 DebugEditor::GetObjectWorldPositionForSelection(engine::Object3d* object) {
     // モデルのワールドAABBが有効なら、その中心を画面選択の代表点にします。
-    if (!object) return { 0.0f, 0.0f, 0.0f };
+    if (!object)
+        return { 0.0f, 0.0f, 0.0f };
 
     AABB modelAabb = object->GetModelWorldAABB();
+
     if (IsValidAabb(modelAabb)) {
         return {
             (modelAabb.min.x + modelAabb.max.x) * 0.5f,
@@ -324,7 +365,8 @@ engine::Vector3 DebugEditor::GetObjectWorldPositionForSelection(engine::Object3d
 
 void DebugEditor::SelectObjectsInGameViewRect(const engine::Vector2& start, const engine::Vector2& end, bool additive) {
     // Game View内のドラッグ矩形を画面座標へ変換してObjectの投影位置と比べます。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
 
     const float localLeft = start.x < end.x ? start.x : end.x;
     const float localRight = start.x < end.x ? end.x : start.x;
@@ -341,13 +383,18 @@ void DebugEditor::SelectObjectsInGameViewRect(const engine::Vector2& start, cons
     }
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
     for (auto& obj : objects) {
-        if (!obj || obj->IsEditorInternal()) continue;
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
-        if (!obj->GetIsRenderVisible() || obj->GetIsLocked()) continue;
+        if (!obj || obj->IsEditorInternal())
+            continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line")
+            continue;
+        if (!obj->GetIsRenderVisible() || obj->GetIsLocked())
+            continue;
 
         engine::Vector3 screenPosition = WorldToScreen(GetObjectWorldPositionForSelection(obj.get()));
-        if (screenPosition.z < 0.0f) continue;
+        if (screenPosition.z < 0.0f)
+            continue;
 
         if (screenPosition.x >= screenLeft && screenPosition.x <= screenRight &&
             screenPosition.y >= screenTop && screenPosition.y <= screenBottom) {
@@ -363,7 +410,8 @@ void DebugEditor::SelectObjectsInGameViewRect(const engine::Vector2& start, cons
 void DebugEditor::DrawSelectionRectangleOverlay() {
 #ifdef USE_IMGUI
     // ドラッグ中だけ矩形をGame Viewに重ね、選択確定前の範囲を示します。
-    if (!isSelectionRectDragging_ || !isSelectionRectReady_) return;
+    if (!isSelectionRectDragging_ || !isSelectionRectReady_)
+        return;
 
     const float minX = selectionRectStart_.x < selectionRectEnd_.x ? selectionRectStart_.x : selectionRectEnd_.x;
     const float maxX = selectionRectStart_.x < selectionRectEnd_.x ? selectionRectEnd_.x : selectionRectStart_.x;
@@ -381,10 +429,13 @@ void DebugEditor::DrawSelectionRectangleOverlay() {
 
 void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 #ifdef USE_IMGUI
-    if (!drawSelectionBounds_) return;
+    if (!drawSelectionBounds_)
+        return;
     PruneInvalidSelectedObjects();
-    if (selectedObjects_.empty() || selectionOverlayMode_ == SelectionOverlayMode::Hidden) return;
-    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f) return;
+    if (selectedObjects_.empty() || selectionOverlayMode_ == SelectionOverlayMode::Hidden)
+        return;
+    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f)
+        return;
 
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
     const std::size_t selectedCount = selectedObjects_.size();
@@ -398,6 +449,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
     auto clampFloat = [](float value, float minimum, float maximum) {
         return (std::max)(minimum, (std::min)(value, maximum));
     };
+
     auto drawPivotMarker = [&](const ImVec2& center, ImU32 color, bool primary) {
         const float radius = primary ? 5.0f : 4.5f;
         drawList->AddCircleFilled(center, radius + 2.0f, IM_COL32(10, 24, 36, 190), 16);
@@ -413,6 +465,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             color,
             1.3f);
     };
+
     auto drawCornerBrackets = [&](const ImVec2& minimum, const ImVec2& maximum, ImU32 color, float thickness) {
         const float width = maximum.x - minimum.x;
         const float height = maximum.y - minimum.y;
@@ -425,6 +478,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             { minimum.x, maximum.y }, { minimum.x, maximum.y },
             { maximum.x, maximum.y }, { maximum.x, maximum.y }
         };
+
         const ImVec2 ends[8] = {
             { minimum.x + bracketLength, minimum.y }, { minimum.x, minimum.y + bracketLength },
             { maximum.x - bracketLength, minimum.y }, { maximum.x, minimum.y + bracketLength },
@@ -435,6 +489,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         for (int i = 0; i < 8; ++i) {
             drawList->AddLine(starts[i], ends[i], shadowColor, shadowThickness);
         }
+
         for (int i = 0; i < 8; ++i) {
             drawList->AddLine(starts[i], ends[i], color, thickness);
         }
@@ -443,7 +498,8 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
     drawList->PushClipRect(viewMin, viewMax, true);
 
     for (engine::Object3d* object : selectedObjects_) {
-        if (!object || !IsObjectInCurrentScene(object)) continue;
+        if (!object || !IsObjectInCurrentScene(object))
+            continue;
 
         engine::Vector3 corners[8] = {};
         engine::Vector3 center = GetObjectWorldPositionForSelection(object);
@@ -468,22 +524,28 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
                     { localMin.x, localMax.y, localMax.z },
                     { localMax.x, localMax.y, localMax.z }
                 };
+
                 const engine::Matrix4x4 worldMatrix = object->GetWorldMatrix();
+
                 for (int i = 0; i < 8; ++i) {
                     corners[i] = engine::Math::Transform(localCorners[i], worldMatrix);
                 }
+
                 const engine::Vector3 localCenter = {
                     (localMin.x + localMax.x) * 0.5f,
                     (localMin.y + localMax.y) * 0.5f,
                     (localMin.z + localMax.z) * 0.5f
                 };
+
                 center = engine::Math::Transform(localCenter, worldMatrix);
                 hasOrientedModelBounds = true;
             }
         }
 
         if (!hasOrientedModelBounds) {
+            // モデル境界を取得できないObjectも選択可能にするため、World AABBかTransformスケールで補う。
             AABB aabb = object->GetModelWorldAABB();
+
             if (!IsValidAabb(aabb)) {
                 const engine::Vector3 scale = object->GetTransform()->scale;
                 const engine::Vector3 halfSize = {
@@ -491,9 +553,11 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
                     (std::max)(std::abs(scale.y), 0.5f),
                     (std::max)(std::abs(scale.z), 0.5f)
                 };
+
                 aabb.min = center - halfSize;
                 aabb.max = center + halfSize;
             }
+
             corners[0] = { aabb.min.x, aabb.min.y, aabb.min.z };
             corners[1] = { aabb.max.x, aabb.min.y, aabb.min.z };
             corners[2] = { aabb.min.x, aabb.max.y, aabb.min.z };
@@ -513,8 +577,10 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             showTemporaryDetails;
 
         if (!showBounds) {
+            // 通常表示は副選択Objectを点だけに縮め、複数選択時の枠の重なりを抑える。
             const engine::Vector3 screen = WorldToScreen(center);
-            if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) continue;
+            if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y))
+                continue;
 
             const ImVec2 markerCenter = ImVec2(
                 clampFloat(screen.x, viewMin.x + 7.0f, viewMax.x - 7.0f),
@@ -533,10 +599,12 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         for (int i = 0; i < 8; ++i) {
             projectedCorners[i] = WorldToScreen(corners[i]);
             const engine::Vector3& screen = projectedCorners[i];
-            if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) continue;
+            if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y))
+                continue;
 
             cornerVisible[i] = true;
             ++visibleCornerCount;
+
             if (!hasScreenPoint) {
                 rectMin = ImVec2(screen.x, screen.y);
                 rectMax = rectMin;
@@ -552,7 +620,8 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         const engine::Vector3 centerScreen = WorldToScreen(center);
         const bool hasCenterScreen = centerScreen.z >= 0.0f &&
             std::isfinite(centerScreen.x) && std::isfinite(centerScreen.y);
-        if (!hasScreenPoint && !hasCenterScreen) continue;
+        if (!hasScreenPoint && !hasCenterScreen)
+            continue;
 
         const bool intersectsView = hasScreenPoint &&
             rectMax.x >= viewMin.x && rectMin.x <= viewMax.x &&
@@ -571,7 +640,8 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             (projectionIsUnstable || isOversized || !intersectsView);
 
         if (useCompactMarker) {
-            if (!hasCenterScreen) continue;
+            if (!hasCenterScreen)
+                continue;
 
             const ImVec2 markerCenter = ImVec2(
                 clampFloat(centerScreen.x, viewMin.x + 9.0f, viewMax.x - 9.0f),
@@ -579,9 +649,11 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             drawPivotMarker(markerCenter, frameColor, true);
 
             std::string label = object->GetName().empty() ? "Selected" : object->GetName();
+
             if (selectedCount > 1) {
                 label += " (+" + std::to_string(selectedCount - 1) + ")";
             }
+
             const ImVec2 textSize = ImGui::CalcTextSize(label.c_str());
             ImVec2 labelPos = ImVec2(markerCenter.x + 10.0f, markerCenter.y - textSize.y * 0.5f);
             labelPos.x = clampFloat(labelPos.x, viewMin.x + 4.0f, viewMax.x - textSize.x - 4.0f);
@@ -594,13 +666,15 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             continue;
         }
 
-        if (!hasScreenPoint || !intersectsView) continue;
+        if (!hasScreenPoint || !intersectsView)
+            continue;
 
         rectMin.x = clampFloat(rectMin.x, viewMin.x + 2.0f, viewMax.x - 2.0f);
         rectMin.y = clampFloat(rectMin.y, viewMin.y + 2.0f, viewMax.y - 2.0f);
         rectMax.x = clampFloat(rectMax.x, viewMin.x + 2.0f, viewMax.x - 2.0f);
         rectMax.y = clampFloat(rectMax.y, viewMin.y + 2.0f, viewMax.y - 2.0f);
-        if (rectMax.x <= rectMin.x || rectMax.y <= rectMin.y) continue;
+        if (rectMax.x <= rectMin.x || rectMax.y <= rectMin.y)
+            continue;
 
         // 遠距離の小さい物体でも選択表示が潰れない最低サイズを確保する。
         constexpr float minimumDisplaySize = 16.0f;
@@ -617,6 +691,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
                 viewMin.x + 2.0f,
                 viewMax.x - 2.0f);
         }
+
         if (rectMax.y - rectMin.y < minimumDisplaySize) {
             rectMin.y = clampFloat(
                 rectCenter.y - minimumDisplaySize * 0.5f,
@@ -636,9 +711,12 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
                 { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 },
                 { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 }
             };
+
             const float thickness = isPrimary ? 2.0f : 1.5f;
+
             for (const auto& edge : edges) {
-                if (!cornerVisible[edge[0]] || !cornerVisible[edge[1]]) continue;
+                if (!cornerVisible[edge[0]] || !cornerVisible[edge[1]])
+                    continue;
                 const ImVec2 start =
                     ImVec2(projectedCorners[edge[0]].x, projectedCorners[edge[0]].y);
                 const ImVec2 end =
@@ -652,14 +730,18 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 
         if (isPrimary) {
             std::string label = object->GetName().empty() ? "Selected" : object->GetName();
+
             if (selectedCount > 1) {
                 label += " (+" + std::to_string(selectedCount - 1) + ")";
             }
+
             const ImVec2 textSize = ImGui::CalcTextSize(label.c_str());
             ImVec2 labelPos = ImVec2(rectMin.x, rectMin.y - textSize.y - 4.0f);
+
             if (labelPos.y < viewMin.y + 3.0f) {
                 labelPos.y = rectMin.y + 4.0f;
             }
+
             labelPos.x = clampFloat(labelPos.x, viewMin.x + 4.0f, viewMax.x - textSize.x - 4.0f);
             labelPos.y = clampFloat(labelPos.y, viewMin.y + 3.0f, viewMax.y - textSize.y - 3.0f);
             drawList->AddText(
@@ -681,11 +763,13 @@ bool DebugEditor::IsObjectInCurrentScene(const engine::Object3d* object) const {
     }
 
     const auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
     for (const auto& candidate : objects) {
         if (candidate.get() == object) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -693,6 +777,7 @@ void DebugEditor::ClearInvalidSelectedObject() {
     // 選択が失われたら変形操作も止め、Inspectorに無効Objectを残しません。
     const bool editorWasSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
     PruneInvalidSelectedObjects();
+
     if (selectedObject_) {
         return;
     }
@@ -702,6 +787,7 @@ void DebugEditor::ClearInvalidSelectedObject() {
     hasInspectorEditStart_ = false;
     inspectorEditStartStates_.clear();
     tempObjectStateStart_.clear();
+
     if (editorWasSelected) {
         EditorManager::GetInstance()->ClearSelection();
     }

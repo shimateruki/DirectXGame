@@ -1,0 +1,437 @@
+#define NOMINMAX
+#include "game/system/cinematic/CinematicSequence.h"
+
+#include "json.hpp"
+
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <cmath>
+
+using json = nlohmann::json;
+
+// Editorの軌跡表示と再生器で、同じアンカー基準の座標変換を使います。
+engine::Vector3 CinematicAnchorPosition(const engine::Vector3& local, const engine::Vector3& origin, float yaw) {
+    // アンカーの向きでローカル座標を回してから、ワールド原点へ移す。
+    const float c = std::cos(yaw), s = std::sin(yaw);
+    return {origin.x + local.x * c + local.z * s, origin.y + local.y, origin.z - local.x * s + local.z * c};
+}
+
+engine::Vector3 CinematicAnchorLocalPosition(const engine::Vector3& world, const engine::Vector3& origin, float yaw) {
+    // 編集したワールド位置を逆回転し、保存用のアンカー相対座標へ戻す。
+    return CinematicAnchorPosition({world.x - origin.x, world.y - origin.y, world.z - origin.z}, {}, -yaw);
+}
+
+namespace {
+// 配列長が不足する旧データでは、個別の既定値を維持します。
+engine::Vector3 ReadVector3(const json& value, const engine::Vector3& fallback) {
+    if (!value.is_array() || value.size() < 3) {
+        return fallback;
+    }
+
+    return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
+}
+
+// 演出トラックの保存形式と並び順を扱います。再生時の時刻評価に使える形へ読み込みデータを整えます。
+
+json WriteVector3(const engine::Vector3& value) {
+    // 座標・回転・大きさを同じ3要素配列形式で保存する。
+    return json::array({value.x, value.y, value.z});
+}
+
+// 旧データの省略項目に既定値を使い、演出対象の名前とEvent IDを読みます。
+void ReadBinding(const json& value, CinematicObjectBinding& binding) {
+    // 名前が無い旧データも扱えるよう、束縛先の既定値を用意する。
+    binding.targetName = value.value("targetName", "");
+    binding.targetEventId = value.value("targetEventId", -1);
+}
+
+// 演出対象を名前でもEvent IDでも解決できるよう両方を保存します。
+void WriteBinding(json& value, const CinematicObjectBinding& binding) {
+    // 対象名とEvent IDを両方残し、再生側の解決方法を選べるようにする。
+    value["targetName"] = binding.targetName;
+    value["targetEventId"] = binding.targetEventId;
+}
+} // namespace
+
+void CinematicSequence::Clear() {
+    // 次の演出を読み込む前に全トラックとプレビュー用の役割を初期状態へ戻す。
+    anchor = {};
+    anchorYawOffset = 0.0f;
+    roleBindings = {};
+    previewModels = {"Characters/slime_pink", "Primitives/cube"};
+    version = kCurrentVersion;
+    duration = 0.0f;
+    transformTracks.clear();
+    vfxTracks.clear();
+    cameraShots.clear();
+    animationClips.clear();
+    audioClips.clear();
+    signals.clear();
+    events.clear();
+}
+
+// 再生側が時刻順に走査できるよう、評価に順序が必要な項目だけ並べ替えます。
+void CinematicSequence::Sort() {
+    // 補間が前後のキーを正しく見つけられるよう、各トラックを時刻順に揃える。
+    for (auto& track : transformTracks) {
+        std::sort(track.keys.begin(), track.keys.end(),
+                  [](const CinematicTransformKey& a, const CinematicTransformKey& b) { return a.time < b.time; });
+    }
+
+    std::sort(events.begin(), events.end(),
+              [](const CinematicEventMarker& a, const CinematicEventMarker& b) { return a.time < b.time; });
+    std::sort(cameraShots.begin(), cameraShots.end(),
+              [](const CinematicCameraShot& a, const CinematicCameraShot& b) { return a.startTime < b.startTime; });
+    std::sort(animationClips.begin(), animationClips.end(),
+              [](const CinematicAnimationClipData& a, const CinematicAnimationClipData& b) {
+                  return a.startTime < b.startTime;
+              });
+    std::sort(
+        audioClips.begin(), audioClips.end(),
+        [](const CinematicAudioClipData& a, const CinematicAudioClipData& b) { return a.startTime < b.startTime; });
+    std::sort(signals.begin(), signals.end(),
+              [](const CinematicSignalMarker& a, const CinematicSignalMarker& b) { return a.time < b.time; });
+}
+
+// 入力されたdurationより長いトラックがあれば、末尾まで再生時間を延ばします。
+float CinematicSequence::GetAuthoredDuration() const {
+    // 設定上の長さと各トラックの最後のキーを比較し、途中で演出を切らない。
+    float result = std::max(0.0f, duration);
+
+    for (const auto& track : transformTracks) {
+        if (!track.keys.empty()) {
+            result = std::max(result, track.startTime + std::max(0.0f, track.keys.back().time));
+        }
+    }
+
+    for (const auto& track : vfxTracks) {
+        result = std::max(result, track.startTime + std::max(0.1f, track.duration));
+    }
+
+    for (const auto& shot : cameraShots) {
+        result = std::max(result, shot.startTime + std::max(0.05f, shot.duration));
+    }
+
+    for (const auto& clip : animationClips) {
+        result = std::max(result, clip.startTime + std::max(0.05f, clip.duration));
+    }
+
+    for (const auto& clip : audioClips) {
+        result = std::max(result, clip.startTime + std::max(0.05f, clip.duration));
+    }
+
+    for (const auto& signal : signals) {
+        result = std::max(result, signal.time);
+    }
+
+    for (const auto& event : events) {
+        result = std::max(result, event.time);
+    }
+
+    return std::max(result, 0.1f);
+}
+
+// 互換性のある項目名で各トラックを書き出し、最後に一つのJSONへまとめます。
+bool CinematicSequence::Save(const std::string& filePath) const {
+    // 実行時に再読込できるよう、バインド先と全トラックを同じバージョンの JSON にまとめる。
+    json root;
+    root["version"] = kCurrentVersion;
+    root["name"] = name;
+    root["duration"] = duration;
+    WriteBinding(root["anchor"], anchor);
+    root["anchorYawOffset"] = anchorYawOffset;
+    root["roleBindings"] = json::array();
+    root["previewModels"] = previewModels;
+
+    for (const auto& binding : roleBindings) {
+        json item;
+        WriteBinding(item, binding);
+        root["roleBindings"].push_back(item);
+    }
+
+    root["tracks"] = json::array();
+    root["vfxCues"] = json::array();
+    root["cameraShots"] = json::array();
+    root["animationClips"] = json::array();
+    root["audioClips"] = json::array();
+    root["signals"] = json::array();
+    root["events"] = json::array();
+
+    // startTimeを正規名として保存しつつ、旧エディターが読むdelayTimeも同値で残す。
+    for (const auto& track : transformTracks) {
+        json item;
+        item["name"] = track.name;
+        WriteBinding(item, track.binding);
+        item["pathFileName"] = track.legacyPathFile;
+        item["startTime"] = track.startTime;
+        item["delayTime"] = track.startTime;
+        item["enabled"] = track.enabled;
+        item["muted"] = track.muted;
+        item["locked"] = track.locked;
+        item["relative"] = track.relative;
+        item["anchorRelative"] = track.anchorRelative;
+        item["holdLast"] = track.holdLast;
+        item["keys"] = json::array();
+
+        for (const auto& key : track.keys) {
+            item["keys"].push_back({{"time", key.time},
+                                    {"position", WriteVector3(key.position)},
+                                    {"rotation", WriteVector3(key.rotation)},
+                                    {"scale", WriteVector3(key.scale)},
+                                    {"easingToNext", key.easingToNext}});
+        }
+
+        root["tracks"].push_back(item);
+    }
+
+    for (const auto& track : vfxTracks) {
+        json item;
+        item["name"] = track.name;
+        WriteBinding(item, track.binding);
+        item["sequenceName"] = track.sequenceName;
+        item["startTime"] = track.startTime;
+        item["delayTime"] = track.startTime;
+        item["duration"] = track.duration;
+        item["snapshotTargetPosition"] = track.snapshotTargetPosition;
+        item["rootOffset"] = WriteVector3(track.rootOffset);
+        item["rootScale"] = WriteVector3(track.rootScale);
+        item["enabled"] = track.enabled;
+        item["muted"] = track.muted;
+        root["vfxCues"].push_back(item);
+    }
+
+    for (const auto& shot : cameraShots) {
+        json item;
+        item["name"] = shot.name;
+        WriteBinding(item, shot.binding);
+        item["startTime"] = shot.startTime;
+        item["duration"] = shot.duration;
+        item["blendInDuration"] = shot.blendInDuration;
+        item["blendOutDuration"] = shot.blendOutDuration;
+        item["easing"] = shot.easing;
+        item["enabled"] = shot.enabled;
+        item["muted"] = shot.muted;
+        root["cameraShots"].push_back(item);
+    }
+
+    for (const auto& clip : animationClips) {
+        json item;
+        item["name"] = clip.name;
+        WriteBinding(item, clip.binding);
+        item["driver"] = clip.driver;
+        item["clipName"] = clip.clipName;
+        item["startTime"] = clip.startTime;
+        item["duration"] = clip.duration;
+        item["playbackSpeed"] = clip.playbackSpeed;
+        item["blendInDuration"] = clip.blendInDuration;
+        item["easing"] = clip.easing;
+        item["loop"] = clip.loop;
+        item["restoreOnStop"] = clip.restoreOnStop;
+        item["enabled"] = clip.enabled;
+        item["muted"] = clip.muted;
+        root["animationClips"].push_back(item);
+    }
+
+    for (const auto& clip : audioClips) {
+        root["audioClips"].push_back({{"name", clip.name},
+                                      {"audioId", clip.audioId},
+                                      {"startTime", clip.startTime},
+                                      {"duration", clip.duration},
+                                      {"volume", clip.volume},
+                                      {"loop", clip.loop},
+                                      {"enabled", clip.enabled},
+                                      {"muted", clip.muted}});
+    }
+
+    for (const auto& signal : signals) {
+        json item;
+        item["time"] = signal.time;
+        item["name"] = signal.name;
+        item["signal"] = signal.signal;
+        item["payload"] = signal.payload;
+        item["enabled"] = signal.enabled;
+        WriteBinding(item, signal.binding);
+        root["signals"].push_back(item);
+    }
+
+    for (const auto& marker : events) {
+        json item;
+        item["time"] = marker.time;
+        item["eventId"] = marker.eventId;
+        item["name"] = marker.name;
+        WriteBinding(item, marker.binding);
+        root["events"].push_back(item);
+    }
+
+    const std::filesystem::path path(filePath);
+
+    if (path.has_parent_path()) {
+        std::filesystem::create_directories(path.parent_path());
+    }
+
+    std::ofstream file(path, std::ios::binary);
+
+    if (!file.is_open()) {
+        return false;
+    }
+
+    file << root.dump(4);
+    return file.good();
+}
+
+// トラック復元中の例外ではClearし、中途半端な内容を残しません。
+bool CinematicSequence::Load(const std::string& filePath) {
+    std::ifstream file(filePath, std::ios::binary);
+
+    if (!file.is_open()) {
+        return false;
+    }
+
+    json root;
+    try {
+        file >> root;
+    } catch (...) {
+        return false;
+    }
+
+    try {
+        Clear();
+        version = root.value("version", 1);
+        name = root.value("name", std::filesystem::path(filePath).stem().string());
+        duration = root.value("duration", 0.0f);
+        ReadBinding(root.value("anchor", json::object()), anchor);
+        anchorYawOffset = root.value("anchorYawOffset", 0.0f);
+        const auto roles = root.value("roleBindings", json::array());
+
+        // 旧データの入口サンプルは従来の仮ゲートを維持する。
+        previewModels = {"Characters/slime_pink", "Gimmicks/portal_gate"};
+        const auto models = root.value("previewModels", json::array());
+
+        for (size_t index = 0; index < previewModels.size() && index < models.size(); ++index)
+            previewModels[index] = models[index].get<std::string>();
+        for (size_t index = 0; index < roleBindings.size() && index < roles.size(); ++index)
+            ReadBinding(roles[index], roleBindings[index]);
+
+        // 旧キー名 delayTime / vfxTracks も読み、既存の演出データを維持します。
+        const json transformItems = root.value("tracks", json::array());
+
+        for (const auto& item : transformItems) {
+            CinematicTransformTrack track;
+            ReadBinding(item, track.binding);
+            track.name = item.value("name", track.binding.targetName);
+            track.legacyPathFile = item.value("pathFileName", "");
+            track.startTime = item.value("startTime", item.value("delayTime", 0.0f));
+            track.enabled = item.value("enabled", true);
+            track.muted = item.value("muted", false);
+            track.locked = item.value("locked", false);
+            track.relative = item.value("relative", false);
+            track.anchorRelative = item.value("anchorRelative", false);
+            track.holdLast = item.value("holdLast", true);
+
+            for (const auto& keyItem : item.value("keys", json::array())) {
+                CinematicTransformKey key;
+                key.time = keyItem.value("time", 0.0f);
+                key.position = ReadVector3(keyItem.value("position", json::array()), key.position);
+                key.rotation = ReadVector3(keyItem.value("rotation", json::array()), key.rotation);
+                key.scale = ReadVector3(keyItem.value("scale", json::array()), key.scale);
+                key.easingToNext = keyItem.value("easingToNext", 4);
+                track.keys.push_back(key);
+            }
+
+            transformTracks.push_back(track);
+        }
+
+        const json vfxItems = root.value("vfxCues", root.value("vfxTracks", json::array()));
+
+        for (const auto& item : vfxItems) {
+            CinematicVFXTrackData track;
+            ReadBinding(item, track.binding);
+            track.name = item.value("name", item.value("sequenceName", "VFX"));
+            track.sequenceName = item.value("sequenceName", "");
+            track.startTime = item.value("startTime", item.value("delayTime", 0.0f));
+            track.duration = item.value("duration", 0.1f);
+            track.snapshotTargetPosition = item.value("snapshotTargetPosition", false);
+            if (item.contains("rootOffset"))
+                track.rootOffset = ReadVector3(item["rootOffset"], track.rootOffset);
+            if (item.contains("rootScale"))
+                track.rootScale = ReadVector3(item["rootScale"], track.rootScale);
+            track.enabled = item.value("enabled", true);
+            track.muted = item.value("muted", false);
+            vfxTracks.push_back(track);
+        }
+
+        // カメラ・アニメーション・音声はそれぞれ独立した時間列です。
+        for (const auto& item : root.value("cameraShots", json::array())) {
+            CinematicCameraShot shot;
+            ReadBinding(item, shot.binding);
+            shot.name = item.value("name", item.value("targetName", "Camera Shot"));
+            shot.startTime = item.value("startTime", 0.0f);
+            shot.duration = item.value("duration", 1.0f);
+            shot.blendInDuration = item.value("blendInDuration", 0.3f);
+            shot.blendOutDuration = item.value("blendOutDuration", 0.3f);
+            shot.easing = item.value("easing", 4);
+            shot.enabled = item.value("enabled", true);
+            shot.muted = item.value("muted", false);
+            cameraShots.push_back(shot);
+        }
+
+        for (const auto& item : root.value("animationClips", json::array())) {
+            CinematicAnimationClipData clip;
+            ReadBinding(item, clip.binding);
+            clip.name = item.value("name", "Animation Clip");
+            clip.driver = item.value("driver", "Model");
+            clip.clipName = item.value("clipName", "");
+            clip.startTime = item.value("startTime", 0.0f);
+            clip.duration = item.value("duration", 1.0f);
+            clip.playbackSpeed = item.value("playbackSpeed", 1.0f);
+            clip.blendInDuration = item.value("blendInDuration", 0.12f);
+            clip.easing = item.value("easing", 4);
+            clip.loop = item.value("loop", false);
+            clip.restoreOnStop = item.value("restoreOnStop", true);
+            clip.enabled = item.value("enabled", true);
+            clip.muted = item.value("muted", false);
+            animationClips.push_back(clip);
+        }
+
+        for (const auto& item : root.value("audioClips", json::array())) {
+            CinematicAudioClipData clip;
+            clip.name = item.value("name", "Audio Clip");
+            clip.audioId = item.value("audioId", "");
+            clip.startTime = item.value("startTime", 0.0f);
+            clip.duration = item.value("duration", 0.1f);
+            clip.volume = item.value("volume", 1.0f);
+            clip.loop = item.value("loop", false);
+            clip.enabled = item.value("enabled", true);
+            clip.muted = item.value("muted", false);
+            audioClips.push_back(clip);
+        }
+
+        // SignalとEventは同時刻でも役割が異なるので、別配列のまま復元します。
+        for (const auto& item : root.value("signals", json::array())) {
+            CinematicSignalMarker signal;
+            signal.time = item.value("time", 0.0f);
+            signal.name = item.value("name", "Signal");
+            signal.signal = item.value("signal", "");
+            signal.payload = item.value("payload", "");
+            signal.enabled = item.value("enabled", true);
+            ReadBinding(item, signal.binding);
+            signals.push_back(signal);
+        }
+
+        for (const auto& item : root.value("events", json::array())) {
+            CinematicEventMarker marker;
+            marker.time = item.value("time", 0.0f);
+            marker.eventId = item.value("eventId", 0);
+            marker.name = item.value("name", "");
+            ReadBinding(item, marker.binding);
+            events.push_back(marker);
+        }
+    } catch (...) {
+        Clear();
+        return false;
+    }
+
+    Sort();
+    return true;
+}

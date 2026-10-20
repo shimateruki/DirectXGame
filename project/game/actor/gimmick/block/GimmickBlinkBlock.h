@@ -1,12 +1,14 @@
 #pragma once
 #include "BaseGimmick.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 
 /// <summary>プレイヤーのジャンプに合わせて出現状態が切り替わるブロックです。</summary>
 class GimmickBlinkBlock : public BaseGimmick {
   public:
     ~GimmickBlinkBlock() override;
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
 
     std::unique_ptr<engine::Object3d> Clone() const override;
@@ -14,6 +16,7 @@ class GimmickBlinkBlock : public BaseGimmick {
   private:
     // ジャンプ通知を受けて、ブロックの表示と衝突を切り替えます。
     void OnPlayerJump(const PlayerJumpEvent& event);
+
     void UpdateAppearance();
 
     bool isActive_ = true;

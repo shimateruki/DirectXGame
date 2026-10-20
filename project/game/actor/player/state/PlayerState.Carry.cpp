@@ -24,6 +24,7 @@ void PlayerStateCarry::Enter(Player* player) {
         struggleTimer_ = 0.0f;
 
         engine::Object3d* enemy = player->GetCarriedEnemy();
+
         if (enemy) {
             // 抵抗演出の基準サイズを保持し、持ち運び終了時に元へ戻せるようにする。
             carriedBaseScale_ = enemy->GetScale();
@@ -38,6 +39,7 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
     struggleTimer_ += deltaTime;
 
     engine::Object3d* enemy = player->GetCarriedEnemy();
+
     if (enemy) {
         engine::Vector3 playerPos = player->GetWorldPosition();
 
@@ -53,6 +55,7 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
         // 2. 回転の揺れ（体をよじる、イヤイヤと暴れる動き）
         engine::Vector3 rot;
         rot.x = std::sin(struggleTimer_ * 20.0f) * 0.2f;
+
         // プレイヤーの現在のY軸回転を基準に、首振り角度をオフセットとして適用する
         rot.y = player->GetRotation().y + std::sin(struggleTimer_ * 15.0f) * 0.4f;
         rot.z = std::cos(struggleTimer_ * 22.0f) * 0.2f;
@@ -76,6 +79,7 @@ void PlayerStateCarry::Exit(Player* player) {
     // 投げた時などに呼ばれる
     if (player) {
         engine::Object3d* enemy = player->GetCarriedEnemy();
+
         if (enemy) {
             // 持ち運びが終わったら（投げる等）、姿勢とスケールを元に戻す
             enemy->SetScale(carriedBaseScale_);
@@ -84,6 +88,7 @@ void PlayerStateCarry::Exit(Player* player) {
             enemy->UpdateLocalMatrix();
             enemy->UpdateWorldMatrix();
         }
+
         player->ReleaseCarriedEnemy(true);
     }
 }

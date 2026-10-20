@@ -1,7 +1,7 @@
 #include "EnemyAttackPreviewWindow.h"
 #include "EnemyAttackPreviewWindow.Constants.h"
-#include "game/system/CrownFinaleTuning.h"
-#include "game/system/CrownDefeatTuning.h"
+#include "game/crown/CrownFinaleTuning.h"
+#include "game/crown/CrownDefeatTuning.h"
 
 #include "BaseEnemy.h"
 #include "BaseScene.h"
@@ -28,27 +28,48 @@ namespace {
 #ifdef USE_IMGUI
 ImU32 GetPhaseColor(const std::string& phase, int alpha = 230) {
     // 攻撃フェーズごとに帯の色を固定し、タイムライン内の境界を見分けやすくする。
-    if (phase == "予兆") return IM_COL32(255, 158, 52, alpha);
-    if (phase == "攻撃") return IM_COL32(255, 74, 28, alpha);
-    if (phase == "硬直") return IM_COL32(212, 126, 92, alpha);
-    if (phase == "溜め") return IM_COL32(255, 188, 64, alpha);
-    if (phase == "近距離放電・溜め" || phase == "連続落雷・溜め") return IM_COL32(247, 210, 73, alpha);
-    if (phase == "連続落雷・落雷中") return IM_COL32(103, 218, 255, alpha);
-    if (phase == "三連風弾・風で上昇" || phase == "三連風弾・頭上に形成") return IM_COL32(128, 245, 211, alpha);
-    if (phase == "三連風弾・順番に投射") return IM_COL32(105, 218, 255, alpha);
-    if (phase == "三連風弾・着地") return IM_COL32(164, 226, 207, alpha);
-    if (phase == "放電後・反発") return IM_COL32(167, 126, 255, alpha);
-    if (phase == "再使用待ち") return IM_COL32(84, 126, 158, alpha);
-    if (phase == "上昇") return IM_COL32(112, 205, 255, alpha);
-    if (phase == "突進") return IM_COL32(255, 92, 116, alpha);
-    if (phase == "着地反発") return IM_COL32(171, 116, 255, alpha);
-    if (phase == "待機・移動") return IM_COL32(104, 190, 153, alpha);
-    if (phase == "空中拘束・落下") return IM_COL32(82, 172, 235, alpha);
-    if (phase == "着地・受け止め") return IM_COL32(242, 185, 69, alpha);
-    if (phase == "踏ん張り・抵抗") return IM_COL32(83, 188, 139, alpha);
-    if (phase == "引きずられ") return IM_COL32(241, 132, 66, alpha);
-    if (phase == "限界・分裂寸前") return IM_COL32(238, 76, 118, alpha);
-    if (phase == "分裂完了" || phase == "分裂後") return IM_COL32(187, 105, 244, alpha);
+    if (phase == "予兆")
+        return IM_COL32(255, 158, 52, alpha);
+    if (phase == "攻撃")
+        return IM_COL32(255, 74, 28, alpha);
+    if (phase == "硬直")
+        return IM_COL32(212, 126, 92, alpha);
+    if (phase == "溜め")
+        return IM_COL32(255, 188, 64, alpha);
+    if (phase == "近距離放電・溜め" || phase == "連続落雷・溜め")
+        return IM_COL32(247, 210, 73, alpha);
+    if (phase == "連続落雷・落雷中")
+        return IM_COL32(103, 218, 255, alpha);
+    if (phase == "三連風弾・風で上昇" || phase == "三連風弾・頭上に形成")
+        return IM_COL32(128, 245, 211, alpha);
+    if (phase == "三連風弾・順番に投射")
+        return IM_COL32(105, 218, 255, alpha);
+    if (phase == "三連風弾・着地")
+        return IM_COL32(164, 226, 207, alpha);
+    if (phase == "放電後・反発")
+        return IM_COL32(167, 126, 255, alpha);
+    if (phase == "再使用待ち")
+        return IM_COL32(84, 126, 158, alpha);
+    if (phase == "上昇")
+        return IM_COL32(112, 205, 255, alpha);
+    if (phase == "突進")
+        return IM_COL32(255, 92, 116, alpha);
+    if (phase == "着地反発")
+        return IM_COL32(171, 116, 255, alpha);
+    if (phase == "待機・移動")
+        return IM_COL32(104, 190, 153, alpha);
+    if (phase == "空中拘束・落下")
+        return IM_COL32(82, 172, 235, alpha);
+    if (phase == "着地・受け止め")
+        return IM_COL32(242, 185, 69, alpha);
+    if (phase == "踏ん張り・抵抗")
+        return IM_COL32(83, 188, 139, alpha);
+    if (phase == "引きずられ")
+        return IM_COL32(241, 132, 66, alpha);
+    if (phase == "限界・分裂寸前")
+        return IM_COL32(238, 76, 118, alpha);
+    if (phase == "分裂完了" || phase == "分裂後")
+        return IM_COL32(187, 105, 244, alpha);
     return IM_COL32(128, 164, 196, alpha);
 }
 
@@ -98,8 +119,10 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         DrawCrownMovieTimeline();
         return;
     }
+
     constexpr const char* kWindowName = "攻撃・能力プレビュー - Timeline";
     const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove;
+
     if (!ImGui::Begin(kWindowName, nullptr, windowFlags)) {
         ImGui::End();
         return;
@@ -110,6 +133,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         ImGui::End();
         return;
     }
+
     if (sceneManager_->IsPlaying()) {
         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.20f, 1.0f), "編集モードへ戻すと敵攻撃タイムラインを使用できます。");
         ImGui::End();
@@ -118,38 +142,47 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
 
     // 配置プレビュー中は部品単体の調整へ絞り、通常の攻撃プレビュー操作を隠します。
     DrawTrackTimeline();
+
     if (placementPreview_) {
         ImGui::TextWrapped("配置モード: 選択部品を単独表示しています。攻撃全体の再生はInspectorの「保存せず動作確認」を使います。");
         DrawPlacementControls();
         ImGui::End();
         return;
     }
+
     if (!enabled_) {
         ImGui::TextDisabled("右のInspectorまたは下のボタンからプレビューを有効にしてください。");
         ImGui::SameLine();
+
         if (ImGui::Button("プレビューを開始")) {
             enabled_ = true;
             CreatePreviewObjects();
         }
+
         ImGui::End();
         return;
     }
 
     // タイムラインが入力を受けるときだけ Space と矢印キーをシークへ割り当てます。
     const bool timelineFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
     if (timelineFocused && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive()) {
         if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
             playing_ = !playing_;
         }
+
         const int stepFrames = ImGui::GetIO().KeyShift ? 10 : 1;
+
         if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow, false)) {
             playing_ = false;
             SeekPreview(elapsedTime_ - kFixedPreviewStep * static_cast<float>(stepFrames));
         }
+
         if (ImGui::IsKeyPressed(ImGuiKey_RightArrow, false)) {
             playing_ = false;
             SeekPreview(elapsedTime_ + kFixedPreviewStep * static_cast<float>(stepFrames));
         }
+
         if (ImGui::IsKeyPressed(ImGuiKey_Home, false)) {
             RestartPreview();
         }
@@ -157,66 +190,85 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
 
     // キーボード操作と同じ SeekPreview をボタンでも使い、再生位置の計算を揃えます。
     ImGui::PushID("EnemyAttackTimelineToolbar");
-    if (playerCopyMode_) ImGui::Text("プレイヤー / %s / %s", kCopyLabels[copyTypeIndex_], kCopyActions[copyActionIndex_]);
+    if (playerCopyMode_)
+        ImGui::Text("プレイヤー / %s / %s", kCopyLabels[copyTypeIndex_], kCopyActions[copyActionIndex_]);
     if (ImGui::Button(playing_ ? "■ 一時停止" : "▶ 再生", ImVec2(108.0f, 0.0f))) {
         playing_ = !playing_;
     }
+
     ImGui::SameLine();
-    if (ImGui::Button("|<")) RestartPreview();
+    if (ImGui::Button("|<"))
+        RestartPreview();
     ImGui::SameLine();
+
     if (ImGui::Button("-10F")) {
         playing_ = false;
         SeekPreview(elapsedTime_ - kFixedPreviewStep * 10.0f);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("-1F")) {
         playing_ = false;
         SeekPreview(elapsedTime_ - kFixedPreviewStep);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("+1F")) {
         playing_ = false;
         SeekPreview(elapsedTime_ + kFixedPreviewStep);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("+10F")) {
         playing_ = false;
         SeekPreview(elapsedTime_ + kFixedPreviewStep * 10.0f);
     }
+
     ImGui::SameLine();
     ImGui::SetNextItemWidth(96.0f);
     ImGui::SliderFloat("速度", &playbackSpeed_, 0.05f, 2.0f, "%.2fx");
     ImGui::SameLine();
     ImGui::Checkbox("ループ", &loop_);
     ImGui::SameLine();
+
     if (ImGui::Button("カメラを初期位置へ")) {
         EffectPreviewStage::GetInstance()->RequestCameraRecenter();
     }
+
     ImGui::PopID();
 
     // 集計欄は最後に取得した実測 Sample を表示します。設定値と混同しないよう別列にします。
     const TimelineSample* currentSample = timelineSamples_.empty() ? nullptr : &timelineSamples_.back();
+
     if (ImGui::BeginTable("EnemyAttackTimelineSummary", 4, ImGuiTableFlags_SizingStretchSame)) {
         const char* labels[] = { "時間 / Frame", playerCopyMode_ ? "入力フェーズ" : "AIフェーズ", "速度", "接地からの高さ" };
         char values[4][64]{};
         sprintf_s(values[0], "%.3f / %.2f 秒  |  %dF", elapsedTime_, loopDuration_, static_cast<int>(std::round(elapsedTime_ / kFixedPreviewStep)));
+
         // 状態名は日本語や実行件数を含み64バイトを超えます。固定長バッファへコピーしません。
         sprintf_s(values[2], "%.2f m/s", currentSample ? currentSample->speed : 0.0f);
         sprintf_s(values[3], "%.2f m", currentSample ? currentSample->height : 0.0f);
+
         for (int column = 0; column < 4; ++column) {
             ImGui::TableNextColumn();
             ImGui::TextDisabled("%s", labels[column]);
+
             if (column == 1) {
                 ImGui::PushTextWrapPos(0.0f);
                 ImGui::TextUnformatted(GetCurrentPhaseName());
                 ImGui::PopTextWrapPos();
             } else ImGui::TextUnformatted(values[column]);
         }
+
         ImGui::EndTable();
     }
 
     if (const auto* prismSlime = dynamic_cast<const EnemyPrismSlime*>(previewEnemy_)) {
         const int chantLayers = prismSlime->GetDebugChantVisibleLayerCount();
+
         if (chantLayers == -2) {
             ImGui::TextDisabled("詠唱エフェクト: 待機中");
         } else if (chantLayers < 0) {
@@ -276,21 +328,26 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         "Mesh Effect数",
         "Debris数"
     };
+
     for (int lane = 0; lane < kLaneCount; ++lane) {
         const float y0 = origin.y + kHeaderHeight + kLaneHeight * static_cast<float>(lane);
         const float y1 = y0 + kLaneHeight;
+
         if ((lane % 2) == 0) {
             drawList->AddRectFilled(ImVec2(origin.x, y0), ImVec2(canvasEnd.x, y1), IM_COL32(255, 255, 255, 6));
         }
+
         drawList->AddLine(ImVec2(origin.x, y1), ImVec2(canvasEnd.x, y1), IM_COL32(62, 68, 80, 190));
         drawList->AddText(ImVec2(origin.x + 8.0f, y0 + 7.0f), IM_COL32(205, 213, 226, 255), laneNames[lane]);
     }
 
     // 拡大率に応じて目盛りを細かくし、一秒境界のみ時刻ラベルを表示します。
     float tickStep = 1.0f;
-    if (timelinePixelsPerSecond_ >= 220.0f) tickStep = 0.25f;
+    if (timelinePixelsPerSecond_ >= 220.0f)
+        tickStep = 0.25f;
     else if (timelinePixelsPerSecond_ >= 110.0f) tickStep = 0.5f;
     const int tickCount = static_cast<int>(std::ceil(duration / tickStep));
+
     for (int tick = 0; tick <= tickCount; ++tick) {
         const float time = static_cast<float>(tick) * tickStep;
         const float x = origin.x + kLabelWidth + time * timelinePixelsPerSecond_;
@@ -308,9 +365,11 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
 
     // 設定レーンには共通命令、巨大フック専用演出、通常の攻撃フェーズを排他的に描きます。
     const EnemyAttackDefinition* sequenceAttack = GetSelectedAttackDefinition();
+
     if (sequenceAttack && sequenceAttack->sequence.enabled) {
         const auto& sequence = sequenceAttack->sequence;
         const float laneY = origin.y + kHeaderHeight;
+
         // 設定イベントはランタイム開始からの相対時刻。Prismは詠唱完了が原点で、AI待機は含みません。
         DrawTimelineBlock(drawList, origin, kLabelWidth, timelinePixelsPerSecond_, laneY, kLaneHeight,
             0, (std::min)(duration, sequence.duration), IM_COL32(50, 100, 125, 160), "共通命令 (命令開始=0)");
@@ -320,9 +379,11 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
             DrawTimelineBlock(drawList, origin, kLabelWidth, timelinePixelsPerSecond_, laneY, kLaneHeight,
                 sequence.actorControl.telegraphEnd, sequence.duration, IM_COL32(100, 120, 170, 230), "発射後・後隙");
         }
+
         for (const auto& event : sequence.events) {
             const float x = origin.x + kLabelWidth + event.time * timelinePixelsPerSecond_;
             drawList->AddLine(ImVec2(x, laneY), ImVec2(x, laneY + kLaneHeight), IM_COL32(255, 200, 60, 255), 2);
+
             if (ImGui::IsMouseHoveringRect(ImVec2(x - 5, laneY), ImVec2(x + 5, laneY + kLaneHeight))) {
                 ImGui::BeginTooltip();
                 ImGui::Text("%.3f秒: %s / %s", event.time, event.operation.c_str(), event.condition.c_str());
@@ -365,11 +426,14 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
     if (!timelineSamples_.empty()) {
         const float phaseLaneY = origin.y + kHeaderHeight + kLaneHeight;
         std::size_t segmentBegin = 0;
+
         for (std::size_t index = 1; index <= timelineSamples_.size(); ++index) {
             const bool segmentEnds = index == timelineSamples_.size() || timelineSamples_[index].phase != timelineSamples_[segmentBegin].phase;
+
             if (!segmentEnds) {
                 continue;
             }
+
             const float startTime = std::clamp(timelineSamples_[segmentBegin].time, 0.0f, duration);
             const float rawEndTime = index < timelineSamples_.size()
                 ? timelineSamples_[index].time
@@ -397,6 +461,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         float maxCpuParticles = 1.0f;
         float maxMeshEffects = 1.0f;
         float maxDebrisPieces = 1.0f;
+
         for (const TimelineSample& sample : timelineSamples_) {
             maxSpeed = (std::max)(maxSpeed, sample.speed);
             maxHeight = (std::max)(maxHeight, sample.height);
@@ -406,6 +471,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
             maxMeshEffects = (std::max)(maxMeshEffects, sample.meshEffects);
             maxDebrisPieces = (std::max)(maxDebrisPieces, sample.debrisPieces);
         }
+
         if (const EnemyAttackDefinition* attack = GetSelectedAttackDefinition()) {
             maxSpeed = (std::max)(maxSpeed, attack->maxSpeed);
         }
@@ -414,6 +480,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         const auto drawGraph = [&](int lane, float TimelineSample::* valueMember, float maxValue, ImU32 color) {
             const float laneTop = origin.y + kHeaderHeight + kLaneHeight * static_cast<float>(lane) + 4.0f;
             const float laneBottom = laneTop + kLaneHeight - 8.0f;
+
             for (std::size_t index = 1; index < timelineSamples_.size(); ++index) {
                 const TimelineSample& previous = timelineSamples_[index - 1];
                 const TimelineSample& current = timelineSamples_[index];
@@ -424,6 +491,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
                 drawList->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), color, 2.0f);
             }
         };
+
         drawGraph(2, &TimelineSample::speed, maxSpeed, IM_COL32(75, 210, 255, 255));
         drawGraph(3, &TimelineSample::height, maxHeight, IM_COL32(255, 196, 72, 255));
         drawGraph(4, &TimelineSample::deformation, maxDeformation, IM_COL32(241, 121, 196, 255));
@@ -456,6 +524,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
                 color,
                 scaleText);
         };
+
         drawCountScale(6, maxGpuParticleSystems, IM_COL32(226, 205, 98, 255));
         drawCountScale(7, maxCpuParticles, IM_COL32(112, 205, 224, 255));
         drawCountScale(8, maxMeshEffects, IM_COL32(224, 153, 112, 255));
@@ -474,6 +543,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
 
     if (ImGui::IsItemHovered()) {
         const ImVec2 mouse = ImGui::GetIO().MousePos;
+
         if (mouse.x >= origin.x + kLabelWidth) {
             const float hoverTime = std::clamp(
                 (mouse.x - origin.x - kLabelWidth) / timelinePixelsPerSecond_,
@@ -481,6 +551,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
                 duration);
             ImGui::BeginTooltip();
             ImGui::Text("%.3f 秒  |  %dF", hoverTime, static_cast<int>(std::round(hoverTime / kFixedPreviewStep)));
+
             if (!timelineSamples_.empty()) {
                 const auto nearest = (std::min_element)(
                     timelineSamples_.begin(),
@@ -494,6 +565,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
                 ImGui::Text("GPU系統 %.0f  |  通常粒子 %.0f", nearest->gpuParticleSystems, nearest->cpuParticles);
                 ImGui::Text("Mesh Effect %.0f  |  Debris %.0f", nearest->meshEffects, nearest->debrisPieces);
             }
+
             ImGui::EndTooltip();
 
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
@@ -502,6 +574,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
                 SeekPreview(hoverTime);
             }
         }
+
         if (ImGui::GetIO().KeyCtrl && std::abs(ImGui::GetIO().MouseWheel) > 0.0f) {
             timelinePixelsPerSecond_ = std::clamp(
                 timelinePixelsPerSecond_ + ImGui::GetIO().MouseWheel * 18.0f,
@@ -516,6 +589,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
         const float desiredScroll = (std::max)(0.0f, playheadLocalX - visibleWidth * 0.75f);
         ImGui::SetScrollX((std::min)(desiredScroll, ImGui::GetScrollMaxX()));
     }
+
     ImGui::EndChild();
 
     ImGui::End();
@@ -544,22 +618,28 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
 
     // 再生終端から再開する場合は先頭へ戻し、時間スライダーも同じ Seek 処理を使います。
     const auto& t = CrownFinaleTuning::Get();
+
     if (ImGui::Button(playing_ ? "一時停止" : "再生")) {
         if (!playing_ && elapsedTime_ >= loopDuration_ - .001f) {
             SeekPreview(0);
         }
+
         playing_ = !playing_;
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("先頭")) {
         SeekPreview(0);
     }
 
     const int frames[] = { -10, -1, 1, 10 };
+
     for (int frame : frames) {
         ImGui::SameLine();
         char label[16];
         std::snprintf(label, sizeof(label), "%+dF", frame);
+
         if (ImGui::Button(label)) {
             SeekPreview(elapsedTime_ + frame * kFixedPreviewStep);
         }
@@ -573,6 +653,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
 
     float seek = elapsedTime_;
     ImGui::SetNextItemWidth(-1);
+
     if (ImGui::SliderFloat("##Time", &seek, 0, loopDuration_, "%.3f 秒")) {
         SeekPreview(seek);
     }
@@ -585,14 +666,17 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
         const auto& d = CrownDefeatTuning::Get();
         const char* names[] = { "最後の一撃", "王冠の亀裂", "王冠破砕", "力の喪失", "小スライム", "勝利", "終了" };
         const float points[] = { 0, .14f, d.rupture + .015f, d.shrink, d.settle + .025f, d.victory + .035f, 1 };
+
         for (int index = 0; index < 7; ++index) {
             if (index) {
                 ImGui::SameLine();
             }
+
             if (ImGui::Button(names[index])) {
                 SeekPreview(points[index] * loopDuration_);
             }
         }
+
         ImGui::Separator();
         ImGui::TextWrapped("最後の一撃 → 王冠の亀裂と再集束 → 破砕・放電 → 力が抜けて小スライムへ → 王の勝利");
         ImGui::TextDisabled("本番と同じ時間で進行します。設定は右のInspectorから保存できます。");
@@ -610,6 +694,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
         if (index && index != 5) {
             ImGui::SameLine();
         }
+
         if (ImGui::Button(names[index])) {
             SeekPreview(points[index] * loopDuration_);
         }
@@ -620,13 +705,17 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
         if (ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
             playing_ = !playing_;
         }
+
         const int step = ImGui::GetIO().KeyShift ? 10 : 1;
+
         if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow, false)) {
             SeekPreview(elapsedTime_ - step * kFixedPreviewStep);
         }
+
         if (ImGui::IsKeyPressed(ImGuiKey_RightArrow, false)) {
             SeekPreview(elapsedTime_ + step * kFixedPreviewStep);
         }
+
         if (ImGui::IsKeyPressed(ImGuiKey_Home, false)) {
             SeekPreview(0);
         }
@@ -638,6 +727,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
     const float labelWidth = 90;
     const float pixels = (std::max)(10.0f, (width - labelWidth) / loopDuration_);
     ImDrawList* draw = ImGui::GetWindowDrawList();
+
     for (int second = 0; second <= static_cast<int>(loopDuration_); ++second) {
         float x = origin.x + labelWidth + second * pixels;
         char label[16];
@@ -647,9 +737,11 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
     }
 
     const char* rows[] = { "王冠の欠片", "プレイヤー", "ステージ", "カメラ" };
+
     for (int row = 0; row < 4; ++row) {
         draw->AddText({ origin.x, origin.y + 28 + row * 32 }, IM_COL32(230, 233, 239, 255), rows[row]);
     }
+
     auto block = [&](int row, float start, float end, ImU32 color, const char* label) {
         DrawTimelineBlock(draw, origin, labelWidth, pixels, origin.y + 23 + row * 32,
             30, start * loopDuration_, end * loopDuration_, color, label);

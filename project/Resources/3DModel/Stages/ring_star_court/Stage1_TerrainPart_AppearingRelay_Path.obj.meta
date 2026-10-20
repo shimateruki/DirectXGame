@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4c0fe759a55d566daea706a8a1bd868f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_AppearingRelay_Path.obj",
+  "version": 1
+}

@@ -41,6 +41,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kUmbraFlameAttackId);
     const UmbraFlameGeometry geometry = ResolveUmbraFlameGeometry(attack, lockedDirection_);
     const auto [nearDistance, farDistance, fanLength, nearWidth, farWidth, forward, right] = geometry;
+
     // 手前の一点から中段二点、奥三点へ広がる扇状の術式です。
     const std::array<engine::Vector2, 6> nodes = {engine::Vector2{nearDistance + fanLength * 0.148f, 0.0f},
                                           engine::Vector2{nearDistance + fanLength * 0.49f, -farWidth * 0.193f},
@@ -50,6 +51,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
                                           engine::Vector2{nearDistance + fanLength * 0.879f, farWidth * 0.380f}};
     umbraFlameNetwork_ = std::make_unique<EffectObject3d>();
     umbraFlameNetwork_->Initialize(common_);
+
     if (!umbraFlameNetwork_->LoadFromJson(kUmbraFlameNetworkEffect)) {
         umbraFlameNetwork_.reset();
     } else {
@@ -58,6 +60,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
         umbraFlameNetwork_->SetIsVisible(false);
         umbraFlameNetwork_->Play(10.0f);
     }
+
     for (size_t index = 0; index < nodes.size(); ++index) {
         UmbraFlamePortal portal;
         portal.groundPosition =
@@ -66,6 +69,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
         portal.age = -portal.delay;
         portal.sigil = std::make_unique<EffectObject3d>();
         portal.sigil->Initialize(common_);
+
         if (!portal.sigil->LoadFromJson(kUmbraFlameSigilEffect)) {
             portal.sigil.reset();
         } else {
@@ -74,14 +78,17 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
             portal.sigil->SetIsVisible(false);
             portal.sigil->Play(10);
         }
+
         // 一つの閉じた体積で扇全体を描き、術式の六点は粒子の起点として使います。
         if (index == 0) {
             portal.flame = CreateRoyalVisual("FalseKing_UmbraFlameFanFlame", "Primitives/cylinder", kFireMaterialType,
                                              {0.72f, 0.38f, 1.0f, 0.0f}, 2.4f);
         }
+
         if (portal.flame) {
             portal.flame->SetBlendMode(BlendMode::kNormal);
             portal.flame->SetIsVisible(false);
+
             if (MeshRenderer* renderer = portal.flame->GetMeshRenderer()) {
                 if (auto* fire = renderer->GetWaterParamData()) {
                     fire->effectType = 7.0f;
@@ -98,6 +105,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
                 }
             }
         }
+
         umbraFlames_.push_back(std::move(portal));
     }
 }
@@ -119,6 +127,7 @@ void EnemyFalseKingSlime::UpdateUmbraFlameNetwork(float deltaTime, bool active) 
     umbraFlameNetwork_->SetRevealProgress(progress);
     umbraFlameNetwork_->SetTranslate(center + engine::Vector3{0.0f, 0.15f, 0.0f});
     umbraFlameNetwork_->SetRotation({0.0f, std::atan2(forward.x, forward.z), 0.0f});
+
     // PlaneSize は 2.4 m。術式の絵柄を実際の扇範囲へ合わせます。
     umbraFlameNetwork_->SetScale({farWidth / 2.4f, 1.0f, fanLength / 2.4f});
     umbraFlameNetwork_->SetColor({1.0f, 1.0f, 1.0f, fade * (0.18f + progress * 0.52f)});
@@ -133,9 +142,11 @@ void EnemyFalseKingSlime::UpdateUmbraFlames(float deltaTime, bool active) {
     const auto [nearDistance, farDistance, fanLength, nearWidth, farWidth, forward, right] = geometry;
     const float elapsed = active ? attackStateDuration_ - attackTimer_ : 0.0f;
     const float waveFront = SmoothStep01(std::clamp(elapsed / 1.55f, 0.0f, 1.0f));
+
     // 魔法陣だけで予告するため、従来の扇形ガイドは表示しません。
     HideAttackTelegraph();
     UpdateUmbraFlameNetwork(deltaTime, active);
+
     for (UmbraFlamePortal& portal : umbraFlames_) {
         if (active)
             portal.activeAge += deltaTime;
@@ -144,6 +155,7 @@ void EnemyFalseKingSlime::UpdateUmbraFlames(float deltaTime, bool active) {
         const float age = active ? portal.activeAge : portal.age;
         const float assembly = active ? 1.0f : SmoothStep01(std::clamp(age / 0.90f, 0.0f, 1.0f));
         const float fade = active ? SmoothStep01(std::clamp(attackTimer_ / 0.70f, 0.0f, 1.0f)) : 1.0f;
+
         if (portal.sigil) {
             portal.sigil->Update(deltaTime);
             portal.sigil->SetIsVisible((active || age >= 0.0f) && fade > 0.01f);
@@ -157,11 +169,13 @@ void EnemyFalseKingSlime::UpdateUmbraFlames(float deltaTime, bool active) {
             portal.sigil->UpdateLocalMatrix();
             portal.sigil->UpdateWorldMatrix();
         }
+
         if (age < 0.0f)
             continue;
 
         if (!active) {
             portal.particleTimer -= deltaTime;
+
             if (portal.particleTimer <= 0.0f && assembly > 0.18f) {
                 // 赤と青の光を上空の別方向から魔法陣へ収束させます。
                 const float orbit = age * 1.7f + portal.delay * 7.0f;
@@ -174,12 +188,14 @@ void EnemyFalseKingSlime::UpdateUmbraFlames(float deltaTime, bool active) {
                 EmitDirectedPreset(kUmbraFlameChargePreset, blueOrigin, destination - blueOrigin, 1.0f);
                 portal.particleTimer += 0.12f;
             }
+
             continue;
         }
 
         // 炎の本体は術者側から奥へ進む一つの扇形体積です。
         const float rise = SmoothStep01(std::clamp(age / 0.34f, 0.0f, 1.0f));
         const float height = 9.6f * rise;
+
         if (portal.flame) {
             portal.flame->SetIsVisible(rise > 0.01f && fade > 0.01f);
             const engine::Vector3 fanCenter =
@@ -188,31 +204,38 @@ void EnemyFalseKingSlime::UpdateUmbraFlames(float deltaTime, bool active) {
             portal.flame->SetRotation({0.0f, std::atan2(forward.x, forward.z), 0.0f});
             portal.flame->SetScale({1.0f, 1.0f, 1.0f});
             portal.flame->SetColor({0.72f, 0.38f, 1.0f, fade * 0.86f});
+
             if (MeshRenderer* renderer = portal.flame->GetMeshRenderer()) {
                 if (auto* fire = renderer->GetWaterParamData()) {
                     fire->effectSoftness = waveFront;
                 }
             }
+
             portal.flame->Update(deltaTime);
             portal.flame->UpdateWorldMatrix(true);
         }
     }
+
     // 火の粉も六つの魔法陣ではなく、扇を進む炎の前縁から湧かせます。
     if (active && waveFront > 0.03f && attackTimer_ > 0.70f) {
         effectTimer_ -= deltaTime;
+
         if (effectTimer_ <= 0.0f) {
             const engine::Vector3 right{forward.z, 0.0f, -forward.x};
             const float frontDistance = nearDistance + fanLength * waveFront;
             const float frontHalfWidth = (nearWidth + (farWidth - nearWidth) * waveFront) * 0.42f;
+
             for (int lane = -2; lane <= 2; ++lane) {
                 const engine::Vector3 ground = FindGroundPoint(attackStartPosition_ + forward * frontDistance +
                                                        right * (frontHalfWidth * lane * 0.5f));
                 EmitDirectedPreset(kUmbraFlameFlamePreset, ground + engine::Vector3{0.0f, 0.18f, 0.0f}, {0.0f, 1.0f, 0.0f},
                                    0.84f);
             }
+
             effectTimer_ += 0.12f;
         }
     }
+
     // 炎の前縁が届いた時だけ判定し、画面に見える進行と被弾を一致させます。
     if (!active || umbraFlameFanHit_ || !target_ || target_->isDead || !target_->GetIsVisible())
         return;

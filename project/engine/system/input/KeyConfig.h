@@ -25,6 +25,7 @@ public:
 
     // アクション名からデータを取得する関数群
     int GetKeyCode(const std::string& actionName) const;
+
     WORD GetPadCode(const std::string& actionName) const;
 
     // パッドの数値を「A」や「RB」などの文字列に変換する
@@ -35,13 +36,17 @@ public:
 
     /// <summary>アクション名に対応する入力割り当てを取得する。</summary>
     const BindData* GetBindData(const std::string& actionName) const;
+
     /// <summary>指定キーがいずれかのゲーム操作へ割り当てられているか返す。</summary>
     bool IsKeyAssigned(int keyCode) const;
 
 private:
     KeyConfig() = default;
+
     ~KeyConfig() = default;
+
     KeyConfig(const KeyConfig&) = delete;
+
     KeyConfig& operator=(const KeyConfig&) = delete;
 
 private:

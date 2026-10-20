@@ -39,17 +39,23 @@ public:
         engine::Vector4 color;
         int32_t enableLighting;
         float padding1[3];
+
         engine::Matrix4x4 uvTransform;
+
         int32_t selectedLighting;
         float shininess;
+
         int32_t materialType;
         float roughness;
         float metallic;
+
         int32_t enableNormalMap;
         int32_t enableEnvMap;
         float envIntensity;
+
         float emissive;
         float time;
+
         float portalClipEnabled;
         float portalClipProgress;
         engine::Vector3 portalClipCenter;
@@ -88,10 +94,13 @@ public:
         engine::Vector3 cameraPos;
         float fogDensity = 0.5f;
         engine::Matrix4x4 inverseViewProj;
+
         float time = 0.0f;
         float edgeFade = 0.1f;
+
         float noiseSpeed = 0.5f;
         float noiseScale = 0.2f;
+
         engine::Vector3 lightDirection;
         float scatteringIntensity = 0.4f;
         engine::Vector3 lightColor;
@@ -104,24 +113,30 @@ public:
         float waveSpeed;
         float waveHeight;
         float waveFrequency;
+
         float flowSpeedX;
         float flowSpeedY;
         float uvOffsetX;
         float uvOffsetY;
+
         float effectType;
         float effectScale;
         float effectSoftness;
         float effectIntensity;
+
         engine::Vector3 cameraWorldPosition;
         float billboardScale;
+
         float effectScaleX;
         float effectScaleY;
         float effectScaleZ;
         float topDownDetail;
+
         engine::Vector3 waterLightDirection;
         float waterLightIntensity;
         engine::Vector3 waterLightColor;
         float waterParamPadding1;
+
         engine::Matrix4x4 waterInverseViewProjection;
 
         // 描画の切り分け専用。マテリアルやシーンには保存しません。
@@ -140,10 +155,11 @@ public:
 public:
     /// <summary>描画対象のTransformを参照してレンダラーを作る。</summary>
     MeshRenderer(Transform* transform);
+
     ~MeshRenderer() = default;
 
     /// <summary>描画用GPUバッファと既定のマテリアルを初期化する。</summary>
-    void Initialize(Object3dCommon* common);
+    void Initialize(engine::Object3dCommon* common);
 
     /// <summary>Transform、LOD、マテリアルの描画状態を更新する。</summary>
     void Update();
@@ -308,6 +324,7 @@ public:
     bool GetAutoTextureTiling() const { return autoTextureTiling_; }
 
     void SetEnableLighting(bool enable) { if (materialData_) materialData_->enableLighting = enable ? 1 : 0; }
+
     bool GetEnableLighting() const { return materialData_ ? (materialData_->enableLighting != 0) : false; }
 
     /// <summary>環境マップ反射の使用を切り替える。</summary>
@@ -334,8 +351,15 @@ public:
 
     /// <summary>シーン深度を参照してローカルフォグを描画する。</summary>
     void DrawLocalFog(uint32_t depthSrvHandle);
+
     LocalFogData* GetLocalFogData() { return localFogData_; }
+
     ID3D12Resource* GetWvpResource() const { return wvpResource_.Get(); }
+
+    // 専用シェーダーのプレビュー描画にも、通常の3D描画と同じ独立WVPを渡す。
+    bool PreparePreviewCameraData(Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource,
+                                  ID3D12Resource*& cameraResource);
+
     ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
 
     /// <summary>自己発光の強度を設定する。</summary>
@@ -343,19 +367,26 @@ public:
 
     /// <summary>自己発光の強度を返す。</summary>
     float GetEmissive() const;
+
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
+
     // エディターの材質撮影だけで使う平行光源。所有権は呼び出し側にある。
     void SetPreviewDirectionalLightResource(ID3D12Resource* resource) { previewDirectionalLightResource_ = resource; }
 
     /// <summary>ゲーム進行用Transformを変えず、描画時だけローカル姿勢を重ねる。</summary>
     void SetVisualTransform(const engine::Vector3& scale, const engine::Vector3& rotation, const engine::Vector3& offset);
+
     const engine::Vector3& GetVisualScale() const { return visualScale_; }
+
     const engine::Vector3& GetVisualRotation() const { return visualRotation_; }
+
     const engine::Vector3& GetVisualOffset() const { return visualOffset_; }
 
     // 指定したローカルY座標を支点に、上側だけを水平方向へ傾けます。
     void SetVisualShear(const engine::Vector3& horizontalShear, float pivotY);
+
     const engine::Vector3& GetVisualShear() const { return visualShear_; }
+
     float GetVisualShearPivotY() const { return visualShearPivotY_; }
 
     /// <summary>描画専用姿勢とシアーを初期値へ戻す。</summary>
@@ -414,6 +445,7 @@ public:
 
     /// <summary>風の球の特殊マテリアルで描画する。</summary>
     void DrawWindOrb(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 
 private:
@@ -423,10 +455,6 @@ private:
     // ゲーム進行用Transformに描画専用の姿勢補正を重ねたワールド行列を作る。
     engine::Matrix4x4 BuildRenderWorldMatrix() const;
 
-    // プレビュー用の独立したWVP・カメラ定数を更新し、リソースを出力する。
-    // カメラやバッファ番号が無効な場合はfalseを返す。
-    bool PreparePreviewCameraData(Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource, ID3D12Resource*& cameraResource);
-
     // 次の描画補助関数はwvpResourceを指定し、通常描画とカメラプレビューの両方から呼ぶ。
     // depthSrvHandleはシーン深度、colorSrvHandleはシーンカラーのSRV番号。
     // waterResourceを指定した場合のみ、水面パラメータの通常バッファを差し替える。
@@ -434,25 +462,31 @@ private:
 
     // マグマ・氷・炎はそれぞれ専用パイプラインでモデルまたは代理モデルを描画する。
     void DrawMagmaWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+
     void DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+
     void DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     // 指定パイプラインで特殊マテリアルを描画する。useProxyModelは代理形状の使用、
     // bakedTextureModeは使用するベイク済みテクスチャ組（0:既定、1:ゲート）を選ぶ。
-    void DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
+    void DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
 
     // ワールド行列が前回と同じなら法線変換行列のキャッシュを返す。
     const engine::Matrix4x4& GetCachedWorldInverseTranspose(const engine::Matrix4x4& worldMatrix);
 
     // 特殊マテリアル用の代理形状を必要になったときに作る。
     void InitializeWaterProxyModel();
+
     void InitializeFireProxyModel();
+
     void InitializeVolumetricFireProxyModel();
+
     void InitializeGatePortalProxyModel();
+
     void InitializeGateBarrierCylinderProxyModel();
 
     // 通常描画用WVPから共通の特殊マテリアル描画へ委譲する。
-    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
+    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
 
     // 現在のLODから実際に描画するモデルを選ぶ。
     Model* ResolveDrawModel() const;
@@ -460,17 +494,19 @@ private:
     // マテリアルへ渡すUV変換行列を更新する。
     void UpdateUvTransform();
 
-    // 外部オブジェクトへの参照。MeshRendererは所有しない。
-    Object3dCommon* common_ = nullptr;
+    // 描画基盤とObject本体の姿勢は借用する。以下は描画だけに加える見た目補正。
+    engine::Object3dCommon* common_ = nullptr;
     Transform* transform_ = nullptr;
     engine::Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
     engine::Vector3 visualRotation_ = { 0.0f, 0.0f, 0.0f };
     engine::Vector3 visualOffset_ = { 0.0f, 0.0f, 0.0f };
     engine::Vector3 visualShear_ = { 0.0f, 0.0f, 0.0f };
     float visualShearPivotY_ = 0.0f;
+
+    // タイムラインが所有する追加姿勢への弱参照。再生終了後は寿命を延ばさない。
     std::weak_ptr<engine::Matrix4x4> timelineVisualPose_;
 
-    // 描画モデルとLOD状態。
+    // ModelはModelManagerから借用し、名前・メッシュ番号・LOD選択を別に保持する。
     Model* model_ = nullptr;
     std::string modelName_;
     int meshDrawIndex_ = -1;
@@ -478,16 +514,19 @@ private:
     std::vector<LodLevel> lodLevels_;
     mutable int activeLodLevel_ = 0;
 
-    // 通常描画設定。
+    // 通常材質を描くときの合成方式。
     BlendMode blendMode_ = BlendMode::kNormal;
 
-    // 通常描画用GPUリソース。
+    // ワールド/View/Projection行列のGPUバッファとマップ済み書込先。
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
     TransformationMatrix* wvpData_ = nullptr;
+
+    // 同じワールド行列なら法線変換行列を再計算しないためのキャッシュ。
     engine::Matrix4x4 cachedWorldMatrix_ = engine::Math::MakeIdentity4x4();
     engine::Matrix4x4 cachedWorldInverseTranspose_ = engine::Math::MakeIdentity4x4();
     bool worldInverseTransposeCacheValid_ = false;
 
+    // 方向ライトとカメラ位置の定数バッファ。Dataポインタは対応バッファ内を指す。
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     DirectionalLight* directionalLightData_ = nullptr;
 
@@ -503,21 +542,24 @@ private:
     std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPreviewBufferCount> previewWaterResources_;
     std::array<WaterParamForGPU*, kPreviewBufferCount> previewWaterData_{};
 
+    // マテリアル定数バッファと編集値の色。
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;
     engine::Vector4 materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-    // テクスチャとPBR補助マップ。
+    // 法線・ORM・基本画像のパスとTextureManagerのハンドルを対で保持する。
     std::string normalMapPath_ = "";
     uint32_t normalMapHandle_ = 0;
     std::string ormMapPath_ = "";
     uint32_t ormMapHandle_ = 0;
     std::string texturePath_ = "";
     uint32_t textureHandle_ = 0;
+
+    // UVの繰り返し倍率と、モデル寸法から自動設定するかどうか。
     engine::Vector2 textureTiling_ = { 1.0f, 1.0f };
     bool autoTextureTiling_ = false;
 
-    // 水面、火、影、ローカルフォグ用リソース。
+    // 水面の描画パラメータと、特殊材質用の代理形状をMeshRendererが所有する。
     Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
     WaterParamForGPU* waterParamData_ = nullptr;
     std::unique_ptr<Model> waterProxyModel_;
@@ -525,12 +567,17 @@ private:
     std::unique_ptr<Model> volumetricFireProxyModel_;
     std::unique_ptr<Model> gatePortalProxyModel_;
     std::unique_ptr<Model> gateBarrierCylinderProxyModel_;
+
+    // 影パスとローカルフォグ用のGPU定数バッファ。
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
     TransformationMatrix* shadowWvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;
     LocalFogData* localFogData_ = nullptr;
+
+    // 水・炎など時間で動く材質へ渡す経過秒数。
     float time_ = 0.0f;
 
+    // UIプレビュー時だけ差し替える描画設定と外部ライトへの非所有参照。
     bool isUIPreview_ = false;
     ID3D12Resource* previewDirectionalLightResource_ = nullptr;
 };

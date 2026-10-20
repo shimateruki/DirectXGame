@@ -4,7 +4,7 @@
 #include "Player.h"
 #include <cassert>
 
-void BaseItem::Initialize(Object3dCommon* common, const std::string& modelName) {
+void BaseItem::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     engine::Object3d::Initialize(common);
 
     // アイテムの見た目は派生型ごとに選び、取得判定の土台だけを共通化します。
@@ -40,9 +40,11 @@ void BaseItem::Update(float deltaTime) {
     // 待機中は経過秒数に応じて回転し、フレームレートによる速度差をなくします。
     engine::Vector3 rotate = GetRotation();
     rotate.y += rotationSpeed_ * deltaTime;
+
     if (rotate.y > 6.283185f) {
         rotate.y -= 6.283185f;
     }
+
     SetRotation(rotate);
 
     engine::Object3d::Update(deltaTime);
@@ -56,11 +58,13 @@ bool BaseItem::OnCollision(engine::Object3d* other) {
     }
 
     Player* player = dynamic_cast<Player*>(other);
+
     if (!player) {
         return false;
     }
 
     CollisionInfo info = CheckCollision(other);
+
     if (!info.isColliding) {
         return false;
     }

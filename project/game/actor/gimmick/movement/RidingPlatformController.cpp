@@ -1,6 +1,6 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "RidingPlatformController.h"
-#include "game/system/SceneGameplayAccess.h"
+#include "game/system/scene/SceneGameplayAccess.h"
 #include "GimmickMovingFloor.h"
 #include "BaseEnemy.h"
 #include "game/actor/gimmick/combat/GimmickMagmaGeyser.h"
@@ -10,6 +10,7 @@
 #include "SceneManager.h"
 #include "GhostRecorder.h"
 #include "DebugConsole.h"
+#include "GPUParticleManager.h"
 #include "MovingFloorSupport.h"
 #include <algorithm>
 #include <cmath>
@@ -29,6 +30,7 @@ BaseEnemy* RidingPlatformController::FindEnemy(BaseScene& scene, const std::stri
         if (object && !object->IsReplayRemoved() && object->GetName() == name)
             return dynamic_cast<BaseEnemy*>(object.get());
     }
+
     return nullptr;
 }
 
@@ -40,10 +42,21 @@ void RidingPlatformController::Reset(GimmickMovingFloor& floor, BaseScene& scene
     floor.UpdateWorldMatrix();
     running_ = false;
     absentTime_ = 0.0f;
+    // 再挑戦で前回の水柱を残さない。水版以外の噴出口には触れない。
+    for (const auto& signal : sequence_.signals) {
+        if (!signal.enabled || signal.signal != "ride.waterjet") continue;
+        for (const auto& object : scene.GetObjects()) {
+            if (object && object->GetName() == signal.binding.targetName && object->GetGimmickType() == "WaterGeyser") {
+                if (auto* jet = dynamic_cast<GimmickMagmaGeyser*>(object.get())) jet->ResetEscapeCycle(false);
+            }
+        }
+    }
+
     for (auto& boarder : boarders_) {
         boarder.active = false;
         boarder.released = false;
         boarder.elapsed = 0;
+
         if (auto* enemy = FindEnemy(scene, boarder.name); enemy && !enemy->isDead && !enemy->IsCarried()) {
             enemy->SetTranslate(boarder.origin);
             enemy->SetCollisionAttribute(boarder.attribute);
@@ -60,9 +73,11 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
     if (!scene)
         return;
     const std::string path = floor.GetPathMoverComponent()->GetRideSequence();
+
     // 同じ床の旧RecorderとTimelineを同時に動かさない。
     if (floor.recorder_)
         floor.recorder_->Stop(false);
+
     // Editorで同じファイルへ保存した変更も、次のゲーム開始時に読み直す。
     if (loadedPath_ != path || (manager->IsPlaying() && !wasPlaying_ && ready_)) {
         if (ready_)
@@ -77,6 +92,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             DebugConsole::GetInstance()->AddLog("乗車床: タイムラインを読み込めません: " + path);
             return;
         }
+
         for (const auto& track : sequence_.transformTracks) {
             if (track.enabled && !track.muted && !track.relative && !track.anchorRelative &&
                 track.binding.targetName == floor.GetName() && !track.keys.empty()) {
@@ -84,8 +100,10 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
                 break;
             }
         }
+
         player_.Initialize(manager);
         player_.SetSequence(&sequence_);
+
         for (const auto& signal : sequence_.signals) {
             if (!signal.enabled || signal.signal != "ride.board")
                 continue;
@@ -98,21 +116,37 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             boarder.attribute = enemy->GetCollisionAttribute();
             boarder.mask = enemy->GetCollisionMask();
             const auto payload = json::parse(signal.payload, nullptr, false);
+
             if (payload.is_object()) {
                 if (payload.contains("duration") && payload["duration"].is_number())
                     boarder.duration = std::clamp(payload["duration"].get<float>(), .4f, 4.0f);
                 if (payload.contains("height") && payload["height"].is_number())
-                    boarder.height = std::clamp(payload["height"].get<float>(), 1.0f, 15.0f);
+                    boarder.height = std::clamp(payload["height"].get<float>(), 0.0f, 15.0f);
+                if (payload.contains("falling") && payload["falling"].is_boolean())
+                    boarder.falling = payload["falling"].get<bool>();
                 if (payload.contains("offset") && payload["offset"].is_array() && payload["offset"].size() == 3 &&
                     payload["offset"][0].is_number() && payload["offset"][1].is_number() &&
                     payload["offset"][2].is_number())
                     boarder.offset = {payload["offset"][0], payload["offset"][1], payload["offset"][2]};
             }
+
             boarders_.push_back(boarder);
         }
+
         player_.SetSignalCallback([this, &floor](engine::Object3d* target, const CinematicSignalMarker& signal, bool preview) {
             if (preview || !target)
                 return;
+            if (signal.signal == "ride.waterjet") {
+                if (target->GetGimmickType() == "WaterGeyser") {
+                    if (auto* jet = dynamic_cast<GimmickMagmaGeyser*>(target)) jet->OnSwitchEvent(signal.payload != "off");
+                }
+                return;
+            }
+            if (signal.signal == "ride.splash") {
+                if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized())
+                    particles->Emit("raft_water_landing", floor.GetTranslate());
+                return;
+            }
             if (signal.signal == "ride.fireball") {
                 if (auto* vent = dynamic_cast<GimmickMagmaGeyser*>(target)) {
                     vent->RequestFireballEruption();
@@ -127,12 +161,15 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             }
         });
     }
+
     if (!ready_)
         return;
     const bool playing = manager->IsPlaying();
+
     if (!playing) {
         if (wasPlaying_)
             Reset(floor, *scene);
+
         // 編集中はGhostDirectorのプレビューを上書きしない。
         for (auto& b : boarders_)
             if (auto* enemy = FindEnemy(*scene, b.name))
@@ -140,12 +177,20 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         wasPlaying_ = false;
         return;
     }
+
     if (!wasPlaying_)
         Reset(floor, *scene);
     wasPlaying_ = true;
     auto* rider = GetScenePlayer(scene);
     if (!rider || deltaTime <= 0)
         return;
+    // 出発直後の落水は水平距離が短いため、死亡復帰でも確実に乗り場へ戻す。
+    if (rider->isDead) riderWasDead_ = true;
+    else if (riderWasDead_) {
+        riderWasDead_ = false;
+        Reset(floor, *scene);
+        return;
+    }
     const engine::Vector3 previous = floor.GetTranslate();
     const bool riderOnDeck = IsStandingOnMovingFloor(floor, *rider);
     // 落下は通常のミス。復活して乗り場へ戻った時だけ床を再準備する。
@@ -156,30 +201,38 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         Reset(floor, *scene);
         return;
     }
+
     if (!running_ && riderOnDeck) {
         player_.Play(false);
         running_ = true;
     }
+
     // 全キャラの前フレームの接地を見てからTimelineを進める。
     std::vector<Character*> passengers;
+
     for (auto& object : scene->GetObjects()) {
         auto* actor = object && !object->IsReplayRemoved() ? dynamic_cast<Character*>(object.get()) : nullptr;
         if (actor && IsStandingOnMovingFloor(floor, *actor))
             passengers.push_back(actor);
     }
+
     if (running_) {
         float step = deltaTime;
+
         if (ferry_) {
             // 飛び上がり中は止めず、島へ降りた後はその場で再乗車を待つ。
             absentTime_ = riderOnDeck ? 0.0f : absentTime_ + deltaTime;
             if (rider->isDead || absentTime_ > 1.2f)
                 step = 0.0f;
         }
+
         const float now = player_.GetCurrentTime();
+
         for (const auto& signal : sequence_.signals) {
             if (!signal.enabled || (signal.signal != "ride.wait_clear" && signal.signal != "ride.wait_switch") ||
                 signal.time + .001f < now)
                 continue;
+
             // 更新後に巻き戻すと乗員・効果が先へ進むため、更新量を停止時刻で切る。
             const bool blocked =
                 std::any_of(scene->GetObjects().begin(), scene->GetObjects().end(), [&](const auto& object) {
@@ -194,10 +247,13 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             if (blocked)
                 step = std::min(step, std::max(0.0f, signal.time - now));
         }
+
         if (step > 0.0f)
             player_.Update(step);
     }
+
     const auto displacement = floor.GetTranslate() - previous;
+
     for (auto* actor : passengers) {
         actor->SetTranslate(actor->GetTranslate() + displacement);
         actor->UpdateLocalMatrix();
@@ -205,16 +261,19 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         if (auto* player = dynamic_cast<Player*>(actor))
             player->SetPlatformMotion(displacement * (1.0f / deltaTime));
     }
+
     for (auto& boarder : boarders_) {
         auto* enemy = FindEnemy(*scene, boarder.name);
         if (!enemy || enemy->isDead || boarder.released)
             continue;
+
         // プレイヤーが先に捕まえた敵を、乗り込み演出で奪い返さない。
         if (enemy->IsCarried()) {
             boarder.released = true;
             enemy->SetDormant(false);
             continue;
         }
+
         enemy->SetDormant(true);
         if (!boarder.active)
             continue;
@@ -226,8 +285,10 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         engine::Vector3 destination = floor.GetTranslate() + boarder.offset;
         destination.y += (c.center.y + c.size.y) * floor.GetScale().y;
         auto position = engine::Math::Lerp(boarder.origin, destination, t);
-        position.y += 4.0f * boarder.height * t * (1.0f - t);
+        if (boarder.falling) position.y = boarder.origin.y + (destination.y - boarder.origin.y) * t * t;
+        else position.y += 4.0f * boarder.height * t * (1.0f - t);
         enemy->SetTranslate(position);
+
         if (t >= 1) {
             boarder.released = true;
             enemy->SetDormant(false);
@@ -236,6 +297,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             enemy->SetCollisionAttribute(boarder.attribute);
             enemy->SetCollisionMask(boarder.mask);
         }
+
         enemy->UpdateLocalMatrix();
         enemy->UpdateWorldMatrix();
     }

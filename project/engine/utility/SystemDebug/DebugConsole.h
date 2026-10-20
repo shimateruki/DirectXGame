@@ -35,8 +35,11 @@ public:
 
 private:
     DebugConsole() = default;
+
     ~DebugConsole() = default;
+
     DebugConsole(const DebugConsole&) = delete;
+
     DebugConsole& operator=(const DebugConsole&) = delete;
 
     /// <summary>表示するメッセージと重大度の組。</summary>

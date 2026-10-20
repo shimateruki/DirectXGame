@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a8eadc94d74f565f81a24b5456c44fb4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_Shrine_Detail.obj",
+  "version": 1
+}

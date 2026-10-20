@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickLiquidLevel::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickLiquidLevel::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 液面は足場の衝突には使わず、表示と高さの制御を担当します。
@@ -42,7 +42,9 @@ void GimmickLiquidLevel::Update(float deltaTime) {
         UpdateEscape(deltaTime);
         return;
     }
+
     bool isPlaying = false;
+
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
         isPlaying = sceneManager->IsPlaying();
     }
@@ -104,6 +106,7 @@ void GimmickLiquidLevel::ApplyTarget(bool active) {
 void GimmickLiquidLevel::ApplyLiquidVisual() {
     // 色種別に合わせて水とマグマの材質・透過色を切り替えます。
     int colorType = param_.has_value() ? param_->colorType : 0;
+
     if (colorType == 1) {
         SetMaterialType(9);
         SetColor({1.0f, 0.25f, 0.02f, 0.88f});
@@ -126,6 +129,7 @@ std::unique_ptr<engine::Object3d> GimmickLiquidLevel::Clone() const {
 // マーカーは中心とScaleを半径として使い、Editorから範囲を調整できます。
 void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
     auto* manager = SceneManager::GetInstance();
+
     if (!manager || !manager->IsPlaying()) {
         if (initializedForPlay_)
             SetTranslate(basePosition_);
@@ -135,6 +139,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         BaseGimmick::Update(deltaTime);
         return;
     }
+
     auto* scene = manager->GetCurrentScene();
     if (!scene)
         return;
@@ -143,11 +148,14 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         initializedForPlay_ = true;
         SetStatic(false);
     }
+
     Player* player = nullptr;
+
     for (auto& obj : scene->GetObjects()) {
         if ((player = dynamic_cast<Player*>(obj.get())))
             break;
     }
+
     auto* start = scene->FindObjectByEventID(GetTargetID());
     auto* finish = scene->FindObjectByEventID(GetTargetID() + 1);
     auto* checkpoint = scene->FindObjectByEventID(GetTargetID() + 2);
@@ -158,6 +166,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         const engine::Vector3 radius = marker->GetScale();
         return std::abs(p.x) <= radius.x && std::abs(p.y) <= radius.y && std::abs(p.z) <= radius.z;
     };
+
     if (player && !player->isDead && player->IsControlActive()) {
         // 開いた入口へ引き返しても上昇は継続。死亡後のScene再生成で初期化します。
         if (!escapeStarted_ && inside(start)) {
@@ -169,9 +178,11 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
             if (auto* camera = CameraManager::GetInstance()->GetActiveCamera())
                 camera->StartShake(0.65f, 0.10f, 18.0f, {0.4f, 1.0f, 0.4f});
         }
+
         if (escapeStarted_ && !escapeFinished_ && inside(finish)) {
             escapeFinished_ = true;
             player->ActivateCheckpoint(finish->GetTranslate());
+
             // 到達後は追撃を止め、頂上のゴールへ安全に進めるようにします。
             for (auto& obj : scene->GetObjects())
                 if (obj->GetTargetID() == GetEventID()) {
@@ -182,6 +193,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
                 }
         }
     }
+
     if (escapeStarted_ && !escapeFinished_) {
         escapeTime_ += (std::max)(0.0f, deltaTime);
         const float elapsed = (std::max)(0.0f, escapeTime_ - param_->shakeDuration);
@@ -189,6 +201,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
             (std::min)((std::max)(0.0f, param_->moveAmount), elapsed * (std::max)(0.01f, param_->moveSpeed));
         SetTranslate(basePosition_ + engine::Vector3{0.0f, rise, 0.0f});
     }
+
     // 接触判定はPlayerが現在の液面を読むため、ここで行列まで確定します。
     SetMaterialType(9);
     BaseGimmick::Update(deltaTime);
@@ -210,6 +223,7 @@ void GimmickLiquidLevel::ResetEscapeObjects(bool active) {
         else if (obj->GetGimmickType() == "EventReceiver")
             obj->OnSwitchEvent(false);
     }
+
     // 出現床のスイッチは独立したリンクなので、受信側IDから同じ組を探します。
     for (auto& obj : scene->GetObjects())
         if (obj->GetTargetID() == GetEventID() + 4)

@@ -5,10 +5,14 @@
 // ボス戦開始時に上から閉じる、実体モデル付きの格子ゲートです。
 class GimmickBossGate final : public BaseGimmick {
   public:
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     void OnTrigger() override;
+
     void OnSwitchEvent(bool active) override;
+
     std::unique_ptr<engine::Object3d> Clone() const override;
 
     // 開門中の退避座標ではなく、シーンで編集した閉鎖位置を返します。
@@ -17,12 +21,20 @@ class GimmickBossGate final : public BaseGimmick {
     // 崩壊演出中はシーン側に配置制御を渡し、開閉状態は保持します。
     void SetCinematicOverride(bool enabled) { cinematicOverride_ = enabled; }
 
+    // 登場タイムラインに移動を渡し、閉鎖後は通常の開閉状態へ引き継ぎます。
+    void SetIntroTimelineControl(bool enabled);
+
   private:
     void CaptureAuthoredState(bool force = false);
+
     void ResetForEditor();
+
     void ApplyRuntimeState();
+
     void SetCollisionEnabled(bool enabled);
+
     float GetTransitionDuration() const;
+
     float GetTravelDistance() const;
 
     engine::Vector3 authoredPosition_{};
@@ -35,4 +47,5 @@ class GimmickBossGate final : public BaseGimmick {
     bool initializedForPlay_ = false;
     bool activationRequested_ = false;
     bool cinematicOverride_ = false;
+    bool introTimelineControl_ = false;
 };

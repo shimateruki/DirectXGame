@@ -17,6 +17,7 @@ engine::Vector3 ReadVector3(const json& value, const engine::Vector3& fallback) 
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
+
     return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
 
@@ -25,6 +26,7 @@ engine::Vector4 ReadVector4(const json& value, const engine::Vector4& fallback) 
     if (!value.is_array() || value.size() < 4) {
         return fallback;
     }
+
     return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
 }
 
@@ -40,6 +42,7 @@ bool IsSupportedMorphTypeValue(int value) {
     case Player::EnemyMorphType::WindSlime:
     case Player::EnemyMorphType::Crown:
         return true;
+
     default:
         return false;
     }
@@ -59,9 +62,10 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerAttackBufferUsed"] = attackInput.usedForStateStart;
     state["playerAttackInputBufferTimer"] = attackInput.inputBufferTimer;
     state["playerDamageCooldownTimer"] = damageCooldownTimer_;
+    state["playerGuardContactCooldownTimer"] = guardContactCooldownTimer_;
     state["playerDamageInvincible"] = isDamageInvincible_;
     state["playerDashInvincible"] = isDashInvincible_;
-    state["playerGuardInvincible"] = isGuardInvincible_;
+    state["playerGuarding"] = isGuarding_;
     state["playerEvasionInvincibleTimer"] = evasionInvincibleTimer_;
     state["playerEvasionInvincible"] = isEvasionInvincible_;
     state["playerInvincibleBlinkTimer"] = invincibleBlinkTimer_;
@@ -98,6 +102,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerTutorialSafety"] = tutorialSafetyEnabled_;
     state["playerTutorialCarryThrowEnabled"] = tutorialCarryThrowEnabled_;
     state["playerTutorialCarryAbsorbEnabled"] = tutorialCarryAbsorbEnabled_;
+
     if (baseCombatController_) {
         const PlayerBaseCombatController::ReplayState combatState = baseCombatController_->CaptureReplayState();
         state["playerBaseCombatPhase"] = combatState.phase;
@@ -123,46 +128,56 @@ void Player::RestoreReplayCustomState(const json& state) {
     attackInput.inputBufferTimer = state.value("playerAttackInputBufferTimer", attackInput.inputBufferTimer);
     attackInputBuffer_.Restore(attackInput);
     damageCooldownTimer_ = state.value("playerDamageCooldownTimer", damageCooldownTimer_);
+    guardContactCooldownTimer_ = state.value("playerGuardContactCooldownTimer", 0.0f);
     isDamageInvincible_ = state.value("playerDamageInvincible", isDamageInvincible_);
     isDashInvincible_ = state.value("playerDashInvincible", isDashInvincible_);
-    isGuardInvincible_ = state.value("playerGuardInvincible", isGuardInvincible_);
+    isGuarding_ = state.value("playerGuarding", state.value("playerGuardInvincible", false));
     evasionInvincibleTimer_ = state.value("playerEvasionInvincibleTimer", evasionInvincibleTimer_);
     isEvasionInvincible_ = state.value("playerEvasionInvincible", isEvasionInvincible_);
     invincibleBlinkTimer_ = state.value("playerInvincibleBlinkTimer", invincibleBlinkTimer_);
     deathTimer_ = state.value("playerDeathTimer", deathTimer_);
+
     if (state.contains("playerRespawnPosition")) {
         respawnPosition_ = ReadVector3(state["playerRespawnPosition"], respawnPosition_);
     }
+
     checkpointActivated_ = state.value("playerCheckpointActivated", checkpointActivated_);
     checkpointObjectName_ = state.value("playerCheckpointObjectName", checkpointObjectName_);
     checkpointMorphEnemyType_ = state.value("playerCheckpointMorphEnemyType", checkpointMorphEnemyType_);
+
     if (state.contains("playerBaseRotation")) {
         baseRotation_ = ReadVector3(state["playerBaseRotation"], baseRotation_);
     }
+
     isFirstUpdate_ = state.value("playerFirstUpdate", isFirstUpdate_);
     jumpCount_ = state.value("playerJumpCount", jumpCount_);
+
     if (state.contains("playerMoveYaw")) {
         SetMoveYaw(state["playerMoveYaw"].get<float>());
     }
 
     const int morphType = state.value("playerEnemyMorphType", static_cast<int>(enemyMorphType_));
     const bool supportedMorphType = IsSupportedMorphTypeValue(morphType);
+
     if (supportedMorphType) {
         enemyMorphType_ = static_cast<EnemyMorphType>(morphType);
     } else {
         // 値6は廃止済みの巨大コピーです。古いリプレイは通常形態へ安全に戻します。
         enemyMorphType_ = EnemyMorphType::None;
     }
+
     isEnemyMorphed_ = supportedMorphType && state.value("playerEnemyMorphed", isEnemyMorphed_);
     enemyMorphHasTimeLimit_ = state.value("playerMorphHasTimeLimit", enemyMorphHasTimeLimit_);
     enemyMorphTimer_ = state.value("playerMorphTimer", enemyMorphTimer_);
     enemyMorphDuration_ = state.value("playerMorphDuration", enemyMorphDuration_);
     enemyMorphEffectTimer_ = state.value("playerMorphEffectTimer", enemyMorphEffectTimer_);
     enemyMorphVisualTimer_ = state.value("playerMorphVisualTimer", enemyMorphVisualTimer_);
+
     if (copyAbilityController_) {
         if (isEnemyMorphed_) {
             // リプレイの時間軸では元敵参照を復元せず、能力セッションを設定値から再構築します。
             copyAbilityController_->ActivateDefault(static_cast<int>(enemyMorphType_));
+
             if (copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
                 enemyMorphSource_ = nullptr;
             }
@@ -170,6 +185,7 @@ void Player::RestoreReplayCustomState(const json& state) {
             copyAbilityController_->Cancel(*this);
         }
     }
+
     enemyMorphReleaseActive_ = state.value("playerMorphReleaseActive", false);
     enemyMorphReleaseBurstStarted_ = state.value("playerMorphReleaseBurstStarted", false);
     enemyMorphReleaseExpired_ = state.value("playerMorphReleaseExpired", false);
@@ -177,40 +193,50 @@ void Player::RestoreReplayCustomState(const json& state) {
     enemyMorphReleaseDuration_ = state.value("playerMorphReleaseDuration", enemyMorphReleaseDuration_);
     enemyMorphReleaseBurstTime_ = state.value("playerMorphReleaseBurstTime", enemyMorphReleaseBurstTime_);
     enemyMorphReleaseParticleTimer_ = state.value("playerMorphReleaseParticleTimer", 0.0f);
+
     if (state.contains("playerMorphReleasePlayerScale")) {
         enemyMorphReleasePlayerScale_ =
             ReadVector3(state["playerMorphReleasePlayerScale"], enemyMorphReleasePlayerScale_);
     }
+
     if (state.contains("playerMorphReleaseVisualScale")) {
         enemyMorphReleaseVisualScale_ =
             ReadVector3(state["playerMorphReleaseVisualScale"], enemyMorphReleaseVisualScale_);
     }
+
     if (state.contains("playerMorphReleaseStartPosition")) {
         enemyMorphReleaseStartPosition_ =
             ReadVector3(state["playerMorphReleaseStartPosition"], enemyMorphReleaseStartPosition_);
     }
+
     if (state.contains("playerMorphReleaseDirection")) {
         enemyMorphReleaseDirection_ = ReadVector3(state["playerMorphReleaseDirection"], enemyMorphReleaseDirection_);
     }
+
     if (state.contains("playerMorphReleaseTint")) {
         enemyMorphReleaseTint_ = ReadVector4(state["playerMorphReleaseTint"], enemyMorphReleaseTint_);
     }
+
     if (enemyMorphReleaseActive_) {
         UpdateEnemyMorphRelease(0.0f);
     } else if (enemyMorphReleaseVisual_) {
         enemyMorphReleaseVisual_->SetIsVisible(false);
     }
+
     electricShockFeedbackTimer_ = state.value("playerElectricShockTimer", electricShockFeedbackTimer_);
     electricShockControlLocked_ = state.value("playerElectricShockLocked", electricShockControlLocked_);
     tutorialSafetyEnabled_ = state.value("playerTutorialSafety", tutorialSafetyEnabled_);
     tutorialCarryThrowEnabled_ = state.value("playerTutorialCarryThrowEnabled", tutorialCarryThrowEnabled_);
     tutorialCarryAbsorbEnabled_ = state.value("playerTutorialCarryAbsorbEnabled", tutorialCarryAbsorbEnabled_);
+
     if (baseCombatController_) {
         PlayerBaseCombatController::ReplayState combatState;
         combatState.phase = state.value("playerBaseCombatPhase", 0);
+
         if (state.contains("playerBaseCombatDirection")) {
             combatState.direction = ReadVector3(state["playerBaseCombatDirection"], combatState.direction);
         }
+
         combatState.timer = state.value("playerBaseCombatTimer", 0.0f);
         combatState.effectTimer = state.value("playerBaseCombatEffectTimer", 0.0f);
         combatState.inputBufferTimer = state.value("playerBaseCombatInputBufferTimer", 0.0f);

@@ -8,21 +8,25 @@
 
 class BaseScene;
 namespace engine { class Object3d; }
-class Object3dCommon;
+namespace engine { class Object3dCommon; }
 
 /// <summary>地面や壁へ沿わせる薄い投影面の生成設定。</summary>
 struct DecalSpawnDesc {
     std::string name = "Decal";
     std::string texturePath = "Resources/sprite/effect/thunder/thunder_ground_scorch.dds";
+
     engine::Vector2 size = { 2.0f, 2.0f };
     engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
     float rotationRadians = 0.0f;
     float depthOffset = 0.012f;
+
     float lifetime = 0.0f;
     float fadeIn = 0.0f;
     float fadeOut = 0.35f;
+
     float emissive = 1.0f;
     int blendMode = 1;
+
     bool transient = false;
 };
 
@@ -31,7 +35,7 @@ class DecalSystem final {
 public:
     /// <summary>指定面に配置したデカールObjectを生成し、呼び出し側へ所有権を渡す。</summary>
     static std::unique_ptr<engine::Object3d> Create(
-        Object3dCommon* common,
+        engine::Object3dCommon* common,
         const engine::Vector3& surfacePoint,
         const engine::Vector3& surfaceNormal,
         const DecalSpawnDesc& desc = DecalSpawnDesc{});

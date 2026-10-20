@@ -20,7 +20,7 @@ public:
 
     /// <summary>エフェクト生成に必要なObject3dCommonを設定する。</summary>
     /// <remarks>commonは所有しないため、利用中は呼び出し側で保持する。</remarks>
-    void Initialize(Object3dCommon* common);
+    void Initialize(engine::Object3dCommon* common);
 
     /// <summary>1フレーム内の更新済み状態を初期化する。</summary>
     void BeginFrame();
@@ -54,6 +54,7 @@ public:
 
     // 攻撃タイムラインが所有する表示物。管理側のdtを加算せず、指定秒の姿を描画します。
     bool StartTimelineEffect(EffectScopeId scopeId, const std::string& path);
+
     void EvaluateTimelineEffect(EffectScopeId scopeId, float time, float duration,
         const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale);
 
@@ -87,13 +88,17 @@ public:
 
     /// <summary>エディタで表示中のエフェクトを返す。</summary>
     EffectObject3d* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }
+
 private:
     MeshEffectManager() = default;
+
     ~MeshEffectManager() = default;
+
     MeshEffectManager(const MeshEffectManager&) = delete;
+
     MeshEffectManager& operator=(const MeshEffectManager&) = delete;
 
-    Object3dCommon* common_ = nullptr;
+    engine::Object3dCommon* common_ = nullptr;
 
     // 現在再生中のエフェクトリスト
     std::vector<std::unique_ptr<EffectObject3d>> activeEffects_;
@@ -104,8 +109,10 @@ private:
     std::unordered_set<std::string> preloadedEffects_;
     bool updatedThisFrame_ = false;
     float timeScale_ = 1.0f;
+
     /// <summary>タイムライン編集時に各エフェクトへ加える位置と回転の補正値。</summary>
     struct TimelineOffset { engine::Vector3 position, rotation; };
+
     std::unordered_map<EffectObject3d*, TimelineOffset> timelineOffsets_;
 
 };

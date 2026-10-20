@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "3d18e6242b525fff8caaa96a249846fe",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_AbilityRestGarden_Soil.obj",
+  "version": 1
+}

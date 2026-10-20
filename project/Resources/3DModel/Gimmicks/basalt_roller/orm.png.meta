@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cef64ae398e694a9510f4b408ebb0151",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/basalt_roller/orm.png",
+  "version": 1
+}

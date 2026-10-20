@@ -22,7 +22,8 @@ class CopyStyleHud {
         sprite_ = sprite;
         previousType_ = Player::EnemyMorphType::None;
         revealTime_ = 0.0f;
-        if (!sprite_) return;
+        if (!sprite_)
+            return;
         basePosition_ = sprite_->GetPosition();
         baseSize_ = sprite_->GetSize();
         sprite_->SetVisible(false);
@@ -30,7 +31,8 @@ class CopyStyleHud {
 
     void Update(const Player* player, float deltaTime) {
         // 能力の種類が変わったフレームだけ画像を差し替え、表示アニメーションを始め直す。
-        if (!sprite_) return;
+        if (!sprite_)
+            return;
 
         const Player::EnemyMorphType type = player && player->IsEnemyMorphed()
                                                 ? player->GetEnemyMorphType()

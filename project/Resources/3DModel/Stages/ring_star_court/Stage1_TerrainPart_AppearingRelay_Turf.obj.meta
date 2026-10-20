@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "dd24787abcd95bb39d93371c1d0161f5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_AppearingRelay_Turf.obj",
+  "version": 1
+}

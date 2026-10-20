@@ -40,6 +40,7 @@ void AssignPreferredTexture(std::string &slot, const std::string &candidate) {
 std::string BuildPbrPresetKey(const fs::path &path) {
   // 解像度と用途を示す語を除き、同じ素材の3種類のマップを同じキーへ寄せる。
   std::string stem = ToLowerAscii(path.stem().string());
+
   for (char &c : stem) {
     if (c == '-' || c == ' ') {
       c = '_';
@@ -54,6 +55,7 @@ std::string BuildPbrPresetKey(const fs::path &path) {
 
   std::string key;
   size_t start = 0;
+
   while (start <= stem.size()) {
     const size_t end = stem.find('_', start);
     const std::string token = stem.substr(
@@ -62,11 +64,14 @@ std::string BuildPbrPresetKey(const fs::path &path) {
       if (!key.empty()) {
         key += "_";
       }
+
       key += token;
     }
+
     if (end == std::string::npos) {
       break;
     }
+
     start = end + 1;
   }
 
@@ -76,15 +81,18 @@ std::string BuildPbrPresetKey(const fs::path &path) {
 std::string BuildPbrPresetName(const std::string &key) {
     // テクスチャ組のキーを人が読みやすい表示名へ整える。
   std::string name = key;
+
   for (char &c : name) {
     if (c == '_') {
       c = ' ';
     }
   }
+
   if (!name.empty()) {
     name[0] =
         static_cast<char>(std::toupper(static_cast<unsigned char>(name[0])));
   }
+
   return name;
 }
 } // namespace
@@ -110,6 +118,7 @@ void InspectorTextureCatalog::Rebuild() {
   pbrPresets_.clear();
 
   const fs::path pbrDir = "Resources/texture/PBR/";
+
   if (fs::exists(pbrDir)) {
     std::vector<std::string> allFiles;
     std::set<std::string> ddsBaseNames;
@@ -120,13 +129,16 @@ void InspectorTextureCatalog::Rebuild() {
       if (!entry.is_regular_file()) {
         continue;
       }
+
       const fs::path path = entry.path();
+
       if (!IsSupportedTextureFile(path)) {
         continue;
       }
 
       const std::string normalized = NormalizeAssetPath(path);
       allFiles.push_back(normalized);
+
       if (ToLowerAscii(path.extension().string()) == ".dds") {
         ddsBaseNames.insert(
             NormalizeAssetPath(path.parent_path() / path.stem()));
@@ -185,6 +197,7 @@ void InspectorTextureCatalog::Rebuild() {
   }
 
   const fs::path spriteDir = "Resources/sprite/";
+
   if (fs::exists(spriteDir)) {
     for (const auto &entry : fs::recursive_directory_iterator(spriteDir)) {
       if (entry.is_regular_file() && IsSupportedTextureFile(entry.path())) {
@@ -196,6 +209,7 @@ void InspectorTextureCatalog::Rebuild() {
   const auto sortPaths = [](std::vector<std::string> &paths) {
     std::sort(paths.begin(), paths.end());
   };
+
   sortPaths(albedoPaths_);
   sortPaths(normalPaths_);
   sortPaths(ormPaths_);

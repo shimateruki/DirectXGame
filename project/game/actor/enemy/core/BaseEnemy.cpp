@@ -2,20 +2,20 @@
 #include "game/actor/enemy/combat/AttackTelegraph.h"
 #include "CollisionConfig.h" // enemyなどの定義を使うため
 #include "Event.h"           //  DamageEventを使うため
-#include "EventManager.h"    //  イベントを発行(Dispatch)するため
+#include "game/system/rules/EventManager.h"    //  イベントを発行(Dispatch)するため
 #include "Player.h"          //  プレイヤーの状態を見るため
 #include "Bullet.h"
 
 #include "CollisionManager.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
-#include "game/system/SceneGameplayAccess.h"
+#include "game/system/scene/SceneGameplayAccess.h"
 #include "ParticleSystem.h"
-#include "HitEffectDirector.h"
+#include "game/system/combat/HitEffectDirector.h"
 #include "MeshEffectManager.h"
 #include "VFXSequencer.h"
 #include "GimmickCoin.h"
-#include "GroundEffectLocator.h"
+#include "game/system/combat/GroundEffectLocator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -88,9 +88,11 @@ engine::Vector3 NormalizePlanarOr(const engine::Vector3& value, const engine::Ve
     // 敵と目標が重なった時は既定方向を使い、ノックバックを失わない。
     engine::Vector3 result = {value.x, 0.0f, value.z};
     const float length = PlanarLength(result);
+
     if (length <= 0.001f) {
         return fallback;
     }
+
     return {result.x / length, 0.0f, result.z / length};
 }
 
@@ -120,21 +122,25 @@ int GetCoinDropCountByEnemyType(const std::string& enemyType) {
     if (enemyType == "FalseKingSlime") {
         return 0;
     }
+
     if (enemyType == "PrismSlime") {
         return 12;
     }
+
     if (enemyType == "GiantSlime") {
         return 8;
     }
+
     if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "WindSlime" || enemyType == "Bomber") {
         return 4;
     }
+
     return 3;
 }
 } // namespace
 
 // 基本初期化
-void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName) {
+void BaseEnemy::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 1. 親クラス(Character)の初期化
     Character::Initialize(common);
 
@@ -166,12 +172,15 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
 bool BaseEnemy::ReloadAttackProfile(std::string* errorMessage) {
     // 種別に対応する攻撃設定を読み直し、失敗理由は編集画面へ返す。
     const std::string enemyType = GetEnemyType();
+
     if (enemyType.empty()) {
         if (errorMessage) {
             *errorMessage = "敵タイプが未設定のため攻撃プロファイルを読み込めません。";
         }
+
         return false;
     }
+
     return EnemyAttackProfile::LoadCachedForEnemy(enemyType, attackProfile_, errorMessage);
 }
 
@@ -197,9 +206,11 @@ void BaseEnemy::CaptureWanderOrigin() {
     wanderSeed_ ^= static_cast<uint32_t>(reinterpret_cast<uintptr_t>(this));
     wanderSeed_ ^= static_cast<uint32_t>((std::abs(wanderOrigin_.x) + 1.0f) * 73856093.0f);
     wanderSeed_ ^= static_cast<uint32_t>((std::abs(wanderOrigin_.z) + 1.0f) * 19349663.0f);
+
     if (wanderSeed_ == 0u) {
         wanderSeed_ = 0x12345678u;
     }
+
     hasWanderOrigin_ = true;
     PickWanderTarget(0.65f, 0.0f);
 }
@@ -276,24 +287,30 @@ engine::Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSp
     if (wanderWaitTimer_ > 0.0f) {
         velocity.x = 0.0f;
         velocity.z = 0.0f;
+
         if (includeVertical) {
             velocity.y = 0.0f;
         }
+
         return velocity;
     }
 
     engine::Vector3 toTarget = target - GetTranslate();
+
     if (!includeVertical) {
         toTarget.y = 0.0f;
     }
 
     const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.y * toTarget.y + toTarget.z * toTarget.z);
+
     if (distance <= 0.001f) {
         velocity.x = 0.0f;
         velocity.z = 0.0f;
+
         if (includeVertical) {
             velocity.y = 0.0f;
         }
+
         return velocity;
     }
 
@@ -302,9 +319,11 @@ engine::Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSp
     const float slowRate = (std::clamp)(distance / 2.0f, 0.25f, 1.0f);
     velocity.x = direction.x * speed * slowRate;
     velocity.z = direction.z * speed * slowRate;
+
     if (includeVertical) {
         velocity.y = direction.y * speed * slowRate;
     }
+
     return velocity;
 }
 
@@ -327,6 +346,7 @@ void BaseEnemy::BeginThrown(const engine::Vector3& initialVelocity) {
     throwRecoveryRotateTimer_ = 0.0f;
     throwRecoveryTimer_ = 0.0f;
     velocity_ = initialVelocity;
+
     if (!param_.has_value()) {
         param_.emplace();
     }
@@ -491,11 +511,13 @@ void BaseEnemy::SpawnSlamImpactEffect(const engine::Vector3& impactPosition, flo
     HitEffectDirector::SpawnThrowSlamShockwave(groundImpactPosition, impactSpeed);
 
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager || !sceneManager->GetCurrentScene()) {
         return;
     }
 
-    ParticleSystem* particleSystem = sceneManager->GetCurrentScene()->GetParticleSystem();
+    engine::ParticleSystem* particleSystem = sceneManager->GetCurrentScene()->GetParticleSystem();
+
     if (!particleSystem) {
         return;
     }
@@ -510,6 +532,7 @@ void BaseEnemy::SpawnSlamImpactEffect(const engine::Vector3& impactPosition, flo
 void BaseEnemy::DamageSlamTargets(const engine::Vector3& impactPosition, float impactSpeed) {
     // 着地点の近傍を一度だけ調べ、投げた敵以外へ速度に応じた威力を配る。
     CollisionManager* collisionManager = CollisionManager::GetInstance();
+
     if (!collisionManager) {
         return;
     }
@@ -521,6 +544,7 @@ void BaseEnemy::DamageSlamTargets(const engine::Vector3& impactPosition, float i
         if (!object || object == this || object->isDead) {
             continue;
         }
+
         if (!(object->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
             continue;
         }
@@ -528,6 +552,7 @@ void BaseEnemy::DamageSlamTargets(const engine::Vector3& impactPosition, float i
         engine::Vector3 diff = object->GetWorldPosition() - impactPosition;
         diff.y *= 0.45f;
         const float distance = engine::Math::Length(diff);
+
         if (distance > radius) {
             continue;
         }
@@ -555,6 +580,7 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
     if (colorResetTimer_ > 0.0f) {
         colorResetTimer_ -= deltaTime;
         SetColor({1.0f, defaultColor_.y * 0.32f + 0.12f, defaultColor_.z * 0.32f + 0.12f, defaultColor_.w});
+
         if (colorResetTimer_ <= 0.0f) {
             SetColor(defaultColor_);
         }
@@ -573,16 +599,19 @@ void BaseEnemy::PlayDamageReaction(engine::Object3d* attacker, const engine::Vec
 
     engine::Vector3 worldDirection = {knockbackVelocity.x, 0.0f, knockbackVelocity.z};
     float planarLength = std::sqrt(worldDirection.x * worldDirection.x + worldDirection.z * worldDirection.z);
+
     if (planarLength <= 0.001f && attacker) {
         worldDirection = GetWorldPosition() - attacker->GetWorldPosition();
         worldDirection.y = 0.0f;
         planarLength = std::sqrt(worldDirection.x * worldDirection.x + worldDirection.z * worldDirection.z);
     }
+
     if (planarLength <= 0.001f) {
         const float yaw = GetRotation().y;
         worldDirection = {-std::sin(yaw), 0.0f, -std::cos(yaw)};
         planarLength = 1.0f;
     }
+
     worldDirection.x /= planarLength;
     worldDirection.z /= planarLength;
 
@@ -606,18 +635,21 @@ float BaseEnemy::GetDamageReactionWeight() const {
     if (damageReactionDuration_ <= 0.0001f || damageReactionTimer_ <= 0.0f) {
         return 0.0f;
     }
+
     return std::clamp(damageReactionTimer_ / damageReactionDuration_, 0.0f, 1.0f);
 }
 
 EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
     // ダメージ方向と残り時間から、各敵に重ねる共通の見た目補正を作る。
     EnemyVisualReactionPose pose;
+
     if (damageReactionDuration_ <= 0.0001f || damageReactionTimer_ <= 0.0f) {
         return pose;
     }
 
     const float progress = 1.0f - std::clamp(damageReactionTimer_ / damageReactionDuration_, 0.0f, 1.0f);
     float response = 0.0f;
+
     if (progress < 0.18f) {
         const float t = progress / 0.18f;
         response = t * t * (3.0f - 2.0f * t);
@@ -656,6 +688,7 @@ void BaseEnemy::ApplyDamageReactionPose(engine::Vector3& scale, engine::Vector3&
     rotation.x += reaction.rotation.x * safeIntensity;
     rotation.y += reaction.rotation.y * safeIntensity;
     rotation.z += reaction.rotation.z * safeIntensity;
+
     if (offset) {
         offset->x += reaction.offset.x * safeIntensity;
         offset->y += reaction.offset.y * safeIntensity;
@@ -687,6 +720,7 @@ void BaseEnemy::EnsureNoticeMarkObject() {
 void BaseEnemy::ConfigureNoticeMarkForReaction() {
     // 気付き演出の開始時だけマークのサイズと表示位置を整える。
     EnsureNoticeMarkObject();
+
     if (!noticeMarkObject_) {
         return;
     }
@@ -702,6 +736,7 @@ void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
     if (kind == NoticeReactionKind::None) {
         return;
     }
+
     if (isNoticeReactionActive_) {
         EndNoticeReaction(true);
     }
@@ -712,15 +747,18 @@ void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
     isNoticeReactionActive_ = true;
     noticeReactionKind_ = kind;
     noticeReactionTimer_ = kind == NoticeReactionKind::Lost ? kEnemyLostDuration : kEnemyNoticeDuration;
+
     if (kind == NoticeReactionKind::Detected) {
         noticeReactionCooldown_ = kEnemyNoticeCooldown;
     }
+
     noticeMarkYaw_ = 0.0f;
 
     SetVelocity({0.0f, 0.0f, 0.0f});
     TriggerAttackTelegraphCue(kind == NoticeReactionKind::Lost ? engine::Vector4{0.20f, 0.82f, 1.0f, 0.82f}
                                                                : engine::Vector4{1.0f, 0.82f, 0.12f, 0.9f});
     ConfigureNoticeMarkForReaction();
+
     if (noticeMarkObject_) {
         noticeMarkObject_->SetIsVisible(true);
     }
@@ -729,8 +767,10 @@ void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
 void BaseEnemy::EndNoticeReaction(bool restoreVisual) {
     // 演出が中断されても元の色とスケールを戻し、次の行動へ残さない。
     const NoticeReactionKind finishedKind = noticeReactionKind_;
+
     if (restoreVisual && isNoticeReactionActive_) {
         SetScale(noticeBaseScale_);
+
         if (finishedKind == NoticeReactionKind::Lost) {
             SetRotation(noticeBaseRotation_);
         }
@@ -739,6 +779,7 @@ void BaseEnemy::EndNoticeReaction(bool restoreVisual) {
     isNoticeReactionActive_ = false;
     noticeReactionKind_ = NoticeReactionKind::None;
     noticeReactionTimer_ = 0.0f;
+
     if (noticeMarkObject_) {
         noticeMarkObject_->SetIsVisible(false);
     }
@@ -755,6 +796,7 @@ void BaseEnemy::CancelNoticeReaction() {
 void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
     // 本体の大きさに合わせてマークを配置し、敵ごとの差を吸収する。
     EnsureNoticeMarkObject();
+
     if (!noticeMarkObject_) {
         return;
     }
@@ -794,6 +836,7 @@ bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, floa
 
     noticeDetectionRange_ = (std::max)(0.0f, detectRange);
     const bool detected = target_ && (bossTargetEngaged_ || targetDistance <= noticeDetectionRange_);
+
     if (!detected) {
         // 見失いへの遷移は、固有AIの状態に左右されない共通Updateで一度だけ処理します。
         return isNoticeReactionActive_;
@@ -804,8 +847,10 @@ bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, floa
             (!isNoticeReactionActive_ && noticeReactionCooldown_ <= 0.0f)) {
             BeginNoticeReaction(NoticeReactionKind::Detected);
         }
+
         wasTargetDetected_ = true;
     }
+
     return isNoticeReactionActive_;
 }
 
@@ -840,6 +885,7 @@ void BaseEnemy::UpdateNoticeReactionAnimation(float deltaTime) {
     const float clampedProgress = (std::clamp)(progress, 0.0f, 1.0f);
 
     SetVelocity({0.0f, 0.0f, 0.0f});
+
     if (noticeReactionKind_ == NoticeReactionKind::Lost) {
         const float rampIn = (std::clamp)(clampedProgress / 0.12f, 0.0f, 1.0f);
         const float rampOut = (std::clamp)((1.0f - clampedProgress) / 0.15f, 0.0f, 1.0f);
@@ -860,6 +906,7 @@ void BaseEnemy::UpdateNoticeReactionAnimation(float deltaTime) {
     }
 
     UpdateNoticeMark(deltaTime, clampedProgress);
+
     if (noticeReactionTimer_ <= 0.0f) {
         EndNoticeReaction(true);
     }
@@ -871,21 +918,26 @@ bool BaseEnemy::ShouldHandleDefeatEffect() const {
     if (isDefeatEffectFinished_) {
         return false;
     }
+
     if (GetEnemyType() == "Bomb") {
         return false;
     }
+
     if (isDefeatEffectPlaying_) {
         return true;
     }
+
     return param_.has_value() && param_->hp <= 0.0f && !isDead;
 }
 
-ParticleSystem* BaseEnemy::GetCurrentParticleSystem() const {
+engine::ParticleSystem* BaseEnemy::GetCurrentParticleSystem() const {
     // シーン切替中は描画先がないため、演出呼び出し側に欠落を伝える。
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager || !sceneManager->GetCurrentScene()) {
         return nullptr;
     }
+
     return sceneManager->GetCurrentScene()->GetParticleSystem();
 }
 
@@ -894,15 +946,18 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
     if (hasSpawnedDefeatCoinDrops_) {
         return;
     }
+
     hasSpawnedDefeatCoinDrops_ = true;
 
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+
     if (!scene || !scene->GetObject3dCommon()) {
         return;
     }
 
     const int dropCount = GetCoinDropCountByEnemyType(GetEnemyType());
+
     if (dropCount <= 0) {
         return;
     }
@@ -918,6 +973,7 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
     uint32_t seed = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(this));
     seed ^= static_cast<uint32_t>((std::abs(basePosition.x) + 13.0f) * 8191.0f);
     seed ^= static_cast<uint32_t>((std::abs(basePosition.z) + 7.0f) * 131071.0f);
+
     if (seed == 0u) {
         seed = 0xC01A5EEDu;
     }
@@ -1035,11 +1091,14 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
         isDefeatEffectFinished_ = true;
         isDead = true;
         SetIsVisible(false);
+
         if (BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr) {
             const int defeatEventID = GetTargetID();
+
             if (defeatEventID > 0) {
                 scene->TriggerEvent(defeatEventID);
             }
+
             scene->RequestRemoveObject(this);
         }
     }
@@ -1047,7 +1106,8 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
 
 void BaseEnemy::SpawnDefeatStartParticles() {
     // 本体スケールで煙と閃光の広がりを調整し、小型敵と大型敵で演出を共用する。
-    ParticleSystem* particleSystem = GetCurrentParticleSystem();
+    engine::ParticleSystem* particleSystem = GetCurrentParticleSystem();
+
     if (!particleSystem) {
         return;
     }
@@ -1080,7 +1140,8 @@ void BaseEnemy::SpawnDefeatStartParticles() {
 
 void BaseEnemy::SpawnDefeatLoopParticles() {
     // 退場中も粒子を補い、上昇する本体から煙が途切れないようにする。
-    ParticleSystem* particleSystem = GetCurrentParticleSystem();
+    engine::ParticleSystem* particleSystem = GetCurrentParticleSystem();
+
     if (!particleSystem) {
         return;
     }
@@ -1102,6 +1163,7 @@ void BaseEnemy::SpawnDefeatLoopParticles() {
 void BaseEnemy::SetDormant(bool dormant) {
     // 休眠に入るフレームで予兆と感知演出を消し、残留速度による移動を防ぐ。
     isDormant_ = dormant;
+
     if (dormant) {
         HideAttackTelegraph();
         CancelNoticeReaction();
@@ -1124,9 +1186,11 @@ void BaseEnemy::Update(float deltaTime) {
 
     if (ShouldHandleDefeatEffect()) {
         HideAttackTelegraph();
+
         if (!isDefeatEffectPlaying_) {
             BeginDefeatEffect();
         }
+
         UpdateDefeatEffect(deltaTime);
         engine::Object3d::Update(deltaTime);
         return;
@@ -1136,6 +1200,7 @@ void BaseEnemy::Update(float deltaTime) {
         HideAttackTelegraph();
         return; // 運搬中の位置と時間はプレイヤー側が管理します。
     }
+
     // 調整用JSONの検知距離を、共通の見渡し処理へ反映します。
     if (param_.has_value()) {
         detectionRange_ = param_->detectionRange;
@@ -1162,6 +1227,7 @@ void BaseEnemy::Update(float deltaTime) {
         if (NavAgentComponent* navAgent = GetNavAgentComponent(); navAgent && navAgent->IsEnabled()) {
             engine::Vector3 velocity = GetVelocity();
             const float planarSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+
             if (planarSpeed > 0.01f) {
                 const engine::Vector3 direction =
                     navAgent->CalculateDirection(this, GetWorldPosition(), target_->GetWorldPosition(), deltaTime);
@@ -1179,6 +1245,7 @@ void BaseEnemy::Update(float deltaTime) {
 void BaseEnemy::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 感知マークは本体とは別オブジェクトなので、可視状態のときだけ追加で描画する。
     Character::Draw(pointLightResource, spotLightResource);
+
     if (noticeMarkObject_ && noticeMarkObject_->GetIsVisible()) {
         noticeMarkObject_->Draw(pointLightResource, spotLightResource);
     }
@@ -1198,6 +1265,7 @@ void BaseEnemy::ShowAttackTelegraphCircle(const engine::Vector3& center, float r
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         attackTelegraph_->ShowCircle(center, radius, progress, color);
     }
@@ -1210,6 +1278,7 @@ void BaseEnemy::ShowAttackTelegraphDecalCircle(const engine::Vector3& center, fl
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         attackTelegraph_->ShowDecalCircle(center, radius, progress, color, texturePath);
     }
@@ -1222,6 +1291,7 @@ void BaseEnemy::ShowAttackTelegraphLine(const engine::Vector3& center, const eng
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         attackTelegraph_->ShowLine(center, direction, length, width, progress, color);
     }
@@ -1232,10 +1302,12 @@ void BaseEnemy::TriggerAttackTelegraphCue(const engine::Vector4& color) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         const engine::Vector3 scale = GetScale();
         const float horizontalScale = (std::max)({0.75f, std::abs(scale.x), std::abs(scale.z)});
         const float verticalScale = (std::max)(0.75f, std::abs(scale.y));
+
         // 雷スライムなど横潰れする敵は現在Scaleが極端に広がるため、見た目上の体格へ補正します。
         const float bodyScale = (std::min)(horizontalScale, (std::max)(1.5f, verticalScale * 2.4f));
         const engine::Vector3 bodyOffset = {0.0f, (std::clamp)(verticalScale * 0.62f, 0.55f, 3.8f), 0.0f};
@@ -1244,6 +1316,7 @@ void BaseEnemy::TriggerAttackTelegraphCue(const engine::Vector4& color) {
         if (attackTelegraph_->IsVisible()) {
             attackTelegraph_->TriggerCue(color);
         }
+
         attackTelegraph_->TriggerWarningCue(this, bodyOffset, (std::clamp)(bodyScale * 1.18f, 1.0f, 5.2f), color);
     }
 }
@@ -1255,6 +1328,7 @@ void BaseEnemy::ShowAttackTelegraphCone(const engine::Vector3& origin, const eng
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         attackTelegraph_->ShowCone(origin, direction, length, startWidth, endWidth, progress, color);
     }
@@ -1267,6 +1341,7 @@ void BaseEnemy::ShowAttackTelegraphImpactAreas(const engine::Vector3* centers, s
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         attackTelegraph_->ShowImpactAreas(centers, centerCount, radius, progress, color);
     }
@@ -1279,6 +1354,7 @@ void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const engine::Vector3* ce
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         attackTelegraph_->ShowReadableImpactAreas(centers, centerCount, radius, progress, color);
     }
@@ -1292,6 +1368,7 @@ void BaseEnemy::ShowAttackTelegraphLaneFan(const engine::Vector3& origin, const 
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
+
     if (attackTelegraph_) {
         attackTelegraph_->ShowLaneFan(origin, direction, length, width, laneCount, lateralSpacing, angleStep, progress,
                                       color);
@@ -1311,6 +1388,7 @@ float BaseEnemy::GetActiveBodyAttackDamage() const {
         (param_.has_value() && param_->hp <= 0.0f)) {
         return 0.0f;
     }
+
     return (std::max)(0.0f, GetBodyAttackDamage());
 }
 
@@ -1346,6 +1424,7 @@ bool BaseEnemy::OnCollision(engine::Object3d* other) {
         DamageEvent dmgEvent;
         dmgEvent.target = this;
         dmgEvent.attacker = other;
+
         if (const Bullet* attackBullet = dynamic_cast<const Bullet*>(other)) {
             dmgEvent.damageAmount = attackBullet->GetDamage();
             dmgEvent.damageType = attackBullet->GetDamageType();
@@ -1353,6 +1432,7 @@ bool BaseEnemy::OnCollision(engine::Object3d* other) {
         } else {
             dmgEvent.damageAmount = 10.0f;
         }
+
         EventManager::GetInstance()->Dispatch(dmgEvent);
 
         damageCooldownTimer_ = 0.5f; // 0.5秒間は次の攻撃を食らわない（剣の持続ヒット防止）
@@ -1405,10 +1485,12 @@ void BaseEnemy::SetCarried(bool isCarried) {
         // --- 復活（地面に投げ出された時など） ---
 
         SetCollisionAttribute(CollisionCategories::Get("enemy"));
+
         if (wasCarried) {
             throwRecoveryTimer_ = 0.75f;
             ResetWanderOrigin();
         }
+
         SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_bullet") | CollisionCategories::Get("player_attack")); // 念のため ground にしておく
     }
 }

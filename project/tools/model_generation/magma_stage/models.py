@@ -39,9 +39,7 @@ def build_magma_fortress_foundation() -> ObjBuilder:
         chamfer=1.35,
     )
 
-    # 壁際の低い縁石。中央の歩行面は広く空ける。
-    add_box(builder, (0.0, 0.22, -11.35), (27.5, 0.44, 0.52), "fortress_trim")
-    add_box(builder, (0.0, 0.22, 11.35), (27.5, 0.44, 0.52), "fortress_trim")
+    # 歩行面を平坦に統一し、判定のない縁石を再生成しない。
     return builder
 
 
@@ -85,7 +83,7 @@ def build_metal_grate_platform() -> ObjBuilder:
 
 
 def build_fortress_plaza() -> ObjBuilder:
-    """段差付きの砦広場。外周床と中央壇を別の閉メッシュで構成する。"""
+    """平坦な砦広場。城塞基礎と同じく段差のない歩行面を持つ。"""
 
     builder = ObjBuilder("fortress_plaza")
     add_tapered_fortress_base(
@@ -97,16 +95,7 @@ def build_fortress_plaza() -> ObjBuilder:
         chamfer=1.15,
     )
 
-    # 中央壇と正面階段。1段15cm相当でスライムも登りやすい寸法にする。
-    add_box(builder, (0.0, 0.30, 1.8), (14.0, 0.60, 10.0), "fortress_floor")
-    step_depth = 1.35
-    for index in range(3):
-        height = 0.15 * (index + 1)
-        z = -4.55 - index * step_depth
-        add_box(builder, (0.0, height * 0.5, z), (14.0, height, step_depth + 0.08), "fortress_trim")
-
-    for x in (-11.9, 11.9):
-        add_box(builder, (x, 0.42, 0.0), (0.65, 0.84, 17.2), "fortress_trim")
+    # 中央壇・階段・縁石を省き、全ての広場で平坦な床を使用する。
     return builder
 
 

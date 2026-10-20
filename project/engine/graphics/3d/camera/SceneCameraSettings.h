@@ -18,6 +18,7 @@ enum class SceneCameraRole {
 enum class SceneCameraEyeSource {
     kCameraObject = 0,
     kSceneObject = 1,
+    kSceneObjectRelativeToReference = 2,
 };
 
 /// <summary>カメラの注視点を決める方法。</summary>
@@ -50,17 +51,22 @@ struct SceneCameraSettings {
 
     // Camera::SetFovYと同じく縦画角をラジアンで保持する。クリップ距離はワールド座標の距離。
     float fovY = 0.45f;
+    bool blendFov = false;
     float nearClip = 0.1f;
     float farClip = 1000.0f;
 
     SceneCameraEyeSource eyeSource = SceneCameraEyeSource::kCameraObject;
+
     // kSceneObjectのときだけ名前で参照先を探す。オフセットは参照先の位置へ加算する。
     std::string eyeObjectName;
+    // 相対視点ではEye対象から参照対象への方向を前方にする。eyeOffsetは右・上・前の距離。
+    std::string eyeReferenceObjectName;
     engine::Vector3 eyeOffset = { 0.0f, 0.0f, 0.0f };
     SceneCameraFollowMode eyeFollowMode = SceneCameraFollowMode::kSnap;
     float eyeFollowResponse = 12.0f;
 
     SceneCameraTargetMode targetMode = SceneCameraTargetMode::kCameraForward;
+
     // kSceneObjectでは名前とオフセット、kFixedPointでは固定のワールド座標を使用する。
     std::string targetObjectName;
     engine::Vector3 targetOffset = { 0.0f, 0.0f, 0.0f };
@@ -71,6 +77,7 @@ struct SceneCameraSettings {
 
     float blendInDuration = 0.30f;
     float blendOutDuration = 0.30f;
+
     // 切替時間は秒。0は補間なしの即時切替を表す。
     SceneCameraEasing easing = SceneCameraEasing::kSmootherStep;
 };
@@ -83,10 +90,12 @@ inline nlohmann::json SerializeSceneCameraSettings(const SceneCameraSettings& se
     camera["enabled"] = settings.enabled;
     camera["role"] = static_cast<int>(settings.role);
     camera["fovY"] = settings.fovY;
+    camera["blendFov"] = settings.blendFov;
     camera["nearClip"] = settings.nearClip;
     camera["farClip"] = settings.farClip;
     camera["eyeSource"] = static_cast<int>(settings.eyeSource);
     camera["eyeObjectName"] = settings.eyeObjectName;
+    camera["eyeReferenceObjectName"] = settings.eyeReferenceObjectName;
     camera["eyeOffset"] = { settings.eyeOffset.x, settings.eyeOffset.y, settings.eyeOffset.z };
     camera["eyeFollowMode"] = static_cast<int>(settings.eyeFollowMode);
     camera["eyeFollowResponse"] = settings.eyeFollowResponse;
@@ -117,27 +126,49 @@ inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCa
         }
     };
 
-    if (camera.contains("version")) settings.version = camera["version"].get<int>();
-    if (camera.contains("enabled")) settings.enabled = camera["enabled"].get<bool>();
-    if (camera.contains("role")) settings.role = static_cast<SceneCameraRole>(std::clamp(camera["role"].get<int>(), 0, 1));
-    if (camera.contains("fovY")) settings.fovY = camera["fovY"].get<float>();
-    if (camera.contains("nearClip")) settings.nearClip = camera["nearClip"].get<float>();
-    if (camera.contains("farClip")) settings.farClip = camera["farClip"].get<float>();
-    if (camera.contains("eyeSource")) settings.eyeSource = static_cast<SceneCameraEyeSource>(std::clamp(camera["eyeSource"].get<int>(), 0, 1));
-    if (camera.contains("eyeObjectName") && camera["eyeObjectName"].is_string()) settings.eyeObjectName = camera["eyeObjectName"].get<std::string>();
+    if (camera.contains("version"))
+        settings.version = camera["version"].get<int>();
+    if (camera.contains("enabled"))
+        settings.enabled = camera["enabled"].get<bool>();
+    if (camera.contains("role"))
+        settings.role = static_cast<SceneCameraRole>(std::clamp(camera["role"].get<int>(), 0, 1));
+    if (camera.contains("fovY"))
+        settings.fovY = camera["fovY"].get<float>();
+    if (camera.contains("blendFov") && camera["blendFov"].is_boolean())
+        settings.blendFov = camera["blendFov"].get<bool>();
+    if (camera.contains("nearClip"))
+        settings.nearClip = camera["nearClip"].get<float>();
+    if (camera.contains("farClip"))
+        settings.farClip = camera["farClip"].get<float>();
+    if (camera.contains("eyeSource"))
+        settings.eyeSource = static_cast<SceneCameraEyeSource>(std::clamp(camera["eyeSource"].get<int>(), 0, 2));
+    if (camera.contains("eyeObjectName") && camera["eyeObjectName"].is_string())
+        settings.eyeObjectName = camera["eyeObjectName"].get<std::string>();
+    if (camera.contains("eyeReferenceObjectName") && camera["eyeReferenceObjectName"].is_string())
+        settings.eyeReferenceObjectName = camera["eyeReferenceObjectName"].get<std::string>();
     readVector3("eyeOffset", settings.eyeOffset);
-    if (camera.contains("eyeFollowMode")) settings.eyeFollowMode = static_cast<SceneCameraFollowMode>(std::clamp(camera["eyeFollowMode"].get<int>(), 0, 1));
-    if (camera.contains("eyeFollowResponse")) settings.eyeFollowResponse = camera["eyeFollowResponse"].get<float>();
-    if (camera.contains("targetMode")) settings.targetMode = static_cast<SceneCameraTargetMode>(std::clamp(camera["targetMode"].get<int>(), 0, 2));
-    if (camera.contains("targetObjectName") && camera["targetObjectName"].is_string()) settings.targetObjectName = camera["targetObjectName"].get<std::string>();
+    if (camera.contains("eyeFollowMode"))
+        settings.eyeFollowMode = static_cast<SceneCameraFollowMode>(std::clamp(camera["eyeFollowMode"].get<int>(), 0, 1));
+    if (camera.contains("eyeFollowResponse"))
+        settings.eyeFollowResponse = camera["eyeFollowResponse"].get<float>();
+    if (camera.contains("targetMode"))
+        settings.targetMode = static_cast<SceneCameraTargetMode>(std::clamp(camera["targetMode"].get<int>(), 0, 2));
+    if (camera.contains("targetObjectName") && camera["targetObjectName"].is_string())
+        settings.targetObjectName = camera["targetObjectName"].get<std::string>();
     readVector3("targetOffset", settings.targetOffset);
     readVector3("fixedTarget", settings.fixedTarget);
-    if (camera.contains("forwardDistance")) settings.forwardDistance = camera["forwardDistance"].get<float>();
-    if (camera.contains("targetFollowMode")) settings.targetFollowMode = static_cast<SceneCameraFollowMode>(std::clamp(camera["targetFollowMode"].get<int>(), 0, 1));
-    if (camera.contains("targetFollowResponse")) settings.targetFollowResponse = camera["targetFollowResponse"].get<float>();
-    if (camera.contains("blendInDuration")) settings.blendInDuration = camera["blendInDuration"].get<float>();
-    if (camera.contains("blendOutDuration")) settings.blendOutDuration = camera["blendOutDuration"].get<float>();
-    if (camera.contains("easing")) settings.easing = static_cast<SceneCameraEasing>(std::clamp(camera["easing"].get<int>(), 0, 4));
+    if (camera.contains("forwardDistance"))
+        settings.forwardDistance = camera["forwardDistance"].get<float>();
+    if (camera.contains("targetFollowMode"))
+        settings.targetFollowMode = static_cast<SceneCameraFollowMode>(std::clamp(camera["targetFollowMode"].get<int>(), 0, 1));
+    if (camera.contains("targetFollowResponse"))
+        settings.targetFollowResponse = camera["targetFollowResponse"].get<float>();
+    if (camera.contains("blendInDuration"))
+        settings.blendInDuration = camera["blendInDuration"].get<float>();
+    if (camera.contains("blendOutDuration"))
+        settings.blendOutDuration = camera["blendOutDuration"].get<float>();
+    if (camera.contains("easing"))
+        settings.easing = static_cast<SceneCameraEasing>(std::clamp(camera["easing"].get<int>(), 0, 4));
 
     // 射影行列や追従補間が破綻しない範囲へ、読み取り後にまとめて補正する。
     settings.fovY = std::clamp(settings.fovY, 0.05f, 3.0f);

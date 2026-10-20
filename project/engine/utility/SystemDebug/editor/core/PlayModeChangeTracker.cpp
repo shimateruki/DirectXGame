@@ -29,23 +29,28 @@ void PlayModeChangeTracker::Clear() {
 }
 
 bool PlayModeChangeTracker::IsEligible(const engine::Object3d* object) const {
-    if (!object || object->IsEditorInternal() || object->GetPersistentGuid().empty()) return false;
+    if (!object || object->IsEditorInternal() || object->GetPersistentGuid().empty())
+        return false;
     const std::string className = object->GetClassName();
     const std::string category = object->GetSaveCategory();
+
     // Player・Enemy等は実行時状態そのものが変わるため、停止時の差分候補へ混ぜません。
     static constexpr const char* runtimeClasses[] = {
         "Player", "Enemy", "Item", "Bullet"
     };
+
     if (std::any_of(std::begin(runtimeClasses), std::end(runtimeClasses), [&className](const char* value) {
         return className == value;
     })) return false;
-    if (category == "Player" || category == "Enemy" || category == "Item") return false;
+    if (category == "Player" || category == "Enemy" || category == "Item")
+        return false;
     return true;
 }
 
 bool PlayModeChangeTracker::IsRuntimeDrivenTransform(const engine::Object3d* object) const {
     // 実行時に自走するギミックの位置差分は、編集内容として採用しない。
-    if (!object) return true;
+    if (!object)
+        return true;
     const std::string className = object->GetClassName();
     const std::string category = object->GetSaveCategory();
     return className == "Gimmick" || className == "Spawner" ||
@@ -64,22 +69,27 @@ bool PlayModeChangeTracker::IsTransformKey(const std::string& key) {
 nlohmann::json PlayModeChangeTracker::ExtractTransform(const nlohmann::json& state) {
     // オブジェクト全体ではなく位置・回転・大きさだけを実行中の差分へ抽出する。
     nlohmann::json result = nlohmann::json::object();
-    if (!state.is_object()) return result;
+    if (!state.is_object())
+        return result;
     for (auto iterator = state.begin(); iterator != state.end(); ++iterator) {
-        if (IsTransformKey(iterator.key())) result[iterator.key()] = iterator.value();
+        if (IsTransformKey(iterator.key()))
+            result[iterator.key()] = iterator.value();
     }
+
     return result;
 }
 
 nlohmann::json PlayModeChangeTracker::ExtractProperties(const nlohmann::json& state) {
     // 実行中の差分確認では位置と識別子を除き、調整可能なプロパティだけ比較する。
     nlohmann::json result = nlohmann::json::object();
-    if (!state.is_object()) return result;
+    if (!state.is_object())
+        return result;
     for (auto iterator = state.begin(); iterator != state.end(); ++iterator) {
         if (!IsTransformKey(iterator.key()) && !IsIdentityKey(iterator.key())) {
             result[iterator.key()] = iterator.value();
         }
     }
+
     return result;
 }
 
@@ -87,12 +97,16 @@ void PlayModeChangeTracker::CaptureBaseline() {
     baselineByGuid_.clear();
     candidates_.clear();
     open_ = false;
-    if (!sceneManager_ || !editor_ || sceneManager_->IsTransitioning()) return;
+    if (!sceneManager_ || !editor_ || sceneManager_->IsTransitioning())
+        return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
-    if (!scene) return;
+    if (!scene)
+        return;
+
     // 復元後も同じ対象を探せるよう、Object のアドレスではなく永続 GUID で記録する。
     for (const auto& object : scene->GetObjects()) {
-        if (!IsEligible(object.get())) continue;
+        if (!IsEligible(object.get()))
+            continue;
         const std::string guid = object->EnsurePersistentGuid();
         BaselineEntry entry;
         entry.name = object->GetName();
@@ -103,20 +117,27 @@ void PlayModeChangeTracker::CaptureBaseline() {
 }
 
 void PlayModeChangeTracker::CaptureRuntimeChanges() {
+    // 停止直前の状態をPlay開始時のGUID別Snapshotと比較し、採用候補だけ残す。
     candidates_.clear();
-    if (!sceneManager_ || !editor_ || baselineByGuid_.empty()) return;
+    if (!sceneManager_ || !editor_ || baselineByGuid_.empty())
+        return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
-    if (!scene) return;
+    if (!scene)
+        return;
     for (const auto& object : scene->GetObjects()) {
-        if (!IsEligible(object.get())) continue;
+        if (!IsEligible(object.get()))
+            continue;
         const auto baseline = baselineByGuid_.find(object->GetPersistentGuid());
-        if (baseline == baselineByGuid_.end()) continue;
+        if (baseline == baselineByGuid_.end())
+            continue;
         const nlohmann::json runtimeState = editor_->CaptureObjectState(object.get());
+
         // Gimmick 等の実行時移動を編集差分と誤認しない。
         const bool transformChanged = !IsRuntimeDrivenTransform(object.get()) &&
             ExtractTransform(baseline->second.state) != ExtractTransform(runtimeState);
         const bool propertiesChanged = ExtractProperties(baseline->second.state) != ExtractProperties(runtimeState);
-        if (!transformChanged && !propertiesChanged) continue;
+        if (!transformChanged && !propertiesChanged)
+            continue;
 
         ChangeCandidate candidate;
         candidate.guid = object->GetPersistentGuid();
@@ -134,35 +155,45 @@ void PlayModeChangeTracker::CaptureRuntimeChanges() {
 
 void PlayModeChangeTracker::OnSceneRestored(bool restored) {
     baselineByGuid_.clear();
+
     if (!restored) {
         candidates_.clear();
         open_ = false;
         return;
     }
+
     // 停止後は作業を遮らず、メニューから必要なときだけ確認します。
     open_ = false;
-    if (!candidates_.empty()) statusMessage_ = "Play中の編集可能な変更を検出しました。";
+    if (!candidates_.empty())
+        statusMessage_ = "Play中の編集可能な変更を検出しました。";
 }
 
 void PlayModeChangeTracker::ApplySelectedChanges() {
-    if (!sceneManager_ || !editor_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !editor_ || !sceneManager_->GetCurrentScene())
+        return;
     int appliedCount = 0;
+
     for (const ChangeCandidate& candidate : candidates_) {
         if ((!candidate.applyTransform || !candidate.transformChanged) &&
             (!candidate.applyProperties || !candidate.propertiesChanged)) continue;
         engine::Object3d* object = sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(candidate.guid);
-        if (!object) continue;
+        if (!object)
+            continue;
         const nlohmann::json beforeApply = editor_->CaptureObjectState(object);
         nlohmann::json merged = candidate.applyProperties ? candidate.runtimeState : beforeApply;
 
         // GUID・名前・親子識別子は復元後の編集シーンのものを維持する。
         for (auto iterator = beforeApply.begin(); iterator != beforeApply.end(); ++iterator) {
-            if (IsIdentityKey(iterator.key())) merged[iterator.key()] = iterator.value();
-            if (!candidate.applyTransform && IsTransformKey(iterator.key())) merged[iterator.key()] = iterator.value();
+            if (IsIdentityKey(iterator.key()))
+                merged[iterator.key()] = iterator.value();
+            if (!candidate.applyTransform && IsTransformKey(iterator.key()))
+                merged[iterator.key()] = iterator.value();
         }
+
         if (candidate.applyTransform) {
             for (auto iterator = candidate.runtimeState.begin(); iterator != candidate.runtimeState.end(); ++iterator) {
-                if (IsTransformKey(iterator.key())) merged[iterator.key()] = iterator.value();
+                if (IsTransformKey(iterator.key()))
+                    merged[iterator.key()] = iterator.value();
             }
         }
 
@@ -172,6 +203,7 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
         editor_->RegisterObjectEdited(object, beforeApply, "Play中変更を持ち帰り");
         ++appliedCount;
     }
+
     statusMessage_ = std::to_string(appliedCount) + " Objectの変更を編集状態へ反映しました。";
     candidates_.clear();
     open_ = false;
@@ -179,38 +211,48 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
 
 void PlayModeChangeTracker::Draw() {
     // Play中の差分はObjectごとにTransformと設定値を独立して選択させる。
-    if (!open_) return;
+    if (!open_)
+        return;
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(760.0f, 520.0f), ImGuiCond_FirstUseEver);
+
     if (!ImGui::Begin("Play中変更の持ち帰り", &open_)) {
         ImGui::End();
         return;
     }
+
     ImGui::TextWrapped("停止前に変わった編集可能Objectだけを表示しています。Player・Enemyの状態とGimmickの実行時Transformは除外済みです。");
     ImGui::TextDisabled("Transformと設定値をObjectごとに選んで反映できます。反映操作はUndo可能です。");
     ImGui::TextWrapped("この一覧は一時データです。次のPlay開始で更新されます。保存済みリプレイとは別の機能です。");
     ImGui::Separator();
     ImGui::BeginChild("PlayModeChangeCandidates", ImVec2(0.0f, -52.0f), true);
+
     for (std::size_t index = 0; index < candidates_.size(); ++index) {
         ChangeCandidate& candidate = candidates_[index];
         ImGui::PushID(static_cast<int>(index));
         ImGui::SeparatorText(candidate.name.c_str());
         ImGui::TextDisabled("%s / %s", candidate.className.c_str(), candidate.guid.c_str());
-        if (candidate.transformChanged) ImGui::Checkbox("Transformを反映", &candidate.applyTransform);
+        if (candidate.transformChanged)
+            ImGui::Checkbox("Transformを反映", &candidate.applyTransform);
         else ImGui::TextDisabled("Transform変更なし");
         ImGui::SameLine();
-        if (candidate.propertiesChanged) ImGui::Checkbox("設定値を反映", &candidate.applyProperties);
+        if (candidate.propertiesChanged)
+            ImGui::Checkbox("設定値を反映", &candidate.applyProperties);
         else ImGui::TextDisabled("設定値変更なし");
         ImGui::PopID();
     }
+
     ImGui::EndChild();
-    if (ImGui::Button("選択した変更を反映")) ApplySelectedChanges();
+    if (ImGui::Button("選択した変更を反映"))
+        ApplySelectedChanges();
     ImGui::SameLine();
+
     if (ImGui::Button("すべて破棄")) {
         candidates_.clear();
         open_ = false;
         statusMessage_ = "Play中変更を破棄しました。";
     }
+
     ImGui::SameLine();
     ImGui::TextDisabled("%s", statusMessage_.c_str());
     ImGui::End();

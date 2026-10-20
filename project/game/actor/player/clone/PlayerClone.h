@@ -6,11 +6,14 @@
 /// </summary>
 class PlayerClone : public Character {
   public:
-    void Initialize(Object3dCommon* common, const engine::Vector3& position, const engine::Vector3& velocity);
+    void Initialize(engine::Object3dCommon* common, const engine::Vector3& position, const engine::Vector3& velocity);
+
     void Update(float deltaTime) override;
 
     bool IsGrounded() const { return isGrounded_; }
+
     bool IsExpired() const { return lifetimeTimer_ <= 0.0f; }
+
     void Destroy() { lifetimeTimer_ = -1.0f; }
 
   private:

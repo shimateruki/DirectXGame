@@ -16,6 +16,7 @@ engine::Vector3 ReadVector3(const json& value, const engine::Vector3& fallback) 
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
+
     return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
 
@@ -24,6 +25,7 @@ engine::Vector4 ReadVector4(const json& value, const engine::Vector4& fallback) 
     if (!value.is_array() || value.size() < 4) {
         return fallback;
     }
+
     return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
 }
 } // namespace
@@ -84,10 +86,12 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     damageReactionTimer_ = state.value("enemyDamageReactionTimer", damageReactionTimer_);
     damageReactionDuration_ = state.value("enemyDamageReactionDuration", damageReactionDuration_);
     damageReactionStrength_ = state.value("enemyDamageReactionStrength", damageReactionStrength_);
+
     if (state.contains("enemyDamageReactionDirection")) {
         damageReactionLocalDirection_ =
             ReadVector3(state["enemyDamageReactionDirection"], damageReactionLocalDirection_);
     }
+
     if (state.contains("enemyDefaultColor"))
         defaultColor_ = ReadVector4(state["enemyDefaultColor"], defaultColor_);
     isCarried_ = state.value("enemyCarried", isCarried_);
@@ -117,17 +121,21 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     bossTargetEngaged_ = state.value("enemyBossTargetEngaged", bossTargetEngaged_);
     isNoticeReactionActive_ = state.value("enemyNoticeActive", isNoticeReactionActive_);
     const int noticeKindValue = state.value("enemyNoticeKind", isNoticeReactionActive_ ? 1 : 0);
+
     switch (noticeKindValue) {
     case 1:
         noticeReactionKind_ = NoticeReactionKind::Detected;
         break;
+
     case 2:
         noticeReactionKind_ = NoticeReactionKind::Lost;
         break;
+
     default:
         noticeReactionKind_ = NoticeReactionKind::None;
         break;
     }
+
     noticeReactionTimer_ = state.value("enemyNoticeTimer", noticeReactionTimer_);
     noticeReactionCooldown_ = state.value("enemyNoticeCooldown", noticeReactionCooldown_);
     noticeDetectionRange_ = state.value("enemyNoticeDetectionRange", noticeDetectionRange_);
@@ -150,6 +158,7 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     if (isNoticeReactionActive_) {
         ConfigureNoticeMarkForReaction();
     }
+
     if (noticeMarkObject_) {
         noticeMarkObject_->SetIsVisible(isNoticeReactionActive_ && !IsReplayRemoved());
     }

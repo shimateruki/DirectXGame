@@ -11,9 +11,11 @@ namespace VFXAssetPicker {
 
 // ファイル名とフォルダー名の両方を検索し、候補が多くても必要な行だけ描画します。
 inline bool Matches(const std::string& value, const char* query) {
-    if (!query || !*query) return true;
+    if (!query || !*query)
+        return true;
     std::string lowerValue = value;
     std::string lowerQuery = query;
+
     // UTF-8 の日本語バイト列は触らず、英字だけを大文字小文字を区別せず比較します。
     const auto toLowerAscii = [](unsigned char c) {
         return static_cast<char>(c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c);
@@ -30,16 +32,19 @@ inline bool DrawCombo(const char* label, const std::vector<std::string>& entries
     const char* preview = validSelection ? entries[selectedIndex].c_str() : emptyLabel;
     bool changed = false;
     if (!ImGui::BeginCombo(label, preview, ImGuiComboFlags_HeightLargest)) {
-        if (validSelection && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", preview);
+        if (validSelection && ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", preview);
         return false;
     }
 
-    if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+    if (ImGui::IsWindowAppearing())
+        ImGui::SetKeyboardFocusHere();
     ImGui::InputTextWithHint("##AssetSearch", "名前・フォルダーで検索", query, queryCapacity);
     std::vector<int> visibleIndices;
     visibleIndices.reserve(entries.size());
     for (int i = 0; i < static_cast<int>(entries.size()); ++i) {
-        if (Matches(entries[i], query)) visibleIndices.push_back(i);
+        if (Matches(entries[i], query))
+            visibleIndices.push_back(i);
     }
     ImGui::TextDisabled("%zu / %zu 件", visibleIndices.size(), entries.size());
     ImGui::BeginChild("##AssetResults", ImVec2(0.0f, 220.0f), false);
@@ -49,7 +54,8 @@ inline bool DrawCombo(const char* label, const std::vector<std::string>& entries
         changed = true;
         ImGui::CloseCurrentPopup();
     }
-    if (visibleIndices.empty()) ImGui::TextDisabled("一致する項目はありません");
+    if (visibleIndices.empty())
+        ImGui::TextDisabled("一致する項目はありません");
     ImGuiListClipper clipper;
     clipper.Begin(static_cast<int>(visibleIndices.size()));
     while (clipper.Step()) {
@@ -66,7 +72,8 @@ inline bool DrawCombo(const char* label, const std::vector<std::string>& entries
                 changed = true;
                 ImGui::CloseCurrentPopup();
             }
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", fullName.c_str());
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", fullName.c_str());
             ImGui::PopID();
         }
     }

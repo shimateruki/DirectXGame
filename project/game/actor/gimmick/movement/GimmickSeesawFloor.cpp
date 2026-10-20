@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickSeesawFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickSeesawFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // シーソーの天面を地面として扱い、乗員を支えられるようにする。
     BaseGimmick::Initialize(common, modelName);
 
@@ -46,6 +46,7 @@ bool GimmickSeesawFloor::OnCollision(engine::Object3d* other) {
     // 上面に乗ったPlayerの位置から左右どちらへ傾けるかを決める。
     if (other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
+
         if (info.isColliding && info.normal.y < -0.5f) {
             engine::Vector3 diff = other->GetWorldPosition() - GetWorldPosition();
             float yaw = GetTransform()->rotate.y;
@@ -56,6 +57,7 @@ bool GimmickSeesawFloor::OnCollision(engine::Object3d* other) {
             contactTimer_ = 0.12f;
         }
     }
+
     return true;
 }
 

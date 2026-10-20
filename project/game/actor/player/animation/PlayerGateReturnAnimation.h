@@ -20,25 +20,38 @@ class PlayerGateReturnAnimation {
 
     // 操作と衝突判定を一時停止し、指定経路の先頭から演出を始める。player は所有しない。
     void Start(Player* player, const Route& route);
+
     // 経過秒数で姿勢を進める。完了時は衝突を戻すが、操作の復帰は呼び出し側が決める。
     void Update(Player* player, float deltaTime);
+
     // 途中終了時にも姿勢と衝突を戻す。restoreControl=true なら開始前の操作状態へ戻す。
     void Stop(Player* player, bool restoreControl);
 
     bool IsActive() const { return active_; }
+
     bool IsFinished() const { return finished_; }
+
     const engine::Vector3& GetEndPosition() const { return route_.end; }
 
   private:
     engine::Vector3 NormalizeDirection(const engine::Vector3& direction) const;
+
     engine::Vector3 Lerp(const engine::Vector3& a, const engine::Vector3& b, float t) const;
+
     engine::Vector3 Bezier(const engine::Vector3& p0, const engine::Vector3& p1, const engine::Vector3& p2, const engine::Vector3& p3, float t) const;
+
     float Clamp01(float value) const;
+
     float EaseOutCubic(float value) const;
+
     float EaseInOutCubic(float value) const;
+
     void ApplyPose(Player* player, float normalizedTime);
+
     void ApplyFinishedPose(Player* player, bool restoreControl);
+
     void SuspendCollision(Player* player);
+
     void RestoreCollision(Player* player);
 
     Route route_;

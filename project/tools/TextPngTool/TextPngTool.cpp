@@ -39,6 +39,7 @@ public:
         // DirectWriteから渡されたNUL区切りのフォントパスを列挙対象へ分解する。
         const wchar_t* cursor = static_cast<const wchar_t*>(collectionKey);
         const wchar_t* end = cursor + collectionKeySize / sizeof(wchar_t);
+
         while (cursor && cursor < end && *cursor != L'\0') {
             std::wstring path(cursor);
             fontPaths_.push_back(path);
@@ -48,24 +49,29 @@ public:
 
     HRESULT STDMETHODCALLTYPE MoveNext(BOOL* hasCurrentFile) override {
         // 開けないフォントファイルは飛ばし、次に有効な参照だけ返す。
-        if (!hasCurrentFile) return E_POINTER;
+        if (!hasCurrentFile)
+            return E_POINTER;
         *hasCurrentFile = FALSE;
         currentFile_.Reset();
 
         while (nextIndex_ < fontPaths_.size()) {
             HRESULT hr = factory_->CreateFontFileReference(fontPaths_[nextIndex_].c_str(), nullptr, currentFile_.GetAddressOf());
             ++nextIndex_;
+
             if (SUCCEEDED(hr) && currentFile_) {
                 *hasCurrentFile = TRUE;
                 return S_OK;
             }
         }
+
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetCurrentFontFile(IDWriteFontFile** fontFile) override {
-        if (!fontFile) return E_POINTER;
-        if (!currentFile_) return E_FAIL;
+        if (!fontFile)
+            return E_POINTER;
+        if (!currentFile_)
+            return E_FAIL;
         return currentFile_.CopyTo(fontFile);
     }
 
@@ -87,9 +93,11 @@ public:
         const void* collectionKey,
         UINT32 collectionKeySize,
         IDWriteFontFileEnumerator** fontFileEnumerator) override {
-        if (!factory || !collectionKey || !fontFileEnumerator) return E_INVALIDARG;
+        if (!factory || !collectionKey || !fontFileEnumerator)
+            return E_INVALIDARG;
         auto enumerator = Microsoft::WRL::Make<ResourceFontFileEnumerator>(factory, collectionKey, collectionKeySize);
-        if (!enumerator) return E_OUTOFMEMORY;
+        if (!enumerator)
+            return E_OUTOFMEMORY;
         *fontFileEnumerator = enumerator.Detach();
         return S_OK;
     }
@@ -131,18 +139,22 @@ struct RenderResult {
 };
 
 std::wstring Utf8ToWide(const std::string& text) {
-    if (text.empty()) return L"";
+    if (text.empty())
+        return L"";
     int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
-    if (size <= 0) return L"";
+    if (size <= 0)
+        return L"";
     std::wstring result(size - 1, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, result.data(), size);
     return result;
 }
 
 std::string WideToUtf8(const std::wstring& text) {
-    if (text.empty()) return "";
+    if (text.empty())
+        return "";
     int size = WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (size <= 0) return "";
+    if (size <= 0)
+        return "";
     std::string result(size - 1, '\0');
     WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, result.data(), size, nullptr, nullptr);
     return result;
@@ -157,45 +169,57 @@ std::wstring MakeFontCollectionKey(const std::wstring& path) {
 
 std::wstring GetLocalizedString(IDWriteLocalizedStrings* strings, const wchar_t* fallback) {
     // フォント名は日本語、英語、先頭ロケールの順で取得する。
-    if (!strings) return fallback ? fallback : L"";
+    if (!strings)
+        return fallback ? fallback : L"";
     UINT32 index = 0;
     BOOL exists = FALSE;
     HRESULT hr = strings->FindLocaleName(L"ja-jp", &index, &exists);
+
     if (FAILED(hr) || !exists) {
         hr = strings->FindLocaleName(L"en-us", &index, &exists);
     }
+
     if (FAILED(hr) || !exists) {
         index = 0;
     }
+
     UINT32 length = 0;
+
     if (FAILED(strings->GetStringLength(index, &length))) {
         return fallback ? fallback : L"";
     }
+
     std::wstring value(length + 1, L'\0');
+
     if (FAILED(strings->GetString(index, value.data(), length + 1))) {
         return fallback ? fallback : L"";
     }
+
     value.resize(length);
     return value;
 }
 
 float ReadFloat(const nlohmann::json& json, const char* name, float fallback) {
-    if (!json.contains(name) || !json[name].is_number()) return fallback;
+    if (!json.contains(name) || !json[name].is_number())
+        return fallback;
     return json[name].get<float>();
 }
 
 int ReadInt(const nlohmann::json& json, const char* name, int fallback) {
-    if (!json.contains(name) || !json[name].is_number_integer()) return fallback;
+    if (!json.contains(name) || !json[name].is_number_integer())
+        return fallback;
     return json[name].get<int>();
 }
 
 bool ReadBool(const nlohmann::json& json, const char* name, bool fallback) {
-    if (!json.contains(name) || !json[name].is_boolean()) return fallback;
+    if (!json.contains(name) || !json[name].is_boolean())
+        return fallback;
     return json[name].get<bool>();
 }
 
 std::wstring ReadWideString(const nlohmann::json& json, const char* name, const wchar_t* fallback = L"") {
-    if (!json.contains(name) || !json[name].is_string()) return fallback;
+    if (!json.contains(name) || !json[name].is_string())
+        return fallback;
     return Utf8ToWide(json[name].get<std::string>());
 }
 
@@ -204,6 +228,7 @@ D2D1_COLOR_F ReadColor(const nlohmann::json& json, const char* name, D2D1_COLOR_
     if (!json.contains(name) || !json[name].is_array() || json[name].size() < 4) {
         return fallback;
     }
+
     return D2D1::ColorF(
         std::clamp(json[name][0].get<float>(), 0.0f, 1.0f),
         std::clamp(json[name][1].get<float>(), 0.0f, 1.0f),
@@ -215,12 +240,14 @@ float ReadArrayFloat(const nlohmann::json& json, const char* name, size_t index,
     if (!json.contains(name) || !json[name].is_array() || json[name].size() <= index) {
         return fallback;
     }
+
     return json[name][index].get<float>();
 }
 
 RenderConfig LoadConfig(const fs::path& configPath) {
     // JSONを編集用の設定へ変換し、寸法などは描画APIへ渡せる範囲へ制限する。
     std::ifstream file(configPath, std::ios::binary);
+
     if (!file) {
         throw std::runtime_error("config open failed");
     }
@@ -230,7 +257,8 @@ RenderConfig LoadConfig(const fs::path& configPath) {
 
     RenderConfig cfg;
     cfg.text = ReadWideString(json, "text", L" ");
-    if (cfg.text.empty()) cfg.text = L" ";
+    if (cfg.text.empty())
+        cfg.text = L" ";
     cfg.fontPath = ReadWideString(json, "fontPath");
     cfg.fontFamilyName = ReadWideString(json, "fontFamilyName");
     cfg.fontSize = std::clamp(ReadFloat(json, "fontSize", 72.0f), 4.0f, 512.0f);
@@ -282,25 +310,31 @@ ComPtr<IDWriteFontCollection> CreateResourceFontCollection(
     key = MakeFontCollectionKey(fs::absolute(fontPath).wstring());
     ComPtr<IDWriteFontCollection> collection;
     HRESULT hr = factory->CreateCustomFontCollection(loader, key.data(), static_cast<UINT32>(key.size() * sizeof(wchar_t)), collection.GetAddressOf());
+
     if (FAILED(hr)) {
         return nullptr;
     }
+
     return collection;
 }
 
 bool CollectionHasFamily(IDWriteFontCollection* collection, const std::wstring& familyName) {
-    if (!collection || familyName.empty()) return false;
+    if (!collection || familyName.empty())
+        return false;
     UINT32 index = 0;
     BOOL exists = FALSE;
     return SUCCEEDED(collection->FindFamilyName(familyName.c_str(), &index, &exists)) && exists;
 }
 
 std::wstring GetFirstFamilyName(IDWriteFontCollection* collection) {
-    if (!collection || collection->GetFontFamilyCount() == 0) return L"";
+    if (!collection || collection->GetFontFamilyCount() == 0)
+        return L"";
     ComPtr<IDWriteFontFamily> family;
-    if (FAILED(collection->GetFontFamily(0, family.GetAddressOf()))) return L"";
+    if (FAILED(collection->GetFontFamily(0, family.GetAddressOf())))
+        return L"";
     ComPtr<IDWriteLocalizedStrings> names;
-    if (FAILED(family->GetFamilyNames(names.GetAddressOf()))) return L"";
+    if (FAILED(family->GetFamilyNames(names.GetAddressOf())))
+        return L"";
     return GetLocalizedString(names.Get(), L"");
 }
 
@@ -322,7 +356,8 @@ ComPtr<IDWriteTextFormat> CreateTextFormatForConfig(
             cfg.fontSize,
             L"ja-jp",
             format.GetAddressOf());
-        if (FAILED(hr)) return ComPtr<IDWriteTextFormat>{};
+        if (FAILED(hr))
+            return ComPtr<IDWriteTextFormat>{};
         result.usedFontFamily = family;
         return format;
     };
@@ -331,14 +366,17 @@ ComPtr<IDWriteTextFormat> CreateTextFormatForConfig(
     if (customCollection) {
         if (!cfg.fontFamilyName.empty() && CollectionHasFamily(customCollection, cfg.fontFamilyName)) {
             ComPtr<IDWriteTextFormat> format = create(cfg.fontFamilyName, customCollection);
-            if (format) return format;
+            if (format)
+                return format;
         }
 
         const std::wstring firstFamily = GetFirstFamilyName(customCollection);
+
         if (!firstFamily.empty()) {
             result.fallbackUsed = true;
             ComPtr<IDWriteTextFormat> format = create(firstFamily, customCollection);
-            if (format) return format;
+            if (format)
+                return format;
         }
     }
 
@@ -350,11 +388,14 @@ ComPtr<IDWriteTextFormat> CreateTextFormatForConfig(
         L"Yu Gothic",
         L"Arial"
     };
+
     for (const std::wstring& family : systemCandidates) {
-        if (family.empty()) continue;
+        if (family.empty())
+            continue;
         result.fallbackUsed = true;
         ComPtr<IDWriteTextFormat> format = create(family, nullptr);
-        if (format) return format;
+        if (format)
+            return format;
     }
 
     throw std::runtime_error("font format create failed");
@@ -363,9 +404,11 @@ ComPtr<IDWriteTextFormat> CreateTextFormatForConfig(
 ComPtr<ID2D1SolidColorBrush> CreateBrush(ID2D1RenderTarget* renderTarget, D2D1_COLOR_F color) {
     ComPtr<ID2D1SolidColorBrush> brush;
     HRESULT hr = renderTarget->CreateSolidColorBrush(color, brush.GetAddressOf());
+
     if (FAILED(hr)) {
         throw std::runtime_error("brush create failed");
     }
+
     return brush;
 }
 
@@ -385,25 +428,31 @@ void SaveBitmapAsPng(IWICImagingFactory* wicFactory, IWICBitmap* bitmap, const f
 
     ComPtr<IWICStream> stream;
     HRESULT hr = wicFactory->CreateStream(stream.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("WIC stream create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("WIC stream create failed");
 
     hr = stream->InitializeFromFilename(outputPath.wstring().c_str(), GENERIC_WRITE);
-    if (FAILED(hr)) throw std::runtime_error("output stream open failed");
+    if (FAILED(hr))
+        throw std::runtime_error("output stream open failed");
 
     ComPtr<IWICBitmapEncoder> encoder;
     hr = wicFactory->CreateEncoder(GUID_ContainerFormatPng, nullptr, encoder.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("PNG encoder create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("PNG encoder create failed");
 
     hr = encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache);
-    if (FAILED(hr)) throw std::runtime_error("PNG encoder initialize failed");
+    if (FAILED(hr))
+        throw std::runtime_error("PNG encoder initialize failed");
 
     ComPtr<IWICBitmapFrameEncode> frame;
     ComPtr<IPropertyBag2> propertyBag;
     hr = encoder->CreateNewFrame(frame.GetAddressOf(), propertyBag.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("PNG frame create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("PNG frame create failed");
 
     hr = frame->Initialize(propertyBag.Get());
-    if (FAILED(hr)) throw std::runtime_error("PNG frame initialize failed");
+    if (FAILED(hr))
+        throw std::runtime_error("PNG frame initialize failed");
 
     UINT width = 0;
     UINT height = 0;
@@ -413,7 +462,8 @@ void SaveBitmapAsPng(IWICImagingFactory* wicFactory, IWICBitmap* bitmap, const f
     WICPixelFormatGUID pixelFormat = GUID_WICPixelFormat32bppPBGRA;
     frame->SetPixelFormat(&pixelFormat);
     hr = frame->WriteSource(bitmap, nullptr);
-    if (FAILED(hr)) throw std::runtime_error("PNG write failed");
+    if (FAILED(hr))
+        throw std::runtime_error("PNG write failed");
 
     frame->Commit();
     encoder->Commit();
@@ -423,6 +473,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     // WIC/D2D/DirectWriteを同じCOMスレッドで生成し、透過キャンバスへ描画する。
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     const bool ownsCom = (hr == S_OK || hr == S_FALSE);
+
     if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
         throw std::runtime_error("COM initialize failed");
     }
@@ -433,17 +484,21 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     ComPtr<IDWriteFactory> dwriteFactory;
 
     hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(wicFactory.GetAddressOf()));
-    if (FAILED(hr)) throw std::runtime_error("WIC factory create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("WIC factory create failed");
 
     hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, d2dFactory.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("D2D factory create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("D2D factory create failed");
 
     hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(dwriteFactory.GetAddressOf()));
-    if (FAILED(hr)) throw std::runtime_error("DirectWrite factory create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("DirectWrite factory create failed");
 
     ComPtr<ResourceFontCollectionLoader> loader;
     loader = Microsoft::WRL::Make<ResourceFontCollectionLoader>();
-    if (!loader) throw std::bad_alloc();
+    if (!loader)
+        throw std::bad_alloc();
     dwriteFactory->RegisterFontCollectionLoader(loader.Get());
 
     // 独自フォントを一時コレクションとして登録し、使用したファミリー名を結果に残す。
@@ -473,7 +528,8 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
         layoutWidth,
         layoutHeight,
         textLayout.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("text layout create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("text layout create failed");
 
     DWRITE_TEXT_METRICS metrics{};
     textLayout->GetMetrics(&metrics);
@@ -482,10 +538,12 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
 
     int width = cfg.canvasWidth;
     int height = cfg.canvasHeight;
+
     if (cfg.autoCanvas) {
         width = static_cast<int>(std::ceil(measuredWidth + edgePadding * 2.0f + shadowPadX));
         height = static_cast<int>(std::ceil(measuredHeight + edgePadding * 2.0f + shadowPadY));
     }
+
     width = std::clamp(width, 1, 8192);
     height = std::clamp(height, 1, 8192);
     result.width = width;
@@ -499,7 +557,8 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
         GUID_WICPixelFormat32bppPBGRA,
         WICBitmapCacheOnLoad,
         bitmap.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("bitmap create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("bitmap create failed");
 
     D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
         D2D1_RENDER_TARGET_TYPE_DEFAULT,
@@ -509,7 +568,8 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
 
     ComPtr<ID2D1RenderTarget> renderTarget;
     hr = d2dFactory->CreateWicBitmapRenderTarget(bitmap.Get(), props, renderTarget.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("render target create failed");
+    if (FAILED(hr))
+        throw std::runtime_error("render target create failed");
 
     ComPtr<ID2D1SolidColorBrush> textBrush = CreateBrush(renderTarget.Get(), cfg.textColor);
     ComPtr<ID2D1SolidColorBrush> outlineBrush = CreateBrush(renderTarget.Get(), cfg.outlineColor);
@@ -523,6 +583,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     ComPtr<ID2D1GradientStopCollection> textGradientStops;
     ComPtr<ID2D1LinearGradientBrush> textGradientBrush;
     ID2D1Brush* textFillBrush = textBrush.Get();
+
     // グラデーション使用時だけ塗りブラシを差し替え、縁と影は単色ブラシのまま使う。
     if (cfg.textGradientEnabled) {
         const float ridge = cfg.textGradientRidgePosition;
@@ -533,13 +594,15 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
             { (std::min)(1.0f, ridge + 0.08f), cfg.textGradientMiddleColor },
             { 1.00f, cfg.textGradientBottomColor },
         };
+
         hr = renderTarget->CreateGradientStopCollection(
             stops,
             static_cast<UINT32>(std::size(stops)),
             D2D1_GAMMA_2_2,
             D2D1_EXTEND_MODE_CLAMP,
             textGradientStops.GetAddressOf());
-        if (FAILED(hr)) throw std::runtime_error("text gradient stops create failed");
+        if (FAILED(hr))
+            throw std::runtime_error("text gradient stops create failed");
 
         hr = renderTarget->CreateLinearGradientBrush(
             D2D1::LinearGradientBrushProperties(
@@ -547,7 +610,8 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
                 D2D1::Point2F(origin.x, origin.y + measuredHeight)),
             textGradientStops.Get(),
             textGradientBrush.GetAddressOf());
-        if (FAILED(hr)) throw std::runtime_error("text gradient brush create failed");
+        if (FAILED(hr))
+            throw std::runtime_error("text gradient brush create failed");
         textFillBrush = textGradientBrush.Get();
     }
 
@@ -562,10 +626,13 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     if (cfg.outlineEnabled && cfg.outlineWidth > 0.0f && cfg.outlineColor.a > 0.0f) {
         // 指定半径の円内へ文字をずらして重ね、画像としての太い縁を作る。
         const int radius = std::clamp(static_cast<int>(std::ceil(cfg.outlineWidth)), 1, 64);
+
         for (int y = -radius; y <= radius; ++y) {
             for (int x = -radius; x <= radius; ++x) {
-                if (x == 0 && y == 0) continue;
-                if (x * x + y * y > radius * radius) continue;
+                if (x == 0 && y == 0)
+                    continue;
+                if (x * x + y * y > radius * radius)
+                    continue;
                 DrawTextLayoutWithOffset(renderTarget.Get(), textLayout.Get(), outlineBrush.Get(), origin, static_cast<float>(x), static_cast<float>(y));
             }
         }
@@ -574,7 +641,8 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     DrawTextLayoutWithOffset(renderTarget.Get(), textLayout.Get(), textFillBrush, origin, 0.0f, 0.0f);
 
     hr = renderTarget->EndDraw();
-    if (FAILED(hr)) throw std::runtime_error("render target draw failed");
+    if (FAILED(hr))
+        throw std::runtime_error("render target draw failed");
 
     SaveBitmapAsPng(wicFactory.Get(), bitmap.Get(), outputPath);
 
@@ -594,6 +662,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     if (dwriteFactory && loader) {
         dwriteFactory->UnregisterFontCollectionLoader(loader.Get());
     }
+
     loader.Reset();
     dwriteFactory.Reset();
     d2dFactory.Reset();
@@ -602,12 +671,14 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
     if (ownsCom) {
         CoUninitialize();
     }
+
     return result;
 }
 
 void WriteReport(const fs::path& reportPath, const RenderResult& result, const fs::path& outputPath) {
     // 生成画像のサイズと使用フォントを呼び出し元が読めるJSONレポートへ書く。
-    if (reportPath.empty()) return;
+    if (reportPath.empty())
+        return;
     fs::create_directories(reportPath.parent_path());
 
     nlohmann::json report;
@@ -627,6 +698,7 @@ fs::path GetOptionValue(int argc, wchar_t** argv, const wchar_t* optionName) {
             return fs::path(argv[i + 1]);
         }
     }
+
     return {};
 }
 
@@ -642,6 +714,7 @@ int wmain(int argc, wchar_t** argv) {
 
         const fs::path configPath = GetOptionValue(argc, argv, L"-config");
         const fs::path outputPath = GetOptionValue(argc, argv, L"-out");
+
         if (configPath.empty() || outputPath.empty()) {
             std::wcerr << L"config and out are required.\n";
             return 2;

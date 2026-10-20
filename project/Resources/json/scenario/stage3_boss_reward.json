@@ -1,0 +1,47 @@
+{
+    "version": 6,
+    "name": "stage3_boss_reward",
+    "duration": 2.78,
+    "tracks": [],
+    "cameraShots": [
+        {
+            "name": "王冠へ寄る",
+            "targetName": "Stage3_BossReward_FocusCamera",
+            "targetEventId": -1,
+            "startTime": 0.0,
+            "duration": 0.32,
+            "blendInDuration": 0.32,
+            "blendOutDuration": 0.0,
+            "easing": 4,
+            "enabled": true,
+            "muted": false
+        },
+        {
+            "name": "移動する王冠を追う",
+            "targetName": "Stage3_BossReward_TrackCamera",
+            "targetEventId": -1,
+            "startTime": 0.32,
+            "duration": 1.5,
+            "blendInDuration": 1.5,
+            "blendOutDuration": 0.96,
+            "easing": 4,
+            "enabled": true,
+            "muted": false
+        }
+    ],
+    "vfxCues": [],
+    "animationClips": [],
+    "audioClips": [],
+    "signals": [
+        {
+            "time": 1.82,
+            "name": "ゲーム視点への復帰を開始",
+            "signal": "camera.resume_gameplay",
+            "payload": "",
+            "targetName": "",
+            "targetEventId": -1,
+            "enabled": true
+        }
+    ],
+    "events": []
+}

@@ -6,7 +6,7 @@
 #endif
 #include <cassert>
 
-void Skybox::Initialize(Object3dCommon* common, uint32_t textureHandle) {
+void Skybox::Initialize(engine::Object3dCommon* common, uint32_t textureHandle) {
     // 描画基盤とテクスチャを確定してから、空を囲むメッシュを一度だけ作る。
     assert(common);
     common_ = common;
@@ -71,6 +71,7 @@ void Skybox::Draw(ID3D12Resource* vpResource) {
     if (!common_ || !vpResource) {
 #ifdef USE_IMGUI
         static bool loggedInvalidDraw = false;
+
         if (!loggedInvalidDraw) {
             DebugConsole::GetInstance()->AddLog("[WARN] Skybox draw skipped: invalid common or camera buffer.");
             loggedInvalidDraw = true;
@@ -81,6 +82,7 @@ void Skybox::Draw(ID3D12Resource* vpResource) {
 
 #ifdef USE_IMGUI
     static bool loggedDraw = false;
+
     if (!loggedDraw) {
         DebugConsole::GetInstance()->AddLog("Skybox draw reached.");
         loggedDraw = true;

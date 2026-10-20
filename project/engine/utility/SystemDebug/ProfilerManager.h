@@ -72,8 +72,11 @@ public:
 
 private:
     ProfilerManager() = default;
+
     ~ProfilerManager() = default;
+
     ProfilerManager(const ProfilerManager&) = delete;
+
     ProfilerManager& operator=(const ProfilerManager&) = delete;
 
     /// <summary>単一の読み込み処理名と所要時間。</summary>
@@ -117,11 +120,13 @@ public:
     ScopedCpuProfiler(const char* name) : name_(name) {
         start_ = std::chrono::high_resolution_clock::now();
     }
+
     ~ScopedCpuProfiler() {
         auto end = std::chrono::high_resolution_clock::now();
         float ms = std::chrono::duration<float, std::milli>(end - start_).count();
         ProfilerManager::GetInstance()->RecordCpuTime(name_, ms);
     }
+
 private:
     const char* name_;
     std::chrono::high_resolution_clock::time_point start_;

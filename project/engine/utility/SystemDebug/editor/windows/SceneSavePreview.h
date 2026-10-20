@@ -25,6 +25,7 @@ public:
 
     /// 差分確認ダイアログを開く、または閉じます。
     void Open();
+
     void Close();
 
     /// 差分確認ダイアログを描画し、保存・取消・操作なしを返します。
@@ -32,8 +33,11 @@ public:
 
     // 表示状態と、確認後に呼び出し元が保存する対象を公開します。
     bool IsOpen() const { return isOpen_; }
+
     const std::vector<SceneSerializer::SaveTarget>& GetTargets() const { return targets_; }
+
     const std::string& GetTitle() const { return title_; }
+
     const std::string& GetSavedFilesLabel() const { return savedFilesLabel_; }
 
 private:
@@ -89,23 +93,34 @@ private:
 
     // 既存 JSON と保存予定 JSON を比較し、表示用データを一度だけ構築します。
     FileDiff BuildFileDiff(const SceneSerializer::SaveTarget& target) const;
+
     void BuildObjectDiff(FileDiff& diff, const nlohmann::json& oldJson, const nlohmann::json& newJson) const;
+
     void BuildFileLevelDiff(FileDiff& diff, const nlohmann::json& oldJson, const nlohmann::json& newJson) const;
+
     void UpdateSummary();
 
     // JSON の表示名と、詳細差分に使う短い文字列を生成します。
     static std::string GetObjectName(const nlohmann::json& obj, const std::string& fallback);
+
     static std::string GetObjectCategory(const nlohmann::json& obj);
+
     static std::string JsonValueToText(const nlohmann::json& value);
+
     /// JSONの差分を再帰的に集め、詳細表示用の短い説明リストへ変換する。
     static void CollectJsonDiffs(const nlohmann::json& before, const nlohmann::json& after, const std::string& path, std::vector<std::string>& outDetails, int maxDetails);
 
 #ifdef USE_IMGUI
+
     // 差分データを描画する処理。比較ロジックは SceneSavePreview.cpp に置きます。
     void DrawSummaryCards() const;
+
     void DrawFileSummaryTable() const;
+
     void DrawFileDiff(FileDiff& diff);
+
     void DrawChangeBadge(ChangeKind kind) const;
+
     const char* GetKindLabel(ChangeKind kind) const;
 #endif
 

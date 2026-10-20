@@ -4,9 +4,11 @@
 std::unique_ptr<BaseScene> SceneFactory::CreateScene(const std::string& sceneName) {
     // 未登録キーを別のシーンへ置き換えず、呼び出し側に失敗を返す。
     const auto found = creators_.find(sceneName);
+
     if (found == creators_.end() || !found->second) {
         return nullptr;
     }
+
     return found->second();
 }
 
@@ -21,10 +23,13 @@ bool SceneFactory::RegisterScene(const std::string& sceneName, SceneCreator crea
     if (sceneName.empty() || !creator) {
         return false;
     }
+
     const bool isNewRegistration = creators_.find(sceneName) == creators_.end();
     creators_[sceneName] = std::move(creator);
+
     if (isNewRegistration) {
         registrationOrder_.push_back(sceneName);
     }
+
     return true;
 }

@@ -1,6 +1,10 @@
 #include "GimmickChainCollapseFloor.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
+#include "ModelManager.h"
+#include "BaseScene.h"
+#include "Player.h"
+#include "game/system/scene/SceneGameplayAccess.h"
 #include <cstdlib>
 
 namespace {
@@ -8,7 +12,7 @@ namespace {
 constexpr float kReturnDelaySeconds = 5.0f;
 } // namespace
 
-void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickChainCollapseFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 踏まれる前は通常の床として衝突し、落下開始時に判定を外します。
@@ -27,6 +31,7 @@ void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::st
     param_->fallDuration = 1.4f;
     param_->interval = 0.18f;
     param_->gravity = 48.0f;
+
     // 従来の一度きりの挙動を既定とし、必要なステージだけ明示的に復帰を有効化する。
     param_->returnOnOff = false;
 }
@@ -34,10 +39,19 @@ void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::st
 void GimmickChainCollapseFloor::Update(float deltaTime) {
     // 待機・予告・揺れ・落下・消失を状態ごとに進め、再出現もここで管理します。
     if (!initializedStart_) {
+        // 最初に両モデルを準備し、踏んだ瞬間のディスク読込を避ける。
+        if (GetModelName().find("Gimmicks/crumbling_rock_block") == 0) {
+            ModelManager::GetInstance()->LoadModel("Gimmicks/crumbling_rock_block");
+            ModelManager::GetInstance()->LoadModel("Gimmicks/crumbling_rock_block_intact");
+            UpdateRockAppearance();
+        }
         startPosition_ = GetTransform()->translate;
         startRotation_ = GetTransform()->rotate;
         initializedStart_ = true;
     }
+
+    if (state_ == State::Idle && SceneManager::GetInstance()->IsPlaying())
+        CheckPlayerContact();
 
     switch (state_) {
     case State::Idle:
@@ -47,10 +61,12 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
 
     case State::Pending:
         pendingTimer_ -= deltaTime;
+
         if (pendingTimer_ <= 0.0f) {
             pendingTimer_ = 0.0f;
             StartCollapse();
         }
+
         break;
 
     case State::Shaking: {
@@ -65,6 +81,7 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
         if (timer_ >= GetShakeDuration()) {
             ChangeState(State::Falling);
         }
+
         break;
     }
 
@@ -79,15 +96,18 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
         if (timer_ >= GetFallDuration()) {
             ChangeState(State::Hidden);
         }
+
         break;
 
     case State::Hidden:
         if (ShouldReturnAfterCollapse()) {
             returnTimer_ += deltaTime;
+
             if (returnTimer_ >= kReturnDelaySeconds) {
                 ResetForRetry();
             }
         }
+
         break;
     }
 
@@ -98,10 +118,12 @@ bool GimmickChainCollapseFloor::OnCollision(engine::Object3d* other) {
     // 横から触れただけでは崩れず、プレイヤーが上面に乗った場合に始動します。
     if (state_ == State::Idle && other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
+
         if (info.isColliding && info.normal.y < -0.5f) {
             StartCollapse();
         }
     }
+
     return true;
 }
 
@@ -122,6 +144,7 @@ void GimmickChainCollapseFloor::QueueCollapse() {
     if (state_ == State::Hidden && ShouldReturnAfterCollapse()) {
         ResetForRetry();
     }
+
     if (state_ != State::Idle)
         return;
     pendingTimer_ = GetChainDelay();
@@ -150,6 +173,7 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         pendingTimer_ = 0.0f;
         returnTimer_ = 0.0f;
         triggeredNext_ = false;
+        hasPreviousPlayerFoot_ = false;
         SetColor({0.75f, 0.92f, 1.0f, 0.82f});
         break;
 
@@ -176,6 +200,56 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         returnTimer_ = 0.0f;
         break;
     }
+    UpdateRockAppearance();
+}
+
+void GimmickChainCollapseFloor::CheckPlayerContact() {
+    // Sweepで床の直前に停止した場合と、薄い床を一フレームで通過した場合を拾う。
+    BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
+    if (!scene) return;
+    Player* player = GetScenePlayer(scene);
+    if (!player || player->isDead) {
+        hasPreviousPlayerFoot_ = false;
+        return;
+    }
+
+    UpdateLocalMatrix();
+    UpdateWorldMatrix(false);
+    player->UpdateLocalMatrix();
+    player->UpdateWorldMatrix(false);
+    const auto deck = GetAABB();
+    const auto body = player->GetAABB();
+    const float footY = body.min.y;
+    const float topY = deck.max.y;
+    const bool overlapsXZ = body.max.x > deck.min.x + 0.02f && body.min.x < deck.max.x - 0.02f &&
+        body.max.z > deck.min.z + 0.02f && body.min.z < deck.max.z - 0.02f;
+    const bool nearTop = footY >= topY - 0.25f && footY <= topY + 0.25f;
+    const bool crossedTop = hasPreviousPlayerFoot_ && previousPlayerFootY_ >= topY - 0.1f &&
+        footY <= topY + 0.1f;
+    previousPlayerFootY_ = footY;
+    hasPreviousPlayerFoot_ = true;
+
+    const Collider* collider = GetCollider();
+    const bool insideFootprint = !collider || collider->GetConfig().footprint.size() < 3 ||
+        collider->OverlapsFootprint(player->GetCollider());
+    if (overlapsXZ && (nearTop || crossedTop) && player->GetVelocity().y <= 0.1f && insideFootprint) {
+        StartCollapse();
+    }
+}
+
+void GimmickChainCollapseFloor::UpdateRockAppearance() {
+    // 既存の透明床などは変更せず、新しい岩だけを不透明な石として扱う。
+    if (GetModelName().find("Gimmicks/crumbling_rock_block") != 0)
+        return;
+    const std::string desired = (state_ == State::Idle || state_ == State::Pending)
+        ? "Gimmicks/crumbling_rock_block_intact" : "Gimmicks/crumbling_rock_block";
+    if (GetModelName() != desired) {
+        // モデル変更の自動フィットでEditor設定の判定が上書きされないようにする。
+        const auto collider = GetColliderConfig();
+        SetModel(desired);
+        SetColliderConfig(collider);
+    }
+    SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 }
 
 bool GimmickChainCollapseFloor::ShouldReturnAfterCollapse() const {

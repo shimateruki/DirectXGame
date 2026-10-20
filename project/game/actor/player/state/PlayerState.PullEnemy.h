@@ -10,8 +10,11 @@ class PlayerStatePullEnemy : public IAnimationState {
   public:
     PlayerStatePullEnemy(engine::Object3d* targetEnemy, const engine::Vector3& targetPos)
         : targetEnemy_(targetEnemy), targetPos_(targetPos) {}
+
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 
   private:
@@ -21,17 +24,22 @@ class PlayerStatePullEnemy : public IAnimationState {
     engine::Object3d* targetEnemy_ = nullptr;
     engine::Vector3 targetPos_;
     engine::Vector3 hookTipPos_;
+
     Phase phase_ = Phase::kShootHook;
+
     engine::Vector3 enemyStartPos_;
     engine::Vector3 enemyPullStartScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 enemyBaseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 enemyBaseRotation_ = {0.0f, 0.0f, 0.0f};
     engine::Quaternion enemyBaseQuaternion_ = {0.0f, 0.0f, 0.0f, 1.0f};
     bool enemyBaseQuaternionMaster_ = true;
+
     float pullTimer_ = 0.0f;
+
     bool isHeavyPullTarget_ = false;
     engine::Vector3 heavyPullBasePlayerPos_ = {0.0f, 0.0f, 0.0f};
     bool hasHeavyPullBasePlayerPos_ = false;
+
     engine::Vector3 normalPullBasePlayerPos_ = {0.0f, 0.0f, 0.0f};
     bool hasNormalPullBasePlayerPos_ = false;
 };

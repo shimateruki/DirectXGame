@@ -12,6 +12,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
 
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
+
     if (!isPlaying) {
         ResetEncounterStateForEditor();
         return true;
@@ -40,6 +41,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
     const float settlePulse = std::sin(progress * kPi) * 0.13f;
 
     SetIsVisible(true);
+
     // 登場演出中も地面との衝突だけは維持し、床抜けを防ぎます。
     SetCollisionAttribute(kPrismActiveCollisionAttribute);
     SetCollisionMask(kPrismAppearanceCollisionMask);
@@ -68,6 +70,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
     if (progress >= 1.0f) {
         FinishEncounterAppearance();
     }
+
     return true;
 }
 
@@ -84,6 +87,7 @@ void EnemyPrismSlime::CaptureEncounterAuthoredState(bool refreshVisualTransform)
 
     const uint32_t collisionAttribute = GetCollisionAttribute();
     const uint32_t collisionMask = GetCollisionMask();
+
     // 待機状態を保存したシーンでは属性とマスクが0になっています。
     // その値を「通常時の設定」として記憶すると、登場後も床をすり抜けるため既定値へ戻します。
     if (collisionAttribute != 0) {
@@ -91,6 +95,7 @@ void EnemyPrismSlime::CaptureEncounterAuthoredState(bool refreshVisualTransform)
     } else if (!encounterAuthoredStateCaptured_) {
         encounterCollisionAttribute_ = kPrismActiveCollisionAttribute;
     }
+
     if (collisionMask != 0) {
         encounterCollisionMask_ = collisionMask;
     } else if (!encounterAuthoredStateCaptured_) {
@@ -111,6 +116,7 @@ void EnemyPrismSlime::InitializeEncounterState() {
     lastAutomaticAttack_ = AttackKind::None;
 
     const bool startActive = param_.has_value() && param_->startActive;
+
     if (startActive || encounterRequestedActive_) {
         BeginEncounterAppearance();
     } else {
@@ -119,6 +125,7 @@ void EnemyPrismSlime::InitializeEncounterState() {
 }
 
 void EnemyPrismSlime::ResetEncounterStateForEditor() {
+    locomotion_.Reset();
     if (encounterInitializedForPlay_) {
         SetTranslate(encounterBasePosition_);
         SetScale(encounterBaseScale_);
@@ -146,10 +153,12 @@ void EnemyPrismSlime::ResetEncounterStateForEditor() {
 }
 
 void EnemyPrismSlime::BeginEncounterAppearance() {
+    locomotion_.Reset();
     encounterState_ = EncounterState::Appearing;
     encounterTimer_ = 0.0f;
     attackCooldown_ = 1.0f;
     SetIsVisible(true);
+
     // 演出中は攻撃・プレイヤー接触を無効にし、地面との衝突だけ有効にします。
     SetCollisionAttribute(kPrismActiveCollisionAttribute);
     SetCollisionMask(kPrismAppearanceCollisionMask);
@@ -163,6 +172,7 @@ void EnemyPrismSlime::BeginEncounterAppearance() {
 }
 
 void EnemyPrismSlime::ApplyDormantEncounterState() {
+    locomotion_.Reset();
     // 未登場中は配置姿勢を保ちながら表示と衝突を止め、攻撃の残像も消す。
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
@@ -212,6 +222,7 @@ bool EnemyPrismSlime::IsEncounterHudActive() const {
     if (!IsEncounterControlled() || isDead) {
         return false;
     }
+
     return encounterState_ == EncounterState::Appearing || encounterState_ == EncounterState::Active;
 }
 
@@ -230,9 +241,11 @@ float EnemyPrismSlime::GetEncounterAppearanceProgress() const {
     if (encounterState_ == EncounterState::Active) {
         return 1.0f;
     }
+
     if (encounterState_ != EncounterState::Appearing) {
         return 0.0f;
     }
+
     return std::clamp(encounterTimer_ / GetEncounterAppearanceDuration(), 0.0f, 1.0f);
 }
 
@@ -243,6 +256,7 @@ void EnemyPrismSlime::TriggerDebugDefeat() {
     }
 
     param_->hp = 0.0f;
+    locomotion_.Reset();
     attackState_ = AttackState::Idle;
     currentAttack_ = AttackKind::None;
     attackTimer_ = 0.0f;

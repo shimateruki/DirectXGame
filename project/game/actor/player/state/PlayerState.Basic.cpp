@@ -13,6 +13,7 @@
 void PlayerStateIdle::Enter(Player* player) {
     // 待機へ戻る時はジャンプの溜め表示を消す。
     DebugConsole::GetInstance()->AddLog("Enter: Idle");
+
     if (player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
         player->SetSlimeJumpCharge(0.0f);
@@ -33,6 +34,7 @@ void PlayerStateIdle::Update(Player* player, float deltaTime) {
     // 速度があれば Run へ遷移
     engine::Vector3 vel = player->GetVelocity();
     vel.y = 0.0f;
+
     if (engine::Math::Length(vel) > 0.1f) {
         player->ChangeState(std::make_unique<PlayerStateRun>());
     }
@@ -49,6 +51,7 @@ void PlayerStateIdle::Exit(Player* player) {
 void PlayerStateRun::Enter(Player* player) {
     // 走行モーションへ切り替え、移動速度はプレイヤー本体側で管理する。
     DebugConsole::GetInstance()->AddLog("Enter: Run");
+
     if (player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Run);
     }
@@ -68,6 +71,7 @@ void PlayerStateRun::Update(Player* player, float deltaTime) {
     // 速度が落ちたら Idle へ遷移
     engine::Vector3 vel = player->GetVelocity();
     vel.y = 0.0f;
+
     if (engine::Math::Length(vel) <= 0.1f) {
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     }
@@ -84,6 +88,7 @@ void PlayerStateRun::Exit(Player* player) {
 void PlayerStateJump::Enter(Player* player) {
     // 空中の姿勢をアニメーターへ知らせる。
     DebugConsole::GetInstance()->AddLog("Enter: Jump");
+
     if (player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
     }
@@ -115,6 +120,7 @@ void PlayerStateDash::Enter(Player* player) {
     // ダッシュ開始時の進行方向を変形アニメーションへ渡す。
     DebugConsole::GetInstance()->AddLog("Enter: Dash");
     timer_ = 0.0f;
+
     if (player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Dash);
         player->SetSlimeAnimationDirection(player->GetVelocity());
@@ -128,6 +134,7 @@ void PlayerStateDash::Update(Player* player, float deltaTime) {
 
     // 約0.2秒(ダッシュ時間)経過で Idle へ戻す
     timer_ += deltaTime;
+
     if (timer_ >= 0.2f) {
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     }

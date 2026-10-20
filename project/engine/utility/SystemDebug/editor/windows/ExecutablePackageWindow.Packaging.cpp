@@ -69,10 +69,12 @@ class ScopedDirectoryCleanup {
 public:
     explicit ScopedDirectoryCleanup(fs::path path) : path_(std::move(path)) {}
     ~ScopedDirectoryCleanup() {
-        if (!active_) return;
+        if (!active_)
+            return;
         std::error_code ec;
         fs::remove_all(path_, ec);
     }
+
     void Release() { active_ = false; }
 
 private:
@@ -87,8 +89,10 @@ std::wstring Utf8ToWide(const std::string& text) {
     }
 
     int size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), static_cast<int>(text.size()), nullptr, 0);
+
     if (size <= 0) {
         size = MultiByteToWideChar(CP_ACP, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
+
         if (size <= 0) {
             return {};
         }
@@ -110,6 +114,7 @@ std::string WideToUtf8(const std::wstring& text) {
     }
 
     int size = WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0, nullptr, nullptr);
+
     if (size <= 0) {
         return {};
     }
@@ -130,11 +135,13 @@ fs::path PathFromUtf8(const std::string& text) {
 std::string TrimAscii(const std::string& text) {
     // 配布物名の前後に混入したASCII空白だけを除く。
     size_t begin = 0;
+
     while (begin < text.size() && static_cast<unsigned char>(text[begin]) <= 0x20) {
         ++begin;
     }
 
     size_t end = text.size();
+
     while (end > begin && static_cast<unsigned char>(text[end - 1]) <= 0x20) {
         --end;
     }
@@ -148,6 +155,7 @@ std::string ToUpperAscii(std::string text) {
             c = static_cast<char>(c - 'a' + 'A');
         }
     }
+
     return text;
 }
 
@@ -155,9 +163,11 @@ bool IsReservedWindowsName(const std::string& name) {
     // 拡張子があってもWindowsの予約名はファイル名として使えないため先頭部分で判定する。
     std::string stem = name;
     const size_t dot = stem.find('.');
+
     if (dot != std::string::npos) {
         stem = stem.substr(0, dot);
     }
+
     stem = ToUpperAscii(stem);
 
     static constexpr std::array<const char*, 22> kReserved = {
@@ -165,6 +175,7 @@ bool IsReservedWindowsName(const std::string& name) {
         "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
     };
+
     return std::find(kReserved.begin(), kReserved.end(), stem) != kReserved.end();
 }
 
@@ -172,8 +183,10 @@ std::string SanitizePackageName(const std::string& input) {
     // Windows で使えない名前と拡張子を除き、UI のプレビューにも同じ規則を適用します。
     std::string name = TrimAscii(input);
     const std::string exeSuffix = ".exe";
+
     if (name.size() > exeSuffix.size()) {
         std::string tail = name.substr(name.size() - exeSuffix.size());
+
         if (ToUpperAscii(tail) == ".EXE") {
             name.resize(name.size() - exeSuffix.size());
         }
@@ -194,9 +207,11 @@ std::string SanitizePackageName(const std::string& input) {
     if (name.empty() || name == "." || name == "..") {
         name = "GE3_Playable";
     }
+
     if (IsReservedWindowsName(name)) {
         name = "_" + name;
     }
+
     return name;
 }
 
@@ -204,13 +219,16 @@ fs::path GetExecutableDirectory() {
     // 実行中のEXEを基準に付属ファイルの配置先を決める。
     std::wstring buffer(MAX_PATH, L'\0');
     DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+
     while (length == buffer.size()) {
         buffer.resize(buffer.size() * 2);
         length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
     }
+
     if (length == 0) {
         return fs::current_path();
     }
+
     buffer.resize(length);
     return fs::path(buffer).parent_path();
 }
@@ -233,12 +251,14 @@ fs::path FindProjectRoot() {
         }
 
         fs::path cursor = seed;
+
         for (int i = 0; i < 8 && !cursor.empty(); ++i) {
             if (LooksLikeProjectRoot(cursor)) {
                 return fs::weakly_canonical(cursor, ec);
             }
 
             const fs::path projectChild = cursor / "project";
+
             if (LooksLikeProjectRoot(projectChild)) {
                 return fs::weakly_canonical(projectChild, ec);
             }
@@ -246,6 +266,7 @@ fs::path FindProjectRoot() {
             if (!cursor.has_parent_path() || cursor == cursor.parent_path()) {
                 break;
             }
+
             cursor = cursor.parent_path();
         }
     }
@@ -257,23 +278,29 @@ bool IsInsideDirectory(const fs::path& root, const fs::path& target) {
     // 正規化後の相対パスで親への脱出を検出し、出力先の誤削除を防ぐ。
     std::error_code ec;
     fs::path canonicalRoot = fs::weakly_canonical(root, ec);
+
     if (ec) {
         return false;
     }
+
     fs::path canonicalTarget = fs::weakly_canonical(target, ec);
+
     if (ec) {
         return false;
     }
 
     fs::path relative = fs::relative(canonicalTarget, canonicalRoot, ec);
+
     if (ec || relative.empty()) {
         return canonicalTarget == canonicalRoot;
     }
+
     for (const fs::path& part : relative) {
         if (part == "..") {
             return false;
         }
     }
+
     return true;
 }
 
@@ -317,6 +344,7 @@ bool IsProjectDirectoryExcluded(const fs::path& relative) {
         L"executablesets",
         L"submissionpackages"
     };
+
     for (const wchar_t* root : kExcludedRoots) {
         if (HasPathPrefix(normalized, root)) {
             return true;
@@ -336,6 +364,7 @@ bool IsProjectDirectoryExcluded(const fs::path& relative) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -381,12 +410,14 @@ bool CopyProjectFiltered(
     ProjectCopyStats& stats,
     std::string& errorMessage) {
     std::error_code ec;
+
     if (!fs::exists(source, ec) || !fs::is_directory(source, ec)) {
         errorMessage = "プロジェクトフォルダが見つかりません: " + PathToUtf8(source);
         return false;
     }
 
     fs::create_directories(destination, ec);
+
     if (ec) {
         errorMessage = "projectコピー先を作成できません: " + PathToUtf8(destination);
         return false;
@@ -395,6 +426,7 @@ bool CopyProjectFiltered(
     // 提出対象の project を相対Pathで再構成し、除外フォルダの内側へは降りません。
     fs::recursive_directory_iterator it(source, fs::directory_options::skip_permission_denied, ec);
     const fs::recursive_directory_iterator end;
+
     if (ec) {
         errorMessage = "プロジェクトを走査できません: " + ec.message();
         return false;
@@ -408,6 +440,7 @@ bool CopyProjectFiltered(
 
         const fs::path entryPath = it->path();
         const fs::path relative = fs::relative(entryPath, source, ec);
+
         if (ec) {
             errorMessage = "プロジェクト内の相対パスを作れません: " + ec.message();
             return false;
@@ -419,17 +452,21 @@ bool CopyProjectFiltered(
                 ++stats.skippedDirectories;
                 it.disable_recursion_pending();
             }
+
             continue;
         }
+
         if (!it->is_regular_file(ec) || IsReparsePoint(entryPath)) {
             continue;
         }
 
         const uint64_t bytes = static_cast<uint64_t>(it->file_size(ec));
+
         if (ec) {
             errorMessage = "プロジェクトファイルのサイズを取得できません: " + PathToUtf8(entryPath);
             return false;
         }
+
         // 生成物や端末固有ファイルは集計だけしてコピー対象から外します。
         if (IsProjectFileExcluded(relative, bytes, stats)) {
             continue;
@@ -437,15 +474,19 @@ bool CopyProjectFiltered(
 
         const fs::path target = destination / relative;
         fs::create_directories(target.parent_path(), ec);
+
         if (ec) {
             errorMessage = "project内のコピー先を作成できません: " + PathToUtf8(target.parent_path());
             return false;
         }
+
         fs::copy_file(entryPath, target, fs::copy_options::overwrite_existing, ec);
+
         if (ec) {
             errorMessage = "プロジェクトファイルをコピーできません: " + PathToUtf8(entryPath);
             return false;
         }
+
         ++stats.copiedFiles;
         stats.copiedBytes += bytes;
     }
@@ -458,6 +499,7 @@ void AccumulateSkippedDirectory(const fs::path& directory, ResourceCopyStats& st
     std::error_code ec;
     fs::recursive_directory_iterator it(directory, fs::directory_options::skip_permission_denied, ec);
     const fs::recursive_directory_iterator end;
+
     if (ec) {
         return;
     }
@@ -467,15 +509,19 @@ void AccumulateSkippedDirectory(const fs::path& directory, ResourceCopyStats& st
             ec.clear();
             continue;
         }
+
         if (!it->is_regular_file(ec)) {
             ec.clear();
             continue;
         }
+
         const uint64_t bytes = static_cast<uint64_t>(it->file_size(ec));
+
         if (ec) {
             ec.clear();
             continue;
         }
+
         ++stats.sourceFiles;
         stats.sourceBytes += bytes;
         ++stats.skippedFiles;
@@ -491,9 +537,12 @@ TexturePackageMode ToTexturePackageMode(int value) {
 const char* GetTextureModeId(TexturePackageMode mode) {
     switch (mode) {
     case TexturePackageMode::CompactPng: return "compact_png";
+
     case TexturePackageMode::FastDds: return "fast_dds";
+
     case TexturePackageMode::Complete: return "complete";
     }
+
     return "compact_png";
 }
 
@@ -510,6 +559,7 @@ bool LoadUnusedResourcePaths(
     std::string& errorMessage) {
     const fs::path reportPath = projectRoot / "Resources" / ".cache" / "asset_audit" / "latest_report.json";
     std::ifstream file(reportPath, std::ios::binary);
+
     if (!file) {
         errorMessage = "Asset Auditの結果が見つかりません: " + PathToUtf8(reportPath);
         return false;
@@ -524,6 +574,7 @@ bool LoadUnusedResourcePaths(
     }
 
     const auto unusedIt = report.find("unusedAssets");
+
     if (unusedIt == report.end() || !unusedIt->is_array()) {
         errorMessage = "Asset Auditの結果にunusedAssetsがありません。";
         return false;
@@ -533,14 +584,17 @@ bool LoadUnusedResourcePaths(
         fs::path path = PathFromUtf8(utf8Path);
         std::wstring normalized = ToLowerWide(path.generic_wstring());
         constexpr std::wstring_view prefix = L"resources/";
+
         if (normalized.rfind(prefix, 0) != 0) {
             return;
         }
 
         normalized.erase(0, prefix.size());
+
         if (normalized.empty() || normalized.find(L"..") != std::wstring::npos) {
             return;
         }
+
         unusedPaths.insert(normalized);
         unusedPaths.insert(normalized + L".meta");
     };
@@ -549,14 +603,19 @@ bool LoadUnusedResourcePaths(
         if (!item.is_object()) {
             continue;
         }
+
         const auto pathIt = item.find("path");
+
         if (pathIt != item.end() && pathIt->is_string()) {
             registerPath(pathIt->get<std::string>());
         }
+
         const auto pairedIt = item.find("pairedFiles");
+
         if (pairedIt == item.end() || !pairedIt->is_array()) {
             continue;
         }
+
         for (const nlohmann::json& paired : *pairedIt) {
             if (paired.is_string()) {
                 registerPath(paired.get<std::string>());
@@ -576,12 +635,14 @@ bool CopyDirectoryFiltered(
     ResourceCopyStats& stats,
     std::string& errorMessage) {
     std::error_code ec;
+
     if (!fs::exists(source, ec) || !fs::is_directory(source, ec)) {
         errorMessage = "Resourcesフォルダが見つかりません: " + PathToUtf8(source);
         return false;
     }
 
     fs::create_directories(destination, ec);
+
     if (ec) {
         errorMessage = "Resourcesコピー先を作成できません: " + PathToUtf8(destination);
         return false;
@@ -591,6 +652,7 @@ bool CopyDirectoryFiltered(
     std::vector<ResourceFile> files;
     fs::recursive_directory_iterator it(source, fs::directory_options::skip_permission_denied, ec);
     const fs::recursive_directory_iterator end;
+
     if (ec) {
         errorMessage = "Resourcesを走査できません: " + ec.message();
         return false;
@@ -604,6 +666,7 @@ bool CopyDirectoryFiltered(
 
         const fs::path entryPath = it->path();
         const fs::path relative = fs::relative(entryPath, source, ec);
+
         if (ec) {
             errorMessage = "Resources内の相対パスを作れません: " + ec.message();
             return false;
@@ -617,6 +680,7 @@ bool CopyDirectoryFiltered(
                 it.disable_recursion_pending();
                 continue;
             }
+
             continue;
         }
 
@@ -625,10 +689,12 @@ bool CopyDirectoryFiltered(
         }
 
         const uint64_t bytes = static_cast<uint64_t>(it->file_size(ec));
+
         if (ec) {
             errorMessage = "ファイルサイズを取得できません: " + PathToUtf8(entryPath);
             return false;
         }
+
         ++stats.sourceFiles;
         stats.sourceBytes += bytes;
         files.push_back({ entryPath, relative, bytes });
@@ -638,17 +704,22 @@ bool CopyDirectoryFiltered(
     constexpr uint8_t kHasDds = 1 << 0;
     constexpr uint8_t kHasPng = 1 << 1;
     std::unordered_map<std::wstring, uint8_t> texturePairs;
+
     for (const ResourceFile& file : files) {
         const std::wstring extension = ToLowerWide(file.relative.extension().wstring());
         uint8_t flag = 0;
-        if (extension == L".dds") flag = kHasDds;
+        if (extension == L".dds")
+            flag = kHasDds;
         else if (extension == L".png") flag = kHasPng;
+
         if (flag != 0) {
             texturePairs[GetTexturePairKey(file.relative)] |= flag;
         }
     }
+
     for (const auto& [key, flags] : texturePairs) {
         (void)key;
+
         if ((flags & kHasDds) != 0 && (flags & kHasPng) != 0) {
             ++stats.texturePairs;
         }
@@ -657,6 +728,7 @@ bool CopyDirectoryFiltered(
     // 監査で未使用と判断された素材、次に指定モードで不要なテクスチャ形式を除外します。
     for (const ResourceFile& file : files) {
         const std::wstring normalizedRelative = ToLowerWide(file.relative.generic_wstring());
+
         if (unusedResourcePaths.find(normalizedRelative) != unusedResourcePaths.end()) {
             ++stats.skippedFiles;
             stats.skippedBytes += file.bytes;
@@ -671,6 +743,7 @@ bool CopyDirectoryFiltered(
         const bool hasPair = (pairFlags & kHasDds) != 0 && (pairFlags & kHasPng) != 0;
         const bool omitForCompact = textureMode == TexturePackageMode::CompactPng && extension == L".dds" && hasPair;
         const bool omitForFast = textureMode == TexturePackageMode::FastDds && extension == L".png" && hasPair;
+
         if (omitForCompact || omitForFast) {
             ++stats.skippedFiles;
             stats.skippedBytes += file.bytes;
@@ -681,16 +754,19 @@ bool CopyDirectoryFiltered(
 
         const fs::path target = destination / file.relative;
         fs::create_directories(target.parent_path(), ec);
+
         if (ec) {
             errorMessage = "コピー先フォルダを作成できません: " + PathToUtf8(target.parent_path());
             return false;
         }
 
         fs::copy_file(file.source, target, fs::copy_options::overwrite_existing, ec);
+
         if (ec) {
             errorMessage = "ファイルをコピーできません: " + PathToUtf8(file.source) + " -> " + PathToUtf8(target);
             return false;
         }
+
         ++stats.copiedFiles;
         stats.copiedBytes += file.bytes;
     }
@@ -708,11 +784,13 @@ fs::path FindMSBuildPath() {
     };
 
     std::error_code ec;
+
     for (const fs::path& candidate : candidates) {
         if (fs::exists(candidate, ec)) {
             return candidate;
         }
     }
+
     return fs::path(L"MSBuild.exe");
 }
 
@@ -724,6 +802,7 @@ bool RunAssetAudit(const fs::path& projectRoot, std::string& errorMessage) {
     // 未使用候補の除外を指定した場合だけ、収集前に最新の監査結果を生成します。
     const fs::path scriptPath = projectRoot / "tools" / "asset_audit" / "asset_audit.ps1";
     std::error_code ec;
+
     if (!fs::exists(scriptPath, ec) || !fs::is_regular_file(scriptPath, ec)) {
         errorMessage = "Asset Auditスクリプトが見つかりません: " + PathToUtf8(scriptPath);
         return false;
@@ -760,10 +839,12 @@ bool RunAssetAudit(const fs::path& projectRoot, std::string& errorMessage) {
     GetExitCodeProcess(processInfo.hProcess, &exitCode);
     CloseHandle(processInfo.hThread);
     CloseHandle(processInfo.hProcess);
+
     if (exitCode != 0) {
         errorMessage = "Asset Auditが失敗しました。ExitCode: " + std::to_string(exitCode);
         return false;
     }
+
     return true;
 }
 
@@ -771,6 +852,7 @@ bool RunMSBuild(const fs::path& projectRoot, const std::string& configuration, s
     // UI に指定された構成をパッケージ作成前にビルドし、失敗時は収集を始めません。
     const fs::path solution = projectRoot / "DirectXGame.sln";
     std::error_code ec;
+
     if (!fs::exists(solution, ec)) {
         errorMessage = "DirectXGame.slnが見つかりません: " + PathToUtf8(solution);
         return false;
@@ -820,6 +902,7 @@ bool RunMSBuild(const fs::path& projectRoot, const std::string& configuration, s
         errorMessage = "MSBuildが失敗しました。ExitCode: " + std::to_string(exitCode);
         return false;
     }
+
     return true;
 }
 
@@ -827,6 +910,7 @@ bool WriteLaunchBatch(const fs::path& destination, const std::string& exeName, s
     // 配布先自身を作業ディレクトリにして起動し、日本語を含むパスもUTF-8で扱う。
     const fs::path batchPath = destination / "launch.bat";
     std::ofstream file(batchPath, std::ios::binary);
+
     if (!file) {
         errorMessage = "launch.batを作成できません: " + PathToUtf8(batchPath);
         return false;
@@ -895,6 +979,7 @@ bool WritePackageManifest(
         { "omittedUnusedFiles", stats.omittedUnusedFiles },
         { "omittedUnusedBytes", stats.omittedUnusedBytes }
     };
+
     manifest["resourceExclusions"] = {
         "Resources/.cache",
         "Resources/.backup",
@@ -902,6 +987,7 @@ bool WritePackageManifest(
         "Resources/tools",
         "Resources/generated/editor"
     };
+
     manifest["notes"] = {
         "元のResourcesは変更していません。",
         "DDSとPNGは同一フォルダ・同一ファイル名のペアだけを整理しています。",
@@ -911,15 +997,19 @@ bool WritePackageManifest(
 
     const fs::path manifestPath = destination / "package_manifest.json";
     std::ofstream file(manifestPath, std::ios::binary);
+
     if (!file) {
         errorMessage = "package_manifest.jsonを作成できません: " + PathToUtf8(manifestPath);
         return false;
     }
+
     file << manifest.dump(2);
+
     if (!file) {
         errorMessage = "package_manifest.jsonを書き込めません: " + PathToUtf8(manifestPath);
         return false;
     }
+
     return true;
 }
 
@@ -928,12 +1018,15 @@ std::wstring QuotePowerShellLiteral(const std::wstring& value) {
     std::wstring escaped;
     escaped.reserve(value.size() + 2);
     escaped.push_back(L'\'');
+
     for (wchar_t c : value) {
         if (c == L'\'') {
             escaped.push_back(L'\'');
         }
+
         escaped.push_back(c);
     }
+
     escaped.push_back(L'\'');
     return escaped;
 }
@@ -945,12 +1038,15 @@ bool CreateZipArchive(
     const fs::path& zipPath,
     std::string& errorMessage) {
     std::error_code ec;
+
     if (!IsInsideDirectory(packageRoot, zipPath)) {
         errorMessage = "安全のためZIP出力先を操作できません: " + PathToUtf8(zipPath);
         return false;
     }
+
     if (fs::exists(zipPath, ec)) {
         fs::remove(zipPath, ec);
+
         if (ec) {
             errorMessage = "既存ZIPを削除できません: " + PathToUtf8(zipPath);
             return false;
@@ -995,6 +1091,7 @@ bool CreateZipArchive(
         errorMessage = "ZIP作成に失敗しました。ExitCode: " + std::to_string(exitCode);
         return false;
     }
+
     return true;
 }
 
@@ -1019,6 +1116,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
     try {
         const std::string packageName = SanitizePackageName(request.packageName);
         const fs::path projectRoot = FindProjectRoot();
+
         if (projectRoot.empty()) {
             return makeResult(false, "プロジェクトルートを検出できませんでした。");
         }
@@ -1026,17 +1124,21 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         // 必要なら収集前に指定構成をビルドし、監査による除外指定があれば索引を作り直します。
         if (request.buildBeforePackage) {
             std::string buildError;
+
             if (!RunMSBuild(projectRoot, request.configuration, buildError)) {
                 return makeResult(false, buildError);
             }
         }
 
         std::unordered_set<std::wstring> unusedResourcePaths;
+
         if (request.excludeUnusedResources) {
             std::string auditError;
+
             if (!RunAssetAudit(projectRoot, auditError)) {
                 return makeResult(false, auditError);
             }
+
             if (!LoadUnusedResourcePaths(projectRoot, unusedResourcePaths, auditError)) {
                 return makeResult(false, auditError);
             }
@@ -1046,6 +1148,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         const fs::path outputRoot = fs::weakly_canonical(projectRoot.parent_path() / "generated" / "outputs" / PathFromUtf8(request.configuration));
         const fs::path sourceExe = outputRoot / "DirectXGame.exe";
         std::error_code ec;
+
         if (!fs::exists(sourceExe, ec)) {
             return makeResult(false, "実行ファイルが見つかりません: " + PathToUtf8(sourceExe));
         }
@@ -1054,6 +1157,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         const fs::path packageRoot = projectRoot.parent_path() /
             (request.includeProject ? fs::path("SubmissionPackages") : fs::path("ExecutableSets"));
         fs::create_directories(packageRoot, ec);
+
         if (ec) {
             return makeResult(false, "パッケージ出力フォルダを作成できません: " + PathToUtf8(packageRoot));
         }
@@ -1071,31 +1175,37 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         // 中断された前回の一時Setと退避済み旧版を整理してから新しい一時Setを作ります。
         if (fs::exists(staging, ec)) {
             fs::remove_all(staging, ec);
+
             if (ec) {
                 return makeResult(false, "前回の一時フォルダを削除できません: " + PathToUtf8(staging));
             }
         }
+
         if (fs::exists(previous, ec)) {
             if (!fs::exists(destination, ec)) {
                 fs::rename(previous, destination, ec);
             } else {
                 fs::remove_all(previous, ec);
             }
+
             if (ec) {
                 return makeResult(false, "前回の完成済みSetを復旧・整理できません: " + PathToUtf8(previous));
             }
         }
 
         fs::create_directories(staging, ec);
+
         if (ec) {
             return makeResult(false, "一時出力先を作成できません: " + PathToUtf8(staging));
         }
+
         ScopedDirectoryCleanup stagingCleanup(staging);
 
         const fs::path runtimeDestination = request.includeProject
             ? staging / fs::path(L"実行ファイルセット")
             : staging;
         fs::create_directories(runtimeDestination, ec);
+
         if (ec) {
             return makeResult(false, "実行ファイルセットの出力先を作成できません: " + PathToUtf8(runtimeDestination));
         }
@@ -1103,23 +1213,28 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         // 実行Setへ本体とDLLを揃えた後、選別したResourcesと起動バッチ・Manifestを追加します。
         const std::string exeFileName = packageName + ".exe";
         fs::copy_file(sourceExe, runtimeDestination / PathFromUtf8(exeFileName), fs::copy_options::overwrite_existing, ec);
+
         if (ec) {
             return makeResult(false, "実行ファイルをコピーできません: " + PathToUtf8(sourceExe));
         }
 
         int copiedDlls = 0;
+
         for (const fs::directory_entry& entry : fs::directory_iterator(outputRoot, ec)) {
             if (ec) {
                 return makeResult(false, "ビルド出力フォルダを走査できません: " + PathToUtf8(outputRoot));
             }
+
             if (!entry.is_regular_file(ec) || entry.path().extension() != ".dll") {
                 continue;
             }
 
             fs::copy_file(entry.path(), runtimeDestination / entry.path().filename(), fs::copy_options::overwrite_existing, ec);
+
             if (ec) {
                 return makeResult(false, "DLLをコピーできません: " + PathToUtf8(entry.path()));
             }
+
             ++copiedDlls;
         }
 
@@ -1129,6 +1244,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         // Releaseの初回起動でDXCを待たないよう、ビルド済みShader Model 6を実行セットへ含める。
         const fs::path startupShaderCache = outputRoot / "StartupShaderCache";
+
         if (request.configuration == "Release" && fs::is_directory(startupShaderCache, ec)) {
             fs::copy(startupShaderCache, runtimeDestination / "StartupShaderCache",
                      fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
@@ -1150,6 +1266,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         }
 
         std::string batchError;
+
         if (!WriteLaunchBatch(runtimeDestination, exeFileName, batchError)) {
             return makeResult(false, batchError);
         }
@@ -1172,18 +1289,23 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         // 提出形式だけはソース側の project と README も同じ一時Setへまとめます。
         ProjectCopyStats projectStats;
+
         if (request.includeProject) {
             std::string projectCopyError;
+
             if (!CopyProjectFiltered(projectRoot, staging / "project", projectStats, projectCopyError)) {
                 return makeResult(false, projectCopyError);
             }
 
             if (request.includeReadMe) {
                 const fs::path readMeSource = projectRoot.parent_path() / "ReadMe.md";
+
                 if (!fs::exists(readMeSource, ec) || !fs::is_regular_file(readMeSource, ec)) {
                     return makeResult(false, "プロジェクト外のReadMe.mdが見つかりません: " + PathToUtf8(readMeSource));
                 }
+
                 fs::copy_file(readMeSource, staging / "ReadMe.md", fs::copy_options::overwrite_existing, ec);
+
                 if (ec) {
                     return makeResult(false, "ReadMe.mdを提出フォルダへコピーできません: " + PathToUtf8(readMeSource));
                 }
@@ -1192,23 +1314,31 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         // 完成後にだけ旧Setを退避して一時Setを正式名へ移します。移動失敗なら旧Setへ戻します。
         const bool hadPreviousSet = fs::exists(destination, ec);
+
         if (hadPreviousSet) {
             fs::rename(destination, previous, ec);
+
             if (ec) {
                 return makeResult(false, "既存の完成済みSetを退避できません: " + PathToUtf8(destination));
             }
         }
+
         fs::rename(staging, destination, ec);
+
         if (ec) {
             if (hadPreviousSet) {
                 std::error_code restoreError;
                 fs::rename(previous, destination, restoreError);
             }
+
             return makeResult(false, "完成した一時Setを移動できません: " + PathToUtf8(staging));
         }
+
         stagingCleanup.Release();
+
         if (hadPreviousSet) {
             fs::remove_all(previous, ec);
+
             if (ec) {
                 return makeResult(false, "新しいSetは完成しましたが、旧Setの退避フォルダを削除できません: " + PathToUtf8(previous));
             }
@@ -1217,11 +1347,13 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         // ZIP は正式Setから最後に作り、Set自体が完成した事実は失敗メッセージにも残します。
         if (request.createZip) {
             std::string zipError;
+
             if (!CreateZipArchive(packageRoot, destination, zipPath, zipError)) {
                 return makeResult(false, zipError + " / Setフォルダ自体は作成済みです。");
             }
         } else if (fs::exists(zipPath, ec)) {
             fs::remove(zipPath, ec);
+
             if (ec) {
                 return makeResult(false, "古い提出用ZIPを削除できません: " + PathToUtf8(zipPath));
             }
@@ -1237,14 +1369,17 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             message << " / 未使用候補除外 " << resourceStats.omittedUnusedFiles
                 << "件 (" << FormatMiB(resourceStats.omittedUnusedBytes) << ")";
         }
+
         if (request.includeProject) {
             message << " / project " << projectStats.copiedFiles << "件 (" << FormatMiB(projectStats.copiedBytes) << ")"
                 << " / project除外 " << projectStats.skippedFiles << "件・" << projectStats.skippedDirectories << "フォルダ";
         }
+
         if (request.createZip) {
             const uint64_t zipBytes = static_cast<uint64_t>(fs::file_size(zipPath, ec));
             message << " / ZIP " << FormatMiB(zipBytes);
         }
+
         return makeResult(true, message.str());
     } catch (const std::exception& e) {
         return makeResult(false, std::string("作成中に例外が発生しました: ") + e.what());

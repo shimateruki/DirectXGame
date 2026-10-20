@@ -12,7 +12,9 @@
 #include <algorithm>
 #include <filesystem>
 #include <string>
+#include <vector>
 #include <cstring>
+#include <limits>
 
 namespace fs = std::filesystem;
 
@@ -28,50 +30,69 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
   // ==========================================
   ImGui::Separator();
   ImGui::Text(ICON_FA_GHOST " 【パス移動 (GhostRecorder)】");
+  if (editor_->GetGhostRecorder() && ImGui::Button("このObjectの動きを作る##GhostRecorder")) {
+    editor_->GetGhostRecorder()->SetTarget(selectedObject);
+    EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostRecorder());
+  }
+
   if (selectedObject->GetGimmickType() == "MovingFloor") {
     auto* path = selectedObject->EnsurePathMoverComponent();
     const auto current = path->GetRideSequence();
+
     if (ImGui::BeginCombo("乗車開始タイムライン", current.empty() ? "(従来の移動)" : current.c_str())) {
-      if (ImGui::Selectable("(従来の移動)", current.empty())) path->SetRideSequence("");
+      if (ImGui::Selectable("(従来の移動)", current.empty()))
+          path->SetRideSequence("");
       const fs::path directory("Resources/json/scenario");
+
       if (fs::exists(directory)) for (const auto& entry : fs::directory_iterator(directory)) {
-        if (entry.path().extension() != ".json") continue;
+        if (entry.path().extension() != ".json")
+            continue;
         const auto candidate = entry.path().generic_string();
+
         if (ImGui::Selectable(entry.path().stem().string().c_str(), candidate == current)) {
           path->SetRideSequence(candidate);
           selectedObject->SetRecordPathName("");
-          if (selectedObject->recorder_) selectedObject->recorder_->Stop(false);
+          if (selectedObject->recorder_)
+              selectedObject->recorder_->Stop(false);
         }
       }
+
       ImGui::EndCombo();
     }
+
     if (!path->GetRideSequence().empty()) {
       ImGui::TextWrapped("乗ると出発し、終点で停止します。床は水平のまま平行移動させてください。死亡後、乗り場へ戻ると再準備します。旧Pathとは排他です。");
+
       if (ImGui::Button("演出タイムラインで編集##Ride") && editor_->GetGhostDirector()) {
         editor_->GetGhostDirector()->LoadScenario(fs::path(path->GetRideSequence()).stem().string());
         EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostDirector());
       }
+
       ImGui::TextWrapped("敵の乗り込み: Signal名 ride.board、対象に敵名。payload例: {\"duration\":1.1,\"height\":6,\"offset\":[-3,0,0]}。時刻はタイムラインで変更できます。");
       ImGui::TextWrapped("浮き岩: ride.wait_clear は対象の破壊待ち、ride.wait_switch は対象スイッチの操作待ちです。");
       ImGui::TextWrapped("ride.fireball の対象にマグマ噴出口を指定すると、甲板へ予告射撃します。発射時刻から警告時間+1.4秒以上の停船区間を設けてください。警告時間・弾半径・ダメージは噴出口のInspectorで調整できます。");
       return;
     }
   }
+
   std::string currentRecordPreview = selectedObject->GetRecordPathName().empty()
                                          ? "(なし)"
                                          : selectedObject->GetRecordPathName();
 
   if (ImGui::BeginCombo("パスデータ", currentRecordPreview.c_str())) {
     bool isNoneSelected = selectedObject->GetRecordPathName().empty();
+
     if (ImGui::Selectable("(なし)", isNoneSelected)) {
       selectedObject->SetRecordPathName("");
       if (selectedObject->recorder_)
         selectedObject->recorder_->Stop();
     }
+
     if (isNoneSelected)
       ImGui::SetItemDefaultFocus();
 
     std::string dirPath = "Resources/json/animation/";
+
     if (fs::exists(dirPath) && fs::is_directory(dirPath)) {
       for (const auto &entry : fs::directory_iterator(dirPath)) {
         if (entry.path().extension() == ".json") {
@@ -80,6 +101,7 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
 
           if (ImGui::Selectable(fileName.c_str(), isSelected)) {
             selectedObject->SetRecordPathName(fileName);
+
             if (selectedObject->recorder_) {
               bool isCinematic = selectedObject->IsCameraObject();
               selectedObject->recorder_->Play(
@@ -88,15 +110,36 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
                   selectedObject->IsRecordRelative(), isCinematic);
             }
           }
+
           if (isSelected)
             ImGui::SetItemDefaultFocus();
         }
       }
     }
+
     ImGui::EndCombo();
   }
 
+  auto* pathSettings = selectedObject->EnsurePathMoverComponent();
+  if (!selectedObject->IsCameraObject()) {
+    int playbackMode = static_cast<int>(pathSettings->GetPlaybackMode());
+    const char* modes[] = {"常時再生", "乗っている間再生（離れるとその場で保持）", "乗ると終点まで再生（離れても継続）"};
+    if (ImGui::Combo("再生条件", &playbackMode, modes, IM_ARRAYSIZE(modes))) {
+      pathSettings->SetPlaybackMode(static_cast<PathMoverComponent::PlaybackMode>(playbackMode));
+      // 再設定時は古い開始ラッチを破棄する。相対基準の累積を避けてから再開する。
+      if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
+        selectedObject->recorder_->Stop();
+        selectedObject->recorder_->Play(selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
+                                       selectedObject->IsRecordRelative(), false);
+      }
+    }
+    ImGui::TextWrapped("乗車条件は地面Colliderへの接地で判定します。横からの接触や敵の乗車では開始しません。");
+    if (pathSettings->GetPlaybackMode() == PathMoverComponent::PlaybackMode::RideToEnd)
+      ImGui::TextWrapped("終点まで1回再生して停止します（ループ指定より優先）。再実行はテスト再生またはシーン再開始で行います。");
+  }
+
   bool pathLoop = selectedObject->IsRecordLoop();
+
   if (ImGui::Checkbox("ループ再生##Record", &pathLoop)) {
     selectedObject->SetRecordLoop(pathLoop);
     if (selectedObject->recorder_ &&
@@ -107,7 +150,9 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
           selectedObject->IsRecordRelative(), isCinematic);
     }
   }
+
   bool pathRelative = selectedObject->IsRecordRelative();
+
   if (ImGui::Checkbox("配置位置を基準に移動（固定座標を解除）##Record", &pathRelative)) {
     selectedObject->SetRecordRelative(pathRelative);
     if (selectedObject->recorder_ &&
@@ -118,7 +163,18 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
           selectedObject->IsRecordRelative(), isCinematic);
     }
   }
+
   ImGui::TextDisabled("OFF: パスJSONの固定座標 / ON: Objectの配置位置 + パス内の移動量");
+
+  float phaseOffset = pathSettings->GetPhaseOffset();
+  if (ImGui::SliderFloat("開始タイミング##Record", &phaseOffset, 0.0f, 0.99f, "周期の %.2f")) {
+    pathSettings->SetPhaseOffset(phaseOffset);
+    if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
+      selectedObject->recorder_->Play(selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
+                                      selectedObject->IsRecordRelative(), selectedObject->IsCameraObject());
+    }
+  }
+
   if (ImGui::Button("テスト再生##Record")) {
     if (selectedObject->recorder_ &&
         !selectedObject->GetRecordPathName().empty()) {
@@ -136,8 +192,10 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
   if (!selectedObject) {
     return;
   }
+
   // 偽王の終幕調整は通常の共通パラメータでは表せないため、専用UIへ委譲します。
-  if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(selectedObject)) king->DrawFinaleEditor();
+  if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(selectedObject))
+      king->DrawFinaleEditor();
 
   // --- Game Data (Stats) ---
   ImGui::Separator();
@@ -153,6 +211,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
                                 "ゴール",
                                 "ステージセレクト",
                                 "スターコイン (StarCoin)"};
+
     if (ImGui::Combo(ICON_FA_FLAG " イベント種類", &currentItemIndex,
                      eventNames, IM_ARRAYSIZE(eventNames))) {
       // Goalへ切り替えた配置物はPlayerとの接触で発火できるよう、
@@ -160,6 +219,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       const EventType selectedEventType =
           static_cast<EventType>(currentItemIndex);
       selectedObject->SetEventType(selectedEventType);
+
       if (selectedEventType == EventType::Goal) {
         selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
         selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
@@ -181,6 +241,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
                                 "Gimmick", "Item",    "InvisibleBox", "Block"};
     std::string currentClass = selectedObject->GetClassName();
     int currentClassIndex = 0;
+
     for (int i = 0; i < IM_ARRAYSIZE(classItems); i++) {
       if (currentClass == classItems[i]) {
         currentClassIndex = i;
@@ -192,6 +253,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
     if (ImGui::Combo(ICON_FA_CUBES " Class Type", &currentClassIndex,
                      classItems, IM_ARRAYSIZE(classItems))) {
       selectedObject->SetClassName(classItems[currentClassIndex]);
+
       if (std::string(classItems[currentClassIndex]) == "Spawner") {
         if (selectedObject->GetName().find("Object") != std::string::npos)
           selectedObject->SetName("Spawner_New");
@@ -225,16 +287,19 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       DrawSpawnerSettings();
 
     ImGui::Spacing();
+
     if (selectedObject->GetClassName() == "Enemy") {
       ImGui::Indent();
       DrawEnemyTypeSelector();
       ImGui::Unindent();
     }
+
     if (selectedObject->GetClassName() == "Gimmick") {
       ImGui::Indent();
       DrawGimmickTypeSelector();
       ImGui::Unindent();
     }
+
     if (selectedObject->GetClassName() == "Item") {
       ImGui::Indent();
       DrawItemTypeSelector();
@@ -261,6 +326,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
             ImGui::TableSetColumnIndex(1);
             ImGui::Text(format, value);
           };
+
           drawValue("現在HP", "%.1f", p.hp);
           drawValue("最大HP", "%.1f", p.maxHp);
           drawValue("攻撃力倍率", "%.2f", p.attackPower);
@@ -275,6 +341,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         ImGui::TextDisabled(
             "ステータスは次回の生成・ロード時に自動設定されます。");
       }
+
       if (ImGui::Button(ICON_FA_SLIDERS_H
                         " ステータス管理を開く##CharacterStatus",
                         ImVec2(-1, 0)) &&
@@ -282,6 +349,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         EditorManager::GetInstance()->SetSelectedObject(
             editor_->GetStatusTuningWindow());
       }
+
       if (selectedObject->param_.has_value() &&
           selectedObject->param_->enemyType == "RingBurner") {
         // リング攻撃の半径と予告は個体ごとに異なる配置値なので共通ステータスとは分けます。
@@ -303,12 +371,14 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       ImGui::Indent();
 
       std::string gType = selectedObject->GetGimmickType();
+
       if (gType == "Trampoline") {
         ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力 (Jump Power)",
                          &p.jumpPower, 1.0f, 0.0f, 100.0f);
       } else if (gType == "SinkingFloor") {
         const char* modes[] = {"従来の浅い沈み込み", "踏むと水没して復帰"};
         ImGui::Combo("沈み方", &p.actionMode, modes, IM_ARRAYSIZE(modes));
+
         if (p.actionMode == 1) {
           ImGui::DragFloat("沈む深さ", &p.moveAmount, 0.1f, 0.1f, 100.0f);
           ImGui::DragFloat("昇降速度", &p.speed, 0.1f, 0.1f, 20.0f);
@@ -377,6 +447,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
           ImGui::DragFloat(ICON_FA_CLOCK " 有効時間", &p.interval, 0.1f, 0.1f,
                            60.0f, "%.1f s");
         }
+
         ImGui::TextDisabled(
             "Target ID と受信側の My Event ID を合わせてください");
       } else if (gType == "EventReceiver") {
@@ -417,6 +488,33 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         ImGui::TextDisabled("Target ID: 中ボスの My Event ID");
         ImGui::TextDisabled("My Event ID: 中ボス撃破時の Target ID");
         ImGui::TextDisabled("障壁は Target ID + 1 から障壁数ぶんを使用します");
+        // 高冠戦の入口に紐付ける演出Assetをシーンへ保存する。
+        const std::string currentCinematic = p.cinematicPath.empty() ? "(なし)" : fs::path(p.cinematicPath).stem().string();
+        if (ImGui::BeginCombo("登場演出JSON", currentCinematic.c_str())) {
+          if (ImGui::Selectable("(なし)", p.cinematicPath.empty())) p.cinematicPath.clear();
+          const fs::path directory("Resources/json/scenario");
+          std::error_code error;
+          std::vector<fs::path> files;
+          if (fs::is_directory(directory, error)) {
+            for (const auto& entry : fs::directory_iterator(directory)) {
+              if (entry.path().extension() == ".json") files.push_back(entry.path());
+            }
+          }
+          std::sort(files.begin(), files.end());
+          for (const auto& file : files) {
+            const std::string path = file.generic_string();
+            if (ImGui::Selectable(file.stem().string().c_str(), path == p.cinematicPath)) p.cinematicPath = path;
+          }
+          ImGui::EndCombo();
+        }
+        if (!p.cinematicPath.empty()) {
+          if (!fs::is_regular_file(p.cinematicPath))
+            ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.3f, 1.0f), "演出JSONが見つかりません");
+          if (ImGui::Button("GhostDirectorで編集##ArenaEncounter") && editor_->GetGhostDirector()) {
+            editor_->GetGhostDirector()->LoadScenario(fs::path(p.cinematicPath).stem().string());
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostDirector());
+          }
+        }
       } else if (gType == "GameplayVolume") {
         // モードごとにPayloadの用途が異なり、退出で戻せるのは一部のモードだけです。
         const char *volumeModes[] = {
@@ -428,22 +526,27 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         if (p.volumeMode == 3 || p.volumeMode == 4 || p.volumeMode == 5) {
           char payloadBuffer[256]{};
           strncpy_s(payloadBuffer, p.volumePayload.c_str(), _TRUNCATE);
+
           if (ImGui::InputText("Cue / Audio ID", payloadBuffer, sizeof(payloadBuffer))) {
             p.volumePayload = payloadBuffer;
           }
         }
+
         if (p.volumeMode == 5) {
           ImGui::DragFloat("切替時間", &p.volumeBlendDuration, 0.05f, 0.0f, 10.0f, "%.2f s");
         }
 
         ImGui::Checkbox("一度だけ実行", &p.volumeTriggerOnce);
         ImGui::Checkbox("退出時に実行", &p.volumeTriggerOnExit);
+
         if (!p.volumeTriggerOnce) {
           ImGui::DragFloat("再実行まで", &p.volumeRearmDelay, 0.05f, 0.0f, 60.0f, "%.2f s");
         }
+
         ImGui::Checkbox("開始時に有効", &p.startActive);
 
         const bool supportsReturn = (p.volumeMode == 0 || p.volumeMode == 4 || p.volumeMode == 5) && !p.volumeTriggerOnExit;
+
         // 設定値は保持したまま、実行時に意味のない組合せだけUI入力を抑止します。
         ImGui::BeginDisabled(!supportsReturn);
         ImGui::Checkbox("退出時にOFFへ戻す", &p.returnOnOff);
@@ -457,33 +560,31 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
           ImGui::TextDisabled("既存の落下・残機処理へ接続します");
         }
       } else if (gType == "CopyMemoryStation") {
-        // 空欄スロットはコアを表示しません。4台目の有効化では初期能力を入れ、
-        // OFFに戻すと空欄にして3台構成のScene JSONを維持します。
+        // 新しいコピー台は一台一能力。旧Sceneの複数スロットは表示したまま、編集時だけ単体へ移行します。
         const char* copyTypeIds[] = {
             "", "Slime", "FireSlime", "ThunderSlime", "WindSlime", "Bomber"};
         const char* copyTypeLabels[] = {
             "なし", "ピンクスライム", "炎スライム", "雷スライム", "風スライム", "ボムスライム"};
-        auto drawCopyType = [&](const char* label, std::string& value) {
-          int current = 0;
-          for (int index = 0; index < IM_ARRAYSIZE(copyTypeIds); ++index) {
-            if (value == copyTypeIds[index]) {
-              current = index;
-              break;
-            }
+        const bool legacyMulti = !p.copyMemoryTypeB.empty() || !p.copyMemoryTypeC.empty() || !p.copyMemoryTypeD.empty();
+        const std::string selectedType = !p.copyMemoryTypeA.empty() ? p.copyMemoryTypeA
+                                       : !p.copyMemoryTypeB.empty() ? p.copyMemoryTypeB
+                                       : !p.copyMemoryTypeC.empty() ? p.copyMemoryTypeC : p.copyMemoryTypeD;
+        int current = 0;
+        for (int index = 0; index < IM_ARRAYSIZE(copyTypeIds); ++index) {
+          if (selectedType == copyTypeIds[index]) {
+            current = index;
+            break;
           }
-          if (ImGui::Combo(label, &current, copyTypeLabels, IM_ARRAYSIZE(copyTypeLabels))) {
-            value = copyTypeIds[current];
-          }
-        };
-        ImGui::TextWrapped("能力が1個だけの場合は単独の補充台になります。不要なコアは「なし」にしてください。");
-        drawCopyType("コア1", p.copyMemoryTypeA);
-        drawCopyType("コア2", p.copyMemoryTypeB);
-        drawCopyType("コア3", p.copyMemoryTypeC);
-        bool fourthEnabled = !p.copyMemoryTypeD.empty();
-        if (ImGui::Checkbox("4台目を使う", &fourthEnabled)) {
-          p.copyMemoryTypeD = fourthEnabled ? "Bomber" : "";
         }
-        if (fourthEnabled) drawCopyType("コア4", p.copyMemoryTypeD);
+        if (ImGui::Combo("コピー能力", &current, copyTypeLabels, IM_ARRAYSIZE(copyTypeLabels))) {
+          p.copyMemoryTypeA = copyTypeIds[current];
+          p.copyMemoryTypeB.clear();
+          p.copyMemoryTypeC.clear();
+          p.copyMemoryTypeD.clear();
+        }
+        if (legacyMulti) {
+          ImGui::TextDisabled("旧式の複数台設定です。能力を選び直すと一台に変わります。");
+        }
         ImGui::DragFloat("コア接触半径", &p.copyMemoryActivationRadius,
                          0.02f, 0.35f, 1.4f, "%.2f m");
         ImGui::DragFloat("能力エッセンスの大きさ", &p.copyMemoryEssenceScale, 0.02f, 0.25f, 2.0f);
@@ -512,10 +613,12 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         // ここでは入力値だけを編集し、実際の参照解決は実行時へ委ねます。
         const char* modes[] = {"従来のスイッチ上下", "マグマ脱出：一定速度で上昇"};
         ImGui::Combo("液面の動作", &p.actionMode, modes, IM_ARRAYSIZE(modes));
+
         if (p.actionMode == 1) {
           ImGui::DragFloat("開始前の予告時間", &p.shakeDuration, 0.1f, 0.0f, 10.0f, "%.1f s");
           ImGui::TextWrapped("Target ID＝開始マーカー、+1＝終了、+2＝復帰。マーカーのScaleが進入範囲です。上下速度はm/s。連動床・火山弾のTarget IDをこの液面のMy Event IDへ接続します。出現床のMy Event IDとスイッチのTarget IDは液面ID+4、入口岩戸のMy Event IDは液面ID+5です。");
         }
+
         const char *liquidTypes[] = {"水", "マグマ"};
         ImGui::Combo("液体の種類", &p.colorType, liquidTypes,
                      IM_ARRAYSIZE(liquidTypes));
@@ -533,18 +636,28 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f,
                          0.1f, 10.0f, "%.2f s");
         ImGui::TextDisabled("触れたプレイヤーを炎上させ、上方向へ弾き返します");
+      } else if (gType == "WaterGeyser") {
+        // 移動床の実高さを使うため、独立した噴出高や攻撃設定は持たせない。
+        ImGui::DragFloat("水柱の半径", &p.detectionRange, 0.1f, 0.25f, 20.0f, "%.2f m");
+        ImGui::Checkbox("開始時に有効", &p.startActive);
+        ImGui::Checkbox("OFFで停止", &p.returnOnOff);
+        ImGui::TextWrapped("Target ID に持ち上げる移動床の My Event ID を指定します。移動床の乗車タイムラインで高さを調整してください。");
+        ImGui::TextWrapped("ride.waterjet 信号の on / off で噴射を切り替えます。水柱は床の底面まで伸び、接触ダメージはありません。");
       } else if (gType == "MagmaGeyser") {
         // 同じ噴出口でも噴射・火山弾・岩盤で使うパラメータが異なります。
         // 泡の予兆はObjectのparamではなくRendererの材質値として保存されます。
         const char* modes[] = {"噴射ダメージ", "火山弾", "岩盤を持ち上げる"};
         p.actionMode = (std::clamp)(p.actionMode, 0, 2);
         ImGui::Combo("噴出口の動作", &p.actionMode, modes, IM_ARRAYSIZE(modes));
+
         if (p.actionMode == 1) {
           ImGui::TextWrapped("泡の予兆から1発が真上に飛び出し、同じ場所へ落下します。ride.fireball は一度だけ噴出させる信号です。");
           ImGui::DragFloat("火山弾の半径", &p.healAmount, 0.05f, 0.25f, 2.0f);
           ImGui::TextWrapped("上吹き飛ばしの値が打ち上げ速度です。水平速度と回転Yは火の玉の軌道に使いません。");
         }
-        if (p.actionMode == 2) ImGui::TextWrapped("移動床のTarget IDをこのMy Event IDへ接続します。上面に噴射ダメージは発生しません。");
+
+        if (p.actionMode == 2)
+            ImGui::TextWrapped("移動床のTarget IDをこのMy Event IDへ接続します。上面に噴射ダメージは発生しません。");
         ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 警告時間", &p.shakeDuration,
                          0.05f, 0.2f, 10.0f, "%.2f s");
         ImGui::DragFloat(ICON_FA_FIRE " 噴出時間", &p.fallDuration, 0.05f, 0.2f,
@@ -615,21 +728,28 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         ImGui::TextDisabled("床番号 1 -> 2 -> 3 ... "
                             "の順に、当たり判定を残したまま180度回転します");
       } else if (gType == "FireCannon") {
-        const char *aimModes[] = {"前方固定", "プレイヤーを狙う", "放物線砲弾（着弾爆発）"};
+        const char *aimModes[] = {"前方固定", "プレイヤーを狙う", "放物線砲弾（着弾爆発）", "大型砲弾（砲口に沿って直進）"};
         ImGui::Combo("発射方向", &p.actionMode, aimModes,
                      IM_ARRAYSIZE(aimModes));
-        ImGui::DragFloat(ICON_FA_FIRE " 火球速度", &p.speed, 0.5f, 1.0f,
+        ImGui::DragFloat(ICON_FA_FIRE " 弾速", &p.speed, 0.5f, 1.0f,
                          120.0f);
         ImGui::DragFloat(ICON_FA_CLOCK " 発射間隔", &p.interval, 0.05f, 0.08f,
                          20.0f, "%.2f s");
-        ImGui::DragFloat(ICON_FA_CIRCLE " 火球サイズ", &p.moveAmount, 0.01f,
-                         0.1f, 5.0f);
-        ImGui::DragFloat(ICON_FA_SEARCH " 索敵範囲", &p.detectionRange, 0.5f,
-                         0.0f, 300.0f);
-        ImGui::DragFloat(ICON_FA_SYNC_ALT " 旋回速度 (度/秒)", &p.moveSpeed,
-                         1.0f, 1.0f, 720.0f);
+        ImGui::DragFloat(ICON_FA_CIRCLE " 弾の半径", &p.moveAmount, 0.01f,
+                         0.1f, (std::numeric_limits<float>::max)());
+        if (p.actionMode != 3) {
+            ImGui::DragFloat(ICON_FA_SEARCH " 索敵範囲", &p.detectionRange, 0.5f, 0.0f, 300.0f);
+        }
+        if (p.actionMode == 1) {
+            ImGui::DragFloat(ICON_FA_SYNC_ALT " 旋回速度 (度/秒)", &p.moveSpeed,
+                             1.0f, 1.0f, 720.0f);
+        }
         ImGui::Checkbox("開始時に有効", &p.startActive);
         ImGui::Checkbox("OFFで停止", &p.returnOnOff);
+
+        ImGui::Checkbox("編集停止中に発射をプレビュー", &p.editorPreviewFiring);
+        ImGui::TextDisabled("無害な弾道表示です。編集時は最短0.8秒間隔、同時表示数には上限があります");
+
         if (p.actionMode == 2) {
             ImGui::DragFloat("弾道の上昇高さ", &p.jumpPower, 0.1f, 3.0f, 20.0f);
             ImGui::DragFloat("砲弾の重力", &p.gravity, 0.2f, 4.0f, 60.0f);
@@ -637,6 +757,14 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
             ImGui::DragFloat("発射前の予告時間", &p.shakeDuration, 0.05f, 0.35f, 4.0f);
             ImGui::TextDisabled("予告開始時に着弾点を固定。着弾後の待機時間は発射間隔で調整します");
             ImGui::TextDisabled("専用モデル: Gimmicks/volcanic_mortar。火球速度・旋回速度は旧モード用です");
+        } else if (p.actionMode == 3) {
+            ImGui::DragFloat("弾の最大持続時間", &p.projectileLifetime, 0.05f, 0.2f, 20.0f, "%.2f s");
+            ImGui::DragFloat("爆風半径", &p.healAmount, 0.1f, 0.5f, 8.0f);
+            ImGui::TextDisabled("最大飛距離の目安: %.1f m", p.speed * p.projectileLifetime);
+            ImGui::TextDisabled("プレイ中は地形やプレイヤーとの衝突で早く消えることがあります");
+            ImGui::TextDisabled("砲口方向（モデル読込後の-Z）へ直進。Transformの回転で向きを調整します");
+            ImGui::TextDisabled("専用モデル: Gimmicks/volcanic_bombard");
+            ImGui::TextDisabled("飛行中の炎: GPUパーティクル cannon_burning_flame");
         } else {
             ImGui::TextDisabled("前方固定はローカルZ+方向に火球を撃ちます");
         }
@@ -652,45 +780,52 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
 
         if (p.actionMode == 0) {
           int stageIndex = selectedObject->GetTargetID();
+
           if (ImGui::InputInt("ステージ番号 (Target ID)", &stageIndex)) {
             selectedObject->SetTargetID(stageIndex);
           }
+
           ImGui::TextDisabled(
               "ステージセレクトで近づいて決定した時だけ使われます");
         } else if (p.actionMode == 1) {
-          const char *sceneValues[] = {"TITLE",    "TUTORIAL",  "SELECT",
-                                       "GAMEPLAY", "GAMECLEAR", "GAMEOVER",
-                                       "SETTING",  "PREVIEW"};
+          const char *sceneValues[] = {"TITLE", "TUTORIAL", "SELECT",
+                                       "GAMEPLAY", "GAMEOVER"};
           const char *sceneLabels[] = {
-              "タイトル",   "チュートリアル", "ステージセレクト",
-              "ゲーム本編", "ゲームクリア",   "ゲームオーバー",
-              "設定",       "プレビュー"};
+              "タイトル", "チュートリアル", "ステージセレクト",
+              "ゲーム本編", "ゲームオーバー", "設定"};
           int sceneIndex = 2;
+
           for (int i = 0; i < IM_ARRAYSIZE(sceneValues); ++i) {
             if (p.targetScene == sceneValues[i]) {
               sceneIndex = i;
               break;
             }
           }
+
           if (ImGui::Combo("転移先シーン", &sceneIndex, sceneLabels,
                            IM_ARRAYSIZE(sceneLabels))) {
             p.targetScene = sceneValues[sceneIndex];
           }
+
           if (p.targetScene.empty()) {
             p.targetScene = "SELECT";
           }
+
           ImGui::TextDisabled("プレイヤーが触れると指定シーンへ遷移します");
         } else if (p.actionMode == 2) {
           int stageIndex = selectedObject->GetTargetID();
+
           if (ImGui::InputInt("開始ステージ番号 (Target ID)", &stageIndex)) {
             selectedObject->SetTargetID(stageIndex);
           }
+
           ImGui::TextDisabled("プレイヤーが触れると指定ステージをセットしてゲー"
                               "ム本編へ遷移します");
         }
       } else {
         ImGui::TextDisabled("(この種類には個別設定がありません)");
       }
+
       ImGui::Unindent();
     } else if (selectedObject->GetClassName() == "Item") {
       // アイテム種別ごとの配置値はここへ集め、共通Objectの描画設定とは分けます。
@@ -702,6 +837,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       ImGui::Indent();
 
       std::string itemType = selectedObject->GetItemType();
+
       if (itemType == "Heal") {
         ImGui::DragFloat(ICON_FA_HEARTBEAT " 回復量", &p.healAmount, 0.1f, 0.0f,
                          999.0f);

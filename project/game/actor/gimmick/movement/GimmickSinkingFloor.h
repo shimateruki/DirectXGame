@@ -6,8 +6,10 @@ class GimmickSinkingFloor : public BaseGimmick {
   public:
     virtual ~GimmickSinkingFloor() = default;
 
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     bool OnCollision(engine::Object3d* other) override;
 
     std::unique_ptr<engine::Object3d> Clone() const override;
@@ -15,6 +17,7 @@ class GimmickSinkingFloor : public BaseGimmick {
   private:
     // 沈下段階ごとの位置と経過時間を進めます。
     void UpdateSubmerging(float deltaTime);
+
     int submergePhase_ = 0;
     float submergeTimer_ = 0.0f;
     engine::Vector3 startPos_ = {0.0f, 0.0f, 0.0f};

@@ -5,18 +5,25 @@
 // 中ボス戦中だけ立ち上がる、当たり判定付きのプリズム障壁です。
 class GimmickPrismBarrier : public BaseGimmick {
   public:
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     void OnTrigger() override;
+
     void OnSwitchEvent(bool active) override;
 
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     void CaptureAuthoredState(bool force = false);
+
     void ResetForEditor();
+
     void ApplyRuntimeVisual();
+
     void SetCollisionEnabled(bool enabled);
+
     float GetTransitionDuration() const;
 
     engine::Vector3 authoredPosition_{};

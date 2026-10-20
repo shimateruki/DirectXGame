@@ -1,0 +1,31 @@
+newmtl WarmBasalt0
+Kd 0.36000 0.24000 0.16000
+Ks 0.12 0.12 0.12
+Ns 20.00
+Pr 0.800
+Pm 0.000
+illum 2
+
+newmtl WarmBasalt1
+Kd 0.43000 0.30000 0.20000
+Ks 0.12 0.12 0.12
+Ns 20.00
+Pr 0.800
+Pm 0.000
+illum 2
+
+newmtl WarmBasalt2
+Kd 0.39000 0.26000 0.17000
+Ks 0.12 0.12 0.12
+Ns 20.00
+Pr 0.800
+Pm 0.000
+illum 2
+
+newmtl WarmBasalt3
+Kd 0.47000 0.33000 0.23000
+Ks 0.12 0.12 0.12
+Ns 20.00
+Pr 0.800
+Pm 0.000
+illum 2

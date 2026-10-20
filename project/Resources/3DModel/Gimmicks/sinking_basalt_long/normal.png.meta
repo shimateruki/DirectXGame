@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c2774c44c98d5a7438fd636d1a52fd4e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/sinking_basalt_long/normal.png",
+  "version": 1
+}

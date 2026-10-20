@@ -70,8 +70,11 @@ private:
     };
 
     Fade() = default;
+
     ~Fade() = default;
+
     Fade(const Fade&) = delete;
+
     Fade& operator=(const Fade&) = delete;
 
     // 素材の準備と、ポストエフェクト側に残った値の初期化。
@@ -91,10 +94,12 @@ private:
 
     // 被覆率に対応するフレームを描画し、画像がなければ黒画面へフォールバックする。
     void DrawFrameSequence(FrameSequence& sequence, float coverage);
+
     void DrawFallbackBlack(float alpha);
 
     // 現在の演出時間を 0～1 に正規化し、閉じる方向の演出かを判定する。
     float GetNormalizedTime() const;
+
     bool IsClosing() const;
 
 private:

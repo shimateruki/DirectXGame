@@ -1,11 +1,11 @@
 #include "EnemyBomber.h"
-#include "game/system/SceneGameplayAccess.h"
+#include "game/system/scene/SceneGameplayAccess.h"
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "EnemyBomb.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"
 #include "SceneManager.h"
@@ -81,24 +81,29 @@ engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
             return current;
         }
     }
+
     return nullptr;
 }
 } // namespace
+
 void EnemyBomber::BindSceneSpawnContext(BaseScene* scene) {
     // 生成した爆弾を元のシーンへ登録する。シーン切替時は古い登録先を外す。
     BaseEnemy::BindSceneSpawnContext(scene);
+
     if (!scene) {
         SetSpawnCallback(nullptr);
         return;
     }
+
     SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> spawned) {
-        if (!spawned) return;
+        if (!spawned)
+            return;
         spawned->BindSceneSpawnContext(scene);
         scene->AddObject(std::move(spawned));
     });
 }
 
-void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelName) {
+void EnemyBomber::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 最初の投擲だけ初期待機を使い、以後の投擲状態は待機から始める。
     BaseEnemy::Initialize(common, modelName);
     common_ = common;
@@ -132,6 +137,7 @@ void EnemyBomber::Update(float deltaTime) {
     float distance = 0.0f;
     engine::Vector3 direction{};
     const bool inRange = IsTargetInRange(&distance, &direction);
+
     if (inRange && throwState_ != ThrowState::LeapThrow) {
         UpdateFacing(direction);
     }
@@ -157,22 +163,26 @@ bool EnemyBomber::UpdateBlockedState(float deltaTime) {
         BaseEnemy::Update(deltaTime);
         return true;
     }
+
     if (isCarried_) {
         HideHeldBombVisual();
         BaseEnemy::Update(deltaTime);
         return true;
     }
+
     if (!target_ || isDead) {
         HideHeldBombVisual();
         HideAttackTelegraph();
         BaseEnemy::Update(deltaTime);
         return true;
     }
+
     if (IsThrowRecovering()) {
         HideHeldBombVisual();
         BaseEnemy::Update(deltaTime);
         return true;
     }
+
     return false;
 }
 
@@ -184,10 +194,12 @@ void EnemyBomber::EnsureBaseScaleForAnimation() {
 
     baseScale_ = GetScale();
     const float capturedMaxScale = (std::max)({std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z)});
+
     if (capturedMaxScale < 1.2f) {
         baseScale_ = {2.0f, 2.0f, 2.0f};
         SetScale(baseScale_);
     }
+
     hasBaseScale_ = true;
 }
 
@@ -225,10 +237,13 @@ void EnemyBomber::UpdateThrowState(float deltaTime, bool inRange) {
     case ThrowState::Idle:
         HideHeldBombVisual();
         throwTimer_ -= deltaTime;
+
         if (throwTimer_ <= 0.0f) {
             BeginThrow();
         }
+
         break;
+
     case ThrowState::Windup:
         windupTimer_ -= deltaTime;
         {
@@ -236,22 +251,28 @@ void EnemyBomber::UpdateThrowState(float deltaTime, bool inRange) {
             HideAttackTelegraph();
             UpdateHeldBombVisual(deltaTime);
         }
+
         if (windupTimer_ <= 0.0f) {
             BeginThrowLeap();
         }
+
         break;
+
     case ThrowState::LeapThrow:
         UpdateThrowLeap(deltaTime);
         break;
+
     case ThrowState::Landing:
         HideHeldBombVisual();
         HideAttackTelegraph();
         throwLandingTimer_ -= deltaTime;
+
         if (throwLandingTimer_ <= 0.0f) {
             throwTimer_ = throwInterval_;
             throwState_ = ThrowState::Idle;
             throwBombReleased_ = false;
         }
+
         break;
     }
 }
@@ -271,6 +292,7 @@ void EnemyBomber::ResetThrowStateAfterTargetLost() {
 void EnemyBomber::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 投げる前の手持ち爆弾は本体とは別オブジェクトなので追加描画する。
     BaseEnemy::Draw(pointLightResource, spotLightResource);
+
     if (heldBombVisual_ && heldBombVisual_->GetIsVisible()) {
         heldBombVisual_->Draw(pointLightResource, spotLightResource);
     }
@@ -296,6 +318,7 @@ bool EnemyBomber::IsTargetInRange(float* outDistance, engine::Vector3* outDirect
     toTarget.y = 0.0f;
 
     const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
+
     if (outDistance) {
         *outDistance = distance;
     }
@@ -317,6 +340,7 @@ bool EnemyBomber::IsTargetInRange(float* outDistance, engine::Vector3* outDirect
 void EnemyBomber::UpdateFacing(const engine::Vector3& direction) {
     // モデルの正面補正を加え、最短角で対象へ振り向く。
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
+
     if (lengthSq > 0.0001f) {
         const float targetYaw = std::atan2(direction.x, direction.z) + kBomberModelYawOffset;
         SetRotationY(engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f));
@@ -335,6 +359,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
     params.airborneStretch = 0.30f;
 
     engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+
     if (throwState_ == ThrowState::Windup) {
         const float chargeRate = GetThrowProgress();
         targetScale = SlimeBounceAnimator::MakeChargeSquash(baseScale_, chargeRate, idleTimer_, 0.92f);
@@ -354,6 +379,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         targetScale.y = baseScale_.y * (1.0f - impact * 0.24f + rebound);
         targetScale.z = baseScale_.z * (1.0f + impact * 0.22f - rebound * 0.25f);
     }
+
     if (throwRecoilTimer_ > 0.0f && throwState_ == ThrowState::Idle) {
         const float recoilRate = 1.0f - Saturate(throwRecoilTimer_ / kThrowRecoilDuration);
         const float kick = std::sin(recoilRate * kPi);
@@ -374,6 +400,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
     float yaw = animatedRotation.y;
     float pitch = 0.0f;
     float roll = 0.0f;
+
     if (throwState_ == ThrowState::Windup) {
         const float progress = GetThrowProgress();
         const float liftRate = SmoothStep01(progress / 0.55f);
@@ -391,16 +418,19 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         pitch = -0.12f * remainRate;
         roll = std::sin((1.0f - remainRate) * kPi) * 0.08f * throwSpinDirection_;
     }
+
     if (throwRecoilTimer_ > 0.0f && throwState_ != ThrowState::LeapThrow) {
         const float recoilRate = 1.0f - Saturate(throwRecoilTimer_ / kThrowRecoilDuration);
         const float kick = std::sin(recoilRate * kPi);
         pitch -= kick * 0.22f;
         roll += kick * 0.12f * footworkDirection_;
     }
+
     if (throwRecoverPoseTimer_ > 0.0f && throwState_ == ThrowState::Idle) {
         const float remainingRate = Saturate(throwRecoverPoseTimer_ / kThrowRecoverPoseDuration);
         roll += std::sin((1.0f - remainingRate) * kPi * 2.0f) * remainingRate * 0.10f;
     }
+
     engine::Vector3 targetRotation = {pitch, yaw, roll};
     ApplyDamageReactionPose(targetScale, targetRotation);
     SetRotation(targetRotation);
@@ -416,12 +446,14 @@ void EnemyBomber::UpdateHeldBombVisual(float deltaTime) {
     }
 
     EnsureHeldBombVisual();
+
     if (!heldBombVisual_) {
         return;
     }
 
     const float progress = (throwState_ == ThrowState::LeapThrow) ? 1.0f : GetThrowProgress();
     const float appearRate = SmoothStep01(progress / 0.28f);
+
     if (appearRate <= 0.03f) {
         heldBombVisual_->SetIsVisible(false);
         return;
@@ -503,6 +535,7 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const engine::Vector3& directi
 
     if (inRange) {
         footworkTimer_ -= deltaTime;
+
         if (footworkTimer_ <= 0.0f) {
             footworkDirection_ *= -1.0f;
             footworkTimer_ = 1.4f;
@@ -531,6 +564,7 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const engine::Vector3& directi
         velocity = CalculateWanderVelocity(deltaTime, kFootworkSpeed * 0.65f, 0.7f);
         engine::Vector3 wanderDirection = {velocity.x, 0.0f, velocity.z};
         const float lengthSq = wanderDirection.x * wanderDirection.x + wanderDirection.z * wanderDirection.z;
+
         if (lengthSq > 0.0001f) {
             const float targetYaw = std::atan2(wanderDirection.x, wanderDirection.z) + kBomberModelYawOffset;
             SetRotationY(engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f));
@@ -576,11 +610,13 @@ void EnemyBomber::BeginThrowLeap() {
 void EnemyBomber::UpdateThrowLeap(float deltaTime) {
     // 進行率が放出点を越えたフレームだけ本物の爆弾を生成する。
     throwLeapTimer_ -= deltaTime;
+
     if (!throwBombReleased_) {
         UpdateHeldBombVisual(deltaTime);
     }
 
     const float progress = GetThrowLeapProgress();
+
     if (!throwBombReleased_ && progress >= kThrowReleaseProgress) {
         ThrowBomb();
         throwBombReleased_ = true;
@@ -614,6 +650,7 @@ void EnemyBomber::ThrowBomb() {
     engine::Vector3 targetDirection = target_->GetTranslate() - bodyPos;
     targetDirection.y = 0.0f;
     float directionLength = std::sqrt(targetDirection.x * targetDirection.x + targetDirection.z * targetDirection.z);
+
     if (directionLength > 0.001f) {
         targetDirection.x /= directionLength;
         targetDirection.z /= directionLength;
@@ -635,6 +672,7 @@ void EnemyBomber::ThrowBomb() {
     engine::Vector3 toTarget = target_->GetTranslate() - spawnPos;
     toTarget.y = 0.0f;
     float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
+
     if (distance > 0.001f) {
         toTarget.x /= distance;
         toTarget.z /= distance;
@@ -666,6 +704,7 @@ void EnemyBomber::ThrowBomb() {
                                                         {0.0f, std::atan2(toTarget.x, toTarget.z), 0.0f},
                                                         {0.65f, 0.65f, 0.65f});
     }
+
     if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
         gpuParticleManager->Emit(kCarryBomberSparkPreset, releasePos);
     }
@@ -685,6 +724,7 @@ void EnemyBomber::SpawnBombObject(std::unique_ptr<BaseEnemy> bomb) {
     }
 
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager || !sceneManager->GetCurrentScene()) {
         return;
     }
@@ -692,5 +732,6 @@ void EnemyBomber::SpawnBombObject(std::unique_ptr<BaseEnemy> bomb) {
     if (!bomb->IsCarried()) {
         bomb->SetTarget(GetScenePlayer(sceneManager->GetCurrentScene()));
     }
+
     sceneManager->GetCurrentScene()->AddObject(std::move(bomb));
 }

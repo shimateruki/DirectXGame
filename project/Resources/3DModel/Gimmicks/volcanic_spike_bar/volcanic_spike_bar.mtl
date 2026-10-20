@@ -1,0 +1,23 @@
+newmtl ForgedIron
+Kd 0.12000 0.16000 0.19000
+Ks 0.12 0.12 0.12
+Ns 58.00
+Pr 0.420
+Pm 0.650
+illum 2
+
+newmtl HeatBronze
+Kd 0.40000 0.23000 0.09000
+Ks 0.12 0.12 0.12
+Ns 60.00
+Pr 0.400
+Pm 0.650
+illum 2
+
+newmtl SpikeIvoryMetal
+Kd 0.76000 0.59000 0.30000
+Ks 0.12 0.12 0.12
+Ns 65.00
+Pr 0.350
+Pm 0.500
+illum 2

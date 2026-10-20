@@ -28,6 +28,7 @@ float ReadArrayNumber(const json& value, std::size_t index, float fallback = 0.0
     if (!value.is_array() || index >= value.size() || !value[index].is_number()) {
         return fallback;
     }
+
     return value[index].get<float>();
 }
 
@@ -44,6 +45,7 @@ bool EditorPropertyDrawer::DrawValue(
         ? options.width
         : (options.compact ? -FLT_MIN : 430.0f);
     ImGui::SetNextItemWidth(width);
+    // 複数選択で値が異なるときはImGuiの混合値表示を使い、入力が確定した項目だけ書き戻す。
     ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, options.mixed);
 
     bool changed = false;
@@ -53,26 +55,32 @@ bool EditorPropertyDrawer::DrawValue(
     switch (property.type) {
     case EditorPropertyType::Bool: {
         bool current = value.is_boolean() ? value.get<bool>() : false;
+
         if (ImGui::Checkbox(id, &current)) {
             value = current;
             changed = true;
         }
+
         break;
     }
+
     case EditorPropertyType::Integer: {
         std::int64_t current = value.is_number_unsigned() || value.is_number_integer()
             ? value.get<std::int64_t>()
             : 0;
         if (!property.enumLabels.empty()) {
+            // 保存値が旧Enumの範囲外でも表示用Indexだけを抑え、変更前のJSON値は保持する。
             int enumValue = std::clamp(
                 static_cast<int>(current),
                 0,
                 static_cast<int>(property.enumLabels.size()) - 1);
             std::vector<const char*> labels;
             labels.reserve(property.enumLabels.size());
+
             for (const std::string& label : property.enumLabels) {
                 labels.push_back(label.c_str());
             }
+
             if (ImGui::Combo(id, &enumValue, labels.data(), static_cast<int>(labels.size()))) {
                 value = enumValue;
                 changed = true;
@@ -82,37 +90,50 @@ bool EditorPropertyDrawer::DrawValue(
             value = current;
             changed = true;
         }
+
         break;
     }
+
     case EditorPropertyType::Number: {
         float current = ReadNumber(value);
+
+        // 内部はラジアンのまま保持し、Inspectorで角度として見せるときだけ度へ換算する。
         if (ui.displayAsDegrees) {
             current *= kRadiansToDegrees;
         }
+
         if (ui.useSlider) {
             changed = ImGui::SliderFloat(id, &current, ui.minValue, ui.maxValue, format);
         }
         else {
             changed = ImGui::DragFloat(id, &current, ui.speed, ui.minValue, ui.maxValue, format);
         }
+
         if (changed) {
             if (ui.displayAsDegrees) {
                 current *= kDegreesToRadians;
             }
+
             value = current;
         }
+
         break;
     }
+
     case EditorPropertyType::String: {
+        // ImGuiの可変バッファへ一時コピーし、編集が成立した場合だけJSONを書き換える。
         std::array<char, 512> buffer = {};
         const std::string current = value.is_string() ? value.get<std::string>() : std::string();
         std::snprintf(buffer.data(), buffer.size(), "%s", current.c_str());
+
         if (ImGui::InputText(id, buffer.data(), buffer.size())) {
             value = std::string(buffer.data());
             changed = true;
         }
+
         break;
     }
+
     case EditorPropertyType::Vector2: {
         float current[2] = { ReadArrayNumber(value, 0), ReadArrayNumber(value, 1) };
         changed = ImGui::DragFloat2(
@@ -120,19 +141,24 @@ bool EditorPropertyDrawer::DrawValue(
         if (changed) {
             value = json::array({ current[0], current[1] });
         }
+
         break;
     }
+
     case EditorPropertyType::Vector3: {
+        // 回転ベクトルも各成分を表示用に換算し、保存時には元の単位へ戻す。
         float current[3] = {
             ReadArrayNumber(value, 0),
             ReadArrayNumber(value, 1),
             ReadArrayNumber(value, 2),
         };
+
         if (ui.displayAsDegrees) {
             for (float& component : current) {
                 component *= kRadiansToDegrees;
             }
         }
+
         changed = ImGui::DragFloat3(
             id, current, ui.speed, ui.minValue, ui.maxValue, format);
         if (changed) {
@@ -141,10 +167,13 @@ bool EditorPropertyDrawer::DrawValue(
                     component *= kDegreesToRadians;
                 }
             }
+
             value = json::array({ current[0], current[1], current[2] });
         }
+
         break;
     }
+
     case EditorPropertyType::Vector4: {
         float current[4] = {
             ReadArrayNumber(value, 0),
@@ -152,12 +181,14 @@ bool EditorPropertyDrawer::DrawValue(
             ReadArrayNumber(value, 2),
             ReadArrayNumber(value, 3, 1.0f),
         };
+
         changed = ui.useColorPicker
             ? ImGui::ColorEdit4(id, current, ImGuiColorEditFlags_Float)
             : ImGui::DragFloat4(id, current, ui.speed, ui.minValue, ui.maxValue, format);
         if (changed) {
             value = json::array({ current[0], current[1], current[2], current[3] });
         }
+
         break;
     }
     }

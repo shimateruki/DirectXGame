@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "80f787d8f31f4d6fa7f96bfb2a4286d6",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/volcanic_bombard/volcanic_bombard.obj",
+  "version": 1
+}

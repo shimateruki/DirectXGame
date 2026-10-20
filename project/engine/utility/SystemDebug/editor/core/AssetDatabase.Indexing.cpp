@@ -49,14 +49,17 @@ bool AssetDatabase::StartFilesystemWatcher() {
 
     // 監視対象は除外フォルダを避けた直下ディレクトリごとに作る。
     std::error_code error;
+
     for (const fs::directory_entry& entry : fs::directory_iterator(resourcesRoot_, error)) {
         if (error) {
             break;
         }
+
         if (!entry.is_directory(error) || ShouldSkipPath(entry.path())) {
             error.clear();
             continue;
         }
+
         addWatcher(
             entry.path(),
             TRUE,
@@ -76,6 +79,7 @@ void AssetDatabase::StopFilesystemWatcher() {
     for (void* rawHandle : changeNotificationHandles_) {
         FindCloseChangeNotification(static_cast<HANDLE>(rawHandle));
     }
+
     changeNotificationHandles_.clear();
     filesystemChangePending_ = false;
 }
@@ -94,19 +98,24 @@ std::vector<fs::path> AssetDatabase::CollectSourcePaths() {
         fs::directory_options::skip_permission_denied,
         error);
     const fs::recursive_directory_iterator end;
+
     while (!error && iterator != end) {
         const fs::directory_entry entry = *iterator;
+
         if (entry.is_directory(error) && ShouldSkipPath(entry.path())) {
             iterator.disable_recursion_pending();
         }
         else if (entry.is_regular_file(error) && !ShouldSkipPath(entry.path())) {
             const std::string extension = ToLowerAscii(entry.path().extension().string());
+
             if (extension != ".meta" && extension != ".tmp") {
                 sourcePaths.push_back(entry.path());
             }
         }
+
         iterator.increment(error);
     }
+
     if (error) {
         AddIssue(
             AssetDatabaseIssueSeverity::Error,
@@ -145,6 +154,7 @@ void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta, bool buildDDS
         persistentIndexCacheInitialized_ = true;
         LoadPersistentIndexCache();
     }
+
     pendingRefreshResult_.loadedPersistentCache = persistentIndexCacheAvailable_;
 
     std::error_code error;
@@ -165,6 +175,7 @@ void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta, bool buildDDS
 bool AssetDatabase::ProcessInitialIndexBuild() {
     // 一フレームの走査量を制限し、エディター操作を止めないようにします。
     const auto frameDeadline = std::chrono::steady_clock::now() + kInitialIndexFrameBudget;
+
     if (initialDirectoryScanInProgress_) {
         // 第1段階はファイル列挙だけを行い、meta読み込みとは別の予算で分割する。
         const fs::recursive_directory_iterator end;
@@ -173,18 +184,22 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
         while (pendingDirectoryIterator_ != end &&
                scannedThisFrame < kInitialDirectoryMaxEntriesPerFrame) {
             const fs::directory_entry entry = *pendingDirectoryIterator_;
+
             if (entry.is_directory(error) && ShouldSkipPath(entry.path())) {
                 pendingDirectoryIterator_.disable_recursion_pending();
             }
             else if (entry.is_regular_file(error) && !ShouldSkipPath(entry.path())) {
                 const std::string extension = ToLowerAscii(entry.path().extension().string());
+
                 if (extension != ".meta" && extension != ".tmp") {
                     pendingSourcePaths_.push_back(entry.path());
                 }
             }
+
             error.clear();
             pendingDirectoryIterator_.increment(error);
             ++scannedThisFrame;
+
             if (error) {
                 AddIssue(
                     AssetDatabaseIssueSeverity::Error,
@@ -193,6 +208,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
                 pendingDirectoryIterator_ = end;
                 break;
             }
+
             if (std::chrono::steady_clock::now() >= frameDeadline) {
                 break;
             }
@@ -208,18 +224,22 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
             return left.generic_string() < right.generic_string();
         });
         assets_.reserve(pendingSourcePaths_.size());
+
         if (pendingSourcePaths_.empty()) {
             CompleteInitialIndexBuild();
         }
+
         return true;
     }
 
     std::size_t processedThisFrame = 0;
+
     // 第2段階は永続キャッシュを優先し、変更されたファイルだけmetaを読み直す。
     while (pendingSourcePathIndex_ < pendingSourcePaths_.size() &&
            processedThisFrame < kInitialIndexMaxAssetsPerFrame) {
         const fs::path& sourcePath = pendingSourcePaths_[pendingSourcePathIndex_];
         EditorAssetRecord reusedRecord;
+
         if (TryReusePersistentAsset(sourcePath, pendingGuidOwners_, &reusedRecord)) {
             ++pendingRefreshResult_.reusedAssetCount;
             assets_.push_back(std::move(reusedRecord));
@@ -230,13 +250,16 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
                 pendingCreateMissingMeta_,
                 pendingGuidOwners_);
             ++pendingRefreshResult_.reparsedAssetCount;
+
             if (meta.success) {
                 if (meta.created) {
                     ++pendingRefreshResult_.createdMetaCount;
                 }
+
                 if (meta.updated) {
                     ++pendingRefreshResult_.updatedMetaCount;
                 }
+
                 StorePendingPersistentAsset(meta.record);
                 assets_.push_back(std::move(meta.record));
             }
@@ -244,6 +267,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
 
         ++pendingSourcePathIndex_;
         ++processedThisFrame;
+
         if (std::chrono::steady_clock::now() >= frameDeadline) {
             break;
         }
@@ -293,9 +317,11 @@ void AssetDatabase::CompleteInitialIndexBuild() {
 void AssetDatabase::RebuildLookupTables() {
     // パスとGUIDの直接検索、親ディレクトリからの一覧検索を同時に再構築する。
     std::unordered_map<std::string, std::set<std::string>> directorySets;
+
     for (std::size_t index = 0; index < assets_.size(); ++index) {
         const EditorAssetRecord& asset = assets_[index];
         assetIndexByPath_[ToLowerAscii(asset.sourcePath)] = index;
+
         if (!asset.guid.empty()) {
             assetIndexByGuid_[ToLowerAscii(asset.guid)] = index;
         }
@@ -305,19 +331,25 @@ void AssetDatabase::RebuildLookupTables() {
 
         // 各Assetの親をResourcesまでたどり、空ディレクトリを除いた階層を作る。
         fs::path current = fs::path(directory);
+
         while (!current.empty()) {
             const std::string currentPath = TrimTrailingSlash(current.generic_string());
+
             if (!StartsWithPath(ToLowerAscii(currentPath), ToLowerAscii(resourcesRootPath_))) {
                 break;
             }
+
             const fs::path parentPath = current.parent_path();
             const std::string parent = TrimTrailingSlash(parentPath.generic_string());
+
             if (!parent.empty() && currentPath != resourcesRootPath_) {
                 directorySets[ToLowerAscii(parent)].insert(currentPath);
             }
+
             if (currentPath == resourcesRootPath_) {
                 break;
             }
+
             current = parentPath;
         }
     }

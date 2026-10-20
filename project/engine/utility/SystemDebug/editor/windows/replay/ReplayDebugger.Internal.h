@@ -5,7 +5,7 @@
 #ifdef USE_IMGUI
 
 #include "BaseScene.h"
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "CaptureToolWindow.h"
 #include "Camera.h"
 #include "CameraManager.h"

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ac8b90c689ae52ae9267646770f46035",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/volcanic_spike_bar/volcanic_spike_bar.obj",
+  "version": 1
+}

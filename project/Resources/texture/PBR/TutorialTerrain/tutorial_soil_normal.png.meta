@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ee534d66d8854cea86f22a9e697f2dd2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/TutorialTerrain/tutorial_soil_normal.png",
+  "version": 1
+}

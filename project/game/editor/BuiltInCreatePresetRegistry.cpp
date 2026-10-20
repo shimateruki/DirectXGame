@@ -6,6 +6,7 @@
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include "json.hpp"
 
+#include <array>
 #include <fstream>
 #include <memory>
 #include <string>
@@ -19,7 +20,8 @@ namespace {
 // 自動更新される組み込み定義でも、ユーザーの表示名・用途・お気に入りを保ちます。
 void PreservePresetCatalogFields(const json& current, json& replacement) {
     for (auto it = current.begin(); it != current.end(); ++it) {
-        if (it.key().rfind("preset", 0) == 0) replacement[it.key()] = it.value();
+        if (it.key().rfind("preset", 0) == 0)
+            replacement[it.key()] = it.value();
     }
 }
 
@@ -29,8 +31,10 @@ bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr
     }
 
     PresetManager* manager = PresetManager::GetInstance();
+
     if (manager->HasPreset(presetName)) {
         const json& current = manager->GetPreset(presetName);
+
         if (!current.value("builtinCreateTemplate", false)) {
             return false;
         }
@@ -46,7 +50,8 @@ bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr
     data["builtinCreateTemplate"] = true;
 
     // 再生成しても表示用メタデータは保ち、内容が同じなら不要な保存を避けます。
-    if (manager->HasPreset(presetName)) PreservePresetCatalogFields(manager->GetPreset(presetName), data);
+    if (manager->HasPreset(presetName))
+        PreservePresetCatalogFields(manager->GetPreset(presetName), data);
     if (manager->HasPreset(presetName) && manager->GetPreset(presetName) == data) {
         return false;
     }
@@ -75,12 +80,16 @@ bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<engine::O
 bool RegisterOrRefreshPresetData(const std::string& presetName, json data) {
     // 内蔵テンプレートだけ更新し、カタログ側の表示情報は維持する。
     PresetManager* manager = PresetManager::GetInstance();
+
     if (manager->HasPreset(presetName)) {
         const json& current = manager->GetPreset(presetName);
+
         if (!current.value("builtinCreateTemplate", false)) {
             return false;
         }
+
         PreservePresetCatalogFields(current, data);
+
         if (current == data) {
             return false;
         }
@@ -112,6 +121,7 @@ struct Stage1PresetDefinition {
 std::unordered_map<std::string, json> LoadStage1PresetSources() {
     std::unordered_map<std::string, json> sources;
     std::ifstream file("Resources/json/3Dobject/stage1_object.json", std::ios::binary);
+
     if (!file.is_open()) {
         return sources;
     }
@@ -119,15 +129,19 @@ std::unordered_map<std::string, json> LoadStage1PresetSources() {
     try {
         json root;
         file >> root;
+
         if (!root.contains("objects") || !root["objects"].is_array()) {
             return sources;
         }
+
         // 配置名をキーに、後続の Preset 定義が参照する元オブジェクトを探せるようにします。
         for (const json& object : root["objects"]) {
             if (!object.is_object()) {
                 continue;
             }
+
             const std::string name = object.value("name", "");
+
             if (!name.empty()) {
                 sources.emplace(name, object);
             }
@@ -135,6 +149,7 @@ std::unordered_map<std::string, json> LoadStage1PresetSources() {
     } catch (...) {
         sources.clear();
     }
+
     return sources;
 }
 
@@ -157,6 +172,7 @@ json BuildStage1PresetData(const json& source, const Stage1PresetDefinition& def
     data["parentName"] = "";
     data["isLocked"] = false;
     data["myEventID"] = -1;
+
     // 収集物などで ID を持ち越す場合を除き、新規配置が既存 Event と接続しないよう解除します。
     if (!definition.preserveTargetId) {
         data["targetID"] = -1;
@@ -205,6 +221,7 @@ json BuildStage1PresetData(const json& source, const Stage1PresetDefinition& def
 // 元配置が存在する定義だけ登録・更新し、保存が必要な変更の有無を返します。
 bool RegisterStage1LibraryPresets() {
     const std::unordered_map<std::string, json> sources = LoadStage1PresetSources();
+
     if (sources.empty()) {
         return false;
     }
@@ -379,19 +396,23 @@ bool RegisterStage1LibraryPresets() {
 
     // 選択した元データだけをテンプレート化し、変更の有無を上位の保存処理へ返します。
     bool changed = false;
+
     for (const Stage1PresetDefinition& definition : definitions) {
         const auto source = sources.find(definition.sourceObjectName);
+
         if (source == sources.end()) {
             continue;
         }
+
         changed |= RegisterOrRefreshPresetData(
             definition.presetName,
             BuildStage1PresetData(source->second, definition));
     }
+
     return changed;
 }
 
-std::unique_ptr<engine::Object3d> CreateSpriteCardPreset(Object3dCommon* common) {
+std::unique_ptr<engine::Object3d> CreateSpriteCardPreset(engine::Object3dCommon* common) {
     auto object = std::make_unique<engine::Object3d>();
     object->Initialize(common);
     object->SetClassName("Model");
@@ -417,7 +438,7 @@ std::unique_ptr<engine::Object3d> CreateSpriteCardPreset(Object3dCommon* common)
 }
 }
 
-void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
+void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* common) {
     if (!common) {
         return;
     }
@@ -437,6 +458,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "FalseKingSlime", "偽王スライム（ステージ3ボス）" },
         { "RingBurner", "リングバーナー" },
     };
+
     for (const auto& [type, label] : enemies) {
         changed |= RegisterOrRefreshEnemyPreset("Builtin/Enemy/" + type,
             EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Enemy, type, common), label);
@@ -458,7 +480,6 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "EventReceiver", "イベント受信" },
         { "ArenaEncounter", "中ボス遭遇管理" },
         { "GameplayVolume", "ゲームプレイボリューム" },
-        { "CopyMemoryStation", "コピー記憶台" },
         { "PrismBarrier", "プリズム障壁" },
         { "BossGate", "ボス闘技場・黒格子ゲート" },
         { "HookPullBlock", "フック可動ブロック" },
@@ -471,9 +492,36 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "PhaseFlipFloor", "時間反転床" },
         { "StageGate", "ステージゲート" },
     };
+
     for (const auto& [type, label] : gimmicks) {
         changed |= RegisterPresetOnce("Builtin/Gimmick/" + type,
             EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Gimmick, type, common), label);
+    }
+
+    // コピー台は一台ごとに配置・移動できるよう、通常の五能力を個別Presetにします。
+    constexpr std::array<std::pair<const char*, const char*>, 5> copyStations = {{
+        {"Slime", "コピー台・ピンク"},
+        {"FireSlime", "コピー台・炎"},
+        {"ThunderSlime", "コピー台・雷"},
+        {"WindSlime", "コピー台・風"},
+        {"Bomber", "コピー台・ボム"},
+    }};
+    for (const auto& [copyType, label] : copyStations) {
+        auto station = EditorObjectFactoryRegistry::Create(
+            EditorObjectFactoryRegistry::Kind::Gimmick, "CopyMemoryStation", common);
+        if (!station) {
+            continue;
+        }
+        if (!station->param_) {
+            station->param_.emplace();
+        }
+        station->param_->copyMemoryTypeA = copyType;
+        station->param_->copyMemoryTypeB.clear();
+        station->param_->copyMemoryTypeC.clear();
+        station->param_->copyMemoryTypeD.clear();
+        station->SetModel("Gimmicks/copy_memory_station_single");
+        changed |= RegisterPresetOnce("Builtin/Gimmick/CopyMemoryStation/" + std::string(copyType),
+                                      std::move(station), label);
     }
 
     // 単体 Preset と Stage1 の配置由来 Preset を追加し、実変更があったときだけ書き出します。

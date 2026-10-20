@@ -23,7 +23,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.enabled", "Camera有効", "Camera", EditorPropertyType::Bool, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().enabled); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_boolean()) return false;
+            if (!value.is_boolean())
+                return false;
             object.GetSceneCameraSettings().enabled = value.get<bool>();
             return true;
         },
@@ -33,7 +34,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.role", "Camera役割", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().role)); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_integer()) return false;
+            if (!value.is_number_integer())
+                return false;
             object.GetSceneCameraSettings().role = static_cast<SceneCameraRole>(std::clamp(
                 value.get<int>(), static_cast<int>(SceneCameraRole::kMain), static_cast<int>(SceneCameraRole::kCinematic)));
             return true;
@@ -41,12 +43,14 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         cameraOnly,
         { "Main", "Cinematic" },
     });
+
     // 視野角とClip距離は、描画行列が破綻しない範囲へ制限する。
     Register({
         "camera.fov", "FOV", "Camera", EditorPropertyType::Number, CommonFlags(true),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().fovY); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.GetSceneCameraSettings().fovY = std::clamp(value.get<float>(), 0.05f, 3.0f);
             return true;
         },
@@ -56,7 +60,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.nearClip", "Near Clip", "Camera", EditorPropertyType::Number, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().nearClip); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             auto& settings = object.GetSceneCameraSettings();
             settings.nearClip = (std::max)(value.get<float>(), 0.001f);
             settings.farClip = (std::max)(settings.farClip, settings.nearClip + 0.01f);
@@ -68,19 +73,22 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.farClip", "Far Clip", "Camera", EditorPropertyType::Number, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().farClip); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             auto& settings = object.GetSceneCameraSettings();
             settings.farClip = (std::max)(value.get<float>(), settings.nearClip + 0.01f);
             return true;
         },
         cameraOnly,
     });
+
     // 視点の取得元、追従対象、オフセット、追従速度をひとまとまりで公開する。
     Register({
         "camera.eyeSource", "Eye取得元", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().eyeSource)); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_integer()) return false;
+            if (!value.is_number_integer())
+                return false;
             object.GetSceneCameraSettings().eyeSource = static_cast<SceneCameraEyeSource>(std::clamp(
                 value.get<int>(), static_cast<int>(SceneCameraEyeSource::kCameraObject), static_cast<int>(SceneCameraEyeSource::kSceneObject)));
             return true;
@@ -92,7 +100,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.eyeObject", "Eye追従Object", "Camera", EditorPropertyType::String, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().eyeObjectName); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_string()) return false;
+            if (!value.is_string())
+                return false;
             object.GetSceneCameraSettings().eyeObjectName = value.get<std::string>();
             return true;
         },
@@ -105,7 +114,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
             return json::array({ value.x, value.y, value.z });
         },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_array() || value.size() < 3) return false;
+            if (!value.is_array() || value.size() < 3)
+                return false;
             object.GetSceneCameraSettings().eyeOffset = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             return true;
         },
@@ -115,7 +125,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.eyeFollowMode", "Eye追従方式", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().eyeFollowMode)); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_integer()) return false;
+            if (!value.is_number_integer())
+                return false;
             object.GetSceneCameraSettings().eyeFollowMode =
                 static_cast<SceneCameraFollowMode>(std::clamp(
                     value.get<int>(), static_cast<int>(SceneCameraFollowMode::kSnap), static_cast<int>(SceneCameraFollowMode::kSmooth)));
@@ -128,18 +139,21 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.eyeFollowResponse", "Eye追従レスポンス", "Camera", EditorPropertyType::Number, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().eyeFollowResponse); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.GetSceneCameraSettings().eyeFollowResponse = (std::max)(value.get<float>(), 0.01f);
             return true;
         },
         cameraOnly,
     });
+
     // 注視点は固定点、シーン内Object、カメラ前方から選び、追従方法を別に指定する。
     Register({
         "camera.targetMode", "注視方法", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().targetMode)); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_integer()) return false;
+            if (!value.is_number_integer())
+                return false;
             object.GetSceneCameraSettings().targetMode = static_cast<SceneCameraTargetMode>(std::clamp(
                 value.get<int>(), static_cast<int>(SceneCameraTargetMode::kFixedPoint), static_cast<int>(SceneCameraTargetMode::kCameraForward)));
             return true;
@@ -151,7 +165,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.targetObject", "注視Object", "Camera", EditorPropertyType::String, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().targetObjectName); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_string()) return false;
+            if (!value.is_string())
+                return false;
             object.GetSceneCameraSettings().targetObjectName = value.get<std::string>();
             return true;
         },
@@ -164,7 +179,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
             return json::array({ value.x, value.y, value.z });
         },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_array() || value.size() < 3) return false;
+            if (!value.is_array() || value.size() < 3)
+                return false;
             object.GetSceneCameraSettings().targetOffset = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             return true;
         },
@@ -177,7 +193,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
             return json::array({ value.x, value.y, value.z });
         },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_array() || value.size() < 3) return false;
+            if (!value.is_array() || value.size() < 3)
+                return false;
             object.GetSceneCameraSettings().fixedTarget = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             return true;
         },
@@ -187,7 +204,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.forwardDistance", "前方距離", "Camera", EditorPropertyType::Number, CommonFlags(true),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().forwardDistance); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.GetSceneCameraSettings().forwardDistance = (std::max)(value.get<float>(), 0.01f);
             return true;
         },
@@ -197,7 +215,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.targetFollowMode", "Target追従方式", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().targetFollowMode)); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_integer()) return false;
+            if (!value.is_number_integer())
+                return false;
             object.GetSceneCameraSettings().targetFollowMode =
                 static_cast<SceneCameraFollowMode>(std::clamp(
                     value.get<int>(), static_cast<int>(SceneCameraFollowMode::kSnap), static_cast<int>(SceneCameraFollowMode::kSmooth)));
@@ -210,18 +229,21 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.targetFollowResponse", "Target追従レスポンス", "Camera", EditorPropertyType::Number, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().targetFollowResponse); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.GetSceneCameraSettings().targetFollowResponse = (std::max)(value.get<float>(), 0.01f);
             return true;
         },
         cameraOnly,
     });
+
     // 演出への出入り時間とEasingは、視点と注視点の計算結果を合成する際に使う。
     Register({
         "camera.blendIn", "Blend In", "Camera", EditorPropertyType::Number, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().blendInDuration); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.GetSceneCameraSettings().blendInDuration = (std::max)(value.get<float>(), 0.0f);
             return true;
         },
@@ -231,7 +253,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.blendOut", "Blend Out", "Camera", EditorPropertyType::Number, CommonFlags(),
         [](const engine::Object3d& object) { return json(object.GetSceneCameraSettings().blendOutDuration); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number()) return false;
+            if (!value.is_number())
+                return false;
             object.GetSceneCameraSettings().blendOutDuration = (std::max)(value.get<float>(), 0.0f);
             return true;
         },
@@ -241,7 +264,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         "camera.easing", "切替Easing", "Camera", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3d& object) { return json(static_cast<int>(object.GetSceneCameraSettings().easing)); },
         [](engine::Object3d& object, const json& value) {
-            if (!value.is_number_integer()) return false;
+            if (!value.is_number_integer())
+                return false;
             object.GetSceneCameraSettings().easing = static_cast<SceneCameraEasing>(std::clamp(
                 value.get<int>(), static_cast<int>(SceneCameraEasing::kLinear), static_cast<int>(SceneCameraEasing::kSmootherStep)));
             return true;
@@ -260,13 +284,15 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
             path, displayName, "Gameplay", EditorPropertyType::Number, CommonFlags(true),
             [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_number() || !object.param_.has_value()) return false;
+                if (!value.is_number() || !object.param_.has_value())
+                    return false;
                 object.param_.value().*member = value.get<float>();
                 return true;
             },
             gameplayParameterOnly,
         });
     };
+
     auto registerParamInteger = [this, gameplayParameterOnly](
         const char* path,
         const char* displayName,
@@ -275,13 +301,15 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
             path, displayName, "Gameplay", EditorPropertyType::Integer, CommonFlags(),
             [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_number_integer() || !object.param_.has_value()) return false;
+                if (!value.is_number_integer() || !object.param_.has_value())
+                    return false;
                 object.param_.value().*member = value.get<int>();
                 return true;
             },
             gameplayParameterOnly,
         });
     };
+
     auto registerParamBool = [this, gameplayParameterOnly](
         const char* path,
         const char* displayName,
@@ -290,13 +318,15 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
             path, displayName, "Gameplay", EditorPropertyType::Bool, CommonFlags(),
             [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_boolean() || !object.param_.has_value()) return false;
+                if (!value.is_boolean() || !object.param_.has_value())
+                    return false;
                 object.param_.value().*member = value.get<bool>();
                 return true;
             },
             gameplayParameterOnly,
         });
     };
+
     auto registerParamString = [this, gameplayParameterOnly](
         const char* path,
         const char* displayName,
@@ -305,7 +335,8 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
             path, displayName, "Gameplay", EditorPropertyType::String, CommonFlags(),
             [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_string() || !object.param_.has_value()) return false;
+                if (!value.is_string() || !object.param_.has_value())
+                    return false;
                 object.param_.value().*member = value.get<std::string>();
                 return true;
             },

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d282b85201f15a8291c4cf488776c092",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_GoalDais_Detail.obj",
+  "version": 1
+}

@@ -2,14 +2,14 @@
 #include "GimmickMagmaHazard.h"
 
 #include "CollisionConfig.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "Player.h"
 #include "SceneManager.h"
 
 #include <algorithm>
 #include <cmath>
 
-void GimmickMagmaHazard::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickMagmaHazard::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -22,6 +22,7 @@ void GimmickMagmaHazard::Initialize(Object3dCommon* common, const std::string& m
     SetMetallic(0.0f);
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
+
     // マグマ面は移動しないため、巨大Colliderを静的グリッドへ一度だけ登録する。
     SetStatic(true);
 
@@ -34,6 +35,7 @@ void GimmickMagmaHazard::Initialize(Object3dCommon* common, const std::string& m
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->speed = 12.0f;
     param_->interval = 0.8f;
 }
@@ -45,6 +47,7 @@ void GimmickMagmaHazard::Update(float deltaTime) {
     }
 
     const bool isPlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
+
     if (!isPlaying) {
         initializedForPlay_ = false;
         damageCooldownTimer_ = 0.0f;

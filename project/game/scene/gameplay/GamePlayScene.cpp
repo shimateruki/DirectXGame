@@ -2,7 +2,7 @@
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "engine/system/scene/SceneEngineIncludes.h"
 #include "SceneController.h"
-#include "game/system/GameSceneDrawing.h"
+#include "game/scene/GameSceneDrawing.h"
 #include "ParticleCommon.h"
 #include "Skybox.h"
 #include "Text.h"
@@ -11,18 +11,18 @@
 #include "game/ui/SettingsMenuOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 #include "imgui.h"
-#include <EventManager.h>
+#include <game/system/rules/EventManager.h>
 #include "DebugConsole.h"
 #include "ProfilerManager.h"
 #include "RenderStats.h"
 #include <cassert>
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "MoveStrategy3D.h"
 #include "MoveStrategy2D.h"
-#include "LevelLoader.h"
-#include "LockOnSystem.h"
-#include "GameRule.h"
-#include "ObjectManager.h"
+#include "game/system/scene/LevelLoader.h"
+#include "game/system/combat/LockOnSystem.h"
+#include "game/system/rules/GameRule.h"
+#include "game/system/scene/ObjectManager.h"
 #include "MeshEffectManager.h"
 #include "WinApp.h"
 #include "IconsFontAwesome5.h"
@@ -41,16 +41,16 @@
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include <game/actor/enemy/spawn/EnemyFactory.h>
 #include <game/actor/enemy/spawn/EnemySpawner.h>
-#include <GimmickFactory.h>
-#include <ItemFactory.h>
+#include <game/system/scene/GimmickFactory.h>
+#include <game/system/scene/ItemFactory.h>
 #include <LightEditor.h>
 #include <ParticleManager.h>
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
 #include "Fade.h"
-#include "StageManager.h"
-#include "GameDataManager.h"
+#include "game/system/progress/StageManager.h"
+#include "game/system/progress/GameDataManager.h"
 #include "game/actor/player/state/PlayerState.h"
 
 #include <algorithm>
@@ -61,6 +61,7 @@
 GamePlayScene::GamePlayScene() {
     // シーン固有リソースの生成はInitializeへまとめる。
 }
+
 GamePlayScene::~GamePlayScene() {
     // シーン固有リソースの終了はFinalizeへまとめる。
 }
@@ -90,14 +91,17 @@ void GamePlayScene::Draw() {
         }
     }
 
+    // ワールド描画に使う光源バッファを先に取得し、通常時と残機喪失演出で共有します。
     ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
     ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
 
+    // 残機喪失中は演出専用の世界だけを描き、通常のオブジェクト群を重ねません。
     if (lifeLostState_.IsActive()) {
         DrawLifeLostPresentationWorld(pointLightRes, spotLightRes);
         return;
     }
 
+    // 黒画面を保持する間はワールド描画を止め、UI側の遷移表示に任せます。
     if (lifeLostState_.HoldsBlack()) {
         return;
     }
@@ -120,6 +124,8 @@ void GamePlayScene::Draw() {
     // フックマーカーの描画（プレイヤーがカメラ外に判定されて非表示になってもマーカーだけは描画する）
     DrawCrownFinaleWorld();
     DrawCrownDefeatWorld();
+
+    // ロック対象の印は本体の視点非表示判定から独立させます。
     if (player_ && player_->GetHookMarker()) {
         player_->GetHookMarker()->Draw(pointLightRes, spotLightRes);
     }
@@ -136,6 +142,13 @@ void GamePlayScene::Draw() {
     // 半透明モデルは不透明物の深度が決まった後に描画します。
     DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Transparent, pointLightRes, spotLightRes,
         player_, isFirstPerson, true, {});
+
+    // 敵が所有する加算・半透明の攻撃表示は、床を含むシーンの深度が揃ってから重ねます。
+    for (const auto& object : objects) {
+        if (object && object->GetIsRenderVisible()) {
+            object->DrawOwnedTransparentVisuals(pointLightRes, spotLightRes);
+        }
+    }
     particleSystem_->Draw();
 
     // ローカルフォグは通常モデルと分け、深度を参照する描画区間へつなぎます。
@@ -144,6 +157,7 @@ void GamePlayScene::Draw() {
     // 画面色のコピーは高コストなので、流体または歪み粒子が必要なフレームだけ行います。
     // hasFluidにはObjectが所有する追加の特殊材質と弾の特殊描画も含めます。
     bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
+
     for (auto& obj : objects) {
         if (IsSpecialMaterialType(obj->GetMaterialType()) || obj->HasOwnedSpecialMaterialVisuals()) {
             hasFluid = true;
@@ -151,17 +165,20 @@ void GamePlayScene::Draw() {
         }
     }
 
+    // GPU粒子には背景色が必要な種類と深度だけを読む種類があるため、コピー要否を分けます。
     GPUParticleManager* gpuParticleManager = GPUParticleManager::GetInstance();
     const bool hasGPUParticles = !gpuParticleManager->IsEmpty();
     const bool gpuParticlesNeedGrab = hasGPUParticles && gpuParticleManager->RequiresSceneColorCopy();
     bool grabUpdated = false;
     const bool isCameraPreview = dxCommon_ && dxCommon_->IsCameraPreviewRendering();
+
     if (!isCameraPreview && (hasFluid || hasGPUParticles)) {
         // 特殊マテリアルか歪みパーティクルが背景色を使う時だけ、画面全体をコピーする。
         if (hasFluid || gpuParticlesNeedGrab) {
             dxCommon_->UpdateGrabTexture();
             grabUpdated = true;
         }
+
         // 水・炎・GPU粒子は深度をSRVとして読むため、この区間ではDSVを外します。
         // PostDrawLocalFogで描画先を戻すまでは、通常の3D描画を挟めません。
         dxCommon_->PreDrawLocalFog();
@@ -169,16 +186,20 @@ void GamePlayScene::Draw() {
         if (hasFluid) {
             for (auto& obj : objects) {
                 bool isPlayerPart = false;
+
                 if (isFirstPerson) {
                     engine::Object3d* current = obj.get();
+
                     while (current) {
                         if (current == player_) {
                             isPlayerPart = true;
                             break;
                         }
+
                         current = current->GetParent();
                     }
                 }
+
                 if (isPlayerPart)
                     continue; // 流体の場合は分身になることはないので単純スキップ
 
@@ -186,6 +207,7 @@ void GamePlayScene::Draw() {
                 obj->DrawSpecialMaterial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
                 obj->DrawOwnedSpecialMaterialVisuals(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
             }
+
             BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
         }
 
@@ -194,6 +216,7 @@ void GamePlayScene::Draw() {
                                      camera->GetProjectionMatrix(), gpuParticleTexHandle_,
                                      dxCommon_->GetDepthSrvHandle());
         }
+
         dxCommon_->PostDrawLocalFog();
     }
 
@@ -201,17 +224,20 @@ void GamePlayScene::Draw() {
     // カメラプレビュー中は本編画面のコピーを触らないため、このパスを飛ばします。
     {
         bool hasMeshEffects = false;
+
         for (auto& obj : objects) {
             if (!obj->GetMeshEffect1Name().empty() || !obj->GetMeshEffect2Name().empty()) {
                 hasMeshEffects = true;
                 break;
             }
         }
+
         if (!isCameraPreview && hasMeshEffects) {
             // GrabTextureがまだ更新されていなければ、ここで更新する
             if (!grabUpdated) {
                 dxCommon_->UpdateGrabTexture();
             }
+
             // 各オブジェクトのアタッチ済みエフェクトを描画
             for (auto& obj : objects) {
                 if (!obj->GetIsVisible())
@@ -230,6 +256,7 @@ void GamePlayScene::Draw() {
 void GamePlayScene::DrawUI() {
     // ワールド描画の後に2Dを重ねます。早期returnする演出は通常HUDと同時表示しません。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+
     if (lifeLostState_.IsActive() || lifeLostState_.HoldsBlack()) {
         DrawGameplayHUD();
         return;
@@ -240,40 +267,51 @@ void GamePlayScene::DrawUI() {
         DrawGoalPresentationOverlay();
         return;
     }
+
     // 黒帯を使うムービーでは通常HUD、照準、配置Sprite、案内をまとめて隠します。
     // 演出状態が解除された次のフレームから通常描画へ戻ります。
     if (stageEntryPresentationActive_ || arenaBossIntroActive_ || arenaBossRewardActive_ ||
         sealBarrageMovie_.active || crownFinale_.active || crownDefeat_.active) {
         return;
     }
+
     // JSON配置のSpriteとプレイヤーUIを描いた後、照準・HUD・モーダルの順に重ねます。
     for (auto& sprite : sprites_) {
         if (sprite && !IsGameplayHUDSprite(sprite.get())) {
             sprite->Draw();
         }
     }
+
+    // プレイヤー固有のUIはJSON配置の背景より手前、HUDとモーダルより奥に置きます。
     if (player_) {
         player_->DrawUI();
     }
+
     // プレイヤーの照準UIに埋もれないよう、選択対象のマーカーを後から描きます。
     if (isDrawLockOn_ && lockOnSprite_) {
         lockOnSprite_->Draw();
     }
+
     DrawGameplayHUD();
     DrawCrownFinaleUI();
+
     // 設定画面はポーズより手前に置き、保存通知はモーダルの後段へ描画します。
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
         controlsGuideOverlay_->Draw();
     }
+
     if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive() && !(settingsOverlay_ && settingsOverlay_->IsActive())) {
         pauseMenuOverlay_->Draw();
     }
+
     if (settingsOverlay_ && settingsOverlay_->IsActive()) {
         settingsOverlay_->Draw();
     }
+
     if (saveIndicatorOverlay_ && saveIndicatorOverlay_->IsActive()) {
         saveIndicatorOverlay_->Draw();
     }
+
     DrawGoalPresentationOverlay();
 }
 
@@ -287,14 +325,17 @@ void GamePlayScene::DrawShadow() {
 void GamePlayScene::StartBridgeDropMovie() {
     // 互換用の呼び出し口。現時点ではこの経路で演出を開始しない。
 }
+
 bool GamePlayScene::IsVisible(engine::Object3d* obj) {
     if (!obj || !obj->GetIsVisible()) {
         return false;
     }
+
     // 所有する槍・封印と王冠Morph中のプレイヤーは本体のAABBだけで除外しません。
     if (dynamic_cast<EnemyFalseKingSlime*>(obj) ||
         (obj == player_ && player_->GetEnemyMorphType() == Player::EnemyMorphType::Crown)) {
         return true;
     }
+
     return IsSceneObjectVisibleByFrustum(obj, CameraManager::GetInstance()->GetActiveCamera());
 }

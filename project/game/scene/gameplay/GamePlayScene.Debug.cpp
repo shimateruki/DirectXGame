@@ -8,10 +8,10 @@
 #include "BaseEnemy.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include "SceneManager.h"
-#include "GameDataManager.h"
-#include "LockOnSystem.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/combat/LockOnSystem.h"
 #include "game/actor/player/state/PlayerState.h"
 #include <algorithm>
 #include <cmath>
@@ -39,22 +39,29 @@ const char* GetDebugMorphDisplayName(Player::EnemyMorphType type) {
     switch (type) {
     case Player::EnemyMorphType::Slime:
         return "ピンクスライム";
+
     case Player::EnemyMorphType::Bomber:
         return "ボムスライム";
+
     case Player::EnemyMorphType::FireSlime:
         return "炎スライム";
+
     case Player::EnemyMorphType::ThunderSlime:
         return "雷スライム";
+
     case Player::EnemyMorphType::WindSlime:
         return "風スライム";
+
     case Player::EnemyMorphType::None:
         return "通常スライム";
+
     default:
         return "その他";
     }
 }
 #endif
 } // namespace
+
 void GamePlayScene::DrawImGui() {
 #ifdef USE_IMGUI
     // ステージ切替、プレイヤー状態、各ボスの演出確認をこのSceneのデバッグ面へ集める。
@@ -68,14 +75,17 @@ void GamePlayScene::DrawImGui() {
 
         ImGui::Text("ステージJSON切り替え");
         constexpr int kStageButtonCount = 5;
+
         for (int stageIndex = 0; stageIndex < kStageButtonCount; ++stageIndex) {
             const bool registered = stageIndex < static_cast<int>(stages.size());
             const bool isCurrent = stageIndex == currentIndex;
+
             if (!registered || isCurrent) {
                 ImGui::BeginDisabled();
             }
 
             std::string label = std::string(ICON_FA_PLAY) + " Stage " + std::to_string(stageIndex + 1);
+
             if (ImGui::Button(label.c_str(), ImVec2(112.0f, 30.0f)) && registered) {
                 StageManager::GetInstance()->SetCurrentStage(stageIndex);
                 SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
@@ -96,10 +106,12 @@ void GamePlayScene::DrawImGui() {
             ImGui::TextDisabled("3D: %s", currentStage.levelPath.c_str());
             ImGui::TextDisabled("Sprite: %s", currentStage.spritePath.c_str());
         }
+
         ImGui::Separator();
 
         // Combo側は選択だけを更新し、明示的なReloadボタンでSceneを読み直す。
         std::vector<const char*> stageNames;
+
         for (const auto& s : stages)
             stageNames.push_back(s.name.c_str());
 
@@ -126,13 +138,16 @@ void GamePlayScene::DrawImGui() {
 
         ImGui::Separator();
         ImGui::Text("Star Coins (Session):");
+
         for (int i = 0; i < 3; i++) {
             ImGui::SameLine();
+
             if (sessionStarCoins_[i]) {
                 ImGui::TextColored(ImVec4(1, 0.9f, 0, 1), ICON_FA_STAR);
             } else {
                 ImGui::TextDisabled(ICON_FA_STAR);
             }
+
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Star Coin %d", i);
         }
@@ -153,7 +168,9 @@ void GamePlayScene::DrawImGui() {
                     player_->param_->hp = 1.0f;
                 }
             }
+
             ImGui::SameLine();
+
             if (ImGui::Button(ICON_FA_SKULL " HPを0にする (Debug)")) {
                 if (player_->param_.has_value()) {
                     player_->param_->hp = 0.0f;
@@ -165,15 +182,19 @@ void GamePlayScene::DrawImGui() {
             int coins = GameDataManager::GetInstance()->GetCoins();
             ImGui::Text(ICON_FA_HEART " Remaining Lives: %d", lives);
             ImGui::Text(ICON_FA_COINS " Coins: %d / 100", coins);
+
             if (ImGui::Button("Reset Lives to 3")) {
                 GameDataManager::GetInstance()->ResetLives();
             }
+
             ImGui::SameLine();
+
             if (ImGui::Button("Reset Coins")) {
                 GameDataManager::GetInstance()->ResetCoins();
             }
 
             ImGui::Separator();
+
             // 移動先のAnchor、再生状態、プレイヤー生存状態を確認してから転送ボタンを有効にする。
             ImGui::Text("デバッグ移動");
             const bool debugRuntimePlaying = GetSceneManager() && GetSceneManager()->IsPlaying();
@@ -190,31 +211,39 @@ void GamePlayScene::DrawImGui() {
             if (!teleportStateReady || !hasPrismAnchor) {
                 ImGui::BeginDisabled();
             }
+
             if (ImGui::Button(ICON_FA_GEM " 中ボス前へ##DebugTeleport", ImVec2(teleportButtonWidth, 32.0f))) {
                 QueueDebugTeleport(DebugTeleportDestination::PrismArena);
             }
+
             if (!teleportStateReady || !hasPrismAnchor) {
                 ImGui::EndDisabled();
             }
 
             ImGui::SameLine();
+
             if (!teleportStateReady || !hasGoalAnchor) {
                 ImGui::BeginDisabled();
             }
+
             if (ImGui::Button(ICON_FA_FLAG_CHECKERED " ゴール前へ##DebugTeleport",
                               ImVec2(teleportButtonWidth, 32.0f))) {
                 QueueDebugTeleport(DebugTeleportDestination::GoalApproach);
             }
+
             if (!teleportStateReady || !hasGoalAnchor) {
                 ImGui::EndDisabled();
             }
+
             // ボタンが使えない理由と、移動に伴う状態解除をUI上にも明示する。
             if (!debugRuntimePlaying) {
                 ImGui::TextDisabled("編集状態を保持して再生を開始し、移動します。");
             }
+
             if (!hasPrismAnchor) {
                 ImGui::TextDisabled("中ボス前の移動先がありません。ステージ1を開いてください。");
             }
+
             if (stageEntryPresentationActive_) {
                 ImGui::TextDisabled("開始演出中でも、演出を安全に終了してから移動します。");
             } else {
@@ -222,6 +251,7 @@ void GamePlayScene::DrawImGui() {
             }
 
             ImGui::Separator();
+
             // 吸収を待たずに実装済み能力を確認するため、変身型を直接選べるようにする。
             ImGui::Text("デバッグ変身（時間制限なし）");
             ImGui::TextDisabled("現在: %s", GetDebugMorphDisplayName(player_->GetEnemyMorphType()));
@@ -246,15 +276,19 @@ void GamePlayScene::DrawImGui() {
             ImGui::SameLine();
 
             const bool hasMorph = player_->IsEnemyMorphed();
+
             if (!hasMorph) {
                 ImGui::BeginDisabled();
             }
+
             if (ImGui::Button("通常スライムへ戻す##DebugMorph", ImVec2(-1.0f, 30.0f))) {
                 ClearDebugPlayerMorph();
             }
+
             if (!hasMorph) {
                 ImGui::EndDisabled();
             }
+
             ImGui::TextDisabled("吸収演出を省略し、能力実装済みのスライムは固有技まで直接確認できます。");
         } else {
             ImGui::TextDisabled("Player not found");
@@ -264,6 +298,7 @@ void GamePlayScene::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_GEM " クリスタルスライム Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
         // 中ボスがScene内にいるときだけ、実際の撃破経路を使うテスト操作を出す。
         EnemyPrismSlime* prismBoss = FindPrismBossForHUD();
+
         if (prismBoss) {
             const float bossHp = prismBoss->GetEncounterCurrentHp();
             const float bossMaxHp = prismBoss->GetEncounterMaximumHp();
@@ -275,6 +310,7 @@ void GamePlayScene::DrawImGui() {
             if (ImGui::Button(ICON_FA_SKULL " 撃破演出を確認##DebugDefeatPrismSlime", ImVec2(-1.0f, 32.0f))) {
                 prismBoss->TriggerDebugDefeat();
             }
+
             ImGui::TextDisabled("実際のHPを0にして、撃破演出からバリア解除までを通して再生します。");
         } else {
             ImGui::TextDisabled("中ボス戦の開始後に使用できます。");
@@ -284,6 +320,7 @@ void GamePlayScene::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_CROWN " 偽王スライム Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
         // 各段階を飛ばす処理の可否はボス自身に問い合わせ、無効な操作を押せないようにする。
         EnemyFalseKingSlime* falseKing = FindFalseKingBossForHUD();
+
         if (falseKing) {
             const float bossHp = falseKing->GetEncounterCurrentHp();
             const float bossMaxHp = falseKing->GetEncounterMaximumHp();
@@ -303,6 +340,7 @@ void GamePlayScene::DrawImGui() {
                               ImVec2(-1.0f, 34.0f))) {
                 falseKing->TriggerDebugPhaseTwoTransition();
             }
+
             if (!canEndPhaseOne)
                 ImGui::EndDisabled();
 
@@ -313,6 +351,7 @@ void GamePlayScene::DrawImGui() {
                               ImVec2(-1.0f, 34.0f))) {
                 falseKing->TriggerDebugCrownInterlude();
             }
+
             if (!canStartInterlude)
                 ImGui::EndDisabled();
 
@@ -323,6 +362,7 @@ void GamePlayScene::DrawImGui() {
                               ImVec2(-1.0f, 34.0f))) {
                 falseKing->TriggerDebugDefeat();
             }
+
             if (!canDefeatFinalPhase)
                 ImGui::EndDisabled();
             ImGui::TextDisabled("上から順に確認できます。王冠継承・脱出は第1形態から直接再生することもできます。");
@@ -355,6 +395,7 @@ void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
     if (!player_ || !object3dCommon_ || !enemyType || enemyType[0] == '\0') {
         return;
     }
+
     if (player_->isDead || player_->IsCinematicLocked()) {
         DebugConsole::GetInstance()->AddLog("Debug morph skipped: player is unavailable.");
         return;
@@ -364,6 +405,7 @@ void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
     ClearDebugPlayerMorph();
 
     std::unique_ptr<BaseEnemy> source = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon_.get());
+
     if (!source || source->GetEnemyType().empty()) {
         DebugConsole::GetInstance()->AddLog(std::string("Debug morph create failed: ") + enemyType);
         return;
@@ -393,6 +435,7 @@ void GamePlayScene::ClearDebugPlayerMorph() {
     if (player_) {
         player_->DebugClearEnemyMorph();
     }
+
     debugPlayerMorphSource_.reset();
 }
 
@@ -408,6 +451,7 @@ void GamePlayScene::QueueDebugTeleport(DebugTeleportDestination destination) {
             return;
         }
     }
+
     pendingDebugTeleportDestination_ = destination;
     DebugConsole::GetInstance()->AddLog("Debug teleport queued for the next gameplay update.");
 }
@@ -415,6 +459,7 @@ void GamePlayScene::QueueDebugTeleport(DebugTeleportDestination destination) {
 void GamePlayScene::ProcessPendingDebugTeleport() {
     const DebugTeleportDestination destination = pendingDebugTeleportDestination_;
     pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
+
     if (destination == DebugTeleportDestination::None) {
         return;
     }
@@ -428,6 +473,7 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
     if (stageEntryPresentationActive_) {
         FinishStageEntryPresentation();
     }
+
     stageEntryPresentationPending_ = false;
     stageEntryPresentationCompleted_ = true;
     stageEntryRuntimeWasPlaying_ = true;
@@ -437,9 +483,11 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
     case DebugTeleportDestination::PrismArena:
         TeleportPlayerToDebugTarget(kDebugPrismArenaAnchorName, {18.0f, 0.0f, 5.0f}, kDebugPrismSlimeName, "中ボス前");
         break;
+
     case DebugTeleportDestination::GoalApproach:
         TeleportPlayerToDebugTarget(kDebugGoalEntryAnchorName, {0.0f, 0.0f, 0.0f}, kDebugGoalName, "ゴール前");
         break;
+
     case DebugTeleportDestination::None:
     default:
         break;
@@ -454,6 +502,7 @@ engine::Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) c
 
     std::vector<engine::Object3d*> objectsToVisit;
     objectsToVisit.reserve(objectManager_->GetObjects().size());
+
     for (const auto& object : objectManager_->GetObjects()) {
         if (object) {
             objectsToVisit.push_back(object.get());
@@ -463,15 +512,18 @@ engine::Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) c
     while (!objectsToVisit.empty()) {
         engine::Object3d* object = objectsToVisit.back();
         objectsToVisit.pop_back();
+
         if (object->GetName() == objectName) {
             return object;
         }
+
         for (engine::Object3d* child : object->GetChildren()) {
             if (child) {
                 objectsToVisit.push_back(child);
             }
         }
     }
+
     return nullptr;
 }
 
@@ -483,6 +535,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
     }
 
     engine::Object3d* anchor = FindDebugObjectByName(anchorName);
+
     if (!anchor) {
         DebugConsole::GetInstance()->AddLog(std::string("Debug teleport anchor not found: ") +
                                             (anchorName ? anchorName : "(null)"));
@@ -491,18 +544,22 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
 
     // 親子階層を含む編集直後のTransformも確定してから、コライダー上面を着地点にします。
     engine::Object3d* anchorRoot = anchor;
+
     while (anchorRoot->GetParent()) {
         anchorRoot = anchorRoot->GetParent();
     }
+
     anchorRoot->UpdateWorldMatrix(false);
 
     engine::Vector3 destination = anchor->GetWorldPosition() + anchorOffset;
     const AABB anchorBounds = anchor->GetAABB();
+
     if (anchorBounds.max.y > anchorBounds.min.y) {
         destination.y = anchorBounds.max.y + kDebugTeleportPlayerFloorClearance;
     }
 
     engine::Vector3 facingDirection = {1.0f, 0.0f, 0.0f};
+
     if (engine::Object3d* facingObject = FindDebugObjectByName(facingObjectName)) {
         facingDirection = facingObject->GetWorldPosition() - destination;
         facingDirection.y = 0.0f;
@@ -520,6 +577,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
     if (arenaBossIntroActive_) {
         FinishArenaBossIntro();
     }
+
     // プレイヤー内部の各コントローラーを一括解除し、次フレームの座標上書きを防ぎます。
     player_->DebugPrepareForTeleport();
     debugPlayerMorphSource_.reset();
@@ -534,10 +592,13 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
     player_->UpdateWorldMatrix();
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (lockOnSystem_) {
         lockOnSystem_->ResetLockOn(camera);
     }
+
     player_->SetLockOn(false);
+
     if (camera) {
         CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
         camera->EndOverride(0.0f);

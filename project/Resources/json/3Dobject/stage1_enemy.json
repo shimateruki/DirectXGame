@@ -336,9 +336,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.4687263071537018,
+                0.09071458131074905,
                 0.0,
-                0.8833434581756592
+                0.9958769083023071
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -347,7 +347,7 @@
             },
             "rotation": [
                 0.0,
-                0.9756966829299927,
+                0.1816789209842682,
                 0.0
             ],
             "roughness": 0.5,
@@ -454,9 +454,9 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                679.0,
-                15.100000381469727,
-                18.0
+                679,
+                2.1,
+                10.5
             ],
             "quaternion": [
                 0.0,
@@ -578,9 +578,9 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                712.0,
-                23.100000381469727,
-                -27.0
+                718,
+                0.1,
+                -26.5
             ],
             "quaternion": [
                 0.0,
@@ -959,6 +959,502 @@
                 0.0
             ],
             "roughness": 0.23999999463558197,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.36000001430511475,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5199999809265137,
+                    0.3700000047683716,
+                    0.5199999809265137
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                0.550000011920929,
+                0.75,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "501ec49e-f874-5133-9423-e5a251165b69",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Stage1_Coaster_Boarder_2",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                758,
+                1.1,
+                10.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.4000000059604645,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.36000001430511475,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5199999809265137,
+                    0.3700000047683716,
+                    0.5199999809265137
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                0.550000011920929,
+                0.75,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "a8fa7df6-3097-50b8-beb6-99e164b71ea4",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Stage1_Coaster_Boarder_3",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                758,
+                1.1,
+                -26.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.4000000059604645,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.36000001430511475,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5199999809265137,
+                    0.3700000047683716,
+                    0.5199999809265137
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                0.550000011920929,
+                0.75,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "c595947d-d921-5557-867a-69f01eedbd68",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Stage1_Coaster_Boarder_4",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                798,
+                2.1,
+                10.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.4000000059604645,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.36000001430511475,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5199999809265137,
+                    0.3700000047683716,
+                    0.5199999809265137
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                0.550000011920929,
+                0.75,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "4177b6cf-a842-538e-bf37-06964fabcd7a",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Stage1_Coaster_Boarder_5",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                798,
+                2.1,
+                -26.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.4000000059604645,
             "saveCategory": "Enemy",
             "tag": "",
             "targetID": -1,

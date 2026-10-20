@@ -19,7 +19,7 @@ void Framework::Initialize() {
         dxCommon_->Initialize(winApp_.get());
     }
 
-    InputManager::GetInstance()->Initialize(winApp_->GetHwnd());
+    engine::InputManager::GetInstance()->Initialize(winApp_->GetHwnd());
 
     audioPlayer_ = AudioPlayer::GetInstance();
     audioPlayer_->Initialize();
@@ -28,11 +28,13 @@ void Framework::Initialize() {
     dxCommon_->CreateDepthSrv();
     dxCommon_->CreateShadowMap();
     ImGuiManager::GetInstance()->Initialize(winApp_.get(), dxCommon_);
+
     // ModelManagerとTextureManagerの初期化
     {
         StartupProfileScope phase("ModelManager::Initialize");
         ModelManager::GetInstance()->Initialize(dxCommon_);
     }
+
     TextureManager::GetInstance()->Initialize(dxCommon_);
     LightManager::GetInstance()->Initialize(dxCommon_);
 
@@ -44,6 +46,7 @@ void Framework::Finalize() {
         // --- GPU処理が完全に終わるまで待機し、リセット ---
         dxCommon_->FlushCommandQueue();
     }
+
     AudioPlayer::GetInstance()->Finalize();
     ImGuiManager::GetInstance()->Finalize();
     ModelManager::GetInstance()->Finalize();

@@ -6,9 +6,12 @@ class GimmickHookPullBlock : public BaseGimmick {
   public:
     virtual ~GimmickHookPullBlock() = default;
 
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     bool OnCollision(engine::Object3d* other) override;
+
     std::unique_ptr<engine::Object3d> Clone() const override;
 
     /// <summary>フックを持つキャラクターへ向けてブロックの移動を開始します。</summary>

@@ -21,8 +21,13 @@ inline void RotateEvent(AttackSequenceEvent& event, engine::Vector3 ownerSize, f
 // 現在時刻へキーを置き、近接する既存キーの時刻と並び順を保ちます。
 inline bool PutKey(AttackSequenceTrack& track, AttackTransformKey key) {
     auto found = std::find_if(track.keys.begin(),track.keys.end(),[&](const auto& k){return std::abs(k.time-key.time)<0.0001f;});
-    if (found != track.keys.end()) { key.time=found->time; *found=key; return true; }
-    if(track.keys.size()>=128) return false;
+    if (found != track.keys.end()) {
+        key.time=found->time;
+        *found=key;
+        return true;
+    }
+    if(track.keys.size()>=128)
+        return false;
     track.keys.push_back(key);
     std::sort(track.keys.begin(),track.keys.end(),[](const auto& a,const auto& b){return a.time<b.time;});
     return true;

@@ -12,12 +12,15 @@ class PlayerBaseCombatController {
   public:
     // 通常攻撃の押下エッジを渡します。継続押下を毎フレーム true にしないでください。
     void ProcessInput(Player& player, bool attackTriggered);
+
     // deltaTime は秒。叩きつけと押し潰し、それぞれの準備・攻撃・硬直を進めます。
     void Update(Player& player, float deltaTime);
+
     // 中断時に一時演出を片付け、既定ではプレイヤー操作も戻します。
     void Cancel(Player& player, bool restoreControl = true);
 
     bool IsActive() const { return phase_ != Phase::Idle; }
+
     bool CanBreakImpactGate() const;
 
     // 再生位置の復元に必要な数値状態。ポインタ集合 hitTargets_ は保存対象外です。
@@ -31,17 +34,24 @@ class PlayerBaseCombatController {
     };
 
     ReplayState CaptureReplayState() const;
+
     void RestoreReplayState(const ReplayState& state);
 
   private:
     enum class Phase { Idle, BashWindup, BashActive, BashRecovery, PressWindup, PressFall, PressRecovery };
 
     void BeginBash(Player& player);
+
     void BeginPress(Player& player);
+
     void UpdateBash(Player& player, float deltaTime);
+
     void UpdatePress(Player& player, float deltaTime);
+
     void DamageBash(Player& player);
+
     void DamagePress(Player& player, bool landingImpact);
+
     void Finish(Player& player);
 
     Phase phase_ = Phase::Idle;

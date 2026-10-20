@@ -28,6 +28,7 @@ public:
 
     /// プリセット名からサムネイルTexture IDを解決する処理を登録する。
     void SetThumbnailProvider(std::function<uint64_t(const std::string&)> provider);
+
     /// 選択中のモデルだけに使う、視点操作付きプレビューの描画元を登録する。
     void SetPreviewProvider(std::function<uint64_t(const std::string&, float, float, float)> provider);
 
@@ -39,17 +40,24 @@ public:
 
     /// ProjectとInspectorで、同じカタログ・選択・配置操作を共有します。
     void DrawLibrary(bool fromProject = false);
+
     /// 下部のAssetドックを広げる予約を、レイアウト管理側で1回だけ受け取ります。
     bool ConsumeLibraryDockExpandRequest() { const bool requested = requestLibraryDockExpand_; requestLibraryDockExpand_ = false; return requested; }
+
     /// 選択プリセットの変化を通知する処理を登録する。
     void SetSelectionCallback(std::function<void()> callback);
+
     /// 更新されたサムネイルのキャッシュを破棄する処理を登録する。
     void SetThumbnailInvalidator(std::function<void(const std::string&)> callback);
+
     const std::string& GetSelectedPresetName() const { return selectedName_; }
+
     /// 保存キーと JSON からパレットに表示する名前を決める。
     std::string GetDisplayName(const std::string& key, const json& data) const;
+
     /// プリセットを選択する。notify が true のとき選択変更を通知する。
     void SelectPreset(const std::string& name, bool notify = true);
+
     /// 使用したプリセットを最近使った一覧へ反映する。
     void NotifyPresetUsed(const std::string& name);
 
@@ -71,6 +79,7 @@ private:
     };
 
     PresetEditor() = default;
+
     ~PresetEditor() = default;
 
     // パレット表示と配置操作。
@@ -216,6 +225,7 @@ private:
     std::vector<std::string> modelNames_;
     std::string selectedName_;
     Category activeCategory_ = Category::Stage1;
+
     // ステージ別パレットの選択。種類・検索条件とは独立して保持します。
     std::string stageCollection_ = "";
     char searchBuffer_[128]{};

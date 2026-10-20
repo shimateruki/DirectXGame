@@ -1,0 +1,114 @@
+{
+    "version": 6,
+    "name": "volcanic_spike_bar_spin",
+    "duration": 4,
+    "tracks": [
+        {
+            "name": "棘バー：水平回転",
+            "targetName": "VolcanicSpikeBar",
+            "targetEventId": -1,
+            "startTime": 0,
+            "enabled": true,
+            "muted": false,
+            "relative": true,
+            "holdLast": true,
+            "keys": [
+                {
+                    "time": 0,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0.0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        1.5707963267948966,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        3.141592653589793,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        4.71238898038469,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 4,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        6.283185307179586,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                }
+            ]
+        }
+    ]
+}

@@ -3,6 +3,7 @@
 
 namespace {
 using namespace CopyAbilityDetail;
+
 // ピンク能力の攻撃・ガード状態を制御し、ガード表示の寿命を能力セッションに結び付ける。
 class PinkSlimeCopyAbility final : public ICopyAbilitySession {
   public:
@@ -11,47 +12,60 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         if (auto* effects = MeshEffectManager::GetInstance())
             guardScope_ = effects->CreateEffectScope();
     }
+
     ~PinkSlimeCopyAbility() override {
         // コピー解除後にガードの膜だけが残らないよう、セッションの寿命で停止する。
         StopGuardVisuals();
     }
+
     const char* GetStateLabel() const override {
         // 同じ攻撃状態でも段数ごとに表示を分け、プレビューから進行を判別できるようにする。
         switch (state_) {
         case State::Idle:
             return "待機";
+
         case State::Guard:
             return "ガード中";
+
         case State::ElasticStrike:
             return comboStage_ == 2 ? "近接3段目: プレス"
                                     : (comboStage_ == 1 ? "近接2段目: 切り返し" : "近接1段目: ボディ打撃");
+
         case State::BounceCharge:
             return "E: 溜め";
+
         case State::BounceRise:
             return "E: 跳ね上がり";
+
         case State::BounceRush:
             return "E: 空中突進";
+
         case State::BounceRecovery:
             return "E: 着地硬直";
         }
+
         return "待機";
     }
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
         // 攻撃中の追加入力は移動や別技へ流さず、次段の予約として保持する。
         guardHeld_ = input.secondaryHeld;
+
         if (state_ == State::ElasticStrike) {
             // 長押しではなく追加クリックを1段分だけ予約します。
             if (input.primaryTriggered && comboStage_ < 2 && duration_ - timer_ >= 0.10f)
                 comboQueued_ = true;
             return;
         }
+
         if (input.specialTriggered) {
             bounceInputBuffer_ = kBounceInputBufferDuration;
         }
+
         if (state_ != State::Idle) {
             return;
         }
+
         if (input.secondaryTriggered && player.IsGrounded() && guardCooldown_ <= 0.0f) {
             state_ = State::Guard;
             guardTimer_ = 1.25f;
@@ -60,16 +74,18 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             direction_ = NormalizePlanar(player.GetForwardDirection());
             player.SetVelocity({0.0f, player.GetVelocity().y, 0.0f});
             player.SetIsControlActive(false);
-            player.SetGuardInvincible(true);
+            player.SetGuarding(true);
             player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::Guard);
             player.PlaySlimeAbilityMotion("player_ability_pink_guard", true, 1.0f, 0.05f, 0.08f);
             UpdateGuardVisuals(player);
             return;
         }
+
         if (bounceInputBuffer_ > 0.0f && CanStartBounceRush(player)) {
             BeginBounceCharge(player);
             return;
         }
+
         if (input.primaryTriggered && straightCooldown_ <= 0.0f && player.IsGrounded()) {
             // 短く踏み込んで全身を横に振り抜く地上打撃。長距離移動のEとは分離します。
             BeginElasticStrike(player);
@@ -96,9 +112,11 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
 
         const bool guardHitMotionWasActive = guardHitMotionTimer_ > 0.0f;
         guardHitMotionTimer_ = std::max(0.0f, guardHitMotionTimer_ - deltaTime);
+
         if (guardHitMotionWasActive && guardHitMotionTimer_ <= 0.0f && state_ == State::Guard) {
             player.PlaySlimeAbilityMotion("player_ability_pink_guard", true, 1.0f, 0.035f, 0.08f);
         }
+
         effectTimer_ -= deltaTime;
         storedPowerEffectTimer_ -= deltaTime;
 
@@ -114,13 +132,15 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
 
         if (state_ == State::Guard) {
             guardTimer_ = std::max(0.0f, guardTimer_ - deltaTime);
+
             if (!guardHeld_ || guardTimer_ <= 0.0f || !player.IsGrounded()) {
                 Finish(player);
                 return;
             }
+
             player.SetVelocity({0.0f, player.GetVelocity().y, 0.0f});
             player.SetIsControlActive(false);
-            player.SetGuardInvincible(true);
+            player.SetGuarding(true);
             player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::Guard);
             player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, direction_);
             if (effectTimer_ <= 0.0f)
@@ -133,6 +153,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             player.SetVelocity({0.0f, std::min(player.GetVelocity().y, 0.0f), 0.0f});
             player.SetIsControlActive(false);
             player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+
             if (effectTimer_ <= 0.0f) {
                 const float pulseScale = 0.72f + activeBouncePower_ * 0.28f;
                 SpawnEffect("Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
@@ -140,9 +161,11 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
                             {pulseScale, pulseScale, pulseScale});
                 effectTimer_ = 0.065f;
             }
+
             if (timer_ <= 0.0f) {
                 LaunchBounceRise(player);
             }
+
             return;
         }
 
@@ -160,6 +183,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             if (timer_ <= 0.0f || velocity.y <= 7.5f) {
                 BeginBounceRush(player);
             }
+
             return;
         }
 
@@ -195,14 +219,17 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
                 // 地面へ届かなかった場合は空中で衝撃を発生させず、操作だけ安全に返します。
                 Finish(player);
             }
+
             return;
         }
 
         if (state_ == State::BounceRecovery) {
             timer_ = std::max(0.0f, timer_ - deltaTime);
+
             if (timer_ <= 0.0f) {
                 Finish(player);
             }
+
             return;
         }
 
@@ -213,17 +240,21 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const float previousElapsed = duration_ - timer_;
         timer_ = std::max(0.0f, timer_ - deltaTime);
         const float elapsed = duration_ - timer_;
+
         // 攻撃中は移動を止めたまま、方向入力だけを受け付ける。
         // 見た目・踏み込み・エフェクト・攻撃判定が別方向にならないよう、共通の方向を更新する。
         const engine::Vector3 moveInput = player.GetMoveInputDirection();
+
         if (moveInput.x * moveInput.x + moveInput.z * moveInput.z > 0.001f) {
             const float currentYaw = std::atan2(direction_.x, direction_.z);
             const float targetYaw = std::atan2(moveInput.x, moveInput.z);
             const float yaw = AnimationInterpolation::DampAngle(currentYaw, targetYaw, 14.0f, deltaTime);
             direction_ = {std::sin(yaw), 0.0f, std::cos(yaw)};
         }
+
         const float hitStart = comboStage_ == 2 ? 0.40f : 0.22f;
         const float hitEnd = comboStage_ == 2 ? 0.49f : 0.36f;
+
         // 位置の直接書き換えはせず、通常の移動・壁衝突を通す短い踏み込み。
         const float stepOverlap = std::max(0.0f, std::min(elapsed, 0.34f) - std::max(previousElapsed, 0.18f));
         const float stepSpeed = (comboStage_ == 2 ? 0.0f : 8.0f) * stepOverlap / std::max(deltaTime, 0.0001f);
@@ -236,12 +267,15 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetIsControlActive(false);
         player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, direction_);
+
         if (!strikeDidDamage_ && elapsed >= hitStart && player.IsGrounded()) {
             strikeDidDamage_ = true;
+
             // 空振りでは振り抜きの軌跡のみ。命中の閃光は実際のダメージ処理に任せます。
             const engine::Vector3 origin =
                 player.GetWorldPosition() + direction_ * 0.55f + engine::Vector3{0.0f, comboStage_ == 2 ? 0.08f : 0.65f, 0.0f};
             const float effectYaw = std::atan2(direction_.x, direction_.z);
+
             if (comboStage_ == 2) {
                 // 閉じた輪ではなく、打点から地面を叩き散らす短い立体の衝撃線。
                 for (int i = 0; i < 7; ++i) {
@@ -250,6 +284,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
                     SpawnEffect("Resources/json/effect/effect_player_pink_combo_press.json", origin + offset,
                                 {-0.20f - 0.08f * static_cast<float>(i % 2), yaw, 0.0f});
                 }
+
                 // 打点の縦方向にも短い衝撃を立て、地面の線だけに見えないようにします。
                 for (int i = -1; i <= 1; ++i) {
                     SpawnEffect("Resources/json/effect/effect_player_pink_guard_impact.json", origin,
@@ -261,10 +296,12 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
                                              : "Resources/json/effect/effect_player_pink_body_sweep.json",
                             origin, {0.0f, effectYaw, comboStage_ == 1 ? kPi - 0.28f : 0.28f});
             }
+
             // 粒の散布ではなく、叩きつけた地面から短命の立体破片を出します。
             if (comboStage_ == 2)
                 SpawnDebrisOnGround("player_pink_press_chips", origin);
         }
+
         if (elapsed >= hitStart && previousElapsed <= hitEnd && player.IsGrounded()) {
             // 有効時間中の前方薙ぎ払い。同じ敵には1振りにつき1回だけ命中します。
             const engine::Vector3 scale = player.GetScale();
@@ -274,6 +311,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             PhysicsQueryFilter filter;
             filter.mask = CollisionCategories::Get("enemy");
             filter.ignoredObject = &player;
+
             for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
                      center, bodySize * (comboStage_ == 2 ? 1.05f : 0.78f), filter)) {
                 engine::Object3d* target = FindEnemyRoot(hit.object);
@@ -285,11 +323,13 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
                              push.z * (comboStage_ == 2 ? 10.0f : 4.0f)});
             }
         }
+
         if (timer_ <= 0.0f) {
             if (comboQueued_ && comboStage_ < 2 && player.IsGrounded()) {
                 BeginElasticStrike(player, comboStage_ + 1);
                 return;
             }
+
             Finish(player);
         }
     }
@@ -337,10 +377,12 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const engine::Vector3 contact = player.GetWorldPosition() + direction_ * radius +
                                 engine::Vector3{0.0f, (bounds.max.y - bounds.min.y) * 0.32f, 0.0f};
         const float yaw = std::atan2(direction_.x, direction_.z);
+
         for (int i = -1; i <= 1; ++i) {
             SpawnEffect("Resources/json/effect/effect_player_pink_guard_impact.json", contact,
                         {-0.25f, yaw + i * 0.65f, 0.0f});
         }
+
         UpdateGuardVisuals(player);
         return true;
     }
@@ -385,6 +427,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         duration_ = stage == 2 ? 0.86f : (stage == 1 ? 0.64f : 0.68f);
         straightCooldown_ = duration_;
         timer_ = duration_;
+
         // 2段目以降は前段で操作した向きを引き継ぎ、ロックオンへ急に向き直らない。
         if (stage == 0)
             direction_ = NormalizePlanar(player.GetLockOnAttackDirection());
@@ -474,12 +517,14 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
     void FinishBounceRush(Player& player) {
         // 地面に届いた場合だけ着地演出を出し、短い硬直を経て操作を返す。
         const engine::Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(player.GetWorldPosition());
+
         if (player.IsGrounded()) {
             SpawnDebrisOnGround("pink_slime_landing_pebble_burst", groundPosition);
             SpawnEffect("Resources/json/effect/effect_player_pink_straight_impact.json",
                         groundPosition + engine::Vector3{0.0f, 0.10f, 0.0f}, {}, {0.72f, 0.72f, 0.72f});
             player.TriggerSlimeImpulse({2.36f, 0.42f, 2.36f}, 0.12f);
         }
+
         state_ = State::BounceRecovery;
         timer_ = 0.18f;
     }
@@ -490,11 +535,14 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
         const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.68f, 0.0f};
+
         for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.35f, filter)) {
             engine::Object3d* target = FindEnemyRoot(hit.object);
+
             if (!target || !hitTargets_.insert(target).second) {
                 continue;
             }
+
             DamageEnemy(player, target, rushDamage_, DamageType::Physical,
                         {direction_.x * 12.0f, 5.5f, direction_.z * 12.0f});
             SpawnEffect("Resources/json/effect/effect_player_pink_straight_impact.json",
@@ -506,12 +554,15 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         if (state_ == State::Idle) {
             return;
         }
+
         if (state_ == State::Guard) {
             StopGuardVisuals();
+
             // 防御中に再使用待ちを消化させず、解除後に必ず隙を作ります。
             guardCooldown_ = std::max(guardCooldown_, 0.82f);
         }
-        player.SetGuardInvincible(false);
+
+        player.SetGuarding(false);
         player.SetDashInvincible(false);
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
         player.StopSlimeAbilityMotion(0.06f);

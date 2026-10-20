@@ -27,9 +27,11 @@ std::unordered_map<std::string, EnemyAttackProfile> gProfileCache;
 float ReadFloat(const json& object, const char* key, float fallback) {
     // 欠損やNaNを既定値へ戻し、後段の距離・秒数計算へ不正値を流さない。
     const auto it = object.find(key);
+
     if (it == object.end() || !it->is_number()) {
         return fallback;
     }
+
     const float value = it->get<float>();
     return std::isfinite(value) ? value : fallback;
 }
@@ -37,9 +39,11 @@ float ReadFloat(const json& object, const char* key, float fallback) {
 std::string ReadString(const json& object, const char* key, const std::string& fallback) {
     // 古いJSONにキーがなくても既定の表示名やアセット名を維持する。
     const auto it = object.find(key);
+
     if (it == object.end() || !it->is_string()) {
         return fallback;
     }
+
     return it->get<std::string>();
 }
 
@@ -50,6 +54,7 @@ engine::Vector3 ReadVector3(const json& object, const char* key, const engine::V
         !(*it)[2].is_number()) {
         return fallback;
     }
+
     return {(*it)[0].get<float>(), (*it)[1].get<float>(), (*it)[2].get<float>()};
 }
 
@@ -76,25 +81,43 @@ AttackProjectileComponent ReadProjectile(const json& source) {
     // 省略された項目は部品の既定値を使い、最後に組み合わせ全体を検証する。
     AttackProjectileComponent p;
     p.configured = true;
-    p.model = source.value("model", p.model); p.style = source.value("style", p.style);
+    p.model = source.value("model", p.model);
+    p.style = source.value("style", p.style);
     p.collisionEnabled = source.value("collisionEnabled", p.collisionEnabled);
-    p.radius = source.value("radius", p.radius); p.lifetime = source.value("lifetime", p.lifetime);
-    p.minSpeed = source.value("minSpeed", p.minSpeed); p.maxSpeed = source.value("maxSpeed", p.maxSpeed);
-    p.damage = source.value("damage", p.damage); p.visualScale = source.value("visualScale", p.visualScale);
-    p.trail = source.value("trail", p.trail); p.secondaryTrail = source.value("secondaryTrail", p.secondaryTrail);
-    p.impact = source.value("impact", p.impact); p.secondaryImpact = source.value("secondaryImpact", p.secondaryImpact);
+    p.radius = source.value("radius", p.radius);
+    p.lifetime = source.value("lifetime", p.lifetime);
+    p.minSpeed = source.value("minSpeed", p.minSpeed);
+    p.maxSpeed = source.value("maxSpeed", p.maxSpeed);
+    p.damage = source.value("damage", p.damage);
+    p.visualScale = source.value("visualScale", p.visualScale);
+    p.trail = source.value("trail", p.trail);
+    p.secondaryTrail = source.value("secondaryTrail", p.secondaryTrail);
+    p.impact = source.value("impact", p.impact);
+    p.secondaryImpact = source.value("secondaryImpact", p.secondaryImpact);
+
     if (source.contains("appearance")) {
-        const auto& j = source.at("appearance"); auto& a = p.appearance;
+        const auto& j = source.at("appearance");
+        auto& a = p.appearance;
+
         if (j.contains("color")) {
-            const auto& c = j.at("color"); a.red = c.at(0).get<float>(); a.green = c.at(1).get<float>();
-            a.blue = c.at(2).get<float>(); a.alpha = c.at(3).get<float>();
+            const auto& c = j.at("color");
+            a.red = c.at(0).get<float>();
+            a.green = c.at(1).get<float>();
+            a.blue = c.at(2).get<float>();
+            a.alpha = c.at(3).get<float>();
         }
-        a.emissive = j.value("emissive", a.emissive); a.effectScale = j.value("effectScale", a.effectScale);
-        a.softness = j.value("softness", a.softness); a.intensity = j.value("intensity", a.intensity);
+
+        a.emissive = j.value("emissive", a.emissive);
+        a.effectScale = j.value("effectScale", a.effectScale);
+        a.softness = j.value("softness", a.softness);
+        a.intensity = j.value("intensity", a.intensity);
         a.billboardScale = j.value("billboardScale", a.billboardScale);
-        a.trailInterval = j.value("trailInterval", a.trailInterval); a.trailSpeedScale = j.value("trailSpeedScale", a.trailSpeedScale);
+        a.trailInterval = j.value("trailInterval", a.trailInterval);
+        a.trailSpeedScale = j.value("trailSpeedScale", a.trailSpeedScale);
     }
-    if (!p.Validate()) throw std::runtime_error("弾部品の設定が不正です。");
+
+    if (!p.Validate())
+        throw std::runtime_error("弾部品の設定が不正です。");
     return p;
 }
 
@@ -102,8 +125,10 @@ AttackProjectileComponent ReadProjectile(const json& source) {
 json WriteSequence(const AttackSequenceDefinition& sequence) {
     // 時間順のイベントと見た目・判定トラックを一つの攻撃アセットに書き出す。
     json tracks = json::array();
+
     for (const auto& track : sequence.tracks) {
         json keys = json::array();
+
         for (const auto& key : track.keys)
             keys.push_back({{"time", key.time}, {"position", key.position}, {"rotation", key.rotation},
                 {"scale", key.scale}, {"interpolation", key.interpolation}});
@@ -117,7 +142,9 @@ json WriteSequence(const AttackSequenceDefinition& sequence) {
             {"begin", track.begin}, {"end", track.end}, {"radius", track.radius},
             {"damageScale", track.damageScale}, {"keys", keys}});
     }
+
     json events = json::array();
+
     for (const auto& e : sequence.events) {
         events.push_back({{"time", e.time}, {"operation", e.operation}, {"condition", e.condition},
             {"stopOnFalse", e.stopOnFalse}, {"offset", {e.right, e.up, e.forward}},
@@ -128,8 +155,10 @@ json WriteSequence(const AttackSequenceDefinition& sequence) {
             {"count", e.count}, {"spreadDegrees", e.spreadDegrees}, {"preset", e.preset}});
         events.back()["name"] = e.name;
         events.back()["enabled"] = e.enabled;
-        if (e.projectile.configured) events.back()["projectile"] = WriteProjectile(e.projectile);
+        if (e.projectile.configured)
+            events.back()["projectile"] = WriteProjectile(e.projectile);
     }
+
     const auto& a = sequence.fireAppearance;
     const json appearance = {{"color", {a.red, a.green, a.blue, a.alpha}}, {"emissive", a.emissive},
         {"effectScale", a.effectScale}, {"softness", a.softness}, {"intensity", a.intensity},
@@ -150,16 +179,20 @@ json WriteSequence(const AttackSequenceDefinition& sequence) {
 void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
     // 外部アセット参照があればそれを優先し、なければJSON内のトラックを復元する。
     const std::string assetPath = source.value("assetPath", std::string{});
+
     if (!assetPath.empty()) {
         std::string error;
         sequence.binding = source.value("binding", std::string("enemy"));
         sequence.priority = source.value("priority", 0);
-        if (!EnemyAttackProfile::LoadSequenceAsset(assetPath, sequence, &error)) throw std::runtime_error(error);
+        if (!EnemyAttackProfile::LoadSequenceAsset(assetPath, sequence, &error))
+            throw std::runtime_error(error);
         sequence.enabled = source.value("enabled", true);
         return;
     }
+
     sequence.assetPath.clear();
     sequence.tracks.clear();
+
     for (const auto& item : source.value("tracks", json::array())) {
         AttackSequenceTrack track;
         track.name = item.value("name", track.name);
@@ -186,6 +219,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
         track.radius = item.value("radius", 0.5f);
         track.damageScale = item.value("damageScale", 1.0f);
         track.keys.clear();
+
         for (const auto& entry : item.at("keys")) {
             AttackTransformKey key;
             key.time = entry.at("time").get<float>();
@@ -195,33 +229,49 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
             key.interpolation = entry.value("interpolation", 1);
             track.keys.push_back(key);
         }
+
         sequence.tracks.push_back(std::move(track));
     }
+
     sequence.enabled = source.value("enabled", false);
     sequence.binding = source.value("binding", std::string("enemy"));
     sequence.priority = source.value("priority", 0);
     sequence.duration = source.value("duration", 0.42f);
     sequence.actorControl = {};
+
     if (source.contains("actorControl")) {
-        const auto& j = source.at("actorControl"); auto& c = sequence.actorControl;
-        c.enabled = j.value("enabled", c.enabled); c.stopMovement = j.value("stopMovement", c.stopMovement);
-        c.faceTarget = j.value("faceTarget", c.faceTarget); c.aimLockTime = j.value("aimLockTime", c.aimLockTime);
-        c.modelYawOffset = j.value("modelYawOffset", c.modelYawOffset); c.telegraph = j.value("telegraph", c.telegraph);
-        c.telegraphEnd = j.value("telegraphEnd", c.telegraphEnd); c.telegraphWidth = j.value("telegraphWidth", c.telegraphWidth);
-        c.cueTime = j.value("cueTime", c.cueTime); c.tint = j.value("tint", c.tint);
-        c.color = j.value("color", c.color); c.telegraphColor = j.value("telegraphColor", c.telegraphColor);
+        const auto& j = source.at("actorControl");
+        auto& c = sequence.actorControl;
+        c.enabled = j.value("enabled", c.enabled);
+        c.stopMovement = j.value("stopMovement", c.stopMovement);
+        c.faceTarget = j.value("faceTarget", c.faceTarget);
+        c.aimLockTime = j.value("aimLockTime", c.aimLockTime);
+        c.modelYawOffset = j.value("modelYawOffset", c.modelYawOffset);
+        c.telegraph = j.value("telegraph", c.telegraph);
+        c.telegraphEnd = j.value("telegraphEnd", c.telegraphEnd);
+        c.telegraphWidth = j.value("telegraphWidth", c.telegraphWidth);
+        c.cueTime = j.value("cueTime", c.cueTime);
+        c.tint = j.value("tint", c.tint);
+        c.color = j.value("color", c.color);
+        c.telegraphColor = j.value("telegraphColor", c.telegraphColor);
     }
+
     sequence.projectileStyle = source.value("projectileStyle", std::string("fire"));
     sequence.visualScale = source.value("visualScale", 1.2f);
     sequence.fireAppearance = {};
+
     if (source.contains("fireAppearance")) {
         const auto& appearance = source.at("fireAppearance");
         auto& a = sequence.fireAppearance;
+
         if (appearance.contains("color")) {
             const auto& color = appearance.at("color");
-            a.red = color.at(0).get<float>(); a.green = color.at(1).get<float>();
-            a.blue = color.at(2).get<float>(); a.alpha = color.at(3).get<float>();
+            a.red = color.at(0).get<float>();
+            a.green = color.at(1).get<float>();
+            a.blue = color.at(2).get<float>();
+            a.alpha = color.at(3).get<float>();
         }
+
         a.emissive = appearance.value("emissive", a.emissive);
         a.effectScale = appearance.value("effectScale", a.effectScale);
         a.softness = appearance.value("softness", a.softness);
@@ -230,20 +280,27 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
         a.trailInterval = appearance.value("trailInterval", a.trailInterval);
         a.trailSpeedScale = appearance.value("trailSpeedScale", a.trailSpeedScale);
     }
+
     sequence.events.clear();
+
     for (const auto& item : source.value("events", json::array())) {
         AttackSequenceEvent event;
         event.name = item.value("name", std::string{});
         event.enabled = item.value("enabled", true);
-        if (item.contains("projectile")) event.projectile = ReadProjectile(item.at("projectile"));
+        if (item.contains("projectile"))
+            event.projectile = ReadProjectile(item.at("projectile"));
         event.time = item.value("time", 0.0f);
         event.operation = item.value("operation", std::string("projectile"));
         event.condition = item.value("condition", std::string("always"));
         event.stopOnFalse = item.value("stopOnFalse", false);
         const engine::Vector3 offset = ReadVector3(item, "offset", {0, 1.05f, 0.65f});
-        event.right = offset.x; event.up = offset.y; event.forward = offset.z;
+        event.right = offset.x;
+        event.up = offset.y;
+        event.forward = offset.z;
         const engine::Vector3 sizeOffset = ReadVector3(item, "sizeOffset", {0, 0, 0});
-        event.sizeRight = sizeOffset.x; event.sizeUp = sizeOffset.y; event.sizeForward = sizeOffset.z;
+        event.sizeRight = sizeOffset.x;
+        event.sizeUp = sizeOffset.y;
+        event.sizeForward = sizeOffset.z;
         event.yawDegrees = item.value("yawDegrees", 0.0f);
         event.aimAtTarget = item.value("aimAtTarget", true);
         event.targetHeight = item.value("targetHeight", 0.35f);
@@ -266,7 +323,8 @@ void MergeAttackJson(const json& source, EnemyAttackDefinition& attack) {
     if (!std::isfinite(attack.selectionWeight) || attack.selectionWeight < 0 || attack.selectionWeight > 100000)
         throw std::runtime_error("攻撃の抽選重みが不正です。");
     attack.displayName = ReadString(source, "displayName", attack.displayName);
-    if (source.contains("sequence")) ReadSequence(source.at("sequence"), attack.sequence);
+    if (source.contains("sequence"))
+        ReadSequence(source.at("sequence"), attack.sequence);
 
     if (source.contains("targeting") && source["targeting"].is_object()) {
         const json& targeting = source["targeting"];
@@ -294,6 +352,7 @@ void MergeAttackJson(const json& source, EnemyAttackDefinition& attack) {
         attack.damage = ReadFloat(combat, "damage", attack.damage);
         attack.knockbackVelocity = ReadVector3(combat, "knockback", attack.knockbackVelocity);
         attack.invincibilityDuration = ReadFloat(combat, "invincibility", attack.invincibilityDuration);
+
         if (combat.contains("statusEffect") && combat["statusEffect"].is_object()) {
             const json& status = combat["statusEffect"];
             attack.statusEffectType = ReadString(status, "type", attack.statusEffectType);
@@ -403,23 +462,29 @@ bool EnemyAttackProfile::SaveSequenceAsset(const std::string& path, const Attack
         auto content = sequence;
         content.enabled = true;
         content.assetPath.clear();
-        if (!content.Validate(error)) return false;
+        if (!content.Validate(error))
+            return false;
         const std::filesystem::path destination(std::u8string(path.begin(), path.end()));
-        if (destination.has_parent_path()) std::filesystem::create_directories(destination.parent_path());
+        if (destination.has_parent_path())
+            std::filesystem::create_directories(destination.parent_path());
         auto temporary = destination;
         temporary += L".tmp";
         {
             std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
             file << json({{"version", 1}, {"sequence", WriteSequence(content)}}).dump(2) << '\n';
             file.flush();
-            if (!file) throw std::runtime_error("攻撃アセットの書き込みに失敗しました。");
+            if (!file)
+                throw std::runtime_error("攻撃アセットの書き込みに失敗しました。");
         }
+
         if (!MoveFileExW(temporary.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             throw std::runtime_error("攻撃アセットの置換に失敗しました。元ファイルは保持しています。");
-        if (error) error->clear();
+        if (error)
+            error->clear();
         return true;
     } catch (const std::exception& exception) {
-        if (error) *error = exception.what();
+        if (error)
+            *error = exception.what();
         return false;
     }
 }
@@ -428,24 +493,31 @@ bool EnemyAttackProfile::LoadSequenceAsset(const std::string& path, AttackSequen
     // アセットの入れ子参照を禁じ、呼び出し元の結び付けと優先度は読み込み後に維持する。
     try {
         std::ifstream file(std::filesystem::path(std::u8string(path.begin(), path.end())), std::ios::binary);
-        if (!file) throw std::runtime_error("攻撃アセットを開けません: " + path);
+        if (!file)
+            throw std::runtime_error("攻撃アセットを開けません: " + path);
         json root;
         file >> root;
-        if (root.at("version").get<int>() != 1) throw std::runtime_error("未対応の攻撃アセットバージョンです。");
+        if (root.at("version").get<int>() != 1)
+            throw std::runtime_error("未対応の攻撃アセットバージョンです。");
         const auto& source = root.at("sequence");
-        if (!source.value("assetPath", std::string{}).empty()) throw std::runtime_error("攻撃アセットの入れ子参照はできません。");
+
+        if (!source.value("assetPath", std::string{}).empty())
+            throw std::runtime_error("攻撃アセットの入れ子参照はできません。");
         AttackSequenceDefinition loaded;
         ReadSequence(source, loaded);
         loaded.enabled = true;
-        if (!loaded.Validate(error)) return false;
+        if (!loaded.Validate(error))
+            return false;
         loaded.assetPath = path;
         loaded.binding = sequence.binding;
         loaded.priority = sequence.priority;
         sequence = std::move(loaded);
-        if (error) error->clear();
+        if (error)
+            error->clear();
         return true;
     } catch (const std::exception& exception) {
-        if (error) *error = exception.what();
+        if (error)
+            *error = exception.what();
         return false;
     }
 }
@@ -455,12 +527,16 @@ float EnemyAttackDefinition::GetPhaseDuration(AttackAbilityPhase phase) const {
     switch (phase) {
     case AttackAbilityPhase::Windup:
         return (std::max)(0.0f, windupDuration);
+
     case AttackAbilityPhase::Active:
         return (std::max)(0.0f, activeDuration);
+
     case AttackAbilityPhase::Recovery:
         return (std::max)(0.0f, recoveryDuration);
+
     case AttackAbilityPhase::Cooldown:
         return (std::max)(0.0f, cooldown);
+
     case AttackAbilityPhase::Ready:
     default:
         return 0.0f;
@@ -508,11 +584,13 @@ engine::Vector3 EnemyAttackDefinition::ResolveKnockback(const engine::Vector3& f
 
     // 設定値の X/Z は敵の右/前を基準にした成分。空中へ向いた forward は水平化してから変換する。
     engine::Vector3 planarForward = {forward.x, 0.0f, forward.z};
+
     if (engine::Math::Length(planarForward) <= 0.001f) {
         planarForward = {0.0f, 0.0f, 1.0f};
     } else {
         planarForward = engine::Math::Normalize(planarForward);
     }
+
     const engine::Vector3 right = {planarForward.z, 0.0f, -planarForward.x};
     return right * knockbackVelocity.x + engine::Vector3{0.0f, knockbackVelocity.y, 0.0f} + planarForward * knockbackVelocity.z;
 }
@@ -556,6 +634,7 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         fireball.statusTickDamage = 0.16f;
         fireball.statusVfx = "status_burning_flame";
         profile.attacks.push_back(std::move(fireball));
+
         // 古いJSONでもコピー火球の威力・入力感を保つための移行時既定値です。
         auto playerFireball = MakeAttack("player_fireball", "プレイヤー炎火球", 0, 40, 0.52f, 0, 0, 0.58f, 0.58f, 0,
             14, 28, 28, 2.65f, 8, 3.35f);
@@ -570,10 +649,14 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         playerFireball.sequence.duration = 0.58f;
         playerFireball.sequence.visualScale = 1.28f;
         AttackSequenceEvent shot;
-        shot.up = 1.35f; shot.forward = 1.75f;
-        shot.aimAtTarget = false; shot.distanceSpeedScale = 0; shot.verticalSpeed = 1.4f;
+        shot.up = 1.35f;
+        shot.forward = 1.75f;
+        shot.aimAtTarget = false;
+        shot.distanceSpeedScale = 0;
+        shot.verticalSpeed = 1.4f;
         playerFireball.sequence.events.push_back(shot);
-        shot.operation = "gpu_vfx"; shot.preset = "fire_slime_cast";
+        shot.operation = "gpu_vfx";
+        shot.preset = "fire_slime_cast";
         playerFireball.sequence.events.push_back(shot);
         profile.attacks.push_back(std::move(playerFireball));
     } else if (type == "ThunderSlime") {
@@ -610,6 +693,7 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         volley.audioCue = "wind_orb_volley";
         profile.attacks.push_back(std::move(volley));
     } else if (type == "PrismSlime") {
+        // 複数属性を使うボスは攻撃IDごとに演出と状態異常を持つ。JSON未設定時もこの構成を保つ。
         profile.displayName = "プリズムスライム";
 
         auto spikes = MakeAttack("crystal_spikes", "晶槍召喚陣", 2.0f, 12.0f, 3.6f, 0.88f, 0.82f, 0.62f, 2.9f, 0.28f,
@@ -663,6 +747,7 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         summon.activeVfx = "prism_slime_pulse";
         profile.attacks.push_back(std::move(summon));
     } else if (type == "FalseKingSlime") {
+        // 偽王の攻撃は距離・予兆・発動時間を個別に持ち、攻撃選択時には同じ Profile から参照する。
         profile.displayName = "偽王スライム";
 
         auto lanceRain = MakeAttack("crown_lance_rain", "王冠晶槍雨", 0.0f, 34.0f, 2.15f, 1.15f, 2.65f, 0.68f, 3.25f,
@@ -728,16 +813,19 @@ std::string EnemyAttackProfile::GetDefaultPath(const std::string& type) {
     // C++の敵タイプ名をスネークケースへ変換し、既定の攻撃JSON名と揃える。
     std::string fileName;
     fileName.reserve(type.size());
+
     for (char character : type) {
         if (character >= 'A' && character <= 'Z') {
             if (!fileName.empty()) {
                 fileName.push_back('_');
             }
+
             fileName.push_back(static_cast<char>(character - 'A' + 'a'));
         } else {
             fileName.push_back(character);
         }
     }
+
     return std::string(kProfileDirectory) + fileName + ".json";
 }
 
@@ -746,22 +834,28 @@ bool EnemyAttackProfile::LoadCachedForEnemy(const std::string& type, EnemyAttack
     {
         std::lock_guard<std::mutex> lock(gProfileCacheMutex);
         const auto it = gProfileCache.find(type);
+
         if (it != gProfileCache.end()) {
             destination = it->second;
+
             if (errorMessage) {
                 errorMessage->clear();
             }
+
             return true;
         }
     }
 
     EnemyAttackProfile loadedProfile;
     const bool loadedFromFile = loadedProfile.LoadForEnemy(type, errorMessage);
+
     if (loadedFromFile) {
         std::lock_guard<std::mutex> lock(gProfileCacheMutex);
+
         // 読込失敗を成功扱いでキャッシュすると、JSONを修正しても再読込されません。
         gProfileCache[type] = loadedProfile;
     }
+
     destination = std::move(loadedProfile);
     return loadedFromFile;
 }
@@ -769,6 +863,7 @@ bool EnemyAttackProfile::LoadCachedForEnemy(const std::string& type, EnemyAttack
 void EnemyAttackProfile::InvalidateCache(const std::string& type) {
     // 空文字は全件再読込の指示とし、エディターの保存後に古い定義を使わない。
     std::lock_guard<std::mutex> lock(gProfileCacheMutex);
+
     if (type.empty()) {
         gProfileCache.clear();
     } else {
@@ -780,23 +875,29 @@ bool EnemyAttackProfile::LoadForEnemy(const std::string& type, std::string* erro
     // 読み込み前に既定攻撃を用意し、ファイル欠損時も呼び出し元が使える状態を保つ。
     *this = CreateDefault(type);
     const std::string path = GetDefaultPath(type);
+
     if (!std::filesystem::exists(path)) {
         if (errorMessage) {
             *errorMessage = "プロファイルが存在しないため既定値を使用します: " + path;
         }
+
         return false;
     }
 
     EnemyAttackProfile loadedProfile = *this;
+
     if (!loadedProfile.LoadFromFile(path, errorMessage)) {
         return false;
     }
+
     if (loadedProfile.enemyType != type) {
         if (errorMessage) {
             *errorMessage = "プロファイルのenemyTypeがファイル名と一致しません: " + path;
         }
+
         return false;
     }
+
     *this = std::move(loadedProfile);
     return true;
 }
@@ -806,19 +907,23 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
     // JSONの攻撃IDで既定値と照合し、検証が済んでからプロフィール全体を反映する。
     try {
         std::ifstream file(std::filesystem::path(std::u8string(path.begin(), path.end())), std::ios::binary);
+
         if (!file.is_open()) {
             if (errorMessage) {
                 *errorMessage = "プロファイルを開けません: " + path;
             }
+
             return false;
         }
 
         json root;
         file >> root;
+
         if (!root.is_object()) {
             if (errorMessage) {
                 *errorMessage = "プロファイルのルートがオブジェクトではありません: " + path;
             }
+
             return false;
         }
 
@@ -836,12 +941,15 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
                 if (!attackJson.is_object()) {
                     continue;
                 }
+
                 const std::string id = ReadString(attackJson, "id", "");
+
                 if (id.empty()) {
                     continue;
                 }
 
                 EnemyAttackDefinition* attack = merged.FindAttack(id);
+
                 if (!attack) {
                     EnemyAttackDefinition added;
                     added.id = id;
@@ -849,27 +957,34 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
                     merged.attacks.push_back(std::move(added));
                     attack = &merged.attacks.back();
                 }
+
                 MergeAttackJson(attackJson, *attack);
             }
         }
 
         for (const auto& attack : merged.attacks) {
             std::string reason;
+
             if (!attack.sequence.Validate(&reason)) {
-                if (errorMessage) *errorMessage = attack.id + ": " + reason;
+                if (errorMessage)
+                    *errorMessage = attack.id + ": " + reason;
                 return false;
             }
         }
+
         merged.Sanitize();
         *this = std::move(merged);
+
         if (errorMessage) {
             errorMessage->clear();
         }
+
         return true;
     } catch (const std::exception& exception) {
         if (errorMessage) {
             *errorMessage = std::string("プロファイルの解析に失敗しました: ") + exception.what();
         }
+
         return false;
     }
 }
@@ -883,12 +998,16 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
             if (!std::isfinite(attack.selectionWeight) || attack.selectionWeight < 0 || attack.selectionWeight > 100000)
                 throw std::runtime_error("攻撃の抽選重みが不正です。");
             std::string reason;
+
             if (!attack.sequence.Validate(&reason)) {
-                if (errorMessage) *errorMessage = attack.id + ": " + reason;
+                if (errorMessage)
+                    *errorMessage = attack.id + ": " + reason;
                 return false;
             }
         }
+
         const std::filesystem::path outputPath(std::u8string(path.begin(), path.end()));
+
         if (outputPath.has_parent_path()) {
             std::filesystem::create_directories(outputPath.parent_path());
         }
@@ -899,6 +1018,7 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
         root["selectionMode"] = selectionMode;
         root["displayName"] = displayName;
         root["attacks"] = json::array();
+
         for (const EnemyAttackDefinition& attack : attacks) {
             root["attacks"].push_back(WriteAttackJson(attack));
         }
@@ -906,31 +1026,39 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
         auto temporaryPath = outputPath;
         temporaryPath += L".tmp";
         std::ofstream file(temporaryPath, std::ios::binary | std::ios::trunc);
+
         if (!file.is_open()) {
             if (errorMessage) {
                 *errorMessage = "プロファイルを書き込めません: " + path;
             }
+
             return false;
         }
+
         file << root.dump(2) << '\n';
         file.flush();
+
         if (!file.good()) {
             if (errorMessage) {
                 *errorMessage = "プロファイルの書き込み中にエラーが発生しました: " + path;
             }
+
             return false;
         }
+
         file.close();
         if (!file || !MoveFileExW(temporaryPath.c_str(), outputPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             throw std::runtime_error("プロファイルの置換に失敗しました。元ファイルは保持しています。");
         if (errorMessage) {
             errorMessage->clear();
         }
+
         return true;
     } catch (const std::exception& exception) {
         if (errorMessage) {
             *errorMessage = std::string("プロファイルの保存に失敗しました: ") + exception.what();
         }
+
         return false;
     }
 }
@@ -952,35 +1080,52 @@ EnemyAttackDefinition* EnemyAttackProfile::FindAttack(const std::string& attackI
 const EnemyAttackDefinition* EnemyAttackProfile::SelectSequence(float distance, float detectionRange,
     const std::string& previewId, float roll) const {
     // 距離と結び付け条件で候補を絞り、プレビュー指定または優先度・抽選方式で選ぶ。
-    if (!std::isfinite(distance) || distance < 0 || distance > detectionRange) return nullptr;
+    if (!std::isfinite(distance) || distance < 0 || distance > detectionRange)
+        return nullptr;
     std::vector<const EnemyAttackDefinition*> candidates;
     const EnemyAttackDefinition* best = nullptr;
     float total = 0;
+
     for (const auto& attack : attacks) {
-        if (!attack.sequence.enabled || attack.sequence.binding != "enemy" || distance < attack.minRange || distance > attack.maxRange) continue;
-        if (!previewId.empty()) { if (attack.id == previewId) return &attack; else continue; }
-        if (selectionMode == "weighted" && attack.selectionWeight <= 0) continue;
+        if (!attack.sequence.enabled || attack.sequence.binding != "enemy" || distance < attack.minRange || distance > attack.maxRange)
+            continue;
+        if (!previewId.empty()) {
+            if (attack.id == previewId)
+                return &attack;
+            else continue;
+        }
+        if (selectionMode == "weighted" && attack.selectionWeight <= 0)
+            continue;
         candidates.push_back(&attack);
         total += selectionMode == "weighted" ? attack.selectionWeight : 1;
-        if (!best || attack.sequence.priority > best->sequence.priority) best = &attack;
+        if (!best || attack.sequence.priority > best->sequence.priority)
+            best = &attack;
     }
-    if (selectionMode == "priority" || candidates.empty()) return best;
+
+    if (selectionMode == "priority" || candidates.empty())
+        return best;
     if (roll < 0) {
         static thread_local std::mt19937 random{std::random_device{}()};
         roll = std::generate_canonical<float, 24>(random);
     }
-    if (!std::isfinite(roll)) return nullptr;
+
+    if (!std::isfinite(roll))
+        return nullptr;
     float ticket = std::clamp(roll, 0.0f, 1.0f) * total;
+
     for (const auto* attack : candidates) {
         ticket -= selectionMode == "weighted" ? attack->selectionWeight : 1;
-        if (ticket < 0) return attack;
+        if (ticket < 0)
+            return attack;
     }
+
     return candidates.back();
 }
 
 void EnemyAttackProfile::Sanitize() {
     auto finiteOr = [](float value, float fallback) { return std::isfinite(value) ? value : fallback; };
     std::unordered_set<std::string> usedIds;
+
     // Editor上で重複IDを残すと、表示された攻撃と実行される攻撃が食い違います。
     attacks.erase(std::remove_if(attacks.begin(), attacks.end(),
                                  [&](const EnemyAttackDefinition& attack) {
@@ -1032,6 +1177,7 @@ void EnemyAttackProfile::Sanitize() {
             attack.hitShape != "cone") {
             attack.hitShape = "sphere";
         }
+
         attack.hitSize.x = (std::max)(0.01f, std::abs(attack.hitSize.x));
         attack.hitSize.y = (std::max)(0.01f, std::abs(attack.hitSize.y));
         attack.hitSize.z = (std::max)(0.01f, std::abs(attack.hitSize.z));
@@ -1046,16 +1192,20 @@ void EnemyAttackProfile::Sanitize() {
         attack.cancelWindowEnd = std::clamp(attack.cancelWindowEnd, attack.cancelWindowStart, actionDuration);
         attack.damage = (std::max)(0.0f, attack.damage);
         attack.invincibilityDuration = (std::max)(0.0f, attack.invincibilityDuration);
+
         if (attack.statusEffectType == "none") {
             attack.statusEffectType.clear();
         }
+
         attack.statusDuration = (std::max)(0.0f, attack.statusDuration);
         attack.statusTickInterval = (std::max)(0.05f, attack.statusTickInterval);
         attack.statusTickDamage = (std::max)(0.0f, attack.statusTickDamage);
+
         if (attack.statusEffectType.empty() || attack.statusDuration <= 0.0f) {
             attack.statusDuration = 0.0f;
             attack.statusTickDamage = 0.0f;
         }
+
         attack.minSpeed = (std::max)(0.0f, attack.minSpeed);
         attack.maxSpeed = (std::max)(attack.minSpeed, attack.maxSpeed);
         attack.lifetime = (std::max)(0.0f, attack.lifetime);

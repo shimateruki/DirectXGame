@@ -18,7 +18,11 @@ int main() {
     char oldBuffer[64]{};
     const int result = sprintf_s(oldBuffer, "%s", phase.c_str());
     const bool reproduced = phase.size() >= sizeof(oldBuffer) && result < 0 && invalidParameters == 1;
-    if (!reproduced) { _set_thread_local_invalid_parameter_handler(previous); return 1; }
+
+    if (!reproduced) {
+        _set_thread_local_invalid_parameter_handler(previous);
+        return 1;
+    }
 
     ImGui::CreateContext();
     auto& io = ImGui::GetIO();
@@ -31,6 +35,7 @@ int main() {
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     ImGui::NewFrame();
     ImGui::Begin("Attack phase regression");
+
     // 修正した表示経路は固定長コピーもprintf書式解釈も必要ありません。
     ImGui::PushTextWrapPos(0.0f);
     ImGui::TextUnformatted(phase.c_str());
@@ -41,7 +46,8 @@ int main() {
     ImGui::Render();
     ImGui::DestroyContext();
     _set_thread_local_invalid_parameter_handler(previous);
-    if (invalidParameters != 1) return 2;
+    if (invalidParameters != 1)
+        return 2;
     std::cout << "Reproduced old 64-byte CRT failure; ImGui unformatted Japanese/long/percent labels passed.\n";
     return 0;
 }

@@ -12,7 +12,9 @@ namespace engine { class Object3d; }
 class MaterialPreviewBoard : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
+
     void DrawImGui() override;
+
     std::string GetName() override { return "Material Preview Board"; }
 
 private:
@@ -28,13 +30,20 @@ private:
 private:
     /// 現在設定から比較用Objectを並べ、マテリアル確認用の盤面を作る。
     void CreateBoard();
+
     /// プレビュー用に作成したObjectをシーンからまとめて削除する。
     void RemoveBoard();
+
     int CountBoardObjects() const;
+
     std::vector<MaterialPreviewEntry> GetEntries() const;
+
     void RefreshModelCandidates();
+
     void SetPreviewModel(const std::string& modelName);
+
     void DrawModelSelector();
+
     /// 各プレビューObjectへマテリアル番号、色、特殊効果の初期値を設定する。
     void ApplyPreviewDefaults(engine::Object3d* object, const MaterialPreviewEntry& entry) const;
 

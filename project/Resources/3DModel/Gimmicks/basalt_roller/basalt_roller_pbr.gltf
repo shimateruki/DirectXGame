@@ -1,0 +1,175 @@
+{
+  "asset": {
+    "generator": "Khronos glTF Blender I/O v4.4.56",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "name": "basalt_roller"
+    }
+  ],
+  "materials": [
+    {
+      "name": "basalt_roller_PBR.001",
+      "normalTexture": {
+        "index": 0
+      },
+      "occlusionTexture": {
+        "index": 1,
+        "strength": 1
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 2
+        },
+        "metallicRoughnessTexture": {
+          "index": 1
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "BasaltRoller.001",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2,
+            "TANGENT": 3
+          },
+          "indices": 4,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ],
+  "images": [
+    {
+      "mimeType": "image/png",
+      "name": "normal",
+      "uri": "normal.png"
+    },
+    {
+      "mimeType": "image/png",
+      "name": "orm",
+      "uri": "orm.png"
+    },
+    {
+      "mimeType": "image/png",
+      "name": "basecolor",
+      "uri": "basecolor.png"
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 3230,
+      "max": [
+        3.995516061782837,
+        1.4954668283462524,
+        1.5012327432632446
+      ],
+      "min": [
+        -3.995516061782837,
+        -1.4955980777740479,
+        -1.499253511428833
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 3230,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 3230,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 3230,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5123,
+      "count": 17280,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 38760,
+      "byteOffset": 0,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 38760,
+      "byteOffset": 38760,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 25840,
+      "byteOffset": 77520,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 51680,
+      "byteOffset": 103360,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 34560,
+      "byteOffset": 155040,
+      "target": 34963
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 189600,
+      "uri": "basalt_roller_pbr.bin"
+    }
+  ]
+}

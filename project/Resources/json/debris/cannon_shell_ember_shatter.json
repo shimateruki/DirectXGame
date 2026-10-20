@@ -1,0 +1,54 @@
+{
+    "modelNames": [
+        "Effects/volcanic_shell_fragment_a",
+        "Effects/volcanic_shell_fragment_b"
+    ],
+    "spawnOffset": [
+        0,
+        0,
+        0
+    ],
+    "spawnBoxHalfExtents": [
+        0.16,
+        0.12,
+        0.16
+    ],
+    "baseDirection": [
+        0,
+        0,
+        1
+    ],
+    "horizontalSpread": 1.9,
+    "groundY": 0,
+    "collideGround": false,
+    "shrinkOnFade": true,
+    "materialType": 0,
+    "metallic": 0,
+    "enableEnvMap": false,
+    "envIntensity": 1,
+    "name": "cannon_shell_ember_shatter",
+    "spawnCount": 6,
+    "verticalMin": 0.18,
+    "verticalMax": 1.08,
+    "speedMin": 4.8,
+    "speedMax": 11,
+    "angularSpeedMin": 8,
+    "angularSpeedMax": 20,
+    "scaleMin": 0.09,
+    "scaleMax": 0.21,
+    "lifetimeMin": 0.32,
+    "lifetimeMax": 0.63,
+    "gravity": 11,
+    "airDrag": 0.13,
+    "restitution": 0,
+    "friction": 0.8,
+    "fadeStartRatio": 0.48,
+    "color": [
+        1,
+        0.32,
+        0.055,
+        1
+    ],
+    "roughness": 0.56,
+    "emissive": 1.5
+}

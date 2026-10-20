@@ -9,7 +9,7 @@ class GimmickBreakableBlock : public BaseGimmick {
     virtual ~GimmickBreakableBlock() = default;
 
     // 初期化
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
     // 更新処理
     void Update(float deltaTime) override;

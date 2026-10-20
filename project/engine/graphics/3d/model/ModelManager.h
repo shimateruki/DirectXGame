@@ -62,8 +62,11 @@ private:
     };
 
     ModelManager() = default;
+
     ~ModelManager() = default;
+
     ModelManager(const ModelManager&) = delete;
+
     ModelManager& operator=(const ModelManager&) = delete;
 
     /// <summary>

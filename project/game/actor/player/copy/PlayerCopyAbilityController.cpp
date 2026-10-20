@@ -10,21 +10,27 @@ std::unique_ptr<ICopyAbilitySession> CreateSession(int morphType, const EnemyAtt
     if (morphType == static_cast<int>(Player::EnemyMorphType::Crown)) {
         return CreateCrownCopyAbility(profile);
     }
+
     if (morphType == static_cast<int>(Player::EnemyMorphType::Slime)) {
         return CreatePinkSlimeCopyAbility(profile);
     }
+
     if (morphType == static_cast<int>(Player::EnemyMorphType::FireSlime)) {
         return CreateFireSlimeCopyAbility(profile);
     }
+
     if (morphType == static_cast<int>(Player::EnemyMorphType::ThunderSlime)) {
         return CreateThunderSlimeCopyAbility(profile);
     }
+
     if (morphType == static_cast<int>(Player::EnemyMorphType::WindSlime)) {
         return CreateWindSlimeCopyAbility(profile);
     }
+
     if (morphType == static_cast<int>(Player::EnemyMorphType::Bomber)) {
         return CreateBomberCopyAbility(profile);
     }
+
     return nullptr;
 }
 
@@ -56,6 +62,7 @@ class PlayerCopyAbilityController::Impl {
 PlayerCopyAbilityController::PlayerCopyAbilityController() : impl_(std::make_unique<Impl>()) {
     // 能力セッションの具体型は非公開の実装側で所有する。
 }
+
 PlayerCopyAbilityController::~PlayerCopyAbilityController() = default;
 
 void PlayerCopyAbilityController::Activate(int morphType, const EnemyAttackProfile& attackProfile) {
@@ -67,11 +74,13 @@ void PlayerCopyAbilityController::Activate(int morphType, const EnemyAttackProfi
 void PlayerCopyAbilityController::ActivateDefault(int morphType) {
     // コピー元の敵種別から共有プロファイルを読み、未対応なら能力を外す。
     const char* enemyType = GetEnemyTypeForMorph(morphType);
+
     if (!enemyType || enemyType[0] == '\0') {
         impl_->session.reset();
         impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
         return;
     }
+
     EnemyAttackProfile profile;
     EnemyAttackProfile::LoadCachedForEnemy(enemyType, profile);
     Activate(morphType, profile);
@@ -97,6 +106,7 @@ void PlayerCopyAbilityController::Cancel(Player& player) {
         impl_->session->Cancel(player);
         impl_->session.reset();
     }
+
     impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
 }
 
@@ -119,7 +129,8 @@ const char* PlayerCopyAbilityController::GetStateLabel() const {
 
 void PlayerCopyAbilityController::SetPreviewAttackId(const std::string& id) {
     // 攻撃プレビュー中の絞り込み指定だけを現セッションへ渡す。
-    if (impl_->session) impl_->session->SetPreviewAttackId(id);
+    if (impl_->session)
+        impl_->session->SetPreviewAttackId(id);
 }
 
 void PlayerCopyAbilityController::DrawOwnedVisuals(Player& player, uint32_t depthSrvHandle, uint32_t grabSrvHandle,

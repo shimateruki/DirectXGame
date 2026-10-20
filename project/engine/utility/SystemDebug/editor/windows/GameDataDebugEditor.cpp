@@ -2,11 +2,11 @@
 #include "GameDataDebugEditor.h"
 
 #include "DebugConsole.h"
-#include "GameDataManager.h"
+#include "game/system/progress/GameDataManager.h"
 #include "game/scene/select/GameSelectScene.h"
 #include "IconsFontAwesome5.h"
 #include "SceneManager.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -22,11 +22,13 @@ std::string FormatTime(int totalSeconds) {
     const int seconds = totalSeconds % 60;
 
     char buffer[32]{};
+
     if (hours > 0) {
         std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hours, minutes, seconds);
     } else {
         std::snprintf(buffer, sizeof(buffer), "%02d:%02d", minutes, seconds);
     }
+
     return buffer;
 }
 
@@ -35,12 +37,15 @@ bool IsStageUnlockedForSave(const StageData& stage, int stageIndex, GameDataMana
     if (!save) {
         return false;
     }
+
     if (stage.defaultUnlocked || stageIndex == 0) {
         return true;
     }
+
     if (stage.unlockStageIndex < 0) {
         return false;
     }
+
     return save->IsStageCleared(stage.unlockStageIndex);
 }
 } // namespace
@@ -78,6 +83,7 @@ void GameDataDebugEditor::SyncSlotState() {
     // 外部のセーブスロット切替に追従し、古いスロットの表示を残しません。
     GameDataManager* save = GameDataManager::GetInstance();
     const int activeSlot = save->GetActiveSlot();
+
     if (lastActiveSlot_ != activeSlot) {
         lastActiveSlot_ = activeSlot;
         crownTarget_ = save->GetClearedStageCount();
@@ -102,18 +108,22 @@ void GameDataDebugEditor::DrawSlotSelector() {
     int activeSlot = save->GetActiveSlot();
 
     ImGui::Text("編集対象スロット");
+
     for (int slot = 0; slot < GameDataManager::kSaveSlotCount; ++slot) {
         ImGui::PushID(slot);
         const std::string label = "Slot " + std::to_string(slot + 1);
+
         if (ImGui::RadioButton(label.c_str(), activeSlot == slot)) {
             save->SetActiveSlot(slot);
             SyncSlotState();
             RefreshStageSelectScene();
             lastStatus_ = "編集対象を Slot " + std::to_string(slot + 1) + " に切り替えました。";
         }
+
         if (slot + 1 < GameDataManager::kSaveSlotCount) {
             ImGui::SameLine();
         }
+
         ImGui::PopID();
     }
 
@@ -123,18 +133,24 @@ void GameDataDebugEditor::DrawSlotSelector() {
         save->Save();
         lastStatus_ = "現在のスロットを保存しました。";
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_SYNC " 再読み込み")) {
         save->Load();
         SyncSlotState();
         RefreshStageSelectScene();
         lastStatus_ = "現在のスロットを保存JSONから再読み込みしました。";
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_TRASH " 初期化")) {
         ImGui::OpenPopup("ResetActiveSaveSlot");
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_TIMES_CIRCLE " 削除")) {
         ImGui::OpenPopup("DeleteActiveSaveSlot");
     }
@@ -142,6 +158,7 @@ void GameDataDebugEditor::DrawSlotSelector() {
     if (ImGui::BeginPopupModal("ResetActiveSaveSlot", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("現在のスロットを初期状態に戻します。");
         ImGui::TextDisabled("ファイルは残り、値だけリセットされます。");
+
         if (ImGui::Button("初期化する", ImVec2(140.0f, 0.0f))) {
             save->ResetAll();
             SyncSlotState();
@@ -149,16 +166,20 @@ void GameDataDebugEditor::DrawSlotSelector() {
             lastStatus_ = "現在のスロットを初期化しました。";
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("キャンセル", ImVec2(120.0f, 0.0f))) {
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::EndPopup();
     }
 
     if (ImGui::BeginPopupModal("DeleteActiveSaveSlot", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("現在のスロットの保存ファイルを削除します。");
         ImGui::TextDisabled("削除後は初期状態として扱われます。");
+
         if (ImGui::Button("削除する", ImVec2(140.0f, 0.0f))) {
             const int slot = save->GetActiveSlot();
             const bool removed = save->DeleteSlot(slot);
@@ -167,10 +188,13 @@ void GameDataDebugEditor::DrawSlotSelector() {
             lastStatus_ = removed ? "保存ファイルを削除しました。" : "保存ファイルは見つかりませんでした。初期状態で続行します。";
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("キャンセル", ImVec2(120.0f, 0.0f))) {
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::EndPopup();
     }
 #endif
@@ -227,6 +251,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
 
     int lives = save->GetLives();
     ImGui::SetNextItemWidth(140.0f);
+
     if (ImGui::DragInt("残機", &lives, 1.0f, 0, 99)) {
         save->SetLives(lives);
         lastStatus_ = "残機を変更しました。";
@@ -234,6 +259,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
 
     int coins = save->GetCoins();
     ImGui::SetNextItemWidth(140.0f);
+
     if (ImGui::DragInt("コイン", &coins, 1.0f, 0, 9999)) {
         save->SetCoins(coins);
         lastStatus_ = "コイン数を変更しました。";
@@ -252,6 +278,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
     ImGui::SameLine();
     ImGui::SetNextItemWidth(90.0f);
     timeChanged |= ImGui::DragInt("秒", &seconds, 1.0f, 0, 59);
+
     if (timeChanged) {
         hours = std::clamp(hours, 0, 99);
         minutes = std::clamp(minutes, 0, 59);
@@ -261,6 +288,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
     }
 
     bool tutorialCleared = save->IsStageCleared(-1);
+
     if (ImGui::Checkbox("チュートリアル完了", &tutorialCleared)) {
         save->SetStageCleared(-1, tutorialCleared);
         RefreshStageSelectScene();
@@ -270,13 +298,16 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
     const int stageCount = static_cast<int>(StageManager::GetInstance()->GetStages().size());
     ImGui::Text("王冠数: %d / %d", save->GetClearedStageCount(), stageCount);
     ImGui::SameLine();
+
     if (ImGui::Button("現在値へ同期")) {
         crownTarget_ = save->GetClearedStageCount();
     }
+
     ImGui::SetNextItemWidth(160.0f);
     ImGui::DragInt("王冠数を指定", &crownTarget_, 1.0f, 0, std::max(stageCount, 0));
     crownTarget_ = std::clamp(crownTarget_, 0, std::max(stageCount, 0));
     ImGui::SameLine();
+
     if (ImGui::Button("王冠数を反映")) {
         ApplyCrownCountToStages();
     }
@@ -288,6 +319,7 @@ void GameDataDebugEditor::DrawStageTable() {
     // Stage定義順にクリア・収集状態を並べ、進行デバッグを行います。
     GameDataManager* save = GameDataManager::GetInstance();
     const auto& stages = StageManager::GetInstance()->GetStages();
+
     if (stages.empty()) {
         ImGui::TextDisabled("ステージ定義がありません。Resources/json/stage_select/stages.json を確認してください。");
         return;
@@ -297,35 +329,45 @@ void GameDataDebugEditor::DrawStageTable() {
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             save->SetStageCleared(stageIndex, true);
         }
+
         SyncSlotState();
         RefreshStageSelectScene();
         lastStatus_ = "全ステージをクリア済みにしました。";
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("全ステージ未クリア")) {
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             save->SetStageCleared(stageIndex, false);
         }
+
         SyncSlotState();
         RefreshStageSelectScene();
         lastStatus_ = "全ステージを未クリアに戻しました。";
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("全スター取得")) {
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             for (int coinIndex = 0; coinIndex < 3; ++coinIndex) {
                 save->SetStarCoinCollected(stageIndex, coinIndex, true);
             }
         }
+
         lastStatus_ = "全スターを取得済みにしました。";
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("全スター未取得")) {
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             for (int coinIndex = 0; coinIndex < 3; ++coinIndex) {
                 save->SetStarCoinCollected(stageIndex, coinIndex, false);
             }
         }
+
         lastStatus_ = "全スターを未取得に戻しました。";
     }
 
@@ -350,12 +392,15 @@ void GameDataDebugEditor::DrawStageTable() {
 
             ImGui::TableSetColumnIndex(1);
             ImGui::TextUnformatted(stage.name.c_str());
+
             if (!stage.description.empty()) {
                 ImGui::TextDisabled("%s", stage.description.c_str());
             }
+
             ImGui::TextDisabled("%s", stage.levelPath.c_str());
 
             ImGui::TableSetColumnIndex(2);
+
             if (stage.defaultUnlocked || stageIndex == 0) {
                 ImGui::TextUnformatted("初期解放");
             } else {
@@ -367,6 +412,7 @@ void GameDataDebugEditor::DrawStageTable() {
 
             ImGui::TableSetColumnIndex(4);
             bool cleared = save->IsStageCleared(stageIndex);
+
             if (ImGui::Checkbox("##cleared", &cleared)) {
                 save->SetStageCleared(stageIndex, cleared);
                 SyncSlotState();
@@ -376,6 +422,7 @@ void GameDataDebugEditor::DrawStageTable() {
 
             ImGui::TableSetColumnIndex(5);
             bool seen = save->IsStageUnlockSeen(stageIndex);
+
             if (ImGui::Checkbox("##seen", &seen)) {
                 save->SetStageUnlockSeen(stageIndex, seen);
                 RefreshStageSelectScene();
@@ -383,16 +430,20 @@ void GameDataDebugEditor::DrawStageTable() {
             }
 
             ImGui::TableSetColumnIndex(6);
+
             for (int coinIndex = 0; coinIndex < 3; ++coinIndex) {
                 ImGui::PushID(coinIndex);
                 bool collected = save->IsStarCoinCollected(stageIndex, coinIndex);
+
                 if (ImGui::Checkbox("##star", &collected)) {
                     save->SetStarCoinCollected(stageIndex, coinIndex, collected);
                     lastStatus_ = stage.name + " のスター取得状態を変更しました。";
                 }
+
                 if (coinIndex < 2) {
                     ImGui::SameLine();
                 }
+
                 ImGui::PopID();
             }
 

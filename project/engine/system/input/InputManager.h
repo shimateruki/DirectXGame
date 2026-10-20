@@ -25,26 +25,33 @@
 #pragma comment(lib, "dxguid.lib")
 
 /// <summary>物理入力、アクション入力、振動、SDL センサーをフレーム単位で管理します。</summary>
+namespace engine {
+
 class InputManager {
 public:
     /// <summary>回帰再生用に、現在と前フレームの物理入力をまとめた状態です。</summary>
     struct ReplayState {
         std::array<uint8_t, 256> keys{};
         std::array<uint8_t, 256> previousKeys{};
+
         std::array<uint8_t, 4> mouseButtons{};
         std::array<uint8_t, 4> previousMouseButtons{};
+
         int32_t mouseX = 0;
         int32_t mouseY = 0;
         int32_t mouseWheel = 0;
         int32_t previousMouseX = 0;
         int32_t previousMouseY = 0;
         int32_t previousMouseWheel = 0;
+
         uint16_t gamepadButtons = 0;
         uint16_t previousGamepadButtons = 0;
+
         uint8_t leftTrigger = 0;
         uint8_t rightTrigger = 0;
         uint8_t previousLeftTrigger = 0;
         uint8_t previousRightTrigger = 0;
+
         int16_t leftX = 0;
         int16_t leftY = 0;
         int16_t rightX = 0;
@@ -53,14 +60,16 @@ public:
         int16_t previousLeftY = 0;
         int16_t previousRightX = 0;
         int16_t previousRightY = 0;
+
         bool gamepadMode = false;
+
         engine::Vector3 accelerometer{};
         engine::Vector3 gyroscope{};
         engine::Vector3 baseAccelerometer{};
     };
 
     /// <summary>エンジンで共有する入力管理インスタンスを取得します。</summary>
-    static InputManager* GetInstance();
+    static engine::InputManager* GetInstance();
 
     /// <summary>DirectInput と SDL ゲームパッドを初期化します。</summary>
     /// <param name="hwnd">マウスとキーボード入力を受け取るウィンドウ。</param>
@@ -178,44 +187,63 @@ public:
 private:
     /// <summary>共有インスタンス以外から入力管理器を生成させない。</summary>
     InputManager() = default;
+
     /// <summary>共有インスタンスの破棄をクラス内に限定する。</summary>
     ~InputManager() = default;
+
     InputManager(const InputManager&) = delete;
+
     InputManager& operator=(const InputManager&) = delete;
 
-    // DirectInput の所有ポインタと、差分判定に必要な前フレーム状態。
+    // DirectInput本体と入力デバイス。Initializeで取得し、Finalizeで解放する。
     IDirectInput8* directInput = nullptr;
     IDirectInputDevice8* keyboardDevice = nullptr;
     IDirectInputDevice8* mouseDevice = nullptr;
 
-    // キーボード状態。
+    // 256キーの現在値と前フレーム値。Triggered判定では両者を比較する。
     BYTE keyState[256]{};
     BYTE prevKeyState[256]{};
 
-    // マウス状態。
+    // マウスボタンと移動量の現在値・前フレーム値。
     DIMOUSESTATE mouseState{};
     DIMOUSESTATE prevMouseState{};
 
-    // ゲームパッド状態。
+    // XInputの現在値と前フレーム値。ボタンの押下エッジに使用する。
     XINPUT_STATE gamepadState{};
     XINPUT_STATE prevGamepadState{};
+
+    // DirectInputの協調レベルを設定する対象ウィンドウ。所有しない。
     HWND hwnd_ = nullptr;
 
-    // SDL2 センサー値と校正時の加速度基準値。
+    // SDLから開いたゲームコントローラー。Finalizeで閉じる。
     SDL_GameController* sdlController_ = nullptr;
+
+    // XInput接続の検出結果。SDLコントローラーの有無とは別に保持する。
     bool xinputConnected_ = false;
+
+    // センサーの直近値。baseAccel_を差し引く前の値を保持する。
     engine::Vector3 accelData_ = { 0, 0, 0 };
     engine::Vector3 gyroData_ = { 0, 0, 0 };
+
+    // 校正時の加速度と、校正済みかどうか。
     engine::Vector3 baseAccel_ = { 0.0f, 0.0f, 0.0f };
     bool isCalibrated_ = false;
 
+    // 直近に操作したデバイス種別。操作案内の表示切替に使う。
     bool isGamepadMode_ = false;
+
+    // メニュー用スティックの各方向について、現在の押下エッジを保持する。
     std::array<bool, 4> menuStickTriggered_{};
+
+    // 押し続けているメニュー方向。0は方向入力なし。
     int menuStickDirection_ = 0;
+
+    // 長押し中に次の方向入力を発生させる時刻（ミリ秒）。
     uint64_t menuStickNextRepeatMs_ = 0;
 
     /// <summary>利用可能なSDLコントローラーを一つ開き、センサー参照を準備する。</summary>
     void OpenFirstAvailableSdlController();
+
     /// <summary>メニューの方向入力と押し続けたときの反復タイミングを更新する。</summary>
     void UpdateMenuStickNavigation();
 
@@ -229,7 +257,12 @@ private:
     /// <summary>複数の振動要求を合成し、出力値が変わった場合だけデバイスへ送る。</summary>
     void RefreshRumbleOutput();
 
+    // 同時に要求された振動を残り時間つきで保持し、出力時に合成する。
     std::vector<RumbleRequest> rumbleRequests_;
+
+    // デバイスへ最後に適用した振動強度。-1はまだ出力していない状態。
     float appliedLowFrequency_ = -1.0f;
     float appliedHighFrequency_ = -1.0f;
 };
+
+} // namespace engine

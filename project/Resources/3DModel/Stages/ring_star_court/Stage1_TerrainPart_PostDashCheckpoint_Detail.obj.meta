@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e236bad4658a563084897473e487e162",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_PostDashCheckpoint_Detail.obj",
+  "version": 1
+}

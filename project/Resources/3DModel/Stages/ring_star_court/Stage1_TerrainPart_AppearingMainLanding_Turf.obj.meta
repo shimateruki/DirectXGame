@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "315872f2afd155328fa4b8d1409d4074",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_AppearingMainLanding_Turf.obj",
+  "version": 1
+}

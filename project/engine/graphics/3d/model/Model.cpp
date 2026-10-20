@@ -25,18 +25,22 @@ constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png"
 // 元の材質値を基準に倍率へ変換し、ゼロ付近では除算を避けます。
 float CalculateMaterialMultiplier(float value, float reference) {
     constexpr float kEpsilon = 1.0e-5f;
+
     if (std::abs(reference) > kEpsilon) {
         return value / reference;
     }
+
     return std::abs(value) <= kEpsilon ? 1.0f : value;
 }
 
 // 描画中に同じフォールバック画像のファイル確認を繰り返さないよう、SRVを一度だけ解決します。
 uint32_t GetDefaultWhiteTextureHandle() {
     static uint32_t handle = 0;
+
     if (handle == 0) {
         handle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
     }
+
     return handle;
 }
 
@@ -103,6 +107,7 @@ void Model::InitializeFromCpuData(
         // カリング用のローカルAABBを保存
         localAabbMin_ = min;
         localAabbMax_ = max;
+
         // 中心座標とサイズも一応計算して保持
         center_ = { (min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f };
         size_ = { max.x - min.x, max.y - min.y, max.z - min.z };
@@ -124,6 +129,7 @@ void Model::InitializeFromCpuData(
                 material.normalMapPath,
                 TextureManager::TextureColorSpace::Linear);
         }
+
         if (material.hasOrmMap && !material.ormMapPath.empty()) {
             material.ormMapHandle = TextureManager::GetInstance()->Load(
                 material.ormMapPath,
@@ -136,45 +142,54 @@ void Model::InitializeFromCpuData(
         if (mesh.vertices.empty() || mesh.indices.empty()) {
             continue;
         }
+
         // 頂点バッファ
         mesh.vertexResource = dxCommon->CreateBufferResource(sizeof(VertexData) * mesh.vertices.size());
+
         if (!mesh.vertexResource) {
             DebugConsole::GetInstance()->AddLog("Model vertex buffer creation failed: " + sourceName);
             continue;
         }
+
         mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
         mesh.vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
 
         VertexData* vertexData = nullptr;
         HRESULT vertexMapResult = mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+
         if (FAILED(vertexMapResult) || !vertexData) {
             DebugConsole::GetInstance()->AddLog("Model vertex buffer map failed: " + sourceName);
             mesh.vertexResource.Reset();
             continue;
         }
+
         std::memcpy(vertexData, mesh.vertices.data(), sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexResource->Unmap(0, nullptr);
 
         // インデックスバッファ
         mesh.indexResource = dxCommon->CreateBufferResource(sizeof(uint32_t) * mesh.indices.size());
+
         if (!mesh.indexResource) {
             DebugConsole::GetInstance()->AddLog("Model index buffer creation failed: " + sourceName);
             mesh.vertexResource.Reset();
             continue;
         }
+
         mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
         mesh.indexBufferView.SizeInBytes = UINT(sizeof(uint32_t) * mesh.indices.size());
         mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 
         uint32_t* indexData = nullptr;
         HRESULT indexMapResult = mesh.indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
+
         if (FAILED(indexMapResult) || !indexData) {
             DebugConsole::GetInstance()->AddLog("Model index buffer map failed: " + sourceName);
             mesh.vertexResource.Reset();
             mesh.indexResource.Reset();
             continue;
         }
+
         std::memcpy(indexData, mesh.indices.data(), sizeof(uint32_t) * mesh.indices.size());
         mesh.indexResource->Unmap(0, nullptr);
     }
@@ -182,18 +197,21 @@ void Model::InitializeFromCpuData(
     // 4. 定数バッファ(Material)の作成と初期設定
     materialData_ = nullptr;
     materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
+
     if (!materialResource_) {
         DebugConsole::GetInstance()->AddLog("Model material buffer creation failed: " + sourceName);
         return;
     }
 
     HRESULT materialMapResult = materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+
     if (FAILED(materialMapResult) || !materialData_) {
         DebugConsole::GetInstance()->AddLog("Model material buffer map failed: " + sourceName);
         materialResource_.Reset();
         materialData_ = nullptr;
         return;
     }
+
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = true;
     materialData_->selectedLighting = 2; // 隊長の設定値を維持
@@ -244,6 +262,7 @@ void Model::CreateBoneBuffer() {
     // 1. リソース作成
     UINT sizeInBytes = sizeof(BoneForGPU) * static_cast<UINT>(modelData_.bones.size());
     boneResource_ = dxCommon->CreateBufferResource(sizeInBytes);
+
     if (!boneResource_) {
         DebugConsole::GetInstance()->AddLog("Model bone buffer creation failed.");
         boneMappedData_ = nullptr;
@@ -253,6 +272,7 @@ void Model::CreateBoneBuffer() {
 
     // 2. マッピング
     HRESULT boneMapResult = boneResource_->Map(0, nullptr, reinterpret_cast<void**>(&boneMappedData_));
+
     if (FAILED(boneMapResult) || !boneMappedData_) {
         DebugConsole::GetInstance()->AddLog("Model bone buffer map failed.");
         boneResource_.Reset();
@@ -264,6 +284,7 @@ void Model::CreateBoneBuffer() {
     // ★重要: 初期値を「単位行列」で埋めておく
     // これをしないと、アニメーション更新が走る前の1フレーム目にモデルが消えます
     engine::Math math;
+
     for (size_t i = 0; i < modelData_.bones.size(); ++i) {
         boneMappedData_[i].finalMatrix = math.MakeIdentity4x4();
     }
@@ -296,9 +317,11 @@ void Model::UpdateBoneBuffer() {
         for (size_t i = 0; i < modelData_.bones.size(); ++i) {
             boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
         }
+
         computeSkinningDirty_ = true;
         return;
     }
+
     // ボーンごとに計算
     for (size_t i = 0; i < modelData_.bones.size(); ++i) {
         // ボーン名に対応するJointを探す
@@ -315,6 +338,7 @@ void Model::UpdateBoneBuffer() {
             boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
         }
     }
+
     computeSkinningDirty_ = true;
 }
 
@@ -370,11 +394,13 @@ void Model::CreateComputeSkinningResources() {
         if (FAILED(result)) {
             // 一部のMeshだけ有効になる状態を避け、全Meshを一括でフォールバックさせる。
             DebugConsole::GetInstance()->AddLog("Compute skinning output buffer creation failed.");
+
             for (auto& resetMesh : modelData_.meshes) {
                 resetMesh.computeSkinnedVertexResource.Reset();
                 resetMesh.computeSkinnedVertexBufferView = {};
                 resetMesh.computeSkinnedVertexState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
             }
+
             return;
         }
 
@@ -395,6 +421,7 @@ bool Model::PrepareComputeSkinning() {
         !common_->IsComputeSkinningAvailable() || !boneResource_) {
         return false;
     }
+
     if (!computeSkinningDirty_ && computeSkinningOutputReady_) {
         return true;
     }
@@ -405,6 +432,7 @@ bool Model::PrepareComputeSkinning() {
     commandList->SetComputeRootShaderResourceView(1, boneResource_->GetGPUVirtualAddress());
 
     bool dispatched = false;
+
     for (auto& mesh : modelData_.meshes) {
         if (!mesh.vertexResource || !mesh.computeSkinnedVertexResource || mesh.vertices.empty()) {
             continue;
@@ -431,6 +459,7 @@ bool Model::PrepareComputeSkinning() {
             static_cast<uint32_t>(mesh.vertices.size()),
             static_cast<uint32_t>(modelData_.bones.size())
         };
+
         commandList->SetComputeRoot32BitConstants(
             3,
             static_cast<UINT>(std::size(dispatchConstants)),
@@ -439,6 +468,7 @@ bool Model::PrepareComputeSkinning() {
 
         const uint32_t groupCount =
             (static_cast<uint32_t>(mesh.vertices.size()) + 63u) / 64u;
+
         // 1グループ64頂点で計算し、UAV完了を待ってから描画用頂点バッファへ遷移する。
         commandList->Dispatch(groupCount, 1, 1);
         engine::RenderStats::GetInstance()->RecordComputeDispatch(groupCount);
@@ -469,13 +499,27 @@ const D3D12_VERTEX_BUFFER_VIEW& Model::GetActiveVertexBufferView(const Mesh& mes
         mesh.computeSkinnedVertexResource) {
         return mesh.computeSkinnedVertexBufferView;
     }
+
     return mesh.vertexBufferView;
 }
 
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation, int meshDrawIndex)
+void Model::Draw(
+    ID3D12Resource* wvpResource,
+    ID3D12Resource* directionalLightResource,
+    ID3D12Resource* cameraResource,
+    ID3D12Resource* pointLightResource,
+    ID3D12Resource* spotLightResource,
+    ID3D12Resource* overrideMaterialResource,
+    uint32_t normalMapHandle,
+    uint32_t ormMapHandle,
+    uint32_t overrideTextureHandle,
+    uint32_t instanceCount,
+    uint32_t startInstanceLocation,
+    int meshDrawIndex)
 {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     engine::RenderStats::GetInstance()->RecordObjectDraw();
+
     // 1. マテリアル設定
     if (overrideMaterialResource) {
         commandList->SetGraphicsRootConstantBufferView(0, overrideMaterialResource->GetGPUVirtualAddress());
@@ -487,12 +531,18 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     }
 
     // 2. 定数バッファ設定
-    if (wvpResource) commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+    if (wvpResource)
+        commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+
     // (RootParam[2] はテクスチャ)
-    if (directionalLightResource) commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
-    if (cameraResource) commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
-    if (pointLightResource) commandList->SetGraphicsRootConstantBufferView(5, pointLightResource->GetGPUVirtualAddress());
-    if (spotLightResource) commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
+    if (directionalLightResource)
+        commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
+    if (cameraResource)
+        commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
+    if (pointLightResource)
+        commandList->SetGraphicsRootConstantBufferView(5, pointLightResource->GetGPUVirtualAddress());
+    if (spotLightResource)
+        commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
 
 
     if (!modelData_.bones.empty() && boneResource_ && boneSrvIndex_ != 0) {
@@ -500,20 +550,25 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     }
 
     uint32_t envMapHandle = LightManager::GetInstance()->GetEnvironmentMapHandle();
+
     if (envMapHandle != 0) { // 念のため0（未読み込み）じゃないかチェック
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
     }
+
     // 3. メッシュごとの描画ループ
     for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
         if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
             continue;
         }
+
         const auto& mesh = modelData_.meshes[meshIndex];
+
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
 
         const MaterialData* meshMaterial = nullptr;
+
         if (mesh.materialIndex < modelData_.materials.size()) {
             meshMaterial = &modelData_.materials[mesh.materialIndex];
         }
@@ -523,6 +578,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
             1.0f,
             0.0f
         };
+
         const MaterialData* primaryMaterial = GetPrimaryMaterialData();
         const bool usesModelTexture =
             overrideTextureHandle == 0 || overrideTextureHandle >= DirectXCommon::kMaxSRVCount;
@@ -539,6 +595,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
                 meshMaterial->roughness, primaryMaterial->roughness);
             meshMaterialFactors[5] = meshMaterial->metallic - primaryMaterial->metallic;
         }
+
         commandList->SetGraphicsRoot32BitConstants(
             13,
             static_cast<UINT>(meshMaterialFactors.size()),
@@ -551,9 +608,11 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
             meshMaterial->normalMapHandle > 0 && meshMaterial->normalMapHandle < DirectXCommon::kMaxSRVCount) {
             meshNormalHandle = meshMaterial->normalMapHandle;
         }
+
         if (meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) {
             meshNormalHandle = GetDefaultWhiteTextureHandle();
         }
+
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, meshNormalHandle);
 
         uint32_t meshOrmHandle = ormMapHandle;
@@ -562,9 +621,11 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
             meshMaterial->ormMapHandle > 0 && meshMaterial->ormMapHandle < DirectXCommon::kMaxSRVCount) {
             meshOrmHandle = meshMaterial->ormMapHandle;
         }
+
         if (meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) {
             meshOrmHandle = GetDefaultWhiteTextureHandle();
         }
+
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
 
         const D3D12_VERTEX_BUFFER_VIEW& activeVertexBufferView = GetActiveVertexBufferView(mesh);
@@ -590,14 +651,18 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
 // モデル全体の頂点数を返し、統計表示や軽量化確認で使えるようにする。
 uint32_t Model::GetVertexCount() const {
     uint32_t count = 0;
-    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.vertices.size());
+
+    for (const auto& mesh : modelData_.meshes)
+        count += static_cast<uint32_t>(mesh.vertices.size());
     return count;
 }
 
 // インデックス数から概算ポリゴン数を返し、描画負荷の目安にする。
 uint32_t Model::GetPolygonCount() const {
     uint32_t count = 0;
-    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.indices.size() / 3);
+
+    for (const auto& mesh : modelData_.meshes)
+        count += static_cast<uint32_t>(mesh.indices.size() / 3);
     return count;
 }
 

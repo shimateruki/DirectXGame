@@ -32,13 +32,21 @@ class AudioVoiceCallback : public IXAudio2VoiceCallback {
 public:
 	void OnBufferEnd(void* pBufferContext) override {
 		std::condition_variable* cv = reinterpret_cast<std::condition_variable*>(pBufferContext);
-		if (cv) { cv->notify_one(); }
+		if (cv) {
+			cv->notify_one();
+		}
 	}
+
 	void OnStreamEnd() override {}
+
 	void OnVoiceProcessingPassStart(UINT32 BytesRequired) override {}
+
 	void OnVoiceProcessingPassEnd() override {}
+
 	void OnBufferStart(void* pBufferContext) override {}
+
 	void OnLoopEnd(void* pBufferContext) override {}
+
 	void OnVoiceError(void* pBufferContext, HRESULT Error) override {}
 };
 
@@ -46,17 +54,22 @@ public:
 struct SoundDataStreaming {
 	Microsoft::WRL::ComPtr<IMFSourceReader> sourceReader;
 	WAVEFORMATEX* waveFormat = nullptr;
+
 	IXAudio2SourceVoice* sourceVoice = nullptr;
 	AudioVoiceCallback voiceCallback;
+
 	std::thread decodeThread;
 	std::mutex mtx;
 	std::condition_variable cv;
+
 	std::atomic_bool isPlaying = false;
 	bool isEndOfStream = false;
 	bool loop = false;
+
 	static const int kNumBuffers = 3;
 	std::vector<BYTE> buffers[kNumBuffers];
 	int currentBufferIndex = 0;
+
 	~SoundDataStreaming() {
 		if (waveFormat) {
 			CoTaskMemFree(waveFormat);
@@ -144,8 +157,11 @@ public:
 
 private:
 	AudioPlayer() = default;
+
 	~AudioPlayer() = default;
+
 	AudioPlayer(const AudioPlayer&) = delete;
+
 	AudioPlayer& operator=(const AudioPlayer&) = delete;
 
 	// ストリーミング音声を別スレッドでデコードし、XAudio2 へ供給します。

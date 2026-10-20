@@ -57,6 +57,7 @@ public:
 
     // 攻撃エディターの単独配置確認。通常の粒子とはGPUバッファと時間を分離します。
     void ClearAuthoringPreview();
+
     bool ShowAuthoringPreview(const std::string& preset, const engine::Vector3& position,
         const engine::Vector3& direction, bool directed, float speedScale, float age);
 
@@ -113,7 +114,10 @@ public:
 
     /// <summary>メッシュ発生用の頂点バッファとボーン SRV を設定します。</summary>
     void SetEmitterMesh(ID3D12Resource* vb, uint32_t vCount, uint32_t vStride, uint32_t boneSrvIndex) {
-        meshVb_ = vb; meshVCount_ = vCount; meshVStride_ = vStride; meshBoneSrv_ = boneSrvIndex;
+        meshVb_ = vb;
+        meshVCount_ = vCount;
+        meshVStride_ = vStride;
+        meshBoneSrv_ = boneSrvIndex;
     }
 
 private:
@@ -140,6 +144,7 @@ private:
         engine::Matrix4x4 transform;
         float timer;
     };
+
     std::vector<AutoEmitter> autoEmitters_;
     uint32_t nextAutoEmitterId_ = 0;
     float timeScale_ = 1.0f;

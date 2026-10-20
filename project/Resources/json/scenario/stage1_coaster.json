@@ -1,10 +1,10 @@
 {
     "version": 6,
-    "name": "stage1_coaster",
-    "duration": 26.3,
+    "name": "stage1_raft",
+    "duration": 40,
     "tracks": [
         {
-            "name": "乗車床：出発・乗り込み停車・上昇・急降下",
+            "name": "いかだ：左右の島・4波の乗り込み・水柱・着岸",
             "targetName": "Stage1_Coaster_Deck",
             "targetEventId": -1,
             "startTime": 0,
@@ -16,14 +16,14 @@
                 {
                     "time": 0,
                     "position": [
-                        632,
-                        11.4,
+                        635,
+                        11.35,
                         -14
                     ],
                     "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
+                        0,
+                        0,
+                        0
                     ],
                     "scale": [
                         1,
@@ -33,187 +33,16 @@
                     "easingToNext": 0
                 },
                 {
-                    "time": 1.1,
+                    "time": 0.65,
                     "position": [
-                        632,
-                        11.4,
+                        635,
+                        11.35,
                         -14
                     ],
                     "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 4
-                },
-                {
-                    "time": 4,
-                    "position": [
-                        650,
-                        15,
-                        -32
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 4
-                },
-                {
-                    "time": 7,
-                    "position": [
-                        672,
-                        18,
-                        -10
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 4
-                },
-                {
-                    "time": 8.5,
-                    "position": [
-                        681,
-                        18,
+                        0,
+                        0,
                         0
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 0
-                },
-                {
-                    "time": 10.6,
-                    "position": [
-                        681,
-                        18,
-                        0
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 4
-                },
-                {
-                    "time": 14,
-                    "position": [
-                        706,
-                        23,
-                        -8
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 0
-                },
-                {
-                    "time": 15.7,
-                    "position": [
-                        706,
-                        23,
-                        -8
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 4
-                },
-                {
-                    "time": 19,
-                    "position": [
-                        718,
-                        36,
-                        14
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 4
-                },
-                {
-                    "time": 22,
-                    "position": [
-                        727,
-                        50,
-                        29
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
-                    ],
-                    "scale": [
-                        1,
-                        1,
-                        1
-                    ],
-                    "easingToNext": 0
-                },
-                {
-                    "time": 23,
-                    "position": [
-                        727,
-                        50,
-                        29
-                    ],
-                    "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
                     ],
                     "scale": [
                         1,
@@ -223,16 +52,16 @@
                     "easingToNext": 1
                 },
                 {
-                    "time": 24.8,
+                    "time": 2,
                     "position": [
-                        752,
-                        23,
-                        18
+                        643,
+                        -11.4,
+                        -14
                     ],
                     "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
+                        0,
+                        0,
+                        0
                     ],
                     "scale": [
                         1,
@@ -242,16 +71,206 @@
                     "easingToNext": 2
                 },
                 {
-                    "time": 26.3,
+                    "time": 2.35,
                     "position": [
-                        763,
-                        16.4,
+                        643,
+                        -10.9,
+                        -14
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 2.7,
+                    "position": [
+                        643,
+                        -11.4,
+                        -14
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 7,
+                    "position": [
+                        679,
+                        -11.4,
+                        -8
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 14,
+                    "position": [
+                        718,
+                        -11.4,
+                        -8
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 21,
+                    "position": [
+                        758,
+                        -11.4,
+                        -8
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 28,
+                    "position": [
+                        798,
+                        -11.4,
+                        -8
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 34,
+                    "position": [
+                        852.8,
+                        -11.4,
+                        29
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 34.8,
+                    "position": [
+                        852.8,
+                        -11.4,
+                        29
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 2
+                },
+                {
+                    "time": 37,
+                    "position": [
+                        852.8,
+                        22,
+                        29
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 38.3,
+                    "position": [
+                        852.8,
+                        22,
+                        29
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 40,
+                    "position": [
+                        852.8,
+                        16.35,
                         13
                     ],
                     "rotation": [
-                        0.0,
-                        0.5404072498724468,
-                        0.0
+                        0,
+                        0,
+                        0
                     ],
                     "scale": [
                         1,
@@ -265,21 +284,84 @@
     ],
     "signals": [
         {
-            "time": 8.8,
-            "name": "スライム1が乗り込む",
-            "signal": "ride.board",
-            "payload": "{\"duration\": 1.1, \"height\": 6, \"offset\": [-3, 0, 0]}",
-            "targetName": "Stage1_Coaster_Boarder_0",
+            "time": 2,
+            "name": "着水の飛沫",
+            "signal": "ride.splash",
+            "targetName": "Stage1_Coaster_Deck",
             "targetEventId": -1,
+            "payload": "",
             "enabled": true
         },
         {
-            "time": 14.2,
-            "name": "スライム2が乗り込む",
+            "time": 7,
+            "name": "第1波：左の島から乗り込み",
             "signal": "ride.board",
-            "payload": "{\"duration\": 1.1, \"height\": 6, \"offset\": [3, 0, 0]}",
+            "targetName": "Stage1_Coaster_Boarder_0",
+            "targetEventId": -1,
+            "enabled": true,
+            "payload": "{\"duration\": 1.25, \"height\": 0, \"falling\": true, \"offset\": [-3, 0, 3]}"
+        },
+        {
+            "time": 14,
+            "name": "第2波：右の島から乗り込み",
+            "signal": "ride.board",
             "targetName": "Stage1_Coaster_Boarder_1",
             "targetEventId": -1,
+            "enabled": true,
+            "payload": "{\"duration\": 1.25, \"height\": 0, \"falling\": true, \"offset\": [3, 0, -3]}"
+        },
+        {
+            "time": 21,
+            "name": "第3波：左の島から乗り込み",
+            "signal": "ride.board",
+            "targetName": "Stage1_Coaster_Boarder_2",
+            "targetEventId": -1,
+            "enabled": true,
+            "payload": "{\"duration\": 1.25, \"height\": 0, \"falling\": true, \"offset\": [-3, 0, 3]}"
+        },
+        {
+            "time": 21,
+            "name": "第3波：右の島から乗り込み",
+            "signal": "ride.board",
+            "targetName": "Stage1_Coaster_Boarder_3",
+            "targetEventId": -1,
+            "enabled": true,
+            "payload": "{\"duration\": 1.25, \"height\": 0, \"falling\": true, \"offset\": [3, 0, -3]}"
+        },
+        {
+            "time": 28,
+            "name": "第4波：左の島から乗り込み",
+            "signal": "ride.board",
+            "targetName": "Stage1_Coaster_Boarder_4",
+            "targetEventId": -1,
+            "enabled": true,
+            "payload": "{\"duration\": 1.25, \"height\": 0, \"falling\": true, \"offset\": [-3, 0, 3]}"
+        },
+        {
+            "time": 28,
+            "name": "第4波：右の島から乗り込み",
+            "signal": "ride.board",
+            "targetName": "Stage1_Coaster_Boarder_5",
+            "targetEventId": -1,
+            "enabled": true,
+            "payload": "{\"duration\": 1.25, \"height\": 0, \"falling\": true, \"offset\": [3, 0, -3]}"
+        },
+        {
+            "time": 34,
+            "name": "水柱の予兆・噴射",
+            "signal": "ride.waterjet",
+            "targetName": "Stage1_Raft_WaterJet",
+            "targetEventId": -1,
+            "payload": "on",
+            "enabled": true
+        },
+        {
+            "time": 38.3,
+            "name": "噴射終了",
+            "signal": "ride.waterjet",
+            "targetName": "Stage1_Raft_WaterJet",
+            "targetEventId": -1,
+            "payload": "off",
             "enabled": true
         }
     ]

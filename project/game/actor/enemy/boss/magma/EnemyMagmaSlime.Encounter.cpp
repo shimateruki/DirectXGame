@@ -6,7 +6,7 @@
 
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
 #include "MeshRenderer.h"
 #include "SceneManager.h"
@@ -29,6 +29,7 @@ bool EnemyMagmaSlime::UpdateEncounterState(float deltaTime) {
     }
 
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager || !sceneManager->IsPlaying()) {
         ResetEncounterStateForEditor();
         return true;
@@ -37,12 +38,14 @@ bool EnemyMagmaSlime::UpdateEncounterState(float deltaTime) {
     if (!encounterInitializedForPlay_) {
         InitializeEncounterState();
     }
+
     if (encounterState_ == EncounterState::Dormant) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         ClearTransientVisuals();
         HideAttackTelegraph();
         return true;
     }
+
     if (encounterState_ != EncounterState::Appearing) {
         return false;
     }
@@ -87,6 +90,7 @@ bool EnemyMagmaSlime::UpdateEncounterState(float deltaTime) {
     if (progress >= 1.0f) {
         FinishEncounterAppearance();
     }
+
     return true;
 }
 
@@ -104,17 +108,20 @@ void EnemyMagmaSlime::CaptureEncounterAuthoredState(bool refreshVisualTransform)
     encounterMaterialType_ = GetMaterialType();
     const uint32_t collisionAttribute = GetCollisionAttribute();
     const uint32_t collisionMask = GetCollisionMask();
+
     // 待機中に保存された衝突無効値を、登場後へ持ち越さないよう補います。
     if (collisionAttribute != 0) {
         encounterCollisionAttribute_ = collisionAttribute;
     } else if (!encounterAuthoredStateCaptured_) {
         encounterCollisionAttribute_ = CollisionCategories::Get("enemy");
     }
+
     if (collisionMask != 0) {
         encounterCollisionMask_ = collisionMask;
     } else if (!encounterAuthoredStateCaptured_) {
         encounterCollisionMask_ = CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet");
     }
+
     baseScale_ = encounterBaseScale_;
     hasBaseScale_ = true;
     encounterAuthoredStateCaptured_ = true;
@@ -128,6 +135,7 @@ void EnemyMagmaSlime::InitializeEncounterState() {
     attackCycleIndex_ = attackCycle_.size();
     lastAutomaticAttack_ = AttackKind::None;
     const bool startActive = param_.has_value() && param_->startActive;
+
     if (startActive || encounterRequestedActive_) {
         BeginEncounterAppearance();
     } else {
@@ -137,6 +145,7 @@ void EnemyMagmaSlime::InitializeEncounterState() {
 
 // 再生中の演出を片付け、Editorで調整した配置値へ戻します。
 void EnemyMagmaSlime::ResetEncounterStateForEditor() {
+    locomotion_.Reset();
     // Play中の演出姿勢と衝突を解除し、編集時の配置状態へ戻す。
     if (encounterInitializedForPlay_) {
         SetTranslate(encounterBasePosition_);
@@ -147,6 +156,7 @@ void EnemyMagmaSlime::ResetEncounterStateForEditor() {
         SetEmissive(encounterBaseEmissive_);
         SyncCollisionRadius();
     }
+
     CaptureEncounterAuthoredState(true);
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
@@ -164,6 +174,7 @@ void EnemyMagmaSlime::ResetEncounterStateForEditor() {
 
 // 登場中の衝突を止め、開始位置に出現VFXを再生します。
 void EnemyMagmaSlime::BeginEncounterAppearance() {
+    locomotion_.Reset();
     // 出現VFX中の被弾を避けるため、戦闘用の衝突を一時的に無効にする。
     encounterState_ = EncounterState::Appearing;
     encounterTimer_ = 0.0f;
@@ -179,6 +190,7 @@ void EnemyMagmaSlime::BeginEncounterAppearance() {
 }
 
 void EnemyMagmaSlime::ApplyDormantEncounterState() {
+    locomotion_.Reset();
     // ステージから起動されるまで非表示にし、前回攻撃の演出を残さない。
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
@@ -229,6 +241,7 @@ bool EnemyMagmaSlime::IsEncounterHudActive() const {
     if (!IsEncounterControlled() || isDead) {
         return false;
     }
+
     return encounterState_ == EncounterState::Appearing || encounterState_ == EncounterState::Active;
 }
 
@@ -247,8 +260,10 @@ float EnemyMagmaSlime::GetEncounterAppearanceProgress() const {
     if (encounterState_ == EncounterState::Active) {
         return 1.0f;
     }
+
     if (encounterState_ != EncounterState::Appearing) {
         return 0.0f;
     }
+
     return std::clamp(encounterTimer_ / GetEncounterAppearanceDuration(), 0.0f, 1.0f);
 }

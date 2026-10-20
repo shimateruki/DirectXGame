@@ -18,6 +18,7 @@ public:
         SceneManager* sceneManager,
         DebugEditor* editor,
         std::function<void()> ensureEditorPanelsVisible);
+
     /// お気に入りと履歴を保存して参照を解除します。
     void Finalize();
 
@@ -58,21 +59,35 @@ private:
 
     // 資産・シーンなどの世代が変わったときだけ候補を再収集します。
     void RefreshResults(bool force = false);
+
     void CollectCommands(std::vector<SearchItem>& items) const;
+
     void CollectObjects(std::vector<SearchItem>& items) const;
+
     void CollectAssets(std::vector<SearchItem>& items) const;
+
     void CollectSceneAssets(std::vector<SearchItem>& items) const;
+
     void CollectPresets(std::vector<SearchItem>& items) const;
+
     void CollectEditorWindows(std::vector<SearchItem>& items) const;
+
     // 検索語の一致度と利用履歴を使って表示順位を決めます。
     int ScoreItem(const SearchItem& item, const std::string& normalizedQuery) const;
+
     void ExecuteItem(std::size_t index);
+
     void ToggleFavorite(const std::string& id);
+
     void TouchRecent(const std::string& id);
+
     bool IsFavorite(const std::string& id) const;
+
     int FindRecentRank(const std::string& id) const;
+
     // 利用者固有のお気に入り・履歴だけをディスクへ永続化します。
     void LoadState();
+
     void SaveState() const;
 
 private:
@@ -83,16 +98,20 @@ private:
     std::vector<SearchItem> results_;
     std::vector<std::string> favoriteIds_;
     std::vector<std::string> recentIds_;
+
     char query_[192] = {};
     std::string lastQuery_;
+
     std::uint64_t lastCommandRevision_ = 0;
     std::uint64_t lastSceneGeneration_ = 0;
     std::uint64_t lastAssetGeneration_ = 0;
     std::size_t lastPresetCount_ = 0;
     std::size_t lastPrefabCount_ = 0;
+
     int selectedIndex_ = 0;
     bool openRequested_ = false;
     bool focusQueryRequested_ = false;
+
     std::string statePath_ = "output/editor_state/editor_quick_search.json";
 };
 

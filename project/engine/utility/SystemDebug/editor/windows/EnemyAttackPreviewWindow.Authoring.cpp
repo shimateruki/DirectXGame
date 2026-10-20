@@ -4,7 +4,7 @@
 #include "BaseEnemy.h"
 #include "Player.h"
 #include "MeshEffectManager.h"
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "CameraManager.h"
 #include "Camera.h"
 #include "ModelManager.h"
@@ -26,43 +26,63 @@ namespace {
 bool EditText(const char* label, std::string& text) {
     char buffer[1024]{};
     text.copy(buffer, sizeof(buffer) - 1);
-    if (!ImGui::InputText(label, buffer, sizeof(buffer))) return false;
+    if (!ImGui::InputText(label, buffer, sizeof(buffer)))
+        return false;
     text = buffer;
     return true;
 }
+
 bool SelectJson(const char* label, const char* directory, std::string& path, ProjectWindow* assets = nullptr) {
     // JSONを名前で絞り込み、表示範囲に入った候補だけサムネイルを要求する。
     bool changed = false;
     const std::string selectedName = path.empty() ? "選択してください" : std::filesystem::path(path).stem().string();
+
     if (ImGui::BeginCombo(label, selectedName.c_str())) {
         static char search[128]{};
         ImGui::InputText("素材名で検索", search, sizeof(search));
         std::error_code error;
         std::vector<std::string> paths;
+
         for (std::filesystem::directory_iterator it(directory, error), end; !error && it != end; it.increment(error))
-            if (it->path().extension() == ".json") paths.push_back(it->path().generic_string());
+            if (it->path().extension() == ".json")
+                paths.push_back(it->path().generic_string());
         std::sort(paths.begin(), paths.end());
+
         for (const auto& candidate : paths) {
-            if (search[0] && candidate.find(search) == std::string::npos) continue;
+            if (search[0] && candidate.find(search) == std::string::npos)
+                continue;
             ImGui::PushID(candidate.c_str());
+
             if (assets) {
                 const uint64_t texture = ImGui::IsRectVisible(ImVec2(64, 64)) ? assets->GetEffectThumbnailGpuPtr(candidate) : 0;
-                if (texture) ImGui::Image(static_cast<ImTextureID>(texture), ImVec2(64, 64));
+                if (texture)
+                    ImGui::Image(static_cast<ImTextureID>(texture), ImVec2(64, 64));
                 else ImGui::Dummy(ImVec2(64, 64));
                 ImGui::SameLine();
             }
+
             const std::string name = std::filesystem::path(candidate).stem().string();
-            if (ImGui::Selectable(name.c_str(), candidate == path, 0, ImVec2(0, assets ? 64.0f : 0.0f))) { path = candidate; changed = true; }
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", candidate.c_str());
+
+            if (ImGui::Selectable(name.c_str(), candidate == path, 0, ImVec2(0, assets ? 64.0f : 0.0f))) {
+                path = candidate;
+                changed = true;
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", candidate.c_str());
             ImGui::PopID();
         }
+
         ImGui::EndCombo();
     }
+
     if (assets && !path.empty()) {
-        if (const auto texture = assets->GetEffectThumbnailGpuPtr(path)) ImGui::Image(static_cast<ImTextureID>(texture), ImVec2(128, 128));
+        if (const auto texture = assets->GetEffectThumbnailGpuPtr(path))
+            ImGui::Image(static_cast<ImTextureID>(texture), ImVec2(128, 128));
         else ImGui::TextDisabled("素材の画像を生成中");
-        if (ImGui::SmallButton("素材を撮り直す")) assets->InvalidatePresetThumbnail("@effect:" + path);
+        if (ImGui::SmallButton("素材を撮り直す"))
+            assets->InvalidatePresetThumbnail("@effect:" + path);
     }
+
     return changed;
 }
 }
@@ -76,20 +96,28 @@ void EnemyAttackPreviewWindow::StopPlacementPreview() {
         placementGizmoUsing_ = false;
         authoringGestureOpen_ = false;
     }
+
     GPUParticleManager::GetInstance()->ClearAuthoringPreview();
+
     if (sceneManager_ && sceneManager_->GetCurrentScene() == previewScene_ && previewScene_) {
         if (placementObject_) {
             previewScene_->RequestRemoveObject(placementObject_);
             std::erase(spawnedPreviewObjects_, placementObject_);
         }
-        if (previewEnemy_) previewEnemy_->SetIsVisible(true);
-        if (previewPlayer_) previewPlayer_->SetIsVisible(true);
-        if (previewTarget_) previewTarget_->SetIsVisible(showTarget_);
+
+        if (previewEnemy_)
+            previewEnemy_->SetIsVisible(true);
+        if (previewPlayer_)
+            previewPlayer_->SetIsVisible(true);
+        if (previewTarget_)
+            previewTarget_->SetIsVisible(showTarget_);
     }
+
     placementObject_ = nullptr;
     placementGpuSignature_.clear();
     placementMessage_.clear();
-    if (placementScope_) MeshEffectManager::GetInstance()->StopEffectScope(placementScope_);
+    if (placementScope_)
+        MeshEffectManager::GetInstance()->StopEffectScope(placementScope_);
     placementScope_ = 0;
     placementPreset_.clear();
     placementPreview_ = false;
@@ -101,6 +129,8 @@ void EnemyAttackPreviewWindow::BeginPlacementPreview() {
         profileStatus_ = "編集モードのSceneを開いてから配置を確認してください。";
         return;
     }
+
+    // 以前のプレビューObjectと一時状態を捨て、選択中の攻撃だけで再生成します。
     authoringActorSelected_ = false;
     draftRefreshPending_ = false;
     ClearPreviewTransientState();
@@ -110,52 +140,81 @@ void EnemyAttackPreviewWindow::BeginPlacementPreview() {
     playing_ = false;
     placementPreview_ = true;
     placementTime_ = selectedTrack_ <= -2 ? 0.15f : 0.0f;
+    // 通常トラックは表示区間の途中を初期姿勢にし、発射イベントは短い時刻で確認します。
     if (const auto* attack = GetSelectedAttackDefinition(); attack && selectedTrack_ >= 0 &&
         selectedTrack_ < static_cast<int>(attack->sequence.tracks.size())) {
         const auto& track = attack->sequence.tracks[selectedTrack_];
         placementTime_ = (std::max)(0.01f, track.end - track.begin) * 0.4f;
     }
+
     UpdatePlacementPreview();
 }
 
 void EnemyAttackPreviewWindow::UpdatePlacementPreview() {
     const auto* attack = GetSelectedAttackDefinition();
+
     if (!attack) {
         StopPlacementPreview();
         return;
     }
+
+    // 作者が選んだ表示設定を術者と標的へ反映し、座標評価の前提を揃えます。
     engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
-    if (actor) actor->SetIsVisible(!hidePlacementActor_);
-    if (previewTarget_) previewTarget_->SetIsVisible(!hidePlacementActor_ && showTarget_);
+    if (actor)
+        actor->SetIsVisible(!hidePlacementActor_);
+    if (previewTarget_)
+        previewTarget_->SetIsVisible(!hidePlacementActor_ && showTarget_);
     engine::Vector3 position, rotation, scale;
-    if (!GetPlacementTransform(position, rotation, scale)) { StopPlacementPreview(); return; }
+
+    if (!GetPlacementTransform(position, rotation, scale)) {
+        StopPlacementPreview();
+        return;
+    }
+    // 負の選択番号は攻撃イベントを表すため、通常トラックとは別の表示物を評価します。
     if (selectedTrack_ <= -2) {
         const auto& event = attack->sequence.events[-2 - selectedTrack_];
         const auto part = ResolveProjectileComponent(*attack, event);
+
         if (event.operation == "projectile") {
             if (!placementObject_) {
                 auto object = std::make_unique<engine::Object3d>();
                 object->Initialize(previewScene_->GetObject3dCommon());
                 object->SetName("AttackPlacementObject");
-                object->SetClassName("EditorOnly"); object->SetEditorInternal(true);
-                object->SetCollisionAttribute(0); object->SetCollisionMask(0);
+                object->SetClassName("EditorOnly");
+                object->SetEditorInternal(true);
+                object->SetCollisionAttribute(0);
+                object->SetCollisionMask(0);
                 object->SetIsLocked(true);
                 placementObject_ = object.get();
                 spawnedPreviewObjects_.push_back(object.get());
                 previewScene_->AddObject(std::move(object));
             }
-            if (placementPreset_ != part.model) { placementObject_->SetModel(part.model); placementPreset_ = part.model; }
+
+            if (placementPreset_ != part.model) {
+                placementObject_->SetModel(part.model);
+                placementPreset_ = part.model;
+            }
             placementObject_->SetIsVisible(projectileSection_ < 3);
-            placementObject_->SetTranslate(position); placementObject_->SetRotation(rotation); placementObject_->SetScale(scale);
+            placementObject_->SetTranslate(position);
+            placementObject_->SetRotation(rotation);
+            placementObject_->SetScale(scale);
             placementObject_->SetMaterialType(part.style == "fire" ? 11 : 0);
             const auto& a = part.appearance;
-            placementObject_->SetColor({a.red,a.green,a.blue,a.alpha}); placementObject_->SetEmissive(a.emissive);
+            placementObject_->SetColor({a.red,a.green,a.blue,a.alpha});
+            placementObject_->SetEmissive(a.emissive);
+
             if (auto* renderer = placementObject_->GetMeshRenderer()) if (auto* water = renderer->GetWaterParamData()) {
-                water->effectType = 1; water->effectScale = a.effectScale; water->effectSoftness = a.softness;
-                water->effectIntensity = a.intensity; water->billboardScale = a.billboardScale;
+                water->effectType = 1;
+                water->effectScale = a.effectScale;
+                water->effectSoftness = a.softness;
+                water->effectIntensity = a.intensity;
+                water->billboardScale = a.billboardScale;
             }
+
             placementObject_->UpdateWorldMatrix(true);
         }
+
+        // イベント種別と編集中の部位からGPU素材を選び、見た目だけを単独再生します。
         const std::string primary = event.operation == "gpu_vfx" ? event.preset :
             projectileSection_ == 3 ? part.trail : projectileSection_ == 4 ? part.impact : "";
         const std::string secondary = event.operation == "gpu_vfx" ? "" :
@@ -164,19 +223,24 @@ void EnemyAttackPreviewWindow::UpdatePlacementPreview() {
         context.position = actor ? actor->GetTranslate() : engine::Vector3{};
         const float baseYaw = rotation.y - event.yawDegrees * 0.01745329252f;
         context.forward = {std::sin(baseYaw),0,std::cos(baseYaw)};
-        context.ownerSize = previewBaseScale_; context.hasTarget = previewTarget_ != nullptr;
-        if (previewTarget_) context.targetPosition = previewTarget_->GetTranslate();
+        context.ownerSize = previewBaseScale_;
+        context.hasTarget = previewTarget_ != nullptr;
+        if (previewTarget_)
+            context.targetPosition = previewTarget_->GetTranslate();
         engine::Vector3 direction = ResolveAttackSequenceEmission(event,context,0,0).direction;
         const bool directed = event.operation == "gpu_vfx" ? event.directed : projectileSection_ == 3 && part.style == "fire";
         const float speed = event.operation == "gpu_vfx" ? event.particleSpeedScale : part.appearance.trailSpeedScale;
-        if (event.operation == "projectile" && projectileSection_ == 3 && part.style == "fire") direction = direction * -1;
+        if (event.operation == "projectile" && projectileSection_ == 3 && part.style == "fire")
+            direction = direction * -1;
         const auto signature = primary + "|" + secondary + "|" + std::to_string(position.x) + "|" +
             std::to_string(position.y) + "|" + std::to_string(position.z) + "|" + std::to_string(rotation.y) + "|" +
             std::to_string(placementTime_) + "|" + std::to_string(directed) + "|" + std::to_string(speed) + "|" +
             std::to_string(direction.x) + "|" + std::to_string(direction.y) + "|" + std::to_string(direction.z);
+        // 素材・姿勢・時刻に変化があった時だけGPUプレビューを作り直します。
         if (signature != placementGpuSignature_) {
             placementGpuSignature_ = signature;
-            auto* gpu = GPUParticleManager::GetInstance(); gpu->ClearAuthoringPreview();
+            auto* gpu = GPUParticleManager::GetInstance();
+            gpu->ClearAuthoringPreview();
             placementMessage_ = primary.empty() ?
                 (event.operation == "gpu_vfx" || projectileSection_ >= 3 ? "GPU素材は未指定です。" : "生成Objectの配置確認です。衝突は発生しません。") :
                 "選択した素材の単独表示です。寿命を過ぎると粒子は見えません。";
@@ -185,40 +249,59 @@ void EnemyAttackPreviewWindow::UpdatePlacementPreview() {
                     speed, placementTime_)) placementMessage_ = "GPU素材を読み込めません（未登録、または単独表示非対応）: " + preset;
             }
         }
+
         return;
     }
-    if (selectedTrack_ < 0 || selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size())) return;
+
+    // 通常トラックのうちMesh VFXだけがここで実体を持ち、判定トラックはViewportへ任せます。
+    if (selectedTrack_ < 0 || selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size()))
+        return;
     const auto& track = attack->sequence.tracks[selectedTrack_];
-    if (track.type != "mesh_vfx") return; // 判定はViewportに実寸の輪を表示します。
+    if (track.type != "mesh_vfx")
+        return; // 判定はViewportに実寸の輪を表示します。
     auto* effects = MeshEffectManager::GetInstance();
+
     if (placementPreset_ != track.preset || !placementScope_) {
-        if (placementScope_) effects->StopEffectScope(placementScope_);
+        if (placementScope_)
+            effects->StopEffectScope(placementScope_);
         placementScope_ = effects->CreateEffectScope();
         placementPreset_ = track.preset;
+
         // 読込失敗でもスコープとパスを保持し、毎フレーム再試行しません。
         if (!effects->StartTimelineEffect(placementScope_, track.preset)) {
             profileStatus_ = "素材を表示できません: " + track.preset;
             return;
         }
+
         profileStatus_ = "配置確認中: 位置・回転・大きさを変更できます。ファイルはまだ保存していません。";
     }
+
+    // プリセットが用意できた後、術者の向きとキー時刻から世界座標を評価します。
     engine::Object3d* owner = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
-    if (!owner) return;
+    if (!owner)
+        return;
     const float duration = (std::max)(0.01f, track.end - track.begin);
     placementTime_ = std::clamp(placementTime_, 0.0f, duration);
     std::string error;
+
     if (!track.Validate(attack->sequence.duration, &error)) {
         profileStatus_ = "配置確認を更新できません: " + error;
         return;
     }
+
     auto key = track.Evaluate(placementTime_);
-    if (track.motion != "keyframed") key.position = track.keys.front().position;
+    if (track.motion != "keyframed")
+        key.position = track.keys.front().position;
     engine::Vector3 forward{0, 0, 1};
+
     if (previewTarget_) {
         engine::Vector3 offset = previewTarget_->GetTranslate() - owner->GetTranslate();
         offset.y = 0;
-        if (engine::Math::Length(offset) > 0.0001f) forward = engine::Math::Normalize(offset);
+        if (engine::Math::Length(offset) > 0.0001f)
+            forward = engine::Math::Normalize(offset);
     }
+
+    // キーの右・上・前オフセットを術者基準の軸に展開して表示位置を作ります。
     const engine::Vector3 right{forward.z, 0, -forward.x};
     const engine::Vector3 worldPosition = owner->GetTranslate() + right * key.position[0] + engine::Vector3{0, key.position[1], 0} + forward * key.position[2];
     effects->EvaluateTimelineEffect(placementScope_, placementTime_, duration, worldPosition,
@@ -232,20 +315,31 @@ void EnemyAttackPreviewWindow::ReloadAuthoringProfile() {
     EnemyAttackProfile loaded;
     std::string error;
     const auto path = EnemyAttackProfile::GetDefaultPath(GetSelectedEnemyType());
+
     // 失敗時に編集内容を失わないよう、一時プロファイルで読込が完了してから置換します。
     if (!loaded.LoadFromFile(path, &error) || loaded.attacks.empty()) {
         profileStatus_ = "再読込できません。編集中の内容は保持しました: " + error;
         return;
     }
+
     StopPreview();
     editableProfile_ = std::move(loaded);
     profileAttackIndex_ = 0;
+
     for (int i = 0; i < static_cast<int>(editableProfile_.attacks.size()); ++i)
-        if (playerCopyMode_ == (editableProfile_.attacks[i].sequence.binding == "player_special")) { profileAttackIndex_ = i; break; }
+        if (playerCopyMode_ == (editableProfile_.attacks[i].sequence.binding == "player_special")) {
+            profileAttackIndex_ = i;
+            break;
+        }
     for (int i = 0; i < static_cast<int>(editableProfile_.attacks.size()); ++i)
-        if (editableProfile_.attacks[i].id == id) { profileAttackIndex_ = i; break; }
+        if (editableProfile_.attacks[i].id == id) {
+            profileAttackIndex_ = i;
+            break;
+        }
     selectedTrack_ = -1;
-    authoringUndo_.clear(); authoringRedo_.clear(); authoringGestureOpen_ = false;
+    authoringUndo_.clear();
+    authoringRedo_.clear();
+    authoringGestureOpen_ = false;
     profileDirty_ = false;
     EnemyAttackProfile::InvalidateCache(GetSelectedEnemyType());
     ApplyRecommendedSettings();
@@ -255,10 +349,12 @@ void EnemyAttackPreviewWindow::ReloadAuthoringProfile() {
 void EnemyAttackPreviewWindow::RememberSequenceEdit(const AttackSequenceDefinition& before) {
     // 連続ドラッグは一操作として扱い、Undoには操作開始前の状態だけを積みます。
     if (!authoringGestureOpen_) {
-        if (authoringUndo_.size() == 64) authoringUndo_.erase(authoringUndo_.begin());
+        if (authoringUndo_.size() == 64)
+            authoringUndo_.erase(authoringUndo_.begin());
         authoringUndo_.push_back(before);
         authoringRedo_.clear();
     }
+
     authoringGestureOpen_ = true;
     profileDirty_ = true;
     RequestDraftRefresh();
@@ -266,11 +362,13 @@ void EnemyAttackPreviewWindow::RememberSequenceEdit(const AttackSequenceDefiniti
 
 void EnemyAttackPreviewWindow::RequestDraftRefresh() {
     // 自動反映では再生位置を退避し、連続編集を一度の再構築にまとめます。
-    if (!autoApplyDraft_ || !useDraftProfile_ || !enabled_ || placementPreview_) return;
+    if (!autoApplyDraft_ || !useDraftProfile_ || !enabled_ || placementPreview_)
+        return;
     if (!draftRefreshPending_) {
         draftRefreshTime_ = elapsedTime_;
         draftRefreshPlaying_ = playing_;
     }
+
     playing_ = false;
     draftRefreshPending_ = true;
     draftRefreshDelay_ = 0;
@@ -279,19 +377,29 @@ void EnemyAttackPreviewWindow::RequestDraftRefresh() {
 void EnemyAttackPreviewWindow::PreviewDraft(bool keepTime) {
     // 保存前の定義を検証してから、必要なら同じ再生時刻へ戻して差を確認します。
     const auto* attack = GetSelectedAttackDefinition();
+
     if (!attack || !attack->sequence.enabled || !IsCurrentSceneReady() || sceneManager_->IsPlaying()) {
         draftRefreshPending_ = false;
         profileStatus_ = "保存前の動作確認は共通攻撃を選び、編集モードで実行してください。";
         return;
     }
-    if (!attack->sequence.Validate(&profileStatus_)) { draftRefreshPending_ = false; return; }
+
+    if (!attack->sequence.Validate(&profileStatus_)) {
+        draftRefreshPending_ = false;
+        return;
+    }
     const float time = keepTime ? (draftRefreshPending_ ? draftRefreshTime_ : elapsedTime_) : 0;
     const bool resume = keepTime ? (draftRefreshPending_ ? draftRefreshPlaying_ : playing_) : true;
     draftRefreshPending_ = false;
     draftProfile_ = editableProfile_;
     useDraftProfile_ = true;
-    if (!enabled_) { enabled_ = true; CreatePreviewObjects(); }
-    if (playerCopyMode_) copyActionIndex_ = 4;
+
+    if (!enabled_) {
+        enabled_ = true;
+        CreatePreviewObjects();
+    }
+    if (playerCopyMode_)
+        copyActionIndex_ = 4;
     SeekPreview(time);
     playing_ = resume;
     profileStatus_ = "編集中の設定で動作確認中。JSONは保存していません。";
@@ -300,80 +408,114 @@ void EnemyAttackPreviewWindow::PreviewDraft(bool keepTime) {
 bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
 #ifdef USE_IMGUI
     // 編集Sceneで扱える敵の攻撃だけを制作対象とし、観測専用のモードとは分けます。
-    if (!sceneManager_ || sceneManager_->IsPlaying()) return false;
+    if (!sceneManager_ || sceneManager_->IsPlaying())
+        return false;
     auto* attack = GetSelectedAttackDefinition();
     const std::string type = GetSelectedEnemyType();
-    if (crownMovieMode_ || !attack || (type != "FireSlime" && type != "PrismSlime")) return false;
+    if (crownMovieMode_ || !attack || (type != "FireSlime" && type != "PrismSlime"))
+        return false;
     ImGui::Begin("攻撃の構成###Hierarchy");
     ImGui::TextWrapped("1 攻撃を開く → 2 部品を配置 → 3 保存して動作確認");
     ImGui::TextColored(profileDirty_ ? ImVec4(1, 0.75f, 0.3f, 1) : ImVec4(0.4f, 0.9f, 0.65f, 1),
         "%s", profileDirty_ ? "未保存の変更があります" : "保存済み");
+
     // 未保存の定義だけを動作確認する入口と、保存後に本編条件で再生する入口を区別します。
-    if (ImGui::Button("保存", ImVec2(-1, 0))) SaveSelectedProfile(false);
+    if (ImGui::Button("保存", ImVec2(-1, 0)))
+        SaveSelectedProfile(false);
     if (attack->sequence.enabled) {
-        if (ImGui::Button("保存せずに攻撃を試す", ImVec2(-1, 0))) PreviewDraft(false);
-        if (ImGui::Button("変更を同じ再生位置へ反映", ImVec2(-1, 0))) PreviewDraft(true);
+        if (ImGui::Button("保存せずに攻撃を試す", ImVec2(-1, 0)))
+            PreviewDraft(false);
+        if (ImGui::Button("変更を同じ再生位置へ反映", ImVec2(-1, 0)))
+            PreviewDraft(true);
         ImGui::Checkbox("調整後に自動反映（操作を離した時）", &autoApplyDraft_);
         ImGui::Checkbox("画面に弾の判定範囲を表示", &showAttackRadii_);
-        if (useDraftProfile_) ImGui::TextColored(ImVec4(0.4f, 0.8f, 1, 1), "編集中データを再生中 / 未保存でも確認可能");
+        if (useDraftProfile_)
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1, 1), "編集中データを再生中 / 未保存でも確認可能");
     }
+
     if (ImGui::Button("保存して攻撃を再生", ImVec2(-1, 0))) {
         profileDirty_ = true;
         SaveSelectedProfile();
+
         if (!profileDirty_) {
             playing_ = true;
-            if (!enabled_) { enabled_ = true; CreatePreviewObjects(); }
+
+            if (!enabled_) {
+                enabled_ = true;
+                CreatePreviewObjects();
+            }
         }
     }
+
     ImGui::TextWrapped("%s", profileStatus_.c_str());
     ImGui::SeparatorText("1. 既存の攻撃を開いて再編集");
+
     if (!playerCopyMode_ && ImGui::TreeNode("本編での攻撃の選び方")) {
         const char* modes[] = {"優先度順", "均等ランダム", "重み付きランダム"};
         int mode = editableProfile_.selectionMode == "weighted" ? 2 : editableProfile_.selectionMode == "uniform" ? 1 : 0;
+
         if (ImGui::Combo("共通攻撃候補の選択", &mode, modes, 3)) {
             editableProfile_.selectionMode = mode == 2 ? "weighted" : mode == 1 ? "uniform" : "priority";
             profileDirty_ = true;
         }
+
         ImGui::TextWrapped("本編で射程内の共通攻撃を選ぶ方式です。プレビューは選択した攻撃を固定再生します。プリズムの外側の行動サイクルは既存AIです。");
         ImGui::TreePop();
     }
+
     // プレイヤーコピー用と敵用の攻撃を同じ一覧から選ぶとき、Binding で候補を分けます。
     if (ImGui::BeginCombo("対象の攻撃", attack->displayName.c_str())) {
         for (int i = 0; i < static_cast<int>(editableProfile_.attacks.size()); ++i) {
             const auto& candidate = editableProfile_.attacks[i];
-            if (playerCopyMode_ != (candidate.sequence.binding == "player_special")) continue;
+            if (playerCopyMode_ != (candidate.sequence.binding == "player_special"))
+                continue;
             const char* mode = !candidate.sequence.enabled ? " [数値調整のみ]" :
                 candidate.sequence.tracks.empty() ? " [弾・放出の構成編集]" : " [部品編集]";
             const std::string label = candidate.displayName + mode + "###" + candidate.id;
+
             if (ImGui::Selectable(label.c_str(), profileAttackIndex_ == i)) {
                 StopPreview();
                 profileAttackIndex_ = i;
                 selectedTrack_ = -1;
-                if (playerCopyMode_) copyActionIndex_ = 4;
+                if (playerCopyMode_)
+                    copyActionIndex_ = 4;
                 ApplyRecommendedSettings();
             }
         }
+
         ImGui::EndCombo();
     }
+
     attack = GetSelectedAttackDefinition();
-    if (EditText("攻撃名", attack->displayName)) profileDirty_ = true;
+    if (EditText("攻撃名", attack->displayName))
+        profileDirty_ = true;
     ImGui::TextWrapped("選択した攻撃を直接編集します。別案を作る場合は複製してください。");
+
     // 再読込は編集中ベクトルを入れ替えるため、未保存時は破棄確認を挟みます。
     if (ImGui::Button("保存済みへ戻す")) {
-        if (profileDirty_) ImGui::OpenPopup("未保存の変更を破棄しますか");
+        if (profileDirty_)
+            ImGui::OpenPopup("未保存の変更を破棄しますか");
         else ReloadAuthoringProfile();
     }
+
     if (ImGui::BeginPopupModal("未保存の変更を破棄しますか", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("この敵の未保存の編集を破棄し、保存済みJSONを開き直します。");
-        if (ImGui::Button("破棄して開き直す")) { ReloadAuthoringProfile(); ImGui::CloseCurrentPopup(); }
+
+        if (ImGui::Button("破棄して開き直す")) {
+            ReloadAuthoringProfile();
+            ImGui::CloseCurrentPopup();
+        }
         ImGui::SameLine();
-        if (ImGui::Button("編集を続ける")) ImGui::CloseCurrentPopup();
+        if (ImGui::Button("編集を続ける"))
+            ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
+
     // 再読込によってvectorが置換されるため、以前の要素ポインタは使いません。
     attack = GetSelectedAttackDefinition();
     if (!attack->sequence.assetPath.empty())
         ImGui::TextWrapped("共有アセットを参照中。この攻撃の部品を変更したら、別の攻撃へ切り替える前に保存してください。個別に編集する場合は複製を使います。");
+
     // 共有 Asset を複製した場合は参照 Path を外し、元の攻撃素材を編集しない独立案にします。
     if (attack->sequence.enabled && ImGui::Button("この攻撃を複製して編集", ImVec2(-1, 0))) {
         auto copy = *attack;
@@ -390,24 +532,30 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         ImGui::End();
         return true;
     }
+
     // 制作機能を知らなくても、既存のC++攻撃から安全に別の攻撃を作れる入口を残します。
     auto createAttack = [&](const char* asset, const char* name) {
         EnemyAttackDefinition created;
         created.sequence.enabled = true;
         created.sequence.binding = playerCopyMode_ ? "player_special" : "enemy";
         created.sequence.duration = 1.5f;
-        if (asset && !EnemyAttackProfile::LoadSequenceAsset(asset, created.sequence, &profileStatus_)) return false;
+        if (asset && !EnemyAttackProfile::LoadSequenceAsset(asset, created.sequence, &profileStatus_))
+            return false;
         created.sequence.assetPath.clear(); // サンプルの編集で、共通の見本ファイルを書き換えない。
         int suffix = 1;
         do { created.id = "custom_attack_" + std::to_string(suffix++); } while (editableProfile_.FindAttack(created.id));
         created.displayName = std::string(name) + " " + std::to_string(suffix - 1);
-        created.minRange = 0; created.maxRange = 3;
-        created.radius = 0.3f; created.maxSpeed = 14; created.lifetime = 2;
+        created.minRange = 0;
+        created.maxRange = 3;
+        created.radius = 0.3f;
+        created.maxSpeed = 14;
+        created.lifetime = 2;
         created.recommendedTargetDistance = 1.5f;
         created.previewDuration = 3;
         created.windupDuration = 0;
         created.activeDuration = created.sequence.duration;
         created.cooldown = 2;
+
         // 新しい攻撃は既存の同 Binding と優先度が衝突しないよう末尾へ配置します。
         for (const auto& existing : editableProfile_.attacks)
             if (existing.sequence.binding == created.sequence.binding)
@@ -417,19 +565,26 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         profileAttackIndex_ = static_cast<int>(editableProfile_.attacks.size()) - 1;
         selectedTrack_ = asset ? 0 : -1;
         authoringIdentity_ = editableProfile_.enemyType + "/" + editableProfile_.attacks.back().id;
-        authoringUndo_.clear(); authoringRedo_.clear(); authoringGestureOpen_ = false;
+        authoringUndo_.clear();
+        authoringRedo_.clear();
+        authoringGestureOpen_ = false;
         profileDirty_ = true;
         prismChantOnly_ = false; // 新しい攻撃の確認では、以前の魔法陣だけの観測設定を引き継がない。
-        if (playerCopyMode_) copyActionIndex_ = 4;
+        if (playerCopyMode_)
+            copyActionIndex_ = 4;
         ApplyRecommendedSettings();
         profileStatus_ = "新しい攻撃を作成しました。表示部品を選ぶと中央で配置を確認できます。";
-        if (selectedTrack_ >= 0 && editableProfile_.attacks.back().sequence.tracks[selectedTrack_].type == "mesh_vfx") BeginPlacementPreview();
+        if (selectedTrack_ >= 0 && editableProfile_.attacks.back().sequence.tracks[selectedTrack_].type == "mesh_vfx")
+            BeginPlacementPreview();
         return true;
     };
+
     bool created = false;
+
     if (ImGui::TreeNode("新しい攻撃を作る・見本から始める")) {
         // 見本の読込直後に共有 Path を解除するので、元ファイルを変更せず編集できます。
-        if (ImGui::Button("空の攻撃を新規作成", ImVec2(-1, 0))) created = createAttack(nullptr, "新しい攻撃");
+        if (ImGui::Button("空の攻撃を新規作成", ImVec2(-1, 0)))
+            created = createAttack(nullptr, "新しい攻撃");
         if (ImGui::Button("表示＋判定の例から作成", ImVec2(-1, 0)))
             created = createAttack("Resources/json/attack_assets/authoring_sweep.json", "表示と判定の攻撃");
         if (ImGui::Button("二段攻撃の例から作成", ImVec2(-1, 0)))
@@ -440,18 +595,25 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
             created = createAttack("Resources/json/attack_assets/authoring_homing.json", "追尾する攻撃Object");
         ImGui::TreePop();
     }
-    if (created) { ImGui::End(); return true; }
+
+    if (created) {
+        ImGui::End();
+        return true;
+    }
     attack = GetSelectedAttackDefinition();
+
     if (attack->id.rfind("custom_attack_", 0) == 0 && ImGui::Button("この作成した攻撃を削除")) {
         StopPreview();
         editableProfile_.attacks.erase(editableProfile_.attacks.begin() + profileAttackIndex_);
         profileAttackIndex_ = 0;
+
         for (int i = 0; i < static_cast<int>(editableProfile_.attacks.size()); ++i) {
             if (playerCopyMode_ == (editableProfile_.attacks[i].sequence.binding == "player_special")) {
                 profileAttackIndex_ = i;
                 break;
             }
         }
+
         selectedTrack_ = -1;
         authoringIdentity_.clear();
         profileDirty_ = true;
@@ -459,60 +621,88 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         ImGui::End();
         return true;
     }
+
     // 攻撃が切り替わったら部品選択と Undo 履歴を破棄し、別攻撃の編集履歴を混ぜません。
     const std::string identity = editableProfile_.enemyType + "/" + attack->id;
+
     if (authoringIdentity_ != identity) {
         authoringIdentity_ = identity;
         selectedTrack_ = -1;
-        authoringUndo_.clear(); authoringRedo_.clear(); authoringGestureOpen_ = false;
+        authoringUndo_.clear();
+        authoringRedo_.clear();
+        authoringGestureOpen_ = false;
     }
-    if (!ImGui::IsAnyItemActive()) authoringGestureOpen_ = false;
+
+    if (!ImGui::IsAnyItemActive())
+        authoringGestureOpen_ = false;
     ImGui::TextWrapped("%s", attack->displayName.c_str());
+
     // 既存 C++ 攻撃の観測モードには部品トラックがないため、数値編集へ誘導して終了します。
     if (!attack->sequence.enabled) {
         ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "現在は観測・数値調整の対象です");
         ImGui::TextWrapped("この既存攻撃は部品編集へ未移行です。画面の槍や魔法陣を名前で選び、配置や表示時間を再編集する一覧はまだありません。右側で変更できるのは攻撃全体の数値です。");
         ImGui::TextWrapped("例えば、表示を0～1秒、判定を0.3～0.5秒にする攻撃を、別の攻撃として作れます。");
+
         if (ImGui::Button("この攻撃の設定を保存して観測", ImVec2(-1, 0))) {
             profileDirty_ = true;
             SaveSelectedProfile();
+
             if (!profileDirty_) {
                 playing_ = true;
-                if (!enabled_) { enabled_ = true; CreatePreviewObjects(); }
+
+                if (!enabled_) {
+                    enabled_ = true;
+                    CreatePreviewObjects();
+                }
             }
         }
+
         ImGui::TextWrapped("%s", profileStatus_.c_str());
         ImGui::End();
         return true;
     }
+
     ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.65f, 1), "%s", attack->sequence.tracks.empty() ?
         "弾の構成編集: 本体・判定・軌跡・着弾" : "部品編集: 表示物・判定・本体の時間を編集できます");
     ImGui::SeparatorText("2. 部品を選んで配置・再編集");
-    if (ImGui::Selectable("攻撃全体の設定", selectedTrack_ == -1 && !authoringActorSelected_)) { selectedTrack_ = -1; authoringActorSelected_ = false; StopPlacementPreview(); }
-    if (ImGui::Selectable((std::string("術者（参照）: ") + GetSelectedEnemyType()).c_str(), authoringActorSelected_)) {
-        selectedTrack_ = -1; StopPlacementPreview(); authoringActorSelected_ = true;
+
+    if (ImGui::Selectable("攻撃全体の設定", selectedTrack_ == -1 && !authoringActorSelected_)) {
+        selectedTrack_ = -1;
+        authoringActorSelected_ = false;
+        StopPlacementPreview();
     }
+    if (ImGui::Selectable((std::string("術者（参照）: ") + GetSelectedEnemyType()).c_str(), authoringActorSelected_)) {
+        selectedTrack_ = -1;
+        StopPlacementPreview();
+        authoringActorSelected_ = true;
+    }
+
     ImGui::TextWrapped("術者と生成Objectは別です。下の部品を選ぶと単独表示と配置ギズモを開きます。");
     ImGui::TextWrapped("表示部品を選択 → 中央に表示 → 右のInspectorで素材・位置・大きさ・時間を変更。下のタイムラインで表示区間を調整できます。");
     ImGui::TextDisabled("表示物と判定は独立した部品です。");
     auto& sequence = attack->sequence;
+
     // Event は生成・放出の命令、Track は時間区間を持つ表示・判定部品として別に並べます。
     if (!sequence.events.empty()) {
         ImGui::SeparatorText("攻撃の構成（選択して再編集）");
+
         for (int i = 0; i < static_cast<int>(sequence.events.size()); ++i) {
             const auto& event = sequence.events[i];
             const std::string name = (event.enabled ? "" : "[無効] ") + std::to_string(i + 1) + ": " +
                 (event.name.empty() ? (event.operation == "projectile" ? "火球 / 弾" : "GPU放出: " + event.preset) : event.name);
+
             // -1は全体設定、-2以下は命令番号を表します。部品番号(0以上)と区別します。
             if (ImGui::Selectable(name.c_str(), selectedTrack_ == -2 - i)) {
                 selectedTrack_ = -2 - i;
                 projectileSection_ = 0;
                 BeginPlacementPreview();
             }
+
             if (event.operation == "projectile") {
                 ImGui::PushID(i);
                 ImGui::Indent(14);
                 const char* children[] = {"発射・移動", "弾Objectの見た目", "当たり判定", "飛行中の軌跡", "着弾エフェクト"};
+
                 for (int section = 1; section < 5; ++section) {
                     if (ImGui::Selectable(children[section], selectedTrack_ == -2 - i && projectileSection_ == section)) {
                         selectedTrack_ = -2 - i;
@@ -520,34 +710,45 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
                         BeginPlacementPreview();
                     }
                 }
+
                 ImGui::Unindent(14);
                 ImGui::PopID();
             }
         }
+
         ImGui::TextWrapped("生成Objectの下の項目を選び、右側で見た目・判定・軌跡を編集します。各項目は同じ弾の構成設定です。");
     }
+
     if (!playerCopyMode_ && editableProfile_.selectionMode == "weighted") {
-        if (ImGui::DragFloat("この攻撃の抽選重み", &attack->selectionWeight, 0.1f, 0, 100000)) profileDirty_ = true;
+        if (ImGui::DragFloat("この攻撃の抽選重み", &attack->selectionWeight, 0.1f, 0, 100000))
+            profileDirty_ = true;
         ImGui::TextWrapped("例: 同じ射程の候補の重みが3と1なら75%%と25%%。0は本編の抽選から除外します。");
     }
+
     // UI 操作前の値を保存し、部品追加・削除を一つの Undo 単位として記録します。
     const auto before = sequence;
     ImGui::Text("生成・放出 %d / 時間区間を持つ部品 %d", static_cast<int>(sequence.events.size()), static_cast<int>(sequence.tracks.size()));
-    if (ImGui::Button("＋ 部品を追加（素材から選択）", ImVec2(-1,0))) ImGui::OpenPopup("攻撃部品を追加");
+    if (ImGui::Button("＋ 部品を追加（素材から選択）", ImVec2(-1,0)))
+        ImGui::OpenPopup("攻撃部品を追加");
     if (ImGui::BeginPopup("攻撃部品を追加")) {
         static int kind = 0;
         const char* kinds[] = {"生成Object（モデル）", "GPU素材の放出", "表示素材（MeshEffect）", "当たり判定", "術者アニメーション"};
         ImGui::Combo("部品の種類", &kind, kinds, 5);
         std::string picked;
         bool add = false;
+
         if (kind == 0 && ImGui::BeginCombo("モデルを選択", "素材を選ぶと追加します")) {
             for (const auto& model : ModelManager::GetInstance()->GetAvailableModelNames())
-                if (ImGui::Selectable(model.c_str())) { picked = model; add = true; }
+                if (ImGui::Selectable(model.c_str())) {
+                    picked = model;
+                    add = true;
+                }
             ImGui::EndCombo();
         } else if (kind == 1) add = SelectJson("GPU素材", "Resources/json/gpu_particles", picked);
         else if (kind == 2) add = SelectJson("表示素材", "Resources/json/effect", picked, authoringAssets_);
         else if (kind == 3) add = ImGui::Button("球の判定を追加");
         else if (kind == 4) add = SelectJson("術者の動き", "Resources/json/animation_clip", picked);
+
         if (add) {
             // Event と Track では上限と保存先が違うため、種類を確定してから分岐します。
             if ((kind < 2 && sequence.events.size() >= 128) || (kind >= 2 && sequence.tracks.size() >= 64))
@@ -556,88 +757,130 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
                 if (kind < 2) {
                     AttackSequenceEvent event;
                     event.name = std::filesystem::path(picked).stem().string();
-                    event.up = 1; event.forward = 1;
+                    event.up = 1;
+                    event.forward = 1;
+
                     if (kind == 0) {
                         event.projectile = ResolveProjectileComponent(*attack,event);
-                        event.projectile.model = picked; event.projectile.style = "plain";
+                        event.projectile.model = picked;
+                        event.projectile.style = "plain";
                         event.projectile.lifetime = (std::max)(0.1f,event.projectile.lifetime);
                         event.projectile.appearance.red = event.projectile.appearance.green = event.projectile.appearance.blue = 1;
                         event.projectile.appearance.alpha = event.projectile.appearance.emissive = 1;
-                        event.projectile.trail.clear(); event.projectile.secondaryTrail.clear();
-                        event.projectile.impact.clear(); event.projectile.secondaryImpact.clear();
-                    } else { event.operation = "gpu_vfx"; event.preset = event.name; }
+                        event.projectile.trail.clear();
+                        event.projectile.secondaryTrail.clear();
+                        event.projectile.impact.clear();
+                        event.projectile.secondaryImpact.clear();
+                    } else { event.operation = "gpu_vfx";
+                    event.preset = event.name;
+                    }
                     sequence.events.push_back(event);
-                    selectedTrack_ = -1 - static_cast<int>(sequence.events.size()); projectileSection_ = kind == 0 ? 1 : 0;
+                    selectedTrack_ = -1 - static_cast<int>(sequence.events.size());
+                    projectileSection_ = kind == 0 ? 1 : 0;
                 } else {
                     AttackSequenceTrack track;
                     track.type = kind == 2 ? "mesh_vfx" : kind == 3 ? "hitbox" : "body_animation";
                     track.name = kind == 3 ? "攻撃判定" : std::filesystem::path(picked).stem().string();
-                    track.preset = picked; track.end = (std::max)(0.01f,sequence.duration); sequence.duration = track.end;
-                    track.keys.front().position = {0,1,1}; sequence.tracks.push_back(track);
+                    track.preset = picked;
+                    track.end = (std::max)(0.01f,sequence.duration);
+                    sequence.duration = track.end;
+                    track.keys.front().position = {0,1,1};
+                    sequence.tracks.push_back(track);
                     selectedTrack_ = static_cast<int>(sequence.tracks.size()) - 1;
                 }
+
                 RememberSequenceEdit(before);
                 authoringActorSelected_ = false;
-                if (kind != 4) BeginPlacementPreview(); else StopPlacementPreview();
+                if (kind != 4)
+                    BeginPlacementPreview();
+                else StopPlacementPreview();
                 ImGui::CloseCurrentPopup();
             }
         }
+
         ImGui::TextWrapped("選んだ素材を追加して配置確認を開きます。生成Objectの見た目と術者モデルは独立しています。");
         ImGui::EndPopup();
     }
+
     // 判定 Track の親が先にある表示 Track のときだけ、Hierarchy 上でも子として描きます。
     auto hasParent = [&](int i) {
         const auto& track = sequence.tracks[i];
         return track.type == "hitbox" && track.parentTrack >= 0 && track.parentTrack < i &&
             sequence.tracks[track.parentTrack].type == "mesh_vfx";
     };
+
     auto drawPart = [&](int i, bool child) {
         ImGui::PushID(i);
         const auto& track = sequence.tracks[i];
-        if (child) ImGui::Indent(16);
+        if (child)
+            ImGui::Indent(16);
         std::string label = (track.parentTrack != -1 && !hasParent(i) ? "[親参照を修正] " : "") +
             std::string(track.enabled ? "" : "[無効] ") + track.name +
             (track.type == "hitbox" ? " [判定]" : track.type == "body_animation" ? " [本体]" : " [表示]");
         if (ImGui::Selectable(label.c_str(), selectedTrack_ == i)) {
             selectedTrack_ = i;
-            if (track.type != "body_animation") BeginPlacementPreview();
+            if (track.type != "body_animation")
+                BeginPlacementPreview();
             else { authoringActorSelected_ = false; StopPlacementPreview(); }
         }
-        if (child) ImGui::Unindent(16);
+
+        if (child)
+            ImGui::Unindent(16);
         ImGui::PopID();
     };
+
     for (int i = 0; i < static_cast<int>(sequence.tracks.size()); ++i) {
-        if (hasParent(i)) continue;
+        if (hasParent(i))
+            continue;
         drawPart(i, false);
+
         for (int j = i + 1; j < static_cast<int>(sequence.tracks.size()); ++j)
-            if (hasParent(j) && sequence.tracks[j].parentTrack == i) drawPart(j, true);
+            if (hasParent(j) && sequence.tracks[j].parentTrack == i)
+                drawPart(j, true);
     }
+
     // Undo/Redo は配置プレビューを止めてから定義を入れ替え、編集中の再生へ再反映します。
     if (ImGui::Button("元に戻す") && !authoringUndo_.empty()) {
         StopPlacementPreview();
         selectedTrack_ = -1;
-        authoringRedo_.push_back(sequence); sequence = authoringUndo_.back(); authoringUndo_.pop_back(); profileDirty_ = true;
+        authoringRedo_.push_back(sequence);
+        sequence = authoringUndo_.back();
+        authoringUndo_.pop_back();
+        profileDirty_ = true;
         RequestDraftRefresh();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("やり直す") && !authoringRedo_.empty()) {
         StopPlacementPreview();
         selectedTrack_ = -1;
-        authoringUndo_.push_back(sequence); sequence = authoringRedo_.back(); authoringRedo_.pop_back(); profileDirty_ = true;
+        authoringUndo_.push_back(sequence);
+        sequence = authoringRedo_.back();
+        authoringRedo_.pop_back();
+        profileDirty_ = true;
         RequestDraftRefresh();
     }
+
     ImGui::Separator();
     ImGui::SeparatorText("3. 保存して動作確認");
     ImGui::TextWrapped("配置確認は未保存の表示部品だけを映します。追尾・接触・分岐は上の「保存して攻撃を再生」で確認します。共有アセットの保存は他の利用先にも反映されます。");
     ImGui::TextWrapped("保存した攻撃は本編の候補にも追加され、射程と設定した選択方式で選ばれます。");
+
     if (ImGui::Button("保存して再生", ImVec2(-1, 0))) {
         profileDirty_ = true;
         SaveSelectedProfile();
+
         if (!profileDirty_) {
             playing_ = true;
-            if (!enabled_) { enabled_ = true; CreatePreviewObjects(); }
+
+            if (!enabled_) {
+                enabled_ = true;
+                CreatePreviewObjects();
+            }
         }
     }
+
     ImGui::TextWrapped("%s", profileStatus_.c_str());
     ImGui::End();
     return true;
@@ -650,40 +893,56 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
 #ifdef USE_IMGUI
     DrawPlacementControls();
     auto* attack = GetSelectedAttackDefinition();
-    if (!attack) return;
+    if (!attack)
+        return;
     auto& sequence = attack->sequence;
     const auto before = sequence;
     bool changed = false;
+
     // 共有 Asset の割り当てと新規作成は、現在の攻撃定義への参照 Path を明示的に更新します。
     if (ImGui::TreeNode("詳細: 共有攻撃アセット")) {
         std::string path = sequence.assetPath;
+
         if (SelectJson("既存アセットを割り当て", "Resources/json/attack_assets", path)) {
-            if (EnemyAttackProfile::LoadSequenceAsset(path, sequence, &profileStatus_)) changed = true;
+            if (EnemyAttackProfile::LoadSequenceAsset(path, sequence, &profileStatus_))
+                changed = true;
         }
+
         EditText("新規アセット名 (英数字・_・-)", authoringAssetName_);
+
         if (ImGui::Button("現在の内容を新規アセットとして保存")) {
             const bool valid = !authoringAssetName_.empty() && std::all_of(authoringAssetName_.begin(), authoringAssetName_.end(),
                 [](unsigned char c) { return c < 128 && (std::isalnum(c) || c == '_' || c == '-'); });
             path = "Resources/json/attack_assets/" + authoringAssetName_ + ".json";
             std::error_code ec;
-            if (!valid) profileStatus_ = "アセット名は英数字・_・-にしてください。";
+            if (!valid)
+                profileStatus_ = "アセット名は英数字・_・-にしてください。";
             else if (std::filesystem::exists(path, ec)) profileStatus_ = "同名のアセットがあります。別名を指定してください。";
             else if (EnemyAttackProfile::SaveSequenceAsset(path, sequence, &profileStatus_)) {
-                sequence.assetPath = path; changed = true;
+                sequence.assetPath = path;
+                changed = true;
                 profileStatus_ = "アセットを作成しました。プロファイルを保存すると割り当ても保存されます。";
             }
         }
+
         if (!sequence.assetPath.empty()) {
             ImGui::TextWrapped("共有先: %s", sequence.assetPath.c_str());
-            if (ImGui::Button("共有を解除して埋め込みにする")) { sequence.assetPath.clear(); changed = true; }
+
+            if (ImGui::Button("共有を解除して埋め込みにする")) {
+                sequence.assetPath.clear();
+                changed = true;
+            }
         }
+
         ImGui::TreePop();
     }
+
     // 選択 Track の種類によって、表示物・術者アニメーション・判定の編集項目を切り替えます。
     if (selectedTrack_ >= 0 && selectedTrack_ < static_cast<int>(sequence.tracks.size())) {
         auto& track = sequence.tracks[selectedTrack_];
         ImGui::SeparatorText("選択した攻撃部品");
         changed |= EditText("部品名", track.name);
+
         // キー時刻は部品開始からの相対値で、位置と補間を Track ごとに持ちます。
         for (int i = 0; track.type != "body_animation" && i < static_cast<int>(track.keys.size()); ++i) {
             ImGui::PushID(i);
@@ -691,75 +950,114 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
             ImGui::Separator();
             changed |= ImGui::DragFloat("キー時刻 (部品開始から)", &key.time, 0.01f, 0, (std::max)(0.0f, track.end - track.begin));
             changed |= ImGui::DragFloat3("位置 (右・上・前)", key.position.data(), 0.01f, -1000, 1000);
+
             if (track.type == "mesh_vfx") {
                 changed |= ImGui::DragFloat3("回転 (ラジアン)", key.rotation.data(), 0.01f, -1000, 1000);
                 changed |= ImGui::DragFloat3("スケール", key.scale.data(), 0.01f, 0.001f, 100);
             }
+
             const char* easing[] = {"保持", "線形補間", "Smoothstep"};
             changed |= ImGui::Combo("次のキーへの補間", &key.interpolation, easing, 3);
+
             if (track.keys.size() > 1 && ImGui::Button("キーを削除")) {
-                track.keys.erase(track.keys.begin() + i); changed = true; ImGui::PopID(); break;
+                track.keys.erase(track.keys.begin() + i);
+                changed = true;
+                ImGui::PopID();
+                break;
             }
+
             ImGui::PopID();
         }
+
         if (track.type != "body_animation" && track.keys.size() < 128 && ImGui::Button("キーを追加")) {
             auto key = track.keys.back();
             key.time = (std::min)(track.end - track.begin, key.time + 0.1f);
-            if (key.time > track.keys.back().time) { track.keys.push_back(key); changed = true; }
+
+            if (key.time > track.keys.back().time) {
+                track.keys.push_back(key);
+                changed = true;
+            }
         }
 
         changed |= ImGui::Checkbox("有効", &track.enabled);
-        if (track.type != "body_animation") changed |= ImGui::Checkbox("術者に追従", &track.followOwner);
+        if (track.type != "body_animation")
+            changed |= ImGui::Checkbox("術者に追従", &track.followOwner);
         changed |= ImGui::DragFloat("表示・判定開始", &track.begin, 0.01f, 0, sequence.duration, "%.3f 秒");
         changed |= ImGui::DragFloat("表示・判定終了", &track.end, 0.01f, 0, sequence.duration, "%.3f 秒");
+
         // 接触結果で分岐する条件では、判定 Track の終了を待つため参照元を選ばせます。
         const char* ids[] = {"always", "grounded", "airborne", "target_in_range", "contact", "no_contact", "track_completed"};
         const char* labels[] = {"常時", "接地中", "空中", "標的が射程内", "指定判定の終了後: 接触あり", "指定判定の終了後: 接触なし", "指定判定の終了後: 結果を問わない"};
         int condition = 0;
-        for (int i = 0; i < 7; ++i) if (track.condition == ids[i]) condition = i;
-        if (ImGui::Combo("開始条件", &condition, labels, 7)) { track.condition = ids[condition]; changed = true; }
+
+        for (int i = 0; i < 7; ++i)
+            if (track.condition == ids[i])
+                condition = i;
+
+        if (ImGui::Combo("開始条件", &condition, labels, 7)) {
+            track.condition = ids[condition];
+            changed = true;
+        }
         if (condition >= 4) {
             const char* sourceName = track.conditionTrack >= 0 && track.conditionTrack < static_cast<int>(sequence.tracks.size())
                 ? sequence.tracks[track.conditionTrack].name.c_str() : "選択してください";
             if (ImGui::BeginCombo("分岐元の判定", sourceName)) {
                 for (int i = 0; i < static_cast<int>(sequence.tracks.size()); ++i) {
                     const auto& source = sequence.tracks[i];
-                    if (i == selectedTrack_ || source.type != "hitbox") continue;
+                    if (i == selectedTrack_ || source.type != "hitbox")
+                        continue;
                     ImGui::PushID(i);
-                    if (ImGui::Selectable(source.name.c_str(), track.conditionTrack == i)) { track.conditionTrack = i; changed = true; }
+
+                    if (ImGui::Selectable(source.name.c_str(), track.conditionTrack == i)) {
+                        track.conditionTrack = i;
+                        changed = true;
+                    }
                     ImGui::PopID();
                 }
+
                 ImGui::EndCombo();
             }
+
             ImGui::TextWrapped("分岐元の終了以降に開始してください。接触はHP減少の確定ではありません。元が条件不成立で省略された場合、後続も省略します。");
         }
+
         // 表示物は共通動作とキー移動を排他的に選び、判定を子 Track として追加できます。
         if (track.type == "mesh_vfx") {
             if (SelectJson("表示プリセット", "Resources/json/effect", track.preset, authoringAssets_)) {
                 changed = true;
-                if (!placementPreview_) BeginPlacementPreview();
+                if (!placementPreview_)
+                    BeginPlacementPreview();
             }
+
             const char* modes[] = {"キーで動かす", "照準して直進", "照準して追尾"};
             int motion = track.motion == "homing" ? 2 : track.motion == "aim_launch" ? 1 : 0;
+
             if (ImGui::Combo("共通動作", &motion, modes, 3)) {
                 track.motion = motion == 2 ? "homing" : motion == 1 ? "aim_launch" : "keyframed";
                 track.launchDelay = (std::min)(track.launchDelay, (track.end - track.begin) * 0.5f);
                 changed = true;
             }
+
             if (motion != 0) {
                 changed |= ImGui::DragFloat("発射まで (部品開始から秒)", &track.launchDelay, 0.01f, 0, 30);
                 changed |= ImGui::DragFloat("移動速度 (m/s)", &track.moveSpeed, 0.1f, 0, 1000);
                 changed |= ImGui::DragFloat("狙う高さ (標的原点からm)", &track.targetHeight, 0.01f, 0, 1000);
+
                 if (motion == 2) {
                     changed |= ImGui::DragFloat("旋回速度 (度/秒)", &track.turnDegreesPerSecond, 1, 0, 1000);
                     changed |= ImGui::DragFloat("発射後の追尾時間 (秒)", &track.homingDuration, 0.01f, 0, 30);
                 }
+
                 ImGui::TextWrapped("先頭キーの位置に生成し、発射までは狙い続けます。発射後はキーの位置を使わず共通動作で移動します。回転は+Zを前として合わせます。");
             }
+
             if (sequence.tracks.size() < 64 && ImGui::Button("このObjectに判定を追加")) {
                 AttackSequenceTrack child;
-                child.name = track.name + " の判定"; child.type = "hitbox"; child.parentTrack = selectedTrack_;
-                child.begin = track.begin + (motion != 0 ? track.launchDelay : 0); child.end = track.end;
+                child.name = track.name + " の判定";
+                child.type = "hitbox";
+                child.parentTrack = selectedTrack_;
+                child.begin = track.begin + (motion != 0 ? track.launchDelay : 0);
+                child.end = track.end;
                 sequence.tracks.push_back(child);
                 selectedTrack_ = static_cast<int>(sequence.tracks.size()) - 1;
                 RememberSequenceEdit(before);
@@ -780,39 +1078,61 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
             const char* parentName = track.parentTrack >= 0 && track.parentTrack < static_cast<int>(sequence.tracks.size())
                 ? sequence.tracks[track.parentTrack].name.c_str() : "親なし / 要確認";
             if (ImGui::BeginCombo("追従するObject", parentName)) {
-                if (ImGui::Selectable("親なし", track.parentTrack == -1)) { track.parentTrack = -1; changed = true; }
+                if (ImGui::Selectable("親なし", track.parentTrack == -1)) {
+                    track.parentTrack = -1;
+                    changed = true;
+                }
                 for (int i = 0; i < selectedTrack_; ++i) {
-                    if (sequence.tracks[i].type != "mesh_vfx") continue;
+                    if (sequence.tracks[i].type != "mesh_vfx")
+                        continue;
                     ImGui::PushID(i);
-                    if (ImGui::Selectable(sequence.tracks[i].name.c_str(), track.parentTrack == i)) { track.parentTrack = i; changed = true; }
+
+                    if (ImGui::Selectable(sequence.tracks[i].name.c_str(), track.parentTrack == i)) {
+                        track.parentTrack = i;
+                        changed = true;
+                    }
                     ImGui::PopID();
                 }
+
                 ImGui::EndCombo();
             }
+
             ImGui::TextWrapped("親を指定すると表示Objectの位置へ追従します。判定キーの位置は親からのオフセットです。親の表示区間内に判定区間を収めてください。");
             changed |= ImGui::DragFloat("球の判定半径", &track.radius, 0.01f, 0.01f, 100);
             changed |= ImGui::DragFloat("ダメージ倍率", &track.damageScale, 0.01f, 0, 100);
             ImGui::TextWrapped("1回の攻撃で各対象に1回命中します。表示スケールは判定半径へ影響しません。");
         }
+
         // 配列の追加・削除後は Track 参照が無効になり得るので、以降は値を使わず履歴へ記録します。
         if (ImGui::Button("部品を複製") && sequence.tracks.size() < 64) {
-            auto copy = track; copy.name += " コピー"; sequence.tracks.push_back(copy); changed = true;
+            auto copy = track;
+            copy.name += " コピー";
+            sequence.tracks.push_back(copy);
+            changed = true;
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("部品を削除")) {
             StopPlacementPreview();
             sequence.tracks.erase(sequence.tracks.begin() + selectedTrack_);
+
             // 配列の詰め直しで別の判定を参照しない。削除された参照は未指定に戻して保存時に検出します。
             for (auto& other : sequence.tracks) {
-                if (other.parentTrack == selectedTrack_) other.parentTrack = -2;
+                if (other.parentTrack == selectedTrack_)
+                    other.parentTrack = -2;
                 else if (other.parentTrack > selectedTrack_) --other.parentTrack;
-                if (other.conditionTrack == selectedTrack_) other.conditionTrack = -1;
+                if (other.conditionTrack == selectedTrack_)
+                    other.conditionTrack = -1;
                 else if (other.conditionTrack > selectedTrack_) --other.conditionTrack;
             }
-            selectedTrack_ = -1; changed = true;
+
+            selectedTrack_ = -1;
+            changed = true;
         }
     } else ImGui::TextDisabled("左側の攻撃の構成から表示物・判定を追加または選択してください。");
-    if (changed) RememberSequenceEdit(before);
+    if (changed)
+        RememberSequenceEdit(before);
 #endif
 }
 
@@ -822,16 +1142,20 @@ void EnemyAttackPreviewWindow::DrawProjectileInspector() {
     DrawPlacementControls();
     auto* attack = GetSelectedAttackDefinition();
     const int index = -2 - selectedTrack_;
-    if (!attack || index < 0 || index >= static_cast<int>(attack->sequence.events.size())) return;
+    if (!attack || index < 0 || index >= static_cast<int>(attack->sequence.events.size()))
+        return;
     auto& sequence = attack->sequence;
     const auto before = sequence;
     auto& event = sequence.events[index];
+    // 攻撃全体の既定弾設定とイベント固有の上書きを合成し、編集後はイベント側へ確定する。
     auto part = ResolveProjectileComponent(*attack, event);
     bool changed = false;
     ImGui::TextWrapped("%s / %s", attack->displayName.c_str(), event.name.empty() ? "名称未設定" : event.name.c_str());
-    if (ImGui::Button("保存せず動作確認")) PreviewDraft(false);
+    if (ImGui::Button("保存せず動作確認"))
+        PreviewDraft(false);
     ImGui::SameLine();
-    if (ImGui::Button("同じ位置で見直す")) PreviewDraft(true);
+    if (ImGui::Button("同じ位置で見直す"))
+        PreviewDraft(true);
     ImGui::TextWrapped("自動反映ONでは入力を離した後に再生位置を再構築します。保存するまで本編のJSONは変わりません。");
     changed |= EditText("構成名", event.name);
     changed |= ImGui::Checkbox("この弾 / 放出を有効にする", &event.enabled);
@@ -841,12 +1165,18 @@ void EnemyAttackPreviewWindow::DrawProjectileInspector() {
         ImGui::PushID(label);
         std::string path = name.empty() ? "" : "Resources/json/gpu_particles/" + name + ".json";
         bool edited = SelectJson(label, "Resources/json/gpu_particles", path);
-        if (edited) name = std::filesystem::path(path).stem().string();
-        if (ImGui::SmallButton("なしにする")) { name.clear(); edited = true; }
+        if (edited)
+            name = std::filesystem::path(path).stem().string();
+        if (ImGui::SmallButton("なしにする")) {
+            name.clear();
+            edited = true;
+        }
         ImGui::PopID();
         return edited;
     };
+
     if (event.operation == "gpu_vfx") {
+        // 粒子イベントには弾Objectや衝突設定がないため、専用Presetと放出方向だけを編集する。
         changed |= gpuPreset("GPUエフェクト", event.preset);
         changed |= ImGui::Checkbox("発射方向へ放出", &event.directed);
         changed |= ImGui::DragFloat("粒子速度倍率", &event.particleSpeedScale, 0.01f, 0, 100);
@@ -854,6 +1184,7 @@ void EnemyAttackPreviewWindow::DrawProjectileInspector() {
         const char* sections[] = {"発射・移動", "弾Objectの見た目", "当たり判定", "飛行中の軌跡", "着弾エフェクト"};
         ImGui::Combo("編集する構成", &projectileSection_, sections, 5);
         ImGui::SeparatorText(sections[projectileSection_]);
+
         if (projectileSection_ == 0) {
             changed |= ImGui::SliderInt("一度に出す弾の数", &event.count, 1, 32);
             changed |= ImGui::DragFloat("扇状に広がる角度", &event.spreadDegrees, 0.5f, 0, 360, "%.1f 度");
@@ -871,15 +1202,28 @@ void EnemyAttackPreviewWindow::DrawProjectileInspector() {
                         changed = true;
                     }
                 }
+
                 ImGui::EndCombo();
             }
+
             int style = part.style == "plain" ? 1 : 0;
             const char* styles[] = {"炎の描画", "通常のモデル"};
-            if (ImGui::Combo("見た目", &style, styles, 2)) { part.style = style ? "plain" : "fire"; changed = true; }
+
+            if (ImGui::Combo("見た目", &style, styles, 2)) {
+                part.style = style ? "plain" : "fire";
+                changed = true;
+            }
             changed |= ImGui::DragFloat("表示スケール (判定は変わりません)", &part.visualScale, 0.01f, 0.01f, 20);
             auto& a = part.appearance;
             float color[] = {a.red, a.green, a.blue, a.alpha};
-            if (ImGui::ColorEdit4("色・透明度", color)) { a.red = color[0]; a.green = color[1]; a.blue = color[2]; a.alpha = color[3]; changed = true; }
+
+            if (ImGui::ColorEdit4("色・透明度", color)) {
+                a.red = color[0];
+                a.green = color[1];
+                a.blue = color[2];
+                a.alpha = color[3];
+                changed = true;
+            }
             changed |= ImGui::DragFloat("発光", &a.emissive, 0.01f, 0, 100);
             changed |= ImGui::DragFloat("炎の広がり", &a.effectScale, 0.01f, 0, 100);
             changed |= ImGui::DragFloat("炎の境界の柔らかさ", &a.softness, 0.01f, 0, 1);
@@ -901,30 +1245,57 @@ void EnemyAttackPreviewWindow::DrawProjectileInspector() {
             ImGui::TextWrapped("衝突・着弾時に放出します。判定OFFや寿命による自然消滅では放出しません。");
         }
     }
+
     if (event.operation == "gpu_vfx" || projectileSection_ == 0) {
+        // 発生位置は術者基準の固定オフセットと、術者サイズに比例するオフセットを別々に保持する。
         float offset[] = {event.right, event.up, event.forward};
-        if (ImGui::DragFloat3("発生位置 (右・上・前)", offset, 0.01f, -1000, 1000)) { event.right = offset[0]; event.up = offset[1]; event.forward = offset[2]; changed = true; }
+
+        if (ImGui::DragFloat3("発生位置 (右・上・前)", offset, 0.01f, -1000, 1000)) {
+            event.right = offset[0];
+            event.up = offset[1];
+            event.forward = offset[2];
+            changed = true;
+        }
         float size[] = {event.sizeRight, event.sizeUp, event.sizeForward};
-        if (ImGui::DragFloat3("術者サイズに比例する位置", size, 0.01f, -1000, 1000)) { event.sizeRight = size[0]; event.sizeUp = size[1]; event.sizeForward = size[2]; changed = true; }
+
+        if (ImGui::DragFloat3("術者サイズに比例する位置", size, 0.01f, -1000, 1000)) {
+            event.sizeRight = size[0];
+            event.sizeUp = size[1];
+            event.sizeForward = size[2];
+            changed = true;
+        }
         changed |= ImGui::Checkbox("標的の方へ向ける", &event.aimAtTarget);
         changed |= ImGui::DragFloat("狙う高さ", &event.targetHeight, 0.01f, -1000, 1000);
         changed |= ImGui::DragFloat("水平回転", &event.yawDegrees, 0.5f, -360, 360, "%.1f 度");
         const char* ids[] = {"always", "grounded", "airborne", "target_in_range"};
         const char* labels[] = {"常時", "接地中", "空中", "標的が射程内"};
         int condition = 0;
-        for (int i = 0; i < 4; ++i) if (event.condition == ids[i]) condition = i;
-        if (ImGui::Combo("発生条件", &condition, labels, 4)) { event.condition = ids[condition]; changed = true; }
+
+        for (int i = 0; i < 4; ++i)
+            if (event.condition == ids[i])
+                condition = i;
+
+        if (ImGui::Combo("発生条件", &condition, labels, 4)) {
+            event.condition = ids[condition];
+            changed = true;
+        }
         changed |= ImGui::Checkbox("条件不成立なら後続も中止", &event.stopOnFalse);
     }
-    if (changed && event.operation == "projectile") event.projectile = part;
+
+    if (changed && event.operation == "projectile")
+        event.projectile = part;
+    // 配列を変更する操作では参照中のeventが無効化され得るため、Undo記録後に直ちに戻る。
     if (ImGui::Button("この構成を複製") && sequence.events.size() < 128) {
-        auto copy = event; copy.name += " (複製)";
+        auto copy = event;
+        copy.name += " (複製)";
         sequence.events.push_back(std::move(copy));
         selectedTrack_ = -1 - static_cast<int>(sequence.events.size());
         RememberSequenceEdit(before);
         return;
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("この構成を削除")) {
         StopPlacementPreview();
         sequence.events.erase(sequence.events.begin() + index);
@@ -932,9 +1303,12 @@ void EnemyAttackPreviewWindow::DrawProjectileInspector() {
         RememberSequenceEdit(before);
         return;
     }
-    if (changed) RememberSequenceEdit(before);
+
+    if (changed)
+        RememberSequenceEdit(before);
     std::string error;
-    if (!sequence.Validate(&error)) ImGui::TextColored(ImVec4(1, 0.5f, 0.3f, 1), "%s", error.c_str());
+    if (!sequence.Validate(&error))
+        ImGui::TextColored(ImVec4(1, 0.5f, 0.3f, 1), "%s", error.c_str());
     ImGui::TextWrapped("%s", profileStatus_.c_str());
 #endif
 }
@@ -943,17 +1317,20 @@ void EnemyAttackPreviewWindow::DrawTrackTimeline() {
 #ifdef USE_IMGUI
     // 共通ランタイムを持つ攻撃だけ編集可能な時間軸を出し、観測専用攻撃は区別します。
     auto* attack = GetSelectedAttackDefinition();
-    if (!attack) return;
+    if (!attack)
+        return;
     if (!attack->sequence.enabled) {
         ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "観測モード: この下は既存攻撃の計測グラフです");
         ImGui::TextWrapped("新しい表示物や判定の制作は、炎スライム／プリズムの左パネルから別の攻撃を作成して行います。");
         return;
     }
+
     auto& sequence = attack->sequence;
     ImGui::SeparatorText("攻撃内容の時間軸 (共通ランタイム開始 = 0秒)");
     ImGui::TextDisabled("棒の中央で移動、左右端で区間を変更。移動キーはInspectorで編集します。");
     const float width = (std::max)(100.0f, ImGui::GetContentRegionAvail().x - 160);
     const float duration = (std::max)(0.01f, sequence.duration);
+
     if (sequence.actorControl.enabled) {
         const auto before = sequence;
         bool changed = false;
@@ -961,33 +1338,45 @@ void EnemyAttackPreviewWindow::DrawTrackTimeline() {
         changed |= ImGui::SliderFloat("照準固定##timeline", &sequence.actorControl.aimLockTime, 0, duration, "%.3f 秒");
         changed |= ImGui::SliderFloat("予備動作終了##timeline", &sequence.actorControl.telegraphEnd, 0, duration, "%.3f 秒");
         ImGui::Text("後隙終了 %.3f 秒 / この後から再使用待ち %.3f 秒", sequence.duration, attack->cooldown);
-        if (changed) RememberSequenceEdit(before);
+        if (changed)
+            RememberSequenceEdit(before);
     }
+
     if (!sequence.events.empty() && ImGui::TreeNodeEx("弾・GPU放出の発生時刻", ImGuiTreeNodeFlags_DefaultOpen)) {
         for (int i = 0; i < static_cast<int>(sequence.events.size()); ++i) {
             ImGui::PushID(i);
             auto& event = sequence.events[i];
             const std::string label = event.name.empty() ? (event.operation == "projectile" ? "弾の発射" : "GPU放出") : event.name;
+
             if (ImGui::Selectable(label.c_str(), selectedTrack_ == -2 - i, 0, ImVec2(160, 0))) {
-                selectedTrack_ = -2 - i; projectileSection_ = 0; BeginPlacementPreview();
+                selectedTrack_ = -2 - i;
+                projectileSection_ = 0;
+                BeginPlacementPreview();
             }
+
             ImGui::SameLine();
             const auto before = sequence;
             ImGui::SetNextItemWidth(width);
-            if (ImGui::SliderFloat("##発生時刻", &event.time, 0, duration, "%.3f 秒")) RememberSequenceEdit(before);
+            if (ImGui::SliderFloat("##発生時刻", &event.time, 0, duration, "%.3f 秒"))
+                RememberSequenceEdit(before);
             ImGui::PopID();
         }
+
         ImGui::TreePop();
     }
+
     for (int i = 0; i < static_cast<int>(sequence.tracks.size()); ++i) {
         ImGui::PushID(i);
         auto& track = sequence.tracks[i];
+
         if (!track.Validate(duration, nullptr)) {
             ImGui::Text("%s: 区間またはキーをInspectorで修正してください。", track.name.c_str());
             ImGui::PopID();
             continue;
         }
-        ImGui::TextUnformatted(track.name.c_str()); ImGui::SameLine(160);
+
+        ImGui::TextUnformatted(track.name.c_str());
+        ImGui::SameLine(160);
         const ImVec2 origin = ImGui::GetCursorScreenPos();
         const float x0 = origin.x + track.begin / duration * width, x1 = origin.x + track.end / duration * width;
         auto* draw = ImGui::GetWindowDrawList();
@@ -995,26 +1384,32 @@ void EnemyAttackPreviewWindow::DrawTrackTimeline() {
         draw->AddRectFilled({x0, origin.y + 2}, {x1, origin.y + 21}, track.type == "hitbox" ? IM_COL32(210, 80, 60, 255) :
             track.type == "body_animation" ? IM_COL32(155, 100, 210, 255) : IM_COL32(60, 150, 210, 255));
         ImGui::InvisibleButton("track", {width, 23});
+
         if (ImGui::IsItemClicked()) {
             selectedTrack_ = i;
             const float mouse = ImGui::GetIO().MousePos.x;
             authoringDragMode_ = std::abs(mouse - x0) < 8 ? 1 : (std::abs(mouse - x1) < 8 ? 2 : 0);
         }
+
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
             const auto before = sequence;
             const float delta = ImGui::GetIO().MouseDelta.x / width * duration;
             const float oldLength = track.end - track.begin;
-            if (authoringDragMode_ == 1) track.begin = std::clamp(track.begin + delta, 0.0f, (std::max)(0.0f, track.end - 0.001f));
+            if (authoringDragMode_ == 1)
+                track.begin = std::clamp(track.begin + delta, 0.0f, (std::max)(0.0f, track.end - 0.001f));
             else if (authoringDragMode_ == 2) track.end = std::clamp(track.end + delta, track.begin + 0.001f, duration);
             else {
                 const float length = track.end - track.begin;
                 track.begin = std::clamp(track.begin + delta, 0.0f, (std::max)(0.0f, duration - length));
                 track.end = track.begin + length;
             }
+
             if (authoringDragMode_ != 0)
-                for (auto& key : track.keys) key.time *= (track.end - track.begin) / oldLength;
+                for (auto& key : track.keys)
+                    key.time *= (track.end - track.begin) / oldLength;
             RememberSequenceEdit(before);
         }
+
         ImGui::PopID();
     }
 #endif
@@ -1022,28 +1417,37 @@ void EnemyAttackPreviewWindow::DrawTrackTimeline() {
 
 void EnemyAttackPreviewWindow::DrawAttackOverlay(float x, float y, float width, float height) {
 #ifdef USE_IMGUI
-    if (IsAuthoringViewportActive()) DrawPlacementGizmo(x, y, width, height);
-    if (!enabled_ || !showAttackRadii_ || !sceneManager_ || sceneManager_->IsPlaying() || crownMovieMode_) return;
+    if (IsAuthoringViewportActive())
+        DrawPlacementGizmo(x, y, width, height);
+    if (!enabled_ || !showAttackRadii_ || !sceneManager_ || sceneManager_->IsPlaying() || crownMovieMode_)
+        return;
     const auto* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera || width <= 0 || height <= 0) return;
+    if (!camera || width <= 0 || height <= 0)
+        return;
     const auto& matrix = camera->GetViewProjectionMatrix();
     auto project = [&](engine::Vector3 p, ImVec2& screen) {
         const auto& m = matrix.m;
         const float w = p.x*m[0][3] + p.y*m[1][3] + p.z*m[2][3] + m[3][3];
-        if (w <= 0.001f) return false;
+        if (w <= 0.001f)
+            return false;
         const float z = (p.x*m[0][2] + p.y*m[1][2] + p.z*m[2][2] + m[3][2]) / w;
-        if (z < 0 || z > 1) return false;
+        if (z < 0 || z > 1)
+            return false;
         screen = {x + (1 + (p.x*m[0][0] + p.y*m[1][0] + p.z*m[2][0] + m[3][0])/w)*width*0.5f,
             y + (1 - (p.x*m[0][1] + p.y*m[1][1] + p.z*m[2][1] + m[3][1])/w)*height*0.5f};
         return true;
     };
+
     auto* draw = ImGui::GetWindowDrawList();
     draw->PushClipRect({x, y}, {x + width, y + height}, true);
+
     for (const auto& bullet : BulletManager::GetInstance()->GetBullets()) {
-        if (!bullet || bullet->IsDead()) continue;
+        if (!bullet || bullet->IsDead())
+            continue;
         const auto position = bullet->GetTranslate();
         const float radius = bullet->GetCollisionRadius();
         const ImU32 color = bullet->GetCollisionMask() ? IM_COL32(255, 215, 40, 255) : IM_COL32(155, 155, 155, 200);
+
         // 実Colliderの半径を3つの大円で表示。編集用の飾り半径とは別に計算しません。
         for (int plane = 0; plane < 3; ++plane) {
             for (int i = 0; i < 48; ++i) {
@@ -1052,23 +1456,29 @@ void EnemyAttackPreviewWindow::DrawAttackOverlay(float x, float y, float width, 
                     const float a = radius * std::cos(angle), b = radius * std::sin(angle);
                     return position + (plane == 0 ? engine::Vector3{a,b,0} : plane == 1 ? engine::Vector3{a,0,b} : engine::Vector3{0,a,b});
                 };
+
                 ImVec2 a, b;
-                if (project(point(i), a) && project(point(i+1), b)) draw->AddLine(a, b, color, 1.5f);
+                if (project(point(i), a) && project(point(i+1), b))
+                    draw->AddLine(a, b, color, 1.5f);
             }
         }
+
         ImVec2 screen;
+
         if (project(position + engine::Vector3{0, radius, 0}, screen)) {
             const std::string label = bullet->GetName() + (bullet->GetCollisionMask() ? " [判定ON]" : " [判定OFF]");
             draw->AddText(screen, color, label.c_str());
         }
     }
+
     draw->PopClipRect();
 #endif
 }
 
 EnemyAttackPreviewWindow::AuthoringSelectionKind EnemyAttackPreviewWindow::GetAuthoringSelectionKind() const {
     // 負のトラック番号は攻撃全体と発射イベントへ割り当てています。
-    if (authoringActorSelected_) return AuthoringSelectionKind::Actor;
+    if (authoringActorSelected_)
+        return AuthoringSelectionKind::Actor;
     return selectedTrack_ == -1 ? AuthoringSelectionKind::Attack :
         selectedTrack_ <= -2 ? AuthoringSelectionKind::Event : AuthoringSelectionKind::Track;
 }
@@ -1087,29 +1497,42 @@ bool EnemyAttackPreviewWindow::GetPlacementTransform(engine::Vector3& position, 
     // 術者と標的からローカル基準を作り、選択した構成のギズモ位置に変換します。
     const auto* attack = GetSelectedAttackDefinition();
     engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
-    if (!attack || !actor || GetAuthoringSelectionKind() == AuthoringSelectionKind::Actor || selectedTrack_ == -1) return false;
+    if (!attack || !actor || GetAuthoringSelectionKind() == AuthoringSelectionKind::Actor || selectedTrack_ == -1)
+        return false;
     engine::Vector3 forward{0,0,1};
+
     if (previewTarget_) { auto delta = previewTarget_->GetTranslate() - actor->GetTranslate(); delta.y = 0;
         if (engine::Math::Length(delta) > 0.001f) forward = engine::Math::Normalize(delta); }
     engine::Vector3 origin = actor->GetTranslate();
-    rotation = {}; scale = {1,1,1};
+    rotation = {};
+    scale = {1,1,1};
+
     if (selectedTrack_ <= -2) {
         const int index = -2 - selectedTrack_;
-        if (index >= static_cast<int>(attack->sequence.events.size())) return false;
+        if (index >= static_cast<int>(attack->sequence.events.size()))
+            return false;
         const auto& event = attack->sequence.events[index];
         AttackSequenceContext context;
-        context.position = origin; context.forward = forward; context.ownerSize = previewBaseScale_;
+        context.position = origin;
+        context.forward = forward;
+        context.ownerSize = previewBaseScale_;
         context.hasTarget = previewTarget_ != nullptr;
-        if (previewTarget_) context.targetPosition = previewTarget_->GetTranslate();
+        if (previewTarget_)
+            context.targetPosition = previewTarget_->GetTranslate();
         position = ResolveAttackSequenceEmission(event, context, 0, 0).position;
         rotation.y = std::atan2(forward.x,forward.z) + event.yawDegrees * 0.01745329252f;
         const float size = ResolveProjectileComponent(*attack, event).visualScale;
-        if (event.operation == "projectile") scale = {size,size,size};
+
+        if (event.operation == "projectile")
+            scale = {size,size,size};
         return true;
     }
-    if (selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size())) return false;
+
+    if (selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size()))
+        return false;
     const auto& track = attack->sequence.tracks[selectedTrack_];
-    if (track.type == "body_animation") return false;
+    if (track.type == "body_animation")
+        return false;
     if (track.parentTrack >= 0 && track.parentTrack < static_cast<int>(attack->sequence.tracks.size())) {
         const auto& parent = attack->sequence.tracks[track.parentTrack];
         const auto parentKey = parent.Evaluate(track.begin + placementTime_ - parent.begin);
@@ -1118,6 +1541,7 @@ bool EnemyAttackPreviewWindow::GetPlacementTransform(engine::Vector3& position, 
         const float yaw = std::atan2(forward.x,forward.z) + parentKey.rotation[1];
         forward = {std::sin(yaw),0,std::cos(yaw)};
     }
+
     const auto key = track.Evaluate(track.motion == "keyframed" ? placementTime_ : 0);
     position = origin + engine::Vector3{forward.z,0,-forward.x} * key.position[0] + engine::Vector3{0,key.position[1],0} + forward * key.position[2];
     rotation = {key.rotation[0],key.rotation[1] + std::atan2(forward.x,forward.z),key.rotation[2]};
@@ -1128,36 +1552,49 @@ bool EnemyAttackPreviewWindow::GetPlacementTransform(engine::Vector3& position, 
 void EnemyAttackPreviewWindow::ApplyPlacementTransform(const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale) {
     auto* attack = GetSelectedAttackDefinition();
     engine::Vector3 previous, oldRotation, oldScale;
-    if (!attack || !GetPlacementTransform(previous, oldRotation, oldScale)) return;
+    if (!attack || !GetPlacementTransform(previous, oldRotation, oldScale))
+        return;
     if (selectedTrack_ <= -2) {
         auto& event = attack->sequence.events[-2 - selectedTrack_];
         const engine::Vector3 delta = position - previous;
+
         if (placementOperation_ == 0) {
             const auto local = AttackPlacementMath::ToLocalDelta(delta,oldRotation.y);
-            event.right += local.x; event.up += local.y; event.forward += local.z;
+            event.right += local.x;
+            event.up += local.y;
+            event.forward += local.z;
         } else if (placementOperation_ == 1) AttackPlacementMath::RotateEvent(event,previewBaseScale_,rotation.y-oldRotation.y);
         else if (event.operation == "projectile") {
             auto part = ResolveProjectileComponent(*attack,event);
+
             // 弾の保存形式は均等倍率です。縮小した軸も拾い、未操作の軸で打ち消さないようにします。
             float value = scale.x;
-            if (std::abs(scale.y-oldScale.y) > std::abs(value-oldScale.x)) value = scale.y;
-            if (std::abs(scale.z-oldScale.z) > std::abs(value-oldScale.x)) value = scale.z;
+            if (std::abs(scale.y-oldScale.y) > std::abs(value-oldScale.x))
+                value = scale.y;
+            if (std::abs(scale.z-oldScale.z) > std::abs(value-oldScale.x))
+                value = scale.z;
             part.visualScale = std::clamp(value,0.01f,20.0f);
             event.projectile = part;
         }
     } else {
         auto& track = attack->sequence.tracks[selectedTrack_];
         const float time = track.motion == "keyframed" ? std::clamp(placementTime_,0.0f,track.end-track.begin) : 0;
-        auto key = track.Evaluate(time); key.time = time;
+        auto key = track.Evaluate(time);
+        key.time = time;
         const engine::Vector3 delta = position - previous;
         const float yaw = oldRotation.y - key.rotation[1];
+
         if (placementOperation_ == 0) {
             const auto local = AttackPlacementMath::ToLocalDelta(delta,yaw);
-            key.position[0] += local.x; key.position[1] += local.y; key.position[2] += local.z;
+            key.position[0] += local.x;
+            key.position[1] += local.y;
+            key.position[2] += local.z;
         } else if (placementOperation_ == 1) key.rotation = {rotation.x,rotation.y-yaw,rotation.z};
         else key.scale = {(std::max)(0.001f,scale.x),(std::max)(0.001f,scale.y),(std::max)(0.001f,scale.z)};
-        if (!AttackPlacementMath::PutKey(track,key)) placementMessage_ = "キー数の上限です。既存キーの時刻を選んで編集してください。";
+        if (!AttackPlacementMath::PutKey(track,key))
+            placementMessage_ = "キー数の上限です。既存キーの時刻を選んで編集してください。";
     }
+
     profileDirty_ = true;
     UpdatePlacementPreview();
 }
@@ -1166,21 +1603,31 @@ void EnemyAttackPreviewWindow::DrawPlacementControls() {
 #ifdef USE_IMGUI
     // 本体アニメーションは配置対象ではないため、生成物と判定だけ操作を出します。
     const auto* attack = GetSelectedAttackDefinition();
-    if (!attack || selectedTrack_ == -1) return;
-    if (selectedTrack_ <= -2 && -2-selectedTrack_ >= static_cast<int>(attack->sequence.events.size())) return;
+    if (!attack || selectedTrack_ == -1)
+        return;
+    if (selectedTrack_ <= -2 && -2-selectedTrack_ >= static_cast<int>(attack->sequence.events.size()))
+        return;
     if (selectedTrack_ >= 0) {
-        if (selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size())) return;
+        if (selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size()))
+            return;
         if (attack->sequence.tracks[selectedTrack_].type == "body_animation") {
             ImGui::TextWrapped("術者のアニメーションは「保存せず動作確認」で再生します。配置ギズモは生成Object・GPU・判定が対象です。");
             return;
         }
     }
+
     ImGui::SeparatorText("選択部品の配置");
-    if (ImGui::Button("選択した部品だけを表示")) BeginPlacementPreview();
-    if (!placementPreview_) { ImGui::TextWrapped("単独表示ではAI・ダメージを止めて配置します。攻撃全体は「保存せず動作確認」で再生します。"); return; }
+    if (ImGui::Button("選択した部品だけを表示"))
+        BeginPlacementPreview();
+    if (!placementPreview_) {
+        ImGui::TextWrapped("単独表示ではAI・ダメージを止めて配置します。攻撃全体は「保存せず動作確認」で再生します。");
+        return;
+    }
     ImGui::Checkbox("術者と標的を一時的に隠す", &hidePlacementActor_);
+
     if (selectedTrack_ >= 0) {
-        if (selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size())) return;
+        if (selectedTrack_ >= static_cast<int>(attack->sequence.tracks.size()))
+            return;
         const auto& track = attack->sequence.tracks[selectedTrack_];
         ImGui::SliderFloat("編集時刻 (部品開始から)",&placementTime_,0,(std::max)(0.01f,track.end-track.begin),"%.3f 秒");
         ImGui::TextWrapped("ギズモ操作はこの時刻のキーを編集し、なければ追加します。移動モード付き表示物は発射前の初期位置を編集します。");
@@ -1188,21 +1635,35 @@ void EnemyAttackPreviewWindow::DrawPlacementControls() {
         ImGui::SliderFloat("素材の経過時間 (配置確認のみ)",&placementTime_,0,3,"%.2f 秒");
         ImGui::TextWrapped("GPU素材は単独の放出結果を表示します。攻撃の発生時刻・粒子の寿命は変更しません。");
     }
-    ImGui::RadioButton("移動",&placementOperation_,0); ImGui::SameLine();
+
+    ImGui::RadioButton("移動",&placementOperation_,0);
+    ImGui::SameLine();
     const bool event = selectedTrack_ <= -2;
     const bool gpu = event && attack->sequence.events[-2-selectedTrack_].operation == "gpu_vfx";
     const bool hitbox = !event && attack->sequence.tracks[selectedTrack_].type == "hitbox";
-    if (!hitbox) { ImGui::RadioButton(event ? "水平回転" : "回転",&placementOperation_,1); ImGui::SameLine(); }
-    if (!gpu && !hitbox) ImGui::RadioButton(event ? "弾の表示倍率" : "拡縮",&placementOperation_,2);
-    if ((gpu && placementOperation_ == 2) || hitbox) placementOperation_ = 0;
+
+    if (!hitbox) {
+        ImGui::RadioButton(event ? "水平回転" : "回転",&placementOperation_,1);
+        ImGui::SameLine();
+    }
+    if (!gpu && !hitbox)
+        ImGui::RadioButton(event ? "弾の表示倍率" : "拡縮",&placementOperation_,2);
+    if ((gpu && placementOperation_ == 2) || hitbox)
+        placementOperation_ = 0;
     if (ImGui::Button("選択位置へカメラを寄せる")) {
         engine::Vector3 p,r,s;
+
         if (GetPlacementTransform(p,r,s)) if (auto* camera = CameraManager::GetInstance()->GetActiveCamera()) {
             const auto delta = camera->GetEye() - camera->GetTargetPoint();
-            camera->SetFollowTarget(nullptr); camera->SetTarget(p); camera->SetEye(p + delta); camera->Update();
+            camera->SetFollowTarget(nullptr);
+            camera->SetTarget(p);
+            camera->SetEye(p + delta);
+            camera->Update();
         }
     }
-    if (!placementMessage_.empty()) ImGui::TextWrapped("%s",placementMessage_.c_str());
+
+    if (!placementMessage_.empty())
+        ImGui::TextWrapped("%s",placementMessage_.c_str());
     UpdatePlacementPreview();
 #endif
 }
@@ -1210,11 +1671,14 @@ void EnemyAttackPreviewWindow::DrawPlacementControls() {
 void EnemyAttackPreviewWindow::DrawPlacementGizmo(float x,float y,float width,float height) {
 #ifdef USE_IMGUI
     // Game Viewの矩形へ投影した位置にギズモを重ね、Scene上の選択物を操作します。
-    if (!placementPreview_) return;
+    if (!placementPreview_)
+        return;
     engine::Vector3 position, rotation, scale;
-    if (!GetPlacementTransform(position,rotation,scale)) return;
+    if (!GetPlacementTransform(position,rotation,scale))
+        return;
     auto* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera) return;
+    if (!camera)
+        return;
     auto* attack = GetSelectedAttackDefinition();
     const auto& vp = camera->GetViewProjectionMatrix();
     const float w = position.x*vp.m[0][3]+position.y*vp.m[1][3]+position.z*vp.m[2][3]+vp.m[3][3];
@@ -1228,15 +1692,22 @@ void EnemyAttackPreviewWindow::DrawPlacementGizmo(float x,float y,float width,fl
     if (radius > 0) {
         auto project = [&](engine::Vector3 p, ImVec2& screen) {
             const float cw=p.x*vp.m[0][3]+p.y*vp.m[1][3]+p.z*vp.m[2][3]+vp.m[3][3];
-            if(cw<=0.001f) return false;
-            auto q=engine::Math::Transform(p,vp); screen={x+(q.x+1)*width*0.5f,y+(1-q.y)*height*0.5f}; return true;
+            if(cw<=0.001f)
+                return false;
+            auto q=engine::Math::Transform(p,vp);
+            screen={x+(q.x+1)*width*0.5f,y+(1-q.y)*height*0.5f};
+            return true;
         };
+
         for(int plane=0;plane<3;++plane) for(int i=0;i<48;++i) {
             auto point=[&](int n) {float a=n*6.28318530718f/48;float c=radius*std::cos(a),s=radius*std::sin(a);
                 return position+(plane==0?engine::Vector3{c,s,0}:plane==1?engine::Vector3{c,0,s}:engine::Vector3{0,c,s});};
-            ImVec2 a,b; if(project(point(i),a)&&project(point(i+1),b)) draw->AddLine(a,b,IM_COL32(255,180,50,255),2);
+            ImVec2 a,b;
+            if(project(point(i),a)&&project(point(i+1),b))
+                draw->AddLine(a,b,IM_COL32(255,180,50,255),2);
         }
     }
+
     if (w > 0.001f) {
         const auto p = engine::Math::Transform(position,vp);
         ImVec2 screen{x+(p.x+1)*width*0.5f,y+(1-p.y)*height*0.5f};
@@ -1244,26 +1715,38 @@ void EnemyAttackPreviewWindow::DrawPlacementGizmo(float x,float y,float width,fl
         const std::string label = selectedTrack_ <= -2 ? attack->sequence.events[-2-selectedTrack_].name : attack->sequence.tracks[selectedTrack_].name;
         draw->AddText({screen.x+16,screen.y},IM_COL32(255,230,110,255),label.c_str());
     }
+
     draw->PopClipRect();
     engine::Math math;
     engine::Matrix4x4 world = math.Multiply(math.Multiply(math.MakeScaleMatrix(scale),math.MakeRotateQuaternionMatrix(math.EulerToQuaternion(rotation))),math.MakeTranslateMatrix(position));
-    auto view = camera->GetViewMatrix(); auto projection = camera->GetProjectionMatrix();
-    ImGuizmo::SetDrawlist(draw); ImGuizmo::SetRect(x,y,width,height); ImGuizmo::SetOrthographic(false);
+    auto view = camera->GetViewMatrix();
+    auto projection = camera->GetProjectionMatrix();
+    ImGuizmo::SetDrawlist(draw);
+    ImGuizmo::SetRect(x,y,width,height);
+    ImGuizmo::SetOrthographic(false);
     ImGuizmo::PushID(9021);
     auto op = placementOperation_ == 0 ? ImGuizmo::TRANSLATE : placementOperation_ == 1 ?
         (selectedTrack_ <= -2 ? ImGuizmo::ROTATE_Y : ImGuizmo::ROTATE) : ImGuizmo::SCALE;
     const auto before = attack->sequence;
     const bool changed = ImGuizmo::Manipulate(&view.m[0][0],&projection.m[0][0],op,ImGuizmo::LOCAL,&world.m[0][0]);
+
     if (ImGuizmo::IsUsing()) {
-        if (!placementGizmoUsing_) { placementGestureBefore_ = before; placementGizmoUsing_ = true; }
+        if (!placementGizmoUsing_) {
+            placementGestureBefore_ = before;
+            placementGizmoUsing_ = true;
+        }
         if (changed) {
-            float p[3],r[3],s[3]; ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0],p,r,s);
+            float p[3],r[3],s[3];
+            ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0],p,r,s);
             ApplyPlacementTransform({p[0],p[1],p[2]},{r[0]*0.01745329252f,r[1]*0.01745329252f,r[2]*0.01745329252f},{s[0],s[1],s[2]});
         }
     } else if (placementGizmoUsing_) {
-        authoringGestureOpen_ = false; RememberSequenceEdit(placementGestureBefore_);
-        authoringGestureOpen_ = false; placementGizmoUsing_ = false;
+        authoringGestureOpen_ = false;
+        RememberSequenceEdit(placementGestureBefore_);
+        authoringGestureOpen_ = false;
+        placementGizmoUsing_ = false;
     }
+
     ImGuizmo::PopID();
 #endif
 }

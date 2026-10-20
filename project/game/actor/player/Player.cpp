@@ -1,5 +1,7 @@
 #include "game/actor/player/Player.Internal.h"
 #include "game/actor/gimmick/movement/GimmickTrampoline.h"
+#include "GhostRecorder.h"
+#include "BaseScene.h"
 
 using namespace PlayerImplementation;
 
@@ -17,7 +19,7 @@ bool Player::IsPinkBounceSlamImpactActive() const {
     return copyAbilityController_ && copyAbilityController_->IsPinkBounceSlamImpactActive();
 }
 
-void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem,
+void Player::Initialize(engine::Object3dCommon* common, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem,
                         engine::SpriteCommon* spriteCommon) {
     // 親クラス(Character)の初期化
     Character::Initialize(common);
@@ -31,9 +33,11 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     // 自機としての基本設定
     SetClassName("Player");
     SetSaveCategory("Player");
+
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     jumpCount_ = 0;
 
     // スライムの潰れ・伸びは見た目だけに適用し、接地判定の高さを変化させません。
@@ -58,12 +62,15 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         hookMarker_ = std::make_unique<engine::Object3d>();
         hookMarker_->Initialize(common);
         hookMarker_->SetModel("Characters/slimeBody");
+
         // スライムっぽい半透明な緑色
         hookMarker_->SetColor({0.3f, 1.0f, 0.5f, 0.6f});
         hookMarker_->SetIsVisible(false);
+
         // 当たり判定は不要
         hookMarker_->SetCollisionAttribute(0);
         hookMarker_->SetCollisionMask(0);
+
         // マーカーサイズを少し小さめに
         hookMarker_->SetScale({0.5f, 0.5f, 0.5f});
 
@@ -86,9 +93,11 @@ void Player::ApplyManagedScale(const engine::Vector3& scale) {
     // 見た目、衝突形状、アニメーションの基準スケールを同時に更新する。
     managedBaseScale_ = scale;
     SetScale(scale);
+
     if (GetCollider()) {
         GetCollider()->SetScaleOverride(scale);
     }
+
     slimeAnimator_.Reset(scale, this);
 }
 
@@ -109,20 +118,36 @@ engine::Vector3 Player::GetMoveInputDirection() {
 
 // 入力、状態、移動、見た目の順に更新します。演出が操作権を持つ間は通常操作へ流しません。
 void Player::Update(float deltaTime) {
+    // 接地通知は毎更新で消去する。死亡や演出の早期returnでも乗車が残らないようにする。
+    if (!copyPreviewActive_ && deltaTime > 0.0f) {
+        if (auto* scene = SceneManager::GetInstance()->GetCurrentScene()) {
+            for (const auto& object : scene->GetObjects())
+                if (object && object->recorder_) object->recorder_->SetPlayerRiding(false);
+        }
+    }
+    const auto notifyRiding = [&](engine::Object3d* ground) {
+        // 子Colliderへ接地した場合も親の録画パスへ通知する。
+        if (copyPreviewActive_ || isDead || deltaTime <= 0.0f || GetVelocity().y > 0.1f) return;
+        for (auto* object = ground; object; object = object->GetParent())
+            if (object->recorder_) object->recorder_->SetPlayerRiding(true);
+    };
     if (mover_ && deltaTime > 0.0f) {
         mover_->SampleJumpInput(deltaTime, isDead || isCinematicLocked_ || gateReturnAnimation_.IsActive() ||
                                                absorbEffectActive_ ||
                                                enemyMorphReleaseActive_ || copyPreviewActive_ ||
                                                electricShockControlLocked_);
     }
+
     // 隔離プレビューは固定刻み側だけが状態を進めます。Scene側のUpdate(0)で
     // 接地や保留入力を再評価すると、コマ送り結果が同じフレーム内で壊れます。
     if (copyPreviewActive_ && deltaTime <= 0.0f) {
         UpdateWorldMatrix(true);
         return;
     }
+
     if (copyPreviewActive_)
         SetIsControlActive(false);
+
     // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
         respawnPosition_ = GetTranslate();
@@ -131,18 +156,21 @@ void Player::Update(float deltaTime) {
         isFirstUpdate_ = false;
     }
 
+    // ムービーが操作を握る間は速度も消し、通常の状態・物理更新へ進ませません。
     if (isCinematicLocked_) {
         SetIsControlActive(false);
         SetVelocity({0.0f, 0.0f, 0.0f});
         return;
     }
 
+    // ゲート復帰は専用アニメーションが座標を決めるため、通常移動を重ねません。
     if (gateReturnAnimation_.IsActive()) {
         gateReturnAnimation_.Update(this, deltaTime);
         UpdateEnemyMorph(deltaTime);
         return;
     }
 
+    // コピー能力とフックは同じ副操作を使うため、形態から今フレームの入力先を決めます。
     const bool copyAbilityInputMode =
         isEnemyMorphed_ && enemyMorphType_ != EnemyMorphType::None && !enemyMorphReleaseActive_ && !absorbEffectActive_;
     const bool hookAimHeld =
@@ -153,6 +181,7 @@ void Player::Update(float deltaTime) {
         if (hookMarker_) {
             hookMarker_->SetIsVisible(false);
         }
+
         aimTargetObject_ = nullptr;
     }
 
@@ -161,14 +190,18 @@ void Player::Update(float deltaTime) {
         // 被弾無敵と回避無敵は別の発生源なので、期限も独立して管理します。
         if (damageCooldownTimer_ > 0.0f) {
             damageCooldownTimer_ -= deltaTime;
+
             if (damageCooldownTimer_ <= 0.0f) {
                 damageCooldownTimer_ = 0.0f;
                 SetDamageInvincible(false);
             }
         }
 
+        guardContactCooldownTimer_ = (std::max)(0.0f, guardContactCooldownTimer_ - deltaTime);
+
         if (evasionInvincibleTimer_ > 0.0f) {
             evasionInvincibleTimer_ -= deltaTime;
+
             if (evasionInvincibleTimer_ <= 0.0f) {
                 evasionInvincibleTimer_ = 0.0f;
                 isEvasionInvincible_ = false;
@@ -191,6 +224,7 @@ void Player::Update(float deltaTime) {
                 SetVelocity({0.0f, v.y, 0.0f});
 
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
                 if (camera) {
                     engine::Vector3 camRot = camera->GetRotation();
                     SetRotation(
@@ -206,6 +240,7 @@ void Player::Update(float deltaTime) {
                         dir.z = std::cos(camRot.y) * std::cos(camRot.x);
 
                         float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+
                         if (length > 0.0f) {
                             dir.x /= length;
                             dir.y /= length;
@@ -225,16 +260,19 @@ void Player::Update(float deltaTime) {
                                          NormalizeYaw(std::atan2(dir.x, dir.z) + GetVisualYawOffset()),
                                          baseRotation_.z});
                         }
+
                         float maxDistance = 150.0f;
                         uint32_t mask = CollisionCategories::Get("ground") | CollisionCategories::Get("enemy") | CollisionCategories::Get("hook_anchor");
 
                         RaycastHit hit;
+
                         if (isLockingOn_) {
                             // 球のローカルオフセットにも対応するQuery版を使い、自分と子パーツを除外します。
                             PhysicsQueryFilter filter;
                             filter.mask = mask;
                             filter.ignoredObject = this;
                             filter.includeTriggers = true;
+
                             if (lockOnAimValid_) {
                                 hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, filter);
                             }
@@ -327,6 +365,7 @@ void Player::Update(float deltaTime) {
             if (baseCombatController_) {
                 baseCombatController_->Cancel(*this, false);
             }
+
             CancelEnemyMorph();
             isDead = true;
             deathTimer_ = 0.0f;
@@ -342,6 +381,7 @@ void Player::Update(float deltaTime) {
             if (baseCombatController_) {
                 baseCombatController_->Cancel(*this, false);
             }
+
             if (tutorialSafetyEnabled_) {
                 SetTranslate(respawnPosition_);
                 SetVelocity({0.0f, 0.0f, 0.0f});
@@ -359,6 +399,7 @@ void Player::Update(float deltaTime) {
         }
     }
 
+    // 変身元への参照は形態が有効な間だけ渡し、解除後の能力処理へ持ち越しません。
     BaseEnemy* activeMorphSource = isEnemyMorphed_ ? enemyMorphSource_ : nullptr;
 
     // 照準中の重力は、このフレームの物理計算だけに適用します。
@@ -380,19 +421,24 @@ void Player::Update(float deltaTime) {
 
     // 状態と入力を確定してから物理を進め、能力入力に必要な接地を再確認します。
     // 破裂中は物理移動を止め、液面に残して演出を見せます。
+    const float landingApproachVelocityY = GetVelocity().y;
     if (isDead) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         engine::Object3d::Update(deltaTime);
     } else {
         Character::Update(deltaTime);
+
         // Sweep 移動で着地面の手前に停止すると重なり判定が発生しないため、
         // Motor が確定した接地相手からもキノコの反発を受け取る。
         const CharacterMotorResult& motorResult = GetCharacterMotor().GetResult();
+
         if (!copyPreviewActive_ && motorResult.grounded && motorResult.groundObject) {
+            notifyRiding(motorResult.groundObject);
             if (auto* trampoline = dynamic_cast<GimmickTrampoline*>(motorResult.groundObject)) {
                 trampoline->TryBounce(this, motorResult.groundNormal);
             }
         }
+
         // 互換モーターは接地をリセットし、シーン末尾の衝突解決まで未接地になります。
         // 能力判定より先に実際の足元接触を確認します。押し戻し・衝突イベントは
         // 従来のCollisionManagerに任せ、ここでは位置や速度を変更しません。
@@ -404,33 +450,51 @@ void Player::Update(float deltaTime) {
             filter.ignoredObject = this;
             const float maxSlope = std::clamp(param_->motorMaxSlopeDegrees, 0.0f, 89.9f);
             const float minimumGroundNormalY = std::cos(maxSlope * kPi / 180.0f);
+
             for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapAABB(GetAABB(), filter)) {
                 // 広域の箱判定だけで接地扱いにせず、自機本来のCollider形状で確認します。
                 const CollisionInfo contact = CheckCollision(hit.object);
+
                 if (contact.isColliding && contact.normal.y > minimumGroundNormalY) {
                     SetGrounded(true);
+                    notifyRiding(hit.object);
                     break;
                 }
             }
         }
+
         // 隔離空間には物理床がないため、モーターの更新後・能力入力の前に床を解決します。
         // 更新前のSetGroundedだけではBeginFrameで消され、ガードが開始できません。
         if (copyPreviewActive_) {
             const bool grounded = GetTranslate().y <= copyPreviewGroundHeight_ + 0.001f && velocity_.y <= 0.0f;
+
             if (grounded) {
                 SetTranslateY(copyPreviewGroundHeight_);
                 velocity_.y = 0.0f;
             }
+
             SetGrounded(grounded);
             UpdateWorldMatrix(true);
         }
     }
 
+    if (mover_) {
+        const bool allowLandingFeedback = !isDead && !isCinematicLocked_ && !gateReturnAnimation_.IsActive() &&
+                                          !dynamic_cast<PlayerStateDamage*>(state_.get()) && !absorbEffectActive_ &&
+                                          !enemyMorphReleaseActive_ && electricShockFeedbackTimer_ <= 0.0f;
+        const float impactRate = mover_->UpdateLandingFeedback(landingApproachVelocityY, deltaTime, allowLandingFeedback);
+        if (impactRate > 0.0f) {
+            slimeAnimator_.TriggerLanding(impactRate);
+        }
+    }
+
+    // 物理計算が終わったら照準中だけの重力補正を戻し、保存対象の設定値を汚しません。
     if (hasTemporaryPhysicsOverride && param_.has_value()) {
         param_->gravity = configuredGravity;
         param_->maxFallSpeed = configuredMaxFallSpeed;
     }
 
+    // 感電中は物理更新後のずれも抑え、拘束位置に固定してから視覚効果を更新します。
     if (electricShockControlLocked_) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         SetTranslate(electricShockLockedPosition_);
@@ -438,8 +502,7 @@ void Player::Update(float deltaTime) {
 
     UpdateElectricShockFeedback(deltaTime);
 
-    const bool hasVisibleInvincibility =
-        isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_ || isGuardInvincible_;
+    const bool hasVisibleInvincibility = isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_;
     if (hasVisibleInvincibility && deltaTime > 0.0f) {
         invincibleBlinkTimer_ += deltaTime;
     }
@@ -449,15 +512,15 @@ void Player::Update(float deltaTime) {
     if (electricShockFeedbackTimer_ <= 0.0f && hasVisibleInvincibility && deltaTime > 0.0f) {
         const float blink = 0.5f + 0.5f * std::sin(invincibleBlinkTimer_ * 42.0f);
         const engine::Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : engine::Vector4{1.0f, 1.0f, 1.0f, 1.0f};
-        const engine::Vector4 flash = isGuardInvincible_
-                                  ? engine::Vector4{1.0f, 0.42f, 0.84f, 1.0f}
-                                  : ((isDashInvincible_ || isEvasionInvincible_) ? engine::Vector4{0.34f, 0.74f, 1.0f, 1.0f}
-                                                                                 : engine::Vector4{1.0f, 0.78f, 0.32f, 1.0f});
+        const engine::Vector4 flash = (isDashInvincible_ || isEvasionInvincible_)
+                                          ? engine::Vector4{0.34f, 0.74f, 1.0f, 1.0f}
+                                          : engine::Vector4{1.0f, 0.78f, 0.32f, 1.0f};
         const float flashRate = blink > 0.48f ? 0.72f : 0.12f;
         const engine::Vector4 color = {base.x * (1.0f - flashRate) + flash.x * flashRate,
                                base.y * (1.0f - flashRate) + flash.y * flashRate,
                                base.z * (1.0f - flashRate) + flash.z * flashRate, 1.0f};
         SetColor(color);
+
         if (!isEnemyMorphed_) {
             for (engine::Object3d* child : GetChildren()) {
                 if (child) {
@@ -505,6 +568,7 @@ void Player::Update(float deltaTime) {
     if (tutorialCarryThrowEnabled_ && !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ &&
         !isEnemyMorphed_ && inputManager_->IsActionPressed("PrimaryAttack")) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
+
         if (enemyBase) {
             CancelEnemyMorph();
 
@@ -512,12 +576,15 @@ void Player::Update(float deltaTime) {
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
             engine::Vector3 throwForward = GetForwardDirection();
             float throwUpSpeed = 17.0f;
+
             if (camera) {
                 engine::Vector3 camRot = camera->GetRotation();
                 throwForward = {std::sin(camRot.y), 0.0f, std::cos(camRot.y)};
                 throwUpSpeed = (std::clamp)(17.0f - std::sin(camRot.x) * 7.0f, 10.0f, 21.0f);
             }
+
             float forwardLength = std::sqrt(throwForward.x * throwForward.x + throwForward.z * throwForward.z);
+
             if (forwardLength > 0.001f) {
                 throwForward.x /= forwardLength;
                 throwForward.z /= forwardLength;
@@ -542,6 +609,7 @@ void Player::Update(float deltaTime) {
             enemyBase->BeginThrown(throwVelocity);
 
             TriggerSlimeImpulse({1.4f, 3.6f, 1.4f}, 0.18f);
+
             // 投擲方向へ衝撃粒子を飛ばし、操作の結果をすぐに示します。
             if (particleSystem_) {
                 engine::Vector3 effectDir = {throwForward.x, 0.35f, throwForward.z};
@@ -550,6 +618,7 @@ void Player::Update(float deltaTime) {
                 if (effectDirLength > 0.001f) {
                     effectDir = effectDir / effectDirLength;
                 }
+
                 particleSystem_->SpawnParticles(playerPos + engine::Vector3{0.0f, 2.5f, 0.0f}, 24, 1.6f, &effectDir, 32.0f,
                                                 {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.0f}, 0.1f, 0.3f, 0.8f,
                                                 0.1f);
@@ -574,6 +643,7 @@ void Player::Update(float deltaTime) {
     } else if (tutorialCarryAbsorbEnabled_ && !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ &&
                carryAbilityTriggered) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
+
         if (enemyBase) {
             if (!isEnemyMorphed_) {
                 if (ShouldPlayAbsorbEffect(enemyBase)) {
@@ -587,14 +657,17 @@ void Player::Update(float deltaTime) {
             }
         }
     }
+
     if (absorbEffectActive_) {
         UpdateAbsorbEffect(deltaTime);
     } else if (carriedEnemy_ && !isEnemyMorphed_) {
         SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Carry);
         BaseEnemy* carriedBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
+
         if (carriedBase && !carriedBase->IsCarried()) {
             carriedBase->SetCarried(true);
         }
+
         carriedEnemy_->SetCollisionAttribute(0);
         carriedEnemy_->SetCollisionMask(0);
 
@@ -622,6 +695,7 @@ void Player::Update(float deltaTime) {
             carriedEnemyBaseScale_ = GetStableEnemyCarryScale(carriedEnemy_);
             hasCarriedEnemyBaseScale_ = true;
         }
+
         float stretch = std::sin(struggleTimer_ * 25.0f) * 0.05f;
         const engine::Vector3 targetScale = {carriedEnemyBaseScale_.x * (1.0f - stretch),
                                      carriedEnemyBaseScale_.y * (1.0f + stretch),
@@ -640,10 +714,12 @@ void Player::Update(float deltaTime) {
         carriedEnemy_->SetIsVisible(false);
         carriedEnemy_->SetCollisionAttribute(0);
         carriedEnemy_->SetCollisionMask(0);
+
         if (carriedBase) {
             carriedBase->UpdateCarriedAbility(this, deltaTime);
         }
     }
+
     if (copyAbilityController_ && copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_)) &&
         !enemyMorphReleaseActive_) {
         copyAbilityController_->Update(*this, deltaTime);
@@ -678,6 +754,7 @@ float Player::GetVisualYawOffset() const {
     if (isEnemyMorphed_) {
         return GetEnemyMorphModelYawOffset();
     }
+
     return kPlayerModelYawOffset;
 }
 
@@ -691,6 +768,7 @@ float Player::GetEnemyMorphModelYawOffset() const {
     case EnemyMorphType::Bomber:
     case EnemyMorphType::Crown:
         return kPi;
+
     default:
         return 0.0f;
     }
@@ -718,9 +796,11 @@ void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
         return;
     for (auto& object : copyPreviewObjects_) {
         object->Update(deltaTime);
+
         if (auto* enemy = dynamic_cast<BaseEnemy*>(object.get())) {
             engine::Vector3 position = enemy->GetTranslate();
             engine::Vector3 velocity = enemy->GetVelocity();
+
             if (position.y < groundY + 0.48f && velocity.y <= 0) {
                 position.y = groundY + 0.48f;
                 velocity.y = 0;
@@ -738,32 +818,40 @@ void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
 void Player::UpdateCopyAdornment() {
     // コピー種別に対応する装飾だけを表示し、解除中は残さない。
     const char* model = nullptr;
+
     if (isEnemyMorphed_ && !enemyMorphReleaseActive_) {
         switch (enemyMorphType_) {
         case EnemyMorphType::Slime:
             model = "Characters/copy_band_pink";
             break;
+
         case EnemyMorphType::FireSlime:
             model = "Characters/copy_band_fire";
             break;
+
         case EnemyMorphType::ThunderSlime:
             model = "Characters/copy_band_thunder";
             break;
+
         case EnemyMorphType::WindSlime:
             model = "Characters/copy_band_wind";
             break;
+
         case EnemyMorphType::Bomber:
             model = "Characters/copy_band_bomb";
             break;
+
         default:
             break; // 覇王は既存モデルに王冠を含みます。
         }
     }
+
     if (!model || !GetIsVisible()) {
         if (copyAdornment_)
             copyAdornment_->SetIsVisible(false);
         return;
     }
+
     if (!copyAdornment_) {
         copyAdornment_ = std::make_unique<engine::Object3d>();
         copyAdornment_->Initialize(common_);
@@ -773,12 +861,15 @@ void Player::UpdateCopyAdornment() {
         copyAdornment_->SetMaterialType(0);
         copyAdornment_->SetEnableLighting(true);
     }
+
     if (copyAdornment_->GetModelName() != model)
         copyAdornment_->SetModel(model);
     copyAdornment_->SetIsVisible(true);
+
     // 本体の潰れ・伸び・回転を含めて追従。能力解除時は描かず、元敵には付けません。
     copyAdornment_->SetLocalTransform(*GetTransform());
     copyAdornment_->SetTransformAnchor(GetTransform()->parent);
+
     if (auto* decorationRenderer = copyAdornment_->GetMeshRenderer()) {
         if (auto* bodyRenderer = GetMeshRenderer()) {
             decorationRenderer->SetVisualTransform(bodyRenderer->GetVisualScale(), bodyRenderer->GetVisualRotation(),
@@ -786,6 +877,7 @@ void Player::UpdateCopyAdornment() {
             decorationRenderer->SetVisualShear(bodyRenderer->GetVisualShear(), bodyRenderer->GetVisualShearPivotY());
         }
     }
+
     copyAdornment_->UpdateWorldMatrix(true);
 }
 
@@ -853,9 +945,11 @@ void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightR
     if (enemyMorphReleaseVisual_ && enemyMorphReleaseVisual_->GetIsVisible()) {
         enemyMorphReleaseVisual_->Draw(pointLightResource, spotLightResource);
     }
+
     if (electricShockAuraEffect_ && electricShockAuraEffect_->GetIsVisible()) {
         electricShockAuraEffect_->Draw(pointLightResource, spotLightResource);
     }
+
     // ※フックマーカーはプレイヤーがカメラ外（フラスタムカリング）になった時でも
     // 描画されるように、GamePlayScene 側で直接描画するように変更しました。
 }
@@ -886,6 +980,7 @@ bool Player::OnCollision(engine::Object3d* other) {
 
     // 衝突相手の属性を取得
     uint32_t attribute = 0;
+
     if (other->GetCollider()) {
         attribute = other->GetCollider()->GetAttribute();
     }
@@ -898,6 +993,7 @@ bool Player::OnCollision(engine::Object3d* other) {
         if (!child)
             continue;
         CollisionInfo childInfo = child->CheckCollision(other);
+
         if (childInfo.isColliding) {
             // パーツがぶつかっていた場合、本体よりめり込みが深ければ
             // そのパーツの押し出し情報（法線とめり込み量）を採用して親を動かす！
@@ -928,6 +1024,7 @@ bool Player::OnCollision(engine::Object3d* other) {
         // 通常の床解決より先に着地を反発へ変える。呼び出し順に依存しないようにする。
         trampoline->TryBounce(this, info.normal);
     }
+
     if (attribute & CollisionCategories::Get("ground")) {
         ApplyPhysicsCollision(info, attribute);
     }
@@ -937,40 +1034,44 @@ bool Player::OnCollision(engine::Object3d* other) {
     // =======================================================
     const BaseEnemy* bodyEnemy = (attribute & CollisionCategories::Get("enemy")) ? dynamic_cast<const BaseEnemy*>(other) : nullptr;
     const float bodyAttackDamage = bodyEnemy ? bodyEnemy->GetActiveBodyAttackDamage() : 0.0f;
+
     // 本体への接触と攻撃への命中は別。物理解決と下のギミック通知は常に維持します。
     if ((attribute & CollisionCategories::Get("enemy_attack")) || bodyAttackDamage > 0.0f) {
-        // ピンクガードは単にダメージを無視するだけでなく、受け止めた瞬間を
-        // コピー能力へ通知して反動モーションと次のバウンド強化へつなげます。
-        if (isGuardInvincible_ && copyAbilityController_) {
-            copyAbilityController_->NotifyGuardedHit(*this, other->GetWorldPosition());
-        }
-        // 通常のダメージ処理 (被弾)
-        else if (damageCooldownTimer_ <= 0.0f && !IsInvincible()) {
-            const Bullet* attackBullet = dynamic_cast<const Bullet*>(other);
-            const bool isElectricHit = other->GetEnemyType() == "ThunderSlime" ||
-                                       (attackBullet && attackBullet->GetDamageType() == DamageType::Electric);
+        if (damageCooldownTimer_ <= 0.0f && !IsInvincible()) {
+            const bool guarded = CanGuardAttackFrom(other->GetWorldPosition());
+            if (!guarded || guardContactCooldownTimer_ <= 0.0f) {
+                const Bullet* attackBullet = dynamic_cast<const Bullet*>(other);
+                const bool isElectricHit = other->GetEnemyType() == "ThunderSlime" ||
+                                           (attackBullet && attackBullet->GetDamageType() == DamageType::Electric);
 
-            // ダメージイベントを発行 (GameRule で HP 減少が処理される)
-            DamageEvent dmgEvent;
-            dmgEvent.target = this;
-            dmgEvent.attacker = other;
-            dmgEvent.damageAmount =
-                attackBullet ? attackBullet->GetDamage() : (bodyAttackDamage > 0.0f ? bodyAttackDamage : 1.0f);
-            if (attackBullet) {
-                dmgEvent.damageType = attackBullet->GetDamageType();
-                dmgEvent.statusEffect = attackBullet->GetStatusEffect();
-            }
-            EventManager::GetInstance()->Dispatch(dmgEvent);
+                // ダメージイベントを発行 (GameRule で HP 減少が処理される)
+                DamageEvent dmgEvent;
+                dmgEvent.target = this;
+                dmgEvent.attacker = other;
+                dmgEvent.damageAmount =
+                    attackBullet ? attackBullet->GetDamage() : (bodyAttackDamage > 0.0f ? bodyAttackDamage : 1.0f);
+                if (attackBullet) {
+                    dmgEvent.damageType = attackBullet->GetDamageType();
+                    dmgEvent.statusEffect = attackBullet->GetStatusEffect();
+                }
 
-            if (isElectricHit) {
-                damageCooldownTimer_ = 0.8f;
-            } else {
-                // 無敵時間をセット
-                damageCooldownTimer_ = 1.0f;
-                SetDamageInvincible(true);
+                // HP の軽減とガード反動は共通 DamageEvent 側で一度だけ処理する。
+                EventManager::GetInstance()->Dispatch(dmgEvent);
 
-                // ノックバック状態へ移行 (衝突法線を利用)
-                ChangeState(std::make_unique<PlayerStateDamage>(info.normal));
+                if (guarded) {
+                    // 常時接触する敵で毎フレーム HP が減らないよう、接触だけ短く間引く。
+                    constexpr float kGuardContactHitInterval = 0.22f;
+                    guardContactCooldownTimer_ = kGuardContactHitInterval;
+                } else if (isElectricHit) {
+                    damageCooldownTimer_ = 0.8f;
+                } else {
+                    // 無敵時間をセット
+                    damageCooldownTimer_ = 1.0f;
+                    SetDamageInvincible(true);
+
+                    // ノックバック状態へ移行 (衝突法線を利用)
+                    ChangeState(std::make_unique<PlayerStateDamage>(info.normal));
+                }
             }
         }
     }
@@ -1012,6 +1113,12 @@ void Player::SetPlatformMotion(const engine::Vector3& velocity) {
         mover_->SetPlatformMotion(velocity);
 }
 
+void Player::SetAbilityAirImpulse(const engine::Vector3& velocity) {
+    // 能力の押し出しを通常の移動入力と同じ更新へ渡し、次フレームでの上書きを防ぐ。
+    if (mover_)
+        mover_->SetAbilityAirImpulse(velocity);
+}
+
 // =================================================================
 // アニメーション・状態管理 (State Pattern)
 // =================================================================
@@ -1038,6 +1145,7 @@ void Player::PlayAnimation(const std::string& animName, bool loop) {
         animName_ = animName;
         ResetAnimationTime();
     }
+
     isAnimLoop_ = loop;
 }
 
@@ -1064,6 +1172,10 @@ void Player::SetSlimePullProgress(float progress) {
 void Player::SetSlimeJumpCharge(float chargeRate) {
     // 溜め量に応じた見た目は Animator に任せ、物理ジャンプとは分離する。
     slimeAnimator_.SetJumpCharge(chargeRate);
+}
+
+void Player::TriggerSlimeJumpTakeoff() {
+    slimeAnimator_.TriggerJumpTakeoff();
 }
 
 void Player::SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float strength) {
@@ -1121,7 +1233,8 @@ void Player::StopGateReturnAnimation(bool restoreControl) {
 
 void Player::StepCinematicPullVisual(float deltaTime, const engine::Vector3& direction, float progress) {
     // 操作ロック中だけ、引き寄せの見た目を演出タイムラインから進める。
-    if (!isCinematicLocked_) return;
+    if (!isCinematicLocked_)
+        return;
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::PullEnemy);
     slimeAnimator_.SetPullDirection(direction);
     slimeAnimator_.SetPullProgress(progress);
@@ -1132,7 +1245,8 @@ void Player::EndCinematicPullVisual() {
     // 演出で使った伸縮を残さず、通常姿勢へ復帰する。
     slimeAnimator_.Reset(managedBaseScale_, this);
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Disabled);
-    if (hookMarker_) hookMarker_->SetIsVisible(false);
+    if (hookMarker_)
+        hookMarker_->SetIsVisible(false);
 }
 
 void Player::BeginCinematicLock(bool preserveCopyAbility) {
@@ -1149,11 +1263,14 @@ void Player::BeginCinematicLock(bool preserveCopyAbility) {
     if (baseCombatController_) {
         baseCombatController_->Cancel(*this, false);
     }
+
     // ボス導入ではコピー能力を維持し、入力と戦闘状態だけを止めます。
     if (!preserveCopyAbility) {
         CancelEnemyMorph();
     }
+
     ReleaseCarriedEnemy(true);
+
     if (electricShockFeedbackTimer_ > 0.0f || electricShockControlLocked_) {
         electricShockPendingInvincibleDuration_ = 0.0f;
         EndElectricShockFeedback();
@@ -1177,9 +1294,11 @@ void Player::BeginCinematicLock(bool preserveCopyAbility) {
     engine::Vector3 stableRotation = GetRotation();
     stableRotation.x = baseRotation_.x;
     stableRotation.z = baseRotation_.z;
+
     if (!preserveCopyAbility || !isEnemyMorphed_) {
         SetScale(managedBaseScale_);
     }
+
     SetRotation(stableRotation);
     SetVelocity({0.0f, 0.0f, 0.0f});
     SetIsControlActive(false);
@@ -1218,15 +1337,39 @@ void Player::SetDashInvincible(bool inv) {
     UpdateColor(); // 状態が変わったら色を更新
 }
 
-void Player::SetGuardInvincible(bool inv) {
-    // ガードの無敵状態は被弾表示色にも直ちに反映する。
-    isGuardInvincible_ = inv;
+void Player::SetGuarding(bool guarding) {
+    isGuarding_ = guarding;
     UpdateColor();
+}
+
+bool Player::CanGuardAttackFrom(const engine::Vector3& sourcePosition) const {
+    if (!isGuarding_) {
+        return false;
+    }
+
+    engine::Vector3 toSource = sourcePosition - GetWorldPosition();
+    toSource.y = 0.0f;
+    const float distance = engine::Math::Length(toSource);
+    if (distance <= 0.001f) {
+        return false;
+    }
+
+    // 正面を中心とした約 120 度のみ軽減し、背面・側面と攻撃元不明の判定は通常被弾にする。
+    const engine::Vector3 forward = GetForwardDirection();
+    constexpr float kGuardFrontConeDot = 0.5f;
+    return (forward.x * toSource.x + forward.z * toSource.z) / distance >= kGuardFrontConeDot;
+}
+
+void Player::NotifyGuardedHit(const engine::Vector3& sourcePosition) {
+    if (copyAbilityController_) {
+        copyAbilityController_->NotifyGuardedHit(*this, sourcePosition);
+    }
 }
 
 void Player::SetTutorialSafetyEnabled(bool enabled) {
     // チュートリアル開始時に残り HP と死亡状態を安全な初期値へ戻す。
     tutorialSafetyEnabled_ = enabled;
+
     if (enabled && param_.has_value()) {
         param_->maxHp = (std::max)(param_->maxHp, 1.0f);
         param_->hp = param_->maxHp;
@@ -1241,6 +1384,7 @@ void Player::RestoreHpToFull() {
     if (!param_.has_value() || isDead) {
         return;
     }
+
     param_->maxHp = (std::max)(param_->maxHp, 1.0f);
     param_->hp = param_->maxHp;
 }
@@ -1275,13 +1419,17 @@ void Player::RestoreDamageBlinkVisibility() {
     }
 
     SetIsVisible(damageBlinkBodyVisible_);
+
     if (!isEnemyMorphed_) {
         const auto& children = GetChildren();
+
         for (size_t i = 0; i < children.size(); ++i) {
             engine::Object3d* child = children[i];
+
             if (!child) {
                 continue;
             }
+
             if (i < damageBlinkChildVisible_.size()) {
                 child->SetIsVisible(damageBlinkChildVisible_[i]);
             }
@@ -1305,8 +1453,10 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
             damageBlinkVisibilityApplied_ = true;
             damageBlinkBodyVisible_ = GetIsVisible();
             damageBlinkChildVisible_.clear();
+
             if (!isEnemyMorphed_) {
                 damageBlinkChildVisible_.reserve(GetChildren().size());
+
                 for (engine::Object3d* child : GetChildren()) {
                     damageBlinkChildVisible_.push_back(child ? child->GetIsVisible() : false);
                 }
@@ -1316,18 +1466,23 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
         const float blinkPhase = std::fmod(invincibleBlinkTimer_, 0.16f);
         const bool blinkVisible = blinkPhase < 0.095f;
         SetIsVisible(damageBlinkBodyVisible_ && blinkVisible);
+
         if (!isEnemyMorphed_) {
             const auto& children = GetChildren();
+
             for (size_t i = 0; i < children.size(); ++i) {
                 engine::Object3d* child = children[i];
+
                 if (!child) {
                     continue;
                 }
+
                 const bool originalVisible =
                     i < damageBlinkChildVisible_.size() ? damageBlinkChildVisible_[i] : child->GetIsVisible();
                 child->SetIsVisible(originalVisible && blinkVisible);
             }
         }
+
         return;
     }
 
@@ -1342,7 +1497,7 @@ void Player::UpdateColor() {
     engine::Vector4 targetColor =
         isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : engine::Vector4{1.0f, 1.0f, 1.0f, 1.0f}; // 基本は白(通常色)
 
-    if (isGuardInvincible_) {
+    if (isGuarding_) {
         // 通常のピンクと区別できる、身を固めた濃いローズ色。
         targetColor = {0.78f, 0.12f, 0.34f, 1.0f};
     } else if (isDashInvincible_ || isEvasionInvincible_) {
@@ -1351,6 +1506,7 @@ void Player::UpdateColor() {
 
     // 本体と子パーツの色を一括変更
     SetColor(targetColor);
+
     if (!isEnemyMorphed_) {
         for (engine::Object3d* child : GetChildren()) {
             if (child)

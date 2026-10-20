@@ -4,7 +4,7 @@
 #include <string>
 
 // 前方宣言
-class Object3dCommon;
+namespace engine { class Object3dCommon; }
 
 // 一定間隔で敵を発生させるための配置用オブジェクト
 class EnemySpawner : public engine::Object3d {
@@ -12,12 +12,13 @@ class EnemySpawner : public engine::Object3d {
     /// <summary>
     /// スポナーの初期化
     /// </summary>
-    void Initialize(Object3dCommon* common, const std::string& enemyType, float interval, int maxCount);
+    void Initialize(engine::Object3dCommon* common, const std::string& enemyType, float interval, int maxCount);
 
     // タイマーを進め、条件を満たしたらスポーン通知を出す
     void Update(float deltaTime) override;
 
     using SpawnCallback = std::function<void(const engine::Vector3&)>;
+
     // 実際の敵生成はシーン側へ任せるため、座標だけコールバックで通知する
     void SetOnSpawnCallback(SpawnCallback callback) { onSpawnCallback_ = callback; }
 
@@ -27,7 +28,7 @@ class EnemySpawner : public engine::Object3d {
 
   private:
     // Factory に渡す共通描画情報。スポーン時の敵初期化で使う。
-    Object3dCommon* common_ = nullptr;
+    engine::Object3dCommon* common_ = nullptr;
 
     std::string enemyType_;      // 生成したい敵タイプ名。
     float spawnInterval_ = 1.0f; // 次のスポーンまでの間隔。

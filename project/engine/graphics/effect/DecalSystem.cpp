@@ -12,7 +12,9 @@ namespace {
 // 面法線がほぼゼロでもデカールの基底を作れるよう、上向きの既定法線を返します。
 engine::Vector3 SafeNormal(const engine::Vector3& value) {
     const float length = engine::Math::Length(value);
-    if (length <= 0.0001f) return { 0.0f, 1.0f, 0.0f };
+
+    if (length <= 0.0001f)
+        return { 0.0f, 1.0f, 0.0f };
     return value * (1.0f / length);
 }
 
@@ -46,11 +48,12 @@ engine::Quaternion BuildSurfaceQuaternion(const engine::Vector3& normal, float r
 }
 
 std::unique_ptr<engine::Object3d> DecalSystem::Create(
-    Object3dCommon* common,
+    engine::Object3dCommon* common,
     const engine::Vector3& surfacePoint,
     const engine::Vector3& surfaceNormal,
     const DecalSpawnDesc& desc) {
-    if (!common) return nullptr;
+    if (!common)
+        return nullptr;
 
     // Decalは通常のObject3dをPlaneとして生成し、照明・影・衝突を無効にする。
     auto decal = std::make_unique<engine::Object3d>();
@@ -82,6 +85,7 @@ std::unique_ptr<engine::Object3d> DecalSystem::Create(
         (std::max)(desc.size.x, 0.01f),
         (std::max)(desc.size.y, 0.01f)
     };
+
     settings.depthOffset = (std::max)(desc.depthOffset, 0.0001f);
     settings.lifetime = (std::max)(desc.lifetime, 0.0f);
     settings.fadeIn = (std::max)(desc.fadeIn, 0.0f);
@@ -100,15 +104,19 @@ engine::Object3d* DecalSystem::Spawn(
     const DecalSpawnDesc& desc) {
     std::unique_ptr<engine::Object3d> decal = Create(
         scene.GetObject3dCommon(), surfacePoint, surfaceNormal, desc);
-    if (!decal) return nullptr;
+    if (!decal)
+        return nullptr;
+
     // 所有権をSceneへ移したあと、実際にSceneへ保持されたときだけ非所有ポインタを返す。
     engine::Object3d* result = decal.get();
     scene.AddObject(std::move(decal));
+
     for (const std::unique_ptr<engine::Object3d>& ownedObject : scene.GetObjects()) {
         if (ownedObject.get() == result) {
             return result;
         }
     }
+
     return nullptr;
 }
 
@@ -119,10 +127,12 @@ engine::Object3d* DecalSystem::SpawnFromRaycast(
     float maxDistance,
     uint32_t collisionMask,
     const DecalSpawnDesc& desc) {
-    if (maxDistance <= 0.0f || engine::Math::Length(rayDirection) <= 0.0001f) return nullptr;
+    if (maxDistance <= 0.0f || engine::Math::Length(rayDirection) <= 0.0001f)
+        return nullptr;
     const RaycastHit hit = CollisionManager::GetInstance()->Raycast(
         rayStart, SafeNormal(rayDirection), maxDistance, collisionMask);
-    if (!hit.isHit) return nullptr;
+    if (!hit.isHit)
+        return nullptr;
     return Spawn(scene, hit.hitPoint, hit.normal, desc);
 }
 
@@ -155,6 +165,7 @@ void engine::Object3d::SetDecalSettings(const DecalSettings& settings) {
     decalSettings_.lifetime = (std::max)(decalSettings_.lifetime, 0.0f);
     decalSettings_.fadeIn = (std::max)(decalSettings_.fadeIn, 0.0f);
     decalSettings_.fadeOut = (std::max)(decalSettings_.fadeOut, 0.0f);
+
     if (!decalSettings_.enabled) {
         decalElapsedTime_ = 0.0f;
     }
@@ -163,6 +174,7 @@ void engine::Object3d::SetDecalSettings(const DecalSettings& settings) {
 void engine::Object3d::RestartDecalPlayback() {
     decalElapsedTime_ = 0.0f;
     decalAuthoredAlpha_ = GetColor().w;
+
     if (decalSettings_.enabled) {
         SetIsVisible(true);
         isDead = false;

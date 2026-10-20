@@ -2,7 +2,7 @@
 #include "ModelManager.h"
 #include <typeinfo>
 
-void BaseGimmick::Initialize(Object3dCommon* common, const std::string& modelName) {
+void BaseGimmick::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     engine::Object3d::Initialize(common);
 
     // モデル読み込みと設定
@@ -39,6 +39,7 @@ std::unique_ptr<engine::Object3d> BaseGimmick::Clone() const {
     if (typeid(*this) != typeid(BaseGimmick)) {
         return nullptr;
     }
+
     auto newObj = std::make_unique<BaseGimmick>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

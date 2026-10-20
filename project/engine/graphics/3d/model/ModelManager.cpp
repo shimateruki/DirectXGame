@@ -39,6 +39,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     // すでに同じキーで読み込まれている場合は、GPUリソースを作り直さず再利用する。
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
+
         if (models_.contains(modelName)) {
             return models_[modelName].get();
         }
@@ -59,9 +60,11 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
             std::filesystem::path(parentPath).filename().string() == stem;
         {
             std::lock_guard<std::recursive_mutex> lock(mutex_);
+
             if (models_.contains(extensionlessKey)) {
                 return models_[extensionlessKey].get();
             }
+
             if (isFolderMainModel && models_.contains(parentPath)) {
                 return models_[parentPath].get();
             }
@@ -88,6 +91,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         fileName = path.filename().string();
         std::string legacyDirectory = directoryPath;
         std::string directDirectory = kDefaultBaseDirectory + (parentPath.empty() ? "" : parentPath + "/");
+
         // 旧配置と直下配置の両方を見て、既存アセットの読み込み互換性を保つ。
         if (std::filesystem::exists(legacyDirectory + fileName)) {
             directoryPath = legacyDirectory;
@@ -113,13 +117,16 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         }
         else if (std::filesystem::exists(directoryPath)) {
             for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
-                if (!entry.is_regular_file()) continue;
+                if (!entry.is_regular_file())
+                    continue;
                 std::string candidateExt = entry.path().extension().string();
+
                 if (candidateExt == ".obj" || candidateExt == ".gltf" || candidateExt == ".glb") {
                     fileName = entry.path().filename().string();
                     break;
                 }
             }
+
             if (fileName.empty()) {
                 fileName = objName;
             }
@@ -138,6 +145,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         auto prepared = preparedModels_.find(modelName);
+
         if (prepared != preparedModels_.end()) {
             preparedModel = std::move(prepared->second);
             preparedModels_.erase(prepared);
@@ -150,6 +158,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         modelCommon = modelCommon_.get();
     }
+
     if (preparedModel) {
         newModel->InitializeFromCpuData(
             modelCommon,
@@ -167,6 +176,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         auto existingIt = models_.find(modelName);
+
         if (existingIt != models_.end()) {
             return existingIt->second.get();
         }
@@ -180,6 +190,7 @@ bool ModelManager::PrepareModel(const std::string& modelName) {
     // GPU登録前のモデルを準備し、同名モデルの重複デコードを避ける。
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
+
         if (models_.contains(modelName) || preparedModels_.contains(modelName)) {
             return true;
         }
@@ -187,6 +198,7 @@ bool ModelManager::PrepareModel(const std::string& modelName) {
 
     std::string directoryPath;
     std::string fileName;
+
     if (!ResolveModelPath(modelName, directoryPath, fileName)) {
         return false;
     }
@@ -207,6 +219,7 @@ bool ModelManager::PrepareModel(const std::string& modelName) {
                 material.normalMapPath,
                 TextureManager::TextureColorSpace::Linear);
         }
+
         if (material.hasOrmMap && !material.ormMapPath.empty()) {
             TextureManager::GetInstance()->Prepare(
                 material.ormMapPath,
@@ -215,9 +228,11 @@ bool ModelManager::PrepareModel(const std::string& modelName) {
     }
 
     std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     if (models_.contains(modelName) || preparedModels_.contains(modelName)) {
         return true;
     }
+
     preparedModels_.emplace(modelName, std::move(prepared));
     return true;
 }
@@ -251,12 +266,14 @@ bool ModelManager::ResolveModelPath(
         else {
             return false;
         }
+
         return true;
     }
 
     const std::string objName = stem + ".obj";
     const std::string gltfName = stem + ".gltf";
     const std::string glbName = stem + ".glb";
+
     if (std::filesystem::exists(directoryPath + objName)) {
         fileName = objName;
     }
@@ -271,6 +288,7 @@ bool ModelManager::ResolveModelPath(
             if (!entry.is_regular_file()) {
                 continue;
             }
+
             const std::string candidateExtension = entry.path().extension().string();
             if (candidateExtension == ".obj" || candidateExtension == ".gltf" ||
                 candidateExtension == ".glb") {
@@ -289,6 +307,7 @@ bool ModelManager::ReloadModel(const std::string& modelName) {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         models_.erase(modelName);
     }
+
     return LoadModel(modelName) != nullptr;
 }
 
@@ -297,9 +316,11 @@ std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     std::vector<std::string> names;
+
     for (const auto& pair : models_) {
         names.push_back(pair.first);
     }
+
     return names;
 }
 
@@ -309,6 +330,7 @@ std::vector<std::string> ModelManager::GetAvailableModelNames() const {
     std::set<std::string> uniqueNames(names.begin(), names.end());
 
     std::error_code error;
+
     if (!std::filesystem::exists(kDefaultBaseDirectory, error) || error) {
         return names;
     }
@@ -324,12 +346,14 @@ std::vector<std::string> ModelManager::GetAvailableModelNames() const {
             error.clear();
             continue;
         }
+
         if (!iterator->is_regular_file(error) || error) {
             error.clear();
             continue;
         }
 
         const std::string extension = iterator->path().extension().string();
+
         if (extension != ".obj" && extension != ".gltf" && extension != ".glb") {
             continue;
         }
@@ -344,6 +368,7 @@ std::vector<std::string> ModelManager::GetAvailableModelNames() const {
         }
 
         std::string modelName = relativePath.generic_string();
+
         if (uniqueNames.insert(modelName).second) {
             names.push_back(std::move(modelName));
         }
@@ -362,13 +387,15 @@ std::vector<std::string> ModelManager::GetAvailableModelNames() const {
 void ModelManager::LoadAllModels() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    if (!std::filesystem::exists(kDefaultBaseDirectory)) return;
+    if (!std::filesystem::exists(kDefaultBaseDirectory))
+        return;
 
     OutputDebugStringA("=== 【ModelManager】事前ロード開始 ===\n");
 
     for (const auto& entry : std::filesystem::recursive_directory_iterator(kDefaultBaseDirectory)) {
         if (entry.is_regular_file()) {
             std::string ext = entry.path().extension().string();
+
             if (ext == ".obj" || ext == ".gltf" || ext == ".glb") {
 
                 // ファイルの本当の場所をそのまま使う！
@@ -402,5 +429,6 @@ void ModelManager::LoadAllModels() {
             }
         }
     }
+
     OutputDebugStringA("=== 【ModelManager】事前ロード終了 ===\n");
 }

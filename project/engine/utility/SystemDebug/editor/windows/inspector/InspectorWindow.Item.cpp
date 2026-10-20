@@ -11,7 +11,8 @@ void InspectorWindow::DrawItemTypeSelector() {
 #ifdef USE_IMGUI
     // 一時ドロップ星は通常アイテムと設定項目が異なるため先に分岐する。
     engine::Object3d* selectedObject = editor_->GetSelectedObject();
-    if (!selectedObject) return;
+    if (!selectedObject)
+        return;
 
     if (auto* star = dynamic_cast<DroppedCopyStar*>(selectedObject)) {
         ImGui::TextUnformatted("コピー解除で落とした星（一度だけ取得）");
@@ -29,11 +30,13 @@ void InspectorWindow::DrawItemTypeSelector() {
     const char* itemTypes[] = { "Heal" };
     const char* itemTypeLabels[] = { "体力回復" };
     std::string currentType = selectedObject->GetItemType();
+
     if (currentType.empty()) {
         // 旧データで種類が空なら、回復アイテムとしてモデルと判定を補完する。
         currentType = "Heal";
         selectedObject->SetItemType(currentType);
-        if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+        if (!selectedObject->param_.has_value())
+            selectedObject->param_.emplace();
         selectedObject->param_->itemType = currentType;
         selectedObject->param_->healAmount = 1.0f;
         selectedObject->SetName("Item_Heal");
@@ -53,6 +56,7 @@ void InspectorWindow::DrawItemTypeSelector() {
     }
 
     int currentIndex = 0;
+
     for (int i = 0; i < IM_ARRAYSIZE(itemTypes); i++) {
         if (currentType == itemTypes[i]) {
             currentIndex = i;
@@ -66,7 +70,8 @@ void InspectorWindow::DrawItemTypeSelector() {
         selectedObject->SetClassName("Item");
         selectedObject->SetItemType(selectedItemType);
 
-        if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+        if (!selectedObject->param_.has_value())
+            selectedObject->param_.emplace();
         selectedObject->param_->itemType = selectedItemType;
 
         if (selectedItemType == "Heal") {
@@ -89,7 +94,8 @@ void InspectorWindow::DrawItemTypeSelector() {
         }
     }
 
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成されるアイテムクラスを指定します。");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("ロード時に生成されるアイテムクラスを指定します。");
 #endif
 }
 
@@ -102,13 +108,17 @@ void InspectorWindow::DrawAttributeSelector(const char* label, uint32_t* attribu
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f),
                 "カテゴリ定義JSONを読めません。既存カテゴリで一時的に動作しています。");
         }
+
         int flags = static_cast<int>(*attribute);
+
         for (const auto& category : CollisionCategories::GetDefinitions()) {
             const std::string itemLabel = category.displayName + " (" + category.id + ")##" + category.id;
             ImGui::CheckboxFlags(itemLabel.c_str(), &flags, static_cast<int>(category.bit));
         }
+
         *attribute = static_cast<uint32_t>(flags);
-        if (ImGui::Button("カテゴリを追加")) ImGui::OpenPopup("AddCollisionCategory");
+        if (ImGui::Button("カテゴリを追加"))
+            ImGui::OpenPopup("AddCollisionCategory");
         if (ImGui::BeginPopup("AddCollisionCategory")) {
             static char idBuffer[64]{};
             static char nameBuffer[128]{};
@@ -116,19 +126,25 @@ void InspectorWindow::DrawAttributeSelector(const char* label, uint32_t* attribu
             ImGui::InputText("ID (英小文字)", idBuffer, sizeof(idBuffer));
             ImGui::InputText("表示名", nameBuffer, sizeof(nameBuffer));
             const bool isPlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
+
             // Play中はJSONを書き換えず、停止後に新しいカテゴリを登録させる。
             ImGui::BeginDisabled(isPlaying);
+
             if (ImGui::Button("追加してJSONへ保存")) {
                 if (CollisionCategories::Add(idBuffer, nameBuffer, &error)) {
                     idBuffer[0] = nameBuffer[0] = '\0';
                     ImGui::CloseCurrentPopup();
                 }
             }
+
             ImGui::EndDisabled();
-            if (isPlaying) ImGui::TextDisabled("Playを停止してから追加してください。");
-            if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());
+            if (isPlaying)
+                ImGui::TextDisabled("Playを停止してから追加してください。");
+            if (!error.empty())
+                ImGui::TextWrapped("%s", error.c_str());
             ImGui::EndPopup();
         }
+
         ImGui::TreePop();
     }
 #endif

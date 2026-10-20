@@ -15,9 +15,11 @@
 void GamePlayScene::StartLifeLostPresentation(int beforeLives, int afterLives) {
     // 演出開始時の表示数を固定し、途中でセーブ値が変わっても数字を跳ねさせません。
     lifeLostState_.Start(beforeLives, afterLives);
+
     if (lifeLostSlimeObject_) {
         lifeLostSlimeObject_->SetIsVisible(false);
     }
+
     if (lifeLostStunObject_) {
         lifeLostStunObject_->SetIsVisible(false);
     }
@@ -54,6 +56,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
         if (lifeLostState_.HoldsBlack()) {
             const float screenW = static_cast<float>(WinApp::kClientWidth);
             const float screenH = static_cast<float>(WinApp::kClientHeight);
+
             if (lifeLostBackdrop_.sprite) {
                 lifeLostBackdrop_.sprite->SetVisible(true);
                 lifeLostBackdrop_.sprite->SetPosition({screenW * 0.5f, screenH * 0.5f});
@@ -61,6 +64,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
                 lifeLostBackdrop_.sprite->SetColor({0.0f, 0.0f, 0.0f, 1.0f});
                 lifeLostBackdrop_.sprite->Update();
             }
+
             if (lifeLostIcon_.sprite)
                 lifeLostIcon_.sprite->SetVisible(false);
             if (lifeLostXIcon_.sprite)
@@ -69,8 +73,10 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
                 if (digit.sprite)
                     digit.sprite->SetVisible(false);
             }
+
             return;
         }
+
         if (lifeLostIcon_.sprite)
             lifeLostIcon_.sprite->SetVisible(false);
         if (lifeLostXIcon_.sprite)
@@ -81,6 +87,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
             if (digit.sprite)
                 digit.sprite->SetVisible(false);
         }
+
         return;
     }
 
@@ -91,6 +98,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     const float kFadeOutStartTime = lifeLostState_.Revives() ? 2.65f : 2.35f;
     constexpr float kFadeOutDuration = 0.35f;
     const float kEndTime = lifeLostState_.Revives() ? 3.12f : 2.85f;
+
     if (t >= kEndTime) {
         // 終端では描画を消して完了通知だけ残し、次のシーン更新に渡します。
         lifeLostState_.Finish();
@@ -106,6 +114,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
             if (digit.sprite)
                 digit.sprite->SetVisible(false);
         }
+
         return;
     }
 
@@ -114,6 +123,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     }
 
     float alpha = std::clamp(t / 0.25f, 0.0f, 1.0f);
+
     if (t > kFadeOutStartTime) {
         alpha = std::clamp(1.0f - (t - kFadeOutStartTime) / kFadeOutDuration, 0.0f, 1.0f);
     }
@@ -135,6 +145,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
         lifeLostBackdrop_.sprite->SetColor({0.0f, 0.0f, 0.0f, 1.0f});
         lifeLostBackdrop_.sprite->Update();
     }
+
     if (lifeLostIcon_.sprite) {
         lifeLostIcon_.sprite->SetVisible(true);
         lifeLostIcon_.sprite->SetPosition(lifeLostIcon_.basePosition);
@@ -143,6 +154,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
             {lifeLostIcon_.baseColor.x, lifeLostIcon_.baseColor.y, lifeLostIcon_.baseColor.z, alpha});
         lifeLostIcon_.sprite->Update();
     }
+
     if (lifeLostXIcon_.sprite) {
         lifeLostXIcon_.sprite->SetVisible(true);
         lifeLostXIcon_.sprite->SetPosition(lifeLostXIcon_.basePosition);
@@ -194,10 +206,12 @@ void GamePlayScene::DrawLifeLostPresentation() {
     if (!lifeLostState_.IsActive()) {
         DrawGameplayHUDSprite(lifeLostBackdrop_);
     }
+
     if (!lifeLostState_.IsActive())
         return;
     DrawGameplayHUDSprite(lifeLostIcon_);
     DrawGameplayHUDSprite(lifeLostXIcon_);
+
     for (auto& digit : lifeLostDigits_) {
         DrawGameplayHUDSprite(digit);
     }
@@ -237,6 +251,7 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
     lifeLostStunObject_->SetBlendMode(BlendMode::kNormal);
     lifeLostStunObject_->SetColor({1.0f, 0.94f, 0.28f, 0.78f});
     lifeLostStunObject_->SetIsVisible(false);
+
     if (lifeLostStunObject_->GetMeshRenderer() && lifeLostStunObject_->GetMeshRenderer()->GetWaterParamData()) {
         auto* stun = lifeLostStunObject_->GetMeshRenderer()->GetWaterParamData();
         stun->effectType = 0.0f;

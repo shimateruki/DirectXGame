@@ -27,6 +27,7 @@ std::string NormalizeSlashes(std::string text) {
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
     // モデル名がファイル指定かフォルダ指定かによって、LOD定義の候補順を切り替える。
     std::vector<fs::path> candidates;
+
     if (modelName.empty()) {
         return candidates;
     }
@@ -51,6 +52,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     // 設定JSONが読めない場合は呼び出し元へ失敗を返し、描画設定の適用を止める。
     std::ifstream file(path);
+
     if (!file) {
         return false;
     }
@@ -69,6 +71,7 @@ float ClampTextureTiling(float value) {
     if (!std::isfinite(value)) {
         return 1.0f;
     }
+
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
@@ -78,9 +81,12 @@ engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
 
-    if (a < b) std::swap(a, b);
-    if (a < c) std::swap(a, c);
-    if (b < c) std::swap(b, c);
+    if (a < b)
+        std::swap(a, b);
+    if (a < c)
+        std::swap(a, c);
+    if (b < c)
+        std::swap(b, c);
 
     return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
 }
@@ -90,17 +96,20 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
     // 作成・Mapの片方でも失敗した場合は両方を空へ戻し、不完全なGPU定数を使わない。
     data = nullptr;
     resource.Reset();
+
     if (!dxCommon) {
         return false;
     }
 
     resource = dxCommon->CreateBufferResource(size);
+
     if (!resource) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
         return false;
     }
 
     HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
+
     if (FAILED(hr) || !data) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
         resource.Reset();
@@ -123,7 +132,7 @@ MeshRenderer::MeshRenderer(Transform* transform) {
     transform_ = transform;
 }
 
-void MeshRenderer::Initialize(Object3dCommon* common) {
+void MeshRenderer::Initialize(engine::Object3dCommon* common) {
     assert(common);
     common_ = common;
     DirectXCommon* dxCommon = common_->GetDxCommon();
@@ -133,6 +142,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
+
     wvpData_->WVP = engine::Math::MakeIdentity4x4();
     wvpData_->world = engine::Math::MakeIdentity4x4();
 
@@ -141,6 +151,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
+
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
 
     // Camera Previewでは通常描画用のWVP/Camera定数を上書きしないよう、専用バッファを使います。
@@ -150,6 +161,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
             common_ = nullptr;
             return;
         }
+
         previewWvpData_[i]->WVP = engine::Math::MakeIdentity4x4();
         previewWvpData_[i]->world = engine::Math::MakeIdentity4x4();
         previewWvpData_[i]->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
@@ -158,6 +170,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
             common_ = nullptr;
             return;
         }
+
         previewCameraData_[i]->worldPosition = { 0.0f, 0.0f, 0.0f };
     }
 
@@ -166,6 +179,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
+
     materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
     materialData_->enableLighting = 1;
@@ -187,10 +201,12 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->portalClipNormal = { 0.0f, 0.0f, 1.0f };
     materialData_->portalClipDissolve = 0.18f;
     materialData_->portalClipColor = { 1.0f, 0.82f, 0.36f, 0.80f };
+
     if (!CreateMappedBuffer(dxCommon, sizeof(TransformationMatrix), shadowWvpResource_, shadowWvpData_, "ShadowWVP")) {
         common_ = nullptr;
         return;
     }
+
     shadowWvpData_->WVP = engine::Math::MakeIdentity4x4();
     shadowWvpData_->world = engine::Math::MakeIdentity4x4();
     shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
@@ -199,6 +215,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
+
     localFogData_->fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // 毒沼カラー
     localFogData_->fogDensity = 0.5f;
 
@@ -206,6 +223,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
+
     // デフォルト値のセット
     waterParamData_->time = 0.0f;
     waterParamData_->waveSpeed = 2.0f;
@@ -231,13 +249,17 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->waterParamPadding1 = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
     waterParamData_->waterInverseViewProjection = engine::Math::MakeIdentity4x4();
     waterParamData_->waterDebugView = 0.0f;
-    for (float& padding : waterParamData_->waterDebugPadding) padding = 0.0f;
+
+    for (float& padding : waterParamData_->waterDebugPadding)
+        padding = 0.0f;
+
     for (int i = 0; i < kPreviewBufferCount; ++i) {
         if (!CreateMappedBuffer(dxCommon, sizeof(WaterParamForGPU),
             previewWaterResources_[i], previewWaterData_[i], "PreviewWater")) {
             common_ = nullptr;
             return;
         }
+
         *previewWaterData_[i] = *waterParamData_;
     }
     
@@ -281,7 +303,8 @@ engine::Matrix4x4 MeshRenderer::BuildRenderWorldMatrix() const {
 
     const engine::Matrix4x4 visualAffine = engine::Math::MakeAffineMatrix(visualScale_, visualRotation_, visualOffset_);
     engine::Matrix4x4 visualLocal = engine::Math::Multiply(shearLocal, visualAffine);
-    if (const auto timelinePose = timelineVisualPose_.lock()) visualLocal = engine::Math::Multiply(*timelinePose, visualLocal);
+    if (const auto timelinePose = timelineVisualPose_.lock())
+        visualLocal = engine::Math::Multiply(*timelinePose, visualLocal);
     return engine::Math::Multiply(visualLocal, transform_->matWorld);
 }
 
@@ -293,6 +316,7 @@ const engine::Matrix4x4& MeshRenderer::GetCachedWorldInverseTranspose(const engi
         cachedWorldInverseTranspose_ = engine::Math::Transpose(engine::Math::Inverse(worldMatrix));
         worldInverseTransposeCacheValid_ = true;
     }
+
     return cachedWorldInverseTranspose_;
 }
 
@@ -339,7 +363,8 @@ void MeshRenderer::RefreshCameraDependentData() {
 }
 
 void MeshRenderer::AdvanceWaterAnimation(float deltaTime) {
-    if (!waterParamData_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
+    if (!waterParamData_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f)
+        return;
     waterParamData_->time += deltaTime;
     waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * deltaTime;
     waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * deltaTime;
@@ -349,15 +374,19 @@ void MeshRenderer::Update() {
     if (!common_ || !HasRequiredBuffers() || !shadowWvpData_ || !localFogData_ || !waterParamData_) {
         return;
     }
+
 	// 経過時間を更新してGPUに転送
     time_ += 1.0f / 60.0f;
+
     if (materialData_) {
         // 草木は実時間で更新する。行列更新やEditor操作で風の時刻を戻さない。
         if (materialData_->materialType != 30 && materialData_->materialType != 31) {
             materialData_->time = time_;
         }
+
         materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
     }
+
     UpdateUvTransform();
 
     if (waterParamData_) {
@@ -375,6 +404,7 @@ void MeshRenderer::Update() {
         waterParamData_->waterLightIntensity = sun.intensity;
         waterParamData_->waterLightColor = { sunColor.x, sunColor.y, sunColor.z };
     }
+
     if (localFogData_) {
         localFogData_->time = time_;
         auto& sun = LightManager::GetInstance()->GetDirectionalLight();
@@ -389,6 +419,7 @@ void MeshRenderer::Update() {
         };
 
     }
+
     // Transformの計算結果 (matWorld) をGPUに転送する
     if (wvpData_ && transform_) {
         engine::Math math;
@@ -404,16 +435,19 @@ void MeshRenderer::Update() {
             wvpData_->world = worldMatrix;
             wvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
             cameraData_->worldPosition = camera->GetEye();
+
             if (waterParamData_) {
                 waterParamData_->cameraWorldPosition = camera->GetEye();
                 waterParamData_->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
             }
+
             localFogData_->cameraPos = camera->GetEye();
             localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
         } else {
             wvpData_->WVP = engine::Math::MakeIdentity4x4();
             wvpData_->world = engine::Math::MakeIdentity4x4();
         }
+
         if (isUIPreview_) {
             if (shadowWvpData_) {
                 // 影マップの影響を受けないように、行列を初期化しておく
@@ -421,8 +455,10 @@ void MeshRenderer::Update() {
                 shadowWvpData_->world = engine::Math::MakeIdentity4x4();
                 shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
             }
+
             return; 
         }
+
         if (shadowWvpData_ && transform_) {
             const engine::Matrix4x4& lightVP =
                 LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);

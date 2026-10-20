@@ -38,11 +38,13 @@ bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMiss
     StopFilesystemWatcher();
     std::error_code error;
     projectRoot_ = fs::current_path(error);
+
     if (error) {
         return false;
     }
 
     resourcesRoot_ = fs::absolute(fs::path(resourcesRoot), error).lexically_normal();
+
     if (error || !fs::exists(resourcesRoot_, error) || !fs::is_directory(resourcesRoot_, error)) {
         return false;
     }
@@ -54,6 +56,7 @@ bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMiss
     persistentIndexCacheInitialized_ = false;
     persistentIndexCacheAvailable_ = false;
     initialized_ = true;
+
     // 起動時は永続索引を利用した差分確認だけを行います。
     // DDS全走査はProject Windowの明示操作や更新要求時に限定します。
     BeginInitialIndexBuild(createMissingMeta_, false);
@@ -85,6 +88,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
     }
 
     std::error_code error;
+
     if (!fs::exists(resourcesRoot_, error) || !fs::is_directory(resourcesRoot_, error)) {
         AddIssue(AssetDatabaseIssueSeverity::Error, resourcesRootPath_, "Resourcesフォルダが見つかりません。");
         result.errorCount = 1;
@@ -96,18 +100,23 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
 
     std::unordered_map<std::string, std::string> guidOwners;
     assets_.reserve(sourcePaths.size());
+
     for (const fs::path& sourcePath : sourcePaths) {
         MetaLoadResult meta = LoadOrCreateMeta(sourcePath, createMissingMeta, guidOwners);
         ++result.reparsedAssetCount;
+
         if (!meta.success) {
             continue;
         }
+
         if (meta.created) {
             ++result.createdMetaCount;
         }
+
         if (meta.updated) {
             ++result.updatedMetaCount;
         }
+
         StorePendingPersistentAsset(meta.record);
         assets_.push_back(std::move(meta.record));
     }
@@ -129,9 +138,11 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
     persistentAssetsByPath_ = std::move(pendingPersistentAssetsByPath_);
     persistentIndexCacheAvailable_ = true;
     SavePersistentIndexCache();
+
     if (!changeNotificationHandles_.empty()) {
         RestartFilesystemWatcher();
     }
+
     RequestDDSCacheBuild();
     return result;
 }
@@ -141,6 +152,7 @@ void AssetDatabase::RequestRefresh(bool createMissingMeta) {
     if (!initialized_) {
         return;
     }
+
     BeginInitialIndexBuild(createMissingMeta, true);
 }
 
@@ -149,6 +161,7 @@ void AssetDatabase::RequestDDSCacheBuild() {
     if (!initialized_ || ddsCacheBuildState_ == DDSCacheBuildState::Running) {
         return;
     }
+
     ddsCacheBuildState_ = DDSCacheBuildState::Queued;
     ddsCacheBuildMessage_ = "Asset Database更新後のDDS変換を待機しています。";
 }
@@ -160,6 +173,7 @@ bool AssetDatabase::Update() {
     }
 
     const bool ddsStateChanged = PollDDSCacheBuild();
+
     if (initialIndexBuildInProgress_) {
         return ProcessInitialIndexBuild() || ddsStateChanged;
     }
@@ -179,6 +193,7 @@ bool AssetDatabase::Update() {
     if (ddsCacheBuildState_ == DDSCacheBuildState::Running) {
         return ddsStateChanged;
     }
+
     if (changeNotificationHandles_.empty()) {
         return ddsStateChanged;
     }
@@ -186,8 +201,10 @@ bool AssetDatabase::Update() {
     const auto now = std::chrono::steady_clock::now();
     bool hasFilesystemChange = false;
     bool watcherFailed = false;
+
     for (void* rawHandle : changeNotificationHandles_) {
         const DWORD waitResult = WaitForSingleObject(static_cast<HANDLE>(rawHandle), 0);
+
         if (waitResult == WAIT_OBJECT_0) {
             hasFilesystemChange = true;
         }
@@ -201,6 +218,7 @@ bool AssetDatabase::Update() {
         filesystemChangePending_ = true;
         filesystemChangeReadyAt_ = now + kFilesystemChangeDebounce;
     }
+
     if (watcherFailed) {
         RestartFilesystemWatcher();
         return ddsStateChanged;
@@ -231,6 +249,7 @@ const EditorAssetRecord* AssetDatabase::FindByPath(const std::string& sourcePath
 std::string AssetDatabase::ResolveAssetPath(const std::string& pathOrGuidReference) const {
     // GUID参照は索引へ解決し、通常のパスは未登録でも元の値を保ちます。
     std::string guid = pathOrGuidReference;
+
     if (guid.rfind("asset:", 0) == 0) {
         guid.erase(0, 6);
     }
@@ -265,24 +284,31 @@ std::vector<const EditorAssetRecord*> AssetDatabase::GetAssetsInDirectory(
     // 直下はディレクトリ索引を使い、再帰指定時だけ全レコードを走査します。
     std::vector<const EditorAssetRecord*> result;
     const std::string normalizedDirectory = TrimTrailingSlash(NormalizeProjectPath(fs::path(directory)));
+
     if (!recursive) {
         const auto iterator = assetsByDirectory_.find(ToLowerAscii(normalizedDirectory));
+
         if (iterator == assetsByDirectory_.end()) {
             return result;
         }
+
         result.reserve(iterator->second.size());
+
         for (std::size_t index : iterator->second) {
             result.push_back(&assets_[index]);
         }
+
         return result;
     }
 
     for (const EditorAssetRecord& asset : assets_) {
         const std::string parent = TrimTrailingSlash(fs::path(asset.sourcePath).parent_path().generic_string());
+
         if (StartsWithPath(ToLowerAscii(parent), ToLowerAscii(normalizedDirectory))) {
             result.push_back(&asset);
         }
     }
+
     return result;
 }
 
@@ -300,19 +326,25 @@ bool AssetDatabase::RenameAsset(
     std::string* errorMessage) {
     // 名前変更を移動処理に集約し、Asset本体と.metaを同じ手順で更新します。
     const fs::path requestedName(newFileName);
+
     if (newFileName.empty() || requestedName.has_parent_path() || requestedName.filename() != requestedName) {
         if (errorMessage) {
             *errorMessage = "新しい名前にはファイル名だけを指定してください。";
         }
+
         return false;
     }
+
     const EditorAssetRecord* asset = FindByPath(sourcePath);
+
     if (!asset) {
         if (errorMessage) {
             *errorMessage = "Asset Databaseに登録されていないAssetです。";
         }
+
         return false;
     }
+
     const fs::path destination = fs::path(asset->sourcePath).parent_path() / requestedName;
     return MoveAsset(asset->sourcePath, destination.generic_string(), errorMessage);
 }
@@ -323,10 +355,12 @@ bool AssetDatabase::MoveAsset(
     std::string* errorMessage) {
     // Resources外への移動を拒否し、.metaの移動失敗時は本体を元へ戻します。
     const EditorAssetRecord* asset = FindByPath(sourcePath);
+
     if (!asset) {
         if (errorMessage) {
             *errorMessage = "Asset Databaseに登録されていないAssetです。";
         }
+
         return false;
     }
 
@@ -335,47 +369,60 @@ bool AssetDatabase::MoveAsset(
     const fs::path sourceAbsolute = ResolveAbsolutePath(sourceProjectPath);
     const fs::path sourceMetaAbsolute = ResolveAbsolutePath(sourceMetaProjectPath);
     const fs::path destinationAbsolute = ResolveAbsolutePath(destinationPath).lexically_normal();
+
     if (!IsPathInsideResources(destinationAbsolute) || destinationAbsolute.extension() == ".meta") {
         if (errorMessage) {
             *errorMessage = "移動先はResources配下の通常Assetを指定してください。";
         }
+
         return false;
     }
 
     std::error_code error;
+
     if (fs::exists(destinationAbsolute, error)) {
         if (errorMessage) {
             *errorMessage = "移動先に同名Assetが存在します。";
         }
+
         return false;
     }
+
     fs::create_directories(destinationAbsolute.parent_path(), error);
+
     if (error) {
         if (errorMessage) {
             *errorMessage = "移動先フォルダを作成できません: " + error.message();
         }
+
         return false;
     }
 
     fs::rename(sourceAbsolute, destinationAbsolute, error);
+
     if (error) {
         if (errorMessage) {
             *errorMessage = "Assetを移動できません: " + error.message();
         }
+
         return false;
     }
 
     fs::path destinationMetaAbsolute = destinationAbsolute;
     destinationMetaAbsolute += ".meta";
+
     if (fs::exists(sourceMetaAbsolute, error)) {
         error.clear();
         fs::rename(sourceMetaAbsolute, destinationMetaAbsolute, error);
+
         if (error) {
             std::error_code rollbackError;
             fs::rename(destinationAbsolute, sourceAbsolute, rollbackError);
+
             if (errorMessage) {
                 *errorMessage = "Assetは移動しましたが.metaを移動できないためロールバックしました: " + error.message();
             }
+
             return false;
         }
     }
@@ -390,35 +437,44 @@ bool AssetDatabase::MoveAssetToTrash(
     std::string* errorMessage) {
     // 元の相対配置を退避先へ残し、同名衝突時はGUIDで回復パスを一意にします。
     const EditorAssetRecord* asset = FindByPath(sourcePath);
+
     if (!asset) {
         if (errorMessage) {
             *errorMessage = "Asset Databaseに登録されていないAssetです。";
         }
+
         return false;
     }
 
     fs::path relativeToResources;
     std::error_code error;
     relativeToResources = fs::relative(ResolveAbsolutePath(asset->sourcePath), resourcesRoot_, error);
+
     if (error || relativeToResources.empty()) {
         if (errorMessage) {
             *errorMessage = "Resourcesからの相対パスを作成できません。";
         }
+
         return false;
     }
 
     fs::path destination = resourcesRoot_ / ".trash" / "asset_database" / MakeTimestamp() / relativeToResources;
+
     if (fs::exists(destination, error)) {
         destination = destination.parent_path() /
             (destination.stem().string() + "_" + asset->guid.substr(0, 8) + destination.extension().string());
     }
+
     const std::string destinationProjectPath = NormalizeProjectPath(destination);
+
     if (!MoveAsset(asset->sourcePath, destinationProjectPath, errorMessage)) {
         return false;
     }
+
     if (recoveredPath) {
         *recoveredPath = destinationProjectPath;
     }
+
     return true;
 }
 
@@ -427,6 +483,7 @@ bool AssetDatabase::IsGuidValid(const std::string& guid) {
     if (guid.size() != 32) {
         return false;
     }
+
     return std::all_of(guid.begin(), guid.end(), [](unsigned char value) {
         return std::isxdigit(value) != 0;
     });
@@ -436,12 +493,19 @@ const char* AssetDatabase::GetAssetTypeName(EditorAssetType type) {
     // .metaへ保存する型名を列挙値から一箇所で決定します。
     switch (type) {
     case EditorAssetType::Model: return "Model";
+
     case EditorAssetType::Texture: return "Texture";
+
     case EditorAssetType::Json: return "JSON";
+
     case EditorAssetType::Audio: return "Audio";
+
     case EditorAssetType::Shader: return "Shader";
+
     case EditorAssetType::Font: return "Font";
+
     case EditorAssetType::Binary: return "Binary";
+
     case EditorAssetType::Unknown:
     default: return "Unknown";
     }
@@ -452,16 +516,21 @@ std::string AssetDatabase::NormalizeProjectPath(const fs::path& path) const {
     std::error_code error;
     fs::path absolute = path.is_absolute() ? path : projectRoot_ / path;
     absolute = fs::absolute(absolute, error).lexically_normal();
+
     if (error) {
         return path.lexically_normal().generic_string();
     }
+
     const fs::path relative = fs::relative(absolute, projectRoot_, error);
+
     if (!error && !relative.empty() && !relative.is_absolute()) {
         const std::string normalized = relative.lexically_normal().generic_string();
+
         if (normalized != ".." && normalized.rfind("../", 0) != 0) {
             return normalized;
         }
     }
+
     return absolute.generic_string();
 }
 
@@ -475,9 +544,11 @@ bool AssetDatabase::IsPathInsideResources(const fs::path& absolutePath) const {
     // 相対化後の親ディレクトリ参照を拒否し、操作対象をResources内へ限定します。
     std::error_code error;
     const fs::path relative = fs::relative(absolutePath.lexically_normal(), resourcesRoot_, error);
+
     if (error || relative.empty() || relative.is_absolute()) {
         return false;
     }
+
     const std::string normalized = relative.generic_string();
     return normalized != ".." && normalized.rfind("../", 0) != 0;
 }
@@ -486,14 +557,18 @@ bool AssetDatabase::ShouldSkipPath(const fs::path& path) const {
     // キャッシュ・退避領域を再登録すると循環するため、索引対象から除外します。
     std::error_code error;
     const fs::path relative = fs::relative(path, resourcesRoot_, error);
+
     if (error) {
         return true;
     }
+
     for (const fs::path& component : relative) {
         const std::string name = ToLowerAscii(component.string());
+
         if (name == ".cache" || name == ".backup" || name == ".trash" || name == "tools") {
             return true;
         }
     }
+
     return false;
 }

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9c4534a537bc06118a9cc87b92ef4466",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/basalt_roller_collision/basalt_roller_collision.obj",
+  "version": 1
+}

@@ -68,7 +68,8 @@ namespace {
 
     engine::Vector3 ReadVector3(const json& value, const engine::Vector3& fallback) {
         // 旧データで座標配列が欠けている場合は呼び出し側の既定値を維持する。
-        if (!value.is_array() || value.size() < 3) return fallback;
+        if (!value.is_array() || value.size() < 3)
+            return fallback;
         return {
             value[0].get<float>(),
             value[1].get<float>(),
@@ -82,7 +83,8 @@ namespace {
 
     engine::Vector4 ReadVector4(const json& value, const engine::Vector4& fallback) {
         // 古いJSONで色配列が欠けている場合は、イベントの既定色を保持する。
-        if (!value.is_array() || value.size() < 4) return fallback;
+        if (!value.is_array() || value.size() < 4)
+            return fallback;
         return {
             value[0].get<float>(),
             value[1].get<float>(),
@@ -98,8 +100,10 @@ namespace {
     float ApplyEventEasing(int easingType, float progress) {
         // 保存済みの曲線番号を再生側の補間へ対応付け、不明な番号は線形扱いにする。
         progress = std::clamp(progress, 0.0f, 1.0f);
-        if (easingType == 2) return Easing::OutSine(progress);
-        if (easingType == 4) return Easing::InQuad(progress);
+        if (easingType == 2)
+            return Easing::OutSine(progress);
+        if (easingType == 4)
+            return Easing::InQuad(progress);
         return progress;
     }
 
@@ -108,16 +112,19 @@ namespace {
         auto lerp = [](float a, float b, float ratio) {
             return a + (b - a) * ratio;
             };
+
         engine::Vector3 a = {
             lerp(p0.x, p1.x, t),
             lerp(p0.y, p1.y, t),
             lerp(p0.z, p1.z, t)
         };
+
         engine::Vector3 b = {
             lerp(p1.x, p2.x, t),
             lerp(p1.y, p2.y, t),
             lerp(p1.z, p2.z, t)
         };
+
         return {
             lerp(a.x, b.x, t),
             lerp(a.y, b.y, t),
@@ -128,7 +135,8 @@ namespace {
     engine::Vector3 ResolveTargetPosition(engine::Object3d* targetObject, const engine::Vector3& localOffset, engine::Matrix4x4& emitMatrix) {
     // 対象がある場合はローカル位置をワールドへ移し、放出行列も同じ基準にする。
         emitMatrix = engine::Math::MakeIdentity4x4();
-        if (!targetObject) return localOffset;
+        if (!targetObject)
+            return localOffset;
 
         engine::Matrix4x4 worldMat = targetObject->GetWorldMatrix();
         engine::Vector3 spawnPos = engine::Math::TransformNormal(localOffset, worldMat);
@@ -154,11 +162,13 @@ namespace {
                 localOffset.y * rootScale.y,
                 localOffset.z * rootScale.z
             };
+
             if (useRootPosition) {
                 targetLocalOffset.x += rootPosition.x;
                 targetLocalOffset.y += rootPosition.y;
                 targetLocalOffset.z += rootPosition.z;
             }
+
             return ResolveTargetPosition(targetObject, targetLocalOffset, emitMatrix);
         }
 
@@ -167,21 +177,27 @@ namespace {
             localOffset.y * rootScale.y,
             localOffset.z * rootScale.z
         };
+
         const engine::Matrix4x4 rootRotateMatrix = engine::Math::MakeRotateMatrix(rootRotation);
         engine::Vector3 spawnPos = engine::Math::TransformNormal(scaledOffset, rootRotateMatrix);
+
         if (useRootPosition) {
             spawnPos.x += rootPosition.x;
             spawnPos.y += rootPosition.y;
             spawnPos.z += rootPosition.z;
         }
+
         emitMatrix = engine::Math::MakeAffineMatrix(rootScale, rootRotation, spawnPos);
         return spawnPos;
     }
+
     void RemovePostPulseContribution(VFXEvent& event) {
-        if (!event.hasAppliedPostPulse) return;
+        if (!event.hasAppliedPostPulse)
+            return;
 
         // 前フレームに加算した分だけ戻し、別イベントの寄与を消さない。
         PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+
         if (params) {
             params->radialIntensity -= event.appliedRadialIntensity;
             params->damageFlash -= event.appliedDamageFlash;
@@ -201,6 +217,7 @@ namespace {
     // 前フレームの寄与を戻してから現在の包絡線を加え、画面効果が蓄積しないようにします。
     void ApplyPostPulse(VFXEvent& event, float currentTime) {
         PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+
         if (!params) {
             event.isFinished = true;
             return;
@@ -211,6 +228,7 @@ namespace {
 
         const float duration = (std::max)(event.duration, 0.01f);
         const float progress = std::clamp((currentTime - event.triggerTime) / duration, 0.0f, 1.0f);
+
         if (progress >= 1.0f) {
             event.isFinished = true;
             return;
@@ -244,6 +262,7 @@ namespace {
             event.type == VFXEventType::CameraFovPulse) {
             return event.triggerTime + (std::max)(event.duration, 0.01f);
         }
+
         return event.triggerTime + 0.08f;
     }
 }
@@ -315,6 +334,7 @@ void VFXSequencer::Stop() {
 void VFXSequencer::Reset() {
     currentTime_ = 0.0f;
     isPlaying_ = false;
+
     for (auto& event : events_) {
         // 加算型の画面効果を取り除いてから発火状態を戻し、再生し直しても効果を積み残さない。
         RemovePostPulseContribution(event);
@@ -326,24 +346,30 @@ void VFXSequencer::Reset() {
 float VFXSequencer::GetDuration() const {
     // 最後に終了するイベントまでをシーケンス全体の長さとする。
     float duration = 0.0f;
+
     for (const auto& event : events_) {
         duration = (std::max)(duration, GetVFXEventEndTime(event));
     }
+
     return duration;
 }
 
 // タイムライン上の単発・継続イベントを時刻順に処理し、全件の終了時に再生を止めます。
 void VFXSequencer::Update(float deltaTime) {
-    if (!isPlaying_) return;
-    if (deltaTime <= 0.0001f) return;
+    if (!isPlaying_)
+        return;
+    if (deltaTime <= 0.0001f)
+        return;
 
     float timeStep = deltaTime;
     currentTime_ += timeStep;
 
     // 時刻に達していないイベントも再生を継続させるため、完了判定へ含める。
     bool allFinished = true;
+
     for (auto& event : events_) {
-        if (event.isFinished) continue;
+        if (event.isFinished)
+            continue;
 
         if (currentTime_ < event.triggerTime) {
             allFinished = false;
@@ -368,6 +394,7 @@ void VFXSequencer::Update(float deltaTime) {
                     event.lightDecay);
                 event.hasFired = true;
             }
+
             if (currentTime_ >= event.triggerTime + (std::max)(event.duration, 0.01f)) {
                 event.isFinished = true;
             }
@@ -378,6 +405,7 @@ void VFXSequencer::Update(float deltaTime) {
             // 軌道上に粒子を発生させるため、イベントの継続時間中は毎フレーム放出する。
             float duration = (std::max)(event.duration, 0.01f);
             float progress = (currentTime_ - event.triggerTime) / duration;
+
             if (progress >= 1.0f) {
                 progress = 1.0f;
                 event.isFinished = true;
@@ -410,18 +438,22 @@ void VFXSequencer::Update(float deltaTime) {
                     event.scale.y * rootScale_.y,
                     event.scale.z * rootScale_.z
                 };
+
                 engine::Vector3 eventRotation = event.rotation;
+
                 if (target) {
                     engine::Vector3 spawnOffset = {
                         event.offset.x * rootScale_.x,
                         event.offset.y * rootScale_.y,
                         event.offset.z * rootScale_.z
                     };
+
                     if (useRootPosition_) {
                         spawnOffset.x += rootPosition_.x;
                         spawnOffset.y += rootPosition_.y;
                         spawnOffset.z += rootPosition_.z;
                     }
+
                     eventRotation.x += rootRotation_.x;
                     eventRotation.y += rootRotation_.y;
                     eventRotation.z += rootRotation_.z;
@@ -455,7 +487,7 @@ void VFXSequencer::Update(float deltaTime) {
                 CameraManager::GetInstance()->PlayFovPulse(event.duration, event.intensity * kDegreesToRadians, event.attackRatio);
             }
             else if (event.type == VFXEventType::ControllerRumble) {
-                InputManager::GetInstance()->PlayRumble(event.intensity, event.secondaryIntensity, event.duration);
+                engine::InputManager::GetInstance()->PlayRumble(event.intensity, event.secondaryIntensity, event.duration);
             }
             else if (event.type == VFXEventType::HitStop) {
                 RequestHitStop(event.duration, event.intensity);
@@ -514,6 +546,7 @@ void VFXSequencer::Save(const std::string& sequenceName) {
     std::string filepath = std::string(kSequenceDirectory) + sequenceName + ".json";
 
     std::ofstream file(filepath);
+
     if (file.is_open()) {
         file << root.dump(4);
         SequenceEventCache()[sequenceName] = events_;
@@ -523,6 +556,7 @@ void VFXSequencer::Save(const std::string& sequenceName) {
         } catch (const std::filesystem::filesystem_error&) {
             SequenceWriteTimeCache().erase(sequenceName);
         }
+
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Saved VFX Sequence: " + sequenceName);
         }
@@ -543,6 +577,7 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     } catch (const std::filesystem::filesystem_error&) {
         hasWriteTime = false;
     }
+
     Reset();
 
     // ファイル更新時刻が一致するときだけキャッシュを使い、編集後の内容を見落とさない。
@@ -559,13 +594,16 @@ void VFXSequencer::Load(const std::string& sequenceName) {
         events_ = cacheIt->second;
         ResetEventRuntimeState(events_);
         Reset();
+
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded VFX Sequence from cache: " + sequenceName);
         }
+
         return;
     }
 
     std::ifstream file(filepath);
+
     if (!file.is_open()) {
         return;
     }
@@ -609,11 +647,13 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     // 読み込んだ編集値をキャッシュし、実行状態はゼロから再開する。
     ResetEventRuntimeState(events_);
     cache[sequenceName] = events_;
+
     if (hasWriteTime) {
         writeTimeCache[sequenceName] = currentWriteTime;
     } else {
         writeTimeCache.erase(sequenceName);
     }
+
     Reset();
 
     if (DebugConsole::GetInstance()) {
@@ -634,6 +674,7 @@ void VFXSequencer::PlayOneShot(const std::string& sequenceName, const engine::Ve
     auto sequence = std::make_unique<VFXSequencer>();
     sequence->Initialize(nullptr);
     sequence->Load(sequenceName);
+
     if (sequence->GetEvents().empty()) {
         return;
     }
@@ -668,6 +709,7 @@ void VFXSequencer::PlayOneShotOnTarget(
     auto sequence = std::make_unique<VFXSequencer>();
     sequence->Initialize(targetObject);
     sequence->Load(sequenceName);
+
     if (sequence->GetEvents().empty()) {
         return;
     }
@@ -682,6 +724,7 @@ void VFXSequencer::PlayOneShotOnTarget(
 // 呼び出し元が所有しない単発演出を更新し、再生終了したものだけ解放します。
 void VFXSequencer::UpdateOneShots(float deltaTime) {
     auto& sequences = ActiveOneShotSequences();
+
     for (auto& sequence : sequences) {
         if (sequence) {
             sequence->Update(deltaTime);
@@ -706,11 +749,13 @@ void VFXSequencer::ClearOneShots() {
             sequence->Stop();
         }
     }
+
     ActiveOneShotSequences().clear();
+
     // シーン切替後にヒットストップや振動が残らないよう、共有フィードバックも戻す。
     ActiveHitStops().clear();
     gameplayTimeScale = 1.0f;
-    InputManager::GetInstance()->StopRumble();
+    engine::InputManager::GetInstance()->StopRumble();
 }
 
 void VFXSequencer::RequestHitStop(float duration, float timeScale) {
@@ -718,6 +763,7 @@ void VFXSequencer::RequestHitStop(float duration, float timeScale) {
     if (duration <= 0.0f) {
         return;
     }
+
     ActiveHitStops().push_back({ duration, std::clamp(timeScale, 0.0f, 1.0f) });
 }
 
@@ -726,9 +772,11 @@ void VFXSequencer::UpdateFeedbackRuntime(float unscaledDeltaTime) {
     // ゲーム時間で減らすとヒットストップ自身が解除されにくくなるため、実時間で寿命を進める。
     const float timeStep = (std::max)(unscaledDeltaTime, 0.0f);
     auto& layers = ActiveHitStops();
+
     for (HitStopLayer& layer : layers) {
         layer.remaining -= timeStep;
     }
+
     layers.erase(
         std::remove_if(layers.begin(), layers.end(), [](const HitStopLayer& layer) {
             return layer.remaining <= 0.0f;
@@ -737,6 +785,7 @@ void VFXSequencer::UpdateFeedbackRuntime(float unscaledDeltaTime) {
 
     // 重なっている要求のうち、最も強い減速を現在のゲーム時間倍率に採用する。
     gameplayTimeScale = 1.0f;
+
     for (const HitStopLayer& layer : layers) {
         gameplayTimeScale = (std::min)(gameplayTimeScale, layer.timeScale);
     }

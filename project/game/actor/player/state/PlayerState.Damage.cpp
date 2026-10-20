@@ -13,6 +13,7 @@
 // ========================================================
 void PlayerStateDamage::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: Damage (Knockback)");
+
     if (player) {
         player->ReleaseCarriedEnemy(true);
         player->SetIsControlActive(false); // 操作不能にする
@@ -24,6 +25,7 @@ void PlayerStateDamage::Enter(Player* player) {
 
         knockbackDir_.y = 0.0f;
         float dirLength = engine::Math::Length(knockbackDir_);
+
         if (dirLength > 0.001f) {
             knockbackDir_ = knockbackDir_ * (1.0f / dirLength);
         } else {

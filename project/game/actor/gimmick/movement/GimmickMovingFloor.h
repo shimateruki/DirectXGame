@@ -6,11 +6,17 @@ class RidingPlatformController;
 class GimmickMovingFloor : public BaseGimmick {
   public:
     GimmickMovingFloor();
+
     ~GimmickMovingFloor() override;
+
     bool IsRidePlatform() const;
+
     std::unique_ptr<engine::Object3d> Clone() const override;
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     bool OnCollision(engine::Object3d* other) override;
 
     // 逃走ギミックで床を再利用するとき、移動周期を初期位置から再開します。

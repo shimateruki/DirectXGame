@@ -23,13 +23,18 @@ public:
         float threshold = 1.0f;
         float bloomIntensity = 0.0f;
         float spread = 1.0f;
+
         int enableToneMapping = 0;
+
         float vignetteIntensity = 0.0f;
         float vignettePower = 1.0f;
+
         float chromaticAberration = 0.0f;
         float filmGrainIntensity = 0.0f;
+
         float lutIntensity = 0.0f;
         std::string lutTexturePath = "Resources/texture/lut/soft_adventure_lut.png";
+
         float colorExposure = 0.0f;
         float colorContrast = 1.0f;
         float colorSaturation = 1.0f;
@@ -157,12 +162,16 @@ public:
 
     // 描画側が定数バッファを参照するための取得口。
     ID3D12Resource* GetPointLightResource() { return pointLightResource_.Get(); }
+
     ID3D12Resource* GetSpotLightResource() { return spotLightResource_.Get(); }
+
     ID3D12Resource* GetDirectionalLightResource() { return directionalLightResource_.Get(); }
 
     // Editor は読み取り一覧から値を作り、SetPointLight/SetSpotLight で適用する。
     DirectionalLight& GetDirectionalLight() { return directionalLightData_; }
+
     const std::vector<PointLightInstance>& GetPointLights() const { return pointLights_; }
+
     const std::vector<SpotLightInstance>& GetSpotLights() const { return spotLights_; }
 
     /// <summary>GPUへ反映済みの有効な点光源数を返す。</summary>
@@ -180,19 +189,27 @@ public:
 
     // シャドウマップ解像度と影を描く領域の大きさ。
     int GetShadowMapResolution() const;
+
     void SetShadowMapResolution(int resolution);
+
     float GetShadowAreaSize() const { return shadowAreaSize_; }
+
     void SetShadowAreaSize(float size);
+
     engine::Vector4& GetSceneClearColor() { return sceneClearColor_; }
 
     /// <summary>保持しているシーンのクリア色を描画設定へ反映する。</summary>
     void ApplySceneClearColor();
+
     bool IsSkyboxEnabled() const { return skyboxEnabled_; }
+
     void SetSkyboxEnabled(bool enabled) { skyboxEnabled_ = enabled; }
+
     const std::string& GetSkyboxTexturePath() const { return skyboxTexturePath_; }
 
     /// <summary>スカイボックスのテクスチャを指定し、読み込みに成功したかを返す。</summary>
     bool SetSkyboxTexturePath(const std::string& texturePath);
+
     uint32_t GetSkyboxTextureHandle() const { return skyboxTextureHandle_; }
 
     // ライトの追加・削除と一時的な点光源演出。
@@ -202,14 +219,20 @@ public:
     bool AddSpotLight();
 
     bool SetPointLight(std::size_t index, const PointLightInstance& value);
+
     bool SetSpotLight(std::size_t index, const SpotLightInstance& value);
+
     bool RemovePointLight(std::size_t index);
+
     bool RemoveSpotLight(std::size_t index);
+
     void ClearPointLights();
+
     void ClearSpotLights();
 
     /// <summary>登録された点光源、スポットライト、一時点光源をすべて削除する。</summary>
     void ClearAllLights();
+
     void PlayPointLightPulse(
         const engine::Vector3& position,
         const engine::Vector4& color,
@@ -223,10 +246,13 @@ public:
 
     /// <summary>ライト配置をファイルから読み込み、現在の配置へ適用する。</summary>
     bool LoadState(const std::string& filename);
+
     const std::string& GetCurrentStateFile() const { return currentStateFile_; }
+
     bool WasLastLoadSuccessful() const { return lastLoadSucceeded_; }
 
     uint32_t GetEnvironmentMapHandle() const { return environmentMapHandle_; }
+
     void SetEnvironmentMapHandle(uint32_t handle) { environmentMapHandle_ = handle; }
 
 
@@ -239,9 +265,13 @@ private:
     bool environmentBlendActive_ = false;
     bool environmentBlendDiscreteApplied_ = false;
     std::string currentEnvironmentProfileFile_;
+
     LightManager() = default;
+
     ~LightManager() = default;
+
     LightManager(const LightManager&) = delete;
+
     const LightManager& operator=(const LightManager&) = delete;
 
     DirectXCommon* dxCommon_ = nullptr;
@@ -258,6 +288,7 @@ private:
         float age = 0.0f;
         float duration = 0.2f;
     };
+
     std::vector<TransientPointLight> transientPointLights_;
 
     // スポットライトデータ
@@ -268,16 +299,20 @@ private:
     // 平行光源（太陽）データ
     DirectionalLight directionalLightData_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
+
     uint32_t environmentMapHandle_ = 0;
+
     float shadowAreaSize_ = 80.0f;
     bool shadowMatrixCacheValid_ = false;
     engine::Vector3 cachedShadowEye_{};
     engine::Vector3 cachedShadowDirection_{};
     float cachedShadowAreaSize_ = 0.0f;
+
     engine::Vector4 sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
     bool skyboxEnabled_ = true;
     std::string skyboxTexturePath_ = "Resources/output_skybox.dds";
     uint32_t skyboxTextureHandle_ = 0;
+
     std::string currentStateFile_ = "Resources/json/light/light_layout.json";
     bool lastLoadSucceeded_ = true;
 

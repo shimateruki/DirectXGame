@@ -1,3 +1,56 @@
 {
-    "objects": []
+    "objects": [
+        {
+            "name": "StageSelect_UnlockCamera_1",
+            "guid": "e279611d-c139-4a5d-9d71-3460b95f88a1",
+            "type": "Camera",
+            "saveCategory": "Camera",
+            "position": [71.8814, 1.97, 34.5031],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "camera": {
+                "version": 1,
+                "enabled": true,
+                "role": 1,
+                "fovY": 0.45,
+                "nearClip": 0.1,
+                "farClip": 1000.0,
+                "eyeSource": 1,
+                "eyeObjectName": "StageSelect_StageGateFrame_1",
+                "eyeOffset": [-7.57, 0.55, -3.65],
+                "targetMode": 1,
+                "targetObjectName": "StageSelect_StageGateFrame_1",
+                "targetOffset": [0.0, -0.48, 0.0],
+                "blendInDuration": 1.05,
+                "blendOutDuration": 1.08,
+                "easing": 4
+            }
+        },
+        {
+            "name": "StageSelect_UnlockCamera_2",
+            "guid": "18282641-a4d2-4c60-979f-576f22bc9ff8",
+            "type": "Camera",
+            "saveCategory": "Camera",
+            "position": [8.6367, 1.97, -77.7303],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "camera": {
+                "version": 1,
+                "enabled": true,
+                "role": 1,
+                "fovY": 0.45,
+                "nearClip": 0.1,
+                "farClip": 1000.0,
+                "eyeSource": 1,
+                "eyeObjectName": "StageSelect_StageGateFrame_2",
+                "eyeOffset": [-0.93, 0.55, 8.35],
+                "targetMode": 1,
+                "targetObjectName": "StageSelect_StageGateFrame_2",
+                "targetOffset": [0.0, -0.48, 0.0],
+                "blendInDuration": 1.05,
+                "blendOutDuration": 1.08,
+                "easing": 4
+            }
+        }
+    ]
 }

@@ -6,6 +6,8 @@
 class ISequencePreviewEnemy {
   public:
     virtual ~ISequencePreviewEnemy() = default;
+
     virtual void SetSequencePreviewAttackId(const std::string& attackId) = 0;
+
     virtual const char* GetSequenceStateLabel() const = 0;
 };

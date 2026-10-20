@@ -6,6 +6,7 @@ using namespace GameEditorControllerImplementation;
 // エディターのコマンドとツール登録。
 void GameEditorController::RegisterEditorCommands() {
 	EditorCommandRegistry* registry = EditorCommandRegistry::GetInstance();
+
 	// 再初期化時に旧ラムダが this を保持し続けないよう、同じ Owner の登録を先に解除します。
 	registry->UnregisterOwner(this);
 
@@ -34,7 +35,8 @@ void GameEditorController::RegisterEditorCommands() {
 		[this]() {
 			const bool wasPaused = replayDebugger_->ShouldFreezeSimulation();
 			replayDebugger_->ToggleSimulationPause();
-			if (!wasPaused) SetReplayDebuggerVisible(true);
+			if (!wasPaused)
+				SetReplayDebuggerVisible(true);
 		}, this });
 
 	// Scene の保存と Undo/Redo は編集可能な状態に限定し、実操作は DebugEditor に委譲します。
@@ -129,6 +131,7 @@ void GameEditorController::RegisterEditorCommands() {
         { "replay", "timeline", "layout", "リプレイ" },
         [this]() { return replayDebugger_ != nullptr; },
         [this]() { ApplyWorkspacePreset(WorkspacePreset::Replay); }, this });
+
 	// ウィンドウ表示と Help は Scene 編集可否とは独立した操作として公開します。
 	registry->Register({
 		EditorCommandId::ViewEditorPanels, "Hierarchy / Inspector表示", "View", "",
@@ -171,13 +174,15 @@ void GameEditorController::RegisterEditorTools() {
     // Scene 切替中にはツールの対象が入れ替わるため、共通の可用性判定で開く操作を止めます。
     auto available = [this]() { return debugEditor_ && sceneManager_ && !sceneManager_->IsTransitioning(); };
     auto add = [&](const char* id, const char* name, const char* category, IEditable* target, bool preserve = false) {
-        if (!target) return;
+        if (!target)
+            return;
         settings.AddTool(std::string("tool.") + id, name, category, [this, target, preserve]() {
             showDebugWindows_ = true;
             SetReplayDebuggerVisible(false);
 			// 通常は Object 選択を解除して Inspector の対象をツールへ切り替えます。
 			// Cinematic Timeline だけは現在の選択を保持して編集できるようにします。
-            if (!preserve) debugEditor_->SetSelectedObject(nullptr);
+            if (!preserve)
+                debugEditor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(target);
         }, available);
     };
@@ -206,31 +211,40 @@ void GameEditorController::RegisterEditorTools() {
     add("package", "実行ファイルセット", "検証・設定", debugEditor_->GetExecutablePackageWindow());
     add("capture", "キャプチャツール", "検証・設定", debugEditor_->GetCaptureToolWindow());
     add("gameData", "内部データ編集", "検証・設定", debugEditor_->GetGameDataDebugEditor());
+
     // 敵攻撃とコピー能力は同じプレビューを使い、起動時の対象モードだけ切り替えます。
     auto openPreview = [this](bool player) {
-        showDebugWindows_ = true; SetReplayDebuggerVisible(false);
+        showDebugWindows_ = true;
+        SetReplayDebuggerVisible(false);
         auto* preview = debugEditor_->GetEnemyAttackPreviewWindow();
         preview->SetPlayerCopyMode(player);
         debugEditor_->SetSelectedObject(nullptr);
         EditorManager::GetInstance()->SetSelectedObject(preview);
     };
+
     settings.AddTool("tool.enemy", "敵攻撃プレビュー", "戦闘", [openPreview]() { openPreview(false); }, available);
     settings.AddTool("tool.crownMovie", "王冠継承ムービープレビュー", "演出", [this]() {
-        showDebugWindows_ = true; SetReplayDebuggerVisible(false);
+        showDebugWindows_ = true;
+        SetReplayDebuggerVisible(false);
         auto* preview = debugEditor_->GetEnemyAttackPreviewWindow();
-        preview->SetCrownMovieMode(); debugEditor_->SetSelectedObject(nullptr);
+        preview->SetCrownMovieMode();
+        debugEditor_->SetSelectedObject(nullptr);
         EditorManager::GetInstance()->SetSelectedObject(preview);
     }, available);
     settings.AddTool("tool.player", "プレイヤー能力プレビュー", "戦闘", [openPreview]() { openPreview(true); }, available);
+
     // Ghost Recorder は現在の選択 Object を編集対象として受け渡します。
     settings.AddTool("tool.recorder", "移動軌跡の記録（Ghost Recorder）", "演出", [this]() {
-        showDebugWindows_ = true; SetReplayDebuggerVisible(false);
-        if (auto* object = debugEditor_->GetSelectedObject()) ghostRecorder_->SetTarget(object);
+        showDebugWindows_ = true;
+        SetReplayDebuggerVisible(false);
+        if (auto* object = debugEditor_->GetSelectedObject())
+            ghostRecorder_->SetTarget(object);
         debugEditor_->SetSelectedObject(nullptr);
         EditorManager::GetInstance()->SetSelectedObject(ghostRecorder_.get());
     }, available);
     settings.AddTool("tool.game", "ゲーム設定", "戦闘", [this]() {
-        showDebugWindows_ = true; debugEditor_->SetSelectedObject(nullptr);
+        showDebugWindows_ = true;
+        debugEditor_->SetSelectedObject(nullptr);
         EditorManager::GetInstance()->SetSelectedObject(sceneManager_->GetCurrentScene());
     }, [this, available]() { return available() && sceneManager_->GetCurrentScene(); });
     settings.AddTool("tool.replay", "リプレイ", "検証・設定", [this]() { SetReplayDebuggerVisible(true); }, available);
@@ -268,6 +282,7 @@ void GameEditorController::RegisterEditorTools() {
     auto* stage = debugEditor_->GetEffectPreviewStage();
     settings.AddVisibility("previewGrid", "エフェクト確認ステージのグリッド", stage->GetGridVisiblePtr());
     settings.AddVisibility("previewAxes", "エフェクト確認ステージの座標軸", stage->GetAxesVisiblePtr());
+
     // 登録後に保存済みの設定を読み、対象フラグへ反映します。
     settings.Load();
 }

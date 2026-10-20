@@ -33,7 +33,7 @@ std::string NormalizeSpritePath(std::string path) {
 }
 
 
-void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inputManager) {
+void SpriteDebugEditor::Initialize(SceneManager* sceneManager, engine::InputManager* inputManager) {
     // Sceneと入力を借用し、前SceneのSprite選択とギズモ操作を初期化します。
 	sceneManager_ = sceneManager;
 	inputManager_ = inputManager;
@@ -66,9 +66,11 @@ void SpriteDebugEditor::ClearSceneSelection() {
 
 void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHovered) {
 #ifdef USE_IMGUI
-	if (sceneManager_ == nullptr) return;
+	if (sceneManager_ == nullptr)
+		return;
 
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
 	if (currentScene == nullptr) {
 		selectedSprite_ = nullptr;
 		return;
@@ -82,6 +84,7 @@ void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHove
 		strcpy_s(currentSpriteFilename_, sizeof(currentSpriteFilename_), "Please_Select_Or_Set.json");
 		lastUpdatedScene_ = currentScene;
 	}
+
 	auto& currentSprites = currentScene->GetSprites();
 	if (selectedSprite_ &&
 		std::none_of(currentSprites.begin(), currentSprites.end(), [this](const std::unique_ptr<engine::Sprite>& spritePtr) {
@@ -91,6 +94,7 @@ void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHove
 		isMovingX_ = false;
 		isMovingY_ = false;
 	}
+
 	static std::string s_lastSyncedSpriteFilename = "";
 	std::string currentLoadedName = currentScene->GetLoadedSpriteFilename();
 
@@ -99,6 +103,7 @@ void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHove
 		SetSpriteFilename(currentLoadedName);
 		s_lastSyncedSpriteFilename = currentLoadedName;
 	}
+
 	if (selectedSprite_ != nullptr) {
 		// 文字入力中（名前の変更中など）でなければショートカットを許可
 		if (!ImGui::GetIO().WantCaptureKeyboard) {
@@ -109,8 +114,10 @@ void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHove
 					selectedSprite_ = nullptr;
 				}
 			}
+
 			// 削除された場合はここで抜ける
-			if (selectedSprite_ == nullptr) goto SKIP_SHORTCUTS;
+			if (selectedSprite_ == nullptr)
+				goto SKIP_SHORTCUTS;
 
 			// --- 複製 (Ctrl + D または Ctrl + C) ---
 			// ※ InputManager の「キーを押しっぱなし」を判定する関数名（IsKeyPressed など）に合わせてください
@@ -127,18 +134,21 @@ void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHove
 
 				// 元のスプライトのパラメータを丸コピー
 				newSprite->SetName(selectedSprite_->GetName() + "_Copy");
+
 				// ※完全に重なると見えないので、少しズラして配置する
 				engine::Vector2 selectedWorldPos = selectedSprite_->GetWorldPosition();
 				newSprite->SetPosition({ selectedWorldPos.x + 20.0f, selectedWorldPos.y + 20.0f });
 				newSprite->SetSize(selectedSprite_->GetSize());
 				newSprite->SetAnchorPoint(selectedSprite_->GetAnchorPoint());
 				newSprite->SetColor(selectedSprite_->GetColor());
+
 				// (もしフリップや回転などがあれば、ここに追加でコピー処理を書きます)
 
 				// シーンのリストに追加
 				// 複製したスプライトを即座に「選択状態」にする（続けて移動などができるように）
 				selectedSprite_ = currentScene->AddSprite(std::move(newSprite));
 			}
+
 			if (!selectedSprite_->IsLocked()) {
 
 				// IsKeyPressed を使うと「押しっぱなし」で滑らかに動きます。
@@ -149,10 +159,22 @@ void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHove
 				engine::Vector2 pos = selectedSprite_->GetPosition();
 				bool isNudged = false;
 
-				if (inputManager_->IsKeyPressed(DIK_UP)) { pos.y -= nudgeStep; isNudged = true; }
-				if (inputManager_->IsKeyPressed(DIK_DOWN)) { pos.y += nudgeStep; isNudged = true; }
-				if (inputManager_->IsKeyPressed(DIK_LEFT)) { pos.x -= nudgeStep; isNudged = true; }
-				if (inputManager_->IsKeyPressed(DIK_RIGHT)) { pos.x += nudgeStep; isNudged = true; }
+				if (inputManager_->IsKeyPressed(DIK_UP)) {
+					pos.y -= nudgeStep;
+					isNudged = true;
+				}
+				if (inputManager_->IsKeyPressed(DIK_DOWN)) {
+					pos.y += nudgeStep;
+					isNudged = true;
+				}
+				if (inputManager_->IsKeyPressed(DIK_LEFT)) {
+					pos.x -= nudgeStep;
+					isNudged = true;
+				}
+				if (inputManager_->IsKeyPressed(DIK_RIGHT)) {
+					pos.x += nudgeStep;
+					isNudged = true;
+				}
 
 				if (isNudged) {
 					selectedSprite_->SetPosition(pos);
@@ -160,9 +182,11 @@ void SpriteDebugEditor::Update(const engine::Vector2& localMousePos, bool isHove
 			}
 		}
 	}
+
 SKIP_SHORTCUTS:
 
-	if (!isHovered && !isMovingX_ && !isMovingY_) return;
+	if (!isHovered && !isMovingX_ && !isMovingY_)
+		return;
 
 	// ギズモ操作 (簡易移動)
 	if (selectedSprite_) {
@@ -203,9 +227,11 @@ SKIP_SHORTCUTS:
 	if (!isMovingX_ && !isMovingY_ && inputManager_->IsMouseButtonTriggered(0)) {
 		auto& sprites = currentScene->GetSprites();
 		bool hit = false;
+
 		// 重なり順を考慮して逆順（手前）からチェック
 		for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
 			engine::Sprite* sprite = it->get();
+
 			// ロックされていないスプライトのみ選択可能にする
 			if (sprite && !sprite->IsLocked() && IsMouseOver(sprite, localMousePos)) {
 				selectedSprite_ = sprite;
@@ -213,7 +239,9 @@ SKIP_SHORTCUTS:
 				break;
 			}
 		}
-		if (!hit) selectedSprite_ = nullptr;
+
+		if (!hit)
+			selectedSprite_ = nullptr;
 	}
 
 #endif
@@ -236,12 +264,15 @@ void SpriteDebugEditor::DrawImGui() {
 // =========================================================================
 void SpriteDebugEditor::DrawHierarchyWindow() {
 #ifdef USE_IMGUI
-	if (!sceneManager_) return;
+	if (!sceneManager_)
+		return;
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
-	if (!currentScene) return;
+	if (!currentScene)
+		return;
 
 	engine::SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
-	if (!spriteCommon) return;
+	if (!spriteCommon)
+		return;
 	auto& sprites = currentScene->GetSprites();
 
 	ImGui::Begin(ICON_FA_LIST_UL " Sprite Hierarchy");
@@ -249,6 +280,7 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 	// --- ファイル管理 ---
 	if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
 		std::string directoryPath = "Resources/json/sprite/";
+
 		if (!std::filesystem::exists(directoryPath)) {
 			std::filesystem::create_directories(directoryPath);
 		}
@@ -259,12 +291,14 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 					if (entry.path().extension() == ".json") {
 						std::string fname = entry.path().filename().string();
 						bool isSelected = (std::string(currentSpriteFilename_) == fname);
+
 						if (ImGui::Selectable(fname.c_str(), isSelected)) {
 							strcpy_s(currentSpriteFilename_, fname.c_str());
 						}
 					}
 				}
 			}
+
 			ImGui::EndCombo();
 		}
 
@@ -284,14 +318,17 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 	ImGui::BeginChild("SpriteListRegion", ImVec2(0, 0), true);
 
 	int id = 0;
+
 	if (sprites.empty()) {
 		ImGui::TextDisabled(ICON_FA_INFO_CIRCLE " スプライトがありません");
 	}
 
 	for (const auto& spritePtr : sprites) {
 		engine::Sprite* sprite = spritePtr.get();
-		if (!sprite) continue;
-		if (sprite->GetParent() != nullptr) continue;
+		if (!sprite)
+			continue;
+		if (sprite->GetParent() != nullptr)
+			continue;
 		DrawSpriteNode(sprite);
 		continue;
 
@@ -302,7 +339,8 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 		const char* eyeIcon = isVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH;
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 		ImGui::PushStyleColor(ImGuiCol_Text, isVisible ? ImVec4(1, 1, 1, 1) : ImVec4(0.5f, 0.5f, 0.5f, 1));
-		if (ImGui::Button(eyeIcon)) sprite->SetVisible(!isVisible);
+		if (ImGui::Button(eyeIcon))
+			sprite->SetVisible(!isVisible);
 		ImGui::PopStyleColor(2);
 
 		ImGui::SameLine();
@@ -313,7 +351,8 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 		ImGui::PushStyleColor(ImGuiCol_Text, isLocked ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 		std::string lockButtonId = std::string(lockIcon) + "##Lock" + std::to_string(id);
-		if (ImGui::Button(lockButtonId.c_str())) sprite->SetLocked(!isLocked);
+		if (ImGui::Button(lockButtonId.c_str()))
+			sprite->SetLocked(!isLocked);
 		ImGui::PopStyleColor(2);
 
 		ImGui::SameLine();
@@ -322,18 +361,22 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 		std::string label = (sprite->GetName().empty()) ? "Sprite " + std::to_string(id) : sprite->GetName();
 		std::string iconLabel = std::string(ICON_FA_IMAGE " ") + label;
 
-		if (!isVisible) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+		if (!isVisible)
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 
 		bool isSelected = (selectedSprite_ == sprite);
-		if (ImGui::Selectable(iconLabel.c_str(), isSelected)) selectedSprite_ = sprite;
+		if (ImGui::Selectable(iconLabel.c_str(), isSelected))
+			selectedSprite_ = sprite;
 
-		if (!isVisible) ImGui::PopStyleColor();
+		if (!isVisible)
+			ImGui::PopStyleColor();
 
 		ImGui::PopID();
 	}
 
 	// ドラッグ＆ドロップで新規作成
 	ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y));
+
 	if (ImGui::BeginDragDropTarget()) {
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
 			const char* droppedFilename = (const char*)payload->Data;
@@ -344,14 +387,18 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 			newSprite->SetTextureName(droppedFilename);
 			selectedSprite_ = currentScene->AddSprite(std::move(newSprite));
 		}
+
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_NODE")) {
 			engine::Sprite* sourceSprite = *(engine::Sprite**)payload->Data;
+
 			if (sourceSprite) {
 				sourceSprite->SetParent(nullptr);
 			}
 		}
+
 		ImGui::EndDragDropTarget();
 	}
+
 	ImGui::EndChild();
 	ImGui::End();
 #endif
@@ -363,7 +410,8 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 void SpriteDebugEditor::DrawSpriteNode(engine::Sprite* sprite) {
 #ifdef USE_IMGUI
     // Sprite自身をImGui IDに使い、同名Spriteの表示・選択が衝突しないようにします。
-	if (!sprite) return;
+	if (!sprite)
+		return;
 
 	ImGui::PushID(sprite);
 
@@ -371,7 +419,8 @@ void SpriteDebugEditor::DrawSpriteNode(engine::Sprite* sprite) {
 	const char* eyeIcon = isVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH;
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 	ImGui::PushStyleColor(ImGuiCol_Text, isVisible ? ImVec4(1, 1, 1, 1) : ImVec4(0.5f, 0.5f, 0.5f, 1));
-	if (ImGui::Button(eyeIcon)) sprite->SetVisible(!isVisible);
+	if (ImGui::Button(eyeIcon))
+		sprite->SetVisible(!isVisible);
 	ImGui::PopStyleColor(2);
 
 	ImGui::SameLine();
@@ -380,18 +429,23 @@ void SpriteDebugEditor::DrawSpriteNode(engine::Sprite* sprite) {
 	const char* lockIcon = isLocked ? ICON_FA_LOCK : ICON_FA_UNLOCK;
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 	ImGui::PushStyleColor(ImGuiCol_Text, isLocked ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-	if (ImGui::Button(lockIcon)) sprite->SetLocked(!isLocked);
+	if (ImGui::Button(lockIcon))
+		sprite->SetLocked(!isLocked);
 	ImGui::PopStyleColor(2);
 
 	ImGui::SameLine();
 
 	std::string label = sprite->GetName().empty() ? "Sprite" : sprite->GetName();
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-	if (selectedSprite_ == sprite) flags |= ImGuiTreeNodeFlags_Selected;
-	if (sprite->GetChildren().empty()) flags |= ImGuiTreeNodeFlags_Leaf;
-	if (!isVisible) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+	if (selectedSprite_ == sprite)
+		flags |= ImGuiTreeNodeFlags_Selected;
+	if (sprite->GetChildren().empty())
+		flags |= ImGuiTreeNodeFlags_Leaf;
+	if (!isVisible)
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 	bool nodeOpen = ImGui::TreeNodeEx("##SpriteNode", flags, ICON_FA_IMAGE " %s", label.c_str());
-	if (!isVisible) ImGui::PopStyleColor();
+	if (!isVisible)
+		ImGui::PopStyleColor();
 
 	if (ImGui::IsItemClicked()) {
 		selectedSprite_ = sprite;
@@ -407,10 +461,12 @@ void SpriteDebugEditor::DrawSpriteNode(engine::Sprite* sprite) {
 	if (ImGui::BeginDragDropTarget()) {
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_NODE")) {
 			engine::Sprite* sourceSprite = *(engine::Sprite**)payload->Data;
+
 			if (sourceSprite && sourceSprite != sprite) {
 				sourceSprite->SetParent(sprite);
 			}
 		}
+
 		ImGui::EndDragDropTarget();
 	}
 
@@ -420,6 +476,7 @@ void SpriteDebugEditor::DrawSpriteNode(engine::Sprite* sprite) {
 				DrawSpriteNode(child);
 			}
 		}
+
 		ImGui::TreePop();
 	}
 
@@ -434,11 +491,13 @@ bool SpriteDebugEditor::TryGetTexturePixelSize(engine::Sprite* sprite, engine::V
 	}
 
 	const uint32_t textureHandle = sprite->GetTextureHandle();
+
 	if (textureHandle == 0) {
 		return false;
 	}
 
 	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle);
+
 	if (metadata.width == 0 || metadata.height == 0) {
 		return false;
 	}
@@ -464,12 +523,14 @@ float SpriteDebugEditor::CalcAspectError(engine::Sprite* sprite, const engine::V
 	}
 
 	const engine::Vector2 size = sprite->GetSize();
+
 	if (size.x <= 0.0f || size.y <= 0.0f) {
 		return 0.0f;
 	}
 
 	const float textureAspect = textureSize.x / textureSize.y;
 	const float spriteAspect = size.x / size.y;
+
 	if (textureAspect <= 0.0f) {
 		return 0.0f;
 	}
@@ -485,9 +546,11 @@ engine::Vector2 SpriteDebugEditor::MakeAspectFixedSize(engine::Sprite* sprite, c
 
 	const engine::Vector2 currentSize = sprite->GetSize();
 	const float textureAspect = textureSize.x / textureSize.y;
+
 	if (keepWidth) {
 		return { currentSize.x, currentSize.x / textureAspect };
 	}
+
 	return { currentSize.y * textureAspect, currentSize.y };
 }
 
@@ -511,24 +574,30 @@ int SpriteDebugEditor::FixSpriteAspectInCurrentScene(bool textOnly, bool keepWid
 	}
 
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
 	if (!currentScene) {
 		return 0;
 	}
 
 	int fixedCount = 0;
+
 	for (const std::unique_ptr<engine::Sprite>& spritePtr : currentScene->GetSprites()) {
 		engine::Sprite* sprite = spritePtr.get();
+
 		if (!sprite) {
 			continue;
 		}
+
 		if (textOnly && !IsGeneratedTextSprite(sprite)) {
 			continue;
 		}
 
 		engine::Vector2 textureSize{};
+
 		if (!TryGetTexturePixelSize(sprite, textureSize)) {
 			continue;
 		}
+
 		if (CalcAspectError(sprite, textureSize) < kSpriteAspectWarningThreshold) {
 			continue;
 		}
@@ -543,29 +612,38 @@ int SpriteDebugEditor::FixSpriteAspectInCurrentScene(bool textOnly, bool keepWid
 
 void SpriteDebugEditor::DrawInspectorWindow() {
 #ifdef USE_IMGUI
-	if (!sceneManager_) return;
+	if (!sceneManager_)
+		return;
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
-	if (!currentScene) return;
+	if (!currentScene)
+		return;
 
 	auto& sprites = currentScene->GetSprites();
 
 	ImGui::Begin(ICON_FA_INFO_CIRCLE " Sprite Inspector");
+
 	if (ImGui::CollapsingHeader("Sprite比率クリーンアップ", ImGuiTreeNodeFlags_DefaultOpen)) {
 		ImGui::TextDisabled("画像本来の縦横比に合わせて、引き伸ばしを補正します。");
+
 		if (ImGui::Button("文字Spriteを横幅維持で一括補正", ImVec2(-1.0f, 0.0f))) {
 			FixSpriteAspectInCurrentScene(true, true);
 		}
+
 		if (ImGui::Button("全Spriteを横幅維持で一括補正", ImVec2(-1.0f, 0.0f))) {
 			FixSpriteAspectInCurrentScene(false, true);
 		}
+
 		if (ImGui::Button("全Spriteを高さ維持で一括補正", ImVec2(-1.0f, 0.0f))) {
 			FixSpriteAspectInCurrentScene(false, false);
 		}
+
 		if (!spriteQualityStatus_.empty()) {
 			ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.8f, 1.0f), "%s", spriteQualityStatus_.c_str());
 		}
+
 		ImGui::Separator();
 	}
+
 	if (selectedSprite_) {
 		ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_EDIT " 編集: %s", selectedSprite_->GetName().c_str());
 
@@ -573,26 +651,33 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		if (ImGui::Button(ICON_FA_ARROW_UP " 前面へ (手前)")) {
 			currentScene->MoveSprite(selectedSprite_, 1);
 		}
+
 		ImGui::SameLine();
+
 		if (ImGui::Button(ICON_FA_ARROW_DOWN " 背面へ (奥)")) {
 			currentScene->MoveSprite(selectedSprite_, -1);
 		}
+
 		ImGui::Separator();
 
 		// 名前編集
 		char nameBuffer[256] = { 0 };
 		strcpy_s(nameBuffer, selectedSprite_->GetName().c_str());
+
 		if (ImGui::InputText(ICON_FA_PEN " 名前 (Name)", nameBuffer, sizeof(nameBuffer))) {
 			selectedSprite_->SetName(nameBuffer);
 		}
+
 		if (selectedSprite_->GetParent()) {
 			ImGui::TextDisabled(ICON_FA_SITEMAP " Parent: %s", selectedSprite_->GetParent()->GetName().c_str());
+
 			if (ImGui::Button(ICON_FA_UNLINK " Unparent Sprite")) {
 				selectedSprite_->SetParent(nullptr);
 			}
 		} else {
 			ImGui::TextDisabled(ICON_FA_SITEMAP " Parent: None");
 		}
+
 		ImGui::Separator();
 
 		// 基本パラメータ
@@ -601,9 +686,12 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		engine::Vector2 anchor = selectedSprite_->GetAnchorPoint();
 		engine::Vector4 color = selectedSprite_->GetColor();
 		float emissive = selectedSprite_->GetEmissive();
-		if (ImGui::DragFloat2(ICON_FA_ARROWS_ALT " 座標 (Pos)", &pos.x, 1.0f)) selectedSprite_->SetPosition(pos);
-		if (ImGui::DragFloat2(ICON_FA_EXPAND_ARROWS_ALT " サイズ (Size)", &size.x, 1.0f)) selectedSprite_->SetSize(size);
+		if (ImGui::DragFloat2(ICON_FA_ARROWS_ALT " 座標 (Pos)", &pos.x, 1.0f))
+			selectedSprite_->SetPosition(pos);
+		if (ImGui::DragFloat2(ICON_FA_EXPAND_ARROWS_ALT " サイズ (Size)", &size.x, 1.0f))
+			selectedSprite_->SetSize(size);
 		engine::Vector2 texturePixelSize{};
+
 		if (TryGetTexturePixelSize(selectedSprite_, texturePixelSize)) {
 			const engine::Vector2 currentSize = selectedSprite_->GetSize();
 			const float scaleX = texturePixelSize.x > 0.0f ? currentSize.x / texturePixelSize.x : 0.0f;
@@ -611,29 +699,40 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 			const float aspectError = CalcAspectError(selectedSprite_, texturePixelSize);
 			ImGui::Text("Texture: %.0f x %.0f px", texturePixelSize.x, texturePixelSize.y);
 			ImGui::Text("Display: %.1f x %.1f / Scale %.2f x %.2f", currentSize.x, currentSize.y, scaleX, scaleY);
+
 			if (aspectError >= kSpriteAspectWarningThreshold) {
 				ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.25f, 1.0f), "縦横比が %.1f%% ずれています", aspectError * 100.0f);
 			}
+
 			if (ImGui::Button("実画像サイズに合わせる")) {
 				selectedSprite_->SetSize(texturePixelSize);
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::Button("横幅維持で比率補正")) {
 				selectedSprite_->SetSize(MakeAspectFixedSize(selectedSprite_, texturePixelSize, true));
 			}
+
 			if (ImGui::Button("高さ維持で比率補正")) {
 				selectedSprite_->SetSize(MakeAspectFixedSize(selectedSprite_, texturePixelSize, false));
 			}
+
 			ImGui::SameLine();
+
 			if (ImGui::Button("近い0.25倍率に補正")) {
 				selectedSprite_->SetSize(MakeNearestIntegerScaleSize(selectedSprite_, texturePixelSize));
 			}
 		}
-		if (ImGui::DragFloat2(ICON_FA_ANCHOR " アンカー (Anchor)", &anchor.x, 0.01f)) selectedSprite_->SetAnchorPoint(anchor);
-		if (ImGui::ColorEdit4(ICON_FA_PALETTE " 色 (Color)", &color.x)) selectedSprite_->SetColor(color);
+
+		if (ImGui::DragFloat2(ICON_FA_ANCHOR " アンカー (Anchor)", &anchor.x, 0.01f))
+			selectedSprite_->SetAnchorPoint(anchor);
+		if (ImGui::ColorEdit4(ICON_FA_PALETTE " 色 (Color)", &color.x))
+			selectedSprite_->SetColor(color);
 		if (ImGui::DragFloat(ICON_FA_SUN " Emissive (発光)", &emissive, 0.1f, 1.0f, 50.0f, "%.1f")) {
 			selectedSprite_->SetEmissive(emissive);
 		}
+
 		ImGui::Separator();
 
 		// クイック配置
@@ -647,16 +746,23 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 				selectedSprite_->SetAnchorPoint({ xRatio, yRatio });
 			}
 			};
-		QuickSnapButton("↖", 0.0f, 0.0f); ImGui::SameLine();
-		QuickSnapButton("⬆", 0.5f, 0.0f); ImGui::SameLine();
+
+		QuickSnapButton("↖", 0.0f, 0.0f);
+		ImGui::SameLine();
+		QuickSnapButton("⬆", 0.5f, 0.0f);
+		ImGui::SameLine();
 		QuickSnapButton("↗", 1.0f, 0.0f);
 
-		QuickSnapButton("⬅", 0.0f, 0.5f); ImGui::SameLine();
-		QuickSnapButton("・", 0.5f, 0.5f); ImGui::SameLine();
+		QuickSnapButton("⬅", 0.0f, 0.5f);
+		ImGui::SameLine();
+		QuickSnapButton("・", 0.5f, 0.5f);
+		ImGui::SameLine();
 		QuickSnapButton("➡", 1.0f, 0.5f);
 
-		QuickSnapButton("↙", 0.0f, 1.0f); ImGui::SameLine();
-		QuickSnapButton("⬇", 0.5f, 1.0f); ImGui::SameLine();
+		QuickSnapButton("↙", 0.0f, 1.0f);
+		ImGui::SameLine();
+		QuickSnapButton("⬇", 0.5f, 1.0f);
+		ImGui::SameLine();
 		QuickSnapButton("↘", 1.0f, 1.0f);
 
 		ImGui::Separator();
@@ -664,6 +770,7 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		// 画像差し替え
 		ImGui::Text(ICON_FA_IMAGE " テクスチャ変更 (Texture Replace)");
 		ImGui::Button("下から画像をここにドロップ！", ImVec2(-1, 30.0f));
+
 		if (ImGui::BeginDragDropTarget()) {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
 				const char* droppedFilename = (const char*)payload->Data;
@@ -671,17 +778,20 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 				selectedSprite_->SetTextureHandle(newHandle);
 				selectedSprite_->SetTextureName(droppedFilename);
 			}
+
 			ImGui::EndDragDropTarget();
 		}
 
 		ImGui::Separator();
 		ImGui::Dummy(ImVec2(0.0f, 5.0f));
-		if (ImGui::Button(ICON_FA_TIMES_CIRCLE " 選択解除 (Deselect)", ImVec2(-1, 0))) selectedSprite_ = nullptr;
+		if (ImGui::Button(ICON_FA_TIMES_CIRCLE " 選択解除 (Deselect)", ImVec2(-1, 0)))
+			selectedSprite_ = nullptr;
 
 	}
 	else {
 		ImGui::TextDisabled(ICON_FA_MOUSE_POINTER " リストからスプライトを選択してください");
 	}
+
 	ImGui::End();
 #endif
 }
@@ -707,8 +817,10 @@ void SpriteDebugEditor::DrawProjectWindow() {
 				currentSpriteDirectory_ = baseDirPath;
 			}
 		}
+
 		ImGui::SameLine();
 	}
+
 	ImGui::TextDisabled("%s", currentSpriteDirectory_.c_str());
 	ImGui::Separator();
 	
@@ -764,6 +876,7 @@ void SpriteDebugEditor::DrawProjectWindow() {
 				// ==========================================================
 				else if (entry.is_regular_file() && entry.path().extension() == ".png") {
 					std::error_code ec;
+
 					if (fs::file_size(entry.path(), ec) == 0 || ec) {
 						continue;
 					}
@@ -792,15 +905,20 @@ void SpriteDebugEditor::DrawProjectWindow() {
 					float h = (float)metadata.height;
 					float drawW = thumbnailSize;
 					float drawH = thumbnailSize;
-					if (w > h) { drawH = thumbnailSize * (h / w); }
+
+					if (w > h) {
+						drawH = thumbnailSize * (h / w);
+					}
 					else if (h > w) { drawW = thumbnailSize * (w / h); }
 					float offsetX = (thumbnailSize - drawW) * 0.5f;
 					float offsetY = (thumbnailSize - drawH) * 0.5f;
 
 					ImGui::BeginGroup();
 
-					if (offsetY > 0.0f) ImGui::Dummy(ImVec2(1.0f, offsetY));
-					if (offsetX > 0.0f) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+					if (offsetY > 0.0f)
+						ImGui::Dummy(ImVec2(1.0f, offsetY));
+					if (offsetX > 0.0f)
+						ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
 
 					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 					ImGui::ImageButton(filename.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(drawW, drawH));
@@ -820,7 +938,8 @@ void SpriteDebugEditor::DrawProjectWindow() {
 						ImGui::EndDragDropSource();
 					}
 
-					if (offsetY > 0.0f) ImGui::Dummy(ImVec2(1.0f, offsetY));
+					if (offsetY > 0.0f)
+						ImGui::Dummy(ImVec2(1.0f, offsetY));
 
 				
 					ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
@@ -831,6 +950,7 @@ void SpriteDebugEditor::DrawProjectWindow() {
 					ImGui::PopID();
 				}
 			}
+
 			ImGui::EndTable();
 		}
 	}
@@ -838,6 +958,7 @@ void SpriteDebugEditor::DrawProjectWindow() {
 		// フォルダが見つからなかった時の警告色
 		ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Directory Not Found: %s", currentSpriteDirectory_.c_str());
 	}
+
 	ImGui::End();
 #endif
 }
@@ -846,32 +967,39 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
     // 現在のSprite配置をScene別JSONへ書き出し、再読込時の位置と見た目を復元します。
 	using json = nlohmann::json;
 
-	if (sceneManager_ == nullptr) return;
+	if (sceneManager_ == nullptr)
+		return;
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
-	if (currentScene == nullptr) return;
+	if (currentScene == nullptr)
+		return;
 
 	// 未知の画面参照も残し、Editorで保存しても事前ロードの依存を失わないようにする。
 	json root = json::object();
 	{
 		std::ifstream existing(filename);
+
 		if (existing.is_open()) {
 			try {
 				existing >> root;
-				if (!root.is_object()) return;
+				if (!root.is_object())
+					return;
 			} catch (const json::exception&) {
 				return;
 			}
 		}
 	}
+
 	json spriteArray = json::array();
 
 	auto& sprites = currentScene->GetSprites();
 
 	for (const auto& spritePtr : sprites) {
 		engine::Sprite* sprite = spritePtr.get();
-		if (sprite == nullptr) continue;
+		if (sprite == nullptr)
+			continue;
 
 		json spriteData;
+
 		if (!sprite->GetName().empty()) {
 			spriteData["name"] = sprite->GetName();
 		}
@@ -893,14 +1021,17 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 		spriteData["parentName"] = sprite->GetParent() ? sprite->GetParent()->GetName() : "";
 		spriteArray.push_back(spriteData);
 	}
+
 	root["designResolution"] = {
 		static_cast<float>(WinApp::kClientWidth),
 		static_cast<float>(WinApp::kClientHeight)
 	};
+
 	root["scaleToWindow"] = true;
 	root["sprites"] = spriteArray;
 
 	std::ofstream file(filename);
+
 	if (file.is_open()) {
 		file << root.dump(4);
 		file.close();
@@ -908,7 +1039,8 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 }
 
 bool SpriteDebugEditor::IsMouseOver(engine::Sprite* sprite, const engine::Vector2& localMousePos) const {
-	if (sprite == nullptr) return false;
+	if (sprite == nullptr)
+		return false;
 
 	engine::Vector2 pos = sprite->GetWorldPosition();
 	engine::Vector2 size = sprite->GetSize();
@@ -941,13 +1073,17 @@ void SpriteDebugEditor::Draw() {
 	}
 
 	BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
 	if (currentScene == nullptr) {
 		return;
 	}
+
 	engine::SpriteCommon* currentSpriteCommon = currentScene->GetSpriteCommon();
+
 	if (currentSpriteCommon == nullptr) {
 		return;
 	}
+
 	if (gizmoArrowX_ == nullptr || initializedSpriteCommon_ != currentSpriteCommon) {
 
 		// ギズモを「現在のシーンの Common」で再作成

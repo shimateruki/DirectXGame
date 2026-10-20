@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "c8c76d71ff9b5fa381ea0243ace6e3a9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/floating_basalt_rock/floating_basalt_rock.obj",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "475f99c41b6d5ca5b5433a069004e4f8",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_AppearingStart_Detail.obj",
+  "version": 1
+}

@@ -15,20 +15,28 @@ struct CollisionCategoryDefinition {
 namespace CollisionCategories {
 /// <summary>カテゴリIDに対応するビットを取得する。未登録の場合は0を返します。</summary>
 uint32_t Get(std::string_view id);
+
 /// <summary>Inspectorに表示するカテゴリ定義のコピーを返します。</summary>
 std::vector<CollisionCategoryDefinition> GetDefinitions();
+
 /// <summary>定義JSONが正常に読み込まれたか返します。</summary>
 bool IsDefinitionLoaded();
+
 /// <summary>未使用ビットでカテゴリを追加し、定義JSONへ保存します。</summary>
 bool Add(const std::string& id, const std::string& displayName, std::string* error = nullptr);
+
 /// <summary>旧シーンの数値マスクを、現在のカテゴリ配置へ変換します。</summary>
 uint32_t FromLegacyMask(uint32_t legacyMask);
+
 /// <summary>現在の数値マスクに含まれるカテゴリIDを返します。</summary>
 std::vector<std::string> GetIds(uint32_t mask);
+
 /// <summary>保存されたカテゴリIDを実行時マスクに変換します。</summary>
 uint32_t FromIds(const std::vector<std::string>& ids);
+
 /// <summary>定義済みカテゴリが占有するビットをまとめて返します。</summary>
 uint32_t GetKnownMask();
+
 /// <summary>従来の0～7番ビットを対象にしていた配置物の既定Maskを再現します。</summary>
 uint32_t GetDefaultGameplayMask();
 } // namespace CollisionCategories
@@ -86,6 +94,7 @@ struct CollisionInfo {
     engine::Vector3 normal = {0, 0, 0}; // 衝突法線 (押し戻す方向)
     float penetration = 0.0f;   // めり込み量
 };
+
 /// <summary>
 /// 衝突面（法線）がどの方向を向いているかを示す
 /// </summary>
@@ -113,6 +122,7 @@ CollisionInfo CheckSphereCollision(const engine::Vector3& posA, float rA, const 
 CollisionInfo CheckSphereAABBCollision(const engine::Vector3& spherePos, float sphereRadius, const AABB& aabb);
 CollisionInfo CheckSphereOBBCollision(const engine::Vector3& spherePos, float sphereRadius, const OBB& obb);
 CollisionInfo CheckOBBCollision(const OBB& obb1, const OBB& obb2);
+
 /// <summary>
 /// AABBとOBBの衝突判定 (AABBをOBBに変換して判定)
 /// </summary>

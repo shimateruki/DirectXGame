@@ -7,12 +7,15 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     // 種別変更時は、生成時に必要なモデル・当たり判定の初期値も同時に揃えます。
 #ifdef USE_IMGUI
     engine::Object3d* selectedObject = editor_->GetSelectedObject();
-    if (!selectedObject) return;
+    if (!selectedObject)
+        return;
 
     const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime" };
     std::string currentType = selectedObject->GetEnemyType();
 
     int currentIndex = -1;
+
+    // 保存済みの未知タイプは候補へ丸めず「未設定」と表示し、意図しない種別変更を防ぐ。
     for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
         if (currentType == enemyTypes[i]) {
             currentIndex = i;
@@ -25,9 +28,12 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     if (ImGui::BeginCombo("敵の種族 (Enemy Type)", previewValue)) {
         for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
             bool isSelected = (currentIndex == i);
+
             if (ImGui::Selectable(enemyTypes[i], isSelected)) {
                 selectedObject->SetEnemyType(enemyTypes[i]);
                 selectedObject->SetName("Enemy_" + std::string(enemyTypes[i]));
+
+                // この画面では配置Objectのプレビュー値を更新する。実際の敵クラスはScene読込時にFactoryが生成する。
                 if (std::string(enemyTypes[i]) == "GiantSlime") {
                     selectedObject->SetModel("Characters/slime");
                     selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -102,11 +108,16 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetCollisionRadius(0.95f);
                 }
             }
-            if (isSelected) ImGui::SetItemDefaultFocus();
+
+            if (isSelected)
+                ImGui::SetItemDefaultFocus();
         }
+
         ImGui::EndCombo();
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
+
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
 #endif
 }
 

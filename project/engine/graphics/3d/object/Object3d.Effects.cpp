@@ -25,11 +25,13 @@ namespace {
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     // 地形の当たり判定データを、保存済みパスと素材基準の候補から解決する。
     std::filesystem::path filePath(path);
+
     if (std::filesystem::exists(filePath)) {
         return filePath;
     }
 
     std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
+
     if (std::filesystem::exists(resourcesPath)) {
         return resourcesPath;
     }
@@ -44,6 +46,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -60,12 +63,15 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
     // ルート（大元）のY軸回転を取得
     float rootRotY = transform_.rotate.y;
     Object3d* rootObj = this;
+
     while (rootObj && rootObj->GetParent()) {
         rootObj = rootObj->GetParent();
     }
+
     if (rootObj) {
         rootRotY = rootObj->GetRotation().y;
     }
+
     effectAnchor_.rotate = { 0.0f, rootRotY, 0.0f };
     effectAnchor_.UpdateMatrix();
 
@@ -74,14 +80,18 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
     // ========================================================
     const std::string& primaryEffect = GetMeshEffect1Name();
     const std::string& secondaryEffect = GetMeshEffect2Name();
+
     if (!primaryEffect.empty()) {
         if (attachedEffects1_.empty() || currentMeshEffect1_ != primaryEffect) {
             attachedEffects1_.clear();
             currentMeshEffect1_ = "";
 
             std::ifstream file(primaryEffect);
+
             if (file.is_open()) {
-                json j; file >> j; file.close();
+                json j;
+                file >> j;
+                file.close();
 
                 int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
                 int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
@@ -105,8 +115,16 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                             localZ.y = -sinf(localRot.x);
                             localZ.z = cosf(localRot.y) * cosf(localRot.x);
 
-                            if (i == 1) { localPos.x += localZ.x * gap; localPos.y += localZ.y * gap; localPos.z += localZ.z * gap; }
-                            if (i == 2) { localPos.x -= localZ.x * gap; localPos.y -= localZ.y * gap; localPos.z -= localZ.z * gap; }
+                            if (i == 1) {
+                                localPos.x += localZ.x * gap;
+                                localPos.y += localZ.y * gap;
+                                localPos.z += localZ.z * gap;
+                            }
+                            if (i == 2) {
+                                localPos.x -= localZ.x * gap;
+                                localPos.y -= localZ.y * gap;
+                                localPos.z -= localZ.z * gap;
+                            }
                         }
 
                         effect->SetTranslate(localPos);
@@ -118,6 +136,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         attachedEffects1_.push_back(std::move(effect));
                     }
                 }
+
                 currentMeshEffect1_ = primaryEffect;
             }
         }
@@ -136,8 +155,11 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
             currentMeshEffect2_ = "";
 
             std::ifstream file(secondaryEffect);
+
             if (file.is_open()) {
-                json j; file >> j; file.close();
+                json j;
+                file >> j;
+                file.close();
 
                 int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
                 int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
@@ -161,8 +183,16 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                             localZ.y = -sinf(localRot.x);
                             localZ.z = cosf(localRot.y) * cosf(localRot.x);
 
-                            if (i == 1) { localPos.x += localZ.x * gap; localPos.y += localZ.y * gap; localPos.z += localZ.z * gap; }
-                            if (i == 2) { localPos.x -= localZ.x * gap; localPos.y -= localZ.y * gap; localPos.z -= localZ.z * gap; }
+                            if (i == 1) {
+                                localPos.x += localZ.x * gap;
+                                localPos.y += localZ.y * gap;
+                                localPos.z += localZ.z * gap;
+                            }
+                            if (i == 2) {
+                                localPos.x -= localZ.x * gap;
+                                localPos.y -= localZ.y * gap;
+                                localPos.z -= localZ.z * gap;
+                            }
                         }
 
                         effect->SetTranslate(localPos);
@@ -174,6 +204,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         attachedEffects2_.push_back(std::move(effect));
                     }
                 }
+
                 currentMeshEffect2_ = secondaryEffect;
             }
         }
@@ -187,18 +218,21 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
     for (auto& effect : attachedEffects1_) {
         effect->Update(deltaTime);
     }
+
     for (auto& effect : attachedEffects2_) {
         effect->Update(deltaTime);
     }
 }
 
 void Object3d::DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (!GetIsRenderVisible()) return;
+    if (!GetIsRenderVisible())
+        return;
 
     // 配列内のすべてのエフェクトを描画
     for (auto& effect : attachedEffects1_) {
         effect->Draw(pointLightResource, spotLightResource);
     }
+
     for (auto& effect : attachedEffects2_) {
         effect->Draw(pointLightResource, spotLightResource);
     }

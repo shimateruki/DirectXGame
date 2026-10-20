@@ -32,6 +32,7 @@ void PlayerStatePullObject::Enter(Player* player) {
     pullStarted_ = false;
 
     engine::Object3d* marker = player->GetHookMarker();
+
     if (marker) {
         marker->SetIsVisible(true);
         marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
@@ -56,18 +57,22 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
         // フック先端が対象に十分近付くまでは、対象の引き寄せを開始しない。
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
         player->SetSlimeAnimationDirection(targetPos - player->GetWorldPosition());
+
         if (dist < 3.0f) {
             hookTipPos_ = targetPos;
+
             // 専用ブロックだけが位置移動を持ち、通常オブジェクトには演出のみ行う。
             if (auto* block = dynamic_cast<GimmickHookPullBlock*>(targetObject_)) {
                 block->StartHookPull(player->GetWorldPosition());
             }
+
             pullStarted_ = true;
             timer_ = 0.0f;
         } else {
             engine::Vector3 dir = engine::Math::Normalize(toTarget);
             hookTipPos_ = hookTipPos_ + dir * (180.0f * deltaTime);
         }
+
         UpdateRopeMarker(player, hookTipPos_, 0.22f);
         return;
     }
@@ -90,6 +95,7 @@ void PlayerStatePullObject::Exit(Player* player) {
 
     player->SetIsControlActive(true);
     engine::Object3d* marker = player->GetHookMarker();
+
     if (marker) {
         marker->SetIsVisible(false);
         marker->SetScale({1.0f, 1.0f, 1.0f});

@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cassert>
 
-void HealItem::Initialize(Object3dCommon* common, const std::string& modelName) {
+void HealItem::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 共通アイテムを初期化してから、回復用の識別子と接触設定を与える。
     BaseItem::Initialize(common, modelName);
 
@@ -18,6 +18,7 @@ void HealItem::Initialize(Object3dCommon* common, const std::string& modelName) 
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->itemType = "Heal";
     param_->healAmount = 1.0f;
 }
@@ -35,6 +36,7 @@ void HealItem::Collect(Player* player) {
     }
 
     float healAmount = 1.0f;
+
     if (param_.has_value()) {
         healAmount = (std::max)(0.0f, param_->healAmount);
     }

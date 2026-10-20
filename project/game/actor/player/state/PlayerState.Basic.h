@@ -6,7 +6,9 @@
 class PlayerStateIdle : public IAnimationState {
   public:
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 };
 
@@ -14,7 +16,9 @@ class PlayerStateIdle : public IAnimationState {
 class PlayerStateRun : public IAnimationState {
   public:
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 };
 
@@ -22,7 +26,9 @@ class PlayerStateRun : public IAnimationState {
 class PlayerStateJump : public IAnimationState {
   public:
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 };
 
@@ -30,7 +36,9 @@ class PlayerStateJump : public IAnimationState {
 class PlayerStateDash : public IAnimationState {
   public:
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 
   private:

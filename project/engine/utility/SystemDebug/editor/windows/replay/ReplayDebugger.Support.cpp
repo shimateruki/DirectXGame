@@ -1,4 +1,4 @@
-﻿#include "engine/utility/SystemDebug/editor/windows/replay/ReplayDebugger.Internal.h"
+#include "engine/utility/SystemDebug/editor/windows/replay/ReplayDebugger.Internal.h"
 
 #ifdef USE_IMGUI
 using namespace ReplayDebuggerImplementation;
@@ -28,22 +28,26 @@ json QuaternionToJson(const engine::Quaternion& value) {
 }
 
 engine::Vector2 JsonToVector2(const json& value, const engine::Vector2& fallback) {
-    if (!value.is_array() || value.size() < 2) return fallback;
+    if (!value.is_array() || value.size() < 2)
+        return fallback;
     return { value[0].get<float>(), value[1].get<float>() };
 }
 
 engine::Vector3 JsonToVector3(const json& value, const engine::Vector3& fallback) {
-    if (!value.is_array() || value.size() < 3) return fallback;
+    if (!value.is_array() || value.size() < 3)
+        return fallback;
     return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
 }
 
 engine::Vector4 JsonToVector4(const json& value, const engine::Vector4& fallback) {
-    if (!value.is_array() || value.size() < 4) return fallback;
+    if (!value.is_array() || value.size() < 4)
+        return fallback;
     return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>() };
 }
 
 engine::Quaternion JsonToQuaternion(const json& value, const engine::Quaternion& fallback) {
-    if (!value.is_array() || value.size() < 4) return fallback;
+    if (!value.is_array() || value.size() < 4)
+        return fallback;
     return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>() };
 }
 
@@ -67,7 +71,9 @@ json SceneLoadContextToJson(const SceneLoadContext& context) {
 // Scene読込条件を復元し、旧ArchiveにないController名はDEFAULTで補います。
 SceneLoadContext JsonToSceneLoadContext(const json& value) {
     SceneLoadContext context;
-    if (!value.is_object()) return context;
+    if (!value.is_object())
+        return context;
+
     // 旧 Archive にキーがない場合も、Scene の既定 Controller だけは DEFAULT を保持します。
     context.sceneAssetId = value.value("sceneAssetId", std::string{});
     context.displayName = value.value("displayName", std::string{});
@@ -102,7 +108,9 @@ json EntityParameterToJson(const engine::Object3d::EntityParameter& value) {
 
 engine::Object3d::EntityParameter JsonToEntityParameter(const json& value) {
     engine::Object3d::EntityParameter result;
-    if (!value.is_object()) return result;
+    if (!value.is_object())
+        return result;
+
     // 未保存キーは現行の既定値に戻し、旧版 Archive を読み込めるようにします。
     result.hp = value.value("hp", result.hp);
     result.maxHp = value.value("maxHp", result.maxHp);
@@ -146,7 +154,8 @@ json AnimatorSnapshotToJson(const AnimatorControllerRuntime::Snapshot& value) {
 AnimatorControllerRuntime::Snapshot JsonToAnimatorSnapshot(const json& value) {
     // 記録済みの状態・パラメーターを再生用スナップショットへ戻す。
     AnimatorControllerRuntime::Snapshot result;
-    if (!value.is_object()) return result;
+    if (!value.is_object())
+        return result;
     result.currentState = value.value("currentState", std::string{});
     result.previousState = value.value("previousState", std::string{});
     result.currentTime = value.value("currentTime", 0.0f);
@@ -160,7 +169,8 @@ AnimatorControllerRuntime::Snapshot JsonToAnimatorSnapshot(const json& value) {
 
 json ParticleEmitterToJson(const std::optional<ParticleEmitterComponent>& value) {
     // Component の不在は null として保存し、設定だけでなく発生タイマーも残します。
-    if (!value) return nullptr;
+    if (!value)
+        return nullptr;
     return {
         { "cpuParticle", value->GetCpuParticle() },
         { "gpuParticle", value->GetGpuParticle() },
@@ -170,7 +180,8 @@ json ParticleEmitterToJson(const std::optional<ParticleEmitterComponent>& value)
 
 std::optional<ParticleEmitterComponent> JsonToParticleEmitter(const json& value) {
     // 保存時の null は Component 不在のまま戻し、発生タイマーも再開位置として復元する。
-    if (!value.is_object()) return std::nullopt;
+    if (!value.is_object())
+        return std::nullopt;
     ParticleEmitterComponent result;
     result.SetCpuParticle(value.value("cpuParticle", std::string{}));
     result.SetGpuParticle(value.value("gpuParticle", std::string{}));
@@ -180,7 +191,8 @@ std::optional<ParticleEmitterComponent> JsonToParticleEmitter(const json& value)
 
 json MeshEffectToJson(const std::optional<MeshEffectComponent>& value) {
     // 未装着の Component は null とし、二系統の演出参照だけを保存する。
-    if (!value) return nullptr;
+    if (!value)
+        return nullptr;
     return {
         { "primaryEffect", value->GetPrimaryEffect() },
         { "secondaryEffect", value->GetSecondaryEffect() },
@@ -189,7 +201,8 @@ json MeshEffectToJson(const std::optional<MeshEffectComponent>& value) {
 
 std::optional<MeshEffectComponent> JsonToMeshEffect(const json& value) {
     // 保存済みの演出参照がない場合は Component を新規生成しない。
-    if (!value.is_object()) return std::nullopt;
+    if (!value.is_object())
+        return std::nullopt;
     MeshEffectComponent result;
     result.SetPrimaryEffect(value.value("primaryEffect", std::string{}));
     result.SetSecondaryEffect(value.value("secondaryEffect", std::string{}));
@@ -198,32 +211,42 @@ std::optional<MeshEffectComponent> JsonToMeshEffect(const json& value) {
 
 json PathMoverToJson(const std::optional<PathMoverComponent>& value) {
     // 経路名と座標解釈を一緒に保存し、再生時の動き方を維持する。
-    if (!value) return nullptr;
+    if (!value)
+        return nullptr;
     return {
         { "pathName", value->GetPathName() }, { "loop", value->IsLoop() },
         { "relative", value->IsRelative() },
+        { "phaseOffset", value->GetPhaseOffset() },
+        { "playbackMode", value->GetPlaybackModeName() },
+        { "rideSequence", value->GetRideSequence() },
     };
 }
 
 std::optional<PathMoverComponent> JsonToPathMover(const json& value) {
     // 旧記録で省略されたループと相対指定は無効として復元する。
-    if (!value.is_object()) return std::nullopt;
+    if (!value.is_object())
+        return std::nullopt;
     PathMoverComponent result;
     result.SetPathName(value.value("pathName", std::string{}));
     result.SetLoop(value.value("loop", false));
     result.SetRelative(value.value("relative", false));
+    result.SetPhaseOffset(value.value("phaseOffset", 0.0f));
+    result.SetPlaybackModeName(value.value("playbackMode", std::string{"always"}));
+    result.SetRideSequence(value.value("rideSequence", std::string{}));
     return result;
 }
 
 json GameplayLinkToJson(const std::optional<GameplayLinkComponent>& value) {
     // イベント接続の両端 ID を保存し、未装着は null のまま残す。
-    if (!value) return nullptr;
+    if (!value)
+        return nullptr;
     return { { "eventId", value->GetEventId() }, { "targetId", value->GetTargetId() } };
 }
 
 std::optional<GameplayLinkComponent> JsonToGameplayLink(const json& value) {
     // 接続先が省略された旧記録では、無効 ID に戻して誤接続を避ける。
-    if (!value.is_object()) return std::nullopt;
+    if (!value.is_object())
+        return std::nullopt;
     GameplayLinkComponent result;
     result.SetEventId(value.value("eventId", -1));
     result.SetTargetId(value.value("targetId", -1));
@@ -232,7 +255,8 @@ std::optional<GameplayLinkComponent> JsonToGameplayLink(const json& value) {
 
 json NavAgentToJson(const std::optional<NavAgentComponent>& value) {
     // コンポーネントなしはnullにし、存在する場合だけ追跡・回避設定を保存する。
-    if (!value) return nullptr;
+    if (!value)
+        return nullptr;
     return {
         { "enabled", value->IsEnabled() }, { "cellSize", value->GetCellSize() },
         { "agentRadius", value->GetAgentRadius() }, { "agentHeight", value->GetAgentHeight() },
@@ -244,7 +268,8 @@ json NavAgentToJson(const std::optional<NavAgentComponent>& value) {
 
 std::optional<NavAgentComponent> JsonToNavAgent(const json& value) {
     // 記録がない項目はコンポーネントの既定値を維持して復元する。
-    if (!value.is_object()) return std::nullopt;
+    if (!value.is_object())
+        return std::nullopt;
     NavAgentComponent result;
     result.SetEnabled(value.value("enabled", true));
     result.SetCellSize(value.value("cellSize", result.GetCellSize()));
@@ -285,6 +310,7 @@ json ObjectReplayStateToJson(const engine::Object3d::ReplayState& value) {
 
 engine::Object3d::ReplayState JsonToObjectReplayState(const json& value) {
     engine::Object3d::ReplayState result;
+
     // 不足キーは ReplayState の初期値を維持し、古い Snapshot の読み込みを許容します。
     // JSON の配列要素は専用変換を通し、短い配列では初期値に戻します。
     result.scale = JsonToVector3(value.value("scale", json::array()), result.scale);
@@ -300,10 +326,12 @@ engine::Object3d::ReplayState JsonToObjectReplayState(const json& value) {
     result.animationName = value.value("animationName", std::string{});
     result.animationLoop = value.value("animationLoop", result.animationLoop);
     result.animatorControllerPath = value.value("animatorControllerPath", std::string{});
+
     // Animator Snapshot は空 Object へフォールバックし、EntityParameter は保存フラグがあるときだけ復元します。
     result.animatorSnapshot = JsonToAnimatorSnapshot(value.value("animatorSnapshot", json::object()));
     result.hasParameter = value.value("hasParameter", false);
-    if (result.hasParameter) result.parameter = JsonToEntityParameter(value.value("parameter", json::object()));
+    if (result.hasParameter)
+        result.parameter = JsonToEntityParameter(value.value("parameter", json::object()));
     result.collisionAttribute = value.value("collisionAttribute", uint32_t{ 0 });
     result.collisionMask = value.value("collisionMask", uint32_t{ 0 });
     result.modelName = value.value("modelName", std::string{});
@@ -311,6 +339,7 @@ engine::Object3d::ReplayState JsonToObjectReplayState(const json& value) {
     result.materialType = value.value("materialType", int32_t{ 0 });
     result.color = JsonToVector4(value.value("color", json::array()), result.color);
     result.emissive = value.value("emissive", result.emissive);
+
     // null の Component は生成せず、保存されていた種類だけ optional を再構成します。
     result.particleEmitterComponent = JsonToParticleEmitter(value.value("particleEmitter", json(nullptr)));
     result.meshEffectComponent = JsonToMeshEffect(value.value("meshEffect", json(nullptr)));
@@ -341,6 +370,7 @@ json SpriteReplayStateToJson(const engine::Sprite::ReplayState& value) {
 
 engine::Sprite::ReplayState JsonToSpriteReplayState(const json& value) {
     engine::Sprite::ReplayState result;
+
     // 新旧 Archive 間で項目が増減しても、各フィールドは既定値へフォールバックします。
     result.position = JsonToVector2(value.value("position", json::array()), result.position);
     result.rotation = value.value("rotation", result.rotation);
@@ -384,26 +414,32 @@ std::string MakeLocalTimestamp(const char* format) {
 bool ReadArchiveHeader(const std::filesystem::path& filePath, json& header, std::string& error) {
     // 本文の読み込み前に Magic・ヘッダー・Schema の順で検証します。
     std::ifstream stream(filePath, std::ios::binary);
+
     if (!stream) {
         error = "ファイルを開けません。";
         return false;
     }
+
     std::string magic;
     std::string headerLine;
+
     if (!std::getline(stream, magic) || magic != kReplayArchiveMagic || !std::getline(stream, headerLine)) {
         error = "リプレイ形式ではありません。";
         return false;
     }
+
     try {
         header = json::parse(headerLine);
     } catch (const std::exception& exception) {
         error = std::string("ヘッダー解析失敗: ") + exception.what();
         return false;
     }
+
     if (!IsSupportedReplayArchiveSchema(header.value("schemaVersion", 0))) {
         error = "未対応のリプレイバージョンです。";
         return false;
     }
+
     return true;
 }
 }

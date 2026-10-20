@@ -82,9 +82,12 @@ inline bool DrawFloatCurve(
         VFXFloatCurve before = curve;
         ImGui::SetNextItemWidth(82.0f);
         bool timeChanged = ImGui::DragFloat("Time", &curve.keys[index].time, 0.005f, 0.0f, 1.0f, "%.3f");
+
         // 両端を0と1に固定し、中間キーは隣同士の順序を崩さない範囲へ制限する。
-        if (index == 0) curve.keys[index].time = 0.0f;
-        if (index + 1 == curve.keys.size()) curve.keys[index].time = 1.0f;
+        if (index == 0)
+            curve.keys[index].time = 0.0f;
+        if (index + 1 == curve.keys.size())
+            curve.keys[index].time = 1.0f;
         if (index > 0 && index + 1 < curve.keys.size()) {
             curve.keys[index].time = std::clamp(
                 curve.keys[index].time,
@@ -95,6 +98,7 @@ inline bool DrawFloatCurve(
             apply(curve);
             changed = true;
         }
+
         // 連続ドラッグは一つのUndo操作として追跡する。
         EditorPropertyTransaction::TrackLastItem(
             std::string(id) + ": Key Time",
@@ -181,6 +185,7 @@ inline bool DrawColorGradient(
     bool allowKeyCountChange = true) {
     bool changed = false;
     ImGui::PushID(id);
+
     // 曲線と同じ時刻制約を色キーにも適用し、色のドラッグをUndoへまとめる。
     for (std::size_t index = 0; index < gradient.keys.size(); ++index) {
         ImGui::PushID(static_cast<int>(index));
@@ -190,8 +195,10 @@ inline bool DrawColorGradient(
         VFXColorGradient before = gradient;
         ImGui::SetNextItemWidth(82.0f);
         bool timeChanged = ImGui::DragFloat("Time", &gradient.keys[index].time, 0.005f, 0.0f, 1.0f, "%.3f");
-        if (index == 0) gradient.keys[index].time = 0.0f;
-        if (index + 1 == gradient.keys.size()) gradient.keys[index].time = 1.0f;
+        if (index == 0)
+            gradient.keys[index].time = 0.0f;
+        if (index + 1 == gradient.keys.size())
+            gradient.keys[index].time = 1.0f;
         if (index > 0 && index + 1 < gradient.keys.size()) {
             gradient.keys[index].time = std::clamp(
                 gradient.keys[index].time,

@@ -1,0 +1,47 @@
+newmtl Bark
+Kd 0.42 0.23 0.105
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2
+
+newmtl BarkLight
+Kd 0.55 0.32 0.15
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2
+
+newmtl Endgrain
+Kd 0.76 0.54 0.29
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2
+
+newmtl GrowthRing
+Kd 0.48 0.29 0.13
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2
+
+newmtl Plank
+Kd 0.67 0.43 0.22
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2
+
+newmtl PlankLight
+Kd 0.75 0.51 0.28
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2
+
+newmtl Rope
+Kd 0.81 0.69 0.44
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2
+
+newmtl RopeShade
+Kd 0.65 0.51 0.29
+Ks 0.025 0.025 0.025
+Ns 12
+illum 2

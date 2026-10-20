@@ -26,6 +26,7 @@ class GameOverSlimeAnimator {
         hasBaseTransform_ = true;
         Update(slime, 0.0f);
     }
+
     // 倒れ姿勢または退場モーションを進め、床に接する姿勢を反映します。
     void Update(engine::Object3d* slime, float deltaTime) {
         if (!slime || !hasBaseTransform_)
@@ -38,6 +39,7 @@ class GameOverSlimeAnimator {
         }
         const float breathe = std::sin(timer_ * 1.7f);
         currentPosition_ = basePosition_;
+
         // 顔(-Z)を床へ伏せ、床の法線になるローカルZを潰す。
         // 上下反転だけでは開いた目が見えるため、倒れ姿勢はうつ伏せにする。
         currentScale_ = {baseScale_.x * (1.32f - breathe * 0.003f), baseScale_.y * 1.08f,
@@ -45,6 +47,7 @@ class GameOverSlimeAnimator {
         currentRotation_ = {-kPi * 0.5f, baseRotation_.y, 0.0f};
         ApplyGroundedPose(slime, 0.0f);
     }
+
     // 倒れ状態から起き上がり、水平の指定方向へ退場する動きを開始します。
     // 方向が無効なら +X、距離が無効なら 10 を採用します。
     void StartExitRight(engine::Object3d* slime, const engine::Vector3& direction, float distance) {
@@ -68,30 +71,42 @@ class GameOverSlimeAnimator {
         exitDistance_ = std::isfinite(distance) ? (std::max)(distance, 0.0f) : 10.0f;
         phase_ = Phase::ExitRight;
     }
+
     bool IsExiting() const { return phase_ != Phase::Downed; }
+
     bool IsExitAnimationFinished() const { return phase_ == Phase::ExitFinished; }
+
     float GetDizzyAlpha() const {
         return phase_ == Phase::Downed ? 0.70f : 0.70f * (1.0f - Clamp01(exitTimer_ / 0.22f));
     }
+
     engine::Vector3 GetDizzyAnchorWorld() const { return dizzyAnchor_; }
+
     float GetTimer() const { return timer_; }
+
     static constexpr float GetImpactTime() { return 0.0f; }
+
     bool HasBaseTransform() const { return hasBaseTransform_; }
 
   private:
     enum class Phase { Downed, ExitRight, ExitFinished };
+
     static constexpr float kPi = 3.14159265f;
+
     static float Clamp01(float v) { return std::clamp(v, 0.0f, 1.0f); }
+
     static float Smooth(float v) {
         v = Clamp01(v);
         return v * v * (3.0f - 2.0f * v);
     }
+
     // 現在の変形を反映し、モデル境界の最下点を床面と跳ね高さに合わせます。
     void ApplyGroundedPose(engine::Object3d* slime, float hop) {
         slime->SetScale(currentScale_);
         slime->SetRotation(currentRotation_);
         slime->SetTranslate(currentPosition_);
         slime->UpdateWorldMatrix(false);
+
         // 回転中もモデル境界の最下点を床へ合わせ、中心点基準の浮き沈みを防ぐ。
         currentPosition_.y += floorY_ + hop - slime->GetModelWorldAABB().min.y;
         slime->SetTranslate(currentPosition_);
@@ -105,6 +120,7 @@ class GameOverSlimeAnimator {
                         (bounds.min.z + bounds.max.z) * 0.5f};
         slime->RefreshRenderCameraData();
     }
+
     // 起き上がり、進行方向への旋回、加速移動の順に退場姿勢を更新します。
     void UpdateExitRight(engine::Object3d* slime, float dt) {
         if (phase_ == Phase::ExitFinished)
@@ -122,12 +138,14 @@ class GameOverSlimeAnimator {
             hop = std::sin(u * kPi) * 0.08f;
         } else {
             const float turn = Smooth((exitTimer_ - standDuration) / turnDuration);
+
             // スライムモデルの正面は-Z。通常プレイヤーと同じ180度補正で進行方向を向く。
             const float yaw = std::atan2(exitDirection_.x, exitDirection_.z) + kPi;
             const float yawDelta = std::atan2(std::sin(yaw - baseRotation_.y), std::cos(yaw - baseRotation_.y));
             currentRotation_ = {baseRotation_.x, baseRotation_.y + yawDelta * turn, baseRotation_.z};
             currentScale_ = baseScale_;
             const float u = Clamp01((exitTimer_ - standDuration - turnDuration) / runDuration);
+
             // 加速して画面外まで進む。起き上がり完了前に横移動を始めない。
             const float move = u * u;
             currentPosition_ = basePosition_ + exitDirection_ * (exitDistance_ * move);
@@ -140,6 +158,7 @@ class GameOverSlimeAnimator {
         if (exitTimer_ >= standDuration + turnDuration + runDuration)
             phase_ = Phase::ExitFinished;
     }
+
     engine::Vector3 basePosition_{}, baseScale_{1, 1, 1}, baseRotation_{};
     engine::Vector3 currentPosition_{}, currentScale_{1, 1, 1}, currentRotation_{}, dizzyAnchor_{};
     engine::Vector3 exitStartScale_{1, 1, 1}, exitStartRotation_{}, exitDirection_{1, 0, 0};

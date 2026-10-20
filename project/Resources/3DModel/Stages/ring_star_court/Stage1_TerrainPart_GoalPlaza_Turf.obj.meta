@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e4c9d1e234b2596397c16cc0902adc26",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_TerrainPart_GoalPlaza_Turf.obj",
+  "version": 1
+}

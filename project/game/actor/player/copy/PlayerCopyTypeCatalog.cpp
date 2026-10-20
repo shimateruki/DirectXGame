@@ -25,6 +25,7 @@ const PlayerCopyTypeDescriptor* PlayerCopyTypeCatalog::Find(std::string_view ene
             return &descriptor;
         }
     }
+
     return nullptr;
 }
 

@@ -7,7 +7,7 @@
 #include <vector>
 
 class Model;
-class Object3dCommon;
+namespace engine { class Object3dCommon; }
 
 /// <summary>
 /// ライト設定ファイル、スカイボックス、ライトギズモを編集する。
@@ -17,24 +17,35 @@ class LightEditor : public IEditable {
 public:
     static LightEditor* GetInstance();
 #ifdef USE_IMGUI
+
     bool* GetGizmoVisiblePtr() { return &isVisibleGizmos_; }
 #endif
 
         // ライト編集に必要な参照を受け取り、UI操作できる状態にします。
 void Initialize();
-    void SetObject3dCommon(Object3dCommon* common);
+
+    void SetObject3dCommon(engine::Object3dCommon* common);
+
     void Update();
+
     void Draw3D();
+
         // ライト種別ごとのパラメータ編集UIを描画します。
 void DrawImGui() override;
+
     std::string GetName() override { return "Light Editor"; }
 
 private:
     void SetStatusMessage(const std::string& message, bool success);
+
     void SyncCurrentFileNameFromManager();
+
     void DrawLightFileList();
+
     void DrawSkyboxTextureList();
+
     void DrawEnvironmentProfilePanel();
+
     std::string BuildFullPathFromFileName() const;
 
     LightManager* lightManager_ = nullptr;
@@ -52,7 +63,7 @@ private:
     bool isVisibleGizmos_ = true;
     float gizmoScale_ = 0.75f;
 
-    Object3dCommon* common_ = nullptr;
+    engine::Object3dCommon* common_ = nullptr;
     std::vector<std::unique_ptr<engine::Object3d>> pointLightGizmos_;
     std::vector<std::unique_ptr<engine::Object3d>> spotLightGizmos_;
 };

@@ -5,7 +5,7 @@
 #include "engine/graphics/postprocess/Fade.h"
 #include "engine/graphics/postprocess/PostEffect.h"
 #include "engine/graphics/3d/camera/CameraManager.h"
-#include "GameDataManager.h"
+#include "game/system/progress/GameDataManager.h"
 #include "SceneManager.h"
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "engine/utility/math/Math.h"
@@ -20,6 +20,7 @@ engine::Vector2 CalculatePlayerIrisCenter(Player* player) {
     // プレイヤーが画面内にいる時だけ投影位置を使い、画面外なら中央から閉じる。
     engine::Vector2 irisCenter = {0.5f, 0.5f};
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+
     if (!player || !cam) {
         return irisCenter;
     }
@@ -32,15 +33,18 @@ engine::Vector2 CalculatePlayerIrisCenter(Player* player) {
     if (isOnScreen) {
         irisCenter = {std::clamp((ndc.x + 1.0f) * 0.5f, 0.18f, 0.82f), std::clamp((1.0f - ndc.y) * 0.5f, 0.16f, 0.78f)};
     }
+
     return irisCenter;
 }
 
 GamePlayScene* GetCurrentGamePlayScene() {
     // 死亡演出はゲームシーン内に限って通知し、プレビュー等では省略する。
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager) {
         return nullptr;
     }
+
     return dynamic_cast<GamePlayScene*>(sceneManager->GetCurrentScene());
 }
 
@@ -63,22 +67,29 @@ void PlayerStateDead::Enter(Player* player) {
     sceneChangeRequested_ = false;
     lifePresentationStarted_ = false;
     finalDeath_ = GameDataManager::GetInstance()->GetLives() <= 1;
+
     // プレビューの死亡演出は隔離し、実戦のカメラ・暗転・シーン遷移を操作しません。
     if (player && player->IsEditorInternal()) {
         deathAnimation_.Start(player, false);
         player->SetIsControlActive(false);
         return;
     }
+
     Fade::GetInstance()->Stop();
+
     if (player) {
         player->SetDamageInvincible(false);
         deathAnimation_.Start(player, finalDeath_);
+
         if (engine::Object3d* hookMarker = player->GetHookMarker()) {
             hookMarker->SetIsVisible(false);
         }
+
         Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+
         if (cam && !(GetCurrentGamePlayScene() && GetCurrentGamePlayScene()->IsSealBarrageMovieActive())) {
             cam->SetFreezeEye(true);
+
             if (finalDeath_) {
                 const engine::Vector3 focus = player->GetWorldPosition() + engine::Vector3{0.0f, 0.58f, 0.0f};
                 engine::Vector3 focusEye = engine::Math::Lerp(cam->GetEye(), focus, 0.16f);
@@ -100,8 +111,10 @@ void PlayerStateDead::Enter(Player* player) {
                 cam->StartShake(0.22f, 0.085f, 30.0f, {0.85f, 0.60f, 0.35f});
             }
         }
+
         irisCenter_ = CalculatePlayerIrisCenter(player);
     }
+
     if (player)
         player->SetIsControlActive(false);
 }
@@ -144,16 +157,19 @@ void PlayerStateDead::Update(Player* player, float deltaTime) {
     }
 
     GamePlayScene* scene = GetCurrentGamePlayScene();
+
     if (scene && !scene->IsLifeLostPresentationFinished()) {
         return;
     }
 
     sceneChangeRequested_ = true;
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+
     if (cam) {
         if (cam->IsOverridden()) {
             cam->EndOverride(0.0f);
         }
+
         cam->SetFreezeEye(false);
     }
 
@@ -172,11 +188,14 @@ void PlayerStateDead::Exit(Player* player) {
         deathAnimation_.RestoreVisual(player);
         player->SetIsControlActive(true);
     }
+
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+
     if (cam) {
         if (cam->IsOverridden()) {
             cam->EndOverride(0.0f);
         }
+
         cam->SetFreezeEye(false);
     }
 }
@@ -191,6 +210,7 @@ void PlayerStateFallingOut::Enter(Player* player) {
     player->SetIsControlActive(false);
     irisCenter_ = CalculatePlayerIrisCenter(player);
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+
     if (cam) {
         cam->SetFreezeEye(true);
     }
@@ -213,11 +233,13 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
     switch (phase_) {
     case Phase::Waiting:
         waitTimer_ += deltaTime;
+
         if (waitTimer_ >= 1.55f) {
             // アイリスアウト開始
             Fade::GetInstance()->StartIrisOut(1.35f, irisCenter_);
             phase_ = Phase::IrisOut;
         }
+
         break;
 
     case Phase::IrisOut:
@@ -227,6 +249,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
             phase_ = Phase::LifeLost;
             break;
         }
+
         break;
 
     case Phase::LifeLost:
@@ -251,9 +274,11 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
         CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(true);
 
         irisCenter_ = CalculatePlayerIrisCenter(player);
+
         if (GamePlayScene* scene = GetCurrentGamePlayScene()) {
             scene->HideLifeLostPresentationOverlay();
         }
+
         Fade::GetInstance()->StartIrisIn(1.25f, irisCenter_);
         phase_ = Phase::IrisIn;
         break;
@@ -265,6 +290,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
             player->ChangeState(std::make_unique<PlayerStateIdle>());
             player->SetIsControlActive(true);
         }
+
         break;
     }
 }
@@ -274,5 +300,6 @@ void PlayerStateFallingOut::Exit(Player* player) {
     if (player) {
         player->SetIsControlActive(true);
     }
+
     CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
 }

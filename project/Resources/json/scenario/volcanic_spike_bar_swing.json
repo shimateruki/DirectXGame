@@ -1,0 +1,646 @@
+{
+    "version": 6,
+    "name": "volcanic_spike_bar_swing",
+    "duration": 4.0,
+    "tracks": [
+        {
+            "name": "棘バー：振り子",
+            "targetName": "VolcanicSpikeBar",
+            "targetEventId": -1,
+            "startTime": 0,
+            "enabled": true,
+            "muted": false,
+            "relative": true,
+            "holdLast": true,
+            "keys": [
+                {
+                    "time": 0.0,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 0.125,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.13656322541128976
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 0.25,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.26787840265556284
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 0.375,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.3888991631137215
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 0.5,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.4949747468305833
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 0.625,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.5820287286117817
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 0.75,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.6467156727579007
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 0.875,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.6865496962822613
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.0,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.7
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.125,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.6865496962822613
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.25,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.6467156727579007
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.375,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.5820287286117817
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.5,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.4949747468305833
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.625,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.3888991631137215
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.75,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.2678784026555629
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.875,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0.13656322541129
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.0,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        8.572527594031472e-17
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.125,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.13656322541128985
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.25,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.26787840265556273
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.375,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.38889916311372136
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.5,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.4949747468305832
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.625,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.5820287286117817
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.75,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.6467156727579005
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 2.875,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.6865496962822611
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.0,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.7
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.125,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.6865496962822613
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.25,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.6467156727579007
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.375,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.5820287286117818
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.5,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.49497474683058335
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.625,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.3888991631137215
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.75,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.26787840265556323
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 3.875,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -0.1365632254112901
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 4.0,
+                    "position": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        -1.7145055188062944e-16
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                }
+            ]
+        }
+    ]
+}

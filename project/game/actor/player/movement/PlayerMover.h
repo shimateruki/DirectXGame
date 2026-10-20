@@ -6,8 +6,8 @@
 
 // 前方宣言
 class Player;
-class InputManager;
-class ParticleSystem; // ジャンプエフェクト用
+namespace engine { class InputManager; }
+namespace engine { class ParticleSystem; } // ジャンプエフェクト用
 class IMoveStrategy;  // 戦略インターフェース
 namespace engine { class Object3d; }       // 子オブジェクト用
 
@@ -17,24 +17,37 @@ namespace engine { class Object3d; }       // 子オブジェクト用
 class PlayerMover {
   public:
     PlayerMover();
+
     ~PlayerMover();
 
     /// <summary>
     /// 初期化
     /// </summary>
-    void Initialize(Player* player, InputManager* inputManager, ParticleSystem* particleSystem);
+    void Initialize(Player* player, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem);
 
     /// <summary>
     /// 毎フレームの更新（移動・回転・ジャンプ）
     /// </summary>
     void Update(float deltaTime);
+
+    // 物理更新後の接地結果から、身体と砂煙で共有する着地強度を返します。
+    float UpdateLandingFeedback(float prePhysicsVelocityY, float deltaTime, bool allowFeedback);
+
     // 操作を一時停止している攻撃中も、通常移動と同じ基準の入力方向を取得する。
     // 入力がない場合はゼロベクトルを返し、移動速度やプレイヤーの向きは変更しない。
     engine::Vector3 GetMoveInputDirection();
+
     // 移動が一時停止しているフレームも入力の寿命を進めます。
     void SampleJumpInput(float deltaTime, bool discard);
+
     const char* GetJumpStatus() const { return jumpStatus_; }
+
     void SetPlatformMotion(const engine::Vector3& velocity) { platformVelocity_ = velocity; }
+
+    // 能力で受けた水平の押し出しを空中で短く残し、通常の移動入力と合成します。
+    void SetAbilityAirImpulse(const engine::Vector3& velocity) {
+        abilityAirVelocity_ = {velocity.x, 0.0f, velocity.z};
+    }
 
     /// <summary>
     /// 移動戦略（操作方法）を切り替える
@@ -42,22 +55,27 @@ class PlayerMover {
     void SetStrategy(std::unique_ptr<IMoveStrategy> strategy);
 
     bool IsDashing() const { return isDashing_; }
+
     void StopDashOnImpact();
+
     // ワープや演出復帰時に、継続中のダッシュ・床補正・ジャンプ溜めを破棄します。
     void ResetTransientState();
+
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
 
   private:
     engine::Vector3 platformVelocity_{};
     engine::Vector3 platformAirVelocity_{};
+    engine::Vector3 abilityAirVelocity_{};
     PlayerJumpRequest jumpRequest_;
     const char* jumpStatus_ = "入力待ち";
+
     void EmitGroundDust(const char* presetName, float yOffset) const;
 
     // 参照用ポインタ
     Player* player_ = nullptr;
-    InputManager* inputManager_ = nullptr;
-    ParticleSystem* particleSystem_ = nullptr;
+    engine::InputManager* inputManager_ = nullptr;
+    engine::ParticleSystem* particleSystem_ = nullptr;
 
     // 移動戦略 (2D/3Dなど)
     std::unique_ptr<IMoveStrategy> strategy_ = nullptr;
@@ -98,4 +116,6 @@ class PlayerMover {
     bool hasGroundedHistory_ = false;
     bool wasGroundedLastFrame_ = false;
     float landingDustCooldown_ = 0.0f;
+    float airborneDuration_ = 0.0f;
+    float airborneMaxDownSpeed_ = 0.0f;
 };

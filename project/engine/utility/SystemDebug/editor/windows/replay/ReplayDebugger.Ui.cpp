@@ -45,10 +45,13 @@ bool ReadCustomVector3(const json& custom, const char* key, engine::Vector3& res
     if (!custom.contains(key)) {
         return false;
     }
+
     const json& value = custom[key];
+
     if (!value.is_array() || value.size() < 3) {
         return false;
     }
+
     result = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
     return true;
 }
@@ -61,6 +64,7 @@ void DrawVector3Row(const char* label, const engine::Vector3& value, const engin
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%.3f, %.3f, %.3f", value.x, value.y, value.z);
     ImGui::TableSetColumnIndex(2);
+
     if (previous) {
         ImGui::TextDisabled(
             "%+.3f, %+.3f, %+.3f",
@@ -80,6 +84,7 @@ void DrawVector2Row(const char* label, const engine::Vector2& value, const engin
     ImGui::TableSetColumnIndex(1);
     ImGui::Text("%.3f, %.3f", value.x, value.y);
     ImGui::TableSetColumnIndex(2);
+
     if (previous) {
         ImGui::TextDisabled("%+.3f, %+.3f", value.x - previous->x, value.y - previous->y);
     } else {
@@ -89,29 +94,39 @@ void DrawVector2Row(const char* label, const engine::Vector2& value, const engin
 
 // 削除・死亡・非表示の優先順でObjectの再生状態を表示します。
 const char* GetObjectStateLabel(const engine::Object3d::ReplayState& state) {
-    if (state.replayRemoved) return "削除済み";
-    if (state.dead) return "死亡";
-    if (!state.visible) return "非表示";
+    if (state.replayRemoved)
+        return "削除済み";
+    if (state.dead)
+        return "死亡";
+    if (!state.visible)
+        return "非表示";
     return "有効";
 }
 
 ImVec4 GetObjectStateColor(const engine::Object3d::ReplayState& state) {
-    if (state.replayRemoved) return ImVec4(0.95f, 0.42f, 0.24f, 1.0f);
-    if (state.dead) return ImVec4(0.95f, 0.28f, 0.38f, 1.0f);
-    if (!state.visible) return ImVec4(0.62f, 0.66f, 0.72f, 1.0f);
+    if (state.replayRemoved)
+        return ImVec4(0.95f, 0.42f, 0.24f, 1.0f);
+    if (state.dead)
+        return ImVec4(0.95f, 0.28f, 0.38f, 1.0f);
+    if (!state.visible)
+        return ImVec4(0.62f, 0.66f, 0.72f, 1.0f);
     return ImVec4(0.38f, 0.88f, 0.52f, 1.0f);
 }
 
 // リプレイから削除されたSpriteと一時的な非表示を区別します。
 const char* GetSpriteStateLabel(const engine::Sprite::ReplayState& state) {
-    if (state.replayRemoved) return "削除済み";
-    if (!state.visible) return "非表示";
+    if (state.replayRemoved)
+        return "削除済み";
+    if (!state.visible)
+        return "非表示";
     return "表示中";
 }
 
 ImVec4 GetSpriteStateColor(const engine::Sprite::ReplayState& state) {
-    if (state.replayRemoved) return ImVec4(0.95f, 0.42f, 0.24f, 1.0f);
-    if (!state.visible) return ImVec4(0.62f, 0.66f, 0.72f, 1.0f);
+    if (state.replayRemoved)
+        return ImVec4(0.95f, 0.42f, 0.24f, 1.0f);
+    if (!state.visible)
+        return ImVec4(0.62f, 0.66f, 0.72f, 1.0f);
     return ImVec4(0.38f, 0.78f, 1.0f, 1.0f);
 }
 }
@@ -134,12 +149,15 @@ void ReplayDebugger::Draw(bool* open) {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("リプレイ")) {
             const bool hasFrames = HasFrames();
+
             if (ImGui::MenuItem("一時停止", "Space", false, mode_ == Mode::Recording && hasFrames)) {
                 PauseAt(frames_.size() - 1);
             }
+
             if (ImGui::MenuItem("履歴を再生", "Space", false, mode_ == Mode::Paused && hasFrames)) {
                 StartPlayback();
             }
+
             const bool canBranchFromMenu =
                 mode_ == Mode::Paused && hasFrames &&
                 (!loadedArchiveReadOnly_ || CanResumeLoadedArchive());
@@ -147,24 +165,30 @@ void ReplayDebugger::Draw(bool* open) {
                 canBranchFromMenu)) {
                 ResumeFromCursor();
             }
+
             ImGui::Separator();
+
             if (ImGui::MenuItem("履歴をクリア", nullptr, false, hasFrames)) {
                 ClearHistory(mode_ == Mode::Recording);
             }
+
             ImGui::EndMenu();
         }
+
         if (ImGui::BeginMenu("表示")) {
             ImGui::MenuItem("変化したObjectのみ", nullptr, &showOnlyChangedObjects_);
             ImGui::MenuItem("削除済みObjectを表示", nullptr, &showRemovedObjects_);
             ImGui::MenuItem("記録中は末尾へ追従", nullptr, &autoScrollTimeline_);
             ImGui::EndMenu();
         }
+
         ImGui::EndMenuBar();
     }
 
     // メニュー・ショートカットのあと、保存履歴／再生／詳細解析を同じ記録状態から表示します。
     HandleEditorShortcuts();
-    if (!statusMessage_.empty()) ImGui::TextWrapped("%s", statusMessage_.c_str());
+    if (!statusMessage_.empty())
+        ImGui::TextWrapped("%s", statusMessage_.c_str());
     if (ImGui::BeginTabBar("ReplayWorkspaceTabs")) {
         if (ImGui::BeginTabItem("保存済みリプレイ")) {
             ImGui::TextWrapped("保存した記録は、ゲームを起動し直してもここから読み込めます。元のシーンとアセットが必要です。");
@@ -172,41 +196,51 @@ void ReplayDebugger::Draw(bool* open) {
             DrawArchivePanel();
             ImGui::EndTabItem();
         }
+
         if (ImGui::BeginTabItem("再生・確認")) {
-            if (!HasFrames()) ImGui::TextWrapped("記録がありません。Play中に記録するか、「保存済みリプレイ」から読み込んでください。");
+            if (!HasFrames())
+                ImGui::TextWrapped("記録がありません。Play中に記録するか、「保存済みリプレイ」から読み込んでください。");
             DrawToolbar();
             DrawTimelineEditor();
             ImGui::EndTabItem();
         }
+
         if (ImGui::BeginTabItem("詳細解析")) {
             DrawRegressionPanel();
             DrawSummaryCards();
 
             // 左側の個体一覧で選んだ ID のSnapshotを右側へ表示し、設定欄も同じペインに置きます。
             ImGui::SeparatorText("フレーム内要素");
+
             if (ImGui::RadioButton("Object3D", !inspectSprites_)) {
                 inspectSprites_ = false;
             }
+
             ImGui::SameLine();
+
             if (ImGui::RadioButton("Sprite / UI", inspectSprites_)) {
                 inspectSprites_ = true;
             }
+
             const float availableWidth = ImGui::GetContentRegionAvail().x;
             const float browserWidth = (std::max)(500.0f, availableWidth * 0.62f);
             ImGui::BeginChild("##ReplayObjectBrowserPane", ImVec2(browserWidth, 0.0f), true);
-            if (inspectSprites_) DrawSpriteBrowser();
+            if (inspectSprites_)
+                DrawSpriteBrowser();
             else DrawObjectBrowser();
             ImGui::EndChild();
 
             ImGui::SameLine();
             ImGui::BeginChild("##ReplayObjectInspectorPane", ImVec2(0.0f, 0.0f), true);
-            if (inspectSprites_) DrawSpriteInspector();
+            if (inspectSprites_)
+                DrawSpriteInspector();
             else DrawObjectInspector();
             DrawSettingsPanel();
             ImGui::EndChild();
 
             ImGui::EndTabItem();
         }
+
         ImGui::EndTabBar();
     }
 
@@ -226,12 +260,15 @@ void ReplayDebugger::DrawToolbar() {
 
     BaseScene* activeScene = GetValidatedActiveScene();
     const bool hasFrames = HasFrames();
+
     if (mode_ == Mode::Idle) {
         ImGui::BeginDisabled(!activeScene);
+
         if (ImGui::Button("● 記録開始", ImVec2(116.0f, 0.0f))) {
             BeginRecording(activeScene);
             statusMessage_ = "リプレイ記録を開始しました。";
         }
+
         ImGui::EndDisabled();
     } else if (mode_ == Mode::Recording) {
         if (ImGui::Button("■ 一時停止", ImVec2(116.0f, 0.0f))) {
@@ -255,19 +292,27 @@ void ReplayDebugger::DrawToolbar() {
 
     ImGui::SameLine();
     ImGui::BeginDisabled(!hasFrames || mode_ == Mode::Regression);
-    if (ImGui::Button("|<")) PauseAt(0);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("記録先頭へ (Home)");
+    if (ImGui::Button("|<"))
+        PauseAt(0);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("記録先頭へ (Home)");
     ImGui::SameLine();
-    if (ImGui::Button("<<")) StepCursor(-10);
+    if (ImGui::Button("<<"))
+        StepCursor(-10);
     ImGui::SameLine();
-    if (ImGui::Button("<")) StepCursor(-1);
+    if (ImGui::Button("<"))
+        StepCursor(-1);
     ImGui::SameLine();
-    if (ImGui::Button(">")) StepCursor(1);
+    if (ImGui::Button(">"))
+        StepCursor(1);
     ImGui::SameLine();
-    if (ImGui::Button(">>")) StepCursor(10);
+    if (ImGui::Button(">>"))
+        StepCursor(10);
     ImGui::SameLine();
-    if (ImGui::Button(">|")) PauseAt(frames_.size() - 1);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("記録末尾へ (End)");
+    if (ImGui::Button(">|"))
+        PauseAt(frames_.size() - 1);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("記録末尾へ (End)");
 
     ImGui::SameLine();
     ImGui::SetNextItemWidth(96.0f);
@@ -276,13 +321,16 @@ void ReplayDebugger::DrawToolbar() {
     ImGui::SameLine();
     const std::size_t futureFrames = cursor_ < frames_.size() ? frames_.size() - cursor_ - 1 : 0;
     std::string archiveResumeBlockReason;
+
     // 保存済み履歴からの分岐は、元 Scene を復元できる場合だけ許可する。
     const bool archiveResumeReady =
         !loadedArchiveReadOnly_ || CanResumeLoadedArchive(&archiveResumeBlockReason);
     ImGui::BeginDisabled(mode_ == Mode::Recording || mode_ == Mode::Regression || !archiveResumeReady);
+
     if (ImGui::Button("この時点から分岐再開", ImVec2(188.0f, 0.0f))) {
         ResumeFromCursor();
     }
+
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         if (loadedArchiveReadOnly_) {
             if (archiveResumeReady) {
@@ -294,12 +342,15 @@ void ReplayDebugger::DrawToolbar() {
             ImGui::SetTooltip("選択位置より後ろの %zu フレームを破棄してゲームを再開します。", futureFrames);
         }
     }
+
     ImGui::EndDisabled();
 
     ImGui::SameLine();
+
     if (ImGui::Button("履歴クリア")) {
         ClearHistory(mode_ == Mode::Recording);
     }
+
     ImGui::EndDisabled();
 
 }
@@ -311,20 +362,25 @@ void ReplayDebugger::DrawArchivePanel() {
 
     const bool canSave = HasFrames() && !loadedArchiveReadOnly_;
     ImGui::BeginDisabled(!canSave);
+
     if (ImGui::Button("現在の履歴を保存", ImVec2(164.0f, 0.0f))) {
         SaveCurrentReplayArchive();
     }
+
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
         ImGui::SetTooltip(canSave
             ? "現在保持している履歴を Saved/Replays に保存します。"
             : "実行中に記録した履歴だけ保存できます。");
     }
+
     ImGui::EndDisabled();
 
     ImGui::SameLine();
+
     if (ImGui::Button("一覧を更新")) {
         RefreshReplayArchiveList();
     }
+
     ImGui::SameLine();
     ImGui::TextDisabled("保存先: Saved/Replays");
 
@@ -334,8 +390,10 @@ void ReplayDebugger::DrawArchivePanel() {
         if (selectedArchiveIndex_ < 0 || selectedArchiveIndex_ >= static_cast<int>(replayArchiveEntries_.size())) {
             selectedArchiveIndex_ = 0;
         }
+
         const ReplayArchiveEntry& selected = replayArchiveEntries_[selectedArchiveIndex_];
         ImGui::SetNextItemWidth((std::max)(360.0f, ImGui::GetContentRegionAvail().x * 0.48f));
+
         if (ImGui::BeginCombo("保存データ", selected.fileName.c_str())) {
             for (int index = 0; index < static_cast<int>(replayArchiveEntries_.size()); ++index) {
                 const ReplayArchiveEntry& entry = replayArchiveEntries_[index];
@@ -343,13 +401,17 @@ void ReplayDebugger::DrawArchivePanel() {
                 const std::string label = entry.valid
                     ? entry.fileName + "  |  " + entry.sceneLabel
                     : entry.fileName + "  |  読込不可";
-                if (ImGui::Selectable(label.c_str(), isSelected)) selectedArchiveIndex_ = index;
-                if (isSelected) ImGui::SetItemDefaultFocus();
+                if (ImGui::Selectable(label.c_str(), isSelected))
+                    selectedArchiveIndex_ = index;
+                if (isSelected)
+                    ImGui::SetItemDefaultFocus();
             }
+
             ImGui::EndCombo();
         }
 
         const ReplayArchiveEntry& current = replayArchiveEntries_[selectedArchiveIndex_];
+
         if (current.valid) {
             ImGui::TextDisabled("%s  |  %s  |  %.2f秒 / %zu状態 / %zu入力",
                 current.createdAt.c_str(), current.sceneLabel.c_str(),
@@ -359,6 +421,8 @@ void ReplayDebugger::DrawArchivePanel() {
         }
 
         ImGui::BeginDisabled(!current.valid || pendingReplayArchive_.has_value());
+
+        // メモリ上の未保存履歴を置き換える場合だけ確認を挟む。
         if (ImGui::Button("選んだリプレイを読み込む", ImVec2(220.0f, 0.0f))) {
             if (HasFrames() && !loadedArchiveReadOnly_) {
                 ImGui::OpenPopup("現行リプレイ履歴を置き換えますか？");
@@ -366,20 +430,25 @@ void ReplayDebugger::DrawArchivePanel() {
                 RequestLoadReplayArchive(static_cast<std::size_t>(selectedArchiveIndex_));
             }
         }
+
         ImGui::EndDisabled();
 
         if (ImGui::CollapsingHeader("開発用：入力を再実行して検証")) {
+        // 旧アーカイブは状態の再生だけ可能で、入力列がある記録だけ実シミュレーションを再実行できる。
         const bool canStartRegression = current.valid && current.regressionReady &&
             !pendingReplayArchive_.has_value() && mode_ != Mode::Regression;
         ImGui::BeginDisabled(!canStartRegression);
+
         if (ImGui::Button("自動回帰テスト", ImVec2(164.0f, 0.0f))) {
             RequestStartRegression(static_cast<std::size_t>(selectedArchiveIndex_));
         }
+
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip(current.regressionReady
                 ? "元シーンを開き、記録入力で実シミュレーションを再実行します。"
                 : "旧形式または入力列なしのReplayです。新しく記録・保存すると実行できます。");
         }
+
         ImGui::EndDisabled();
 
         }
@@ -387,14 +456,18 @@ void ReplayDebugger::DrawArchivePanel() {
         if (ImGui::BeginPopupModal("現行リプレイ履歴を置き換えますか？", nullptr,
             ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::TextWrapped("現在のメモリ内リプレイ履歴は破棄されます。必要なら先に保存してください。");
+
             if (ImGui::Button("読込を続行", ImVec2(132.0f, 0.0f))) {
                 RequestLoadReplayArchive(static_cast<std::size_t>(selectedArchiveIndex_));
                 ImGui::CloseCurrentPopup();
             }
+
             ImGui::SameLine();
+
             if (ImGui::Button("キャンセル", ImVec2(112.0f, 0.0f))) {
                 ImGui::CloseCurrentPopup();
             }
+
             ImGui::EndPopup();
         }
     }
@@ -404,10 +477,13 @@ void ReplayDebugger::DrawArchivePanel() {
             ? "読込準備完了：画面上部の「再生」でPlayを開始してください。保存履歴の先頭で停止します。"
             : "読込中：元のシーンを準備しています。");
     }
+
     if (loadedArchiveReadOnly_) {
         ImGui::TextWrapped("保存済みを閲覧中：%s。「再生・確認」タブで再生・コマ送りできます。保存ファイルは変更しません。", loadedArchiveName_.c_str());
+
         if (ImGui::CollapsingHeader("この記録からゲームを再開する場合")) {
         std::string resumeBlockReason;
+
         if (CanResumeLoadedArchive(&resumeBlockReason)) {
             ImGui::TextColored(ImVec4(0.36f, 0.92f, 0.58f, 1.0f),
                 "分岐再開可能: %s（任意フレームでゲームへ復帰できます）", loadedArchiveName_.c_str());
@@ -416,6 +492,7 @@ void ReplayDebugger::DrawArchivePanel() {
                 "閲覧中: %s（分岐停止理由: %s）",
                 loadedArchiveName_.c_str(), resumeBlockReason.c_str());
         }
+
         if (recreatedArchiveObjectCount_ > 0) {
             ImGui::TextDisabled("Archiveから動的Objectを %zu 件再生成しました。",
                 recreatedArchiveObjectCount_);
@@ -475,17 +552,25 @@ void ReplayDebugger::DrawRegressionPanel() {
     if (ImGui::BeginTable("ReplayRegressionMetrics", 6,
         ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame)) {
         const char* labels[] = { "再実行", "比較", "最大軌跡誤差", "CPU 平均/最大", "GPU 平均/最大", "Error" };
+
         for (const char* label : labels) {
             ImGui::TableSetupColumn(label);
         }
+
         ImGui::TableHeadersRow();
         ImGui::TableNextRow();
-        ImGui::TableNextColumn(); ImGui::Text("%zu", regressionResult_.simulatedFrames);
-        ImGui::TableNextColumn(); ImGui::Text("%zu", regressionResult_.comparedFrames);
-        ImGui::TableNextColumn(); ImGui::Text("%.3f", regressionResult_.maxPositionError);
-        ImGui::TableNextColumn(); ImGui::Text("%.2f / %.2f", regressionResult_.averageCpuMs, regressionResult_.maximumCpuMs);
-        ImGui::TableNextColumn(); ImGui::Text("%.2f / %.2f", regressionResult_.averageGpuMs, regressionResult_.maximumGpuMs);
-        ImGui::TableNextColumn(); ImGui::Text("%llu", static_cast<unsigned long long>(regressionResult_.newErrorLogs));
+        ImGui::TableNextColumn();
+        ImGui::Text("%zu", regressionResult_.simulatedFrames);
+        ImGui::TableNextColumn();
+        ImGui::Text("%zu", regressionResult_.comparedFrames);
+        ImGui::TableNextColumn();
+        ImGui::Text("%.3f", regressionResult_.maxPositionError);
+        ImGui::TableNextColumn();
+        ImGui::Text("%.2f / %.2f", regressionResult_.averageCpuMs, regressionResult_.maximumCpuMs);
+        ImGui::TableNextColumn();
+        ImGui::Text("%.2f / %.2f", regressionResult_.averageGpuMs, regressionResult_.maximumGpuMs);
+        ImGui::TableNextColumn();
+        ImGui::Text("%llu", static_cast<unsigned long long>(regressionResult_.newErrorLogs));
         ImGui::EndTable();
     }
 
@@ -495,6 +580,7 @@ void ReplayDebugger::DrawRegressionPanel() {
     for (const std::string& failure : regressionResult_.failures) {
         ImGui::BulletText("%s", failure.c_str());
     }
+
     if (!regressionResult_.reportPath.empty()) {
         ImGui::TextWrapped("Report: %s", regressionResult_.reportPath.c_str());
     }
@@ -528,6 +614,7 @@ void ReplayDebugger::DrawSummaryCards() {
         ImGui::EndChild();
         ImGui::PopStyleColor();
     }
+
     ImGui::EndTable();
 }
 
@@ -540,6 +627,7 @@ void ReplayDebugger::DrawTimelineEditor() {
     ImGui::Checkbox("記録末尾へ追従", &autoScrollTimeline_);
 
     const float timelineHeight = kTimelineHeaderHeight + kTimelineLaneHeight * 3.0f + kTimelineBottomPadding;
+
     if (frames_.empty()) {
         ImGui::BeginChild("##ReplayEmptyTimeline", ImVec2(0.0f, timelineHeight), true);
         ImGui::TextDisabled("ゲームを再生すると、ここにリプレイ履歴が記録されます。");
@@ -573,21 +661,26 @@ void ReplayDebugger::DrawTimelineEditor() {
 
     // Frameの密度、生成/削除、HP/死亡を別レーンに分け、変化の種類を一目で追えるようにします。
     const char* laneNames[] = { "Frames", "Spawn / Remove", "HP / Death" };
+
     for (int lane = 0; lane < 3; ++lane) {
         const float y0 = origin.y + kTimelineHeaderHeight + lane * kTimelineLaneHeight;
         const float y1 = y0 + kTimelineLaneHeight;
+
         if ((lane % 2) == 0) {
             drawList->AddRectFilled(ImVec2(origin.x, y0), ImVec2(end.x, y1), IM_COL32(255, 255, 255, 6));
         }
+
         drawList->AddLine(ImVec2(origin.x, y1), ImVec2(end.x, y1), IM_COL32(62, 68, 80, 190));
         drawList->AddText(ImVec2(origin.x + 8.0f, y0 + 5.0f), IM_COL32(205, 213, 226, 255), laneNames[lane]);
     }
 
     // ズームに合わせて目盛り間隔を変え、整数秒にだけラベルを付けます。
     float tickStep = 1.0f;
-    if (timelinePixelsPerSecond_ >= 220.0f) tickStep = 0.25f;
+    if (timelinePixelsPerSecond_ >= 220.0f)
+        tickStep = 0.25f;
     else if (timelinePixelsPerSecond_ >= 110.0f) tickStep = 0.5f;
     const int tickCount = static_cast<int>(std::ceil(duration / tickStep));
+
     for (int tick = 0; tick <= tickCount; ++tick) {
         const float elapsed = tick * tickStep;
         const float x = origin.x + kLabelWidth + elapsed * timelinePixelsPerSecond_;
@@ -615,6 +708,7 @@ void ReplayDebugger::DrawTimelineEditor() {
         drawList->AddLine(ImVec2(x, frameY0), ImVec2(x, frameY1), IM_COL32(90, 175, 235, changeAlpha), 1.0f);
 
         const float presenceY = origin.y + kTimelineHeaderHeight + kTimelineLaneHeight * 1.5f;
+
         if (frame.diagnostics.spawnedObjects > 0) {
             drawList->AddTriangleFilled(
                 ImVec2(x, presenceY - 7.0f),
@@ -622,6 +716,7 @@ void ReplayDebugger::DrawTimelineEditor() {
                 ImVec2(x + 5.0f, presenceY + 5.0f),
                 IM_COL32(80, 225, 130, 255));
         }
+
         if (frame.diagnostics.removedObjects > 0) {
             drawList->AddRectFilled(
                 ImVec2(x - 4.0f, presenceY - 4.0f),
@@ -631,9 +726,11 @@ void ReplayDebugger::DrawTimelineEditor() {
         }
 
         const float hpY = origin.y + kTimelineHeaderHeight + kTimelineLaneHeight * 2.5f;
+
         if (frame.diagnostics.hpChanges > 0) {
             drawList->AddCircleFilled(ImVec2(x, hpY), 4.0f, IM_COL32(255, 205, 65, 255));
         }
+
         if (frame.diagnostics.deaths > 0) {
             drawList->AddCircle(ImVec2(x, hpY), 7.0f, IM_COL32(255, 70, 100, 255), 0, 2.0f);
         }
@@ -652,17 +749,21 @@ void ReplayDebugger::DrawTimelineEditor() {
     // Hover時は最も近い保存Frameの診断値を示し、クリック/ドラッグでその時刻へ移動します。
     if (ImGui::IsItemHovered()) {
         const ImVec2 mouse = ImGui::GetIO().MousePos;
+
         if (mouse.x >= origin.x + kLabelWidth) {
             const double hoverTime = startTime + (mouse.x - origin.x - kLabelWidth) / timelinePixelsPerSecond_;
             std::size_t nearest = 0;
             double bestDistance = std::abs(frames_.front().time - hoverTime);
+
             for (std::size_t index = 1; index < frames_.size(); ++index) {
                 const double distance = std::abs(frames_[index].time - hoverTime);
+
                 if (distance < bestDistance) {
                     bestDistance = distance;
                     nearest = index;
                 }
             }
+
             const FrameSnapshot& hovered = frames_[nearest];
             ImGui::BeginTooltip();
             ImGui::Text("Frame %zu  |  %.3f 秒", nearest, hovered.time - startTime);
@@ -678,6 +779,7 @@ void ReplayDebugger::DrawTimelineEditor() {
                 SelectFrameFromTimeline(selectedTime);
             }
         }
+
         if (ImGui::GetIO().KeyCtrl && std::abs(ImGui::GetIO().MouseWheel) > 0.0f) {
             timelinePixelsPerSecond_ = (std::clamp)(
                 timelinePixelsPerSecond_ + ImGui::GetIO().MouseWheel * 18.0f,
@@ -690,6 +792,7 @@ void ReplayDebugger::DrawTimelineEditor() {
     if (mode_ == Mode::Recording && autoScrollTimeline_) {
         ImGui::SetScrollX(ImGui::GetScrollMaxX());
     }
+
     ImGui::EndChild();
 }
 
@@ -730,38 +833,47 @@ void ReplayDebugger::DrawObjectBrowser() {
     ImGui::TableHeadersRow();
 
     const FrameSnapshot* previousFrame = cursor_ > 0 ? &frames_[cursor_ - 1] : nullptr;
+
     for (const ObjectSnapshot& snapshot : frame.objects) {
         const ObjectSnapshot* previous = previousFrame ? FindObjectSnapshot(*previousFrame, snapshot.replayId) : nullptr;
         const bool changed = !previous || HasMeaningfulChange(*previous, snapshot);
-        if (showOnlyChangedObjects_ && !changed) continue;
-        if (!showRemovedObjects_ && snapshot.state.replayRemoved) continue;
+        if (showOnlyChangedObjects_ && !changed)
+            continue;
+        if (!showRemovedObjects_ && snapshot.state.replayRemoved)
+            continue;
         if (!filter.empty()) {
             const std::string searchable = ToLower(snapshot.name + " " + snapshot.className);
-            if (searchable.find(filter) == std::string::npos) continue;
+            if (searchable.find(filter) == std::string::npos)
+                continue;
         }
 
         ImGui::PushID(static_cast<int>(snapshot.replayId & 0x7fffffff));
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         const bool selected = selectedReplayId_ == snapshot.replayId;
+
         if (ImGui::Selectable(snapshot.name.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick)) {
             selectedReplayId_ = snapshot.replayId;
+
             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                 SelectSceneObject(snapshot.replayId);
             }
         }
+
         ImGui::TableSetColumnIndex(1);
         ImGui::TextDisabled("%s", snapshot.className.c_str());
         ImGui::TableSetColumnIndex(2);
         ImGui::TextColored(GetObjectStateColor(snapshot.state), "%s", GetObjectStateLabel(snapshot.state));
         ImGui::TableSetColumnIndex(3);
-        if (snapshot.state.hasParameter) ImGui::Text("%.1f", snapshot.state.parameter.hp);
+        if (snapshot.state.hasParameter)
+            ImGui::Text("%.1f", snapshot.state.parameter.hp);
         else ImGui::TextDisabled("-");
         ImGui::TableSetColumnIndex(4);
         ImGui::Text("%.2f", snapshot.state.translation.x);
         ImGui::TableSetColumnIndex(5);
         ImGui::Text("%.2f", snapshot.state.translation.y);
         ImGui::TableSetColumnIndex(6);
+
         if (!previous) {
             ImGui::TextColored(ImVec4(0.40f, 0.88f, 0.52f, 1.0f), "新規");
         } else if (!changed) {
@@ -774,8 +886,10 @@ void ReplayDebugger::DrawObjectBrowser() {
         } else {
             ImGui::Text("Transform");
         }
+
         ImGui::PopID();
     }
+
     ImGui::EndTable();
 }
 
@@ -819,17 +933,22 @@ void ReplayDebugger::DrawSpriteBrowser() {
     for (const SpriteSnapshot& snapshot : frame.sprites) {
         const SpriteSnapshot* previous = previousFrame ? FindSpriteSnapshot(*previousFrame, snapshot.replayId) : nullptr;
         const bool changed = !previous || HasMeaningfulChange(*previous, snapshot);
-        if (showOnlyChangedObjects_ && !changed) continue;
-        if (!showRemovedObjects_ && snapshot.state.replayRemoved) continue;
-        if (!filter.empty() && ToLower(snapshot.name).find(filter) == std::string::npos) continue;
+        if (showOnlyChangedObjects_ && !changed)
+            continue;
+        if (!showRemovedObjects_ && snapshot.state.replayRemoved)
+            continue;
+        if (!filter.empty() && ToLower(snapshot.name).find(filter) == std::string::npos)
+            continue;
 
         ImGui::PushID(static_cast<int>(snapshot.replayId & 0x7fffffff));
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         const bool selected = selectedSpriteReplayId_ == snapshot.replayId;
+
         if (ImGui::Selectable(snapshot.name.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns)) {
             selectedSpriteReplayId_ = snapshot.replayId;
         }
+
         ImGui::TableSetColumnIndex(1);
         ImGui::TextColored(GetSpriteStateColor(snapshot.state), "%s", GetSpriteStateLabel(snapshot.state));
         ImGui::TableSetColumnIndex(2);
@@ -841,6 +960,7 @@ void ReplayDebugger::DrawSpriteBrowser() {
         ImGui::TableSetColumnIndex(5);
         ImGui::Text("%.1f", snapshot.state.size.y);
         ImGui::TableSetColumnIndex(6);
+
         if (!previous) {
             ImGui::TextColored(ImVec4(0.40f, 0.88f, 0.52f, 1.0f), "新規");
         } else if (!changed) {
@@ -852,28 +972,35 @@ void ReplayDebugger::DrawSpriteBrowser() {
         } else {
             ImGui::Text("見た目");
         }
+
         ImGui::PopID();
     }
+
     ImGui::EndTable();
 }
 
 void ReplayDebugger::DrawObjectInspector() {
     // 選択 Object の記録値を直前フレームと比較し、現在の Scene への選択も提供する。
     ImGui::SeparatorText("Object差分Inspector");
+
     if (frames_.empty() || selectedReplayId_ == 0) {
         ImGui::TextDisabled("左の一覧からObjectを選択してください。");
         return;
     }
 
     const ObjectSnapshot* current = FindObjectSnapshot(frames_[cursor_], selectedReplayId_);
+
     if (!current) {
         ImGui::TextDisabled("このフレームには選択Objectが存在しません。");
         ImGui::TextWrapped("生成前または削除後の区間です。変化ナビゲーションで出現・消滅フレームへ移動できます。");
-        if (ImGui::Button("< 前の変化")) JumpToObjectChange(-1);
+        if (ImGui::Button("< 前の変化"))
+            JumpToObjectChange(-1);
         ImGui::SameLine();
-        if (ImGui::Button("次の変化 >")) JumpToObjectChange(1);
+        if (ImGui::Button("次の変化 >"))
+            JumpToObjectChange(1);
         return;
     }
+
     const ObjectSnapshot* previous = FindPreviousObjectSnapshot(selectedReplayId_);
     const ObjectSnapshot* latest = FindLatestObjectSnapshot(selectedReplayId_);
 
@@ -885,9 +1012,12 @@ void ReplayDebugger::DrawObjectInspector() {
     if (ImGui::Button("Scene上で選択", ImVec2(-1.0f, 0.0f))) {
         SelectSceneObject(selectedReplayId_);
     }
-    if (ImGui::Button("< 前の変化")) JumpToObjectChange(-1);
+
+    if (ImGui::Button("< 前の変化"))
+        JumpToObjectChange(-1);
     ImGui::SameLine();
-    if (ImGui::Button("次の変化 >")) JumpToObjectChange(1);
+    if (ImGui::Button("次の変化 >"))
+        JumpToObjectChange(1);
 
     if (ImGui::BeginTable("ReplayTransformInspector", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthFixed, 70.0f);
@@ -909,6 +1039,7 @@ void ReplayDebugger::DrawObjectInspector() {
     }
 
     engine::Vector3 velocity;
+
     if (ReadCustomVector3(current->state.custom, "characterVelocity", velocity)) {
         ImGui::Text("速度: %.2f, %.2f, %.2f", velocity.x, velocity.y, velocity.z);
         ImGui::TextDisabled("速さ: %.2f", std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z));
@@ -916,6 +1047,7 @@ void ReplayDebugger::DrawObjectInspector() {
 
     ImGui::TextDisabled("Animation: %s  t=%.3f", current->state.animationName.empty() ? "(なし)" : current->state.animationName.c_str(), current->state.animationTime);
     ImGui::TextDisabled("Model: %s", current->state.modelName.empty() ? "(なし)" : current->state.modelName.c_str());
+
     if (lastMissingObjectCount_ > 0) {
         ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.2f, 1.0f), "復元不能Object: %zu", lastMissingObjectCount_);
     }
@@ -924,16 +1056,19 @@ void ReplayDebugger::DrawObjectInspector() {
 void ReplayDebugger::DrawSpriteInspector() {
     // Sprite の Transform と再生状態を、選択フレームのスナップショットから表示する。
     ImGui::SeparatorText("Sprite差分Inspector");
+
     if (frames_.empty() || selectedSpriteReplayId_ == 0) {
         ImGui::TextDisabled("左の一覧からSpriteを選択してください。");
         return;
     }
 
     const SpriteSnapshot* current = FindSpriteSnapshot(frames_[cursor_], selectedSpriteReplayId_);
+
     if (!current) {
         ImGui::TextDisabled("このフレームには選択Spriteが存在しません。");
         return;
     }
+
     const SpriteSnapshot* previous = cursor_ > 0
         ? FindSpriteSnapshot(frames_[cursor_ - 1], selectedSpriteReplayId_)
         : nullptr;
@@ -956,7 +1091,8 @@ void ReplayDebugger::DrawSpriteInspector() {
         ImGui::TableSetColumnIndex(1);
         ImGui::Text("%.3f", current->state.rotation);
         ImGui::TableSetColumnIndex(2);
-        if (previous) ImGui::TextDisabled("%+.3f", current->state.rotation - previous->state.rotation);
+        if (previous)
+            ImGui::TextDisabled("%+.3f", current->state.rotation - previous->state.rotation);
         else ImGui::TextDisabled("-");
         ImGui::EndTable();
     }
@@ -970,6 +1106,7 @@ void ReplayDebugger::DrawSpriteInspector() {
         current->state.animationTimer,
         current->state.animationPlaying ? "再生中" : "停止");
     ImGui::TextDisabled("Parent Replay ID: %llu", static_cast<unsigned long long>(current->state.parentReplayId));
+
     if (lastMissingSpriteCount_ > 0) {
         ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.2f, 1.0f), "復元不能Sprite: %zu", lastMissingSpriteCount_);
     }
@@ -986,6 +1123,7 @@ void ReplayDebugger::DrawSettingsPanel() {
     ImGui::SliderFloat("記録頻度 (fps)", &captureRate_, 5.0f, 60.0f, "%.0f");
     ImGui::SliderFloat("履歴の長さ (秒)", &historySeconds_, 3.0f, 60.0f, "%.0f");
     ImGui::EndDisabled();
+
     if (frames_.size() > 1) {
         ImGui::TextDisabled("記録頻度と履歴長は、履歴クリア後に変更できます。");
     }
@@ -1002,23 +1140,32 @@ void ReplayDebugger::HandleEditorShortcuts() {
     if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) || ImGui::GetIO().WantTextInput) {
         return;
     }
+
     if (mode_ == Mode::Regression) {
         return;
     }
 
     const bool hasFrames = HasFrames();
+
     if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
-        if (mode_ == Mode::Recording && hasFrames) PauseAt(frames_.size() - 1);
+        if (mode_ == Mode::Recording && hasFrames)
+            PauseAt(frames_.size() - 1);
         else if (mode_ == Mode::Playback && hasFrames) PauseAt(cursor_);
         else if (mode_ == Mode::Paused && hasFrames) StartPlayback();
     }
-    if (!hasFrames) return;
+
+    if (!hasFrames)
+        return;
 
     const int step = ImGui::GetIO().KeyShift ? 10 : 1;
-    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) StepCursor(-step);
-    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) StepCursor(step);
-    if (ImGui::IsKeyPressed(ImGuiKey_Home)) PauseAt(0);
-    if (ImGui::IsKeyPressed(ImGuiKey_End)) PauseAt(frames_.size() - 1);
+    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow))
+        StepCursor(-step);
+    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow))
+        StepCursor(step);
+    if (ImGui::IsKeyPressed(ImGuiKey_Home))
+        PauseAt(0);
+    if (ImGui::IsKeyPressed(ImGuiKey_End))
+        PauseAt(frames_.size() - 1);
     if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Enter) &&
         mode_ == Mode::Paused &&
         (!loadedArchiveReadOnly_ || CanResumeLoadedArchive())) {
@@ -1028,23 +1175,28 @@ void ReplayDebugger::HandleEditorShortcuts() {
 
 void ReplayDebugger::SelectFrameFromTimeline(double time) {
     // 描画上の時刻に最も近い保存フレームへ移動し、その状態で停止する。
-    if (frames_.empty()) return;
+    if (frames_.empty())
+        return;
     std::size_t nearest = 0;
     double bestDistance = std::abs(frames_.front().time - time);
+
     for (std::size_t index = 1; index < frames_.size(); ++index) {
         const double distance = std::abs(frames_[index].time - time);
+
         if (distance < bestDistance) {
             bestDistance = distance;
             nearest = index;
         }
     }
+
     PauseAt(nearest);
 }
 
 void ReplayDebugger::SelectSceneObject(uint64_t replayId) {
     // 名前ではなく replayId で実 Scene の Object を探し、同名の別個体を避ける。
     BaseScene* scene = GetValidatedActiveScene();
-    if (!scene || !debugEditor_) return;
+    if (!scene || !debugEditor_)
+        return;
     for (auto& object : scene->GetObjects()) {
         if (object && object->GetReplayId() == replayId) {
             debugEditor_->SetSelectedObject(object.get());
@@ -1053,12 +1205,14 @@ void ReplayDebugger::SelectSceneObject(uint64_t replayId) {
             return;
         }
     }
+
     statusMessage_ = "対象Objectは現在のSceneに存在しません。";
 }
 
 void ReplayDebugger::JumpToObjectChange(int direction) {
     // 見た目に意味のある変化だけを探し、微小な数値揺れでは移動しません。
-    if (frames_.empty() || selectedReplayId_ == 0 || direction == 0) return;
+    if (frames_.empty() || selectedReplayId_ == 0 || direction == 0)
+        return;
 
     if (direction < 0) {
         for (std::size_t index = cursor_; index > 0; --index) {
@@ -1066,6 +1220,7 @@ void ReplayDebugger::JumpToObjectChange(int direction) {
             const ObjectSnapshot* before = FindObjectSnapshot(frames_[index - 1], selectedReplayId_);
             const bool presenceChanged = (current == nullptr) != (before == nullptr);
             const bool stateChanged = current && before && HasMeaningfulChange(*before, *current);
+
             if (presenceChanged || stateChanged) {
                 PauseAt(index - 1);
                 return;
@@ -1077,12 +1232,14 @@ void ReplayDebugger::JumpToObjectChange(int direction) {
             const ObjectSnapshot* before = FindObjectSnapshot(frames_[index - 1], selectedReplayId_);
             const bool presenceChanged = (current == nullptr) != (before == nullptr);
             const bool stateChanged = current && before && HasMeaningfulChange(*before, *current);
+
             if (presenceChanged || stateChanged) {
                 PauseAt(index);
                 return;
             }
         }
     }
+
     statusMessage_ = "この方向には選択Objectの変化がありません。";
 }
 
@@ -1095,16 +1252,20 @@ bool ReplayDebugger::HasMeaningfulChange(const ObjectSnapshot& lhs, const Object
         lhs.state.animationName != rhs.state.animationName) {
         return true;
     }
+
     if (DistanceSquared(lhs.state.translation, rhs.state.translation) > kTransformEpsilonSquared ||
         DistanceSquared(lhs.state.rotation, rhs.state.rotation) > kTransformEpsilonSquared ||
         DistanceSquared(lhs.state.scale, rhs.state.scale) > kTransformEpsilonSquared) {
         return true;
     }
-    if (lhs.state.hasParameter != rhs.state.hasParameter) return true;
+
+    if (lhs.state.hasParameter != rhs.state.hasParameter)
+        return true;
     if (lhs.state.hasParameter &&
         std::abs(lhs.state.parameter.hp - rhs.state.parameter.hp) > 0.001f) {
         return true;
     }
+
     return false;
 }
 
@@ -1119,6 +1280,7 @@ bool ReplayDebugger::HasMeaningfulChange(const SpriteSnapshot& lhs, const Sprite
         lhs.state.currentFrame != rhs.state.currentFrame) {
         return true;
     }
+
     if (DistanceSquared(lhs.state.position, rhs.state.position) > kEpsilonSquared ||
         DistanceSquared(lhs.state.size, rhs.state.size) > kEpsilonSquared ||
         std::abs(lhs.state.rotation - rhs.state.rotation) > 0.001f ||
@@ -1126,6 +1288,7 @@ bool ReplayDebugger::HasMeaningfulChange(const SpriteSnapshot& lhs, const Sprite
         std::abs(lhs.state.emissive - rhs.state.emissive) > 0.001f) {
         return true;
     }
+
     const engine::Vector4& a = lhs.state.color;
     const engine::Vector4& b = rhs.state.color;
     return std::abs(a.x - b.x) > 0.001f ||
@@ -1152,19 +1315,22 @@ const ReplayDebugger::SpriteSnapshot* ReplayDebugger::FindSpriteSnapshot(const F
 
 const ReplayDebugger::ObjectSnapshot* ReplayDebugger::FindPreviousObjectSnapshot(uint64_t replayId) const {
     // 先頭フレームでは比較元が存在しないので空を返す。
-    if (cursor_ == 0 || cursor_ >= frames_.size()) return nullptr;
+    if (cursor_ == 0 || cursor_ >= frames_.size())
+        return nullptr;
     return FindObjectSnapshot(frames_[cursor_ - 1], replayId);
 }
 
 const ReplayDebugger::ObjectSnapshot* ReplayDebugger::FindLatestObjectSnapshot(uint64_t replayId) const {
     // 最新との差を表示するため、履歴末尾の同一 Object を取得する。
-    if (frames_.empty()) return nullptr;
+    if (frames_.empty())
+        return nullptr;
     return FindObjectSnapshot(frames_.back(), replayId);
 }
 
 const char* ReplayDebugger::FormatBytes(std::size_t bytes, char* buffer, std::size_t bufferSize) {
     // 表示先バッファの大きさを守りながら、容量に応じた単位を選ぶ。
-    if (!buffer || bufferSize == 0) return "";
+    if (!buffer || bufferSize == 0)
+        return "";
     if (bytes >= 1024ull * 1024ull) {
         sprintf_s(buffer, bufferSize, "%.2f MB", static_cast<double>(bytes) / (1024.0 * 1024.0));
     } else if (bytes >= 1024ull) {
@@ -1172,6 +1338,7 @@ const char* ReplayDebugger::FormatBytes(std::size_t bytes, char* buffer, std::si
     } else {
         sprintf_s(buffer, bufferSize, "%zu B", bytes);
     }
+
     return buffer;
 }
 

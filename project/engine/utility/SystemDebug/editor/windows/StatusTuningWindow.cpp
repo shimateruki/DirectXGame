@@ -21,6 +21,7 @@ std::string ToLowerAscii(std::string text) {
     for (char& c : text) {
         c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
+
     return text;
 }
 
@@ -33,23 +34,32 @@ std::string MakeModelKeyFromFile(const fs::path& modelFile) {
     // モデル名と同名のフォルダに入ったファイルは、フォルダ名をAssetキーにする。
     fs::path relative = fs::relative(modelFile, kModelRootDirectory);
     fs::path parent = relative.parent_path();
+
     if (!parent.empty() && parent.filename() == modelFile.stem()) {
         return parent.generic_string();
     }
+
     relative.replace_extension("");
     return relative.generic_string();
 }
 
 std::string GetModelDisplayName(const std::string& modelName) {
     // ステータス調整画面だけ日本語の通称を付け、未登録モデルは短い元名で示す。
-    if (modelName.empty()) return "未設定";
+    if (modelName.empty())
+        return "未設定";
     const std::string shortName = fs::path(modelName).filename().string();
-    if (shortName == "slime_pink") return "ピンクスライム";
-    if (shortName == "slime_red") return "ファイアスライム";
-    if (shortName == "slime_yellow") return "サンダースライム";
-    if (shortName == "slime_black") return "ブラックスライム";
-    if (shortName == "slime") return "スライム";
-    if (shortName == "ring_burner") return "リングバーナー";
+    if (shortName == "slime_pink")
+        return "ピンクスライム";
+    if (shortName == "slime_red")
+        return "ファイアスライム";
+    if (shortName == "slime_yellow")
+        return "サンダースライム";
+    if (shortName == "slime_black")
+        return "ブラックスライム";
+    if (shortName == "slime")
+        return "スライム";
+    if (shortName == "ring_burner")
+        return "リングバーナー";
     return shortName;
 }
 }
@@ -80,11 +90,15 @@ void StatusTuningWindow::DrawImGui() {
             statusText_ = "設定JSONの再読込に失敗しました。現在値は維持されています。";
         }
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_UNDO " 標準値へ戻す")) {
         ImGui::OpenPopup("ResetGameplayStatusConfirm");
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_CUBE " モデル一覧更新")) {
         RefreshCharacterModelList();
         statusText_ = "モデル一覧を更新しました。";
@@ -92,20 +106,26 @@ void StatusTuningWindow::DrawImGui() {
 
     if (ImGui::BeginPopupModal("ResetGameplayStatusConfirm", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextWrapped("Playerと全Enemy Typeの設定をゲーム標準値へ戻します。よろしいですか？");
+
         if (ImGui::Button("戻す", ImVec2(120.0f, 0.0f))) {
             manager->ResetToDefaults();
             const int applied = ApplyAllStatusLive();
+
             if (manager->Save()) {
                 statusText_ = "標準値へ戻して保存しました: " + std::to_string(applied) + " 件";
             } else {
                 statusText_ = "標準値は反映しましたが、設定JSONの保存に失敗しました。";
             }
+
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("キャンセル", ImVec2(120.0f, 0.0f))) {
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::EndPopup();
     }
 
@@ -205,20 +225,25 @@ bool StatusTuningWindow::DrawModelPicker(const char* label, const char* id, std:
     ImGui::PushID(id);
     bool changed = false;
     const std::string preview = GetModelDisplayName(modelName) + "  /  " + modelName;
+
     if (ImGui::BeginCombo(label, preview.c_str())) {
         for (const std::string& candidate : characterModelNames_) {
             const bool selected = candidate == modelName;
             const std::string itemLabel = GetModelDisplayName(candidate) + "  /  " + candidate;
+
             if (ImGui::Selectable(itemLabel.c_str(), selected)) {
                 modelName = candidate;
                 changed = true;
             }
+
             if (selected) {
                 ImGui::SetItemDefaultFocus();
             }
         }
+
         ImGui::EndCombo();
     }
+
     ImGui::PopID();
     return changed;
 #else
@@ -233,6 +258,7 @@ void StatusTuningWindow::DrawCurrentSceneSummary() {
 #ifdef USE_IMGUI
     // 現在Sceneにいる対象数を見せ、Live反映の範囲を判断できるようにします。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+
     if (!scene) {
         ImGui::TextDisabled("現在シーンがありません。");
         return;
@@ -240,11 +266,15 @@ void StatusTuningWindow::DrawCurrentSceneSummary() {
 
     int playerCount = 0;
     int enemyCount = 0;
+
     for (const auto& object : scene->GetObjects()) {
-        if (!object) continue;
-        if (object->GetClassName() == "Player") ++playerCount;
+        if (!object)
+            continue;
+        if (object->GetClassName() == "Player")
+            ++playerCount;
         else if (object->GetClassName() == "Enemy") ++enemyCount;
     }
+
     ImGui::Text("現在シーンの反映対象: プレイヤー %d / 敵 %d", playerCount, enemyCount);
 #endif
 }
@@ -255,12 +285,15 @@ void StatusTuningWindow::DrawEnemyStatusRows() {
     auto* manager = GameplayStatusManager::GetInstance();
     ImGui::TextDisabled("変更したタイプだけが現在シーンへ即時反映されます。");
     ImGui::BeginChild("EnemyStatusList", ImVec2(0.0f, 600.0f), true, ImGuiWindowFlags_HorizontalScrollbar);
+
     for (const EnemyTypeInfo& info : enemyTypes_) {
         auto* status = manager->FindMutableEnemyStatus(info.type);
-        if (!status) continue;
+        if (!status)
+            continue;
 
         ImGui::PushID(info.type);
         const std::string header = std::string(info.label) + "  /  " + info.type;
+
         if (ImGui::CollapsingHeader(header.c_str())) {
             if (DrawStatusEditor(*status, "EnemyStatus")) {
                 manager->MarkDirty();
@@ -268,9 +301,11 @@ void StatusTuningWindow::DrawEnemyStatusRows() {
                 statusText_ = std::string(info.label) + " へリアルタイム反映中: " + std::to_string(applied) + " 件";
             }
         }
+
         ImGui::Separator();
         ImGui::PopID();
     }
+
     ImGui::EndChild();
 #endif
 }
@@ -280,6 +315,7 @@ void StatusTuningWindow::RefreshCharacterModelList() {
     characterModelNames_.clear();
     try {
         const fs::path root(kModelRootDirectory);
+
         if (!fs::exists(root) || !fs::is_directory(root)) {
             return;
         }
@@ -288,11 +324,14 @@ void StatusTuningWindow::RefreshCharacterModelList() {
             if (!entry.is_regular_file() || !IsSupportedModelFile(entry.path())) {
                 continue;
             }
+
             const std::string modelKey = MakeModelKeyFromFile(entry.path());
+
             if (!modelKey.empty() && std::find(characterModelNames_.begin(), characterModelNames_.end(), modelKey) == characterModelNames_.end()) {
                 characterModelNames_.push_back(modelKey);
             }
         }
+
         std::sort(characterModelNames_.begin(), characterModelNames_.end());
     } catch (...) {
         characterModelNames_.clear();
@@ -302,44 +341,54 @@ void StatusTuningWindow::RefreshCharacterModelList() {
 int StatusTuningWindow::ApplyPlayerStatusLive() {
     // 現在SceneのPlayerへ定義値を反映し、適用できた件数を返します。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
-    if (!scene) return 0;
+    if (!scene)
+        return 0;
 
     int applied = 0;
     auto* manager = GameplayStatusManager::GetInstance();
+
     for (const auto& object : scene->GetObjects()) {
-        if (!object || object->GetClassName() != "Player") continue;
+        if (!object || object->GetClassName() != "Player")
+            continue;
         if (manager->ApplyPlayerStatus(object.get(), false)) {
             object->UpdateLocalMatrix();
             object->UpdateWorldMatrix();
             ++applied;
         }
     }
+
     return applied;
 }
 
 int StatusTuningWindow::ApplyEnemyStatusLive(const std::string& enemyType) {
     // Enemy全体ではなく指定タイプだけ更新し、他タイプの実行状態を保ちます。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
-    if (!scene) return 0;
+    if (!scene)
+        return 0;
 
     int applied = 0;
     auto* manager = GameplayStatusManager::GetInstance();
+
     for (const auto& object : scene->GetObjects()) {
-        if (!object || object->GetClassName() != "Enemy" || object->GetEnemyType() != enemyType) continue;
+        if (!object || object->GetClassName() != "Enemy" || object->GetEnemyType() != enemyType)
+            continue;
         if (manager->ApplyEnemyStatus(object.get(), false)) {
             object->UpdateLocalMatrix();
             object->UpdateWorldMatrix();
             ++applied;
         }
     }
+
     return applied;
 }
 
 int StatusTuningWindow::ApplyAllStatusLive() {
     // プレイヤーと登録済み全敵タイプの適用件数を合算します。
     int applied = ApplyPlayerStatusLive();
+
     for (const EnemyTypeInfo& info : enemyTypes_) {
         applied += ApplyEnemyStatusLive(info.type);
     }
+
     return applied;
 }

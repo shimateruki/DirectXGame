@@ -28,24 +28,30 @@ struct GPUParticleConfig {
     engine::Vector4 midColor = { 1.0f, 0.5f, 0.0f, 1.0f }; // 途中の色
     float colorMidTime = 0.2f;                     // 色がMidになるタイミング (0.0~1.0)
     engine::Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f };
+
     float baseSize = 1.0f;
     float midSize = 2.0f;                          // 途中の大きさ
     float sizeMidTime = 0.2f;                      // 大きさがMidになるタイミング (0.0~1.0)
     float endSize = 0.0f;
+
     float colorIntensity = 1.0f;
     std::string texturePath = "Resources/sprite/Particle.png";
     float rotSpeed = 0.0f; // 回転速度の乱数範囲の絶対値。ラジアン/秒。
     int blendModeIndex = 0; // 0: 加算、1: 通常α、2: 背景コピーを参照する歪み。
+
     int spriteSheetColumns = 1;
     int spriteSheetRows = 1;
     int spriteSheetFrameCount = 1;
     float spriteSheetFps = 0.0f;
     int spriteSheetLoop = 0;
     int spriteSheetRandomStart = 0;
+
     int alignToVelocity = 0;
     float velocityStretch = 0.0f;
+
     int particleType = 0;       // 0: Billboard, 1: Trail
     float trailLength = 0.15f;
+
     int receiveLighting = 0;
     engine::Vector3 lightDirection = { -0.4f, -1.0f, 0.3f };
     engine::Vector3 lightColor = { 1.0f, 1.0f, 1.0f };

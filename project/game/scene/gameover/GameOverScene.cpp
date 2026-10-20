@@ -1,6 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameover/GameOverScene.h"
-#include "game/system/GameSceneDrawing.h"
+#include "game/scene/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -17,9 +17,9 @@
 #include "LightManager.h"
 #include "SceneManager.h"
 #include "DebugConsole.h"
-#include "BulletManager.h"
-#include "LevelLoader.h"
-#include "GameRule.h"
+#include "game/system/combat/BulletManager.h"
+#include "game/system/scene/LevelLoader.h"
+#include "game/system/rules/GameRule.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "LightEditor.h"
 #include "ParticleManager.h"
@@ -27,7 +27,7 @@
 #include "VFXSequencer.h"
 #include "Fade.h"
 #include "PostEffect.h"
-#include "GameDataManager.h"
+#include "game/system/progress/GameDataManager.h"
 #include "WinApp.h"
 #ifdef USE_IMGUI
 #include "imgui.h"
@@ -51,6 +51,7 @@ bool TryResetLivesForExit() {
     if (GameDataManager::GetInstance()->ResetLives()) {
         return true;
     }
+
     ::MessageBoxW(nullptr, L"残機を保存できませんでした。保存先を確認して、もう一度選択してください。",
                   L"セーブエラー", MB_OK | MB_ICONERROR);
     return false;
@@ -84,9 +85,11 @@ float EaseOutBack(float t) {
 float EaseInOutCubic(float t) {
     // 演出の始点と終点を滑らかにつなぐ対称の補間曲線。
     t = Clamp01(t);
+
     if (t < 0.5f) {
         return 4.0f * t * t * t;
     }
+
     const float inv = -2.0f * t + 2.0f;
     return 1.0f - inv * inv * inv * 0.5f;
 }
@@ -130,7 +133,7 @@ SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
 void GameOverScene::Initialize() {
     // このシーン専用の描画・粒子・カメラを構築し、配置 JSON を読み込む。
     dxCommon_ = DirectXCommon::GetInstance();
-    inputManager_ = InputManager::GetInstance();
+    inputManager_ = engine::InputManager::GetInstance();
 
     ModelManager::GetInstance()->LoadModel("Characters/player");
     LOG("GameOverScene Initialized!");
@@ -139,16 +142,16 @@ void GameOverScene::Initialize() {
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    object3dCommon_ = std::make_unique<Object3dCommon>();
+    object3dCommon_ = std::make_unique<engine::Object3dCommon>();
     object3dCommon_->Initialize(dxCommon_);
 
     spriteCommon_ = std::make_unique<engine::SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
 
-    particleCommon_ = std::make_unique<ParticleCommon>();
+    particleCommon_ = std::make_unique<engine::ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
 
-    particleSystem_ = std::make_unique<ParticleSystem>();
+    particleSystem_ = std::make_unique<engine::ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
@@ -168,6 +171,7 @@ void GameOverScene::Initialize() {
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameOverScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameOverScene.json");
     BindLayoutSprites();
+
     // 背景にも王冠があるため、前景へ重ねて降らせない。
     InitializeDizzyStars();
 
@@ -190,13 +194,16 @@ void GameOverScene::OnActivated() {
     retryExitTimer_ = 0.0f;
     VFXSequencer::ClearOneShots();
     ResetGameOverPostEffects();
+
     if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
         params->dangerVignette = 0.0f;
     }
+
     InitializeGameOverPresentation();
     UpdateGameOverCamera();
     CameraManager::GetInstance()->Update(0.0f);
     UpdateMenuSprites(0.0f);
+
     for (auto& object : objectManager_->GetObjects())
         object->RefreshRenderCameraData();
     for (auto& sprite : sprites_)
@@ -250,6 +257,7 @@ void GameOverScene::Update(float deltaTime) {
     CameraEditor::GetInstance()->Update(player_, false);
     UpdateGameOverCamera();
     CameraManager::GetInstance()->Update(deltaTime);
+
     // カメラ更新後の行列で同一フレームのモデルを描画する。
     for (auto& object : objectManager_->GetObjects())
         object->RefreshRenderCameraData();
@@ -323,16 +331,21 @@ void GameOverScene::DrawUI() {
         if (!sprite) {
             continue;
         }
+
         const std::string& spriteName = sprite->GetName();
+
         if (spriteName == "gameover_background") {
             continue;
         }
+
         if (spriteName.rfind(kFallingCrownSpritePrefix, 0) == 0) {
             continue;
         }
+
         if (spriteName.rfind(kDizzyStarSpritePrefix, 0) == 0) {
             continue;
         }
+
         sprite->Draw();
     }
 }
@@ -350,6 +363,7 @@ void GameOverScene::DrawImGui() {
             presentationTuning_ = PresentationTuning{};
         ImGui::TextUnformatted("UI配置はSprite Editorで調整できます。");
     }
+
     ImGui::End();
 #endif
 }
@@ -364,6 +378,7 @@ void GameOverScene::BindLayoutSprites() {
 
     for (size_t i = 0; i < titleNames.size(); ++i) {
         titleLetters_[i] = FindSprite(titleNames[i]);
+
         if (titleLetters_[i]) {
             titleLetterBasePositions_[i] = titleLetters_[i]->GetPosition();
             titleLetterBaseSizes_[i] = titleLetters_[i]->GetSize();
@@ -377,9 +392,11 @@ void GameOverScene::BindLayoutSprites() {
         const std::string prefix = rowPrefixes[i];
         row.backdrop = FindSprite(prefix + "_row");
         row.label = FindSprite(prefix + "_label");
+
         if (row.backdrop) {
             row.backdropBaseSize = row.backdrop->GetSize();
         }
+
         if (row.label) {
             row.labelBaseSize = row.label->GetSize();
         }
@@ -397,6 +414,7 @@ void GameOverScene::RefreshLayoutSpritePointers() {
     for (size_t i = 0; i < titleNames.size(); ++i) {
         if (!IsAlive(titleLetters_[i])) {
             titleLetters_[i] = FindSprite(titleNames[i]);
+
             if (titleLetters_[i]) {
                 titleLetterBasePositions_[i] = titleLetters_[i]->GetPosition();
                 titleLetterBaseSizes_[i] = titleLetters_[i]->GetSize();
@@ -412,10 +430,12 @@ void GameOverScene::RefreshLayoutSpritePointers() {
     for (size_t i = 0; i < rowPrefixes.size(); ++i) {
         MenuRow& row = menuRows_[i];
         const std::string prefix = rowPrefixes[i];
+
         if (!IsAlive(row.backdrop)) {
             row.backdrop = FindSprite(prefix + "_row");
             row.backdropBaseSize = row.backdrop ? row.backdrop->GetSize() : engine::Vector2{0.0f, 0.0f};
         }
+
         if (!IsAlive(row.label)) {
             row.label = FindSprite(prefix + "_label");
             row.labelBaseSize = row.label ? row.label->GetSize() : engine::Vector2{0.0f, 0.0f};
@@ -430,12 +450,14 @@ engine::Sprite* GameOverScene::FindSprite(const std::string& name) const {
             return sprite.get();
         }
     }
+
     return nullptr;
 }
 
 void GameOverScene::InitializeFallingCrowns() {
     // 周期と位相をずらした装飾 Sprite を作り、画面全体に同時落下しない配置にする。
     fallingCrowns_.clear();
+
     if (!spriteCommon_) {
         return;
     }
@@ -468,6 +490,7 @@ void GameOverScene::InitializeFallingCrowns() {
     };
 
     const uint32_t textureHandle = engine::Sprite::LoadTexture("ui/gameover/gameover_crown_falling.png");
+
     for (size_t i = 0; i < setups.size(); ++i) {
         const CrownSetup& setup = setups[i];
         auto sprite = std::make_unique<engine::Sprite>();
@@ -501,6 +524,7 @@ void GameOverScene::UpdateFallingCrowns(float deltaTime) {
         }
 
         float localTime = std::fmod(sceneTime_ + crown.timeOffset, crown.cycleDuration);
+
         if (localTime < 0.0f) {
             localTime += crown.cycleDuration;
         }
@@ -525,6 +549,7 @@ void GameOverScene::UpdateFallingCrowns(float deltaTime) {
 void GameOverScene::InitializeDizzyStars() {
     // スライムの頭上を回る星を個別の位相とサイズで用意する。
     dizzyStars_.clear();
+
     if (!spriteCommon_) {
         return;
     }
@@ -558,6 +583,7 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
                       static_cast<float>(WinApp::kClientHeight) * 0.57f};
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (camera && IsAlive(gameOverSlimeObject_)) {
         const engine::Vector3 headWorld = gameOverSlimeAnimator_.GetDizzyAnchorWorld();
 
@@ -613,6 +639,7 @@ void GameOverScene::UpdateMenuInput() {
     if (up) {
         ChangeSelection(-1);
     }
+
     if (down) {
         ChangeSelection(1);
     }
@@ -633,6 +660,7 @@ void GameOverScene::StartRetryExit() {
     if (!TryResetLivesForExit()) {
         return;
     }
+
     retryExitActive_ = true;
     retrySceneChangeRequested_ = false;
     retryExitTimer_ = 0.0f;
@@ -643,6 +671,7 @@ void GameOverScene::StartRetryExit() {
 
     engine::Vector3 exitDirection = {1.0f, 0.0f, 0.0f};
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (camera) {
         const engine::Vector3 rotation = camera->GetRotation();
         exitDirection = {std::cos(rotation.y), 0.0f, -std::sin(rotation.y)};
@@ -676,11 +705,13 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
     // タイトル文字の時間差登場と選択行の強調を、保存済みの配置基準から計算する。
     (void)deltaTime;
     RefreshLayoutSpritePointers();
+
     // 編集停止中は登場タイマーが進まないので、配置確認用に完成状態を表示する。
     const bool layoutPreview = !SceneManager::GetInstance()->IsPlaying();
     const float visibleTitleTime = layoutPreview ? 100.0f : titleRevealTimer_;
 
     backgroundSprite_ = FindSprite("gameover_background");
+
     if (backgroundSprite_) {
         backgroundSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     }
@@ -689,6 +720,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
 
     for (size_t i = 0; i < titleLetters_.size(); ++i) {
         engine::Sprite* letter = titleLetters_[i];
+
         if (!letter) {
             continue;
         }
@@ -769,6 +801,7 @@ bool GameOverScene::IsTitleRevealComplete() const {
 
 void GameOverScene::InitializeGameOverPresentation() {
     FindGameOverSlimeObject();
+
     // 作者が配置した基準位置を、倒れ姿勢を適用する前に保存する。
     gameOverPresentationTimer_ = 0.0f;
     gameOverImpactCuePlayed_ = false;
@@ -780,6 +813,7 @@ void GameOverScene::InitializeGameOverPresentation() {
 
     gameOverSlimeAnimator_.Reset(gameOverSlimeObject_);
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (camera) {
         camera->SetFollowTarget(nullptr);
         camera->SetInputEnabled(false);
@@ -792,6 +826,7 @@ void GameOverScene::InitializeGameOverPresentation() {
 void GameOverScene::FindGameOverSlimeObject() {
     // レイアウト内のプレイヤーモデルを名前またはモデルパスで探す。
     gameOverSlimeObject_ = nullptr;
+
     if (!objectManager_) {
         return;
     }
@@ -816,8 +851,10 @@ void GameOverScene::UpdateGameOverPresentation(float deltaTime) {
     if (!IsAlive(gameOverSlimeObject_)) {
         gameOverSlimeObject_ = nullptr;
     }
+
     if (!gameOverSlimeObject_) {
         FindGameOverSlimeObject();
+
         if (gameOverSlimeObject_) {
             gameOverSlimeAnimator_.Reset(gameOverSlimeObject_);
         }
@@ -842,6 +879,7 @@ void GameOverScene::UpdateGameOverCamera() {
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera || !gameOverSlimeObject_)
         return;
+
     // 2D背景の床と3Dキャラクターがずれないよう、退場まで同じ構図を維持する。
     const engine::Vector3 eye = gameOverSlimeBasePosition_ + presentationTuning_.settleEyeOffset;
     const engine::Vector3 target = gameOverSlimeBasePosition_ + presentationTuning_.settleTargetOffset;
@@ -870,6 +908,7 @@ void GameOverScene::EmitGameOverImpactCue() {
 
     VFXSequencer::PlayOneShot(kGameOverImpactCue, gameOverSlimeObject_->GetWorldPosition());
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (camera) {
         camera->StartShake(0.24f, presentationTuning_.impactShake, 28.0f, {0.85f, 0.55f, 0.35f});
     }
@@ -878,6 +917,7 @@ void GameOverScene::EmitGameOverImpactCue() {
 void GameOverScene::ResetGameOverPostEffects() {
     // 前シーンの被弾・危険表示を持ち込まず、ゲームオーバー画面の色を一定にする。
     PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+
     if (!params) {
         return;
     }
@@ -912,6 +952,7 @@ void GameOverScene::ResetGameOverPostEffects() {
 void GameOverScene::DrawBackgroundSprite() {
     // 3D シーンより先に背景を描き、未配置時は安全に省略する。
     backgroundSprite_ = IsAlive(backgroundSprite_) ? backgroundSprite_ : FindSprite("gameover_background");
+
     if (!backgroundSprite_) {
         return;
     }
@@ -936,14 +977,17 @@ void GameOverScene::ConfirmSelection() {
     case MenuItem::Retry:
         StartRetryExit();
         break;
+
     case MenuItem::Title:
         if (!TryResetLivesForExit()) {
             return;
         }
+
         retrySceneChangeRequested_ = true;
         DebugConsole::GetInstance()->AddLog("[GameOver] Return title selected.");
         SceneManager::GetInstance()->ChangeSceneWithoutLoading("TITLE");
         break;
+
     default:
         break;
     }

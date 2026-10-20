@@ -1,0 +1,55 @@
+newmtl basalt
+Ka 0.035 0.025 0.035
+Kd 0.180 0.145 0.180
+Ks 0.120 0.105 0.150
+Ns 34
+illum 2
+
+newmtl basalt_edge
+Ka 0.080 0.050 0.060
+Kd 0.305 0.215 0.220
+Ks 0.205 0.155 0.155
+Ns 50
+illum 2
+
+newmtl forged_iron
+Ka 0.045 0.045 0.055
+Kd 0.250 0.270 0.310
+Ks 0.580 0.600 0.650
+Ns 118
+illum 2
+
+newmtl dark_iron
+Ka 0.020 0.018 0.024
+Kd 0.085 0.076 0.105
+Ks 0.360 0.310 0.400
+Ns 86
+illum 2
+
+newmtl copper
+Ka 0.180 0.085 0.035
+Kd 0.680 0.345 0.135
+Ks 0.820 0.520 0.300
+Ns 128
+illum 2
+
+newmtl copper_highlight
+Ka 0.260 0.135 0.045
+Kd 0.920 0.570 0.225
+Ks 0.950 0.780 0.400
+Ns 156
+illum 2
+
+newmtl furnace
+Ka 0.060 0.018 0.010
+Kd 0.155 0.055 0.035
+Ks 0.100 0.055 0.045
+Ns 20
+illum 2
+
+newmtl ember
+Ka 0.760 0.190 0.015
+Kd 1.000 0.420 0.055
+Ks 0.880 0.570 0.120
+Ns 110
+illum 2

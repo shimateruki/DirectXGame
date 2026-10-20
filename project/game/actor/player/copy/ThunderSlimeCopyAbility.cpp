@@ -2,6 +2,7 @@
 
 namespace {
 using namespace CopyAbilityDetail;
+
 // 雷コピーの攻撃状態と火花表示を管理し、解除時に専用スコープの演出を消す。
 class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
   public:
@@ -9,10 +10,12 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         // 溜め中に繰り返す火花を、発射・回避・解除時にまとめて消せるようにする。
         sparkScope_ = MeshEffectManager::GetInstance()->CreateEffectScope();
     }
+
     ~ThunderSlimeCopyAbility() override {
         // 能力が破棄されても残った火花を止める。
         ClearSparkEffects();
     }
+
     const char* GetStateLabel() const override {
         // 溜めが上限に達した時だけ「離して発射」を案内する。
         return charging_ ? (chargeTime_ >= 1.0f ? "帯電・溜め完了 / 離して発射" : "帯電中") : "雷能力";
@@ -21,6 +24,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
         // 回避・連続落雷・溜めを排他的に開始し、別行動へ移る際は溜めを解く。
         primaryHeld_ = input.primaryHeld;
+
         if (input.secondaryTriggered && evadeCooldown_ <= 0.0f) {
             StopCharge(player);
             Evade(player);
@@ -53,6 +57,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         lineTimer_ = std::max(0.0f, lineTimer_ - deltaTime);
         const float elapsed = 0.50f - lineTimer_;
+
         while (strikeIndex_ < 5 && elapsed >= 0.10f + static_cast<float>(strikeIndex_) * 0.075f) {
             const engine::Vector3 ground =
                 player.GetWorldPosition() + lineDirection_ * (2.8f + 2.2f * static_cast<float>(strikeIndex_));
@@ -76,6 +81,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         if (auto* effects = MeshEffectManager::GetInstance())
             effects->StopEffectScope(sparkScope_);
     }
+
     void StopCharge(Player& player) {
         // 溜め動作が実行中ならモーションも止め、火花を回収する。
         if (charging_)
@@ -83,6 +89,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         charging_ = false;
         ClearSparkEffects();
     }
+
     void UpdateCharge(Player& player, float dt) {
         // 溜め量は上限で止めても、電撃の走る時間は止めない。
         sparkVisualTime_ += dt;
@@ -90,6 +97,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         sparkEffectTimer_ -= dt;
         sparkDamageTimer_ -= dt;
         const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.85f, 0.0f};
+
         if (!primaryHeld_) {
             // 弾の寿命と衝突は共通BulletManagerに任せ、能力解除後も安全に完走させます。
             const engine::Vector3 direction = NormalizePlanar(player.GetLockOnAttackDirection());
@@ -113,13 +121,16 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             dischargeCooldown_ = 0.45f;
             return;
         }
+
         if (sparkEffectTimer_ <= 0.0f) {
             ClearSparkEffects();
             const float radius = 1.05f;
             const int arcCount = 3;
+
             // 規則的に回る飾りではなく、身体の表面で短い電撃が場所を変えて走る。
             const float phase = std::floor(sparkVisualTime_ * 10.0f);
             const float pulse = chargeTime_ >= 1.0f ? 0.5f + 0.5f * std::sin(sparkVisualTime_ * 8.0f) : 0.0f;
+
             for (int i = 0; i < arcCount; ++i) {
                 const float angle = i * 2.15f + phase * 2.4f;
                 const float flicker = std::sin(phase * 1.7f + i * 2.3f);
@@ -129,19 +140,23 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
                     {0.12f * flicker, angle, kPi * 0.5f + flicker * 0.28f},
                     {0.8f + pulse * 0.12f, 0.85f + chargeTime_ * 0.15f, 1.0f});
             }
+
             // 完了時も大きく増殖させず、頭上の小さな明滅だけで知らせる。
             if (chargeTime_ >= 1.0f && pulse > 0.70f) {
                 SpawnScopedEffect(sparkScope_, "Resources/json/effect/effect_player_thunder_spark_arc.json",
                                   center + engine::Vector3{0.0f, 0.65f, 0.0f}, {kPi * 0.5f, phase * 1.3f, 0.0f},
                                   {0.75f, 0.85f, 1.0f});
             }
+
             sparkEffectTimer_ = 0.10f;
         }
+
         if (sparkDamageTimer_ <= 0.0f) {
             DamageSphere(player, center, 2.2f, 3.0f, DamageType::Electric, 2.0f, 0.5f);
             sparkDamageTimer_ = 0.28f;
         }
     }
+
     void SpawnStrike(Player& player, const engine::Vector3& ground) {
         // 見た目と球状判定を同じ着地点へ置き、連続落雷中は敵ごとに一度だけ当てる。
         const float yaw = std::atan2(lineDirection_.x, lineDirection_.z);
@@ -153,6 +168,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
+
         for (const PhysicsOverlapHit& hit :
              CollisionManager::GetInstance()->OverlapSphere(ground + engine::Vector3{0.0f, 1.1f, 0.0f}, 1.45f, filter)) {
             engine::Object3d* target = FindEnemyRoot(hit.object);

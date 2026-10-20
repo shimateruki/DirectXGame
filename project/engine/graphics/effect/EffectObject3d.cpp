@@ -15,9 +15,11 @@ constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png"
 // 未設定テクスチャ用SRVを共有し、Effectの描画ごとのファイル確認を避けます。
 uint32_t GetDefaultWhiteTextureHandle() {
     static uint32_t handle = 0;
+
     if (handle == 0) {
         handle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
     }
+
     return handle;
 }
 
@@ -28,6 +30,7 @@ float ResolveTargetRootYaw(engine::Object3d* targetObject) {
     }
 
     engine::Object3d* rootObject = targetObject;
+
     while (rootObject && rootObject->GetParent()) {
         rootObject = rootObject->GetParent();
     }
@@ -41,22 +44,53 @@ float ApplyEasing1(int type, float t) {
     // エディターの数値設定を補間関数へ対応付け、不明な番号は線形補間へ戻す。
     switch (type) {
     case 0: return Easing::Linear(t);
-    case 1: return Easing::InSine(t);    case 2: return Easing::OutSine(t);    case 3: return Easing::InOutSine(t);
-    case 4: return Easing::InQuad(t);    case 5: return Easing::OutQuad(t);    case 6: return Easing::InOutQuad(t);
-    case 7: return Easing::InCubic(t);   case 8: return Easing::OutCubic(t);   case 9: return Easing::InOutCubic(t);
-    case 10: return Easing::InQuart(t);  case 11: return Easing::OutQuart(t);  case 12: return Easing::InOutQuart(t);
-    case 13: return Easing::InQuint(t);  case 14: return Easing::OutQuint(t);  case 15: return Easing::InOutQuint(t);
-    case 16: return Easing::InExpo(t);   case 17: return Easing::OutExpo(t);   case 18: return Easing::InOutExpo(t);
-    case 19: return Easing::InCirc(t);   case 20: return Easing::OutCirc(t);   case 21: return Easing::InOutCirc(t);
-    case 22: return Easing::InBack(t);   case 23: return Easing::OutBack(t);   case 24: return Easing::InOutBack(t);
-    case 25: return Easing::InElastic(t);case 26: return Easing::OutElastic(t);case 27: return Easing::InOutElastic(t);
-    case 28: return Easing::InBounce(t); case 29: return Easing::OutBounce(t); case 30: return Easing::InOutBounce(t);
+
+    case 1: return Easing::InSine(t);
+    case 2: return Easing::OutSine(t);
+    case 3: return Easing::InOutSine(t);
+
+    case 4: return Easing::InQuad(t);
+    case 5: return Easing::OutQuad(t);
+    case 6: return Easing::InOutQuad(t);
+
+    case 7: return Easing::InCubic(t);
+    case 8: return Easing::OutCubic(t);
+    case 9: return Easing::InOutCubic(t);
+
+    case 10: return Easing::InQuart(t);
+    case 11: return Easing::OutQuart(t);
+    case 12: return Easing::InOutQuart(t);
+
+    case 13: return Easing::InQuint(t);
+    case 14: return Easing::OutQuint(t);
+    case 15: return Easing::InOutQuint(t);
+
+    case 16: return Easing::InExpo(t);
+    case 17: return Easing::OutExpo(t);
+    case 18: return Easing::InOutExpo(t);
+
+    case 19: return Easing::InCirc(t);
+    case 20: return Easing::OutCirc(t);
+    case 21: return Easing::InOutCirc(t);
+
+    case 22: return Easing::InBack(t);
+    case 23: return Easing::OutBack(t);
+    case 24: return Easing::InOutBack(t);
+
+    case 25: return Easing::InElastic(t);
+    case 26: return Easing::OutElastic(t);
+    case 27: return Easing::InOutElastic(t);
+
+    case 28: return Easing::InBounce(t);
+    case 29: return Easing::OutBounce(t);
+    case 30: return Easing::InOutBounce(t);
+
     default: return Easing::Linear(t);
     }
 }
 
 // Object3dの描画基盤を確認してから、エフェクト専用マテリアル定数を準備します。
-void EffectObject3d::Initialize(Object3dCommon* common) {
+void EffectObject3d::Initialize(engine::Object3dCommon* common) {
     if (!common || !common->GetDxCommon() || !common->GetDxCommon()->GetDevice()) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] Initialize failed: invalid Object3dCommon.");
         return;
@@ -74,6 +108,7 @@ void EffectObject3d::Initialize(Object3dCommon* common) {
 bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
     materialBuffer_.Reset();
     materialData_ = nullptr;
+
     if (!device) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] material buffer creation failed: device is null.");
         return false;
@@ -102,6 +137,7 @@ bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
         nullptr,
         IID_PPV_ARGS(&materialBuffer_)
     );
+
     if (FAILED(hr) || !materialBuffer_) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] material buffer creation failed.");
         return false;
@@ -109,12 +145,14 @@ bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
 
     // マッピングして初期値を書き込む
     hr = materialBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+
     if (FAILED(hr) || !materialData_) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] material buffer map failed.");
         materialBuffer_.Reset();
         materialData_ = nullptr;
         return false;
     }
+
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->scrollSpeed = { 0.0f, -1.0f }; // デフォルトはV方向に流れる
     materialData_->time = 0.0f;
@@ -133,7 +171,8 @@ bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
 }
 
 void EffectObject3d::Update(float deltaTime) {
-    if (!isPlaying_ || !materialData_) return;
+    if (!isPlaying_ || !materialData_)
+        return;
 
     // 再生寿命とUVスクロールは同じ経過秒を使う。描画用進捗だけ寿命内へ制限する。
     currentTime_ += deltaTime;
@@ -193,6 +232,7 @@ void EffectObject3d::Update(float deltaTime) {
     // UpdateAttachedEffects や UpdateParticle が再帰的に走ってしまうため）
     UpdateLocalMatrix();
     UpdateWorldMatrix();
+
     if (GetMeshRenderer()) {
         GetMeshRenderer()->Update();
     }
@@ -200,8 +240,27 @@ void EffectObject3d::Update(float deltaTime) {
 
 // 専用パイプラインと必要なSRVを束ねて描画し、未設定素材には白画像を代用します。
 void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    (void)pointLightResource;
+    (void)spotLightResource;
+    DrawWithWvp(GetMeshRenderer() ? GetMeshRenderer()->GetWvpResource() : nullptr);
+}
 
-    if (!common_ || !GetMeshRenderer()) return;
+void EffectObject3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+                                   ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    (void)pointLightResource;
+    (void)spotLightResource;
+    if (!camera || !GetIsRenderVisible() || !GetMeshRenderer()) return;
+    ID3D12Resource* previewWvpResource = nullptr;
+    ID3D12Resource* previewCameraResource = nullptr;
+    if (!GetMeshRenderer()->PreparePreviewCameraData(camera, previewBufferIndex, previewWvpResource,
+                                                      previewCameraResource)) return;
+    DrawWithWvp(previewWvpResource);
+}
+
+void EffectObject3d::DrawWithWvp(ID3D12Resource* wvpResource) {
+
+    if (!common_ || !GetMeshRenderer() || !wvpResource)
+        return;
     Model* model = GetMeshRenderer()->GetModel();
     if (!model)
     {
@@ -209,6 +268,7 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "  Error: Model is NULL! Drawing skipped.");
         return;
     }
+
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     // 通常の3Dマテリアルとは異なる専用パイプラインへ切り替える。
@@ -216,36 +276,44 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
 
     // ルートスロットの順序はエフェクト用RootSignatureと一致させる。
     // 0: VSのWVP、1: 予備のVS定数、2: PSマテリアル。
-    commandList->SetGraphicsRootConstantBufferView(0, GetMeshRenderer()->GetWvpResource()->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
 
     // 未使用のVS定数スロットにも有効なリソースを割り当てる。
-    commandList->SetGraphicsRootConstantBufferView(1, GetMeshRenderer()->GetWvpResource()->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
     commandList->SetGraphicsRootConstantBufferView(2, materialBuffer_->GetGPUVirtualAddress());
 
     // テクスチャ未設定時は白画像を使い、必要なGrab/Noise/RampのSRVを順に束ねる。
     const uint32_t fallbackTextureHandle = GetDefaultWhiteTextureHandle();
     uint32_t texHandle = GetMeshRenderer()->GetTextureHandle();
+
     if (texHandle == 0) {
         texHandle = fallbackTextureHandle;
     }
+
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, texHandle);
     uint32_t grabSrvHandle = common_->GetDxCommon()->GetGrabSrvHandle();
+
     if (grabSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
     }
 
     uint32_t noiseHandle = noiseTextureHandle_;
+
     if (noiseHandle == 0) {
         // Noise未設定でもRootSignatureに有効なSRVを渡す。
         noiseHandle = fallbackTextureHandle;
     }
+
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, noiseHandle);
     uint32_t rampHandle = rampTextureHandle_;
+
     if (rampHandle == 0) {
         rampHandle = fallbackTextureHandle;
     }
+
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, rampHandle);
+
     // 頂点構造とマテリアルが確定してからメッシュ本体を描く。
     model->DrawMeshOnly();
 }
@@ -319,14 +387,30 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
     for (int i = 0; i < segments; ++i) {
         uint32_t curr = i * 4;
         uint32_t next = (i + 1) * 4;
-        proceduralIndices_.push_back(curr + 0); proceduralIndices_.push_back(curr + 1); proceduralIndices_.push_back(next + 0);
-        proceduralIndices_.push_back(curr + 1); proceduralIndices_.push_back(next + 1); proceduralIndices_.push_back(next + 0);
-        proceduralIndices_.push_back(curr + 1); proceduralIndices_.push_back(curr + 3); proceduralIndices_.push_back(next + 1);
-        proceduralIndices_.push_back(curr + 3); proceduralIndices_.push_back(next + 3); proceduralIndices_.push_back(next + 1);
-        proceduralIndices_.push_back(curr + 0); proceduralIndices_.push_back(next + 0); proceduralIndices_.push_back(curr + 2);
-        proceduralIndices_.push_back(curr + 2); proceduralIndices_.push_back(next + 0); proceduralIndices_.push_back(next + 2);
-        proceduralIndices_.push_back(curr + 2); proceduralIndices_.push_back(next + 2); proceduralIndices_.push_back(curr + 3);
-        proceduralIndices_.push_back(curr + 3); proceduralIndices_.push_back(next + 2); proceduralIndices_.push_back(next + 3);
+        proceduralIndices_.push_back(curr + 0);
+        proceduralIndices_.push_back(curr + 1);
+        proceduralIndices_.push_back(next + 0);
+        proceduralIndices_.push_back(curr + 1);
+        proceduralIndices_.push_back(next + 1);
+        proceduralIndices_.push_back(next + 0);
+        proceduralIndices_.push_back(curr + 1);
+        proceduralIndices_.push_back(curr + 3);
+        proceduralIndices_.push_back(next + 1);
+        proceduralIndices_.push_back(curr + 3);
+        proceduralIndices_.push_back(next + 3);
+        proceduralIndices_.push_back(next + 1);
+        proceduralIndices_.push_back(curr + 0);
+        proceduralIndices_.push_back(next + 0);
+        proceduralIndices_.push_back(curr + 2);
+        proceduralIndices_.push_back(curr + 2);
+        proceduralIndices_.push_back(next + 0);
+        proceduralIndices_.push_back(next + 2);
+        proceduralIndices_.push_back(curr + 2);
+        proceduralIndices_.push_back(next + 2);
+        proceduralIndices_.push_back(curr + 3);
+        proceduralIndices_.push_back(curr + 3);
+        proceduralIndices_.push_back(next + 2);
+        proceduralIndices_.push_back(next + 3);
     }
 }
 
@@ -353,6 +437,7 @@ void EffectObject3d::GenerateThrustVertices(float length, float radius, int segm
 
     // 2~: 根元の円周上の頂点
     uint32_t offset = 2;
+
     for (int i = 0; i <= segments; ++i) {
         float angle = i * angleStep;
         float s = sinf(angle);
@@ -372,27 +457,38 @@ void EffectObject3d::GenerateThrustVertices(float length, float radius, int segm
         uint32_t next = offset + i + 1;
 
         // 側面 (両面)
-        proceduralIndices_.push_back(0); proceduralIndices_.push_back(curr); proceduralIndices_.push_back(next);
-        proceduralIndices_.push_back(0); proceduralIndices_.push_back(next); proceduralIndices_.push_back(curr);
+        proceduralIndices_.push_back(0);
+        proceduralIndices_.push_back(curr);
+        proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(0);
+        proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(curr);
 
         // 底面のフタ (両面)
-        proceduralIndices_.push_back(1); proceduralIndices_.push_back(next); proceduralIndices_.push_back(curr);
-        proceduralIndices_.push_back(1); proceduralIndices_.push_back(curr); proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(1);
+        proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(curr);
+        proceduralIndices_.push_back(1);
+        proceduralIndices_.push_back(curr);
+        proceduralIndices_.push_back(next);
     }
 }
 
 #include <fstream>
 void EffectObject3d::ExportToObj(const std::string& filePath) const {
     std::ofstream file(filePath);
-    if (!file.is_open()) return;
+    if (!file.is_open())
+        return;
     
     for (const auto& v : proceduralVertices_) {
         file << "v " << v.position.x << " " << v.position.y << " " << v.position.z << "\n";
     }
+
     for (const auto& v : proceduralVertices_) {
         // DirectX の V を反転して OBJ 標準に合わせる
         file << "vt " << v.texcoord.x << " " << (1.0f - v.texcoord.y) << "\n";
     }
+
     for (const auto& v : proceduralVertices_) {
         file << "vn " << v.normal.x << " " << v.normal.y << " " << v.normal.z << "\n";
     }
@@ -406,6 +502,7 @@ void EffectObject3d::ExportToObj(const std::string& filePath) const {
                      << i1 << "/" << i1 << "/" << i1 << " "
                      << i2 << "/" << i2 << "/" << i2 << "\n";
     }
+
     file.close();
 }
 
@@ -431,7 +528,12 @@ void EffectObject3d::GenerateSphereVertices(float radius, int segments, int ring
             vertex.texcoord = {u, v};
             engine::Vector3 norm = {x, y, z};
             float len = sqrtf(x*x + y*y + z*z);
-            if (len > 0.0001f) { norm.x /= len; norm.y /= len; norm.z /= len; }
+
+            if (len > 0.0001f) {
+                norm.x /= len;
+                norm.y /= len;
+                norm.z /= len;
+            }
             vertex.normal = norm;
             proceduralVertices_.push_back(vertex);
         }
@@ -462,9 +564,11 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
 
     // 1. 側面
     uint32_t offset = 0;
+
     for (int i = 0; i <= 1; ++i) { 
         float v = 1.0f - (float)i;
         float y = (i == 0) ? -halfH : halfH;
+
         for (int s = 0; s <= segments; ++s) {
             float u = (float)s / segments;
             float theta = u * 2.0f * 3.14159265f;
@@ -478,6 +582,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
             proceduralVertices_.push_back(vertex);
         }
     }
+
     for (int s = 0; s < segments; ++s) {
         uint32_t curr = offset + s;
         uint32_t next = curr + (segments + 1);
@@ -496,6 +601,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
     topCenter.texcoord = {0.5f, 0.5f};
     topCenter.normal = {0, 1, 0};
     proceduralVertices_.push_back(topCenter);
+
     for (int s = 0; s <= segments; ++s) {
         float theta = ((float)s / segments) * 2.0f * 3.14159265f;
         Model::VertexData v;
@@ -504,6 +610,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
         v.normal = {0, 1, 0};
         proceduralVertices_.push_back(v);
     }
+
     for (int s = 0; s < segments; ++s) {
         proceduralIndices_.push_back(offset);
         proceduralIndices_.push_back(offset + 1 + s);
@@ -517,6 +624,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
     botCenter.texcoord = {0.5f, 0.5f};
     botCenter.normal = {0, -1, 0};
     proceduralVertices_.push_back(botCenter);
+
     for (int s = 0; s <= segments; ++s) {
         float theta = ((float)s / segments) * 2.0f * 3.14159265f;
         Model::VertexData v;
@@ -525,6 +633,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
         v.normal = {0, -1, 0};
         proceduralVertices_.push_back(v);
     }
+
     for (int s = 0; s < segments; ++s) {
         proceduralIndices_.push_back(offset);
         proceduralIndices_.push_back(offset + 1 + s + 1);
@@ -534,143 +643,239 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
 
 void EffectObject3d::GenerateBoxVertices(const engine::Vector3& size) {
     // 各面に独立した法線とUVを持たせ、箱の角が滑らかに補間されないようにする。
-    proceduralVertices_.clear(); proceduralIndices_.clear();
-    float x = size.x / 2.0f; float y = size.y / 2.0f; float z = size.z / 2.0f;
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
+    float x = size.x / 2.0f;
+    float y = size.y / 2.0f;
+    float z = size.z / 2.0f;
     engine::Vector3 p[] = { {-x,-y,z}, {x,-y,z}, {-x,y,z}, {x,y,z}, {-x,-y,-z}, {x,-y,-z}, {-x,y,-z}, {x,y,-z} };
     int faces[6][4] = {{0,1,2,3}, {5,4,7,6}, {2,3,6,7}, {4,5,0,1}, {1,5,3,7}, {4,0,6,2}};
     engine::Vector3 n[6] = {{0,0,1}, {0,0,-1}, {0,1,0}, {0,-1,0}, {1,0,0}, {-1,0,0}};
     engine::Vector2 uv[4] = {{0,1}, {1,1}, {0,0}, {1,0}};
+
     for(int i=0; i<6; ++i) {
         uint32_t base = i * 4;
+
         for(int j=0; j<4; ++j) {
             Model::VertexData v;
             v.position = {p[faces[i][j]].x, p[faces[i][j]].y, p[faces[i][j]].z, 1.0f};
-            v.normal = n[i]; v.texcoord = uv[j];
+            v.normal = n[i];
+            v.texcoord = uv[j];
             proceduralVertices_.push_back(v);
         }
-        proceduralIndices_.push_back(base); proceduralIndices_.push_back(base+1); proceduralIndices_.push_back(base+2);
-        proceduralIndices_.push_back(base+2); proceduralIndices_.push_back(base+1); proceduralIndices_.push_back(base+3);
+
+        proceduralIndices_.push_back(base);
+        proceduralIndices_.push_back(base+1);
+        proceduralIndices_.push_back(base+2);
+        proceduralIndices_.push_back(base+2);
+        proceduralIndices_.push_back(base+1);
+        proceduralIndices_.push_back(base+3);
     }
 }
 
 void EffectObject3d::GeneratePlaneVertices(const engine::Vector2& size, int subdivisions) {
     // 平面を等間隔の格子に分け、変形可能な頂点とUVを生成する。
-    proceduralVertices_.clear(); proceduralIndices_.clear();
-    float hw = size.x / 2.0f; float hd = size.y / 2.0f;
-    int xSegments = subdivisions; int zSegments = subdivisions;
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
+    float hw = size.x / 2.0f;
+    float hd = size.y / 2.0f;
+    int xSegments = subdivisions;
+    int zSegments = subdivisions;
+
     for(int z=0; z<=zSegments; ++z) {
-        float v = (float)z / zSegments; float pz = hd - (size.y * v);
+        float v = (float)z / zSegments;
+        float pz = hd - (size.y * v);
+
         for(int x=0; x<=xSegments; ++x) {
-            float u = (float)x / xSegments; float px = -hw + (size.x * u);
+            float u = (float)x / xSegments;
+            float px = -hw + (size.x * u);
             Model::VertexData vert;
-            vert.position = {px, 0.0f, pz, 1.0f}; vert.normal = {0,1,0}; vert.texcoord = {u, v};
+            vert.position = {px, 0.0f, pz, 1.0f};
+            vert.normal = {0,1,0};
+            vert.texcoord = {u, v};
             proceduralVertices_.push_back(vert);
         }
     }
+
     for(int z=0; z<zSegments; ++z) {
         for(int x=0; x<xSegments; ++x) {
             uint32_t curr = z * (xSegments + 1) + x;
             uint32_t next = curr + (xSegments + 1);
-            proceduralIndices_.push_back(curr); proceduralIndices_.push_back(curr+1); proceduralIndices_.push_back(next);
-            proceduralIndices_.push_back(next); proceduralIndices_.push_back(curr+1); proceduralIndices_.push_back(next+1);
+            proceduralIndices_.push_back(curr);
+            proceduralIndices_.push_back(curr+1);
+            proceduralIndices_.push_back(next);
+            proceduralIndices_.push_back(next);
+            proceduralIndices_.push_back(curr+1);
+            proceduralIndices_.push_back(next+1);
         }
     }
 }
 
 void EffectObject3d::GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings) {
     // 大円に沿って小円を並べ、継ぎ目のUVを複製して輪状Meshを作る。
-    proceduralVertices_.clear(); proceduralIndices_.clear();
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
+
     for (int r = 0; r <= rings; ++r) {
-        float v = (float)r / rings; float phi = v * 2.0f * 3.14159265f;
-        float cosPhi = cosf(phi); float sinPhi = sinf(phi);
+        float v = (float)r / rings;
+        float phi = v * 2.0f * 3.14159265f;
+        float cosPhi = cosf(phi);
+        float sinPhi = sinf(phi);
+
         for (int s = 0; s <= segments; ++s) {
-            float u = (float)s / segments; float theta = u * 2.0f * 3.14159265f;
-            float cosTheta = cosf(theta); float sinTheta = sinf(theta);
+            float u = (float)s / segments;
+            float theta = u * 2.0f * 3.14159265f;
+            float cosTheta = cosf(theta);
+            float sinTheta = sinf(theta);
             float x = (majorRad + minorRad * cosPhi) * cosTheta;
             float y = minorRad * sinPhi;
             float z = (majorRad + minorRad * cosPhi) * sinTheta;
             Model::VertexData vert;
-            vert.position = {x, y, z, 1.0f}; vert.texcoord = {u, v};
+            vert.position = {x, y, z, 1.0f};
+            vert.texcoord = {u, v};
             engine::Vector3 center = {majorRad * cosTheta, 0, majorRad * sinTheta};
             engine::Vector3 norm = {x - center.x, y - center.y, z - center.z};
             float len = sqrtf(norm.x*norm.x + norm.y*norm.y + norm.z*norm.z);
-            if(len>0) { norm.x/=len; norm.y/=len; norm.z/=len; }
+
+            if(len>0) {
+                norm.x/=len;
+                norm.y/=len;
+                norm.z/=len;
+            }
             vert.normal = norm;
             proceduralVertices_.push_back(vert);
         }
     }
+
     for (int r = 0; r < rings; ++r) {
         for (int s = 0; s < segments; ++s) {
-            uint32_t curr = r * (segments + 1) + s; uint32_t next = curr + (segments + 1);
-            proceduralIndices_.push_back(curr); proceduralIndices_.push_back(next); proceduralIndices_.push_back(curr+1);
-            proceduralIndices_.push_back(curr+1); proceduralIndices_.push_back(next); proceduralIndices_.push_back(next+1);
+            uint32_t curr = r * (segments + 1) + s;
+            uint32_t next = curr + (segments + 1);
+            proceduralIndices_.push_back(curr);
+            proceduralIndices_.push_back(next);
+            proceduralIndices_.push_back(curr+1);
+            proceduralIndices_.push_back(curr+1);
+            proceduralIndices_.push_back(next);
+            proceduralIndices_.push_back(next+1);
         }
     }
 }
 
 void EffectObject3d::GenerateConeVertices(float radius, float height, int segments) {
-    proceduralVertices_.clear(); proceduralIndices_.clear();
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
     float halfH = height / 2.0f;
     uint32_t offset = 0;
+
     // Tip
-    Model::VertexData tip; tip.position = {0, halfH, 0, 1.0f}; tip.texcoord = {0.5f, 0.0f}; tip.normal = {0,1,0};
+    Model::VertexData tip;
+    tip.position = {0, halfH, 0, 1.0f};
+    tip.texcoord = {0.5f, 0.0f};
+    tip.normal = {0,1,0};
     proceduralVertices_.push_back(tip);
+
     for (int s = 0; s <= segments; ++s) {
-        float u = (float)s / segments; float theta = u * 2.0f * 3.14159265f;
-        float x = sinf(theta) * radius; float z = cosf(theta) * radius;
-        Model::VertexData v; v.position = {x, -halfH, z, 1.0f}; v.texcoord = {u, 1.0f};
+        float u = (float)s / segments;
+        float theta = u * 2.0f * 3.14159265f;
+        float x = sinf(theta) * radius;
+        float z = cosf(theta) * radius;
+        Model::VertexData v;
+        v.position = {x, -halfH, z, 1.0f};
+        v.texcoord = {u, 1.0f};
         engine::Vector3 norm = {sinf(theta), radius/height, cosf(theta)};
         float len = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
-        if(len>0){norm.x/=len;norm.y/=len;norm.z/=len;} v.normal = norm;
+
+        if(len>0){
+            norm.x/=len;
+            norm.y/=len;
+            norm.z/=len;
+        }
+        v.normal = norm;
         proceduralVertices_.push_back(v);
     }
+
     for (int s = 0; s < segments; ++s) {
-        proceduralIndices_.push_back(0); proceduralIndices_.push_back(s+2); proceduralIndices_.push_back(s+1);
+        proceduralIndices_.push_back(0);
+        proceduralIndices_.push_back(s+2);
+        proceduralIndices_.push_back(s+1);
     }
+
     // Bottom
     offset = (uint32_t)proceduralVertices_.size();
-    Model::VertexData bot; bot.position = {0, -halfH, 0, 1.0f}; bot.texcoord = {0.5f, 0.5f}; bot.normal = {0,-1,0};
+    Model::VertexData bot;
+    bot.position = {0, -halfH, 0, 1.0f};
+    bot.texcoord = {0.5f, 0.5f};
+    bot.normal = {0,-1,0};
     proceduralVertices_.push_back(bot);
+
     for (int s = 0; s <= segments; ++s) {
         float theta = ((float)s / segments) * 2.0f * 3.14159265f;
-        Model::VertexData v; v.position = {sinf(theta) * radius, -halfH, cosf(theta) * radius, 1.0f};
-        v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f - cosf(theta)*0.5f}; v.normal = {0,-1,0};
+        Model::VertexData v;
+        v.position = {sinf(theta) * radius, -halfH, cosf(theta) * radius, 1.0f};
+        v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f - cosf(theta)*0.5f};
+        v.normal = {0,-1,0};
         proceduralVertices_.push_back(v);
     }
+
     for (int s = 0; s < segments; ++s) {
-        proceduralIndices_.push_back(offset); proceduralIndices_.push_back(offset+1+s+1); proceduralIndices_.push_back(offset+1+s);
+        proceduralIndices_.push_back(offset);
+        proceduralIndices_.push_back(offset+1+s+1);
+        proceduralIndices_.push_back(offset+1+s);
     }
 }
 
 void EffectObject3d::GenerateRingVertices(float outerRad, float innerRad, int segments) {
-    proceduralVertices_.clear(); proceduralIndices_.clear();
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
+
     for(int i=0; i<=1; ++i) { // 0=inner, 1=outer
         float r = (i==0) ? innerRad : outerRad;
         float v = (float)i;
+
         for(int s=0; s<=segments; ++s) {
-            float u = (float)s / segments; float theta = u * 2.0f * 3.14159265f;
-            Model::VertexData vert; vert.position = {sinf(theta)*r, 0, cosf(theta)*r, 1.0f};
-            vert.texcoord = {u, v}; vert.normal = {0,1,0};
+            float u = (float)s / segments;
+            float theta = u * 2.0f * 3.14159265f;
+            Model::VertexData vert;
+            vert.position = {sinf(theta)*r, 0, cosf(theta)*r, 1.0f};
+            vert.texcoord = {u, v};
+            vert.normal = {0,1,0};
             proceduralVertices_.push_back(vert);
         }
     }
+
     for(int s=0; s<segments; ++s) {
-        uint32_t curr = s; uint32_t next = s + (segments + 1);
-        proceduralIndices_.push_back(curr); proceduralIndices_.push_back(curr+1); proceduralIndices_.push_back(next);
-        proceduralIndices_.push_back(next); proceduralIndices_.push_back(curr+1); proceduralIndices_.push_back(next+1);
+        uint32_t curr = s;
+        uint32_t next = s + (segments + 1);
+        proceduralIndices_.push_back(curr);
+        proceduralIndices_.push_back(curr+1);
+        proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(curr+1);
+        proceduralIndices_.push_back(next+1);
     }
 }
 
 void EffectObject3d::GenerateTriangleVertices(float size) {
     // 重心が原点に来る正三角形をXZ平面へ作り、法線を上向きに揃える。
-    proceduralVertices_.clear(); proceduralIndices_.clear();
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
     float r = size / sqrtf(3.0f);
     Model::VertexData v0, v1, v2;
-    v0.position = {0, 0, r, 1.0f}; v0.texcoord = {0.5f, 0.0f}; v0.normal = {0,1,0};
-    v1.position = {size/2.0f, 0, -r/2.0f, 1.0f}; v1.texcoord = {1.0f, 1.0f}; v1.normal = {0,1,0};
-    v2.position = {-size/2.0f, 0, -r/2.0f, 1.0f}; v2.texcoord = {0.0f, 1.0f}; v2.normal = {0,1,0};
-    proceduralVertices_.push_back(v0); proceduralVertices_.push_back(v1); proceduralVertices_.push_back(v2);
-    proceduralIndices_.push_back(0); proceduralIndices_.push_back(1); proceduralIndices_.push_back(2);
+    v0.position = {0, 0, r, 1.0f};
+    v0.texcoord = {0.5f, 0.0f};
+    v0.normal = {0,1,0};
+    v1.position = {size/2.0f, 0, -r/2.0f, 1.0f};
+    v1.texcoord = {1.0f, 1.0f};
+    v1.normal = {0,1,0};
+    v2.position = {-size/2.0f, 0, -r/2.0f, 1.0f};
+    v2.texcoord = {0.0f, 1.0f};
+    v2.normal = {0,1,0};
+    proceduralVertices_.push_back(v0);
+    proceduralVertices_.push_back(v1);
+    proceduralVertices_.push_back(v2);
+    proceduralIndices_.push_back(0);
+    proceduralIndices_.push_back(1);
+    proceduralIndices_.push_back(2);
 }
 
 void EffectObject3d::GenerateLanceVertices(float radius, float height, int segments) {
@@ -684,8 +889,10 @@ void EffectObject3d::GenerateLanceVertices(float radius, float height, int segme
         {  0.03f, 0.64f }, {  0.09f, 0.22f }, {  0.39f, 0.16f },
         {  0.45f, 0.35f }, {  0.50f, 0.00f }
     };
+
     constexpr int ringCount = static_cast<int>(sizeof(profile) / sizeof(profile[0]));
     const int sideCount = (std::max)(6, segments);
+
     for (int ring = 0; ring < ringCount; ++ring) {
         for (int side = 0; side <= sideCount; ++side) {
             const float angle = static_cast<float>(side) * 2.0f * 3.14159265f /
@@ -703,6 +910,7 @@ void EffectObject3d::GenerateLanceVertices(float radius, float height, int segme
             proceduralVertices_.push_back(vertex);
         }
     }
+
     for (int ring = 0; ring < ringCount - 1; ++ring) {
         for (int side = 0; side < sideCount; ++side) {
             const uint32_t lower = static_cast<uint32_t>(ring * (sideCount + 1) + side);
@@ -717,8 +925,12 @@ void EffectObject3d::GenerateLanceVertices(float radius, float height, int segme
 
 // 形状番号に対応する頂点を再生成し、共通UV倍率を掛けて動的Modelへ反映します。
 void EffectObject3d::UpdateProceduralMesh() {
-    if (!dynamicModel_) { dynamicModel_ = std::make_unique<Model>(); }
-    if (GetMeshRenderer()) { GetMeshRenderer()->SetModel(dynamicModel_.get()); }
+    if (!dynamicModel_) {
+        dynamicModel_ = std::make_unique<Model>();
+    }
+    if (GetMeshRenderer()) {
+        GetMeshRenderer()->SetModel(dynamicModel_.get());
+    }
 
     int type = materialData_ ? materialData_->proceduralType : 0;
 
@@ -774,6 +986,7 @@ void EffectObject3d::UpdateProceduralMesh() {
 // ファイルを開けない場合やJSON構文が不正な場合はfalseを返します。
 bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     std::ifstream file(jsonFilePath);
+
     if (!file.is_open()) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] LoadFromJson Failed to open file: " + jsonFilePath);
         return false;
@@ -786,6 +999,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] LoadFromJson JSON Parse Error in " + jsonFilePath + ": " + e.what());
         return false;
     }
+
     file.close();
 
     // 前に読み込んだエフェクトの特殊設定が、欠けたJSON項目へ残らないよう初期化する。
@@ -807,6 +1021,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     // --- パラメータ復元 ---
     if (j.contains("ModelName")) {
         std::string modelName = j["ModelName"].get<std::string>();
+
         if (!modelName.empty()) {
             SetModel(modelName);
         }
@@ -814,6 +1029,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
 
     if (j.contains("TexturePath")) {
         std::string tp = j["TexturePath"];
+
         if (!tp.empty() && GetMeshRenderer()) {
             GetMeshRenderer()->SetTexture(tp);
         }
@@ -821,6 +1037,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
 
     if (j.contains("NoiseTexturePath")) {
         std::string np = j["NoiseTexturePath"];
+
         if (!np.empty()) {
             SetNoiseTexture(TextureManager::GetInstance()->Load(np));
             SetEnableNoiseTexture(true);
@@ -829,6 +1046,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
 
     if (j.contains("RampTexturePath")) {
         std::string rp = j["RampTexturePath"];
+
         if (!rp.empty()) {
             SetRampTexture(TextureManager::GetInstance()->Load(rp));
             SetEnableColorRamp(true);
@@ -837,9 +1055,11 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
 
     // スケール・カラーアニメーション範囲
     engine::Vector3 scaleFactor = { 1.0f, 1.0f, 1.0f };
+
     if (j.contains("StartScale")) {
         SetStartScale({ j["StartScale"][0] * scaleFactor.x, j["StartScale"][1] * scaleFactor.y, j["StartScale"][2] * scaleFactor.z });
     }
+
     if (j.contains("EndScale")) {
         SetEndScale({ j["EndScale"][0] * scaleFactor.x, j["EndScale"][1] * scaleFactor.y, j["EndScale"][2] * scaleFactor.z });
     }
@@ -847,6 +1067,7 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     if (j.contains("StartColor")) {
         SetStartColor({ j["StartColor"][0], j["StartColor"][1], j["StartColor"][2], j["StartColor"][3] });
     }
+
     if (j.contains("EndColor")) {
         SetEndColor({ j["EndColor"][0], j["EndColor"][1], j["EndColor"][2], j["EndColor"][3] });
     }
@@ -854,53 +1075,69 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     if (j.contains("ScrollSpeed")) {
         SetScrollSpeed({ j["ScrollSpeed"][0], j["ScrollSpeed"][1] });
     }
+
     if (j.contains("Intensity")) {
         SetIntensity(j["Intensity"]);
     }
+
     if (j.contains("UseTextureColor")) {
         SetUseTextureColor(j["UseTextureColor"].get<bool>());
     }
+
     if (j.contains("ChantFlowStrength")) {
         SetChantFlowStrength(j["ChantFlowStrength"].get<float>());
     }
+
     if (j.contains("ChantRibbonStrength")) {
         SetChantRibbonStrength(j["ChantRibbonStrength"].get<float>());
     }
+
     if (j.contains("RingEnergyStrength")) {
         SetRingEnergyStrength(j["RingEnergyStrength"].get<float>());
     }
+
     if (j.contains("RingSpinSpeed")) {
         SetRingSpinSpeed(j["RingSpinSpeed"].get<float>());
     }
+
     if (j.contains("DistortionStrength")) {
         SetDistortionStrength(j["DistortionStrength"]);
     }
+
     if (j.contains("DistortionSpeed")) {
         SetDistortionSpeed(j["DistortionSpeed"]);
     }
+
     if (j.contains("EdgeFadeStrength")) {
         SetEdgeFadeStrength(j["EdgeFadeStrength"]);
     }
+
     if (j.contains("EnableDistortion")) {
         SetEnableDistortion(j["EnableDistortion"].get<bool>());
     }
+
     if (j.contains("BlendMode")) {
         SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
     }
+
     if (j.contains("EnableReveal")) {
         SetEnableReveal(j["EnableReveal"].get<bool>());
     }
+
     if (j.contains("RevealMode")) {
         SetRevealMode(j["RevealMode"].get<int>());
     }
+
     if (j.contains("EasingType")) {
         SetEasingType(j["EasingType"]);
     }
+
     if (j.contains("AlphaReference")) {
         SetAlphaReference(j["AlphaReference"].get<float>());
     } else {
         SetAlphaReference(0.0f);
     }
+
     if (j.contains("AutoLoop")) {
         SetAutoLoop(j["AutoLoop"].get<bool>());
     }
@@ -909,32 +1146,63 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     if (j.contains("ProceduralType")) {
         int procType = j["ProceduralType"];
         SetProceduralType(procType);
+
         if (procType >= 1) {
-            if (j.contains("SlashAngle"))      editSlashAngle_      = j["SlashAngle"];
-            if (j.contains("InnerRadius"))     editInnerRadius_     = j["InnerRadius"];
-            if (j.contains("OuterRadius"))     editOuterRadius_     = j["OuterRadius"];
-            if (j.contains("Thickness"))       editThickness_       = j["Thickness"];
-            if (j.contains("SpiralPitch"))     editSpiralPitch_     = j["SpiralPitch"];
-            if (j.contains("ThrustLength"))    editThrustLength_    = j["ThrustLength"];
-            if (j.contains("ThrustRadius"))    editThrustRadius_    = j["ThrustRadius"];
-            if (j.contains("SphereRadius"))    editSphereRadius_    = j["SphereRadius"];
-            if (j.contains("SphereRings"))     editSphereRings_     = j["SphereRings"];
-            if (j.contains("CylinderRadius"))  editCylinderRadius_  = j["CylinderRadius"];
-            if (j.contains("CylinderHeight"))  editCylinderHeight_  = j["CylinderHeight"];
-            if (j.contains("BoxSize"))    { editBoxSize_.x = j["BoxSize"][0]; editBoxSize_.y = j["BoxSize"][1]; editBoxSize_.z = j["BoxSize"][2]; }
-            if (j.contains("PlaneSize"))  { editPlaneSize_.x = j["PlaneSize"][0]; editPlaneSize_.y = j["PlaneSize"][1]; }
-            if (j.contains("TorusMajorRadius")) editTorusMajorRadius_ = j["TorusMajorRadius"];
-            if (j.contains("TorusMinorRadius")) editTorusMinorRadius_ = j["TorusMinorRadius"];
-            if (j.contains("ConeRadius"))  editConeRadius_  = j["ConeRadius"];
-            if (j.contains("ConeHeight"))  editConeHeight_  = j["ConeHeight"];
-            if (j.contains("RingOuterRadius")) editRingOuterRadius_ = j["RingOuterRadius"];
-            if (j.contains("RingInnerRadius")) editRingInnerRadius_ = j["RingInnerRadius"];
-            if (j.contains("TriangleSize"))    editTriangleSize_ = j["TriangleSize"];
-            if (j.contains("MeshSegments"))    editMeshSegments_ = j["MeshSegments"];
-            if (j.contains("UvTiling"))        { editUvTiling_.x = j["UvTiling"][0]; editUvTiling_.y = j["UvTiling"][1]; }
+            if (j.contains("SlashAngle"))
+                editSlashAngle_      = j["SlashAngle"];
+            if (j.contains("InnerRadius"))
+                editInnerRadius_     = j["InnerRadius"];
+            if (j.contains("OuterRadius"))
+                editOuterRadius_     = j["OuterRadius"];
+            if (j.contains("Thickness"))
+                editThickness_       = j["Thickness"];
+            if (j.contains("SpiralPitch"))
+                editSpiralPitch_     = j["SpiralPitch"];
+            if (j.contains("ThrustLength"))
+                editThrustLength_    = j["ThrustLength"];
+            if (j.contains("ThrustRadius"))
+                editThrustRadius_    = j["ThrustRadius"];
+            if (j.contains("SphereRadius"))
+                editSphereRadius_    = j["SphereRadius"];
+            if (j.contains("SphereRings"))
+                editSphereRings_     = j["SphereRings"];
+            if (j.contains("CylinderRadius"))
+                editCylinderRadius_  = j["CylinderRadius"];
+            if (j.contains("CylinderHeight"))
+                editCylinderHeight_  = j["CylinderHeight"];
+            if (j.contains("BoxSize"))    {
+                editBoxSize_.x = j["BoxSize"][0];
+                editBoxSize_.y = j["BoxSize"][1];
+                editBoxSize_.z = j["BoxSize"][2];
+            }
+            if (j.contains("PlaneSize"))  {
+                editPlaneSize_.x = j["PlaneSize"][0];
+                editPlaneSize_.y = j["PlaneSize"][1];
+            }
+            if (j.contains("TorusMajorRadius"))
+                editTorusMajorRadius_ = j["TorusMajorRadius"];
+            if (j.contains("TorusMinorRadius"))
+                editTorusMinorRadius_ = j["TorusMinorRadius"];
+            if (j.contains("ConeRadius"))
+                editConeRadius_  = j["ConeRadius"];
+            if (j.contains("ConeHeight"))
+                editConeHeight_  = j["ConeHeight"];
+            if (j.contains("RingOuterRadius"))
+                editRingOuterRadius_ = j["RingOuterRadius"];
+            if (j.contains("RingInnerRadius"))
+                editRingInnerRadius_ = j["RingInnerRadius"];
+            if (j.contains("TriangleSize"))
+                editTriangleSize_ = j["TriangleSize"];
+            if (j.contains("MeshSegments"))
+                editMeshSegments_ = j["MeshSegments"];
+            if (j.contains("UvTiling"))        {
+                editUvTiling_.x = j["UvTiling"][0];
+                editUvTiling_.y = j["UvTiling"][1];
+            }
             if (procType == 2 && editSlashAngle_ < 360.0f) {
                 editSlashAngle_ = 400.0f;
             }
+
             UpdateProceduralMesh();
         }
     }
@@ -942,11 +1210,14 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     // コライダー関連
     if (j.contains("Collision")) {
         auto col = j["Collision"];
-        if (col.contains("HasCollision")) editHasCollision_ = col["HasCollision"].get<bool>();
-        if (col.contains("Shape")) editCollisionShape_ = col["Shape"].get<int>();
+        if (col.contains("HasCollision"))
+            editHasCollision_ = col["HasCollision"].get<bool>();
+        if (col.contains("Shape"))
+            editCollisionShape_ = col["Shape"].get<int>();
         if (col.contains("Size") && col["Size"].is_array() && col["Size"].size() >= 3) {
             editCollisionSize_ = { col["Size"][0].get<float>(), col["Size"][1].get<float>(), col["Size"][2].get<float>() };
         }
+
         if (col.contains("Offset") && col["Offset"].is_array() && col["Offset"].size() >= 3) {
             editCollisionOffset_ = { col["Offset"][0].get<float>(), col["Offset"][1].get<float>(), col["Offset"][2].get<float>() };
         }
@@ -958,12 +1229,15 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
         auto rotVal = j["Rotation"];
         engine::Vector3 offsetPos = { 0, 0, 0 };
         engine::Vector3 offsetRot = { 0, 0, 0 };
+
         if (posVal.is_array() && posVal.size() >= 3) {
             offsetPos = { posVal[0].get<float>(), posVal[1].get<float>(), posVal[2].get<float>() };
         }
+
         if (rotVal.is_array() && rotVal.size() >= 3) {
             offsetRot = { rotVal[0].get<float>(), rotVal[1].get<float>(), rotVal[2].get<float>() };
         }
+
         SetOffsets(offsetPos, offsetRot);
         
         // アタッチ時の初期座標としても利用するため translate / rotate に一旦セットする

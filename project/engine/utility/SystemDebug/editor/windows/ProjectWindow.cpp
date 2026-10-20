@@ -9,6 +9,7 @@
 #include "imgui.h"
 #include "ModelManager.h"
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
+#include "game/system/rules/GameplayStatusManager.h"
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
 #include "SrvManager.h"
@@ -41,6 +42,7 @@ constexpr size_t kPresetThumbnailCacheLimit = 96;
 constexpr const char* kPresetPreviewPrefix = "@preset-preview:";
 constexpr size_t kPbrThumbnailCacheLimit = 64;
 std::map<std::string, uint64_t> presetThumbnailUseFence;
+
 // HUD 用モデル画像の生成設定。表示姿勢・拡縮・位置調整と出力名をまとめる。
 struct HudPortraitSpec {
     const char* presetName;
@@ -133,6 +135,7 @@ bool CreateHurtPortrait(const DirectX::Image& source, DirectX::ScratchImage& hur
 
     const DirectX::Image* squashedImage = squashed.GetImage(0, 0, 0);
     const DirectX::Image* destination = hurtImage.GetImage(0, 0, 0);
+
     if (!squashedImage || !destination) {
         return false;
     }
@@ -141,6 +144,7 @@ bool CreateHurtPortrait(const DirectX::Image& source, DirectX::ScratchImage& hur
     const size_t verticalOffset = (source.height - squashedHeight) / 2 + 4;
     const size_t copyHeight = (std::min)(squashedHeight, source.height - (std::min)(verticalOffset, source.height));
     const size_t copyBytes = (std::min)(source.width * 4, (std::min)(squashedImage->rowPitch, destination->rowPitch));
+
     for (size_t y = 0; y < copyHeight; ++y) {
         std::memcpy(
             destination->pixels + (verticalOffset + y) * destination->rowPitch,
@@ -151,16 +155,20 @@ bool CreateHurtPortrait(const DirectX::Image& source, DirectX::ScratchImage& hur
     // 被弾時は同じモデルの形を保ったまま、つぶれと赤みだけで反応を出します。
     for (size_t y = 0; y < destination->height; ++y) {
         uint8_t* row = destination->pixels + y * destination->rowPitch;
+
         for (size_t x = 0; x < destination->width; ++x) {
             uint8_t* pixel = row + x * 4;
+
             if (pixel[3] == 0) {
                 continue;
             }
+
             pixel[0] = static_cast<uint8_t>((std::min)(255.0f, pixel[0] * 0.88f + 42.0f));
             pixel[1] = static_cast<uint8_t>(pixel[1] * 0.76f);
             pixel[2] = static_cast<uint8_t>(pixel[2] * 0.76f);
         }
     }
+
     return true;
 }
 }
@@ -168,11 +176,14 @@ bool CreateHurtPortrait(const DirectX::Image& source, DirectX::ScratchImage& hur
 void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
     editor_ = editor;
     dxCommon_ = dxCommon;
+
     if (dxCommon_) {
-        previewObject3dCommon_ = std::make_unique<Object3dCommon>();
+        previewObject3dCommon_ = std::make_unique<engine::Object3dCommon>();
         previewObject3dCommon_->Initialize(dxCommon_);
+
         // シーンの昼夜やフォグに左右されず、全PBR素材を同じ条件で比較する。
         pbrPreviewLightResource_ = dxCommon_->CreateBufferResource(sizeof(DirectionalLight));
+
         if (pbrPreviewLightResource_) {
             DirectionalLight light{};
             light.color = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -184,6 +195,7 @@ void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
             light.volumetricSteps = 0;
             light.lightViewProj = engine::Math::MakeIdentity4x4();
             void* mapped = nullptr;
+
             if (SUCCEEDED(pbrPreviewLightResource_->Map(0, nullptr, &mapped)) && mapped) {
                 std::memcpy(mapped, &light, sizeof(light));
                 pbrPreviewLightResource_->Unmap(0, nullptr);
@@ -191,17 +203,21 @@ void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
                 pbrPreviewLightResource_.Reset();
             }
         }
+
         // ルートCBVの前回値を引き継がず、撮影中の局所ライトは常に0個にする。
         pbrPreviewPointLightsResource_ = dxCommon_->CreateBufferResource(sizeof(LightManager::PointLightConstData));
         pbrPreviewSpotLightsResource_ = dxCommon_->CreateBufferResource(sizeof(LightManager::SpotLightConstData));
         const auto clearLightBuffer = [](ID3D12Resource* resource, size_t bytes) {
-            if (!resource) return;
+            if (!resource)
+                return;
             void* mapped = nullptr;
+
             if (SUCCEEDED(resource->Map(0, nullptr, &mapped)) && mapped) {
                 std::memset(mapped, 0, bytes);
                 resource->Unmap(0, nullptr);
             }
         };
+
         clearLightBuffer(pbrPreviewPointLightsResource_.Get(), sizeof(LightManager::PointLightConstData));
         clearLightBuffer(pbrPreviewSpotLightsResource_.Get(), sizeof(LightManager::SpotLightConstData));
     }
@@ -210,9 +226,11 @@ void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
 void ProjectWindow::QueueHudPortraitExports(bool forceAll) {
     // 通常・被弾PNGの不足分だけ撮影対象とし、強制更新時は既存ファイルも撮り直す。
     const fs::path outputDirectory(kHudPortraitDirectory);
+
     for (const HudPortraitSpec& spec : kHudPortraitSpecs) {
         const fs::path normalPath = outputDirectory / (std::string(spec.fileStem) + ".png");
         const fs::path hurtPath = outputDirectory / (std::string(spec.fileStem) + "_hurt.png");
+
         if (!forceAll && fs::exists(normalPath) && fs::exists(hurtPath)) {
             continue;
         }
@@ -238,7 +256,8 @@ void ProjectWindow::QueueHudPortraitExports(bool forceAll) {
 // 画用紙（レンダーターゲット）の作成
 // ==========================================================
 void ProjectWindow::CreateThumbnailResource(const std::string& modelName) {
-    if (!dxCommon_) return;
+    if (!dxCommon_)
+        return;
     auto device = dxCommon_->GetDevice();
     ThumbnailData& data = thumbnailAlbum_[modelName];
 
@@ -286,27 +305,40 @@ void ProjectWindow::CreateThumbnailResource(const std::string& modelName) {
 }
 
 void ProjectWindow::CreatePresetThumbnailResource(const std::string& presetName) {
-    if (!dxCommon_) return;
+    if (!dxCommon_)
+        return;
     if (presetThumbnailAlbum_.size() >= kPresetThumbnailCacheLimit) {
         const uint64_t completed = dxCommon_->GetFence()->GetCompletedValue();
         auto oldest = presetThumbnailAlbum_.end();
         uint64_t oldestFence = UINT64_MAX;
+
         for (auto it = presetThumbnailAlbum_.begin(); it != presetThumbnailAlbum_.end(); ++it) {
-            if (it->second.isHudPortrait || it->second.exportRequested) continue;
+            if (it->second.isHudPortrait || it->second.exportRequested)
+                continue;
             const uint64_t lastUse = presetThumbnailUseFence[it->first];
-            if (lastUse <= completed && lastUse < oldestFence) { oldest = it; oldestFence = lastUse; }
+
+            if (lastUse <= completed && lastUse < oldestFence) {
+                oldest = it;
+                oldestFence = lastUse;
+            }
         }
-        if (oldest == presetThumbnailAlbum_.end()) return;
+
+        if (oldest == presetThumbnailAlbum_.end())
+            return;
         ThumbnailData reused = std::move(oldest->second);
         presetThumbnailUseFence.erase(oldest->first);
         presetThumbnailAlbum_.erase(oldest);
-        reused.previewObjects.clear(); reused.previewObject.reset(); reused.retiredPreviewObjects.clear();
-        reused.retiredPreviewFence = 0; reused.isCaptured = false;
+        reused.previewObjects.clear();
+        reused.previewObject.reset();
+        reused.retiredPreviewObjects.clear();
+        reused.retiredPreviewFence = 0;
+        reused.isCaptured = false;
         reused.contentDirty = true;
         reused.previewHasBounds = false;
         presetThumbnailAlbum_[presetName] = std::move(reused);
         return;
     }
+
     auto device = dxCommon_->GetDevice();
     ThumbnailData& data = presetThumbnailAlbum_[presetName];
 
@@ -354,19 +386,23 @@ void ProjectWindow::CreatePresetThumbnailResource(const std::string& presetName)
 }
 
 void ProjectWindow::CreatePbrThumbnailResource(const std::string& name) {
-    if (!dxCommon_ || name.empty()) return;
+    if (!dxCommon_ || name.empty())
+        return;
 
     // GPUがまだ参照する画像を破棄しないよう、完了済みの最古の枠だけを再利用する。
     if (pbrThumbnailAlbum_.size() >= kPbrThumbnailCacheLimit) {
         const uint64_t completed = dxCommon_->GetFence()->GetCompletedValue();
         auto oldest = pbrThumbnailAlbum_.end();
+
         for (auto it = pbrThumbnailAlbum_.begin(); it != pbrThumbnailAlbum_.end(); ++it) {
             if (it->second.lastUseFence <= completed &&
                 (oldest == pbrThumbnailAlbum_.end() || it->second.lastUseFence < oldest->second.lastUseFence)) {
                 oldest = it;
             }
         }
-        if (oldest == pbrThumbnailAlbum_.end()) return;
+
+        if (oldest == pbrThumbnailAlbum_.end())
+            return;
         PbrThumbnailData reused = std::move(oldest->second);
         pbrThumbnailAlbum_.erase(oldest);
         reused.thumbnail.previewObject.reset();
@@ -375,6 +411,7 @@ void ProjectWindow::CreatePbrThumbnailResource(const std::string& name) {
         return;
     }
 
+    // 再利用できる枠がなければ、新しいPBRサムネイル用の描画先を確保します。
     auto* device = dxCommon_->GetDevice();
     auto& data = pbrThumbnailAlbum_[name].thumbnail;
     D3D12_RESOURCE_DESC desc{};
@@ -400,7 +437,8 @@ void ProjectWindow::CreatePbrThumbnailResource(const std::string& name) {
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeap{};
     rtvHeap.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
     rtvHeap.NumDescriptors = 1;
-    if (FAILED(device->CreateDescriptorHeap(&rtvHeap, IID_PPV_ARGS(&data.rtvHeap)))) return;
+    if (FAILED(device->CreateDescriptorHeap(&rtvHeap, IID_PPV_ARGS(&data.rtvHeap))))
+        return;
     D3D12_RENDER_TARGET_VIEW_DESC rtv{};
     rtv.Format = desc.Format;
     rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -415,24 +453,32 @@ void ProjectWindow::CreatePbrThumbnailResource(const std::string& name) {
 
 uint64_t ProjectWindow::GetPbrThumbnailGpuPtr(const std::string& name,
     const std::string& albedoPath, const std::string& normalPath, const std::string& ormPath) {
-    if (name.empty() || albedoPath.empty() || normalPath.empty() || ormPath.empty()) return 0;
-    if (pbrThumbnailAlbum_.find(name) == pbrThumbnailAlbum_.end()) CreatePbrThumbnailResource(name);
+    if (name.empty() || albedoPath.empty() || normalPath.empty() || ormPath.empty())
+        return 0;
+    if (pbrThumbnailAlbum_.find(name) == pbrThumbnailAlbum_.end())
+        CreatePbrThumbnailResource(name);
     auto it = pbrThumbnailAlbum_.find(name);
-    if (it == pbrThumbnailAlbum_.end() || !it->second.thumbnail.resource || !it->second.thumbnail.srvHandle) return 0;
+    if (it == pbrThumbnailAlbum_.end() || !it->second.thumbnail.resource || !it->second.thumbnail.srvHandle)
+        return 0;
     PbrThumbnailData& data = it->second;
+
+    // 同じ名前でも参照テクスチャが変われば撮影済み画像を無効にします。
     if (data.albedoPath != albedoPath || data.normalPath != normalPath || data.ormPath != ormPath) {
         data.albedoPath = albedoPath;
         data.normalPath = normalPath;
         data.ormPath = ormPath;
         data.thumbnail.isCaptured = false;
     }
+
+    // このフレームの利用を記録し、GPUが読み終える前にキャッシュから外さないようにします。
     data.lastUseFence = dxCommon_->GetFenceValue() + 1;
     return data.thumbnail.isCaptured
         ? SRVManager::GetInstance()->GetGPUDescriptorHandle(data.thumbnail.srvHandle).ptr : 0;
 }
 
 void ProjectWindow::InvalidatePbrThumbnails() {
-    for (auto& [name, data] : pbrThumbnailAlbum_) data.thumbnail.isCaptured = false;
+    for (auto& [name, data] : pbrThumbnailAlbum_)
+        data.thumbnail.isCaptured = false;
 }
 
 uint64_t ProjectWindow::GetPresetThumbnailGpuPtr(const std::string& presetName) {
@@ -446,23 +492,28 @@ uint64_t ProjectWindow::GetPresetThumbnailGpuPtr(const std::string& presetName) 
     }
 
     auto it = presetThumbnailAlbum_.find(presetName);
+
     if (it == presetThumbnailAlbum_.end() || it->second.srvHandle == 0) {
         return 0;
     }
 
     presetThumbnailUseFence[presetName] = dxCommon_->GetFenceValue() + 1;
-    if (presetName.starts_with("@effect:") && !it->second.isCaptured) return 0;
+    if (presetName.starts_with("@effect:") && !it->second.isCaptured)
+        return 0;
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(it->second.srvHandle);
     return static_cast<uint64_t>(gpuHandle.ptr);
 }
 
 uint64_t ProjectWindow::GetPresetPreviewGpuPtr(const std::string& presetName, float yaw, float pitch, float zoom) {
-    if (presetName.empty() || !PresetManager::GetInstance()->HasPreset(presetName)) return 0;
+    if (presetName.empty() || !PresetManager::GetInstance()->HasPreset(presetName))
+        return 0;
+
     // 一覧写真・HUDアイコンとは別の描画先を使い、視点操作がそれらへ波及しないようにする。
     const std::string key = std::string(kPresetPreviewPrefix) + presetName;
     const uint64_t texture = GetPresetThumbnailGpuPtr(key);
     const auto it = presetThumbnailAlbum_.find(key);
-    if (it == presetThumbnailAlbum_.end()) return 0;
+    if (it == presetThumbnailAlbum_.end())
+        return 0;
     ThumbnailData& data = it->second;
     if (std::abs(data.previewYaw - yaw) > 0.0001f ||
         std::abs(data.previewPitch - pitch) > 0.0001f ||
@@ -472,6 +523,7 @@ uint64_t ProjectWindow::GetPresetPreviewGpuPtr(const std::string& presetName, fl
         data.previewZoom = zoom;
         data.isCaptured = false;
     }
+
     return texture;
 }
 
@@ -482,6 +534,7 @@ void ProjectWindow::InvalidatePresetThumbnail(const std::string& presetName) {
     // 保存値が変わったときは一覧写真と操作用プレビューの両方でObjectを組み直す。
     for (const std::string key : {presetName, std::string(kPresetPreviewPrefix) + presetName}) {
         const auto it = presetThumbnailAlbum_.find(key);
+
         if (it != presetThumbnailAlbum_.end()) {
             it->second.isCaptured = false;
             it->second.contentDirty = true;
@@ -490,24 +543,28 @@ void ProjectWindow::InvalidatePresetThumbnail(const std::string& presetName) {
 }
 
 void ProjectWindow::CapturePendingThumbnails() {
-    if (!dxCommon_) return;
+    if (!dxCommon_)
+        return;
     if (!hudPortraitAutoScanDone_) {
         hudPortraitAutoScanDone_ = true;
         QueueHudPortraitExports(false);
     }
+
     auto device = dxCommon_->GetDevice();
     auto commandList = dxCommon_->GetCommandList();
 
     // =======================================================
     //  シーンの進行状況に依存しない、安全な専用 Object3dCommon を使う！
     // =======================================================
-    Object3dCommon* objCommon = previewObject3dCommon_.get();
-    if (!objCommon) return;
+    engine::Object3dCommon* objCommon = previewObject3dCommon_.get();
+    if (!objCommon)
+        return;
 
     // --- Zバッファの生成 ---
     static Microsoft::WRL::ComPtr<ID3D12Resource> s_studioDepth;
     static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> s_studioDsvHeap;
     static uint32_t s_studioDepthSrv = 0;
+
     if (!s_studioDepth) {
         D3D12_RESOURCE_DESC depthDesc{};
         depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -523,7 +580,8 @@ void ProjectWindow::CapturePendingThumbnails() {
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
         D3D12_CLEAR_VALUE clearValue{};
-        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;;
+        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        ;
         clearValue.DepthStencil.Depth = 1.0f;
 
         device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &depthDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&s_studioDepth));
@@ -564,17 +622,20 @@ void ProjectWindow::CapturePendingThumbnails() {
         studioCamera_.SetInputEnabled(false);
         isStudioCameraInitialized_ = true;
     }
+
     studioCamera_.Update(); // 行列を計算
 
     // メインカメラから、このスタジオ用カメラにすり替える！
     Camera* previousCameraOverride = CameraManager::GetInstance()->GetActiveCameraOverride();
     CameraManager::GetInstance()->SetActiveCamera(&studioCamera_);
+
     // =================================================================
 
     for (auto& pair : thumbnailAlbum_) {
         std::string modelName = pair.first;
         ThumbnailData& data = pair.second;
-        if (data.isCaptured) continue;
+        if (data.isCaptured)
+            continue;
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Transition.pResource = data.resource.Get();
@@ -628,6 +689,7 @@ void ProjectWindow::CapturePendingThumbnails() {
 
                 // 最も長い辺を見つける
                 float maxDim = (std::max)({ modelSize.x, modelSize.y, modelSize.z });
+
                 if (maxDim > 0.001f) {
                     // モデルのサイズと中心点に基づき、フィットするスケールとオフセットを計算
                     autoScale = 8.5f / maxDim;
@@ -666,6 +728,7 @@ void ProjectWindow::CapturePendingThumbnails() {
 
     // --- プリセットの撮影ループ ---
     int capturedPresetCount = 0;
+
     for (auto& pair : presetThumbnailAlbum_) {
         std::string presetName = pair.first;
         ThumbnailData& data = pair.second;
@@ -676,9 +739,13 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.retiredPreviewObjects.clear();
             data.retiredPreviewFence = 0;
         }
-        if (data.isCaptured) continue;
+
+        if (data.isCaptured)
+            continue;
+
         // 表示した項目だけ生成し、初回撮影によるフレーム停止を抑えます。
-        if (!data.isHudPortrait && capturedPresetCount >= 4) continue;
+        if (!data.isHudPortrait && capturedPresetCount >= 4)
+            continue;
         ++capturedPresetCount;
 
         D3D12_RESOURCE_BARRIER barrier{};
@@ -698,6 +765,7 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.isHudPortrait ? 0.0f : 0.25f,
             data.isHudPortrait ? 0.0f : 1.0f
         };
+
         commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
@@ -715,6 +783,7 @@ void ProjectWindow::CapturePendingThumbnails() {
                 data.retiredPreviewObjects.push_back(std::move(data.previewObject));
                 data.retiredPreviewFence = dxCommon_->GetFenceValue() + 1;
             }
+
             auto effect = std::make_shared<EffectObject3d>();
             effect->Initialize(objCommon);
             data.previewObject = effect;
@@ -723,13 +792,17 @@ void ProjectWindow::CapturePendingThumbnails() {
                     effect->SetIsUIPreview(true);
                     effect->SetEditorInternal(true);
                     effect->editHasCollision_ = false;
-                    effect->SetCollisionAttribute(0); effect->SetCollisionMask(0);
-                    effect->SetTargetObject(nullptr); effect->SetAutoLoop(false);
+                    effect->SetCollisionAttribute(0);
+                    effect->SetCollisionMask(0);
+                    effect->SetTargetObject(nullptr);
+                    effect->SetAutoLoop(false);
+
                     // 背景歪みは撮影先のSceneカラーを持たないため、素材の色と形を撮ります。
                     effect->SetEnableDistortion(false);
                     const float lifetime = (std::max)(0.01f, effect->GetLifetime());
                     effect->Play(lifetime);
                     effect->Update(lifetime * 0.4f);
+
                     // 手続き生成メッシュはModelNameが空でもRendererに実体があります。
                     if (auto* model = effect->GetMeshRenderer() ? effect->GetMeshRenderer()->GetModel() : nullptr) {
                         auto scale = effect->GetScale();
@@ -741,7 +814,9 @@ void ProjectWindow::CapturePendingThumbnails() {
                         const auto center = engine::Math::Transform(model->GetCenter(), engine::Math::MakeAffineMatrix(scale, effect->GetRotation(), {}));
                         effect->SetTranslate({-center.x, 1.1f - center.y, -center.z});
                     }
-                    effect->UpdateLocalMatrix(); effect->UpdateWorldMatrix();
+
+                    effect->UpdateLocalMatrix();
+                    effect->UpdateWorldMatrix();
                     effect->Draw(nullptr, nullptr);
                 }
             } catch (const std::exception& error) {
@@ -766,15 +841,19 @@ void ProjectWindow::CapturePendingThumbnails() {
             // モデルの自動フィット計算 (モデルが設定されている場合のみ)
             if (!data.previewObject->GetModelName().empty()) {
                 Model* model = ModelManager::GetInstance()->LoadModel(data.previewObject->GetModelName());
+
                 if (model) {
                     engine::Vector3 modelSize = model->GetSize();
                     engine::Vector3 modelCenter = model->GetCenter();
                     float maxDim = (std::max)({ modelSize.x, modelSize.y, modelSize.z });
+
                     if (maxDim > 0.001f) {
                         float autoScale = 8.0f / maxDim;
+
                         if (data.isHudPortrait) {
                             autoScale *= data.portraitScale;
                         }
+
                         data.previewObject->SetScale({ autoScale, autoScale, autoScale });
                         data.previewObject->SetTranslateX(-modelCenter.x * autoScale);
                         data.previewObject->SetTranslateY(-modelCenter.y * autoScale + 1.1f + (data.isHudPortrait ? data.portraitOffsetY : 0.0f));
@@ -792,55 +871,96 @@ void ProjectWindow::CapturePendingThumbnails() {
         } else {
             // Sceneの実体やギミックのUpdateを使わず、描画専用Objectで階層を再現します。
             if (data.contentDirty || !data.previewObject) {
-            for (auto& node : data.previewObjects) data.retiredPreviewObjects.push_back(std::move(node));
+            for (auto& node : data.previewObjects)
+                data.retiredPreviewObjects.push_back(std::move(node));
             data.previewObjects.clear();
-            if (data.previewObject) data.retiredPreviewObjects.push_back(std::move(data.previewObject));
-            if (!data.retiredPreviewObjects.empty()) data.retiredPreviewFence = dxCommon_->GetFenceValue() + 1;
+            if (data.previewObject)
+                data.retiredPreviewObjects.push_back(std::move(data.previewObject));
+            if (!data.retiredPreviewObjects.empty())
+                data.retiredPreviewFence = dxCommon_->GetFenceValue() + 1;
             data.previewObject = std::make_shared<engine::Object3d>();
             data.previewObject->Initialize(objCommon);
             data.previewObject->SetIsUIPreview(true);
             const auto& presets = PresetManager::GetInstance()->GetPresets();
             const auto presetIt = presets.find(sourcePresetName);
+
             if (presetIt != presets.end()) {
                 std::function<void(const nlohmann::json&, engine::Object3d*, int)> build = [&](const nlohmann::json& source, engine::Object3d* parent, int depth) {
-                    if (!source.is_object() || depth > 32) return;
+                    if (!source.is_object() || depth > 32)
+                        return;
                     auto node = std::make_shared<engine::Object3d>();
                     node->Initialize(objCommon);
                     nlohmann::json visual = source;
-                    visual.erase("children"); visual.erase("guid"); visual.erase("prefabInstance");
+                    visual.erase("children");
+                    visual.erase("guid");
+                    visual.erase("prefabInstance");
                     visual["type"] = "Model";
+
                     // 一覧は正面に統一し、操作用プレビューだけ配置時の回転を表示します。
                     if (depth == 0 && !interactivePreview) { visual["rotate"] = {0.0f, 0.0f, 0.0f}; visual["quaternion"] = {0.0f, 0.0f, 0.0f, 1.0f}; }
+
                     // Recorder・衝突地形・Componentを読み込まず、描画設定だけを復元します。
-                    visual.erase("recorder"); visual.erase("terrainCollisionPath"); visual.erase("components");
+                    visual.erase("recorder");
+                    visual.erase("terrainCollisionPath");
+                    visual.erase("components");
                     node->ImportFromJson(visual);
+                    if (source.value("type", std::string{}) == "Enemy") {
+                        std::string enemyType = source.value("enemyType", std::string{});
+                        if (enemyType.empty() && source.contains("param") && source["param"].is_object()) {
+                            enemyType = source["param"].value("enemyType", std::string{});
+                        }
+
+                        // 敵のモデルとスケールはプリセットに保存されないため、撮影時だけ共通ステータスから補います。
+                        auto* statusManager = GameplayStatusManager::GetInstance();
+                        statusManager->Initialize();
+                        if (const auto* status = statusManager->FindEnemyStatus(enemyType)) {
+                            if (!status->modelName.empty()) {
+                                node->SetModel(status->modelName);
+                            }
+                            node->SetScale(status->scale);
+                        }
+                    }
                     const bool invisible = source.value("type", "") == "InvisibleBox" || source.value("presetUsage", "") == "当たり判定";
-                    if (invisible) node->SetModel("");
+                    if (invisible)
+                        node->SetModel("");
                     node->SetIsUIPreview(true);
                     node->SetParent(parent);
                     node->UpdateWorldMatrix();
                     data.previewObjects.push_back(node);
                     if (source.contains("children") && source["children"].is_array())
-                        for (const auto& child : source["children"]) build(child, node.get(), depth + 1);
+                        for (const auto& child : source["children"])
+                            build(child, node.get(), depth + 1);
                 };
+
                 build(presetIt->second, data.previewObject.get(), 0);
             }
+
             engine::Vector3 low = {FLT_MAX,FLT_MAX,FLT_MAX}, high = {-FLT_MAX,-FLT_MAX,-FLT_MAX};
             bool hasBounds = false;
+
             for (const auto& node : data.previewObjects) {
-                if (!node->GetModel()) continue;
+                if (!node->GetModel())
+                    continue;
                 const AABB bounds = node->GetModelWorldAABB();
-                low.x = (std::min)(low.x,bounds.min.x); low.y = (std::min)(low.y,bounds.min.y); low.z = (std::min)(low.z,bounds.min.z);
-                high.x = (std::max)(high.x,bounds.max.x); high.y = (std::max)(high.y,bounds.max.y); high.z = (std::max)(high.z,bounds.max.z);
+                low.x = (std::min)(low.x,bounds.min.x);
+                low.y = (std::min)(low.y,bounds.min.y);
+                low.z = (std::min)(low.z,bounds.min.z);
+                high.x = (std::max)(high.x,bounds.max.x);
+                high.y = (std::max)(high.y,bounds.max.y);
+                high.z = (std::max)(high.z,bounds.max.z);
                 hasBounds = true;
             }
+
             data.previewHasBounds = hasBounds;
+
             if (hasBounds) {
                 data.previewCenter = {(low.x+high.x)*.5f,(low.y+high.y)*.5f,(low.z+high.z)*.5f};
                 data.previewExtent = {high.x-low.x,high.y-low.y,high.z-low.z};
             }
+
             data.contentDirty = false;
             }
+
             if (data.previewHasBounds) {
                 const engine::Vector3 center = data.previewCenter;
                 const engine::Vector3 extent = data.previewExtent;
@@ -849,31 +969,38 @@ void ProjectWindow::CapturePendingThumbnails() {
                 Transform framingValue = *data.previewObject->GetTransform();
                 Transform* framing = &framingValue;
                 framing->scale = {fit,fit,fit};
+
                 // 正面形状と床の上面が読める、固定された斜め上の構図を使います。
                 framing->rotate = {-.28f,.32f,0};
-                if (extent.y < (std::max)(extent.x,extent.z)*.12f) framing->rotate.x = -.55f;
+                if (extent.y < (std::max)(extent.x,extent.z)*.12f)
+                    framing->rotate.x = -.55f;
                 if (interactivePreview) {
                     framing->rotate.x += data.previewPitch;
                     framing->rotate.y += data.previewYaw;
                 }
+
                 framing->isQuaternionMaster = false;
                 const engine::Matrix4x4 orientation = engine::Math::MakeAffineMatrix(framing->scale,framing->rotate,{});
                 const engine::Vector3 offset = engine::Math::Transform(center,orientation);
                 framing->translate = {-offset.x,1.1f-offset.y,-offset.z};
                 data.previewObject->SetLocalTransform(framingValue);
             }
+
             // プリセット写真は保存済みの照明・PBR値を維持し、共通の撮影ライトだけ差し替える。
             for (const auto& node : data.previewObjects) {
                 if (auto* renderer = node->GetMeshRenderer()) {
                     renderer->SetPreviewDirectionalLightResource(pbrPreviewLightResource_.Get());
                 }
             }
+
             data.previewObject->UpdateWorldMatrix();
+
             for (const auto& node : data.previewObjects) {
                 const int material = node->GetMaterialType();
                 if (material < 8 || (material > 22 && material != 26))
                     node->Draw(pbrPreviewPointLightsResource_.Get(), pbrPreviewSpotLightsResource_.Get());
             }
+
             // 不透明物体の深度を特殊材質へ渡すため、DSVを外して読取状態へ遷移します。
             commandList->OMSetRenderTargets(1,&rtvHandle,false,nullptr);
             D3D12_RESOURCE_BARRIER depthRead{};
@@ -883,11 +1010,13 @@ void ProjectWindow::CapturePendingThumbnails() {
             depthRead.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             commandList->ResourceBarrier(1,&depthRead);
             const uint32_t neutralColor = TextureManager::GetInstance()->Load("Resources/sprite/common/white.dds");
+
             for (const auto& node : data.previewObjects) {
                 const int material = node->GetMaterialType();
                 if ((material >= 8 && material <= 22) || material == 26)
                     node->DrawSpecialMaterialForCamera(&studioCamera_,s_studioDepthSrv,neutralColor);
             }
+
             std::swap(depthRead.Transition.StateBefore,depthRead.Transition.StateAfter);
             commandList->ResourceBarrier(1,&depthRead);
         }
@@ -902,11 +1031,13 @@ void ProjectWindow::CapturePendingThumbnails() {
 
     // PBR一覧は撮影用の球だけを描く。1フレーム2枚までに抑えてUI停止を防ぐ。
     int capturedPbrCount = 0;
+
     for (auto& [name, entry] : pbrThumbnailAlbum_) {
         ThumbnailData& data = entry.thumbnail;
         if (data.isCaptured || !data.resource || !data.rtvHeap ||
             entry.albedoPath.empty() || entry.normalPath.empty() || entry.ormPath.empty()) continue;
-        if (capturedPbrCount++ >= 2) break;
+        if (capturedPbrCount++ >= 2)
+            break;
 
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -931,6 +1062,7 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.previewObject->Initialize(objCommon);
             data.previewObject->SetIsUIPreview(true);
             data.previewObject->SetModel("Primitives/sphere");
+
             if (Model* sphere = ModelManager::GetInstance()->LoadModel("Primitives/sphere")) {
                 const engine::Vector3 size = sphere->GetSize();
                 const engine::Vector3 center = sphere->GetCenter();
@@ -940,6 +1072,7 @@ void ProjectWindow::CapturePendingThumbnails() {
                 data.previewObject->SetTranslate({
                     -center.x * scale, 1.1f - center.y * scale, -center.z * scale });
             }
+
             data.previewObject->SetEulerX(-0.2f);
             data.previewObject->SetMaterialType(0);
             data.previewObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -951,10 +1084,12 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.previewObject->SetEnableNormalMap(true);
             data.previewObject->SetAutoTextureTiling(false);
             data.previewObject->SetTextureTiling({ 1.0f, 1.0f });
+
             if (auto* renderer = data.previewObject->GetMeshRenderer()) {
                 renderer->SetPreviewDirectionalLightResource(pbrPreviewLightResource_.Get());
             }
         }
+
         data.previewObject->SetTexture(entry.albedoPath);
         data.previewObject->SetNormalMap(entry.normalPath);
         data.previewObject->SetOrmMap(entry.ormPath);
@@ -983,6 +1118,7 @@ void ProjectWindow::ExportCapturedHudPortraits() {
     const fs::path outputDirectory(kHudPortraitDirectory);
     std::error_code directoryError;
     fs::create_directories(outputDirectory, directoryError);
+
     if (directoryError) {
         DebugConsole::GetInstance()->AddLog("HUD icon export failed: output directory could not be created.");
         return;
@@ -994,6 +1130,7 @@ void ProjectWindow::ExportCapturedHudPortraits() {
         }
 
         data.exportRequested = false;
+
         // GPUリソースを取得し、PNG保存に使えるRGBA8へ変換する。
         DirectX::ScratchImage captured;
         HRESULT hr = DirectX::CaptureTexture(
@@ -1009,6 +1146,7 @@ void ProjectWindow::ExportCapturedHudPortraits() {
         }
 
         const DirectX::Image* source = captured.GetImage(0, 0, 0);
+
         if (!source) {
             DebugConsole::GetInstance()->AddLog("HUD icon export failed: captured image is empty: " + presetName);
             continue;
@@ -1022,12 +1160,14 @@ void ProjectWindow::ExportCapturedHudPortraits() {
             DirectX::TEX_THRESHOLD_DEFAULT,
             converted);
         const DirectX::Image* normalImage = converted.GetImage(0, 0, 0);
+
         if (FAILED(hr) || !normalImage) {
             DebugConsole::GetInstance()->AddLog("HUD icon export failed while converting image: " + presetName);
             continue;
         }
 
         const fs::path normalPath = outputDirectory / (data.exportFileStem + ".png");
+
         // 通常版と被弾版を対で書き出し、両方保存できた場合だけ成功とする。
         const fs::path hurtPath = outputDirectory / (data.exportFileStem + "_hurt.png");
         DirectX::ScratchImage hurtImage;
@@ -1055,14 +1195,18 @@ void ProjectWindow::Draw() {
         ImGui::End();
         return;
     }
+
     if (ImGui::BeginTabItem("プリセット")) {
         PresetEditor::GetInstance()->DrawLibrary(true);
         ImGui::EndTabItem();
     }
+
     if (ImGui::BeginTabItem("モデル")) {
         ImGui::SeparatorText("Asset Database");
+
     // 初回索引中は進捗、完了後はAsset数・再解析数・エラー数を示す。
     const AssetDatabaseRefreshResult& databaseStatus = assetDatabase->GetLastRefreshResult();
+
     if (assetDatabase->IsInitialIndexBuildInProgress()) {
         if (assetDatabase->IsInitialDirectoryScanInProgress()) {
             ImGui::Text(
@@ -1095,14 +1239,17 @@ void ProjectWindow::Draw() {
             databaseStatus.createdMetaCount,
             databaseStatus.errorCount);
     }
+
     // Asset索引とDDS変換が重なる間は、手動更新と追加の変換要求を無効にする。
     const DDSCacheBuildState ddsState = assetDatabase->GetDDSCacheBuildState();
     const bool ddsProcessBusy = ddsState == DDSCacheBuildState::Queued ||
         ddsState == DDSCacheBuildState::Running;
     ImGui::BeginDisabled(assetDatabase->IsInitialIndexBuildInProgress() || ddsProcessBusy);
+
     if (ImGui::Button(ICON_FA_SYNC " Asset Databaseを更新")) {
         assetDatabase->RequestRefresh(true);
     }
+
     ImGui::EndDisabled();
 
     if (ddsState == DDSCacheBuildState::Running || ddsState == DDSCacheBuildState::Queued) {
@@ -1126,13 +1273,17 @@ void ProjectWindow::Draw() {
     const bool ddsBusy = ddsProcessBusy ||
         assetDatabase->IsInitialIndexBuildInProgress();
     ImGui::BeginDisabled(ddsBusy);
+
     if (ImGui::Button(ICON_FA_IMAGE " 未変換DDSを生成")) {
         assetDatabase->RequestDDSCacheBuild();
     }
+
     ImGui::EndDisabled();
+
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("未変換または元画像より古いDDSだけを非同期で生成します。");
     }
+
     if (!assetDatabase->GetIssues().empty() && ImGui::TreeNode("Asset Database Issues")) {
         for (const AssetDatabaseIssue& issue : assetDatabase->GetIssues()) {
             const ImVec4 color = issue.severity == AssetDatabaseIssueSeverity::Error
@@ -1141,6 +1292,7 @@ void ProjectWindow::Draw() {
             ImGui::TextColored(color, "%s", issue.path.c_str());
             ImGui::TextWrapped("  %s", issue.message.c_str());
         }
+
         ImGui::TreePop();
     }
 
@@ -1161,8 +1313,10 @@ void ProjectWindow::Draw() {
                     currentModelDirectory_ = baseDirectory;
                 }
             }
+
             ImGui::SameLine();
         }
+
         ImGui::TextDisabled("%s", currentModelDirectory_.c_str());
         ImGui::Separator();
 
@@ -1193,14 +1347,17 @@ void ProjectWindow::Draw() {
                     [](const EditorAssetRecord* asset) {
                         return asset && asset->type == EditorAssetType::Model;
                     });
+
                 // 直下にModelを含むフォルダーは、フォルダー自体を配置可能なModelとして扱う。
                 const bool isModelFolder = modelAssetIterator != childAssets.end();
 
                 ImGui::TableNextColumn();
+
                 if (isModelFolder) {
                     if (thumbnailAlbum_.find(payloadName) == thumbnailAlbum_.end()) {
                         CreateThumbnailResource(payloadName);
                     }
+
                     const uint32_t srvHandle = thumbnailAlbum_[payloadName].srvHandle;
                     const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
                         SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
@@ -1224,11 +1381,14 @@ void ProjectWindow::Draw() {
                             ImVec2(32.0f, 32.0f));
                         ImGui::SameLine();
                         ImGui::Text("Place: %s", folderName.c_str());
+
                         if (!(*modelAssetIterator)->guid.empty()) {
                             ImGui::TextDisabled("GUID: %s", (*modelAssetIterator)->guid.c_str());
                         }
+
                         ImGui::EndDragDropSource();
                     }
+
                     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
                     ImGui::TextWrapped("%s", folderName.c_str());
                     ImGui::PopTextWrapPos();
@@ -1243,9 +1403,11 @@ void ProjectWindow::Draw() {
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.7f, 0.2f, 1.0f));
                     ImGui::SetWindowFontScale(3.0f);
+
                     if (ImGui::Button(ICON_FA_FOLDER, ImVec2(thumbnailSize, thumbnailSize))) {
                         currentModelDirectory_ = directoryPath + "/";
                     }
+
                     ImGui::SetWindowFontScale(1.0f);
                     ImGui::PopStyleColor(4);
                     ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
@@ -1261,6 +1423,7 @@ void ProjectWindow::Draw() {
                 if (!asset || asset->type != EditorAssetType::Model) {
                     continue;
                 }
+
                 const fs::path sourcePath(asset->sourcePath);
                 const std::string fileName = sourcePath.filename().string();
                 std::string payloadName = fs::relative(sourcePath, baseDirectory).generic_string();
@@ -1270,6 +1433,7 @@ void ProjectWindow::Draw() {
                 if (thumbnailAlbum_.find(payloadName) == thumbnailAlbum_.end()) {
                     CreateThumbnailResource(payloadName);
                 }
+
                 const uint32_t srvHandle = thumbnailAlbum_[payloadName].srvHandle;
                 const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
                     SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
@@ -1277,6 +1441,7 @@ void ProjectWindow::Draw() {
                 ImGui::TableNextColumn();
                 ImGui::PushID(asset->guid.empty() ? asset->sourcePath.c_str() : asset->guid.c_str());
                 ImGui::BeginGroup();
+
                 if (isGeneratedLod) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.28f, 0.05f, 0.9f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.43f, 0.08f, 1.0f));
@@ -1287,6 +1452,7 @@ void ProjectWindow::Draw() {
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
                 }
+
                 ImGui::ImageButton(
                     payloadName.c_str(),
                     static_cast<ImTextureID>(gpuHandle.ptr),
@@ -1301,11 +1467,14 @@ void ProjectWindow::Draw() {
                         ImVec2(32.0f, 32.0f));
                     ImGui::SameLine();
                     ImGui::Text("Place: %s", fileName.c_str());
+
                     if (!asset->guid.empty()) {
                         ImGui::TextDisabled("GUID: %s", asset->guid.c_str());
                     }
+
                     ImGui::EndDragDropSource();
                 }
+
                 if (ImGui::IsItemHovered() && !asset->guid.empty()) {
                     ImGui::SetTooltip(
                         "%s\nGUID: %s\nImporter: %s",
@@ -1313,24 +1482,29 @@ void ProjectWindow::Draw() {
                         asset->guid.c_str(),
                         asset->importer.c_str());
                 }
+
                 if (isGeneratedLod) {
                     ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "LOD");
                 }
+
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
                 ImGui::TextWrapped("%s", fileName.c_str());
                 ImGui::PopTextWrapPos();
                 ImGui::EndGroup();
                 ImGui::PopID();
             }
+
             ImGui::EndTable();
         }
     }
 
     ImGui::EndTabItem();
     }
+
     // Presetの作成・上書き・名前変更など、内容を変更する操作は管理タブに置く。
     if (ImGui::BeginTabItem("管理")) {
     bool openDeleteConfirmation = false;
+
     if (ImGui::CollapsingHeader("Presets (Configured)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_PLUS_SQUARE " Create New Preset");
@@ -1364,6 +1538,7 @@ void ProjectWindow::Draw() {
             QueueHudPortraitExports(true);
             DebugConsole::GetInstance()->AddLog("HUD icon regeneration queued.");
         }
+
         ImGui::SameLine();
         ImGui::TextDisabled("実際の敵プリセットから通常・被弾PNGを生成します");
 
@@ -1382,6 +1557,7 @@ void ProjectWindow::Draw() {
 
             for (const auto& [name, data] : presets) {
                 size_t slashPos = name.find('/');
+
                 if (slashPos != std::string::npos) {
                     folders[name.substr(0, slashPos)].push_back(name);
                 }
@@ -1411,13 +1587,15 @@ void ProjectWindow::Draw() {
                         const bool selected = thumbnail
                             ? ImGui::ImageButton(name.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize))
                             : ImGui::Button(name.c_str(), ImVec2(thumbnailSize, thumbnailSize));
-                        if (selected) PresetEditor::GetInstance()->SelectPreset(name);
+                        if (selected)
+                            PresetEditor::GetInstance()->SelectPreset(name);
                         ImGui::PopStyleColor();
 
                         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
                             ImGui::SetDragDropPayload("PRESET_ASSET", name.c_str(), name.size() + 1);
                             ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
-                            ImGui::SameLine(); ImGui::Text("Preset: %s", name.c_str());
+                            ImGui::SameLine();
+                            ImGui::Text("Preset: %s", name.c_str());
                             ImGui::EndDragDropSource();
                         }
 
@@ -1434,32 +1612,40 @@ void ProjectWindow::Draw() {
                             if (ImGui::MenuItem(ICON_FA_EDIT " Rename")) {
                                 openRename = true; // 直接開かずフラグを立てる
                             }
+
                             if (ImGui::MenuItem(ICON_FA_SAVE " Overwrite")) {
                                 if (editor_->GetSelectedObject()) {
                                     PresetManager::GetInstance()->AddPresetFromObject(name, editor_->GetSelectedObject());
                                     InvalidatePresetThumbnail(name);
                                 }
                             }
+
                             if (ImGui::MenuItem(ICON_FA_CODE_BRANCH " Prefabへ変換")) {
                                 std::string prefabName = name;
                                 int suffix = 1;
+
                                 while (PresetManager::GetInstance()->HasPrefab(prefabName)) {
                                     prefabName = name + "_Prefab" + std::to_string(suffix++);
                                 }
+
                                 if (PresetManager::GetInstance()->CreatePrefabFromPreset(name, prefabName)) {
                                     DebugConsole::GetInstance()->AddLog(
                                         "Converted Preset to Prefab: " + name + " -> " + prefabName);
                                 }
                             }
-                            if (ImGui::MenuItem(ICON_FA_CAMERA " Update Thumbnail")) InvalidatePresetThumbnail(name);
+
+                            if (ImGui::MenuItem(ICON_FA_CAMERA " Update Thumbnail"))
+                                InvalidatePresetThumbnail(name);
 
                             ImGui::Separator();
 
                             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.90f, 0.27f, 0.30f, 1.0f));
+
                             if (ImGui::MenuItem(ICON_FA_TRASH_ALT " 削除...")) {
                                 pendingDeletePresetName_ = name;
                                 openDeleteConfirmation = true;
                             }
+
                             ImGui::PopStyleColor();
                             ImGui::EndPopup();
                         }
@@ -1488,24 +1674,29 @@ void ProjectWindow::Draw() {
                             // エンターかOKが押されたらリネーム実行
                             if (isEnter || isOk) {
                                 std::string newName = renameBuf;
+
                                 if (!newName.empty() && newName != name) {
                                     PresetManager::GetInstance()->RenamePreset(name, newName);
+
                                     if (presetThumbnailAlbum_.count(name)) {
                                         presetThumbnailAlbum_[newName] = std::move(presetThumbnailAlbum_[name]);
                                         presetThumbnailAlbum_.erase(name);
                                     }
                                 }
+
                                 ImGui::CloseCurrentPopup();
                             }
                             else if (isCancel) {
                                 ImGui::CloseCurrentPopup();
                             }
+
                             ImGui::EndPopup();
                         }
 
                         ImGui::EndGroup();
                         ImGui::PopID();
                     }
+
                     ImGui::EndTable();
                 }
                 };
@@ -1517,9 +1708,11 @@ void ProjectWindow::Draw() {
                     ImGui::TreePop();
                 }
             }
+
             // ルート直下の表示
             if (!rootPresets.empty()) {
-                if (folders.empty()) DrawPresetGrid(rootPresets, "RootPresetsTable");
+                if (folders.empty())
+                    DrawPresetGrid(rootPresets, "RootPresetsTable");
                 else if (ImGui::TreeNodeEx("Others", ImGuiTreeNodeFlags_DefaultOpen)) {
                     DrawPresetGrid(rootPresets, "RootPresetsTable");
                     ImGui::TreePop();
@@ -1528,33 +1721,42 @@ void ProjectWindow::Draw() {
         }
     }
 
-    if (openDeleteConfirmation) ImGui::OpenPopup("プリセットの削除を確認");
+    if (openDeleteConfirmation)
+        ImGui::OpenPopup("プリセットの削除を確認");
     if (ImGui::BeginPopupModal("プリセットの削除を確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextWrapped("「%s」を登録一覧から削除します。", pendingDeletePresetName_.c_str());
         ImGui::TextDisabled("シーン上のObjectやモデルファイルは削除されません。");
+
         if (ImGui::Button("削除する")) {
             PresetManager::GetInstance()->RemovePreset(pendingDeletePresetName_);
+
             // 撮影済みのGPU資源はここで破棄せず、キャッシュの再利用時に解放する。
             pendingDeletePresetName_.clear();
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("キャンセル")) {
             pendingDeletePresetName_.clear();
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::EndPopup();
     }
+
     // VFXのAsset一覧は別タブへ置き、Preset管理の操作と混ぜない。
         ImGui::Separator();
     ImGui::EndTabItem();
     }
+
     if (ImGui::BeginTabItem("Prefab")) {
         if (ImGui::CollapsingHeader("Prefabs (v3 / Variants)", ImGuiTreeNodeFlags_DefaultOpen)) {
             static char prefabNameBuf[64] = "NewPrefab";
             ImGui::InputText("Prefab名", prefabNameBuf, IM_ARRAYSIZE(prefabNameBuf));
 
             engine::Object3d* selectedObject = editor_ ? editor_->GetSelectedObject() : nullptr;
+
             if (!selectedObject) {
                 ImGui::TextDisabled("保存するObjectをHierarchyまたはGame Viewで選択してください。");
             }
@@ -1567,11 +1769,13 @@ void ProjectWindow::Draw() {
             ImGui::TextDisabled("旧Prefab v1/v2は読み込み時にv3へ移行されます。Presetは右クリックからPrefabへ明示変換できます。");
 
             const auto& prefabs = PresetManager::GetInstance()->GetPrefabs();
+
             if (prefabs.empty()) {
                 ImGui::TextDisabled("Prefabはまだありません。");
             }
 
             int prefabIndex = 0;
+
             for (const auto& [prefabName, prefabJson] : prefabs) {
                 const bool isVariant = PresetManager::GetInstance()->IsPrefabVariant(prefabName);
                 const std::string basePrefabName = PresetManager::GetInstance()->GetPrefabBaseName(prefabName);
@@ -1580,17 +1784,22 @@ void ProjectWindow::Draw() {
                 ImGui::PushID(prefabName.c_str());
                 ImGui::BeginGroup();
                 ImGui::Button(isVariant ? "Variant" : "Prefab", ImVec2(86.0f, 46.0f));
+
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && editor_) {
                     editor_->BeginPrefabEditSession(prefabName);
                 }
+
                 if (ImGui::BeginDragDropSource()) {
                     ImGui::SetDragDropPayload("PREFAB_ASSET", prefabName.c_str(), prefabName.size() + 1);
                     ImGui::Text("Prefab: %s", prefabName.c_str());
                     ImGui::EndDragDropSource();
                 }
+
                 ImGui::TextWrapped("%s", prefabName.c_str());
+
                 if (isVariant) {
                     ImGui::TextDisabled("Base: %s", basePrefabName.empty() ? "Missing" : basePrefabName.c_str());
+
                     if (structureSummary.HasOverrides()) {
                         ImGui::TextDisabled("Structure: +%d -%d Move:%d",
                             structureSummary.addedObjects,
@@ -1598,39 +1807,50 @@ void ProjectWindow::Draw() {
                             structureSummary.reparentedObjects);
                     }
                 }
+
                 if (ImGui::BeginPopupContextItem("PrefabContextMenu")) {
                     if (ImGui::MenuItem(ICON_FA_CUBE " Prefab Modeで開く") && editor_) {
                         editor_->BeginPrefabEditSession(prefabName);
                     }
+
                     ImGui::Separator();
+
                     if (ImGui::MenuItem(ICON_FA_CODE_BRANCH " Variantを作成")) {
                         std::string variantName = prefabName + "_Variant";
                         int suffix = 1;
+
                         while (PresetManager::GetInstance()->HasPrefab(variantName)) {
                             variantName = prefabName + "_Variant" + std::to_string(suffix++);
                         }
+
                         if (PresetManager::GetInstance()->CreatePrefabVariant(prefabName, variantName)) {
                             DebugConsole::GetInstance()->AddLog(
                                 "Created Prefab Variant: " + variantName + " from " + prefabName);
                         }
                     }
+
                     ImGui::TextDisabled("Asset ID: %s", prefabJson.value("assetId", "").c_str());
                     ImGui::EndPopup();
                 }
+
                 ImGui::EndGroup();
                 ImGui::PopID();
 
                 ++prefabIndex;
+
                 if (prefabIndex % 4 != 0) {
                     ImGui::SameLine();
                 }
             }
         }
+
     ImGui::EndTabItem();
     }
+
     if (ImGui::BeginTabItem("VFX")) {
 if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string particleDir = "Resources/json/gpu_particles/";
+
         if (fs::exists(particleDir)) {
             float thumbnailSize = 64.0f;
             float padding = 16.0f;
@@ -1671,6 +1891,7 @@ if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) 
                         ImGui::PopID();
                     }
                 }
+
                 ImGui::EndTable();
             }
         }
@@ -1678,6 +1899,7 @@ if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) 
 
     ImGui::EndTabItem();
     }
+
     ImGui::EndTabBar();
     ImGui::End();
 #endif

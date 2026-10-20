@@ -17,9 +17,11 @@ namespace CameraEditorImplementation {
     bool IsObjectInCurrentScene(const engine::Object3d* target) {
         // 生ポインターの参照先がシーン切替で失効していないか、現所有一覧と照合する。
         BaseScene* scene = GetCurrentScene();
+
         if (!scene || !target) {
             return false;
         }
+
         return std::any_of(scene->GetObjects().begin(), scene->GetObjects().end(), [target](const std::unique_ptr<engine::Object3d>& object) {
             return object.get() == target;
         });
@@ -38,6 +40,7 @@ namespace CameraEditorImplementation {
         engine::Math math;
         engine::Vector3 diff = end - start;
         float length = math.Length(diff);
+
         if (length < 0.001f) {
             length = 0.001f;
         }
@@ -82,9 +85,11 @@ namespace CameraEditorImplementation {
 
     engine::Vector3 NormalizeSafe(const engine::Vector3& v, const engine::Vector3& fallback) {
         float length = Length(v);
+
         if (length < 0.0001f) {
             return fallback;
         }
+
         return { v.x / length, v.y / length, v.z / length };
     }
 
@@ -99,6 +104,7 @@ namespace CameraEditorImplementation {
         if (!object) {
             return { 0.0f, 0.0f, 1.0f };
         }
+
         engine::Vector3 forward = engine::Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, object->GetWorldMatrix());
         return NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
     }

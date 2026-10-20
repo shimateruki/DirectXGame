@@ -2,7 +2,8 @@
 #include "game/scene/select/GameSelectScene.h"
 #include "Player.h"
 #include "CameraManager.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
+#include "Log.h"
 #include "WinApp.h"
 #include <algorithm>
 #include <cmath>
@@ -14,106 +15,62 @@ std::string ToSpriteRelativePath(const std::string& path) {
     if (path.rfind(kSpriteResourcePrefix, 0) == 0) {
         return path.substr(std::string(kSpriteResourcePrefix).size());
     }
+
     return path;
 }
 
 } // namespace
 
-// HUDはシーン所有のSpriteを借用する。更新時点・保存値の参照先・報酬演出との呼び出し順は変更しない。
-engine::Sprite* GameSelectScene::FindSpriteByName(const std::string& name) const {
-    // シーン所有の既存 Sprite を先に探し、再初期化による二重表示を避ける。
-    for (const auto& sprite : sprites_) {
-        if (sprite && sprite->GetName() == name) {
-            return sprite.get();
-        }
-    }
-    return nullptr;
-}
-
 GameSelectScene::StageSelectHudSprite
-GameSelectScene::BindStageSelectHUDSprite(const std::string& name, const std::string& texturePath,
-                                          const engine::Vector2& position, const engine::Vector2& size, const engine::Vector2& anchor,
-                                          const engine::Vector4& color) {
-    // JSON に配置済みならその Sprite を使い、ない物だけ補助生成する。
-
-    engine::Sprite* sprite = FindSpriteByName(name);
-    bool createdFromFallback = false;
+GameSelectScene::BindStageSelectHUDSprite(const std::string& name) {
+    // レイアウトの静的な画像・配置・色を保持し、数値と表示だけを更新する。
+    engine::Sprite* sprite = GetSpriteByName(name);
     if (!sprite) {
-        auto newSprite = std::make_unique<engine::Sprite>();
-        newSprite->Initialize(spriteCommon_.get(), texturePath);
-        newSprite->SetName(name);
-        newSprite->SetTextureName(ToSpriteRelativePath(texturePath));
-        sprite = newSprite.get();
-        sprites_.push_back(std::move(newSprite));
-        createdFromFallback = true;
+        LOG_ERROR("stageSelect_sprite.json: Sprite '{}' was not found", name);
+        return {};
     }
 
-    if (sprite->GetTextureName().empty()) {
-        sprite->SetTextureName(ToSpriteRelativePath(texturePath));
-    }
-
-    if (createdFromFallback) {
-        sprite->SetPosition(position);
-        sprite->SetSize(size);
-        sprite->SetAnchorPoint(anchor);
-        sprite->SetColor(color);
-    }
     sprite->SetVisible(true);
     sprite->Update();
 
-    return {sprite, sprite->GetPosition(), sprite->GetSize(), sprite->GetColor()};
+    return {name, sprite->GetPosition(), sprite->GetSize(), sprite->GetColor()};
+}
+
+engine::Sprite* GameSelectScene::ResolveStageSelectHUDSprite(const StageSelectHudSprite& state) {
+    // Editor や Replay が Sprite を削除・再生成しても、古い借用ポインタを使わない。
+    return state.name.empty() ? nullptr : GetSpriteByName(state.name);
 }
 
 void GameSelectScene::InitializeStageSelectHUD() {
-    // 桁ごとの Sprite を先に結び、毎フレームの数値更新で生成し直さない。
-    const engine::Vector4 white = {1.0f, 1.0f, 1.0f, 0.96f};
-    const engine::Vector4 crownNumber = {1.0f, 0.94f, 0.50f, 1.0f};
-    const engine::Vector4 starNumber = {1.0f, 0.90f, 0.30f, 1.0f};
-    const engine::Vector4 coinNumber = {1.0f, 0.82f, 0.24f, 1.0f};
-    const engine::Vector4 xColor = {1.0f, 0.95f, 0.58f, 0.96f};
-    const std::array<float, 3> rows = {86.0f, 142.0f, 198.0f};
-    const std::array<std::string, 3> iconTextures = {"Resources/sprite/ui/title/crown_progress_icon.png",
-                                                     "Resources/sprite/ui/hud/stage_star_filled.png",
-                                                     "Resources/sprite/ui/hud/coin_icon.png"};
+    // 全部品を配置JSONの名前だけで結ぶ。画像と位置はEditorで調整できる。
+    stageSelectCrownIcon_ = BindStageSelectHUDSprite("stage_select_hud_crown_icon");
+    stageSelectCrownXIcon_ = BindStageSelectHUDSprite("stage_select_hud_crown_x");
+    stageSelectStarIcon_ = BindStageSelectHUDSprite("stage_select_hud_star_icon");
+    stageSelectStarXIcon_ = BindStageSelectHUDSprite("stage_select_hud_star_x");
+    stageSelectCoinIcon_ = BindStageSelectHUDSprite("stage_select_hud_coin_icon");
+    stageSelectCoinXIcon_ = BindStageSelectHUDSprite("stage_select_hud_coin_x");
 
-    stageSelectCrownIcon_ = BindStageSelectHUDSprite("stage_select_hud_crown_icon", iconTextures[0], {42.0f, rows[0]},
-                                                     {48.0f, 48.0f}, {0.0f, 0.5f}, white);
-    stageSelectCrownXIcon_ = BindStageSelectHUDSprite("stage_select_hud_crown_x", "Resources/sprite/ui/hud/xUi.png",
-                                                      {94.0f, rows[0]}, {38.0f, 38.0f}, {0.5f, 0.5f}, xColor);
-    stageSelectStarIcon_ = BindStageSelectHUDSprite("stage_select_hud_star_icon", iconTextures[1], {42.0f, rows[1]},
-                                                    {48.0f, 48.0f}, {0.0f, 0.5f}, white);
-    stageSelectStarXIcon_ = BindStageSelectHUDSprite("stage_select_hud_star_x", "Resources/sprite/ui/hud/xUi.png",
-                                                     {94.0f, rows[1]}, {38.0f, 38.0f}, {0.5f, 0.5f}, xColor);
-    stageSelectCoinIcon_ = BindStageSelectHUDSprite("stage_select_hud_coin_icon", iconTextures[2], {42.0f, rows[2]},
-                                                    {48.0f, 48.0f}, {0.0f, 0.5f}, white);
-    stageSelectCoinXIcon_ = BindStageSelectHUDSprite("stage_select_hud_coin_x", "Resources/sprite/ui/hud/xUi.png",
-                                                     {94.0f, rows[2]}, {38.0f, 38.0f}, {0.5f, 0.5f}, xColor);
-
-    const float digitStartX = 124.0f;
-    const float digitSpacing = 25.0f;
-    const engine::Vector2 digitSize = {24.0f, 36.0f};
+    // 桁数に応じた表示と画像の切り替えだけを更新側へ残す。
     for (int i = 0; i < 3; ++i) {
-        const float x = digitStartX + digitSpacing * static_cast<float>(i);
         stageSelectCrownDigits_[static_cast<size_t>(i)] = BindStageSelectHUDSprite(
-            "stage_select_hud_crown_digit_" + std::to_string(i), "Resources/sprite/number/0.png", {x, rows[0]},
-            digitSize, {0.5f, 0.5f}, crownNumber);
+            "stage_select_hud_crown_digit_" + std::to_string(i));
         stageSelectStarDigits_[static_cast<size_t>(i)] = BindStageSelectHUDSprite(
-            "stage_select_hud_star_digit_" + std::to_string(i), "Resources/sprite/number/0.png", {x, rows[1]},
-            digitSize, {0.5f, 0.5f}, starNumber);
+            "stage_select_hud_star_digit_" + std::to_string(i));
         stageSelectCoinDigits_[static_cast<size_t>(i)] = BindStageSelectHUDSprite(
-            "stage_select_hud_coin_digit_" + std::to_string(i), "Resources/sprite/number/0.png", {x, rows[2]},
-            digitSize, {0.5f, 0.5f}, coinNumber);
+            "stage_select_hud_coin_digit_" + std::to_string(i));
     }
 }
 
 void GameSelectScene::InitializeStageGateNameLabels() {
     const auto& stages = StageManager::GetInstance()->GetStages();
+
     // 最後のスロットをチュートリアル専用にし、通常ステージの添字は変えません。
     const size_t tutorialIndex = stages.size();
     stageGateNameLabels_.clear();
     stageGateNameLabels_.resize(stages.size() + 1);
     stageGateStarIcons_.clear();
     stageGateStarIcons_.resize(stages.size() + 1);
+
     for (size_t index = 0; index <= tutorialIndex; ++index) {
         const bool tutorial = index == tutorialIndex;
         const std::string texturePath = tutorial ? "Resources/sprite/ui/stage_select/tutorial_gate_name.png"
@@ -136,9 +93,10 @@ void GameSelectScene::InitializeStageGateNameLabels() {
         label->Update();
         stageGateNameLabels_[index] = std::move(label);
 
-        if (tutorial) {
+        if (tutorial || !stages[index].hasStarCoins) {
             continue;
         }
+
         // 名札と同じスクリーン座標で描き、セーブ済みの3個の収集状況を並べます。
         for (int coinIndex = 0; coinIndex < GameDataManager::kStarCoinsPerStage; ++coinIndex) {
             auto star = std::make_unique<engine::Sprite>();
@@ -167,17 +125,21 @@ void GameSelectScene::UpdateStageGateNameLabels() {
     for (size_t index = 0; index < stageGateNameLabels_.size(); ++index) {
         const bool tutorial = index == stageGateNameLabels_.size() - 1;
         engine::Sprite* label = stageGateNameLabels_[index].get();
+
         if (!label) {
             continue;
         }
+
         auto hide = [this, index, label]() {
             label->SetVisible(false);
+
             for (auto& star : stageGateStarIcons_[index]) {
                 if (star) {
                     star->SetVisible(false);
                 }
             }
         };
+
         engine::Object3d* gate = showLabels ? (tutorial ? FindObjectByName("TutorialArrivalGate")
                                             : FindStageGateByIndex(static_cast<int>(index))) : nullptr;
         if (!gate) {
@@ -190,6 +152,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
         const float dx = gatePosition.x - playerPosition.x;
         const float dz = gatePosition.z - playerPosition.z;
         const float distance = std::sqrt(dx * dx + dz * dz);
+
         // 中央から識別できる距離では固定サイズで見せ、橋に差しかかる距離から消します。
         // チュートリアル入口は初期位置の近くにあるため、通常ゲートと同じ40mでは常時隠れます。
         const float hideDistance = tutorial ? 8.0f : gateNameHideDistance_;
@@ -209,6 +172,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
             hide();
             continue;
         }
+
         const engine::Vector3 ndc = engine::Math::Transform(worldPosition, viewProjection);
         if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y) || !std::isfinite(ndc.z) ||
             ndc.x < -1.0f || ndc.x > 1.0f || ndc.y < -1.0f || ndc.y > 1.0f ||
@@ -216,7 +180,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
             hide();
             continue;
         }
-
+		// NDC座標をスクリーン座標に変換し、ラベルの中心が画面内に収まるように制限します。
         const float screenWidth = static_cast<float>(WinApp::kClientWidth);
         const float screenHeight = static_cast<float>(WinApp::kClientHeight);
         const float halfWidth = label->GetSize().x * 0.5f;
@@ -228,20 +192,26 @@ void GameSelectScene::UpdateStageGateNameLabels() {
         label->Update();
 
         auto* save = GameDataManager::GetInstance();
+
         if (tutorial) {
             continue;
         }
+
         for (int coinIndex = 0; coinIndex < GameDataManager::kStarCoinsPerStage; ++coinIndex) {
             engine::Sprite* star = stageGateStarIcons_[index][static_cast<size_t>(coinIndex)].get();
+
             if (!star) {
                 continue;
             }
+
             const bool collected = save && save->IsStarCoinCollected(static_cast<int>(index), coinIndex);
             const std::string texture = collected ? "ui/hud/stage_star_filled.png" : "ui/hud/stage_star_empty.png";
+
             if (star->GetTextureName() != texture) {
                 star->SetTextureHandle(engine::Sprite::LoadTexture(texture));
                 star->SetTextureName(texture);
             }
+
             star->SetPosition({screenX + (static_cast<float>(coinIndex) - 1.0f) * 50.0f, screenY - 7.0f});
             star->SetColor({1.0f, 1.0f, 1.0f, alpha});
             star->SetVisible(true);
@@ -250,8 +220,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
     }
 }
 
-void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value,
-                                              const engine::Vector4& color, bool visible) {
+void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value, bool visible) {
     // 桁数に応じて先頭のゼロを隠し、固定長の Sprite 配列を再利用する。
     value = std::clamp(value, 0, 999);
     const std::array<int, 3> digitValues = {value / 100, (value / 10) % 10, value % 10};
@@ -260,44 +229,48 @@ void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3
 
     for (int i = 0; i < 3; ++i) {
         StageSelectHudSprite& state = digits[static_cast<size_t>(i)];
-        if (!state.sprite) {
+
+        engine::Sprite* sprite = ResolveStageSelectHUDSprite(state);
+        if (!sprite) {
             continue;
         }
 
         const bool digitVisible = visible && i >= visibleStart;
-        state.sprite->SetVisible(digitVisible);
+        sprite->SetVisible(digitVisible);
+
         if (digitVisible) {
-            state.sprite->SetTextureHandle(
+            sprite->SetTextureHandle(
                 engine::Sprite::LoadTexture("number/" + std::to_string(digitValues[static_cast<size_t>(i)]) + ".png"));
-            state.sprite->SetColor(color);
+            sprite->SetColor(state.baseColor);
         }
-        state.sprite->Update();
+
+        sprite->Update();
     }
 }
 
 void GameSelectScene::UpdateUI() {
     // 取得数をセーブデータから読み直し、ステージ選択へ戻った直後も最新値を見せる。
     auto* save = GameDataManager::GetInstance();
+
     if (!save) {
         return;
     }
 
     const bool visible = true;
-    const engine::Vector4 crownNumber = {1.0f, 0.94f, 0.50f, 1.0f};
-    const engine::Vector4 starNumber = {1.0f, 0.90f, 0.30f, 1.0f};
-    const engine::Vector4 coinNumber = {1.0f, 0.82f, 0.24f, 1.0f};
     const std::array<StageSelectHudSprite*, 6> icons = {&stageSelectCrownIcon_, &stageSelectCrownXIcon_,
                                                         &stageSelectStarIcon_,  &stageSelectStarXIcon_,
                                                         &stageSelectCoinIcon_,  &stageSelectCoinXIcon_};
     for (StageSelectHudSprite* state : icons) {
-        if (state && state->sprite) {
-            state->sprite->SetVisible(visible);
-            state->sprite->Update();
+        if (state) {
+            if (engine::Sprite* sprite = ResolveStageSelectHUDSprite(*state)) {
+                sprite->SetVisible(visible);
+                sprite->Update();
+            }
         }
     }
 
-    SetStageSelectHUDNumber(stageSelectCrownDigits_, GetDisplayedCrownCount(), crownNumber, visible);
-    SetStageSelectHUDNumber(stageSelectStarDigits_, save->GetCollectedStarCoinCount(), starNumber, visible);
-    SetStageSelectHUDNumber(stageSelectCoinDigits_, save->GetCoins(), coinNumber, visible);
+    SetStageSelectHUDNumber(stageSelectCrownDigits_, GetDisplayedCrownCount(), visible);
+    SetStageSelectHUDNumber(stageSelectStarDigits_, save->GetCollectedStarCoinCount(), visible);
+    SetStageSelectHUDNumber(stageSelectCoinDigits_, save->GetCoins(), visible);
     UpdateStageSelectCrownHudReward();
 }

@@ -54,6 +54,7 @@ void PlayerGateReturnAnimation::Update(Player* player, float deltaTime) {
     if (normalizedTime >= 1.0f) {
         active_ = false;
         finished_ = true;
+
         // 帰還先の選択 UI が操作を解放するため、自然終了では衝突だけ戻す。
         ApplyFinishedPose(player, false);
     }
@@ -70,6 +71,7 @@ engine::Vector3 PlayerGateReturnAnimation::NormalizeDirection(const engine::Vect
     // 経路の向きは水平面に限定し、ゼロ入力には前方向を使う。
     engine::Vector3 flat{direction.x, 0.0f, direction.z};
     const float lengthSq = flat.x * flat.x + flat.z * flat.z;
+
     if (lengthSq <= 0.000001f) {
         return {0.0f, 0.0f, 1.0f};
     }
@@ -112,9 +114,11 @@ float PlayerGateReturnAnimation::EaseOutCubic(float value) const {
 float PlayerGateReturnAnimation::EaseInOutCubic(float value) const {
     // 前半を加速、後半を減速させて切替点の速度をつなぐ。
     value = Clamp01(value);
+
     if (value < 0.5f) {
         return 4.0f * value * value * value;
     }
+
     const float f = -2.0f * value + 2.0f;
     return 1.0f - (f * f * f) * 0.5f;
 }
@@ -143,6 +147,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
                           {controlB.x, controlB.y + 0.55f, controlB.z}, landing, moveT);
         const float groundY = route_.end.y;
         const float fallStartY = (std::max)({route_.start.y, route_.gateCenter.y, groundY + kLaunchHopHeight});
+
         if (phaseT < kGateExitNoGravityTime) {
             const float gateExitT = EaseOutCubic(Clamp01(phaseT / kGateExitNoGravityTime));
             position.y = route_.start.y + (fallStartY - route_.start.y) * gateExitT;
@@ -157,6 +162,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
             // ゲートを抜けた後は上向き初速を入れず、下向き重力だけで地面まで落とします。
             // 接地後は地面に固定し、以降の跳ね演出が空中で始まらないようにします。
             position.y = fallStartY - 0.5f * landingGravity * fallTime * fallTime;
+
             if (position.y < groundY) {
                 position.y = groundY;
             }
@@ -222,6 +228,7 @@ void PlayerGateReturnAnimation::ApplyFinishedPose(Player* player, bool restoreCo
     player->SetVelocity({0.0f, 0.0f, 0.0f});
     player->SetIsVisible(true);
     RestoreCollision(player);
+
     if (restoreControl) {
         player->SetIsControlActive(savedControlActive_);
     }

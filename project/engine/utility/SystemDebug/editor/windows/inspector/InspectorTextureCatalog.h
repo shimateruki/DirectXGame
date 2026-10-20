@@ -29,13 +29,17 @@ public:
   const std::vector<std::string> &GetAlbedoPaths() const {
     return albedoPaths_;
   }
+
   const std::vector<std::string> &GetNormalPaths() const {
     return normalPaths_;
   }
+
   const std::vector<std::string> &GetOrmPaths() const { return ormPaths_; }
+
   const std::vector<std::string> &GetSpritePaths() const {
     return spritePaths_;
   }
+
   const std::vector<PbrPreset> &GetPbrPresets() const { return pbrPresets_; }
 
 private:

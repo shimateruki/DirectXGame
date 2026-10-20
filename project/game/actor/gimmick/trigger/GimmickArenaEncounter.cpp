@@ -10,8 +10,8 @@
 #include "Player.h"
 #include "SceneManager.h"
 #include "VFXSequencer.h"
-#include "GameDataManager.h"
-#include "StageManager.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/progress/StageManager.h"
 
 #include <algorithm>
 #include <cassert>
@@ -27,7 +27,7 @@ constexpr int kHighCrownActionMode = 2;
 constexpr const char* kHighCrownReleaseSequence = "false_king_defeat_reward_cue";
 } // namespace
 
-void GimmickArenaEncounter::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickArenaEncounter::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 入場範囲はプレイヤー専用のトリガーとし、ボスや壁はイベント ID で参照します。
@@ -48,6 +48,7 @@ void GimmickArenaEncounter::Initialize(Object3dCommon* common, const std::string
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->gimmickType = "ArenaEncounter";
     param_->maxCount = kDefaultBarrierCount;
     param_->shakeDuration = kDefaultBossRevealDelay;
@@ -59,6 +60,7 @@ void GimmickArenaEncounter::Update(float deltaTime) {
     // 編集中は進行を巻き戻し、再生中だけ封鎖からボス登場までの猶予を数えます。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
+
     if (!isPlaying) {
         ResetForEditor();
         BaseGimmick::Update(deltaTime);
@@ -71,7 +73,15 @@ void GimmickArenaEncounter::Update(float deltaTime) {
 
     if (state_ == State::Sealing) {
         stateTimer_ += (std::max)(0.0f, deltaTime);
-        if (stateTimer_ >= GetBossRevealDelay()) {
+
+        if (introTimelineActive_) {
+            auto* gameplay = dynamic_cast<GamePlayScene*>(sceneManager->GetCurrentScene());
+            if (!gameplay || !gameplay->IsArenaBossIntroActive()) {
+                introTimelineActive_ = false;
+            }
+        }
+
+        if (!introTimelineActive_ && stateTimer_ >= GetBossRevealDelay()) {
             SetBossActive(true);
             state_ = State::Fighting;
             stateTimer_ = 0.0f;
@@ -83,6 +93,7 @@ void GimmickArenaEncounter::Update(float deltaTime) {
 
 void GimmickArenaEncounter::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager || !sceneManager->IsPlaying()) {
         // 編集中だけ進入範囲を可視化し、ゲーム中は判定とイベント接続だけを残します。
         BaseGimmick::Draw(pointLightResource, spotLightResource);
@@ -125,10 +136,12 @@ void GimmickArenaEncounter::InitializeForPlay() {
     initializedForPlay_ = true;
     state_ = State::Waiting;
     stateTimer_ = 0.0f;
+    introTimelineActive_ = false;
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
     SetBossActive(false);
     SetBarriersActive(false);
+
     if (IsHighCrownMode()) {
         SetRewardActive(false);
     }
@@ -139,6 +152,7 @@ void GimmickArenaEncounter::ResetForEditor() {
     initializedForPlay_ = false;
     state_ = State::Waiting;
     stateTimer_ = 0.0f;
+    introTimelineActive_ = false;
     SetIsVisible(true);
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
@@ -149,14 +163,17 @@ void GimmickArenaEncounter::BeginEncounter() {
     // 入場判定を即時に外し、同じフレームの重複開始を防ぎます。
     state_ = State::Sealing;
     stateTimer_ = 0.0f;
+    introTimelineActive_ = false;
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetBarriersActive(true);
+
     if (!IsHighCrownMode()) {
         VFXSequencer::PlayOneShot(IsMagmaMode() ? kMagmaSealSequence : kSealSequence, GetWorldPosition(),
                                   {4.0f, 1.0f, 4.0f});
     }
-    StartBossPresentation();
+
+    introTimelineActive_ = StartBossPresentation();
 }
 
 void GimmickArenaEncounter::CompleteEncounter() {
@@ -167,26 +184,33 @@ void GimmickArenaEncounter::CompleteEncounter() {
                                                                     GetEventID());
     state_ = State::Cleared;
     stateTimer_ = 0.0f;
+    introTimelineActive_ = false;
     SetCollisionAttribute(0);
     SetCollisionMask(0);
+
     if (IsHighCrownMode()) {
         SetRewardActive(true);
     } else {
         SetBarriersActive(false);
     }
+
     engine::Vector3 cuePosition = GetWorldPosition();
+
     if (IsHighCrownMode()) {
         BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
         const int rewardEventID = GetTargetID() + GetBarrierCount() + 1;
+
         if (scene) {
             if (engine::Object3d* reward = scene->FindObjectByEventID(rewardEventID)) {
                 cuePosition = reward->GetTranslate();
+
                 if (auto* gameplay = dynamic_cast<GamePlayScene*>(scene)) {
                     gameplay->StartArenaBossDefeatReward(reward);
                 }
             }
         }
     }
+
     VFXSequencer::PlayOneShot(
         IsHighCrownMode() ? kHighCrownReleaseSequence : (IsMagmaMode() ? kMagmaReleaseSequence : kReleaseSequence),
         cuePosition, IsHighCrownMode() ? engine::Vector3{1.25f, 1.25f, 1.25f} : engine::Vector3{4.0f, 1.0f, 4.0f});
@@ -195,15 +219,19 @@ void GimmickArenaEncounter::CompleteEncounter() {
 bool GimmickArenaEncounter::IsBossDefeated() const {
     // 最終撃破演出の保留中は HP がゼロでも解放を始めません。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
+
     if (!scene || GetTargetID() <= 0) {
         return false;
     }
 
     auto* boss = dynamic_cast<BaseEnemy*>(scene->FindObjectByEventID(GetTargetID()));
+
     if (!boss) {
         return false;
     }
-    if (auto* king=dynamic_cast<EnemyFalseKingSlime*>(boss); king && king->IsFinalDefeatPending()) return false;
+
+    if (auto* king=dynamic_cast<EnemyFalseKingSlime*>(boss); king && king->IsFinalDefeatPending())
+        return false;
     const float hp = boss->param_.has_value() ? boss->param_->hp : 1.0f;
     return boss->isDead || hp <= 0.0f;
 }
@@ -211,20 +239,24 @@ bool GimmickArenaEncounter::IsBossDefeated() const {
 void GimmickArenaEncounter::SetBossActive(bool active) {
     // Target ID が指すボスへ有効状態を送ります。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
+
     if (!scene || GetTargetID() <= 0) {
         return;
     }
+
     scene->SetEventActive(GetTargetID(), active);
 }
 
 void GimmickArenaEncounter::SetBarriersActive(bool active) {
     // ボスの後続 ID を隔離壁の連番として扱います。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
+
     if (!scene || GetTargetID() <= 0) {
         return;
     }
 
     const int firstBarrierEventID = GetTargetID() + 1;
+
     for (int index = 0; index < GetBarrierCount(); ++index) {
         scene->SetEventActive(firstBarrierEventID + index, active);
     }
@@ -233,30 +265,48 @@ void GimmickArenaEncounter::SetBarriersActive(bool active) {
 void GimmickArenaEncounter::SetRewardActive(bool active) {
     // 報酬はボスと壁の連番の直後に配置されます。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
+
     if (!scene || GetTargetID() <= 0) {
         return;
     }
+
     const int rewardEventID = GetTargetID() + GetBarrierCount() + 1;
     scene->SetEventActive(rewardEventID, active);
 }
 
-void GimmickArenaEncounter::StartBossPresentation() {
-    // 高冠戦だけはゲームシーンの専用登場演出へ接続します。
-    if (!IsHighCrownMode()) {
-        return;
+bool GimmickArenaEncounter::StartBossPresentation() {
+    // 配置Objectの演出JSONを使う。未設定・読み込み失敗時は通常の遅延起動へ戻す。
+    if (!IsHighCrownMode() || !param_.has_value() || param_->cinematicPath.empty()) {
+        return false;
     }
+
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     auto* gameplay = dynamic_cast<GamePlayScene*>(scene);
     if (!gameplay) {
-        return;
+        return false;
     }
+
     engine::Object3d* boss = scene->FindObjectByEventID(GetTargetID());
     engine::Object3d* gate = scene->FindObjectByEventID(GetTargetID() + 1);
-    gameplay->StartArenaBossIntro(boss, gate, GetBossRevealDelay());
+    return gameplay->StartArenaBossIntro(boss, gate, param_->cinematicPath);
+}
+
+void GimmickArenaEncounter::ActivateBossFromTimeline() {
+    // 対象の遭遇が封鎖中のときだけ、DirectorのSignalで戦闘を始める。
+    SceneManager* manager = SceneManager::GetInstance();
+    if (!manager || !manager->IsPlaying() || !IsHighCrownMode() || state_ != State::Sealing ||
+        !introTimelineActive_) {
+        return;
+    }
+
+    SetBossActive(true);
+    state_ = State::Fighting;
+    stateTimer_ = 0.0f;
+    introTimelineActive_ = false;
 }
 
 float GimmickArenaEncounter::GetBossRevealDelay() const {
-    // 設定が短すぎても封鎖演出を見せる時間を確保します。
+    // Timelineが使えない場合と通常ボスは、配置時の遅延設定で起動する。
     return param_.has_value() ? (std::max)(0.05f, param_->shakeDuration) : kDefaultBossRevealDelay;
 }
 
@@ -282,6 +332,7 @@ void GimmickArenaEncounter::RestoreCheckpointClear() {
     initializedForPlay_ = true;
     state_ = State::Cleared;
     stateTimer_ = 0.0f;
+    introTimelineActive_ = false;
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetBossActive(false);

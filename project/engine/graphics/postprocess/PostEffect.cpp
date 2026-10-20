@@ -75,8 +75,10 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
     CreateConstBuffer();
     CreateRootSignature();
     CreatePipelineState();
+
 	// [0] シーン描画用 (HDR / 元サイズ)
     CreateRenderTexture(0, WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
+
     // [1] トーンマップ後・ImGui表示用 (SDR / 元サイズ)
     CreateRenderTexture(1, WinApp::kClientWidth, WinApp::kClientHeight,  DXGI_FORMAT_R16G16B16A16_FLOAT);
 
@@ -96,6 +98,7 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 
 void PostEffect::Update(float deltaTime) {
     LightManager::GetInstance()->UpdateEnvironmentProfile(deltaTime);
+
     // 時間を進める（ノイズのアニメーション用）
     paramsData_->time += deltaTime;
     paramsData_->linearWorkflowEnabled =
@@ -107,12 +110,14 @@ bool PostEffect::SetLUTTexturePath(const std::string& path) {
     if (path.empty()) {
         return false;
     }
+
     const uint32_t handle = TextureManager::GetInstance()->Load(
         path,
         TextureManager::TextureColorSpace::SRGB);
     if (handle == 0) {
         return false;
     }
+
     lutSrvHandle_ = handle;
     lutTexturePath_ = path;
     return true;
@@ -136,6 +141,7 @@ void PostEffect::SetBloomQuality(BloomQuality quality) {
     case BloomQuality::High:
         bloomQuality_ = quality;
         break;
+
     default:
         bloomQuality_ = BloomQuality::High;
         break;
@@ -152,8 +158,11 @@ int PostEffect::GetBloomLevelCount() const {
     // 品質設定を縮小解像度の段数へ対応させます。
     switch (bloomQuality_) {
     case BloomQuality::Low: return 1;
+
     case BloomQuality::Medium: return 2;
+
     case BloomQuality::High: return 4;
+
     default: return 4;
     }
 }
@@ -163,17 +172,20 @@ int PostEffect::GetExpectedPostEffectPassCount() const {
     if (!IsBloomActive()) {
         return 1;
     }
+
     return GetBloomLevelCount() * 2 + 2;
 }
 
 void PostEffect::SetCameraPreviewResolutionScale(float scale) {
     // プレビュー専用の解像度を制限し、変更時だけRenderTextureを作り直します。
     const float clampedScale = std::clamp(scale, 0.25f, 1.0f);
+
     if (std::abs(cameraPreviewResolutionScale_ - clampedScale) < 0.0001f) {
         return;
     }
 
     cameraPreviewResolutionScale_ = clampedScale;
+
     if (dxCommon_ && renderTextures_.size() >= 8 && renderWidth_ > 0 && renderHeight_ > 0) {
         ResizeCameraPreviewTextures();
     }
@@ -209,6 +221,7 @@ void PostEffect::ResizeCameraPreviewTextures() {
     constexpr float kPreviewAspect = 16.0f / 9.0f;
     int width = (std::max)(static_cast<int>(renderWidth_ * cameraPreviewResolutionScale_), 16);
     int height = (std::max)(static_cast<int>(renderHeight_ * cameraPreviewResolutionScale_), 16);
+
     if (static_cast<float>(width) / static_cast<float>(height) > kPreviewAspect) {
         width = (std::max)(static_cast<int>(height * kPreviewAspect), 16);
     }
@@ -340,7 +353,8 @@ void PostEffect::CreatePipelineState() {
 // 同一テクスチャを描画先とサンプリング元に使い分けるため、現在状態を追跡して遷移します。
 void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int texIndex) {
     RenderTexture& rt = renderTextures_[texIndex];
-    if (rt.currentState == D3D12_RESOURCE_STATE_RENDER_TARGET) return; // 既にRTVなら何もしない
+    if (rt.currentState == D3D12_RESOURCE_STATE_RENDER_TARGET)
+        return; // 既にRTVなら何もしない
 
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -354,7 +368,8 @@ void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int tex
 // 次の描画パスが結果をサンプルできるよう、描画先をSRV状態へ遷移します。
 void PostEffect::TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex) {
     RenderTexture& rt = renderTextures_[texIndex];
-    if (rt.currentState == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) return; // 既にSRVなら何もしない
+    if (rt.currentState == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+        return; // 既にSRVなら何もしない
 
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -408,6 +423,7 @@ void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, i
             sceneClearColor.z,
             sceneClearColor.w
         };
+
         commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     }
@@ -478,6 +494,7 @@ void PostEffect::EndCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandL
     }
 
     RenderTexture& rt = renderTextures_[targetTexIndex];
+
     if (!rt.resource || !rt.depthResource || !rt.rtvHeap || !rt.dsvHeap) {
         return;
     }
@@ -501,6 +518,7 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
     commandList->SetPipelineState(pipelineStates_[psoIndex].Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 3頂点で全画面を覆う
+
     // 全画面三角形の頂点はShader側で生成するため、頂点バッファを設定しない。
     commandList->SetGraphicsRootConstantBufferView(0, constBuffer_->GetGPUVirtualAddress());
 
@@ -553,7 +571,10 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     // クリアカラー (少し暗めのグレーなど)
     D3D12_CLEAR_VALUE clearValue = {};
     clearValue.Format = format;
-    clearValue.Color[0] = 0.1f; clearValue.Color[1] = 0.1f; clearValue.Color[2] = 0.1f; clearValue.Color[3] = 1.0f;
+    clearValue.Color[0] = 0.1f;
+    clearValue.Color[1] = 0.1f;
+    clearValue.Color[2] = 0.1f;
+    clearValue.Color[3] = 1.0f;
 
     // リソース生成
     D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
@@ -563,6 +584,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
         IID_PPV_ARGS(&newResource)
     );
+
     if (FAILED(hr) || !newResource) {
         return;
     }
@@ -573,6 +595,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> newRtvHeap;
     hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&newRtvHeap));
+
     if (FAILED(hr) || !newRtvHeap) {
         return;
     }
@@ -587,6 +610,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     depthDesc.Height = height;
     depthDesc.MipLevels = 1;
     depthDesc.DepthOrArraySize = 1;
+
     // DSVとSRVの両方から参照するため、Resource本体はTypelessで作成します。
     depthDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
     depthDesc.SampleDesc.Count = 1;
@@ -604,6 +628,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
         D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthClearValue,
         IID_PPV_ARGS(&newDepthResource)
     );
+
     if (FAILED(hr) || !newDepthResource) {
         return;
     }
@@ -613,6 +638,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> newDsvHeap;
     hr = device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&newDsvHeap));
+
     if (FAILED(hr) || !newDsvHeap) {
         return;
     }
@@ -628,6 +654,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
         depthSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         depthSrvDesc.Texture2D.MipLevels = 1;
         depthSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
         if (rt.depthSrvHandle != 0) {
             SRVManager::GetInstance()->CreateSRVforResource(rt.depthSrvHandle, newDepthResource.Get(), depthSrvDesc);
         }
@@ -651,6 +678,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> newGrabResource;
+
     if (needsPreviewSampling) {
         // 特殊マテリアル用の背景コピーはCamera Previewの2枚だけに確保します。
         D3D12_RESOURCE_DESC grabDesc = resDesc;
@@ -665,6 +693,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
         if (FAILED(hr) || !newGrabResource) {
             return;
         }
+
         if (rt.grabSrvHandle != 0) {
             SRVManager::GetInstance()->CreateSRVforResource(rt.grabSrvHandle, newGrabResource.Get(), srvDesc);
         }

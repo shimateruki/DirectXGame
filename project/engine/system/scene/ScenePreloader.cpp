@@ -16,9 +16,11 @@ namespace {
 std::string NormalizePath(std::string path) {
     // 同じAssetが区切り文字の違いで重複しないよう正規化する。
     std::replace(path.begin(), path.end(), '\\', '/');
+
     while (path.rfind("./", 0) == 0) {
         path.erase(0, 2);
     }
+
     return path;
 }
 
@@ -34,12 +36,15 @@ template <class T, class KeySelector>
 void AddUnique(std::vector<T>& values, T value, KeySelector keySelector) {
     // Assetの識別キーで重複を除き、読込と警告を一回に抑える。
     const auto key = keySelector(value);
+
     if (key.empty()) {
         return;
     }
+
     const auto found = std::find_if(values.begin(), values.end(), [&](const T& candidate) {
         return keySelector(candidate) == key;
     });
+
     if (found == values.end()) {
         values.push_back(std::move(value));
     }
@@ -92,6 +97,7 @@ void RecordDependency(
     const std::string& rawPath,
     bool validateExists = true) {
     const std::string path = NormalizePath(rawPath);
+
     if (path.empty()) {
         return;
     }
@@ -126,10 +132,12 @@ void AddJsonDependency(ScenePreloadData& data, const std::string& path) {
 void AddAudioDependency(ScenePreloadData& data, std::string path) {
     // 短いSE名は共有SEディレクトリからの相対指定として扱う。
     path = NormalizePath(std::move(path));
+
     if (path.rfind("Resources/", 0) != 0) {
         path = NormalizePath(
             (std::filesystem::path("Resources/audio/se") / path).generic_string());
     }
+
     AddUniquePath(data.audioPaths, path);
     RecordDependency(data, SceneDependencyType::Audio, path);
 }
@@ -139,6 +147,7 @@ void CollectSharedParticleTextures(ScenePreloadData& data) {
     // パーティクルが実行中に初めて使う画像も、シーン開始前にまとめて準備する。
     const std::filesystem::path directory = "Resources/sprite/particle";
     std::error_code error;
+
     if (!std::filesystem::exists(directory, error) || error) {
         return;
     }
@@ -153,6 +162,7 @@ void CollectSharedParticleTextures(ScenePreloadData& data) {
             error.clear();
             continue;
         }
+
         if (!iterator->is_regular_file(error) || error || !IsTextureFile(iterator->path())) {
             error.clear();
             continue;
@@ -171,6 +181,7 @@ void CollectSharedFadeTextures(ScenePreloadData& data) {
     // 画面遷移中の王冠アイリス素材をシーン共通の先読み対象へ加える。
     const std::filesystem::path directory = "Resources/sprite/fade/crown_iris";
     std::error_code error;
+
     if (!std::filesystem::exists(directory, error) || error) {
         return;
     }
@@ -185,6 +196,7 @@ void CollectSharedFadeTextures(ScenePreloadData& data) {
             error.clear();
             continue;
         }
+
         if (!iterator->is_regular_file(error) || error || !IsTextureFile(iterator->path())) {
             error.clear();
             continue;
@@ -218,6 +230,7 @@ void CollectDependencies(
     bool spriteTexturePaths) {
     // ネストしたJSONを再帰走査し、モデル・画像・音声・演出プリセットを抽出する。
     if (value.is_object()) {
+        // VFXイベントは同じ presetName でも type ごとに探索先が違うため、一般の文字列判定より先に扱う。
         if (value.contains("type") && value["type"].is_number_integer() &&
             value.contains("presetName") && value["presetName"].is_string() &&
             value.contains("triggerTime")) {
@@ -237,6 +250,7 @@ void CollectDependencies(
                 }
                 else if (eventType == 2) {
                     const std::filesystem::path presetPath(presetName);
+
                     if (ToLower(presetPath.extension().string()) == ".json") {
                         std::filesystem::path eventPath =
                             std::filesystem::path("Resources/json/audio_events") /
@@ -253,29 +267,37 @@ void CollectDependencies(
         for (auto iterator = value.begin(); iterator != value.end(); ++iterator) {
             CollectDependencies(iterator.value(), iterator.key(), data, spriteTexturePaths);
         }
+
         return;
     }
+
     if (value.is_array()) {
         for (const auto& element : value) {
             CollectDependencies(element, propertyName, data, spriteTexturePaths);
         }
+
         return;
     }
+
     if (!value.is_string()) {
         return;
     }
 
+    // キー名と拡張子の双方を見て分類する。拡張子を持たないモデル名やPreset名も対象にするため。
     std::string stringValue = NormalizePath(value.get<std::string>());
+
     if (stringValue.empty()) {
         return;
     }
 
     const std::string lowerKey = ToLower(propertyName);
+
     if (lowerKey == "gpuparticlename") {
         AddUniquePath(data.gpuParticlePresetNames, stringValue);
         AddJsonDependency(data, "Resources/json/gpu_particles/" + stringValue + ".json");
         return;
     }
+
     if (lowerKey == "modelname") {
         AddUniquePath(data.modelNames, stringValue);
         RecordDependency(data, SceneDependencyType::Model, stringValue, false);
@@ -284,6 +306,7 @@ void CollectDependencies(
 
     std::filesystem::path path(stringValue);
     const std::string extension = ToLower(path.extension().string());
+
     if (extension == ".json") {
         if ((lowerKey.find("animator") != std::string::npos ||
              lowerKey.find("controller") != std::string::npos) &&
@@ -294,15 +317,19 @@ void CollectDependencies(
             stringValue.rfind("Resources/", 0) != 0) {
             path = std::filesystem::path("Resources/json/cinematic") / path.filename();
         }
+
         AddJsonDependency(data, path.generic_string());
         return;
     }
+
     if (IsAudioFile(path)) {
         AddAudioDependency(data, stringValue);
         return;
     }
+
     if (IsTextureFile(path) || IsTextureKey(lowerKey)) {
         SceneLoadManifest::TextureRequest request;
+        // Sprite配置JSONの相対パスは実ロードと同じ規則で解決し、先読みと本読込のパスを一致させる。
         request.path = spriteTexturePaths ? engine::Sprite::ResolveTexturePath(stringValue) : stringValue;
         request.linear = IsLinearTextureKey(lowerKey);
         AddUnique(data.textures, request, [](const SceneLoadManifest::TextureRequest& item) {
@@ -315,27 +342,34 @@ void CollectDependencies(
     if (lowerKey.find("animator") != std::string::npos ||
         lowerKey.find("controller") != std::string::npos) {
         std::filesystem::path controllerPath(stringValue);
+
         if (controllerPath.extension().empty()) {
             controllerPath.replace_extension(".json");
         }
+
         if (NormalizePath(controllerPath.generic_string()).rfind("Resources/", 0) != 0) {
             controllerPath =
                 std::filesystem::path("Resources/json/animator") /
                 controllerPath.filename();
         }
+
         AddJsonDependency(data, controllerPath.generic_string());
         return;
     }
+
     if (lowerKey.find("cinematic") != std::string::npos) {
         std::filesystem::path cinematicPath(stringValue);
+
         if (cinematicPath.extension().empty()) {
             cinematicPath.replace_extension(".json");
         }
+
         if (NormalizePath(cinematicPath.generic_string()).rfind("Resources/", 0) != 0) {
             cinematicPath =
                 std::filesystem::path("Resources/json/cinematic") /
                 cinematicPath.filename();
         }
+
         AddJsonDependency(data, cinematicPath.generic_string());
         return;
     }
@@ -360,6 +394,7 @@ void ExpandObjectLayoutPaths(const std::string& path, std::vector<std::string>& 
     };
 
     bool hasSplitFile = false;
+
     for (const std::string& splitPath : splitPaths) {
         if (std::filesystem::exists(splitPath)) {
             hasSplitFile = true;
@@ -382,6 +417,7 @@ void ExpandObjectLayoutPaths(const std::string& path, std::vector<std::string>& 
 bool LoadJsonDocument(const std::string& path, nlohmann::json& document, std::string& warning) {
     // 失敗理由を呼び出し側へ渡し、他の依存ファイルの探索は継続する。
     std::ifstream file(path);
+
     if (!file.is_open()) {
         warning = "Scene preload could not open JSON: " + path;
         return false;
@@ -470,9 +506,11 @@ float ScenePreloadProgress::GetRatio() const {
     // 作業スレッドから更新された件数を読み、UI向けに0から1へ収める。
     const std::size_t total = totalTasks_.load(std::memory_order_relaxed);
     const std::size_t completed = completedTasks_.load(std::memory_order_relaxed);
+
     if (total == 0) {
         return 1.0f;
     }
+
     return (std::min)(1.0f, static_cast<float>(completed) / static_cast<float>(total));
 }
 
@@ -485,9 +523,11 @@ std::string ScenePreloadProgress::GetCurrentTask() const {
 bool ScenePreloadData::TakeJson(const std::string& path, nlohmann::json& destination) {
     // 解析済みJSONを移動して渡し、同じ文書の二重消費を防ぐ。
     const auto found = jsonDocuments.find(NormalizePath(path));
+
     if (found == jsonDocuments.end()) {
         return false;
     }
+
     destination = std::move(found->second);
     jsonDocuments.erase(found);
     return true;
@@ -499,12 +539,15 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
     auto result = std::make_shared<ScenePreloadData>();
 
     std::vector<std::string> jsonPaths;
+
     for (const std::string& path : manifest.objectLayoutPaths) {
         ExpandObjectLayoutPaths(path, jsonPaths);
     }
+
     for (const std::string& path : manifest.spriteLayoutPaths) {
         AddUniquePath(jsonPaths, path);
     }
+
     for (const std::string& path : manifest.additionalJsonPaths) {
         AddUniquePath(jsonPaths, path);
     }
@@ -515,12 +558,14 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
 
     // JSON 内の参照からさらに JSON が見つかるため、走査中に候補列を伸ばします。
     std::size_t jsonIndex = 0;
+
     while (jsonIndex < jsonPaths.size()) {
         const std::string path = jsonPaths[jsonIndex++];
         RecordDependency(*result, SceneDependencyType::Json, path);
 
         nlohmann::json document;
         std::string warning;
+
         if (LoadJsonDocument(path, document, warning)) {
             // Sprite配置の画像参照には、実際のSprite生成と同じパス変換を適用する。
             const bool spriteAssetPaths =
@@ -531,12 +576,14 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
 
             // 参照先JSONが増えた分だけ進捗の総数を伸ばし、割合が早く100%にならないようにする。
             const std::size_t previousCount = jsonPaths.size();
+
             for (const SceneDependencyRecord& dependency :
                 result->dependencyReport.assets) {
                 if (dependency.type == SceneDependencyType::Json) {
                     AddUniquePath(jsonPaths, dependency.path);
                 }
             }
+
             if (progress && jsonPaths.size() > previousCount) {
                 progress->AddTasks(jsonPaths.size() - previousCount);
             }
@@ -553,24 +600,30 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
     for (const std::string& modelName : manifest.modelNames) {
         AddUniquePath(result->modelNames, modelName);
     }
+
     // 同一パスでも線形色空間と色テクスチャは別の準備要求として扱う。
     for (const SceneLoadManifest::TextureRequest& texture : manifest.textures) {
         AddUnique(result->textures, texture, [](const SceneLoadManifest::TextureRequest& item) {
             return NormalizePath(item.path) + (item.linear ? "|linear" : "|color");
         });
     }
+
     for (const std::string& audioPath : manifest.audioPaths) {
         AddAudioDependency(*result, audioPath);
     }
+
     for (const std::string& modelName : result->modelNames) {
         RecordDependency(*result, SceneDependencyType::Model, modelName, false);
     }
+
     for (const SceneLoadManifest::TextureRequest& texture : result->textures) {
         RecordDependency(*result, SceneDependencyType::Texture, texture.path);
     }
+
     if (manifest.includeSharedParticleTextures) {
         CollectSharedParticleTextures(*result);
     }
+
     CollectSharedFadeTextures(*result);
     AddSharedTexture(*result, "Resources/sprite/effect/noise0.png", true);
     AddSharedTexture(*result, "Resources/texture/lut/soft_adventure_lut.png");
@@ -590,6 +643,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
     for (const std::string& missing : result->dependencyReport.missingPaths) {
         result->warnings.push_back("Scene dependency is missing: " + missing);
     }
+
     if (progress) {
         // この時点で依存解析が終わり、残りの事前準備件数が確定します。
         progress->AddTasks(result->textures.size() + result->modelNames.size() + result->audioPaths.size());
@@ -597,6 +651,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
 
     // WIC画像デコードを行うため、ワーカースレッド側でCOMを初期化します。
     const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
     for (const SceneLoadManifest::TextureRequest& texture : result->textures) {
         TextureManager::GetInstance()->Prepare(
             texture.path,
@@ -606,18 +661,23 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
             progress->Advance(texture.path);
         }
     }
+
     for (const std::string& modelName : result->modelNames) {
         ModelManager::GetInstance()->PrepareModel(modelName);
+
         if (progress) {
             progress->Advance(modelName);
         }
     }
+
     for (const std::string& audioPath : result->audioPaths) {
         AudioPlayer::GetInstance()->LoadSoundFile(audioPath);
+
         if (progress) {
             progress->Advance(audioPath);
         }
     }
+
     if (SUCCEEDED(comResult)) {
         CoUninitialize();
     }
@@ -625,6 +685,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
     if (progress) {
         progress->Finish();
     }
+
     return result;
 }
 

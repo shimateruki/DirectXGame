@@ -4,14 +4,14 @@
 #include "game/actor/combat/CombatMath.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "Character.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "DebrisEffectManager.h"
 #include "EffectObject3d.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
 #include "MeshEffectManager.h"
 #include "Player.h"
@@ -36,27 +36,37 @@ inline constexpr const char* kSlimeSummonAttackId = "slime_summon";
 // パーティクル、メッシュ効果、魔法陣の資産名。
 inline constexpr const char* kPrismChargePreset = "prism_slime_charge";
 inline constexpr const char* kPrismPhasePulsePreset = "prism_slime_pulse";
+
 inline constexpr const char* kPrismSpikeWarningPreset = "prism_spike_warning";
 inline constexpr const char* kPrismSpikeBurstPreset = "prism_spike_burst";
 inline constexpr const char* kPrismSpikeShatterDebrisPreset = "prism_crystal_shatter";
+
 inline constexpr const char* kPrismLanceTrailPreset = "prism_lance_trail";
+
 inline constexpr const char* kPrismSpellMotesPreset = "prism_spell_motes";
 inline constexpr const char* kFireChantMotesPreset = "boss_chant_fire_motes";
 inline constexpr const char* kThunderChantMotesPreset = "boss_chant_thunder_motes";
 inline constexpr const char* kWindChantMotesPreset = "boss_chant_wind_motes";
+
 inline constexpr const char* kPrismLanceReleasePreset = "prism_lance_release";
+
 inline constexpr const char* kPrismSpellTelegraphTexture = "Resources/sprite/effect/prism/prism_spell_circle.dds";
 inline constexpr const char* kPrismCrystalLanceCircleEffect =
     "Resources/json/effect/effect_prism_crystal_lance_circle.json";
+
 inline constexpr const char* kPrismChantSigilEffect = "Resources/json/effect/effect_prism_chant_sigil.json";
 inline constexpr const char* kFireChantSigilEffect = "Resources/json/effect/effect_boss_chant_fire.json";
 inline constexpr const char* kThunderChantSigilEffect = "Resources/json/effect/effect_boss_chant_thunder.json";
 inline constexpr const char* kWindChantSigilEffect = "Resources/json/effect/effect_boss_chant_wind.json";
+
 inline constexpr const char* kPrismSpikeGroundEffect = "Resources/json/effect/effect_prism_spike_ground_flash.json";
 inline constexpr const char* kPrismSpikeSectorEffect = "Resources/json/effect/effect_prism_spike_sector.json";
+
 inline constexpr const char* kFireCastPreset = "fire_slime_cast";
+
 inline constexpr const char* kThunderChargePreset = "thunder_slime_charge";
 inline constexpr const char* kThunderImpactPreset = "player_thunder_strike_impact";
+
 inline constexpr const char* kWindChargePreset = "wind_slime_charge";
 inline constexpr const char* kWindStreamPreset = "wind_slime_breath_stream";
 inline constexpr const char* kWindDustPreset = "wind_slime_breath_dust";
@@ -87,25 +97,33 @@ inline constexpr float kPrismSpikeHoldDuration = 1.64f;
 inline constexpr float kPrismSpikeFractureDuration = 0.10f;
 inline constexpr float kPrismSpikeLifetime =
     kPrismSpikeRiseDuration + kPrismSpikeHoldDuration + kPrismSpikeFractureDuration;
+
 inline constexpr float kCrystalLanceInterval = 0.12f;
 inline constexpr float kCrystalLanceTrailInterval = 0.045f;
 inline constexpr int kCrystalLanceCount = 5;
+
 inline constexpr float kFireFanInterval = 0.095f;
 inline constexpr int kFireFanProjectileCount = 5;
+
 inline constexpr float kThunderStrikeInterval = 0.115f;
+
 inline constexpr float kWindPushInterval = 0.12f;
+
 inline constexpr float kSummonInterval = 0.17f;
 inline constexpr float kSummonPortalFadeDuration = 0.34f;
 inline constexpr int kSummonPortalCount = 3;
 inline constexpr int kMaxSummonWaves = 2;
+
 inline constexpr int kEncounterControlledActionMode = 1;
 inline constexpr float kDefaultEncounterAppearanceDuration = 1.08f;
 inline constexpr float kEncounterAppearanceRise = 1.85f;
 inline constexpr const char* kEncounterAppearanceSequence = "prism_midboss_appear_cue";
+
 inline constexpr float kRepositionMinimumDistance = 4.5f;
 inline constexpr float kRepositionMaximumDistance = 8.0f;
 inline constexpr float kRepositionMoveSpeed = 5.8f;
 inline constexpr float kRepositionJumpSpeed = 6.2f;
+
 inline constexpr float kRepositionArenaHalfExtentX = 21.0f;
 inline constexpr float kRepositionArenaHalfExtentZ = 18.0f;
 

@@ -15,6 +15,15 @@ void Character::Update(float deltaTime) {
         return;
     }
 
+    if (param_->hp <= 0) {
+        isDead = true;
+    }
+
+    if (motorSuspended_) {
+        // 直接移動の終点へ重力を重ねると、着地や突進の補間軌道がずれる。
+        return;
+    }
+
     SyncCharacterMotorSettings();
     characterMotor_.BeginFrame(isGrounded_);
     characterMotor_.ApplyGravity(velocity_, param_->gravity, param_->maxFallSpeed, deltaTime);
@@ -25,16 +34,13 @@ void Character::Update(float deltaTime) {
         const float weight = remaining * remaining * (3.0f - 2.0f * remaining);
         velocity_.x = engine::Math::Lerp(velocity_.x, externalImpulseVelocity_.x, weight);
         velocity_.z = engine::Math::Lerp(velocity_.z, externalImpulseVelocity_.z, weight);
+
         if (externalImpulseVerticalPending_) {
             velocity_.y = (std::max)(velocity_.y, externalImpulseVelocity_.y);
             externalImpulseVerticalPending_ = false;
         }
-        externalImpulseTimer_ = (std::max)(0.0f, externalImpulseTimer_ - deltaTime);
-    }
 
-    // HP の死亡状態を移動前に同期します。
-    if (param_->hp <= 0) {
-        isDead = true;
+        externalImpulseTimer_ = (std::max)(0.0f, externalImpulseTimer_ - deltaTime);
     }
 
     engine::Vector3 position = GetTranslate();
@@ -62,6 +68,7 @@ void Character::SyncCharacterMotorSettings() {
 void Character::ApplyExternalImpulse(const engine::Vector3& velocity, float duration) {
     // 連続被弾では弱い水平外力で強いノックバックを上書きせず、上方向だけ維持できる。
     const float safeDuration = (std::max)(0.01f, duration);
+
     if (externalImpulseTimer_ <= 0.0f) {
         externalImpulseVelocity_ = velocity;
         externalImpulseDuration_ = safeDuration;
@@ -73,11 +80,13 @@ void Character::ApplyExternalImpulse(const engine::Vector3& velocity, float dura
     const float currentPlanarSq = externalImpulseVelocity_.x * externalImpulseVelocity_.x +
                                   externalImpulseVelocity_.z * externalImpulseVelocity_.z;
     const float nextPlanarSq = velocity.x * velocity.x + velocity.z * velocity.z;
+
     if (nextPlanarSq >= currentPlanarSq * 0.72f) {
         externalImpulseVelocity_ = velocity;
     } else {
         externalImpulseVelocity_.y = (std::max)(externalImpulseVelocity_.y, velocity.y);
     }
+
     externalImpulseDuration_ = (std::max)(externalImpulseDuration_, safeDuration);
     externalImpulseTimer_ = (std::max)(externalImpulseTimer_, safeDuration);
     externalImpulseVerticalPending_ = true;
@@ -122,6 +131,7 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
     if (typeid(*this) != typeid(Character)) {
         return nullptr;
     }
+
     auto newObj = std::make_unique<Character>();
 
     assert(common_ != nullptr);
@@ -131,6 +141,7 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
     if (!GetModelName().empty()) {
         newObj->SetModel(GetModelName());
     }
+
     newObj->CopyTransformStateFrom(*this);
     newObj->SetName(GetName());
     newObj->SetClassName(GetClassName());
@@ -143,13 +154,16 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
 
     // ステータスと現在の移動状態を引き継ぎます。
     newObj->SetEventType(eventType_);
+
     if (param_.has_value()) {
         newObj->param_ = param_.value();
     }
+
     newObj->velocity_ = velocity_;
     newObj->isGrounded_ = isGrounded_;
 
     newObj->characterMotor_ = characterMotor_;
+
     // アニメーションの選択とループ設定を引き継ぎます。
     newObj->animName_ = animName_;
     newObj->isAnimLoop_ = isAnimLoop_;
@@ -160,6 +174,8 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
         newObj->SetRecordPathName(GetRecordPathName());
         newObj->SetRecordLoop(IsRecordLoop());
         newObj->SetRecordRelative(IsRecordRelative());
+        newObj->GetPathMoverComponent()->SetPlaybackMode(GetPathMoverComponent()->GetPlaybackMode());
+        newObj->GetPathMoverComponent()->SetPhaseOffset(GetPathMoverComponent()->GetPhaseOffset());
     }
 
     newObj->InitializeRecorder(nullptr);

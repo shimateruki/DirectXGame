@@ -8,7 +8,7 @@
 #include "CollisionManager.h"
 #include "Camera.h"
 #include "CameraManager.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
 #include "MeshRenderer.h"
 #include "EffectObject3d.h"
@@ -16,7 +16,7 @@
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "VFXSequencer.h"
 #include "game/scene/gameplay/GamePlayScene.h"
-#include "game/system/CrownFinaleTuning.h"
+#include "game/crown/CrownFinaleTuning.h"
 #ifdef USE_IMGUI
 #include "imgui.h"
 #endif
@@ -39,6 +39,7 @@ inline constexpr const char* kCrownDominionAttackId = "crown_dominion";
 inline constexpr const char* kUmbraFlameAttackId = "umbra_flame";
 inline constexpr const char* kAstralReaverAttackId = "astral_reaver";
 inline constexpr const char* kNightfallLancesAttackId = "nightfall_lances";
+
 // 攻撃プロフィールには保存しない、第2形態の封印失敗演出用プレビュー ID。
 inline constexpr const char* kSealBarragePreviewId = "seal_barrage_preview";
 
@@ -85,15 +86,20 @@ inline constexpr const char* kNightfallLancesRimPreset = "false_king_nightfall_l
 inline constexpr const char* kNightfallLancesDissolvePreset = "false_king_nightfall_lances_dissolve";
 
 inline constexpr const char* kChargePreset = "false_king_charge";
+
 inline constexpr const char* kLanceTrailPreset = "false_king_lance_trail";
 inline constexpr const char* kLanceImpactPreset = "false_king_lance_impact";
+
 inline constexpr const char* kRushWakePreset = "false_king_rush_wake";
+
 inline constexpr const char* kShockwavePreset = "false_king_shockwave";
 inline constexpr const char* kShockwaveChargeRingPreset = "false_king_shockwave_charge_ring";
 inline constexpr const char* kShockwaveDustPreset = "false_king_shockwave_dust";
 inline constexpr const char* kShockwaveCrestPreset = "false_king_shockwave_crest";
 inline constexpr const char* kShockwaveShardPreset = "false_king_shockwave_shard";
+
 inline constexpr const char* kDominionPreset = "false_king_dominion";
+
 inline constexpr const char* kAppearanceSequence = "false_king_appear_cue";
 inline constexpr const char* kPhaseShiftSequence = "false_king_phase_shift_cue";
 inline constexpr const char* kDominionSequence = "false_king_dominion_cue";
@@ -107,16 +113,20 @@ inline constexpr const char* kDominionSigilModel = "Effects/false_king_dominion_
 
 // 素材、攻撃間隔、登場演出に共通する調整値。
 inline constexpr int kEncounterControlledActionMode = 1;
+
 inline constexpr int kLaserMaterialType = 12;
 inline constexpr int kShockwaveMaterialType = 14;
 inline constexpr int kCrownMaterialType = 19;
 inline constexpr int kGatePortalMaterialType = 22;
 inline constexpr int kFireMaterialType = 11;
+
 inline constexpr float kDefaultAppearanceDuration = 1.45f;
-inline constexpr float kAppearanceRise = 3.6f;
+
 inline constexpr float kPi = 3.1415926535f;
 inline constexpr float kTwoPi = kPi * 2.0f;
+
 inline constexpr float kModelYawOffset = kPi;
+
 inline constexpr float kLanceInterval = 0.13f;
 inline constexpr float kDominionLanceInterval = 0.58f;
 

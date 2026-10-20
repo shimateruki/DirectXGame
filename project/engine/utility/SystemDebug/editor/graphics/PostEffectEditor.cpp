@@ -11,25 +11,30 @@ using json = nlohmann::json;
 
 void PostEffectEditor::Initialize(PostEffect* postEffect) {
     targetEffect_ = postEffect;
+
     // 起動時に自動で前回の設定をロードする
     LoadParams();
 }
 
 void PostEffectEditor::DrawImGui() {
 #ifdef USE_IMGUI
-    if (!targetEffect_) return;
+    if (!targetEffect_)
+        return;
 
     auto* params = targetEffect_->GetParams();
 
     ImGui::Text("Color Workflow");
     bool linearWorkflow = engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled();
+
     if (ImGui::Checkbox("リニアワークフローを使用", &linearWorkflow)) {
         engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(linearWorkflow);
         LightManager::GetInstance()->ApplySceneClearColor();
+
         if (linearWorkflow && params->enableToneMapping == 0) {
             params->enableToneMapping = 1;
         }
     }
+
     ImGui::TextDisabled(
         linearWorkflow
             ? "sRGB入力をリニア化し、HDR合成後にsRGB出力します。"
@@ -42,9 +47,16 @@ void PostEffectEditor::DrawImGui() {
     ImGui::Text(ICON_FA_ADJUST " Tone Mapping Mode");
 
     int mode = params->enableToneMapping;
-    if (ImGui::RadioButton("OFF (No ToneMap)", mode == 0)) { mode = 0; }
-    if (ImGui::RadioButton(ICON_FA_EYE " Real (ACES - White Out)", mode == 1)) { mode = 1; }
-    if (ImGui::RadioButton(ICON_FA_PALETTE " Anime (ACES - Vivid Color)", mode == 2)) { mode = 2; }
+
+    if (ImGui::RadioButton("OFF (No ToneMap)", mode == 0)) {
+        mode = 0;
+    }
+    if (ImGui::RadioButton(ICON_FA_EYE " Real (ACES - White Out)", mode == 1)) {
+        mode = 1;
+    }
+    if (ImGui::RadioButton(ICON_FA_PALETTE " Anime (ACES - Vivid Color)", mode == 2)) {
+        mode = 2;
+    }
     params->enableToneMapping = mode;
 
     if (mode == 1) {
@@ -53,6 +65,7 @@ void PostEffectEditor::DrawImGui() {
     else if (mode == 2) {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "  Good for Anime/Vivid Magic effects.");
     }
+
     ImGui::Separator();
 
     ImGui::Text(ICON_FA_PALETTE " Color Grading / LUT");
@@ -62,6 +75,7 @@ void PostEffectEditor::DrawImGui() {
     ImGui::DragFloat(" Saturation", &params->colorSaturation, 0.01f, 0.0f, 2.5f);
     ImGui::DragFloat(" Temperature", &params->colorTemperature, 0.01f, -1.0f, 1.0f);
     ImGui::DragFloat(" Tint", &params->colorTint, 0.01f, -1.0f, 1.0f);
+
     if (ImGui::Button("Soft Adventure Preset")) {
         params->enableToneMapping = 2;
         params->lutIntensity = 0.28f;
@@ -73,6 +87,7 @@ void PostEffectEditor::DrawImGui() {
         params->vignetteIntensity = 0.04f;
         params->vignettePower = 1.15f;
     }
+
     ImGui::Separator();
 
     // ==========================================================
@@ -81,6 +96,7 @@ void PostEffectEditor::DrawImGui() {
     ImGui::Text(ICON_FA_SUN " Bloom Settings");
 
 	bool bloomEnabled = targetEffect_->IsBloomEnabled();
+
 	if (ImGui::Checkbox("Bloomを使用", &bloomEnabled)) {
 		targetEffect_->SetBloomEnabled(bloomEnabled);
 	}
@@ -91,6 +107,7 @@ void PostEffectEditor::DrawImGui() {
 		"中 (6 passes / 2 levels)",
 		"高 (10 passes / 4 levels)",
 	};
+
 	if (ImGui::Combo("Bloom品質", &bloomQuality, bloomQualityItems, IM_ARRAYSIZE(bloomQualityItems))) {
 		targetEffect_->SetBloomQuality(static_cast<PostEffect::BloomQuality>(bloomQuality));
 	}
@@ -175,13 +192,17 @@ void PostEffectEditor::DrawImGui() {
     ImGui::ColorEdit3(" Slime Color", &params->slimeColor.x);
     
     ImGui::Spacing();
+
     if (ImGui::Button("Start Fade In")) {
         Fade::GetInstance()->StartFadeIn(1.5f);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("Start Fade Out")) {
         Fade::GetInstance()->StartFadeOut(1.5f);
     }
+
     ImGui::Separator();
 
     // ==========================================================
@@ -192,13 +213,17 @@ void PostEffectEditor::DrawImGui() {
     ImGui::DragFloat2(" Iris Center", &params->irisCenterX, 0.01f, 0.0f, 1.0f);
     
     ImGui::Spacing();
+
     if (ImGui::Button("Start Iris In")) {
         Fade::GetInstance()->StartIrisIn(1.0f);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("Start Iris Out")) {
         Fade::GetInstance()->StartIrisOut(1.0f);
     }
+
     ImGui::Separator();
 
     // ==========================================================
@@ -207,7 +232,9 @@ void PostEffectEditor::DrawImGui() {
     if (ImGui::Button(ICON_FA_SAVE " Save JSON")) {
         SaveParams();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_UPLOAD " Load JSON")) {
         LoadParams();
     }
@@ -215,16 +242,19 @@ void PostEffectEditor::DrawImGui() {
 }
 
 void PostEffectEditor::SaveParams(const std::string& filename) {
-    if (!targetEffect_) return;
+    if (!targetEffect_)
+        return;
 
     // フォルダが存在しない場合は作成する
     std::filesystem::path dir = std::filesystem::path(filename).parent_path();
+
     if (!dir.empty() && !std::filesystem::exists(dir)) {
         std::filesystem::create_directories(dir);
     }
 
     auto* params = targetEffect_->GetParams();
     json j;
+    // Editorで調整した描画パラメータと、全シーン共有の色空間設定を同じPresetへ保存する。
     j["bloomEnabled"] = targetEffect_->IsBloomEnabled();
     j["bloomQuality"] = static_cast<int>(targetEffect_->GetBloomQuality());
     j["threshold"] = params->threshold;
@@ -268,82 +298,126 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["irisFadeIntensity"] = params->irisFadeIntensity;
     j["irisCenter"] = { params->irisCenterX, params->irisCenterY };
     std::ofstream file(filename);
+
     if (file.is_open()) {
         file << j.dump(4); // インデント4で綺麗に出力
     }
 }
 
 void PostEffectEditor::LoadParams(const std::string& filename) {
-    if (!targetEffect_) return;
+    if (!targetEffect_)
+        return;
 
     std::ifstream file(filename);
-    if (!file.is_open()) return;
+    if (!file.is_open())
+        return;
 
     try {
         json j;
         file >> j;
 
+        // 古いPresetに無いキーは現在の既定値を残し、追加項目だけを段階的に適用する。
         auto* params = targetEffect_->GetParams();
 		if (j.contains("bloomEnabled")) {
 			targetEffect_->SetBloomEnabled(j["bloomEnabled"].get<bool>());
 		}
+
 		if (j.contains("bloomQuality")) {
 			targetEffect_->SetBloomQuality(
 				static_cast<PostEffect::BloomQuality>(j["bloomQuality"].get<int>()));
 		}
 
         if (j.contains("linearWorkflowEnabled")) {
+            // 色空間の変更は背景クリア色にも影響するため、LightManager側へ再反映する。
             engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
                 j["linearWorkflowEnabled"].get<bool>());
             LightManager::GetInstance()->ApplySceneClearColor();
         }
 
-        if (j.contains("threshold")) params->threshold = j["threshold"];
-        if (j.contains("bloomIntensity")) params->bloomIntensity = j["bloomIntensity"];
-        if (j.contains("spread")) params->spread = j["spread"];
-        if (j.contains("enableToneMapping")) params->enableToneMapping = j["enableToneMapping"];
-        if (j.contains("vignetteIntensity")) params->vignetteIntensity = j["vignetteIntensity"];
-        if (j.contains("vignettePower")) params->vignettePower = j["vignettePower"];
-        if (j.contains("chromaticAberration")) params->chromaticAberration = j["chromaticAberration"];
-        if (j.contains("filmGrainIntensity")) params->filmGrainIntensity = j["filmGrainIntensity"];
-        if (j.contains("radialIntensity")) params->radialIntensity = j["radialIntensity"];
-        if (j.contains("radialBlurSamples")) params->radialBlurSamples = j["radialBlurSamples"];
-        if (j.contains("radialCenterX")) params->radialCenterX = j["radialCenterX"];
-        if (j.contains("radialCenterY")) params->radialCenterY = j["radialCenterY"];
-        if (j.contains("lutIntensity")) params->lutIntensity = j["lutIntensity"];
-        if (j.contains("colorExposure")) params->colorExposure = j["colorExposure"];
-        if (j.contains("colorContrast")) params->colorContrast = j["colorContrast"];
-        if (j.contains("colorSaturation")) params->colorSaturation = j["colorSaturation"];
-        if (j.contains("colorTemperature")) params->colorTemperature = j["colorTemperature"];
-        if (j.contains("colorTint")) params->colorTint = j["colorTint"];
-        if (j.contains("damageFlash")) params->damageFlash = j["damageFlash"];
-        if (j.contains("cinemaBarHeight")) params->cinemaBarHeight = j["cinemaBarHeight"];
-        if (j.contains("wobbleIntensity")) params->wobbleIntensity = j["wobbleIntensity"];
-        if (j.contains("scanlineIntensity")) params->scanlineIntensity = j["scanlineIntensity"];
-        if (j.contains("mosaicSize")) params->mosaicSize = j["mosaicSize"];
-        if (j.contains("grayscaleIntensity")) params->grayscaleIntensity = j["grayscaleIntensity"];
-        if (j.contains("sepiaIntensity")) params->sepiaIntensity = j["sepiaIntensity"];
-        if (j.contains("boxFilterSize")) params->boxFilterSize = j["boxFilterSize"];
-        if (j.contains("gaussianFilterSize")) params->gaussianFilterSize = j["gaussianFilterSize"];
-        if (j.contains("gaussianSigma")) params->gaussianSigma = j["gaussianSigma"];
-        if (j.contains("luminanceOutlineIntensity")) params->luminanceOutlineIntensity = j["luminanceOutlineIntensity"];
-        if (j.contains("depthOutlineIntensity")) params->depthOutlineIntensity = j["depthOutlineIntensity"];
-        if (j.contains("dissolveThreshold")) params->dissolveThreshold = j["dissolveThreshold"];
-        if (j.contains("dissolveEdgeWidth")) params->dissolveEdgeWidth = j["dissolveEdgeWidth"];
+        if (j.contains("threshold"))
+            params->threshold = j["threshold"];
+        if (j.contains("bloomIntensity"))
+            params->bloomIntensity = j["bloomIntensity"];
+        if (j.contains("spread"))
+            params->spread = j["spread"];
+        if (j.contains("enableToneMapping"))
+            params->enableToneMapping = j["enableToneMapping"];
+        if (j.contains("vignetteIntensity"))
+            params->vignetteIntensity = j["vignetteIntensity"];
+        if (j.contains("vignettePower"))
+            params->vignettePower = j["vignettePower"];
+        if (j.contains("chromaticAberration"))
+            params->chromaticAberration = j["chromaticAberration"];
+        if (j.contains("filmGrainIntensity"))
+            params->filmGrainIntensity = j["filmGrainIntensity"];
+        if (j.contains("radialIntensity"))
+            params->radialIntensity = j["radialIntensity"];
+        if (j.contains("radialBlurSamples"))
+            params->radialBlurSamples = j["radialBlurSamples"];
+        if (j.contains("radialCenterX"))
+            params->radialCenterX = j["radialCenterX"];
+        if (j.contains("radialCenterY"))
+            params->radialCenterY = j["radialCenterY"];
+        if (j.contains("lutIntensity"))
+            params->lutIntensity = j["lutIntensity"];
+        if (j.contains("colorExposure"))
+            params->colorExposure = j["colorExposure"];
+        if (j.contains("colorContrast"))
+            params->colorContrast = j["colorContrast"];
+        if (j.contains("colorSaturation"))
+            params->colorSaturation = j["colorSaturation"];
+        if (j.contains("colorTemperature"))
+            params->colorTemperature = j["colorTemperature"];
+        if (j.contains("colorTint"))
+            params->colorTint = j["colorTint"];
+        if (j.contains("damageFlash"))
+            params->damageFlash = j["damageFlash"];
+        if (j.contains("cinemaBarHeight"))
+            params->cinemaBarHeight = j["cinemaBarHeight"];
+        if (j.contains("wobbleIntensity"))
+            params->wobbleIntensity = j["wobbleIntensity"];
+        if (j.contains("scanlineIntensity"))
+            params->scanlineIntensity = j["scanlineIntensity"];
+        if (j.contains("mosaicSize"))
+            params->mosaicSize = j["mosaicSize"];
+        if (j.contains("grayscaleIntensity"))
+            params->grayscaleIntensity = j["grayscaleIntensity"];
+        if (j.contains("sepiaIntensity"))
+            params->sepiaIntensity = j["sepiaIntensity"];
+        if (j.contains("boxFilterSize"))
+            params->boxFilterSize = j["boxFilterSize"];
+        if (j.contains("gaussianFilterSize"))
+            params->gaussianFilterSize = j["gaussianFilterSize"];
+        if (j.contains("gaussianSigma"))
+            params->gaussianSigma = j["gaussianSigma"];
+        if (j.contains("luminanceOutlineIntensity"))
+            params->luminanceOutlineIntensity = j["luminanceOutlineIntensity"];
+        if (j.contains("depthOutlineIntensity"))
+            params->depthOutlineIntensity = j["depthOutlineIntensity"];
+        if (j.contains("dissolveThreshold"))
+            params->dissolveThreshold = j["dissolveThreshold"];
+        if (j.contains("dissolveEdgeWidth"))
+            params->dissolveEdgeWidth = j["dissolveEdgeWidth"];
         if (j.contains("dissolveEdgeColor")) {
             params->dissolveEdgeColor.x = j["dissolveEdgeColor"][0];
             params->dissolveEdgeColor.y = j["dissolveEdgeColor"][1];
             params->dissolveEdgeColor.z = j["dissolveEdgeColor"][2];
         }
-        if (j.contains("randomIntensity")) params->randomIntensity = j["randomIntensity"];
-        if (j.contains("slimeFadeIntensity")) params->slimeFadeIntensity = j["slimeFadeIntensity"];
-        if (j.contains("slimeDensity")) params->slimeDensity = j["slimeDensity"];
+
+        if (j.contains("randomIntensity"))
+            params->randomIntensity = j["randomIntensity"];
+        if (j.contains("slimeFadeIntensity"))
+            params->slimeFadeIntensity = j["slimeFadeIntensity"];
+        if (j.contains("slimeDensity"))
+            params->slimeDensity = j["slimeDensity"];
         if (j.contains("slimeColor")) {
             params->slimeColor.x = j["slimeColor"][0];
             params->slimeColor.y = j["slimeColor"][1];
             params->slimeColor.z = j["slimeColor"][2];
         }
-        if (j.contains("irisFadeIntensity")) params->irisFadeIntensity = j["irisFadeIntensity"];
+
+        if (j.contains("irisFadeIntensity"))
+            params->irisFadeIntensity = j["irisFadeIntensity"];
         if (j.contains("irisCenter")) {
             params->irisCenterX = j["irisCenter"][0];
             params->irisCenterY = j["irisCenter"][1];

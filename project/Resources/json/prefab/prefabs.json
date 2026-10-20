@@ -1,4 +1,431 @@
 {
-    "prefabs": {},
+    "prefabs": {
+        "Stage2/Gimmick/MagmaGeyserLiftRock": {
+            "addedChildren": [],
+            "assetId": "prefab-stage2-magma-geyser-lift-rock",
+            "baseAssetId": "",
+            "componentOverrides": {},
+            "nodeOverrides": {},
+            "propertyOverrides": {},
+            "removedObjectIds": [],
+            "reparentedObjects": [],
+            "root": {
+                "children": [
+                    {
+                        "animation": {
+                            "animName": "",
+                            "animatorController": "",
+                            "isAnimLoop": true
+                        },
+                        "autoTextureTiling": false,
+                        "blendMode": 0,
+                        "castShadow": false,
+                        "collider": {
+                            "center": [
+                                0.0,
+                                5.220000267028809,
+                                0.0
+                            ],
+                            "rotation": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "size": [
+                                5.300000190734863,
+                                4.5,
+                                5.300000190734863
+                            ],
+                            "type": 4
+                        },
+                        "collisionAttribute": 0,
+                        "collisionAttributeIds": [],
+                        "collisionAttributeUnknownBits": 0,
+                        "collisionMask": 0,
+                        "collisionMaskIds": [],
+                        "collisionMaskUnknownBits": 0,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "components": {
+                            "GameplayLink": {
+                                "_editorPresent": true,
+                                "eventId": 8311,
+                                "targetId": -1,
+                                "version": 1
+                            }
+                        },
+                        "emissive": 1.0299999713897705,
+                        "enableEnvMap": false,
+                        "enableLighting": true,
+                        "enableNormalMap": false,
+                        "enemyType": "",
+                        "envIntensity": 1.25,
+                        "eventID": 0,
+                        "gimmickType": "MagmaGeyser",
+                        "gpuParticleName": "",
+                        "isStatic": false,
+                        "itemType": "",
+                        "layer": "Default",
+                        "localFog": {
+                            "color": [
+                                0.20000000298023224,
+                                0.800000011920929,
+                                0.5,
+                                1.0
+                            ],
+                            "density": 0.5,
+                            "edgeFade": 0.0,
+                            "noiseScale": 0.0,
+                            "noiseSpeed": 0.0,
+                            "scatteringG": 0.0,
+                            "scatteringIntensity": 0.0
+                        },
+                        "materialType": 0,
+                        "meshDrawIndex": -1,
+                        "meshEffect1": "",
+                        "meshEffect2": "",
+                        "metallic": 0.07999999821186066,
+                        "modelName": "Stages/magma_vent",
+                        "myEventID": 8311,
+                        "name": "Stage2_LiftVent_01",
+                        "normalMapPath": "",
+                        "ormMapPath": "",
+                        "param": {
+                            "actionMode": 2,
+                            "attackPower": 1.0,
+                            "colorType": 0,
+                            "copyMemoryActivationRadius": 0.8999999761581421,
+                            "copyMemoryEssenceScale": 1.0,
+                            "copyMemoryGlow": 0.44999998807907104,
+                            "copyMemoryHoverAmount": 0.10000000149011612,
+                            "copyMemoryTypeA": "FireSlime",
+                            "copyMemoryTypeB": "ThunderSlime",
+                            "copyMemoryTypeC": "WindSlime",
+                            "copyMemoryTypeD": "",
+                            "copyMemoryUnlimitedDuration": true,
+                            "detectionRange": 5.300000190734863,
+                            "enemyType": "",
+                            "fallDuration": 5.0,
+                            "gimmickType": "MagmaGeyser",
+                            "gravity": 5.5,
+                            "healAmount": 1.0,
+                            "hp": 100.0,
+                            "interval": 2.0,
+                            "itemType": "",
+                            "jumpPower": 15.0,
+                            "maxCount": 5,
+                            "maxFallSpeed": 160.0,
+                            "maxHp": 100.0,
+                            "moveAmount": 9.0,
+                            "moveSpeed": 0.0,
+                            "returnOnOff": true,
+                            "shakeDuration": 1.5,
+                            "speed": 1.0,
+                            "startActive": true,
+                            "switchMode": 0,
+                            "targetScene": "SELECT",
+                            "volumeBlendDuration": 0.75,
+                            "volumeMode": 0,
+                            "volumePayload": "",
+                            "volumeRearmDelay": 0.0,
+                            "volumeTriggerOnExit": false,
+                            "volumeTriggerOnce": true
+                        },
+                        "particleName": "",
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "prefabObjectId": "vent",
+                        "quaternion": [
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0
+                        ],
+                        "recorder": {
+                            "isRecordLoop": false,
+                            "isRecordRelative": false,
+                            "recordPathName": ""
+                        },
+                        "rotate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "roughness": 0.7200000286102295,
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.399999976158142,
+                            1.0,
+                            1.399999976158142
+                        ],
+                        "tag": "",
+                        "targetID": -1,
+                        "texturePath": "",
+                        "textureTiling": [
+                            32.0,
+                            24.0
+                        ],
+                        "translate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "type": "Gimmick"
+                    },
+                    {
+                        "animation": {
+                            "animName": "",
+                            "animatorController": "",
+                            "isAnimLoop": true
+                        },
+                        "autoTextureTiling": false,
+                        "blendMode": 0,
+                        "castShadow": false,
+                        "collider": {
+                            "center": [
+                                0.00911480188369751,
+                                -0.7968025207519531,
+                                -0.01616048812866211
+                            ],
+                            "rotation": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "size": [
+                                1.0657029151916504,
+                                0.7931928634643555,
+                                0.9839804172515869
+                            ],
+                            "type": 3,
+                            "useModelVolume": true
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionAttributeUnknownBits": 0,
+                        "collisionMask": 4294967291,
+                        "collisionMaskIds": [
+                            "player",
+                            "enemy",
+                            "player_bullet",
+                            "trigger",
+                            "map_block",
+                            "player_attack",
+                            "enemy_attack",
+                            "hook_anchor"
+                        ],
+                        "collisionMaskUnknownBits": 4294966784,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "components": {
+                            "GameplayLink": {
+                                "_editorPresent": true,
+                                "eventId": -1,
+                                "targetId": 8311,
+                                "version": 1
+                            }
+                        },
+                        "emissive": 0.10000000149011612,
+                        "enableEnvMap": false,
+                        "enableLighting": true,
+                        "enableNormalMap": false,
+                        "enemyType": "",
+                        "envIntensity": 1.25,
+                        "eventID": 0,
+                        "gimmickType": "MovingFloor",
+                        "gpuParticleName": "",
+                        "isStatic": false,
+                        "itemType": "",
+                        "layer": "Default",
+                        "localFog": {
+                            "color": [
+                                0.20000000298023224,
+                                0.800000011920929,
+                                0.5,
+                                1.0
+                            ],
+                            "density": 0.5,
+                            "edgeFade": 0.0,
+                            "noiseScale": 0.0,
+                            "noiseSpeed": 0.0,
+                            "scatteringG": 0.0,
+                            "scatteringIntensity": 0.0
+                        },
+                        "materialType": 35,
+                        "meshDrawIndex": -1,
+                        "meshEffect1": "",
+                        "meshEffect2": "",
+                        "metallic": 0.0,
+                        "modelName": "Stages/magma_lift_rock",
+                        "myEventID": -1,
+                        "name": "Stage2_LiftRock_01",
+                        "normalMapPath": "",
+                        "ormMapPath": "",
+                        "param": {
+                            "actionMode": 5,
+                            "attackPower": 1.0,
+                            "colorType": 0,
+                            "copyMemoryActivationRadius": 0.8999999761581421,
+                            "copyMemoryEssenceScale": 1.0,
+                            "copyMemoryGlow": 0.44999998807907104,
+                            "copyMemoryHoverAmount": 0.10000000149011612,
+                            "copyMemoryTypeA": "FireSlime",
+                            "copyMemoryTypeB": "ThunderSlime",
+                            "copyMemoryTypeC": "WindSlime",
+                            "copyMemoryTypeD": "",
+                            "copyMemoryUnlimitedDuration": true,
+                            "detectionRange": 20.0,
+                            "enemyType": "",
+                            "fallDuration": 2.0,
+                            "gimmickType": "MovingFloor",
+                            "gravity": 50.0,
+                            "healAmount": 1.0,
+                            "hp": 100.0,
+                            "interval": 0.800000011920929,
+                            "itemType": "",
+                            "jumpPower": 38.0,
+                            "maxCount": 5,
+                            "maxFallSpeed": 60.0,
+                            "maxHp": 100.0,
+                            "moveAmount": 8.0,
+                            "moveSpeed": 6.0,
+                            "returnOnOff": true,
+                            "shakeDuration": 1.0,
+                            "speed": 0.0,
+                            "startActive": true,
+                            "switchMode": 0,
+                            "targetScene": "SELECT",
+                            "volumeBlendDuration": 0.75,
+                            "volumeMode": 0,
+                            "volumePayload": "",
+                            "volumeRearmDelay": 0.0,
+                            "volumeTriggerOnExit": false,
+                            "volumeTriggerOnce": true
+                        },
+                        "particleName": "",
+                        "position": [
+                            0.0,
+                            0.2,
+                            0.0
+                        ],
+                        "prefabObjectId": "rock",
+                        "quaternion": [
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0
+                        ],
+                        "recorder": {
+                            "isRecordLoop": false,
+                            "isRecordRelative": false,
+                            "recordPathName": ""
+                        },
+                        "rotate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "roughness": 0.8999999761581421,
+                        "saveCategory": "Object",
+                        "scale": [
+                            10.0,
+                            2.4000000953674316,
+                            10.0
+                        ],
+                        "tag": "",
+                        "targetID": 8311,
+                        "texturePath": "",
+                        "textureTiling": [
+                            32.0,
+                            24.0
+                        ],
+                        "translate": [
+                            0.0,
+                            0.2,
+                            0.0
+                        ],
+                        "type": "Gimmick"
+                    }
+                ],
+                "collider": {
+                    "center": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "size": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "type": 0
+                },
+                "collisionAttribute": 0,
+                "collisionMask": 0,
+                "layer": "Default",
+                "modelName": "",
+                "myEventID": -1,
+                "name": "Stage2_MagmaGeyserLiftRock_Set",
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "prefabObjectId": "root",
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "saveCategory": "Object",
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "targetID": -1,
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": "Model"
+            },
+            "version": 3
+        }
+    },
     "version": 3
 }

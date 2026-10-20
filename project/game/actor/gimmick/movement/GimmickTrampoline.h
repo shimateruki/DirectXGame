@@ -6,10 +6,14 @@ class Player;
 // 上から踏むと大ジャンプするジャンプ台ギミック
 class GimmickTrampoline : public BaseGimmick {
   public:
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     bool OnCollision(engine::Object3d* other) override;
+
     std::unique_ptr<engine::Object3d> Clone() const override;
+
     // プレイヤーから見た接触法線を受け取り、上面への着地だけを反発へ変える。
     bool TryBounce(Player* player, const engine::Vector3& playerGroundNormal);
 

@@ -50,10 +50,12 @@ const char* kEventTypeNames[] = {
     "Effect",
     "SE"
 };
+
 constexpr int kEventTypeCount = static_cast<int>(sizeof(kEventTypeNames) / sizeof(kEventTypeNames[0]));
 
 void CopyToBuffer(char* buffer, size_t size, const std::string& text) {
-    if (!buffer || size == 0) return;
+    if (!buffer || size == 0)
+        return;
     strncpy_s(buffer, size, text.c_str(), _TRUNCATE);
 }
 }
@@ -75,19 +77,24 @@ void AnimationWorkbench::Finalize() {
 }
 
 void AnimationWorkbench::StartPreview() {
-    if (enabled_ || !sceneManager_ || sceneManager_->IsPlaying()) return;
+    if (enabled_ || !sceneManager_ || sceneManager_->IsPlaying())
+        return;
     enabled_ = true;
+
     // カメラ上書きより先に元の視点を保存する。
     Update(0.0f);
 }
 
 void AnimationWorkbench::Update(float deltaTime) {
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
 
+    // プレビューがカメラを借りている間はEditor状態の保存を抑え、仮視点の混入を防ぎます。
     CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 1, enabled_);
 
     if (enabled_ && !wasEnabled_) {
         previewScene_ = sceneManager_->GetCurrentScene();
+
         if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
             storedEye_ = camera->GetEye();
             storedTarget_ = camera->GetTargetPoint();
@@ -96,26 +103,36 @@ void AnimationWorkbench::Update(float deltaTime) {
             storedCameraMode_ = static_cast<int>(CameraEditor::GetInstance()->GetMode());
             storedCameraValid_ = true;
         }
+
         hasPlacedCamera_ = false;
         auto* studio = EffectPreviewStage::GetInstance();
         studio->EnableForToolPreview();
+
         // 初回の床・照明・カメラ状態をここで確定し、次フレームの再配置を防ぐ。
         studio->Update();
         ownsStudio_ = true;
         previewOrigin_ = studio->GetGroundPosition();
+
         if (!previewObject_) {
             CreatePreviewObject();
         }
     }
+
+    // 停止またはScene切替時はプレビュー所有物を先に戻し、編集Sceneに残しません。
     if (!enabled_ && wasEnabled_) {
         StopPreview();
     }
-    if (enabled_ && (sceneManager_->IsPlaying() || previewScene_ != sceneManager_->GetCurrentScene())) StopPreview();
+
+    if (enabled_ && (sceneManager_->IsPlaying() || previewScene_ != sceneManager_->GetCurrentScene()))
+        StopPreview();
     wasEnabled_ = enabled_;
 
-    if (!enabled_) return;
+    if (!enabled_)
+        return;
 
+    // Scene内の仮Objectを再取得し、Editorで調整した基準位置と大きさを反映します。
     previewObject_ = FindPreviewObject();
+
     if (previewObject_) {
         previewObject_->SetTranslate(previewOrigin_);
         previewObject_->SetScale(previewScale_);
@@ -125,12 +142,15 @@ void AnimationWorkbench::Update(float deltaTime) {
 
     float previousTime = currentTime_;
     bool timelineAdvanced = false;
+
     if (play_ && duration_ > 0.0f) {
         currentTime_ += deltaTime * playbackSpeed_;
         timelineAdvanced = true;
+
         if (loop_) {
             currentTime_ = std::fmod(currentTime_, duration_);
-            if (currentTime_ < 0.0f) currentTime_ += duration_;
+            if (currentTime_ < 0.0f)
+                currentTime_ += duration_;
         } else {
             if (currentTime_ > duration_) {
                 currentTime_ = duration_;
@@ -142,9 +162,11 @@ void AnimationWorkbench::Update(float deltaTime) {
         }
     }
 
+    // 手動スクラブでは一時イベントを再発火させず、実再生で時刻が進んだときだけ評価します。
     if (timelineAdvanced && previewEvents_) {
         UpdateEventPreview(previousTime, currentTime_);
     }
+
     if (eventPreviewTimer_ > 0.0f) {
         eventPreviewTimer_ = (std::max)(0.0f, eventPreviewTimer_ - deltaTime);
     }
@@ -159,15 +181,20 @@ void AnimationWorkbench::StopPreview() {
         EffectPreviewStage::GetInstance()->ReturnToScene();
         ownsStudio_ = false;
     }
+
     timelineDragKind_ = timelineDragIndex_ = -1;
     const bool sameScene = sceneManager_ && sceneManager_->GetCurrentScene() == previewScene_;
+
     if (sameScene) {
         RemovePreviewObject();
+
         if (storedCameraValid_) {
             if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 engine::Object3d* follow = nullptr;
+
                 for (const auto& object : previewScene_->GetObjects())
-                    if (object.get() == storedFollow_) follow = object.get();
+                    if (object.get() == storedFollow_)
+                        follow = object.get();
                 camera->SetFollowTarget(follow);
                 camera->SetEye(storedEye_);
                 camera->SetTarget(storedTarget_);
@@ -177,6 +204,7 @@ void AnimationWorkbench::StopPreview() {
             }
         }
     }
+
     // クリップの編集内容は残し、仮Objectとカメラの占有だけを解除する。
     enabled_ = wasEnabled_ = play_ = hasPlacedCamera_ = storedCameraValid_ = false;
     previewObject_ = nullptr;
@@ -194,42 +222,59 @@ void AnimationWorkbench::DrawImGui() {
     ImGui::Checkbox("自動反映", &autoApply_);
 
     ImGui::SeparatorText("編集対象");
+
     if (ImGui::RadioButton("身体全体の変形", editBodyTransform_)) {
         editBodyTransform_ = true;
     }
+
     ImGui::SameLine();
+
     if (ImGui::RadioButton("ボーンの姿勢", !editBodyTransform_)) {
         editBodyTransform_ = false;
     }
+
     ImGui::TextWrapped("身体全体：伸縮・傾き / ボーン：関節の姿勢。再生・時刻は画面下で操作します。");
 
     DrawPreviewControls();
     DrawAssetControls();
+
     // クリップ切り替えで編集中のキーを無言で捨てない。
-    if (pendingClipAction_ != 0) ImGui::OpenPopup("クリップの切り替え確認");
+    if (pendingClipAction_ != 0)
+        ImGui::OpenPopup("クリップの切り替え確認");
     if (ImGui::BeginPopupModal("クリップの切り替え確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("現在の編集内容を置き換えます。必要な場合は先に保存してください。");
+
         if (ImGui::Button("置き換える")) {
             play_ = false;
-            if (pendingClipAction_ == 1) NewAuthoringClip();
+            if (pendingClipAction_ == 1)
+                NewAuthoringClip();
             else {
                 CopyToBuffer(saveFileBuffer_, sizeof(saveFileBuffer_), pendingClipPath_);
                 LoadAuthoringJson();
             }
+
             pendingClipAction_ = 0;
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
-        if (ImGui::Button("キャンセル")) { pendingClipAction_ = 0; ImGui::CloseCurrentPopup(); }
+
+        if (ImGui::Button("キャンセル")) {
+            pendingClipAction_ = 0;
+            ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
+
     if (editBodyTransform_) {
         DrawBodyControls();
     } else {
         DrawJointControls();
         DrawKeyframeControls();
     }
-    if (ImGui::CollapsingHeader("イベント（上級）")) DrawEventControls();
+
+    if (ImGui::CollapsingHeader("イベント（上級）"))
+        DrawEventControls();
     if (editBodyTransform_) {
         DrawBodyGizmo();
     } else {
@@ -242,26 +287,34 @@ void AnimationWorkbench::DrawImGui() {
 void AnimationWorkbench::DrawPreviewControls() {
     // 再生位置・速度・ループを編集し、保存済みキーと現在の見た目を同期する。
 #ifdef USE_IMGUI
-    if (!ImGui::CollapsingHeader("プレビュー", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (!ImGui::CollapsingHeader("プレビュー", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
 
     ImGui::InputText("モデル名", modelNameBuffer_, sizeof(modelNameBuffer_));
 
     std::vector<std::string> loadedModels = ModelManager::GetInstance()->GetAvailableModelNames();
+
     if (ImGui::BeginCombo("ロード済みモデル", modelNameBuffer_[0] ? modelNameBuffer_ : "選択なし")) {
         for (const std::string& name : loadedModels) {
             bool selected = (name == modelNameBuffer_);
+
             if (ImGui::Selectable(name.c_str(), selected)) {
                 CopyToBuffer(modelNameBuffer_, sizeof(modelNameBuffer_), name);
             }
-            if (selected) ImGui::SetItemDefaultFocus();
+
+            if (selected)
+                ImGui::SetItemDefaultFocus();
         }
+
         ImGui::EndCombo();
     }
 
     if (ImGui::Button(ICON_FA_FOLDER_OPEN " モデルを読み込み")) {
         LoadPreviewModel(modelNameBuffer_);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_TRASH_ALT " プレビュー削除")) {
         RemovePreviewObject();
         previewModel_ = nullptr;
@@ -273,6 +326,7 @@ void AnimationWorkbench::DrawPreviewControls() {
     ImGui::DragFloat3("表示スケール", &previewScale_.x, 0.01f, 0.01f, 100.0f);
     ImGui::DragFloat("カメラ距離", &cameraDistance_, 0.1f, 1.0f, 80.0f);
     ImGui::DragFloat("カメラ高さ", &cameraHeight_, 0.1f, -20.0f, 40.0f);
+
     if (ImGui::Button(ICON_FA_CROSSHAIRS " カメラをプレビューへ")) {
         recenterCameraRequested_ = true;
     }
@@ -289,17 +343,23 @@ void AnimationWorkbench::DrawPreviewControls() {
                 animationNameBuffer_[0] = '\0';
                 useBaseAnimation_ = false;
             }
+
             for (const auto& anim : data.animations) {
                 bool selected = (anim.name == animationNameBuffer_);
+
                 if (ImGui::Selectable(anim.name.c_str(), selected)) {
                     CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), anim.name);
                     duration_ = (std::max)(duration_, anim.duration);
                     useBaseAnimation_ = true;
                 }
-                if (selected) ImGui::SetItemDefaultFocus();
+
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
             }
+
             ImGui::EndCombo();
         }
+
         ImGui::Checkbox("ベースアニメーションを重ねる", &useBaseAnimation_);
     }
 #endif
@@ -309,36 +369,49 @@ void AnimationWorkbench::DrawPreviewControls() {
 void AnimationWorkbench::DrawAssetControls() {
     // モデル、基礎アニメーション、作業 JSON の選択と保存をここに集める。
 #ifdef USE_IMGUI
-    if (!ImGui::CollapsingHeader("クリップの読み込み・保存", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (!ImGui::CollapsingHeader("クリップの読み込み・保存", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
 
     const char* currentFile = saveFileBuffer_[0] ? saveFileBuffer_ : "(新規)";
+
     if (ImGui::BeginCombo("既存Clip", currentFile)) {
         for (const std::string& fileName : assetFiles_) {
             const bool selected = fileName == std::filesystem::path(saveFileBuffer_).stem().string();
+
             if (ImGui::Selectable(fileName.c_str(), selected)) {
                 pendingClipPath_ = fileName + ".json";
                 pendingClipAction_ = 2;
             }
-            if (selected) ImGui::SetItemDefaultFocus();
+
+            if (selected)
+                ImGui::SetItemDefaultFocus();
         }
+
         ImGui::EndCombo();
     }
 
     ImGui::InputText("保存ファイル", saveFileBuffer_, sizeof(saveFileBuffer_));
+
     if (ImGui::Button(ICON_FA_FILE " 新規")) {
         pendingClipAction_ = 1;
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_SAVE " 保存")) {
         SaveAuthoringJson();
         RefreshAssetFiles();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_FOLDER_OPEN " 再読込")) {
         pendingClipPath_ = saveFileBuffer_;
         pendingClipAction_ = 2;
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_SYNC " 一覧更新")) {
         RefreshAssetFiles();
     }
@@ -351,7 +424,8 @@ void AnimationWorkbench::DrawAssetControls() {
 void AnimationWorkbench::DrawBodyControls() {
     // 本体の移動・回転・伸縮・せん断を関節キーとは分けて編集する。
 #ifdef USE_IMGUI
-    if (!ImGui::CollapsingHeader("身体の姿勢", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (!ImGui::CollapsingHeader("身体の姿勢", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
 
     ImGui::TextDisabled("Scaleは基準Scaleへの倍率、RotationとPositionは見た目用Offsetです。");
     ImGui::TextDisabled("Player Runtimeでは物理座標を守るためPosition Offsetを移動処理へ加算しません。");
@@ -364,11 +438,14 @@ void AnimationWorkbench::DrawBodyControls() {
     edited |= ImGui::DragFloat("上体の傾き Z", &bodyShearUi_.z, 0.01f, -2.0f, 2.0f);
     edited |= ImGui::DragFloat("傾きの支点 Y", &bodyShearPivotY_, 0.005f);
     edited |= ImGui::Combo("次のキーへのEasing", &bodyEasingToNext_, kEasingNames, IM_ARRAYSIZE(kEasingNames));
-    if (ImGui::RadioButton("移動##BodyGizmo", gizmoOperation_ == 0)) gizmoOperation_ = 0;
+    if (ImGui::RadioButton("移動##BodyGizmo", gizmoOperation_ == 0))
+        gizmoOperation_ = 0;
     ImGui::SameLine();
-    if (ImGui::RadioButton("回転##BodyGizmo", gizmoOperation_ == 1)) gizmoOperation_ = 1;
+    if (ImGui::RadioButton("回転##BodyGizmo", gizmoOperation_ == 1))
+        gizmoOperation_ = 1;
     ImGui::SameLine();
-    if (ImGui::RadioButton("拡縮##BodyGizmo", gizmoOperation_ == 2)) gizmoOperation_ = 2;
+    if (ImGui::RadioButton("拡縮##BodyGizmo", gizmoOperation_ == 2))
+        gizmoOperation_ = 2;
     ImGui::Checkbox("Body Gizmo", &enableBodyGizmo_);
     ImGui::SameLine();
     ImGui::Checkbox("Gizmo操作で自動キー", &autoKeyBodyOnGizmo_);
@@ -385,17 +462,22 @@ void AnimationWorkbench::DrawBodyControls() {
     if (ImGui::Button(ICON_FA_KEY " 現在Body姿勢をキー登録")) {
         AddOrUpdateBodyKey();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_UNDO " 編集姿勢を破棄")) {
         bodyEditOverrideActive_ = false;
         SyncBodyUiFromTimeline();
         ApplyTimelinePose();
     }
+
     ImGui::SameLine();
     ImGui::BeginDisabled(selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size()));
+
     if (ImGui::Button(ICON_FA_TRASH " 選択キー削除")) {
         DeleteSelectedBodyKey();
     }
+
     ImGui::EndDisabled();
 
     if (ImGui::BeginTable("AnimationWorkbenchBodyKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 190.0f))) {
@@ -413,6 +495,7 @@ void AnimationWorkbench::DrawBodyControls() {
             ImGui::PushID(20000 + index);
             char timeLabel[32]{};
             std::snprintf(timeLabel, sizeof(timeLabel), "%.3f", key.time);
+
             if (ImGui::Selectable(timeLabel, selectedBodyKeyIndex_ == index, ImGuiSelectableFlags_SpanAllColumns)) {
                 selectedBodyKeyIndex_ = index;
                 currentTime_ = key.time;
@@ -420,6 +503,7 @@ void AnimationWorkbench::DrawBodyControls() {
                 SyncBodyUiFromKey(key);
                 ApplyTimelinePose();
             }
+
             ImGui::PopID();
             ImGui::TableSetColumnIndex(1);
             ImGui::Text("%.2f %.2f %.2f", key.translate.x, key.translate.y, key.translate.z);
@@ -431,6 +515,7 @@ void AnimationWorkbench::DrawBodyControls() {
             ImGui::TableSetColumnIndex(4);
             ImGui::TextUnformatted(kEasingNames[std::clamp(key.easingToNext, 0, 4)]);
         }
+
         ImGui::EndTable();
     }
 #endif
@@ -439,7 +524,8 @@ void AnimationWorkbench::DrawBodyControls() {
 void AnimationWorkbench::DrawJointControls() {
     // 選択関節のローカル姿勢だけを編集し、全身の基礎アニメーションに重ねる。
 #ifdef USE_IMGUI
-    if (!ImGui::CollapsingHeader("ボーン編集", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (!ImGui::CollapsingHeader("ボーン編集", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
     if (!previewModel_ || !previewModel_->HasSkeleton()) {
         ImGui::TextDisabled("モデルを読み込むとボーン一覧が表示されます。");
         return;
@@ -456,38 +542,49 @@ void AnimationWorkbench::DrawJointControls() {
     ImGui::DragFloat("ボーン点サイズ", &bonePointRadius_, 0.1f, 2.0f, 16.0f);
     ImGui::DragFloat("ボーン線の太さ", &boneLineThickness_, 0.1f, 1.0f, 8.0f);
 
-    if (ImGui::RadioButton("移動", gizmoOperation_ == 0)) gizmoOperation_ = 0;
+    if (ImGui::RadioButton("移動", gizmoOperation_ == 0))
+        gizmoOperation_ = 0;
     ImGui::SameLine();
-    if (ImGui::RadioButton("回転", gizmoOperation_ == 1)) gizmoOperation_ = 1;
+    if (ImGui::RadioButton("回転", gizmoOperation_ == 1))
+        gizmoOperation_ = 1;
     ImGui::SameLine();
-    if (ImGui::RadioButton("拡縮", gizmoOperation_ == 2)) gizmoOperation_ = 2;
+    if (ImGui::RadioButton("拡縮", gizmoOperation_ == 2))
+        gizmoOperation_ = 2;
 
     ImGui::InputText("検索", jointSearchBuffer_, sizeof(jointSearchBuffer_));
 
     const auto& joints = previewModel_->GetJoints();
     ImGui::BeginChild("AnimationWorkbenchJoints", ImVec2(0, 180), true);
+
     for (const auto& joint : joints) {
         if (jointSearchBuffer_[0] != '\0' && joint.name.find(jointSearchBuffer_) == std::string::npos) {
             continue;
         }
+
         int depth = 0;
         std::optional<int> parent = joint.parent;
+
         while (parent && *parent >= 0 && *parent < static_cast<int>(joints.size()) && depth < static_cast<int>(joints.size())) {
             ++depth;
             parent = joints[*parent].parent;
         }
+
         ImGui::Indent(static_cast<float>(depth) * 12.0f);
         const std::string label = joint.name + "##joint" + std::to_string(joint.index);
         bool selected = (selectedJointIndex_ == joint.index);
+
         if (ImGui::Selectable(label.c_str(), selected)) {
             selectedJointIndex_ = joint.index;
             SyncUiFromJoint(selectedJointIndex_);
         }
+
         ImGui::Unindent(static_cast<float>(depth) * 12.0f);
     }
+
     ImGui::EndChild();
 
-    if (selectedJointIndex_ < 0) return;
+    if (selectedJointIndex_ < 0)
+        return;
 
     bool edited = false;
     edited |= ImGui::DragFloat3("移動", &jointTranslateUi_.x, 0.01f);
@@ -506,13 +603,17 @@ void AnimationWorkbench::DrawJointControls() {
     if (ImGui::Button(ICON_FA_KEY " 現在ポーズをキー登録")) {
         AddOrUpdateKey();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_UNDO " 編集ポーズを破棄")) {
         ClearEditOverride(selectedJointIndex_);
         ApplyTimelinePose();
         SyncUiFromJoint(selectedJointIndex_);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_TRASH " 全編集ポーズ破棄")) {
         ClearAllEditOverrides();
         ApplyTimelinePose();
@@ -524,12 +625,15 @@ void AnimationWorkbench::DrawJointControls() {
 void AnimationWorkbench::DrawKeyframeControls() {
     // タイムラインのキーを選択し、同時刻の値を更新できるようにする。
 #ifdef USE_IMGUI
-    if (!ImGui::CollapsingHeader("キー", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (!ImGui::CollapsingHeader("キー", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
 
     if (ImGui::Button(ICON_FA_KEY " 選択ボーンにキー登録")) {
         AddOrUpdateKey();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_TRASH " 現在時間のキー削除")) {
         DeleteSelectedJointKeyAtCurrentTime();
     }
@@ -556,6 +660,7 @@ void AnimationWorkbench::DrawKeyframeControls() {
             ImGui::TableSetColumnIndex(4);
             ImGui::Text("%.2f %.2f %.2f", key.scale.x, key.scale.y, key.scale.z);
         }
+
         ImGui::EndTable();
     }
 
@@ -565,7 +670,8 @@ void AnimationWorkbench::DrawKeyframeControls() {
 void AnimationWorkbench::DrawEventControls() {
     // 音や演出の発火点は姿勢キーと別のイベント列で管理する。
 #ifdef USE_IMGUI
-    if (!ImGui::CollapsingHeader("イベントマーカー")) return;
+    if (!ImGui::CollapsingHeader("イベントマーカー"))
+        return;
 
     ImGui::Combo("種類", &eventType_, kEventTypeNames, IM_ARRAYSIZE(kEventTypeNames));
     ImGui::InputText("名前", eventNameBuffer_, sizeof(eventNameBuffer_));
@@ -586,11 +692,14 @@ void AnimationWorkbench::DrawEventControls() {
         events_.push_back(marker);
         std::sort(events_.begin(), events_.end(), [](const EventMarker& a, const EventMarker& b) { return a.time < b.time; });
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_TRASH " 選択削除") && selectedEventIndex_ >= 0 && selectedEventIndex_ < static_cast<int>(events_.size())) {
         events_.erase(events_.begin() + selectedEventIndex_);
         selectedEventIndex_ = -1;
     }
+
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_BOLT " 選択イベントを発火") &&
         selectedEventIndex_ >= 0 && selectedEventIndex_ < static_cast<int>(events_.size())) {
@@ -603,17 +712,20 @@ void AnimationWorkbench::DrawEventControls() {
         ImGui::TableSetupColumn("Name");
         ImGui::TableSetupColumn("Offset");
         ImGui::TableHeadersRow();
+
         for (int i = 0; i < static_cast<int>(events_.size()); ++i) {
             const EventMarker& marker = events_[i];
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             std::string rowId = std::to_string(i) + "##event";
+
             if (ImGui::Selectable(rowId.c_str(), selectedEventIndex_ == i, ImGuiSelectableFlags_SpanAllColumns)) {
                 selectedEventIndex_ = i;
                 currentTime_ = marker.time;
                 SyncBodyUiFromTimeline();
                 ApplyTimelinePose();
             }
+
             ImGui::SameLine();
             ImGui::Text("%.3f", marker.time);
             ImGui::TableSetColumnIndex(1);
@@ -623,6 +735,7 @@ void AnimationWorkbench::DrawEventControls() {
             ImGui::TableSetColumnIndex(3);
             ImGui::Text("%.2f %.2f %.2f", marker.offset.x, marker.offset.y, marker.offset.z);
         }
+
         ImGui::EndTable();
     }
 #endif
@@ -630,9 +743,11 @@ void AnimationWorkbench::DrawEventControls() {
 
 bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
     // メッシュ実体のあるモデルだけ採用し、前モデルのキーや一時編集を残さない。
-    if (modelName.empty()) return false;
+    if (modelName.empty())
+        return false;
 
     Model* model = ModelManager::GetInstance()->LoadModel(modelName);
+
     if (!model || model->GetMeshCount() == 0 || model->GetVertexCount() == 0 || model->GetPolygonCount() == 0) {
         DebugConsole::GetInstance()->AddLog(("Animation Workbench failed to load mesh data: " + modelName).c_str());
         return false;
@@ -656,6 +771,7 @@ bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
     currentTime_ = 0.0f;
 
     const auto& animations = previewModel_->GetModelData().animations;
+
     if (!animations.empty()) {
         CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), animations.front().name);
         duration_ = (std::max)(0.01f, animations.front().duration);
@@ -669,6 +785,7 @@ bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
     if (enabled_) {
         CreatePreviewObject();
     }
+
     ApplyTimelinePose();
     DebugConsole::GetInstance()->AddLog(("Animation Workbench loaded: " + modelName).c_str());
     return true;
@@ -676,11 +793,14 @@ bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
 
 void AnimationWorkbench::CreatePreviewObject() {
     // 専用 Object をシーンに一つだけ置き、保存や当たり判定の対象から外す。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
-    if (!scene->GetObject3dCommon()) return;
+    if (!scene->GetObject3dCommon())
+        return;
 
     engine::Object3d* existing = FindPreviewObject();
+
     if (existing) {
         previewObject_ = existing;
     } else {
@@ -712,27 +832,32 @@ void AnimationWorkbench::RemovePreviewObject() {
         previewObject_ = nullptr;
         return;
     }
+
     if (engine::Object3d* object = FindPreviewObject()) {
         object->SetIsVisible(false);
         object->SetName("__Editor_AnimationWorkbenchRetired");
         sceneManager_->GetCurrentScene()->RequestRemoveObject(object);
     }
+
     previewObject_ = nullptr;
 }
 
 engine::Object3d* AnimationWorkbench::FindPreviewObject() const {
     // シーン切り替え後は保持ポインタを信用せず、現シーン内で名前から探す。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return nullptr;
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (object && object->GetName() == kPreviewObjectName) {
             return object.get();
         }
     }
+
     return nullptr;
 }
 
 void AnimationWorkbench::ApplyTimelinePose() {
-    if (!previewModel_ || !previewObject_) return;
+    if (!previewModel_ || !previewObject_)
+        return;
 
     // UI の一時調整を保存済みキーより優先し、未確定の姿勢をその場で確認できるようにする。
     BodyAnimationClip::Key bodyPose;
@@ -756,6 +881,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
         previewObject_->SetRotation({});
         previewObject_->SetScale(previewScale_);
     }
+
     previewObject_->UpdateLocalMatrix();
     previewObject_->UpdateWorldMatrix();
 
@@ -769,17 +895,21 @@ void AnimationWorkbench::ApplyTimelinePose() {
     if (useBaseAnimation_ && animationNameBuffer_[0] != '\0') {
         if (const Model::Animation* anim = previewModel_->GetAnimation(animationNameBuffer_)) {
             float time = currentTime_;
+
             if (anim->duration > 0.0f) {
                 time = (std::min)(time, anim->duration);
             }
+
             previewModel_->ApplyAnimation(*anim, time);
             previewModel_->RebuildSkeletonForEditor();
         }
     }
 
     std::map<int, PoseKey> poseByJoint;
+
     for (const PoseKey& key : keys_) {
         PoseKey interpolated;
+
         if (TryGetInterpolatedKey(key.jointIndex, currentTime_, interpolated)) {
             poseByJoint[key.jointIndex] = interpolated;
         }
@@ -809,6 +939,7 @@ BodyAnimationClip::Key AnimationWorkbench::BuildBodyKeyFromUi() const {
         (std::max)(0.01f, bodyScaleUi_.y),
         (std::max)(0.01f, bodyScaleUi_.z)
     };
+
     key.easingToNext = std::clamp(bodyEasingToNext_, 0, 4);
     return key;
 }
@@ -816,6 +947,7 @@ BodyAnimationClip::Key AnimationWorkbench::BuildBodyKeyFromUi() const {
 void AnimationWorkbench::AddOrUpdateBodyKey() {
     // 同時刻のキーを上書きし、新しい時刻だけ追加して並びを維持する。
     BodyAnimationClip::Key key = BuildBodyKeyFromUi();
+
     for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
         if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
             bodyKeys_[index] = key;
@@ -831,12 +963,14 @@ void AnimationWorkbench::AddOrUpdateBodyKey() {
     bodyEditOverrideActive_ = false;
     duration_ = (std::max)(duration_, key.time);
     SortBodyKeys();
+
     for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
         if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
             selectedBodyKeyIndex_ = index;
             break;
         }
     }
+
     ApplyTimelinePose();
 }
 
@@ -845,6 +979,7 @@ void AnimationWorkbench::DeleteSelectedBodyKey() {
     if (selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size())) {
         return;
     }
+
     bodyKeys_.erase(bodyKeys_.begin() + selectedBodyKeyIndex_);
     selectedBodyKeyIndex_ = -1;
     bodyEditOverrideActive_ = false;
@@ -857,10 +992,12 @@ bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip
     if (bodyKeys_.empty()) {
         return false;
     }
+
     if (bodyKeys_.size() == 1 || time <= bodyKeys_.front().time) {
         keyOut = bodyKeys_.front();
         return true;
     }
+
     if (time >= bodyKeys_.back().time) {
         keyOut = bodyKeys_.back();
         return true;
@@ -869,9 +1006,11 @@ bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip
     for (size_t index = 0; index + 1 < bodyKeys_.size(); ++index) {
         const BodyAnimationClip::Key& from = bodyKeys_[index];
         const BodyAnimationClip::Key& to = bodyKeys_[index + 1];
+
         if (time < from.time || time > to.time) {
             continue;
         }
+
         const float segmentDuration = (std::max)(kKeyEpsilon, to.time - from.time);
         const float rawRate = (time - from.time) / segmentDuration;
         const float rate = AnimationInterpolation::ApplyEasing(
@@ -886,6 +1025,7 @@ bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip
         keyOut.shearPivotY = engine::Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
         return true;
     }
+
     keyOut = bodyKeys_.back();
     return true;
 }
@@ -903,6 +1043,7 @@ void AnimationWorkbench::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
 void AnimationWorkbench::SyncBodyUiFromTimeline() {
     // キーが無い場合は単位姿勢に戻し、前クリップの値を UI に残さない。
     BodyAnimationClip::Key key;
+
     if (TryGetInterpolatedBodyKey(currentTime_, key)) {
         SyncBodyUiFromKey(key);
     } else {
@@ -913,6 +1054,7 @@ void AnimationWorkbench::SyncBodyUiFromTimeline() {
         bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
         bodyEasingToNext_ = 4;
     }
+
     bodyEditOverrideActive_ = false;
 }
 
@@ -925,7 +1067,8 @@ void AnimationWorkbench::SortBodyKeys() {
 
 void AnimationWorkbench::ApplyPoseKey(const PoseKey& key) {
     // 関節の Euler 回転を骨格が使う Quaternion へ変換して適用する。
-    if (!previewModel_) return;
+    if (!previewModel_)
+        return;
     previewModel_->SetJointTransform(key.jointIndex, {
         key.scale,
         engine::Math::EulerToQuaternion(key.rotate),
@@ -941,17 +1084,21 @@ AnimationWorkbench::PoseKey AnimationWorkbench::BuildPoseKeyFromUi() const {
     key.translate = jointTranslateUi_;
     key.rotate = ToRadians(jointRotateDegUi_);
     key.scale = jointScaleUi_;
+
     if (previewModel_ && selectedJointIndex_ >= 0 && selectedJointIndex_ < static_cast<int>(previewModel_->GetJoints().size())) {
         key.jointName = previewModel_->GetJoints()[selectedJointIndex_].name;
     }
+
     return key;
 }
 
 void AnimationWorkbench::AddOrUpdateKey() {
     // 同じ関節・同じ時刻のキーは置換し、一時プレビュー値を確定値へ移す。
-    if (!previewModel_ || selectedJointIndex_ < 0) return;
+    if (!previewModel_ || selectedJointIndex_ < 0)
+        return;
 
     PoseKey key = BuildPoseKeyFromUi();
+
     for (PoseKey& existing : keys_) {
         if (existing.jointIndex == key.jointIndex && std::abs(existing.time - key.time) <= kKeyEpsilon) {
             existing = key;
@@ -970,7 +1117,8 @@ void AnimationWorkbench::AddOrUpdateKey() {
 
 void AnimationWorkbench::DeleteSelectedJointKeyAtCurrentTime() {
     // 他の関節や別時刻のキーを残して、選択関節の現在キーだけ消す。
-    if (selectedJointIndex_ < 0) return;
+    if (selectedJointIndex_ < 0)
+        return;
     keys_.erase(
         std::remove_if(keys_.begin(), keys_.end(), [&](const PoseKey& key) {
             return key.jointIndex == selectedJointIndex_ && std::abs(key.time - currentTime_) <= kKeyEpsilon;
@@ -982,18 +1130,22 @@ void AnimationWorkbench::DeleteSelectedJointKeyAtCurrentTime() {
 bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseKey& keyOut) const {
     // 対象関節の前後キーだけを取り、回転は Quaternion 補間でつなぐ。
     std::vector<PoseKey> jointKeys;
+
     for (const PoseKey& key : keys_) {
         if (key.jointIndex == jointIndex) {
             jointKeys.push_back(key);
         }
     }
-    if (jointKeys.empty()) return false;
+
+    if (jointKeys.empty())
+        return false;
     std::sort(jointKeys.begin(), jointKeys.end(), [](const PoseKey& a, const PoseKey& b) { return a.time < b.time; });
 
     if (time <= jointKeys.front().time) {
         keyOut = jointKeys.front();
         return true;
     }
+
     if (time >= jointKeys.back().time) {
         keyOut = jointKeys.back();
         return true;
@@ -1002,6 +1154,7 @@ bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseK
     for (size_t i = 0; i + 1 < jointKeys.size(); ++i) {
         const PoseKey& a = jointKeys[i];
         const PoseKey& b = jointKeys[i + 1];
+
         if (time >= a.time && time <= b.time) {
             float t = (time - a.time) / (b.time - a.time);
             keyOut = a;
@@ -1014,12 +1167,14 @@ bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseK
             return true;
         }
     }
+
     return false;
 }
 
 void AnimationWorkbench::SyncUiFromJoint(int jointIndex) {
     // プレビュー骨格の現在姿勢を編集欄へ戻す際は角度を度へ変換する。
-    if (!previewModel_) return;
+    if (!previewModel_)
+        return;
     Model::QuaternionTransform transform = previewModel_->GetJointTransform(jointIndex);
     jointTranslateUi_ = transform.translate;
     jointRotateDegUi_ = ToDegrees(engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(transform.rotate)));
@@ -1029,7 +1184,8 @@ void AnimationWorkbench::SyncUiFromJoint(int jointIndex) {
 void AnimationWorkbench::SortKeys() {
     // 時刻が近いキーは関節番号で整列し、一覧の順序を安定させる。
     std::sort(keys_.begin(), keys_.end(), [](const PoseKey& a, const PoseKey& b) {
-        if (std::abs(a.time - b.time) > kKeyEpsilon) return a.time < b.time;
+        if (std::abs(a.time - b.time) > kKeyEpsilon)
+            return a.time < b.time;
         return a.jointIndex < b.jointIndex;
     });
 }
@@ -1038,14 +1194,17 @@ void AnimationWorkbench::RefreshAssetFiles() {
     // 作業ディレクトリ内の JSON だけを候補にし、名前順で表示する。
     namespace fs = std::filesystem;
     assetFiles_.clear();
+
     if (!fs::exists(kSaveDirectory)) {
         return;
     }
+
     for (const auto& entry : fs::directory_iterator(kSaveDirectory)) {
         if (entry.is_regular_file() && entry.path().extension() == ".json") {
             assetFiles_.push_back(entry.path().stem().string());
         }
     }
+
     std::sort(assetFiles_.begin(), assetFiles_.end());
 }
 
@@ -1090,6 +1249,7 @@ void AnimationWorkbench::SaveAuthoringJson() {
     data["loop"] = loop_;
     data["previewPlaybackSpeed"] = playbackSpeed_;
     data["bodyKeys"] = nlohmann::json::array();
+
     for (const BodyAnimationClip::Key& key : bodyKeys_) {
         data["bodyKeys"].push_back({
             {"time", key.time},
@@ -1101,7 +1261,9 @@ void AnimationWorkbench::SaveAuthoringJson() {
             {"easingToNext", key.easingToNext}
         });
     }
+
     data["keys"] = nlohmann::json::array();
+
     for (const PoseKey& key : keys_) {
         data["keys"].push_back({
             {"time", key.time},
@@ -1114,6 +1276,7 @@ void AnimationWorkbench::SaveAuthoringJson() {
     }
 
     data["events"] = nlohmann::json::array();
+
     for (const EventMarker& marker : events_) {
         data["events"].push_back({
             {"time", marker.time},
@@ -1131,10 +1294,13 @@ void AnimationWorkbench::SaveAuthoringJson() {
 void AnimationWorkbench::LoadAuthoringJson() {
     // 現行保存先を優先し、旧フォルダのファイルも読み込めるようにする。
     std::ifstream ifs(GetSavePath(), std::ios::binary);
+
     if (!ifs) {
         std::string legacyFileName = saveFileBuffer_;
-        if (legacyFileName.empty()) legacyFileName = "enemy_animation.json";
-        if (legacyFileName.find(".json") == std::string::npos) legacyFileName += ".json";
+        if (legacyFileName.empty())
+            legacyFileName = "enemy_animation.json";
+        if (legacyFileName.find(".json") == std::string::npos)
+            legacyFileName += ".json";
         const std::string legacyPath = std::string(kLegacySaveDirectory) + legacyFileName;
         ifs.clear();
         ifs.open(legacyPath, std::ios::binary);
@@ -1145,6 +1311,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
     }
 
     nlohmann::json data = nlohmann::json::parse(ifs, nullptr, false);
+
     if (data.is_discarded() || !data.is_object()) {
         DebugConsole::GetInstance()->AddLog("Animation Workbench: invalid clip JSON");
         return;
@@ -1162,6 +1329,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
     if (modelNameBuffer_[0] != '\0') {
         LoadPreviewModel(modelNameBuffer_);
     }
+
     CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), baseAnimation);
     duration_ = loadedDuration;
     loop_ = data.value("loop", true);
@@ -1169,49 +1337,67 @@ void AnimationWorkbench::LoadAuthoringJson() {
     useBaseAnimation_ = animationNameBuffer_[0] != '\0';
 
     bodyKeys_.clear();
+
     for (const auto& item : data.value("bodyKeys", nlohmann::json::array())) {
         BodyAnimationClip::Key key;
         key.time = item.value("time", 0.0f);
         auto translate = item.value("translate", std::vector<float>{0.0f, 0.0f, 0.0f});
         auto rotate = item.value("rotate", std::vector<float>{0.0f, 0.0f, 0.0f});
         auto scale = item.value("scale", std::vector<float>{1.0f, 1.0f, 1.0f});
-        if (translate.size() >= 3) key.translate = { translate[0], translate[1], translate[2] };
-        if (rotate.size() >= 3) key.rotate = { rotate[0], rotate[1], rotate[2] };
-        if (scale.size() >= 3) key.scale = { scale[0], scale[1], scale[2] };
+
+        if (translate.size() >= 3)
+            key.translate = { translate[0], translate[1], translate[2] };
+        if (rotate.size() >= 3)
+            key.rotate = { rotate[0], rotate[1], rotate[2] };
+        if (scale.size() >= 3)
+            key.scale = { scale[0], scale[1], scale[2] };
         const auto shear = item.value("shear", std::vector<float>{0.0f, 0.0f, 0.0f});
-        if (shear.size() >= 3) key.shear = { shear[0], 0.0f, shear[2] };
+
+        if (shear.size() >= 3)
+            key.shear = { shear[0], 0.0f, shear[2] };
         key.shearPivotY = item.value("shearPivotY", 0.0f);
         key.easingToNext = std::clamp(item.value("easingToNext", 4), 0, 4);
         bodyKeys_.push_back(key);
     }
 
     keys_.clear();
+
     for (const auto& item : data.value("keys", nlohmann::json::array())) {
         PoseKey key;
         key.time = item.value("time", 0.0f);
         key.jointIndex = item.value("jointIndex", -1);
         key.jointName = item.value("jointName", "");
+
         if (previewModel_ && !key.jointName.empty()) {
             int index = previewModel_->FindJointIndex(key.jointName);
-            if (index >= 0) key.jointIndex = index;
+            if (index >= 0)
+                key.jointIndex = index;
         }
+
         auto translate = item.value("translate", std::vector<float>{0.0f, 0.0f, 0.0f});
         auto rotate = item.value("rotate", std::vector<float>{0.0f, 0.0f, 0.0f});
         auto scale = item.value("scale", std::vector<float>{1.0f, 1.0f, 1.0f});
-        if (translate.size() >= 3) key.translate = { translate[0], translate[1], translate[2] };
-        if (rotate.size() >= 3) key.rotate = { rotate[0], rotate[1], rotate[2] };
-        if (scale.size() >= 3) key.scale = { scale[0], scale[1], scale[2] };
+
+        if (translate.size() >= 3)
+            key.translate = { translate[0], translate[1], translate[2] };
+        if (rotate.size() >= 3)
+            key.rotate = { rotate[0], rotate[1], rotate[2] };
+        if (scale.size() >= 3)
+            key.scale = { scale[0], scale[1], scale[2] };
         keys_.push_back(key);
     }
 
     events_.clear();
+
     for (const auto& item : data.value("events", nlohmann::json::array())) {
         EventMarker marker;
         marker.time = item.value("time", 0.0f);
         marker.type = item.value("type", 0);
         marker.name = item.value("name", "");
         auto offset = item.value("offset", std::vector<float>{0.0f, 0.0f, 0.0f});
-        if (offset.size() >= 3) marker.offset = { offset[0], offset[1], offset[2] };
+
+        if (offset.size() >= 3)
+            marker.offset = { offset[0], offset[1], offset[2] };
         events_.push_back(marker);
     }
 
@@ -1227,16 +1413,19 @@ void AnimationWorkbench::LoadAuthoringJson() {
 std::string AnimationWorkbench::GetSavePath() const {
     // 拡張子が省略された名前でもワークベンチ専用ディレクトリの JSON へ揃える。
     std::string filename = saveFileBuffer_;
-    if (filename.empty()) filename = "new_body_animation.json";
+    if (filename.empty())
+        filename = "new_body_animation.json";
     if (filename.find(".json") == std::string::npos) {
         filename += ".json";
     }
+
     return std::string(kSaveDirectory) + filename;
 }
 
 void AnimationWorkbench::StoreEditOverrideFromUi() {
     // ギズモ操作中の未確定姿勢をキーへ保存せず、プレビュー上だけ優先する。
-    if (!previewModel_ || selectedJointIndex_ < 0) return;
+    if (!previewModel_ || selectedJointIndex_ < 0)
+        return;
     editPoseOverrides_[selectedJointIndex_] = BuildPoseKeyFromUi();
 }
 
@@ -1254,11 +1443,14 @@ void AnimationWorkbench::ClearAllEditOverrides() {
 // 終端から先頭へループした場合は区間を二つに分け、境界での二重発火を避けます。
 void AnimationWorkbench::UpdateEventPreview(float previousTime, float currentTime) {
     // 順再生と逆再生で区間境界を変え、キー通過時の二重発火を防ぐ。
-    if (events_.empty()) return;
+    if (events_.empty())
+        return;
 
     bool forward = playbackSpeed_ >= 0.0f;
+
     for (const EventMarker& marker : events_) {
         bool crossed = false;
+
         if (forward) {
             if (currentTime >= previousTime) {
                 crossed = marker.time > previousTime + kKeyEpsilon && marker.time <= currentTime + kKeyEpsilon;
@@ -1330,12 +1522,16 @@ void AnimationWorkbench::SetGameViewRegion(const engine::Vector2& offset, const 
 void AnimationWorkbench::DrawBodyGizmo() {
     // ワールド操作をプレビュー原点からの相対値に戻して本体キーへ反映する。
 #ifdef USE_IMGUI
-    if (!EditorToolSettings::Get().IsVisible("transformGizmo")) return;
-    if (!enabled_ || !previewObject_ || !enableBodyGizmo_) return;
-    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f) return;
+    if (!EditorToolSettings::Get().IsVisible("transformGizmo"))
+        return;
+    if (!enabled_ || !previewObject_ || !enableBodyGizmo_)
+        return;
+    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f)
+        return;
 
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera) return;
+    if (!camera)
+        return;
 
     engine::Matrix4x4 view = camera->GetViewMatrix();
     engine::Matrix4x4 projection = camera->GetProjectionMatrix();
@@ -1345,8 +1541,10 @@ void AnimationWorkbench::DrawBodyGizmo() {
     ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
 
     ImGuizmo::OPERATION operation = ImGuizmo::TRANSLATE;
-    if (gizmoOperation_ == 1) operation = ImGuizmo::ROTATE;
-    if (gizmoOperation_ == 2) operation = ImGuizmo::SCALE;
+    if (gizmoOperation_ == 1)
+        operation = ImGuizmo::ROTATE;
+    if (gizmoOperation_ == 2)
+        operation = ImGuizmo::SCALE;
 
     ImGuizmo::Manipulate(
         &view.m[0][0],
@@ -1357,7 +1555,8 @@ void AnimationWorkbench::DrawBodyGizmo() {
         nullptr,
         nullptr);
 
-    if (!ImGuizmo::IsUsing()) return;
+    if (!ImGuizmo::IsUsing())
+        return;
 
     engine::Vector3 worldScale;
     engine::Vector3 worldRotateDeg;
@@ -1373,14 +1572,17 @@ void AnimationWorkbench::DrawBodyGizmo() {
         worldTranslate.y - previewOrigin_.y,
         worldTranslate.z - previewOrigin_.z
     };
+
     bodyRotateDegUi_ = worldRotateDeg;
     bodyScaleUi_ = {
         worldScale.x / (std::max)(previewScale_.x, 0.0001f),
         worldScale.y / (std::max)(previewScale_.y, 0.0001f),
         worldScale.z / (std::max)(previewScale_.z, 0.0001f)
     };
+
     bodyEditOverrideActive_ = true;
     ApplyTimelinePose();
+
     if (autoKeyBodyOnGizmo_) {
         AddOrUpdateBodyKey();
     }
@@ -1389,12 +1591,16 @@ void AnimationWorkbench::DrawBodyGizmo() {
 
 void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 #ifdef USE_IMGUI
-    if (!EditorToolSettings::Get().IsVisible("bones")) return;
-    if (!enabled_ || !previewModel_ || !previewObject_ || !showBoneOverlay_) return;
-    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f) return;
+    if (!EditorToolSettings::Get().IsVisible("bones"))
+        return;
+    if (!enabled_ || !previewModel_ || !previewObject_ || !showBoneOverlay_)
+        return;
+    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f)
+        return;
 
     const auto& joints = previewModel_->GetJoints();
-    if (joints.empty()) return;
+    if (joints.empty())
+        return;
 
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
     const ImVec2 clipMin(gameViewOffset_.x, gameViewOffset_.y);
@@ -1409,11 +1615,13 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
         const float segmentX = end.x - start.x;
         const float segmentY = end.y - start.y;
         const float lengthSquared = segmentX * segmentX + segmentY * segmentY;
+
         if (lengthSquared <= 0.0001f) {
             const float dx = point.x - start.x;
             const float dy = point.y - start.y;
             return std::sqrt(dx * dx + dy * dy);
         }
+
         const float projection = std::clamp(
             ((point.x - start.x) * segmentX + (point.y - start.y) * segmentY) / lengthSquared,
             0.0f,
@@ -1426,26 +1634,34 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     };
 
     auto isSelectedAncestor = [&](int jointIndex) {
-        if (selectedJointIndex_ < 0 || selectedJointIndex_ >= static_cast<int>(joints.size())) return false;
+        if (selectedJointIndex_ < 0 || selectedJointIndex_ >= static_cast<int>(joints.size()))
+            return false;
         int current = selectedJointIndex_;
+
         for (size_t guard = 0; guard < joints.size(); ++guard) {
-            if (current == jointIndex) return true;
-            if (!joints[current].parent) break;
+            if (current == jointIndex)
+                return true;
+            if (!joints[current].parent)
+                break;
             current = *joints[current].parent;
-            if (current < 0 || current >= static_cast<int>(joints.size())) break;
+            if (current < 0 || current >= static_cast<int>(joints.size()))
+                break;
         }
+
         return false;
     };
 
     // ボーン線を先に描き、ジョイント点が常に手前に見えるようにする。
     for (const auto& joint : joints) {
-        if (!joint.parent || *joint.parent < 0 || *joint.parent >= static_cast<int>(joints.size())) continue;
+        if (!joint.parent || *joint.parent < 0 || *joint.parent >= static_cast<int>(joints.size()))
+            continue;
 
         const engine::Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
         const engine::Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joint.parent));
         engine::Vector2 jointScreen{};
         engine::Vector2 parentScreen{};
-        if (!ProjectWorldToGameView(jointWorld, jointScreen) || !ProjectWorldToGameView(parentWorld, parentScreen)) continue;
+        if (!ProjectWorldToGameView(jointWorld, jointScreen) || !ProjectWorldToGameView(parentWorld, parentScreen))
+            continue;
 
         const bool selectedChain = joint.index == selectedJointIndex_ ||
             *joint.parent == selectedJointIndex_ || isSelectedAncestor(joint.index);
@@ -1459,6 +1675,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 
         if (isGameViewHovered_) {
             const float distance = distanceToSegment(mouseScreen, start, end);
+
             if (distance < bestHoverDistance) {
                 bestHoverDistance = distance;
                 hoveredJoint = joint.index;
@@ -1466,14 +1683,17 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
         }
     }
 
+    // 線よりジョイント点を後で描き、選択位置が骨格線に埋もれないようにする。
     for (const auto& joint : joints) {
         const engine::Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
         engine::Vector2 jointScreen{};
-        if (!ProjectWorldToGameView(jointWorld, jointScreen)) continue;
+        if (!ProjectWorldToGameView(jointWorld, jointScreen))
+            continue;
 
         const float dx = mouseScreen.x - jointScreen.x;
         const float dy = mouseScreen.y - jointScreen.y;
         const float distance = std::sqrt(dx * dx + dy * dy);
+
         if (isGameViewHovered_ && distance < bestHoverDistance) {
             bestHoverDistance = distance;
             hoveredJoint = joint.index;
@@ -1491,6 +1711,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 
         drawList->AddCircleFilled(ImVec2(jointScreen.x, jointScreen.y), radius, fillColor, 18);
         drawList->AddCircle(ImVec2(jointScreen.x, jointScreen.y), radius + 1.0f, outlineColor, 18, 1.5f);
+
         if (showBoneNames_ || hovered) {
             drawList->AddText(
                 ImVec2(jointScreen.x + radius + 5.0f, jointScreen.y - 8.0f),
@@ -1503,24 +1724,30 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
         const engine::Matrix4x4 selectedWorld = GetJointWorldMatrix(selectedJointIndex_);
         const engine::Vector3 originWorld = GetMatrixTranslation(selectedWorld);
         engine::Vector2 originScreen{};
+
         if (ProjectWorldToGameView(originWorld, originScreen)) {
             float axisLength = 0.5f;
+
             if (joints[selectedJointIndex_].parent) {
                 const engine::Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joints[selectedJointIndex_].parent));
                 axisLength = std::clamp(engine::Math::Length(originWorld - parentWorld) * 0.45f, 0.2f, 0.85f);
             }
+
             const engine::Vector3 axes[] = {
                 engine::Math::Normalize(engine::Math::TransformNormal({ 1.0f, 0.0f, 0.0f }, selectedWorld)),
                 engine::Math::Normalize(engine::Math::TransformNormal({ 0.0f, 1.0f, 0.0f }, selectedWorld)),
                 engine::Math::Normalize(engine::Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, selectedWorld)),
             };
+
             const ImU32 axisColors[] = {
                 IM_COL32(255, 82, 82, 255),
                 IM_COL32(92, 235, 112, 255),
                 IM_COL32(84, 145, 255, 255),
             };
+
             for (int axisIndex = 0; axisIndex < 3; ++axisIndex) {
                 engine::Vector2 axisScreen{};
+
                 if (ProjectWorldToGameView(originWorld + axes[axisIndex] * axisLength, axisScreen)) {
                     drawList->AddLine(
                         ImVec2(originScreen.x, originScreen.y),
@@ -1539,10 +1766,15 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
         SyncUiFromJoint(selectedJointIndex_);
     }
 
-    if (!enableBoneGizmo_ || !EditorToolSettings::Get().IsVisible("transformGizmo") || selectedJointIndex_ < 0 || selectedJointIndex_ >= static_cast<int>(joints.size())) return;
+    if (!enableBoneGizmo_ ||
+        !EditorToolSettings::Get().IsVisible("transformGizmo") ||
+        selectedJointIndex_ < 0 ||
+        selectedJointIndex_ >= static_cast<int>(joints.size()))
+        return;
 
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera) return;
+    if (!camera)
+        return;
 
     engine::Matrix4x4 view = camera->GetViewMatrix();
     engine::Matrix4x4 proj = camera->GetProjectionMatrix();
@@ -1552,17 +1784,21 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
 
     ImGuizmo::OPERATION operation = ImGuizmo::TRANSLATE;
-    if (gizmoOperation_ == 1) operation = ImGuizmo::ROTATE;
-    if (gizmoOperation_ == 2) operation = ImGuizmo::SCALE;
+    if (gizmoOperation_ == 1)
+        operation = ImGuizmo::ROTATE;
+    if (gizmoOperation_ == 2)
+        operation = ImGuizmo::SCALE;
 
     ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], operation, ImGuizmo::WORLD, &jointWorld.m[0][0], nullptr, nullptr);
 
     if (ImGuizmo::IsUsing()) {
         const auto& selectedJoint = joints[selectedJointIndex_];
         engine::Matrix4x4 parentWorld = previewObject_->GetWorldMatrix();
+
         if (selectedJoint.parent) {
             parentWorld = GetJointWorldMatrix(*selectedJoint.parent);
         }
+
         engine::Matrix4x4 localMatrix = engine::Math::Multiply(jointWorld, engine::Math::Inverse(parentWorld));
 
         engine::Vector3 scale;
@@ -1587,11 +1823,13 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 bool AnimationWorkbench::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
     // 骨格のワールド位置を Game View 内のピクセル座標へ変換する。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera) return false;
+    if (!camera)
+        return false;
 
     engine::Matrix4x4 viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
     engine::Vector3 ndc = engine::Math::Transform(world, viewProjection);
-    if (ndc.z < 0.0f || ndc.z > 1.0f) return false;
+    if (ndc.z < 0.0f || ndc.z > 1.0f)
+        return false;
 
     screenOut.x = gameViewOffset_.x + (ndc.x + 1.0f) * 0.5f * gameViewSize_.x;
     screenOut.y = gameViewOffset_.y + (1.0f - ndc.y) * 0.5f * gameViewSize_.y;
@@ -1606,10 +1844,13 @@ engine::Matrix4x4 AnimationWorkbench::GetJointWorldMatrix(int jointIndex) const 
     if (!previewModel_ || !previewObject_) {
         return engine::Math::MakeIdentity4x4();
     }
+
     const auto& joints = previewModel_->GetJoints();
+
     if (jointIndex < 0 || jointIndex >= static_cast<int>(joints.size())) {
         return previewObject_->GetWorldMatrix();
     }
+
     return engine::Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, previewObject_->GetWorldMatrix());
 }
 
@@ -1620,11 +1861,13 @@ engine::Vector3 AnimationWorkbench::GetMatrixTranslation(const engine::Matrix4x4
 
 void AnimationWorkbench::ApplyCameraOverride() {
     // 初回と再中心化要求時だけプレビュー模型を見やすい位置へ捉え直す。
-    if (!enabled_) return;
+    if (!enabled_)
+        return;
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
 
     if ((!hasPlacedCamera_ && cameraMoveOnEnter_) || recenterCameraRequested_) {
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
         if (camera) {
             engine::Vector3 target = previewOrigin_;
             engine::Vector3 eye = {
@@ -1632,6 +1875,7 @@ void AnimationWorkbench::ApplyCameraOverride() {
                 target.y + cameraHeight_,
                 target.z - cameraDistance_
             };
+
             float pitch = std::atan2(cameraHeight_, cameraDistance_);
             camera->SetFollowTarget(nullptr);
             camera->SetEye(eye);
@@ -1639,6 +1883,7 @@ void AnimationWorkbench::ApplyCameraOverride() {
             camera->SetRotation({ pitch, 0.0f, 0.0f });
             camera->Update();
         }
+
         hasPlacedCamera_ = true;
         recenterCameraRequested_ = false;
     }

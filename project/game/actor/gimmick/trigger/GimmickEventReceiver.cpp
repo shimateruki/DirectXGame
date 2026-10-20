@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickEventReceiver::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickEventReceiver::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // イベントを受けた際に表示・移動する地形なので、通常時の地面属性を保持します。
@@ -26,6 +26,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
         param_.emplace();
 
     bool isPlaying = false;
+
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
         isPlaying = sceneManager->IsPlaying();
     }
@@ -62,6 +63,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
 
     // 軸移動モードと報酬の出現演出は同じ受信オブジェクトで処理します。
     int actionMode = param_->actionMode;
+
     if (actionMode >= 1 && actionMode <= 3) {
         float speed = (std::max)(0.01f, param_->moveSpeed);
         float t = 1.0f - std::exp(-speed * deltaTime);
@@ -120,6 +122,7 @@ void GimmickEventReceiver::OnSwitchEvent(bool active) {
         hasPendingActive_ = true;
         return;
     }
+
     ApplyActiveState(active);
 }
 
@@ -133,6 +136,7 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
     if (actionMode == 0) {
         SetIsVisible(active);
         SetCollisionEnabled(active);
+
         // エディタで設定した色を尊重し、報酬王冠などを汎用緑色へ上書きしません。
         SetColor(originalColor_);
     } else if (actionMode >= 1 && actionMode <= 3) {
@@ -155,6 +159,7 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
     } else if (actionMode == 6) {
         SetScale(baseScale_);
         SetRotation(baseRotation_);
+
         if (active) {
             SetTranslate(basePosition_ + engine::Vector3{0.0f, 4.05f, -moveAmount});
             SetIsVisible(true);

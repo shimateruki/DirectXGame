@@ -24,6 +24,7 @@ const char* SelectLoadingSlimeTexturePath() {
         "Resources/sprite/loading/slime_hop_sheet_right_fire.png",
         "Resources/sprite/loading/slime_hop_sheet_right_bomber.png",
     };
+
     static constexpr std::array<int, 4> kAppearanceWeights = { 70, 10, 10, 10 };
     static std::mt19937 randomEngine(std::random_device{}());
 
@@ -89,6 +90,8 @@ void LoadingScene::Initialize() {
         { 0.88f, 0.98f, 1.0f, 1.0f });
 
     dots_.clear();
+
+    // 進行中の点は同じ素材を共有し、時間差のアニメーションだけ個別に与える。
     for (int i = 0; i < 3; ++i) {
         dots_.push_back(CreateSprite(
             dotHandle,
@@ -124,6 +127,7 @@ void LoadingScene::Initialize() {
         { 0.20f, 0.92f, 1.0f, 1.0f });
     gaugeFill_->SetAnchorPoint({ 0.0f, 0.5f });
 
+    // ハイライトもFillと同じ左端基準にし、幅を変えても先端位置を揃える。
     gaugeHighlight_ = CreateSprite(
         whiteHandle,
         { GaugeLeft(), GaugeY() - 5.0f },
@@ -138,6 +142,7 @@ void LoadingScene::Initialize() {
         { 0.40f, 0.96f, 1.0f, 0.0f });
 
     gaugeBubbles_.clear();
+
     for (int i = 0; i < 12; ++i) {
         gaugeBubbles_.push_back(CreateSprite(
             glowHandle,
@@ -173,6 +178,7 @@ void LoadingScene::Update(float deltaTime) {
 
     const float progressFollow = 1.0f - std::pow(0.001f, effectiveDeltaTime);
     displayedProgress_ += (targetProgress_ - displayedProgress_) * progressFollow;
+
     if (targetProgress_ >= 0.999f) {
         displayedProgress_ = (std::max)(displayedProgress_, 0.995f);
     }
@@ -199,6 +205,7 @@ void LoadingScene::DrawUI() {
     }
 
     spriteCommon_->SetPipeline(DirectXCommon::GetInstance()->GetCommandList());
+
     for (auto& sprite : sprites_) {
         if (sprite) {
             sprite->Draw();
@@ -302,6 +309,7 @@ void LoadingScene::UpdateDotAnimation() {
     // 点ごとに位相をずらし、進捗待ちでも静止して見えないようにします。
     for (size_t i = 0; i < dots_.size(); ++i) {
         engine::Sprite* dot = dots_[i];
+
         if (!dot) {
             continue;
         }
@@ -341,6 +349,7 @@ void LoadingScene::UpdateProgressGauge() {
 
     for (size_t i = 0; i < gaugeBubbles_.size(); ++i) {
         engine::Sprite* bubble = gaugeBubbles_[i];
+
         if (!bubble) {
             continue;
         }
@@ -349,6 +358,7 @@ void LoadingScene::UpdateProgressGauge() {
         const float bubbleX = GaugeLeft() + normalizedX * kGaugeWidth;
         const bool visible = fillWidth > normalizedX * kGaugeWidth + 6.0f;
         bubble->SetVisible(visible);
+
         if (!visible) {
             continue;
         }

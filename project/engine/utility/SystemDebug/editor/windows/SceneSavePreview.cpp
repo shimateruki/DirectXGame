@@ -15,6 +15,7 @@ namespace {
 bool ReadJsonFile(const std::string& path, json& outJson) {
     // 空ファイルは空オブジェクトとして扱い、構文エラーは保存差分の検証失敗として返す。
     std::ifstream file(path);
+
     if (!file.is_open()) {
         return false;
     }
@@ -26,6 +27,7 @@ bool ReadJsonFile(const std::string& path, json& outJson) {
         else {
             file >> outJson;
         }
+
         return true;
     }
     catch (...) {
@@ -41,7 +43,8 @@ bool HasObjectList(const json& value) {
 
 // JSONの子フィールドを差分一覧に表示するため、ドット区切りの位置を作ります。
 std::string JoinPath(const std::string& parent, const std::string& child) {
-    if (parent.empty()) return child;
+    if (parent.empty())
+        return child;
     return parent + "." + child;
 }
 
@@ -65,6 +68,7 @@ void SceneSavePreview::Build(const std::vector<SceneSerializer::SaveTarget>& tar
         if (!savedFilesLabel_.empty()) {
             savedFilesLabel_ += ", ";
         }
+
         savedFilesLabel_ += target.label;
         fileDiffs_.push_back(BuildFileDiff(target));
     }
@@ -92,8 +96,10 @@ SceneSavePreview::FileDiff SceneSavePreview::BuildFileDiff(const SceneSerializer
     diff.hasObjectList = HasObjectList(target.data);
 
     json oldJson = json::object();
+
     if (diff.oldFileExists) {
         diff.oldJsonValid = ReadJsonFile(target.path, oldJson);
+
         if (!diff.oldJsonValid) {
             diff.fileDetails.push_back("既存JSONの読み込みに失敗しました。保存すると現在の内容で上書きします。");
         }
@@ -120,6 +126,7 @@ void SceneSavePreview::BuildObjectDiff(FileDiff& diff, const json& oldJson, cons
 
     if (HasObjectList(oldJson)) {
         int unnamedIndex = 0;
+
         for (const auto& obj : oldJson["objects"]) {
             std::string name = GetObjectName(obj, "__old_unnamed_" + std::to_string(unnamedIndex++));
             oldObjects[name] = obj;
@@ -128,6 +135,7 @@ void SceneSavePreview::BuildObjectDiff(FileDiff& diff, const json& oldJson, cons
 
     if (HasObjectList(newJson)) {
         int unnamedIndex = 0;
+
         for (const auto& obj : newJson["objects"]) {
             std::string name = GetObjectName(obj, "__new_unnamed_" + std::to_string(unnamedIndex++));
             newObjects[name] = obj;
@@ -145,15 +153,18 @@ void SceneSavePreview::BuildObjectDiff(FileDiff& diff, const json& oldJson, cons
             change.kind = ChangeKind::Added;
             change.details.push_back("type: " + JsonValueToText(newObj.contains("type") ? newObj["type"] : json("")));
             change.details.push_back("modelName: " + JsonValueToText(newObj.contains("modelName") ? newObj["modelName"] : json("")));
-            if (newObj.contains("position")) change.details.push_back("position: " + JsonValueToText(newObj["position"]));
+            if (newObj.contains("position"))
+                change.details.push_back("position: " + JsonValueToText(newObj["position"]));
             diff.addedCount++;
         }
         else if (oldIt->second != newObj) {
             change.kind = ChangeKind::Modified;
             CollectJsonDiffs(oldIt->second, newObj, "", change.details, 12);
+
             if (change.details.empty()) {
                 change.details.push_back("JSONの内容が変更されています。");
             }
+
             diff.modifiedCount++;
         }
         else {
@@ -167,20 +178,23 @@ void SceneSavePreview::BuildObjectDiff(FileDiff& diff, const json& oldJson, cons
 
     // 旧版にしか残っていないObjectは保存後の削除として表示する。
     for (const auto& [name, oldObj] : oldObjects) {
-        if (newObjects.find(name) != newObjects.end()) continue;
+        if (newObjects.find(name) != newObjects.end())
+            continue;
 
         ObjectChange change;
         change.kind = ChangeKind::Removed;
         change.name = name;
         change.category = GetObjectCategory(oldObj);
         change.details.push_back("保存後のJSONから削除されます。");
-        if (oldObj.contains("type")) change.details.push_back("type: " + JsonValueToText(oldObj["type"]));
+        if (oldObj.contains("type"))
+            change.details.push_back("type: " + JsonValueToText(oldObj["type"]));
         diff.removedCount++;
         diff.objects.push_back(std::move(change));
     }
 
     std::sort(diff.objects.begin(), diff.objects.end(), [](const ObjectChange& a, const ObjectChange& b) {
-        if (a.kind != b.kind) return static_cast<int>(a.kind) < static_cast<int>(b.kind);
+        if (a.kind != b.kind)
+            return static_cast<int>(a.kind) < static_cast<int>(b.kind);
         return a.name < b.name;
     });
 }
@@ -203,6 +217,7 @@ void SceneSavePreview::BuildFileLevelDiff(FileDiff& diff, const json& oldJson, c
     }
 
     CollectJsonDiffs(oldJson, newJson, "", diff.fileDetails, 16);
+
     if (diff.fileDetails.empty()) {
         diff.fileDetails.push_back("ファイル内容が変更されています。");
     }
@@ -237,6 +252,7 @@ std::string SceneSavePreview::GetObjectName(const json& obj, const std::string& 
     if (obj.is_object() && obj.contains("name") && obj["name"].is_string()) {
         return obj["name"].get<std::string>();
     }
+
     return fallback;
 }
 
@@ -244,55 +260,75 @@ std::string SceneSavePreview::GetObjectCategory(const json& obj) {
     if (obj.is_object() && obj.contains("saveCategory") && obj["saveCategory"].is_string()) {
         return obj["saveCategory"].get<std::string>();
     }
+
     return "Object";
 }
 
 std::string SceneSavePreview::JsonValueToText(const json& value) {
     // 差分一覧に収まるよう短い配列は展開し、大きい配列やObjectは件数で要約する。
-    if (value.is_null()) return "null";
-    if (value.is_string()) return "\"" + value.get<std::string>() + "\"";
-    if (value.is_boolean()) return value.get<bool>() ? "true" : "false";
+    if (value.is_null())
+        return "null";
+    if (value.is_string())
+        return "\"" + value.get<std::string>() + "\"";
+    if (value.is_boolean())
+        return value.get<bool>() ? "true" : "false";
     if (value.is_number_float()) {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(3) << value.get<double>();
         return oss.str();
     }
-    if (value.is_number_integer()) return std::to_string(value.get<long long>());
-    if (value.is_number_unsigned()) return std::to_string(value.get<unsigned long long>());
+
+    if (value.is_number_integer())
+        return std::to_string(value.get<long long>());
+    if (value.is_number_unsigned())
+        return std::to_string(value.get<unsigned long long>());
     if (value.is_array()) {
         if (value.size() <= 6) {
             std::string text = "[";
+
             for (size_t i = 0; i < value.size(); ++i) {
-                if (i > 0) text += ", ";
+                if (i > 0)
+                    text += ", ";
                 text += JsonValueToText(value[i]);
             }
+
             text += "]";
             return text;
         }
+
         return "array(" + std::to_string(value.size()) + ")";
     }
-    if (value.is_object()) return "object(" + std::to_string(value.size()) + ")";
+
+    if (value.is_object())
+        return "object(" + std::to_string(value.size()) + ")";
     return value.dump();
 }
 
 void SceneSavePreview::CollectJsonDiffs(const json& before, const json& after, const std::string& path, std::vector<std::string>& outDetails, int maxDetails) {
     // 深い JSON でも UI が大量の行で埋まらないよう、表示件数を制限します。
-    if (static_cast<int>(outDetails.size()) >= maxDetails) return;
-    if (before == after) return;
+    if (static_cast<int>(outDetails.size()) >= maxDetails)
+        return;
+    if (before == after)
+        return;
 
     // Object同士はキーの和集合を作り、追加・削除・変更を各パスへ展開する。
     if (before.is_object() && after.is_object()) {
         std::vector<std::string> keys;
-        for (auto it = before.begin(); it != before.end(); ++it) keys.push_back(it.key());
+
+        for (auto it = before.begin(); it != before.end(); ++it)
+            keys.push_back(it.key());
+
         for (auto it = after.begin(); it != after.end(); ++it) {
             if (std::find(keys.begin(), keys.end(), it.key()) == keys.end()) {
                 keys.push_back(it.key());
             }
         }
+
         std::sort(keys.begin(), keys.end());
 
         for (const std::string& key : keys) {
-            if (static_cast<int>(outDetails.size()) >= maxDetails) break;
+            if (static_cast<int>(outDetails.size()) >= maxDetails)
+                break;
             bool hasBefore = before.contains(key);
             bool hasAfter = after.contains(key);
             std::string childPath = JoinPath(path, key);
@@ -307,6 +343,7 @@ void SceneSavePreview::CollectJsonDiffs(const json& before, const json& after, c
                 CollectJsonDiffs(before[key], after[key], childPath, outDetails, maxDetails);
             }
         }
+
         return;
     }
 
@@ -314,9 +351,11 @@ void SceneSavePreview::CollectJsonDiffs(const json& before, const json& after, c
     if (before.is_array() && after.is_array()) {
         if (before.size() == after.size() && before.size() <= 3) {
             for (size_t i = 0; i < before.size(); ++i) {
-                if (static_cast<int>(outDetails.size()) >= maxDetails) break;
+                if (static_cast<int>(outDetails.size()) >= maxDetails)
+                    break;
                 CollectJsonDiffs(before[i], after[i], MakeArrayPath(path, i), outDetails, maxDetails);
             }
+
             return;
         }
     }

@@ -40,7 +40,7 @@
       },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 1.0 },
       "preview": { "targetDistance": 6.5, "duration": 5.2 },
-      "presentation": { "animation": "volcanic_slam", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_mortar_trail", "impactVfx": "magma_slime_slam_burst", "audioCue": "" }
+      "presentation": { "animation": "magma_volcanic_slam", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_mortar_trail", "impactVfx": "magma_slime_slam_burst", "audioCue": "" }
     },
     {
       "id": "eruption_field",

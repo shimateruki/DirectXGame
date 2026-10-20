@@ -27,6 +27,7 @@ void PresetEditor::RefreshModelList() {
     // フォルダー単位のModel名を集め、同じフォルダーに複数形式があっても候補は一件にする。
     modelNames_.clear();
     const std::filesystem::path root = "Resources/3DModel";
+
     if (!std::filesystem::exists(root)) {
         return;
     }
@@ -38,6 +39,7 @@ void PresetEditor::RefreshModelList() {
 
         std::string ext = entry.path().extension().string();
         std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
         if (ext != ".obj" && ext != ".gltf" && ext != ".glb") {
             continue;
         }
@@ -45,9 +47,11 @@ void PresetEditor::RefreshModelList() {
         // ルート直下のファイルだけはファイル名を使い、それ以外は相対フォルダーをModel名にする。
         std::filesystem::path relative = std::filesystem::relative(entry.path().parent_path(), root);
         std::string modelName = relative.generic_string();
+
         if (modelName == ".") {
             modelName = entry.path().stem().generic_string();
         }
+
         if (std::find(modelNames_.begin(), modelNames_.end(), modelName) == modelNames_.end()) {
             modelNames_.push_back(modelName);
         }
@@ -58,6 +62,7 @@ void PresetEditor::RefreshModelList() {
 
 bool PresetEditor::MatchesSearch(const std::string& name, const json& data) const {
     std::string needle = ToLower(searchBuffer_);
+
     if (needle.empty()) {
         return true;
     }
@@ -75,6 +80,7 @@ bool PresetEditor::MatchesSearch(const std::string& name, const json& data) cons
         ReadString(data, "presetSection", "") + " " +
         ReadString(data, "presetDescription", "") + " " +
         ReadString(data, "presetSourceObject", "");
+
     // 旧形式でparam内に保存された型名も拾う。
     if (data.contains("param") && data["param"].is_object()) {
         const json& param = data["param"];
@@ -82,6 +88,7 @@ bool PresetEditor::MatchesSearch(const std::string& name, const json& data) cons
         haystack += " " + ReadString(param, "gimmickType", "");
         haystack += " " + ReadString(param, "itemType", "");
     }
+
     return ToLower(haystack).find(needle) != std::string::npos;
 }
 
@@ -90,10 +97,12 @@ bool PresetEditor::MatchesCategory(const json& data, Category category) const {
     if (category == Category::All) {
         return true;
     }
+
     if (category == Category::Stage1) {
         return IsStageLibraryPreset(data) &&
             (stageCollection_.empty() || ReadString(data, "presetCollection", "") == stageCollection_);
     }
+
     return DetectCategory(data) == category;
 }
 
@@ -104,20 +113,30 @@ bool PresetEditor::IsStageLibraryPreset(const json& data) const {
 PresetEditor::Category PresetEditor::DetectCategory(const json& data) const {
     // 新しいtype、直下の種別名、旧param内の種別名の順に分類を決める。
     std::string type = ReadString(data, "type", "");
-    if (type == "Enemy") return Category::Enemy;
-    if (type == "Gimmick") return Category::Gimmick;
-    if (type == "Item") return Category::Item;
-    if (type == "Model") return Category::Model;
+    if (type == "Enemy")
+        return Category::Enemy;
+    if (type == "Gimmick")
+        return Category::Gimmick;
+    if (type == "Item")
+        return Category::Item;
+    if (type == "Model")
+        return Category::Model;
 
-    if (!ReadString(data, "enemyType", "").empty()) return Category::Enemy;
-    if (!ReadString(data, "gimmickType", "").empty()) return Category::Gimmick;
-    if (!ReadString(data, "itemType", "").empty()) return Category::Item;
+    if (!ReadString(data, "enemyType", "").empty())
+        return Category::Enemy;
+    if (!ReadString(data, "gimmickType", "").empty())
+        return Category::Gimmick;
+    if (!ReadString(data, "itemType", "").empty())
+        return Category::Item;
 
     if (data.contains("param") && data["param"].is_object()) {
         const json& param = data["param"];
-        if (!ReadString(param, "enemyType", "").empty()) return Category::Enemy;
-        if (!ReadString(param, "gimmickType", "").empty()) return Category::Gimmick;
-        if (!ReadString(param, "itemType", "").empty()) return Category::Item;
+        if (!ReadString(param, "enemyType", "").empty())
+            return Category::Enemy;
+        if (!ReadString(param, "gimmickType", "").empty())
+            return Category::Gimmick;
+        if (!ReadString(param, "itemType", "").empty())
+            return Category::Item;
     }
 
     return Category::Model;
@@ -127,10 +146,15 @@ const char* PresetEditor::GetCategoryLabel(Category category) const {
     // 未知の値は一覧で空欄にせず、全件カテゴリの表示名へ戻す。
     switch (category) {
     case Category::Stage1: return "ステージ別";
+
     case Category::Enemy: return "敵";
+
     case Category::Gimmick: return "ギミック";
+
     case Category::Item: return "アイテム";
+
     case Category::Model: return "モデル";
+
     case Category::All:
     default: return "すべて";
     }
@@ -140,20 +164,29 @@ ImVec4 PresetEditor::GetCategoryColor(Category category) const {
     // カテゴリごとの識別色を返し、未知の値には中立色を使う。
     switch (category) {
     case Category::Stage1: return ImVec4(0.16f, 0.76f, 0.88f, 1.0f);
+
     case Category::Enemy: return ImVec4(0.78f, 0.28f, 0.24f, 1.0f);
+
     case Category::Gimmick: return ImVec4(0.24f, 0.50f, 0.84f, 1.0f);
+
     case Category::Item: return ImVec4(0.28f, 0.66f, 0.38f, 1.0f);
+
     case Category::Model: return ImVec4(0.56f, 0.48f, 0.78f, 1.0f);
+
     case Category::All:
     default: return ImVec4(0.40f, 0.42f, 0.46f, 1.0f);
     }
 }
 
 ImVec4 PresetEditor::GetStage1SectionColor(int sectionOrder) const {
-    if (sectionOrder < 200) return ImVec4(0.30f, 0.84f, 0.55f, 1.0f);
-    if (sectionOrder < 300) return ImVec4(0.24f, 0.70f, 1.0f, 1.0f);
-    if (sectionOrder < 400) return ImVec4(0.78f, 0.52f, 1.0f, 1.0f);
-    if (sectionOrder < 500) return ImVec4(1.0f, 0.76f, 0.24f, 1.0f);
+    if (sectionOrder < 200)
+        return ImVec4(0.30f, 0.84f, 0.55f, 1.0f);
+    if (sectionOrder < 300)
+        return ImVec4(0.24f, 0.70f, 1.0f, 1.0f);
+    if (sectionOrder < 400)
+        return ImVec4(0.78f, 0.52f, 1.0f, 1.0f);
+    if (sectionOrder < 500)
+        return ImVec4(1.0f, 0.76f, 0.24f, 1.0f);
     return ImVec4(0.60f, 0.78f, 0.50f, 1.0f);
 }
 
@@ -164,9 +197,11 @@ std::string PresetEditor::ShortModelName(const std::string& modelName) const {
     }
 
     size_t slash = modelName.find_last_of("/\\");
+
     if (slash == std::string::npos) {
         return modelName;
     }
+
     return modelName.substr(slash + 1);
 }
 
@@ -174,6 +209,7 @@ std::string PresetEditor::ReadString(const json& data, const char* key, const st
     if (data.contains(key) && data[key].is_string()) {
         return data[key].get<std::string>();
     }
+
     return defaultValue;
 }
 
@@ -181,6 +217,7 @@ float PresetEditor::ReadFloat(const json& data, const char* key, float defaultVa
     if (data.contains(key) && data[key].is_number()) {
         return data[key].get<float>();
     }
+
     return defaultValue;
 }
 
@@ -189,9 +226,11 @@ int PresetEditor::ReadInt(const json& data, const char* key, int defaultValue) c
     if (data.contains(key) && data[key].is_number_integer()) {
         return data[key].get<int>();
     }
+
     if (data.contains(key) && data[key].is_number()) {
         return static_cast<int>(data[key].get<float>());
     }
+
     return defaultValue;
 }
 
@@ -199,17 +238,23 @@ bool PresetEditor::ReadBool(const json& data, const char* key, bool defaultValue
     if (data.contains(key) && data[key].is_boolean()) {
         return data[key].get<bool>();
     }
+
     return defaultValue;
 }
 
 engine::Vector3 PresetEditor::ReadVector3(const json& data, const char* key, const engine::Vector3& defaultValue) const {
     // 数値でない要素だけ既定値を保ち、部分的に壊れた配置値も読めるようにする。
     engine::Vector3 value = defaultValue;
+
     if (data.contains(key) && data[key].is_array() && data[key].size() >= 3) {
-        if (data[key][0].is_number()) value.x = data[key][0].get<float>();
-        if (data[key][1].is_number()) value.y = data[key][1].get<float>();
-        if (data[key][2].is_number()) value.z = data[key][2].get<float>();
+        if (data[key][0].is_number())
+            value.x = data[key][0].get<float>();
+        if (data[key][1].is_number())
+            value.y = data[key][1].get<float>();
+        if (data[key][2].is_number())
+            value.z = data[key][2].get<float>();
     }
+
     return value;
 }
 

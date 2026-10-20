@@ -1,9 +1,9 @@
 #include "GimmickCoin.h"
 #include "CollisionConfig.h"
-#include "GameDataManager.h"
+#include "game/system/progress/GameDataManager.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
-#include "GroundEffectLocator.h"
+#include "game/system/combat/GroundEffectLocator.h"
 #include <DebugConsole.h>
 #include <algorithm>
 #include <cmath>
@@ -27,11 +27,12 @@ engine::Vector3 ReplayJsonToVector3(const json& value, const engine::Vector3& fa
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
+
     return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
 } // namespace
 
-void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickCoin::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // コインはプレイヤーだけが拾える球トリガーとして初期化します。
@@ -95,6 +96,7 @@ void GimmickCoin::Update(float deltaTime) {
 
     if (isTemporaryDrop_) {
         UpdateTemporaryDrop(deltaTime);
+
         if (isDead) {
             BaseGimmick::Update(deltaTime);
             return;
@@ -102,9 +104,11 @@ void GimmickCoin::Update(float deltaTime) {
     }
 
     rotate.y += rotationSpeed_ * deltaTime;
+
     if (rotate.y > kPi * 2.0f) {
         rotate.y -= kPi * 2.0f;
     }
+
     SetRotation(rotate);
 
     BaseGimmick::Update(deltaTime);
@@ -144,12 +148,14 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
     engine::Vector3 position = GetTranslate();
     const engine::Vector3 groundSample = {position.x, dropGroundY_ - dropGroundOffset_, position.z};
     dropGroundY_ = GroundEffectLocator::ResolveGroundPosition(groundSample).y + dropGroundOffset_;
+
     if (dropSettleTimer_ <= 0.0f) {
         dropVelocity_.y -= kDropGravity * deltaTime;
         position += dropVelocity_ * deltaTime;
 
         if (position.y <= dropGroundY_) {
             position.y = dropGroundY_;
+
             if (std::abs(dropVelocity_.y) > kDropStopSpeed) {
                 dropVelocity_.y = -dropVelocity_.y * kDropBounceRate;
                 dropVelocity_.x *= kDropGroundFriction;
@@ -166,9 +172,11 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
         position.x += dropVelocity_.x * deltaTime;
         position.z += dropVelocity_.z * deltaTime;
     }
+
     SetTranslate(position);
 
     const float remaining = dropLifetime_ - dropAge_;
+
     if (dropBlinkStartTime_ > 0.0f && remaining <= dropBlinkStartTime_) {
         const float blinkProgress = 1.0f - std::clamp(remaining / dropBlinkStartTime_, 0.0f, 1.0f);
         const float blinkSpeed = 8.0f + blinkProgress * 18.0f;
@@ -220,6 +228,7 @@ void GimmickCoin::Collect() {
 void GimmickCoin::RequestSelfRemove() {
     // 描画・衝突の走査中に直接破棄せず、シーンの遅延削除へ依頼します。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
+
     if (scene) {
         scene->RequestRemoveObject(this);
     }
@@ -256,12 +265,15 @@ void GimmickCoin::RestoreReplayCustomState(const json& state) {
     dropGroundY_ = state.value("coinDropGroundY", dropGroundY_);
     dropGroundOffset_ = state.value("coinDropGroundOffset", dropGroundOffset_);
     dropSettleTimer_ = state.value("coinDropSettleTimer", dropSettleTimer_);
+
     if (state.contains("coinDropVelocity")) {
         dropVelocity_ = ReplayJsonToVector3(state["coinDropVelocity"], dropVelocity_);
     }
+
     if (state.contains("coinCollectStartPosition")) {
         collectStartPosition_ = ReplayJsonToVector3(state["coinCollectStartPosition"], collectStartPosition_);
     }
+
     if (state.contains("coinCollectStartScale")) {
         collectStartScale_ = ReplayJsonToVector3(state["coinCollectStartScale"], collectStartScale_);
     }

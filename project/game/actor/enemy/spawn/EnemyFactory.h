@@ -12,11 +12,14 @@ class EnemyFactory {
 
     /// <summary>種別名に対応する敵を生成し、モデル・ステータス・検知範囲を設定する。</summary>
     /// <returns>未対応の種別名では仮表示用のBaseEnemyを返す。</returns>
-    std::unique_ptr<BaseEnemy> CreateEnemy(const std::string& enemyName, Object3dCommon* common);
+    std::unique_ptr<BaseEnemy> CreateEnemy(const std::string& enemyName, engine::Object3dCommon* common);
 
   private:
     EnemyFactory() = default;
+
     ~EnemyFactory() = default;
+
     EnemyFactory(const EnemyFactory&) = delete;
+
     const EnemyFactory& operator=(const EnemyFactory&) = delete;
 };

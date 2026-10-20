@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "70a252c7b7a5484685bec5748372fc5b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/TutorialTerrain/tutorial_grass_albedo.png",
+  "version": 1
+}

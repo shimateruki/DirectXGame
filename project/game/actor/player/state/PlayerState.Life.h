@@ -8,7 +8,9 @@
 class PlayerStateDead : public IAnimationState {
   public:
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 
   private:
@@ -24,7 +26,9 @@ class PlayerStateDead : public IAnimationState {
 class PlayerStateFallingOut : public IAnimationState {
   public:
     void Enter(Player* player) override;
+
     void Update(Player* player, float deltaTime) override;
+
     void Exit(Player* player) override;
 
   private:

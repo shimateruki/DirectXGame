@@ -7,7 +7,8 @@ void InspectorWindow::DrawSpawnerSettings() {
     // スポナーの種別と発生条件を、選択中オブジェクトのパラメータへ反映します。
 #ifdef USE_IMGUI
     engine::Object3d* selectedObject = editor_->GetSelectedObject();
-    if (!selectedObject) return;
+    if (!selectedObject)
+        return;
 
     ImGui::Separator();
     ImGui::Indent();
@@ -16,17 +17,21 @@ void InspectorWindow::DrawSpawnerSettings() {
     if (!selectedObject->param_.has_value()) {
         selectedObject->param_.emplace();
     }
+
     auto& p = selectedObject->param_.value();
 
     static char typeBuf[64] = "";
+
     if (typeBuf[0] == '\0') {
         strcpy_s(typeBuf, sizeof(typeBuf), p.enemyType.c_str());
     }
 
     const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime" };
     int currentTypeIndex = -1;
+
     for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
-        if (p.enemyType == enemyTypes[i]) currentTypeIndex = i;
+        if (p.enemyType == enemyTypes[i])
+            currentTypeIndex = i;
     }
 
     if (ImGui::Combo("Spawn Type", &currentTypeIndex, enemyTypes, IM_ARRAYSIZE(enemyTypes))) {

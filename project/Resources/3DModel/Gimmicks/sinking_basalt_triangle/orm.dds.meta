@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "916ef337a5c89aae206b0850ae722f07",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/sinking_basalt_triangle/orm.dds",
+  "version": 1
+}

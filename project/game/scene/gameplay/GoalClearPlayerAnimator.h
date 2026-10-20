@@ -19,12 +19,15 @@ class GoalClearPlayerAnimator {
         float resultUiTime = 3.10f;
         float victoryLandTime = 3.46f;
         float readyTime = 5.55f;
+
         float jumpHeight = 2.20f;
         float forwardDistance = 0.35f;
+
         float anticipationDepth = 0.28f;
         float landingSquash = 0.26f;
         float anticipationSquash = 0.42f;
         float takeoffStretch = 0.45f;
+
         float resultStretch = 0.12f;
         float resultYawBias = 0.12f;
     };
@@ -86,6 +89,7 @@ class GoalClearPlayerAnimator {
         if (!player_ || !isActive_) {
             return;
         }
+
         // 演出を中断したときは開始姿勢と行列を戻し、次のScene更新へ古い変形を残しません。
         player_->SetTranslate(basePosition_);
         player_->SetScale(baseScale_);
@@ -243,16 +247,27 @@ class GoalClearPlayerAnimator {
     }
 
     void SetTuning(const Tuning& tuning) { tuning_ = tuning; }
+
     const Tuning& GetTuning() const { return tuning_; }
+
     Tuning& EditTuning() { return tuning_; }
+
     bool IsActive() const { return isActive_; }
+
     bool WasControlActive() const { return savedControlActive_; }
+
     const engine::Vector3& GetBasePosition() const { return basePosition_; }
+
     const engine::Vector3& GetBaseScale() const { return baseScale_; }
+
     const engine::Vector3& GetBaseRotation() const { return baseRotation_; }
+
     const engine::Vector3& GetPosePosition() const { return posePosition_; }
+
     const engine::Vector3& GetCurrentScale() const { return currentScale_; }
+
     const engine::Vector3& GetMoveForward() const { return moveForward_; }
+
     const engine::Vector3& GetMoveRight() const { return moveRight_; }
 
   private:
@@ -283,14 +298,18 @@ class GoalClearPlayerAnimator {
   private:
     Player* player_ = nullptr;
     Tuning tuning_{};
+
     bool isActive_ = false;
     bool savedControlActive_ = true;
+
     engine::Vector3 basePosition_{};
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 baseRotation_{};
     engine::Vector3 resultRotation_{};
+
     engine::Vector3 posePosition_{};
     engine::Vector3 currentScale_ = {1.0f, 1.0f, 1.0f};
+
     engine::Vector3 moveForward_ = {0.0f, 0.0f, 1.0f};
     engine::Vector3 moveRight_ = {1.0f, 0.0f, 0.0f};
 };

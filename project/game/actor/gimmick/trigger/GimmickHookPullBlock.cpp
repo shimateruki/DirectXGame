@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cassert>
 
-void GimmickHookPullBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickHookPullBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 共通ギミックとして登録した後、フック対象として識別できる型を設定する。
     BaseGimmick::Initialize(common, modelName);
 
@@ -21,6 +21,7 @@ void GimmickHookPullBlock::Initialize(Object3dCommon* common, const std::string&
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->speed = 42.0f;
     param_->gravity = 50.0f;
     param_->maxFallSpeed = 60.0f;
@@ -39,6 +40,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
         toTarget.y = 0.0f;
 
         float dist = engine::Math::Length(toTarget);
+
         if (dist > 0.05f) {
             engine::Vector3 dir = engine::Math::Normalize(toTarget);
             float pullSpeed = std::max(1.0f, param_->speed);
@@ -55,6 +57,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
     }
 
     velocity_.y -= param_->gravity * deltaTime;
+
     if (velocity_.y < -param_->maxFallSpeed) {
         velocity_.y = -param_->maxFallSpeed;
     }
@@ -62,6 +65,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
     SetTranslate(GetTranslate() + velocity_ * deltaTime);
 
     float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
+
     if (speedXZ > 0.05f) {
         engine::Vector3 rot = GetRotation();
         rot.x += velocity_.z * deltaTime * 0.35f;
@@ -88,6 +92,7 @@ bool GimmickHookPullBlock::OnCollision(engine::Object3d* other) {
     SetTranslate(GetTranslate() + info.normal * info.penetration);
 
     float dot = engine::Math::Dot(velocity_, info.normal);
+
     if (dot < 0.0f) {
         velocity_ = velocity_ - info.normal * dot;
     }

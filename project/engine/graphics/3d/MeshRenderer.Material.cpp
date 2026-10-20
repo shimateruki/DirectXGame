@@ -26,6 +26,7 @@ std::string NormalizeSlashes(std::string text) {
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
     // モデルの配置形式に応じて、LOD定義を探索する二つのパスを用意する。
     std::vector<fs::path> candidates;
+
     if (modelName.empty()) {
         return candidates;
     }
@@ -50,6 +51,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     // マテリアル設定の読み込み可否を返し、不正なJSONを適用しない。
     std::ifstream file(path);
+
     if (!file) {
         return false;
     }
@@ -68,6 +70,7 @@ float ClampTextureTiling(float value) {
     if (!std::isfinite(value)) {
         return 1.0f;
     }
+
     return std::clamp(value, 0.01f, 1000.0f);
 }
 
@@ -77,9 +80,12 @@ engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
 
-    if (a < b) std::swap(a, b);
-    if (a < c) std::swap(a, c);
-    if (b < c) std::swap(b, c);
+    if (a < b)
+        std::swap(a, b);
+    if (a < c)
+        std::swap(a, c);
+    if (b < c)
+        std::swap(b, c);
 
     return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
 }
@@ -89,17 +95,20 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
     // 定数バッファの確保とMapを一組として扱い、失敗時は参照を残さない。
     data = nullptr;
     resource.Reset();
+
     if (!dxCommon) {
         return false;
     }
 
     resource = dxCommon->CreateBufferResource(size);
+
     if (!resource) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
         return false;
     }
 
     HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
+
     if (FAILED(hr) || !data) {
         DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
         resource.Reset();
@@ -119,15 +128,18 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 // ========================================================================
 void MeshRenderer::SetColor(const engine::Vector4& color) {
     materialColor_ = color;
-    if (materialData_) materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
+    if (materialData_)
+        materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
 }
 
 void MeshRenderer::SetMaterialType(int32_t type) {
-    if (materialData_) materialData_->materialType = type;
+    if (materialData_)
+        materialData_->materialType = type;
 }
 
 void MeshRenderer::SetIntensity(float intensity) {
-    if (directionalLightData_) directionalLightData_->intensity = intensity;
+    if (directionalLightData_)
+        directionalLightData_->intensity = intensity;
 }
 
 engine::Vector4 MeshRenderer::GetColor() const {
@@ -139,11 +151,13 @@ int32_t MeshRenderer::GetMaterialType() const {
 }
 
 void MeshRenderer::SetMetallic(float metallic) {
-    if (materialData_) materialData_->metallic = metallic;
+    if (materialData_)
+        materialData_->metallic = metallic;
 }
 
 void MeshRenderer::SetRoughness(float roughness) {
-    if (materialData_) materialData_->roughness = roughness;
+    if (materialData_)
+        materialData_->roughness = roughness;
 }
 
 float MeshRenderer::GetMetallic() const {
@@ -155,7 +169,8 @@ float MeshRenderer::GetRoughness() const {
 }
 
 void MeshRenderer::SetEnableNormalMap(bool enable) {
-    if (materialData_) materialData_->enableNormalMap = enable ? 1 : 0;
+    if (materialData_)
+        materialData_->enableNormalMap = enable ? 1 : 0;
 }
 
 bool MeshRenderer::GetEnableNormalMap() const {
@@ -165,6 +180,7 @@ bool MeshRenderer::GetEnableNormalMap() const {
 void MeshRenderer::SetNormalMap(const std::string& texturePath) {
     // 法線テクスチャは色変換せず線形空間で読み、解除時は旧ハンドルを使わない。
     normalMapPath_ = texturePath;
+
     if (!texturePath.empty()) {
         normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::Linear);
     } else {
@@ -175,6 +191,7 @@ void MeshRenderer::SetNormalMap(const std::string& texturePath) {
 void MeshRenderer::SetOrmMap(const std::string& texturePath) {
     // ORM の各成分は色ではなく係数なので線形空間で読み込む。
     ormMapPath_ = texturePath;
+
     if (!texturePath.empty()) {
         ormMapHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::Linear);
     } else {
@@ -186,6 +203,7 @@ void MeshRenderer::SetOrmMap(const std::string& texturePath) {
 void MeshRenderer::SetTexture(const std::string& texturePath) {
     // ベースカラーだけは sRGB として読み込み、空パスで参照を解除する。
     texturePath_ = texturePath;
+
     if (!texturePath.empty()) {
         textureHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::SRGB);
     } else {
@@ -199,6 +217,7 @@ void MeshRenderer::SetTextureTiling(const engine::Vector2& tiling) {
         ClampTextureTiling(tiling.x),
         ClampTextureTiling(tiling.y)
     };
+
     UpdateUvTransform();
 }
 
@@ -228,7 +247,8 @@ void MeshRenderer::UpdateUvTransform() {
 }
 
 void MeshRenderer::SetEnableEnvMap(bool enable) {
-    if (materialData_) materialData_->enableEnvMap = enable ? 1 : 0;
+    if (materialData_)
+        materialData_->enableEnvMap = enable ? 1 : 0;
 }
 
 bool MeshRenderer::GetEnableEnvMap() const {
@@ -236,7 +256,8 @@ bool MeshRenderer::GetEnableEnvMap() const {
 }
 
 void MeshRenderer::SetEnvIntensity(float intensity) {
-    if (materialData_) materialData_->envIntensity = intensity;
+    if (materialData_)
+        materialData_->envIntensity = intensity;
 }
 
 float MeshRenderer::GetEnvIntensity() const {
@@ -244,7 +265,8 @@ float MeshRenderer::GetEnvIntensity() const {
 }
 
 void MeshRenderer::SetEmissive(float emissive) {
-    if (materialData_) materialData_->emissive = emissive;
+    if (materialData_)
+        materialData_->emissive = emissive;
 }
 
 float MeshRenderer::GetEmissive() const {

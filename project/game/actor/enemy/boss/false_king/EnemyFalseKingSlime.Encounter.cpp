@@ -12,6 +12,7 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
     }
 
     SceneManager* sceneManager = SceneManager::GetInstance();
+
     if (!sceneManager || !sceneManager->IsPlaying()) {
         ResetForEditor();
         return true;
@@ -20,17 +21,19 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
     if (!initializedForPlay_) {
         InitializeEncounterState();
     }
+
     if (encounterState_ == EncounterState::Dormant) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         ClearTransientVisuals();
         HideAttackTelegraph();
         return true;
     }
+
     if (encounterState_ != EncounterState::Appearing) {
         return false;
     }
 
-    // 登場中は衝突を無効にし、四段階の伸縮で着地までの動きを作ります。
+    // 登場中の姿勢はTimelineが担当し、ボス側は判定と戦闘状態を管理する。
     encounterTimer_ += deltaTime;
     idleTimer_ += deltaTime;
     const float progress = std::clamp(encounterTimer_ / GetAppearanceDuration(), 0.0f, 1.0f);
@@ -38,38 +41,7 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetVelocity({0.0f, 0.0f, 0.0f});
-    float horizontal = 1.0f;
-    float vertical = 1.0f;
-    float heightOffset = 0.0f;
-    if (progress < 0.45f) {
-        const float rate = SmoothStep01(progress / 0.45f);
-        horizontal = engine::Math::Lerp(0.88f, 1.32f, rate);
-        vertical = engine::Math::Lerp(1.20f, 0.58f, rate);
-        heightOffset = (1.0f - rate) * kAppearanceRise;
-    } else if (progress < 0.68f) {
-        const float rate = SmoothStep01((progress - 0.45f) / 0.23f);
-        horizontal = engine::Math::Lerp(1.32f, 0.86f, rate);
-        vertical = engine::Math::Lerp(0.58f, 1.25f, rate);
-        heightOffset = std::sin(rate * kPi) * 0.48f;
-    } else if (progress < 0.88f) {
-        const float rate = SmoothStep01((progress - 0.68f) / 0.20f);
-        horizontal = engine::Math::Lerp(0.86f, 1.08f, rate);
-        vertical = engine::Math::Lerp(1.25f, 0.90f, rate);
-        heightOffset = std::sin(rate * kPi) * 0.16f;
-    } else {
-        const float rate = SmoothStep01((progress - 0.88f) / 0.12f);
-        horizontal = engine::Math::Lerp(1.08f, 1.0f, rate);
-        vertical = engine::Math::Lerp(0.90f, 1.0f, rate);
-    }
-
-    // 元の配置姿勢を基準に補間し、演出を繰り返しても誤差を蓄積させません。
-    SetTranslate({authoredPosition_.x, authoredPosition_.y + heightOffset, authoredPosition_.z});
-    SetScale({authoredScale_.x * horizontal, authoredScale_.y * vertical, authoredScale_.z * horizontal});
-    SetRotation({
-        authoredRotation_.x + std::sin(progress * kPi) * 0.14f,
-        authoredRotation_.y + std::sin(progress * kPi) * 0.12f,
-        authoredRotation_.z + std::sin(progress * kPi * 2.0f) * 0.055f,
-    });
+    // 透明度と発光は描画材質の状態なので、TimelineのTransformと競合しない。
     SetColor({
         authoredColor_.x,
         authoredColor_.y,
@@ -78,9 +50,11 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
     });
     SetEmissive(1.0f + std::sin(std::min(progress / 0.72f, 1.0f) * kPi) * 2.2f);
     SyncCollisionBounds();
+
     if (progress >= 1.0f) {
         FinishAppearance();
     }
+
     return true;
 }
 
@@ -90,6 +64,7 @@ void EnemyFalseKingSlime::CaptureAuthoredState(bool force) {
     if (authoredStateCaptured_ && !force) {
         return;
     }
+
     authoredPosition_ = GetTranslate();
     authoredScale_ = GetScale();
     authoredRotation_ = GetRotation();
@@ -110,6 +85,8 @@ void EnemyFalseKingSlime::CaptureAuthoredState(bool force) {
 // Play開始時に攻撃履歴と形態を初期化し、配置設定に応じて待機または登場へ進めます。
 void EnemyFalseKingSlime::InitializeEncounterState() {
     // 前回の王冠決戦と攻撃履歴を消し、配置設定から初期状態を決めます。
+    ResetLocomotion();
+    locomotionStepSerial_ = 0;
     ResetCrownFinale();
     initializedForPlay_ = true;
     CaptureAuthoredState(true);
@@ -124,6 +101,7 @@ void EnemyFalseKingSlime::InitializeEncounterState() {
     currentAttack_ = AttackKind::None;
     attackCooldown_ = 1.05f;
     const bool startActive = param_.has_value() && param_->startActive;
+
     if (startActive || activationRequested_) {
         BeginAppearance();
     } else {
@@ -134,8 +112,11 @@ void EnemyFalseKingSlime::InitializeEncounterState() {
 // Play中の一時状態を破棄して、Editor上の配置姿勢へ戻します。
 void EnemyFalseKingSlime::ResetForEditor() {
     // プレイ中の姿勢・材質・衝突を破棄して編集時の設定へ戻します。
+    ResetLocomotion();
+    locomotionStepSerial_ = 0;
     introPresentationActive_ = false;
     ResetCrownFinale();
+
     if (initializedForPlay_) {
         SetTranslate(authoredPosition_);
         SetScale(authoredScale_);
@@ -144,6 +125,7 @@ void EnemyFalseKingSlime::ResetForEditor() {
         SetMaterialType(authoredMaterialType_);
         SetEmissive(authoredEmissive_);
     }
+
     CaptureAuthoredState(true);
     initializedForPlay_ = false;
     activationRequested_ = false;
@@ -167,22 +149,30 @@ void EnemyFalseKingSlime::ResetForEditor() {
     SyncCollisionBounds();
 }
 
-// 登場演出中は攻撃判定を外し、出現VFXを一度だけ再生します。
+// 登場演出中は攻撃判定を外し、出現VFXを再生します。
 void EnemyFalseKingSlime::BeginAppearance() {
-    // 登場途中に攻撃が当たらないよう判定を外してから VFX を一度再生します。
     encounterState_ = EncounterState::Appearing;
     encounterTimer_ = 0.0f;
     SetIsVisible(true);
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetVelocity({0.0f, 0.0f, 0.0f});
+    // Timelineの登場開始時刻でボスが有効化されるため、VFXもここで同期する。
     engine::Vector3 effectPosition = authoredPosition_;
     effectPosition.y += 0.2f;
     VFXSequencer::PlayOneShot(kAppearanceSequence, effectPosition, {2.4f, 2.4f, 2.4f});
 }
 
+void EnemyFalseKingSlime::SetIntroPresentationActive(bool active, float duration) {
+    introPresentationActive_ = active;
+    if (active) {
+        introPresentationDuration_ = (std::max)(0.05f, duration);
+    }
+}
+
 void EnemyFalseKingSlime::ApplyDormantState() {
     // 入口イベント前はモデルも衝突も隠し、待機中の攻撃演出を消します。
+    ResetLocomotion();
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
     SetTranslate(authoredPosition_);
@@ -202,6 +192,7 @@ void EnemyFalseKingSlime::ApplyDormantState() {
 // 登場終了後に配置時の衝突設定を戻して戦闘AIを再開します。
 void EnemyFalseKingSlime::FinishAppearance() {
     // 演出後に元の判定と姿勢を戻して戦闘 AI を始めます。
+    ResetLocomotion();
     encounterState_ = EncounterState::Active;
     encounterTimer_ = 0.0f;
     SetTranslate(authoredPosition_);
@@ -219,10 +210,15 @@ void EnemyFalseKingSlime::FinishAppearance() {
 }
 
 void EnemyFalseKingSlime::SyncCollisionBounds() {
+    // 描画用の伸縮で接地判定が上下しないよう、OBBは配置時のスケールへ固定します。
+    if (Collider* collider = GetCollider()) {
+        collider->SetScaleOverride(hasBaseScale_ ? baseScale_ : GetScale());
+    }
+
     // 登場時の伸縮中も本体用 OBB の基準寸法を設定します。
     engine::Object3d::ColliderConfig collider = GetColliderConfig();
     collider.type = ColliderType::kOBB;
-    collider.center = {0.0f, 1.48f, 0.0f};
+    collider.center = {0.0f, 1.46f, 0.0f};
     collider.size = {2.82f, 1.46f, 2.28f};
     SetColliderConfig(collider);
 }
@@ -235,7 +231,7 @@ bool EnemyFalseKingSlime::IsEncounterControlled() const {
 float EnemyFalseKingSlime::GetAppearanceDuration() const {
     // 専用の登場演出中は通常の配置設定より長い尺を使います。
     if (introPresentationActive_)
-        return 4.2f;
+        return introPresentationDuration_;
     return param_.has_value() ? std::clamp(param_->shakeDuration, 0.55f, 3.5f) : kDefaultAppearanceDuration;
 }
 
@@ -244,6 +240,7 @@ bool EnemyFalseKingSlime::IsEncounterHudActive() const {
     if (!IsEncounterControlled() || isDead) {
         return false;
     }
+
     return encounterState_ == EncounterState::Appearing || encounterState_ == EncounterState::Active;
 }
 
@@ -262,9 +259,11 @@ float EnemyFalseKingSlime::GetEncounterAppearanceProgress() const {
     if (encounterState_ == EncounterState::Active) {
         return 1.0f;
     }
+
     if (encounterState_ != EncounterState::Appearing) {
         return 0.0f;
     }
+
     return std::clamp(encounterTimer_ / GetAppearanceDuration(), 0.0f, 1.0f);
 }
 
@@ -273,6 +272,7 @@ float EnemyFalseKingSlime::GetPhaseTransitionProgress() const {
     if (attackState_ != AttackState::PhaseShift) {
         return battlePhase_ == pendingBattlePhase_ ? 1.0f : 0.0f;
     }
+
     return std::clamp(phaseTransitionTimer_ / (std::max)(phaseTransitionDuration_, 0.01f), 0.0f, 1.0f);
 }
 
@@ -281,6 +281,7 @@ void EnemyFalseKingSlime::TriggerDebugDefeat() {
     if (!param_.has_value() || isDead || IsDefeatEffectPlaying()) {
         return;
     }
+
     param_->hp = 0.0f;
     SetVelocity({0.0f, 0.0f, 0.0f});
     ClearTransientVisuals();
@@ -323,15 +324,23 @@ void EnemyFalseKingSlime::TriggerDebugCrownInterlude() {
 
 void EnemyFalseKingSlime::HoldFinalDefeat() {
     // 勝利演出がボスを参照する間は死亡確定を保留し、攻撃判定だけ止めます。
-    finalDefeatHeld_=true;finalDefeatCompleted_=false;
-    SetVelocity({});SetCollisionAttribute(0);SetCollisionMask(0);
-    HideAttackTelegraph();ClearTransientVisuals();
+    finalDefeatHeld_=true;
+    finalDefeatCompleted_=false;
+    SetVelocity({});
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    HideAttackTelegraph();
+    ClearTransientVisuals();
 }
 
 void EnemyFalseKingSlime::CompleteFinalDefeat() {
     // 演出終了後に一度だけ死亡を確定し、入口イベントへ撃破を通知します。
-    if(finalDefeatCompleted_)return;
-    finalDefeatCompleted_=true;isDead=true;SetIsVisible(false);
+    if(finalDefeatCompleted_)
+        return;
+    finalDefeatCompleted_=true;
+    isDead=true;
+    SetIsVisible(false);
+
     // 継承演出もボスを参照するため、Sceneの破棄まで本体は保持します。
     if(auto* scene=SceneManager::GetInstance()->GetCurrentScene();scene && GetTargetID()>0)
         scene->TriggerEvent(GetTargetID());
@@ -339,5 +348,7 @@ void EnemyFalseKingSlime::CompleteFinalDefeat() {
 
 void EnemyFalseKingSlime::CancelFinalDefeat() {
     // 演出の中断時は保留フラグを解除し、通常の戦闘へ戻せます。
-    finalDefeatHeld_=false;finalDefeatCompleted_=false;isDead=false;
+    finalDefeatHeld_=false;
+    finalDefeatCompleted_=false;
+    isDead=false;
 }

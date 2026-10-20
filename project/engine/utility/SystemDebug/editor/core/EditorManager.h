@@ -8,8 +8,11 @@
 class EditorManager {
 private:
     EditorManager() = default;
+
     ~EditorManager() = default;
+
     EditorManager(const EditorManager&) = delete;
+
     EditorManager& operator=(const EditorManager&) = delete;
 
     // 現在Inspectorで編集対象になっているオブジェクト。
@@ -26,7 +29,9 @@ public:
 
     // 選択状態の設定、取得、解除。
     void SetSelectedObject(IEditable* object) { selectedObject_ = object; }
+
     IEditable* GetSelectedObject() const { return selectedObject_; }
+
     void ClearSelection() { selectedObject_ = nullptr; }
 
     /// <summary>

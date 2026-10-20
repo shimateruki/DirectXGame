@@ -8,6 +8,7 @@ namespace engine { class Object3d; }
 class GPUParticleEmitter {
 public:
     GPUParticleEmitter() = default;
+
     ~GPUParticleEmitter() = default;
 
     /// <summary>使用するプリセット名と追従対象を設定する。</summary>

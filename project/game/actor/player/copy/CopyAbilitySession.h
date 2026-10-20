@@ -11,20 +11,32 @@ namespace CopyAbilityDetail {
 class ICopyAbilitySession {
   public:
     explicit ICopyAbilitySession(EnemyAttackProfile profile) : profile_(std::move(profile)) {}
+
     virtual ~ICopyAbilitySession() = default;
+
     // 入力受付と時間経過を分離します。deltaTime は秒です。
     virtual void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) = 0;
+
     virtual void Update(Player& player, float deltaTime) = 0;
+
     // 能力切替や形態解除時に、能力が所有する演出・一時状態を後始末します。
     virtual void Cancel(Player& player) = 0;
+
     virtual void Draw(Player&, ID3D12Resource*, ID3D12Resource*, Camera*, int) {}
+
     virtual bool HasOwnedVisuals() const { return false; }
+
     virtual const char* GetStateLabel() const { return "コピー能力有効"; }
+
     virtual void SetPreviewAttackId(const std::string&) {}
+
     virtual void DrawOwnedVisuals(Player&, uint32_t, uint32_t, Camera*, int) {}
+
     // ガード成立時の追加演出を処理した場合のみ true を返します。
     virtual bool NotifyGuardedHit(Player&, const engine::Vector3&) { return false; }
+
     virtual bool CanBreakImpactGate() const { return false; }
+
     virtual bool IsPinkBounceSlamImpactActive() const { return false; }
 
   protected:

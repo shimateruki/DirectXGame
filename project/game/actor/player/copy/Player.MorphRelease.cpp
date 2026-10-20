@@ -12,6 +12,7 @@ float Player::GetEnemyMorphReleaseRate() const {
     if (!enemyMorphReleaseActive_ || enemyMorphReleaseDuration_ <= 0.0f) {
         return 0.0f;
     }
+
     return std::clamp(enemyMorphReleaseTimer_ / enemyMorphReleaseDuration_, 0.0f, 1.0f);
 }
 
@@ -26,9 +27,11 @@ void Player::ActivateCheckpoint(const engine::Vector3& position, const std::stri
     checkpointActivated_ = true;
     checkpointObjectName_ = checkpointObjectName;
     const std::string currentMorph = GetEnemyTypeForCurrentMorph();
+
     if (!currentMorph.empty()) {
         checkpointMorphEnemyType_ = currentMorph;
     }
+
     RefreshCheckpointMorphSnapshot();
 }
 
@@ -44,6 +47,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
     if (baseCombatController_) {
         baseCombatController_->Cancel(*this, true);
     }
+
     if (isEnemyMorphed_ && copyAbilityController_) {
         copyAbilityController_->Cancel(*this);
     }
@@ -52,6 +56,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
     // 参照だけを残すと変身解除後に敵が再び頭上へ追従し、カメラへ張り付いたように見えます。
     ReleaseCarriedEnemy(true);
     aimTargetObject_ = nullptr;
+
     if (hookMarker_) {
         hookMarker_->SetIsVisible(false);
     }
@@ -67,9 +72,11 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
     enemyMorphEffectTimer_ = 0.0f;
     enemyMorphVisualTimer_ = 0.0f;
     enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
+
     if (copyAbilityController_) {
         copyAbilityController_->ActivateDefault(static_cast<int>(enemyMorphType_));
     }
+
     isEnemyMorphed_ = true;
     CompleteEnemyMorphStart(currentMoveYaw);
 
@@ -79,6 +86,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
     if (resolvedType == EnemyMorphType::Crown)
         SetColliderConfig(bodyCollider);
     SetTexture("");
+
     // 覇王モデルは顔・金属・布を別材質で持つため、全身ジェル化しない。
     SetMaterialType(resolvedType == EnemyMorphType::Crown ? 0 : 25);
     SetEmissive(1.0f);
@@ -96,17 +104,23 @@ std::string Player::GetEnemyTypeForCurrentMorph() const {
     if (!isEnemyMorphed_) {
         return {};
     }
+
     switch (enemyMorphType_) {
     case EnemyMorphType::Slime:
         return "Slime";
+
     case EnemyMorphType::Bomber:
         return "Bomber";
+
     case EnemyMorphType::FireSlime:
         return "FireSlime";
+
     case EnemyMorphType::ThunderSlime:
         return "ThunderSlime";
+
     case EnemyMorphType::WindSlime:
         return "WindSlime";
+
     default:
         return {};
     }
@@ -123,6 +137,7 @@ void Player::RefreshCheckpointMorphSnapshot() {
     if (!checkpointActivated_) {
         return;
     }
+
     const engine::Vector3 position = respawnPosition_;
     GameDataManager::GetInstance()->RequestStageCheckpointRespawn(StageManager::GetInstance()->GetCurrentStageIndex(),
                                                                   position.x, position.y, position.z,
@@ -140,6 +155,7 @@ void Player::BeginEnemyMorphRelease(bool expired) {
     if (copyAbilityController_) {
         copyAbilityController_->Cancel(*this);
     }
+
     evasionInvincibleTimer_ = 0.0f;
     isEvasionInvincible_ = false;
     UpdateColor();
@@ -196,9 +212,11 @@ void Player::EmitEnemyMorphReleaseBurst() {
 
     engine::Vector3 burstDirection = {enemyMorphReleaseDirection_.x, 0.42f, enemyMorphReleaseDirection_.z};
     const float burstLength = engine::Math::Length(burstDirection);
+
     if (burstLength > 0.001f) {
         burstDirection = burstDirection / burstLength;
     }
+
     if (particleSystem_) {
         particleSystem_->SpawnParticles(
             enemyMorphReleaseStartPosition_, enemyMorphReleaseExpired_ ? 20 : 28, 1.45f, &burstDirection,
@@ -234,6 +252,7 @@ void Player::EmitEnemyMorphReleaseBurst() {
         star->InitializeDrop(common_, droppedType, !enemyMorphHasTimeLimit_, enemyMorphReleaseStartPosition_, landing);
         sceneManager->GetCurrentScene()->AddObject(std::move(star));
     }
+
     RestoreEnemyMorphAppearance();
 }
 
@@ -283,11 +302,13 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
         position.y += std::sin(t * kPi) * 0.92f - t * 0.34f;
 
         float scaleRate = 1.0f;
+
         if (t < 0.20f) {
             scaleRate = 0.72f + (t / 0.20f) * 0.38f;
         } else if (t > 0.68f) {
             scaleRate = std::clamp((1.0f - t) / 0.32f, 0.0f, 1.0f);
         }
+
         const float residueWobble = std::sin(t * kPi * 5.0f) * (1.0f - t) * 0.18f;
         enemyMorphReleaseVisual_->SetTranslate(position);
         enemyMorphReleaseVisual_->SetScale(
@@ -312,6 +333,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
                     {enemyMorphReleaseTint_.x, enemyMorphReleaseTint_.y, enemyMorphReleaseTint_.z, 0.0f}, 0.04f, 0.14f,
                     0.16f, 0.01f);
             }
+
             enemyMorphReleaseParticleTimer_ = 0.055f;
         }
     }
@@ -340,11 +362,13 @@ void Player::RestoreEnemyMorphAppearance() {
     if (!savedMorphModelName_.empty()) {
         SetModel(savedMorphModelName_);
     }
+
     if (!savedMorphTexturePath_.empty()) {
         SetTexture(savedMorphTexturePath_);
     } else {
         SetTexture("");
     }
+
     SetMaterialType(savedMorphMaterialType_);
     SetEmissive(savedMorphEmissive_);
     SetColor(savedMorphColor_);
@@ -354,10 +378,13 @@ void Player::RestoreEnemyMorphAppearance() {
     ResetAnimationTime();
 
     const auto& children = GetChildren();
+
     for (size_t i = 0; i < children.size(); ++i) {
         engine::Object3d* child = children[i];
+
         if (child) {
             child->SetColor(savedMorphColor_);
+
             if (i < savedMorphChildVisible_.size()) {
                 child->SetIsVisible(savedMorphChildVisible_[i]);
             } else {
@@ -369,6 +396,7 @@ void Player::RestoreEnemyMorphAppearance() {
     if (morphSource && !morphSource->isDead && !morphSource->IsDefeatEffectPlaying()) {
         morphSource->SetIsVisible(savedMorphSourceVisible_);
     }
+
     if (carriedEnemy_ == morphSource) {
         SetCarriedEnemy(nullptr);
     }
@@ -382,9 +410,11 @@ void Player::RestoreEnemyMorphAppearance() {
     enemyMorphVisualTimer_ = 0.0f;
     savedMorphChildVisible_.clear();
     savedMorphSourceVisible_ = true;
+
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera(); camera && !IsEditorInternal()) {
         camera->SetAimCameraSuppressed(false);
     }
+
     SetMoveYaw(currentMoveYaw);
     DebugConsole::GetInstance()->AddLog("Enemy morph end.");
 }
@@ -395,12 +425,14 @@ void Player::ResetEnemyMorphRelease() {
         enemyMorphReleaseVisual_->SetIsVisible(false);
         enemyMorphReleaseVisual_->SetScale({0.0f, 0.0f, 0.0f});
     }
+
     if (enemyMorphReleaseActive_ && !isEnemyMorphed_) {
         SetScale(savedMorphScale_);
         SetColor(savedMorphColor_);
         UpdateLocalMatrix();
         UpdateWorldMatrix();
     }
+
     enemyMorphReleaseActive_ = false;
     enemyMorphReleaseBurstStarted_ = false;
     enemyMorphReleaseExpired_ = false;
@@ -413,11 +445,14 @@ void Player::CancelEnemyMorph() {
     if (absorbEffectActive_) {
         CancelAbsorbEffect(true);
     }
+
     ResetEnemyMorphRelease();
     RestoreEnemyMorphAppearance();
+
     if (hookMarker_) {
         hookMarker_->SetIsVisible(false);
     }
+
     aimTargetObject_ = nullptr;
     evasionInvincibleTimer_ = 0.0f;
     isEvasionInvincible_ = false;
@@ -452,9 +487,11 @@ void Player::DebugPrepareForTeleport() {
     if (mover_) {
         mover_->ResetTransientState();
     }
+
     if (gateReturnAnimation_.IsActive()) {
         gateReturnAnimation_.Stop(this, false);
     }
+
     if (isCinematicLocked_) {
         EndCinematicLock(false);
     }
@@ -463,9 +500,11 @@ void Player::DebugPrepareForTeleport() {
     if (baseCombatController_) {
         baseCombatController_->Cancel(*this, false);
     }
+
     if (copyAbilityController_) {
         copyAbilityController_->Cancel(*this);
     }
+
     CancelEnemyMorph();
     ReleaseCarriedEnemy(true);
 
@@ -477,17 +516,19 @@ void Player::DebugPrepareForTeleport() {
 
     RestoreDamageBlinkVisibility();
     damageCooldownTimer_ = 0.0f;
+    guardContactCooldownTimer_ = 0.0f;
     evasionInvincibleTimer_ = 0.0f;
     invincibleBlinkTimer_ = 0.0f;
     isEvasionInvincible_ = false;
     SetDamageInvincible(false);
     SetDashInvincible(false);
-    SetGuardInvincible(false);
+    SetGuarding(false);
 
     pendingAttack2_ = false;
     attackInputBuffer_.ClearPendingInput();
     forcedSlimeAnimationModeActive_ = false;
     aimTargetObject_ = nullptr;
+
     if (hookMarker_) {
         hookMarker_->SetIsVisible(false);
     }

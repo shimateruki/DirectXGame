@@ -44,6 +44,7 @@ float GoalEaseInOut(float value) {
 }
 
 } // namespace
+
 // タイムラインを読み、見つからない場合は現在の調整値から同等の演出を組み立てます。
 void GamePlayScene::InitializeGoalCinematicTimeline() {
     // タイムラインのアニメーションと合図をPlayer用処理へ結び付けてから読込む。
@@ -58,6 +59,7 @@ void GamePlayScene::InitializeGoalCinematicTimeline() {
         });
 
     goalCinematicTimelineLoaded_ = goalCinematicSequence_.Load(kGoalCinematicTimelinePath);
+
     if (!goalCinematicTimelineLoaded_) {
         DebugConsole::GetInstance()->AddLog(std::string("Goal Timeline load failed: ") + kGoalCinematicTimelinePath);
         goalCinematicSequence_.Clear();
@@ -67,6 +69,7 @@ void GamePlayScene::InitializeGoalCinematicTimeline() {
     } else {
         ApplyGoalCinematicTimingFromSequence();
     }
+
     goalCinematicPlayer_.SetSequence(&goalCinematicSequence_);
 }
 
@@ -74,10 +77,12 @@ void GamePlayScene::InitializeGoalCinematicTimeline() {
 void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
     // JSONの合図時刻を演出パラメータへ反映し、旧来の固定値とずれないようにする。
     GoalClearPlayerAnimator::Tuning animation = goalClearPlayerAnimator_.GetTuning();
+
     for (const auto& marker : goalCinematicSequence_.signals) {
         if (!marker.enabled) {
             continue;
         }
+
         if (marker.signal == "goal.crown_focus_end") {
             goalPresentationTuning_.crownFocusEndTime = marker.time;
         } else if (marker.signal == "goal.crown_move_start") {
@@ -98,6 +103,7 @@ void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
             animation.readyTime = marker.time;
         }
     }
+
     goalClearPlayerAnimator_.SetTuning(animation);
     SanitizeGoalPresentationTuning();
 }
@@ -113,6 +119,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
                 return;
             }
         }
+
         CinematicSignalMarker marker;
         marker.signal = signalId;
         marker.name = displayName;
@@ -132,6 +139,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
 
     // タイムラインを手編集した後も、プレイヤー姿勢を駆動するクリップの終端を結果待ち時刻へ合わせる。
     bool hasAnimationDriver = false;
+
     for (auto& clip : goalCinematicSequence_.animationClips) {
         if (clip.driver == "GoalClearPlayer") {
             clip.startTime = 0.0f;
@@ -141,6 +149,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
             hasAnimationDriver = true;
         }
     }
+
     if (!hasAnimationDriver) {
         CinematicAnimationClipData clip;
         clip.name = "Player Goal Celebration";
@@ -157,6 +166,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
     bool hasCrownVfx = false;
     bool hasResultVfx = false;
     bool hasVictoryLandVfx = false;
+
     for (auto& track : goalCinematicSequence_.vfxTracks) {
         if (track.sequenceName.rfind("crown_focus", 0) == 0) {
             track.startTime = std::max(0.05f, goalPresentationTuning_.crownFocusEndTime - 0.22f);
@@ -172,7 +182,9 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
             hasVictoryLandVfx = true;
         }
     }
+
     engine::Object3d* crown = FindGoalCrownObject();
+
     if (!hasCrownFocusVfx) {
         CinematicVFXTrackData track;
         track.name = "Crown Focus VFX";
@@ -182,6 +194,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         track.binding.targetEventId = crown ? crown->GetEventID() : -1;
         goalCinematicSequence_.vfxTracks.push_back(track);
     }
+
     if (!hasCrownVfx) {
         CinematicVFXTrackData track;
         track.name = "Crown Landing VFX";
@@ -191,6 +204,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         track.binding.targetEventId = crown ? crown->GetEventID() : -1;
         goalCinematicSequence_.vfxTracks.push_back(track);
     }
+
     if (!hasResultVfx) {
         CinematicVFXTrackData track;
         track.name = "Result Burst VFX";
@@ -200,6 +214,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         track.binding.targetEventId = player_ ? player_->GetEventID() : -1;
         goalCinematicSequence_.vfxTracks.push_back(track);
     }
+
     if (!hasVictoryLandVfx) {
         CinematicVFXTrackData track;
         track.name = "Victory Landing VFX";
@@ -218,9 +233,11 @@ void GamePlayScene::HandleGoalCinematicAnimation(engine::Object3d* target, const
                                                  float localTime, bool isPreview) {
     // GoalClearPlayerドライバだけをPlayerへ適用し、他の対象のClipは無視する。
     (void)isPreview;
+
     if (clip.driver != "GoalClearPlayer" || !player_ || (target && target != player_)) {
         return;
     }
+
     goalClearPlayerAnimator_.Update(localTime);
     goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
 }
@@ -229,6 +246,7 @@ void GamePlayScene::HandleGoalCinematicSignal(engine::Object3d* target, const Ci
     // goal.readyの合図で帰還可能状態へ進み、時計だけに依存しない。
     (void)target;
     (void)isPreview;
+
     if (signal.signal == "goal.ready" && goalPresentationState_ == GoalPresentationState::Celebrating) {
         goalPresentationState_ = GoalPresentationState::ReadyToReturn;
     }
@@ -261,6 +279,7 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
         "Resources/sprite/ui/result/clear/slime_letters/letter_e.png",
         "Resources/sprite/ui/result/clear/slime_letters/letter_a.png",
         "Resources/sprite/ui/result/clear/slime_letters/letter_r.png"};
+
     for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
         auto& letter = goalOverlayStageClearLetters_[i];
         letter = std::make_unique<engine::Sprite>();
@@ -305,6 +324,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
     const float flashIn = GoalEaseOut((t - animation.resultUiTime) / 0.04f);
     const float flashOut = 1.0f - GoalEaseOut((t - animation.resultUiTime - 0.04f) / 0.20f);
     const float flash = visible ? flashIn * flashOut : 0.0f;
+
     if (goalOverlayFlash_) {
         goalOverlayFlash_->SetPosition({screenW * 0.5f, screenH * 0.5f});
         goalOverlayFlash_->SetSize({screenW + 8.0f, screenH + 8.0f});
@@ -312,6 +332,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
         goalOverlayFlash_->Update();
     }
 
+    // 文字ごとの送り幅と画像幅を分離し、フォント画像の余白に左右されず中央揃えにする。
     static constexpr std::array<float, 10> kAdvanceWidths = {62.0f, 60.0f, 66.0f, 68.0f, 56.0f,
                                                              68.0f, 54.0f, 56.0f, 66.0f, 64.0f};
     static constexpr std::array<float, 10> kSpriteWidths = {88.0f, 90.0f, 96.0f, 100.0f, 84.0f,
@@ -321,9 +342,11 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
     constexpr float kLetterGap = 6.0f;
     constexpr float kWordGap = 28.0f;
     float totalWidth = kWordGap + kLetterGap * 9.0f;
+
     for (float advance : kAdvanceWidths) {
         totalWidth += advance;
     }
+
     float cursorX = centerX - totalWidth * 0.5f * uiScale;
 
     for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
@@ -331,6 +354,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
         engine::Sprite* splash = goalOverlaySparkles_[i].get();
         const float letterCenterX = cursorX + kAdvanceWidths[i] * 0.5f * uiScale;
         const float localTime = t - animation.resultUiTime - static_cast<float>(i) * presentation.resultLetterStagger;
+        // 各文字に時間差を与え、落下前・接地後・静止後の姿勢を同じ時計から再現する。
         float letterY = baselineY - presentation.resultLetterDropHeight * uiScale;
         float scaleX = 0.82f;
         float scaleY = 1.18f;
@@ -339,6 +363,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
 
         if (localTime >= 0.0f) {
             letterAlpha = GoalEaseOut(localTime / 0.10f);
+
             if (localTime < presentation.resultLetterFallDuration) {
                 const float fallRate = GoalClamp01(localTime / presentation.resultLetterFallDuration);
                 const float acceleratedFall = fallRate * fallRate;
@@ -348,6 +373,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
                 scaleY = 1.18f - 0.18f * approach;
                 rotation = kInitialTilts[i] * (1.0f - approach);
             } else {
+                // 接地後の振幅を減衰させ、反発から待機中の微揺れへ連続的につなぐ。
                 const float bounceTime = localTime - presentation.resultLetterFallDuration;
                 const float damping = std::exp(-bounceTime * presentation.resultLetterBounceDamping);
                 const float bouncePhase = bounceTime * presentation.resultLetterBounceFrequency;
@@ -377,6 +403,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
         }
 
         if (splash) {
+            // 着地した文字だけ短時間の接地光を出し、次の文字の落下とは独立させる。
             const float impactAge = localTime - presentation.resultLetterFallDuration;
             const float splashRate = GoalClamp01(impactAge / 0.30f);
             const float splashAlpha =
@@ -389,6 +416,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
         }
 
         cursorX += (kAdvanceWidths[i] + kLetterGap) * uiScale;
+
         if (i == 4) {
             cursorX += kWordGap * uiScale;
         }
@@ -412,16 +440,19 @@ void GamePlayScene::DrawGoalPresentationOverlay() {
     if (goalOverlayFlash_) {
         goalOverlayFlash_->Draw();
     }
+
     for (auto& sparkle : goalOverlaySparkles_) {
         if (sparkle) {
             sparkle->Draw();
         }
     }
+
     for (auto& letter : goalOverlayStageClearLetters_) {
         if (letter) {
             letter->Draw();
         }
     }
+
     if (goalOverlayReturnText_) {
         goalOverlayReturnText_->Draw();
     }
@@ -430,6 +461,7 @@ void GamePlayScene::DrawGoalPresentationOverlay() {
 void GamePlayScene::LoadGoalPresentationTuning() {
     // 設定JSONがない・壊れている場合も、既定値を安全な時刻順に補正する。
     std::ifstream file(kGoalPresentationTuningPath, std::ios::binary);
+
     if (!file.is_open()) {
         SanitizeGoalPresentationTuning();
         return;
@@ -454,6 +486,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             animation.victoryLandTime = j.value("victoryLandTime", animation.victoryLandTime);
             animation.readyTime = j.value("readyTime", animation.readyTime);
         }
+
         if (const auto it = root.find("player"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             animation.jumpHeight = j.value("jumpHeight", animation.jumpHeight);
@@ -465,11 +498,13 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             animation.resultStretch = j.value("resultStretch", animation.resultStretch);
             animation.resultYawBias = j.value("resultYawBias", animation.resultYawBias);
         }
+
         if (const auto it = root.find("crown"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.crownDropHeight = j.value("dropHeight", goalPresentationTuning_.crownDropHeight);
             goalPresentationTuning_.crownSeatDepth = j.value("seatDepth", goalPresentationTuning_.crownSeatDepth);
         }
+
         if (const auto it = root.find("camera"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.crownFocusDistance =
@@ -499,6 +534,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             goalPresentationTuning_.jumpFov = j.value("jumpFov", goalPresentationTuning_.jumpFov);
             goalPresentationTuning_.resultFov = j.value("resultFov", goalPresentationTuning_.resultFov);
         }
+
         if (const auto it = root.find("ui"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.resultUiCenterX = j.value("centerX", goalPresentationTuning_.resultUiCenterX);
@@ -583,6 +619,7 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
                   {"letterBounceFrequency", g.resultLetterBounceFrequency}};
 
     std::ofstream file(kGoalPresentationTuningPath, std::ios::binary);
+
     if (file.is_open()) {
         file << root.dump(4);
     }
@@ -695,30 +732,39 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     if (ImGui::Button(ICON_FA_PLAY " 実ステージでプレビュー")) {
         StartGoalPresentationPreview();
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_STOP " プレビュー停止")) {
         StopGoalPresentationPreview();
     }
+
     if (ImGui::Button(ICON_FA_SAVE " JSON保存")) {
         SanitizeGoalPresentationTuning();
         SyncGoalCinematicTimelineFromTuning();
         SaveGoalPresentationTuning();
         goalCinematicSequence_.Save(kGoalCinematicTimelinePath);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button(ICON_FA_FOLDER_OPEN " JSON再読込")) {
         LoadGoalPresentationTuning();
         SyncGoalCinematicTimelineFromTuning();
     }
+
     ImGui::SameLine();
     ImGui::BeginDisabled(isGoal_);
+
     if (ImGui::Button(ICON_FA_FILM " Timeline再読込")) {
         goalCinematicTimelineLoaded_ = goalCinematicSequence_.Load(kGoalCinematicTimelinePath);
+
         if (goalCinematicTimelineLoaded_) {
             ApplyGoalCinematicTimingFromSequence();
             goalCinematicPlayer_.SetSequence(&goalCinematicSequence_);
         }
     }
+
     ImGui::EndDisabled();
     ImGui::TextDisabled("保存先: %s", kGoalPresentationTuningPath);
     ImGui::TextDisabled("Timeline: %s", kGoalCinematicTimelinePath);
@@ -733,11 +779,13 @@ engine::Object3d* GamePlayScene::FindGoalCrownObject() const {
     if (!objectManager_) {
         return nullptr;
     }
+
     for (const auto& object : objectManager_->GetObjects()) {
         if (object && object->GetEventType() == EventType::Goal) {
             return object.get();
         }
     }
+
     return nullptr;
 }
 
@@ -748,13 +796,17 @@ void GamePlayScene::StartGoalPresentationPreview() {
             DebugConsole::GetInstance()->AddLog("Goal presentation is already running in gameplay.");
             return;
         }
+
         StopGoalPresentationPreview();
     }
+
     engine::Object3d* crown = FindGoalCrownObject();
+
     if (!crown || !player_) {
         DebugConsole::GetInstance()->AddLog("Goal presentation preview requires player and crown.");
         return;
     }
+
     goalEditorPreviewMode_ = true;
     StartGoalPresentation(crown);
     goalSavePerformed_ = true;
@@ -765,11 +817,14 @@ void GamePlayScene::StopGoalPresentationPreview() {
     if (!goalEditorPreviewMode_) {
         return;
     }
+
     Camera* restoreCamera =
         goalLockedPrimaryCamera_ ? goalLockedPrimaryCamera_ : CameraManager::GetInstance()->GetMainCamera();
     SetIsGoal(false);
+
     if (restoreCamera) {
         CameraManager::GetInstance()->SetActiveCamera(restoreCamera);
     }
+
     goalEditorPreviewMode_ = false;
 }

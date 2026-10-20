@@ -51,6 +51,7 @@ class PlayerJumpRequest {
             charge_ = 0.0f;
         }
     }
+
     /// <summary>入力と接地猶予が残っていれば一度だけ要求を取り出します。</summary>
     /// <param name="charge">成功時、コピー用の溜め時間を秒で受け取る。失敗時は変更しない。</param>
     bool Consume(float& charge) {
@@ -62,9 +63,13 @@ class PlayerJumpRequest {
         leftGround_ = false;
         return true;
     }
+
     bool IsCharging() const { return charging_; }
+
     float Charge() const { return charge_; }
+
     float BufferRemaining() const { return buffer_; }
+
     float GraceRemaining() const { return grace_; }
 
   private:

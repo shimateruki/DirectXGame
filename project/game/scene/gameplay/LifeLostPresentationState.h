@@ -33,7 +33,9 @@ class LifeLostPresentationState {
 
     // 呼び出し側の経過時間を加算します。負値の補正は行いません。
     void Advance(float deltaTime) { timer_ += deltaTime; }
+
     void MarkNumberDropped() { numberDropped_ = true; }
+
     // 再生を終え、後続の画面遷移まで暗転を保持します。
     void Finish() {
         active_ = false;
@@ -42,12 +44,19 @@ class LifeLostPresentationState {
     }
 
     bool IsActive() const { return active_; }
+
     bool IsFinished() const { return finished_; }
+
     bool HoldsBlack() const { return blackHold_; }
+
     bool DidDropNumber() const { return numberDropped_; }
+
     bool Revives() const { return revive_; }
+
     float Timer() const { return timer_; }
+
     int BeforeLives() const { return beforeLives_; }
+
     int AfterLives() const { return afterLives_; }
 
     // 残機減少演出の進行状態を Replay 用 JSON として取得します。
@@ -59,7 +68,8 @@ class LifeLostPresentationState {
 
     // JSON に存在する項目だけを復元します。オブジェクト以外は無視します。
     void RestoreReplay(const nlohmann::json& state) {
-        if (!state.is_object()) return;
+        if (!state.is_object())
+            return;
         active_ = state.value("active", active_);
         finished_ = state.value("finished", finished_);
         blackHold_ = state.value("blackHold", blackHold_);

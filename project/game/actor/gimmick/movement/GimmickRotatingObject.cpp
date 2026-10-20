@@ -3,7 +3,7 @@
 #include "SceneManager.h"
 #include <cmath>
 
-void GimmickRotatingObject::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickRotatingObject::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     // 回転軸と速度の旧既定値を用意し、地形として足場判定を有効にする。
     BaseGimmick::Initialize(common, modelName);
 
@@ -31,6 +31,7 @@ void GimmickRotatingObject::Update(float deltaTime) {
         param_.emplace();
 
     bool isPlaying = false;
+
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
         isPlaying = sceneManager->IsPlaying();
     }

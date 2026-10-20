@@ -20,6 +20,7 @@ public:
 
     /// <summary>シーン遷移の初期状態を作る。</summary>
     SceneManager();
+
     /// <summary>保留中の非同期処理を終了し、保持するシーンを破棄する。</summary>
     ~SceneManager();
 
@@ -70,6 +71,7 @@ public:
 
     /// <summary>最後に使用したシーン名をユーザー設定へ保存する。</summary>
     void SaveLastSceneName(const std::string& sceneName);
+
     /// <summary>現在の実行時シーン名を返す。未設定なら空文字列。</summary>
     const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
@@ -79,13 +81,18 @@ public:
     /// <summary>シーンインスタンスの差し替えごとに増える世代番号を返す。</summary>
     /// <remarks>ポインターのアドレスが再利用されてもシーン変更を判定できる。</remarks>
     uint64_t GetSceneGeneration() const { return sceneGeneration_; }
+
     /// <summary>シーン管理と連携するEditorを登録する。所有権は受け取らない。</summary>
     void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
+
     /// <summary>ゲームを再生中か取得・設定する。</summary>
     bool IsPlaying() const { return isPlaying_; }
+
     void SetIsPlaying(bool isPlaying) { isPlaying_ = isPlaying; }
+
     /// <summary>シーン遷移のいずれかの段階を実行中か返す。</summary>
     bool IsTransitioning() const { return transitionPhase_ != TransitionPhase::Idle; }
+
     /// <summary>シーン初期化を非同期で進めているか返す。</summary>
     bool IsSceneInitializingAsync() const {
         return sceneInitializationStarted_ && !sceneInitializationFinished_;
@@ -97,21 +104,29 @@ public:
         const std::string& objectLayoutPath,
         const std::string& spriteLayoutPath,
         const std::string& runtimeSceneName);
+
     /// <summary>SceneLoadContextに指定されたScene Assetを開く。</summary>
     /// <returns>指定を受理して遷移を始めた場合はtrue。</returns>
     bool OpenSceneAsset(const SceneLoadContext& context);
+
     /// <summary>実行時シーン名をSCENE_EDITORに固定してレイアウトを開く。</summary>
     bool OpenEditorSceneAsset(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
+
     /// <summary>編集対象のパスだけを更新する。シーンの再読込と保存はしない。</summary>
     void SetEditorSceneAssetPaths(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
+
     /// <summary>現在のScene Assetの3D配置パスを返す。</summary>
     const std::string& GetEditorSceneAssetObjectPath() const { return activeSceneLoadContext_.objectLayoutPath; }
+
     /// <summary>現在のScene AssetのSprite配置パスを返す。</summary>
     const std::string& GetEditorSceneAssetSpritePath() const { return activeSceneLoadContext_.spriteLayoutPath; }
+
     /// <summary>現在のScene Assetに結び付く実行時シーン名を返す。</summary>
     const std::string& GetActiveSceneAssetRuntimeScene() const { return activeSceneLoadContext_.runtimeScene; }
+
     /// <summary>現在のScene Asset読み込み設定を返す。</summary>
     const SceneLoadContext& GetActiveSceneLoadContext() const { return activeSceneLoadContext_; }
+
     /// <summary>開いているScene Assetがあるか返す。</summary>
     bool HasActiveSceneAsset() const { return activeSceneLoadContext_.IsSceneAsset(); }
 
@@ -129,56 +144,84 @@ private:
 
     /// <summary>ロード画面を開始し、次シーンの非同期準備へ移る。</summary>
     void BeginLoadingTransition();
+
     /// <summary>遷移先とフェード・ロードの方式を内部キューへ登録する。</summary>
     void QueueSceneChange(const std::string& sceneName, bool startFadeOut, bool skipLoading = false, bool destinationHandlesReveal = false);
+
     /// <summary>次シーンの生成を非同期タスクに依頼する。</summary>
     void StartAsyncSceneCreate();
+
     /// <summary>非同期のシーン生成が完了したか返す。</summary>
     bool IsAsyncSceneReady() const;
+
     /// <summary>生成済みシーンをメインスレッドで初期化する。</summary>
     void PrepareLoadedSceneOnMainThread();
+
     /// <summary>事前抽出した素材の読み込みを非同期で開始する。</summary>
     void StartPreparedAssetsAsync();
+
     /// <summary>シーン生成と素材準備を合わせたロード進捗を返す。</summary>
     float CalculateLoadingProgress() const;
 
     /// <summary>準備済みシーンを現在シーンへ差し替える。</summary>
     void SwapToPreparedScene();
+
     /// <summary>ロード画面を経ない次シーンを現在シーンへ差し替える。</summary>
     void SwapToDirectNextScene();
+
     /// <summary>ロード画面に表示する進捗値を更新する。</summary>
     void SetLoadingProgress(float progress);
+
     /// <summary>ロード・フェードを含む遷移が進行中か返す。</summary>
     bool IsTransitionBusy() const;
 
 private:
+    // GetInstanceが参照する共有インスタンス。
     static SceneManager* instance_;
 
+    // 現在表示中、次に切り替える候補、ロード済み候補の各Sceneを所有する。
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
     std::unique_ptr<BaseScene> nextScene_ = nullptr;
     std::unique_ptr<BaseScene> preparedScene_ = nullptr;
+
+    // 背景で進む配置データ読込と素材準備の完了待ち。
     std::future<std::shared_ptr<ScenePreloadData>> loadingFuture_;
     std::future<void> assetCreationFuture_;
+
+    // 次Sceneへ受け渡す事前読込結果と、ロード画面へ表示する進捗。
     std::shared_ptr<ScenePreloadData> preparedLoadData_;
     std::shared_ptr<ScenePreloadProgress> preloadProgress_;
 
+    // Scene生成の登録表とEditorは外部所有。SceneManagerは借用する。
     AbstractSceneFactory* sceneFactory_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
 
+    // 起動シーンなどユーザー設定を読むファイル。
     const std::string kUserConfigPath = "Resources/json/user_config.json";
 
+    // 実行中かどうかと、Scene切替を識別する世代番号。
     bool isPlaying_ = false;
     uint64_t sceneGeneration_ = 0;
     TransitionPhase transitionPhase_ = TransitionPhase::Idle;
+
+    // 要求、現在、切替直前、ロード中のScene名を段階ごとに分けて保持する。
     std::string nextSceneName_ = "";
     std::string currentSceneName_;
     std::string pendingSceneNameForSwap_;
     std::string loadingTargetSceneName_;
+
+    // ロード画面の表示秒数。短時間でも最小表示時間は維持する。
     float loadingElapsed_ = 0.0f;
     float minLoadingDisplayTime_ = 0.45f;
+
+    // 事前生成したSceneのメインスレッド初期化が済んだかどうか。
     bool preparedSceneInitialized_ = false;
+
+    // テクスチャ/モデルを段階転送する現在の要素番号。非同期側とも共有する。
     std::atomic<std::size_t> preparedTextureIndex_ = 0;
     std::atomic<std::size_t> preparedModelIndex_ = 0;
+
+    // GPUアップロードの開始・送信、素材作成、Scene初期化の完了段階。
     bool asyncUploadBatchStarted_ = false;
     bool asyncUploadBatchSubmitted_ = false;
     bool assetCreationStarted_ = false;
@@ -186,8 +229,12 @@ private:
     bool preparedAssetsReady_ = false;
     bool sceneInitializationStarted_ = false;
     bool sceneInitializationFinished_ = false;
+
+    // 現在開いているScene Assetの読込設定と、次回切替への引継ぎ指定。
     SceneLoadContext activeSceneLoadContext_;
     bool preserveSceneAssetForNextChange_ = false;
+
+    // ロード画面を省いた直接切替の予約と、行き先側で暗転解除を担うかどうか。
     bool directTransitionPending_ = false;
     bool directDestinationHandlesReveal_ = false;
 };

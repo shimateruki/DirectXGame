@@ -21,6 +21,7 @@ public:
 
     /// <summary>最新の配置を集計し、検索と分類結果を表示します。</summary>
     void DrawImGui() override;
+
     std::string GetName() override { return "Scene Inventory"; }
 
 private:
@@ -51,16 +52,24 @@ private:
 
     // シーンの配置状態を読み取り、表示用の行と集計へ変換します。
     void RebuildEntries();
+
     void DrawSummary() const;
+
     void DrawGroupedList(GroupMode mode);
+
     void DrawObjectRows(const Group& group);
+
     void CopySummaryToClipboard() const;
 
     // 名前に基づく暫定分類を含むため、分類規則はここにまとめます。
     std::vector<Group> BuildGroups(GroupMode mode) const;
+
     bool MatchesSearch(const Entry& entry, const std::string& groupLabel = {}) const;
+
     std::string ClassifyCategory(const engine::Object3d& object) const;
+
     std::string ClassifyType(const engine::Object3d& object, const std::string& category) const;
+
     std::string ClassifyCollision(const engine::Object3d& object) const;
 
 private:

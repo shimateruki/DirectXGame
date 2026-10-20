@@ -27,11 +27,13 @@ namespace {
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     // 相対パスの地形判定はResources配下も探し、旧データの保存形式を受け入れる。
     std::filesystem::path filePath(path);
+
     if (std::filesystem::exists(filePath)) {
         return filePath;
     }
 
     std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
+
     if (std::filesystem::exists(resourcesPath)) {
         return resourcesPath;
     }
@@ -47,6 +49,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
             return true;
         }
     }
+
     return false;
 }
 
@@ -65,22 +68,34 @@ void Object3d::SetColliderConfig(const ColliderConfig& config) {
     if (collider_) {
         collider_->SetConfig(config);
         RefreshModelSurfaceCollision();
-        if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+        if (isStatic_)
+            CollisionManager::GetInstance()->MarkStaticGridDirty();
     }
 }
 
 void Object3d::RefreshModelSurfaceCollision() {
     // 接地用の面は描画モデルから一度だけ抽出し、毎フレームの衝突判定では再生成しない。
-    if (!collider_) return;
+    if (!collider_)
+        return;
     std::vector<ModelSurfaceTriangle> triangles;
-    Model* model = collider_->GetConfig().useModelSurface ? GetModel() : nullptr;
+    const bool volume = collider_->GetConfig().useModelVolume;
+    Model* model = (collider_->GetConfig().useModelSurface || volume) ? GetModel() : nullptr;
+
     if (model) {
-        for (const Model::Mesh& mesh : model->GetModelData().meshes) {
+        const auto& meshes = model->GetModelData().meshes;
+
+        for (size_t meshIndex = 0; meshIndex < meshes.size(); ++meshIndex) {
+            // メッシュ分割後の子Objectでは、その子が表示する部品だけを判定へ取り込む。
+            if (GetMeshDrawIndex() >= 0 && meshIndex != static_cast<size_t>(GetMeshDrawIndex()))
+                continue;
+            const Model::Mesh& mesh = meshes[meshIndex];
+
             for (size_t index = 0; index + 2 < mesh.indices.size(); index += 3) {
                 const uint32_t ia = mesh.indices[index];
                 const uint32_t ib = mesh.indices[index + 1];
                 const uint32_t ic = mesh.indices[index + 2];
-                if (ia >= mesh.vertices.size() || ib >= mesh.vertices.size() || ic >= mesh.vertices.size()) continue;
+                if (ia >= mesh.vertices.size() || ib >= mesh.vertices.size() || ic >= mesh.vertices.size())
+                    continue;
                 const auto& pa = mesh.vertices[ia].position;
                 const auto& pb = mesh.vertices[ib].position;
                 const auto& pc = mesh.vertices[ic].position;
@@ -93,11 +108,13 @@ void Object3d::RefreshModelSurfaceCollision() {
                                              ab.z * ac.x - ab.x * ac.z,
                                              ab.x * ac.y - ab.y * ac.x};
                 const float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-                if (length < 0.000001f || std::abs(normal.y) / length < 0.45f) continue;
+                if (length < 0.000001f || (!volume && std::abs(normal.y) / length < 0.45f))
+                    continue;
                 triangles.push_back({a, b, c});
             }
         }
     }
+
     collider_->SetModelSurface(std::move(triangles));
 }
 
@@ -108,11 +125,13 @@ const Object3d::ColliderConfig& Object3d::GetColliderConfig() const {
 
 void Object3d::SetColliderType(ColliderType type) {
     // 形状種別の変更後は静的衝突グリッドを無効化し、古い登録位置を使わせない。
-    if (!collider_) return;
+    if (!collider_)
+        return;
     ColliderConfig config = collider_->GetConfig();
     config.type = type;
     collider_->SetConfig(config);
-    if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+    if (isStatic_)
+        CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
 ColliderType Object3d::GetColliderType() const {
@@ -122,11 +141,13 @@ ColliderType Object3d::GetColliderType() const {
 
 void Object3d::SetCollisionSize(const engine::Vector3& size) {
     // 大きさを変更した静的物体は衝突グリッドへ再登録する。
-    if (!collider_) return;
+    if (!collider_)
+        return;
     ColliderConfig config = collider_->GetConfig();
     config.size = size;
     collider_->SetConfig(config);
-    if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+    if (isStatic_)
+        CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
 engine::Vector3 Object3d::GetCollisionSize() const {
@@ -148,7 +169,8 @@ void Object3d::SetCollisionAttribute(uint32_t attribute) {
     // 衝突カテゴリ変更は静的グリッド内の検索対象を変えるため、再構築を要求する。
     if (collider_) {
         collider_->SetAttribute(attribute);
-        if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+        if (isStatic_)
+            CollisionManager::GetInstance()->MarkStaticGridDirty();
     }
 }
 
@@ -161,7 +183,8 @@ void Object3d::SetCollisionMask(uint32_t mask) {
     // 衝突相手の選別条件が変わったら静的グリッドを更新する。
     if (collider_) {
         collider_->SetMask(mask);
-        if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+        if (isStatic_)
+            CollisionManager::GetInstance()->MarkStaticGridDirty();
     }
 }
 
@@ -172,10 +195,12 @@ uint32_t Object3d::GetCollisionMask() const {
 
 bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
     // 高さ配列が解像度に足りないJSONは採用せず、既存の地形判定を保持する。
-    if (!collider_ || path.empty()) return false;
+    if (!collider_ || path.empty())
+        return false;
 
     std::ifstream file(ResolveTerrainCollisionFilePath(path));
-    if (!file) return false;
+    if (!file)
+        return false;
 
     json data;
     try {
@@ -183,7 +208,9 @@ bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
     } catch (...) {
         return false;
     }
-    if (!data.is_object()) return false;
+
+    if (!data.is_object())
+        return false;
 
     TerrainCollisionData terrain;
     terrain.enabled = true;
@@ -195,9 +222,11 @@ bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
 
     if (data.contains("heightSamples") && data["heightSamples"].is_array()) {
         const auto& samples = data["heightSamples"];
+
         if (!samples.empty() && samples.front().is_array()) {
             for (const auto& row : samples) {
-                if (!row.is_array()) continue;
+                if (!row.is_array())
+                    continue;
                 for (const auto& value : row) {
                     if (value.is_number()) {
                         terrain.heights.push_back(value.get<float>());
@@ -225,15 +254,18 @@ bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
 
 void Object3d::SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path) {
     // 判定本体と再読込用パスを同時に保存し、静的グリッドへ変更を通知する。
-    if (!collider_) return;
+    if (!collider_)
+        return;
     collider_->SetTerrainData(data);
     terrainCollisionPath_ = path;
-    if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+    if (isStatic_)
+        CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
 const TerrainCollisionData* Object3d::GetTerrainCollisionData() const {
     // 地形判定が無効ならデータ参照を返さず、通常Colliderと区別する。
-    if (!collider_) return nullptr;
+    if (!collider_)
+        return nullptr;
     const TerrainCollisionData& data = collider_->GetTerrainData();
     return data.enabled ? &data : nullptr;
 }
@@ -250,6 +282,7 @@ OBB Object3d::GetOBB() const {
 
 AABB Object3d::GetModelWorldAABB() const {
     Model* model = GetModel();
+
     if (!model) {
         // モデルがない場合は位置を基準にデフォルトサイズ
         return { {transform_.translate.x - 0.5f, transform_.translate.y - 0.5f, transform_.translate.z - 0.5f},
@@ -295,6 +328,7 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
         info.isColliding = false;
         return info;
     }
+
     if (GetColliderType() == ColliderType::kNone ||
         other->GetColliderType() == ColliderType::kNone ||
         GetCollisionAttribute() == 0 || other->GetCollisionAttribute() == 0 ||
@@ -303,6 +337,7 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
         info.isColliding = false;
         return info;
     }
+
     return collider_->CheckCollision(other->GetCollider());
 }
 

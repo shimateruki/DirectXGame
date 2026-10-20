@@ -13,25 +13,31 @@ void Player::SetCarriedEnemy(engine::Object3d* enemy) {
         if (enemy && !hasCarriedEnemyBaseScale_) {
             carriedEnemyBaseScale_ = GetStableEnemyCarryScale(enemy);
             const Transform* enemyTransform = enemy->GetTransform();
+
             if (enemyTransform) {
                 carriedEnemyBaseRotation_ = enemyTransform->rotate;
                 carriedEnemyBaseQuaternion_ = enemyTransform->quaternion;
                 carriedEnemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
             }
+
             hasCarriedEnemyBaseScale_ = true;
         }
+
         return;
     }
 
     carriedEnemy_ = enemy;
+
     if (enemy) {
         carriedEnemyBaseScale_ = GetStableEnemyCarryScale(enemy);
         const Transform* enemyTransform = enemy->GetTransform();
+
         if (enemyTransform) {
             carriedEnemyBaseRotation_ = enemyTransform->rotate;
             carriedEnemyBaseQuaternion_ = enemyTransform->quaternion;
             carriedEnemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
         }
+
         hasCarriedEnemyBaseScale_ = true;
     } else {
         carriedEnemyBaseScale_ = {1.0f, 1.0f, 1.0f};
@@ -49,6 +55,7 @@ void Player::ReleaseCarriedEnemy(bool restorePose) {
     }
 
     engine::Object3d* enemy = carriedEnemy_;
+
     if (!enemy) {
         return;
     }
@@ -61,6 +68,7 @@ void Player::ReleaseCarriedEnemy(bool restorePose) {
     }
 
     enemy->SetIsVisible(true);
+
     if (restorePose) {
         enemy->SetScale(hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemy->GetScale());
         enemy->SetEulerAngles(carriedEnemyBaseRotation_);
@@ -90,6 +98,7 @@ void Player::BeginAbsorbEffect(BaseEnemy* enemy) {
     }
 
     pendingAbsorbType_ = ResolveEnemyMorphType(enemy->GetEnemyType());
+
     if (pendingAbsorbType_ != EnemyMorphType::Slime && pendingAbsorbType_ != EnemyMorphType::FireSlime) {
         StartEnemyMorph(enemy);
         return;
@@ -118,10 +127,12 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
     if (!absorbEffectActive_) {
         return;
     }
+
     if (!pendingAbsorbEnemy_) {
         CancelAbsorbEffect(false);
         return;
     }
+
     if (deltaTime <= 0.0f) {
         return;
     }
@@ -171,6 +182,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
                                   0.0f, 1.0f),
                        1.0f};
     SetColor(flashColor);
+
     for (engine::Object3d* child : GetChildren()) {
         if (child) {
             child->SetColor(flashColor);
@@ -183,6 +195,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
     if (particleSystem_ && absorbEffectEmitTimer_ <= 0.0f) {
         engine::Vector3 toPlayer = targetPos - absorbPos;
         const float length = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y + toPlayer.z * toPlayer.z);
+
         if (length > 0.001f) {
             toPlayer = toPlayer / length;
         } else {
@@ -203,6 +216,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
 
 void Player::FinishAbsorbEffect() {
     BaseEnemy* enemy = pendingAbsorbEnemy_;
+
     if (!enemy) {
         CancelAbsorbEffect(false);
         return;
@@ -211,6 +225,7 @@ void Player::FinishAbsorbEffect() {
     // 獲得バーストは共通VFXへ集約し、二重発生を避ける。
 
     SetColor(pendingAbsorbPlayerBaseColor_);
+
     for (engine::Object3d* child : GetChildren()) {
         if (child) {
             child->SetColor(pendingAbsorbPlayerBaseColor_);
@@ -236,10 +251,12 @@ void Player::CancelAbsorbEffect(bool restoreEnemy) {
             pendingAbsorbEnemy_->UpdateLocalMatrix();
             pendingAbsorbEnemy_->UpdateWorldMatrix();
         }
+
         pendingAbsorbEnemy_->SetIsVisible(true);
     }
 
     SetColor(pendingAbsorbPlayerBaseColor_);
+
     if (!isEnemyMorphed_) {
         for (engine::Object3d* child : GetChildren()) {
             if (child) {
@@ -261,14 +278,17 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     }
 
     const EnemyMorphType resolvedType = ResolveEnemyMorphType(enemy->GetEnemyType());
+
     if (resolvedType == EnemyMorphType::None) {
         DebugConsole::GetInstance()->AddLog("Enemy morph rejected: unsupported enemy type.");
         return;
     }
 
     if (baseCombatController_) {
+        // 進行中の攻撃を先に止め、変身前の判定や演出を次の能力へ持ち込まない。
         baseCombatController_->Cancel(*this, true);
     }
+
     if (isEnemyMorphed_ && copyAbilityController_) {
         copyAbilityController_->Cancel(*this);
     }
@@ -284,17 +304,22 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;
     enemyMorphEffectTimer_ = 0.0f;
     enemyMorphVisualTimer_ = 0.0f;
+
     if (copyAbilityController_) {
         copyAbilityController_->Activate(static_cast<int>(enemyMorphType_), enemy->GetAttackProfile());
     }
+
     enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
     isEnemyMorphed_ = true;
     CompleteEnemyMorphStart(currentMoveYaw);
     enemy->SetCarried(true);
+
     if (enemy->param_.has_value()) {
         enemy->param_->hp = 0.0f;
     }
+
     enemy->isDead = true;
+    // コピー元は以後の敵更新・当たり判定から除外し、能力だけをPlayer側へ移す。
     enemy->SetIsVisible(false);
     enemy->SetCollisionAttribute(0);
     enemy->SetCollisionMask(0);
@@ -306,10 +331,13 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     if (!enemy->GetModelName().empty()) {
         SetModel(enemy->GetModelName());
     }
+
     const std::string enemyTexture = enemy->GetTexturePath();
+
     if (!enemyTexture.empty()) {
         SetTexture(enemyTexture);
     }
+
     SetMaterialType(enemy->GetMaterialType());
     SetEmissive(enemy->GetEmissive());
     animName_.clear();
@@ -319,6 +347,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     EmitEnemyMorphStartEffects();
 
     DebugConsole::GetInstance()->AddLog("Enemy morph start: " + enemy->GetEnemyType());
+
     if (carriedEnemy_ == enemy) {
         SetCarriedEnemy(nullptr);
     }
@@ -347,6 +376,7 @@ void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible) {
     savedMorphSourceVisible_ = sourceVisible;
     savedMorphChildVisible_.clear();
     savedMorphChildVisible_.reserve(GetChildren().size());
+
     for (engine::Object3d* child : GetChildren()) {
         savedMorphChildVisible_.push_back(child ? child->GetIsVisible() : false);
     }
@@ -355,20 +385,25 @@ void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible) {
 void Player::CompleteEnemyMorphStart(float moveYaw) {
     if (checkpointActivated_ && enemyMorphType_ != EnemyMorphType::Crown) {
         const std::string currentMorph = GetEnemyTypeForCurrentMorph();
+
         if (!currentMorph.empty()) {
             checkpointMorphEnemyType_ = currentMorph;
             RefreshCheckpointMorphSnapshot();
         }
     }
+
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera(); camera && !IsEditorInternal()) {
         // コピー中の右クリックは固有能力専用なので、通常フックの一人称ズームを無効化します。
         camera->SetAimCameraSuppressed(true);
     }
+
     if (hookMarker_) {
         hookMarker_->SetIsVisible(false);
     }
+
     aimTargetObject_ = nullptr;
     SetMoveYaw(moveYaw);
+
     for (engine::Object3d* child : GetChildren()) {
         if (child) {
             child->SetIsVisible(false);
@@ -378,35 +413,44 @@ void Player::CompleteEnemyMorphStart(float moveYaw) {
 
 void Player::EmitEnemyMorphStartEffects() {
     const char* cue = nullptr;
+
     switch (enemyMorphType_) {
     case EnemyMorphType::Slime:
         cue = "player_copy_pink";
         break;
+
     case EnemyMorphType::FireSlime:
         cue = "player_copy_fire";
         break;
+
     case EnemyMorphType::ThunderSlime:
         cue = "player_copy_thunder";
         break;
+
     case EnemyMorphType::WindSlime:
         cue = "player_copy_wind";
         break;
+
     case EnemyMorphType::Bomber:
         cue = "player_copy_bomb";
         break;
+
     default:
         break;
     }
+
     if (cue) {
         // 見た目だけの変形。速度・操作・当たり判定・コピー成立時刻は変更しない。
         // 攻撃は同じモーション枠を上書きでき、ジャンプ時はAnimator側で解除する。
         ClearSlimeAbilityMotion();
         PlaySlimeAbilityMotion("player_copy_acquire", false, 1.0f, 0.025f, 0.08f);
         VFXSequencer::PlayOneShotOnTarget(cue, this);
+
         // 獲得演出中に常時オーラを重ねない。
         enemyMorphEffectTimer_ = 0.55f;
         return;
     }
+
     // 王冠などの特殊コピーは既存演出を維持する。
     if (particleSystem_ && enemyMorphType_ != EnemyMorphType::Slime) {
         engine::Vector3 up = {0.0f, 1.0f, 0.0f};
@@ -485,20 +529,7 @@ void Player::UpdateEnemyMorph(float deltaTime) {
                 GetWorldPosition() + engine::Vector3{0.0f, 1.1f, 0.0f}, 6, 1.2f, &up, 12.0f, enemyMorphTint_,
                 {enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f}, 0.08f, 0.22f, 0.26f, 0.03f);
         }
+
         enemyMorphEffectTimer_ = kEnemyMorphParticleInterval;
     }
-}
-
-float Player::GetEnemyMorphRate() const {
-    // 制限時間のないコピーは残量を常に満量としてUIへ返す。
-    if (!isEnemyMorphed_) {
-        return 0.0f;
-    }
-    if (!enemyMorphHasTimeLimit_) {
-        return 1.0f;
-    }
-    if (enemyMorphDuration_ <= 0.0f) {
-        return 0.0f;
-    }
-    return std::clamp(enemyMorphTimer_ / enemyMorphDuration_, 0.0f, 1.0f);
 }

@@ -24,6 +24,7 @@ class Character : public engine::Object3d {
 
     /// <summary>現在の移動速度を取得・設定する。</summary>
     engine::Vector3 GetVelocity() const { return velocity_; }
+
     void SetVelocity(const engine::Vector3& v) { velocity_ = v; }
 
     /// <summary>ダメージ状態へ移らず、指定時間だけ移動へ外力を重ねる。</summary>
@@ -31,9 +32,12 @@ class Character : public engine::Object3d {
 
     /// <summary>最後の移動更新での接地状態を取得・設定する。</summary>
     bool IsGrounded() const { return isGrounded_; }
+
     void SetGrounded(bool grounded) { isGrounded_ = grounded; }
+
     /// <summary>衝突と移動を計算するCharacterMotorを可変または読み取り専用で返す。</summary>
     CharacterMotor& GetCharacterMotor() { return characterMotor_; }
+
     const CharacterMotor& GetCharacterMotor() const { return characterMotor_; }
 
     /// <summary>
@@ -66,13 +70,20 @@ class Character : public engine::Object3d {
   protected:
     /// <summary>速度や接地などCharacter固有の状態をリプレイ用JSONへ書く。</summary>
     void CaptureReplayCustomState(json& state) const override;
+
     /// <summary>CharacterMotorの設定を現在のキャラクターパラメータへ同期する。</summary>
     void SyncCharacterMotorSettings();
+
+    /// <summary>演出が座標を直接制御するフレームでは重力とMotor移動を止める。</summary>
+    void SetMotorSuspended(bool suspended) { motorSuspended_ = suspended; }
+
     /// <summary>リプレイ用JSONからCharacter固有の状態を戻す。</summary>
     void RestoreReplayCustomState(const json& state) override;
 
     engine::Vector3 velocity_ = {0.0f, 0.0f, 0.0f}; // 現在速度。
     bool isGrounded_ = false;               // 最後の更新で接地しているか。
+    bool motorSuspended_ = false;            // 演出が座標を直接決めるフレームだけ有効。
+
 private:
     engine::Vector3 externalImpulseVelocity_ = {0.0f, 0.0f, 0.0f};
     float externalImpulseTimer_ = 0.0f;

@@ -43,8 +43,11 @@ public:
 
 private:
     ImGuiManager() = default;
+
     ~ImGuiManager() = default;
+
     ImGuiManager(const ImGuiManager&) = delete;
+
     ImGuiManager& operator=(const ImGuiManager&) = delete;
 
 private:

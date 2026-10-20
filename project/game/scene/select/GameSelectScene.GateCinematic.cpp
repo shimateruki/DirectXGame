@@ -4,7 +4,7 @@
 #include "Player.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include "SceneManager.h"
 #include "PostEffect.h"
 #include "GimmickStageGate.h"
@@ -18,15 +18,18 @@ using namespace StageSelectDetail;
 void GameSelectScene::CaptureGateEntryMaterialState(engine::Object3d* rootObject) {
     // ゲート突入演出で変更する前に、子を含む材質を復元用に控える。
     gateEntryMaterialSnapshots_.clear();
+
     if (!rootObject) {
         return;
     }
 
     std::vector<engine::Object3d*> stack;
     stack.push_back(rootObject);
+
     while (!stack.empty()) {
         engine::Object3d* object = stack.back();
         stack.pop_back();
+
         if (!object) {
             continue;
         }
@@ -36,6 +39,7 @@ void GameSelectScene::CaptureGateEntryMaterialState(engine::Object3d* rootObject
         snapshot.color = object->GetColor();
         snapshot.materialType = object->GetMaterialType();
         snapshot.emissive = object->GetEmissive();
+
         if (auto* material = object->GetMaterialData()) {
             snapshot.portalClipEnabled = material->portalClipEnabled;
             snapshot.portalClipProgress = material->portalClipProgress;
@@ -45,6 +49,7 @@ void GameSelectScene::CaptureGateEntryMaterialState(engine::Object3d* rootObject
             snapshot.portalClipDissolve = material->portalClipDissolve;
             snapshot.portalClipColor = material->portalClipColor;
         }
+
         gateEntryMaterialSnapshots_.push_back(snapshot);
 
         for (engine::Object3d* child : object->GetChildren()) {
@@ -68,6 +73,7 @@ void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const engin
     } else {
         dissolveDirection = {0.0f, 0.0f, 1.0f};
     }
+
     // ゲートに入り始めた瞬間から輪郭を焼き、透明化は後半だけに寄せて削れて消える印象を強める。
     const float clipProgress = SelectClamp01(0.14f + SelectEaseOutCubic(dissolveProgress) * 0.86f);
     const float edgePeak = 1.0f - std::abs(clipProgress * 2.0f - 1.0f);
@@ -80,6 +86,7 @@ void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const engin
 
     for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
         engine::Object3d* object = snapshot.object;
+
         if (!object) {
             continue;
         }
@@ -110,6 +117,7 @@ void GameSelectScene::RestoreGateEntryMaterialState() {
     // 編集・再入場時にゲートの演出色が残らないよう、控えた材質を戻す。
     for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
         engine::Object3d* object = snapshot.object;
+
         if (!object) {
             continue;
         }
@@ -128,12 +136,14 @@ void GameSelectScene::RestoreGateEntryMaterialState() {
             material->portalClipColor = snapshot.portalClipColor;
         }
     }
+
     gateEntryMaterialSnapshots_.clear();
 }
 
 void GameSelectScene::UpdateGateCinematicBars(float deltaTime) {
     // シネマバーの高さを既定値から補間し、他のポストエフェクト設定を保つ。
     PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+
     if (!params) {
         return;
     }
@@ -152,6 +162,7 @@ void GameSelectScene::UpdateGateCinematicBars(float deltaTime) {
     const float targetBlend = isCinematicActive ? 1.0f : 0.0f;
     const float speed = isCinematicActive ? kGateCinematicBarOpenSpeed : kGateCinematicBarCloseSpeed;
     const float step = speed * std::max(deltaTime, 0.0f);
+
     if (gateCinematicBarBlend_ < targetBlend) {
         gateCinematicBarBlend_ = std::min(targetBlend, gateCinematicBarBlend_ + step);
     } else if (gateCinematicBarBlend_ > targetBlend) {
@@ -172,9 +183,11 @@ void GameSelectScene::UpdateGateCinematicBars(float deltaTime) {
 void GameSelectScene::ResetGateCinematicBars() {
     // この演出が上書きした場合だけ元のバー高さへ復元する。
     PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+
     if (params && gateCinematicBarOverrideActive_) {
         params->cinemaBarHeight = gateCinematicBarBaseHeight_;
     }
+
     gateCinematicBarOverrideActive_ = false;
     gateCinematicBarBlend_ = 0.0f;
     gateCinematicBarBaseHeight_ = 0.0f;
@@ -184,12 +197,15 @@ bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageS
     if (!request.active || gateEntryCinematicActive_) {
         return false;
     }
+
     const auto& stages = StageManager::GetInstance()->GetStages();
+
     if (request.stageIndex < 0 || request.stageIndex >= static_cast<int>(stages.size())) {
         return false;
     }
 
     gateReturnTargetGate_ = FindStageGateByIndex(request.stageIndex);
+
     if (!gateReturnTargetGate_ || !player_) {
         return false;
     }
@@ -210,6 +226,7 @@ bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageS
                                           probeRoute.surface.z + outwardDirection.z * kGateReturnExitForwardOffset};
     const float returnGroundY = SelectResolveGateReturnGroundY(landingProbePosition, gatePos, stageNodePosition,
                                                                selectPlayerStart, gateReturnTargetGate_);
+
     // 出現開始はゲートの見た目中心に合わせ、着地先だけを床レイキャストのYに分離します。
     const float gateExitY = gatePos.y;
     const SelectGateEntryRoute route = SelectBuildGateEntryRoute(gatePos, gateDirection, gateExitY);
@@ -245,6 +262,7 @@ bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageS
         const engine::Vector3 landingFocus = {gateReturnEndPlayerPosition_.x,
                                       gateReturnEndPlayerPosition_.y + kGateReturnCameraFocusHeight,
                                       gateReturnEndPlayerPosition_.z};
+
         // ゲート真正面だけを見ると、着地後のプレイヤーが画面外やゲート裏へ逃げやすいです。
         // 注視点を着地点寄りにし、少し斜めから見ることでゲートから出る動きと着地を同時に見せます。
         const engine::Vector3 focus = SelectLerpVector3(gateFocus, landingFocus, kGateReturnCameraLandingFocusRate);
@@ -275,10 +293,12 @@ bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageS
     gateReturnLandingImpulsePlayed_ = false;
     gateReturnRecoveryImpulsePlayed_ = false;
     stageDecisionCooldown_ = kGateReturnTotalDuration;
+
     if (gatePromptSprite_) {
         gatePromptSprite_->SetVisible(false);
         gatePromptSprite_->Update();
     }
+
     DebugConsole::GetInstance()->AddLog("Stage Select: gate return presentation start.");
     return true;
 }
@@ -299,6 +319,7 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
         const float returnGroundY =
             SelectResolveGateReturnGroundY(gateReturnEndPlayerPosition_, gatePos, stageNodePosition,
                                            gateReturnEndPlayerPosition_, gateReturnTargetGate_);
+
         // 出現開始はゲートの見た目中心、着地先は床レイキャストで分けます。
         const float gateExitY = gatePos.y;
         const SelectGateEntryRoute route = SelectBuildGateEntryRoute(gatePos, gateReturnDirection_, gateExitY);
@@ -317,6 +338,7 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
 
         engine::Vector3 eye = gateReturnCameraEndEye_;
         engine::Vector3 target = gateReturnCameraEndTarget_;
+
         if (gateReturnPresentationTimer_ < kGateReturnCameraRestoreStartTime) {
             const float introT =
                 SelectEaseOutCubic(SelectClamp01(gateReturnPresentationTimer_ / kGateReturnCameraIntroDuration));
@@ -328,6 +350,7 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
             eye = SelectLerpVector3(gateReturnCameraEndEye_, gateReturnCameraRestoreEye_, restoreT);
             target = SelectLerpVector3(gateReturnCameraEndTarget_, gateReturnCameraRestoreTarget_, restoreT);
         }
+
         camera->ConfigFixedPoint(eye, SelectLookAtRotation(eye, target));
     }
 
@@ -338,6 +361,7 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
     }
 
     const bool playerAnimationFinished = player_ && player_->IsGateReturnAnimationFinished();
+
     if (playerAnimationFinished || gateReturnPresentationTimer_ >= kGateReturnTotalDuration) {
         FinishStageReturnPresentation();
     }
@@ -356,6 +380,7 @@ void GameSelectScene::FinishStageReturnPresentation() {
         player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
         player_->TriggerSlimeImpulse({0.96f, 1.08f, 0.96f}, 0.18f);
     }
+
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         if (player_) {
             camera->SetFollowTarget(player_);
@@ -363,6 +388,7 @@ void GameSelectScene::FinishStageReturnPresentation() {
             camera->SnapToThirdPerson(kGateReturnThirdPersonDistance, kGateReturnThirdPersonHeight,
                                       kGateReturnThirdPersonPitch);
         }
+
         camera->SetInputEnabled(true);
     }
 
@@ -371,11 +397,13 @@ void GameSelectScene::FinishStageReturnPresentation() {
         pendingStageClearRewardPresentation_ = {};
     } else {
         unlockingStageIndex_ = FindPendingUnlockStage();
+
         if (unlockingStageIndex_ >= 0) {
             selectedStageIndex_ = unlockingStageIndex_;
             DebugConsole::GetInstance()->AddLog("Stage Select: crown unlock presentation start.");
         }
     }
+
     DebugConsole::GetInstance()->AddLog("Stage Select: gate return presentation finished.");
 }
 
@@ -402,6 +430,7 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
         const engine::Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
         const engine::Vector3 toGateRaw = {gatePos.x - gateEntryStartPlayerPosition_.x, 0.0f,
                                    gatePos.z - gateEntryStartPlayerPosition_.z};
+
         // 接触位置そのものではなく、ゲート面の向きから突入方向を決める。
         // これにより、ゲートの端から触れてもカメラ構図と突入方向が大きく暴れない。
         const engine::Vector3 toGate = SelectGateEntryDirection(gateEntryTargetGate_, toGateRaw);
@@ -418,12 +447,14 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
         player_->TriggerSlimeImpulse({1.08f, 0.92f, 1.10f}, 0.20f);
         CaptureGateEntryMaterialState(player_);
         ApplyGateEntryDissolveMaterial(0.0f, gatePos, toGate);
+
         if (auto* stageGate = dynamic_cast<GimmickStageGate*>(gateEntryTargetGate_)) {
             stageGate->TriggerEntryReaction();
         }
 
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
             const engine::Vector3 side = {toGate.z, 0.0f, -toGate.x};
+
             // カメラはプレイヤーの接触位置ではなくゲート中心を基準にする。
             // 表裏の差はtoGateの向きだけで反転させ、どちら側から入っても同じ構図に近づける。
             const engine::Vector3 focus = {gatePos.x, gatePos.y + kGateEntryCameraFocusHeight, gatePos.z};
@@ -447,10 +478,12 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
     gateEntryPendingStageIndex_ = stageIndex;
     isChangingStage_ = true;
     stageDecisionCooldown_ = 0.35f;
+
     if (gatePromptSprite_) {
         gatePromptSprite_->SetVisible(false);
         gatePromptSprite_->Update();
     }
+
     DebugConsole::GetInstance()->AddLog("Stage Select: gate entry cinematic start.");
 }
 
@@ -490,6 +523,7 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
             const engine::Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
             const engine::Vector3 toGate = gateEntryDirection_;
             const float entryY = gatePos.y;
+
             // 演出中にゲートが親子関係やEditor操作で動いても、入口・中心・奥位置を最新Transformから作り直す。
             const SelectGateEntryRoute entryRoute = SelectBuildGateEntryRoute(gatePos, toGate, entryY);
             gateEntrySurfacePlayerPosition_ = entryRoute.surface;
@@ -517,6 +551,7 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
 
         player_->SetTranslate(playerPos);
         player_->SetScale(gateEntryStartPlayerScale_);
+
         if (clipT >= 0.995f || t >= 0.94f) {
             player_->SetIsVisible(false);
         }
@@ -529,6 +564,7 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
             ApplyGateEntryDissolveMaterial(1.0f, gatePos, gateEntryDirection_);
             gateEntryMaterialSnapshots_.clear();
         }
+
         gateEntryCinematicActive_ = false;
         gateEntryCinematicTimer_ = 0.0f;
         gateEntryPendingStageIndex_ = -1;

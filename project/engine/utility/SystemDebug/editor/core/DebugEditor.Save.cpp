@@ -45,7 +45,7 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
+#include <game/system/combat/BulletManager.h>
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -85,6 +85,7 @@ bool DebugEditor::CreateSceneAsset(
     if (created) {
         DebugConsole::GetInstance()->AddLog("Created Scene Asset: " + createdFilename);
     }
+
     return created;
 }
 
@@ -105,6 +106,7 @@ bool DebugEditor::DuplicateSceneAsset(
         DebugConsole::GetInstance()->AddLog(
             "Duplicated Scene Asset: " + sourceFilename + " -> " + createdFilename);
     }
+
     return duplicated;
 }
 
@@ -128,12 +130,14 @@ bool DebugEditor::RenameSceneAsset(
 
     if (wasCurrentScene) {
         SetSceneFilename(renamedFilename);
+
         if (sceneManager_) {
             sceneManager_->SetEditorSceneAssetPaths(
                 serializer_.ResolveSceneAssetObjectPath(renamedFilename),
                 serializer_.ResolveSceneAssetSpritePath(renamedFilename));
         }
     }
+
     DebugConsole::GetInstance()->AddLog(
         "Renamed Scene Asset: " + sourceFilename + " -> " + renamedFilename);
     return true;
@@ -145,9 +149,11 @@ bool DebugEditor::DeleteSceneAsset(const std::string& filename, std::string& err
         errorMessage = "開いているScene Assetは削除できません。別のシーンを開いてから削除してください。";
         return false;
     }
+
     if (!serializer_.DeleteSceneAsset(filename, errorMessage)) {
         return false;
     }
+
     DebugConsole::GetInstance()->AddLog("Deleted Scene Asset: " + filename);
     return true;
 }
@@ -160,6 +166,7 @@ bool DebugEditor::SetSceneAssetRuntimeScene(
     if (!serializer_.SetSceneAssetRuntimeScene(filename, runtimeScene, errorMessage)) {
         return false;
     }
+
     DebugConsole::GetInstance()->AddLog(
         "Scene Asset runtime changed: " + filename + " -> " + runtimeScene);
     return true;
@@ -184,6 +191,7 @@ bool DebugEditor::SetSceneAssetRuntimeSettings(
         errorMessage)) {
         return false;
     }
+
     DebugConsole::GetInstance()->AddLog("Updated Scene Asset runtime settings: " + filename);
     return true;
 }
@@ -200,6 +208,7 @@ SceneSerializer::SceneAssetValidationResult DebugEditor::ValidateSceneAsset(
         !SceneControllerFactory::GetInstance()->IsRegistered(asset->controllerName)) {
         result.errors.push_back("Scene Controllerが登録されていません: " + asset->controllerName);
     }
+
     return result;
 }
 
@@ -214,18 +223,22 @@ bool DebugEditor::OpenSceneAsset(
     std::string& errorMessage) {
     // Play・Prefab 編集・未保存変更を確認してから Scene Asset を切り替える。
     errorMessage.clear();
+
     if (!sceneManager_) {
         errorMessage = "SceneManagerが初期化されていません。";
         return false;
     }
+
     if (sceneManager_->IsPlaying()) {
         errorMessage = "実行中はScene Assetを切り替えられません。停止してから開いてください。";
         return false;
     }
+
     if (prefabEditMode_) {
         errorMessage = "Prefab Modeを終了してからScene Assetを開いてください。";
         return false;
     }
+
     if (HasAnyDirty() && !discardUnsavedChanges) {
         errorMessage = "未保存の変更があります。保存するか、破棄して開く操作を選んでください。";
         return false;
@@ -237,22 +250,29 @@ bool DebugEditor::OpenSceneAsset(
     const auto asset = std::find_if(assets.begin(), assets.end(), [&](const SceneSerializer::SceneAssetInfo& candidate) {
         return candidate.filename == filename;
     });
+
     if (asset == assets.end()) {
         errorMessage = "Scene Assetが見つかりません: " + filename;
         return false;
     }
+
     if (!sceneManager_->IsSceneRegistered(asset->runtimeScene)) {
         errorMessage = "実行クラスがSceneFactoryへ登録されていません: " + asset->runtimeScene;
         return false;
     }
+
     const SceneSerializer::SceneAssetValidationResult validation = ValidateSceneAsset(filename);
+
     if (!validation.IsValid()) {
         errorMessage = validation.errors.front();
+
         for (size_t index = 1; index < validation.errors.size(); ++index) {
             errorMessage += "\n" + validation.errors[index];
         }
+
         return false;
     }
+
     for (const std::string& warning : validation.warnings) {
         DebugConsole::GetInstance()->AddLog("Scene validation warning: " + warning);
     }
@@ -269,6 +289,7 @@ bool DebugEditor::OpenSceneAsset(
     context.lightPath = asset->lightPath;
     context.cameraPath = asset->cameraPath;
     context.skyboxPath = asset->skyboxPath;
+
     if (!sceneManager_->OpenSceneAsset(context)) {
         errorMessage = "シーン遷移中のためScene Assetを開けませんでした。";
         return false;
@@ -278,6 +299,7 @@ bool DebugEditor::OpenSceneAsset(
     if (ghostRecorder_) {
         ghostRecorder_->ClearTarget();
     }
+
     ClearObjectSelection();
     EditorManager::GetInstance()->ClearSelection();
     EditorTransactionManager::GetInstance()->Clear();
@@ -299,11 +321,14 @@ bool DebugEditor::IsCurrentSceneAsset(const std::string& filename) const {
     if (!sceneManager_ || !sceneManager_->HasActiveSceneAsset()) {
         return false;
     }
+
     std::string leafName = filename;
     const size_t slash = leafName.find_last_of("/\\");
+
     if (slash != std::string::npos) {
         leafName = leafName.substr(slash + 1);
     }
+
     return leafName == currentSceneFilename_;
 }
 
@@ -323,9 +348,16 @@ void DebugEditor::SaveScene(SaveMode mode) {
         SavePrefabEditSession();
         return;
     }
+
+    // 未選択のSceneに名前のない分割JSONを作らない。保存先はScene Assetの選択か新規作成で確定する。
+    if (currentSceneFilename_[0] == '\0') {
+        DebugConsole::GetInstance()->AddLog("Scene Assetを開くか新規作成してから保存してください。");
+        return;
+    }
 #ifdef USE_IMGUI
     // ImGui 有効時は保存対象をプレビューに積み、ユーザーの確定まで書き込まない。
     auto targets = serializer_.BuildSceneSaveTargets(currentSceneFilename_, mode);
+
     if (targets.empty()) {
         DebugConsole::GetInstance()->AddLog("Save Preview: 保存対象がありません。");
         return;
@@ -346,10 +378,18 @@ void DebugEditor::SaveSingleObject() {
         SavePrefabEditSession();
         return;
     }
-    if (!selectedObject_) return;
+
+    if (currentSceneFilename_[0] == '\0') {
+        DebugConsole::GetInstance()->AddLog("Scene Assetを開くか新規作成してから保存してください。");
+        return;
+    }
+
+    if (!selectedObject_)
+        return;
 
 #ifdef USE_IMGUI
     auto targets = serializer_.BuildSingleObjectSaveTargets(selectedObject_, std::string(currentSceneFilename_));
+
     if (targets.empty()) {
         DebugConsole::GetInstance()->AddLog("Save Preview: 単体保存の対象を作成できませんでした。");
         return;
@@ -368,19 +408,24 @@ void DebugEditor::DrawSavePreview() {
 #ifdef USE_IMGUI
     // 確定時だけ書き込み、保存待ちの Scene 切り替えは Dirty が消えた後に行う。
     SceneSavePreview::Action action = sceneSavePreview_.Draw();
+
     if (action == SceneSavePreview::Action::None) {
         return;
     }
 
     if (action == SceneSavePreview::Action::Confirm) {
         std::string savedFiles = serializer_.SaveTargets(sceneSavePreview_.GetTargets());
+
         if (!pendingSaveIsSingleObject_) {
             ClearDirty(pendingSaveMode_);
         }
+
         std::string notificationName = sceneSavePreview_.GetTitle();
+
         if (!savedFiles.empty()) {
             notificationName += " (" + savedFiles + ")";
         }
+
         DebugConsole::GetInstance()->AddLog("Save Preview: 保存を確定しました。");
         TriggerSaveNotification(notificationName);
 
@@ -388,6 +433,7 @@ void DebugEditor::DrawSavePreview() {
             const std::string filenameToOpen = pendingSceneAssetOpenAfterSave_;
             pendingSceneAssetOpenAfterSave_.clear();
             std::string openError;
+
             if (!OpenSceneAsset(filenameToOpen, false, openError)) {
                 DebugConsole::GetInstance()->AddLog("Scene Asset Open Error: " + openError);
             }
@@ -407,17 +453,22 @@ std::string DebugEditor::MakeSavePreviewTitle(SaveMode mode) const {
     // 保存対象のカテゴリを確認画面の見出しに含め、対象 JSON を判別しやすくする。
     std::string baseName = currentSceneFilename_;
     size_t extPos = baseName.find(".json");
-    if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
+    if (extPos != std::string::npos)
+        baseName = baseName.substr(0, extPos);
 
     switch (mode) {
     case SaveMode::Player:
         return "シーン保存: " + baseName + " / Player";
+
     case SaveMode::Enemy:
         return "シーン保存: " + baseName + " / Enemy";
+
     case SaveMode::Object:
         return "シーン保存: " + baseName + " / Object";
+
     case SaveMode::Camera:
         return "シーン保存: " + baseName + " / Camera";
+
     case SaveMode::All:
     default:
         return "シーン全体保存: " + baseName;

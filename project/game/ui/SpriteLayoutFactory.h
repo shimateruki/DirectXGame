@@ -2,7 +2,7 @@
 
 #include "Sprite.h"
 #include "SpriteCommon.h"
-#include "SpriteLayoutScaler.h"
+#include "game/ui/SpriteLayoutScaler.h"
 
 #include <memory>
 

@@ -6,10 +6,14 @@ class GimmickEventReceiver : public BaseGimmick {
   public:
     virtual ~GimmickEventReceiver() = default;
 
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+
     void Update(float deltaTime) override;
+
     void OnTrigger() override;
+
     void OnSwitchEvent(bool active) override;
+
     // 演出による移設では、移動先だけでなく再生の基準位置も更新する。
     void RelocateRuntimeBase(const engine::Vector3& position);
 
@@ -17,18 +21,24 @@ class GimmickEventReceiver : public BaseGimmick {
 
   private:
     void ApplyActiveState(bool active);
+
     void SetCollisionEnabled(bool enabled);
 
     engine::Vector3 basePosition_ = {0.0f, 0.0f, 0.0f};
     engine::Vector3 targetPosition_ = {0.0f, 0.0f, 0.0f};
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
+
     uint32_t originalCollisionAttribute_ = 0;
     uint32_t originalCollisionMask_ = 0;
+
     engine::Vector4 originalColor_ = {0.65f, 1.0f, 0.65f, 1.0f};
+
     float activationTimer_ = 0.0f;
+
     bool initializedForPlay_ = false;
     bool active_ = false;
+
     bool hasPendingActive_ = false;
     bool pendingActive_ = false;
 };

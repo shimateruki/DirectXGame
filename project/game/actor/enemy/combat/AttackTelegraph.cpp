@@ -27,9 +27,11 @@ engine::Vector3 NormalizePlanar(engine::Vector3 direction) {
     // 目標と同座標でも予告の向きを失わないよう、ゼロ長には固定の前方を使う。
     direction.y = 0.0f;
     const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
+
     if (length <= 0.001f) {
         return {0.0f, 0.0f, 1.0f};
     }
+
     return {direction.x / length, 0.0f, direction.z / length};
 }
 
@@ -42,14 +44,15 @@ float EaseOut(float t) {
 }
 } // namespace
 
-void AttackTelegraph::Initialize(Object3dCommon* common) {
+void AttackTelegraph::Initialize(engine::Object3dCommon* common) {
     common_ = common;
+
     // 初回攻撃の瞬間にDDS読込が走らないよう、シーンロード中に共有テクスチャを温めます。
     TextureManager::GetInstance()->Load(kAttackWarningTexturePath);
     EnsureEffect(common_);
 }
 
-void AttackTelegraph::EnsureEffect(Object3dCommon* common) {
+void AttackTelegraph::EnsureEffect(engine::Object3dCommon* common) {
     // 地面の基本予告は初回だけ生成し、毎フレームの表示で再利用する。
     if (effect_ || !common) {
         return;
@@ -70,7 +73,7 @@ void AttackTelegraph::EnsureEffect(Object3dCommon* common) {
     effect_->SetIsVisible(false);
 }
 
-void AttackTelegraph::EnsureCueEffect(Object3dCommon* common) {
+void AttackTelegraph::EnsureCueEffect(engine::Object3dCommon* common) {
     // 命中直前の強調表示を本体の予告と別の寿命で管理する。
     if (cueEffect_ || !common) {
         return;
@@ -91,7 +94,7 @@ void AttackTelegraph::EnsureCueEffect(Object3dCommon* common) {
     cueEffect_->SetIsVisible(false);
 }
 
-void AttackTelegraph::EnsureWarningEffect(Object3dCommon* common) {
+void AttackTelegraph::EnsureWarningEffect(engine::Object3dCommon* common) {
     if (warningEffect_ || !common) {
         return;
     }
@@ -99,6 +102,7 @@ void AttackTelegraph::EnsureWarningEffect(Object3dCommon* common) {
     warningEffect_ = std::make_unique<EffectObject3d>();
     warningEffect_->Initialize(common);
     warningEffect_->SetName("AttackWarningCue");
+
     if (!warningEffect_->LoadFromJson(kAttackWarningEffectPath)) {
         // JSONを編集中でも予兆自体が消えないよう、最小構成へフォールバックします。
         warningEffect_->SetBlendMode(BlendMode::kAdd);
@@ -120,6 +124,7 @@ void AttackTelegraph::EnsureWarningEffect(Object3dCommon* common) {
         warningEffect_->SetEasingType(5);
         warningEffect_->Play(0.18f);
     }
+
     warningEffect_->SetIsVisible(false);
 }
 
@@ -177,17 +182,21 @@ void AttackTelegraph::BeginPattern(Shape shape, std::size_t count) {
     const bool shapeChanged = !isPatternShapeConfigured_ || patternShape_ != shape;
     patternShape_ = shape;
     EnsurePatternEffects(count);
+
     if (shapeChanged) {
         for (auto& effect : patternEffects_) {
             ConfigureEffectShape(effect.get(), patternShape_);
         }
+
         isPatternShapeConfigured_ = true;
     }
 
     patternActiveCount_ = (std::min)(count, patternEffects_.size());
+
     for (std::size_t index = 0; index < patternEffects_.size(); ++index) {
         patternEffects_[index]->SetIsVisible(index < patternActiveCount_);
     }
+
     isVisible_ = patternActiveCount_ > 0;
     hasLastShape_ = false;
 }
@@ -197,14 +206,17 @@ void AttackTelegraph::BeginTiming(Shape shape, std::size_t count) {
     const bool shapeChanged = !isTimingShapeConfigured_ || timingShape_ != shape;
     timingShape_ = shape;
     EnsureTimingEffects(count);
+
     if (shapeChanged) {
         for (auto& effect : timingEffects_) {
             ConfigureTimingEffectShape(effect.get(), timingShape_);
         }
+
         isTimingShapeConfigured_ = true;
     }
 
     timingActiveCount_ = (std::min)(count, timingEffects_.size());
+
     for (std::size_t index = 0; index < timingEffects_.size(); ++index) {
         timingEffects_[index]->SetIsVisible(index < timingActiveCount_);
     }
@@ -214,6 +226,7 @@ void AttackTelegraph::HidePatternEffects() {
     // 攻撃終了時は前回の地点数と強調時間を破棄する。
     patternActiveCount_ = 0;
     patternCueTimer_ = 0.0f;
+
     for (auto& effect : patternEffects_) {
         effect->SetIsVisible(false);
     }
@@ -222,6 +235,7 @@ void AttackTelegraph::HidePatternEffects() {
 void AttackTelegraph::HideTimingEffects() {
     // 時間表示が次の攻撃へ残らないよう、再利用物を全て隠す。
     timingActiveCount_ = 0;
+
     for (auto& effect : timingEffects_) {
         effect->SetIsVisible(false);
     }
@@ -234,6 +248,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
     }
 
     const bool isCue = effect == cueEffect_.get();
+
     if (shape == Shape::Circle || shape == Shape::ImpactDisc) {
         effect->SetProceduralType(10);
         effect->editRingOuterRadius_ = 1.0f;
@@ -260,6 +275,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
         effect->SetIntensity(isCue ? 4.4f : 2.35f);
         effect->SetEdgeFadeStrength(isCue ? 0.35f : 1.0f);
     }
+
     effect->UpdateProceduralMesh();
 }
 
@@ -273,6 +289,7 @@ void AttackTelegraph::ConfigureTimingEffectShape(EffectObject3d* effect, Shape s
     effect->SetBlendMode(BlendMode::kAdd);
     effect->SetIntensity(5.1f);
     effect->SetEdgeFadeStrength(0.22f);
+
     if (shape == Shape::Circle) {
         effect->editRingInnerRadius_ = 0.86f;
         effect->UpdateProceduralMesh();
@@ -449,6 +466,7 @@ void AttackTelegraph::ShowLineTiming(const engine::Vector3& origin, const engine
 void AttackTelegraph::ShowCircle(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color) {
     // 複数地点の表示を解除し、この一箇所の範囲と時間だけ表示する。
     EnsureEffect(common_);
+
     if (!effect_) {
         return;
     }
@@ -470,16 +488,19 @@ void AttackTelegraph::ShowDecalCircle(const engine::Vector3& center, float radiu
                                       const std::string& texturePath) {
     // 画像が変わった時だけ形状設定を更新し、古いデカールを使い回さない。
     EnsureEffect(common_);
+
     if (!effect_ || texturePath.empty()) {
         return;
     }
 
     HidePatternEffects();
+
     if (decalTexturePath_ != texturePath) {
         decalTexturePath_ = texturePath;
         isShapeConfigured_ = false;
         isCueShapeConfigured_ = false;
     }
+
     ConfigureShape(Shape::DecalCircle);
     ApplyDecalCircle(effect_.get(), center, radius, progress, MakeDecalColor(color, progress), 1.0f);
     ShowCircleTiming(center, radius, progress, color);
@@ -496,6 +517,7 @@ void AttackTelegraph::ShowLine(const engine::Vector3& center, const engine::Vect
                                float progress, const engine::Vector4& color) {
     // 射線の最後の形状を覚え、命中直前の合図を同じ位置へ出せるようにする。
     EnsureEffect(common_);
+
     if (!effect_) {
         return;
     }
@@ -588,6 +610,7 @@ void AttackTelegraph::ShowReadableImpactAreas(const engine::Vector3* centers, st
     BeginTiming(Shape::Circle, centerCount);
 
     const float sequenceStep = centerCount > 1 ? (std::min)(0.072f, 0.32f / static_cast<float>(centerCount - 1)) : 0.0f;
+
     for (std::size_t index = 0; index < centerCount; ++index) {
         const float localProgress = std::clamp(progress - static_cast<float>(index) * sequenceStep, 0.0f, 1.0f);
         const float urgencyT = std::clamp((localProgress - 0.58f) / 0.42f, 0.0f, 1.0f);
@@ -653,10 +676,13 @@ void AttackTelegraph::TriggerCue(const engine::Vector4& color) {
         patternCueColor_ = color;
         return;
     }
+
     if (!hasLastShape_) {
         return;
     }
+
     EnsureCueEffect(common_);
+
     if (!cueEffect_) {
         return;
     }
@@ -665,6 +691,7 @@ void AttackTelegraph::TriggerCue(const engine::Vector4& color) {
     cueColor_ = color;
     ConfigureCueShape(lastShape_);
     const engine::Vector4 cueColor = MakeCueColor(color, 0.0f);
+
     if (lastShape_ == Shape::Circle) {
         ApplyCircle(cueEffect_.get(), lastCenter_, lastRadius_, 1.0f, cueColor, 1.0f);
     } else if (lastShape_ == Shape::DecalCircle) {
@@ -672,12 +699,14 @@ void AttackTelegraph::TriggerCue(const engine::Vector4& color) {
     } else {
         ApplyLine(cueEffect_.get(), lastCenter_, lastDirection_, lastLength_, lastWidth_, 1.0f, cueColor, 1.0f);
     }
+
     cueEffect_->SetIsVisible(true);
 }
 
 void AttackTelegraph::TriggerCueAt(const engine::Vector3& center, float radius, const engine::Vector4& color) {
     // 汎用の円形合図は、事前の予告がなくても指定地点に生成できる。
     EnsureCueEffect(common_);
+
     if (!cueEffect_) {
         return;
     }
@@ -699,6 +728,7 @@ void AttackTelegraph::TriggerWarningCue(engine::Object3d* target, const engine::
                                         const engine::Vector4& accentColor) {
     // 対象へ追従する警告を開始し、移動中も本体の近くに保持する。
     EnsureWarningEffect(common_);
+
     if (!warningEffect_) {
         return;
     }
@@ -716,9 +746,11 @@ void AttackTelegraph::TriggerWarningCue(engine::Object3d* target, const engine::
 void AttackTelegraph::Hide() {
     // 範囲・時間・合図をまとめて隠し、次の攻撃へ前回の予告を残さない。
     isVisible_ = false;
+
     if (effect_) {
         effect_->SetIsVisible(false);
     }
+
     HidePatternEffects();
     HideTimingEffects();
 }
@@ -726,37 +758,44 @@ void AttackTelegraph::Hide() {
 void AttackTelegraph::Update(float deltaTime) {
     // 表示中だけ各エフェクトの位置と点滅を進め、非表示物の更新を抑える。
     pulseTimer_ += (std::max)(deltaTime, 0.0f);
+
     if (effect_ && isVisible_) {
         effect_->UpdateLocalMatrix();
         effect_->UpdateWorldMatrix();
     }
+
     for (std::size_t index = 0; index < patternActiveCount_; ++index) {
         if (patternEffects_[index]->GetIsVisible()) {
             patternEffects_[index]->UpdateLocalMatrix();
             patternEffects_[index]->UpdateWorldMatrix();
         }
     }
+
     for (std::size_t index = 0; index < timingActiveCount_; ++index) {
         if (timingEffects_[index]->GetIsVisible()) {
             timingEffects_[index]->UpdateLocalMatrix();
             timingEffects_[index]->UpdateWorldMatrix();
         }
     }
+
     if (patternCueTimer_ > 0.0f && patternActiveCount_ > 0) {
         patternCueTimer_ = (std::max)(0.0f, patternCueTimer_ - (std::max)(deltaTime, 0.0f));
         const float progress = 1.0f - std::clamp(patternCueTimer_ / cueDuration_, 0.0f, 1.0f);
         const engine::Vector4 cueColor = MakeCueColor(patternCueColor_, progress);
+
         for (std::size_t index = 0; index < patternActiveCount_; ++index) {
             if (patternEffects_[index]->GetIsVisible()) {
                 patternEffects_[index]->SetColor(cueColor);
             }
         }
     }
+
     if (cueEffect_ && cueTimer_ > 0.0f && hasLastShape_) {
         cueTimer_ = (std::max)(0.0f, cueTimer_ - (std::max)(deltaTime, 0.0f));
         const float progress = 1.0f - std::clamp(cueTimer_ / cueDuration_, 0.0f, 1.0f);
         const float scaleMultiplier = 1.0f + (kCueOuterScale - 1.0f) * EaseOut(progress);
         const engine::Vector4 cueColor = MakeCueColor(cueColor_, progress);
+
         if (lastShape_ == Shape::Circle) {
             ApplyCircle(cueEffect_.get(), lastCenter_, lastRadius_, 1.0f, cueColor, scaleMultiplier);
         } else if (lastShape_ == Shape::DecalCircle) {
@@ -765,10 +804,12 @@ void AttackTelegraph::Update(float deltaTime) {
             ApplyLine(cueEffect_.get(), lastCenter_, lastDirection_, lastLength_, lastWidth_, 1.0f, cueColor,
                       scaleMultiplier);
         }
+
         cueEffect_->SetIsVisible(cueTimer_ > 0.0f);
     } else if (cueEffect_) {
         cueEffect_->SetIsVisible(false);
     }
+
     UpdateWarningEffect(deltaTime);
 }
 
@@ -779,6 +820,7 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
 
     warningEffect_->Update((std::max)(deltaTime, 0.0f));
     const float progress = warningEffect_->GetPlaybackProgress();
+
     if (!warningEffect_->IsPlaying() && progress >= 1.0f) {
         warningEffect_->SetIsVisible(false);
         return;
@@ -800,9 +842,11 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
     float yaw = 0.0f;
     float pitch = 0.0f;
     Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
+
     if (camera) {
         engine::Vector3 toCamera = camera->GetEye() - position;
         const float length = std::sqrt(toCamera.x * toCamera.x + toCamera.y * toCamera.y + toCamera.z * toCamera.z);
+
         if (length > 0.001f) {
             toCamera = toCamera / length;
             position = position + toCamera * kWarningCameraOffset;
@@ -827,18 +871,21 @@ void AttackTelegraph::DrawGround(ID3D12Resource* pointLightResource, ID3D12Resou
         effect_->RefreshRenderCameraData();
         effect_->Draw(pointLightResource, spotLightResource);
     }
+
     for (std::size_t index = 0; index < patternActiveCount_; ++index) {
         if (patternEffects_[index]->GetIsVisible()) {
             patternEffects_[index]->RefreshRenderCameraData();
             patternEffects_[index]->Draw(pointLightResource, spotLightResource);
         }
     }
+
     for (std::size_t index = 0; index < timingActiveCount_; ++index) {
         if (timingEffects_[index]->GetIsVisible()) {
             timingEffects_[index]->RefreshRenderCameraData();
             timingEffects_[index]->Draw(pointLightResource, spotLightResource);
         }
     }
+
     if (cueEffect_ && cueEffect_->GetIsVisible()) {
         cueEffect_->RefreshRenderCameraData();
         cueEffect_->Draw(pointLightResource, spotLightResource);

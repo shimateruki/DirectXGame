@@ -33,6 +33,7 @@ bool AssetDatabase::StartDDSCacheBuild() {
 
     const fs::path scriptPath = (projectRoot_ / "tools/dds_cache/dds_cache_builder.ps1").lexically_normal();
     std::error_code error;
+
     if (!fs::exists(scriptPath, error) || error) {
         ddsCacheBuildState_ = DDSCacheBuildState::Failed;
         ddsCacheBuildMessage_ = "DDS変換スクリプトが見つかりません。";
@@ -41,9 +42,12 @@ bool AssetDatabase::StartDDSCacheBuild() {
     }
 
     const fs::path notificationPath = resourcesRoot_ / ".cache/dds_cache_notifications.jsonl";
+    // 前回分の通知を今回の変換結果と取り違えないよう、開始前の末尾位置を控える。
     gDDSNotificationSizeBeforeBuild = 0;
+
     if (fs::exists(notificationPath, error) && !error) {
         gDDSNotificationSizeBeforeBuild = fs::file_size(notificationPath, error);
+
         if (error) {
             gDDSNotificationSizeBeforeBuild = 0;
             error.clear();
@@ -60,6 +64,7 @@ bool AssetDatabase::StartDDSCacheBuild() {
     startupInfo.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION processInfo{};
+    // CreateProcessWはコマンドラインを書き換えるため、変更可能な文字列を渡す。
     std::vector<wchar_t> mutableCommand(commandLine.begin(), commandLine.end());
     mutableCommand.push_back(L'\0');
     const BOOL created = CreateProcessW(
@@ -96,17 +101,20 @@ bool AssetDatabase::PollDDSCacheBuild() {
 
     HANDLE process = static_cast<HANDLE>(ddsCacheProcessHandle_);
     const DWORD waitResult = WaitForSingleObject(process, 0);
+
     if (waitResult == WAIT_TIMEOUT) {
         return false;
     }
 
     DWORD exitCode = 1;
+
     if (waitResult == WAIT_OBJECT_0) {
         GetExitCodeProcess(process, &exitCode);
     }
     else {
         exitCode = GetLastError();
     }
+
     lastDDSCacheBuildExitCode_ = exitCode;
     CloseDDSCacheProcessHandle();
 
@@ -115,12 +123,15 @@ bool AssetDatabase::PollDDSCacheBuild() {
     const fs::path notificationPath = resourcesRoot_ / ".cache/dds_cache_notifications.jsonl";
     std::error_code error;
     std::uintmax_t notificationSizeAfterBuild = 0;
+
     if (fs::exists(notificationPath, error) && !error) {
         notificationSizeAfterBuild = fs::file_size(notificationPath, error);
+
         if (error) {
             notificationSizeAfterBuild = 0;
         }
     }
+
     const bool generatedDDS = notificationSizeAfterBuild > gDDSNotificationSizeBeforeBuild;
     refreshAfterDDSCacheBuild_ = generatedDDS;
 
@@ -134,6 +145,7 @@ bool AssetDatabase::PollDDSCacheBuild() {
         ddsCacheBuildState_ = DDSCacheBuildState::Failed;
         ddsCacheBuildMessage_ = "DDS変換に失敗しました。Exit Code: " + std::to_string(exitCode);
     }
+
     return true;
 }
 
@@ -142,6 +154,7 @@ void AssetDatabase::CloseDDSCacheProcessHandle() {
     if (!ddsCacheProcessHandle_) {
         return;
     }
+
     CloseHandle(static_cast<HANDLE>(ddsCacheProcessHandle_));
     ddsCacheProcessHandle_ = nullptr;
 }

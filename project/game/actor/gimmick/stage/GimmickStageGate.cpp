@@ -1,7 +1,7 @@
 #include "GimmickStageGate.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -34,16 +34,18 @@ float Smoothstep(float edge0, float edge1, float value) {
 }
 } // namespace
 
-void GimmickStageGate::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickStageGate::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 未設定の遷移先はステージ選択にし、ポータル専用材質を割り当てます。
     SetClassName("Gimmick");
     SetGimmickType("StageGate");
     SetName("Gimmick_StageGate");
+
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->gimmickType = "StageGate";
     param_->targetScene = param_->targetScene.empty() ? "SELECT" : param_->targetScene;
     param_->startActive = true;
@@ -70,14 +72,17 @@ void GimmickStageGate::Update(float deltaTime) {
     const float response = Clamp01(deltaTime * 6.5f);
     const float previousActivation = activation_;
     activation_ = Lerp(activation_, targetActivation_, response);
+
     if (isUnlocked_ && targetActivation_ > 0.82f && previousActivation < 0.62f && activation_ >= 0.62f) {
         activationBurst_ = 1.0f;
     }
+
     activationBurst_ = activationBurst_ > deltaTime * 1.15f ? activationBurst_ - deltaTime * 1.15f : 0.0f;
     const float visibleActivation = isUnlocked_ ? activation_ : 0.06f;
 
     lastAppliedPulse_ = 1.0f;
     engine::Vector4 gateColor = GetTargetColor();
+
     if (activationBurst_ > 0.0f && isUnlocked_) {
         const float burstTint = Clamp01(activationBurst_ * 0.82f);
         const engine::Vector4 burstColor = isCleared_ ? engine::Vector4{0.58f, 1.0f, 1.0f, 1.0f} : engine::Vector4{1.0f, 0.88f, 0.40f, 1.0f};
@@ -86,6 +91,7 @@ void GimmickStageGate::Update(float deltaTime) {
         gateColor.z = Lerp(gateColor.z, burstColor.z, burstTint);
         gateColor.w = Lerp(gateColor.w, 1.0f, burstTint);
     }
+
     SetColor(gateColor);
     float emissive = isUnlocked_ ? Lerp(0.62f, 1.65f, visibleActivation) : 0.34f;
     if (isSelected_ && isUnlocked_)
@@ -97,6 +103,7 @@ void GimmickStageGate::Update(float deltaTime) {
     if (isUnlocked_) {
         emissive += activationBurst_ * 2.8f;
     }
+
     SetEmissive(emissive);
     UpdatePortalMaterial();
 
@@ -108,6 +115,7 @@ bool GimmickStageGate::OnCollision(engine::Object3d* other) {
     if (!other || !(other->GetCollisionAttribute() & CollisionCategories::Get("player"))) {
         return false;
     }
+
     if (!CanTriggerTransition()) {
         return false;
     }
@@ -135,15 +143,18 @@ int GimmickStageGate::GetGateMode() const {
     if (!param_.has_value()) {
         return kGateModeStageSelectNode;
     }
+
     return param_->actionMode;
 }
 
 const std::string& GimmickStageGate::GetTargetSceneName() const {
     // 遷移先が未設定ならステージ選択画面へ戻します。
     static const std::string kDefaultScene = "SELECT";
+
     if (!param_.has_value() || param_->targetScene.empty()) {
         return kDefaultScene;
     }
+
     return param_->targetScene;
 }
 
@@ -170,7 +181,9 @@ void GimmickStageGate::SetTransitionEnabled(bool enabled) {
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->startActive = enabled;
+
     if (enabled) {
         hasTriggeredTransition_ = false;
     }
@@ -186,6 +199,7 @@ void GimmickStageGate::TriggerEntryReaction() {
 void GimmickStageGate::UpdatePortalMaterial() {
     // 専用材質がない複製・編集中は、シェーダーパラメータへのアクセスを避けます。
     auto* renderer = GetMeshRenderer();
+
     if (!renderer || !renderer->GetWaterParamData()) {
         return;
     }
@@ -214,12 +228,15 @@ void GimmickStageGate::UpdatePortalMaterial() {
 bool GimmickStageGate::CanTriggerTransition() const {
     // 実際の遷移はモード、有効状態、遷移済みフラグで判定します。
     const int mode = GetGateMode();
+
     if (mode == kGateModeStageSelectNode || hasTriggeredTransition_) {
         return false;
     }
+
     if (param_.has_value() && !param_->startActive) {
         return false;
     }
+
     return true;
 }
 
@@ -241,6 +258,7 @@ void GimmickStageGate::CaptureBaseScale() {
     if (hasBaseScale_) {
         return;
     }
+
     baseScale_ = GetScale();
     hasBaseScale_ = true;
 }
@@ -251,19 +269,26 @@ engine::Vector4 GimmickStageGate::GetTargetColor() const {
         // 未解放でもゲートの輪郭は残し、鎖と南京錠で封鎖状態を示します。
         return {0.30f, 0.54f, 0.64f, 0.92f};
     }
+
     const float active = isUnlocking_ ? 1.0f : activation_;
+
     if (isUnlocking_) {
         return {1.0f, 0.72f, 0.28f, 1.0f};
     }
+
     if (isCleared_) {
         const float alpha = Lerp(0.70f, 0.98f, active);
+
         if (isSelected_) {
             return {0.48f, 0.96f, 1.0f, alpha};
         }
+
         return {0.28f, 0.82f, 1.0f, alpha};
     }
+
     if (isSelected_) {
         return {1.0f, 0.62f, 0.24f, Lerp(0.78f, 1.0f, active)};
     }
+
     return {1.0f, 0.52f, 0.20f, Lerp(0.68f, 0.94f, active)};
 }

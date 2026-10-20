@@ -19,7 +19,7 @@ float SmoothStep01(float value) {
 }
 } // namespace
 
-void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickPrismBarrier::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 薄い OBB を壁面として使い、開放時には通行を妨げるようにします。
@@ -45,6 +45,7 @@ void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& 
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     param_->gimmickType = "PrismBarrier";
     param_->moveSpeed = kDefaultTransitionDuration;
     param_->interval = 2.4f;
@@ -57,10 +58,12 @@ void GimmickPrismBarrier::Update(float deltaTime) {
     // 再生停止時は編集配置を復元し、実行時のみ開閉補間を進めます。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
+
     if (!isPlaying) {
         if (!initializedForPlay_) {
             CaptureAuthoredState(true);
         }
+
         ResetForEditor();
         BaseGimmick::Update(deltaTime);
         return;
@@ -70,9 +73,11 @@ void GimmickPrismBarrier::Update(float deltaTime) {
 
     if (!initializedForPlay_) {
         initializedForPlay_ = true;
+
         if (!activationRequestReceived_) {
             targetActivation_ = param_.has_value() && param_->startActive ? 1.0f : 0.0f;
         }
+
         activation_ = targetActivation_;
         ApplyRuntimeVisual();
     }
@@ -80,11 +85,13 @@ void GimmickPrismBarrier::Update(float deltaTime) {
     visualTime_ += (std::max)(0.0f, deltaTime);
     const float duration = GetTransitionDuration();
     const float step = duration > 0.0001f ? deltaTime / duration : 1.0f;
+
     if (activation_ < targetActivation_) {
         activation_ = (std::min)(targetActivation_, activation_ + step);
     } else if (activation_ > targetActivation_) {
         activation_ = (std::max)(targetActivation_, activation_ - step);
     }
+
     ApplyRuntimeVisual();
     BaseGimmick::Update(deltaTime);
 }
@@ -99,6 +106,7 @@ void GimmickPrismBarrier::OnSwitchEvent(bool active) {
     if (!param_.has_value()) {
         param_.emplace();
     }
+
     if (!active && !param_->returnOnOff) {
         return;
     }
@@ -106,10 +114,12 @@ void GimmickPrismBarrier::OnSwitchEvent(bool active) {
     CaptureAuthoredState();
     activationRequestReceived_ = true;
     targetActivation_ = active ? 1.0f : 0.0f;
+
     if (active) {
         SetIsVisible(true);
     } else {
         SetCollisionEnabled(false);
+
         // 戦闘開始前の無効化はフェード元を描画せず、その場で完全に隠します。
         // 一度展開した後の解除だけは Update 側の縮退アニメーションを残します。
         if (!initializedForPlay_ || activation_ <= 0.005f) {
@@ -139,18 +149,23 @@ void GimmickPrismBarrier::CaptureAuthoredState(bool force) {
     authoredColor_ = GetColor();
     const uint32_t collisionAttribute = GetCollisionAttribute();
     const uint32_t collisionMask = GetCollisionMask();
+
     if (collisionAttribute != 0 || !authoredStateCaptured_) {
         authoredCollisionAttribute_ = collisionAttribute;
     }
+
     if (collisionMask != 0 || !authoredStateCaptured_) {
         authoredCollisionMask_ = collisionMask;
     }
+
     if (authoredCollisionAttribute_ == 0) {
         authoredCollisionAttribute_ = CollisionCategories::Get("ground");
     }
+
     if (authoredCollisionMask_ == 0) {
         authoredCollisionMask_ = 0xffffffffu;
     }
+
     authoredStateCaptured_ = true;
 }
 
@@ -206,6 +221,7 @@ void GimmickPrismBarrier::ApplyRuntimeVisual() {
 
     const bool shouldCollide = targetActivation_ > 0.5f && activation_ >= 0.22f;
     SetCollisionEnabled(shouldCollide);
+
     if (activation_ <= 0.005f && targetActivation_ <= 0.0f) {
         SetIsVisible(false);
     }

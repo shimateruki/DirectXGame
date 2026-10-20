@@ -8,15 +8,15 @@
 #include "Model.h"
 #include "CollisionConfig.h"
 #include "engine/utility/math/Math.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "CameraManager.h"
 #include "IMoveStrategy.h"
 #include "game/actor/player/state/PlayerState.h"
 #include "PostEffect.h"
-#include "GameDataManager.h"
-#include "GameplayStatusManager.h"
+#include "game/system/progress/GameDataManager.h"
+#include "game/system/rules/GameplayStatusManager.h"
 #include "SceneManager.h"
-#include "StageManager.h"
+#include "game/system/progress/StageManager.h"
 #include "Winapp.h"
 #include <DebugConsole.h>
 #include <algorithm>
@@ -34,24 +34,32 @@
 namespace PlayerImplementation {
 inline constexpr float kPi = 3.1415926535f;
 inline constexpr float kTwoPi = kPi * 2.0f;
+
 inline constexpr float kEnemyMorphDuration = 5.0f;
 inline constexpr float kEnemyMorphParticleInterval = 0.12f;
+
 inline constexpr float kEnemyMorphReleaseDuration = 0.42f;
 inline constexpr float kEnemyMorphExpiredReleaseDuration = 0.32f;
 inline constexpr float kEnemyMorphReleaseBurstTime = 0.11f;
 inline constexpr float kEnemyMorphExpiredReleaseBurstTime = 0.075f;
+
 inline constexpr float kAbsorbEffectDuration = 0.24f;
 inline constexpr float kAbsorbEffectParticleInterval = 0.035f;
+
 inline constexpr float kPlayerModelYawOffset = kPi;
+
 inline constexpr const char* kPinkSlimeMorphBurstPreset = "pink_slime_morph_burst";
 inline constexpr const char* kPinkSlimeMorphIdlePreset = "pink_slime_morph_glint";
 inline constexpr float kPinkSlimeMorphParticleInterval = 0.78f;
+
 inline constexpr const char* kBomberMorphAuraPreset = "player_bomb_morph_aura";
 inline constexpr const char* kFireMorphAuraPreset = "player_fire_morph_aura";
 inline constexpr const char* kWindMorphAuraPreset = "player_wind_morph_aura";
+
 inline constexpr const char* kBomberMorphPulseEffectPath = "Resources/json/effect/effect_player_bomb_morph_pulse.json";
 inline constexpr const char* kFireMorphPulseEffectPath = "Resources/json/effect/effect_player_fire_morph_pulse.json";
 inline constexpr const char* kWindMorphPulseEffectPath = "Resources/json/effect/effect_player_wind_morph_pulse.json";
+
 inline constexpr float kElectricShockShakeAmount = 0.045f;
 inline constexpr const char* kElectricShockAuraEffectPath =
     "Resources/json/effect/effect_thunder_slime_constant_aura.json";
@@ -100,6 +108,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
     const AABB body = player.GetModelWorldAABB();
     const float cx = (body.min.x + body.max.x) * .5f;
     const float cz = (body.min.z + body.max.z) * .5f;
+
     // 胴体中心と足元の四隅。足場の端から触れた場合も拾います。
     const float rx = (body.max.x - body.min.x) * .3f;
     const float rz = (body.max.z - body.min.z) * .3f;
@@ -115,6 +124,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
         if (!liquid || liquid == &player || !liquid->GetIsVisible())
             continue;
         const int material = liquid->GetMaterialType();
+
         // マグマを使った敵・弾・装飾は、通常のダメージ処理のままにします。
         if (material != 8 &&
             !(material == 9 && (liquid->GetGimmickType() == "MagmaHazard" ||
@@ -128,6 +138,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
         if (material == 8 && !isWaterGrid)
             continue;
         const auto& world = liquid->GetWorldMatrix();
+
         // 海・溶岩池の水平面を対象にし、傾けた演出用モデルは除外します。
         if (std::abs(world.m[1][0]) > .001f || std::abs(world.m[1][2]) > .001f || world.m[1][1] <= .001f)
             continue;

@@ -1,3 +1,131 @@
 {
-    "objects": []
+    "objects": [
+        {
+            "name": "Stage3_BossIntro_GateCamera",
+            "guid": "63926d58-8c12-4c25-a24b-698159fb28d3",
+            "type": "Camera",
+            "saveCategory": "Camera",
+            "position": [2.6, 6.07, 21.2],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "camera": {
+                "version": 1,
+                "enabled": true,
+                "role": 1,
+                "fovY": 0.52,
+                "nearClip": 0.1,
+                "farClip": 1000.0,
+                "eyeSource": 0,
+                "targetMode": 0,
+                "fixedTarget": [0.0, 4.57, 43.2],
+                "blendInDuration": 0.0,
+                "blendOutDuration": 0.0,
+                "easing": 4
+            }
+        },
+        {
+            "name": "Stage3_BossIntro_BossCamera",
+            "guid": "d826981b-308d-4d2b-ad5f-bf76e9ab3ff9",
+            "type": "Camera",
+            "saveCategory": "Camera",
+            "position": [2.6, 6.84, 15.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "camera": {
+                "version": 1,
+                "enabled": true,
+                "role": 1,
+                "fovY": 0.49,
+                "nearClip": 0.1,
+                "farClip": 1000.0,
+                "eyeSource": 0,
+                "targetMode": 0,
+                "fixedTarget": [0.0, 5.744, -16.0],
+                "blendInDuration": 0.5,
+                "blendOutDuration": 0.0,
+                "easing": 4
+            }
+        },
+        {
+            "name": "Stage3_BossIntro_ReturnCamera",
+            "guid": "66ce025f-8729-4eaa-8da8-18e82790dfaa",
+            "type": "Camera",
+            "saveCategory": "Camera",
+            "position": [0.0, 8.0, 40.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "camera": {
+                "version": 1,
+                "enabled": true,
+                "role": 1,
+                "fovY": 0.45,
+                "nearClip": 0.1,
+                "farClip": 1000.0,
+                "eyeSource": 1,
+                "eyeObjectName": "Stage3_HighCrown_Player",
+                "eyeOffset": [0.0, 7.5, 11.5],
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_Player",
+                "targetOffset": [0.0, 3.8, 0.0],
+                "blendInDuration": 1.0,
+                "blendOutDuration": 0.0,
+                "easing": 4
+            }
+        },
+        {
+            "name": "Stage3_BossReward_FocusCamera",
+            "guid": "c0980e75-3bb8-45aa-87a4-bde221e486d7",
+            "type": "Camera",
+            "saveCategory": "Camera",
+            "position": [0.0, 0.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "camera": {
+                "version": 1,
+                "enabled": true,
+                "role": 1,
+                "fovY": 0.42,
+                "blendFov": true,
+                "nearClip": 0.1,
+                "farClip": 1000.0,
+                "eyeSource": 2,
+                "eyeObjectName": "Stage3_HighCrown_VictoryCrown",
+                "eyeReferenceObjectName": "Stage3_HighCrown_Player",
+                "eyeOffset": [2.9, 3.4, 7.4],
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_VictoryCrown",
+                "targetOffset": [0.0, 1.15, 0.0],
+                "blendInDuration": 0.32,
+                "blendOutDuration": 0.0,
+                "easing": 4
+            }
+        },
+        {
+            "name": "Stage3_BossReward_TrackCamera",
+            "guid": "6017a854-7b44-4822-a4df-1374a89be80b",
+            "type": "Camera",
+            "saveCategory": "Camera",
+            "position": [0.0, 0.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "camera": {
+                "version": 1,
+                "enabled": true,
+                "role": 1,
+                "fovY": 0.47,
+                "blendFov": true,
+                "nearClip": 0.1,
+                "farClip": 1000.0,
+                "eyeSource": 1,
+                "eyeObjectName": "Stage3_HighCrown_VictoryCrown",
+                "eyeOffset": [6.2, 3.3, 7.4],
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_VictoryCrown",
+                "targetOffset": [0.0, 1.0, 0.0],
+                "blendInDuration": 1.5,
+                "blendOutDuration": 0.96,
+                "easing": 4
+            }
+        }
+    ]
 }

@@ -8,7 +8,7 @@
 #include <DebugConsole.h>
 #include <cmath>
 
-void GimmickBreakableBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickBreakableBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     if (modelName == "Stages/bomb_break_block") {
@@ -57,7 +57,8 @@ bool GimmickBreakableBlock::OnCollision(engine::Object3d* other) {
     const auto* bomb = dynamic_cast<const EnemyBomb*>(other);
 
     // プレイヤーが生成したボムの爆風だけを破壊条件にする。
-    if (bomb && bomb->IsPlayerOwned() && (attribute & CollisionCategories::Get("player_attack")) &&
+    if (bomb && bomb->IsPlayerOwned() && bomb->IsExploded() &&
+        (attribute & CollisionCategories::Get("player_attack")) &&
         other->GetColliderType() == ColliderType::kSphere) {
 
         Break();
@@ -75,6 +76,7 @@ bool GimmickBreakableBlock::TryBreakByPlayerImpact(const Player* player) {
     }
 
     const int actionMode = param_->actionMode;
+
     if (actionMode == 7) {
         if (!player->IsPinkBounceSlamImpactActive()) {
             return false;
@@ -105,6 +107,7 @@ void GimmickBreakableBlock::Break() {
     // 屈折マテリアルのガラスは、炎を残さず透明破片と短い閃光で割れた瞬間を見せる。
     if (GetMaterialType() == 10 || GetModelName() == "Stages/star_garden_glass_panel") {
         const bool isGiantGate = GetModelName() == "Stages/star_garden_giant_gate";
+
         if (isGiantGate) {
             const AABB bounds = GetModelWorldAABB();
             const float groundY = std::isfinite(bounds.min.y) ? bounds.min.y : myPos.y - 4.2f;
@@ -112,10 +115,12 @@ void GimmickBreakableBlock::Break() {
         } else {
             DebrisEffectManager::GetInstance()->Spawn("star_garden_glass_shatter", myPos);
         }
+
         if (GPUParticleManager::GetInstance()) {
             GPUParticleManager::GetInstance()->Emit("star_garden_glass_shards", myPos);
             GPUParticleManager::GetInstance()->Emit("hit_bomb_flash_core", myPos);
         }
+
         return;
     }
 
@@ -126,6 +131,7 @@ void GimmickBreakableBlock::Break() {
     }
 
     DebrisEffectManager::GetInstance()->Spawn("bomb_hit_fragment_burst", myPos);
+
     if (GPUParticleManager::GetInstance()) {
         GPUParticleManager::GetInstance()->Emit("star_sparkleGet", myPos);
     }

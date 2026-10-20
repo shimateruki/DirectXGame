@@ -9,9 +9,11 @@ std::atomic<uint64_t> gNextReplayId{ 1 };
 }
 
 uint64_t Object3d::EnsureReplayId() {
+    // IDは識別だけに使用するため、スレッド間の更新順を同期する必要はない。
     if (replayId_ == 0) {
         replayId_ = gNextReplayId.fetch_add(1, std::memory_order_relaxed);
     }
+
     return replayId_;
 }
 
@@ -35,9 +37,11 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     state.animatorSnapshot = animatorControllerRuntime_.CaptureSnapshot();
 
     state.hasParameter = param_.has_value();
+
     if (param_) {
         state.parameter = *param_;
     }
+
     state.collisionAttribute = GetCollisionAttribute();
     state.collisionMask = GetCollisionMask();
 
@@ -54,6 +58,7 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     state.navAgentComponent = navAgentComponent_;
 
     state.replayRemoved = replayRemoved_;
+
     // 派生Object固有の状態は共通スナップショットの末尾へ委譲する。
     CaptureReplayCustomState(state.custom);
     return state;
@@ -73,9 +78,12 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     animationTime_ = state.animationTime;
     animName_ = state.animationName;
     isAnimLoop_ = state.animationLoop;
+
+    // Snapshotを戻す前に対象Controllerを揃え、別Assetの状態を誤適用しない。
     if (state.animatorControllerPath != animatorControllerPath_) {
         SetAnimatorController(state.animatorControllerPath);
     }
+
     if (state.animatorSnapshot.valid) {
         animatorControllerRuntime_.RestoreSnapshot(state.animatorSnapshot);
         ApplyAnimatorControllerPose(GetModel(), true);
@@ -86,15 +94,18 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     } else {
         param_.reset();
     }
+
     SetCollisionAttribute(state.collisionAttribute);
     SetCollisionMask(state.collisionMask);
 
     if (GetModelName() != state.modelName && !state.modelName.empty()) {
         SetModel(state.modelName);
     }
+
     if (GetTexturePath() != state.texturePath && !state.texturePath.empty()) {
         SetTexture(state.texturePath);
     }
+
     SetMaterialType(state.materialType);
     SetColor(state.color);
     SetEmissive(state.emissive);
@@ -121,6 +132,7 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     if (particleAssetChanged) {
         gpuEmitter_.reset();
     }
+
     if (meshEffectChanged) {
         currentMeshEffect1_.clear();
         currentMeshEffect2_.clear();
@@ -129,6 +141,7 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     }
 
     replayRemoved_ = state.replayRemoved;
+    // 派生状態を戻してから行列を更新し、復元直後の描画位置へ反映する。
     RestoreReplayCustomState(state.custom);
     UpdateLocalMatrix();
     UpdateWorldMatrix();

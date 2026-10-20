@@ -12,9 +12,11 @@ public:
 
     // 発火元と接続先のID。-1は未設定。
     int GetEventId() const { return eventId_; }
+
     void SetEventId(int id) { eventId_ = id; }
 
     int GetTargetId() const { return targetId_; }
+
     void SetTargetId(int id) { targetId_ = id; }
 
 private:

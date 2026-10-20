@@ -3,7 +3,7 @@
 #include "SceneManager.h"
 #include <cmath>
 
-void GimmickSwitch::Initialize(Object3dCommon* common, const std::string& modelName) {
+void GimmickSwitch::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -11,6 +11,7 @@ void GimmickSwitch::Initialize(Object3dCommon* common, const std::string& modelN
     SetName("Gimmick_Switch");
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+
     // 押し板の石・金属・中央ボタンの素材色を保ちながら、起動状態を色で伝えます。
     SetColor({0.85f, 0.94f, 1.0f, 1.0f});
     SetScale({1.5f, 0.25f, 1.5f});
@@ -51,6 +52,7 @@ void GimmickSwitch::Update(float deltaTime) {
 
         if (timedTimer_ > 0.0f) {
             timedTimer_ -= deltaTime;
+
             if (timedTimer_ <= 0.0f) {
                 timedTimer_ = 0.0f;
                 SendActive(false);
@@ -78,6 +80,7 @@ bool GimmickSwitch::OnCollision(engine::Object3d* other) {
         return true;
 
     CollisionInfo info = CheckCollision(other);
+
     if (info.isColliding && info.normal.y < -0.5f) {
         contactTimer_ = 0.12f;
     }

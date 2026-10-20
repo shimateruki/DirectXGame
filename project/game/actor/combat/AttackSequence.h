@@ -26,22 +26,27 @@ struct AttackMotionState {
     engine::Vector3 position{}, direction{0, 0, 1};
     float elapsed = 0;
     bool launched = false;
+
     // 長さがほぼゼロのときは指定方向を維持する。
     static engine::Vector3 Normalize(engine::Vector3 value, engine::Vector3 fallback) {
         const float length = engine::Math::Length(value);
         return length > 0.00001f ? value * (1 / length) : fallback;
     }
+
     // 発射待ち・追尾区間を小刻みに積分する。巻き戻しは扱わない。
     void Advance(const AttackSequenceTrack& track, float time, engine::Vector3 target, bool hasTarget) {
-        if (time < elapsed) return; // 巻き戻しはインスタンスの再生成で行います。
+        if (time < elapsed)
+            return; // 巻き戻しはインスタンスの再生成で行います。
         if (!launched && hasTarget)
             direction = Normalize(target - position, direction);
-        if (time >= track.launchDelay) launched = true;
+        if (time >= track.launchDelay)
+            launched = true;
         float cursor = (std::max)(elapsed, track.launchDelay);
         while (cursor < time) {
             float step = (std::min)(1.0f / 120.0f, time - cursor);
             const float trackingEnd = track.launchDelay + track.homingDuration;
-            if (cursor < trackingEnd) step = (std::min)(step, trackingEnd - cursor);
+            if (cursor < trackingEnd)
+                step = (std::min)(step, trackingEnd - cursor);
             if (track.motion == "homing" && cursor < trackingEnd && hasTarget) {
                 const auto desired = Normalize(target - position, direction);
                 const float dot = std::clamp(direction.x * desired.x + direction.y * desired.y + direction.z * desired.z, -1.0f, 1.0f);
@@ -96,27 +101,42 @@ inline AttackSequenceEmission ResolveAttackSequenceEmission(const AttackSequence
 class AttackSequence {
   public:
     ~AttackSequence();
+
     AttackSequence() = default;
+
     AttackSequence(const AttackSequence&) = delete;
+
     AttackSequence& operator=(const AttackSequence&) = delete;
+
     // 攻撃定義をコピーし、開始条件を満たせばシーケンスを起動する。
     bool Start(const EnemyAttackDefinition& definition, const AttackSequenceContext& context);
+
     // 経過時間を進め、条件を満たしたトラックとイベントを実行する。
     void Update(float dt, const AttackSequenceContext& context);
+
     // 実行中の効果と姿勢の参照を解放して停止する。
     void Cancel();
+
     bool IsRunning() const { return clock_.IsRunning(); }
+
     const EnemyAttackDefinition& GetDefinition() const { return definition_; }
+
     const char* GetStateLabel() const { return label_.c_str(); }
+
     float GetElapsed() const { return clock_.GetElapsed(); }
+
   private:
     // 攻撃条件文字列を現在の役者・標的状態で評価する。
     bool CheckCondition(const std::string& condition, const AttackSequenceContext& context) const;
+
     // 前回時刻から現在までに入ったトラックを更新する。
     void UpdateTracks(float previous, const AttackSequenceContext& context);
+
     // トラックが保持する効果のスコープを解放する。
     void ReleaseTrackEffects();
+
     std::shared_ptr<engine::Matrix4x4> bodyPose_; // Rendererは弱参照。Cancel/終了時に破棄して姿勢を解除します。
+
     /// <summary>各攻撃トラックの発動状況、当たり判定、姿勢と移動の実行状態を保持する。</summary>
     struct TrackState {
         bool entered = false, allowed = false;
@@ -130,11 +150,14 @@ class AttackSequence {
         engine::Vector3 worldPosition{}, worldForward{0, 0, 1};
         engine::Vector3 frameStartPosition{}; // 追従判定の開始フレームでも通過した区間を問い合わせます。
     };
+
     std::vector<TrackState> trackStates_;
     AttackSequenceContext initialContext_;
     uint64_t generation_ = 0; // 同期DamageEventから中断・再開始された場合の通知打ち切りに使います。
+
     // 定義された攻撃イベントを現在の座標と対象へ適用する。
     void Execute(const AttackSequenceEvent& event, const AttackSequenceContext& context);
+
     EnemyAttackDefinition definition_;
     AttackSequenceClock clock_;
     std::string label_ = "待機";

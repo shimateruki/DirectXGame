@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e6ef0a5f77c659f083730c8c47c4d920",
+  "importer": "ModelImporter",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "source": "Resources/3DModel/Gimmicks/basalt_roller/basalt_roller_pbr.gltf",
+  "version": 1
+}

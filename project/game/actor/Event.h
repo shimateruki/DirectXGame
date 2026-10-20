@@ -3,6 +3,7 @@
 #include <string>
 namespace engine { class Object3d; }
 class Bullet;
+
 /// <summary>
 /// プレイヤーが何かに衝突したときに発行されるイベント
 /// </summary>
@@ -54,6 +55,7 @@ struct DamageEvent {
     engine::Vector3 knockbackVelocity = {0, 0, 0}; // 追加：吹き飛ばしベクトル
     float invincibilityDuration = 1.0f;    // 被弾後に操作を守る無敵時間
     bool bypassPlayerInvincibility = false; // 強制攻撃だけ回避・被弾無敵を貫通します。演出中は引き続き無効です。
+
     // プレイヤー専用の即死攻撃。攻撃力倍率によらず残りHPを全て減らします。
     bool lethalPlayerDamage = false;
     DamageType damageType = DamageType::Physical;

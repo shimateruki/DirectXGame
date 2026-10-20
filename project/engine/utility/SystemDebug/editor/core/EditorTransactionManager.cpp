@@ -9,9 +9,11 @@ EditorTransactionManager* EditorTransactionManager::GetInstance() {
 }
 
 void EditorTransactionManager::Register(EditorTransaction transaction) {
+    // Undo/Redoの適用中に生じた変更を履歴へ再登録すると、履歴が自己増殖する。
     if (isApplying_ || !transaction.undo || !transaction.redo) {
         return;
     }
+
     if (transaction.label.empty()) {
         transaction.label = "Editor Edit";
     }
@@ -23,7 +25,9 @@ void EditorTransactionManager::Register(EditorTransaction transaction) {
     }
 
     undoStack_.push_back(std::move(transaction));
+    // 新しい編集が入った時点で、取り消した操作のRedo経路は無効になる。
     redoStack_.clear();
+
     while (undoStack_.size() > kMaxHistoryEntries) {
         undoStack_.pop_front();
     }
@@ -36,6 +40,8 @@ void EditorTransactionManager::BeginInteractive(
     if (isApplying_ || !undo) {
         return;
     }
+
+    // ドラッグ中は開始時のUndoを保持し、毎フレーム別履歴を作らない。
     if (interactiveTransaction_ && interactiveTransaction_->itemId == itemId) {
         return;
     }
@@ -73,10 +79,12 @@ void EditorTransactionManager::BeginGroup(const std::string& label) {
     if (isApplying_) {
         return;
     }
+
     if (groupDepth_ == 0) {
         groupTransactions_.clear();
         groupLabel_ = label.empty() ? "Editor Group Edit" : label;
     }
+
     ++groupDepth_;
 }
 
@@ -85,7 +93,9 @@ void EditorTransactionManager::EndGroup() {
     if (isApplying_ || groupDepth_ <= 0) {
         return;
     }
+
     --groupDepth_;
+
     if (groupDepth_ > 0) {
         return;
     }
@@ -106,6 +116,7 @@ void EditorTransactionManager::EndGroup() {
             }
         }
     };
+
     transaction.redo = [grouped]() {
         for (EditorTransaction& entry : *grouped) {
             if (entry.redo) {
@@ -113,6 +124,7 @@ void EditorTransactionManager::EndGroup() {
             }
         }
     };
+
     groupLabel_.clear();
     Register(std::move(transaction));
 }
@@ -152,6 +164,7 @@ void EditorTransactionManager::Clear() {
     if (isApplying_) {
         return;
     }
+
     undoStack_.clear();
     redoStack_.clear();
     groupTransactions_.clear();

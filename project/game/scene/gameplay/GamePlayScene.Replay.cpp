@@ -5,9 +5,9 @@
 #include "game/ui/SettingsMenuOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
-#include "GimmickFactory.h"
-#include "ItemFactory.h"
-#include "LevelLoader.h"
+#include "game/system/scene/GimmickFactory.h"
+#include "game/system/scene/ItemFactory.h"
+#include "game/system/scene/LevelLoader.h"
 #include "BaseEnemy.h"
 #include "Object3d.h"
 #include <algorithm>
@@ -17,7 +17,8 @@
 // リプレイの再生成・状態退避・復元。JSONキーと復元順を維持し、保存形式は変更しない。
 std::unique_ptr<engine::Object3d> GamePlayScene::CreateReplayObject(const json& descriptor) {
     // 記録された型情報から実体を作り直し、シーンの描画基盤がない場合は復元しない。
-    Object3dCommon* common = GetObject3dCommon();
+    engine::Object3dCommon* common = GetObject3dCommon();
+
     if (!common || !descriptor.is_object()) {
         return nullptr;
     }
@@ -30,6 +31,7 @@ std::unique_ptr<engine::Object3d> GamePlayScene::CreateReplayObject(const json& 
 
     if (!enemyType.empty()) {
         object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
+
         if (!object || object->GetEnemyType() != enemyType) {
             return nullptr;
         }
@@ -37,6 +39,7 @@ std::unique_ptr<engine::Object3d> GamePlayScene::CreateReplayObject(const json& 
         object = GimmickFactory::GetInstance()->CreateGimmick(gimmickType, common);
     } else if (!itemType.empty()) {
         object = ItemFactory::GetInstance()->CreateItem(itemType, common);
+
         if (!object || object->GetItemType() != itemType) {
             return nullptr;
         }
@@ -78,21 +81,27 @@ void GamePlayScene::CollectReplaySprites(std::vector<engine::Sprite*>& replaySpr
     add(lockOnSprite_.get());
     add(goalOverlayFlash_.get());
     add(goalOverlayReturnText_.get());
+
     for (const auto& letter : goalOverlayStageClearLetters_) {
         add(letter.get());
     }
+
     for (const auto& sparkle : goalOverlaySparkles_) {
         add(sparkle.get());
     }
+
     if (pauseMenuOverlay_) {
         pauseMenuOverlay_->CollectReplaySprites(replaySprites);
     }
+
     if (controlsGuideOverlay_) {
         controlsGuideOverlay_->CollectReplaySprites(replaySprites);
     }
+
     if (settingsOverlay_) {
         settingsOverlay_->CollectReplaySprites(replaySprites);
     }
+
     if (saveIndicatorOverlay_) {
         saveIndicatorOverlay_->CollectReplaySprites(replaySprites);
     }
@@ -147,10 +156,8 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
           {"damagePulseTimer", hudDamagePulseTimer_},
           {"hurtIconTimer", hudHurtIconTimer_},
           {"hpDamageHoldTimer", hudHpDamageHoldTimer_},
-          {"hpDelayedRate", hudHpDelayedRate_},
-          {"hpAnimationTimer", hudHpAnimationTimer_},
-          {"morphGaugeTimer", hudMorphGaugeTimer_},
-          {"morphGaugeVisibleTimer", hudMorphGaugeVisibleTimer_}}},
+           {"hpDelayedRate", hudHpDelayedRate_},
+           {"hpAnimationTimer", hudHpAnimationTimer_}}},
         {"lifeLost", lifeLostState_.CaptureReplay()},
         {"overlays",
          {{"pause", std::move(pauseState)},
@@ -172,6 +179,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 
     auto restoreVector3 = [](const json& object, const char* key, engine::Vector3& value) {
         const auto found = object.find(key);
+
         if (found != object.end() && found->is_array() && found->size() >= 3) {
             value = {(*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>()};
         }
@@ -179,6 +187,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 
     if (const auto found = state.find("goal"); found != state.end() && found->is_object()) {
         const json& goal = *found;
+        // 冠のばね位置だけでなく速度も戻し、シーク直後の跳ね方を記録時と揃える。
         isGoal_ = goal.value("active", isGoal_);
         goalWasStageCleared_ = goal.value("wasStageCleared", goalWasStageCleared_);
         const int stateValue = std::clamp(goal.value("state", static_cast<int>(goalPresentationState_)), 0, 3);
@@ -199,8 +208,10 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         goalResultCuePlayed_ = goal.value("resultCuePlayed", goalResultCuePlayed_);
 
         if (goalCinematicTimelineLoaded_ && isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
+            // 演出の時刻と再生/停止を別々に復元し、停止中のフレームへも戻せるようにする。
             const bool shouldPlay = goal.value("cinematicPlaying", goalCinematicPlayer_.IsPlaying());
             goalCinematicPlayer_.SetTime(goalPresentationTimer_, false);
+
             if (shouldPlay && !goalCinematicPlayer_.IsPlaying()) {
                 goalCinematicPlayer_.Resume(false);
             } else if (!shouldPlay && goalCinematicPlayer_.IsPlaying()) {
@@ -211,16 +222,19 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 
     if (const auto found = state.find("hud"); found != state.end() && found->is_object()) {
         const json& hud = *found;
+
         if (const auto values = hud.find("stageStarPulseTimers"); values != hud.end() && values->is_array()) {
             for (size_t i = 0; i < hudStageStarPulseTimers_.size() && i < values->size(); ++i) {
                 hudStageStarPulseTimers_[i] = (*values)[i].get<float>();
             }
         }
+
         if (const auto values = hud.find("stageStarCollected"); values != hud.end() && values->is_array()) {
             for (size_t i = 0; i < hudStageStarVisualCollected_.size() && i < values->size(); ++i) {
                 hudStageStarVisualCollected_[i] = (*values)[i].get<bool>();
             }
         }
+
         hudLifeGainPulseTimer_ = hud.value("lifeGainPulseTimer", hudLifeGainPulseTimer_);
         hudCoinPulseTimer_ = hud.value("coinPulseTimer", hudCoinPulseTimer_);
         hudPreviousLives_ = hud.value("previousLives", hudPreviousLives_);
@@ -231,8 +245,6 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         hudHpDamageHoldTimer_ = hud.value("hpDamageHoldTimer", hudHpDamageHoldTimer_);
         hudHpDelayedRate_ = hud.value("hpDelayedRate", hudHpDelayedRate_);
         hudHpAnimationTimer_ = hud.value("hpAnimationTimer", hudHpAnimationTimer_);
-        hudMorphGaugeTimer_ = hud.value("morphGaugeTimer", hudMorphGaugeTimer_);
-        hudMorphGaugeVisibleTimer_ = hud.value("morphGaugeVisibleTimer", hudMorphGaugeVisibleTimer_);
     }
 
     if (const auto found = state.find("lifeLost"); found != state.end() && found->is_object()) {
@@ -241,20 +253,26 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 
     if (const auto found = state.find("overlays"); found != state.end() && found->is_object()) {
         const json& overlays = *found;
+        // 古いリプレイのキー名も受け取り、ポーズから操作説明への往復状態を維持する。
         pauseGuideSession_ = overlays.value("pauseGuideSession", overlays.value("returnToPauseAfterGuide", false));
+
         if (pauseMenuOverlay_ && overlays.contains("pause")) {
             pauseMenuOverlay_->RestoreReplayState(overlays["pause"]);
         }
+
         if (controlsGuideOverlay_ && overlays.contains("controlsGuide")) {
             controlsGuideOverlay_->RestoreReplayState(overlays["controlsGuide"]);
         }
+
         pausePageSliding_ = overlays.value("pausePageSliding", false);
         pausePageToMenu_ = overlays.value("pausePageToMenu", true);
         pausePageSlideTime_ = std::clamp(overlays.value("pausePageSlideTime", 0.0f), 0.0f, 0.34f);
-        if (pausePageSliding_) UpdatePausePageSlide(0.0f);
+        if (pausePageSliding_)
+            UpdatePausePageSlide(0.0f);
         if (settingsOverlay_ && overlays.contains("settings")) {
             settingsOverlay_->RestoreReplayState(overlays["settings"]);
         }
+
         if (saveIndicatorOverlay_ && overlays.contains("saveIndicator")) {
             saveIndicatorOverlay_->RestoreReplayState(overlays["saveIndicator"]);
         }

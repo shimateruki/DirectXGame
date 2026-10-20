@@ -16,8 +16,10 @@ void TrailEmitter::Stop() {
 }
 
 void TrailEmitter::Update(float /*deltaTime*/) {
-    if (!isActive_ || !target_) return;
-    if (!config_.emitMesh && !config_.emitParticle) return;
+    if (!isActive_ || !target_)
+        return;
+    if (!config_.emitMesh && !config_.emitParticle)
+        return;
 
     engine::Vector3 currentPos = target_->GetWorldPosition();
 
@@ -32,7 +34,8 @@ void TrailEmitter::Update(float /*deltaTime*/) {
     engine::Vector3 diff = currentPos - lastEmitPos_;
     float dist = engine::Math::Length(diff);
 
-    if (dist < config_.emitDistance) return; // まだ足りない
+    if (dist < config_.emitDistance)
+        return; // まだ足りない
 
     // 移動方向からY軸回転を算出 (autoOrient=true のとき使う)
     engine::Vector3 moveDir = engine::Math::Normalize(diff);

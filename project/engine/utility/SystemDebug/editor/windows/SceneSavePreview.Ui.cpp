@@ -16,9 +16,11 @@ using json = nlohmann::json;
 SceneSavePreview::Action SceneSavePreview::Draw() {
 #ifdef USE_IMGUI
     // 保存候補の差分を確認してから、保存・取消の選択だけ呼び出し側へ返します。
-    if (!isOpen_) return Action::None;
+    if (!isOpen_)
+        return Action::None;
 
     const char* popupName = "Scene Save Preview###SceneSavePreview";
+
     if (requestOpenPopup_) {
         ImGui::OpenPopup(popupName);
         requestOpenPopup_ = false;
@@ -41,6 +43,7 @@ SceneSavePreview::Action SceneSavePreview::Draw() {
         ImGui::Separator();
         ImGui::Checkbox("変更なしのオブジェクトも表示", &showUnchanged_);
         ImGui::SameLine();
+
         if (!summary_.HasChanges()) {
             ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.6f, 1.0f), ICON_FA_CHECK_CIRCLE " 差分はありません");
         }
@@ -53,29 +56,35 @@ SceneSavePreview::Action SceneSavePreview::Draw() {
                 DrawFileDiff(diff);
             }
         }
+
         ImGui::EndChild();
 
         ImGui::Separator();
+
         if (ImGui::Button(ICON_FA_TIMES " キャンセル", ImVec2(160.0f, 34.0f))) {
             action = Action::Cancel;
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
         float buttonSpacer = std::max(0.0f, ImGui::GetContentRegionAvail().x - 330.0f);
         ImGui::Dummy(ImVec2(buttonSpacer, 0.0f));
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.25f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.60f, 0.32f, 1.0f));
+
         if (ImGui::Button(ICON_FA_CHECK " この内容で保存", ImVec2(170.0f, 34.0f))) {
             action = Action::Confirm;
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::PopStyleColor(2);
 
         ImGui::EndPopup();
     }
 
     if (!keepOpen && action == Action::None) {
+        // タイトルバーの閉じる操作も明示的なキャンセルと同じ結果にする。
         action = Action::Cancel;
     }
 
@@ -132,6 +141,7 @@ void SceneSavePreview::DrawFileSummaryTable() const {
         ImGui::TextUnformatted(diff.target.path.c_str());
 
         ImGui::TableSetColumnIndex(1);
+
         if (!diff.oldFileExists) {
             DrawChangeBadge(ChangeKind::FileAdded);
         }
@@ -161,6 +171,7 @@ void SceneSavePreview::DrawFileSummaryTable() const {
 void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
     // 変更Objectを優先表示し、必要な場合だけ未変更行も展開します。
     int visibleChanges = 0;
+
     for (const auto& change : diff.objects) {
         if (showUnchanged_ || change.kind != ChangeKind::Unchanged) {
             visibleChanges++;
@@ -168,6 +179,7 @@ void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
     }
 
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+
     if (diff.addedCount > 0 || diff.removedCount > 0 || diff.modifiedCount > 0 || !diff.oldFileExists || !diff.oldJsonValid) {
         flags |= ImGuiTreeNodeFlags_DefaultOpen;
     }
@@ -209,8 +221,10 @@ void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
     ImGui::TableHeadersRow();
 
     int rowId = 0;
+
     for (const auto& change : diff.objects) {
-        if (!showUnchanged_ && change.kind == ChangeKind::Unchanged) continue;
+        if (!showUnchanged_ && change.kind == ChangeKind::Unchanged)
+            continue;
 
         ImGui::PushID(rowId++);
         ImGui::TableNextRow();
@@ -224,20 +238,24 @@ void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
         ImGui::TextUnformatted(change.name.c_str());
 
         ImGui::TableSetColumnIndex(3);
+
         if (change.details.empty()) {
             ImGui::TextDisabled("-");
         }
         else {
             ImGui::TextWrapped("%s", change.details[0].c_str());
+
             if (change.details.size() > 1) {
                 if (ImGui::TreeNode("詳細")) {
                     for (size_t i = 1; i < change.details.size(); ++i) {
                         ImGui::BulletText("%s", change.details[i].c_str());
                     }
+
                     ImGui::TreePop();
                 }
             }
         }
+
         ImGui::PopID();
     }
 
@@ -247,21 +265,26 @@ void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
 void SceneSavePreview::DrawChangeBadge(ChangeKind kind) const {
     // 追加・削除・変更を同じ色規則で表し、各差分表の読み方を揃えます。
     ImVec4 color = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
+
     switch (kind) {
     case ChangeKind::Added:
     case ChangeKind::FileAdded:
         color = ImVec4(0.35f, 1.0f, 0.55f, 1.0f);
         break;
+
     case ChangeKind::Removed:
         color = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
         break;
+
     case ChangeKind::Modified:
     case ChangeKind::FileModified:
         color = ImVec4(1.0f, 0.78f, 0.22f, 1.0f);
         break;
+
     case ChangeKind::FileInvalid:
         color = ImVec4(1.0f, 0.25f, 0.75f, 1.0f);
         break;
+
     case ChangeKind::Unchanged:
     case ChangeKind::FileUnchanged:
     default:
@@ -277,16 +300,22 @@ const char* SceneSavePreview::GetKindLabel(ChangeKind kind) const {
     switch (kind) {
     case ChangeKind::Added:
         return "Added";
+
     case ChangeKind::Removed:
         return "Removed";
+
     case ChangeKind::Modified:
         return "Modified";
+
     case ChangeKind::FileAdded:
         return "New File";
+
     case ChangeKind::FileModified:
         return "Changed";
+
     case ChangeKind::FileInvalid:
         return "Invalid";
+
     case ChangeKind::Unchanged:
     case ChangeKind::FileUnchanged:
     default:

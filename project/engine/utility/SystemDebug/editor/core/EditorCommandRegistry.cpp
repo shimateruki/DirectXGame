@@ -15,10 +15,12 @@ bool EditorCommandRegistry::Register(EditorCommand command) {
     }
 
     auto existing = commands_.find(command.id);
+
     if (existing != commands_.end()) {
         if (existing->second.owner != command.owner) {
             return false;
         }
+
         existing->second = std::move(command);
         ++revision_;
         return true;
@@ -35,6 +37,7 @@ bool EditorCommandRegistry::Unregister(std::string_view id, const void* owner) {
     // 登録者が一致するコマンドだけを解除し、他のツールの登録を保持する。
     const std::string key(id);
     auto it = commands_.find(key);
+
     if (it == commands_.end() || (owner && it->second.owner != owner)) {
         return false;
     }
@@ -82,6 +85,7 @@ void EditorCommandRegistry::Clear() {
     if (commands_.empty() && registrationOrder_.empty()) {
         return;
     }
+
     commands_.clear();
     registrationOrder_.clear();
     ++revision_;
@@ -99,18 +103,22 @@ bool EditorCommandRegistry::Contains(std::string_view id) const {
 bool EditorCommandRegistry::CanExecute(std::string_view id) const {
     // 実行関数のないコマンドは無効とし、条件関数がなければ実行可能とする。
     const EditorCommand* command = Find(id);
+
     if (!command || !command->execute) {
         return false;
     }
+
     return !command->canExecute || command->canExecute();
 }
 
 bool EditorCommandRegistry::Execute(std::string_view id) const {
     // UI 側と同じ実行条件を直前にも評価し、無効になった操作を実行しない。
     const EditorCommand* command = Find(id);
+
     if (!command || !command->execute || (command->canExecute && !command->canExecute())) {
         return false;
     }
+
     command->execute();
     return true;
 }
@@ -119,11 +127,14 @@ std::vector<const EditorCommand*> EditorCommandRegistry::GetCommands() const {
     // ハッシュ表の走査順ではなく登録時の順番で、エディターへ表示する。
     std::vector<const EditorCommand*> result;
     result.reserve(registrationOrder_.size());
+
     for (const std::string& id : registrationOrder_) {
         const auto it = commands_.find(id);
+
         if (it != commands_.end()) {
             result.push_back(&it->second);
         }
     }
+
     return result;
 }

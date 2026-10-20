@@ -24,6 +24,7 @@ public:
 
 private:
     WorkflowSettings() = default;
+
     bool linearWorkflowEnabled_ = false;
 };
 

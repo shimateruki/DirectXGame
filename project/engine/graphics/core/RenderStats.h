@@ -129,6 +129,7 @@ public:
     ~ScopedRenderPass();
 
     ScopedRenderPass(const ScopedRenderPass&) = delete;
+
     ScopedRenderPass& operator=(const ScopedRenderPass&) = delete;
 
 private:

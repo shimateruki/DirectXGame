@@ -23,6 +23,7 @@ bool PresetEditor::DrawEnemySettings(json& data) {
         changed |= DrawTypeCombo("敵の種類", data, param, "enemyType", GetEnemyOptions(), Category::Enemy);
         ImGui::TextDisabled("HP・攻撃力・移動・重力などはステータス管理でタイプごとに編集します。");
     }
+
     return changed;
 }
 
@@ -31,6 +32,7 @@ bool PresetEditor::RemoveManagedEnemyFields(json& data) {
     bool changed = false;
     changed |= data.erase("modelName") > 0;
     changed |= data.erase("scale") > 0;
+
     if (!data.contains("param") || !data["param"].is_object()) {
         return changed;
     }
@@ -40,9 +42,11 @@ bool PresetEditor::RemoveManagedEnemyFields(json& data) {
         "hp", "maxHp", "attackPower", "speed", "gravity", "maxFallSpeed",
         "jumpPower", "detectionRange", "morphLimited", "morphDuration", "interval"
     };
+
     for (const char* key : managedKeys) {
         changed |= param.erase(key) > 0;
     }
+
     return changed;
 }
 
@@ -80,6 +84,7 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
             changed |= DrawParamIntCombo(param, "色タイプ", "colorType", 0, { "青", "赤" });
         }
         else if (type == "BreakableBlock") {
+            // 保存値のactionModeは他のギミックと共用の数値なので、UIでは破壊条件へ読み替える。
             const int actionMode = param.value("actionMode", 0);
             int condition = actionMode == 7 ? 2 : (actionMode == 6 ? 1 : 0);
             if (ImGui::Combo("破壊条件", &condition,
@@ -87,6 +92,7 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
                 param["actionMode"] = condition == 2 ? 7 : (condition == 1 ? 6 : 0);
                 changed = true;
             }
+
             ImGui::TextDisabled("ピンク専用は通常攻撃や横突進では開きません。");
         }
         else if (type == "Switch") {
@@ -165,6 +171,24 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
             changed |= DrawParamFloat(param, "1フェーズの時間", "interval", 2.0f, 0.05f);
             changed |= DrawParamBool(param, "正方向に回転", "startActive", true);
         }
+        else if (type == "FireCannon") {
+            // 砲台のモデルと動作をPresetからも調整できるようにする。
+            changed |= DrawParamIntCombo(param, "発射方向", "actionMode", 0,
+                { "前方固定", "プレイヤーを狙う", "放物線砲弾", "大型砲弾（砲口に沿って直進）" });
+            changed |= DrawParamFloat(param, "弾速", "speed", 18.0f, 0.5f);
+            changed |= DrawParamFloat(param, "発射間隔", "interval", 3.0f, 0.05f);
+            changed |= DrawParamFloat(param, "弾の半径", "moveAmount", 1.0f, 0.05f);
+            if (param.value("actionMode", 0) != 3) {
+                changed |= DrawParamFloat(param, "索敵範囲", "detectionRange", 35.0f, 0.5f);
+            }
+            if (param.value("actionMode", 0) == 3) {
+                changed |= DrawParamFloat(param, "弾の持続時間", "projectileLifetime", 2.0f, 0.05f);
+                changed |= DrawParamFloat(param, "爆風半径", "healAmount", 2.2f, 0.1f);
+            }
+            changed |= DrawParamBool(param, "開始時に有効", "startActive", true);
+            changed |= DrawParamBool(param, "OFFで停止", "returnOnOff", true);
+            changed |= DrawParamBool(param, "編集停止中に発射をプレビュー", "editorPreviewFiring", true);
+        }
         else if (type == "StageGate") {
             changed |= DrawParamIntCombo(param, "入口の用途", "actionMode", 0,
                 {"ステージ選択の入口", "指定シーンへ遷移", "指定ステージへ遷移"});
@@ -177,6 +201,7 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
             ImGui::TextDisabled("このギミックは追加パラメータなしで配置できます。");
         }
     }
+
     return changed;
 }
 
@@ -189,10 +214,12 @@ bool PresetEditor::DrawItemSettings(json& data) {
     if (ImGui::CollapsingHeader("アイテムパラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
         changed |= DrawTypeCombo("アイテムの種類", data, param, "itemType", GetItemOptions(), Category::Item);
         const std::string type = ReadString(data, "itemType", ReadString(param, "itemType", ""));
+
         if (type == "Heal") {
             changed |= DrawParamFloat(param, "回復量", "healAmount", 1.0f, 0.1f);
         }
     }
+
     return changed;
 }
 
@@ -200,6 +227,7 @@ bool PresetEditor::DrawTypeCombo(const char* label, json& data, json& param, con
     // 旧JSONで型がparam内にある場合も読み、変更時は両方の参照先を揃えます。
     std::string current = ReadString(data, key, ReadString(param, key, ""));
     int currentIndex = 0;
+
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
         if (current == options[i].value) {
             currentIndex = i;
@@ -209,6 +237,7 @@ bool PresetEditor::DrawTypeCombo(const char* label, json& data, json& param, con
 
     std::vector<const char*> labels;
     labels.reserve(options.size());
+
     for (const TypeOption& option : options) {
         labels.push_back(option.label);
     }
@@ -220,6 +249,7 @@ bool PresetEditor::DrawTypeCombo(const char* label, json& data, json& param, con
         ApplyTypeDefaults(data, category, options[currentIndex].value);
         return true;
     }
+
     return false;
 }
 
@@ -352,10 +382,12 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
         data["scale"] = { 0.8f, 0.8f, 0.8f };
         SetColliderDefaults(data, 1, { 1.2f, 1.2f, 1.2f });
     }
+
     // ここで作った数値Maskは現在のJSON定義の値なので、IDも同時に保存します。
     if (data.contains("collisionAttribute") && data["collisionAttribute"].is_number_unsigned()) {
         data["collisionAttributeIds"] = CollisionCategories::GetIds(data["collisionAttribute"].get<uint32_t>());
     }
+
     if (data.contains("collisionMask") && data["collisionMask"].is_number_unsigned()) {
         data["collisionMaskIds"] = CollisionCategories::GetIds(data["collisionMask"].get<uint32_t>());
     }
@@ -366,29 +398,38 @@ void PresetEditor::SetColliderDefaults(json& data, int type, const engine::Vecto
     if (!data.contains("collider") || !data["collider"].is_object()) {
         data["collider"] = json::object();
     }
+
     data["collider"]["type"] = type;
     data["collider"]["size"] = { size.x, size.y, size.z };
-    if (!data["collider"].contains("center")) data["collider"]["center"] = { 0.0f, 0.0f, 0.0f };
-    if (!data["collider"].contains("rotation")) data["collider"]["rotation"] = { 0.0f, 0.0f, 0.0f };
+
+    if (!data["collider"].contains("center"))
+        data["collider"]["center"] = { 0.0f, 0.0f, 0.0f };
+    if (!data["collider"].contains("rotation"))
+        data["collider"]["rotation"] = { 0.0f, 0.0f, 0.0f };
 }
 
 bool PresetEditor::DrawModelField(json& data) {
     // 表示名ではなくモデルの参照名をJSONへ保存します。
     bool changed = false;
     std::string current = ReadString(data, "modelName", "");
+
     if (ImGui::BeginCombo("モデル", current.empty() ? "(なし)" : current.c_str())) {
         for (const std::string& modelName : modelNames_) {
             bool selected = modelName == current;
+
             if (ImGui::Selectable(modelName.c_str(), selected)) {
                 data["modelName"] = modelName;
                 changed = true;
             }
+
             if (selected) {
                 ImGui::SetItemDefaultFocus();
             }
         }
+
         ImGui::EndCombo();
     }
+
     changed |= DrawStringField(data, "モデル名", "modelName", "");
     return changed;
 }
@@ -396,6 +437,7 @@ bool PresetEditor::DrawModelField(json& data) {
 bool PresetEditor::DrawCollider(json& data) {
     // colliderが欠けた旧Presetも編集できるよう、初回表示時に空オブジェクトを補います。
     bool changed = false;
+
     if (!data.contains("collider") || !data["collider"].is_object()) {
         data["collider"] = json::object();
         changed = true;
@@ -404,10 +446,12 @@ bool PresetEditor::DrawCollider(json& data) {
     json& collider = data["collider"];
     int type = ReadInt(collider, "type", 0);
     const char* labels[] = { "なし", "球", "AABB", "OBB" };
+
     if (ImGui::Combo("形状", &type, labels, 4)) {
         collider["type"] = type;
         changed = true;
     }
+
     changed |= DrawVector3Field(collider, "中心", "center", { 0.0f, 0.0f, 0.0f }, 0.05f);
     changed |= DrawVector3Field(collider, "サイズ", "size", { 1.0f, 1.0f, 1.0f }, 0.05f);
     changed |= DrawVector3Field(collider, "回転", "rotation", { 0.0f, 0.0f, 0.0f }, 0.01f);
@@ -419,36 +463,43 @@ bool PresetEditor::DrawStringField(json& data, const char* label, const char* ke
     char buffer[256]{};
     std::string value = ReadString(data, key, defaultValue);
     strncpy_s(buffer, value.c_str(), _TRUNCATE);
+
     if (ImGui::InputText(label, buffer, sizeof(buffer))) {
         data[key] = std::string(buffer);
         return true;
     }
+
     return false;
 }
 
 bool PresetEditor::DrawFloatField(json& data, const char* label, const char* key, float defaultValue, float speed) {
     // Drag操作が確定した値だけ保存し、呼び出し側へ変更を伝えます。
     float value = ReadFloat(data, key, defaultValue);
+
     if (ImGui::DragFloat(label, &value, speed)) {
         data[key] = value;
         return true;
     }
+
     return false;
 }
 
 bool PresetEditor::DrawIntField(json& data, const char* label, const char* key, int defaultValue) {
     // 整数パラメータも共通の変更フラグで保存処理へ渡します。
     int value = ReadInt(data, key, defaultValue);
+
     if (ImGui::DragInt(label, &value, 1.0f)) {
         data[key] = value;
         return true;
     }
+
     return false;
 }
 
 bool PresetEditor::DrawColorField(json& data, const char* label, const char* key, const engine::Vector4& defaultValue) {
     // 壊れた配列要素は既定色を保ち、編集時にRGBA配列へ正規化します。
     float color[4] = { defaultValue.x, defaultValue.y, defaultValue.z, defaultValue.w };
+
     if (data.contains(key) && data[key].is_array() && data[key].size() >= 4) {
         for (int i = 0; i < 4; ++i) {
             if (data[key][i].is_number()) {
@@ -456,22 +507,28 @@ bool PresetEditor::DrawColorField(json& data, const char* label, const char* key
             }
         }
     }
+
     if (ImGui::ColorEdit4(label, color)) {
         data[key] = { color[0], color[1], color[2], color[3] };
         return true;
     }
+
     return false;
 }
 
 bool PresetEditor::DrawVector3Field(json& data, const char* label, const char* key, const engine::Vector3& defaultValue, float speed) {
     engine::Vector3 value = ReadVector3(data, key, defaultValue);
     float values[3] = { value.x, value.y, value.z };
+
     if (ImGui::DragFloat3(label, values, speed)) {
         data[key] = { values[0], values[1], values[2] };
+
         // 保存されたQuaternionより、今回編集したEuler角を優先します。
-        if (std::string(key) == "rotate") data.erase("quaternion");
+        if (std::string(key) == "rotate")
+            data.erase("quaternion");
         return true;
     }
+
     return false;
 }
 
@@ -488,20 +545,24 @@ bool PresetEditor::DrawParamInt(json& param, const char* label, const char* key,
 bool PresetEditor::DrawParamBool(json& param, const char* label, const char* key, bool defaultValue) {
     // 未登録値は既定値で表示し、チェック変更時に初めてJSONへ確定します。
     bool value = ReadBool(param, key, defaultValue);
+
     if (ImGui::Checkbox(label, &value)) {
         param[key] = value;
         return true;
     }
+
     return false;
 }
 
 bool PresetEditor::DrawParamIntCombo(json& param, const char* label, const char* key, int defaultValue, const std::vector<const char*>& labels) {
     // UIの選択番号をそのまま保存形式の整数値に対応させます。
     int value = ReadInt(param, key, defaultValue);
+
     if (ImGui::Combo(label, &value, labels.data(), static_cast<int>(labels.size()))) {
         param[key] = value;
         return true;
     }
+
     return false;
 }
 
@@ -510,6 +571,7 @@ json& PresetEditor::EnsureParam(json& data) {
     if (!data.contains("param") || !data["param"].is_object()) {
         data["param"] = json::object();
     }
+
     return data["param"];
 }
 
@@ -533,16 +595,21 @@ json PresetEditor::BuildBlankPreset(const std::string& name, Category category) 
     data["name"] = name;
     data["presetDisplayName"] = name;
     data["presetUsage"] = category == Category::Model ? "装飾" : GetCategoryLabel(category);
+
     if (category != Category::Enemy) {
         data["modelName"] = "Stages/block";
     }
+
     data["translate"] = { 0.0f, 0.0f, 0.0f };
     data["rotate"] = { 0.0f, 0.0f, 0.0f };
+
     if (category != Category::Enemy) {
         data["scale"] = { 1.0f, 1.0f, 1.0f };
     }
+
     data["color"] = { 1.0f, 1.0f, 1.0f, 1.0f };
     data["materialType"] = 0;
+
     // 描画側の初期値と一致させ、作成直後からPBR設定をJSON上で確認できるようにします。
     data["metallic"] = 0.0f;
     data["roughness"] = 0.5f;
@@ -565,6 +632,7 @@ json PresetEditor::BuildBlankPreset(const std::string& name, Category category) 
         { "size", { 1.0f, 1.0f, 1.0f } },
         { "rotation", { 0.0f, 0.0f, 0.0f } }
     };
+
     if (category == Category::Enemy) {
         data["param"] = { { "enemyType", "Slime" } };
     } else {

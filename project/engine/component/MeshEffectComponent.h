@@ -14,9 +14,11 @@ public:
 
     // 主・副エフェクトのAsset名。空文字列ならその枠は未設定。
     const std::string& GetPrimaryEffect() const { return primaryEffect_; }
+
     void SetPrimaryEffect(const std::string& name) { primaryEffect_ = name; }
 
     const std::string& GetSecondaryEffect() const { return secondaryEffect_; }
+
     void SetSecondaryEffect(const std::string& name) { secondaryEffect_ = name; }
 
 private:

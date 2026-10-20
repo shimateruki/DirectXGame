@@ -19,6 +19,7 @@ namespace {
 bool IntersectsFrustumSphere(const engine::Frustum& frustum, const engine::Vector3& center, float radius) {
     // いずれかの視錐台面より球が完全に外なら描画対象から除く。
     const float safeRadius = (std::max)(radius, 0.0f);
+
     for (const engine::Plane& plane : frustum.planes) {
         const float signedDistance =
             plane.normal.x * center.x +
@@ -29,6 +30,7 @@ bool IntersectsFrustumSphere(const engine::Frustum& frustum, const engine::Vecto
             return false;
         }
     }
+
     return true;
 }
 }
@@ -84,6 +86,7 @@ void LightManager::Update() {
     // 1. 平行光源 (Directional Light)
     // ---------------------------------------------------
     GetDirectionalShadowViewProjection(CameraManager::GetInstance()->GetActiveCamera());
+
     if (directionalLightResource_) {
         DirectionalLight* dirMap = nullptr;
 
@@ -117,7 +120,8 @@ void LightManager::Update() {
 
     for (auto& instance : pointLights_) {
         // 最大数チェック
-        if (pointLightConstData_->activeCount >= kMaxPointLights) break;
+        if (pointLightConstData_->activeCount >= kMaxPointLights)
+            break;
 
         // --- ロジック更新 (CPU側) ---
 
@@ -134,11 +138,13 @@ void LightManager::Update() {
         // B. アニメーション処理 (点滅・明滅)
         if (instance.mode == LightMode::Flicker) {
             instance.timer += 1.0f / 60.0f * instance.speed;
+
             // ランダムなノイズ (故障したライト風)
             float noise = (float)(rand() % 100) / 100.0f;
             instance.data.intensity = instance.baseIntensity * (0.5f + noise * 0.5f);
         } else if (instance.mode == LightMode::SineWave) {
             instance.timer += 1.0f / 60.0f * instance.speed;
+
             // サイン波 (呼吸のような明滅)
             float wave = (std::sin(instance.timer) + 1.0f) * 0.5f;
             instance.data.intensity = instance.baseIntensity * (0.5f + wave * 0.5f);
@@ -150,6 +156,7 @@ void LightManager::Update() {
         if (instance.data.intensity <= 0.0001f || instance.data.radius <= 0.0001f) {
             continue;
         }
+
         if (activeFrustum && !IntersectsFrustumSphere(*activeFrustum, instance.data.position, instance.data.radius)) {
             continue;
         }
@@ -189,6 +196,7 @@ void LightManager::Update() {
             pointLightConstData_->lights[transientIndex] = gpuLight;
             pointLightConstData_->activeCount++;
         }
+
         ++index;
     }
 
@@ -198,7 +206,8 @@ void LightManager::Update() {
     spotLightConstData_->activeCount = 0;
 
     for (auto& instance : spotLights_) {
-        if (spotLightConstData_->activeCount >= kMaxSpotLights) break;
+        if (spotLightConstData_->activeCount >= kMaxSpotLights)
+            break;
 
         // --- ロジック更新 ---
 
@@ -218,6 +227,7 @@ void LightManager::Update() {
 
             // 正規化
             float len = std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+
             if (len > 0.0001f) {
                 instance.data.direction = { forward.x / len, forward.y / len, forward.z / len };
             }
@@ -239,6 +249,7 @@ void LightManager::Update() {
         if (instance.data.intensity <= 0.0001f || instance.data.distance <= 0.0001f) {
             continue;
         }
+
         if (activeFrustum && !IntersectsFrustumSphere(*activeFrustum, instance.data.position, instance.data.distance)) {
             continue;
         }
@@ -256,12 +267,14 @@ const engine::Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const 
     // 光源方向とカメラ注視点から影領域を組み立て、キャッシュ行列を更新します。
     engine::Math math;
     engine::Vector3 lightDirection = directionalLightData_.direction;
+
     if (engine::Math::Length(lightDirection) > 0.0001f) {
         lightDirection = engine::Math::Normalize(lightDirection);
     }
     else {
         lightDirection = { 0.0f, -1.0f, 0.0f };
     }
+
     directionalLightData_.direction = lightDirection;
 
     const engine::Vector3 target = camera ? camera->GetEye() : engine::Vector3{};
@@ -269,6 +282,7 @@ const engine::Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const 
     const auto changed = [](float lhs, float rhs) {
         return std::abs(lhs - rhs) > 0.0001f;
     };
+
     const bool eyeChanged =
         changed(target.x, cachedShadowEye_.x) ||
         changed(target.y, cachedShadowEye_.y) ||
@@ -284,7 +298,9 @@ const engine::Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const 
             target.y - lightDirection.y * 200.0f,
             target.z - lightDirection.z * 200.0f,
         };
+
         engine::Vector3 up = { 0.0f, 1.0f, 0.0f };
+
         if (std::abs(lightDirection.x) < 0.001f && std::abs(lightDirection.z) < 0.001f) {
             up = { 0.0f, 0.0f, 1.0f };
         }
@@ -324,6 +340,7 @@ void LightManager::ApplySceneClearColor() {
     if (!dxCommon_) {
         return;
     }
+
     dxCommon_->SetRenderClearColor(
         sceneClearColor_.x,
         sceneClearColor_.y,
@@ -333,10 +350,12 @@ void LightManager::ApplySceneClearColor() {
 
 // 戻り値を Instance* に変更
 bool LightManager::AddPointLight() {
-    if (pointLights_.size() >= kMaxPointLights) return false;
+    if (pointLights_.size() >= kMaxPointLights)
+        return false;
 
     PointLightInstance instance;
     instance.name = "PointLight " + std::to_string(pointLights_.size());
+
     // デフォルト値
     instance.data.color = { 1.0f, 1.0f, 1.0f, 1.0f };
     instance.data.position = { 0.0f, 2.0f, 0.0f };
@@ -355,7 +374,8 @@ bool LightManager::AddPointLight() {
 
 // 戻り値を Instance* に変更
 bool LightManager::AddSpotLight() {
-    if (spotLights_.size() >= kMaxSpotLights) return false;
+    if (spotLights_.size() >= kMaxSpotLights)
+        return false;
 
     SpotLightInstance instance;
     instance.name = "SpotLight " + std::to_string(spotLights_.size());
@@ -379,7 +399,8 @@ bool LightManager::AddSpotLight() {
 
 bool LightManager::SetPointLight(std::size_t index, const PointLightInstance& value) {
     // 半径・減衰・基準強度を非負に補正してから保存します。
-    if (index >= pointLights_.size()) return false;
+    if (index >= pointLights_.size())
+        return false;
     pointLights_[index] = value;
     pointLights_[index].data.radius = (std::max)(0.0f, pointLights_[index].data.radius);
     pointLights_[index].data.decay = (std::max)(0.0f, pointLights_[index].data.decay);
@@ -389,7 +410,8 @@ bool LightManager::SetPointLight(std::size_t index, const PointLightInstance& va
 
 bool LightManager::SetSpotLight(std::size_t index, const SpotLightInstance& value) {
     // 到達距離と減衰の負値を排除し、GPUへ渡す設定を保ちます。
-    if (index >= spotLights_.size()) return false;
+    if (index >= spotLights_.size())
+        return false;
     spotLights_[index] = value;
     spotLights_[index].data.distance = (std::max)(0.0f, spotLights_[index].data.distance);
     spotLights_[index].data.decay = (std::max)(0.0f, spotLights_[index].data.decay);
@@ -399,14 +421,16 @@ bool LightManager::SetSpotLight(std::size_t index, const SpotLightInstance& valu
 
 bool LightManager::RemovePointLight(std::size_t index) {
     // 不正インデックスでは一覧を変更せず、呼び出し側へ失敗を返します。
-    if (index >= pointLights_.size()) return false;
+    if (index >= pointLights_.size())
+        return false;
     pointLights_.erase(pointLights_.begin() + index);
     return true;
 }
 
 bool LightManager::RemoveSpotLight(std::size_t index) {
     // 不正インデックスでは一覧を変更せず、呼び出し側へ失敗を返します。
-    if (index >= spotLights_.size()) return false;
+    if (index >= spotLights_.size())
+        return false;
     spotLights_.erase(spotLights_.begin() + index);
     return true;
 }
@@ -450,6 +474,7 @@ bool LightManager::SetSkyboxTexturePath(const std::string& texturePath) {
         if (!std::filesystem::exists(texturePath)) {
             return false;
         }
+
         skyboxTexturePath_ = texturePath;
         skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
             texturePath,
@@ -485,9 +510,11 @@ bool LightManager::SaveState(const std::string& filename) {
 
     // --- 点光源 ---
     json pArray = json::array();
+
     for (const auto& instance : pointLights_) {
         json j;
         j["name"] = instance.name;
+
         // GPUデータ
         const auto& l = instance.data;
         j["position"] = { l.position.x, l.position.y, l.position.z };
@@ -504,10 +531,12 @@ bool LightManager::SaveState(const std::string& filename) {
 
         pArray.push_back(j);
     }
+
     root["pointLights"] = pArray;
 
     // --- スポットライト ---
     json sArray = json::array();
+
     for (const auto& instance : spotLights_) {
         json j;
         j["name"] = instance.name;
@@ -529,10 +558,12 @@ bool LightManager::SaveState(const std::string& filename) {
 
         sArray.push_back(j);
     }
+
     root["spotLights"] = sArray;
 
     try {
         const std::filesystem::path path(filename);
+
         if (!path.parent_path().empty()) {
             std::filesystem::create_directories(path.parent_path());
         }
@@ -541,15 +572,19 @@ bool LightManager::SaveState(const std::string& filename) {
     }
 
     std::ofstream file(filename, std::ios::trunc);
+
     if (!file.is_open()) {
         return false;
     }
+
     file << root.dump(4);
     const bool result = file.good();
+
     if (result) {
         currentStateFile_ = filename;
         lastLoadSucceeded_ = true;
     }
+
     return result;
 }
 
@@ -558,7 +593,8 @@ bool LightManager::LoadState(const std::string& filename) {
     lastLoadSucceeded_ = false;
 
     std::ifstream file(filename);
-    if (!file.is_open()) return false;
+    if (!file.is_open())
+        return false;
 
     json root;
     try { file >> root; }
@@ -574,16 +610,21 @@ bool LightManager::LoadState(const std::string& filename) {
     } else {
         sceneClearColor_ = { 0.1f, 0.25f, 0.5f, 1.0f };
     }
+
     ApplySceneClearColor();
 
     skyboxEnabled_ = true;
+
     if (root.contains("skybox") && root["skybox"].is_object()) {
         const json& skybox = root["skybox"];
+
         if (skybox.contains("enabled")) {
             skyboxEnabled_ = skybox["enabled"].get<bool>();
         }
+
         if (skybox.contains("texture") && skybox["texture"].is_string()) {
             const std::string texturePath = skybox["texture"].get<std::string>();
+
             if (!SetSkyboxTexturePath(texturePath)) {
                 SetSkyboxTexturePath("Resources/output_skybox.dds");
             }
@@ -594,66 +635,106 @@ bool LightManager::LoadState(const std::string& filename) {
 
     int shadowResolution = 2048;
     float shadowAreaSize = 80.0f;
+
     if (root.contains("shadow") && root["shadow"].is_object()) {
         const json& shadow = root["shadow"];
         shadowResolution = shadow.value("resolution", shadowResolution);
         shadowAreaSize = shadow.value("areaSize", shadowAreaSize);
     }
+
     SetShadowMapResolution(shadowResolution);
     SetShadowAreaSize(shadowAreaSize);
 
     // --- 平行光源 ---
     if (root.contains("directionalLight")) {
         json& d = root["directionalLight"];
+
         if (d.contains("color")) {
-            directionalLightData_.color.x = d["color"][0]; directionalLightData_.color.y = d["color"][1];
-            directionalLightData_.color.z = d["color"][2]; directionalLightData_.color.w = d["color"][3];
+            directionalLightData_.color.x = d["color"][0];
+            directionalLightData_.color.y = d["color"][1];
+            directionalLightData_.color.z = d["color"][2];
+            directionalLightData_.color.w = d["color"][3];
         }
+
         if (d.contains("direction")) {
-            directionalLightData_.direction.x = d["direction"][0]; directionalLightData_.direction.y = d["direction"][1];
+            directionalLightData_.direction.x = d["direction"][0];
+            directionalLightData_.direction.y = d["direction"][1];
             directionalLightData_.direction.z = d["direction"][2];
         }
-        if (d.contains("intensity")) directionalLightData_.intensity = d["intensity"];
+
+        if (d.contains("intensity"))
+            directionalLightData_.intensity = d["intensity"];
         if (d.contains("ambientColor")) {
-            directionalLightData_.ambientColor.x = d["ambientColor"][0]; directionalLightData_.ambientColor.y = d["ambientColor"][1];
+            directionalLightData_.ambientColor.x = d["ambientColor"][0];
+            directionalLightData_.ambientColor.y = d["ambientColor"][1];
             directionalLightData_.ambientColor.z = d["ambientColor"][2];
         }
 
         // フォグの設定
-        if (d.contains("fogStart")) directionalLightData_.fogStart = d["fogStart"];
-        if (d.contains("fogEnd")) directionalLightData_.fogEnd = d["fogEnd"];
+        if (d.contains("fogStart"))
+            directionalLightData_.fogStart = d["fogStart"];
+        if (d.contains("fogEnd"))
+            directionalLightData_.fogEnd = d["fogEnd"];
         if (d.contains("fogColor")) {
-            directionalLightData_.fogColor.x = d["fogColor"][0]; directionalLightData_.fogColor.y = d["fogColor"][1];
+            directionalLightData_.fogColor.x = d["fogColor"][0];
+            directionalLightData_.fogColor.y = d["fogColor"][1];
             directionalLightData_.fogColor.z = d["fogColor"][2];
         }
-        if (d.contains("fogHeightMin")) directionalLightData_.fogHeightMin = d["fogHeightMin"];
-        if (d.contains("fogHeightMax")) directionalLightData_.fogHeightMax = d["fogHeightMax"];
 
-        if (d.contains("volumetricIntensity")) directionalLightData_.volumetricIntensity = d["volumetricIntensity"];
-        if (d.contains("volumetricSteps")) directionalLightData_.volumetricSteps = d["volumetricSteps"];
-        if (d.contains("enableFog")) directionalLightData_.enableFog = d["enableFog"];
+        if (d.contains("fogHeightMin"))
+            directionalLightData_.fogHeightMin = d["fogHeightMin"];
+        if (d.contains("fogHeightMax"))
+            directionalLightData_.fogHeightMax = d["fogHeightMax"];
+
+        if (d.contains("volumetricIntensity"))
+            directionalLightData_.volumetricIntensity = d["volumetricIntensity"];
+        if (d.contains("volumetricSteps"))
+            directionalLightData_.volumetricSteps = d["volumetricSteps"];
+        if (d.contains("enableFog"))
+            directionalLightData_.enableFog = d["enableFog"];
     }
 
     // --- 点光源 ---
     if (root.contains("pointLights") && root["pointLights"].is_array()) {
         for (const auto& j : root["pointLights"]) {
             PointLightInstance* instance = AddPointLight() ? &pointLights_.back() : nullptr;
+
             if (instance) {
                 auto& l = instance->data;
-                if (j.contains("name")) instance->name = j["name"];
-                if (j.contains("position")) { l.position.x = j["position"][0]; l.position.y = j["position"][1]; l.position.z = j["position"][2]; }
-                if (j.contains("color")) { l.color.x = j["color"][0]; l.color.y = j["color"][1]; l.color.z = j["color"][2]; l.color.w = j["color"][3]; }
-                if (j.contains("intensity")) l.intensity = j["intensity"];
-                if (j.contains("radius")) l.radius = j["radius"];
-                if (j.contains("decay")) l.decay = j["decay"];
+                if (j.contains("name"))
+                    instance->name = j["name"];
+                if (j.contains("position")) {
+                    l.position.x = j["position"][0];
+                    l.position.y = j["position"][1];
+                    l.position.z = j["position"][2];
+                }
+                if (j.contains("color")) {
+                    l.color.x = j["color"][0];
+                    l.color.y = j["color"][1];
+                    l.color.z = j["color"][2];
+                    l.color.w = j["color"][3];
+                }
+                if (j.contains("intensity"))
+                    l.intensity = j["intensity"];
+                if (j.contains("radius"))
+                    l.radius = j["radius"];
+                if (j.contains("decay"))
+                    l.decay = j["decay"];
 
                 // 制御データ読み込み
-                if (j.contains("baseIntensity")) instance->baseIntensity = j["baseIntensity"];
+                if (j.contains("baseIntensity"))
+                    instance->baseIntensity = j["baseIntensity"];
                 else instance->baseIntensity = l.intensity; // 古いデータ互換
 
-                if (j.contains("mode")) instance->mode = (LightMode)j["mode"];
-                if (j.contains("speed")) instance->speed = j["speed"];
-                if (j.contains("offset")) { instance->offset.x = j["offset"][0]; instance->offset.y = j["offset"][1]; instance->offset.z = j["offset"][2]; }
+                if (j.contains("mode"))
+                    instance->mode = (LightMode)j["mode"];
+                if (j.contains("speed"))
+                    instance->speed = j["speed"];
+                if (j.contains("offset")) {
+                    instance->offset.x = j["offset"][0];
+                    instance->offset.y = j["offset"][1];
+                    instance->offset.z = j["offset"][2];
+                }
                 SetPointLight(pointLights_.size() - 1, *instance);
             }
         }
@@ -663,29 +744,57 @@ bool LightManager::LoadState(const std::string& filename) {
     if (root.contains("spotLights") && root["spotLights"].is_array()) {
         for (const auto& j : root["spotLights"]) {
             SpotLightInstance* instance = AddSpotLight() ? &spotLights_.back() : nullptr;
+
             if (instance) {
                 auto& l = instance->data;
-                if (j.contains("name")) instance->name = j["name"];
-                if (j.contains("position")) { l.position.x = j["position"][0]; l.position.y = j["position"][1]; l.position.z = j["position"][2]; }
-                if (j.contains("direction")) { l.direction.x = j["direction"][0]; l.direction.y = j["direction"][1]; l.direction.z = j["direction"][2]; }
-                if (j.contains("color")) { l.color.x = j["color"][0]; l.color.y = j["color"][1]; l.color.z = j["color"][2]; l.color.w = j["color"][3]; }
-                if (j.contains("intensity")) l.intensity = j["intensity"];
-                if (j.contains("distance")) l.distance = j["distance"];
-                if (j.contains("decay")) l.decay = j["decay"];
-                if (j.contains("cosAngle")) l.cosAngle = j["cosAngle"];
-                if (j.contains("cosFalloffStart")) l.cosFalloffStart = j["cosFalloffStart"];
+                if (j.contains("name"))
+                    instance->name = j["name"];
+                if (j.contains("position")) {
+                    l.position.x = j["position"][0];
+                    l.position.y = j["position"][1];
+                    l.position.z = j["position"][2];
+                }
+                if (j.contains("direction")) {
+                    l.direction.x = j["direction"][0];
+                    l.direction.y = j["direction"][1];
+                    l.direction.z = j["direction"][2];
+                }
+                if (j.contains("color")) {
+                    l.color.x = j["color"][0];
+                    l.color.y = j["color"][1];
+                    l.color.z = j["color"][2];
+                    l.color.w = j["color"][3];
+                }
+                if (j.contains("intensity"))
+                    l.intensity = j["intensity"];
+                if (j.contains("distance"))
+                    l.distance = j["distance"];
+                if (j.contains("decay"))
+                    l.decay = j["decay"];
+                if (j.contains("cosAngle"))
+                    l.cosAngle = j["cosAngle"];
+                if (j.contains("cosFalloffStart"))
+                    l.cosFalloffStart = j["cosFalloffStart"];
 
                 // 制御データ
-                if (j.contains("baseIntensity")) instance->baseIntensity = j["baseIntensity"];
+                if (j.contains("baseIntensity"))
+                    instance->baseIntensity = j["baseIntensity"];
                 else instance->baseIntensity = l.intensity;
 
-                if (j.contains("mode")) instance->mode = (LightMode)j["mode"];
-                if (j.contains("speed")) instance->speed = j["speed"];
-                if (j.contains("offset")) { instance->offset.x = j["offset"][0]; instance->offset.y = j["offset"][1]; instance->offset.z = j["offset"][2]; }
+                if (j.contains("mode"))
+                    instance->mode = (LightMode)j["mode"];
+                if (j.contains("speed"))
+                    instance->speed = j["speed"];
+                if (j.contains("offset")) {
+                    instance->offset.x = j["offset"][0];
+                    instance->offset.y = j["offset"][1];
+                    instance->offset.z = j["offset"][2];
+                }
                 SetSpotLight(spotLights_.size() - 1, *instance);
             }
         }
     }
+
     lastLoadSucceeded_ = true;
     return true;
 }
@@ -701,6 +810,7 @@ LightManager::EnvironmentProfileState LightManager::CaptureEnvironmentProfile() 
     profile.skyboxTexturePath = skyboxTexturePath_;
 
     PostEffect* postEffect = PostEffect::GetInstance();
+
     if (const PostEffect::Params* params = postEffect->GetParams()) {
         profile.post.bloomEnabled = postEffect->IsBloomEnabled();
         profile.post.bloomQuality = static_cast<int>(postEffect->GetBloomQuality());
@@ -720,6 +830,7 @@ LightManager::EnvironmentProfileState LightManager::CaptureEnvironmentProfile() 
         profile.post.colorTemperature = params->colorTemperature;
         profile.post.colorTint = params->colorTint;
     }
+
     return profile;
 }
 
@@ -749,18 +860,22 @@ bool LightManager::SaveEnvironmentProfile(const std::string& filename) const {
         { "volumetricSteps", light.volumetricSteps },
         { "enableFog", light.enableFog }
     };
+
     root["clearColor"] = {
         profile.clearColor.x, profile.clearColor.y,
         profile.clearColor.z, profile.clearColor.w
     };
+
     root["shadow"] = {
         { "resolution", profile.shadowMapResolution },
         { "areaSize", profile.shadowAreaSize }
     };
+
     root["skybox"] = {
         { "enabled", profile.skyboxEnabled },
         { "texture", profile.skyboxTexturePath }
     };
+
     root["postEffect"] = {
         { "bloomEnabled", post.bloomEnabled },
         { "bloomQuality", post.bloomQuality },
@@ -783,17 +898,21 @@ bool LightManager::SaveEnvironmentProfile(const std::string& filename) const {
 
     const std::filesystem::path path(filename);
     std::error_code error;
+
     if (!path.parent_path().empty()) {
         std::filesystem::create_directories(path.parent_path(), error);
+
         if (error) {
             return false;
         }
     }
 
     std::ofstream file(path, std::ios::binary);
+
     if (!file) {
         return false;
     }
+
     file << root.dump(2);
     return file.good();
 }
@@ -803,6 +922,7 @@ bool LightManager::LoadEnvironmentProfile(
     EnvironmentProfileState& profile) const {
     // JSONにない項目は現行環境を初期値にし、古いプロファイルも読み込めるようにします。
     std::ifstream file(filename, std::ios::binary);
+
     if (!file) {
         return false;
     }
@@ -817,6 +937,7 @@ bool LightManager::LoadEnvironmentProfile(
                 destination = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
             }
         };
+
         const auto readVector4 = [](const json& value, engine::Vector4& destination) {
             if (value.is_array() && value.size() >= 4) {
                 destination = {
@@ -829,32 +950,40 @@ bool LightManager::LoadEnvironmentProfile(
         if (root.contains("directionalLight") && root["directionalLight"].is_object()) {
             const json& source = root["directionalLight"];
             DirectionalLight& light = profile.directionalLight;
-            if (source.contains("color")) readVector4(source["color"], light.color);
-            if (source.contains("direction")) readVector3(source["direction"], light.direction);
+            if (source.contains("color"))
+                readVector4(source["color"], light.color);
+            if (source.contains("direction"))
+                readVector3(source["direction"], light.direction);
             light.intensity = source.value("intensity", light.intensity);
-            if (source.contains("ambientColor")) readVector3(source["ambientColor"], light.ambientColor);
+            if (source.contains("ambientColor"))
+                readVector3(source["ambientColor"], light.ambientColor);
             light.fogStart = source.value("fogStart", light.fogStart);
             light.fogEnd = source.value("fogEnd", light.fogEnd);
-            if (source.contains("fogColor")) readVector3(source["fogColor"], light.fogColor);
+            if (source.contains("fogColor"))
+                readVector3(source["fogColor"], light.fogColor);
             light.fogHeightMin = source.value("fogHeightMin", light.fogHeightMin);
             light.fogHeightMax = source.value("fogHeightMax", light.fogHeightMax);
             light.volumetricIntensity = source.value("volumetricIntensity", light.volumetricIntensity);
             light.volumetricSteps = source.value("volumetricSteps", light.volumetricSteps);
             light.enableFog = source.value("enableFog", light.enableFog);
         }
+
         if (root.contains("clearColor")) {
             readVector4(root["clearColor"], profile.clearColor);
         }
+
         if (root.contains("shadow") && root["shadow"].is_object()) {
             const json& source = root["shadow"];
             profile.shadowMapResolution = source.value("resolution", profile.shadowMapResolution);
             profile.shadowAreaSize = source.value("areaSize", profile.shadowAreaSize);
         }
+
         if (root.contains("skybox") && root["skybox"].is_object()) {
             const json& source = root["skybox"];
             profile.skyboxEnabled = source.value("enabled", profile.skyboxEnabled);
             profile.skyboxTexturePath = source.value("texture", profile.skyboxTexturePath);
         }
+
         if (root.contains("postEffect") && root["postEffect"].is_object()) {
             const json& source = root["postEffect"];
             EnvironmentPostSettings& post = profile.post;
@@ -892,9 +1021,11 @@ bool LightManager::LoadEnvironmentProfile(
 bool LightManager::ApplyEnvironmentProfile(const std::string& filename, float blendDuration) {
     // 読込失敗時は現在の環境を維持し、成功時だけ補間を開始します。
     EnvironmentProfileState profile;
+
     if (!LoadEnvironmentProfile(filename, profile)) {
         return false;
     }
+
     ApplyEnvironmentProfile(profile, blendDuration);
     currentEnvironmentProfileFile_ = filename;
     return true;
@@ -918,19 +1049,24 @@ void LightManager::ApplyEnvironmentProfile(
         SetShadowMapResolution(profile.shadowMapResolution);
         SetShadowAreaSize(profile.shadowAreaSize);
         skyboxEnabled_ = profile.skyboxEnabled;
+
         if (!profile.skyboxTexturePath.empty()) {
             SetSkyboxTexturePath(profile.skyboxTexturePath);
         }
+
         ApplySceneClearColor();
 
         PostEffect* postEffect = PostEffect::GetInstance();
+
         if (PostEffect::Params* params = postEffect->GetParams()) {
             const EnvironmentPostSettings& post = profile.post;
             postEffect->SetBloomEnabled(post.bloomEnabled);
             postEffect->SetBloomQuality(static_cast<PostEffect::BloomQuality>(post.bloomQuality));
+
             if (!post.lutTexturePath.empty()) {
                 postEffect->SetLUTTexturePath(post.lutTexturePath);
             }
+
             params->threshold = post.threshold;
             params->bloomIntensity = post.bloomIntensity;
             params->spread = post.spread;
@@ -965,6 +1101,7 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
     const auto lerp3 = [&](const engine::Vector3& from, const engine::Vector3& to) {
         return engine::Vector3{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z) };
     };
+
     const auto lerp4 = [&](const engine::Vector4& from, const engine::Vector4& to) {
         return engine::Vector4{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z), lerp(from.w, to.w) };
     };
@@ -973,9 +1110,11 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
     const DirectionalLight& toLight = environmentBlendTo_.directionalLight;
     directionalLightData_.color = lerp4(fromLight.color, toLight.color);
     directionalLightData_.direction = lerp3(fromLight.direction, toLight.direction);
+
     if (engine::Math::Length(directionalLightData_.direction) > 0.0001f) {
         directionalLightData_.direction = engine::Math::Normalize(directionalLightData_.direction);
     }
+
     directionalLightData_.intensity = lerp(fromLight.intensity, toLight.intensity);
     directionalLightData_.ambientColor = lerp3(fromLight.ambientColor, toLight.ambientColor);
     directionalLightData_.fogStart = lerp(fromLight.fogStart, toLight.fogStart);
@@ -995,6 +1134,7 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
     ApplySceneClearColor();
 
     PostEffect* postEffect = PostEffect::GetInstance();
+
     if (PostEffect::Params* params = postEffect->GetParams()) {
         const EnvironmentPostSettings& from = environmentBlendFrom_.post;
         const EnvironmentPostSettings& to = environmentBlendTo_.post;
@@ -1016,13 +1156,17 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
     if (!environmentBlendDiscreteApplied_ && linearT >= 0.5f) {
         environmentBlendDiscreteApplied_ = true;
         skyboxEnabled_ = environmentBlendTo_.skyboxEnabled;
+
         if (!environmentBlendTo_.skyboxTexturePath.empty()) {
             SetSkyboxTexturePath(environmentBlendTo_.skyboxTexturePath);
         }
+
         SetShadowMapResolution(environmentBlendTo_.shadowMapResolution);
+
         if (!environmentBlendTo_.post.lutTexturePath.empty()) {
             postEffect->SetLUTTexturePath(environmentBlendTo_.post.lutTexturePath);
         }
+
         postEffect->SetBloomEnabled(environmentBlendTo_.post.bloomEnabled);
         postEffect->SetBloomQuality(
             static_cast<PostEffect::BloomQuality>(environmentBlendTo_.post.bloomQuality));
@@ -1044,6 +1188,7 @@ float LightManager::GetEnvironmentProfileBlendProgress() const {
     if (!environmentBlendActive_) {
         return 1.0f;
     }
+
     return std::clamp(
         environmentBlendElapsed_ / (std::max)(environmentBlendDuration_, 0.0001f),
         0.0f,

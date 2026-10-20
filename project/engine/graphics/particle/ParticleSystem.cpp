@@ -21,12 +21,14 @@ struct ParticleVertex {
     engine::Vector2 texcoord;
 };
 
-void ParticleSystem::Initialize(ParticleCommon* common, const std::string& texturePath) {
+void engine::ParticleSystem::Initialize(engine::ParticleCommon* common, const std::string& texturePath) {
     assert(common);
     common_ = common;
+
     if (params_.textureName.empty()) {
         params_.textureName = texturePath;
     }
+
     SetTexture(params_.textureName); // ここでロード＆ハンドル取得
 
     assert(textureHandle_ != 0);
@@ -40,15 +42,18 @@ void ParticleSystem::Initialize(ParticleCommon* common, const std::string& textu
     params_.isEmitting = false;
 }
 
-float ParticleSystem::ResolveEmissionScale(const EmitterParams& params, const engine::Vector3& origin) const {
+float engine::ParticleSystem::ResolveEmissionScale(const EmitterParams& params, const engine::Vector3& origin) const {
     // LODが有効なときだけカメラ距離から放出量の倍率を評価する。
     if (!params.lod.enabled) {
         return 1.0f;
     }
+
     const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     if (!camera) {
         return 1.0f;
     }
+
     const engine::Vector3 eye = camera->GetEye();
     const float x = origin.x - eye.x;
     const float y = origin.y - eye.y;
@@ -56,22 +61,24 @@ float ParticleSystem::ResolveEmissionScale(const EmitterParams& params, const en
     return params.lod.EvaluateEmissionScale(std::sqrt(x * x + y * y + z * z));
 }
 
-std::size_t ParticleSystem::ResolveParticleLimit(const EmitterParams& params) const {
+std::size_t engine::ParticleSystem::ResolveParticleLimit(const EmitterParams& params) const {
     if (!params.lod.enabled || params.lod.maxAliveParticles <= 0) {
         return static_cast<std::size_t>(kMaxParticles);
     }
+
     return static_cast<std::size_t>(std::clamp(params.lod.maxAliveParticles, 1, kMaxParticles));
 }
 
 /// <summary>
 /// 自動エミッターが内部で呼ぶSpawn
 /// </summary>
-void ParticleSystem::SpawnFromEmitter() {
+void engine::ParticleSystem::SpawnFromEmitter() {
     SpawnFromParams(params_, params_.spawnPosition + editorPreviewOffset_);
 }
 
-void ParticleSystem::SpawnFromParams(const EmitterParams& params, const engine::Vector3& origin) {
-    if (particles_.size() >= ResolveParticleLimit(params)) return;
+void engine::ParticleSystem::SpawnFromParams(const EmitterParams& params, const engine::Vector3& origin) {
+    if (particles_.size() >= ResolveParticleLimit(params))
+        return;
 
     // 出現形状に応じて発生位置と初速を決める。粒子の共通属性は分岐の後で埋める。
     engine::Vector3 pos = origin;
@@ -93,14 +100,16 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const engine::
 
         // 乱数がゼロベクトルになったときは上方向を使う。
         float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-        if (len != 0.0f) dir = dir / len;
+        if (len != 0.0f)
+            dir = dir / len;
         else dir = { 0, 1, 0 }; // ゼロなら上へ
 
         pos += dir * params.spawnRadius;
 
         // initialVelocityの長さを速度量として使い、方向は球面法線へ置き換える。
         float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
-        if (speed == 0) speed = 1.0f; // デフォルトスピード
+        if (speed == 0)
+            speed = 1.0f; // デフォルトスピード
 
         vel = dir * speed;
     } else if (params.emitterType == EmitterType::Cone) {
@@ -116,14 +125,16 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const engine::
 
         // 初速へ使うため方向を正規化する。
         float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-        if (len != 0) dir = dir / len;
+        if (len != 0)
+            dir = dir / len;
 
         // 発生点は原点から同じ方向へ0～1の範囲で散らす。
         pos += dir * (dis(randomEngine_) * 0.5f + 0.5f);
 
         // 初速の大きさだけ維持し、向きは放出方向へ合わせる。
         float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
-        if (speed == 0) speed = 5.0f;
+        if (speed == 0)
+            speed = 5.0f;
         vel = dir * speed;
 
     }
@@ -141,6 +152,7 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const engine::
     p.endSize = params.endSize;
     p.acceleration = params.acceleration;
     p.hdrIntensity = params.hdrIntensity;
+
     // 編集用カーブは両方のキーが揃っている場合だけ有効にする。
     p.useAuthoringCurves =
         params.useAuthoringCurves &&
@@ -158,7 +170,7 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const engine::
 /// <summary>
 ///手動で（単発で）発生させる関数
 /// </summary>
-void ParticleSystem::SpawnParticles(const engine::Vector3& position, int count,
+void engine::ParticleSystem::SpawnParticles(const engine::Vector3& position, int count,
     float initialSpeed, const engine::Vector3* direction, float spreadAngle,
     engine::Vector4 initialColor, engine::Vector4 endColor,
     float lifeTimeMin, float lifeTimeMax,
@@ -166,9 +178,11 @@ void ParticleSystem::SpawnParticles(const engine::Vector3& position, int count,
 {
     // カメラ距離等の放出倍率を先に適用し、上限数を越える前に粒子を止める。
     const float emissionScale = ResolveEmissionScale(params_, position);
+
     if (emissionScale <= 0.0001f) {
         return;
     }
+
     const int scaledCount = (std::max)(
         1, static_cast<int>(std::lround(static_cast<float>(count) * emissionScale)));
     const std::size_t particleLimit = ResolveParticleLimit(params_);
@@ -180,8 +194,10 @@ void ParticleSystem::SpawnParticles(const engine::Vector3& position, int count,
         }
 
         engine::Vector3 spawnDir;
+
         if (direction) { // 指定方向に二軸の角度揺れを加える。
             spawnDir = *direction;
+
             if (spreadAngle > 0.0f) {
                 std::uniform_real_distribution<float> angleDist(-spreadAngle / 2.0f, spreadAngle / 2.0f);
                 engine::Matrix4x4 rotX = math.MakeRotateXMatrix(angleDist(randomEngine_));
@@ -196,6 +212,7 @@ void ParticleSystem::SpawnParticles(const engine::Vector3& position, int count,
         if (math.Length(spawnDir) < 0.001f) {
             spawnDir = { 0.0f, 1.0f, 0.0f }; // ゼロベクトル対策
         }
+
         spawnDir = math.Normalize(spawnDir);
 
         // 発生時点の属性と、寿命中に評価するカーブを一粒子分作る。
@@ -211,6 +228,7 @@ void ParticleSystem::SpawnParticles(const engine::Vector3& position, int count,
         p.rotation = 0.0f; 
         p.acceleration = params_.acceleration;
         p.hdrIntensity = params_.hdrIntensity;
+
         // 回転速度は度からラジアンへ直してから積分に渡す。
         float rotSpeedDeg = params_.initialRotationSpeed + dis(randomEngine_) * params_.rotationSpeedRandomness;
         p.useAuthoringCurves =
@@ -224,15 +242,18 @@ void ParticleSystem::SpawnParticles(const engine::Vector3& position, int count,
     }
 }
 
-void ParticleSystem::EmitOneShot(const EmitterParams& params, const engine::Vector3& position) {
+void engine::ParticleSystem::EmitOneShot(const EmitterParams& params, const engine::Vector3& position) {
     // カメラ距離によるLOD倍率と粒子上限を反映して単発放出数を決める。
     const float emissionScale = ResolveEmissionScale(params, position);
+
     if (emissionScale <= 0.0001f) {
         return;
     }
+
     const int scaledCount = static_cast<int>(std::lround(static_cast<float>(params.emitCount) * emissionScale));
     const int count = std::clamp(scaledCount, 1, static_cast<int>(ResolveParticleLimit(params)));
     const std::size_t particleLimit = ResolveParticleLimit(params);
+
     for (int i = 0; i < count && particles_.size() < particleLimit; ++i) {
         SpawnFromParams(params, position);
     }
@@ -241,7 +262,7 @@ void ParticleSystem::EmitOneShot(const EmitterParams& params, const engine::Vect
 /// <summary>
 /// パーティクル全体の更新
 /// </summary>
-void ParticleSystem::Update(float deltaTime) {
+void engine::ParticleSystem::Update(float deltaTime) {
     const auto cpuStart = std::chrono::high_resolution_clock::now();
     deltaTime *= simulationTimeScale_;
 
@@ -262,6 +283,7 @@ void ParticleSystem::Update(float deltaTime) {
 
     // カメラ行列がなければ描画姿勢を作れないため、計測値を残してここで戻る。
     const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
     // カメラが無い場合の安全対策 (必要に応じて)
     if (!camera) {
         const auto cpuEnd = std::chrono::high_resolution_clock::now();
@@ -302,7 +324,8 @@ void ParticleSystem::Update(float deltaTime) {
 
         // 寿命の進行度 (0.0:生まれたて -> 1.0:死ぬ直前)
         float lifeRatio = p.currentTime / p.lifeTime;
-        if (lifeRatio > 1.0f) lifeRatio = 1.0f;
+        if (lifeRatio > 1.0f)
+            lifeRatio = 1.0f;
 
         // 編集カーブが有効ならそちらを使い、なければ開始色と終了色を補間する。
         engine::Vector4 currentColor = p.useAuthoringCurves
@@ -321,8 +344,10 @@ void ParticleSystem::Update(float deltaTime) {
         // サイズも新しいカーブを優先し、旧形式の固定10点グラフへ戻せるようにする。
         // 旧形式の10点サイズカーブを寿命の進行率から選びます。
         int graphIndex = (int)(lifeRatio * 9.0f);
-        if (graphIndex < 0) graphIndex = 0;
-        if (graphIndex > 9) graphIndex = 9;
+        if (graphIndex < 0)
+            graphIndex = 0;
+        if (graphIndex > 9)
+            graphIndex = 9;
 
         // 新形式のカーブが有効ならそれを優先し、旧形式の固定10点へフォールバックします。
         float currentSize = p.useAuthoringCurves
@@ -331,6 +356,7 @@ void ParticleSystem::Update(float deltaTime) {
         p.velocity.x += p.acceleration.x * deltaTime;
         p.velocity.y += p.acceleration.y * deltaTime;
         p.velocity.z += p.acceleration.z * deltaTime;
+
         // 加速度を速度へ加えた後、その速度で位置を積分する。
         p.position.x += p.velocity.x * deltaTime;
         p.position.y += p.velocity.y * deltaTime;
@@ -363,11 +389,12 @@ void ParticleSystem::Update(float deltaTime) {
 
         ++it;
     }
+
     const auto cpuEnd = std::chrono::high_resolution_clock::now();
     lastUpdateCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
 
-void ParticleSystem::Draw() {
+void engine::ParticleSystem::Draw() {
     if (particleCount_ == 0) {
         lastDrawCpuTimeMs_ = 0.0f;
         return;
@@ -397,7 +424,7 @@ void ParticleSystem::Draw() {
     lastDrawCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
 
-void ParticleSystem::CreateResources() {
+void engine::ParticleSystem::CreateResources() {
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
     // --- 頂点バッファ (四角形) ---
@@ -416,8 +443,12 @@ void ParticleSystem::CreateResources() {
     indexBufferView_ = { indexResource_->GetGPUVirtualAddress(), sizeof(uint32_t) * 6, DXGI_FORMAT_R32_UINT };
     uint32_t* indexData = nullptr;
     indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-    indexData[0] = 0; indexData[1] = 1; indexData[2] = 2;
-    indexData[3] = 2; indexData[4] = 1; indexData[5] = 3;
+    indexData[0] = 0;
+    indexData[1] = 1;
+    indexData[2] = 2;
+    indexData[3] = 2;
+    indexData[4] = 1;
+    indexData[5] = 3;
     indexResource_->Unmap(0, nullptr);
 
     // --- インスタンシング用リソース ---
@@ -430,18 +461,18 @@ void ParticleSystem::CreateResources() {
     matrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&matrixData_));
 }
 
-void ParticleSystem::Clear() {
+void engine::ParticleSystem::Clear() {
     particles_.clear();
     particleCount_ = 0;
     spawnTimer_ = 0.0f;
 }
 
-void ParticleSystem::ResetSimulation(uint32_t randomSeed) {
+void engine::ParticleSystem::ResetSimulation(uint32_t randomSeed) {
     Clear();
     randomEngine_.seed(randomSeed);
 }
 
-size_t ParticleSystem::GetEstimatedMemoryBytes() const {
+size_t engine::ParticleSystem::GetEstimatedMemoryBytes() const {
     // パーティクル配列と描画用リソースから診断表示向けの使用量を概算する。
     size_t bytes = particles_.capacity() * sizeof(Particle);
     ID3D12Resource* resources[] = {
@@ -450,15 +481,17 @@ size_t ParticleSystem::GetEstimatedMemoryBytes() const {
         instancingResource_.Get(),
         matrixResource_.Get()
     };
+
     for (ID3D12Resource* resource : resources) {
         if (resource) {
             bytes += static_cast<size_t>(resource->GetDesc().Width);
         }
     }
+
     return bytes;
 }
 
-void ParticleSystem::SetTexture(const std::string& texturePath) {
+void engine::ParticleSystem::SetTexture(const std::string& texturePath) {
     // パラメータに名前を記憶
     params_.textureName = texturePath;
 
@@ -466,14 +499,16 @@ void ParticleSystem::SetTexture(const std::string& texturePath) {
     textureHandle_ = TextureManager::GetInstance()->Load(texturePath);
 }
 
-void ParticleSystem::SpawnPrimitiveHitEffect(const engine::Vector3& position) {
+void engine::ParticleSystem::SpawnPrimitiveHitEffect(const engine::Vector3& position) {
     std::uniform_real_distribution<float> angleDist(0.0f, 3.141592f);
     float baseRotation = angleDist(randomEngine_);
 
     // ① 星型の閃光 (4本のラインで十字を作る)
     int lineCount = 4;
+
     for (int i = 0; i < lineCount; ++i) {
-        if (particles_.size() >= kMaxParticles) break;
+        if (particles_.size() >= kMaxParticles)
+            break;
 
         Particle p;
         p.position = position;
@@ -504,17 +539,19 @@ void ParticleSystem::SpawnPrimitiveHitEffect(const engine::Vector3& position) {
 // ★課題エフェクト①: ランダムZ回転で星型ヒットエフェクト
 //   楕円パーティクルを8個、-π〜πのランダム回転で配置 → 星型/閃光
 // ==============================================================
-void ParticleSystem::SpawnStarHitEffect(const engine::Vector3& position) {
+void engine::ParticleSystem::SpawnStarHitEffect(const engine::Vector3& position) {
     // Z回転をランダムに (-π〜π)
     std::uniform_real_distribution<float> distRotate(
         -std::numbers::pi_v<float>, std::numbers::pi_v<float>);
+
     // 縦方向スケールをランダムに (1.0〜3.5) ← 大きめ
     std::uniform_real_distribution<float> distScale(1.0f, 3.5f);
 
     constexpr int kCount = 8;
 
     for (int i = 0; i < kCount; ++i) {
-        if (particles_.size() >= kMaxParticles) break;
+        if (particles_.size() >= kMaxParticles)
+            break;
 
         Particle p;
         p.position    = position;
@@ -543,16 +580,18 @@ void ParticleSystem::SpawnStarHitEffect(const engine::Vector3& position) {
 // ★課題エフェクト②: ランダムY-scaleで斬撃エフェクト
 //   縦長パーティクルを3個、Yスケールランダム → 斬撃/スラッシュ
 // ==============================================================
-void ParticleSystem::SpawnSlashEffect(const engine::Vector3& position, float baseRotation) {
+void engine::ParticleSystem::SpawnSlashEffect(const engine::Vector3& position, float baseRotation) {
     // 縦方向スケールをランダムに (1.5〜4.0) ← 大きめ
     std::uniform_real_distribution<float> distScale(1.5f, 4.0f);
+
     // 回転のゆらぎ
     std::uniform_real_distribution<float> distRotJitter(-0.4f, 0.4f);
 
     constexpr int kCount = 3;
 
     for (int i = 0; i < kCount; ++i) {
-        if (particles_.size() >= kMaxParticles) break;
+        if (particles_.size() >= kMaxParticles)
+            break;
 
         Particle p;
         p.position    = position;

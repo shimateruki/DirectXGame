@@ -19,6 +19,7 @@ int main() {
         const auto* binding = inputs->GetBindData(action);
         assert(binding && binding->keyCode == key && binding->mouseButton == mouse && binding->padCode == pad);
     };
+
     check("Forward", 0x11, -1, XINPUT_GAMEPAD_DPAD_UP);
     check("Backward", 0x1F, -1, XINPUT_GAMEPAD_DPAD_DOWN);
     check("Left", 0x1E, -1, XINPUT_GAMEPAD_DPAD_LEFT);
@@ -31,6 +32,7 @@ int main() {
     check("LockOn", 0x10, -1, XINPUT_GAMEPAD_RIGHT_THUMB);
     check("LockOnNext", 0x22, -1, XINPUT_GAMEPAD_LEFT_THUMB);
     assert(inputs->GetBindData("RemovedLegacyAction") == nullptr);
+
     // 移動はWASD全体を表示し、パッドでは左スティックへ切り替わる。
     const auto keyboard = ResolveInputGlyph("ui/input/combo/combo_wasd.png", false);
     const auto pad = ResolveInputGlyph("ui/input/combo/combo_wasd.png", true);

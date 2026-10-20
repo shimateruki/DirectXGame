@@ -18,7 +18,7 @@
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
-#include "GameplayStatusManager.h"
+#include "game/system/rules/GameplayStatusManager.h"
 #include "EditorPropertyDrawer.h"
 #include "EditorPropertyRegistry.h"
 #include "EditorCommandRegistry.h"

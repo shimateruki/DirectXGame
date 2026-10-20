@@ -3,7 +3,7 @@
 
 #include "Sprite.h"
 #include "SpriteCommon.h"
-#include "SpriteLayoutScaler.h"
+#include "game/ui/SpriteLayoutScaler.h"
 #include "SpriteLayoutFactory.h"
 #include "TextureManager.h"
 #include "json.hpp"
@@ -72,8 +72,10 @@ void SaveIndicatorOverlay::Update(float deltaTime) {
     timer_ += deltaTime;
 
     float alpha = 1.0f;
+
     if (!debugHold_) {
         const float totalDuration = kFadeInDuration + holdDuration_ + kFadeOutDuration;
+
         if (timer_ < kFadeInDuration) {
             alpha = timer_ / kFadeInDuration;
         } else if (timer_ > kFadeInDuration + holdDuration_) {
@@ -112,6 +114,7 @@ void SaveIndicatorOverlay::Draw() {
 void SaveIndicatorOverlay::CollectReplaySprites(std::vector<engine::Sprite*>& replaySprites) const {
     // リプレイ復元で通知の見た目も同じフレームへ戻せるよう登録する。
     replaySprites.reserve(replaySprites.size() + sprites_.size());
+
     for (const auto& sprite : sprites_) {
         if (sprite) {
             replaySprites.push_back(sprite.get());
@@ -129,6 +132,7 @@ void SaveIndicatorOverlay::RestoreReplayState(const json& state) {
     if (!state.is_object()) {
         return;
     }
+
     isActive_ = state.value("active", isActive_);
     debugHold_ = state.value("debugHold", debugHold_);
     timer_ = state.value("timer", timer_);
@@ -144,8 +148,10 @@ void SaveIndicatorOverlay::DrawImGui() {
     }
 
     bool hold = debugHold_;
+
     if (ImGui::Checkbox("セーブ中表示を固定", &hold)) {
         debugHold_ = hold;
+
         if (debugHold_) {
             timer_ = 0.0f;
             SetAllVisible(true);
@@ -159,11 +165,13 @@ void SaveIndicatorOverlay::DrawImGui() {
 void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
     // レイアウト JSON の座標は基準解像度から実画面へ変換します。
     sprites_.clear();
+
     if (!spriteCommon_) {
         return;
     }
 
     std::ifstream file(layoutPath);
+
     if (!file.is_open()) {
         return;
     }
@@ -180,10 +188,12 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
     }
 
     const auto layoutScale = SpriteLayoutScaler::Make(root);
+
     for (const auto& spriteData : root["sprites"]) {
         if (!spriteData.is_object()) {
             continue;
         }
+
         auto sprite = SpriteLayoutFactory::Create(spriteCommon_, spriteData, layoutScale, "save_indicator_sprite");
         sprite->Update();
         sprites_.push_back(std::move(sprite));
@@ -208,6 +218,7 @@ engine::Sprite* SaveIndicatorOverlay::FindSprite(const std::string& name) const 
             return sprite.get();
         }
     }
+
     return nullptr;
 }
 

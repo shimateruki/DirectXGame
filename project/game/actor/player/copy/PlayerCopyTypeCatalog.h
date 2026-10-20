@@ -17,6 +17,7 @@ namespace PlayerCopyTypeCatalog {
 const std::array<PlayerCopyTypeDescriptor, 5>& GetAll();
 const PlayerCopyTypeDescriptor* Find(std::string_view enemyType);
 bool IsSupported(std::string_view enemyType);
+
 // 記憶台とドロップで、能力を示す同じ星モデルを使います。
 std::string_view GetEssenceModel(std::string_view enemyType);
 } // namespace PlayerCopyTypeCatalog

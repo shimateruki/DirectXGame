@@ -19,6 +19,7 @@ void ModelCommon::CreateComputeSkinningPipeline() {
     rootSignatureBuilder.AddSRV(0);
     rootSignatureBuilder.AddSRV(1);
     rootSignatureBuilder.AddUAV(0);
+
     // Root Descriptorは要素数を保持しないため、頂点数とボーン数を明示的に渡す。
     rootSignatureBuilder.AddConstants(0, 2);
     rootSignatureBuilder.Build(

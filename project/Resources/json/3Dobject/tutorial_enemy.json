@@ -27,8 +27,12 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 2,
-            "collisionMask": 77,
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -136,8 +140,12 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 2,
-            "collisionMask": 77,
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -245,8 +253,12 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 2,
-            "collisionMask": 77,
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -354,8 +366,12 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 2,
-            "collisionMask": 77,
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -463,8 +479,12 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 2,
-            "collisionMask": 77,
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,

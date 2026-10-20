@@ -1,0 +1,1028 @@
+#define NOMINMAX
+#include "game/system/cinematic/CinematicPlayer.h"
+
+#include "AnimationInterpolation.h"
+#include "BaseScene.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "CameraManager.h"
+#include "game/system/settings/GameAudioSettings.h"
+#include "GhostRecorder.h"
+#include "Object3d.h"
+#include "MeshRenderer.h"
+#include "SceneManager.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace {
+// 保存された整数を補間方式の有効範囲へ収めて変換します。
+AnimationInterpolation::EasingType ToEasingType(int value) {
+    // 保存された番号を有効な補間方式へ制限する。
+    value = std::clamp(value, 0, 4);
+    return static_cast<AnimationInterpolation::EasingType>(value);
+}
+
+engine::Vector3 AddVector3(const engine::Vector3& a, const engine::Vector3& b) {
+    // 相対トラックの位置・回転を基準姿勢へ加える。
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+engine::Vector3 MultiplyVector3(const engine::Vector3& a, const engine::Vector3& b) {
+    // 相対トラックの拡大率は基準スケールとの成分積で扱う。
+    return {a.x * b.x, a.y * b.y, a.z * b.z};
+}
+
+void ApplyPose(engine::Object3d* object, const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale) {
+    // 設定値とワールド行列を同じフレームで揃え、表示の遅れを防ぐ。
+    if (!object) {
+        return;
+    }
+
+    object->SetTranslate(position);
+    object->SetRotation(rotation);
+    object->SetScale(scale);
+    object->UpdateLocalMatrix();
+    object->UpdateWorldMatrix();
+}
+} // namespace
+
+// シネマティックを時刻から評価します。シークでは姿勢を再計算し、イベントの再発火は呼び出し側が指定します。
+
+void CinematicPlayer::Initialize(SceneManager* sceneManager) {
+    // 新しいシーンで使う前に、前回の束縛先とトラック状態を消す。
+    sceneManager_ = sceneManager;
+    sequence_ = nullptr;
+    boundScene_ = nullptr;
+    transformRuntime_.clear();
+    vfxRuntime_.clear();
+    audioRuntime_.clear();
+    animationRuntime_.clear();
+    currentTime_ = 0.0f;
+    isPlaying_ = false;
+    isPreviewing_ = false;
+    isLooping_ = false;
+    activeCameraObject_ = nullptr;
+    activeCameraShotIndex_ = -1;
+    bindingResolver_ = {};
+    positionResolver_ = {};
+}
+
+void CinematicPlayer::SetSequence(CinematicSequence* sequence) {
+    // 再生中の演出を停止して姿勢を戻し、新しいシーケンスへ束縛し直す。
+    if (isPlaying_ || isPreviewing_) {
+        Stop(true);
+    }
+
+    sequence_ = sequence;
+    currentTime_ = 0.0f;
+    RefreshBindings();
+}
+
+void CinematicPlayer::RefreshBindings() {
+    // 現シーンのObjectを解決し、VFX・音声・アニメーションの実行状態を作り直す。
+    anchorCaptured_ = false;
+    boundScene_ = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+    transformRuntime_.clear();
+    vfxRuntime_.clear();
+    audioRuntime_.clear();
+    animationRuntime_.clear();
+
+    if (!sequence_) {
+        return;
+    }
+
+    transformRuntime_.resize(sequence_->transformTracks.size());
+
+    for (size_t index = 0; index < sequence_->transformTracks.size(); ++index) {
+        const auto& track = sequence_->transformTracks[index];
+        auto& runtime = transformRuntime_[index];
+        runtime.target = ResolveTarget(track.binding);
+
+        if (runtime.target && runtime.target->recorder_) {
+            runtime.target->recorder_->SetSceneManager(sceneManager_);
+            runtime.target->recorder_->SetTarget(runtime.target);
+
+            if (!track.legacyPathFile.empty()) {
+                runtime.target->recorder_->Load(track.legacyPathFile);
+            }
+        }
+    }
+
+    vfxRuntime_.resize(sequence_->vfxTracks.size());
+
+    for (size_t index = 0; index < sequence_->vfxTracks.size(); ++index) {
+        const auto& track = sequence_->vfxTracks[index];
+        auto& runtime = vfxRuntime_[index];
+        runtime.target = ResolveTarget(track.binding);
+        runtime.sequencer.Initialize(track.snapshotTargetPosition ? nullptr : runtime.target);
+
+        if (!track.sequenceName.empty()) {
+            runtime.sequencer.Load(track.sequenceName);
+            sequence_->vfxTracks[index].duration = std::max(0.1f, runtime.sequencer.GetDuration());
+        }
+    }
+
+    audioRuntime_.resize(sequence_->audioClips.size());
+    animationRuntime_.resize(sequence_->animationClips.size());
+
+    for (size_t index = 0; index < sequence_->animationClips.size(); ++index) {
+        animationRuntime_[index].target = ResolveTarget(sequence_->animationClips[index].binding);
+        const auto& clip = sequence_->animationClips[index];
+        animationRuntime_[index].restoreOnStop = clip.restoreOnStop;
+
+        if (clip.driver == "Body" && clip.enabled && !clip.muted) {
+            animationRuntime_[index].bodyClip.Load(BodyAnimationClip::ResolveAssetPath(clip.clipName));
+        }
+    }
+}
+
+std::vector<std::string> CinematicPlayer::ValidateBindings() const {
+    std::vector<std::string> issues;
+    if (!sequence_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        issues.emplace_back("再生するシーンまたは演出がありません。");
+        return issues;
+    }
+
+    for (const auto& track : sequence_->transformTracks) {
+        if (!track.enabled || track.muted) {
+            continue;
+        }
+
+        engine::Object3d* target = ResolveTarget(track.binding);
+        if (!target) {
+            issues.push_back(track.name + ": 対象Objectが見つかりません。");
+        }
+        if (track.keys.empty() && track.legacyPathFile.empty()) {
+            issues.push_back(track.name + ": 移動キーがありません。");
+        }
+        if (track.anchorRelative) {
+            engine::Vector3 position{};
+            float yaw = 0.0f;
+            if (!GetAnchorPose(position, yaw)) {
+                issues.push_back(track.name + ": 基準Objectが見つからないか、親を持っています。");
+            }
+            if (target && target->GetParent()) {
+                issues.push_back(track.name + ": 基準移動の対象に親が設定されています。");
+            }
+        }
+    }
+
+    for (const auto& shot : sequence_->cameraShots) {
+        if (!shot.enabled || shot.muted) {
+            continue;
+        }
+        engine::Object3d* target = ResolveTarget(shot.binding);
+        if (!target || !target->IsCameraObject() || !target->GetSceneCameraSettings().enabled) {
+            issues.push_back(shot.name + ": 有効なCamera Objectが見つかりません。");
+        } else {
+            std::string cameraIssue;
+            if (!CameraEditor::GetInstance()->ValidateSceneObjectCamera(target, cameraIssue)) {
+                issues.push_back(shot.name + ": " + cameraIssue);
+            }
+        }
+    }
+
+    for (size_t index = 0; index < sequence_->vfxTracks.size(); ++index) {
+        const auto& track = sequence_->vfxTracks[index];
+        if (!track.enabled || track.muted) {
+            continue;
+        }
+        if (track.snapshotTargetPosition &&
+            (track.sequenceName.empty() || index >= vfxRuntime_.size() ||
+             vfxRuntime_[index].sequencer.GetEvents().empty())) {
+            issues.push_back(track.name + ": VFX素材を読み込めません。");
+        }
+        const bool hasPosition = positionResolver_ && positionResolver_(track.binding).has_value();
+        if (track.snapshotTargetPosition && !hasPosition && !ResolveTarget(track.binding)) {
+            issues.push_back(track.name + ": VFXの発生位置となるObjectが見つかりません。");
+        }
+    }
+
+    for (const auto& signal : sequence_->signals) {
+        if (!signal.enabled || (signal.binding.targetName.empty() && signal.binding.targetEventId < 0)) {
+            continue;
+        }
+        if (!ResolveTarget(signal.binding)) {
+            issues.push_back(signal.name + ": Signalの対象Objectが見つかりません。");
+        }
+    }
+    return issues;
+}
+
+void CinematicPlayer::Play(bool loop) {
+    // 基準姿勢と発火状態を取り直し、時刻0の演出も評価する。
+    Stop(true);
+    RefreshBindings();
+    CaptureBasePoses();
+    ResetRuntimeEvents();
+    currentTime_ = 0.0f;
+    isLooping_ = loop;
+    isPlaying_ = true;
+    isPreviewing_ = false;
+    Evaluate(0.0f, -1.0f / 60.0f, true);
+}
+
+void CinematicPlayer::Resume(bool loop) {
+    // 一時停止から再開する際は、現在時刻のループ音だけ再始動する。
+    if (!sequence_) {
+        return;
+    }
+
+    if (!isPreviewing_) {
+        Play(loop);
+        return;
+    }
+
+    isLooping_ = loop;
+    isPreviewing_ = false;
+    isPlaying_ = true;
+    ResetRuntimeEvents();
+
+    for (size_t index = 0; index < sequence_->audioClips.size() && index < audioRuntime_.size(); ++index) {
+        const auto& clip = sequence_->audioClips[index];
+        const float endTime = clip.startTime + std::max(0.05f, clip.duration);
+        if (clip.enabled && !clip.muted && clip.loop && !clip.audioId.empty() && currentTime_ >= clip.startTime &&
+            currentTime_ < endTime) {
+            GameAudioSettings::GetInstance()->PlaySE(clip.audioId, clip.volume, true);
+            audioRuntime_[index].started = true;
+        }
+    }
+}
+
+void CinematicPlayer::Pause() {
+    // 姿勢はプレビューとして残し、音とVFXの副作用だけ止める。
+    if (!isPlaying_) {
+        return;
+    }
+
+    for (auto& runtime : vfxRuntime_) {
+        runtime.sequencer.Stop();
+        runtime.started = false;
+    }
+
+    StopAudioClips();
+    isPlaying_ = false;
+    isPreviewing_ = true;
+}
+
+void CinematicPlayer::Stop(bool restorePose) {
+    // 停止時はVFX・音・カメラを解除し、必要なら開始前の姿勢へ戻す。
+    for (auto& runtime : vfxRuntime_) {
+        runtime.sequencer.Stop();
+        runtime.started = false;
+    }
+
+    StopAudioClips();
+    StopCameraTrack();
+
+    if (restorePose) {
+        RestoreBasePoses();
+    }
+
+    isPlaying_ = false;
+    isPreviewing_ = false;
+    currentTime_ = 0.0f;
+    lastEventId_ = 0;
+    lastEventTarget_ = nullptr;
+}
+
+void CinematicPlayer::Update(float deltaTime) {
+    BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+
+    if (currentScene != boundScene_) {
+        // 別シーンの Object 参照を持ち越さないよう、姿勢復元せず再束縛する。
+        Stop(false);
+        RefreshBindings();
+        return;
+    }
+
+    if (!isPlaying_ || !sequence_ || deltaTime <= 0.0f) {
+        return;
+    }
+
+    const float duration = GetDuration();
+    const float previousTime = currentTime_;
+    float nextTime = currentTime_ + deltaTime;
+
+    if (nextTime >= duration) {
+        if (isLooping_) {
+            // 末尾のイベントまで発火させてから基準姿勢を取り直し、次周の先頭を評価する。
+            Evaluate(duration, previousTime, true);
+            RestoreBasePoses();
+            CaptureBasePoses();
+            ResetRuntimeEvents();
+            nextTime = std::fmod(nextTime, std::max(duration, 0.1f));
+            currentTime_ = 0.0f;
+            Evaluate(nextTime, -1.0f / 60.0f, true);
+            currentTime_ = nextTime;
+            return;
+        }
+
+        Evaluate(duration, previousTime, true);
+        currentTime_ = duration;
+        isPlaying_ = false;
+
+        // 終端ポーズを保持したプレビューとして扱い、再編集時にも開始前へ復元する。
+        isPreviewing_ = true;
+        return;
+    }
+
+    Evaluate(nextTime, previousTime, true);
+    currentTime_ = nextTime;
+}
+
+void CinematicPlayer::SetTime(float timeSeconds, bool dispatchEvents) {
+    // シーク時のイベント再発火は呼び出し側に選ばせ、姿勢は指定時刻から再評価する。
+    if (!sequence_) {
+        return;
+    }
+
+    if (!isPlaying_ && !isPreviewing_) {
+        BeginPreview();
+    }
+
+    const float nextTime = std::clamp(timeSeconds, 0.0f, GetDuration());
+    const float previousTime = currentTime_;
+    if (nextTime < previousTime) {
+        // 巻き戻した後の再生でVFXと音が再び発火できるよう、実行状態を戻す。
+        for (auto& runtime : vfxRuntime_) {
+            runtime.sequencer.Stop();
+            runtime.started = false;
+        }
+        StopAudioClips();
+    }
+    Evaluate(nextTime, previousTime, dispatchEvents);
+    currentTime_ = nextTime;
+}
+
+void CinematicPlayer::BeginPreview() {
+    // 編集前の姿勢を一度だけ保存し、シーク終了時に復元できるようにする。
+    if (isPlaying_ || isPreviewing_ || !sequence_) {
+        return;
+    }
+
+    RefreshBindings();
+    CaptureBasePoses();
+    ResetRuntimeEvents();
+    isPreviewing_ = true;
+}
+
+void CinematicPlayer::EndPreview(bool restorePose) {
+    // プレビューを閉じるときはカメラと音を止め、復元指定があれば元の姿勢へ戻す。
+    if (!isPreviewing_) {
+        return;
+    }
+
+    StopCameraTrack();
+    StopAudioClips();
+
+    if (restorePose) {
+        RestoreBasePoses();
+    }
+
+    isPreviewing_ = false;
+    currentTime_ = 0.0f;
+}
+
+float CinematicPlayer::GetDuration() const {
+    // JSONの指定時間より長い実VFXや旧Ghost軌跡も末尾に含める。
+    if (!sequence_) {
+        return 0.1f;
+    }
+
+    float result = sequence_->GetAuthoredDuration();
+
+    for (size_t index = 0; index < sequence_->transformTracks.size(); ++index) {
+        result = std::max(result, sequence_->transformTracks[index].startTime + GetTransformTrackDuration(index));
+    }
+
+    for (size_t index = 0; index < sequence_->vfxTracks.size() && index < vfxRuntime_.size(); ++index) {
+        result = std::max(result, sequence_->vfxTracks[index].startTime + vfxRuntime_[index].sequencer.GetDuration());
+    }
+
+    return std::max(result, 0.1f);
+}
+
+bool CinematicPlayer::GetBasePose(engine::Object3d* object, engine::Vector3& position, engine::Vector3& rotation, engine::Vector3& scale) const {
+    // 編集前に取得した姿勢だけ返し、未束縛Objectの値は触らない。
+    if (!object) {
+        return false;
+    }
+
+    for (const auto& runtime : transformRuntime_) {
+        if (runtime.target == object && runtime.captured) {
+            position = runtime.basePosition;
+            rotation = runtime.baseRotation;
+            scale = runtime.baseScale;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+engine::Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) const {
+    // 専用Resolverを優先し、通常はEvent IDを名前より優先して現シーン内を探す。
+    if (bindingResolver_)
+        return bindingResolver_(binding);
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        return nullptr;
+    }
+
+    engine::Object3d* nameMatch = nullptr;
+
+    for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+        if (!object) {
+            continue;
+        }
+
+        if (binding.targetEventId >= 0 && object->GetEventID() == binding.targetEventId) {
+            return object.get();
+        }
+
+        if (!binding.targetName.empty() && object->GetName() == binding.targetName) {
+            nameMatch = object.get();
+        }
+    }
+
+    return nameMatch;
+}
+
+float CinematicPlayer::GetTransformTrackDuration(size_t index) const {
+    // キー列が無い旧データではGhost Recorderの長さを使う。
+    if (!sequence_ || index >= sequence_->transformTracks.size()) {
+        return 0.0f;
+    }
+
+    const auto& track = sequence_->transformTracks[index];
+
+    if (!track.keys.empty()) {
+        return std::max(0.0f, track.keys.back().time);
+    }
+
+    if (index < transformRuntime_.size() && transformRuntime_[index].target &&
+        transformRuntime_[index].target->recorder_ && !track.legacyPathFile.empty()) {
+        return transformRuntime_[index].target->recorder_->GetDurationSeconds();
+    }
+
+    return 0.0f;
+}
+
+void CinematicPlayer::CaptureBasePoses() {
+    // 演出で動かすObjectと描画用アニメーションの開始姿勢を保存する。
+    anchorCaptured_ = false;
+    anchorCaptured_ = GetAnchorPose(anchorPosition_, anchorYaw_);
+
+    for (auto& runtime : transformRuntime_) {
+        if (!runtime.target) {
+            continue;
+        }
+
+        runtime.basePosition = runtime.target->GetTranslate();
+        runtime.baseRotation = runtime.target->GetRotation();
+        runtime.baseScale = runtime.target->GetScale();
+        runtime.captured = true;
+
+        if (runtime.target->recorder_) {
+            runtime.target->recorder_->CaptureBasePose();
+        }
+    }
+
+    for (auto& runtime : animationRuntime_) {
+        if (!runtime.target) {
+            continue;
+        }
+
+        runtime.animatorSnapshot = runtime.target->CaptureAnimatorSnapshot();
+        runtime.legacyAnimationName = runtime.target->animName_;
+        runtime.legacyAnimationTime = runtime.target->GetAnimationTime();
+        runtime.legacyLoop = runtime.target->isAnimLoop_;
+
+        if (runtime.bodyClip.IsValid()) {
+            if (auto* renderer = runtime.target->GetMeshRenderer()) {
+                runtime.baseVisual.scale = renderer->GetVisualScale();
+                runtime.baseVisual.rotate = renderer->GetVisualRotation();
+                runtime.baseVisual.translate = renderer->GetVisualOffset();
+                runtime.baseVisual.shear = renderer->GetVisualShear();
+                runtime.baseVisual.shearPivotY = renderer->GetVisualShearPivotY();
+                runtime.bodyCaptured = true;
+            }
+        }
+
+        runtime.captured = true;
+    }
+}
+
+void CinematicPlayer::RestoreBasePoses() {
+    anchorCaptured_ = false;
+
+    // 編集でクリップが削除・並べ替えされても、保存した対象から復元する。
+    if (!sceneManager_ || sceneManager_->GetCurrentScene() != boundScene_ || !boundScene_)
+        return;
+    const auto isAlive = [this](engine::Object3d* target) {
+        for (const auto& object : boundScene_->GetObjects()) {
+            if (object.get() == target)
+                return true;
+        }
+
+        return false;
+    };
+
+    for (auto& runtime : transformRuntime_) {
+        if (!runtime.target || !runtime.captured || !isAlive(runtime.target)) {
+            continue;
+        }
+
+        ApplyPose(runtime.target, runtime.basePosition, runtime.baseRotation, runtime.baseScale);
+        runtime.captured = false;
+    }
+
+    for (auto& runtime : animationRuntime_) {
+        if (!runtime.target || !runtime.captured || !runtime.restoreOnStop || !isAlive(runtime.target)) {
+            continue;
+        }
+
+        if (runtime.bodyCaptured) {
+            if (auto* renderer = runtime.target->GetMeshRenderer()) {
+                const auto& base = runtime.baseVisual;
+                renderer->SetVisualTransform(base.scale, base.rotate, base.translate);
+                renderer->SetVisualShear(base.shear, base.shearPivotY);
+            }
+
+            runtime.bodyCaptured = false;
+        } else if (runtime.animatorSnapshot.valid) {
+            runtime.target->RestoreAnimatorSnapshot(runtime.animatorSnapshot);
+        } else {
+            runtime.target->RestoreAnimationPlayback(runtime.legacyAnimationName, runtime.legacyAnimationTime,
+                                                     runtime.legacyLoop);
+        }
+
+        runtime.captured = false;
+    }
+}
+
+void CinematicPlayer::ResetRuntimeEvents() {
+    // ループの次周で一回限りのVFX・音・イベントが再び発火できるようにする。
+    for (auto& runtime : vfxRuntime_) {
+        runtime.sequencer.Stop();
+        runtime.started = false;
+    }
+
+    for (auto& runtime : audioRuntime_) {
+        runtime.started = false;
+    }
+
+    lastEventId_ = 0;
+    lastEventTarget_ = nullptr;
+}
+
+void CinematicPlayer::Evaluate(float timeSeconds, float previousTimeSeconds, bool dispatchEvents) {
+    // 姿勢は時刻から毎回再評価しますが、イベントは通過した区間だけ発火させます。
+    // エディターのシークではdispatchEventsを切り、同じイベントの重複実行を避けます。
+    lastEventId_ = 0;
+    lastEventTarget_ = nullptr;
+
+    for (size_t index = 0; sequence_ && index < sequence_->transformTracks.size(); ++index) {
+        EvaluateTransformTrack(index, timeSeconds, previousTimeSeconds, dispatchEvents);
+    }
+
+    EvaluateAnimationClips(timeSeconds);
+
+    if (dispatchEvents) {
+        for (const auto& marker : sequence_->events) {
+            if (marker.time > previousTimeSeconds && marker.time <= timeSeconds) {
+                engine::Object3d* target = ResolveTarget(marker.binding);
+
+                if (target && marker.eventId != 0) {
+                    target->OnRecordEvent(marker.eventId);
+                }
+
+                lastEventId_ = marker.eventId;
+                lastEventTarget_ = target;
+            }
+        }
+
+        DispatchSignals(timeSeconds, previousTimeSeconds);
+    }
+
+    // 音とVFXは実再生中だけ進め、シークでプレビューの副作用を増やしません。
+    if (isPlaying_ && dispatchEvents) {
+        UpdateVFXTracks(timeSeconds, previousTimeSeconds);
+        UpdateAudioClips(timeSeconds, previousTimeSeconds);
+    }
+
+    UpdateCameraTrack(timeSeconds);
+}
+
+void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, float previousTimeSeconds,
+                                             bool dispatchEvents) {
+    if (!sequence_ || index >= sequence_->transformTracks.size() || index >= transformRuntime_.size()) {
+        return;
+    }
+
+    const auto& track = sequence_->transformTracks[index];
+    auto& runtime = transformRuntime_[index];
+
+    if (!runtime.target) {
+        return;
+    }
+
+    if (!track.enabled || track.muted) {
+        // 無効化したトラックの最終姿勢を残さず、再生前のTransformへ戻す。
+        if (runtime.captured) {
+            ApplyPose(runtime.target, runtime.basePosition, runtime.baseRotation, runtime.baseScale);
+        }
+
+        return;
+    }
+
+    const float localTime = timeSeconds - track.startTime;
+    const float previousLocalTime = previousTimeSeconds - track.startTime;
+    const float trackDuration = GetTransformTrackDuration(index);
+
+    if (localTime < 0.0f) {
+        if (runtime.captured) {
+            ApplyPose(runtime.target, runtime.basePosition, runtime.baseRotation, runtime.baseScale);
+        }
+
+        return;
+    }
+
+    if (localTime > trackDuration && !track.holdLast) {
+        if (runtime.captured) {
+            ApplyPose(runtime.target, runtime.basePosition, runtime.baseRotation, runtime.baseScale);
+        }
+
+        return;
+    }
+
+    const float evaluateTime = std::clamp(localTime, 0.0f, trackDuration);
+
+    if (track.keys.empty()) {
+        // 旧Path Recorder素材はキー配列を持たないため、記録済み軌道へ評価を委譲する。
+        if (runtime.target->recorder_ && !track.legacyPathFile.empty()) {
+            runtime.target->recorder_->EvaluateAtTime(evaluateTime, dispatchEvents, previousLocalTime);
+        }
+
+        return;
+    }
+
+    if (evaluateTime < track.keys.front().time) {
+        if (runtime.captured) {
+            ApplyPose(runtime.target, runtime.basePosition, runtime.baseRotation, runtime.baseScale);
+        }
+
+        return;
+    }
+
+    CinematicTransformKey value = track.keys.front();
+
+    // 区間の開始キーに設定したEasingで次のキーまで補間する。
+    if (evaluateTime >= track.keys.back().time) {
+        value = track.keys.back();
+    } else {
+        for (size_t keyIndex = 0; keyIndex + 1 < track.keys.size(); ++keyIndex) {
+            const auto& a = track.keys[keyIndex];
+            const auto& b = track.keys[keyIndex + 1];
+
+            if (evaluateTime < a.time || evaluateTime > b.time) {
+                continue;
+            }
+
+            const float raw = AnimationInterpolation::SegmentRate(evaluateTime, a.time, b.time);
+            const float eased = AnimationInterpolation::ApplyEasing(raw, ToEasingType(a.easingToNext));
+            value.time = evaluateTime;
+            value.position = AnimationInterpolation::Lerp(a.position, b.position, eased);
+            value.rotation = AnimationInterpolation::SlerpEuler(a.rotation, b.rotation, eased);
+            value.scale = AnimationInterpolation::Lerp(a.scale, b.scale, eased);
+            break;
+        }
+    }
+
+    if (track.anchorRelative) {
+        engine::Vector3 origin;
+        float yaw = 0.0f;
+
+        // 親付き対象はローカル座標と混同しないよう、明示的に非対応とする。
+        if (runtime.target->GetParent() || !GetAnchorPose(origin, yaw))
+            return;
+        value.position = CinematicAnchorPosition(value.position, origin, yaw);
+        value.rotation.y += yaw;
+        ApplyPose(runtime.target, value.position, value.rotation, value.scale);
+        return;
+    }
+
+    ApplyPose(runtime.target, track.relative ? AddVector3(runtime.basePosition, value.position) : value.position,
+              track.relative ? AddVector3(runtime.baseRotation, value.rotation) : value.rotation,
+              track.relative ? MultiplyVector3(runtime.baseScale, value.scale) : value.scale);
+}
+
+void CinematicPlayer::ApplyBodyPose() {
+    if ((isPlaying_ || isPreviewing_) && sceneManager_ && sceneManager_->GetCurrentScene() == boundScene_) {
+        // 編集用の基準移動も通常更新後に保持する。イベントは再発火しない。
+        for (size_t index = 0; sequence_ && index < sequence_->transformTracks.size(); ++index) {
+            if (sequence_->transformTracks[index].anchorRelative && index < transformRuntime_.size() &&
+                transformRuntime_[index].target == ResolveTarget(sequence_->transformTracks[index].binding))
+                EvaluateTransformTrack(index, currentTime_, currentTime_, false);
+        }
+
+        EvaluateAnimationClips(currentTime_, true);
+    }
+}
+
+bool CinematicPlayer::GetAnchorPose(engine::Vector3& position, float& yaw) const {
+    // 再生開始時に固定したアンカーを優先し、無ければ現シーンのObjectから求める。
+    if (anchorCaptured_) {
+        position = anchorPosition_;
+        yaw = anchorYaw_;
+        return true;
+    }
+
+    engine::Object3d* anchor = sequence_ ? ResolveTarget(sequence_->anchor) : nullptr;
+    if (!anchor || anchor->GetParent())
+        return false;
+    position = anchor->GetTranslate();
+    yaw = anchor->GetRotation().y + sequence_->anchorYawOffset;
+    return true;
+}
+
+void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
+    if (!sequence_) {
+        return;
+    }
+
+    // 毎回基準へ戻してから評価するため、逆方向のシークや区間外にも変形を残さない。
+    // 同じ対象で区間が重なる場合は、リストの後の身体クリップを優先する。
+    for (size_t index = 0; index < animationRuntime_.size(); ++index) {
+        auto& runtime = animationRuntime_[index];
+
+        // シーン内で削除された対象へ保存ポインタからアクセスしない。
+        if (index >= sequence_->animationClips.size() ||
+            runtime.target != ResolveTarget(sequence_->animationClips[index].binding))
+            continue;
+        if (runtime.target && runtime.bodyCaptured) {
+            if (auto* renderer = runtime.target->GetMeshRenderer()) {
+                const auto& base = runtime.baseVisual;
+                renderer->SetVisualTransform(base.scale, base.rotate, base.translate);
+                renderer->SetVisualShear(base.shear, base.shearPivotY);
+            }
+        }
+    }
+
+    for (size_t index = 0; index < sequence_->animationClips.size(); ++index) {
+        const auto& clip = sequence_->animationClips[index];
+        if (bodyOnly && clip.driver != "Body")
+            continue;
+        if (!clip.enabled || clip.muted) {
+            continue;
+        }
+
+        const float duration = std::max(0.05f, clip.duration);
+        const float elapsed = timeSeconds - clip.startTime;
+
+        if (elapsed < 0.0f || elapsed > duration) {
+            continue;
+        }
+
+        float localTime = elapsed * std::max(0.0f, clip.playbackSpeed);
+
+        if (clip.driver != "Body" && clip.loop && duration > 0.0f) {
+            localTime = std::fmod(localTime, duration);
+        }
+
+        engine::Object3d* target =
+            index < animationRuntime_.size() ? animationRuntime_[index].target : ResolveTarget(clip.binding);
+        if (target != ResolveTarget(clip.binding))
+            continue;
+        if (target && clip.driver == "Body" && index < animationRuntime_.size()) {
+            auto& runtime = animationRuntime_[index];
+            BodyAnimationClip::Sample sample;
+            auto* renderer = target->GetMeshRenderer();
+
+            if (renderer && runtime.bodyCaptured && runtime.bodyClip.Evaluate(localTime, clip.loop, sample)) {
+                const float weight =
+                    clip.blendInDuration > 0.0f
+                        ? AnimationInterpolation::ApplyEasing(std::clamp(elapsed / clip.blendInDuration, 0.0f, 1.0f),
+                                                              ToEasingType(clip.easing))
+                        : 1.0f;
+                const auto& base = runtime.baseVisual;
+
+                // 物理座標・当たり判定には触れず、描画用の変形だけを上書きする。
+                renderer->SetVisualTransform(AnimationInterpolation::Lerp(base.scale, sample.scale, weight),
+                                             AnimationInterpolation::SlerpEuler(base.rotate, sample.rotate, weight),
+                                             AnimationInterpolation::Lerp(base.translate, sample.translate, weight));
+                renderer->SetVisualShear(AnimationInterpolation::Lerp(base.shear, sample.shear, weight),
+                                         base.shearPivotY + (sample.shearPivotY - base.shearPivotY) * weight);
+            }
+        }
+
+        if (target &&
+            (clip.driver.empty() || clip.driver == "Animator" || clip.driver == "Model" || clip.driver == "Skeletal")) {
+            target->EvaluateAnimatorState(clip.clipName, localTime, clip.loop, clip.blendInDuration, clip.easing,
+                                          isPreviewing_);
+        }
+
+        if (animationCallback_ && !bodyOnly) {
+            animationCallback_(target, clip, localTime, isPreviewing_);
+        }
+    }
+}
+
+void CinematicPlayer::DispatchSignals(float timeSeconds, float previousTimeSeconds) {
+    // 前回から今回までに通過した有効なSignalだけ通知する。
+    if (!sequence_ || !signalCallback_ || timeSeconds < previousTimeSeconds) {
+        return;
+    }
+
+    for (const auto& signal : sequence_->signals) {
+        if (!signal.enabled || signal.time <= previousTimeSeconds || signal.time > timeSeconds) {
+            continue;
+        }
+
+        signalCallback_(ResolveTarget(signal.binding), signal, isPreviewing_);
+    }
+}
+
+void CinematicPlayer::UpdateVFXTracks(float timeSeconds, float previousTimeSeconds) {
+    // 開始時刻を飛び越えたフレームでは経過分だけ追いつかせる。
+    if (!sequence_) {
+        return;
+    }
+
+    for (size_t index = 0; index < sequence_->vfxTracks.size() && index < vfxRuntime_.size(); ++index) {
+        const auto& track = sequence_->vfxTracks[index];
+        auto& runtime = vfxRuntime_[index];
+
+        if (!track.enabled || track.muted || track.sequenceName.empty()) {
+            continue;
+        }
+
+        if (!runtime.started && timeSeconds >= track.startTime) {
+            if (track.snapshotTargetPosition) {
+                std::optional<engine::Vector3> position;
+                if (positionResolver_) {
+                    position = positionResolver_(track.binding);
+                }
+                if (!position && runtime.target) {
+                    // 一時Objectの姿勢はまだ行列へ反映されていない場合がある。
+                    position = runtime.target->GetParent()
+                        ? runtime.target->GetWorldPosition() : runtime.target->GetTranslate();
+                }
+                if (!position) {
+                    continue;
+                }
+                runtime.sequencer.SetTargetObject(nullptr);
+                runtime.sequencer.SetRootPosition(*position + track.rootOffset);
+                runtime.sequencer.SetRootScale(track.rootScale);
+            } else {
+                runtime.sequencer.SetTargetObject(runtime.target);
+            }
+            runtime.sequencer.Play();
+            runtime.started = true;
+            const float catchUp = std::max(0.0f, timeSeconds - track.startTime);
+
+            if (catchUp > 0.0f) {
+                runtime.sequencer.Update(catchUp);
+            }
+        } else if (runtime.started) {
+            runtime.sequencer.Update(std::max(0.0f, timeSeconds - previousTimeSeconds));
+        }
+    }
+}
+
+void CinematicPlayer::UpdateAudioClips(float timeSeconds, float previousTimeSeconds) {
+    // 開始境界を通過したClipだけ鳴らし、ループ音は終了時刻で止める。
+    if (!sequence_) {
+        return;
+    }
+
+    for (size_t index = 0; index < sequence_->audioClips.size() && index < audioRuntime_.size(); ++index) {
+        const auto& clip = sequence_->audioClips[index];
+        auto& runtime = audioRuntime_[index];
+
+        if (!clip.enabled || clip.muted || clip.audioId.empty()) {
+            continue;
+        }
+
+        const float endTime = clip.startTime + std::max(0.05f, clip.duration);
+        const bool crossedStart = clip.startTime > previousTimeSeconds && clip.startTime <= timeSeconds;
+
+        if (!runtime.started && crossedStart && (!clip.loop || timeSeconds < endTime)) {
+            GameAudioSettings::GetInstance()->PlaySE(clip.audioId, clip.volume, clip.loop);
+            runtime.started = true;
+        }
+
+        if (runtime.started && clip.loop && timeSeconds >= endTime) {
+            GameAudioSettings::GetInstance()->Stop(clip.audioId);
+            runtime.started = false;
+        }
+    }
+}
+
+void CinematicPlayer::StopAudioClips() {
+    // PauseやStop後にシーケンス由来のループ音を残さない。
+    if (!sequence_) {
+        return;
+    }
+
+    for (size_t index = 0; index < sequence_->audioClips.size() && index < audioRuntime_.size(); ++index) {
+        if (!audioRuntime_[index].started) {
+            continue;
+        }
+
+        const auto& clip = sequence_->audioClips[index];
+
+        if (!clip.audioId.empty()) {
+            GameAudioSettings::GetInstance()->Stop(clip.audioId);
+        }
+
+        audioRuntime_[index].started = false;
+    }
+}
+
+void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
+    // 重なるカットでは開始時刻が最も新しい有効ショットを採用します。
+    if (!sequence_) {
+        return;
+    }
+
+    engine::Object3d* requestedCamera = nullptr;
+    float requestedStartTime = -1.0f;
+    int requestedShotIndex = -1;
+
+    if (!sequence_->cameraShots.empty()) {
+        for (size_t index = 0; index < sequence_->cameraShots.size(); ++index) {
+            const auto& shot = sequence_->cameraShots[index];
+
+            if (!shot.enabled || shot.muted) {
+                continue;
+            }
+
+            const float endTime = shot.startTime + std::max(0.05f, shot.duration);
+
+            if (timeSeconds >= shot.startTime && timeSeconds <= endTime && shot.startTime >= requestedStartTime) {
+                engine::Object3d* target = ResolveTarget(shot.binding);
+
+                if (target && target->IsCameraObject()) {
+                    requestedCamera = target;
+                    requestedStartTime = shot.startTime;
+                    requestedShotIndex = static_cast<int>(index);
+                }
+            }
+        }
+    } else {
+        // v3以前のSequenceはCamera ObjectのTransform Trackをカメラカットとして扱います。
+        for (size_t index = 0; index < sequence_->transformTracks.size() && index < transformRuntime_.size(); ++index) {
+            const auto& track = sequence_->transformTracks[index];
+            engine::Object3d* target = transformRuntime_[index].target;
+
+            if (!track.enabled || track.muted || !target || !target->IsCameraObject()) {
+                continue;
+            }
+
+            const float endTime = track.startTime + GetTransformTrackDuration(index);
+            if (timeSeconds >= track.startTime && (track.holdLast || timeSeconds <= endTime) &&
+                track.startTime >= requestedStartTime) {
+                requestedCamera = target;
+                requestedStartTime = track.startTime;
+            }
+        }
+    }
+
+    if (requestedCamera == activeCameraObject_ && requestedShotIndex == activeCameraShotIndex_) {
+        return;
+    }
+
+    StopCameraTrack(requestedCamera != nullptr);
+
+    if (requestedCamera) {
+        bool started = false;
+
+        if (requestedShotIndex >= 0) {
+            const auto& shot = sequence_->cameraShots[requestedShotIndex];
+            started = CameraEditor::GetInstance()->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(),
+                                                                         requestedCamera, shot.blendInDuration,
+                                                                         shot.blendOutDuration, shot.easing);
+        } else {
+            started = CameraEditor::GetInstance()->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(),
+                                                                         requestedCamera);
+        }
+
+        if (started) {
+            activeCameraObject_ = requestedCamera;
+            activeCameraShotIndex_ = requestedShotIndex;
+        }
+    }
+}
+
+void CinematicPlayer::StopCameraTrack(bool switchingToNextShot) {
+    // シーンObjectカメラの上書きを解除して通常カメラへ戻す。
+    if (!activeCameraObject_) {
+        return;
+    }
+
+    CameraEditor::GetInstance()->StopSceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(),
+                                                       switchingToNextShot);
+    activeCameraObject_ = nullptr;
+    activeCameraShotIndex_ = -1;
+}

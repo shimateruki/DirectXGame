@@ -4,7 +4,7 @@
 #include "GraphicsPipelineBuilder.h"
 #include <cassert>
 
-void ParticleCommon::Initialize(DirectXCommon* dxCommon) {
+void engine::ParticleCommon::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     CreateRootSignature();
@@ -12,7 +12,7 @@ void ParticleCommon::Initialize(DirectXCommon* dxCommon) {
 }
 
 
-void ParticleCommon::CreateRootSignature() {
+void engine::ParticleCommon::CreateRootSignature() {
     RootSignatureBuilder builder;
 
     // =================================================================
@@ -39,9 +39,10 @@ void ParticleCommon::CreateRootSignature() {
 }
 
 
-void ParticleCommon::SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode) {
+void engine::ParticleCommon::SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode) {
     // 範囲チェック（念のため）
-    if ((int)mode >= (int)ParticleBlendMode::kCount) return;
+    if ((int)mode >= (int)ParticleBlendMode::kCount)
+        return;
 
     commandList->SetPipelineState(graphicsPipelines_[(int)mode].Get());
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
@@ -49,7 +50,7 @@ void ParticleCommon::SetPipeline(ID3D12GraphicsCommandList* commandList, Particl
 }
 
 
-void ParticleCommon::CreatePipeline() {
+void engine::ParticleCommon::CreatePipeline() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
     auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/particle/Particle.VS.hlsl", L"vs_6_0");
@@ -91,12 +92,22 @@ void ParticleCommon::CreatePipeline() {
 
         // ① 独自の ParticleBlendMode から、共通の BlendMode へ変換
         ::BlendMode globalMode = ::BlendMode::kNormal;
+
         switch (pMode) {
-        case ParticleBlendMode::kAlpha:    globalMode = ::BlendMode::kNormal;   break;
-        case ParticleBlendMode::kAdd:      globalMode = ::BlendMode::kAdd;      break;
-        case ParticleBlendMode::kSubtract: globalMode = ::BlendMode::kSubtract; break;
-        case ParticleBlendMode::kMultiply: globalMode = ::BlendMode::kMultiply; break;
-        case ParticleBlendMode::kScreen:   globalMode = ::BlendMode::kScreen;   break;
+        case ParticleBlendMode::kAlpha:    globalMode = ::BlendMode::kNormal;
+        break;
+
+        case ParticleBlendMode::kAdd:      globalMode = ::BlendMode::kAdd;
+        break;
+
+        case ParticleBlendMode::kSubtract: globalMode = ::BlendMode::kSubtract;
+        break;
+
+        case ParticleBlendMode::kMultiply: globalMode = ::BlendMode::kMultiply;
+        break;
+
+        case ParticleBlendMode::kScreen:   globalMode = ::BlendMode::kScreen;
+        break;
         }
 
         // ② 変換したモードをセット

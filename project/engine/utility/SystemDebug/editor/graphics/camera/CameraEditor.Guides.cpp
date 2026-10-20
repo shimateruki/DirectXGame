@@ -5,19 +5,27 @@ using namespace CameraEditorImplementation;
 // カメラの軌道・フラスタムの可視化。
 void CameraEditor::DrawOrbitCenterGizmo(const engine::Vector2& gameViewOffset, const engine::Vector2& gameViewSize, bool snapEnabled, float snapValue) {
 #ifdef USE_IMGUI
-    if (!EditorToolSettings::Get().IsVisible("orbitGizmo")) return;
-    if (settings_.currentMode != Mode::Editor) return;
-    if (settings_.gameFollowMode != Camera::FollowMode::kOrbit) return;
-    if (!settings_.orbitGuideVisible || !settings_.orbitCenterGizmoVisible) return;
-    if (gameViewSize.x <= 1.0f || gameViewSize.y <= 1.0f) return;
-    if (!isGameViewHovered_ && !isDraggingOrbitCenterGizmo_) return;
+    if (!EditorToolSettings::Get().IsVisible("orbitGizmo"))
+        return;
+    if (settings_.currentMode != Mode::Editor)
+        return;
+    if (settings_.gameFollowMode != Camera::FollowMode::kOrbit)
+        return;
+    if (!settings_.orbitGuideVisible || !settings_.orbitCenterGizmoVisible)
+        return;
+    if (gameViewSize.x <= 1.0f || gameViewSize.y <= 1.0f)
+        return;
+    if (!isGameViewHovered_ && !isDraggingOrbitCenterGizmo_)
+        return;
 
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    if (!camera) return;
+    if (!camera)
+        return;
 
     engine::Math math;
     orbitEditGizmoTarget_ = (std::clamp)(orbitEditGizmoTarget_, 0, 1);
     const bool editStartEye = orbitEditGizmoTarget_ == 1;
+
     // 同じギズモを中心位置と開始視点で使い回し、編集先だけ切り替える。
     engine::Vector3 gizmoPosition = editStartEye ? GetOrbitStartEye() : GetOrbitCenter();
     engine::Matrix4x4 world = math.MakeTranslateMatrix(gizmoPosition);
@@ -40,11 +48,13 @@ void CameraEditor::DrawOrbitCenterGizmo(const engine::Vector2& gameViewOffset, c
         // ドラッグ中はカメラへ即時反映し、操作を離した時だけ設定を保存する。
         isDraggingOrbitCenterGizmo_ = true;
         engine::Vector3 editedCenter = { world.m[3][0], world.m[3][1], world.m[3][2] };
+
         if (editStartEye) {
             SetOrbitStartFromWorld(editedCenter);
         } else {
             SetOrbitCenterFromWorld(editedCenter);
         }
+
         camera->SetOrbitCenterOffset(settings_.orbitCenterOffset);
         camera->SetOrbitCenterHeight(settings_.orbitCenterHeight);
         camera->SetOrbitParams(settings_.orbitRadius, settings_.orbitHeight, settings_.orbitSpeed);
@@ -64,12 +74,16 @@ void CameraEditor::DrawOrbitCenterGizmo(const engine::Vector2& gameViewOffset, c
 
 void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
 #ifdef USE_IMGUI
-    if (!EditorToolSettings::Get().IsVisible("cameraGuide")) return;
-    if (!settings_.cameraGuideVisible) return;
+    if (!EditorToolSettings::Get().IsVisible("cameraGuide"))
+        return;
+    if (!settings_.cameraGuideVisible)
+        return;
     const bool isCameraEditorSelected =
         EditorManager::GetInstance()->GetSelectedObject() == this;
-    if (!isCameraEditorSelected && GetSelectedCameraObject() == nullptr) return;
-    if (instanceCount >= maxDrawLimit) return;
+    if (!isCameraEditorSelected && GetSelectedCameraObject() == nullptr)
+        return;
+    if (instanceCount >= maxDrawLimit)
+        return;
 
     engine::Math math;
     const float markerSize = (std::max)(0.05f, settings_.cameraGuideSize);
@@ -77,19 +91,22 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
 
     // 各描画ヘルパーで共通の上限を確認し、Editorガイドがプリミティブ枠を超えないようにする。
     auto drawSphere = [&](const engine::Vector3& pos, float size, const engine::Vector4& color) {
-        if (instanceCount >= maxDrawLimit) return;
+        if (instanceCount >= maxDrawLimit)
+            return;
         engine::Matrix4x4 world = math.Multiply(math.MakeScaleMatrix({ size, size, size }), math.MakeTranslateMatrix(pos));
         primitiveDrawer.DrawWireSphere(commandList, world, color, instanceCount++);
     };
 
     auto drawCubeLine = [&](const engine::Vector3& start, const engine::Vector3& end, float thickness, const engine::Vector4& color) {
-        if (instanceCount >= maxDrawLimit) return;
+        if (instanceCount >= maxDrawLimit)
+            return;
         primitiveDrawer.DrawWireCube(commandList, MakeLineBoxMatrix(start, end, thickness), color, instanceCount++);
     };
 
     auto drawWireBox = [&](const engine::Vector3& center, const engine::Vector3& right, const engine::Vector3& up, const engine::Vector3& forward,
         float halfRight, float halfUp, float halfForward, float thickness, const engine::Vector4& color) {
-        if (instanceCount >= maxDrawLimit) return;
+        if (instanceCount >= maxDrawLimit)
+            return;
 
         // カメラ基底から八隅を求め、12本の辺だけをワイヤーとして描く。
         auto corner = [&](float sx, float sy, float sz) {
@@ -122,8 +139,10 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
     };
 
     auto drawCameraBody = [&](const engine::Vector3& eye, const engine::Vector3& forward, float sizeScale, const engine::Vector4& bodyColor, const engine::Vector4& accentColor) {
-        if (!settings_.cameraBodyVisible || instanceCount >= maxDrawLimit) return;
-        if (object3dCommon_) return;
+        if (!settings_.cameraBodyVisible || instanceCount >= maxDrawLimit)
+            return;
+        if (object3dCommon_)
+            return;
 
         const engine::Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
         const engine::Vector3 right = GetConfiguredCameraRight(safeForward);
@@ -153,7 +172,8 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
     };
 
     auto drawCameraBadge = [&](const engine::Vector3& eye, const engine::Vector3& forward, int badgeNumber, float sizeScale, const engine::Vector4& color, bool selected) {
-        if (instanceCount >= maxDrawLimit) return;
+        if (instanceCount >= maxDrawLimit)
+            return;
 
         const engine::Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
         const engine::Vector3 right = GetConfiguredCameraRight(safeForward);
@@ -174,17 +194,20 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         const int dotCount = (std::min)(badgeNumber, 5);
         const float start = -0.24f;
         const float step = dotCount > 1 ? 0.12f : 0.0f;
+
         for (int i = 0; i < dotCount; ++i) {
             const engine::Vector3 dotPos = tagCenter + right * (size * (start + step * i));
             drawSphere(dotPos, size * (selected ? 0.075f : 0.060f), color);
         }
+
         if (badgeNumber > 5) {
             drawCubeLine(tagCenter + right * (size * 0.28f) - up * (size * 0.08f), tagCenter + right * (size * 0.34f) + up * (size * 0.08f), line * 0.75f, color);
         }
     };
 
     auto drawFrustum = [&](const engine::Vector3& eye, const engine::Vector3& forward, float fovY, float sizeScale, const engine::Vector4& eyeColor, const engine::Vector4& rayColor, const engine::Vector4& frameColor) {
-        if (instanceCount >= maxDrawLimit) return;
+        if (instanceCount >= maxDrawLimit)
+            return;
 
         const engine::Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
         const engine::Vector3 right = GetConfiguredCameraRight(safeForward);
@@ -192,6 +215,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         const engine::Vector3 target = eye + safeForward * frustumLength;
         const float safeFovY = std::clamp(fovY, DegToRad(1.0f), DegToRad(179.0f));
         const float halfHeight = frustumLength * std::tan(safeFovY * 0.5f);
+
         // 縦FOVと固定の16:9比から、視線先のフラスタム四隅を復元する。
         const float halfWidth = halfHeight * (16.0f / 9.0f);
         const float localMarkerSize = markerSize * sizeScale;
@@ -223,6 +247,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         const engine::Vector4 gameFrameColor = { 1.0f, 0.92f, 0.35f, 0.88f };
         drawFrustum(gameEye, gameForward, 0.45f, 0.85f, gameEyeColor, gameRayColor, gameFrameColor);
         drawCameraBadge(gameEye, gameForward, 0, 0.85f, gameFrameColor, true);
+
         if (targetPlayer_) {
             engine::Vector3 lookTarget = targetPlayer_->GetWorldPosition();
             lookTarget.y += settings_.height;
@@ -236,6 +261,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         // Scene内カメラは保存されたFOVと姿勢を使い、ゲームカメラとは色を分ける。
         engine::Vector3 eye{};
         engine::Vector3 target{};
+
         if (ResolveSceneCameraPose(cameraObject, eye, target)) {
             const SceneCameraSettings& cameraSettings = cameraObject->GetSceneCameraSettings();
             const engine::Vector3 forward = NormalizeSafe(target - eye, GetObjectWorldForward(cameraObject));
@@ -261,11 +287,16 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
 void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
 #ifdef USE_IMGUI
     DrawCameraGuide(primitiveDrawer, commandList, instanceCount, maxDrawLimit);
-    if (!EditorToolSettings::Get().IsVisible("orbitGuide")) return;
-    if (settings_.currentMode != Mode::Editor) return;
-    if (!settings_.orbitGuideVisible) return;
-    if (settings_.gameFollowMode != Camera::FollowMode::kOrbit) return;
-    if (instanceCount >= maxDrawLimit) return;
+    if (!EditorToolSettings::Get().IsVisible("orbitGuide"))
+        return;
+    if (settings_.currentMode != Mode::Editor)
+        return;
+    if (!settings_.orbitGuideVisible)
+        return;
+    if (settings_.gameFollowMode != Camera::FollowMode::kOrbit)
+        return;
+    if (instanceCount >= maxDrawLimit)
+        return;
 
     engine::Math math;
     const engine::Vector3 center = GetOrbitCenter();
@@ -274,13 +305,15 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
     const float startAngle = DegToRad(settings_.orbitStartAngleDeg);
 
     auto drawSphere = [&](const engine::Vector3& pos, float size, const engine::Vector4& color) {
-        if (instanceCount >= maxDrawLimit) return;
+        if (instanceCount >= maxDrawLimit)
+            return;
         engine::Matrix4x4 world = math.Multiply(math.MakeScaleMatrix({ size, size, size }), math.MakeTranslateMatrix(pos));
         primitiveDrawer.DrawWireSphere(commandList, world, color, instanceCount++);
         };
 
     auto drawCubeLine = [&](const engine::Vector3& start, const engine::Vector3& end, float thickness, const engine::Vector4& color) {
-        if (instanceCount >= maxDrawLimit) return;
+        if (instanceCount >= maxDrawLimit)
+            return;
         primitiveDrawer.DrawWireCube(commandList, MakeLineBoxMatrix(start, end, thickness), color, instanceCount++);
         };
 
@@ -297,6 +330,7 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
         center.y,
         center.z + radius * std::sin(startAngle)
     };
+
     engine::Vector3 startEye = startGround;
     startEye.y += settings_.orbitHeight;
 
@@ -306,6 +340,7 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
     drawCubeLine(startGround, startEye, 0.04f, { 0.3f, 1.0f, 0.2f, 0.9f });
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
     if (camera) {
         drawSphere(camera->GetEye(), markerSize * 0.75f, { 0.75f, 0.35f, 1.0f, 1.0f });
     }

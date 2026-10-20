@@ -27,6 +27,7 @@ void Log(const std::string& message) {
     // デバッグ出力へ送る前に文字列を加工せず、呼び出し元の改行も維持する。
     OutputDebugStringA(message.c_str());
 }
+
 std::string ConvertString(const std::wstring& str);
 
 #pragma comment(lib, "d3d12.lib")
@@ -44,6 +45,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 	winApp_ = winApp;
 
 	InitalaizeFixFPS();
+
 	// 各種初期化処理
 	InitializeDXGIDevice();
 	CreateCommand();
@@ -67,6 +69,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 	DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils_));
 	DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler_));
 	dxcUtils_->CreateDefaultIncludeHandler(&includeHandler_);
+
 // =========================================================
 // GPUプロファイラの初期化 
 // =========================================================
@@ -103,6 +106,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 void DirectXCommon::PreDraw() {
     // バックバッファへ直接描画する前に、コマンドリストと描画ターゲット状態を準備する。
 	frameCount_++;
+
 	// コマンドアロケータをリセットします。
 	HRESULT hr = commandAllocator_->Reset();
 	assert(SUCCEEDED(hr));
@@ -142,6 +146,7 @@ void DirectXCommon::PreDraw() {
 		clearColor[2] = clearColor_[2];
 		clearColor[3] = clearColor_[3];
 	}
+
 	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
 	// 深度バッファをクリアします。値を1.0f(最も遠い)に設定します。
@@ -149,6 +154,7 @@ void DirectXCommon::PreDraw() {
 
 	// ビューポート（描画する画面内の領域）を設定します。
 	commandList_->RSSetViewports(1, &viewport_);
+
 	// シザー矩形（ピクセルを描画する範囲を限定する矩形）を設定します。
 	commandList_->RSSetScissorRects(1, &scissorRect_);
 
@@ -165,18 +171,23 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 	//頂点とリソース用のヒープ設定
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+
 	//頂点リソースの設定
 	D3D12_RESOURCE_DESC vertResoucesDesc{};
+
 	//バッファーリソーステクスチャの場合は別の指定をする
 	vertResoucesDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	vertResoucesDesc.Width = sizeInBytes;
+
 	//バッファの場合は1にする
 	vertResoucesDesc.Height = 1;
 	vertResoucesDesc.DepthOrArraySize = 1;
 	vertResoucesDesc.MipLevels = 1;
 	vertResoucesDesc.SampleDesc.Count = 1;
+
 	//バッファの場合はこれをする決まり
 	vertResoucesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
 	//実際に頂点リソースを作る
 	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
 	HRESULT hr = device_->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
@@ -185,6 +196,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 		Log(std::format("CreateBufferResource failed. size={}, hr=0x{:08X}\n", sizeInBytes, static_cast<unsigned int>(hr)));
 		return nullptr;
 	}
+
 	return resource;
 }
 
@@ -203,13 +215,16 @@ void DirectXCommon::UpdateFixFPS()
 {
 	//1/60秒びったりの時間
 	const std::chrono::microseconds kMinTimer(uint64_t(1000000.0f / 60.0f));
+
 	//1/60秒よりわずかに短い時間
 	const std::chrono::microseconds  kMinCheckTime(uint64_t(1000000.0f / 65.0f));
+
 	// 現在の時刻を取得
 	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
 	// 前回記録した時刻からの経過時間を計算
 	std::chrono::microseconds elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - reference_);
+
 	//1/60秒(よりわずかに短い時間)立っていない場合
 	if (elapsed < kMinTimer)
 	{
@@ -219,6 +234,7 @@ void DirectXCommon::UpdateFixFPS()
 			std::this_thread::sleep_for(std::chrono::microseconds(1));
 		}
 	}
+
 	// 現在の時刻を再取得
 	reference_ = std::chrono::steady_clock::now();
 }
@@ -232,33 +248,44 @@ bool CollectShaderDependencies(const std::filesystem::path& source,
                                std::vector<ShaderDependency>& dependencies) {
     std::error_code error;
     const auto absolutePath = std::filesystem::absolute(source, error).lexically_normal();
-    if (error) return false;
-    if (!visited.insert(absolutePath).second) return true;
+    if (error)
+        return false;
+    if (!visited.insert(absolutePath).second)
+        return true;
 
     const auto modified = std::filesystem::last_write_time(absolutePath, error);
-    if (error) return false;
+    if (error)
+        return false;
     dependencies.emplace_back(absolutePath, modified);
 
     std::ifstream file(absolutePath);
-    if (!file) return false;
+    if (!file)
+        return false;
     std::string line;
+
     while (std::getline(file, line)) {
         const size_t first = line.find_first_not_of(" \t");
-        if (first == std::string::npos || line.compare(first, 8, "#include") != 0) continue;
+        if (first == std::string::npos || line.compare(first, 8, "#include") != 0)
+            continue;
         const size_t open = line.find_first_of("\"<", first + 8);
-        if (open == std::string::npos) return false;
+        if (open == std::string::npos)
+            return false;
         const char closeChar = line[open] == '"' ? '"' : '>';
         const size_t close = line.find(closeChar, open + 1);
-        if (close == std::string::npos) return false;
+        if (close == std::string::npos)
+            return false;
         const auto includeName = std::filesystem::path(line.substr(open + 1, close - open - 1));
         auto includePath = absolutePath.parent_path() / includeName;
+
         if (!std::filesystem::exists(includePath)) {
             includePath = std::filesystem::path("Resources/shader") / includeName;
         }
+
         // 依存先を特定できない場合はキャッシュせず、DXC本来のinclude解決に任せる。
         if (!std::filesystem::exists(includePath) ||
             !CollectShaderDependencies(includePath, visited, dependencies)) return false;
     }
+
     return true;
 }
 }
@@ -269,26 +296,33 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	// 同じシェーダーをシーンや粒子システムごとに再コンパイルしない。
 	// 元ファイルとinclude先の更新時刻が変わればキャッシュを無効にする。
 	using ShaderKey = std::tuple<std::wstring, std::wstring, std::wstring>;
+
 	/// <summary>コンパイル済みシェーダーと依存ファイルを一緒に保持し、更新判定に使う。</summary>
 	struct CachedShader {
 		std::vector<ShaderDependency> dependencies;
 		Microsoft::WRL::ComPtr<IDxcBlob> blob;
 	};
+
 	static std::mutex cacheMutex;
 	static std::map<ShaderKey, CachedShader> shaderCache;
 	const ShaderKey key{filePath, profile, entryPoint};
 	std::lock_guard<std::mutex> cacheLock(cacheMutex);
 	const auto found = shaderCache.find(key);
+
 	if (found != shaderCache.end()) {
 		bool unchanged = true;
+
 		for (const auto& [path, modified] : found->second.dependencies) {
 			std::error_code error;
+
 			if (std::filesystem::last_write_time(path, error) != modified || error) {
 				unchanged = false;
 				break;
 			}
 		}
-		if (unchanged) return found->second.blob;
+
+		if (unchanged)
+			return found->second.blob;
 	}
 
 #if defined(NDEBUG) && !defined(USE_IMGUI)
@@ -297,9 +331,11 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 		std::filesystem::path(filePath + L"." + profile + L"." + entryPoint + L".cso");
 	std::error_code cacheError;
 	const auto compiledTime = std::filesystem::last_write_time(compiledPath, cacheError);
+
 	if (!cacheError) {
 		std::set<std::filesystem::path> visited;
 		std::vector<ShaderDependency> dependencies;
+
 		if (CollectShaderDependencies(filePath, visited, dependencies)) {
 			const bool current = std::all_of(dependencies.begin(), dependencies.end(),
 				[compiledTime](const ShaderDependency& dependency) {
@@ -307,8 +343,10 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 				});
 			if (current) {
 				Microsoft::WRL::ComPtr<IDxcBlobEncoding> compiledFile;
+
 				if (SUCCEEDED(dxcUtils_->LoadFile(compiledPath.c_str(), nullptr, &compiledFile))) {
 					Microsoft::WRL::ComPtr<IDxcBlob> compiledBlob;
+
 					if (SUCCEEDED(compiledFile.As(&compiledBlob))) {
 						shaderCache[key] = {std::move(dependencies), compiledBlob};
 						return compiledBlob;
@@ -320,6 +358,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 #endif
 
 	Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
+
 	// メンバ変数のdxcUtils_を使う
 	HRESULT hr = dxcUtils_->LoadFile(filePath.c_str(), nullptr, &shaderSource);
 	assert(SUCCEEDED(hr));
@@ -342,6 +381,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 #endif
 
 	Microsoft::WRL::ComPtr<IDxcResult> shaderResult = nullptr;
+
 	// メンバ変数のdxcCompiler_, includeHandler_を使う
 	hr = dxcCompiler_->Compile(
 		&shaderSourceBuffer, arguments, _countof(arguments),
@@ -350,6 +390,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 
 	Microsoft::WRL::ComPtr<IDxcBlobUtf8> shaderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
+
 	if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
 		assert(false);
 	}
@@ -357,9 +398,11 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob = nullptr;
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 	assert(SUCCEEDED(hr));
+
 	if (shaderBlob) {
 		std::set<std::filesystem::path> visited;
 		std::vector<ShaderDependency> dependencies;
+
 		if (CollectShaderDependencies(filePath, visited, dependencies)) {
 			shaderCache[key] = {std::move(dependencies), shaderBlob};
 		} else {
@@ -372,7 +415,8 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 
 void DirectXCommon::Finalize() {
     // GPU処理の完了を待ってから、DirectX関連リソースを安全に解放する。
-	if (!commandQueue_ || !fence_) return;
+	if (!commandQueue_ || !fence_)
+		return;
 
 	// --- GPUの完了を確実に待つ ---
 	fenceValue_++;
@@ -390,6 +434,7 @@ void DirectXCommon::Finalize() {
 
 	// --- コマンドリストが開いていたら安全に閉じる ---
 	hr = commandList_->Close();
+
 	// Closeに失敗しても無視
 
 	// --- 残りのリソースを解放 ---
@@ -444,11 +489,13 @@ void DirectXCommon::PostDraw() {
 	const auto presentStart = std::chrono::steady_clock::now();
 	swapChain_->Present(1, 0);
 	static bool firstPresentLogged = false;
+
 	if (!firstPresentLogged) {
 		// 最初のタイトルフレームを表示した時点を起動時間の終点とする。
 		LogStartupProfileCheckpoint("first Present");
 		firstPresentLogged = true;
 	}
+
 	const double presentMs = std::chrono::duration<double, std::milli>(
 		std::chrono::steady_clock::now() - presentStart).count();
 	if (presentMs >= 40.0) {
@@ -457,6 +504,7 @@ void DirectXCommon::PostDraw() {
 
 	// フェンスの目標値をインクリメントします。
 	fenceValue_++;
+
 	// GPUがコマンドキューのここまで処理を終えたら、フェンスに新しい値を書き込むよう指示します。
 	commandQueue_->Signal(fence_.Get(), fenceValue_);
 
@@ -480,6 +528,7 @@ void DirectXCommon::InitializeDXGIDevice() {
 #ifdef _DEBUG
 	// Debug構成だけD3D12診断レイヤーを有効にする。
 	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController;
+
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
 		debugController->EnableDebugLayer();
 	}
@@ -489,30 +538,38 @@ void DirectXCommon::InitializeDXGIDevice() {
 	assert(SUCCEEDED(hr));
 
 	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAdapter;
+
 	// ソフトウェアアダプタを避け、高性能GPUから順に実デバイスを選ぶ。
 	for (UINT i = 0; dxgiFactory_->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAdapter)) != DXGI_ERROR_NOT_FOUND; ++i) {
 		DXGI_ADAPTER_DESC3 adapterDesc{};
 		hr = useAdapter->GetDesc3(&adapterDesc);
 		assert(SUCCEEDED(hr));
+
 		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)) {
 			break;
 		}
+
 		useAdapter = nullptr;
 	}
+
 	assert(useAdapter != nullptr);
 
 	D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0 };
+
 	// 上位の機能レベルが使えない環境では対応可能なレベルまで下げる。
 	for (size_t i = 0; i < _countof(featureLevels); ++i) {
 		hr = D3D12CreateDevice(useAdapter.Get(), featureLevels[i], IID_PPV_ARGS(&device_));
+
 		if (SUCCEEDED(hr)) {
 			break;
 		}
 	}
+
 	assert(device_ != nullptr);
 
 #ifdef _DEBUG
 	Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
+
 	if (SUCCEEDED(device_->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
 		infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
 		infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
@@ -557,6 +614,7 @@ void DirectXCommon::CreateSwapChain() {
 void DirectXCommon::CreateRTV() {
     // スワップチェーンの各バックバッファに対応するRTVを作成する。
 	rtvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, (UINT)backBufferCount_, false);
+
 	for (UINT i = 0; i < backBufferCount_; ++i) {
 		HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
 		assert(SUCCEEDED(hr));
@@ -756,10 +814,13 @@ std::wstring DirectXCommon::ConvertString(const std::string& str) {
 
 		return std::wstring();
 	}
+
 	auto sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), NULL, 0);
+
 	if (sizeNeeded == 0) {
 		return std::wstring();
 	}
+
 	std::wstring result(sizeNeeded, 0);
 	MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), &result[0], sizeNeeded);
 	return result;
@@ -770,6 +831,7 @@ void DirectXCommon::FlushCommandQueue(bool reset) {
 	// --- 安全にコマンドリストを閉じる ---
 	HRESULT hr = S_OK;
 	hr = commandList_->Close();
+
 	if (FAILED(hr)) {
 	}
 
@@ -822,12 +884,16 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DirectXCommon::CreateDescriptorHeap
 /// </summary>
 D3D12_DEPTH_STENCIL_DESC DirectXCommon::GetDefaultDepthStencilDesc() const {
 	D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+
 	// Depthの機能を有効化
 	depthStencilDesc.DepthEnable = TRUE;
+
 	// 書き込みします
 	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+
 	// 比較関数はLessEqual。つまり、近ければ描画される
 	depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
 	// Stencilの機能は利用しない
 	depthStencilDesc.StencilEnable = FALSE;
 
@@ -924,6 +990,7 @@ void DirectXCommon::CreateRenderTexture() {
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
 		IID_PPV_ARGS(&newRenderTexture)
 	);
+
 	if (FAILED(hr) || !newRenderTexture) {
 		Log("CreateRenderTexture failed: render texture resource could not be created.\n");
 		return;
@@ -935,6 +1002,7 @@ void DirectXCommon::CreateRenderTexture() {
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> newRtRtvHeap;
 	hr = device_->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&newRtRtvHeap));
+
 	if (FAILED(hr) || !newRtRtvHeap) {
 		Log("CreateRenderTexture failed: RTV heap could not be created.\n");
 		return;
@@ -953,6 +1021,7 @@ void DirectXCommon::CreateRenderTexture() {
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	uint32_t newRenderTextureSrvHandle = renderTextureSrvHandle_;
+
 	if (newRenderTextureSrvHandle != 0) {
 		SRVManager::GetInstance()->CreateSRVforResource(newRenderTextureSrvHandle, newRenderTexture.Get(), srvDesc);
 	} else {
@@ -969,6 +1038,7 @@ void DirectXCommon::CreateRenderTexture() {
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
 		IID_PPV_ARGS(&newGrabTexture)
 	);
+
 	if (FAILED(hrGrab) || !newGrabTexture) {
 		Log("CreateRenderTexture failed: grab texture resource could not be created.\n");
 		return;
@@ -976,6 +1046,7 @@ void DirectXCommon::CreateRenderTexture() {
 
 	// 7. GrabTexture をシェーダーで読むための SRV 作成
 	uint32_t newGrabSrvHandle = grabSrvHandle_;
+
 	if (newGrabSrvHandle != 0) {
 		SRVManager::GetInstance()->CreateSRVforResource(newGrabSrvHandle, newGrabTexture.Get(), srvDesc);
 	} else {
@@ -1077,7 +1148,9 @@ void DirectXCommon::PreDrawBackBuffer() {
 		clearColor[2] = clearColor_[2];
 		clearColor[3] = clearColor_[3];
 	}
+
 	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
 	// ImGuiが深度を使う場合はクリアが必要
 	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
@@ -1156,6 +1229,7 @@ void DirectXCommon::CreateShadowMap() {
 void DirectXCommon::SetShadowMapResolution(int resolution) {
 	// Power of two以外がJSONへ入っていても、対応する品質段階へ正規化する。
 	int normalizedResolution = 2048;
+
 	if (resolution <= 768) {
 		normalizedResolution = 512;
 	}
@@ -1234,7 +1308,8 @@ void DirectXCommon::StartGpuProfile(const std::string& name) {
     // GPU計測区間の開始タイムスタンプを書き込む。
     // まだ登録されていない名前なら、新しいインデックス（開始・終了ペア）を割り当てる
     if (!gpuProfileMap_.contains(name)) {
-        if (nextQueryIndex_ + 2 > kMaxGpuQueries) return;
+        if (nextQueryIndex_ + 2 > kMaxGpuQueries)
+            return;
         gpuProfileMap_[name] = nextQueryIndex_;
         nextQueryIndex_ += 2;
     }
@@ -1245,7 +1320,8 @@ void DirectXCommon::StartGpuProfile(const std::string& name) {
 
 void DirectXCommon::EndGpuProfile(const std::string& name) {
     // GPU計測区間の終了タイムスタンプを書き込む。
-    if (!gpuProfileMap_.contains(name)) return;
+    if (!gpuProfileMap_.contains(name))
+        return;
 
     uint32_t startIndex = gpuProfileMap_[name];
     uint32_t endIndex = startIndex + 1;
@@ -1269,6 +1345,7 @@ void DirectXCommon::ReadAllGpuProfiles() {
     
     // 読み取り範囲を指定してMap（キャッシュの無効化を確実にする）
     HRESULT hr = queryResultBuffer_->Map(0, &readRange, reinterpret_cast<void**>(&mappedData));
+
     if (SUCCEEDED(hr)) {
         for (auto& pair : gpuProfileMap_) {
             const std::string& name = pair.first;
@@ -1318,6 +1395,7 @@ void DirectXCommon::PreDrawLocalFog() {
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	commandList_->ResourceBarrier(1, &barrier);
+
 	// =================================================================
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr); // ← DSVを nullptr にする！
@@ -1388,6 +1466,7 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
 	for (size_t i = 0; i < backBufferCount_; ++i) {
 		swapChainResources_[i].Reset();
 	}
+
 	depthStencilResource_.Reset();
 
 	// 3. スワップチェーン自体のサイズを変更

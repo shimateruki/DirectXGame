@@ -1,0 +1,54 @@
+{
+    "modelNames": [
+        "Effects/volcanic_shell_fragment_a",
+        "Effects/volcanic_shell_fragment_b"
+    ],
+    "spawnOffset": [
+        0,
+        0,
+        0
+    ],
+    "spawnBoxHalfExtents": [
+        0.16,
+        0.12,
+        0.16
+    ],
+    "baseDirection": [
+        0,
+        0,
+        1
+    ],
+    "horizontalSpread": 1.9,
+    "groundY": 0,
+    "collideGround": false,
+    "shrinkOnFade": true,
+    "materialType": 0,
+    "metallic": 0,
+    "enableEnvMap": false,
+    "envIntensity": 1,
+    "name": "cannon_shell_basalt_shatter",
+    "spawnCount": 9,
+    "verticalMin": 0.12,
+    "verticalMax": 0.88,
+    "speedMin": 3.4,
+    "speedMax": 8.5,
+    "angularSpeedMin": 5,
+    "angularSpeedMax": 13,
+    "scaleMin": 0.17,
+    "scaleMax": 0.35,
+    "lifetimeMin": 0.55,
+    "lifetimeMax": 1,
+    "gravity": 16,
+    "airDrag": 0.16,
+    "restitution": 0,
+    "friction": 0.8,
+    "fadeStartRatio": 0.64,
+    "color": [
+        0.19,
+        0.1,
+        0.065,
+        1
+    ],
+    "roughness": 0.8,
+    "emissive": 0.24
+}

@@ -1,11 +1,11 @@
 #include "EnemyFireSlime.h"
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
-#include "BulletManager.h"
+#include "game/system/combat/BulletManager.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
-#include "HitEffectDirector.h"
+#include "game/system/combat/HitEffectDirector.h"
 #include "MeshEffectManager.h"
 #include "SceneManager.h"
 #include "VFXSequencer.h"
@@ -37,9 +37,11 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     // 目標と重なって方向を失った場合も、攻撃とエフェクトに有効な前方を返す。
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
+
     if (length <= 0.001f) {
         return {0.0f, 0.0f, 1.0f};
     }
+
     return {value.x / length, 0.0f, value.z / length};
 }
 
@@ -72,9 +74,11 @@ BulletVisualConfig MakeFireVisual(float scale) {
 StatusEffectApplication MakeStatusEffect(const EnemyAttackDefinition& attack) {
     // ダメージとは別に、攻撃 JSON で指定された燃焼の継続条件を弾へ渡す。
     StatusEffectApplication status;
+
     if (attack.statusEffectType == "burning") {
         status.type = StatusEffectType::Burning;
     }
+
     status.duration = attack.statusDuration;
     status.tickInterval = attack.statusTickInterval;
     status.tickDamage = attack.statusTickDamage;
@@ -89,16 +93,18 @@ engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
             return current;
         }
     }
+
     return nullptr;
 }
 } // namespace
 
 // 炎スライムの初期化
-void EnemyFireSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
+void EnemyFireSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_FireSlime");
     SetEnemyType("FireSlime");
     ReloadAttackProfile();
+
     // 本体のIdle/移動/攻撃姿勢はControllerのBody Clipから再生する。
     // 読み込み失敗時は従来の手続きアニメーションへ戻す。
     SetAnimatorController("enemy_fire_slime");
@@ -121,6 +127,7 @@ void EnemyFireSlime::Update(float deltaTime) {
     }
 
     idleTimer_ += deltaTime;
+
     if (UpdateThrowRecoveryState(deltaTime)) {
         fireballSequence_.Cancel();
         fireballWindupTimer_ = 0;
@@ -173,6 +180,7 @@ bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
         BaseEnemy::Update(deltaTime);
         return true;
     }
+
     return false;
 }
 
@@ -184,9 +192,11 @@ bool EnemyFireSlime::UpdateThrowRecoveryState(float deltaTime) {
         } else {
             SyncGroundCollisionRadius();
         }
+
         BaseEnemy::Update(deltaTime);
         return true;
     }
+
     return false;
 }
 
@@ -210,12 +220,14 @@ void EnemyFireSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& veloci
         UpdateFireballWindup(deltaTime, velocity, {0, 0, 1}, 0);
         return;
     }
+
     if (target_ && param_.has_value()) {
         engine::Vector3 toTarget = target_->GetTranslate() - GetTranslate();
         engine::Vector3 direction = NormalizePlanar(toTarget);
         const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
-        if (!fireballSequence_.ControlsActor()) UpdateFacing(direction);
+        if (!fireballSequence_.ControlsActor())
+            UpdateFacing(direction);
         UpdateCombatBehavior(deltaTime, velocity, direction, distance);
     }
 }
@@ -272,6 +284,7 @@ void EnemyFireSlime::ApplyGroundMovementAndAnimation(float deltaTime, engine::Ve
                                                                    kMoveHopInterval, 0.10f)) {
         velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
+
     SetVelocity(velocity);
     ApplySlimeAnimation(deltaTime);
     SyncGroundCollisionRadius();
@@ -280,6 +293,7 @@ void EnemyFireSlime::ApplyGroundMovementAndAnimation(float deltaTime, engine::Ve
 void EnemyFireSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     // 運搬から投擲へ移る前に詠唱・予告・炎を片付け、通常サイズへ戻す。
     fireballSequence_.Cancel();
+
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
         const float capturedMaxScale =
@@ -287,6 +301,7 @@ void EnemyFireSlime::BeginThrown(const engine::Vector3& initialVelocity) {
         if (capturedMaxScale < 1.2f) {
             baseScale_ = {2.0f, 2.0f, 2.0f};
         }
+
         hasBaseScale_ = true;
     }
 
@@ -355,12 +370,14 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const engine::Vector3& direct
     const float damageTriggerTime = activeDuration * 0.62f;
     const float damageTriggerProgress = 1.0f - damageTriggerTime / activeDuration;
     const float timingProgress = std::clamp(progress / (std::max)(damageTriggerProgress, 0.01f), 0.0f, 1.0f);
+
     if (!breathDamageDone_) {
         ShowAttackTelegraphCone(GetTranslate(), direction, attack.maxRange + 0.55f, 0.62f, attack.radius * 2.0f,
                                 timingProgress, {1.0f, 0.30f, 0.05f, 0.78f});
     } else {
         HideAttackTelegraph();
     }
+
     UpdateBreathFlameVisuals(direction, deltaTime);
 
     if (!breathWarningTriggered_ && breathTimer_ <= damageTriggerTime + attack.warningLeadTime) {
@@ -390,6 +407,7 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const engine::Vector3& direct
 
 void EnemyFireSlime::StartFireballWindup(const engine::Vector3& direction, float distance) {
     const EnemyAttackDefinition& attack = selectedFireball_;
+
     if (attack.sequence.enabled && attack.sequence.actorControl.enabled) {
         // 開始に失敗したデータを毎フレーム再試行しません。失敗理由は状態表示に残ります。
         if (!fireballSequence_.Start(attack, MakeSequenceContext(direction, distance)))
@@ -397,6 +415,7 @@ void EnemyFireSlime::StartFireballWindup(const engine::Vector3& direction, float
         fireballWindupTimer_ = attackTimer_ = 0;
         return;
     }
+
     fireballWindupTimer_ = (std::max)(0.01f, attack.windupDuration);
     pendingFireballDirection_ = direction;
     pendingFireballDistance_ = distance;
@@ -404,6 +423,7 @@ void EnemyFireSlime::StartFireballWindup(const engine::Vector3& direction, float
     fireballAimLocked_ = false;
     attackTimer_ = fireballWindupTimer_;
     SetColor({1.0f, 0.72f, 0.48f, 1.0f});
+
     if (attack.sequence.enabled) {
         fireballSequence_.Start(attack, MakeSequenceContext(direction, distance));
         fireballWindupTimer_ = (std::max)(0.0001f, attack.sequence.duration);
@@ -413,22 +433,28 @@ void EnemyFireSlime::StartFireballWindup(const engine::Vector3& direction, float
 void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction,
                                           float distance) {
     const EnemyAttackDefinition& attack = selectedFireball_;
+
     if (attack.sequence.enabled && attack.sequence.actorControl.enabled) {
         fireballSequence_.Update(deltaTime, MakeSequenceContext(direction, distance));
-        if (attack.sequence.actorControl.stopMovement) velocity.x = velocity.z = 0;
-        if (!fireballSequence_.IsRunning()) attackCooldown_ = attack.cooldown;
+        if (attack.sequence.actorControl.stopMovement)
+            velocity.x = velocity.z = 0;
+        if (!fireballSequence_.IsRunning())
+            attackCooldown_ = attack.cooldown;
         return;
     }
+
     velocity.x = 0.0f;
     velocity.z = 0.0f;
 
     if (attack.sequence.enabled) {
         const float elapsed = fireballSequence_.GetElapsed();
+
         if (!fireballAimLocked_) {
             pendingFireballDirection_ = direction;
             pendingFireballDistance_ = distance;
             UpdateFacing(direction);
         }
+
         if (elapsed < attack.windupDuration) {
             ShowAttackTelegraphLine(GetWorldPosition(), pendingFireballDirection_,
                 std::clamp(pendingFireballDistance_, attack.minRange, attack.maxRange), attack.radius * 2,
@@ -439,8 +465,10 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
             }
         } else HideAttackTelegraph();
         fireballSequence_.Update(deltaTime, MakeSequenceContext(pendingFireballDirection_, distance));
+
         // 既存の溜め姿勢も共通時計へ追従させ、残り時間を二重に積算しません。
         fireballWindupTimer_ = (std::max)(0.0f, attack.windupDuration - fireballSequence_.GetElapsed());
+
         if (!fireballSequence_.IsRunning()) {
             fireballWindupTimer_ = 0;
             attackCooldown_ = attack.cooldown;
@@ -448,6 +476,7 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
             HideAttackTelegraph();
             SetColor(defaultColor_);
         }
+
         return;
     }
 
@@ -485,12 +514,14 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
 void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, float distance) {
     // 扇形に加え、炎メッシュの高さと遮蔽物を確認してから命中を通知する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
+
     if (!target_ || distance > attack.maxRange + 0.55f) {
         return;
     }
 
     engine::Vector3 toTarget = NormalizePlanar(target_->GetTranslate() - GetTranslate());
     const float facingDot = direction.x * toTarget.x + direction.z * toTarget.z;
+
     if (facingDot < 0.34f) {
         return;
     }
@@ -508,6 +539,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
     const engine::Vector3 targetCenter = (targetBounds.min + targetBounds.max) * 0.5f;
     const engine::Vector3 rayDelta = targetCenter - rayStart;
     const float rayDistance = engine::Math::Length(rayDelta);
+
     if (rayDistance > 0.01f) {
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("ground") | CollisionCategories::Get("map_block");
@@ -528,6 +560,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
     damageEvent.statusEffect = MakeStatusEffect(attack);
     damageEvent.invincibilityDuration = attack.ResolveInvincibilityDuration();
     EventManager::GetInstance()->Dispatch(damageEvent);
+
     if (!attack.feedbackCue.empty()) {
         VFXSequencer::PlayOneShot(attack.feedbackCue, target_->GetWorldPosition());
     }
@@ -543,9 +576,11 @@ void EnemyFireSlime::FireFireball(const engine::Vector3& direction, float distan
 
     engine::Vector3 aim = target_->GetTranslate() - spawnPos;
     aim.y += 0.35f;
+
     if (engine::Math::Length(aim) <= 0.001f) {
         aim = {direction.x, 0.12f, direction.z};
     }
+
     aim = engine::Math::Normalize(aim);
 
     const EnemyAttackDefinition& attack = GetAttackDefinition(kFireballAttackId);
@@ -564,7 +599,8 @@ AttackSequenceContext EnemyFireSlime::MakeSequenceContext(const engine::Vector3&
     context.position = GetWorldPosition();
     context.forward = direction;
     context.hasTarget = target_ != nullptr;
-    if (target_) context.targetPosition = target_->GetWorldPosition();
+    if (target_)
+        context.targetPosition = target_->GetWorldPosition();
     context.targetDistance = distance;
     context.grounded = isGrounded_;
     return context;
@@ -587,6 +623,7 @@ void EnemyFireSlime::EnsureHeadFlameVisual() {
 
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+
     if (!scene || !scene->GetObject3dCommon()) {
         return;
     }
@@ -595,6 +632,7 @@ void EnemyFireSlime::EnsureHeadFlameVisual() {
     flame->Initialize(scene->GetObject3dCommon());
     flame->SetName(GetName() + "_HeadFlameShader");
     flame->SetClassName("Effect");
+
     // 敵に追従する一時演出はシーン保存の対象にしない。
     flame->SetEditorInternal(true);
     flame->SetModel("Primitives/sphere");
@@ -632,6 +670,7 @@ void EnemyFireSlime::EnsureHeadFlameVisual() {
 
 void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     EnsureHeadFlameVisual();
+
     if (!headFlameVisual_) {
         return;
     }
@@ -645,6 +684,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     const float moveSpeed = engine::Math::Length(smoothedFlameVelocity_);
     engine::Vector3 pos = GetTranslate();
     pos.y += kHeadFlameHeight * (std::max)(0.65f, std::abs(scale.y));
+
     if (moveSpeed > 0.001f) {
         const engine::Vector3 trailDirection = engine::Math::Normalize(smoothedFlameVelocity_) * -1.0f;
         pos = pos + trailDirection * (std::min)(0.32f, moveSpeed * 0.022f);
@@ -682,8 +722,10 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
 
     headFlameParticleTimer_ -= deltaTime;
     headEmberParticleTimer_ -= deltaTime;
+
     if (headFlameVisual_->GetIsVisible()) {
         engine::Vector3 particleDirection = {-smoothedFlameVelocity_.x * 0.075f, 0.78f, -smoothedFlameVelocity_.z * 0.075f};
+
         if (headFlameParticleTimer_ <= 0.0f) {
             constexpr float kGoldenAngle = 2.39996323f;
             const float phase = idleTimer_ * 2.8f + static_cast<float>(headFlameParticleCursor_) * kGoldenAngle;
@@ -696,6 +738,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
             ++headFlameParticleCursor_;
             headFlameParticleTimer_ = 0.12f;
         }
+
         if (headEmberParticleTimer_ <= 0.0f) {
             const float phase = idleTimer_ * 4.2f + static_cast<float>(headFlameParticleCursor_) * 1.37f;
             engine::Vector3 emitPosition = pos;
@@ -715,6 +758,7 @@ void EnemyFireSlime::RequestRemoveHeadFlameVisual() {
     }
 
     headFlameRemoveRequested_ = true;
+
     if (!headFlameVisual_) {
         return;
     }
@@ -722,9 +766,11 @@ void EnemyFireSlime::RequestRemoveHeadFlameVisual() {
     headFlameVisual_->SetIsVisible(false);
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+
     if (scene) {
         scene->RequestRemoveObject(headFlameVisual_);
     }
+
     headFlameVisual_ = nullptr;
 }
 
@@ -734,18 +780,21 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
     }
 
     bool needsCreate = false;
+
     for (int i = 0; i < kBreathFlameVisualCount; ++i) {
         if (!breathFlameVisuals_[i]) {
             needsCreate = true;
             break;
         }
     }
+
     if (!needsCreate) {
         return;
     }
 
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+
     if (!scene || !scene->GetObject3dCommon()) {
         return;
     }
@@ -759,6 +808,7 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
         flame->Initialize(scene->GetObject3dCommon());
         flame->SetName(GetName() + "_BreathFlameShader_" + std::to_string(i));
         flame->SetClassName("Effect");
+
         // ブレスの一時演出も配置オブジェクトとして保存しない。
         flame->SetEditorInternal(true);
         flame->SetModel("Primitives/sphere");
@@ -812,6 +862,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const engine::Vector3& direction, 
 
     for (int i = 0; i < kBreathFlameVisualCount; ++i) {
         engine::Object3d* flame = breathFlameVisuals_[i];
+
         if (!flame) {
             continue;
         }
@@ -875,10 +926,13 @@ void EnemyFireSlime::RequestRemoveBreathFlameVisuals() {
         if (!flame) {
             continue;
         }
+
         flame->SetIsVisible(false);
+
         if (scene) {
             scene->RequestRemoveObject(flame);
         }
+
         flame = nullptr;
     }
 }
@@ -901,15 +955,18 @@ void EnemyFireSlime::EmitBreathParticles(const engine::Vector3& origin, const en
         EmitDirectedFirePreset(kBreathEmberPreset, emitPosition, streamDirection, 0.95f + step * 0.42f);
         breathEmberTimer_ += 0.14f;
     }
+
     ++breathParticleCursor_;
 }
 
 void EnemyFireSlime::EmitFirePreset(const char* presetName, const engine::Vector3& position) {
     // 未初期化の GPU パーティクル管理には要求を送らない。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
+
     if (!particles || !particles->IsInitialized()) {
         return;
     }
+
     particles->Emit(presetName, position);
 }
 
@@ -917,27 +974,34 @@ void EnemyFireSlime::EmitDirectedFirePreset(const char* presetName, const engine
                                             float speedScale) {
     // 火の粉の流れる向きを指定できる場合だけ方向付きプリセットを使う。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
+
     if (!particles || !particles->IsInitialized()) {
         return;
     }
+
     particles->EmitDirected(presetName, position, direction, speedScale);
 }
 
 void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
     if (auto* controller = GetAnimatorControllerAsset()) {
         std::string stateName = "Idle";
+
         if (fireballSequence_.IsRunning() || fireballWindupTimer_ > 0.0f) {
             stateName = selectedFireball_.animation;
         } else if (breathTimer_ > 0.0f) {
             stateName = GetAttackDefinition(kBreathAttackId).animation;
         } else {
             const engine::Vector3 velocity = GetVelocity();
-            if (velocity.x * velocity.x + velocity.z * velocity.z > 0.04f) stateName = "Move";
+            if (velocity.x * velocity.x + velocity.z * velocity.z > 0.04f)
+                stateName = "Move";
         }
+
         // 状態配列の並び替えでは値が変わらないよう、Controllerの遷移条件から入力値を読む。
         int motionMode = 0;
+
         for (const auto& transition : controller->transitions) {
-            if (transition.toState != stateName) continue;
+            if (transition.toState != stateName)
+                continue;
             for (const auto& condition : transition.conditions) {
                 if (condition.parameter == "MotionMode" && condition.mode == AnimatorConditionMode::Equals) {
                     motionMode = static_cast<int>(condition.threshold);
@@ -945,7 +1009,10 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
                 }
             }
         }
-        if (auto* runtime = GetAnimatorControllerRuntime()) runtime->SetInt("MotionMode", motionMode);
+
+        if (auto* runtime = GetAnimatorControllerRuntime())
+            runtime->SetInt("MotionMode", motionMode);
+
         // 当たり判定の物理Transformは基準値に保ち、Controllerの姿勢は描画だけに適用する。
         engine::Vector3 scale = baseScale_;
         engine::Vector3 rotation = {0.0f, GetRotation().y, 0.0f};
@@ -957,12 +1024,15 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
                      current.z + (rotation.z - current.z) * poseRate});
         return;
     }
+
     engine::Vector3 targetScale = baseScale_;
     engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
+
     if (fireballSequence_.ControlsActor()) {
         // Controllerを読めない環境でも、共通シーケンスの時計に合わせて溜めと反動を見せる。
         const float elapsed = fireballSequence_.GetElapsed();
         const float windup = (std::max)(0.01f, selectedFireball_.windupDuration);
+
         if (elapsed < windup) {
             const float charge = std::clamp(elapsed / windup, 0.0f, 1.0f);
             targetScale.x = baseScale_.x * (1.0f + charge * 0.18f);

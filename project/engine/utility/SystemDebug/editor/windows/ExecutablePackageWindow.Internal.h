@@ -28,10 +28,13 @@ constexpr std::array<const char*, 3> kTextureModeLabels = {
 // UI とパッケージ処理で同じ検証・パス変換を使い、表示先と実際の出力先を一致させます。
 /// 実際に使用される安全なパッケージ名を返します。
 std::string PreviewPackageName(const std::string& input);
+
 /// 作業ディレクトリまたは実行ファイル位置から project のルートを探します。
 std::filesystem::path PreviewProjectRoot();
+
 /// UI の UTF-8 文字列を Windows のパスへ変換します。
 std::filesystem::path PreviewPathFromUtf8(const std::string& text);
+
 /// Windows のパスを UI 表示用の UTF-8 文字列へ変換します。
 std::string PreviewPathToUtf8(const std::filesystem::path& path);
 

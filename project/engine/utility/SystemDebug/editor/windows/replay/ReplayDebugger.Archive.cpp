@@ -7,6 +7,7 @@ using namespace ReplayDebuggerImplementation;
 json ReplayDebugger::SerializeFrame(const FrameSnapshot& frame, double firstFrameTime) const {
     // 時刻を保存履歴の先頭基準へ直し、Object・Sprite・Camera を同じフレームに格納する。
     json objects = json::array();
+
     for (const ObjectSnapshot& snapshot : frame.objects) {
         objects.push_back({
             { "replayId", snapshot.replayId }, { "persistentGuid", snapshot.persistentGuid },
@@ -20,6 +21,7 @@ json ReplayDebugger::SerializeFrame(const FrameSnapshot& frame, double firstFram
     }
 
     json sprites = json::array();
+
     for (const SpriteSnapshot& snapshot : frame.sprites) {
         sprites.push_back({
             { "replayId", snapshot.replayId }, { "bindingKey", snapshot.bindingKey },
@@ -55,7 +57,9 @@ bool ReplayDebugger::DeserializeFrame(const json& data, FrameSnapshot& frame, st
             error = "フレーム構造が不足しています。";
             return false;
         }
+
         frame.time = data.value("time", 0.0);
+
         for (const json& objectData : data.at("objects")) {
             ObjectSnapshot snapshot;
             snapshot.replayId = objectData.value("replayId", uint64_t{ 0 });
@@ -70,6 +74,7 @@ bool ReplayDebugger::DeserializeFrame(const json& data, FrameSnapshot& frame, st
             snapshot.state = JsonToObjectReplayState(objectData.value("state", json::object()));
             frame.objects.push_back(std::move(snapshot));
         }
+
         for (const json& spriteData : data.at("sprites")) {
             SpriteSnapshot snapshot;
             snapshot.replayId = spriteData.value("replayId", uint64_t{ 0 });
@@ -108,15 +113,17 @@ bool ReplayDebugger::DeserializeFrame(const json& data, FrameSnapshot& frame, st
 }
 
 
-json ReplayDebugger::SerializeInputState(const InputManager::ReplayState& state) const {
+json ReplayDebugger::SerializeInputState(const engine::InputManager::ReplayState& state) const {
     // キーとマウスボタンは押下中の添字だけ記録して Archive を小さくする。
     auto pressedIndices = [](const auto& values) {
         json result = json::array();
+
         for (std::size_t index = 0; index < values.size(); ++index) {
             if ((values[index] & 0x80u) != 0) {
                 result.push_back(index);
             }
         }
+
         return result;
     };
 
@@ -149,7 +156,7 @@ json ReplayDebugger::SerializeInputState(const InputManager::ReplayState& state)
 
 bool ReplayDebugger::DeserializeInputState(
     const json& data,
-    InputManager::ReplayState& state,
+    engine::InputManager::ReplayState& state,
     std::string& error) const {
     // 押下番号は配列長、ゲームパッド軸とトリガーは型の範囲へ制限して復元する。
     if (!data.is_object()) {
@@ -163,18 +170,23 @@ bool ReplayDebugger::DeserializeInputState(
             error = std::string(label) + " のキー配列が不正です。";
             return false;
         }
+
         for (const json& value : values) {
             if (!value.is_number_unsigned() && !value.is_number_integer()) {
                 error = std::string(label) + " に数値以外が含まれています。";
                 return false;
             }
+
             const int index = value.get<int>();
+
             if (index < 0 || index >= static_cast<int>(destination.size())) {
                 error = std::string(label) + " のキー番号が範囲外です。";
                 return false;
             }
+
             destination[static_cast<std::size_t>(index)] = 0x80u;
         }
+
         return true;
     };
 
@@ -188,6 +200,7 @@ bool ReplayDebugger::DeserializeInputState(
         !readPressedIndices(mouse.value("previousButtons", json::array()), state.previousMouseButtons, "mouse.previousButtons")) {
         return false;
     }
+
     state.mouseX = mouse.value("x", 0);
     state.mouseY = mouse.value("y", 0);
     state.mouseWheel = mouse.value("wheel", 0);
@@ -199,6 +212,7 @@ bool ReplayDebugger::DeserializeInputState(
     auto readInt16 = [&gamepad](const char* key) {
         return static_cast<int16_t>((std::clamp)(gamepad.value(key, 0), -32768, 32767));
     };
+
     state.gamepadButtons = static_cast<uint16_t>((std::clamp)(gamepad.value("buttons", 0), 0, 65535));
     state.previousGamepadButtons = static_cast<uint16_t>((std::clamp)(gamepad.value("previousButtons", 0), 0, 65535));
     state.leftTrigger = static_cast<uint8_t>((std::clamp)(gamepad.value("leftTrigger", 0), 0, 255));
@@ -238,12 +252,15 @@ bool ReplayDebugger::DeserializeInputSample(
         error = "入力サンプルの構造が不正です。";
         return false;
     }
+
     sample.time = (std::max)(0.0, data.value("time", 0.0));
     sample.deltaTime = (std::clamp)(data.value("deltaTime", 0.0f), 0.0f, 0.25f);
+
     if (sample.deltaTime <= 0.0f) {
         error = "入力サンプルのdeltaTimeが不正です。";
         return false;
     }
+
     return DeserializeInputState(data.at("state"), sample.state, error);
 }
 
@@ -259,6 +276,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
     std::error_code fileError;
     const std::filesystem::path archiveDirectory = GetReplayArchiveDirectory();
     std::filesystem::create_directories(archiveDirectory, fileError);
+
     if (fileError) {
         statusMessage_ = "保存フォルダーを作成できません: " + fileError.message();
         return false;
@@ -266,13 +284,16 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
 
     std::string fileStem = "replay_" + MakeLocalTimestamp("%Y%m%d_%H%M%S");
     std::filesystem::path archivePath = archiveDirectory / (fileStem + ".cgr");
+
     for (int suffix = 1; std::filesystem::exists(archivePath); ++suffix) {
         archivePath = archiveDirectory / (fileStem + "_" + std::to_string(suffix) + ".cgr");
     }
+
     // 書き込み途中のファイルを完成済みArchiveと取り違えないよう、一時名で作る。
     const std::filesystem::path temporaryPath = archivePath.string() + ".tmp";
 
     const SceneLoadContext sceneContext = sceneManager_->GetActiveSceneLoadContext();
+
     // Scene識別子と保存先頭からの相対時刻をヘッダーへ記録する。
     const std::string currentSceneName = sceneManager_->GetCurrentSceneName();
     const std::string sceneLabel = !sceneContext.displayName.empty()
@@ -293,17 +314,22 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
         { "inputSampleCount", savedInputSampleCount },
         { "durationSeconds", duration },
     };
+
     json payload;
     payload["frames"] = json::array();
+
     for (const FrameSnapshot& frame : frames_) {
         payload["frames"].push_back(SerializeFrame(frame, firstFrameTime));
     }
+
     payload["inputs"] = json::array();
+
     // 先頭フレーム以前の入力は再実行に不要なので除外し、ヘッダー件数と一致させる。
     for (const InputSample& sample : inputSamples_) {
         if (sample.time <= firstFrameTime || sample.deltaTime <= 0.0f) {
             continue;
         }
+
         payload["inputs"].push_back(SerializeInputSample(sample, firstFrameTime));
     }
 
@@ -311,13 +337,16 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
         // JSONヘッダーは一覧用に残し、フレーム本体はCBORへ圧縮して連結する。
         const std::vector<std::uint8_t> binaryPayload = json::to_cbor(payload);
         std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
+
         if (!stream) {
             statusMessage_ = "リプレイ保存ファイルを作成できません。";
             return false;
         }
+
         stream << kReplayArchiveMagic << '\n' << header.dump() << '\n';
         stream.write(reinterpret_cast<const char*>(binaryPayload.data()), static_cast<std::streamsize>(binaryPayload.size()));
         stream.close();
+
         if (!stream) {
             std::filesystem::remove(temporaryPath, fileError);
             statusMessage_ = "リプレイデータの書き込みに失敗しました。";
@@ -331,6 +360,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
 
     // 全データを書き終えてから正式名へ移し、一覧に不完全なArchiveを出さない。
     std::filesystem::rename(temporaryPath, archivePath, fileError);
+
     if (fileError) {
         std::filesystem::remove(temporaryPath, fileError);
         statusMessage_ = "リプレイ保存の確定に失敗しました: " + fileError.message();
@@ -349,20 +379,24 @@ void ReplayDebugger::RefreshReplayArchiveList() {
     std::error_code fileError;
     const std::filesystem::path archiveDirectory = GetReplayArchiveDirectory();
     std::filesystem::create_directories(archiveDirectory, fileError);
+
     if (fileError) {
         statusMessage_ = "保存リプレイ一覧を開けません: " + fileError.message();
         return;
     }
 
     for (const std::filesystem::directory_entry& file : std::filesystem::directory_iterator(archiveDirectory, fileError)) {
-        if (fileError) break;
-        if (!file.is_regular_file() || file.path().extension() != ".cgr") continue;
+        if (fileError)
+            break;
+        if (!file.is_regular_file() || file.path().extension() != ".cgr")
+            continue;
 
         ReplayArchiveEntry entry;
         entry.filePath = file.path().string();
         entry.fileName = file.path().filename().string();
         json header;
         entry.valid = ReadArchiveHeader(file.path(), header, entry.error);
+
         if (entry.valid) {
             entry.createdAt = header.value("createdAt", std::string{});
             entry.sceneLabel = header.value("sceneLabel", header.value("sceneName", std::string{}));
@@ -371,23 +405,29 @@ void ReplayDebugger::RefreshReplayArchiveList() {
             entry.inputSampleCount = header.value("inputSampleCount", std::size_t{ 0 });
             entry.regressionReady = entry.frameCount >= 2 && entry.inputSampleCount > 0;
         }
+
         replayArchiveEntries_.push_back(std::move(entry));
     }
+
     std::sort(replayArchiveEntries_.begin(), replayArchiveEntries_.end(),
         [](const ReplayArchiveEntry& lhs, const ReplayArchiveEntry& rhs) {
             return lhs.fileName > rhs.fileName;
         });
-    if (!replayArchiveEntries_.empty()) selectedArchiveIndex_ = 0;
+    if (!replayArchiveEntries_.empty())
+        selectedArchiveIndex_ = 0;
 }
 
 bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
     // 現在のScene編集が未保存なら切替を止め、Archiveの正当性を確かめてから読込を始める。
-    if (!sceneManager_ || archiveIndex >= replayArchiveEntries_.size()) return false;
+    if (!sceneManager_ || archiveIndex >= replayArchiveEntries_.size())
+        return false;
     if (!sceneManager_->IsPlaying() && debugEditor_ && debugEditor_->HasAnyDirty()) {
         statusMessage_ = "未保存のシーン編集があります。編集内容を保存してからリプレイを読み込んでください。";
         return false;
     }
+
     const ReplayArchiveEntry& entry = replayArchiveEntries_[archiveIndex];
+
     if (!entry.valid) {
         statusMessage_ = "保存リプレイを読み込めません: " + entry.error;
         return false;
@@ -395,18 +435,22 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
 
     const std::filesystem::path archivePath(entry.filePath);
     std::error_code fileError;
+
     // 外部ファイルを一括でメモリに読むため、先にサイズ上限を設ける。
     constexpr std::uintmax_t kMaximumArchiveBytes = 512ull * 1024ull * 1024ull;
     const std::uintmax_t archiveBytes = std::filesystem::file_size(archivePath, fileError);
+
     if (fileError || archiveBytes > kMaximumArchiveBytes) {
         statusMessage_ = fileError
             ? "保存リプレイのサイズを確認できません。"
             : "保存リプレイが大きすぎます（上限512MB）。";
         return false;
     }
+
     std::ifstream stream(archivePath, std::ios::binary);
     std::string magic;
     std::string headerLine;
+
     if (!stream || !std::getline(stream, magic) || magic != kReplayArchiveMagic || !std::getline(stream, headerLine)) {
         statusMessage_ = "保存リプレイのヘッダーを読み込めません。";
         return false;
@@ -414,19 +458,23 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
 
     try {
         const json header = json::parse(headerLine);
+
         // Schema、CBOR構造、フレームと入力の上限を確認した後で一時領域へ復元する。
         if (!IsSupportedReplayArchiveSchema(header.value("schemaVersion", 0))) {
             statusMessage_ = "未対応の保存リプレイバージョンです。";
             return false;
         }
+
         const std::istreambuf_iterator<char> payloadBegin(stream);
         const std::istreambuf_iterator<char> payloadEnd;
         const std::vector<std::uint8_t> bytes(payloadBegin, payloadEnd);
         const json payload = json::from_cbor(bytes, true, false);
+
         if (payload.is_discarded() || !payload.contains("frames") || !payload.at("frames").is_array()) {
             statusMessage_ = "保存リプレイ本体が破損しています。";
             return false;
         }
+
         if (payload.at("frames").empty() || payload.at("frames").size() > 100000) {
             statusMessage_ = "保存リプレイのフレーム数が不正です。";
             return false;
@@ -438,31 +486,40 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
         archive.sceneName = header.value("sceneName", std::string{});
         archive.sceneContext = JsonToSceneLoadContext(header.value("sceneContext", json::object()));
         archive.captureRate = (std::clamp)(header.value("captureRate", 15.0f), kMinimumCaptureRate, kMaximumCaptureRate);
+
         for (const json& frameData : payload.at("frames")) {
             FrameSnapshot frame;
             std::string frameError;
+
             if (!DeserializeFrame(frameData, frame, frameError)) {
                 statusMessage_ = frameError;
                 return false;
             }
+
             archive.frames.push_back(std::move(frame));
         }
+
         if (const auto inputs = payload.find("inputs"); inputs != payload.end()) {
             if (!inputs->is_array() || inputs->size() > 1000000) {
                 statusMessage_ = "保存リプレイの入力サンプル数が不正です。";
                 return false;
             }
+
             archive.inputSamples.reserve(inputs->size());
+
             for (const json& inputData : *inputs) {
                 InputSample sample;
                 std::string inputError;
+
                 if (!DeserializeInputSample(inputData, sample, inputError)) {
                     statusMessage_ = inputError;
                     return false;
                 }
+
                 archive.inputSamples.push_back(std::move(sample));
             }
         }
+
         // 元シーンを読み込むまで現在の履歴へ適用せず、保留データとして保持する。
         pendingReplayArchive_ = std::move(archive);
     } catch (const std::exception& exception) {
@@ -471,11 +528,13 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
     }
 
     statusMessage_ = "保存リプレイの元シーンを読み込みます。";
+
     // 解析が成功してもSceneが一致するまでは現在のフレーム履歴へ適用しない。
     if (!RequestPendingArchiveScene()) {
         pendingReplayArchive_.reset();
         return false;
     }
+
     return true;
 }
 
@@ -485,38 +544,48 @@ bool ReplayDebugger::RequestStartRegression(std::size_t archiveIndex) {
         statusMessage_ = "この保存リプレイには入力列がないため、自動回帰テストを実行できません。";
         return false;
     }
+
     pendingRegressionStart_ = true;
+
     if (!RequestLoadReplayArchive(archiveIndex)) {
         pendingRegressionStart_ = false;
         return false;
     }
+
     return true;
 }
 
 bool ReplayDebugger::RequestPendingArchiveScene() {
     // 保存元 Scene の読込を先に要求し、異なる Scene へ履歴を直接適用しない。
-    if (!sceneManager_ || !pendingReplayArchive_) return false;
-    if (IsPendingArchiveSceneCurrent()) return true;
+    if (!sceneManager_ || !pendingReplayArchive_)
+        return false;
+    if (IsPendingArchiveSceneCurrent())
+        return true;
 
     const SceneLoadContext& context = pendingReplayArchive_->sceneContext;
+
     if (context.IsSceneAsset() && sceneManager_->IsPlaying()) {
         statusMessage_ = "保存元と別のScene Assetです。Playを停止してから、もう一度読込してください。";
         return false;
     }
 
     ResetForSceneChange();
+
     if (context.IsSceneAsset()) {
         if (!sceneManager_->OpenSceneAsset(context)) {
             statusMessage_ = "保存元のScene Assetを開けませんでした。";
             return false;
         }
+
         return true;
     }
+
     if (pendingReplayArchive_->sceneName.empty() ||
         !sceneManager_->IsSceneRegistered(pendingReplayArchive_->sceneName)) {
         statusMessage_ = "保存元の実行シーンが登録されていません。";
         return false;
     }
+
     sceneManager_->ChangeScene(pendingReplayArchive_->sceneName);
     return true;
 }
@@ -527,31 +596,39 @@ bool ReplayDebugger::IsPendingArchiveSceneCurrent() const {
         !sceneManager_->GetCurrentScene()) {
         return false;
     }
+
     const SceneLoadContext& expected = pendingReplayArchive_->sceneContext;
+
     if (expected.IsSceneAsset()) {
         const SceneLoadContext& current = sceneManager_->GetActiveSceneLoadContext();
         return current.sceneAssetId == expected.sceneAssetId && current.runtimeScene == expected.runtimeScene;
     }
+
     return sceneManager_->GetCurrentSceneName() == pendingReplayArchive_->sceneName;
 }
 
 bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
     // 元 Scene で Play が始まるまで保留し、実体との再対応付け後に履歴を適用する。
-    if (!pendingReplayArchive_) return false;
-    if (sceneManager_->IsTransitioning() || !IsPendingArchiveSceneCurrent()) return true;
+    if (!pendingReplayArchive_)
+        return false;
+    if (sceneManager_->IsTransitioning() || !IsPendingArchiveSceneCurrent())
+        return true;
     if (!isPlaying) {
         statusMessage_ = "元シーンを開きました。上部の再生ボタンでPlayを開始すると保存履歴を表示します。";
         return true;
     }
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
-    if (!scene) return true;
+    if (!scene)
+        return true;
 
     ReleaseRetainedObjects();
+
     // Play中のScene実体へ結び直してから履歴を移し、Scene世代を更新する。
     frames_.clear();
     activeScene_ = scene;
     activeSceneGeneration_ = sceneManager_->GetSceneGeneration();
+
     // 永続 GUID などで現在の個体へ結び直してから保存フレームを受け取る。
     RebindPendingArchiveToCurrentScene(scene);
     frames_ = std::move(pendingReplayArchive_->frames);
@@ -575,26 +652,33 @@ bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
         statusMessage_ = "保存リプレイにフレームがありません。";
         return true;
     }
+
     const auto player = std::find_if(frames_.front().objects.begin(), frames_.front().objects.end(),
         [](const ObjectSnapshot& snapshot) {
             return snapshot.className == "Player" || snapshot.name == "player";
         });
-    if (player != frames_.front().objects.end()) selectedReplayId_ = player->replayId;
+    if (player != frames_.front().objects.end())
+        selectedReplayId_ = player->replayId;
     else if (!frames_.front().objects.empty()) selectedReplayId_ = frames_.front().objects.front().replayId;
-    if (!frames_.front().sprites.empty()) selectedSpriteReplayId_ = frames_.front().sprites.front().replayId;
+    if (!frames_.front().sprites.empty())
+        selectedSpriteReplayId_ = frames_.front().sprites.front().replayId;
 
     ClearTransientRuntime();
     ApplyFrame(0);
+
     // 自動回帰要求なら同じ読込経路を使い、そのまま入力再実行へ移る。
     if (pendingRegressionStart_) {
         pendingRegressionStart_ = false;
+
         if (!StartRegression()) {
             mode_ = Mode::Paused;
         }
+
         return true;
     }
 
     std::string resumeBlockReason;
+
     if (CanResumeLoadedArchive(&resumeBlockReason)) {
         statusMessage_ = "読込完了。「再生・確認」タブで履歴を再生できます: " +
             loadedArchiveName_;
@@ -605,6 +689,7 @@ bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
         statusMessage_ = "保存リプレイを閲覧用に読み込みました: " + loadedArchiveName_ +
             "（分岐停止理由: " + resumeBlockReason + "）";
     }
+
     return true;
 }
 

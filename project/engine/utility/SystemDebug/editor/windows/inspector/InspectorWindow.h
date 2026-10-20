@@ -11,6 +11,7 @@ namespace engine { class Object3d; }
 class InspectorWindow {
 public:
     InspectorWindow() = default;
+
     ~InspectorWindow() = default;
 
     /// <summary>
@@ -28,17 +29,24 @@ public:
 private:
     // 材質固有の数値UIのみを担当。変更通知・保存・複数選択への反映は呼び出し元に残す。
     void DrawEffectMaterialSettings(engine::Object3d* selectedObject, int currentMatType, bool& isGraphicsChanged);
+
     // Inspector専用のUI描画ヘルパー。
     /// スポナーObject固有の出現対象や間隔などを編集する。
     void DrawSpawnerSettings();
+
     /// Enemy分類の詳細タイプを切り替え、必要な追加設定UIへ誘導する。
     void DrawEnemyTypeSelector();
+
     void DrawGimmickTypeSelector();
+
     void DrawItemTypeSelector();
+
     /// Ghost Recorderで作成した移動パスの割り当てと試験再生を描画する。
     void DrawPathMoverSection(engine::Object3d* selectedObject);
+
     /// Event・Class・ステータス・タイプ固有値をまとめたゲームプレイ設定を描画する。
     void DrawGameplayDataSection(engine::Object3d* selectedObject);
+
     /// 衝突属性やマスクなどのビットフラグを、人間が見やすい形で編集する。
     void DrawAttributeSelector(const char* label, uint32_t* attribute);
 

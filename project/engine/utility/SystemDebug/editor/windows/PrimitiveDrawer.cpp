@@ -17,27 +17,44 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
     rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     D3D12_ROOT_PARAMETER params[2] = {};
-    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; params[0].Descriptor.ShaderRegister = 0;
-    params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; params[1].Descriptor.ShaderRegister = 1;
-    rsDesc.pParameters = params; rsDesc.NumParameters = _countof(params);
+    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    params[0].Descriptor.ShaderRegister = 0;
+    params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    params[1].Descriptor.ShaderRegister = 1;
+    rsDesc.pParameters = params;
+    rsDesc.NumParameters = _countof(params);
     Microsoft::WRL::ComPtr<ID3DBlob> sigBlob, errBlob;
     hr = D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &errBlob);
-    if (FAILED(hr)) { OutputDebugStringA((char*)errBlob->GetBufferPointer()); assert(false); }
-    hr = device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), IID_PPV_ARGS(&primitiveRootSignature_)); assert(SUCCEEDED(hr));
+
+    if (FAILED(hr)) {
+        OutputDebugStringA((char*)errBlob->GetBufferPointer());
+        assert(false);
+    }
+    hr = device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), IID_PPV_ARGS(&primitiveRootSignature_));
+    assert(SUCCEEDED(hr));
 
     D3D12_INPUT_ELEMENT_DESC inputElems[] = { { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } };
     D3D12_INPUT_LAYOUT_DESC inputLayout = { inputElems, _countof(inputElems) };
-    D3D12_RASTERIZER_DESC rasterDesc{}; rasterDesc.CullMode = D3D12_CULL_MODE_NONE; rasterDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    D3D12_RASTERIZER_DESC rasterDesc{};
+    rasterDesc.CullMode = D3D12_CULL_MODE_NONE;
+    rasterDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
 
     Microsoft::WRL::ComPtr<IDxcBlob> vsBlob = dxCommon_->CompileShader(L"Resources/shader/debug/DebugPrimitive.VS.hlsl", L"vs_6_0");
     Microsoft::WRL::ComPtr<IDxcBlob> psBlob = dxCommon_->CompileShader(L"Resources/shader/debug/DebugPrimitive.PS.hlsl", L"ps_6_0");
     assert(vsBlob && psBlob);
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-    psoDesc.pRootSignature = primitiveRootSignature_.Get(); psoDesc.InputLayout = inputLayout;
-    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() }; psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-    psoDesc.RasterizerState = rasterDesc; psoDesc.NumRenderTargets = 1; psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    psoDesc.pRootSignature = primitiveRootSignature_.Get();
+    psoDesc.InputLayout = inputLayout;
+    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
+    psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
+    psoDesc.RasterizerState = rasterDesc;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-    psoDesc.SampleDesc.Count = 1; psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+    psoDesc.SampleDesc.Count = 1;
+    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
     D3D12_BLEND_DESC blendDesc{};
     blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
     psoDesc.BlendState = blendDesc;
@@ -46,14 +63,25 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     psoDesc.DepthStencilState = depthDesc;
     psoDesc.DSVFormat = dxCommon_->GetDSVFormat();
 
-    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&primitivePipelineState_)); assert(SUCCEEDED(hr));
+    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&primitivePipelineState_));
+    assert(SUCCEEDED(hr));
 
     engine::Vector4 cubeVerts[] = { {-0.5f,-0.5f,-0.5f,1}, {0.5f,-0.5f,-0.5f,1}, {-0.5f,0.5f,-0.5f,1}, {0.5f,0.5f,-0.5f,1}, {-0.5f,-0.5f,0.5f,1}, {0.5f,-0.5f,0.5f,1}, {-0.5f,0.5f,0.5f,1}, {0.5f,0.5f,0.5f,1} };
     uint32_t cubeIdx[] = { 0,1, 1,3, 3,2, 2,0, 4,5, 5,7, 7,6, 6,4, 0,4, 1,5, 2,6, 3,7 };
-    cubeVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeVerts)); cubeVertexBufferView_ = { cubeVertexBuffer_->GetGPUVirtualAddress(), sizeof(cubeVerts), sizeof(engine::Vector4) };
-    void* vbData; hr = cubeVertexBuffer_->Map(0, nullptr, &vbData); assert(SUCCEEDED(hr)); memcpy(vbData, cubeVerts, sizeof(cubeVerts)); cubeVertexBuffer_->Unmap(0, nullptr);
-    cubeIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeIdx)); cubeIndexBufferView_ = { cubeIndexBuffer_->GetGPUVirtualAddress(), sizeof(cubeIdx), DXGI_FORMAT_R32_UINT };
-    void* ibData; hr = cubeIndexBuffer_->Map(0, nullptr, &ibData); assert(SUCCEEDED(hr)); memcpy(ibData, cubeIdx, sizeof(cubeIdx)); cubeIndexBuffer_->Unmap(0, nullptr);
+    cubeVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeVerts));
+    cubeVertexBufferView_ = { cubeVertexBuffer_->GetGPUVirtualAddress(), sizeof(cubeVerts), sizeof(engine::Vector4) };
+    void* vbData;
+    hr = cubeVertexBuffer_->Map(0, nullptr, &vbData);
+    assert(SUCCEEDED(hr));
+    memcpy(vbData, cubeVerts, sizeof(cubeVerts));
+    cubeVertexBuffer_->Unmap(0, nullptr);
+    cubeIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeIdx));
+    cubeIndexBufferView_ = { cubeIndexBuffer_->GetGPUVirtualAddress(), sizeof(cubeIdx), DXGI_FORMAT_R32_UINT };
+    void* ibData;
+    hr = cubeIndexBuffer_->Map(0, nullptr, &ibData);
+    assert(SUCCEEDED(hr));
+    memcpy(ibData, cubeIdx, sizeof(cubeIdx));
+    cubeIndexBuffer_->Unmap(0, nullptr);
 
     primitiveColorBuffer_ = dxCommon_->CreateBufferResource(sizeof(AlignedVector4) * kMaxInstances);
     hr = primitiveColorBuffer_->Map(0, nullptr, (void**)&primitiveColorData_);
@@ -82,19 +110,27 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
         sphereIdx[kSegments * 4 + i * 2] = kSegments * 2 + i;
         sphereIdx[kSegments * 4 + i * 2 + 1] = kSegments * 2 + ((i + 1) % kSegments);
     }
+
     sphereVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(sphereVerts));
     sphereVertexBufferView_ = { sphereVertexBuffer_->GetGPUVirtualAddress(), sizeof(sphereVerts), sizeof(engine::Vector4) };
-    void* svbData; hr = sphereVertexBuffer_->Map(0, nullptr, &svbData); assert(SUCCEEDED(hr));
-    memcpy(svbData, sphereVerts, sizeof(sphereVerts)); sphereVertexBuffer_->Unmap(0, nullptr);
+    void* svbData;
+    hr = sphereVertexBuffer_->Map(0, nullptr, &svbData);
+    assert(SUCCEEDED(hr));
+    memcpy(svbData, sphereVerts, sizeof(sphereVerts));
+    sphereVertexBuffer_->Unmap(0, nullptr);
 
     sphereIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(sphereIdx));
     sphereIndexBufferView_ = { sphereIndexBuffer_->GetGPUVirtualAddress(), sizeof(sphereIdx), DXGI_FORMAT_R32_UINT };
-    void* sibData; hr = sphereIndexBuffer_->Map(0, nullptr, &sibData); assert(SUCCEEDED(hr));
-    memcpy(sibData, sphereIdx, sizeof(sphereIdx)); sphereIndexBuffer_->Unmap(0, nullptr);
+    void* sibData;
+    hr = sphereIndexBuffer_->Map(0, nullptr, &sibData);
+    assert(SUCCEEDED(hr));
+    memcpy(sibData, sphereIdx, sizeof(sphereIdx));
+    sphereIndexBuffer_->Unmap(0, nullptr);
 
     primitiveWVPBuffer_ = dxCommon_->CreateBufferResource(sizeof(AlignedMatrix4x4) * kMaxInstances);
     hr = primitiveWVPBuffer_->Map(0, nullptr, (void**)&primitiveWVPData_);
     assert(SUCCEEDED(hr));
+
     // --- 円柱のバッファ作成 ---
     const int kCylinderSegments = 16; // 16角柱で円柱を表現
     engine::Vector4 cylinderVerts[kCylinderSegments * 2];
@@ -107,6 +143,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
 
         // 上面の頂点 (Y = 0.5)
         cylinderVerts[i] = { cosT, 0.5f, sinT, 1.0f };
+
         // 底面の頂点 (Y = -0.5)
         cylinderVerts[kCylinderSegments + i] = { cosT, -0.5f, sinT, 1.0f };
 
@@ -127,19 +164,31 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     // 頂点バッファ生成
     cylinderVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cylinderVerts));
     cylinderVertexBufferView_ = { cylinderVertexBuffer_->GetGPUVirtualAddress(), sizeof(cylinderVerts), sizeof(engine::Vector4) };
-    void* cvbData; hr = cylinderVertexBuffer_->Map(0, nullptr, &cvbData); assert(SUCCEEDED(hr));
-    memcpy(cvbData, cylinderVerts, sizeof(cylinderVerts)); cylinderVertexBuffer_->Unmap(0, nullptr);
+    void* cvbData;
+    hr = cylinderVertexBuffer_->Map(0, nullptr, &cvbData);
+    assert(SUCCEEDED(hr));
+    memcpy(cvbData, cylinderVerts, sizeof(cylinderVerts));
+    cylinderVertexBuffer_->Unmap(0, nullptr);
 
     // インデックスバッファ生成
     cylinderIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cylinderIdx));
     cylinderIndexBufferView_ = { cylinderIndexBuffer_->GetGPUVirtualAddress(), sizeof(cylinderIdx), DXGI_FORMAT_R32_UINT };
-    void* cibData; hr = cylinderIndexBuffer_->Map(0, nullptr, &cibData); assert(SUCCEEDED(hr));
-    memcpy(cibData, cylinderIdx, sizeof(cylinderIdx)); cylinderIndexBuffer_->Unmap(0, nullptr);
+    void* cibData;
+    hr = cylinderIndexBuffer_->Map(0, nullptr, &cibData);
+    assert(SUCCEEDED(hr));
+    memcpy(cibData, cylinderIdx, sizeof(cylinderIdx));
+    cylinderIndexBuffer_->Unmap(0, nullptr);
 }
 
 void PrimitiveDrawer::Finalize() {
-    if (primitiveWVPData_) { primitiveWVPBuffer_->Unmap(0, nullptr); primitiveWVPData_ = nullptr; }
-    if (primitiveColorData_) { primitiveColorBuffer_->Unmap(0, nullptr); primitiveColorData_ = nullptr; }
+    if (primitiveWVPData_) {
+        primitiveWVPBuffer_->Unmap(0, nullptr);
+        primitiveWVPData_ = nullptr;
+    }
+    if (primitiveColorData_) {
+        primitiveColorBuffer_->Unmap(0, nullptr);
+        primitiveColorData_ = nullptr;
+    }
 }
 
 void PrimitiveDrawer::PreDraw(ID3D12GraphicsCommandList* commandList) {
@@ -152,7 +201,10 @@ void PrimitiveDrawer::PreDraw(ID3D12GraphicsCommandList* commandList) {
 
 void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
     // インスタンスごとの行列・色を定数バッファへ書き、枠線用の24インデックスを描く。
-    engine::Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
+    engine::Math math;
+    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera)
+        return;
 
     primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
 
@@ -171,7 +223,10 @@ void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const
 }
 
 void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
-    engine::Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
+    engine::Math math;
+    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera)
+        return;
 
     primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
 
@@ -202,7 +257,8 @@ void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, con
 void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
     engine::Math math;
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    if (!camera) return;
+    if (!camera)
+        return;
 
     // 定数バッファの更新（WVP行列と色）
     primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));

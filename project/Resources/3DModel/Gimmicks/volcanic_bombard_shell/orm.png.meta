@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ca57547619bd46178b72cd6d671ed35b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/volcanic_bombard_shell/orm.png",
+  "version": 1
+}

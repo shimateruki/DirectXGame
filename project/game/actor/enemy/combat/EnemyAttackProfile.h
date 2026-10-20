@@ -65,20 +65,28 @@ struct EnemyAttackDefinition {
 
     /// <summary>指定フェーズの長さを取得します。Ready は 0 秒です。</summary>
     float GetPhaseDuration(AttackAbilityPhase phase) const;
+
     /// <summary>フェーズ開始からの経過秒数を 0～1 の進行率に変換します。</summary>
     float GetPhaseProgressFromElapsed(AttackAbilityPhase phase, float elapsed) const;
+
     /// <summary>フェーズ終了までの残り秒数を 0～1 の進行率に変換します。</summary>
     float GetPhaseProgressFromRemaining(AttackAbilityPhase phase, float remaining) const;
+
     /// <summary>予備動作から硬直までの合計時間を返します。</summary>
     float GetActionDuration() const;
+
     /// <summary>再使用待ちも含む合計時間を返します。</summary>
     float GetTotalDuration() const;
+
     /// <summary>攻撃開始からの経過秒数がキャンセル可能区間に入っているか調べます。</summary>
     bool IsCancelWindowOpen(float elapsedActionTime) const;
+
     /// <summary>ノックバックが設定されているか調べます。</summary>
     bool HasConfiguredKnockback() const;
+
     /// <summary>前方を基準にローカルノックバックをワールド方向へ変換します。</summary>
     engine::Vector3 ResolveKnockback(const engine::Vector3& forward, const engine::Vector3& legacyFallback) const;
+
     /// <summary>無敵時間が未設定なら従来値を使います。</summary>
     float ResolveInvincibilityDuration(float legacyFallback = 1.0f) const;
 };
@@ -87,16 +95,25 @@ using AttackAbilityDefinition = EnemyAttackDefinition;
 
 // 旧プロファイルと新しい弾部品を同じ規則で解決します。Editor・実行・テストで共有します。
 inline AttackProjectileComponent ResolveProjectileComponent(const EnemyAttackDefinition& attack, const AttackSequenceEvent& event) {
-    if (event.projectile.configured) return event.projectile;
+    if (event.projectile.configured)
+        return event.projectile;
     AttackProjectileComponent part;
     part.configured = true;
+
     // 旧弾は表示倍率もColliderへ掛かるため、同じワールド半径に変換して引き継ぎます。
-    part.radius = attack.radius * attack.sequence.visualScale; part.lifetime = attack.lifetime;
-    part.minSpeed = attack.minSpeed; part.maxSpeed = attack.maxSpeed; part.damage = attack.damage;
-    part.style = attack.sequence.projectileStyle; part.visualScale = attack.sequence.visualScale;
+    part.radius = attack.radius * attack.sequence.visualScale;
+    part.lifetime = attack.lifetime;
+    part.minSpeed = attack.minSpeed;
+    part.maxSpeed = attack.maxSpeed;
+    part.damage = attack.damage;
+    part.style = attack.sequence.projectileStyle;
+    part.visualScale = attack.sequence.visualScale;
     part.appearance = attack.sequence.fireAppearance;
     if (part.style != "fire") {
-        part.trail.clear(); part.secondaryTrail.clear(); part.impact.clear(); part.secondaryImpact.clear();
+        part.trail.clear();
+        part.secondaryTrail.clear();
+        part.impact.clear();
+        part.secondaryImpact.clear();
         part.appearance.red = part.appearance.green = part.appearance.blue = part.appearance.alpha = part.appearance.emissive = 1;
     }
     return part;
@@ -119,20 +136,29 @@ class AttackAbilityRuntime {
     /// <param name="definition">実行中に保持する攻撃定義。</param>
     /// <returns>開始できた場合は true。</returns>
     bool Start(const AttackAbilityDefinition& definition);
+
     /// <summary>経過時間を進め、通過したフェーズ境界を返します。</summary>
     /// <param name="deltaTime">経過秒数。負数は 0 として扱います。</param>
     AttackAbilityUpdateResult Update(float deltaTime);
+
     /// <summary>現在の攻撃を中断し、必要なら再使用待ちへ移します。</summary>
     void Cancel(bool enterCooldown = true);
+
     /// <summary>攻撃定義と進行状態を破棄します。</summary>
     void Reset();
 
     AttackAbilityPhase GetPhase() const { return phase_; }
+
     float GetPhaseProgress() const;
+
     float GetElapsedActionTime() const;
+
     bool IsReady() const { return phase_ == AttackAbilityPhase::Ready; }
+
     bool IsHitWindowOpen() const { return phase_ == AttackAbilityPhase::Active; }
+
     bool CanCancel() const;
+
     const AttackAbilityDefinition* GetDefinition() const { return hasDefinition_ ? &definition_ : nullptr; }
 
   private:
@@ -151,29 +177,39 @@ class EnemyAttackProfile {
   public:
     // 敵種・入力割当から独立した攻撃内容。bindingとpriorityは利用先の値を維持します。
     static bool SaveSequenceAsset(const std::string& path, const AttackSequenceDefinition& sequence, std::string* error = nullptr);
+
     static bool LoadSequenceAsset(const std::string& path, AttackSequenceDefinition& sequence, std::string* error = nullptr);
+
     /// <summary>敵種に対応する既定の攻撃群を生成します。</summary>
     static EnemyAttackProfile CreateDefault(const std::string& enemyType);
+
     /// <summary>敵種名から標準JSONパスを組み立てます。</summary>
     static std::string GetDefaultPath(const std::string& enemyType);
+
     /// <summary>成功した読込結果を共有キャッシュから取得します。失敗時は既定値を返します。</summary>
     static bool LoadCachedForEnemy(const std::string& enemyType, EnemyAttackProfile& destination,
                                    std::string* errorMessage = nullptr);
+
     /// <summary>指定敵種、または全敵種のキャッシュを無効化します。</summary>
     static void InvalidateCache(const std::string& enemyType = {});
 
     /// <summary>標準パスから読み込み、失敗時は既定値に戻します。</summary>
     bool LoadForEnemy(const std::string& enemyType, std::string* errorMessage = nullptr);
+
     /// <summary>任意パスのJSONを既定値へマージして読み込みます。</summary>
     bool LoadFromFile(const std::string& path, std::string* errorMessage = nullptr);
+
     /// <summary>Editorで調整した攻撃群をJSONに保存します。</summary>
     bool SaveToFile(const std::string& path, std::string* errorMessage = nullptr) const;
 
     // ID で攻撃を探します。見つからなければ nullptr です。
     const EnemyAttackDefinition* FindAttack(const std::string& attackId) const;
+
     EnemyAttackDefinition* FindAttack(const std::string& attackId);
+
     /// <summary>範囲・時間・判定形状を実行可能な値へ補正します。</summary>
     void Sanitize();
+
     // rollはテスト用の[0,1]値。負なら内部の乱数を使用。プレビュー指定は抽選より優先します。
     const EnemyAttackDefinition* SelectSequence(float distance, float detectionRange,
         const std::string& previewId = {}, float roll = -1) const;

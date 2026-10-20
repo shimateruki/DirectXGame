@@ -1,11 +1,11 @@
 #define NOMINMAX
 #include "EnemyRingBurner.h"
-#include "game/system/SceneGameplayAccess.h"
+#include "game/system/scene/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
-#include "EventManager.h"
+#include "game/system/rules/EventManager.h"
 #include "GPUParticleManager.h"
-#include "HitEffectDirector.h"
+#include "game/system/combat/HitEffectDirector.h"
 #include "MeshEffectManager.h"
 #include "Player.h"
 #include "SceneManager.h"
@@ -19,6 +19,7 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr float kModelHeight = 1.46f;
 constexpr float kTopRadius = 1.05f;
 constexpr float kWaveStartRadiusRatio = 1.60f / 11.0f;
+
 // 波の寿命は effect_ring_burner_wave / wave_heat の Lifetime と揃えます。
 constexpr float kWaveDuration = 3.6f;
 constexpr float kRecoveryDuration = 0.62f;
@@ -50,9 +51,11 @@ float PlanarDistance(const engine::Vector3& first, const engine::Vector3& second
 engine::Vector3 NormalizePlanar(const engine::Vector3& value) {
     // 完全に重なった対象にも一定方向の押し出しを与える。
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
+
     if (length <= 0.001f) {
         return {0.0f, 0.0f, 1.0f};
     }
+
     return {value.x / length, 0.0f, value.z / length};
 }
 } // namespace
@@ -64,6 +67,7 @@ class EnemyRingBurner::StateBehavior {
     virtual void Enter(EnemyRingBurner&) const {
         // 入場処理がない状態では何も変更しない。
     }
+
     virtual void Update(EnemyRingBurner& owner, float deltaTime, float targetDistance, float detectRange) const = 0;
     virtual void ApplyVisualPose(const EnemyRingBurner& owner, engine::Vector3& scale, engine::Vector4& color,
                                  float& emissive) const = 0;
@@ -79,6 +83,7 @@ class EnemyRingBurner::IdleBehavior final : public StateBehavior {
         // 待機中だけ再使用待ちを減らし、対象が射程に入ったら詠唱へ進む。
         owner.cooldownTimer_ = (std::max)(0.0f, owner.cooldownTimer_ - deltaTime);
         owner.HideAttackTelegraph();
+
         if (owner.target_ && targetDistance <= detectRange && owner.cooldownTimer_ <= 0.0f) {
             owner.EnterState(State::Charge, owner.GetChargeDuration());
         }
@@ -117,8 +122,10 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
                 particles->Emit(kChargeParticle, owner.GetWorldPosition() +
                                                  engine::Vector3{0.0f, 1.12f * owner.baseScale_.y, 0.0f});
             }
+
             owner.particleTimer_ = 0.12f;
         }
+
         if (owner.stateTimer_ <= 0.0f) {
             owner.EnterState(State::Wave, kWaveDuration);
         }
@@ -157,9 +164,11 @@ class EnemyRingBurner::WaveBehavior final : public StateBehavior {
         const float progress = (std::clamp)(1.0f - owner.stateTimer_ / owner.stateDuration_, 0.0f, 1.0f);
         const float maximumRadius = owner.GetWaveMaximumRadius();
         const float previousRadius = owner.waveRadius_;
+
         // 発射直後に最大半径へ飛ばず、見た目と同じ等速で一周の輪を広げます。
         owner.waveRadius_ = engine::Math::Lerp(maximumRadius * kWaveStartRadiusRatio, maximumRadius, progress);
         owner.UpdateWaveDamage(previousRadius);
+
         if (owner.stateTimer_ <= 0.0f) {
             owner.EnterState(State::Recovery, kRecoveryDuration);
         }
@@ -189,6 +198,7 @@ class EnemyRingBurner::RecoveryBehavior final : public StateBehavior {
     void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
         // 硬直後に待機へ戻し、その時点から次の充填までの間隔を数える。
         owner.stateTimer_ -= deltaTime;
+
         if (owner.stateTimer_ <= 0.0f) {
             owner.EnterState(State::Idle, 0.01f);
             owner.cooldownTimer_ = owner.GetCooldownDuration();
@@ -214,6 +224,7 @@ class EnemyRingBurner::SuppressedBehavior final : public StateBehavior {
     void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
         // 踏まれなくなって一定時間が経つと、硬直を経て再起動する。
         owner.stateTimer_ -= deltaTime;
+
         if (owner.stateTimer_ <= 0.0f) {
             owner.EnterState(State::Recovery, kRecoveryDuration);
         }
@@ -242,7 +253,7 @@ const EnemyRingBurner::StateBehavior& EnemyRingBurner::BehaviorFor(State state) 
     return *behaviors[static_cast<std::size_t>(state)];
 }
 
-void EnemyRingBurner::Initialize(Object3dCommon* common, const std::string& modelName) {
+void EnemyRingBurner::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_RingBurner");
     SetEnemyType("RingBurner");
@@ -271,6 +282,7 @@ void EnemyRingBurner::Initialize(Object3dCommon* common, const std::string& mode
 void EnemyRingBurner::Update(float deltaTime) {
     // 上面にプレイヤーがいる間は攻撃状態より抑止状態を優先する。
     ResolveRuntimeTarget();
+
     if (UpdateInactiveState(deltaTime)) {
         return;
     }
@@ -284,6 +296,7 @@ void EnemyRingBurner::Update(float deltaTime) {
         if (state_ != State::Suppressed) {
             EnterState(State::Suppressed, kSuppressedReleaseDuration);
         }
+
         stateTimer_ = kSuppressedReleaseDuration;
         cooldownTimer_ = GetCooldownDuration() * 0.38f;
     } else {
@@ -302,6 +315,7 @@ void EnemyRingBurner::ResolveRuntimeTarget() {
 
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+
     if (scene) {
         target_ = GetScenePlayer(scene);
     }
@@ -315,6 +329,7 @@ bool EnemyRingBurner::UpdateInactiveState(float deltaTime) {
         BaseEnemy::Update(deltaTime);
         return true;
     }
+
     return false;
 }
 
@@ -332,9 +347,11 @@ void EnemyRingBurner::EnterState(State state, float duration) {
     state_ = state;
     stateDuration_ = (std::max)(duration, 0.001f);
     stateTimer_ = stateDuration_;
+
     if (state != State::Wave) {
         waveDamageDone_ = false;
     }
+
     BehaviorFor(state_).Enter(*this);
 }
 
@@ -357,8 +374,10 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
     const float targetRelativeHeight = targetPosition.y - origin.y;
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
     const float bandWidth = (std::max)(kWaveBandHalfWidth * horizontalScale, waveRadius_ * 0.045f);
+
     // フレーム間に通過した帯も調べ、処理落ちで輪がプレイヤーを飛び越えないようにします。
     const bool crossesRing = targetDistance >= previousRadius - bandWidth && targetDistance <= waveRadius_ + bandWidth;
+
     // 下段の救済床には届かせず、同じ高さのプレイヤーだけを対象にします。
     const bool isLowEnough =
         targetRelativeHeight >= -0.65f * baseScale_.y && targetRelativeHeight <= kWaveJumpClearHeight * baseScale_.y;
@@ -396,6 +415,7 @@ void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
 bool EnemyRingBurner::IsTargetStandingOnTop() const {
     // 輪の回避を兼ねた踏みつけを、接地・水平距離・上面との高さで判定する。
     const Player* player = dynamic_cast<const Player*>(target_);
+
     if (!player || !player->IsGrounded()) {
         return false;
     }
@@ -435,9 +455,11 @@ void EnemyRingBurner::SpawnChargeEffects() {
     // 充填のメッシュ演出と火花を本体の高さ・大きさに合わせて置く。
     const engine::Vector3 origin = GetWorldPosition() + engine::Vector3{0.0f, 0.18f * baseScale_.y, 0.0f};
     const float scale = (std::max)(baseScale_.x, baseScale_.z);
+
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
         meshEffects->SpawnEffectAt(kChargeEffect, origin, {0.0f, 0.0f, 0.0f}, {scale, baseScale_.y, scale});
     }
+
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
         particles->Emit(kChargeParticle, origin + engine::Vector3{0.0f, 1.12f * baseScale_.y, 0.0f});
     }
@@ -448,6 +470,7 @@ void EnemyRingBurner::SpawnWaveEffects() {
     const engine::Vector3 origin = GetWorldPosition() + engine::Vector3{0.0f, 0.34f * baseScale_.y, 0.0f};
     const float authoredRadius = 11.0f;
     const float effectScale = GetWaveMaximumRadius() / authoredRadius;
+
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
         StopWaveEffects();
         waveEffectScope_ = meshEffects->CreateEffectScope();
@@ -455,6 +478,7 @@ void EnemyRingBurner::SpawnWaveEffects() {
         meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveHeatEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
         meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
     }
+
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
         particles->Emit(kFireParticle, origin + engine::Vector3{0.0f, 1.05f * baseScale_.y, 0.0f});
     }

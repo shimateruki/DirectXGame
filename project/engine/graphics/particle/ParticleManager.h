@@ -14,10 +14,10 @@ public:
     static ParticleManager* GetInstance();
 
     /// <summary>粒子生成に使うParticleSystemを設定する。所有しない。</summary>
-    void Initialize(ParticleSystem* particleSystem);
+    void Initialize(engine::ParticleSystem* particleSystem);
 
     /// <summary>指定名のパーティクル設定をJSONへ保存する。</summary>
-    void SaveParam(const std::string& name, const ParticleSystem::EmitterParams& param);
+    void SaveParam(const std::string& name, const engine::ParticleSystem::EmitterParams& param);
 
     /// <summary>指定名のJSONからパーティクル設定を読み込む。</summary>
     void LoadParam(const std::string& name);
@@ -33,21 +33,24 @@ public:
     void Emit(const std::string& name, const engine::Vector3& position, float& timer);
 
     /// <summary>エディタ表示用に、読み込み済み設定の一覧を返す。</summary>
-    const std::map<std::string, ParticleSystem::EmitterParams>& GetParamsMap() const { return paramsMap_; }
+    const std::map<std::string, engine::ParticleSystem::EmitterParams>& GetParamsMap() const { return paramsMap_; }
 
     /// <summary>指定名の編集用設定を返す。未登録名は既定設定を追加する。</summary>
-    ParticleSystem::EmitterParams& GetParam(const std::string& name) { return paramsMap_[name]; }
+    engine::ParticleSystem::EmitterParams& GetParam(const std::string& name) { return paramsMap_[name]; }
 
 private:
     ParticleManager() = default;
+
     ~ParticleManager() = default;
+
     ParticleManager(const ParticleManager&) = delete;
+
     const ParticleManager& operator=(const ParticleManager&) = delete;
 
-    ParticleSystem* particleSystem_ = nullptr;
+    engine::ParticleSystem* particleSystem_ = nullptr;
 
     // 名前とパラメータの辞書 (例: "Fire" -> { params... })
-    std::map<std::string, ParticleSystem::EmitterParams> paramsMap_;
+    std::map<std::string, engine::ParticleSystem::EmitterParams> paramsMap_;
 
     // JSON保存先パス
     const std::string kDirectoryPath = "Resources/json/particle/";

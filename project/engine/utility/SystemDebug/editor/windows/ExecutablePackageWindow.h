@@ -16,6 +16,7 @@ public:
 
     /// <summary>作成条件と非同期処理の状態を表示します。</summary>
     void DrawImGui() override;
+
     std::string GetName() override { return "実行ファイルセット (Executable Package)"; }
 
 private:

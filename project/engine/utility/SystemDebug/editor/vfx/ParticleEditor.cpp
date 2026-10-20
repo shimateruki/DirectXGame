@@ -25,12 +25,14 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     }
 
     targetSystem_ = sceneManager_->GetCurrentScene()->GetParticleSystem();
+
     if (!targetSystem_) {
         return;
     }
 
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     const bool isSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+
     if (!isSelected || !previewStage || !previewStage->IsEnabled()) {
         // プレビュー解除時はゲーム側の発生位置・時間倍率へ戻す。
         targetSystem_->SetEditorPreviewOffset({ 0.0f, 0.0f, 0.0f });
@@ -39,13 +41,14 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     }
 
     targetSystem_->SetEditorPreviewOffset(previewStage->GetPreviewPosition());
-    ParticleSystem::EmitterParams& params = targetSystem_->params_;
+    engine::ParticleSystem::EmitterParams& params = targetSystem_->params_;
     const float duration = (std::max)(3.0f, params.particleLifetime + 0.75f);
 
     const auto restartPreview = [&](float seekTime) {
         // 粒子の履歴を直接戻せないため、固定刻みで先頭から再計算してシーク位置を再現する。
         targetSystem_->ResetSimulation();
         previewTime_ = 0.0f;
+
         if (!params.isEmitting) {
             targetSystem_->EmitOneShot(
                 params,
@@ -55,6 +58,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         targetSystem_->SetSimulationTimeScale(1.0f);
         constexpr float kSeekStep = 1.0f / 60.0f;
         float remaining = std::clamp(seekTime, 0.0f, duration);
+
         while (remaining > 0.0001f) {
             const float step = (std::min)(kSeekStep, remaining);
             targetSystem_->Update(step);
@@ -68,11 +72,13 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         restartPreview(0.0f);
     }
+
     if (previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
         lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
         targetSystem_->ResetSimulation();
         previewTime_ = 0.0f;
     }
+
     if (previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
         lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
         restartPreview(previewStage->GetSeekTargetTime());
@@ -80,11 +86,14 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
     const float effectiveSpeed = previewStage->GetPlaybackSpeed();
     targetSystem_->SetSimulationTimeScale(effectiveSpeed);
+
     if (!sceneIsPlaying && effectiveSpeed > 0.0f) {
         targetSystem_->Update(deltaTime);
     }
+
     if (effectiveSpeed > 0.0f) {
         previewTime_ += deltaTime * effectiveSpeed;
+
         if (previewStage->IsLoopEnabled() && previewTime_ >= duration) {
             restartPreview(0.0f);
             targetSystem_->SetSimulationTimeScale(effectiveSpeed);
@@ -94,6 +103,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     }
 
     std::vector<EffectPreviewStage::TimelineEvent> events;
+
     // 発生期間と粒子寿命を別レーンとして示し、設定と実際の生存時間を比較できるようにする。
     events.push_back({
         params.isEmitting ? "連続発生" : "単発発生",
@@ -152,6 +162,7 @@ void EditCurve(const char* label, float* values, int count, float minVal, float 
         if (index >= 0 && index < count) {
             // マウスのY位置から値を計算
             float mouseY = io.MousePos.y - ImGui::GetItemRectMin().y;
+
             // Y軸は上がMin、下がMaxになっていることが多いので反転して正規化
             float normalizedY = 1.0f - (mouseY / graphSize.y);
 
@@ -165,21 +176,24 @@ void EditCurve(const char* label, float* values, int count, float minVal, float 
 
 void ParticleEditor::DrawImGui() {
 #ifdef USE_IMGUI
-    if (sceneManager_ == nullptr) return;
+    if (sceneManager_ == nullptr)
+        return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
     if (currentScene == nullptr) {
         ImGui::TextDisabled(ICON_FA_EXCLAMATION_TRIANGLE " アクティブなシーンがありません");
         return;
     }
 
-    ParticleSystem* targetSystem = currentScene->GetParticleSystem();
+    engine::ParticleSystem* targetSystem = currentScene->GetParticleSystem();
+
     if (targetSystem == nullptr) {
         ImGui::TextDisabled(ICON_FA_EXCLAMATION_TRIANGLE " このシーンにはパーティクルシステムがありません");
         return;
     }
 
-    ParticleSystem::EmitterParams& params = targetSystem->params_;
+    engine::ParticleSystem::EmitterParams& params = targetSystem->params_;
 
     // -------------------------------------------------------------
     // 1. 描画・形状設定
@@ -187,12 +201,14 @@ void ParticleEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_PAINT_BRUSH " 描画・形状設定 (Rendering & Shape)", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* modes[] = { "Alpha (Normal)", "Add (Glow)", "Subtract (Dark)", "Multiply (Shadow)", "Screen (Soft Light)" };
         int currentMode = (int)params.blendMode;
+
         if (ImGui::Combo(ICON_FA_ADJUST " Blend Mode", &currentMode, modes, IM_ARRAYSIZE(modes))) {
             params.blendMode = (ParticleBlendMode)currentMode;
         }
 
         const char* shapes[] = { "Box", "Sphere", "Cone" };
         int currentShape = (int)params.emitterType;
+
         if (ImGui::Combo(ICON_FA_SHAPES " Type (形状)", &currentShape, shapes, IM_ARRAYSIZE(shapes))) {
             params.emitterType = (EmitterType)currentShape;
         }
@@ -211,22 +227,28 @@ void ParticleEditor::DrawImGui() {
         ImGui::Checkbox(ICON_FA_TOGGLE_ON " 放出有効 (Emit)", &params.isEmitting);
         if (ImGui::DragInt(
             ICON_FA_SORT_NUMERIC_UP " 単発の発生数 (Emit Count)",
-            &params.emitCount, 1.0f, 1, ParticleSystem::GetMaxParticles())) {
-            params.emitCount = std::clamp(params.emitCount, 1, ParticleSystem::GetMaxParticles());
+            &params.emitCount, 1.0f, 1, engine::ParticleSystem::GetMaxParticles())) {
+            params.emitCount = std::clamp(params.emitCount, 1, engine::ParticleSystem::GetMaxParticles());
+
             if (!params.isEmitting) {
                 targetSystem->ResetSimulation();
                 engine::Vector3 origin = params.spawnPosition;
+
                 if (EffectPreviewStage* stage = EffectPreviewStage::GetInstance(); stage && stage->IsEnabled()) {
                     origin += stage->GetPreviewPosition();
                 }
+
                 targetSystem->EmitOneShot(params, origin);
             }
         }
+
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("単発プレビューとEmitOneShot 1回で生成する粒子数です");
         }
+
         ImGui::DragFloat(ICON_FA_STREAM " 生成レート (個/秒)", &params.particlesPerSecond, 1.0f, 0.0f, 1000.0f);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("1秒間に何個パーティクルを出すか");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("1秒間に何個パーティクルを出すか");
 
         ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 生存時間 (Lifetime)", &params.particleLifetime, 0.1f, 0.1f, 10.0f);
     }
@@ -237,7 +259,8 @@ void ParticleEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_COGS " 挙動設定 (Transform & Physics)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::DragFloat3(ICON_FA_CROSSHAIRS " 発生中心座標", &params.spawnPosition.x, 0.1f);
         ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " 発生範囲 (乱数幅)", &params.spawnArea.x, 0.1f);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("中心座標から±この範囲内でランダムに出現します");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("中心座標から±この範囲内でランダムに出現します");
 
         ImGui::DragFloat3(ICON_FA_TACHOMETER_ALT " 初速度 (Velocity)", &params.initialVelocity.x, 0.1f);
         ImGui::DragFloat3(ICON_FA_RANDOM " 速度のばらつき", &params.velocityRandomness.x, 0.1f);
@@ -246,7 +269,8 @@ void ParticleEditor::DrawImGui() {
         ImGui::DragFloat(ICON_FA_REDO " 回転のばらつき", &params.rotationSpeedRandomness, 1.0f);
 
         ImGui::DragFloat3(ICON_FA_ARROW_CIRCLE_DOWN " 加速度 (Gravity)", &params.acceleration.x, 0.01f);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Yをマイナスにすると重力がかかります");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Yをマイナスにすると重力がかかります");
     }
 
     // -------------------------------------------------------------
@@ -262,30 +286,38 @@ void ParticleEditor::DrawImGui() {
         ImGui::Text(ICON_FA_CHART_LINE " サイズ推移 (Lifetime Graph)");
         ImGui::TextDisabled("※グラフをマウスでなぞって描けます");
         EditCurve("##SizeCurve", params.sizeCurve, 10, 0.0f, 5.0f);
+
         if (ImGui::Button(ICON_FA_UNDO " カーブをリセット")) {
-            for (int i = 0; i < 10; i++) params.sizeCurve[i] = 1.0f;
+            for (int i = 0; i < 10; i++)
+                params.sizeCurve[i] = 1.0f;
         }
 
         ImGui::SeparatorText("共通Curve / Gradient");
-        const ParticleSystem::EmitterParams beforeAuthoringToggle = params;
+        const engine::ParticleSystem::EmitterParams beforeAuthoringToggle = params;
+
         if (ImGui::Checkbox("Authoring Curveを使用", &params.useAuthoringCurves)) {
             if (params.useAuthoringCurves) {
                 if (params.sizeOverLife.keys.empty()) {
                     params.sizeOverLife = VFXFloatCurve::FromLegacySamples(params.sizeCurve, 10);
                 }
+
                 if (params.colorOverLife.keys.empty()) {
                     params.colorOverLife = VFXColorGradient::FromTwoColors(params.startColor, params.endColor);
                 }
             }
-            const auto applyParams = [targetSystem](const ParticleSystem::EmitterParams& value) {
-                if (targetSystem) targetSystem->params_ = value;
+
+            const auto applyParams = [targetSystem](const engine::ParticleSystem::EmitterParams& value) {
+                if (targetSystem)
+                    targetSystem->params_ = value;
             };
+
             EditorPropertyTransaction::RegisterDiscrete(
                 "CPU Particle: Authoring Curve",
                 beforeAuthoringToggle,
                 params,
                 applyParams);
         }
+
         ImGui::TextDisabled("旧JSONは従来の10点Curveで同じ見た目を維持します。有効化後だけ新Curveを使用します。");
 
         if (params.useAuthoringCurves) {
@@ -296,14 +328,16 @@ void ParticleEditor::DrawImGui() {
                 8.0f,
                 12,
                 [targetSystem](const VFXFloatCurve& value) {
-                    if (targetSystem) targetSystem->params_.sizeOverLife = value;
+                    if (targetSystem)
+                        targetSystem->params_.sizeOverLife = value;
                 });
             VFXAuthoringEditor::DrawColorGradient(
                 "CpuParticleColor",
                 params.colorOverLife,
                 8,
                 [targetSystem](const VFXColorGradient& value) {
-                    if (targetSystem) targetSystem->params_.colorOverLife = value;
+                    if (targetSystem)
+                        targetSystem->params_.colorOverLife = value;
                 });
         }
 
@@ -322,19 +356,24 @@ void ParticleEditor::DrawImGui() {
                 files.push_back(relativePath);
             }
         }
+
         std::sort(files.begin(), files.end());
         int currentItem = -1;
+
         for (int i = 0; i < static_cast<int>(files.size()); ++i) {
             if (params.textureName == directoryPath + files[i] || params.textureName == files[i]) {
                 currentItem = i;
                 break;
             }
         }
+
         if (VFXAssetPicker::DrawCombo(ICON_FA_FILE_IMAGE " Texture File", files,
                                       currentItem, textureSearch_, sizeof(textureSearch_))) {
             targetSystem->SetTexture(directoryPath + files[currentItem]);
         }
-        if (currentItem < 0 && !params.textureName.empty()) ImGui::TextDisabled("現在の画像: %s", params.textureName.c_str());
+
+        if (currentItem < 0 && !params.textureName.empty())
+            ImGui::TextDisabled("現在の画像: %s", params.textureName.c_str());
     }
 
     if (ImGui::CollapsingHeader("距離LOD / Budget", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -342,13 +381,14 @@ void ParticleEditor::DrawImGui() {
             "CpuParticleLod",
             params.lod,
             [targetSystem](const VFXLodSettings& value) {
-                if (targetSystem) targetSystem->params_.lod = value;
+                if (targetSystem)
+                    targetSystem->params_.lod = value;
             },
             1,
-            ParticleSystem::GetMaxParticles());
+            engine::ParticleSystem::GetMaxParticles());
         const std::size_t limit = params.lod.enabled && params.lod.maxAliveParticles > 0
             ? static_cast<std::size_t>(params.lod.maxAliveParticles)
-            : static_cast<std::size_t>(ParticleSystem::GetMaxParticles());
+            : static_cast<std::size_t>(engine::ParticleSystem::GetMaxParticles());
         ImGui::TextDisabled("現在 %zu / 上限 %zu particles", targetSystem->GetActiveParticleCount(), limit);
     }
 
@@ -356,9 +396,11 @@ void ParticleEditor::DrawImGui() {
     // 4. データ保存・読み込み
     // -------------------------------------------------------------
     ImGui::Separator();
+
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::vector<std::string> savedNames;
         const fs::path presetDirectory = "Resources/json/particle";
+
         if (fs::exists(presetDirectory)) {
             for (const auto& entry : fs::directory_iterator(presetDirectory)) {
                 if (entry.is_regular_file() && entry.path().extension() == ".json") {
@@ -366,22 +408,31 @@ void ParticleEditor::DrawImGui() {
                 }
             }
         }
+
         std::sort(savedNames.begin(), savedNames.end());
         int selectedPreset = -1;
+
         for (int i = 0; i < static_cast<int>(savedNames.size()); ++i) {
-            if (savedNames[i] == saveName_) { selectedPreset = i; break; }
+            if (savedNames[i] == saveName_) {
+                selectedPreset = i;
+                break;
+            }
         }
+
         if (VFXAssetPicker::DrawCombo(ICON_FA_FOLDER_OPEN " 保存済み設定", savedNames,
                                       selectedPreset, presetSearch_, sizeof(presetSearch_))) {
             strcpy_s(saveName_, sizeof(saveName_), savedNames[selectedPreset].c_str());
         }
+
         ImGui::TextDisabled("一覧で選んだ後、「読み込み」で設定を反映します");
         ImGui::InputText(ICON_FA_FILE_SIGNATURE " Name", saveName_, sizeof(saveName_));
 
         if (ImGui::Button(ICON_FA_DOWNLOAD " Save JSON", ImVec2(120, 0))) {
             ParticleManager::GetInstance()->SaveParam(std::string(saveName_), params);
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button(ICON_FA_UPLOAD " Load JSON", ImVec2(120, 0))) {
             if (fs::exists(presetDirectory / (std::string(saveName_) + ".json"))) {
                 ParticleManager::GetInstance()->LoadParam(std::string(saveName_));
@@ -391,6 +442,7 @@ void ParticleEditor::DrawImGui() {
                 ImGui::OpenPopup("通常パーティクル設定が見つかりません");
             }
         }
+
         if (ImGui::BeginPopup("通常パーティクル設定が見つかりません")) {
             ImGui::TextUnformatted("読み込む JSON がありません。保存済み設定から選んでください。");
             ImGui::EndPopup();

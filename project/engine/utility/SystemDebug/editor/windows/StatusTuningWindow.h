@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GameplayStatusManager.h"
+#include "game/system/rules/GameplayStatusManager.h"
 #include "IEditable.h"
 
 #include <array>
@@ -15,7 +15,9 @@ class SceneManager;
 class StatusTuningWindow : public IEditable {
 public:
     void Initialize(DebugEditor* editor, SceneManager* sceneManager);
+
     void DrawImGui() override;
+
     std::string GetName() override { return "ステータス管理"; }
 
 private:
@@ -26,12 +28,19 @@ private:
     };
 
     bool DrawStatusEditor(GameplayStatusManager::CharacterStatus& status, const char* id);
+
     bool DrawModelPicker(const char* label, const char* id, std::string& modelName);
+
     void DrawCurrentSceneSummary();
+
     void DrawEnemyStatusRows();
+
     void RefreshCharacterModelList();
+
     int ApplyPlayerStatusLive();
+
     int ApplyEnemyStatusLive(const std::string& enemyType);
+
     int ApplyAllStatusLive();
 
 private:

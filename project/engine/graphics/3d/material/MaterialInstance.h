@@ -34,13 +34,17 @@ struct MaterialInstanceData {
     float waveSpeed = 1.0f;
     float waveHeight = 0.2f;
     float waveFrequency = 2.0f;
+
     float flowSpeedX = 0.0f;
     float flowSpeedY = 0.0f;
+
     float effectType = 0.0f;
     float effectScale = 1.0f;
     float effectSoftness = 0.5f;
     float effectIntensity = 1.0f;
+
     float billboardScale = 1.0f;
+
     float effectScaleX = 1.0f;
     float effectScaleY = 1.0f;
     float effectScaleZ = 1.0f;
@@ -61,6 +65,7 @@ public:
         const std::string& assetPath,
         MaterialInstanceData& material,
         std::string* errorMessage = nullptr);
+
     // 現在の値を全項目保存する。baseAsset 指定時も差分だけの保存にはならない。
     static bool Save(
         const std::string& assetPath,

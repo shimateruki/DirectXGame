@@ -24,31 +24,45 @@ namespace engine { class SpriteCommon; }
 class TextSpriteGenerator : public IEditable {
 public:
     TextSpriteGenerator() = default;
+
     ~TextSpriteGenerator() override;
 
     /// シーンとエディタ参照を保持し、フォント一覧や生成状態を初期化する。
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
+
     /// リアルタイムプレビューの遅延更新や通知タイマーを毎フレーム進める。
     void Update();
+
     /// Game View上に生成予定のテキストSpriteをプレビュー表示する。
     void DrawPreview();
+
     void SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size);
+
     /// 文字列、フォント、縁取り、影、出力先などの編集UIを描画する。
     void DrawImGui() override;
+
     std::string GetName() override { return "Text PNG Generator"; }
 
 private:
     bool EnsureFactories();
+
     void RefreshFonts();
+
     /// 現在の設定を外部PNG生成ツールへ渡し、実際の画像ファイルを書き出す。
     bool RenderToFile(const std::string& fullPath, int& outWidth, int& outHeight);
+
     /// 入力変更後すぐに重い生成を走らせず、短い待ち時間を挟んでプレビュー更新する。
     void TickPreviewAutoUpdate();
+
     void UpdatePreviewTexture();
+
     bool ExportToFile(std::string* outFullPath = nullptr, std::string* outRelativePath = nullptr);
+
     /// 書き出し済みPNGをSpriteとして現在シーンへ追加する。
     void AddPendingSpriteToScene();
+
     void MarkPreviewDirty();
+
     void UpdateOutputNameFromText();
 
 private:
@@ -95,15 +109,19 @@ private:
     bool previewEnabled_ = true;
     bool previewBoundsEnabled_ = true;
     bool previewAutoUpdate_ = true;
+
     engine::Vector2 previewPosition_ = { 640.0f, 360.0f };
     float previewScale_ = 1.0f;
+
     bool previewDirty_ = false;
     bool previewRequestPending_ = false;
     float previewDelayTimer_ = 0.0f;
     int previewSerial_ = 0;
+
     int previewWidth_ = 1;
     int previewHeight_ = 1;
     uint32_t previewTextureHandle_ = 0;
+
     engine::Vector2 gameViewOffset_ = { 0.0f, 0.0f };
     engine::Vector2 gameViewSize_ = { 0.0f, 0.0f };
 

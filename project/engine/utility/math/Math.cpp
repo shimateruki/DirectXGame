@@ -30,6 +30,7 @@ Vector3 operator/(const Vector3& v, float scalar) {
 	if (scalar != 0.0f) {
 		return { v.x / scalar, v.y / scalar, v.z / scalar };
 	}
+
 	// 呼び出し側へ非有限値を伝播させず、ゼロベクトルを返します。
 	return { 0.0f, 0.0f, 0.0f };
 }
@@ -42,17 +43,20 @@ Vector3 operator-(const Vector3& v)
 Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2)
 {
 	Matrix4x4 result = {};
+
 	for (int i = 0; i < 4; ++i)
 	{
 		for (int j = 0; j < 4; ++j)
 		{
 			result.m[i][j] = 0;
+
 			for (int k = 0; k < 4; ++k)
 			{
 				result.m[i][j] += m1.m[i][k] * m2.m[k][j];
 			}
 		}
 	}
+
 	return result;
 }
 
@@ -143,6 +147,7 @@ Matrix4x4 Math::Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 {
     // 左から右への変換順を保つため、行と列の内積で積を作ります。
 	Matrix4x4 result = {};
+
 	for (int row = 0; row < 4; ++row) {
 		for (int col = 0; col < 4; ++col) {
 			result.m[row][col] =
@@ -152,6 +157,7 @@ Matrix4x4 Math::Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 				m1.m[row][3] * m2.m[3][col];
 		}
 	}
+
 	return result;
 }
 
@@ -374,9 +380,11 @@ float Math::Clamp(float value, float min, float max)
 	if (value < min) {
 		return min;
 	}
+
 	if (value > max) {
 		return max;
 	}
+
 	return value;
 }
 
@@ -398,16 +406,19 @@ Vector4 Math::Lerp(const Vector4& v1, const Vector4& v2, float t) {
 Matrix4x4 Math::Transpose(const Matrix4x4& m)
 {
 	Matrix4x4 result;
+
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {
 			result.m[i][j] = m.m[j][i]; // 行と列を入れ替える
 		}
 	}
+
 	return result;
 }
 
 Vector3 Math::Transform(const Vector3& v, const Matrix4x4& m) {
 	Vector3 result;
+
 	// x, y, z に加えて w 成分も計算
 	result.x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
 	result.y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + m.m[3][1];
@@ -420,6 +431,7 @@ Vector3 Math::Transform(const Vector3& v, const Matrix4x4& m) {
 		result.y /= w;
 		result.z /= w;
 	}
+
 	return result;
 }
 
@@ -432,45 +444,54 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 	// レイのX方向がほぼ0（垂直）の場合
 	if (std::abs(ray.diff.x) < 1e-6f) {
 		// レイの始点が箱の外にあったら、絶対に当たらない
-		if (ray.origin.x < minBox.x || ray.origin.x > maxBox.x) return false;
+		if (ray.origin.x < minBox.x || ray.origin.x > maxBox.x)
+			return false;
 	}
 	else {
 		// スラブ法による判定
 		float invD = 1.0f / ray.diff.x;
 		float t1 = (minBox.x - ray.origin.x) * invD;
 		float t2 = (maxBox.x - ray.origin.x) * invD;
-		if (t1 > t2) std::swap(t1, t2);
+		if (t1 > t2)
+			std::swap(t1, t2);
 		tMin = std::max(tMin, t1);
 		tMax = std::min(tMax, t2);
-		if (tMin > tMax) return false;
+		if (tMin > tMax)
+			return false;
 	}
 
 	// --- Y軸の判定 ---
 	if (std::abs(ray.diff.y) < 1e-6f) {
-		if (ray.origin.y < minBox.y || ray.origin.y > maxBox.y) return false;
+		if (ray.origin.y < minBox.y || ray.origin.y > maxBox.y)
+			return false;
 	}
 	else {
 		float invD = 1.0f / ray.diff.y;
 		float t1 = (minBox.y - ray.origin.y) * invD;
 		float t2 = (maxBox.y - ray.origin.y) * invD;
-		if (t1 > t2) std::swap(t1, t2);
+		if (t1 > t2)
+			std::swap(t1, t2);
 		tMin = std::max(tMin, t1);
 		tMax = std::min(tMax, t2);
-		if (tMin > tMax) return false;
+		if (tMin > tMax)
+			return false;
 	}
 
 	// --- Z軸の判定 ---
 	if (std::abs(ray.diff.z) < 1e-6f) {
-		if (ray.origin.z < minBox.z || ray.origin.z > maxBox.z) return false;
+		if (ray.origin.z < minBox.z || ray.origin.z > maxBox.z)
+			return false;
 	}
 	else {
 		float invD = 1.0f / ray.diff.z;
 		float t1 = (minBox.z - ray.origin.z) * invD;
 		float t2 = (maxBox.z - ray.origin.z) * invD;
-		if (t1 > t2) std::swap(t1, t2);
+		if (t1 > t2)
+			std::swap(t1, t2);
 		tMin = std::max(tMin, t1);
 		tMax = std::min(tMax, t2);
-		if (tMin > tMax) return false;
+		if (tMin > tMax)
+			return false;
 	}
 
 	// 衝突確定
@@ -491,7 +512,9 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 		// 正規化して比較 (どの軸の端に近いか)
 		float bias = 1.001f; // 誤差対策
 		hit->normal = { 0, 0, 0 };
-		if (p.x >= size.x / bias) hit->normal = { 1, 0, 0 };
+
+		if (p.x >= size.x / bias)
+			hit->normal = { 1, 0, 0 };
 		else if (p.x <= -size.x / bias) hit->normal = { -1, 0, 0 };
 		else if (p.y >= size.y / bias) hit->normal = { 0, 1, 0 };
 		else if (p.y <= -size.y / bias) hit->normal = { 0, -1, 0 };
@@ -508,8 +531,10 @@ float Math::LerpShortAngle(float a, float b, float t) {
 	const float PI2 = PI * 2.0f;
 
 	// 角度を [-PI, PI] の範囲に補正
-	while (diff < -PI) diff += PI2;
-	while (diff > PI) diff -= PI2;
+	while (diff < -PI)
+		diff += PI2;
+	while (diff > PI)
+		diff -= PI2;
 
 	return a + diff * t;
 }
@@ -530,6 +555,7 @@ Quaternion Math::Slerp(const Quaternion& q0, const Quaternion& q1, float t) {
 
 	// 内積が負＝反対側なら反転して最短経路を取る
 	Quaternion trueQ1 = q1;
+
 	if (dot < 0.0f) {
 		trueQ1 = { -q1.x, -q1.y, -q1.z, -q1.w };
 		dot = -dot;
@@ -580,7 +606,10 @@ Matrix4x4 Math::MakeRotateQuaternionMatrix(const Quaternion& q) {
 	m.m[2][2] = 1 - 2 * x * x - 2 * y * y;
 	m.m[2][3] = 0;
 
-	m.m[3][0] = 0; m.m[3][1] = 0; m.m[3][2] = 0; m.m[3][3] = 1;
+	m.m[3][0] = 0;
+	m.m[3][1] = 0;
+	m.m[3][2] = 0;
+	m.m[3][3] = 1;
 
 	return m;
 }
@@ -625,12 +654,26 @@ Vector3 Math::MatrixToEuler(const Matrix4x4& m) {
 	scale.z = std::sqrt(m.m[2][0] * m.m[2][0] + m.m[2][1] * m.m[2][1] + m.m[2][2] * m.m[2][2]);
 
 	Matrix4x4 rmat = m;
-	if (scale.x > 0.0001f) { rmat.m[0][0] /= scale.x; rmat.m[0][1] /= scale.x; rmat.m[0][2] /= scale.x; }
-	if (scale.y > 0.0001f) { rmat.m[1][0] /= scale.y; rmat.m[1][1] /= scale.y; rmat.m[1][2] /= scale.y; }
-	if (scale.z > 0.0001f) { rmat.m[2][0] /= scale.z; rmat.m[2][1] /= scale.z; rmat.m[2][2] /= scale.z; }
+
+	if (scale.x > 0.0001f) {
+		rmat.m[0][0] /= scale.x;
+		rmat.m[0][1] /= scale.x;
+		rmat.m[0][2] /= scale.x;
+	}
+	if (scale.y > 0.0001f) {
+		rmat.m[1][0] /= scale.y;
+		rmat.m[1][1] /= scale.y;
+		rmat.m[1][2] /= scale.y;
+	}
+	if (scale.z > 0.0001f) {
+		rmat.m[2][0] /= scale.z;
+		rmat.m[2][1] /= scale.z;
+		rmat.m[2][2] /= scale.z;
+	}
 
 	// 2. Z->X->Y の回転順序に基づいたオイラー角の逆算
 	float sinX = -rmat.m[1][2];
+
 	// 安全のため -1 ～ 1 の範囲にクランプ
 	sinX = std::max(-1.0f, std::min(1.0f, sinX));
 	euler.x = std::asin(sinX);
@@ -657,9 +700,22 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 	scale.z = std::sqrt(m.m[2][0] * m.m[2][0] + m.m[2][1] * m.m[2][1] + m.m[2][2] * m.m[2][2]);
 
 	Matrix4x4 rmat = m;
-	if (scale.x > 0.0001f) { rmat.m[0][0] /= scale.x; rmat.m[0][1] /= scale.x; rmat.m[0][2] /= scale.x; }
-	if (scale.y > 0.0001f) { rmat.m[1][0] /= scale.y; rmat.m[1][1] /= scale.y; rmat.m[1][2] /= scale.y; }
-	if (scale.z > 0.0001f) { rmat.m[2][0] /= scale.z; rmat.m[2][1] /= scale.z; rmat.m[2][2] /= scale.z; }
+
+	if (scale.x > 0.0001f) {
+		rmat.m[0][0] /= scale.x;
+		rmat.m[0][1] /= scale.x;
+		rmat.m[0][2] /= scale.x;
+	}
+	if (scale.y > 0.0001f) {
+		rmat.m[1][0] /= scale.y;
+		rmat.m[1][1] /= scale.y;
+		rmat.m[1][2] /= scale.y;
+	}
+	if (scale.z > 0.0001f) {
+		rmat.m[2][0] /= scale.z;
+		rmat.m[2][1] /= scale.z;
+		rmat.m[2][2] /= scale.z;
+	}
 
 	// 2. 純粋な回転行列からクォータニオンを抽出する
 	Quaternion q;
@@ -696,6 +752,7 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 
 	// 行列からの変換で生じた丸め誤差を除き、ゼロ長なら単位クォータニオンへ戻します。
 	float len = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+
 	if (len > 0.0001f) {
 		q.x /= len;
 		q.y /= len;
@@ -712,24 +769,42 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 
 Frustum Math::ExtractFrustumPlanes(const Matrix4x4& vp) {
 	Frustum f;
+
 	// 左
-	f.planes[0].normal.x = vp.m[0][3] + vp.m[0][0]; f.planes[0].normal.y = vp.m[1][3] + vp.m[1][0];
-	f.planes[0].normal.z = vp.m[2][3] + vp.m[2][0]; f.planes[0].distance = vp.m[3][3] + vp.m[3][0];
+	f.planes[0].normal.x = vp.m[0][3] + vp.m[0][0];
+	f.planes[0].normal.y = vp.m[1][3] + vp.m[1][0];
+	f.planes[0].normal.z = vp.m[2][3] + vp.m[2][0];
+	f.planes[0].distance = vp.m[3][3] + vp.m[3][0];
+
 	// 右
-	f.planes[1].normal.x = vp.m[0][3] - vp.m[0][0]; f.planes[1].normal.y = vp.m[1][3] - vp.m[1][0];
-	f.planes[1].normal.z = vp.m[2][3] - vp.m[2][0]; f.planes[1].distance = vp.m[3][3] - vp.m[3][0];
+	f.planes[1].normal.x = vp.m[0][3] - vp.m[0][0];
+	f.planes[1].normal.y = vp.m[1][3] - vp.m[1][0];
+	f.planes[1].normal.z = vp.m[2][3] - vp.m[2][0];
+	f.planes[1].distance = vp.m[3][3] - vp.m[3][0];
+
 	// 下
-	f.planes[2].normal.x = vp.m[0][3] + vp.m[0][1]; f.planes[2].normal.y = vp.m[1][3] + vp.m[1][1];
-	f.planes[2].normal.z = vp.m[2][3] + vp.m[2][1]; f.planes[2].distance = vp.m[3][3] + vp.m[3][1];
+	f.planes[2].normal.x = vp.m[0][3] + vp.m[0][1];
+	f.planes[2].normal.y = vp.m[1][3] + vp.m[1][1];
+	f.planes[2].normal.z = vp.m[2][3] + vp.m[2][1];
+	f.planes[2].distance = vp.m[3][3] + vp.m[3][1];
+
 	// 上
-	f.planes[3].normal.x = vp.m[0][3] - vp.m[0][1]; f.planes[3].normal.y = vp.m[1][3] - vp.m[1][1];
-	f.planes[3].normal.z = vp.m[2][3] - vp.m[2][1]; f.planes[3].distance = vp.m[3][3] - vp.m[3][1];
+	f.planes[3].normal.x = vp.m[0][3] - vp.m[0][1];
+	f.planes[3].normal.y = vp.m[1][3] - vp.m[1][1];
+	f.planes[3].normal.z = vp.m[2][3] - vp.m[2][1];
+	f.planes[3].distance = vp.m[3][3] - vp.m[3][1];
+
 	// 近 (DirectX12は0〜w)
-	f.planes[4].normal.x = vp.m[0][2]; f.planes[4].normal.y = vp.m[1][2];
-	f.planes[4].normal.z = vp.m[2][2]; f.planes[4].distance = vp.m[3][2];
+	f.planes[4].normal.x = vp.m[0][2];
+	f.planes[4].normal.y = vp.m[1][2];
+	f.planes[4].normal.z = vp.m[2][2];
+	f.planes[4].distance = vp.m[3][2];
+
 	// 遠
-	f.planes[5].normal.x = vp.m[0][3] - vp.m[0][2]; f.planes[5].normal.y = vp.m[1][3] - vp.m[1][2];
-	f.planes[5].normal.z = vp.m[2][3] - vp.m[2][2]; f.planes[5].distance = vp.m[3][3] - vp.m[3][2];
+	f.planes[5].normal.x = vp.m[0][3] - vp.m[0][2];
+	f.planes[5].normal.y = vp.m[1][3] - vp.m[1][2];
+	f.planes[5].normal.z = vp.m[2][3] - vp.m[2][2];
+	f.planes[5].distance = vp.m[3][3] - vp.m[3][2];
 
 	// 正規化
 	for (int i = 0; i < 6; ++i) {
@@ -741,6 +816,7 @@ Frustum Math::ExtractFrustumPlanes(const Matrix4x4& vp) {
 			f.planes[i].distance /= length;
 		}
 	}
+
 	return f;
 }
 
@@ -748,16 +824,21 @@ bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const V
 	for (int i = 0; i < 6; ++i) {
 		// AABBの中で一番「平面の法線方向にある点(p)」を調べる
 		Vector3 p = minBox;
-		if (f.planes[i].normal.x >= 0) p.x = maxBox.x;
-		if (f.planes[i].normal.y >= 0) p.y = maxBox.y;
-		if (f.planes[i].normal.z >= 0) p.z = maxBox.z;
+		if (f.planes[i].normal.x >= 0)
+			p.x = maxBox.x;
+		if (f.planes[i].normal.y >= 0)
+			p.y = maxBox.y;
+		if (f.planes[i].normal.z >= 0)
+			p.z = maxBox.z;
 
 		// pが面よりも外側にあれば、箱全体が外側にあると確定！
 		float dot = f.planes[i].normal.x * p.x + f.planes[i].normal.y * p.y + f.planes[i].normal.z * p.z;
+
 		if (dot + f.planes[i].distance < 0) {
 			return false;
 		}
 	}
+
 	return true;
 }
 

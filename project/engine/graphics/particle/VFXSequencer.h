@@ -24,26 +24,34 @@ struct VFXEvent {
     // 以下の hasFired/isFinished/applied* は再生時の状態で、Asset 設定値とは分けて扱います。
     VFXEventType type = VFXEventType::GPUParticle;
     std::string presetName;
+
     float triggerTime = 0.0f;
+
     engine::Vector3 offset = { 0.0f, 0.0f, 0.0f };
     engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
     engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
+
     bool hasFired = false;
+
     engine::Vector3 controlPoint = { 0.0f, 5.0f, 0.0f };
     engine::Vector3 endOffset = { 0.0f, 0.0f, 10.0f };
+
     float duration = 1.0f;
     int easingType = 0;
+
     bool isFinished = false;
 
     float intensity = 0.2f;
     float secondaryIntensity = 0.7f;
     float frequency = 24.0f;
     float attackRatio = 0.12f;
+
     float radialIntensity = 0.0f;
     float damageFlash = 0.0f;
     float chromaticAberration = 0.0f;
     float wobbleIntensity = 0.0f;
     float bloomIntensity = 0.0f;
+
     float lightRadius = 9.0f;
     float lightDecay = 1.4f;
     engine::Vector4 lightColor = { 1.0f, 0.58f, 0.12f, 1.0f };
@@ -60,6 +68,7 @@ struct VFXEvent {
 class VFXSequencer {
 public:
     VFXSequencer() = default;
+
     ~VFXSequencer() = default;
 
     /// <summary>対象オブジェクトを設定し、シーケンス再生の準備をします。</summary>

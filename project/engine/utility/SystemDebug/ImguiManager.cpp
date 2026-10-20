@@ -133,6 +133,7 @@ void ImGuiManager::Finalize() {
     // バックエンドをシャットダウン
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
+
     // ImGuiのコンテキストを破棄
     ImGui::DestroyContext();
 #endif

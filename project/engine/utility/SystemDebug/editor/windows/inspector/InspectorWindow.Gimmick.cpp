@@ -8,33 +8,54 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     // このUIは配置済みObjectの種別と初期見た目を直接変更します。
     // Factoryで再生成する経路ではないため、モデル・当たり判定・paramの初期値をここで揃えます。
     engine::Object3d* selectedObject = editor_->GetSelectedObject();
-    if (!selectedObject) return;
+    if (!selectedObject)
+        return;
 
-    // 型名はScene JSONにも保存される識別子です。表示名との件数・順序の不整合は
-    // 調査MDに記録済みで、ここでは既存データの挙動を変えずに残します。
+    // 型名と表示名を同じ順序に揃え、選択時の配列外参照を防ぐ。
     const char* gimmickTypes[] = {
-        "Default", "MovingFloor", "HazardRideFloor", "Trampoline", "ChikuwaBlock",
-        "BlinkBlock", "BreakableBlock", "Coin", "SinkingFloor", "SeesawFloor",
-        "DashPanel", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver",
-        "ArenaEncounter", "GameplayVolume", "CopyMemoryStation", "PrismBarrier",
-        "HookPullBlock", "LiquidLevel", "MagmaHazard", "MagmaGeyser",
-        "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor",
-        "FireCannon", "StageGate"};
+        "Default",
+        "MovingFloor",
+        "HazardRideFloor",
+        "Trampoline",
+        "ChikuwaBlock",
+        "BlinkBlock",
+        "BreakableBlock",
+        "Coin",
+        "SinkingFloor",
+        "SeesawFloor",
+        "DashPanel",
+        "TimedSwitch",
+        "AppearingFloor",
+        "Switch",
+        "EventReceiver",
+        "ArenaEncounter",
+        "GameplayVolume",
+        "CopyMemoryStation",
+        "PrismBarrier",
+        "HookPullBlock",
+        "LiquidLevel",
+        "MagmaHazard",
+        "MagmaGeyser",
+        "ChainCollapseFloor",
+        "RotatingFloor",
+        "RotatingPillar",
+        "PhaseFlipFloor",
+        "FireCannon",
+        "StageGate",
+        "WaterGeyser",
+    };
     const char* gimmickTypeLabels[] = {
         "通常",
         "移動床",
         "妨害付き輸送床",
         "トランポリン",
-        "スターランチャー",
         "ちくわブロック",
         "点滅ブロック",
         "破壊ブロック",
         "コイン",
-        "フックアンカー",
         "沈む床",
         "シーソー床",
         "ダッシュパネル",
-        "氷の床",
         "時限スイッチ床",
         "出現床",
         "汎用スイッチ",
@@ -44,24 +65,24 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         "コピー記憶台",
         "プリズム障壁",
         "フックで引っ張るブロック",
-        "一方通行床",
         "水位・マグマ上下",
         "マグマダメージ床",
         "周期式マグマ噴出口",
-        "落下する棘",
         "連鎖崩れ床",
         "回転床",
         "回転柱",
         "順番反転床",
         "火球砲台",
         "ステージゲート",
-        "レーザー発生器",
-        "レーザー接続ノード"
+        "水の噴出口",
     };
+    static_assert(IM_ARRAYSIZE(gimmickTypes) == IM_ARRAYSIZE(gimmickTypeLabels));
+
     // 現在の保存値から選択位置を探します。未登録の型は先頭表示のままにします。
     std::string currentType = selectedObject->GetGimmickType();
 
     int currentIndex = 0;
+
     for (int i = 0; i < IM_ARRAYSIZE(gimmickTypes); i++) {
         if (currentType == gimmickTypes[i]) {
             currentIndex = i;
@@ -74,7 +95,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         selectedObject->SetGimmickType(selectedGimmickType);
 
         // 実行時のギミック型判定とエディターの種別表示が食い違わないよう、paramにも反映します。
-        if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+        if (!selectedObject->param_.has_value())
+            selectedObject->param_.emplace();
         selectedObject->param_->gimmickType = selectedGimmickType;
 
         // 以下はギミック別の配置直後の初期状態です。床系は接地用、取得物と領域系は
@@ -243,7 +265,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->switchMode = 0;
             selectedObject->param_->interval = 3.0f;
 
@@ -263,7 +286,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->actionMode = 0;
             selectedObject->param_->moveAmount = 10.0f;
             selectedObject->param_->moveSpeed = 6.0f;
@@ -287,7 +311,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->speed = 42.0f;
             selectedObject->param_->gravity = 50.0f;
             selectedObject->param_->maxFallSpeed = 60.0f;
@@ -309,7 +334,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(0);
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->colorType = 0;
             selectedObject->param_->moveAmount = 6.0f;
             selectedObject->param_->moveSpeed = 3.0f;
@@ -336,7 +362,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(true);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->speed = 12.0f;
             selectedObject->param_->interval = 0.8f;
 
@@ -345,7 +372,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
         }
-        else if (selectedGimmickType == "MagmaGeyser") {
+        else if (selectedGimmickType == "MagmaGeyser" || selectedGimmickType == "WaterGeyser") {
             // 噴出口本体の衝突属性は0にし、円柱Colliderの形状を別途定義します。
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_MagmaGeyser");
@@ -360,7 +387,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(0);
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->speed = 4.0f;
             selectedObject->param_->interval = 2.6f;
             selectedObject->param_->shakeDuration = 1.35f;
@@ -379,6 +407,15 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.center = { 0.0f, 5.47f, 0.0f };
             colConfig.size = { 2.15f, 4.75f, 2.15f };
             selectedObject->SetColliderConfig(colConfig);
+            if (selectedGimmickType == "WaterGeyser") {
+                // 水版の高さは接続した移動床から取得する。炎の攻撃設定を残さない。
+                selectedObject->SetName("Gimmick_WaterGeyser");
+                selectedObject->SetModel("Stages/magma_pressure_column");
+                selectedObject->param_->actionMode = 3;
+                selectedObject->param_->speed = 0.0f;
+                selectedObject->param_->startActive = false;
+                selectedObject->param_->detectionRange = 4.5f;
+            }
         }
         else if (selectedGimmickType == "ArenaEncounter") {
             // 遭遇管理は見える地形ではなく、Playerが侵入する領域として置きます。
@@ -431,10 +468,10 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColliderConfig(colConfig);
         }
         else if (selectedGimmickType == "CopyMemoryStation") {
-            // 台座の見た目と4枠までのコピー能力候補は、Sceneのparamを初期値にします。
+            // 新規配置は1台に1能力とし、能力ごとのPresetで個別に配置できるようにします。
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_CopyMemoryStation");
-            selectedObject->SetModel("Gimmicks/copy_memory_station");
+            selectedObject->SetModel("Gimmicks/copy_memory_station_single");
             selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
             selectedObject->SetMaterialType(0);
@@ -447,8 +484,9 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetStatic(false);
 
             selectedObject->param_->copyMemoryTypeA = "FireSlime";
-            selectedObject->param_->copyMemoryTypeB = "ThunderSlime";
-            selectedObject->param_->copyMemoryTypeC = "WindSlime";
+            selectedObject->param_->copyMemoryTypeB.clear();
+            selectedObject->param_->copyMemoryTypeC.clear();
+            selectedObject->param_->copyMemoryTypeD.clear();
             selectedObject->param_->copyMemoryActivationRadius = 0.9f;
             selectedObject->param_->copyMemoryUnlimitedDuration = true;
             selectedObject->param_->startActive = true;
@@ -456,7 +494,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             engine::Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.center = { 0.0f, 0.95f, 0.0f };
-            colConfig.size = { 3.1f, 1.6f, 1.85f };
+            colConfig.size = { 1.3f, 1.6f, 1.85f };
             selectedObject->SetColliderConfig(colConfig);
         }
         else if (selectedGimmickType == "PrismBarrier") {
@@ -502,7 +540,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->shakeDuration = 0.45f;
             selectedObject->param_->fallDuration = 1.4f;
             selectedObject->param_->interval = 0.18f;
@@ -523,7 +562,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->speed = 45.0f;
             selectedObject->param_->actionMode = 1;
             selectedObject->param_->startActive = true;
@@ -544,7 +584,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->speed = 60.0f;
             selectedObject->param_->actionMode = 1;
             selectedObject->param_->startActive = true;
@@ -565,7 +606,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->colorType = 0;
             selectedObject->param_->maxCount = 3;
             selectedObject->param_->interval = 1.0f;
@@ -590,7 +632,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->speed = 13.0f;
             selectedObject->param_->interval = 1.35f;
             selectedObject->param_->moveAmount = 0.55f;
@@ -620,7 +663,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(false);
 
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            if (!selectedObject->param_.has_value())
+                selectedObject->param_.emplace();
             selectedObject->param_->gimmickType = "StageGate";
             selectedObject->param_->actionMode = 0;
             selectedObject->param_->targetScene = "SELECT";
@@ -642,7 +686,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         }
     }
 
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成されるギミッククラスを指定します。");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("ロード時に生成されるギミッククラスを指定します。");
 #endif
 }
 

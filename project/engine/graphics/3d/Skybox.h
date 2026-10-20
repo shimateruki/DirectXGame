@@ -14,7 +14,7 @@ public:
     };
 
     /// <summary>共通描画機能とキューブマップテクスチャで初期化する。</summary>
-    void Initialize(Object3dCommon* common, uint32_t textureHandle);
+    void Initialize(engine::Object3dCommon* common, uint32_t textureHandle);
 
     /// <summary>描画に使うキューブマップのハンドルを変更する。</summary>
     void SetTextureHandle(uint32_t textureHandle) { textureHandle_ = textureHandle; }
@@ -30,7 +30,7 @@ private:
     void CreateMesh();
 
 private:
-    Object3dCommon* common_ = nullptr;
+    engine::Object3dCommon* common_ = nullptr;
     uint32_t textureHandle_ = 0;
 
     // メッシュリソース
