@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "DebugEditor.h"
 #include "EditorToolSettings.h"
 #include "game/ui/SettingsMenuOverlay.h"
@@ -472,6 +472,7 @@ void DebugEditor::Update() {
     // 1. シーン変更リセット (最優先で行う: ダングリングポインタ防止)
     // =========================================================
     if (lastUpdatedScene_ != currentScene) {
+        PresetEditor::GetInstance()->ClearPropertyEditors();
         if (prefabEditMode_) {
             ResetPrefabEditSessionForSceneChange();
         }
@@ -498,6 +499,12 @@ void DebugEditor::Update() {
     // =========================================================
     // 2. エディタ状態の同期と更新
     // =========================================================
+    // Inspectorが前フレームの借用参照を使い終わってから、実体を交換します。
+    if (pendingObjectTypeChange_) {
+        auto change = std::move(pendingObjectTypeChange_);
+        pendingObjectTypeChange_ = {};
+        change();
+    }
     IEditable* current = EditorManager::GetInstance()->GetSelectedObject();
     static std::string s_lastSyncedSceneFilename = "";
     std::string currentLoadedName = currentScene->GetLoadedFilename();
@@ -897,6 +904,7 @@ void DebugEditor::Finalize() {
         EndPrefabEditSession(true);
     }
 
+    PresetEditor::GetInstance()->ClearPropertyEditors();
     FinalizeCrashRecovery();
     enemyAttackPreviewWindow_.Finalize();
     animationWorkbench_.Finalize();
@@ -929,7 +937,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     primitiveDrawer_.PreDraw(commandList);
 
     int instanceCount = 0;
-    const int kMaxDrawLimit = 2048; // 描画上限（PrimitiveDrawerのバッファサイズと合わせる）
+    const int kMaxDrawLimit = 8192; // 描画上限（PrimitiveDrawerのバッファサイズと合わせる）
     engine::Math math;
 
     // =========================================================

@@ -123,7 +123,8 @@ int GetCoinDropCountByEnemyType(const std::string& enemyType) {
         return 0;
     }
 
-    if (enemyType == "PrismSlime") {
+    // クリスタルとマグマのボス撃破報酬を同じ枚数にそろえる。
+    if (enemyType == "PrismSlime" || enemyType == "MagmaSlime") {
         return 12;
     }
 

@@ -1,4 +1,5 @@
 #include "GimmickSwitch.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
 #include <cmath>
@@ -18,6 +19,16 @@ void GimmickSwitch::Initialize(engine::Object3dCommon* common, const std::string
 
     if (!param_.has_value())
         param_.emplace();
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickSwitch;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "汎用スイッチ",
+        "Target IDと受信側のMy Event IDを合わせてください。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("スイッチ方式", "switchMode", &Parameter::switchMode, 0.0f, 3.0f,
+        nullptr, {"押している間だけ", "押すたび切替", "一定時間だけ", "一度押すと保持"});
+    properties.Parameter("有効時間", "interval", &Parameter::interval, 0.1f, 60.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->switchMode == 2); });
 }
 
 void GimmickSwitch::Update(float deltaTime) {

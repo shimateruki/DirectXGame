@@ -1,4 +1,5 @@
 #include "GimmickChikuwaBlock.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "Math.h"
 #include <random>
@@ -15,6 +16,16 @@ void GimmickChikuwaBlock::Initialize(engine::Object3dCommon* common, const std::
 
     // 当たり判定設定 (地面属性)
     SetCollisionAttribute(CollisionCategories::Get("ground"));
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickChikuwaBlock;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ちくわブロック",
+        "");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("震え時間", "shakeDuration", &Parameter::shakeDuration, 0.0f, 10.0f);
+    properties.Parameter("落下時間", "fallDuration", &Parameter::fallDuration, 0.0f, 10.0f);
+    properties.Parameter("リスポーン間隔", "interval", &Parameter::interval, 0.0f, 10.0f);
+    properties.Parameter("落下重力", "gravity", &Parameter::gravity, 0.0f, 200.0f);
 }
 
 void GimmickChikuwaBlock::Update(float deltaTime) {

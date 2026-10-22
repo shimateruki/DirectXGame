@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickArenaEncounter.h"
+#include "ObjectPropertyDefinition.h"
 
 #include "BaseScene.h"
 #include "CollisionConfig.h"
@@ -54,6 +55,17 @@ void GimmickArenaEncounter::Initialize(engine::Object3dCommon* common, const std
     param_->shakeDuration = kDefaultBossRevealDelay;
     param_->startActive = true;
     param_->returnOnOff = false;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickArenaEncounter;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "中ボス遭遇管理",
+        "Target IDは中ボスのMy Event ID、My Event IDは撃破通知の受信先です。障壁はTarget ID + 1から連番で指定します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("障壁数", "maxCount", &Parameter::maxCount, 1.0f, 16.0f);
+    properties.Parameter("ボス出現まで", "shakeDuration", &Parameter::shakeDuration, 0.05f, 3.0f);
+    properties.Parameter("遭遇を有効にする", "startActive", &Parameter::startActive);
+    properties.Parameter("登場演出JSON", "cinematicPath", &Parameter::cinematicPath, 0.0f, 0.0f,
+        nullptr, {}, {.assetDirectory = "Resources/json/scenario", .assetEditor = EditorPropertyAssetEditor::Scenario});
 }
 
 void GimmickArenaEncounter::Update(float deltaTime) {

@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "game/scene/tutorial/TutorialScene.h"
 #include "game/scene/GameSceneDrawing.h"
+#include "GimmickStageGate.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -113,7 +114,16 @@ constexpr const char* kTutorialPromptTexturesToPreload[] = {
     "Resources/sprite/ui/tutorial/tutorial_pull.png",    "Resources/sprite/ui/tutorial/tutorial_throw.png",
     "Resources/sprite/ui/tutorial/tutorial_absorb.png",  "Resources/sprite/ui/tutorial/tutorial_ability.png",
     "Resources/sprite/ui/tutorial/tutorial_release.png", "Resources/sprite/ui/tutorial/tutorial_controls.png",
-    "Resources/sprite/ui/tutorial/tutorial_exit.png",    "Resources/sprite/ui/tutorial/tutorial_objective_marker.png"};
+    "Resources/sprite/ui/tutorial/tutorial_exit.png",    "Resources/sprite/ui/tutorial/tutorial_objective_marker.png",
+    // 入力を切り替えたフレームに文字画像を読み込まないよう、パッド用も先に準備します。
+    "Resources/sprite/ui/tutorial/tutorial_move_gamepad.png",
+    "Resources/sprite/ui/tutorial/tutorial_look_gamepad.png",
+    "Resources/sprite/ui/tutorial/tutorial_jump_gamepad.png",
+    "Resources/sprite/ui/tutorial/tutorial_pull_gamepad.png",
+    "Resources/sprite/ui/tutorial/tutorial_throw_gamepad.png",
+    "Resources/sprite/ui/tutorial/tutorial_absorb_gamepad.png",
+    "Resources/sprite/ui/tutorial/tutorial_release_gamepad.png",
+    "Resources/sprite/ui/tutorial/tutorial_controls_gamepad.png"};
 } // namespace
 
 // チュートリアルのシーン側は入力・描画と手順管理の接続役です。課題の達成判定は TutorialDirector に委ねます。
@@ -427,6 +437,9 @@ bool TutorialScene::InitializeLoadingStep() {
         case 11:
             levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/tutorialScene.json");
             copyStyleHud_.Bind(GetSpriteByName("hud_copy_style"));
+            healthHud_.Bind(GetSpriteByName("hud_hp_icon"), GetSpriteByName("hud_hp_damage_fill"),
+                            GetSpriteByName("hud_hp_fill"), GetSpriteByName("hud_hp_highlight"),
+                            GetSpriteByName("hud_hp_frame"), player_);
 
             if (player_) {
                 player_->SetTutorialSafetyEnabled(true);
@@ -482,6 +495,7 @@ float TutorialScene::GetLoadingInitializeProgress() const {
 }
 
 void TutorialScene::Finalize() {
+    GimmickStageGate::ResetSceneEntries(*this);
     // Directorを先に終了し、演出が参照する共有Managerをその後に片付ける。
     if (tutorialDirector_) {
         tutorialDirector_->Finalize();
@@ -511,6 +525,11 @@ void TutorialScene::Finalize() {
 }
 
 void TutorialScene::Update(float deltaTime) {
+    if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) {
+        if (saveIndicatorOverlay_) saveIndicatorOverlay_->Update(deltaTime);
+        UpdateUI();
+        return;
+    }
     // 手順完了後に保存できなければ出口を閉じたまま、一定間隔で再試行する。
     if (!isGoal_ && tutorialDirector_ && tutorialDirector_->IsCompleted() && !goalSavePerformed_) {
         goalSaveRetryTimer_ = (std::max)(0.0f, goalSaveRetryTimer_ - deltaTime);
@@ -661,6 +680,7 @@ void TutorialScene::Update(float deltaTime) {
 
     GPUParticleManager::GetInstance()->Update(deltaTime);
     copyStyleHud_.Update(player_, deltaTime);
+    healthHud_.Update(player_, deltaTime);
 
     for (auto& sprite : sprites_) {
         sprite->Update();
@@ -746,7 +766,8 @@ void TutorialScene::DrawUI() {
     }
 
     for (auto& sprite : sprites_)
-        sprite->Draw();
+        if (!healthHud_.Owns(sprite.get())) sprite->Draw();
+    healthHud_.Draw();
     if (isDrawLockOn_ && lockOnSprite_)
         lockOnSprite_->Draw();
     if (player_)

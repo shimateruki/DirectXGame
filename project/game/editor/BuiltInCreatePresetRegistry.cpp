@@ -270,6 +270,15 @@ bool RegisterStage1LibraryPresets() {
             220
         },
         {
+            "Stage1/Gimmick/JumpFlipPair",
+            "Stage1_RingCourt_EntryFlipPair_0",
+            "ジャンプ反転床（青・赤ペア）",
+            "移動・床ギミック",
+            "ジャンプごとに中央の軸で板が反転。speedで回転速度、colorTypeで初期面を調整できます。",
+            200,
+            225
+        },
+        {
             "Stage1/Gimmick/LinkedCollapsePlatform",
             "Stage1_V4_LinkedFloor_Approach_01",
             "連動崩れ床",
@@ -465,37 +474,11 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* commo
     }
 
     // Gimmick は初回だけ登録し、Editor 上で編集した内容を以後の起動で保持します。
-    const std::vector<std::pair<std::string, std::string>> gimmicks = {
-        { "FireCannon", "火炎砲台" },
-        { "BreakableBlock", "破壊ブロック" },
-        { "MovingFloor", "動く床" },
-        { "HazardRideFloor", "妨害付き輸送床" },
-        { "Trampoline", "ジャンプ床" },
-        { "SinkingFloor", "沈む床" },
-        { "SeesawFloor", "シーソー床" },
-        { "DashPanel", "ダッシュパネル" },
-        { "TimedSwitch", "時間スイッチ" },
-        { "AppearingFloor", "出現床" },
-        { "Switch", "汎用スイッチ" },
-        { "EventReceiver", "イベント受信" },
-        { "ArenaEncounter", "中ボス遭遇管理" },
-        { "GameplayVolume", "ゲームプレイボリューム" },
-        { "PrismBarrier", "プリズム障壁" },
-        { "BossGate", "ボス闘技場・黒格子ゲート" },
-        { "HookPullBlock", "フック可動ブロック" },
-        { "LiquidLevel", "水位/マグマ上下" },
-        { "MagmaHazard", "マグマダメージ床" },
-        { "MagmaGeyser", "周期式マグマ噴出口" },
-        { "ChainCollapseFloor", "連鎖崩れ床" },
-        { "RotatingFloor", "回転床" },
-        { "RotatingPillar", "回転柱" },
-        { "PhaseFlipFloor", "時間反転床" },
-        { "StageGate", "ステージゲート" },
-    };
-
-    for (const auto& [type, label] : gimmicks) {
-        changed |= RegisterPresetOnce("Builtin/Gimmick/" + type,
-            EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Gimmick, type, common), label);
+    for (const auto& type : EditorObjectFactoryRegistry::GetTypes(EditorObjectFactoryRegistry::Kind::Gimmick)) {
+        // 既存Presetのために同じギミックや内部エフェクトを毎回生成しません。
+        if (PresetManager::GetInstance()->HasPreset("Builtin/Gimmick/" + type.id)) continue;
+        changed |= RegisterPresetOnce("Builtin/Gimmick/" + type.id,
+            EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Gimmick, type.id, common), type.displayName);
     }
 
     // コピー台は一台ごとに配置・移動できるよう、通常の五能力を個別Presetにします。
@@ -507,6 +490,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* commo
         {"Bomber", "コピー台・ボム"},
     }};
     for (const auto& [copyType, label] : copyStations) {
+        if (PresetManager::GetInstance()->HasPreset("Builtin/Gimmick/CopyMemoryStation/" + std::string(copyType))) continue;
         auto station = EditorObjectFactoryRegistry::Create(
             EditorObjectFactoryRegistry::Kind::Gimmick, "CopyMemoryStation", common);
         if (!station) {

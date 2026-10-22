@@ -4,6 +4,10 @@
 // プレイヤーが取得できるコインギミック
 class GimmickCoin : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "Coin";
+    static constexpr const char* kModelPath = "Primitives/sphere";
+
     virtual ~GimmickCoin() = default;
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;

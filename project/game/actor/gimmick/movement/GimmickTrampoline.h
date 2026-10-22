@@ -6,6 +6,10 @@ class Player;
 // 上から踏むと大ジャンプするジャンプ台ギミック
 class GimmickTrampoline : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "Trampoline";
+    static constexpr const char* kModelPath = "Gimmicks/mushroom_trampoline";
+
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
     void Update(float deltaTime) override;

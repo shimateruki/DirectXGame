@@ -1,0 +1,11 @@
+{
+  "importer": "TextureImporter",
+  "importSettings": {
+    "generateMipmaps": false,
+    "colorSpace": "Auto"
+  },
+  "source": "Resources/sprite/ui/tutorial/tutorial_throw_gamepad.png",
+  "assetType": "Texture",
+  "version": 1,
+  "guid": "9f8cf79db1d74d9ebc1d2f9783157d4f"
+}

@@ -8,6 +8,10 @@ class Player;
 // 配置した範囲への進入・退出を、イベントやチェックポイントなどのゲーム処理へ変換します。
 class GimmickGameplayVolume : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "GameplayVolume";
+    static constexpr const char* kModelPath = "Primitives/cube";
+
     /// 範囲の種類と Scene JSON の設定を初期化する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 

@@ -9,6 +9,7 @@
 #include "ScenePreloader.h"
 #include "SceneController.h"
 #include "SceneManager.h"
+#include "GimmickStageGate.h"
 
 #include "AudioPlayer.h"
 #include "game/system/combat/BulletManager.h"
@@ -20,6 +21,7 @@
 #include "game/system/rules/EventManager.h"
 #include "Fade.h"
 #include "game/system/progress/GameDataManager.h"
+#include "game/system/progress/StarCoinPresentation.h"
 #include "game/actor/gimmick/trigger/GimmickArenaEncounter.h"
 #include "game/system/rules/GameRule.h"
 #include "GPUParticleManager.h"
@@ -154,7 +156,9 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_ring_burner_wave_heat.json"};
 
 // GPU粒子はMeshEffectと読込経路が異なるため、同名の攻撃に属しても別一覧で管理します。
-constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_core",
+constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {StarCoinPresentation::kSilverIdle,
+                                                                StarCoinPresentation::kSilverGet,
+                                                                "hit_bomb_fire_core",
                                                                 "hit_bomb_flash_core",
                                                                 "hit_bomb_fire_mushroom",
                                                                 "hit_bomb_fire_sparks",
@@ -730,6 +734,7 @@ void GamePlayScene::OnActivated() {
 }
 
 void GamePlayScene::Finalize() {
+    GimmickStageGate::ResetSceneEntries(*this);
     // SceneController の通知を先に行い、その後に共有演出を含む資源を片付ける。
     if (sceneController_) {
         sceneController_->OnFinalize(*this);
@@ -899,7 +904,7 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
 }
 
 void GamePlayScene::LoadCurrentStageObjects(const StageData& currentStage) {
-    // 配置直後に進行記録を反映し、回収済みアイテムを再出現させない。
+    // 配置直後に進行記録を反映し、回収済みの王冠とスターを銀色へ切り替える。
     levelLoader_ = std::make_unique<LevelLoader>();
     levelLoader_->LoadObjectLayout(this, currentStage.levelPath);
     ApplyGoalCrownState();
@@ -967,7 +972,7 @@ void GamePlayScene::ApplyGoalCrownState() {
 }
 
 void GamePlayScene::ApplyStageStarCoinState() {
-    // 保存済みのスターコインを不可視にし、同じ位置で再取得できないようにする。
+    // 保存済みのスターは銀色で残す。新規取得の集計は保存記録と分けて扱う。
     if (!objectManager_) {
         return;
     }
@@ -983,13 +988,12 @@ void GamePlayScene::ApplyStageStarCoinState() {
         const int starCoinIndex = object->GetTargetID();
 
         if (!GameDataManager::GetInstance()->IsStarCoinCollected(stageIndex, starCoinIndex)) {
+            StarCoinPresentation::RestoreUncollectedIfSilver(*object);
             continue;
         }
 
-        // 保存済みのスターコインは再配置せず、当たり判定も同時に無効化します。
-        object->SetIsVisible(false);
-        object->SetCollisionAttribute(0);
-        object->SetCollisionMask(0);
+        // 遭遇クリアで出すスターの可視性と、編集済みの判定サイズは維持する。
+        StarCoinPresentation::ApplyPreviouslyCollected(*object);
     }
 }
 

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4e9790f2ffb452d1aea11073b8c48413",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_name/crown.png",
+  "version": 1
+}

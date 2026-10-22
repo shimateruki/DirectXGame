@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickHazardRideFloor.h"
+#include "ObjectPropertyDefinition.h"
 
 #include "BaseScene.h"
 #include "CollisionConfig.h"
@@ -46,6 +47,22 @@ void GimmickHazardRideFloor::Initialize(engine::Object3dCommon* common, const st
 
     // 従来の一度きりの挙動を既定とし、必要なステージだけ明示的に復帰を有効化する。
     param_->returnOnOff = false;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickHazardRideFloor;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "妨害付き輸送床",
+        "Target IDを先頭に、Target ID + 妨害番号を順番に起動します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("移動速度", "speed", &Parameter::speed, 0.1f, 40.0f);
+    properties.Parameter("移動距離", "moveAmount", &Parameter::moveAmount, 1.0f, 300.0f);
+    properties.Parameter("発進前の予告", "shakeDuration", &Parameter::shakeDuration, 0.0f, 5.0f);
+    properties.Parameter("終点の落下予告", "interval", &Parameter::interval, 0.1f, 5.0f);
+    properties.Parameter("落下時間", "fallDuration", &Parameter::fallDuration, 0.1f, 10.0f);
+    properties.Parameter("落下重力", "gravity", &Parameter::gravity, 1.0f, 200.0f);
+    properties.Parameter("妨害数", "maxCount", &Parameter::maxCount, 0.0f, 16.0f);
+    properties.Parameter("進行方向", "actionMode", &Parameter::actionMode, 0.0f, 1.0f,
+        nullptr, {"ローカルX+", "ローカルX-"});
+    properties.Parameter("終了後に復帰を許可", "returnOnOff", &Parameter::returnOnOff);
 }
 
 void GimmickHazardRideFloor::Update(float deltaTime) {

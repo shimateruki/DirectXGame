@@ -1,5 +1,6 @@
 ﻿#define NOMINMAX
 #include "GimmickCopyMemoryStation.h"
+#include "ObjectPropertyDefinition.h"
 #include "game/system/scene/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
@@ -118,6 +119,41 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const 
     }
 
     UpdateCoreVisuals(0.0f);
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickCopyMemoryStation;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "コピー記憶台",
+        "操作キー不要で、浮いている能力エッセンスへ触れると変身します。");
+    using Parameter = engine::Object3d::EntityParameter;
+
+    // 旧4枠は読むだけなら保持し、ユーザーが能力を選び直した時だけ単体へ変更します。
+    properties.Accessor<std::string>("コピー能力", "copyMemoryTypeA", "param.copyMemoryTypeA",
+        [](const Self& object) { return object.param_ ? object.param_->copyMemoryTypeA : std::string(); },
+        [](Self& object, const std::string& value) {
+            if (!object.param_) object.param_.emplace();
+            object.param_->copyMemoryTypeA = value;
+            object.param_->copyMemoryTypeB.clear();
+            object.param_->copyMemoryTypeC.clear();
+            object.param_->copyMemoryTypeD.clear();
+        }, 0, 0, nullptr, {"なし", "ピンクスライム", "炎スライム", "雷スライム", "風スライム", "ボムスライム"},
+        {.values = {"", "Slime", "FireSlime", "ThunderSlime", "WindSlime", "Bomber"},
+         .help = +[](const Self& object) -> std::string {
+             return object.param_ && (!object.param_->copyMemoryTypeB.empty() || !object.param_->copyMemoryTypeC.empty() || !object.param_->copyMemoryTypeD.empty())
+                 ? "旧式の複数台設定です。能力を選び直した時だけ一台へ変更します。" : "";
+         },
+         .displayValue = +[](const Self& object) -> nlohmann::json {
+             if (!object.param_) return "";
+             const auto& p = *object.param_;
+             return !p.copyMemoryTypeA.empty() ? p.copyMemoryTypeA : !p.copyMemoryTypeB.empty() ? p.copyMemoryTypeB
+                 : !p.copyMemoryTypeC.empty() ? p.copyMemoryTypeC : p.copyMemoryTypeD;
+         }});
+    properties.Parameter("コア接触半径", "copyMemoryActivationRadius", &Parameter::copyMemoryActivationRadius, 0.35f, 1.4f);
+    properties.Parameter("能力エッセンスの大きさ", "copyMemoryEssenceScale", &Parameter::copyMemoryEssenceScale, 0.25f, 2.0f);
+    properties.Parameter("能力エッセンスの浮遊幅", "copyMemoryHoverAmount", &Parameter::copyMemoryHoverAmount, 0.0f, 0.35f,
+        nullptr, {}, {.speed = 0.005f});
+    properties.Parameter("能力エッセンスの発光", "copyMemoryGlow", &Parameter::copyMemoryGlow, 0.0f, 2.0f);
+    properties.Parameter("時間制限なし", "copyMemoryUnlimitedDuration", &Parameter::copyMemoryUnlimitedDuration);
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
 }
 
 void GimmickCopyMemoryStation::Update(float deltaTime) {

@@ -1038,7 +1038,8 @@ PixelShaderOutput main(VertexShaderOutput input)
                     }
 
                     float3 albedo = MATERIAL_COLOR.rgb * textureColor.rgb;
-                    if (OBJECT3D_MATERIAL_TYPE == 29 || OBJECT3D_MATERIAL_TYPE == 32) {
+                    // A solid terrain block shades its upward face as turf and the other faces as earth.
+                    if (OBJECT3D_MATERIAL_TYPE == 29 || OBJECT3D_MATERIAL_TYPE == 32 || (OBJECT3D_MATERIAL_TYPE == 36 && N.y > 0.5f)) {
                         // Soft painted turf evaluated before the normal PBR lighting.
                         // Blend rotated scales to avoid visible square noise cells.
                         float2 turfUV = float2(input.worldPosition.x * 0.83f - input.worldPosition.z * 0.56f,
@@ -1052,7 +1053,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         float3 turf = lerp(float3(0.22f, 0.32f, 0.105f),
                             float3(0.31f, 0.42f, 0.16f), broad);
                         albedo = turf * (0.94f + detail * 0.12f) * MATERIAL_COLOR.rgb;
-                        if (OBJECT3D_MATERIAL_TYPE == 32) {
+                        if (OBJECT3D_MATERIAL_TYPE == 32 || (OBJECT3D_MATERIAL_TYPE == 36 && gMaterial.envIntensity > 0.0f)) {
                             // UV cross-section defines the path; noise softens the soil/turf boundary.
                             float acrossPath = abs(input.texcoord.y - 0.5f) * 44.0f;
                             float edgeNoise = ValueNoise2D(input.worldPosition.xz * 0.65f);
@@ -1069,7 +1070,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         metallic = 0.0f;
                         roughness = max(roughness, 0.85f);
                     }
-                    if (OBJECT3D_MATERIAL_TYPE == 33) {
+                    if (OBJECT3D_MATERIAL_TYPE == 33 || (OBJECT3D_MATERIAL_TYPE == 36 && N.y <= 0.5f)) {
                         // Entrance soil sides: path-related earth colors, softly eroded strata.
                         float2 soilUV = float2(input.worldPosition.x + input.worldPosition.z, input.worldPosition.y);
                         float macro = ValueNoise2D(soilUV * float2(0.22f, 0.32f));

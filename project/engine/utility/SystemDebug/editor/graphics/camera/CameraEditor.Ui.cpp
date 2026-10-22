@@ -1,4 +1,4 @@
-﻿#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.Internal.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.Internal.h"
 
 using namespace CameraEditorImplementation;
 
@@ -62,6 +62,12 @@ void CameraEditor::DrawImGui() {
     // 3. 各モードごとの詳細設定
     // =========================================================
     if (settings_.currentMode == Mode::Game) {
+        ImGui::Checkbox("ジャンプ中の高さ追従を抑える", &settings_.stabilizeJumpHeight);
+        if (settings_.stabilizeJumpHeight) {
+            ImGui::DragFloat("上昇時の許容高低差", &settings_.jumpHeightAllowance, 0.1f, 1.0f, 30.0f);
+            ImGui::TextDisabled("通常のジャンプは高さを保持し、大きな落下・上昇時は追従します。");
+        }
+
         // --- Game Mode 設定 ---
         ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_GAMEPAD " カメラ挙動設定 (Game)");
 
@@ -82,6 +88,13 @@ void CameraEditor::DrawImGui() {
             if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
                 ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
             }
+        }
+
+        if (ImGui::TreeNode("ロックオン視点")) {
+            ImGui::DragFloat("左右##LockOn", &settings_.lockOnOffset.x, 0.05f, -10.0f, 10.0f);
+            ImGui::DragFloat("高さ##LockOn", &settings_.lockOnOffset.y, 0.05f, 0.0f, 15.0f);
+            ImGui::DragFloat("後方距離##LockOn", &settings_.lockOnOffset.z, 0.1f, -40.0f, -3.0f);
+            ImGui::TreePop();
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||

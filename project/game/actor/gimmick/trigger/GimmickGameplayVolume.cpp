@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickGameplayVolume.h"
+#include "ObjectPropertyDefinition.h"
 
 #include "BaseScene.h"
 #include "CollisionConfig.h"
@@ -47,6 +48,25 @@ void GimmickGameplayVolume::Initialize(engine::Object3dCommon* common, const std
     param_->volumeBlendDuration = 0.75f;
     param_->startActive = true;
     param_->returnOnOff = false;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickGameplayVolume;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ゲームプレイボリューム",
+        "イベント連携はTarget IDを接続します。チェックポイントは中心位置を記録、落下死は既存の残機処理へ接続します。退出時のOFFは対応モードだけ編集できます。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("処理", "volumeMode", &Parameter::volumeMode, 0.0f, 5.0f,
+        nullptr, {"イベント連携", "チェックポイント", "落下死", "Feedback Cue", "BGM", "Environment Profile"});
+    properties.Parameter("Cue / Audio / Profile ID", "volumePayload", &Parameter::volumePayload, 0.0f, 0.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->volumeMode >= 3 && object.param_->volumeMode <= 5); });
+    properties.Parameter("環境の切替時間", "volumeBlendDuration", &Parameter::volumeBlendDuration, 0.0f, 10.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->volumeMode == 5); });
+    properties.Parameter("一度だけ実行", "volumeTriggerOnce", &Parameter::volumeTriggerOnce);
+    properties.Parameter("退出時に実行", "volumeTriggerOnExit", &Parameter::volumeTriggerOnExit);
+    properties.Parameter("再実行まで", "volumeRearmDelay", &Parameter::volumeRearmDelay, 0.0f, 60.0f,
+        +[](const Self& object) { return object.param_ && (!object.param_->volumeTriggerOnce); });
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("退出時にOFFへ戻す", "returnOnOff", &Parameter::returnOnOff, 0.0f, 0.0f,
+        nullptr, {}, {.enabled = +[](const Self& object) { return object.param_ && ((object.param_->volumeMode == 0 || object.param_->volumeMode == 4 || object.param_->volumeMode == 5) && !object.param_->volumeTriggerOnExit); }});
 }
 
 void GimmickGameplayVolume::Update(float deltaTime) {

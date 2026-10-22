@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "577575c7326b50af956cfac708febcca",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_solid/Stage1_MidbossTerrain_Approach.obj",
+  "version": 1
+}

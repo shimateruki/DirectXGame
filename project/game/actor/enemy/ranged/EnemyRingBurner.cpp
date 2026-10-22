@@ -20,7 +20,7 @@ constexpr float kModelHeight = 1.46f;
 constexpr float kTopRadius = 1.05f;
 constexpr float kWaveStartRadiusRatio = 1.60f / 11.0f;
 
-// 波の寿命は effect_ring_burner_wave / wave_heat の Lifetime と揃えます。
+// 倍率1の波の寿命。表示エフェクトにも同じ実行時の秒数を渡します。
 constexpr float kWaveDuration = 3.6f;
 constexpr float kRecoveryDuration = 0.62f;
 constexpr float kSuppressedReleaseDuration = 4.0f;
@@ -127,7 +127,7 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
         }
 
         if (owner.stateTimer_ <= 0.0f) {
-            owner.EnterState(State::Wave, kWaveDuration);
+            owner.EnterState(State::Wave, owner.GetWaveDuration());
         }
     }
 
@@ -451,6 +451,12 @@ float EnemyRingBurner::GetWaveMaximumRadius() const {
     return (std::clamp)(configured, 6.0f, 48.0f) * horizontalScale;
 }
 
+float EnemyRingBurner::GetWaveDuration() const {
+    // 速度を上げた分だけ到達時間を短縮し、判定と表示を同じ進行率に保つ。
+    const float speed = param_.has_value() ? (std::clamp)(param_->ringWaveSpeed, 0.25f, 4.0f) : 1.0f;
+    return kWaveDuration / speed;
+}
+
 void EnemyRingBurner::SpawnChargeEffects() {
     // 充填のメッシュ演出と火花を本体の高さ・大きさに合わせて置く。
     const engine::Vector3 origin = GetWorldPosition() + engine::Vector3{0.0f, 0.18f * baseScale_.y, 0.0f};
@@ -475,8 +481,9 @@ void EnemyRingBurner::SpawnWaveEffects() {
         StopWaveEffects();
         waveEffectScope_ = meshEffects->CreateEffectScope();
         const engine::Vector3 scale = {effectScale, baseScale_.y * 3.0f, effectScale};
-        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveHeatEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
-        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
+        const float waveDuration = GetWaveDuration();
+        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveHeatEffect, origin, {0.0f, 0.0f, 0.0f}, scale, waveDuration);
+        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, {0.0f, 0.0f, 0.0f}, scale, waveDuration);
     }
 
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {

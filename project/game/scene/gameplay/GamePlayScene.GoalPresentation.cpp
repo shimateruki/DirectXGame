@@ -240,6 +240,11 @@ void GamePlayScene::HandleGoalCinematicAnimation(engine::Object3d* target, const
 
     goalClearPlayerAnimator_.Update(localTime);
     goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
+    if (isGoal_) {
+        // 同じ時刻の王冠を確定してから、共通再生器が着地VFXを発火する。
+        goalPresentationTimer_=clip.startTime+localTime/(std::max)(clip.playbackSpeed,0.001f);
+        UpdateGoalCrownMotion(0.0f);
+    }
 }
 
 void GamePlayScene::HandleGoalCinematicSignal(engine::Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
@@ -489,6 +494,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
 
         if (const auto it = root.find("player"); it != root.end() && it->is_object()) {
             const auto& j = *it;
+            animation.settleDuration = j.value("settleDuration", animation.settleDuration);
             animation.jumpHeight = j.value("jumpHeight", animation.jumpHeight);
             animation.forwardDistance = j.value("forwardDistance", animation.forwardDistance);
             animation.anticipationDepth = j.value("anticipationDepth", animation.anticipationDepth);
@@ -503,10 +509,12 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             const auto& j = *it;
             goalPresentationTuning_.crownDropHeight = j.value("dropHeight", goalPresentationTuning_.crownDropHeight);
             goalPresentationTuning_.crownSeatDepth = j.value("seatDepth", goalPresentationTuning_.crownSeatDepth);
+            goalPresentationTuning_.crownWearWidthRatio = j.value("wearWidthRatio", goalPresentationTuning_.crownWearWidthRatio);
         }
 
         if (const auto it = root.find("camera"); it != root.end() && it->is_object()) {
             const auto& j = *it;
+            goalPresentationTuning_.cameraSafeMargin = j.value("safeMargin", goalPresentationTuning_.cameraSafeMargin);
             goalPresentationTuning_.crownFocusDistance =
                 j.value("crownFocusDistance", goalPresentationTuning_.crownFocusDistance);
             goalPresentationTuning_.crownFocusSide = j.value("crownFocusSide", goalPresentationTuning_.crownFocusSide);
@@ -580,7 +588,7 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
                         {"resultUiTime", a.resultUiTime},
                         {"victoryLandTime", a.victoryLandTime},
                         {"readyTime", a.readyTime}};
-    root["player"] = {{"jumpHeight", a.jumpHeight},
+    root["player"] = {{"settleDuration", a.settleDuration}, {"jumpHeight", a.jumpHeight},
                       {"forwardDistance", a.forwardDistance},
                       {"anticipationDepth", a.anticipationDepth},
                       {"landingSquash", a.landingSquash},
@@ -588,8 +596,8 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
                       {"takeoffStretch", a.takeoffStretch},
                       {"resultStretch", a.resultStretch},
                       {"resultYawBias", a.resultYawBias}};
-    root["crown"] = {{"dropHeight", g.crownDropHeight}, {"seatDepth", g.crownSeatDepth}};
-    root["camera"] = {{"crownFocusDistance", g.crownFocusDistance},
+    root["crown"] = {{"dropHeight", g.crownDropHeight}, {"seatDepth", g.crownSeatDepth}, {"wearWidthRatio", g.crownWearWidthRatio}};
+    root["camera"] = {{"safeMargin", g.cameraSafeMargin}, {"crownFocusDistance", g.crownFocusDistance},
                       {"crownFocusSide", g.crownFocusSide},
                       {"crownFocusHeight", g.crownFocusHeight},
                       {"landingDistance", g.landingCameraDistance},
@@ -638,6 +646,7 @@ void GamePlayScene::SanitizeGoalPresentationTuning() {
     a.resultUiTime = std::max(a.resultUiTime, a.apexTime + 0.02f);
     a.victoryLandTime = std::max(a.victoryLandTime, a.apexTime + 0.36f);
     a.readyTime = std::max(a.readyTime, a.victoryLandTime + 0.55f);
+    a.settleDuration = std::clamp(a.settleDuration, 0.05f, 0.65f);
     a.jumpHeight = std::clamp(a.jumpHeight, 1.0f, 7.0f);
     a.forwardDistance = std::clamp(a.forwardDistance, 0.0f, 3.0f);
     a.anticipationDepth = std::clamp(a.anticipationDepth, 0.02f, 0.65f);
@@ -645,6 +654,8 @@ void GamePlayScene::SanitizeGoalPresentationTuning() {
     a.anticipationSquash = std::clamp(a.anticipationSquash, 0.0f, 0.50f);
     a.takeoffStretch = std::clamp(a.takeoffStretch, 0.0f, 0.65f);
     a.resultStretch = std::clamp(a.resultStretch, 0.0f, 0.35f);
+    g.crownWearWidthRatio = std::clamp(g.crownWearWidthRatio, 0.35f, 1.10f);
+    g.cameraSafeMargin = std::clamp(g.cameraSafeMargin, 0.04f, 0.20f);
     g.crownDropHeight = std::clamp(g.crownDropHeight, 0.30f, 4.0f);
     g.crownSeatDepth = std::clamp(g.crownSeatDepth, 0.0f, 0.45f);
     g.crownFocusFov = std::clamp(g.crownFocusFov, 0.30f, 1.10f);
@@ -688,6 +699,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
 
     ImGui::Separator();
     ImGui::TextUnformatted("プレイヤー");
+    changed |= ImGui::DragFloat("取得姿勢を整える時間", &a.settleDuration, 0.01f, 0.05f, 0.65f, "%.2f 秒");
     changed |= ImGui::DragFloat("ジャンプ高さ", &a.jumpHeight, 0.02f, 1.0f, 7.0f, "%.2f");
     changed |= ImGui::DragFloat("前進距離", &a.forwardDistance, 0.01f, 0.0f, 3.0f, "%.2f");
     changed |= ImGui::DragFloat("溜め沈み", &a.anticipationDepth, 0.005f, 0.02f, 0.65f, "%.3f");
@@ -700,9 +712,11 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     ImGui::TextUnformatted("王冠");
     changed |= ImGui::DragFloat("降下開始高さ", &g.crownDropHeight, 0.01f, 0.30f, 4.0f, "%.2f");
     changed |= ImGui::DragFloat("頭への沈み", &g.crownSeatDepth, 0.005f, 0.0f, 0.45f, "%.3f");
+    changed |= ImGui::DragFloat("体幅に対する王冠の幅", &g.crownWearWidthRatio, 0.01f, 0.35f, 1.10f, "%.2f");
 
     ImGui::Separator();
     ImGui::TextUnformatted("カメラ");
+    changed |= ImGui::DragFloat("画面端の余白", &g.cameraSafeMargin, 0.005f, 0.04f, 0.20f, "%.3f");
     changed |= ImGui::DragFloat3("王冠ショット 距離/横/高さ", &g.crownFocusDistance, 0.01f, -10.0f, 10.0f, "%.2f");
     changed |= ImGui::DragFloat3("着地ショット 距離/横/高さ", &g.landingCameraDistance, 0.01f, -12.0f, 12.0f, "%.2f");
     changed |= ImGui::DragFloat3("ジャンプショット 距離/横/高さ", &g.jumpCameraDistance, 0.01f, -14.0f, 14.0f, "%.2f");
@@ -818,13 +832,6 @@ void GamePlayScene::StopGoalPresentationPreview() {
         return;
     }
 
-    Camera* restoreCamera =
-        goalLockedPrimaryCamera_ ? goalLockedPrimaryCamera_ : CameraManager::GetInstance()->GetMainCamera();
     SetIsGoal(false);
-
-    if (restoreCamera) {
-        CameraManager::GetInstance()->SetActiveCamera(restoreCamera);
-    }
-
     goalEditorPreviewMode_ = false;
 }

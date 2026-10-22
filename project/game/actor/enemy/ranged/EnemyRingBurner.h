@@ -83,6 +83,8 @@ class EnemyRingBurner : public BaseEnemy {
 
     /// 熱輪の到達半径を返す。
     float GetWaveMaximumRadius() const;
+    /// 個体ごとの速度倍率から、リングが最大半径に届く秒数を返す。
+    float GetWaveDuration() const;
 
     /// 予備動作中の演出を発生させる。
     void SpawnChargeEffects();

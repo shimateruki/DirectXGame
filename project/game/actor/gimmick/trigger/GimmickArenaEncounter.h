@@ -5,6 +5,10 @@
 // プレイヤーの進入を検知し、中ボス・封鎖壁・撃破後の開放を一つの状態で管理します。
 class GimmickArenaEncounter : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "ArenaEncounter";
+    static constexpr const char* kModelPath = "Primitives/cube";
+
     /// ボス、封鎖壁、報酬との紐付けを初期化する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 

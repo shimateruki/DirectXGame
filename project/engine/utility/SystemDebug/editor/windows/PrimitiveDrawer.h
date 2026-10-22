@@ -42,7 +42,7 @@ public:
 
 private:
     DirectXCommon* dxCommon_ = nullptr;
-    static const int kMaxInstances = 2048;
+    static const int kMaxInstances = 8192;
 
     // --- プリミティブ描画リソース ---
     Microsoft::WRL::ComPtr<ID3D12RootSignature> primitiveRootSignature_;

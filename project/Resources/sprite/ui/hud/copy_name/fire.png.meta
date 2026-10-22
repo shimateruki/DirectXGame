@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0d9709174f275c4883a118e2daffa498",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_name/fire.png",
+  "version": 1
+}

@@ -1,5 +1,7 @@
 {
-    "uiAssets": ["Resources/json/ui/settingsMenu.json"],
+    "uiAssets": [
+        "Resources/json/ui/settingsMenu.json"
+    ],
     "designResolution": [
         1920.0,
         1080.0
@@ -73,10 +75,10 @@
                 712.0
             ],
             "size": [
-                330.0,
-                50.0
+                340.0,
+                64.0
             ],
-            "texture": "title/gameStartText.png"
+            "texture": "ui/menu_hints/title_start.png"
         },
         {
             "anchor": [
@@ -97,10 +99,10 @@
                 818.0
             ],
             "size": [
-                122.0,
-                60.0
+                112.0,
+                64.0
             ],
-            "texture": "title/setting.png"
+            "texture": "ui/menu_hints/title_setting.png"
         },
         {
             "anchor": [
@@ -163,6 +165,30 @@
             ],
             "emissive": 1.0,
             "name": "mainMenuPrompt",
+            "parentName": "",
+            "position": [
+                960.0,
+                1008.0
+            ],
+            "size": [
+                660.0,
+                75.0
+            ],
+            "texture": "ui/title/title_press_any_key.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "mainMenuPromptSuffix",
             "parentName": "",
             "position": [
                 960.0,
@@ -553,10 +579,10 @@
                 351
             ],
             "size": [
-                220,
-                43
+                250.0,
+                55.309734513274336
             ],
-            "texture": "ui/title/save_beginning_label.png"
+            "texture": "ui/menu_hints/save_beginning.png"
         },
         {
             "anchor": [
@@ -1081,10 +1107,10 @@
                 521
             ],
             "size": [
-                220,
-                43
+                250.0,
+                55.309734513274336
             ],
-            "texture": "ui/title/save_beginning_label.png"
+            "texture": "ui/menu_hints/save_beginning.png"
         },
         {
             "anchor": [
@@ -1609,10 +1635,10 @@
                 691
             ],
             "size": [
-                220,
-                43
+                250.0,
+                55.309734513274336
             ],
-            "texture": "ui/title/save_beginning_label.png"
+            "texture": "ui/menu_hints/save_beginning.png"
         },
         {
             "anchor": [
@@ -2133,14 +2159,14 @@
             "name": "saveDetailEmptyLabel",
             "parentName": "",
             "position": [
-                1375,
-                565
+                1375.0,
+                495.0
             ],
             "size": [
-                320,
-                68
+                320.0,
+                70.79646017699115
             ],
-            "texture": "ui/title/save_beginning_label.png"
+            "texture": "ui/menu_hints/save_beginning.png"
         },
         {
             "anchor": [
@@ -2196,10 +2222,10 @@
                 0.5
             ],
             "color": [
-                0.02,
-                0.07,
-                0.14,
-                0.68
+                1.0,
+                1.0,
+                1.0,
+                1.0
             ],
             "emissive": 1.0,
             "name": "saveHintBackdrop",
@@ -2209,10 +2235,58 @@
                 968
             ],
             "size": [
-                1250,
-                80
+                1584.0,
+                88.0
             ],
-            "texture": "common/white.png"
+            "texture": "ui/control_guide/footer_close_frame.png"
+        },
+        {
+            "name": "saveHintFrame_left",
+            "texture": "ui/control_guide/footer_close_frame.png",
+            "position": [
+                124.0,
+                968.0
+            ],
+            "size": [
+                88.0,
+                88.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "saveHintFrame_right",
+            "texture": "ui/control_guide/footer_close_frame.png",
+            "position": [
+                1796.0,
+                968.0
+            ],
+            "size": [
+                88.0,
+                88.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
         },
         {
             "anchor": [
@@ -2233,10 +2307,10 @@
                 968.0
             ],
             "size": [
-                1120.0,
-                52.0
+                1760.0,
+                88.0
             ],
-            "texture": "ui/title/save_hint_keyboard.png"
+            "texture": "ui/menu_hints/save_keyboard.png"
         },
         {
             "anchor": [
@@ -2257,10 +2331,10 @@
                 968.0
             ],
             "size": [
-                1120.0,
-                52.0
+                1760.0,
+                88.0
             ],
-            "texture": "ui/title/save_hint_gamepad.png"
+            "texture": "ui/menu_hints/save_gamepad.png"
         },
         {
             "anchor": [

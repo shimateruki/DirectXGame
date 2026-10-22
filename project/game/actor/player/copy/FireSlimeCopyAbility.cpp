@@ -39,6 +39,8 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
         // ブレスの押し続け状態を保存し、突進中は火球の開始を受け付けない。
         primaryHeld_ = input.primaryHeld;
+        if (player.isDead || player.IsCinematicLocked() || actionMotionTimer_ > 0.0f || fireballSequence_.IsRunning())
+            return; // 火球の予備動作・後隙を突進や次の火球で取り消さない。
 
         if (input.secondaryTriggered && !dashActive_ && dashCooldown_ <= 0.0f) {
             BeginDash(player);
@@ -49,8 +51,13 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
     void Update(Player& player, float deltaTime) override {
         // 単発攻撃、突進、継続ブレスの順に更新し、同時実行を避ける。
-        if (player.isDead || player.IsCinematicLocked())
+        if (player.isDead || player.IsCinematicLocked()) {
             fireballSequence_.Cancel();
+            actionMotionTimer_ = 0.0f;
+            primaryHeld_ = false;
+            StopBreathMotion(player);
+            return;
+        }
         if (fireballSequence_.IsRunning())
             fireballSequence_.Update(deltaTime, MakeSequenceContext(player));
         breathVisible_ = false;
@@ -118,6 +125,14 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         hitTargets_.clear();
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
         player.SetIsControlActive(true);
+    }
+
+    PlayerAttackMovement GetAttackMovement() const override {
+        // 短い制限区間を終えたら歩行速度を戻し、残りの後隙は次の技の受付だけを止める。
+        if (!fireballSequence_.IsRunning())
+            return {};
+        const auto& movement = fireballSequence_.GetDefinition().playerMovement;
+        return fireballSequence_.GetElapsed() < movement.duration ? movement : PlayerAttackMovement{};
     }
 
     bool CanBreakImpactGate() const override {
@@ -290,9 +305,11 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
                 selected = &candidate;
         }
 
-        if (!selected || !fireballSequence_.Start(*selected, MakeSequenceContext(player)))
+        if (!selected)
             return;
         StopBreathMotion(player);
+        if (!fireballSequence_.Start(*selected, MakeSequenceContext(player)))
+            return;
         const bool authoredBody = std::any_of(selected->sequence.tracks.begin(), selected->sequence.tracks.end(),
             [](const auto& track) { return track.enabled && track.type == "body_animation"; });
 

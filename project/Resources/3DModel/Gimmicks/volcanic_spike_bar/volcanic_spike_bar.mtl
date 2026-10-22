@@ -21,3 +21,11 @@ Ns 65.00
 Pr 0.350
 Pm 0.500
 illum 2
+
+newmtl SpinMarker
+Kd 0.92000 0.27000 0.07000
+Ks 0.18 0.10 0.05
+Ns 62.00
+Pr 0.340
+Pm 0.500
+illum 2

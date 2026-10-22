@@ -113,6 +113,7 @@ public:
 
         float moveAmount = 10.0f;
         float moveSpeed = 6.0f;
+        float ringWaveSpeed = 1.0f; // リング攻撃の拡大速度倍率。配置ごとに調整する。
         bool startActive = false;
         bool returnOnOff = true;
         bool editorPreviewFiring = true; // 砲台の編集画面だけで弾道を確認します。

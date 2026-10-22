@@ -391,30 +391,35 @@ def build_arena() -> ObjBuilder:
 
 def build_wall() -> ObjBuilder:
     model = ObjBuilder()
-    model.box("StoneDark", (0.0, 1.46, 0.0), (3.0, 1.46, 0.70))
-    model.box("Stone", (0.0, 2.34, 0.74), (3.02, 0.46, 0.12))
-    model.box("StoneLight", (0.0, 3.02, 0.0), (3.10, 0.16, 0.78))
-    # 石組みの横目地を立体化し、単色の板に見えないようにします。
-    for y in (0.62, 1.45, 2.24):
-        model.box("Stone", (0.0, y, 0.72), (2.86, 0.055, 0.08))
+    # 門楼と同じ高さまで石積みを重ね、縦拡大だけで模様が間延びしない外壁にします。
+    model.box("StoneDark", (0.0, 3.95, 0.0), (3.0, 3.95, 0.70))
+    model.box("Stone", (0.0, 0.36, 0.75), (3.10, 0.36, 0.14))
+    for y in (2.20, 4.35, 6.50):
+        model.box("Stone", (0.0, y, 0.76), (3.06, 0.11, 0.13))
+    for x in (-2.72, 2.72):
+        model.box("StoneLight", (x, 3.94, 0.78), (0.14, 3.54, 0.10))
+    model.box("StoneLight", (0.0, 8.06, 0.0), (3.14, 0.16, 0.82))
+    model.box("Stone", (0.0, 8.48, 0.0), (3.08, 0.26, 0.79))
     for x in (-2.52, -1.26, 0.0, 1.26, 2.52):
-        model.box("StoneLight", (x, 3.54, 0.0), (0.38, 0.50, 0.80))
+        model.box("StoneLight", (x, 9.07, 0.0), (0.38, 0.50, 0.80))
     return model
 
 
 def build_tower() -> ObjBuilder:
     model = ObjBuilder()
-    # 反復壁から装飾を分離し、四つの塔だけを王宮テーマのランドマークにします。
-    model.box("StoneDark", (0.0, 1.75, 0.0), (1.72, 1.75, 1.48))
-    model.box("Stone", (0.0, 3.58, 0.0), (1.92, 0.18, 1.66))
-    model.box("StoneLight", (0.0, 3.92, 0.0), (1.58, 0.16, 1.38))
-    model.box("Banner", (0.0, 2.12, 1.50), (0.72, 1.02, 0.05))
-    model.box("Gold", (0.0, 3.15, 1.55), (0.82, 0.07, 0.09))
+    # 外壁より少し高い塔にし、旗と火灯は頂部付近へ上げて縦長の石柱に埋もれないようにします。
+    model.box("StoneDark", (0.0, 3.90, 0.0), (1.72, 3.90, 1.48))
+    for y in (2.18, 4.38, 6.58):
+        model.box("Stone", (0.0, y, 1.50), (1.78, 0.10, 0.10))
+    model.box("Stone", (0.0, 7.98, 0.0), (1.92, 0.18, 1.66))
+    model.box("StoneLight", (0.0, 8.34, 0.0), (1.58, 0.16, 1.38))
+    model.box("Banner", (0.0, 5.05, 1.50), (0.72, 1.16, 0.05))
+    model.box("Gold", (0.0, 6.26, 1.55), (0.82, 0.07, 0.09))
     for x in (-0.90, 0.0, 0.90):
-        add_vertical_crystal(model, "StoneLight", (x, 4.42 + (0.28 if abs(x) < 0.1 else 0.0), 0.0), 0.34, 0.92, 5)
-    add_vertical_crystal(model, "GateGlow", (0.0, 4.96, 0.0), 0.34, 0.98, 5)
-    model.box("Gold", (1.36, 1.80, 1.58), (0.10, 0.54, 0.10))
-    model.sphere("FlameGlow", (1.36, 2.48, 1.58), (0.21, 0.38, 0.21), 14, 8)
+        add_vertical_crystal(model, "StoneLight", (x, 8.88 + (0.28 if abs(x) < 0.1 else 0.0), 0.0), 0.34, 0.92, 5)
+    add_vertical_crystal(model, "GateGlow", (0.0, 9.42, 0.0), 0.34, 0.98, 5)
+    model.box("Gold", (1.36, 5.55, 1.58), (0.10, 0.54, 0.10))
+    model.sphere("FlameGlow", (1.36, 6.23, 1.58), (0.21, 0.38, 0.21), 14, 8)
     return model
 
 

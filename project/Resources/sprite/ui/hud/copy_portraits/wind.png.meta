@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2ada15a4dd6c5ee98268cd37a71f5fe3",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_portraits/wind.png",
+  "version": 1
+}

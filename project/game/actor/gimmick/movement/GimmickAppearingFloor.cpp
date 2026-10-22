@@ -1,4 +1,5 @@
 #include "GimmickAppearingFloor.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
 #include <algorithm>
@@ -15,6 +16,13 @@ void GimmickAppearingFloor::Initialize(engine::Object3dCommon* common, const std
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetColor({0.55f, 1.0f, 0.7f, 1.0f});
     SetStatic(false);
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickAppearingFloor;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "出現床",
+        "イベントを受けた後に出現します。0以下は従来どおり3秒として実行し、保存値自体は書き換えません。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("出現する時間", "interval", &Parameter::interval, 0.0f, 60.0f);
 }
 
 // Play中だけタイマーを進め、Editorでは足場を常に見える状態に戻します。

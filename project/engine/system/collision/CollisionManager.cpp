@@ -678,7 +678,7 @@ bool CollisionManager::PassesQueryFilter(engine::Object3d* object, const Physics
             return false;
     }
 
-    return true;
+    return !filter.acceptsObject || filter.acceptsObject(object);
 }
 
 RaycastHit CollisionManager::RaycastInternal(

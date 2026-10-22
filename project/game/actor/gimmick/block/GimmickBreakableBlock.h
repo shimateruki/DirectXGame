@@ -6,6 +6,10 @@ class Player;
 // 爆発のみで破壊可能なブロックギミック
 class GimmickBreakableBlock : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "BreakableBlock";
+    static constexpr const char* kModelPath = "Stages/bomb_break_block";
+
     virtual ~GimmickBreakableBlock() = default;
 
     // 初期化

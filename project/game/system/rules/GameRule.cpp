@@ -8,6 +8,7 @@
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/system/progress/IStageProgressScene.h"
 #include "game/system/progress/GameDataManager.h"
+#include "game/system/progress/StarCoinPresentation.h"
 #include "GPUParticleManager.h"
 #include "VFXSequencer.h"
 #include "game/system/combat/HitEffectDirector.h"
@@ -152,12 +153,20 @@ void GameRule::Initialize(BaseScene* scene) {
         } break;
 
         case EventType::StarCoin: {
-            int coinIdx = objectHit->GetTargetID();
+            // 上昇中の再接触で取得アニメーションと粒子を繰り返し開始しない。
+            if (!objectHit->GetIsVisible() || objectHit->IsCollecting())
+                break;
+            const int coinIdx = objectHit->GetTargetID();
 
             if (auto* progress = dynamic_cast<IStageProgressScene*>(scene_)) {
                 progress->CollectStarCoinFromContact(coinIdx, objectHit->GetWorldPosition());
                 objectHit->StartCollectionAnimation();
-                GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
+                objectHit->SetCollisionAttribute(0);
+                objectHit->SetCollisionMask(0);
+                objectHit->SetGPUParticleName("");
+                const char* burst = StarCoinPresentation::IsSilver(*objectHit)
+                    ? StarCoinPresentation::kSilverGet : "star_sparkleGet";
+                GPUParticleManager::GetInstance()->Emit(burst, objectHit->GetWorldPosition());
             }
         } break;
 
@@ -172,6 +181,10 @@ void GameRule::Initialize(BaseScene* scene) {
             // 着地で噴出口を反転すると、乗った瞬間に上昇が停止してしまう。
             if (objectHit->GetGimmickType() == "MovingFloor" && objectHit->param_ &&
                 objectHit->param_->actionMode == 5) {
+                break;
+            }
+            // 回転棘のTarget IDは追従する床の参照であり、接触イベントではない。
+            if (objectHit->GetGimmickType() == "RotatingFloor" && objectHit->GetTargetID() >= 0) {
                 break;
             }
             int tID = objectHit->GetTargetID();

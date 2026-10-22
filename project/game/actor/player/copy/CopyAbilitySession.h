@@ -35,6 +35,9 @@ class ICopyAbilitySession {
     // ガード成立時の追加演出を処理した場合のみ true を返します。
     virtual bool NotifyGuardedHit(Player&, const engine::Vector3&) { return false; }
 
+    // 制限を使わない能力は従来の移動を維持します。
+    virtual PlayerAttackMovement GetAttackMovement() const { return {}; }
+
     virtual bool CanBreakImpactGate() const { return false; }
 
     virtual bool IsPinkBounceSlamImpactActive() const { return false; }

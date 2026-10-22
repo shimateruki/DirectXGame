@@ -859,32 +859,11 @@ void EnemyFalseKingSlime::DrawFinaleEditor() {
     ImGui::SliderFloat("槍雨カメラの高さ", &t.sealBarrageCameraHeight, 0.7f, 1.5f);
     ImGui::TextUnformatted("全域放電：HPと回避無敵に関係なく即死");
     ImGui::SliderFloat("失敗後の再詠唱待ち", &t.sealBarrageRecovery, 1.0f, 8.0f);
-    ImGui::SliderFloat("継承・脱出ムービー秒数", &t.movieDuration, 12.0f, 24.0f);
-    ImGui::TextUnformatted("中央装飾：破断 → 落下 → 吸い込み → 王冠覚醒");
-    auto editMovieTime = [&](const char* label, float& ratio, float lo, float hi) {
-        float seconds = ratio * t.movieDuration;
-        if (ImGui::SliderFloat(label, &seconds, lo * t.movieDuration, hi * t.movieDuration, "%.2f 秒"))
-            ratio = seconds / t.movieDuration;
-    };
-
-    editMovieTime("装飾が折れる時刻", t.movieFragmentBreakTime, 0.03f, 0.10f);
-    editMovieTime("欠片が着地する時刻", t.movieFragmentLandTime, 0.14f, 0.28f);
-    editMovieTime("吸い込み開始時刻", t.movieFragmentPullTime, 0.28f, 0.40f);
-    editMovieTime("取り込み・変身時刻", t.movieFragmentAbsorbTime, 0.40f, 0.49f);
-    editMovieTime("暴走と衝撃波", t.movieRageTime, 0.235f, 0.305f);
-    editMovieTime("金色の体", t.movieBodyTime, 0.475f, 0.545f);
-    editMovieTime("王冠の形成", t.movieCrownTime, 0.565f, 0.635f);
-    editMovieTime("翼の形成", t.movieWingsTime, 0.645f, 0.715f);
-    editMovieTime("踏み切り", t.movieEscapeTime, 0.725f, 0.795f);
-    editMovieTime("最終ステージ着地", t.movieArriveTime, 0.895f, 0.965f);
+    ImGui::TextWrapped("王冠継承の装飾・カメラ・時刻は、演出タイムラインの crown_finale で編集します。");
     ImGui::SliderFloat("欠片とプレイヤーの距離", &t.movieFragmentDistance, 1.5f, 5.5f, "%.2f m");
     ImGui::SliderFloat("中央装飾の大きさ", &t.movieFragmentScale, 0.65f, 1.5f, "%.2f 倍");
     ImGui::SliderFloat("欠片の放物線の高さ", &t.movieFragmentFallArc, 0.0f, 6.0f, "%.2f m");
-    ImGui::SliderFloat("装飾・吸収カメラの距離", &t.movieFragmentCameraDistance, 0.7f, 1.5f, "%.2f 倍");
-    ImGui::TextDisabled("欠片を地面で見せてから吸収します。時刻の前後関係は自動で補正されます。");
     ImGui::SliderFloat("脱出軌道の高さ", &t.escapeHeight, 18.0f, 60.0f);
-    ImGui::SliderFloat("ムービーのシェイク強度", &t.movieShake, 0.0f, 2.0f);
-    ImGui::SliderFloat("ムービーの王翼サイズ", &t.movieWingScale, 0.5f, 2.0f);
     ImGui::SliderFloat("最終闘技場 X", &t.destinationX, 130.0f, 240.0f);
     ImGui::SliderFloat("王冠槍ダメージ", &t.lanceDamage, 1.0f, 40.0f);
     ImGui::SliderFloat("王威波ダメージ", &t.waveDamage, 1.0f, 60.0f);

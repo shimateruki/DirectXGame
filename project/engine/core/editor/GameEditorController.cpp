@@ -1198,6 +1198,7 @@ void GameEditorController::ExportCapturedHudPortraits() {
 }
 
 void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    if (ghostDirector_) ghostDirector_->DrawSceneObjects(pointLightResource, spotLightResource);
     // エディタ選択中のプレビューやゴースト表示を3Dシーン上に描画する。
 	if (debugEditor_) {
 		SceneManager* editorSceneManager = debugEditor_->GetSceneManager();

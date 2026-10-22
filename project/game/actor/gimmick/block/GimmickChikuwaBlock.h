@@ -4,6 +4,10 @@
 // 乗ると揺れ、落下・非表示を経て再出現する足場です。時間は param_ があればその設定を使います。
 class GimmickChikuwaBlock : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "ChikuwaBlock";
+    static constexpr const char* kModelPath = "Stages/block";
+
     enum class State {
         Idle,    // 待機中（足場として存在）
         Shaking, // プレイヤーが乗って震えている

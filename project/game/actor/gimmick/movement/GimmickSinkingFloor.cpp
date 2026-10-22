@@ -1,4 +1,5 @@
 #include "GimmickSinkingFloor.h"
+#include "engine/utility/SystemDebug/editor/core/ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "MovingFloorSupport.h"
 #include "SceneManager.h"
@@ -11,11 +12,25 @@ namespace {
 // 一つの沈む床を構成する子の上面も調べ、どの部品を踏んでも親を始動する。
 bool HasRiderOnDeck(engine::Object3d& part, Character& actor) {
     if (const Collider* collider = part.GetCollider(); collider && part.GetCollisionAttribute() != 0) {
-        if (IsStandingOnMovingFloor(part, actor))
+        if (!collider->HasModelVolume() && IsStandingOnMovingFloor(part, actor))
             return true;
+        if (!actor.isDead && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
+            collider->HasModelVolume()) {
+            // 親の非一様拡縮で傾いた子床は、箱の上端でなく実際の凸形状の上面を測る。
+            const AABB body = actor.GetAABB();
+            const engine::Vector3 origin = {
+                (body.min.x + body.max.x) * 0.5f, body.min.y + 0.35f,
+                (body.min.z + body.max.z) * 0.5f
+            };
+            float distance = 0.0f;
+            engine::Vector3 normal{};
+            if (collider->RaycastModelVolume(origin, {0.0f, -1.0f, 0.0f}, 0.65f, distance, normal) &&
+                normal.y > 0.5f && std::abs(origin.y - distance - body.min.y) <= 0.25f)
+                return true;
+        }
         // 傾いた子床ではAABB最高点が上面中央より高い。実際のOBB上面で足元を測る。
         if (!actor.isDead && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
-            collider->GetType() == ColliderType::kOBB) {
+            collider->GetType() == ColliderType::kOBB && !collider->HasModelVolume()) {
             const OBB box = collider->GetOBB();
             const engine::Vector3 normal = box.orientations[1];
             const auto body = actor.GetAABB();
@@ -47,6 +62,19 @@ void GimmickSinkingFloor::Initialize(engine::Object3dCommon* common, const std::
     SetClassName("Gimmick");
     SetGimmickType("SinkingFloor");
     SetName("Gimmick_SinkingFloor");
+
+    // 登録済みのクラスでは共通処理が二重登録を省きます。個体のアドレスは台帳へ渡しません。
+    engine::ObjectPropertyDefinition<GimmickSinkingFloor> properties(*this, kTypeId, "沈む床");
+    const auto shallow = +[](const GimmickSinkingFloor& floor) { return !floor.param_ || floor.param_->actionMode != 1; };
+    const auto submerged = +[](const GimmickSinkingFloor& floor) { return floor.param_ && floor.param_->actionMode == 1; };
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("沈み方", "actionMode", &Parameter::actionMode, 0, 1, nullptr,
+                         {"従来の浅い沈み込み", "踏むと水没して復帰"});
+    properties.Expose("浅い沈み深さ", ENGINE_PROPERTY(sinkDepth_), 0.1f, 100.0f, shallow);
+    properties.Expose("沈み込みの追従係数", ENGINE_PROPERTY(sinkSpeed_), 0.1f, 20.0f, shallow);
+    properties.Parameter("沈む深さ", "moveAmount", &Parameter::moveAmount, 0.1f, 100.0f, submerged);
+    properties.Parameter("昇降速度", "speed", &Parameter::speed, 0.1f, 20.0f, submerged);
+    properties.Parameter("水没後の待機時間", "interval", &Parameter::interval, 0.1f, 10.0f, submerged);
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 }

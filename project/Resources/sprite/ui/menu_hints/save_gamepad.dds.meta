@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "04e2f59791f2b8fddf19ee24c0d23455",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/menu_hints/save_gamepad.dds",
+  "version": 1
+}

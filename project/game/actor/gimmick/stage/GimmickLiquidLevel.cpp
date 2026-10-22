@@ -1,4 +1,5 @@
 #include "GimmickLiquidLevel.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
@@ -31,6 +32,22 @@ void GimmickLiquidLevel::Initialize(engine::Object3dCommon* common, const std::s
     param_->returnOnOff = true;
 
     ApplyLiquidVisual();
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickLiquidLevel;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "水位・マグマ上下",
+        "脱出モードのTarget IDは開始マーカー、+1は終了、+2は復帰です。マーカーのScaleが進入範囲です。連動床・火山弾のTarget IDを液面のMy Event IDへ接続します。出現床とスイッチは液面ID+4、入口岩戸はID+5です。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("液面の動作", "actionMode", &Parameter::actionMode, 0.0f, 1.0f,
+        nullptr, {"従来のスイッチ上下", "マグマ脱出：一定速度で上昇"});
+    properties.Parameter("開始前の予告時間", "shakeDuration", &Parameter::shakeDuration, 0.0f, 10.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); });
+    properties.Parameter("液体の種類", "colorType", &Parameter::colorType, 0.0f, 1.0f,
+        nullptr, {"水", "マグマ"});
+    properties.Parameter("上下量", "moveAmount", &Parameter::moveAmount, -500.0f, 500.0f);
+    properties.Parameter("上下速度", "moveSpeed", &Parameter::moveSpeed, 0.1f, 60.0f);
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
 }
 
 void GimmickLiquidLevel::Update(float deltaTime) {

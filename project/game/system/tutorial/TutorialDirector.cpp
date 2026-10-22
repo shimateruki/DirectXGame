@@ -3,6 +3,8 @@
 
 #include "BaseScene.h"
 #include "BaseEnemy.h"
+#include "game/actor/enemy/spawn/EnemyFactory.h"
+#include "CollisionManager.h"
 #include "CollisionConfig.h"
 #include "Camera.h"
 #include "CameraManager.h"
@@ -94,7 +96,8 @@ bool TutorialDirector::Initialize(BaseScene* scene, Player* player, engine::Inpu
 
         SpawnEnemySlot slot;
         slot.objectName = objectName;
-        slot.enemy = enemy;
+        slot.initialDefinition = enemy->ExportToJson();
+        slot.initialCustomState = enemy->CaptureReplayState().custom;
         slot.initialPosition = enemy->GetTranslate();
 
         // 非表示中に保存された敵は衝突設定が0になるため、出現時の通常設定を保持します。
@@ -161,7 +164,7 @@ void TutorialDirector::Finalize() {
     stepConditionSatisfied_ = false;
     conditionSatisfiedTimer_ = 0.0f;
     morphWasActiveOnStepEntry_ = false;
-    carriedEnemyOnStepEntry_ = nullptr;
+    carriedEnemyOnStepEntryName_.clear();
     promptPanel_ = {};
     promptLabel_ = {};
     promptIcons_ = {};
@@ -205,10 +208,13 @@ void TutorialDirector::Update(float deltaTime) {
     UpdateCinematic(deltaTime);
 
     // 手順が続いている間も、最後に使用した入力方式へ案内を切り替えます。
-    if (!stepConditionSatisfied_ && inputManager_ &&
+    if (inputManager_ &&
         (promptGamepadMode_ != inputManager_->IsGamepadMode() ||
          promptBindingSignature_ != GetInputGlyphBindingSignature())) {
+        // 達成後のフェード中も説明を揃え、切替によって消した案内を再表示しません。
+        const bool wasVisible = promptRequestedVisible_;
         ApplyStepPrompt(&steps_[static_cast<size_t>(currentStepIndex_)]);
+        SetPromptVisible(wasVisible);
     }
 
     UpdatePrompt(deltaTime);
@@ -217,7 +223,7 @@ void TutorialDirector::Update(float deltaTime) {
     // 運搬対象の取り違えを先に回復し、そのフレームは達成判定へ進めません。
     const Step& step = steps_[static_cast<size_t>(currentStepIndex_)];
 
-    if (RecoverFromWrongCarriedAction(step)) {
+    if ((deltaTime > 0.0f && RecoverMissingPracticeEnemy(step)) || RecoverFromWrongCarriedAction(step)) {
         return;
     }
 
@@ -261,9 +267,16 @@ const std::string& TutorialDirector::GetCurrentStepId() const {
 
 void TutorialDirector::CaptureReplayState(json& state) const {
     // 対象物はポインタでなく名前を保存し、復元時に現シーンから解決する。
-    const auto objectName = [](const engine::Object3d* object) { return object ? object->GetName() : std::string{}; };
+    const auto objectName = [this](const engine::Object3d* object) {
+        for (const auto& candidate : scene_->GetObjects())
+            if (candidate && candidate.get() == object) return candidate->GetName();
+        return std::string{};
+    };
 
+    json activeEnemies = json::array();
+    for (const auto& slot : spawnEnemies_) if (slot.active) activeEnemies.push_back(slot.objectName);
     state = {{"currentStepIndex", currentStepIndex_},
+             {"activeSpawnEnemies", std::move(activeEnemies)},
              {"stepTimer", stepTimer_},
              {"conditionSatisfiedTimer", conditionSatisfiedTimer_},
              {"stepStartPosition", {stepStartPosition_.x, stepStartPosition_.y, stepStartPosition_.z}},
@@ -274,7 +287,7 @@ void TutorialDirector::CaptureReplayState(json& state) const {
              {"controlsGuideOpened", controlsGuideOpened_},
              {"stepConditionSatisfied", stepConditionSatisfied_},
              {"morphWasActiveOnStepEntry", morphWasActiveOnStepEntry_},
-             {"carriedEnemyOnStepEntry", objectName(carriedEnemyOnStepEntry_)},
+             {"carriedEnemyOnStepEntry", carriedEnemyOnStepEntryName_},
              {"playerCarriedEnemy", player_ ? objectName(player_->GetCarriedEnemy()) : std::string{}},
              {"promptAlpha", promptAlpha_},
              {"promptRequestedVisible", promptRequestedVisible_},
@@ -307,12 +320,17 @@ void TutorialDirector::RestoreReplayState(const json& state) {
         ReadVector3(*found, stepStartPosition_);
     }
 
+    if (state.contains("activeSpawnEnemies") && state["activeSpawnEnemies"].is_array()) {
+        const auto& active = state["activeSpawnEnemies"];
+        for (auto& slot : spawnEnemies_)
+            slot.active = std::find(active.begin(), active.end(), slot.objectName) != active.end();
+    }
     started_ = state.value("started", false);
     completed_ = state.value("completed", false);
     controlsGuideOpened_ = state.value("controlsGuideOpened", false);
     stepConditionSatisfied_ = state.value("stepConditionSatisfied", false);
     morphWasActiveOnStepEntry_ = state.value("morphWasActiveOnStepEntry", false);
-    carriedEnemyOnStepEntry_ = FindObjectByName(state.value("carriedEnemyOnStepEntry", std::string{}));
+    carriedEnemyOnStepEntryName_ = state.value("carriedEnemyOnStepEntry", std::string{});
 
     const Step* currentStep = currentStepIndex_ >= 0 && currentStepIndex_ < maxStepIndex
                                   ? &steps_[static_cast<size_t>(currentStepIndex_)]
@@ -372,7 +390,7 @@ void TutorialDirector::RestoreReplayState(const json& state) {
         cinematicActive_ = cinematicPlayer_.IsPlaying();
 
         if (cinematicActive_ && player_ && !player_->IsCinematicLocked()) {
-            player_->BeginCinematicLock();
+            player_->BeginCinematicLock(true); // 獲得したコピーは登場演出や巻き戻しでも維持する。
         }
     }
 }
@@ -396,7 +414,7 @@ void TutorialDirector::Restart() {
     stepConditionSatisfied_ = false;
     conditionSatisfiedTimer_ = 0.0f;
     morphWasActiveOnStepEntry_ = false;
-    carriedEnemyOnStepEntry_ = nullptr;
+    carriedEnemyOnStepEntryName_.clear();
     promptAlpha_ = 0.0f;
     objectiveAlphas_ = {};
     objectiveAnimationTime_ = 0.0f;
@@ -492,6 +510,7 @@ bool TutorialDirector::LoadFlow(const std::string& flowPath) {
             step.action = item.value("action", "");
             step.cinematicPath = item.value("cinematic", "");
             step.promptLabel = item.value("promptLabel", "");
+            step.promptLabelGamepad = item.value("promptLabelGamepad", "");
             step.objectiveTarget = item.value("objectiveTarget", "");
             step.threshold = item.value("threshold", 0.0f);
             step.radius = (std::max)(0.1f, item.value("radius", 3.0f));
@@ -627,7 +646,9 @@ void TutorialDirector::EnterStep(int stepIndex) {
     stepConditionSatisfied_ = false;
     stepStartPosition_ = player_->GetWorldPosition();
     morphWasActiveOnStepEntry_ = player_->IsEnemyMorphed();
-    carriedEnemyOnStepEntry_ = player_->GetCarriedEnemy();
+    carriedEnemyOnStepEntryName_.clear();
+    for (const auto& object : scene_->GetObjects())
+        if (object && object.get() == player_->GetCarriedEnemy()) carriedEnemyOnStepEntryName_ = object->GetName();
 
     Step& step = steps_[static_cast<size_t>(currentStepIndex_)];
 
@@ -741,10 +762,11 @@ bool TutorialDirector::EvaluateCurrentStep() const {
                HorizontalDistance(player_->GetWorldPosition(), step.targetPosition) <= step.radius;
 
     case CompletionCondition::kCarryEnemy:
-        return player_->GetCarriedEnemy() != nullptr;
+        return player_->GetCarriedEnemy() != nullptr &&
+               (step.objectiveTarget.empty() || player_->GetCarriedEnemy() == FindObjectByName(step.objectiveTarget));
 
     case CompletionCondition::kEnemyThrown: {
-        auto* enemy = dynamic_cast<BaseEnemy*>(carriedEnemyOnStepEntry_);
+        auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(carriedEnemyOnStepEntryName_.empty() ? step.objectiveTarget : carriedEnemyOnStepEntryName_));
         return enemy && player_->GetCarriedEnemy() == nullptr && !player_->IsEnemyMorphed() && enemy->IsThrownPhysics();
     }
 
@@ -755,7 +777,7 @@ bool TutorialDirector::EvaluateCurrentStep() const {
         return player_->IsEnemyMorphed();
 
     case CompletionCondition::kMorphReleased:
-        return morphWasActiveOnStepEntry_ && !player_->IsEnemyMorphed() && !player_->IsEnemyMorphReleasing();
+        return !player_->IsEnemyMorphed() && !player_->IsEnemyMorphReleasing();
 
     case CompletionCondition::kControlsGuideOpened:
         return controlsGuideOpened_;
@@ -767,12 +789,16 @@ bool TutorialDirector::EvaluateCurrentStep() const {
 }
 
 bool TutorialDirector::AreTargetEnemiesDefeated(const Step& step) const {
-    // 対象に残っている敵がすべて死亡したときだけ課題を達成する。
+    // 出現済みの対象について、HP切れ・吸収・消去を倒し方によらず達成へ数える。
     if (step.targetEnemyObjects.empty()) {
         return false;
     }
 
     for (const std::string& objectName : step.targetEnemyObjects) {
+        // まだ出現していない対象を、名前がないだけで撃破済みにしない。
+        const auto slot = std::find_if(spawnEnemies_.begin(), spawnEnemies_.end(),
+                                      [&](const SpawnEnemySlot& value) { return value.objectName == objectName; });
+        if (slot == spawnEnemies_.end() || !slot->active) return false;
         engine::Object3d* object = FindObjectByName(objectName);
 
         if (!object) {
@@ -781,12 +807,34 @@ bool TutorialDirector::AreTargetEnemiesDefeated(const Step& step) const {
 
         const auto* enemy = dynamic_cast<const BaseEnemy*>(object);
 
-        if (!enemy || !enemy->isDead) {
+        if (!enemy || (!enemy->isDead && !enemy->IsReplayRemoved() &&
+                       (!enemy->param_ || enemy->param_->hp > 0.0f))) {
             return false;
         }
     }
 
     return true;
+}
+
+bool TutorialDirector::RecoverMissingPracticeEnemy(const Step& step) {
+    if (stepConditionSatisfied_ || cinematicActive_ || step.objectiveTarget.empty()) return false;
+    const bool practice = step.condition == CompletionCondition::kTargetLocked ||
+                          step.condition == CompletionCondition::kCarryEnemy ||
+                          step.condition == CompletionCondition::kEnemyThrown ||
+                          step.condition == CompletionCondition::kMorphActive;
+    if (!practice || (step.condition == CompletionCondition::kMorphActive && player_->IsEnemyMorphed())) return false;
+    auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(step.objectiveTarget));
+    if (step.condition == CompletionCondition::kEnemyThrown && enemy && enemy->IsThrownPhysics() &&
+        !player_->GetCarriedEnemy() && !player_->IsEnemyMorphed()) return false;
+    const bool lost = !enemy || enemy->IsReplayRemoved() || enemy->isDead ||
+                      (enemy->param_ && enemy->param_->hp <= 0.0f);
+    const bool lostCarry = step.condition == CompletionCondition::kEnemyThrown &&
+                           player_->GetCarriedEnemy() != enemy;
+    if (!lost && !lostCarry) return false;
+    // 参照先がなくなった運搬・吸収演出も解放してから、必要な操作だけをやり直す。
+    player_->ResetTutorialCarryActionState();
+    lockedTargetName_.clear();
+    return JumpToStep(step.wrongActionRetryStep.empty() ? step.id : step.wrongActionRetryStep);
 }
 
 // 吸収と投擲の練習を取り違えると対象が失われるため、保持状態を戻して指定ステップから再試行します。
@@ -801,7 +849,7 @@ bool TutorialDirector::RecoverFromWrongCarriedAction(const Step& step) {
     bool thrownDuringAbsorbPractice = false;
 
     if (!step.allowCarriedThrow) {
-        auto* enemy = dynamic_cast<BaseEnemy*>(carriedEnemyOnStepEntry_);
+        auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(carriedEnemyOnStepEntryName_.empty() ? step.objectiveTarget : carriedEnemyOnStepEntryName_));
         thrownDuringAbsorbPractice =
             enemy && player_->GetCarriedEnemy() == nullptr && !player_->IsEnemyMorphed() && enemy->IsThrownPhysics();
     }
@@ -872,7 +920,7 @@ void TutorialDirector::BeginStepCinematic(const Step& step) {
     cinematicActive_ = cinematicPlayer_.IsPlaying();
 
     if (cinematicActive_ && player_) {
-        player_->BeginCinematicLock();
+        player_->BeginCinematicLock(true); // 獲得したコピーは登場演出や巻き戻しでも維持する。
     }
 
     SetPromptVisible(false);
@@ -956,57 +1004,47 @@ void TutorialDirector::SetSpawnEnemyActive(const std::string& objectName, bool a
     }
 
     SpawnEnemySlot& slot = *it;
-    slot.enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(objectName));
-
-    if (!slot.enemy) {
-        slot.active = false;
-        return;
+    auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(objectName));
+    if (!enemy && active) {
+        // 通常の撃破処理で実体が削除されても、配置時の定義から同じ練習対象を作り直す。
+        auto created = EnemyFactory::GetInstance()->CreateEnemy(slot.initialDefinition.value("enemyType", "Slime"), scene_->GetObject3dCommon());
+        if (created) {
+            created->ImportFromJson(slot.initialDefinition);
+            created->SetName(slot.objectName);
+            enemy = dynamic_cast<BaseEnemy*>(scene_->AddObjectImmediate(std::move(created)));
+        }
     }
-
-    if (!active && player_ && player_->GetCarriedEnemy() == slot.enemy) {
-        player_->ReleaseCarriedEnemy(true);
-    }
-
     slot.active = active;
-    slot.enemy->isDead = false;
-
+    if (!enemy) return;
+    if (player_ && player_->GetCarriedEnemy() == enemy) player_->ReleaseCarriedEnemy(true);
     if (active) {
-        // 再試行時に前回の投擲物理状態を持ち越さないよう、一時状態を初期化します。
-        slot.enemy->SetCarried(true);
+        // 消滅演出・潰れ・投擲速度も戻し、再出現直後に再び消える状態を持ち越さない。
+        enemy->ImportFromJson(slot.initialDefinition);
+        auto state = enemy->CaptureReplayState();
+        state.custom = slot.initialCustomState;
+        state.dead = false;
+        state.replayRemoved = false;
+        enemy->RestoreReplayState(state);
+        enemy->SetTarget(player_);
     }
-
-    slot.enemy->SetCarried(false);
-    slot.enemy->SetTranslate(slot.initialPosition);
-    slot.enemy->SetVelocity({0.0f, 0.0f, 0.0f});
-
-    if (active && slot.maxHpOverride > 0.0f) {
-        if (!slot.enemy->param_.has_value()) {
-            slot.enemy->param_.emplace();
+    enemy->isDead = false;
+    enemy->SetCarried(false);
+    enemy->SetTranslate(slot.initialPosition);
+    enemy->SetVelocity({0.0f, 0.0f, 0.0f});
+    if (active && enemy->param_) {
+        if (slot.maxHpOverride > 0.0f) enemy->param_->hp = enemy->param_->maxHp = slot.maxHpOverride;
+        if (slot.detectionRangeOverride >= 0.0f) {
+            enemy->param_->detectionRange = slot.detectionRangeOverride;
+            enemy->SetDetectionRange(slot.detectionRangeOverride);
         }
-
-        slot.enemy->param_->maxHp = slot.maxHpOverride;
-        slot.enemy->param_->hp = slot.maxHpOverride;
     }
-
-    if (active && slot.detectionRangeOverride >= 0.0f) {
-        if (!slot.enemy->param_.has_value()) {
-            slot.enemy->param_.emplace();
-        }
-
-        slot.enemy->param_->detectionRange = slot.detectionRangeOverride;
-        slot.enemy->SetDetectionRange(slot.detectionRangeOverride);
-    }
-
-    slot.enemy->SetDormant(!active);
-    slot.enemy->SetIsVisible(active);
-    slot.enemy->SetCollisionAttribute(active ? slot.collisionAttribute : 0);
-    slot.enemy->SetCollisionMask(active ? slot.collisionMask : 0);
-
-    // 出現位置と当たり判定を同じフレームで確定します。
-    slot.enemy->UpdateLocalMatrix();
-    slot.enemy->UpdateWorldMatrix(false);
-
+    enemy->SetDormant(!active);
+    enemy->SetIsVisible(active);
+    enemy->SetCollisionAttribute(active ? slot.collisionAttribute : 0);
+    enemy->SetCollisionMask(active ? slot.collisionMask : 0);
+    enemy->UpdateWorldMatrix(true);
     if (active) {
+        CollisionManager::GetInstance()->AddObject(enemy);
         DebugConsole::GetInstance()->AddLog("[Tutorial] Enemy spawned: " + slot.objectName);
     }
 }
@@ -1074,7 +1112,7 @@ void TutorialDirector::RestoreSpawnEnemyStateBeforeStep(int stepIndex) {
         }
 
         if (step.spawnEnemiesDormant) {
-            SetStepSpawnEnemiesDormant(step, true);
+            SetStepSpawnEnemiesDormant(step, false);
         }
     }
 }
@@ -1156,7 +1194,10 @@ void TutorialDirector::ApplyStepPrompt(const Step* step) {
             glyphs.push_back({path});
     }
 
-    const bool show = step && step->showPrompt && (!glyphs.empty() || !step->promptLabel.empty());
+    // アイコンと説明を同じ入力モードで選びます。共通説明だけの手順は従来の画像を使います。
+    const std::string labelPath = step ?
+        (promptGamepadMode_ && !step->promptLabelGamepad.empty() ? step->promptLabelGamepad : step->promptLabel) : "";
+    const bool show = step && step->showPrompt && (!glyphs.empty() || !labelPath.empty());
     SetPromptVisible(show);
     promptLabel_.requestedVisible = false;
 
@@ -1168,13 +1209,13 @@ void TutorialDirector::ApplyStepPrompt(const Step* step) {
         return;
     }
 
-    const bool hasLabel = !step->promptLabel.empty() && promptLabel_.sprite;
+    const bool hasLabel = !labelPath.empty() && promptLabel_.sprite;
 
     if (hasLabel) {
         promptLabel_.requestedVisible = true;
         promptLabel_.sprite->SetVisible(true);
         const bool fourKeys = glyphs.size() >= 4;
-        SetFullTextureRect(promptLabel_.sprite, step->promptLabel, {fourKeys ? 360.0f : 470.0f, 76.0f});
+        SetFullTextureRect(promptLabel_.sprite, labelPath, {fourKeys ? 360.0f : 470.0f, 76.0f});
         promptLabel_.basePosition.x = glyphs.empty() ? 960.0f : (fourKeys ? 1140.0f : 1070.0f);
         promptLabel_.baseSize = promptLabel_.sprite->GetSize();
     }
@@ -1392,6 +1433,14 @@ void TutorialDirector::SetObjectiveMarkerVisible(bool visible) {
 #ifdef USE_IMGUI
 void TutorialDirector::DrawImGui() {
     // 実行中の手順と演出を確認し、開発時は任意の手順へ移動できる。
+    // 押し込みが届いているかを、対象選択の成否とは分けて確認できます。
+    if (inputManager_) {
+        ImGui::Text("押し込み状態: L3 %s / R3 %s",
+                    inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_LEFT_THUMB) ? "ON" : "OFF",
+                    inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_RIGHT_THUMB) ? "ON" : "OFF");
+        ImGui::TextDisabled("R3: ロックオン/解除、L3: 対象切替");
+    }
+
     ImGui::Text("Flow: %s", loaded_ ? "Ready" : "Load Failed");
     ImGui::Text("Step: %d / %d", currentStepIndex_ + 1, static_cast<int>(steps_.size()));
     ImGui::Text("ID: %s", GetCurrentStepId().c_str());

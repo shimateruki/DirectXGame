@@ -947,9 +947,9 @@
             "roughness": 1.0,
             "saveCategory": "Object",
             "scale": [
-                17.833999633789063,
-                17.833999633789063,
-                17.833999633789063
+                17.833999633789062,
+                17.833999633789062,
+                17.833999633789062
             ],
             "tag": "",
             "targetID": -1,
@@ -5803,7 +5803,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -5813,7 +5813,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -5879,8 +5879,8 @@
             "name": "Stage3_HighCrown_Wall_00",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 54.880001068115234,
@@ -5931,7 +5931,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -5941,7 +5941,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6007,8 +6007,8 @@
             "name": "Stage3_HighCrown_Wall_01",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 54.3213996887207,
@@ -6059,7 +6059,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6069,7 +6069,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6135,8 +6135,8 @@
             "name": "Stage3_HighCrown_Wall_02",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 52.65696716308594,
@@ -6187,7 +6187,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6197,7 +6197,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6263,8 +6263,8 @@
             "name": "Stage3_HighCrown_Wall_03",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 49.920597076416016,
@@ -6315,7 +6315,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6325,7 +6325,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6391,8 +6391,8 @@
             "name": "Stage3_HighCrown_Wall_04",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 46.16799545288086,
@@ -6443,7 +6443,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6453,7 +6453,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6519,8 +6519,8 @@
             "name": "Stage3_HighCrown_Wall_05",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 41.47553253173828,
@@ -6571,7 +6571,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6581,7 +6581,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6647,8 +6647,8 @@
             "name": "Stage3_HighCrown_Wall_06",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 35.93875503540039,
@@ -6699,7 +6699,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6709,7 +6709,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6775,8 +6775,8 @@
             "name": "Stage3_HighCrown_Wall_07",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 29.670368194580078,
@@ -6827,7 +6827,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6837,7 +6837,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -6903,8 +6903,8 @@
             "name": "Stage3_HighCrown_Wall_08",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 22.797977447509766,
@@ -6955,7 +6955,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -6965,7 +6965,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7031,8 +7031,8 @@
             "name": "Stage3_HighCrown_Wall_09",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 15.461487770080566,
@@ -7083,7 +7083,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7093,7 +7093,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7159,8 +7159,8 @@
             "name": "Stage3_HighCrown_Wall_13",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -15.461487770080566,
@@ -7211,7 +7211,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7221,7 +7221,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7287,8 +7287,8 @@
             "name": "Stage3_HighCrown_Wall_14",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -22.797977447509766,
@@ -7339,7 +7339,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7349,7 +7349,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7415,8 +7415,8 @@
             "name": "Stage3_HighCrown_Wall_15",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -29.670368194580078,
@@ -7467,7 +7467,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7477,7 +7477,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7543,8 +7543,8 @@
             "name": "Stage3_HighCrown_Wall_16",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -35.93875503540039,
@@ -7595,7 +7595,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7605,7 +7605,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7671,8 +7671,8 @@
             "name": "Stage3_HighCrown_Wall_17",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -41.47553253173828,
@@ -7723,7 +7723,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7733,7 +7733,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7799,8 +7799,8 @@
             "name": "Stage3_HighCrown_Wall_18",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -46.16799545288086,
@@ -7851,7 +7851,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7861,7 +7861,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -7927,8 +7927,8 @@
             "name": "Stage3_HighCrown_Wall_19",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -49.920597076416016,
@@ -7979,7 +7979,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -7989,7 +7989,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8055,8 +8055,8 @@
             "name": "Stage3_HighCrown_Wall_20",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -52.65696716308594,
@@ -8107,7 +8107,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -8117,7 +8117,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8183,8 +8183,8 @@
             "name": "Stage3_HighCrown_Wall_21",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -54.3213996887207,
@@ -8235,7 +8235,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -8245,7 +8245,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8311,8 +8311,8 @@
             "name": "Stage3_HighCrown_Wall_22",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -54.880001068115234,
@@ -8363,7 +8363,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -8373,7 +8373,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8439,8 +8439,8 @@
             "name": "Stage3_HighCrown_Wall_23",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -54.3213996887207,
@@ -8491,7 +8491,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -8501,7 +8501,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8567,8 +8567,8 @@
             "name": "Stage3_HighCrown_Wall_24",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -52.65696716308594,
@@ -8619,7 +8619,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -8629,7 +8629,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8695,8 +8695,8 @@
             "name": "Stage3_HighCrown_Wall_25",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -49.920597076416016,
@@ -8747,7 +8747,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -8757,7 +8757,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8823,8 +8823,8 @@
             "name": "Stage3_HighCrown_Wall_26",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -46.16799545288086,
@@ -8875,7 +8875,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -8885,7 +8885,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -8951,8 +8951,8 @@
             "name": "Stage3_HighCrown_Wall_27",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -41.47553253173828,
@@ -9003,7 +9003,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9013,7 +9013,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9079,8 +9079,8 @@
             "name": "Stage3_HighCrown_Wall_28",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -35.93875503540039,
@@ -9131,7 +9131,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9141,7 +9141,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9207,8 +9207,8 @@
             "name": "Stage3_HighCrown_Wall_29",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -29.670368194580078,
@@ -9259,7 +9259,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9269,7 +9269,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9335,8 +9335,8 @@
             "name": "Stage3_HighCrown_Wall_30",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -22.797977447509766,
@@ -9387,7 +9387,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9397,7 +9397,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9463,8 +9463,8 @@
             "name": "Stage3_HighCrown_Wall_31",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -15.461487770080566,
@@ -9515,7 +9515,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9525,7 +9525,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9591,8 +9591,8 @@
             "name": "Stage3_HighCrown_Wall_32",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -7.810235977172852,
@@ -9643,7 +9643,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9653,7 +9653,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9719,8 +9719,8 @@
             "name": "Stage3_HighCrown_Wall_33",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -0.0,
@@ -9771,7 +9771,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9781,7 +9781,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9847,8 +9847,8 @@
             "name": "Stage3_HighCrown_Wall_34",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 7.810235977172852,
@@ -9899,7 +9899,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -9909,7 +9909,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -9975,8 +9975,8 @@
             "name": "Stage3_HighCrown_Wall_35",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 15.461487770080566,
@@ -10027,7 +10027,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10037,7 +10037,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10103,8 +10103,8 @@
             "name": "Stage3_HighCrown_Wall_36",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 22.797977447509766,
@@ -10155,7 +10155,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10165,7 +10165,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10231,8 +10231,8 @@
             "name": "Stage3_HighCrown_Wall_37",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 29.670368194580078,
@@ -10283,7 +10283,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10293,7 +10293,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10359,8 +10359,8 @@
             "name": "Stage3_HighCrown_Wall_38",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 35.93875503540039,
@@ -10411,7 +10411,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10421,7 +10421,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10487,8 +10487,8 @@
             "name": "Stage3_HighCrown_Wall_39",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 41.47553253173828,
@@ -10539,7 +10539,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10549,7 +10549,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10615,8 +10615,8 @@
             "name": "Stage3_HighCrown_Wall_40",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 46.16799545288086,
@@ -10667,7 +10667,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10677,7 +10677,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10743,8 +10743,8 @@
             "name": "Stage3_HighCrown_Wall_41",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 49.920597076416016,
@@ -10795,7 +10795,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10805,7 +10805,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10871,8 +10871,8 @@
             "name": "Stage3_HighCrown_Wall_42",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 52.65696716308594,
@@ -10923,7 +10923,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    2.0199999809265137,
+                    4.785,
                     0.0
                 ],
                 "rotation": [
@@ -10933,7 +10933,7 @@
                 ],
                 "size": [
                     3.049999952316284,
-                    2.0199999809265137,
+                    4.785,
                     0.7799999713897705
                 ],
                 "type": 3
@@ -10999,8 +10999,8 @@
             "name": "Stage3_HighCrown_Wall_43",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 54.3213996887207,
@@ -11115,8 +11115,8 @@
             "name": "Stage3_HighCrown_DecorTower_1",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -44.099998474121094,
@@ -11231,8 +11231,8 @@
             "name": "Stage3_HighCrown_DecorTower_2",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 44.099998474121094,
@@ -11347,8 +11347,8 @@
             "name": "Stage3_HighCrown_DecorTower_3",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 -44.099998474121094,
@@ -11463,8 +11463,8 @@
             "name": "Stage3_HighCrown_DecorTower_4",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "parentName": "Stage3_HighCrown_OuterWallGroup",
             "particleName": "",
             "position": [
                 44.099998474121094,
@@ -13092,13 +13092,13 @@
             "name": "[Collision] Stage3_HighCrown_BossGateFrame_Pillar_1",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "26788cca-cd83-5530-904b-317edef395aa",
+            "parentName": "Stage3_HighCrown_BossGateFrame",
             "particleName": "",
             "position": [
                 -7.25,
-                0.7200000286102295,
-                43.20000076293945
+                0.0,
+                0.0
             ],
             "quaternion": [
                 0.0,
@@ -13219,13 +13219,13 @@
             "name": "[Collision] Stage3_HighCrown_BossGateFrame_Pillar_2",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "26788cca-cd83-5530-904b-317edef395aa",
+            "parentName": "Stage3_HighCrown_BossGateFrame",
             "particleName": "",
             "position": [
                 7.25,
-                0.7200000286102295,
-                43.20000076293945
+                0.0,
+                0.0
             ],
             "quaternion": [
                 0.0,
@@ -13271,7 +13271,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    -0.6499999761581421,
+                    0.53,
                     0.0
                 ],
                 "rotation": [
@@ -13280,9 +13280,9 @@
                     0.0
                 ],
                 "size": [
-                    0.8999999761581421,
-                    1.149999976158142,
-                    0.2199999988079071
+                    1.35,
+                    1.55,
+                    0.22
                 ],
                 "type": 3
             },
@@ -13385,8 +13385,8 @@
             "particleName": "",
             "position": [
                 0.0,
-                -0.9079999923706055,
-                82.30944061279297
+                -0.4855000126361847,
+                78.30944061279297
             ],
             "quaternion": [
                 0.0,
@@ -13420,12 +13420,12 @@
             ],
             "type": "Gimmick",
             "waterParam": {
-                "billboardScale": 0.550000011920929,
+                "billboardScale": 1.48,
                 "effectIntensity": 1.5800000429153442,
                 "effectScale": 1.1799999475479126,
-                "effectScaleX": 1.0,
-                "effectScaleY": 1.0,
-                "effectScaleZ": 1.0,
+                "effectScaleX": 1.198,
+                "effectScaleY": 1.215,
+                "effectScaleZ": 0.425,
                 "effectSoftness": 0.6600000262260437,
                 "effectType": 1.0,
                 "flowSpeedX": 0.0,
@@ -14708,7 +14708,975 @@
                     1.0,
                     1.0
                 ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "f2ddc5d0-b5ee-497c-9c9d-731f1be6417c",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/gate",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_EntranceDecor_PortalFrame",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.53,
+                0.0
+            ],
+            "quaternion": [
+                0.5,
+                0.5,
+                0.5,
+                0.5
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                1.5707963267948966,
+                0,
+                1.5707963267948966
+            ],
+            "roughness": 0.6200000047683716,
+            "saveCategory": "Object",
+            "scale": [
+                0.6296296185099705,
+                0.7407407276587887,
+                0.6296296185099705
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": true,
+            "enemyType": "",
+            "envIntensity": 0.3199999928474426,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "196e44ed-3e6c-5455-880c-643aa8af4168",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_OuterWallGroup",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                2.0,
+                2.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": true,
+            "enemyType": "",
+            "envIntensity": 0.3199999928474426,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "85680158-5658-58bf-9516-66f0075ede03",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/high_crown/high_crown_tower.obj",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_BossGateFlankTower_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "26788cca-cd83-5530-904b-317edef395aa",
+            "parentName": "Stage3_HighCrown_BossGateFrame",
+            "particleName": "",
+            "position": [
+                -12.65,
+                0.0,
+                -0.8
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                2.0,
+                2.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": true,
+            "enemyType": "",
+            "envIntensity": 0.3199999928474426,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "8a266257-d9d6-5b0e-95cf-4bc1940d10e0",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/high_crown/high_crown_tower.obj",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_BossGateFlankTower_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "26788cca-cd83-5530-904b-317edef395aa",
+            "parentName": "Stage3_HighCrown_BossGateFrame",
+            "particleName": "",
+            "position": [
+                12.65,
+                0.0,
+                -0.8
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                2.0,
+                2.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": true,
+            "enemyType": "",
+            "envIntensity": 0.3199999928474426,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "e7df369d-d1fb-5147-b80f-b14f8dbc3705",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/high_crown/high_crown_gate_frame.obj",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_EntranceDecor_Frame",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                -0.0,
+                -1.43296292829579,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.33333332744645494,
+                0.4888888802548006,
+                0.4444444365952732
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                2.0,
+                2.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.17,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.1,
+                    0.17,
+                    6.1
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
+            "color": [
+                0.72,
+                0.72,
+                0.82,
+                1.0
+            ],
+            "emissive": 0.1599999964237213,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "108aa8fe-a867-5b48-9be1-136348a012ac",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage_select_gate_pad",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_EntranceDecor_Pad",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                -0.0,
+                -1.4922221865084933,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.41999998688697815,
+            "saveCategory": "Object",
+            "scale": [
+                0.5185185093611521,
+                0.38518517838257016,
+                0.5185185093611521
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.5199999809265137,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.7200000286102295,
+                    0.550000011920929,
+                    0.7200000286102295
+                ],
                 "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
+            "color": [
+                0.78,
+                0.78,
+                0.86,
+                1.0
+            ],
+            "emissive": 0.14000000059604645,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.18000000715255737,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "dd0459d7-5f79-5be0-a269-7b4835151117",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/brazier",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_EntranceDecor_Brazier_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                4.59259251148449,
+                -1.43296292829579,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.7200000286102295,
+            "saveCategory": "Object",
+            "scale": [
+                0.8888888731905464,
+                0.8888888731905464,
+                0.8888888731905464
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                0.54,
+                0.3,
+                1.0,
+                0.86
+            ],
+            "emissive": 2.0,
+            "enableEnvMap": false,
+            "enableLighting": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "83cc4fa7-3958-5de4-8b07-feda27a9df35",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 11,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Effects/flame",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_EntranceDecor_Flame_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                4.59259251148449,
+                -0.3366666513607828,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.7200000286102295,
+            "saveCategory": "Object",
+            "scale": [
+                0.592592582127031,
+                0.592592582127031,
+                0.592592582127031
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "type": "Effect",
+            "waterParam": {
+                "billboardScale": 0.7400000095367432,
+                "effectIntensity": 0.8799999952316284,
+                "effectScale": 0.9599999785423279,
+                "effectScaleX": 0.8999999761581421,
+                "effectScaleY": 1.149999976158142,
+                "effectScaleZ": 0.8199999928474426,
+                "effectSoftness": 0.36000001430511475,
+                "effectType": 4.0,
+                "flowSpeedX": -0.029999999329447746,
+                "flowSpeedY": 0.47999998927116394,
+                "topDownDetail": 1.0,
+                "waveFrequency": 2.200000047683716,
+                "waveHeight": 0.5,
+                "waveSpeed": 1.5499999523162842
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    3.65,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.36,
+                    3.65,
+                    1.52
+                ],
+                "type": 3
             },
             "collisionAttribute": 4,
             "collisionAttributeIds": [
@@ -14743,18 +15711,18 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "f2ddc5d0-b5ee-497c-9c9d-731f1be6417c",
+            "guid": "3649ed5b-0f13-51b1-a894-45c7bdec68e0",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
             "localFog": {
                 "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
                     1.0
                 ],
-                "density": 0.5,
+                "density": 0.0,
                 "edgeFade": 0.0,
                 "noiseScale": 0.0,
                 "noiseSpeed": 0.0,
@@ -14766,24 +15734,23 @@
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Stages/gate",
             "myEventID": -1,
-            "name": "ゲート枠",
+            "name": "[Collision] Stage3_HighCrown_EntranceDecor_Pillar_Left",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
             "particleName": "",
             "position": [
-                0.0,
-                0.5569846630096436,
-                0.0
+                2.4166666239867984,
+                -1.43296292829579,
+                -0.0
             ],
             "quaternion": [
-                -0.4999997913837433,
-                -0.4999998211860657,
-                0.49999991059303284,
-                0.5000001788139343
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -14791,16 +15758,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                -2.785520507586625e-07,
-                -1.5707955360412598,
-                1.5707957744598389
+                0.0,
+                0.0,
+                0.0
             ],
-            "roughness": 0.6200000047683716,
+            "roughness": 0.5199999809265137,
             "saveCategory": "Object",
             "scale": [
-                0.9999999403953552,
-                1.0000096559524536,
-                0.5000048279762268
+                0.33333332744645494,
+                0.4888888802548006,
+                0.4444444365952732
             ],
             "tag": "",
             "targetID": -1,
@@ -14809,7 +15776,648 @@
                 1.0,
                 1.0
             ],
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    2.2,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.38,
+                    2.2,
+                    1.2
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "90b4032b-a17a-5817-a57d-3a2cbdc47bba",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "[Collision] Stage3_HighCrown_EntranceDecor_Wing_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                3.299999941719904,
+                -1.43296292829579,
+                -0.12444444224668123
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5199999809265137,
+            "saveCategory": "Object",
+            "scale": [
+                0.33333332744645494,
+                0.4888888802548006,
+                0.4444444365952732
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.5199999809265137,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.7200000286102295,
+                    0.550000011920929,
+                    0.7200000286102295
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
+            "color": [
+                0.78,
+                0.78,
+                0.86,
+                1.0
+            ],
+            "emissive": 0.14000000059604645,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.18000000715255737,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "382dc7a4-3129-593d-b95d-f46953bf3d6d",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/brazier",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_EntranceDecor_Brazier_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                -4.59259251148449,
+                -1.43296292829579,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.7200000286102295,
+            "saveCategory": "Object",
+            "scale": [
+                0.8888888731905464,
+                0.8888888731905464,
+                0.8888888731905464
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
             "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                0.54,
+                0.3,
+                1.0,
+                0.86
+            ],
+            "emissive": 2.0,
+            "enableEnvMap": false,
+            "enableLighting": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "d41ff802-829b-551a-98f3-219866879ccd",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 11,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Effects/flame",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_EntranceDecor_Flame_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                -4.59259251148449,
+                -0.3366666513607828,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.7200000286102295,
+            "saveCategory": "Object",
+            "scale": [
+                0.592592582127031,
+                0.592592582127031,
+                0.592592582127031
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "type": "Effect",
+            "waterParam": {
+                "billboardScale": 0.7400000095367432,
+                "effectIntensity": 0.8799999952316284,
+                "effectScale": 0.9599999785423279,
+                "effectScaleX": 0.8999999761581421,
+                "effectScaleY": 1.149999976158142,
+                "effectScaleZ": 0.8199999928474426,
+                "effectSoftness": 0.36000001430511475,
+                "effectType": 4.0,
+                "flowSpeedX": -0.029999999329447746,
+                "flowSpeedY": 0.47999998927116394,
+                "topDownDetail": 1.0,
+                "waveFrequency": 2.200000047683716,
+                "waveHeight": 0.5,
+                "waveSpeed": 1.5499999523162842
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    3.65,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.36,
+                    3.65,
+                    1.52
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "211d9f77-feb0-51ea-a9f0-6d71cfb290b2",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "[Collision] Stage3_HighCrown_EntranceDecor_Pillar_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                -2.4166666239867984,
+                -1.43296292829579,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5199999809265137,
+            "saveCategory": "Object",
+            "scale": [
+                0.33333332744645494,
+                0.4888888802548006,
+                0.4444444365952732
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    2.2,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.38,
+                    2.2,
+                    1.2
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "fe3eec06-1b2c-558e-8ac0-4a508dd10211",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "[Collision] Stage3_HighCrown_EntranceDecor_Wing_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "c3ee922e-5718-5e17-bdca-19d4c9809c5c",
+            "parentName": "Stage3_HighCrown_EntranceGate",
+            "particleName": "",
+            "position": [
+                -3.299999941719904,
+                -1.43296292829579,
+                -0.12444444224668123
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5199999809265137,
+            "saveCategory": "Object",
+            "scale": [
+                0.33333332744645494,
+                0.4888888802548006,
+                0.4444444365952732
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "InvisibleBox"
         }
     ]
 }

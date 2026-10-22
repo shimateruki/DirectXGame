@@ -31,6 +31,8 @@ public:
         // Gameモード用パラメータ。
         float distance = 15.0f;
         float height = 5.0f;
+        bool stabilizeJumpHeight = true;
+        float jumpHeightAllowance = 8.0f;
         engine::Vector3 angle = { 25.0f, 0.0f, 0.0f };
         engine::Vector3 lockOnOffset = { 0.0f, 4.0f, -12.0f };
 

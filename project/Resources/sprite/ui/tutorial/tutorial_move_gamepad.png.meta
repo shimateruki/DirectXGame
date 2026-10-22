@@ -1,0 +1,11 @@
+{
+  "importer": "TextureImporter",
+  "importSettings": {
+    "generateMipmaps": false,
+    "colorSpace": "Auto"
+  },
+  "source": "Resources/sprite/ui/tutorial/tutorial_move_gamepad.png",
+  "assetType": "Texture",
+  "version": 1,
+  "guid": "6b028fccf67f4f70b931797ef787e830"
+}

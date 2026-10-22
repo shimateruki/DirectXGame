@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "31dfdb6452d5536c9f349299430584a0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_portraits/pink.dds",
+  "version": 1
+}

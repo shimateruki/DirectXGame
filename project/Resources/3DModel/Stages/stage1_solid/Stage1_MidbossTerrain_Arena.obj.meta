@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f4d64c359b025f1f981eca3d0f53d5e3",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_solid/Stage1_MidbossTerrain_Arena.obj",
+  "version": 1
+}

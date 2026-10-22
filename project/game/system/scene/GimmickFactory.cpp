@@ -27,120 +27,96 @@
 #include "GimmickFireCannon.h"
 #include "GimmickMagmaHazard.h"
 #include "GimmickMagmaGeyser.h"
+#include <typeinfo>
 
-namespace {
-
-template <typename T>
-std::unique_ptr<BaseGimmick> CreateSimpleGimmick(engine::Object3dCommon* common, const char* modelPath) {
-    auto gimmick = std::make_unique<T>();
-    gimmick->Initialize(common, modelPath);
-    return gimmick;
+GimmickFactory::GimmickFactory() {
+    // 保存ID・日本語名・生成クラスを一度だけ対応付け、Editorもこの一覧を使用します。
+    registered_.push_back({{"Default", "通常", [](const engine::Object3d& object) {
+        return typeid(object) == typeid(BaseGimmick);
+    }}, [](engine::Object3dCommon* common) {
+        auto object = std::make_unique<BaseGimmick>();
+        object->Initialize(common, "Primitives/cube");
+        return object;
+    }});
+    RegisterGimmick<GimmickMovingFloor>("移動床", GimmickMovingFloor::kTypeId, GimmickMovingFloor::kModelPath,
+        [](GimmickMovingFloor& object) { object.param_->speed = 0.05f; });
+    RegisterGimmick<GimmickHazardRideFloor>("妨害付き輸送床");
+    RegisterGimmick<GimmickTrampoline>("トランポリン");
+    RegisterGimmick<GimmickChikuwaBlock>("ちくわブロック");
+    RegisterGimmick<GimmickBlinkBlock>("点滅・ジャンプ反転ブロック");
+    RegisterGimmick<GimmickBreakableBlock>("破壊ブロック");
+    RegisterGimmick<GimmickCoin>("コイン");
+    RegisterGimmick<GimmickSeesawFloor>("シーソー床");
+    RegisterGimmick<GimmickDashPanel>("ダッシュパネル");
+    RegisterGimmick<GimmickTimedSwitch>("時限スイッチ床");
+    RegisterGimmick<GimmickAppearingFloor>("出現床");
+    RegisterGimmick<GimmickSwitch>("汎用スイッチ");
+    RegisterGimmick<GimmickEventReceiver>("イベント受信ギミック");
+    RegisterGimmick<GimmickArenaEncounter>("中ボス遭遇管理");
+    RegisterGimmick<GimmickGameplayVolume>("ゲームプレイボリューム");
+    RegisterGimmick<GimmickCopyMemoryStation>("コピー記憶台");
+    RegisterGimmick<GimmickPrismBarrier>("プリズム障壁");
+    RegisterGimmick<GimmickBossGate>("ボス闘技場・格子ゲート");
+    RegisterGimmick<GimmickHookPullBlock>("フック可動ブロック");
+    RegisterGimmick<GimmickLiquidLevel>("水位・マグマ上下");
+    RegisterGimmick<GimmickChainCollapseFloor>("連鎖崩れ床");
+    RegisterGimmick<GimmickRotatingObject>("回転床", "RotatingFloor", GimmickRotatingObject::kModelPath,
+        [](GimmickRotatingObject& object) {
+            object.SetName("Gimmick_RotatingFloor");
+            object.SetScale({3.0f, 0.3f, 1.2f});
+            object.param_->actionMode = 1;
+            object.param_->speed = 45.0f;
+            object.param_->startActive = true;
+        });
+    RegisterGimmick<GimmickRotatingObject>("回転柱", "RotatingPillar", GimmickRotatingObject::kModelPath,
+        [](GimmickRotatingObject& object) {
+            object.SetName("Gimmick_RotatingPillar");
+            object.SetScale({0.75f, 3.0f, 0.75f});
+            object.param_->actionMode = 1;
+            object.param_->speed = 60.0f;
+            object.param_->startActive = true;
+        });
+    RegisterGimmick<GimmickPhaseFlipFloor>("順番反転床");
+    RegisterGimmick<GimmickFireCannon>("火球砲台");
+    RegisterGimmick<GimmickMagmaHazard>("マグマダメージ床");
+    RegisterGimmick<GimmickMagmaGeyser>("マグマ・水の噴出口");
+    RegisterGimmick<GimmickStageGate>("ステージゲート");
+    RegisterGimmick<GimmickSinkingFloor>("沈む床");
+    RegisterGimmick<GimmickMagmaGeyser>("水の噴出口", "WaterGeyser", "Stages/magma_pressure_column",
+        [](GimmickMagmaGeyser& object) {
+            object.param_->startActive = false;
+            object.param_->returnOnOff = true;
+            object.param_->actionMode = 3;
+            object.param_->detectionRange = 4.0f;
+        });
 }
-
-using Creator = std::unique_ptr<BaseGimmick> (*)(engine::Object3dCommon*, const char*);
-
-struct SimpleGimmickEntry {
-    const char* type;
-    const char* modelPath;
-    Creator create;
-};
-
-// 追加設定が不要な種類は、型名・モデル・生成関数を一か所で対応付ける。
-constexpr SimpleGimmickEntry kSimpleGimmicks[] = {
-    {"HazardRideFloor", "Stages/star_garden_ride_platform", &CreateSimpleGimmick<GimmickHazardRideFloor>},
-    {"Trampoline", "Gimmicks/mushroom_trampoline", &CreateSimpleGimmick<GimmickTrampoline>},
-    {"ChikuwaBlock", "Stages/block", &CreateSimpleGimmick<GimmickChikuwaBlock>},
-    {"BlinkBlock", "Stages/block", &CreateSimpleGimmick<GimmickBlinkBlock>},
-    {"BreakableBlock", "Stages/bomb_break_block", &CreateSimpleGimmick<GimmickBreakableBlock>},
-    {"Coin", "Primitives/sphere", &CreateSimpleGimmick<GimmickCoin>},
-    {"SinkingFloor", "Stages/block", &CreateSimpleGimmick<GimmickSinkingFloor>},
-    {"SeesawFloor", "Stages/block", &CreateSimpleGimmick<GimmickSeesawFloor>},
-    {"DashPanel", "Stages/block", &CreateSimpleGimmick<GimmickDashPanel>},
-    {"TimedSwitch", "Stages/block", &CreateSimpleGimmick<GimmickTimedSwitch>},
-    {"AppearingFloor", "Stages/block", &CreateSimpleGimmick<GimmickAppearingFloor>},
-    {"Switch", "Stages/block", &CreateSimpleGimmick<GimmickSwitch>},
-    {"EventReceiver", "Stages/block", &CreateSimpleGimmick<GimmickEventReceiver>},
-    {"ArenaEncounter", "Primitives/cube", &CreateSimpleGimmick<GimmickArenaEncounter>},
-    {"GameplayVolume", "Primitives/cube", &CreateSimpleGimmick<GimmickGameplayVolume>},
-    {"CopyMemoryStation", "Gimmicks/copy_memory_station", &CreateSimpleGimmick<GimmickCopyMemoryStation>},
-    {"PrismBarrier", "Gimmicks/portal_surface", &CreateSimpleGimmick<GimmickPrismBarrier>},
-    {"BossGate", "Stages/high_crown/high_crown_gate.obj", &CreateSimpleGimmick<GimmickBossGate>},
-    {"HookPullBlock", "Stages/block", &CreateSimpleGimmick<GimmickHookPullBlock>},
-    {"LiquidLevel", "Stages/block", &CreateSimpleGimmick<GimmickLiquidLevel>},
-    {"ChainCollapseFloor", "Stages/block", &CreateSimpleGimmick<GimmickChainCollapseFloor>},
-    {"PhaseFlipFloor", "Stages/block", &CreateSimpleGimmick<GimmickPhaseFlipFloor>},
-    {"FireCannon", "Primitives/cube", &CreateSimpleGimmick<GimmickFireCannon>},
-    {"MagmaHazard", "Stages/block", &CreateSimpleGimmick<GimmickMagmaHazard>},
-    {"MagmaGeyser", "Stages/magma_vent", &CreateSimpleGimmick<GimmickMagmaGeyser>},
-    {"StageGate", "Gimmicks/portal_surface", &CreateSimpleGimmick<GimmickStageGate>},
-};
-
-std::unique_ptr<BaseGimmick> CreateConfiguredGimmick(const std::string& type, engine::Object3dCommon* common) {
-    if (type == "MovingFloor") {
-        auto floor = std::make_unique<GimmickMovingFloor>();
-        floor->Initialize(common, "Stages/block");
-        if (!floor->param_.has_value()) {
-            floor->param_.emplace();
-        }
-        floor->param_->speed = 0.05f;
-        return floor;
-    }
-
-    if (type == "RotatingFloor" || type == "RotatingPillar") {
-        const bool isPillar = type == "RotatingPillar";
-        auto rotating = std::make_unique<GimmickRotatingObject>();
-        rotating->Initialize(common, "Stages/block");
-        rotating->SetName(isPillar ? "Gimmick_RotatingPillar" : "Gimmick_RotatingFloor");
-        rotating->SetScale(isPillar ? engine::Vector3{0.75f, 3.0f, 0.75f}
-                                    : engine::Vector3{3.0f, 0.3f, 1.2f});
-        if (!rotating->param_.has_value()) {
-            rotating->param_.emplace();
-        }
-        rotating->param_->actionMode = 1;
-        rotating->param_->speed = isPillar ? 60.0f : 45.0f;
-        rotating->param_->startActive = true;
-        return rotating;
-    }
-
-    if (type == "WaterGeyser") {
-        // 噴出口の描画は共用し、水版だけ起動条件を変更して攻撃を無効にする。
-        auto geyser = std::make_unique<GimmickMagmaGeyser>();
-        geyser->Initialize(common, "Stages/magma_pressure_column");
-        geyser->param_->startActive = false;
-        geyser->param_->returnOnOff = true;
-        geyser->param_->actionMode = 3;
-        geyser->param_->detectionRange = 4.0f;
-        return geyser;
-    }
-
-    return nullptr;
-}
-
-} // namespace
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
     return &instance;
 }
 
-std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gimmickName, engine::Object3dCommon* common) {
-    auto gimmick = CreateConfiguredGimmick(gimmickName, common);
-    if (!gimmick) {
-        for (const auto& entry : kSimpleGimmicks) {
-            if (gimmickName == entry.type) {
-                gimmick = entry.create(common, entry.modelPath);
-                break;
-            }
-        }
-    }
+bool GimmickFactory::IsKnownType(const std::string& type) const {
+    return std::any_of(registered_.begin(), registered_.end(), [&](const Entry& entry) { return entry.info.id == type; });
+}
 
+std::string GimmickFactory::GetCreationType(const BaseGimmick& object) const {
+    // 同じC++クラスの別名は保存IDを優先します。不一致データだけ実クラスへ戻します。
+    for (const auto& entry : registered_)
+        if (entry.info.id == object.GetGimmickType() && entry.info.matches(object)) return entry.info.id;
+    if (typeid(object) == typeid(BaseGimmick)) return object.GetGimmickType();
+    for (const auto& entry : registered_) if (entry.info.matches(object)) return entry.info.id;
+    return object.GetGimmickType();
+}
+
+std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gimmickName, engine::Object3dCommon* common) {
+    std::unique_ptr<BaseGimmick> gimmick;
+    for (const auto& entry : registered_) if (entry.info.id == gimmickName) { gimmick = entry.create(common); break; }
     if (!gimmick) {
-        // 未登録名も配置を確認できるよう、従来と同じ仮のキューブを返す。
+        // 旧シーンに含まれる未知IDは、従来と同じ仮Objectとして保持します。
         gimmick = std::make_unique<BaseGimmick>();
         gimmick->Initialize(common, "Primitives/cube");
     }
-
-    // 初期化時のクラス既定値より、シーンに保存された種類名を優先する。
     gimmick->SetGimmickType(gimmickName);
     return gimmick;
 }

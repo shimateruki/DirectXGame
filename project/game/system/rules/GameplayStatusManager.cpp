@@ -227,29 +227,29 @@ void GameplayStatusManager::ResetToDefaults() {
         MakeStatus(5.0f, 1.0f, 27.7f, 50.0f, 60.0f, 24.0f, 20.0f, {2.0f, 2.0f, 2.0f}, "Characters/slime", false, 5.0f);
 
     enemyStatuses_.clear();
-    enemyStatuses_.emplace("Slime", MakeStatus(50.0f, 1.0f, 0.1f, 60.0f, 60.0f, 18.0f, 20.0f, engine::Vector3{2.0f, 2.0f, 2.0f},
+    enemyStatuses_.emplace("Slime", MakeStatus(38.0f, 1.0f, 0.1f, 60.0f, 60.0f, 18.0f, 20.0f, engine::Vector3{2.0f, 2.0f, 2.0f},
                                                "Characters/slime_pink", false, 5.0f));
-    enemyStatuses_.emplace("Bomb", MakeStatus(30.0f, 1.0f, 0.04f, 60.0f, 60.0f, 16.0f, 20.0f,
+    enemyStatuses_.emplace("Bomb", MakeStatus(23.0f, 1.0f, 0.04f, 60.0f, 60.0f, 16.0f, 20.0f,
                                               engine::Vector3{0.16f, 0.16f, 0.16f}, "Gimmicks/blob", true, 5.0f));
-    enemyStatuses_.emplace("Bomber", MakeStatus(60.0f, 1.15f, 0.0f, 60.0f, 60.0f, 16.0f, 32.0f,
+    enemyStatuses_.emplace("Bomber", MakeStatus(45.0f, 1.15f, 0.0f, 60.0f, 60.0f, 16.0f, 32.0f,
                                                 engine::Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_black", true, 5.0f));
-    enemyStatuses_.emplace("FireSlime", MakeStatus(45.0f, 1.0f, 2.35f, 60.0f, 60.0f, 18.0f, 24.0f,
+    enemyStatuses_.emplace("FireSlime", MakeStatus(34.0f, 1.0f, 2.35f, 60.0f, 60.0f, 18.0f, 24.0f,
                                                    engine::Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_red", true, 5.0f));
     enemyStatuses_.emplace("ThunderSlime",
-                           MakeStatus(45.0f, 1.0f, 3.0f, 62.0f, 60.0f, 18.0f, 20.0f, engine::Vector3{2.0f, 2.0f, 2.0f},
+                           MakeStatus(34.0f, 1.0f, 3.0f, 62.0f, 60.0f, 18.0f, 20.0f, engine::Vector3{2.0f, 2.0f, 2.0f},
                                       "Characters/slime_yellow", true, 5.0f));
-    enemyStatuses_.emplace("WindSlime", MakeStatus(42.0f, 0.9f, 3.4f, 54.0f, 58.0f, 19.0f, 22.0f,
+    enemyStatuses_.emplace("WindSlime", MakeStatus(32.0f, 0.9f, 3.4f, 54.0f, 58.0f, 19.0f, 22.0f,
                                                    engine::Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_wind", false, 5.0f));
-    enemyStatuses_.emplace("GiantSlime", MakeStatus(160.0f, 1.25f, 0.0f, 70.0f, 60.0f, 24.0f, 26.0f,
+    enemyStatuses_.emplace("GiantSlime", MakeStatus(120.0f, 1.25f, 0.0f, 70.0f, 60.0f, 24.0f, 26.0f,
                                                     engine::Vector3{3.6f, 3.6f, 3.6f}, "Characters/slime_pink", true, 5.0f));
-    enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 90.0f,
+    enemyStatuses_.emplace("PrismSlime", MakeStatus(315.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 90.0f,
                                                     engine::Vector3{4.2f, 4.2f, 4.2f}, "Characters/prism_slime", true, 5.0f));
-    enemyStatuses_.emplace("MagmaSlime", MakeStatus(360.0f, 1.45f, 1.45f, 72.0f, 62.0f, 22.0f, 90.0f,
+    enemyStatuses_.emplace("MagmaSlime", MakeStatus(270.0f, 1.45f, 1.45f, 72.0f, 62.0f, 22.0f, 90.0f,
                                                     engine::Vector3{3.8f, 3.8f, 3.8f}, "Characters/magma_slime", true, 5.0f));
     enemyStatuses_.emplace("FalseKingSlime",
-                           MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f, engine::Vector3{1.3f, 1.3f, 1.3f},
+                           MakeStatus(540.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f, engine::Vector3{1.3f, 1.3f, 1.3f},
                                       "Characters/false_king_slime", true, 5.0f));
-    enemyStatuses_.emplace("RingBurner", MakeStatus(180.0f, 1.0f, 0.0f, 0.0f, 60.0f, 10.0f, 30.0f,
+    enemyStatuses_.emplace("RingBurner", MakeStatus(135.0f, 1.0f, 0.0f, 0.0f, 60.0f, 10.0f, 30.0f,
                                                     engine::Vector3{1.0f, 1.0f, 1.0f}, "Characters/ring_burner", true, 5.0f));
 
     dirty_ = true;

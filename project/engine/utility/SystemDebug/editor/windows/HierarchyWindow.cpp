@@ -499,50 +499,10 @@ namespace {
         }
 
         if (ImGui::BeginMenu(ICON_FA_PUZZLE_PIECE " ギミック")) {
-            if (ImGui::MenuItem("動く床"))
-                CreateGimmick(editor, scene, "MovingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("破壊ブロック"))
-                CreateGimmick(editor, scene, "BreakableBlock", useGameViewCursor);
-            if (ImGui::MenuItem("ジャンプ台"))
-                CreateGimmick(editor, scene, "Trampoline", useGameViewCursor);
-            if (ImGui::MenuItem("沈む床"))
-                CreateGimmick(editor, scene, "SinkingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("シーソー床"))
-                CreateGimmick(editor, scene, "SeesawFloor", useGameViewCursor);
-            if (ImGui::MenuItem("ダッシュパネル"))
-                CreateGimmick(editor, scene, "DashPanel", useGameViewCursor);
-            if (ImGui::MenuItem("時限スイッチ"))
-                CreateGimmick(editor, scene, "TimedSwitch", useGameViewCursor);
-            if (ImGui::MenuItem("出現床"))
-                CreateGimmick(editor, scene, "AppearingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("汎用スイッチ"))
-                CreateGimmick(editor, scene, "Switch", useGameViewCursor);
-            if (ImGui::MenuItem("イベント受信"))
-                CreateGimmick(editor, scene, "EventReceiver", useGameViewCursor);
-            if (ImGui::MenuItem("中ボス遭遇管理"))
-                CreateGimmick(editor, scene, "ArenaEncounter", useGameViewCursor);
-            if (ImGui::MenuItem("ゲームプレイボリューム"))
-                CreateGimmick(editor, scene, "GameplayVolume", useGameViewCursor);
-            if (ImGui::MenuItem("コピー記憶台"))
-                CreateGimmick(editor, scene, "CopyMemoryStation", useGameViewCursor);
-            if (ImGui::MenuItem("プリズム障壁"))
-                CreateGimmick(editor, scene, "PrismBarrier", useGameViewCursor);
-            if (ImGui::MenuItem("フック可動ブロック"))
-                CreateGimmick(editor, scene, "HookPullBlock", useGameViewCursor);
-            if (ImGui::MenuItem("水位/マグマ上下"))
-                CreateGimmick(editor, scene, "LiquidLevel", useGameViewCursor);
-            if (ImGui::MenuItem("マグマダメージ床"))
-                CreateGimmick(editor, scene, "MagmaHazard", useGameViewCursor);
-            if (ImGui::MenuItem("連鎖崩れ床"))
-                CreateGimmick(editor, scene, "ChainCollapseFloor", useGameViewCursor);
-            if (ImGui::MenuItem("回転床"))
-                CreateGimmick(editor, scene, "RotatingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("回転柱"))
-                CreateGimmick(editor, scene, "RotatingPillar", useGameViewCursor);
-            if (ImGui::MenuItem("時間反転床"))
-                CreateGimmick(editor, scene, "PhaseFlipFloor", useGameViewCursor);
-            if (ImGui::MenuItem("ステージゲート"))
-                CreateGimmick(editor, scene, "StageGate", useGameViewCursor);
+            for (const auto& type : EditorObjectFactoryRegistry::GetTypes(EditorObjectFactoryRegistry::Kind::Gimmick)) {
+                if (ImGui::MenuItem(type.displayName.c_str()))
+                    CreateGimmick(editor, scene, type.id, useGameViewCursor);
+            }
             ImGui::EndMenu();
         }
 

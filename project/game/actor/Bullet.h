@@ -55,7 +55,8 @@ class Bullet : public engine::Object3d {
     const StatusEffectApplication& GetStatusEffect() const { return statusEffect_; }
 
   private:
-    void Explode();
+    // Castまたは接触判定で確定した直撃相手を、爆風の範囲と独立して処理する。
+    void Explode(engine::Object3d* directHit = nullptr);
 
     float explosionRadius_ = 0.0f;
 

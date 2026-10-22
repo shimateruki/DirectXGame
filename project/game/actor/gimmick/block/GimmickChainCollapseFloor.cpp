@@ -1,4 +1,5 @@
 #include "GimmickChainCollapseFloor.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
 #include "ModelManager.h"
@@ -34,6 +35,18 @@ void GimmickChainCollapseFloor::Initialize(engine::Object3dCommon* common, const
 
     // 従来の一度きりの挙動を既定とし、必要なステージだけ明示的に復帰を有効化する。
     param_->returnOnOff = false;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickChainCollapseFloor;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "連鎖崩れ床",
+        "Target IDに次の床のMy Event IDを入れると連鎖します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("揺れ時間", "shakeDuration", &Parameter::shakeDuration, 0.0f, 10.0f);
+    properties.Parameter("連鎖までの時間", "interval", &Parameter::interval, 0.0f, 10.0f,
+        nullptr, {}, {.speed = 0.01f});
+    properties.Parameter("落下時間", "fallDuration", &Parameter::fallDuration, 0.1f, 10.0f);
+    properties.Parameter("重力", "gravity", &Parameter::gravity, 0.0f, 200.0f);
+    properties.Parameter("終了後に復帰を許可", "returnOnOff", &Parameter::returnOnOff);
 }
 
 void GimmickChainCollapseFloor::Update(float deltaTime) {

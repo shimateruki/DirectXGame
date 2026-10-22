@@ -1,4 +1,5 @@
 #include "GimmickTimedSwitch.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
 #include <cmath>
@@ -14,6 +15,11 @@ void GimmickTimedSwitch::Initialize(engine::Object3dCommon* common, const std::s
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetColor({0.25f, 0.75f, 1.0f, 1.0f});
     SetScale({1.5f, 0.25f, 1.5f});
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickTimedSwitch;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "時限スイッチ床",
+        "上面を踏んでいる間、Target IDへ通知します。保持時間は実装側の固定値です。長い時限動作は汎用スイッチの「一定時間だけ」を使います。");
 }
 
 void GimmickTimedSwitch::Update(float deltaTime) {

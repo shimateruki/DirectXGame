@@ -1,0 +1,185 @@
+#pragma once
+
+#include "engine/utility/math/Math.h"
+#include "engine/animation/cinematic/CinematicPresentation.h"
+
+#include <string>
+#include <vector>
+#include <array>
+
+namespace engine {
+
+// Timeline上のトラックとシーンObjectを、名前またはイベントIDで結び付けます。
+struct CinematicObjectBinding {
+    std::string targetName;
+    int targetEventId = -1;
+};
+
+// 対象Objectへ適用する変形の時間列。relative 系フラグは座標の基準を指定します。
+struct CinematicTransformTrack {
+    std::string name;
+    CinematicObjectBinding binding;
+    std::string legacyPathFile;
+    float startTime = 0.0f;
+    bool enabled = true;
+    bool muted = false;
+    bool locked = false;
+    bool relative = false;
+    bool anchorRelative = false;
+    bool holdLast = true;
+    std::vector<CinematicTransformKey> keys;
+};
+
+// 指定時刻から VFX シーケンスを再生するトラックです。
+struct CinematicVFXTrackData {
+    std::string name;
+    CinematicObjectBinding binding;
+    std::string sequenceName;
+    float startTime = 0.0f;
+    float duration = 0.1f;
+    // trueなら開始時の対象位置をワールド座標で確定し、対象の拡縮・回転をVFXへ継承しない。
+    bool snapshotTargetPosition = false;
+    engine::Vector3 rootOffset = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 rootScale = {1.0f, 1.0f, 1.0f};
+    bool enabled = true;
+    bool muted = false;
+};
+
+// Camera Objectを使用する1つのカメラカットです。
+// カメラ自身の追従・注視設定はCamera Object側、カット固有の時間とBlendはTimeline側で管理します。
+struct CinematicCameraShot {
+    std::string name;
+    CinematicObjectBinding binding;
+    float startTime = 0.0f;
+    float duration = 1.0f;
+    float blendInDuration = 0.3f;
+    float blendOutDuration = 0.3f;
+    int easing = 4;
+    bool enabled = true;
+    bool muted = false;
+};
+
+// Runtime側のAnimation Driverへ渡すAnimation Clipです。
+struct CinematicAnimationClipData {
+    std::string name;
+    CinematicObjectBinding binding;
+
+    std::string driver;
+    std::string clipName;
+
+    float startTime = 0.0f;
+    float duration = 1.0f;
+    float playbackSpeed = 1.0f;
+
+    float blendInDuration = 0.12f;
+    int easing = 4;
+
+    bool loop = false;
+    bool restoreOnStop = true;
+
+    bool enabled = true;
+    bool muted = false;
+};
+
+// 再生開始時刻・長さ・音量を持つ音声クリップです。
+struct CinematicAudioClipData {
+    std::string name;
+    std::string audioId;
+    float startTime = 0.0f;
+    float duration = 0.1f;
+    float volume = 1.0f;
+    bool loop = false;
+    bool enabled = true;
+    bool muted = false;
+};
+
+// シーン固有処理をTimelineの時刻へ接続する名前付きSignalです。
+struct CinematicSignalMarker {
+    float time = 0.0f;
+    std::string name;
+    std::string signal;
+    std::string payload;
+    CinematicObjectBinding binding;
+    bool enabled = true;
+};
+
+// イベントIDを持つObjectに対して、指定時刻のイベントを通知します。
+struct CinematicEventMarker {
+    float time = 0.0f;
+    int eventId = 0;
+    std::string name;
+    CinematicObjectBinding binding;
+};
+
+/// <summary>カットシーンの各トラックとマーカーを、保存・再生用に保持します。</summary>
+class CinematicSequence {
+  public:
+    static constexpr int kCurrentVersion = 8;
+
+    // 各トラックを消去して制作時の初期値へ戻します。
+    void Clear();
+
+    // 時刻順で評価するトラックとマーカーを並べ替えます。
+    void Sort();
+
+    /// <summary>設定された長さと全トラックの最終時刻から、必要な再生時間を求めます。</summary>
+    /// <returns>少なくとも 0.1 秒の再生時間。</returns>
+    float GetAuthoredDuration() const;
+
+    // ゲーム処理と見た目で同じSignal時刻を使い、別のタイマー設定を持たない。
+    float GetSignalTime(const std::string& name, float fallback = 0.0f) const;
+
+    /// <summary>現在のシーケンスを JSON ファイルへ保存します。</summary>
+    /// <param name="filePath">保存先のファイルパス。</param>
+    /// <returns>ファイルを開いて保存できた場合は true。</returns>
+    bool Save(const std::string& filePath) const;
+
+    /// <summary>JSON ファイルを読み込み、各トラックの時刻順を整えます。</summary>
+    /// <param name="filePath">読み込むファイルパス。</param>
+    /// <returns>読み込みと形式の検証に成功した場合は true。</returns>
+    bool Load(const std::string& filePath);
+
+    int version = kCurrentVersion;
+    std::string name = "cinematic_sequence";
+    float duration = 0.0f;
+
+    // ゲート等を共通原点にする。大きさや傾きは引き継がず、水平方向だけ使用する。
+    CinematicObjectBinding anchor;
+    float anchorYawOffset = 0.0f;
+
+    // 役割名で作った演出を実シーンへ接続する。プレビュー専用Object名は保存しない。
+    std::array<CinematicObjectBinding, 3> roleBindings;
+
+    // 制作空間の仮モデル。ゲーム側の対象モデルは変更しない。
+    std::array<std::string, 2> previewModels = {"Characters/slime_pink", "Primitives/cube"};
+
+    // 編集と保存の対象となるトラックと時刻マーカーです。
+    std::vector<CinematicTransformTrack> transformTracks;
+    std::vector<CinematicVFXTrackData> vfxTracks;
+    std::vector<CinematicCameraShot> cameraShots;
+    std::vector<CinematicAnimationClipData> animationClips;
+    std::vector<CinematicAudioClipData> audioClips;
+    std::vector<CinematicSignalMarker> signals;
+    std::vector<CinematicEventMarker> events;
+    CinematicPresentation presentation;
+};
+
+// エディターの軌跡表示・キー記録と再生器で同じ座標変換を使用する。
+engine::Vector3 CinematicAnchorPosition(const engine::Vector3& local, const engine::Vector3& origin, float yaw);
+engine::Vector3 CinematicAnchorLocalPosition(const engine::Vector3& world, const engine::Vector3& origin, float yaw);
+
+} // namespace engine
+
+// 既存呼び出しとの互換名。新規コードは engine:: の正式名を使用する。
+using engine::CinematicObjectBinding;
+using engine::CinematicTransformKey;
+using engine::CinematicTransformTrack;
+using engine::CinematicVFXTrackData;
+using engine::CinematicCameraShot;
+using engine::CinematicAnimationClipData;
+using engine::CinematicAudioClipData;
+using engine::CinematicSignalMarker;
+using engine::CinematicEventMarker;
+using engine::CinematicSequence;
+using engine::CinematicAnchorPosition;
+using engine::CinematicAnchorLocalPosition;

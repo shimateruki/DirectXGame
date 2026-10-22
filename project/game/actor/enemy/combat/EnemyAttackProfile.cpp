@@ -370,6 +370,16 @@ void MergeAttackJson(const json& source, EnemyAttackDefinition& attack) {
         attack.lifetime = ReadFloat(movement, "lifetime", attack.lifetime);
     }
 
+    if (source.contains("playerMovement") && source["playerMovement"].is_object()) {
+        // 敵の弾速と混ぜず、コピー攻撃だけが利用する操作制限を読み込む。
+        const json& movement = source["playerMovement"];
+        attack.playerMovement.enabled = movement.contains("enabled") && movement["enabled"].is_boolean() ? movement["enabled"].get<bool>() : attack.playerMovement.enabled;
+        attack.playerMovement.duration = ReadFloat(movement, "duration", attack.playerMovement.duration);
+        attack.playerMovement.groundSpeedScale = ReadFloat(movement, "groundSpeedScale", attack.playerMovement.groundSpeedScale);
+        attack.playerMovement.airSpeedScale = ReadFloat(movement, "airSpeedScale", attack.playerMovement.airSpeedScale);
+        attack.playerMovement.airResponse = ReadFloat(movement, "airResponse", attack.playerMovement.airResponse);
+    }
+
     if (source.contains("preview") && source["preview"].is_object()) {
         const json& preview = source["preview"];
         attack.recommendedTargetDistance = ReadFloat(preview, "targetDistance", attack.recommendedTargetDistance);
@@ -419,6 +429,9 @@ json WriteAttackJson(const EnemyAttackDefinition& attack) {
                 {"tickDamage", attack.statusTickDamage},
                 {"vfx", attack.statusVfx}}}}},
             {"movement", {{"minSpeed", attack.minSpeed}, {"maxSpeed", attack.maxSpeed}, {"lifetime", attack.lifetime}}},
+            {"playerMovement", {{"enabled", attack.playerMovement.enabled}, {"duration", attack.playerMovement.duration},
+                {"groundSpeedScale", attack.playerMovement.groundSpeedScale}, {"airSpeedScale", attack.playerMovement.airSpeedScale},
+                {"airResponse", attack.playerMovement.airResponse}}},
             {"preview", {{"targetDistance", attack.recommendedTargetDistance}, {"duration", attack.previewDuration}}},
             {"presentation",
              {{"animation", attack.animation},
@@ -636,8 +649,9 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         profile.attacks.push_back(std::move(fireball));
 
         // 古いJSONでもコピー火球の威力・入力感を保つための移行時既定値です。
-        auto playerFireball = MakeAttack("player_fireball", "プレイヤー炎火球", 0, 40, 0.52f, 0, 0, 0.58f, 0.58f, 0,
+        auto playerFireball = MakeAttack("player_fireball", "プレイヤー炎火球", 0, 40, 0.52f, 0.20f, 0, 0.38f, 0.58f, 0,
             14, 28, 28, 2.65f, 8, 3.35f);
+        playerFireball.playerMovement.enabled = true;
         playerFireball.animation = "player_ability_fireball";
         playerFireball.statusEffectType = "burning";
         playerFireball.statusDuration = 2.8f;
@@ -648,7 +662,17 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         playerFireball.sequence.binding = "player_special";
         playerFireball.sequence.duration = 0.58f;
         playerFireball.sequence.visualScale = 1.28f;
+        // 地上・空中で同じ本体トラックを再生し、発射と体の伸びを合わせる。
+        AttackSequenceTrack body;
+        body.name = "火球の予備動作と反動";
+        body.type = "body_animation";
+        body.preset = "player_ability_fireball";
+        body.end = playerFireball.sequence.duration;
+        body.blendIn = 0.035f;
+        body.blendOut = 0.08f;
+        playerFireball.sequence.tracks.push_back(body);
         AttackSequenceEvent shot;
+        shot.time = 0.20f;
         shot.up = 1.35f;
         shot.forward = 1.75f;
         shot.aimAtTarget = false;
@@ -965,6 +989,10 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
         for (const auto& attack : merged.attacks) {
             std::string reason;
 
+            if (!attack.playerMovement.Validate()) {
+                if (errorMessage) *errorMessage = attack.id + ": プレイヤー移動制限の値が範囲外です。";
+                return false;
+            }
             if (!attack.sequence.Validate(&reason)) {
                 if (errorMessage)
                     *errorMessage = attack.id + ": " + reason;
@@ -999,6 +1027,10 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
                 throw std::runtime_error("攻撃の抽選重みが不正です。");
             std::string reason;
 
+            if (!attack.playerMovement.Validate()) {
+                if (errorMessage) *errorMessage = attack.id + ": プレイヤー移動制限の値が範囲外です。";
+                return false;
+            }
             if (!attack.sequence.Validate(&reason)) {
                 if (errorMessage)
                     *errorMessage = attack.id + ": " + reason;

@@ -779,7 +779,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
 //  JSONの Position / Rotation フィールドを無視し、
 //  worldPos / worldRot をそのまま最終座標として使う
 // ==========================================================
-void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const engine::Vector3& worldPos, const engine::Vector3& worldRot, const engine::Vector3& scale) {
+void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const engine::Vector3& worldPos, const engine::Vector3& worldRot,
+    const engine::Vector3& scale, float lifetimeOverride) {
     // common_ が null なら現在シーンから自己修復
     if (!common_) {
         SceneManager* sm = SceneManager::GetInstance();
@@ -806,6 +807,9 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const eng
     int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
     int numSpawns  = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
     float lifetime = j.contains("Lifetime") ? (float)j["Lifetime"] : 1.0f;
+    // 個体ごとの攻撃速度を指定した場合は、見た目の進行も同じ秒数に揃える。
+    if (lifetimeOverride > 0.0f)
+        lifetime = lifetimeOverride;
 
     // localZ ベクトル (volumeMode 2 の立体化オフセット計算用)
     engine::Vector3 localZ;
@@ -980,9 +984,10 @@ void MeshEffectManager::SpawnEffectAtScoped(
     const std::string& jsonFilePath,
     const engine::Vector3& worldPos,
     const engine::Vector3& worldRot,
-    const engine::Vector3& scale) {
+    const engine::Vector3& scale,
+    float lifetimeOverride) {
     const size_t firstNewEffect = activeEffects_.size();
-    SpawnEffectAt(jsonFilePath, worldPos, worldRot, scale);
+    SpawnEffectAt(jsonFilePath, worldPos, worldRot, scale, lifetimeOverride);
 
     if (scopeId == kInvalidEffectScope) {
         return;

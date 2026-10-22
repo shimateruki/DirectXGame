@@ -5,6 +5,10 @@ class RidingPlatformController;
 /// <summary>移動床の軌道と、乗っているキャラクターへの移動量を管理します。</summary>
 class GimmickMovingFloor : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "MovingFloor";
+    static constexpr const char* kModelPath = "Stages/block";
+
     GimmickMovingFloor();
 
     ~GimmickMovingFloor() override;

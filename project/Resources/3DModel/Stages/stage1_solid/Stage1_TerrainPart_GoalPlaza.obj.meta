@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "5ab542c17f14511f9f15cfcbb5831dc1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_solid/Stage1_TerrainPart_GoalPlaza.obj",
+  "version": 1
+}

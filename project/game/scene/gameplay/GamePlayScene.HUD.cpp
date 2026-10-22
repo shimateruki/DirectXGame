@@ -56,32 +56,22 @@ void SetFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
     sprite->SetTextureRect({0.0f, 0.0f}, {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
 }
 
-const char* ResolveHpIconTexture(const Player* player, bool showHurtIcon) {
-    // 被弾中の表情と現在のコピー能力を優先順位付きでHPアイコンに反映する。
+const char* ResolveHpIconTexture(const Player* player) {
+    // 現在の本体と同じ装飾付き肖像を表示し、被弾時も能力の目印を維持する。
     if (player && player->IsEnemyMorphed()) {
         switch (player->GetEnemyMorphType()) {
-        case Player::EnemyMorphType::Slime:
-            return showHurtIcon ? "ui/portraits/slime_hurt.png" : "ui/portraits/slime.png";
-
-        case Player::EnemyMorphType::Bomber:
-            return showHurtIcon ? "ui/portraits/bomber_hurt.png" : "ui/portraits/bomber.png";
-
-        case Player::EnemyMorphType::FireSlime:
-            return showHurtIcon ? "ui/portraits/fire_slime_hurt.png" : "ui/portraits/fire_slime.png";
-
-        case Player::EnemyMorphType::ThunderSlime:
-            return showHurtIcon ? "ui/portraits/thunder_slime_hurt.png" : "ui/portraits/thunder_slime.png";
-
-        case Player::EnemyMorphType::WindSlime:
-            return showHurtIcon ? "ui/portraits/wind_slime_hurt.png" : "ui/portraits/wind_slime.png";
-
-        default:
-            break;
+        case Player::EnemyMorphType::Slime: return "ui/hud/copy_portraits/pink.png";
+        case Player::EnemyMorphType::FireSlime: return "ui/hud/copy_portraits/fire.png";
+        case Player::EnemyMorphType::ThunderSlime: return "ui/hud/copy_portraits/thunder.png";
+        case Player::EnemyMorphType::WindSlime: return "ui/hud/copy_portraits/wind.png";
+        case Player::EnemyMorphType::Bomber: return "ui/hud/copy_portraits/bomb.png";
+        case Player::EnemyMorphType::Crown: return "ui/hud/copy_portraits/crown.png";
+        default: break;
         }
     }
-
-    return showHurtIcon ? "ui/portraits/player_hurt.png" : "ui/portraits/player.png";
+    return "ui/hud/copy_portraits/normal.png";
 }
+
 } // namespace
 
 // HUD はシーンの現在状態を読み取って更新します。収集演出とボス表示はゲーム進行の判定を書き換えません。
@@ -135,6 +125,10 @@ void GamePlayScene::InitializeGameplayHUD() {
 
     // プレイヤーHPは現在値、遅れて追うダメージ量、枠と光を別Spriteで重ねる。
     hudHpIcon_ = BindHud("hud_hp_icon");
+    // 肖像は正方形のまま枠内へ収め、ウィンドウ比率による顔の潰れを防ぐ。
+    const float portraitSide = (std::min)(hudHpIcon_.baseSize.x, hudHpIcon_.baseSize.y);
+    hudHpIcon_.baseSize = {portraitSide, portraitSide};
+
     hudCopyStyle_ = BindHud("hud_copy_style");
     copyStyleHud_.Bind(hudCopyStyle_.sprite);
     hudHpDamageFill_ = BindHud("hud_hp_damage_fill");
@@ -566,11 +560,13 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
 
     // HP 表示は実値と遅れて追うダメージ量を別レイヤーにし、被弾量を読めるようにします。
     if (hudHpIcon_.sprite) {
-        const uint32_t handle = engine::Sprite::LoadTexture(ResolveHpIconTexture(player_, damageReacting));
+        const uint32_t handle = engine::Sprite::LoadTexture(ResolveHpIconTexture(player_));
         SetFullTextureRect(hudHpIcon_.sprite, handle);
         hudHpIcon_.sprite->SetVisible(visible);
+        // 枠と同じ揺れ・拡縮中心へ追従し、装飾を丸枠の内側に保つ。
         hudHpIcon_.sprite->SetPosition(
-            {hudHpIcon_.basePosition.x + hpIconShakeX, hudHpIcon_.basePosition.y + hpIconShakeY});
+            {hudHpIcon_.basePosition.x + barShake + (hudHpIcon_.basePosition.x - hudHpFrame_.basePosition.x) * damageImpact * 0.012f + hpIconShakeX * 0.25f,
+             hudHpIcon_.basePosition.y + hpIconShakeY * 0.25f});
         hudHpIcon_.sprite->SetSize({hudHpIcon_.baseSize.x * hpIconPulse, hudHpIcon_.baseSize.y * hpIconPulse});
         hudHpIcon_.sprite->SetRotation(hpIconRotation);
         hudHpIcon_.sprite->SetColor({hudHpIcon_.baseColor.x, hudHpIcon_.baseColor.y, hudHpIcon_.baseColor.z,

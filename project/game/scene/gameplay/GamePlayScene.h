@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+namespace GoalPresentationRuntimeProbe { struct Access; }
+
 // 前方宣言
 class DirectXCommon;
 namespace engine { class InputManager; }
@@ -25,6 +27,7 @@ class LockOnSystem;
 class GameRule;
 class BaseEnemy;
 struct StageData;
+struct CrownFinaleTuning;
 namespace engine { class Object3dCommon; }
 namespace engine { class ParticleCommon; }
 namespace engine { class ParticleSystem; }
@@ -101,6 +104,11 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
     /// <summary>ボス登場タイムラインの再生中か返す。</summary>
     bool IsArenaBossIntroActive() const { return arenaBossIntroActive_; }
+
+    // 既存のムービープレビューも、実際に読み込んだ演出素材の尺と節目を使う。
+    float GetCrownDefeatDuration() const { return crownDefeatVfxSequence_.duration > 0 ? crownDefeatVfxPlayer_.GetDuration() : 12.0f; }
+    float GetCrownDefeatMarkerTime(const std::string& name) const;
+    CrownFinaleTuning GetCrownFinaleTiming() const;
 
     /// <summary>アリーナボス撃破後の報酬表示を開始する。実行できない状態では何もしない。</summary>
     /// <param name="rewardObject">登場させる報酬Object。所有権は移さない。</param>
@@ -225,6 +233,9 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     void HideLifeLostPresentationOverlay();
 
   private:
+#ifdef USE_IMGUI
+    friend struct GoalPresentationRuntimeProbe::Access;
+#endif
     /// <summary>シーンが所有する可変Sprite配列を基底の編集処理へ渡す。</summary>
     std::vector<std::unique_ptr<engine::Sprite>>* GetMutableSprites() override { return &sprites_; }
 
@@ -318,51 +329,22 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
         class EnemyFalseKingSlime* boss = nullptr;
         std::vector<CrownFinaleObjectPose> originalObjects;
         std::vector<CrownFinaleObjectPose> fractureChunks;
-        std::vector<std::unique_ptr<engine::Object3d>> floorCracks;
         std::vector<engine::Object3d*> generatedObjects;
 
-        std::unique_ptr<engine::Object3d> fragment;
-        std::unique_ptr<engine::Object3d> fragmentCrack;
-        std::unique_ptr<engine::Object3d> lastSeal;
-        std::vector<std::unique_ptr<engine::Object3d>> fragmentChips;
-
-        std::unique_ptr<engine::Object3d> shockwave;
-
-        std::unique_ptr<engine::Object3d> wings;
-        std::unique_ptr<engine::Object3d> rightWing;
-
-        std::unique_ptr<engine::Object3d> innerRune;
-        std::unique_ptr<engine::Object3d> goldBody;
-        std::unique_ptr<engine::Object3d> regalia;
-
-        std::unique_ptr<engine::Object3d> groundFractures;
+        // 共通再生器が所有する王冠片への借用参照。操作用フックと接続する。
+        engine::Object3d* fragment = nullptr;
     } crownFinale_;
-    // 王冠継承VFXの素材と再生状態。時刻は調整JSONに追従する。
-    CinematicSequence crownFinaleVfxSequence_;
-    CinematicPlayer crownFinaleVfxPlayer_;
+    // 王冠継承の装飾・VFX・カメラをまとめたDirector素材。
+    CinematicSequence crownFinaleSequence_;
+    CinematicPlayer crownFinalePlayer_;
 
-    // 元の配置・能力へ触れず、プレビュー複製の寿命と元のカメラを保持します。
-    struct CrownDefeatPart {
-        std::unique_ptr<engine::Object3d> visual;
-        engine::Vector3 pivot{};
-        bool gem = false;
-    };
-
-    // 撃破中は元のボスを残し、分割モデルだけを動かして寿命と撃破通知を分離します。
+    // ゲーム側は撃破の確定とPlayerの操作状態だけを保持する。
     struct CrownDefeatState {
-        // 元のボス・カメラは終了時に復元し、分割した演出Objectだけを所有する。
-        bool active=false, completed=false, bossVisible=true, hadControl=true;
-        float time=0, bars=0, playerYaw=0;
-        class EnemyFalseKingSlime* boss=nullptr;
-        engine::Vector3 bossPosition{},bossScale{},bossRotation{},playerPosition{},playerScale{},playerRotation{};
-        engine::Vector3 forward{},right{};
-        Camera* previousCamera=nullptr;
-        std::unique_ptr<Camera> camera;
-        std::unique_ptr<engine::Object3d> body,cracks,ring;
-        std::vector<CrownDefeatPart> parts;
-        std::vector<std::unique_ptr<engine::Object3d>> rays;
+        bool active = false, completed = false, hadControl = true;
+        class EnemyFalseKingSlime* boss = nullptr;
+        float playerYaw = 0.0f, victoryYaw = 0.0f, victoryTime = 0.0f;
     } crownDefeat_;
-    // 偽王撃破VFXの素材と再生状態。演出Objectは上のStateが所有する。
+    // 撃破演出全体の素材と再生状態。一時Objectはエンジンの再生器が所有する。
     CinematicSequence crownDefeatVfxSequence_;
     CinematicPlayer crownDefeatVfxPlayer_;
 
@@ -486,6 +468,8 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
         float crownDropHeight = 2.00f;
         float crownSeatDepth = 0.10f;
+        float crownWearWidthRatio = 0.78f;
+        float cameraSafeMargin = 0.10f;
 
         float crownFocusDistance = 5.80f;
         float crownFocusSide = 1.25f;
@@ -622,6 +606,12 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     engine::Vector3 goalMoveForward_ = {0.0f, 0.0f, 1.0f};
     engine::Vector3 goalMoveRight_ = {1.0f, 0.0f, 0.0f};
     engine::Vector3 goalCrownBasePosition_ = {0.0f, 0.0f, 0.0f};
+    // 配置時の姿と装着後の寸法を分離し、親付きの王冠もワールド空間で運ぶ。
+    engine::Vector3 goalCrownStartWorldPosition_{};
+    engine::Vector3 goalCrownWearScale_ = {1.0f, 1.0f, 1.0f};
+    std::string goalCrownIdleEffect1_, goalCrownIdleEffect2_;
+    bool goalCrownBaseEnvMap_ = false;
+    float goalCrownBaseEnvIntensity_ = 1.0f, goalCrownBaseRoughness_ = 0.3f;
     engine::Vector3 goalCrownBaseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 goalCrownBaseRotation_ = {0.0f, 0.0f, 0.0f};
 
@@ -657,6 +647,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
     // 既存の王冠Objectとカメラは借用し、演出専用カメラとUIだけ所有する。
     engine::Object3d* goalCrownObject_ = nullptr;
+    Camera* goalCameraRestoreOverride_ = nullptr;
     Camera* goalLockedPrimaryCamera_ = nullptr;
     Camera* goalLockedSecondaryCamera_ = nullptr;
 

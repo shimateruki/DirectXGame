@@ -3,6 +3,10 @@
 #include <functional>
 #include <memory>
 
+#ifdef USE_IMGUI
+namespace EnemyProjectileRuntimeProbe { struct Access; }
+#endif
+
 // 距離を保ちながら爆弾を生成して投げる、ボム使いの敵。
 class EnemyBomber : public BaseEnemy {
   public:
@@ -33,6 +37,9 @@ class EnemyBomber : public BaseEnemy {
     void SetSpawnCallback(std::function<void(std::unique_ptr<BaseEnemy>)> callback) { spawnCallback_ = callback; }
 
   private:
+#ifdef USE_IMGUI
+    friend struct EnemyProjectileRuntimeProbe::Access;
+#endif
     // 溜め、跳躍投擲、着地までの攻撃段階です。
     enum class ThrowState { Idle, Windup, LeapThrow, Landing };
 

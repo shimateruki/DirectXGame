@@ -294,6 +294,11 @@ class Player : public Character {
     /// <remarks>操作制限中にも読めるため、攻撃中の方向転換に使用できます。</remarks>
     engine::Vector3 GetMoveInputDirection();
 
+    PlayerAttackMovement GetAttackMovement() const {
+        // 死亡・コピー解除中に攻撃の減速を通常移動へ持ち越さない。
+        return !isDead && copyAbilityController_ ? copyAbilityController_->GetAttackMovement() : PlayerAttackMovement{};
+    }
+
     /// <summary>水平面での進行向きをY回転のラジアン値で指定します。</summary>
     void SetMoveYaw(float yaw);
 

@@ -1,4 +1,5 @@
 #include "GimmickDashPanel.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "Player.h"
 
@@ -23,6 +24,11 @@ void GimmickDashPanel::Initialize(engine::Object3dCommon* common, const std::str
     SetTextureTiling({1.0f, 1.0f});
     SetAutoTextureTiling(false);
     SetScale({2.0f, 0.25f, 1.2f});
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickDashPanel;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ダッシュパネル",
+        "上面を踏んだプレイヤーを加速します。配置と向きはTransform、発光や色は材質欄で調整します。");
 }
 
 void GimmickDashPanel::Update(float deltaTime) {

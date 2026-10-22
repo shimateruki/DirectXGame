@@ -1,0 +1,69 @@
+{
+    "baseColor": [
+        0.83,
+        0.91,
+        1,
+        0.9
+    ],
+    "baseSize": 0.10000000149011612,
+    "blendModeIndex": 0,
+    "colorEaseType": 0,
+    "colorIntensity": 1.8,
+    "colorMidTime": 0.5,
+    "emitArea": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emitCount": 3,
+    "emitInterval": 0.6000000238418579,
+    "emitLife": 1.5,
+    "emitPos": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emitVelocity": [
+        0.0,
+        0.20000000298023224,
+        0.0
+    ],
+    "enableCollision": 0,
+    "endColor": [
+        0.43,
+        0.52,
+        0.68,
+        0
+    ],
+    "endSize": 0.0,
+    "envDrag": 0.8999999761581421,
+    "envGravity": [
+        0.0,
+        0.30000001192092896,
+        0.0
+    ],
+    "envTurbulence": 0.0,
+    "envWind": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "isLooping": true,
+    "midColor": [
+        0.6,
+        0.72,
+        0.86,
+        0.8
+    ],
+    "midSize": 0.28,
+    "restitution": 0.5,
+    "rotSpeed": 2.0,
+    "shapeAngle": 30.0,
+    "shapeRadius": 1.5,
+    "shapeType": 1,
+    "sizeEaseType": 0,
+    "sizeMidTime": 0.5,
+    "softParticleFade": 5.0,
+    "texturePath": "Resources/sprite/particle/particle.png",
+    "velocityVariance": 0.5
+}

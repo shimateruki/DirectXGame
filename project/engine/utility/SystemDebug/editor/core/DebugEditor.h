@@ -25,6 +25,7 @@
 #include "CaptureToolWindow.h"
 #include "EditorCommon.h"
 #include "EditorPropertyRegistry.h"
+#include "EditorObjectFactoryRegistry.h"
 #include "EditorTransactionManager.h"
 #include "EffectPreviewStage.h"
 #include "EnemyAttackPreviewWindow.h"
@@ -248,6 +249,12 @@ public:
 
     /// <summary>Editorから単一オブジェクトを追加し、Undo履歴へ登録する。</summary>
     void AddEditorObject(std::unique_ptr<engine::Object3d> object, const std::string& label);
+
+    /// Inspector描画中に参照を壊さないよう、種類変更を次の編集更新へ予約します。
+    void RequestObjectTypeChange(engine::Object3d* object, EditorObjectFactoryRegistry::Kind kind, const std::string& type);
+
+    /// 編集停止中だけ、配置と親子を保って登録済みの実クラスへ交換します。Undoにも同じ経路を使います。
+    bool ChangeObjectType(engine::Object3d* object, EditorObjectFactoryRegistry::Kind kind, const std::string& type);
 
     /// <summary>Editorから複数オブジェクトを追加し、Undo履歴へまとめて登録する。</summary>
     void AddEditorObjects(std::vector<std::unique_ptr<engine::Object3d>> objects, const std::string& label);
@@ -671,6 +678,9 @@ struct PlacementResult {
     /// <summary>JSONに保存した状態を指定Objectへ反映する。</summary>
     void ApplyObjectState(engine::Object3d* object, const nlohmann::json& state);
 
+    engine::Object3d* ReplaceObjectFromState(engine::Object3d* object, const nlohmann::json& state,
+        std::unique_ptr<engine::Object3d> replacement = {});
+
     /// <summary>名前が一致するシーンObjectを探す。</summary>
     engine::Object3d* FindObjectByName(const std::string& name) const;
 
@@ -769,6 +779,7 @@ private:
 
     // 前回更新したSceneを借用し、切替時のプレビュー片付けに使う。
     BaseScene* lastUpdatedScene_ = nullptr;
+    std::function<void()> pendingObjectTypeChange_;
 
     // Prefab Modeでは現在Sceneを一時的に隠し、Prefab階層だけを同じInspector/Gizmoで編集します。
     // Prefab編集の有効性と未保存状態。
@@ -834,7 +845,8 @@ private:
     enum class EditorCommandType {
         ObjectCreated,
         ObjectDeleted,
-        ObjectEdited
+        ObjectEdited,
+        ObjectReplaced
     };
 
     // Object 編集の前後 JSON と名前。Undo は before、Redo は after を使って編集状態を戻す。

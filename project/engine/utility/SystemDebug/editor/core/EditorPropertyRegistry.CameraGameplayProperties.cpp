@@ -357,6 +357,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
     registerParamString("gameplay.targetScene", "移動先Scene", &engine::Object3d::EntityParameter::targetScene);
     registerParamNumber("gameplay.moveAmount", "移動量", &engine::Object3d::EntityParameter::moveAmount);
     registerParamNumber("gameplay.moveSpeed", "移動速度", &engine::Object3d::EntityParameter::moveSpeed);
+    registerParamNumber("gameplay.ringWaveSpeed", "リング拡大速度", &engine::Object3d::EntityParameter::ringWaveSpeed);
     registerParamBool("gameplay.startActive", "開始時有効", &engine::Object3d::EntityParameter::startActive);
     registerParamBool("gameplay.returnOnOff", "OFFで戻る", &engine::Object3d::EntityParameter::returnOnOff);
 }

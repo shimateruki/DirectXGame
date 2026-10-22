@@ -62,6 +62,7 @@ void PlayerMover::ResetTransientState() {
     platformVelocity_ = {};
     platformAirVelocity_ = {};
     abilityAirVelocity_ = {};
+    previousAddedAirVelocity_ = {};
     jumpRequest_.Reset();
     jumpStatus_ = "リセット";
     StopDashOnImpact();
@@ -161,6 +162,7 @@ void PlayerMover::Update(float deltaTime) {
 
     engine::Vector3 velocity = player_->GetVelocity();
 
+    const auto attackMovement = player_->GetAttackMovement();
     engine::Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
     bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
@@ -187,10 +189,16 @@ void PlayerMover::Update(float deltaTime) {
             StopDashOnImpact();
         }
     } else {
-        // 通常移動は入力速度を直接適用します。
-        const engine::Vector3 targetMove = inputMove * moveSpeedMultiplier;
-        velocity.x = targetMove.x;
-        velocity.z = targetMove.z;
+        // 空中の攻撃だけ慣性を残します。前回の外力を除いてから入力を補間し、末尾で外力を一度だけ足す。
+        if (attackMovement.enabled && !player_->IsGrounded()) {
+            auto removeExternal = [](float current, float added) {
+                // 壁で外力ごと停止した場合、差し引きで逆向きの速度を作らない。
+                return current * added >= 0.0f && std::abs(current) <= std::abs(added) ? 0.0f : current - added;
+            };
+            velocity.x = removeExternal(velocity.x, previousAddedAirVelocity_.x);
+            velocity.z = removeExternal(velocity.z, previousAddedAirVelocity_.z);
+        }
+        velocity = attackMovement.Apply(velocity, inputMove * moveSpeedMultiplier, player_->IsGrounded(), deltaTime);
     }
 
     // ロック中は横移動・後退しても敵を正面に捉えます。遮蔽で照準が無効なら通常の移動方向へ戻します。
@@ -258,19 +266,20 @@ void PlayerMover::Update(float deltaTime) {
             EmitGroundDust("player_jump_dust", 0.035f);
         }
 
-        // 水平方向の操作感は今回変更しません。
+        // 攻撃中の踏み切りも地上の減速率を引き継ぎ、ジャンプ入力で制限を消さない。
+        const float takeoffScale = attackMovement.enabled ? attackMovement.groundSpeedScale : 1.0f;
         if (hasMoveInput) {
             const float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
 
             if (len > 0.001f) {
-                const float scale = player_->GetMoveSpeed() / len;
+                const float scale = player_->GetMoveSpeed() * takeoffScale / len;
                 velocity.x = inputMove.x * scale;
                 velocity.z = inputMove.z * scale;
             }
         } else {
             const float yaw = player_->GetMoveYaw();
-            velocity.x = std::sin(yaw) * player_->GetMoveSpeed();
-            velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
+            velocity.x = std::sin(yaw) * player_->GetMoveSpeed() * takeoffScale;
+            velocity.z = std::cos(yaw) * player_->GetMoveSpeed() * takeoffScale;
         }
 
         // 下降速度は渡さない。水平の勢いだけを残し、空中操作も維持する。
@@ -288,7 +297,9 @@ void PlayerMover::Update(float deltaTime) {
     // 見た目の伸縮はPlayerSlimeAnimatorが担当します。
 
     // --- 9. 最終的な速度をプレイヤーへ適用 ---
+    previousAddedAirVelocity_ = {};
     if (!isDashing_) {
+        previousAddedAirVelocity_ = platformAirVelocity_ + abilityAirVelocity_;
         velocity += platformAirVelocity_;
         platformAirVelocity_ = platformAirVelocity_ * std::exp(-0.8f * deltaTime);
         velocity += abilityAirVelocity_;

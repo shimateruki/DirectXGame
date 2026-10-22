@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "aed6434e5b1c5f8ebee019dfe66f549b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_portraits/bomb.png",
+  "version": 1
+}

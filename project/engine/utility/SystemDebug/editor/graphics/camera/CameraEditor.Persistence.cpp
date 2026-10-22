@@ -43,6 +43,8 @@ void CameraEditor::SaveSettings() {
   j["gameFollowMode"] = static_cast<int>(settings_.gameFollowMode);
   j["distance"] = settings_.distance;
   j["height"] = settings_.height;
+  j["stabilizeJumpHeight"] = settings_.stabilizeJumpHeight;
+  j["jumpHeightAllowance"] = settings_.jumpHeightAllowance;
   j["angle"] = {settings_.angle.x, settings_.angle.y, settings_.angle.z};
   j["lockOnOffset"] = {settings_.lockOnOffset.x, settings_.lockOnOffset.y,
                        settings_.lockOnOffset.z};
@@ -151,6 +153,8 @@ void CameraEditor::LoadSettings() {
       settings_.distance = j["distance"];
     if (j.contains("height"))
       settings_.height = j["height"];
+    settings_.stabilizeJumpHeight = j.value("stabilizeJumpHeight", true);
+    settings_.jumpHeightAllowance = std::clamp(j.value("jumpHeightAllowance", 8.0f), 1.0f, 30.0f);
     if (j.contains("angle")) {
       if (j["angle"].is_array()) {
         settings_.angle.x = j["angle"][0];

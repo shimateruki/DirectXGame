@@ -8,14 +8,14 @@
 #include <array>
 #include <cmath>
 
-// コピー能力の短い案内を、チュートリアル・本編・プレビューで同じ条件で表示する。
+// 現在のコピー能力名を、チュートリアル・本編・プレビューで同じ条件で表示する。
 // 位置と大きさは各シーンが所有する Sprite の配置設定から受け取る。
 class CopyStyleHud {
   public:
     // コピー能力ごとの表示画像。事前ロードは操作ガイドのUIデータから収集する。
     static constexpr std::array<const char*, 6> kTexturePaths = {
-        "ui/hud/copy_style/pink.png", "ui/hud/copy_style/fire.png", "ui/hud/copy_style/thunder.png",
-        "ui/hud/copy_style/wind.png", "ui/hud/copy_style/bomb.png", "ui/hud/copy_style/crown.png"};
+        "ui/hud/copy_name/pink.png", "ui/hud/copy_name/fire.png", "ui/hud/copy_name/thunder.png",
+        "ui/hud/copy_name/wind.png", "ui/hud/copy_name/bomb.png", "ui/hud/copy_name/crown.png"};
 
     void Bind(engine::Sprite* sprite) {
         // シーン所有のSpriteから基準座標と寸法だけ保持し、能力表示は一度隠す。
@@ -26,6 +26,15 @@ class CopyStyleHud {
             return;
         basePosition_ = sprite_->GetPosition();
         baseSize_ = sprite_->GetSize();
+        // 画面の縦横比が変わっても文字を潰さず、Editorで指定した範囲へ収める。
+        const auto& metadata = TextureManager::GetInstance()->GetMetadata(sprite_->GetTextureHandle());
+        if (metadata.width > 0 && metadata.height > 0) {
+            const float width = static_cast<float>(metadata.width);
+            const float height = static_cast<float>(metadata.height);
+            const float fit = (std::min)(baseSize_.x / width, baseSize_.y / height);
+            baseSize_ = {width * fit, height * fit};
+        }
+
         sprite_->SetVisible(false);
     }
 
@@ -55,15 +64,13 @@ class CopyStyleHud {
                                     {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
         }
 
-        // 出現時だけ小さく跳ねさせ、透明度と位置を同じ進行率で揃える。
+        // 能力名はHPバーの上に固定し、切替時の短いフェードだけを行う。
         revealTime_ += (std::max)(deltaTime, 0.0f);
-        const float t = std::clamp(revealTime_ / 0.32f, 0.0f, 1.0f);
+        const float t = std::clamp(revealTime_ / 0.16f, 0.0f, 1.0f);
         const float smooth = t * t * (3.0f - 2.0f * t);
-        const float bounce = std::sin(std::clamp(revealTime_ / 0.48f, 0.0f, 1.0f) * 3.14159265f);
-        const float scale = 1.0f + bounce * 0.08f;
         sprite_->SetVisible(true);
-        sprite_->SetPosition({basePosition_.x, basePosition_.y + (1.0f - smooth) * 14.0f - bounce * 3.0f});
-        sprite_->SetSize({baseSize_.x * scale, baseSize_.y * scale});
+        sprite_->SetPosition(basePosition_);
+        sprite_->SetSize(baseSize_);
         sprite_->SetColor({1.0f, 1.0f, 1.0f, smooth});
         sprite_->Update();
     }

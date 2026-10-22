@@ -13,6 +13,10 @@
 #include <utility>
 
 // Singletonの寿命はEditor全体と同じで、外部から所有権を受け取りません。
+void PresetEditor::ClearPropertyEditors() {
+    propertyEditors_.clear();
+}
+
 PresetEditor* PresetEditor::GetInstance() {
     static PresetEditor instance;
     return &instance;
@@ -27,6 +31,7 @@ std::string PresetEditor::GetName() {
 
 // パレットの表示、選択、ドラッグ配置を担当します。
 void PresetEditor::Initialize() {
+    ClearPropertyEditors();
     // カタログとモデル候補を先に読み込み、初回表示から配置候補を選べるようにする。
     PresetManager::GetInstance()->Initialize();
     RefreshModelList();

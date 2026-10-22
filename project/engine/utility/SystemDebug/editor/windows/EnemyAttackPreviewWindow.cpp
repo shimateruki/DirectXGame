@@ -4,7 +4,6 @@
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/system/scene/SceneGameplayAccess.h"
 #include "game/crown/CrownFinaleTuning.h"
-#include "game/crown/CrownDefeatTuning.h"
 
 #include "BaseEnemy.h"
 #include "game/actor/enemy/combat/ISequencePreviewEnemy.h"
@@ -106,7 +105,7 @@ void EnemyAttackPreviewWindow::SetCrownMovieMode() {
     playing_ = false;
     playerCopyMode_ = false;
     crownMovieMode_ = true;
-    loopDuration_ = crownDefeatMode_ ? CrownDefeatTuning::Get().duration : CrownFinaleTuning::Get().movieDuration;
+    loopDuration_ = GetCrownMovieDuration();
 }
 
 void EnemyAttackPreviewWindow::StopPreview() {
@@ -176,7 +175,7 @@ void EnemyAttackPreviewWindow::Update(float deltaTime) {
     }
 
     if (crownMovieMode_)
-        loopDuration_ = crownDefeatMode_ ? CrownDefeatTuning::Get().duration : CrownFinaleTuning::Get().movieDuration;
+        loopDuration_ = GetCrownMovieDuration();
 
     // Sceneの切り替えと本番再生を確認してから、プレビューだけを再構築します。
     if (draftRefreshPending_ && useDraftProfile_ && !placementPreview_) {
@@ -236,7 +235,7 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
         if (!crownMoviePrepared_)
             enabled_ = false;
         elapsedTime_ = simulationAccumulator_ = 0.0f;
-        loopDuration_ = crownDefeatMode_ ? CrownDefeatTuning::Get().duration : CrownFinaleTuning::Get().movieDuration;
+        loopDuration_ = GetCrownMovieDuration();
         return;
     }
 
@@ -1400,4 +1399,10 @@ const char* EnemyAttackPreviewWindow::GetSelectedEnemyType() const {
 bool EnemyAttackPreviewWindow::IsCurrentSceneReady() const {
     // 現シーンと描画基盤が揃うまで観測用 Object を生成しない。
     return sceneManager_ && sceneManager_->GetCurrentScene() && sceneManager_->GetCurrentScene()->GetObject3dCommon();
+}
+
+float EnemyAttackPreviewWindow::GetCrownMovieDuration() const {
+    const auto* game=sceneManager_?dynamic_cast<GamePlayScene*>(sceneManager_->GetCurrentScene()):nullptr;
+    return game ? (crownDefeatMode_ ? game->GetCrownDefeatDuration() : game->GetCrownFinaleTiming().movieDuration)
+                : (crownDefeatMode_ ? 12.0f : 18.0f);
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Object3d.h"
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
@@ -37,6 +38,8 @@ struct PhysicsQueryFilter {
     bool includeTriggers = false;
     bool includeDisabled = false;
     bool refineSphereCastHit = false; // 高速弾など、最初の接触位置を細かく求める場合に指定する。
+    // 用途固有の除外はこのクエリだけに適用し、接触判定や他のクエリへ波及させない。
+    std::function<bool(const engine::Object3d*)> acceptsObject;
 };
 
 /// <summary>Overlap Query の対象と、押し戻し情報です。</summary>

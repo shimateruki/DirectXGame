@@ -65,6 +65,8 @@ enum class EditorPropertyType {
 
 /// Registryから共通ImGui Drawerへ渡す表示方法です。
 /// Property固有の見た目をDrawer側のPath分岐に増やさないため、型情報と一緒に管理します。
+enum class EditorPropertyAssetEditor { None, Scenario };
+
 struct EditorPropertyUiHints {
     bool configured = false;
     bool useSlider = false;
@@ -74,6 +76,9 @@ struct EditorPropertyUiHints {
     float minValue = 0.0f;
     float maxValue = 0.0f;
     std::string format;
+    int integerDisplayOffset = 0;
+    std::string assetDirectory;
+    EditorPropertyAssetEditor assetEditor = EditorPropertyAssetEditor::None;
 };
 
 enum class EditorPropertyFlags : std::uint32_t {
@@ -82,6 +87,8 @@ enum class EditorPropertyFlags : std::uint32_t {
     PrefabOverride = 1u << 1,
     Animatable = 1u << 2,
     ReadOnly = 1u << 3,
+    // クラス側で公開した専用設定をcomponentsへ保存します。既存paramは従来の保存経路を使います。
+    ClassStorage = 1u << 4,
 };
 
 inline EditorPropertyFlags operator|(EditorPropertyFlags lhs, EditorPropertyFlags rhs) {
@@ -120,6 +127,16 @@ struct EditorPropertyDescriptor {
 
     /// Inspectorなどの編集画面で共有するUI表示情報です。
     EditorPropertyUiHints ui;
+
+    /// 入力欄だけの表示条件です。非表示でも値の保存・複製・復元は行います。
+    std::function<bool(const engine::Object3d&)> visible;
+
+    // 表示名と保存値の対応も台帳に持ち、未選択の旧値を書き換えません。
+    std::vector<nlohmann::json> enumValues;
+    std::function<bool(const engine::Object3d&)> enabled;
+    std::function<float(const engine::Object3d&)> maximum;
+    std::function<std::string(const engine::Object3d&)> help;
+    std::function<nlohmann::json(const engine::Object3d&)> displayValue;
 };
 
 /// Inspector、Prefab、Sequencerから共通利用するObject3dプロパティ台帳です。
@@ -197,6 +214,13 @@ public:
 
     /// <summary>複数対象のプロパティ値に差があるか調べます。</summary>
     bool HasMixedValue(const std::vector<engine::Object3d*>& objects, const std::string& path) const;
+
+    /// クラスで宣言した専用設定を、未知のComponent項目を保持したまま読み書きします。
+    /// 型に登録された保存項目を調べます。描画材質とは別に使う材質設定も往復させます。
+    bool HasSerializedProperties(const engine::Object3d& object, const std::string& prefix) const;
+
+    void WriteClassProperties(const engine::Object3d& object, nlohmann::json& components) const;
+    void ReadClassProperties(engine::Object3d& object, const nlohmann::json& components) const;
 
 private:
     /// <summary>標準定義を所有領域ごとに登録します。登録順はInspectorの表示順に影響します。</summary>

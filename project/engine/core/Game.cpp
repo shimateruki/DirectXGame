@@ -1,3 +1,7 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <d3d12.h>
 #define NOMINMAX
 #include "Game.h"
 
@@ -314,6 +318,14 @@ void Game::Update() {
 	}
 #endif
 
+#ifdef USE_IMGUI
+    if (GoalPresentationRuntimeProbe::Enabled() || StarCoinRuntimeProbe::Enabled() || EnemyProjectileRuntimeProbe::Enabled()) { isPlaying_ = true; }
+    if (GateEntryRuntimeProbe::Enabled()) {
+        isPlaying_ = GateEntryRuntimeProbe::WantsPlay();
+        sceneManager_->SetIsPlaying(isPlaying_);
+        CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
+    }
+#endif
 	const float feedbackTimeScale = VFXSequencer::GetGameplayTimeScale();
 	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ * feedbackTimeScale : 0.0f;
 #ifdef USE_IMGUI

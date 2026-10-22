@@ -55,8 +55,7 @@ void SetFullSaveUiTexture(engine::Sprite* sprite, uint32_t handle, bool keepText
 constexpr const char* kTextFile1 = "Resources/sprite/generated/text/text_1_3c19efbf.png";
 constexpr const char* kTextFile2 = "Resources/sprite/generated/text/text_2_3d19f152.png";
 constexpr const char* kTextFile3 = "Resources/sprite/generated/text/text_3_3e19f2e5.png";
-constexpr const char* kTextStartFromBeginning = "Resources/sprite/ui/title/save_beginning_label.png";
-constexpr const char* kTextContinue = "Resources/sprite/generated/text/text_text_46356cfa.png";
+constexpr const char* kTextStartFromBeginning = "Resources/sprite/ui/menu_hints/save_beginning.png";
 constexpr const char* kTextDeleteFile = "Resources/sprite/generated/text/text_text_1f05b6eb.png";
 constexpr const char* kTextDeleteQuestion = "Resources/sprite/ui/title/save_delete_question.png";
 constexpr const char* kTextYes = "Resources/sprite/generated/text/text_text_a214f5c6.png";
@@ -84,10 +83,6 @@ constexpr float kSaveLaunchDuration = 0.70f;
 constexpr float kTitleIntroPi = 3.1415926535f;
 const engine::Vector2 kMenuStartFramePosition = {1536.0f, 712.0f};
 const engine::Vector2 kMenuSettingFramePosition = {1536.0f, 818.0f};
-const engine::Vector2 kMenuStartTextureLeftTop = {2.0f, 2.0f};
-const engine::Vector2 kMenuStartTextureSize = {278.0f, 42.0f};
-const engine::Vector2 kMenuSettingTextureLeftTop = {5.0f, 3.0f};
-const engine::Vector2 kMenuSettingTextureSize = {75.0f, 37.0f};
 const engine::Vector2 kMenuCursorTextureLeftTop = {115.0f, 218.0f};
 const engine::Vector2 kMenuCursorTextureSize = {1024.0f, 827.0f};
 const engine::Vector3 kTitleHeroDefaultPosition = {0.0f, -0.42f, 5.5f};
@@ -574,13 +569,13 @@ void TitleScene::InitializeMainMenuUI() {
     // ボタン枠を基準に、文字・カーソルの相対位置を保存する。
     if (startTextSprite_) {
         startTextSprite_->SetAnchorPoint({0.5f, 0.5f});
-        startTextSprite_->SetTextureRect(kMenuStartTextureLeftTop, kMenuStartTextureSize);
+        SetFullSaveUiTexture(startTextSprite_, engine::Sprite::LoadTexture("ui/menu_hints/title_start.png"));
         startTextSprite_->SetColor({0.41f, 0.91f, 1.0f, 0.0f});
     }
 
     if (settingTextSprite_) {
         settingTextSprite_->SetAnchorPoint({0.5f, 0.5f});
-        settingTextSprite_->SetTextureRect(kMenuSettingTextureLeftTop, kMenuSettingTextureSize);
+        SetFullSaveUiTexture(settingTextSprite_, engine::Sprite::LoadTexture("ui/menu_hints/title_setting.png"));
         settingTextSprite_->SetColor({0.62f, 0.74f, 0.82f, 0.0f});
     }
 
@@ -793,8 +788,8 @@ void TitleScene::UpdateMainMenu() {
     const float selectedScale = 1.0f + pulse * 0.018f;
     const float menuAlpha =
         std::clamp((titleIntroTime_ - kTitleIntroMenuDelay) / kTitleIntroMenuFadeDuration, 0.0f, 1.0f);
-    engine::Vector4 normalColor = {0.24f, 0.22f, 0.17f, 0.98f * menuAlpha};
-    engine::Vector4 selectColor = {0.07f, 0.20f, 0.25f, menuAlpha};
+    engine::Vector4 normalColor = {0.07f, 0.17f, 0.21f, menuAlpha};
+    engine::Vector4 selectColor = normalColor;
     const engine::Vector2 startFramePosition =
         mainMenuStartFrameSprite_ ? mainMenuStartFrameSprite_->GetPosition() : kMenuStartFramePosition;
     const engine::Vector2 settingFramePosition =
@@ -860,8 +855,26 @@ void TitleScene::UpdateMainMenu() {
     if (mainMenuPromptSprite_) {
         const float promptPulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 1.45f);
         const float promptAlpha = (0.38f + promptPulse * 0.55f) * menuAlpha;
-        mainMenuPromptSprite_->SetPosition(mainMenuPromptBasePosition_);
-        mainMenuPromptSprite_->SetSize(mainMenuPromptBaseSize_);
+        // 元画像の字形・縁・発光を保ち、使用中の入力機器に必要な部分だけを並べる。
+        const bool gamepad = input->IsGamepadMode();
+        const float firstPixels = gamepad ? 65.0f : 289.0f;
+        const float lastOrigin = gamepad ? 365.0f : 517.0f;
+        const float lastPixels = 707.0f - lastOrigin;
+        const auto& metadata = TextureManager::GetInstance()->GetMetadata(mainMenuPromptSprite_->GetTextureHandle());
+        const float scale = mainMenuPromptBaseSize_.x / static_cast<float>(metadata.width);
+        const float firstWidth = firstPixels * scale;
+        const float lastWidth = lastPixels * scale;
+        const float left = mainMenuPromptBasePosition_.x - (firstWidth + lastWidth) * 0.5f;
+        mainMenuPromptSprite_->SetTextureRect({40.0f, 0.0f}, {firstPixels, 75.0f});
+        mainMenuPromptSprite_->SetPosition({left + firstWidth * 0.5f, mainMenuPromptBasePosition_.y});
+        mainMenuPromptSprite_->SetSize({firstWidth, mainMenuPromptBaseSize_.y});
+        if (auto* suffix = GetSpriteByName("mainMenuPromptSuffix")) {
+            suffix->SetTextureRect({lastOrigin, 0.0f}, {lastPixels, 75.0f});
+            suffix->SetPosition({left + firstWidth + lastWidth * 0.5f, mainMenuPromptBasePosition_.y});
+            suffix->SetSize({lastWidth, mainMenuPromptBaseSize_.y});
+            suffix->SetColor({1.0f, 1.0f, 1.0f, promptAlpha});
+            suffix->Update();
+        }
         mainMenuPromptSprite_->SetColor({1.0f, 1.0f, 1.0f, promptAlpha});
         mainMenuPromptSprite_->Update();
     }
@@ -1104,7 +1117,7 @@ void TitleScene::InitializeSaveSlotUI() {
                {900.0f, 550.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
     bindSprite(saveDetailFileName_, "saveDetailFileName", kTextFile1, {1430.0f, 290.0f}, {290.0f, 70.0f},
                {0.20f, 0.26f, 0.38f, 1.0f});
-    bindSprite(saveDetailEmptyLabel_, "saveDetailEmptyLabel", "ui/title/save_beginning_label.png",
+    bindSprite(saveDetailEmptyLabel_, "saveDetailEmptyLabel", "ui/menu_hints/save_beginning.png",
                {1375.0f, 550.0f}, {310.0f, 64.0f}, {0.20f, 0.32f, 0.48f, 1.0f});
     bindSprite(saveLaunchLabel_, "saveLaunchLabel", "ui/title/save_launch_label.png",
                {1375.0f, 672.0f}, {340.0f, 70.0f}, {0.17f, 0.39f, 0.65f, 1.0f});
@@ -1114,10 +1127,17 @@ void TitleScene::InitializeSaveSlotUI() {
                {790.0f, 160.0f}, {1.0f, 1.0f, 1.0f, 0.35f});
     bindSprite(saveHintBackdrop_, "saveHintBackdrop", kWhite, {960.0f, 965.0f},
                {1250.0f, 82.0f}, {0.02f, 0.07f, 0.14f, 0.68f});
-    bindSprite(saveKeyboardHint_, "saveKeyboardHint", "ui/title/save_hint_keyboard.png", {960.0f, 970.0f},
+    bindSprite(saveKeyboardHint_, "saveKeyboardHint", "ui/menu_hints/save_keyboard.png", {960.0f, 970.0f},
                {1120.0f, 54.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
-    bindSprite(saveGamepadHint_, "saveGamepadHint", "ui/title/save_hint_gamepad.png", {960.0f, 970.0f},
+    bindSprite(saveGamepadHint_, "saveGamepadHint", "ui/menu_hints/save_gamepad.png", {960.0f, 970.0f},
                {1120.0f, 54.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
+    // 既存の枠を左右端と中央に分け、長い帯でも丸い端や縁の太さを変えない。
+    saveHintBackdrop_->SetTextureRect({110.0f, 0.0f}, {340.0f, 110.0f});
+    if (auto* left = GetSpriteByName("saveHintFrame_left"))
+        left->SetTextureRect({0.0f, 0.0f}, {110.0f, 110.0f});
+    if (auto* right = GetSpriteByName("saveHintFrame_right"))
+        right->SetTextureRect({450.0f, 0.0f}, {110.0f, 110.0f});
+
     saveDetailPanelBasePosition_ = saveDetailPanel_->GetPosition();
     saveSelectTitleBasePosition_ = saveSelectTitle_->GetPosition();
 
@@ -1269,6 +1289,8 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         mainMenuCursorSprite_->SetVisible(showMainMenu);
     if (mainMenuPromptSprite_)
         mainMenuPromptSprite_->SetVisible(showMainMenu);
+    if (auto* suffix = GetSpriteByName("mainMenuPromptSuffix"))
+        suffix->SetVisible(showMainMenu);
     if (saveSelectHeader_)
         saveSelectHeader_->SetVisible(false);
 
@@ -1300,8 +1322,16 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     }
 
     if (saveHintBackdrop_) {
+        // 操作が多いファイル選択では、設定画面と共通の配色で一つのガイド帯にまとめる。
         saveHintBackdrop_->SetVisible(inSaveSelect && !deleteConfirm && !launching && hintReveal > 0.0f);
-        saveHintBackdrop_->SetColor({0.02f, 0.07f, 0.14f, 0.68f * hintReveal});
+        saveHintBackdrop_->SetColor({1.0f, 1.0f, 1.0f, hintReveal});
+    }
+
+    for (const char* name : {"saveHintFrame_left", "saveHintFrame_right"}) {
+        if (auto* frame = GetSpriteByName(name)) {
+            frame->SetVisible(inSaveSelect && !deleteConfirm && !launching && hintReveal > 0.0f);
+            frame->SetColor({1.0f, 1.0f, 1.0f, hintReveal});
+        }
     }
 
     if (saveKeyboardHint_) {
@@ -1316,7 +1346,8 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
 
     // 選択中スロットのファイル番号と空欄表示は保存要約から毎フレーム更新する。
     if (saveDetailFileName_) {
-        saveDetailFileName_->SetVisible(inSaveSelect && panelReveal > 0.0f);
+        const auto summary = GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
+        saveDetailFileName_->SetVisible(inSaveSelect && summary.exists && panelReveal > 0.0f);
         saveDetailFileName_->SetColor({0.20f, 0.26f, 0.38f, panelReveal});
         const std::string fileTexture = kFileTextPaths[currentSaveSlotIndex_];
         SetFullSaveUiTexture(saveDetailFileName_,
@@ -1326,6 +1357,8 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     if (saveDetailEmptyLabel_) {
         const auto summary = GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
         saveDetailEmptyLabel_->SetVisible(inSaveSelect && !summary.exists && panelReveal > 0.0f);
+        if (saveDetailPanel_)
+            saveDetailEmptyLabel_->SetPosition(saveDetailPanel_->GetPosition());
         saveDetailEmptyLabel_->SetColor({0.20f, 0.32f, 0.48f, panelReveal});
     }
 
@@ -1393,21 +1426,21 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         }
 
         if (saveSlotFileNameTexts_[i]) {
-            saveSlotFileNameTexts_[i]->SetVisible(inSaveSelect && rowReveal > 0.0f);
-            saveSlotFileNameTexts_[i]->SetPosition({saveSlotFileNameBasePositions_[i].x,
-                                                   saveSlotFileNameBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
+            saveSlotFileNameTexts_[i]->SetVisible(inSaveSelect && summary.exists && rowReveal > 0.0f);
+            saveSlotFileNameTexts_[i]->SetPosition({saveSlotCardBasePositions_[i].x,
+                                                   saveSlotCardBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
             saveSlotFileNameTexts_[i]->SetColor({textColor.x, textColor.y, textColor.z,
                                                  textColor.w * rowReveal * launchDim});
         }
 
         if (saveSlotStatusTexts_[i]) {
-            // チュートリアル未クリアのファイルだけ開始状態を示す。クリア後はファイル名を主役にする。
+            // 空の枠だけ初回開始を示し、保存済みの枠はファイル名だけ表示する。
             const std::string statusTexture = kTextStartFromBeginning;
             SetFullSaveUiTexture(saveSlotStatusTexts_[i],
                                  engine::Sprite::LoadTexture(statusTexture.substr(std::string("Resources/sprite/").size())));
-            saveSlotStatusTexts_[i]->SetVisible(inSaveSelect && !summary.tutorialCleared && rowReveal > 0.0f);
-            saveSlotStatusTexts_[i]->SetPosition({saveSlotStatusBasePositions_[i].x,
-                                                 saveSlotStatusBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
+            saveSlotStatusTexts_[i]->SetVisible(inSaveSelect && !summary.exists && rowReveal > 0.0f);
+            saveSlotStatusTexts_[i]->SetPosition({saveSlotCardBasePositions_[i].x,
+                                                 saveSlotCardBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
             saveSlotStatusTexts_[i]->SetColor({textColor.x, textColor.y, textColor.z,
                                                textColor.w * rowReveal * launchDim});
         }

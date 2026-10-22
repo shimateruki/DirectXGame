@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickMagmaGeyser.h"
+#include "ObjectPropertyDefinition.h"
 #include "game/system/scene/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
@@ -147,6 +148,54 @@ void GimmickMagmaGeyser::Initialize(engine::Object3dCommon* common, const std::s
             fire->uvOffsetY = 5.31f;
         }
     }
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickMagmaGeyser;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "マグマ・水の噴出口",
+        "水柱はTarget IDで移動床へ接続し、乗車タイムラインとride.waterjetのon/offで制御します（接触ダメージなし）。マグマ火山弾は真上へ発射し、上吹き飛ばしが打上げ速度です。岩盤モードは移動床からこのMy Event IDへ接続します。泡の値はマテリアルへ保存します。");
+    using Parameter = engine::Object3d::EntityParameter;
+
+    // 泡の調整は旧マテリアル値を直接編集し、paramや新Componentへ二重保存しません。
+    properties.Accessor<float>("泡の幅倍率", "boiling_effectScaleX", "waterParam.effectScaleX",
+        [](const Self& object) { auto* renderer = object.GetMeshRenderer(); return renderer ? renderer->GetWaterParamData()->effectScaleX : 1.0f; },
+        [](Self& object, const float& value) { if (auto* renderer = object.GetMeshRenderer()) renderer->GetWaterParamData()->effectScaleX = value; },
+        0.25f, 2.0f, +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Accessor<float>("泡の高さ倍率", "boiling_effectScaleY", "waterParam.effectScaleY",
+        [](const Self& object) { auto* renderer = object.GetMeshRenderer(); return renderer ? renderer->GetWaterParamData()->effectScaleY : 1.0f; },
+        [](Self& object, const float& value) { if (auto* renderer = object.GetMeshRenderer()) renderer->GetWaterParamData()->effectScaleY = value; },
+        0.25f, 2.0f, +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Accessor<float>("泡立つ速さ", "boiling_waveSpeed", "waterParam.waveSpeed",
+        [](const Self& object) { auto* renderer = object.GetMeshRenderer(); return renderer ? renderer->GetWaterParamData()->waveSpeed : 1.0f; },
+        [](Self& object, const float& value) { if (auto* renderer = object.GetMeshRenderer()) renderer->GetWaterParamData()->waveSpeed = value; },
+        0.1f, 3.0f, +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("噴出口の動作", "actionMode", &Parameter::actionMode, 0.0f, 2.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; }, {"噴射ダメージ", "火山弾", "岩盤を持ち上げる"});
+    properties.Parameter("火山弾の半径", "healAmount", &Parameter::healAmount, 0.25f, 2.0f,
+        +[](const Self& object) { return object.param_ && (object.GetGimmickType() != "WaterGeyser" && object.param_->actionMode == 1); });
+    properties.Parameter("警告時間", "shakeDuration", &Parameter::shakeDuration, 0.2f, 10.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("噴出時間", "fallDuration", &Parameter::fallDuration, 0.2f, 10.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("休止時間", "interval", &Parameter::interval, 0.2f, 30.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("初回ディレイ", "moveSpeed", &Parameter::moveSpeed, 0.0f, 30.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("噴出高", "moveAmount", &Parameter::moveAmount, 0.5f, 60.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("シミュレーション距離", "maxFallSpeed", &Parameter::maxFallSpeed, 20.0f, 500.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("危険半径", "detectionRange", &Parameter::detectionRange, 0.25f, 20.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("ダメージ", "speed", &Parameter::speed, 0.0f, 100.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("横吹き飛ばし", "gravity", &Parameter::gravity, 0.0f, 80.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("上吹き飛ばし", "jumpPower", &Parameter::jumpPower, 0.0f, 100.0f,
+        +[](const Self& object) { return object.GetGimmickType() != "WaterGeyser"; });
+    properties.Parameter("水柱の半径", "detectionRange_water", &Parameter::detectionRange, 0.25f, 20.0f,
+        +[](const Self& object) { return object.GetGimmickType() == "WaterGeyser"; }, {}, {.parameterId = "detectionRange"});
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
 }
 
 void GimmickMagmaGeyser::Update(float deltaTime) {

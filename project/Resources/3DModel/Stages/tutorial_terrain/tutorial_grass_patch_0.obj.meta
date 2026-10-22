@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "0a75d04950ff45fd9bd48e3798332dec",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/tutorial_terrain/tutorial_grass_patch_0.obj",
+  "version": 1
+}

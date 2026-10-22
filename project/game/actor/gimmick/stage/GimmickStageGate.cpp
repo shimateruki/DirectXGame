@@ -1,6 +1,9 @@
 #include "GimmickStageGate.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
+#include "Player.h"
+#include "PostEffect.h"
 #include "game/system/progress/StageManager.h"
 #include <algorithm>
 #include <cassert>
@@ -61,6 +64,22 @@ void GimmickStageGate::Initialize(engine::Object3dCommon* common, const std::str
     SetCollisionMask(CollisionCategories::Get("player"));
     SetColliderType(ColliderType::kSphere);
     SetCollisionRadius(4.0f);
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickStageGate;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ステージゲート",
+        "セレクト用ノードは接近して決定した時、転移・開始ゲートは接触時に作動します。未設定の転移先は実行時にSELECTとして扱います。");
+    using Parameter = engine::Object3d::EntityParameter;
+
+    properties.Accessor<int>("ステージ番号（Target ID）", "stageIndex", "targetID",
+        [](const Self& object) { return object.GetTargetID(); },
+        [](Self& object, const int& value) { object.SetTargetID(value); }, 0, 0,
+        +[](const Self& object) { return !object.param_ || object.param_->actionMode != 1; });
+    properties.Parameter("ゲートモード", "actionMode", &Parameter::actionMode, 0.0f, 2.0f,
+        nullptr, {"ステージセレクト用ノード", "シーン転移ゲート", "ステージ開始ゲート"});
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("転移先シーン", "targetScene", &Parameter::targetScene, 0.0f, 0.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); }, {"タイトル", "チュートリアル", "ステージセレクト", "ゲーム本編", "ゲームオーバー"}, {.values = {"TITLE", "TUTORIAL", "SELECT", "GAMEPLAY", "GAMEOVER"}});
 }
 
 void GimmickStageGate::Update(float deltaTime) {
@@ -108,6 +127,11 @@ void GimmickStageGate::Update(float deltaTime) {
     UpdatePortalMaterial();
 
     BaseGimmick::Update(deltaTime);
+    if (entryPresentation_.IsActive()) {
+        entryPresentation_.Update(deltaTime);
+        if (entryPresentation_.IsFinished() && !transitionQueued_)
+            TriggerTransition();
+    }
 }
 
 bool GimmickStageGate::OnCollision(engine::Object3d* other) {
@@ -120,7 +144,17 @@ bool GimmickStageGate::OnCollision(engine::Object3d* other) {
         return false;
     }
 
-    TriggerTransition();
+    auto* player = dynamic_cast<Player*>(other);
+    auto* manager = SceneManager::GetInstance();
+    const std::string destination = GetGateMode() == kGateModeStageTransition ? "GAMEPLAY" : GetTargetSceneName();
+    if (!player || !manager->IsPlaying() || manager->IsTransitioning() || !manager->IsSceneRegistered(destination) ||
+        !entryPresentation_.Start(player, this)) {
+        return false;
+    }
+
+    // 接触時に遷移を予約せず、同じディゾルブを最後まで描画してから要求します。
+    hasTriggeredTransition_ = true;
+    TriggerEntryReaction();
     return true;
 }
 
@@ -183,8 +217,11 @@ void GimmickStageGate::SetTransitionEnabled(bool enabled) {
     }
 
     param_->startActive = enabled;
+    if (!enabled && entryPresentation_.IsActive())
+        entryPresentation_.Reset();
 
-    if (enabled) {
+    if (enabled && !entryPresentation_.IsActive()) {
+        transitionQueued_ = false;
         hasTriggeredTransition_ = false;
     }
 }
@@ -229,7 +266,7 @@ bool GimmickStageGate::CanTriggerTransition() const {
     // 実際の遷移はモード、有効状態、遷移済みフラグで判定します。
     const int mode = GetGateMode();
 
-    if (mode == kGateModeStageSelectNode || hasTriggeredTransition_) {
+    if (mode == kGateModeStageSelectNode || hasTriggeredTransition_ || entryPresentation_.IsActive()) {
         return false;
     }
 
@@ -241,8 +278,18 @@ bool GimmickStageGate::CanTriggerTransition() const {
 }
 
 void GimmickStageGate::TriggerTransition() {
+    // Editor で演出中に行き先が変更されても、存在しないシーンへの要求で操作不能にしません。
+    auto* manager = SceneManager::GetInstance();
+    const std::string destination = GetGateMode() == kGateModeStageTransition ? "GAMEPLAY" : GetTargetSceneName();
+    if (!manager->IsSceneRegistered(destination)) {
+        entryPresentation_.Reset();
+        hasTriggeredTransition_ = false;
+        transitionQueued_ = false;
+        return;
+    }
     // 衝突が続くフレームでも ChangeScene を一度だけ要求します。
     hasTriggeredTransition_ = true;
+    transitionQueued_ = true;
 
     if (GetGateMode() == kGateModeStageTransition) {
         StageManager::GetInstance()->SetCurrentStage(GetStageIndex());
@@ -291,4 +338,36 @@ engine::Vector4 GimmickStageGate::GetTargetColor() const {
     }
 
     return {1.0f, 0.52f, 0.20f, Lerp(0.68f, 0.94f, active)};
+}
+
+// ゲートが演出を所有し、シーン側は通常更新の入口でこの処理を呼ぶだけにします。
+bool GimmickStageGate::UpdateSceneEntry(BaseScene& scene, float deltaTime) {
+    for (const auto& object : scene.GetObjects()) {
+        auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
+        if (!gate || !gate->entryPresentation_.IsActive()) continue;
+        if (!SceneManager::GetInstance()->IsPlaying()) {
+            gate->entryPresentation_.Reset();
+            gate->hasTriggeredTransition_ = false;
+            gate->transitionQueued_ = false;
+            continue;
+        }
+        PostEffect::GetInstance()->Update(deltaTime);
+        gate->Update(deltaTime);
+        // ワールドを停止していても、カメラ移動後の地形・背景の描画行列は更新します。
+        for (const auto& sceneObject : scene.GetObjects())
+            sceneObject->RefreshRenderCameraData();
+        return true;
+    }
+    return false;
+}
+
+void GimmickStageGate::ResetSceneEntries(BaseScene& scene) {
+    // Player とカメラが生存している Finalize の先頭で、借用参照をすべて外します。
+    for (const auto& object : scene.GetObjects()) {
+        if (auto* gate = dynamic_cast<GimmickStageGate*>(object.get())) {
+            gate->entryPresentation_.Reset();
+            gate->hasTriggeredTransition_ = false;
+            gate->transitionQueued_ = false;
+        }
+    }
 }

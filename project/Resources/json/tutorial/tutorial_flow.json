@@ -10,11 +10,11 @@
     "Tutorial_AbilityTarget_2"
   ],
   "spawnEnemyMaxHp": {
-    "Tutorial_PinkSlime_Throw": 30.0,
-    "Tutorial_PinkSlime_Absorb": 100.0,
-    "Tutorial_AbilityTarget_0": 30.0,
-    "Tutorial_AbilityTarget_1": 30.0,
-    "Tutorial_AbilityTarget_2": 30.0
+    "Tutorial_PinkSlime_Throw": 23,
+    "Tutorial_PinkSlime_Absorb": 75,
+    "Tutorial_AbilityTarget_0": 23,
+    "Tutorial_AbilityTarget_1": 23,
+    "Tutorial_AbilityTarget_2": 23
   },
   "spawnEnemyDetectionRange": {
     "Tutorial_PinkSlime_Throw": 0.1,
@@ -29,19 +29,26 @@
       "condition": "timer",
       "threshold": 0.35,
       "showPrompt": false,
-      "checkpoint": [-42.0, -0.54, -16.0],
+      "checkpoint": [
+        -42,
+        -0.54,
+        -16
+      ],
       "minimumDisplayTime": 0.35,
       "completionDelay": 0.25
     },
     {
       "id": "move",
       "condition": "move_distance",
-      "threshold": 8.0,
+      "threshold": 8,
       "promptIcons": [
         "ui/input/combo/combo_wasd.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_l_stick.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_l_stick.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_move.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_move_gamepad.png",
       "minimumDisplayTime": 0.8,
       "completionDelay": 0.45
     },
@@ -52,8 +59,11 @@
       "promptIcons": [
         "ui/input/mouse/mouse_move.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_r_stick.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_r_stick.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_look.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_look_gamepad.png",
       "minimumDisplayTime": 0.8,
       "completionDelay": 0.45
     },
@@ -64,8 +74,11 @@
       "promptIcons": [
         "ui/input/keyboard/key_space.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_a.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_a.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_jump.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_jump_gamepad.png",
       "minimumDisplayTime": 0.65,
       "completionDelay": 0.55
     },
@@ -76,7 +89,11 @@
       "spawnEnemyObject": "Tutorial_PinkSlime_Throw",
       "spawnEnemiesDormant": true,
       "showPrompt": false,
-      "checkpoint": [-17.0, -0.54, -5.0],
+      "checkpoint": [
+        -17,
+        -0.54,
+        -5
+      ],
       "minimumDisplayTime": 0.6,
       "completionDelay": 0.25
     },
@@ -88,10 +105,14 @@
       "promptIcons": [
         "ui/input/keyboard/key_q.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_r3.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_r3.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_lock_on.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_lock_on_gamepad.png",
       "minimumDisplayTime": 0.6,
-      "completionDelay": 0.45
+      "completionDelay": 0.45,
+      "wrongActionRetryStep": "lock_on_throw_slime"
     },
     {
       "id": "pull_throw_slime",
@@ -102,10 +123,14 @@
       "promptIcons": [
         "ui/input/mouse/mouse_right.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_lb.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_lb.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_pull.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_pull_gamepad.png",
       "minimumDisplayTime": 0.5,
-      "completionDelay": 0.45
+      "completionDelay": 0.45,
+      "wrongActionRetryStep": "pull_throw_slime"
     },
     {
       "id": "throw_slime",
@@ -116,10 +141,14 @@
       "promptIcons": [
         "ui/input/mouse/mouse_left.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_x.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_x.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_throw.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_throw_gamepad.png",
       "minimumDisplayTime": 0.5,
-      "completionDelay": 0.3
+      "completionDelay": 0.3,
+      "wrongActionRetryStep": "pull_throw_slime"
     },
     {
       "id": "wait_throw_defeat",
@@ -138,7 +167,11 @@
       "despawnEnemyObject": "Tutorial_PinkSlime_Throw",
       "spawnEnemyObject": "Tutorial_PinkSlime_Absorb",
       "showPrompt": false,
-      "checkpoint": [10.0, -0.54, 1.0],
+      "checkpoint": [
+        10,
+        -0.54,
+        1
+      ],
       "minimumDisplayTime": 0.9,
       "completionDelay": 0.25
     },
@@ -151,10 +184,14 @@
       "promptIcons": [
         "ui/input/mouse/mouse_right.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_lb.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_lb.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_pull.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_pull_gamepad.png",
       "minimumDisplayTime": 0.5,
-      "completionDelay": 0.45
+      "completionDelay": 0.45,
+      "wrongActionRetryStep": "pull_absorb_slime"
     },
     {
       "id": "absorb_slime",
@@ -165,10 +202,28 @@
       "promptIcons": [
         "ui/input/keyboard/key_e.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_y.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_y.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_absorb.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_absorb_gamepad.png",
       "minimumDisplayTime": 0.55,
-      "completionDelay": 0.55
+      "completionDelay": 0.55,
+      "wrongActionRetryStep": "pull_absorb_slime"
+    },
+    {
+      "id": "open_controls_guide",
+      "condition": "controls_guide_opened",
+      "promptIcons": [
+        "ui/input/keyboard/key_tab.png"
+      ],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_view.png"
+      ],
+      "promptLabel": "ui/tutorial/tutorial_controls.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_controls_gamepad.png",
+      "minimumDisplayTime": 0.6,
+      "completionDelay": 0.45
     },
     {
       "id": "ability_targets_spawn",
@@ -181,7 +236,11 @@
       ],
       "spawnEnemiesDormant": true,
       "showPrompt": false,
-      "checkpoint": [23.0, -0.54, 7.0],
+      "checkpoint": [
+        23,
+        -0.54,
+        7
+      ],
       "minimumDisplayTime": 0.75,
       "completionDelay": 0.3
     },
@@ -198,30 +257,9 @@
         "Tutorial_AbilityTarget_1",
         "Tutorial_AbilityTarget_2"
       ],
-      "spawnEnemyObjects": [
-        "Tutorial_AbilityTarget_0",
-        "Tutorial_AbilityTarget_1",
-        "Tutorial_AbilityTarget_2"
-      ],
-      "requireMorph": true,
-      "promptIcons": [
-        "ui/input/keyboard/key_e.png"
-      ],
-      "promptIconsGamepad": ["ui/input/controller/pad_y.png"],
       "promptLabel": "ui/tutorial/tutorial_ability.png",
       "minimumDisplayTime": 0.8,
       "completionDelay": 0.65
-    },
-    {
-      "id": "open_controls_guide",
-      "condition": "controls_guide_opened",
-      "promptIcons": [
-        "ui/input/keyboard/key_tab.png"
-      ],
-      "promptIconsGamepad": ["ui/input/controller/pad_view.png"],
-      "promptLabel": "ui/tutorial/tutorial_controls.png",
-      "minimumDisplayTime": 0.6,
-      "completionDelay": 0.45
     },
     {
       "id": "release_morph",
@@ -229,8 +267,11 @@
       "promptIcons": [
         "ui/input/keyboard/key_r.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_b.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_b.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_release.png",
+      "promptLabelGamepad": "ui/tutorial/tutorial_release_gamepad.png",
       "minimumDisplayTime": 0.65,
       "completionDelay": 0.55
     },
@@ -239,7 +280,11 @@
       "condition": "cinematic_finished",
       "cinematic": "Resources/json/scenario/tutorial_gate_unlock.json",
       "showPrompt": false,
-      "checkpoint": [34.0, -0.54, 13.0],
+      "checkpoint": [
+        34,
+        -0.54,
+        13
+      ],
       "previewGateUnlock": true,
       "unlockGateOnComplete": true,
       "minimumDisplayTime": 0.75,
@@ -250,13 +295,23 @@
       "condition": "reach_position",
       "objectiveTarget": "Gimmick_StageGate",
       "objectiveOffsetY": 0.9,
-      "targetPosition": [44.0, -0.54, 15.0],
-      "radius": 4.0,
-      "checkpoint": [34.0, -0.54, 13.0],
+      "targetPosition": [
+        44,
+        -0.54,
+        15
+      ],
+      "radius": 4,
+      "checkpoint": [
+        34,
+        -0.54,
+        13
+      ],
       "promptIcons": [
         "ui/input/combo/combo_wasd.png"
       ],
-      "promptIconsGamepad": ["ui/input/controller/pad_l_stick.png"],
+      "promptIconsGamepad": [
+        "ui/input/controller/pad_l_stick.png"
+      ],
       "promptLabel": "ui/tutorial/tutorial_exit.png",
       "minimumDisplayTime": 0.6,
       "completionDelay": 0.35

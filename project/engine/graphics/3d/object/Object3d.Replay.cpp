@@ -1,4 +1,5 @@
 #include "Object3d.h"
+#include "EditorPropertyRegistry.h"
 
 #include <atomic>
 
@@ -61,6 +62,10 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
 
     // 派生Object固有の状態は共通スナップショットの末尾へ委譲する。
     CaptureReplayCustomState(state.custom);
+    // クラスの編集設定も巻き戻します。派生側の再生状態とは別の予約キーに保持します。
+    nlohmann::json properties = nlohmann::json::object();
+    EditorPropertyRegistry::GetInstance()->WriteClassProperties(*this, properties);
+    if (!properties.empty()) state.custom["__classProperties"] = std::move(properties);
     return state;
 }
 
@@ -142,6 +147,8 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
 
     replayRemoved_ = state.replayRemoved;
     // 派生状態を戻してから行列を更新し、復元直後の描画位置へ反映する。
+    if (state.custom.is_object() && state.custom.contains("__classProperties"))
+        EditorPropertyRegistry::GetInstance()->ReadClassProperties(*this, state.custom["__classProperties"]);
     RestoreReplayCustomState(state.custom);
     UpdateLocalMatrix();
     UpdateWorldMatrix();

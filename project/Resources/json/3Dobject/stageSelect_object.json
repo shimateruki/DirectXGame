@@ -5876,7 +5876,7 @@
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Stages/stage_select_hub_plaza",
+            "modelName": "Stages/stage_select_paths/plaza.obj",
             "myEventID": -1,
             "name": "StageSelect_HubPlaza",
             "normalMapPath": "",
@@ -35024,6 +35024,325 @@
                 0.0,
                 0.9971888181122075
             ]
+        },
+        {
+            "name": "StageSelect_DirtPath_1",
+            "guid": "b339d124-ec3c-5b76-a8af-b5b72467ffa5",
+            "type": "Model",
+            "modelName": "Stages/stage_select_paths/path_1.obj",
+            "position": [
+                -18.77818677414196,
+                -1.125,
+                10.953941873152703
+            ],
+            "rotation": [
+                0,
+                -1.0427218947291403,
+                0
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "materialType": 32,
+            "roughness": 0.92,
+            "metallic": 0,
+            "enableLighting": true,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "envIntensity": 3.0,
+            "emissive": 1,
+            "castShadow": false,
+            "isStatic": true,
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "collider": {
+                "type": 0
+            },
+            "parentGuid": "a3f85a73-0dd2-5b49-9935-3859a1cd759e",
+            "parentName": "[Group] Central Terrain",
+            "layer": "Default",
+            "saveCategory": "Object",
+            "quaternion": [
+                0,
+                -0.49806073354956315,
+                0,
+                0.8671421484947385
+            ]
+        },
+        {
+            "name": "StageSelect_DirtPath_2",
+            "guid": "8635ac6e-f212-5698-9642-122d543f9e6c",
+            "type": "Model",
+            "modelName": "Stages/stage_select_paths/path_2.obj",
+            "position": [
+                19.7800192564085,
+                -1.125,
+                9.49440909347484
+            ],
+            "rotation": [
+                0,
+                1.123276357784712,
+                0
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "materialType": 32,
+            "roughness": 0.92,
+            "metallic": 0,
+            "enableLighting": true,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "envIntensity": 3.0,
+            "emissive": 1,
+            "castShadow": false,
+            "isStatic": true,
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "collider": {
+                "type": 0
+            },
+            "parentGuid": "a3f85a73-0dd2-5b49-9935-3859a1cd759e",
+            "parentName": "[Group] Central Terrain",
+            "layer": "Default",
+            "saveCategory": "Object",
+            "quaternion": [
+                0,
+                0.5325734399859223,
+                0,
+                0.8463837965258794
+            ]
+        },
+        {
+            "name": "StageSelect_DirtPath_3",
+            "guid": "72ede5b7-405a-5ce1-ae7c-64a16f004089",
+            "type": "Model",
+            "modelName": "Stages/stage_select_paths/path_3.obj",
+            "position": [
+                2.196837285951811,
+                -1.125,
+                -19.771535573566297
+            ],
+            "rotation": [
+                0,
+                3.0309354324158977,
+                0
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "materialType": 32,
+            "roughness": 0.92,
+            "metallic": 0,
+            "enableLighting": true,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "envIntensity": 3.0,
+            "emissive": 1,
+            "castShadow": false,
+            "isStatic": true,
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "collider": {
+                "type": 0
+            },
+            "parentGuid": "a3f85a73-0dd2-5b49-9935-3859a1cd759e",
+            "parentName": "[Group] Central Terrain",
+            "layer": "Default",
+            "saveCategory": "Object",
+            "quaternion": [
+                0,
+                0.9984697628555456,
+                0,
+                0.055300385741787965
+            ]
+        },
+        {
+            "name": "StageSelect_DirtPath_Tutorial",
+            "guid": "cfbb8d12-16e6-5577-a2fa-83e2984a875a",
+            "type": "Model",
+            "modelName": "Stages/stage_select_paths/path_Tutorial.obj",
+            "position": [
+                0.0,
+                -1.125,
+                11.5075
+            ],
+            "rotation": [
+                0,
+                0.0,
+                0
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "materialType": 32,
+            "roughness": 0.92,
+            "metallic": 0,
+            "enableLighting": true,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "envIntensity": 3.0,
+            "emissive": 1,
+            "castShadow": false,
+            "isStatic": true,
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "collider": {
+                "type": 0
+            },
+            "parentGuid": "a3f85a73-0dd2-5b49-9935-3859a1cd759e",
+            "parentName": "[Group] Central Terrain",
+            "layer": "Default",
+            "saveCategory": "Object",
+            "quaternion": [
+                0,
+                0.0,
+                0,
+                1.0
+            ]
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "type": 3,
+                "center": [
+                    0,
+                    0,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "size": [
+                    4.15,
+                    7.0,
+                    0.7
+                ]
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.15000000596046448,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "9da05184-ea0b-532d-bd45-d59722e23c45",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "StageSelect_Stage3_TemporaryBlocker",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "415c3d7b-8e9d-5e48-9a95-2dd5d86ef346",
+            "parentName": "[Group] Stage 3 Bridge",
+            "particleName": "",
+            "position": [
+                3.3224887689776104,
+                4.6,
+                -29.90239892079849
+            ],
+            "quaternion": [
+                0.0,
+                0.9984697699546814,
+                0.0,
+                0.055300384759902954
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                3.030935525894165,
+                0.0
+            ],
+            "roughness": 0.7200000286102295,
+            "saveCategory": "Object",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "InvisibleBox"
         }
     ]
 }

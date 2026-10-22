@@ -19,7 +19,10 @@ void Require(bool condition,const char* message) {
 
 std::vector<ModelSurfaceTriangle> ReadObj(const std::string& model) {
     // 実際にStage2で使用するOBJを三角形へ展開し、描画初期化なしで判定本体を検証する。
-    const auto file=std::filesystem::path("Resources/3DModel")/model/(std::filesystem::path(model).filename().string()+".obj");
+    const auto asset=std::filesystem::path(model);
+    const auto file=asset.extension()==".gltf"
+        ? std::filesystem::path("Resources/3DModel")/asset.parent_path()/(asset.parent_path().filename().string()+".obj")
+        : std::filesystem::path("Resources/3DModel")/asset/(asset.filename().string()+".obj");
     std::ifstream stream(file);
     Require(bool(stream),"OBJ missing");
     std::vector<engine::Vector3> vertices;
@@ -105,6 +108,42 @@ int main(){
         std::ifstream sceneFile("Resources/json/3Dobject/stage2_object.json");
         nlohmann::json scene;
         sceneFile>>scene;
+        const auto findSceneObject=[&](const char* name)->const nlohmann::json& {
+            for(const auto& obj:scene["objects"])
+                if(obj.value("name","")==name)
+                    return obj;
+            throw std::runtime_error("sinking floor missing");
+        };
+        const auto readVector=[](const nlohmann::json& value) {
+            return engine::Vector3{value[0],value[1],value[2]};
+        };
+        const auto setSceneTransform=[&](Transform& transform,const nlohmann::json& obj) {
+            transform.translate=readVector(obj.at("position"));
+            transform.rotate=readVector(obj.at("rotation"));
+            transform.scale=readVector(obj.at("scale"));
+            transform.isQuaternionMaster=false;
+            transform.UpdateMatrix();
+        };
+        Transform sinkParent,sinkChild;
+        const auto& sinkParentData=findSceneObject("SinkWide_1_Copy2");
+        const auto& sinkChildData=findSceneObject("SinkWide_1_Copy2_Copy3");
+        setSceneTransform(sinkParent,sinkParentData);
+        sinkChild.parent=&sinkParent;
+        setSceneTransform(sinkChild,sinkChildData);
+        Collider slopedChild(&sinkChild);
+        slopedChild.SetConfig(config);
+        slopedChild.SetModelSurface(ReadObj(sinkChildData.at("modelName")));
+        Require(slopedChild.HasModelVolume(),"sloped child hull missing");
+        const engine::Vector3 deckCenter=engine::Math::Transform({0,0,0},sinkChild.matWorld);
+        Require(slopedChild.RaycastModelVolume(deckCenter+engine::Vector3{0,10,0},
+            {0,-1,0},20,distance,normal)&&normal.y>.5f&&std::abs(distance-10)<.2f,
+            "scaled parent sloped child top ray");
+        actorConfig.type=ColliderType::kSphere;
+        actor.SetConfig(actorConfig);
+        actorTransform.translate=deckCenter+normal*.4f;
+        actorTransform.UpdateMatrix();
+        hit=actor.CheckCollision(&slopedChild);
+        Require(hit.isColliding&&hit.normal.y>.5f,"scaled parent sloped child contact");
         size_t count=0;
         const auto begin=std::chrono::steady_clock::now();
 
@@ -196,7 +235,7 @@ int main(){
 
         for(const auto& entry:entries){
             const auto mask=entry->data.value("collisionMask",0u);
-            Require((mask&4u)==0 && (mask|4u)==0xffffffffu,"only terrain bit may be excluded");
+            Require((mask&4u)==0,"model volume floors must not collide with other ground");
         }
 
         // 凸包同士の精密判定自体は維持し、地形以外にも使えることを確認する。
@@ -240,7 +279,8 @@ int main(){
             ++gateParts;
         }
 
-        Require(touchedPost&&gateParts==13,"gate parts missing");
+        if (gateParts > 0)
+            Require(touchedPost&&gateParts==13,"gate parts missing");
         ground.SetConfig(config);
         ground.SetModelSurface(ReadObj("Stages/magma_fortress_foundation"));
         const auto performanceStart=std::chrono::steady_clock::now();

@@ -1,7 +1,7 @@
 #include "EnemyAttackPreviewWindow.h"
 #include "EnemyAttackPreviewWindow.Constants.h"
 #include "game/crown/CrownFinaleTuning.h"
-#include "game/crown/CrownDefeatTuning.h"
+#include "game/scene/gameplay/GamePlayScene.h"
 
 #include "BaseEnemy.h"
 #include "BaseScene.h"
@@ -617,7 +617,8 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
     }
 
     // 再生終端から再開する場合は先頭へ戻し、時間スライダーも同じ Seek 処理を使います。
-    const auto& t = CrownFinaleTuning::Get();
+    const auto* game = sceneManager_ ? dynamic_cast<GamePlayScene*>(sceneManager_->GetCurrentScene()) : nullptr;
+    const auto t = game ? game->GetCrownFinaleTiming() : CrownFinaleTuning::Get();
 
     if (ImGui::Button(playing_ ? "一時停止" : "再生")) {
         if (!playing_ && elapsedTime_ >= loopDuration_ - .001f) {
@@ -663,9 +664,11 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
 
     // 最終撃破は章ごとのジャンプボタンを表示して終了し、継承ムービーのレーンは作りません。
     if (crownDefeatMode_) {
-        const auto& d = CrownDefeatTuning::Get();
+        const auto* game=sceneManager_?dynamic_cast<GamePlayScene*>(sceneManager_->GetCurrentScene()):nullptr;
+        const auto point=[&](const char* marker,float fallback){return game?game->GetCrownDefeatMarkerTime(marker):fallback*loopDuration_;};
         const char* names[] = { "最後の一撃", "王冠の亀裂", "王冠破砕", "力の喪失", "小スライム", "勝利", "終了" };
-        const float points[] = { 0, .14f, d.rupture + .015f, d.shrink, d.settle + .025f, d.victory + .035f, 1 };
+        const float points[] = { 0, .14f*loopDuration_, point("rupture",.28f)+.015f*loopDuration_,
+            point("shrink",.43f), point("settle",.64f)+.025f*loopDuration_, point("victory",.76f)+.035f*loopDuration_, loopDuration_ };
 
         for (int index = 0; index < 7; ++index) {
             if (index) {
@@ -673,13 +676,13 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
             }
 
             if (ImGui::Button(names[index])) {
-                SeekPreview(points[index] * loopDuration_);
+                SeekPreview(points[index]);
             }
         }
 
         ImGui::Separator();
         ImGui::TextWrapped("最後の一撃 → 王冠の亀裂と再集束 → 破砕・放電 → 力が抜けて小スライムへ → 王の勝利");
-        ImGui::TextDisabled("本番と同じ時間で進行します。設定は右のInspectorから保存できます。");
+        ImGui::TextDisabled("本番と同じ演出素材で進行します。編集は演出タイムラインで行います。");
         ImGui::PopID();
         ImGui::End();
         return;
@@ -696,7 +699,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
         }
 
         if (ImGui::Button(names[index])) {
-            SeekPreview(points[index] * loopDuration_);
+            SeekPreview(points[index]);
         }
     }
 

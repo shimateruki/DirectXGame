@@ -4,6 +4,10 @@
 // フェーズ周期で足場の可視性と衝突属性を交互に切り替えます。
 class GimmickPhaseFlipFloor : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "PhaseFlipFloor";
+    static constexpr const char* kModelPath = "Stages/block";
+
     virtual ~GimmickPhaseFlipFloor() = default;
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;

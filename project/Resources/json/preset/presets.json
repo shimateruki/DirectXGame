@@ -12,8 +12,8 @@
         "collider": {
             "center": [
                 0.0,
-                1.1920928955078125e-07,
-                -0.2644650936126709
+                0.0,
+                0.0
             ],
             "rotation": [
                 0.0,
@@ -835,6 +835,7 @@
             "enemyType": "RingBurner",
             "interval": 3.0,
             "moveAmount": 10.0,
+            "ringWaveSpeed": 1.0,
             "shakeDuration": 1.0
         },
         "particleName": "",
@@ -1461,6 +1462,131 @@
         "recorder": {
             "isRecordLoop": false,
             "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "tag": "",
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick"
+    },
+    "Builtin/Gimmick/BlinkBlock": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "type": 3
+        },
+        "collisionAttribute": 4,
+        "collisionAttributeIds": [
+            "ground"
+        ],
+        "collisionAttributeUnknownBits": 0,
+        "collisionMask": 15,
+        "collisionMaskIds": [
+            "player",
+            "enemy",
+            "ground",
+            "player_bullet"
+        ],
+        "collisionMaskUnknownBits": 0,
+        "color": [
+            0.20000000298023224,
+            0.6000000238418579,
+            1.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "BlinkBlock",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "isVisible": true,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Stages/block",
+        "myEventID": -1,
+        "name": "点滅・ジャンプ反転ブロック",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "particleName": "",
+        "prefabInstance": null,
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "phaseOffset": 0.0,
             "recordPathName": ""
         },
         "rotate": [
@@ -2198,6 +2324,467 @@
         ],
         "targetID": -1,
         "texturePath": "",
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick"
+    },
+    "Builtin/Gimmick/ChikuwaBlock": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "type": 3
+        },
+        "collisionAttribute": 4,
+        "collisionAttributeIds": [
+            "ground"
+        ],
+        "collisionAttributeUnknownBits": 0,
+        "collisionMask": 15,
+        "collisionMaskIds": [
+            "player",
+            "enemy",
+            "ground",
+            "player_bullet"
+        ],
+        "collisionMaskUnknownBits": 0,
+        "color": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "ChikuwaBlock",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "isVisible": true,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Stages/block",
+        "myEventID": -1,
+        "name": "ちくわブロック",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "attackPower": 1.0,
+            "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
+            "detectionRange": 20.0,
+            "editorPreviewFiring": true,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
+            "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": false,
+            "switchMode": 0,
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
+        },
+        "particleName": "",
+        "prefabInstance": null,
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "phaseOffset": 0.0,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "tag": "",
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick"
+    },
+    "Builtin/Gimmick/Coin": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "type": 1
+        },
+        "collisionAttribute": 16,
+        "collisionAttributeIds": [
+            "trigger"
+        ],
+        "collisionAttributeUnknownBits": 0,
+        "collisionMask": 1,
+        "collisionMaskIds": [
+            "player"
+        ],
+        "collisionMaskUnknownBits": 0,
+        "color": [
+            1.0,
+            0.8999999761581421,
+            0.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "Coin",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "isVisible": true,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 1.0,
+        "modelName": "Primitives/sphere",
+        "myEventID": -1,
+        "name": "コイン",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "particleName": "",
+        "prefabInstance": null,
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "phaseOffset": 0.0,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 1.0,
+        "saveCategory": "Object",
+        "scale": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.15000000596046448
+        ],
+        "tag": "",
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick"
+    },
+    "Builtin/Gimmick/CopyMemoryStation": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                0.4399999976158142,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.2999999523162842,
+                0.3999999761581421,
+                1.25
+            ],
+            "type": 3
+        },
+        "collisionAttribute": 16,
+        "collisionAttributeIds": [
+            "trigger"
+        ],
+        "collisionAttributeUnknownBits": 0,
+        "collisionMask": 1,
+        "collisionMaskIds": [
+            "player"
+        ],
+        "collisionMaskUnknownBits": 0,
+        "color": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            1.0
+        ],
+        "emissive": 0.5,
+        "enableEnvMap": true,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 0.3499999940395355,
+        "eventType": 0,
+        "gimmickType": "CopyMemoryStation",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "isVisible": true,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Gimmicks/copy_memory_station_single",
+        "myEventID": -1,
+        "name": "コピー記憶台",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "attackPower": 1.0,
+            "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "",
+            "copyMemoryTypeC": "",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
+            "detectionRange": 20.0,
+            "editorPreviewFiring": true,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "CopyMemoryStation",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
+            "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": true,
+            "switchMode": 0,
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
+        },
+        "particleName": "",
+        "prefabInstance": null,
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "phaseOffset": 0.0,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "tag": "",
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -3057,6 +3644,131 @@
             0.25,
             1.2000000476837158
         ],
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick"
+    },
+    "Builtin/Gimmick/Default": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "type": 3
+        },
+        "collisionAttribute": 2,
+        "collisionAttributeIds": [
+            "enemy"
+        ],
+        "collisionAttributeUnknownBits": 0,
+        "collisionMask": 15,
+        "collisionMaskIds": [
+            "player",
+            "enemy",
+            "ground",
+            "player_bullet"
+        ],
+        "collisionMaskUnknownBits": 0,
+        "color": [
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "Default",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "isVisible": true,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Primitives/cube",
+        "myEventID": -1,
+        "name": "通常",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "particleName": "",
+        "prefabInstance": null,
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "phaseOffset": 0.0,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -5834,6 +6546,186 @@
         ],
         "type": "Gimmick"
     },
+    "Builtin/Gimmick/WaterGeyser": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                5.470000267028809,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                2.1500000953674316,
+                4.75,
+                2.1500000953674316
+            ],
+            "type": 4
+        },
+        "collisionAttribute": 0,
+        "collisionAttributeIds": [],
+        "collisionAttributeUnknownBits": 0,
+        "collisionMask": 0,
+        "collisionMaskIds": [],
+        "collisionMaskUnknownBits": 0,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "WaterGeyser",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "isVisible": true,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.07999999821186066,
+        "modelName": "Stages/magma_pressure_column",
+        "myEventID": -1,
+        "name": "水の噴出口",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 3,
+            "attackPower": 1.0,
+            "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
+            "detectionRange": 4.0,
+            "editorPreviewFiring": true,
+            "enemyType": "",
+            "fallDuration": 1.149999976158142,
+            "gimmickType": "",
+            "gravity": 5.5,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 2.5999999046325684,
+            "itemType": "",
+            "jumpPower": 15.0,
+            "maxCount": 5,
+            "maxFallSpeed": 110.0,
+            "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "moveAmount": 9.5,
+            "moveSpeed": 0.0,
+            "projectileLifetime": 2.0,
+            "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
+            "shakeDuration": 1.350000023841858,
+            "speed": 4.0,
+            "startActive": false,
+            "switchMode": 0,
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
+        },
+        "particleName": "",
+        "prefabInstance": null,
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "phaseOffset": 0.0,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.7200000286102295,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "tag": "",
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick",
+        "waterParam": {
+            "billboardScale": 0.550000011920929,
+            "effectIntensity": 1.0,
+            "effectScale": 1.0,
+            "effectScaleX": 1.0,
+            "effectScaleY": 1.0,
+            "effectScaleZ": 1.0,
+            "effectSoftness": 0.550000011920929,
+            "effectType": 0.0,
+            "flowSpeedX": 0.10000000149011612,
+            "flowSpeedY": 0.10000000149011612,
+            "topDownDetail": 1.0,
+            "waveFrequency": 1.5,
+            "waveHeight": 0.5,
+            "waveSpeed": 2.0
+        }
+    },
     "Builtin/Item/Heal": {
         "animation": {
             "animName": "",
@@ -6312,6 +7204,7 @@
         "param": {
             "actionMode": 0,
             "attackPower": 1.0,
+            "cinematicPath": "",
             "colorType": 0,
             "copyMemoryActivationRadius": 0.8999999761581421,
             "copyMemoryEssenceScale": 1.0,
@@ -6323,6 +7216,7 @@
             "copyMemoryTypeD": "",
             "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
+            "editorPreviewFiring": true,
             "enemyType": "",
             "fallDuration": 2.0,
             "gimmickType": "Coin",
@@ -6335,9 +7229,13 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
             "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
             "shakeDuration": 1.0,
             "speed": 1.0,
             "startActive": false,
@@ -6467,6 +7365,12 @@
                 "eventId": -1,
                 "targetId": 0,
                 "version": 1
+            },
+            "ParticleEmitter": {
+                "_editorPresent": true,
+                "cpuParticle": "",
+                "gpuParticle": "star_sparkle",
+                "version": 1
             }
         },
         "emissive": 1.649999976158142,
@@ -6477,7 +7381,7 @@
         "envIntensity": 1.25,
         "eventID": 7,
         "gimmickType": "",
-        "gpuParticleName": "",
+        "gpuParticleName": "star_sparkle",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -6638,6 +7542,12 @@
                 "eventId": -1,
                 "targetId": 1,
                 "version": 1
+            },
+            "ParticleEmitter": {
+                "_editorPresent": true,
+                "cpuParticle": "",
+                "gpuParticle": "star_sparkle",
+                "version": 1
             }
         },
         "emissive": 1.649999976158142,
@@ -6648,7 +7558,7 @@
         "envIntensity": 1.25,
         "eventID": 7,
         "gimmickType": "",
-        "gpuParticleName": "",
+        "gpuParticleName": "star_sparkle",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -6779,28 +7689,16 @@
             ],
             "type": 1
         },
-        "collisionAttribute": 16,
-        "collisionAttributeIds": [
-            "trigger"
-        ],
+        "collisionAttribute": 0,
+        "collisionAttributeIds": [],
         "collisionAttributeUnknownBits": 0,
-        "collisionMask": 4294967295,
-        "collisionMaskIds": [
-            "player",
-            "enemy",
-            "ground",
-            "player_bullet",
-            "trigger",
-            "map_block",
-            "player_attack",
-            "enemy_attack",
-            "hook_anchor"
-        ],
-        "collisionMaskUnknownBits": 4294966784,
+        "collisionMask": 0,
+        "collisionMaskIds": [],
+        "collisionMaskUnknownBits": 0,
         "color": [
-            1.0,
-            0.7400000095367432,
-            0.07999999821186066,
+            0.8199999928474426,
+            0.8500000238418579,
+            0.8799999952316284,
             1.0
         ],
         "components": {
@@ -6809,17 +7707,23 @@
                 "eventId": -1,
                 "targetId": 2,
                 "version": 1
+            },
+            "ParticleEmitter": {
+                "_editorPresent": true,
+                "cpuParticle": "",
+                "gpuParticle": "star_sparkle_silver",
+                "version": 1
             }
         },
-        "emissive": 1.649999976158142,
-        "enableEnvMap": false,
+        "emissive": 1.25,
+        "enableEnvMap": true,
         "enableLighting": true,
-        "enableNormalMap": false,
+        "enableNormalMap": true,
         "enemyType": "",
-        "envIntensity": 1.25,
+        "envIntensity": 0.6499999761581421,
         "eventID": 7,
         "gimmickType": "",
-        "gpuParticleName": "",
+        "gpuParticleName": "star_sparkle_silver",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -6838,27 +7742,12 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "lod": {
-            "enabled": false,
-            "levels": [
-                {
-                    "distance": 35.0,
-                    "level": 1,
-                    "modelName": "Gimmicks/star/star_lod1.gltf"
-                },
-                {
-                    "distance": 70.0,
-                    "level": 2,
-                    "modelName": "Gimmicks/star/star_lod2.gltf"
-                }
-            ]
-        },
         "materialType": 0,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.18000000715255737,
-        "modelName": "Gimmicks/star",
+        "metallic": 0.4000000059604645,
+        "modelName": "Gimmicks/star/star_silver.gltf",
         "myEventID": -1,
         "name": "スターコイン 3",
         "normalMapPath": "",
@@ -6901,7 +7790,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.3199999928474426,
+        "roughness": 0.30000001192092896,
         "saveCategory": "Object",
         "scale": [
             0.05000000074505806,
@@ -6910,7 +7799,7 @@
         ],
         "tag": "",
         "targetID": 2,
-        "texturePath": "",
+        "texturePath": "Resources/sprite/common/white.png",
         "textureTiling": [
             1.0,
             1.0
@@ -7413,7 +8302,7 @@
             0.03999999910593033,
             1.0
         ],
-        "emissive": 2.4642419815063477,
+        "emissive": 2.954545259475708,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -7453,6 +8342,7 @@
         "param": {
             "actionMode": 0,
             "attackPower": 1.0,
+            "cinematicPath": "",
             "colorType": 0,
             "copyMemoryActivationRadius": 0.8999999761581421,
             "copyMemoryEssenceScale": 1.0,
@@ -7464,6 +8354,7 @@
             "copyMemoryTypeD": "",
             "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
+            "editorPreviewFiring": true,
             "enemyType": "",
             "fallDuration": 2.0,
             "gimmickType": "DashPanel",
@@ -7476,9 +8367,13 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
             "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
             "shakeDuration": 1.0,
             "speed": 12.0,
             "startActive": false,
@@ -7921,6 +8816,198 @@
             "waveSpeed": 0.0
         }
     },
+    "Stage1/Gimmick/JumpFlipPair": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                0.1419999897480011,
+                5.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                5.320000171661377,
+                0.125,
+                4.659999847412109
+            ],
+            "type": 3
+        },
+        "collisionAttribute": 4,
+        "collisionAttributeIds": [
+            "ground"
+        ],
+        "collisionAttributeUnknownBits": 0,
+        "collisionMask": 255,
+        "collisionMaskIds": [
+            "player",
+            "enemy",
+            "ground",
+            "player_bullet",
+            "trigger",
+            "map_block",
+            "player_attack",
+            "enemy_attack"
+        ],
+        "collisionMaskUnknownBits": 0,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 1.100000023841858,
+        "enableEnvMap": false,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventID": 0,
+        "gimmickType": "BlinkBlock",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Stages/jump_flip_pair/jump_flip_pair_blue_preview.obj",
+        "myEventID": -1,
+        "name": "ジャンプ反転床（青・赤ペア）",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "attackPower": 1.0,
+            "cinematicPath": "",
+            "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
+            "detectionRange": 20.0,
+            "editorPreviewFiring": true,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "BlinkBlock",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
+            "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": false,
+            "switchMode": 0,
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
+        },
+        "parentGuid": "",
+        "parentName": "",
+        "particleName": "",
+        "position": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "presetCollection": "Stage1",
+        "presetDescription": "ジャンプごとに中央の軸で板が反転。speedで回転速度、colorTypeで初期面を調整できます。",
+        "presetOrder": 225,
+        "presetRecommended": true,
+        "presetSection": "移動・床ギミック",
+        "presetSectionOrder": 200,
+        "presetSourceObject": "Stage1_RingCourt_EntryFlipPair_0",
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "rotation": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "tag": "",
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick"
+    },
     "Stage1/Gimmick/LinkedCollapsePlatform": {
         "animation": {
             "animName": "",
@@ -8150,6 +9237,8 @@
                 "_editorPresent": true,
                 "loop": true,
                 "path": "stage1_v4_moving_intro_a",
+                "phaseOffset": 0.0,
+                "playbackMode": "always",
                 "relative": true,
                 "rideSequence": "",
                 "version": 1
@@ -8195,6 +9284,7 @@
         "param": {
             "actionMode": 0,
             "attackPower": 1.0,
+            "cinematicPath": "",
             "colorType": 0,
             "copyMemoryActivationRadius": 0.8999999761581421,
             "copyMemoryEssenceScale": 1.0,
@@ -8206,6 +9296,7 @@
             "copyMemoryTypeD": "",
             "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
+            "editorPreviewFiring": true,
             "enemyType": "",
             "fallDuration": 2.0,
             "gimmickType": "MovingFloor",
@@ -8218,9 +9309,13 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 0.0,
             "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
             "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
             "shakeDuration": 1.0,
             "speed": 0.0,
             "startActive": true,
@@ -8348,6 +9443,8 @@
                 "_editorPresent": true,
                 "loop": true,
                 "path": "stage1_v4_moving_intro_c",
+                "phaseOffset": 0.0,
+                "playbackMode": "always",
                 "relative": true,
                 "rideSequence": "",
                 "version": 1
@@ -8393,6 +9490,7 @@
         "param": {
             "actionMode": 0,
             "attackPower": 1.0,
+            "cinematicPath": "",
             "colorType": 0,
             "copyMemoryActivationRadius": 0.8999999761581421,
             "copyMemoryEssenceScale": 1.0,
@@ -8404,6 +9502,7 @@
             "copyMemoryTypeD": "",
             "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
+            "editorPreviewFiring": true,
             "enemyType": "",
             "fallDuration": 2.0,
             "gimmickType": "MovingFloor",
@@ -8416,9 +9515,13 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 0.0,
             "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
             "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
             "shakeDuration": 1.0,
             "speed": 0.0,
             "startActive": true,
@@ -9203,6 +10306,7 @@
         "param": {
             "actionMode": 1,
             "attackPower": 1.0,
+            "cinematicPath": "",
             "colorType": 0,
             "copyMemoryActivationRadius": 0.8999999761581421,
             "copyMemoryEssenceScale": 1.0,
@@ -9214,6 +10318,7 @@
             "copyMemoryTypeD": "",
             "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
+            "editorPreviewFiring": true,
             "enemyType": "",
             "fallDuration": 2.0,
             "gimmickType": "StageGate",
@@ -9226,9 +10331,13 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
+            "projectileLifetime": 2.0,
             "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
             "shakeDuration": 1.0,
             "speed": 1.0,
             "startActive": true,
@@ -9282,7 +10391,7 @@
         "roughness": 0.5,
         "saveCategory": "Object",
         "scale": [
-            1.9999806880950928,
+            1.9999805688858032,
             1.0,
             0.9999903440475464
         ],
@@ -9404,6 +10513,7 @@
         "param": {
             "actionMode": 0,
             "attackPower": 1.0,
+            "cinematicPath": "",
             "colorType": 0,
             "copyMemoryActivationRadius": 0.8999999761581421,
             "copyMemoryEssenceScale": 1.0,
@@ -9415,6 +10525,7 @@
             "copyMemoryTypeD": "",
             "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
+            "editorPreviewFiring": true,
             "enemyType": "",
             "fallDuration": 2.0,
             "gimmickType": "PrismBarrier",
@@ -9427,9 +10538,13 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 0.41999998688697815,
+            "projectileLifetime": 2.0,
             "returnOnOff": true,
+            "ringWaveSpeed": 1.0,
             "shakeDuration": 1.0,
             "speed": 12.0,
             "startActive": false,
@@ -9573,6 +10688,8 @@
                 "_editorPresent": true,
                 "loop": true,
                 "path": "stage1_v4_moving_intro_a",
+                "phaseOffset": 0.0,
+                "playbackMode": "always",
                 "relative": true,
                 "rideSequence": "",
                 "version": 1
@@ -10654,8 +11771,8 @@
             ],
             "type": 3
         },
-        "collisionAttribute": 0,
-        "collisionMask": 0,
+        "collisionAttribute": 128,
+        "collisionMask": 1,
         "color": [
             1,
             1,
@@ -10668,7 +11785,7 @@
         "enemyType": "",
         "envIntensity": 1.0,
         "eventType": 0,
-        "gimmickType": "",
+        "gimmickType": "RotatingFloor",
         "isLocked": false,
         "isStatic": false,
         "isVisible": true,
@@ -10696,7 +11813,13 @@
         "name": "VolcanicSpikeBar",
         "normalMapPath": "",
         "ormMapPath": "",
-        "presetDisplayName": "棘バー（Director動作用）",
+        "param": {
+            "actionMode": 0,
+            "returnOnOff": true,
+            "speed": 180.0,
+            "startActive": true
+        },
+        "presetDisplayName": "棘バー（回転・経路移動）",
         "presetUsage": "ギミック",
         "quaternion": [
             0.0,
@@ -10728,7 +11851,7 @@
             0.0,
             0.0
         ],
-        "type": "Model"
+        "type": "Gimmick"
     },
     "Stage2/RouteKit/Crumble": {
         "animation": {
@@ -49653,7 +50776,7 @@
         "collider": {
             "center": [
                 0.0,
-                2.02,
+                4.785,
                 0.0
             ],
             "rotation": [
@@ -49663,7 +50786,7 @@
             ],
             "size": [
                 3.05,
-                2.02,
+                4.785,
                 0.78
             ],
             "type": 3

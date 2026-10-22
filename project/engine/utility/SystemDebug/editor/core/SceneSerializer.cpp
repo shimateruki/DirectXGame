@@ -1,3 +1,4 @@
+#include "EditorPropertyRegistry.h"
 #include "SceneSerializer.h"
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include "engine/graphics/3d/material/WaterParamJsonCodec.h"
@@ -713,7 +714,8 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3d* obj) {
         d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
     }
 
-    if (MaterialRenderPolicy::IsSpecial(obj->GetMaterialType()) && obj->GetMeshRenderer() && obj->GetMeshRenderer()->GetWaterParamData()) {
+    if ((MaterialRenderPolicy::IsSpecial(obj->GetMaterialType()) ||
+         EditorPropertyRegistry::GetInstance()->HasSerializedProperties(*obj, "waterParam.")) && obj->GetMeshRenderer() && obj->GetMeshRenderer()->GetWaterParamData()) {
         auto* water = obj->GetMeshRenderer()->GetWaterParamData();
         d["waterParam"] = WaterParamJsonCodec::Write(*water);
     }

@@ -724,10 +724,14 @@ bool EditorPropertyRegistry::HasMixedValue(const std::vector<engine::Object3d*>&
         return false;
     }
 
-    const json reference = property->getter(*first);
+    // 混合表示は画面に見せる値で比較し、Prefabなどへ渡す正本はgetterのまま保ちます。
+    const auto displayed = [&](const engine::Object3d& object) {
+        return property->displayValue ? property->displayValue(object) : property->getter(object);
+    };
+    const json reference = displayed(*first);
 
     for (engine::Object3d* object : objects) {
-        if (object && IsApplicable(object, path) && !JsonValuesEqual(reference, property->getter(*object))) {
+        if (object && IsApplicable(object, path) && !JsonValuesEqual(reference, displayed(*object))) {
             return true;
         }
     }
@@ -747,4 +751,39 @@ void EditorPropertyRegistry::InitializeBuiltInProperties() {
     RegisterBuiltInBaseProperties();
     RegisterBuiltInRenderAndComponentProperties();
     RegisterBuiltInCameraAndGameplayProperties();
+}
+
+void EditorPropertyRegistry::WriteClassProperties(const engine::Object3d& object, json& components) const {
+    // UIで隠れている設定も保存します。未知のキーは上書きせず、そのまま引き継ぎます。
+    for (const auto& property : properties_) {
+        if (!HasEditorPropertyFlag(property.flags, EditorPropertyFlags::ClassStorage) ||
+            (property.applicable && !property.applicable(object))) continue;
+        json& payload = components[property.componentTypeId];
+        if (!payload.is_object()) payload = json::object();
+        payload["version"] = 1;
+        payload[property.path.substr(property.path.rfind('.') + 1)] = property.getter(object);
+    }
+}
+
+void EditorPropertyRegistry::ReadClassProperties(engine::Object3d& object, const json& components) const {
+    for (const auto& property : properties_) {
+        if (!HasEditorPropertyFlag(property.flags, EditorPropertyFlags::ClassStorage) ||
+            (property.applicable && !property.applicable(object))) continue;
+        const std::string key = property.path.substr(property.path.rfind('.') + 1);
+        const auto payload = components.find(property.componentTypeId);
+        if (payload != components.end() && payload->is_object() && payload->contains(key)) {
+            property.setter(object, payload->at(key));
+        } else if (!property.defaultValue.is_null()) {
+            // 追加項目のない旧JSONと、項目追加前へのUndoは、従来の既定値で再現します。
+            property.setter(object, property.defaultValue);
+        }
+    }
+}
+
+// 表示条件ではなく保存パスと適用対象を確認し、非表示モードの調整値も保持します。
+bool EditorPropertyRegistry::HasSerializedProperties(const engine::Object3d& object, const std::string& prefix) const {
+    return std::any_of(properties_.begin(), properties_.end(), [&](const auto& property) {
+        return property.serializedPath.compare(0, prefix.size(), prefix) == 0 &&
+            (!property.applicable || property.applicable(object));
+    });
 }

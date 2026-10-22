@@ -4,6 +4,10 @@
 // スイッチからの有効/無効イベントを、配置物の位置・表示・衝突状態へ反映します。
 class GimmickEventReceiver : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "EventReceiver";
+    static constexpr const char* kModelPath = "Stages/block";
+
     virtual ~GimmickEventReceiver() = default;
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;

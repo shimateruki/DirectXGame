@@ -49,6 +49,8 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
 BulletVisualConfig MakeFireVisual(float scale) {
     // 火球の軌跡と着弾は弾の寿命に紐付け、単発発射でも残像を管理する。
     BulletVisualConfig visual;
+    // シーケンスを使わない火球も、床・壁で停止したまま残さない。
+    visual.destroyOnSolidCastHit = true;
     visual.materialType = 11;
     visual.blendMode = BlendMode::kNormal;
     visual.color = {1.0f, 0.34f, 0.07f, 0.96f};

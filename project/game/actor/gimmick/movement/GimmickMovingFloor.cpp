@@ -1,4 +1,5 @@
 #include "GimmickMovingFloor.h"
+#include "ObjectPropertyDefinition.h"
 #include <algorithm>
 #include <cmath>
 #include "CollisionConfig.h"
@@ -68,6 +69,41 @@ void GimmickMovingFloor::Initialize(engine::Object3dCommon* common, const std::s
 
     // 当たり判定設定 (地面として扱う)
     SetCollisionAttribute(CollisionCategories::Get("ground"));
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickMovingFloor;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "移動床",
+        "噴出口連動ではTarget IDを噴出口のMy Event IDへ接続します。高さと周期は噴出口側、記録軌道はGhost Recorderで調整します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Accessor<std::string>("乗車開始タイムライン", "rideSequence", "components.PathMover.rideSequence",
+        [](const Self& object) {
+            const auto* path = object.GetPathMoverComponent();
+            return path ? path->GetRideSequence() : std::string();
+        },
+        [](Self& object, const std::string& value) {
+            object.EnsurePathMoverComponent()->SetRideSequence(value);
+            if (!value.empty()) {
+                object.SetRecordPathName("");
+                if (object.recorder_) object.recorder_->Stop(false);
+            }
+        }, 0, 0, nullptr, {},
+        {.assetDirectory = "Resources/json/scenario", .assetEditor = EditorPropertyAssetEditor::Scenario,
+         .help = +[](const Self& object) -> std::string {
+             const auto* path = object.GetPathMoverComponent();
+             return !path || path->GetRideSequence().empty() ? "" :
+                 "乗ると出発し終点で停止します。床は水平に平行移動させ、死亡後は乗り場へ戻ると再準備します。旧Pathとは排他です。"
+                 "敵の乗り込みはride.board、対象は敵名、payload例は{\"duration\":1.1,\"height\":6,\"offset\":[-3,0,0]}です。"
+                 "ride.wait_clearは破壊待ち、ride.wait_switchはスイッチ待ちです。ride.fireballは噴出口を対象にし、警告時間+1.4秒以上の停船区間を設けます。";
+         }});
+
+    properties.Parameter("移動速度", "speed", &Parameter::speed, 0.0f, 100.0f,
+        nullptr, {}, {.speed = 0.1f});
+    properties.Parameter("移動方式", "actionMode", &Parameter::actionMode, 0.0f, 5.0f,
+        nullptr, {"従来の上下移動", "浮遊", "X方向に往復", "Z方向に往復", "Y方向に往復", "マグマ噴出口と連動"});
+    properties.Parameter("浮き沈み幅", "moveAmount", &Parameter::moveAmount, 0.0f, 2.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); }, {}, {.speed = 0.01f});
+    properties.Parameter("往復幅", "moveAmount_travel", &Parameter::moveAmount, 0.0f, 100.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode >= 2 && object.param_->actionMode <= 4); }, {}, {.speed = 0.1f, .parameterId = "moveAmount"});
 }
 
 void GimmickMovingFloor::Update(float deltaTime) {

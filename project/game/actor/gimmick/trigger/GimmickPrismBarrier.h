@@ -5,6 +5,10 @@
 // 中ボス戦中だけ立ち上がる、当たり判定付きのプリズム障壁です。
 class GimmickPrismBarrier : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "PrismBarrier";
+    static constexpr const char* kModelPath = "Gimmicks/portal_surface";
+
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
     void Update(float deltaTime) override;

@@ -4,6 +4,10 @@
 /// <summary>接触時に加速を与え、発光の反応を再生するパネルです。</summary>
 class GimmickDashPanel : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "DashPanel";
+    static constexpr const char* kModelPath = "Stages/block";
+
     virtual ~GimmickDashPanel() = default;
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;

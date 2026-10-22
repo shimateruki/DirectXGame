@@ -67,6 +67,7 @@ class PlayerMover {
     engine::Vector3 platformVelocity_{};
     engine::Vector3 platformAirVelocity_{};
     engine::Vector3 abilityAirVelocity_{};
+    engine::Vector3 previousAddedAirVelocity_{}; // 空中攻撃の補間へ床・爆風を二重加算しないための前回加算値。
     PlayerJumpRequest jumpRequest_;
     const char* jumpStatus_ = "入力待ち";
 

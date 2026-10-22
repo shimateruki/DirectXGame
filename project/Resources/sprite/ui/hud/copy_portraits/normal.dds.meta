@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0b37c62416a554c2b3908d3149c22d86",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_portraits/normal.dds",
+  "version": 1
+}

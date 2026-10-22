@@ -1,4 +1,5 @@
 #include "GimmickCoin.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "game/system/progress/GameDataManager.h"
 #include "SceneManager.h"
@@ -58,6 +59,11 @@ void GimmickCoin::Initialize(engine::Object3dCommon* common, const std::string& 
 
     SetClassName("Gimmick");
     SetGimmickType("Coin");
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickCoin;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "コイン",
+        "配置用のコインです。一時ドロップの寿命や速度は生成側で設定し、配置用の編集項目には混ぜません。");
 }
 
 void GimmickCoin::Update(float deltaTime) {

@@ -2,6 +2,7 @@
 
 #include "engine/utility/math/Math.h"
 #include "game/actor/combat/AttackSequenceData.h"
+#include "game/actor/combat/PlayerAttackMovement.h"
 
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@ struct EnemyAttackDefinition {
     std::string id;
     std::string displayName;
     float selectionWeight = 1; // 重み付き抽選で使用。0なら抽選対象外。
+    PlayerAttackMovement playerMovement; // コピー攻撃の移動制限。敵の移動・弾速とは独立します。
     AttackSequenceDefinition sequence; // 共通命令で実行する攻撃。無効なら従来の専用処理を使います。
 
     // 射程と判定形状。位置・サイズは攻撃者のローカル空間で指定します。

@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickMagmaHazard.h"
+#include "ObjectPropertyDefinition.h"
 
 #include "CollisionConfig.h"
 #include "game/system/rules/EventManager.h"
@@ -38,6 +39,14 @@ void GimmickMagmaHazard::Initialize(engine::Object3dCommon* common, const std::s
 
     param_->speed = 12.0f;
     param_->interval = 0.8f;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickMagmaHazard;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "マグマダメージ床",
+        "触れたプレイヤーを炎上させ、上方向へ弾き返します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("接触ダメージ", "speed", &Parameter::speed, 0.0f, 100.0f);
+    properties.Parameter("ダメージ間隔", "interval", &Parameter::interval, 0.1f, 10.0f);
 }
 
 void GimmickMagmaHazard::Update(float deltaTime) {

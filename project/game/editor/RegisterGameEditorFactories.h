@@ -11,9 +11,14 @@ inline void RegisterGameEditorFactories() {
     Registry::Register(Registry::Kind::Enemy, [](const std::string& type, engine::Object3dCommon* common) {
         return EnemyFactory::GetInstance()->CreateEnemy(type, common);
     });
-    Registry::Register(Registry::Kind::Gimmick, [](const std::string& type, engine::Object3dCommon* common) {
-        return GimmickFactory::GetInstance()->CreateGimmick(type, common);
+    Registry::Register(Registry::Kind::Gimmick, [](const std::string& type, engine::Object3dCommon* common) -> std::unique_ptr<engine::Object3d> {
+        auto* factory = GimmickFactory::GetInstance();
+        return factory->IsKnownType(type) ? factory->CreateGimmick(type, common) : nullptr;
     });
+    std::vector<Registry::TypeInfo> gimmickTypes;
+    for (const auto& type : GimmickFactory::GetInstance()->GetRegisteredTypes())
+        gimmickTypes.push_back({type.id, type.displayName, type.matches});
+    Registry::RegisterTypes(Registry::Kind::Gimmick, std::move(gimmickTypes));
     Registry::Register(Registry::Kind::Item, [](const std::string& type, engine::Object3dCommon* common) {
         return ItemFactory::GetInstance()->CreateItem(type, common);
     });

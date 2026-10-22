@@ -12,6 +12,10 @@ class Player;
 // 一台に一能力を置くコピー台です。旧シーンの複数コア設定も読み込めます。
 class GimmickCopyMemoryStation final : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "CopyMemoryStation";
+    static constexpr const char* kModelPath = "Gimmicks/copy_memory_station";
+
     /// コアの種類と配置設定を読み込み、表示を準備する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 

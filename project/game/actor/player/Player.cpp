@@ -174,10 +174,10 @@ void Player::Update(float deltaTime) {
     const bool copyAbilityInputMode =
         isEnemyMorphed_ && enemyMorphType_ != EnemyMorphType::None && !enemyMorphReleaseActive_ && !absorbEffectActive_;
     const bool hookAimHeld =
-        inputManager_ && inputManager_->IsActionPressed("SecondaryAction") && !copyAbilityInputMode;
+        inputManager_ && inputManager_->IsActionPressed("SecondaryAction") && !copyAbilityInputMode && !carriedEnemy_;
 
-    if (copyAbilityInputMode) {
-        // コピー中の右クリックは能力専用です。通常形態のフック照準を持ち越しません。
+    if (copyAbilityInputMode || carriedEnemy_) {
+        // コピー中と運搬中はフックを使わず、ボタンを離した時に古い照準から発射しない。
         if (hookMarker_) {
             hookMarker_->SetIsVisible(false);
         }
@@ -743,6 +743,10 @@ void Player::Update(float deltaTime) {
     }
 
     UpdateEnemyMorph(deltaTime);
+
+    // 能力による跳ね上がりも含めて接地確定後の状態を渡し、ゲーム固有の型はカメラへ持ち込まない。
+    if (auto* camera = CameraManager::GetInstance()->GetMainCamera(); camera && camera->GetFollowTarget() == this)
+        camera->SetFollowTargetGrounded(IsGrounded());
 }
 
 void Player::DrawUI() {
@@ -1124,6 +1128,13 @@ void Player::SetAbilityAirImpulse(const engine::Vector3& velocity) {
 // =================================================================
 
 void Player::ChangeState(std::unique_ptr<IAnimationState> newState) {
+    // 入力以外の経路でも、保持中の敵を離してフックへ切り替えない。
+    // 現在状態のExitより前に拒否し、運搬側の解除処理も発生させない。
+    if (carriedEnemy_ && (dynamic_cast<PlayerStatePullEnemy*>(newState.get()) ||
+                          dynamic_cast<PlayerStatePullObject*>(newState.get()))) {
+        return;
+    }
+
     // 現在の状態を終了
     if (state_) {
         state_->Exit(this);

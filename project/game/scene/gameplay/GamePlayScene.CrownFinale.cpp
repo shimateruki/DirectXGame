@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "Log.h"
 #include "game/ui/ControlsGuideOverlay.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
@@ -20,24 +21,16 @@
 #include <cmath>
 #include <cstdio>
 #include <optional>
+#include <unordered_set>
 
 namespace {
-constexpr const char* kCrownFinaleVfxPath = "Resources/json/scenario/crown_finale_vfx.json";
-
-void SyncFinaleVfxTimes(CinematicSequence& sequence, const CrownFinaleTuning& tuning, float duration) {
-    sequence.duration = duration;
-    for (auto& cue : sequence.vfxTracks) {
-        float normalizedTime = -1.0f;
-        if (cue.name == "fragment_land") normalizedTime = tuning.movieFragmentLandTime;
-        else if (cue.name == "rage") normalizedTime = tuning.movieRageTime;
-        else if (cue.name == "pull") normalizedTime = tuning.movieFragmentPullTime;
-        else if (cue.name == "body") normalizedTime = tuning.movieBodyTime;
-        else if (cue.name == "crown") normalizedTime = tuning.movieCrownTime;
-        else if (cue.name == "wings") normalizedTime = tuning.movieWingsTime;
-        else if (cue.name == "escape") normalizedTime = tuning.movieEscapeTime;
-        if (normalizedTime >= 0.0f) cue.startTime = normalizedTime * duration;
-    }
-}
+constexpr const char* kCrownFinalePath = "Resources/json/scenario/crown_finale.json";
+constexpr std::pair<const char*, float CrownFinaleTuning::*> kFinaleMarkers[] = {
+    {"break", &CrownFinaleTuning::movieFragmentBreakTime}, {"land", &CrownFinaleTuning::movieFragmentLandTime},
+    {"rage", &CrownFinaleTuning::movieRageTime}, {"pull", &CrownFinaleTuning::movieFragmentPullTime},
+    {"absorb", &CrownFinaleTuning::movieFragmentAbsorbTime}, {"body", &CrownFinaleTuning::movieBodyTime},
+    {"crown", &CrownFinaleTuning::movieCrownTime}, {"wings", &CrownFinaleTuning::movieWingsTime},
+    {"escape", &CrownFinaleTuning::movieEscapeTime}, {"arrive", &CrownFinaleTuning::movieArriveTime}};
 
 // 王冠演出の始点と終点を滑らかにつなぐ補間率を返します。
 float CrownEase(float t) {
@@ -160,6 +153,15 @@ void GamePlayScene::FinishSealBarrageMovie() {
     }
 }
 
+CrownFinaleTuning GamePlayScene::GetCrownFinaleTiming() const {
+    auto tuning = CrownFinaleTuning::Get();
+    if (crownFinaleSequence_.duration <= 0) return tuning;
+    tuning.movieDuration = crownFinaleSequence_.GetAuthoredDuration();
+    for (const auto& [name, member] : kFinaleMarkers)
+        tuning.*member = crownFinaleSequence_.GetSignalTime(name, tuning.*member * tuning.movieDuration) / tuning.movieDuration;
+    return tuning;
+}
+
 bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     if (crownFinale_.active || crownFinale_.prepared || !boss || !player_ || player_->isDead ||
         player_->IsCinematicLocked() || isGoal_)
@@ -178,11 +180,22 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
 
     if (!hasFloor || !hasArena)
         return false;
-    if (!crownFinaleVfxSequence_.Load(kCrownFinaleVfxPath))
+    if (!crownFinaleSequence_.Load(kCrownFinalePath))
         return false;
     auto& s = crownFinale_;
-    const auto& tuning = CrownFinaleTuning::Get();
-    SyncFinaleVfxTimes(crownFinaleVfxSequence_, tuning, tuning.movieDuration);
+    const auto tuning = GetCrownFinaleTiming();
+    // 編集した節目が欠けたり逆転した場合は、世界を変更する前に停止する。
+    float previous = 0;
+    for (const auto& [name, member] : kFinaleMarkers) {
+        const float time = crownFinaleSequence_.GetSignalTime(name, -1) / tuning.movieDuration;
+        const float gap = member == &CrownFinaleTuning::movieFragmentPullTime ? .03f :
+            (member == &CrownFinaleTuning::movieCrownTime || member == &CrownFinaleTuning::movieWingsTime ? .012f : 0);
+        if (!(time > previous + gap && time < 1)) {
+            LOG_ERROR("Crown inheritance: invalid required marker {}", name);
+            return false;
+        }
+        previous = time;
+    }
     s.active = s.prepared = true;
     s.time = 0.0f;
     s.duration = tuning.movieDuration;
@@ -291,31 +304,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     for (auto& copy : previewArenaCopies)
         AddObjectImmediate(std::move(copy));
 
-    // 元モデルから分離した中央装飾を同じ位置へ配置し、破断前後の形状を連続させます。
-    auto makeVisual = [&](const char* model) {
-        auto visual = std::make_unique<engine::Object3d>();
-        visual->Initialize(GetObject3dCommon());
-        visual->SetModel(model);
-        visual->SetMaterialType(0);
-        visual->SetBlendMode(BlendMode::kNone);
-        visual->SetColliderType(ColliderType::kNone);
-        visual->SetCollisionAttribute(0);
-        visual->SetCollisionMask(0);
-        visual->SetEmissive(1.0f);
-        visual->SetIsVisible(false);
-        return visual;
-    };
-
     s.lastSealPosition = boss->GetLastBrokenCrownSealPosition();
-    s.lastSeal = makeVisual("Effects/false_king_seal_core");
-    s.lastSeal->SetColor({.86f,.32f,1,1});
-    s.lastSeal->SetEmissive(1.5f);
-    s.fragment = makeVisual("Characters/false_king_slime/false_king_crown_emblem.obj");
-    s.fragmentCrack = makeVisual("Characters/false_king_slime/false_king_crown_emblem_crack.obj");
-    s.fragmentCrack->SetEmissive(6.0f);
-
-    for (int i = 0; i < 5; ++i)
-        s.fragmentChips.push_back(makeVisual("Characters/false_king_slime/false_king_crown_emblem_chip.obj"));
     const auto bossCollider = boss->GetColliderConfig();
     boss->SetModel("Characters/false_king_slime/false_king_slime_without_emblem.obj");
     boss->SetColliderConfig(bossCollider);
@@ -329,77 +318,56 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     const engine::Vector3 sample = s.start + direction * tuning.movieFragmentDistance;
     s.fragmentGround = CombatGroundQuery::FindGroundPoint(sample, player_, {8.0f, 24.0f}, s.start.y - 0.75f);
     s.fragmentGround.y += 0.51f * s.bossScale.y * tuning.movieFragmentScale;
+    // 装飾・追従・カメラは同じDirector素材から再生し、ゲーム固有の位置だけ接続する。
+    crownFinalePlayer_.Initialize(SceneManager::GetInstance());
+    crownFinalePlayer_.SetBindingResolver([this](const CinematicObjectBinding& binding) -> engine::Object3d* {
+        if (binding.targetName == "boss" || binding.targetName == "$Actor") return crownFinale_.boss;
+        if (binding.targetName == "player" || binding.targetName == "$Gate") return player_;
+        return CinematicPlayer::ResolveSceneTarget(this, binding);
+    });
+    crownFinalePlayer_.SetPositionResolver([this](const CinematicObjectBinding& binding)
+        -> std::optional<engine::Vector3> {
+        const auto& state = crownFinale_;
+        if (binding.targetName == "fragment_ground") return state.fragmentGround;
+        if (binding.targetName == "player_start") return state.start;
+        if (binding.targetName == "boss_start") return state.bossStart;
+        if (binding.targetName == "destination") return state.offset + engine::Vector3{0,.82f,12};
+        if (binding.targetName == "final_arena_focus") return state.offset + engine::Vector3{0,3,0};
+        auto direction = state.fragmentGround - state.start;
+        direction.y = 0;
+        const float length = engine::Math::Length(direction);
+        direction = length > .001f ? direction * (1.0f / length) : engine::Vector3{0,0,1};
+        if (binding.targetName == "mouth") return state.start + direction * .70f + engine::Vector3{0,.22f,0};
+        if (binding.targetName == "transform_eye") return state.start + direction * 5.5f + engine::Vector3{1.6f,2.1f,0};
+        return std::nullopt;
+    });
+    crownFinalePlayer_.SetSequence(&crownFinaleSequence_);
+    const auto issues = crownFinalePlayer_.ValidateBindings();
+    if (!issues.empty()) {
+        for (const auto& issue : issues) LOG_ERROR("Crown inheritance: {}", issue);
+        ResetCrownFinaleWorld();
+        return false;
+    }
+    s.fragment = crownFinalePlayer_.ResolveBinding({"fragment",-1});
+    auto* sealAnchor = crownFinalePlayer_.ResolveBinding({"seal_anchor",-1});
+    auto* releaseAnchor = crownFinalePlayer_.ResolveBinding({"release_anchor",-1});
+    if (!s.fragment || !sealAnchor || !releaseAnchor) {
+        ResetCrownFinaleWorld();
+        return false;
+    }
     s.fragment->SetTranslate(s.fragmentStart);
     s.fragment->SetScale(s.bossScale);
     s.fragment->SetRotation(s.bossRotation);
     s.fragment->SetIsVisible(true);
-    s.fragment->UpdateWorldMatrix(true);
-
-    // 白い薄い圧力面を高速で広げ、金色の塊が拡大する見え方を避けます。
-    s.shockwave = makeVisual("Characters/false_king_slime/false_king_pressure_front.obj");
-    s.shockwave->SetBlendMode(BlendMode::kAdd);
-    s.shockwave->SetEmissive(3.0f);
-    s.wings = makeVisual("Characters/false_king_slime/crown_inheritance_wing_left.obj");
-    s.rightWing = makeVisual("Characters/false_king_slime/crown_inheritance_wing_right.obj");
-    s.innerRune = makeVisual("Characters/false_king_slime/crown_inheritance_inner_rune.obj");
-    s.innerRune->SetEnableLighting(false);
-    s.innerRune->SetBlendMode(BlendMode::kAdd);
-    s.goldBody = makeVisual("Characters/slime_crown/slime_crown_body.gltf");
-    s.goldBody->SetColor({1,.77f,.25f,1});
-    s.regalia = makeVisual("Characters/slime_crown/slime_crown_regalia.gltf");
-    s.regalia->SetColor({1,.68f,.12f,1});
-
-    for (engine::Object3d* wing : {s.wings.get(),s.rightWing.get()}) {
-        // SetModelで取得した基準材質を保ち、白い羽と金の軸をそれぞれ描きます。
-        wing->SetEnableLighting(false);
-        wing->SetEmissive(1.1f);
-    }
-
-    s.groundFractures = makeVisual("Characters/false_king_slime/crown_inheritance_ground_fractures.obj");
-    s.groundFractures->SetEnableLighting(false);
-
-    for (const auto& pose : s.fractureChunks) {
-        const std::string index = pose.object->GetName().substr(std::string("CrownFracture_").size());
-        char path[160];
-        std::snprintf(path,sizeof(path),"Characters/false_king_slime/crown_inheritance_cracks_%02d.obj",std::stoi(index));
-
-        // 地割れが交差しない外周の三片は、床だけを落とします。
-        if (index=="1" || index=="6" || index=="62") {
-            s.floorCracks.push_back(nullptr);
-            continue;
-        }
-        auto crack=makeVisual(path);
-        crack->SetScale(pose.object->GetScale());
-        crack->SetEnableLighting(false);
-        s.floorCracks.push_back(std::move(crack));
-    }
-
-    camera->EndOverride(0.0f);
-    camera->ClearPresentationLayers();
-    camera->SetInputEnabled(false);
-    camera->SetFollowTarget(nullptr);
-    camera->SetLockOnTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-    // VFXの種類・位置・倍率はDirector素材で管理し、ゲーム側は対象だけを結び付ける。
-    crownFinaleVfxPlayer_.Initialize(SceneManager::GetInstance());
-    crownFinaleVfxPlayer_.SetBindingResolver([this](const CinematicObjectBinding& binding) -> engine::Object3d* {
-        if (binding.targetName == "fragment") return crownFinale_.fragment.get();
-        if (binding.targetName == "boss") return crownFinale_.boss;
-        if (binding.targetName == "player") return player_;
-        return nullptr;
-    });
-    crownFinaleVfxPlayer_.SetPositionResolver([this](const CinematicObjectBinding& binding)
-        -> std::optional<engine::Vector3> {
-        if (binding.targetName == "fragment_ground") return crownFinale_.fragmentGround;
-        if (binding.targetName == "player_start") return crownFinale_.start;
-        return std::nullopt;
-    });
-    crownFinaleVfxPlayer_.SetSequence(&crownFinaleVfxSequence_);
-    if (!crownFinaleVfxPlayer_.ValidateBindings().empty()) {
+    sealAnchor->SetTranslate(s.lastSealPosition);
+    releaseAnchor->SetTranslate(s.fragmentStart);
+    releaseAnchor->SetScale(s.bossScale);
+    crownFinalePlayer_.Play(false);
+    if (!crownFinalePlayer_.IsPlaying()) {
         ResetCrownFinaleWorld();
         return false;
     }
-    crownFinaleVfxPlayer_.Play(false);
+    UpdateCrownFinale(0);
     return true;
 }
 
@@ -413,7 +381,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         ResetCrownFinaleWorld();
         return;
     }
-    const auto& tuning = CrownFinaleTuning::Get();
+    const auto tuning = GetCrownFinaleTiming();
     const float previousTime = s.time;
     s.time += std::max(0.0f, dt);
     const float t = std::clamp(s.time / s.duration, 0.0f, 1.0f);
@@ -422,26 +390,11 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     const float absorbTime = tuning.movieFragmentAbsorbTime, bodyTime = tuning.movieBodyTime;
     const float crownTime = tuning.movieCrownTime, wingsTime = tuning.movieWingsTime;
     const float escapeTime = tuning.movieEscapeTime, arriveTime = tuning.movieArriveTime;
-    SyncFinaleVfxTimes(crownFinaleVfxSequence_, tuning, s.duration);
     const float bodyEnd = crownTime - 0.012f, crownEnd = wingsTime - 0.012f;
     const engine::Vector3 destination = s.offset + engine::Vector3{0.0f, 0.82f, 12.0f};
     const float flightYaw = std::atan2(destination.x - s.start.x, destination.z - s.start.z);
     auto crossed = [&](float when) { return previousTime < when * s.duration && s.time >= when * s.duration; };
     auto periodic = [&](float rate) { return dt > 0.0f && static_cast<int>(s.time * rate) != static_cast<int>(previousTime * rate); };
-
-    // 最後の封印の破壊を冒頭で見せ、次の王冠カットに因果関係を持たせます。
-    const float sealDisappear=CrownEase((s.time-.08f)/.48f);
-    s.lastSeal->SetTranslate(s.lastSealPosition);
-    s.lastSeal->SetScale({1,1,1});
-    s.lastSeal->SetIsVisible(s.time<.58f);
-    auto* sealMaterial=s.lastSeal->GetMaterialData();
-    sealMaterial->portalClipEnabled=1;
-    sealMaterial->portalClipProgress=0;
-    sealMaterial->portalClipCenter=s.lastSealPosition+engine::Vector3{0,3.0f-6.0f*sealDisappear-.52f,0};
-    sealMaterial->portalClipNormal={0,1,0};
-    sealMaterial->portalClipEdgeWidth=.10f;
-    sealMaterial->portalClipDissolve=.18f;
-    sealMaterial->portalClipColor={1,.85f,1,1};
 
     // 一度だけの破壊音と破片は時刻の通過で発火し、フレーム落ちでも重複させません。
     if (crossed(.005f)) {
@@ -502,46 +455,17 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     s.fragment->SetScale(fragmentScale);
     s.fragment->SetRotation(fragmentRotation);
     s.fragment->SetEmissive(1.2f + (t >= landTime ? 0.4f + 0.15f * std::sin(s.time * 6.0f) : 0.0f));
-    s.fragmentCrack->SetIsVisible(t >= 0.04f && t < breakTime);
-    s.fragmentCrack->SetTranslate(fragmentPosition);
-    s.fragmentCrack->SetScale(fragmentScale);
-    s.fragmentCrack->SetRotation(fragmentRotation);
-
     if (crossed(0.04f))
         VFXSequencer::PlayOneShot("pull_catch_cue", release, {0.7f,0.7f,0.7f});
     if (crossed(breakTime)) {
         VFXSequencer::PlayOneShot("pull_catch_cue", release, {0.9f,0.9f,0.9f});
     }
 
-    // 細かな欠片は本体の吸収とは独立して飛散させ、短い寿命で消します。
-    for (size_t i=0; i<s.fragmentChips.size(); ++i) {
-        auto& chip=s.fragmentChips[i];
-        const float age=(t-breakTime)*s.duration, angle=i*2.3999632f;
-        chip->SetIsVisible(age>=0.0f && age<1.3f);
-        chip->SetTranslate(release + engine::Vector3{std::cos(angle)*age*2.5f,age*(1.6f+i*.18f)-4.9f*age*age,std::sin(angle)*age*2.5f});
-        chip->SetScale(s.bossScale);
-        chip->SetRotation({age*3.0f,angle+age*4.0f,age*2.0f});
-    }
-
-
     if (t>=landTime && t<pullTime && periodic(5))
         GPUParticleManager::GetInstance()->EmitDirected("crown_goal_idle_sparkle",s.fragmentGround,{0,1,0},.4f);
 
-    // 寄りで欠片を確認した後、ボスの圧力面・粉塵・地割れが外周へ走ります。
-    const float shock = std::clamp((t-rageTime)/.07f,0.0f,1.0f);
-    s.shockwave->SetIsVisible(t>=rageTime && t<rageTime+.07f);
-    s.shockwave->SetTranslate(s.bossStart+engine::Vector3{0,.18f,0});
-    s.shockwave->SetScale({1+shock*47,.42f+std::sin(shock*3.14159265f)*.7f,1+shock*40});
-    s.shockwave->SetColor({1,.91f,.76f,(1-shock)*.85f});
-
-
-    s.groundFractures->SetIsVisible(false);
-    s.groundFractures->SetTranslate({0,.89f,0});
-    s.groundFractures->SetScale({1,1,1});
-    s.groundFractures->SetEmissive(1.0f + 1.8f*CrownEase((t-rageTime)/.07f));
-
     // プレイヤーの向きを先に欠片へ寄せ、引き寄せ区間でだけ操作用のフック表示を使います。
-    engine::Vector3 playerPosition=s.start, eye{},target{};
+    engine::Vector3 playerPosition=s.start;
     const float notice=CrownEase((t-rageTime-.03f)/(pullTime-rageTime-.03f));
     const float turnDelta=std::atan2(std::sin(pullYaw-s.playerYaw),std::cos(pullYaw-s.playerYaw));
     if (t<pullTime)
@@ -572,14 +496,6 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         VFXSequencer::PlayOneShot("pull_catch_cue",mouth,{.8f,.8f,.8f});
     }
 
-    // 体内の菱形は取り込んだ装飾と同じ形です。身体を透かして模様を読ませます。
-    s.innerRune->SetIsVisible(t>=absorbTime && t<crownTime);
-    s.innerRune->SetTranslate(s.start);
-    s.innerRune->SetScale(s.playerScale);
-    s.innerRune->SetRotation({0,pullYaw,0});
-    s.innerRune->SetColor({1,.8f,.24f,1});
-    s.innerRune->SetEmissive(2+2*std::sin(s.time*7)*std::sin(s.time*7));
-
     if (t>=absorbTime && t<bodyTime) {
         player_->SetMaterialType(1);
         player_->SetColor({.72f,.95f,1,.48f});
@@ -589,31 +505,20 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
             GPUParticleManager::GetInstance()->EmitDirected("goal_clear_gold_motes",s.start+engine::Vector3{0,.8f,0},{0,1,0},.45f);
     }
 
-    // 金色の仮ボディと本体は逆向きのクリップ面を使い、下から置換されるように見せます。
-    auto formFromBottom=[&](engine::Object3d* object,float progress,float low,float high,bool reverse) {
-        auto* material=object->GetMeshRenderer()->GetMaterialData();
-        material->portalClipEnabled=progress<.999f?1.0f:0.0f;
-        material->portalClipProgress=0;
-        const float height=low+(high-low)*progress;
-        material->portalClipCenter=s.start+engine::Vector3{0,height+(reverse?.52f:-.52f),0};
-        material->portalClipNormal={0,reverse?-1.0f:1.0f,0};
-        material->portalClipEdgeWidth=.035f;
-        material->portalClipDissolve=.055f;
-        material->portalClipColor={1,.85f,.3f,1};
-    };
-
-    const float bodyProgress=CrownEase((t-bodyTime)/(bodyEnd-bodyTime));
-    s.goldBody->SetIsVisible(t>=bodyTime && t<bodyEnd);
-    s.goldBody->SetTranslate(s.start);
-    s.goldBody->SetScale(s.playerScale*1.002f);
-    s.goldBody->SetRotation(player_->GetRotation());
-    formFromBottom(s.goldBody.get(),bodyProgress,-.1f,1.65f,false);
-
+    // 実Playerの置換面だけを設定する。金色の仮ボディは共通再生器が逆側から形成する。
     if (t>=bodyTime && t<bodyEnd) {
+        const float progress = CrownEase((t-bodyTime)/(bodyEnd-bodyTime));
         player_->SetScale(s.playerScale);
         player_->SetMaterialType(25);
         player_->SetColor(s.playerColor);
-        formFromBottom(player_,bodyProgress,-.1f,1.65f,true);
+        auto* material = player_->GetMaterialData();
+        material->portalClipEnabled = progress < .999f ? 1.0f : 0.0f;
+        material->portalClipProgress = 0;
+        material->portalClipCenter = s.start + engine::Vector3{0,-.1f+1.75f*progress+.52f,0};
+        material->portalClipNormal = {0,-1,0};
+        material->portalClipEdgeWidth = .035f;
+        material->portalClipDissolve = .055f;
+        material->portalClipColor = {1,.85f,.3f,1};
     }
 
     // 形成が終わってから実モデルを交換し、途中のクリップ設定を持ち越しません。
@@ -624,14 +529,6 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->SetMaterialType(0);
         player_->SetColor({1,.77f,.25f,1});
     }
-
-    const float crownProgress=CrownEase((t-crownTime)/(crownEnd-crownTime));
-    s.regalia->SetIsVisible(t>=crownTime && t<crownEnd);
-    s.regalia->SetTranslate(s.start);
-    s.regalia->SetScale(s.playerScale);
-    s.regalia->SetRotation(player_->GetRotation());
-    formFromBottom(s.regalia.get(),crownProgress,0,2.2f,false);
-
 
     // 能力付与は見た目の形成完了と一致させ、初めから装備済みに見えないようにします。
     if (t>=crownEnd && !s.granted) {
@@ -646,9 +543,6 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     }
 
     // 羽の出現と飛び出しは別の時刻にし、発進前に向きとつぶれを作ります。
-
-    const float wingOpen=CrownEase((t-wingsTime)/(escapeTime-wingsTime-.02f));
-    const float wingFold=1-CrownEase((t-arriveTime)/std::max(.02f,1-arriveTime));
 
     if (t>=wingsTime && t<escapeTime) {
         const float anticipation=CrownEase((t-escapeTime+.025f)/.025f);
@@ -686,28 +580,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     player_->SetTranslate(playerPosition);
     player_->SetVelocity({});
     player_->UpdateWorldMatrix(false);
-    const float flap=t>=escapeTime && t<arriveTime?std::sin((t-escapeTime)*s.duration*9):0;
-    const float yaw=player_->GetRotation().y;
-
-    for (engine::Object3d* wing:{s.wings.get(),s.rightWing.get()}) {
-        wing->SetIsVisible(t>=wingsTime && wingFold>.001f);
-        wing->SetTranslate(playerPosition+engine::Vector3{0,.35f,0});
-        wing->SetScale(s.playerScale*(tuning.movieWingScale*wingFold));
-        const float side=wing==s.wings.get()?-1.0f:1.0f;
-        wing->SetRotation({0,yaw,side*((1-wingOpen)*1.15f+flap*.22f)});
-        wing->SetEmissive(1.0f+(1-wingOpen)*1.6f);
-        auto* mat=wing->GetMeshRenderer()->GetMaterialData();
-        mat->portalClipEnabled=wingOpen<.999f?1.0f:0.0f;
-        mat->portalClipProgress=0;
-        mat->portalClipCenter=playerPosition+engine::Vector3{0,.35f+(-.1f+2.9f*wingOpen)-.52f,0};
-        mat->portalClipNormal={0,1,0};
-        mat->portalClipEdgeWidth=.04f;
-        mat->portalClipDissolve=.06f;
-        mat->portalClipColor={1,.9f,.4f,1};
-    }
-
     // 表示メッシュを実際に分割した床片です。外周から割れ、最後に足元が抜けます。
-    size_t crackIndex=0;
 
     for (auto& pose:s.fractureChunks) {
         const engine::Vector3 delta=pose.position-s.start;
@@ -721,20 +594,26 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         pose.object->SetRotation(pose.rotation+engine::Vector3{age*.18f,age*.04f,age*.13f});
         pose.object->UpdateWorldMatrix(false);
 
-        // 床の姿勢を共有し、亀裂の発光だけを衝撃後に減衰させます。
-        auto& crack=s.floorCracks[crackIndex++];
-
-        if (crack) {crack->SetTranslate(pose.object->GetTranslate());crack->SetRotation(pose.object->GetRotation());
-        crack->SetIsVisible(pose.object->GetIsVisible());
-        crack->SetEmissive(1.0f+1.5f*std::exp(-(t-rageTime)*12));}
-
         if (crossed(begin) && distance>10)
             VFXSequencer::PlayOneShot("crown_inheritance_floor_break_cue",pose.position+engine::Vector3{0,.8f,0});
     }
 
+    // 親子を両方動かすと子だけ落下量が二重になるため、親が演出対象なら子の姿勢は親に追従させます。
+    std::unordered_set<engine::Object3d*> animatedObjects;
+    animatedObjects.reserve(s.originalObjects.size());
+    for (const auto& pose : s.originalObjects)
+        animatedObjects.insert(pose.object);
+
     size_t index=0;
 
     for (auto& pose:s.originalObjects) {
+        if (auto* parent = pose.object->GetParent(); parent && animatedObjects.find(parent) != animatedObjects.end()) {
+            if (t >= rageTime) {
+                pose.object->SetCollisionAttribute(0);
+                pose.object->SetCollisionMask(0);
+            }
+            continue;
+        }
         const std::string& name=pose.object->GetName();
         if (name=="Stage3_HighCrown_VictoryCrown")
             continue;
@@ -755,53 +634,12 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         pose.object->UpdateWorldMatrix(false);
     }
 
-    // カットごとに主役を一つに絞る。欠片の着地を見せてから暴走の全景へ切り替えます。
-    if (t<.035f) {target=s.lastSealPosition;eye=target+engine::Vector3{3.2f,1.0f,5.5f};}
-    else if (t<breakTime) {target=fragmentPosition;eye=target+engine::Vector3{2.4f,.7f,4.8f}*tuning.movieFragmentCameraDistance;}
-    else if (t<landTime) {
-        const float follow=CrownEase((t-breakTime)/(landTime-breakTime));
-        target=fragmentPosition;
-        eye=target+CrownLerp({2.4f,.7f,4.8f},{2.6f,1.2f,4.2f},follow)*tuning.movieFragmentCameraDistance;
-    } else if (t<rageTime) {target=s.fragmentGround;
-    eye=target+engine::Vector3{2.5f,1,4.0f}*tuning.movieFragmentCameraDistance;
+    // 対象の姿勢を確定してから、同じ時刻の装飾・VFX・カメラを評価する。
+    crownFinalePlayer_.SetTime(s.time, dt > 0.0f);
+    if (!crownFinalePlayer_.IsPlaying() && !crownFinalePlayer_.IsPreviewing()) {
+        ResetCrownFinaleWorld();
+        return;
     }
-    else if (t<rageTime+.04f) {target=s.bossStart+engine::Vector3{0,1.8f,0};eye=target+engine::Vector3{13,7,24};}
-    else if (t<pullTime) {target=CrownLerp(s.start+engine::Vector3{0,.8f,0},s.fragmentGround,.45f);eye=target+engine::Vector3{5,2.6f,7};}
-    else if (t<absorbTime) {target=CrownLerp(mouth,s.fragmentGround,.38f);eye=target+engine::Vector3{4.0f,1.8f,5.8f}*tuning.movieFragmentCameraDistance;}
-    else if (t<wingsTime) {
-        target=s.start+engine::Vector3{0,1,0};
-        const engine::Vector3 front{std::sin(pullYaw),0,std::cos(pullYaw)};
-        eye=target+front*5.5f+engine::Vector3{1.6f,1.1f,0};
-    } else if (t<escapeTime) {target=s.start+engine::Vector3{0,1.3f,0};
-    eye=target+engine::Vector3{-7,3,9};
-    }
-    else if (t<arriveTime) {
-        target=playerPosition+engine::Vector3{0,.9f,0};
-        const float travel=(t-escapeTime)/(arriveTime-escapeTime);
-        eye=target+CrownLerp({-14,7,24},{-9,5,15},CrownEase(travel));
-    } else {target=CrownLerp(destination+engine::Vector3{0,1.2f,0},s.offset+engine::Vector3{0,3,0},.5f*CrownEase((t-arriveTime)/(1-arriveTime)));
-    eye=target+engine::Vector3{8,10,32};
-    }
-    const float impact=t>=rageTime?.25f*std::exp(-(t-rageTime)*48):0;
-    const float tremor=t>=rageTime && t<escapeTime?.055f:0;
-    const float shake=(impact+tremor)*tuning.movieShake;
-    const engine::Vector3 jitter{std::sin(s.time*47)*shake,std::sin(s.time*61)*shake*.65f,0};
-    eye=eye+jitter;
-    target=target+jitter*.35f;
-    camera->SetFollowTarget(nullptr);
-    camera->SetLockOnTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-    camera->SetEye(eye);
-    camera->SetTarget(target);
-    camera->SetRotation(CrownLook(eye,target));
-    camera->ConfigFixedPoint(eye,CrownLook(eye,target));
-    camera->SetFovY(.58f);
-    camera->SetInputEnabled(false);
-
-    // 編集カメラのOverride補間を経由せず、評価した注視点をそのまま行列へ反映します。
-    camera->ApplyReplayView(eye,target,CrownLook(eye,target),.58f,camera->GetNearClip(),camera->GetFarClip());
-    CameraManager::GetInstance()->SetActiveCamera(camera);
-    crownFinaleVfxPlayer_.SetTime(s.time, dt > 0.0f);
 
     // 通常Updateもカメラ変更前にモデルを更新していました。最後に全描画定数を揃えます。
     for (auto& object:GetObjects())
@@ -809,19 +647,16 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
             object->UpdateWorldMatrix(true);
     if (engine::Object3d* marker=player_->GetHookMarker())
         marker->UpdateWorldMatrix(true);
-    if (auto* params=PostEffect::GetInstance()->GetParams())
-        params->cinemaBarHeight=s.bars+.075f*CrownEase(t/.04f)*(1-CrownEase((t-.96f)/.04f));
     if (t>=1 && !crownMoviePreview_.active)
         FinishCrownFinale(true);
 }
-
 
 void GamePlayScene::FinishCrownFinale(bool completed) {
     // 結果に応じて演出終了後のボス・Player状態を確定する。
     auto& s = crownFinale_;
     if (!s.active)
         return;
-    crownFinaleVfxPlayer_.Stop(false);
+    crownFinalePlayer_.Stop(true);
     s.active = false;
     if (auto* params = PostEffect::GetInstance()->GetParams())
         params->cinemaBarHeight = s.bars;
@@ -894,19 +729,8 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
     }
 
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
-    // 一時的な演出Objectだけを破棄し、次の再生で古いエフェクトを再利用しない。
-    s.fragment.reset();
-    s.fragmentCrack.reset();
-    s.lastSeal.reset();
-    s.fragmentChips.clear();
-    s.shockwave.reset();
-    s.wings.reset();
-    s.rightWing.reset();
-    s.innerRune.reset();
-    s.goldBody.reset();
-    s.regalia.reset();
-    s.groundFractures.reset();
-    s.floorCracks.clear();
+    // 装飾ObjectはStopで共通再生器が破棄する。借用参照だけを外す。
+    s.fragment = nullptr;
 }
 
 void GamePlayScene::ResetCrownFinaleWorld() {
@@ -952,32 +776,8 @@ void GamePlayScene::ResetCrownFinaleWorld() {
 }
 
 void GamePlayScene::DrawCrownFinaleWorld() {
-    // 最終演出が有効な間だけ専用の破片・翼・衝撃波を描く。
-    if (!crownFinale_.active)
-        return;
-    for (auto* visual : {crownFinale_.fragment.get(), crownFinale_.fragmentCrack.get(), crownFinale_.lastSeal.get(),
-                         crownFinale_.shockwave.get(), crownFinale_.wings.get(), crownFinale_.rightWing.get(),
-                         crownFinale_.innerRune.get(), crownFinale_.goldBody.get(), crownFinale_.regalia.get(),
-                         crownFinale_.groundFractures.get()}) {
-        if (!visual || !visual->GetIsVisible())
-            continue;
-        visual->UpdateWorldMatrix(true);
-        visual->Draw(pointLightResource_.Get(), spotLightResource_.Get());
-    }
-
-    for (const auto& crack : crownFinale_.floorCracks) {
-        if (!crack || !crack->GetIsVisible())
-            continue;
-        crack->UpdateWorldMatrix(true);
-        crack->Draw(pointLightResource_.Get(),spotLightResource_.Get());
-    }
-
-    for (const auto& chip : crownFinale_.fragmentChips) {
-        if (chip && chip->GetIsVisible()) {
-            chip->UpdateWorldMatrix(true);
-            chip->Draw(pointLightResource_.Get(), spotLightResource_.Get());
-        }
-    }
+    if (crownFinale_.active)
+        crownFinalePlayer_.DrawPresentation(pointLightResource_.Get(), spotLightResource_.Get());
 }
 
 void GamePlayScene::DrawCrownFinaleUI() {
@@ -997,7 +797,7 @@ void GamePlayScene::DrawCrownFinaleUI() {
                 (1.0f - CrownEase((arenaBossIntroTimer_ - arenaBossIntroMessageOutTime_) / 0.35f));
     } else if (crownFinale_.active) {
         const float t = crownFinale_.time / crownFinale_.duration;
-        const auto& tuning = CrownFinaleTuning::Get();
+        const auto tuning = GetCrownFinaleTiming();
         index = t < tuning.movieFragmentPullTime ? 4 : (t < tuning.movieFragmentAbsorbTime ? 1 : 5);
         const float begin = index == 4 ? 0.0f : (index == 1 ? tuning.movieFragmentPullTime : tuning.movieFragmentAbsorbTime);
         const float end = index == 4 ? tuning.movieFragmentPullTime : (index == 1 ? tuning.movieFragmentAbsorbTime : tuning.movieEscapeTime);

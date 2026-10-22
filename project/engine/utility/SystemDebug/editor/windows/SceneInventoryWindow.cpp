@@ -6,6 +6,7 @@
 #include "IconsFontAwesome5.h"
 #include "Object3d.h"
 #include "SceneManager.h"
+#include "EditorObjectFactoryRegistry.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -66,32 +67,11 @@ bool IsTerrainVisual(const engine::Object3d& object) {
 }
 
 std::string GetTypeDisplayName(const std::string& type) {
-    // 保存データの内部型IDを一覧向けの日本語名へ置き換え、未知の型はIDを残す。
+    // ギミックは作成メニューと同じ登録表示名を使います。
+    for (const auto& info : EditorObjectFactoryRegistry::GetTypes(EditorObjectFactoryRegistry::Kind::Gimmick))
+        if (info.id == type) return info.displayName;
+    // 敵・アイテムの表示名は既存の一覧を使います。
     static const std::unordered_map<std::string, std::string> kNames = {
-        { "AppearingFloor", "出現床" },
-        { "BlinkBlock", "点滅ブロック" },
-        { "BreakableBlock", "破壊可能壁・ブロック" },
-        { "ChainCollapseFloor", "連鎖して落ちる床" },
-        { "ChikuwaBlock", "ちくわブロック" },
-        { "DashPanel", "ダッシュパネル" },
-        { "EventReceiver", "イベント受信オブジェクト" },
-        { "ArenaEncounter", "中ボス遭遇管理" },
-        { "GameplayVolume", "ゲームプレイボリューム" },
-        { "PrismBarrier", "プリズム障壁" },
-        { "FireCannon", "炎の砲台" },
-        { "HazardRideFloor", "妨害付き輸送床" },
-        { "MagmaGeyser", "マグマ噴出口" },
-        { "WaterGeyser", "水の噴出口" },
-        { "MagmaHazard", "マグマ地形" },
-        { "MovingFloor", "移動床" },
-        { "PhaseFlipFloor", "時間反転床" },
-        { "RotatingFloor", "回転床" },
-        { "SeesawFloor", "シーソー床" },
-        { "SinkingFloor", "沈む床" },
-        { "StageGate", "ステージゲート" },
-        { "TimedSwitch", "時間スイッチ" },
-        { "Trampoline", "ジャンプ床" },
-        { "Coin", "コイン" },
         { "StarCoin", "スターコイン" },
         { "Slime", "ピンクスライム" },
         { "FireSlime", "炎スライム" },

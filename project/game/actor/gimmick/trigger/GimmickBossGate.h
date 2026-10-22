@@ -5,6 +5,10 @@
 // ボス戦開始時に上から閉じる、実体モデル付きの格子ゲートです。
 class GimmickBossGate final : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "BossGate";
+    static constexpr const char* kModelPath = "Stages/high_crown/high_crown_gate.obj";
+
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
     void Update(float deltaTime) override;

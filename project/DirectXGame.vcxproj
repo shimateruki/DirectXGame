@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -168,6 +168,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="game\system\cinematic\GateEntryPresentation.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomber.cpp" />
     <ClCompile Include="game\actor\enemy\combat\AttackTelegraph.cpp" />
     <ClCompile Include="game\actor\enemy\combat\EnemyAttackProfile.cpp" />
@@ -399,10 +400,13 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.Catalog.cpp" />
     <ClCompile Include="game\editor\BuiltInCreatePresetRegistry.cpp" />
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp" />
-    <ClCompile Include="game\system\cinematic\GhostDirector.cpp" />
-    <ClCompile Include="game\system\cinematic\GhostDirector.Studio.cpp" />
-    <ClCompile Include="game\system\cinematic\CinematicPlayer.cpp" />
-    <ClCompile Include="game\system\cinematic\CinematicSequence.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.Studio.cpp" />
+    <ClCompile Include="engine\animation\cinematic\CinematicPlayer.cpp" />
+    <ClCompile Include="engine\animation\cinematic\CinematicSequence.cpp" />
+    <ClCompile Include="engine\animation\cinematic\CinematicSequence.Presentation.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.Presentation.cpp" />
+    <ClCompile Include="engine\animation\cinematic\CinematicPlayer.Presentation.cpp" />
     <ClCompile Include="engine\animation\BodyAnimationClip.cpp" />
     <ClCompile Include="engine\animation\AnimatorController.cpp" />
     <ClCompile Include="engine\utility\state\IAnimationState.cpp" />
@@ -640,12 +644,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="game\crown\CrownDefeatTuning.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomber.h" />
     <ClInclude Include="game\actor\enemy\combat\AttackTelegraph.h" />
     <ClInclude Include="game\actor\enemy\combat\EnemyAttackProfile.h" />
     <ClInclude Include="game\actor\combat\AttackSequence.h" />
     <ClInclude Include="game\actor\combat\AttackSequenceData.h" />
+    <ClInclude Include="game\actor\combat\PlayerAttackMovement.h" />
     <ClInclude Include="game\actor\combat\AttackSequenceTracks.h" />
     <ClInclude Include="engine\graphics\effect\EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h" />
@@ -657,6 +661,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PlayModeChangeTracker.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\ObjectPropertyDefinition.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyJsonBinding.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BuiltIn.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.h" />
@@ -710,6 +716,7 @@
     <ClInclude Include="game\actor\gimmick\block\GimmickChainCollapseFloor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickRotatingObject.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickPhaseFlipFloor.h" />
+    <ClInclude Include="game\system\cinematic\GateEntryPresentation.h" />
     <ClInclude Include="game\actor\gimmick\stage\GimmickStageGate.h" />
     <ClInclude Include="game\actor\gimmick\combat\GimmickFireCannon.h" />
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaHazard.h" />
@@ -1007,9 +1014,10 @@
     <ClInclude Include="game\editor\RegisterGameEditorFactories.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorObjectFactoryRegistry.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
-    <ClInclude Include="game\system\cinematic\GhostDirector.h" />
-    <ClInclude Include="game\system\cinematic\CinematicPlayer.h" />
-    <ClInclude Include="game\system\cinematic\CinematicSequence.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.h" />
+    <ClInclude Include="engine\animation\cinematic\CinematicPlayer.h" />
+    <ClInclude Include="engine\animation\cinematic\CinematicSequence.h" />
+    <ClInclude Include="engine\animation\cinematic\CinematicPresentation.h" />
     <ClInclude Include="engine\animation\BodyAnimationClip.h" />
     <ClInclude Include="engine\animation\AnimatorController.h" />
     <ClInclude Include="engine\utility\state\IAnimationState.h" />

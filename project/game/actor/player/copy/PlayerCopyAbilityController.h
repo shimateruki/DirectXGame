@@ -4,6 +4,7 @@
 #include <string>
 
 #include "engine/utility/math/Math.h"
+#include "game/actor/combat/PlayerAttackMovement.h"
 
 class Player;
 class Camera;
@@ -62,6 +63,9 @@ class PlayerCopyAbilityController {
     bool HandlesMorphType(int morphType) const;
 
     bool IsActive() const;
+
+    // セッションの現在の制限を値で取得します。終了・解除後は無制限です。
+    PlayerAttackMovement GetAttackMovement() const;
 
     const char* GetStateLabel() const;
 

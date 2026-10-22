@@ -130,6 +130,27 @@ float NormalizeYaw(float yaw) {
     return yaw;
 }
 
+// 王冠や体の寸法は配置倍率ではなく、描画に使うワールド変換から求める。
+engine::Vector3 GoalWorldScale(engine::Object3d* object) {
+    if (!object) return {1,1,1};
+    const auto& m=object->GetWorldMatrix();
+    return {engine::Math::Length({m.m[0][0],m.m[0][1],m.m[0][2]}),
+        engine::Math::Length({m.m[1][0],m.m[1][1],m.m[1][2]}),
+        engine::Math::Length({m.m[2][0],m.m[2][1],m.m[2][2]})};
+}
+engine::Vector3 GoalLocalPosition(engine::Object3d* object, const engine::Vector3& world) {
+    return object && object->GetParent()
+        ? engine::Math::Transform(world,engine::Math::Inverse(object->GetParent()->GetWorldMatrix())) : world;
+}
+std::array<engine::Vector3,8> GoalWorldCorners(engine::Object3d* object) {
+    std::array<engine::Vector3,8> result{};
+    const auto lo=object->GetModel() ? object->GetModel()->GetLocalAabbMin() : engine::Vector3{-0.5f,-0.5f,-0.5f};
+    const auto hi=object->GetModel() ? object->GetModel()->GetLocalAabbMax() : engine::Vector3{0.5f,0.5f,0.5f};
+    for (size_t i=0;i<8;++i) result[i]=engine::Math::Transform(
+        {(i&1)?hi.x:lo.x,(i&2)?hi.y:lo.y,(i&4)?hi.z:lo.z},object->GetWorldMatrix());
+    return result;
+}
+
 } // namespace
 
 // ゴール状態を解除する際は、プレイヤー・王冠・カメラの演出前の状態を戻します。
@@ -165,8 +186,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
 
     if (!isGoal_) {
         goalCinematicPlayer_.Stop(false);
-        Camera* restoreCamera =
-            goalLockedPrimaryCamera_ ? goalLockedPrimaryCamera_ : CameraManager::GetInstance()->GetMainCamera();
+        Camera* restoreCamera = goalCameraRestoreOverride_;
         goalClearPlayerAnimator_.RestoreInitialPose();
 
         // 王冠だけはScene配置物を直接動かすので、演出開始前のTransformを復元します。
@@ -174,8 +194,14 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
             goalCrownObject_->SetTranslate(goalCrownBasePosition_);
             goalCrownObject_->SetScale(goalCrownBaseScale_);
             goalCrownObject_->SetRotation(goalCrownBaseRotation_);
+            goalCrownObject_->SetEnableEnvMap(goalCrownBaseEnvMap_);
+            goalCrownObject_->SetEnvIntensity(goalCrownBaseEnvIntensity_);
+            goalCrownObject_->SetRoughness(goalCrownBaseRoughness_);
+            goalCrownObject_->SetMeshEffect1Name(goalCrownIdleEffect1_);
+            goalCrownObject_->SetMeshEffect2Name(goalCrownIdleEffect2_);
             goalCrownObject_->UpdateLocalMatrix();
             goalCrownObject_->UpdateWorldMatrix();
+            goalCrownObject_->UpdateAttachedEffects(0.0f);
         }
 
         if (player_ && player_->IsCinematicLocked()) {
@@ -209,9 +235,8 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
         }
 
         // 演出用カメラを外した後で、元のカメラを最後に有効化します。
-        if (restoreCamera) {
-            CameraManager::GetInstance()->SetActiveCamera(restoreCamera);
-        }
+        // nullptrも元の選択状態として復元し、通常カメラを上書き参照へ変えない。
+        CameraManager::GetInstance()->SetActiveCamera(restoreCamera);
     }
 }
 
@@ -250,6 +275,16 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
 
     if (crownObject) {
         // 演出で王冠を動かす前のTransformを控え、終了時に配置状態へ戻せるようにする。
+        goalCrownStartWorldPosition_ = crownObject->GetWorldPosition();
+        goalCrownBaseEnvMap_=crownObject->GetEnableEnvMap();
+        goalCrownBaseEnvIntensity_=crownObject->GetEnvIntensity();
+        goalCrownBaseRoughness_=crownObject->GetRoughness();
+        // 待機オーラを外しても金属の面が読めるよう、演出中は環境反射を有効にする。
+        crownObject->SetEnableEnvMap(true);
+        crownObject->SetEnvIntensity((std::max)(0.85f,goalCrownBaseEnvIntensity_));
+        crownObject->SetRoughness((std::min)(0.45f,goalCrownBaseRoughness_));
+        goalCrownIdleEffect1_ = crownObject->GetMeshEffect1Name();
+        goalCrownIdleEffect2_ = crownObject->GetMeshEffect2Name();
         goalCrownBasePosition_ = crownObject->GetTranslate();
         goalCrownBaseScale_ = crownObject->GetScale();
         goalCrownBaseRotation_ = crownObject->GetRotation();
@@ -282,6 +317,18 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
         goalPlayerSnapshotValid_ = false;
     }
 
+    if (crownObject && crownObject->GetModel() && player_->GetModel()) {
+        const auto bodySize=player_->GetModel()->GetLocalAabbMax()-player_->GetModel()->GetLocalAabbMin();
+        const auto bodyScale=GoalWorldScale(player_);
+        const auto crownSize=crownObject->GetModel()->GetLocalAabbMax()-crownObject->GetModel()->GetLocalAabbMin();
+        const float width=(std::max)(bodySize.x*bodyScale.x,bodySize.z*bodyScale.z)*goalPresentationTuning_.crownWearWidthRatio;
+        const float uniform=width/(std::max)({0.001f,crownSize.x,crownSize.z});
+        const auto parentScale=GoalWorldScale(crownObject->GetParent());
+        goalCrownWearScale_={uniform/(std::max)(parentScale.x,0.001f),uniform/(std::max)(parentScale.y,0.001f),uniform/(std::max)(parentScale.z,0.001f)};
+    } else {
+        goalCrownWearScale_=goalCrownBaseScale_;
+    }
+    goalCameraRestoreOverride_=CameraManager::GetInstance()->GetActiveCameraOverride();
     LockGoalPresentationCameraInput();
     SetupGoalPresentationCamera();
 
@@ -325,6 +372,10 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
 
 // 演出モードは互いに排他的です。早期終了で通常入力と敵更新の二重実行を防ぎます。
 void GamePlayScene::Update(float deltaTime) {
+    if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) {
+        UpdateUI(deltaTime);
+        return;
+    }
     // ムービープレビューはEditorが時間とエフェクトを所有し、通常AI・衝突を進めません。
     if (crownMoviePreview_.active) {
         if (!SceneManager::GetInstance()->IsPlaying()) {
@@ -885,7 +936,13 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     }
 
     UpdateGoalPlayerCelebration(deltaTime);
+#ifdef USE_IMGUI
+    if (ImGui::GetCurrentContext() && !ImGui::GetDrawData()) DrawGoalCrownPhysicsTuning();
+#endif
     UpdateGoalCrownMotion(deltaTime);
+    // AIや物理を再開せず、動かした表示物の付属エフェクトだけを同フレームで追従させる。
+    if (goalCrownObject_) goalCrownObject_->UpdateAttachedEffects(deltaTime);
+    if (player_) player_->UpdateAttachedEffects(deltaTime);
     UpdateGoalPresentationCamera();
 
     if (!goalCinematicTimelineLoaded_) {
@@ -915,13 +972,9 @@ void GamePlayScene::UpdateGoalPlayerCelebration(float deltaTime) {
 }
 
 void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
-    if (!goalCrownObject_ || !goalCrownSnapshotValid_ || !goalPlayerSnapshotValid_) {
+    if (!goalCrownObject_ || !goalCrownObject_->GetModel() || !player_ || !player_->GetModel() || !goalCrownSnapshotValid_ || !goalPlayerSnapshotValid_) {
         return;
     }
-
-#ifdef USE_IMGUI
-    DrawGoalCrownPhysicsTuning();
-#endif
 
     // 王冠の着地点はプレイヤーの現在姿勢とモデルの下端から求め、潰れ・伸びにも追従させる。
     const GoalCrownPhysicsTuning& physics = GetGoalCrownPhysicsTuning();
@@ -932,26 +985,34 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     const engine::Vector3 playerRotation = player_ ? player_->GetRotation() : goalPlayerBaseRotation_;
     const float baseScaleY = std::max(std::abs(goalPlayerBaseScale_.y), 0.001f);
     const float squashRate = std::clamp((goalPlayerBaseScale_.y - playerScale.y) / baseScaleY, -0.35f, 0.35f);
-    const float stretchRate = std::max(0.0f, -squashRate);
-    const float slimeSurfaceHeight = std::max(0.82f, playerScale.y * 0.72f + 0.30f);
-
-    // モデル原点と見た目の下端の差を補正し、頭上へ置いたときに浮きや埋まりを防ぐ。
-    float crownPivotFromBottom = 0.0f;
-
-    if (Model* crownModel = goalCrownObject_->GetModel()) {
-        crownPivotFromBottom = std::max(0.0f, -crownModel->GetLocalAabbMin().y * std::abs(goalCrownBaseScale_.y));
+    // 頭頂と王冠の底面を実モデルから求め、配置倍率や原点の違いを打ち消す。
+    const auto bodyMin=player_->GetModel()->GetLocalAabbMin();
+    const auto bodyMax=player_->GetModel()->GetLocalAabbMax();
+    auto bodyHead=engine::Math::Transform({(bodyMin.x+bodyMax.x)*0.5f,bodyMax.y,(bodyMin.z+bodyMax.z)*0.5f},player_->GetWorldMatrix());
+    const auto up=engine::Math::Normalize(engine::Math::TransformNormal({0,1,0},player_->GetWorldMatrix()));
+    const float seatDepth=presentation.crownSeatDepth+(std::max)(0.0f,squashRate)*0.06f;
+    const auto crownMin=goalCrownObject_->GetModel()->GetLocalAabbMin();
+    const auto crownMax=goalCrownObject_->GetModel()->GetLocalAabbMax();
+    const engine::Vector3 bottom={(crownMin.x+crownMax.x)*0.5f,crownMin.y,(crownMin.z+crownMax.z)*0.5f};
+    // 中心の頭頂へ輪を置くと縁が浮くため、冠の内周が丸い頭に接する断面高さへ下げる。
+    const auto bodyWorldScale=GoalWorldScale(player_);
+    const auto crownParentScale=GoalWorldScale(goalCrownObject_->GetParent());
+    const float bodyWidth=(std::max)(0.001f,(bodyMax.x-bodyMin.x)*bodyWorldScale.x);
+    const float innerRatio=std::clamp((crownMax.x-crownMin.x)*goalCrownWearScale_.x*crownParentScale.x/bodyWidth*0.9f,0.0f,0.95f);
+    const float surfaceDrop=(bodyMax.y-bodyMin.y)*bodyWorldScale.y*0.5f*(1.0f-std::sqrt(1.0f-innerRatio*innerRatio));
+    bodyHead=bodyHead-up*surfaceDrop;
+    auto bottomOffset=engine::Math::TransformNormal(bottom,engine::Math::MakeAffineMatrix(goalCrownWearScale_,goalCrownBaseRotation_,{0,0,0}));
+    if (goalCrownObject_->GetParent()) bottomOffset=engine::Math::TransformNormal(bottomOffset,goalCrownObject_->GetParent()->GetWorldMatrix());
+    const auto headPosition=bodyHead-up*seatDepth-bottomOffset;
+    const auto dropStartPosition=headPosition+engine::Vector3{0,presentation.crownDropHeight,0};
+    engine::Vector3 crownPosition=goalCrownStartWorldPosition_;
+    const float fit=AnimationInterpolation::ApplyEasing(AnimationInterpolation::SegmentRate(t,presentation.crownMoveStartTime,animation.crownLandTime),AnimationInterpolation::EasingType::SmootherStep);
+    engine::Vector3 crownScale=AnimationInterpolation::Lerp(goalCrownBaseScale_,goalCrownWearScale_,fit);
+    engine::Vector3 crownRotation=goalCrownBaseRotation_;
+    if (t>=presentation.crownMoveStartTime) {
+        goalCrownObject_->SetMeshEffect1Name("");
+        goalCrownObject_->SetMeshEffect2Name("");
     }
-
-    const float seatDepth = presentation.crownSeatDepth + std::max(0.0f, squashRate) * 0.10f - stretchRate * 0.035f;
-    const float crownPivotHeight = std::max(0.72f, slimeSurfaceHeight - seatDepth + crownPivotFromBottom);
-    const engine::Matrix4x4 playerRotationMatrix = engine::Math::MakeRotateMatrix(playerRotation);
-    const engine::Vector3 headOffset = engine::Math::TransformNormal({0.0f, crownPivotHeight, 0.0f}, playerRotationMatrix);
-    const engine::Vector3 headPosition = goalPlayerPosePosition_ + headOffset;
-    const engine::Vector3 dropStartPosition = headPosition + engine::Vector3{0.0f, presentation.crownDropHeight, 0.0f};
-
-    engine::Vector3 crownPosition = goalCrownBasePosition_;
-    engine::Vector3 crownScale = goalCrownBaseScale_;
-    engine::Vector3 crownRotation = goalCrownBaseRotation_;
 
     // 視線誘導中はその場で見せ、次に弧を描いて頭上へ運び、着地後はバネで追従させる。
     if (t < presentation.crownMoveStartTime) {
@@ -972,10 +1033,10 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             const float approach = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(t, presentation.crownMoveStartTime, approachEndTime),
                 AnimationInterpolation::EasingType::SmootherStep);
-            engine::Vector3 control = AnimationInterpolation::Lerp(goalCrownBasePosition_, dropStartPosition, 0.52f);
-            control.y = std::max(goalCrownBasePosition_.y, dropStartPosition.y) + presentation.crownDropHeight * 0.34f;
+            engine::Vector3 control = AnimationInterpolation::Lerp(goalCrownStartWorldPosition_, dropStartPosition, 0.52f);
+            control.y = std::max(goalCrownStartWorldPosition_.y, dropStartPosition.y) + presentation.crownDropHeight * 0.34f;
             control = control + goalMoveRight_ * 0.28f;
-            crownPosition = QuadraticBezier(goalCrownBasePosition_, control, dropStartPosition, approach);
+            crownPosition = QuadraticBezier(goalCrownStartWorldPosition_, control, dropStartPosition, approach);
             crownRotation = AnimationInterpolation::SlerpEuler(
                 {goalCrownBaseRotation_.x, moveStartYaw, goalCrownBaseRotation_.z},
                 {goalCrownBaseRotation_.x - 0.06f, goalCrownBaseRotation_.y + 0.38f, goalCrownBaseRotation_.z + 0.05f},
@@ -1098,12 +1159,20 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     }
 
     // 描画と後続の演出から参照される確定位置を、Object3dとSceneの状態へ反映する。
-    goalCrownPosition_ = crownPosition;
-    goalCrownObject_->SetTranslate(crownPosition);
+    goalCrownObject_->SetTranslate(GoalLocalPosition(goalCrownObject_,crownPosition));
     goalCrownObject_->SetScale(crownScale);
     goalCrownObject_->SetRotation(crownRotation);
     goalCrownObject_->UpdateLocalMatrix();
     goalCrownObject_->UpdateWorldMatrix();
+    if (t>=animation.crownLandTime) {
+        // 回転と着地時の潰れが変わっても、王冠の底面を同じ装着位置へ戻す。
+        const auto actualBottom=engine::Math::Transform(bottom,goalCrownObject_->GetWorldMatrix());
+        const auto desiredBottom=bodyHead-up*seatDepth+(crownPosition-headPosition);
+        crownPosition=crownPosition+(desiredBottom-actualBottom);
+        goalCrownObject_->SetTranslate(GoalLocalPosition(goalCrownObject_,crownPosition));
+        goalCrownObject_->UpdateWorldMatrix(true);
+    }
+    goalCrownPosition_=goalCrownObject_->GetWorldPosition();
 }
 
 void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
@@ -1267,6 +1336,47 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         fov = camera.resultFov;
     }
 
+    if (player_ && goalCrownObject_) {
+        const auto body=GoalWorldCorners(player_);
+        const auto crown=GoalWorldCorners(goalCrownObject_);
+        auto low=body[0],high=body[0];
+        for (const auto& points:{body,crown}) for (const auto& p:points) {
+            low={(std::min)(low.x,p.x),(std::min)(low.y,p.y),(std::min)(low.z,p.z)};
+            high={(std::max)(high.x,p.x),(std::max)(high.y,p.y),(std::max)(high.z,p.z)};
+        }
+        auto direction=target-eye;
+        if (engine::Math::Length(direction)<0.001f) direction=goalMoveForward_*-1.0f+engine::Vector3{0,-0.25f,0};
+        auto forward=engine::Math::Normalize(direction);
+        if (std::abs(forward.y)>0.95f) forward=engine::Math::Normalize(goalMoveForward_*-0.5f+engine::Vector3{0,forward.y,0});
+        const auto right=engine::Math::Normalize(engine::Math::Cross({0,1,0},forward));
+        const auto up=engine::Math::Cross(forward,right);
+        auto center=(low+high)*0.5f;
+        const float tanY=std::tan(fov*0.5f);
+        // エディターのウィンドウ寸法とGame Viewの描画比率は異なるため、実投影行列から求める。
+        const auto& projection=presentationCamera->GetProjectionMatrix();
+        const float aspect=std::abs(projection.m[0][0])>0.0001f ? std::abs(projection.m[1][1]/projection.m[0][0]) : 16.0f/9.0f;
+        const float tanX=tanY*aspect;
+        const float margin=camera.cameraSafeMargin;
+        const float uiBlend=AnimationInterpolation::ApplyEasing(AnimationInterpolation::SegmentRate(t,animation.resultUiTime-0.35f,animation.resultUiTime),AnimationInterpolation::EasingType::SmootherStep);
+        center=center+goalMoveRight_*(camera.resultTargetSide*uiBlend);
+        const float reserved=(std::max)(margin,(std::min)(0.65f,camera.resultUiCenterY+0.14f*camera.resultUiScale));
+        const float top=1.0f-2.0f*(margin+(reserved-margin)*uiBlend);
+        const float bottom=-1.0f+2.0f*margin;
+        const float middle=(top+bottom)*0.5f;
+        const float horizontal=1.0f-2.0f*margin;
+        float distance=engine::Math::Length(target-eye);
+        for (const auto& points:{body,crown}) for (const auto& p:points) {
+            const auto delta=p-center;
+            const float x=engine::Math::Dot(delta,right),y=engine::Math::Dot(delta,up),z=engine::Math::Dot(delta,forward);
+            distance=(std::max)({distance,0.25f-z,
+                std::abs(x)/(tanX*horizontal)-z,
+                (y-top*tanY*z)/(tanY*(top-middle)),
+                (-y+bottom*tanY*z)/(tanY*(middle-bottom))});
+        }
+        // 開始時の向きを保持しつつ対象の中心へ寄せ、結果UIのための上側余白を確保する。
+        target=center-up*(middle*tanY*distance);
+        eye=target-forward*distance;
+    }
     presentationCamera->SetFovY(fov);
     const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
     presentationCamera->SetEye(eye);

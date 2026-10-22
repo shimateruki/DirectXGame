@@ -4,6 +4,10 @@
 /// <summary>接触位置に応じて傾き、離れると元の角度に戻る床です。</summary>
 class GimmickSeesawFloor : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "SeesawFloor";
+    static constexpr const char* kModelPath = "Stages/block";
+
     virtual ~GimmickSeesawFloor() = default;
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;

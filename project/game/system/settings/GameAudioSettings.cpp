@@ -1,6 +1,7 @@
 #include "game/system/settings/GameAudioSettings.h"
 
 #include "json.hpp"
+#include "engine/animation/cinematic/CinematicPlayer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -27,6 +28,15 @@ void GameAudioSettings::Initialize() {
 
     initialized_ = true;
     Load();
+    // 演出再生器へ音声ID表を一度だけ接続し、エンジンからゲーム設定への依存をなくす。
+    CinematicPlayer::SetAudioServices(
+        [this](const std::string& id, float volume, bool loop) { PlaySE(id, volume, loop); },
+        [this](const std::string& id) { Stop(id); },
+        [this]() {
+            std::vector<CinematicPlayer::AudioEntry> result;
+            for (const auto& entry : entries_) result.push_back({entry.id, entry.displayName});
+            return result;
+        });
 }
 
 void GameAudioSettings::Load() {

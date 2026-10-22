@@ -283,6 +283,15 @@ void engine::InputManager::Update()
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_SHOULDER;
         }
 
+        // 押し込みも共通入力へ渡し、R3のロックオンとL3の対象切替を有効にします。
+        if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_LEFTSTICK)) {
+            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_THUMB;
+        }
+
+        if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_RIGHTSTICK)) {
+            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_THUMB;
+        }
+
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
         }

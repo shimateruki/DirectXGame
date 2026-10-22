@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "EnemyBomb.h"
 #include "game/actor/player/Player.h"
 #include "game/actor/player/state/PlayerState.h"
@@ -19,15 +19,11 @@ namespace {
 // 爆発判定と描画の大きさ、投擲後の接地・反射をそろえる調整値です。
 constexpr const char* kExplosionEffectPath = "Resources/json/effect/effect_bakuhatu.json";
 constexpr float kFallbackExplosionRadius = 3.0f;
-constexpr float kGroundFriction = 0.985f;
-constexpr float kStopSpeed = 0.02f;
+constexpr float kGroundDragPerSecond = 10.0f;
+constexpr float kStopSpeed = 0.12f;
 constexpr float kBombVisualScale = 0.30f;
 constexpr float kBombWorldCollisionRadius = 0.48f;
 constexpr float kBombCollisionRadius = kBombWorldCollisionRadius / kBombVisualScale;
-constexpr float kBombSweepSkin = 0.08f;
-constexpr float kBombLandingBounce = 0.22f;
-constexpr float kBombLandingFriction = 0.72f;
-constexpr float kBombWallBounce = 0.35f;
 
 float MaxScaleComponent(const nlohmann::json& values) {
     // エフェクトの最大軸で球形の爆発判定を広げる。欠損時は等倍にする。
@@ -84,6 +80,11 @@ void EnemyBomb::Initialize(engine::Object3dCommon* common, const std::string& mo
 
     SetColliderType(ColliderType::kSphere);
     SetCollisionRadius(kBombCollisionRadius);
+    auto collider = GetColliderConfig();
+    collider.center = {0.0f, 0.0f, 0.0f};
+    SetColliderConfig(collider);
+    if (GetCollider())
+        GetCollider()->SetScaleOverride(managedBaseScale_);
 
     // 通常時は敵として接触を受け付け、爆発時に属性を切り替えます。
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
@@ -94,6 +95,9 @@ void EnemyBomb::ApplyManagedScale(const engine::Vector3& scale) {
     // 点滅による一時変形と区別できるよう、通常時の基準スケールを保持する。
     managedBaseScale_ = scale;
     SetScale(scale);
+    // 点滅の伸縮と回転では取得・接地半径を変えない。
+    if (GetCollider())
+        GetCollider()->SetScaleOverride(managedBaseScale_);
 }
 
 // 運搬、投擲、通常移動では位置の更新担当が異なるため、処理を分けます。
@@ -107,92 +111,35 @@ void EnemyBomb::Update(float deltaTime) {
         return;
     }
 
-    const engine::Vector3 previousPosition = GetTranslate();
-
-    // 運搬が始まった瞬間だけ点火し、毎フレーム導火線を戻さないようにします。
-    if (isCarried_ && state_ != State::Ignited) {
-        Ignite(3.0f);
+    if (!std::isfinite(deltaTime) || deltaTime < 0.0f)
+        return;
+    if (ShouldHandleDefeatEffect() || IsDormant()) {
+        BaseEnemy::Update(deltaTime);
+        return;
     }
 
     if (isCarried_) {
-        // 運搬中の位置はプレイヤー側が決めるため、導火線と警告演出だけ進めます。
+        // 運搬中はプレイヤーが位置を管理し、導火線だけを進める。
+        if (state_ != State::Ignited)
+            Ignite(3.0f);
         UpdateIgnited(deltaTime);
-    } else if (IsThrownPhysics()) {
-        UpdateIgnited(deltaTime);
-
-        if (state_ != State::Exploded) {
-            BaseEnemy::Update(deltaTime);
-            ResolveSweptCollision(previousPosition);
-        }
-    } else {
-        // 運搬中と投擲物理中以外は、ここで重力と地上移動を扱います。
-        // 敵パラメータの重力を優先し、未設定なら固定値を使います。
-        if (param_.has_value()) {
-            velocity_.y -= param_.value().gravity * deltaTime;
-        } else {
-            velocity_.y -= 50.0f * deltaTime; // 敵パラメータ未設定時の重力です。
-        }
-
-        // 接地した投擲体は水平速度を少しずつ落とし、自然に停止させます。
-        // 極小速度をゼロにすることで、摩擦後の微小な移動が残るのを防ぎます。
-        // この減速は投擲後の接地移動だけに適用します。
-        if (isGrounded_ && isThrown_) {
-            // 地上では水平速度を減衰させます。
-            velocity_.x *= kGroundFriction;
-            velocity_.z *= kGroundFriction;
-
-            if (std::abs(velocity_.x) < kStopSpeed)
-                velocity_.x = 0.0f;
-            if (std::abs(velocity_.z) < kStopSpeed)
-                velocity_.z = 0.0f;
-
-            // 停止後は投擲状態を解除し、通常の状態更新へ戻します。
-            if (velocity_.x == 0.0f && velocity_.z == 0.0f) {
-                isThrown_ = false;
-            }
-
-            // 移動方向を向きに反映し、地面を転がる見た目だけを加えます。
-            float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
-
-            if (speedXZ > 0.05f) {
-                // 水平速度から進行方向を求めます。
-                float dirX = velocity_.x / speedXZ;
-                float dirZ = velocity_.z / speedXZ;
-
-                // 進行方向に胴体を向けます。
-                SetRotationY(std::atan2(dirX, dirZ));
-
-                // 水平移動距離に応じて転がりの角度を進めます。
-                // モデルのピッチだけを変え、衝突半径には影響させません。
-                float rollDelta = speedXZ * deltaTime * 0.5f; // 転がり角度は速度と経過時間に比例します。
-                engine::Vector3 rot = GetRotation();
-                rot.x += rollDelta;
-                SetRotation(rot);
-            }
-        }
-
-        // 追跡または点火の状態処理を共通移動より先に進めます。
-        switch (state_) {
-        case State::Chase:
-            UpdateChase(deltaTime);
-            break;
-
-        case State::Ignited:
-            UpdateIgnited(deltaTime);
-            break;
-        }
-
-        if (state_ == State::Chase) {
-            engine::Vector3 targetScale = managedBaseScale_;
-            engine::Vector3 reactionRotation = {0.0f, 0.0f, 0.0f};
-            ApplyDamageReactionPose(targetScale, reactionRotation, nullptr, 0.90f);
-            SetScale(engine::Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 15.0f)));
-        }
-
-        // 共通の敵更新で移動を確定してから、掃引で床や壁との衝突を補正します。
-        BaseEnemy::Update(deltaTime);
-        ResolveSweptCollision(previousPosition);
+        return;
     }
+
+    if (state_ == State::Chase)
+        UpdateChase(deltaTime);
+    else
+        UpdateIgnited(deltaTime);
+    if (state_ == State::Exploded)
+        return;
+
+    // 感知・被弾・表示の共通処理は残し、移動の積分は専用Motorへ一本化する。
+    SetMotorSuspended(true);
+    BaseEnemy::Update(deltaTime);
+    SetMotorSuspended(false);
+    if (isDead || ShouldHandleDefeatEffect())
+        return;
+    UpdateBombPhysics(deltaTime);
 
     // 実際の爆発位置は接地後の移動で決まる。現在の爆弾を中心に判定半径を示す。
     if (state_ == State::Ignited && !isCarried_ && !playerOwned_ && isGrounded_) {
@@ -214,85 +161,58 @@ void EnemyBomb::Update(float deltaTime) {
     }
 }
 
-// 前フレームからの移動区間を掃引し、高速の投擲体が薄い床や壁を抜けるのを防ぎます。
-void EnemyBomb::ResolveSweptCollision(const engine::Vector3& previousPosition) {
-    // 現在位置だけの重なり判定では取り逃す床・壁を移動線分から探す。
-    if (state_ == State::Exploded || isCarried_) {
+// 爆弾はキャラクター用の投げ反射を使わず、一つのMotorで床・壁を解決する。
+void EnemyBomb::UpdateBombPhysics(float deltaTime) {
+    if (deltaTime <= 0.0f)
         return;
-    }
+    SyncCharacterMotorSettings();
+    auto& motor = GetCharacterMotor();
+    auto settings = motor.GetSettings();
+    settings.continuousCollision = true;
+    settings.snapToGround = true;
+    settings.stepHeight = 0.0f;
+    settings.groundProbeDistance = 0.06f;
+    settings.skinWidth = 0.012f;
+    motor.SetSettings(settings);
 
-    CollisionManager* collisionManager = CollisionManager::GetInstance();
-
-    if (!collisionManager) {
-        return;
-    }
-
-    const engine::Vector3 currentPosition = GetTranslate();
-    engine::Vector3 movement = {currentPosition.x - previousPosition.x, currentPosition.y - previousPosition.y,
-                        currentPosition.z - previousPosition.z};
-
-    const float movementLength = std::sqrt(movement.x * movement.x + movement.y * movement.y + movement.z * movement.z);
-
-    if (movementLength <= 0.001f) {
-        return;
-    }
-
-    engine::Vector3 direction = {movement.x / movementLength, movement.y / movementLength, movement.z / movementLength};
-
-    const float sweepLength = movementLength + kBombWorldCollisionRadius + kBombSweepSkin;
-    RaycastHit hit = collisionManager->Raycast(previousPosition, direction, sweepLength, CollisionCategories::Get("ground"));
-
-    if (!hit.isHit) {
-        return;
-    }
-
-    engine::Vector3 normal = hit.normal;
-    float normalLength = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-
-    if (normalLength <= 0.001f) {
-        if (direction.y < -0.15f) {
-            normal = {0.0f, 1.0f, 0.0f};
-            normalLength = 1.0f;
-        } else {
-            normal = {-direction.x, 0.0f, -direction.z};
-            normalLength = std::sqrt(normal.x * normal.x + normal.z * normal.z);
-
-            if (normalLength <= 0.001f) {
-                normal = {0.0f, 1.0f, 0.0f};
-                normalLength = 1.0f;
+    // 大きなフレームでも同じ軌道と減速になるよう、計算量を制限して分割する。
+    const int steps = std::clamp(static_cast<int>(std::ceil(std::min(deltaTime, 0.25f) * 120.0f)), 1, 32);
+    const float step = std::min(deltaTime, 0.25f) / static_cast<float>(steps);
+    for (int i = 0; i < steps; ++i) {
+        if (isGrounded_ && state_ == State::Ignited) {
+            const float keep = std::exp(-kGroundDragPerSecond * step);
+            velocity_.x *= keep;
+            velocity_.z *= keep;
+            if (velocity_.x * velocity_.x + velocity_.z * velocity_.z < kStopSpeed * kStopSpeed) {
+                velocity_.x = velocity_.z = 0.0f;
+                isThrown_ = false;
             }
         }
-    }
-
-    normal.x /= normalLength;
-    normal.y /= normalLength;
-    normal.z /= normalLength;
-
-    const float separation = kBombWorldCollisionRadius + kBombSweepSkin;
-    SetTranslate({hit.hitPoint.x + normal.x * separation, hit.hitPoint.y + normal.y * separation,
-                  hit.hitPoint.z + normal.z * separation});
-
-    const float velocityAlongNormal = velocity_.x * normal.x + velocity_.y * normal.y + velocity_.z * normal.z;
-
-    if (normal.y > 0.35f) {
-        isGrounded_ = true;
-
-        if (velocity_.y < 0.0f) {
-            velocity_.y = -velocity_.y * kBombLandingBounce;
+        motor.BeginFrame(isGrounded_);
+        motor.ApplyGravity(velocity_, param_ ? param_->gravity : 60.0f,
+                           param_ ? param_->maxFallSpeed : 60.0f, step);
+        auto position = GetTranslate();
+        motor.Move(*this, position, velocity_, isGrounded_, step);
+        SetTranslate(position);
+        UpdateWorldMatrix(false);
+        if (isGrounded_) {
+            const float radius = std::max(0.05f, GetCollider()->GetRadius());
+            auto rotation = GetRotation();
+            rotation.x += velocity_.z * step / radius;
+            rotation.z -= velocity_.x * step / radius;
+            SetRotation(rotation);
         }
-
-        if (std::abs(velocity_.y) < 0.85f) {
-            velocity_.y = 0.0f;
-        }
-
-        velocity_.x *= kBombLandingFriction;
-        velocity_.z *= kBombLandingFriction;
-    } else if (velocityAlongNormal < 0.0f) {
-        const float reflectionScale = (1.0f + kBombWallBounce) * velocityAlongNormal;
-        velocity_.x -= normal.x * reflectionScale;
-        velocity_.y -= normal.y * reflectionScale;
-        velocity_.z -= normal.z * reflectionScale;
     }
+}
+
+void EnemyBomb::BeginThrown(const engine::Vector3& initialVelocity) {
+    // スライム共通の着地バウンド・起き上がりへ入らず、残りの導火線を保つ。
+    SetCarried(false);
+    CancelNoticeReaction();
+    if (state_ != State::Ignited)
+        Ignite(3.0f);
+    SetGrounded(false);
+    SetVelocity(initialVelocity);
 }
 
 void EnemyBomb::UpdateChase(float deltaTime) {
@@ -353,15 +273,7 @@ void EnemyBomb::UpdateChase(float deltaTime) {
 
 // 点火後の減速、導火線、点滅と脈動を更新します。
 void EnemyBomb::UpdateIgnited(float deltaTime) {
-    // 接地後の転がりはUpdate側の摩擦に任せます。
-    // ここでは空中や未投擲の状態だけ水平速度を抑えます。
-    // これにより点火後の急停止と投擲後の自然な減速を両立します。
-    // 運搬中は位置がプレイヤーに管理されるため、速度を変更しません。
-    if (!isCarried_ && !isThrown_ && !isGrounded_) {
-        velocity_.x *= 0.8f;
-        velocity_.z *= 0.8f;
-    }
-
+    // 空中の水平速度は保ち、接地時の減速はUpdateBombPhysicsで扱う。
     // 導火線が尽きたら一度だけ爆発へ移行します。
     fuseTimer_ -= deltaTime;
 
@@ -554,6 +466,6 @@ bool EnemyBomb::OnCollision(engine::Object3d* other) {
         return true;
     }
 
-    // 投擲物理の床・壁反射はBaseEnemyと掃引処理が担当します。
+    // 床・壁は専用Motorで接地と速度を解決し、汎用の投げ反射へ入らない。
     return BaseEnemy::OnCollision(other);
 }

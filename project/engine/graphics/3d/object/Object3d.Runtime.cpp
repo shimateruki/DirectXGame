@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include "EditorPropertyRegistry.h"
 #include "Object3dTransformUtils.h"
 #include "engine/graphics/3d/material/MaterialInstance.h"
 #include "DirectXCommon.h"
@@ -582,6 +583,8 @@ void Object3d::CopyFrom(const Object3d* other) {
 
     // 5. Stats (Param)
     this->param_ = other->param_;
+    // 設定値だけを複製し、台帳のGetter/Setterや移動中の状態はコピーしません。
+    EditorPropertyRegistry::GetInstance()->ReadClassProperties(*this, other->SerializeFeatureComponents());
 
     // 6. MeshRendererはMaterial Instanceと同じ共通変換を使い、項目追加時のコピー漏れを防ぎます。
     if (meshRenderer_ && other->meshRenderer_) {

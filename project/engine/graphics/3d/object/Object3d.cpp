@@ -183,6 +183,11 @@ void Object3d::Update(float deltaTime) {
 
     // 収集アニメーション
     if (isCollecting_) {
+        // 常駐粒子を取得位置へ残さず、GameRuleの一度きりの取得演出へ切り替える。
+        if (eventType_ == EventType::StarCoin) {
+            SetGPUParticleName("");
+            gpuEmitter_.reset();
+        }
         collectTimer_ += deltaTime;
 
         // 収集中だけ回転アニメーションへ切り替えます。
@@ -202,11 +207,9 @@ void Object3d::Update(float deltaTime) {
         // エディター表示とゲーム中の見え方が一致しなくなります。
         // 保存された向きは変更せず、きらめきパーティクルだけで動きを出します。
 
-        if (!gpuEmitter_) {
-            gpuEmitter_ = std::make_unique<GPUParticleEmitter>();
-            gpuEmitter_->Initialize("star_sparkle", this);
-            gpuEmitter_->SetInterval(0.1f);
-            gpuEmitter_->Play();
+        // 明示された銀色などのプリセットを尊重し、後段のUpdateParticleで発生器を一元管理する。
+        if (GetGPUParticleName().empty()) {
+            SetGPUParticleName("star_sparkle");
         }
     }
 

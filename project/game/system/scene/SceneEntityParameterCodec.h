@@ -27,6 +27,13 @@ inline nlohmann::json Serialize(const engine::Object3d& object) {
                 result["shakeDuration"] = p.shakeDuration;
                 result["startActive"] = p.startActive;
             }
+            if (p.enemyType == "RingBurner") {
+                // 共通HPとは独立した個体の攻撃設定だけをSceneに残す。
+                result["moveAmount"] = p.moveAmount;
+                result["interval"] = p.interval;
+                result["shakeDuration"] = p.shakeDuration;
+                result["ringWaveSpeed"] = p.ringWaveSpeed;
+            }
         }
         return result;
     }
@@ -40,6 +47,8 @@ inline nlohmann::json Serialize(const engine::Object3d& object) {
     SCENE_PARAM_WRITE(gravity);
     SCENE_PARAM_WRITE(jumpPower);
     SCENE_PARAM_WRITE(maxFallSpeed);
+    SCENE_PARAM_WRITE(morphLimited);
+    SCENE_PARAM_WRITE(morphDuration);
     SCENE_PARAM_WRITE(enemyType);
     SCENE_PARAM_WRITE(gimmickType);
     SCENE_PARAM_WRITE(itemType);
@@ -57,8 +66,10 @@ inline nlohmann::json Serialize(const engine::Object3d& object) {
     SCENE_PARAM_WRITE(cinematicPath);
     SCENE_PARAM_WRITE(moveAmount);
     SCENE_PARAM_WRITE(moveSpeed);
+    SCENE_PARAM_WRITE(ringWaveSpeed);
     SCENE_PARAM_WRITE(startActive);
     SCENE_PARAM_WRITE(returnOnOff);
+    SCENE_PARAM_WRITE(editorPreviewFiring);
     SCENE_PARAM_WRITE(volumeMode);
     SCENE_PARAM_WRITE(volumePayload);
     SCENE_PARAM_WRITE(volumeTriggerOnce);
@@ -120,8 +131,10 @@ inline void Apply(engine::Object3d& object, const nlohmann::json& source) {
         p.cinematicPath = source["cinematicPath"].get<std::string>();
     SCENE_PARAM_READ(moveAmount);
     SCENE_PARAM_READ(moveSpeed);
+    SCENE_PARAM_READ(ringWaveSpeed);
     SCENE_PARAM_READ(startActive);
     SCENE_PARAM_READ(returnOnOff);
+    SCENE_PARAM_READ(editorPreviewFiring);
     SCENE_PARAM_READ(volumeMode);
     if (source.contains("volumePayload") && source["volumePayload"].is_string())
         p.volumePayload = source["volumePayload"].get<std::string>();
@@ -152,6 +165,8 @@ inline void Apply(engine::Object3d& object, const nlohmann::json& source) {
         p.volumeBlendDuration = (std::max)(0.0f, p.volumeBlendDuration);
     if (source.contains("copyMemoryActivationRadius"))
         p.copyMemoryActivationRadius = (std::max)(0.1f, p.copyMemoryActivationRadius);
+    if (source.contains("ringWaveSpeed"))
+        p.ringWaveSpeed = (std::clamp)(p.ringWaveSpeed, 0.25f, 4.0f);
     if (!managed) {
         p.maxHp = (std::max)(p.maxHp, 1.0f);
         if (hasMaxHp && !hasHp)

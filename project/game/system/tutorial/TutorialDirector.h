@@ -107,6 +107,8 @@ class TutorialDirector {
         std::string cinematicPath;
 
         std::string promptLabel;
+        // 未指定なら共通の説明画像を使い、既存の進行 JSON と互換性を保ちます。
+        std::string promptLabelGamepad;
         std::string objectiveTarget;
 
         std::vector<std::string> promptIcons;
@@ -152,7 +154,8 @@ class TutorialDirector {
     // 手順を戻した際にも同じ敵を再利用できるよう、初期状態を控えます。
     struct SpawnEnemySlot {
         std::string objectName;
-        BaseEnemy* enemy = nullptr;
+        nlohmann::json initialDefinition;
+        nlohmann::json initialCustomState;
         engine::Vector3 initialPosition = {0.0f, 0.0f, 0.0f};
         uint32_t collisionAttribute = 0;
         uint32_t collisionMask = 0;
@@ -199,6 +202,9 @@ class TutorialDirector {
 
     /// 誤った運搬操作からやり直し手順へ戻せたか返す。
     bool RecoverFromWrongCarriedAction(const Step& step);
+
+    /// 必要な操作より先に失われた練習対象を復元し、再試行する。
+    bool RecoverMissingPracticeEnemy(const Step& step);
 
     /// 指定操作の入力が発生したか返す。
     bool IsActionTriggered(const std::string& action) const;
@@ -280,7 +286,7 @@ class TutorialDirector {
 
     bool stepConditionSatisfied_ = false;
     bool morphWasActiveOnStepEntry_ = false;
-    engine::Object3d* carriedEnemyOnStepEntry_ = nullptr;
+    std::string carriedEnemyOnStepEntryName_;
 
     // ステップごとの演出再生と、操作案内・目標表示の独立した状態です。
     CinematicSequence cinematicSequence_;

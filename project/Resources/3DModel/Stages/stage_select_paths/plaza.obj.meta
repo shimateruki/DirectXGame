@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "41b2511c15bb55c09ef0b731bee17e74",
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/stage_select_paths/plaza.obj",
+    "version": 1,
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1.0
+    }
+}

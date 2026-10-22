@@ -908,6 +908,8 @@ const char* GetSerializedPropertyKey(const std::string& propertyPath) {
         return "param.moveAmount";
     if (propertyPath == "gameplay.moveSpeed")
         return "param.moveSpeed";
+    if (propertyPath == "gameplay.ringWaveSpeed")
+        return "param.ringWaveSpeed";
     if (propertyPath == "gameplay.startActive")
         return "param.startActive";
     if (propertyPath == "gameplay.returnOnOff")

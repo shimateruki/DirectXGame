@@ -297,6 +297,9 @@ void GameSelectScene::OnActivated() {
 }
 
 void GameSelectScene::Finalize() {
+    gateEntryPresentation_.Reset();
+    ResetGateCinematicBars();
+    GimmickStageGate::ResetSceneEntries(*this);
     // 共有マネージャーのシーン固有状態を消してから所有リソースを解放する。
     unlockPlayer_.Stop(false);
     unlockTimelineLoaded_ = false;
@@ -328,6 +331,14 @@ void GameSelectScene::Finalize() {
 }
 
 void GameSelectScene::Update(float deltaTime) {
+    if (gateEntryCinematicActive_ && !SceneManager::GetInstance()->IsPlaying()) {
+        gateEntryPresentation_.Reset();
+        gateEntryCinematicActive_ = false;
+        gateEntryTargetGate_ = nullptr;
+        isChangingStage_ = false;
+        ResetGateCinematicBars();
+    }
+    if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) return;
     // ポーズ中はゲーム側の時計と衝突処理を進めず、オーバーレイだけ更新する。
     if (HandlePauseOverlay(deltaTime)) {
         return;

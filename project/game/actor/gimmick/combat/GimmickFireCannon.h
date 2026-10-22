@@ -5,6 +5,10 @@
 // 対象の位置を固定して着弾予告を出し、砲口から炎弾を発射するギミックです。
 class GimmickFireCannon : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "FireCannon";
+    static constexpr const char* kModelPath = "Primitives/cube";
+
     ~GimmickFireCannon() override;
     /// 砲台の配置、発射周期、着弾予告を初期化する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
@@ -30,6 +34,13 @@ class GimmickFireCannon : public BaseGimmick {
 
     // 大型砲弾はモデルの砲口側へ重力なしで発射します。
     void FireBombard();
+
+    // 描画専用の姿勢なので、配置・当たり判定・発射方向は変えません。
+    void UpdateBombardPose();
+    float GetBombardRecoveryTime() const;
+    float bombardAnticipationTime_ = 0.20f;
+    float bombardRecoilStrength_ = 0.22f;
+    float bombardRecoveryTime_ = 0.42f;
 
     AttackTelegraph landingWarning_;
     engine::Vector3 lockedTarget_ = {};

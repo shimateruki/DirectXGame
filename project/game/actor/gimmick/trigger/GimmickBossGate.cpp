@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickBossGate.h"
+#include "ObjectPropertyDefinition.h"
 
 #include "CollisionConfig.h"
 #include "SceneManager.h"
@@ -41,6 +42,16 @@ void GimmickBossGate::Initialize(engine::Object3dCommon* common, const std::stri
     param_->moveAmount = 8.0f;
     param_->startActive = false;
     param_->returnOnOff = true;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickBossGate;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ボス闘技場・格子ゲート",
+        "Transformは閉鎖位置です。演出中はタイムライン制御、通常時はイベント通知で開閉します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("開門時の退避距離", "moveAmount", &Parameter::moveAmount, 0.0f, 100.0f);
+    properties.Parameter("開閉にかかる時間", "moveSpeed", &Parameter::moveSpeed, 0.05f, 10.0f);
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
 }
 
 void GimmickBossGate::Update(float deltaTime) {

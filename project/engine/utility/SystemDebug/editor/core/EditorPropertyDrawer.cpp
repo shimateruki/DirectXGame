@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <vector>
+#include <filesystem>
 
 namespace {
 
@@ -68,26 +69,38 @@ bool EditorPropertyDrawer::DrawValue(
         std::int64_t current = value.is_number_unsigned() || value.is_number_integer()
             ? value.get<std::int64_t>()
             : 0;
+        current += ui.integerDisplayOffset;
         if (!property.enumLabels.empty()) {
-            // 保存値が旧Enumの範囲外でも表示用Indexだけを抑え、変更前のJSON値は保持する。
-            int enumValue = std::clamp(
-                static_cast<int>(current),
-                0,
-                static_cast<int>(property.enumLabels.size()) - 1);
-            std::vector<const char*> labels;
-            labels.reserve(property.enumLabels.size());
-
-            for (const std::string& label : property.enumLabels) {
-                labels.push_back(label.c_str());
+            std::string preview = value.dump();
+            const auto choiceValue = [&](std::size_t index) -> json {
+                return property.enumValues.size() == property.enumLabels.size()
+                    ? property.enumValues[index] : json(index);
+            };
+            for (std::size_t i = 0; i < property.enumLabels.size(); ++i)
+                if (choiceValue(i) == value) preview = property.enumLabels[i];
+            if (ImGui::BeginCombo(id, preview.c_str())) {
+                for (std::size_t i = 0; i < property.enumLabels.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i));
+                    if (ImGui::Selectable(property.enumLabels[i].c_str(), value == choiceValue(i))) {
+                        value = choiceValue(i);
+                        changed = true;
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndCombo();
             }
-
-            if (ImGui::Combo(id, &enumValue, labels.data(), static_cast<int>(labels.size()))) {
-                value = enumValue;
+        }
+        else if (ui.useSlider && ui.maxValue > ui.minValue) {
+            // 登録側で範囲を指定した整数も、共通UIだけで調整できます。
+            const std::int64_t minimum = static_cast<std::int64_t>(ui.minValue) + ui.integerDisplayOffset;
+            const std::int64_t maximum = static_cast<std::int64_t>(ui.maxValue) + ui.integerDisplayOffset;
+            if (ImGui::SliderScalar(id, ImGuiDataType_S64, &current, &minimum, &maximum, "%lld")) {
+                value = current - ui.integerDisplayOffset;
                 changed = true;
             }
         }
         else if (ImGui::InputScalar(id, ImGuiDataType_S64, &current)) {
-            value = current;
+            value = current - ui.integerDisplayOffset;
             changed = true;
         }
 
@@ -121,14 +134,49 @@ bool EditorPropertyDrawer::DrawValue(
     }
 
     case EditorPropertyType::String: {
-        // ImGuiの可変バッファへ一時コピーし、編集が成立した場合だけJSONを書き換える。
-        std::array<char, 512> buffer = {};
         const std::string current = value.is_string() ? value.get<std::string>() : std::string();
-        std::snprintf(buffer.data(), buffer.size(), "%s", current.c_str());
-
-        if (ImGui::InputText(id, buffer.data(), buffer.size())) {
-            value = std::string(buffer.data());
-            changed = true;
+        if (property.enumLabels.size() == property.enumValues.size() && !property.enumValues.empty()) {
+            std::string preview = current.empty() ? "(未設定)" : current;
+            for (std::size_t i = 0; i < property.enumValues.size(); ++i)
+                if (value == property.enumValues[i]) preview = property.enumLabels[i];
+            if (ImGui::BeginCombo(id, preview.c_str())) {
+                for (std::size_t i = 0; i < property.enumValues.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i));
+                    if (ImGui::Selectable(property.enumLabels[i].c_str(), value == property.enumValues[i])) {
+                        value = property.enumValues[i];
+                        changed = true;
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndCombo();
+            }
+        } else if (!ui.assetDirectory.empty()) {
+            namespace fs = std::filesystem;
+            const auto preview = current.empty() ? std::string("(なし)") : fs::path(current).stem().string();
+            if (ImGui::BeginCombo(id, preview.c_str())) {
+                if (ImGui::Selectable("(なし)", current.empty())) { value = ""; changed = true; }
+                std::vector<fs::path> files;
+                std::error_code error;
+                for (fs::directory_iterator it(ui.assetDirectory, error), end; !error && it != end; it.increment(error)) {
+                    if (it->is_regular_file(error) && it->path().extension() == ".json") files.push_back(it->path());
+                }
+                std::sort(files.begin(), files.end());
+                for (const auto& file : files) {
+                    const auto path = file.generic_string();
+                    if (ImGui::Selectable(file.stem().string().c_str(), current == path)) { value = path; changed = true; }
+                }
+                ImGui::EndCombo();
+            }
+            std::error_code error;
+            if (!current.empty() && !fs::is_regular_file(current, error))
+                ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.3f, 1.0f), "指定されたJSONが見つかりません");
+        } else {
+            std::array<char, 512> buffer = {};
+            std::snprintf(buffer.data(), buffer.size(), "%s", current.c_str());
+            if (ImGui::InputText(id, buffer.data(), buffer.size())) {
+                value = std::string(buffer.data());
+                changed = true;
+            }
         }
 
         break;

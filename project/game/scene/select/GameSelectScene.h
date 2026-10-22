@@ -1,4 +1,5 @@
 #pragma once
+#include "game/system/cinematic/GateEntryPresentation.h"
 #include "BaseScene.h"
 #include "game/system/scene/SceneGameplayAccess.h"
 #include "game/system/progress/GameDataManager.h"
@@ -145,15 +146,6 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
 
     /// <summary>入場演出の画面帯を初期状態へ戻す。</summary>
     void ResetGateCinematicBars();
-
-    /// <summary>入場演出前のゲート材質を保存する。</summary>
-    void CaptureGateEntryMaterialState(engine::Object3d* rootObject);
-
-    /// <summary>入場演出の進行率に合わせてゲートのDissolve材質を更新する。</summary>
-    void ApplyGateEntryDissolveMaterial(float progress, const engine::Vector3& gatePosition, const engine::Vector3& direction);
-
-    /// <summary>入場演出前に保存したゲート材質へ戻す。</summary>
-    void RestoreGateEntryMaterialState();
 
     /// <summary>クリア後のゲート帰還演出を、保存済みの要求から開始します。</summary>
     /// <param name="request">戻り元ステージと今回獲得した報酬。</param>
@@ -333,48 +325,10 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     float stageDecisionCooldown_ = 0.0f;
     bool isChangingStage_ = false;
 
-    // 入場演出で変える材質の復元用コピー。Object は借用し、演出終了後に元の値を戻す。
-    struct GateEntryMaterialSnapshot {
-        engine::Object3d* object = nullptr;
-        engine::Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};
-        int32_t materialType = 0;
-        float emissive = 1.0f;
-        float portalClipEnabled = 0.0f;
-        float portalClipProgress = 0.0f;
-        engine::Vector3 portalClipCenter = {0.0f, 0.0f, 0.0f};
-        float portalClipEdgeWidth = 0.0f;
-        engine::Vector3 portalClipNormal = {0.0f, 0.0f, 1.0f};
-        float portalClipDissolve = 0.0f;
-        engine::Vector4 portalClipColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    };
-
-    // 入場ムービーの時刻と、遷移が確定したステージ番号。
+    // 通常ゲートと同じ再生器を使い、シーン固有の選択状態だけ保持します。
+    GateEntryPresentation gateEntryPresentation_;
     bool gateEntryCinematicActive_ = false;
-    float gateEntryCinematicTimer_ = 0.0f;
-    int gateEntryPendingStageIndex_ = -1;
-
-    // 入場ゲートは借用する。プレイヤーの経路とカメラの始終点だけ保持する。
     engine::Object3d* gateEntryTargetGate_ = nullptr;
-
-    engine::Vector3 gateEntryStartPlayerPosition_{};
-    engine::Vector3 gateEntryTargetPlayerPosition_{};
-    engine::Vector3 gateEntrySurfacePlayerPosition_{};
-    engine::Vector3 gateEntryInsidePlayerPosition_{};
-    engine::Vector3 gateEntryDirection_{0.0f, 0.0f, 1.0f};
-
-    engine::Vector3 gateEntryCameraStartEye_{};
-    engine::Vector3 gateEntryCameraStartTarget_{};
-    engine::Vector3 gateEntryCameraEndEye_{};
-    engine::Vector3 gateEntryCameraEndTarget_{};
-
-    engine::Vector3 gateEntryStartPlayerScale_{1.0f, 1.0f, 1.0f};
-    bool gateEntryHadPlayerControl_ = true;
-
-    // 入場時の火花・霧・光の発生間隔を別々の時計で管理する。
-    float gateEntrySparkTimer_ = 0.0f;
-    float gateEntryMistTimer_ = 0.0f;
-    float gateEntryGlintTimer_ = 0.0f;
-    std::vector<GateEntryMaterialSnapshot> gateEntryMaterialSnapshots_;
 
     // クリア後の帰還ムービー。帰還ゲートと入場前の操作権は終了時に復元する。
     bool gateReturnPresentationActive_ = false;

@@ -11,6 +11,7 @@
 #include <cmath>
 #include <utility>
 #include <CollisionManager.h>
+#include "SceneManager.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -140,6 +141,8 @@ void Camera::SetLookAtPreviewView(const engine::Vector3& eye, const engine::Vect
     up_ = { 0.0f, 1.0f, 0.0f };
     aspectRatio_ = aspectRatio;
     followObject_ = nullptr;
+    hasFollowHeight_ = false;
+    followTargetGrounded_ = true;
     targetObject_ = nullptr;
     followMode_ = FollowMode::kFixedPoint;
     smoothEye_ = eye_;
@@ -243,9 +246,30 @@ void Camera::Update(float deltaTime) {
         return engine::Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
         };
 
+    if (!followObject_ || followMode_ != FollowMode::kLockOn || !targetObject_) {
+        hasLockOnPlayerPosition_ = false;
+    }
+
     // まず追従対象から通常の視点と注視点を求め、その後に演出用Overrideを重ねる。
     if (followObject_) {
         engine::Vector3 playerPos = followObject_->GetWorldPosition();
+        const bool isAiming = (inputManager_ && inputManager_->IsActionPressed("SecondaryAction") &&
+            !isAimCameraSuppressed_ && followMode_ != FollowMode::kLockOn);
+        const bool stabilizeHeight = stabilizeJumpHeight_ && !isAiming &&
+            (followMode_ == FollowMode::kAimable || followMode_ == FollowMode::kFixed ||
+             followMode_ == FollowMode::kLockOn);
+
+        // 視点・注視点・地形補正で同じ高さを使い、ジャンプだけで画面が上下しないようにする。
+        if (!hasFollowHeight_ || !stabilizeHeight || followTargetGrounded_) {
+            followHeight_ = playerPos.y;
+            hasFollowHeight_ = true;
+        } else {
+            // 離地前より下へ落ちた時は追い、特殊な高い上昇でも自機を見失わない。
+            followHeight_ = std::clamp(followHeight_, playerPos.y - jumpHeightAllowance_, playerPos.y);
+        }
+        if (stabilizeHeight)
+            playerPos.y = followHeight_;
+
 
         // 回転モードは軌道中心を、その他の追従モードはプレイヤーの上方を基準に見る。
         engine::Vector3 targetPos = playerPos;
@@ -297,7 +321,10 @@ void Camera::Update(float deltaTime) {
                 float zoom = std::max(0.0f, distanceXZ - 10.0f) * 0.5f;
                 zoom = std::min(zoom, 25.0f);
 
-                engine::Vector3 dynamicOffset = { 2.0f, 2.0f + (closeZoomOut * 0.3f), -6.5f - closeZoomOut - heightZoom };
+                // 基準位置はカメラエディターのロックオン設定を使う。
+                engine::Vector3 dynamicOffset = {
+                    lockOnOffset_.x, lockOnOffset_.y + closeZoomOut * 0.3f,
+                    lockOnOffset_.z - closeZoomOut - heightZoom };
                 dynamicOffset.z -= zoom;
                 dynamicOffset.y += zoom * 0.15f;
 
@@ -381,14 +408,28 @@ void Camera::Update(float deltaTime) {
         }
 
         // エイム中はモードごとの視点を一時的に頭の位置へ寄せ、視線の向きは維持する。
-        bool isAiming = (inputManager_ && inputManager_->IsActionPressed("SecondaryAction") &&
-            !isAimCameraSuppressed_ && followMode_ != FollowMode::kLockOn);
         if (isAiming) {
             // ここで視点と注視点の両方を置き換え、後段の補間へ渡す。
             desiredEye = playerPos + engine::Vector3{ 0.0f, aimHeight_, 0.0f };
             engine::Matrix4x4 rotateMatFP = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
             engine::Vector3 forwardFP = math.TransformNormal({ 0, 0, 1 }, rotateMatFP);
             targetPos = desiredEye + forwardFP * 10.0f;
+        }
+
+        // 急なダッシュでもプレイヤーの画面位置が遅れないよう、移動分を補間の基点へ先に加える。
+        if (followMode_ == FollowMode::kLockOn && targetObject_) {
+            if (hasLockOnPlayerPosition_ && isCameraInitialized_) {
+                engine::Vector3 displacement = playerPos - previousLockOnPlayerPosition_;
+                // 横方向の高速追従は保ち、異なる高さへ着地した時の上下移動だけは補間する。
+                if (stabilizeHeight)
+                    displacement.y = 0.0f;
+                smoothEye_ = smoothEye_ + displacement;
+                smoothTarget_ = smoothTarget_ + displacement;
+            }
+            previousLockOnPlayerPosition_ = playerPos;
+            hasLockOnPlayerPosition_ = true;
+        } else {
+            hasLockOnPlayerPosition_ = false;
         }
 
         // 初回だけ補間せず即時配置し、それ以降は注視点と視点を別の速さで追従させる。
@@ -444,8 +485,30 @@ void Camera::Update(float deltaTime) {
 
                 // 地形レイの衝突点より少し手前で止め、壁への視点のめり込みを防ぐ。
                 if (dist > 0.1f) {
+                    PhysicsQueryFilter filter;
+                    filter.mask = CollisionCategories::Get("ground");
+                    filter.ignoredObject = followObject_;
+                    filter.includeTriggers = true;
+                    const auto* sceneManager = SceneManager::GetInstance();
+                    // エディターで別の実行クラスからstageSelectを開いた場合も同じ条件にする。
+                    const bool isStageSelect = sceneManager->GetCurrentSceneName() == "SELECT" ||
+                        sceneManager->GetActiveSceneLoadContext().sceneAssetId == "stageSelect";
+                    filter.acceptsObject = [isStageSelect](const engine::Object3d* object) {
+                        // 従来の無効マスクとプレイヤー階層の除外条件も維持する。
+                        if (object->GetCollisionMask() == 0)
+                            return false;
+                        for (const auto* current = object; current; current = current->GetParent()) {
+                            if (current->GetClassName() == "Player" ||
+                                current->GetName().find("Player") != std::string::npos)
+                                return false;
+                        }
+                        // 通行止め用の障壁はカメラだけ通し、プレイヤーや弾の判定を変えない。
+                        if (object->GetGimmickType() == "PrismBarrier")
+                            return false;
+                        return !(isStageSelect && object->GetClassName() == "InvisibleBox");
+                    };
                     RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                        rayStartPos, direction, dist, CollisionCategories::Get("ground")
+                        rayStartPos, direction, dist, filter
                     );
 
                     if (hit.isHit) {
@@ -484,6 +547,10 @@ void Camera::Update(float deltaTime) {
 
         if (camToPlayerDist < 3.5f) {
             alpha = std::max(0.0f, (camToPlayerDist - 1.0f) / 2.5f);
+        }
+        if (followMode_ == FollowMode::kLockOn) {
+            // 壁際で視点が押し戻されても、操作中のプレイヤーを見失わない透明度を保つ。
+            alpha = (std::max)(alpha, 0.7f);
         }
 
         engine::Vector4 pColor = followObject_->GetColor();
@@ -758,6 +825,9 @@ void Camera::SnapToThirdPerson(float distance, float height, float pitch) {
     if (!followObject_)
         return;
 
+    // ワープ・復帰では以前の足場の高さを持ち越さない。
+    followHeight_ = followObject_->GetWorldPosition().y;
+    hasFollowHeight_ = true;
     followMode_ = FollowMode::kAimable;
     aimDistance_ = distance;
     aimHeight_ = height;

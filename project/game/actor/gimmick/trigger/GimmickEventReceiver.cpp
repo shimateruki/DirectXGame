@@ -1,4 +1,5 @@
 #include "GimmickEventReceiver.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
 #include <algorithm>
@@ -18,6 +19,28 @@ void GimmickEventReceiver::Initialize(engine::Object3dCommon* common, const std:
 
     if (!param_.has_value())
         param_.emplace();
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickEventReceiver;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "イベント受信ギミック",
+        "My Event IDとスイッチのTarget IDを合わせます。王冠落下は編集時は非表示で、撃破通知後にボス頭上から着地点へ落下します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("動作モード", "actionMode", &Parameter::actionMode, 0.0f, 6.0f,
+        nullptr, {"出現", "Y方向に移動", "X方向に移動", "Z方向に移動", "有効化", "無効化", "ボス王冠落下"});
+    properties.Parameter("移動量", "moveAmount", &Parameter::moveAmount, -500.0f, 500.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode >= 1 && object.param_->actionMode <= 3); });
+    properties.Parameter("移動速度", "moveSpeed", &Parameter::moveSpeed, 0.1f, 60.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode >= 1 && object.param_->actionMode <= 3); });
+    properties.Parameter("ボスから着地点までの距離", "moveAmount_crown", &Parameter::moveAmount, 0.0f, 80.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); }, {}, {.parameterId = "moveAmount"});
+    properties.Parameter("落下演出時間", "fallDuration", &Parameter::fallDuration, 0.35f, 6.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); });
+    properties.Parameter("弧の高さ", "jumpPower", &Parameter::jumpPower, 0.0f, 12.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); });
+    properties.Parameter("王冠の回転速度", "moveSpeed_crown", &Parameter::moveSpeed, -20.0f, 20.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); }, {}, {.parameterId = "moveSpeed"});
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
 }
 
 void GimmickEventReceiver::Update(float deltaTime) {

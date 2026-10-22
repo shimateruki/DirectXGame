@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickHookPullBlock.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "DebugConsole.h"
 #include "engine/utility/math/Math.h"
@@ -25,6 +26,15 @@ void GimmickHookPullBlock::Initialize(engine::Object3dCommon* common, const std:
     param_->speed = 42.0f;
     param_->gravity = 50.0f;
     param_->maxFallSpeed = 60.0f;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickHookPullBlock;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "フック可動ブロック",
+        "フックを当てるとプレイヤー側へ引き寄せます。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("引っ張り速度", "speed", &Parameter::speed, 1.0f, 120.0f);
+    properties.Parameter("重力", "gravity", &Parameter::gravity, 0.0f, 200.0f);
+    properties.Parameter("最大落下速度", "maxFallSpeed", &Parameter::maxFallSpeed, 0.0f, 200.0f);
 }
 
 void GimmickHookPullBlock::Update(float deltaTime) {

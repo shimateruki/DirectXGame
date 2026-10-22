@@ -62,11 +62,13 @@ public:
     void SpawnEffect(const std::string& jsonFilePath, engine::Object3d* baseObject = nullptr, const engine::Vector3& extOffset = { 0,0,0 }, const engine::Vector3& extRot = { 0,0,0 }, const engine::Vector3& extScale = { 1,1,1 });
 
     /// <summary>JSON側の配置値に代えて、指定のワールド座標・回転で生成する。</summary>
-    void SpawnEffectAt(const std::string& jsonFilePath, const engine::Vector3& worldPos, const engine::Vector3& worldRot, const engine::Vector3& scale = { 1,1,1 });
+    void SpawnEffectAt(const std::string& jsonFilePath, const engine::Vector3& worldPos, const engine::Vector3& worldRot,
+        const engine::Vector3& scale = { 1,1,1 }, float lifetimeOverride = -1.0f);
 
     /// <summary>指定スコープに属するエフェクトをワールド座標で生成する。</summary>
     void SpawnEffectAtScoped(EffectScopeId scopeId, const std::string& jsonFilePath,
-        const engine::Vector3& worldPos, const engine::Vector3& worldRot, const engine::Vector3& scale = { 1,1,1 });
+        const engine::Vector3& worldPos, const engine::Vector3& worldRot,
+        const engine::Vector3& scale = { 1,1,1 }, float lifetimeOverride = -1.0f);
 
     /// <summary>リング状の波紋エフェクトを発生させる。</summary>
     void SpawnRingWaveEffect(const engine::Vector3& position);

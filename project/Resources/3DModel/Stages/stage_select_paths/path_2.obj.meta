@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "97d1e17b59b054e9b3690fbfa06c8f52",
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/stage_select_paths/path_2.obj",
+    "version": 1,
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1.0
+    }
+}

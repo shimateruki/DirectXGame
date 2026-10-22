@@ -14,132 +14,6 @@
 #include "game/scene/select/GameSelectScene.Internal.h"
 using namespace StageSelectDetail;
 
-// ゲート出入りの演出。材質退避・復元とカメラ復帰をまとめ、遷移条件や実行順は変更しない。
-void GameSelectScene::CaptureGateEntryMaterialState(engine::Object3d* rootObject) {
-    // ゲート突入演出で変更する前に、子を含む材質を復元用に控える。
-    gateEntryMaterialSnapshots_.clear();
-
-    if (!rootObject) {
-        return;
-    }
-
-    std::vector<engine::Object3d*> stack;
-    stack.push_back(rootObject);
-
-    while (!stack.empty()) {
-        engine::Object3d* object = stack.back();
-        stack.pop_back();
-
-        if (!object) {
-            continue;
-        }
-
-        GateEntryMaterialSnapshot snapshot;
-        snapshot.object = object;
-        snapshot.color = object->GetColor();
-        snapshot.materialType = object->GetMaterialType();
-        snapshot.emissive = object->GetEmissive();
-
-        if (auto* material = object->GetMaterialData()) {
-            snapshot.portalClipEnabled = material->portalClipEnabled;
-            snapshot.portalClipProgress = material->portalClipProgress;
-            snapshot.portalClipCenter = material->portalClipCenter;
-            snapshot.portalClipEdgeWidth = material->portalClipEdgeWidth;
-            snapshot.portalClipNormal = material->portalClipNormal;
-            snapshot.portalClipDissolve = material->portalClipDissolve;
-            snapshot.portalClipColor = material->portalClipColor;
-        }
-
-        gateEntryMaterialSnapshots_.push_back(snapshot);
-
-        for (engine::Object3d* child : object->GetChildren()) {
-            if (child) {
-                stack.push_back(child);
-            }
-        }
-    }
-}
-
-void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const engine::Vector3& gatePosition,
-                                                     const engine::Vector3& direction) {
-    const float dissolveProgress = SelectClamp01(progress);
-    engine::Vector3 dissolveDirection = direction;
-    const float directionLength =
-        std::sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
-    if (directionLength > 0.0001f) {
-        dissolveDirection.x /= directionLength;
-        dissolveDirection.y /= directionLength;
-        dissolveDirection.z /= directionLength;
-    } else {
-        dissolveDirection = {0.0f, 0.0f, 1.0f};
-    }
-
-    // ゲートに入り始めた瞬間から輪郭を焼き、透明化は後半だけに寄せて削れて消える印象を強める。
-    const float clipProgress = SelectClamp01(0.14f + SelectEaseOutCubic(dissolveProgress) * 0.86f);
-    const float edgePeak = 1.0f - std::abs(clipProgress * 2.0f - 1.0f);
-    const float fadeProgress = SelectEaseInOutCubic(SelectClamp01((clipProgress - 0.72f) / 0.28f));
-    const float heat = SelectClamp01(0.08f + clipProgress * 0.18f + edgePeak * 0.30f);
-    const float edgeWidth = 0.30f - 0.16f * clipProgress;
-    const float emissive = 1.25f + clipProgress * 0.95f + edgePeak * 1.45f;
-    const float dissolveNoise = 0.74f - 0.18f * clipProgress;
-    const engine::Vector4 portalColor = {1.0f, 0.66f, 0.26f, 0.94f};
-
-    for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
-        engine::Object3d* object = snapshot.object;
-
-        if (!object) {
-            continue;
-        }
-
-        const engine::Vector4 baseColor = snapshot.color;
-        const engine::Vector4 dissolveColor = {baseColor.x * (1.0f - heat) + 1.0f * heat,
-                                       baseColor.y * (1.0f - heat) + 0.76f * heat,
-                                       baseColor.z * (1.0f - heat) + 0.34f * heat, 1.0f - fadeProgress};
-
-        object->SetMaterialType(4);
-        object->SetBlendMode(BlendMode::kNormal);
-        object->SetEmissive(std::max(snapshot.emissive, emissive));
-        object->SetColor(dissolveColor);
-
-        if (auto* material = object->GetMaterialData()) {
-            material->portalClipEnabled = 1.0f;
-            material->portalClipProgress = clipProgress;
-            material->portalClipCenter = gatePosition;
-            material->portalClipNormal = dissolveDirection;
-            material->portalClipEdgeWidth = edgeWidth;
-            material->portalClipDissolve = dissolveNoise;
-            material->portalClipColor = portalColor;
-        }
-    }
-}
-
-void GameSelectScene::RestoreGateEntryMaterialState() {
-    // 編集・再入場時にゲートの演出色が残らないよう、控えた材質を戻す。
-    for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
-        engine::Object3d* object = snapshot.object;
-
-        if (!object) {
-            continue;
-        }
-
-        object->SetMaterialType(snapshot.materialType);
-        object->SetEmissive(snapshot.emissive);
-        object->SetColor(snapshot.color);
-
-        if (auto* material = object->GetMaterialData()) {
-            material->portalClipEnabled = snapshot.portalClipEnabled;
-            material->portalClipProgress = snapshot.portalClipProgress;
-            material->portalClipCenter = snapshot.portalClipCenter;
-            material->portalClipEdgeWidth = snapshot.portalClipEdgeWidth;
-            material->portalClipNormal = snapshot.portalClipNormal;
-            material->portalClipDissolve = snapshot.portalClipDissolve;
-            material->portalClipColor = snapshot.portalClipColor;
-        }
-    }
-
-    gateEntryMaterialSnapshots_.clear();
-}
-
 void GameSelectScene::UpdateGateCinematicBars(float deltaTime) {
     // シネマバーの高さを既定値から補間し、他のポストエフェクト設定を保つ。
     PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
@@ -407,169 +281,29 @@ void GameSelectScene::FinishStageReturnPresentation() {
     DebugConsole::GetInstance()->AddLog("Stage Select: gate return presentation finished.");
 }
 
-// 接触位置に依存しないゲート基準の進入経路を作り、操作・カメラ・素材の演出状態を確保します。
+// 通常の遷移ゲートと同じ移動・ディゾルブを再生し、選択シーンは行き先だけを担当します。
 void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
-    if (gateEntryCinematicActive_) {
-        return;
-    }
-
-    gateEntryTargetGate_ = FindNearestStageGate(nullptr);
-    gateEntryStartPlayerPosition_ = player_ ? player_->GetWorldPosition() : engine::Vector3{};
-    gateEntryStartPlayerScale_ = player_ ? player_->GetScale() : engine::Vector3{1.0f, 1.0f, 1.0f};
-    gateEntryTargetPlayerPosition_ = gateEntryStartPlayerPosition_;
-    gateEntrySurfacePlayerPosition_ = gateEntryStartPlayerPosition_;
-    gateEntryInsidePlayerPosition_ = gateEntryStartPlayerPosition_;
-    gateEntryDirection_ = {0.0f, 0.0f, 1.0f};
-    gateEntryCameraStartEye_ = {};
-    gateEntryCameraStartTarget_ = {};
-    gateEntryCameraEndEye_ = {};
-    gateEntryCameraEndTarget_ = {};
-    gateEntryHadPlayerControl_ = player_ ? player_->IsControlActive() : true;
-
-    if (gateEntryTargetGate_ && player_) {
-        const engine::Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
-        const engine::Vector3 toGateRaw = {gatePos.x - gateEntryStartPlayerPosition_.x, 0.0f,
-                                   gatePos.z - gateEntryStartPlayerPosition_.z};
-
-        // 接触位置そのものではなく、ゲート面の向きから突入方向を決める。
-        // これにより、ゲートの端から触れてもカメラ構図と突入方向が大きく暴れない。
-        const engine::Vector3 toGate = SelectGateEntryDirection(gateEntryTargetGate_, toGateRaw);
-        gateEntryDirection_ = toGate;
-        const float entryY = gatePos.y;
-        const SelectGateEntryRoute entryRoute = SelectBuildGateEntryRoute(gatePos, toGate, entryY);
-        gateEntrySurfacePlayerPosition_ = entryRoute.surface;
-        gateEntryTargetPlayerPosition_ = entryRoute.center;
-        gateEntryInsidePlayerPosition_ = entryRoute.inside;
-        player_->SetMoveYaw(std::atan2(toGate.x, toGate.z));
-        player_->SetIsControlActive(false);
-        player_->SetVelocity({0.0f, 0.0f, 0.0f});
-        player_->SetSlimeAnimationDirection(toGate);
-        player_->TriggerSlimeImpulse({1.08f, 0.92f, 1.10f}, 0.20f);
-        CaptureGateEntryMaterialState(player_);
-        ApplyGateEntryDissolveMaterial(0.0f, gatePos, toGate);
-
-        if (auto* stageGate = dynamic_cast<GimmickStageGate*>(gateEntryTargetGate_)) {
-            stageGate->TriggerEntryReaction();
-        }
-
-        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-            const engine::Vector3 side = {toGate.z, 0.0f, -toGate.x};
-
-            // カメラはプレイヤーの接触位置ではなくゲート中心を基準にする。
-            // 表裏の差はtoGateの向きだけで反転させ、どちら側から入っても同じ構図に近づける。
-            const engine::Vector3 focus = {gatePos.x, gatePos.y + kGateEntryCameraFocusHeight, gatePos.z};
-            gateEntryCameraStartEye_ = camera->GetEye();
-            gateEntryCameraStartTarget_ = camera->GetTargetPoint();
-            gateEntryCameraEndTarget_ = focus;
-            gateEntryCameraEndEye_ = {
-                focus.x - toGate.x * kGateEntryCameraBackDistance + side.x * kGateEntryCameraSideOffset,
-                focus.y + kGateEntryCameraHeight,
-                focus.z - toGate.z * kGateEntryCameraBackDistance + side.z * kGateEntryCameraSideOffset};
-            camera->SetInputEnabled(false);
-            camera->SetFollowTarget(nullptr);
-            camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-            camera->ConfigFixedPoint(gateEntryCameraStartEye_,
-                                     SelectLookAtRotation(gateEntryCameraStartEye_, gateEntryCameraStartTarget_));
-        }
-    }
-
+    if (gateEntryCinematicActive_ || !SceneManager::GetInstance()->IsPlaying()) return;
+    auto* gate = FindStageGateByIndex(stageIndex);
+    if (!gate || !gateEntryPresentation_.Start(player_, gate, false)) return;
+    gateEntryTargetGate_ = gate;
     gateEntryCinematicActive_ = true;
-    gateEntryCinematicTimer_ = 0.0f;
-    gateEntryPendingStageIndex_ = stageIndex;
     isChangingStage_ = true;
     stageDecisionCooldown_ = 0.35f;
-
+    if (auto* stageGate = dynamic_cast<GimmickStageGate*>(gate)) stageGate->TriggerEntryReaction();
     if (gatePromptSprite_) {
         gatePromptSprite_->SetVisible(false);
         gatePromptSprite_->Update();
     }
-
     DebugConsole::GetInstance()->AddLog("Stage Select: gate entry cinematic start.");
 }
 
-// 入口へ向かう移動とカメラ演出を進め、完了後に指定ステージへ切り替えます。
 void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
-    if (!gateEntryCinematicActive_) {
-        return;
-    }
-
-    gateEntryCinematicTimer_ += deltaTime;
-    const float t = SelectClamp01(gateEntryCinematicTimer_ / kGateEntryCinematicDuration);
-    const float cameraT = SelectEaseInOutCubic(SelectClamp01(gateEntryCinematicTimer_ / kGateEntryCameraBlendTime));
-    const float alignT = SelectEaseOutCubic(SelectClamp01(gateEntryCinematicTimer_ / kGateEntryAlignEndTime));
-    const float centeringT =
-        SelectEaseInOutCubic(SelectClamp01((t - kGateEntryCenteringDelay) / kGateEntryCenteringDuration));
-    const float diveT = SelectEaseInOutCubic(SelectClamp01(
-        (t - kGateEntryDiveStartTime) / std::max(kGateEntryDiveEndTime - kGateEntryDiveStartTime, 0.001f)));
-    const float clipT = SelectEaseInOutCubic(SelectClamp01(
-        (t - kGateEntryDissolveStartTime) / std::max(kGateEntryDissolveEndTime - kGateEntryDissolveStartTime, 0.001f)));
-
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        camera->SetInputEnabled(false);
-        camera->SetFollowTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-        const engine::Vector3 currentEye = SelectLerpVector3(gateEntryCameraStartEye_, gateEntryCameraEndEye_, cameraT);
-        const engine::Vector3 currentTarget =
-            SelectLerpVector3(gateEntryCameraStartTarget_, gateEntryCameraEndTarget_, cameraT);
-        camera->ConfigFixedPoint(currentEye, SelectLookAtRotation(currentEye, currentTarget));
-    }
-
-    if (player_) {
-        player_->SetIsVisible(true);
-        player_->SetVelocity({0.0f, 0.0f, 0.0f});
-        player_->SetIsControlActive(false);
-
-        if (gateEntryTargetGate_) {
-            const engine::Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
-            const engine::Vector3 toGate = gateEntryDirection_;
-            const float entryY = gatePos.y;
-
-            // 演出中にゲートが親子関係やEditor操作で動いても、入口・中心・奥位置を最新Transformから作り直す。
-            const SelectGateEntryRoute entryRoute = SelectBuildGateEntryRoute(gatePos, toGate, entryY);
-            gateEntrySurfacePlayerPosition_ = entryRoute.surface;
-            gateEntryTargetPlayerPosition_ = entryRoute.center;
-            gateEntryInsidePlayerPosition_ = entryRoute.inside;
-            player_->SetMoveYaw(std::atan2(toGate.x, toGate.z));
-            player_->SetSlimeAnimationDirection(toGate);
-            ApplyGateEntryDissolveMaterial(clipT, gatePos, toGate);
-        }
-
-        // 接触した瞬間の位置から直接ゲート中心へ飛ばすとワープ感が強いので、
-        // まずゲート正面の入口ラインへ短く補間し、その後ゲート奥へ吸い込む。
-        engine::Vector3 centeredStart = gateEntryStartPlayerPosition_;
-        centeredStart.y = gateEntryStartPlayerPosition_.y +
-                          (gateEntrySurfacePlayerPosition_.y - gateEntryStartPlayerPosition_.y) * centeringT;
-        const engine::Vector3 alignedStart = SelectLerpVector3(centeredStart, gateEntrySurfacePlayerPosition_, alignT);
-        const engine::Vector3 controlA =
-            SelectLerpVector3(gateEntrySurfacePlayerPosition_, gateEntryTargetPlayerPosition_, 0.42f);
-        const engine::Vector3 controlB =
-            SelectLerpVector3(gateEntryTargetPlayerPosition_, gateEntryInsidePlayerPosition_, 0.58f);
-        const engine::Vector3 divePos = SelectBezierVector3(
-            gateEntrySurfacePlayerPosition_, {controlA.x, controlA.y + kGateEntryLiftHeight, controlA.z},
-            {controlB.x, controlB.y + kGateEntryLiftHeight * 0.35f, controlB.z}, gateEntryInsidePlayerPosition_, diveT);
-        engine::Vector3 playerPos = SelectLerpVector3(alignedStart, divePos, SelectClamp01((t - 0.08f) / 0.28f));
-
-        player_->SetTranslate(playerPos);
-        player_->SetScale(gateEntryStartPlayerScale_);
-
-        if (clipT >= 0.995f || t >= 0.94f) {
-            player_->SetIsVisible(false);
-        }
-    }
-
-    if (gateEntryCinematicTimer_ >= kGateEntryCinematicDuration) {
-        if (player_) {
-            const engine::Vector3 gatePos =
-                gateEntryTargetGate_ ? gateEntryTargetGate_->GetWorldPosition() : gateEntryInsidePlayerPosition_;
-            ApplyGateEntryDissolveMaterial(1.0f, gatePos, gateEntryDirection_);
-            gateEntryMaterialSnapshots_.clear();
-        }
-
-        gateEntryCinematicActive_ = false;
-        gateEntryCinematicTimer_ = 0.0f;
-        gateEntryPendingStageIndex_ = -1;
-        gateEntryTargetGate_ = nullptr;
-        ResetGateCinematicBars();
-        SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-    }
+    if (!gateEntryCinematicActive_) return;
+    gateEntryPresentation_.Update(deltaTime);
+    if (!gateEntryPresentation_.IsFinished()) return;
+    gateEntryCinematicActive_ = false;
+    gateEntryTargetGate_ = nullptr;
+    ResetGateCinematicBars();
+    SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
 }

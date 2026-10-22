@@ -1,0 +1,11 @@
+{
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "assetType": "Texture",
+  "version": 1,
+  "guid": "d3b6b720492f48c7bb1296efca30ae77",
+  "source": "Resources/sprite/ui/tutorial/tutorial_lock_on_gamepad.png",
+  "importer": "TextureImporter"
+}

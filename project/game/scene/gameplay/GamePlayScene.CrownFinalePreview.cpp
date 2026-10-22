@@ -1,4 +1,4 @@
-﻿#include "game/scene/gameplay/GamePlayScene.h"
+#include "game/scene/gameplay/GamePlayScene.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "game/crown/CrownFinaleTuning.h"
 #include "CameraManager.h"
@@ -150,7 +150,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
 void GamePlayScene::RewindCrownMoviePreview() {
     // 敗北演出と戴冠演出で時計が異なるため、現在の分岐だけを先頭へ戻す。
     if (crownMoviePreview_.active && crownMoviePreview_.defeat) {
-        crownDefeat_.time=0;
+        crownDefeatVfxPlayer_.SetTime(0.0f, false);
         UpdateCrownDefeat(0);
         return;
     }
@@ -173,7 +173,7 @@ void GamePlayScene::RewindCrownMoviePreview() {
     player_->SetTranslate(s.start);
     player_->SetVelocity({});
     s.time = 0.0f;
-    s.duration = CrownFinaleTuning::Get().movieDuration;
+    s.duration = GetCrownFinaleTiming().movieDuration;
     s.bodyFormed = false;
     s.granted = s.landed = false;
 

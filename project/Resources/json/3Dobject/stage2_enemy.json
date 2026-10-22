@@ -95,9 +95,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.2825380861759186,
+                0.027533795684576035,
                 0.0,
-                0.9592560529708862
+                0.9996208548545837
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -106,7 +106,365 @@
             },
             "rotation": [
                 0.0,
-                0.5728779435157776,
+                0.055074550211429596,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "enemy_fire_slime",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.4099999964237213,
+                    0.4099999964237213,
+                    0.4099999964237213
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 77,
+            "collisionMaskIds": [
+                "player",
+                "ground",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "FireSlime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "ca16e726-2d38-4440-86f3-9c20897c9766",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "FireSlime",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "FireSlime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -88.79817199707031,
+                -1.4667106866836548,
+                161.93788146972656
+            ],
+            "quaternion": [
+                0.0,
+                -0.4480034410953522,
+                0.0,
+                0.894031822681427
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.929061770439148,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.16111111640930176,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.3194444477558136,
+                    0.3194444477558136,
+                    0.3194444477558136
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 77,
+            "collisionMaskIds": [
+                "player",
+                "ground",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "GiantSlime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "44a2c1f8-7b53-48d9-952c-3d99d1a0991b",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "GiantSlime",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "GiantSlime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -80.5206069946289,
+                -0.7289583683013916,
+                164.68508911132813
+            ],
+            "quaternion": [
+                1.124083723880176e-06,
+                -0.9951485991477966,
+                2.1209636997809866e-06,
+                0.09838328510522842
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                3.1415882110595703,
+                0.19708538055419922,
+                3.1415908336639404
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5137262344360352,
+                    0.3710375130176544,
+                    0.5139153003692627
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 65,
+            "collisionMaskIds": [
+                "player",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Bomber",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "79b3c2bb-d2e3-49f2-9e80-59c214d14d42",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Bomber",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Bomber"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -94.35822296142578,
+                -7.628958702087402,
+                141.42401123046875
+            ],
+            "quaternion": [
+                0.0,
+                -0.11370892077684402,
+                0.0,
+                0.9935141205787659
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.22791078686714172,
                 0.0
             ],
             "roughness": 0.6000000238418579,

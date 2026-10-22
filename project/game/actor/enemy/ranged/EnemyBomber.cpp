@@ -293,7 +293,12 @@ void EnemyBomber::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotL
     // 投げる前の手持ち爆弾は本体とは別オブジェクトなので追加描画する。
     BaseEnemy::Draw(pointLightResource, spotLightResource);
 
-    if (heldBombVisual_ && heldBombVisual_->GetIsVisible()) {
+    if (GetIsRenderVisible() && heldBombVisual_ && heldBombVisual_->GetIsVisible()) {
+        // 個別所有の表示物はObjectManagerの最終更新に含まれない。
+        // 本体の物理移動後の手元位置と、描画時のカメラをここで反映する。
+        const float progress = throwState_ == ThrowState::LeapThrow ? 1.0f : GetThrowProgress();
+        heldBombVisual_->SetTranslate(ComputeHeldBombPosition(progress));
+        heldBombVisual_->UpdateWorldMatrix(true);
         heldBombVisual_->Draw(pointLightResource, spotLightResource);
     }
 }

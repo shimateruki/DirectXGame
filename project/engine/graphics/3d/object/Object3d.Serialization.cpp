@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include "EditorPropertyRegistry.h"
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include "engine/graphics/3d/material/WaterParamJsonCodec.h"
 #include "DirectXCommon.h"
@@ -204,6 +205,7 @@ json Object3d::SerializeFeatureComponents() const {
         });
     }
 
+    EditorPropertyRegistry::GetInstance()->WriteClassProperties(*this, components);
     return components;
 }
 
@@ -212,6 +214,8 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     opaqueComponents_ = objectData.contains("components") && objectData["components"].is_object()
         ? objectData["components"]
         : json::object();
+
+    EditorPropertyRegistry::GetInstance()->ReadClassProperties(*this, opaqueComponents_);
 
     // 先に現在の実体と再生中の派生物を破棄し、読み直すJSONの状態だけで再構成します。
     particleEmitterComponent_.reset();
@@ -457,6 +461,7 @@ json Object3d::ExportToJson() {
                     jp["moveAmount"] = p.moveAmount;
                     jp["interval"] = p.interval;
                     jp["shakeDuration"] = p.shakeDuration;
+                    jp["ringWaveSpeed"] = p.ringWaveSpeed;
                 }
             }
         } else {
@@ -485,9 +490,17 @@ json Object3d::ExportToJson() {
             jp["targetScene"] = p.targetScene;
             jp["moveAmount"] = p.moveAmount;
             jp["moveSpeed"] = p.moveSpeed;
+            jp["ringWaveSpeed"] = p.ringWaveSpeed;
             jp["startActive"] = p.startActive;
             jp["returnOnOff"] = p.returnOnOff;
-            if (gimmickType_ == "FireCannon") jp["editorPreviewFiring"] = p.editorPreviewFiring;
+            jp["editorPreviewFiring"] = p.editorPreviewFiring;
+            // Sceneと単体Objectの両方で、ボリューム設定と非表示中の値を保持します。
+            jp["volumeMode"] = p.volumeMode;
+            jp["volumePayload"] = p.volumePayload;
+            jp["volumeTriggerOnce"] = p.volumeTriggerOnce;
+            jp["volumeTriggerOnExit"] = p.volumeTriggerOnExit;
+            jp["volumeRearmDelay"] = p.volumeRearmDelay;
+            jp["volumeBlendDuration"] = p.volumeBlendDuration;
             if (!p.cinematicPath.empty()) jp["cinematicPath"] = p.cinematicPath;
             jp["copyMemoryTypeA"] = p.copyMemoryTypeA;
             jp["copyMemoryTypeB"] = p.copyMemoryTypeB;
@@ -565,7 +578,8 @@ json Object3d::ExportToJson() {
         d["lod"] = lodJson;
     }
 
-    if (MaterialRenderPolicy::IsSpecial(GetMaterialType()) && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+    if ((MaterialRenderPolicy::IsSpecial(GetMaterialType()) ||
+         EditorPropertyRegistry::GetInstance()->HasSerializedProperties(*this, "waterParam.")) && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
         d["waterParam"] = WaterParamJsonCodec::Write(*water);
     }
@@ -802,10 +816,24 @@ void Object3d::ImportFromJson(const json& j) {
             p.moveAmount = jp["moveAmount"];
         if (jp.contains("moveSpeed"))
             p.moveSpeed = jp["moveSpeed"];
+        if (jp.contains("ringWaveSpeed"))
+            p.ringWaveSpeed = (std::clamp)(jp["ringWaveSpeed"].get<float>(), 0.25f, 4.0f);
         if (jp.contains("startActive"))
             p.startActive = jp["startActive"];
         if (jp.contains("returnOnOff"))
             p.returnOnOff = jp["returnOnOff"];
+        if (jp.contains("volumeMode") && jp["volumeMode"].is_number_integer())
+            p.volumeMode = jp["volumeMode"].get<int>();
+        if (jp.contains("volumePayload") && jp["volumePayload"].is_string())
+            p.volumePayload = jp["volumePayload"].get<std::string>();
+        if (jp.contains("volumeTriggerOnce") && jp["volumeTriggerOnce"].is_boolean())
+            p.volumeTriggerOnce = jp["volumeTriggerOnce"].get<bool>();
+        if (jp.contains("volumeTriggerOnExit") && jp["volumeTriggerOnExit"].is_boolean())
+            p.volumeTriggerOnExit = jp["volumeTriggerOnExit"].get<bool>();
+        if (jp.contains("volumeRearmDelay") && jp["volumeRearmDelay"].is_number())
+            p.volumeRearmDelay = (std::max)(0.0f, jp["volumeRearmDelay"].get<float>());
+        if (jp.contains("volumeBlendDuration") && jp["volumeBlendDuration"].is_number())
+            p.volumeBlendDuration = (std::max)(0.0f, jp["volumeBlendDuration"].get<float>());
         if (jp.contains("editorPreviewFiring") && jp["editorPreviewFiring"].is_boolean())
             p.editorPreviewFiring = jp["editorPreviewFiring"].get<bool>();
         if (jp.contains("copyMemoryTypeA"))
@@ -910,7 +938,8 @@ void Object3d::ImportFromJson(const json& j) {
         SetLodEnabled(enabled);
     }
 
-    if (j.contains("waterParam") && MaterialRenderPolicy::IsSpecial(GetMaterialType())) {
+    if (j.contains("waterParam") && (MaterialRenderPolicy::IsSpecial(GetMaterialType()) ||
+        EditorPropertyRegistry::GetInstance()->HasSerializedProperties(*this, "waterParam."))) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();
             WaterParamJsonCodec::Read(j["waterParam"], *water);

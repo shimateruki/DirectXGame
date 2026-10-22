@@ -25,7 +25,7 @@ struct CrownFinaleTuning {
     // 第二形態の中央詠唱。クリスタルは同時に壊せ、時間切れで全域攻撃になります。
     float sealCenterOffsetZ = 15.0f;
     float sealCastTime = 18.0f;
-    float sealCrystalHp = 30.0f;
+    float sealCrystalHp = 23.0f;
 
     float sealBarrierRadius = 6.5f;
     float sealBarrierHeight = 9.0f;

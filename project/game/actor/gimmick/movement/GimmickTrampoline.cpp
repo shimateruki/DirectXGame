@@ -1,4 +1,5 @@
 #include "GimmickTrampoline.h"
+#include "ObjectPropertyDefinition.h"
 #include "Player.h"
 #include "CollisionConfig.h"
 #include "game/actor/player/state/PlayerState.h"
@@ -29,6 +30,14 @@ void GimmickTrampoline::Initialize(engine::Object3dCommon* common, const std::st
     SetColliderConfig(config);
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(CollisionCategories::Get("player"));
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickTrampoline;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "トランポリン",
+        "");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("ジャンプ力", "jumpPower", &Parameter::jumpPower, 0.0f, 100.0f,
+        nullptr, {}, {.speed = 1.0f});
 }
 
 void GimmickTrampoline::Update(float deltaTime) {

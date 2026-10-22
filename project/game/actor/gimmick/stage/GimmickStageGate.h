@@ -1,10 +1,17 @@
 #pragma once
 
 #include "BaseGimmick.h"
+#include "game/system/cinematic/GateEntryPresentation.h"
+
+class BaseScene;
 
 /// <summary>ステージ選択ノードと入場ゲートの表示・遷移を管理します。</summary>
 class GimmickStageGate : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "StageGate";
+    static constexpr const char* kModelPath = "Gimmicks/portal_surface";
+
     ~GimmickStageGate() override = default;
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
@@ -41,6 +48,13 @@ class GimmickStageGate : public BaseGimmick {
 
     bool IsUnlocked() const { return isUnlocked_; }
 
+    bool IsEntryPresentationActive() const { return entryPresentation_.IsActive(); }
+    float GetEntryPresentationProgress() const { return entryPresentation_.GetProgress(); }
+
+    // 通常更新より先に演出だけを進め、操作ガイド・物理・敵の攻撃との競合を防ぎます。
+    static bool UpdateSceneEntry(BaseScene& scene, float deltaTime);
+    static void ResetSceneEntries(BaseScene& scene);
+
   private:
     // 元の縮尺を保存し、点滅演出による縮尺の累積を防ぎます。
     void CaptureBaseScale();
@@ -61,6 +75,9 @@ class GimmickStageGate : public BaseGimmick {
     float targetActivation_ = 1.0f;
     float activationBurst_ = 0.0f;
     float lastAppliedPulse_ = 1.0f;
+
+    GateEntryPresentation entryPresentation_;
+    bool transitionQueued_ = false;
 
     bool hasBaseScale_ = false;
     bool hasTriggeredTransition_ = false;

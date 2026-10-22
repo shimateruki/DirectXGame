@@ -8,19 +8,24 @@
 #include "WinApp.h"
 #include <fstream>
 #include "RollerRuntimeProbe.h"
+#include "FlipPairRuntimeProbe.h"
 
 namespace RaftRuntimeProbe {
 inline ULONGLONG pauseUntil = 0;
 inline bool Enabled() {
     // 明示した検証起動だけで配置を変え、通常プレイには介入しない。
     static const bool enabled = GetEnvironmentVariableA("CG2_RAFT_TEST", nullptr, 0) > 0;
-    return enabled;
+    return enabled || FlipPairRuntimeProbe::Enabled();
 }
 inline bool WantsPlay(SceneManager* manager) {
     // エディターの停止設定から独立して、実際の接地・死亡・描画経路を検証する。
     return Enabled() && manager && !manager->IsTransitioning() && manager->GetCurrentSceneName() == "GAMEPLAY";
 }
 inline void AfterDraw(SceneManager* manager, const std::string& path) {
+    if (FlipPairRuntimeProbe::Enabled()) {
+        FlipPairRuntimeProbe::AfterDraw(manager, path);
+        return;
+    }
     // 同じ検証用起動経路で円柱も確認し、通常起動の更新処理を増やさない。
     if (GetEnvironmentVariableA("CG2_ROLLER_TEST", nullptr, 0)>0) {
         RollerRuntimeProbe::AfterDraw(manager, path);

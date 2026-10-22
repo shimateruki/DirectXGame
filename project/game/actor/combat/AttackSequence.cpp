@@ -323,6 +323,8 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
     visual.emissive = part.appearance.emissive;
 
     if (part.style == "fire") {
+        // 火球は指定された地形との接触で着弾演出を出して終了する。
+        visual.destroyOnSolidCastHit = true;
         visual.materialType = 11;
         const auto& appearance = part.appearance;
         visual.color = {appearance.red, appearance.green, appearance.blue, appearance.alpha};

@@ -1,6 +1,7 @@
 ﻿#include "PresetEditor.h"
 
 #include "ModelManager.h"
+#include "EditorObjectFactoryRegistry.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -280,35 +281,11 @@ std::vector<PresetEditor::TypeOption> PresetEditor::GetEnemyOptions() const {
 }
 
 std::vector<PresetEditor::TypeOption> PresetEditor::GetGimmickOptions() const {
-    // 保存する内部IDとEditor表示名を同じ順番で保持し、選択値の対応を明示する。
-    return {
-        { "Default", "通常" },
-        { "MovingFloor", "移動床" },
-        { "Trampoline", "トランポリン" },
-        { "ChikuwaBlock", "ちくわブロック" },
-        { "BlinkBlock", "点滅ブロック" },
-        { "BreakableBlock", "破壊ブロック" },
-        { "Coin", "コイン" },
-        { "SinkingFloor", "沈む床" },
-        { "SeesawFloor", "シーソー床" },
-        { "DashPanel", "ダッシュパネル" },
-        { "TimedSwitch", "時限スイッチ床" },
-        { "AppearingFloor", "出現床" },
-        { "Switch", "汎用スイッチ" },
-        { "EventReceiver", "イベント受信" },
-        { "ArenaEncounter", "中ボス遭遇管理" },
-        { "GameplayVolume", "ゲームプレイボリューム" },
-        { "CopyMemoryStation", "コピー記憶台" },
-        { "PrismBarrier", "プリズム障壁" },
-        { "HookPullBlock", "フック可動ブロック" },
-        { "LiquidLevel", "水位・マグマ上下" },
-        { "MagmaHazard", "マグマダメージ床" },
-        { "ChainCollapseFloor", "連鎖崩れ床" },
-        { "RotatingFloor", "回転床" },
-        { "RotatingPillar", "回転柱" },
-        { "PhaseFlipFloor", "順番反転床" },
-        { "StageGate", "ステージゲート" }
-    };
+    std::vector<TypeOption> options;
+    // 文字列はEditorの登録一覧が所有し、この候補を描画している間は保持されます。
+    for (const auto& type : EditorObjectFactoryRegistry::GetTypes(EditorObjectFactoryRegistry::Kind::Gimmick))
+        options.push_back({type.id.c_str(), type.displayName.c_str()});
+    return options;
 }
 
 std::vector<PresetEditor::TypeOption> PresetEditor::GetItemOptions() const {

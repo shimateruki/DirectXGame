@@ -4,12 +4,24 @@
 #include "SceneManager.h"
 #include "MeshEffectManager.h"
 #include "WinApp.h"
+#include "SdlStickRuntimeProbe.h"
+#include "TutorialPromptRuntimeProbe.h"
 #include <Windows.h>
 #include <fstream>
 #include <string>
 #include "AttackLifecycleRuntimeProbe.h"
 #include "AttackEditorRuntimeProbe.h"
 #include "RaftRuntimeProbe.h"
+#include "CinematicRuntimeProbe.h"
+#include "GimmickPropertyRuntimeProbe.h"
+#include "GateEntryRuntimeProbe.h"
+#include "PlayerAttackRuntimeProbe.h"
+#include "CannonDamageRuntimeProbe.h"
+#include "GoalPresentationRuntimeProbe.h"
+#include "StarCoinRuntimeProbe.h"
+#include "EnemyProjectileRuntimeProbe.h"
+#include "CarryHookRuntimeProbe.h"
+#include "CameraBarrierRuntimeProbe.h"
 
 // 明示的に環境変数を設定した実行だけで、実際の更新・GPU描画を通して遷移を検証します。
 // 通常起動ではシーン選択、エフェクト、保存データに介入しません。
@@ -26,6 +38,54 @@ inline bool Enabled() { return !LogPath().empty(); }
 inline void AfterDraw(SceneManager* manager, DebugEditor* editor = nullptr) {
     if (!Enabled() || !manager)
         return;
+    if (CameraBarrierRuntimeProbe::Enabled()) {
+        CameraBarrierRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (CarryHookRuntimeProbe::Enabled()) {
+        CarryHookRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (EnemyProjectileRuntimeProbe::Enabled()) {
+        EnemyProjectileRuntimeProbe::AfterDraw(manager,LogPath());
+        return;
+    }
+    if (StarCoinRuntimeProbe::Enabled()) {
+        StarCoinRuntimeProbe::AfterDraw(manager,LogPath());
+        return;
+    }
+    if (GoalPresentationRuntimeProbe::Enabled()) {
+        GoalPresentationRuntimeProbe::AfterDraw(manager,LogPath());
+        return;
+    }
+    if (SdlStickRuntimeProbe::Enabled()) {
+        SdlStickRuntimeProbe::AfterDraw(LogPath());
+        return;
+    }
+    if (GateEntryRuntimeProbe::Enabled()) {
+        GateEntryRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (CannonDamageRuntimeProbe::Enabled()) {
+        CannonDamageRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (TutorialPromptRuntimeProbe::Enabled()) {
+        TutorialPromptRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (PlayerAttackRuntimeProbe::Enabled()) {
+        PlayerAttackRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (GimmickPropertyRuntimeProbe::Enabled()) {
+        GimmickPropertyRuntimeProbe::AfterDraw(manager, editor, LogPath());
+        return;
+    }
+    if (CinematicRuntimeProbe::Enabled()) {
+        CinematicRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
     if (RaftRuntimeProbe::Enabled()) {
         RaftRuntimeProbe::AfterDraw(manager, LogPath());
         return;

@@ -1,0 +1,84 @@
+newmtl ivory
+Ka 0.08 0.08 0.08
+Kd 0.9400 0.9400 0.8800
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl steel
+Ka 0.08 0.08 0.08
+Kd 0.4500 0.5500 0.6800
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl dark
+Ka 0.08 0.08 0.08
+Kd 0.0650 0.0900 0.1500
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl blue_frame
+Ka 0.08 0.08 0.08
+Kd 0.1200 0.3400 0.7200
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl blue_rim
+Ka 0.08 0.08 0.08
+Kd 0.4000 0.7300 1.0000
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl red_frame
+Ka 0.08 0.08 0.08
+Kd 0.7600 0.1500 0.2300
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl red_rim
+Ka 0.08 0.08 0.08
+Kd 1.0000 0.4600 0.4100
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl blue_face
+Ka 0.08 0.08 0.08
+Kd 0.1400 0.3000 0.7000
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl blue_mark
+Ka 0.08 0.08 0.08
+Kd 0.5200 0.7900 1.0000
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl red_face
+Ka 0.08 0.08 0.08
+Kd 0.7600 0.1400 0.2100
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl red_mark
+Ka 0.08 0.08 0.08
+Kd 1.0000 0.6500 0.4200
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+
+newmtl gold
+Ka 0.08 0.08 0.08
+Kd 0.9500 0.6700 0.2200
+Ks 0.22 0.25 0.29
+Ns 64
+illum 2
+

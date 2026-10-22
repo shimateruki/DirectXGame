@@ -1,6 +1,10 @@
 #include "PresetEditor.h"
 
 #include "ModelManager.h"
+#include "EditorObjectFactoryRegistry.h"
+#include "EditorPropertyDrawer.h"
+#include "EditorPropertyJsonBinding.h"
+#include "SceneManager.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -50,158 +54,81 @@ bool PresetEditor::RemoveManagedEnemyFields(json& data) {
     return changed;
 }
 
+PresetEditor::PropertyEditorContext* PresetEditor::GetPropertyEditor(const std::string& type) {
+    const auto found = propertyEditors_.find(type);
+    if (found != propertyEditors_.end()) return &found->second;
+    auto* scene = SceneManager::GetInstance()->GetCurrentScene();
+    if (!scene || !scene->GetObject3dCommon()) return nullptr;
+    auto object = EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Gimmick, type, scene->GetObject3dCommon());
+    if (!object) return nullptr;
+    PropertyEditorContext context;
+    context.defaults = object->ExportToJson();
+    context.object = std::move(object);
+    return &propertyEditors_.emplace(type, std::move(context)).first->second;
+}
+
 bool PresetEditor::DrawGimmickSettings(json& data) {
-    // 選択したギミック型に該当する設定だけを表示し、無関係な値はUIへ出しません。
+    if (!ImGui::CollapsingHeader("ギミックパラメータ", ImGuiTreeNodeFlags_DefaultOpen)) return false;
     bool changed = false;
-    ApplyHiddenCategoryFields(data, Category::Gimmick);
-    json& param = EnsureParam(data);
-
-    if (ImGui::CollapsingHeader("ギミックパラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
-        changed |= DrawTypeCombo("ギミックの種類", data, param, "gimmickType", GetGimmickOptions(), Category::Gimmick);
-        const std::string type = ReadString(data, "gimmickType", ReadString(param, "gimmickType", ""));
-
-        if (type == "Trampoline") {
-            changed |= DrawParamFloat(param, "ジャンプ力", "jumpPower", 18.0f, 0.5f);
-        }
-        else if (type == "MovingFloor") {
-            changed |= DrawParamFloat(param, "移動速度", "speed", 3.0f, 0.1f);
-            changed |= DrawParamIntCombo(param, "移動方式", "actionMode", 0,
-                { "従来の上下移動", "浮遊", "X方向に往復", "Z方向に往復", "Y方向に往復" });
-            if (param.value("actionMode", 0) == 1) {
-                changed |= DrawParamFloat(param, "浮き沈み幅", "moveAmount", 0.35f, 0.01f);
-            }
-            else if (param.value("actionMode", 0) >= 2) {
-                changed |= DrawParamFloat(param, "往復幅", "moveAmount", 8.0f, 0.1f);
-            }
-        }
-        else if (type == "ChikuwaBlock") {
-            changed |= DrawParamFloat(param, "震え時間", "shakeDuration", 1.0f, 0.05f);
-            changed |= DrawParamFloat(param, "落下時間", "fallDuration", 2.0f, 0.05f);
-            changed |= DrawParamFloat(param, "復帰間隔", "interval", 3.0f, 0.05f);
-            changed |= DrawParamFloat(param, "重力", "gravity", 50.0f, 1.0f);
-        }
-        else if (type == "BlinkBlock") {
-            changed |= DrawParamIntCombo(param, "色タイプ", "colorType", 0, { "青", "赤" });
-        }
-        else if (type == "BreakableBlock") {
-            // 保存値のactionModeは他のギミックと共用の数値なので、UIでは破壊条件へ読み替える。
-            const int actionMode = param.value("actionMode", 0);
-            int condition = actionMode == 7 ? 2 : (actionMode == 6 ? 1 : 0);
-            if (ImGui::Combo("破壊条件", &condition,
-                "ボムのみ\0汎用衝撃攻撃\0ピンクのバウンド落下\0")) {
-                param["actionMode"] = condition == 2 ? 7 : (condition == 1 ? 6 : 0);
+    // 種類を変更した時だけ初期値を入れ、閲覧だけで既存Presetを補完しません。
+    const auto options = GetGimmickOptions();
+    const auto readType = [&]() {
+        const auto param = data.find("param");
+        return ReadString(data, "gimmickType", param != data.end() && param->is_object()
+            ? ReadString(*param, "gimmickType", "") : std::string());
+    };
+    const std::string type = readType();
+    const auto current = std::find_if(options.begin(), options.end(), [&](const TypeOption& option) { return type == option.value; });
+    const char* preview = current != options.end() ? current->label : type.c_str();
+    if (ImGui::BeginCombo("ギミックの種類", preview)) {
+        for (const auto& option : options) {
+            if (ImGui::Selectable(option.label, type == option.value)) {
+                data["gimmickType"] = option.value;
+                ApplyTypeDefaults(data, Category::Gimmick, option.value);
                 changed = true;
             }
-
-            ImGui::TextDisabled("ピンク専用は通常攻撃や横突進では開きません。");
         }
-        else if (type == "Switch") {
-            changed |= DrawParamIntCombo(param, "スイッチ方式", "switchMode", 0, { "押している間", "押すたび切替", "一定時間" });
-            changed |= DrawParamFloat(param, "有効時間", "interval", 3.0f, 0.05f);
-        }
-        else if (type == "EventReceiver") {
-            changed |= DrawParamIntCombo(param, "動作モード", "actionMode", 0, { "出現", "Y移動", "X移動", "Z移動", "有効化", "無効化", "ボス王冠落下" });
-            changed |= DrawParamFloat(param, "移動量", "moveAmount", 10.0f, 0.1f);
-            changed |= DrawParamFloat(param, "移動速度", "moveSpeed", 6.0f, 0.05f);
-            changed |= DrawParamFloat(param, "落下演出時間", "fallDuration", 1.55f, 0.02f);
-            changed |= DrawParamFloat(param, "弧の高さ", "jumpPower", 1.85f, 0.05f);
-            changed |= DrawParamBool(param, "開始時に有効", "startActive", false);
-            changed |= DrawParamBool(param, "OFFで元に戻す", "returnOnOff", true);
-        }
-        else if (type == "ArenaEncounter") {
-            changed |= DrawParamInt(param, "障壁数", "maxCount", 4);
-            changed |= DrawParamFloat(param, "ボス出現まで", "shakeDuration", 0.72f, 0.02f);
-            changed |= DrawParamBool(param, "遭遇を有効にする", "startActive", true);
-        }
-        else if (type == "GameplayVolume") {
-            changed |= DrawParamIntCombo(param, "処理", "volumeMode", 0, { "イベント連携", "チェックポイント", "落下死", "Feedback Cue", "BGM", "Environment Profile" });
-            changed |= DrawStringField(param, "Cue / Audio ID", "volumePayload", "");
-            changed |= DrawParamBool(param, "一度だけ実行", "volumeTriggerOnce", true);
-            changed |= DrawParamBool(param, "退出時に実行", "volumeTriggerOnExit", false);
-            changed |= DrawParamFloat(param, "再実行まで", "volumeRearmDelay", 0.0f, 0.05f);
-            changed |= DrawParamFloat(param, "環境切替時間", "volumeBlendDuration", 0.75f, 0.05f);
-            changed |= DrawParamBool(param, "開始時に有効", "startActive", true);
-            changed |= DrawParamBool(param, "退出時にOFFへ戻す", "returnOnOff", false);
-        }
-        else if (type == "CopyMemoryStation") {
-            changed |= DrawStringField(param, "左コア", "copyMemoryTypeA", "FireSlime");
-            changed |= DrawStringField(param, "中央コア", "copyMemoryTypeB", "ThunderSlime");
-            changed |= DrawStringField(param, "右コア", "copyMemoryTypeC", "WindSlime");
-            changed |= DrawStringField(param, "4台目（空欄で無効）", "copyMemoryTypeD", "");
-            changed |= DrawParamFloat(param, "コア接触半径", "copyMemoryActivationRadius", 0.9f, 0.02f);
-            changed |= DrawParamBool(param, "時間制限なし", "copyMemoryUnlimitedDuration", true);
-            changed |= DrawParamBool(param, "開始時に有効", "startActive", true);
-        }
-        else if (type == "PrismBarrier") {
-            changed |= DrawParamFloat(param, "展開・解除時間", "moveSpeed", 0.42f, 0.02f);
-            changed |= DrawParamFloat(param, "発光パルス速度", "interval", 2.4f, 0.05f);
-            changed |= DrawParamBool(param, "開始時に展開", "startActive", false);
-            changed |= DrawParamBool(param, "OFFで解除", "returnOnOff", true);
-        }
-        else if (type == "HookPullBlock") {
-            changed |= DrawParamFloat(param, "引っ張り速度", "speed", 24.0f, 0.5f);
-            changed |= DrawParamFloat(param, "重力", "gravity", 50.0f, 1.0f);
-        }
-        else if (type == "LiquidLevel") {
-            changed |= DrawParamIntCombo(param, "液体の種類", "colorType", 0, { "水", "マグマ" });
-            changed |= DrawParamFloat(param, "上下量", "moveAmount", 10.0f, 0.1f);
-            changed |= DrawParamFloat(param, "上下速度", "moveSpeed", 3.0f, 0.05f);
-            changed |= DrawParamBool(param, "開始時に上昇", "startActive", false);
-            changed |= DrawParamBool(param, "OFFで元に戻す", "returnOnOff", true);
-        }
-        else if (type == "MagmaHazard") {
-            changed |= DrawParamFloat(param, "接触ダメージ", "speed", 12.0f, 0.5f);
-            changed |= DrawParamFloat(param, "ダメージ間隔", "interval", 0.8f, 0.05f);
-        }
-        else if (type == "ChainCollapseFloor") {
-            changed |= DrawParamFloat(param, "揺れ時間", "shakeDuration", 0.8f, 0.05f);
-            changed |= DrawParamFloat(param, "連鎖までの時間", "interval", 0.3f, 0.01f);
-            changed |= DrawParamFloat(param, "落下時間", "fallDuration", 2.0f, 0.05f);
-            changed |= DrawParamFloat(param, "重力", "gravity", 50.0f, 1.0f);
-        }
-        else if (type == "RotatingFloor" || type == "RotatingPillar") {
-            changed |= DrawParamIntCombo(param, "回転軸", "actionMode", 1, { "X", "Y", "Z" });
-            changed |= DrawParamFloat(param, "回転速度", "speed", 90.0f, 1.0f);
-            changed |= DrawParamBool(param, "開始時に回転", "startActive", true);
-            changed |= DrawParamBool(param, "OFFで停止", "returnOnOff", true);
-        }
-        else if (type == "PhaseFlipFloor") {
-            changed |= DrawParamInt(param, "床番号", "colorType", 0);
-            changed |= DrawParamInt(param, "全体の床数", "maxCount", 3);
-            changed |= DrawParamFloat(param, "1フェーズの時間", "interval", 2.0f, 0.05f);
-            changed |= DrawParamBool(param, "正方向に回転", "startActive", true);
-        }
-        else if (type == "FireCannon") {
-            // 砲台のモデルと動作をPresetからも調整できるようにする。
-            changed |= DrawParamIntCombo(param, "発射方向", "actionMode", 0,
-                { "前方固定", "プレイヤーを狙う", "放物線砲弾", "大型砲弾（砲口に沿って直進）" });
-            changed |= DrawParamFloat(param, "弾速", "speed", 18.0f, 0.5f);
-            changed |= DrawParamFloat(param, "発射間隔", "interval", 3.0f, 0.05f);
-            changed |= DrawParamFloat(param, "弾の半径", "moveAmount", 1.0f, 0.05f);
-            if (param.value("actionMode", 0) != 3) {
-                changed |= DrawParamFloat(param, "索敵範囲", "detectionRange", 35.0f, 0.5f);
+        ImGui::EndCombo();
+    }
+    const std::string selected = readType();
+    auto* context = GetPropertyEditor(selected);
+    if (!context) {
+        ImGui::TextDisabled("未登録の種類です。保存済みの値は保持します。");
+        return changed;
+    }
+    auto& object = *context->object;
+    // 前のPresetの省略値が混ざらないよう、Factoryの初期値から現在のJSONを復元します。
+    if (context->source != data) {
+        EditorPropertyJsonBinding::Restore(object, context->defaults, data);
+        context->source = data;
+    }
+    auto* registry = EditorPropertyRegistry::GetInstance();
+    for (const auto* component : registry->GetComponentsForObject(&object)) {
+        if (component->typeId.rfind("Game_", 0) != 0) continue;
+        if (!component->description.empty()) ImGui::TextWrapped("%s", component->description.c_str());
+        for (const auto* property : registry->GetPropertiesForComponent(component->typeId)) {
+            if (property->visible && !property->visible(object)) continue;
+            ImGui::PushID(property->path.c_str());
+            ImGui::TextUnformatted(property->displayName.c_str());
+            auto value = property->displayValue ? property->displayValue(object) : registry->GetValue(&object, property->path);
+            auto effective = *property;
+            if (property->maximum) effective.ui.maxValue = property->maximum(object);
+            const bool disabled = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly) ||
+                (property->enabled && !property->enabled(object));
+            ImGui::BeginDisabled(disabled);
+            EditorPropertyDrawOptions drawOptions;
+            drawOptions.compact = true;
+            if (EditorPropertyDrawer::DrawValue(effective, value, "##Value", drawOptions))
+                changed |= EditorPropertyJsonBinding::Apply(object, *property, data, value);
+            ImGui::EndDisabled();
+            if (property->help) {
+                const auto help = property->help(object);
+                if (!help.empty()) ImGui::TextWrapped("%s", help.c_str());
             }
-            if (param.value("actionMode", 0) == 3) {
-                changed |= DrawParamFloat(param, "弾の持続時間", "projectileLifetime", 2.0f, 0.05f);
-                changed |= DrawParamFloat(param, "爆風半径", "healAmount", 2.2f, 0.1f);
-            }
-            changed |= DrawParamBool(param, "開始時に有効", "startActive", true);
-            changed |= DrawParamBool(param, "OFFで停止", "returnOnOff", true);
-            changed |= DrawParamBool(param, "編集停止中に発射をプレビュー", "editorPreviewFiring", true);
-        }
-        else if (type == "StageGate") {
-            changed |= DrawParamIntCombo(param, "入口の用途", "actionMode", 0,
-                {"ステージ選択の入口", "指定シーンへ遷移", "指定ステージへ遷移"});
-            changed |= DrawStringField(param, "遷移先シーン", "targetScene", "SELECT");
-            changed |= DrawIntField(data, "ステージ選択番号（0始まり）", "targetID", 0);
-            changed |= DrawParamInt(param, "ステージ番号", "colorType", 0);
-            changed |= DrawParamBool(param, "遷移を有効にする", "startActive", true);
-        }
-        else {
-            ImGui::TextDisabled("このギミックは追加パラメータなしで配置できます。");
+            ImGui::PopID();
         }
     }
-
+    context->source = data;
     return changed;
 }
 
@@ -284,97 +211,13 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
         }
     }
     else if (category == Category::Gimmick) {
-        if (type == "Coin") {
-            data["modelName"] = "Primitives/sphere";
-            data["scale"] = { 0.6f, 0.6f, 0.15f };
-            data["color"] = { 1.0f, 0.9f, 0.0f, 1.0f };
-            SetColliderDefaults(data, 1, { 1.0f, 1.0f, 1.0f });
-        }
-        else if (type == "StageGate") {
-            data["modelName"] = "Gimmicks/portal_surface";
-            data["scale"] = { 1.0f, 1.0f, 1.0f };
-            data["materialType"] = 22;
-            data["blendMode"] = 1;
-            data["emissive"] = 1.8f;
-            json& param = EnsureParam(data);
-            param["gimmickType"] = "StageGate";
-            param["actionMode"] = 0;
-            param["targetScene"] = "SELECT";
-            param["startActive"] = true;
-            SetColliderDefaults(data, 2, { 1.5f, 1.5f, 1.5f });
-        }
-        else if (type == "ArenaEncounter") {
-            data["modelName"] = "Primitives/cube";
-            data["scale"] = { 1.0f, 1.0f, 1.0f };
-            data["color"] = { 0.42f, 0.24f, 1.0f, 0.22f };
-            data["collisionAttribute"] = CollisionCategories::Get("trigger");
-            data["collisionMask"] = CollisionCategories::Get("player");
-            json& param = EnsureParam(data);
-            param["gimmickType"] = "ArenaEncounter";
-            param["maxCount"] = 4;
-            param["shakeDuration"] = 0.72f;
-            param["startActive"] = true;
-            SetColliderDefaults(data, 3, { 3.0f, 3.0f, 8.0f });
-        }
-        else if (type == "GameplayVolume") {
-            data["modelName"] = "Primitives/cube";
-            data["scale"] = { 3.0f, 3.0f, 3.0f };
-            data["color"] = { 0.15f, 0.75f, 1.0f, 0.3f };
-            data["blendMode"] = 1;
-            data["collisionAttribute"] = CollisionCategories::Get("trigger");
-            data["collisionMask"] = CollisionCategories::Get("player");
-            json& param = EnsureParam(data);
-            param["gimmickType"] = "GameplayVolume";
-            param["volumeMode"] = 0;
-            param["volumePayload"] = "";
-            param["volumeTriggerOnce"] = true;
-            param["volumeTriggerOnExit"] = false;
-            param["volumeRearmDelay"] = 0.0f;
-            param["volumeBlendDuration"] = 0.75f;
-            param["startActive"] = true;
-            param["returnOnOff"] = false;
-            SetColliderDefaults(data, 3, { 1.0f, 1.0f, 1.0f });
-        }
-        else if (type == "CopyMemoryStation") {
-            data["modelName"] = "Gimmicks/copy_memory_station";
-            data["scale"] = { 1.0f, 1.0f, 1.0f };
-            data["materialType"] = 0;
-            data["emissive"] = 1.0f;
-            data["metallic"] = 0.18f;
-            data["roughness"] = 0.34f;
-            data["collisionAttribute"] = CollisionCategories::Get("trigger");
-            data["collisionMask"] = CollisionCategories::Get("player");
-            json& param = EnsureParam(data);
-            param["gimmickType"] = "CopyMemoryStation";
-            param["copyMemoryTypeA"] = "FireSlime";
-            param["copyMemoryTypeB"] = "ThunderSlime";
-            param["copyMemoryTypeC"] = "WindSlime";
-            param["copyMemoryActivationRadius"] = 0.9f;
-            param["copyMemoryUnlimitedDuration"] = true;
-            param["startActive"] = true;
-            SetColliderDefaults(data, 3, { 3.1f, 1.6f, 1.85f });
-            data["collider"]["center"] = { 0.0f, 0.95f, 0.0f };
-        }
-        else if (type == "PrismBarrier") {
-            data["modelName"] = "Gimmicks/portal_surface";
-            data["scale"] = { 8.0f, 3.0f, 1.0f };
-            data["materialType"] = 22;
-            data["blendMode"] = 1;
-            data["color"] = { 0.30f, 0.86f, 1.0f, 0.84f };
-            data["emissive"] = 2.4f;
-            data["collisionAttribute"] = CollisionCategories::Get("ground");
-            data["collisionMask"] = CollisionCategories::GetDefaultGameplayMask();
-            json& param = EnsureParam(data);
-            param["gimmickType"] = "PrismBarrier";
-            param["moveSpeed"] = 0.42f;
-            param["interval"] = 2.4f;
-            param["startActive"] = false;
-            param["returnOnOff"] = true;
-            SetColliderDefaults(data, 3, { 1.0f, 1.0f, 0.45f });
-        }
-        else {
-            data["modelName"] = "Stages/block";
-            SetColliderDefaults(data, 3, { 1.0f, 1.0f, 1.0f });
+        if (const auto* context = GetPropertyEditor(type)) {
+            const auto& defaults = context->defaults;
+            for (const char* key : {"param", "modelName", "scale", "color", "materialType", "blendMode", "emissive",
+                 "metallic", "roughness", "collider", "collisionAttribute", "collisionMask", "collisionAttributeIds", "collisionMaskIds"})
+                if (defaults.contains(key)) data[key] = defaults[key];
+            data["gimmickType"] = type;
+            EnsureParam(data)["gimmickType"] = type;
         }
     }
     else if (category == Category::Item) {
@@ -535,35 +378,6 @@ bool PresetEditor::DrawVector3Field(json& data, const char* label, const char* k
 bool PresetEditor::DrawParamFloat(json& param, const char* label, const char* key, float defaultValue, float speed) {
     // param直下の浮動小数点設定も通常フィールドと同じ更新経路へ渡します。
     return DrawFloatField(param, label, key, defaultValue, speed);
-}
-
-bool PresetEditor::DrawParamInt(json& param, const char* label, const char* key, int defaultValue) {
-    // param直下の整数設定を共通UIへ委譲します。
-    return DrawIntField(param, label, key, defaultValue);
-}
-
-bool PresetEditor::DrawParamBool(json& param, const char* label, const char* key, bool defaultValue) {
-    // 未登録値は既定値で表示し、チェック変更時に初めてJSONへ確定します。
-    bool value = ReadBool(param, key, defaultValue);
-
-    if (ImGui::Checkbox(label, &value)) {
-        param[key] = value;
-        return true;
-    }
-
-    return false;
-}
-
-bool PresetEditor::DrawParamIntCombo(json& param, const char* label, const char* key, int defaultValue, const std::vector<const char*>& labels) {
-    // UIの選択番号をそのまま保存形式の整数値に対応させます。
-    int value = ReadInt(param, key, defaultValue);
-
-    if (ImGui::Combo(label, &value, labels.data(), static_cast<int>(labels.size()))) {
-        param[key] = value;
-        return true;
-    }
-
-    return false;
 }
 
 json& PresetEditor::EnsureParam(json& data) {

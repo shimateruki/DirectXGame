@@ -4,10 +4,31 @@
 
 using namespace PlayerImplementation;
 
+namespace {
+// 削除された練習相手を、運搬・吸収の演出から参照し続けない。
+bool IsTutorialEnemyPresent(const engine::Object3d* enemy) {
+    const auto* scene = SceneManager::GetInstance()->GetCurrentScene();
+    if (!scene) return false;
+    const auto& objects = scene->GetObjects();
+    return std::any_of(objects.begin(), objects.end(), [enemy](const auto& object) { return object.get() == enemy && !object->IsReplayRemoved(); });
+}
+} // namespace
+
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 // 敵の運搬・吸収からコピー開始までを扱います。途中キャンセルでも敵とプレイヤーの見た目を戻せる順序にします。
 
 void Player::SetCarriedEnemy(engine::Object3d* enemy) {
+    if (enemy) {
+        // 照準中に捕獲した場合も、その場でマーカーと対象を破棄する。
+        if (hookMarker_)
+            hookMarker_->SetIsVisible(false);
+        aimTargetObject_ = nullptr;
+    }
+    if (auto* camera = CameraManager::GetInstance()->GetMainCamera(); camera && !IsEditorInternal()) {
+        // コピー側の抑制を保ちつつ、運搬中は照準用の一人称視点へ切り替えない。
+        camera->SetAimCameraSuppressed(enemy || isEnemyMorphed_ || enemyMorphReleaseActive_ || absorbEffectActive_);
+    }
+
     // 抱えた時の基準サイズと姿勢を保存し、見た目の縮小を解除時に戻せるようにする。
     if (carriedEnemy_ == enemy) {
         if (enemy && !hasCarriedEnemyBaseScale_) {
@@ -50,6 +71,10 @@ void Player::SetCarriedEnemy(engine::Object3d* enemy) {
 
 void Player::ReleaseCarriedEnemy(bool restorePose) {
     // 吸収途中なら先に演出を止め、保持敵の姿勢を指定に従って復元する。
+    if (tutorialSafetyEnabled_) {
+        if (pendingAbsorbEnemy_ && !IsTutorialEnemyPresent(pendingAbsorbEnemy_)) pendingAbsorbEnemy_ = nullptr;
+        if (carriedEnemy_ && !IsTutorialEnemyPresent(carriedEnemy_)) SetCarriedEnemy(nullptr);
+    }
     if (absorbEffectActive_) {
         CancelAbsorbEffect(restorePose);
     }
@@ -128,6 +153,10 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
         return;
     }
 
+    if (tutorialSafetyEnabled_ && pendingAbsorbEnemy_ && !IsTutorialEnemyPresent(pendingAbsorbEnemy_)) {
+        if (carriedEnemy_ == pendingAbsorbEnemy_) SetCarriedEnemy(nullptr);
+        pendingAbsorbEnemy_ = nullptr;
+    }
     if (!pendingAbsorbEnemy_) {
         CancelAbsorbEffect(false);
         return;
@@ -298,7 +327,8 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
 
     enemyMorphType_ = resolvedType;
     enemyMorphSource_ = enemy;
-    enemyMorphHasTimeLimit_ = !enemy->param_.has_value() || enemy->param_->morphLimited;
+    // 練習中は時間切れで能力を奪わず、解除操作を学ぶまでコピーを維持する。
+    enemyMorphHasTimeLimit_ = !tutorialSafetyEnabled_ && (!enemy->param_.has_value() || enemy->param_->morphLimited);
     enemyMorphDuration_ =
         enemy->param_.has_value() ? (std::max)(0.1f, enemy->param_->morphDuration) : kEnemyMorphDuration;
     enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;

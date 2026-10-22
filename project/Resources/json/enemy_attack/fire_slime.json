@@ -201,9 +201,9 @@
         "radius": 0.52
       },
       "timing": {
-        "windup": 0,
+        "windup": 0.2,
         "active": 0,
-        "recovery": 0.58,
+        "recovery": 0.38,
         "cooldown": 0.58,
         "warningLead": 0
       },
@@ -221,6 +221,13 @@
         "minSpeed": 15.0,
         "maxSpeed": 28.0,
         "lifetime": 2.65
+      },
+      "playerMovement": {
+        "enabled": true,
+        "duration": 0.38,
+        "groundSpeedScale": 0.45,
+        "airSpeedScale": 0.85,
+        "airResponse": 6.0
       },
       "preview": {
         "targetDistance": 8.0,
@@ -240,9 +247,21 @@
         "duration": 0.58,
         "projectileStyle": "fire",
         "visualScale": 1.28,
+        "tracks": [
+          {
+            "name": "火球の予備動作と反動",
+            "type": "body_animation",
+            "preset": "player_ability_fireball",
+            "begin": 0.0,
+            "end": 0.58,
+            "blendIn": 0.035,
+            "blendOut": 0.08,
+            "keys": [{"time": 0, "position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1]}]
+          }
+        ],
         "events": [
           {
-            "time": 0,
+            "time": 0.2,
             "operation": "projectile",
             "condition": "always",
             "stopOnFalse": false,
@@ -292,7 +311,7 @@
             }
           },
           {
-            "time": 0,
+            "time": 0.2,
             "operation": "gpu_vfx",
             "condition": "always",
             "stopOnFalse": false,

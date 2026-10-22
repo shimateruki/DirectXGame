@@ -149,10 +149,34 @@ void Bullet::Update(float deltaTime) {
     if (hit.isHit && hit.hitObject) {
         // 球の最初の接触点よりわずかに手前へ置き、着弾エフェクトの中心が壁へ潜らないようにします。
         SetTranslate(GetTranslate() + direction * (std::max)(0.0f, hit.distance - 0.002f));
+        UpdateWorldMatrix(true); // ガード方向と被弾演出にも、停止した命中位置を渡す。
         impactNormal_ = hit.normal;
+        const uint32_t attribute = GetCollisionAttribute();
+        const uint32_t targetAttribute = hit.hitObject->GetCollisionAttribute();
+        const bool isDamageTarget =
+            ((attribute & CollisionCategories::Get("enemy_attack")) && (targetAttribute & CollisionCategories::Get("player"))) ||
+            ((attribute & (CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"))) &&
+             (targetAttribute & CollisionCategories::Get("enemy")));
         if (explosionRadius_ > 0.0f)
-            Explode();
-        else if (destroyOnSolidCastHit_ &&
+            Explode(hit.hitObject);
+        else if (isDamageTarget && (hit.hitObject->GetCollisionMask() & attribute)) {
+            // Castは重なる直前に停止するため、受け手のOnCollisionを待たずに命中を確定する。
+            // 通常の接触判定が同じ弾を処理しないよう、通知する前に衝突属性とマスクを外す。
+            isDead_ = true;
+            SetCollisionAttribute(0);
+            SetCollisionMask(0);
+            EmitImpactVfx();
+            DamageEvent event;
+            event.target = hit.hitObject;
+            event.attacker = this;
+            event.damageAmount = damage_;
+            // Playerの通常接触と同じ被弾無敵を、Castからの通知にも引き継ぐ。
+            event.invincibilityDuration = (targetAttribute & CollisionCategories::Get("player")) ? 1.0f : 0.0f;
+            event.damageType = damageType_;
+            event.statusEffect = statusEffect_;
+            EventManager::GetInstance()->Dispatch(event);
+            EventManager::GetInstance()->Dispatch(BulletHitEvent{hit.hitObject, this});
+        } else if (destroyOnSolidCastHit_ &&
                  (hit.hitObject->GetCollisionAttribute() &
                   (CollisionCategories::Get("ground") | CollisionCategories::Get("map_block"))))
             Expire(true);
@@ -164,7 +188,7 @@ void Bullet::Update(float deltaTime) {
 
 bool Bullet::OnCollision(engine::Object3d* other) {
     // 爆発弾は範囲判定へ移し、通常弾だけ直接命中イベントを送る。
-    if (isDead_ || !other)
+    if (isDead_ || previewOnly_ || !other)
         return false;
 
     CollisionInfo info = CheckCollision(other);
@@ -175,7 +199,7 @@ bool Bullet::OnCollision(engine::Object3d* other) {
 
     if (explosionRadius_ > 0.0f) {
         impactNormal_ = info.normal;
-        Explode();
+        Explode(other);
         return true;
     }
 
@@ -322,9 +346,15 @@ void Bullet::EmitImpactVfx() {
     }
 }
 
-void Bullet::Explode() {
+void Bullet::Explode(engine::Object3d* directHit) {
     if (isDead_)
         return;
+
+    // 大きい弾でも爆風半径は広げず、実際に接触した相手だけを直撃として保証する。
+    const bool hasDirectPlayerHit = directHit &&
+        (directHit->GetCollisionAttribute() & CollisionCategories::Get("player")) &&
+        (GetCollisionMask() & directHit->GetCollisionAttribute()) &&
+        (directHit->GetCollisionMask() & GetCollisionAttribute());
 
     // 直撃と爆風が同じフレームに二重加算されないよう、先に弾を無効化する。
     isDead_ = true;
@@ -359,26 +389,33 @@ void Bullet::Explode() {
     filter.ignoredObject = this;
     std::unordered_set<engine::Object3d*> damaged;
 
-    for (const auto& hit : CollisionManager::GetInstance()->OverlapSphere(center, explosionRadius_, filter)) {
-        if (!hit.object || !damaged.insert(hit.object).second)
-            continue;
-        engine::Vector3 delta = hit.object->GetWorldPosition() - center;
+    auto damageTarget = [&](engine::Object3d* target, bool direct) {
+        // 直撃を先に登録し、同じ相手が範囲判定にも含まれても一度だけ通知する。
+        if (!target || !damaged.insert(target).second)
+            return;
+        engine::Vector3 delta = target->GetWorldPosition() - center;
         PhysicsQueryFilter wallFilter;
         wallFilter.mask = CollisionCategories::Get("ground");
         wallFilter.ignoredObject = this;
         const float distance = engine::Math::Length(delta);
 
-        if (distance > 0.05f) {
+        if (!direct && distance > 0.05f) {
             const auto wall = CollisionManager::GetInstance()->Raycast(center, delta / distance, distance, wallFilter);
             if (wall.isHit && wall.distance > 0.05f && wall.distance < distance - 0.1f)
-                continue;
+                return;
         }
 
         DamageEvent event;
-        event.target = hit.object;
+        event.target = target;
         event.attacker = this;
         event.damageAmount = damage_;
         event.damageType = DamageType::Explosion;
+        event.invincibilityDuration = 1.0f; // 爆風の被弾後も、通常の砲弾と同じ無敵時間を設ける。
         EventManager::GetInstance()->Dispatch(event);
-    }
+    };
+
+    if (hasDirectPlayerHit)
+        damageTarget(directHit, true);
+    for (const auto& hit : CollisionManager::GetInstance()->OverlapSphere(center, explosionRadius_, filter))
+        damageTarget(hit.object, false);
 }

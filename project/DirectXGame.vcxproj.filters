@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Engine\Editor\Cinematic" />
+    <Filter Include="Engine\Animation\Cinematic" />
     <Filter Include="繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -556,18 +558,27 @@
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\system\cinematic\GhostDirector.cpp">
-      <Filter>Game\system\cinematic</Filter>
+    <ClCompile Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.cpp">
+      <Filter>Engine\Editor\Cinematic</Filter>
     </ClCompile>
-    <ClCompile Include="game\system\cinematic\CinematicPlayer.cpp">
-      <Filter>Game\system\cinematic</Filter>
+    <ClCompile Include="engine\animation\cinematic\CinematicPlayer.cpp">
+      <Filter>Engine\Animation\Cinematic</Filter>
     </ClCompile>
-    <ClCompile Include="game\system\cinematic\CinematicSequence.cpp">
-      <Filter>Game\system\cinematic</Filter>
+    <ClCompile Include="engine\animation\cinematic\CinematicSequence.cpp">
+      <Filter>Engine\Animation\Cinematic</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\animation\cinematic\CinematicSequence.Presentation.cpp">
+      <Filter>Engine\Animation\Cinematic</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.Presentation.cpp">
+      <Filter>Engine\Editor\Cinematic</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\animation\cinematic\CinematicPlayer.Presentation.cpp">
+      <Filter>Engine\Animation\Cinematic</Filter>
     </ClCompile>
     <ClCompile Include="engine\animation\BodyAnimationClip.cpp" />
-    <ClCompile Include="game\system\cinematic\GhostDirector.Studio.cpp">
-      <Filter>Game\system\cinematic</Filter>
+    <ClCompile Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.Studio.cpp">
+      <Filter>Engine\Editor\Cinematic</Filter>
     </ClCompile>
     <ClCompile Include="engine\animation\AnimatorController.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.cpp">
@@ -801,6 +812,7 @@
     <ClCompile Include="game\scene\select\GameSelectScene.Rewards.cpp">
       <Filter>Scenes\select</Filter>
     </ClCompile>
+    <ClCompile Include="game\system\cinematic\GateEntryPresentation.cpp" />
     <ClCompile Include="game\scene\select\GameSelectScene.GateCinematic.cpp">
       <Filter>Scenes\select</Filter>
     </ClCompile>
@@ -1818,14 +1830,17 @@
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\system\cinematic\GhostDirector.h">
-      <Filter>Game\system\cinematic</Filter>
+    <ClInclude Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.h">
+      <Filter>Engine\Editor\Cinematic</Filter>
     </ClInclude>
-    <ClInclude Include="game\system\cinematic\CinematicPlayer.h">
-      <Filter>Game\system\cinematic</Filter>
+    <ClInclude Include="engine\animation\cinematic\CinematicPlayer.h">
+      <Filter>Engine\Animation\Cinematic</Filter>
     </ClInclude>
-    <ClInclude Include="game\system\cinematic\CinematicSequence.h">
-      <Filter>Game\system\cinematic</Filter>
+    <ClInclude Include="engine\animation\cinematic\CinematicSequence.h">
+      <Filter>Engine\Animation\Cinematic</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\animation\cinematic\CinematicPresentation.h">
+      <Filter>Engine\Animation\Cinematic</Filter>
     </ClInclude>
     <ClInclude Include="engine\animation\BodyAnimationClip.h" />
     <ClInclude Include="engine\animation\AnimatorController.h" />
@@ -1927,6 +1942,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PlayModeChangeTracker.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\ObjectPropertyDefinition.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyJsonBinding.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BuiltIn.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.h" />
@@ -2052,6 +2069,7 @@
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaGeyser.h">
       <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="game\system\cinematic\GateEntryPresentation.h" />
     <ClInclude Include="game\actor\gimmick\stage\GimmickStageGate.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2238,6 +2256,7 @@
     <ClInclude Include="game\actor\combat\CombatMath.h"><Filter>CombatShared</Filter></ClInclude>
     <ClInclude Include="game\actor\combat\AttackSequence.h"><Filter>CombatShared</Filter></ClInclude>
     <ClInclude Include="game\actor\combat\AttackSequenceData.h"><Filter>CombatShared</Filter></ClInclude>
+    <ClInclude Include="game\actor\combat\PlayerAttackMovement.h"><Filter>CombatShared</Filter></ClInclude>
     <ClCompile Include="game\actor\combat\AttackSequence.cpp"><Filter>CombatShared</Filter></ClCompile>
     <ClInclude Include="game\actor\combat\CombatGroundQuery.h"><Filter>CombatShared</Filter></ClInclude>
     <ClCompile Include="game\actor\combat\CombatGroundQuery.cpp"><Filter>CombatShared</Filter></ClCompile>
@@ -2258,9 +2277,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\crown\CrownBarrageCamera.h">
-      <Filter>Game\crown</Filter>
-    </ClInclude>
-    <ClInclude Include="game\crown\CrownDefeatTuning.h">
       <Filter>Game\crown</Filter>
     </ClInclude>
     <ClInclude Include="game\crown\CrownFinaleTuning.h">

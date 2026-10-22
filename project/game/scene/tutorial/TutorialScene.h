@@ -17,6 +17,7 @@
 #include "MeshRenderer.h"
 #include "game/ui/ControlsGuideOverlay.h"
 #include "game/ui/CopyStyleHud.h"
+#include "game/ui/PlayerHealthHud.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 
 #include "game/system/scene/ObjectManager.h"
@@ -211,6 +212,7 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
     CopyStyleHud copyStyleHud_;
+    PlayerHealthHud healthHud_;
 
     int loadingInitializePhase_ = 0;
     size_t loadingInitializeItemIndex_ = 0;

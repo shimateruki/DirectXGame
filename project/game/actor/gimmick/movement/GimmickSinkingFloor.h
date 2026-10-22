@@ -4,6 +4,10 @@
 /// <summary>接触後に沈み、一定の段階を経て戻る床を管理します。</summary>
 class GimmickSinkingFloor : public BaseGimmick {
   public:
+    // 表示名とは分け、既存シーンの生成IDを維持します。
+    static constexpr const char* kTypeId = "SinkingFloor";
+    static constexpr const char* kModelPath = "Stages/block";
+
     virtual ~GimmickSinkingFloor() = default;
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;

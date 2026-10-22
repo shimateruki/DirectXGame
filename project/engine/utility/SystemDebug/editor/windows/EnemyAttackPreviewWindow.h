@@ -163,6 +163,7 @@ private:
 
     /// 王冠撃破ムービーの再生設定を表示する。
     void DrawCrownDefeatSettings();
+    float GetCrownMovieDuration() const;
 
     /// 王冠ムービーの対象と再生設定を表示する。
     void DrawCrownMovieSettings();

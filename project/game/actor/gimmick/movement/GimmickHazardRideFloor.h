@@ -7,6 +7,10 @@
 /// </summary>
 class GimmickHazardRideFloor : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "HazardRideFloor";
+    static constexpr const char* kModelPath = "Stages/star_garden_ride_platform";
+
     /// 乗車床の移動距離、速度、妨害配置を初期化する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 

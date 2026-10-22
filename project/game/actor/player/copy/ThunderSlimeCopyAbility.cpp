@@ -33,11 +33,15 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             lineDirection_ = NormalizePlanar(player.GetLockOnAttackDirection());
             lineTimer_ = 0.50f;
             strikeIndex_ = 0;
+            // 射程を伸ばしても落雷の間隔が判定直径を超えないよう、発数を増やす。
+            const auto& attack = LineAttack();
+            const float span = std::max(0.0f, attack.maxRange - attack.minRange);
+            strikeCount_ = std::clamp(static_cast<int>(std::ceil(span / std::max(0.5f, attack.radius * 1.8f))) + 1, 2, 32);
             lineCooldown_ = 1.65f;
             lineHitTargets_.clear();
             player.PlaySlimeAbilityMotion("player_ability_thunder_cast", false, 1.0f, 0.04f, 0.08f);
             SpawnEffect("Resources/json/effect/effect_player_thunder_warning.json",
-                        player.GetWorldPosition() + lineDirection_ * 2.8f);
+                        player.GetWorldPosition() + lineDirection_ * LineAttack().minRange);
         } else if (input.primaryTriggered && dischargeCooldown_ <= 0.0f && lineTimer_ <= 0.0f && !charging_) {
             charging_ = true;
             chargeTime_ = sparkEffectTimer_ = sparkDamageTimer_ = 0.0f;
@@ -47,7 +51,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Update(Player& player, float deltaTime) override {
-        // 連続落雷は経過時間で五発を配置し、フレーム落ちでも未発射分を追いつかせる。
+        // 連続落雷は経過時間で配置し、フレーム落ちでも未発射分を追いつかせる。
         lineCooldown_ = std::max(0.0f, lineCooldown_ - deltaTime);
         dischargeCooldown_ = std::max(0.0f, dischargeCooldown_ - deltaTime);
         evadeCooldown_ = std::max(0.0f, evadeCooldown_ - deltaTime);
@@ -58,9 +62,12 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         lineTimer_ = std::max(0.0f, lineTimer_ - deltaTime);
         const float elapsed = 0.50f - lineTimer_;
 
-        while (strikeIndex_ < 5 && elapsed >= 0.10f + static_cast<float>(strikeIndex_) * 0.075f) {
-            const engine::Vector3 ground =
-                player.GetWorldPosition() + lineDirection_ * (2.8f + 2.2f * static_cast<float>(strikeIndex_));
+        while (strikeIndex_ < strikeCount_ &&
+               elapsed + 0.00001f >= 0.10f + 0.40f * static_cast<float>(strikeIndex_) / static_cast<float>(strikeCount_ - 1)) {
+            const auto& attack = LineAttack();
+            const float progress = static_cast<float>(strikeIndex_) / static_cast<float>(strikeCount_ - 1);
+            const float distance = attack.minRange + (attack.maxRange - attack.minRange) * progress;
+            const engine::Vector3 ground = player.GetWorldPosition() + lineDirection_ * distance;
             SpawnStrike(player, ground);
             ++strikeIndex_;
         }
@@ -76,6 +83,19 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
   private:
+    const EnemyAttackDefinition& LineAttack() const {
+        // 敵用の落雷設定を変えず、コピー用の射程・半径・威力をEditorから調整する。
+        static const EnemyAttackDefinition fallback = [] {
+            EnemyAttackDefinition attack;
+            attack.minRange = 2.8f;
+            attack.maxRange = 22.0f;
+            attack.radius = 1.45f;
+            attack.damage = 10.0f;
+            return attack;
+        }();
+        return FindAttackOrFallback(profile_, "player_line_lightning", fallback);
+    }
+
     void ClearSparkEffects() {
         // この能力のEffectScopeだけを止め、他の効果へ干渉しない。
         if (auto* effects = MeshEffectManager::GetInstance())
@@ -101,7 +121,18 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         if (!primaryHeld_) {
             // 弾の寿命と衝突は共通BulletManagerに任せ、能力解除後も安全に完走させます。
             const engine::Vector3 direction = NormalizePlanar(player.GetLockOnAttackDirection());
+            const float radius = 0.45f + chargeTime_ * 0.40f;
+            engine::Vector3 muzzle = center;
+            PhysicsQueryFilter groundFilter;
+            groundFilter.mask = CollisionCategories::Get("ground");
+            groundFilter.ignoredObject = &player;
+            const auto floor = CollisionManager::GetInstance()->Raycast(center, {0.0f, -1.0f, 0.0f}, radius + 1.0f, groundFilter);
+            if (floor.isHit && floor.normal.y > 0.5f)
+                muzzle.y = std::max(muzzle.y, floor.hitPoint.y + radius + 0.10f);
             BulletVisualConfig visual;
+            // 表示倍率2倍を衝突半径へ掛けず、足元の床と重ならない高さから撃つ。
+            visual.collisionRadiusIsWorld = true;
+            visual.destroyOnSolidCastHit = true;
             visual.materialType = 18;
             visual.effectType = 2.0f;
             visual.color = {1.0f, 0.95f, 0.3f, 1.0f};
@@ -111,8 +142,8 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             visual.billboardScale = 1.2f;
             visual.trailPreset = "player_thunder_evade_sparks";
             visual.impactPreset = "player_thunder_strike_impact";
-            BulletManager::GetInstance()->Fire(center, direction * 28.0f, CollisionCategories::Get("player_attack"), CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"),
-                                               "Primitives/sphere", 0.45f + chargeTime_ * 0.40f, 0.9f, visual,
+            BulletManager::GetInstance()->Fire(muzzle, direction * 28.0f, CollisionCategories::Get("player_attack"), CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"),
+                                               "Primitives/sphere", radius, 0.9f, visual,
                                                7.0f + 13.0f * chargeTime_, {}, DamageType::Electric);
             StopCharge(player);
             player.PlaySlimeAbilityMotion("player_ability_thunder_cast", false, 1.0f, 0.02f, 0.08f);
@@ -170,11 +201,11 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         filter.ignoredObject = &player;
 
         for (const PhysicsOverlapHit& hit :
-             CollisionManager::GetInstance()->OverlapSphere(ground + engine::Vector3{0.0f, 1.1f, 0.0f}, 1.45f, filter)) {
+             CollisionManager::GetInstance()->OverlapSphere(ground + engine::Vector3{0.0f, 1.1f, 0.0f}, LineAttack().radius, filter)) {
             engine::Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !lineHitTargets_.insert(target).second)
                 continue;
-            DamageEnemy(player, target, 10.0f, DamageType::Electric,
+            DamageEnemy(player, target, LineAttack().damage, DamageType::Electric,
                         {lineDirection_.x * 6.5f, 7.0f, lineDirection_.z * 6.5f});
         }
     }
@@ -217,6 +248,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     float sparkEffectTimer_ = 0.0f;
     float sparkDamageTimer_ = 0.0f;
     int strikeIndex_ = 0;
+    int strikeCount_ = 9;
 };
 } // namespace
 

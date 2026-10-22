@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "c620d9022a0ff999aa2f6f94d66bf85d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/star/star_silver.gltf",
+  "version": 1
+}

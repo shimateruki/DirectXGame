@@ -1,4 +1,5 @@
 #include "GimmickPhaseFlipFloor.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
 #include <algorithm>
@@ -23,6 +24,31 @@ void GimmickPhaseFlipFloor::Initialize(engine::Object3dCommon* common, const std
     param_->maxCount = 3;
     param_->interval = 1.0f;
     param_->startActive = true;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickPhaseFlipFloor;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "順番反転床",
+        "床番号1→2→3…の順に、当たり判定を残したまま180度回転します。");
+    using Parameter = engine::Object3d::EntityParameter;
+
+    // 表示だけ1始まりにし、従来のcolorType（0始まり）をそのまま保存します。
+    properties.Accessor<int>("床番号", "colorType", "param.colorType",
+        [](const Self& object) { return object.param_ ? object.param_->colorType : 0; },
+        [](Self& object, const int& value) {
+            if (!object.param_) object.param_.emplace();
+            object.param_->colorType = std::clamp(value, 0, (std::max)(1, object.param_->maxCount) - 1);
+        }, 0, 15, nullptr, {}, {.integerDisplayOffset = 1, .maximum = +[](const Self& object) {
+            return static_cast<float>(object.param_ ? (std::max)(1, object.param_->maxCount) - 1 : 0);
+        }});
+    properties.Accessor<int>("全体の床数", "maxCount", "param.maxCount",
+        [](const Self& object) { return object.param_ ? object.param_->maxCount : 3; },
+        [](Self& object, const int& value) {
+            if (!object.param_) object.param_.emplace();
+            object.param_->maxCount = std::clamp(value, 1, 16);
+            object.param_->colorType = std::clamp(object.param_->colorType, 0, object.param_->maxCount - 1);
+        }, 1, 16);
+    properties.Parameter("1フェーズの時間", "interval", &Parameter::interval, 0.1f, 30.0f);
+    properties.Parameter("正方向に回転", "startActive", &Parameter::startActive);
 }
 
 void GimmickPhaseFlipFloor::Update(float deltaTime) {

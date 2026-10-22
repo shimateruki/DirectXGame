@@ -139,7 +139,22 @@ public:
     bool IsInputEnabled() const { return isInputEnabled_; }
 
     /// <summary>追従対象を設定する。対象は所有しない。</summary>
-    void SetFollowTarget(engine::Object3d* target) { followObject_ = target; }
+    void SetFollowTarget(engine::Object3d* target) {
+        if (followObject_ != target) {
+            hasFollowHeight_ = false;
+            followTargetGrounded_ = true;
+        }
+        followObject_ = target;
+    }
+
+    /// <summary>ゲーム側が確定した接地状態を渡す。カメラはキャラクター型に依存しない。</summary>
+    void SetFollowTargetGrounded(bool grounded) { followTargetGrounded_ = grounded; }
+
+    /// <summary>ジャンプ中の上下追従を抑え、通常の横追従と手動回転は維持する。</summary>
+    void SetJumpHeightStabilization(bool enabled, float maxRise = 8.0f) {
+        stabilizeJumpHeight_ = enabled;
+        jumpHeightAllowance_ = std::clamp(maxRise, 1.0f, 30.0f);
+    }
 
     /// <summary>注視・ロックオン対象を設定する。対象は所有しない。</summary>
     void SetLockOnTarget(engine::Object3d* target) { targetObject_ = target; }
@@ -337,6 +352,15 @@ private:
     engine::Vector3 smoothTarget_ = { 0.0f, 0.0f, 0.0f };
     engine::Vector3 smoothEye_ = { 0.0f, 0.0f, 0.0f };
     bool isCameraInitialized_ = false;
+    engine::Vector3 previousLockOnPlayerPosition_ = { 0.0f, 0.0f, 0.0f };
+    bool hasLockOnPlayerPosition_ = false;
+
+    // 接地時の高さを空中へ引き継ぐ。大きな落下と上昇は追い、画面外への離脱を防ぐ。
+    bool stabilizeJumpHeight_ = true;
+    bool followTargetGrounded_ = true;
+    bool hasFollowHeight_ = false;
+    float followHeight_ = 0.0f;
+    float jumpHeightAllowance_ = 8.0f;
 
     // 固定追従のずれ、ズーム距離とその上下限、一人称の視点ずれ。
     engine::Vector3 fixedOffset_ = { 0.0f, 5.0f, -10.0f };

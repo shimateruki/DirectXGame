@@ -4,6 +4,10 @@
 // 踏まれた床が揺れて落下し、次の床へ連鎖する足場です。
 class GimmickChainCollapseFloor : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "ChainCollapseFloor";
+    static constexpr const char* kModelPath = "Stages/block";
+
     virtual ~GimmickChainCollapseFloor() = default;
 
     /// 配置床の初期姿勢と連鎖先を準備する。

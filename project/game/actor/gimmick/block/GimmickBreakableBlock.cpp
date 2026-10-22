@@ -1,4 +1,5 @@
 #include "GimmickBreakableBlock.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "EnemyBomb.h"
 #include "Player.h"
@@ -34,6 +35,14 @@ void GimmickBreakableBlock::Initialize(engine::Object3dCommon* common, const std
     isBroken_ = false;
     SetClassName("Gimmick");
     SetGimmickType("BreakableBlock");
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickBreakableBlock;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "破壊ブロック",
+        "プレイヤーの爆風で破壊できます。衝撃による破壊だけをactionModeで追加指定します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("追加の破壊条件", "actionMode", &Parameter::actionMode, 0.0f, 7.0f,
+        nullptr, {"爆風のみ", "汎用衝撃でも破壊", "ピンクのバウンド落下でも破壊"}, {.values = {0, 6, 7}});
 }
 
 void GimmickBreakableBlock::Update(float deltaTime) {
@@ -102,7 +111,8 @@ void GimmickBreakableBlock::Break() {
     SetIsVisible(false);
     isDead = true;
 
-    engine::Vector3 myPos = GetTranslate();
+    // 親の地形を含む座標から破片と閃光を出し、ローカル原点へのずれを防ぎます。
+    engine::Vector3 myPos = GetWorldPosition();
 
     // 屈折マテリアルのガラスは、炎を残さず透明破片と短い閃光で割れた瞬間を見せる。
     if (GetMaterialType() == 10 || GetModelName() == "Stages/star_garden_glass_panel") {

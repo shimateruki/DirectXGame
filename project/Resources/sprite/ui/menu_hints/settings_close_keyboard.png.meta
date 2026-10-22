@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ce09ade4e384425a9ad954e735812873",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/menu_hints/settings_close_keyboard.png",
+  "version": 1
+}

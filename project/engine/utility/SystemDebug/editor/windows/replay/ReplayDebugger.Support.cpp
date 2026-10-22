@@ -101,7 +101,8 @@ json EntityParameterToJson(const engine::Object3d::EntityParameter& value) {
         { "fallDuration", value.fallDuration }, { "colorType", value.colorType },
         { "switchMode", value.switchMode }, { "actionMode", value.actionMode },
         { "targetScene", value.targetScene }, { "moveAmount", value.moveAmount },
-        { "moveSpeed", value.moveSpeed }, { "startActive", value.startActive },
+        { "moveSpeed", value.moveSpeed }, { "ringWaveSpeed", value.ringWaveSpeed },
+        { "startActive", value.startActive },
         { "returnOnOff", value.returnOnOff },
     };
 }
@@ -136,6 +137,7 @@ engine::Object3d::EntityParameter JsonToEntityParameter(const json& value) {
     result.targetScene = value.value("targetScene", result.targetScene);
     result.moveAmount = value.value("moveAmount", result.moveAmount);
     result.moveSpeed = value.value("moveSpeed", result.moveSpeed);
+    result.ringWaveSpeed = value.value("ringWaveSpeed", result.ringWaveSpeed);
     result.startActive = value.value("startActive", result.startActive);
     result.returnOnOff = value.value("returnOnOff", result.returnOnOff);
     return result;

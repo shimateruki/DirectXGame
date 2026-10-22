@@ -1,4 +1,4 @@
-﻿#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.Internal.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.Internal.h"
 
 using namespace CameraEditorImplementation;
 
@@ -121,7 +121,11 @@ void CameraEditor::Update(engine::Object3d* player, bool isLockingOn) {
     if (!camera)
         return;
 
+    camera->SetJumpHeightStabilization(settings_.stabilizeJumpHeight, settings_.jumpHeightAllowance);
+
     if (settings_.currentMode == Mode::Game && isLockingOn) {
+        // ロックオン中もエディターで調整した視点オフセットだけは即時反映する。
+        camera->SetLockOnOffset(settings_.lockOnOffset);
         return;
     }
 

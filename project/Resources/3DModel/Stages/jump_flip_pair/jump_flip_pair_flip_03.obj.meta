@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "55f33c23484248f0a3152642b897b759",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/jump_flip_pair/jump_flip_pair_flip_03.obj",
+  "version": 1
+}

@@ -9,6 +9,10 @@
 // 警告、噴出、休止を周期的に繰り返すマグマ噴出口です。
 class GimmickMagmaGeyser : public BaseGimmick {
   public:
+    // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
+    static constexpr const char* kTypeId = "MagmaGeyser";
+    static constexpr const char* kModelPath = "Stages/magma_vent";
+
     /// 噴出口のモデル、周期、攻撃予告を初期化する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 

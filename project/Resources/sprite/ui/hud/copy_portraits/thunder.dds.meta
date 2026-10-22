@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9bdd2df0c34b5c2894faf727cb26e1d6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/copy_portraits/thunder.dds",
+  "version": 1
+}

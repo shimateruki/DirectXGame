@@ -1,4 +1,5 @@
 #include "GimmickSeesawFloor.h"
+#include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include <algorithm>
 #include <cmath>
@@ -13,6 +14,11 @@ void GimmickSeesawFloor::Initialize(engine::Object3dCommon* common, const std::s
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetScale({4.0f, 0.35f, 1.4f});
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickSeesawFloor;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "シーソー床",
+        "接触位置に応じて傾く床です。位置と大きさはTransformで調整します。実行中の接触時計や傾きは編集設定として公開しません。");
 }
 
 // 接触が途切れると目標傾きを水平へ戻し、急な角度変化を補間します。

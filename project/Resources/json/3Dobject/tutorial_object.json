@@ -198,9 +198,9 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableLighting": true,
-            "enableNormalMap": true,
+            "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.550000011920929,
+            "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -222,7 +222,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 33,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
@@ -230,8 +230,8 @@
             "modelName": "Stages/tutorial_terrain/tutorial_soil.obj",
             "myEventID": -1,
             "name": "Tutorial_SandBase",
-            "normalMapPath": "Resources/texture/PBR/TutorialTerrain/tutorial_soil_normal.png",
-            "ormMapPath": "Resources/texture/PBR/TutorialTerrain/tutorial_soil_orm.png",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
@@ -256,7 +256,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.9,
             "saveCategory": "Object",
             "scale": [
                 58.0,
@@ -265,7 +265,7 @@
             ],
             "tag": "",
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/TutorialTerrain/tutorial_soil_albedo.png",
+            "texturePath": "",
             "textureTiling": [
                 1.0,
                 1.0
@@ -326,9 +326,9 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableLighting": true,
-            "enableNormalMap": true,
+            "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.25,
+            "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -350,22 +350,22 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 29,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Stages/tutorial_terrain/tutorial_grass.obj",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "Tutorial_GrassSquare",
-            "normalMapPath": "Resources/texture/PBR/TutorialTerrain/tutorial_grass_normal.png",
-            "ormMapPath": "Resources/texture/PBR/TutorialTerrain/tutorial_grass_orm.png",
-            "parentGuid": "",
-            "parentName": "",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
             "particleName": "",
             "position": [
                 0.0,
-                -1.5,
+                1.0,
                 0.0
             ],
             "quaternion": [
@@ -384,16 +384,16 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.9,
             "saveCategory": "Object",
             "scale": [
-                54.0,
-                0.2199999988079071,
-                54.0
+                1.0,
+                0.10999999940395355,
+                1.0
             ],
             "tag": "",
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/TutorialTerrain/tutorial_grass_albedo.png",
+            "texturePath": "",
             "textureTiling": [
                 1.0,
                 1.0
@@ -2265,6 +2265,3718 @@
                 "waveHeight": 0.18000000715255737,
                 "waveSpeed": 0.2800000011920929
             }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.00257951021194458,
+                    0.4099999964237213,
+                    -0.008457988500595093
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.4606184959411621,
+                    0.4099999964237213,
+                    0.5713629722595215
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "529a5adb-91ff-5b62-9459-2cea0e1f7281",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tutorial_terrain/tutorial_grass_patch_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_GrassPatch_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.46551724137931033,
+                1.12,
+                -0.46551724137931033
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.017241379310344827,
+                0.5,
+                0.017241379310344827
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.00257951021194458,
+                    0.4099999964237213,
+                    -0.008457988500595093
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.4606184959411621,
+                    0.4099999964237213,
+                    0.5713629722595215
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "7e19fc50-ac2f-5d0f-ae48-e2f3471f5d86",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tutorial_terrain/tutorial_grass_patch_1.obj",
+            "myEventID": -1,
+            "name": "Tutorial_GrassPatch_1",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.46551724137931033,
+                1.12,
+                -0.46551724137931033
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.017241379310344827,
+                0.5,
+                0.017241379310344827
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.00257951021194458,
+                    0.4099999964237213,
+                    -0.008457988500595093
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.4606184959411621,
+                    0.4099999964237213,
+                    0.5713629722595215
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "0d46b3a0-7dad-5215-aab7-e82d107cf1f4",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tutorial_terrain/tutorial_grass_patch_2.obj",
+            "myEventID": -1,
+            "name": "Tutorial_GrassPatch_2",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.46551724137931033,
+                1.12,
+                0.46551724137931033
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.017241379310344827,
+                0.5,
+                0.017241379310344827
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.00257951021194458,
+                    0.4099999964237213,
+                    -0.008457988500595093
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.4606184959411621,
+                    0.4099999964237213,
+                    0.5713629722595215
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "9f5d5ca7-3503-5482-9d44-4a7ec07a7a91",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tutorial_terrain/tutorial_grass_patch_3.obj",
+            "myEventID": -1,
+            "name": "Tutorial_GrassPatch_3",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.46551724137931033,
+                1.12,
+                0.46551724137931033
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.017241379310344827,
+                0.5,
+                0.017241379310344827
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "b714d28b-54d9-5837-afe2-b4339fe63554",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_00",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.7413793103448276,
+                1.115,
+                -0.7413793103448276
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.018965517241379314,
+                0.66,
+                0.018965517241379314
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "3b0942c2-b16f-54af-a0a6-3973d5133b81",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_1.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_01",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.3103448275862069,
+                1.115,
+                -0.7068965517241379
+            ],
+            "quaternion": [
+                0.0,
+                0.9320331699599413,
+                0.0,
+                0.3623729709766211
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                137.508,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.021034482758620694,
+                0.7320000000000001,
+                0.021034482758620694
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "778db09f-0a7b-55f6-80e3-d8c833051f68",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_2.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_02",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.13793103448275862,
+                1.115,
+                -0.7758620689655172
+            ],
+            "quaternion": [
+                0.0,
+                0.675487257694284,
+                0.0,
+                -0.7373716598111539
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                275.016,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02310344827586207,
+                0.804,
+                0.02310344827586207
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "04d3702b-ce0a-5574-ad7d-0175750ac36d",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_3.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_03",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.6206896551724138,
+                1.115,
+                -0.7241379310344828
+            ],
+            "quaternion": [
+                0.0,
+                0.44247652110488517,
+                0.0,
+                0.8967800891360814
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                52.524,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02517241379310345,
+                0.876,
+                0.02517241379310345
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "9286ecf0-dccc-5379-b1d8-92077315bf63",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_4.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_04",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.7413793103448276,
+                1.115,
+                -0.06896551724137931
+            ],
+            "quaternion": [
+                0.0,
+                0.9961703207746375,
+                0.0,
+                -0.08743392938531241
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                190.03200000000004,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.018965517241379314,
+                0.66,
+                0.018965517241379314
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "efc4ae49-bb31-5d9b-8ddc-91ce1600c9d5",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_05",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.3275862068965517,
+                1.115,
+                -0.29310344827586204
+            ],
+            "quaternion": [
+                0.0,
+                0.2794938763707922,
+                0.0,
+                -0.9601474746471129
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                327.5400000000001,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.021034482758620694,
+                0.7320000000000001,
+                0.021034482758620694
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "34fb927b-8fb9-52a1-ab05-95b6286529d4",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_1.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_06",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.13793103448275862,
+                1.115,
+                -0.2413793103448276
+            ],
+            "quaternion": [
+                0.0,
+                0.7936082680741242,
+                0.0,
+                0.6084290565418362
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                105.048,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02310344827586207,
+                0.804,
+                0.02310344827586207
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "28d2a6c7-e205-5387-926a-6e97a96d846e",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_2.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_07",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.6724137931034483,
+                1.115,
+                -0.29310344827586204
+            ],
+            "quaternion": [
+                0.0,
+                0.854658248158055,
+                0.0,
+                -0.5191909849519775
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                242.55600000000004,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02517241379310345,
+                0.876,
+                0.02517241379310345
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "f6cf3964-f7c3-58ee-8099-00975e8f742f",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_3.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_08",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.7586206896551724,
+                1.115,
+                0.1896551724137931
+            ],
+            "quaternion": [
+                0.0,
+                0.17419817096470755,
+                0.0,
+                0.9847106159844884
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                20.064000000000078,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.018965517241379314,
+                0.66,
+                0.018965517241379314
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "df77d413-a48f-52be-b47f-a0bd2111762e",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_4.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_09",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.27586206896551724,
+                1.115,
+                0.22413793103448276
+            ],
+            "quaternion": [
+                0.0,
+                0.9809076656604037,
+                0.0,
+                0.19447403798105714
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                157.57200000000012,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.021034482758620694,
+                0.7320000000000001,
+                0.021034482758620694
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "6d6feccb-a6e3-56eb-8e3f-002dbc5f7783",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_10",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.1206896551724138,
+                1.115,
+                0.27586206896551724
+            ],
+            "quaternion": [
+                0.0,
+                0.5367106791534969,
+                0.0,
+                -0.8437663461424567
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                295.08000000000015,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02310344827586207,
+                0.804,
+                0.02310344827586207
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "e986557b-0a4f-50be-8ef1-4ba78b53c085",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_1.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_11",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.6206896551724138,
+                1.115,
+                0.22413793103448276
+            ],
+            "quaternion": [
+                0.0,
+                0.5919287789409385,
+                0.0,
+                0.8059902733045167
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                72.58800000000019,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02517241379310345,
+                0.876,
+                0.02517241379310345
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "6a8ce068-ba0d-53d4-87c8-495a4ca30291",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_2.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_12",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.7068965517241379,
+                1.115,
+                0.6724137931034483
+            ],
+            "quaternion": [
+                0.0,
+                0.9657086596162802,
+                0.0,
+                -0.25962816631122215
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                210.096,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.018965517241379314,
+                0.66,
+                0.018965517241379314
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "159549ad-a4c9-50e7-b7c5-2b0c04b29013",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_3.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_13",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.1896551724137931,
+                1.115,
+                0.6551724137931034
+            ],
+            "quaternion": [
+                0.0,
+                0.10796465322506624,
+                0.0,
+                -0.9941547332553374
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                347.60400000000004,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.021034482758620694,
+                0.7320000000000001,
+                0.021034482758620694
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "c3f4464c-b8a6-5a39-b0d5-97101ad3f9e5",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_4.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_14",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.2413793103448276,
+                1.115,
+                0.6896551724137931
+            ],
+            "quaternion": [
+                0.0,
+                0.8874617153170243,
+                0.0,
+                0.46088144228919087
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                125.11200000000008,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02310344827586207,
+                0.804,
+                0.02310344827586207
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.20587599277496338,
+                    0.37477898597717285,
+                    0.0542370080947876
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.9567819833755493,
+                    0.37477898597717285,
+                    1.0689640045166016
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "864020d7-6ab3-5de5-8b4d-828a6f4dcb3e",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_flowers_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_FlowerPatch_15",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.6724137931034483,
+                1.115,
+                0.7241379310344828
+            ],
+            "quaternion": [
+                0.0,
+                0.7511489300399412,
+                0.0,
+                -0.6601327782346909
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                262.62000000000035,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.02517241379310345,
+                0.876,
+                0.02517241379310345
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "e3f00584-56ea-57aa-ac36-994899024489",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_00",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.5862068965517241,
+                1.17,
+                -0.4827586206896552
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.011551724137931036,
+                0.335,
+                0.011551724137931036
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "e745d44e-b88d-5ee6-99d7-2d4294235fcf",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_1.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_01",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.05172413793103448,
+                1.17,
+                -0.5172413793103449
+            ],
+            "quaternion": [
+                0.0,
+                0.9320331699599413,
+                0.0,
+                0.3623729709766211
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                137.508,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.012758620689655172,
+                0.37,
+                0.012758620689655172
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "59354d55-a892-58d1-945f-b5830556fdd1",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_2.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_02",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.4482758620689655,
+                1.17,
+                -0.5
+            ],
+            "quaternion": [
+                0.0,
+                0.675487257694284,
+                0.0,
+                -0.7373716598111539
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                275.016,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.01396551724137931,
+                0.405,
+                0.01396551724137931
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "ad0307cd-b07f-5936-92d8-af6e4596c1d4",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_3.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_03",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.7758620689655172,
+                1.17,
+                -0.4482758620689655
+            ],
+            "quaternion": [
+                0.0,
+                0.44247652110488517,
+                0.0,
+                0.8967800891360814
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                52.524,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.01517241379310345,
+                0.44000000000000006,
+                0.01517241379310345
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "5f755537-bf9a-53b7-ae4c-29857bc56d23",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_4.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_04",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.5689655172413793,
+                1.17,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.9961703207746375,
+                0.0,
+                -0.08743392938531241
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                190.03200000000004,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.011551724137931036,
+                0.335,
+                0.011551724137931036
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "cdd1f8f1-9a6a-509e-aee2-37f0d0b8369a",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_05",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.08620689655172414,
+                1.17,
+                -0.05172413793103448
+            ],
+            "quaternion": [
+                0.0,
+                0.2794938763707922,
+                0.0,
+                -0.9601474746471129
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                327.5400000000001,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.012758620689655172,
+                0.37,
+                0.012758620689655172
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "f590419d-2bc7-536a-b1f3-8267070d7053",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_1.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_06",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.43103448275862066,
+                1.17,
+                -0.06896551724137931
+            ],
+            "quaternion": [
+                0.0,
+                0.7936082680741242,
+                0.0,
+                0.6084290565418362
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                105.048,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.01396551724137931,
+                0.405,
+                0.01396551724137931
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "f1a04852-e4b5-5f0e-b0f8-aa257294cde6",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_2.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_07",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.8275862068965517,
+                1.17,
+                -0.017241379310344827
+            ],
+            "quaternion": [
+                0.0,
+                0.854658248158055,
+                0.0,
+                -0.5191909849519775
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                242.55600000000004,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.01517241379310345,
+                0.44000000000000006,
+                0.01517241379310345
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "c99e1003-6833-5b03-b465-4566c056f07d",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_3.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_08",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.5862068965517241,
+                1.17,
+                0.46551724137931033
+            ],
+            "quaternion": [
+                0.0,
+                0.17419817096470755,
+                0.0,
+                0.9847106159844884
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                20.064000000000078,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.011551724137931036,
+                0.335,
+                0.011551724137931036
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "aeff0ada-aa96-5be8-b020-06bf8f866dab",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_4.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_09",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                -0.05172413793103448,
+                1.17,
+                0.4827586206896552
+            ],
+            "quaternion": [
+                0.0,
+                0.9809076656604037,
+                0.0,
+                0.19447403798105714
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                157.57200000000012,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.012758620689655172,
+                0.37,
+                0.012758620689655172
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "983b585f-857b-50c4-9162-b67540e8e205",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_0.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_10",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.4482758620689655,
+                1.17,
+                0.5172413793103449
+            ],
+            "quaternion": [
+                0.0,
+                0.5367106791534969,
+                0.0,
+                -0.8437663461424567
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                295.08000000000015,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.01396551724137931,
+                0.405,
+                0.01396551724137931
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.49919450283050537,
+                    0.5115350484848022,
+                    0.1876780390739441
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.031149387359619,
+                    0.7897080183029175,
+                    1.2909519672393799
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "90654a27-4ebe-56c4-976b-b50a711629d3",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 34,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/entry_meadow/bed_rocks_1.obj",
+            "myEventID": -1,
+            "name": "Tutorial_StonePatch_11",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "parentName": "Tutorial_SandBase",
+            "particleName": "",
+            "position": [
+                0.8103448275862069,
+                1.17,
+                0.4827586206896552
+            ],
+            "quaternion": [
+                0.0,
+                0.5919287789409385,
+                0.0,
+                0.8059902733045167
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                72.58800000000019,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.01517241379310345,
+                0.44000000000000006,
+                0.01517241379310345
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
         }
     ]
 }

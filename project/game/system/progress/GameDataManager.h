@@ -23,7 +23,7 @@ class GameDataManager {
   public:
     static constexpr int kSaveSlotCount = 3;
     static constexpr int kStarCoinsPerStage = 3;
-    static constexpr int kStartingLives = 3;
+    static constexpr int kStartingLives = 20;
     static constexpr int kMaxLives = 99;
     static constexpr int kMaxCoins = 9999;
     static constexpr int kCoinsPerLife = 100;

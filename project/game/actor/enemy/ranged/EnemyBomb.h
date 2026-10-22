@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "BaseEnemy.h"
 
 // プレイヤーに接近して点火する爆弾型の敵。運搬・投擲後も導火線の残り時間を引き継ぎます。
@@ -19,6 +19,9 @@ class EnemyBomb : public BaseEnemy {
 
     // 追跡、導火線、投擲後の移動を状態に応じて進める。
     void Update(float deltaTime) override;
+
+    /// 投げ始めの速度を設定し、爆弾専用の接地処理を使う。
+    void BeginThrown(const engine::Vector3& initialVelocity) override;
 
     // プレイヤーの爆弾が敵に当たったら即座に爆発し、通常の接触は基底クラスへ渡す。
     bool OnCollision(engine::Object3d* other) override;
@@ -49,8 +52,8 @@ class EnemyBomb : public BaseEnemy {
     // 爆発状態へ移し、所有者に応じた一時的な爆発判定と演出を発生させる。
     void Explode();
 
-    // 前フレーム位置からの通過を含めて衝突を検査する。
-    void ResolveSweptCollision(const engine::Vector3& previousPosition);
+    // 重力・掃引・接地減速を同じMotorで一度ずつ処理する。
+    void UpdateBombPhysics(float deltaTime);
 
   private:
     State state_ = State::Chase;

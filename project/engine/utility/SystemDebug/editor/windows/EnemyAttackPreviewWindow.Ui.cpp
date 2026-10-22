@@ -16,7 +16,6 @@
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "game/crown/CrownFinaleTuning.h"
-#include "game/crown/CrownDefeatTuning.h"
 #include "EnemyGiantSlime.h"
 #include "game/actor/enemy/boss/magma/EnemyMagmaSlime.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
@@ -676,7 +675,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieSettings() {
         playing_=false;
         crownDefeatMode_=mode==1;
         profileStatus_.clear();
-        loopDuration_=crownDefeatMode_?CrownDefeatTuning::Get().duration:CrownFinaleTuning::Get().movieDuration;
+        loopDuration_=GetCrownMovieDuration();
     }
 
     ImGui::TextWrapped("ステージ3を編集モードで開いてください。専用の複製を使って本番の演出を再生します。");
@@ -704,35 +703,15 @@ void EnemyAttackPreviewWindow::DrawCrownMovieSettings() {
     }
     ImGui::SeparatorText("本番に反映する演出設定");
     auto& t = CrownFinaleTuning::Get();
-    bool changed = ImGui::SliderFloat("ムービーの長さ", &t.movieDuration, 12.0f,24.0f,"%.2f 秒");
-    auto timeControl = [&](const char* label,float& ratio,float lo,float hi) {
-        float seconds=ratio*t.movieDuration;
-
-        if (ImGui::SliderFloat(label,&seconds,lo*t.movieDuration,hi*t.movieDuration,"%.2f 秒")) {
-            ratio=seconds/t.movieDuration;
-            changed=true;
-        }
-    };
-
-    timeControl("王冠の破断",t.movieFragmentBreakTime,.03f,.10f);
-    timeControl("欠片の着地",t.movieFragmentLandTime,.14f,.28f);
-    timeControl("吸い込み開始",t.movieFragmentPullTime,.28f,.40f);
-    timeControl("欠片を体内へ取り込む",t.movieFragmentAbsorbTime,.40f,.49f);
-    timeControl("ボスの暴走・衝撃波",t.movieRageTime,0.235f,0.305f);
-    timeControl("金色の体の形成",t.movieBodyTime,0.475f,0.545f);
-    timeControl("王冠の形成",t.movieCrownTime,0.565f,0.635f);
-    timeControl("翼の形成",t.movieWingsTime,0.645f,0.715f);
-    timeControl("踏み切り・脱出",t.movieEscapeTime,0.725f,0.795f);
-    timeControl("最終ステージへの着地",t.movieArriveTime,0.895f,0.965f);
+    ImGui::TextWrapped("装飾・翼・消失・カメラ・黒帯は、演出タイムラインの crown_finale で編集します。ゲーム処理の節目も同素材のSignalを使います。");
+    if (ImGui::Button("継承の演出素材を再読込") && enabled_) RestartPreview();
+    bool changed = false;
     changed |= ImGui::SliderFloat("欠片までの距離",&t.movieFragmentDistance,1.5f,5.5f,"%.2f m");
     changed |= ImGui::SliderFloat("欠片の大きさ",&t.movieFragmentScale,.65f,1.5f,"%.2f 倍");
     changed |= ImGui::SliderFloat("落下の弧の高さ",&t.movieFragmentFallArc,0.0f,6.0f,"%.2f m");
-    changed |= ImGui::SliderFloat("寄りのカメラ距離",&t.movieFragmentCameraDistance,.7f,1.5f,"%.2f 倍");
     changed |= ImGui::SliderFloat("脱出の高さ",&t.escapeHeight,18.0f,60.0f,"%.1f m");
-    changed |= ImGui::SliderFloat("カメラの揺れ",&t.movieShake,0.0f,2.0f,"%.2f");
-    changed |= ImGui::SliderFloat("翼の大きさ",&t.movieWingScale,.5f,2.0f,"%.2f 倍");
     t.Sanitize();
-    loopDuration_=t.movieDuration;
+    loopDuration_=GetCrownMovieDuration();
 
     if (changed && enabled_) {
         // 距離変更も開始位置から取り直し、今の確認時刻へ復元します。
@@ -749,7 +728,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieSettings() {
 
     if (ImGui::Button("設定を再読込")) {
         t.Load();
-        loopDuration_=t.movieDuration;
+        loopDuration_=GetCrownMovieDuration();
 
         if (enabled_) {
             ClearPreviewTransientState();
@@ -764,38 +743,12 @@ void EnemyAttackPreviewWindow::DrawCrownMovieSettings() {
 }
 
 void EnemyAttackPreviewWindow::DrawCrownDefeatSettings() {
-    // 最終形態の撃破演出を攻撃設定から調整し、プレビューと実戦を一致させる。
 #ifdef USE_IMGUI
-    ImGui::SeparatorText("最終撃破の演出設定");
-    auto& t=CrownDefeatTuning::Get();
-    bool changed=ImGui::SliderFloat("ムービーの長さ",&t.duration,9,18,"%.2f 秒");
-    auto time=[&](const char* label,float& ratio,float lo,float hi) {
-        float seconds=ratio*t.duration;
-
-        if(ImGui::SliderFloat(label,&seconds,lo*t.duration,hi*t.duration,"%.2f 秒")) {
-            ratio=seconds/t.duration;
-            changed=true;
-        }
-    };
-
-    time("王冠の破砕",t.rupture,.22f,.34f);
-    time("力が抜け始める",t.shrink,t.rupture+.10f,.52f);
-    time("小スライムになる",t.settle,t.shrink+.12f,.72f);
-    time("王の勝利カット",t.victory,t.settle+.08f,.88f);
-    changed|=ImGui::SliderFloat("破片の広がり",&t.spread,.5f,1.8f,"%.2f 倍");
-    changed|=ImGui::SliderFloat("カメラの距離",&t.cameraDistance,.8f,1.4f,"%.2f 倍");
-    changed|=ImGui::SliderFloat("衝撃の揺れ",&t.shake,0,2,"%.2f 倍");
-    changed|=ImGui::SliderFloat("発光・粒子の強さ",&t.energy,.4f,1.8f,"%.2f 倍");
-    t.Sanitize();
-    loopDuration_=t.duration;
-    if(changed && enabled_)
-        SeekPreview(elapsedTime_);
-    if(ImGui::Button("撃破設定を保存"))
-        profileStatus_=t.Save()?"保存しました。本番にも反映されます。":"保存できませんでした。";
-    ImGui::SameLine();if(ImGui::Button("撃破設定を再読込")) {t.Load();loopDuration_=t.duration;if(enabled_)SeekPreview(0);}
-    ImGui::TextWrapped("%s",profileStatus_.c_str());
-    ImGui::TextWrapped("火花はGPUパーティクルの crown_defeat_sparks、破砕時の光はVFXシーケンサーの crown_defeat_rupture_cue で調整できます。");
-    ImGui::TextWrapped("本番では撃破完了後にクリアを保存します。プレビューは専用の複製を使い、セーブや撃破通知を行いません。");
+    ImGui::SeparatorText("最終撃破の演出素材");
+    ImGui::TextWrapped("演出タイムラインで crown_defeat を読み込んで編集してください。部品・色・発光・消失・カメラ・黒帯・粒子を同じ素材に保存します。");
+    ImGui::TextWrapped("旧調整JSONへの二重保存は不要です。保存後は次のボタンで本番と同じ素材を再読込できます。");
+    if (ImGui::Button("撃破の演出素材を再読込") && enabled_) RestartPreview();
+    ImGui::TextWrapped("このプレビューでは撃破・クリア保存を確定しません。停止時に複製を破棄して元の編集状態へ戻します。");
 #endif
 }
 
@@ -1074,6 +1027,20 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
             changed |= ImGui::DragFloat("キャンセル開始", &editedAttack->cancelWindowStart, 0.01f, 0.0f, 60.0f, "%.2f sec");
             changed |= ImGui::DragFloat("キャンセル終了", &editedAttack->cancelWindowEnd, 0.01f, 0.0f, 60.0f, "%.2f sec");
             ImGui::TextDisabled("開始からの秒数。0 / 0 の場合はキャンセル不可です。");
+            ImGui::EndDisabled();
+            ImGui::TreePop();
+        }
+
+        if (playerCopyMode_ && std::string(GetSelectedEnemyType()) == "FireSlime" && ImGui::TreeNodeEx("攻撃中のプレイヤー移動", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // 弾速の欄と分け、通常移動へ掛かる制限だけを編集する。
+            auto& movement = editedAttack->playerMovement;
+            changed |= ImGui::Checkbox("移動制限を使う", &movement.enabled);
+            ImGui::BeginDisabled(!movement.enabled);
+            changed |= ImGui::DragFloat("制限時間", &movement.duration, 0.01f, 0.0f, 30.0f, "%.2f sec");
+            changed |= ImGui::SliderFloat("地上の移動倍率", &movement.groundSpeedScale, 0.0f, 1.0f, "%.2f");
+            changed |= ImGui::SliderFloat("空中の移動倍率", &movement.airSpeedScale, 0.0f, 1.0f, "%.2f");
+            changed |= ImGui::DragFloat("空中の操作応答", &movement.airResponse, 0.1f, 0.1f, 60.0f, "%.1f / sec");
+            ImGui::TextWrapped("制限時間は攻撃開始からの秒数。空中では慣性を保って入力へ近づきます。発射時刻・本体モーションはタイムラインで編集できます。");
             ImGui::EndDisabled();
             ImGui::TreePop();
         }

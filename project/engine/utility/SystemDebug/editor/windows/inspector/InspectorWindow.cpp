@@ -631,14 +631,15 @@ void InspectorWindow::Draw() {
                                          "土の道付き草地 PBR (Meadow Path)",
                                          "入口の土側面 PBR (Island Soil)",
                                          "庭の景物 PBR (Garden Prop)",
-                                         "火山岩 PBR (Basalt)"
+                                         "火山岩 PBR (Basalt)",
+                                         "箱型の草地 PBR (Solid Terrain)"
                 };
 
                 int currentMatType = selectedObject->GetMaterialType();
                 // 未知の材質番号では Combo の配列外を参照しないよう標準材質へ表示を戻す。
                 if (currentMatType < 0)
                     currentMatType = 0;
-                if (currentMatType > 35)
+                if (currentMatType > 36)
                     currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     for (engine::Object3d* object : inspectorTargets) {
@@ -683,7 +684,21 @@ void InspectorWindow::Draw() {
                     ImGui::TextWrapped("根元を固定して葉先だけ揺らします。色・スケールで草の色と丈を調整できます。");
                 }
 
-                if (currentMatType == 0 || (currentMatType >= 29 && currentMatType <= 35)) {
+                if (currentMatType == 36) {
+                    // 箱型地形の道は上面の材質で描き、板を追加せず幅を調整します。
+                    float pathWidth = selectedObject->GetEnvIntensity() * 2.0f;
+                    if (ImGui::SliderFloat("道の幅（0で非表示）", &pathWidth, 0.0f, 32.0f)) {
+                        for (engine::Object3d* object : inspectorTargets) {
+                            if (object)
+                                object->SetEnvIntensity(pathWidth * 0.5f);
+                        }
+                        MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                        isGraphicsChanged = true;
+                    }
+                    ImGui::TextWrapped("上面・側面・底面は1つの箱モデルです。地形全体の大きさはTransform、判定はColliderで調整できます。");
+                }
+
+                if (currentMatType == 0 || (currentMatType >= 29 && currentMatType <= 36)) {
                     float metallic = selectedObject->GetMetallic();
 
                     if (ImGui::SliderFloat("金属度 (Metallic)", &metallic, 0.0f, 1.0f)) {

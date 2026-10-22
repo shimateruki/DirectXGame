@@ -79,8 +79,9 @@ std::unique_ptr<engine::Object3d> CreateEditorObjectFromState(engine::Object3dCo
         object->Initialize(common);
     } else if (!enemyType.empty()) {
         object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
-    } else if (!gimmickType.empty()) {
-        object = GimmickFactory::GetInstance()->CreateGimmick(gimmickType, common);
+    } else if (!gimmickType.empty() || state.contains("_editorGimmickFactoryType")) {
+        // 旧シーンの未知IDを仮Objectとして読み込んだ場合も、同じ実行型へ復元します。
+        object = GimmickFactory::GetInstance()->CreateGimmick(state.value("_editorGimmickFactoryType", gimmickType), common);
     } else if (!itemType.empty()) {
         object = ItemFactory::GetInstance()->CreateItem(itemType, common);
     }
@@ -182,6 +183,10 @@ nlohmann::json DebugEditor::CaptureObjectState(engine::Object3d* object) const {
 
     // Editor の Undo/Redo はこの実行型を復元できる場合だけ再生成する。
     state["_editorRuntimeType"] = typeid(*object).name();
+    if (auto* gimmick = dynamic_cast<BaseGimmick*>(object)) {
+        const auto creationType = GimmickFactory::GetInstance()->GetCreationType(*gimmick);
+        if (!creationType.empty()) state["_editorGimmickFactoryType"] = creationType;
+    }
     state["name"] = object->GetName();
     state["parentName"] = object->GetParent() ? object->GetParent()->GetName() : "";
     state["parentGuid"] = object->GetParent() ? object->GetParent()->EnsurePersistentGuid() : "";
@@ -309,6 +314,81 @@ std::unique_ptr<engine::Object3d> DebugEditor::RemoveObjectImmediate(engine::Obj
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene())
         return nullptr;
     return sceneManager_->GetCurrentScene()->TakeObjectImmediate(object);
+}
+
+void DebugEditor::RequestObjectTypeChange(engine::Object3d* object, EditorObjectFactoryRegistry::Kind kind, const std::string& type) {
+    if (!object || !IsObjectInCurrentScene(object) || sceneManager_->IsPlaying()) return;
+    const std::string guid = object->EnsurePersistentGuid();
+    const auto generation = sceneManager_->GetSceneGeneration();
+    pendingObjectTypeChange_ = [this, guid, kind, type, generation] {
+        if (sceneManager_->GetSceneGeneration() == generation)
+            ChangeObjectType(FindObjectByPersistentGuid(guid), kind, type);
+    };
+}
+
+bool DebugEditor::ChangeObjectType(engine::Object3d* object, EditorObjectFactoryRegistry::Kind kind, const std::string& type) {
+    if (!object || !IsObjectInCurrentScene(object) || sceneManager_->IsPlaying() || sceneManager_->IsTransitioning()) return false;
+    auto* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
+    std::unique_ptr<engine::Object3d> replacement;
+    if (kind == EditorObjectFactoryRegistry::Kind::Gimmick && type == "Default") {
+        replacement = std::make_unique<engine::Object3d>();
+        replacement->Initialize(common);
+        replacement->SetClassName("Default");
+    } else {
+        replacement = EditorObjectFactoryRegistry::Create(kind, type, common);
+    }
+    if (!replacement) return false;
+
+    const auto before = CaptureObjectState(object);
+    auto state = before;
+    state["_editorRuntimeType"] = typeid(*replacement).name();
+    if (auto* gimmick = dynamic_cast<BaseGimmick*>(replacement.get()))
+        state["_editorGimmickFactoryType"] = GimmickFactory::GetInstance()->GetCreationType(*gimmick);
+    else
+        state.erase("_editorGimmickFactoryType");
+    state["type"] = replacement->GetClassName();
+    const char* key = kind == EditorObjectFactoryRegistry::Kind::Enemy ? "enemyType" :
+                      kind == EditorObjectFactoryRegistry::Kind::Item ? "itemType" : "gimmickType";
+    state[key] = type;
+    if (before.value(key, std::string{}) != type) {
+        // 型を変える時だけ、その型の既定パラメーターにします。同じ型の修復時は保存値を保ちます。
+        const auto defaults = replacement->ExportToJson();
+        if (defaults.contains("param")) state["param"] = defaults["param"];
+        else state.erase("param");
+    }
+    auto* changed = ReplaceObjectFromState(object, state, std::move(replacement));
+    if (!changed) return false;
+    EditorCommand command;
+    command.type = EditorCommandType::ObjectReplaced;
+    command.label = "種類の変更";
+    command.beforeState = before;
+    command.afterState = CaptureObjectState(changed);
+    RegisterCommand(command);
+    return true;
+}
+
+engine::Object3d* DebugEditor::ReplaceObjectFromState(engine::Object3d* object, const nlohmann::json& state,
+    std::unique_ptr<engine::Object3d> replacement) {
+    if (!object || !IsObjectInCurrentScene(object) || sceneManager_->IsPlaying()) return nullptr;
+    auto* scene = sceneManager_->GetCurrentScene();
+    if (!replacement) replacement = CreateEditorObjectFromState(scene->GetObject3dCommon(), state);
+    if (!replacement) return nullptr;
+    ApplyObjectState(replacement.get(), state);
+
+    // 作成・検証が済むまで元Objectを触りません。所有権の取り出しに失敗した場合も現状を保ちます。
+    auto previous = RemoveObjectImmediate(object);
+    if (!previous) return nullptr;
+    const auto children = previous->GetChildren();
+    previous->SetParent(nullptr);
+    auto* raw = scene->AddObjectImmediate(std::move(replacement));
+    for (auto* child : children) if (child) child->SetParent(raw);
+    ClearObjectSelection();
+    SetSelectedObject(raw);
+    EditorManager::GetInstance()->SetSelectedObject(this);
+    hasInspectorEditStart_ = false;
+    inspectorEditStartStates_.clear();
+    MarkDirtyForObject(raw);
+    return raw;
 }
 
 void DebugEditor::RegisterCommand(const EditorCommand& command) {
@@ -884,163 +964,103 @@ void DebugEditor::DuplicateSelected() {
 void DebugEditor::DeleteSelected() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene())
         return;
-
     PruneInvalidSelectedObjects();
     if (selectedObjects_.empty())
         return;
-
     if (prefabEditMode_ && std::find(selectedObjects_.begin(), selectedObjects_.end(), prefabEditRoot_) != selectedObjects_.end()) {
         DebugConsole::GetInstance()->AddLog("Prefab Mode: Root Objectは削除できません。");
         return;
     }
 
-    if (prefabEditMode_) {
-        auto& sceneObjects = sceneManager_->GetCurrentScene()->GetObjects();
-        std::unordered_set<engine::Object3d*> selectedSet(selectedObjects_.begin(), selectedObjects_.end());
-        std::vector<engine::Object3d*> deleteRoots;
-
-        for (engine::Object3d* selected : selectedObjects_) {
-            bool hasSelectedAncestor = false;
-
-            for (engine::Object3d* parent = selected ? selected->GetParent() : nullptr; parent; parent = parent->GetParent()) {
-                if (selectedSet.find(parent) != selectedSet.end()) {
-                    hasSelectedAncestor = true;
-                    break;
-                }
-            }
-
-            if (selected && !hasSelectedAncestor) {
-                deleteRoots.push_back(selected);
+    // 親から子の順で一度だけ収集する。親子を同時選択しても二重登録しない。
+    const auto& sceneObjects = sceneManager_->GetCurrentScene()->GetObjects();
+    std::unordered_set<engine::Object3d*> selected(selectedObjects_.begin(), selectedObjects_.end());
+    std::unordered_set<engine::Object3d*> visited;
+    std::vector<engine::Object3d*> targets;
+    std::function<void(engine::Object3d*)> collect = [&](engine::Object3d* object) {
+        if (!object || !visited.insert(object).second)
+            return;
+        targets.push_back(object);
+        for (const auto& candidate : sceneObjects) {
+            if (candidate && candidate->GetParent() == object)
+                collect(candidate.get());
+        }
+    };
+    for (auto* object : selectedObjects_) {
+        bool ancestorSelected = false;
+        std::unordered_set<engine::Object3d*> ancestors;
+        for (auto* parent = object->GetParent(); parent && ancestors.insert(parent).second; parent = parent->GetParent()) {
+            if (selected.count(parent)) {
+                ancestorSelected = true;
+                break;
             }
         }
-
-        std::vector<engine::Object3d*> deleteObjects;
-        std::function<void(engine::Object3d*)> collectChildren = [&](engine::Object3d* parent) {
-            if (!parent)
-                return;
-            deleteObjects.push_back(parent);
-
-            for (const auto& candidate : sceneObjects) {
-                if (candidate && candidate->GetParent() == parent) {
-                    collectChildren(candidate.get());
-                }
-            }
-        };
-
-        for (engine::Object3d* root : deleteRoots) {
-            collectChildren(root);
-        }
-
-        std::vector<nlohmann::json> deletedStates;
-        deletedStates.reserve(deleteObjects.size());
-        engine::Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
-
-        for (engine::Object3d* object : deleteObjects) {
-            nlohmann::json state = CaptureObjectState(object);
-
-            if (!CreateEditorObjectFromState(common, state)) {
-                DebugConsole::GetInstance()->AddLog("Delete cancelled: " + object->GetName() +
-                                                    " cannot be restored as the same runtime type.");
-                return;
-            }
-
-            deletedStates.push_back(std::move(state));
-        }
-
-        for (auto it = deleteObjects.rbegin(); it != deleteObjects.rend(); ++it) {
-            RemoveObjectImmediate(*it);
-        }
-
-        EditorTransaction transaction;
-        transaction.label = "Delete Prefab Child";
-        transaction.undo = [this, deletedStates]() {
-            engine::Object3d* firstRestored = nullptr;
-
-            for (const auto& state : deletedStates) {
-                engine::Object3d* restored = AddObjectFromState(state);
-                if (!firstRestored)
-                    firstRestored = restored;
-            }
-
-            if (firstRestored) {
-                SetSelectedObject(firstRestored);
-                EditorManager::GetInstance()->SetSelectedObject(this);
-            }
-
-            prefabEditDirty_ = true;
-        };
-
-        transaction.redo = [this, deletedStates]() {
-            for (auto it = deletedStates.rbegin(); it != deletedStates.rend(); ++it) {
-                const std::string name = it->value("name", "");
-
-                if (engine::Object3d* object = FindObjectByName(name)) {
-                    RemoveObjectImmediate(object);
-                }
-            }
-
-            ClearObjectSelection();
-            prefabEditDirty_ = true;
-        };
-
-        EditorTransactionManager::GetInstance()->Register(std::move(transaction));
-        prefabEditDirty_ = true;
-        ClearObjectSelection();
-        EditorManager::GetInstance()->ClearSelection();
-        DebugConsole::GetInstance()->AddLog("Prefab Childを削除: " + std::to_string(deleteObjects.size()));
-        return;
+        if (!ancestorSelected)
+            collect(object);
     }
+    if (targets.empty())
+        return;
 
-    std::vector<engine::Object3d*> targets = selectedObjects_;
-    engine::Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
-
-    for (engine::Object3d* target : targets) {
-        if (!target || !IsObjectInCurrentScene(target))
-            continue;
-        if (!CreateEditorObjectFromState(common, CaptureObjectState(target))) {
-            DebugConsole::GetInstance()->AddLog("Delete cancelled: " + target->GetName() +
-                                                " cannot be restored as the same runtime type.");
+    std::vector<nlohmann::json> states;
+    auto* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
+    for (auto* object : targets) {
+        auto state = CaptureObjectState(object);
+        // 復元できない型があれば、何も削除する前に操作全体を中止する。
+        if (!CreateEditorObjectFromState(common, state)) {
+            DebugConsole::GetInstance()->AddLog("Delete cancelled: " + object->GetName() + " cannot be restored as the same runtime type.");
             return;
         }
+        states.push_back(std::move(state));
     }
-
-    const bool isGroupDelete = targets.size() > 1;
-    int deletedCount = 0;
-    std::string deletedName;
-
-    for (engine::Object3d* target : targets) {
-        if (!target || !IsObjectInCurrentScene(target))
-            continue;
-
-        nlohmann::json beforeState = CaptureObjectState(target);
-        deletedName = target->GetName();
-        MarkDirtyForObject(target);
-
-        EditorCommand command;
-        command.type = EditorCommandType::ObjectDeleted;
-        command.label = isGroupDelete ? "Delete Selected Objects" : "Delete Object";
-        command.beforeState = beforeState;
-        command.beforeName = beforeState.value("name", deletedName);
-        RegisterCommand(command);
-
-        sceneManager_->GetCurrentScene()->DestroyObject(target);
-        ++deletedCount;
-    }
-
-    // 重要：削除したポインタを持ち続けないようにする
-    ClearObjectSelection();
-    EditorManager::GetInstance()->ClearSelection();
-
-    if (isGroupDelete) {
-        DebugConsole::GetInstance()->AddLog("Deleted Objects: " + std::to_string(deletedCount));
-    } else {
-        DebugConsole::GetInstance()->AddLog("Deleted Object: " + deletedName);
-    }
+    auto remove = [this, states]() {
+        ClearObjectSelection();
+        EditorManager::GetInstance()->ClearSelection();
+        // 親を破棄する前に子を消し、親Transformへの参照を残さない。
+        for (auto it = states.rbegin(); it != states.rend(); ++it) {
+            auto* object = FindObjectByPersistentGuid(it->value("guid", std::string{}));
+            if (object) {
+                MarkDirtyForObject(object);
+                RemoveObjectImmediate(object);
+            }
+        }
+        if (prefabEditMode_)
+            prefabEditDirty_ = true;
+    };
+    EditorTransaction transaction;
+    transaction.label = states.size() > 1 ? "Delete Object Hierarchy" : "Delete Object";
+    transaction.undo = [this, states]() {
+        engine::Object3d* first = nullptr;
+        // 保存順に親を先に生成し、GUIDで元の階層とローカル座標を復元する。
+        for (const auto& state : states) {
+            auto* object = AddObjectFromState(state);
+            if (object) {
+                MarkDirtyForObject(object);
+                if (!first)
+                    first = object;
+            }
+        }
+        if (first) {
+            SetSelectedObject(first);
+            EditorManager::GetInstance()->SetSelectedObject(this);
+        }
+        if (prefabEditMode_)
+            prefabEditDirty_ = true;
+    };
+    transaction.redo = remove;
+    remove();
+    EditorTransactionManager::GetInstance()->Register(std::move(transaction));
+    DebugConsole::GetInstance()->AddLog("Deleted Objects: " + std::to_string(states.size()));
 }
 
 void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
     // 作成・削除・属性変更で Undo と Redo の方向を反転して同じ適用経路を使う。
     switch (command.type) {
+    case EditorCommandType::ObjectReplaced: {
+        const auto& state = undo ? command.beforeState : command.afterState;
+        auto* object = FindObjectByPersistentGuid(state.value("guid", std::string{}));
+        ReplaceObjectFromState(object, state);
+        break;
+    }
     case EditorCommandType::ObjectCreated: {
         if (undo) {
             engine::Object3d* object = FindObjectByPersistentGuid(

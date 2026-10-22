@@ -89,15 +89,15 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                -178.0,
-                7.820000171661377,
+                240.82467651367188,
+                12.926969528198242,
                 -42.0
             ],
             "quaternion": [
                 0.0,
-                0.7071067690849304,
+                0.7071066498756409,
                 0.0,
-                0.7071067690849304
+                0.7071069478988647
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -106,7 +106,7 @@
             },
             "rotation": [
                 0.0,
-                1.5707963705062866,
+                1.5707958936691284,
                 0.0
             ],
             "roughness": 0.6000000238418579,
@@ -203,7 +203,11 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
-                "enemyType": "RingBurner"
+                "enemyType": "RingBurner",
+                "interval": 3.0,
+                "moveAmount": 10.0,
+                "ringWaveSpeed": 3.0,
+                "shakeDuration": 1.0
             },
             "parentGuid": "",
             "parentName": "",
@@ -336,9 +340,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.09071458131074905,
+                0.8042075634002686,
                 0.0,
-                0.9958769083023071
+                0.5943484902381897
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -347,7 +351,7 @@
             },
             "rotation": [
                 0.0,
-                0.1816789209842682,
+                1.8686820268630981,
                 0.0
             ],
             "roughness": 0.5,
@@ -454,8 +458,8 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                679,
-                2.1,
+                679.0,
+                2.0999999046325684,
                 10.5
             ],
             "quaternion": [
@@ -578,8 +582,8 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                718,
-                0.1,
+                718.0,
+                0.10000000149011612,
                 -26.5
             ],
             "quaternion": [
@@ -692,7 +696,11 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
-                "enemyType": "RingBurner"
+                "enemyType": "RingBurner",
+                "interval": 3.0,
+                "moveAmount": 10.0,
+                "ringWaveSpeed": 3.0,
+                "shakeDuration": 1.0
             },
             "parentGuid": "",
             "parentName": "",
@@ -812,7 +820,11 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
-                "enemyType": "RingBurner"
+                "enemyType": "RingBurner",
+                "interval": 3.0,
+                "moveAmount": 10.0,
+                "ringWaveSpeed": 3.0,
+                "shakeDuration": 1.0
             },
             "parentGuid": "",
             "parentName": "",
@@ -932,7 +944,11 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
-                "enemyType": "RingBurner"
+                "enemyType": "RingBurner",
+                "interval": 3.0,
+                "moveAmount": 10.0,
+                "ringWaveSpeed": 3.0,
+                "shakeDuration": 1.0
             },
             "parentGuid": "",
             "parentName": "",
@@ -1062,8 +1078,8 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                758,
-                1.1,
+                758.0,
+                1.100000023841858,
                 10.5
             ],
             "quaternion": [
@@ -1186,8 +1202,8 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                758,
-                1.1,
+                758.0,
+                1.100000023841858,
                 -26.5
             ],
             "quaternion": [
@@ -1310,8 +1326,8 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                798,
-                2.1,
+                798.0,
+                2.0999999046325684,
                 10.5
             ],
             "quaternion": [
@@ -1434,8 +1450,8 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                798,
-                2.1,
+                798.0,
+                2.0999999046325684,
                 -26.5
             ],
             "quaternion": [

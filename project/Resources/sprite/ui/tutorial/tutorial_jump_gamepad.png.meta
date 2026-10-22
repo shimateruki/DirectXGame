@@ -1,0 +1,11 @@
+{
+  "importer": "TextureImporter",
+  "importSettings": {
+    "generateMipmaps": false,
+    "colorSpace": "Auto"
+  },
+  "source": "Resources/sprite/ui/tutorial/tutorial_jump_gamepad.png",
+  "assetType": "Texture",
+  "version": 1,
+  "guid": "f4d8a42a41884cbe939e5a1c887e176b"
+}

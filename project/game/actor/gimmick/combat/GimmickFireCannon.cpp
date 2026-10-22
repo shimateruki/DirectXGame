@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickFireCannon.h"
+#include "ObjectPropertyDefinition.h"
 #include "game/system/scene/SceneGameplayAccess.h"
 #include "BaseScene.h"
 #include "game/system/combat/BulletManager.h"
@@ -63,6 +64,41 @@ void GimmickFireCannon::Initialize(engine::Object3dCommon* common, const std::st
     param_->actionMode = 1;
     param_->startActive = true;
     param_->returnOnOff = true;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickFireCannon;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "火球砲台",
+        "編集プレビューは無害で最短0.8秒間隔、同時数制限付きです。放物線は予告時に着弾点を固定します。大型砲弾は砲口方向（読込後の-Z）へ直進し、衝突で早く消えることがあります。通常の前方固定はローカルZ+です。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("発射方向", "actionMode", &Parameter::actionMode, 0.0f, 3.0f,
+        nullptr, {"前方固定", "プレイヤーを狙う", "放物線砲弾（着弾爆発）", "大型砲弾（砲口に沿って直進）"});
+    properties.Parameter("弾速", "speed", &Parameter::speed, 1.0f, 120.0f);
+    properties.Parameter("発射間隔", "interval", &Parameter::interval, 0.08f, 20.0f);
+    properties.Parameter("弾の半径", "moveAmount", &Parameter::moveAmount, 0.1f, (std::numeric_limits<float>::max)(),
+        nullptr, {}, {.speed = 0.01f});
+    properties.Parameter("索敵範囲", "detectionRange", &Parameter::detectionRange, 0.0f, 300.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode != 3); });
+    properties.Parameter("旋回速度（度/秒）", "moveSpeed", &Parameter::moveSpeed, 1.0f, 720.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); });
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
+    properties.Parameter("編集停止中に発射をプレビュー", "editorPreviewFiring", &Parameter::editorPreviewFiring);
+    properties.Parameter("弾道の上昇高さ", "jumpPower", &Parameter::jumpPower, 3.0f, 20.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+    properties.Parameter("砲弾の重力", "gravity", &Parameter::gravity, 4.0f, 60.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+    properties.Parameter("爆風半径", "healAmount", &Parameter::healAmount, 1.0f, 8.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+    properties.Parameter("発射前の予告時間", "shakeDuration", &Parameter::shakeDuration, 0.35f, 4.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+    properties.Parameter("弾の最大持続時間", "projectileLifetime", &Parameter::projectileLifetime, 0.2f, 20.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 3); }, {}, {.help = +[](const Self& object) { return std::string("最大飛距離の目安: ") + std::to_string(object.param_->speed * object.param_->projectileLifetime) + " m"; }});
+    properties.Parameter("爆風半径", "healAmount_straight", &Parameter::healAmount, 0.5f, 8.0f,
+        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 3); }, {}, {.parameterId = "healAmount"});
+    const auto straightOnly = +[](const Self& object) { return object.param_ && object.param_->actionMode == 3; };
+    properties.Expose("直進砲台のため時間", ENGINE_PROPERTY(bombardAnticipationTime_), 0.0f, 0.6f, straightOnly);
+    properties.Expose("直進砲台の反動の強さ", ENGINE_PROPERTY(bombardRecoilStrength_), 0.0f, 0.45f, straightOnly);
+    properties.Expose("直進砲台の戻り時間", ENGINE_PROPERTY(bombardRecoveryTime_), 0.12f, 1.0f, straightOnly);
 }
 
 // 編集停止中は無害な弾道プレビューだけを進め、Play 中は通常の攻撃を実行します。
@@ -72,6 +108,8 @@ void GimmickFireCannon::Update(float deltaTime) {
         param_.emplace();
     }
 
+    // モード変更やプレビュー停止時に、前フレームの描画補正を残しません。
+    if (auto* renderer = GetMeshRenderer()) renderer->ResetVisualTransform();
     const bool playing = IsPlaying();
     bool editorPreview = false;
 #ifdef USE_IMGUI
@@ -136,24 +174,23 @@ void GimmickFireCannon::Update(float deltaTime) {
     }
 
     if (param_->actionMode == 3) {
-        // 大型砲台の向きは配置したTransformで固定し、撃つ瞬間だけ砲身を縮めます。
+        // 発射周期は維持し、その終わりにため、発射直後に反動を重ねます。
         const float dt = (std::max)(0.0f, deltaTime);
         recoilTimer_ = (std::max)(0.0f, recoilTimer_ - dt);
-        const float recoil = std::sin(recoilTimer_ / 0.28f * kPi) * 0.06f;
-        if (!editorPreview)
-            SetScale({baseScale_.x * (1.0f + recoil * 0.35f),
-                      baseScale_.y * (1.0f + recoil * 0.35f),
-                      baseScale_.z * (1.0f - recoil)});
         landingWarning_.Hide();
+        bool fireNow = false;
         if (active_) {
             fireTimer_ -= dt;
             if (fireTimer_ <= 0.0f) {
-                FireBombard();
+                fireNow = true;
                 fireTimer_ = GetFireInterval();
+                recoilTimer_ = GetBombardRecoveryTime();
             }
         } else {
             fireTimer_ = (std::min)(fireTimer_, GetFireInterval() * 0.35f);
         }
+        UpdateBombardPose();
+        if (fireNow) FireBombard();
         BaseGimmick::Update(deltaTime);
         return;
     }
@@ -322,24 +359,59 @@ void GimmickFireCannon::FireProjectile(const engine::Vector3& direction) {
     visual.impactDebrisSecondaryPreset = "cannon_shell_ember_shatter";
     visual.impactDebrisScale = radius;
     visual.impactOnExpiry = true;
-    visual.destroyOnSolidCastHit = true;
     visual.trailInterval = 0.06f;
     visual.trailReverseDirection = true;
     visual.impactDirected = false;
     visual.previewOnly = previewActive_;
     visual.previewOwner = this;
 
-    // 攻撃属性とプレイヤー・地面のマスクを渡し、命中処理は弾管理へ任せます。
+    // 壁や地形では弾を壊さず、プレイヤー命中か寿命終了で消滅させます。
     BulletManager::GetInstance()->Fire(GetMuzzlePosition(direction) + direction * (radius + 0.16f), direction * speed,
-                                       CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") |
-                                           CollisionCategories::Get("ground") | CollisionCategories::Get("map_block"),
+                                       CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player"),
                                        "Gimmicks/volcanic_bombard_shell", radius, life, visual, 1.0f, {}, DamageType::Fire);
+}
+
+float GimmickFireCannon::GetBombardRecoveryTime() const {
+    // 連射時にも次弾までに元へ戻り、停止中のプレビューで変形を蓄積しません。
+    const float configured = std::isfinite(bombardRecoveryTime_) ? bombardRecoveryTime_ : 0.42f;
+    return (std::min)(std::clamp(configured, 0.12f, 1.0f), GetFireInterval() * 0.65f);
+}
+
+void GimmickFireCannon::UpdateBombardPose() {
+    auto* renderer = GetMeshRenderer();
+    if (!renderer) return;
+    const float strength = std::isfinite(bombardRecoilStrength_) ? std::clamp(bombardRecoilStrength_, 0.0f, 0.45f) : 0.22f;
+    float squash = 0.0f;
+    float retreat = 0.0f;
+    if (recoilTimer_ > 0.0f) {
+        const float t = std::clamp(1.0f - recoilTimer_ / GetBombardRecoveryTime(), 0.0f, 1.0f);
+        // 一度だけ小さく伸び返し、末尾の速度も0へ収束させます。
+        const float spring = (1.0f - t) * (1.0f - t) * std::cos(2.0f * kPi * t);
+        squash = strength * spring;
+        retreat = strength * 2.0f * spring;
+    } else if (active_) {
+        const float configured = std::isfinite(bombardAnticipationTime_) ? bombardAnticipationTime_ : 0.20f;
+        const float duration = (std::min)(std::clamp(configured, 0.0f, 0.6f), GetFireInterval() * 0.30f);
+        if (duration > 0.0001f) {
+            float t = std::clamp(1.0f - fireTimer_ / duration, 0.0f, 1.0f);
+            t = t * t * (3.0f - 2.0f * t);
+            squash = strength * 0.35f * t;
+            retreat = strength * 0.45f * t;
+        }
+    }
+    // 読込後の砲口は-Z。+Z側へ引き、底面の高さは固定して接地を保ちます。
+    renderer->SetVisualTransform({1.0f + squash * 0.35f, 1.0f + squash * 0.35f, 1.0f - squash}, {}, {0.0f, 0.0f, retreat});
 }
 
 void GimmickFireCannon::FireBombard() {
     // OBJ の +Z 砲口は左手座標への読み込みで -Z になるため、描画された砲口側へ発射します。
     UpdateWorldMatrix();
-    const auto& world = GetWorldMatrix();
+    auto world = GetWorldMatrix();
+    if (const auto* renderer = GetMeshRenderer()) {
+        // 弾と発射光は、反動中も実際に描かれる砲口から出します。
+        const auto pose = engine::Math::MakeAffineMatrix(renderer->GetVisualScale(), renderer->GetVisualRotation(), renderer->GetVisualOffset());
+        world = engine::Math::Multiply(pose, world);
+    }
     engine::Vector3 forward = {-world.m[2][0], -world.m[2][1], -world.m[2][2]};
     if (engine::Math::Length(forward) <= 0.001f) {
         return;
@@ -352,9 +424,9 @@ void GimmickFireCannon::FireBombard() {
 
     // 読み込み後の砲口中心はローカル(0, 2.73, -2.55)。球の後端が砲縁に重ならない位置から出します。
     const engine::Vector3 muzzle = {
-        world.m[3][0] + world.m[1][0] * 2.73f - world.m[2][0] * 2.55f + forward.x * (radius + 0.16f),
-        world.m[3][1] + world.m[1][1] * 2.73f - world.m[2][1] * 2.55f + forward.y * (radius + 0.16f),
-        world.m[3][2] + world.m[1][2] * 2.73f - world.m[2][2] * 2.55f + forward.z * (radius + 0.16f)};
+        world.m[3][0] + world.m[1][0] * 2.73f - world.m[2][0] * 2.55f,
+        world.m[3][1] + world.m[1][1] * 2.73f - world.m[2][1] * 2.55f,
+        world.m[3][2] + world.m[1][2] * 2.73f - world.m[2][2] * 2.55f};
 
     BulletVisualConfig visual;
     visual.visualScale = radius * 0.60f / 1.043f; // 岩の芯を小さくし、外側の炎に輪郭を任せます。
@@ -373,16 +445,14 @@ void GimmickFireCannon::FireBombard() {
     visual.impactDebrisSecondaryPreset = "cannon_shell_ember_shatter";
     visual.impactDebrisScale = radius;
     visual.impactOnExpiry = true;
-    visual.destroyOnSolidCastHit = true;
     visual.trailInterval = 0.04f;
     visual.trailReverseDirection = true;
     visual.impactDirected = false;
     visual.previewOnly = previewActive_;
     visual.previewOwner = this;
-    BulletManager::GetInstance()->Fire(muzzle, forward * speed,
+    BulletManager::GetInstance()->Fire(muzzle + forward * (radius + 0.16f), forward * speed,
                                        CollisionCategories::Get("enemy_attack"),
-                                       CollisionCategories::Get("player") | CollisionCategories::Get("ground") |
-                                           CollisionCategories::Get("map_block"),
+                                       CollisionCategories::Get("player"),
                                        "Gimmicks/volcanic_bombard_shell", radius, life, visual, 1.0f, {},
                                        DamageType::Explosion);
 
@@ -396,7 +466,6 @@ void GimmickFireCannon::FireBombard() {
             particles->EmitDirected("hit_bomb_fire_sparks", muzzle, forward, 0.7f);
         }
     }
-    recoilTimer_ = 0.28f;
 }
 
 float GimmickFireCannon::GetProjectileSpeed() const {

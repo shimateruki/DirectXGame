@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "45a5d1aeb1a34254826da7537266df75",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/menu_hints/settings_close_gamepad.png",
+  "version": 1
+}

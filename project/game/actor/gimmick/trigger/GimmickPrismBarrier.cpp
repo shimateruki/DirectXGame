@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickPrismBarrier.h"
+#include "ObjectPropertyDefinition.h"
 
 #include "CollisionConfig.h"
 #include "SceneManager.h"
@@ -51,6 +52,16 @@ void GimmickPrismBarrier::Initialize(engine::Object3dCommon* common, const std::
     param_->interval = 2.4f;
     param_->startActive = false;
     param_->returnOnOff = true;
+
+    // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
+    using Self = GimmickPrismBarrier;
+    engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "プリズム障壁",
+        "My Event IDは遭遇管理のTarget ID + 連番へ接続します。");
+    using Parameter = engine::Object3d::EntityParameter;
+    properties.Parameter("展開・解除時間", "moveSpeed", &Parameter::moveSpeed, 0.05f, 3.0f);
+    properties.Parameter("発光パルス速度", "interval", &Parameter::interval, 0.1f, 8.0f);
+    properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
+    properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
 }
 
 // 編集時の配置値を基準にして開閉を補間します。再生を止めた後も元の配置へ戻せるようにします。

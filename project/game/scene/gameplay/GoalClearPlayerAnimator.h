@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Player.h"
+#include "Model.h"
+#include "game/actor/combat/CombatGroundQuery.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 
 #include <algorithm>
@@ -20,6 +22,7 @@ class GoalClearPlayerAnimator {
         float victoryLandTime = 3.46f;
         float readyTime = 5.55f;
 
+        float settleDuration = 0.45f;
         float jumpHeight = 2.20f;
         float forwardDistance = 0.35f;
 
@@ -43,10 +46,21 @@ class GoalClearPlayerAnimator {
 
         // 元の操作権・姿勢を保存し、ムービー中はこの基準から毎フレーム姿勢を計算します。
         savedControlActive_ = player_->IsControlActive();
-        basePosition_ = player_->GetTranslate();
+        restorePosition_ = player_->GetTranslate();
+        restoreRotation_ = player_->GetRotation();
+        basePosition_ = restorePosition_;
         baseScale_ = player_->GetScale();
         baseRotation_ = player_->GetRotation();
-        posePosition_ = basePosition_;
+        // 通常の姿勢安定化後にも空中で取った高さは残るため、足元だけを地面へなじませる。
+        modelBottom_ = player_->GetModel() ? player_->GetModel()->GetLocalAabbMin().y : -0.5f;
+        modelHeight_ = player_->GetModel() ? (std::max)(0.1f, player_->GetModel()->GetLocalAabbMax().y - modelBottom_) : 1.0f;
+        const auto world = player_->GetWorldPosition();
+        const float footY = world.y + modelBottom_ * baseScale_.y;
+        auto grounded = world;
+        grounded.y = CombatGroundQuery::FindGroundPoint(world, player_, {1.0f, 33.0f}, footY).y - modelBottom_ * baseScale_.y;
+        if (player_->GetParent()) grounded = engine::Math::Transform(grounded, engine::Math::Inverse(player_->GetParent()->GetWorldMatrix()));
+        basePosition_ = grounded;
+        posePosition_ = restorePosition_;
         currentScale_ = baseScale_;
 
         player_->SetIsControlActive(false);
@@ -91,9 +105,9 @@ class GoalClearPlayerAnimator {
         }
 
         // 演出を中断したときは開始姿勢と行列を戻し、次のScene更新へ古い変形を残しません。
-        player_->SetTranslate(basePosition_);
+        player_->SetTranslate(restorePosition_);
         player_->SetScale(baseScale_);
-        player_->SetRotation(baseRotation_);
+        player_->SetRotation(restoreRotation_);
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
         player_->UpdateLocalMatrix();
         player_->UpdateWorldMatrix();
@@ -129,7 +143,7 @@ class GoalClearPlayerAnimator {
             // 王冠が落ちた衝撃だけを短く見せ、次の踏み切り姿勢へつなぎます。
             const float p = AnimationInterpolation::SegmentRate(time, c.crownLandTime, c.anticipationStartTime);
             const float impact = std::sin(p * kPi) * (1.0f - p * 0.45f);
-            position.y -= c.landingSquash * 0.10f * impact;
+            // 潰れは拡縮で表し、最後にモデル下端を足元へ固定する。
             scale.x = baseScale_.x * (1.0f + c.landingSquash * impact);
             scale.y = baseScale_.y * (1.0f - c.landingSquash * 0.78f * impact);
             scale.z = baseScale_.z * (1.0f + c.landingSquash * impact);
@@ -138,9 +152,9 @@ class GoalClearPlayerAnimator {
             const float p = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(time, c.anticipationStartTime, c.jumpStartTime),
                 AnimationInterpolation::EasingType::SmootherStep);
-            position.y -= c.anticipationDepth * p;
+            // 沈み込みの距離も拡縮へ変換し、床へ原点ごと押し込まない。
             scale.x = baseScale_.x * (1.0f + c.anticipationSquash * p);
-            scale.y = baseScale_.y * (1.0f - c.anticipationSquash * 0.92f * p);
+            scale.y = (std::max)(baseScale_.y * 0.35f, baseScale_.y * (1.0f - c.anticipationSquash * 0.92f * p) - c.anticipationDepth / modelHeight_ * p);
             scale.z = baseScale_.z * (1.0f + c.anticipationSquash * p);
             rotation.x += moveForward_.z * 0.070f * p;
             rotation.z -= moveForward_.x * 0.070f * p;
@@ -154,10 +168,10 @@ class GoalClearPlayerAnimator {
             const float sideArc = std::sin(raw * kPi * 0.5f) * c.forwardDistance * 0.18f;
             position.x += moveRight_.x * sideArc;
             position.z += moveRight_.z * sideArc;
-            position.y += AnimationInterpolation::Lerp(-c.anticipationDepth, c.jumpHeight, travel);
+            position.y += AnimationInterpolation::Lerp(0.0f, c.jumpHeight, travel);
 
             engine::Vector3 squashScale = {baseScale_.x * (1.0f + c.anticipationSquash),
-                                   baseScale_.y * (1.0f - c.anticipationSquash * 0.92f),
+                                   (std::max)(baseScale_.y * 0.35f, baseScale_.y * (1.0f - c.anticipationSquash * 0.92f) - c.anticipationDepth / modelHeight_),
                                    baseScale_.z * (1.0f + c.anticipationSquash)};
             engine::Vector3 stretchScale = {baseScale_.x * (1.0f - c.takeoffStretch * 0.48f),
                                     baseScale_.y * (1.0f + c.takeoffStretch),
@@ -197,7 +211,7 @@ class GoalClearPlayerAnimator {
             position.x += moveRight_.x * sideArc;
             position.z += moveRight_.z * sideArc;
             position.y += AnimationInterpolation::Lerp(c.jumpHeight, 0.0f, fall);
-            position.y -= c.landingSquash * 0.08f * fall;
+            // 着地後の足元はモデル下端から補正する。
 
             const engine::Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f),
                                          baseScale_.y * (1.0f + c.resultStretch),
@@ -211,30 +225,26 @@ class GoalClearPlayerAnimator {
             rotation.x += moveForward_.z * descentLean;
             rotation.z -= moveForward_.x * descentLean;
         } else {
-            // 結果表示中は一定周期で跳ね続け、左右の傾きを周期ごとに反転します。
+            // 一度の喜びジャンプの後は短く着地を収め、結果を読める決め姿勢へ移す。
             position.x += moveForward_.x * c.forwardDistance;
             position.z += moveForward_.z * c.forwardDistance;
-            const float holdTime = time - c.victoryLandTime;
-            constexpr float kBounceCycle = 0.68f;
-            const float cyclePosition = std::fmod((std::max)(holdTime, 0.0f), kBounceCycle) / kBounceCycle;
-            const int cycleIndex = static_cast<int>(std::floor((std::max)(holdTime, 0.0f) / kBounceCycle));
-            const float bounceArc = std::sin(cyclePosition * kPi);
-            const float bounceHeight = std::clamp(c.jumpHeight * 0.38f, 0.72f, 0.92f);
-            position.y += bounceHeight * bounceArc;
-
-            // 接地の潰れと離陸中の伸びを毎周期つなぎ、王冠装着後もスライムらしく跳ね続けます。
-            const float contactDistance = (std::min)(cyclePosition, 1.0f - cyclePosition);
-            const float contact = std::exp(-contactDistance * 24.0f);
-            const float airStretch = std::pow((std::max)(0.0f, bounceArc), 0.72f);
-            scale.x = baseScale_.x * (1.0f + c.landingSquash * 0.46f * contact - c.takeoffStretch * 0.10f * airStretch);
-            scale.y = baseScale_.y * (1.0f - c.landingSquash * 0.42f * contact + c.takeoffStretch * 0.18f * airStretch);
-            scale.z = baseScale_.z * (1.0f + c.landingSquash * 0.46f * contact - c.takeoffStretch * 0.10f * airStretch);
+            const float holdTime = (std::max)(time - c.victoryLandTime, 0.0f);
+            const float settle = AnimationInterpolation::ApplyEasing(
+                (std::min)(holdTime / 0.38f, 1.0f), AnimationInterpolation::EasingType::SmootherStep);
+            const engine::Vector3 landingScale = {baseScale_.x * (1.0f + c.landingSquash * 0.45f),
+                baseScale_.y * (1.0f - c.landingSquash * 0.40f), baseScale_.z * (1.0f + c.landingSquash * 0.45f)};
+            const float breath = std::sin(holdTime * 3.2f) * 0.008f * settle;
+            const engine::Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f + breath),
+                baseScale_.y * (1.0f + c.resultStretch - breath), baseScale_.z * (1.0f - c.resultStretch * 0.36f + breath)};
+            scale = AnimationInterpolation::Lerp(landingScale, resultScale, settle);
             rotation = resultRotation_;
-            const float bounceSide = (cycleIndex % 2 == 0) ? 1.0f : -1.0f;
-            const float bounceLean = bounceSide * bounceArc * 0.050f;
-            rotation.x += moveRight_.x * bounceLean;
-            rotation.z += moveRight_.z * bounceLean;
         }
+
+        // 空中取得の高さは短く補間し、拡縮による底面の上下は打ち消す。
+        const float entry = AnimationInterpolation::ApplyEasing(
+            (std::min)(time / (std::max)(0.05f, c.settleDuration), 1.0f), AnimationInterpolation::EasingType::SmootherStep);
+        position.y += (restorePosition_.y - basePosition_.y) * (1.0f - entry);
+        position.y += modelBottom_ * (baseScale_.y - scale.y);
 
         // 計算済みポーズをPlayerへまとめて反映し、描画が参照する行列も同フレームで更新します。
         posePosition_ = position;
@@ -302,6 +312,8 @@ class GoalClearPlayerAnimator {
     bool isActive_ = false;
     bool savedControlActive_ = true;
 
+    engine::Vector3 restorePosition_{}, restoreRotation_{};
+    float modelBottom_ = -0.5f, modelHeight_ = 1.0f;
     engine::Vector3 basePosition_{};
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 baseRotation_{};

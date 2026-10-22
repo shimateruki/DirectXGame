@@ -22,6 +22,33 @@
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
       "preview": { "targetDistance": 9.0, "duration": 4.0 },
       "presentation": { "animation": "", "windupVfx": "thunder_slime_charge", "activeVfx": "player_thunder_strike_impact", "impactVfx": "Resources/json/effect/effect_thunder_scorch_mark.json", "audioCue": "" }
+    },
+    {
+      "id": "player_line_lightning",
+      "displayName": "コピー連続落雷",
+      "targeting": {
+        "minRange": 2.8,
+        "maxRange": 22,
+        "radius": 1.45
+      },
+      "timing": {
+        "windup": 0.1,
+        "active": 0.4,
+        "recovery": 0,
+        "cooldown": 1.65
+      },
+      "combat": {
+        "damage": 10
+      },
+      "movement": {
+        "minSpeed": 0,
+        "maxSpeed": 0,
+        "lifetime": 0
+      },
+      "preview": {
+        "targetDistance": 18,
+        "duration": 2.2
+      }
     }
   ]
 }

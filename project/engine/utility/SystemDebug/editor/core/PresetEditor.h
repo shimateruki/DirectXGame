@@ -20,6 +20,9 @@ public:
     /// プリセット定義とモデル一覧を読み込み、編集開始時の状態を整える。
     void Initialize();
 
+    /// シーン切替・終了前に、設定編集だけに使うObjectを破棄します。
+    void ClearPropertyEditors();
+
     /// 選択プリセットをGame Viewへ配置する処理を外部から受け取る。
     void SetPlacePresetCallback(std::function<void(const std::string&)> callback);
 
@@ -77,6 +80,15 @@ private:
         const char* value;
         const char* label;
     };
+
+    // 設定用Objectは型ごとに再利用し、重いギミックを毎フレーム生成しません。
+    struct PropertyEditorContext {
+        std::unique_ptr<engine::Object3d> object;
+        json defaults;
+        json source;
+    };
+    PropertyEditorContext* GetPropertyEditor(const std::string& type);
+    std::map<std::string, PropertyEditorContext> propertyEditors_;
 
     PresetEditor() = default;
 
@@ -146,12 +158,6 @@ private:
     bool DrawVector3Field(json& data, const char* label, const char* key, const engine::Vector3& defaultValue, float speed);
 
     bool DrawParamFloat(json& param, const char* label, const char* key, float defaultValue, float speed);
-
-    bool DrawParamInt(json& param, const char* label, const char* key, int defaultValue);
-
-    bool DrawParamBool(json& param, const char* label, const char* key, bool defaultValue);
-
-    bool DrawParamIntCombo(json& param, const char* label, const char* key, int defaultValue, const std::vector<const char*>& labels);
 
     /// プリセット JSON にパラメータオブジェクトがなければ作成して返す。
     json& EnsureParam(json& data);

@@ -1,6 +1,7 @@
-﻿#include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.Internal.h"
+#include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.Internal.h"
 
 #ifdef USE_IMGUI
+#include "engine/utility/SystemDebug/editor/cinematic/GhostDirector.h"
 
 using namespace InspectorWindowImplementation;
 
@@ -265,7 +266,7 @@ void DrawRegisteredComponentRow(
     ImGui::PushID(component.typeId.c_str());
     ImGui::BeginGroup();
     ImGui::TextUnformatted(component.displayName.c_str());
-    ImGui::TextDisabled("%s", component.description.c_str());
+    if (!component.description.empty()) ImGui::TextWrapped("%s", component.description.c_str());
     ImGui::EndGroup();
 
     if (component.removable && component.remove) {
@@ -442,7 +443,8 @@ void DrawAutomaticComponentProperties(
 
         // Registryが持つ型、読み書き、複数編集、Prefab差分の情報から各行を描く。
         for (const EditorPropertyDescriptor* property : properties) {
-            if (!property || !registry->IsApplicable(primary, property->path)) {
+            if (!property || !registry->IsApplicable(primary, property->path) ||
+                (property->visible && !property->visible(*primary))) {
                 continue;
             }
 
@@ -479,14 +481,29 @@ void DrawAutomaticComponentProperties(
             }
 
             ImGui::TableSetColumnIndex(1);
-            nlohmann::json value = registry->GetValue(primary, property->path);
-            const bool readOnly = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly);
+            // Prefabが参照する保存値と、旧形式を案内する表示値を分けます。
+            nlohmann::json value = property->displayValue ? property->displayValue(*primary)
+                : registry->GetValue(primary, property->path);
+            const bool readOnly = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly) ||
+                (property->enabled && !property->enabled(*primary));
             ImGui::BeginDisabled(readOnly);
             EditorPropertyDrawOptions options;
             options.compact = true;
             options.mixed = mixed;
-            const bool changed = EditorPropertyDrawer::DrawValue(*property, value, "##Value", options);
+            auto effective = *property;
+            if (property->maximum) effective.ui.maxValue = property->maximum(*primary);
+            const bool changed = EditorPropertyDrawer::DrawValue(effective, value, "##Value", options);
             ImGui::EndDisabled();
+            if (property->help) {
+                const auto help = property->help(*primary);
+                if (!help.empty()) ImGui::TextWrapped("%s", help.c_str());
+            }
+            if (property->ui.assetEditor == EditorPropertyAssetEditor::Scenario && value.is_string() &&
+                !value.get_ref<const std::string&>().empty() &&
+                ImGui::Button("GhostDirectorで編集") && editor->GetGhostDirector()) {
+                editor->GetGhostDirector()->LoadScenario(fs::path(value.get<std::string>()).stem().string());
+                EditorManager::GetInstance()->SetSelectedObject(editor->GetGhostDirector());
+            }
 
             if (!multiEditable && componentTargets.size() > 1) {
                 ImGui::SameLine();
@@ -497,7 +514,8 @@ void DrawAutomaticComponentProperties(
             if (changed && !readOnly) {
                 for (engine::Object3d* target : componentTargets) {
                     if (!target || (!multiEditable && target != primary) ||
-                        !registry->IsApplicable(target, property->path)) {
+                        !registry->IsApplicable(target, property->path) ||
+                        (property->enabled && !property->enabled(*target))) {
                         continue;
                     }
 

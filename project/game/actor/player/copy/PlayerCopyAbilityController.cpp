@@ -156,6 +156,11 @@ bool PlayerCopyAbilityController::IsActive() const {
     return impl_->session != nullptr;
 }
 
+PlayerAttackMovement PlayerCopyAbilityController::GetAttackMovement() const {
+    // 制限の寿命は能力側が所有するため、コピー解除後にタイマーだけ残りません。
+    return impl_->session ? impl_->session->GetAttackMovement() : PlayerAttackMovement{};
+}
+
 bool PlayerCopyAbilityController::CanBreakImpactGate() const {
     // ゲート破壊の可否は現在の能力動作に応じて変わる。
     return impl_->session && impl_->session->CanBreakImpactGate();

@@ -1,3 +1,4 @@
+#include "EditorPropertyRegistry.h"
 #include "game/system/scene/LevelLoader.h"
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include "engine/graphics/3d/material/WaterParamJsonCodec.h"
@@ -870,7 +871,8 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 }
 
                 if (objData.contains("waterParam") &&
-                    MaterialRenderPolicy::IsSpecial(targetObject->GetMaterialType())) {
+                    (MaterialRenderPolicy::IsSpecial(targetObject->GetMaterialType()) ||
+                     EditorPropertyRegistry::GetInstance()->HasSerializedProperties(*targetObject, "waterParam."))) {
                     if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
                         auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
                         WaterParamJsonCodec::Read(objData["waterParam"], *water);
