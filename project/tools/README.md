@@ -606,7 +606,7 @@ SDL2の `.lib/.dll/include` をリポジトリへ直接持ち続けず、必要�
 
 - SDL2 versionは `2.32.10` です。
 - ダウンロード元はSDL公式GitHub Releaseです。
-- `externals/SDL2/lib/x64/SDL2.lib` と `SDL2.dll` があれば何もしません。
+- `externals/SDL2/include/SDL.h`、`externals/SDL2/lib/x64/SDL2.lib`、`SDL2.dll` が揃っていれば何もしません。
 - なければ `externals/.cache` にzipをダウンロードして展開します。
 - `externals/SDL2/include` と `externals/SDL2/lib/x64` に必要ファイルをコピーします。
 

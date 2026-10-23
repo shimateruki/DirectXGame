@@ -11,10 +11,13 @@ class GimmickMagmaHazard : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 配置データがない場合も既定値で危険域を更新できるようにする。
     void Update(float deltaTime) override;
 
+    // 液面接触による死亡はPlayer側で波の高さも含めて判定します。
     bool OnCollision(engine::Object3d* other) override;
 
+    // 複製先を初期化してから危険域の設定と配置を移す。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

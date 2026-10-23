@@ -16,5 +16,6 @@ class BaseGimmick : public engine::Object3d {
     // ギミック共通の衝突処理
     virtual bool OnCollision(engine::Object3d* other) override;
 
+    // 派生型を基底型として複製しない。各派生クラスが自分の複製を担当する。
     std::unique_ptr<engine::Object3d> Clone() const override;
 };

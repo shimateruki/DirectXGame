@@ -38,8 +38,10 @@ private:
     // 外部プロセスの終了を監視し、結果を読み取ってハンドルを解放します。
     void UpdateBuilderProcess();
 
+    // 解析だけならレポート表示、LOD 生成なら採用待ちの状態に分ける。
     void FinishBuilderProcess(unsigned long exitCode);
 
+    // 終了済みプロセスの OS ハンドルを両方閉じ、次の生成で再利用しない。
     void CloseBuilderProcessHandles();
 
     // 生成された LOD をエディター専用オブジェクトとして段階的に配置します。
@@ -47,6 +49,7 @@ private:
 
     void DrawPreviewLabels();
 
+    // NDC から Game View の座標へ変換し、背面や画面外のラベルを省く。
     bool ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const;
 
     /// 生成ツールが出力した最新レポートを読み込みます。
@@ -55,6 +58,7 @@ private:
     /// 生成レポートのLOD設定を現在選択中のObjectへ適用する。
     bool ApplyLodConfigToSelected();
 
+    // 保存済みの LOD 設定を選択オブジェクトへ反映し、プレビューと実配置を揃えます。
     bool ApplyLodConfigToObject(engine::Object3d* object);
 
     /// 生成したLODファイルを採用し、対象モデルのLOD manifestとして使える状態にする。
@@ -63,16 +67,21 @@ private:
     /// 生成物を採用せず、安全性検証を通った生成ファイルだけを取り除きます。
     bool RejectGeneratedLods();
 
+    // レポートが示す生成物だけを対象にし、SafeDeleteGeneratedLodFile でも再検証します。
     int DeleteGeneratedLodFilesFromReport();
 
+    // 古い試験配置を取り除き、新しいレポートの各 LOD を横並びの生成待ちへ積む。
     void CreatePreviewObjects();
 
+    // 生成待ちを止め、Scene 走査中の破棄を避けるため対象を先に集める。
     void RemovePreviewObjects();
 
+    // 元モデルの統計と生成可否を短くまとめ、LOD 表の入口へ表示する。
     std::string BuildReportSummary() const;
 
     std::string GetLodModelName(int lodLevel) const;
 
+    // 専用名の試験配置だけ数え、同じモデルの通常 Object は含めない。
     int CountPreviewObjects() const;
 
 private:

@@ -1,4 +1,5 @@
 #include "MeshRenderer.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "CameraManager.h"
@@ -7,12 +8,10 @@
 #include "DebugConsole.h"
 #include <cassert>
 #include <SrvManager.h>
-#include "json.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
-#include <fstream>
 
 namespace {
 namespace fs = std::filesystem;
@@ -32,12 +31,6 @@ struct BakedShaderTextureCache {
     BakedShaderTextureSet gatePortal;
     bool loaded = false;
 };
-
-std::string NormalizeSlashes(std::string text) {
-    // リソースパスを Windows と JSON の両表記で一致させる。
-    std::replace(text.begin(), text.end(), '\\', '/');
-    return text;
-}
 
 BakedShaderTextureCache& GetBakedShaderTextureCache() {
     // テクスチャ管理側の SRV 番号を一度読み、全材質で再利用する。
@@ -111,102 +104,6 @@ void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const Baked
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, textures.slot2);
 }
 
-std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
-    // モデルがファイル指定かフォルダ指定かによって、LOD 定義の候補を順に作る。
-    std::vector<fs::path> candidates;
-
-    if (modelName.empty()) {
-        return candidates;
-    }
-
-    const fs::path root = "Resources/3DModel";
-    const fs::path modelPath = fs::path(modelName);
-    const fs::path parent = modelPath.parent_path();
-    const std::string stem = modelPath.stem().string();
-    const std::string lodFileName = stem + "_lod.json";
-
-    if (!modelPath.extension().empty()) {
-        candidates.push_back(root / parent / lodFileName);
-        candidates.push_back(root / parent / stem / lodFileName);
-    } else {
-        candidates.push_back(root / parent / stem / lodFileName);
-        candidates.push_back(root / parent / lodFileName);
-    }
-
-    return candidates;
-}
-
-bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
-    // 読み込み失敗は例外を外へ出さず、呼び出し側の代替設定へ戻す。
-    std::ifstream file(path);
-
-    if (!file) {
-        return false;
-    }
-
-    try {
-        file >> outJson;
-        return true;
-    }
-    catch (...) {
-        return false;
-    }
-}
-
-// 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
-float ClampTextureTiling(float value) {
-    // 非有限値や極端な繰り返し値を材質定数に渡さない。
-    if (!std::isfinite(value)) {
-        return 1.0f;
-    }
-
-    return std::clamp(value, 0.01f, 1000.0f);
-}
-
-engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
-    // 物体の大きい二軸を使い、向きに依らず面積に合った繰り返し量を作る。
-    float a = std::abs(scale.x);
-    float b = std::abs(scale.y);
-    float c = std::abs(scale.z);
-
-    if (a < b)
-        std::swap(a, b);
-    if (a < c)
-        std::swap(a, c);
-    if (b < c)
-        std::swap(b, c);
-
-    return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
-}
-
-template <typename T>
-bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
-    // 作成と Map のどちらかに失敗したら部分的な資源を残さない。
-    data = nullptr;
-    resource.Reset();
-
-    if (!dxCommon) {
-        return false;
-    }
-
-    resource = dxCommon->CreateBufferResource(size);
-
-    if (!resource) {
-        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
-        return false;
-    }
-
-    HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
-
-    if (FAILED(hr) || !data) {
-        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
-        resource.Reset();
-        data = nullptr;
-        return false;
-    }
-
-    return true;
-}
 }
 
 // ========================================================================
@@ -221,7 +118,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
         return;
     drawModel->PrepareComputeSkinning();
     common_->SetGraphicsCommand();
-    common_->SetMaterialPipelineState(blendMode_, GetMaterialType());
+    common_->SetMaterialPipelineState(blendMode_, GetMaterialType(), shaderMaterialId_);
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     // [11] 影用のWVP行列 (b1) をセット
@@ -258,7 +155,7 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
 
     drawModel->PrepareComputeSkinning();
     common_->SetGraphicsCommand();
-    common_->SetMaterialPipelineState(blendMode_, GetMaterialType());
+    common_->SetMaterialPipelineState(blendMode_, GetMaterialType(), shaderMaterialId_);
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     if (shadowWvpResource_) {
@@ -310,53 +207,54 @@ bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferInd
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 通常画面の材質選択を描画コンポーネントへ集約する。各描画関数は既存のPSOを使う。
-    switch (GetMaterialType()) {
-    case 8: DrawWater(depthSrvHandle, colorSrvHandle);
+    using MaterialRenderPolicy::SpecialKind;
+    switch (MaterialRenderPolicy::GetSpecialKind(GetMaterialType())) {
+    case SpecialKind::Water: DrawWater(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 9: DrawMagma(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::Magma: DrawMagma(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 10: DrawIce(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::Ice: DrawIce(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 11: DrawFire(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::Fire: DrawFire(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 12: DrawLaser(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::Laser: DrawLaser(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 13: DrawSlimeGel(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::SlimeGel: DrawSlimeGel(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 14: DrawShockwave(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::Shockwave: DrawShockwave(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 15: DrawLiquidContact(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::LiquidContact: DrawLiquidContact(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 16: DrawDamageCrack(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::DamageCrack: DrawDamageCrack(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 17: DrawUpdraft(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::Updraft: DrawUpdraft(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 18: DrawStunBind(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::StunBind: DrawStunBind(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 19: DrawCrownUnlock(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::CrownUnlock: DrawCrownUnlock(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 20: DrawPoisonSpore(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::PoisonSpore: DrawPoisonSpore(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 21: DrawCloud(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::Cloud: DrawCloud(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 22: DrawGatePortal(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::GatePortal: DrawGatePortal(depthSrvHandle, colorSrvHandle);
     break;
 
-    case 26: DrawWindOrb(depthSrvHandle, colorSrvHandle);
+    case SpecialKind::WindOrb: DrawWindOrb(depthSrvHandle, colorSrvHandle);
     break;
 
     default: break;
@@ -371,8 +269,9 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
         return;
     }
 
-    switch (materialType) {
-    case 8:
+    using MaterialRenderPolicy::SpecialKind;
+    switch (MaterialRenderPolicy::GetSpecialKind(materialType)) {
+    case SpecialKind::Water:
     {
         // 別カメラの描画で通常画面の定数を上書きしないようにします。
         const int index = std::clamp(previewBufferIndex, 0, kPreviewBufferCount - 1);
@@ -385,63 +284,63 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
         break;
     }
 
-    case 9:
+    case SpecialKind::Magma:
         DrawMagmaWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
         break;
 
-    case 10:
+    case SpecialKind::Ice:
         DrawIceWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
         break;
 
-    case 11:
+    case SpecialKind::Fire:
         DrawFireWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
         break;
 
-    case 12:
+    case SpecialKind::Laser:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetLaserGraphicsCommand);
         break;
 
-    case 13:
+    case SpecialKind::SlimeGel:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetSlimeGelGraphicsCommand);
         break;
 
-    case 14:
+    case SpecialKind::Shockwave:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetShockwaveGraphicsCommand);
         break;
 
-    case 15:
+    case SpecialKind::LiquidContact:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetLiquidContactGraphicsCommand);
         break;
 
-    case 16:
+    case SpecialKind::DamageCrack:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetDamageCrackGraphicsCommand);
         break;
 
-    case 17:
+    case SpecialKind::Updraft:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetUpdraftGraphicsCommand, true);
         break;
 
-    case 18:
+    case SpecialKind::StunBind:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetStunBindGraphicsCommand, true);
         break;
 
-    case 19:
+    case SpecialKind::CrownUnlock:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetCrownUnlockGraphicsCommand, true);
         break;
 
-    case 20:
+    case SpecialKind::PoisonSpore:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetPoisonSporeGraphicsCommand, true);
         break;
 
-    case 21:
+    case SpecialKind::Cloud:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetCloudGraphicsCommand, true);
         break;
 
-    case 22:
+    case SpecialKind::GatePortal:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
         break;
 
-    case 26:
+    case SpecialKind::WindOrb:
         DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetWindOrbGraphicsCommand);
         break;
 

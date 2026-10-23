@@ -69,10 +69,13 @@ class EnemyGiantSlime : public BaseEnemy {
     /// 未設定なら現在の配置スケールを記録する。
     void EnsureBaseScale();
 
+    // 着地の発光は残り時間だけ減らし、負の値を後続の演出へ渡さない。
     void UpdateTimers(float deltaTime);
 
+    // 高低差は照準に含めず、交戦前は索敵範囲に入った対象だけへ向きを変える。
     void UpdateTargetFacing(engine::Vector3& direction, float& distance);
 
+    // 滞空中は着地予測地点を表示し、落下時間に合わせて警告を一度だけ強める。
     void UpdateStateMachine(float deltaTime, const engine::Vector3& direction, float distance);
 
     void UpdateIdleState(float deltaTime, const engine::Vector3& direction, float distance);
@@ -80,14 +83,19 @@ class EnemyGiantSlime : public BaseEnemy {
     // 目標方向と距離に応じてジャンプ攻撃を開始します。
     void LaunchJump(const engine::Vector3& direction, float distance);
 
+    // 射程に収めた着地点を予告し、溜め中の移動を止めて回避の猶予を作る。
     void BeginJumpCharge(const engine::Vector3& direction, float distance);
 
+    // 溜め中は対象の移動を追って着地点を更新し、発射後は予告地点を固定する。
     void UpdateJumpCharge(float deltaTime);
 
+    // 着地の瞬間だけ衝撃波とエフェクトを発生させ、回復状態へ移す。
     void BeginLandingRecovery();
 
+    // 潰れた姿を回復時間に沿って元へ戻し、終了時に色とサイズを復元する。
     void UpdateLandingRecovery(float deltaTime);
 
+    // 予告リングを地面より少し上に置き、地形との重なりで消えないようにする。
     void SpawnLandingTelegraph();
 
     // 着地時のパーティクルや画面演出を発生させます。
@@ -96,6 +104,7 @@ class EnemyGiantSlime : public BaseEnemy {
     /// 着地の衝撃波に入った対象へダメージを通知する。
     void DispatchLandingShockwave();
 
+    // 攻撃段階ごとの潰れ・伸びと被弾反応を合成し、配置時の大きさを基準に描画する。
     void ApplySlimeAnimation(float deltaTime);
 
     /// フックで引かれる際の踏ん張り演出へ移る。
@@ -110,10 +119,13 @@ class EnemyGiantSlime : public BaseEnemy {
     /// フック分裂用の変形を戻す。
     void ResetHookSplitVisual();
 
+    // 表示スケールが変化しても判定のワールド半径が一定になるよう逆算する。
     void SyncWorldCollisionRadius(float worldRadius, float worldCenterY);
 
+    // 接地中はプレイヤーと接触する通常の胴体範囲にする。
     void SyncGroundCollisionRadius();
 
+    // 投げられた胴体は横方向へ広がるため、専用の半径と中心を使う。
     void SyncThrownCollisionRadius();
 
     // フック分裂完了時に小型スライムを生成します。

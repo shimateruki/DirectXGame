@@ -48,9 +48,11 @@ class ControlsGuideOverlay : public IEditable {
     /// <summary>能力ページの右端からメニューページへ送る要求を一度だけ受け取ります。</summary>
     bool ConsumeMenuPageRequest();
 
+    // 表示内容の参照先だけを差し替える。Playerの所有権は受け取らない。
     void SetPlayer(Player* player) { player_ = player; }
 
     // 入力、ページ遷移、能力の表示内容を更新します。
+    // deltaTimeは秒。acceptInput=falseでもページ遷移と表示更新は継続させるための指定。
     void Update(float deltaTime, bool acceptInput = true);
 
     // 共通背景を固定し、メニューとの横スライド位置を適用する。

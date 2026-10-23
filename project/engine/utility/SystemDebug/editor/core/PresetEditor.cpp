@@ -1,6 +1,7 @@
 ﻿#include "PresetEditor.h"
 
 #include "ModelManager.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include "imgui.h"
 #include "IconsFontAwesome5.h"
 
@@ -505,9 +506,6 @@ void PresetEditor::DrawCreateButtons() {
     if (ImGui::Button("ギミック", ImVec2(92.0f, 0.0f)))
         AddBlankPreset(Category::Gimmick);
     ImGui::SameLine();
-    if (ImGui::Button("アイテム", ImVec2(92.0f, 0.0f)))
-        AddBlankPreset(Category::Item);
-    ImGui::SameLine();
     if (ImGui::Button("モデル", ImVec2(72.0f, 0.0f)))
         AddBlankPreset(Category::Model);
 }
@@ -810,6 +808,20 @@ void PresetEditor::DrawSettingsPane() {
         bool fieldChanged = false;
         fieldChanged |= DrawColorField(material, "色", "color", {1.0f, 1.0f, 1.0f, 1.0f});
         fieldChanged |= DrawIntField(material, "マテリアルタイプ", "materialType", 0);
+        const int selectedMaterialType = ReadInt(material, "materialType", 0);
+        const auto* selectedMaterial = MaterialRenderPolicy::Find(selectedMaterialType);
+        const char* selectedName = selectedMaterial ? selectedMaterial->displayName : "未登録の番号";
+        if (ImGui::BeginCombo("登録済み材質", selectedName)) {
+            for (const auto& definition : MaterialRenderPolicy::kLegacyMaterials) {
+                if (ImGui::Selectable(definition.displayName, selectedMaterialType == definition.type)) {
+                    material["materialType"] = definition.type;
+                    fieldChanged = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if (selectedMaterial)
+            ImGui::TextDisabled("固定ID: %.*s", static_cast<int>(selectedMaterial->id.size()), selectedMaterial->id.data());
         fieldChanged |= DrawFloatField(material, "金属度", "metallic", 0.0f, 0.01f);
         fieldChanged |= DrawFloatField(material, "粗さ", "roughness", 0.5f, 0.01f);
         fieldChanged |= DrawFloatField(material, "発光", "emissive", 1.0f, 0.05f);
@@ -841,7 +853,7 @@ void PresetEditor::DrawSettingsPane() {
 
     if (ImGui::CollapsingHeader("材質・モデル")) {
         if (category == Category::Enemy) {
-            ImGui::TextDisabled("敵のモデルとタイプ共通スケールはステータス管理で設定します。");
+            ImGui::TextDisabled("敵のモデルとタイプ共通スケールは「敵の調整・攻撃プレビュー」の「基本ステータス」で設定します。");
         } else {
             changed |= DrawModelField(data);
         }
@@ -868,7 +880,7 @@ void PresetEditor::DrawSettingsPane() {
         changed |= drawRotationDegrees(data, "回転 (度)");
 
         if (category == Category::Enemy) {
-            ImGui::TextDisabled("スケールはステータス管理の敵タイプ共通値を使用します。");
+            ImGui::TextDisabled("スケールは「基本ステータス」の敵タイプ共通値を使用します。");
         } else {
             changed |= DrawVector3Field(data, "スケール", "scale", { 1.0f, 1.0f, 1.0f }, 0.05f);
         }
@@ -880,9 +892,6 @@ void PresetEditor::DrawSettingsPane() {
     else if (category == Category::Gimmick) {
         changed |= DrawGimmickSettings(data);
     }
-    else if (category == Category::Item) {
-        changed |= DrawItemSettings(data);
-    }
 
     if (ImGui::CollapsingHeader("当たり判定")) {
         changed |= DrawCollider(data);
@@ -893,7 +902,7 @@ void PresetEditor::DrawSettingsPane() {
     if (ImGui::CollapsingHeader("イベント連携")) {
         changed |= DrawIntField(data, "自分ID", "myEventID", -1);
         changed |= DrawIntField(data, "送信先ID", "targetID", -1);
-        changed |= DrawIntField(data, "イベント種別", "eventType", 0);
+        changed |= DrawEventSettings(data);
     }
 
     if (data.contains("children") && data["children"].is_array()) {

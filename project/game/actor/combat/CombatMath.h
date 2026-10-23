@@ -17,6 +17,7 @@ inline engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
+// 高さを除いた XZ 平面の距離を返す。立体的な射程判定とは使い分ける。
 inline float PlanarDistance(const engine::Vector3& lhs, const engine::Vector3& rhs) {
     const float x = lhs.x - rhs.x;
     const float z = lhs.z - rhs.z;
@@ -34,6 +35,7 @@ inline float EaseOutCubic(float value) {
     return 1.0f - inverse * inverse * inverse;
 }
 
+// 補間率は制限しない。区間外の値を許可しない呼び出し側は先に 0～1 に収める。
 inline engine::Vector3 LerpVector3(const engine::Vector3& start, const engine::Vector3& end, float rate) {
     return {
         engine::Math::Lerp(start.x, end.x, rate),

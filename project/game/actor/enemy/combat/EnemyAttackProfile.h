@@ -180,6 +180,7 @@ class EnemyAttackProfile {
     // 敵種・入力割当から独立した攻撃内容。bindingとpriorityは利用先の値を維持します。
     static bool SaveSequenceAsset(const std::string& path, const AttackSequenceDefinition& sequence, std::string* error = nullptr);
 
+    // アセットの入れ子参照を禁じ、呼び出し元の結び付けと優先度は読み込み後に維持する。
     static bool LoadSequenceAsset(const std::string& path, AttackSequenceDefinition& sequence, std::string* error = nullptr);
 
     /// <summary>敵種に対応する既定の攻撃群を生成します。</summary>

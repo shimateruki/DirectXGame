@@ -31,8 +31,10 @@ class RidingPlatformController {
         bool falling = false; // 高い島から降りる場合だけ、縦方向を加速落下にする。
     };
 
+    // リプレイから除外された敵は乗車イベントの対象にしない。
     BaseEnemy* FindEnemy(BaseScene& scene, const std::string& name) const;
 
+    // 床・敵・当たり判定を演出開始前の配置へ戻し、再乗車できる状態にする。
     void Reset(GimmickMovingFloor& floor, BaseScene& scene);
 
     CinematicSequence sequence_;

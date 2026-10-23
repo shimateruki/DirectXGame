@@ -250,14 +250,18 @@ private:
 
     void GenerateThrustVertices(float length, float radius, int segments);
 
+    // 緯度ごとのリングを作り、UVの継ぎ目用に各リングの端点を重複させる。
     void GenerateSphereVertices(float radius, int segments, int rings);
 
     void GenerateCylinderVertices(float radius, float height, int segments);
 
+    // 各面に独立した法線とUVを持たせ、箱の角が滑らかに補間されないようにする。
     void GenerateBoxVertices(const engine::Vector3& size);
 
+    // 平面を等間隔の格子に分け、変形可能な頂点とUVを生成する。
     void GeneratePlaneVertices(const engine::Vector2& size, int subdivisions);
 
+    // 大円に沿って小円を並べ、継ぎ目のUVを複製して輪状Meshを作る。
     void GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings);
 
     void GenerateConeVertices(float radius, float height, int segments);
@@ -267,6 +271,7 @@ private:
 
     void GenerateRingVertices(float outerRad, float innerRad, int segments);
 
+    // 重心が原点に来る正三角形をXZ平面へ作り、法線を上向きに揃える。
     void GenerateTriangleVertices(float size);
 
 };

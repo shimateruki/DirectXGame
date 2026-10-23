@@ -511,13 +511,12 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
         { "sceneInventory", "配置物集計", "scene inventory", editor_->GetSceneInventoryWindow() },
         { "materialPreview", "マテリアル確認", "material pbr", editor_->GetMaterialPreviewBoard() },
         { "effectPreview", "エフェクト確認ステージ", "effect vfx preview", editor_->GetEffectPreviewStage() },
-        { "enemyAttack", "敵攻撃プレビュー", "enemy attack timeline", editor_->GetEnemyAttackPreviewWindow() },
+        { "enemyAttack", "敵・プレイヤー調整", "enemy player attack timeline status parameter ステータス", editor_->GetEnemyAttackPreviewWindow() },
         { "animation", "アニメーション制作", "animation motion", editor_->GetAnimationWorkbench() },
         { "animator", "Animator Controller", "animator state", editor_->GetAnimatorControllerEditor() },
         { "textPng", "テキストPNG生成", "text png", editor_->GetTextSpriteGenerator() },
         { "modelOptimizer", "モデル最適化", "model lod optimize", editor_->GetModelOptimizerWindow() },
         { "assetAudit", "アセット監査", "asset audit", editor_->GetAssetAuditWindow() },
-        { "status", "ステータス管理", "status parameter", editor_->GetStatusTuningWindow() },
         { "audio", "音声設定", "audio sound bgm", editor_->GetAudioSettingsWindow() },
         { "package", "実行ファイルセット", "executable package", editor_->GetExecutablePackageWindow() },
         { "capture", "キャプチャツール", "capture screenshot video", editor_->GetCaptureToolWindow() },
@@ -544,8 +543,12 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
         item.execute = [this, editable]() {
             if (ensureEditorPanelsVisible_)
                 ensureEditorPanelsVisible_();
-            if (editor_)
+            if (editor_) {
                 editor_->SetSelectedObject(nullptr);
+                // 同じウィンドウの演出モードが残っていても、検索から通常の調整画面へ戻します。
+                if (editable == editor_->GetEnemyAttackPreviewWindow())
+                    editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(false);
+            }
             EditorManager::GetInstance()->SetSelectedObject(editable);
         };
 

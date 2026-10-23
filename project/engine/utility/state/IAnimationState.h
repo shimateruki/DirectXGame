@@ -11,6 +11,7 @@ public:
     virtual void Enter(Player* player) = 0;
 
     // その状態の間、毎フレーム呼ばれる (例: 移動入力の監視、遷移判定)
+    // playerは借用参照、deltaTimeは経過秒数。状態を抜ける後片付けはExitへ分ける。
     virtual void Update(Player* player, float deltaTime) = 0;
 
     // その状態から出る瞬間に呼ばれる (例: エフェクト停止)

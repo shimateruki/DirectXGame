@@ -44,8 +44,10 @@ namespace CameraEditorImplementation {
 
     float Length(const engine::Vector3& v);
 
+    // 長さがほぼゼロなら fallback を返す。ゼロ除算でカメラの向きを壊さないための補助。
     engine::Vector3 NormalizeSafe(const engine::Vector3& v, const engine::Vector3& fallback);
 
+    // 前方向から Euler 回転をラジアンで求める。カメラの姿勢計算に使用する。
     engine::Vector3 MakeRotationFromForward(const engine::Vector3& forward);
 
     engine::Vector3 GetObjectWorldForward(const engine::Object3d* object);

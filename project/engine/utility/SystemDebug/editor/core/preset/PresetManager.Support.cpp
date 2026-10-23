@@ -1,5 +1,6 @@
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.Internal.h"
 #include "game/system/scene/GimmickFactory.h"
+#include "engine/utility/SystemDebug/editor/core/EditorObjectDefaults.h"
 
 using namespace PresetManagerImplementation;
 
@@ -11,78 +12,6 @@ std::string ReadString(const json& source, const char* key, const std::string& f
     }
 
     return fallback;
-}
-
-std::string ToLowerAscii(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return value;
-}
-
-// モデル名が地形・床に使われる語を含むかを判定します。
-bool ContainsGroundKeyword(const std::string& value) {
-    return value.find("block") != std::string::npos ||
-        value.find("floor") != std::string::npos ||
-        value.find("ground") != std::string::npos ||
-        value.find("platform") != std::string::npos ||
-        value.find("terrain") != std::string::npos ||
-        value.find("wall") != std::string::npos;
-}
-
-// 専用衝突設定を持つ役者を除き、地形用の既定衝突設定が必要か判定します。
-bool ShouldApplyGroundDefaults(engine::Object3d* object) {
-    // 地形プリセットの初期判定だけを補完し、ギミックなど専用判定を持つクラスは除く。
-    if (!object) {
-        return false;
-    }
-
-    const std::string className = ToLowerAscii(object->GetClassName());
-    if (className == "enemy" || className == "player" || className == "gimmick" ||
-        className == "item" || className == "gpuparticle" || className == "cinematiccamera" ||
-        className == "spritecard" || className == "meshroot" || className == "meshpart") {
-        return false;
-    }
-
-    const std::string modelName = ToLowerAscii(object->GetModelName());
-
-    if (modelName.empty()) {
-        return false;
-    }
-
-    if (modelName.rfind("characters/", 0) == 0 || modelName.rfind("item/", 0) == 0) {
-        return false;
-    }
-
-    if (modelName == "primitives/plane" || modelName.find("portal") != std::string::npos) {
-        return false;
-    }
-
-    return modelName.rfind("stages/", 0) == 0 ||
-        modelName == "primitives/cube" || ContainsGroundKeyword(modelName);
-}
-
-// 未設定の地形Colliderと衝突属性だけを補い、明示設定は維持します。
-void ApplyGroundDefaultsIfNeeded(engine::Object3d* object) {
-    // 地形プリセットで未設定の衝突情報だけ補い、個別設定は上書きしない。
-    if (!ShouldApplyGroundDefaults(object)) {
-        return;
-    }
-
-    auto colliderConfig = object->GetColliderConfig();
-
-    if (colliderConfig.type == ColliderType::kNone) {
-        colliderConfig.type = ColliderType::kAABB;
-        object->SetColliderConfig(colliderConfig);
-    }
-
-    if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
-    }
-
-    if (object->GetCollisionMask() == 0) {
-        object->SetCollisionMask(0xFFFFFFFFu);
-    }
 }
 
 std::string ResolveEnemyType(const json& node) {
@@ -660,7 +589,7 @@ void CreateObjectFromPresetNode(
 
     // 明示された当たり判定と衝突属性を優先し、旧テンプレートの省略値だけ補完します。
     if (!node.contains("collider") && !node.contains("collisionAttribute") && !node.contains("collisionMask"))
-        ApplyGroundDefaultsIfNeeded(object.get());
+        EditorObjectDefaults::ApplyGroundCollision(object.get());
     if (node.contains("name") && node["name"].is_string()) {
         object->SetName(node.value("presetDisplayName", node["name"].get<std::string>()));
     }

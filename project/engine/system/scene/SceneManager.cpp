@@ -1,4 +1,4 @@
-﻿#include "SceneManager.h"
+#include "SceneManager.h"
 
 #include "DirectXCommon.h"
 #include "LoadingScene.h"

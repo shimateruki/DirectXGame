@@ -125,14 +125,21 @@ class CinematicPlayer {
         engine::Object3d* source = nullptr;
         engine::Vector3 origin{}, rotation{}, scale{1, 1, 1}, pivot{}, radial{};
         CinematicVisualKey before;
-        engine::Object3d::Material material{};
+        engine::Object3d::MaterialState material{};
     };
+    // 演出専用Objectを用意し、既存Objectを使う部品は借用先を解決する。
     void PreparePresentation();
+    // 再生直前の姿勢・材質・可視状態と、カメラ／帯の復元用状態を退避する。
     void CapturePresentation();
+    // 一時Objectを破棄する。restore 時は生存中の借用対象とカメラ状態を戻す。
     void ReleasePresentation(bool restore);
+    // 指定秒の見た目・視点を評価する。対象が失われた場合は再生を止めて復元する。
     void EvaluatePresentation(float time, float previous, bool dispatch);
+    // 現在シーンと自分が所有する部品から、参照してよいObjectの集合を作る。
     std::unordered_set<engine::Object3d*> GetLiveTargets() const;
+    // 対象不足や名前重複、視点キーとCamera Shotの競合を診断結果へ追記する。
     void AddPresentationIssues(std::vector<std::string>& issues) const;
+    // 外部の位置解決を優先し、解決できない名前は nullopt を返す。
     std::optional<engine::Vector3> PresentationPosition(const std::string& name,
         const std::unordered_set<engine::Object3d*>& live) const;
     std::vector<PresentationObject> presentationObjects_;

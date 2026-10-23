@@ -45,6 +45,7 @@ class GameSettingsManager {
 
     void SetStageSelectWeatherMode(StageSelectWeatherMode mode);
 
+    // 保持中のBGM/SE音量を音声側へ再適用する。設定ファイルへの保存は行わない。
     void ApplyAudioSettings() const;
 
   private:

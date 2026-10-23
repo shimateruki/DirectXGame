@@ -99,6 +99,7 @@ inline float LiquidWaveHeight(const MeshRenderer::WaterParamForGPU& p, float x, 
     return (a + (b - a) * u + (c - a) * v * (1 - u) + (d - b) * u * v - .5f) * std::max(p.waveHeight, 0.0f) * .14f;
 }
 
+// 足元の標本点に触れる致死液面を探す。true 時の contactY は触れた液面の最大ワールド高さ。
 inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
     auto* manager = SceneManager::GetInstance();
     if (!manager || !manager->IsPlaying() || !manager->GetCurrentScene())
@@ -166,6 +167,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
     return touched;
 }
 
+// ラジアンの向きを -π～π に折り返す。呼び出し側は有限値を渡す。
 inline float NormalizeYaw(float yaw) {
     while (yaw > kPi)
         yaw -= kTwoPi;
@@ -198,6 +200,7 @@ inline engine::Vector3 GetStableEnemyCarryScale(engine::Object3d* enemy) {
     return {stableScale, stableScale, stableScale};
 }
 
+// Transform が正本にしている Euler／Quaternion を確認して、ラジアンの Euler 角を返す。
 inline engine::Vector3 ResolveTransformEuler(const Transform& transform) {
     if (!transform.isQuaternionMaster) {
         return transform.rotate;

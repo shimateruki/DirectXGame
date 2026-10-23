@@ -21,6 +21,7 @@ class TrailEmitter {
 public:
     /// <summary>追跡対象を設定し、軌跡の発生を開始する。</summary>
     /// <param name="target">移動を追跡するObject3d。所有しない。</param>
+    // 対象は借用する。対象を破棄する側は先に Stop し、追従中の無効参照を残さない。
     void Start(engine::Object3d* target);
 
     /// <summary>軌跡の発生を停止する。</summary>

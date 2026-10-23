@@ -11,10 +11,12 @@ class PlayerStatePullEnemy : public IAnimationState {
     PlayerStatePullEnemy(engine::Object3d* targetEnemy, const engine::Vector3& targetPos)
         : targetEnemy_(targetEnemy), targetPos_(targetPos) {}
 
+    // 自身の操作と移動を止め、対象の姿勢を退避して引き寄せを開始する。
     void Enter(Player* player) override;
 
     void Update(Player* player, float deltaTime) override;
 
+    // 操作を戻し、引き寄せ用のマーカーや退避した対象の姿勢を後始末する。
     void Exit(Player* player) override;
 
   private:

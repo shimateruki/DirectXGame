@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 #include "json.hpp"
+#include "engine/utility/JsonFile.h"
 #include "game/system/progress/StageCatalog.h"
 
 // ステージ一覧と現在の選択を管理します。JSON が読めない場合は内蔵の一覧へ戻します。
@@ -126,32 +127,11 @@ class StageManager {
     /// <summary>開発用ビルドで現在の配列位置をユーザー設定へ保存する。</summary>
     void SaveDevelopmentStageIndex() const {
 #if defined(USE_IMGUI) && defined(NDEBUG) && !defined(DD)
-        // 既存のユーザー設定を読み、他の項目を消さずステージ選択だけ更新する。
-        nlohmann::json root;
-        {
-            std::ifstream input(kUserConfigPath);
-            if (input.is_open()) {
-                try {
-                    input >> root;
-                } catch (...) {
-                    root = nlohmann::json::object();
-                }
-            }
-        }
-
-        if (!root.is_object()) {
-            root = nlohmann::json::object();
-        }
-
-        root["lastStageIndex"] = currentStageIndex_;
+        nlohmann::json values = {{"lastStageIndex", currentStageIndex_}};
         if (currentStageIndex_ >= 0 && currentStageIndex_ < static_cast<int>(stages_.size())) {
-            root["lastStageId"] = stages_[currentStageIndex_].id;
+            values["lastStageId"] = stages_[currentStageIndex_].id;
         }
-
-        std::ofstream output(kUserConfigPath);
-        if (output.is_open()) {
-            output << root.dump(4);
-        }
+        JsonFile::UpdateObject(kUserConfigPath, values);
 #endif
     }
 

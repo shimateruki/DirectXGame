@@ -25,6 +25,7 @@ inline bool Matches(const std::string& value, const char* query) {
     return lowerValue.find(lowerQuery) != std::string::npos;
 }
 
+// selectedIndex は元の entries の添字で、未選択は -1。変更した場合だけ true を返す。
 inline bool DrawCombo(const char* label, const std::vector<std::string>& entries,
                       int& selectedIndex, char* query, size_t queryCapacity,
                       const char* emptyLabel = "未選択", bool allowNone = false) {

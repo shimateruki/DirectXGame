@@ -45,21 +45,27 @@ class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
     /// 未設定なら現在の配置スケールを記録する。
     void EnsureBaseScale();
 
+    // 行動間隔と攻撃中の時間は負値を残さず、次の行動選択へ渡す。
     void UpdateWildTimers(float deltaTime);
 
     void UpdateWildBehavior(float deltaTime, engine::Vector3& velocity);
 
+    // 編集済みシーケンスを優先し、使わない攻撃だけ従来の距離別行動へ戻す。
     void UpdateCombatBehavior(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction, float distance);
 
+    // 索敵外は攻撃速度より遅い巡回速度で動き、進行方向へ体を向ける。
     void UpdateWanderBehavior(float deltaTime, engine::Vector3& velocity);
 
+    // 詠唱中の跳ね動作は止め、飛び道具の発射姿勢と移動を競合させない。
     void ApplyGroundMovementAndAnimation(float deltaTime, engine::Vector3& velocity);
 
+    // 停止中の微小ベクトルで向きを跳ねさせず、モデルの前方軸だけ補正する。
     void UpdateFacing(const engine::Vector3& direction);
 
     // 炎ブレス攻撃の予兆と再生状態を開始します。
     void StartBreath();
 
+    // 攻撃判定より先に扇形の予告を見せ、判定発生後は予告を消す。
     void UpdateBreath(float deltaTime, const engine::Vector3& direction, float distance);
 
     /// 火球の予備動作または攻撃シーケンスを開始する。
@@ -84,6 +90,7 @@ class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
     EnemyAttackAction fireballSequence_;
     std::string previewAttackId_;
 
+    // 頭上の炎は AI と別の更新経路で維持し、待機中も動かす。
     void UpdateHeadFlame(float deltaTime);
 
     /// 頭上の炎表示がなければ作成する。
@@ -107,19 +114,25 @@ class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
     /// ブレス用の炎表示をシーンから取り除くよう要求する。
     void RequestRemoveBreathFlameVisuals();
 
+    // 放出口を順に前へ進め、メッシュの炎と同じ距離帯に火の粉を散らす。
     void EmitBreathParticles(const engine::Vector3& origin, const engine::Vector3& direction);
 
+    // 未初期化の GPU パーティクル管理には要求を送らない。
     void EmitFirePreset(const char* presetName, const engine::Vector3& position);
 
+    // 火の粉の流れる向きを指定できる場合だけ方向付きプリセットを使う。
     void EmitDirectedFirePreset(const char* presetName, const engine::Vector3& position, const engine::Vector3& direction,
                                 float speedScale = 1.0f);
 
     void ApplySlimeAnimation(float deltaTime);
 
+    // 見た目の伸縮でワールド空間の当たり半径が変わらないよう逆スケールする。
     void SyncWorldCollisionRadius(float worldRadius);
 
+    // 地上では小さめの本体判定へ戻す。
     void SyncGroundCollisionRadius();
 
+    // 投擲時は接触を拾いやすい広い判定を使う。
     void SyncThrownCollisionRadius();
 
     float attackCooldown_ = 0.65f;     // 野生時の攻撃再使用待ち。

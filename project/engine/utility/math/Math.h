@@ -122,8 +122,10 @@ public:
 	// 指定ラジアン角で各軸を中心に回転する行列を作る。
 	static Matrix4x4 MakeRotateXMatrix(float theta);
 
+	// thetaはラジアンで受け取り、Y軸回りの行ベクトル用行列を作ります。
 	static Matrix4x4 MakeRotateYMatrix(float theta);
 
+	// thetaはラジアンで受け取り、Z軸回りの行ベクトル用行列を作ります。
 	static Matrix4x4 MakeRotateZMatrix(float theta);
 
 	/// <summary>移動量から平行移動行列を作る。</summary>

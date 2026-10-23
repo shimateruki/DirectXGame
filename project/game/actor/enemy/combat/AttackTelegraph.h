@@ -48,6 +48,7 @@ class AttackTelegraph {
     // 攻撃直前の強調表示を直近の予兆位置で再生します。
     void TriggerCue(const engine::Vector4& color);
 
+    // 汎用の円形合図は、事前の予告がなくても指定地点に生成できる。
     void TriggerCueAt(const engine::Vector3& center, float radius, const engine::Vector4& color);
 
     // 敵本体の上へ、回避入力の瞬間を伝える短い共通フラッシュを表示します。
@@ -62,6 +63,7 @@ class AttackTelegraph {
     // 地面上の範囲予兆と、対象の頭上に出す警告を別パスで描画します。
     void DrawGround(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
+    // 頭上の警告は地面の予告とは別パスで描く。
     void DrawWarning(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     bool IsVisible() const { return isVisible_; }
@@ -70,22 +72,27 @@ class AttackTelegraph {
     // 必要数だけ予兆・強調用Effectを遅延生成する。
     void EnsureEffect(engine::Object3dCommon* common);
 
+    // 命中直前の強調表示を本体の予告と別の寿命で管理する。
     void EnsureCueEffect(engine::Object3dCommon* common);
 
     void EnsureWarningEffect(engine::Object3dCommon* common);
 
+    // 複数着弾地点に必要な数だけ表示物を増やし、既存分は再利用する。
     void EnsurePatternEffects(std::size_t count);
 
+    // 時間表示の数を攻撃パターンへ合わせ、毎フレームの生成を避ける。
     void EnsureTimingEffects(std::size_t count);
 
     // 表示する形状と有効個数を切り替え、前の予兆を片付ける。
     void BeginPattern(Shape shape, std::size_t count);
 
+    // 形状変更時だけ描画設定を作り直し、タイミング表示の個数を揃える。
     void BeginTiming(Shape shape, std::size_t count);
 
     // パターンとタイミング表示をまとめて消す。
     void HidePatternEffects();
 
+    // 時間表示が次の攻撃へ残らないよう、再利用物を全て隠す。
     void HideTimingEffects();
 
     // 頭上警告の追従位置と残り時間を更新する。
@@ -94,6 +101,7 @@ class AttackTelegraph {
     // 使用する形状が変わったときにメッシュ構成を更新する。
     void ConfigureShape(Shape shape);
 
+    // 強調表示の形状を予告範囲へ揃え、直前の攻撃形状を引きずらない。
     void ConfigureCueShape(Shape shape);
 
     // EffectObject3dの手続き生成形状を予兆用に設定します。
@@ -106,28 +114,35 @@ class AttackTelegraph {
     void ApplyCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress, const engine::Vector4& color,
                      float scaleMultiplier) const;
 
+    // 地面から僅かに浮かせ、深度競合でデカールがちらつくのを避ける。
     void ApplyDecalCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress,
                           const engine::Vector4& color, float scaleMultiplier) const;
 
+    // 始点を固定したまま前方へ伸ばし、射線の向きを予告から読めるようにする。
     void ApplyLine(EffectObject3d* effect, const engine::Vector3& center, const engine::Vector3& direction, float length, float width,
                    float progress, const engine::Vector4& color, float scaleMultiplier) const;
 
+    // 残り時間を線上の移動マーカーに変え、端を越えないよう位置を制限する。
     void ApplyLineTimingMarker(EffectObject3d* effect, const engine::Vector3& origin, const engine::Vector3& direction, float length,
                                float width, float progress, const engine::Vector4& color) const;
 
     // 予兆本体とは別に発動タイミング用のマーカーを表示する。
     void ShowCircleTiming(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color);
 
+    // 射線上を進むマーカーで、線状攻撃の発生までの時間を示す。
     void ShowLineTiming(const engine::Vector3& origin, const engine::Vector3& direction, float length, float width, float progress,
                         const engine::Vector4& color);
 
     // 予兆、デカール、強調、タイミングごとの透明度と発光色を計算する。
     engine::Vector4 MakeDisplayColor(const engine::Vector4& color, float progress) const;
 
+    // デカールは地面との重なりを保ちつつ、発生が近いほど目立たせる。
     engine::Vector4 MakeDecalColor(const engine::Vector4& color, float progress) const;
 
+    // 命中合図を短時間で消し、次の警告と混ざらないようにする。
     engine::Vector4 MakeCueColor(const engine::Vector4& color, float progress) const;
 
+    // 発生が近づく後半ほど色を強め、攻撃の直前を判別しやすくする。
     engine::Vector4 MakeTimingColor(const engine::Vector4& color, float progress) const;
 
     std::unique_ptr<EffectObject3d> effect_;

@@ -119,6 +119,7 @@
     <ClCompile Include="engine\core\Game.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClCompile>
+    <ClCompile Include="engine\core\editor\PlayModeSnapshot.cpp" />
     <ClCompile Include="engine\core\editor\GameEditorController.cpp"><Filter>EditorOrganization\Controller</Filter></ClCompile>
     <ClCompile Include="engine\system\input\InputManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
@@ -284,6 +285,8 @@
     <ClCompile Include="engine\graphics\3d\object\Object3d.Animation.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
+    <ClCompile Include="engine\utility\JsonFile.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorObjectDefaults.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.Components.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BaseProperties.cpp" />
@@ -379,6 +382,9 @@
       <Filter>Game\system\settings</Filter>
     </ClCompile>
     <ClCompile Include="game\ui\ControlsGuideOverlay.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ui\PlayerHealthHud.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\system\tutorial\TutorialDirector.cpp">
@@ -633,9 +639,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
+    <ClCompile Include="game\editor\CharacterStatusEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -671,8 +675,6 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Ui.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
     <ClCompile Include="engine\graphics\3d\object\Object3d.Replay.cpp" />
     <ClCompile Include="game\actor\Character.Replay.cpp" />
     <ClCompile Include="game\actor\player\Player.Replay.cpp">
@@ -795,9 +797,6 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\item\BaseItem.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\item\HealItem.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\select\GameSelectScene.cpp">
@@ -924,6 +923,7 @@
     <ClInclude Include="engine\core\Game.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClInclude>
+    <ClInclude Include="engine\core\editor\PlayModeSnapshot.h" />
     <ClInclude Include="engine\core\editor\GameEditorController.h"><Filter>EditorOrganization\Controller</Filter></ClInclude>
     <ClInclude Include="engine\system\input\InputManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
@@ -1109,6 +1109,8 @@
     <ClInclude Include="game\editor\RegisterGameEditorFactories.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="game\editor\RegisterGameEditorEvents.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorEventRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorObjectFactoryRegistry.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1883,6 +1885,10 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Constants.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EnemyAttackPreviewRegistry.h" />
+    <ClInclude Include="game\editor\RegisterGameAttackPreviews.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\CopyAbilityPreviewRegistry.h" />
+    <ClInclude Include="game\editor\RegisterGameCopyPreviews.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1900,9 +1906,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
+    <ClInclude Include="game\editor\CharacterStatusEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1944,6 +1948,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\ObjectPropertyDefinition.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyJsonBinding.h" />
+    <ClInclude Include="engine\utility\JsonFile.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorObjectDefaults.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BuiltIn.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.h" />
@@ -1956,7 +1962,6 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.h"><Filter>EditorOrganization\Replay</Filter></ClInclude>
     <ClInclude Include="engine\system\input\KeyConfig.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2074,9 +2079,6 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\item\BaseItem.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\item\HealItem.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\select\GameSelectScene.h">
@@ -2233,10 +2235,6 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Guides.cpp"><Filter>EditorOrganization\Camera</Filter></ClCompile>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Internal.h"><Filter>EditorOrganization\Inspector</Filter></ClInclude>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Support.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Internal.h"><Filter>EditorOrganization\Replay</Filter></ClInclude>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Support.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Archive.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Regression.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

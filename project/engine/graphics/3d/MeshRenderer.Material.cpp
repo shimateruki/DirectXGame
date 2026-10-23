@@ -8,62 +8,11 @@
 #include "DebugConsole.h"
 #include <cassert>
 #include <SrvManager.h>
-#include "json.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <filesystem>
-#include <fstream>
 
 namespace {
-namespace fs = std::filesystem;
-
-std::string NormalizeSlashes(std::string text) {
-    std::replace(text.begin(), text.end(), '\\', '/');
-    return text;
-}
-
-std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
-    // モデルの配置形式に応じて、LOD定義を探索する二つのパスを用意する。
-    std::vector<fs::path> candidates;
-
-    if (modelName.empty()) {
-        return candidates;
-    }
-
-    const fs::path root = "Resources/3DModel";
-    const fs::path modelPath = fs::path(modelName);
-    const fs::path parent = modelPath.parent_path();
-    const std::string stem = modelPath.stem().string();
-    const std::string lodFileName = stem + "_lod.json";
-
-    if (!modelPath.extension().empty()) {
-        candidates.push_back(root / parent / lodFileName);
-        candidates.push_back(root / parent / stem / lodFileName);
-    } else {
-        candidates.push_back(root / parent / stem / lodFileName);
-        candidates.push_back(root / parent / lodFileName);
-    }
-
-    return candidates;
-}
-
-bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
-    // マテリアル設定の読み込み可否を返し、不正なJSONを適用しない。
-    std::ifstream file(path);
-
-    if (!file) {
-        return false;
-    }
-
-    try {
-        file >> outJson;
-        return true;
-    }
-    catch (...) {
-        return false;
-    }
-}
 
 // 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
 float ClampTextureTiling(float value) {
@@ -90,34 +39,6 @@ engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
     return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
 }
 
-template <typename T>
-bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
-    // 定数バッファの確保とMapを一組として扱い、失敗時は参照を残さない。
-    data = nullptr;
-    resource.Reset();
-
-    if (!dxCommon) {
-        return false;
-    }
-
-    resource = dxCommon->CreateBufferResource(size);
-
-    if (!resource) {
-        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
-        return false;
-    }
-
-    HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
-
-    if (FAILED(hr) || !data) {
-        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
-        resource.Reset();
-        data = nullptr;
-        return false;
-    }
-
-    return true;
-}
 }
 
 // ========================================================================
@@ -126,6 +47,63 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 // 色、PBR値、通常/ORM/アルベドテクスチャ、UVタイリング、環境反射を担当する。
 // Inspectorから編集される見た目の値は、基本的にこのファイルへ集める。
 // ========================================================================
+// GPU色だけを戻すと次のUpdateで上書きされるため、入力色と描画方式も同時に復元する。
+MeshRenderer::MaterialState MeshRenderer::CaptureMaterialState() const {
+    MaterialState state;
+    if (materialData_) {
+        state.parameters = *materialData_;
+        state.authoringColor = materialColor_;
+        state.blendMode = blendMode_;
+        state.valid = true;
+    }
+    return state;
+}
+
+void MeshRenderer::RestoreMaterialState(const MaterialState& state) {
+    if (!materialData_ || !state.valid) return;
+    *materialData_ = state.parameters;
+    SetColor(state.authoringColor);
+    SetBlendMode(state.blendMode);
+}
+
+void MeshRenderer::SetPortalClip(const PortalClipSettings& settings) {
+    if (!materialData_) return;
+    const auto finite = [](float value, float fallback) { return std::isfinite(value) ? value : fallback; };
+    auto normal = settings.normal;
+    const float length = engine::Math::Length(normal);
+    normal = std::isfinite(length) && length > 0.0001f ? normal * (1.0f / length) : engine::Vector3{0, 0, 1};
+    materialData_->portalClipEnabled = settings.enabled ? 1.0f : 0.0f;
+    materialData_->portalClipProgress = std::clamp(finite(settings.progress, 0.0f), 0.0f, 1.0f);
+    materialData_->portalClipCenter = {finite(settings.center.x, 0), finite(settings.center.y, 0), finite(settings.center.z, 0)};
+    materialData_->portalClipNormal = normal;
+    materialData_->portalClipEdgeWidth = (std::max)(0.0001f, finite(settings.edgeWidth, 0.12f));
+    materialData_->portalClipDissolve = (std::max)(0.0f, finite(settings.dissolve, 0.18f));
+    // HDRの縁色は1を超える値も演出で使うため、上限を設けない。
+    materialData_->portalClipColor = {finite(settings.color.x, 1), finite(settings.color.y, 1),
+        finite(settings.color.z, 1), std::clamp(finite(settings.color.w, 1), 0.0f, 1.0f)};
+}
+
+void MeshRenderer::ClearPortalClip() {
+    if (materialData_) materialData_->portalClipEnabled = 0.0f;
+}
+
+void MeshRenderer::SetMaterialTime(float time) {
+    if (materialData_ && std::isfinite(time)) materialData_->time = time;
+}
+
+void MeshRenderer::AdvanceMaterialTime(float deltaTime) {
+    if (materialData_ && std::isfinite(deltaTime) && deltaTime > 0.0f)
+        SetMaterialTime(materialData_->time + deltaTime);
+}
+
+void MeshRenderer::SetShininess(float shininess) {
+    if (materialData_ && std::isfinite(shininess)) materialData_->shininess = (std::max)(0.0f, shininess);
+}
+
+void MeshRenderer::SetSelectedLighting(int32_t type) {
+    if (materialData_) materialData_->selectedLighting = type;
+}
+
 void MeshRenderer::SetColor(const engine::Vector4& color) {
     materialColor_ = color;
     if (materialData_)

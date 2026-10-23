@@ -22,6 +22,7 @@ private:
     /// 入力中の検索文字列に一致する音声項目だけを表示するための判定。
     bool MatchesSearch(const std::string& text) const;
 
+    // 音源ファイルとイベント設定を分けて扱い、イベント側の調整値を編集します。
     void DrawAudioEventEditor();
 
     DebugEditor* editor_ = nullptr;

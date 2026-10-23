@@ -215,10 +215,13 @@ class TutorialDirector {
     // ステップ専用の短い演出を再生し、終了時に通常操作へ戻します。
     void BeginStepCinematic(const Step& step);
 
+    // 自然終了後も Stop でカメラトラックを解放し、通常カメラへの復帰を完了する。
     void EndStepCinematic(bool skipped);
 
+    // 開始直後の決定入力で飛ばさないよう、短い猶予の後だけスキップを受け付ける。
     void UpdateCinematic(float deltaTime);
 
+    // 予告表示は可能にしても、課題完了前のステージ遷移は許可しない。
     void UpdateGateStateForStep(const Step& step);
 
     void SetGateTransitionEnabled(bool enabled);
@@ -231,21 +234,27 @@ class TutorialDirector {
 
     void SetAllSpawnEnemiesActive(bool active);
 
+    // 指定ステップまでの出現・消去履歴を再適用し、途中再開でも敵の状態を一致させる。
     void RestoreSpawnEnemyStateBeforeStep(int stepIndex);
 
+    // 名前から現在のシーン内で解決し、前回シーンのポインタを使わない。
     engine::Object3d* FindObjectByName(const std::string& name) const;
 
     // 操作案内と目標マーカーは JSON から取得した Sprite を更新します。
     void BindPromptSprites();
 
+    // 固定操作表から入力機器に合う画像を選び、ゲーム内操作と案内を一致させる。
     void ApplyStepPrompt(const Step* step);
 
+    // 指数応答で表示と非表示を補間し、フレーム時間が変わっても速度を揃える。
     void UpdatePrompt(float deltaTime);
 
     void SetPromptVisible(bool visible);
 
+    // 課題の目標名を入れ替え、シーンに実在する対象だけマーカーを表示する。
     void ApplyStepObjective(const Step* step);
 
+    // 目標の頭上を画面座標へ投影し、背面や画面外ではマーカーを消す。
     void UpdateObjectiveMarker(float deltaTime);
 
     void SetObjectiveMarkerVisible(bool visible);

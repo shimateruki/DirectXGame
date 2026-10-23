@@ -13,6 +13,7 @@ public:
     std::string_view GetTypeId() const override { return kTypeId; }
 
     // 排他的な再生条件。旧データは常時再生として扱う。
+    // Alwaysは常時、WhileRidingは乗車中だけ、RideToEndは乗車を契機に終端まで進む指定。
     enum class PlaybackMode { Always, WhileRiding, RideToEnd };
     PlaybackMode GetPlaybackMode() const { return playbackMode_; }
     void SetPlaybackMode(PlaybackMode mode) { playbackMode_ = mode; }
@@ -44,6 +45,7 @@ public:
 
     // ループの開始位置を周期の割合でずらし、同じパスを使う障害物の動きを揃えすぎない。
     float GetPhaseOffset() const { return phaseOffset_; }
+    // 値を保持するだけで、ここでは0〜1への制限や経路の再計算をしない。
     void SetPhaseOffset(float phase) { phaseOffset_ = phase; }
 
     // 乗車型の床は演出タイムラインを実行する。空なら従来のPath再生を維持する。

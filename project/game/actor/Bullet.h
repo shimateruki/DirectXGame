@@ -28,6 +28,7 @@ class Bullet : public engine::Object3d {
     void ConfigureVfx(const std::string& trailPreset, const std::string& trailSecondaryPreset,
                       const std::string& impactPreset, const std::string& impactSecondaryPreset, float trailInterval,
                       float trailSpeedScale, bool trailReverseDirection, bool impactDirected);
+    // 弾にまとわせる粒子のプリセットと基準半径を指定し、発生時計を先頭へ戻す。
     void ConfigureBurningVfx(const std::string& preset, float radius);
     void ConfigureDestructionVfx(const std::string& debrisPreset, const std::string& secondaryDebrisPreset,
                                  float debrisScale, bool impactOnExpiry, bool destroyOnSolidCastHit);
@@ -36,6 +37,7 @@ class Bullet : public engine::Object3d {
 
     bool IsDead() const { return isDead_; }
 
+    // 弾を死亡扱いにする。playImpact 時だけ着弾演出を出し、既に死亡済みなら何もしない。
     void Expire(bool playImpact = false);
 
     void SetGravity(float gravity) { gravity_ = gravity; }
@@ -97,8 +99,10 @@ class Bullet : public engine::Object3d {
     bool previewOnly_ = false;
     const engine::Object3d* previewOwner_ = nullptr; // 比較用。所有も参照もしません。
 
+    // 速度ゼロでも無効な方向ベクトルを GPU パーティクルへ渡さない。
     void EmitTrailVfx();
     void EmitBurningVfx();
 
+    // 衝突と強制終了が重なっても着弾演出を重複発生させない。
     void EmitImpactVfx();
 };

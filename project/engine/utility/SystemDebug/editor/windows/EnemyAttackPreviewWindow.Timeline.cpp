@@ -1,4 +1,5 @@
 #include "EnemyAttackPreviewWindow.h"
+#include "CopyAbilityPreviewRegistry.h"
 #include "EnemyAttackPreviewWindow.Constants.h"
 #include "game/crown/CrownFinaleTuning.h"
 #include "game/scene/gameplay/GamePlayScene.h"
@@ -20,8 +21,6 @@
 #include <cstdio>
 #include <iterator>
 
-using EnemyAttackPreviewConstants::kCopyActions;
-using EnemyAttackPreviewConstants::kCopyLabels;
 using EnemyAttackPreviewConstants::kFixedPreviewStep;
 
 namespace {
@@ -190,8 +189,12 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
 
     // キーボード操作と同じ SeekPreview をボタンでも使い、再生位置の計算を揃えます。
     ImGui::PushID("EnemyAttackTimelineToolbar");
-    if (playerCopyMode_)
-        ImGui::Text("プレイヤー / %s / %s", kCopyLabels[copyTypeIndex_], kCopyActions[copyActionIndex_]);
+    if (playerCopyMode_) {
+        const auto* copy = GetCopyDescriptor();
+        const auto* action = GetCopyAction();
+        ImGui::Text("プレイヤー / %s / %s", copy ? copy->displayName.c_str() : "未登録",
+            action ? action->displayName.c_str() : "未選択");
+    }
     if (ImGui::Button(playing_ ? "■ 一時停止" : "▶ 再生", ImVec2(108.0f, 0.0f))) {
         playing_ = !playing_;
     }
@@ -403,7 +406,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
             0.0f,
             duration,
             IM_COL32(70, 105, 132, 190),
-            giantPreviewModeIndex_ == 2
+            IsAirHookSplitPreview()
                 ? "空中拘束 → 着地 → 抵抗 → 分裂"
                 : "踏ん張り → 引きずられ → 分裂");
     } else if (const EnemyAttackDefinition* attack = GetSelectedAttackDefinition()) {

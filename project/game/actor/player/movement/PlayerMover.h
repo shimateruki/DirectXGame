@@ -56,11 +56,13 @@ class PlayerMover {
 
     bool IsDashing() const { return isDashing_; }
 
+    // 衝突でダッシュが途切れたら、移動速度だけでなく無敵と子の衝突属性も戻す。
     void StopDashOnImpact();
 
     // ワープや演出復帰時に、継続中のダッシュ・床補正・ジャンプ溜めを破棄します。
     void ResetTransientState();
 
+    // 連続してパネルを踏んでも効果時間は短縮せず、速度だけ不足分を補う。
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
 
   private:
@@ -71,6 +73,7 @@ class PlayerMover {
     PlayerJumpRequest jumpRequest_;
     const char* jumpStatus_ = "入力待ち";
 
+    // プレイヤー中心ではなく接地面から発生させ、段差やジャンプ時の浮きを防ぐ。
     void EmitGroundDust(const char* presetName, float yOffset) const;
 
     // 参照用ポインタ

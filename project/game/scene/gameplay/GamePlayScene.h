@@ -1,3 +1,4 @@
+#include "game/ui/PlayerHealthHud.h"
 #pragma once
 #include "LifeLostPresentationState.h"
 #include "BaseScene.h"
@@ -673,14 +674,10 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
     // --- プレイ中 HUD ---
     // HudSpriteStateは配置JSONのSpriteを借用し、演出前の基準配置も保持する。
-    HudSpriteState hudHpIcon_;
     HudSpriteState hudCopyStyle_;
     CopyStyleHud copyStyleHud_;
+    PlayerHealthHud healthHud_;
 
-    HudSpriteState hudHpFrame_;
-    HudSpriteState hudHpDamageFill_;
-    HudSpriteState hudHpFill_;
-    HudSpriteState hudHpHighlight_;
 
     HudSpriteState hudLifeIcon_;
     HudSpriteState hudLifeXIcon_;
@@ -719,13 +716,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     int hudPreviousLives_ = 0;
     int hudPreviousCoins_ = 0;
 
-    float hudPreviousHp_ = 0.0f;
-    float hudDamagePulseTimer_ = 0.0f;
-    float hudHurtIconTimer_ = 0.0f;
 
-    float hudHpDamageHoldTimer_ = 0.0f;
-    float hudHpDelayedRate_ = 1.0f;
-    float hudHpAnimationTimer_ = 0.0f;
 
     // --- ボス／中ボス共通 HUD ---
     enum class PrismBossHudPhase {

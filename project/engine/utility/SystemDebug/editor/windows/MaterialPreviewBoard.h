@@ -11,6 +11,7 @@ namespace engine { class Object3d; }
 /// 各マテリアルタイプや特殊表現を同じ条件で並べ、見た目を比較するためのプレビュー板。
 class MaterialPreviewBoard : public IEditable {
 public:
+    // 配置先SceneとEditorを借用し、使えるモデル候補を最初に集めます。
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
 
     void DrawImGui() override;
@@ -34,10 +35,12 @@ private:
     /// プレビュー用に作成したObjectをシーンからまとめて削除する。
     void RemoveBoard();
 
+    // 現行Scene内のプレビュー専用Objectだけを数え、通常配置は含めません。
     int CountBoardObjects() const;
 
     std::vector<MaterialPreviewEntry> GetEntries() const;
 
+    // 基本形状を残した上で利用可能なモデルを追加し、選択候補を一意にします。
     void RefreshModelCandidates();
 
     void SetPreviewModel(const std::string& modelName);

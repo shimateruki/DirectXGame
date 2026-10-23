@@ -76,6 +76,7 @@ public:
     const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
     /// <summary>現在のシーンを返す。未設定ならnullptr。</summary>
+    // 返すSceneはManager所有の借用参照。遷移後は持ち越さず、必要なら世代番号も照合する。
     BaseScene* GetCurrentScene() const;
 
     /// <summary>シーンインスタンスの差し替えごとに増える世代番号を返す。</summary>

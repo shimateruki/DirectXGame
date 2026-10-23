@@ -45,8 +45,10 @@ std::string ToLowerAscii(std::string text);
 // 複数選択を含む現在の編集対象を集めます。戻り値はシーン所有オブジェクトへの非所有参照です。
 std::vector<engine::Object3d*> CollectInspectorTargets(DebugEditor* editor, engine::Object3d* primary);
 
+// 複数選択の編集を保存対象へ反映するため、生存しているObjectだけ変更済みにする。
 void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<engine::Object3d*>& targets);
 
+// 編集値をワールド行列へ反映し、選択枠や子Objectの表示を更新する。
 void RefreshInspectorTargetMatrices(const std::vector<engine::Object3d*>& targets);
 
 float SafeScaleRatio(float after, float before);
@@ -69,6 +71,7 @@ bool IsSpriteCardObject(const engine::Object3d* object);
 
 void ConfigureSpriteCardObject(engine::Object3d* object);
 
+// 複数選択へ同じComponent操作を適用し、変更があったときだけDirtyと行列を更新する。
 void ApplyRegisteredComponentToTargets(
     DebugEditor* editor,
     const std::vector<engine::Object3d*>& targets,
@@ -105,24 +108,29 @@ void DrawAutomaticComponentProperties(
     const std::vector<engine::Object3d*>& targets,
     const EditorComponentDescriptor& component);
 
+// 共通Component定義を用いて単体・複数選択のInspectorを同じ手順で描画する。
 void DrawComponentPanel(DebugEditor* editor, engine::Object3d* primary, const std::vector<engine::Object3d*>& targets);}
 
 namespace InspectorWindowImplementation {
 
+// カメラ自身とEditor専用Objectを除き、注視対象として有効な名前だけ列挙する。
 bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, engine::Object3d* cameraObject, std::string& objectName);
 
 bool HasMixedInspectorValue(const std::vector<engine::Object3d*>& targets, const char* propertyPath);
 
 void DrawMixedValueHint(bool mixed);
 
+// 複数対象で値が異なるCheckboxの表示フラグを積む。描画後に PopMixedCheckbox と対で戻す。
 void PushMixedCheckbox(bool mixed);
 
 void PopMixedCheckbox();
 
 void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Object3d* cameraObject);
 
+// インスペクターの対象を現シーンの所有オブジェクトから集める。
 std::vector<engine::Object3d*> CollectSceneObjects(BaseScene* scene);
 
+// 同一Prefabインスタンスに属する子だけを編集対象として集める。
 std::vector<engine::Object3d*> CollectPrefabInstanceObjects(BaseScene* scene, const std::string& instanceId);
 
 void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, engine::Object3d* object);

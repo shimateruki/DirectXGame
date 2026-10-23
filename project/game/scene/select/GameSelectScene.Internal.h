@@ -105,10 +105,12 @@ struct SelectGateEntryRoute {
 
 // 演出補間用の 0～1 制限とイージング関数。
 float SelectClamp01(float value);
+// ゲートへの接近を終点付近で減速させる。
 float SelectEaseOutCubic(float value);
 
 // 視点から対象を向くカメラ回転と、水平ゲート方向の正規化を求める。
 engine::Vector3 SelectLookAtRotation(const engine::Vector3& eye, const engine::Vector3& target);
+// ゲートの向きは水平面へ投影し、無効なら代替方向を使う。
 engine::Vector3 SelectNormalizeGateDirectionXZ(const engine::Vector3& value, const engine::Vector3& fallback);
 
 // 帰還地点の地面を調べ、安全に配置できる高さを返す。
@@ -118,14 +120,20 @@ float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const
 
 // ゲートの向きから突入方向と通過用の三点経路を組み立てる。
 engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const engine::Vector3& fallbackDirection);
+// ゲート面を基準に前後の通過点を作り、入場経路を配置向きへ合わせる。
 SelectGateEntryRoute SelectBuildGateEntryRoute(const engine::Vector3& gatePos, const engine::Vector3& direction, float entryY);
 
 // ゲートと帰還演出の補間に使うイージング、線形補間、ベジェ補間。
 float SelectEaseInOutCubic(float value);
+// 経路の端を越えないよう補間率を制限する。
 engine::Vector3 SelectLerpVector3(const engine::Vector3& a, const engine::Vector3& b, float t);
+// 四点の三次Bezierでゲートへ吸い込まれる曲線を作る。
 engine::Vector3 SelectBezierVector3(const engine::Vector3& p0, const engine::Vector3& p1, const engine::Vector3& p2, const engine::Vector3& p3, float t);
+// 高さを除いた方向がほぼゼロなら、呼び出し側の代替方向を保つ。
 engine::Vector3 SelectNormalizeXZ(const engine::Vector3& value, const engine::Vector3& fallback);
+// 解放表示の登場時だけ少し行き過ぎて戻る曲線を作る。
 float SelectEaseOutBack(float value);
+// 入場経路の区間外を参照しないよう補間率を制限する。
 engine::Vector3 SelectLerp(const engine::Vector3& a, const engine::Vector3& b, float t);
 
 // 開放・選択・解放演出の状態から島とゲートの表示色・発光量を算出する。

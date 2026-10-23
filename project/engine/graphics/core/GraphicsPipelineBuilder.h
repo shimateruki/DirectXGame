@@ -51,6 +51,8 @@ public:
     /// <param name="device">作成に使用するデバイス。</param>
     /// <param name="outPipelineState">生成したステートの受け取り先。</param>
     void Build(ID3D12Device* device, ID3D12PipelineState** outPipelineState);
+    // 外部アセット由来の設定では生成失敗を呼び出し元へ返す。
+    HRESULT TryBuild(ID3D12Device* device, ID3D12PipelineState** outPipelineState);
 
 private:
     // 入力レイアウトとシェーダーバイナリは非所有のポインタを保持します。

@@ -269,6 +269,13 @@ GameplayStatusManager::FindEnemyStatus(const std::string& enemyType) const {
     return it != enemyStatuses_.end() ? &it->second : nullptr;
 }
 
+std::vector<std::string> GameplayStatusManager::GetEnemyTypes() const {
+    std::vector<std::string> types;
+    for (const auto& [type, status] : enemyStatuses_) types.push_back(type);
+    std::sort(types.begin(), types.end());
+    return types;
+}
+
 bool GameplayStatusManager::SaveIfDirty() {
     // 変更がない場合はディスクへ書かず、変更時だけ保存結果を返す。
     return !dirty_ || Save();

@@ -92,6 +92,7 @@ public:
     // エフェクトJSONを独立した描画Objectで撮影します。ゲームのSceneへは登録しません。
     uint64_t GetEffectThumbnailGpuPtr(const std::string& path) { return GetPresetThumbnailGpuPtr("@effect:" + path); }
 
+    // 保存値が変わったときは一覧写真と操作用プレビューの両方でObjectを組み直す。
     void InvalidatePresetThumbnail(const std::string& presetName);
 
     /// PBRの3枚セットを球で撮影したサムネイルを取得する。未撮影なら次の描画時に生成する。
@@ -109,6 +110,7 @@ private:
 
     void CreatePbrThumbnailResource(const std::string& name);
 
+    // 通常・被弾PNGの不足分だけ撮影対象とし、強制更新時は既存ファイルも撮り直す。
     void QueueHudPortraitExports(bool forceAll);
 
     // EditorとDirectX基盤への参照。ProjectWindowは所有しない。

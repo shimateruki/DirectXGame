@@ -94,10 +94,13 @@ private:
     // 既存 JSON と保存予定 JSON を比較し、表示用データを一度だけ構築します。
     FileDiff BuildFileDiff(const SceneSerializer::SaveTarget& target) const;
 
+    // Object一覧は名前をキーにして旧版と新版を突き合わせる。
     void BuildObjectDiff(FileDiff& diff, const nlohmann::json& oldJson, const nlohmann::json& newJson) const;
 
+    // Object一覧を持たないメタ情報などは、ファイルのJSON全体で変更を比較する。
     void BuildFileLevelDiff(FileDiff& diff, const nlohmann::json& oldJson, const nlohmann::json& newJson) const;
 
+    // ファイルとObjectの件数を別々に集計し、既存JSONの読込失敗も独立して数える。
     void UpdateSummary();
 
     // JSON の表示名と、詳細差分に使う短い文字列を生成します。
@@ -105,6 +108,7 @@ private:
 
     static std::string GetObjectCategory(const nlohmann::json& obj);
 
+    // 差分一覧に収まるよう短い配列は展開し、大きい配列やObjectは件数で要約する。
     static std::string JsonValueToText(const nlohmann::json& value);
 
     /// JSONの差分を再帰的に集め、詳細表示用の短い説明リストへ変換する。
@@ -115,10 +119,13 @@ private:
     // 差分データを描画する処理。比較ロジックは SceneSavePreview.cpp に置きます。
     void DrawSummaryCards() const;
 
+    // 保存対象ごとの増減を一覧化し、意図しないファイルの更新を見つけやすくします。
     void DrawFileSummaryTable() const;
 
+    // 変更Objectを優先表示し、必要な場合だけ未変更行も展開します。
     void DrawFileDiff(FileDiff& diff);
 
+    // 追加・削除・変更を同じ色規則で表し、各差分表の読み方を揃えます。
     void DrawChangeBadge(ChangeKind kind) const;
 
     const char* GetKindLabel(ChangeKind kind) const;

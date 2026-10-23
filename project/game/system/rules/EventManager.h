@@ -15,8 +15,10 @@ class EventManager {
     static EventManager* GetInstance();
 
     // --- PlayerHitEvent 関連 ---
+    // 各 Subscribe は呼び出し関数を保持する。捕捉先を破棄する前に、返されたIDで解除する。
     SubscriptionId Subscribe(std::function<void(const PlayerHitEvent&)> callback);
 
+    // 各 Dispatch はこの呼び出し中に同期実行する。event 内の対象参照を後のフレームへ持ち越さない。
     void Dispatch(const PlayerHitEvent& event);
 
     // --- BulletHitEvent 関連 ---

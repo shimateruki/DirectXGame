@@ -34,6 +34,7 @@ public:
     void PreDraw(ID3D12GraphicsCommandList* commandList);
 
     // キューブの描画
+    // 各 DrawWire 関数で使う instanceIndex は 0～8191。同一描画内で異なる表示には別のスロットを使う。
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex);
 
     void DrawWireSphere(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex);

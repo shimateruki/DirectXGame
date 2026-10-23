@@ -10,12 +10,15 @@ class GimmickAppearingFloor : public BaseGimmick {
 
     virtual ~GimmickAppearingFloor() = default;
 
+    // 表示と当たり判定を同時に切り替える床として登録する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
     void Update(float deltaTime) override;
 
+    // 再起動時は表示時間を延長し、床を再び有効にする。
     void OnTrigger() override;
 
+    // 新しい実体を初期化してから、出現時間と配置を引き継ぐ。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

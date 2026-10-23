@@ -48,23 +48,30 @@ private:
 
     void DrawAssetPreview(const nlohmann::json& item, float size);
 
+    // 外部アプリへ渡す前に実在を確認し、失敗理由を UI へ残す。
     bool OpenExternalPath(const std::string& relativePath);
 
     uint32_t GetPreviewTextureHandle(const std::string& relativePath);
 
+    // 試聴のたびに音声を再ロードしないよう、読み込み済みハンドルを使う。
     bool PlayAudioPreview(const std::string& relativePath, bool isBgm);
 
+    // 既存シーンへ一時配置するので、シーンと描画共通資源がある場合だけ進める。
     void CreateModelPreview(const std::string& relativePath);
 
+    // 走査中に配列を変更しないよう対象を先に集め、シーンへ削除を予約する。
     void RemoveModelPreviews();
 
+    // エディター専用の一時 Object だけ数え、通常のシーン資産は含めない。
     int CountModelPreviews() const;
 
+    // カテゴリや参照元も検索対象に含め、一覧ごとに別の検索処理を持たない。
     bool MatchesSearch(const nlohmann::json& item) const;
 
     /// 保護パスを避けながら、選択ファイルと同名DDSなどの相方ファイルをまとめて削除する。
     bool DeleteAssetFiles(const std::string& relativePath, std::vector<std::string>& deletedPaths, std::string& errorMessage);
 
+    // 再監査を待たずに一覧から消すが、更新するのは今回削除したパスだけに限る。
     void RemoveDeletedAssetsFromReport(const std::vector<std::string>& deletedPaths);
 
 private:

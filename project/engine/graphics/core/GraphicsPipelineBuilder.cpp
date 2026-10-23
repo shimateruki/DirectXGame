@@ -142,3 +142,10 @@ void GraphicsPipelineBuilder::Build(ID3D12Device* device, ID3D12PipelineState** 
     HRESULT hr = device->CreateGraphicsPipelineState(&desc_, IID_PPV_ARGS(outPipelineState));
     assert(SUCCEEDED(hr));
 }
+
+HRESULT GraphicsPipelineBuilder::TryBuild(ID3D12Device* device, ID3D12PipelineState** outPipelineState) {
+    if (!device || !outPipelineState)
+        return E_INVALIDARG;
+    *outPipelineState = nullptr;
+    return device->CreateGraphicsPipelineState(&desc_, IID_PPV_ARGS(outPipelineState));
+}

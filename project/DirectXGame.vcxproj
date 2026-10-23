@@ -187,8 +187,6 @@
     <ClCompile Include="game\actor\enemy\ranged\EnemyRingBurner.cpp" />
     <ClCompile Include="engine\graphics\effect\EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Ui.cpp" />
     <ClCompile Include="game\actor\enemy\core\BaseEnemy.cpp" />
     <ClCompile Include="game\actor\enemy\core\BaseEnemy.Replay.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
@@ -224,7 +222,6 @@
     <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaHazard.cpp" />
     <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaGeyser.cpp" />
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
-    <ClCompile Include="game\actor\item\HealItem.cpp" />
     <ClCompile Include="game\actor\enemy\spawn\EnemyFactory.cpp" />
     <ClCompile Include="game\system\rules\GameplayStatusManager.cpp" />
     <ClCompile Include="game\actor\enemy\normal\EnemySlime.cpp" />
@@ -256,6 +253,7 @@
     </ClCompile>
     <ClCompile Include="game\scene\gameover\GameOverScene.cpp" />
     <ClCompile Include="game\ui\ControlsGuideOverlay.cpp" />
+    <ClCompile Include="game\ui\PlayerHealthHud.cpp" />
     <ClCompile Include="game\ui\PauseMenuOverlay.cpp" />
     <ClCompile Include="game\ui\SaveIndicatorOverlay.cpp" />
     <ClCompile Include="game\ui\SettingsMenuOverlay.cpp" />
@@ -287,6 +285,8 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.Ui.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
+    <ClCompile Include="engine\utility\JsonFile.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorObjectDefaults.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.Components.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BaseProperties.cpp" />
@@ -317,6 +317,7 @@
     <ClCompile Include="engine\core\Framework.cpp" />
     <ClCompile Include="engine\core\Game.cpp" />
     <ClCompile Include="engine\core\editor\GameEditorController.cpp" />
+    <ClCompile Include="engine\core\editor\PlayModeSnapshot.cpp" />
     <ClCompile Include="engine\system\input\InputManager.cpp" />
     <ClCompile Include="game\scene\gameplay\GamePlayScene.cpp" />
     <ClCompile Include="game\scene\gameplay\GamePlayScene.Replay.cpp" />
@@ -457,7 +458,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.cpp" />
+    <ClCompile Include="game\editor\CharacterStatusEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Packaging.cpp" />
@@ -663,6 +664,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\ObjectPropertyDefinition.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyJsonBinding.h" />
+    <ClInclude Include="engine\utility\JsonFile.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorObjectDefaults.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BuiltIn.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.h" />
@@ -670,7 +673,6 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorAssetDragPayload.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.h" />
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
@@ -722,7 +724,6 @@
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaHazard.h" />
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaGeyser.h" />
     <ClInclude Include="game\actor\item\BaseItem.h" />
-    <ClInclude Include="game\actor\item\HealItem.h" />
     <ClInclude Include="game\actor\enemy\spawn\EnemyFactory.h" />
     <ClInclude Include="game\system\rules\GameplayStatusManager.h" />
     <ClInclude Include="game\actor\enemy\normal\EnemySlime.h" />
@@ -952,6 +953,7 @@
     <ClInclude Include="engine\core\Framework.h" />
     <ClInclude Include="engine\core\Game.h" />
     <ClInclude Include="engine\core\editor\GameEditorController.h" />
+    <ClInclude Include="engine\core\editor\PlayModeSnapshot.h" />
     <ClInclude Include="engine\system\input\InputManager.h" />
     <ClInclude Include="engine\graphics\3d\model\Model.h" />
     <ClInclude Include="engine\graphics\3d\model\ModelCommon.h" />
@@ -1012,6 +1014,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PresetEditor.h" />
     <ClInclude Include="game\editor\BuiltInCreatePresetRegistry.h" />
     <ClInclude Include="game\editor\RegisterGameEditorFactories.h" />
+    <ClInclude Include="game\editor\RegisterGameEditorEvents.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorEventRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorObjectFactoryRegistry.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\cinematic\GhostDirector.h" />
@@ -1055,13 +1059,17 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Constants.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EnemyAttackPreviewRegistry.h" />
+    <ClInclude Include="game\editor\RegisterGameAttackPreviews.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\CopyAbilityPreviewRegistry.h" />
+    <ClInclude Include="game\editor\RegisterGameCopyPreviews.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorTextureCatalog.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.h" />
+    <ClInclude Include="game\editor\CharacterStatusEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Internal.h" />
@@ -1145,10 +1153,6 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Guides.cpp" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Internal.h" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Support.cpp" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Internal.h" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Support.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Archive.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Regression.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

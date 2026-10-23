@@ -121,6 +121,7 @@ void LightEditor::DrawLightFileList() {
     for (const auto& name : fileNames) {
         const bool selected = (name == currentFileName_);
 
+        // 一覧の選択は入出力先の名前だけを変更し、照明への適用はLoadボタンで行う。
         if (ImGui::Selectable(name.c_str(), selected)) {
             strncpy_s(currentFileName_, sizeof(currentFileName_), name.c_str(), _TRUNCATE);
             syncedLightPath_ = currentPath;
@@ -224,6 +225,7 @@ void LightEditor::Update() {
             pointLightGizmos_[i]->SetTranslate(pointLights[i].data.position);
             pointLightGizmos_[i]->SetScale({ gizmoScale_, gizmoScale_, gizmoScale_ });
 
+            // 暗いライトでも位置を識別できるよう、ギズモの表示色だけに明るさの下限を設ける。
             engine::Vector4 color = pointLights[i].data.color;
             color.x = color.x < 0.35f ? 0.35f : color.x;
             color.y = color.y < 0.35f ? 0.35f : color.y;
@@ -368,6 +370,7 @@ void LightEditor::DrawEnvironmentProfilePanel() {
         profilePath.replace_extension(".json");
     }
 
+    // Profileは一覧で選ぶだけでは適用せず、保存または切替ボタンの操作先として使う。
     const std::string profilePathString = profilePath.generic_string();
 
     if (ImGui::Button(ICON_FA_SAVE " 現在の環境を保存")) {
@@ -429,6 +432,7 @@ void LightEditor::DrawImGui() {
 
     engine::Vector4& clearColor = lightManager_->GetSceneClearColor();
 
+    // 背景色はManagerの保存値に加えて、実際の画面クリアに使う値も同時に更新する。
     if (ImGui::ColorEdit4(ICON_FA_PALETTE " 背景色 (Clear Color)", &clearColor.x)) {
         DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     }
@@ -508,6 +512,7 @@ void LightEditor::DrawImGui() {
 
         ImGui::Separator();
         ImGui::Text(ICON_FA_ADJUST " シャドウ品質");
+        // Comboの選択番号を実際の解像度へ変換し、影リソースの変更はManagerへ任せる。
         constexpr int kShadowResolutions[] = { 1024, 2048, 4096 };
         const char* shadowResolutionLabels[] = {
             "1024 x 1024 (軽量)",
@@ -607,6 +612,7 @@ void LightEditor::DrawImGui() {
 
         for (int i = 0; i < pointLights.size(); ++i) {
             ImGui::PushID(i);
+            // 編集中はInstanceのコピーを使い、末尾のSetterでライト管理側へ書き戻す。
             LightManager::PointLightInstance instance = pointLights[i];
             auto& data = instance.data;
 
@@ -623,6 +629,7 @@ void LightEditor::DrawImGui() {
                 }
 
                 if (ImGui::Button(ICON_FA_TRASH " 削除")) {
+                    // 削除後はこのInstanceを書き戻さず、開いているTreeとIDを閉じて次の要素へ進む。
                     lightManager_->RemovePointLight(static_cast<std::size_t>(i));
                     selectedPointLightIndex_ = -1;
                     ImGui::TreePop();
@@ -631,6 +638,7 @@ void LightEditor::DrawImGui() {
                 }
 
                 ImGui::Text(ICON_FA_COGS " --- 挙動設定 ---");
+                // 追従対象があるライトは絶対位置でなく対象からのオフセットを編集する。
                 std::string currentTargetName = instance.target ? instance.target->GetName() : "(None)";
 
                 if (ImGui::BeginCombo(ICON_FA_LINK " 追従対象", currentTargetName.c_str())) {
@@ -720,6 +728,7 @@ void LightEditor::DrawImGui() {
 
         for (int i = 0; i < spotLights.size(); ++i) {
             ImGui::PushID(i + 1000);
+            // スポットライトもコピーを編集して最後に書き戻し、削除した要素への反映は飛ばす。
             LightManager::SpotLightInstance instance = spotLights[i];
             auto& data = instance.data;
 
@@ -762,6 +771,7 @@ void LightEditor::DrawImGui() {
                 ImGui::ColorEdit4(" 色", &data.color.x);
                 ImGui::DragFloat(" 距離", &data.distance, 0.1f, 0.0f, 100.0f);
 
+                // 保存・描画は角度のcos値、UIは度を使うため、編集があったときだけcos値へ戻す。
                 float angleDeg = std::acos(data.cosAngle) * 180.0f / 3.141592f;
 
                 if (ImGui::DragFloat(ICON_FA_COMPASS " 角度", &angleDeg, 1.0f, 0.1f, 179.0f)) {

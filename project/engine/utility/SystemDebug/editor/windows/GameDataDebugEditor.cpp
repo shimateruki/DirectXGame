@@ -155,6 +155,7 @@ void GameDataDebugEditor::DrawSlotSelector() {
         ImGui::OpenPopup("DeleteActiveSaveSlot");
     }
 
+    // 初期化は保存ファイルを残して値を戻す操作。下の削除確認とは経路を分ける。
     if (ImGui::BeginPopupModal("ResetActiveSaveSlot", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("現在のスロットを初期状態に戻します。");
         ImGui::TextDisabled("ファイルは残り、値だけリセットされます。");
@@ -265,6 +266,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
         lastStatus_ = "コイン数を変更しました。";
     }
 
+    // 保存形式の秒数を時分秒へ分け、いずれかが編集されたフレームだけ合計秒数へ戻す。
     int totalSeconds = save->GetPlayTimeSeconds();
     int hours = totalSeconds / 3600;
     int minutes = (totalSeconds / 60) % 60;
@@ -295,6 +297,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
         lastStatus_ = "チュートリアル進行状態を変更しました。";
     }
 
+    // 王冠数の入力は適用ボタンまで保持し、確定時に先頭からのクリア状態へ変換する。
     const int stageCount = static_cast<int>(StageManager::GetInstance()->GetStages().size());
     ImGui::Text("王冠数: %d / %d", save->GetClearedStageCount(), stageCount);
     ImGui::SameLine();
@@ -325,6 +328,7 @@ void GameDataDebugEditor::DrawStageTable() {
         return;
     }
 
+    // 一括クリア操作は各ステージの保存値を変え、選択Sceneの解放状態も再評価する。
     if (ImGui::Button("全ステージクリア")) {
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             save->SetStageCleared(stageIndex, true);
@@ -349,6 +353,7 @@ void GameDataDebugEditor::DrawStageTable() {
 
     ImGui::SameLine();
 
+    // スターはクリア状態と独立した保存値として更新し、ここでは解放状態の再評価を呼ばない。
     if (ImGui::Button("全スター取得")) {
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             for (int coinIndex = 0; coinIndex < 3; ++coinIndex) {
@@ -383,6 +388,7 @@ void GameDataDebugEditor::DrawStageTable() {
 
         for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
             const StageData& stage = stages[stageIndex];
+            // 解放中かどうかは直接保存せず、ステージ定義と前提ステージのクリア値から表示する。
             const bool unlocked = IsStageUnlockedForSave(stage, stageIndex, save);
 
             ImGui::PushID(stageIndex);
@@ -420,6 +426,7 @@ void GameDataDebugEditor::DrawStageTable() {
                 lastStatus_ = stage.name + " のクリア状態を変更しました。";
             }
 
+            // 解放演出を見たかどうかはクリア値と別に変更でき、選択Sceneの演出状態も更新する。
             ImGui::TableSetColumnIndex(5);
             bool seen = save->IsStageUnlockSeen(stageIndex);
 
@@ -431,6 +438,7 @@ void GameDataDebugEditor::DrawStageTable() {
 
             ImGui::TableSetColumnIndex(6);
 
+            // ステージIDの内側にスター番号のIDを重ね、同じラベルのチェック欄を別々に識別する。
             for (int coinIndex = 0; coinIndex < 3; ++coinIndex) {
                 ImGui::PushID(coinIndex);
                 bool collected = save->IsStarCoinCollected(stageIndex, coinIndex);

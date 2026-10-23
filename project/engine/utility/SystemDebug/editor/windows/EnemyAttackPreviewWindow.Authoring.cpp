@@ -1,4 +1,5 @@
 #include "EnemyAttackPreviewWindow.h"
+#include "EnemyAttackPreviewRegistry.h"
 #include "SceneManager.h"
 #include "ProjectWindow.h"
 #include "BaseEnemy.h"
@@ -399,7 +400,7 @@ void EnemyAttackPreviewWindow::PreviewDraft(bool keepTime) {
         CreatePreviewObjects();
     }
     if (playerCopyMode_)
-        copyActionIndex_ = 4;
+        SelectCopyProfileAction();
     SeekPreview(time);
     playing_ = resume;
     profileStatus_ = "編集中の設定で動作確認中。JSONは保存していません。";
@@ -411,8 +412,8 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
     if (!sceneManager_ || sceneManager_->IsPlaying())
         return false;
     auto* attack = GetSelectedAttackDefinition();
-    const std::string type = GetSelectedEnemyType();
-    if (crownMovieMode_ || !attack || (type != "FireSlime" && type != "PrismSlime"))
+    const auto* descriptor = GetPreviewDescriptor();
+    if (crownMovieMode_ || !attack || !descriptor || !descriptor->canAuthor)
         return false;
     ImGui::Begin("攻撃の構成###Hierarchy");
     ImGui::TextWrapped("1 攻撃を開く → 2 部品を配置 → 3 保存して動作確認");
@@ -478,7 +479,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
                 profileAttackIndex_ = i;
                 selectedTrack_ = -1;
                 if (playerCopyMode_)
-                    copyActionIndex_ = 4;
+                    SelectCopyProfileAction();
                 ApplyRecommendedSettings();
             }
         }
@@ -571,7 +572,7 @@ bool EnemyAttackPreviewWindow::DrawAttackAuthoringHierarchy() {
         profileDirty_ = true;
         prismChantOnly_ = false; // 新しい攻撃の確認では、以前の魔法陣だけの観測設定を引き継がない。
         if (playerCopyMode_)
-            copyActionIndex_ = 4;
+            SelectCopyProfileAction();
         ApplyRecommendedSettings();
         profileStatus_ = "新しい攻撃を作成しました。表示部品を選ぶと中央で配置を確認できます。";
         if (selectedTrack_ >= 0 && editableProfile_.attacks.back().sequence.tracks[selectedTrack_].type == "mesh_vfx")

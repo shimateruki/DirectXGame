@@ -72,16 +72,22 @@ class EnemySlime : public BaseEnemy {
     // 予備動作、飛行、着地の演出は判定処理と独立して発生させます。
     void SpawnChargePulseEffect(float deltaTime, float chargeRate);
 
+    // 地面の小石は独立した間隔で発生させ、輪の演出と同時に大量生成しない。
     void SpawnChargeDebrisEffect(float deltaTime, float chargeRate);
 
+    // 本体の周囲に回転する軌跡を配置し、中心へ向く姿勢を毎回計算する。
     void SpawnChargeVortexEffect(float deltaTime, float chargeRate);
 
+    // 地面から離れる瞬間だけ、足元に蹴り出しの輪を置く。
     void SpawnLaunchEffect();
 
+    // 上昇の頂点で視線を集め、落下攻撃への切り替わりを見せる。
     void SpawnApexEffect();
 
+    // 移動方向の後方へ一定間隔で軌跡を出し、突進が進むほど長くする。
     void SpawnDiveTrailEffect(float deltaTime);
 
+    // 床の破片・輪と本体の閃光を同じ着地点から発生させる。
     void SpawnLandingEffect();
 
     /// 現在の攻撃段階に合わせて伸縮と回転を反映する。

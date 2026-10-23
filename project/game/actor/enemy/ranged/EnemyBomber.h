@@ -46,31 +46,40 @@ class EnemyBomber : public BaseEnemy {
     // 移動制限と敵の射程を先に評価し、投擲状態を進めます。
     bool UpdateBlockedState(float deltaTime);
 
+    // 配置された大きさを見た目の変形基準にし、小さすぎる初期値だけ補う。
     void EnsureBaseScaleForAnimation();
 
+    // 反動と姿勢の余韻は投擲状態とは独立して減らし、待機へ戻っても残す。
     void UpdateThrowTimers(float deltaTime);
 
     void UpdateCombatMovement(float deltaTime, const engine::Vector3& direction, float distance, bool inRange);
 
     void UpdateThrowState(float deltaTime, bool inRange);
 
+    // 標的喪失で予告と手持ち弾を消し、次の投擲待機は初期待機以下に抑える。
     void ResetThrowStateAfterTargetLost();
 
     bool IsTargetInRange(float* outDistance = nullptr, engine::Vector3* outDirection = nullptr) const;
 
+    // モデルの正面補正を加え、最短角で対象へ振り向く。
     void UpdateFacing(const engine::Vector3& direction);
 
+    // 射程内では横移動しながら理想距離を保ち、射程外では巡回速度を使う。
     void UpdateFootwork(float deltaTime, const engine::Vector3& direction, float distance, bool inRange);
 
+    // 歩行・溜め・跳躍・着地の変形を共通スケールから作り、被弾姿勢を最後に重ねる。
     void ApplySlimeAnimation(float deltaTime);
 
     // 手元の爆弾は予備動作の表示用で、実際の爆弾生成とは分けます。
     void UpdateHeldBombVisual(float deltaTime);
 
+    // 手持ち用は表示専用なので衝突を持たせず、初回使用時だけ作る。
     void EnsureHeldBombVisual();
 
+    // 発射・中断後は仮モデルを隠し、実際に生成した爆弾と二重表示しない。
     void HideHeldBombVisual();
 
+    // 本体の前後・左右・高さを段階ごとに補間し、取り出しから投げ出しまでの手元位置を作る。
     engine::Vector3 ComputeHeldBombPosition(float progress) const;
 
     float GetThrowProgress() const;

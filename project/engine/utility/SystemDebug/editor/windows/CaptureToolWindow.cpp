@@ -411,6 +411,7 @@ bool SavePngWithWic(const fs::path& path, const CapturedImage& image, std::strin
         hr = frame->WritePixels(static_cast<UINT>(image.height), stride, bufferSize, const_cast<BYTE*>(image.bgra.data()));
     }
 
+    // 画素を書いたFrameを先に確定し、その後Encoderを確定してPNGの出力を完了する。
     if (SUCCEEDED(hr)) {
         hr = frame->Commit();
     }
@@ -454,6 +455,7 @@ void CaptureToolWindow::DrawImGui() {
     ImGui::TextDisabled("保存先: %s", PathToUtf8(GetCaptureRoot()).c_str());
     ImGui::Separator();
 
+    // 録画Workerへ渡した矩形とFPSは開始時に固定されるため、録画中は設定変更を受け付けない。
     ImGui::BeginDisabled(recording_);
     int areaIndex = static_cast<int>(captureArea_);
     constexpr std::array<const char*, 3> kCaptureAreas = {
@@ -610,6 +612,7 @@ void CaptureToolWindow::RetagLastScreenshot() {
         return;
     }
 
+    // 実ファイルの移動が成功してから履歴を更新し、失敗時は元の保存先を表示し続ける。
     fs::rename(lastScreenshotPath_, destination, ec);
 
     if (ec) {
@@ -671,6 +674,7 @@ void CaptureToolWindow::StartRecording() {
         return;
     }
 
+    // 前回Workerを回収した後に、今回の完了フラグ・統計・結果メッセージを初期化する。
     StopRecordingWorker();
     recordingTimestamp_ = MakeTimestamp();
     recordingOutputPath_ = GetCaptureRoot() / ("recording_" + recordingTimestamp_ + ".mp4");
@@ -698,6 +702,7 @@ void CaptureToolWindow::StartRecording() {
         return;
     }
 
+    // スレッド作成が成功した時点で録画中へ切り替え、エンコーダー準備の成否は後で結果として受け取る。
     recording_ = true;
     statusText_ = "録画を開始しました。画面取得とMP4圧縮はバックグラウンドで実行しています。";
 }
@@ -796,6 +801,7 @@ void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRec
         resultMessage = "録画ワーカーで不明な例外が発生しました。";
     }
 
+    // COMと録画資源は使用したWorker内で片付けてから、完了メッセージとフラグを公開する。
     CloseRecordingResources();
     {
         std::lock_guard<std::mutex> lock(recordingResultMutex_);
@@ -892,6 +898,7 @@ bool CaptureToolWindow::StartMediaFoundationRecording(
     recordingRect_ = captureRect;
     recordingWidth_ = static_cast<int>(recordingRect_.right - recordingRect_.left);
     recordingHeight_ = static_cast<int>(recordingRect_.bottom - recordingRect_.top);
+    // フレーム長はMedia Foundationの100ns単位へ変換し、サンプルの時刻も同じ単位で渡す。
     recordingFrameDuration100ns_ = static_cast<LONGLONG>(
         10000000.0 / static_cast<double>(std::max(fps, 1.0f)));
 
@@ -915,6 +922,7 @@ bool CaptureToolWindow::StartMediaFoundationRecording(
         return false;
     }
 
+    // 保存先の圧縮形式をH.264で定義し、続く入力形式とは別に解像度とFPSを設定する。
     Microsoft::WRL::ComPtr<IMFMediaType> outputType;
     hr = MFCreateMediaType(&outputType);
     if (SUCCEEDED(hr))
@@ -934,6 +942,7 @@ bool CaptureToolWindow::StartMediaFoundationRecording(
     if (SUCCEEDED(hr))
         hr = writer->AddStream(outputType.Get(), &videoStreamIndex_);
 
+    // 画面から取得するRGB32を入力形式に指定し、Sink WriterにH.264への変換を任せる。
     Microsoft::WRL::ComPtr<IMFMediaType> inputType;
     if (SUCCEEDED(hr))
         hr = MFCreateMediaType(&inputType);
@@ -960,6 +969,7 @@ bool CaptureToolWindow::StartMediaFoundationRecording(
         return false;
     }
 
+    // 書込開始まで成功したWriterだけを録画資源へ移し、終了処理で解放する。
     sinkWriter_ = writer.Detach();
     return true;
 }
@@ -988,6 +998,7 @@ bool CaptureToolWindow::WriteRecordingFrame(LONGLONG sampleTime100ns, std::strin
         if (maxLength < bufferSize) {
             hr = E_FAIL;
         } else {
+            // キャプチャの上から下への画素列を、RGB32動画入力に合わせて行単位で上下反転する。
             const size_t stride = static_cast<size_t>(image.width) * 4u;
 
             for (int y = 0; y < image.height; ++y) {
@@ -1005,6 +1016,7 @@ bool CaptureToolWindow::WriteRecordingFrame(LONGLONG sampleTime100ns, std::strin
     if (SUCCEEDED(hr))
         hr = buffer->SetCurrentLength(bufferSize);
 
+    // 画素バッファに取得時刻とフレーム長を付け、圧縮側へ一枚のサンプルとして渡す。
     Microsoft::WRL::ComPtr<IMFSample> sample;
     if (SUCCEEDED(hr))
         hr = MFCreateSample(&sample);

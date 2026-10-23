@@ -23,6 +23,7 @@ public:
     // Play 開始時の状態を GUID ごとに保持し、終了時に実行中との差分を候補化する。
     void CaptureBaseline();
 
+    // 停止前の実行状態から候補を作る。新規生成物ではなく、開始時に記録したGUIDだけ比較する。
     void CaptureRuntimeChanges();
 
     // シーン復元に失敗した場合は、持ち帰り候補も破棄する。
@@ -62,12 +63,14 @@ private:
 
     static nlohmann::json ExtractTransform(const nlohmann::json& state);
 
+    // 識別子とTransformを除き、持ち帰り対象のプロパティだけを比較用に抽出する。
     static nlohmann::json ExtractProperties(const nlohmann::json& state);
 
     static bool IsIdentityKey(const std::string& key);
 
     static bool IsTransformKey(const std::string& key);
 
+    // 復元後の編集シーンへ選択項目を反映する。識別子は保持し、操作をUndo履歴へ登録する。
     void ApplySelectedChanges();
 
     void Clear();

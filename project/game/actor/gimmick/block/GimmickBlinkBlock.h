@@ -15,15 +15,18 @@ class GimmickBlinkBlock : public BaseGimmick {
 
     void Update(float deltaTime) override;
 
+    // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
     // ジャンプ通知を受けて、ブロックの表示と衝突を切り替えます。
     void OnPlayerJump(const PlayerJumpEvent& event);
 
+    // isActive_ に基づいて見た目と衝突判定を切り替える
     void UpdateAppearance();
     void ResetFlipPair();
     void UpdateFlipPair(float deltaTime);
+    // 枠は全コマに共通で静止し、中央のX軸を中心とした板だけが半回転する。
     void ApplyFlipPairAppearance();
     bool IsFlipPairModel() const;
 

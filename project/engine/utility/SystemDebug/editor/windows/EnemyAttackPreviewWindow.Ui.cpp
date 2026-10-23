@@ -1,4 +1,6 @@
 #include "EnemyAttackPreviewWindow.h"
+#include "EnemyAttackPreviewRegistry.h"
+#include "CopyAbilityPreviewRegistry.h"
 #include "EnemyAttackPreviewWindow.Constants.h"
 #include "engine/animation/AnimatorController.h"
 #include "game/scene/gameplay/GamePlayScene.h"
@@ -47,10 +49,6 @@
 #include <iterator>
 #include <unordered_set>
 
-using EnemyAttackPreviewConstants::kCopyActions;
-using EnemyAttackPreviewConstants::kCopyLabels;
-using EnemyAttackPreviewConstants::kEnemyTypes;
-using EnemyAttackPreviewConstants::kEnemyLabels;
 using EnemyAttackPreviewConstants::kFixedPreviewStep;
 using EnemyAttackPreviewConstants::kMinLoopDuration;
 using EnemyAttackPreviewConstants::kMaxLoopDuration;
@@ -82,13 +80,14 @@ void EnemyAttackPreviewWindow::DrawPlayerCopySettings() {
     ImGui::TextUnformatted("プレイヤー能力プレビュー");
     ImGui::TextWrapped("実モデルと実コピー能力を隔離ステージで再生します。下段で停止・コマ送り・先頭からの再構築ができます。");
 
-    if (!IsCurrentSceneReady() || sceneManager_->IsPlaying()) {
+    if (!IsCurrentSceneReady()) {
         ImGui::TextUnformatted("シーンを開き、編集モードで使用してください。");
         return;
     }
 
     bool enabled = enabled_;
 
+    ImGui::BeginDisabled(sceneManager_->IsPlaying());
     if (ImGui::Checkbox("プレビューを有効化", &enabled)) {
         enabled_ = enabled;
         if (enabled_)
@@ -96,20 +95,38 @@ void EnemyAttackPreviewWindow::DrawPlayerCopySettings() {
         else { ClearPreviewTransientState(); RemovePreviewObjects(); }
     }
 
-    bool changed = ImGui::Combo("コピー形態", &copyTypeIndex_, kCopyLabels, IM_ARRAYSIZE(kCopyLabels));
-    if (changed)
-        LoadSelectedProfile();
-    changed |= ImGui::Combo("確認する動作", &copyActionIndex_, kCopyActions, IM_ARRAYSIZE(kCopyActions));
-    const char* descriptions[] = {
-        "左: 追加クリックで3段打撃 / 右: 身を縮めるガード / E: 跳ね上がり突進",
-        "左長押し: 炎ブレス / 右: 炎ダッシュ / E: 火球",
-        "左長押し: 周囲に帯電 / 離す: 電撃弾（1秒で最大） / 右: 雷移動 / E: 雷の直線攻撃",
-        "左長押し: 竜巻攻撃（最大1.6秒） / 右: 風移動 / E: 上昇気流",
-        "左: 設置ボム / 右: 爆風ジャンプ / E: ボム投擲",
-        "左: 王冠槍 / 左長押し解除: 槍の雨 / 右: 王威の波 / E: 王翼突進"
-    };
+    ImGui::EndDisabled();
 
-    ImGui::TextWrapped("%s", descriptions[copyTypeIndex_]);
+    bool changed = false;
+    const auto* copy = GetCopyDescriptor();
+    if (ImGui::BeginCombo("コピー形態", copy ? copy->displayName.c_str() : "(未登録)")) {
+        for (const auto& entry : CopyAbilityPreviewRegistry::GetEntries()) {
+            if (ImGui::Selectable(entry.displayName.c_str(), copyType_ == entry.type)) {
+                copyType_ = entry.type;
+                LoadSelectedProfile();
+                if (enabled_) RestartPreview();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (DrawStatusSettings()) return;
+    if (sceneManager_->IsPlaying()) {
+        ImGui::TextWrapped("基本値は実行中のPlayerへ反映されます。能力プレビューは編集モードで使用できます。");
+        return;
+    }
+    copy = GetCopyDescriptor();
+    if (!copy) { ImGui::TextDisabled("能力プレビューが登録されていません。"); return; }
+    const auto* action = GetCopyAction();
+    if (ImGui::BeginCombo("確認する動作", action ? action->displayName.c_str() : "(未選択)")) {
+        for (const auto& entry : copy->actions) {
+            if (ImGui::Selectable(entry.displayName.c_str(), copyActionId_ == entry.id)) {
+                copyActionId_ = entry.id;
+                changed = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::TextWrapped("%s", copy->description.c_str());
 
     if (previewPlayer_) {
         ImGui::Text("実行中の能力: %s", previewPlayer_->GetCopyAbilityStateLabel());
@@ -131,42 +148,18 @@ void EnemyAttackPreviewWindow::DrawPlayerCopySettings() {
         RestartPreview();
     if (enabled_ && ImGui::Button("先頭から再生", ImVec2(-1,0)))
         RestartPreview();
-    if (enabled_ && copyTypeIndex_ == 0) {
-        if (ImGui::Button("ガード中を確認")) {
-            copyActionIndex_ = 3;
-            SeekPreview(0.95f);
+    if (enabled_ && !copy->bookmarks.empty()) {
+        for (const auto& bookmark : copy->bookmarks) {
+            if (ImGui::Button(bookmark.displayName.c_str())) {
+                copyActionId_ = bookmark.actionId;
+                if (bookmark.targetDistance > 0.0f) targetDistance_ = bookmark.targetDistance;
+                SeekPreview(bookmark.time);
+            }
         }
-        ImGui::SameLine();
-
-        if (ImGui::Button("Eの跳躍を確認")) {
-            copyActionIndex_ = 4;
-            SeekPreview(0.88f);
-        }
-        if (ImGui::Button("近接1段目: 引きを確認")) {
-            copyActionIndex_ = 1;
-            targetDistance_ = 2.4f;
-            SeekPreview(0.66f);
-        }
-        if (ImGui::Button("近接1段目: 打点を確認")) {
-            copyActionIndex_ = 1;
-            targetDistance_ = 2.4f;
-            SeekPreview(0.80f);
-        }
-        if (ImGui::Button("近接2段目: 打点を確認")) {
-            copyActionIndex_ = 7;
-            targetDistance_ = 2.4f;
-            SeekPreview(1.48f);
-        }
-        if (ImGui::Button("近接3段目: プレスを確認")) {
-            copyActionIndex_ = 7;
-            targetDistance_ = 2.4f;
-            SeekPreview(2.26f);
-        }
-        ImGui::TextDisabled("追加クリックで次の段へ。3段コンボは実入力を3回送って確認します。");
+        ImGui::TextWrapped("%s", copy->bookmarkHelp.c_str());
         ImGui::Text("現在の演出: メッシュ %d / 3D破片 %d",
             static_cast<int>(MeshEffectManager::GetInstance()->GetActiveEffects().size()),
             static_cast<int>(DebrisEffectManager::GetInstance()->GetActivePieceCount()));
-        ImGui::TextDisabled("打点を確認で停止できます。命中専用演出はダミーへのダメージ成立時のみです。");
     }
 
     if (enabled_ && ImGui::Button(playing_ ? "一時停止" : "再生", ImVec2(-1,0)))
@@ -177,7 +170,8 @@ void EnemyAttackPreviewWindow::DrawPlayerCopySettings() {
     if (ImGui::Button("カメラを初期位置へ", ImVec2(-1,0)))
         EffectPreviewStage::GetInstance()->RequestCameraRecenter();
     ImGui::Separator();
-    ImGui::TextUnformatted("入力開始: 0.5 秒 / 爆弾は点火から爆発まで実更新");
+    action = GetCopyAction();
+    ImGui::Text("入力開始: %.2f 秒", action ? action->startTime : 0.0f);
     ImGui::TextWrapped("形態・動作を切り替えると先頭へ戻ります。エフェクトの編集はGPUパーティクル／メッシュエフェクトの各エディターで行えます。");
     DrawAttackProfileEditor();
 #endif
@@ -190,6 +184,10 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         DrawCrownMovieSettings();
         return;
     }
+    if (ImGui::RadioButton("敵の調整", !playerCopyMode_)) SetPlayerCopyMode(false);
+    ImGui::SameLine();
+    if (ImGui::RadioButton("プレイヤー・コピー能力", playerCopyMode_)) SetPlayerCopyMode(true);
+
     if (authoringActorSelected_) {
         ImGui::SeparatorText("術者（プレビューActorへの参照）");
         ImGui::Text("種類: %s",GetSelectedEnemyType());
@@ -247,14 +245,11 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         return;
     }
 
-    if (sceneManager_->IsPlaying()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.20f, 1.0f), "実行中はプレビューを停止します。編集モードへ戻してください。");
-        return;
-    }
 
     // プレビューの有効化に合わせて一時Objectを生成・除去し、Sceneへ残さない。
     bool nextEnabled = enabled_;
 
+    ImGui::BeginDisabled(!GetPreviewDescriptor() || sceneManager_->IsPlaying());
     if (ImGui::Checkbox("プレビューを有効化", &nextEnabled)) {
         enabled_ = nextEnabled;
 
@@ -266,6 +261,8 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         }
     }
 
+    ImGui::EndDisabled();
+
     if (std::string(GetSelectedEnemyType()) == "FireSlime" && previewEnemy_) {
         const std::string state = previewEnemy_->GetAnimatorCurrentStateName();
         ImGui::Text("炎スライム本体: %s", state.empty() ? "Controller未適用" : state.c_str());
@@ -276,69 +273,75 @@ void EnemyAttackPreviewWindow::DrawImGui() {
 
     // 敵種の変更はProfileと推奨距離を更新し、表示中ならプレビューを先頭から再開する。
     ImGui::SeparatorText("攻撃対象");
-    const char* currentLabel = kEnemyLabels[
-        std::clamp(enemyTypeIndex_, 0, static_cast<int>(std::size(kEnemyLabels)) - 1)];
-    if (ImGui::BeginCombo("敵タイプ", currentLabel)) {
-        for (int index = 0; index < static_cast<int>(std::size(kEnemyTypes)); ++index) {
-            const bool selected = enemyTypeIndex_ == index;
-            const char* itemLabel = kEnemyLabels[index];
-
-            if (ImGui::Selectable(itemLabel, selected)) {
-                enemyTypeIndex_ = index;
+    const auto* descriptor = GetPreviewDescriptor();
+    const auto& statusEditor = EnemyAttackPreviewRegistry::GetStatusEditor();
+    std::vector<EnemyAttackPreviewRegistry::StatusTarget> targets;
+    if (statusEditor.targets) targets = statusEditor.targets();
+    else for (const auto& entry : EnemyAttackPreviewRegistry::GetEntries()) targets.push_back({entry.type, entry.displayName});
+    std::string selectedLabel = enemyType_;
+    for (const auto& entry : targets) if (entry.type == enemyType_) selectedLabel = entry.displayName;
+    if (ImGui::BeginCombo("敵タイプ", selectedLabel.c_str())) {
+        for (const auto& entry : targets) {
+            const bool selected = enemyType_ == entry.type;
+            if (ImGui::Selectable(entry.displayName.c_str(), selected) && !selected) {
+                enemyType_ = entry.type;
                 LoadSelectedProfile();
                 ApplyRecommendedSettings();
-                if (enabled_)
-                    RestartPreview();
+                if (enabled_) RestartPreview();
             }
-
-            if (selected)
-                ImGui::SetItemDefaultFocus();
+            if (selected) ImGui::SetItemDefaultFocus();
         }
-
         ImGui::EndCombo();
     }
 
-    // 選んだ攻撃により同じ敵でも演出内容が変わる。専用の槍雨は別項目として扱う。
-    if (editableProfile_.attacks.size() > 1 && !IsGiantHookSplitPreview()) {
-        const EnemyAttackDefinition* currentAttack = GetSelectedAttackDefinition();
-        const char* attackLabel = falseKingSealBarragePreview_
-                                      ? "第2形態：封印失敗の黒晶墜槍"
-                                      : (currentAttack ? currentAttack->displayName.c_str() : "(攻撃なし)");
-        if (ImGui::BeginCombo("攻撃種類", attackLabel)) {
-            for (int index = 0; index < static_cast<int>(editableProfile_.attacks.size()); ++index) {
-                if (editableProfile_.attacks[index].sequence.enabled && editableProfile_.attacks[index].sequence.binding == "player_special")
-                    continue;
-                const bool selected = !falseKingSealBarragePreview_ && profileAttackIndex_ == index;
+    if (DrawStatusSettings()) return;
+    if (sceneManager_->IsPlaying()) {
+        ImGui::TextWrapped("基本値は実行中の同じ種類の敵へ反映されます。攻撃プレビューは編集モードで使用できます。");
+        return;
+    }
+    if (!GetPreviewDescriptor()) {
+        ImGui::TextWrapped("この種類は基本ステータスの調整に対応しています。動作確認は通常のプレイで行えます。");
+        return;
+    }
 
-                if (ImGui::Selectable(editableProfile_.attacks[index].displayName.c_str(), selected)) {
-                    profileAttackIndex_ = index;
-                    falseKingSealBarragePreview_ = false;
-                    ApplyRecommendedSettings();
-                    if (enabled_)
-                        RestartPreview();
-                }
-
-                if (selected)
-                    ImGui::SetItemDefaultFocus();
+    // 通常攻撃はProfileから、分裂や専用演出は登録された追加確認項目から列挙します。
+    descriptor = GetPreviewDescriptor();
+    const auto* option = GetPreviewOption();
+    const auto* currentAttack = GetSelectedAttackDefinition();
+    const char* attackLabel = option ? option->displayName.c_str() :
+        (currentAttack ? currentAttack->displayName.c_str() : "(攻撃なし)");
+    if (ImGui::BeginCombo("攻撃種類", attackLabel)) {
+        auto changed = [&] {
+            ApplyRecommendedSettings();
+            if (enabled_) RestartPreview();
+        };
+        for (int index = 0; index < static_cast<int>(editableProfile_.attacks.size()); ++index) {
+            const auto& attack = editableProfile_.attacks[index];
+            if (attack.sequence.enabled && attack.sequence.binding == "player_special") continue;
+            const bool selected = !option && profileAttackIndex_ == index;
+            if (ImGui::Selectable(attack.displayName.c_str(), selected)) {
+                profileAttackIndex_ = index;
+                previewOptionId_.clear();
+                changed();
             }
-
-            if (enemyTypeIndex_ == 8) {
-                ImGui::Separator();
-
-                if (ImGui::Selectable("第2形態：封印失敗の黒晶墜槍", falseKingSealBarragePreview_)) {
-                    falseKingSealBarragePreview_ = true;
-                    ApplyRecommendedSettings();
-                    if (enabled_)
-                        RestartPreview();
-                }
-            }
-
-            ImGui::EndCombo();
+            if (selected) ImGui::SetItemDefaultFocus();
         }
+        if (descriptor && !descriptor->options.empty()) {
+            ImGui::Separator();
+            for (const auto& entry : descriptor->options) {
+                const bool selected = previewOptionId_ == entry.id;
+                if (ImGui::Selectable(entry.displayName.c_str(), selected)) {
+                    previewOptionId_ = entry.id;
+                    changed();
+                }
+                if (selected) ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
     }
 
     // 偽王の槍雨は共有Tuningを直接編集し、保存ボタンでAssetへ反映する。
-    if (enemyTypeIndex_ == 8 && falseKingSealBarragePreview_) {
+    if (IsSealBarragePreview()) {
         ImGui::SeparatorText("第2形態・空中槍雨の演出");
         auto& tuning = CrownFinaleTuning::Get();
         ImGui::SliderFloat("空中魔法陣の高さ", &tuning.sealBarrageSkyHeight, 8.0f, 18.0f, "%.1f m");
@@ -364,27 +367,8 @@ void EnemyAttackPreviewWindow::DrawImGui() {
         ImGui::TextDisabled("全域放電は即死。seal専用のメッシュエフェクト・GPU粒子・3D破片プリセットで外観を調整できます。");
     }
 
-    // 巨大スライムの分裂確認は通常攻撃とは別のモードを選ぶ。
-    if (enemyTypeIndex_ == 3) {
-        const char* giantPreviewModes[] = {
-            "ジャンププレス攻撃",
-            "フック分裂（接地から抵抗）",
-            "フック分裂（空中拘束から着地）"
-        };
-
-        int nextMode = giantPreviewModeIndex_;
-
-        if (ImGui::Combo("確認モーション", &nextMode, giantPreviewModes, IM_ARRAYSIZE(giantPreviewModes))) {
-            giantPreviewModeIndex_ = nextMode;
-            ApplyRecommendedSettings();
-            if (enabled_)
-                RestartPreview();
-        }
-
-        if (IsGiantHookSplitPreview()) {
-            ImGui::TextDisabled("青いダミーをフック所有者として、抵抗から分裂までを再生します。");
-        }
-    }
+    if (IsGiantHookSplitPreview())
+        ImGui::TextDisabled("青いダミーをフック所有者として、抵抗から分裂までを再生します。");
 
     // 詠唱の遮蔽を調べるため、エフェクト単体表示と斜め視点を用意する。
     if (auto* prismSlime = dynamic_cast<EnemyPrismSlime*>(previewEnemy_)) {
@@ -451,7 +435,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
 
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 engine::Vector3 focus = EffectPreviewStage::GetInstance()->GetGroundPosition();
-                focus.z += falseKingSealBarragePreview_ ? 0.0f : targetDistance_;
+                focus.z += IsSealBarragePreview() ? 0.0f : targetDistance_;
                 focus.y += 6.0f;
                 const engine::Vector3 offset{21.0f, 5.0f, -26.0f};
                 camera->SetFollowTarget(nullptr);
@@ -767,7 +751,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
                     continue;
                 if (ImGui::Selectable(attack.displayName.c_str(), profileAttackIndex_ == i)) {
                     profileAttackIndex_ = i;
-                    copyActionIndex_ = 4;
+                    SelectCopyProfileAction();
                     if (enabled_)
                         RestartPreview();
                 }
@@ -778,10 +762,9 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
     }
 
     const auto* selectedSequenceAttack = GetSelectedAttackDefinition();
-    const bool prismSequence = !playerCopyMode_ && std::string(GetSelectedEnemyType()) == "PrismSlime";
-    const bool canEditSequence = std::string(GetSelectedEnemyType()) == "FireSlime" ||
-        (prismSequence && selectedSequenceAttack && (selectedSequenceAttack->id == "fire_fan" ||
-            !selectedSequenceAttack->sequence.events.empty() || !selectedSequenceAttack->sequence.tracks.empty()));
+    const auto* previewDescriptor = GetPreviewDescriptor();
+    const bool canEditSequence = previewDescriptor && previewDescriptor->canEditSequence &&
+        previewDescriptor->canEditSequence(selectedSequenceAttack, playerCopyMode_);
     if (canEditSequence) {
         if (ImGui::Button("共通攻撃を追加・選択攻撃から複製")) {
             // 複製元の共有シーケンス参照を外し、新しい攻撃だけを編集できるようにする。
@@ -811,13 +794,12 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
             profileAttackIndex_ = static_cast<int>(editableProfile_.attacks.size()) - 1;
             profileDirty_ = true;
             if (playerCopyMode_)
-                copyActionIndex_ = 4;
+                SelectCopyProfileAction();
         }
 
         ImGui::TextWrapped("共通攻撃は射程内の候補から優先度順に選択されます。保存して再生成すると本編と同じデータで実行されます。");
-        if (prismSequence)
-            ImGui::TextWrapped("この敵では炎属性の攻撃枠で実行します。命令の時刻0は詠唱完了時です。複製した攻撃も同じ詠唱とAIを使用します。");
-        else ImGui::TextWrapped("炎スライムの敵AIと炎コピーE入力に接続しています。命令の時刻0は攻撃開始時です。");
+        if (!previewDescriptor->sequenceHelp.empty())
+            ImGui::TextWrapped("%s", previewDescriptor->sequenceHelp.c_str());
     }
 
     EnemyAttackDefinition* editedAttack = GetSelectedAttackDefinition();
@@ -839,14 +821,14 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
                 const char* bindings[] = {"敵AI", "プレイヤーE入力"};
                 int binding = sequence.binding == "player_special" ? 1 : 0;
 
-                if (ImGui::Combo("実行先", &binding, bindings, prismSequence ? 1 : 2)) {
+                if (ImGui::Combo("実行先", &binding, bindings, previewDescriptor->supportsPlayerBinding ? 2 : 1)) {
                     sequence.binding = binding ? "player_special" : "enemy";
                     changed = true;
                 }
                 changed |= ImGui::SliderInt("選択優先度", &sequence.priority, -1000, 1000);
                 changed |= ImGui::DragFloat("シーケンス長", &sequence.duration, 0.01f, 0, 30, "%.3f 秒");
 
-                if (!prismSequence && sequence.binding == "enemy" && ImGui::TreeNodeEx("術者制御（予備動作から終了まで）", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (previewDescriptor->supportsActorControl && sequence.binding == "enemy" && ImGui::TreeNodeEx("術者制御（予備動作から終了まで）", ImGuiTreeNodeFlags_DefaultOpen)) {
                     auto& c = sequence.actorControl;
                     changed |= ImGui::Checkbox("術者も共通アクションで動かす", &c.enabled);
 
@@ -1031,7 +1013,7 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
             ImGui::TreePop();
         }
 
-        if (playerCopyMode_ && std::string(GetSelectedEnemyType()) == "FireSlime" && ImGui::TreeNodeEx("攻撃中のプレイヤー移動", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (playerCopyMode_ && previewDescriptor && previewDescriptor->supportsPlayerBinding && ImGui::TreeNodeEx("攻撃中のプレイヤー移動", ImGuiTreeNodeFlags_DefaultOpen)) {
             // 弾速の欄と分け、通常移動へ掛かる制限だけを編集する。
             auto& movement = editedAttack->playerMovement;
             changed |= ImGui::Checkbox("移動制限を使う", &movement.enabled);
@@ -1160,4 +1142,23 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
     }
 
 #endif
+}
+
+bool EnemyAttackPreviewWindow::DrawStatusSettings() {
+#ifdef USE_IMGUI
+    const bool supportsPreview = playerCopyMode_ || GetPreviewDescriptor();
+    if (!supportsPreview) statusTab_ = true;
+    if (ImGui::RadioButton("基本ステータス", statusTab_)) statusTab_ = true;
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!supportsPreview);
+    if (ImGui::RadioButton("攻撃・動作確認", !statusTab_)) statusTab_ = false;
+    ImGui::EndDisabled();
+    if (!statusTab_) return false;
+    if (!supportsPreview) ImGui::TextWrapped("この種類の動作確認は通常プレイで行えます。ここでは基本値を調整します。");
+    const auto& draw = EnemyAttackPreviewRegistry::GetStatusEditor().draw;
+    if (draw && draw(sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr, playerCopyMode_ ? "" : enemyType_))
+        statusRefreshPending_ = true;
+    if (statusRefreshPending_ && !ImGui::IsAnyItemActive()) RefreshStatusPreview();
+#endif
+    return statusTab_;
 }

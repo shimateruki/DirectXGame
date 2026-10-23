@@ -16,6 +16,7 @@ struct CinematicObjectBinding {
 };
 
 // 対象Objectへ適用する変形の時間列。relative 系フラグは座標の基準を指定します。
+// 各トラックの startTime・duration・ブレンド時間、およびマーカーの time は秒単位。
 struct CinematicTransformTrack {
     std::string name;
     CinematicObjectBinding binding;
@@ -165,6 +166,7 @@ class CinematicSequence {
 };
 
 // エディターの軌跡表示・キー記録と再生器で同じ座標変換を使用する。
+// local と world を水平アンカー基準で相互変換する。yaw はラジアン。
 engine::Vector3 CinematicAnchorPosition(const engine::Vector3& local, const engine::Vector3& origin, float yaw);
 engine::Vector3 CinematicAnchorLocalPosition(const engine::Vector3& world, const engine::Vector3& origin, float yaw);
 

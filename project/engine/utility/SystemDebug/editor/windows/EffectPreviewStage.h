@@ -136,11 +136,13 @@ private:
     // 専用床と環境Objectを名前から探す。見つからない場合は nullptr。
     engine::Object3d* FindFloor() const;
 
+    // 通常 Scene の Object と区別するため、編集環境の固定名で探す。
     engine::Object3d* FindEnvironmentObject(const std::string& name) const;
 
     // 背景用Objectの生成、姿勢・色・表示状態の反映。
     void CreateEnvironmentObject(const std::string& name);
 
+    // 環境の配置と色だけを更新し、モデルや材質設定は生成時の共通値を保つ。
     void UpdateEnvironmentObject(const std::string& name, const engine::Vector3& translate, const engine::Vector3& scale, const engine::Vector4& color);
 
     void SetEnvironmentObjectVisible(const std::string& name, bool visible);
@@ -151,6 +153,7 @@ private:
     // プレビュー用照明を適用し、終了時には退避した照明へ戻す。
     void ApplyStudioLighting();
 
+    // プレビュー開始前に保存した光と空の設定へ一度だけ戻す。
     void RestoreStudioLighting();
 
     // プレビュー背景色を描画基盤へ反映する。
@@ -168,6 +171,7 @@ private:
     // ツールが報告した計測値を蓄積／リセットする。
     void UpdatePerformanceMeasurement(const PerformanceMetrics& performance);
 
+    // 計測を止める操作では結果を残せるよう、実行状態と表示結果を分けて初期化する。
     void ResetPerformanceMeasurement(bool clearResult);
 
 private:

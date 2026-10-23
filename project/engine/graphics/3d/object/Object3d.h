@@ -73,6 +73,8 @@ public:
     using DirectionalLight = MeshRenderer::DirectionalLight;
     using CameraForGPU = MeshRenderer::CameraForGPU;
     using Material = MeshRenderer::MaterialData;
+    using MaterialState = MeshRenderer::MaterialState;
+    using PortalClipSettings = MeshRenderer::PortalClipSettings;
     using LodLevel = MeshRenderer::LodLevel;
 
     // ゲームロジック用パラメータ
@@ -362,20 +364,26 @@ public:
     /// <summary>ローカル空間の拡縮値を設定する。</summary>
     void SetScale(const engine::Vector3& scale) { transform_.scale = scale; }
 
-    /// <summary>表示用のEuler角を更新する。回転モードは変更しない。</summary>
-    void SetEulerAngles(const engine::Vector3& rotate) { transform_.rotate = rotate; }
+    /// <summary>Euler角を更新し、次の行列更新で実際の回転へ反映する。</summary>
+    void SetEulerAngles(const engine::Vector3& rotate) { SetRotation(rotate); }
 
-    /// <summary>表示用Euler角のX成分だけを変更し、回転モードは維持する。</summary>
-    void SetEulerX(float x) { transform_.rotate.x = x; }
+    /// <summary>Euler角のX成分を変更し、次の行列更新で実際の回転へ反映する。</summary>
+    void SetEulerX(float x) { auto rotation = transform_.rotate; rotation.x = x; SetRotation(rotation); }
 
-    /// <summary>表示用Euler角のY成分だけを変更し、回転モードは維持する。</summary>
-    void SetEulerY(float y) { transform_.rotate.y = y; }
+    /// <summary>Euler角のY成分を変更し、次の行列更新で実際の回転へ反映する。</summary>
+    void SetEulerY(float y) { auto rotation = transform_.rotate; rotation.y = y; SetRotation(rotation); }
 
-    /// <summary>表示用Euler角のZ成分だけを変更し、回転モードは維持する。</summary>
-    void SetEulerZ(float z) { transform_.rotate.z = z; }
+    /// <summary>Euler角のZ成分を変更し、次の行列更新で実際の回転へ反映する。</summary>
+    void SetEulerZ(float z) { auto rotation = transform_.rotate; rotation.z = z; SetRotation(rotation); }
 
     /// <summary>Quaternionを設定し、次の行列更新で優先する。</summary>
     void SetQuaternion(const engine::Quaternion& quaternion) { transform_.quaternion = quaternion; transform_.isQuaternionMaster = true; }
+
+    /// <summary>行列分解で得たQuaternionとEditor表示角を同時に設定し、Quaternionを優先する。</summary>
+    void SetQuaternionWithEulerHint(const engine::Quaternion& quaternion, const engine::Vector3& displayAngles) {
+        transform_.rotate = displayAngles;
+        SetQuaternion(quaternion);
+    }
 
     /// <summary>falseを指定すると次の行列更新でEuler角からQuaternionを作る。</summary>
     void SetQuaternionMaster(bool isQuaternionMaster) { transform_.isQuaternionMaster = isQuaternionMaster; }
@@ -515,11 +523,22 @@ public:
     /// <summary>互換用の平行光源データへの非所有参照を返す。</summary>
     DirectionalLight* GetDirectionalLightData();
 
-    /// <summary>描画マテリアルの編集可能なデータを取得する。</summary>
-    Material* GetMaterialData();
+    /// <summary>描画マテリアルを読み取り専用で取得する。</summary>
+    const Material* GetMaterialData() const;
+    // 演出用に描画材質を値で退避する。Objectやテクスチャの複製ではない。
+    MaterialState CaptureMaterialState() const;
+    // 退避した材質を MeshRenderer 経由で戻す。見た目の一時変更の復元に使う。
+    void RestoreMaterialState(const MaterialState& state);
+    // 形成・消滅演出用のクリップ設定を描画器へ渡す。物理Colliderは変更しない。
+    void SetPortalClip(const PortalClipSettings& settings);
+    void ClearPortalClip();
+    // 特殊材質の演出時計を秒で指定する。通常のObject更新とは独立したシークにも使う。
+    void SetMaterialTime(float time);
 
     /// <summary>特殊マテリアルの種類を設定する。</summary>
     void SetMaterialType(int32_t type);
+    void SetShaderMaterialId(const std::string& id);
+    std::string GetShaderMaterialId() const;
 
     /// <summary>鏡面反射の強さを設定する。</summary>
     void SetShininess(float shininess);
@@ -660,7 +679,7 @@ public:
     /// <summary>子Objectへの非所有参照一覧を返す。</summary>
     const std::vector<Object3d*>& GetChildren() const { return children_; }
 
-    /// <summary>Scene保存や生成処理で使うObjectクラス名を設定・取得する。</summary>
+    /// <summary>Scene保存や生成処理で使う分類名を設定・取得する。C++の実体の型は変更しない。</summary>
     void SetClassName(const std::string& name) { className_ = name; }
 
     std::string GetClassName() const { return className_; }

@@ -12,8 +12,10 @@ class GimmickPhaseFlipFloor : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 編集時は元の状態へ戻し、再生時だけ位相のタイマーを進めます。
     void Update(float deltaTime) override;
 
+    // 複製先の基本資源を作ってから配置と周期設定を移します。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
@@ -28,6 +30,7 @@ class GimmickPhaseFlipFloor : public BaseGimmick {
 
     float GetPhaseDuration() const;
 
+    // 回転の開始と終了で角速度が急変しないようにします。
     float SmoothStep(float t) const;
 
     uint32_t originalCollisionAttribute_ = 0;

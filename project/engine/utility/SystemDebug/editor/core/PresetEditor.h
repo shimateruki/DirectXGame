@@ -87,7 +87,10 @@ private:
         json defaults;
         json source;
     };
-    PropertyEditorContext* GetPropertyEditor(const std::string& type);
+    // commonObjectはイベント共通設定用。実クラスの生成が必要なギミックとはキャッシュを分けます。
+    PropertyEditorContext* GetPropertyEditor(const std::string& type, bool commonObject = false);
+    bool DrawRegisteredSettings(json& data, PropertyEditorContext& context, const std::string& componentType);
+    bool DrawEventSettings(json& data);
     std::map<std::string, PropertyEditorContext> propertyEditors_;
 
     PresetEditor() = default;
@@ -124,9 +127,6 @@ private:
 
     /// ギミック固有の JSON パラメータを編集する。
     bool DrawGimmickSettings(json& data);
-
-    /// アイテム固有の JSON パラメータを編集する。
-    bool DrawItemSettings(json& data);
 
     /// カテゴリに対応する種別候補を表示し、選択値を JSON へ反映する。
     bool DrawTypeCombo(const char* label, json& data, json& param, const char* key, const std::vector<TypeOption>& options, Category category);
@@ -216,7 +216,6 @@ private:
 
     std::vector<TypeOption> GetGimmickOptions() const;
 
-    std::vector<TypeOption> GetItemOptions() const;
 
 private:
     // コールバックはPresetEditorが所有せず、DebugEditor側の操作へ委譲する。

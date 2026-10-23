@@ -18,6 +18,7 @@ inline V Normal(const Face& f) {
     const float length = std::sqrt(Dot(n,n));
     return length > 1e-7f ? n / length : V{};
 }
+// 入力点は同一座標系で渡す。立体の初期四面体を作れない点列は空の凸包になる。
 inline std::vector<Face> Build(const std::vector<V>& input) {
     // 最初の四面体を外側の点へ順に拡張する。読み込み時だけ実行する。
     std::vector<V> points;
@@ -59,6 +60,7 @@ inline std::vector<Face> Build(const std::vector<V>& input) {
     if(best<1e-6f)
         return {};
     const V inside=(points[a]+points[b]+points[c]+points[d])*0.25f;
+    // 内部点を基準に全ての面を外向きへ揃え、後続の平面判定で符号を統一する。
     using Indices=std::array<size_t,3>;
     std::vector<Indices> faces;
     const auto add=[&](size_t x,size_t y,size_t z) {
@@ -71,6 +73,7 @@ inline std::vector<Face> Build(const std::vector<V>& input) {
     add(a,c,d);
     add(b,d,c);
     for(size_t i=0;i<points.size();++i) {
+        // 追加点から見える面を除き、逆向きの共有辺を相殺して拡張境界だけを残す。
         std::vector<std::array<size_t,2>> boundary;
         std::vector<Indices> kept;
         for(const auto& f:faces) {
@@ -123,6 +126,7 @@ inline V Closest(const V& p,const Face& f) {
     return a+ab*(vb*inverse)+ac*(vc*inverse);
 }
 
+// レイ始点が凸包の内側なら出口を返す。directionの長さを揃える処理は呼び出し側で行う。
 inline bool Ray(const std::vector<Face>& hull,const V& start,const V& direction,float limit,float& distance,V& normal) {
     // 全ての外向き平面でレイ区間を切り詰める。側面・底面も同じ経路で調べる。
     float enter=0,exit=limit;
@@ -189,6 +193,7 @@ inline bool Sphere(const std::vector<Face>& hull,const V& center,float radius,fl
     return true;
 }
 
+// 頂点・面法線・辺方向は同一空間で渡す。trueのときに重なり深さと法線を採用する。
 inline bool Polyhedra(const std::vector<V>& pointsA, const std::vector<V>& normalsA,
                       const std::vector<V>& edgesA, const std::vector<V>& pointsB,
                       const std::vector<V>& normalsB, const std::vector<V>& edgesB,

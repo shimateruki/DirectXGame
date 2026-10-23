@@ -64,12 +64,16 @@ private:
     // 名前に基づく暫定分類を含むため、分類規則はここにまとめます。
     std::vector<Group> BuildGroups(GroupMode mode) const;
 
+    // 表示軸のラベルも検索対象に含め、モデル名や判定種別で絞り込めるようにします。
     bool MatchesSearch(const Entry& entry, const std::string& groupLabel = {}) const;
 
+    // 複数の属性を持つObjectが二重計上されないよう、用途の優先順位を固定します。
     std::string ClassifyCategory(const engine::Object3d& object) const;
 
+    // 用途が決まった後に、その用途内で意味のある細分類へ変換します。
     std::string ClassifyType(const engine::Object3d& object, const std::string& category) const;
 
+    // 形状だけでは用途が分からないため、カテゴリ・名前・縦横比から表示名を推定します。
     std::string ClassifyCollision(const engine::Object3d& object) const;
 
 private:

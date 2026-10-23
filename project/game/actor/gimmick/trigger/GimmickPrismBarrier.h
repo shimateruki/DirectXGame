@@ -11,19 +11,26 @@ class GimmickPrismBarrier : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 再生停止時は編集配置を復元し、実行時のみ開閉補間を進めます。
     void Update(float deltaTime) override;
 
+    // 単発イベントは壁を出すスイッチのオンとして扱います。
     void OnTrigger() override;
 
+    // 無効化の要求時に衝突を先に消し、見た目の縮退とは切り離します。
     void OnSwitchEvent(bool active) override;
 
+    // 初期化後に編集設定を移し、壁の材質と判定を複製先で作り直します。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
+    // 再生中の変形値で編集時の基準を上書きしないよう、初回のみ記録します。
     void CaptureAuthoredState(bool force = false);
 
+    // 再生中の高さや衝突を持ち越さず、保存された配置へ戻します。
     void ResetForEditor();
 
+    // 壁の底辺を固定して上へ伸ばし、開閉中の見た目と衝突を同期します。
     void ApplyRuntimeVisual();
 
     void SetCollisionEnabled(bool enabled);

@@ -61,6 +61,9 @@ public:
     /// <param name="entryPoint">コンパイル対象のエントリーポイント。</param>
     /// <returns>コンパイル済みバイトコード。</returns>
     Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst, const wchar_t* entryPoint = L"main");
+    // ユーザー追加のシェーダーを安全に試し、失敗理由をEditorへ返す。
+    Microsoft::WRL::ComPtr<IDxcBlob> TryCompileShader(const std::wstring& filePath, const wchar_t* profile,
+                                                        const wchar_t* entryPoint, std::string& errorMessage);
 
     /// <summary>定数・頂点データ用のアップロードヒープを作成する。</summary>
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
@@ -120,6 +123,7 @@ public:
     // GameView用レンダーテクスチャの生成、描画開始・終了、SRV取得。
     void CreateRenderTexture();
 
+    // シーンをレンダーテクスチャへ描画する前に、RTV状態と描画先を準備する。
     void PreDrawRenderTexture();
 
     void PostDrawRenderTexture();
@@ -141,8 +145,10 @@ public:
 
     void SetShadowMapResolution(int resolution);
 
+    // シャドウマップへ深度を書き込むため、描画先とビューポートを影用に切り替える。
     void PreDrawShadow();
 
+    // シャドウマップをSRV状態へ戻し、通常描画用の描画先とビューポートを復帰する。
     void PostDrawShadow();
 
     /// <summary>直近のGPU描画時間をミリ秒で返す。</summary>
@@ -151,10 +157,13 @@ public:
     // GPU計測。
     void StartGpuProfile(const std::string& name = "Total");
 
+    // GPU計測区間の終了タイムスタンプを書き込む。
     void EndGpuProfile(const std::string& name = "Total");
 
+    // 登録済みGPU計測区間をクリアし、次フレームの計測に備える。
     void ResetGpuProfiles();
 
+    // GPUタイムスタンプ結果を読み戻し、ProfilerManagerへミリ秒単位で記録する。
     void ReadAllGpuProfiles();
 
     /// <summary>深度テクスチャをシェーダーから参照するSRVを作る。</summary>
@@ -165,6 +174,7 @@ public:
     // ローカルフォグや画面効果で使う描画先。
     void PreDrawLocalFog();
 
+    // ローカルフォグ後に深度バッファを通常の深度書き込み状態へ戻す。
     void PostDrawLocalFog();
 
     uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
@@ -199,14 +209,19 @@ private:
     // DirectX初期化の内部手順。依存するリソースを順に作る。
     void InitializeDXGIDevice();
 
+    // コマンドキュー、アロケータ、コマンドリストを作成する。
     void CreateCommand();
 
+    // ウィンドウへ表示するためのスワップチェーンを作成する。
     void CreateSwapChain();
 
+    // スワップチェーンの各バックバッファに対応するRTVを作成する。
     void CreateRTV();
 
+    // 深度ステンシル用のヒープと深度バッファを作成し、DSVへ登録する。
     void CreateDSV();
 
+    // CPUがGPUの処理完了を待てるよう、フェンスと通知イベントを対で作る。
     void CreateFence();
 
     /// <summary>

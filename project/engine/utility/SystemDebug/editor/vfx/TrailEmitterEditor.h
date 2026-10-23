@@ -28,12 +28,16 @@ void DrawImGui() override;
 void RefreshFileLists();
 
 private:
+    // 軌跡の参照プリセットと放出条件をJSONに書き出し、一覧へ即時反映する。
     void Save(const std::string& name);
 
+    // 保存された放出条件をエミッターへ反映し、参照する素材名も復元する。
     void Load(const std::string& name);
 
+    // 再生時計は常に戻し、既存の効果を消すかは呼び出し側の指定に従う。
     void ResetDummyPreview(bool clearEffects);
 
+    // 実キャラクターがいなくても往復するダミーを動かし、Trail発生条件を確認する。
     void StepDummyPreview(float deltaTime, bool allowLoop);
 
     SceneManager* sceneManager_ = nullptr;

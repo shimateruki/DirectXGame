@@ -48,6 +48,7 @@ class SettingsMenuOverlay {
     /// Replay JSON から表示状態を復元する。
     void RestoreReplayState(const nlohmann::json& state);
 
+    // 複数インスタンスを含む表示数で判定し、他画面でも設定UIが入力を使用中か共有する。
     static bool IsAnyActive() { return activeCount_ > 0; }
 
     // エディターから描画範囲を受け取り、Game View外のクリックを無視します。
@@ -111,6 +112,7 @@ class SettingsMenuOverlay {
         bool hasCrop = false;
     };
 
+    // レイアウト未登録ならnullptr。返す参照はこのメニューのレイアウト保持中だけ有効。
     const LayoutSprite* FindLayoutSprite(const std::string& name) const;
     bool InsideLayout(const engine::Vector2& point, const std::string& name) const;
     void PictureLayout(const std::string& name, bool selected = false, float offsetX = 0.0f,
@@ -124,6 +126,7 @@ class SettingsMenuOverlay {
 
     void Picture(const std::string& texture, float x, float y, float w, float h, const engine::Vector4& color);
 
+    // Game Viewまたはクライアント内のポインターを1280×720の設計座標へ戻す。
     engine::Vector2 Pointer() const;
 
     engine::SpriteCommon* common_ = nullptr;
@@ -151,6 +154,7 @@ class SettingsMenuOverlay {
     float animationTime_ = 0.f;
 
     int horizontalHeldDirection_ = 0;
+    // 左右の連続調整に使う実時刻はミリ秒。animationTime_の経過秒数とは別に管理する。
     uint64_t horizontalHoldStartMs_ = 0;
     uint64_t horizontalNextRepeatMs_ = 0;
 

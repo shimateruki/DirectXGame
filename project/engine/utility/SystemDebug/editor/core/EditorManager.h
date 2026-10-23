@@ -16,6 +16,7 @@ private:
     EditorManager& operator=(const EditorManager&) = delete;
 
     // 現在Inspectorで編集対象になっているオブジェクト。
+    // 編集対象は借用する。対象を破棄する側で ClearSelection し、解放済み参照を残さない。
     IEditable* selectedObject_ = nullptr;
 
 public:

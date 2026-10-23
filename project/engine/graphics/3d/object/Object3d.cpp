@@ -24,23 +24,6 @@ namespace engine {
 
 namespace {
 
-std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
-    // 保存済み相対パスはResources配下も試し、旧シーンの地形判定を解決する。
-    std::filesystem::path filePath(path);
-
-    if (std::filesystem::exists(filePath)) {
-        return filePath;
-    }
-
-    std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
-
-    if (std::filesystem::exists(resourcesPath)) {
-        return resourcesPath;
-    }
-
-    return filePath;
-}
-
 // 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
     // 親の祖先に自分がいれば循環になるため、設定前に階層を調べる。
@@ -137,9 +120,7 @@ void Object3d::Initialize(engine::Object3dCommon* common) {
 void Object3d::Update(float deltaTime) {
     if (meshRenderer_ && (GetMaterialType() == 30 || GetMaterialType() == 31)
         && std::isfinite(deltaTime) && deltaTime > 0.0f) {
-        if (auto* material = meshRenderer_->GetMaterialData()) {
-            material->time += deltaTime;
-        }
+        meshRenderer_->AdvanceMaterialTime(deltaTime);
     }
 
     if (meshRenderer_ && GetMaterialType() == 8) {
@@ -782,22 +763,52 @@ Object3d::DirectionalLight* Object3d::GetDirectionalLightData() {
     return meshRenderer_ ? meshRenderer_->GetLightData() : nullptr;
 }
 
-Object3d::Material* Object3d::GetMaterialData() {
+const Object3d::Material* Object3d::GetMaterialData() const {
     // 旧APIからはレンダラー所有の材質データを参照させる。
     return meshRenderer_ ? meshRenderer_->GetMaterialData() : nullptr;
 }
 
+Object3d::MaterialState Object3d::CaptureMaterialState() const {
+    return meshRenderer_ ? meshRenderer_->CaptureMaterialState() : MaterialState{};
+}
+
+void Object3d::RestoreMaterialState(const MaterialState& state) {
+    if (meshRenderer_) meshRenderer_->RestoreMaterialState(state);
+}
+
+void Object3d::SetPortalClip(const PortalClipSettings& settings) {
+    if (meshRenderer_) meshRenderer_->SetPortalClip(settings);
+}
+
+void Object3d::ClearPortalClip() {
+    if (meshRenderer_) meshRenderer_->ClearPortalClip();
+}
+
+void Object3d::SetMaterialTime(float time) {
+    if (meshRenderer_) meshRenderer_->SetMaterialTime(time);
+}
+
 void Object3d::SetMaterialType(int32_t type) {
     // 特殊材質の種類を描画側の設定へ渡す。
-    if (meshRenderer_)
+    if (meshRenderer_) {
         meshRenderer_->SetMaterialType(type);
+        if (type != 0)
+            meshRenderer_->SetShaderMaterialId({});
+    }
+}
+
+void Object3d::SetShaderMaterialId(const std::string& id) {
+    if (meshRenderer_ && GetMaterialType() == 0)
+        meshRenderer_->SetShaderMaterialId(id);
+}
+
+std::string Object3d::GetShaderMaterialId() const {
+    return meshRenderer_ ? meshRenderer_->GetShaderMaterialId() : std::string{};
 }
 
 void Object3d::SetShininess(float shininess) {
     // 材質が存在するときだけ旧来の光沢値を書き換える。
-    if (meshRenderer_ && meshRenderer_->GetMaterialData()) {
-        meshRenderer_->GetMaterialData()->shininess = shininess;
-    }
+    if (meshRenderer_) meshRenderer_->SetShininess(shininess);
 }
 
 int32_t Object3d::GetMaterialType() const {
@@ -807,9 +818,7 @@ int32_t Object3d::GetMaterialType() const {
 
 void Object3d::SetSelectedLighting(int32_t type) {
     // 材質が存在するときだけライティングの選択値を更新する。
-    if (meshRenderer_ && meshRenderer_->GetMaterialData()) {
-        meshRenderer_->GetMaterialData()->selectedLighting = type;
-    }
+    if (meshRenderer_) meshRenderer_->SetSelectedLighting(type);
 }
 
 // ========================================================================

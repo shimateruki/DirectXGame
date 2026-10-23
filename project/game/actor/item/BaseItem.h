@@ -12,16 +12,20 @@ class BaseItem : public engine::Object3d {
 
     virtual void Initialize(engine::Object3dCommon* common, const std::string& modelName);
 
+    // 取得済みのアイテムは同じフレーム中にも再取得できないようにします。
     void Update(float deltaTime) override;
 
+    // 属性だけで確定せず、相手の型と実際の重なりを確認してから取得します。
     bool OnCollision(engine::Object3d* other) override;
 
+    // 初期化で描画・判定資源を作り直してから、編集可能な設定値を引き継ぎます。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   protected:
     // 派生アイテムで取得効果を実装し、MarkCollected で重複取得を防ぎます。
     virtual void Collect(Player* player);
 
+    // 死亡フラグが反映される前にも、表示と判定を即時に止めます。
     void MarkCollected();
 
     bool isCollected_ = false;

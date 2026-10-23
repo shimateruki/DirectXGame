@@ -9,14 +9,19 @@ class GimmickBossGate final : public BaseGimmick {
     static constexpr const char* kTypeId = "BossGate";
     static constexpr const char* kModelPath = "Stages/high_crown/high_crown_gate.obj";
 
+    // 閉鎖中の門を壁として扱い、開く方向と所要時間の既定値を用意する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // エディターでは配置位置へ戻し、プレイ中のみ閉鎖率に応じて門を動かします。
     void Update(float deltaTime) override;
 
+    // イベントからの起動はスイッチ ON と同じ閉鎖経路へ渡す。
     void OnTrigger() override;
 
+    // シネマティック制御中は外部スイッチで門を上書きしない。
     void OnSwitchEvent(bool active) override;
 
+    // 編集配置を複製し、実行時の閉鎖率は新しい門で計算する。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
     // 開門中の退避座標ではなく、シーンで編集した閉鎖位置を返します。
@@ -29,10 +34,13 @@ class GimmickBossGate final : public BaseGimmick {
     void SetIntroTimelineControl(bool enabled);
 
   private:
+    // 実行時の移動や衝突切替で、編集時の Transform とマスクを失わないよう保存する。
     void CaptureAuthoredState(bool force = false);
 
+    // 再生停止時は演出上書きと閉鎖率を消し、編集で決めた位置を復元する。
     void ResetForEditor();
 
+    // 閉鎖率に応じて門を上下させ、十分閉じるまで壁の接触を有効にしない。
     void ApplyRuntimeState();
 
     void SetCollisionEnabled(bool enabled);

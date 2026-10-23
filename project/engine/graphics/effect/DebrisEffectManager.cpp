@@ -123,6 +123,7 @@ void DebrisEffectManager::Update(float deltaTime) {
         return;
     }
 
+    // このフレームのカメラ・ライト行列は全破片で共有し、休止中の破片にも視点変更を反映する。
     engine::Math math;
     engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
@@ -151,6 +152,7 @@ void DebrisEffectManager::Update(float deltaTime) {
         float lifeRatio = SafeRatio(piece.age, piece.lifetime);
         bool transformDirty = false;
 
+        // 休止中は運動計算だけを止め、寿命の進行と後続の縮小処理は続ける。
         if (!piece.sleeping) {
             piece.velocity.y -= piece.gravity * deltaTime;
             float drag = (std::max)(0.0f, 1.0f - piece.airDrag * deltaTime);
@@ -181,6 +183,7 @@ void DebrisEffectManager::Update(float deltaTime) {
 
         float scale = piece.baseScale;
 
+        // 消失区間だけ基準サイズから縮め、前フレームの縮小値を累積して掛けない。
         if (piece.shrinkOnFade && lifeRatio > piece.fadeStartRatio) {
             float fadeT = (lifeRatio - piece.fadeStartRatio) / (std::max)(0.001f, 1.0f - piece.fadeStartRatio);
             scale *= (std::max)(0.001f, 1.0f - fadeT);
@@ -309,6 +312,7 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
         config.modelNames.push_back("Primitives/cube");
     }
 
+    // ここから発生範囲と初速度の設定を読み、各項目の欠落時はConfigの既定値を残す。
     if (j.contains("spawnCount"))
         config.spawnCount = j["spawnCount"].get<int>();
     config.spawnOffset = ReadVector3(j, "spawnOffset", config.spawnOffset);
@@ -336,6 +340,7 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
         config.lifetimeMin = j["lifetimeMin"].get<float>();
     if (j.contains("lifetimeMax"))
         config.lifetimeMax = j["lifetimeMax"].get<float>();
+    // 生成後の運動・地面衝突・消失タイミングは破片ごとの更新に引き継ぐ。
     if (j.contains("gravity"))
         config.gravity = j["gravity"].get<float>();
     if (j.contains("airDrag"))
@@ -348,6 +353,7 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
         config.groundY = j["groundY"].get<float>();
     if (j.contains("fadeStartRatio"))
         config.fadeStartRatio = j["fadeStartRatio"].get<float>();
+    // 描画材質の設定は物理値と分けて読み、生成時のGPUバッファ初期化へ渡す。
     config.color = ReadVector4(j, "color", config.color);
     if (j.contains("materialType"))
         config.materialType = j["materialType"].get<int>();
@@ -451,6 +457,7 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
         return;
     }
 
+    // 同じモデルを重複して準備せず、候補未指定なら既定の箱だけをロードする。
     std::vector<std::string> modelNames;
     modelNames.reserve(config.modelNames.size());
 
@@ -551,6 +558,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         return;
     }
 
+    // 空名と重複を除いたモデル候補を作り、この候補列から破片ごとにランダム選択する。
     std::vector<std::string> modelNames;
     modelNames.reserve(config.modelNames.size());
 
@@ -567,11 +575,13 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         modelNames.push_back(modelName);
     }
 
+    // 候補が一つも指定されていない場合は箱を使い、空配列からの抽選を避ける。
     if (modelNames.empty()) {
         modelNames.push_back("Primitives/cube");
         ModelManager::GetInstance()->LoadModel(modelNames.front());
     }
 
+    // 一度の要求数を制限してから、表示中の総数が収まるだけの枠を確保する。
     int count = std::clamp(config.spawnCount, 1, 256);
 
     if (static_cast<size_t>(count) > kMaxActiveDebrisPieces) {
@@ -596,6 +606,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
             continue;
         }
 
+        // プールからGPU資源を引き継ぎつつ、経過時間・休止状態・配置を今回の発生用に戻す。
         DebrisPiece piece = AcquirePiece();
         piece.model = model;
         piece.age = 0.0f;
@@ -613,6 +624,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
             RandomRange(-3.141592f, 3.141592f)
         };
 
+        // 見た目の大きさと初速度・回転速度を個別に抽選し、同時発生でも動きを揃えない。
         float scale = RandomRange(config.scaleMin, config.scaleMax);
         piece.currentScale = scale;
         piece.velocity = RandomDirection(config) * RandomRange(config.speedMin, config.speedMax);
@@ -622,6 +634,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
             RandomRange(config.angularSpeedMin, config.angularSpeedMax) * RandomRange(-1.0f, 1.0f)
         };
 
+        // 寿命と物理・消失設定を各破片へコピーし、発生後はプリセット参照なしで更新する。
         piece.lifetime = RandomRange(config.lifetimeMin, config.lifetimeMax);
         piece.baseScale = scale;
         piece.gravity = config.gravity;
@@ -633,10 +646,12 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         piece.collideGround = config.collideGround;
         piece.shrinkOnFade = config.shrinkOnFade;
 
+        // 描画バッファを準備できない破片は表示リストへ登録せず、今回の生成を見送る。
         if (!InitializePieceResources(piece, config)) {
             continue;
         }
 
+        // 登録前に初期行列まで書き込み、次のUpdateを待たず描画できる状態にする。
         Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
         engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
 
@@ -707,6 +722,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
         }
     }
 
+    // 影用行列は影描画が有効な構成だけ用意し、通常描画のバッファとは別に保持する。
     if (kEnableDebrisShadowWvp && !piece.shadowWvpResource) {
         piece.shadowWvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
 
@@ -747,6 +763,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
         return false;
     }
 
+    // 再利用したバッファにも単位行列を書き、前の破片の変換を残さない。
     piece.wvpData->WVP = engine::Math::MakeIdentity4x4();
     piece.wvpData->world = engine::Math::MakeIdentity4x4();
     piece.wvpData->WorldInverseTranspose = engine::Math::MakeIdentity4x4();

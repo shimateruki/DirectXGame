@@ -24,6 +24,7 @@ class SaveIndicatorOverlay {
     /// <param name="holdDuration">不透明状態を維持する秒数</param>
     void Play(float holdDuration = 1.35f);
 
+    // デバッグで保持表示している間もtrue。通常のフェード再生中だけを調べるならIsPlayingを使う。
     bool IsActive() const { return isActive_ || debugHold_; }
 
     bool IsPlaying() const { return isActive_; }
@@ -63,6 +64,7 @@ class SaveIndicatorOverlay {
 
     void BindSprites();
 
+    // 戻り値は所有Spriteへの借用参照。Finalizeで無効になる。
     engine::Sprite* FindSprite(const std::string& name) const;
 
     // レイアウト内のSpriteをまとめて表示／非表示にする。

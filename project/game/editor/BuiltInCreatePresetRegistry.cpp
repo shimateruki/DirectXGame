@@ -509,8 +509,6 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* commo
     }
 
     // 単体 Preset と Stage1 の配置由来 Preset を追加し、実変更があったときだけ書き出します。
-    changed |= RegisterPresetOnce("Builtin/Item/Heal",
-        EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Item, "Heal", common), "体力回復");
     changed |= RegisterPresetOnce("Builtin/Utility/SpriteCard2_5D", CreateSpriteCardPreset(common), "2.5Dスプライト板");
     changed |= RegisterStage1LibraryPresets();
 

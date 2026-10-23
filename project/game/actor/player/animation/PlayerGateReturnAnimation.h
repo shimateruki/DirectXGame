@@ -34,24 +34,32 @@ class PlayerGateReturnAnimation {
     const engine::Vector3& GetEndPosition() const { return route_.end; }
 
   private:
+    // 経路の向きは水平面に限定し、ゼロ入力には前方向を使う。
     engine::Vector3 NormalizeDirection(const engine::Vector3& direction) const;
 
+    // 経路の端を越えないよう、補間率を0〜1に制限する。
     engine::Vector3 Lerp(const engine::Vector3& a, const engine::Vector3& b, float t) const;
 
+    // 四点の三次Bezierでゲートへの曲線経路を作る。
     engine::Vector3 Bezier(const engine::Vector3& p0, const engine::Vector3& p1, const engine::Vector3& p2, const engine::Vector3& p3, float t) const;
 
+    // 演出時間を経路の定義域へ収める。
     float Clamp01(float value) const;
 
+    // 終点近くで減速する三次曲線を適用する。
     float EaseOutCubic(float value) const;
 
+    // 前半を加速、後半を減速させて切替点の速度をつなぐ。
     float EaseInOutCubic(float value) const;
 
     void ApplyPose(Player* player, float normalizedTime);
 
+    // 演出中の傾きと移動を消し、経路の終点へ確定させる。
     void ApplyFinishedPose(Player* player, bool restoreControl);
 
     void SuspendCollision(Player* player);
 
+    // 開始前に保存した属性とマスクだけを戻す。
     void RestoreCollision(Player* player);
 
     Route route_;

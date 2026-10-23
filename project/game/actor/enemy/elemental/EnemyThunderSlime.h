@@ -49,10 +49,13 @@ class EnemyThunderSlime : public BaseEnemy {
     /// 未設定なら現在の配置スケールを記録する。
     void EnsureBaseScale();
 
+    // 攻撃後のつぶれと次の攻撃までの待ち時間を独立して進める。
     void UpdateWildTimers(float deltaTime);
 
+    // 連続落雷中は新しい攻撃を選ばず、固定した方向への落雷を完了させる。
     void UpdateWildBehavior(float deltaTime, engine::Vector3& velocity);
 
+    // 近距離放電・中距離落雷・追跡・巡回を射程と待機時間で振り分ける。
     void UpdateCombatBehavior(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction, float distance);
 
     /// 野生時の落雷攻撃に向けて狙い方向を固定する。
@@ -70,20 +73,25 @@ class EnemyThunderSlime : public BaseEnemy {
     /// 野生時落雷の進行状態を初期状態へ戻す。
     void ResetWildLightning();
 
+    // 検知範囲外では共通巡回速度を使い、移動方向へモデルを向ける。
     void UpdateWanderBehavior(float deltaTime, engine::Vector3& velocity);
 
+    // 詠唱中は足踏みを止め、移動中だけ跳ねる速度と地上判定半径を反映する。
     void ApplyGroundMovementAndAnimation(float deltaTime, engine::Vector3& velocity);
 
+    // モデルの正面補正を加え、最短角で標的へ向ける。
     void UpdateFacing(const engine::Vector3& direction);
 
     // 放電攻撃前のチャージ状態へ移行します。
     void StartCharge();
 
+    // 残り時間で円形予兆と電弧を強め、終了時に一度だけ放電する。
     void UpdateCharge(float deltaTime, const engine::Vector3& direction);
 
     // チャージ完了後に雷範囲攻撃を発生させます。
     void ReleaseShock(const engine::Vector3& direction);
 
+    // 高さ方向の差を軽く見て球状範囲を判定し、中心に近いほど押し出しを強める。
     void DispatchShockDamage(const engine::Vector3& center, const engine::Vector3& direction, float radius, float damage);
 
     /// 待機中に発生する小さな火花を更新する。
@@ -101,24 +109,34 @@ class EnemyThunderSlime : public BaseEnemy {
     /// 体の大きさから雷オーラの中心と縦横の径を計算する。
     void CalculateAuraShape(engine::Vector3& center, float& horizontalDiameter, float& verticalDiameter) const;
 
+    // 電弧を楕円周上に分散し、個数と位相で待機・詠唱・放電を使い分ける。
     void EmitOuterThunderEffect(const char* presetName, int count, float phaseOffset = 0.0f);
 
+    // 落雷の発生が近づくほど電弧を中心・上方へ集める。
     void EmitLineChargeEffect(const char* presetName, float progress);
 
+    // GPU粒子が未初期化のプレビューでも本体の攻撃は継続する。
     void EmitThunderPreset(const char* presetName, const engine::Vector3& position);
 
+    // 上から地形を探して雷を接地させ、地形がなければ指定高さを使う。
     engine::Vector3 FindStrikeGround(const engine::Vector3& samplePosition, engine::Object3d* ignoredObject, float fallbackHeight) const;
 
+    // 柱状の雷は着地点を基準に上へ伸ばし、床の閃光と焦げ跡は地面へ置く。
     void SpawnLightningStrikeVisual(const engine::Vector3& groundPosition, const engine::Vector3& direction);
 
+    // 地面との重なりを避ける小さな高さ補正を加えて詠唱模様を置く。
     void SpawnChargeGroundEffect(const engine::Vector3& groundPosition, float scale = 1.0f);
 
+    // 放電・落雷・反動で異なる目標姿勢を作り、通常時は跳ねる変形へ戻す。
     void ApplySlimeAnimation(float deltaTime);
 
+    // 見た目のスケール変化に左右されないワールド半径になるよう局所半径へ換算する。
     void SyncWorldCollisionRadius(float worldRadius);
 
+    // 地上の通常行動では小さい接触半径を使う。
     void SyncGroundCollisionRadius();
 
+    // 投擲時は回転しても当たりやすい半径に切り替える。
     void SyncThrownCollisionRadius();
 
     float attackCooldown_ = 1.15f;     // 野生時の放電再使用待ち。

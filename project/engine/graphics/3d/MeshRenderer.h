@@ -65,6 +65,31 @@ public:
         engine::Vector4 portalClipColor;
     };
 
+    /// <summary>演出前の材質定数・入力色・ブレンド方式を保持する。テクスチャの差し替えは含まない。</summary>
+    class MaterialState {
+    public:
+        MaterialState() = default;
+
+    private:
+        // 復元データを外部から改変して、材質操作APIを迂回することを防ぐ。
+        friend class MeshRenderer;
+        MaterialData parameters{};
+        engine::Vector4 authoringColor{1, 1, 1, 1};
+        BlendMode blendMode = BlendMode::kNone;
+        bool valid = false;
+    };
+
+    /// <summary>ポータル・形成・消滅で使うクリップ面の設定。</summary>
+    struct PortalClipSettings {
+        bool enabled = false;
+        float progress = 0.0f;
+        engine::Vector3 center{};
+        float edgeWidth = 0.12f;
+        engine::Vector3 normal{0, 0, 1};
+        float dissolve = 0.18f;
+        engine::Vector4 color{1.0f, 0.82f, 0.36f, 0.80f};
+    };
+
     /// <summary>GPUへ渡す点光源の位置、色、減衰パラメータ。</summary>
     struct PointLight {
         engine::Vector4 color;
@@ -246,6 +271,9 @@ public:
 
     /// <summary>特殊マテリアルの種類を設定する。</summary>
     void SetMaterialType(int32_t type);
+    // 通常描画の共通入力で動くShader Materialを固定IDで選ぶ。
+    void SetShaderMaterialId(const std::string& id) { shaderMaterialId_ = id; }
+    const std::string& GetShaderMaterialId() const { return shaderMaterialId_; }
 
     /// <summary>平行光源の強度を設定する。</summary>
     void SetIntensity(float intensity);
@@ -259,9 +287,22 @@ public:
     /// <summary>現在のブレンドモードを返す。</summary>
     BlendMode GetBlendMode() const { return blendMode_; }
 
-    // 必要に応じてエディタや演出側から直接調整するためのデータアクセス。
-    /// <summary>GPUへ送るマテリアル定数の編集用ポインタを返す。</summary>
-    MaterialData* GetMaterialData() { return materialData_; }
+    /// <summary>GPU定数の読み取り専用参照。変更は材質操作APIを通す。</summary>
+    const MaterialData* GetMaterialData() const { return materialData_; }
+
+    // 演出前の材質定数・入力色・合成方式を値で退避する。テクスチャ資源の所有権は含めない。
+    MaterialState CaptureMaterialState() const;
+    // 有効な退避値だけ復元する。GPU材質バッファ未生成時は何もしない。
+    void RestoreMaterialState(const MaterialState& state);
+    // クリップ面・進行率をまとめて設定する。無効な数値と法線は実装側で補正する。
+    void SetPortalClip(const PortalClipSettings& settings);
+    // クリップの有効フラグだけ解除し、他の材質調整値は保持する。
+    void ClearPortalClip();
+    void SetMaterialTime(float time);
+    // 正の有限な経過秒だけを加算する。描画時刻とゲームの経過時間を明示的に同期する。
+    void AdvanceMaterialTime(float deltaTime);
+    void SetShininess(float shininess);
+    void SetSelectedLighting(int32_t type);
 
     /// <summary>平行光源定数の編集用ポインタを返す。</summary>
     DirectionalLight* GetLightData() { return directionalLightData_; }
@@ -463,6 +504,7 @@ private:
     // マグマ・氷・炎はそれぞれ専用パイプラインでモデルまたは代理モデルを描画する。
     void DrawMagmaWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
+    // 半透明の氷も水系ルートの定数とテクスチャ配置を共用する。
     void DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     void DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
@@ -477,12 +519,15 @@ private:
     // 特殊マテリアル用の代理形状を必要になったときに作る。
     void InitializeWaterProxyModel();
 
+    // 平面型の炎で使う代理メッシュを必要時に生成する。
     void InitializeFireProxyModel();
 
     void InitializeVolumetricFireProxyModel();
 
+    // ポータルを描くための代理形状を元モデルとは別に保持する。
     void InitializeGatePortalProxyModel();
 
+    // 結界の設定では平面ではなく円筒の代理形状を使う。
     void InitializeGateBarrierCylinderProxyModel();
 
     // 通常描画用WVPから共通の特殊マテリアル描画へ委譲する。
@@ -516,6 +561,7 @@ private:
 
     // 通常材質を描くときの合成方式。
     BlendMode blendMode_ = BlendMode::kNormal;
+    std::string shaderMaterialId_;
 
     // ワールド/View/Projection行列のGPUバッファとマップ済み書込先。
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;

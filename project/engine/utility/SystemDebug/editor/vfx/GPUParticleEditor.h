@@ -19,6 +19,7 @@ void Update(float deltaTime, bool sceneIsPlaying = false);
         // 発生、速度、色、テクスチャなどの編集UIを描画します。
 void DrawImGui() override;
 
+    // Preview Stageの一時座標は保存せず、実行設定だけを共通形式へ変換する。
     void Save(const std::string& presetName);
 
     void Load(const std::string& presetName);

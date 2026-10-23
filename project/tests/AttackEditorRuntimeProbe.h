@@ -15,6 +15,7 @@ struct AttackEditorRuntimeProbe {
         return enabled;
     }
 
+    // 通常描画後に段階を進める。専用起動の確認後にだけ、シーン切替とEditor操作を実行する。
     static void AfterDraw(SceneManager* manager, DebugEditor* editor, const std::string& path) {
         if (!Enabled() || !manager || !editor)
             return;
@@ -44,7 +45,7 @@ struct AttackEditorRuntimeProbe {
             // Scene切替直後の選択リセットが終わってから、ユーザーが開くのと同じ順序にします。
             if (++frames < 3)
                 return;
-            preview.enemyTypeIndex_ = 1;
+            preview.enemyType_ = "FireSlime";
             preview.LoadSelectedProfile();
             for (int i = 0; i < static_cast<int>(preview.editableProfile_.attacks.size()); ++i)
                 if (preview.editableProfile_.attacks[i].id == "fireball")

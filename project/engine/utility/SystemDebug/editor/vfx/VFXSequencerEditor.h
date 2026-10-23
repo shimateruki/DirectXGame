@@ -8,6 +8,7 @@
 // VFXSequencerEditorは、複数のVFXイベントをタイムライン上で並べて演出確認するツールです。
 class VFXSequencerEditor : public IEditable {
 public:
+    // プレビュー用Sequencerを初期化し、参照できるSequenceを収集します。
     void Initialize();
 
         // プレビュー再生中のタイムラインを進めます。
@@ -25,6 +26,7 @@ void RefreshFileList();
     void RequestOpenSequence(const std::string& name);
 
 private:
+    // 専用Stageを優先し、通常画面ではカメラ基準の再生位置へ戻します。
     engine::Vector3 ResolvePreviewPosition() const;
 
         // 現在編集中のシーケンスをプレビュー再生します。
@@ -37,6 +39,7 @@ void DrawTimelinePreview();
 
     void DrawPresetCombo(const char* label, std::string& value, const std::vector<std::string>& list);
 
+    // Event型に応じた既存Presetを初期値にし、空の選択を減らします。
     void AddDefaultEvent(VFXEventType type);
 
     const char* GetEventTypeName(VFXEventType type) const;

@@ -4,6 +4,7 @@
 
 // 草を倒す現在位置と短い通過履歴。物理判定には影響しない。
 namespace FoliageInteraction {
+// 8点分の (ワールドX, Y, Z, 倒れの強さ)。先頭は現在位置、後続は減衰する通過履歴。
 inline std::array<float, 32> samples{};
 inline float sampleTimer = 0.0f;
 
@@ -18,6 +19,7 @@ inline void Update(float x, float y, float z, float dt) {
     const float distanceSquared = dx * dx + dz * dz;
     if (distanceSquared > 64.0f)
         Reset(); // ワープ時は途中に跡を作らない。
+    // dt は秒。履歴の強さだけ指数減衰させ、座標は記録地点に残す。
     const float decay = std::exp(-3.5f * dt);
     sampleTimer += dt;
     for (int i = 1; i < 8; ++i)

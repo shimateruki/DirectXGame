@@ -36,6 +36,7 @@ public:
     /// <summary>
     /// フレームの終了と描画
     /// </summary>
+    // 複数ビューポート有効時のサブウィンドウを更新・描画する。本画面へのコマンド発行は Draw が担う。
     void EndFrame();
 
     /// <summary>作成済みのImGui描画データをコマンドリストへ送る。</summary>

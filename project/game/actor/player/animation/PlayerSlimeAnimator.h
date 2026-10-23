@@ -81,18 +81,23 @@ class PlayerSlimeAnimator {
     // 状態に応じたスケールと回転を計算し、作成済みクリップを優先して適用します。
     engine::Vector3 NormalizeOrForward(const engine::Vector3& direction) const;
 
+    // 速度とモード時計から伸縮を作り、Idle・Run・Jumpなどの質感を分ける。
     engine::Vector3 BuildModeScale(Player* player, float deltaTime) const;
 
+    // 移動中は進行方向へ傾け、停止中は小さな揺れだけを残す。
     engine::Vector3 BuildModeRotation(Player* player) const;
 
     bool TryBuildAuthoredBodyPose(Player* player, engine::Vector3& scaleOut, engine::Vector3& rotationOut,
                                   engine::Vector3& visualOffsetOut) const;
 
+    // Clipを評価した後に開始・終了時の重みを掛け、基本姿勢へ滑らかに戻す。
     void UpdateAbilityMotion(float deltaTime, engine::Vector3& visualScale, engine::Vector3& visualRotation, engine::Vector3& visualOffset,
                              engine::Vector3& visualShear, float& shearPivotY);
 
+    // ガードなどの一時姿勢を基本モードの姿勢へ強度付きで重ねる。
     void ApplyAbilityPose(engine::Vector3& scale, engine::Vector3& rotation) const;
 
+    // Stateが参照するBody Clipだけを一度ずつ読み込み、重複Assetを共有する。
     void ReloadBodyClips();
 
     static const char* GetStateName(Mode mode);

@@ -6,10 +6,17 @@
 #include "engine/utility/math/Math.h"
 
 #include <string>
+#include <memory>
+#include <functional>
 #include <cstdint>
 #include <vector>
 
 class BaseEnemy;
+struct EnemyAttackPreviewDescriptor;
+struct EnemyAttackPreviewOption;
+struct EnemyAttackPreviewContext;
+struct CopyAbilityPreviewDescriptor;
+struct CopyAbilityPreviewAction;
 class BaseScene;
 namespace engine { class Object3d; }
 class Player;
@@ -56,6 +63,9 @@ public:
     /// プレイヤーのコピー能力プレビューへ切り替える。
     void SetPlayerCopyMode(bool enabled);
 
+    /// Inspectorの対象と同じ種類を開く。空文字はPlayer共通値です。
+    void SelectStatusTarget(const std::string& type);
+
     bool IsCrownMovieMode() const { return crownMovieMode_; }
 
     /// 王冠ムービー確認モードへ切り替える。
@@ -69,6 +79,9 @@ public:
 
 private:
 #ifdef USE_IMGUI
+    friend struct AttackPreviewRegistryRuntimeProbe;
+    friend struct PreviewCompositionRuntimeProbe;
+    friend struct StatusPreviewRuntimeProbe;
     friend struct AttackEditorRuntimeProbe; // 明示的な検証起動でUIと同じ操作を実行します。
 #endif
     ProjectWindow* authoringAssets_ = nullptr; // Editorが所有。素材サムネイルだけを借用します。
@@ -78,6 +91,12 @@ private:
 
     /// <summary>コピー能力に固有の入力と動作を設定するUIを描画します。</summary>
     void DrawPlayerCopySettings();
+
+    // ゲーム側の編集欄を描き、操作確定時だけプレビューを再生成します。
+    bool DrawStatusSettings();
+    bool statusTab_ = false; // 基本値と攻撃設定を同時に縦へ積まず、対象を共有して切り替えます。
+    void RefreshStatusPreview();
+    bool statusRefreshPending_ = false;
 
     /// 攻撃プロファイルの数値とシーケンス設定を編集する。
     void DrawAttackProfileEditor();
@@ -96,6 +115,7 @@ private:
 
     void UpdatePlacementPreview();
 
+    // 未確定のギズモ操作を履歴へ閉じ、仮配置のObjectとGPUプレビューを同時に片付けます。
     void StopPlacementPreview();
 
     /// 編集中の攻撃プロファイルを保存元から読み直す。
@@ -172,10 +192,23 @@ private:
     void DrawCrownMovieTimeline();
 
     bool playerCopyMode_ = false;
-    int copyTypeIndex_ = 0;
-    int copyActionIndex_ = 0;
+    std::string copyType_ = "Slime";
+    std::string copyActionId_ = "acquire";
     float copyHoldTime_ = 1.5f;
     bool copyActionTriggered_ = false;
+
+    const CopyAbilityPreviewDescriptor* GetCopyDescriptor() const;
+    const CopyAbilityPreviewAction* GetCopyAction() const;
+    void SelectCopyProfileAction();
+
+    // 先の再生から遅れて届く生成を拒否する、生存期間だけを表すトークンです。
+    struct SpawnSession {};
+    std::shared_ptr<SpawnSession> spawnSession_;
+    std::function<void(std::unique_ptr<BaseEnemy>)> MakePreviewSpawnCallback();
+    void AddPreviewSpawn(std::unique_ptr<BaseEnemy> enemy);
+    void PreparePreviewMetadata(BaseEnemy& enemy, const std::string& name);
+    void ConnectPreviewSpawns(BaseEnemy& enemy);
+    EnemyAttackPreviewContext GetEnemyPreviewContext() const;
 
     /// 固定刻み再生から取得した、タイムラインの一時的な可視化データです。
     struct TimelineSample {
@@ -272,6 +305,11 @@ private:
     /// <summary>選択中の敵の安定した型IDを返します。</summary>
     const char* GetSelectedEnemyType() const;
 
+    const EnemyAttackPreviewDescriptor* GetPreviewDescriptor() const;
+    const EnemyAttackPreviewOption* GetPreviewOption() const;
+    bool IsSealBarragePreview() const;
+    bool IsAirHookSplitPreview() const;
+
     /// <summary>現在Sceneにプレビュー用Objectを配置できるか調べます。</summary>
     bool IsCurrentSceneReady() const;
 
@@ -292,12 +330,12 @@ private:
     bool usePlayerTarget_ = true;
     bool previewSequenceCompleted_ = false;
 
-    int enemyTypeIndex_ = 0;
+    // 一覧の並び順から独立した、保存データと同じ敵種類IDです。
+    std::string enemyType_ = "Slime";
     int profileAttackIndex_ = 0;
 
-    bool falseKingSealBarragePreview_ = false;
+    std::string previewOptionId_; // 保存しない追加確認項目の安定ID。
     bool sealBarrageMovieCameraPreview_ = true;
-    int giantPreviewModeIndex_ = 0;
 
     float elapsedTime_ = 0.0f;
     float simulationAccumulator_ = 0.0f;

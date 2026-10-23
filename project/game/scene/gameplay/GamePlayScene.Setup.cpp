@@ -1128,12 +1128,7 @@ void GamePlayScene::FinalizeGameplayResources() {
     pauseMenuOverlay_.reset();
 
     // HUDはScene内Spriteへの非所有参照なので、レイアウト破棄前に参照と演出時間を無効化する。
-    hudHpIcon_ = {};
-    hudHpFrame_ = {};
-    hudHpDamageFill_ = {};
-    hudHpFill_ = {};
-    hudHpHighlight_ = {};
-    hudHpAnimationTimer_ = 0.0f;
+    healthHud_.Reset();
 
     hudLifeIcon_ = {};
     hudLifeXIcon_ = {};

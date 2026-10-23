@@ -3,6 +3,7 @@
 
 /// <summary>位置、回転、拡縮、親子関係とローカル/ワールド行列を保持する。</summary>
 struct Transform {
+    // scale・rotate・translateは親に対するローカル値。Euler回転の単位はラジアン。
     engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
     engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f }; // インスペクター表示・操作用
     engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
@@ -12,6 +13,7 @@ struct Transform {
 
     engine::Matrix4x4 matLocal = engine::Math::MakeIdentity4x4();
     engine::Matrix4x4 matWorld = engine::Math::MakeIdentity4x4();
+    // 親Transformは借用し、親のmatWorldを先に更新した状態でUpdateMatrixを呼ぶ。
     const Transform* parent = nullptr;
 
     /// <summary>拡縮、回転、移動と親行列からローカル/ワールド行列を更新する。</summary>

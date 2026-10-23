@@ -8,6 +8,7 @@ class Easing {
 public:
     // 引数tは補間の進行割合。Inは開始側、Outは終了側、InOutは両側を緩急づける。
     // 1. Linear (等速)
+    // 入力範囲の制限は呼び出し側で行う。Back・Elastic は出力が 0～1 を越える場合がある。
     static float Linear(float t);
 
     // 2. Sine (サイン波：滑らか)

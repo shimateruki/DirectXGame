@@ -257,6 +257,7 @@ private:
 
     const char* GetPreviewCameraLabel() const;
 
+    // 保存済みの名前から現シーンの実体を探し、シーン切り替え後の古いポインタを使わない。
     engine::Object3d* FindSceneObjectByName(const std::string& name) const;
 
     /// 保存済み Override の参照先 Object を実行時参照へ解決する。
@@ -273,6 +274,7 @@ private:
     /// Override の参照先を含めて視点と注視点を解決する。
     engine::Vector3 ResolveOverrideEye(const Camera::CameraOverrideParams& params) const;
 
+    // ターゲットの種類に応じて追従対象・視点前方・固定点を選ぶ。
     engine::Vector3 ResolveOverrideTarget(const Camera::CameraOverrideParams& params) const;
 
     engine::Vector3 GetConfiguredCameraRight(const engine::Vector3& forward) const;

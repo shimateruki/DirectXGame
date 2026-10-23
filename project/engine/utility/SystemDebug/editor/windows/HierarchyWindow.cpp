@@ -452,14 +452,6 @@ namespace {
         AddCreatedObject(editor, scene, std::move(enemy), "Enemy_" + type, "Create Enemy " + type, useGameViewCursor);
     }
 
-    void CreateItem(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
-        if (!scene || !scene->GetObject3dCommon())
-            return;
-
-        auto item = EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Item, type, scene->GetObject3dCommon());
-        AddCreatedObject(editor, scene, std::move(item), "Item_" + type, "Create Item " + type, useGameViewCursor);
-    }
-
     void DrawCreateContextMenu(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
 #ifdef USE_IMGUI
         // ゲームビュー上の配置はプレビューで位置を決め、Hierarchy側は選択位置を基準に作る。
@@ -527,12 +519,6 @@ namespace {
                 CreateEnemy(editor, scene, "MagmaSlime", useGameViewCursor);
             if (ImGui::MenuItem("リングバーナー"))
                 CreateEnemy(editor, scene, "RingBurner", useGameViewCursor);
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu(ICON_FA_HEART " アイテム")) {
-            if (ImGui::MenuItem("体力回復"))
-                CreateItem(editor, scene, "Heal", useGameViewCursor);
             ImGui::EndMenu();
         }
 
@@ -718,7 +704,7 @@ void HierarchyWindow::Draw() {
         }
 
         if (editor_->GetEnemyAttackPreviewWindow() &&
-            ImGui::Selectable("  " ICON_FA_PAW " 敵攻撃プレビュー (Enemy Attack Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow() &&
+            ImGui::Selectable("  " ICON_FA_PAW " 敵の調整・攻撃プレビュー", currentObj == editor_->GetEnemyAttackPreviewWindow() &&
             !editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode() &&
             !editor_->GetEnemyAttackPreviewWindow()->IsCrownMovieMode())) {
             editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(false);
@@ -727,7 +713,7 @@ void HierarchyWindow::Draw() {
         }
 
         if (editor_->GetEnemyAttackPreviewWindow() &&
-            ImGui::Selectable("  " ICON_FA_PAW " プレイヤー能力プレビュー (Player Ability Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow() &&
+            ImGui::Selectable("  " ICON_FA_PAW " プレイヤー調整・コピー能力", currentObj == editor_->GetEnemyAttackPreviewWindow() &&
             editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode())) {
             // 同じPreviewWindowを敵攻撃とコピー能力で共用し、選択時に編集モードだけを切り替える。
             editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(true);
@@ -770,12 +756,6 @@ void HierarchyWindow::Draw() {
         if (editor_->GetAssetAuditWindow() && ImGui::Selectable("  " ICON_FA_SEARCH " アセット監査 (Asset Audit)", currentObj == editor_->GetAssetAuditWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAssetAuditWindow());
-        }
-
-        if (editor_->GetStatusTuningWindow() &&
-            ImGui::Selectable("  " ICON_FA_SLIDERS_H " ステータス管理 (Status Management)", currentObj == editor_->GetStatusTuningWindow())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
         }
 
         if (editor_->GetAudioSettingsWindow() &&
@@ -1159,7 +1139,8 @@ void HierarchyWindow::Draw() {
                 engine::Vector3 t, rDeg, s;
                 ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &t.x, &rDeg.x, &s.x);
                 sourceObj->SetTranslate(t);
-                sourceObj->SetEulerAngles({ ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
+                sourceObj->SetQuaternionWithEulerHint(sourceObj->GetTransform()->quaternion,
+                    { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
                 sourceObj->SetScale(s);
                 sourceObj->UpdateWorldMatrix();
                 editor_->RegisterObjectEdited(sourceObj, beforeState, "Unparent Object");

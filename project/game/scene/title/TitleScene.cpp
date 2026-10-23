@@ -1,3 +1,4 @@
+#include "game/ui/MenuControls.h"
 #define NOMINMAX
 #include "game/scene/title/TitleScene.h"
 #include "engine/system/scene/SceneEngineIncludes.h"
@@ -771,14 +772,15 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
 void TitleScene::UpdateMainMenu() {
     // 枠の編集位置に文字とカーソルを追従させ、選択時だけ強調する。
     engine::InputManager* input = engine::InputManager::GetInstance();
+    const auto menu = MenuControls::Read(MenuControls::Screen::Title, *input);
 
-    if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+    if (menu.up) {
         currentMenuIndex_--;
         if (currentMenuIndex_ < 0)
             currentMenuIndex_ = (int)MenuIndex::Max - 1;
     }
 
-    if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+    if (menu.down) {
         currentMenuIndex_++;
         if (currentMenuIndex_ >= (int)MenuIndex::Max)
             currentMenuIndex_ = 0;
@@ -856,9 +858,9 @@ void TitleScene::UpdateMainMenu() {
         const float promptPulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 1.45f);
         const float promptAlpha = (0.38f + promptPulse * 0.55f) * menuAlpha;
         // 元画像の字形・縁・発光を保ち、使用中の入力機器に必要な部分だけを並べる。
-        const bool gamepad = input->IsGamepadMode();
-        const float firstPixels = gamepad ? 65.0f : 289.0f;
-        const float lastOrigin = gamepad ? 365.0f : 517.0f;
+        const auto crop = MenuControls::TitlePrompt(menu.gamepad);
+        const float firstPixels = crop.firstWidth;
+        const float lastOrigin = crop.suffixOrigin;
         const float lastPixels = 707.0f - lastOrigin;
         const auto& metadata = TextureManager::GetInstance()->GetMetadata(mainMenuPromptSprite_->GetTextureHandle());
         const float scale = mainMenuPromptBaseSize_.x / static_cast<float>(metadata.width);
@@ -879,7 +881,7 @@ void TitleScene::UpdateMainMenu() {
         mainMenuPromptSprite_->Update();
     }
 
-    if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+    if (menu.confirm) {
         if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
             titleMode_ = TitleMode::SaveSelect;
             saveSelectMode_ = SaveSelectMode::Browse;
@@ -918,31 +920,23 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         return;
     }
 
-    const bool moveUp = input->IsKeyTriggered(DIK_UP) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) ||
-        input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP);
-    const bool moveDown = input->IsKeyTriggered(DIK_DOWN) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) ||
-        input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
-    const bool moveLeft = input->IsKeyTriggered(DIK_LEFT) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ||
-        input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
-    const bool moveRight =
-        input->IsKeyTriggered(DIK_RIGHT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || input->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
+    const auto menu = MenuControls::Read(MenuControls::Screen::SaveSelect, *input);
+    const bool moveUp = menu.up, moveDown = menu.down;
+    const bool moveLeft = menu.left, moveRight = menu.right;
 
     if (saveSelectMode_ == SaveSelectMode::DeleteConfirm) {
         if (moveLeft || moveRight) {
             deleteConfirmIndex_ = 1 - deleteConfirmIndex_;
         }
 
-        if (input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+        if (menu.cancel) {
             saveSelectMode_ = SaveSelectMode::Browse;
             deleteConfirmIndex_ = 1;
             DebugConsole::GetInstance()->AddLog("[Title] Cancel save delete.");
             return;
         }
 
-        if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+        if (menu.confirm) {
             if (deleteConfirmIndex_ == 0) {
                 DeleteSelectedSaveSlot();
             }
@@ -991,7 +985,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         currentSaveSlotIndex_ = std::clamp(saveSelectFocusIndex_, 0, GameDataManager::kSaveSlotCount - 1);
     }
 
-    if (input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+    if (menu.cancel) {
         titleMode_ = TitleMode::MainMenu;
         saveSelectMode_ = SaveSelectMode::Browse;
         saveSelectFocusIndex_ = currentSaveSlotIndex_;
@@ -1003,7 +997,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
     const GameDataManager::SaveSlotSummary summary =
         GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
     const bool requestDelete =
-        (input->IsKeyTriggered(DIK_D) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_X)) && summary.exists;
+        (menu.remove) && summary.exists;
 
     if (requestDelete) {
         saveSelectMode_ = SaveSelectMode::DeleteConfirm;
@@ -1013,7 +1007,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
     }
 
     if (saveSelectFocusIndex_ < GameDataManager::kSaveSlotCount &&
-        (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A))) {
+        (menu.confirm)) {
         saveSelectMode_ = SaveSelectMode::Launching;
         saveLaunchTime_ = 0.0f;
         saveLaunchTransitionRequested_ = false;
@@ -1127,9 +1121,9 @@ void TitleScene::InitializeSaveSlotUI() {
                {790.0f, 160.0f}, {1.0f, 1.0f, 1.0f, 0.35f});
     bindSprite(saveHintBackdrop_, "saveHintBackdrop", kWhite, {960.0f, 965.0f},
                {1250.0f, 82.0f}, {0.02f, 0.07f, 0.14f, 0.68f});
-    bindSprite(saveKeyboardHint_, "saveKeyboardHint", "ui/menu_hints/save_keyboard.png", {960.0f, 970.0f},
+    bindSprite(saveKeyboardHint_, "saveKeyboardHint", MenuControls::Get(MenuControls::Screen::SaveSelect).footerHint.keyboard, {960.0f, 970.0f},
                {1120.0f, 54.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
-    bindSprite(saveGamepadHint_, "saveGamepadHint", "ui/menu_hints/save_gamepad.png", {960.0f, 970.0f},
+    bindSprite(saveGamepadHint_, "saveGamepadHint", MenuControls::Get(MenuControls::Screen::SaveSelect).footerHint.gamepad, {960.0f, 970.0f},
                {1120.0f, 54.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
     // 既存の枠を左右端と中央に分け、長い帯でも丸い端や縁の太さを変えない。
     saveHintBackdrop_->SetTextureRect({110.0f, 0.0f}, {340.0f, 110.0f});

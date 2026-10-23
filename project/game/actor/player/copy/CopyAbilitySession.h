@@ -22,6 +22,7 @@ class ICopyAbilitySession {
     // 能力切替や形態解除時に、能力が所有する演出・一時状態を後始末します。
     virtual void Cancel(Player& player) = 0;
 
+    // 通常描画用。能力に表示物がなければ既定の空実装を使う。
     virtual void Draw(Player&, ID3D12Resource*, ID3D12Resource*, Camera*, int) {}
 
     virtual bool HasOwnedVisuals() const { return false; }
@@ -30,6 +31,7 @@ class ICopyAbilitySession {
 
     virtual void SetPreviewAttackId(const std::string&) {}
 
+    // 深度・画面コピーを必要とする表示物の専用パス。通常描画との二重描画を避ける。
     virtual void DrawOwnedVisuals(Player&, uint32_t, uint32_t, Camera*, int) {}
 
     // ガード成立時の追加演出を処理した場合のみ true を返します。
@@ -46,6 +48,7 @@ class ICopyAbilitySession {
     EnemyAttackProfile profile_;
 };
 
+// 各生成関数は能力ごとのセッションを返し、所有権を Controller へ渡す。
 std::unique_ptr<ICopyAbilitySession> CreatePinkSlimeCopyAbility(const EnemyAttackProfile& profile);
 std::unique_ptr<ICopyAbilitySession> CreateFireSlimeCopyAbility(const EnemyAttackProfile& profile);
 std::unique_ptr<ICopyAbilitySession> CreateThunderSlimeCopyAbility(const EnemyAttackProfile& profile);

@@ -37,6 +37,7 @@ private:
         // 選択可能なテクスチャ一覧を最新のアセット状態に更新します。
 void RefreshTextureList();
 
+    // 保存済みパスの表記ゆれを吸収し、画像一覧の選択位置へ戻す。
     void SyncTextureIndices();
 
     void RefreshJsonFileList();

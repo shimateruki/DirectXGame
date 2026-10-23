@@ -26,8 +26,10 @@ void Initialize();
 
     void SetObject3dCommon(engine::Object3dCommon* common);
 
+    // 現在の点光源・スポットライトの個数と位置へ、編集用ギズモを同期する。
     void Update();
 
+    // 可視設定が有効な場合だけギズモを描く。ゲームのライト本体の描画ではない。
     void Draw3D();
 
         // ライト種別ごとのパラメータ編集UIを描画します。
@@ -38,6 +40,7 @@ void DrawImGui() override;
 private:
     void SetStatusMessage(const std::string& message, bool success);
 
+    // 実行側で切り替わった照明ファイル名をUIへ取り込みます。
     void SyncCurrentFileNameFromManager();
 
     void DrawLightFileList();
@@ -46,6 +49,7 @@ private:
 
     void DrawEnvironmentProfilePanel();
 
+    // 保存名を照明設定用JSONディレクトリに固定します。
     std::string BuildFullPathFromFileName() const;
 
     LightManager* lightManager_ = nullptr;

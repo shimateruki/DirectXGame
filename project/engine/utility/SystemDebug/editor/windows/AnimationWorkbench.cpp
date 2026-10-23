@@ -140,6 +140,7 @@ void AnimationWorkbench::Update(float deltaTime) {
         previewObject_->UpdateWorldMatrix();
     }
 
+    // イベントの通過区間を後で判定できるよう、再生時刻を進める前の値を残す。
     float previousTime = currentTime_;
     bool timelineAdvanced = false;
 
@@ -185,6 +186,7 @@ void AnimationWorkbench::StopPreview() {
     timelineDragKind_ = timelineDragIndex_ = -1;
     const bool sameScene = sceneManager_ && sceneManager_->GetCurrentScene() == previewScene_;
 
+    // 保存したカメラと追従先は元のSceneに属するため、切替後のSceneへは復元しない。
     if (sameScene) {
         RemovePreviewObject();
 
@@ -192,6 +194,7 @@ void AnimationWorkbench::StopPreview() {
             if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 engine::Object3d* follow = nullptr;
 
+                // 停止までに追従Objectが削除されていても、保存したポインタをそのまま再設定しない。
                 for (const auto& object : previewScene_->GetObjects())
                     if (object.get() == storedFollow_)
                         follow = object.get();
@@ -374,6 +377,7 @@ void AnimationWorkbench::DrawAssetControls() {
 
     const char* currentFile = saveFileBuffer_[0] ? saveFileBuffer_ : "(新規)";
 
+    // クリップの選択は予約だけ行い、実際の置換はDrawImGui側の確認後に実行する。
     if (ImGui::BeginCombo("既存Clip", currentFile)) {
         for (const std::string& fileName : assetFiles_) {
             const bool selected = fileName == std::filesystem::path(saveFileBuffer_).stem().string();
@@ -450,6 +454,7 @@ void AnimationWorkbench::DrawBodyControls() {
     ImGui::SameLine();
     ImGui::Checkbox("Gizmo操作で自動キー", &autoKeyBodyOnGizmo_);
 
+    // 数値編集は未登録の上書き姿勢として表示し、キー登録されるまで保存キーを変更しない。
     if (edited) {
         bodyEditOverrideActive_ = true;
         ApplyTimelinePose();
@@ -496,6 +501,7 @@ void AnimationWorkbench::DrawBodyControls() {
             char timeLabel[32]{};
             std::snprintf(timeLabel, sizeof(timeLabel), "%.3f", key.time);
 
+            // キー行を選ぶと未登録姿勢を解除し、選択した時刻とキーの値へ編集欄を揃える。
             if (ImGui::Selectable(timeLabel, selectedBodyKeyIndex_ == index, ImGuiSelectableFlags_SpanAllColumns)) {
                 selectedBodyKeyIndex_ = index;
                 currentTime_ = key.time;
@@ -564,6 +570,7 @@ void AnimationWorkbench::DrawJointControls() {
         int depth = 0;
         std::optional<int> parent = joint.parent;
 
+        // 親の深さで一覧を字下げする。親参照が循環しても関節数までで探索を打ち切る。
         while (parent && *parent >= 0 && *parent < static_cast<int>(joints.size()) && depth < static_cast<int>(joints.size())) {
             ++depth;
             parent = joints[*parent].parent;
@@ -591,6 +598,7 @@ void AnimationWorkbench::DrawJointControls() {
     edited |= ImGui::DragFloat3("回転", &jointRotateDegUi_.x, 0.5f);
     edited |= ImGui::DragFloat3("拡縮", &jointScaleUi_.x, 0.01f, 0.01f, 100.0f);
 
+    // 入力した姿勢は選択関節の一時上書きへ保存し、他の関節の編集中姿勢も保持する。
     if (edited && previewModel_) {
         StoreEditOverrideFromUi();
         ApplyTimelinePose();
@@ -689,6 +697,7 @@ void AnimationWorkbench::DrawEventControls() {
         marker.type = eventType_;
         marker.name = eventNameBuffer_;
         marker.offset = eventOffsetUi_;
+        // 追加位置に関係なく時刻順へ整列し、一覧を再生順に並べ直す。
         events_.push_back(marker);
         std::sort(events_.begin(), events_.end(), [](const EventMarker& a, const EventMarker& b) { return a.time < b.time; });
     }
@@ -753,6 +762,7 @@ bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
         return false;
     }
 
+    // モデルの検証を終えてから旧モデル用のキーと編集状態を捨て、新しい骨格へ切り替える。
     previewModel_ = model;
     bodyKeys_.clear();
     keys_.clear();
@@ -770,6 +780,7 @@ bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
     bodyEasingToNext_ = 4;
     currentTime_ = 0.0f;
 
+    // モデルに既存アニメーションがあれば先頭を基準にし、ない場合はキー編集だけで開始する。
     const auto& animations = previewModel_->GetModelData().animations;
 
     if (!animations.empty()) {
@@ -817,6 +828,7 @@ void AnimationWorkbench::CreatePreviewObject() {
         object->SetScale(previewScale_);
         object->animName_.clear();
         previewObject_ = object.get();
+        // Objectの所有権はSceneへ移し、ワークベンチには操作用の借用ポインタだけを残す。
         scene->AddObject(std::move(object));
     }
 
@@ -905,6 +917,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
         }
     }
 
+    // 関節ごとの補間結果を一つにまとめ、同じ関節のキー数だけ姿勢を重ねて適用しない。
     std::map<int, PoseKey> poseByJoint;
 
     for (const PoseKey& key : keys_) {
@@ -964,6 +977,7 @@ void AnimationWorkbench::AddOrUpdateBodyKey() {
     duration_ = (std::max)(duration_, key.time);
     SortBodyKeys();
 
+    // 新規追加後はソートで添字が変わるため、登録時刻から選択キーの位置を探し直す。
     for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
         if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
             selectedBodyKeyIndex_ = index;
@@ -993,6 +1007,7 @@ bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip
         return false;
     }
 
+    // キー区間の外側は端の姿勢を維持し、外挿で位置や大きさを伸ばさない。
     if (bodyKeys_.size() == 1 || time <= bodyKeys_.front().time) {
         keyOut = bodyKeys_.front();
         return true;
@@ -1250,6 +1265,7 @@ void AnimationWorkbench::SaveAuthoringJson() {
     data["previewPlaybackSpeed"] = playbackSpeed_;
     data["bodyKeys"] = nlohmann::json::array();
 
+    // 保存対象は確定済みキー。UIだけの一時上書きは含めず、回転も保存値のラジアンを使う。
     for (const BodyAnimationClip::Key& key : bodyKeys_) {
         data["bodyKeys"].push_back({
             {"time", key.time},
@@ -1262,6 +1278,7 @@ void AnimationWorkbench::SaveAuthoringJson() {
         });
     }
 
+    // 関節キーには名前も持たせ、読込先モデルで関節番号が変わった場合に照合できるようにする。
     data["keys"] = nlohmann::json::array();
 
     for (const PoseKey& key : keys_) {
@@ -1310,6 +1327,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
         }
     }
 
+    // ファイルが開けてもJSON全体が不正なら、現在のキーを置換する前に中断する。
     nlohmann::json data = nlohmann::json::parse(ifs, nullptr, false);
 
     if (data.is_discarded() || !data.is_object()) {
@@ -1326,6 +1344,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
     float loadedDuration = data.value("duration", 2.0f);
     CopyToBuffer(modelNameBuffer_, sizeof(modelNameBuffer_), modelName);
 
+    // モデル読込が編集状態を初期化するため、保存されたキーと再生設定の復元より先に行う。
     if (modelNameBuffer_[0] != '\0') {
         LoadPreviewModel(modelNameBuffer_);
     }
@@ -1336,6 +1355,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
     playbackSpeed_ = data.value("previewPlaybackSpeed", 1.0f);
     useBaseAnimation_ = animationNameBuffer_[0] != '\0';
 
+    // 旧ファイルにBodyキーがなくても読み進め、せん断などの追加項目は既定値で補う。
     bodyKeys_.clear();
 
     for (const auto& item : data.value("bodyKeys", nlohmann::json::array())) {
@@ -1368,6 +1388,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
         key.jointIndex = item.value("jointIndex", -1);
         key.jointName = item.value("jointName", "");
 
+        // 保存時の番号より現在モデルの関節名を優先し、名前が見つからない場合は元の番号を残す。
         if (previewModel_ && !key.jointName.empty()) {
             int index = previewModel_->FindJointIndex(key.jointName);
             if (index >= 0)
@@ -1401,6 +1422,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
         events_.push_back(marker);
     }
 
+    // 全キーを読んでから補間用の順序へ揃え、現在時刻の編集欄と見た目を再構築する。
     SortBodyKeys();
     SortKeys();
     selectedBodyKeyIndex_ = -1;
@@ -1567,6 +1589,7 @@ void AnimationWorkbench::DrawBodyGizmo() {
         &worldRotateDeg.x,
         &worldScale.x);
 
+    // ワールド位置からプレビュー原点を引き、大きさも基準Scaleに対する倍率へ戻す。
     bodyTranslateUi_ = {
         worldTranslate.x - previewOrigin_.x,
         worldTranslate.y - previewOrigin_.y,
@@ -1611,6 +1634,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     int hoveredJoint = -1;
     float bestHoverDistance = (std::max)(bonePointRadius_ + 4.0f, boneLineThickness_ + 4.0f);
 
+    // 点だけでなく画面上のボーン線も選択候補にし、マウスに最も近い候補へ絞る。
     auto distanceToSegment = [](const ImVec2& point, const ImVec2& start, const ImVec2& end) {
         const float segmentX = end.x - start.x;
         const float segmentY = end.y - start.y;
@@ -1633,6 +1657,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
         return std::sqrt(dx * dx + dy * dy);
     };
 
+    // 選択関節から親へたどって強調する鎖を求め、循環・範囲外参照では探索を止める。
     auto isSelectedAncestor = [&](int jointIndex) {
         if (selectedJointIndex_ < 0 || selectedJointIndex_ >= static_cast<int>(joints.size()))
             return false;
@@ -1759,6 +1784,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
         }
     }
 
+    // Game View用の描画クリップを閉じてから、選択操作とギズモ操作の判定へ移る。
     drawList->PopClipRect();
 
     if (hoveredJoint >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing()) {
@@ -1799,6 +1825,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
             parentWorld = GetJointWorldMatrix(*selectedJoint.parent);
         }
 
+        // ワールドで操作した行列から親の変換を取り除き、保存する関節ローカルの姿勢へ戻す。
         engine::Matrix4x4 localMatrix = engine::Math::Multiply(jointWorld, engine::Math::Inverse(parentWorld));
 
         engine::Vector3 scale;
@@ -1813,6 +1840,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
         StoreEditOverrideFromUi();
         ApplyTimelinePose();
 
+        // 通常は一時姿勢として保持し、自動キーが有効な場合だけ現在時刻のキーへ確定する。
         if (autoKeyOnGizmo_) {
             AddOrUpdateKey();
         }

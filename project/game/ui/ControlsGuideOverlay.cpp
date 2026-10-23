@@ -1,3 +1,4 @@
+#include "game/ui/MenuControls.h"
 #define NOMINMAX
 #include "ControlsGuideOverlay.h"
 
@@ -300,22 +301,15 @@ void ControlsGuideOverlay::Update(float deltaTime, bool acceptInput) {
                && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantTextInput)
 #endif
     ) {
-        if (inputManager_->IsKeyTriggered(DIK_TAB) ||
-            inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) ||
-            inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_BACK)) {
+        const auto menu = MenuControls::Read(MenuControls::Screen::Guide, *inputManager_);
+        if (menu.cancel) {
             SetActive(false);
             return;
         }
 
         if (!isSliding_) {
-            const bool left = inputManager_->IsKeyTriggered(DIK_LEFT) || inputManager_->IsKeyTriggered(DIK_A) ||
-                              inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
-            const bool right = inputManager_->IsKeyTriggered(DIK_RIGHT) || inputManager_->IsKeyTriggered(DIK_D) ||
-                               inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
-
-            const bool confirm = inputManager_->IsKeyTriggered(DIK_SPACE) ||
-                                 inputManager_->IsKeyTriggered(DIK_RETURN) ||
-                                 inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A);
+            const bool left = menu.left, right = menu.right;
+            const bool confirm = menu.confirm;
             if (confirm) {
                 // 基本操作は能力ページへ進み、能力ページからはポーズメニューへ進む。
                 if (pauseMode_ && currentPage_ == 1)
@@ -822,13 +816,13 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
     inputGlyphBindingSignature_ = std::move(signature);
 
     // ページ共通の操作案内を差し替え、キーボードとパッドの表記を同時に出さない。
-    const std::string footerSuffix = gamepadMode ? "gamepad.png" : "keyboard.png";
+    const auto& controls = MenuControls::Get(MenuControls::Screen::Guide);
 
     for (const char* action : {"close", "confirm"}) {
         engine::Sprite* footer = FindSprite(std::string("controls_guide_footer_") + action + "_text");
         if (!footer)
             continue;
-        const std::string path = "generated/text/pause_guide/footer_" + std::string(action) + "_" + footerSuffix;
+        const std::string path = (std::string(action) == "close" ? controls.closeHint : controls.confirmHint).Resolve(gamepadMode);
 
         if (footer->GetTextureName() != path) {
             SetFullTextureRect(footer, engine::Sprite::LoadTexture(path));
@@ -1151,7 +1145,5 @@ bool ControlsGuideOverlay::IsToggleHeld() const {
         return false;
     }
 
-    return inputManager_->IsKeyPressed(DIK_TAB) ||
-           inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_B) ||
-           inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_BACK);
+    return MenuControls::Get(MenuControls::Screen::Guide).bindings.cancel.Held(*inputManager_);
 }

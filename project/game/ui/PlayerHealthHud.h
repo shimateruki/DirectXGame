@@ -1,76 +1,49 @@
 #pragma once
-#include "Player.h"
-#include "Sprite.h"
-#include "TextureManager.h"
-#include <algorithm>
+
+#include "engine/utility/math/Math.h"
+#include "engine/graphics/2d/HealthBarState.h"
 #include <array>
 
-// シーンが所有するHP用Spriteを更新する。位置と寸法はEditorの配置を基準にする。
+class Player;
+namespace engine { class Sprite; }
+
+// 配置はシーン所有のSpriteを借用し、描画と演出は専用実装へまとめる。
 class PlayerHealthHud {
 public:
-    bool Owns(const engine::Sprite* sprite) const {
-        return std::find(sprites_.begin(),sprites_.end(),sprite)!=sprites_.end();
-    }
-    void Draw() const {
-        // 枠には不透明な下地があるため、残量と肖像は必ずその上に描画する。
-        for(size_t i:{4u,1u,2u,3u,0u}) if(sprites_[i]) sprites_[i]->Draw();
-    }
+    enum class Style { Simple, Animated };
+
+    // Spriteは破棄せず参照と演出状態を解除する。シーン側のSpriteを片付ける前に呼ぶ。
+    void Reset();
+    // ここでのOwnsは描画対象かの判定。Spriteの所有権を持つという意味ではない。
+    bool Owns(const engine::Sprite* sprite) const;
+    // 保持した5パーツを枠から順に描画する。シーン側で同じSpriteを二重描画しない。
+    void Draw() const;
+    // Spriteの配置・サイズ・色を基準値として取り込む。各ポインタは借用で、未使用パーツはnullptr可。
     void Bind(engine::Sprite* icon, engine::Sprite* damage, engine::Sprite* fill,
-              engine::Sprite* highlight, engine::Sprite* frame, const Player* player) {
-        sprites_ = {icon, damage, fill, highlight, frame};
-        for (size_t i=0; i<sprites_.size(); ++i)
-            if (sprites_[i]) sizes_[i] = sprites_[i]->GetSize();
-        if (icon) {
-            const float side=(std::min)(sizes_[0].x,sizes_[0].y);
-            sizes_[0]={side,side};icon->SetSize(sizes_[0]);
-        }
-        if (fill) { fill->SetAnimation(8,.08f,true);fill->Play(); }
-        if (highlight) { highlight->SetAnimation(6,.10f,true);highlight->Play(); }
-        delayedRate_=previousRate_=Rate(player);hold_=0;
-        Update(player,0);
-        for (auto* sprite:sprites_) if(sprite) sprite->Update();
-    }
+              engine::Sprite* highlight, engine::Sprite* frame, const Player* player,
+              Style style = Style::Simple);
+    // 経過秒数でHPと形態アイコンを更新する。Playerがnullptrなら全パーツを非表示にする。
+    void Update(const Player* player, float deltaTime);
+    // 演出値への直接参照。Reset/Bindで内容が初期化されるため、その後の値を持ち越さない。
+    engine::HealthBarState& State() { return state_; }
+    const engine::HealthBarState& State() const { return state_; }
 
-    void Update(const Player* player,float deltaTime) {
-        const float dt=(std::max)(0.f,deltaTime),rate=Rate(player);
-        if (rate<previousRate_-.001f) hold_=.18f;
-        previousRate_=rate;
-        if(rate>=delayedRate_) { delayedRate_=rate;hold_=0; }
-        else if(hold_>0) hold_=(std::max)(0.f,hold_-dt);
-        else delayedRate_=(std::max)(rate,delayedRate_-dt*.62f);
-
-        for(auto* sprite:sprites_) if(sprite) sprite->SetVisible(player!=nullptr);
-        // 遅れて減るバーと現在HPを分け、回復時は同時に満たす。
-        for(size_t i=1;i<=3;++i) if(auto* sprite=sprites_[i]) {
-            const float amount=i==1?delayedRate_:rate;
-            sprite->SetSize({sizes_[i].x*amount,sizes_[i].y});
-            sprite->SetVisible(player&&amount>.001f);
-        }
-        if(auto* icon=sprites_[0]) {
-            const auto handle=engine::Sprite::LoadTexture(Portrait(player));
-            const auto& meta=TextureManager::GetInstance()->GetMetadata(handle);
-            icon->SetTextureHandle(handle);
-            icon->SetTextureRect({0,0},{static_cast<float>(meta.width),static_cast<float>(meta.height)});
-            icon->SetSize(sizes_[0]);
-        }
-    }
 private:
-    static float Rate(const Player* player) {
-        return player?std::clamp(player->GetHp()/(std::max)(1.f,player->GetMaxHp()),0.f,1.f):0.f;
-    }
-    static const char* Portrait(const Player* player) {
-        if(player&&player->IsEnemyMorphed()) switch(player->GetEnemyMorphType()) {
-        case Player::EnemyMorphType::Slime:return "ui/hud/copy_portraits/pink.png";
-        case Player::EnemyMorphType::FireSlime:return "ui/hud/copy_portraits/fire.png";
-        case Player::EnemyMorphType::ThunderSlime:return "ui/hud/copy_portraits/thunder.png";
-        case Player::EnemyMorphType::WindSlime:return "ui/hud/copy_portraits/wind.png";
-        case Player::EnemyMorphType::Bomber:return "ui/hud/copy_portraits/bomb.png";
-        case Player::EnemyMorphType::Crown:return "ui/hud/copy_portraits/crown.png";
-        default:break;
-        }
-        return "ui/hud/copy_portraits/normal.png";
-    }
-    std::array<engine::Sprite*,5> sprites_{};
-    std::array<engine::Vector2,5> sizes_{};
-    float delayedRate_=1,previousRate_=1,hold_=0;
+    // Sprite本体はシーン所有。基準値はBind時のスナップショットとして演出から参照する。
+    struct Part {
+        engine::Sprite* sprite = nullptr;
+        engine::Vector2 basePosition{}, baseSize{};
+        engine::Vector4 baseColor{1, 1, 1, 1};
+    };
+    static Part Capture(engine::Sprite* sprite);
+    std::array<const Part*, 5> Parts() const;
+    void UpdatePortrait(const Player* player);
+    void UpdateSimple(const Player* player, float rate, bool visible);
+    void UpdateAnimated(const Player* player, float hpRate, bool visible);
+    static const char* Portrait(const Player* player);
+
+    Style style_ = Style::Simple;
+    Part icon_, damage_, fill_, highlight_, frame_;
+    engine::HealthBarState state_;
+    const char* portrait_ = nullptr;
 };

@@ -157,6 +157,7 @@ public:
     bool Register(EditorPropertyDescriptor descriptor);
 
     /// <summary>型IDからコンポーネント定義を探します。</summary>
+    // 以下の定義検索は内部配列への借用参照を返す。登録で配列が伸びる場合は取得し直す。
     const EditorComponentDescriptor* FindComponent(const std::string& typeId) const;
 
     /// <summary>コンポーネントに属する追加用プリセットを探します。</summary>
@@ -219,7 +220,9 @@ public:
     /// 型に登録された保存項目を調べます。描画材質とは別に使う材質設定も往復させます。
     bool HasSerializedProperties(const engine::Object3d& object, const std::string& prefix) const;
 
+    // クラス側で登録した保存項目を components に書き込む。既存の未知項目は残す。
     void WriteClassProperties(const engine::Object3d& object, nlohmann::json& components) const;
+    // components 内の登録項目を setter 経由で対象へ戻す。保存経路の param とは区別する。
     void ReadClassProperties(engine::Object3d& object, const nlohmann::json& components) const;
 
 private:

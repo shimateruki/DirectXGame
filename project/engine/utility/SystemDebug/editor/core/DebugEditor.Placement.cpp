@@ -111,9 +111,9 @@ namespace {
         }
 
         if (auto* material = object->GetMaterialData()) {
-            material->enableLighting = 0;
-            material->selectedLighting = 0;
-            material->emissive = (std::max)(material->emissive, 1.0f);
+            object->SetEnableLighting(false);
+            object->SetSelectedLighting(0);
+            object->SetEmissive((std::max)(material->emissive, 1.0f));
         }
     }
 
@@ -802,8 +802,8 @@ void DebugEditor::RestorePreviewVisual(engine::Object3d* object) {
         object->SetBlendMode(state.blendMode);
 
         if (auto* material = object->GetMaterialData()) {
-            material->selectedLighting = state.selectedLighting;
-            material->enableLighting = state.enableLighting;
+            object->SetSelectedLighting(state.selectedLighting);
+            object->SetEnableLighting(state.enableLighting != 0);
         }
 
         object->SetEmissive(state.emissive);
@@ -816,8 +816,8 @@ void DebugEditor::RestorePreviewVisual(engine::Object3d* object) {
     object->SetBlendMode(previewObjectOriginalBlendMode_);
 
     if (auto* material = object->GetMaterialData()) {
-        material->selectedLighting = previewObjectOriginalSelectedLighting_;
-        material->enableLighting = previewObjectOriginalEnableLighting_;
+        object->SetSelectedLighting(previewObjectOriginalSelectedLighting_);
+        object->SetEnableLighting(previewObjectOriginalEnableLighting_ != 0);
     }
 
     object->SetEmissive(previewObjectOriginalEmissive_);

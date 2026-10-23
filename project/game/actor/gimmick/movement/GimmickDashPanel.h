@@ -10,12 +10,16 @@ class GimmickDashPanel : public BaseGimmick {
 
     virtual ~GimmickDashPanel() = default;
 
+    // 地面として接触し、踏んだ時の光が読める材質を既定にする。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 編集済みの基準色を最初に保存し、短い加速パルスの後に戻す。
     void Update(float deltaTime) override;
 
+    // 上面から踏んだプレイヤーだけを加速し、接触し続けても発光を連射しない。
     bool OnCollision(engine::Object3d* other) override;
 
+    // 配置と調整値を複製し、実行時のパルス時計は新しい床に持ち込まない。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

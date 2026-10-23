@@ -12,12 +12,16 @@ class GimmickLiquidLevel : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 脱出シーケンスだけは通常のスイッチ昇降と別の時間軸で進めます。
     void Update(float deltaTime) override;
 
+    // 脱出用液面はエリア進行で動くため、通常のトリガー入力を無視します。
     void OnTrigger() override;
 
+    // オフで戻さない設定なら、解除イベント後も上昇位置を維持します。
     void OnSwitchEvent(bool active) override;
 
+    // 複製先の描画資源を作った後で、液面の設定を引き継ぎます。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
@@ -30,8 +34,10 @@ class GimmickLiquidLevel : public BaseGimmick {
     bool escapeFinished_ = false;
     float escapeTime_ = 0.0f;
 
+    // 配置時の高さを基準に、設定した距離だけ上下させます。
     void ApplyTarget(bool active);
 
+    // 色種別に合わせて水とマグマの材質・透過色を切り替えます。
     void ApplyLiquidVisual();
 
     engine::Vector3 basePosition_ = {0.0f, 0.0f, 0.0f};

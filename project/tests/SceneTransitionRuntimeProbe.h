@@ -2,6 +2,10 @@
 
 #ifdef USE_IMGUI
 #include "SceneManager.h"
+#include "StatusPreviewRuntimeProbe.h"
+#include "PreviewCompositionRuntimeProbe.h"
+#include "AttackPreviewRegistryRuntimeProbe.h"
+#include "EditorEventRuntimeProbe.h"
 #include "MeshEffectManager.h"
 #include "WinApp.h"
 #include "SdlStickRuntimeProbe.h"
@@ -38,6 +42,22 @@ inline bool Enabled() { return !LogPath().empty(); }
 inline void AfterDraw(SceneManager* manager, DebugEditor* editor = nullptr) {
     if (!Enabled() || !manager)
         return;
+    if (StatusPreviewRuntimeProbe::Enabled()) {
+        StatusPreviewRuntimeProbe::AfterDraw(manager, editor, LogPath());
+        return;
+    }
+    if (PreviewCompositionRuntimeProbe::Enabled()) {
+        PreviewCompositionRuntimeProbe::AfterDraw(manager, editor, LogPath());
+        return;
+    }
+    if (AttackPreviewRegistryRuntimeProbe::Enabled()) {
+        AttackPreviewRegistryRuntimeProbe::AfterDraw(manager, editor, LogPath());
+        return;
+    }
+    if (EditorEventRuntimeProbe::Enabled()) {
+        EditorEventRuntimeProbe::AfterDraw(manager, editor, LogPath());
+        return;
+    }
     if (CameraBarrierRuntimeProbe::Enabled()) {
         CameraBarrierRuntimeProbe::AfterDraw(manager, LogPath());
         return;

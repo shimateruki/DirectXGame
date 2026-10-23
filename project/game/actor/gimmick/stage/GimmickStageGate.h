@@ -16,10 +16,13 @@ class GimmickStageGate : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 目標開放度に滑らかに追従させ、開放の閾値をまたいだ瞬間だけ発光を強めます。
     void Update(float deltaTime) override;
 
+    // ステージ選択用の展示ノードは、触れてもシーン遷移を起こしません。
     bool OnCollision(engine::Object3d* other) override;
 
+    // 複製先の描画資源を初期化した後で、ゲート設定をコピーします。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
     // エディターで設定された行き先情報とノードの動作モードを取得します。
@@ -53,17 +56,20 @@ class GimmickStageGate : public BaseGimmick {
 
     // 通常更新より先に演出だけを進め、操作ガイド・物理・敵の攻撃との競合を防ぎます。
     static bool UpdateSceneEntry(BaseScene& scene, float deltaTime);
+    // Player とカメラが生存している Finalize の先頭で、借用参照をすべて外します。
     static void ResetSceneEntries(BaseScene& scene);
 
   private:
     // 元の縮尺を保存し、点滅演出による縮尺の累積を防ぎます。
     void CaptureBaseScale();
 
+    // 専用材質がない複製・編集中は、シェーダーパラメータへのアクセスを避けます。
     void UpdatePortalMaterial();
 
     // 選択状態と演出状態を満たした場合にだけシーン遷移します。
     bool CanTriggerTransition() const;
 
+    // Editor で演出中に行き先が変更されても、存在しないシーンへの要求で操作不能にしません。
     void TriggerTransition();
 
     engine::Vector4 GetTargetColor() const;

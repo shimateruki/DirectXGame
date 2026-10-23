@@ -14,6 +14,7 @@ public:
         // パーティクル編集に必要なシーン参照を保持します。
 void Initialize(SceneManager* sceneManager);
 
+    // シーンを切り替えた場合は古いParticleSystemを参照せず、毎フレーム現在のシーンから取り直す。
     void Update(float deltaTime, bool sceneIsPlaying = false);
 
         // パーティクル設定を調整するUIを描画します。

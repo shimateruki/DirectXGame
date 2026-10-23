@@ -202,6 +202,7 @@ void InspectorWindow::Draw() {
         DrawMixedValueHint(mixedLayer);
 
 
+        // Componentの有無を編集してから、後続の専用欄で表示・適用対象を判定する。
         DrawComponentPanel(editor_, selectedObject, inspectorTargets);
 
         const char* saveCategories[] = { "Object", "Player", "Enemy" };
@@ -230,6 +231,7 @@ void InspectorWindow::Draw() {
             ImGui::TextDisabled(ICON_FA_SITEMAP " 親: %s", selectedObject->GetParent()->GetName().c_str());
 
             if (ImGui::Button(ICON_FA_UNLINK " 親を解除 (Unparent)")) {
+                // 親解除は代表Objectだけに行い、ワールド上の見た目の位置を維持する。
                 selectedObject->SetParent(nullptr, true);
             }
         }
@@ -242,11 +244,15 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             ImGui::Text(ICON_FA_CUBE " モデルアセット: %s", selectedObject->GetModelName().c_str());
 
+            // Player/Enemyのモデル変更は配置値ではなくタイプ共通設定へ案内し、個別差し替えと分ける。
             if (isManagedCharacter) {
-                ImGui::TextDisabled("Player/Enemyのモデルはステータス管理のタイプ共通設定です。");
+                ImGui::TextDisabled("Player/Enemyのモデルはプレビュー画面のタイプ共通設定です。");
 
-                if (ImGui::Button(ICON_FA_SLIDERS_H " ステータス管理を開く##ModelStatus", ImVec2(-1, 0)) && editor_->GetStatusTuningWindow()) {
-                    EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
+                if (ImGui::Button(ICON_FA_SLIDERS_H " この種類の基本ステータスを調整##ModelStatus", ImVec2(-1, 0)) && editor_->GetEnemyAttackPreviewWindow()) {
+                    auto* preview = editor_->GetEnemyAttackPreviewWindow();
+        preview->SelectStatusTarget(selectedObject->GetClassName() == "Player" ? "" : selectedObject->GetEnemyType());
+        editor_->SetSelectedObject(nullptr);
+        EditorManager::GetInstance()->SetSelectedObject(preview);
                 }
             } else {
                 ImGui::Button(ICON_FA_BOX_OPEN " [ ここにモデルをドロップして変更 ] ", ImVec2(-1, 30));
@@ -295,6 +301,7 @@ void InspectorWindow::Draw() {
         ImGui::Separator();
         bool isVisible = selectedObject->GetIsVisible();
         const bool mixedVisible = HasMixedInspectorValue(inspectorTargets, "rendering.visible");
+        // 代表値だけで全対象が同値に見えないよう、値の混在を示してから一括編集を受け付ける。
         PushMixedCheckbox(mixedVisible);
 
         if (ImGui::Checkbox(ICON_FA_EYE " 表示 (ゲーム内)", &isVisible)) {
@@ -369,6 +376,7 @@ void InspectorWindow::Draw() {
 
         DrawMixedValueHint(mixedPosition);
 
+        // 回転欄だけ度で受け取り、Transformへはラジアンを戻してEuler回転を編集元にする。
         engine::Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
         const engine::Vector3 beforeRot = transform->rotate;
         const bool mixedRotation = HasMixedInspectorValue(inspectorTargets, "transform.rotation");
@@ -395,7 +403,7 @@ void InspectorWindow::Draw() {
         const engine::Vector3 beforeScale = transform->scale;
 
         if (isManagedCharacter) {
-            ImGui::TextDisabled(ICON_FA_EXPAND_ARROWS_ALT " スケール: %.3f, %.3f, %.3f（ステータス管理）",
+            ImGui::TextDisabled(ICON_FA_EXPAND_ARROWS_ALT " スケール: %.3f, %.3f, %.3f（基本ステータスのタイプ共通値）",
                 transform->scale.x, transform->scale.y, transform->scale.z);
         } else {
             const bool mixedScale = HasMixedInspectorValue(inspectorTargets, "transform.scale");
@@ -478,6 +486,7 @@ void InspectorWindow::Draw() {
                     colConfig.size = { 1.0f, 1.0f, 1.0f };
                 }
 
+                // 箱以外の形状へ切り替えたときは、箱向けの輪郭・モデル形状判定を持ち越さない。
                 if (colConfig.type != ColliderType::kAABB && colConfig.type != ColliderType::kOBB) {
                     colConfig.footprint.clear();
                     colConfig.useModelSurface = false;
@@ -514,6 +523,7 @@ void InspectorWindow::Draw() {
 
                 if ((colConfig.type == ColliderType::kAABB || colConfig.type == ColliderType::kOBB) &&
                     selectedObject->GetModel()) {
+                    // モデル全体の凸形状を選ぶと上面専用判定と手入力輪郭を外し、競合する設定を残さない。
                     if (ImGui::Checkbox("モデル全体の凸形状で判定", &colConfig.useModelVolume)) {
                         if (colConfig.useModelVolume) {
                             colConfig.useModelSurface = false;
@@ -918,6 +928,7 @@ void InspectorWindow::Draw() {
                     ImGui::TextDisabled("影マップ描画だけを無効化します。ライト影響は別設定です。");
                 }
 
+                // テクスチャ候補は画面をまたいで保持し、明示的な更新操作で再読込する。
                 static InspectorTextureCatalog textureCatalog;
                 textureCatalog.EnsureLoaded();
                 const auto& albedoPaths = textureCatalog.GetAlbedoPaths();
@@ -1007,6 +1018,7 @@ void InspectorWindow::Draw() {
                         for (const auto& preset : pbrPresets) {
                             ImGui::TableNextColumn();
                             ImGui::PushID(preset.name.c_str());
+                            // 表示範囲内のカードだけ球プレビューを要求し、未準備の画像には待機表示を出す。
                             const uint64_t thumbnail = projectWindow && ImGui::IsRectVisible(ImVec2(96.0f, 96.0f))
                                 ? projectWindow->GetPbrThumbnailGpuPtr(preset.name,
                                     preset.albedoPath, preset.normalPath, preset.ormPath) : 0;
@@ -1049,6 +1061,7 @@ void InspectorWindow::Draw() {
                     ImGui::TextDisabled("同じベース名の3枚をまとめて適用します。");
                 }
 
+                // 個別の画像選択は代表Objectへ適用する。上のPBRセット一括適用とは対象範囲が異なる。
                 const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
 
                 if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse / Sprite)", previewTextureValue)) {
@@ -1273,6 +1286,7 @@ void InspectorWindow::Draw() {
                         selectedObject->ClearLodLevels();
                     }
 
+                    // 再読込・解除の操作後にLOD一覧を取得し直し、古い一覧への参照を使い続けない。
                     const auto& lodLevels = selectedObject->GetLodLevels();
 
                     if (lodLevels.empty()) {
@@ -1359,6 +1373,7 @@ void InspectorWindow::Draw() {
                     gpuIdx++;
                 }
 
+                // ここではプリセット名の選択だけをObjectへ保存し、粒子の即時生成操作にはしない。
                 if (ImGui::Combo("GPU Effect", &currentGpuIndex, gpuItemNames.data(), (int)gpuItemNames.size())) {
                     if (currentGpuIndex == 0)
                         selectedObject->SetGPUParticleName("");
@@ -1452,6 +1467,7 @@ void InspectorWindow::Draw() {
             // ==========================================
             ImGui::Separator();
             ImGui::Text(ICON_FA_BONE " 【ボーンアニメーション】");
+            // 複数選択でもAnimatorを持つObjectに絞り、持たないObjectへControllerを追加しない。
             const std::vector<engine::Object3d*> animatorTargets =
                 CollectRegisteredComponentTargets(inspectorTargets, "Animator");
 
@@ -1505,6 +1521,7 @@ void InspectorWindow::Draw() {
                 const bool isSelected = !hasMixedController && fs::path(controllerPath).stem().string() == fileName;
 
                 if (ImGui::Selectable(fileName.c_str(), isSelected)) {
+                    // 適用前を記録し、少なくとも一つ読み込めた場合に編集履歴へ登録する。全対象の成功判定ではない。
                     const auto beforeStates = editor_->CaptureObjectStates(animatorTargets);
                     bool assigned = false;
 
@@ -1555,6 +1572,7 @@ void InspectorWindow::Draw() {
             DrawPathMoverSection(selectedObject);
         }
 
+        // ゲーム固有欄は代表Objectへ委譲し、ここまで開いた通常編集の無効化スコープを閉じる。
         DrawGameplayDataSection(selectedObject);
         ImGui::EndDisabled();
         ImGui::Separator();

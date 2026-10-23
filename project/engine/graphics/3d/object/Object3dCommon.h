@@ -1,6 +1,9 @@
 #pragma once
 #include "DirectXCommon.h"
 #include <array>
+#include <map>
+#include <set>
+#include <string>
 #include <wrl.h>
 
 // BlendModeは、3D描画で使う合成方式を表します。
@@ -44,7 +47,7 @@ public:
     void SetPipelineState(BlendMode blendMode);
 
     /// <summary>材質に専用シェーダがある場合はそれを、なければ通常描画パイプラインを設定する。</summary>
-    void SetMaterialPipelineState(BlendMode blendMode, int materialType);
+    void SetMaterialPipelineState(BlendMode blendMode, int materialType, const std::string& shaderMaterialId = {});
 
     /// <summary>所有しないDirectX基盤への参照を返す。</summary>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
@@ -83,28 +86,40 @@ public:
 
     void CreateFirePipeline();
 
+    // ビームは加算合成し、深度テクスチャによる遮蔽をシェーダー側で判定する。
     void CreateLaserPipeline();
 
+    // ゼリー状の表面は両面を半透明合成する。
     void CreateSlimeGelPipeline();
 
+    // 地表の衝撃波は薄い面の裏側からも見えるよう両面描画する。
     void CreateShockwavePipeline();
 
+    // 水面との接触表現は水と同じ定数バッファの配置を使う。
     void CreateLiquidContactPipeline();
 
+    // ひび割れは地形の向きに依存せず見えるよう両面描画する。
     void CreateDamageCrackPipeline();
 
+    // 上昇気流は視点が内側に入っても見える半透明の両面パスにする。
     void CreateUpdraftPipeline();
 
+    // 拘束光は背景へ加算して発光させる。
     void CreateStunBindPipeline();
 
+    // 王冠解除の光も加算合成し、暗い背景で消えないようにする。
     void CreateCrownUnlockPipeline();
 
+    // 胞子の薄い面を両側から描けるようカリングを無効にする。
     void CreatePoisonSporePipeline();
 
+    // 雲は半透明で描き、視点が内部に入っても面を残す。
     void CreateCloudPipeline();
 
+    // ゲート面は通過前後の両側から見えるよう両面描画する。
     void CreateGatePortalPipeline();
 
+    // 風の球は閉じた形状なので裏面を除き、半透明で合成する。
     void CreateWindOrbPipeline();
 
     // 特殊マテリアルごとの描画コマンド設定。関数名と同じ種類のCreate*Pipelineに対応する。
@@ -162,7 +177,7 @@ private:
     void CreatePipelineStatesInternal(bool titleBlendModesOnly);
 
     /// <summary>通常描画と同じルート・深度・合成設定で材質専用のピクセルシェーダを組み込む。</summary>
-    void CreateMaterialVariantPipeline(const wchar_t* pixelShaderPath, BlendMode blendMode, ID3D12PipelineState** outPipelineState);
+    bool CreateMaterialVariantPipeline(const wchar_t* pixelShaderPath, BlendMode blendMode, ID3D12PipelineState** outPipelineState);
 
 private:
     // 段階初期化で実行するパイプライン生成処理の総数。進捗率の分母にも使う。
@@ -188,6 +203,8 @@ private:
 
     // デカール材質の専用シェーダとブレンド方式の組み合わせ。
     std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> decalPipelineStates_;
+    std::map<std::string, std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)>> shaderMaterialPipelineStates_;
+    std::set<std::string> failedShaderMaterials_;
 
     // 通常モデルを深度へ描く影パスのPSO。
     Microsoft::WRL::ComPtr<ID3D12PipelineState> shadowPipelineState_;

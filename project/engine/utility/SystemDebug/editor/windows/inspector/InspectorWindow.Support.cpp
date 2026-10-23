@@ -1,4 +1,5 @@
 #include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.Internal.h"
+#include "engine/graphics/3d/material/ShaderMaterialRegistry.h"
 
 #ifdef USE_IMGUI
 #include "engine/utility/SystemDebug/editor/cinematic/GhostDirector.h"
@@ -1168,6 +1169,42 @@ void DrawMaterialInstancePanel(
     const std::string& linkedPath = selectedObject->GetMaterialInstancePath();
     ImGui::Text("リンク: %s", linkedPath.empty() ? "未設定" : linkedPath.c_str());
     ImGui::TextDisabled("リンク中はScene読込時にAssetの設定一式を再適用します。");
+
+    // 材質定義のEditor一覧は同じRegistryから取得する。
+    auto& shaderMaterials = ShaderMaterialRegistry::Instance();
+    const std::string selectedShaderId = selectedObject->GetShaderMaterialId();
+    const auto* selectedShader = shaderMaterials.Find(selectedShaderId);
+    ImGui::TextDisabled("Shader Materialの変更時は共有Materialとのリンクを解除します。");
+    if (selectedObject->GetMaterialType() == 0) {
+        if (ImGui::BeginCombo("Shader Material", selectedShader ? selectedShader->displayName.c_str() :
+                              (selectedShaderId.empty() ? "標準" : "未登録のID"))) {
+            if (ImGui::Selectable("標準", selectedShaderId.empty())) {
+                for (engine::Object3d* target : targets)
+                    if (target && target->GetMaterialType() == 0) {
+                        target->ClearMaterialInstanceLink();
+                        target->SetShaderMaterialId({});
+                    }
+                MarkInspectorTargetsDirty(editor, targets);
+            }
+            for (const auto& definition : shaderMaterials.List()) {
+                if (ImGui::Selectable(definition.displayName.c_str(), definition.id == selectedShaderId)) {
+                    for (engine::Object3d* target : targets)
+                        if (target && target->GetMaterialType() == 0) {
+                            target->ClearMaterialInstanceLink();
+                            target->SetShaderMaterialId(definition.id);
+                        }
+                    MarkInspectorTargetsDirty(editor, targets);
+                }
+            }
+            ImGui::EndCombo();
+        }
+    } else {
+        ImGui::TextDisabled("Shader Materialは通常材質タイプ0で使用できます。");
+    }
+    if (ImGui::Button("Shader Material一覧を再読込"))
+        shaderMaterials.Reload();
+    for (const std::string& error : shaderMaterials.Errors())
+        ImGui::TextWrapped("%s", error.c_str());
 
     static std::vector<std::string> assets;
     static bool assetsLoaded = false;

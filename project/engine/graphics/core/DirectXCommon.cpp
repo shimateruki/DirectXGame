@@ -413,6 +413,39 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	return shaderBlob;
 }
 
+Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::TryCompileShader(
+    const std::wstring& filePath, const wchar_t* profile, const wchar_t* entryPoint, std::string& errorMessage) {
+    errorMessage.clear();
+    if (!dxcUtils_ || !dxcCompiler_) {
+        errorMessage = "DXCが初期化されていません";
+        return nullptr;
+    }
+    Microsoft::WRL::ComPtr<IDxcBlobEncoding> source;
+    if (FAILED(dxcUtils_->LoadFile(filePath.c_str(), nullptr, &source)) || !source) {
+        errorMessage = "HLSLを読み込めません";
+        return nullptr;
+    }
+    DxcBuffer buffer{source->GetBufferPointer(), source->GetBufferSize(), DXC_CP_UTF8};
+    LPCWSTR arguments[] = {filePath.c_str(), L"-E", entryPoint, L"-T", profile, L"-Od", L"-Zpr"};
+    Microsoft::WRL::ComPtr<IDxcResult> result;
+    if (FAILED(dxcCompiler_->Compile(&buffer, arguments, _countof(arguments), includeHandler_.Get(), IID_PPV_ARGS(&result))) || !result) {
+        errorMessage = "DXCの実行に失敗しました";
+        return nullptr;
+    }
+    HRESULT status = E_FAIL;
+    result->GetStatus(&status);
+    if (FAILED(status)) {
+        Microsoft::WRL::ComPtr<IDxcBlobUtf8> diagnostics;
+        result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&diagnostics), nullptr);
+        errorMessage = diagnostics ? std::string(diagnostics->GetStringPointer(), diagnostics->GetStringLength()) : "HLSLのコンパイルに失敗しました";
+        return nullptr;
+    }
+    Microsoft::WRL::ComPtr<IDxcBlob> shader;
+    if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shader), nullptr)) || !shader)
+        errorMessage = "DXCからバイトコードを取得できません";
+    return shader;
+}
+
 void DirectXCommon::Finalize() {
     // GPU処理の完了を待ってから、DirectX関連リソースを安全に解放する。
 	if (!commandQueue_ || !fence_)

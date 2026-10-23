@@ -89,7 +89,8 @@ void GameEditorController::StopPlay() {
 		playModeChangeTracker_->CaptureRuntimeChanges();
 	}
 
-	const bool restored = replayDebugger_ && replayDebugger_->RestorePlayInEditorSnapshot();
+	const bool restored = playModeSnapshot_ && playModeSnapshot_->Restore();
+	simulationPaused_ = false;
 	*activePlayState_ = false;
 
 	if (sceneManager_) {
@@ -199,8 +200,8 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 	ghostDirector_->Initialize(sceneManager, debugEditor_.get());
 
 	engineManualWindow_ = std::make_unique<EngineManualWindow>();
-	replayDebugger_ = std::make_unique<ReplayDebugger>();
-	replayDebugger_->Initialize(sceneManager, debugEditor_.get());
+	playModeSnapshot_ = std::make_unique<PlayModeSnapshot>();
+	playModeSnapshot_->Initialize(sceneManager);
 
 	if (sceneManager) {
 		if (BaseScene* currentScene = sceneManager->GetCurrentScene()) {
@@ -274,16 +275,12 @@ void GameEditorController::Finalize() {
     if (playModeChangeTracker_)
         playModeChangeTracker_->Finalize();
     playModeChangeTracker_.reset();
+	if (playModeSnapshot_) playModeSnapshot_->Reset();
     if (assetReferenceExplorer_)
         assetReferenceExplorer_->Finalize();
     assetReferenceExplorer_.reset();
 	sceneManager_ = nullptr;
-
-	if (replayDebugger_) {
-		replayDebugger_->Finalize();
-	}
-
-	replayDebugger_.reset();
+	playModeSnapshot_.reset();
 	trailEmitterEditor_.reset();
 	debrisEffectEditor_.reset();
 	meshEffectEditor_.reset();
@@ -330,11 +327,9 @@ void GameEditorController::BeginFrame() {
 
 	IEditable* selectedObject = EditorManager::GetInstance()->GetSelectedObject();
 	const bool wantsEnemyAttackTimeline =
-		!showReplayDebugger_ &&
 		debugEditor_ &&
 		selectedObject == debugEditor_->GetEnemyAttackPreviewWindow();
 	const bool wantsEffectPreviewTimeline =
-		!showReplayDebugger_ &&
 		!wantsEnemyAttackTimeline &&
 		(selectedObject == particleEditor_.get() ||
 		 selectedObject == gpuParticleEditor_.get() ||
@@ -343,9 +338,9 @@ void GameEditorController::BeginFrame() {
 		 selectedObject == debrisEffectEditor_.get() ||
 		 selectedObject == trailEmitterEditor_.get());
 	EffectPreviewStage* effectPreviewStage = EffectPreviewStage::GetInstance();
-    const bool wantsAnimationTimeline = !showReplayDebugger_ && debugEditor_ &&
+    const bool wantsAnimationTimeline = debugEditor_ &&
         selectedObject == debugEditor_->GetAnimationWorkbench();
-    const bool wantsCinematicTimeline = !showReplayDebugger_ && ghostDirector_ &&
+    const bool wantsCinematicTimeline = ghostDirector_ &&
         selectedObject == ghostDirector_.get();
     if (showEnemyAttackTimeline_ && !wantsEnemyAttackTimeline && debugEditor_) {
         auto* preview = debugEditor_->GetEnemyAttackPreviewWindow();
@@ -393,16 +388,6 @@ void GameEditorController::SetPortfolioCaptureMode(bool enabled) {
 			: "ポートフォリオ撮影モード: OFF (エディタ表示を再開しました)");
 }
 
-void GameEditorController::SetReplayDebuggerVisible(bool visible) {
-	if (showReplayDebugger_ == visible) {
-		return;
-	}
-
-	showReplayDebugger_ = visible;
-
-	// Replay表示中は下段を1枚の固定パネルに組み直し、閉じたら通常配置へ戻します。
-	dockspaceInitialized_ = false;
-}
 
 void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
     // 初回起動時にHierarchy、Inspector、Project、GameViewなどの既定ドック配置を作る。
@@ -435,18 +420,12 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 
 	ImGui::Text(isPlaying ? " | 実行中" : " | 編集モード");
 
-	if (isPlaying && replayDebugger_) {
-		ImGui::SameLine();
-		const bool canControlReplay = replayDebugger_->HasFrames();
-		const bool replayPaused = replayDebugger_->ShouldFreezeSimulation();
-		ImGui::BeginDisabled(!canControlReplay);
-
-		if (ImGui::Button(replayPaused ? ICON_FA_PLAY " リプレイ再開" : ICON_FA_PAUSE " 一時停止")) {
-			ExecuteEditorCommand(EditorCommandId::ReplayPauseResume);
-		}
-
-		ImGui::EndDisabled();
-	}
+	if (isPlaying) {
+        ImGui::SameLine();
+        if (ImGui::Button(simulationPaused_ ? ICON_FA_PLAY " 再開" : ICON_FA_PAUSE " 一時停止")) {
+            ExecuteEditorCommand(EditorCommandId::PauseResume);
+        }
+    }
 
 	const ImGuiIO& menuIo = ImGui::GetIO();
 
@@ -507,7 +486,6 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		ImGui::Separator();
 		DrawEditorCommandMenuItem(EditorCommandId::ViewConsole, nullptr, showDebugConsole_);
 		DrawEditorCommandMenuItem(EditorCommandId::ViewStatus, nullptr, showTimeController_);
-		DrawEditorCommandMenuItem(EditorCommandId::ViewReplay, nullptr, showReplayDebugger_);
 		ImGui::EndMenu();
 	}
 
@@ -541,8 +519,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
     }
 #endif
 
-	if (ImGui::BeginMenu(ICON_FA_HISTORY " リプレイ")) {
-		DrawEditorCommandMenuItem(EditorCommandId::ViewReplay, "保存済みリプレイ / 再生・確認を開く", showReplayDebugger_);
+	if (ImGui::BeginMenu(ICON_FA_HISTORY " 実行")) {
 		const std::size_t changeCount = playModeChangeTracker_ ? playModeChangeTracker_->GetPendingChangeCount() : 0;
 		const std::string changeLabel = "Play中の変更を確認（" + std::to_string(changeCount) + "件）";
 
@@ -551,10 +528,8 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		}
 
 		ImGui::Separator();
-		const bool replayPaused = replayDebugger_ && replayDebugger_->ShouldFreezeSimulation();
-		DrawEditorCommandMenuItem(
-			EditorCommandId::ReplayPauseResume,
-			replayPaused ? "選択時点から実行を再開" : "実行を一時停止");
+		DrawEditorCommandMenuItem(EditorCommandId::PauseResume,
+			simulationPaused_ ? "実行を再開" : "実行を一時停止");
 		ImGui::EndMenu();
 	}
 
@@ -654,7 +629,8 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 	playOriginSceneLoadContext_ = sceneManager ? sceneManager->GetActiveSceneLoadContext() : SceneLoadContext{};
 	pendingPlayOriginReload_ = false;
 
-	const bool snapshotCaptured = replayDebugger_ && replayDebugger_->BeginPlayInEditorSnapshot();
+	simulationPaused_ = false;
+	const bool snapshotCaptured = playModeSnapshot_ && playModeSnapshot_->Capture();
 
 	if (!snapshotCaptured) {
 		DebugConsole::GetInstance()->AddLog(
@@ -740,8 +716,8 @@ void GameEditorController::ClearSceneBoundEditorState() {
         sceneWorkspace_->RestoreAllTemporaryVisibility();
     }
 
-	if (replayDebugger_) {
-		replayDebugger_->ResetForSceneChange();
+	if (playModeSnapshot_) {
+		playModeSnapshot_->Reset();
 	}
 
 	if (ghostRecorder_) {
@@ -811,13 +787,9 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 	// 非選択のVFXツールが時間倍率を戻したり実時間更新したりすると、一時停止中の短寿命粒子が消えるため更新を競合させません。
 	const bool enemyPreviewOwnsEffects = enemyPreview && enemyPreview->IsEnabled() && !isPlaying;
 
-	if (replayDebugger_) {
-		replayDebugger_->UpdateBeforeSimulation(deltaTime, isPlaying);
-	}
+	const bool simulationPaused = isPlaying && simulationPaused_;
 
-	const bool replayFrozen = ShouldFreezeSimulationForReplay();
-
-	if (!sceneTransitioning && !replayFrozen) {
+	if (!sceneTransitioning && !simulationPaused) {
 		if (ghostDirector_) {
 			ghostDirector_->Update(isPlaying ? deltaTime * timeScale : deltaTime);
 		}
@@ -854,7 +826,7 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 		debugEditor_->GetCaptureToolWindow()->UpdateHotkeys();
 	}
 
-	if (isPlaying && !sceneTransitioning && !replayFrozen) {
+	if (isPlaying && !sceneTransitioning && !simulationPaused) {
 		MeshEffectManager::GetInstance()->Update(deltaTime * timeScale);
 		GPUParticleManager::GetInstance()->Update(deltaTime * timeScale);
 	}
@@ -904,13 +876,12 @@ void GameEditorController::DrawToolWindows(
 		return;
 	}
 
-	const bool replayWorkspaceActive = replayDebugger_ && showReplayDebugger_;
 	const bool enemyAttackWorkspaceActive =
 		showEnemyAttackTimeline_ &&
 		debugEditor_ &&
 		debugEditor_->GetEnemyAttackPreviewWindow();
 	const bool effectPreviewWorkspaceActive = showEffectPreviewTimeline_ && debugEditor_;
-	const bool expandedBottomWorkspace = replayWorkspaceActive || enemyAttackWorkspaceActive || effectPreviewWorkspaceActive ||
+	const bool expandedBottomWorkspace = enemyAttackWorkspaceActive || effectPreviewWorkspaceActive ||
         showAnimationTimeline_ || showCinematicTimeline_;
 	if (showDebugWindows_) {
 		if (debugEditor_) {
@@ -938,15 +909,6 @@ void GameEditorController::DrawToolWindows(
 
     if (!expandedBottomWorkspace && showTimeController_ && EditorToolSettings::Get().IsVisible("diagnosticWindows")) {
 		DrawStatusWindow(timeScale, sceneUpdateTimeMs, cpuCmdTimeMs, drawTimeMs, updateTimeHistory, drawTimeHistory, timeHistoryIndex);
-	}
-
-	if (replayWorkspaceActive) {
-		bool replayOpen = true;
-		replayDebugger_->Draw(&replayOpen);
-
-		if (!replayOpen) {
-			SetReplayDebuggerVisible(false);
-		}
 	}
 
 	if (enemyAttackWorkspaceActive) {
@@ -988,24 +950,6 @@ void GameEditorController::DrawToolWindows(
     }
 }
 
-bool GameEditorController::ShouldFreezeSimulationForReplay() const {
-	// リプレイのコマ送り中は通常のシミュレーション更新を止める。
-	return replayDebugger_ && replayDebugger_->ShouldFreezeSimulation();
-}
-
-float GameEditorController::ResolveReplaySimulationDeltaTime(float defaultDeltaTime) const {
-    // リプレイ時だけ記録済みの進行時間を使い、通常時は呼び出し元の値を維持する。
-    return replayDebugger_
-        ? replayDebugger_->ResolveSimulationDeltaTime(defaultDeltaTime)
-        : defaultDeltaTime;
-}
-
-void GameEditorController::CaptureReplayFrame(float simulationDeltaTime, bool isPlaying) {
-	// シミュレーション後の状態を記録し、表示フレームとのずれを防ぐ。
-	if (replayDebugger_) {
-		replayDebugger_->CaptureAfterSimulation(simulationDeltaTime, isPlaying);
-	}
-}
 
 void GameEditorController::DrawStatusWindow(
 	float& timeScale,
@@ -1277,11 +1221,6 @@ void GameEditorController::DrawBackBufferUi() {
 void GameEditorController::EndFrame() {
     // ImGuiのフレームを終了し、描画コマンドを発行できる状態にする。
 	ImGuiManager::GetInstance()->EndFrame();
-
-	if (replayDebugger_ && debugEditor_ && debugEditor_->GetCaptureToolWindow()) {
-		replayDebugger_->CapturePendingRegressionScreenshot(
-			debugEditor_->GetCaptureToolWindow());
-	}
 }
 
 void GameEditorController::ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying) {
@@ -1293,7 +1232,7 @@ void GameEditorController::ApplyCameraInputState(const EditorFrameState& frameSt
 
 void GameEditorController::ApplyCameraOverrides() {
     // エフェクトプレビューやアニメーション作業台のカメラ上書きを現在フレームへ反映する。
-    if (ShouldFreezeSimulationForReplay()) {
+    if (simulationPaused_) {
         return;
     }
 

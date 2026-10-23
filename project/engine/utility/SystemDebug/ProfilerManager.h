@@ -117,6 +117,7 @@ private:
 /// <summary>スコープを抜けるまでのCPU所要時間を自動で記録する。</summary>
 class ScopedCpuProfiler {
 public:
+    // name の文字列は借用するため、この計測スコープの終了まで保持する。
     ScopedCpuProfiler(const char* name) : name_(name) {
         start_ = std::chrono::high_resolution_clock::now();
     }

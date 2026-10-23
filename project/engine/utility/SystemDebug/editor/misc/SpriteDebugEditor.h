@@ -66,16 +66,21 @@ private:
     // レイアウト保存
     void SaveSpriteLayout(const std::string& filename);
 
+    // 画像の実ピクセル寸法を取得できないSpriteは縦横比調整から除きます。
     bool TryGetTexturePixelSize(engine::Sprite* sprite, engine::Vector2& outSize) const;
 
     bool IsGeneratedTextSprite(engine::Sprite* sprite) const;
 
+    // 画像とSpriteの比率差を測り、補正対象を判定します。
     float CalcAspectError(engine::Sprite* sprite, const engine::Vector2& textureSize) const;
 
+    // 幅か高さの選択軸を維持して、もう一方だけ画像比率へ合わせます。
     engine::Vector2 MakeAspectFixedSize(engine::Sprite* sprite, const engine::Vector2& textureSize, bool keepWidth) const;
 
+    // 元画像との倍率を四分の一刻みへ丸め、細かすぎる縮小を避けます。
     engine::Vector2 MakeNearestIntegerScaleSize(engine::Sprite* sprite, const engine::Vector2& textureSize) const;
 
+    // 現行SceneのSpriteだけを走査し、文字PNG限定にも切り替えられるようにします。
     int FixSpriteAspectInCurrentScene(bool textOnly, bool keepWidth);
 
     SceneManager* sceneManager_ = nullptr;

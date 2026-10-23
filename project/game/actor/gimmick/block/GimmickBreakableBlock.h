@@ -24,6 +24,7 @@ class GimmickBreakableBlock : public BaseGimmick {
     // actionMode=6は汎用衝撃、7はピンクのバウンド落下だけで破壊します。
     bool TryBreakByPlayerImpact(const Player* player);
 
+    // 同じモデルで新しい実体を初期化してから、配置と破壊設定を複製する。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

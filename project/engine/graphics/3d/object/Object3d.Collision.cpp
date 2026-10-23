@@ -41,18 +41,6 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     return filePath;
 }
 
-// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
-bool HasParentInChain(Object3d* parent, const Object3d* child) {
-    // 親の祖先をたどり、循環する親子付けを拒否するための判定を返す。
-    for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
-        if (current == child) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 }
 
 // ========================================================================

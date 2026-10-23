@@ -396,6 +396,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     currentScene->EnsureUniquePersistentObjectGuids();
     auto& allObjects = currentScene->GetObjects();
 
+    // 編集用の仮Objectを除き、名前の付いた配置Objectだけを保存へ渡す。
     for (auto& obj : allObjects) {
         if (obj->GetName().empty())
             continue;
@@ -597,10 +598,12 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3d* obj) {
     d["rotation"] = { t->rotate.x, t->rotate.y, t->rotate.z };
     d["quaternion"] = { t->quaternion.x, t->quaternion.y, t->quaternion.z, t->quaternion.w };
 
+    // Player/Enemyの大きさはタイプ共通設定から復元するため、配置側には保存しない。
     if (!isManagedCharacter) {
         d["scale"] = { t->scale.x, t->scale.y, t->scale.z };
     }
 
+    // Cameraは移動と再生設定までを保存し、通常モデルの衝突・材質項目は書き出さない。
     if (obj->IsCameraObject()) {
         d["animation"]["animName"] = obj->animName_;
         d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
@@ -656,6 +659,10 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3d* obj) {
     d["color"] = { color.x, color.y, color.z, color.w };
     d["blendMode"] = static_cast<int>(obj->GetBlendMode());
     d["materialType"] = obj->GetMaterialType();
+    if (!obj->GetShaderMaterialId().empty())
+        d["shaderMaterialId"] = obj->GetShaderMaterialId();
+    if (!obj->GetMaterialInstancePath().empty())
+        d["materialInstance"] = obj->GetMaterialInstancePath();
     d["meshDrawIndex"] = obj->GetMeshDrawIndex();
     d["metallic"] = obj->GetMetallic();
     d["roughness"] = obj->GetRoughness();
@@ -714,6 +721,7 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3d* obj) {
         d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
     }
 
+    // 特殊材質または水の登録プロパティを持つObjectだけ、描画側の水パラメータも保存する。
     if ((MaterialRenderPolicy::IsSpecial(obj->GetMaterialType()) ||
          EditorPropertyRegistry::GetInstance()->HasSerializedProperties(*obj, "waterParam.")) && obj->GetMeshRenderer() && obj->GetMeshRenderer()->GetWaterParamData()) {
         auto* water = obj->GetMeshRenderer()->GetWaterParamData();
@@ -776,6 +784,7 @@ std::vector<SceneSerializer::SceneAssetInfo> SceneSerializer::DiscoverSceneAsset
         const json metadata = ReadJsonObject(entry.path());
         const bool hasSceneAssetMetadata =
             metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object();
+        // 明示メタデータを優先し、旧形式は実行クラスを推定できるSceneだけ一覧へ残す。
         if (hasSceneAssetMetadata) {
             const json& sceneAsset = metadata["_sceneAsset"];
             asset.displayName = sceneAsset.value("displayName", asset.id);
@@ -802,6 +811,7 @@ std::vector<SceneSerializer::SceneAssetInfo> SceneSerializer::DiscoverSceneAsset
             asset.usesLegacyMetadata = true;
         }
 
+        // メタデータの有無とは別に、分割配置と現行・旧形式のSpriteファイルの実在を調べる。
         const std::vector<fs::path> objectPaths = BuildObjectAssetPaths(asset.id);
 
         for (size_t index = 1; index < objectPaths.size(); ++index) {
@@ -840,6 +850,7 @@ bool SceneSerializer::CreateSceneAsset(
         return false;
     }
 
+    // ファイルを作る前に、実行クラスの登録とScene IDの重複を検査する。
     if (runtimeScene.empty() || !editor_ || !editor_->GetSceneManager() ||
         !editor_->GetSceneManager()->IsSceneRegistered(runtimeScene)) {
         errorMessage = "登録されていない実行クラスです: " + runtimeScene;
@@ -859,6 +870,7 @@ bool SceneSerializer::CreateSceneAsset(
             return false;
         }
 
+        // 現在Sceneの配置を新IDの保存先へ組み立て、メタデータだけ新規作成時の指定へ差し替える。
         std::vector<SaveTarget> targets = BuildSceneSaveTargets(filename, SaveMode::All);
 
         for (SaveTarget& target : targets) {
@@ -1028,6 +1040,7 @@ bool SceneSerializer::DuplicateSceneAsset(
         return false;
     }
 
+    // 配置の複製後も実行クラスは引き継ぎ、識別子・表示名・Sprite参照を複製先へ揃える。
     json metadata = ReadJsonObject(destinationPaths[0]);
     const std::string runtimeScene = metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object()
         ? metadata["_sceneAsset"].value("runtimeScene", std::string("SCENE_EDITOR"))
@@ -1062,11 +1075,13 @@ bool SceneSerializer::RenameSceneAsset(
         return false;
     }
 
+    // 表示名だけの変更は許し、IDを変える場合だけ出力先の衝突を検査する。
     if (sourceId != newSceneId && AnySceneDestinationExists(newSceneId)) {
         errorMessage = "同じScene IDのファイルが既に存在します。";
         return false;
     }
 
+    // 固定パスやステージ定義の参照元はここでは書き換えないため、参照中のID変更を拒否する。
     if (sourceId != newSceneId) {
         std::string referenceDescription;
 
@@ -1093,6 +1108,7 @@ bool SceneSerializer::RenameSceneAsset(
     std::vector<MovedPath> movedPaths;
 
     if (sourceId != newSceneId) {
+        // 本体と存在するカテゴリ別JSONを同じIDへ移し、旧形式の単一ファイルにも対応する。
         for (size_t index = 0; index < sourcePaths.size(); ++index) {
             if (!fs::exists(sourcePaths[index])) {
                 continue;
@@ -1115,6 +1131,7 @@ bool SceneSerializer::RenameSceneAsset(
             movedPaths.push_back({ sourcePaths[index], destinationPaths[index] });
         }
 
+        // Spriteも同じ改名履歴へ加え、後続処理の失敗時にはObject側と一緒に名前を戻す。
         const std::string sourceSpritePath = ResolveExistingSpritePath(sourceId);
 
         if (!sourceSpritePath.empty()) {
@@ -1137,6 +1154,7 @@ bool SceneSerializer::RenameSceneAsset(
         }
     }
 
+    // ファイル名の変更後に内部IDとSprite参照を揃える。IDが同じ場合は表示名の更新もここで行う。
     const fs::path metadataPath = destinationPaths[0];
     json metadata = ReadJsonObject(metadataPath);
     const std::string runtimeScene = metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object()
@@ -1144,6 +1162,7 @@ bool SceneSerializer::RenameSceneAsset(
         : "SCENE_EDITOR";
     ApplySceneAssetMetadata(metadata, newSceneId, displayName, runtimeScene);
 
+    // 保存失敗時に戻すのは移動したパス名。メタデータの書込内容を復元する処理ではない。
     if (!WriteJsonObject(metadataPath, metadata, errorMessage)) {
         for (auto rollback = movedPaths.rbegin(); rollback != movedPaths.rend(); ++rollback) {
             std::error_code rollbackError;
@@ -1170,6 +1189,7 @@ bool SceneSerializer::DeleteSceneAsset(const std::string& filename, std::string&
 
     bool removedAny = false;
 
+    // 存在する構成ファイルを順に削除する。途中失敗時に削除済みファイルを復元する処理はない。
     for (const fs::path& path : BuildObjectAssetPaths(sceneId)) {
         if (!fs::exists(path)) {
             continue;
@@ -1270,6 +1290,7 @@ bool SceneSerializer::SetSceneAssetRuntimeSettings(
     const std::string displayName = hasSceneAsset
         ? metadata["_sceneAsset"].value("displayName", sceneId)
         : sceneId;
+    // 旧形式では実行クラスを推定し、特定できない場合は汎用Sceneとしてメタデータを補う。
     std::string runtimeScene = hasSceneAsset
         ? metadata["_sceneAsset"].value("runtimeScene", std::string())
         : InferLegacyRuntimeScene(sceneId);
@@ -1330,6 +1351,7 @@ SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
         result.warnings.push_back("Skyboxが見つかりません: " + asset->skyboxPath);
     }
 
+    // 単一・分割の配置を横断して必要Objectと名前の重複を集め、ファイル単位の見落としを防ぐ。
     bool hasPlayer = false;
     bool hasCamera = false;
     bool hasGoal = false;
@@ -1365,6 +1387,7 @@ SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
         }
     }
 
+    // GAMEPLAY向けの必須配置と進行定義を確認し、汎用編集Sceneへゲーム固有の条件を課さない。
     if (asset->runtimeScene == "GAMEPLAY") {
         if (!hasPlayer) {
             result.errors.push_back("GAMEPLAYにはPlayerが1体必要です。");

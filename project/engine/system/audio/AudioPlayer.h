@@ -141,6 +141,7 @@ public:
 
 	/// <summary>同じ SE を重ねて鳴らせる独立した再生インスタンスを開始します。</summary>
 	/// <returns>再生インスタンスのハンドル。失敗時は kInvalidPlaybackHandle。</returns>
+	// pitch は周波数の倍率で 1 が原音。返るハンドルはファイルの AudioHandle と混用しない。
 	PlaybackHandle PlayTransientSE(
 		const std::string& filename,
 		float volume = 1.0f,
@@ -233,6 +234,7 @@ public:
 	/// <summary>イベント定義から SE を選び、必要なら距離減衰を適用して再生します。</summary>
     AudioPlayer::PlaybackHandle Play(
         const std::string& eventPath,
+        // 位置は呼び出し中だけ参照する。位置未指定ではイベントの距離減衰を適用しない。
         const engine::Vector3* worldPosition = nullptr,
         float volumeScale = 1.0f);
 

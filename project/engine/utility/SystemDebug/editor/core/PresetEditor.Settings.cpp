@@ -25,7 +25,7 @@ bool PresetEditor::DrawEnemySettings(json& data) {
 
     if (ImGui::CollapsingHeader("敵パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
         changed |= DrawTypeCombo("敵の種類", data, param, "enemyType", GetEnemyOptions(), Category::Enemy);
-        ImGui::TextDisabled("HP・攻撃力・移動・重力などはステータス管理でタイプごとに編集します。");
+        ImGui::TextDisabled("HP・攻撃力・移動・重力などは「敵の調整・攻撃プレビュー」の「基本ステータス」で編集します。");
     }
 
     return changed;
@@ -54,17 +54,24 @@ bool PresetEditor::RemoveManagedEnemyFields(json& data) {
     return changed;
 }
 
-PresetEditor::PropertyEditorContext* PresetEditor::GetPropertyEditor(const std::string& type) {
-    const auto found = propertyEditors_.find(type);
+PresetEditor::PropertyEditorContext* PresetEditor::GetPropertyEditor(const std::string& type, bool commonObject) {
+    const std::string cacheKey = (commonObject ? "Object/" : "Gimmick/") + type;
+    const auto found = propertyEditors_.find(cacheKey);
     if (found != propertyEditors_.end()) return &found->second;
     auto* scene = SceneManager::GetInstance()->GetCurrentScene();
     if (!scene || !scene->GetObject3dCommon()) return nullptr;
-    auto object = EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Gimmick, type, scene->GetObject3dCommon());
+    std::unique_ptr<engine::Object3d> object;
+    if (commonObject) {
+        object = std::make_unique<engine::Object3d>();
+        object->Initialize(scene->GetObject3dCommon());
+    } else {
+        object = EditorObjectFactoryRegistry::Create(EditorObjectFactoryRegistry::Kind::Gimmick, type, scene->GetObject3dCommon());
+    }
     if (!object) return nullptr;
     PropertyEditorContext context;
     context.defaults = object->ExportToJson();
     context.object = std::move(object);
-    return &propertyEditors_.emplace(type, std::move(context)).first->second;
+    return &propertyEditors_.emplace(cacheKey, std::move(context)).first->second;
 }
 
 bool PresetEditor::DrawGimmickSettings(json& data) {
@@ -105,49 +112,58 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
     auto* registry = EditorPropertyRegistry::GetInstance();
     for (const auto* component : registry->GetComponentsForObject(&object)) {
         if (component->typeId.rfind("Game_", 0) != 0) continue;
-        if (!component->description.empty()) ImGui::TextWrapped("%s", component->description.c_str());
-        for (const auto* property : registry->GetPropertiesForComponent(component->typeId)) {
-            if (property->visible && !property->visible(object)) continue;
-            ImGui::PushID(property->path.c_str());
-            ImGui::TextUnformatted(property->displayName.c_str());
-            auto value = property->displayValue ? property->displayValue(object) : registry->GetValue(&object, property->path);
-            auto effective = *property;
-            if (property->maximum) effective.ui.maxValue = property->maximum(object);
-            const bool disabled = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly) ||
-                (property->enabled && !property->enabled(object));
-            ImGui::BeginDisabled(disabled);
-            EditorPropertyDrawOptions drawOptions;
-            drawOptions.compact = true;
-            if (EditorPropertyDrawer::DrawValue(effective, value, "##Value", drawOptions))
-                changed |= EditorPropertyJsonBinding::Apply(object, *property, data, value);
-            ImGui::EndDisabled();
-            if (property->help) {
-                const auto help = property->help(object);
-                if (!help.empty()) ImGui::TextWrapped("%s", help.c_str());
-            }
-            ImGui::PopID();
-        }
+        changed |= DrawRegisteredSettings(data, *context, component->typeId);
     }
     context->source = data;
     return changed;
 }
 
-bool PresetEditor::DrawItemSettings(json& data) {
-    // アイテム共通の種類を先に選び、型固有の値だけ後続で編集します。
-    bool changed = false;
-    ApplyHiddenCategoryFields(data, Category::Item);
-    json& param = EnsureParam(data);
 
-    if (ImGui::CollapsingHeader("アイテムパラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
-        changed |= DrawTypeCombo("アイテムの種類", data, param, "itemType", GetItemOptions(), Category::Item);
-        const std::string type = ReadString(data, "itemType", ReadString(param, "itemType", ""));
-
-        if (type == "Heal") {
-            changed |= DrawParamFloat(param, "回復量", "healAmount", 1.0f, 0.1f);
-        }
+// ギミックとイベントで同じ入力・保存差分処理を使い、未知のJSON項目を保持します。
+bool PresetEditor::DrawRegisteredSettings(json& data, PropertyEditorContext& context, const std::string& componentType) {
+    auto& object = *context.object;
+    if (context.source != data) {
+        EditorPropertyJsonBinding::Restore(object, context.defaults, data);
+        context.source = data;
     }
-
+    auto* registry = EditorPropertyRegistry::GetInstance();
+    const auto* component = registry->FindComponent(componentType);
+    if (!component) return false;
+    bool changed = false;
+    if (!component->description.empty()) ImGui::TextWrapped("%s", component->description.c_str());
+    for (const auto* property : registry->GetPropertiesForComponent(componentType)) {
+        if (!registry->IsApplicable(&object, property->path) ||
+            (property->visible && !property->visible(object))) continue;
+        ImGui::PushID(property->path.c_str());
+        ImGui::TextUnformatted(property->displayName.c_str());
+        auto value = property->displayValue ? property->displayValue(object) : registry->GetValue(&object, property->path);
+        auto effective = *property;
+        if (property->maximum) effective.ui.maxValue = property->maximum(object);
+        const bool disabled = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly) ||
+            (property->enabled && !property->enabled(object));
+        ImGui::BeginDisabled(disabled);
+        EditorPropertyDrawOptions drawOptions;
+        drawOptions.compact = true;
+        if (EditorPropertyDrawer::DrawValue(effective, value, "##Value", drawOptions))
+            changed |= EditorPropertyJsonBinding::Apply(object, *property, data, value);
+        ImGui::EndDisabled();
+        if (property->help) {
+            const auto help = property->help(object);
+            if (!help.empty()) ImGui::TextWrapped("%s", help.c_str());
+        }
+        ImGui::PopID();
+    }
+    context.source = data;
     return changed;
+}
+
+bool PresetEditor::DrawEventSettings(json& data) {
+    auto* context = GetPropertyEditor("ContactEvent", true);
+    if (!context) {
+        ImGui::TextDisabled("シーンの初期化後にイベントを編集できます。");
+        return false;
+    }
+    return DrawRegisteredSettings(data, *context, "ContactEvent");
 }
 
 bool PresetEditor::DrawTypeCombo(const char* label, json& data, json& param, const char* key, const std::vector<TypeOption>& options, Category category) {
@@ -219,11 +235,6 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             data["gimmickType"] = type;
             EnsureParam(data)["gimmickType"] = type;
         }
-    }
-    else if (category == Category::Item) {
-        data["modelName"] = "Item/heart.gltf";
-        data["scale"] = { 0.8f, 0.8f, 0.8f };
-        SetColliderDefaults(data, 1, { 1.2f, 1.2f, 1.2f });
     }
 
     // ここで作った数値Maskは現在のJSON定義の値なので、IDも同時に保存します。
@@ -439,7 +450,7 @@ json PresetEditor::BuildBlankPreset(const std::string& name, Category category) 
     data["collisionMask"] = 0;
     data["enemyType"] = category == Category::Enemy ? "Slime" : "";
     data["gimmickType"] = category == Category::Gimmick ? "Default" : "";
-    data["itemType"] = category == Category::Item ? "Heal" : "";
+    data["itemType"] = "";
     data["collider"] = {
         { "type", 2 },
         { "center", { 0.0f, 0.0f, 0.0f } },
@@ -455,8 +466,7 @@ json PresetEditor::BuildBlankPreset(const std::string& name, Category category) 
             { "gravity", 50.0f },
             { "interval", 3.0f },
             { "gimmickType", category == Category::Gimmick ? "Default" : "" },
-            { "itemType", category == Category::Item ? "Heal" : "" },
-            { "healAmount", 1.0f }
+            { "itemType", "" }
         };
     }
 
@@ -464,7 +474,7 @@ json PresetEditor::BuildBlankPreset(const std::string& name, Category category) 
     const std::string type =
         category == Category::Enemy ? "Slime" :
         category == Category::Gimmick ? "Default" :
-        category == Category::Item ? "Heal" : "";
+        "";
     const_cast<PresetEditor*>(this)->ApplyTypeDefaults(data, category, type);
     return data;
 }

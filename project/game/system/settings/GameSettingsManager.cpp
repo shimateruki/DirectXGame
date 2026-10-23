@@ -2,11 +2,11 @@
 
 #include "AudioPlayer.h"
 #include "json.hpp"
+#include "engine/utility/JsonFile.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <filesystem>
 #include <fstream>
 
 namespace {
@@ -114,43 +114,15 @@ void GameSettingsManager::Load() {
 }
 
 bool GameSettingsManager::Save() const {
-    // 他システムの設定キーを残しつつ、廃止した表示設定だけ整理する。
-    nlohmann::json data;
-    std::ifstream input(filePath_);
-
-    if (input.is_open()) {
-        try {
-            input >> data;
-        } catch (...) {
-            data = nlohmann::json::object();
-        }
-    }
-
-    if (!data.is_object()) {
-        data = nlohmann::json::object();
-    }
-
-    data["bgmVolume"] = bgmVolume_;
-    data["seVolume"] = seVolume_;
-    data["cameraSensitivity"] = cameraSensitivity_;
-    data["cameraInvertX"] = cameraInvertX_;
-    data["cameraInvertY"] = cameraInvertY_;
-    data["stageSelectWeatherMode"] = static_cast<int>(stageSelectWeatherMode_);
-
-    // 廃止済みの表示設定は再保存時に残さない。
-    data.erase("brightness");
-    data.erase("resolutionIndex");
-    data.erase("fullscreen");
-
-    std::filesystem::create_directories(std::filesystem::path(filePath_).parent_path());
-    std::ofstream output(filePath_);
-
-    if (output.is_open()) {
-        output << data.dump(4);
-    }
-
-    output.flush();
-    return output.good();
+    // 保存キーの選択はゲーム側で行い、共通処理が他システムの項目を保持する。
+    return JsonFile::UpdateObject(filePath_, {
+        {"bgmVolume", bgmVolume_},
+        {"seVolume", seVolume_},
+        {"cameraSensitivity", cameraSensitivity_},
+        {"cameraInvertX", cameraInvertX_},
+        {"cameraInvertY", cameraInvertY_},
+        {"stageSelectWeatherMode", static_cast<int>(stageSelectWeatherMode_)}
+    }, {"brightness", "resolutionIndex", "fullscreen"});
 }
 
 void GameSettingsManager::SetBGMVolume(float volume) {

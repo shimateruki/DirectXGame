@@ -12,10 +12,12 @@ class GimmickTrampoline : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 保存済みの配置スケールを基準に、着地直後につぶれ、ばねで戻る。
     void Update(float deltaTime) override;
 
     bool OnCollision(engine::Object3d* other) override;
 
+    // 複製後も専用の衝突・反発動作を保つ。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
     // プレイヤーから見た接触法線を受け取り、上面への着地だけを反発へ変える。

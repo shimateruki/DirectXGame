@@ -573,8 +573,8 @@ bool GameRule::ApplyDamage(engine::Object3d* target, float damage, bool bypassPl
             return false;
     }
 
-    if (target->GetClassName() == "Player") {
-        Player* player = static_cast<Player*>(target);
+    // 保存用の分類名はEditorで変更できるため、実体の型でプレイヤーを判定する。
+    if (auto* player = dynamic_cast<Player*>(target)) {
 
         // 被弾無敵または回避ダッシュ中ならダメージを無効化
         if ((player->IsInvincible() && !bypassPlayerInvincibility) || player->IsCinematicLocked()) {

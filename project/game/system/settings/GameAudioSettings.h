@@ -31,11 +31,13 @@ class GameAudioSettings {
     /// 現在の音声登録と音量を JSON へ書き出す。
     void Save() const;
 
+    // Editor編集用の直接参照。追加・削除で要素参照が無効になり得るため長期間保持しない。
     std::vector<SoundEntry>& GetEntries() { return entries_; }
 
     const std::vector<SoundEntry>& GetEntries() const { return entries_; }
 
     /// ID に一致する登録音声を返す。見つからなければ nullptr。
+    // 返す要素はentries_内の借用参照。Loadや登録配列の変更後は取得し直す。
     SoundEntry* FindEntry(const std::string& id);
 
     const SoundEntry* FindEntry(const std::string& id) const;

@@ -222,8 +222,10 @@ public:
 
     bool SetSpotLight(std::size_t index, const SpotLightInstance& value);
 
+    // 不正インデックスでは一覧を変更せず、呼び出し側へ失敗を返します。
     bool RemovePointLight(std::size_t index);
 
+    // 不正インデックスでは一覧を変更せず、呼び出し側へ失敗を返します。
     bool RemoveSpotLight(std::size_t index);
 
     void ClearPointLights();
@@ -233,6 +235,7 @@ public:
     /// <summary>登録された点光源、スポットライト、一時点光源をすべて削除する。</summary>
     void ClearAllLights();
 
+    // 一時ライトの寿命に下限を置き、次の更新で確実に減衰できるようにします。
     void PlayPointLightPulse(
         const engine::Vector3& position,
         const engine::Vector4& color,

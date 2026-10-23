@@ -19,8 +19,10 @@ class GimmickChikuwaBlock : public BaseGimmick {
 
     void Update(float deltaTime) override;
 
+    // 待機中のみプレイヤーの搭乗を判定
     bool OnCollision(engine::Object3d* other) override;
 
+    // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

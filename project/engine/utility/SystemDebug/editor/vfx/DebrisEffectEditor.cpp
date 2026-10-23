@@ -1,4 +1,5 @@
 #include "DebrisEffectEditor.h"
+#include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 
 #include "CameraManager.h"
 #include "DebugConsole.h"
@@ -15,37 +16,6 @@
 
 namespace {
 constexpr const char* kDebrisPresetDirectory = "Resources/json/debris/";
-
-constexpr const char* kMaterialTypeNames[] = {
-    "通常 (Standard)",
-    "ガラス (Glass)",
-    "氷・宝石 (Ice/Crystal)",
-    "ホログラム (Hologram)",
-    "消滅 (Dissolve)",
-    "旧マグマ (Emissive)",
-    "トゥーン調 (Cel Shaded)",
-    "ローカルフォグ (Local Fog)",
-    "水 (Water)",
-    "新マグマ (Magma)",
-    "分厚い氷 (Ice)",
-    "炎 (Fire)",
-    "レーザー (Laser)",
-    "スライムジェル (Slime Gel)",
-    "地面衝撃波 (Shockwave)",
-    "水/マグマ接触 (Liquid Contact)",
-    "ダメージ亀裂 (Damage Crack)",
-    "上昇気流 (Updraft)",
-    "スタン拘束 (Stun Bind)",
-    "王冠解放 (Crown Unlock)",
-    "毒胞子 (Poison Spore)",
-    "雲 (Cloud)",
-    "ゲートポータル (Gate Portal)",
-    "アニメ調地形 (Stylized Terrain)",
-    "ダッシュパネル (Dash Panel)",
-    "スライム補正 (Slime Soft)",
-    "風弾 (Wind Orb)",
-    "プリズム結晶 (Prism Crystal)"
-};
 
 void CopyToBuffer(std::array<char, 128>& buffer, const std::string& text) {
     std::fill(buffer.begin(), buffer.end(), '\0');
@@ -105,14 +75,17 @@ void DrawModelCombo(const char* label, std::array<char, 128>& buffer, const std:
 void DrawMaterialTypeCombo(int& materialType) {
 #ifdef USE_IMGUI
     // 定義済みタイプは選択式にし、未知値は失わず直接調整できるようにする。
-    constexpr int materialTypeCount = static_cast<int>(std::size(kMaterialTypeNames));
+    constexpr int materialTypeCount = static_cast<int>(MaterialRenderPolicy::kLegacyMaterials.size());
+    std::array<const char*, MaterialRenderPolicy::kLegacyMaterials.size()> names{};
+    for (std::size_t i = 0; i < names.size(); ++i)
+        names[i] = MaterialRenderPolicy::kLegacyMaterials[i].displayName;
     int currentMaterialType = materialType;
 
     if (currentMaterialType < 0 || currentMaterialType >= materialTypeCount) {
         currentMaterialType = 0;
     }
 
-    if (ImGui::Combo("マテリアルタイプ", &currentMaterialType, kMaterialTypeNames, materialTypeCount)) {
+    if (ImGui::Combo("マテリアルタイプ", &currentMaterialType, names.data(), materialTypeCount)) {
         materialType = currentMaterialType;
     }
 
@@ -120,7 +93,7 @@ void DrawMaterialTypeCombo(int& materialType) {
         ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "未知のマテリアルタイプ: %d", materialType);
         ImGui::DragInt("数値を直接調整", &materialType, 1, 0, 32);
     } else {
-        ImGui::TextDisabled("現在: %d / %s", materialType, kMaterialTypeNames[materialType]);
+        ImGui::TextDisabled("現在: %d / %s", materialType, names[materialType]);
     }
 #else
     (void)materialType;

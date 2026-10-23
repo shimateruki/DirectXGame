@@ -30,10 +30,12 @@ class EditorObjectFactoryRegistry {
 
     static const std::vector<TypeInfo>& GetTypes(Kind kind) { return Types()[static_cast<size_t>(kind)]; }
 
+    // 同じカテゴリの生成関数を置き換える。捕捉した外部参照の寿命は登録側で保証する。
     static void Register(Kind kind, Factory factory) {
         Factories()[static_cast<size_t>(kind)] = std::move(factory);
     }
 
+    // 生成物の所有権を呼び出し側へ渡す。Factory 未登録なら nullptr。
     static std::unique_ptr<engine::Object3d> Create(Kind kind, const std::string& type, engine::Object3dCommon* common) {
         const auto& factory = Factories()[static_cast<size_t>(kind)];
         return factory ? factory(type, common) : nullptr;

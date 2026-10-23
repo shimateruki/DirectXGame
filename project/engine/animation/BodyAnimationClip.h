@@ -13,6 +13,7 @@ public:
 
     /// <summary>指定時刻の移動、回転、拡縮、せん断と次キーへの補間方法。</summary>
     struct Key {
+        // timeは秒、rotateはラジアン、scaleは基準姿勢への倍率。せん断は見た目だけに適用する。
         float time = 0.0f;
         engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
         engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f };

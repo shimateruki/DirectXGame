@@ -188,6 +188,10 @@ void TutorialScene::CaptureReplaySceneState(json& state) const {
                {"startCameraTarget", {movieStartCameraTarget_.x, movieStartCameraTarget_.y, movieStartCameraTarget_.z}},
                {"bridgeDropped", hasBridgeDropped_}}},
              {"sessionStarCoins", {sessionStarCoins_[0], sessionStarCoins_[1], sessionStarCoins_[2]}},
+             {"healthHud", {{"previousHp", healthHud_.State().previousHp},
+                            {"previousRate", healthHud_.State().previousRate},
+                            {"hpDamageHoldTimer", healthHud_.State().damageHoldTimer},
+                            {"hpDelayedRate", healthHud_.State().delayedRate}}},
              {"tutorial", std::move(tutorialState)},
              {"overlays",
               {{"controlsGuide", std::move(controlsGuideState)}, {"saveIndicator", std::move(saveIndicatorState)}}}};
@@ -198,6 +202,14 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
     if (!state.is_object()) {
         return;
     }
+    if (const auto found = state.find("healthHud"); found != state.end() && found->is_object()) {
+        auto& hp = healthHud_.State();
+        hp.previousHp = found->value("previousHp", hp.previousHp);
+        hp.previousRate = found->value("previousRate", hp.previousRate);
+        hp.damageHoldTimer = found->value("hpDamageHoldTimer", hp.damageHoldTimer);
+        hp.delayedRate = found->value("hpDelayedRate", hp.delayedRate);
+    }
+
 
     auto restoreVector3 = [](const json& object, const char* key, engine::Vector3& value) {
         const auto found = object.find(key);
@@ -517,6 +529,7 @@ void TutorialScene::Finalize() {
     saveIndicatorOverlay_.reset();
     particleSystem_.reset();
     particleCommon_.reset();
+    healthHud_.Reset();
     sprites_.clear();
     spriteCommon_.reset();
     object3dCommon_.reset();

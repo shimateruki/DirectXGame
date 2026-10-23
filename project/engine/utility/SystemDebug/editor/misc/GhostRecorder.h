@@ -139,6 +139,7 @@ public:
     // 経路編集の履歴を一段戻す／進める。
     void PerformUndo();
 
+    // エディター共通の履歴へ委譲し、他ツールとの操作順を維持する。
     void PerformRedo();
 
     // 現在選択しているピンのイベントIDを返す。
@@ -161,6 +162,7 @@ private:
     // 対象の動きのサンプル採取を開始／終了する。
     void StartRecording();
 
+    // 収録済みフレームは保持し、状態だけ待機へ戻す。
     void StopRecording();
 
     // 読み込み済みフレームを再生状態へ移す。
@@ -172,13 +174,16 @@ private:
     // 演出カメラ用の対象表示と視点を切り替える。
     void StartCinematicPlayback();
 
+    // 再生終了時は CameraEditor が退避した投影条件へ戻す。
     void StopCinematicPlayback();
 
     // 編集パラメータの履歴を記録し、Undo/Redo へ渡す。
     void SaveHistory();
 
+    // 操作前の退避値がある場合だけ一件のトランザクションとして登録する。
     void CommitHistory(const std::string& label);
 
+    // 実際に値が変わった操作だけ登録し、破棄後に Undo が走っても触れないよう寿命を監視する。
     void RegisterHistory(const GenerationParams& before, const GenerationParams& after, const std::string& label);
 
     // 経路の曲線補間とプレビュー用サンプル生成。
@@ -186,13 +191,16 @@ private:
 
     engine::Vector3 GetSplinePoint(const std::vector<engine::Vector3>& points, float t);
 
+    // 透視除算を含む座標変換を行い、経路の画面投影に使う。
     engine::Vector3 TransformCoord(const engine::Vector3& vec, const engine::Matrix4x4& mat);
 
+    // 録画済みならフレームを補間し、未録画なら編集用ウェイポイントから見本を作る。
     std::vector<GhostFrame> BuildPreviewSamples(int sampleCount);
 
     // 借用中の対象が現在のシーンに残っているか検査する。
     bool IsTargetInCurrentScene() const;
 
+    // シーン切り替え後の対象とアンカーの古いポインタを破棄する。
     void ClearTargetIfMissingFromScene();
 
 private:

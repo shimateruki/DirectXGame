@@ -43,7 +43,7 @@
 #include "PostEffectEditor.h"
 #include "ProfilerManager.h"
 #include "RenderStats.h"
-#include "engine/utility/SystemDebug/editor/windows/replay/ReplayDebugger.h"
+#include "engine/core/editor/PlayModeSnapshot.h"
 #include "ProjectWindow.h"
 #include "SceneManager.h"
 #include "SceneWorkspace.h"

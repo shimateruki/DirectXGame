@@ -1,3 +1,4 @@
+#include "game/ui/MenuControls.h"
 #define NOMINMAX
 #include "SettingsMenuOverlay.h"
 #include "game/system/settings/GameSettingsManager.h"
@@ -363,27 +364,10 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
         return Result::None;
     }
 
-    const bool accept = input_->IsKeyTriggered(DIK_RETURN) || input_->IsKeyTriggered(DIK_SPACE) ||
-                        input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A);
-    const bool back = input_->IsKeyTriggered(DIK_ESCAPE) || input_->IsKeyTriggered(DIK_TAB) || input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B);
-    int horizontal =
-        (input_->IsKeyTriggered(DIK_RIGHT) ||
-            input_->IsKeyTriggered(DIK_D) ||
-            input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ||
-            input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ? 1 : 0) -
-        (input_->IsKeyTriggered(DIK_LEFT) ||
-            input_->IsKeyTriggered(DIK_A) ||
-            input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ||
-            input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ? 1 : 0);
-    const int vertical =
-        (input_->IsKeyTriggered(DIK_DOWN) ||
-            input_->IsKeyTriggered(DIK_S) ||
-            input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) ||
-            input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN) ? 1 : 0) -
-        (input_->IsKeyTriggered(DIK_UP) ||
-            input_->IsKeyTriggered(DIK_W) ||
-            input_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) ||
-            input_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP) ? 1 : 0);
+    const auto menu = MenuControls::Read(MenuControls::Screen::Settings, *input_);
+    const bool accept = menu.confirm, back = menu.cancel;
+    int horizontal = menu.Horizontal();
+    const int vertical = menu.Vertical();
     engine::Vector2 p = Pointer();
     const bool click = input_->IsMouseButtonTriggered(0);
 
@@ -419,14 +403,8 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
 
         // 項目の値だけは押し続けても動かせるようにする。短押しは1、長押し開始後は一定間隔で1ずつ進める。
         if (footer_ < 0) {
-            const engine::Vector2 stick = input_->GetLeftStick();
-            const bool stickRight = stick.x >= .45f && std::abs(stick.x) >= std::abs(stick.y);
-            const bool stickLeft = stick.x <= -.45f && std::abs(stick.x) >= std::abs(stick.y);
-            const int held =
-                (input_->IsKeyPressed(DIK_RIGHT) || input_->IsKeyPressed(DIK_D) ||
-                 input_->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_RIGHT) || stickRight ? 1 : 0) -
-                (input_->IsKeyPressed(DIK_LEFT) || input_->IsKeyPressed(DIK_A) ||
-                 input_->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_LEFT) || stickLeft ? 1 : 0);
+            const int held = engine::ReadMenuHorizontalHeld(
+                *input_, MenuControls::Get(MenuControls::Screen::Settings).bindings);
             const uint64_t now = GetTickCount64();
 
             if (held == 0) {
@@ -682,9 +660,9 @@ void SettingsMenuOverlay::BuildFrame() {
     // 確認ダイアログを開いた時も、実際に使える閉じる・決定を両端に表示する。
     const bool gamepad = input_ && input_->IsGamepadMode();
     PictureLayout("settings_footer_close_frame");
-    PictureLayout("settings_footer_close_text", gamepad);
+    PictureLayout(MenuControls::Get(MenuControls::Screen::Settings).closeHint.Resolve(gamepad), gamepad);
     PictureLayout("settings_footer_confirm_frame");
-    PictureLayout("settings_footer_confirm_text", gamepad);
+    PictureLayout(MenuControls::Get(MenuControls::Screen::Settings).confirmHint.Resolve(gamepad), gamepad);
 
     for (size_t i = usedSprites_; i < sprites_.size(); ++i) sprites_[i]->SetVisible(false);
 }

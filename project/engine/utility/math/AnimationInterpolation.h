@@ -55,6 +55,7 @@ inline float Lerp(float start, float end, float rate) {
 
 /// <summary>Euler 角の単一軸を最短経路で補間します。</summary>
 /// <remarks>180 度付近でも遠回りしないため、キャラクターの旋回に使用できます。</remarks>
+// 角度はラジアン。単純な差ではなく、±πをまたぐ最短の差を使う。
 inline float LerpAngle(float start, float end, float rate) {
     return engine::Math::LerpShortAngle(start, end, Clamp01(rate));
 }

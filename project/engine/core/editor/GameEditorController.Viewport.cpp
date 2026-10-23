@@ -113,7 +113,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 		camera->UpdateProjectionMatrix();
 	}
 
-	if (!isPlaying && !showReplayDebugger_ && (!sceneManager || !sceneManager->IsTransitioning())) {
+	if (!isPlaying && (!sceneManager || !sceneManager->IsTransitioning())) {
 		DrawCameraObjectPreviewWindow();
 	}
 

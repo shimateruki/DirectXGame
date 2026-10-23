@@ -1,5 +1,4 @@
 #include "game/system/scene/ItemFactory.h"
-#include "game/actor/item/HealItem.h"
 
 ItemFactory* ItemFactory::GetInstance() {
     // 種類ごとの生成表をプロセス内で共有する。
@@ -7,20 +6,15 @@ ItemFactory* ItemFactory::GetInstance() {
     return &instance;
 }
 
-// アイテムタイプ名から専用アイテムを生成する。未登録なら仮アイテムを返す。
+// 廃止済み種別は生成せず、それ以外の旧アイテムデータは共通型で読み込みます。
 std::unique_ptr<BaseItem> ItemFactory::CreateItem(const std::string& itemName, engine::Object3dCommon* common) {
-    std::unique_ptr<BaseItem> newItem = nullptr;
-
-    if (itemName == "Heal") {
-        auto heal = std::make_unique<HealItem>();
-        heal->Initialize(common, "Item/heart.gltf");
-        newItem = std::move(heal);
+    // 廃止済みの回復アイテムや種別未設定のデータは、別アイテムへ置き換えず生成しません。
+    if (itemName.empty() || itemName == "Heal") {
+        return nullptr;
     }
 
-    if (!newItem) {
-        newItem = std::make_unique<BaseItem>();
-        newItem->Initialize(common, "Primitives/sphere");
-    }
+    auto newItem = std::make_unique<BaseItem>();
+    newItem->Initialize(common, "Primitives/sphere");
 
     // タイプ名を本体とパラメータの両方に保存して、エディタ/イベント側から参照できるようにする
     newItem->SetItemType(itemName);

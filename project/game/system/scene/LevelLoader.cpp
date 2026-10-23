@@ -627,11 +627,10 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                     // パターンD: アイテム (Factory)
                     else if (!itemType.empty() || type == "Item") {
-                        std::string iType = itemType.empty() ? "Heal" : itemType;
-                        auto item = ItemFactory::GetInstance()->CreateItem(iType, object3dCommon);
+                        auto item = ItemFactory::GetInstance()->CreateItem(itemType, object3dCommon);
 
                         if (item) {
-                            item->SetItemType(iType);
+                            item->SetItemType(itemType);
                             newObj = std::move(item);
                         }
                     }

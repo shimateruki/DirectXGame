@@ -44,8 +44,10 @@ public:
     std::string GetName() override { return "Text PNG Generator"; }
 
 private:
+    // COMを既存のスレッド初期化と共存させ、必要なWICだけ遅延生成します。
     bool EnsureFactories();
 
+    // 一覧を再取得しても選択中のフォントをパスとファミリー名で探し直します。
     void RefreshFonts();
 
     /// 現在の設定を外部PNG生成ツールへ渡し、実際の画像ファイルを書き出す。
@@ -54,15 +56,19 @@ private:
     /// 入力変更後すぐに重い生成を走らせず、短い待ち時間を挟んでプレビュー更新する。
     void TickPreviewAutoUpdate();
 
+    // 編集中のPNGは4つの仮ファイル名を循環利用し、プレビュー用ファイルの増加を抑えます。
     void UpdatePreviewTexture();
 
+    // 出力名を安全なファイル名に揃え、成功した正式Assetのパスだけ呼び出し側へ渡します。
     bool ExportToFile(std::string* outFullPath = nullptr, std::string* outRelativePath = nullptr);
 
     /// 書き出し済みPNGをSpriteとして現在シーンへ追加する。
     void AddPendingSpriteToScene();
 
+    // 設定変更時は次の更新で描き直し、保留中の古い要求を取り消します。
     void MarkPreviewDirty();
 
+    // 新しい文字列から候補名だけを作り、正式出力はまだ行いません。
     void UpdateOutputNameFromText();
 
 private:

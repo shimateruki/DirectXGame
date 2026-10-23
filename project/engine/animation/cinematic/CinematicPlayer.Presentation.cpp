@@ -157,7 +157,7 @@ void CinematicPlayer::CapturePresentation() {
         s.radial=length>0.01f ? engine::Vector3{pivot.x/length,0,pivot.z/length} : engine::Vector3{1,0,0};
         s.before.position=s.target->GetTranslate(); s.before.rotation=s.target->GetRotation();
         s.before.scale=s.target->GetScale(); s.before.visible=s.target->GetIsVisible();
-        if (auto* material=s.target->GetMaterialData()) s.material=*material;
+        s.material=s.target->CaptureMaterialState();
     }
     for (const auto& name:p.hideObjects)
         if (auto* object=ResolveTarget({name,-1})) {
@@ -186,7 +186,7 @@ void CinematicPlayer::ReleasePresentation(bool restore) {
             if (!s.owned && live.contains(s.target)) {
                 s.target->SetTranslate(s.before.position); s.target->SetRotation(s.before.rotation);
                 s.target->SetScale(s.before.scale); s.target->SetIsVisible(s.before.visible);
-                if (auto* material=s.target->GetMaterialData()) *material=s.material;
+                s.target->RestoreMaterialState(s.material);
                 s.target->UpdateWorldMatrix(true);
             }
         for (const auto& hidden:presentationHidden_)
@@ -224,11 +224,13 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
         s.target->SetScale(clip.inheritScale?Product(pose.scale,k.scale):k.scale);
         s.target->SetColor(k.color); s.target->SetEmissive(k.emissive);
         s.target->SetIsVisible(k.visible && (!clip.inheritVisibility || s.source->GetIsVisible()));
-        if (auto* material=s.target->GetMaterialData()) {
-            material->portalClipEnabled=k.clipEnabled?1.0f:0.0f; material->portalClipProgress=0;
-            material->portalClipCenter=position+engine::Vector3{0,k.clipHeight*(clip.clipScaleHeight?pose.scale.y:1.0f)+clip.clipCenterOffset,0};
-            material->portalClipNormal={0,1,0}; material->portalClipEdgeWidth=clip.clipEdgeWidth;
-            material->portalClipDissolve=clip.clipDissolve; material->portalClipColor=clip.clipColor;
+        {
+            engine::Object3d::PortalClipSettings clipSettings;
+            clipSettings.enabled=k.clipEnabled; clipSettings.progress=0;
+            clipSettings.center=position+engine::Vector3{0,k.clipHeight*(clip.clipScaleHeight?pose.scale.y:1.0f)+clip.clipCenterOffset,0};
+            clipSettings.normal={0,1,0}; clipSettings.edgeWidth=clip.clipEdgeWidth;
+            clipSettings.dissolve=clip.clipDissolve; clipSettings.color=clip.clipColor;
+            s.target->SetPortalClip(clipSettings);
         }
         s.target->UpdateWorldMatrix(true);
     }

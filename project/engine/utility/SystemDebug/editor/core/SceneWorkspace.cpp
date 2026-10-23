@@ -145,6 +145,7 @@ void SceneWorkspace::DrawHierarchyPanel() {
         ImGui::TextDisabled("Sceneの表示フラグや保存JSONには反映されません。");
     }
 
+    // レイヤー欄は保存用の可視フラグではなく、Editor専用の非表示理由だけを切り替える。
     if (ImGui::TreeNodeEx("Layer一時表示", ImGuiTreeNodeFlags_DefaultOpen)) {
         for (const std::string& layer : CollectSceneLayers()) {
             bool visible = hiddenLayers_.find(layer) == hiddenLayers_.end();
@@ -160,6 +161,7 @@ void SceneWorkspace::DrawHierarchyPanel() {
 
     if (ImGui::TreeNodeEx("カメラブックマーク", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextDisabled("Ctrl+Shift+1～9: 保存 / Ctrl+1～9: 復帰");
+        // 現在のSceneキーに属する記録だけを操作し、他Sceneの地点をこの一覧へ混ぜない。
         auto& bookmarks = GetCurrentBookmarks();
         if (ImGui::BeginTable(
             "SceneCameraBookmarks",
@@ -224,6 +226,7 @@ void SceneWorkspace::IsolateSelection() {
 
     std::unordered_set<engine::Object3d*> visibleObjects;
 
+    // 親を選んだ場合は子孫も表示対象へ含め、装飾などを切り離さず確認できるようにする。
     for (engine::Object3d* object : editor_->GetSelectedObjects()) {
         CollectHierarchy(object, visibleObjects);
     }
@@ -240,6 +243,7 @@ void SceneWorkspace::IsolateSelection() {
         const bool keepVisible = visibleObjects.find(object.get()) != visibleObjects.end();
         object->SetEditorHiddenReason(kIsolationReason, !keepVisible);
 
+        // 残す階層はレイヤー・手動非表示も解除し、以前の非表示理由で隔離対象が隠れるのを防ぐ。
         if (keepVisible) {
             object->SetEditorHiddenReason(kLayerReason | kManualReason, false);
         }
@@ -302,6 +306,7 @@ void SceneWorkspace::SetLayerVisible(const std::string& layer, bool visible) {
         return;
     }
 
+    // 変更するのはレイヤー由来の理由だけで、隔離や手動非表示の指定は残す。
     for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (!object) {
             continue;
@@ -373,6 +378,7 @@ void SceneWorkspace::CaptureBookmark(std::size_t index) {
     bookmark.objectGuid.clear();
     bookmark.objectName.clear();
 
+    // 視点と一緒に選択物のGUIDも記録し、復帰時は名前に依存せず再選択できるようにする。
     if (editor_) {
         if (engine::Object3d* selected = editor_->GetSelectedObject()) {
             bookmark.objectGuid = selected->GetPersistentGuid();
@@ -394,6 +400,7 @@ void SceneWorkspace::RecallBookmark(std::size_t index) {
 
     const CameraBookmark& bookmark = (*bookmarks)[index];
     CameraEditor* cameraEditor = CameraEditor::GetInstance();
+    // 保存地点を編集カメラへ設定し、直後に行列も更新して次の描画へ反映する。
     cameraEditor->SetMode(CameraEditor::Mode::Editor);
     cameraEditor->SetEditorCameraTransform(bookmark.position, bookmark.rotation);
 
@@ -448,6 +455,7 @@ void SceneWorkspace::LoadBookmarks() {
             }
 
             auto& bookmarks = bookmarksByScene_[sceneIt.key()];
+            // 保存配列が現在の上限より長くても、利用できる番号の範囲だけ読み込む。
             const std::size_t count = (std::min)(kBookmarkCount, sceneIt.value().size());
 
             for (std::size_t index = 0; index < count; ++index) {
@@ -458,6 +466,7 @@ void SceneWorkspace::LoadBookmarks() {
                 }
 
                 CameraBookmark bookmark;
+                // 位置と回転が両方読めた地点だけを有効にし、片方だけの記録へ復帰させない。
                 bookmark.valid = ReadVector3(source.value("position", json::array()), bookmark.position) &&
                     ReadVector3(source.value("rotation", json::array()), bookmark.rotation);
                 bookmark.objectGuid = source.value("objectGuid", std::string{});
@@ -466,6 +475,7 @@ void SceneWorkspace::LoadBookmarks() {
             }
         }
     }
+    // 読込中の例外では途中までの結果を残さず、ブックマーク全体を空に戻す。
     catch (...) {
         bookmarksByScene_.clear();
     }
@@ -489,6 +499,7 @@ void SceneWorkspace::SaveBookmarks() const {
     for (const auto& [sceneKey, bookmarks] : bookmarksByScene_) {
         json sceneBookmarks = json::array();
 
+        // 未登録の枠も並べて保存し、途中の削除でショートカット番号が詰まらないようにする。
         for (const CameraBookmark& bookmark : bookmarks) {
             sceneBookmarks.push_back({
                 { "valid", bookmark.valid },

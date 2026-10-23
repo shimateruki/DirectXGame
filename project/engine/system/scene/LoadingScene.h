@@ -57,6 +57,7 @@ private:
     std::unique_ptr<engine::SpriteCommon> spriteCommon_;
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
 
+    // 以下のパーツ参照はsprites_が所有するSpriteを指す。Finalize後は利用しない。
     engine::Sprite* background_ = nullptr;
     engine::Sprite* loadingText_ = nullptr;
     engine::Sprite* slime_ = nullptr;
@@ -73,6 +74,7 @@ private:
     std::vector<engine::Sprite*> gaugeBubbles_;
 
     float timer_ = 0.0f;
+    // 受け取った進捗と見た目の進捗を分け、表示側の追従アニメーションに使う。
     float targetProgress_ = 0.0f;
     float displayedProgress_ = 0.0f;
     int slimeFrame_ = -1;

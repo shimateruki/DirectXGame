@@ -11,13 +11,16 @@ class PlayerStatePullObject : public IAnimationState {
     PlayerStatePullObject(engine::Object3d* targetObject, const engine::Vector3& targetPos)
         : targetObject_(targetObject), targetPos_(targetPos) {}
 
+    // フックの発射中は自身の移動を止め、マーカーをプレイヤー位置から伸ばす。
     void Enter(Player* player) override;
 
     void Update(Player* player, float deltaTime) override;
 
+    // 成否にかかわらず、入力とフックマーカーの可視・回転モードを戻す。
     void Exit(Player* player) override;
 
   private:
+    // 両端の中点・方向・距離から細長い表示モデルの Transform を作る。
     void UpdateRopeMarker(Player* player, const engine::Vector3& endPos, float thickness);
 
     // 対象の生存期間は呼び出し元が管理します。

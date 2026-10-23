@@ -39,6 +39,7 @@ struct GPUParticleConfig {
     float rotSpeed = 0.0f; // 回転速度の乱数範囲の絶対値。ラジアン/秒。
     int blendModeIndex = 0; // 0: 加算、1: 通常α、2: 背景コピーを参照する歪み。
 
+    // シートの分割数と使用コマ数。Fps は秒あたりのコマ送りで、Loop／RandomStart は 0／1。
     int spriteSheetColumns = 1;
     int spriteSheetRows = 1;
     int spriteSheetFrameCount = 1;
@@ -70,6 +71,7 @@ struct GPUParticleConfig {
 
     // --- エディタ・プレビュー用設定 ---
     bool isLooping = false;
+    // ループ発生の間隔は秒。1回あたりの発生数とは別に調整する。
     float emitInterval = 0.1f;
     float softParticleFade = 5.0f; // 背景との視点空間深度差でαを減衰する距離。ほぼ0なら減衰を無効化。
     int sizeEaseType = 0; // ParticleCS.hlslのApplyEasingの0～30。VFXCurveEasingの0～4とは別の番号体系。

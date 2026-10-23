@@ -12,7 +12,9 @@
 struct ColliderConfig {
     ColliderType type = ColliderType::kAABB;
     engine::Vector3 center = { 0.0f, 0.0f, 0.0f };
+    // sizeの解釈は形状別。箱は半幅、球はxを半径として使い、ObjectのScaleは別に適用する。
     engine::Vector3 size = { 1.0f, 1.0f, 1.0f };
+    // 衝突形状のローカル回転をラジアンで指定する。Objectの回転とは別の設定。
     engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
 
     // ローカルXZ平面の凸な上面輪郭。空なら従来の箱判定を使う。
@@ -63,12 +65,14 @@ public:
 
     void ClearTerrainData() { terrainData_ = TerrainCollisionData{}; }
 
+    // モデルのローカル三角形を受け取り、上面判定と凸包の元データを更新する。
     void SetModelSurface(std::vector<ModelSurfaceTriangle> triangles);
 
     bool HasModelSurface() const { return config_.useModelSurface && !modelSurface_.empty(); }
 
     bool HasModelVolume() const { return config_.useModelVolume && !modelHull_.empty(); }
 
+    // ワールド空間の凸包へレイを飛ばす。ヒット判定がtrueの場合に距離と法線を利用する。
     bool RaycastModelVolume(const engine::Vector3& start, const engine::Vector3& direction,
                            float maxDistance, float& distance, engine::Vector3& normal) const;
 
@@ -96,6 +100,7 @@ public:
     // タイプやサイズのショートカット
     ColliderType GetType() const { return config_.type; }
 
+    // ここで返すsizeとcenterは設定値のまま。ワールド形状が必要ならGetAABB/GetOBB等を使う。
     engine::Vector3 GetSize() const { return config_.size; }
 
     engine::Vector3 GetCenter() const { return config_.center; }
@@ -118,6 +123,7 @@ public:
     /// <summary>相手の水平断面が上面輪郭と重なるか調べる。</summary>
     bool OverlapsFootprint(const Collider* other, engine::Vector3* normal = nullptr, float* depth = nullptr) const;
 
+    // ワールド点のXZだけを上面輪郭で判定し、Y方向の高さ条件は別途確認する。
     bool ContainsFootprintPoint(const engine::Vector3& worldPoint) const;
 
     /// <summary>モデル上面の高さと法線をワールド座標で求める。</summary>

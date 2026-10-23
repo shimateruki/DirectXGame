@@ -43,6 +43,7 @@ private:
 	// 起動設定を読んで再生モードと最初のシーンを決める。
 	void ConfigureInitialPlayState();
 
+	// シーン遷移の完了を待ち、起動時だけ必要な配置上書きを適用する。
 	void ApplyInitialSceneOverrides();
 
 	/// <summary>起動設定から最初に開くシーン名を決める。</summary>
@@ -54,8 +55,10 @@ private:
 	// 編集画面とゲーム実行中では、更新対象と固定刻みの扱いが異なる。
 	void UpdateEditorFrame(float deltaTime);
 
+	// deltaTimeは実フレーム秒、finalDeltaTimeはゲーム進行用。遷移中の更新では実時間を使う。
 	void UpdateGameSystems(float deltaTime, float finalDeltaTime);
 
+	// 停止・遷移中は蓄積を消し、動作中だけ固定刻みでシーンを進める。引数の時間単位は秒。
 	void RunFixedUpdates(float finalDeltaTime, bool replayFrozen, bool sceneTransitioning);
 
 	// 更新開始からの経過と固定FPSの待機時間を記録する。
@@ -91,6 +94,7 @@ private:
 	bool initialSceneOverridesPending_ = false;
 	std::string currentSceneName_;
 
+	// 計測履歴はミリ秒。ゲーム更新へ渡すdeltaTimeや固定刻みの秒数とは混ぜない。
 	float sceneUpdateTimeMs_ = 0.0f;
 	float sceneDrawTimeMs_ = 0.0f;
 	float updateTimeHistory_[120] = {};

@@ -35,6 +35,7 @@ public:
 
     void Open() { open_ = true; }
 
+    // ショートカット設定の編集画面。実際のキー受付は HandleShortcuts で行う。
     void DrawWindow();
 
     void DrawToolsMenu();

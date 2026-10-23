@@ -16,6 +16,7 @@ struct MaterialInstanceData {
     engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
     int blendMode = 1;
     int materialType = 0;
+    std::string shaderMaterialId;
     float metallic = 0.0f;
     float roughness = 0.5f;
     float emissive = 1.0f;

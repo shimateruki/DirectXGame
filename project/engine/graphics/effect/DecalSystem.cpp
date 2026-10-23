@@ -150,8 +150,8 @@ void DecalSystem::AlignToSurface(
     object.SetTranslate(surfacePoint + normal * settings.depthOffset);
     object.SetScale({ settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f });
     const engine::Quaternion rotation = BuildSurfaceQuaternion(normal, rotationRadians);
-    object.SetQuaternion(rotation);
-    object.SetEulerAngles(engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(rotation)));
+    object.SetQuaternionWithEulerHint(rotation,
+        engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(rotation)));
     object.UpdateLocalMatrix();
     object.UpdateWorldMatrix();
 }

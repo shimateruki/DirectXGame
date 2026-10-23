@@ -10,6 +10,7 @@
 struct InputGlyphSpec {
     std::string path;
     bool useCrop = false;
+    // 切抜き原点と幅・高さは元画像のピクセル単位。描画先の大きさとは分けて扱う。
     float cropX = 0.0f;
     float cropY = 0.0f;
     float width = 96.0f;
@@ -29,12 +30,14 @@ inline std::string GetInputGlyphBindingSignature() {
     return signature;
 }
 
+// DIKコード0〜255を16列のアトラスへ対応させ、範囲外は未割当用の0へ戻す。
 inline InputGlyphSpec MakeKeyboardGlyph(int keyCode) {
     const int code = keyCode >= 0 && keyCode <= 255 ? keyCode : 0;
     return {"ui/input/keyboard/key_scan_atlas.png", true,
             static_cast<float>((code % 16) * 96), static_cast<float>((code / 16) * 64), 96.0f, 64.0f};
 }
 
+// アクションが未登録、または対応画像がない場合は未割当キーの切抜きへ戻す。
 inline InputGlyphSpec ResolveActionGlyph(const std::string& action, bool gamepadMode) {
     const BindData* binding = KeyConfig::GetInstance()->GetBindData(action);
     if (!binding) {

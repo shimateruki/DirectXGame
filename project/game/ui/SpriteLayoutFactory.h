@@ -9,6 +9,7 @@
 namespace SpriteLayoutFactory {
 
 // JSON の基本設定だけを適用します。切り抜きなど画面固有の設定後に Update してください。
+// 生成したSpriteの所有権を返す。初期状態は非表示で、表示とUpdateは呼び出し側で確定する。
 inline std::unique_ptr<engine::Sprite> Create(engine::SpriteCommon* spriteCommon, const nlohmann::json& spriteData,
     const SpriteLayoutScaler::LayoutScale& layoutScale, const char* fallbackName) {
     const std::string name = SpriteLayoutScaler::ReadString(spriteData, "name", fallbackName);

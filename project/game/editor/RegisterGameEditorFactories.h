@@ -1,12 +1,20 @@
 #pragma once
 
 #include "EditorObjectFactoryRegistry.h"
+#include "RegisterGameAttackPreviews.h"
+#include "RegisterGameCopyPreviews.h"
+#include "RegisterGameEditorEvents.h"
+#include "game/editor/CharacterStatusEditor.h"
 #include "../actor/enemy/spawn/EnemyFactory.h"
 #include "game/system/scene/GimmickFactory.h"
 #include "game/system/scene/ItemFactory.h"
 
 // 具体的な敵・ギミック・アイテムの生成方法はゲーム側で登録します。
 inline void RegisterGameEditorFactories() {
+    RegisterGameAttackPreviews();
+    RegisterGameCopyPreviews();
+    RegisterGameEditorEvents();
+    CharacterStatusEditor::Register();
     using Registry = EditorObjectFactoryRegistry;
     Registry::Register(Registry::Kind::Enemy, [](const std::string& type, engine::Object3dCommon* common) {
         return EnemyFactory::GetInstance()->CreateEnemy(type, common);

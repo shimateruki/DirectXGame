@@ -7,6 +7,7 @@
 // 仮想SDLコントローラーから実際のUpdateを通し、押し込み変換と押下エッジを確認します。
 namespace SdlStickRuntimeProbe {
 inline bool Enabled() { return GetEnvironmentVariableA("CG2_SDL_STICK_TEST", nullptr, 0) > 0; }
+// 専用プロセスで一度だけ仮想パッドを接続し、検証結果を path のログへ書き出す。
 inline void AfterDraw(const std::string& path) {
     static bool done = false;
     if (done) return;

@@ -12,10 +12,13 @@ class GimmickSwitch : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 短い接触間隔では押下状態を保ち、踏んだ直後の瞬間的な判定抜けを吸収する。
     void Update(float deltaTime) override;
 
+    // プレイヤーが上から踏んだ接触だけ押下に数え、側面衝突を除外する。
     bool OnCollision(engine::Object3d* other) override;
 
+    // スイッチ固有の設定も含めて配置物を複製する。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
     // 脱出ギミックを再実行できるよう、出力と接触履歴を初期化します。
@@ -24,6 +27,7 @@ class GimmickSwitch : public BaseGimmick {
     bool IsOutputActive() const { return isOutputActive_; }
 
   private:
+    // 状態変更を一度だけイベントとして配信し、連続接触での重複発火を防ぎます。
     void SendActive(bool active);
 
     int GetSwitchMode() const;

@@ -2,6 +2,7 @@
 
 #include "Object3d.h"
 #include "engine/graphics/3d/MeshRenderer.h"
+#include "engine/graphics/3d/material/ShaderMaterialRegistry.h"
 #include "json.hpp"
 
 #include <algorithm>
@@ -57,6 +58,7 @@ void OverlayMaterial(const json& source, MaterialInstanceData& material) {
         ReadVector4(source["color"], material.color);
     ReadValue(source, "blendMode", material.blendMode);
     ReadValue(source, "materialType", material.materialType);
+    ReadValue(source, "shaderMaterialId", material.shaderMaterialId);
     ReadValue(source, "metallic", material.metallic);
     ReadValue(source, "roughness", material.roughness);
     ReadValue(source, "emissive", material.emissive);
@@ -175,6 +177,7 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3d& obje
     material.color = object.GetColor();
     material.blendMode = static_cast<int>(object.GetBlendMode());
     material.materialType = object.GetMaterialType();
+    material.shaderMaterialId = object.GetShaderMaterialId();
     material.metallic = object.GetMetallic();
     material.roughness = object.GetRoughness();
     material.emissive = object.GetEmissive();
@@ -215,6 +218,7 @@ void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, engine::
     object.SetColor(material.color);
     object.SetBlendMode(static_cast<BlendMode>(std::clamp(material.blendMode, 0, 5)));
     object.SetMaterialType(material.materialType);
+    object.SetShaderMaterialId(material.shaderMaterialId);
     object.SetMetallic(material.metallic);
     object.SetRoughness(material.roughness);
     object.SetEmissive(material.emissive);
@@ -259,7 +263,14 @@ bool MaterialInstanceAsset::LoadResolved(
 
     material = MaterialInstanceData{};
     std::unordered_set<std::string> loading;
-    return LoadResolvedInternal(fs::path(assetPath), material, loading, 0, errorMessage);
+    if (!LoadResolvedInternal(fs::path(assetPath), material, loading, 0, errorMessage))
+        return false;
+    if (!material.shaderMaterialId.empty() &&
+        (material.materialType != 0 || !ShaderMaterialRegistry::Instance().Find(material.shaderMaterialId))) {
+        SetError(errorMessage, "Shader Material IDが未登録か、材質番号と併用されています: " + material.shaderMaterialId);
+        return false;
+    }
+    return true;
 }
 
 bool MaterialInstanceAsset::Save(
@@ -289,6 +300,8 @@ bool MaterialInstanceAsset::Save(
     properties["color"] = { material.color.x, material.color.y, material.color.z, material.color.w };
     properties["blendMode"] = material.blendMode;
     properties["materialType"] = material.materialType;
+    // 派生したShader Materialを使わない場合も空文字を保存して上書きする。
+    properties["shaderMaterialId"] = material.shaderMaterialId;
     properties["metallic"] = material.metallic;
     properties["roughness"] = material.roughness;
     properties["emissive"] = material.emissive;

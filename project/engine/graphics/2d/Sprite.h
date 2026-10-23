@@ -209,10 +209,10 @@ public:
     /// <summary>親Spriteの変換を反映した画面上の位置を返す。</summary>
     engine::Vector2 GetWorldPosition() const;
 
-    /// <summary>ReplayDebugger用IDが未発行なら割り当て、同じIDを返す。</summary>
+    /// <summary>Play状態保存用IDが未発行なら割り当て、同じIDを返す。</summary>
     uint64_t EnsureReplayId();
 
-    /// <summary>現在のReplayDebugger用IDを返す。未発行なら0。</summary>
+    /// <summary>現在のPlay状態保存用IDを返す。未発行なら0。</summary>
     uint64_t GetReplayId() const { return replayId_; }
 
     /// <summary>リプレイ再現に必要な可変状態を保存する。</summary>

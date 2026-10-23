@@ -78,6 +78,7 @@ class BulletManager {
 
     // リプレイ分岐など、時間軸を切り替える際に残存弾を安全に破棄します。
     void Clear();
+    // 編集を止めた砲台の弾だけ消し、他の砲台やゲーム用の弾を保ちます。
     void ClearPreviewForOwner(const engine::Object3d* owner);
 
     /// <summary>
@@ -97,6 +98,7 @@ class BulletManager {
 
     bool HasSpecialMaterialBullets() const;
 
+    // 深度や画面コピーが揃った段階で特殊マテリアル弾だけ描く。
     void DrawSpecial(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
     /// <summary>

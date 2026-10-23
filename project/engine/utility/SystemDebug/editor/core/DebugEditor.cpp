@@ -239,7 +239,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     textSpriteGenerator_.Initialize(sceneManager, this);
     modelOptimizerWindow_.Initialize(this);
     assetAuditWindow_.Initialize(this);
-    statusTuningWindow_.Initialize(this, sceneManager_);
+
     gameDataDebugEditor_.Initialize(sceneManager);
     audioSettingsWindow_.Initialize(this);
     executablePackageWindow_.Initialize(this);
@@ -791,8 +791,7 @@ void DebugEditor::Update() {
 
                         selectedObject_->SetTranslate(t);
                         selectedObject_->SetScale(s);
-                        selectedObject_->SetQuaternion(math_.MatrixToQuaternion(newLocalMat));
-                        selectedObject_->SetEulerAngles({ ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
+                        selectedObject_->SetQuaternionWithEulerHint(math_.MatrixToQuaternion(newLocalMat), { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
 
                         selectedObject_->UpdateLocalMatrix();
                         selectedObject_->UpdateWorldMatrix();
@@ -833,8 +832,7 @@ void DebugEditor::Update() {
 
                             object->SetTranslate(otherTranslate);
                             object->SetScale(otherScale);
-                            object->SetQuaternion(math_.MatrixToQuaternion(objectLocalAfter));
-                            object->SetEulerAngles({ ToRadians(otherRotDeg.x), ToRadians(otherRotDeg.y), ToRadians(otherRotDeg.z) });
+                            object->SetQuaternionWithEulerHint(math_.MatrixToQuaternion(objectLocalAfter), { ToRadians(otherRotDeg.x), ToRadians(otherRotDeg.y), ToRadians(otherRotDeg.z) });
                             object->UpdateLocalMatrix();
                             object->UpdateWorldMatrix();
                         }

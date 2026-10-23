@@ -29,38 +29,6 @@
 
 namespace engine {
 
-namespace {
-
-std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
-    // 保存済みのパスを優先し、相対パスならResources配下も探して旧データを読めるようにする。
-    std::filesystem::path filePath(path);
-
-    if (std::filesystem::exists(filePath)) {
-        return filePath;
-    }
-
-    std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
-
-    if (std::filesystem::exists(resourcesPath)) {
-        return resourcesPath;
-    }
-
-    return filePath;
-}
-
-// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
-bool HasParentInChain(Object3d* parent, const Object3d* child) {
-    // 親子付け時の循環参照を防ぐため、祖先を根までたどる。
-    for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
-        if (current == child) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-}
 
 // ========================================================================
 // Object3d 実行時補助処理

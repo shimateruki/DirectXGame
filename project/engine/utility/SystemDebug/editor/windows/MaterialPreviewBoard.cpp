@@ -378,6 +378,8 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
     for (const BaseEntry& base : baseEntries) {
         if (showOnlySpecialMaterials_ && !MaterialRenderPolicy::IsSpecial(base.type))
             continue;
+        const auto* materialDefinition = MaterialRenderPolicy::Find(base.type);
+        const char* materialLabel = materialDefinition ? materialDefinition->displayName : base.label;
 
         if (expandModeVariants_ && !base.modes.empty()) {
             // effectTypeを持つ材質は各モードを別Objectへ展開して比較する。
@@ -385,7 +387,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
                 entries.push_back({
                     base.type,
                     mode.value,
-                    base.label,
+                    materialLabel,
                     std::string(base.shortLabel) + "_" + mode.shortLabel,
                     mode.label
                 });
@@ -393,7 +395,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         } else {
             float effectType = base.modes.empty() ? 0.0f : base.modes.front().value;
             std::string modeLabel = base.modes.empty() ? "" : base.modes.front().label;
-            entries.push_back({ base.type, effectType, base.label, base.shortLabel, modeLabel });
+            entries.push_back({ base.type, effectType, materialLabel, base.shortLabel, modeLabel });
         }
     }
 

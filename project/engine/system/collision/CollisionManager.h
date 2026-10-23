@@ -31,6 +31,7 @@ struct RaycastHit {
 };
 
 /// <summary>Physics Query の対象レイヤーや除外条件を指定します。</summary>
+// クエリ専用の絞り込み条件。Object同士の接触通知用マスクを書き換える設定ではない。
 struct PhysicsQueryFilter {
     uint32_t mask = 0xFFFFFFFFu;
     engine::Object3d* ignoredObject = nullptr;
@@ -112,6 +113,7 @@ public:
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
     /// <summary>登録中のオブジェクト一覧を取得します。</summary>
+    // 登録中の借用一覧。Add/Remove/Clearで変化し、列挙中に登録内容を変更しない。
     const std::list<engine::Object3d*>& GetObjects() const { return objects_; }
 
 private:

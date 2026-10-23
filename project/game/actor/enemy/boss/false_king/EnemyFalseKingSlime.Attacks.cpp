@@ -217,15 +217,17 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
             lance->visual->SetEmissive(1.65f + edgePeak * 1.35f);
             lance->visual->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 
-            if (auto* material = lance->visual->GetMaterialData()) {
-                material->portalClipEnabled = 1.0f;
-                material->portalClipProgress = dissolveProgress;
-                material->portalClipCenter = impactPosition + lance->flightDirection * 0.52f;
-                material->portalClipNormal = lance->flightDirection;
-                material->portalClipEdgeWidth = 0.22f - dissolveProgress * 0.10f;
-                material->portalClipDissolve = 0.72f - dissolveProgress * 0.16f;
-                material->portalClipColor =
+            {
+                engine::Object3d::PortalClipSettings clipSettings;
+                clipSettings.enabled = true;
+                clipSettings.progress = dissolveProgress;
+                clipSettings.center = impactPosition + lance->flightDirection * 0.52f;
+                clipSettings.normal = lance->flightDirection;
+                clipSettings.edgeWidth = 0.22f - dissolveProgress * 0.10f;
+                clipSettings.dissolve = 0.72f - dissolveProgress * 0.16f;
+                clipSettings.color =
                     battlePhase_ >= 3 ? engine::Vector4{0.96f, 0.34f, 1.0f, 0.96f} : engine::Vector4{1.0f, 0.66f, 0.18f, 0.96f};
+                lance->visual->SetPortalClip(clipSettings);
             }
         }
 

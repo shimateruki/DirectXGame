@@ -1,9 +1,12 @@
 #include "Object3dCommon.h"
+#include "engine/graphics/3d/material/ShaderMaterialRegistry.h"
 #include "../FoliageInteraction.h"
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h" 
 #include "engine/system/scene/LoadingProfiler.h"
+#include "DebugConsole.h"
 #include <cassert>
+#include <filesystem>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -113,8 +116,32 @@ void engine::Object3dCommon::SetPipelineState(BlendMode blendMode) {
     commandList->SetPipelineState(graphicsPipelineStates_[static_cast<size_t>(blendMode)].Get());
 }
 
-void engine::Object3dCommon::SetMaterialPipelineState(BlendMode blendMode, int materialType) {
+void engine::Object3dCommon::SetMaterialPipelineState(BlendMode blendMode, int materialType, const std::string& shaderMaterialId) {
     // 材質と合成方式の組を初回だけ作る。通常材質の既存PSOはそのまま使用する。
+    if (blendMode < BlendMode::kNone || blendMode >= BlendMode::kCountOfBlendMode)
+        blendMode = BlendMode::kNormal;
+    if (materialType == 0 && !shaderMaterialId.empty()) {
+        const auto* definition = ShaderMaterialRegistry::Instance().Find(shaderMaterialId);
+        if (definition) {
+            const std::string& shaderPath = definition->pixelShader;
+            const std::string cacheKey = shaderPath + "#" + std::to_string(ShaderMaterialRegistry::Instance().Generation());
+            const std::string failureKey = cacheKey + "#" + std::to_string(static_cast<int>(blendMode));
+            auto& states = shaderMaterialPipelineStates_[cacheKey];
+            auto& state = states[static_cast<size_t>(blendMode)];
+            if (!state && !failedShaderMaterials_.contains(failureKey)) {
+                const std::wstring widePath = std::filesystem::path(std::u8string(shaderPath.begin(), shaderPath.end())).wstring();
+                if (!CreateMaterialVariantPipeline(widePath.c_str(), blendMode, state.GetAddressOf()))
+                    failedShaderMaterials_.insert(failureKey);
+            }
+            if (state) {
+                dxCommon_->GetCommandList()->SetPipelineState(state.Get());
+                return;
+            }
+        }
+        // 未登録・コンパイル失敗時は通常材質へ戻し、描画欠落を避ける。
+        SetPipelineState(blendMode);
+        return;
+    }
     const wchar_t* shaderPath = nullptr;
     std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)>* states = nullptr;
 
@@ -133,14 +160,15 @@ void engine::Object3dCommon::SetMaterialPipelineState(BlendMode blendMode, int m
 
     auto& pipeline = (*states)[static_cast<size_t>(blendMode)];
 
-    if (!pipeline) {
+    if (!pipeline)
         CreateMaterialVariantPipeline(shaderPath, blendMode, pipeline.GetAddressOf());
-    }
-
-    dxCommon_->GetCommandList()->SetPipelineState(pipeline.Get());
+    if (pipeline)
+        dxCommon_->GetCommandList()->SetPipelineState(pipeline.Get());
+    else
+        SetPipelineState(blendMode);
 }
 
-void engine::Object3dCommon::CreateMaterialVariantPipeline(const wchar_t* pixelShaderPath, BlendMode blendMode, ID3D12PipelineState** outPipelineState) {
+bool engine::Object3dCommon::CreateMaterialVariantPipeline(const wchar_t* pixelShaderPath, BlendMode blendMode, ID3D12PipelineState** outPipelineState) {
     // 通常描画と同じ頂点入力・ルート・深度設定を使い、ピクセルシェーダだけを差し替える。
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -152,7 +180,12 @@ void engine::Object3dCommon::CreateMaterialVariantPipeline(const wchar_t* pixelS
     };
 
     auto vertexShader = dxCommon_->CompileShader(L"Resources/shader/object3d/Object3d.VS.hlsl", L"vs_6_0");
-    auto pixelShader = dxCommon_->CompileShader(pixelShaderPath, L"ps_6_0");
+    std::string shaderError;
+    auto pixelShader = dxCommon_->TryCompileShader(pixelShaderPath, L"ps_6_0", L"main", shaderError);
+    if (!pixelShader) {
+        DebugConsole::GetInstance()->AddLog("Shader Material compile error: " + shaderError);
+        return false;
+    }
 
     GraphicsPipelineBuilder builder;
     builder.SetRootSignature(rootSignature_.Get());
@@ -163,7 +196,12 @@ void engine::Object3dCommon::CreateMaterialVariantPipeline(const wchar_t* pixelS
     builder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_D24_UNORM_S8_UINT);
     builder.SetDepthStencilState(true);
     builder.SetBlendMode(blendMode);
-    builder.Build(dxCommon_->GetDevice(), outPipelineState);
+    const HRESULT result = builder.TryBuild(dxCommon_->GetDevice(), outPipelineState);
+    if (FAILED(result)) {
+        DebugConsole::GetInstance()->AddLog("Shader Material pipeline error: " + std::to_string(result));
+        return false;
+    }
+    return outPipelineState && *outPipelineState;
 }
 
 void engine::Object3dCommon::CreateRootSignature() {

@@ -100,6 +100,7 @@ public:
     /// 指定した複数のPresetを削除し、変更があった場合だけ一度保存する。
     void RemovePresets(const std::vector<std::string>& presetNames);
 
+    // 名前衝突による上書きを防ぎ、キーだけを変更して内容を保持する。
     void RenamePreset(const std::string& oldName, const std::string& newName);
 
     const std::map<std::string, json>& GetPresets() const { return presets_; }
@@ -167,17 +168,22 @@ public:
     // 名前と配置専用PropertyはSourceへ反映しない。
     bool ApplyPrefabProperty(engine::Object3d* object, const std::string& propertyPath, const std::vector<engine::Object3d*>& sceneObjects);
 
+    // インスタンス固有の名前・配置値を避け、元ノードの値だけ復元する。
     bool RevertPrefabProperty(engine::Object3d* object, const std::string& propertyPath);
 
+    // Component の追加・削除を構造差分へ保存し、必要なら内部 Property も維持する。
     bool ApplyPrefabComponent(engine::Object3d* object, const std::string& componentTypeId, const std::vector<engine::Object3d*>& sceneObjects);
 
+    // 配置個体の Component 有無を、解決済みの Prefab 元ノードへ戻す。
     bool RevertPrefabComponent(engine::Object3d* object, const std::string& componentTypeId);
 
+    // 派生側の明示的な Property 上書きを外し、元 Prefab の有効値を再継承する。
     bool RevertPrefabVariantProperty(
         engine::Object3d* object,
         const std::string& propertyPath,
         const std::vector<engine::Object3d*>& sceneObjects);
 
+    // 派生 Component の存在差分と内部 Property 差分を消し、元構造へ戻す。
     bool RevertPrefabVariantComponent(
         engine::Object3d* object,
         const std::string& componentTypeId,
@@ -186,15 +192,19 @@ public:
     // 同じinstanceIdの階層全体へ適用し、個別操作をひとつのAsset履歴にまとめる。
     int ApplyAllPrefabOverrides(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects);
 
+    // 同じ instanceId の階層を回り、構造差分と Property 差分を元へ戻す。
     int RevertAllPrefabOverrides(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects);
 
     // 同じinstanceIdの階層からPrefabへの紐付けを外す。戻り値は解除したObject数。
     int UnpackPrefabInstance(engine::Object3d* object, const std::vector<engine::Object3d*>& sceneObjects);
 
+    // 同じ旧 instanceId を持つ複製群には同じ新 ID を割り当て、群のまとまりを保つ。
     void AssignNewPrefabInstanceId(const std::vector<engine::Object3d*>& objects) const;
 
+    // 未登録名ではディスクに触れず、削除が成立したときだけ再保存する。
     void RemovePrefab(const std::string& prefabName);
 
+    // 派生関係は assetId で維持し、表示名の変更だけを保存する。
     void RenamePrefab(const std::string& oldName, const std::string& newName);
 
     const std::map<std::string, json>& GetPrefabs() const { return prefabs_; }

@@ -12,18 +12,23 @@ class GimmickEventReceiver : public BaseGimmick {
 
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 編集時の配置を再生基準にし、ボス報酬はイベント発火まで隠します。
     void Update(float deltaTime) override;
 
+    // 単発トリガーはスイッチのオンイベントとして扱います。
     void OnTrigger() override;
 
+    // 再生開始前に届いたイベントも、基準姿勢の取得後に適用できるよう保留します。
     void OnSwitchEvent(bool active) override;
 
     // 演出による移設では、移動先だけでなく再生の基準位置も更新する。
     void RelocateRuntimeBase(const engine::Vector3& position);
 
+    // 複製先を初期化してから、イベント設定と配置をコピーします。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
+    // モード別に表示・衝突・移動先を切り替え、報酬出現時は着地まで衝突を遅らせます。
     void ApplyActiveState(bool active);
 
     void SetCollisionEnabled(bool enabled);

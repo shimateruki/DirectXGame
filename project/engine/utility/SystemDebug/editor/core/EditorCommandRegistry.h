@@ -17,6 +17,7 @@ struct EditorCommand {
     std::vector<std::string> keywords;
     std::function<bool()> canExecute;
     std::function<void()> execute;
+    // 登録者を識別する値で、解放や寿命管理はしない。終了時はコールバックの捕捉先も含め解除する。
     const void* owner = nullptr;
 };
 
@@ -29,18 +30,23 @@ public:
     // 別Ownerが使用中のIDは上書きせずfalseを返します。
     bool Register(EditorCommand command);
 
+    // owner 指定時は登録者が一致するものだけ削除する。nullptr は所有者を限定しない。
     bool Unregister(std::string_view id, const void* owner = nullptr);
 
+    // 登録者の全コマンドをまとめて解除する。nullptr は解除対象にしない。
     void UnregisterOwner(const void* owner);
 
     void Clear();
 
+    // 見つからなければ nullptr。返す定義は借用参照なので解除後は使わない。
     const EditorCommand* Find(std::string_view id) const;
 
     bool Contains(std::string_view id) const;
 
+    // 実行条件が未指定なら実行可能。未知IDや実行関数のない定義は false。
     bool CanExecute(std::string_view id) const;
 
+    // 実行直前にも条件を確認する。false の場合はコールバックを呼ばない。
     bool Execute(std::string_view id) const;
 
     // 登録順を保持した一覧です。Quick SearchやCommand一覧表示で利用します。
@@ -58,7 +64,7 @@ private:
 namespace EditorCommandId {
 inline constexpr const char* Play = "game.play";
 inline constexpr const char* Stop = "game.stop";
-inline constexpr const char* ReplayPauseResume = "replay.pauseResume";
+inline constexpr const char* PauseResume = "game.pauseResume";
 
 inline constexpr const char* SceneNew = "scene.new";
 inline constexpr const char* SceneSave = "scene.save";
@@ -77,12 +83,10 @@ inline constexpr const char* ViewIsolateSelection = "view.isolateSelection";
 inline constexpr const char* ViewRestoreTemporaryVisibility = "view.restoreTemporaryVisibility";
 inline constexpr const char* ViewConsole = "view.console";
 inline constexpr const char* ViewStatus = "view.status";
-inline constexpr const char* ViewReplay = "view.replay";
 inline constexpr const char* ViewPortfolio = "view.portfolio";
 
 inline constexpr const char* WorkspaceVfx = "workspace.vfx";
 inline constexpr const char* WorkspaceAnimation = "workspace.animation";
-inline constexpr const char* WorkspaceReplay = "workspace.replay";
 
 inline constexpr const char* HelpManual = "help.manual";
 inline constexpr const char* HelpProfiler = "help.profiler";

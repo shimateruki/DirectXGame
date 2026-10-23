@@ -20,37 +20,6 @@
 
 namespace engine {
 
-namespace {
-
-std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
-    // 地形の当たり判定データを、保存済みパスと素材基準の候補から解決する。
-    std::filesystem::path filePath(path);
-
-    if (std::filesystem::exists(filePath)) {
-        return filePath;
-    }
-
-    std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
-
-    if (std::filesystem::exists(resourcesPath)) {
-        return resourcesPath;
-    }
-
-    return filePath;
-}
-
-// 親候補の祖先に対象が含まれるか調べ、階層の循環を防ぎます。
-bool HasParentInChain(Object3d* parent, const Object3d* child) {
-    for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
-        if (current == child) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-}
 
 
 // Object3dに追従するMeshEffectを生成、更新、描画する処理を担当する。

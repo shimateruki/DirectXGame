@@ -210,6 +210,7 @@ struct AttackSequenceDefinition {
 // 描画やPlayer型に依存しない時計。大きなdtで通過した命令も時刻順に一度ずつ通知します。
 class AttackSequenceClock {
   public:
+    // 定義を検証して値コピーし、同時刻の命令順を保持したまま時刻順に並べる。
     bool Start(const AttackSequenceDefinition& definition) {
         Reset();
         if (!definition.enabled || !definition.Validate())
@@ -225,6 +226,7 @@ class AttackSequenceClock {
     void Update(float dt, Condition condition, Execute execute) {
         if (!running_ || !std::isfinite(dt) || dt < 0)
             return;
+        // dt は秒。大きな刻みでも通過した未処理命令を順番に取り出す。
         elapsed_ = (std::min)(definition_.duration, elapsed_ + dt);
         while (running_ && next_ < definition_.events.size() && definition_.events[next_].time <= elapsed_ + 0.000001f) {
             const auto& event = definition_.events[next_++];
@@ -232,6 +234,7 @@ class AttackSequenceClock {
                 ++skipped_;
                 continue;
             } // 無効な部品は後続命令を止めません。
+            // 命令ごとに現在の条件を評価する。不成立でも stopOnFalse がなければ後続を続ける。
             if (condition(event.condition)) {
                 execute(event);
                 ++executed_;
@@ -244,6 +247,7 @@ class AttackSequenceClock {
                 }
             }
         }
+        // 終端時刻の命令まで評価してから停止する。開始時刻ゼロの命令も最初の Update が実行する。
         if (elapsed_ >= definition_.duration)
             running_ = false;
     }

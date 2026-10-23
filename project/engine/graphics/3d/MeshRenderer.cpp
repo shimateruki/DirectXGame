@@ -8,88 +8,12 @@
 #include "DebugConsole.h"
 #include <cassert>
 #include <SrvManager.h>
-#include "json.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
 
 namespace {
-namespace fs = std::filesystem;
-
-std::string NormalizeSlashes(std::string text) {
-    std::replace(text.begin(), text.end(), '\\', '/');
-    return text;
-}
-
-std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
-    // モデル名がファイル指定かフォルダ指定かによって、LOD定義の候補順を切り替える。
-    std::vector<fs::path> candidates;
-
-    if (modelName.empty()) {
-        return candidates;
-    }
-
-    const fs::path root = "Resources/3DModel";
-    const fs::path modelPath = fs::path(modelName);
-    const fs::path parent = modelPath.parent_path();
-    const std::string stem = modelPath.stem().string();
-    const std::string lodFileName = stem + "_lod.json";
-
-    if (!modelPath.extension().empty()) {
-        candidates.push_back(root / parent / lodFileName);
-        candidates.push_back(root / parent / stem / lodFileName);
-    } else {
-        candidates.push_back(root / parent / stem / lodFileName);
-        candidates.push_back(root / parent / lodFileName);
-    }
-
-    return candidates;
-}
-
-bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
-    // 設定JSONが読めない場合は呼び出し元へ失敗を返し、描画設定の適用を止める。
-    std::ifstream file(path);
-
-    if (!file) {
-        return false;
-    }
-
-    try {
-        file >> outJson;
-        return true;
-    }
-    catch (...) {
-        return false;
-    }
-}
-
-// 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
-float ClampTextureTiling(float value) {
-    if (!std::isfinite(value)) {
-        return 1.0f;
-    }
-
-    return std::clamp(value, 0.01f, 1000.0f);
-}
-
-engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
-    // 壁と床のどちらでも面積の大きい二軸をUV繰り返し量に使う。
-    float a = std::abs(scale.x);
-    float b = std::abs(scale.y);
-    float c = std::abs(scale.z);
-
-    if (a < b)
-        std::swap(a, b);
-    if (a < c)
-        std::swap(a, c);
-    if (b < c)
-        std::swap(b, c);
-
-    return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
-}
 
 template <typename T>
 bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {

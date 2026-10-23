@@ -40,6 +40,7 @@ protected:
 
 protected:
     // --- エンジンシステム ---
+    // ウィンドウはFramework所有。DirectXと音声は共有サービスへの借用参照として保持する。
     std::unique_ptr<WinApp> winApp_;
     DirectXCommon* dxCommon_ = nullptr;
     AudioPlayer* audioPlayer_ = nullptr;

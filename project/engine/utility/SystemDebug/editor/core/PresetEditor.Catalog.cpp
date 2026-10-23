@@ -288,10 +288,5 @@ std::vector<PresetEditor::TypeOption> PresetEditor::GetGimmickOptions() const {
     return options;
 }
 
-std::vector<PresetEditor::TypeOption> PresetEditor::GetItemOptions() const {
-    return {
-        { "Heal", "回復アイテム" }
-    };
-}
 
 #endif

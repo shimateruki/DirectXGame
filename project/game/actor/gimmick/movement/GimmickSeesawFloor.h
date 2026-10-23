@@ -10,12 +10,16 @@ class GimmickSeesawFloor : public BaseGimmick {
 
     virtual ~GimmickSeesawFloor() = default;
 
+    // シーソーの天面を地面として扱い、乗員を支えられるようにする。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 編集時の姿勢を基準角として保持し、Play中の傾きから復帰できるようにする。
     void Update(float deltaTime) override;
 
+    // 上面に乗ったPlayerの位置から左右どちらへ傾けるかを決める。
     bool OnCollision(engine::Object3d* other) override;
 
+    // 揺れの途中状態は持ち越さず、配置と設定から新しい床を作る。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

@@ -293,6 +293,7 @@ class EnemyMagmaSlime final : public BaseEnemy {
     /// 確定した候補地点へ次の間欠泉を配置する。
     void SpawnNextMagmaPillar();
 
+    // 噴出遅延と攻撃 ID を柱ごとに保持し、着地衝撃と通常噴火で威力を分ける。
     void SpawnMagmaPillar(const engine::Vector3& position, float radius, float height, float lifetime, float delay,
                           const char* attackId);
 
@@ -355,8 +356,10 @@ class EnemyMagmaSlime final : public BaseEnemy {
     /// 本体の熱色と発光を攻撃段階へ同期する。
     void UpdateBodyHeat(float deltaTime);
 
+    // GPU粒子が利用できる場合だけ指定プリセットを発生させる。
     void EmitPreset(const char* presetName, const engine::Vector3& position) const;
 
+    // 発射方向と速度倍率を持つ粒子だけを、GPU粒子管理器が有効な場合に放出する。
     void EmitDirectedPreset(const char* presetName, const engine::Vector3& position, const engine::Vector3& direction,
                             float speedScale) const;
 

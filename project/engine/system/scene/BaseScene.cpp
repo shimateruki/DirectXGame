@@ -211,8 +211,10 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
         }
 
         const int materialType = object->GetMaterialType();
-        const bool isTransparent = (materialType == 1);
-        const bool isSpecialMaterial = (materialType == 7 || IsSpecialMaterialType(materialType));
+        const auto materialPass = MaterialRenderPolicy::GetPass(materialType);
+        const bool isTransparent = materialPass == MaterialRenderPolicy::Pass::Transparent;
+        const bool isSpecialMaterial = materialPass == MaterialRenderPolicy::Pass::LocalFog ||
+            materialPass == MaterialRenderPolicy::Pass::Special;
 
         if (isSpecialMaterial || isTransparent != transparentPass) {
             return;

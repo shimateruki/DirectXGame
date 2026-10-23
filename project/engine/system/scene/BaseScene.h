@@ -121,6 +121,7 @@ public:
     std::string ResolvePrimarySpriteLayoutPath(const std::string& defaultPath);
 
     /// <summary>派生シーンが所有する3Dオブジェクトを返す。基底の既定実装は空の一覧。</summary>
+    // 走査で得たポインタはシーン所有。削除予約・遷移の後に参照を持ち越さない。
     virtual const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const {
         static const std::vector<std::unique_ptr<engine::Object3d>> empty;
         return empty;
@@ -141,7 +142,7 @@ public:
     /// <returns>対象があり、指定方向へ移動できた場合はtrue。</returns>
     bool MoveSprite(engine::Sprite* sprite, int offset);
 
-    /// <summary>ReplayDebugger 向けに、シーンが所有する Sprite を列挙します。</summary>
+    /// <summary>Play状態保存向けに、シーンが所有する Sprite を列挙します。</summary>
     /// <remarks>個別の unique_ptr で保持する HUD は派生シーンで追加してください。</remarks>
     virtual void CollectReplaySprites(std::vector<engine::Sprite*>& sprites);
 

@@ -15,6 +15,7 @@ inline void ReadValue(const Json& json, const char* key, T& target) {
     }
 }
 
+// キーがある場合は3成分配列として読む。型や成分不足の例外は呼び出し側で扱う。
 inline void ReadVector3(const Json& json, const char* key, engine::Vector3& target) {
     if (const auto found = json.find(key); found != json.end()) {
         target.x = (*found)[0].get<float>();
@@ -115,6 +116,7 @@ inline void Read(const Json& json, GPUParticleConfig& config) {
     }
 }
 
+// 実行時の粒子やGPUバッファは含めず、編集可能なプリセット設定をJSONへ変換する。
 inline Json Write(const GPUParticleConfig& config) {
     Json json;
     json["emitPos"] = {config.emitPos.x, config.emitPos.y, config.emitPos.z};

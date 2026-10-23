@@ -125,6 +125,7 @@ public:
     std::uint32_t GetLastDDSCacheBuildExitCode() const { return lastDDSCacheBuildExitCode_; }
 
     /// GUID またはソースパスから既存の資産レコードを探します。見つからない場合は nullptr。
+    // 返すレコードや一覧内のポインターは索引の借用参照。再走査後は取得し直す。
     const EditorAssetRecord* FindByGuid(const std::string& guid) const;
 
     const EditorAssetRecord* FindByPath(const std::string& sourcePath) const;

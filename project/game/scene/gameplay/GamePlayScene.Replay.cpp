@@ -152,12 +152,12 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
           {"coinPulseTimer", hudCoinPulseTimer_},
           {"previousLives", hudPreviousLives_},
           {"previousCoins", hudPreviousCoins_},
-          {"previousHp", hudPreviousHp_},
-          {"damagePulseTimer", hudDamagePulseTimer_},
-          {"hurtIconTimer", hudHurtIconTimer_},
-          {"hpDamageHoldTimer", hudHpDamageHoldTimer_},
-           {"hpDelayedRate", hudHpDelayedRate_},
-           {"hpAnimationTimer", hudHpAnimationTimer_}}},
+          {"previousHp", healthHud_.State().previousHp},
+          {"damagePulseTimer", healthHud_.State().damagePulseTimer},
+          {"hurtIconTimer", healthHud_.State().hurtIconTimer},
+          {"hpDamageHoldTimer", healthHud_.State().damageHoldTimer},
+           {"hpDelayedRate", healthHud_.State().delayedRate},
+           {"hpAnimationTimer", healthHud_.State().animationTimer}}},
         {"lifeLost", lifeLostState_.CaptureReplay()},
         {"overlays",
          {{"pause", std::move(pauseState)},
@@ -239,12 +239,12 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         hudCoinPulseTimer_ = hud.value("coinPulseTimer", hudCoinPulseTimer_);
         hudPreviousLives_ = hud.value("previousLives", hudPreviousLives_);
         hudPreviousCoins_ = hud.value("previousCoins", hudPreviousCoins_);
-        hudPreviousHp_ = hud.value("previousHp", hudPreviousHp_);
-        hudDamagePulseTimer_ = hud.value("damagePulseTimer", hudDamagePulseTimer_);
-        hudHurtIconTimer_ = hud.value("hurtIconTimer", hudHurtIconTimer_);
-        hudHpDamageHoldTimer_ = hud.value("hpDamageHoldTimer", hudHpDamageHoldTimer_);
-        hudHpDelayedRate_ = hud.value("hpDelayedRate", hudHpDelayedRate_);
-        hudHpAnimationTimer_ = hud.value("hpAnimationTimer", hudHpAnimationTimer_);
+        healthHud_.State().previousHp = hud.value("previousHp", healthHud_.State().previousHp);
+        healthHud_.State().damagePulseTimer = hud.value("damagePulseTimer", healthHud_.State().damagePulseTimer);
+        healthHud_.State().hurtIconTimer = hud.value("hurtIconTimer", healthHud_.State().hurtIconTimer);
+        healthHud_.State().damageHoldTimer = hud.value("hpDamageHoldTimer", healthHud_.State().damageHoldTimer);
+        healthHud_.State().delayedRate = hud.value("hpDelayedRate", healthHud_.State().delayedRate);
+        healthHud_.State().animationTimer = hud.value("hpAnimationTimer", healthHud_.State().animationTimer);
     }
 
     if (const auto found = state.find("lifeLost"); found != state.end() && found->is_object()) {

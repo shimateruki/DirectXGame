@@ -19,6 +19,7 @@ class PauseMenuOverlay {
 
     enum class Mode { Gameplay, StageSelect };
 
+    // 描画基盤を借用してSpriteを所有する。Modeで表示する項目を切り替える。
     void Initialize(engine::SpriteCommon* spriteCommon, const std::string& layoutPath = "Resources/json/sprite/pauseMenu.json",
                     Mode mode = Mode::Gameplay);
 
@@ -34,6 +35,7 @@ class PauseMenuOverlay {
     bool IsActive() const { return isActive_; }
 
     /// <summary>入力と開閉アニメーションを更新し、確定した操作を返します。</summary>
+    // 戻り値はシーン側で処理する要求。RetryやScene切替そのものはこのUIで実行しない。
     Action Update(float deltaTime, bool acceptInput = true);
 
     // ガイドと共通の背景を二重描画せずにページを移動する。

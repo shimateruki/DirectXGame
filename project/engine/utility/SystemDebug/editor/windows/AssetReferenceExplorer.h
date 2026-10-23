@@ -20,6 +20,7 @@ public:
     /// 検索用にパス区切りと大文字小文字を正規化します。
     static std::string Normalize(std::string value);
 
+    // Editor への参照と探索結果をまとめて破棄し、再オープン時に古い一覧を見せない。
     void Finalize();
 
     /// 指定資産を選択して開き、次回描画時の再走査を予約します。
@@ -58,10 +59,13 @@ private:
     // 参照索引の構築。AssetDatabase の世代が変わったときに再実行します。
     void RefreshIndex();
 
+    // 同一資産を GUID、パス、Resources 相対パスで引けるようにします。
     void BuildAliasIndex();
 
+    // 壊れたJSON一件で探索全体を止めず、そのアセットだけを読み飛ばす。
     void ScanJsonAsset(const EditorAssetRecord& owner);
 
+    // JSON Pointer を更新しながら葉の文字列へ降り、修復時に同じ値だけを安全に書き換えます。
     void VisitJson(
         const nlohmann::json& value,
         const std::string& ownerPath,
@@ -75,6 +79,7 @@ private:
 
     std::vector<std::size_t> FindRepairCandidates(const MissingReference& missing) const;
 
+    // モデル参照のキーにはモデルルートからのフォルダ名を、それ以外は元パスを返す。
     std::string MakeReferenceValue(const EditorAssetRecord& asset, const std::string& key) const;
 
     bool RepairMissingReference(MissingReference& missing, std::string& message);
@@ -84,14 +89,19 @@ private:
     // 参照索引の表示と利用者が選んだ修復先の入力を扱います。
     void DrawAssetBrowser();
 
+    // GUIDを索引へ引き直し、更新で消えたAssetの古いポインタは使いません。
     void DrawSelectedAssetDetails();
 
+    // 選択Objectをその場でJSON化して、保存前のAsset参照も確認します。
     void DrawSelectedObjectReferences();
 
+    // 未解決候補には名前参照も含むため、修復は自動一括ではなく個別に提示します。
     void DrawMissingReferences();
 
+    // 参照元とJSON Pointerを併記し、同名Assetのどの設定か追えるようにします。
     void DrawUsageList(const std::vector<Usage>& usages, UsageKind kind) const;
 
+    // JSON Pointerの特別文字は規約の順にエスケープして参照先を一意にする。
     static std::string EscapeJsonPointerToken(const std::string& token);
 
     static std::string GetOwnerCategory(const std::string& path);

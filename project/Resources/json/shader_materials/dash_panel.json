@@ -1,0 +1,8 @@
+{
+  "assetType": "ShaderMaterial",
+  "version": 1,
+  "id": "dash_panel",
+  "displayName": "ダッシュ床（Shader Material）",
+  "renderPass": "opaque",
+  "pixelShader": "Resources/shader/object3d/Object3d.DashPanel.PS.hlsl"
+}

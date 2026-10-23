@@ -34,6 +34,7 @@ public:
 
     ~CaptureToolWindow() override;
 
+    // Game Viewの表示範囲を取得するため、Editor参照だけ保持します。
     void Initialize(DebugEditor* editor);
 
     /// キャプチャ範囲、保存先、録画状態、ショートカット案内を描画する。
@@ -57,19 +58,25 @@ private:
     /// 直前に手動撮影したPNGを選択中の用途フォルダへ移す。
     void RetagLastScreenshot();
 
+    // Worker起動前に撮影矩形を確定し、無効な領域では録画を始めません。
     void StartRecording();
 
+    // Workerの終了を待ってから結果を回収し、未書込の動画を成功扱いしません。
     void StopRecording();
 
+    // Workerが非同期に終了した場合も、UI側で停止処理と結果表示を完了します。
     void UpdateRecording();
 
     /// 画面取得と動画エンコードをゲーム更新から分離して実行する。
     void RecordingWorkerMain(std::filesystem::path outputPath, RECT captureRect, float fps);
 
+    // 停止要求を通知し、自スレッドをjoinしないようにしてWorkerを回収します。
     void StopRecordingWorker();
 
+    // Worker共有メッセージをロック下で読み、UIの録画状態へ確定します。
     void ApplyRecordingWorkerResult();
 
+    // 選択した画面範囲を確定してから画素を取得し、PNGへ保存します。
     bool CaptureToFile(const std::filesystem::path& path);
 
     /// Media FoundationのSinkWriterを準備し、指定範囲の録画を開始する。
@@ -82,6 +89,7 @@ private:
     /// 現在フレームをキャプチャして動画ストリームへ1枚分書き込む。
     bool WriteRecordingFrame(LONGLONG sampleTime100ns, std::string& errorMessage);
 
+    // Media FoundationのWriterを解放してからランタイムを終了します。
     void CloseRecordingResources();
 
     DebugEditor* editor_ = nullptr;

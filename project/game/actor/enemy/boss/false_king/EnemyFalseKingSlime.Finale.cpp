@@ -675,16 +675,18 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                 spear.model->SetEmissive((spear.hero ? 0.65f : 0.42f) + 0.35f * (1.0f - fall));
 
                 // 槍を上端からノイズ付きの赤い縁で崩し、破片と火花に引き継ぎます。
-                if (auto* material = spear.model->GetMaterialData()) {
-                    material->time = idleTimer_;
-                    material->portalClipEnabled = dissolve > 0.0f ? 1.0f : 0.0f;
-                    material->portalClipProgress = 0.5f;
-                    material->portalClipCenter = spear.ground + engine::Vector3{0.0f,
+                {
+                    engine::Object3d::PortalClipSettings clipSettings;
+                    spear.model->SetMaterialTime(idleTimer_);
+                    clipSettings.enabled = dissolve > 0.0f ? true : false;
+                    clipSettings.progress = 0.5f;
+                    clipSettings.center = spear.ground + engine::Vector3{0.0f,
                         (centerHeight + 4.3f * spearScale + 0.8f) * (1.0f - dissolve) - dissolve, 0.0f};
-                    material->portalClipNormal = {0.0f, 1.0f, 0.0f};
-                    material->portalClipEdgeWidth = 0.18f * spear.size;
-                    material->portalClipDissolve = 0.7f;
-                    material->portalClipColor = {4.0f, 0.20f, 0.025f, 1.0f};
+                    clipSettings.normal = {0.0f, 1.0f, 0.0f};
+                    clipSettings.edgeWidth = 0.18f * spear.size;
+                    clipSettings.dissolve = 0.7f;
+                    clipSettings.color = {4.0f, 0.20f, 0.025f, 1.0f};
+                    spear.model->SetPortalClip(clipSettings);
                 }
 
                 spear.model->UpdateLocalMatrix();

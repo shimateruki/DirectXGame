@@ -6,7 +6,7 @@
 #include "SceneManager.h"
 #include "imgui.h"
 
-// 一時ドロップの星は実体の寿命だけを調整し、通常アイテムは初回選択時に必要な外観と判定を補います。
+// コピー解除で落ちる星だけを対象に、選択中の実体の寿命と点滅時間を調整します。
 void InspectorWindow::DrawItemTypeSelector() {
 #ifdef USE_IMGUI
     // 一時ドロップ星は通常アイテムと設定項目が異なるため先に分岐する。
@@ -27,75 +27,6 @@ void InspectorWindow::DrawItemTypeSelector() {
         return;
     }
 
-    const char* itemTypes[] = { "Heal" };
-    const char* itemTypeLabels[] = { "体力回復" };
-    std::string currentType = selectedObject->GetItemType();
-
-    if (currentType.empty()) {
-        // 旧データで種類が空なら、回復アイテムとしてモデルと判定を補完する。
-        currentType = "Heal";
-        selectedObject->SetItemType(currentType);
-        if (!selectedObject->param_.has_value())
-            selectedObject->param_.emplace();
-        selectedObject->param_->itemType = currentType;
-        selectedObject->param_->healAmount = 1.0f;
-        selectedObject->SetName("Item_Heal");
-        selectedObject->SetModel("Item/heart.gltf");
-        selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
-        selectedObject->SetEmissive(1.8f);
-        selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
-        selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
-        selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
-        selectedObject->SetStatic(false);
-
-        engine::Object3d::ColliderConfig colConfig;
-        colConfig.type = ColliderType::kSphere;
-        colConfig.size = { 1.2f, 1.2f, 1.2f };
-        selectedObject->SetColliderConfig(colConfig);
-        selectedObject->SetCollisionRadius(1.2f);
-    }
-
-    int currentIndex = 0;
-
-    for (int i = 0; i < IM_ARRAYSIZE(itemTypes); i++) {
-        if (currentType == itemTypes[i]) {
-            currentIndex = i;
-            break;
-        }
-    }
-
-    if (ImGui::Combo("アイテムの種類", &currentIndex, itemTypeLabels, IM_ARRAYSIZE(itemTypeLabels))) {
-        // 種類だけでなく見た目とColliderも同時に更新し、編集内容との不一致を防ぐ。
-        std::string selectedItemType = itemTypes[currentIndex];
-        selectedObject->SetClassName("Item");
-        selectedObject->SetItemType(selectedItemType);
-
-        if (!selectedObject->param_.has_value())
-            selectedObject->param_.emplace();
-        selectedObject->param_->itemType = selectedItemType;
-
-        if (selectedItemType == "Heal") {
-            selectedObject->SetName("Item_Heal");
-            selectedObject->SetModel("Item/heart.gltf");
-            selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
-            selectedObject->SetEmissive(1.8f);
-            selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
-            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
-            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
-            selectedObject->SetStatic(false);
-
-            selectedObject->param_->healAmount = 1.0f;
-
-            engine::Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kSphere;
-            colConfig.size = { 1.2f, 1.2f, 1.2f };
-            selectedObject->SetColliderConfig(colConfig);
-            selectedObject->SetCollisionRadius(1.2f);
-        }
-    }
-
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("ロード時に生成されるアイテムクラスを指定します。");
 #endif
 }
 

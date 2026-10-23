@@ -163,7 +163,7 @@ void GamePlayScene::RewindCrownMoviePreview() {
     player_->SetModel(s.playerModel);
     player_->SetMaterialType(s.playerMaterial);
     player_->SetColor(s.playerColor);
-    player_->GetMeshRenderer()->GetMaterialData()->portalClipEnabled = 0.0f;
+    player_->ClearPortalClip();
     player_->BeginCinematicLock();
     player_->SetScale(s.playerScale);
     player_->SetMoveYaw(s.playerYaw);

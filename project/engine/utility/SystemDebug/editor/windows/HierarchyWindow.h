@@ -34,6 +34,7 @@ public:
     // メインメニューからも同じ新規Sceneダイアログを開けるようにします。
     void OpenCreateSceneDialog();
 
+    // メニュー経由も通常のScene切り替え確認経路へ渡します。
     void OpenSceneAssetFromMenu(const std::string& filename);
 
 private:
@@ -45,6 +46,7 @@ private:
 
     void DrawSceneAssetDialogs();
 
+    // 現在のAssetを再指定した場合も、実行クラスの整合を確認して開きます。
     void RequestOpenSceneAsset(const std::string& filename);
 
     // DebugEditor本体への参照。HierarchyWindowは所有しない。

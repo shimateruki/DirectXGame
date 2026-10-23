@@ -1,3 +1,4 @@
+#include "game/ui/MenuControls.h"
 #define NOMINMAX
 #include "PauseMenuOverlay.h"
 
@@ -273,8 +274,7 @@ bool PauseMenuOverlay::IsOpenOrCloseHeld() const {
         return false;
     }
 
-    return inputManager_->IsKeyPressed(DIK_TAB) || inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_START) ||
-           inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_B);
+    return MenuControls::Get(MenuControls::Screen::Pause).bindings.cancel.Held(*inputManager_);
 }
 
 PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
@@ -291,10 +291,8 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         return Action::None;
     }
 
-    const bool up = inputManager_->IsKeyTriggered(DIK_UP) || inputManager_->IsKeyTriggered(DIK_W) ||
-                    inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_UP);
-    const bool down = inputManager_->IsKeyTriggered(DIK_DOWN) || inputManager_->IsKeyTriggered(DIK_S) ||
-                      inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
+    const auto menu = MenuControls::Read(MenuControls::Screen::Pause, *inputManager_);
+    const bool up = menu.up, down = menu.down;
 
     if (up) {
         ChangeSelection(-1);
@@ -304,22 +302,16 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         ChangeSelection(1);
     }
 
-    if (mode_ == Mode::Gameplay &&
-        (inputManager_->IsKeyTriggered(DIK_LEFT) || inputManager_->IsKeyTriggered(DIK_A) ||
-         inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ||
-         inputManager_->IsMenuStickTriggered(XINPUT_GAMEPAD_DPAD_LEFT))) {
+    if (mode_ == Mode::Gameplay && menu.left) {
         // メニューは能力説明の次ページ。左送りで前ページへ戻す。
         return Action::OpenGuide;
     }
 
-    if (inputManager_->IsKeyTriggered(DIK_TAB) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
+    if (menu.cancel) {
         return Action::Resume;
     }
 
-    if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsKeyTriggered(DIK_RETURN) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+    if (menu.confirm) {
         switch (static_cast<Item>(selectedIndex_)) {
         case Item::Resume:
             return Action::Resume;
@@ -363,13 +355,10 @@ void PauseMenuOverlay::UpdateSprites() {
 
     if (inputManager_) {
         // 下端の二つの案内だけを入力機器に合わせて差し替える。
-        const std::string suffix = inputManager_->IsGamepadMode() ? "gamepad.png" : "keyboard.png";
-        const auto updateHint = [&suffix](engine::Sprite* sprite, const char* action) {
-            if (!sprite)
-                return;
-            const std::string path = "generated/text/pause_guide/footer_" + std::string(action) + "_" + suffix;
-            if (sprite->GetTextureName() == path)
-                return;
+        const bool gamepad = inputManager_->IsGamepadMode();
+        const auto& controls = MenuControls::Get(MenuControls::Screen::Pause);
+        const auto updateHint = [](engine::Sprite* sprite, const char* path) {
+            if (!sprite || sprite->GetTextureName() == path) return;
             const uint32_t handle = engine::Sprite::LoadTexture(path);
             sprite->SetTextureHandle(handle);
             const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
@@ -377,9 +366,8 @@ void PauseMenuOverlay::UpdateSprites() {
                                    {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
             sprite->SetTextureName(path);
         };
-
-        updateHint(closeHintText_, "close");
-        updateHint(confirmHintText_, "confirm");
+        updateHint(closeHintText_, controls.closeHint.Resolve(gamepad));
+        updateHint(confirmHintText_, controls.confirmHint.Resolve(gamepad));
     }
 
     for (int i = 0; i < static_cast<int>(Item::Count); ++i) {

@@ -41,7 +41,6 @@
 #include "SceneSavePreview.h"
 #include "SceneSerializer.h"
 #include "SceneInventoryWindow.h"
-#include "StatusTuningWindow.h"
 #include "TextSpriteGenerator.h"
 
 namespace engine { class Object3d; }
@@ -514,7 +513,6 @@ public:
 
     AssetAuditWindow* GetAssetAuditWindow() { return &assetAuditWindow_; }
 
-    StatusTuningWindow* GetStatusTuningWindow() { return &statusTuningWindow_; }
 
     GameDataDebugEditor* GetGameDataDebugEditor() { return &gameDataDebugEditor_; }
 
@@ -937,7 +935,6 @@ private:
     ModelOptimizerWindow modelOptimizerWindow_;
     AssetAuditWindow assetAuditWindow_;
 
-    StatusTuningWindow statusTuningWindow_;
     GameDataDebugEditor gameDataDebugEditor_;
     AudioSettingsWindow audioSettingsWindow_;
 

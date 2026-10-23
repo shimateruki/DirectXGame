@@ -1,6 +1,6 @@
 ﻿<#
 指定したプロジェクトの externals/SDL2 に、固定版のヘッダー・ライブラリ・DLL を復元する。
-両方のライブラリが既にある場合は何もしない。欠けている場合はキャッシュへ取得・展開する。
+ヘッダー、LIB、DLLが揃っている場合は何もしない。欠けている場合はキャッシュへ取得・展開する。
 #>
 param(
     [string]$ProjectDir = ""
@@ -20,8 +20,9 @@ $ProjectDir = (Resolve-Path $ProjectDir).Path
 $SdlRoot = Join-Path $ProjectDir "externals\SDL2"
 $SdlLib = Join-Path $SdlRoot "lib\x64\SDL2.lib"
 $SdlDll = Join-Path $SdlRoot "lib\x64\SDL2.dll"
+$SdlHeader = Join-Path $SdlRoot "include\SDL.h"
 
-if ((Test-Path -LiteralPath $SdlLib) -and (Test-Path -LiteralPath $SdlDll)) {
+if ((Test-Path -LiteralPath $SdlLib) -and (Test-Path -LiteralPath $SdlDll) -and (Test-Path -LiteralPath $SdlHeader)) {
     Write-Host "SDL2 is already restored."
     exit 0
 }
@@ -39,6 +40,12 @@ if (!(Test-Path -LiteralPath $ArchivePath)) {
     Invoke-WebRequest -Uri $DownloadUrl -OutFile $ArchivePath
 }
 
+$resolvedCache = [System.IO.Path]::GetFullPath($CacheDir).TrimEnd('\') + '\'
+$resolvedExtract = [System.IO.Path]::GetFullPath($ExtractDir)
+if (-not $resolvedExtract.StartsWith($resolvedCache, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Unsafe SDL2 extraction path: $resolvedExtract"
+}
+
 if (Test-Path -LiteralPath $ExtractDir) {
     Remove-Item -LiteralPath $ExtractDir -Recurse -Force
 }
@@ -53,7 +60,7 @@ if (!(Test-Path -LiteralPath $ExtractedRoot)) {
 New-Item -ItemType Directory -Force -Path (Join-Path $SdlRoot "include") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $SdlRoot "lib\x64") | Out-Null
 
-Copy-Item -LiteralPath (Join-Path $ExtractedRoot "include\*") -Destination (Join-Path $SdlRoot "include") -Recurse -Force
+Copy-Item -Path (Join-Path $ExtractedRoot "include\*") -Destination (Join-Path $SdlRoot "include") -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $ExtractedRoot "lib\x64\SDL2.lib") -Destination $SdlLib -Force
 Copy-Item -LiteralPath (Join-Path $ExtractedRoot "lib\x64\SDL2.dll") -Destination $SdlDll -Force
 

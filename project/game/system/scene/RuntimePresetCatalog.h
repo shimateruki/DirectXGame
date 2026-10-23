@@ -42,6 +42,7 @@ class RuntimePresetCatalog {
         }
     }
 
+    // 名前が存在する場合だけ読込値を適用し、管理対象の共通ステータスを再適用する。保存は行わない。
     void ApplyToObject(const std::string& name, engine::Object3d* object) const {
         const auto it = presets_.find(name);
         if (!object || it == presets_.end())
@@ -57,6 +58,7 @@ class RuntimePresetCatalog {
     }
 
   private:
+    // シーン個体のGUIDを子まで除き、同じ定義から複数配置しても識別子が重複しないようにする。
     static void RemoveSceneGuids(nlohmann::json& node) {
         if (!node.is_object())
             return;

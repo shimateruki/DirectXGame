@@ -41,12 +41,14 @@ class EnemyBomb : public BaseEnemy {
 
     bool IsExploded() const { return state_ == State::Exploded; }
 
+    // 点滅による一時変形と区別できるよう、通常時の基準スケールを保持する。
     void ApplyManagedScale(const engine::Vector3& scale) override;
 
   private:
     // プレイヤー追跡と導火線点火後の警告演出をそれぞれ更新する。
     void UpdateChase(float deltaTime);
 
+    // 空中の水平速度は保ち、接地時の減速はUpdateBombPhysicsで扱う。
     void UpdateIgnited(float deltaTime);
 
     // 爆発状態へ移し、所有者に応じた一時的な爆発判定と演出を発生させる。

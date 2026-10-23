@@ -57,6 +57,7 @@ class GhostDirector : public IEditable {
     // 指定名の演出 JSON を保存・読み込みます。
     void SaveScenario(const std::string& fileName);
 
+    // 読込後は再生器と選択状態を新しいシーケンスへ合わせ、古いプレビューを残さない。
     void LoadScenario(const std::string& fileName);
 
     /// 読み込み済みシナリオの再生が終わったか返す。
@@ -90,6 +91,7 @@ class GhostDirector : public IEditable {
     // 対象 Object とトラックの対応を調べ、必要な場合だけ新規トラックを作ります。
     int FindTransformTrack(engine::Object3d* object) const;
 
+    // 重複トラックを避け、対象の現在姿勢を新しい移動トラックの初期値にする。
     int AddTransformTrack(engine::Object3d* object);
 
     /// Editor で選択中の Object を変形トラックへ追加する。

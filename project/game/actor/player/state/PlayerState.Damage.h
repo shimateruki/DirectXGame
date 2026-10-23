@@ -12,6 +12,7 @@ class PlayerStateDamage : public IAnimationState {
 
     void Update(Player* player, float deltaTime) override;
 
+    // ノックバックの変形を次状態へ持ち越さず、入場前の姿勢へ戻す。
     void Exit(Player* player) override;
 
   private:

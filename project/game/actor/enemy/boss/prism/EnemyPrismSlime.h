@@ -310,6 +310,7 @@ class EnemyPrismSlime : public BaseEnemy, public ISequencePreviewEnemy {
 
     void UpdateWindSpellVisual(float deltaTime);
 
+    // 攻撃状態から詠唱共通部品の進行率を作り、見た目を本体に追従させる。
     void UpdateChantSigilVisual(float deltaTime);
 
     /// 結晶槍の着弾地点に破砕演出を出す。
@@ -353,18 +354,22 @@ class EnemyPrismSlime : public BaseEnemy, public ISequencePreviewEnemy {
     // 魔法陣と地面位置を生成・取得する共通処理です。
     std::unique_ptr<EffectObject3d> CreateSummonPortalEffect(bool glow) const;
 
+    // 同じ JSON を通常層と加算発光層で使い、後段で別々の透明度を制御する。
     std::unique_ptr<EffectObject3d> CreateCrystalCircleEffect(bool glow) const;
 
+    // 演出データの再生状態だけ準備し、実際の表示時刻は攻撃状態が決める。
     std::unique_ptr<EffectObject3d> CreateSpellEffect(const char* path) const;
 
     engine::Vector3 GetChantSigilCenter() const;
 
+    // 予告や着弾を空中に置かないよう、周囲の地形面を探す。
     engine::Vector3 FindGroundPoint(const engine::Vector3& samplePosition) const;
 
     // 顔パーツと本体のアニメーションを同期します。
     /// 属性を示す顔パーツの表示を準備する。
     void InitializeFaceParts();
 
+    // 本体に追従する子オブジェクトを作り、衝突対象からは除外する。
     std::unique_ptr<engine::Object3d> CreatePart(const std::string& name, const std::string& modelName,
                                          const engine::Vector3& localPosition, const engine::Vector3& localScale, const engine::Vector4& color,
                                          float emissive);
@@ -384,6 +389,7 @@ class EnemyPrismSlime : public BaseEnemy, public ISequencePreviewEnemy {
     // JSON プリセットから通常/方向付き粒子を発生させます。
     void EmitPreset(const char* presetName, const engine::Vector3& position);
 
+    // 指向性のあるプリセットには発射方向と速度倍率を渡す。
     void EmitDirectedPreset(const char* presetName, const engine::Vector3& position, const engine::Vector3& direction,
                             float speedScale);
 

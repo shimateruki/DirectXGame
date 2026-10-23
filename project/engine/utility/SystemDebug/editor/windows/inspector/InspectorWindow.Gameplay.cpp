@@ -166,44 +166,11 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
   ImGui::Separator();
   if (ImGui::CollapsingHeader(ICON_FA_GAMEPAD " ゲームデータ (Stats)",
                               ImGuiTreeNodeFlags_DefaultOpen)) {
-    EventType currentType = selectedObject->GetEventType();
-    int currentItemIndex = static_cast<int>(currentType);
-    const char *eventNames[] = {"なし",
-                                "ダメージ",
-                                "ワープ",
-                                "映像演出 (橋落ち)",
-                                "中間地点 (Checkpoint)",
-                                "ゴール",
-                                "ステージセレクト",
-                                "スターコイン (StarCoin)"};
-
-    if (ImGui::Combo(ICON_FA_FLAG " イベント種類", &currentItemIndex,
-                     eventNames, IM_ARRAYSIZE(eventNames))) {
-      // Goalへ切り替えた配置物はPlayerとの接触で発火できるよう、
-      // 既存Colliderがない場合に限って球Triggerを補います。
-      const EventType selectedEventType =
-          static_cast<EventType>(currentItemIndex);
-      selectedObject->SetEventType(selectedEventType);
-
-      if (selectedEventType == EventType::Goal) {
-        selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
-        selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
-
-        if (selectedObject->GetColliderType() == ColliderType::kNone) {
-          engine::Object3d::ColliderConfig colConfig;
-          colConfig.type = ColliderType::kSphere;
-          colConfig.size = {1.2f, 1.2f, 1.2f};
-          selectedObject->SetColliderConfig(colConfig);
-          selectedObject->SetCollisionRadius(1.2f);
-        }
-      }
-    }
-
     ImGui::Separator();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
                        "--- Object Type Settings ---");
     const char *classItems[] = {"Model",   "Spawner", "Player",       "Enemy",
-                                "Gimmick", "Item",    "InvisibleBox", "Block"};
+                                "Gimmick", "InvisibleBox", "Block"};
     std::string currentClass = selectedObject->GetClassName();
     int currentClassIndex = 0;
 
@@ -214,8 +181,10 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       }
     }
 
-    // Class Typeはロード時の生成経路を変えるため、Itemだけは見た目・接触・初期値を同時に設定します。
-    if (ImGui::Combo(ICON_FA_CUBES " Class Type", &currentClassIndex,
+    // 一時ドロップ星はゲームが生成するため、配置用の型へ切り替えません。
+    if (currentClass == "Item") {
+      ImGui::TextUnformatted("Class Type: Item（実行時生成）");
+    } else if (ImGui::Combo(ICON_FA_CUBES " Class Type", &currentClassIndex,
                      classItems, IM_ARRAYSIZE(classItems))) {
       selectedObject->SetClassName(classItems[currentClassIndex]);
 
@@ -224,27 +193,6 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
           selectedObject->SetName("Spawner_New");
         if (!selectedObject->param_.has_value())
           selectedObject->param_.emplace();
-      } else if (std::string(classItems[currentClassIndex]) == "Item") {
-        if (selectedObject->GetName().find("Object") != std::string::npos)
-          selectedObject->SetName("Item_Heal");
-        if (!selectedObject->param_.has_value())
-          selectedObject->param_.emplace();
-        selectedObject->SetItemType("Heal");
-        selectedObject->param_->itemType = "Heal";
-        selectedObject->param_->healAmount = 1.0f;
-        selectedObject->SetModel("Item/heart.gltf");
-        selectedObject->SetColor({1.0f, 0.15f, 0.35f, 1.0f});
-        selectedObject->SetEmissive(1.8f);
-        selectedObject->SetScale({0.8f, 0.8f, 0.8f});
-        selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
-        selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
-        selectedObject->SetStatic(false);
-
-        engine::Object3d::ColliderConfig colConfig;
-        colConfig.type = ColliderType::kSphere;
-        colConfig.size = {1.2f, 1.2f, 1.2f};
-        selectedObject->SetColliderConfig(colConfig);
-        selectedObject->SetCollisionRadius(1.2f);
       }
     }
 
@@ -276,7 +224,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
     if (selectedObject->GetClassName() == "Enemy" ||
         selectedObject->GetClassName() == "Player") {
       ImGui::SeparatorText("キャラクター・ステータス（表示のみ）");
-      ImGui::TextDisabled("共通値の編集はステータス管理で行います。現在HPだけは"
+      ImGui::TextDisabled("共通値の編集は下の「この種類の基本ステータスを調整」から行います。現在HPだけは"
                           "実行中に変動します。");
       if (selectedObject->param_.has_value()) {
         const auto &p = selectedObject->param_.value();
@@ -308,11 +256,13 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       }
 
       if (ImGui::Button(ICON_FA_SLIDERS_H
-                        " ステータス管理を開く##CharacterStatus",
+                        " この種類の基本ステータスを調整##CharacterStatus",
                         ImVec2(-1, 0)) &&
-          editor_->GetStatusTuningWindow()) {
-        EditorManager::GetInstance()->SetSelectedObject(
-            editor_->GetStatusTuningWindow());
+          editor_->GetEnemyAttackPreviewWindow()) {
+        auto* preview = editor_->GetEnemyAttackPreviewWindow();
+        preview->SelectStatusTarget(selectedObject->GetClassName() == "Player" ? "" : selectedObject->GetEnemyType());
+        editor_->SetSelectedObject(nullptr);
+        EditorManager::GetInstance()->SetSelectedObject(preview);
       }
 
       if (selectedObject->param_.has_value() &&
@@ -326,31 +276,11 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         ImGui::DragFloat("攻撃の待機時間", &p.interval, 0.05f, 1.2f, 8.0f);
         ImGui::DragFloat("発射前の予告時間", &p.shakeDuration, 0.05f, 0.45f, 1.4f);
         ImGui::Text("最大半径への到達: %.2f 秒", 3.6f / p.ringWaveSpeed);
-        ImGui::TextWrapped("リングは等速に拡大します。頭に乗ると停止し、降りた後も4秒間停止します。感知範囲は上のステータス管理で調整できます。");
+        ImGui::TextWrapped("リングは等速に拡大します。頭に乗ると停止し、降りた後も4秒間停止します。感知範囲は上の「この種類の基本ステータスを調整」から変更できます。");
       }
     } else if (selectedObject->GetClassName() == "Gimmick") {
       // 種類別の入力欄はクラス側の登録から共通Component欄へ自動生成します。
       ImGui::TextDisabled("固有設定は上のクラス名付きComponent欄で編集できます。");
-    } else if (selectedObject->GetClassName() == "Item") {
-      // アイテム種別ごとの配置値はここへ集め、共通Objectの描画設定とは分けます。
-      if (!selectedObject->param_.has_value())
-        selectedObject->param_.emplace();
-      auto &p = selectedObject->param_.value();
-
-      ImGui::Text(ICON_FA_HEART " アイテム設定:");
-      ImGui::Indent();
-
-      std::string itemType = selectedObject->GetItemType();
-
-      if (itemType == "Heal") {
-        ImGui::DragFloat(ICON_FA_HEARTBEAT " 回復量", &p.healAmount, 0.1f, 0.0f,
-                         999.0f);
-        ImGui::TextDisabled("プレイヤーが触れるとHPを回復して消えます");
-      } else {
-        ImGui::TextDisabled("(この種類には個別設定がありません)");
-      }
-
-      ImGui::Unindent();
     }
   }
 }

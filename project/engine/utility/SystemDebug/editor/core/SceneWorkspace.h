@@ -22,18 +22,22 @@ public:
     // SceneManager と DebugEditor を借用し、編集用ブックマークを読み込む。
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
 
+    // Editor専用の非表示状態を復元してからブックマークを保存します。
     void Finalize();
 
+    // Scene切り替え時は旧Sceneに紐付く隔離・レイヤー表示状態を破棄します。
     void Update();
 
     // Play 中は編集地点の記録・復帰を行わない。
     void HandleHotkeys();
 
+    // 選択状態と再生状態に応じ、隔離・非表示の操作可能範囲を制限します。
     void DrawHierarchyPanel();
 
     // 選択階層以外を一時的に隠す。選択階層のレイヤー・手動非表示は解除する。
     void IsolateSelection();
 
+    // 保存データを変えず、Editorだけで選択Objectを隠します。
     void HideSelectionTemporarily();
 
     // 選択対象の隔離・レイヤー・手動非表示理由をすべて解除する。
@@ -70,20 +74,27 @@ private:
 
     const std::array<CameraBookmark, kBookmarkCount>* FindCurrentBookmarks() const;
 
+    // Play中の視点を編集用の保存地点へ混ぜない。
     void CaptureBookmark(std::size_t index);
 
     void RecallBookmark(std::size_t index);
 
+    // 配列範囲を確認し、削除したブックマークを永続設定にも反映します。
     void ClearBookmark(std::size_t index);
 
+    // シーンごとのカメラ記憶位置を読み込み、別シーンの記録と混ぜません。
     void LoadBookmarks();
 
+    // Sceneごとのカメラ位置をEditor状態として保存し、ゲーム用JSONと分離します。
     void SaveBookmarks() const;
 
+    // 内部補助Objectを除外し、空レイヤーはDefaultとして一覧化します。
     std::vector<std::string> CollectSceneLayers() const;
 
+    // 集合への挿入結果で循環・重複を止めながら子階層をたどります。
     void CollectHierarchy(engine::Object3d* root, std::unordered_set<engine::Object3d*>& objects) const;
 
+    // Scene世代が変わった後は、一時非表示の理由を新Sceneへ持ち越しません。
     void ResetSceneRuntimeState();
 
 private:

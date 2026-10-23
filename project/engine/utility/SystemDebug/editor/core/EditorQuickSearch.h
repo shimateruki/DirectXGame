@@ -60,6 +60,7 @@ private:
     // 資産・シーンなどの世代が変わったときだけ候補を再収集します。
     void RefreshResults(bool force = false);
 
+    // 以下の Collect 群は候補を出力配列へ追加する。検索順位付けや実行は後段で行う。
     void CollectCommands(std::vector<SearchItem>& items) const;
 
     void CollectObjects(std::vector<SearchItem>& items) const;
@@ -75,6 +76,7 @@ private:
     // 検索語の一致度と利用履歴を使って表示順位を決めます。
     int ScoreItem(const SearchItem& item, const std::string& normalizedQuery) const;
 
+    // 表示中の候補を実行し、お気に入りとは別に最近使った履歴へ記録する。
     void ExecuteItem(std::size_t index);
 
     void ToggleFavorite(const std::string& id);

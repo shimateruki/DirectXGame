@@ -22,9 +22,6 @@
 
 namespace {
 constexpr float kPi = 3.1415926535f;
-constexpr float kDamagePulseDuration = 0.42f;
-constexpr float kHurtIconDuration = 0.48f;
-constexpr float kHpDamageHoldDuration = 0.18f;
 constexpr float kLifeGainPulseDuration = 0.62f;
 constexpr float kCoinPulseDuration = 0.24f;
 
@@ -56,21 +53,6 @@ void SetFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
     sprite->SetTextureRect({0.0f, 0.0f}, {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
 }
 
-const char* ResolveHpIconTexture(const Player* player) {
-    // 現在の本体と同じ装飾付き肖像を表示し、被弾時も能力の目印を維持する。
-    if (player && player->IsEnemyMorphed()) {
-        switch (player->GetEnemyMorphType()) {
-        case Player::EnemyMorphType::Slime: return "ui/hud/copy_portraits/pink.png";
-        case Player::EnemyMorphType::FireSlime: return "ui/hud/copy_portraits/fire.png";
-        case Player::EnemyMorphType::ThunderSlime: return "ui/hud/copy_portraits/thunder.png";
-        case Player::EnemyMorphType::WindSlime: return "ui/hud/copy_portraits/wind.png";
-        case Player::EnemyMorphType::Bomber: return "ui/hud/copy_portraits/bomb.png";
-        case Player::EnemyMorphType::Crown: return "ui/hud/copy_portraits/crown.png";
-        default: break;
-        }
-    }
-    return "ui/hud/copy_portraits/normal.png";
-}
 
 } // namespace
 
@@ -123,32 +105,11 @@ void GamePlayScene::InitializeGameplayHUD() {
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameplayHUD.json");
     }
 
-    // プレイヤーHPは現在値、遅れて追うダメージ量、枠と光を別Spriteで重ねる。
-    hudHpIcon_ = BindHud("hud_hp_icon");
-    // 肖像は正方形のまま枠内へ収め、ウィンドウ比率による顔の潰れを防ぐ。
-    const float portraitSide = (std::min)(hudHpIcon_.baseSize.x, hudHpIcon_.baseSize.y);
-    hudHpIcon_.baseSize = {portraitSide, portraitSide};
-
+    healthHud_.Bind(BindHud("hud_hp_icon").sprite, BindHud("hud_hp_damage_fill").sprite,
+                    BindHud("hud_hp_fill").sprite, BindHud("hud_hp_highlight").sprite,
+                    BindHud("hud_hp_frame").sprite, player_, PlayerHealthHud::Style::Animated);
     hudCopyStyle_ = BindHud("hud_copy_style");
     copyStyleHud_.Bind(hudCopyStyle_.sprite);
-    hudHpDamageFill_ = BindHud("hud_hp_damage_fill");
-    hudHpFill_ = BindHud("hud_hp_fill");
-    if (hudHpFill_.sprite) {
-        hudHpFill_.sprite->SetAnimation(8, 0.08f, true);
-        hudHpFill_.sprite->Play();
-        hudHpFill_.sprite->SetSize(hudHpFill_.baseSize);
-        hudHpFill_.sprite->Update();
-    }
-
-    hudHpHighlight_ = BindHud("hud_hp_highlight");
-    if (hudHpHighlight_.sprite) {
-        hudHpHighlight_.sprite->SetAnimation(6, 0.10f, true);
-        hudHpHighlight_.sprite->Play();
-        hudHpHighlight_.sprite->SetSize(hudHpHighlight_.baseSize);
-        hudHpHighlight_.sprite->Update();
-    }
-
-    hudHpFrame_ = BindHud("hud_hp_frame");
 
     // ボスHUDは共通の表示部品を使い、戦闘相手に応じて後から色と名前を替える。
     prismBossHudGlow_ = BindHud("hud_boss_prism_glow");
@@ -222,16 +183,6 @@ void GamePlayScene::InitializeGameplayHUD() {
     // 最初のフレームでダメージ演出が発生しないよう、比較に使う前回値を現在値へ揃える。
     lifeLostState_.Reset();
 
-    hudPreviousHp_ = player_ ? player_->GetHp() : 0.0f;
-    {
-        const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
-        hudHpDelayedRate_ = player_ ? std::clamp(hudPreviousHp_ / maxHp, 0.0f, 1.0f) : 0.0f;
-    }
-
-    hudDamagePulseTimer_ = 0.0f;
-    hudHurtIconTimer_ = 0.0f;
-    hudHpDamageHoldTimer_ = 0.0f;
-    hudHpAnimationTimer_ = 0.0f;
     prismBossHudPhase_ = PrismBossHudPhase::Hidden;
     prismBossHudTimer_ = 0.0f;
     prismBossHudDisplayedRate_ = 0.0f;
@@ -476,10 +427,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     deltaTime = (std::max)(0.0f, deltaTime);
     copyStyleHud_.Update(player_, deltaTime);
     const bool visible = player_ != nullptr;
-    const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
-    const float hp = player_ ? std::clamp(player_->GetHp(), 0.0f, maxHp) : 0.0f;
-    const float hpRate = std::clamp(hp / maxHp, 0.0f, 1.0f);
-    const float previousHpRate = std::clamp(hudPreviousHp_ / maxHp, 0.0f, 1.0f);
+    healthHud_.Update(player_, deltaTime);
     const int lives = GameDataManager::GetInstance()->GetLives();
     const int coins = GameDataManager::GetInstance()->GetCoins();
 
@@ -495,48 +443,8 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     hudPreviousLives_ = lives;
     hudPreviousCoins_ = coins;
 
-    const bool tookDamage = visible && hp < hudPreviousHp_ - 0.01f;
-
-    if (tookDamage) {
-        hudDamagePulseTimer_ = kDamagePulseDuration;
-        hudHurtIconTimer_ = kHurtIconDuration;
-        hudHpDamageHoldTimer_ = kHpDamageHoldDuration;
-        hudHpDelayedRate_ = std::max(hudHpDelayedRate_, previousHpRate);
-    }
-
-    hudPreviousHp_ = hp;
-    hudDamagePulseTimer_ = std::max(0.0f, hudDamagePulseTimer_ - deltaTime);
-    hudHurtIconTimer_ = std::max(0.0f, hudHurtIconTimer_ - deltaTime);
-
-    if (!visible) {
-        hudHpDelayedRate_ = 0.0f;
-        hudHpDamageHoldTimer_ = 0.0f;
-    } else if (hpRate >= hudHpDelayedRate_) {
-        hudHpDelayedRate_ = hpRate;
-        hudHpDamageHoldTimer_ = 0.0f;
-    } else if (hudHpDamageHoldTimer_ > 0.0f) {
-        hudHpDamageHoldTimer_ = std::max(0.0f, hudHpDamageHoldTimer_ - deltaTime);
-    } else {
-        hudHpDelayedRate_ = std::max(hpRate, hudHpDelayedRate_ - deltaTime * 0.62f);
-    }
-
     hudLifeGainPulseTimer_ = std::max(0.0f, hudLifeGainPulseTimer_ - deltaTime);
     hudCoinPulseTimer_ = std::max(0.0f, hudCoinPulseTimer_ - deltaTime);
-    hudHpAnimationTimer_ = std::fmod(hudHpAnimationTimer_ + std::max(deltaTime, 0.0f), 1000.0f);
-
-    const float pulse = hudDamagePulseTimer_ > 0.0f ? std::sin(hudDamagePulseTimer_ * 70.0f) : 0.0f;
-    const float damageRate = std::clamp(hudDamagePulseTimer_ / kDamagePulseDuration, 0.0f, 1.0f);
-    const float damageImpact = std::sin((1.0f - damageRate) * kPi) * damageRate;
-    const float lowHpRate = visible ? std::clamp((0.34f - hpRate) / 0.34f, 0.0f, 1.0f) : 0.0f;
-    const float lowHpPulse = lowHpRate * (0.5f + 0.5f * std::sin(hudHpAnimationTimer_ * (5.0f + lowHpRate * 3.0f)));
-    const float liquidWave = std::sin(hudHpAnimationTimer_ * 4.6f);
-    const float idleIconPulse = 1.0f + std::sin(hudHpAnimationTimer_ * 2.2f) * 0.012f + lowHpPulse * 0.035f;
-    const float hpIconPulse = idleIconPulse + std::abs(pulse) * damageRate * 0.07f;
-    const float barShake =
-        damageRate > 0.0f ? std::sin(hudDamagePulseTimer_ * 92.0f) * SpriteLayoutScaler::ScaleDesignX(3.2f) * damageRate
-                          : 0.0f;
-    const engine::Vector2 liquidOffset = {barShake, 0.0f};
-    const float liquidHeightScale = 1.0f + damageImpact * 0.07f;
     const float lifeGainRate =
         hudLifeGainPulseTimer_ > 0.0f ? hudLifeGainPulseTimer_ / kLifeGainPulseDuration : 0.0f;
     const float lifeGainWave = std::sin((1.0f - lifeGainRate) * kPi * 2.0f) * lifeGainRate;
@@ -549,76 +457,6 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     const float coinPulseScaleY = 1.0f + coinBounce * 0.28f;
     const float coinCountScale = 1.0f + coinBounce * 0.14f;
     const float coinBounceOffsetY = -12.0f * coinBounce;
-
-    const bool damageReacting = hudHurtIconTimer_ > 0.0f;
-    const float hpIconShakeX =
-        damageReacting ? std::sin(hudHurtIconTimer_ * 85.0f) * SpriteLayoutScaler::ScaleDesignX(3.0f) : 0.0f;
-    const float hpIconShakeY =
-        damageReacting ? std::sin(hudHurtIconTimer_ * 61.0f) * SpriteLayoutScaler::ScaleDesignY(1.2f) : 0.0f;
-    const float hpIconRotation =
-        damageReacting ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.055f : liquidWave * lowHpRate * 0.012f;
-
-    // HP 表示は実値と遅れて追うダメージ量を別レイヤーにし、被弾量を読めるようにします。
-    if (hudHpIcon_.sprite) {
-        const uint32_t handle = engine::Sprite::LoadTexture(ResolveHpIconTexture(player_));
-        SetFullTextureRect(hudHpIcon_.sprite, handle);
-        hudHpIcon_.sprite->SetVisible(visible);
-        // 枠と同じ揺れ・拡縮中心へ追従し、装飾を丸枠の内側に保つ。
-        hudHpIcon_.sprite->SetPosition(
-            {hudHpIcon_.basePosition.x + barShake + (hudHpIcon_.basePosition.x - hudHpFrame_.basePosition.x) * damageImpact * 0.012f + hpIconShakeX * 0.25f,
-             hudHpIcon_.basePosition.y + hpIconShakeY * 0.25f});
-        hudHpIcon_.sprite->SetSize({hudHpIcon_.baseSize.x * hpIconPulse, hudHpIcon_.baseSize.y * hpIconPulse});
-        hudHpIcon_.sprite->SetRotation(hpIconRotation);
-        hudHpIcon_.sprite->SetColor({hudHpIcon_.baseColor.x, hudHpIcon_.baseColor.y, hudHpIcon_.baseColor.z,
-                                     visible ? hudHpIcon_.baseColor.w : 0.0f});
-        hudHpIcon_.sprite->Update();
-    }
-
-    if (hudHpDamageFill_.sprite) {
-        const float rate = std::clamp(hudHpDelayedRate_, 0.0f, 1.0f);
-        hudHpDamageFill_.sprite->SetVisible(visible && rate > 0.001f);
-        hudHpDamageFill_.sprite->SetPosition(
-            {hudHpDamageFill_.basePosition.x + liquidOffset.x, hudHpDamageFill_.basePosition.y + liquidOffset.y});
-        hudHpDamageFill_.sprite->SetSize(
-            {hudHpDamageFill_.baseSize.x * rate, hudHpDamageFill_.baseSize.y * liquidHeightScale});
-        hudHpDamageFill_.sprite->SetColor(
-            {hudHpDamageFill_.baseColor.x, hudHpDamageFill_.baseColor.y, hudHpDamageFill_.baseColor.z,
-             visible ? hudHpDamageFill_.baseColor.w * (0.88f + damageRate * 0.12f) : 0.0f});
-        hudHpDamageFill_.sprite->Update();
-    }
-
-    if (hudHpFill_.sprite) {
-        hudHpFill_.sprite->SetVisible(visible && hpRate > 0.001f);
-        hudHpFill_.sprite->SetPosition(
-            {hudHpFill_.basePosition.x + liquidOffset.x, hudHpFill_.basePosition.y + liquidOffset.y});
-        hudHpFill_.sprite->SetSize({hudHpFill_.baseSize.x * hpRate, hudHpFill_.baseSize.y * liquidHeightScale});
-        hudHpFill_.sprite->SetColor(
-            {1.0f, 1.0f - lowHpPulse * 0.08f, 1.0f - lowHpPulse * 0.14f, visible ? hudHpFill_.baseColor.w : 0.0f});
-        hudHpFill_.sprite->Update();
-    }
-
-    if (hudHpHighlight_.sprite) {
-        const float shimmer = 0.78f + hpRate * 0.10f + damageImpact * 0.12f;
-        const float alpha = visible && hpRate > 0.001f ? hudHpHighlight_.baseColor.w * shimmer : 0.0f;
-        hudHpHighlight_.sprite->SetVisible(visible && hpRate > 0.001f);
-        hudHpHighlight_.sprite->SetPosition({hudHpHighlight_.basePosition.x + liquidOffset.x,
-                                             hudHpHighlight_.basePosition.y - SpriteLayoutScaler::ScaleDesignY(0.35f)});
-        hudHpHighlight_.sprite->SetSize(
-            {hudHpHighlight_.baseSize.x * hpRate, hudHpHighlight_.baseSize.y * liquidHeightScale});
-        hudHpHighlight_.sprite->SetColor(
-            {hudHpHighlight_.baseColor.x, hudHpHighlight_.baseColor.y, hudHpHighlight_.baseColor.z, alpha});
-        hudHpHighlight_.sprite->Update();
-    }
-
-    if (hudHpFrame_.sprite) {
-        hudHpFrame_.sprite->SetVisible(visible);
-        hudHpFrame_.sprite->SetPosition({hudHpFrame_.basePosition.x + barShake, hudHpFrame_.basePosition.y});
-        hudHpFrame_.sprite->SetSize({hudHpFrame_.baseSize.x * (1.0f + damageImpact * 0.012f),
-                                     hudHpFrame_.baseSize.y * (1.0f + damageImpact * 0.055f)});
-        hudHpFrame_.sprite->SetColor(
-            {1.0f, 1.0f - lowHpPulse * 0.10f, 1.0f - lowHpPulse * 0.16f, visible ? hudHpFrame_.baseColor.w : 0.0f});
-        hudHpFrame_.sprite->Update();
-    }
 
     // 残機とコインの取得反応を更新した後、数字の桁を描画状態へ反映します。
     if (hudLifeIcon_.sprite) {
@@ -1119,11 +957,7 @@ void GamePlayScene::DrawGameplayHUD() {
     DrawPrismBossHUD();
 
     // HPは枠の上へ遅延帯・現在値・光を順に重ねる。
-    DrawGameplayHUDSprite(hudHpFrame_);
-    DrawGameplayHUDSprite(hudHpDamageFill_);
-    DrawGameplayHUDSprite(hudHpFill_);
-    DrawGameplayHUDSprite(hudHpHighlight_);
-    DrawGameplayHUDSprite(hudHpIcon_);
+    healthHud_.Draw();
     DrawGameplayHUDSprite(hudCopyStyle_);
 
     DrawLifeLostPresentation();

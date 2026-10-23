@@ -11,7 +11,7 @@ class ItemFactory {
     static ItemFactory* GetInstance();
 
     /// <summary>種別名に対応するアイテムを生成し、基本初期化する。</summary>
-    /// <returns>未対応の種別名では仮表示用のBaseItemを返す。</returns>
+    /// <returns>空の種別名・廃止済みの回復アイテムはnullptr。それ以外の未対応種別は仮表示用のBaseItem。</returns>
     std::unique_ptr<BaseItem> CreateItem(const std::string& itemName, engine::Object3dCommon* common);
 
   private:

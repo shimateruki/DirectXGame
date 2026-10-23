@@ -10,12 +10,16 @@ class GimmickTimedSwitch : public BaseGimmick {
 
     virtual ~GimmickTimedSwitch() = default;
 
+    // 上面を踏める地面として登録し、待機時の色を設定する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // 接触が途切れたら短い保持時間後に待機色へ戻す。
     void Update(float deltaTime) override;
 
+    // 上面から踏まれた間だけ指定 EventID へ通知する。
     bool OnCollision(engine::Object3d* other) override;
 
+    // 押下タイマーは持ち込まず、配置と接続先の設定だけを複製する。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

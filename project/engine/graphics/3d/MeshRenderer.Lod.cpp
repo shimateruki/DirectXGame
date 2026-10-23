@@ -64,59 +64,6 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     }
 }
 
-// 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
-float ClampTextureTiling(float value) {
-    if (!std::isfinite(value)) {
-        return 1.0f;
-    }
-
-    return std::clamp(value, 0.01f, 1000.0f);
-}
-
-engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
-    // LOD描画でも通常描画と同じ二軸を選び、距離切替で模様の密度を変えない。
-    float a = std::abs(scale.x);
-    float b = std::abs(scale.y);
-    float c = std::abs(scale.z);
-
-    if (a < b)
-        std::swap(a, b);
-    if (a < c)
-        std::swap(a, c);
-    if (b < c)
-        std::swap(b, c);
-
-    return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
-}
-
-template <typename T>
-bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
-    // Resource生成かMapに失敗した場合は参照を初期化し、LOD描画へ不正なGPU値を渡さない。
-    data = nullptr;
-    resource.Reset();
-
-    if (!dxCommon) {
-        return false;
-    }
-
-    resource = dxCommon->CreateBufferResource(size);
-
-    if (!resource) {
-        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
-        return false;
-    }
-
-    HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
-
-    if (FAILED(hr) || !data) {
-        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
-        resource.Reset();
-        data = nullptr;
-        return false;
-    }
-
-    return true;
-}
 }
 
 // ========================================================================

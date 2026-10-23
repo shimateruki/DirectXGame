@@ -9,12 +9,14 @@ namespace engine {
 
 // 既存移動トラックと見た目キーで、姿勢の形式を共有する。
 struct CinematicTransformKey {
+    // 時刻はシーケンス先頭からの秒数、rotation はラジアン、scale は各軸の倍率。
     float time = 0.0f;
     engine::Vector3 position{}, rotation{}, scale{1, 1, 1};
     int easingToNext = 4;
 };
 
 // 区間探索は全キー列で共有する。離散値の補間方法は呼び出し側で指定する。
+// keys は time の昇順が前提。空なら既定値、範囲外なら端のキーを返す。
 template<class Key, class Blend>
 Key SampleCinematicKeys(const std::vector<Key>& keys, float time, Blend blend) {
     if (keys.empty()) return {};
@@ -76,6 +78,7 @@ struct CinematicViewKey {
 // 移動する発生点から一定間隔で粒子を出す。シーク中は発火しない。
 struct CinematicParticleClip {
     std::string target, preset, directionMode = "fixed";
+    // 開始・終了時刻と発生間隔は秒単位。方向と拡縮は粒子生成時に適用する。
     float startTime = 0.0f, endTime = 1.0f, interval = 1.0f / 9.0f, scale = 1.0f;
     engine::Vector3 direction{0, 1, 0};
 };

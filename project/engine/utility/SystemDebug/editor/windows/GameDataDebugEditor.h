@@ -9,6 +9,7 @@ class SceneManager;
 /// セーブスロットやステージ進行状態をデバッグ用途で直接確認・編集するウィンドウ。
 class GameDataDebugEditor : public IEditable {
 public:
+    // セーブスロットとStage定義を先に同期し、編集対象を現在の実データへ向けます。
     void Initialize(SceneManager* sceneManager);
 
     void DrawImGui() override;
@@ -19,6 +20,7 @@ private:
     /// 現在選択中のセーブスロット状態をUI内部の表示値へ同期する。
     void SyncSlotState();
 
+    // Stage Select表示中だけ、変更済みの進行状態を画面へ反映します。
     void RefreshStageSelectScene();
 
     /// 編集対象にするセーブスロットを選ぶUIを描画する。

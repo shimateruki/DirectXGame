@@ -511,20 +511,21 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->SetScale(s.playerScale);
         player_->SetMaterialType(25);
         player_->SetColor(s.playerColor);
-        auto* material = player_->GetMaterialData();
-        material->portalClipEnabled = progress < .999f ? 1.0f : 0.0f;
-        material->portalClipProgress = 0;
-        material->portalClipCenter = s.start + engine::Vector3{0,-.1f+1.75f*progress+.52f,0};
-        material->portalClipNormal = {0,-1,0};
-        material->portalClipEdgeWidth = .035f;
-        material->portalClipDissolve = .055f;
-        material->portalClipColor = {1,.85f,.3f,1};
+        engine::Object3d::PortalClipSettings clipSettings;
+        clipSettings.enabled = progress < .999f;
+        clipSettings.progress = 0;
+        clipSettings.center = s.start + engine::Vector3{0,-.1f+1.75f*progress+.52f,0};
+        clipSettings.normal = {0,-1,0};
+        clipSettings.edgeWidth = .035f;
+        clipSettings.dissolve = .055f;
+        clipSettings.color = {1,.85f,.3f,1};
+        player_->SetPortalClip(clipSettings);
     }
 
     // 形成が終わってから実モデルを交換し、途中のクリップ設定を持ち越しません。
     if (t>=bodyEnd && !s.bodyFormed) {
         s.bodyFormed=true;
-        player_->GetMeshRenderer()->GetMaterialData()->portalClipEnabled=0;
+        player_->ClearPortalClip();
         player_->SetModel("Characters/slime_crown/slime_crown_body.gltf");
         player_->SetMaterialType(0);
         player_->SetColor({1,.77f,.25f,1});
@@ -708,7 +709,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
 
     if (player_) {
         player_->EndCinematicPullVisual();
-        player_->GetMeshRenderer()->GetMaterialData()->portalClipEnabled = 0.0f;
+        player_->ClearPortalClip();
 
         if (!completed) {
             player_->ClearCrownPower();

@@ -87,9 +87,9 @@ void ApplyThumbnailLightOverride(engine::Object3d* object) {
     }
 
     if (auto* material = object->GetMaterialData()) {
-        material->enableLighting = 0;
-        material->selectedLighting = 0;
-        material->emissive = (std::max)(material->emissive, 1.0f);
+        object->SetEnableLighting(false);
+        object->SetSelectedLighting(0);
+        object->SetEmissive((std::max)(material->emissive, 1.0f));
     }
 
     for (engine::Object3d* child : object->GetChildren()) {

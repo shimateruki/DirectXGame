@@ -77,12 +77,11 @@ void SetCameraPose(Camera* camera, const engine::Vector3& eye, const engine::Vec
 struct GateEntryPresentation::State {
     struct MaterialState {
         engine::Object3d* object = nullptr;
-        MeshRenderer::MaterialData material{};
+        engine::Object3d::MaterialState material{};
         engine::Vector4 color{};
         BlendMode blend = BlendMode::kNormal;
         int materialType = 0;
         float emissive = 0.0f;
-        bool hasMaterial = false;
         bool visible = true;
     };
     Player* player = nullptr;
@@ -144,10 +143,7 @@ bool GateEntryPresentation::Start(Player* player, engine::Object3d* gate, bool m
         saved.emissive = object->GetEmissive();
         saved.materialType = object->GetMaterialType();
         saved.visible = object->GetIsVisible();
-        if (auto* material = object->GetMaterialData()) {
-            saved.material = *material;
-            saved.hasMaterial = true;
-        }
+        saved.material = object->CaptureMaterialState();
         state->materials.push_back(saved);
         for (auto* child : object->GetChildren()) if (child) pending.push_back(child);
     }
@@ -194,14 +190,16 @@ void GateEntryPresentation::Update(float deltaTime) {
         object->SetColor({saved.color.x*(1.0f-heat)+heat, saved.color.y*(1.0f-heat)+0.76f*heat,
                           saved.color.z*(1.0f-heat)+0.34f*heat, 1.0f-fade});
         object->SetIsVisible(saved.visible && clipT < 0.995f && t < 0.94f);
-        if (auto* material = object->GetMaterialData()) {
-            material->portalClipEnabled = 1.0f;
-            material->portalClipProgress = clip;
-            material->portalClipCenter = gatePos;
-            material->portalClipNormal = s.direction;
-            material->portalClipEdgeWidth = 0.30f-0.16f*clip;
-            material->portalClipDissolve = 0.74f-0.18f*clip;
-            material->portalClipColor = {1.0f,0.66f,0.26f,0.94f};
+        {
+            engine::Object3d::PortalClipSettings clipSettings;
+            clipSettings.enabled = true;
+            clipSettings.progress = clip;
+            clipSettings.center = gatePos;
+            clipSettings.normal = s.direction;
+            clipSettings.edgeWidth = 0.30f-0.16f*clip;
+            clipSettings.dissolve = 0.74f-0.18f*clip;
+            clipSettings.color = {1.0f,0.66f,0.26f,0.94f};
+            object->SetPortalClip(clipSettings);
         }
     }
     s.player->UpdateLocalMatrix();
@@ -232,7 +230,7 @@ void GateEntryPresentation::Reset() {
         object->SetEmissive(saved.emissive);
         object->SetColor(saved.color);
         object->SetIsVisible(saved.visible);
-        if (saved.hasMaterial) if (auto* material = object->GetMaterialData()) *material = saved.material;
+        object->RestoreMaterialState(saved.material);
     }
     s.player->UpdateLocalMatrix();
     s.player->UpdateWorldMatrix(true);

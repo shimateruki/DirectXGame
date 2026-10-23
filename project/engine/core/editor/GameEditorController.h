@@ -23,7 +23,7 @@ struct ID3D12GraphicsCommandList;
 class MeshEffectEditor;
 class ParticleEditor;
 class PostEffectEditor;
-class ReplayDebugger;
+class PlayModeSnapshot;
 class SceneManager;
 class SceneWorkspace;
 class PlayModeChangeTracker;
@@ -39,6 +39,7 @@ struct EditorFrameState {
 
 // GameViewAreaは、エディタ内ゲームビューの画面上の位置とサイズを表します。
 struct GameViewArea {
+	// ImGuiの画面座標とピクセル寸法。ゲーム内のワールド座標とは区別する。
 	float screenX = 0.0f;
 	float screenY = 0.0f;
 	float width = 0.0f;
@@ -72,14 +73,8 @@ void DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::str
 	/// <summary>各Editorツールの更新処理をまとめて呼び出す。</summary>
 void UpdateTools(float deltaTime, bool isPlaying, float timeScale);
 
-    /// <summary>リプレイの一時停止中にゲーム側のシーン更新を止めるべきか返す。</summary>
-    bool ShouldFreezeSimulationForReplay() const;
-
-    /// <summary>回帰再生中なら記録時の経過時間へ差し替えて返す。</summary>
-    float ResolveReplaySimulationDeltaTime(float defaultDeltaTime) const;
-
-    /// <summary>通常のシーン更新後にリプレイ用スナップショットを記録する。</summary>
-    void CaptureReplayFrame(float simulationDeltaTime, bool isPlaying);
+    /// <summary>EditorのPlay中のシミュレーション停止状態。</summary>
+    bool IsSimulationPaused() const { return simulationPaused_; }
 
 	/// <summary>Inspector、Project、VFX、ステータスなどのツールウィンドウを描画する。</summary>
 void DrawToolWindows(
@@ -138,7 +133,6 @@ private:
     enum class WorkspacePreset : int {
         Vfx = 0,
         Animation,
-        Replay,
     };
 
     /// <summary>指定した作業領域の窓配置を適用する。</summary>
@@ -181,9 +175,6 @@ private:
 	/// <summary>Editorの既定Dockspaceを初期配置する。</summary>
 	void SetupDefaultDockspace();
 
-	/// <summary>Replay Debuggerの表示状態を切り替える。</summary>
-	void SetReplayDebuggerVisible(bool visible);
-
 	/// <summary>ゲームビューへドロップされた素材を画面範囲に基づいて処理する。</summary>
 	void HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area);
 
@@ -222,6 +213,7 @@ bool HasUnsavedEditorChanges() const;
 		int timeHistoryIndex);
 
 private:
+	// 外部のシーン管理と再生状態を借用する。各ツールは下の unique_ptr が所有する。
 	SceneManager* sceneManager_ = nullptr;
 	bool* activePlayState_ = nullptr;
 	std::string activeSceneName_;
@@ -248,8 +240,8 @@ private:
 	std::unique_ptr<EngineManualWindow> engineManualWindow_;
 	bool showDebugWindows_ = true;
 
-	std::unique_ptr<ReplayDebugger> replayDebugger_;
-	bool showReplayDebugger_ = false;
+	std::unique_ptr<PlayModeSnapshot> playModeSnapshot_;
+	bool simulationPaused_ = false;
 
 	bool showEnemyAttackTimeline_ = false;
 	bool showEffectPreviewTimeline_ = false;

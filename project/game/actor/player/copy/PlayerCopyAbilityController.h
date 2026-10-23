@@ -45,11 +45,13 @@ class PlayerCopyAbilityController {
     // 経過秒数が正の場合だけ能力を進める。Play 停止時の 0 秒更新では進まない。
     void Update(Player& player, float deltaTime);
 
+    // 能力固有の3D表示を、現在のセッションがある時だけ描く。
     void Draw(Player& player, ID3D12Resource* pointLight, ID3D12Resource* spotLight, Camera* camera = nullptr,
               int previewBufferIndex = 0);
 
     bool HasOwnedVisuals() const;
 
+    // 深度・画面取得テクスチャを使う能力の見た目を専用パスへ転送する。
     void DrawOwnedVisuals(Player& player, uint32_t depthSrvHandle, uint32_t grabSrvHandle, Camera* camera = nullptr,
                           int previewBufferIndex = 0);
 
@@ -60,6 +62,7 @@ class PlayerCopyAbilityController {
     // ダメージ判定とコピー固有の反応を分離し、敵クラスへ能力処理を戻しません。
     bool NotifyGuardedHit(Player& player, const engine::Vector3& sourcePosition);
 
+    // セッションの実在と変身種別の一致をともに確認する。
     bool HandlesMorphType(int morphType) const;
 
     bool IsActive() const;
@@ -72,6 +75,7 @@ class PlayerCopyAbilityController {
     // エディターが選択したデータIDだけを渡します。能力の実行経路は本編と共通です。
     void SetPreviewAttackId(const std::string& id);
 
+    // ゲート破壊の可否は現在の能力動作に応じて変わる。
     bool CanBreakImpactGate() const;
 
     bool IsPinkBounceSlamImpactActive() const;

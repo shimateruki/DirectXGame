@@ -104,6 +104,7 @@ private:
     float agentRadius_ = 0.55f;
     float agentHeight_ = 1.5f;
     float searchPadding_ = 5.0f;
+    // 再探索の待機秒数。保持中の経路を使う間もCalculateDirectionへ経過時間を渡す。
     float repathInterval_ = 0.35f;
     float stoppingDistance_ = 0.25f;
     uint32_t obstacleMask_ = CollisionCategories::Get("ground");

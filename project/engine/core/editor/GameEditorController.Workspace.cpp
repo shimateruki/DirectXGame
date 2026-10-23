@@ -20,17 +20,11 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
 
     switch (preset) {
     case WorkspacePreset::Vfx:
-        SetReplayDebuggerVisible(false);
         target = vfxSequencerEditor_.get();
         break;
 
     case WorkspacePreset::Animation:
-        SetReplayDebuggerVisible(false);
         target = debugEditor_->GetAnimationWorkbench();
-        break;
-
-    case WorkspacePreset::Replay:
-        SetReplayDebuggerVisible(true);
         break;
     }
 
@@ -49,10 +43,6 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
 
     case WorkspacePreset::Animation: key = "animation";
     displayName = "アニメーション編集";
-    break;
-
-    case WorkspacePreset::Replay: key = "replay";
-    displayName = "リプレイ解析";
     break;
 
     default: break;
@@ -83,10 +73,6 @@ void GameEditorController::SaveWorkspacePreset(WorkspacePreset preset) {
 
     case WorkspacePreset::Animation: key = "animation";
     displayName = "アニメーション編集";
-    break;
-
-    case WorkspacePreset::Replay: key = "replay";
-    displayName = "リプレイ解析";
     break;
 
     default: break;
@@ -125,9 +111,6 @@ void GameEditorController::ProcessPendingWorkspaceLayout() {
     case WorkspacePreset::Animation: key = "animation";
     break;
 
-    case WorkspacePreset::Replay: key = "replay";
-    break;
-
     default: break;
     }
 
@@ -152,9 +135,6 @@ void GameEditorController::DrawWorkspaceMenu() {
     DrawEditorCommandMenuItem(
         EditorCommandId::WorkspaceAnimation, nullptr,
         activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Animation));
-    DrawEditorCommandMenuItem(
-        EditorCommandId::WorkspaceReplay, nullptr,
-        activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Replay));
 
     ImGui::Separator();
     ImGui::BeginDisabled(activeWorkspacePreset_ < 0);
@@ -182,7 +162,6 @@ void GameEditorController::SetupDefaultDockspace() {
     const bool expandAssets = PresetEditor::GetInstance()->ConsumeLibraryDockExpandRequest();
 
     if (expandAssets) {
-        SetReplayDebuggerVisible(false);
     }
 
     if (dockspaceInitialized_ && expandAssets) {
@@ -245,14 +224,7 @@ void GameEditorController::SetupDefaultDockspace() {
 	ImGui::DockBuilderDockWindow(ICON_FA_LIST_UL " Sprite Hierarchy", dockLeftId);
 	ImGui::DockBuilderDockWindow("Inspector", dockRightId);
 	ImGui::DockBuilderDockWindow(ICON_FA_INFO_CIRCLE " Sprite Inspector", dockRightId);
-
-	if (showReplayDebugger_) {
-		ImGui::DockBuilderDockWindow("リプレイデバッガー - Time Machine", dockBottomId);
-
-		if (ImGuiDockNode* replayNode = ImGui::DockBuilderGetNode(dockBottomId)) {
-			replayNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit;
-		}
-	} else if (showEnemyAttackTimeline_) {
+	if (showEnemyAttackTimeline_) {
         ImGui::DockBuilderDockWindow("攻撃・能力プレビュー - Timeline", dockBottomId);
 		if (ImGuiDockNode* timelineNode = ImGui::DockBuilderGetNode(dockBottomId)) {
 			timelineNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit;

@@ -10,12 +10,16 @@ class GimmickSinkingFloor : public BaseGimmick {
 
     virtual ~GimmickSinkingFloor() = default;
 
+    // プレイヤーが乗れる床として衝突属性を設定する。
     void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
 
+    // actionMode で単純な踏み込みと、段階的な水没演出を切り替える。
     void Update(float deltaTime) override;
 
+    // プレイヤーが上面を踏んだ短い間だけ、目標の沈み位置を維持する。
     bool OnCollision(engine::Object3d* other) override;
 
+    // 移動中の位相は複製せず、保存された配置と設定だけ引き継ぐ。
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:

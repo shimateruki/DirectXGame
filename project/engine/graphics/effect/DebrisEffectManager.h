@@ -23,6 +23,7 @@ struct DebrisEffectConfig {
     std::vector<std::string> modelNames = { "Primitives/cube" };
 
     int spawnCount = 18;
+    // 発生点からのオフセットと各軸のばらつき半幅はワールド距離。
     engine::Vector3 spawnOffset = { 0.0f, 0.4f, 0.0f };
     engine::Vector3 spawnBoxHalfExtents = { 0.0f, 0.0f, 0.0f };
 
@@ -31,6 +32,7 @@ struct DebrisEffectConfig {
     float verticalMin = 0.25f;
     float verticalMax = 0.9f;
 
+    // 初速はワールド単位/秒。下の角速度はラジアン/秒。
     float speedMin = 7.0f;
     float speedMax = 16.0f;
 
@@ -40,6 +42,7 @@ struct DebrisEffectConfig {
     float scaleMin = 0.15f;
     float scaleMax = 0.45f;
 
+    // 生存時間は秒。フェード開始位置は全寿命に対する fadeStartRatio の割合。
     float lifetimeMin = 1.0f;
     float lifetimeMax = 1.8f;
 
@@ -47,6 +50,7 @@ struct DebrisEffectConfig {
     float airDrag = 0.08f;
     float restitution = 0.35f;
     float friction = 0.78f;
+    // 地面衝突に使うワールド高さ。地形探索済みの値を発生側から渡せる。
     float groundY = 0.0f;
 
     float fadeStartRatio = 0.72f;
@@ -168,6 +172,7 @@ private:
     // 描画基盤を解決し、プールから破片を確保・返却する。
     engine::Object3dCommon* ResolveCommon();
 
+    // プールに残る GPU リソースを移動して取得し、空なら新規初期化へ任せる。
     DebrisPiece AcquirePiece();
 
     void RecyclePiece(size_t index);
@@ -175,15 +180,19 @@ private:
     // 確保した破片のGPU定数を準備し、移動後の描画行列を更新する。
     bool InitializePieceResources(DebrisPiece& piece, const DebrisEffectConfig& config);
 
+    // 通常描画と影描画へ同じ world 行列を渡し、破片の向きを一致させる。
     void UpdatePieceMatrix(DebrisPiece& piece, const engine::Matrix4x4& viewProjection, const engine::Matrix4x4* lightViewProjection);
 
     // プリセットの乱数範囲、方向、読み込みパスを決める。
     float RandomRange(float minValue, float maxValue);
 
+    // 候補が一つ以下なら乱数を消費せず、配列外参照を防ぐ。
     int RandomIndex(int maxExclusive);
 
+    // 基準方向へ水平拡散と垂直範囲を加え、最後に単位方向へ正規化する。
     engine::Vector3 RandomDirection(const DebrisEffectConfig& config);
 
+    // パス指定はそのまま使い、短い名前だけ標準プリセットディレクトリへ解決する。
     std::string ResolvePresetPath(const std::string& presetName) const;
 
     engine::Object3dCommon* common_ = nullptr;

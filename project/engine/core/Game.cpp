@@ -329,13 +329,11 @@ void Game::Update() {
 	const float feedbackTimeScale = VFXSequencer::GetGameplayTimeScale();
 	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ * feedbackTimeScale : 0.0f;
 #ifdef USE_IMGUI
-	if (editorController_) {
-		finalDeltaTime = editorController_->ResolveReplaySimulationDeltaTime(finalDeltaTime);
-	}
-
 	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get()) || RaftRuntimeProbe::WantsPlay(sceneManager_.get()))
 		finalDeltaTime = 1.0f / 60.0f;
 	if (RaftRuntimeProbe::WantsPlay(sceneManager_.get()) && GetTickCount64() < RaftRuntimeProbe::pauseUntil)
+		finalDeltaTime = 0.0f;
+	if (editorController_ && editorController_->IsSimulationPaused())
 		finalDeltaTime = 0.0f;
 #endif
 	UpdateGameSystems(deltaTime, finalDeltaTime);
@@ -408,15 +406,15 @@ void Game::UpdateEditorFrame(float deltaTime) {
 void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	// シーン、ライト、エフェクト、フェード、ポストエフェクト時刻を更新する。
 	auto startUpdate = std::chrono::high_resolution_clock::now();
-	bool replayFrozen = false;
+	bool simulationPaused = false;
 	const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
 #ifdef USE_IMGUI
 	if (editorController_) {
-		replayFrozen = editorController_->ShouldFreezeSimulationForReplay();
+		simulationPaused = editorController_->IsSimulationPaused();
 	}
 #endif
 
-	RunFixedUpdates(finalDeltaTime, replayFrozen, sceneTransitioning);
+	RunFixedUpdates(finalDeltaTime, simulationPaused, sceneTransitioning);
 
 	{
 		PROFILE_SCOPE("シーン");
@@ -424,19 +422,14 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		if (sceneManager_) {
 			const float sceneDeltaTime = sceneManager_->IsTransitioning() ? deltaTime : finalDeltaTime;
 
-			if (!replayFrozen || sceneManager_->IsTransitioning()) {
+			if (!simulationPaused || sceneManager_->IsTransitioning()) {
 				sceneManager_->Update(sceneDeltaTime);
-#ifdef USE_IMGUI
-				if (editorController_ && !sceneManager_->IsTransitioning()) {
-					editorController_->CaptureReplayFrame(sceneDeltaTime, isPlaying_);
-				}
-#endif
 			}
 		}
 	}
 #ifdef USE_IMGUI
     // 編集中は水と砲台プレビューだけ実時間で進め、他のゲーム挙動は停止させます。
-    if (!isPlaying_ && !replayFrozen && !sceneTransitioning && sceneManager_) {
+    if (!isPlaying_ && !simulationPaused && !sceneTransitioning && sceneManager_) {
         if (BaseScene* scene = sceneManager_->GetCurrentScene()) {
             for (auto& object : scene->GetObjects()) {
                 if (auto* cannon = finalDeltaTime == 0.0f && object && !object->IsReplayRemoved()
@@ -450,9 +443,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 
                 if (object && (object->GetMaterialType() == 30 || object->GetMaterialType() == 31)
                     && object->GetMeshRenderer()) {
-                    if (auto* material = object->GetMeshRenderer()->GetMaterialData()) {
-                        material->time += deltaTime;
-                    }
+                    object->GetMeshRenderer()->AdvanceMaterialTime(deltaTime);
                 }
             }
             if (finalDeltaTime == 0.0f) {
@@ -482,7 +473,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
                 if (object && object->GetClassName() == "Player") {
                     const auto pos = object->GetWorldPosition();
                     FoliageInteraction::Update(pos.x, pos.y, pos.z,
-                        replayFrozen ? 0.0f : (isPlaying_ ? finalDeltaTime : deltaTime));
+                        simulationPaused ? 0.0f : (isPlaying_ ? finalDeltaTime : deltaTime));
                     found = true;
                     break;
                 }
@@ -500,7 +491,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 
 	if (!sceneTransitioning) {
 		PROFILE_SCOPE("パーティクル");
-		const float effectDeltaTime = isPlaying_ && !replayFrozen ? finalDeltaTime : 0.0f;
+		const float effectDeltaTime = isPlaying_ && !simulationPaused ? finalDeltaTime : 0.0f;
 		VFXSequencer::UpdateOneShots(effectDeltaTime);
 		GPUParticleManager::GetInstance()->Update(effectDeltaTime);
 #ifndef USE_IMGUI
@@ -513,15 +504,15 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3dCommon());
 		}
 
-		DebrisEffectManager::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
+		DebrisEffectManager::GetInstance()->Update(simulationPaused ? 0.0f : deltaTime);
 	}
 
 	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
 		PROFILE_SCOPE("フェード");
-		Fade::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
+		Fade::GetInstance()->Update(simulationPaused ? 0.0f : deltaTime);
 	}
 
-	PostEffect::GetInstance()->GetParams()->time += replayFrozen ? 0.0f : deltaTime;
+	PostEffect::GetInstance()->GetParams()->time += simulationPaused ? 0.0f : deltaTime;
 
 	if (sceneManager_) {
 		sceneManager_->SetIsPlaying(isPlaying_);
@@ -536,8 +527,8 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	RecordUpdateProfile(startUpdate);
 }
 
-void Game::RunFixedUpdates(float finalDeltaTime, bool replayFrozen, bool sceneTransitioning) {
-	if (!sceneManager_ || replayFrozen || sceneTransitioning || finalDeltaTime <= 0.0f) {
+void Game::RunFixedUpdates(float finalDeltaTime, bool simulationPaused, bool sceneTransitioning) {
+	if (!sceneManager_ || simulationPaused || sceneTransitioning || finalDeltaTime <= 0.0f) {
 		fixedUpdateAccumulator_ = 0.0f;
 		return;
 	}

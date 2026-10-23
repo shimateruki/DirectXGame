@@ -18,6 +18,7 @@ inline bool Enabled() {
     static const bool enabled = GetEnvironmentVariableA("CG2_CANNON_DAMAGE_TEST", nullptr, 0) > 0;
     return enabled;
 }
+// 隔離Actorを配置して実際の弾更新と衝突を通す。step は検証時の経過秒。
 inline bool RunCase(SceneManager* manager, int mode, float radius, float blast, bool preview, bool invincible, std::ostream& log, float step = 0.2f) {
     // 配置データを変えず、高空の隔離空間で一発だけ飛ばします。
     auto* scene = manager->GetCurrentScene();

@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include "engine/utility/SystemDebug/editor/core/EditorObjectDefaults.h"
 #include "SceneManager.h"    
 #include "BaseScene.h"      
 #include "Object3d.h"
@@ -94,75 +95,6 @@ std::unique_ptr<engine::Object3d> CreateEditorObjectFromState(engine::Object3dCo
     return object;
 }
 
-std::string ToLowerForGroundDefault(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return value;
-}
-
-bool ContainsGroundKeywordForDefault(const std::string& value) {
-    return value.find("block") != std::string::npos ||
-        value.find("floor") != std::string::npos ||
-        value.find("ground") != std::string::npos ||
-        value.find("platform") != std::string::npos ||
-        value.find("terrain") != std::string::npos ||
-        value.find("wall") != std::string::npos;
-}
-
-bool ShouldApplyGroundDefaults(engine::Object3d* object) {
-    // 地形として扱えるモデルだけに初期Colliderを補い、敵・演出・子Meshには付けない。
-    if (!object) {
-        return false;
-    }
-
-    const std::string className = ToLowerForGroundDefault(object->GetClassName());
-    if (className == "enemy" || className == "player" || className == "gimmick" ||
-        className == "item" || className == "gpuparticle" || className == "cinematiccamera" ||
-        className == "spritecard" || className == "meshroot" || className == "meshpart") {
-        return false;
-    }
-
-    const std::string modelName = ToLowerForGroundDefault(object->GetModelName());
-
-    if (modelName.empty()) {
-        return false;
-    }
-
-    if (modelName.rfind("characters/", 0) == 0 || modelName.rfind("item/", 0) == 0) {
-        return false;
-    }
-
-    if (modelName == "primitives/plane" || modelName.find("portal") != std::string::npos) {
-        return false;
-    }
-
-    return modelName.rfind("stages/", 0) == 0 ||
-        modelName == "primitives/cube" ||
-        ContainsGroundKeywordForDefault(modelName);
-}
-
-void ApplyGroundDefaultsForGeneratedModel(engine::Object3d* object) {
-    // 自動生成した地形の未設定項目だけに地面用の衝突属性を与える。
-    if (!ShouldApplyGroundDefaults(object)) {
-        return;
-    }
-
-    auto colliderConfig = object->GetColliderConfig();
-
-    if (colliderConfig.type == ColliderType::kNone) {
-        colliderConfig.type = ColliderType::kAABB;
-        object->SetColliderConfig(colliderConfig);
-    }
-
-    if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
-    }
-
-    if (object->GetCollisionMask() == 0) {
-        object->SetCollisionMask(0xFFFFFFFFu);
-    }
-}
 }
 
 
@@ -528,7 +460,7 @@ void DebugEditor::AddEditorObject(std::unique_ptr<engine::Object3d> object, cons
         raw->SetParent(prefabEditRoot_, true);
     }
 
-    ApplyGroundDefaultsForGeneratedModel(raw);
+    EditorObjectDefaults::ApplyGroundCollision(raw);
     nlohmann::json afterState = CaptureObjectState(raw);
 
     sceneManager_->GetCurrentScene()->AddObjectImmediate(std::move(object));

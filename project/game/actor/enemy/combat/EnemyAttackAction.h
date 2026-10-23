@@ -30,6 +30,7 @@ public:
         return true;
     }
 
+    // dt は秒。照準固定時刻までは対象を追い、以降は固定した照準と現在の成立条件で進める。
     void Update(float dt, const AttackSequenceContext& context) {
         if (!IsRunning() || !std::isfinite(dt) || dt < 0)
             return;
@@ -58,6 +59,7 @@ public:
         else ApplyPresentation(context);
     }
 
+    // 命令列を止め、攻撃中に変えた色と予告表示も同時に戻す。
     void Cancel() { AttackSequence::Cancel(); Restore(); }
 
     bool ControlsActor() const { return controlled_ && IsRunning(); }
@@ -87,6 +89,7 @@ private:
         } else owner_->HideAttackTelegraph();
     }
 
+    // 制御対象を所有しないため、復元後に借用参照を外して二重復元を避ける。
     void Restore() {
         if (controlled_ && owner_) {
             owner_->SetColor(originalColor_);
