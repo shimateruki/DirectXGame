@@ -96,7 +96,7 @@ function Read-RequestMap {
         return $map
     }
 
-    Get-Content -LiteralPath $RequestQueue -ErrorAction SilentlyContinue | ForEach-Object {
+    Get-Content -LiteralPath $RequestQueue -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object {
         $line = $_.Trim()
         if ([string]::IsNullOrWhiteSpace($line)) {
             return
@@ -152,6 +152,7 @@ function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null, [
     else {
         ""
     }
+    $sourceHashValidated = $false
     $status = "latest"
     $message = "DDS is up to date."
 
@@ -170,6 +171,7 @@ function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null, [
         $sameDdsFileAsLastBuild = $manifestDdsSize -lt 0 -or $manifestDdsSize -eq [int64]$ddsInfo.Length
 
         if ($sameSourceAsLastBuild -and $sameFormatAsLastBuild -and $sameDdsFileAsLastBuild) {
+            $sourceHashValidated = $true
             $status = "latest"
             $message = "DDS is up to date by source hash."
         }
@@ -189,6 +191,7 @@ function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null, [
         dds = Convert-ToProjectPath $ddsPath
         format = $format
         sourceHash = $sourceHash
+        sourceHashValidated = $sourceHashValidated
         sourceSize = [int64]$File.Length
         ddsSize = if ($ddsInfo) { [int64]$ddsInfo.Length } else { [int64]0 }
         sourceWriteTimeUtc = $File.LastWriteTimeUtc.ToString("o")
@@ -287,6 +290,36 @@ function Save-Manifest($Entries) {
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $Manifest -Encoding UTF8
 }
 
+# 内容一致で再変換を省いたDDSも、ゲーム側の更新日時判定で有効になるよう揃える。
+function Sync-ValidatedDDSTimestamps($Entries) {
+    if ($DryRun) {
+        return
+    }
+    foreach ($entry in $Entries) {
+        if ($entry.status -ne "latest" -or -not $entry.sourceHashValidated) {
+            continue
+        }
+        $sourceInfo = Get-Item -LiteralPath $entry.source
+        $ddsInfo = Get-Item -LiteralPath $entry.dds
+        # ハッシュ確認後に編集された画像のDDSを、誤って最新扱いにしない。
+        if ($sourceInfo.LastWriteTimeUtc.ToString("o") -ne $entry.sourceWriteTimeUtc -or
+            [int64]$sourceInfo.Length -ne $entry.sourceSize) {
+            $entry.sourceHash = Get-SourceHash $sourceInfo
+            $entry.sourceHashValidated = $false
+            $entry.sourceSize = [int64]$sourceInfo.Length
+            $entry.sourceWriteTimeUtc = $sourceInfo.LastWriteTimeUtc.ToString("o")
+            $entry.status = "outdated"
+            $entry.message = "Source changed during hash validation."
+            continue
+        }
+        if ($ddsInfo.LastWriteTimeUtc -lt $sourceInfo.LastWriteTimeUtc) {
+            $ddsInfo.LastWriteTimeUtc = $sourceInfo.LastWriteTimeUtc
+            $ddsInfo.Refresh()
+        }
+        $entry.ddsWriteTimeUtc = $ddsInfo.LastWriteTimeUtc.ToString("o")
+    }
+}
+
 # DDS生成完了をエディタやログから拾えるよう、軽量なJSONL通知として追記する。
 function Write-Notification($Entry) {
     if ($DryRun) {
@@ -378,7 +411,14 @@ function Convert-Texture($Entry) {
     }
 
     $ddsInfo = Get-Item -LiteralPath $Entry.dds
+    # 未来の更新日時を持つ元画像でも、変換直後のDDSが古い扱いにならないようにする。
+    $sourceInfo = Get-Item -LiteralPath $Entry.source
+    if ($ddsInfo.LastWriteTimeUtc -lt $sourceInfo.LastWriteTimeUtc) {
+        $ddsInfo.LastWriteTimeUtc = $sourceInfo.LastWriteTimeUtc
+        $ddsInfo.Refresh()
+    }
     $Entry.ddsSize = [int64]$ddsInfo.Length
+    $Entry.ddsWriteTimeUtc = $ddsInfo.LastWriteTimeUtc.ToString("o")
     $Entry.status = "built"
     $Entry.message = "DDS built successfully."
     Write-Notification $Entry
@@ -399,6 +439,7 @@ function Write-Summary($Entries) {
 # DDSが無い/古い/強制指定された対象だけをtexconvへ流し、最新のものはスキップする。
 function Invoke-DDSCacheBuildCore {
     $entries = @(Get-TextureEntries)
+    Sync-ValidatedDDSTimestamps $entries
     Write-Summary $entries
 
     $targets = @($entries | Where-Object { $Force -or $_.status -eq "missing" -or $_.status -eq "outdated" })

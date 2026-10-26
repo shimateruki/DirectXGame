@@ -78,8 +78,10 @@ public:
     /// </summary>
     void UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages);
 
-    /// <summary>画像ファイルを読み込み、必要に応じてDDSキャッシュとsRGB変換を使う。</summary>
-    static DirectX::ScratchImage LoadTexture(const std::string& filePath, bool forceSRGB = true);
+    /// <summary>画像を読み込み、失敗時は白画像を返す。DDSの選択と元画像への再試行はTextureManagerが担当する。</summary>
+    /// <param name="loadedFromFile">指定時は実ファイルの読込成功を返す。白画像への代替時はfalse。</param>
+    static DirectX::ScratchImage LoadTexture(
+        const std::string& filePath, bool forceSRGB = true, bool* loadedFromFile = nullptr);
 
     /// <summary>
     /// UTF-8文字列をワイド文字列に変換する。

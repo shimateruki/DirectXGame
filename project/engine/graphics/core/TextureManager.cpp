@@ -44,13 +44,24 @@ std::string NormalizeTexturePathLower(std::string path) {
     return ToLower(NormalizeTexturePath(std::move(path)));
 }
 
+// Windowsのパスをエンジン内のUTF-8へ戻し、日本語をANSIへ変換しない。
+// C++20のchar8_t対応コンストラクターでUTF-8をWindowsパスへ変換する。
+std::filesystem::path PathFromUtf8(const std::string& text) {
+    return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}
+
+std::string PathToUtf8(const std::filesystem::path& path) {
+    const auto text = path.generic_u8string();
+    return { text.begin(), text.end() };
+}
+
 std::string ToProjectPath(const std::filesystem::path& path) {
     // 絶対パスを可能な限りプロジェクト相対パスへ戻し、ログやキャッシュ要求を環境依存にしにくくする。
     std::error_code ec;
     std::filesystem::path absolutePath = std::filesystem::absolute(path, ec);
 
     if (ec) {
-        return NormalizeTexturePath(path.string());
+        return NormalizeTexturePath(PathToUtf8(path));
     }
 
     absolutePath = absolutePath.lexically_normal();
@@ -60,11 +71,11 @@ std::string ToProjectPath(const std::filesystem::path& path) {
         std::filesystem::path relativePath = absolutePath.lexically_relative(rootPath.lexically_normal());
 
         if (!relativePath.empty()) {
-            return NormalizeTexturePath(relativePath.string());
+            return NormalizeTexturePath(PathToUtf8(relativePath));
         }
     }
 
-    return NormalizeTexturePath(absolutePath.string());
+    return NormalizeTexturePath(PathToUtf8(absolutePath));
 }
 
 bool IsSourceTextureExtension(const std::string& ext) {
@@ -125,7 +136,7 @@ bool IsLinearTexturePath(const std::string& path) {
 
 std::string GetDDSFormat(const std::string& filePath, bool isLinearTexture) {
     // テクスチャ用途に応じて、DDS変換時に使用する圧縮フォーマット名を決める。
-    const std::string ext = ToLower(std::filesystem::path(filePath).extension().string());
+    const std::string ext = ToLower(PathFromUtf8(filePath).extension().string());
 
     if (ext == ".hdr") {
         return "BC6H_UF16";
@@ -192,7 +203,7 @@ std::string EscapeJson(const std::string& text) {
 
 void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float durationMs) {
     // 読み込んだ元画像に対応するDDS生成要求をJSONLへ追記し、次回以降の読み込みを軽くする。
-    const std::filesystem::path sourcePath(filePath);
+    const std::filesystem::path sourcePath = PathFromUtf8(filePath);
     const std::string ext = ToLower(sourcePath.extension().string());
 
     if (!IsSourceTextureExtension(ext) || IsEditorPreviewTexture(filePath)) {
@@ -239,7 +250,7 @@ void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float 
 std::string GetTextureBasePath(const std::filesystem::path& path) {
     // 拡張子を除いたテクスチャ基準パスを作り、元画像とDDSの対応確認に使う。
     std::filesystem::path base = path.parent_path() / path.stem();
-    return NormalizeTexturePath(base.string());
+    return NormalizeTexturePath(PathToUtf8(base));
 }
 }
 
@@ -319,7 +330,7 @@ ResolvedTexturePath ResolveTexturePath(
     resolved.isLinearTexture = colorSpace == TextureManager::TextureColorSpace::Linear ||
         (colorSpace == TextureManager::TextureColorSpace::Auto && IsLinearTexturePath(filePath));
 
-    std::filesystem::path path(filePath);
+    std::filesystem::path path = PathFromUtf8(filePath);
     resolved.useDDSCache = allowDDSCache && !IsDDSCacheDisabled();
     const bool requestedDDS = ToLower(path.extension().string()) == ".dds";
 
@@ -336,7 +347,7 @@ ResolvedTexturePath ResolveTexturePath(
         }
     }
 
-    resolved.effectiveFilePath = NormalizeTexturePath(path.string());
+    resolved.effectiveFilePath = NormalizeTexturePath(PathToUtf8(path));
     if (colorSpace == TextureManager::TextureColorSpace::Auto &&
         IsLinearTexturePath(resolved.effectiveFilePath)) {
         resolved.isLinearTexture = true;
@@ -350,7 +361,7 @@ ResolvedTexturePath ResolveTexturePath(
 
     if (resolved.useDDSCache && resolved.isSourceTexture && std::filesystem::exists(ddsPath)) {
         if (!std::filesystem::exists(path)) {
-            resolved.loadPath = NormalizeTexturePath(ddsPath.string());
+            resolved.loadPath = NormalizeTexturePath(PathToUtf8(ddsPath));
             resolved.ddsIsUpToDate = true;
         }
         else {
@@ -358,18 +369,40 @@ ResolvedTexturePath ResolveTexturePath(
             const auto ddsTime = std::filesystem::last_write_time(ddsPath);
 
             if (sourceTime <= ddsTime) {
-                resolved.loadPath = NormalizeTexturePath(ddsPath.string());
+                resolved.loadPath = NormalizeTexturePath(PathToUtf8(ddsPath));
                 resolved.ddsIsUpToDate = true;
             }
         }
     }
 
-    if (ToLower(std::filesystem::path(resolved.loadPath).extension().string()) == ".hdr") {
+    if (ToLower(PathFromUtf8(resolved.loadPath).extension().string()) == ".hdr") {
         resolved.isLinearTexture = true;
     }
 
     resolved.cacheKey = MakeTextureCacheKey(resolved.loadPath, resolved.isLinearTexture);
     return resolved;
+}
+
+// DDSを読めなかった場合だけ元画像を試す。白画像の寸法では成否を判定しない。
+DirectX::ScratchImage DecodeResolvedTexture(const ResolvedTexturePath& resolved, bool forceSRGB) {
+    bool loadedFromFile = false;
+    auto image = DirectXCommon::LoadTexture(resolved.loadPath, forceSRGB, &loadedFromFile);
+    if (loadedFromFile || ToLower(PathFromUtf8(resolved.loadPath).extension().string()) != ".dds") {
+        return image;
+    }
+
+    // PNG指定からDDSを選んだ場合は、別形式の同名画像より指定された元画像を優先する。
+    std::filesystem::path sourcePath = PathFromUtf8(resolved.effectiveFilePath);
+    if (!IsSourceTextureExtension(sourcePath.extension().string())) {
+        sourcePath = FindSourceTextureForDDS(PathFromUtf8(resolved.loadPath));
+    }
+    if (sourcePath.empty()) {
+        return image;
+    }
+
+    const std::string source = PathToUtf8(sourcePath);
+    OutputDebugStringA(("DDS texture load failed; retrying source: " + resolved.loadPath + " -> " + source + "\n").c_str());
+    return DirectXCommon::LoadTexture(source, forceSRGB);
 }
 
 // 実行中の描画コマンドリストを触らず、テクスチャ転送専用の一時コマンドリストでGPUへ送る。
@@ -709,9 +742,7 @@ bool TextureManager::Prepare(
 
     const auto start = std::chrono::high_resolution_clock::now();
     auto prepared = std::make_unique<PreparedTextureData>();
-    prepared->mipImages = DirectXCommon::LoadTexture(
-        resolved.loadPath,
-        !resolved.isLinearTexture);
+    prepared->mipImages = DecodeResolvedTexture(resolved, !resolved.isLinearTexture);
     const auto end = std::chrono::high_resolution_clock::now();
     prepared->decodeDurationMs = std::chrono::duration<float, std::milli>(end - start).count();
 
@@ -770,7 +801,7 @@ uint32_t TextureManager::LoadInternal(
     }
 
     if (mipImages.GetImageCount() == 0) {
-        mipImages = DirectXCommon::LoadTexture(loadPath, forceSRGB);
+        mipImages = DecodeResolvedTexture(resolved, forceSRGB);
     }
 
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
@@ -859,14 +890,14 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
 
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
     // 指定ディレクトリ配下の画像を走査し、元画像とDDSの重複を避けながらまとめて読み込む。
-    if (!std::filesystem::exists(directoryPath)) {
+    if (!std::filesystem::exists(PathFromUtf8(directoryPath))) {
         return;
     }
 
     std::vector<std::filesystem::path> files;
     std::set<std::string> sourceBaseNames;
 
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(PathFromUtf8(directoryPath))) {
         if (!entry.is_regular_file()) {
             continue;
         }
@@ -876,17 +907,17 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
 
         const std::string ext = ToLower(path.extension().string());
 
-        if (IsSourceTextureExtension(ext) && !IsEditorPreviewTexture(path.string())) {
+        if (IsSourceTextureExtension(ext) && !IsEditorPreviewTexture(PathToUtf8(path))) {
             sourceBaseNames.insert(GetTextureBasePath(path));
         }
     }
 
     std::sort(files.begin(), files.end(), [](const std::filesystem::path& lhs, const std::filesystem::path& rhs) {
-        return lhs.generic_string() < rhs.generic_string();
+        return PathToUtf8(lhs) < PathToUtf8(rhs);
     });
 
     for (const auto& path : files) {
-        const std::string pathString = NormalizeTexturePath(path.string());
+        const std::string pathString = NormalizeTexturePath(PathToUtf8(path));
 
         if (IsEditorPreviewTexture(pathString)) {
             continue;
@@ -992,12 +1023,12 @@ uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
         return handle;
     }
 
-    std::filesystem::path ddsPath(normalizedPath);
+    std::filesystem::path ddsPath = PathFromUtf8(normalizedPath);
 
     if (IsSourceTextureExtension(ddsPath.extension().string())) {
         ddsPath.replace_extension(".dds");
 
-        if (const uint32_t handle = findHandle(NormalizeTexturePath(ddsPath.string())); handle != 0) {
+        if (const uint32_t handle = findHandle(NormalizeTexturePath(PathToUtf8(ddsPath))); handle != 0) {
             return handle;
         }
     }

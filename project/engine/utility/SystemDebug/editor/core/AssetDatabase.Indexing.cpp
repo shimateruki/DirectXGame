@@ -106,7 +106,7 @@ std::vector<fs::path> AssetDatabase::CollectSourcePaths() {
             iterator.disable_recursion_pending();
         }
         else if (entry.is_regular_file(error) && !ShouldSkipPath(entry.path())) {
-            const std::string extension = ToLowerAscii(entry.path().extension().string());
+            const std::string extension = ToLowerAscii(PathToUtf8(entry.path().extension()));
 
             if (extension != ".meta" && extension != ".tmp") {
                 sourcePaths.push_back(entry.path());
@@ -125,7 +125,7 @@ std::vector<fs::path> AssetDatabase::CollectSourcePaths() {
 
     // 走査順に依存しない索引と重複GUID判定にするため順序を固定する。
     std::sort(sourcePaths.begin(), sourcePaths.end(), [](const fs::path& left, const fs::path& right) {
-        return left.generic_string() < right.generic_string();
+        return PathToUtf8(left) < PathToUtf8(right);
     });
     return sourcePaths;
 }
@@ -189,7 +189,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
                 pendingDirectoryIterator_.disable_recursion_pending();
             }
             else if (entry.is_regular_file(error) && !ShouldSkipPath(entry.path())) {
-                const std::string extension = ToLowerAscii(entry.path().extension().string());
+                const std::string extension = ToLowerAscii(PathToUtf8(entry.path().extension()));
 
                 if (extension != ".meta" && extension != ".tmp") {
                     pendingSourcePaths_.push_back(entry.path());
@@ -221,7 +221,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
         // 列挙完了後に安定した順序へ並べ替え、第2段階のレコード生成へ移る。
         initialDirectoryScanInProgress_ = false;
         std::sort(pendingSourcePaths_.begin(), pendingSourcePaths_.end(), [](const fs::path& left, const fs::path& right) {
-            return left.generic_string() < right.generic_string();
+            return PathToUtf8(left) < PathToUtf8(right);
         });
         assets_.reserve(pendingSourcePaths_.size());
 
@@ -326,21 +326,21 @@ void AssetDatabase::RebuildLookupTables() {
             assetIndexByGuid_[ToLowerAscii(asset.guid)] = index;
         }
 
-        const std::string directory = TrimTrailingSlash(fs::path(asset.sourcePath).parent_path().generic_string());
+        const std::string directory = TrimTrailingSlash(PathToUtf8(PathFromUtf8(asset.sourcePath).parent_path()));
         assetsByDirectory_[ToLowerAscii(directory)].push_back(index);
 
         // 各Assetの親をResourcesまでたどり、空ディレクトリを除いた階層を作る。
-        fs::path current = fs::path(directory);
+        fs::path current = PathFromUtf8(directory);
 
         while (!current.empty()) {
-            const std::string currentPath = TrimTrailingSlash(current.generic_string());
+            const std::string currentPath = TrimTrailingSlash(PathToUtf8(current));
 
             if (!StartsWithPath(ToLowerAscii(currentPath), ToLowerAscii(resourcesRootPath_))) {
                 break;
             }
 
             const fs::path parentPath = current.parent_path();
-            const std::string parent = TrimTrailingSlash(parentPath.generic_string());
+            const std::string parent = TrimTrailingSlash(PathToUtf8(parentPath));
 
             if (!parent.empty() && currentPath != resourcesRootPath_) {
                 directorySets[ToLowerAscii(parent)].insert(currentPath);

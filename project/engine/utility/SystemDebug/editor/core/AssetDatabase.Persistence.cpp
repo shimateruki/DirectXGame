@@ -183,6 +183,18 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
         ? record.importSettings
         : json::object();
 
+    // 不正なImport設定等があってもEditorを終了させず、既存.metaを保護して失敗を返す。
+    std::string serialized;
+    try {
+        serialized = metadata.dump(2);
+    }
+    catch (const std::exception& exception) {
+        if (errorMessage) {
+            *errorMessage = ".metaのJSON変換に失敗しました: " + std::string(exception.what());
+        }
+        return false;
+    }
+
     // Metaファイルと同じ場所の一時ファイルを確定後に置き換えます。
     const fs::path metaPath = ResolveAbsolutePath(record.metaPath);
     fs::path temporaryPath = metaPath;
@@ -209,7 +221,7 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
             return false;
         }
 
-        output << metadata.dump(2) << '\n';
+        output << serialized << '\n';
         output.flush();
 
         if (!output.good()) {
@@ -547,7 +559,7 @@ void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record)
 
 EditorAssetType AssetDatabase::DetectAssetType(const fs::path& path) {
     // 拡張子からImporterの初期値に使う型だけを推定します。
-    const std::string extension = ToLowerAscii(path.extension().string());
+    const std::string extension = ToLowerAscii(PathToUtf8(path.extension()));
 
     if (extension == ".obj" || extension == ".gltf" || extension == ".glb" || extension == ".fbx") {
         return EditorAssetType::Model;

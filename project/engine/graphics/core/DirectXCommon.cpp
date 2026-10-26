@@ -7,6 +7,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cctype>
 #include <format>
 #include <vector>
 #include <dxcapi.h>
@@ -772,72 +773,73 @@ void DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resourc
 // 画像ファイルをDirectXTexで読み込み、必要なミップマップや色空間変換を行う。
 
 
-DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bool forceSRGB)
-{
-	DirectX::ScratchImage image{};
-	DirectX::ScratchImage mipImages{};
-	std::wstring filePathW = DirectXCommon::ConvertString(filePath);
-	HRESULT hr = S_FALSE;
+DirectX::ScratchImage DirectXCommon::LoadTexture(
+    const std::string& filePath, bool forceSRGB, bool* loadedFromFile) {
+    if (loadedFromFile) {
+        *loadedFromFile = false;
+    }
 
-	// =========================================================
-	//  拡張子が .dds かどうかで読み込み関数を分ける！
-	// =========================================================
-	if (filePath.size() >= 4 && filePath.substr(filePath.size() - 4) == ".dds")
-	{
-		// DDS用の読み込み関数
-		hr = DirectX::LoadFromDDSFile(filePathW.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
+    // WICやミップ生成後も、DDSと同じ指定色空間でGPUへ登録する。
+    const auto applyColorSpace = [forceSRGB](DirectX::ScratchImage& texture) {
+        texture.OverrideFormat(forceSRGB ? DirectX::MakeSRGB(texture.GetMetadata().format)
+                                        : DirectX::MakeLinear(texture.GetMetadata().format));
+    };
 
-		// DDSの場合はすでにミップマップやキューブマップが構築されていることが多いので、
-		// そのまま返す（ミップマップ生成をスキップ）
-		if (SUCCEEDED(hr)) {
-			const DXGI_FORMAT requestedFormat = forceSRGB
-				? DirectX::MakeSRGB(image.GetMetadata().format)
-				: DirectX::MakeLinear(image.GetMetadata().format);
-			image.OverrideFormat(requestedFormat);
-			return image;
-		}
-	} else
-	{
-		// PNG, JPGなどの一般的な画像用。PBRのNormal/ORMなどはlinearのまま読み込みます。
-		const auto wicFlags = forceSRGB ? DirectX::WIC_FLAGS_FORCE_SRGB : DirectX::WIC_FLAGS_IGNORE_SRGB;
-		hr = DirectX::LoadFromWICFile(filePathW.c_str(), wicFlags, nullptr, image);
-	}
+    // 失敗を呼出元へ伝えてから白画像を返す。正常な1×1画像と混同しない。
+    const auto makeWhiteTexture = [] {
+        DirectX::ScratchImage white;
+        white.Initialize2D(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1, 1, 1, 1);
+        std::fill_n(white.GetPixels(), white.GetPixelsSize(), uint8_t{255});
+        return white;
+    };
 
-	// テクスチャが読み込まれなかった場合は白色のテクスチャを張る
-	if (FAILED(hr))
-	{
-		D3D12_RESOURCE_DESC materialData;
-		materialData.Width = 1;
-		materialData.Height = 1;
-		materialData.DepthOrArraySize = 1;
-		materialData.MipLevels = 1;
-		materialData.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		materialData.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    DirectX::ScratchImage image;
+    const std::wstring filePathW = ConvertString(filePath);
+    std::string extension = filePath.size() >= 4 ? filePath.substr(filePath.size() - 4) : std::string{};
+    std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
 
-		// 白色のテクスチャを作成
-		DirectX::Image whiteImage;
-		whiteImage.width = 1;
-		whiteImage.height = 1;
-		whiteImage.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		whiteImage.rowPitch = 4;
-		whiteImage.slicePitch = 4;
+    if (extension == ".dds") {
+        const HRESULT result = DirectX::LoadFromDDSFile(
+            filePathW.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
+        if (FAILED(result)) {
+            return makeWhiteTexture();
+        }
+        // DDS内のミップを再利用し、用途に応じた色空間だけを適用する。
+        applyColorSpace(image);
+        if (loadedFromFile) {
+            *loadedFromFile = true;
+        }
+        return image;
+    }
 
-		// ScratchImage は画素を内部バッファへコピーするため、ローカル配列で十分。
-		std::array<uint8_t, 4> pixels{ 255, 255, 255, 255 };
-		whiteImage.pixels = pixels.data();
+    const auto wicFlags = forceSRGB ? DirectX::WIC_FLAGS_FORCE_SRGB : DirectX::WIC_FLAGS_IGNORE_SRGB;
+    if (FAILED(DirectX::LoadFromWICFile(filePathW.c_str(), wicFlags, nullptr, image))) {
+        return makeWhiteTexture();
+    }
 
-		image.InitializeFromImage(whiteImage);
-		mipImages.InitializeFromImage(whiteImage);
+    applyColorSpace(image);
 
-		return mipImages;
-	}
+    // 1×1画像には下位ミップが無いため、デコードできた画像をそのまま返す。
+    if (image.GetMetadata().width == 1 && image.GetMetadata().height == 1) {
+        if (loadedFromFile) {
+            *loadedFromFile = true;
+        }
+        return image;
+    }
 
-	// ミニマップの作成 (DDS以外の場合のみ実行される)
-	const auto filterFlags = forceSRGB ? DirectX::TEX_FILTER_SRGB : DirectX::TEX_FILTER_DEFAULT;
-	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), filterFlags, 0, mipImages);
-	assert(SUCCEEDED(hr));
-
-	return mipImages;
+    DirectX::ScratchImage mipImages;
+    const auto filterFlags = forceSRGB ? DirectX::TEX_FILTER_SRGB : DirectX::TEX_FILTER_DEFAULT;
+    if (FAILED(DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(),
+                                      image.GetMetadata(), filterFlags, 0, mipImages))) {
+        return makeWhiteTexture();
+    }
+    applyColorSpace(mipImages);
+    if (loadedFromFile) {
+        *loadedFromFile = true;
+    }
+    return mipImages;
 }
 
 // UTF-8文字列をワイド文字列へ変換し、Win32やDXCなどのWCHAR APIへ渡せる形にする。

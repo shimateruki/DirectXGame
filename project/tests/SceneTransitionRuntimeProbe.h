@@ -19,6 +19,7 @@
 #include "CinematicRuntimeProbe.h"
 #include "GimmickPropertyRuntimeProbe.h"
 #include "GateEntryRuntimeProbe.h"
+#include "TutorialExitGuideRuntimeProbe.h"
 #include "PlayerAttackRuntimeProbe.h"
 #include "PlayerLocomotionRuntimeProbe.h"
 #include "CannonDamageRuntimeProbe.h"
@@ -89,6 +90,10 @@ inline void AfterDraw(SceneManager* manager, DebugEditor* editor = nullptr) {
     }
     if (CannonDamageRuntimeProbe::Enabled()) {
         CannonDamageRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (TutorialExitGuideRuntimeProbe::Enabled()) {
+        TutorialExitGuideRuntimeProbe::AfterDraw(manager, LogPath());
         return;
     }
     if (TutorialPromptRuntimeProbe::Enabled()) {

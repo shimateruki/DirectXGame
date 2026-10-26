@@ -1,0 +1,27 @@
+# Material colors and PBR values are shared with the Blender preview.
+newmtl GuideNavy
+Kd 0.012000 0.050000 0.105000
+Ks 0.15 0.15 0.15
+Ns 79.3600
+Pr 0.380000
+Pm 0.120000
+d 1.0
+illum 2
+
+newmtl GuideIvory
+Kd 1.000000 0.930000 0.780000
+Ks 0.15 0.15 0.15
+Ns 87.0400
+Pr 0.320000
+Pm 0.080000
+d 1.0
+illum 2
+
+newmtl GuideGold
+Kd 1.000000 0.570000 0.018000
+Ks 0.15 0.15 0.15
+Ns 84.4800
+Pr 0.340000
+Pm 0.180000
+d 1.0
+illum 2

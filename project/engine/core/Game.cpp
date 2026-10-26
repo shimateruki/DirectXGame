@@ -326,6 +326,12 @@ void Game::Update() {
         CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
     }
 #endif
+#ifdef USE_IMGUI
+    if (TutorialExitGuideRuntimeProbe::Enabled()) {
+        isPlaying_ = TutorialExitGuideRuntimeProbe::WantsPlay();
+        sceneManager_->SetIsPlaying(isPlaying_);
+    }
+#endif
 	const float feedbackTimeScale = VFXSequencer::GetGameplayTimeScale();
 	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ * feedbackTimeScale : 0.0f;
 #ifdef USE_IMGUI
@@ -621,6 +627,8 @@ void Game::Draw() {
 	auto startDraw = std::chrono::high_resolution_clock::now();
 
 #ifdef USE_IMGUI
+    if (TutorialExitGuideRuntimeProbe::Enabled())
+        TutorialExitGuideRuntimeProbe::PrepareCaptureCamera(sceneManager_.get());
 	DrawEditorFrame(postEffect);
 #else
 	DrawRuntimeFrame(postEffect);

@@ -19,6 +19,10 @@
 #include "game/ui/CopyStyleHud.h"
 #include "game/ui/PlayerHealthHud.h"
 #include "game/ui/SaveIndicatorOverlay.h"
+#include "game/system/navigation/DestinationGuide.h"
+#ifdef USE_IMGUI
+namespace TutorialExitGuideRuntimeProbe { struct Access; }
+#endif
 
 #include "game/system/scene/ObjectManager.h"
 #include "DebugEditor.h"
@@ -157,6 +161,13 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     /// チュートリアル完了を保存し、成功時に出口ゲートを解放する。
     void HandleTutorialFlowCompleted();
 
+    void InitializeExitGuide();
+    void UpdateExitGuide(float deltaTime);
+    void HideExitGuide();
+#ifdef USE_IMGUI
+    friend struct TutorialExitGuideRuntimeProbe::Access;
+#endif
+
     enum class MovieState { kNone, kBridgeDrop };
 
     MovieState movieState_ = MovieState::kNone;
@@ -209,6 +220,8 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     float goalSaveRetryTimer_ = 0.0f;
     bool sessionStarCoins_[3] = {false, false, false};
     std::unique_ptr<TutorialDirector> tutorialDirector_;
+    DestinationGuide exitGuide_;
+    bool exitGuideRequested_ = false;
     std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
     CopyStyleHud copyStyleHud_;

@@ -62,6 +62,17 @@
 #include <iterator>
 
 namespace {
+constexpr const char* kExitGuideName = "Tutorial_ExitGuideArrow";
+constexpr const char* kExitGuideModel = "Stages/tutorial_gate_arrow/tutorial_gate_arrow.obj";
+constexpr const char* kExitGuideSettings = "Resources/json/navigation/tutorial_exit_guide.json";
+
+engine::Object3d* FindExitGuideArrow(const BaseScene& scene) {
+    for (const auto& object : scene.GetObjects())
+        if (object && object->GetName() == kExitGuideName && !object->IsReplayRemoved())
+            return object.get();
+    return nullptr;
+}
+
 constexpr const char* kTutorialMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
     "Resources/json/effect/effect_pink_slime_charge_core_flash.json",
@@ -257,6 +268,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
 SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
     // 操作案内とプレイヤー演出を初回表示前に読み込み、描画中の遅延を抑える。
     SceneLoadManifest manifest;
+    manifest.AddModel(kExitGuideModel);
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
                                  ? GetSceneLoadContext().objectLayoutPath
                                  : "Resources/json/3Dobject/tutorial.json");
@@ -466,6 +478,7 @@ bool TutorialScene::InitializeLoadingStep() {
             controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
             saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
             saveIndicatorOverlay_->Initialize(spriteCommon_.get());
+            InitializeExitGuide();
             tutorialDirector_ = std::make_unique<TutorialDirector>();
 
             if (tutorialDirector_->Initialize(this, player_, inputManager_)) {
@@ -507,6 +520,9 @@ float TutorialScene::GetLoadingInitializeProgress() const {
 }
 
 void TutorialScene::Finalize() {
+    HideExitGuide();
+    exitGuide_.Reset();
+    exitGuideRequested_ = false;
     GimmickStageGate::ResetSceneEntries(*this);
     // Directorを先に終了し、演出が参照する共有Managerをその後に片付ける。
     if (tutorialDirector_) {
@@ -539,6 +555,7 @@ void TutorialScene::Finalize() {
 
 void TutorialScene::Update(float deltaTime) {
     if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) {
+        HideExitGuide();
         if (saveIndicatorOverlay_) saveIndicatorOverlay_->Update(deltaTime);
         UpdateUI();
         return;
@@ -584,6 +601,7 @@ void TutorialScene::Update(float deltaTime) {
     }
 
     if (HandleControlsGuideOverlay(deltaTime)) {
+        HideExitGuide();
         if (saveIndicatorOverlay_) {
             saveIndicatorOverlay_->Update(deltaTime);
         }
@@ -705,6 +723,8 @@ void TutorialScene::Update(float deltaTime) {
 
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
+    // 接地・衝突で修正された最新の足元へ追従し、移動に対する一フレームの遅れを作らない。
+    UpdateExitGuide(deltaTime);
     UpdateUI();
 }
 
@@ -821,6 +841,11 @@ void TutorialScene::DrawImGui() {
         tutorialDirector_->DrawImGui();
     }
 
+    if (ImGui::CollapsingHeader("出口への矢印", ImGuiTreeNodeFlags_DefaultOpen)) {
+        exitGuide_.DrawImGui(kExitGuideSettings);
+        ImGui::TextDisabled("最後の移動課題 reach_exit_gate で表示します。");
+    }
+
     ImGui::Separator();
     ImGui::TextDisabled("※この項目は TutorialScene::DrawImGui() で編集可能です");
 #endif
@@ -872,6 +897,56 @@ bool TutorialScene::IsControlsGuideOpenTriggered() const {
 #endif
 
     return inputManager_->IsKeyTriggered(DIK_TAB) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_BACK);
+}
+
+void TutorialScene::InitializeExitGuide() {
+    exitGuide_.Initialize({});
+    exitGuide_.LoadSettings(kExitGuideSettings);
+    exitGuideRequested_ = false;
+    auto arrow = std::make_unique<engine::Object3d>();
+    arrow->Initialize(object3dCommon_.get());
+    arrow->SetModel(kExitGuideModel);
+    arrow->SetName(kExitGuideName);
+    // 実行中に作る案内をシーン保存へ混ぜず、衝突・影にも参加させない。
+    arrow->SetEditorInternal(true);
+    arrow->SetCollisionAttribute(0);
+    arrow->SetCollisionMask(0);
+    arrow->SetCastShadow(false);
+    arrow->SetEnableLighting(true);
+    arrow->SetEmissive(1.15f);
+    arrow->SetIsVisible(false);
+    AddObjectImmediate(std::move(arrow));
+}
+
+void TutorialScene::HideExitGuide() {
+    if (auto* arrow = objectManager_ ? FindExitGuideArrow(*this) : nullptr)
+        exitGuide_.Hide(*arrow);
+}
+
+void TutorialScene::UpdateExitGuide(float deltaTime) {
+    auto* arrow = FindExitGuideArrow(*this);
+    if (!arrow)
+        return;
+    auto* target = tutorialDirector_ ? tutorialDirector_->GetDirectionGuideTarget() : nullptr;
+    const bool alive = player_ && player_->param_ && player_->param_->hp > 0.0f;
+    const bool requested = target && alive && !isGoal_ && !player_->IsCinematicLocked();
+    if (!requested) {
+        exitGuide_.Hide(*arrow);
+        exitGuideRequested_ = false;
+        return;
+    }
+    if (!std::isfinite(deltaTime) || deltaTime <= 0.0f) {
+        // Editor停止中は非表示にし、到着済みの状態は維持する。
+        exitGuide_.Hide(*arrow);
+        return;
+    }
+    if (!exitGuideRequested_) {
+        exitGuide_.Reset();
+        exitGuideRequested_ = true;
+    }
+    auto anchor = player_->GetWorldPosition();
+    anchor.y = player_->GetModelWorldAABB().min.y;
+    exitGuide_.Update(*arrow, anchor, target->GetWorldPosition(), deltaTime);
 }
 
 void TutorialScene::HandleTutorialFlowCompleted() {

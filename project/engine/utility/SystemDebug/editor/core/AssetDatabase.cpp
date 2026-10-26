@@ -43,7 +43,7 @@ bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMiss
         return false;
     }
 
-    resourcesRoot_ = fs::absolute(fs::path(resourcesRoot), error).lexically_normal();
+    resourcesRoot_ = fs::absolute(PathFromUtf8(resourcesRoot), error).lexically_normal();
 
     if (error || !fs::exists(resourcesRoot_, error) || !fs::is_directory(resourcesRoot_, error)) {
         return false;
@@ -241,7 +241,7 @@ const EditorAssetRecord* AssetDatabase::FindByGuid(const std::string& guid) cons
 
 const EditorAssetRecord* AssetDatabase::FindByPath(const std::string& sourcePath) const {
     // 絶対・相対パスを同じプロジェクト表記に揃えてから索引を引きます。
-    const std::string normalized = NormalizeProjectPath(fs::path(sourcePath));
+    const std::string normalized = NormalizeProjectPath(PathFromUtf8(sourcePath));
     const auto iterator = assetIndexByPath_.find(ToLowerAscii(normalized));
     return iterator == assetIndexByPath_.end() ? nullptr : &assets_[iterator->second];
 }
@@ -283,7 +283,7 @@ std::vector<const EditorAssetRecord*> AssetDatabase::GetAssetsInDirectory(
     bool recursive) const {
     // 直下はディレクトリ索引を使い、再帰指定時だけ全レコードを走査します。
     std::vector<const EditorAssetRecord*> result;
-    const std::string normalizedDirectory = TrimTrailingSlash(NormalizeProjectPath(fs::path(directory)));
+    const std::string normalizedDirectory = TrimTrailingSlash(NormalizeProjectPath(PathFromUtf8(directory)));
 
     if (!recursive) {
         const auto iterator = assetsByDirectory_.find(ToLowerAscii(normalizedDirectory));
@@ -302,7 +302,7 @@ std::vector<const EditorAssetRecord*> AssetDatabase::GetAssetsInDirectory(
     }
 
     for (const EditorAssetRecord& asset : assets_) {
-        const std::string parent = TrimTrailingSlash(fs::path(asset.sourcePath).parent_path().generic_string());
+        const std::string parent = TrimTrailingSlash(PathToUtf8(PathFromUtf8(asset.sourcePath).parent_path()));
 
         if (StartsWithPath(ToLowerAscii(parent), ToLowerAscii(normalizedDirectory))) {
             result.push_back(&asset);
@@ -315,7 +315,7 @@ std::vector<const EditorAssetRecord*> AssetDatabase::GetAssetsInDirectory(
 std::vector<std::string> AssetDatabase::GetSubdirectories(const std::string& directory) const {
     // 区切りと大文字小文字を索引側に合わせて、同じフォルダを一意に引きます。
     const std::string normalizedDirectory = ToLowerAscii(
-        TrimTrailingSlash(NormalizeProjectPath(fs::path(directory))));
+        TrimTrailingSlash(NormalizeProjectPath(PathFromUtf8(directory))));
     const auto iterator = subdirectoriesByDirectory_.find(normalizedDirectory);
     return iterator == subdirectoriesByDirectory_.end() ? std::vector<std::string>() : iterator->second;
 }
@@ -325,7 +325,7 @@ bool AssetDatabase::RenameAsset(
     const std::string& newFileName,
     std::string* errorMessage) {
     // 名前変更を移動処理に集約し、Asset本体と.metaを同じ手順で更新します。
-    const fs::path requestedName(newFileName);
+    const fs::path requestedName = PathFromUtf8(newFileName);
 
     if (newFileName.empty() || requestedName.has_parent_path() || requestedName.filename() != requestedName) {
         if (errorMessage) {
@@ -345,8 +345,8 @@ bool AssetDatabase::RenameAsset(
         return false;
     }
 
-    const fs::path destination = fs::path(asset->sourcePath).parent_path() / requestedName;
-    return MoveAsset(asset->sourcePath, destination.generic_string(), errorMessage);
+    const fs::path destination = PathFromUtf8(asset->sourcePath).parent_path() / requestedName;
+    return MoveAsset(asset->sourcePath, PathToUtf8(destination), errorMessage);
 }
 
 bool AssetDatabase::MoveAsset(
@@ -462,7 +462,7 @@ bool AssetDatabase::MoveAssetToTrash(
 
     if (fs::exists(destination, error)) {
         destination = destination.parent_path() /
-            (destination.stem().string() + "_" + asset->guid.substr(0, 8) + destination.extension().string());
+            PathFromUtf8(PathToUtf8(destination.stem()) + "_" + asset->guid.substr(0, 8) + PathToUtf8(destination.extension()));
     }
 
     const std::string destinationProjectPath = NormalizeProjectPath(destination);
@@ -518,25 +518,25 @@ std::string AssetDatabase::NormalizeProjectPath(const fs::path& path) const {
     absolute = fs::absolute(absolute, error).lexically_normal();
 
     if (error) {
-        return path.lexically_normal().generic_string();
+        return PathToUtf8(path.lexically_normal());
     }
 
     const fs::path relative = fs::relative(absolute, projectRoot_, error);
 
     if (!error && !relative.empty() && !relative.is_absolute()) {
-        const std::string normalized = relative.lexically_normal().generic_string();
+        const std::string normalized = PathToUtf8(relative.lexically_normal());
 
         if (normalized != ".." && normalized.rfind("../", 0) != 0) {
             return normalized;
         }
     }
 
-    return absolute.generic_string();
+    return PathToUtf8(absolute);
 }
 
 fs::path AssetDatabase::ResolveAbsolutePath(const std::string& projectPath) const {
     // 読込・移動に使う実パスはプロジェクトルートから確定します。
-    const fs::path path(projectPath);
+    const fs::path path = PathFromUtf8(projectPath);
     return (path.is_absolute() ? path : projectRoot_ / path).lexically_normal();
 }
 
@@ -549,7 +549,7 @@ bool AssetDatabase::IsPathInsideResources(const fs::path& absolutePath) const {
         return false;
     }
 
-    const std::string normalized = relative.generic_string();
+    const std::string normalized = PathToUtf8(relative);
     return normalized != ".." && normalized.rfind("../", 0) != 0;
 }
 
@@ -563,7 +563,7 @@ bool AssetDatabase::ShouldSkipPath(const fs::path& path) const {
     }
 
     for (const fs::path& component : relative) {
-        const std::string name = ToLowerAscii(component.string());
+        const std::string name = ToLowerAscii(PathToUtf8(component));
 
         if (name == ".cache" || name == ".backup" || name == ".trash" || name == "tools") {
             return true;

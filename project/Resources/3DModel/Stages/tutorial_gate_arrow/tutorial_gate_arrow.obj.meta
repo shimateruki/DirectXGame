@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "736093c84b71531d8728f2603ce02242",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/tutorial_gate_arrow/tutorial_gate_arrow.obj",
+  "version": 1
+}

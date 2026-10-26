@@ -15,6 +15,16 @@
 namespace AssetDatabaseInternal {
 namespace fs = std::filesystem;
 
+// EditorとJSONではUTF-8、Windowsのファイル操作ではネイティブパスを使う。
+inline fs::path PathFromUtf8(const std::string& text) {
+    return fs::path(std::u8string(text.begin(), text.end()));
+}
+
+inline std::string PathToUtf8(const fs::path& path) {
+    const auto text = path.generic_u8string();
+    return { text.begin(), text.end() };
+}
+
 // .meta と永続索引の形式を区別し、古い形式は安全に再構築します。
 constexpr int kAssetMetaVersion = 1;
 constexpr int kPersistentIndexCacheVersion = 1;

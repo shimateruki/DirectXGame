@@ -265,6 +265,15 @@ const std::string& TutorialDirector::GetCurrentStepId() const {
     return steps_[static_cast<size_t>(currentStepIndex_)].id;
 }
 
+engine::Object3d* TutorialDirector::GetDirectionGuideTarget() const {
+    if (!loaded_ || completed_ || cinematicActive_ || stepConditionSatisfied_ ||
+        GetCurrentStepId() != "reach_exit_gate")
+        return nullptr;
+    // Editorで削除・差し替えられたゲートへの古いポインターを持ち越さない。
+    auto* gate = dynamic_cast<GimmickStageGate*>(FindObjectByName(exitGateObjectName_));
+    return gate && gate->IsUnlocked() && !gate->IsEntryPresentationActive() ? gate : nullptr;
+}
+
 void TutorialDirector::CaptureReplayState(json& state) const {
     // 対象物はポインタでなく名前を保存し、復元時に現シーンから解決する。
     const auto objectName = [this](const engine::Object3d* object) {
@@ -757,9 +766,14 @@ bool TutorialDirector::EvaluateCurrentStep() const {
     case CompletionCondition::kTargetLocked:
         return !step.objectiveTarget.empty() && lockedTargetName_ == step.objectiveTarget;
 
-    case CompletionCondition::kReachPosition:
+    case CompletionCondition::kReachPosition: {
+        // 目標Objectがある課題ではEditorで移動した実体を追う。固定座標だけの課題は従来どおり。
+        const auto* target = FindObjectByName(step.objectiveTarget);
+        if (target)
+            return HorizontalDistance(player_->GetWorldPosition(), target->GetWorldPosition()) <= step.radius;
         return step.hasTargetPosition &&
                HorizontalDistance(player_->GetWorldPosition(), step.targetPosition) <= step.radius;
+    }
 
     case CompletionCondition::kCarryEnemy:
         return player_->GetCarriedEnemy() != nullptr &&

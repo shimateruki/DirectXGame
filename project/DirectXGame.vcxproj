@@ -224,6 +224,7 @@
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
     <ClCompile Include="game\actor\enemy\spawn\EnemyFactory.cpp" />
     <ClCompile Include="game\system\rules\GameplayStatusManager.cpp" />
+    <ClCompile Include="game\system\navigation\DestinationGuide.cpp" />
     <ClCompile Include="game\actor\enemy\normal\EnemySlime.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomb.cpp" />
     <ClCompile Include="game\actor\enemy\spawn\EnemySpawner.cpp" />
@@ -726,6 +727,7 @@
     <ClInclude Include="game\actor\item\BaseItem.h" />
     <ClInclude Include="game\actor\enemy\spawn\EnemyFactory.h" />
     <ClInclude Include="game\system\rules\GameplayStatusManager.h" />
+    <ClInclude Include="game\system\navigation\DestinationGuide.h" />
     <ClInclude Include="game\actor\enemy\normal\EnemySlime.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\elemental\EnemyFireSlime.h" />
@@ -1181,10 +1183,3 @@
     <ClInclude Include="game\system\scene\SceneGameplayAccess.h" />
   </ItemGroup>
 </Project>
-
-
-
-
-
-
-

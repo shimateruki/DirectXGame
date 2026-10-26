@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "distance": 3.0,
+  "height": 0.8,
+  "scale": 0.55,
+  "followResponse": 24.0,
+  "turnResponse": 12.0,
+  "bobAmplitude": 0.1,
+  "bobSpeed": 3.0,
+  "arrivalDistance": 4.0,
+  "arrivalHeight": 3.0
+}

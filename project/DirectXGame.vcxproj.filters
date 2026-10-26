@@ -445,6 +445,9 @@
     <ClCompile Include="game\system\rules\GameplayStatusManager.cpp">
       <Filter>Game\system\rules</Filter>
     </ClCompile>
+    <ClCompile Include="game\system\navigation\DestinationGuide.cpp">
+      <Filter>Game\system</Filter>
+    </ClCompile>
     <ClCompile Include="externals\imgui\imgui.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -1428,6 +1431,9 @@
     <ClInclude Include="game\system\rules\GameplayStatusManager.h">
       <Filter>Game\system\rules</Filter>
     </ClInclude>
+    <ClInclude Include="game\system\navigation\DestinationGuide.h">
+      <Filter>Game\system</Filter>
+    </ClInclude>
     <ClInclude Include="externals\imgui\imconfig.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2303,7 +2309,3 @@
     </ClInclude>
   </ItemGroup>
 </Project>
-
-
-
-

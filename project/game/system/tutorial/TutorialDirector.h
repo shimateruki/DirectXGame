@@ -51,6 +51,9 @@ class TutorialDirector {
 
     bool IsCompleted() const { return completed_; }
 
+    // 最後の移動課題で、まだ到着していない間だけ案内先を返す。実体はシーンが所有する。
+    engine::Object3d* GetDirectionGuideTarget() const;
+
     /// <summary>完了後の出口をセーブ成功時だけ開けます。</summary>
     void SetCompletionGateEnabled(bool enabled) {
         if (completed_)
