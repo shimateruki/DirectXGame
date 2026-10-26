@@ -179,6 +179,7 @@ bool GameplayStatusManager::Reload() {
     Initialize();
 
     const CharacterStatus previousPlayer = playerStatus_;
+    const auto previousLocomotion = playerLocomotion_;
     const auto previousEnemies = enemyStatuses_;
     ResetToDefaults();
     dirty_ = false;
@@ -188,6 +189,7 @@ bool GameplayStatusManager::Reload() {
     }
 
     playerStatus_ = previousPlayer;
+    playerLocomotion_ = previousLocomotion;
     enemyStatuses_ = previousEnemies;
     return false;
 }
@@ -197,8 +199,12 @@ bool GameplayStatusManager::Save() {
     Initialize();
 
     json root;
-    root["schemaVersion"] = 5;
+    root["schemaVersion"] = 6;
     root["player"] = StatusToJson(playerStatus_);
+    auto locomotion = playerLocomotion_;
+    locomotion.Normalize();
+    root["player"]["locomotion"] = {{"accelerationTime", locomotion.accelerationTime},
+                                    {"brakingTime", locomotion.brakingTime}, {"airControl", locomotion.airControl}};
     root["enemies"] = json::object();
 
     for (const auto& [enemyType, status] : enemyStatuses_) {
@@ -226,6 +232,7 @@ void GameplayStatusManager::ResetToDefaults() {
     playerStatus_ =
         MakeStatus(5.0f, 1.0f, 27.7f, 50.0f, 60.0f, 24.0f, 20.0f, {2.0f, 2.0f, 2.0f}, "Characters/slime", false, 5.0f);
 
+    playerLocomotion_ = {};
     enemyStatuses_.clear();
     enemyStatuses_.emplace("Slime", MakeStatus(38.0f, 1.0f, 0.1f, 60.0f, 60.0f, 18.0f, 20.0f, engine::Vector3{2.0f, 2.0f, 2.0f},
                                                "Characters/slime_pink", false, 5.0f));
@@ -368,6 +375,17 @@ bool GameplayStatusManager::LoadFromFile(const std::string& path) {
         }
 
         JsonToStatus(root.value("player", json::object()), playerStatus_);
+        // 旧JSONに項目がなければ、加速付きの標準値でそのまま開始する。
+        const auto player = root.find("player");
+        if (player != root.end() && player->is_object()) {
+            const auto movement = player->find("locomotion");
+            if (movement != player->end() && movement->is_object()) {
+                ReadFloat(*movement, "accelerationTime", playerLocomotion_.accelerationTime);
+                ReadFloat(*movement, "brakingTime", playerLocomotion_.brakingTime);
+                ReadFloat(*movement, "airControl", playerLocomotion_.airControl);
+            }
+        }
+        playerLocomotion_.Normalize();
 
         if (root.contains("enemies") && root["enemies"].is_object()) {
             for (auto& [enemyType, status] : enemyStatuses_) {

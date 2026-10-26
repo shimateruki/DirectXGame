@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "13ae2133d25f14f0b1311c2afd6dd1da",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/shader_materials/dash_panel.json",
+  "version": 1
+}

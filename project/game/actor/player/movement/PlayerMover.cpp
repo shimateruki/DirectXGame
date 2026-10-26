@@ -13,6 +13,7 @@
 #include "GPUParticleManager.h"
 #include "game/system/combat/GroundEffectLocator.h"
 #include "MeshEffectManager.h"
+#include "game/system/rules/GameplayStatusManager.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 
 // 移動入力と接地状態を統合します。ジャンプ入力はPlayer本体で先に採取し、更新順による取りこぼしを避けます。
@@ -150,7 +151,7 @@ engine::Vector3 PlayerMover::GetMoveInputDirection() {
 
 // 水平移動とジャンプ要求を確定します。重力・衝突を含む Character の更新は呼び出し側で行います。
 void PlayerMover::Update(float deltaTime) {
-    if (!player_ || !inputManager_ || !strategy_)
+    if (!player_ || !inputManager_ || !strategy_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f)
         return;
 
     // 死亡時も落下速度は維持し、水平移動だけ止めます。
@@ -164,8 +165,6 @@ void PlayerMover::Update(float deltaTime) {
 
     const auto attackMovement = player_->GetAttackMovement();
     engine::Vector3 inputMove = strategy_->CalculateVelocity(player_);
-
-    bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
 
     if (dashPanelTimer_ > 0.0f) {
         dashPanelTimer_ = (std::max)(0.0f, dashPanelTimer_ - deltaTime);
@@ -189,8 +188,8 @@ void PlayerMover::Update(float deltaTime) {
             StopDashOnImpact();
         }
     } else {
-        // 空中の攻撃だけ慣性を残します。前回の外力を除いてから入力を補間し、末尾で外力を一度だけ足す。
-        if (attackMovement.enabled && !player_->IsGrounded()) {
+        // 前回加えた床・爆風の速度を除き、通常の加速へ外力を二重に持ち込まない。
+        {
             auto removeExternal = [](float current, float added) {
                 // 壁で外力ごと停止した場合、差し引きで逆向きの速度を作らない。
                 return current * added >= 0.0f && std::abs(current) <= std::abs(added) ? 0.0f : current - added;
@@ -198,7 +197,14 @@ void PlayerMover::Update(float deltaTime) {
             velocity.x = removeExternal(velocity.x, previousAddedAirVelocity_.x);
             velocity.z = removeExternal(velocity.z, previousAddedAirVelocity_.z);
         }
-        velocity = attackMovement.Apply(velocity, inputMove * moveSpeedMultiplier, player_->IsGrounded(), deltaTime);
+        if (attackMovement.enabled) {
+            // 攻撃中の地上制限と空中補間は、攻撃側で編集した設定をそのまま優先する。
+            velocity = attackMovement.Apply(velocity, inputMove * moveSpeedMultiplier, player_->IsGrounded(), deltaTime);
+        } else {
+            const auto& movement = GameplayStatusManager::GetInstance()->GetPlayerLocomotion();
+            velocity = movement.Apply(velocity, inputMove * moveSpeedMultiplier,
+                                      player_->GetMoveSpeed() * moveSpeedMultiplier, player_->IsGrounded(), deltaTime);
+        }
     }
 
     // ロック中は横移動・後退しても敵を正面に捉えます。遮蔽で照準が無効なら通常の移動方向へ戻します。
@@ -266,21 +272,7 @@ void PlayerMover::Update(float deltaTime) {
             EmitGroundDust("player_jump_dust", 0.035f);
         }
 
-        // 攻撃中の踏み切りも地上の減速率を引き継ぎ、ジャンプ入力で制限を消さない。
-        const float takeoffScale = attackMovement.enabled ? attackMovement.groundSpeedScale : 1.0f;
-        if (hasMoveInput) {
-            const float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
-
-            if (len > 0.001f) {
-                const float scale = player_->GetMoveSpeed() * takeoffScale / len;
-                velocity.x = inputMove.x * scale;
-                velocity.z = inputMove.z * scale;
-            }
-        } else {
-            const float yaw = player_->GetMoveYaw();
-            velocity.x = std::sin(yaw) * player_->GetMoveSpeed() * takeoffScale;
-            velocity.z = std::cos(yaw) * player_->GetMoveSpeed() * takeoffScale;
-        }
+        // 踏み切りでは確定済みの水平速度を保ち、加速途中のジャンプで最高速へ飛ばさない。
 
         // 下降速度は渡さない。水平の勢いだけを残し、空中操作も維持する。
         platformAirVelocity_ = platformVelocity_ * 0.55f;

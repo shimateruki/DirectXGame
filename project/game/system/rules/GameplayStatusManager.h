@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Object3d.h"
+#include "game/actor/player/movement/PlayerLocomotion.h"
 
 #include <string>
 #include <unordered_map>
@@ -58,6 +59,10 @@ class GameplayStatusManager {
 
     const CharacterStatus& GetPlayerStatus() const { return playerStatus_; }
 
+    // 通常移動の加減速はPlayer共通値として管理し、敵の移動には適用しない。
+    PlayerLocomotionSettings& GetMutablePlayerLocomotion() { return playerLocomotion_; }
+    const PlayerLocomotionSettings& GetPlayerLocomotion() const { return playerLocomotion_; }
+
     // 未登録の敵種別なら nullptr。可変参照の編集後は MarkDirty を呼ぶ。
     CharacterStatus* FindMutableEnemyStatus(const std::string& enemyType);
 
@@ -105,6 +110,7 @@ class GameplayStatusManager {
 
   private:
     CharacterStatus playerStatus_;
+    PlayerLocomotionSettings playerLocomotion_;
     std::unordered_map<std::string, CharacterStatus> enemyStatuses_;
     bool initialized_ = false;
     bool dirty_ = false;

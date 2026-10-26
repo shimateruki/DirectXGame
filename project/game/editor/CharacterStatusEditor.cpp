@@ -213,7 +213,17 @@ bool Draw(BaseScene* scene, const std::string& type) {
         auto* status = type.empty() ? &manager->GetMutablePlayerStatus() : manager->FindMutableEnemyStatus(type);
         if (status) {
             if (!modelListReady) RefreshCharacterModelList();
-            if (DrawStatusEditor(*status, "SelectedCharacterStatus")) {
+            bool statusChanged = DrawStatusEditor(*status, "SelectedCharacterStatus");
+            if (type.empty() && ImGui::TreeNodeEx("通常移動の加速・減速", ImGuiTreeNodeFlags_DefaultOpen)) {
+                auto& movement = manager->GetMutablePlayerLocomotion();
+                statusChanged |= ImGui::DragFloat("最高速まで（秒）", &movement.accelerationTime, 0.01f, 0.0f, 3.0f, "%.2f");
+                statusChanged |= ImGui::DragFloat("停止まで（秒）", &movement.brakingTime, 0.01f, 0.0f, 3.0f, "%.2f");
+                statusChanged |= ImGui::DragFloat("空中の追従倍率", &movement.airControl, 0.01f, 0.1f, 1.0f, "%.2f");
+                ImGui::TextDisabled("最高速度は上の移動速度を使用。0秒なら即時に切り替わります。");
+                movement.Normalize();
+                ImGui::TreePop();
+            }
+            if (statusChanged) {
                 manager->MarkDirty();
                 const int count = CharacterStatusEditor::Apply(scene, type);
                 statusText = "配置済みの対象へ反映: " + std::to_string(count) + " 件";

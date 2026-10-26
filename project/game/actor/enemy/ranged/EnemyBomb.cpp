@@ -19,6 +19,8 @@ namespace {
 // 爆発判定と描画の大きさ、投擲後の接地・反射をそろえる調整値です。
 constexpr const char* kExplosionEffectPath = "Resources/json/effect/effect_bakuhatu.json";
 constexpr float kFallbackExplosionRadius = 3.0f;
+// プレイヤーの設置・投擲は、編集した爆発エフェクトより1.5倍広い爆風でまとめて攻撃する。
+constexpr float kPlayerExplosionScale = 1.5f;
 constexpr float kGroundDragPerSecond = 10.0f;
 constexpr float kStopSpeed = 0.12f;
 constexpr float kBombVisualScale = 0.30f;
@@ -325,16 +327,23 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
 }
 
 void EnemyBomb::Explode() {
+    // 接触と導火線が同じフレームに成立しても、爆風を二度発生させない。
+    if (state_ == State::Exploded)
+        return;
     state_ = State::Exploded;
     SetScale(managedBaseScale_);
+    UpdateWorldMatrix(false);
 
     // 爆発エフェクトと判定を出した後は、本体を表示しません。
     SetIsVisible(false);
 
-    // 爆発判定の半径はエフェクト設定から読み、見た目と攻撃範囲をそろえます。
-    // 判定はこのフレームにだけ出し、次のUpdateで無効化します。
+    // プレイヤーの爆風はワールド単位で扱い、小さな爆弾モデルの縮小率を掛けない。
+    // 敵の爆弾は既存の予告・攻撃設定を維持する。
+    const float effectScale = playerOwned_ ? kPlayerExplosionScale : 1.0f;
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(explosionRadius_);
+    if (playerOwned_ && GetCollider())
+        GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
+    SetCollisionRadius(explosionRadius_ * effectScale);
 
     // 所有者によって攻撃属性と対象マスクを切り替えます。
     // 投げ返した爆弾がプレイヤーへ即座に当たるのを防ぎます。
@@ -347,12 +356,45 @@ void EnemyBomb::Explode() {
     }
 
     // 命中演出とメッシュエフェクトは同じ爆発位置から発生させます。
-    engine::Vector3 myPos = GetTranslate();
+    engine::Vector3 myPos = GetWorldPosition();
+    auto* effects = MeshEffectManager::GetInstance();
+    const size_t firstNewEffect = effects ? effects->GetActiveEffects().size() : 0;
     HitEffectDirector::SpawnBombExplosionHit(myPos);
 
-    if (MeshEffectManager::GetInstance()) {
-        MeshEffectManager::GetInstance()->SpawnEffectAt(kExplosionEffectPath, myPos, {0.0f, 0.0f, 0.0f},
-                                                        {1.0f, 1.0f, 1.0f});
+    if (effects) {
+        effects->SpawnEffectAt(kExplosionEffectPath, myPos, {0.0f, 0.0f, 0.0f},
+                               {effectScale, effectScale, effectScale});
+        if (playerOwned_) {
+            // 表示の膨張で後から命中させず、この下の瞬間的な爆風だけを攻撃判定にする。
+            const auto& activeEffects = effects->GetActiveEffects();
+            for (size_t i = firstNewEffect; i < activeEffects.size(); ++i) {
+                auto* visual = activeEffects[i].get();
+                if (visual->editHasCollision_)
+                    CollisionManager::GetInstance()->RemoveObject(visual);
+                visual->editHasCollision_ = false;
+                visual->SetCollisionAttribute(0);
+                visual->SetCollisionMask(0);
+            }
+        }
+    }
+
+    if (playerOwned_ && GetCollider()) {
+        // 導火線と直撃を同じ経路へ集約する。消滅前に爆風内の敵と破壊壁へ一度だけ通知する。
+        PhysicsQueryFilter filter;
+        filter.mask = CollisionCategories::Get("enemy") | CollisionCategories::Get("ground");
+        filter.ignoredObject = this;
+        for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
+                 myPos, GetCollider()->GetRadius(), filter)) {
+            engine::Object3d* target = hit.object;
+            if ((dynamic_cast<BaseEnemy*>(target) || dynamic_cast<GimmickBreakableBlock*>(target)) &&
+                (GetCollisionMask() & target->GetCollisionAttribute()) &&
+                (target->GetCollisionMask() & GetCollisionAttribute())) {
+                target->OnCollision(this);
+            }
+        }
+        // 既に通知した爆風を通常の衝突パスへ残さず、同フレームの二重命中を防ぐ。
+        SetCollisionAttribute(0);
+        SetCollisionMask(0);
     }
 
     // 爆発済みの本体を敵の生存判定に残さないよう、HPをゼロへします。
@@ -447,21 +489,6 @@ bool EnemyBomb::OnCollision(engine::Object3d* other) {
         dynamic_cast<BaseEnemy*>(other) && (other->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
         Explode();
 
-        // 接触中に半径を広げても衝突管理の候補一覧は更新されないため、爆風内を即座に調べます。
-        // 通常の衝突コールバックと重なっても敵の被弾猶予と壁の破壊済み判定が重複を防ぎます。
-        PhysicsQueryFilter filter;
-        filter.mask = CollisionCategories::Get("enemy") | CollisionCategories::Get("ground");
-        filter.ignoredObject = this;
-
-        for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
-                 GetWorldPosition(), GetCollider()->GetRadius(), filter)) {
-            engine::Object3d* target = hit.object;
-            if ((dynamic_cast<BaseEnemy*>(target) || dynamic_cast<GimmickBreakableBlock*>(target)) &&
-                (GetCollisionMask() & target->GetCollisionAttribute()) &&
-                (target->GetCollisionMask() & GetCollisionAttribute())) {
-                target->OnCollision(this);
-            }
-        }
 
         return true;
     }

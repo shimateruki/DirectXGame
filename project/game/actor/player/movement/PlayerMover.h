@@ -4,6 +4,10 @@
 #include "game/actor/player/movement/PlayerJumpRequest.h"
 #include <unordered_map>
 
+#ifdef USE_IMGUI
+namespace PlayerLocomotionRuntimeProbe { struct Access; }
+#endif
+
 // 前方宣言
 class Player;
 namespace engine { class InputManager; }
@@ -47,6 +51,10 @@ class PlayerMover {
     // 能力で受けた水平の押し出しを空中で短く残し、通常の移動入力と合成します。
     void SetAbilityAirImpulse(const engine::Vector3& velocity) {
         abilityAirVelocity_ = {velocity.x, 0.0f, velocity.z};
+        // 非ゼロの噴射は呼び出し元が本体速度にも設定済み。次回の加速計算で二重に足さない。
+        // 解除時は直前に加算した量を保持し、残った外力を通常速度として引き継がせない。
+        if (velocity.x != 0.0f || velocity.z != 0.0f)
+            previousAddedAirVelocity_ = abilityAirVelocity_;
     }
 
     /// <summary>
@@ -66,6 +74,9 @@ class PlayerMover {
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
 
   private:
+#ifdef USE_IMGUI
+    friend struct PlayerLocomotionRuntimeProbe::Access;
+#endif
     engine::Vector3 platformVelocity_{};
     engine::Vector3 platformAirVelocity_{};
     engine::Vector3 abilityAirVelocity_{};

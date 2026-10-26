@@ -3,6 +3,7 @@
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/actor/enemy/ranged/EnemyBomber.h"
 #include "game/actor/enemy/ranged/EnemyBomb.h"
+#include "game/actor/gimmick/block/GimmickBreakableBlock.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "game/actor/combat/AttackSequence.h"
 #include "game/system/combat/BulletManager.h"
@@ -105,6 +106,78 @@ inline void BombPhysicsCases(BaseScene* scene,std::ostream& log) {
     collisions->RemoveObject(wall.get());collisions->RemoveObject(floor.get());
     log<<"PASS bomb wall contact, single gravity, stable placed/thrown physics and frame-rate range"<<std::endl;
 }
+// 爆弾モデルの縮小率・起爆経路が異なっても、同じワールド範囲へ一度だけ命中する。
+inline void BombExplosionCases(BaseScene* scene, std::ostream& log) {
+    auto* collisions = CollisionManager::GetInstance();
+    const engine::Vector3 origin{2000.0f, 1000.0f, 2000.0f};
+    for (float scale : {0.16f, 0.30f, 2.0f}) for (bool direct : {false, true}) {
+        std::vector<std::unique_ptr<engine::Object3d>> objects;
+        struct Registration {
+            CollisionManager* manager;
+            std::vector<engine::Object3d*> values;
+            ~Registration() { for (auto* object : values) manager->RemoveObject(object); }
+        } registration{collisions, {}};
+        auto addEnemy = [&](const engine::Vector3& offset) {
+            auto actor = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3dCommon());
+            Require(actor && actor->param_, "bomb regression target missing");
+            auto* enemy = actor.get();
+            enemy->SetTarget(nullptr);
+            enemy->param_->hp = enemy->param_->maxHp = 100.0f;
+            enemy->SetScale({1, 1, 1});
+            enemy->SetTranslate(origin + offset);
+            engine::Object3d::ColliderConfig shape;
+            shape.type = ColliderType::kSphere; shape.size = {0.25f, 0.25f, 0.25f};
+            enemy->SetColliderConfig(shape);
+            enemy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+            enemy->SetCollisionMask(CollisionCategories::Get("player_attack"));
+            enemy->UpdateWorldMatrix(true);
+            collisions->AddObject(enemy); registration.values.push_back(enemy);
+            objects.push_back(std::move(actor));
+            return enemy;
+        };
+        BaseEnemy* nearby = addEnemy({4.4f, 0, 0});
+        BaseEnemy* outside = addEnemy({6.2f, 0, 0});
+        BaseEnemy* contact = direct ? addEnemy({0, 0, 0.2f}) : nullptr;
+        auto wall = std::make_unique<GimmickBreakableBlock>();
+        wall->Initialize(scene->GetObject3dCommon(), "Stages/bomb_break_block");
+        wall->SetScale({1, 1, 1}); wall->SetTranslate(origin + engine::Vector3{-4.4f, 0, 0});
+        engine::Object3d::ColliderConfig box;
+        box.type = ColliderType::kAABB; box.size = {0.25f, 0.25f, 0.25f};
+        wall->SetColliderConfig(box); wall->UpdateWorldMatrix(true);
+        auto* breakable = wall.get();
+        collisions->AddObject(breakable); registration.values.push_back(breakable);
+        objects.push_back(std::move(wall));
+        auto actor = EnemyFactory::GetInstance()->CreateEnemy("Bomb", scene->GetObject3dCommon());
+        auto* bomb = dynamic_cast<EnemyBomb*>(actor.get());
+        Require(bomb && bomb->param_, "bomb regression actor missing");
+        bomb->SetTarget(nullptr); bomb->SetPlayerOwned(true);
+        bomb->param_->attackPower = 1.0f;
+        bomb->ApplyManagedScale({scale, scale, scale});
+        bomb->SetTranslate(origin); bomb->SetRotation({0.4f, 0.6f, 0.2f});
+        bomb->Ignite(direct ? 8.0f : 0.01f); bomb->UpdateWorldMatrix(true);
+        if (direct) bomb->OnCollision(contact); else bomb->Update(0.02f);
+        Require(bomb->IsExploded(), "player bomb failed to explode");
+        Require(std::abs(bomb->GetCollider()->GetRadius() - 5.1f) < 0.01f, "bomb model scale shrank world blast");
+        Require(std::abs(nearby->param_->hp - 90.0f) < 0.01f, "near-miss bomb did not damage nearby enemy once");
+        Require(std::abs(outside->param_->hp - 100.0f) < 0.01f, "bomb damaged enemy outside blast");
+        Require(breakable->isDead && breakable->GetCollisionAttribute() == 0, "fuse/impact blast did not break nearby wall");
+        if (contact) Require(std::abs(contact->param_->hp - 90.0f) < 0.01f, "direct blast damage duplicated");
+        // 次の衝突・更新に再通知しても同じ爆風を残さない。
+        if (contact) bomb->OnCollision(contact);
+        nearby->OnCollision(bomb); bomb->Update(0.02f);
+        Require(std::abs(nearby->param_->hp - 90.0f) < 0.01f && bomb->GetCollisionAttribute() == 0,
+                "expired bomb applied a second blast");
+        // 爆発した後に近づいた敵へ、表示用の膨張エフェクトが追加ダメージを出さない。
+        BaseEnemy* late = addEnemy({0, 0, 0});
+        auto* meshes = MeshEffectManager::GetInstance();
+        meshes->UpdateEditorPreviewStep(0.25f);
+        for (const auto& visual : meshes->GetActiveEffects()) late->OnCollision(visual.get());
+        Require(std::abs(late->param_->hp - 100.0f) < 0.01f, "visual blast applied delayed extra damage");
+        log << "PASS player bomb blast scale=" << scale << " direct=" << direct
+            << " radius=" << bomb->GetCollider()->GetRadius() << " nearHP=" << nearby->param_->hp
+            << " outsideHP=" << outside->param_->hp << " wallBroken=" << breakable->isDead << std::endl;
+    }
+}
 inline void AfterDraw(SceneManager* manager,const std::string& path) {
     static std::ofstream log(path,std::ios::trunc);static ULONGLONG start=GetTickCount64();
     static int phase=0,frames=0;static bool done=false;static EnemyBomber* bomber=nullptr;static EnemyBomb* thrown=nullptr;
@@ -120,6 +193,11 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
         auto* player=GetScenePlayer(scene);if(!player)return;
         if(phase==1) {
             if(++frames<12 || !player->IsControlActive() || player->IsCinematicLocked())return;
+            BombExplosionCases(scene,log);
+            if (GetEnvironmentVariableA("CG2_BOMB_EXPLOSION_TEST", nullptr, 0) > 0) {
+                finish("PASS: player bomb world radius, fuse/contact splash, breakable walls and single damage");
+                return;
+            }
             FireCases(scene,log);
             BombPhysicsCases(scene,log);
             Require(CannonDamageRuntimeProbe::RunCase(manager,0,0.6f,0,false,false,log),"cannon damage regression");

@@ -20,6 +20,7 @@
 #include "GimmickPropertyRuntimeProbe.h"
 #include "GateEntryRuntimeProbe.h"
 #include "PlayerAttackRuntimeProbe.h"
+#include "PlayerLocomotionRuntimeProbe.h"
 #include "CannonDamageRuntimeProbe.h"
 #include "GoalPresentationRuntimeProbe.h"
 #include "StarCoinRuntimeProbe.h"
@@ -92,6 +93,10 @@ inline void AfterDraw(SceneManager* manager, DebugEditor* editor = nullptr) {
     }
     if (TutorialPromptRuntimeProbe::Enabled()) {
         TutorialPromptRuntimeProbe::AfterDraw(manager, LogPath());
+        return;
+    }
+    if (PlayerLocomotionRuntimeProbe::Enabled()) {
+        PlayerLocomotionRuntimeProbe::AfterDraw(manager, LogPath());
         return;
     }
     if (PlayerAttackRuntimeProbe::Enabled()) {
