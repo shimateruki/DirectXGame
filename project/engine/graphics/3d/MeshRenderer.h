@@ -423,6 +423,9 @@ public:
 
     const engine::Vector3& GetVisualOffset() const { return visualOffset_; }
 
+    /// <summary>描画に使う最終ワールド行列。装着物も身体変形・シアー・演出姿勢へ追従させる。</summary>
+    engine::Matrix4x4 GetRenderWorldMatrix() const { return BuildRenderWorldMatrix(); }
+
     // 指定したローカルY座標を支点に、上側だけを水平方向へ傾けます。
     void SetVisualShear(const engine::Vector3& horizontalShear, float pivotY);
 

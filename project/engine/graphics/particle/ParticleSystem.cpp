@@ -5,7 +5,7 @@
 #include "TextureManager.h"
 #include "CameraManager.h"
 #include "SRVManager.h"
-#include "engine/utility/math/Math.h" 
+#include "engine/utility/math/Math.h"
 #include <cassert>
 #include <chrono>
 #include <string>
@@ -33,7 +33,7 @@ void engine::ParticleSystem::Initialize(engine::ParticleCommon* common, const st
 
     assert(textureHandle_ != 0);
     CreateResources();
-    particles_.reserve(kMaxParticles); 
+    particles_.reserve(kMaxParticles);
     std::random_device seed_gen;
     randomEngine_.seed(seed_gen());
 
@@ -225,7 +225,7 @@ void engine::ParticleSystem::SpawnParticles(const engine::Vector3& position, int
         p.endColor = endColor;
         p.startSize = startSize;
         p.endSize = endSize;
-        p.rotation = 0.0f; 
+        p.rotation = 0.0f;
         p.acceleration = params_.acceleration;
         p.hdrIntensity = params_.hdrIntensity;
 
@@ -616,3 +616,22 @@ void engine::ParticleSystem::SpawnSlashEffect(const engine::Vector3& position, f
         particles_.push_back(p);
     }
 }
+
+#ifdef USE_IMGUI
+void engine::ParticleSystem::BeginEditorSession() {
+    if (editorSession_) return;
+    savedEditorParams_ = params_; savedEditorRandom_ = randomEngine_;
+    savedEditorScale_ = simulationTimeScale_; savedEditorTimer_ = spawnTimer_; savedEditorTexture_ = textureHandle_;
+    particles_.swap(savedEditorParticles_); ResetSimulation();
+    params_.isEmitting = false; simulationTimeScale_ = 1; editorSession_ = true;
+}
+void engine::ParticleSystem::EndEditorSession() {
+    if (!editorSession_) return;
+    Clear(); particles_.swap(savedEditorParticles_);
+    params_ = savedEditorParams_; randomEngine_ = savedEditorRandom_;
+    simulationTimeScale_ = savedEditorScale_; spawnTimer_ = savedEditorTimer_; textureHandle_ = savedEditorTexture_;
+    editorSession_ = false;
+    // GPUのインスタンス転送は通常の時間0更新で復元する。
+    Update(0.0f);
+}
+#endif

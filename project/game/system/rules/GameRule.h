@@ -27,7 +27,7 @@ class GameRule {
 
     /// <summary>監視対象シーンを借用し、接触・ダメージ・死亡イベントを購読する。</summary>
     /// <remarks>購読中はGameRuleとシーンの両方が有効である必要がある。</remarks>
-    void Initialize(BaseScene* scene);
+    void Initialize(BaseScene* scene, bool editorOnly = false);
 
     /// <summary>チェックポイント演出と継続型状態異常を更新する。</summary>
     /// <param name="deltaTime">経過秒数。</param>
@@ -64,6 +64,7 @@ class GameRule {
         std::string vfxPreset;
     };
 
+    bool editorOnly_ = false;
     BaseScene* scene_ = nullptr;
     std::vector<ActiveStatusEffect> activeStatusEffects_;
     std::unique_ptr<CheckpointRule> checkpointRule_;

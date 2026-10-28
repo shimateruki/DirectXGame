@@ -165,7 +165,7 @@ class GhostDirector : public IEditable {
     void DrawCameraShotEditor();
 
     /// ボディアニメーションの再生トラックを編集する。
-    void DrawAnimationClipEditor();
+    void DrawAnimationWorkbench();
 
     /// 音声クリップの再生トラックを編集する。
     void DrawAudioClipEditor();

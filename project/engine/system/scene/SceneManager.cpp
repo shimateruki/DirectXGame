@@ -1,3 +1,6 @@
+#ifdef USE_IMGUI
+#include "engine/core/editor/SelectedActorSession.h"
+#endif
 #include "SceneManager.h"
 
 #include "DirectXCommon.h"
@@ -115,6 +118,10 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
 }
 
 void SceneManager::Finalize() {
+#ifdef USE_IMGUI
+    if (auto* session = SelectedActorSession::Current()) session->PrepareSceneChange();
+#endif
+
     // 非同期処理とGPUの使用完了を待ってから、現行/準備中のシーンを解放する。
     if (assetCreationFuture_.valid()) {
         assetCreationFuture_.wait();
@@ -288,6 +295,10 @@ void SceneManager::DrawShadow() {
 }
 
 void SceneManager::SetNextScene(std::unique_ptr<BaseScene> nextScene) {
+#ifdef USE_IMGUI
+    if (auto* session = SelectedActorSession::Current()) session->PrepareSceneChange();
+#endif
+
     // 直接生成済みのシーンの所有権を受け取り、次の更新で交換する。
     nextScene_ = std::move(nextScene);
 }
@@ -298,16 +309,28 @@ BaseScene* SceneManager::GetCurrentScene() const {
 }
 
 void SceneManager::ChangeScene(const std::string& sceneName) {
+#ifdef USE_IMGUI
+    if (auto* session = SelectedActorSession::Current()) session->PrepareSceneChange();
+#endif
+
     // 通常遷移は暗転後にローディング画面を経由する。
     QueueSceneChange(sceneName, true);
 }
 
 void SceneManager::ChangeSceneWithoutLoading(const std::string& sceneName, bool destinationHandlesReveal) {
+#ifdef USE_IMGUI
+    if (auto* session = SelectedActorSession::Current()) session->PrepareSceneChange();
+#endif
+
     // 短い演出ではローディング画面を省き、遷移先の開示演出を選べる。
     QueueSceneChange(sceneName, true, true, destinationHandlesReveal);
 }
 
 void SceneManager::ChangeSceneAfterFade(const std::string& sceneName) {
+#ifdef USE_IMGUI
+    if (auto* session = SelectedActorSession::Current()) session->PrepareSceneChange();
+#endif
+
     // 呼び出し側が始めた暗転を待ってから通常の遷移へ進む。
     QueueSceneChange(sceneName, false);
 }
@@ -775,6 +798,10 @@ float SceneManager::CalculateLoadingProgress() const {
 }
 
 void SceneManager::SwapToPreparedScene() {
+#ifdef USE_IMGUI
+    if (auto* session = SelectedActorSession::Current()) session->PrepareSceneChange();
+#endif
+
     // GPU使用が終わってからLoadingSceneを解放し、準備済みシーンを有効化する。
     const auto swapWaitStart = std::chrono::steady_clock::now();
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
@@ -825,6 +852,10 @@ void SceneManager::SwapToPreparedScene() {
 }
 
 void SceneManager::SwapToDirectNextScene() {
+#ifdef USE_IMGUI
+    if (auto* session = SelectedActorSession::Current()) session->PrepareSceneChange();
+#endif
+
     // ロード画面を挟まない遷移でも、旧シーンのGPU参照を待ってから交換する。
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 

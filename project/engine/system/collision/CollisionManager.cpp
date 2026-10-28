@@ -1,7 +1,7 @@
 #define NOMINMAX
 #include "CollisionManager.h"
 #include "engine/utility/math/Math.h"
-#include <cmath> 
+#include <cmath>
 #include <algorithm> // std::find
 #include <limits>
 #include <unordered_map>
@@ -576,7 +576,7 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
 
         // (1) マスク判定 (指定した対象か？)
         if (!((object->GetCollisionAttribute()) & mask)) {
-            continue; // 対象外 
+            continue; // 対象外
         }
 
             // =========================================================
@@ -597,7 +597,7 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
                 distance = IntersectRayAABB(start, direction, aabb);
             }
             else if (colType == ColliderType::kOBB) {
-                OBB obb = object->GetOBB(); 
+                OBB obb = object->GetOBB();
                 distance = IntersectRayOBB(start, direction, obb);
             }
             else if (colType == ColliderType::kSphere) {
@@ -653,6 +653,10 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
 }
 
 bool CollisionManager::PassesQueryFilter(engine::Object3d* object, const PhysicsQueryFilter& filter) const {
+#ifdef USE_IMGUI
+    if (object && editorQueryFilter_ && !editorQueryFilter_(object)) return false;
+#endif
+
     // 属性、トリガー、無効化と親子の除外条件を全クエリで共通に適用する。
     if (!object || !object->GetCollider() || object->GetColliderType() == ColliderType::kNone) {
         return false;

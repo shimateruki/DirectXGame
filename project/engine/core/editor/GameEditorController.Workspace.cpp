@@ -1,4 +1,4 @@
-﻿#include "engine/core/editor/GameEditorController.Internal.h"
+#include "engine/core/editor/GameEditorController.Internal.h"
 
 #ifdef USE_IMGUI
 using namespace GameEditorControllerImplementation;
@@ -12,8 +12,10 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
     showDebugWindows_ = true;
 
     // 前の対象選択を残すと、新しいワークスペースのInspectorに別用途の編集対象が混ざる。
-    debugEditor_->SetSelectedObject(nullptr);
-    EditorManager::GetInstance()->ClearSelection();
+    if (preset == WorkspacePreset::Vfx) {
+        debugEditor_->SetSelectedObject(nullptr);
+        EditorManager::GetInstance()->ClearSelection();
+    }
 
     // ワークスペースごとの主役となる編集対象と、専用のタイムライン表示を切り替える。
     IEditable* target = nullptr;
@@ -24,7 +26,7 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
         break;
 
     case WorkspacePreset::Animation:
-        target = debugEditor_->GetAnimationWorkbench();
+        target = debugEditor_.get();
         break;
     }
 

@@ -212,14 +212,13 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void SyncHeadVisualTransform(Player& player) {
-        // スライム本体の拡縮に追従させ、頭上の相対位置を維持する。
-        const engine::Vector3 scale = player.GetScale();
-        const float bodyScale = (std::max)({0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
-        const engine::Vector3 position =
-            player.GetWorldPosition() + engine::Vector3{0.0f, 0.95f * (std::max)(0.65f, std::abs(scale.y)), 0.0f};
-        headVisual_->SetTranslate(position);
-        headVisual_->SetRotation({0.0f, player.GetMoveYaw(), 0.0f});
-        headVisual_->SetScale({0.73f * bodyScale, 0.70f * bodyScale, 0.73f * bodyScale});
+        // 頭上の位置を本体ローカルで持ち、攻撃時の潰れ・傾き・移動もまとめて追従する。
+        const auto* bodyRenderer = player.GetMeshRenderer();
+        headVisualAnchor_.matWorld = bodyRenderer ? bodyRenderer->GetRenderWorldMatrix() : player.GetWorldMatrix();
+        headVisual_->SetTransformAnchor(&headVisualAnchor_);
+        headVisual_->SetTranslate({0.0f, 0.95f, 0.0f});
+        headVisual_->SetRotation({0.0f, 0.0f, 0.0f});
+        headVisual_->SetScale({0.73f, 0.70f, 0.73f});
         headVisual_->UpdateWorldMatrix(true);
     }
 
@@ -475,6 +474,8 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     engine::Vector3 dashDirection_{0.0f, 0.0f, 1.0f};
     AttackSequence fireballSequence_;
     std::string previewAttackId_;
+    // 表示Objectより先に確保し、親参照より長く生存させる。
+    Transform headVisualAnchor_;
     std::unique_ptr<engine::Object3d> headVisual_;
     std::vector<std::unique_ptr<engine::Object3d>> breathVisuals_;
     bool breathVisible_ = false;

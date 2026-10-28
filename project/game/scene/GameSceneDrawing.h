@@ -39,7 +39,8 @@ inline void DrawSceneObjectPass(const std::vector<std::unique_ptr<engine::Object
     const std::function<bool(engine::Object3d*)>& filter = {}) {
     // 一人称視点では本人と必要に応じて子Objectを除き、材質別パスに振り分ける。
     for (const auto& object : objects) {
-        if (!object || (filter && !filter(object.get()))) {
+        // Editorで一時非表示の実体は、派生Drawが所有する付属パーツごと除外する。
+        if (!object || object->IsEditorTemporarilyHidden() || (filter && !filter(object.get()))) {
             continue;
         }
 

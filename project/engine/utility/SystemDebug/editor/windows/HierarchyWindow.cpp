@@ -669,7 +669,7 @@ void HierarchyWindow::Draw() {
         }
 
      if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
-            editor_->SetSelectedObject(nullptr); 
+            editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetMeshEffectEditor());
         }
 
@@ -703,37 +703,13 @@ void HierarchyWindow::Draw() {
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEffectPreviewStage());
         }
 
-        if (editor_->GetEnemyAttackPreviewWindow() &&
-            ImGui::Selectable("  " ICON_FA_PAW " 敵の調整・攻撃プレビュー", currentObj == editor_->GetEnemyAttackPreviewWindow() &&
-            !editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode() &&
-            !editor_->GetEnemyAttackPreviewWindow()->IsCrownMovieMode())) {
-            editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(false);
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
-        }
 
-        if (editor_->GetEnemyAttackPreviewWindow() &&
-            ImGui::Selectable("  " ICON_FA_PAW " プレイヤー調整・コピー能力", currentObj == editor_->GetEnemyAttackPreviewWindow() &&
-            editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode())) {
-            // 同じPreviewWindowを敵攻撃とコピー能力で共用し、選択時に編集モードだけを切り替える。
-            editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(true);
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
-        }
 
-        if (editor_->GetEnemyAttackPreviewWindow() &&
-            ImGui::Selectable("  " ICON_FA_FILM " 王冠・撃破ムービープレビュー", currentObj == editor_->GetEnemyAttackPreviewWindow() &&
-            editor_->GetEnemyAttackPreviewWindow()->IsCrownMovieMode())) {
-            editor_->GetEnemyAttackPreviewWindow()->SetCrownMovieMode();
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
-        }
 
-        if (editor_->GetAnimationWorkbench() &&
-            ImGui::Selectable("  " ICON_FA_RUNNING " アニメーション制作 (Animation Workbench)", currentObj == editor_->GetAnimationWorkbench())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimationWorkbench());
-        }
+
+
+
+
 
         if (editor_->GetAnimatorControllerEditor() &&
             ImGui::Selectable("  " ICON_FA_RANDOM " Animator Controller", currentObj == editor_->GetAnimatorControllerEditor())) {
@@ -975,20 +951,20 @@ void HierarchyWindow::Draw() {
 
                 if (common) {
                     auto newObj = std::make_unique<engine::Object3d>();
-                    newObj->Initialize(common); 
-                    newObj->SetModel("Stages/block"); 
-                    newObj->SetName("VFX_" + std::string(presetName)); 
+                    newObj->Initialize(common);
+                    newObj->SetModel("Stages/block");
+                    newObj->SetName("VFX_" + std::string(presetName));
                     newObj->SetClassName("GPUParticle");
                     newObj->SetGPUParticleName(presetName);
 
                     // エディタ上で分かりやすいように色をオレンジ半透明っぽくする
                     newObj->SetColor({1.0f, 0.5f, 0.0f, 0.5f});
                     newObj->SetBlendMode(BlendMode::kNormal);
-                    
-                    newObj->SetTranslate({ 0.0f, 0.0f, 0.0f }); 
-                    newObj->UpdateLocalMatrix(); 
+
+                    newObj->SetTranslate({ 0.0f, 0.0f, 0.0f });
+                    newObj->UpdateLocalMatrix();
                     newObj->UpdateWorldMatrix();
-                    
+
                     editor_->SetPreviewObject(std::move(newObj));
                 }
             }

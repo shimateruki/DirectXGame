@@ -1024,22 +1024,22 @@ void MeshEffectManager::SpawnRingWaveEffect(const engine::Vector3& position) {
 
     // ★ 課題用: リング波紋エフェクトの設定
     effect->SetProceduralType(10); // 10: Ring
-    
+
     // UVスクロールで波紋を外側に広げる (V方向スクロール)
     // AddressV=CLAMP にしているので、1回の波で終わる
-    effect->SetScrollSpeed({ 0.0f, -1.5f }); 
-    
+    effect->SetScrollSpeed({ 0.0f, -1.5f });
+
     // スケールを徐々に大きくする
     effect->SetStartScale({ 1.0f, 1.0f, 1.0f });
     effect->SetEndScale({ 6.0f, 6.0f, 6.0f });
-    
+
     // 色と透明度（青白っぽく発光しながら消える）
     effect->SetStartColor({ 0.5f, 0.8f, 1.0f, 1.0f });
     effect->SetEndColor({ 0.5f, 0.8f, 1.0f, 0.0f });
-    
+
     // 発光の強さ
     effect->SetIntensity(2.0f);
-    
+
     // 加算合成（透けるように光らせる）
     effect->SetBlendMode(BlendMode::kAdd);
 
@@ -1059,7 +1059,7 @@ void MeshEffectManager::SpawnRingWaveEffect(const engine::Vector3& position) {
     // 配置
     effect->SetTranslate(position);
     effect->SetRotation({ 0.0f, 0.0f, 0.0f });
-    
+
     // アニメーション再生（0.6秒）
     effect->Play(0.6f);
     effect->Update(0.0f);
@@ -1148,3 +1148,22 @@ void MeshEffectManager::SpawnPortalEffect(const engine::Vector3& position, float
 
     activeEffects_.push_back(std::move(effect));
 }
+
+#ifdef USE_IMGUI
+void MeshEffectManager::BeginEditorSession() {
+    if (editorSession_) return;
+    savedEditorScale_ = timeScale_;
+    savedEditorDebugEffect_ = previewEffectForDebug_; previewEffectForDebug_ = nullptr;
+    activeEffects_.swap(savedEditorEffects_); effectScopes_.swap(savedEditorScopes_);
+    timelineScopes_.swap(savedEditorTimelineScopes_); timelineOffsets_.swap(savedEditorOffsets_);
+    timeScale_ = 1; updatedThisFrame_ = false; editorSession_ = true;
+}
+void MeshEffectManager::EndEditorSession() {
+    if (!editorSession_) return;
+    ClearActiveEffects();
+    activeEffects_.swap(savedEditorEffects_); effectScopes_.swap(savedEditorScopes_);
+    timelineScopes_.swap(savedEditorTimelineScopes_); timelineOffsets_.swap(savedEditorOffsets_);
+    timeScale_ = savedEditorScale_; updatedThisFrame_ = false; editorSession_ = false;
+    previewEffectForDebug_ = savedEditorDebugEffect_; savedEditorDebugEffect_ = nullptr;
+}
+#endif

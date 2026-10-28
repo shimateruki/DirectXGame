@@ -1,12 +1,12 @@
-#include "EnemyAttackPreviewWindow.h"
-#include "CopyAbilityPreviewRegistry.h"
-#include "EnemyAttackPreviewWindow.Constants.h"
+#ifdef USE_IMGUI
+#include "game/editor/ActorDebugPanel.h"
+#include "game/editor/CopyAbilityPreviewRegistry.h"
+#include "game/editor/ActorDebugPanel.Constants.h"
 #include "game/crown/CrownFinaleTuning.h"
 #include "game/scene/gameplay/GamePlayScene.h"
 
 #include "BaseEnemy.h"
 #include "BaseScene.h"
-#include "EffectPreviewStage.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "Object3d.h"
 #include "Player.h"
@@ -110,7 +110,7 @@ void DrawTimelineBlock(
 #endif
 }
 
-void EnemyAttackPreviewWindow::DrawTimelineWindow() {
+void ActorDebugPanel::DrawTimelineWindow() {
     // 設定上の攻撃時間と実際の AI フェーズを同じ時間軸に重ねて比較します。
 #ifdef USE_IMGUI
     // 王冠ムービーでは専用トラックを使い、通常の敵攻撃トラックとは表示を切り替えます。
@@ -122,20 +122,20 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
     constexpr const char* kWindowName = "攻撃・能力プレビュー - Timeline";
     const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove;
 
-    if (!ImGui::Begin(kWindowName, nullptr, windowFlags)) {
-        ImGui::End();
+    if (!ImGui::BeginChild(kWindowName, ImVec2(0, 420), true, ImGuiWindowFlags_HorizontalScrollbar)) {
+        ImGui::EndChild();
         return;
     }
 
     if (!IsCurrentSceneReady()) {
         ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.28f, 1.0f), "Object3dを配置できるSceneが必要です。");
-        ImGui::End();
+        ImGui::EndChild();
         return;
     }
 
     if (sceneManager_->IsPlaying()) {
         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.20f, 1.0f), "編集モードへ戻すと敵攻撃タイムラインを使用できます。");
-        ImGui::End();
+        ImGui::EndChild();
         return;
     }
 
@@ -145,12 +145,12 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
     if (placementPreview_) {
         ImGui::TextWrapped("配置モード: 選択部品を単独表示しています。攻撃全体の再生はInspectorの「保存せず動作確認」を使います。");
         DrawPlacementControls();
-        ImGui::End();
+        ImGui::EndChild();
         return;
     }
 
     if (!enabled_) {
-        ImGui::TextDisabled("右のInspectorまたは下のボタンからプレビューを有効にしてください。");
+        ImGui::TextDisabled("このパネルのボタンからプレビューを有効にしてください。");
         ImGui::SameLine();
 
         if (ImGui::Button("プレビューを開始")) {
@@ -158,7 +158,7 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
             CreatePreviewObjects();
         }
 
-        ImGui::End();
+        ImGui::EndChild();
         return;
     }
 
@@ -238,7 +238,6 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
     ImGui::SameLine();
 
     if (ImGui::Button("カメラを初期位置へ")) {
-        EffectPreviewStage::GetInstance()->RequestCameraRecenter();
     }
 
     ImGui::PopID();
@@ -595,16 +594,15 @@ void EnemyAttackPreviewWindow::DrawTimelineWindow() {
 
     ImGui::EndChild();
 
-    ImGui::End();
+    ImGui::EndChild();
 #endif
 }
 
-void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
+void ActorDebugPanel::DrawCrownMovieTimeline() {
 #ifdef USE_IMGUI
     // 同じ下段ドックを使い、InspectorとGame Viewを残して確認します。
-    if (!ImGui::Begin("攻撃・能力プレビュー - Timeline", nullptr,
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove)) {
-        ImGui::End();
+    if (!ImGui::BeginChild("演出の時間軸", ImVec2(0, 420), true, ImGuiWindowFlags_HorizontalScrollbar)) {
+        ImGui::EndChild();
         return;
     }
 
@@ -615,7 +613,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
     if (!enabled_) {
         ImGui::TextDisabled("右のInspectorから「ムービープレビューを開始」を押してください。");
         ImGui::PopID();
-        ImGui::End();
+        ImGui::EndChild();
         return;
     }
 
@@ -687,7 +685,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
         ImGui::TextWrapped("最後の一撃 → 王冠の亀裂と再集束 → 破砕・放電 → 力が抜けて小スライムへ → 王の勝利");
         ImGui::TextDisabled("本番と同じ演出素材で進行します。編集は演出タイムラインで行います。");
         ImGui::PopID();
-        ImGui::End();
+        ImGui::EndChild();
         return;
     }
 
@@ -779,6 +777,8 @@ void EnemyAttackPreviewWindow::DrawCrownMovieTimeline() {
     ImGui::Dummy({ width, 162 });
     ImGui::TextDisabled("Space: 再生/停止 / ←→: 1F / Shift+←→: 10F / Home: 先頭");
     ImGui::PopID();
-    ImGui::End();
+    ImGui::EndChild();
 #endif
 }
+
+#endif

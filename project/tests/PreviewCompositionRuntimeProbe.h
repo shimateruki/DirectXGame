@@ -5,9 +5,9 @@
 #include "SceneManager.h"
 #include "WinApp.h"
 #include "Player.h"
-#include "CopyAbilityPreviewRegistry.h"
-#include "EnemyAttackPreviewRegistry.h"
-#include "engine/utility/SystemDebug/editor/windows/EnemyAttackPreviewWindow.h"
+#include "game/editor/CopyAbilityPreviewRegistry.h"
+#include "game/editor/EnemyAttackPreviewRegistry.h"
+#include "game/editor/RegisterGameActorDebug.h"
 #include "tests/EnemyProjectileRuntimeProbe.h"
 #include <fstream>
 #include <stdexcept>
@@ -69,7 +69,7 @@ struct PreviewCompositionRuntimeProbe {
         Require(!CopyAbilityPreviewRegistry::Register({entries.front()}),"copy duplicate accepted");
         log<<"OK 6 forms / 43 actions: legacy fixed-step inputs, hold/release, combo, profile aliases, atomic registration"<<std::endl;
     }
-    static void CheckSpawn(EnemyAttackPreviewWindow& preview,std::ofstream& log) {
+    static void CheckSpawn(ActorDebugPanel& preview,std::ofstream& log) {
         preview.StopPreview();preview.SetPlayerCopyMode(false);
         preview.enemyType_="PrismSlime";preview.LoadSelectedProfile();preview.prismChantOnly_=false;
         for(int a=0;a<static_cast<int>(preview.editableProfile_.attacks.size());++a)
@@ -109,8 +109,8 @@ struct PreviewCompositionRuntimeProbe {
         preview.StopPreview();
         std::function<void(std::unique_ptr<BaseEnemy>)> expired;
         {
-            EnemyAttackPreviewWindow temporary;
-            temporary.spawnSession_=std::make_shared<EnemyAttackPreviewWindow::SpawnSession>();
+            ActorDebugPanel temporary;
+            temporary.spawnSession_=std::make_shared<ActorDebugPanel::SpawnSession>();
             expired=temporary.MakePreviewSpawnCallback();
         }
         expired(std::make_unique<BaseEnemy>());
@@ -124,7 +124,7 @@ struct PreviewCompositionRuntimeProbe {
         try {
             if(phase==0){manager->SetIsPlaying(false);manager->ChangeScene("GAMEPLAY");phase=1;return;}
             if(manager->GetCurrentSceneName()!="GAMEPLAY" || ++wait<3)return;
-            auto& preview=*editor->GetEnemyAttackPreviewWindow();
+            auto& preview=*GetGameActorDebugPanel();
             if(phase==1){
                 CheckInputs(cases,log);CheckSpawn(preview,log);
                 preview.SetPlayerCopyMode(true);preview.loop_=false;preview.showTarget_=false;

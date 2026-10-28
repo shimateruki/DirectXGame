@@ -1,6 +1,6 @@
 #pragma once
 #ifdef USE_IMGUI
-#include "engine/utility/SystemDebug/editor/windows/EnemyAttackPreviewWindow.h"
+#include "game/editor/RegisterGameActorDebug.h"
 #include "engine/utility/SystemDebug/editor/windows/EffectPreviewStage.h"
 #include "engine/utility/SystemDebug/editor/core/EditorManager.h"
 #include "engine/utility/SystemDebug/editor/core/DebugEditor.h"
@@ -40,7 +40,7 @@ struct AttackEditorRuntimeProbe {
         }
         if (manager->GetCurrentSceneName() != "GAMEPLAY")
             return;
-        auto& preview = *editor->GetEnemyAttackPreviewWindow();
+        auto& preview = *GetGameActorDebugPanel();
         if (phase == 1) {
             // Scene切替直後の選択リセットが終わってから、ユーザーが開くのと同じ順序にします。
             if (++frames < 3)

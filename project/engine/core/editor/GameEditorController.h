@@ -24,6 +24,7 @@ class MeshEffectEditor;
 class ParticleEditor;
 class PostEffectEditor;
 class PlayModeSnapshot;
+class SelectedActorSession;
 class SceneManager;
 class SceneWorkspace;
 class PlayModeChangeTracker;
@@ -72,6 +73,7 @@ void DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::str
 
 	/// <summary>各Editorツールの更新処理をまとめて呼び出す。</summary>
 void UpdateTools(float deltaTime, bool isPlaying, float timeScale);
+    void UpdateActorTools(float deltaTime);
 
     /// <summary>EditorのPlay中のシミュレーション停止状態。</summary>
     bool IsSimulationPaused() const { return simulationPaused_; }
@@ -241,6 +243,7 @@ private:
 	bool showDebugWindows_ = true;
 
 	std::unique_ptr<PlayModeSnapshot> playModeSnapshot_;
+    std::unique_ptr<SelectedActorSession> actorSession_;
 	bool simulationPaused_ = false;
 
 	bool showEnemyAttackTimeline_ = false;

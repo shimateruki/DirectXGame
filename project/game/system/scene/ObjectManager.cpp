@@ -1,3 +1,6 @@
+#ifdef USE_IMGUI
+#include "engine/core/editor/SelectedActorSession.h"
+#endif
 #include "game/system/scene/ObjectManager.h"
 #include "CollisionManager.h"
 #include "CameraManager.h"
@@ -28,6 +31,11 @@ bool ShouldDrawStageGateFrame(const std::unique_ptr<engine::Object3d>& obj) {
 // シーン内オブジェクトの所有と更新順を管理します。生成済み参照を使う側との寿命の境界に注意します。
 
 void ObjectManager::Update(float deltaTime) {
+    bool selectedActorUpdating = false;
+#ifdef USE_IMGUI
+    selectedActorUpdating = SelectedActorSession::Current() && SelectedActorSession::Current()->IsActive();
+#endif
+
     // 入力を処理しないフレームが挟まっても、古い床の速度を持ち越さない。
     for (auto& obj : objects_) {
         if (auto* player = obj && !obj->IsReplayRemoved() ? dynamic_cast<Player*>(obj.get()) : nullptr)
@@ -53,7 +61,8 @@ void ObjectManager::Update(float deltaTime) {
 
     // 先行更新した液面・移動床を除き、各オブジェクトのロジックを一度ずつ進めます。
     for (auto& obj : objects_) {
-        if (!obj || obj->IsReplayRemoved())
+        // 確認用Actorのロジックは固定刻み側だけで実行し、Sceneの時間0更新では重ねない。
+        if (!obj || obj->IsReplayRemoved() || (selectedActorUpdating && obj->IsEditorInternal()))
             continue;
         if (dynamic_cast<GimmickMovingFloor*>(obj.get()) || dynamic_cast<GimmickLiquidLevel*>(obj.get()))
             continue;
@@ -93,6 +102,9 @@ void ObjectManager::ApplyPendingChanges() {
     // 更新中に生成したオブジェクトは走査を終えてから追加します。
     if (!pendingObjects_.empty()) {
         for (auto& pendingObj : pendingObjects_) {
+            // 既存Objectの行列確定後に追加されるため、生成した位置・縮小率を初回描画前に転送する。
+            // Updateは呼ばず、AI・物理・導火線を同じフレームに二度進めない。
+            pendingObj->UpdateWorldMatrix();
             objects_.push_back(std::move(pendingObj));
         }
 
@@ -148,6 +160,8 @@ engine::Object3d* ObjectManager::AddObjectImmediate(std::unique_ptr<engine::Obje
     // 編集などで即時参照が必要な場合も、所有権と衝突登録を同時に移す。
     if (!object)
         return nullptr;
+    // 即時登録も、次の通常更新を待たず正しい姿勢で描画できる状態にする。
+    object->UpdateWorldMatrix();
     engine::Object3d* raw = object.get();
     CollisionManager::GetInstance()->AddObject(raw);
     objects_.push_back(std::move(object));

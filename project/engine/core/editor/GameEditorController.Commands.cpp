@@ -1,4 +1,4 @@
-﻿#include "engine/core/editor/GameEditorController.Internal.h"
+#include "engine/core/editor/GameEditorController.Internal.h"
 
 #ifdef USE_IMGUI
 using namespace GameEditorControllerImplementation;
@@ -181,7 +181,7 @@ void GameEditorController::RegisterEditorTools() {
     add("inventory", "配置物集計", "ステージ", debugEditor_->GetSceneInventoryWindow());
     add("material", "マテリアル確認", "素材", debugEditor_->GetMaterialPreviewBoard());
     add("effectPreview", "エフェクト確認ステージ", "演出", debugEditor_->GetEffectPreviewStage());
-    add("animation", "アニメーション制作", "演出", debugEditor_->GetAnimationWorkbench());
+
     add("animator", "Animator Controller", "演出", debugEditor_->GetAnimatorControllerEditor());
     add("text", "テキストPNG生成", "素材", debugEditor_->GetTextSpriteGenerator());
     add("models", "モデル最適化", "素材", debugEditor_->GetModelOptimizerWindow());
@@ -191,24 +191,11 @@ void GameEditorController::RegisterEditorTools() {
     add("capture", "キャプチャツール", "検証・設定", debugEditor_->GetCaptureToolWindow());
     add("gameData", "内部データ編集", "検証・設定", debugEditor_->GetGameDataDebugEditor());
 
-    // 敵攻撃とコピー能力は同じプレビューを使い、起動時の対象モードだけ切り替えます。
-    auto openPreview = [this](bool player) {
+    settings.AddTool("tool.actor", "選択対象の動作・データ調整", "戦闘", [this]() {
         showDebugWindows_ = true;
-        auto* preview = debugEditor_->GetEnemyAttackPreviewWindow();
-        preview->SetPlayerCopyMode(player);
-        debugEditor_->SetSelectedObject(nullptr);
-        EditorManager::GetInstance()->SetSelectedObject(preview);
-    };
-
-    settings.AddTool("tool.enemy", "敵の調整・攻撃プレビュー", "戦闘", [openPreview]() { openPreview(false); }, available);
-    settings.AddTool("tool.crownMovie", "王冠継承ムービープレビュー", "演出", [this]() {
-        showDebugWindows_ = true;
-        auto* preview = debugEditor_->GetEnemyAttackPreviewWindow();
-        preview->SetCrownMovieMode();
-        debugEditor_->SetSelectedObject(nullptr);
-        EditorManager::GetInstance()->SetSelectedObject(preview);
-    }, available);
-    settings.AddTool("tool.player", "プレイヤー調整・コピー能力", "戦闘", [openPreview]() { openPreview(true); }, available);
+        if (auto* session = debugEditor_->GetActorSession())
+            session->SetTarget(debugEditor_->GetSelectedObject());
+    }, [this, available]() { return available() && debugEditor_->GetSelectedObject(); });
 
     // Ghost Recorder は現在の選択 Object を編集対象として受け渡します。
     settings.AddTool("tool.recorder", "移動軌跡の記録（Ghost Recorder）", "演出", [this]() {
@@ -250,7 +237,7 @@ void GameEditorController::RegisterEditorTools() {
     settings.AddVisibility("directorTrack", "ムービーの選択トラック軌跡", ghostDirector_->GetTrackPreviewPtr());
     settings.AddVisibility("directorPose", "ムービーの姿勢ガイド", ghostDirector_->GetOrientationPreviewPtr());
     settings.AddVisibility("direction", "右上の方向ギズモ", &sceneDirectionVisible_);
-    auto* animation = debugEditor_->GetAnimationWorkbench();
+    auto* animation = debugEditor_->GetAnimationClipEditor();
     settings.AddVisibility("bones", "アニメーションのボーン", animation->GetBoneOverlayPtr());
     settings.AddVisibility("boneNames", "ボーン名", animation->GetBoneNamesPtr());
     settings.AddVisibility("boneAxes", "ボーンの選択軸", animation->GetBoneAxesPtr());

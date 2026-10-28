@@ -90,13 +90,17 @@ bool GhostDirector::BeginStudio() {
         return false;
     }
 
-    if (EffectPreviewStage::GetInstance()->IsEnabled() ||
+
+#ifdef USE_IMGUI
+if (EffectPreviewStage::GetInstance()->IsEnabled() ||
         (editor_ &&
-         (editor_->GetAnimationWorkbench()->IsEnabled() || editor_->GetEnemyAttackPreviewWindow()->IsEnabled()))) {
+         (editor_->GetAnimationClipEditor()->IsEnabled() || (editor_->GetActorSession() && editor_->GetActorSession()->IsActive())))) {
         fileOperationStatus_ =
             "他の独立プレビューを終了してから制作空間を開いてください。カメラ・エフェクトの競合を防ぎます。";
         return false;
     }
+#endif
+
 
     auto* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera)

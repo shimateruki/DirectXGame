@@ -1,7 +1,7 @@
 #include "engine/core/editor/GameEditorController.Internal.h"
 
 #ifdef USE_IMGUI
-#include "engine/utility/SystemDebug/editor/windows/EnemyAttackPreviewWindow.h"
+#include "SelectedActorSession.h"
 using namespace GameEditorControllerImplementation;
 
 // プレビュー描画から呼び出す、同じ実装ファイル内の補助処理です。
@@ -30,13 +30,20 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			const bool imageHovered = ImGui::IsItemHovered();
 			const ImVec2 mousePos = ImGui::GetIO().MousePos;
 			const bool canEditViewport = !isPlaying && !sceneTransitioning;
-            const bool attackPlacement = debugEditor_ && debugEditor_->GetEnemyAttackPreviewWindow() &&
-                debugEditor_->GetEnemyAttackPreviewWindow()->IsAuthoringViewportActive();
+            const bool actorToolsActive = debugEditor_ &&
+                ((debugEditor_->GetActorSession() && debugEditor_->GetActorSession()->IsActive()) ||
+                 debugEditor_->GetAnimationClipEditor()->IsEnabled());
 
-            if (canEditViewport && debugEditor_ && debugEditor_->GetEnemyAttackPreviewWindow())
-                debugEditor_->GetEnemyAttackPreviewWindow()->DrawAttackOverlay(area.screenX, area.screenY, area.width, area.height);
+            if (canEditViewport && debugEditor_ && debugEditor_->GetActorSession())
+                debugEditor_->GetActorSession()->DrawOverlay(area.screenX, area.screenY, area.width, area.height);
 
-			if (canEditViewport && !attackPlacement) {
+            // ドロップ処理より先に、このフレームの矩形とマウスを確定する。
+            // Prefabも他の素材と同じ座標を使い、リサイズ時の前フレーム値を残さない。
+            if (debugEditor_) {
+                debugEditor_->SetGameViewRegion({area.screenX, area.screenY}, {area.width, area.height});
+                debugEditor_->SetGameViewMousePos({mousePos.x - area.screenX, mousePos.y - area.screenY});
+            }
+			if (canEditViewport && !actorToolsActive) {
 				HandleGameViewDropTargets(sceneManager, area);
 			}
 
@@ -44,20 +51,18 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 				debugEditor_->SetGameViewScreenRect(imageMin.x, imageMin.y, imageMax.x, imageMax.y);
 
 				if (!sceneTransitioning) {
-					debugEditor_->SetGameViewRegion({ area.screenX, area.screenY }, { area.width, area.height });
-					debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 					debugEditor_->SetGameViewHovered(canEditViewport && imageHovered);
 
-                    // 攻撃編集中も再生時計・隔離ステージを更新します。
-                    // 通常Sceneへの入力だけをDebugEditor側で止めます。
+                    // 参照の整理は継続し、動作・クリップ確認中の配置入力を止めます。
+                    // 再生時計はScene更新後のUpdateActorToolsで進めます。
                     debugEditor_->Update();
 					const bool openCreateMenu = ImGui::IsKeyPressed(ImGuiKey_Tab, false) ||
 						ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-					if (canEditViewport && !attackPlacement && imageHovered && !ImGuizmo::IsOver() && openCreateMenu) {
+					if (canEditViewport && !actorToolsActive && imageHovered && !ImGuizmo::IsOver() && openCreateMenu) {
 						debugEditor_->OpenGameViewCreateContextMenu();
 					}
 
-					if (canEditViewport && !attackPlacement) {
+					if (canEditViewport && !actorToolsActive) {
 						debugEditor_->DrawGameViewCreateContextMenu();
 					}
 
@@ -68,7 +73,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 				}
 			}
 
-            if (spriteDebugEditor_ && canEditViewport && !attackPlacement && EditorToolSettings::Get().IsVisible("spriteGuides")) {
+            if (spriteDebugEditor_ && canEditViewport && !actorToolsActive && EditorToolSettings::Get().IsVisible("spriteGuides")) {
 				const engine::Vector2 spriteLocalPos = {
 					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::kClientWidth) / area.width),
 					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::kClientHeight) / area.height),
@@ -81,7 +86,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			if (canEditViewport) {
 				DrawGhostPreview(false, area);
 				Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
-				engine::Object3d* selectedObject = debugEditor_ && !attackPlacement ? debugEditor_->GetSelectedObject() : nullptr;
+				engine::Object3d* selectedObject = debugEditor_ && !actorToolsActive ? debugEditor_->GetSelectedObject() : nullptr;
 
 				if (!IsObjectInCurrentScene(sceneManager, selectedObject)) {
 					selectedObject = nullptr;
@@ -237,8 +242,6 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 		const std::string droppedModelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
 
 		if (debugEditor_ && !droppedModelName.empty()) {
-			ImVec2 mousePos = ImGui::GetIO().MousePos;
-			debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 			debugEditor_->InstantiateModelAtCursor(droppedModelName);
 		}
 	}
@@ -248,8 +251,6 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 		const char* droppedPresetName = static_cast<const char*>(payload->Data);
 
 		if (debugEditor_ && droppedPresetName) {
-			ImVec2 mousePos = ImGui::GetIO().MousePos;
-			debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 			debugEditor_->InstantiatePresetAtCursor(droppedPresetName);
 		}
 	}
@@ -266,8 +267,6 @@ if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PARTICLE_ASSET")
 		const char* droppedParticleName = static_cast<const char*>(payload->Data);
 
 		if (debugEditor_ && droppedParticleName) {
-			ImVec2 mousePos = ImGui::GetIO().MousePos;
-			debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 			debugEditor_->InstantiateParticleAtCursor(droppedParticleName);
 		}
 	}

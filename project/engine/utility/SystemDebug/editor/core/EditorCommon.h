@@ -8,3 +8,12 @@ enum class SaveMode {
     Object,
     Camera
 };
+
+#ifdef USE_IMGUI
+#include "engine/utility/math/Math.h"
+namespace EditorCommon {
+// worldを位置・ラジアン回転・スケールへ分解する。出力はすべてワールド基準。
+void DecomposeWorldPose(const engine::Matrix4x4& world, engine::Vector3& position,
+    engine::Vector3& rotation, engine::Vector3& scale);
+}
+#endif

@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/utility/math/Math.h"
-#include "ParticleCommon.h" 
+#include "ParticleCommon.h"
 #include "VFXAuthoring.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -128,6 +128,12 @@ public:
 
     /// <summary>エディタの巻き戻し用に粒子・発生端数・乱数系列を初期状態へ戻す。</summary>
     void ResetSimulation(uint32_t randomSeed = 0xC0D3u);
+#ifdef USE_IMGUI
+    // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
+    void BeginEditorSession();
+    void EndEditorSession();
+#endif
+
 
     /// <summary>エディタプレビューで表示位置に加えるオフセットを指定する。</summary>
     void SetEditorPreviewOffset(const engine::Vector3& offset) { editorPreviewOffset_ = offset; }
@@ -240,6 +246,15 @@ private:
     // 直近のUpdateとDrawで測ったCPU処理時間（ミリ秒）。
     float lastUpdateCpuTimeMs_ = 0.0f;
     float lastDrawCpuTimeMs_ = 0.0f;
+#ifdef USE_IMGUI
+    bool editorSession_ = false;
+    decltype(particles_) savedEditorParticles_;
+    EmitterParams savedEditorParams_;
+    std::mt19937 savedEditorRandom_;
+    float savedEditorScale_ = 1, savedEditorTimer_ = 0;
+    uint32_t savedEditorTexture_ = 0;
+#endif
+
 };
 
 } // namespace engine

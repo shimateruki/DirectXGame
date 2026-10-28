@@ -1,4 +1,6 @@
 #pragma once
+#ifdef USE_IMGUI
+#include <cstdint>
 
 #include "IEditable.h"
 #include "Model.h"
@@ -16,10 +18,10 @@ class SceneManager;
 class BaseScene;
 
 /// <summary>
-/// モデルのポーズキー、イベントマーカー、プレビュー再生を編集する作業用ウィンドウ。
+/// 選択モデルのポーズキー・イベントをInspector内で編集する。
 /// </summary>
 /// 単体ObjectのBody Transformと、モデルのボーン姿勢を編集・プレビューするアニメーション作業台。
-class AnimationWorkbench : public IEditable {
+class AnimationClipEditor {
 public:
     /// シーンと描画基盤への非所有参照を設定する。
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
@@ -31,21 +33,23 @@ public:
     void Finalize();
 
     /// アニメーション編集ウィンドウを描画する。
-    void DrawImGui() override;
+    void DrawImGui();
 
     /// キー、イベント、再生位置を操作するタイムラインを描画する。
     void DrawTimelinePanel();
 
     /// 現在のタイムライン位置からプレビュー再生を始める。
     void StartPreview();
+    // 選択モデルを受け取り、保存対象外の表示実体に姿勢を反映する。
+    void SetTarget(engine::Object3d* target);
+    uint64_t GetTargetId() const { return targetId_; }
 
     /// プレビュー再生を止める。
     void StopPreview();
 
-    std::string GetName() override { return "Animation Workbench"; }
 
     /// 作業対象を見やすい位置にカメラを一時的に配置する。
-    void ApplyCameraOverride();
+
 
     /// Game View の位置と大きさをギズモ投影に使用する。
     void SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size);
@@ -223,13 +227,14 @@ private:
     SceneManager* sceneManager_ = nullptr;
     DirectXCommon* dxCommon_ = nullptr;
     Model* previewModel_ = nullptr;
+    std::unique_ptr<Model> previewModelOwner_;
     engine::Object3d* previewObject_ = nullptr;
 
     // プレビュー再生と表示オプション。
     bool enabled_ = false;
 
     // 制作空間の所有権と時間軸の表示状態。ゲーム用クリップには保存しない。
-    bool ownsStudio_ = false;
+
 
     int pendingClipAction_ = 0;
     std::string pendingClipPath_;
@@ -265,16 +270,15 @@ private:
 
     bool previewEvents_ = true;
 
-    bool cameraMoveOnEnter_ = true;
-    bool recenterCameraRequested_ = false;
-    bool hasPlacedCamera_ = false;
+
+
+
 
     BaseScene* previewScene_ = nullptr;
 
-    bool storedCameraValid_ = false;
-    engine::Vector3 storedEye_{}, storedTarget_{}, storedRotation_{};
-    engine::Object3d* storedFollow_ = nullptr;
-    int storedCameraMode_ = 0;
+    uint64_t targetId_ = 0, sceneGeneration_ = 0;
+    engine::Vector3 sourceRotation_{};
+    engine::Object3d* FindSourceObject() const;
 
     // タイムラインとプレビュー配置。
     float currentTime_ = 0.0f;
@@ -283,8 +287,8 @@ private:
     float bonePointRadius_ = 5.0f;
     float boneLineThickness_ = 3.0f;
     float eventPreviewTimer_ = 0.0f;
-    float cameraDistance_ = 8.0f;
-    float cameraHeight_ = 3.0f;
+
+
     engine::Vector3 previewOrigin_ = { 12000.0f, 10000.0f, 12000.0f };
     engine::Vector3 previewScale_ = { 1.0f, 1.0f, 1.0f };
 
@@ -329,3 +333,5 @@ private:
     std::vector<std::string> assetFiles_;
     std::map<int, PoseKey> editPoseOverrides_;
 };
+
+#endif

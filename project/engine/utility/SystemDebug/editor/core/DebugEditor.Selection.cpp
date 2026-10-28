@@ -19,6 +19,7 @@
 #include <cmath>
 #include <cassert> 
 #include <algorithm>
+#include <limits>
 #include <chrono>
 #include <cctype>
 #include <ctime>
@@ -195,16 +196,31 @@ void DebugEditor::PruneInvalidSelectedObjects() {
     }
 }
 
-engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mousePos) {
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
-        return nullptr;
+bool DebugEditor::RaycastSceneSurface(const engine::Ray& ray, engine::RayResult& result,
+    engine::Object3d** hitObject, const engine::Object3d* ignore, bool forSelection,
+    const std::unordered_set<std::string>* ignoredRootGuids) {
 
-    engine::Ray ray = ScreenPointToRay(mousePos);
-    if (engine::Math::Dot(ray.diff, ray.diff) < 1e-12f)
-        return nullptr;
+    result = {};
+    if (hitObject) *hitObject = nullptr;
+    const auto finite = [](const engine::Vector3& v) {
+        return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+    };
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene() || !finite(ray.origin) || !finite(ray.diff) ||
+        engine::Math::Dot(ray.diff, ray.diff) < 1e-12f)
+        return false;
     float bestDistance = 1.0f;
     engine::Object3d* hit = nullptr;
 
+    auto accept = [&](engine::Object3d* object, float distance, const engine::Vector3& localNormal,
+                      const engine::Matrix4x4& inverseWorld) {
+        auto normal = engine::Math::TransformNormal(localNormal, engine::Math::Transpose(inverseWorld));
+        if (!finite(normal) || engine::Math::Dot(normal, normal) < 1e-12f) return;
+        normal = engine::Math::Normalize(normal);
+        // 両面を拾うため、配置側へ向く法線にそろえる。非一様拡大には逆転置を使う。
+        if (engine::Math::Dot(normal, ray.diff) > 0) normal = -normal;
+        bestDistance = distance; hit = object;
+        result = { true, distance, ray.origin + ray.diff * distance, normal };
+    };
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     for (auto& obj : objects) {
@@ -212,7 +228,14 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
             continue;
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line")
             continue;
-        if (!obj->GetIsRenderVisible() || obj->GetIsLocked())
+        if (!obj->GetIsRenderVisible() || (forSelection && obj->GetIsLocked()))
+            continue;
+        bool ignored = false;
+        for (auto* ancestor = obj.get(); ancestor; ancestor = ancestor->GetParent())
+            if (ancestor == ignore || (ignoredRootGuids && ignoredRootGuids->contains(ancestor->GetPersistentGuid()))) {
+                ignored = true; break;
+            }
+        if (ignored || (!forSelection && !obj->GetModel()))
             continue;
 
         const engine::Matrix4x4 worldMatrix = obj->GetWorldMatrix();
@@ -319,8 +342,7 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
                     const float distance = engine::Math::Dot(edge2, q) * inverseDeterminant;
 
                     if (distance >= 0.0f && distance <= 1.0f && distance < bestDistance) {
-                        bestDistance = distance;
-                        hit = obj.get();
+                        accept(obj.get(), distance, engine::Math::Cross(edge1, edge2), inverseWorld);
                     }
                 }
             }
@@ -329,12 +351,34 @@ engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mo
             const float distance = startsInside ? exit : entry;
 
             if (distance >= 0.0f && distance < bestDistance) {
-                bestDistance = distance;
-                hit = obj.get();
+                const auto point = localRay.origin + localRay.diff * distance;
+                engine::Vector3 normal{};
+                float nearest = (std::numeric_limits<float>::max)();
+                const float coords[3] = {point.x, point.y, point.z};
+                for (int axis = 0; axis < 3; ++axis) {
+                    for (int side = 0; side < 2; ++side) {
+                        const float error = std::abs(coords[axis] - (side ? maxs[axis] : mins[axis]));
+                        if (error < nearest) {
+                            nearest = error; normal = {};
+                            if (axis == 0) normal.x = side ? 1.f : -1.f;
+                            if (axis == 1) normal.y = side ? 1.f : -1.f;
+                            if (axis == 2) normal.z = side ? 1.f : -1.f;
+                        }
+                    }
+                }
+                accept(obj.get(), distance, normal, inverseWorld);
             }
         }
     }
 
+    if (hitObject) *hitObject = hit;
+    return result.isHit;
+}
+
+engine::Object3d* DebugEditor::PickObjectAtGameViewPos(const engine::Vector2& mousePos) {
+    engine::RayResult result{};
+    engine::Object3d* hit = nullptr;
+    RaycastSceneSurface(ScreenPointToRay(mousePos), result, &hit, nullptr, true);
     // 地形編集グループは見た目の子をクリックしても、当たり判定を含む区画単位で選択する。
     // 子メッシュだけを調整したい場合はHierarchyから直接選択できる。
     if (hit && hit->GetParent() && hit->GetParent()->GetTag() == "TerrainEditGroup") {

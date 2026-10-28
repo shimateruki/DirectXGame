@@ -1,3 +1,17 @@
 {
-    "_comment": "Actual data is in _player, _enemy, and _object.json"
+    "_comment": "Actual data is in _player, _enemy, _object, and _camera.json",
+    "_sceneAsset": {
+        "controller": "DEFAULT",
+        "displayName": "ステージ5・撮影用",
+        "id": "stage5",
+        "resources": {
+            "bgm": "",
+            "camera": "",
+            "light": "Resources/json/light/stage1_sunny.json",
+            "skybox": ""
+        },
+        "runtimeScene": "GAMEPLAY",
+        "spriteLayout": "Resources/json/sprite/stage5_sprite.json",
+        "version": 3
+    }
 }

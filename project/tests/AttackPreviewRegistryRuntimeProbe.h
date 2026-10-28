@@ -4,8 +4,8 @@
 #include "BaseEnemy.h"
 #include <cmath>
 #include "EditorManager.h"
-#include "EnemyAttackPreviewRegistry.h"
-#include "engine/utility/SystemDebug/editor/windows/EnemyAttackPreviewWindow.h"
+#include "game/editor/EnemyAttackPreviewRegistry.h"
+#include "game/editor/RegisterGameActorDebug.h"
 #include "SceneManager.h"
 #include "WinApp.h"
 #include <fstream>
@@ -29,7 +29,7 @@ struct AttackPreviewRegistryRuntimeProbe {
         try {
             if (phase==0) { manager->SetIsPlaying(false); manager->ChangeScene("GAMEPLAY"); phase=1; return; }
             if (manager->GetCurrentSceneName()!="GAMEPLAY" || ++wait<3) return;
-            auto& preview=*editor->GetEnemyAttackPreviewWindow();
+            auto& preview=*GetGameActorDebugPanel();
             if (phase==1) {
                 const std::vector<std::string> expected={"Slime","FireSlime","ThunderSlime","GiantSlime",
                     "PrismSlime","MagmaSlime","Bomber","WindSlime","FalseKingSlime"};

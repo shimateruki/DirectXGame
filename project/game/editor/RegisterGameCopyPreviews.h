@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CopyAbilityPreviewRegistry.h"
+#include "game/editor/CopyAbilityPreviewRegistry.h"
 #include "Player.h"
 #include <cassert>
 

@@ -78,6 +78,12 @@ public:
 
     /// <summary>初期化状態とプリロードを維持し、再生中のエフェクトだけを消す。</summary>
     void ClearActiveEffects();
+#ifdef USE_IMGUI
+    // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
+    void BeginEditorSession();
+    void EndEditorSession();
+#endif
+
 
     /// <summary>シーン切り替え時にエフェクト・プリロード・生成元参照を破棄する。</summary>
     void Clear();
@@ -116,5 +122,15 @@ private:
     struct TimelineOffset { engine::Vector3 position, rotation; };
 
     std::unordered_map<EffectObject3d*, TimelineOffset> timelineOffsets_;
+#ifdef USE_IMGUI
+    EffectObject3d* savedEditorDebugEffect_ = nullptr;
+    bool editorSession_ = false;
+    float savedEditorScale_ = 1;
+    decltype(activeEffects_) savedEditorEffects_;
+    decltype(effectScopes_) savedEditorScopes_;
+    decltype(timelineScopes_) savedEditorTimelineScopes_;
+    decltype(timelineOffsets_) savedEditorOffsets_;
+#endif
+
 
 };

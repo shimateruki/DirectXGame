@@ -199,8 +199,9 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
         }
     }
 
-    for (auto& object : brushPreviewObjects_) {
-        drawPreviewObject(object.get());
+    if (brushPlacement_.found) {
+        for (auto& object : brushPreviewObjects_)
+            drawPreviewObject(object.get());
     }
 
 }

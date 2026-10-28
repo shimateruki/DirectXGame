@@ -255,15 +255,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
             "ステータスは次回の生成・ロード時に自動設定されます。");
       }
 
-      if (ImGui::Button(ICON_FA_SLIDERS_H
-                        " この種類の基本ステータスを調整##CharacterStatus",
-                        ImVec2(-1, 0)) &&
-          editor_->GetEnemyAttackPreviewWindow()) {
-        auto* preview = editor_->GetEnemyAttackPreviewWindow();
-        preview->SelectStatusTarget(selectedObject->GetClassName() == "Player" ? "" : selectedObject->GetEnemyType());
-        editor_->SetSelectedObject(nullptr);
-        EditorManager::GetInstance()->SetSelectedObject(preview);
-      }
+
 
       if (selectedObject->param_.has_value() &&
           selectedObject->param_->enemyType == "RingBurner") {

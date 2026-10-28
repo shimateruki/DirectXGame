@@ -504,6 +504,8 @@ class Player : public Character {
     bool copyPreviewActive_ = false;
     float copyPreviewGroundHeight_ = 0.0f;
 
+    // 装飾を破棄するまで保持し、本体の描画専用姿勢を親行列として渡す。
+    Transform copyAdornmentAnchor_;
     // コピー能力中だけ表示する装飾Objectを所有する。
     std::unique_ptr<engine::Object3d> copyAdornment_;
 

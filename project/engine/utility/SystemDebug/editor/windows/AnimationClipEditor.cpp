@@ -1,5 +1,7 @@
-#include "AnimationWorkbench.h"
-#include "EffectPreviewStage.h"
+#ifdef USE_IMGUI
+#include "AnimationClipEditor.h"
+#include "EditorCommon.h"
+
 #include "EditorToolSettings.h"
 
 #include "BaseScene.h"
@@ -28,7 +30,7 @@
 #include <optional>
 
 namespace {
-constexpr const char* kPreviewObjectName = "__Editor_AnimationWorkbenchPreview";
+constexpr const char* kPreviewObjectName = "__Editor_AnimationClipVisual";
 constexpr const char* kSaveDirectory = "Resources/json/animation_clip/";
 constexpr const char* kLegacySaveDirectory = "Resources/json/enemy_animation/";
 constexpr float kPi = 3.14159265358979323846f;
@@ -60,168 +62,54 @@ void CopyToBuffer(char* buffer, size_t size, const std::string& text) {
 }
 }
 
-void AnimationWorkbench::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+void AnimationClipEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
     // プレビューのシーンと描画基盤は借用し、ワークベンチ側で所有しない。
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
     RefreshAssetFiles();
 }
 
-void AnimationWorkbench::Finalize() {
-    // シーンへ追加したプレビュー専用 Object を片付けて参照を無効にする。
-    StopPreview();
-    CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 1, false);
-    RemovePreviewObject();
-    previewModel_ = nullptr;
-    ClearAllEditOverrides();
+void AnimationClipEditor::Finalize() {
+StopPreview(); sceneManager_ = nullptr; previewModel_ = nullptr;
 }
 
-void AnimationWorkbench::StartPreview() {
-    if (enabled_ || !sceneManager_ || sceneManager_->IsPlaying())
-        return;
-    enabled_ = true;
-
-    // カメラ上書きより先に元の視点を保存する。
-    Update(0.0f);
+void AnimationClipEditor::StartPreview() {
+enabled_ = FindSourceObject() != nullptr && previewObject_ != nullptr;
 }
 
-void AnimationWorkbench::Update(float deltaTime) {
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
-        return;
-
-    // プレビューがカメラを借りている間はEditor状態の保存を抑え、仮視点の混入を防ぎます。
-    CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 1, enabled_);
-
-    if (enabled_ && !wasEnabled_) {
-        previewScene_ = sceneManager_->GetCurrentScene();
-
-        if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
-            storedEye_ = camera->GetEye();
-            storedTarget_ = camera->GetTargetPoint();
-            storedRotation_ = camera->GetRotation();
-            storedFollow_ = camera->GetFollowTarget();
-            storedCameraMode_ = static_cast<int>(CameraEditor::GetInstance()->GetMode());
-            storedCameraValid_ = true;
-        }
-
-        hasPlacedCamera_ = false;
-        auto* studio = EffectPreviewStage::GetInstance();
-        studio->EnableForToolPreview();
-
-        // 初回の床・照明・カメラ状態をここで確定し、次フレームの再配置を防ぐ。
-        studio->Update();
-        ownsStudio_ = true;
-        previewOrigin_ = studio->GetGroundPosition();
-
-        if (!previewObject_) {
-            CreatePreviewObject();
-        }
+void AnimationClipEditor::Update(float deltaTime) {
+if (!enabled_) return;
+    if (!sceneManager_ || sceneManager_->IsPlaying() || sceneManager_->IsTransitioning() || !FindSourceObject()) {
+        StopPreview(); return;
     }
-
-    // 停止またはScene切替時はプレビュー所有物を先に戻し、編集Sceneに残しません。
-    if (!enabled_ && wasEnabled_) {
-        StopPreview();
-    }
-
-    if (enabled_ && (sceneManager_->IsPlaying() || previewScene_ != sceneManager_->GetCurrentScene()))
-        StopPreview();
-    wasEnabled_ = enabled_;
-
-    if (!enabled_)
-        return;
-
-    // Scene内の仮Objectを再取得し、Editorで調整した基準位置と大きさを反映します。
     previewObject_ = FindPreviewObject();
-
-    if (previewObject_) {
-        previewObject_->SetTranslate(previewOrigin_);
-        previewObject_->SetScale(previewScale_);
-        previewObject_->UpdateLocalMatrix();
-        previewObject_->UpdateWorldMatrix();
+    if (!previewObject_) { StopPreview(); return; }
+    const float previous = currentTime_;
+    if (play_ && duration_ > 0) {
+        currentTime_ += std::clamp(deltaTime, 0.0f, 0.25f) * playbackSpeed_;
+        if (loop_) currentTime_ = std::fmod(currentTime_, duration_);
+        else if (currentTime_ >= duration_) { currentTime_ = duration_; play_ = false; }
+        if (previewEvents_) UpdateEventPreview(previous, currentTime_);
     }
-
-    // イベントの通過区間を後で判定できるよう、再生時刻を進める前の値を残す。
-    float previousTime = currentTime_;
-    bool timelineAdvanced = false;
-
-    if (play_ && duration_ > 0.0f) {
-        currentTime_ += deltaTime * playbackSpeed_;
-        timelineAdvanced = true;
-
-        if (loop_) {
-            currentTime_ = std::fmod(currentTime_, duration_);
-            if (currentTime_ < 0.0f)
-                currentTime_ += duration_;
-        } else {
-            if (currentTime_ > duration_) {
-                currentTime_ = duration_;
-                play_ = false;
-            } else if (currentTime_ < 0.0f) {
-                currentTime_ = 0.0f;
-                play_ = false;
-            }
-        }
-    }
-
-    // 手動スクラブでは一時イベントを再発火させず、実再生で時刻が進んだときだけ評価します。
-    if (timelineAdvanced && previewEvents_) {
-        UpdateEventPreview(previousTime, currentTime_);
-    }
-
-    if (eventPreviewTimer_ > 0.0f) {
-        eventPreviewTimer_ = (std::max)(0.0f, eventPreviewTimer_ - deltaTime);
-    }
-
-    if (autoApply_) {
-        ApplyTimelinePose();
-    }
+    eventPreviewTimer_ = (std::max)(0.0f, eventPreviewTimer_ - deltaTime);
+    if (autoApply_) ApplyTimelinePose();
 }
 
-void AnimationWorkbench::StopPreview() {
-    if (ownsStudio_) {
-        EffectPreviewStage::GetInstance()->ReturnToScene();
-        ownsStudio_ = false;
-    }
-
-    timelineDragKind_ = timelineDragIndex_ = -1;
-    const bool sameScene = sceneManager_ && sceneManager_->GetCurrentScene() == previewScene_;
-
-    // 保存したカメラと追従先は元のSceneに属するため、切替後のSceneへは復元しない。
-    if (sameScene) {
-        RemovePreviewObject();
-
-        if (storedCameraValid_) {
-            if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
-                engine::Object3d* follow = nullptr;
-
-                // 停止までに追従Objectが削除されていても、保存したポインタをそのまま再設定しない。
-                for (const auto& object : previewScene_->GetObjects())
-                    if (object.get() == storedFollow_)
-                        follow = object.get();
-                camera->SetFollowTarget(follow);
-                camera->SetEye(storedEye_);
-                camera->SetTarget(storedTarget_);
-                camera->SetRotation(storedRotation_);
-                CameraEditor::GetInstance()->SetMode(static_cast<CameraEditor::Mode>(storedCameraMode_));
-                camera->Update();
-            }
-        }
-    }
-
-    // クリップの編集内容は残し、仮Objectとカメラの占有だけを解除する。
-    enabled_ = wasEnabled_ = play_ = hasPlacedCamera_ = storedCameraValid_ = false;
-    previewObject_ = nullptr;
-    previewScene_ = nullptr;
-    CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 1, false);
+void AnimationClipEditor::StopPreview() {
+if (auto* source = FindSourceObject()) source->SetEditorHiddenReason(1u << 9, false);
+    RemovePreviewObject();
+    enabled_ = wasEnabled_ = play_ = false;
+    previewObject_ = nullptr; previewModel_ = nullptr; previewScene_ = nullptr;
+    targetId_ = 0; timelineDragKind_ = timelineDragIndex_ = -1;
 }
 
-void AnimationWorkbench::DrawImGui() {
+void AnimationClipEditor::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text(ICON_FA_RUNNING " アニメーション制作");
     ImGui::TextWrapped("1. モデル・クリップを選ぶ → 2. 下で時刻を選ぶ → 3. 姿勢を編集してキー登録");
     ImGui::Separator();
 
-    ImGui::TextDisabled("制作専用グリッド空間 / 実ステージには保存されません");
+    ImGui::TextDisabled("選択位置で姿勢を確認 / 配置Objectの保存値は変更しません");
     ImGui::Checkbox("自動反映", &autoApply_);
 
     ImGui::SeparatorText("編集対象");
@@ -287,89 +175,29 @@ void AnimationWorkbench::DrawImGui() {
 }
 
 
-void AnimationWorkbench::DrawPreviewControls() {
-    // 再生位置・速度・ループを編集し、保存済みキーと現在の見た目を同期する。
+void AnimationClipEditor::DrawPreviewControls() {
 #ifdef USE_IMGUI
-    if (!ImGui::CollapsingHeader("プレビュー", ImGuiTreeNodeFlags_DefaultOpen))
+    ImGui::TextWrapped("モデル: %s（選択対象のモデルを使用）", modelNameBuffer_);
+    if (!previewModel_) {
+        ImGui::TextWrapped("別モデルのボーンキーを編集中の場合は、先に保存するか新規クリップを作成してください。");
         return;
-
-    ImGui::InputText("モデル名", modelNameBuffer_, sizeof(modelNameBuffer_));
-
-    std::vector<std::string> loadedModels = ModelManager::GetInstance()->GetAvailableModelNames();
-
-    if (ImGui::BeginCombo("ロード済みモデル", modelNameBuffer_[0] ? modelNameBuffer_ : "選択なし")) {
-        for (const std::string& name : loadedModels) {
-            bool selected = (name == modelNameBuffer_);
-
-            if (ImGui::Selectable(name.c_str(), selected)) {
-                CopyToBuffer(modelNameBuffer_, sizeof(modelNameBuffer_), name);
+    }
+    const auto& data = previewModel_->GetModelData();
+    ImGui::Text("メッシュ %u / ボーン %zu", previewModel_->GetMeshCount(), data.skeleton.joints.size());
+    if (ImGui::BeginCombo("ベースアニメーション", animationNameBuffer_[0] ? animationNameBuffer_ : "なし")) {
+        if (ImGui::Selectable("なし", !useBaseAnimation_)) { animationNameBuffer_[0] = '\0'; useBaseAnimation_ = false; }
+        for (const auto& anim : data.animations)
+            if (ImGui::Selectable(anim.name.c_str(), anim.name == animationNameBuffer_)) {
+                CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), anim.name); useBaseAnimation_ = true;
             }
-
-            if (selected)
-                ImGui::SetItemDefaultFocus();
-        }
-
         ImGui::EndCombo();
     }
-
-    if (ImGui::Button(ICON_FA_FOLDER_OPEN " モデルを読み込み")) {
-        LoadPreviewModel(modelNameBuffer_);
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button(ICON_FA_TRASH_ALT " プレビュー削除")) {
-        RemovePreviewObject();
-        previewModel_ = nullptr;
-        ClearAllEditOverrides();
-        lastEventPreviewText_.clear();
-        eventPreviewTimer_ = 0.0f;
-    }
-
-    ImGui::DragFloat3("表示スケール", &previewScale_.x, 0.01f, 0.01f, 100.0f);
-    ImGui::DragFloat("カメラ距離", &cameraDistance_, 0.1f, 1.0f, 80.0f);
-    ImGui::DragFloat("カメラ高さ", &cameraHeight_, 0.1f, -20.0f, 40.0f);
-
-    if (ImGui::Button(ICON_FA_CROSSHAIRS " カメラをプレビューへ")) {
-        recenterCameraRequested_ = true;
-    }
-
-    if (previewModel_) {
-        const auto& data = previewModel_->GetModelData();
-        ImGui::Text("メッシュ: %u / ボーン: %d / アニメーション: %d",
-            previewModel_->GetMeshCount(),
-            static_cast<int>(data.skeleton.joints.size()),
-            static_cast<int>(data.animations.size()));
-
-        if (ImGui::BeginCombo("ベースアニメーション", animationNameBuffer_[0] ? animationNameBuffer_ : "なし")) {
-            if (ImGui::Selectable("なし", animationNameBuffer_[0] == '\0')) {
-                animationNameBuffer_[0] = '\0';
-                useBaseAnimation_ = false;
-            }
-
-            for (const auto& anim : data.animations) {
-                bool selected = (anim.name == animationNameBuffer_);
-
-                if (ImGui::Selectable(anim.name.c_str(), selected)) {
-                    CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), anim.name);
-                    duration_ = (std::max)(duration_, anim.duration);
-                    useBaseAnimation_ = true;
-                }
-
-                if (selected)
-                    ImGui::SetItemDefaultFocus();
-            }
-
-            ImGui::EndCombo();
-        }
-
-        ImGui::Checkbox("ベースアニメーションを重ねる", &useBaseAnimation_);
-    }
+    DrawTimelinePanel();
 #endif
 }
 
 
-void AnimationWorkbench::DrawAssetControls() {
+void AnimationClipEditor::DrawAssetControls() {
     // モデル、基礎アニメーション、作業 JSON の選択と保存をここに集める。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("クリップの読み込み・保存", ImGuiTreeNodeFlags_DefaultOpen))
@@ -425,7 +253,7 @@ void AnimationWorkbench::DrawAssetControls() {
 #endif
 }
 
-void AnimationWorkbench::DrawBodyControls() {
+void AnimationClipEditor::DrawBodyControls() {
     // 本体の移動・回転・伸縮・せん断を関節キーとは分けて編集する。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("身体の姿勢", ImGuiTreeNodeFlags_DefaultOpen))
@@ -485,7 +313,7 @@ void AnimationWorkbench::DrawBodyControls() {
 
     ImGui::EndDisabled();
 
-    if (ImGui::BeginTable("AnimationWorkbenchBodyKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 190.0f))) {
+    if (ImGui::BeginTable("AnimationClipEditorBodyKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 190.0f))) {
         ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 62.0f);
         ImGui::TableSetupColumn("Position");
         ImGui::TableSetupColumn("Rotation");
@@ -527,7 +355,7 @@ void AnimationWorkbench::DrawBodyControls() {
 #endif
 }
 
-void AnimationWorkbench::DrawJointControls() {
+void AnimationClipEditor::DrawJointControls() {
     // 選択関節のローカル姿勢だけを編集し、全身の基礎アニメーションに重ねる。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("ボーン編集", ImGuiTreeNodeFlags_DefaultOpen))
@@ -560,7 +388,7 @@ void AnimationWorkbench::DrawJointControls() {
     ImGui::InputText("検索", jointSearchBuffer_, sizeof(jointSearchBuffer_));
 
     const auto& joints = previewModel_->GetJoints();
-    ImGui::BeginChild("AnimationWorkbenchJoints", ImVec2(0, 180), true);
+    ImGui::BeginChild("AnimationClipEditorJoints", ImVec2(0, 180), true);
 
     for (const auto& joint : joints) {
         if (jointSearchBuffer_[0] != '\0' && joint.name.find(jointSearchBuffer_) == std::string::npos) {
@@ -630,7 +458,7 @@ void AnimationWorkbench::DrawJointControls() {
 #endif
 }
 
-void AnimationWorkbench::DrawKeyframeControls() {
+void AnimationClipEditor::DrawKeyframeControls() {
     // タイムラインのキーを選択し、同時刻の値を更新できるようにする。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("キー", ImGuiTreeNodeFlags_DefaultOpen))
@@ -646,7 +474,7 @@ void AnimationWorkbench::DrawKeyframeControls() {
         DeleteSelectedJointKeyAtCurrentTime();
     }
 
-    if (ImGui::BeginTable("AnimationWorkbenchKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+    if (ImGui::BeginTable("AnimationClipEditorKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Time");
         ImGui::TableSetupColumn("Joint");
         ImGui::TableSetupColumn("Move");
@@ -675,7 +503,7 @@ void AnimationWorkbench::DrawKeyframeControls() {
 #endif
 }
 
-void AnimationWorkbench::DrawEventControls() {
+void AnimationClipEditor::DrawEventControls() {
     // 音や演出の発火点は姿勢キーと別のイベント列で管理する。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("イベントマーカー"))
@@ -715,7 +543,7 @@ void AnimationWorkbench::DrawEventControls() {
         FireEventPreview(events_[selectedEventIndex_]);
     }
 
-    if (ImGui::BeginTable("AnimationWorkbenchEventTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+    if (ImGui::BeginTable("AnimationClipEditorEventTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Time");
         ImGui::TableSetupColumn("Type");
         ImGui::TableSetupColumn("Name");
@@ -750,95 +578,40 @@ void AnimationWorkbench::DrawEventControls() {
 #endif
 }
 
-bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
-    // メッシュ実体のあるモデルだけ採用し、前モデルのキーや一時編集を残さない。
-    if (modelName.empty())
-        return false;
-
-    Model* model = ModelManager::GetInstance()->LoadModel(modelName);
-
-    if (!model || model->GetMeshCount() == 0 || model->GetVertexCount() == 0 || model->GetPolygonCount() == 0) {
-        DebugConsole::GetInstance()->AddLog(("Animation Workbench failed to load mesh data: " + modelName).c_str());
+bool AnimationClipEditor::LoadPreviewModel(const std::string& modelName) {
+// クリップの保存形式は維持し、別モデルへの差し替えは選択Objectを変えて行う。
+    if (!previewObject_ || modelName != modelNameBuffer_) {
+        DebugConsole::GetInstance()->AddLog("クリップのモデルと選択対象が異なります。対象モデルを選び直してください。");
         return false;
     }
-
-    // モデルの検証を終えてから旧モデル用のキーと編集状態を捨て、新しい骨格へ切り替える。
-    previewModel_ = model;
-    bodyKeys_.clear();
-    keys_.clear();
-    events_.clear();
-    ClearAllEditOverrides();
-    lastEventPreviewText_.clear();
-    eventPreviewTimer_ = 0.0f;
-    selectedJointIndex_ = -1;
-    selectedBodyKeyIndex_ = -1;
-    bodyTranslateUi_ = {};
-    bodyShearUi_ = {};
-    bodyShearPivotY_ = 0.0f;
-    bodyRotateDegUi_ = {};
-    bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
-    bodyEasingToNext_ = 4;
-    currentTime_ = 0.0f;
-
-    // モデルに既存アニメーションがあれば先頭を基準にし、ない場合はキー編集だけで開始する。
-    const auto& animations = previewModel_->GetModelData().animations;
-
-    if (!animations.empty()) {
-        CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), animations.front().name);
-        duration_ = (std::max)(0.01f, animations.front().duration);
-        useBaseAnimation_ = true;
-    } else {
-        animationNameBuffer_[0] = '\0';
-        duration_ = 2.0f;
-        useBaseAnimation_ = false;
-    }
-
-    if (enabled_) {
-        CreatePreviewObject();
-    }
-
-    ApplyTimelinePose();
-    DebugConsole::GetInstance()->AddLog(("Animation Workbench loaded: " + modelName).c_str());
-    return true;
+    previewModel_ = previewObject_->GetModel();
+    return previewModel_ != nullptr;
 }
 
-void AnimationWorkbench::CreatePreviewObject() {
-    // 専用 Object をシーンに一つだけ置き、保存や当たり判定の対象から外す。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
-        return;
-    BaseScene* scene = sceneManager_->GetCurrentScene();
-    if (!scene->GetObject3dCommon())
-        return;
-
-    engine::Object3d* existing = FindPreviewObject();
-
-    if (existing) {
-        previewObject_ = existing;
-    } else {
-        auto object = std::make_unique<engine::Object3d>();
-        object->Initialize(scene->GetObject3dCommon());
-        object->SetName(kPreviewObjectName);
-        object->SetClassName("EditorOnly");
-        object->SetEditorInternal(true);
-        object->SetSaveCategory("Object");
-        object->SetIsLocked(true);
-        object->SetCollisionAttribute(0);
-        object->SetCollisionMask(0);
-        object->SetTranslate(previewOrigin_);
-        object->SetScale(previewScale_);
-        object->animName_.clear();
-        previewObject_ = object.get();
-        // Objectの所有権はSceneへ移し、ワークベンチには操作用の借用ポインタだけを残す。
-        scene->AddObject(std::move(object));
+void AnimationClipEditor::CreatePreviewObject() {
+auto* source = FindSourceObject();
+    if (!source || !source->GetModel() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    auto* scene = sceneManager_->GetCurrentScene();
+    auto object = std::make_unique<engine::Object3d>();
+    object->Initialize(scene->GetObject3dCommon());
+    object->SetName(kPreviewObjectName); object->SetClassName("EditorOnly"); object->SetEditorInternal(true);
+    object->SetIsLocked(true); object->SetCollisionAttribute(0); object->SetCollisionMask(0);
+    // ModelManagerの共有骨格を直接編集せず、CPUデータから確認用モデルを作る。
+    auto data = source->GetModel()->GetModelData();
+    for (auto& mesh : data.meshes) {
+        mesh.vertexResource.Reset(); mesh.indexResource.Reset(); mesh.computeSkinnedVertexResource.Reset();
     }
-
-    if (previewObject_ && previewModel_) {
-        previewObject_->SetModel(previewModel_);
-        previewObject_->SetIsVisible(true);
-    }
+    for (auto& material : data.materials) { material.materialResource.Reset(); material.materialData = nullptr; }
+    previewModelOwner_ = std::make_unique<Model>();
+    previewModelOwner_->InitializeFromCpuData(ModelManager::GetInstance()->GetModelCommon(), std::move(data), source->GetModelName());
+    object->SetModel(previewModelOwner_.get());
+    object->SetMaterialType(source->GetMaterialType()); object->SetColor(source->GetColor()); object->SetEmissive(source->GetEmissive());
+    previewObject_ = object.get(); previewModel_ = object->GetModel();
+    scene->AddObjectImmediate(std::move(object));
+    source->SetEditorHiddenReason(1u << 9, true);
 }
 
-void AnimationWorkbench::RemovePreviewObject() {
+void AnimationClipEditor::RemovePreviewObject() {
     // Scene の走査中に直接消さず、非表示にして削除要求へ渡す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         previewObject_ = nullptr;
@@ -847,27 +620,28 @@ void AnimationWorkbench::RemovePreviewObject() {
 
     if (engine::Object3d* object = FindPreviewObject()) {
         object->SetIsVisible(false);
-        object->SetName("__Editor_AnimationWorkbenchRetired");
+        object->SetModel(nullptr);
+        object->SetReplayRemoved(true);
+        object->SetName("__Editor_AnimationClipEditorRetired");
         sceneManager_->GetCurrentScene()->RequestRemoveObject(object);
     }
 
     previewObject_ = nullptr;
+    // 前フレームのGPU描画が終了してから、この編集だけが持つモデルを解放する。
+    if (previewModelOwner_ && dxCommon_) dxCommon_->WaitForGPUIdle();
+    previewModelOwner_.reset();
 }
 
-engine::Object3d* AnimationWorkbench::FindPreviewObject() const {
-    // シーン切り替え後は保持ポインタを信用せず、現シーン内で名前から探す。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
-        return nullptr;
-    for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-        if (object && object->GetName() == kPreviewObjectName) {
-            return object.get();
-        }
-    }
-
+engine::Object3d* AnimationClipEditor::FindPreviewObject() const {
+if (!sceneManager_ || sceneManager_->GetSceneGeneration() != sceneGeneration_) return nullptr;
+    auto* scene = sceneManager_->GetCurrentScene();
+    if (!scene) return nullptr;
+    for (const auto& object : scene->GetObjects())
+        if (object && object.get() == previewObject_ && !object->IsReplayRemoved()) return object.get();
     return nullptr;
 }
 
-void AnimationWorkbench::ApplyTimelinePose() {
+void AnimationClipEditor::ApplyTimelinePose() {
     if (!previewModel_ || !previewObject_)
         return;
 
@@ -882,7 +656,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
             previewOrigin_.y + bodyPose.translate.y,
             previewOrigin_.z + bodyPose.translate.z
         });
-        previewObject_->SetRotation(bodyPose.rotate);
+        previewObject_->SetRotation(sourceRotation_ + bodyPose.rotate);
         previewObject_->SetScale({
             previewScale_.x * bodyPose.scale.x,
             previewScale_.y * bodyPose.scale.y,
@@ -890,7 +664,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
         });
     } else {
         previewObject_->SetTranslate(previewOrigin_);
-        previewObject_->SetRotation({});
+        previewObject_->SetRotation(sourceRotation_);
         previewObject_->SetScale(previewScale_);
     }
 
@@ -939,7 +713,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
     }
 }
 
-BodyAnimationClip::Key AnimationWorkbench::BuildBodyKeyFromUi() const {
+BodyAnimationClip::Key AnimationClipEditor::BuildBodyKeyFromUi() const {
     // UI の角度を保存形式のラジアンへ変換し、ゼロに近いスケールを制限する。
     BodyAnimationClip::Key key;
     key.time = currentTime_;
@@ -957,7 +731,7 @@ BodyAnimationClip::Key AnimationWorkbench::BuildBodyKeyFromUi() const {
     return key;
 }
 
-void AnimationWorkbench::AddOrUpdateBodyKey() {
+void AnimationClipEditor::AddOrUpdateBodyKey() {
     // 同時刻のキーを上書きし、新しい時刻だけ追加して並びを維持する。
     BodyAnimationClip::Key key = BuildBodyKeyFromUi();
 
@@ -988,7 +762,7 @@ void AnimationWorkbench::AddOrUpdateBodyKey() {
     ApplyTimelinePose();
 }
 
-void AnimationWorkbench::DeleteSelectedBodyKey() {
+void AnimationClipEditor::DeleteSelectedBodyKey() {
     // 削除後はその時刻の補間姿勢へ UI を戻し、未保存の一時姿勢を消す。
     if (selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size())) {
         return;
@@ -1001,7 +775,7 @@ void AnimationWorkbench::DeleteSelectedBodyKey() {
     ApplyTimelinePose();
 }
 
-bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip::Key& keyOut) const {
+bool AnimationClipEditor::TryGetInterpolatedBodyKey(float time, BodyAnimationClip::Key& keyOut) const {
     // 区間の開始キーに保存されたイージングを補間率へ適用する。
     if (bodyKeys_.empty()) {
         return false;
@@ -1045,7 +819,7 @@ bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip
     return true;
 }
 
-void AnimationWorkbench::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
+void AnimationClipEditor::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
     // 保存値の回転はラジアンなので、操作欄には度へ戻して表示する。
     bodyTranslateUi_ = key.translate;
     bodyShearUi_ = key.shear;
@@ -1055,7 +829,7 @@ void AnimationWorkbench::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
     bodyEasingToNext_ = std::clamp(key.easingToNext, 0, 4);
 }
 
-void AnimationWorkbench::SyncBodyUiFromTimeline() {
+void AnimationClipEditor::SyncBodyUiFromTimeline() {
     // キーが無い場合は単位姿勢に戻し、前クリップの値を UI に残さない。
     BodyAnimationClip::Key key;
 
@@ -1073,14 +847,14 @@ void AnimationWorkbench::SyncBodyUiFromTimeline() {
     bodyEditOverrideActive_ = false;
 }
 
-void AnimationWorkbench::SortBodyKeys() {
+void AnimationClipEditor::SortBodyKeys() {
     // 補間時に隣接キーを探せるよう時刻順を維持する。
     std::sort(bodyKeys_.begin(), bodyKeys_.end(), [](const BodyAnimationClip::Key& lhs, const BodyAnimationClip::Key& rhs) {
         return lhs.time < rhs.time;
     });
 }
 
-void AnimationWorkbench::ApplyPoseKey(const PoseKey& key) {
+void AnimationClipEditor::ApplyPoseKey(const PoseKey& key) {
     // 関節の Euler 回転を骨格が使う Quaternion へ変換して適用する。
     if (!previewModel_)
         return;
@@ -1091,7 +865,7 @@ void AnimationWorkbench::ApplyPoseKey(const PoseKey& key) {
     });
 }
 
-AnimationWorkbench::PoseKey AnimationWorkbench::BuildPoseKeyFromUi() const {
+AnimationClipEditor::PoseKey AnimationClipEditor::BuildPoseKeyFromUi() const {
     // 保存時は関節番号と名前を両方持ち、モデル更新後の再割り当てに備える。
     PoseKey key;
     key.time = currentTime_;
@@ -1107,7 +881,7 @@ AnimationWorkbench::PoseKey AnimationWorkbench::BuildPoseKeyFromUi() const {
     return key;
 }
 
-void AnimationWorkbench::AddOrUpdateKey() {
+void AnimationClipEditor::AddOrUpdateKey() {
     // 同じ関節・同じ時刻のキーは置換し、一時プレビュー値を確定値へ移す。
     if (!previewModel_ || selectedJointIndex_ < 0)
         return;
@@ -1130,7 +904,7 @@ void AnimationWorkbench::AddOrUpdateKey() {
     ApplyTimelinePose();
 }
 
-void AnimationWorkbench::DeleteSelectedJointKeyAtCurrentTime() {
+void AnimationClipEditor::DeleteSelectedJointKeyAtCurrentTime() {
     // 他の関節や別時刻のキーを残して、選択関節の現在キーだけ消す。
     if (selectedJointIndex_ < 0)
         return;
@@ -1142,7 +916,7 @@ void AnimationWorkbench::DeleteSelectedJointKeyAtCurrentTime() {
     ApplyTimelinePose();
 }
 
-bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseKey& keyOut) const {
+bool AnimationClipEditor::TryGetInterpolatedKey(int jointIndex, float time, PoseKey& keyOut) const {
     // 対象関節の前後キーだけを取り、回転は Quaternion 補間でつなぐ。
     std::vector<PoseKey> jointKeys;
 
@@ -1186,7 +960,7 @@ bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseK
     return false;
 }
 
-void AnimationWorkbench::SyncUiFromJoint(int jointIndex) {
+void AnimationClipEditor::SyncUiFromJoint(int jointIndex) {
     // プレビュー骨格の現在姿勢を編集欄へ戻す際は角度を度へ変換する。
     if (!previewModel_)
         return;
@@ -1196,7 +970,7 @@ void AnimationWorkbench::SyncUiFromJoint(int jointIndex) {
     jointScaleUi_ = transform.scale;
 }
 
-void AnimationWorkbench::SortKeys() {
+void AnimationClipEditor::SortKeys() {
     // 時刻が近いキーは関節番号で整列し、一覧の順序を安定させる。
     std::sort(keys_.begin(), keys_.end(), [](const PoseKey& a, const PoseKey& b) {
         if (std::abs(a.time - b.time) > kKeyEpsilon)
@@ -1205,7 +979,7 @@ void AnimationWorkbench::SortKeys() {
     });
 }
 
-void AnimationWorkbench::RefreshAssetFiles() {
+void AnimationClipEditor::RefreshAssetFiles() {
     // 作業ディレクトリ内の JSON だけを候補にし、名前順で表示する。
     namespace fs = std::filesystem;
     assetFiles_.clear();
@@ -1223,7 +997,7 @@ void AnimationWorkbench::RefreshAssetFiles() {
     std::sort(assetFiles_.begin(), assetFiles_.end());
 }
 
-void AnimationWorkbench::NewAuthoringClip() {
+void AnimationClipEditor::NewAuthoringClip() {
     // モデルは維持したままキー・イベント・一時姿勢を初期状態へ戻す。
     CopyToBuffer(saveFileBuffer_, sizeof(saveFileBuffer_), "new_body_animation.json");
     bodyKeys_.clear();
@@ -1250,7 +1024,7 @@ void AnimationWorkbench::NewAuthoringClip() {
     ApplyTimelinePose();
 }
 
-void AnimationWorkbench::SaveAuthoringJson() {
+void AnimationClipEditor::SaveAuthoringJson() {
     // 本体キー、関節キー、イベントを同じファイルに保存して再編集可能にする。
     namespace fs = std::filesystem;
     fs::create_directories(kSaveDirectory);
@@ -1308,7 +1082,7 @@ void AnimationWorkbench::SaveAuthoringJson() {
     DebugConsole::GetInstance()->AddLog(("Animation Workbench saved: " + GetSavePath()).c_str());
 }
 
-void AnimationWorkbench::LoadAuthoringJson() {
+void AnimationClipEditor::LoadAuthoringJson() {
     // 現行保存先を優先し、旧フォルダのファイルも読み込めるようにする。
     std::ifstream ifs(GetSavePath(), std::ios::binary);
 
@@ -1335,6 +1109,12 @@ void AnimationWorkbench::LoadAuthoringJson() {
         return;
     }
 
+    const std::string savedModel = data.value("model", "");
+    if (const auto* target = FindSourceObject(); target && !data.value("keys", nlohmann::json::array()).empty() &&
+        !savedModel.empty() && savedModel != target->GetModelName()) {
+        DebugConsole::GetInstance()->AddLog("骨格用クリップのモデルと選択対象が異なります。対応するモデルを選択してください。");
+        return;
+    }
     ClearAllEditOverrides();
     lastEventPreviewText_.clear();
     eventPreviewTimer_ = 0.0f;
@@ -1432,7 +1212,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
     DebugConsole::GetInstance()->AddLog(("Animation Workbench loaded json: " + GetSavePath()).c_str());
 }
 
-std::string AnimationWorkbench::GetSavePath() const {
+std::string AnimationClipEditor::GetSavePath() const {
     // 拡張子が省略された名前でもワークベンチ専用ディレクトリの JSON へ揃える。
     std::string filename = saveFileBuffer_;
     if (filename.empty())
@@ -1444,26 +1224,26 @@ std::string AnimationWorkbench::GetSavePath() const {
     return std::string(kSaveDirectory) + filename;
 }
 
-void AnimationWorkbench::StoreEditOverrideFromUi() {
+void AnimationClipEditor::StoreEditOverrideFromUi() {
     // ギズモ操作中の未確定姿勢をキーへ保存せず、プレビュー上だけ優先する。
     if (!previewModel_ || selectedJointIndex_ < 0)
         return;
     editPoseOverrides_[selectedJointIndex_] = BuildPoseKeyFromUi();
 }
 
-void AnimationWorkbench::ClearEditOverride(int jointIndex) {
+void AnimationClipEditor::ClearEditOverride(int jointIndex) {
     // 確定した関節の一時姿勢だけ消し、他の編集中関節には触れない。
     editPoseOverrides_.erase(jointIndex);
 }
 
-void AnimationWorkbench::ClearAllEditOverrides() {
+void AnimationClipEditor::ClearAllEditOverrides() {
     // クリップやモデル変更時に旧骨格の一時編集を持ち越さない。
     editPoseOverrides_.clear();
 }
 
 // 順再生・逆再生の双方で、前回時刻と今回時刻の間を横切ったイベントだけをプレビューします。
 // 終端から先頭へループした場合は区間を二つに分け、境界での二重発火を避けます。
-void AnimationWorkbench::UpdateEventPreview(float previousTime, float currentTime) {
+void AnimationClipEditor::UpdateEventPreview(float previousTime, float currentTime) {
     // 順再生と逆再生で区間境界を変え、キー通過時の二重発火を防ぐ。
     if (events_.empty())
         return;
@@ -1493,14 +1273,14 @@ void AnimationWorkbench::UpdateEventPreview(float previousTime, float currentTim
     }
 }
 
-void AnimationWorkbench::FireEventPreview(const EventMarker& marker) {
+void AnimationClipEditor::FireEventPreview(const EventMarker& marker) {
     // ゲーム本体のイベント処理は呼ばず、内容を画面とログへ短時間表示する。
     lastEventPreviewText_ = FormatEventMarker(marker);
     eventPreviewTimer_ = 1.5f;
     DebugConsole::GetInstance()->AddLog(("Animation Event Preview: " + lastEventPreviewText_).c_str());
 }
 
-std::string AnimationWorkbench::FormatEventMarker(const EventMarker& marker) const {
+std::string AnimationClipEditor::FormatEventMarker(const EventMarker& marker) const {
     // 時刻・種類・位置を一行にまとめてイベントの確認欄へ表示する。
     int typeIndex = (std::clamp)(marker.type, 0, kEventTypeCount - 1);
     char buffer[256] = {};
@@ -1517,7 +1297,7 @@ std::string AnimationWorkbench::FormatEventMarker(const EventMarker& marker) con
     return buffer;
 }
 
-engine::Vector3 AnimationWorkbench::ToDegrees(const engine::Vector3& radians) const {
+engine::Vector3 AnimationClipEditor::ToDegrees(const engine::Vector3& radians) const {
     // 保存と骨格で使うラジアンを UI の度へ戻す。
     return {
         radians.x * 180.0f / kPi,
@@ -1526,7 +1306,7 @@ engine::Vector3 AnimationWorkbench::ToDegrees(const engine::Vector3& radians) co
     };
 }
 
-engine::Vector3 AnimationWorkbench::ToRadians(const engine::Vector3& degrees) const {
+engine::Vector3 AnimationClipEditor::ToRadians(const engine::Vector3& degrees) const {
     // UI で入力した度を保存と骨格で使うラジアンへ変換する。
     return {
         degrees.x * kPi / 180.0f,
@@ -1535,13 +1315,13 @@ engine::Vector3 AnimationWorkbench::ToRadians(const engine::Vector3& degrees) co
     };
 }
 
-void AnimationWorkbench::SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
+void AnimationClipEditor::SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
     // 3D ギズモの入力と投影を Game View の表示矩形に合わせる。
     gameViewOffset_ = offset;
     gameViewSize_ = size;
 }
 
-void AnimationWorkbench::DrawBodyGizmo() {
+void AnimationClipEditor::DrawBodyGizmo() {
     // ワールド操作をプレビュー原点からの相対値に戻して本体キーへ反映する。
 #ifdef USE_IMGUI
     if (!EditorToolSettings::Get().IsVisible("transformGizmo"))
@@ -1612,7 +1392,7 @@ void AnimationWorkbench::DrawBodyGizmo() {
 #endif
 }
 
-void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
+void AnimationClipEditor::DrawBoneOverlayAndGizmo() {
 #ifdef USE_IMGUI
     if (!EditorToolSettings::Get().IsVisible("bones"))
         return;
@@ -1848,7 +1628,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 #endif
 }
 
-bool AnimationWorkbench::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
+bool AnimationClipEditor::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
     // 骨格のワールド位置を Game View 内のピクセル座標へ変換する。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera)
@@ -1867,7 +1647,7 @@ bool AnimationWorkbench::ProjectWorldToGameView(const engine::Vector3& world, en
            screenOut.y <= gameViewOffset_.y + gameViewSize_.y + 64.0f;
 }
 
-engine::Matrix4x4 AnimationWorkbench::GetJointWorldMatrix(int jointIndex) const {
+engine::Matrix4x4 AnimationClipEditor::GetJointWorldMatrix(int jointIndex) const {
     // 骨格空間の行列へプレビュー Object のワールド行列を重ねる。
     if (!previewModel_ || !previewObject_) {
         return engine::Math::MakeIdentity4x4();
@@ -1882,37 +1662,34 @@ engine::Matrix4x4 AnimationWorkbench::GetJointWorldMatrix(int jointIndex) const 
     return engine::Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, previewObject_->GetWorldMatrix());
 }
 
-engine::Vector3 AnimationWorkbench::GetMatrixTranslation(const engine::Matrix4x4& matrix) const {
+engine::Vector3 AnimationClipEditor::GetMatrixTranslation(const engine::Matrix4x4& matrix) const {
     // 行列の平行移動成分を骨表示の起点として取り出す。
     return { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
 }
 
-void AnimationWorkbench::ApplyCameraOverride() {
-    // 初回と再中心化要求時だけプレビュー模型を見やすい位置へ捉え直す。
-    if (!enabled_)
-        return;
-    CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
 
-    if ((!hasPlacedCamera_ && cameraMoveOnEnter_) || recenterCameraRequested_) {
-        Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
-        if (camera) {
-            engine::Vector3 target = previewOrigin_;
-            engine::Vector3 eye = {
-                target.x,
-                target.y + cameraHeight_,
-                target.z - cameraDistance_
-            };
-
-            float pitch = std::atan2(cameraHeight_, cameraDistance_);
-            camera->SetFollowTarget(nullptr);
-            camera->SetEye(eye);
-            camera->SetTarget(target);
-            camera->SetRotation({ pitch, 0.0f, 0.0f });
-            camera->Update();
-        }
-
-        hasPlacedCamera_ = true;
-        recenterCameraRequested_ = false;
-    }
+engine::Object3d* AnimationClipEditor::FindSourceObject() const {
+    if (!targetId_ || !sceneManager_ || sceneManager_->GetSceneGeneration() != sceneGeneration_) return nullptr;
+    auto* scene = sceneManager_->GetCurrentScene();
+    if (!scene) return nullptr;
+    for (const auto& object : scene->GetObjects())
+        if (object && object->GetReplayId() == targetId_ && !object->IsReplayRemoved()) return object.get();
+    return nullptr;
 }
+void AnimationClipEditor::SetTarget(engine::Object3d* target) {
+    if (!target || target->IsEditorInternal() || !sceneManager_ || sceneManager_->IsPlaying()) { StopPreview(); return; }
+    // 別骨格の編集中キーは無言で上書きしない。保存・新規クリップの操作を先に行ってもらう。
+    if (!keys_.empty() && modelNameBuffer_[0] && target->GetModelName() != modelNameBuffer_) {
+        StopPreview(); return;
+    }
+    const auto id = target->EnsureReplayId();
+    if (enabled_ && targetId_ == id && sceneGeneration_ == sceneManager_->GetSceneGeneration()) return;
+    StopPreview(); targetId_ = id; sceneGeneration_ = sceneManager_->GetSceneGeneration();
+    previewScene_ = sceneManager_->GetCurrentScene();
+    EditorCommon::DecomposeWorldPose(target->GetWorldMatrix(), previewOrigin_, sourceRotation_, previewScale_);
+    CopyToBuffer(modelNameBuffer_, sizeof(modelNameBuffer_), target->GetModelName());
+    CreatePreviewObject(); enabled_ = previewObject_ && previewModel_;
+}
+
+#endif

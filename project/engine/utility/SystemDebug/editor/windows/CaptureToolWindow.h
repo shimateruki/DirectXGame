@@ -20,6 +20,8 @@ struct IMFSinkWriter;
 
 /// Game Viewやウィンドウ領域のスクリーンショット、録画、保存先管理を行うキャプチャツール。
 class CaptureToolWindow : public IEditable {
+#ifdef USE_IMGUI
+#endif
 public:
     enum class CaptureArea {
         GameView,

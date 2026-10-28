@@ -90,6 +90,12 @@ public:
 
     /// <summary>Editor の時間シークに合わせ、保持中の粒子を初期状態へ戻します。</summary>
     void ResetSimulation();
+#ifdef USE_IMGUI
+    // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
+    void BeginEditorSession();
+    void EndEditorSession();
+#endif
+
 
     /// <summary>GPU バッファを再利用しつつ、シーン内の実行状態を消去します。</summary>
     void ClearSceneRuntime();
@@ -151,6 +157,15 @@ private:
     std::unordered_map<std::string, std::unique_ptr<GPUParticleSystem>> authoringSystems_;
     bool authoringPreviewVisible_ = false;
     bool updatedThisFrame_ = false;
+#ifdef USE_IMGUI
+    bool editorSession_ = false;
+    float savedEditorScale_ = 1;
+    ID3D12Resource* savedEditorMesh_ = nullptr;
+    uint32_t savedEditorMeshCount_ = 0, savedEditorMeshStride_ = 0, savedEditorMeshBones_ = 0;
+    decltype(systems_) savedEditorSystems_;
+    decltype(autoEmitters_) savedEditorEmitters_;
+#endif
+
     float lastUpdateCpuTimeMs_ = 0.0f;
     float lastDrawCpuTimeMs_ = 0.0f;
 

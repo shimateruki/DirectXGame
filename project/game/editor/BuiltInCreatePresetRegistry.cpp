@@ -464,6 +464,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* commo
         { "Bomber", "ボムスライム" },
         { "GiantSlime", "巨大スライム" },
         { "PrismSlime", "プリズムスライム（中ボス）" },
+        { "MagmaSlime", "マグマスライム（中ボス）" },
         { "FalseKingSlime", "偽王スライム（ステージ3ボス）" },
         { "RingBurner", "リングバーナー" },
     };

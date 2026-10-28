@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EnemyAttackPreviewRegistry.h"
+#include "game/editor/EnemyAttackPreviewRegistry.h"
 #include "EnemySlime.h"
 #include "EnemyFireSlime.h"
 #include "EnemyThunderSlime.h"

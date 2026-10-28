@@ -26,7 +26,7 @@ class ObjectManager {
     /// </summary>
     void AddObject(std::unique_ptr<engine::Object3d> object);
 
-    /// <summary>EditorやReplayが直後に参照できるよう、所有権を受け取って即時登録する。</summary>
+    /// <summary>EditorやReplayが直後に参照・描画できるよう、行列を確定して即時登録する。</summary>
     /// <returns>登録したオブジェクトへの非所有ポインター。</returns>
     engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object);
 
@@ -40,7 +40,7 @@ class ObjectManager {
     /// </summary>
     void RequestRemove(engine::Object3d* object);
 
-    /// <summary>AIを更新せず、保留中の追加と削除だけを反映する。</summary>
+    /// <summary>AIを進めず、新規Objectの描画行列を確定して保留中の追加・削除を反映する。</summary>
     void ApplyPendingChanges();
 
     /// <summary>

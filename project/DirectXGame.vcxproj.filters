@@ -119,6 +119,8 @@
     <ClCompile Include="engine\core\Game.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorCommon.cpp" />
+    <ClCompile Include="engine\core\editor\SelectedActorSession.cpp" />
     <ClCompile Include="engine\core\editor\PlayModeSnapshot.cpp" />
     <ClCompile Include="engine\core\editor\GameEditorController.cpp"><Filter>EditorOrganization\Controller</Filter></ClCompile>
     <ClCompile Include="engine\system\input\InputManager.cpp">
@@ -608,18 +610,18 @@
     <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.Timeline.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationClipEditor.Timeline.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationClipEditor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.cpp">
+    <ClCompile Include="game\editor\ActorDebugPanel.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Ui.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Timeline.cpp" />
+    <ClCompile Include="game\editor\ActorDebugPanel.Ui.cpp" />
+    <ClCompile Include="game\editor\ActorDebugPanel.Timeline.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -926,6 +928,7 @@
     <ClInclude Include="engine\core\Game.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClInclude>
+    <ClInclude Include="engine\core\editor\SelectedActorSession.h" />
     <ClInclude Include="engine\core\editor\PlayModeSnapshot.h" />
     <ClInclude Include="engine\core\editor\GameEditorController.h"><Filter>EditorOrganization\Controller</Filter></ClInclude>
     <ClInclude Include="engine\system\input\InputManager.h">
@@ -1881,19 +1884,20 @@
     <ClInclude Include="engine\graphics\core\GraphicsPipelineBuilder.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimationClipEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.h">
+    <ClInclude Include="game\editor\RegisterGameActorDebug.h" />
+    <ClInclude Include="game\editor\ActorDebugPanel.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Constants.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\core\EnemyAttackPreviewRegistry.h" />
+    <ClInclude Include="game\editor\ActorDebugPanel.Constants.h" />
+    <ClInclude Include="game\editor\EnemyAttackPreviewRegistry.h" />
     <ClInclude Include="game\editor\RegisterGameAttackPreviews.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\core\CopyAbilityPreviewRegistry.h" />
+    <ClInclude Include="game\editor\CopyAbilityPreviewRegistry.h" />
     <ClInclude Include="game\editor\RegisterGameCopyPreviews.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>

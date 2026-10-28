@@ -2,8 +2,8 @@
 #include "DebugEditor.h"
 #include "EditorToolSettings.h"
 #include "game/ui/SettingsMenuOverlay.h"
-#include "SceneManager.h"    
-#include "BaseScene.h"      
+#include "SceneManager.h"
+#include "BaseScene.h"
 #include "Object3d.h"
 #include "imgui.h"
 #include <fstream>
@@ -16,10 +16,10 @@
 #include "Math.h"
 #include "DirectXCommon.h"
 #include "CollisionConfig.h"
-#include "ModelManager.h"      
-#include "InputManager.h"    
+#include "ModelManager.h"
+#include "InputManager.h"
 #include <cmath>
-#include <cassert> 
+#include <cassert>
 #include <algorithm>
 #include <chrono>
 #include <cctype>
@@ -27,7 +27,7 @@
 #include <cwctype>
 #include <iomanip>
 #include <sstream>
-#include "GhostRecorder.h" 
+#include "GhostRecorder.h"
 #include "game/system/cinematic/GhostDirector.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "Transform.h"
@@ -38,7 +38,7 @@
 #include "ParticleEditor.h"
 #include "GPUParticleEditor.h"
 #include "VFXSequencerEditor.h"
-#include "LightEditor.h"      
+#include "LightEditor.h"
 #include "IconsFontAwesome5.h"
 #include "AssetDatabase.h"
 
@@ -233,8 +233,9 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     sceneInventoryWindow_.Initialize(sceneManager, this);
     materialPreviewBoard_.Initialize(sceneManager, this);
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
-    enemyAttackPreviewWindow_.Initialize(sceneManager);
+#ifdef USE_IMGUI
     animationWorkbench_.Initialize(sceneManager, dxCommon);
+#endif
     animatorControllerEditor_.Initialize(sceneManager, this);
     textSpriteGenerator_.Initialize(sceneManager, this);
     modelOptimizerWindow_.Initialize(this);
@@ -460,8 +461,7 @@ void DebugEditor::Update() {
         return;
 
     EffectPreviewStage::GetInstance()->Update();
-    enemyAttackPreviewWindow_.Update(enemyAttackPreviewWindow_.IsCrownMovieMode() ? ImGui::GetIO().DeltaTime : 1.0f / 60.0f);
-    animationWorkbench_.Update(1.0f / 60.0f);
+
     textSpriteGenerator_.Update();
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
@@ -483,6 +483,9 @@ void DebugEditor::Update() {
         previewObject_ = nullptr;
         previewChildObjects_.clear();
         brushPreviewObjects_.clear();
+        brushPlacement_ = {};
+        brushPresetSource_ = {};
+        brushStampedRootGuids_.clear();
         isPresetBrushMode_ = false;
         brushPresetName_.clear();
         hasLastBrushStamp_ = false;
@@ -519,12 +522,12 @@ void DebugEditor::Update() {
 
     ClearInvalidSelectedObject();
 
-    // 毎フレーム更新とシーン切替時の参照整理を済ませ、通常Sceneへの入力だけを止めます。
-    // 攻撃編集中も再生時計・隔離空間は更新し続けます。
-    if (enemyAttackPreviewWindow_.IsAuthoringViewportActive())
+    // 動作・クリップ確認中だけ配置操作を止め、元Objectをギズモで動かさない。
+    // 再生時計はGameEditorControllerから更新するため、通常編集へ必ず復帰できる。
+    const bool actorToolsActive = (actorSession_ && actorSession_->IsActive()) || animationWorkbench_.IsEnabled();
+    CameraEditor::GetInstance()->SetGameViewHovered(isGameViewHovered_ && !actorToolsActive);
+    if (actorToolsActive)
         return;
-
-    CameraEditor::GetInstance()->SetGameViewHovered(isGameViewHovered_);
 
     // 選択対象が「DebugEditor自身」である間は、以前選んだオブジェクトを保持し続ける
     if (current != nullptr && current != this) {
@@ -904,15 +907,16 @@ void DebugEditor::Finalize() {
 
     PresetEditor::GetInstance()->ClearPropertyEditors();
     FinalizeCrashRecovery();
-    enemyAttackPreviewWindow_.Finalize();
+#ifdef USE_IMGUI
     animationWorkbench_.Finalize();
+#endif
     primitiveDrawer_.Finalize();
     EditorTransactionManager::GetInstance()->Clear();
 }
 
 
 // ========================================================================
-// コライダー描画処理 
+// コライダー描画処理
 // ========================================================================
 void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 #ifdef USE_IMGUI
@@ -1127,7 +1131,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             engine::Matrix4x4 matRotY = math.MakeRotateYMatrix(obj->GetColliderConfig().rotation.y);
             engine::Matrix4x4 matRotZ = math.MakeRotateZMatrix(obj->GetColliderConfig().rotation.z);
             engine::Matrix4x4 matCollRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
-            
+
             engine::Matrix4x4 matObjWorldNoScale = obj->GetWorldMatrix();
 
             for (int i = 0; i < 3; ++i) {
@@ -1164,17 +1168,17 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 for (float h : {-halfH, halfH}) {
                     engine::Vector3 pInner = { innerR * c, h, innerR * s };
                     engine::Vector3 pOuter = { outerR * c, h, outerR * s };
-                    
+
                     // 線を細い箱で代用 (PrimitiveDrawerにDrawLineがあればそちらが良いが、無ければ極小Box)
                     engine::Vector3 center = (pInner + pOuter) * 0.5f;
                     engine::Vector3 diff = pOuter - pInner;
                     float len = math.Length(diff);
-                    
+
                     engine::Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
                     engine::Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
                     engine::Matrix4x4 matLT = math.MakeTranslateMatrix(center);
                     engine::Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
-                    
+
                     primitiveDrawer_.DrawWireCube(commandList, lineWorld, color, instanceCount++);
                 }
             }
@@ -1200,7 +1204,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 engine::Matrix4x4 matScale = math.MakeScaleMatrix({ range * 2.0f, range * 2.0f, range * 2.0f });
                 engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(obj->GetWorldPosition());
                 engine::Matrix4x4 rangeWorldMatrix = math.Multiply(matScale, matTrans);
-                
+
                 // 検知範囲は薄い赤色
                 engine::Vector4 rangeColor = { 1.0f, 0.0f, 0.0f, 0.3f };
                 primitiveDrawer_.DrawWireSphere(commandList, rangeWorldMatrix, rangeColor, instanceCount);
@@ -1421,7 +1425,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                         engine::Matrix4x4 mRZ = math.MakeRotateZMatrix(config.rotation.z);
                         matCollRot = math.Multiply(mRZ, math.Multiply(mRX, mRY));
                     }
-                    
+
                     engine::Matrix4x4 matObjWorldNoScale = effect->GetWorldMatrix();
 
                     for (int i = 0; i < 3; ++i) {

@@ -199,7 +199,7 @@ void GhostDirector::DrawInspectorContents() {
     }
 
     if (selectedTrackKind_ == 3) {
-        DrawAnimationClipEditor();
+        DrawAnimationWorkbench();
     }
 
     if (selectedTrackKind_ == 4) {
@@ -1632,7 +1632,7 @@ void GhostDirector::DrawCameraShotEditor() {
 #endif
 }
 
-void GhostDirector::DrawAnimationClipEditor() {
+void GhostDirector::DrawAnimationWorkbench() {
     // 対象オブジェクトへ再生する身体アニメーションと時間範囲を設定する。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Animation Clip追加", ImVec2(-1.0f, 0.0f))) {

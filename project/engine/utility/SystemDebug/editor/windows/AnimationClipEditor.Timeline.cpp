@@ -1,4 +1,5 @@
-#include "AnimationWorkbench.h"
+#ifdef USE_IMGUI
+#include "AnimationClipEditor.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -8,7 +9,7 @@
 #endif
 
 // シークでは未登録の姿勢を解除し、表示モデルとInspectorを同じ時刻へ揃える。
-void AnimationWorkbench::SeekTimeline(float time) {
+void AnimationClipEditor::SeekTimeline(float time) {
     currentTime_ = std::clamp(time, 0.0f, (std::max)(0.01f, duration_));
     play_ = false;
     bodyEditOverrideActive_ = false;
@@ -19,7 +20,7 @@ void AnimationWorkbench::SeekTimeline(float time) {
         SyncUiFromJoint(selectedJointIndex_);
 }
 
-void AnimationWorkbench::DrawTimelineControls() {
+void AnimationClipEditor::DrawTimelineControls() {
 #ifdef USE_IMGUI
     if (ImGui::Button(play_ ? "停止" : "再生")) {
         if (!play_ && currentTime_ >= duration_)
@@ -83,10 +84,10 @@ void AnimationWorkbench::DrawTimelineControls() {
 #endif
 }
 
-void AnimationWorkbench::DrawTimelinePanel() {
+void AnimationClipEditor::DrawTimelinePanel() {
 #ifdef USE_IMGUI
-    if (!ImGui::Begin("アニメーション制作 - Timeline", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove)) {
-        ImGui::End();
+    if (!ImGui::BeginChild("クリップ時間軸", ImVec2(0, 320), true, ImGuiWindowFlags_HorizontalScrollbar)) {
+        ImGui::EndChild();
         return;
     }
 
@@ -108,11 +109,10 @@ void AnimationWorkbench::DrawTimelinePanel() {
         RefreshAssetFiles();
     }
     ImGui::SameLine();
-    if (ImGui::Button("カメラを対象へ"))
-        recenterCameraRequested_ = true;
+
     ImGui::TextDisabled("空白をドラッグ：時刻移動 / 菱形をドラッグ：キー移動 / Esc：移動取消 / Space：再生 / 左右：1F");
     if (!previewModel_)
-        ImGui::TextWrapped("右側でモデル、または保存済みクリップを読み込んでください。グリッド1区画は1mです。");
+        ImGui::TextWrapped("モデルのあるObjectを選択してください。");
 
     const bool keyboard = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput;
 
@@ -302,6 +302,8 @@ void AnimationWorkbench::DrawTimelinePanel() {
     draw->AddLine({playhead,origin.y},{playhead,origin.y+height},IM_COL32(255,107,120,255),2);
     draw->AddTriangleFilled({playhead-6,origin.y},{playhead+6,origin.y},{playhead,origin.y+10},IM_COL32(255,107,120,255));
     ImGui::EndChild();
-    ImGui::End();
+    ImGui::EndChild();
 #endif
 }
+
+#endif

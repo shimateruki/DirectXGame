@@ -54,6 +54,13 @@ class CollisionManager {
 public:
     /// <summary>エンジンで共有する衝突管理インスタンスを取得します。</summary>
     static CollisionManager* GetInstance();
+#ifdef USE_IMGUI
+    // 既存の検索条件へ一時条件を重ね、終了時に元の条件へ戻せるよう交換する。
+    std::function<bool(const engine::Object3d*)> ExchangeEditorQueryFilter(
+        std::function<bool(const engine::Object3d*)> filter) {
+        editorQueryFilter_.swap(filter); return filter;
+    }
+#endif
 
     /// <summary>空間グリッドを使って登録オブジェクトの接触を更新します。</summary>
     void Update();
@@ -117,6 +124,9 @@ public:
     const std::list<engine::Object3d*>& GetObjects() const { return objects_; }
 
 private:
+#ifdef USE_IMGUI
+    std::function<bool(const engine::Object3d*)> editorQueryFilter_;
+#endif
     CollisionManager() = default;
 
     ~CollisionManager() = default;

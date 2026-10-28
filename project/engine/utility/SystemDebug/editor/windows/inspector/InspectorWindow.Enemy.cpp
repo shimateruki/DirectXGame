@@ -1,123 +1,45 @@
 #include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.h"
 #include "DebugEditor.h"
+#include "EditorObjectFactoryRegistry.h"
+#include "SceneManager.h"
+#include "BaseScene.h"
 #include "Object3d.h"
+#ifdef USE_IMGUI
 #include "imgui.h"
+#endif
 
 void InspectorWindow::DrawEnemyTypeSelector() {
-    // 種別変更時は、生成時に必要なモデル・当たり判定の初期値も同時に揃えます。
 #ifdef USE_IMGUI
-    engine::Object3d* selectedObject = editor_->GetSelectedObject();
-    if (!selectedObject)
-        return;
-
-    const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime" };
-    std::string currentType = selectedObject->GetEnemyType();
-
-    int currentIndex = -1;
-
-    // 保存済みの未知タイプは候補へ丸めず「未設定」と表示し、意図しない種別変更を防ぐ。
-    for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
-        if (currentType == enemyTypes[i]) {
-            currentIndex = i;
-            break;
+    auto* object = editor_->GetSelectedObject();
+    auto* scene = editor_->GetSceneManager() ? editor_->GetSceneManager()->GetCurrentScene() : nullptr;
+    if (!object || !scene) return;
+    using Registry = EditorObjectFactoryRegistry;
+    const auto& types = Registry::GetTypes(Registry::Kind::Enemy);
+    const std::string current = object->GetEnemyType();
+    std::string label = current.empty() ? "(未設定)" : current;
+    for (const auto& type : types) if (type.id == current) label = type.displayName;
+    if (ImGui::BeginCombo("敵の種類", label.c_str())) {
+        for (const auto& type : types) {
+            if (!ImGui::Selectable(type.displayName.c_str(), current == type.id) || current == type.id) continue;
+            // 実際のFactoryから表示・Collider・基本値を取得する。配置位置と親子関係は保つ。
+            auto defaults = Registry::Create(Registry::Kind::Enemy, type.id, scene->GetObject3dCommon());
+            if (!defaults || defaults->GetEnemyType() != type.id) continue;
+            if (auto* session = editor_->GetActorSession()) session->Stop();
+            object->SetEnemyType(type.id);
+            object->SetName("Enemy_" + type.id);
+            object->SetModel(defaults->GetModelName());
+            object->SetColor(defaults->GetColor());
+            object->SetMaterialType(defaults->GetMaterialType());
+            object->SetEmissive(defaults->GetEmissive());
+            object->SetScale(defaults->GetScale());
+            object->SetColliderConfig(defaults->GetColliderConfig());
+            object->SetCollisionAttribute(defaults->GetCollisionAttribute());
+            object->SetCollisionMask(defaults->GetCollisionMask());
+            object->param_ = defaults->param_;
+            object->animName_ = defaults->animName_; object->isAnimLoop_ = defaults->isAnimLoop_;
         }
-    }
-
-    const char* previewValue = (currentIndex >= 0) ? enemyTypes[currentIndex] : "(未設定)";
-
-    if (ImGui::BeginCombo("敵の種族 (Enemy Type)", previewValue)) {
-        for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
-            bool isSelected = (currentIndex == i);
-
-            if (ImGui::Selectable(enemyTypes[i], isSelected)) {
-                selectedObject->SetEnemyType(enemyTypes[i]);
-                selectedObject->SetName("Enemy_" + std::string(enemyTypes[i]));
-
-                // この画面では配置Objectのプレビュー値を更新する。実際の敵クラスはScene読込時にFactoryが生成する。
-                if (std::string(enemyTypes[i]) == "GiantSlime") {
-                    selectedObject->SetModel("Characters/slime");
-                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-                    selectedObject->SetEmissive(1.0f);
-                    selectedObject->SetScale({ 2.8f, 2.8f, 2.8f });
-                    selectedObject->animName_.clear();
-                    selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(2.2f);
-                }
-                else if (std::string(enemyTypes[i]) == "PrismSlime") {
-                    selectedObject->SetModel("Characters/prism_slime");
-                    selectedObject->SetColor({ 0.62f, 0.94f, 1.0f, 1.0f });
-                    selectedObject->SetEmissive(1.08f);
-                    selectedObject->SetScale({ 4.2f, 4.2f, 4.2f });
-                    selectedObject->animName_.clear();
-                    selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(0.78f);
-                }
-                else if (std::string(enemyTypes[i]) == "MagmaSlime") {
-                    selectedObject->SetModel("Characters/magma_slime");
-                    selectedObject->SetMaterialType(0);
-                    selectedObject->SetColor({ 1.0f, 0.94f, 0.86f, 1.0f });
-                    selectedObject->SetEmissive(1.18f);
-                    selectedObject->SetScale({ 3.8f, 3.8f, 3.8f });
-                    selectedObject->animName_.clear();
-                    selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(0.96f);
-                }
-                else if (std::string(enemyTypes[i]) == "FireSlime") {
-                    selectedObject->SetModel("Characters/slime_red");
-                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-                    selectedObject->SetEmissive(1.15f);
-                    selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
-                    selectedObject->animName_.clear();
-                    selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(0.95f);
-                }
-                else if (std::string(enemyTypes[i]) == "ThunderSlime") {
-                    selectedObject->SetModel("Characters/slime_yellow");
-                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-                    selectedObject->SetEmissive(1.2f);
-                    selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
-                    selectedObject->animName_.clear();
-                    selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(0.95f);
-                }
-                else if (std::string(enemyTypes[i]) == "WindSlime") {
-                    selectedObject->SetModel("Characters/slime_wind");
-                    selectedObject->SetColor({ 0.78f, 1.0f, 0.92f, 1.0f });
-                    selectedObject->SetEmissive(1.08f);
-                    selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
-                    selectedObject->animName_.clear();
-                    selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(0.95f);
-                }
-            }
-
-            if (isSelected)
-                ImGui::SetItemDefaultFocus();
-        }
-
         ImGui::EndCombo();
     }
-
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
+    ImGui::TextDisabled("種類と初期値はゲーム側の登録を使用します。動作は下の調整欄で確認できます。");
 #endif
 }
-

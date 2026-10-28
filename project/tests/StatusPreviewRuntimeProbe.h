@@ -2,7 +2,7 @@
 #ifdef USE_IMGUI
 #include "DebugEditor.h"
 #include "EditorManager.h"
-#include "EnemyAttackPreviewRegistry.h"
+#include "game/editor/EnemyAttackPreviewRegistry.h"
 #include "game/editor/CharacterStatusEditor.h"
 #include "game/system/rules/GameplayStatusManager.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
@@ -58,7 +58,7 @@ struct StatusPreviewRuntimeProbe {
         firePtr->SetEnemyType("FireSlime");
         log << "OK live apply preserves HP ratio, other enemy types and editor dummy" << std::endl;
 
-        auto& preview = *editor->GetEnemyAttackPreviewWindow();
+        auto& preview = *GetGameActorDebugPanel();
         preview.SelectStatusTarget("FireSlime");
         EditorManager::GetInstance()->SetSelectedObject(&preview);
         preview.enabled_ = true; preview.CreatePreviewObjects(); preview.playing_ = false;
@@ -137,7 +137,7 @@ struct StatusPreviewRuntimeProbe {
             if (scenes->GetCurrentSceneName() != "GAMEPLAY" || ++frames < 3) return;
             if (phase == 1) { Check(scenes, editor, log); phase = 2; frames = 0; return; }
             if (phase == 2) {
-                auto* preview = editor->GetEnemyAttackPreviewWindow();
+                auto* preview = GetGameActorDebugPanel();
                 Require(EditorManager::GetInstance()->GetSelectedObject() == preview, "integrated inspector selection lost");
                 Require(drawnStatusFrames > 0, "integrated status panel was not drawn" );
                 log << "PASS: integrated character status, live apply, preview refresh, persistence and normal UI frames" << std::endl;

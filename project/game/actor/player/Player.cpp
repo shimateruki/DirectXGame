@@ -870,18 +870,10 @@ void Player::UpdateCopyAdornment() {
         copyAdornment_->SetModel(model);
     copyAdornment_->SetIsVisible(true);
 
-    // 本体の潰れ・伸び・回転を含めて追従。能力解除時は描かず、元敵には付けません。
-    copyAdornment_->SetLocalTransform(*GetTransform());
-    copyAdornment_->SetTransformAnchor(GetTransform()->parent);
-
-    if (auto* decorationRenderer = copyAdornment_->GetMeshRenderer()) {
-        if (auto* bodyRenderer = GetMeshRenderer()) {
-            decorationRenderer->SetVisualTransform(bodyRenderer->GetVisualScale(), bodyRenderer->GetVisualRotation(),
-                                                   bodyRenderer->GetVisualOffset());
-            decorationRenderer->SetVisualShear(bodyRenderer->GetVisualShear(), bodyRenderer->GetVisualShearPivotY());
-        }
-    }
-
+    // 本体と同じ最終描画行列を親にする。個別コピーでは漏れる演出姿勢やシアーも一致させる。
+    const auto* bodyRenderer = GetMeshRenderer();
+    copyAdornmentAnchor_.matWorld = bodyRenderer ? bodyRenderer->GetRenderWorldMatrix() : GetWorldMatrix();
+    copyAdornment_->SetTransformAnchor(&copyAdornmentAnchor_);
     copyAdornment_->UpdateWorldMatrix(true);
 }
 

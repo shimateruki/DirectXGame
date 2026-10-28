@@ -1,7 +1,7 @@
 #define NOMINMAX
 #include "game/editor/CharacterStatusEditor.h"
 #include "game/system/rules/GameplayStatusManager.h"
-#include "EnemyAttackPreviewRegistry.h"
+#include "game/editor/EnemyAttackPreviewRegistry.h"
 #include "EditorObjectFactoryRegistry.h"
 #include "BaseScene.h"
 #ifdef USE_IMGUI

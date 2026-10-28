@@ -8,6 +8,7 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <wrl.h>
 
@@ -18,7 +19,7 @@
 #include "engine/utility/math/Math.h"
 
 // Editorを構成するサブウィンドウ。
-#include "AnimationWorkbench.h"
+#include "AnimationClipEditor.h"
 #include "AnimatorControllerEditor.h"
 #include "AssetAuditWindow.h"
 #include "AudioSettingsWindow.h"
@@ -28,7 +29,8 @@
 #include "EditorObjectFactoryRegistry.h"
 #include "EditorTransactionManager.h"
 #include "EffectPreviewStage.h"
-#include "EnemyAttackPreviewWindow.h"
+#include "engine/core/editor/SelectedActorSession.h"
+class SelectedActorSession;
 #include "ExecutablePackageWindow.h"
 #include "GameDataDebugEditor.h"
 #include "game/system/cinematic/GhostDirector.h"
@@ -315,7 +317,11 @@ public:
     void SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
         gameViewOffset_ = offset;
         gameViewSize_ = size;
-        animationWorkbench_.SetGameViewRegion(offset, size);
+
+#ifdef USE_IMGUI
+    animationWorkbench_.SetGameViewRegion(offset, size);
+#endif
+
         textSpriteGenerator_.SetGameViewRegion(offset, size);
         modelOptimizerWindow_.SetGameViewRegion(offset, size);
     }
@@ -343,10 +349,18 @@ public:
     }
 
     /// <summary>Game View上にマウスがあるか、プレビューツールへ通知する。</summary>
-    void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; animationWorkbench_.SetGameViewHovered(hovered); }
+    void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered;
+#ifdef USE_IMGUI
+    animationWorkbench_.SetGameViewHovered(hovered);
+#endif
+ }
 
     /// <summary>Game View内のマウス位置をプレビューツールへ通知する。</summary>
-    void SetGameViewMousePos(const engine::Vector2& pos) { gameViewMousePos_ = pos; animationWorkbench_.SetGameViewMousePos(pos); }
+    void SetGameViewMousePos(const engine::Vector2& pos) { gameViewMousePos_ = pos;
+#ifdef USE_IMGUI
+    animationWorkbench_.SetGameViewMousePos(pos);
+#endif
+ }
 
     /// <summary>パスからファイル名だけを取り出し、現在の保存先名として設定する。</summary>
     void SetSceneFilename(const std::string& filepath) {
@@ -501,9 +515,12 @@ public:
 
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
 
-    EnemyAttackPreviewWindow* GetEnemyAttackPreviewWindow() { return &enemyAttackPreviewWindow_; }
+    SelectedActorSession* GetActorSession() { return actorSession_; }
+    void SetActorSession(SelectedActorSession* session) { actorSession_ = session; }
 
-    AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
+#ifdef USE_IMGUI
+    AnimationClipEditor* GetAnimationClipEditor() { return &animationWorkbench_; }
+#endif
 
     AnimatorControllerEditor* GetAnimatorControllerEditor() { return &animatorControllerEditor_; }
 
@@ -556,12 +573,25 @@ struct PlacementResult {
     /// <summary>Game Viewのマウス位置からワールド空間のRayを作る。</summary>
     engine::Ray ScreenPointToRay(const engine::Vector2& mousePos);
 
+    /// <summary>可視モデルの面へRayを当て、最も手前の接点・法線・交差率を返す。</summary>
+    /// <remarks>選択時だけロック対象を除外。配置ではignoreとその子を除外する。</remarks>
+    bool RaycastSceneSurface(const engine::Ray& ray, engine::RayResult& result,
+        engine::Object3d** hitObject = nullptr, const engine::Object3d* ignore = nullptr, bool forSelection = false,
+        const std::unordered_set<std::string>* ignoredRootGuids = nullptr);
+
     /// <summary>Rayと配置用平面の交点を求める。</summary>
     /// <returns>交点がある場合はtrue。座標はintersectOutへ書く。</returns>
     bool IntersectRayPlane(const engine::Ray& ray, engine::Vector3& intersectOut);
 
     /// <summary>Game Viewのマウス位置から床・面・グリッドを考慮した配置を計算する。</summary>
-    PlacementResult CalculateGameViewPlacement(const engine::Object3d* object, const engine::Vector2& mousePos, bool useGridSnap = true);
+    PlacementResult CalculateGameViewPlacement(const engine::Object3d* object, const engine::Vector2& mousePos, bool useGridSnap = true,
+        const std::vector<std::unique_ptr<engine::Object3d>>* group = nullptr,
+        const std::unordered_set<std::string>* ignoredRootGuids = nullptr);
+
+    /// <summary>先頭を親とするObject群を接地させる。D&Dとブラシは同じ姿勢保持・接地規則を使う。</summary>
+    PlacementResult PlaceGameViewObjects(std::vector<std::unique_ptr<engine::Object3d>>& objects,
+        const engine::Vector2& mousePos, bool useGridSnap = true,
+        const std::unordered_set<std::string>* ignoredRootGuids = nullptr);
 
     /// <summary>計算済みの配置結果をObjectの位置と必要な向きへ反映する。</summary>
     void ApplyGameViewPlacement(engine::Object3d* object, const PlacementResult& placement, bool alignToSurface);
@@ -735,6 +765,11 @@ private:
 
     // ブラシ配置の複数プレビューは確定まで別配列で所有する。
     std::vector<std::unique_ptr<engine::Object3d>> brushPreviewObjects_;
+    // 直前に表示した配置結果と元Asset。無効な見本や編集中に変わったAssetを確定しない。
+    PlacementResult brushPlacement_{};
+    nlohmann::json brushPresetSource_;
+    // 同じブラシ操作中の配置物を下地から除外する。Undo/Redo後も有効なGUIDを使う。
+    std::unordered_set<std::string> brushStampedRootGuids_;
 
     // 連続スタンプの間隔と直前の配置位置。
     bool isPresetBrushMode_ = false;
@@ -925,8 +960,10 @@ private:
     SceneInventoryWindow sceneInventoryWindow_;
     MaterialPreviewBoard materialPreviewBoard_;
 
-    EnemyAttackPreviewWindow enemyAttackPreviewWindow_;
-    AnimationWorkbench animationWorkbench_;
+    SelectedActorSession* actorSession_ = nullptr;
+#ifdef USE_IMGUI
+    AnimationClipEditor animationWorkbench_;
+#endif
     AnimatorControllerEditor animatorControllerEditor_;
 
     SceneSavePreview sceneSavePreview_;

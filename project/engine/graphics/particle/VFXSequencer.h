@@ -160,6 +160,10 @@ public:
 
     /// <summary>全 OneShot を停止して破棄します。</summary>
     static void ClearOneShots();
+#ifdef USE_IMGUI
+    static void BeginEditorSession();
+    static void EndEditorSession();
+#endif
 
     /// <summary>指定時間のヒットストップを要求します。</summary>
     static void RequestHitStop(float duration, float timeScale = 0.0f);

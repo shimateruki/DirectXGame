@@ -115,7 +115,8 @@ void EnemyPrismSlime::Update(float deltaTime) {
 }
 
 void EnemyPrismSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (debugPreviewChantOnly_) {
+    // Editorの一時非表示は、本体だけでなく目・コア・所有する攻撃表示にも適用する。
+    if (IsEditorTemporarilyHidden() || debugPreviewChantOnly_) {
         return;
     }
 

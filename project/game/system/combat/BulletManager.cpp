@@ -220,3 +220,14 @@ void BulletManager::DrawSpecial(uint32_t depthSrvHandle, uint32_t grabSrvHandle)
         bullet->DrawSpecialMaterial(depthSrvHandle, grabSrvHandle);
     }
 }
+
+#ifdef USE_IMGUI
+void BulletManager::BeginEditorSession() {
+    if (editorSession_) return;
+    bullets_.swap(savedEditorBullets_); editorSession_ = true;
+}
+void BulletManager::EndEditorSession() {
+    if (!editorSession_) return;
+    Clear(); bullets_.swap(savedEditorBullets_); editorSession_ = false;
+}
+#endif

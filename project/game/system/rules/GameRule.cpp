@@ -92,13 +92,14 @@ GameRule::~GameRule() {
 }
 
 // 前Sceneのイベント購読を解除し、現在Sceneの接触・被弾・死亡イベントへ登録し直します。
-void GameRule::Initialize(BaseScene* scene) {
+void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
     for (auto& id : eventSubscriptions_) {
         EventManager::GetInstance()->Unsubscribe(id);
         id = EventManager::kInvalidSubscriptionId;
     }
 
     scene_ = scene;
+    editorOnly_ = editorOnly;
     activeStatusEffects_.clear();
     if (!checkpointRule_)
         checkpointRule_ = std::make_unique<CheckpointRule>();
@@ -109,7 +110,7 @@ void GameRule::Initialize(BaseScene* scene) {
         engine::Object3d* whoHit = event.me;           // プレイヤー
         engine::Object3d* objectHit = event.hitObject; // 当たった物
 
-        if (!whoHit || !objectHit)
+        if (editorOnly_ || !whoHit || !objectHit || whoHit->IsEditorInternal() || objectHit->IsEditorInternal())
             return;
 
         EventType type = objectHit->GetEventType();
@@ -198,7 +199,8 @@ void GameRule::Initialize(BaseScene* scene) {
 
     // HP 減算が成立したときだけ、打撃演出・状態異常・ノックバックへ進む。
     eventSubscriptions_[1] = EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
-        if (!event.target)
+        if (!event.target || event.target->IsEditorInternal() != editorOnly_ ||
+            (event.attacker && event.attacker->IsEditorInternal() != event.target->IsEditorInternal()))
             return;
         Player* playerTarget = dynamic_cast<Player*>(event.target);
         if (playerTarget && playerTarget->IsCinematicLocked()) {

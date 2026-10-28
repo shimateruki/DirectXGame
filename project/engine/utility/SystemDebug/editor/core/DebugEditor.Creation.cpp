@@ -284,81 +284,11 @@ void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
     newObj->SetClassName("Model");
     newObj->SetName(modelName + "_" + std::to_string(currentScene->GetObjects().size()));
 
-    // 2. マウス座標からレイキャスト
-    engine::Math math;
-    engine::Ray ray = ScreenPointToRay(gameViewMousePos_);
-    engine::Vector3 finalPos = { 0, 0, 0 };
-    bool found = false;
-
-    // 他のオブジェクトの上に乗せられるかチェック
-    auto& objects = currentScene->GetObjects();
-    engine::RayResult best;
-    best.isHit = false;
-    best.distance = 1e5f;
-
-    for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible())
-            continue;
-        engine::Matrix4x4 wm = obj->GetWorldMatrix();
-        engine::Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
-        engine::Vector3 ws = obj->GetTransform()->scale;
-        engine::RayResult tmp;
-
-        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
-            if (tmp.distance < best.distance)
-                best = tmp;
-        }
-    }
-
-    // 高さとカメラからの距離を考慮して配置場所を決定
-    float yOffset = newObj->GetColliderConfig().size.y;
-    if (yOffset == 0.0f)
-        yOffset = newObj->GetTransform()->scale.y;
-
-    if (best.isHit) {
-        // オブジェクトに当たった場合はその上に乗せる
-        finalPos = best.point;
-        finalPos.y += yOffset;
-        found = true;
-    }
-    else {
-        // 当たらなかった場合、地面（Y=0）との交点を計算
-        if (IntersectRayPlane(ray, finalPos)) {
-            // カメラから交点までの「距離」を計算
-            float dx = finalPos.x - ray.origin.x;
-            float dy = finalPos.y - ray.origin.y;
-            float dz = finalPos.z - ray.origin.z;
-            float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-            // 距離が遠すぎる（20m以上先）なら、強制的にカメラの前方10mの空中に配置
-            if (distance > 20.0f) {
-                finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            }
-            else {
-                finalPos.y = yOffset; // 近ければ地面に乗せる
-            }
-
-            found = true;
-        }
-        else {
-            // 空を向いていた場合は、カメラの前方10mに置く
-            finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            found = true;
-        }
-    }
-
-    // 座標の確定とスナップ適用
-    if (found) {
-        if (isGridSnapEnabled_) {
-            finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
-            finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
-        }
-
-        newObj->SetTranslate(finalPos);
-    }
-
-    newObj->UpdateLocalMatrix();
+    // 実際の面と配置物の底面を合わせる。Prefabの向き・親子関係は変えない。
     newObj->UpdateWorldMatrix();
+    const auto placement = CalculateGameViewPlacement(newObj.get(), gameViewMousePos_, true);
+    if (!placement.found) return;
+    ApplyGameViewPlacement(newObj.get(), placement, newObj.get()->IsDecal());
 
     // 4. シーンに追加して、即座に選択状態にする
     AddEditorObject(std::move(newObj), "Drop 3D Model");
@@ -381,71 +311,10 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
         return;
 
     AssignPresetInstanceNames(currentScene, presetName, presetObjects, PresetRootName::PathLeaf);
-    engine::Object3d* rootObject = presetObjects.front().get();
 
-    engine::Math math;
-    engine::Ray ray = ScreenPointToRay(gameViewMousePos_);
-    engine::Vector3 finalPos = { 0, 0, 0 };
-    bool found = false;
-
-    auto& objects = currentScene->GetObjects();
-
-    // カーソルRayに最も近い既存Objectの上面を配置候補にする。
-    engine::RayResult best;
-    best.isHit = false;
-    best.distance = 1e5f;
-
-    for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible())
-            continue;
-        engine::Matrix4x4 wm = obj->GetWorldMatrix();
-        engine::Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
-        engine::Vector3 ws = obj->GetTransform()->scale;
-        engine::RayResult tmp;
-
-        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
-            if (tmp.distance < best.distance)
-                best = tmp;
-        }
-    }
-
-    float yOffset = rootObject->GetColliderConfig().size.y;
-    if (yOffset == 0.0f)
-        yOffset = rootObject->GetTransform()->scale.y;
-
-    if (best.isHit) {
-        finalPos = best.point;
-        finalPos.y += yOffset;
-        found = true;
-    }
-    else {
-        // 何も指していない場合は地面Planeかカメラ前方へ配置する。
-        if (IntersectRayPlane(ray, finalPos)) {
-            float dx = finalPos.x - ray.origin.x;
-            float dy = finalPos.y - ray.origin.y;
-            float dz = finalPos.z - ray.origin.z;
-            float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-            if (distance > 20.0f) {
-                finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            } else {
-                finalPos.y = yOffset;
-            }
-
-            found = true;
-        } else {
-            finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            found = true;
-        }
-    }
-
-    if (found && isGridSnapEnabled_) {
-        finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
-        finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
-    }
-
-    rootObject->SetTranslate(finalPos);
-    rootObject->UpdateWorldMatrix();
+    // 実際の面と配置物の底面を合わせる。Prefabの向き・親子関係は変えない。
+    const auto placement = PlaceGameViewObjects(presetObjects, gameViewMousePos_, true);
+    if (!placement.found) return;
 
     AddEditorObjects(std::move(presetObjects), "Drop Preset");
 
@@ -467,71 +336,10 @@ void DebugEditor::InstantiatePrefabAtCursor(const std::string& prefabName) {
         return;
 
     AssignPresetInstanceNames(currentScene, prefabName, prefabObjects, PresetRootName::PathLeaf);
-    engine::Object3d* rootObject = prefabObjects.front().get();
 
-    engine::Math math;
-    engine::Ray ray = ScreenPointToRay(gameViewMousePos_);
-    engine::Vector3 finalPos = { 0, 0, 0 };
-    bool found = false;
-
-    auto& objects = currentScene->GetObjects();
-
-    // 既存ObjectへのRayヒットを優先し、空間上で配置先を探しやすくする。
-    engine::RayResult best;
-    best.isHit = false;
-    best.distance = 1e5f;
-
-    for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible())
-            continue;
-        engine::Matrix4x4 wm = obj->GetWorldMatrix();
-        engine::Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
-        engine::Vector3 ws = obj->GetTransform()->scale;
-        engine::RayResult tmp;
-
-        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
-            if (tmp.distance < best.distance)
-                best = tmp;
-        }
-    }
-
-    float yOffset = rootObject->GetColliderConfig().size.y;
-    if (yOffset == 0.0f)
-        yOffset = rootObject->GetTransform()->scale.y;
-
-    if (best.isHit) {
-        finalPos = best.point;
-        finalPos.y += yOffset;
-        found = true;
-    }
-    else {
-        // ヒット対象がないときは地面Planeを試し、遠すぎる点は手前へ制限する。
-        if (IntersectRayPlane(ray, finalPos)) {
-            float dx = finalPos.x - ray.origin.x;
-            float dy = finalPos.y - ray.origin.y;
-            float dz = finalPos.z - ray.origin.z;
-            float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-            if (distance > 20.0f) {
-                finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            } else {
-                finalPos.y = yOffset;
-            }
-
-            found = true;
-        } else {
-            finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            found = true;
-        }
-    }
-
-    if (found && isGridSnapEnabled_) {
-        finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
-        finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
-    }
-
-    rootObject->SetTranslate(finalPos);
-    rootObject->UpdateWorldMatrix();
+    // 実際の面と配置物の底面を合わせる。Prefabの向き・親子関係は変えない。
+    const auto placement = PlaceGameViewObjects(prefabObjects, gameViewMousePos_, true);
+    if (!placement.found) return;
 
     AddEditorObjects(std::move(prefabObjects), "Drop Prefab");
 
@@ -555,68 +363,11 @@ void DebugEditor::InstantiateParticleAtCursor(const std::string& particleName) {
     newObj->SetColor({1.0f, 0.5f, 0.0f, 0.5f});
     newObj->SetBlendMode(BlendMode::kNormal);
 
-    // 2. マウス座標からのレイキャスト（配置場所の決定）
-    engine::Math math;
-    engine::Ray ray = ScreenPointToRay(gameViewMousePos_);
-    engine::Vector3 finalPos = { 0, 0, 0 };
-    bool found = false;
-
-    auto& objects = currentScene->GetObjects();
-    engine::RayResult best;
-    best.isHit = false;
-    best.distance = 1e5f;
-
-    for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible())
-            continue;
-        engine::Matrix4x4 wm = obj->GetWorldMatrix();
-        engine::Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
-        engine::Vector3 ws = obj->GetTransform()->scale;
-        engine::RayResult tmp;
-
-        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
-            if (tmp.distance < best.distance)
-                best = tmp;
-        }
-    }
-
-    float yOffset = newObj->GetColliderConfig().size.y;
-    if (yOffset == 0.0f)
-        yOffset = newObj->GetTransform()->scale.y;
-
-    if (best.isHit) {
-        finalPos = best.point;
-        finalPos.y += yOffset;
-        found = true;
-    }
-    else {
-        if (IntersectRayPlane(ray, finalPos)) {
-            float dx = finalPos.x - ray.origin.x;
-            float dy = finalPos.y - ray.origin.y;
-            float dz = finalPos.z - ray.origin.z;
-            float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-            if (distance > 20.0f) {
-                finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            } else {
-                finalPos.y = yOffset;
-            }
-
-            found = true;
-        } else {
-            finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
-            found = true;
-        }
-    }
-
-    // 3. 座標確定とスナップ
-    if (found && isGridSnapEnabled_) {
-        finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
-        finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
-    }
-
-    newObj->SetTranslate(finalPos);
+    // 実際の面と配置物の底面を合わせる。Prefabの向き・親子関係は変えない。
     newObj->UpdateWorldMatrix();
+    const auto placement = CalculateGameViewPlacement(newObj.get(), gameViewMousePos_, true);
+    if (!placement.found) return;
+    ApplyGameViewPlacement(newObj.get(), placement, newObj.get()->IsDecal());
 
     // 4. シーンに追加
     AddEditorObject(std::move(newObj), "Drop Particle");

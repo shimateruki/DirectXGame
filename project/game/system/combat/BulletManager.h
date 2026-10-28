@@ -89,6 +89,12 @@ class BulletManager {
     // 停止中の Editor では、無害なプレビュー弾だけを実時間で進めます。
     void UpdatePreview(float deltaTime);
     bool HasPreviewBullets() const;
+#ifdef USE_IMGUI
+    // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
+    void BeginEditorSession();
+    void EndEditorSession();
+#endif
+
 #endif
 
     /// <summary>
@@ -127,6 +133,11 @@ class BulletManager {
     BulletManager& operator=(const BulletManager&) = delete;
 
     std::list<std::unique_ptr<Bullet>> bullets_;
+#ifdef USE_IMGUI
+    bool editorSession_ = false;
+    decltype(bullets_) savedEditorBullets_;
+#endif
+
     engine::Object3dCommon* common_ = nullptr;
     CollisionManager* colManager_ = nullptr;
 };

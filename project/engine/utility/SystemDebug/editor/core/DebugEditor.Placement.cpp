@@ -20,6 +20,7 @@
 #include <cmath>
 #include <cassert> 
 #include <algorithm>
+#include <limits>
 #include <chrono>
 #include <cctype>
 #include <ctime>
@@ -77,16 +78,15 @@ namespace {
     }
 
     engine::Vector3 GetPlacementExtents(const engine::Object3d* object) {
-        // 接地位置の計算には軸ごとに当たり判定を優先し、未設定軸だけ倍率を使う。
+        // ローカルの半寸法を返す。拡大率は後でワールド行列から一度だけ適用する。
         if (!object)
             return { 1.0f, 1.0f, 1.0f };
 
         const auto& collider = object->GetColliderConfig();
-        const Transform& transform = object->GetTransform();
         return {
-            collider.size.x > 0.0f ? collider.size.x : std::abs(transform.scale.x),
-            collider.size.y > 0.0f ? collider.size.y : std::abs(transform.scale.y),
-            collider.size.z > 0.0f ? collider.size.z : std::abs(transform.scale.z)
+            collider.size.x > 0.0f ? collider.size.x : 1.0f,
+            collider.size.y > 0.0f ? collider.size.y : 1.0f,
+            collider.size.z > 0.0f ? collider.size.z : 1.0f
         };
     }
 
@@ -118,23 +118,38 @@ namespace {
     }
 
     float GetSurfaceOffset(const engine::Object3d* object, const engine::Vector3& normal) {
-        // 配置物の半寸法と衝突形状の中心を面法線へ投影し、面へ埋まらない距離を求める。
-        if (object && object->IsDecal()) {
-            return object->GetDecalSettings().depthOffset;
+        if (object && object->IsDecal()) return object->GetDecalSettings().depthOffset;
+        if (!object) return 1.0f;
+        const auto world = object->GetWorldMatrix();
+        auto* model = object->GetModel();
+        engine::Vector3 lo, hi;
+        if (model) {
+            lo = model->GetLocalAabbMin(); hi = model->GetLocalAabbMax();
+            // 分割されたモデルは、表示中のメッシュだけを配置物の寸法に使う。
+            const int index = object->GetMeshDrawIndex();
+            const auto& meshes = model->GetModelData().meshes;
+            if (index >= 0 && index < static_cast<int>(meshes.size()) && !meshes[index].vertices.empty()) {
+                lo = {(std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)()};
+                hi = -lo;
+                for (const auto& vertex : meshes[index].vertices) {
+                    lo.x = (std::min)(lo.x, vertex.position.x); hi.x = (std::max)(hi.x, vertex.position.x);
+                    lo.y = (std::min)(lo.y, vertex.position.y); hi.y = (std::max)(hi.y, vertex.position.y);
+                    lo.z = (std::min)(lo.z, vertex.position.z); hi.z = (std::max)(hi.z, vertex.position.z);
+                }
+            }
+        } else {
+            const auto extents = GetPlacementExtents(object);
+            const auto center = object->GetColliderConfig().center;
+            lo = center - extents; hi = center + extents;
         }
-
-        engine::Vector3 extents = GetPlacementExtents(object);
-        engine::Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
-        float extentOnNormal = extents.x * absNormal.x + extents.y * absNormal.y + extents.z * absNormal.z;
-        if (!object)
-            return extentOnNormal;
-
-        const auto& collider = object->GetColliderConfig();
-        float centerOnNormal =
-            collider.center.x * normal.x +
-            collider.center.y * normal.y +
-            collider.center.z * normal.z;
-        return std::max(extentOnNormal - centerOnNormal, 0.0f);
+        // 原点から各隅までのベクトルを面法線へ投影し、最も面へ近い底面を求める。
+        // 位置の平行移動を除くことで、親の拡大・回転・モデルの原点ずれを保持する。
+        float minimum = (std::numeric_limits<float>::max)();
+        for (int bits = 0; bits < 8; ++bits) {
+            const engine::Vector3 corner{bits & 1 ? hi.x : lo.x, bits & 2 ? hi.y : lo.y, bits & 4 ? hi.z : lo.z};
+            minimum = (std::min)(minimum, engine::Math::Dot(engine::Math::TransformNormal(corner, world), normal));
+        }
+        return -minimum;
     }
 
     engine::Vector3 GetSurfaceAlignedRotation(const engine::Vector3& currentRotation, const engine::Vector3& normal) {
@@ -162,6 +177,7 @@ namespace {
         if (!enabled || snapValue <= 0.0f)
             return;
 
+        const auto beforeSnap = position;
         if (!hasSurface || std::abs(normal.x) < 0.5f) {
             position.x = std::round(position.x / snapValue) * snapValue;
         }
@@ -173,6 +189,9 @@ namespace {
         if (!hasSurface || std::abs(normal.z) < 0.5f) {
             position.z = std::round(position.z / snapValue) * snapValue;
         }
+        // 斜面でも吸着後の点を同じ接平面へ戻し、面の奥へ埋め込まない。
+        if (hasSurface)
+            position = position - normal * engine::Math::Dot(position - beforeSnap, normal);
     }
 
     float Distance(const engine::Vector3& a, const engine::Vector3& b) {
@@ -378,8 +397,10 @@ engine::Vector3 DebugEditor::CalculateGameViewCreatePosition(const engine::Objec
     return { 0.0f, GetCreateYOffsetForObject(object), 0.0f };
 }
 
-DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engine::Object3d* object, const engine::Vector2& mousePos, bool useGridSnap) {
-    // 画面座標のレイから最も手前の可視 AABB を選び、配置面を決める。
+DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engine::Object3d* object, const engine::Vector2& mousePos, bool useGridSnap,
+    const std::vector<std::unique_ptr<engine::Object3d>>* group,
+    const std::unordered_set<std::string>* ignoredRootGuids) {
+    // 選択と同じ可視モデルの面を使い、Colliderや仮の単位箱を配置先にしない。
     PlacementResult result;
 
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
@@ -395,30 +416,23 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engin
         return result;
     }
 
-    auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
-    engine::RayResult best;
-    best.isHit = false;
-    best.distance = 1e5f;
+    engine::RayResult best{};
+    RaycastSceneSurface(ray, best, nullptr, object, false, ignoredRootGuids);
 
-    for (auto& obj : objects) {
-        if (!obj)
-            continue;
-        if (obj.get() == object)
-            continue;
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line")
-            continue;
-        if (!obj->GetIsVisible())
-            continue;
-
-        AABB aabb = obj->GetAABB();
-        engine::RayResult tmp;
-
-        if (math.IntersectRayAABB(ray, aabb.min, aabb.max, &tmp)) {
-            if (tmp.distance < best.distance) {
-                best = tmp;
-            }
+    auto offsetForSurface = [&](const engine::Vector3& normal) {
+        if (!object || !group) return GetSurfaceOffset(object, normal);
+        const auto origin = object->GetWorldPosition();
+        float offset = (std::numeric_limits<float>::lowest)();
+        bool hasModel = false;
+        // 空の親を持つPrefabも、見えている子全体の底面を面へ合わせる。
+        for (const auto& child : *group) {
+            if (!child || !child->GetModel() || !child->GetIsRenderVisible()) continue;
+            hasModel = true;
+            offset = (std::max)(offset, GetSurfaceOffset(child.get(), normal) -
+                engine::Math::Dot(child->GetWorldPosition() - origin, normal));
         }
-    }
+        return hasModel ? offset : GetSurfaceOffset(object, normal);
+    };
 
     float surfaceOffset = 0.0f;
 
@@ -426,14 +440,14 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engin
     if (best.isHit) {
         result.normal = NormalizeOrUp(best.normal);
         result.contactPosition = best.point;
-        surfaceOffset = GetSurfaceOffset(object, result.normal);
+        surfaceOffset = offsetForSurface(result.normal);
         result.position = result.contactPosition + result.normal * surfaceOffset;
         result.found = true;
         result.hasSurface = true;
     }
     else if (IntersectRayPlane(ray, result.contactPosition)) {
         result.normal = { 0.0f, 1.0f, 0.0f };
-        surfaceOffset = GetSurfaceOffset(object, result.normal);
+        surfaceOffset = offsetForSurface(result.normal);
         result.position = result.contactPosition + result.normal * surfaceOffset;
         result.found = true;
         result.hasSurface = true;
@@ -450,6 +464,18 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engin
     ApplyGridSnap(result.position, result.normal, result.hasSurface, useGridSnap && isGridSnapEnabled_, snapValue_);
     result.contactPosition = result.hasSurface ? result.position - result.normal * surfaceOffset : result.position;
     return result;
+}
+
+DebugEditor::PlacementResult DebugEditor::PlaceGameViewObjects(
+    std::vector<std::unique_ptr<engine::Object3d>>& objects, const engine::Vector2& mousePos, bool useGridSnap,
+    const std::unordered_set<std::string>* ignoredRootGuids) {
+    if (objects.empty() || !objects.front()) return {};
+    auto* root = objects.front().get();
+    root->UpdateWorldMatrix();
+    const auto placement = CalculateGameViewPlacement(root, mousePos, useGridSnap, &objects, ignoredRootGuids);
+    if (placement.found)
+        ApplyGameViewPlacement(root, placement, root->IsDecal());
+    return placement;
 }
 
 void DebugEditor::ApplyGameViewPlacement(engine::Object3d* object, const PlacementResult& placement, bool alignToSurface) {
@@ -473,6 +499,8 @@ void DebugEditor::ApplyGameViewPlacement(engine::Object3d* object, const Placeme
 
     if (alignToSurface && placement.hasSurface) {
         object->SetRotation(GetSurfaceAlignedRotation(object->GetTransform()->rotate, placement.normal));
+        object->UpdateWorldMatrix();
+        object->SetTranslate(placement.contactPosition + placement.normal * GetSurfaceOffset(object, placement.normal));
     }
 
     if (object == previewObject_.get()) {
@@ -555,6 +583,7 @@ void DebugEditor::StartPresetBrush(const std::string& presetName) {
         CancelPreviewPlacement();
     }
 
+    brushStampedRootGuids_.clear();
     brushPresetName_ = presetName;
     isPresetBrushMode_ = true;
     hasLastBrushStamp_ = false;
@@ -575,13 +604,18 @@ void DebugEditor::StopPresetBrush() {
 
     DebugConsole::GetInstance()->AddLog("Brush Stop: " + brushPresetName_);
     isPresetBrushMode_ = false;
+    brushStampedRootGuids_.clear();
     brushPresetName_.clear();
+    brushPlacement_ = {};
+    brushPresetSource_ = {};
     brushPreviewObjects_.clear();
     hasLastBrushStamp_ = false;
 }
 
 void DebugEditor::RebuildPresetBrushPreview() {
-    // プリセットを再生成して一意名を割り当て、半透明の配置見本へ変換する。
+    // 再生成中は前の位置を確定できない。空の親には接地用の仮モデルを追加しない。
+    brushPlacement_ = {};
+    brushPresetSource_ = {};
     brushPreviewObjects_.clear();
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || brushPresetName_.empty())
         return;
@@ -598,6 +632,7 @@ void DebugEditor::RebuildPresetBrushPreview() {
         return;
     }
 
+    brushPresetSource_ = PresetManager::GetInstance()->GetPresets().at(brushPresetName_);
     AssignPresetInstanceNames(scene, brushPresetName_, brushPreviewObjects_, PresetRootName::DisplayName);
 
     for (auto& object : brushPreviewObjects_) {
@@ -634,16 +669,16 @@ void DebugEditor::UpdatePresetBrush() {
     if (brushPreviewObjects_.empty())
         return;
 
+    // 範囲外・他のUI・Gizmo操作中は古い位置へ刻印しない。
+    brushPlacement_ = {};
+    if (!isGameViewHovered_ || ImGuizmo::IsOver() || ImGuizmo::IsUsing()) return;
+
     engine::Object3d* root = brushPreviewObjects_.front().get();
-    PlacementResult placement = CalculateGameViewPlacement(root, gameViewMousePos_, true);
-    ApplyGameViewPlacement(root, placement, true);
+    brushPlacement_ = PlaceGameViewObjects(brushPreviewObjects_, gameViewMousePos_, true, &brushStampedRootGuids_);
+    if (!brushPlacement_.found) return;
 
     for (auto& object : brushPreviewObjects_) {
         ApplyBrushPreviewVisual(object.get());
-    }
-
-    if (!isGameViewHovered_ || ImGuizmo::IsOver() || ImGuizmo::IsUsing()) {
-        return;
     }
 
     bool clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
@@ -664,8 +699,17 @@ void DebugEditor::UpdatePresetBrush() {
 
 void DebugEditor::StampPresetBrush() {
     // プレビューそのものは再利用し、実配置用のインスタンスを別に生成する。
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene() || brushPresetName_.empty() || brushPreviewObjects_.empty())
+    if (!isPresetBrushMode_ || !brushPlacement_.found || !sceneManager_ || !sceneManager_->GetCurrentScene() ||
+        sceneManager_->IsPlaying() || sceneManager_->IsTransitioning() || brushPresetName_.empty() || brushPreviewObjects_.empty())
         return;
+
+    // Asset編集が見本の作成後に入ったら、先に表示を更新してから次の刻印を待つ。
+    const auto& presets = PresetManager::GetInstance()->GetPresets();
+    const auto source = presets.find(brushPresetName_);
+    if (source == presets.end() || source->second != brushPresetSource_) {
+        RebuildPresetBrushPreview();
+        return;
+    }
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
     engine::Object3dCommon* common = scene->GetObject3dCommon();
@@ -677,16 +721,21 @@ void DebugEditor::StampPresetBrush() {
         return;
 
     AssignPresetInstanceNames(scene, brushPresetName_, objects, PresetRootName::DisplayName);
-    engine::Object3d* root = objects.front().get();
-    engine::Object3d* previewRoot = brushPreviewObjects_.front().get();
-    engine::Vector3 stampPosition = previewRoot->GetWorldPosition();
-
-    root->SetTranslate(previewRoot->GetTranslate());
-    root->SetRotation(previewRoot->GetRotation());
-    root->UpdateLocalMatrix();
+    if (objects.size() != brushPreviewObjects_.size()) {
+        RebuildPresetBrushPreview();
+        return;
+    }
+    // 同じAssetから作った全ノードへ、見本で確認したローカル姿勢だけを渡す。
+    // 表示用の色・材質はコピーせず、Quaternion優先フラグやScaleを失わない。
+    for (size_t i = 0; i < objects.size(); ++i)
+        objects[i]->SetLocalTransform(*brushPreviewObjects_[i]->GetTransform());
+    auto* root = objects.front().get();
     root->UpdateWorldMatrix();
+    const auto stampPosition = root->GetWorldPosition();
 
     AddEditorObjects(std::move(objects), "Brush Preset " + brushPresetName_);
+    // 親のGUIDだけで子孫も除外し、次フレームに見本が自分の刻印へ登ることを防ぐ。
+    brushStampedRootGuids_.insert(root->GetPersistentGuid());
     lastBrushStampPosition_ = stampPosition;
     hasLastBrushStamp_ = true;
 }
@@ -697,6 +746,22 @@ void DebugEditor::DrawPresetBrushOverlay() {
     if (!isPresetBrushMode_)
         return;
 
+    // 実モデルを持たない親やTriggerも、接点マーカーで位置を示す。
+    // 見本用の立方体をObjectへ付けず、接地寸法と表示用の印を分離する。
+    if (brushPlacement_.found) {
+        const auto point = WorldToScreen(brushPlacement_.contactPosition);
+        if (point.z >= 0) {
+            auto* draw = ImGui::GetWindowDrawList();
+            draw->PushClipRect({gameViewOffset_.x, gameViewOffset_.y},
+                {gameViewOffset_.x + gameViewSize_.x, gameViewOffset_.y + gameViewSize_.y}, true);
+            const ImVec2 center{point.x, point.y};
+            const auto color = IM_COL32(255, 235, 100, 240);
+            draw->AddCircle(center, 7.0f, color, 20, 2.0f);
+            draw->AddLine({point.x - 11, point.y}, {point.x + 11, point.y}, color, 1.5f);
+            draw->AddLine({point.x, point.y - 11}, {point.x, point.y + 11}, color, 1.5f);
+            draw->PopClipRect();
+        }
+    }
     ImGui::SetNextWindowPos(ImVec2(gameViewOffset_.x + 12.0f, gameViewOffset_.y + 12.0f), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.78f);
     ImGuiWindowFlags flags =
@@ -720,14 +785,10 @@ void DebugEditor::DrawPresetBrushOverlay() {
 
 void DebugEditor::ApplyBrushPreviewVisual(engine::Object3d* object) {
     // 元プリセットを編集せず、見本の Object だけ半透明・高輝度で表示する。
-    if (!object)
+    if (!object || !object->GetModel())
         return;
 
-    if (!object->GetModel()) {
-        object->SetModel("Primitives/cube");
-    }
-
-    object->SetClassName("Model");
+    // クラスとモデルは元のまま保つ。面合わせに必要なDecal判定も維持する。
     object->SetMaterialType(0);
     object->SetBlendMode(BlendMode::kNormal);
     engine::Vector4 color = object->GetColor();

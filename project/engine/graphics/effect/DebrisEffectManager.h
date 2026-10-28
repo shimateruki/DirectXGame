@@ -88,6 +88,12 @@ public:
 
     /// <summary>指定乱数種でエディタープレビューの破片状態を初期化する。</summary>
     void ResetEditorPreview(uint32_t randomSeed = 0xD3B1u);
+#ifdef USE_IMGUI
+    // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
+    void BeginEditorSession();
+    void EndEditorSession();
+#endif
+
 
     /// <summary>破片更新に掛ける時間倍率を設定する。</summary>
     void SetTimeScale(float timeScale) { timeScale_ = (std::max)(0.0f, timeScale); }
@@ -204,4 +210,11 @@ private:
     mutable std::recursive_mutex mutex_;
     mutable std::mt19937 randomEngine_;
     float timeScale_ = 1.0f;
+#ifdef USE_IMGUI
+    bool editorSession_ = false;
+    float savedEditorScale_ = 1;
+    decltype(activePieces_) savedEditorPieces_;
+    std::mt19937 savedEditorRandom_;
+#endif
+
 };

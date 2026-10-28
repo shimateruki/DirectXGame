@@ -60,6 +60,21 @@ void InspectorWindow::Draw() {
 
         ImGui::Spacing();
 
+        // 選択対象の動作は上部から操作し、通常の配置設定はその下へ残す。
+        if (!isMultiSelection && !editor_->GetIsPathEditMode()) {
+            if (auto* session = editor_->GetActorSession()) session->DrawInspector(selectedObject, editor_->GetProjectWindow());
+            if (ImGui::CollapsingHeader("アニメーションクリップ編集")) {
+                if (auto* session = editor_->GetActorSession(); session && session->IsActive())
+                    ImGui::TextDisabled("動作確認を終了するとクリップを編集できます。");
+                else {
+                    auto* clip = editor_->GetAnimationClipEditor(); clip->SetTarget(selectedObject); clip->DrawImGui();
+                }
+            } else editor_->GetAnimationClipEditor()->StopPreview();
+        } else {
+            if (auto* session = editor_->GetActorSession()) session->Stop();
+            editor_->GetAnimationClipEditor()->StopPreview();
+        }
+
         if (editor_->GetIsPathEditMode()) {
             // 編集モード中は目立つ色（オレンジ）にして警告を表示
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
@@ -246,14 +261,9 @@ void InspectorWindow::Draw() {
 
             // Player/Enemyのモデル変更は配置値ではなくタイプ共通設定へ案内し、個別差し替えと分ける。
             if (isManagedCharacter) {
-                ImGui::TextDisabled("Player/Enemyのモデルはプレビュー画面のタイプ共通設定です。");
+                ImGui::TextDisabled("Player/Enemyのモデルは下の動作・データ調整で種類共通の設定として変更できます。");
 
-                if (ImGui::Button(ICON_FA_SLIDERS_H " この種類の基本ステータスを調整##ModelStatus", ImVec2(-1, 0)) && editor_->GetEnemyAttackPreviewWindow()) {
-                    auto* preview = editor_->GetEnemyAttackPreviewWindow();
-        preview->SelectStatusTarget(selectedObject->GetClassName() == "Player" ? "" : selectedObject->GetEnemyType());
-        editor_->SetSelectedObject(nullptr);
-        EditorManager::GetInstance()->SetSelectedObject(preview);
-                }
+
             } else {
                 ImGui::Button(ICON_FA_BOX_OPEN " [ ここにモデルをドロップして変更 ] ", ImVec2(-1, 30));
 
@@ -1391,8 +1401,8 @@ void InspectorWindow::Draw() {
                 // effect JSONを列挙し、二つのSlotで別々のパスを選べるようにする。
                 std::vector<std::string> effectPaths;
                 std::vector<std::string> effectDisplayNames;
-                
-                effectPaths.push_back(""); 
+
+                effectPaths.push_back("");
                 effectDisplayNames.push_back("None");
 
                 std::string effectDir = "Resources/json/effect";
@@ -1606,6 +1616,8 @@ void InspectorWindow::Draw() {
             currentOperation = ImGuizmo::SCALE;
     }
 #endif
+
+
 }
 
 // -------------------------------------------------------------

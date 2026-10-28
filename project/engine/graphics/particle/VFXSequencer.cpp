@@ -794,3 +794,23 @@ void VFXSequencer::UpdateFeedbackRuntime(float unscaledDeltaTime) {
 float VFXSequencer::GetGameplayTimeScale() {
     return gameplayTimeScale;
 }
+
+#ifdef USE_IMGUI
+namespace {
+    bool editorVfxSession = false;
+    std::vector<std::unique_ptr<VFXSequencer>> savedEditorSequences;
+    std::vector<HitStopLayer> savedEditorHitStops;
+    float savedEditorGameplayScale = 1;
+}
+void VFXSequencer::BeginEditorSession() {
+    if (editorVfxSession) return;
+    ActiveOneShotSequences().swap(savedEditorSequences); ActiveHitStops().swap(savedEditorHitStops);
+    savedEditorGameplayScale = gameplayTimeScale; gameplayTimeScale = 1; editorVfxSession = true;
+}
+void VFXSequencer::EndEditorSession() {
+    if (!editorVfxSession) return;
+    ClearOneShots();
+    ActiveOneShotSequences().swap(savedEditorSequences); ActiveHitStops().swap(savedEditorHitStops);
+    gameplayTimeScale = savedEditorGameplayScale; editorVfxSession = false;
+}
+#endif

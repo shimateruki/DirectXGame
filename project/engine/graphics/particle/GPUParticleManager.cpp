@@ -530,3 +530,21 @@ bool GPUParticleManager::ShowAuthoringPreview(const std::string& preset, const e
     authoringPreviewVisible_ = true;
     return true;
 }
+
+#ifdef USE_IMGUI
+void GPUParticleManager::BeginEditorSession() {
+    if (editorSession_) return;
+    savedEditorScale_ = timeScale_;
+    savedEditorMesh_ = meshVb_; savedEditorMeshCount_ = meshVCount_; savedEditorMeshStride_ = meshVStride_; savedEditorMeshBones_ = meshBoneSrv_;
+    systems_.swap(savedEditorSystems_); autoEmitters_.swap(savedEditorEmitters_);
+    // 前回の確認用GPUバッファは再利用し、開始前のバッファには触れない。
+    ResetSimulation(); timeScale_ = 1; updatedThisFrame_ = false; editorSession_ = true;
+}
+void GPUParticleManager::EndEditorSession() {
+    if (!editorSession_) return;
+    ResetSimulation();
+    systems_.swap(savedEditorSystems_); autoEmitters_.swap(savedEditorEmitters_);
+    timeScale_ = savedEditorScale_; updatedThisFrame_ = false; editorSession_ = false;
+    SetEmitterMesh(savedEditorMesh_, savedEditorMeshCount_, savedEditorMeshStride_, savedEditorMeshBones_);
+}
+#endif

@@ -1,4 +1,6 @@
 #pragma once
+#ifdef USE_IMGUI
+#include "engine/core/editor/SelectedActorSession.h"
 
 #include "IEditable.h"
 #include "game/actor/enemy/combat/EnemyAttackProfile.h"
@@ -12,6 +14,7 @@
 #include <vector>
 
 class BaseEnemy;
+#include "game/system/rules/GameRule.h"
 struct EnemyAttackPreviewDescriptor;
 struct EnemyAttackPreviewOption;
 struct EnemyAttackPreviewContext;
@@ -23,8 +26,9 @@ class Player;
 class SceneManager;
 class ProjectWindow;
 
-/// スライム系敵の実際のAIと攻撃演出を、隔離ステージ上で確認するためのプレビューウィンドウ。
-class EnemyAttackPreviewWindow : public IEditable {
+/// スライム系敵の実際のAIと攻撃演出を、選択位置で確認し、既存データの編集欄を提供するゲーム側の共通パネル。
+class ActorDebugPanel : public IEditable {
+    friend void RegisterGameActorDebug();
 public:
     /// <summary>現在のSceneを使ってプレビューを準備します。</summary>
     /// <param name="sceneManager">プレビュー対象のSceneを管理するインスタンス。</param>
@@ -84,6 +88,17 @@ private:
     friend struct StatusPreviewRuntimeProbe;
     friend struct AttackEditorRuntimeProbe; // 明示的な検証起動でUIと同じ操作を実行します。
 #endif
+    SelectedActorSession* session_ = nullptr;
+    engine::Vector3 sourcePosition_{}, sourceRotation_{}, sourceScale_{1,1,1};
+    std::unique_ptr<GameRule> previewRules_;
+    bool effectsOwned_ = false;
+    std::function<void()> restoreMovieCamera_;
+    engine::Vector3 GetGroundPosition() const { return sourcePosition_; }
+    void BuildRuntime(bool requestCameraRecenter = false);
+    void ReleaseRuntime();
+    float ResolveGroundHeight(const engine::Vector3& position, float fallback) const;
+    void BeginEffects();
+    void EndEffects();
     ProjectWindow* authoringAssets_ = nullptr; // Editorが所有。素材サムネイルだけを借用します。
 
     /// <summary>選択中の敵またはコピー能力のプレビュー用Actorがあるか調べます。</summary>
@@ -91,6 +106,7 @@ private:
 
     /// <summary>コピー能力に固有の入力と動作を設定するUIを描画します。</summary>
     void DrawPlayerCopySettings();
+    void DrawSelectedInspector(ProjectWindow* assets);
 
     // ゲーム側の編集欄を描き、操作確定時だけプレビューを再生成します。
     bool DrawStatusSettings();
@@ -110,7 +126,7 @@ private:
     /// 編集前のシーケンスを Undo 用に記録する。
     void RememberSequenceEdit(const AttackSequenceDefinition& before);
 
-    // 保存前の表示部品だけを隔離ステージに配置します。AI・接触判定は実行しません。
+    // 保存前の表示部品だけを現在のステージに配置します。AI・接触判定は実行しません。
     void BeginPlacementPreview();
 
     void UpdatePlacementPreview();
@@ -224,7 +240,7 @@ private:
         std::string phase;
     };
 
-    /// <summary>隔離ステージに敵・ターゲットを生成し、必要ならカメラを合わせます。</summary>
+    /// <summary>現在のステージに敵・ターゲットを生成し、必要ならカメラを合わせます。</summary>
     void CreatePreviewObjects(bool requestCameraRecenter = true);
 
     /// <summary>プレビューが所有するObjectをSceneから除去します。</summary>
@@ -368,3 +384,5 @@ private:
     bool authoringGestureOpen_ = false;
     int authoringDragMode_ = 0; // 0=全体移動、1=開始端、2=終了端
 };
+
+#endif

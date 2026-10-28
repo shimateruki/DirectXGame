@@ -1,3 +1,6 @@
+#ifdef USE_IMGUI
+#include "engine/core/editor/SelectedActorSession.h"
+#endif
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -435,7 +438,8 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	}
 #ifdef USE_IMGUI
     // 編集中は水と砲台プレビューだけ実時間で進め、他のゲーム挙動は停止させます。
-    if (!isPlaying_ && !simulationPaused && !sceneTransitioning && sceneManager_) {
+    if (!isPlaying_ && !simulationPaused && !sceneTransitioning && sceneManager_ &&
+        !(SelectedActorSession::Current() && SelectedActorSession::Current()->IsActive())) {
         if (BaseScene* scene = sceneManager_->GetCurrentScene()) {
             for (auto& object : scene->GetObjects()) {
                 if (auto* cannon = finalDeltaTime == 0.0f && object && !object->IsReplayRemoved()
@@ -461,6 +465,9 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
             }
         }
     }
+#endif
+#ifdef USE_IMGUI
+    if (editorController_) editorController_->UpdateActorTools(deltaTime);
 #endif
     // シーン変更時は草への接触履歴を消し、現プレイヤーだけ反映する。
     {
@@ -510,7 +517,10 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3dCommon());
 		}
 
-		DebrisEffectManager::GetInstance()->Update(simulationPaused ? 0.0f : deltaTime);
+		#ifdef USE_IMGUI
+        if (!(SelectedActorSession::Current() && SelectedActorSession::Current()->IsActive()))
+#endif
+        DebrisEffectManager::GetInstance()->Update(simulationPaused ? 0.0f : deltaTime);
 	}
 
 	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {

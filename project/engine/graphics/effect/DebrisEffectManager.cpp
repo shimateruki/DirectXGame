@@ -862,3 +862,19 @@ std::string DebrisEffectManager::ResolvePresetPath(const std::string& presetName
 
     return std::string(kDebrisPresetDirectory) + presetName + ".json";
 }
+
+#ifdef USE_IMGUI
+void DebrisEffectManager::BeginEditorSession() {
+    std::scoped_lock lock(mutex_);
+    if (editorSession_) return;
+    savedEditorScale_ = timeScale_; savedEditorRandom_ = randomEngine_;
+    activePieces_.swap(savedEditorPieces_); randomEngine_.seed(0xD3B1u);
+    timeScale_ = 1; editorSession_ = true;
+}
+void DebrisEffectManager::EndEditorSession() {
+    std::scoped_lock lock(mutex_);
+    if (!editorSession_) return;
+    Clear(); activePieces_.swap(savedEditorPieces_);
+    timeScale_ = savedEditorScale_; randomEngine_ = savedEditorRandom_; editorSession_ = false;
+}
+#endif

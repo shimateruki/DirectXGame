@@ -1,3 +1,4 @@
+#include "SelectedActorSession.h"
 #include "engine/core/editor/GameEditorController.Internal.h"
 
 #include "game/ui/SettingsMenuOverlay.h"
@@ -170,6 +171,11 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 
 	debugEditor_ = std::make_unique<DebugEditor>();
 	debugEditor_->Initialize(sceneManager, dxCommon);
+    actorSession_ = std::make_unique<SelectedActorSession>();
+    actorSession_->Initialize(sceneManager);
+    debugEditor_->SetActorSession(actorSession_.get());
+    actorSession_->SetBeforeSceneChange([this] { if (debugEditor_) debugEditor_->GetAnimationClipEditor()->StopPreview(); });
+
 
 	if (sceneManager) {
 		sceneManager->SetDebugEditor(debugEditor_.get());
@@ -249,6 +255,10 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 }
 
 void GameEditorController::Finalize() {
+    if (actorSession_) actorSession_->Finalize();
+    if (debugEditor_) debugEditor_->SetActorSession(nullptr);
+    actorSession_.reset();
+
     // 各種エディタツールを逆順に解放し、DebugConsoleを終了する。
     EditorToolSettings::Get().Clear();
 	EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
@@ -325,51 +335,27 @@ void GameEditorController::BeginFrame() {
             editorQuickSearch_->HandleShortcut();
     }
 
-	IEditable* selectedObject = EditorManager::GetInstance()->GetSelectedObject();
-	const bool wantsEnemyAttackTimeline =
-		debugEditor_ &&
-		selectedObject == debugEditor_->GetEnemyAttackPreviewWindow();
-	const bool wantsEffectPreviewTimeline =
-		!wantsEnemyAttackTimeline &&
-		(selectedObject == particleEditor_.get() ||
-		 selectedObject == gpuParticleEditor_.get() ||
-		 selectedObject == vfxSequencerEditor_.get() ||
-		 selectedObject == meshEffectEditor_.get() ||
-		 selectedObject == debrisEffectEditor_.get() ||
-		 selectedObject == trailEmitterEditor_.get());
-	EffectPreviewStage* effectPreviewStage = EffectPreviewStage::GetInstance();
-    const bool wantsAnimationTimeline = debugEditor_ &&
-        selectedObject == debugEditor_->GetAnimationWorkbench();
-    const bool wantsCinematicTimeline = ghostDirector_ &&
-        selectedObject == ghostDirector_.get();
-    if (showEnemyAttackTimeline_ && !wantsEnemyAttackTimeline && debugEditor_) {
-        auto* preview = debugEditor_->GetEnemyAttackPreviewWindow();
-        if (preview->IsCrownMovieMode())
-            preview->StopPreview();
+    IEditable* selectedObject = EditorManager::GetInstance()->GetSelectedObject();
+    const bool wantsEffect = selectedObject == particleEditor_.get() || selectedObject == gpuParticleEditor_.get() ||
+        selectedObject == vfxSequencerEditor_.get() || selectedObject == meshEffectEditor_.get() ||
+        selectedObject == debrisEffectEditor_.get() || selectedObject == trailEmitterEditor_.get();
+    if (wantsEffect != showEffectPreviewTimeline_) {
+        if (actorSession_) actorSession_->Stop();
+        if (wantsEffect) EffectPreviewStage::GetInstance()->EnableForToolPreview();
+        else EffectPreviewStage::GetInstance()->ReturnToScene();
+        showEffectPreviewTimeline_ = wantsEffect;
+        dockspaceInitialized_ = false;
     }
-
-    if (showCinematicTimeline_ && !wantsCinematicTimeline)
-        ghostDirector_->EndStudio();
-    if (showAnimationTimeline_ && !wantsAnimationTimeline && debugEditor_)
-        debugEditor_->GetAnimationWorkbench()->StopPreview();
-	if (wantsEffectPreviewTimeline && !showEffectPreviewTimeline_) {
-		effectPreviewStage->EnableForToolPreview();
-	} else if (!wantsEffectPreviewTimeline && showEffectPreviewTimeline_) {
-		effectPreviewStage->ReturnToScene();
-	}
-
-    if (wantsAnimationTimeline && !showAnimationTimeline_)
-        debugEditor_->GetAnimationWorkbench()->StartPreview();
-	if (showEnemyAttackTimeline_ != wantsEnemyAttackTimeline ||
-		showEffectPreviewTimeline_ != wantsEffectPreviewTimeline ||
-        showAnimationTimeline_ != wantsAnimationTimeline ||
-        showCinematicTimeline_ != wantsCinematicTimeline) {
-        showAnimationTimeline_ = wantsAnimationTimeline;
-        showCinematicTimeline_ = wantsCinematicTimeline;
-		showEnemyAttackTimeline_ = wantsEnemyAttackTimeline;
-		showEffectPreviewTimeline_ = wantsEffectPreviewTimeline;
-		dockspaceInitialized_ = false;
-	}
+    const bool wantsCinematic = selectedObject == ghostDirector_.get();
+    if (showCinematicTimeline_ && !wantsCinematic) ghostDirector_->EndStudio();
+    showCinematicTimeline_ = wantsCinematic;
+    showEnemyAttackTimeline_ = showAnimationTimeline_ = false;
+    if (actorSession_ && debugEditor_) actorSession_->SetTarget(debugEditor_->GetSelectedObject());
+    if (debugEditor_) {
+        auto* selected = debugEditor_->GetSelectedObject();
+        auto* clip = debugEditor_->GetAnimationClipEditor();
+        if (clip->IsEnabled() && (!selected || selected->GetReplayId() != clip->GetTargetId())) clip->StopPreview();
+    }
 
 	SetupDefaultDockspace();
     ProcessPendingWorkspaceLayout();
@@ -618,6 +604,8 @@ void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlayi
 }
 
 void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
+    if (actorSession_) actorSession_->Stop();
+
     // Scene再読み込みは行わず、Play開始直前の状態を保持してゲームモードへ切り替える。
 	if (playModeChangeTracker_) {
 		playModeChangeTracker_->CaptureBaseline();
@@ -707,11 +695,13 @@ void GameEditorController::ApplyPendingPlayStartPosition() {
 
 // シーンに紐づく選択状態やゴースト対象をクリアし、Play前後の参照不整合を防ぐ。
 void GameEditorController::ClearSceneBoundEditorState() {
+    if (actorSession_) actorSession_->Stop();
+
     // シーン破棄後に古い選択先へ触れないよう、各ツールの参照を先に外す。
     if (ghostDirector_)
         ghostDirector_->EndStudio();
     if (debugEditor_)
-        debugEditor_->GetAnimationWorkbench()->StopPreview();
+        debugEditor_->GetAnimationClipEditor()->StopPreview();
     if (sceneWorkspace_) {
         sceneWorkspace_->RestoreAllTemporaryVisibility();
     }
@@ -781,11 +771,11 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
     // パーティクル、VFX、メッシュ、デブリ、トレイルなどのエディタツールを更新する。
 	SceneManager* sceneManager = SceneManager::GetInstance();
 	const bool sceneTransitioning = sceneManager && sceneManager->IsTransitioning();
-	const EnemyAttackPreviewWindow* enemyPreview = debugEditor_ ? debugEditor_->GetEnemyAttackPreviewWindow() : nullptr;
+	const auto* session = actorSession_.get();
 
 	// 敵プレビュー中は同じGPU/Mesh/Particle管理系を敵タイムラインが所有します。
 	// 非選択のVFXツールが時間倍率を戻したり実時間更新したりすると、一時停止中の短寿命粒子が消えるため更新を競合させません。
-	const bool enemyPreviewOwnsEffects = enemyPreview && enemyPreview->IsEnabled() && !isPlaying;
+	const bool enemyPreviewOwnsEffects = session && session->IsActive() && !isPlaying;
 
 	const bool simulationPaused = isPlaying && simulationPaused_;
 
@@ -876,20 +866,13 @@ void GameEditorController::DrawToolWindows(
 		return;
 	}
 
-	const bool enemyAttackWorkspaceActive =
-		showEnemyAttackTimeline_ &&
-		debugEditor_ &&
-		debugEditor_->GetEnemyAttackPreviewWindow();
-	const bool effectPreviewWorkspaceActive = showEffectPreviewTimeline_ && debugEditor_;
-	const bool expandedBottomWorkspace = enemyAttackWorkspaceActive || effectPreviewWorkspaceActive ||
-        showAnimationTimeline_ || showCinematicTimeline_;
-	if (showDebugWindows_) {
-		if (debugEditor_) {
-			debugEditor_->SetProjectWindowVisible(!expandedBottomWorkspace);
-			debugEditor_->GetEnemyAttackPreviewWindow()->SetAuthoringAssets(debugEditor_->GetProjectWindow());
-			if (!enemyAttackWorkspaceActive || !debugEditor_->GetEnemyAttackPreviewWindow()->DrawAttackAuthoringHierarchy())
-				debugEditor_->DrawHierarchy();
-		}
+    const bool effectPreviewWorkspaceActive = showEffectPreviewTimeline_ && debugEditor_;
+    const bool expandedBottomWorkspace = effectPreviewWorkspaceActive || showCinematicTimeline_;
+    if (showDebugWindows_) {
+        if (debugEditor_) {
+            debugEditor_->SetProjectWindowVisible(!expandedBottomWorkspace);
+            debugEditor_->DrawHierarchy();
+        }
 
 		EditorManager::GetInstance()->DrawInspector();
 
@@ -911,25 +894,16 @@ void GameEditorController::DrawToolWindows(
 		DrawStatusWindow(timeScale, sceneUpdateTimeMs, cpuCmdTimeMs, drawTimeMs, updateTimeHistory, drawTimeHistory, timeHistoryIndex);
 	}
 
-	if (enemyAttackWorkspaceActive) {
-		debugEditor_->GetEnemyAttackPreviewWindow()->DrawTimelineWindow();
-	}
+
 
 	if (effectPreviewWorkspaceActive) {
 		EffectPreviewStage::GetInstance()->DrawTimelineWindow();
 	}
 
-    if (showAnimationTimeline_ && debugEditor_)
-        debugEditor_->GetAnimationWorkbench()->DrawTimelinePanel();
+
     if (showCinematicTimeline_ && ghostDirector_)
         ghostDirector_->DrawTimelinePanel();
-	if (debugEditor_) {
-		EnemyAttackPreviewWindow* enemyPreview = debugEditor_->GetEnemyAttackPreviewWindow();
 
-		if (enemyPreview && enemyPreview->IsEnabled()) {
-			enemyPreview->ApplyEffectPlaybackState();
-		}
-	}
 
 	if (engineManualWindow_) {
 		engineManualWindow_->Draw();
@@ -1245,15 +1219,20 @@ void GameEditorController::ApplyCameraOverrides() {
 		debugEditor_->GetEffectPreviewStage()->ApplyCameraOverride();
 	}
 
-	if (debugEditor_ && debugEditor_->GetAnimationWorkbench()) {
-		debugEditor_->GetAnimationWorkbench()->ApplyCameraOverride();
-	}
+
 }
 
 void GameEditorController::SaveAllEditors() {
     // すべてのエディタデータ保存処理の入口。現在はログ出力のみを行う。
 	DebugConsole::GetInstance()->AddLog("--- Auto Saving All Editor Data... ---");
 	DebugConsole::GetInstance()->AddLog("--- Save Complete! ---");
+}
+
+void GameEditorController::UpdateActorTools(float deltaTime) {
+    if (actorSession_ && actorSession_->IsActive() && debugEditor_)
+        debugEditor_->GetAnimationClipEditor()->StopPreview();
+    if (actorSession_) actorSession_->Update(deltaTime);
+    if (debugEditor_) debugEditor_->GetAnimationClipEditor()->Update(deltaTime);
 }
 
 #endif
