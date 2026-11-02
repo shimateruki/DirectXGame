@@ -19,7 +19,7 @@ struct BulletVisualConfig {
 
     int32_t materialType = 0;
     BlendMode blendMode = BlendMode::kNormal;
-    engine::Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+    engine::Vector4 color = engine::Colors::White;
     float emissive = 1.0f;
     float visualScale = 1.0f;
 

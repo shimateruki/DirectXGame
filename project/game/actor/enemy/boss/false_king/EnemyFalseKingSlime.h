@@ -137,7 +137,7 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     void CancelFinalDefeat();
 
     /// <summary>最終形態に入り、まだ撃破が確定していないか返す。</summary>
-    bool IsFinalDefeatPending() const { return battlePhase_ == 3 && !isDead && !finalDefeatCompleted_; }
+    bool IsFinalDefeatPending() const { return battlePhase_ == 3 && !IsDead() && !finalDefeatCompleted_; }
 
     /// <summary>王冠封印の幕間が進行中か返す。</summary>
     bool IsCrownInterlude() const { return crownInterlude_; }

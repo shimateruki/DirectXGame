@@ -176,8 +176,8 @@ void EnemyMagmaSlime::UpdateMagmaPools(float deltaTime) {
         pool->visual->UpdateWorldMatrix(true);
 
         // 見た目の円盤は薄いが、上下に離れた相手へ床ダメージを与えない。
-        if (pool->damageTimer <= 0.0f && target_) {
-            const engine::Vector3 targetPosition = target_->GetWorldPosition();
+        if (pool->damageTimer <= 0.0f && GetTarget()) {
+            const engine::Vector3 targetPosition = GetTarget()->GetWorldPosition();
             if (std::abs(targetPosition.y - pool->position.y) <= kPoolVerticalTolerance &&
                 PlanarDistance(targetPosition, pool->position) <= pool->radius + 0.55f) {
                 DamageTargetAt(pool->position, pool->radius + 0.55f, 0.55f, {0.0f, 2.2f, 0.0f}, 2.2f, 0.55f, 0.22f);
@@ -198,8 +198,8 @@ void EnemyMagmaSlime::BeginRush() {
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackStartPosition_ = FindGroundPoint(GetTranslate());
 
-    if (target_) {
-        lockedTargetPosition_ = FindGroundPoint(target_->GetWorldPosition());
+    if (GetTarget()) {
+        lockedTargetPosition_ = FindGroundPoint(GetTarget()->GetWorldPosition());
         lockedDirection_ = NormalizePlanar(lockedTargetPosition_ - attackStartPosition_);
     }
 
@@ -245,9 +245,9 @@ void EnemyMagmaSlime::UpdateRush(float deltaTime, float, engine::Vector3& veloci
         actionTimer_ += kRushPoolInterval;
     }
 
-    if (!attackDamageApplied_ && target_ &&
-        PlanarDistance(target_->GetWorldPosition(), position) <= attack.radius + target_->GetCollisionRadius()) {
-        DamageTargetAt(position, attack.radius + target_->GetCollisionRadius(), attack.damage,
+    if (!attackDamageApplied_ && GetTarget() &&
+        PlanarDistance(GetTarget()->GetWorldPosition(), position) <= attack.radius + GetTarget()->GetCollisionRadius()) {
+        DamageTargetAt(position, attack.radius + GetTarget()->GetCollisionRadius(), attack.damage,
                        {lockedDirection_.x * 12.0f, 5.2f, lockedDirection_.z * 12.0f}, attack.statusDuration,
                        attack.statusTickInterval, attack.statusTickDamage);
         attackDamageApplied_ = true;
@@ -492,15 +492,15 @@ void EnemyMagmaSlime::UpdateMagmaRings(float deltaTime) {
         ring->visual->Update(deltaTime);
         ring->visual->UpdateWorldMatrix(true);
 
-        if (!ring->hitTarget && target_) {
-            const float targetDistance = PlanarDistance(target_->GetWorldPosition(), ring->position);
-            const float hitPadding = target_->GetCollisionRadius() + 0.72f;
+        if (!ring->hitTarget && GetTarget()) {
+            const float targetDistance = PlanarDistance(GetTarget()->GetWorldPosition(), ring->position);
+            const float hitPadding = GetTarget()->GetCollisionRadius() + 0.72f;
             if (targetDistance >= ring->previousRadius - hitPadding && targetDistance <= radius + hitPadding &&
-                std::abs(target_->GetWorldPosition().y - ring->position.y) <= 3.0f) {
+                std::abs(GetTarget()->GetWorldPosition().y - ring->position.y) <= 3.0f) {
                 const EnemyAttackDefinition& attack = GetAttackDefinition(kVolcanicSlamAttackId);
-                const engine::Vector3 knockbackDirection = NormalizePlanar(target_->GetWorldPosition() - ring->position);
+                const engine::Vector3 knockbackDirection = NormalizePlanar(GetTarget()->GetWorldPosition() - ring->position);
                 DamageEvent event;
-                event.target = target_;
+                event.target = GetTarget();
                 event.attacker = this;
                 event.damageAmount = attack.damage * 0.34f;
                 event.damageType = DamageType::Fire;
@@ -646,9 +646,9 @@ void EnemyMagmaSlime::UpdateMagmaPillars(float deltaTime) {
         if (!pillar->damageApplied && envelope >= 0.62f) {
             const EnemyAttackDefinition& attack = GetAttackDefinition(pillar->attackId);
             engine::Vector3 knockbackDirection =
-                target_ ? NormalizePlanar(target_->GetWorldPosition() - pillar->position) : lockedDirection_;
+                GetTarget() ? NormalizePlanar(GetTarget()->GetWorldPosition() - pillar->position) : lockedDirection_;
             const float damageScale = pillar->attackId == kVolcanicSlamAttackId ? 0.28f : 0.78f;
-            DamageTargetAt(pillar->position, pillar->radius + (target_ ? target_->GetCollisionRadius() : 0.0f),
+            DamageTargetAt(pillar->position, pillar->radius + (GetTarget() ? GetTarget()->GetCollisionRadius() : 0.0f),
                            attack.damage * damageScale,
                            {knockbackDirection.x * 4.2f, 8.2f, knockbackDirection.z * 4.2f}, attack.statusDuration,
                            attack.statusTickInterval, attack.statusTickDamage);
@@ -805,10 +805,10 @@ void EnemyMagmaSlime::UpdateMagmaSurges(float deltaTime) {
         }
 
         // 見えている波頭から離れた対象を巻き込まないよう、高さと水平距離の両方で判定する。
-        if (!surge->hitTarget && target_ &&
-            std::abs(target_->GetWorldPosition().y - position.y) <= kPoolVerticalTolerance &&
-            PlanarDistance(target_->GetWorldPosition(), position) <= surge->radius + target_->GetCollisionRadius()) {
-            DamageTargetAt(position, surge->radius + target_->GetCollisionRadius(), attack.damage * 0.52f,
+        if (!surge->hitTarget && GetTarget() &&
+            std::abs(GetTarget()->GetWorldPosition().y - position.y) <= kPoolVerticalTolerance &&
+            PlanarDistance(GetTarget()->GetWorldPosition(), position) <= surge->radius + GetTarget()->GetCollisionRadius()) {
+            DamageTargetAt(position, surge->radius + GetTarget()->GetCollisionRadius(), attack.damage * 0.52f,
                            {curvedDirection.x * 6.8f, 4.8f, curvedDirection.z * 6.8f}, attack.statusDuration,
                            attack.statusTickInterval, attack.statusTickDamage);
             surge->hitTarget = true;
@@ -857,11 +857,11 @@ void EnemyMagmaSlime::PrepareFireColumnTargets() {
 
 void EnemyMagmaSlime::CreateFireColumnSigils() {
     // 地面の魔法陣と三辺の接続線を個別に持ち、予兆の組み立て順を表現する。
-    if (!common_)
+    if (!GetObjectCommon())
         return;
     for (std::size_t index = 0; index < fireColumnSigils_.size(); ++index) {
         auto sigil = std::make_unique<EffectObject3d>();
-        sigil->Initialize(common_);
+        sigil->Initialize(GetObjectCommon());
         if (!sigil->LoadFromJson(kFireChantEffect))
             continue;
         sigil->SetName("MagmaSlime_FireColumnSigil_" + std::to_string(index));
@@ -873,7 +873,7 @@ void EnemyMagmaSlime::CreateFireColumnSigils() {
 
     for (std::size_t index = 0; index < fireColumnLinks_.size(); ++index) {
         auto link = std::make_unique<EffectObject3d>();
-        link->Initialize(common_);
+        link->Initialize(GetObjectCommon());
         if (!link->LoadFromJson(kFireColumnLinkEffect))
             continue;
         link->SetName("MagmaSlime_FireColumnLink_" + std::to_string(index));
@@ -1059,7 +1059,7 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
     fireColumnDamageTimer_ -= deltaTime;
 
     if (elapsed >= blastStart + 0.22f && attackTimer_ > 0.30f && fireColumnDamageTimer_ <= 0.0f) {
-        DamageTargetAt(fireColumnCenter_, attack.radius + (target_ ? target_->GetCollisionRadius() : 0.0f),
+        DamageTargetAt(fireColumnCenter_, attack.radius + (GetTarget() ? GetTarget()->GetCollisionRadius() : 0.0f),
                        attack.damage, {lockedDirection_.x * 4.0f, 6.0f, lockedDirection_.z * 4.0f},
                        attack.statusDuration, attack.statusTickInterval, attack.statusTickDamage);
         fireColumnDamageTimer_ = 0.52f;
@@ -1147,11 +1147,11 @@ void EnemyMagmaSlime::UpdateMagmaFlood(float deltaTime) {
             cell->crest->UpdateWorldMatrix(true);
         }
 
-        if (target_ && floodDamageTimer_ <= 0.0f && appear > 0.60f && fade > 0.30f &&
-            std::abs(target_->GetWorldPosition().y - cell->position.y) <= kPoolVerticalTolerance &&
-            PlanarDistance(target_->GetWorldPosition(), cell->position) <=
-                cell->radius + target_->GetCollisionRadius()) {
-            DamageTargetAt(cell->position, cell->radius + target_->GetCollisionRadius(), attack.damage,
+        if (GetTarget() && floodDamageTimer_ <= 0.0f && appear > 0.60f && fade > 0.30f &&
+            std::abs(GetTarget()->GetWorldPosition().y - cell->position.y) <= kPoolVerticalTolerance &&
+            PlanarDistance(GetTarget()->GetWorldPosition(), cell->position) <=
+                cell->radius + GetTarget()->GetCollisionRadius()) {
+            DamageTargetAt(cell->position, cell->radius + GetTarget()->GetCollisionRadius(), attack.damage,
                            {cell->direction.x * 4.0f, 3.0f, cell->direction.z * 4.0f}, attack.statusDuration,
                            attack.statusTickInterval, attack.statusTickDamage);
             floodDamageTimer_ = 0.68f;

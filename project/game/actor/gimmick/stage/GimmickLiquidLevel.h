@@ -40,8 +40,8 @@ class GimmickLiquidLevel : public BaseGimmick {
     // 色種別に合わせて水とマグマの材質・透過色を切り替えます。
     void ApplyLiquidVisual();
 
-    engine::Vector3 basePosition_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 targetPosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 basePosition_ = engine::Vector3::ZERO;
+    engine::Vector3 targetPosition_ = engine::Vector3::ZERO;
     bool initializedForPlay_ = false;
     bool active_ = false;
 };

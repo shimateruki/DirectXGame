@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/actor/enemy/boss/magma/EnemyMagmaSlime.h"
+#include <numbers>
 #include "game/actor/combat/CombatMath.h"
 
 #include <string>
@@ -46,7 +47,7 @@ constexpr int kMagmaMaterialType = 9;
 constexpr int kFireMaterialType = 11;
 constexpr int kShockwaveMaterialType = 14;
 
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kMagmaSlimeModelYawOffset = kPi;
 
 constexpr float kGroundCollisionWorldRadius = 3.65f;

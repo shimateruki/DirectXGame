@@ -18,7 +18,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{f227b748-5b42-4409-aac8-871bfc20d966}</ProjectGuid>
-    <RootNamespace>DirectXGame</RootNamespace>
+    <RootNamespace>ShimaEngine</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -432,6 +432,7 @@
     <ClCompile Include="game\actor\player\state\PlayerState.Basic.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.Damage.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.Life.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.Whip.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.PullEnemy.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.PullObject.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.Carry.cpp" />
@@ -1047,6 +1048,7 @@
     <ClInclude Include="game\actor\player\state\PlayerState.Carry.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.Damage.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.Life.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.Whip.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.PullEnemy.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.PullObject.h" />
     <ClInclude Include="game\actor\player\clone\PlayerClone.h" />
@@ -1111,7 +1113,7 @@
     <Text Include="externals\imgui\LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="DirectXGame.rc" />
+    <ResourceCompile Include="ShimaEngine.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

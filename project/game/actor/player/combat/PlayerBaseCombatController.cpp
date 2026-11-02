@@ -75,7 +75,7 @@ void DispatchDamage(Player& player, engine::Object3d* target, float damage, cons
 // 通常形態の攻撃状態を管理します。入力受理、攻撃判定、終了時の操作復帰を別の段階として扱います。
 
 void PlayerBaseCombatController::ProcessInput(Player& player, bool attackTriggered) {
-    if (!attackTriggered || player.isDead || player.IsCinematicLocked() || player.IsEnemyMorphed() ||
+    if (!attackTriggered || player.IsDead() || player.IsCinematicLocked() || player.IsEnemyMorphed() ||
         player.GetCarriedEnemy()) {
         return;
     }
@@ -99,7 +99,7 @@ void PlayerBaseCombatController::Update(Player& player, float deltaTime) {
         return;
     }
 
-    if (player.isDead || player.IsCinematicLocked() || player.IsEnemyMorphed()) {
+    if (player.IsDead() || player.IsCinematicLocked() || player.IsEnemyMorphed()) {
         Cancel(player, false);
         return;
     }
@@ -134,7 +134,7 @@ void PlayerBaseCombatController::Cancel(Player& player, bool restoreControl) {
     player.StopSlimeAbilityMotion(0.05f);
     player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
 
-    if (restoreControl && !player.isDead && !player.IsCinematicLocked()) {
+    if (restoreControl && !player.IsDead() && !player.IsCinematicLocked()) {
         player.SetIsControlActive(true);
     }
 
@@ -328,13 +328,13 @@ void PlayerBaseCombatController::DamagePress(Player& player, bool landingImpact)
 
 void PlayerBaseCombatController::Finish(Player& player) {
     // 入力猶予中の追加入力は、通常操作へ戻した後に次の攻撃へつなぐ。
-    const bool consumeBufferedAttack = inputBufferTimer_ > 0.0f && !player.isDead && !player.IsCinematicLocked() &&
+    const bool consumeBufferedAttack = inputBufferTimer_ > 0.0f && !player.IsDead() && !player.IsCinematicLocked() &&
                                        !player.IsEnemyMorphed() && !player.GetCarriedEnemy();
 
     player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
     player.StopSlimeAbilityMotion(0.06f);
 
-    if (!player.isDead && !player.IsCinematicLocked()) {
+    if (!player.IsDead() && !player.IsCinematicLocked()) {
         player.SetIsControlActive(true);
     }
 

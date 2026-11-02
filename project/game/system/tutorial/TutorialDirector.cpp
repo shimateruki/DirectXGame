@@ -821,8 +821,8 @@ bool TutorialDirector::AreTargetEnemiesDefeated(const Step& step) const {
 
         const auto* enemy = dynamic_cast<const BaseEnemy*>(object);
 
-        if (!enemy || (!enemy->isDead && !enemy->IsReplayRemoved() &&
-                       (!enemy->param_ || enemy->param_->hp > 0.0f))) {
+        if (!enemy || (!enemy->IsDead() && !enemy->IsReplayRemoved() &&
+                       (!enemy->GetParameters() || enemy->GetParameters()->hp > 0.0f))) {
             return false;
         }
     }
@@ -840,8 +840,8 @@ bool TutorialDirector::RecoverMissingPracticeEnemy(const Step& step) {
     auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(step.objectiveTarget));
     if (step.condition == CompletionCondition::kEnemyThrown && enemy && enemy->IsThrownPhysics() &&
         !player_->GetCarriedEnemy() && !player_->IsEnemyMorphed()) return false;
-    const bool lost = !enemy || enemy->IsReplayRemoved() || enemy->isDead ||
-                      (enemy->param_ && enemy->param_->hp <= 0.0f);
+    const bool lost = !enemy || enemy->IsReplayRemoved() || enemy->IsDead() ||
+                      (enemy->GetParameters() && enemy->GetParameters()->hp <= 0.0f);
     const bool lostCarry = step.condition == CompletionCondition::kEnemyThrown &&
                            player_->GetCarriedEnemy() != enemy;
     if (!lost && !lostCarry) return false;
@@ -1041,14 +1041,14 @@ void TutorialDirector::SetSpawnEnemyActive(const std::string& objectName, bool a
         enemy->RestoreReplayState(state);
         enemy->SetTarget(player_);
     }
-    enemy->isDead = false;
+    enemy->SetDead(false);
     enemy->SetCarried(false);
     enemy->SetTranslate(slot.initialPosition);
     enemy->SetVelocity({0.0f, 0.0f, 0.0f});
-    if (active && enemy->param_) {
-        if (slot.maxHpOverride > 0.0f) enemy->param_->hp = enemy->param_->maxHp = slot.maxHpOverride;
+    if (active && enemy->GetParameters()) {
+        if (slot.maxHpOverride > 0.0f) enemy->SetParameter(&engine::EntityParameter::hp, enemy->SetParameter(&engine::EntityParameter::maxHp, slot.maxHpOverride));
         if (slot.detectionRangeOverride >= 0.0f) {
-            enemy->param_->detectionRange = slot.detectionRangeOverride;
+            enemy->SetParameter(&engine::EntityParameter::detectionRange, slot.detectionRangeOverride);
             enemy->SetDetectionRange(slot.detectionRangeOverride);
         }
     }
@@ -1367,7 +1367,7 @@ void TutorialDirector::UpdateObjectiveMarker(float deltaTime) {
             objectiveTargetNames_[index].empty() ? nullptr : FindObjectByName(objectiveTargetNames_[index]);
         bool canShow = camera && target && target->GetIsVisible();
 
-        if (const auto* enemy = dynamic_cast<const BaseEnemy*>(target); enemy && enemy->isDead) {
+        if (const auto* enemy = dynamic_cast<const BaseEnemy*>(target); enemy && enemy->IsDead()) {
             canShow = false;
         }
 
@@ -1393,8 +1393,8 @@ void TutorialDirector::UpdateObjectiveMarker(float deltaTime) {
                 canShow = std::isfinite(ndcX) && std::isfinite(ndcY) && ndcX >= -1.10f && ndcX <= 1.10f &&
                           ndcY >= -1.10f && ndcY <= 1.10f;
                 if (canShow) {
-                    const float screenWidth = static_cast<float>(WinApp::kClientWidth);
-                    const float screenHeight = static_cast<float>(WinApp::kClientHeight);
+                    const float screenWidth = static_cast<float>(WinApp::GetClientWidth());
+                    const float screenHeight = static_cast<float>(WinApp::GetClientHeight());
                     screenPosition.x = (ndcX + 1.0f) * 0.5f * screenWidth;
                     screenPosition.y = (1.0f - ndcY) * 0.5f * screenHeight;
                     screenPosition.x =

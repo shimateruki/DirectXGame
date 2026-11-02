@@ -28,6 +28,11 @@ class BaseItem : public engine::Object3d {
     // 死亡フラグが反映される前にも、表示と判定を即時に止めます。
     void MarkCollected();
 
+    /// <summary>取得済み状態の参照と、複製・Replay復元を行う。</summary>
+    bool IsCollected() const { return isCollected_; }
+    void RestoreCollected(bool collected) { isCollected_ = collected; }
+private:
+
     bool isCollected_ = false;
     float rotationSpeed_ = 2.4f;
 };

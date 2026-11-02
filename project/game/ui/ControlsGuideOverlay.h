@@ -75,9 +75,9 @@ class ControlsGuideOverlay : public IEditable {
     // 元のレイアウト値を保持し、アニメーション時も JSON の配置に戻せます。
     struct Element {
         engine::Sprite* sprite = nullptr;
-        engine::Vector2 basePosition = {0.0f, 0.0f};
-        engine::Vector2 baseSize = {0.0f, 0.0f};
-        engine::Vector4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        engine::Vector2 basePosition = engine::Vector2::ZERO;
+        engine::Vector2 baseSize = engine::Vector2::ZERO;
+        engine::Vector4 baseColor = engine::Colors::White;
     };
 
     // 基本操作ページと能力ページで共通する Sprite 群です。
@@ -96,7 +96,7 @@ class ControlsGuideOverlay : public IEditable {
         bool scroll = false;
         int row = -1;
         engine::Vector2 textureSize = {1.0f, 1.0f};
-        engine::Vector2 textureOrigin = {0.0f, 0.0f};
+        engine::Vector2 textureOrigin = engine::Vector2::ZERO;
     };
 
     // 図鑑の内容更新と、スクロール位置に応じた配置を分けます。

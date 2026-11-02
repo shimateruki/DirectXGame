@@ -119,10 +119,10 @@ inline void BombExplosionCases(BaseScene* scene, std::ostream& log) {
         } registration{collisions, {}};
         auto addEnemy = [&](const engine::Vector3& offset) {
             auto actor = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3dCommon());
-            Require(actor && actor->param_, "bomb regression target missing");
+            Require(actor && actor->GetParameters(), "bomb regression target missing");
             auto* enemy = actor.get();
             enemy->SetTarget(nullptr);
-            enemy->param_->hp = enemy->param_->maxHp = 100.0f;
+            enemy->SetParameter(&engine::EntityParameter::hp, enemy->SetParameter(&engine::EntityParameter::maxHp, 100.0f));
             enemy->SetScale({1, 1, 1});
             enemy->SetTranslate(origin + offset);
             engine::Object3d::ColliderConfig shape;
@@ -149,33 +149,33 @@ inline void BombExplosionCases(BaseScene* scene, std::ostream& log) {
         objects.push_back(std::move(wall));
         auto actor = EnemyFactory::GetInstance()->CreateEnemy("Bomb", scene->GetObject3dCommon());
         auto* bomb = dynamic_cast<EnemyBomb*>(actor.get());
-        Require(bomb && bomb->param_, "bomb regression actor missing");
+        Require(bomb && bomb->GetParameters(), "bomb regression actor missing");
         bomb->SetTarget(nullptr); bomb->SetPlayerOwned(true);
-        bomb->param_->attackPower = 1.0f;
+        bomb->SetParameter(&engine::EntityParameter::attackPower, 1.0f);
         bomb->ApplyManagedScale({scale, scale, scale});
         bomb->SetTranslate(origin); bomb->SetRotation({0.4f, 0.6f, 0.2f});
         bomb->Ignite(direct ? 8.0f : 0.01f); bomb->UpdateWorldMatrix(true);
         if (direct) bomb->OnCollision(contact); else bomb->Update(0.02f);
         Require(bomb->IsExploded(), "player bomb failed to explode");
         Require(std::abs(bomb->GetCollider()->GetRadius() - 5.1f) < 0.01f, "bomb model scale shrank world blast");
-        Require(std::abs(nearby->param_->hp - 90.0f) < 0.01f, "near-miss bomb did not damage nearby enemy once");
-        Require(std::abs(outside->param_->hp - 100.0f) < 0.01f, "bomb damaged enemy outside blast");
-        Require(breakable->isDead && breakable->GetCollisionAttribute() == 0, "fuse/impact blast did not break nearby wall");
-        if (contact) Require(std::abs(contact->param_->hp - 90.0f) < 0.01f, "direct blast damage duplicated");
+        Require(std::abs(nearby->GetParameters()->hp - 90.0f) < 0.01f, "near-miss bomb did not damage nearby enemy once");
+        Require(std::abs(outside->GetParameters()->hp - 100.0f) < 0.01f, "bomb damaged enemy outside blast");
+        Require(breakable->IsDead() && breakable->GetCollisionAttribute() == 0, "fuse/impact blast did not break nearby wall");
+        if (contact) Require(std::abs(contact->GetParameters()->hp - 90.0f) < 0.01f, "direct blast damage duplicated");
         // 次の衝突・更新に再通知しても同じ爆風を残さない。
         if (contact) bomb->OnCollision(contact);
         nearby->OnCollision(bomb); bomb->Update(0.02f);
-        Require(std::abs(nearby->param_->hp - 90.0f) < 0.01f && bomb->GetCollisionAttribute() == 0,
+        Require(std::abs(nearby->GetParameters()->hp - 90.0f) < 0.01f && bomb->GetCollisionAttribute() == 0,
                 "expired bomb applied a second blast");
         // 爆発した後に近づいた敵へ、表示用の膨張エフェクトが追加ダメージを出さない。
         BaseEnemy* late = addEnemy({0, 0, 0});
         auto* meshes = MeshEffectManager::GetInstance();
         meshes->UpdateEditorPreviewStep(0.25f);
         for (const auto& visual : meshes->GetActiveEffects()) late->OnCollision(visual.get());
-        Require(std::abs(late->param_->hp - 100.0f) < 0.01f, "visual blast applied delayed extra damage");
+        Require(std::abs(late->GetParameters()->hp - 100.0f) < 0.01f, "visual blast applied delayed extra damage");
         log << "PASS player bomb blast scale=" << scale << " direct=" << direct
-            << " radius=" << bomb->GetCollider()->GetRadius() << " nearHP=" << nearby->param_->hp
-            << " outsideHP=" << outside->param_->hp << " wallBroken=" << breakable->isDead << std::endl;
+            << " radius=" << bomb->GetCollider()->GetRadius() << " nearHP=" << nearby->GetParameters()->hp
+            << " outsideHP=" << outside->GetParameters()->hp << " wallBroken=" << breakable->IsDead() << std::endl;
     }
 }
 inline void AfterDraw(SceneManager* manager,const std::string& path) {
@@ -207,8 +207,8 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
             auto created=EnemyFactory::GetInstance()->CreateEnemy("Bomber",scene->GetObject3dCommon());
             bomber=dynamic_cast<EnemyBomber*>(created.get());Require(bomber,"bomber factory failed");
             bomber->SetTranslate(base);bomber->ApplyManagedScale({2,2,2});bomber->SetTarget(player);
-            bomber->SetGravity(0);bomber->SetMaxFallSpeed(0);bomber->param_->gravity=bomber->param_->maxFallSpeed=bomber->param_->speed=0;
-            bomber->param_->hp=bomber->param_->maxHp=200;bomber->SetVelocity({0,0,0});bomber->UpdateWorldMatrix(true);
+            bomber->SetGravity(0);bomber->SetMaxFallSpeed(0);bomber->SetParameter(&engine::EntityParameter::gravity, bomber->SetParameter(&engine::EntityParameter::maxFallSpeed, bomber->SetParameter(&engine::EntityParameter::speed, 0)));
+            bomber->SetParameter(&engine::EntityParameter::hp, bomber->SetParameter(&engine::EntityParameter::maxHp, 200));bomber->SetVelocity({0,0,0});bomber->UpdateWorldMatrix(true);
             bomber->SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> object){thrown=dynamic_cast<EnemyBomb*>(object.get());scene->AddObject(std::move(object));});
             scene->AddObject(std::move(created));
             previous=CameraManager::GetInstance()->GetActiveCameraOverride();camera=std::make_unique<Camera>();camera->Initialize();camera->SetFovY(0.65f);

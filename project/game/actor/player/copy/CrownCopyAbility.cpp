@@ -10,7 +10,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
         // 演出ロック中は受け付けず、突進・衝撃波・槍・溜め落下弾を各再使用時間で分ける。
-        if (player.IsCinematicLocked() || player.isDead)
+        if (player.IsCinematicLocked() || player.IsDead())
             return;
         held_ = input.primaryHeld;
         if (dashTime_ > 0.0f)
@@ -55,7 +55,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
 
                 for (const auto& object : scene->GetObjects()) {
                     auto* enemy = dynamic_cast<BaseEnemy*>(object.get());
-                    if (!enemy || enemy->isDead || !enemy->GetIsVisible())
+                    if (!enemy || enemy->IsDead() || !enemy->GetIsVisible())
                         continue;
                     const float distance = engine::Math::Length(enemy->GetWorldPosition() - player.GetWorldPosition());
 

@@ -45,7 +45,7 @@ public:
 private:
     TrailEmitterConfig config_;
     engine::Object3d* target_     = nullptr;
-    engine::Vector3   lastEmitPos_ = { 0, 0, 0 };
+    engine::Vector3 lastEmitPos_ = engine::Vector3::ZERO;
     bool      hasLastPos_  = false;
     bool      isActive_    = false;
 };

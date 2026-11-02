@@ -85,19 +85,20 @@ inline void Run(BaseScene* scene, std::ostream& log) {
             actor->ChangeState(std::make_unique<ExitCounter>(exits));
             actor->ChangeState(std::make_unique<PlayerStatePullEnemy>(target.get(), target->GetWorldPosition()));
             actor->ChangeState(std::make_unique<PlayerStatePullObject>(target.get(), target->GetWorldPosition()));
+            actor->ChangeState(std::make_unique<PlayerStateWhip>(engine::Vector3{0, 0, 1}));
             Require(exits == 0 && actor->GetCarriedEnemy() == enemy.get(), "direct hook transition exited carry state");
             actor->ReleaseCarriedEnemy();
             camera->Update(dt);
-            Require(std::abs(camera->GetEye().z - actor->GetWorldPosition().z) < 1, "release did not restore aiming camera");
+            Require(std::abs(camera->GetEye().z - actor->GetWorldPosition().z) > 5, "released carry re-entered aiming camera");
             actor->ChangeState(std::make_unique<PlayerStateIdle>());
             actor->SetVelocity({0, 0, 0}); actor->SetTranslate({0, 1000, 0}); actor->UpdateWorldMatrix(true);
             replay(pad, true, false); actor->Update(dt);
-            Require(actor->GetHookMarker()->GetIsVisible(), "release did not restore target acquisition");
+            Require(actor->GetHookMarker()->GetIsVisible(), "press did not launch whip after carry release");
             replay(pad, false, true); actor->Update(dt);
-            Require(!actor->IsControlActive(), "release did not restore hook launch");
+            Require(!actor->IsControlActive(), "button release interrupted whip flight");
             actor->ChangeState(std::make_unique<PlayerStateIdle>());
             Require(exits == 1, "state exit count mismatch");
-            log << "OK " << (pad ? "gamepad" : "mouse") << ": carry press/hold/release, stale marker, gravity, camera, both state guards, released hook launch" << std::endl;
+            log << "OK " << (pad ? "gamepad" : "mouse") << ": carry press/hold/release, stale marker, gravity, camera, all hook state guards, one-button launch after carry release" << std::endl;
         }
         // SetCarriedEnemy(nullptr)がコピー側のカメラ抑制を解除しないことも確認する。
         Require(actor->ApplyStoredCopy("FireSlime"), "copy setup failed");

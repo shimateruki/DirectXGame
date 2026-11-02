@@ -802,8 +802,8 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Ob
     if (ImGui::BeginCombo("パスデータ", recordPreview.c_str())) {
         if (ImGui::Selectable("(なし)", cameraObject->GetRecordPathName().empty())) {
             cameraObject->SetRecordPathName("");
-            if (cameraObject->recorder_)
-                cameraObject->recorder_->Stop();
+            if (cameraObject->GetRecorder())
+                cameraObject->GetRecorder()->Stop();
             changed = true;
         }
 
@@ -850,16 +850,16 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Ob
     ImGui::SameLine();
 
     if (ImGui::Button(ICON_FA_STOP " 停止##CameraObject")) {
-        if (cameraObject->recorder_)
-            cameraObject->recorder_->Stop();
+        if (cameraObject->GetRecorder())
+            cameraObject->GetRecorder()->Stop();
         CameraEditor::GetInstance()->StopSceneObjectCamera(CameraManager::GetInstance()->GetMainCamera());
     }
 
     if (!cameraObject->GetRecordPathName().empty() && ImGui::Button(ICON_FA_GHOST " Ghost Recorder再生")) {
-        if (!cameraObject->recorder_)
+        if (!cameraObject->GetRecorder())
             cameraObject->InitializeRecorder(nullptr);
-        if (cameraObject->recorder_) {
-            cameraObject->recorder_->Play(
+        if (cameraObject->GetRecorder()) {
+            cameraObject->GetRecorder()->Play(
                 cameraObject->GetRecordPathName(),
                 cameraObject->IsRecordLoop(),
                 cameraObject->IsRecordRelative(),

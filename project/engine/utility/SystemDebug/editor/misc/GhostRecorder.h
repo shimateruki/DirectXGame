@@ -31,8 +31,8 @@ public:
 
     // 始終点と中継点から記録フレームを生成する設定。相対生成の基準と区間補間方式も保持する。
     struct GenerationParams {
-        engine::Vector3 startPos = { 0,0,0 };
-        engine::Vector3 startRot = { 0,0,0 };
+        engine::Vector3 startPos = engine::Vector3::ZERO;
+        engine::Vector3 startRot = engine::Vector3::ZERO;
         engine::Vector3 startScale = { 1.0f, 1.0f, 1.0f };
 
         int startEventID = 0;
@@ -40,15 +40,15 @@ public:
         float startDurationToNext = 1.0f;
         int startEasingToNext = 0;
 
-        engine::Vector3 endPos = { 0,0,0 };
-        engine::Vector3 endRot = { 0,0,0 };
+        engine::Vector3 endPos = engine::Vector3::ZERO;
+        engine::Vector3 endRot = engine::Vector3::ZERO;
         engine::Vector3 endScale = { 1.0f, 1.0f, 1.0f };
 
         int endEventID = 0;
         float endWaitTime = 0.0f;
 
-        engine::Vector3 anchorOffsetPos = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 anchorOffsetRot = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 anchorOffsetPos = engine::Vector3::ZERO;
+        engine::Vector3 anchorOffsetRot = engine::Vector3::ZERO;
 
         // 経路生成の中継点。waitTime はその点での待機秒、durationToNext は次点までの移動秒。
         struct Waypoint {
@@ -228,8 +228,8 @@ private:
     float objectPreviewAlpha_ = 0.24f;
 
     bool isOverrideCamera_ = false;
-    engine::Vector3 basePosition_ = { 0, 0, 0 };
-    engine::Vector3 baseRotation_ = { 0, 0, 0 };
+    engine::Vector3 basePosition_ = engine::Vector3::ZERO;
+    engine::Vector3 baseRotation_ = engine::Vector3::ZERO;
     engine::Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
     bool isScrubbing_ = false; // Scrubbing中かどうかのフラグ
     engine::Object3d* anchor_ = nullptr;

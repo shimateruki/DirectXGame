@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include "Easing.h"
 #include <array>
 #include <cmath>
 #include <string>
@@ -61,7 +62,7 @@ struct AttackSequenceTrack {
             float t = std::clamp((localTime - a.time) / (b.time - a.time), 0.0f, 1.0f);
             if (a.interpolation == 0)
                 t = 0;
-            else if (a.interpolation == 2) t = t * t * (3 - 2 * t);
+            else if (a.interpolation == 2) t = Easing::SmoothStep(t);
             auto value = a;
             value.time = localTime;
             for (size_t axis = 0; axis < 3; ++axis) {

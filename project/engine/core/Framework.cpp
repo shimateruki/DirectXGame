@@ -11,7 +11,7 @@ void Framework::Initialize() {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     winApp_ = std::make_unique<WinApp>();
-    winApp_->Initialize(L"スライムの大冒険", WinApp::kClientWidth, WinApp::kClientHeight);
+    winApp_->Initialize(L"スライムの大冒険", 1280, 720);
 
     dxCommon_ = DirectXCommon::GetInstance();
     {

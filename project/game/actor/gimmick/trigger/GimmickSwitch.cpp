@@ -17,8 +17,8 @@ void GimmickSwitch::Initialize(engine::Object3dCommon* common, const std::string
     SetColor({0.85f, 0.94f, 1.0f, 1.0f});
     SetScale({1.5f, 0.25f, 1.5f});
 
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickSwitch;
@@ -28,13 +28,13 @@ void GimmickSwitch::Initialize(engine::Object3dCommon* common, const std::string
     properties.Parameter("スイッチ方式", "switchMode", &Parameter::switchMode, 0.0f, 3.0f,
         nullptr, {"押している間だけ", "押すたび切替", "一定時間だけ", "一度押すと保持"});
     properties.Parameter("有効時間", "interval", &Parameter::interval, 0.1f, 60.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->switchMode == 2); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->switchMode == 2); });
 }
 
 void GimmickSwitch::Update(float deltaTime) {
     // 短い接触間隔では押下状態を保ち、踏んだ直後の瞬間的な判定抜けを吸収する。
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
     if (contactTimer_ > 0.0f) {
         contactTimer_ -= deltaTime;
@@ -57,7 +57,7 @@ void GimmickSwitch::Update(float deltaTime) {
             SendActive(true);
     } else {
         if (pressedThisFrame) {
-            timedTimer_ = param_->interval > 0.0f ? param_->interval : 3.0f;
+            timedTimer_ = GetParameters()->interval > 0.0f ? GetParameters()->interval : 3.0f;
             SendActive(true);
         }
 
@@ -116,14 +116,14 @@ void GimmickSwitch::SendActive(bool active) {
 
 int GimmickSwitch::GetSwitchMode() const {
     // 未設定の配置物は通常モードとして扱う。
-    return param_.has_value() ? param_->switchMode : 0;
+    return GetParameters().has_value() ? GetParameters()->switchMode : 0;
 }
 
 std::unique_ptr<engine::Object3d> GimmickSwitch::Clone() const {
     // スイッチ固有の設定も含めて配置物を複製する。
     auto newObj = std::make_unique<GimmickSwitch>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

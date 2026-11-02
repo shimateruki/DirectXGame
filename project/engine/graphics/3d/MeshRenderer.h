@@ -73,10 +73,10 @@ public:
     private:
         // 復元データを外部から改変して、材質操作APIを迂回することを防ぐ。
         friend class MeshRenderer;
-        MaterialData parameters{};
-        engine::Vector4 authoringColor{1, 1, 1, 1};
-        BlendMode blendMode = BlendMode::kNone;
-        bool valid = false;
+        MaterialData parameters_{};
+        engine::Vector4 authoringColor_{1, 1, 1, 1};
+        BlendMode blendMode_ = BlendMode::kNone;
+        bool valid_ = false;
     };
 
     /// <summary>ポータル・形成・消滅で使うクリップ面の設定。</summary>
@@ -546,9 +546,9 @@ private:
     engine::Object3dCommon* common_ = nullptr;
     Transform* transform_ = nullptr;
     engine::Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
-    engine::Vector3 visualRotation_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 visualOffset_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 visualShear_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 visualRotation_ = engine::Vector3::ZERO;
+    engine::Vector3 visualOffset_ = engine::Vector3::ZERO;
+    engine::Vector3 visualShear_ = engine::Vector3::ZERO;
     float visualShearPivotY_ = 0.0f;
 
     // タイムラインが所有する追加姿勢への弱参照。再生終了後は寿命を延ばさない。
@@ -594,7 +594,7 @@ private:
     // マテリアル定数バッファと編集値の色。
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;
-    engine::Vector4 materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 materialColor_ = engine::Colors::White;
 
     // 法線・ORM・基本画像のパスとTextureManagerのハンドルを対で保持する。
     std::string normalMapPath_ = "";

@@ -86,8 +86,8 @@ void SceneAssetEditorScene::Initialize() {
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(object3dCommon_.get(), skyboxTexture);
 
-    const std::string objectLayoutPath = sceneManager_ ? sceneManager_->GetEditorSceneAssetObjectPath() : std::string();
-    const std::string spriteLayoutPath = sceneManager_ ? sceneManager_->GetEditorSceneAssetSpritePath() : std::string();
+    const std::string objectLayoutPath = GetSceneManager() ? GetSceneManager()->GetEditorSceneAssetObjectPath() : std::string();
+    const std::string spriteLayoutPath = GetSceneManager() ? GetSceneManager()->GetEditorSceneAssetSpritePath() : std::string();
 
     if (!objectLayoutPath.empty() && fs::exists(objectLayoutPath)) {
         levelLoader_->LoadObjectLayout(this, objectLayoutPath);

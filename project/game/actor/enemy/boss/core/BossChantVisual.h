@@ -1,6 +1,8 @@
 #pragma once
 
 #include "EffectObject3d.h"
+#include "Easing.h"
+#include <numbers>
 #include "GPUParticleManager.h"
 
 #include <algorithm>
@@ -317,7 +319,10 @@ class BossChantVisual {
     }
 
   private:
-    static float SmoothStep(float value) { return value * value * (3.0f - 2.0f * value); }
+    static float SmoothStep(float value) {
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::SmoothStep(value);
+}
 
     // 水平方向だけで正規化し、方向が取れないときは前方を使います。
     static engine::Vector3 ResolveForward(const engine::Vector3& direction) {
@@ -327,7 +332,7 @@ class BossChantVisual {
 
     // 地面用の平面エフェクトを、術者の正面に立てる回転です。
     static engine::Vector3 MakeUprightRotation(const engine::Vector3& forward) {
-        constexpr float kHalfPi = 1.5707963268f;
+        constexpr float kHalfPi = (std::numbers::pi_v<float> * 0.5f);
         return {kHalfPi, std::atan2(forward.x, forward.z), 0.0f};
     }
 
@@ -392,7 +397,7 @@ class BossChantVisual {
                                 1.4f + charge * 0.4f);
 
         // 反対側の軌道も使い、片側だけに粒子が偏らないようにします。
-        const float secondOrbit = orbit + 3.14159265f;
+        const float secondOrbit = orbit + std::numbers::pi_v<float>;
         const engine::Vector3 upperPosition =
             frame.groundPosition + side * (std::cos(secondOrbit) * orbitRadius) +
             forward * (std::sin(secondOrbit) * orbitRadius) +

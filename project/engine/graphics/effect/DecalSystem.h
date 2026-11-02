@@ -16,7 +16,7 @@ struct DecalSpawnDesc {
     std::string texturePath = "Resources/sprite/effect/thunder/thunder_ground_scorch.dds";
 
     engine::Vector2 size = { 2.0f, 2.0f };
-    engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 color = engine::Colors::White;
     float rotationRadians = 0.0f;
     float depthOffset = 0.012f;
 

@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "SaveIndicatorOverlay.h"
+#include "Easing.h"
+#include <numbers>
 
 #include "Sprite.h"
 #include "SpriteCommon.h"
@@ -21,16 +23,9 @@ using json = nlohmann::json;
 namespace {
 constexpr float kFadeInDuration = 0.16f;
 constexpr float kFadeOutDuration = 0.30f;
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 
-// 保存通知の登場時に終点を少し越えて戻る補間率を返します。
-float EaseOutBack(float value) {
-    // 登場時に一度だけ行き過ぎて戻る曲線を、0〜1の時間から作る。
-    value = std::clamp(value, 0.0f, 1.0f);
-    constexpr float c1 = 1.70158f;
-    constexpr float c3 = c1 + 1.0f;
-    return 1.0f + c3 * std::pow(value - 1.0f, 3.0f) + c1 * std::pow(value - 1.0f, 2.0f);
-}
+
 } // namespace
 
 void SaveIndicatorOverlay::Initialize(engine::SpriteCommon* spriteCommon, const std::string& layoutPath) {
@@ -245,7 +240,7 @@ void SaveIndicatorOverlay::CaptureBaseState(SpriteState& state) {
 
 void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
     // 共通透明度に対して、パネルの拡大・アイコンの脈動・文字の揺れを別々に重ねる。
-    const float appear = EaseOutBack(std::min(timer_ / kFadeInDuration, 1.0f));
+    const float appear = Easing::OutBack01(std::min(timer_ / kFadeInDuration, 1.0f));
     const float pulse = std::sin(timer_ * 5.0f);
 
     if (panel_.sprite) {

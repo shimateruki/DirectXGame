@@ -106,15 +106,15 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     struct MenuRow {
         engine::Sprite* backdrop = nullptr;
         engine::Sprite* label = nullptr;
-        engine::Vector2 backdropBaseSize = {0.0f, 0.0f};
-        engine::Vector2 labelBaseSize = {0.0f, 0.0f};
+        engine::Vector2 backdropBaseSize = engine::Vector2::ZERO;
+        engine::Vector2 labelBaseSize = engine::Vector2::ZERO;
     };
 
     // 背景王冠 Sprite の借用参照と落下周期。基準位置から毎回評価し、流れ続ける表示を作る。
     struct FallingCrown {
         engine::Sprite* sprite = nullptr;
-        engine::Vector2 basePosition = {0.0f, 0.0f};
-        engine::Vector2 size = {0.0f, 0.0f};
+        engine::Vector2 basePosition = engine::Vector2::ZERO;
+        engine::Vector2 size = engine::Vector2::ZERO;
         float timeOffset = 0.0f;
         float cycleDuration = 1.0f;
         float fallDistance = 0.0f;
@@ -232,7 +232,7 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
     engine::Object3d* gameOverSlimeObject_ = nullptr;
     GameOverSlimeAnimator gameOverSlimeAnimator_;
-    engine::Vector3 gameOverSlimeBasePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 gameOverSlimeBasePosition_ = engine::Vector3::ZERO;
     engine::Vector3 gameOverSlimeBaseScale_ = {1.0f, 1.0f, 1.0f};
     float gameOverPresentationTimer_ = 0.0f;
     PresentationTuning presentationTuning_;

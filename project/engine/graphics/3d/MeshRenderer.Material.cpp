@@ -51,19 +51,19 @@ engine::Vector2 MakeAutoTilingFromScale(const engine::Vector3& scale) {
 MeshRenderer::MaterialState MeshRenderer::CaptureMaterialState() const {
     MaterialState state;
     if (materialData_) {
-        state.parameters = *materialData_;
-        state.authoringColor = materialColor_;
-        state.blendMode = blendMode_;
-        state.valid = true;
+        state.parameters_ = *materialData_;
+        state.authoringColor_ = materialColor_;
+        state.blendMode_ = blendMode_;
+        state.valid_ = true;
     }
     return state;
 }
 
 void MeshRenderer::RestoreMaterialState(const MaterialState& state) {
-    if (!materialData_ || !state.valid) return;
-    *materialData_ = state.parameters;
-    SetColor(state.authoringColor);
-    SetBlendMode(state.blendMode);
+    if (!materialData_ || !state.valid_) return;
+    *materialData_ = state.parameters_;
+    SetColor(state.authoringColor_);
+    SetBlendMode(state.blendMode_);
 }
 
 void MeshRenderer::SetPortalClip(const PortalClipSettings& settings) {

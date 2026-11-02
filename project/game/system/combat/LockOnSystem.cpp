@@ -20,7 +20,7 @@ engine::Vector3 AimCenter(engine::Object3d* object) {
 bool Available(engine::Object3d* object) {
     // 倒れた敵・運搬中の敵・不可視の敵は照準候補から外す。
     auto* enemy = dynamic_cast<BaseEnemy*>(object);
-    return enemy && !enemy->isDead && enemy->GetIsVisible() && (enemy->GetCollisionAttribute() & CollisionCategories::Get("enemy")) &&
+    return enemy && !enemy->IsDead() && enemy->GetIsVisible() && (enemy->GetCollisionAttribute() & CollisionCategories::Get("enemy")) &&
            !enemy->IsCarried() && !enemy->IsDefeatEffectPlaying();
 }
 
@@ -68,7 +68,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3d>>& 
         return;
     player->SetLockOn(false);
     player->SetLockOnAimPoint({}, false);
-    if (!SceneManager::GetInstance()->IsPlaying() || player->isDead || player->IsCinematicLocked() ||
+    if (!SceneManager::GetInstance()->IsPlaying() || player->IsDead() || player->IsCinematicLocked() ||
         player->IsGateReturnAnimationActive()) {
         ResetLockOn(camera);
         return;

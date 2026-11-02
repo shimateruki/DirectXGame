@@ -1,4 +1,6 @@
 #include "game/ui/MenuControls.h"
+#include "Easing.h"
+#include <numbers>
 #define NOMINMAX
 #include "game/scene/title/TitleScene.h"
 #include "engine/system/scene/SceneEngineIncludes.h"
@@ -81,7 +83,7 @@ constexpr float kTitleIntroGlyphDuration = 0.45f;
 constexpr float kTitleIntroMenuDelay = kTitleIntroLastDelay + kTitleIntroGlyphDuration + 0.20f;
 constexpr float kTitleIntroMenuFadeDuration = 0.35f;
 constexpr float kSaveLaunchDuration = 0.70f;
-constexpr float kTitleIntroPi = 3.1415926535f;
+constexpr float kTitleIntroPi = std::numbers::pi_v<float>;
 const engine::Vector2 kMenuStartFramePosition = {1536.0f, 712.0f};
 const engine::Vector2 kMenuSettingFramePosition = {1536.0f, 818.0f};
 const engine::Vector2 kMenuCursorTextureLeftTop = {115.0f, 218.0f};
@@ -92,8 +94,8 @@ constexpr float kTitleHeroSequenceDuration = 22.0f;
 constexpr float kTitleHeroPatrolStart = 4.8f;
 constexpr float kTitleHeroPatrolEnd = 17.6f;
 const std::array<engine::Vector3, 7> kTitleHeroPatrolOffsets = {
-    engine::Vector3{0.0f, 0.0f, 0.0f}, engine::Vector3{-4.8f, 0.0f, -1.2f}, engine::Vector3{-5.6f, 0.0f, 4.1f}, engine::Vector3{-1.4f, 0.0f, 6.4f},
-    engine::Vector3{4.6f, 0.0f, 4.6f}, engine::Vector3{5.2f, 0.0f, -1.8f},  engine::Vector3{0.0f, 0.0f, 0.0f}};
+    engine::Vector3::ZERO, engine::Vector3{-4.8f, 0.0f, -1.2f}, engine::Vector3{-5.6f, 0.0f, 4.1f}, engine::Vector3{-1.4f, 0.0f, 6.4f},
+    engine::Vector3{4.6f, 0.0f, 4.6f}, engine::Vector3{5.2f, 0.0f, -1.8f},  engine::Vector3::ZERO};
 
 const std::array<const char*, 3> kFileTextPaths = {kTextFile1, kTextFile2, kTextFile3};
 
@@ -124,12 +126,7 @@ const std::array<TitleLogoGlyphLayout, 8> kTitleLogoGlyphLayouts = {
     TitleLogoGlyphLayout{
         "titleLogoChar_7", "title/logo/slime_adventure_char_07_ken.png", {1327.3f, 147.5f}, {110.4f, 111.6f}, 0.385f}};
 
-// タイトル文字とカードの動きを両端で滑らかにする補間率を返します。
-float SmoothStep(float t) {
-    // タイトル文字やカードの登場で始点・終点の急な速度変化を抑える。
-    t = std::clamp(t, 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
-}
+
 
 engine::Vector3 LerpTitleVector3(const engine::Vector3& from, const engine::Vector3& to, float t) {
     // 巡回経路の区間外へ飛び出さないよう補間率を丸める。
@@ -278,9 +275,9 @@ void TitleScene::Initialize() {
         GPUParticleManager::GetInstance()->Initialize(dxCommon_);
         GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
 #else
-        if (preparedLoadData_) {
+        if (GetPreparedLoadData()) {
             GPUParticleManager::GetInstance()->InitializeForTitle(
-                dxCommon_, preparedLoadData_->gpuParticlePresetNames);
+                dxCommon_, GetPreparedLoadData()->gpuParticlePresetNames);
         } else {
             // CPU先読みが失敗した場合は、既存の全プリセット読込経路を使う。
             GPUParticleManager::GetInstance()->Initialize(dxCommon_);
@@ -669,7 +666,7 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
         }
 
         const float appearT = std::clamp(localTime / kTitleIntroGlyphDuration, 0.0f, 1.0f);
-        const float smooth = SmoothStep(appearT);
+        const float smooth = Easing::SmoothStep01(appearT);
         const float bounce = std::sin(appearT * kTitleIntroPi) * (1.0f - appearT * 0.35f);
         const float scaleX = 0.68f + 0.32f * smooth + bounce * 0.10f;
         const float scaleY = 0.55f + 0.45f * smooth + bounce * 0.22f;
@@ -731,7 +728,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         const float localT = segmentProgress - static_cast<float>(segmentIndex);
         const engine::Vector3& fromOffset = kTitleHeroPatrolOffsets[segmentIndex];
         const engine::Vector3& toOffset = kTitleHeroPatrolOffsets[segmentIndex + 1];
-        const engine::Vector3 routeOffset = LerpTitleVector3(fromOffset, toOffset, SmoothStep(localT));
+        const engine::Vector3 routeOffset = LerpTitleVector3(fromOffset, toOffset, Easing::SmoothStep01(localT));
 
         position.x += routeOffset.x;
         position.z += routeOffset.z;
@@ -1073,8 +1070,8 @@ void TitleScene::InitializeSaveSlotUI() {
     saveConfirmYesText_ = nullptr;
     saveConfirmBackText_ = nullptr;
 
-    const float screenW = static_cast<float>(WinApp::kClientWidth);
-    const float screenH = static_cast<float>(WinApp::kClientHeight);
+    const float screenW = static_cast<float>(WinApp::GetClientWidth());
+    const float screenH = static_cast<float>(WinApp::GetClientHeight());
     const float centerX = screenW * 0.50f;
     const float firstY = screenH * 0.21f;
     const float slotStep = 172.0f;
@@ -1257,12 +1254,12 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
     const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
     const bool launching = inSaveSelect && saveSelectMode_ == SaveSelectMode::Launching;
-    const float launchFocus = SmoothStep(std::clamp(saveLaunchTime_ / 0.32f, 0.0f, 1.0f));
+    const float launchFocus = Easing::SmoothStep01(std::clamp(saveLaunchTime_ / 0.32f, 0.0f, 1.0f));
     const float launchBounce = launching ? std::sin(kTitleIntroPi * std::clamp(saveLaunchTime_ / 0.48f, 0.0f, 1.0f)) : 0.0f;
     saveSelectOpenTime_ = inSaveSelect ? saveSelectOpenTime_ + std::max(deltaTime, 0.0f) : 0.0f;
-    const float titleReveal = SmoothStep(std::clamp(saveSelectOpenTime_ / 0.25f, 0.0f, 1.0f));
-    const float panelReveal = SmoothStep(std::clamp((saveSelectOpenTime_ - 0.12f) / 0.28f, 0.0f, 1.0f));
-    const float hintReveal = SmoothStep(std::clamp((saveSelectOpenTime_ - 0.22f) / 0.25f, 0.0f, 1.0f));
+    const float titleReveal = Easing::SmoothStep01(std::clamp(saveSelectOpenTime_ / 0.25f, 0.0f, 1.0f));
+    const float panelReveal = Easing::SmoothStep01(std::clamp((saveSelectOpenTime_ - 0.12f) / 0.28f, 0.0f, 1.0f));
+    const float hintReveal = Easing::SmoothStep01(std::clamp((saveSelectOpenTime_ - 0.22f) / 0.25f, 0.0f, 1.0f));
     const bool settingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
     const bool showMainMenu = !settingsOpen && !inSaveSelect && titleIntroComplete_;
 
@@ -1357,14 +1354,14 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     }
 
     if (saveLaunchLabel_) {
-        const float reveal = SmoothStep(std::clamp((saveLaunchTime_ - 0.08f) / 0.24f, 0.0f, 1.0f));
+        const float reveal = Easing::SmoothStep01(std::clamp((saveLaunchTime_ - 0.08f) / 0.24f, 0.0f, 1.0f));
         saveLaunchLabel_->SetVisible(launching && reveal > 0.0f);
         saveLaunchLabel_->SetColor({0.17f, 0.39f, 0.65f, reveal});
     }
 
     // 各行の登場時間、選択強調、起動時の減光を計算してからカードと文字へ反映する。
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
-        const float rowReveal = SmoothStep(std::clamp((saveSelectOpenTime_ - i * 0.065f) / 0.26f, 0.0f, 1.0f));
+        const float rowReveal = Easing::SmoothStep01(std::clamp((saveSelectOpenTime_ - i * 0.065f) / 0.26f, 0.0f, 1.0f));
         const float selectionTarget = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == i ? 1.0f : 0.0f;
         saveSlotSelectionWeights_[i] += (selectionTarget - saveSlotSelectionWeights_[i]) *
                                         std::clamp(deltaTime * 12.0f, 0.0f, 1.0f);
@@ -1520,7 +1517,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     saveSelectionGlowY_ += (saveSlotCardBasePositions_[focusedRow].y - saveSelectionGlowY_) * follow;
 
     if (saveSelectionGlow_) {
-        const float reveal = SmoothStep(std::clamp((saveSelectOpenTime_ - focusedRow * 0.065f) / 0.26f, 0.0f, 1.0f));
+        const float reveal = Easing::SmoothStep01(std::clamp((saveSelectOpenTime_ - focusedRow * 0.065f) / 0.26f, 0.0f, 1.0f));
         saveSelectionGlow_->SetVisible(inSaveSelect && !deleteConfirm && reveal > 0.0f);
         saveSelectionGlow_->SetPosition({saveSlotCardBasePositions_[focusedRow].x,
                                          saveSelectionGlowY_ - (launching ? 9.0f * launchFocus : 0.0f)});

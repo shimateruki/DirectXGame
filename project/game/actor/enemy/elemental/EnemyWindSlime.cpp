@@ -1,4 +1,6 @@
 #include "EnemyWindSlime.h"
+#include "Easing.h"
+#include <numbers>
 
 #include "BaseScene.h"
 #include "game/system/combat/BulletManager.h"
@@ -19,7 +21,7 @@ namespace {
 constexpr const char* kGustAttackId = "gust_breath";
 constexpr const char* kVolleyAttackId = "aerial_wind_volley";
 constexpr int kWindOrbMaterialType = 26;
-constexpr float kWindSlimeModelYawOffset = 3.1415926535f;
+constexpr float kWindSlimeModelYawOffset = std::numbers::pi_v<float>;
 constexpr float kGroundCollisionWorldRadius = 0.82f;
 constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kMoveHopInterval = 0.24f;
@@ -63,12 +65,7 @@ constexpr const char* kSoarLaunchEffectPath = "Resources/json/effect/effect_play
 constexpr const char* kSlowFallEffectPath = "Resources/json/effect/effect_player_wind_slow_fall.json";
 constexpr const char* kSoarLandEffectPath = "Resources/json/effect/effect_player_wind_soar_land.json";
 
-// 離陸と風弾の表示率を0～1へ収め、両端を滑らかにつなぎます。
-float SmoothStep01(float value) {
-    // 離陸や風弾の出現が段階境界で急に跳ねないよう進行率を滑らかにする。
-    value = std::clamp(value, 0.0f, 1.0f);
-    return value * value * (3.0f - 2.0f * value);
-}
+
 
 // 風弾の材質、軌跡、着弾の見た目を一つの設定として組み立てます。
 BulletVisualConfig MakeWindOrbVisual() {
@@ -125,7 +122,7 @@ void EnemyWindSlime::Initialize(engine::Object3dCommon* common, const std::strin
     SetEnemyType("WindSlime");
     ReloadAttackProfile();
     SetColor({0.78f, 1.0f, 0.92f, 1.0f});
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kSphere);
@@ -155,7 +152,7 @@ void EnemyWindSlime::Update(float deltaTime) {
     velocity.z = 0.0f;
     UpdateWildBehavior(deltaTime, velocity);
 
-    if (attackState_ == AttackState::Idle && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_,
+    if (attackState_ == AttackState::Idle && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, IsGrounded(),
                                                                                 deltaTime, kMoveHopInterval, 0.10f)) {
         velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
@@ -187,7 +184,7 @@ void EnemyWindSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, ui
 }
 
 bool EnemyWindSlime::UpdateInactiveState(float deltaTime) {
-    if (isDead || !GetIsVisible()) {
+    if (IsDead() || !GetIsVisible()) {
         // 非表示・死亡時は予告と手持ち弾を消し、復帰時に攻撃の途中から再開しない。
         HideAttackTelegraph();
         HideHeldWindOrbs();
@@ -204,7 +201,7 @@ bool EnemyWindSlime::UpdateInactiveState(float deltaTime) {
         return true;
     }
 
-    if (isCarried_) {
+    if (IsCarried()) {
         HideAttackTelegraph();
         HideHeldWindOrbs();
         return true;
@@ -241,8 +238,8 @@ void EnemyWindSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& veloci
     engine::Vector3 direction = lockedAttackDirection_;
     float distance = lockedTargetDistance_;
 
-    if (target_ && param_.has_value()) {
-        const engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+    if (GetTarget() && GetParameters().has_value()) {
+        const engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - GetWorldPosition();
         direction = NormalizePlanar(toTarget);
         distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
     }
@@ -253,14 +250,14 @@ void EnemyWindSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& veloci
         return;
     }
 
-    if (!target_ || !param_.has_value()) {
-        const float speed = param_.has_value() ? (std::max)(0.55f, param_->speed * 0.45f) : 0.8f;
+    if (!GetTarget() || !GetParameters().has_value()) {
+        const float speed = GetParameters().has_value() ? (std::max)(0.55f, GetParameters()->speed * 0.45f) : 0.8f;
         velocity = CalculateWanderVelocity(deltaTime, speed, 0.72f);
         UpdateFacing(velocity);
         return;
     }
 
-    if (UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+    if (UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), direction)) {
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         UpdateFacing(direction);
@@ -277,14 +274,14 @@ void EnemyWindSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& veloci
         StartGustBreath(direction);
     } else if (allowVolley && distance >= volley.minRange && distance <= volley.maxRange && attackCooldown_ <= 0.0f) {
         StartAerialWindVolley(direction, distance);
-    } else if (distance <= detectionRange_) {
+    } else if (distance <= GetDetectionRange()) {
         // 近付き過ぎた場合は後退し、息攻撃に適した距離を取り直す。
-        const float speed = (std::max)(0.0f, param_->speed) * 1.12f;
+        const float speed = (std::max)(0.0f, GetParameters()->speed) * 1.12f;
         const float approach = distance > gust.maxRange * 0.78f ? 1.0f : -0.46f;
         velocity.x = direction.x * speed * approach;
         velocity.z = direction.z * speed * approach;
     } else {
-        velocity = CalculateWanderVelocity(deltaTime, (std::max)(0.55f, param_->speed * 0.48f), 0.72f);
+        velocity = CalculateWanderVelocity(deltaTime, (std::max)(0.55f, GetParameters()->speed * 0.48f), 0.72f);
         UpdateFacing(velocity);
     }
 }
@@ -351,10 +348,10 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, engine::Vector3& velocit
         }
 
         UpdateFacing(lockedAttackDirection_);
-        const float height = volleyGroundY_ + (volleyHoverY_ - volleyGroundY_) * SmoothStep01(progress);
+        const float height = volleyGroundY_ + (volleyHoverY_ - volleyGroundY_) * Easing::SmoothStep01(progress);
         HoldVolleyAltitude(height, deltaTime, velocity);
         ShowVolleyImpactTelegraphs(progress);
-        UpdateHeldWindOrbs(deltaTime, SmoothStep01((progress - 0.38f) / 0.52f));
+        UpdateHeldWindOrbs(deltaTime, Easing::SmoothStep01((progress - 0.38f) / 0.52f));
 
         if (breathParticleTimer_ <= 0.0f) {
             const engine::Vector3 liftOrigin = {GetWorldPosition().x, volleyGroundY_ + 0.12f, GetWorldPosition().z};
@@ -428,7 +425,7 @@ void EnemyWindSlime::UpdateAttackState(float deltaTime, engine::Vector3& velocit
         const float duration = (std::max)(0.16f, attack.recoveryDuration);
         attackStateTimer_ = (std::max)(0.0f, attackStateTimer_ - deltaTime);
         const float progress = std::clamp(1.0f - attackStateTimer_ / duration, 0.0f, 1.0f);
-        const float height = volleyLandingStartY_ + (volleyGroundY_ - volleyLandingStartY_) * SmoothStep01(progress);
+        const float height = volleyLandingStartY_ + (volleyGroundY_ - volleyLandingStartY_) * Easing::SmoothStep01(progress);
         HoldVolleyAltitude(height, deltaTime, velocity);
         HideHeldWindOrbs();
         breathParticleTimer_ -= deltaTime;
@@ -587,7 +584,7 @@ void EnemyWindSlime::UpdateVolleyImpactCenters() {
         GetWorldPosition() + forward * std::clamp(lockedTargetDistance_, attack.minRange, attack.maxRange);
     engine::Vector3 targetVelocity = {};
 
-    if (const Character* targetCharacter = dynamic_cast<const Character*>(target_)) {
+    if (const Character* targetCharacter = dynamic_cast<const Character*>(GetTarget())) {
         targetPosition = targetCharacter->GetWorldPosition();
         targetVelocity = targetCharacter->GetVelocity();
         targetVelocity.y = 0.0f;
@@ -650,13 +647,13 @@ void EnemyWindSlime::HoldVolleyAltitude(float height, float deltaTime, engine::V
     engine::Vector3 position = GetTranslate();
     position.y = height;
     SetTranslate(position);
-    velocity.y = param_.has_value() ? param_->gravity * deltaTime : 0.0f;
+    velocity.y = GetParameters().has_value() ? GetParameters()->gravity * deltaTime : 0.0f;
     SetGrounded(false);
 }
 
 void EnemyWindSlime::EnsureHeldWindOrbs() {
     // 発射前の三つの風弾は表示専用とし、接触判定を持つ実弾は発射時に作る。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return;
     }
 
@@ -666,7 +663,7 @@ void EnemyWindSlime::EnsureHeldWindOrbs() {
         }
 
         auto orb = std::make_unique<engine::Object3d>();
-        orb->Initialize(common_);
+        orb->Initialize(GetObjectCommon());
         orb->SetName("WindSlime_HeldOrb_" + std::to_string(index));
         orb->SetModel("Primitives/sphere");
         orb->SetCollisionAttribute(0);
@@ -717,7 +714,7 @@ void EnemyWindSlime::UpdateHeldWindOrbs(float deltaTime, float appearProgress) {
         }
 
         const float localAppear =
-            SmoothStep01((appearProgress - appearThreshold) * static_cast<float>(kVolleyOrbCount));
+            Easing::SmoothStep01((appearProgress - appearThreshold) * static_cast<float>(kVolleyOrbCount));
         const float pulse = 1.0f + std::sin(idleTimer_ * 9.0f + static_cast<float>(index) * 1.8f) * 0.07f;
         const float scale = kVolleyOrbVisualScale * (0.32f + localAppear * 0.68f) * pulse;
         const engine::Vector3 position = ComputeHeldWindOrbPosition(index);
@@ -761,13 +758,13 @@ engine::Vector3 EnemyWindSlime::ComputeHeldWindOrbPosition(int orbIndex) const {
 void EnemyWindSlime::DispatchEnemyBreathPush(const engine::Vector3& direction, float distance) {
     // 射程だけでなく向きも確認し、近距離ほど強い外力を標的へ与える。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kGustAttackId);
-    Character* character = dynamic_cast<Character*>(target_);
+    Character* character = dynamic_cast<Character*>(GetTarget());
 
     if (!character || distance > attack.maxRange + 0.75f) {
         return;
     }
 
-    const engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+    const engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - GetWorldPosition();
     const engine::Vector3 targetDirection = NormalizePlanar(toTarget);
     const float facingDot = engine::Math::Dot(direction, targetDirection);
 
@@ -779,7 +776,7 @@ void EnemyWindSlime::DispatchEnemyBreathPush(const engine::Vector3& direction, f
     const float planarForce = 22.0f + falloff * 8.0f;
     character->ApplyExternalImpulse({direction.x * planarForce, 6.0f + falloff * 2.5f, direction.z * planarForce},
                                     0.24f);
-    EmitDirectedWindPreset(kImpactPreset, target_->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f}, direction, 1.15f);
+    EmitDirectedWindPreset(kImpactPreset, GetTarget()->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f}, direction, 1.15f);
 }
 
 void EnemyWindSlime::BeginThrown(const engine::Vector3& initialVelocity) {
@@ -798,10 +795,10 @@ void EnemyWindSlime::BeginThrown(const engine::Vector3& initialVelocity) {
 std::unique_ptr<engine::Object3d> EnemyWindSlime::Clone() const {
     // 複製先を初期化してから配置設定と対象を引き継ぐ。
     auto clone = std::make_unique<EnemyWindSlime>();
-    clone->Initialize(common_, GetModelName());
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     return clone;
 }
 
@@ -879,19 +876,19 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
         const float duration = (std::max)(0.01f, attack.windupDuration);
         const float progress = std::clamp(1.0f - attackStateTimer_ / duration, 0.0f, 1.0f);
-        const float launchSquash = std::sin(std::clamp(progress / 0.46f, 0.0f, 1.0f) * 3.14159265f) * 0.19f;
-        const float airborneStretch = std::sin(progress * 3.14159265f) * 0.17f;
+        const float launchSquash = std::sin(std::clamp(progress / 0.46f, 0.0f, 1.0f) * std::numbers::pi_v<float>) * 0.19f;
+        const float airborneStretch = std::sin(progress * std::numbers::pi_v<float>) * 0.17f;
         targetScale = {
             baseScale_.x * (1.0f + launchSquash - airborneStretch * 0.42f),
             baseScale_.y * (1.0f - launchSquash * 0.58f + airborneStretch),
             baseScale_.z * (1.0f + launchSquash - airborneStretch * 0.42f),
         };
 
-        targetRotation.x = -std::sin(progress * 3.14159265f) * 0.10f;
+        targetRotation.x = -std::sin(progress * std::numbers::pi_v<float>) * 0.10f;
     } else if (attackState_ == AttackState::VolleyActive) {
         const float hoverWave = std::sin(idleTimer_ * 6.2f);
         const float recoilRate = std::clamp(volleyRecoilTimer_ / 0.18f, 0.0f, 1.0f);
-        const float recoil = std::sin((1.0f - recoilRate) * 3.14159265f) * 0.16f;
+        const float recoil = std::sin((1.0f - recoilRate) * std::numbers::pi_v<float>) * 0.16f;
         targetScale = {
             baseScale_.x * (1.0f + hoverWave * 0.045f + recoil),
             baseScale_.y * (1.0f - hoverWave * 0.035f - recoil * 0.54f),
@@ -904,7 +901,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
         const float duration = (std::max)(0.16f, attack.recoveryDuration);
         const float progress = std::clamp(1.0f - attackStateTimer_ / duration, 0.0f, 1.0f);
-        const float fallingStretch = std::sin(progress * 3.14159265f) * 0.22f;
+        const float fallingStretch = std::sin(progress * std::numbers::pi_v<float>) * 0.22f;
         targetScale = {
             baseScale_.x * (1.0f - fallingStretch * 0.38f),
             baseScale_.y * (1.0f + fallingStretch),
@@ -926,7 +923,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
     } else if (attackState_ == AttackState::Recover) {
         const float duration = (std::max)(0.01f, recoveryDuration_ > 0.0f ? recoveryDuration_ : 0.28f);
         const float remaining = std::clamp(attackStateTimer_ / duration, 0.0f, 1.0f);
-        const float rebound = std::sin((1.0f - remaining) * 3.14159265f);
+        const float rebound = std::sin((1.0f - remaining) * std::numbers::pi_v<float>);
         targetScale = {
             baseScale_.x * (1.0f - rebound * 0.09f),
             baseScale_.y * (1.0f + rebound * 0.16f),
@@ -941,7 +938,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
         params.horizontalSquash = 0.30f;
         params.verticalStretch = 0.39f;
         params.airborneStretch = 0.40f;
-        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     }
 
     ApplyDamageReactionPose(targetScale, targetRotation);

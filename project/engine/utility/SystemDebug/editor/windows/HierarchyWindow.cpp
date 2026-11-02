@@ -1,4 +1,5 @@
 #include "HierarchyWindow.h"
+#include <numbers>
 #include "DebugEditor.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
@@ -38,16 +39,13 @@
 #include <cmath>
 #include <map>
 #include <vector>
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-static const float PI = (float)M_PI;
+
 
 // ImGuizmoの角度表示は度、Object3dの回転値はラジアンなので変換します。
-static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
+static float ToRadians(float degrees) { return degrees * (std::numbers::pi_v<float> / 180.0f); }
 
 // 回転値をInspectorへ表示するときにラジアンから度へ戻します。
-static float ToDegrees(float radians) { return radians * (180.0f / PI); }
+static float ToDegrees(float radians) { return radians * (180.0f / std::numbers::pi_v<float>); }
 
 static std::string ToLowerAscii(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {

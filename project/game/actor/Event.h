@@ -11,7 +11,7 @@ class Bullet;
 struct PlayerHitEvent {
     engine::Object3d* me = nullptr;
     engine::Object3d* hitObject = nullptr; // ぶつかった相手（罠、アイテムなど）
-    engine::Vector3 normal = {0, 0, 0};
+    engine::Vector3 normal = engine::Vector3::ZERO;
 };
 
 // BulletHitEventは、弾がObject3dへ当たったときの通知データです。
@@ -52,7 +52,7 @@ struct DamageEvent {
     engine::Object3d* target = nullptr;            // ダメージを受ける人
     engine::Object3d* attacker = nullptr;          // 攻撃した人
     float damageAmount = 0.0f;             // ダメージ量
-    engine::Vector3 knockbackVelocity = {0, 0, 0}; // 追加：吹き飛ばしベクトル
+    engine::Vector3 knockbackVelocity = engine::Vector3::ZERO; // 追加：吹き飛ばしベクトル
     float invincibilityDuration = 1.0f;    // 被弾後に操作を守る無敵時間
     bool bypassPlayerInvincibility = false; // 強制攻撃だけ回避・被弾無敵を貫通します。演出中は引き続き無効です。
 

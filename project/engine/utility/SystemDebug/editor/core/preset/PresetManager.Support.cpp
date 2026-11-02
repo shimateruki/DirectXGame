@@ -577,11 +577,11 @@ void CreateObjectFromPresetNode(
         object->SetClassName("Enemy");
         object->SetEnemyType(enemyType);
 
-        if (!object->param_.has_value()) {
-            object->param_.emplace();
+        if (!object->GetParameters().has_value()) {
+            object->ResetParameters();
         }
 
-        object->param_->enemyType = enemyType;
+        object->SetParameter(&engine::EntityParameter::enemyType, enemyType);
         auto* statusManager = GameplayStatusManager::GetInstance();
         statusManager->Initialize();
         statusManager->ApplyEnemyStatus(object.get(), true);

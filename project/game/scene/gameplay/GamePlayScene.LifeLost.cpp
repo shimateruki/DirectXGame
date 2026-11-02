@@ -54,8 +54,8 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     if (!lifeLostState_.IsActive()) {
         // 演出完了後もシーン切り替えまで黒画面を保持します。
         if (lifeLostState_.HoldsBlack()) {
-            const float screenW = static_cast<float>(WinApp::kClientWidth);
-            const float screenH = static_cast<float>(WinApp::kClientHeight);
+            const float screenW = static_cast<float>(WinApp::GetClientWidth());
+            const float screenH = static_cast<float>(WinApp::GetClientHeight());
 
             if (lifeLostBackdrop_.sprite) {
                 lifeLostBackdrop_.sprite->SetVisible(true);
@@ -129,8 +129,8 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     }
 
     const int displayLives = lifeLostState_.DidDropNumber() ? lifeLostState_.AfterLives() : lifeLostState_.BeforeLives();
-    const float screenW = static_cast<float>(WinApp::kClientWidth);
-    const float screenH = static_cast<float>(WinApp::kClientHeight);
+    const float screenW = static_cast<float>(WinApp::GetClientWidth());
+    const float screenH = static_cast<float>(WinApp::GetClientHeight());
     const float centerX = screenW * 0.5f;
     const float centerY = screenH * 0.5f;
     const float settlePulse = lifeLostState_.DidDropNumber()

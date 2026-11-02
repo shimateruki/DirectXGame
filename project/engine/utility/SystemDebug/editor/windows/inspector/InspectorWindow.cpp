@@ -82,8 +82,8 @@ void InspectorWindow::Draw() {
 
             if (ImGui::Button(ICON_FA_CHECK_CIRCLE " パス編集を完了してロックを解除 (Exit Edit Mode)", ImVec2(-1, 45))) {
                 editor_->SetIsPathEditMode(false);
-                if (selectedObject->recorder_)
-                    selectedObject->recorder_->DeselectPin();
+                if (selectedObject->GetRecorder())
+                    selectedObject->GetRecorder()->DeselectPin();
             }
 
             ImGui::PopStyleColor(2);
@@ -1569,13 +1569,16 @@ void InspectorWindow::Draw() {
         ImGui::TextDisabled("Controller未設定時は下の旧単発クリップ設定を使用します。現行制作ではControllerを推奨します。");
 
         char animNameBuf[64];
-        strncpy_s(animNameBuf, selectedObject->animName_.c_str(), sizeof(animNameBuf));
+        strncpy_s(animNameBuf, selectedObject->GetAnimationName().c_str(), sizeof(animNameBuf));
 
         if (ImGui::InputText("アニメ名##BoneAnim", animNameBuf, sizeof(animNameBuf))) {
-            selectedObject->animName_ = animNameBuf;
+            selectedObject->SetAnimationName(animNameBuf);
         }
 
-            ImGui::Checkbox("ループ再生##BoneAnim", &selectedObject->isAnimLoop_);
+            bool animationLoop = selectedObject->IsAnimationLoop();
+            if (ImGui::Checkbox("ループ再生##BoneAnim", &animationLoop)) {
+                selectedObject->SetAnimationLoop(animationLoop);
+            }
         }
 
         if (HasRegisteredComponent(selectedObject, "PathMover")) {

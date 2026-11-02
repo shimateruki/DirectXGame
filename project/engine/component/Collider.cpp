@@ -531,7 +531,7 @@ bool Collider::OverlapsFootprint(const Collider* other, engine::Vector3* normal,
         return false;
 
     float minimumDepth = std::numeric_limits<float>::max();
-    engine::Vector3 outward = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 outward = engine::Vector3::ZERO;
 
     if (other->GetType() == ColliderType::kSphere) {
         const engine::Vector3 center = other->GetSphereCenter();

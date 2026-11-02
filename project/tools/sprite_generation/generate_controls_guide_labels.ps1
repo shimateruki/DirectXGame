@@ -1,4 +1,4 @@
-﻿<#
+<#
 操作ガイドに表示する日本語ラベルを TextPngTool で透過 PNG に描画する。
 Resources/sprite/ui/control_guide/labels の同名画像を更新する。
 #>
@@ -30,7 +30,7 @@ $labels = [ordered]@{
     "absorb" = "吸収"
     "throw" = "投げる"
     "slime_attack" = "スライムアタック"
-    "hook_aim" = "フック照準"
+    "hook_aim" = "スライムウィップ"
     "slime_dive" = "スライムダイブ"
     "puni_straight" = "ぷにストレート"
     "puni_guard" = "ぷにガード"

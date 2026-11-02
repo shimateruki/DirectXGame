@@ -180,8 +180,8 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             }
             // マグマ連動床のTarget IDは駆動元の参照であり、接触スイッチではない。
             // 着地で噴出口を反転すると、乗った瞬間に上昇が停止してしまう。
-            if (objectHit->GetGimmickType() == "MovingFloor" && objectHit->param_ &&
-                objectHit->param_->actionMode == 5) {
+            if (objectHit->GetGimmickType() == "MovingFloor" && objectHit->GetParameters() &&
+                objectHit->GetParameters()->actionMode == 5) {
                 break;
             }
             // 回転棘のTarget IDは追従する床の参照であり、接触イベントではない。
@@ -210,8 +210,8 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
         const bool isElectricPlayerHit = playerTarget && damageType == DamageType::Electric;
 
         float finalDamage = event.damageAmount;
-        if (event.attacker && event.attacker->param_.has_value()) {
-            finalDamage *= (std::max)(0.0f, event.attacker->param_->attackPower);
+        if (event.attacker && event.attacker->GetParameters().has_value()) {
+            finalDamage *= (std::max)(0.0f, event.attacker->GetParameters()->attackPower);
         }
 
         // 即死指定は通常倍率の計算後に適用し、攻撃力0でもHPを確実に0へ落とします。
@@ -243,8 +243,8 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
 
         if (event.statusEffect.IsValid()) {
             ApplyStatusEffect(event.target, event.statusEffect,
-                              event.attacker && event.attacker->param_.has_value()
-                                  ? (std::max)(0.0f, event.attacker->param_->attackPower)
+                              event.attacker && event.attacker->GetParameters().has_value()
+                                  ? (std::max)(0.0f, event.attacker->GetParameters()->attackPower)
                                   : 1.0f);
         }
 
@@ -541,11 +541,11 @@ bool GameRule::IsStatusTargetAlive(engine::Object3d* target) const {
         return false;
     }
 
-    if (target->isDead || !target->GetIsVisible()) {
+    if (target->IsDead() || !target->GetIsVisible()) {
         return false;
     }
 
-    return !target->param_.has_value() || target->param_->hp > 0.0f;
+    return !target->GetParameters().has_value() || target->GetParameters()->hp > 0.0f;
 }
 
 void GameRule::EmitStatusVisual(engine::Object3d* target, const std::string& presetName) const {
@@ -584,21 +584,21 @@ bool GameRule::ApplyDamage(engine::Object3d* target, float damage, bool bypassPl
         }
     }
 
-    if (target->param_.has_value()) {
-        target->param_->maxHp = (std::max)(target->param_->maxHp, 1.0f);
-        target->param_->hp = (std::max)(target->param_->hp, 0.0f);
+    if (target->GetParameters().has_value()) {
+        target->SetParameter(&engine::EntityParameter::maxHp, (std::max)(target->GetParameters()->maxHp, 1.0f));
+        target->SetParameter(&engine::EntityParameter::hp, (std::max)(target->GetParameters()->hp, 0.0f));
 
-        if (target->param_->hp > target->param_->maxHp) {
-            target->param_->maxHp = target->param_->hp;
+        if (target->GetParameters()->hp > target->GetParameters()->maxHp) {
+            target->SetParameter(&engine::EntityParameter::maxHp, target->GetParameters()->hp);
         }
 
-        target->param_->hp -= damage;
-        target->param_->hp = std::clamp(target->param_->hp, 0.0f, target->param_->maxHp);
+        target->SetParameter(&engine::EntityParameter::hp, target->GetParameters()->hp - (damage));
+        target->SetParameter(&engine::EntityParameter::hp, std::clamp(target->GetParameters()->hp, 0.0f, target->GetParameters()->maxHp));
 
         DebugConsole::GetInstance()->AddLog(target->GetName() + " に " + std::to_string(damage) +
-                                            " のダメージ！ 残りHP: " + std::to_string(target->param_->hp));
+                                            " のダメージ！ 残りHP: " + std::to_string(target->GetParameters()->hp));
 
-        if (target->param_->hp <= 0.0f) {
+        if (target->GetParameters()->hp <= 0.0f) {
             DebugConsole::GetInstance()->AddLog(target->GetName() + " を撃破！");
         }
 

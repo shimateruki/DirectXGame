@@ -535,12 +535,12 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     // 入場ゲートはシーン内Objectを借用し、位置とカメラ構図だけ保存する。
     engine::Object3d* stageEntryGate_ = nullptr;
     engine::Vector3 stageEntryDirection_ = {1.0f, 0.0f, 0.0f};
-    engine::Vector3 stageEntryCameraStartEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 stageEntryCameraStartTarget_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 stageEntryCameraFocusEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 stageEntryCameraFocusTarget_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 stageEntryCameraRestoreEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 stageEntryCameraRestoreTarget_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 stageEntryCameraStartEye_ = engine::Vector3::ZERO;
+    engine::Vector3 stageEntryCameraStartTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 stageEntryCameraFocusEye_ = engine::Vector3::ZERO;
+    engine::Vector3 stageEntryCameraFocusTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 stageEntryCameraRestoreEye_ = engine::Vector3::ZERO;
+    engine::Vector3 stageEntryCameraRestoreTarget_ = engine::Vector3::ZERO;
     float stageEntryCameraBaseFov_ = 0.45f;
     float stageEntryCameraFocusFov_ = 0.45f;
 
@@ -567,8 +567,8 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     engine::Object3d* arenaBossIntroBoss_ = nullptr;
     engine::Object3d* arenaBossIntroGate_ = nullptr;
 
-    engine::Vector3 arenaBossIntroRestoreEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 arenaBossIntroRestoreTarget_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 arenaBossIntroRestoreEye_ = engine::Vector3::ZERO;
+    engine::Vector3 arenaBossIntroRestoreTarget_ = engine::Vector3::ZERO;
 
     // --- ステージ3 ボス撃破・王冠落下演出 ---
     // 報酬Objectは借用し、演出中の視点と終了時の復元位置を保持する。
@@ -582,8 +582,8 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     CinematicSequence arenaBossRewardSequence_;
     CinematicPlayer arenaBossRewardPlayer_;
     engine::Object3d* arenaBossRewardObject_ = nullptr;
-    engine::Vector3 arenaBossRewardGameplayEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 arenaBossRewardGameplayTarget_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 arenaBossRewardGameplayEye_ = engine::Vector3::ZERO;
+    engine::Vector3 arenaBossRewardGameplayTarget_ = engine::Vector3::ZERO;
 
     enum class GoalPresentationState { Inactive, Celebrating, ReadyToReturn, Returning };
 
@@ -599,14 +599,14 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     size_t goalCrownSparklePatternIndex_ = 0;
 
     // 演出開始前のプレイヤー・王冠の姿勢を保持し、終了時に復元する。
-    engine::Vector3 goalCrownPosition_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalPlayerBasePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 goalCrownPosition_ = engine::Vector3::ZERO;
+    engine::Vector3 goalPlayerBasePosition_ = engine::Vector3::ZERO;
     engine::Vector3 goalPlayerBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 goalPlayerBaseRotation_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalPlayerPosePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 goalPlayerBaseRotation_ = engine::Vector3::ZERO;
+    engine::Vector3 goalPlayerPosePosition_ = engine::Vector3::ZERO;
     engine::Vector3 goalMoveForward_ = {0.0f, 0.0f, 1.0f};
     engine::Vector3 goalMoveRight_ = {1.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCrownBasePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 goalCrownBasePosition_ = engine::Vector3::ZERO;
     // 配置時の姿と装着後の寸法を分離し、親付きの王冠もワールド空間で運ぶ。
     engine::Vector3 goalCrownStartWorldPosition_{};
     engine::Vector3 goalCrownWearScale_ = {1.0f, 1.0f, 1.0f};
@@ -614,26 +614,26 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     bool goalCrownBaseEnvMap_ = false;
     float goalCrownBaseEnvIntensity_ = 1.0f, goalCrownBaseRoughness_ = 0.3f;
     engine::Vector3 goalCrownBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 goalCrownBaseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 goalCrownBaseRotation_ = engine::Vector3::ZERO;
 
     // 王冠着地後の揺れを位置・回転それぞれのバネ状態で積分する。
-    engine::Vector3 goalCrownSpringPosition_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCrownSpringVelocity_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCrownSpringRotation_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCrownSpringRotationVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 goalCrownSpringPosition_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCrownSpringVelocity_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCrownSpringRotation_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCrownSpringRotationVelocity_ = engine::Vector3::ZERO;
     bool goalCrownSpringInitialized_ = false;
 
     // 通常・王冠注視・着地・ジャンプ・結果表示の各カメラ構図。
-    engine::Vector3 goalCameraGameplayEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraGameplayTarget_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraFocusEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraFocusTarget_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraLandingEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraLandingTarget_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraJumpEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraJumpTarget_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraResultEye_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 goalCameraResultTarget_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 goalCameraGameplayEye_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraGameplayTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraFocusEye_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraFocusTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraLandingEye_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraLandingTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraJumpEye_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraJumpTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraResultEye_ = engine::Vector3::ZERO;
+    engine::Vector3 goalCameraResultTarget_ = engine::Vector3::ZERO;
     float goalCameraGameplayFov_ = 0.45f;
 
     // 復元に必要なスナップショットの有効性と、一度だけ鳴らす演出の実行状態。
@@ -667,9 +667,9 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     // HUD の基準値。演出で拡縮しても戻せるよう保存する。
     struct HudSpriteState {
         engine::Sprite* sprite = nullptr;
-        engine::Vector2 basePosition = {0.0f, 0.0f};
-        engine::Vector2 baseSize = {0.0f, 0.0f};
-        engine::Vector4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        engine::Vector2 basePosition = engine::Vector2::ZERO;
+        engine::Vector2 baseSize = engine::Vector2::ZERO;
+        engine::Vector4 baseColor = engine::Colors::White;
     };
 
     // --- プレイ中 HUD ---
@@ -696,9 +696,9 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     // スターコイン取得時、ワールド位置から HUD へ飛んでいく粒子
     struct StageStarUIFlyParticle {
         std::unique_ptr<engine::Sprite> sprite;
-        engine::Vector2 start = {0.0f, 0.0f};
-        engine::Vector2 control = {0.0f, 0.0f};
-        engine::Vector2 end = {0.0f, 0.0f};
+        engine::Vector2 start = engine::Vector2::ZERO;
+        engine::Vector2 control = engine::Vector2::ZERO;
+        engine::Vector2 end = engine::Vector2::ZERO;
         float timer = 0.0f;
         float duration = 0.6f;
         float baseSize = 20.0f;

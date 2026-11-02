@@ -49,7 +49,7 @@ void EnemyPrismSlime::Initialize(engine::Object3dCommon* common, const std::stri
     SetEnableEnvMap(true);
     SetEnvIntensity(1.0f);
     SetEmissive(0.92f);
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
 
     SetCollisionAttribute(kPrismActiveCollisionAttribute);
     SetCollisionMask(kPrismActiveCollisionMask);
@@ -86,8 +86,8 @@ void EnemyPrismSlime::Update(float deltaTime) {
     engine::Vector3 direction = lockedDirection_;
     float distance = 9999.0f;
 
-    if (target_) {
-        const engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+    if (GetTarget()) {
+        const engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - GetWorldPosition();
         direction = NormalizePlanar(toTarget);
         distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
     }
@@ -232,11 +232,11 @@ void EnemyPrismSlime::DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D1
 std::unique_ptr<engine::Object3d> EnemyPrismSlime::Clone() const {
     // 配置値と追跡対象を引き継ぎ、攻撃中の一時状態は新しい個体で初期化する。
     auto clone = std::make_unique<EnemyPrismSlime>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     return clone;
 }
 
@@ -335,7 +335,7 @@ bool EnemyPrismSlime::UpdateInactiveState(float deltaTime) {
         return true;
     }
 
-    if (isCarried_) {
+    if (IsCarried()) {
         locomotion_.Reset();
         ClearPrismAttackVisuals();
         HideAttackTelegraph();
@@ -365,8 +365,8 @@ void EnemyPrismSlime::UpdateElementPhase() {
     // HP段階またはデバッグで選んだ技から属性を決め、表示と次の攻撃選択を同期する。
     ElementPhase nextPhase = ElementPhase::Neutral;
 
-    if (param_.has_value() && param_->maxHp > 0.001f) {
-        const float ratio = std::clamp(param_->hp / param_->maxHp, 0.0f, 1.0f);
+    if (GetParameters().has_value() && GetParameters()->maxHp > 0.001f) {
+        const float ratio = std::clamp(GetParameters()->hp / GetParameters()->maxHp, 0.0f, 1.0f);
 
         if (ratio <= 0.25f) {
             nextPhase = ElementPhase::Wind;
@@ -422,7 +422,7 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
         return;
     }
 
-    if (!target_ || !param_.has_value()) {
+    if (!GetTarget() || !GetParameters().has_value()) {
         const float verticalVelocity = velocity.y;
         velocity = CalculateWanderVelocity(deltaTime, 0.55f, 0.52f);
         velocity.y = verticalVelocity;
@@ -432,7 +432,7 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
 
     UpdateFacing(direction);
 
-    if (UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+    if (UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), direction)) {
         return;
     }
 
@@ -442,12 +442,12 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
         ? SelectFireFanDefinition(distance) : GetAttackDefinition(GetAttackId(plannedAttack));
     const bool isInAttackRange = distance >= plannedDefinition.minRange && distance <= plannedDefinition.maxRange;
 
-    if (isGrounded_ && IsBossTargetEngaged() && attackCooldown_ <= 0.0f && isInAttackRange) {
+    if (IsGrounded() && IsBossTargetEngaged() && attackCooldown_ <= 0.0f && isInAttackRange) {
         StartAttack(plannedAttack, direction, distance);
         return;
     }
 
-    if (!debugPreviewAttackId_.empty() || !isGrounded_ || !locomotion_.CanBegin()) return;
+    if (!debugPreviewAttackId_.empty() || !IsGrounded() || !locomotion_.CanBegin()) return;
 
     // 遠距離では軽い斜め跳躍、射程内では短い横移動に分ける。
     const float preferredDistance = std::clamp(plannedDefinition.recommendedTargetDistance, 4.2f, 9.0f);
@@ -458,18 +458,18 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
     const engine::Vector3 movement = farAway ? NormalizePlanar(direction + lateral * 0.38f)
         : (tooClose ? NormalizePlanar(direction * -1.0f + lateral * 0.32f) : lateral);
     const float stepDistance = farAway ? std::clamp(distance - preferredDistance, 2.2f, 4.0f)
-                                       : std::clamp(param_->speed * 0.85f, 0.65f, 1.65f);
+                                       : std::clamp(GetParameters()->speed * 0.85f, 0.65f, 1.65f);
     ++locomotionStepSerial_;
 
     BossGroundLocomotion::Style style;
     style.windup = farAway ? 0.12f : 0.09f;
-    style.travelSpeed = farAway ? std::clamp(param_->speed * 5.8f, 5.0f, 10.0f)
-                                  : std::clamp(param_->speed * 3.2f, 3.0f, 6.0f);
+    style.travelSpeed = farAway ? std::clamp(GetParameters()->speed * 5.8f, 5.0f, 10.0f)
+                                  : std::clamp(GetParameters()->speed * 3.2f, 3.0f, 6.0f);
     style.minimumTravelTime = farAway ? 0.34f : 0.18f;
     style.maximumTravelTime = farAway ? 0.56f : 0.30f;
     style.landing = farAway ? 0.18f : 0.12f;
     style.cooldown = farAway ? 0.48f : 0.62f;
-    style.arcHeight = farAway ? std::clamp(param_->jumpPower * 0.055f, 1.0f, 1.55f) : 0.0f;
+    style.arcHeight = farAway ? std::clamp(GetParameters()->jumpPower * 0.055f, 1.0f, 1.55f) : 0.0f;
 
     const engine::Vector3 current = GetTranslate();
     engine::Vector3 destination = current + movement * stepDistance;
@@ -510,8 +510,8 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
 
     locomotion_.Reset();
 
-    if (kind == AttackKind::FireFan && debugPreviewAttackId_.empty() && attackProfile_.selectionMode != "priority" &&
-        !attackProfile_.SelectSequence(distance, 100000.0f, {}, 0.0f)) {
+    if (kind == AttackKind::FireFan && debugPreviewAttackId_.empty() && GetAttackProfile().selectionMode != "priority" &&
+        !GetAttackProfile().SelectSequence(distance, 100000.0f, {}, 0.0f)) {
         // 全候補が重み0・射程外なら旧火球へ戻さず、外側の行動サイクルを次へ進めます。
         ++attackCycleIndex_;
         attackCooldown_ = 0.1f;
@@ -620,7 +620,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
 
     chantVisual_ = std::make_unique<BossChantVisual>();
 
-    if (!chantVisual_->Start(common_, std::move(chantStyle))) {
+    if (!chantVisual_->Start(GetObjectCommon(), std::move(chantStyle))) {
         chantVisual_.reset();
     }
 
@@ -1121,7 +1121,7 @@ EnemyPrismSlime::AttackKind EnemyPrismSlime::ResolveDebugAttack() const {
         return AttackKind::WindWave;
     if (debugPreviewAttackId_ == kSlimeSummonAttackId)
         return AttackKind::SlimeSummon;
-    if (const auto* selected = attackProfile_.FindAttack(debugPreviewAttackId_);
+    if (const auto* selected = GetAttackProfile().FindAttack(debugPreviewAttackId_);
         selected && selected->sequence.binding == "enemy" && (!selected->sequence.events.empty() || !selected->sequence.tracks.empty()))
         return AttackKind::FireFan;
     return AttackKind::None;
@@ -1136,10 +1136,10 @@ const EnemyAttackDefinition& EnemyPrismSlime::GetCurrentAttackDefinition() const
 
 const EnemyAttackDefinition& EnemyPrismSlime::SelectFireFanDefinition(float distance) const {
     // プレビュー指定を優先し、通常時は距離に合うシーケンス定義を選ぶ。
-    if (const auto* selected = attackProfile_.FindAttack(debugPreviewAttackId_);
+    if (const auto* selected = GetAttackProfile().FindAttack(debugPreviewAttackId_);
         selected && selected->sequence.binding == "enemy" &&
         (selected->id == kFireFanAttackId || (!selected->sequence.events.empty() || !selected->sequence.tracks.empty()))) return *selected;
-    const auto* selected = attackProfile_.SelectSequence(distance, 100000.0f);
+    const auto* selected = GetAttackProfile().SelectSequence(distance, 100000.0f);
     return selected ? *selected : GetAttackDefinition(kFireFanAttackId);
 }
 
@@ -1151,11 +1151,11 @@ AttackSequenceContext EnemyPrismSlime::MakeSequenceContext() {
 
     // 従来の発射口は前方に横幅の0.48倍、上方に高さの0.48倍です。
     context.ownerSize = {baseScale_.x, baseScale_.y, baseScale_.x};
-    context.hasTarget = target_ != nullptr;
-    if (target_)
-        context.targetPosition = target_->GetWorldPosition();
+    context.hasTarget = GetTarget() != nullptr;
+    if (GetTarget())
+        context.targetPosition = GetTarget()->GetWorldPosition();
     context.targetDistance = lockedTargetDistance_;
-    context.grounded = isGrounded_;
+    context.grounded = IsGrounded();
     return context;
 }
 
@@ -1221,12 +1221,12 @@ std::unique_ptr<engine::Object3d> EnemyPrismSlime::CreatePart(const std::string&
                                                       const engine::Vector3& localPosition, const engine::Vector3& localScale,
                                                       const engine::Vector4& color, float emissive) {
     // 本体に追従する子オブジェクトを作り、衝突対象からは除外する。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return nullptr;
     }
 
     auto part = std::make_unique<engine::Object3d>();
-    part->Initialize(common_);
+    part->Initialize(GetObjectCommon());
     part->SetName(name);
     part->SetClassName("EnemyVisualPart");
     part->SetModel(modelName);
@@ -1320,7 +1320,7 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
     params.verticalStretch = 0.20f;
     params.airborneStretch = 0.29f;
 
-    engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+    engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
 
     if (attackState_ == AttackState::Idle && locomotion_.IsActive()) {
@@ -1345,7 +1345,7 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
             targetScale = {baseScale_.x * (1.0f + squash * 0.8f), baseScale_.y * (1.0f - squash),
                            baseScale_.z * (1.0f + squash * 0.8f)};
         }
-    } else if (attackState_ == AttackState::Idle && isGrounded_) {
+    } else if (attackState_ == AttackState::Idle && IsGrounded()) {
         // 停止中の縦倍率は固定し、微小な呼吸で地面から浮いて見えるのを防ぐ。
         const float speedRate = std::clamp(SlimeBounceAnimator::PlanarSpeed(GetVelocity()) / 3.2f, 0.0f, 1.0f);
         const float breath = std::sin(idleTimer_ * 2.0f) * 0.018f * (1.0f - speedRate);

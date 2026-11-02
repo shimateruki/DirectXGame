@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/utility/math/Math.h"
+#include "Easing.h"
 #include <algorithm>
 #include <cmath>
 
@@ -25,14 +26,13 @@ inline float PlanarDistance(const engine::Vector3& lhs, const engine::Vector3& r
 }
 
 inline float SmoothStep01(float value) {
-    value = std::clamp(value, 0.0f, 1.0f);
-    return value * value * (3.0f - 2.0f * value);
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::SmoothStep01(value);
 }
 
 inline float EaseOutCubic(float value) {
-    value = std::clamp(value, 0.0f, 1.0f);
-    const float inverse = 1.0f - value;
-    return 1.0f - inverse * inverse * inverse;
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::OutCubic01(value);
 }
 
 // 補間率は制限しない。区間外の値を許可しない呼び出し側は先に 0～1 に収める。

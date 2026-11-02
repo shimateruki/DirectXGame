@@ -72,18 +72,18 @@ public:
         auto property = Describe<Value>(label, id, minimum, maximum, visible);
         property.serializedPath = std::string("param.") + (options.parameterId[0] ? options.parameterId : id);
         const Object3d::EntityParameter fallback{};
-        property.defaultValue = defaults_.param_ ? (*defaults_.param_).*member : fallback.*member;
+        property.defaultValue = defaults_.GetParameters() ? (*defaults_.GetParameters()).*member : fallback.*member;
         property.enumLabels = std::move(choices);
         ApplyOptions(property, options);
         const Value defaultValue = property.defaultValue.get<Value>();
         property.getter = [member, defaultValue](const Object3d& object) -> nlohmann::json {
-            return object.param_ ? (*object.param_).*member : defaultValue;
+            return object.GetParameters() ? (*object.GetParameters()).*member : defaultValue;
         };
         property.setter = [member](Object3d& object, const nlohmann::json& json) {
             Value value{};
             if (!Assign(value, json)) return false;
-            if (!object.param_) object.param_.emplace();
-            (*object.param_).*member = std::move(value);
+            if (!object.GetParameters()) object.ResetParameters();
+            object.SetParameter(member, std::move(value));
             return true;
         };
         EditorPropertyRegistry::GetInstance()->Register(std::move(property));

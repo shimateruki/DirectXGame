@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/crown/CrownFinaleTuning.h"
+#include "Easing.h"
 #include "engine/utility/math/Math.h"
 
 #include <algorithm>
@@ -46,7 +47,7 @@ inline CrownBarrageCameraPose EvaluateCrownBarrageCamera(float seconds, const en
     if (shot == 0)
         return shots[0];
     const float blend = std::clamp((seconds - boundaries[shot]) / 0.16f, 0.0f, 1.0f);
-    const float eased = blend * blend * (3.0f - 2.0f * blend);
+    const float eased = Easing::SmoothStep(blend);
     return {shots[shot - 1].eye + (shots[shot].eye - shots[shot - 1].eye) * eased,
             shots[shot - 1].target + (shots[shot].target - shots[shot - 1].target) * eased,
             shots[shot - 1].fov + (shots[shot].fov - shots[shot - 1].fov) * eased};

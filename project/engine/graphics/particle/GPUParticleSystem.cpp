@@ -129,7 +129,7 @@ void GPUParticleSystem::CreateBuffer() {
     cameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
 
     dummyVertexBuffer_ = dxCommon_->CreateBufferResource(64);
-    engine::Vector3 dummyPos = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 dummyPos = engine::Vector3::ZERO;
     void* mapped = nullptr;
     dummyVertexBuffer_->Map(0, nullptr, &mapped);
     memcpy(mapped, &dummyPos, sizeof(engine::Vector3));
@@ -390,7 +390,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
         updateConfig.time = totalTime_;
         updateConfig.viewProj = vp;
         updateConfig.inverseViewProj = math.Inverse(vp);
-        updateConfig.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+        updateConfig.screenSize = { (float)WinApp::GetClientWidth(), (float)WinApp::GetClientHeight() };
         updateConfig.maxParticles = maxParticles_;
         configData_[0] = updateConfig;
 
@@ -424,7 +424,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
             auto& req = emitRequests_[i];
             req.config.viewProj = vp;
             req.config.inverseViewProj = math.Inverse(vp);
-            req.config.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+            req.config.screenSize = { (float)WinApp::GetClientWidth(), (float)WinApp::GetClientHeight() };
             req.config.deltaTime = 0.0f; // Emit pass does not progress physics
 
             // シーク中にCPU側へ溜めた要求は、初回Drawで年齢を付けて生成する。
@@ -484,7 +484,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     cameraData_->projection = projectionMatrix;
     cameraData_->softParticleFade = softParticleFade_;
     cameraData_->blendMode = blendModeIndex_;
-    cameraData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+    cameraData_->screenSize = { (float)WinApp::GetClientWidth(), (float)WinApp::GetClientHeight() };
     cameraData_->spriteSheetColumns = spriteSheetColumns_;
     cameraData_->spriteSheetRows = spriteSheetRows_;
     cameraData_->spriteSheetFrameCount = spriteSheetFrameCount_;

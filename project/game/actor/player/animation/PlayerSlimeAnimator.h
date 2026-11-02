@@ -27,6 +27,10 @@ class PlayerSlimeAnimator {
     void Reset(const engine::Vector3& baseScale, Player* player = nullptr);
 
     void SetMode(Mode mode);
+    void SetWhipPose(const engine::Vector3& scale, const engine::Vector3& rotation) {
+        whipPoseActive_ = true; whipVisualScale_ = scale; whipVisualRotation_ = rotation;
+    }
+    void ClearWhipPose() { whipPoseActive_ = false; }
 
     Mode GetMode() const { return mode_; }
 
@@ -103,6 +107,9 @@ class PlayerSlimeAnimator {
     static const char* GetStateName(Mode mode);
 
     // 通常移動、着地反動、能力モーションの時間は独立して進めます。
+    bool whipPoseActive_ = false;
+    engine::Vector3 whipVisualScale_{1.0f, 1.0f, 1.0f};
+    engine::Vector3 whipVisualRotation_{};
     Mode mode_ = Mode::Idle;
     float modeTimer_ = 0.0f;
     float runMotionTime_ = 0.0f;
@@ -122,7 +129,7 @@ class PlayerSlimeAnimator {
     float modeTransitionTimer_ = 0.0f;
     bool modeTransitionCapturePending_ = false;
     engine::Vector3 modeTransitionStartScale_ = {2.0f, 2.0f, 2.0f};
-    engine::Vector3 modeTransitionStartRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 modeTransitionStartRotation_ = engine::Vector3::ZERO;
 
     float jumpTakeoffStretchTimer_ = 0.0f;
     float landingHoldTimer_ = 0.0f;

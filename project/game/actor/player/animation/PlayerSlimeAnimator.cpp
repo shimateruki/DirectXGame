@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/actor/player/animation/PlayerSlimeAnimator.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/actor/player/Player.h"
 #include "VFXSequencer.h"
 #include "InputManager.h"
@@ -9,7 +11,7 @@
 #include <utility>
 
 namespace {
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kModeTransitionBlendDuration = 0.12f;
 constexpr float kJumpTakeoffStretchDuration = 0.18f;
 constexpr float kLandingHoldDuration = 0.08f;
@@ -19,12 +21,7 @@ constexpr float kGateReturnSlimeDuration = 1.12f;
 constexpr const char* kPlayerSlimeControllerPath = "Resources/json/animator/player_slime.json";
 constexpr const char* kLocomotionModeParameter = "LocomotionMode";
 
-// プレイヤーのスライム姿勢を終点で減速させる補間率を返します。
-float EaseOut(float t) {
-    // 補間率の外挿を防ぎ、終点へ向かって減速する二次曲線にする。
-    t = std::clamp(t, 0.0f, 1.0f);
-    return 1.0f - (1.0f - t) * (1.0f - t);
-}
+
 
 float HorizontalLength(const engine::Vector3& v) {
     // ジャンプ速度に影響されず走行アニメーションを選ぶため、XZ成分だけを測る。
@@ -39,6 +36,7 @@ void PlayerSlimeAnimator::Reset(const engine::Vector3& baseScale, Player* player
         ReloadController();
     }
 
+    ClearWhipPose();
     baseScale_ = baseScale;
     mode_ = Mode::Idle;
     modeTimer_ = 0.0f;
@@ -322,7 +320,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     if (impulseTimer_ > 0.0f) {
         impulseTimer_ = (std::max)(0.0f, impulseTimer_ - deltaTime);
         const float t = impulseTimer_ / (std::max)(impulseDuration_, 0.01f);
-        const float rate = EaseOut(t);
+        const float rate = Easing::OutQuad01(t);
         targetScale = {engine::Math::Lerp(targetScale.x, impulseScale_.x, rate),
                        engine::Math::Lerp(targetScale.y, impulseScale_.y, rate),
                        engine::Math::Lerp(targetScale.z, impulseScale_.z, rate)};
@@ -348,6 +346,15 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     float abilityShearPivotY = 0.0f;
     UpdateAbilityMotion(deltaTime, abilityVisualScale, abilityVisualRotation, visualOffset, abilityVisualShear,
                         abilityShearPivotY);
+    // 鞭は物理Transformを潰さず、描画だけで溜め・ひねり・振り抜きを表現します。
+    if (whipPoseActive_ && mode_ == Mode::ShootHook) {
+        targetScale = baseScale_;
+        targetRotation = {0.0f, player->GetRotation().y, 0.0f};
+        abilityVisualScale = whipVisualScale_;
+        abilityVisualRotation = whipVisualRotation_;
+        abilityVisualShear = {};
+        visualOffset = {};
+    }
     if (player->GetMeshRenderer()) {
         player->GetMeshRenderer()->SetVisualTransform(abilityVisualScale, abilityVisualRotation, visualOffset);
         player->GetMeshRenderer()->SetVisualShear(abilityVisualShear, abilityShearPivotY);

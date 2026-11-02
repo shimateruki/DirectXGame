@@ -33,12 +33,12 @@ void GimmickMagmaHazard::Initialize(engine::Object3dCommon* common, const std::s
     collider.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(collider);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->speed = 12.0f;
-    param_->interval = 0.8f;
+    SetParameter(&engine::EntityParameter::speed, 12.0f);
+    SetParameter(&engine::EntityParameter::interval, 0.8f);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickMagmaHazard;
@@ -51,8 +51,8 @@ void GimmickMagmaHazard::Initialize(engine::Object3dCommon* common, const std::s
 
 void GimmickMagmaHazard::Update(float deltaTime) {
     // 配置データがない場合も既定値で危険域を更新できるようにする。
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
     const bool isPlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
@@ -88,19 +88,19 @@ bool GimmickMagmaHazard::OnCollision(engine::Object3d* /*other*/) {
 
 float GimmickMagmaHazard::GetDamage() const {
     // 共通パラメータのspeed欄をダメージ量として使い、負値は0へ丸める。
-    return param_.has_value() ? (std::max)(0.0f, param_->speed) : 12.0f;
+    return GetParameters().has_value() ? (std::max)(0.0f, GetParameters()->speed) : 12.0f;
 }
 
 float GimmickMagmaHazard::GetDamageInterval() const {
     // 接触中の連続被弾を防ぐため、間隔は最低0.1秒に制限する。
-    return param_.has_value() ? (std::max)(0.1f, param_->interval) : 0.8f;
+    return GetParameters().has_value() ? (std::max)(0.1f, GetParameters()->interval) : 0.8f;
 }
 
 std::unique_ptr<engine::Object3d> GimmickMagmaHazard::Clone() const {
     // 複製先を初期化してから危険域の設定と配置を移す。
     auto clone = std::make_unique<GimmickMagmaHazard>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }

@@ -27,7 +27,7 @@ void PlayerStatePullObject::Enter(Player* player) {
     player->SetVelocity({0.0f, 0.0f, 0.0f});
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
     player->SetSlimeAnimationDirection(targetPos_ - player->GetWorldPosition());
-    hookTipPos_ = player->GetWorldPosition();
+    hookTipPos_ = alreadyHit_ && targetObject_ ? targetObject_->GetWorldPosition() : player->GetWorldPosition();
     timer_ = 0.0f;
     pullStarted_ = false;
 
@@ -41,6 +41,11 @@ void PlayerStatePullObject::Enter(Player* player) {
 }
 
 void PlayerStatePullObject::Update(Player* player, float deltaTime) {
+    // シーンから除去された対象を逆参照せず、通常操作へ戻します。
+    const auto& registered = CollisionManager::GetInstance()->GetObjects();
+    if (targetObject_ && std::find(registered.begin(), registered.end(), targetObject_) == registered.end())
+        targetObject_ = nullptr;
+
     if (!player || !targetObject_) {
         if (player)
             player->ChangeState(std::make_unique<PlayerStateIdle>());
@@ -58,7 +63,8 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
         player->SetSlimeAnimationDirection(targetPos - player->GetWorldPosition());
 
-        if (dist < 3.0f) {
+        if (alreadyHit_ || dist < 3.0f) {
+            alreadyHit_ = false;
             hookTipPos_ = targetPos;
 
             // 専用ブロックだけが位置移動を持ち、通常オブジェクトには演出のみ行う。
@@ -89,6 +95,11 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStatePullObject::Exit(Player* player) {
+    // シーンから除去された対象を逆参照せず、通常操作へ戻します。
+    const auto& registered = CollisionManager::GetInstance()->GetObjects();
+    if (targetObject_ && std::find(registered.begin(), registered.end(), targetObject_) == registered.end())
+        targetObject_ = nullptr;
+
     // 成否にかかわらず、入力とフックマーカーの可視・回転モードを戻す。
     if (!player)
         return;

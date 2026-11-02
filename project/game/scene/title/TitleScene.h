@@ -211,27 +211,27 @@ class TitleScene : public BaseScene, public ISceneGameplayAccess {
     engine::Sprite* mainMenuPromptSprite_ = nullptr;
 
     // 演出でサイズ・位置を変えても戻せるように保存した初期配置。
-    engine::Vector2 startTextBaseSize_ = {0.0f, 0.0f};
-    engine::Vector2 settingTextBaseSize_ = {0.0f, 0.0f};
-    engine::Vector2 startTextBasePosition_ = {0.0f, 0.0f};
-    engine::Vector2 settingTextBasePosition_ = {0.0f, 0.0f};
-    engine::Vector2 mainMenuArrowBaseSize_ = {0.0f, 0.0f};
-    engine::Vector2 mainMenuCursorBaseSize_ = {0.0f, 0.0f};
-    engine::Vector2 mainMenuPromptBaseSize_ = {0.0f, 0.0f};
+    engine::Vector2 startTextBaseSize_ = engine::Vector2::ZERO;
+    engine::Vector2 settingTextBaseSize_ = engine::Vector2::ZERO;
+    engine::Vector2 startTextBasePosition_ = engine::Vector2::ZERO;
+    engine::Vector2 settingTextBasePosition_ = engine::Vector2::ZERO;
+    engine::Vector2 mainMenuArrowBaseSize_ = engine::Vector2::ZERO;
+    engine::Vector2 mainMenuCursorBaseSize_ = engine::Vector2::ZERO;
+    engine::Vector2 mainMenuPromptBaseSize_ = engine::Vector2::ZERO;
 
     // メニュー選択に応じて基準配置へ加える矢印・カーソルの差分。
-    engine::Vector2 mainMenuArrowOffset_ = {0.0f, 0.0f};
-    engine::Vector2 mainMenuCursorOffset_ = {0.0f, 0.0f};
-    engine::Vector2 mainMenuPromptBasePosition_ = {0.0f, 0.0f};
+    engine::Vector2 mainMenuArrowOffset_ = engine::Vector2::ZERO;
+    engine::Vector2 mainMenuCursorOffset_ = engine::Vector2::ZERO;
+    engine::Vector2 mainMenuPromptBasePosition_ = engine::Vector2::ZERO;
 
     // 配置済み主人公は借用し、カメラ追従用の補助Objectだけ所有する。
     engine::Object3d* titleHeroSlime_ = nullptr;
     std::unique_ptr<engine::Object3d> titleCameraAnchor_ = nullptr;
 
     // タイトル演出開始前に記録する主人公の基準姿勢。
-    engine::Vector3 titleHeroBasePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 titleHeroBasePosition_ = engine::Vector3::ZERO;
     engine::Vector3 titleHeroBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 titleHeroBaseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 titleHeroBaseRotation_ = engine::Vector3::ZERO;
     bool titleHeroBaseCaptured_ = false;
 
     // 主人公の演出シーケンスの再生時刻。
@@ -240,8 +240,8 @@ class TitleScene : public BaseScene, public ISceneGameplayAccess {
     // 文字 Sprite の借用参照と基準配置。導入アニメーションはこの基準へオフセットを加える。
     struct TitleLogoGlyph {
         engine::Sprite* sprite = nullptr;
-        engine::Vector2 basePosition = {0.0f, 0.0f};
-        engine::Vector2 baseSize = {0.0f, 0.0f};
+        engine::Vector2 basePosition = engine::Vector2::ZERO;
+        engine::Vector2 baseSize = engine::Vector2::ZERO;
         float delay = 0.0f;
     };
 

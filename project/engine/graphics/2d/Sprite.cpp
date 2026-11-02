@@ -17,7 +17,7 @@ std::atomic<uint64_t> gNextSpriteReplayId{ 0x8000000000000001ull };
 engine::Matrix4x4 MakeSpriteLocalMatrix(const Sprite* sprite) {
 	// Sprite未指定時も親子行列の計算に使える単位姿勢を返す。
 	engine::Math math;
-	engine::Vector2 position = sprite ? sprite->GetPosition() : engine::Vector2{ 0.0f, 0.0f };
+	engine::Vector2 position = sprite ? sprite->GetPosition() : engine::Vector2::ZERO;
 	float rotation = sprite ? sprite->GetRotation() : 0.0f;
 	return math.MakeAffineMatrix(
 		{ 1.0f, 1.0f, 1.0f },
@@ -243,7 +243,7 @@ void Sprite::Update() {
 	engine::Math math;
 	engine::Matrix4x4 worldMatrix = MakeSpriteWorldMatrix(this);
 	engine::Matrix4x4 viewMatrix = math.MakeIdentity4x4();
-	engine::Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 100.0f);
+	engine::Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::GetClientWidth(), (float)WinApp::GetClientHeight(), 0.0f, 100.0f);
 	engine::Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
 
 	wvpData_->WVP = worldViewProjectionMatrix;

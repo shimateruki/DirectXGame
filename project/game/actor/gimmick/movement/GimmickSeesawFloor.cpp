@@ -70,8 +70,8 @@ bool GimmickSeesawFloor::OnCollision(engine::Object3d* other) {
 std::unique_ptr<engine::Object3d> GimmickSeesawFloor::Clone() const {
     // 揺れの途中状態は持ち越さず、配置と設定から新しい床を作る。
     auto newObj = std::make_unique<GimmickSeesawFloor>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

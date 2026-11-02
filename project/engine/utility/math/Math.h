@@ -7,6 +7,8 @@ namespace engine {
 /// <summary>二次元の座標や方向を表す浮動小数ベクトル。</summary>
 struct Vector2
 {
+	/// <summary>全成分が0の値。座標や速度の初期化に使う。</summary>
+	static const Vector2 ZERO;
 	float x;
 	float y;
 };
@@ -14,6 +16,8 @@ struct Vector2
 /// <summary>三次元の座標や方向を表す浮動小数ベクトル。</summary>
 struct Vector3
 {
+	/// <summary>全成分が0の値。座標や速度の初期化に使う。</summary>
+	static const Vector3 ZERO;
 	float x;
 	float y;
 	float z;
@@ -32,11 +36,27 @@ struct Vector3
 /// <summary>四次元のベクトル。RGBA色や同次座標にも使う。</summary>
 struct Vector4
 {
+	/// <summary>全成分が0の値。座標や速度の初期化に使う。</summary>
+	static const Vector4 ZERO;
 	float x;
 	float y;
 	float z;
 	float w;
 };
+
+
+// インスタンスの大きさや集成体初期化を変えず、コンパイル時に使える共有値を定義する。
+inline constexpr Vector2 Vector2::ZERO{0.0f, 0.0f};
+inline constexpr Vector3 Vector3::ZERO{0.0f, 0.0f, 0.0f};
+inline constexpr Vector4 Vector4::ZERO{0.0f, 0.0f, 0.0f, 0.0f};
+
+namespace Colors {
+/// <summary>不透明な白。描画色の初期値に使う。</summary>
+inline constexpr Vector4 White{1.0f, 1.0f, 1.0f, 1.0f};
+/// <summary>不透明な黒と完全透明色。アルファ値の違いを明示する。</summary>
+inline constexpr Vector4 Black{0.0f, 0.0f, 0.0f, 1.0f};
+inline constexpr Vector4 Transparent = Vector4::ZERO;
+}
 
 /// <summary>四成分で三次元回転を表すクォータニオン。</summary>
 struct Quaternion {

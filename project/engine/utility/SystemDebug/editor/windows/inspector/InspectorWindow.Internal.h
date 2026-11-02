@@ -1,6 +1,7 @@
 ﻿#pragma once
 // 分割実装だけが使う補助関数の宣言です。状態を重複して持たせません。
 #include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.h"
+#include <numbers>
 #include "engine/utility/SystemDebug/editor/windows/inspector/InspectorTextureCatalog.h"
 #include "DebugEditor.h"
 #include "SceneManager.h"
@@ -30,13 +31,10 @@
 #include <cmath>
 #include <vector>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
-static const float PI = (float)M_PI;
-static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
-static float ToDegrees(float radians) { return radians * (180.0f / PI); }
+
+static float ToRadians(float degrees) { return degrees * (std::numbers::pi_v<float> / 180.0f); }
+static float ToDegrees(float radians) { return radians * (180.0f / std::numbers::pi_v<float>); }
 namespace fs = std::filesystem;
 
 namespace InspectorWindowImplementation {

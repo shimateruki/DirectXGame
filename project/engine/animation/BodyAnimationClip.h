@@ -15,8 +15,8 @@ public:
     struct Key {
         // timeは秒、rotateはラジアン、scaleは基準姿勢への倍率。せん断は見た目だけに適用する。
         float time = 0.0f;
-        engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 translate = engine::Vector3::ZERO;
+        engine::Vector3 rotate = engine::Vector3::ZERO;
         engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
         engine::Vector3 shear = {};
         float shearPivotY = 0.0f;
@@ -25,8 +25,8 @@ public:
 
     /// <summary>Evaluateが計算した任意時刻の身体姿勢。</summary>
     struct Sample {
-        engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 translate = engine::Vector3::ZERO;
+        engine::Vector3 rotate = engine::Vector3::ZERO;
         engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
         engine::Vector3 shear = {};
         float shearPivotY = 0.0f;

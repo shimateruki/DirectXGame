@@ -8,8 +8,8 @@ namespace engine { class Object3d; }
 /// <summary>フックで対象物を引き寄せる状態とロープ表示を管理します。</summary>
 class PlayerStatePullObject : public IAnimationState {
   public:
-    PlayerStatePullObject(engine::Object3d* targetObject, const engine::Vector3& targetPos)
-        : targetObject_(targetObject), targetPos_(targetPos) {}
+    PlayerStatePullObject(engine::Object3d* targetObject, const engine::Vector3& targetPos, bool alreadyHit = false)
+        : targetObject_(targetObject), targetPos_(targetPos), alreadyHit_(alreadyHit) {}
 
     // フックの発射中は自身の移動を止め、マーカーをプレイヤー位置から伸ばす。
     void Enter(Player* player) override;
@@ -20,6 +20,7 @@ class PlayerStatePullObject : public IAnimationState {
     void Exit(Player* player) override;
 
   private:
+    bool alreadyHit_ = false;
     // 両端の中点・方向・距離から細長い表示モデルの Transform を作る。
     void UpdateRopeMarker(Player* player, const engine::Vector3& endPos, float thickness);
 

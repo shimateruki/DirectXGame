@@ -128,8 +128,8 @@ private:
     int previewHeight_ = 1;
     uint32_t previewTextureHandle_ = 0;
 
-    engine::Vector2 gameViewOffset_ = { 0.0f, 0.0f };
-    engine::Vector2 gameViewSize_ = { 0.0f, 0.0f };
+    engine::Vector2 gameViewOffset_ = engine::Vector2::ZERO;
+    engine::Vector2 gameViewSize_ = engine::Vector2::ZERO;
 
     // 書き出し後にシーンへ追加するSprite情報。
     bool pendingAddSprite_ = false;

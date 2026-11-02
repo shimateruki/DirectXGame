@@ -1,5 +1,6 @@
 #pragma once
 #include "AttackSequenceData.h"
+#include <numbers>
 #include "engine/utility/math/Math.h"
 
 // ギズモのワールド移動を、保存形式である右・上・前の相対位置へ戻します。
@@ -15,7 +16,7 @@ inline void RotateEvent(AttackSequenceEvent& event, engine::Vector3 ownerSize, f
     const float forward = event.forward + ownerSize.z * event.sizeForward;
     event.right = right * std::cos(deltaYaw) - forward * std::sin(deltaYaw) - ownerSize.x * event.sizeRight;
     event.forward = right * std::sin(deltaYaw) + forward * std::cos(deltaYaw) - ownerSize.z * event.sizeForward;
-    event.yawDegrees = std::remainder(event.yawDegrees + deltaYaw * 57.295779513f,360.0f);
+    event.yawDegrees = std::remainder(event.yawDegrees + deltaYaw * (180.0f / std::numbers::pi_v<float>),360.0f);
 }
 
 // 現在時刻へキーを置き、近接する既存キーの時刻と並び順を保ちます。

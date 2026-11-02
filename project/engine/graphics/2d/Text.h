@@ -44,7 +44,7 @@ private:
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
 
     std::string text_ = "";
-    engine::Vector2 position_ = { 0.0f, 0.0f };
+    engine::Vector2 position_ = engine::Vector2::ZERO;
     engine::Vector2 scale_ = { 1.0f, 1.0f };
 
     // フォントテクスチャの1文字分のサイズ

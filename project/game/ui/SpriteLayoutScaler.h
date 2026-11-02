@@ -100,8 +100,8 @@ inline LayoutScale Make(const nlohmann::json& root) {
     scale.designResolution.x = AtLeastOne(scale.designResolution.x);
     scale.designResolution.y = AtLeastOne(scale.designResolution.y);
 
-    scale.ratio = {static_cast<float>(WinApp::kClientWidth) / scale.designResolution.x,
-                   static_cast<float>(WinApp::kClientHeight) / scale.designResolution.y};
+    scale.ratio = {static_cast<float>(WinApp::GetClientWidth()) / scale.designResolution.x,
+                   static_cast<float>(WinApp::GetClientHeight()) / scale.designResolution.y};
 
     return scale;
 }
@@ -130,8 +130,8 @@ inline engine::Vector2 ScaleDesignPosition(const engine::Vector2& value, const e
     scale.designResolution = designResolution;
     scale.designResolution.x = AtLeastOne(scale.designResolution.x);
     scale.designResolution.y = AtLeastOne(scale.designResolution.y);
-    scale.ratio = {static_cast<float>(WinApp::kClientWidth) / scale.designResolution.x,
-                   static_cast<float>(WinApp::kClientHeight) / scale.designResolution.y};
+    scale.ratio = {static_cast<float>(WinApp::GetClientWidth()) / scale.designResolution.x,
+                   static_cast<float>(WinApp::GetClientHeight()) / scale.designResolution.y};
     return ScalePosition(value, scale);
 }
 
@@ -142,19 +142,19 @@ inline engine::Vector2 ScaleDesignSize(const engine::Vector2& value, const engin
     scale.designResolution = designResolution;
     scale.designResolution.x = AtLeastOne(scale.designResolution.x);
     scale.designResolution.y = AtLeastOne(scale.designResolution.y);
-    scale.ratio = {static_cast<float>(WinApp::kClientWidth) / scale.designResolution.x,
-                   static_cast<float>(WinApp::kClientHeight) / scale.designResolution.y};
+    scale.ratio = {static_cast<float>(WinApp::GetClientWidth()) / scale.designResolution.x,
+                   static_cast<float>(WinApp::GetClientHeight()) / scale.designResolution.y};
     return ScaleSize(value, scale);
 }
 
 inline float ScaleDesignX(float value, float designWidth = 1920.0f) {
     designWidth = AtLeastOne(designWidth);
-    return value * static_cast<float>(WinApp::kClientWidth) / designWidth;
+    return value * static_cast<float>(WinApp::GetClientWidth()) / designWidth;
 }
 
 inline float ScaleDesignY(float value, float designHeight = 1080.0f) {
     designHeight = AtLeastOne(designHeight);
-    return value * static_cast<float>(WinApp::kClientHeight) / designHeight;
+    return value * static_cast<float>(WinApp::GetClientHeight()) / designHeight;
 }
 
 } // namespace SpriteLayoutScaler

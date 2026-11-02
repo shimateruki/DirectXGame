@@ -42,7 +42,7 @@ void EnemyFalseKingSlime::Initialize(engine::Object3dCommon* common, const std::
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kOBB);
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
     SyncCollisionBounds();
 }
 
@@ -68,7 +68,7 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
     }
 
     // 最終局面のHP消滅は通常の死亡処理へ渡す前に、専用決着演出へ引き継ぎます。
-    if (finalArenaStarted_ && battlePhase_ == 3 && param_ && param_->hp <= 0 && !isDead) {
+    if (finalArenaStarted_ && battlePhase_ == 3 && GetParameters() && GetParameters()->hp <= 0 && !IsDead()) {
         auto* scene=dynamic_cast<GamePlayScene*>(SceneManager::GetInstance()->GetCurrentScene());
         if (scene && scene->StartCrownDefeat(this))
             return;
@@ -89,8 +89,8 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
     // デバッグ要求は通常攻撃プレビューが終わってから一度だけ段階を切り替えます。
     if (pendingDebugSeals_ && debugPreviewAttackId_.empty()) {
         pendingDebugSeals_ = false;
-        if (param_)
-            param_->hp = GetEncounterMaximumHp() * 0.67f;
+        if (GetParameters())
+            SetParameter(&engine::EntityParameter::hp, GetEncounterMaximumHp() * 0.67f);
         BeginPhaseShift(2);
     }
 
@@ -108,7 +108,7 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
 
     // 封印段階は通常AIと移動を止め、封印・詠唱の進行だけを更新します。
     if (battlePhase_ == 2 &&
-        (debugPreviewAttackId_.empty() || debugPreviewAttackId_ == kSealBarragePreviewId) && !isDead) {
+        (debugPreviewAttackId_.empty() || debugPreviewAttackId_ == kSealBarragePreviewId) && !IsDead()) {
         UpdateCrownSeals(deltaTime);
         SetVelocity({});
         ApplyBossAnimation(deltaTime);
@@ -117,7 +117,7 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
         return;
     }
 
-    if (isDead || !GetIsVisible()) {
+    if (IsDead() || !GetIsVisible()) {
         HideAttackTelegraph();
         ClearTransientVisuals();
         BaseEnemy::Update(deltaTime);
@@ -141,9 +141,9 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
     engine::Vector3 targetDirection = lockedDirection_;
     float targetDistance = 9999.0f;
 
-    if (target_) {
-        targetDirection = NormalizePlanar(target_->GetWorldPosition() - GetWorldPosition());
-        targetDistance = PlanarDistance(target_->GetWorldPosition(), GetWorldPosition());
+    if (GetTarget()) {
+        targetDirection = NormalizePlanar(GetTarget()->GetWorldPosition() - GetWorldPosition());
+        targetDistance = PlanarDistance(GetTarget()->GetWorldPosition(), GetWorldPosition());
     }
 
     UpdateBossTargetEngagement(targetDistance);
@@ -155,18 +155,18 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
     UpdateBehavior(deltaTime, targetDirection, targetDistance, velocity);
 
     // 待機中の追跡だけを平滑化し、地面のない方向へは次の一歩を出しません。
-    if (attackState_ == AttackState::Idle && locomotionPhase_ == LocomotionPhase::None && target_ && param_.has_value()) {
+    if (attackState_ == AttackState::Idle && locomotionPhase_ == LocomotionPhase::None && GetTarget() && GetParameters().has_value()) {
         velocity = CombatMath::SmoothPlanarVelocity(previousVelocity, velocity, deltaTime, 4.5f);
         const engine::Vector3 candidate = GetTranslate() + engine::Vector3{velocity.x * 0.48f, 0.0f, velocity.z * 0.48f};
 
-        if (isGrounded_ && !CombatGroundQuery::CanWalkTo(GetTranslate(), candidate, this, {5.0f, 14.0f}, 1.4f)) {
+        if (IsGrounded() && !CombatGroundQuery::CanWalkTo(GetTranslate(), candidate, this, {5.0f, 14.0f}, 1.4f)) {
             velocity.x = 0.0f;
             velocity.z = 0.0f;
         }
     }
 
     // 移動時は見た目の弾みだけを使い、周期的な実座標のジャンプを止めます。
-    if (attackState_ == AttackState::Idle && locomotionPhase_ == LocomotionPhase::None && isGrounded_) {
+    if (attackState_ == AttackState::Idle && locomotionPhase_ == LocomotionPhase::None && IsGrounded()) {
         travelPhase_ += SlimeBounceAnimator::PlanarSpeed(velocity) * deltaTime * 1.7f;
     }
     SetVelocity(velocity);
@@ -350,11 +350,11 @@ void EnemyFalseKingSlime::OnSwitchEvent(bool active) {
 std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::Clone() const {
     // 描画と衝突資源を複製先で作り、配置設定だけを引き継ぎます。
     auto clone = std::make_unique<EnemyFalseKingSlime>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     clone->baseScale_ = baseScale_;
     clone->hasBaseScale_ = true;
     return clone;
@@ -680,7 +680,7 @@ void EnemyFalseKingSlime::UpdateBehavior(float deltaTime, const engine::Vector3&
         return;
     }
 
-    if (!target_ || !param_.has_value()) {
+    if (!GetTarget() || !GetParameters().has_value()) {
         const float verticalVelocity = velocity.y;
         velocity = CalculateWanderVelocity(deltaTime, 0.34f, 0.28f);
         velocity.y = verticalVelocity;
@@ -692,7 +692,7 @@ void EnemyFalseKingSlime::UpdateBehavior(float deltaTime, const engine::Vector3&
 
     // 攻撃プレビューでは発見リアクションを挟まず、選択した攻撃の予兆へ直行します。
     if (debugPreviewAttackId_.empty() &&
-        UpdateNoticeReaction(deltaTime, targetDistance, detectionRange_, targetDirection)) {
+        UpdateNoticeReaction(deltaTime, targetDistance, GetDetectionRange(), targetDirection)) {
         return;
     }
 
@@ -702,13 +702,13 @@ void EnemyFalseKingSlime::UpdateBehavior(float deltaTime, const engine::Vector3&
     const EnemyAttackDefinition& planned = GetAttackDefinition(GetAttackId(plannedAttack));
     const bool inRange = targetDistance >= planned.minRange && targetDistance <= planned.maxRange;
 
-    if (IsBossTargetEngaged() && attackCooldown_ <= 0.0f && inRange && isGrounded_) {
+    if (IsBossTargetEngaged() && attackCooldown_ <= 0.0f && inRange && IsGrounded()) {
         StartAttack(plannedAttack, targetDirection);
         return;
     }
 
     // 攻撃プレビューには移動用の床がないため、本番の位置取りだけを進めます。
-    if (!debugPreviewAttackId_.empty() || !isGrounded_ || locomotionCooldown_ > 0.0f) {
+    if (!debugPreviewAttackId_.empty() || !IsGrounded() || locomotionCooldown_ > 0.0f) {
         return;
     }
 
@@ -722,7 +722,7 @@ void EnemyFalseKingSlime::UpdateBehavior(float deltaTime, const engine::Vector3&
         : (tooClose ? NormalizePlanar(targetDirection * -1.0f + lateral * 0.18f) : lateral);
     const float distance = farAway
         ? std::clamp(targetDistance - preferredDistance, 2.4f, 4.6f)
-        : std::clamp(param_->speed * 0.55f, 0.80f, 1.35f);
+        : std::clamp(GetParameters()->speed * 0.55f, 0.80f, 1.35f);
 
     ++locomotionStepSerial_;
     if (!BeginLocomotion(moveDirection, distance, farAway)) {
@@ -768,11 +768,11 @@ bool EnemyFalseKingSlime::BeginLocomotion(const engine::Vector3& direction, floa
     locomotionEnd_ = {candidate.x, start.y + endHit.hitPoint.y - startHit.hitPoint.y, candidate.z};
     locomotionDirection_ = planarDirection;
     locomotionLeap_ = leap;
-    locomotionArcHeight_ = leap ? std::clamp(param_->jumpPower * 0.055f, 0.95f, 1.50f) : 0.0f;
+    locomotionArcHeight_ = leap ? std::clamp(GetParameters()->jumpPower * 0.055f, 0.95f, 1.50f) : 0.0f;
     const float travelDistance = PlanarDistance(start, locomotionEnd_);
     locomotionTravelDuration_ = leap
-        ? std::clamp(travelDistance / (std::max)(6.5f, param_->speed * 3.0f), 0.44f, 0.65f)
-        : std::clamp(travelDistance / (std::max)(3.0f, param_->speed * 1.8f), 0.24f, 0.36f);
+        ? std::clamp(travelDistance / (std::max)(6.5f, GetParameters()->speed * 3.0f), 0.44f, 0.65f)
+        : std::clamp(travelDistance / (std::max)(3.0f, GetParameters()->speed * 1.8f), 0.24f, 0.36f);
     locomotionTimer_ = 0.0f;
     locomotionPhase_ = LocomotionPhase::Windup;
     return true;
@@ -853,7 +853,7 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const engine::Vector3& ta
     currentAttack_ = kind;
     attackState_ = AttackState::Windup;
     lockedDirection_ = NormalizePlanar(targetDirection);
-    lockedTargetPosition_ = target_ ? FindGroundPoint(target_->GetWorldPosition())
+    lockedTargetPosition_ = GetTarget() ? FindGroundPoint(GetTarget()->GetWorldPosition())
                                     : FindGroundPoint(GetTranslate() + lockedDirection_ * 9.0f);
     attackStartPosition_ = FindGroundPoint(GetTranslate());
     attackEndPosition_ = attackStartPosition_;
@@ -929,7 +929,7 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const engine::Vector3& ta
                               : (std::max)(0.0f, attack.activeDuration - 0.24f);
         spellChant_ = std::make_unique<BossChantVisual>();
 
-        if (!spellChant_->Start(common_, std::move(style))) {
+        if (!spellChant_->Start(GetObjectCommon(), std::move(style))) {
             spellChant_.reset();
         }
     }
@@ -974,11 +974,11 @@ void EnemyFalseKingSlime::UpdateWindup(float deltaTime, const engine::Vector3& t
     const engine::Vector4 warningColor =
         battlePhase_ >= 3 ? engine::Vector4{0.90f, 0.18f, 1.0f, 0.86f} : engine::Vector4{1.0f, 0.72f, 0.12f, 0.86f};
 
-    if (attackTimer_ > attack.warningLeadTime && target_ && currentAttack_ != AttackKind::CrownLanceRain &&
+    if (attackTimer_ > attack.warningLeadTime && GetTarget() && currentAttack_ != AttackKind::CrownLanceRain &&
         currentAttack_ != AttackKind::UmbraFlame && currentAttack_ != AttackKind::AstralReaver &&
         currentAttack_ != AttackKind::NightfallLances) {
         lockedDirection_ = NormalizePlanar(targetDirection);
-        lockedTargetPosition_ = FindGroundPoint(target_->GetWorldPosition());
+        lockedTargetPosition_ = FindGroundPoint(GetTarget()->GetWorldPosition());
 
         if (currentAttack_ == AttackKind::CrownLanceRain) {
             PrepareLanceTargets(false);
@@ -1488,7 +1488,7 @@ void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
     params.verticalStretch = 0.23f;
     params.airborneStretch = 0.33f;
 
-    engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+    engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     engine::Vector3 targetRotation = {authoredRotation_.x, GetRotation().y, authoredRotation_.z};
 
     if (attackState_ == AttackState::Idle && locomotionPhase_ != LocomotionPhase::None) {
@@ -1520,7 +1520,7 @@ void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
             targetScale = {baseScale_.x * (1.0f + squash * 0.75f), baseScale_.y * (1.0f - squash),
                            baseScale_.z * (1.0f + squash * 0.75f)};
         }
-    } else if (attackState_ == AttackState::Idle && isGrounded_) {
+    } else if (attackState_ == AttackState::Idle && IsGrounded()) {
         // 移動距離に合わせて接地した体を伸縮させ、停止中は小さな呼吸だけを残す。
         const float speedRate = std::clamp(SlimeBounceAnimator::PlanarSpeed(GetVelocity()) / 3.4f, 0.0f, 1.0f);
         const float wave = std::sin(travelPhase_);
@@ -1646,7 +1646,7 @@ void EnemyFalseKingSlime::UpdateRoyalGlow(float deltaTime) {
                                             : engine::Vector4{0.74f, 0.58f, 1.0f, authoredColor_.w};
     }
 
-    defaultColor_ = phaseColor;
+    SetDefaultColor(phaseColor);
     SetColor(phaseColor);
     SetEmissive(authoredEmissive_ + static_cast<float>(battlePhase_ - 1) * 0.34f + (attacking ? 0.52f : 0.0f) +
                 pulse * 0.12f);

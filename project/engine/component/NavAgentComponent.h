@@ -115,7 +115,7 @@ private:
     std::vector<engine::Vector3> currentPath_;
     std::size_t waypointIndex_ = 0;
     float repathTimer_ = 0.0f;
-    engine::Vector3 lastTargetPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 lastTargetPosition_ = engine::Vector3::ZERO;
     bool hasLastTarget_ = false;
     bool lastPathSucceeded_ = false;
 };

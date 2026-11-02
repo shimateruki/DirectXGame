@@ -85,7 +85,7 @@ public:
     struct QuaternionTransform {
         engine::Vector3 scale = {1.0f, 1.0f, 1.0f};
         engine::Quaternion rotate = {0.0f, 0.0f, 0.0f, 1.0f};
-        engine::Vector3 translate = {0.0f, 0.0f, 0.0f};
+        engine::Vector3 translate = engine::Vector3::ZERO;
     };
 
     /// <summary>スケルトン内の一関節と、親子関係および計算済み行列を保持する。</summary>
@@ -137,7 +137,7 @@ public:
         uint32_t normalMapHandle = 0;
         uint32_t ormMapHandle = 0;
 
-        engine::Vector4 baseColorFactor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        engine::Vector4 baseColorFactor = engine::Colors::White;
         float roughness = 0.5f;
         float metallic = 0.0f;
 
@@ -377,7 +377,7 @@ private:
 
     engine::Math math_;
     engine::Vector3 size_ = { 1.0f, 1.0f, 1.0f };
-    engine::Vector3 center_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 center_ = engine::Vector3::ZERO;
 
     // ボーン行列のGPU転送状態。
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
@@ -388,7 +388,7 @@ private:
     bool computeSkinningDirty_ = true;
     bool computeSkinningOutputReady_ = false;
 
-    engine::Vector3 localAabbMin_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 localAabbMax_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 localAabbMin_ = engine::Vector3::ZERO;
+    engine::Vector3 localAabbMax_ = engine::Vector3::ZERO;
 };
 

@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Character.h"
+#include "Easing.h"
 #include "CollisionConfig.h"
 #include "Math.h"
 #include <algorithm>
@@ -11,12 +12,12 @@
 void Character::Update(float deltaTime) {
     engine::Object3d::Update(deltaTime);
 
-    if (!param_.has_value()) {
+    if (!GetParameters().has_value()) {
         return;
     }
 
-    if (param_->hp <= 0) {
-        isDead = true;
+    if (GetParameters()->hp <= 0) {
+        SetDead(true);
     }
 
     if (motorSuspended_) {
@@ -26,12 +27,12 @@ void Character::Update(float deltaTime) {
 
     SyncCharacterMotorSettings();
     characterMotor_.BeginFrame(isGrounded_);
-    characterMotor_.ApplyGravity(velocity_, param_->gravity, param_->maxFallSpeed, deltaTime);
+    characterMotor_.ApplyGravity(velocity_, GetParameters()->gravity, GetParameters()->maxFallSpeed, deltaTime);
 
     if (externalImpulseTimer_ > 0.0f) {
         const float duration = (std::max)(externalImpulseDuration_, 0.001f);
         const float remaining = std::clamp(externalImpulseTimer_ / duration, 0.0f, 1.0f);
-        const float weight = remaining * remaining * (3.0f - 2.0f * remaining);
+        const float weight = Easing::SmoothStep(remaining);
         velocity_.x = engine::Math::Lerp(velocity_.x, externalImpulseVelocity_.x, weight);
         velocity_.z = engine::Math::Lerp(velocity_.z, externalImpulseVelocity_.z, weight);
 
@@ -50,17 +51,17 @@ void Character::Update(float deltaTime) {
 
 void Character::SyncCharacterMotorSettings() {
     // ステータスの移動設定を毎フレーム Motor へ同期し、編集値を即座に反映する。
-    if (!param_.has_value()) {
+    if (!GetParameters().has_value()) {
         return;
     }
 
     CharacterMotorSettings settings;
-    settings.continuousCollision = param_->motorContinuousCollision;
-    settings.snapToGround = param_->motorSnapToGround;
-    settings.maxSlopeDegrees = param_->motorMaxSlopeDegrees;
-    settings.stepHeight = param_->motorStepHeight;
-    settings.groundProbeDistance = param_->motorGroundProbeDistance;
-    settings.skinWidth = param_->motorSkinWidth;
+    settings.continuousCollision = GetParameters()->motorContinuousCollision;
+    settings.snapToGround = GetParameters()->motorSnapToGround;
+    settings.maxSlopeDegrees = GetParameters()->motorMaxSlopeDegrees;
+    settings.stepHeight = GetParameters()->motorStepHeight;
+    settings.groundProbeDistance = GetParameters()->motorGroundProbeDistance;
+    settings.skinWidth = GetParameters()->motorSkinWidth;
     settings.collisionMask = CollisionCategories::Get("ground");
     characterMotor_.SetSettings(settings);
 }
@@ -134,8 +135,8 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
 
     auto newObj = std::make_unique<Character>();
 
-    assert(common_ != nullptr);
-    newObj->Initialize(common_);
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon());
 
     // 表示と Transform を元の配置から複製します。
     if (!GetModelName().empty()) {
@@ -153,10 +154,10 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
     newObj->SetCollisionMask(GetCollisionMask());
 
     // ステータスと現在の移動状態を引き継ぎます。
-    newObj->SetEventType(eventType_);
+    newObj->SetEventType(GetEventType());
 
-    if (param_.has_value()) {
-        newObj->param_ = param_.value();
+    if (GetParameters().has_value()) {
+        newObj->SetParameters(GetParameters().value());
     }
 
     newObj->velocity_ = velocity_;
@@ -165,8 +166,8 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
     newObj->characterMotor_ = characterMotor_;
 
     // アニメーションの選択とループ設定を引き継ぎます。
-    newObj->animName_ = animName_;
-    newObj->isAnimLoop_ = isAnimLoop_;
+    newObj->SetAnimationName(GetAnimationName());
+    newObj->SetAnimationLoop(IsAnimationLoop());
 
     // 経路設定を複製し、再生器は複製先専用に作り直します。
     if (HasPathMoverComponent()) {
@@ -181,11 +182,33 @@ std::unique_ptr<engine::Object3d> Character::Clone() const {
     newObj->InitializeRecorder(nullptr);
 
     // パス名が設定されていれば自動再生を開始
-    if (!newObj->GetRecordPathName().empty() && newObj->recorder_) {
+    if (!newObj->GetRecordPathName().empty() && newObj->GetRecorder()) {
         bool isCinematic = newObj->IsCameraObject();
-        newObj->recorder_->Play(newObj->GetRecordPathName(), newObj->IsRecordLoop(), newObj->IsRecordRelative(),
+        newObj->GetRecorder()->Play(newObj->GetRecordPathName(), newObj->IsRecordLoop(), newObj->IsRecordRelative(),
                                 isCinematic);
     }
 
     return newObj;
+}
+
+// ゲーム設定の有無を維持し、指定した物理項目だけを更新する。
+void Character::SetGravity(float gravity) {
+    if (!this->GetParameters().has_value()) {
+        this->ResetParameters();
+    }
+    this->SetParameter(&engine::EntityParameter::gravity, gravity);
+}
+
+void Character::SetMaxFallSpeed(float maxFallSpeed) {
+    if (!this->GetParameters().has_value()) {
+        this->ResetParameters();
+    }
+    this->SetParameter(&engine::EntityParameter::maxFallSpeed, maxFallSpeed);
+}
+
+void Character::SimulateMotorStep(engine::Vector3& position, float gravity, float maxFallSpeed, float deltaTime) {
+    // 衝突コールバックからも同じ速度・接地状態を参照できるよう、保持値を直接渡す。
+    characterMotor_.BeginFrame(isGrounded_);
+    characterMotor_.ApplyGravity(velocity_, gravity, maxFallSpeed, deltaTime);
+    characterMotor_.Move(*this, position, velocity_, isGrounded_, deltaTime);
 }

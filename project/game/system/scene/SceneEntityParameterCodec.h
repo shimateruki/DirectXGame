@@ -12,9 +12,9 @@ namespace SceneEntityParameterCodec {
 // 配置Objectの param をScene JSONへ変換する。
 // 共通ステータス管理対象は個体値を出力せず、敵種別とボス固有の動作設定だけを残す。
 inline nlohmann::json Serialize(const engine::Object3d& object) {
-    if (!object.param_)
+    if (!object.GetParameters())
         return nlohmann::json();
-    const auto& p = *object.param_;
+    const auto p = *object.GetParameters();
     nlohmann::json result = nlohmann::json::object();
     const std::string className = object.GetClassName();
 
@@ -94,9 +94,9 @@ inline nlohmann::json Serialize(const engine::Object3d& object) {
 inline void Apply(engine::Object3d& object, const nlohmann::json& source) {
     if (!source.is_object())
         return;
-    if (!object.param_)
-        object.param_.emplace();
-    auto& p = *object.param_;
+    if (!object.GetParameters())
+        object.ResetParameters();
+    auto p = *object.GetParameters();
     const bool managed = GameplayStatusManager::IsManagedCharacter(&object);
     const bool hasHp = !managed && source.contains("hp");
     const bool hasMaxHp = !managed && source.contains("maxHp");
@@ -179,6 +179,7 @@ inline void Apply(engine::Object3d& object, const nlohmann::json& source) {
             p.morphDuration = (std::max)(p.morphDuration, 0.1f);
         }
     }
+    object.SetParameters(p);
 }
 
 } // namespace SceneEntityParameterCodec

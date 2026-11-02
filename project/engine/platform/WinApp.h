@@ -6,11 +6,46 @@
 /// <summary>Win32ウィンドウの生成、メッセージ処理、表示とカーソルを管理する。</summary>
 class WinApp {
 public:
-    inline static int32_t kClientWidth = 1280;
-    inline static int32_t kClientHeight = 720;
+    // ゲームとSpriteの基準座標。実ウィンドウのサイズやDPIから独立させます。
+    inline static constexpr int32_t kClientWidth = 1920;
+    inline static constexpr int32_t kClientHeight = 1080;
+    static constexpr int32_t GetClientWidth() { return kClientWidth; }
+    static constexpr int32_t GetClientHeight() { return kClientHeight; }
+    static int32_t GetWindowWidth() { return kWindowWidth; }
+    static int32_t GetWindowHeight() { return kWindowHeight; }
+    /// <summary>論理解像度を変えず、実ウィンドウの幅・高さを一緒に更新する。</summary>
+    static void SetWindowSize(int32_t width, int32_t height) { kWindowWidth = width; kWindowHeight = height; }
+
+    struct GameViewRect {
+        float x = 0.0f, y = 0.0f, width = 0.0f, height = 0.0f;
+    };
+
+    // 実ピクセルのクライアント内へ16:9の映像を中央配置します。
+    static GameViewRect CalculateGameViewRect(int32_t width, int32_t height) {
+        if (width <= 0 || height <= 0)
+            return {};
+        const float scaleX = static_cast<float>(width) / kClientWidth;
+        const float scaleY = static_cast<float>(height) / kClientHeight;
+        const float scale = scaleX < scaleY ? scaleX : scaleY;
+        const float viewWidth = kClientWidth * scale;
+        const float viewHeight = kClientHeight * scale;
+        return {(width - viewWidth) * 0.5f, (height - viewHeight) * 0.5f, viewWidth, viewHeight};
+    }
+
+    // 表示矩形を逆変換します。黒帯・無効領域はfalseを返し、UIの操作対象にしません。
+    static bool ClientToGamePosition(float x, float y, const GameViewRect& view, float& gameX, float& gameY) {
+        if (view.width <= 0.0f || view.height <= 0.0f ||
+            x < view.x || y < view.y || x >= view.x + view.width || y >= view.y + view.height) {
+            gameX = gameY = -1.0f;
+            return false;
+        }
+        gameX = (x - view.x) * kClientWidth / view.width;
+        gameY = (y - view.y) * kClientHeight / view.height;
+        return true;
+    }
 
     /// <summary>指定したタイトルとサイズでゲームウィンドウを作成する。</summary>
-    void Initialize(const wchar_t* title = L"CG2", int width = kClientWidth, int height = kClientHeight);
+    void Initialize(const wchar_t* title = L"CG2", int width = 1280, int height = 720);
 
     /// <summary>Windowsメッセージを処理し、アプリを継続できるか返す。</summary>
     bool Update();
@@ -58,6 +93,8 @@ public:
     void SetCursorRecenteringSuppressed(bool suppressed) { cursorRecenteringSuppressed_ = suppressed; }
 
 private:
+    inline static int32_t kWindowWidth = 1280;
+    inline static int32_t kWindowHeight = 720;
     HWND hwnd_ = nullptr;
     HINSTANCE hInstance_ = nullptr;
     bool isCursorClipping_ = false;

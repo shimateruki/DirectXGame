@@ -1,4 +1,6 @@
 #pragma once
+#include <type_traits>
+#include <utility>
 #include "engine/utility/math/Math.h"
 #include "Object3dCommon.h"
 #include "Model.h"
@@ -152,8 +154,8 @@ public:
     // シーン保存用JSONとは分離し、実行中だけ変化するHPやアニメーション時刻も扱います。
     struct ReplayState {
         engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
-        engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 translation = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 rotation = engine::Vector3::ZERO;
+        engine::Vector3 translation = engine::Vector3::ZERO;
         engine::Quaternion quaternion = { 0.0f, 0.0f, 0.0f, 1.0f };
         bool quaternionMaster = true;
 
@@ -175,7 +177,7 @@ public:
         std::string modelName;
         std::string texturePath;
         int32_t materialType = 0;
-        engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        engine::Vector4 color = engine::Colors::White;
         float emissive = 1.0f;
 
         // 実体Componentの有無と実行状態も巻き戻し対象にします。
@@ -667,9 +669,30 @@ public:
     bool IsStatic() const { return isStatic_; }
 
     // ゲームロジック
-    std::optional<EntityParameter> param_;
-    bool isDead = false;
-    EventType eventType_ = EventType::None;
+    /// <summary>パラメータの有無と内容を読み取り専用で取得する。未設定時の状態も保持する。</summary>
+    const std::optional<EntityParameter>& GetParameters() const { return param_; }
+
+    /// <summary>保存・複製・初期設定のパラメータ一式を適用する。</summary>
+    void SetParameters(const std::optional<EntityParameter>& parameters) { param_ = parameters; }
+
+    /// <summary>パラメータを既定値で作り直す。既存値があっても初期化する。</summary>
+    void ResetParameters() { param_.emplace(); }
+
+    /// <summary>パラメータを未設定へ戻す。</summary>
+    void ClearParameters() { param_.reset(); }
+
+    /// <summary>指定項目だけを更新する。全パラメータのコピーやゲーム固有の補正は行わない。</summary>
+    template<class Value>
+    Value SetParameter(Value EntityParameter::* member, std::type_identity_t<Value> value) {
+        param_.value().*member = std::move(value);
+        return param_.value().*member;
+    }
+
+    /// <summary>死亡・削除対象として扱うフラグを取得する。</summary>
+    bool IsDead() const { return isDead_; }
+
+    /// <summary>死亡フラグだけを変更する。演出開始や即時削除は行わない。</summary>
+    void SetDead(bool dead) { isDead_ = dead; }
 
     /// <summary>ゲームイベントの種別を設定・取得する。</summary>
     void SetEventType(EventType type) { eventType_ = type; }
@@ -1146,12 +1169,18 @@ public:
         (void)previewBufferIndex;
     }
 
-    // --- ボーンアニメーション用 ---
-    std::string animName_ = "";
-    bool isAnimLoop_ = true;
+    /// <summary>保存されているアニメーション名を取得・設定する。再生開始は行わない。</summary>
+    const std::string& GetAnimationName() const { return animName_; }
+    void SetAnimationName(const std::string& name) { animName_ = name; }
+    bool IsAnimationLoop() const { return isAnimLoop_; }
+    void SetAnimationLoop(bool loop) { isAnimLoop_ = loop; }
 
-    // GhostRecorder本体はPathMoverComponentの再生Runtimeとして段階的に分離します。
-    std::unique_ptr<GhostRecorder> recorder_;
+    /// <summary>Object所有の経路再生器を借用する。所有権は移さない。</summary>
+    GhostRecorder* GetRecorder() { return recorder_.get(); }
+    const GhostRecorder* GetRecorder() const { return recorder_.get(); }
+
+    /// <summary>生成時に使用する描画環境を借用する。</summary>
+    engine::Object3dCommon* GetObjectCommon() const { return common_; }
 
     /// <summary>Scene保存先のカテゴリ名を設定・取得する。</summary>
     void SetSaveCategory(const std::string& category) { saveCategory_ = category; }
@@ -1175,8 +1204,6 @@ protected:
     /// <summary>派生クラス固有の実行状態をリプレイ用JSONから戻す。</summary>
     virtual void RestoreReplayCustomState(const json& state);
 
-    // 派生オブジェクトの生成時に同じ描画環境を渡すための参照。
-    engine::Object3dCommon* common_ = nullptr;
 
     /// <summary>派生クラスがアニメーションを先頭から再生するときに使用する。</summary>
     void ResetAnimationTime() { animationTime_ = 0.0f; }
@@ -1185,6 +1212,22 @@ protected:
     void CopyTransformStateFrom(const Object3d& source) { transform_ = source.transform_; }
 
 private:
+    // --- ボーンアニメーション用 ---
+    std::string animName_ = "";
+    bool isAnimLoop_ = true;
+
+    // GhostRecorder本体はPathMoverComponentの再生Runtimeとして段階的に分離します。
+    std::unique_ptr<GhostRecorder> recorder_;
+
+    engine::Object3dCommon* common_ = nullptr;
+
+    // ゲーム設定と実行値。読み取りと更新の入口を分けて保持する。
+    std::optional<EntityParameter> param_;
+
+    // 死亡フラグとイベント分類。外部・派生クラスは公開関数を通して扱う。
+    bool isDead_ = false;
+    EventType eventType_ = EventType::None;
+
     // シーン内で人が識別する名前と、保存・Prefab照合に使う永続ID。
     std::string name_ = "Object";
     std::string persistentGuid_;
@@ -1328,5 +1371,8 @@ public:
     /// <summary>直近フレームの行列計算に使ったCPU時間をミリ秒で返す。</summary>
     float GetCpuMatrixTimeMs() const { return cpuMatrixTimeMs_; }
 };
+
+// 共通登録や派生クラスから、保存用パラメータ型を短い名前で参照する。
+using EntityParameter = Object3d::EntityParameter;
 
 } // namespace engine

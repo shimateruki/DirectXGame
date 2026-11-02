@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include <numbers>
 #include "engine/utility/SystemDebug/editor/core/EditorObjectDefaults.h"
 #include "SceneManager.h"    
 #include "BaseScene.h"      
@@ -39,9 +40,6 @@
 #include "LightEditor.h"      
 #include "IconsFontAwesome5.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
@@ -812,7 +810,7 @@ void DebugEditor::DuplicateSelected() {
     // =========================================================
     engine::Math math;
     engine::Ray ray = ScreenPointToRay(gameViewMousePos_);
-    engine::Vector3 finalPos = { 0, 0, 0 };
+    engine::Vector3 finalPos = engine::Vector3::ZERO;
     bool found = false;
 
     // A. まず、他のオブジェクトの表面にマウスポインタが乗っているか判定

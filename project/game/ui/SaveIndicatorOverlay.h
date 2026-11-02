@@ -53,9 +53,9 @@ class SaveIndicatorOverlay {
     // JSON で指定した初期配置を控え、フェード時はアルファだけを変更します。
     struct SpriteState {
         engine::Sprite* sprite = nullptr;
-        engine::Vector2 basePosition = {0.0f, 0.0f};
-        engine::Vector2 baseSize = {0.0f, 0.0f};
-        engine::Vector4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        engine::Vector2 basePosition = engine::Vector2::ZERO;
+        engine::Vector2 baseSize = engine::Vector2::ZERO;
+        engine::Vector4 baseColor = engine::Colors::White;
         float baseRotation = 0.0f;
     };
 

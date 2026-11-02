@@ -129,7 +129,7 @@ void Game::Initialize() {
 	ConfigureInitialPlayState();
 
 	CameraEditor::GetInstance()->Initialize();
-	dxCommon_->CreateRenderTexture();
+	GetDirectX()->CreateRenderTexture();
 	lastTime_ = std::chrono::high_resolution_clock::now();
 	LogStartupProfileCheckpoint("Game::Initialize complete");
 }
@@ -214,7 +214,7 @@ void Game::InitializePostProcess() {
 	// ポストエフェクト、LUT、フェード、キー設定を初期化する。
 	LoadColorWorkflowSetting();
 	LightManager::GetInstance()->ApplySceneClearColor();
-	PostEffect::GetInstance()->Initialize(dxCommon_);
+	PostEffect::GetInstance()->Initialize(GetDirectX());
 	PostEffect::GetInstance()->SetLUTTexturePath(
 		"Resources/texture/lut/soft_adventure_lut.png");
 
@@ -229,7 +229,7 @@ void Game::InitializeEditorTools() {
 	// USE_IMGUI時に、ゲームビューや各種エディタを束ねるコントローラを初期化する。
 #ifdef USE_IMGUI
 	editorController_ = std::make_unique<GameEditorController>();
-	editorController_->Initialize(sceneManager_.get(), dxCommon_);
+	editorController_->Initialize(sceneManager_.get(), GetDirectX());
 
 	if (sceneManager_ && sceneManager_->GetCurrentScene()) {
 		BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
@@ -245,8 +245,8 @@ void Game::ConfigureInitialPlayState() {
 #else
 	isPlaying_ = true;
 	WinApp::SetCursorVisibility(false);
-	winApp_->SetCursorClipping(true);
-	winApp_->SetCursorLocked(true);
+	GetWindow()->SetCursorClipping(true);
+	GetWindow()->SetCursorLocked(true);
 	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 #endif
 }
@@ -292,8 +292,8 @@ void Game::Update() {
 #endif
 	}
 
-	if (dxCommon_) {
-		dxCommon_->ProcessPendingResize();
+	if (GetDirectX()) {
+		GetDirectX()->ProcessPendingResize();
 	}
 
 	AudioEventSystem::GetInstance()->Update();
@@ -586,7 +586,7 @@ void Game::RecordUpdateProfile(const std::chrono::high_resolution_clock::time_po
 void Game::Draw() {
 	// GPUプロファイルを読み戻し、エディタまたは通常実行の描画フローを実行する。
 	PostEffect* postEffect = PostEffect::GetInstance();
-	dxCommon_->ReadAllGpuProfiles();
+	GetDirectX()->ReadAllGpuProfiles();
 #ifdef USE_IMGUI
 	// 環境変数が指定されたときだけ描画区間の実測値をCSVに記録します。
 	static bool gpuTraceInitialized = false;
@@ -667,18 +667,18 @@ void Game::DrawEditorFrame(PostEffect* postEffect) {
 		DrawCameraEditorPreview(postEffect);
 	}
 
-	dxCommon_->StartGpuProfile("エディタUI");
-	dxCommon_->PreDrawBackBuffer();
+	GetDirectX()->StartGpuProfile("エディタUI");
+	GetDirectX()->PreDrawBackBuffer();
 
 	if (editorController_) {
 		editorController_->DrawBackBufferUi();
 	}
 
-	dxCommon_->EndGpuProfile("エディタUI");
+	GetDirectX()->EndGpuProfile("エディタUI");
 
-	dxCommon_->EndGpuProfile("Total");
+	GetDirectX()->EndGpuProfile("Total");
 	prePostDrawTime_ = std::chrono::high_resolution_clock::now();
-	dxCommon_->PostDraw();
+	GetDirectX()->PostDraw();
 
 	if (editorController_) {
 		editorController_->ExportCapturedHudPortraits();
@@ -694,35 +694,35 @@ void Game::DrawRuntimeFrame(PostEffect* postEffect) {
 	DrawSceneToRenderTexture(false);
 	ApplyPostEffectPipeline(postEffect, false);
 
-	dxCommon_->EndGpuProfile("Total");
+	GetDirectX()->EndGpuProfile("Total");
 	prePostDrawTime_ = std::chrono::high_resolution_clock::now();
-	dxCommon_->PostDraw();
+	GetDirectX()->PostDraw();
 }
 
 void Game::DrawSceneToRenderTexture(bool editorMode) {
 	// 影、3Dシーン、UI、フェードをレンダーテクスチャへまとめて描画する。
-	dxCommon_->PreDrawRenderTexture();
+	GetDirectX()->PreDrawRenderTexture();
 
 	// サムネイル撮影も同じフレームのGPU仕事なので、Total計測に含めます。
-	dxCommon_->StartGpuProfile("Total");
+	GetDirectX()->StartGpuProfile("Total");
 
 #ifdef USE_IMGUI
 	if (editorMode && editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
-		dxCommon_->StartGpuProfile("プリセット撮影");
+		GetDirectX()->StartGpuProfile("プリセット撮影");
 		const auto thumbnailStart = std::chrono::high_resolution_clock::now();
 		editorController_->CapturePendingThumbnails();
 		const auto thumbnailEnd = std::chrono::high_resolution_clock::now();
 		ProfilerManager::GetInstance()->RecordCpuTime("プリセット撮影 CPU",
 			std::chrono::duration<float, std::milli>(thumbnailEnd - thumbnailStart).count());
-		dxCommon_->EndGpuProfile("プリセット撮影");
+		GetDirectX()->EndGpuProfile("プリセット撮影");
 	}
 #else
 	(void)editorMode;
 #endif
-	dxCommon_->PreDrawShadow();
-	SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
+	GetDirectX()->PreDrawShadow();
+	SRVManager::GetInstance()->SetDescriptorHeaps(GetDirectX()->GetCommandList());
 
-	dxCommon_->StartGpuProfile("影描画");
+	GetDirectX()->StartGpuProfile("影描画");
 	{
 		engine::ScopedRenderPass renderPass(engine::RenderPass::Shadow);
 
@@ -731,15 +731,15 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		}
 	}
 
-	dxCommon_->EndGpuProfile("影描画");
-	dxCommon_->PostDrawShadow();
+	GetDirectX()->EndGpuProfile("影描画");
+	GetDirectX()->PostDrawShadow();
 
-	dxCommon_->StartGpuProfile("メイン描画");
+	GetDirectX()->StartGpuProfile("メイン描画");
 
 #ifdef USE_IMGUI
 	if (editorMode) {
 		// Editorではゲーム画面・UI・操作ハンドルを別パスに分け、表示先のテクスチャを保つ。
-		dxCommon_->StartGpuProfile("  3Dシーン");
+		GetDirectX()->StartGpuProfile("  3Dシーン");
 		{
 			engine::ScopedRenderPass renderPass(engine::RenderPass::MainScene);
 			const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
@@ -758,16 +758,16 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 				DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
 
 				if (MeshEffectManager::GetInstance()->RequiresSceneColorCopy()) {
-					dxCommon_->UpdateGrabTexture();
+					GetDirectX()->UpdateGrabTexture();
 				}
 
 				MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 			}
 		}
 
-		dxCommon_->EndGpuProfile("  3Dシーン");
+		GetDirectX()->EndGpuProfile("  3Dシーン");
 
-		dxCommon_->StartGpuProfile("  ゲームUI");
+		GetDirectX()->StartGpuProfile("  ゲームUI");
 		{
 			engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
 
@@ -776,18 +776,18 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			}
 		}
 
-		dxCommon_->EndGpuProfile("  ゲームUI");
+		GetDirectX()->EndGpuProfile("  ゲームUI");
 
-		dxCommon_->StartGpuProfile("  デバッグ");
+		GetDirectX()->StartGpuProfile("  デバッグ");
 		{
 			engine::ScopedRenderPass renderPass(engine::RenderPass::EditorOverlay);
 
 			if (editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
-				editorController_->DrawSceneDebug(dxCommon_->GetCommandList());
+				editorController_->DrawSceneDebug(GetDirectX()->GetCommandList());
 			}
 		}
 
-		dxCommon_->EndGpuProfile("  デバッグ");
+		GetDirectX()->EndGpuProfile("  デバッグ");
 	} else
 #endif
 	{
@@ -805,7 +805,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 					DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
 
 					if (MeshEffectManager::GetInstance()->RequiresSceneColorCopy()) {
-						dxCommon_->UpdateGrabTexture();
+						GetDirectX()->UpdateGrabTexture();
 					}
 
 					MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
@@ -819,17 +819,17 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		}
 	}
 
-	dxCommon_->StartGpuProfile("Fade");
+	GetDirectX()->StartGpuProfile("Fade");
 
 	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
 		engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
 		Fade::GetInstance()->Draw();
 	}
 
-	dxCommon_->EndGpuProfile("Fade");
+	GetDirectX()->EndGpuProfile("Fade");
 
-	dxCommon_->EndGpuProfile("メイン描画");
-	dxCommon_->PostDrawRenderTexture();
+	GetDirectX()->EndGpuProfile("メイン描画");
+	GetDirectX()->PostDrawRenderTexture();
 }
 
 void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
@@ -852,9 +852,9 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 		return;
 	}
 
-	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+	ID3D12GraphicsCommandList* commandList = GetDirectX()->GetCommandList();
 	engine::ScopedRenderPass renderPass(engine::RenderPass::CameraPreview);
-	dxCommon_->SetCameraPreviewRendering(true);
+	GetDirectX()->SetCameraPreviewRendering(true);
 
 	if (renderEditorPreview) {
 		if (Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f)) {
@@ -886,7 +886,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 		}
 	}
 
-	dxCommon_->SetCameraPreviewRendering(false);
+	GetDirectX()->SetCameraPreviewRendering(false);
 #else
 	(void)postEffect;
 #endif
@@ -894,10 +894,10 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 
 void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView) {
 	// レンダーテクスチャへ複数段のポストエフェクトを適用し、最終出力先へ渡す。
-	dxCommon_->StartGpuProfile("後処理");
+	GetDirectX()->StartGpuProfile("後処理");
 	engine::ScopedRenderPass renderPass(engine::RenderPass::PostProcess);
-	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-	const uint32_t renderTextureHandle = dxCommon_->GetRenderTextureSrvHandle();
+	ID3D12GraphicsCommandList* commandList = GetDirectX()->GetCommandList();
+	const uint32_t renderTextureHandle = GetDirectX()->GetRenderTextureSrvHandle();
 
 	auto drawFinalComposite = [&](uint32_t sourceHandle) {
 		if (outputForEditorGameView) {
@@ -905,7 +905,11 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 			postEffect->Draw(commandList, sourceHandle, PostEffect::kCompositeHdrPipeline);
 			postEffect->TransitionToSRV(commandList, 1);
 		} else {
-			dxCommon_->PreDraw();
+			GetDirectX()->PreDraw();
+			// 黒帯は後処理を掛けず、完成したゲーム映像だけを等比で配置します。
+			const auto area = WinApp::CalculateGameViewRect(WinApp::GetWindowWidth(), WinApp::GetWindowHeight());
+			D3D12_VIEWPORT viewport{area.x, area.y, area.width, area.height, 0.0f, 1.0f};
+			commandList->RSSetViewports(1, &viewport);
 			postEffect->Draw(commandList, sourceHandle, PostEffect::kCompositeBackBufferPipeline);
 		}
 	};
@@ -914,7 +918,7 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	// Tone Mappingや色調補正などは最終Compositeで引き続き適用される。
 	if (!postEffect->IsBloomActive()) {
 		drawFinalComposite(renderTextureHandle);
-		dxCommon_->EndGpuProfile("後処理");
+		GetDirectX()->EndGpuProfile("後処理");
 		return;
 	}
 
@@ -949,7 +953,7 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 
 	drawFinalComposite(postEffect->GetSRVHandle(0));
 
-	dxCommon_->EndGpuProfile("後処理");
+	GetDirectX()->EndGpuProfile("後処理");
 }
 
 void Game::RecordDrawProfile(const std::chrono::high_resolution_clock::time_point& startDraw) {
@@ -975,7 +979,7 @@ void Game::RecordDrawProfile(const std::chrono::high_resolution_clock::time_poin
 void Game::RecordFixedFpsProfile() {
 	// 固定FPS待機時間とフレーム間隔を計測し、負荷表示に反映する。
 	auto preFixFPS = std::chrono::high_resolution_clock::now();
-	dxCommon_->UpdateFixFPS();
+	GetDirectX()->UpdateFixFPS();
 	auto postFixFPS = std::chrono::high_resolution_clock::now();
 
 	static std::chrono::high_resolution_clock::time_point lastFrameStart;

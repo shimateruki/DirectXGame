@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameover/GameOverScene.h"
+#include "Easing.h"
 #include "game/scene/GameSceneDrawing.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
@@ -63,36 +64,11 @@ float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
-// タイトル文字の登場を終端で減速させる補間率を返します。
-float EaseOutCubic(float t) {
-    // タイトル文字が勢いよく現れて終端で減速する曲線。
-    t = Clamp01(t);
-    const float inv = 1.0f - t;
-    return 1.0f - inv * inv * inv;
-}
 
-// 表示の終端で少し行き過ぎて戻る補間率を返します。
-float EaseOutBack(float t) {
-    // 文字の表示時だけ少し行き過ぎて戻る弾みを作る。
-    t = Clamp01(t);
-    constexpr float c1 = 1.70158f;
-    constexpr float c3 = c1 + 1.0f;
-    const float shifted = t - 1.0f;
-    return 1.0f + c3 * shifted * shifted * shifted + c1 * shifted * shifted;
-}
 
-// 始点と終点の両方を滑らかにする対称の補間率を返します。
-float EaseInOutCubic(float t) {
-    // 演出の始点と終点を滑らかにつなぐ対称の補間曲線。
-    t = Clamp01(t);
 
-    if (t < 0.5f) {
-        return 4.0f * t * t * t;
-    }
 
-    const float inv = -2.0f * t + 2.0f;
-    return 1.0f - inv * inv * inv * 0.5f;
-}
+
 
 // 区間外のtを丸め、指定範囲を越えない線形補間値を返します。
 float LerpFloat(float start, float end, float t) {
@@ -223,8 +199,8 @@ void GameOverScene::Finalize() {
     gameOverSlimeAnimator_.Reset(nullptr);
     backgroundSprite_ = nullptr;
     titleLetters_.fill(nullptr);
-    titleLetterBasePositions_.fill(engine::Vector2{0.0f, 0.0f});
-    titleLetterBaseSizes_.fill(engine::Vector2{0.0f, 0.0f});
+    titleLetterBasePositions_.fill(engine::Vector2::ZERO);
+    titleLetterBaseSizes_.fill(engine::Vector2::ZERO);
     menuRows_ = {};
     fallingCrowns_.clear();
     dizzyStars_.clear();
@@ -433,12 +409,12 @@ void GameOverScene::RefreshLayoutSpritePointers() {
 
         if (!IsAlive(row.backdrop)) {
             row.backdrop = FindSprite(prefix + "_row");
-            row.backdropBaseSize = row.backdrop ? row.backdrop->GetSize() : engine::Vector2{0.0f, 0.0f};
+            row.backdropBaseSize = row.backdrop ? row.backdrop->GetSize() : engine::Vector2::ZERO;
         }
 
         if (!IsAlive(row.label)) {
             row.label = FindSprite(prefix + "_label");
-            row.labelBaseSize = row.label ? row.label->GetSize() : engine::Vector2{0.0f, 0.0f};
+            row.labelBaseSize = row.label ? row.label->GetSize() : engine::Vector2::ZERO;
         }
     }
 }
@@ -515,7 +491,7 @@ void GameOverScene::InitializeFallingCrowns() {
 void GameOverScene::UpdateFallingCrowns(float deltaTime) {
     // シーン時計から位置を決め、停止・再開後も周期がずれないようにする。
     (void)deltaTime;
-    const float presentationAlpha = EaseOutCubic((sceneTime_ - 0.48f) / 0.82f);
+    const float presentationAlpha = Easing::OutCubic01((sceneTime_ - 0.48f) / 0.82f);
 
     for (FallingCrown& crown : fallingCrowns_) {
         if (!crown.sprite || !IsAlive(crown.sprite)) {
@@ -579,8 +555,8 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
     // 3D の頭部位置を画面へ投影し、モデルが見えない間は画面中央寄りに配置する。
     (void)deltaTime;
 
-    engine::Vector2 center = {static_cast<float>(WinApp::kClientWidth) * 0.5f,
-                      static_cast<float>(WinApp::kClientHeight) * 0.57f};
+    engine::Vector2 center = {static_cast<float>(WinApp::GetClientWidth()) * 0.5f,
+                      static_cast<float>(WinApp::GetClientHeight()) * 0.57f};
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
@@ -588,8 +564,8 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
         const engine::Vector3 headWorld = gameOverSlimeAnimator_.GetDizzyAnchorWorld();
 
         const engine::Matrix4x4 viewProjection = camera->GetViewProjectionMatrix();
-        const engine::Matrix4x4 viewport = engine::Math::MakeViewportMatrix(0.0f, 0.0f, static_cast<float>(WinApp::kClientWidth),
-                                                            static_cast<float>(WinApp::kClientHeight), 0.0f, 1.0f);
+        const engine::Matrix4x4 viewport = engine::Math::MakeViewportMatrix(0.0f, 0.0f, static_cast<float>(WinApp::GetClientWidth()),
+                                                            static_cast<float>(WinApp::GetClientHeight()), 0.0f, 1.0f);
         const engine::Matrix4x4 screenMatrix = engine::Math::Multiply(viewProjection, viewport);
         const engine::Vector3 screen = engine::Math::Transform(headWorld, screenMatrix);
 
@@ -599,9 +575,9 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
     }
 
     const float animationTime = gameOverSlimeAnimator_.GetTimer();
-    const float introAlpha = EaseOutCubic((animationTime - 0.16f) / 0.42f) * gameOverSlimeAnimator_.GetDizzyAlpha();
+    const float introAlpha = Easing::OutCubic01((animationTime - 0.16f) / 0.42f) * gameOverSlimeAnimator_.GetDizzyAlpha();
     const float orbitTime = animationTime * 2.45f;
-    const float uiScale = static_cast<float>(WinApp::kClientHeight) / 1080.0f;
+    const float uiScale = static_cast<float>(WinApp::GetClientHeight()) / 1080.0f;
     const float radiusX = 46.0f * uiScale;
     const float radiusY = 15.0f * uiScale;
 
@@ -742,8 +718,8 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
 
         letter->SetVisible(true);
         const float revealRate = Clamp01(revealElapsed / kTitleLetterPopDuration);
-        const float revealEase = EaseOutCubic(revealRate);
-        const float popEase = EaseOutBack(revealRate);
+        const float revealEase = Easing::OutCubic01(revealRate);
+        const float popEase = Easing::OutBack01(revealRate);
         const float idleScale = 1.0f + pulse * 0.025f;
         const float revealScale = std::clamp(0.55f + popEase * 0.48f, 0.55f, 1.12f);
         const float scale = revealRate < 1.0f ? revealScale : idleScale;
@@ -759,8 +735,8 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
     const engine::Vector4 selectedText = {0.10f, 0.12f, 0.23f, 1.0f};
     const float menuStartTime = static_cast<float>(titleLetters_.size()) * kTitleLetterInterval + kMenuRevealDelay;
     const float retryMenuFade =
-        retryExitActive_ && !layoutPreview ? (1.0f - EaseOutCubic(retryExitTimer_ / 0.28f)) : 1.0f;
-    const float menuAlpha = EaseOutCubic((visibleTitleTime - menuStartTime) / 0.28f) * retryMenuFade;
+        retryExitActive_ && !layoutPreview ? (1.0f - Easing::OutCubic01(retryExitTimer_ / 0.28f)) : 1.0f;
+    const float menuAlpha = Easing::OutCubic01((visibleTitleTime - menuStartTime) / 0.28f) * retryMenuFade;
     const bool menuVisible = menuAlpha > 0.0f;
 
     for (int i = 0; i < static_cast<int>(MenuItem::Count); ++i) {

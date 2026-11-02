@@ -653,8 +653,8 @@ void TutorialScene::Update(float deltaTime) {
                      targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) /
                     w;
 
-            float screenWidth = static_cast<float>(::WinApp::kClientWidth);
-            float screenHeight = static_cast<float>(::WinApp::kClientHeight);
+            float screenWidth = static_cast<float>(::WinApp::GetClientWidth());
+            float screenHeight = static_cast<float>(::WinApp::GetClientHeight());
             float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
             float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
 
@@ -928,7 +928,7 @@ void TutorialScene::UpdateExitGuide(float deltaTime) {
     if (!arrow)
         return;
     auto* target = tutorialDirector_ ? tutorialDirector_->GetDirectionGuideTarget() : nullptr;
-    const bool alive = player_ && player_->param_ && player_->param_->hp > 0.0f;
+    const bool alive = player_ && player_->GetParameters() && player_->GetParameters()->hp > 0.0f;
     const bool requested = target && alive && !isGoal_ && !player_->IsCinematicLocked();
     if (!requested) {
         exitGuide_.Hide(*arrow);

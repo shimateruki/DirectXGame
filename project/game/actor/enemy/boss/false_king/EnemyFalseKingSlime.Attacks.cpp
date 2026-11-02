@@ -1,4 +1,5 @@
 ﻿#include "game/actor/combat/CombatGroundQuery.h"
+#include "Easing.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.Internal.h"
 
 using namespace EnemyFalseKingSlimeImplementation;
@@ -27,23 +28,18 @@ engine::Vector3 AstralReaverRimOffset(const engine::Vector3& rotation, const eng
     return engine::Math::TransformNormal({std::cos(phase), 0.0f, std::sin(phase)}, ringMatrix);
 }
 
-// 魔法攻撃の演出進行率を滑らかな補間率へ変換します。
-float MagicEase(float value) {
-    // 予兆と飛行演出の時間を滑らかにつなぎます。
-    const float t = std::clamp(value, 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
-}
+
 
 engine::Vector3 AstralReaverFlightPosition(const engine::Vector3& origin, const engine::Vector3& destination, const engine::Vector3& forward,
                                    const engine::Vector3& right, float progress, size_t index, float hitRadius) {
     const float t = std::clamp(progress, 0.0f, 1.0f);
 
     // 前半は外へ回り込み、後半で急加速して着弾点へ収束します。
-    const float early = MagicEase(t / 0.56f);
+    const float early = Easing::SmoothStep01(t / 0.56f);
     const float late = std::clamp((t - 0.56f) / 0.44f, 0.0f, 1.0f);
     const float travel =
         t < 0.56f ? early * 0.38f : 0.38f + 0.62f * (1.0f - (1.0f - late) * (1.0f - late) * (1.0f - late));
-    const float orbitEnvelope = MagicEase((t - 0.04f) / 0.22f) * (1.0f - MagicEase((t - 0.75f) / 0.25f));
+    const float orbitEnvelope = Easing::SmoothStep01((t - 0.04f) / 0.22f) * (1.0f - Easing::SmoothStep01((t - 0.75f) / 0.25f));
     const float dx = destination.x - origin.x;
     const float dz = destination.z - origin.z;
     const float distance = std::sqrt(dx * dx + dz * dz);
@@ -275,8 +271,8 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
                                                       ? GetAttackDefinition(kCrownDominionAttackId)
                                                       : GetAttackDefinition(kCrownLanceRainAttackId);
             engine::Vector3 knockbackDirection =
-                target_ ? NormalizePlanar(target_->GetWorldPosition() - lance->groundPosition) : lockedDirection_;
-            DamageTargetAt(lance->groundPosition, attack.radius + (target_ ? target_->GetCollisionRadius() : 0.0f),
+                GetTarget() ? NormalizePlanar(GetTarget()->GetWorldPosition() - lance->groundPosition) : lockedDirection_;
+            DamageTargetAt(lance->groundPosition, attack.radius + (GetTarget() ? GetTarget()->GetCollisionRadius() : 0.0f),
                            3.8f, attack.damage, DamageType::Explosion,
                            {knockbackDirection.x * 7.0f, 7.5f, knockbackDirection.z * 7.0f});
             lance->damageApplied = true;
@@ -420,16 +416,16 @@ void EnemyFalseKingSlime::UpdateRoyalWaves(float deltaTime) {
             wave->particleTimer += 0.09f;
         }
 
-        if (!wave->hitTarget && target_) {
-            const float distance = PlanarDistance(target_->GetWorldPosition(), wave->center);
-            const float padding = target_->GetCollisionRadius() + 0.82f;
+        if (!wave->hitTarget && GetTarget()) {
+            const float distance = PlanarDistance(GetTarget()->GetWorldPosition(), wave->center);
+            const float padding = GetTarget()->GetCollisionRadius() + 0.82f;
 
             // 波の上を飛び越えられるよう、接地付近だけを当たりにします。
             if (distance >= wave->previousRadius - padding && distance <= radius + padding &&
-                std::abs(target_->GetWorldPosition().y - wave->center.y) <= 2.25f) {
+                std::abs(GetTarget()->GetWorldPosition().y - wave->center.y) <= 2.25f) {
                 const EnemyAttackDefinition& attack = GetAttackDefinition(kRoyalShockwaveAttackId);
-                const engine::Vector3 direction = NormalizePlanar(target_->GetWorldPosition() - wave->center);
-                DamageTargetAt(target_->GetWorldPosition(), padding, 2.25f, attack.damage, DamageType::Explosion,
+                const engine::Vector3 direction = NormalizePlanar(GetTarget()->GetWorldPosition() - wave->center);
+                DamageTargetAt(GetTarget()->GetWorldPosition(), padding, 2.25f, attack.damage, DamageType::Explosion,
                                {direction.x * 8.0f, 5.4f, direction.z * 8.0f});
                 wave->hitTarget = true;
             }
@@ -464,8 +460,8 @@ void EnemyFalseKingSlime::BeginRushStep(int step) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kKingRushAttackId);
     attackStartPosition_ = FindGroundPoint(GetTranslate());
 
-    if (target_) {
-        lockedTargetPosition_ = FindGroundPoint(target_->GetWorldPosition());
+    if (GetTarget()) {
+        lockedTargetPosition_ = FindGroundPoint(GetTarget()->GetWorldPosition());
         lockedDirection_ = NormalizePlanar(lockedTargetPosition_ - attackStartPosition_);
     }
 
@@ -552,9 +548,9 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
         effectTimer_ += 0.11f;
     }
 
-    if (!rushDamageApplied_ && target_ &&
-        PlanarDistance(target_->GetWorldPosition(), position) <= attack.radius + target_->GetCollisionRadius()) {
-        DamageTargetAt(position, attack.radius + target_->GetCollisionRadius(), 3.4f, attack.damage,
+    if (!rushDamageApplied_ && GetTarget() &&
+        PlanarDistance(GetTarget()->GetWorldPosition(), position) <= attack.radius + GetTarget()->GetCollisionRadius()) {
+        DamageTargetAt(position, attack.radius + GetTarget()->GetCollisionRadius(), 3.4f, attack.damage,
                        DamageType::Physical, {lockedDirection_.x * 13.0f, 6.2f, lockedDirection_.z * 13.0f});
         rushDamageApplied_ = true;
     }
@@ -706,12 +702,12 @@ std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalVisual(const s
                                                                  int materialType, const engine::Vector4& color,
                                                                  float emissive) const {
     // 特殊材質の演出物には衝突を付けず、実ダメージは攻撃側の時刻処理で管理します。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return nullptr;
     }
 
     auto visual = std::make_unique<engine::Object3d>();
-    visual->Initialize(common_);
+    visual->Initialize(GetObjectCommon());
     visual->SetName(name);
     visual->SetClassName("EnemyVisualPart");
     visual->SetModel(model);
@@ -753,12 +749,12 @@ std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalVisual(const s
 std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalMesh(const std::string& name, const std::string& model,
                                                                const engine::Vector4& color, float emissive) const {
     // 通常 PBR で描く王冠部品を作り、光の演出物とは別に保持します。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return nullptr;
     }
 
     auto visual = std::make_unique<engine::Object3d>();
-    visual->Initialize(common_);
+    visual->Initialize(GetObjectCommon());
     visual->SetName(name);
     visual->SetClassName("EnemyVisualPart");
     visual->SetModel(model);
@@ -786,18 +782,18 @@ engine::Vector3 EnemyFalseKingSlime::FindGroundPoint(const engine::Vector3& samp
 void EnemyFalseKingSlime::DamageTargetAt(const engine::Vector3& center, float radius, float verticalTolerance, float damage,
                                          DamageType damageType, const engine::Vector3& knockback) {
     // 水平距離と高さを両方満たした対象へ、共通のダメージイベントを送ります。
-    if (!target_ || target_->isDead || !target_->GetIsVisible()) {
+    if (!GetTarget() || GetTarget()->IsDead() || !GetTarget()->GetIsVisible()) {
         return;
     }
 
-    const engine::Vector3 targetPosition = target_->GetWorldPosition();
+    const engine::Vector3 targetPosition = GetTarget()->GetWorldPosition();
 
     if (std::abs(targetPosition.y - center.y) > verticalTolerance || PlanarDistance(targetPosition, center) > radius) {
         return;
     }
 
     DamageEvent event;
-    event.target = target_;
+    event.target = GetTarget();
     event.attacker = this;
     event.damageAmount = damage;
     event.damageType = damageType;
@@ -818,7 +814,7 @@ void EnemyFalseKingSlime::PrepareAstralReaver() {
     const float casterHeight = (std::max)(baseScale_.y * 1.2f, bounds.max.y - bounds.min.y);
     auto makeEffect = [this](const char* path, const std::string& name) {
         auto effect = std::make_unique<EffectObject3d>();
-        effect->Initialize(common_);
+        effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
             return std::unique_ptr<EffectObject3d>{};
         effect->SetName(name);
@@ -934,7 +930,7 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
             const engine::Vector3 orbitPosition = lockedTargetPosition_ + right * (std::cos(orbit) * 0.72f) +
                                           forward * (std::sin(orbit) * 0.72f) + engine::Vector3{0.0f, 1.15f, 0.0f};
             const float holdAge = astralReaverElapsed_ - orb.launchDelay - orb.flightDuration;
-            const float blend = MagicEase(holdAge / 0.14f);
+            const float blend = Easing::SmoothStep01(holdAge / 0.14f);
             position = position + (orbitPosition - position) * blend;
         }
 
@@ -1020,7 +1016,7 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
     nightfallLances_ = {};
     auto makeEffect = [this](const char* path, const std::string& name) {
         auto effect = std::make_unique<EffectObject3d>();
-        effect->Initialize(common_);
+        effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
             return std::unique_ptr<EffectObject3d>{};
         effect->SetName(name);
@@ -1081,19 +1077,19 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
     const float pulseTime = 1.40f;
     const float damageTime = 1.64f;
     const float fallStart = 0.22f;
-    const float fall = active ? MagicEase((age - fallStart) / (impactTime - fallStart)) : 0.0f;
+    const float fall = active ? Easing::SmoothStep01((age - fallStart) / (impactTime - fallStart)) : 0.0f;
     const float groundFade =
-        active ? std::clamp(1.0f - (std::max)(0.0f, age - damageTime) / 0.40f, 0.0f, 1.0f) : MagicEase(windup / 0.30f);
-    const float warningDetailFade = active ? 1.0f - 0.72f * MagicEase((age - impactTime) / 0.10f) : 1.0f;
+        active ? std::clamp(1.0f - (std::max)(0.0f, age - damageTime) / 0.40f, 0.0f, 1.0f) : Easing::SmoothStep01(windup / 0.30f);
+    const float warningDetailFade = active ? 1.0f - 0.72f * Easing::SmoothStep01((age - impactTime) / 0.10f) : 1.0f;
 
     // 術式を槍の射出口まで下げ、横視点でも地表から離れた円として見せます。
     const engine::Vector3 skyCenter = ground + engine::Vector3{0.0f, 10.6f, 0.0f};
-    const float skyOpen = active ? 1.0f : MagicEase((windup - 0.04f) / 0.55f);
-    const float skyRelease = active ? MagicEase((age - fallStart) / (impactTime - fallStart)) : 0.0f;
+    const float skyOpen = active ? 1.0f : Easing::SmoothStep01((windup - 0.04f) / 0.55f);
+    const float skyRelease = active ? Easing::SmoothStep01((age - fallStart) / (impactTime - fallStart)) : 0.0f;
 
     // 槍が抜けた直後にも魔法陣を残し、落下元が消えて見えない時間をなくします。
     const float skyFade = skyOpen * (1.0f - 0.18f * skyRelease) *
-                          (active ? 1.0f - MagicEase((age - pulseTime) / 0.42f) : 1.0f);
+                          (active ? 1.0f - Easing::SmoothStep01((age - pulseTime) / 0.42f) : 1.0f);
     const float skyRadius = attack.radius * (0.18f + 1.05f * skyOpen);
     const float skyPulse = 0.88f + 0.12f * std::sin(idleTimer_ * 7.0f);
     PlaceMagicLayer(nightfallLances_.skySigil.get(), deltaTime, skyFade > 0.01f,
@@ -1101,13 +1097,13 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
                     {skyRadius / 1.2f, 1.0f, skyRadius / 1.2f},
                     {1.0f, 0.48f, 0.86f, skyFade * skyPulse * 0.88f});
     if (nightfallLances_.skySigil)
-        nightfallLances_.skySigil->SetRevealProgress(active ? 1.0f : MagicEase(windup / 0.66f));
+        nightfallLances_.skySigil->SetRevealProgress(active ? 1.0f : Easing::SmoothStep01(windup / 0.66f));
     PlaceMagicLayer(nightfallLances_.skyCounterSigil.get(), deltaTime, skyFade > 0.01f,
                     skyCenter + engine::Vector3{0.0f, -0.08f, 0.0f}, {kPi, -idleTimer_ * 0.42f, 0.0f},
                     {skyRadius * 0.39f, 1.0f, skyRadius * 0.39f},
                     {0.42f, 0.72f, 1.0f, skyFade * 0.52f});
     if (nightfallLances_.skyCounterSigil)
-        nightfallLances_.skyCounterSigil->SetRevealProgress(active ? 1.0f : MagicEase((windup - 0.25f) / 0.50f));
+        nightfallLances_.skyCounterSigil->SetRevealProgress(active ? 1.0f : Easing::SmoothStep01((windup - 0.25f) / 0.50f));
     PlaceMagicLayer(nightfallLances_.skyOuterRing.get(), deltaTime, skyFade > 0.01f,
                     skyCenter + engine::Vector3{0.0f, 0.08f, 0.0f}, {0.0f, -idleTimer_ * 0.31f, 0.0f},
                     {skyRadius, 1.0f, skyRadius}, {1.0f, 0.12f, 0.44f, skyFade * 0.86f});
@@ -1123,7 +1119,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
                     {sigilScale, 1.0f, sigilScale},
                     {1.0f, 0.10f, 0.18f, groundFade * warningDetailFade * 0.34f});
     if (nightfallLances_.targetSigil)
-        nightfallLances_.targetSigil->SetRevealProgress(active ? 1.0f : MagicEase(windup));
+        nightfallLances_.targetSigil->SetRevealProgress(active ? 1.0f : Easing::SmoothStep01(windup));
     PlaceMagicLayer(nightfallLances_.targetRing.get(), deltaTime, groundFade > 0.01f,
                     ground + engine::Vector3{0.0f, 0.19f, 0.0f}, {0.0f, -idleTimer_ * 0.40f, 0.0f},
                     {attack.radius, 1.0f, attack.radius}, {1.0f, 0.08f, 0.16f, groundFade * 0.46f});
@@ -1133,9 +1129,9 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
                     {0.76f, 0.04f, 0.18f, groundFade * warningDetailFade * 0.30f});
 
     // 詠唱後半に槍を標的の上空へ組み立て、落下前に逃げる余地を残します。
-    const float assembly = active ? 1.0f : MagicEase((windup - 0.42f) / 0.48f);
+    const float assembly = active ? 1.0f : Easing::SmoothStep01((windup - 0.42f) / 0.48f);
     const float visibleScale = (std::max)(0.05f, assembly);
-    const float dissolveProgress = active ? MagicEase((age - damageTime) / 0.52f) : 0.0f;
+    const float dissolveProgress = active ? Easing::SmoothStep01((age - damageTime) / 0.52f) : 0.0f;
     const float spearFade = active ? (dissolveProgress < 1.0f ? 1.0f : 0.0f) : assembly;
     const float spearHeight = 15.2f - fall * 10.4f;
     const engine::Vector3 spearCenter = ground + engine::Vector3{0.0f, spearHeight, 0.0f};
@@ -1261,7 +1257,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
     const float charge = std::clamp((age - impactTime) / (pulseTime - impactTime), 0.0f, 1.0f);
     const float expansion = std::clamp((age - pulseTime) / (damageTime - pulseTime), 0.0f, 1.0f);
     const float impactRadius =
-        age < pulseTime ? 1.05f + charge * 0.60f : 1.65f + (attack.radius - 1.65f) * MagicEase(expansion);
+        age < pulseTime ? 1.05f + charge * 0.60f : 1.65f + (attack.radius - 1.65f) * Easing::SmoothStep01(expansion);
     PlaceMagicLayer(nightfallLances_.impactRing.get(), deltaTime, impactFade > 0.01f,
                     ground + engine::Vector3{0.0f, 0.16f, 0.0f}, {}, {impactRadius, 1.0f, impactRadius},
                     {1.0f, 0.20f, 0.32f, impactFade * 0.88f});
@@ -1302,10 +1298,10 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
     const float arcDuration = secondArc ? 0.48f : 0.68f;
     const float arcProgress = std::clamp(arcAge / arcDuration, 0.0f, 1.0f);
     const float arcFade = active && arcAge >= 0.0f && arcAge < arcDuration
-                              ? MagicEase(arcProgress / 0.15f) * std::pow(1.0f - arcProgress, 1.2f)
+                              ? Easing::SmoothStep01(arcProgress / 0.15f) * std::pow(1.0f - arcProgress, 1.2f)
                               : 0.0f;
-    const float arcRadius = attack.radius * (secondArc ? 0.65f + 0.35f * MagicEase(arcProgress)
-                                                      : 0.42f + 0.56f * MagicEase(arcProgress));
+    const float arcRadius = attack.radius * (secondArc ? 0.65f + 0.35f * Easing::SmoothStep01(arcProgress)
+                                                      : 0.42f + 0.56f * Easing::SmoothStep01(arcProgress));
     PlaceMagicLayer(nightfallLances_.groundArc.get(), deltaTime, arcFade > 0.01f,
                     ground + engine::Vector3{0.0f, 0.31f, 0.0f}, {0.0f, secondArc ? 0.24f : -0.11f, 0.0f},
                     {arcRadius, 1.0f, arcRadius},
@@ -1327,7 +1323,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
     const float blastProgress = std::clamp(blastAge / (damageTime - pulseTime), 0.0f, 1.0f);
     const float blastFade =
         active && blastAge >= 0.0f ? std::pow(1.0f - std::clamp(blastAge / 0.58f, 0.0f, 1.0f), 1.5f) : 0.0f;
-    const float blastRadius = attack.radius * (0.12f + 0.88f * MagicEase(blastProgress));
+    const float blastRadius = attack.radius * (0.12f + 0.88f * Easing::SmoothStep01(blastProgress));
     PlaceMagicLayer(nightfallLances_.blastShell.get(), deltaTime, blastFade > 0.01f,
                     ground + engine::Vector3{0.0f, blastRadius * 0.40f, 0.0f}, {},
                     {blastRadius, blastRadius * 0.44f, blastRadius}, {0.55f, 0.65f, 1.0f, blastFade * 0.29f});
@@ -1341,7 +1337,7 @@ void EnemyFalseKingSlime::PrepareSealNightfallSatellites() {
     sealNightfallSatellites_ = {};
     auto makeEffect = [this](const char* path, const std::string& name) {
         auto effect = std::make_unique<EffectObject3d>();
-        effect->Initialize(common_);
+        effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
             return std::unique_ptr<EffectObject3d>{};
         effect->SetName(name);
@@ -1376,7 +1372,7 @@ void EnemyFalseKingSlime::UpdateSealNightfallSatellites(float deltaTime, bool ac
         const engine::Vector3 offset = right * (side * spread) + forward * (index == 1 ? spread * 0.85f : spread * 0.25f);
         satellite.ground = FindGroundPoint(center + offset);
         const float untilImpact = satellite.impactAge - age;
-        const float fall = active ? MagicEase((age - satellite.impactAge + 0.34f) / 0.34f) : 0.0f;
+        const float fall = active ? Easing::SmoothStep01((age - satellite.impactAge + 0.34f) / 0.34f) : 0.0f;
         const float fade = active ? std::clamp((satellite.impactAge + 0.38f - age) / 0.38f, 0.0f, 1.0f) : 1.0f;
         const float warning = active ? std::clamp(untilImpact / 0.45f, 0.0f, 1.0f) : 1.0f;
         PlaceMagicLayer(satellite.sigil.get(), deltaTime, warning > 0.01f,
@@ -1399,7 +1395,7 @@ void EnemyFalseKingSlime::UpdateSealNightfallSatellites(float deltaTime, bool ac
 
 void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
     // ビーム方向への射影と横方向の幅で判定し、命中後は短い再判定間隔を設けます。
-    if (!target_ || target_->isDead || !target_->GetIsVisible()) {
+    if (!GetTarget() || GetTarget()->IsDead() || !GetTarget()->GetIsVisible()) {
         return;
     }
 
@@ -1410,10 +1406,10 @@ void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
     }
 
     const engine::Vector3 direction = {std::sin(beam.angle), 0.0f, std::cos(beam.angle)};
-    const engine::Vector3 toTarget = target_->GetWorldPosition() - beam.origin;
+    const engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - beam.origin;
     const float projection = toTarget.x * direction.x + toTarget.z * direction.z;
     if (projection < 0.0f || projection > beam.length ||
-        std::abs(target_->GetWorldPosition().y - beam.origin.y) > 3.0f) {
+        std::abs(GetTarget()->GetWorldPosition().y - beam.origin.y) > 3.0f) {
         return;
     }
 
@@ -1421,7 +1417,7 @@ void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
     const float lateralZ = toTarget.z - direction.z * projection;
     const float lateralDistance = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
 
-    if (lateralDistance > beam.width + target_->GetCollisionRadius()) {
+    if (lateralDistance > beam.width + GetTarget()->GetCollisionRadius()) {
         return;
     }
 
@@ -1429,7 +1425,7 @@ void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
         GetAttackDefinition(currentAttack_ == AttackKind::CrownDominion ? kCrownDominionAttackId : kRoyalCrossAttackId);
     const engine::Vector3 side = {direction.z, 0.0f, -direction.x};
     DamageEvent event;
-    event.target = target_;
+    event.target = GetTarget();
     event.attacker = this;
     event.damageAmount = attack.damage;
     event.damageType = DamageType::Electric;

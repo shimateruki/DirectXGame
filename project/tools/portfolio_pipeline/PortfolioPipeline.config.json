@@ -9,10 +9,10 @@
     "game",
     "Resources/shader",
     "Resources/json",
-    "DirectXGame.sln",
-    "DirectXGame.vcxproj",
-    "DirectXGame.vcxproj.filters",
-    "DirectXGame.rc",
+    "ShimaEngine.sln",
+    "ShimaEngine.vcxproj",
+    "ShimaEngine.vcxproj.filters",
+    "ShimaEngine.rc",
     "resource.h",
     "ReadMe.md"
   ]

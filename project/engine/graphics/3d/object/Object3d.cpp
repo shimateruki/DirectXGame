@@ -110,7 +110,7 @@ void Object3d::Initialize(engine::Object3dCommon* common) {
     isCollecting_ = false;
     collectTimer_ = 0.0f;
     gpuEmitter_ = nullptr;
-    isDead = false;
+    isDead_ = false;
 }
 
 // ========================================================================
@@ -157,7 +157,7 @@ void Object3d::Update(float deltaTime) {
             SetIsVisible(false);
 
             if (decalSettings_.transient) {
-                isDead = true;
+                isDead_ = true;
             }
         }
     }
@@ -179,7 +179,7 @@ void Object3d::Update(float deltaTime) {
         if (collectTimer_ >= 0.5f) {
             isCollecting_ = false;
             isVisible_ = false;
-            isDead = true; // 完全に消去
+            isDead_ = true; // 完全に消去
         }
     }
     else if (eventType_ == EventType::StarCoin && isVisible_) {

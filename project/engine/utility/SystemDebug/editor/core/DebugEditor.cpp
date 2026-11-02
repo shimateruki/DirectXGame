@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include <numbers>
 #include "EditorToolSettings.h"
 #include "game/ui/SettingsMenuOverlay.h"
 #include "SceneManager.h"
@@ -42,9 +43,6 @@
 #include "IconsFontAwesome5.h"
 #include "AssetDatabase.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
@@ -57,12 +55,12 @@
 #include <unordered_set>
 #include <utility>
 namespace fs = std::filesystem;
-const float PI = (float)M_PI;
+
 
 
 
 // Gizmoが返す度単位の回転を、Object3dへ渡すラジアン値に変換します。
-float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
+float ToRadians(float degrees) { return degrees * (std::numbers::pi_v<float> / 180.0f); }
 
 namespace {
     std::string GetLeafName(const std::string& path) {
@@ -587,8 +585,8 @@ void DebugEditor::Update() {
             // --- ショートカットキー処理 ---
             if (input->IsKeyTriggered(DIK_DELETE)) {
                 // パス編集モード中なら「点」を消す！
-                if (isPathEditMode_ && selectedObject_ && selectedObject_->recorder_ && selectedObject_->recorder_->IsPinSelected()) {
-                    selectedObject_->recorder_->DeleteSelectedPin();
+                if (isPathEditMode_ && selectedObject_ && selectedObject_->GetRecorder() && selectedObject_->GetRecorder()->IsPinSelected()) {
+                    selectedObject_->GetRecorder()->DeleteSelectedPin();
                 }
 
                 // 通常モードなら「オブジェクト」を消す！
@@ -1160,7 +1158,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             const int kLineCount = 8;
 
             for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
-                float angle = (2.0f * 3.14159265f / kLineCount) * i;
+                float angle = (2.0f * std::numbers::pi_v<float> / kLineCount) * i;
                 float s = std::sin(angle);
                 float c = std::cos(angle);
 
@@ -1195,8 +1193,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         if (obj->GetClassName() == "Enemy") {
             float range = 0.0f;
 
-            if (obj->param_.has_value()) {
-                range = obj->param_->detectionRange;
+            if (obj->GetParameters().has_value()) {
+                range = obj->GetParameters()->detectionRange;
             }
 
             // インスタンス描画の上限チェック
@@ -1404,8 +1402,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                         // コライダーがない場合(エフェクト単体)の救済
                         ring.center = effect->GetWorldPosition();
                         ring.normal = { 0, 1, 0 };
-                        ring.innerRadius = effect->editRingInnerRadius_;
-                        ring.outerRadius = effect->editRingOuterRadius_;
+                        ring.innerRadius = effect->GetMeshSettings().ringInnerRadius;
+                        ring.outerRadius = effect->GetMeshSettings().ringOuterRadius;
                     }
 
                     float outerR = ring.outerRadius;
@@ -1454,7 +1452,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     const int kLineCount = 8;
 
                     for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
-                        float angle = (2.0f * 3.14159265f / kLineCount) * i;
+                        float angle = (2.0f * std::numbers::pi_v<float> / kLineCount) * i;
                         float s = std::sin(angle);
                         float c = std::cos(angle);
 

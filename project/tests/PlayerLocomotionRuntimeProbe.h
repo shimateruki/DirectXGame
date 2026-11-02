@@ -29,7 +29,7 @@ inline void Run(BaseScene* scene, std::ostream& log) {
     actor->Initialize(scene->GetObject3dCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
     actor->SetEditorInternal(true); actor->SetCollisionAttribute(0); actor->SetCollisionMask(0);
     actor->SetCopyPreviewInput({}); actor->SetCopyPreviewGroundHeight(1000);
-    actor->param_->speed = 10; actor->param_->gravity = 50; actor->param_->maxFallSpeed = 60;
+    actor->SetParameter(&engine::EntityParameter::speed, 10); actor->SetParameter(&engine::EntityParameter::gravity, 50); actor->SetParameter(&engine::EntityParameter::maxFallSpeed, 60);
     auto mover = std::make_unique<PlayerMover>();
     mover->Initialize(actor.get(), engine::InputManager::GetInstance(), scene->GetParticleSystem());
     auto strategy = std::make_unique<MoveInput>(); auto* input = strategy.get(); mover->SetStrategy(std::move(strategy));

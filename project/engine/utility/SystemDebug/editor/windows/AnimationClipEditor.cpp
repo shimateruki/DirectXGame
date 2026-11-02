@@ -1,5 +1,6 @@
 #ifdef USE_IMGUI
 #include "AnimationClipEditor.h"
+#include <numbers>
 #include "EditorCommon.h"
 
 #include "EditorToolSettings.h"
@@ -33,7 +34,7 @@ namespace {
 constexpr const char* kPreviewObjectName = "__Editor_AnimationClipVisual";
 constexpr const char* kSaveDirectory = "Resources/json/animation_clip/";
 constexpr const char* kLegacySaveDirectory = "Resources/json/enemy_animation/";
-constexpr float kPi = 3.14159265358979323846f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kKeyEpsilon = 0.001f;
 
 const char* kEasingNames[] = {

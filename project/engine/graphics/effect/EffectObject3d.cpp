@@ -1,4 +1,5 @@
 #include "EffectObject3d.h"
+#include <numbers>
 #include "SRVManager.h"
 #include "Winapp.h"
 #include "Easing.h"
@@ -190,7 +191,7 @@ void EffectObject3d::Update(float deltaTime) {
     materialData_->dissolveFade = std::clamp((easeProgress - 0.5f) * 2.0f, 0.0f, 1.0f);
 
     // 歪み演出のUV計算に現在の画面寸法を渡す。
-    materialData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+    materialData_->screenSize = { (float)WinApp::GetClientWidth(), (float)WinApp::GetClientHeight() };
 
     // 指定した開始・終了のスケールと色を、同じ進捗で補間する。
     engine::Vector3 currentScale;
@@ -259,7 +260,7 @@ void EffectObject3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightRes
 
 void EffectObject3d::DrawWithWvp(ID3D12Resource* wvpResource) {
 
-    if (!common_ || !GetMeshRenderer() || !wvpResource)
+    if (!GetObjectCommon() || !GetMeshRenderer() || !wvpResource)
         return;
     Model* model = GetMeshRenderer()->GetModel();
     if (!model)
@@ -269,10 +270,10 @@ void EffectObject3d::DrawWithWvp(ID3D12Resource* wvpResource) {
         return;
     }
 
-    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    ID3D12GraphicsCommandList* commandList = GetObjectCommon()->GetDxCommon()->GetCommandList();
 
     // 通常の3Dマテリアルとは異なる専用パイプラインへ切り替える。
-    common_->SetEffectGraphicsCommand(blendMode_);
+    GetObjectCommon()->SetEffectGraphicsCommand(blendMode_);
 
     // ルートスロットの順序はエフェクト用RootSignatureと一致させる。
     // 0: VSのWVP、1: 予備のVS定数、2: PSマテリアル。
@@ -292,7 +293,7 @@ void EffectObject3d::DrawWithWvp(ID3D12Resource* wvpResource) {
     }
 
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, texHandle);
-    uint32_t grabSrvHandle = common_->GetDxCommon()->GetGrabSrvHandle();
+    uint32_t grabSrvHandle = GetObjectCommon()->GetDxCommon()->GetGrabSrvHandle();
 
     if (grabSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
@@ -323,7 +324,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
-    float angleRad = angleDeg * (3.14159265f / 180.0f);
+    float angleRad = angleDeg * (std::numbers::pi_v<float> / 180.0f);
     float startAngle = -angleRad / 2.0f;
     float angleStep = angleRad / segments;
 
@@ -343,7 +344,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         float currentThick = thickness;
 
         if (isCrescent) {
-            float taper = sinf(u * 3.14159265f);
+            float taper = sinf(u * std::numbers::pi_v<float>);
 
             currentInRad = outRad - (outRad - inRad) * taper;
 
@@ -419,7 +420,7 @@ void EffectObject3d::GenerateThrustVertices(float length, float radius, int segm
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
-    float angleStep = (2.0f * 3.14159265f) / segments;
+    float angleStep = (2.0f * std::numbers::pi_v<float>) / segments;
 
     // 0: 先端 (Z軸の奥)
     Model::VertexData tip;
@@ -513,13 +514,13 @@ void EffectObject3d::GenerateSphereVertices(float radius, int segments, int ring
 
     for (int r = 0; r <= rings; ++r) {
         float v = (float)r / rings;
-        float phi = v * 3.14159265f;
+        float phi = v * std::numbers::pi_v<float>;
         float y = cosf(phi) * radius;
         float ringRad = sinf(phi) * radius;
 
         for (int s = 0; s <= segments; ++s) {
             float u = (float)s / segments;
-            float theta = u * 2.0f * 3.14159265f;
+            float theta = u * 2.0f * std::numbers::pi_v<float>;
             float x = sinf(theta) * ringRad;
             float z = cosf(theta) * ringRad;
 
@@ -571,7 +572,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
 
         for (int s = 0; s <= segments; ++s) {
             float u = (float)s / segments;
-            float theta = u * 2.0f * 3.14159265f;
+            float theta = u * 2.0f * std::numbers::pi_v<float>;
             float x = sinf(theta) * radius;
             float z = cosf(theta) * radius;
 
@@ -603,7 +604,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
     proceduralVertices_.push_back(topCenter);
 
     for (int s = 0; s <= segments; ++s) {
-        float theta = ((float)s / segments) * 2.0f * 3.14159265f;
+        float theta = ((float)s / segments) * 2.0f * std::numbers::pi_v<float>;
         Model::VertexData v;
         v.position = {sinf(theta) * radius, halfH, cosf(theta) * radius, 1.0f};
         v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f + cosf(theta)*0.5f}; // UVは円形にマッピング
@@ -626,7 +627,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
     proceduralVertices_.push_back(botCenter);
 
     for (int s = 0; s <= segments; ++s) {
-        float theta = ((float)s / segments) * 2.0f * 3.14159265f;
+        float theta = ((float)s / segments) * 2.0f * std::numbers::pi_v<float>;
         Model::VertexData v;
         v.position = {sinf(theta) * radius, -halfH, cosf(theta) * radius, 1.0f};
         v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f - cosf(theta)*0.5f};
@@ -718,13 +719,13 @@ void EffectObject3d::GenerateTorusVertices(float majorRad, float minorRad, int s
 
     for (int r = 0; r <= rings; ++r) {
         float v = (float)r / rings;
-        float phi = v * 2.0f * 3.14159265f;
+        float phi = v * 2.0f * std::numbers::pi_v<float>;
         float cosPhi = cosf(phi);
         float sinPhi = sinf(phi);
 
         for (int s = 0; s <= segments; ++s) {
             float u = (float)s / segments;
-            float theta = u * 2.0f * 3.14159265f;
+            float theta = u * 2.0f * std::numbers::pi_v<float>;
             float cosTheta = cosf(theta);
             float sinTheta = sinf(theta);
             float x = (majorRad + minorRad * cosPhi) * cosTheta;
@@ -776,7 +777,7 @@ void EffectObject3d::GenerateConeVertices(float radius, float height, int segmen
 
     for (int s = 0; s <= segments; ++s) {
         float u = (float)s / segments;
-        float theta = u * 2.0f * 3.14159265f;
+        float theta = u * 2.0f * std::numbers::pi_v<float>;
         float x = sinf(theta) * radius;
         float z = cosf(theta) * radius;
         Model::VertexData v;
@@ -809,7 +810,7 @@ void EffectObject3d::GenerateConeVertices(float radius, float height, int segmen
     proceduralVertices_.push_back(bot);
 
     for (int s = 0; s <= segments; ++s) {
-        float theta = ((float)s / segments) * 2.0f * 3.14159265f;
+        float theta = ((float)s / segments) * 2.0f * std::numbers::pi_v<float>;
         Model::VertexData v;
         v.position = {sinf(theta) * radius, -halfH, cosf(theta) * radius, 1.0f};
         v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f - cosf(theta)*0.5f};
@@ -834,7 +835,7 @@ void EffectObject3d::GenerateRingVertices(float outerRad, float innerRad, int se
 
         for(int s=0; s<=segments; ++s) {
             float u = (float)s / segments;
-            float theta = u * 2.0f * 3.14159265f;
+            float theta = u * 2.0f * std::numbers::pi_v<float>;
             Model::VertexData vert;
             vert.position = {sinf(theta)*r, 0, cosf(theta)*r, 1.0f};
             vert.texcoord = {u, v};
@@ -895,7 +896,7 @@ void EffectObject3d::GenerateLanceVertices(float radius, float height, int segme
 
     for (int ring = 0; ring < ringCount; ++ring) {
         for (int side = 0; side <= sideCount; ++side) {
-            const float angle = static_cast<float>(side) * 2.0f * 3.14159265f /
+            const float angle = static_cast<float>(side) * 2.0f * std::numbers::pi_v<float> /
                 static_cast<float>(sideCount);
             const float facet = (side % 2 == 0) ? 1.0f : 0.78f;
             const float radial = radius * profile[ring][1] * facet;
@@ -936,47 +937,47 @@ void EffectObject3d::UpdateProceduralMesh() {
 
     // 材質の形状番号に対応する頂点生成器を選ぶ。1と2だけ同じ生成器の形を切り替える。
     if (type == 1) {
-        GenerateSlashVertices(editSlashAngle_, editInnerRadius_, editOuterRadius_, editThickness_, editSpiralPitch_, editMeshSegments_, true);
+        GenerateSlashVertices(meshSettings_.slashAngle, meshSettings_.innerRadius, meshSettings_.outerRadius, meshSettings_.thickness, meshSettings_.spiralPitch, meshSettings_.meshSegments, true);
     }
     else if (type == 2) {
-        GenerateSlashVertices(editSlashAngle_, editInnerRadius_, editOuterRadius_, editThickness_, editSpiralPitch_, editMeshSegments_, false);
+        GenerateSlashVertices(meshSettings_.slashAngle, meshSettings_.innerRadius, meshSettings_.outerRadius, meshSettings_.thickness, meshSettings_.spiralPitch, meshSettings_.meshSegments, false);
     }
     else if (type == 3) { // 突き
-        GenerateThrustVertices(editThrustLength_, editThrustRadius_, editMeshSegments_);
+        GenerateThrustVertices(meshSettings_.thrustLength, meshSettings_.thrustRadius, meshSettings_.meshSegments);
     }
     else if (type == 4) { // 球
-        GenerateSphereVertices(editSphereRadius_, editMeshSegments_, editSphereRings_);
+        GenerateSphereVertices(meshSettings_.sphereRadius, meshSettings_.meshSegments, meshSettings_.sphereRings);
     }
     else if (type == 5) { // 円柱
-        GenerateCylinderVertices(editCylinderRadius_, editCylinderHeight_, editMeshSegments_);
+        GenerateCylinderVertices(meshSettings_.cylinderRadius, meshSettings_.cylinderHeight, meshSettings_.meshSegments);
     }
     else if (type == 6) { // 箱
-        GenerateBoxVertices(editBoxSize_);
+        GenerateBoxVertices(meshSettings_.boxSize);
     }
     else if (type == 7 || type == 13 || type == 14) { // 平面と動的放電
-        GeneratePlaneVertices(editPlaneSize_, editMeshSegments_);
+        GeneratePlaneVertices(meshSettings_.planeSize, meshSettings_.meshSegments);
     }
     else if (type == 8) { // トーラス
-        GenerateTorusVertices(editTorusMajorRadius_, editTorusMinorRadius_, editMeshSegments_, editSphereRings_);
+        GenerateTorusVertices(meshSettings_.torusMajorRadius, meshSettings_.torusMinorRadius, meshSettings_.meshSegments, meshSettings_.sphereRings);
     }
     else if (type == 9) { // 円錐
-        GenerateConeVertices(editConeRadius_, editConeHeight_, editMeshSegments_);
+        GenerateConeVertices(meshSettings_.coneRadius, meshSettings_.coneHeight, meshSettings_.meshSegments);
     }
     else if (type == 10) { // リング
-        GenerateRingVertices(editRingOuterRadius_, editRingInnerRadius_, editMeshSegments_);
+        GenerateRingVertices(meshSettings_.ringOuterRadius, meshSettings_.ringInnerRadius, meshSettings_.meshSegments);
     }
     else if (type == 11) { // 三角形
-        GenerateTriangleVertices(editTriangleSize_);
+        GenerateTriangleVertices(meshSettings_.triangleSize);
     }
     else if (type == 12) { // 槍
-        GenerateLanceVertices(editConeRadius_, editConeHeight_, editMeshSegments_);
+        GenerateLanceVertices(meshSettings_.coneRadius, meshSettings_.coneHeight, meshSettings_.meshSegments);
     }
     else { return; }
 
     // 生成器が作ったUVへ共通のタイリングを掛け、動的Modelへまとめて反映する。
     for (auto& v : proceduralVertices_) {
-        v.texcoord.x *= editUvTiling_.x;
-        v.texcoord.y *= editUvTiling_.y;
+        v.texcoord.x *= meshSettings_.uvTiling.x;
+        v.texcoord.y *= meshSettings_.uvTiling.y;
     }
 
     dynamicModel_->CreateFromVertices(ModelManager::GetInstance()->GetModelCommon(), proceduralVertices_, proceduralIndices_);
@@ -1149,58 +1150,58 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
 
         if (procType >= 1) {
             if (j.contains("SlashAngle"))
-                editSlashAngle_      = j["SlashAngle"];
+                meshSettings_.slashAngle      = j["SlashAngle"];
             if (j.contains("InnerRadius"))
-                editInnerRadius_     = j["InnerRadius"];
+                meshSettings_.innerRadius     = j["InnerRadius"];
             if (j.contains("OuterRadius"))
-                editOuterRadius_     = j["OuterRadius"];
+                meshSettings_.outerRadius     = j["OuterRadius"];
             if (j.contains("Thickness"))
-                editThickness_       = j["Thickness"];
+                meshSettings_.thickness       = j["Thickness"];
             if (j.contains("SpiralPitch"))
-                editSpiralPitch_     = j["SpiralPitch"];
+                meshSettings_.spiralPitch     = j["SpiralPitch"];
             if (j.contains("ThrustLength"))
-                editThrustLength_    = j["ThrustLength"];
+                meshSettings_.thrustLength    = j["ThrustLength"];
             if (j.contains("ThrustRadius"))
-                editThrustRadius_    = j["ThrustRadius"];
+                meshSettings_.thrustRadius    = j["ThrustRadius"];
             if (j.contains("SphereRadius"))
-                editSphereRadius_    = j["SphereRadius"];
+                meshSettings_.sphereRadius    = j["SphereRadius"];
             if (j.contains("SphereRings"))
-                editSphereRings_     = j["SphereRings"];
+                meshSettings_.sphereRings     = j["SphereRings"];
             if (j.contains("CylinderRadius"))
-                editCylinderRadius_  = j["CylinderRadius"];
+                meshSettings_.cylinderRadius  = j["CylinderRadius"];
             if (j.contains("CylinderHeight"))
-                editCylinderHeight_  = j["CylinderHeight"];
+                meshSettings_.cylinderHeight  = j["CylinderHeight"];
             if (j.contains("BoxSize"))    {
-                editBoxSize_.x = j["BoxSize"][0];
-                editBoxSize_.y = j["BoxSize"][1];
-                editBoxSize_.z = j["BoxSize"][2];
+                meshSettings_.boxSize.x = j["BoxSize"][0];
+                meshSettings_.boxSize.y = j["BoxSize"][1];
+                meshSettings_.boxSize.z = j["BoxSize"][2];
             }
             if (j.contains("PlaneSize"))  {
-                editPlaneSize_.x = j["PlaneSize"][0];
-                editPlaneSize_.y = j["PlaneSize"][1];
+                meshSettings_.planeSize.x = j["PlaneSize"][0];
+                meshSettings_.planeSize.y = j["PlaneSize"][1];
             }
             if (j.contains("TorusMajorRadius"))
-                editTorusMajorRadius_ = j["TorusMajorRadius"];
+                meshSettings_.torusMajorRadius = j["TorusMajorRadius"];
             if (j.contains("TorusMinorRadius"))
-                editTorusMinorRadius_ = j["TorusMinorRadius"];
+                meshSettings_.torusMinorRadius = j["TorusMinorRadius"];
             if (j.contains("ConeRadius"))
-                editConeRadius_  = j["ConeRadius"];
+                meshSettings_.coneRadius  = j["ConeRadius"];
             if (j.contains("ConeHeight"))
-                editConeHeight_  = j["ConeHeight"];
+                meshSettings_.coneHeight  = j["ConeHeight"];
             if (j.contains("RingOuterRadius"))
-                editRingOuterRadius_ = j["RingOuterRadius"];
+                meshSettings_.ringOuterRadius = j["RingOuterRadius"];
             if (j.contains("RingInnerRadius"))
-                editRingInnerRadius_ = j["RingInnerRadius"];
+                meshSettings_.ringInnerRadius = j["RingInnerRadius"];
             if (j.contains("TriangleSize"))
-                editTriangleSize_ = j["TriangleSize"];
+                meshSettings_.triangleSize = j["TriangleSize"];
             if (j.contains("MeshSegments"))
-                editMeshSegments_ = j["MeshSegments"];
+                meshSettings_.meshSegments = j["MeshSegments"];
             if (j.contains("UvTiling"))        {
-                editUvTiling_.x = j["UvTiling"][0];
-                editUvTiling_.y = j["UvTiling"][1];
+                meshSettings_.uvTiling.x = j["UvTiling"][0];
+                meshSettings_.uvTiling.y = j["UvTiling"][1];
             }
-            if (procType == 2 && editSlashAngle_ < 360.0f) {
-                editSlashAngle_ = 400.0f;
+            if (procType == 2 && meshSettings_.slashAngle < 360.0f) {
+                meshSettings_.slashAngle = 400.0f;
             }
 
             UpdateProceduralMesh();
@@ -1211,15 +1212,15 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     if (j.contains("Collision")) {
         auto col = j["Collision"];
         if (col.contains("HasCollision"))
-            editHasCollision_ = col["HasCollision"].get<bool>();
+            meshSettings_.hasCollision = col["HasCollision"].get<bool>();
         if (col.contains("Shape"))
-            editCollisionShape_ = col["Shape"].get<int>();
+            meshSettings_.collisionShape = col["Shape"].get<int>();
         if (col.contains("Size") && col["Size"].is_array() && col["Size"].size() >= 3) {
-            editCollisionSize_ = { col["Size"][0].get<float>(), col["Size"][1].get<float>(), col["Size"][2].get<float>() };
+            meshSettings_.collisionSize = { col["Size"][0].get<float>(), col["Size"][1].get<float>(), col["Size"][2].get<float>() };
         }
 
         if (col.contains("Offset") && col["Offset"].is_array() && col["Offset"].size() >= 3) {
-            editCollisionOffset_ = { col["Offset"][0].get<float>(), col["Offset"][1].get<float>(), col["Offset"][2].get<float>() };
+            meshSettings_.collisionOffset = { col["Offset"][0].get<float>(), col["Offset"][1].get<float>(), col["Offset"][2].get<float>() };
         }
     }
 
@@ -1227,8 +1228,8 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     if (j.contains("Position") && j.contains("Rotation")) {
         auto posVal = j["Position"];
         auto rotVal = j["Rotation"];
-        engine::Vector3 offsetPos = { 0, 0, 0 };
-        engine::Vector3 offsetRot = { 0, 0, 0 };
+        engine::Vector3 offsetPos = engine::Vector3::ZERO;
+        engine::Vector3 offsetRot = engine::Vector3::ZERO;
 
         if (posVal.is_array() && posVal.size() >= 3) {
             offsetPos = { posVal[0].get<float>(), posVal[1].get<float>(), posVal[2].get<float>() };

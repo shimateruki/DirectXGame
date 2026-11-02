@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/actor/player/state/PlayerState.h"
+#include <numbers>
 #include "game/actor/player/Player.h"
 #include "DebugConsole.h"
 #include "engine/utility/math/Math.h"
@@ -52,7 +53,7 @@ void PlayerStateDamage::Update(Player* player, float deltaTime) {
 
     engine::Vector3 targetScale = baseScale_;
     engine::Vector3 targetRotation = baseRotation_;
-    const float roll = t * 6.28318531f;
+    const float roll = t * (2.0f * std::numbers::pi_v<float>);
     const float rollEaseOut = 1.0f - (1.0f - t) * (1.0f - t);
 
     if (t < 0.16f) {
@@ -70,16 +71,16 @@ void PlayerStateDamage::Update(Player* player, float deltaTime) {
         float p = (t - 0.48f) / 0.52f;
         if (p > 1.0f)
             p = 1.0f;
-        float wobble = std::sin(p * 3.14159265f * 4.0f) * (1.0f - p);
+        float wobble = std::sin(p * std::numbers::pi_v<float> * 4.0f) * (1.0f - p);
         targetScale = {baseScale_.x * (1.0f + wobble * 0.28f), baseScale_.y * (1.0f - wobble * 0.22f),
                        baseScale_.z * (1.0f + wobble * 0.28f)};
     }
 
     targetRotation.x += knockbackDir_.z * roll;
     targetRotation.z -= knockbackDir_.x * roll;
-    targetRotation.y += std::sin(t * 3.14159265f) * 0.35f * (knockbackDir_.x + knockbackDir_.z);
-    targetScale.x += std::sin(rollEaseOut * 3.14159265f * 2.0f) * baseScale_.x * 0.08f;
-    targetScale.z += std::cos(rollEaseOut * 3.14159265f * 2.0f) * baseScale_.z * 0.06f;
+    targetRotation.y += std::sin(t * std::numbers::pi_v<float>) * 0.35f * (knockbackDir_.x + knockbackDir_.z);
+    targetScale.x += std::sin(rollEaseOut * std::numbers::pi_v<float> * 2.0f) * baseScale_.x * 0.08f;
+    targetScale.z += std::cos(rollEaseOut * std::numbers::pi_v<float> * 2.0f) * baseScale_.z * 0.06f;
 
     player->SetScale(targetScale);
     player->SetRotation(targetRotation);

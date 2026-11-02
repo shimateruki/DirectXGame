@@ -1,4 +1,5 @@
 #include "EffectPreviewStage.h"
+#include <numbers>
 
 #include "BaseScene.h"
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
@@ -875,7 +876,7 @@ void EffectPreviewStage::PlaceCameraAtPreview() {
 
     engine::Vector3 target = GetGroundPosition();
     target.y += cameraTargetHeight_;
-    constexpr float kDegreesToRadians = 3.14159265358979323846f / 180.0f;
+    constexpr float kDegreesToRadians = std::numbers::pi_v<float> / 180.0f;
     const float azimuth = cameraAzimuthDegrees_ * kDegreesToRadians;
     engine::Vector3 eye = {
         target.x + std::sin(azimuth) * cameraDistance_,

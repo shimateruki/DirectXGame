@@ -5,7 +5,7 @@
 namespace EditorPropertyJsonBinding {
 // 省略されたparamへ前のPresetの値を持ち越さず、生成時の既定値から読み直します。
 inline void Restore(engine::Object3d& object, const nlohmann::json& defaults, const nlohmann::json& source) {
-    object.param_.reset();
+    object.ClearParameters();
     object.ImportFromJson(defaults);
     object.ImportFromJson(source);
 }

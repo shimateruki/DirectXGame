@@ -7,5 +7,5 @@ class MoveStrategy2D : public IMoveStrategy {
     engine::Vector3 CalculateVelocity(Player* player) override;
 
   private:
-    engine::Math math;
+    engine::Math math_;
 };

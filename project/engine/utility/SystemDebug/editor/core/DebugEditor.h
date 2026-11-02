@@ -547,8 +547,8 @@ public:
 private:
         // モデルやプリセット生成時の配置結果をまとめ、生成後の選択やUndo登録に使います。
 struct PlacementResult {
-        engine::Vector3 position = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 contactPosition = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 position = engine::Vector3::ZERO;
+        engine::Vector3 contactPosition = engine::Vector3::ZERO;
         engine::Vector3 normal = { 0.0f, 1.0f, 0.0f };
         bool found = false;
         bool hasSurface = false;
@@ -756,8 +756,8 @@ private:
     // 矩形選択のドラッグ中/確定待ちと画面上の対角座標。
     bool isSelectionRectDragging_ = false;
     bool isSelectionRectReady_ = false;
-    engine::Vector2 selectionRectStart_ = { 0.0f, 0.0f };
-    engine::Vector2 selectionRectEnd_ = { 0.0f, 0.0f };
+    engine::Vector2 selectionRectStart_ = engine::Vector2::ZERO;
+    engine::Vector2 selectionRectEnd_ = engine::Vector2::ZERO;
 
     // 配置確定前のObjectとその子をEditorが一時所有する。
     std::unique_ptr<engine::Object3d> previewObject_ = nullptr;
@@ -776,10 +776,10 @@ private:
     std::string brushPresetName_;
     float brushSpacing_ = 2.0f;
     bool hasLastBrushStamp_ = false;
-    engine::Vector3 lastBrushStampPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 lastBrushStampPosition_ = engine::Vector3::ZERO;
 
     // プレビューで一時変更した元Objectの見た目・クラス・モデルを取消時に復元する。
-    engine::Vector4 previewObjectOriginalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 previewObjectOriginalColor_ = engine::Colors::White;
     BlendMode previewObjectOriginalBlendMode_ = BlendMode::kNormal;
     int32_t previewObjectOriginalMaterialType_ = 0;
     int32_t previewObjectOriginalSelectedLighting_ = 2;
@@ -792,14 +792,14 @@ private:
     bool previewObjectUsesFallbackModel_ = false;
 
     // 配置面への接触位置。有効でない間は計算値を利用しない。
-    engine::Vector3 previewPlacementContactPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 previewPlacementContactPosition_ = engine::Vector3::ZERO;
     bool hasPreviewPlacementContact_ = false;
     std::string previewCreateCommandLabel_ = "Place Preview Object";
 
     // 生成プレビュー中だけ一時的に差し替える表示状態を保持する。
     struct PreviewVisualState {
         std::string className;
-        engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        engine::Vector4 color = engine::Colors::White;
         BlendMode blendMode = BlendMode::kNormal;
         int32_t materialType = 0;
         int32_t selectedLighting = 2;
@@ -845,9 +845,9 @@ private:
     char presetNameBuffer_[64] = "";
 
     // Game View内のマウス位置・矩形。画面座標とView内座標を分けて持つ。
-    engine::Vector2 gameViewMousePos_ = { 0, 0 };
+    engine::Vector2 gameViewMousePos_ = engine::Vector2::ZERO;
     engine::Vector2 gameViewSize_ = { 1266, 530 };
-    engine::Vector2 gameViewOffset_ = { 0, 0 };
+    engine::Vector2 gameViewOffset_ = engine::Vector2::ZERO;
     int gameViewScreenRectLeft_ = 0;
     int gameViewScreenRectTop_ = 0;
     int gameViewScreenRectRight_ = 0;
@@ -856,8 +856,8 @@ private:
     bool isGameViewHovered_ = false;
 
     // 右クリック生成メニューのView内位置と画面位置、および表示予約。
-    engine::Vector2 gameViewCreateMenuMousePos_ = { 0, 0 };
-    engine::Vector2 gameViewCreateMenuScreenPos_ = { 0, 0 };
+    engine::Vector2 gameViewCreateMenuMousePos_ = engine::Vector2::ZERO;
+    engine::Vector2 gameViewCreateMenuScreenPos_ = engine::Vector2::ZERO;
     bool requestGameViewCreateMenu_ = false;
 
     // Play開始位置の通知先。位置とラベルを渡すが所有権は移さない。

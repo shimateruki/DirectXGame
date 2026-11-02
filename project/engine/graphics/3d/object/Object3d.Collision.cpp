@@ -140,7 +140,7 @@ void Object3d::SetCollisionSize(const engine::Vector3& size) {
 
 engine::Vector3 Object3d::GetCollisionSize() const {
     // Collider未作成時は各軸0の範囲を返す。
-    return collider_ ? collider_->GetSize() : engine::Vector3{ 0,0,0 };
+    return collider_ ? collider_->GetSize() : engine::Vector3::ZERO;
 }
 
 void Object3d::SetCollisionRadius(float radius) {

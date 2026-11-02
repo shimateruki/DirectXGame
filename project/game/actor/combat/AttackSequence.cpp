@@ -1,4 +1,5 @@
 #include "AttackSequence.h"
+#include <numbers>
 #include "game/system/combat/BulletManager.h"
 #include "CollisionConfig.h"
 #include "GPUParticleManager.h"
@@ -358,7 +359,7 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
     const auto mask = CollisionCategories::Get(context.playerOwned ? "enemy" : "player") | CollisionCategories::Get("ground");
 
     for (int i = 0; i < event.count; ++i) {
-        const float angle = event.count == 1 ? 0.0f : (static_cast<float>(i) / (event.count - 1) - 0.5f) * event.spreadDegrees * 0.01745329252f;
+        const float angle = event.count == 1 ? 0.0f : (static_cast<float>(i) / (event.count - 1) - 0.5f) * event.spreadDegrees * (std::numbers::pi_v<float> / 180.0f);
         const engine::Vector3 spread{direction.x * std::cos(angle) + direction.z * std::sin(angle), direction.y,
                             direction.z * std::cos(angle) - direction.x * std::sin(angle)};
         BulletManager::GetInstance()->Fire(position, spread * speed + engine::Vector3{0, event.verticalSpeed, 0},

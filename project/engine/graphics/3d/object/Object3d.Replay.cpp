@@ -28,7 +28,7 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     state.quaternionMaster = transform_.isQuaternionMaster;
 
     state.visible = isVisible_;
-    state.dead = isDead;
+    state.dead = isDead_;
     state.collecting = isCollecting_;
     state.collectTimer = collectTimer_;
     state.animationTime = animationTime_;
@@ -77,7 +77,7 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     transform_.isQuaternionMaster = state.quaternionMaster;
 
     isVisible_ = state.visible;
-    isDead = state.dead;
+    isDead_ = state.dead;
     isCollecting_ = state.collecting;
     collectTimer_ = state.collectTimer;
     animationTime_ = state.animationTime;

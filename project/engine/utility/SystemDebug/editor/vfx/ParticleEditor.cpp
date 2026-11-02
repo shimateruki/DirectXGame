@@ -41,7 +41,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     }
 
     targetSystem_->SetEditorPreviewOffset(previewStage->GetPreviewPosition());
-    engine::ParticleSystem::EmitterParams& params = targetSystem_->params_;
+    const auto& params = targetSystem_->GetEmitterParams();
     const float duration = (std::max)(3.0f, params.particleLifetime + 0.75f);
 
     const auto restartPreview = [&](float seekTime) {
@@ -193,7 +193,7 @@ void ParticleEditor::DrawImGui() {
         return;
     }
 
-    engine::ParticleSystem::EmitterParams& params = targetSystem->params_;
+    auto params = targetSystem->GetEmitterParams();
 
     // -------------------------------------------------------------
     // 1. 描画・形状設定
@@ -308,7 +308,7 @@ void ParticleEditor::DrawImGui() {
 
             const auto applyParams = [targetSystem](const engine::ParticleSystem::EmitterParams& value) {
                 if (targetSystem)
-                    targetSystem->params_ = value;
+                    targetSystem->SetEmitterParams(value);
             };
 
             EditorPropertyTransaction::RegisterDiscrete(
@@ -329,7 +329,7 @@ void ParticleEditor::DrawImGui() {
                 12,
                 [targetSystem](const VFXFloatCurve& value) {
                     if (targetSystem)
-                        targetSystem->params_.sizeOverLife = value;
+                        targetSystem->SetSizeOverLife(value);
                 });
             VFXAuthoringEditor::DrawColorGradient(
                 "CpuParticleColor",
@@ -337,7 +337,7 @@ void ParticleEditor::DrawImGui() {
                 8,
                 [targetSystem](const VFXColorGradient& value) {
                     if (targetSystem)
-                        targetSystem->params_.colorOverLife = value;
+                        targetSystem->SetColorOverLife(value);
                 });
         }
 
@@ -369,7 +369,8 @@ void ParticleEditor::DrawImGui() {
 
         if (VFXAssetPicker::DrawCombo(ICON_FA_FILE_IMAGE " Texture File", files,
                                       currentItem, textureSearch_, sizeof(textureSearch_))) {
-            targetSystem->SetTexture(directoryPath + files[currentItem]);
+            params.textureName = directoryPath + files[currentItem];
+            targetSystem->SetTexture(params.textureName);
         }
 
         if (currentItem < 0 && !params.textureName.empty())
@@ -382,7 +383,7 @@ void ParticleEditor::DrawImGui() {
             params.lod,
             [targetSystem](const VFXLodSettings& value) {
                 if (targetSystem)
-                    targetSystem->params_.lod = value;
+                    targetSystem->SetLodSettings(value);
             },
             1,
             engine::ParticleSystem::GetMaxParticles());
@@ -448,6 +449,9 @@ void ParticleEditor::DrawImGui() {
             ImGui::EndPopup();
         }
     }
+
+    // このフレームに編集した値を、次の更新・描画で使う設定へ適用する。
+    targetSystem->SetEmitterParams(params);
 
 #endif
 }

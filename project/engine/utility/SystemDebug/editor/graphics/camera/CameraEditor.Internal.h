@@ -1,6 +1,7 @@
 ﻿#pragma once
 // 分割実装だけが使う補助関数の宣言です。状態を重複して持たせません。
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include <numbers>
 #include "CameraManager.h"
 #include "InputManager.h" // 入力取得に必要
 #include "PrimitiveDrawer.h"
@@ -18,7 +19,7 @@
 #include "IconsFontAwesome5.h"
 
 namespace CameraEditorImplementation {
-    inline constexpr float kPi = 3.14159265f;
+    inline constexpr float kPi = std::numbers::pi_v<float>;
     inline constexpr const char* kCameraModelGizmoName = "Editor/camera_gizmo";
     inline constexpr bool kShowLegacyCameraEditor = false;
 

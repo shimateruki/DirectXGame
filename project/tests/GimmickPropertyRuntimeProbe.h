@@ -56,19 +56,19 @@ inline void CheckSettings(engine::Object3dCommon* common, DebugEditor* editor, B
                                     {"interval", 1.2f}, {"shakeDuration", 0.7f}}}};
     floor->DeserializeFeatureComponents(legacy);
     SceneEntityParameterCodec::Apply(*floor, legacy["param"]);
-    Require(floor->param_->actionMode == 1 && Near(floor->param_->moveAmount, 4.25f) &&
-            Near(floor->param_->speed, 3.75f) && Near(floor->param_->shakeDuration, 0.7f), "legacy param migration");
+    Require(floor->GetParameters()->actionMode == 1 && Near(floor->GetParameters()->moveAmount, 4.25f) &&
+            Near(floor->GetParameters()->speed, 3.75f) && Near(floor->GetParameters()->shakeDuration, 0.7f), "legacy param migration");
     Require(Near(registry->GetValue(floor.get(), prefix + "sinkDepth_").get<float>(), 2.0f), "legacy shallow default");
     Require(!registry->Find(prefix + "sinkDepth_")->visible(*floor) &&
             registry->Find(prefix + "moveAmount")->visible(*floor), "deep mode visibility");
     registry->SetValue(floor.get(), prefix + "actionMode", 0);
     Require(registry->Find(prefix + "sinkDepth_")->visible(*floor) &&
-            !registry->Find(prefix + "moveAmount")->visible(*floor) && Near(floor->param_->moveAmount, 4.25f), "mode switch lost hidden setting");
+            !registry->Find(prefix + "moveAmount")->visible(*floor) && Near(floor->GetParameters()->moveAmount, 4.25f), "mode switch lost hidden setting");
     registry->SetValue(floor.get(), prefix + "actionMode", 1);
     Require(registry->SetValue(floor.get(), prefix + "sinkDepth_", 3.5f), "set private depth");
     Require(registry->SetValue(floor.get(), prefix + "sinkSpeed_", 7.25f), "set private response");
     Require(!registry->SetValue(floor.get(), prefix + "sinkDepth_", "invalid"), "reject malformed number");
-    Require(registry->SetValue(floor.get(), prefix + "speed", 4.5f) && Near(floor->param_->speed, 4.5f), "legacy single source");
+    Require(registry->SetValue(floor.get(), prefix + "speed", 4.5f) && Near(floor->GetParameters()->speed, 4.5f), "legacy single source");
     auto saved = floor->ExportToJson();
     saved["components"]["Game_SinkingFloor"]["future"] = {1, 2, 3};
     floor->ImportFromJson(json::parse(saved.dump()));
@@ -163,7 +163,7 @@ inline void CheckAllGimmicks(engine::Object3dCommon* common, DebugEditor* editor
         auto presetWithValues = defaults;
         presetWithValues["param"]["speed"] = 77.0f;
         EditorPropertyJsonBinding::Restore(*object, defaults, presetWithValues);
-        Require(object->param_ && Near(object->param_->speed, 77.0f), "preset context failed to load values");
+        Require(object->GetParameters() && Near(object->GetParameters()->speed, 77.0f), "preset context failed to load values");
         EditorPropertyJsonBinding::Restore(*object, defaults, json{{"type", "Gimmick"}, {"gimmickType", type.id}});
         Require(SceneEntityParameterCodec::Serialize(*object) == defaultParams, "preset context carried absent parameters from previous preset");
         const auto beforeRead = object->ExportToJson();
@@ -214,9 +214,9 @@ inline void CheckAllGimmicks(engine::Object3dCommon* common, DebugEditor* editor
             }
         }
         // 読込・複製・Replayで非表示項目も含めて旧paramをそのまま保持します。
-        if (object->param_) {
-            object->param_->hp = 83.25f;
-            object->param_->volumePayload = "__unused_legacy_payload";
+        if (object->GetParameters()) {
+            object->SetParameter(&engine::EntityParameter::hp, 83.25f);
+            object->SetParameter(&engine::EntityParameter::volumePayload, "__unused_legacy_payload");
         }
         auto saved = object->ExportToJson();
         second->ImportFromJson(saved);
@@ -228,7 +228,7 @@ inline void CheckAllGimmicks(engine::Object3dCommon* common, DebugEditor* editor
         Require(clone->GetGimmickType() == type.id && SceneEntityParameterCodec::Serialize(*clone) == SceneEntityParameterCodec::Serialize(*object), "clone alias or params");
         const auto params = SceneEntityParameterCodec::Serialize(*object);
         const auto replay = object->CaptureReplayState();
-        if (object->param_) object->param_->speed += 12.5f;
+        if (object->GetParameters()) object->SetParameter(&engine::EntityParameter::speed, object->GetParameters()->speed + (12.5f));
         object->RestoreReplayState(replay);
         Require(params == SceneEntityParameterCodec::Serialize(*object), "replay params");
         log << "OK factory, read-only inspection, roundtrip, clone, replay: " << type.id << std::endl;
@@ -257,33 +257,33 @@ inline void CheckAllGimmicks(engine::Object3dCommon* common, DebugEditor* editor
     }
     // 旧4枠を表示するだけでは消さず、選択を変更した場合だけ単体へ移行します。
     auto copy = factory->CreateGimmick("CopyMemoryStation", common);
-    copy->param_->copyMemoryTypeA.clear(); copy->param_->copyMemoryTypeB = "WindSlime";
-    copy->param_->copyMemoryTypeC = "Bomber"; copy->param_->copyMemoryTypeD = "Slime";
+    copy->SetParameter(&engine::EntityParameter::copyMemoryTypeA, {}); copy->SetParameter(&engine::EntityParameter::copyMemoryTypeB, "WindSlime");
+    copy->SetParameter(&engine::EntityParameter::copyMemoryTypeC, "Bomber"); copy->SetParameter(&engine::EntityParameter::copyMemoryTypeD, "Slime");
     const auto copyBefore = SceneEntityParameterCodec::Serialize(*copy);
     Require(registry->GetValue(copy.get(), "class.Game_CopyMemoryStation.copyMemoryTypeA") == "" &&
         registry->Find("class.Game_CopyMemoryStation.copyMemoryTypeA")->displayValue(*copy) == "WindSlime", "legacy copy display and canonical storage");
     Require(copyBefore == SceneEntityParameterCodec::Serialize(*copy), "legacy copy changed on read");
     auto otherCopy = factory->CreateGimmick("CopyMemoryStation", common);
-    otherCopy->param_->copyMemoryTypeA.clear(); otherCopy->param_->copyMemoryTypeB = "ThunderSlime";
+    otherCopy->SetParameter(&engine::EntityParameter::copyMemoryTypeA, {}); otherCopy->SetParameter(&engine::EntityParameter::copyMemoryTypeB, "ThunderSlime");
     Require(registry->HasMixedValue({copy.get(), otherCopy.get()}, "class.Game_CopyMemoryStation.copyMemoryTypeA"), "legacy copy mixed display");
     Require(registry->SetValue(copy.get(), "class.Game_CopyMemoryStation.copyMemoryTypeA", "FireSlime"), "copy selection");
-    Require(copy->param_->copyMemoryTypeB.empty() && copy->param_->copyMemoryTypeC.empty() && copy->param_->copyMemoryTypeD.empty(), "copy selection legacy cleanup");
+    Require(copy->GetParameters()->copyMemoryTypeB.empty() && copy->GetParameters()->copyMemoryTypeC.empty() && copy->GetParameters()->copyMemoryTypeD.empty(), "copy selection legacy cleanup");
     auto phase = factory->CreateGimmick("PhaseFlipFloor", common);
-    phase->param_->maxCount = 3; phase->param_->colorType = 2;
+    phase->SetParameter(&engine::EntityParameter::maxCount, 3); phase->SetParameter(&engine::EntityParameter::colorType, 2);
     Require(registry->GetValue(phase.get(), "class.Game_PhaseFlipFloor.colorType") == 2 &&
         registry->Find("class.Game_PhaseFlipFloor.colorType")->ui.integerDisplayOffset == 1, "one-based floor display and canonical storage");
     registry->SetValue(phase.get(), "class.Game_PhaseFlipFloor.maxCount", 2);
-    Require(phase->param_->maxCount == 2 && phase->param_->colorType == 1, "phase count edit clamp");
+    Require(phase->GetParameters()->maxCount == 2 && phase->GetParameters()->colorType == 1, "phase count edit clamp");
     auto water = factory->CreateGimmick("WaterGeyser", common);
     Require(!registry->Find("class.Game_MagmaGeyser.actionMode")->visible(*water) &&
         registry->Find("class.Game_MagmaGeyser.detectionRange_water")->visible(*water), "water alias UI");
     auto volume = factory->CreateGimmick("GameplayVolume", common);
     const auto* returns = registry->Find("class.Game_GameplayVolume.returnOnOff");
-    volume->param_->volumeMode = 1;
+    volume->SetParameter(&engine::EntityParameter::volumeMode, 1);
     Require(returns->enabled && !returns->enabled(*volume), "volume unsupported return enabled");
-    volume->param_->volumeMode = 4;
+    volume->SetParameter(&engine::EntityParameter::volumeMode, 4);
     Require(returns->enabled(*volume), "volume BGM return disabled");
-    volume->param_->volumeTriggerOnExit = true;
+    volume->SetParameter(&engine::EntityParameter::volumeTriggerOnExit, true);
     Require(!returns->enabled(*volume), "volume exit conflict enabled");
     // 通常材質の噴出口でも、泡の調整値を旧waterParamへ保存して復元します。
     auto magma = factory->CreateGimmick("MagmaGeyser", common);
@@ -392,18 +392,18 @@ inline std::string CheckTypeChange(engine::Object3dCommon* common, DebugEditor* 
     Require(raw && !dynamic_cast<GimmickSinkingFloor*>(raw), "old dynamic type remained");
     // 同じ種類名のまま実体だけを直す場合は、旧JSONの調整値を失わないようにします。
     raw->SetGimmickType("SinkingFloor");
-    raw->param_.emplace();
-    raw->param_->actionMode = 1;
-    raw->param_->moveAmount = 6.3f;
+    raw->ResetParameters();
+    raw->SetParameter(&engine::EntityParameter::actionMode, 1);
+    raw->SetParameter(&engine::EntityParameter::moveAmount, 6.3f);
     Require(editor->ChangeObjectType(raw, Registry::Kind::Gimmick, "SinkingFloor"), "metadata repair");
     raw = find();
-    Require(raw && raw->param_->actionMode == 1 && Near(raw->param_->moveAmount, 6.3f), "metadata repair lost parameter");
+    Require(raw && raw->GetParameters()->actionMode == 1 && Near(raw->GetParameters()->moveAmount, 6.3f), "metadata repair lost parameter");
     editor->PerformUndo();
     raw = find();
     Require(raw && !dynamic_cast<GimmickSinkingFloor*>(raw) && childRaw->GetParent() == raw, "metadata repair undo");
     editor->PerformRedo();
     raw = find();
-    Require(dynamic_cast<GimmickSinkingFloor*>(raw) && Near(raw->param_->moveAmount, 6.3f), "metadata repair redo");
+    Require(dynamic_cast<GimmickSinkingFloor*>(raw) && Near(raw->GetParameters()->moveAmount, 6.3f), "metadata repair redo");
     Require(editor->ChangeObjectType(raw, Registry::Kind::Gimmick, "MovingFloor"), "second switch away");
     raw = find();
     editor->RequestObjectTypeChange(raw, Registry::Kind::Gimmick, "SinkingFloor");

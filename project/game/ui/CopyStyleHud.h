@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Player.h"
+#include "Easing.h"
 #include "Sprite.h"
 #include "TextureManager.h"
 
@@ -67,7 +68,7 @@ class CopyStyleHud {
         // 能力名はHPバーの上に固定し、切替時の短いフェードだけを行う。
         revealTime_ += (std::max)(deltaTime, 0.0f);
         const float t = std::clamp(revealTime_ / 0.16f, 0.0f, 1.0f);
-        const float smooth = t * t * (3.0f - 2.0f * t);
+        const float smooth = Easing::SmoothStep(t);
         sprite_->SetVisible(true);
         sprite_->SetPosition(basePosition_);
         sprite_->SetSize(baseSize_);
@@ -90,8 +91,8 @@ class CopyStyleHud {
     }
 
     engine::Sprite* sprite_ = nullptr; // 所有権は各シーンが持つ。
-    engine::Vector2 basePosition_ = {0.0f, 0.0f};
-    engine::Vector2 baseSize_ = {0.0f, 0.0f};
+    engine::Vector2 basePosition_ = engine::Vector2::ZERO;
+    engine::Vector2 baseSize_ = engine::Vector2::ZERO;
     Player::EnemyMorphType previousType_ = Player::EnemyMorphType::None;
     float revealTime_ = 0.0f;
 };

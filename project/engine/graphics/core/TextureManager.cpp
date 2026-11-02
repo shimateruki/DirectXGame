@@ -805,13 +805,17 @@ uint32_t TextureManager::LoadInternal(
     }
 
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
-    Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
+    // Copy Queueへ渡す画像はCOMMONから開始し、同期転送は従来のCOPY_DESTを維持します。
+    const bool useCopyQueue = asyncUploadRecording_;
+    const D3D12_RESOURCE_STATES initialState = useCopyQueue
+        ? D3D12_RESOURCE_STATE_COMMON : D3D12_RESOURCE_STATE_COPY_DEST;
+    Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata, initialState);
 
     if (!resource) {
         return 0;
     }
 
-    if (asyncUploadRecording_) {
+    if (useCopyQueue) {
         if (!RecordAsyncTextureUpload(resource.Get(), mipImages)) {
             return 0;
         }

@@ -170,54 +170,73 @@ public:
     /// <summary>現在の手続き生成メッシュを OBJ 形式で書き出す。</summary>
     void ExportToObj(const std::string& filePath) const;
 
-    // --- プロシージャルメッシュ用パラメータ ---
-    float editSlashAngle_ = 360.0f; // 斬撃の角度（360度以上も可能に）
-    float editInnerRadius_ = 0.5f;  // 内径（剣の根元）
-    float editOuterRadius_ = 4.0f;  // 外径（剣の先端）
-    float editThickness_ = 0.5f;    // 軌跡の厚み
-    float editSpiralPitch_ = 0.0f;  // 螺旋の高さ（スパイラル）
-    float editThrustLength_ = 5.0f; // 突きの長さ
-    float editThrustRadius_ = 0.8f; // 突きの根本の太さ
-    int   editMeshSegments_ = 16;   // ポリゴンの分割数（滑らかさ）
+    /// <summary>手続き形状・UV・衝突の編集用データ。保持状態への変更は適用関数を使う。</summary>
+    struct MeshSettings {
+        // --- プロシージャルメッシュ用パラメータ ---
+        float slashAngle = 360.0f; // 斬撃の角度（360度以上も可能に）
+        float innerRadius = 0.5f;  // 内径（剣の根元）
+        float outerRadius = 4.0f;  // 外径（剣の先端）
+        float thickness = 0.5f;    // 軌跡の厚み
+        float spiralPitch = 0.0f;  // 螺旋の高さ（スパイラル）
+        float thrustLength = 5.0f; // 突きの長さ
+        float thrustRadius = 0.8f; // 突きの根本の太さ
+        int   meshSegments = 16;   // ポリゴンの分割数（滑らかさ）
     
-    // 基本プリミティブ用
-    float editSphereRadius_ = 1.0f;
-    int   editSphereRings_ = 16;
+        // 基本プリミティブ用
+        float sphereRadius = 1.0f;
+        int   sphereRings = 16;
 
-    float editCylinderRadius_ = 1.0f;
-    float editCylinderHeight_ = 2.0f;
+        float cylinderRadius = 1.0f;
+        float cylinderHeight = 2.0f;
 
-    engine::Vector3 editBoxSize_ = {1.0f, 1.0f, 1.0f};
+        engine::Vector3 boxSize = {1.0f, 1.0f, 1.0f};
 
-    engine::Vector2 editPlaneSize_ = {2.0f, 2.0f};
-    int   editPlaneSubdivisions_ = 1;
+        engine::Vector2 planeSize = {2.0f, 2.0f};
+        int   planeSubdivisions = 1;
 
-    float editTorusMajorRadius_ = 1.0f;
-    float editTorusMinorRadius_ = 0.3f;
+        float torusMajorRadius = 1.0f;
+        float torusMinorRadius = 0.3f;
 
-    float editConeRadius_ = 1.0f;
-    float editConeHeight_ = 2.0f;
+        float coneRadius = 1.0f;
+        float coneHeight = 2.0f;
 
-    float editRingOuterRadius_ = 1.0f;
-    float editRingInnerRadius_ = 0.5f;
+        float ringOuterRadius = 1.0f;
+        float ringInnerRadius = 0.5f;
 
-    float editTriangleSize_ = 1.0f;
+        float triangleSize = 1.0f;
 
-    engine::Vector2 editUvTiling_ = {1.0f, 1.0f};
+        engine::Vector2 uvTiling = {1.0f, 1.0f};
 
-    bool editHasCollision_ = false;
-    int editCollisionShape_ = 0; // 0:Sphere, 1:AABB, 2:OBB, 3:Cylinder
-    engine::Vector3 editCollisionSize_ = { 1.0f, 1.0f, 1.0f };
-    engine::Vector3 editCollisionOffset_ = { 0.0f, 0.0f, 0.0f };
+        bool hasCollision = false;
+        int collisionShape = 0; // 0:Sphere, 1:AABB, 2:OBB, 3:Cylinder
+        engine::Vector3 collisionSize = { 1.0f, 1.0f, 1.0f };
+        engine::Vector3 collisionOffset = engine::Vector3::ZERO;
+
+    };
+
+    const MeshSettings& GetMeshSettings() const { return meshSettings_; }
+    void SetMeshSettings(const MeshSettings& settings) { meshSettings_ = settings; }
+
+    template<class Value>
+    void SetMeshSetting(Value MeshSettings::* member, std::type_identity_t<Value> value) {
+        meshSettings_.*member = std::move(value);
+    }
+
+    template<class Vector>
+    void SetMeshComponent(Vector MeshSettings::* member, float Vector::* component, float value) {
+        (meshSettings_.*member).*component = value;
+    }
 
 private:
+    MeshSettings meshSettings_;
+
     void DrawWithWvp(ID3D12Resource* wvpResource);
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
     EffectMaterial* materialData_ = nullptr;
     engine::Object3d* targetObject_ = nullptr;
-    engine::Vector3 offsetPos_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 offsetRot_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 offsetPos_ = engine::Vector3::ZERO;
+    engine::Vector3 offsetRot_ = engine::Vector3::ZERO;
 
     // エフェクト用マテリアルをGPUへ渡す定数バッファを作る。
     bool CreateMaterialBuffer(ID3D12Device* device);
@@ -234,8 +253,8 @@ private:
     engine::Vector3 startScale_ = { 1.0f, 1.0f, 1.0f };
     engine::Vector3 endScale_ = { 1.0f, 1.0f, 1.0f };
 
-    engine::Vector4 startColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    engine::Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 startColor_ = engine::Colors::White;
+    engine::Vector4 endColor_ = engine::Colors::White;
 
     int easingType_ = 0; // デフォルトは 0 (Linear)
     bool isAutoLoop_ = false;

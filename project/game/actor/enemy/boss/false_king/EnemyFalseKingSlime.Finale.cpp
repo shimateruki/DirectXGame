@@ -11,7 +11,7 @@ class CrownSealTarget final : public BaseEnemy {
   public:
     void Update(float deltaTime) override {
         // 結晶も通常の敵ダメージ間隔を使い、連続接触で一瞬に壊れないようにします。
-        damageCooldownTimer_ = std::max(0.0f, damageCooldownTimer_ - deltaTime);
+        SetDamageCooldown(std::max(0.0f, GetDamageCooldown() - deltaTime));
         engine::Object3d::Update(deltaTime);
     }
 };
@@ -134,7 +134,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
         seal.broken = false;
         seal.breakAge = 0.0f;
         auto crystal = std::make_unique<CrownSealTarget>();
-        crystal->Initialize(common_, "Effects/false_king_seal_core");
+        crystal->Initialize(GetObjectCommon(), "Effects/false_king_seal_core");
         crystal->SetName("FalseKing_CrownSeal_" + std::to_string(i + 1));
         crystal->SetEnemyType("FalseKingSeal");
         crystal->SetCollisionAttribute(debugPreviewAttackId_ == kSealBarragePreviewId ? 0 : CollisionCategories::Get("enemy"));
@@ -151,9 +151,9 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
         crystal->SetTranslate(seal.position + engine::Vector3{0.0f, 2.0f, 0.0f});
         crystal->SetScale({1.0f, 1.0f, 1.0f});
         crystal->UpdateWorldMatrix(true);
-        crystal->param_.emplace();
-        crystal->param_->maxHp = tuning.sealCrystalHp;
-        crystal->param_->hp = tuning.sealCrystalHp;
+        crystal->ResetParameters();
+        crystal->SetParameter(&engine::EntityParameter::maxHp, tuning.sealCrystalHp);
+        crystal->SetParameter(&engine::EntityParameter::hp, tuning.sealCrystalHp);
         seal.crystal = std::move(crystal);
         CollisionManager::GetInstance()->AddObject(seal.crystal.get());
         seal.ring = CreateRoyalMesh("CrownSealBase", "Effects/false_king_seal_base",
@@ -184,11 +184,11 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
     chantStyle.radius = std::clamp(baseScale_.x * 1.45f, 2.4f, 4.2f);
     chantStyle.fadeStart = 0.25f;
     spellChant_ = std::make_unique<BossChantVisual>();
-    if (!spellChant_->Start(common_, std::move(chantStyle)))
+    if (!spellChant_->Start(GetObjectCommon(), std::move(chantStyle)))
         spellChant_.reset();
     auto makeShield = [this](const char* path, const char* name) {
         auto effect = std::make_unique<EffectObject3d>();
-        effect->Initialize(common_);
+        effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
             return std::unique_ptr<EffectObject3d>{};
         effect->SetName(name);
@@ -271,7 +271,7 @@ void EnemyFalseKingSlime::TryBreakCrownSeal(const engine::Vector3& impact, int a
     if (attackStage < 0 || attackStage >= static_cast<int>(crownSeals_.size()))
         return;
     auto& seal = crownSeals_[attackStage];
-    if (!force && (!seal.crystal || !seal.crystal->param_ || seal.crystal->param_->hp > 0.0f))
+    if (!force && (!seal.crystal || !seal.crystal->GetParameters() || seal.crystal->GetParameters()->hp > 0.0f))
         return;
     if (seal.broken ||
         PlanarDistance(impact, seal.position) > CrownFinaleTuning::Get().sealHitRadius)
@@ -317,7 +317,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
     // 結晶のHPは既存のダメージイベントが減らす。描画と衝突は同じ位置へ同期します。
     for (int i = 0; i < static_cast<int>(crownSeals_.size()); ++i) {
         auto& seal = crownSeals_[i];
-        if (!seal.broken && seal.crystal && seal.crystal->param_ && seal.crystal->param_->hp <= 0.0f)
+        if (!seal.broken && seal.crystal && seal.crystal->GetParameters() && seal.crystal->GetParameters()->hp <= 0.0f)
             TryBreakCrownSeal(seal.position, i);
         if (seal.broken)
             seal.breakAge += deltaTime;
@@ -580,7 +580,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
 
         // 失敗が確定してから操作を止める。詠唱中の結晶破壊は最後まで可能です。
         auto* gameplay = dynamic_cast<GamePlayScene*>(SceneManager::GetInstance()->GetCurrentScene());
-        const engine::Vector3 heroGround = target_ ? FindGroundPoint(target_->GetWorldPosition()) : ground;
+        const engine::Vector3 heroGround = GetTarget() ? FindGroundPoint(GetTarget()->GetWorldPosition()) : ground;
         if (gameplay && debugPreviewAttackId_.empty())
             gameplay->StartSealBarrageMovie(this, heroGround);
 
@@ -591,7 +591,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         sealBarrage_.clear();
         const auto makeEffect = [this](const char* path) {
             auto effect = std::make_unique<EffectObject3d>();
-            effect->Initialize(common_);
+            effect->Initialize(GetObjectCommon());
             if (!effect->LoadFromJson(path))
                 return std::unique_ptr<EffectObject3d>{};
             effect->SetIsVisible(false);
@@ -762,10 +762,10 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         if (!sealBarrageDamageApplied_ && sealStateTimer_ >= 2.76f) {
             sealBarrageDamageApplied_ = true;
 
-            if (target_) {
+            if (GetTarget()) {
                 // 結晶を守れなかった場合だけ、移動と回避の無敵時間を貫く全域攻撃です。
                 DamageEvent event;
-                event.target = target_;
+                event.target = GetTarget();
                 event.attacker = this;
                 event.damageAmount = tuning.sealBarrageDamage;
                 event.lethalPlayerDamage = true;
@@ -814,8 +814,8 @@ void EnemyFalseKingSlime::BeginFinalArena(const engine::Vector3& position) {
     SetGrounded(true);
     SetCollisionAttribute(authoredCollisionAttribute_);
     SetCollisionMask(authoredCollisionMask_);
-    if (param_)
-        param_->hp = GetEncounterMaximumHp() * 0.34f;
+    if (GetParameters())
+        SetParameter(&engine::EntityParameter::hp, GetEncounterMaximumHp() * 0.34f);
     SetColor({0.78f, 0.65f, 1.0f, 1.0f});
     SyncCollisionBounds();
     UpdateWorldMatrix(true);
@@ -830,8 +830,8 @@ void EnemyFalseKingSlime::AbortCrownFinale() {
     SetTranslate(FindGroundPoint(authoredPosition_ +
                                  engine::Vector3{0.0f, 0.0f, CrownFinaleTuning::Get().sealCenterOffsetZ}));
     SetScale(baseScale_);
-    if (param_)
-        param_->hp = GetEncounterMaximumHp() * 0.67f;
+    if (GetParameters())
+        SetParameter(&engine::EntityParameter::hp, GetEncounterMaximumHp() * 0.67f);
     InitializeCrownSeals();
 }
 

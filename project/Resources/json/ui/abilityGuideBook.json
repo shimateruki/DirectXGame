@@ -30,11 +30,11 @@
     "title": "いつものスライム",
     "intro": "ぷにっと飛びこめ、冒険の一歩！\n敵をつかまえて、新しい力を見つけよう。",
     "role": "得意：敵の引き寄せ・コピーへの準備",
-    "traits": "補助ボタンで敵やフックを狙える。\n敵を持って能力ボタンでコピー！",
+    "traits": "補助ボタンを1回押して鞭を発射。\n敵を持って能力ボタンでコピー！",
     "moves": [
       { "name": "吸収", "condition": "敵を持っているとき / 能力ボタン", "description": "持っている敵を吸収する。\n対応した敵なら、その能力に変身！", "glyph": "ui/input/keyboard/key_e.png" },
       { "name": "スライムアタック", "condition": "攻撃ボタン", "description": "スライムの体を使って攻撃する。\n敵を持っているときは、前へ投げられる。", "glyph": "ui/input/mouse/mouse_left.png" },
-      { "name": "フック照準", "condition": "補助操作ボタン", "description": "対象を狙って引き寄せる操作。\n遠くの敵やフックの対象をよく見て狙おう。", "glyph": "ui/input/mouse/mouse_right.png" }
+      { "name": "スライムウィップ", "condition": "補助操作ボタン", "description": "正面へ鞭を伸ばし、当たった敵を捕まえる。\nロックオン中は対象へ発射。外れた鞭は戻る。", "glyph": "ui/input/mouse/mouse_right.png" }
     ],
     "tip": "変身すると左・補助操作ボタンの役割も変わる。\n新しい能力を手に入れたら、Tabで特徴を確認しよう。"
   },

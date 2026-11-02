@@ -1,4 +1,5 @@
 #include "MeshRenderer.h"
+#include <numbers>
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
@@ -796,7 +797,7 @@ void MeshRenderer::InitializeGateBarrierCylinderProxyModel() {
 
         for (int segment = 0; segment <= kSegments; ++segment) {
             const float u = static_cast<float>(segment) / static_cast<float>(kSegments);
-            const float angle = u * 6.2831853f;
+            const float angle = u * (2.0f * std::numbers::pi_v<float>);
             const float x = std::sin(angle);
             const float z = std::cos(angle);
             Model::VertexData vertex{};

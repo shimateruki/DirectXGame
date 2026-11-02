@@ -155,7 +155,7 @@ void PlayerMover::Update(float deltaTime) {
         return;
 
     // 死亡時も落下速度は維持し、水平移動だけ止めます。
-    if (player_->param_.has_value() && player_->param_->hp <= 0.0f) {
+    if (player_->GetParameters().has_value() && player_->GetParameters()->hp <= 0.0f) {
         engine::Vector3 v = player_->GetVelocity();
         player_->SetVelocity({0.0f, v.y, 0.0f});
         return;

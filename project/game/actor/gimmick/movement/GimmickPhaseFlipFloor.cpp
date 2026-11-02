@@ -1,4 +1,6 @@
 #include "GimmickPhaseFlipFloor.h"
+#include "Easing.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
@@ -18,12 +20,12 @@ void GimmickPhaseFlipFloor::Initialize(engine::Object3dCommon* common, const std
     SetScale({2.0f, 0.25f, 2.0f});
     SetStatic(false);
 
-    if (!param_.has_value())
-        param_.emplace();
-    param_->colorType = 0;
-    param_->maxCount = 3;
-    param_->interval = 1.0f;
-    param_->startActive = true;
+    if (!GetParameters().has_value())
+        ResetParameters();
+    SetParameter(&engine::EntityParameter::colorType, 0);
+    SetParameter(&engine::EntityParameter::maxCount, 3);
+    SetParameter(&engine::EntityParameter::interval, 1.0f);
+    SetParameter(&engine::EntityParameter::startActive, true);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickPhaseFlipFloor;
@@ -33,19 +35,19 @@ void GimmickPhaseFlipFloor::Initialize(engine::Object3dCommon* common, const std
 
     // 表示だけ1始まりにし、従来のcolorType（0始まり）をそのまま保存します。
     properties.Accessor<int>("床番号", "colorType", "param.colorType",
-        [](const Self& object) { return object.param_ ? object.param_->colorType : 0; },
+        [](const Self& object) { return object.GetParameters() ? object.GetParameters()->colorType : 0; },
         [](Self& object, const int& value) {
-            if (!object.param_) object.param_.emplace();
-            object.param_->colorType = std::clamp(value, 0, (std::max)(1, object.param_->maxCount) - 1);
+            if (!object.GetParameters()) object.ResetParameters();
+            object.SetParameter(&engine::EntityParameter::colorType, std::clamp(value, 0, (std::max)(1, object.GetParameters()->maxCount) - 1));
         }, 0, 15, nullptr, {}, {.integerDisplayOffset = 1, .maximum = +[](const Self& object) {
-            return static_cast<float>(object.param_ ? (std::max)(1, object.param_->maxCount) - 1 : 0);
+            return static_cast<float>(object.GetParameters() ? (std::max)(1, object.GetParameters()->maxCount) - 1 : 0);
         }});
     properties.Accessor<int>("全体の床数", "maxCount", "param.maxCount",
-        [](const Self& object) { return object.param_ ? object.param_->maxCount : 3; },
+        [](const Self& object) { return object.GetParameters() ? object.GetParameters()->maxCount : 3; },
         [](Self& object, const int& value) {
-            if (!object.param_) object.param_.emplace();
-            object.param_->maxCount = std::clamp(value, 1, 16);
-            object.param_->colorType = std::clamp(object.param_->colorType, 0, object.param_->maxCount - 1);
+            if (!object.GetParameters()) object.ResetParameters();
+            object.SetParameter(&engine::EntityParameter::maxCount, std::clamp(value, 1, 16));
+            object.SetParameter(&engine::EntityParameter::colorType, std::clamp(object.GetParameters()->colorType, 0, object.GetParameters()->maxCount - 1));
         }, 1, 16);
     properties.Parameter("1フェーズの時間", "interval", &Parameter::interval, 0.1f, 30.0f);
     properties.Parameter("正方向に回転", "startActive", &Parameter::startActive);
@@ -53,8 +55,8 @@ void GimmickPhaseFlipFloor::Initialize(engine::Object3dCommon* common, const std
 
 void GimmickPhaseFlipFloor::Update(float deltaTime) {
     // 編集時は元の状態へ戻し、再生時だけ位相のタイマーを進めます。
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
     bool isPlaying = false;
 
@@ -120,7 +122,7 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
     SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : CollisionCategories::GetDefaultGameplayMask());
     SetIsVisible(true);
 
-    const float direction = param_.has_value() && !param_->startActive ? -1.0f : 1.0f;
+    const float direction = GetParameters().has_value() && !GetParameters()->startActive ? -1.0f : 1.0f;
     float turn = static_cast<float>(flipCount_);
 
     if (isOwnPhase) {
@@ -130,7 +132,7 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
     SetColor(GetPhaseColor(1.0f));
 
     engine::Vector3 rot = baseRotation_;
-    rot.x += direction * turn * 3.14159265f;
+    rot.x += direction * turn * std::numbers::pi_v<float>;
     SetEulerAngles(rot);
     SetQuaternionMaster(false);
 }
@@ -155,33 +157,32 @@ engine::Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {
 int GimmickPhaseFlipFloor::GetPhaseIndex() const {
     // 設定値が位相数を超えても存在する位相へ収めます。
     int phaseCount = GetPhaseCount();
-    int index = param_.has_value() ? param_->colorType : 0;
+    int index = GetParameters().has_value() ? GetParameters()->colorType : 0;
     return std::clamp(index, 0, phaseCount - 1);
 }
 
 int GimmickPhaseFlipFloor::GetPhaseCount() const {
     // ゼロで割らないよう、周期の位相数は一以上にします。
-    int count = param_.has_value() ? param_->maxCount : 3;
+    int count = GetParameters().has_value() ? GetParameters()->maxCount : 3;
     return (std::max)(1, count);
 }
 
 float GimmickPhaseFlipFloor::GetPhaseDuration() const {
     // 時間設定がゼロでも位相が進むよう、最短時間を設けます。
-    float duration = param_.has_value() ? param_->interval : 1.0f;
+    float duration = GetParameters().has_value() ? GetParameters()->interval : 1.0f;
     return (std::max)(0.1f, duration);
 }
 
 float GimmickPhaseFlipFloor::SmoothStep(float t) const {
-    // 回転の開始と終了で角速度が急変しないようにします。
-    t = std::clamp(t, 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::SmoothStep01(t);
 }
 
 std::unique_ptr<engine::Object3d> GimmickPhaseFlipFloor::Clone() const {
     // 複製先の基本資源を作ってから配置と周期設定を移します。
     auto newObj = std::make_unique<GimmickPhaseFlipFloor>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

@@ -46,15 +46,15 @@ void GimmickArenaEncounter::Initialize(engine::Object3dCommon* common, const std
     collider.size = {3.0f, 3.0f, 8.0f};
     SetColliderConfig(collider);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->gimmickType = "ArenaEncounter";
-    param_->maxCount = kDefaultBarrierCount;
-    param_->shakeDuration = kDefaultBossRevealDelay;
-    param_->startActive = true;
-    param_->returnOnOff = false;
+    SetParameter(&engine::EntityParameter::gimmickType, "ArenaEncounter");
+    SetParameter(&engine::EntityParameter::maxCount, kDefaultBarrierCount);
+    SetParameter(&engine::EntityParameter::shakeDuration, kDefaultBossRevealDelay);
+    SetParameter(&engine::EntityParameter::startActive, true);
+    SetParameter(&engine::EntityParameter::returnOnOff, false);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickArenaEncounter;
@@ -118,7 +118,7 @@ bool GimmickArenaEncounter::OnCollision(engine::Object3d* other) {
         return false;
     }
 
-    if (!param_.has_value() || !param_->startActive) {
+    if (!GetParameters().has_value() || !GetParameters()->startActive) {
         return false;
     }
 
@@ -137,8 +137,8 @@ void GimmickArenaEncounter::OnTrigger() {
 std::unique_ptr<engine::Object3d> GimmickArenaEncounter::Clone() const {
     // 進行状態は持ち込まず、配置とイベント設定を複製します。
     auto clone = std::make_unique<GimmickArenaEncounter>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }
@@ -244,8 +244,8 @@ bool GimmickArenaEncounter::IsBossDefeated() const {
 
     if (auto* king=dynamic_cast<EnemyFalseKingSlime*>(boss); king && king->IsFinalDefeatPending())
         return false;
-    const float hp = boss->param_.has_value() ? boss->param_->hp : 1.0f;
-    return boss->isDead || hp <= 0.0f;
+    const float hp = boss->GetParameters().has_value() ? boss->GetParameters()->hp : 1.0f;
+    return boss->IsDead() || hp <= 0.0f;
 }
 
 void GimmickArenaEncounter::SetBossActive(bool active) {
@@ -288,7 +288,7 @@ void GimmickArenaEncounter::SetRewardActive(bool active) {
 
 bool GimmickArenaEncounter::StartBossPresentation() {
     // 配置Objectの演出JSONを使う。未設定・読み込み失敗時は通常の遅延起動へ戻す。
-    if (!IsHighCrownMode() || !param_.has_value() || param_->cinematicPath.empty()) {
+    if (!IsHighCrownMode() || !GetParameters().has_value() || GetParameters()->cinematicPath.empty()) {
         return false;
     }
 
@@ -300,7 +300,7 @@ bool GimmickArenaEncounter::StartBossPresentation() {
 
     engine::Object3d* boss = scene->FindObjectByEventID(GetTargetID());
     engine::Object3d* gate = scene->FindObjectByEventID(GetTargetID() + 1);
-    return gameplay->StartArenaBossIntro(boss, gate, param_->cinematicPath);
+    return gameplay->StartArenaBossIntro(boss, gate, GetParameters()->cinematicPath);
 }
 
 void GimmickArenaEncounter::ActivateBossFromTimeline() {
@@ -319,17 +319,17 @@ void GimmickArenaEncounter::ActivateBossFromTimeline() {
 
 float GimmickArenaEncounter::GetBossRevealDelay() const {
     // Timelineが使えない場合と通常ボスは、配置時の遅延設定で起動する。
-    return param_.has_value() ? (std::max)(0.05f, param_->shakeDuration) : kDefaultBossRevealDelay;
+    return GetParameters().has_value() ? (std::max)(0.05f, GetParameters()->shakeDuration) : kDefaultBossRevealDelay;
 }
 
 int GimmickArenaEncounter::GetBarrierCount() const {
     // ID の連番探索が暴走しないよう壁数に上限を設けます。
-    return param_.has_value() ? (std::clamp)(param_->maxCount, 1, 16) : kDefaultBarrierCount;
+    return GetParameters().has_value() ? (std::clamp)(GetParameters()->maxCount, 1, 16) : kDefaultBarrierCount;
 }
 
 bool GimmickArenaEncounter::IsHighCrownMode() const {
     // 高冠戦だけ報酬や登場の進行を切り替えます。
-    return param_.has_value() && param_->actionMode == kHighCrownActionMode;
+    return GetParameters().has_value() && GetParameters()->actionMode == kHighCrownActionMode;
 }
 
 bool GimmickArenaEncounter::IsMagmaMode() const {

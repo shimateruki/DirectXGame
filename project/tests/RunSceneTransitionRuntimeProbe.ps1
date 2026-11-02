@@ -16,7 +16,7 @@
 )
 $ErrorActionPreference = 'Stop'
 $projectPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$exePath = Join-Path (Split-Path $projectPath -Parent) 'generated/outputs/Development/DirectXGame.exe'
+$exePath = Join-Path (Split-Path $projectPath -Parent) 'generated/outputs/Development/ShimaEngine.exe'
 if ($ExecutablePath) { $exePath = [IO.Path]::GetFullPath($ExecutablePath) }
 $configPath = Join-Path $projectPath 'Resources/json/user_config.json'
 # 別worktreeの同名EXEとは並行実行でき、同じ出力ファイルの二重起動だけを防ぎます。

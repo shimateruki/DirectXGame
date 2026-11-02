@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_IMGUI
 #include "game/scene/gameplay/GamePlayScene.h"
+#include <numbers>
 #include "game/system/progress/GameDataManager.h"
 #include "game/system/progress/StageManager.h"
 #include "game/system/progress/StarCoinPresentation.h"
@@ -79,7 +80,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
             for(auto* object:{silver,gold}) {
                 object->SetParent(nullptr,true);object->SetIsVisible(true);
                 object->SetTranslate(center+engine::Vector3{object==silver?-2.6f:2.6f,0,0});
-                object->SetRotation({1.5707963f,0,0});object->SetScale({0.05f,0.05f,0.05f});object->UpdateWorldMatrix(true);
+                object->SetRotation({(std::numbers::pi_v<float> * 0.5f),0,0});object->SetScale({0.05f,0.05f,0.05f});object->UpdateWorldMatrix(true);
             }
             previousCamera=CameraManager::GetInstance()->GetActiveCameraOverride();
             camera=std::make_unique<Camera>();camera->Initialize();camera->SetFovY(0.65f);
@@ -105,7 +106,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
                 object->Update(0.30f);
                 PlayerHitEvent repeated;repeated.me=player;repeated.hitObject=object;EventManager::GetInstance()->Dispatch(repeated);
                 object->Update(0.21f);
-                Require(object->isDead && !object->GetIsVisible(),"repeated contact restarted collection");
+                Require(object->IsDead() && !object->GetIsVisible(),"repeated contact restarted collection");
             }
             Require(data->GetCollectedStarCoinCount()==savedCount,"recollect changed saved star count");
             log<<"PASS stage="<<stage+1<<" gold/silver pickup, duplicate contact ignored, saved count unchanged"<<std::endl;

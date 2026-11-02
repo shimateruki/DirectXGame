@@ -1,4 +1,5 @@
 #include "Math.h"
+#include <numbers>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -527,13 +528,13 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 
 float Math::LerpShortAngle(float a, float b, float t) {
 	float diff = b - a;
-	const float PI = 3.1415926535f;
-	const float PI2 = PI * 2.0f;
 
-	// 角度を [-PI, PI] の範囲に補正
-	while (diff < -PI)
+	const float PI2 = std::numbers::pi_v<float> * 2.0f;
+
+	// 角度を [-std::numbers::pi_v<float>, std::numbers::pi_v<float>] の範囲に補正
+	while (diff < -std::numbers::pi_v<float>)
 		diff += PI2;
-	while (diff > PI)
+	while (diff > std::numbers::pi_v<float>)
 		diff -= PI2;
 
 	return a + diff * t;

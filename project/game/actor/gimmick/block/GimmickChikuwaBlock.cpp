@@ -11,8 +11,8 @@ void GimmickChikuwaBlock::Initialize(engine::Object3dCommon* common, const std::
 
     startPos_ = GetTransform()->translate;
 
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
     // 当たり判定設定 (地面属性)
     SetCollisionAttribute(CollisionCategories::Get("ground"));
@@ -133,8 +133,8 @@ void GimmickChikuwaBlock::ChangeState(State newState) {
 std::unique_ptr<engine::Object3d> GimmickChikuwaBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     auto newObj = std::make_unique<GimmickChikuwaBlock>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

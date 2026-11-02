@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/ui/SaveIndicatorOverlay.h"
 
 #include "CameraManager.h"
@@ -21,16 +23,11 @@
 #include <string>
 
 namespace {
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kLifeGainPulseDuration = 0.62f;
 constexpr float kCoinPulseDuration = 0.24f;
 
-// HUDの表示率を0～1へ収め、両端を滑らかにつなぎます。
-float SmoothStep(float value) {
-    // 星がHUDへ飛ぶ移動の両端を滑らかにし、急な開始・停止を防ぐ。
-    value = std::clamp(value, 0.0f, 1.0f);
-    return value * value * (3.0f - 2.0f * value);
-}
+
 
 engine::Vector2 Lerp(const engine::Vector2& a, const engine::Vector2& b, float t) {
     // HUDの二点間移動に共通の補間率を使う。
@@ -269,8 +266,8 @@ void GamePlayScene::CollectStarCoin(int coinIndex, const engine::Vector3& worldP
 engine::Vector2 GamePlayScene::ProjectWorldToScreen(const engine::Vector3& worldPosition) const {
     // ワールド上の取得位置を画面座標へ変換し、カメラ不在や異常値では中央を使う。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-    const float screenW = static_cast<float>(WinApp::kClientWidth);
-    const float screenH = static_cast<float>(WinApp::kClientHeight);
+    const float screenW = static_cast<float>(WinApp::GetClientWidth());
+    const float screenH = static_cast<float>(WinApp::GetClientHeight());
 
     if (!camera) {
         return {screenW * 0.5f, screenH * 0.5f};
@@ -354,7 +351,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
         StageStarUIFlyParticle& particle = *it;
         particle.timer += deltaTime;
         const float t = particle.duration > 0.0f ? std::clamp(particle.timer / particle.duration, 0.0f, 1.0f) : 1.0f;
-        const float eased = SmoothStep(t);
+        const float eased = Easing::SmoothStep01(t);
         const engine::Vector2 position = QuadraticBezier(particle.start, particle.control, particle.end, eased);
         const float fade = particle.fillsSlot ? 1.0f : std::clamp(1.0f - (t - 0.62f) / 0.38f, 0.0f, 1.0f);
         const float size = particle.baseSize * (particle.fillsSlot ? (1.0f + (1.0f - t) * 0.20f) : (1.0f - t * 0.38f));
@@ -641,9 +638,9 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
             prismBoss ? prismBoss->GetEncounterAppearanceProgress()
                       : (magmaBoss ? magmaBoss->GetEncounterAppearanceProgress()
                                    : (falseKingBoss ? falseKingBoss->GetEncounterAppearanceProgress() : 1.0f));
-        frameReveal = (std::max)(SmoothStep(prismBossHudTimer_ / 0.34f), SmoothStep(appearanceProgress * 1.25f));
-        nameReveal = SmoothStep((prismBossHudTimer_ - 0.08f) / 0.32f);
-        prismBossHudDisplayedRate_ = SmoothStep((prismBossHudTimer_ - 0.42f) / 1.06f);
+        frameReveal = (std::max)(Easing::SmoothStep01(prismBossHudTimer_ / 0.34f), Easing::SmoothStep01(appearanceProgress * 1.25f));
+        nameReveal = Easing::SmoothStep01((prismBossHudTimer_ - 0.08f) / 0.32f);
+        prismBossHudDisplayedRate_ = Easing::SmoothStep01((prismBossHudTimer_ - 0.42f) / 1.06f);
         prismBossHudDelayedRate_ = prismBossHudDisplayedRate_;
         prismBossHudPreviousHp_ = currentHp;
         visualAlpha = 1.0f;
@@ -694,7 +691,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         prismBossHudTimer_ += deltaTime;
         frameReveal = 1.0f;
         nameReveal = 1.0f;
-        visualAlpha = 1.0f - SmoothStep(prismBossHudTimer_ / kDismissDuration);
+        visualAlpha = 1.0f - Easing::SmoothStep01(prismBossHudTimer_ / kDismissDuration);
 
         if (prismBossHudTimer_ >= kDismissDuration) {
             prismBossHudPhase_ = PrismBossHudPhase::Hidden;

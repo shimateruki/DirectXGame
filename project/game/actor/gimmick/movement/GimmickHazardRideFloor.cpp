@@ -32,21 +32,21 @@ void GimmickHazardRideFloor::Initialize(engine::Object3dCommon* common, const st
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetStatic(false);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->speed = kDefaultTravelSpeed;
-    param_->moveAmount = kDefaultTravelDistance;
-    param_->shakeDuration = kDefaultStartDelay;
-    param_->interval = kDefaultEndWarningDuration;
-    param_->fallDuration = kDefaultFallDuration;
-    param_->gravity = kDefaultFallGravity;
-    param_->maxCount = kDefaultHazardCount;
-    param_->actionMode = 0;
+    SetParameter(&engine::EntityParameter::speed, kDefaultTravelSpeed);
+    SetParameter(&engine::EntityParameter::moveAmount, kDefaultTravelDistance);
+    SetParameter(&engine::EntityParameter::shakeDuration, kDefaultStartDelay);
+    SetParameter(&engine::EntityParameter::interval, kDefaultEndWarningDuration);
+    SetParameter(&engine::EntityParameter::fallDuration, kDefaultFallDuration);
+    SetParameter(&engine::EntityParameter::gravity, kDefaultFallGravity);
+    SetParameter(&engine::EntityParameter::maxCount, kDefaultHazardCount);
+    SetParameter(&engine::EntityParameter::actionMode, 0);
 
     // 従来の一度きりの挙動を既定とし、必要なステージだけ明示的に復帰を有効化する。
-    param_->returnOnOff = false;
+    SetParameter(&engine::EntityParameter::returnOnOff, false);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickHazardRideFloor;
@@ -184,8 +184,8 @@ void GimmickHazardRideFloor::OnTrigger() {
 std::unique_ptr<engine::Object3d> GimmickHazardRideFloor::Clone() const {
     // 複製先を初期化してから走行設定と配置を引き継ぎます。
     auto clone = std::make_unique<GimmickHazardRideFloor>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }
@@ -267,7 +267,7 @@ void GimmickHazardRideFloor::ChangeState(State nextState) {
 
 bool GimmickHazardRideFloor::ShouldReturnAfterRide() const {
     // 復帰はステージ側で明示的に有効化した床に限ります。
-    return param_.has_value() && param_->returnOnOff;
+    return GetParameters().has_value() && GetParameters()->returnOnOff;
 }
 
 engine::Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
@@ -275,7 +275,7 @@ engine::Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
     const float yaw = startRotation_.y;
     engine::Vector3 direction = {std::cos(yaw), 0.0f, std::sin(yaw)};
 
-    if (param_.has_value() && param_->actionMode == 1) {
+    if (GetParameters().has_value() && GetParameters()->actionMode == 1) {
         direction = direction * -1.0f;
     }
 
@@ -284,35 +284,35 @@ engine::Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
 
 float GimmickHazardRideFloor::GetTravelSpeed() const {
     // 負値やゼロでも床が停止しないよう最低速度を保証します。
-    return param_.has_value() ? (std::max)(0.1f, std::abs(param_->speed)) : kDefaultTravelSpeed;
+    return GetParameters().has_value() ? (std::max)(0.1f, std::abs(GetParameters()->speed)) : kDefaultTravelSpeed;
 }
 
 float GimmickHazardRideFloor::GetTravelDistance() const {
     // 走行距離は正の値として扱います。
-    return param_.has_value() ? (std::max)(0.1f, std::abs(param_->moveAmount)) : kDefaultTravelDistance;
+    return GetParameters().has_value() ? (std::max)(0.1f, std::abs(GetParameters()->moveAmount)) : kDefaultTravelDistance;
 }
 
 float GimmickHazardRideFloor::GetStartDelay() const {
     // 発進前の予告はゼロ秒まで許可します。
-    return param_.has_value() ? (std::max)(0.0f, param_->shakeDuration) : kDefaultStartDelay;
+    return GetParameters().has_value() ? (std::max)(0.0f, GetParameters()->shakeDuration) : kDefaultStartDelay;
 }
 
 float GimmickHazardRideFloor::GetEndWarningDuration() const {
     // 終点の警告には最低時間を設け、即落下を避けます。
-    return param_.has_value() ? (std::max)(0.1f, param_->interval) : kDefaultEndWarningDuration;
+    return GetParameters().has_value() ? (std::max)(0.1f, GetParameters()->interval) : kDefaultEndWarningDuration;
 }
 
 float GimmickHazardRideFloor::GetFallDuration() const {
     // 落下演出が少なくとも一フレーム続く長さにします。
-    return param_.has_value() ? (std::max)(0.1f, param_->fallDuration) : kDefaultFallDuration;
+    return GetParameters().has_value() ? (std::max)(0.1f, GetParameters()->fallDuration) : kDefaultFallDuration;
 }
 
 float GimmickHazardRideFloor::GetFallGravity() const {
     // 落下加速度がゼロや負値にならないよう制限します。
-    return param_.has_value() ? (std::max)(0.1f, param_->gravity) : kDefaultFallGravity;
+    return GetParameters().has_value() ? (std::max)(0.1f, GetParameters()->gravity) : kDefaultFallGravity;
 }
 
 int GimmickHazardRideFloor::GetHazardCount() const {
     // 途中イベントの数を上限内に収め、過剰な発火を防ぎます。
-    return param_.has_value() ? (std::clamp)(param_->maxCount, 0, 16) : kDefaultHazardCount;
+    return GetParameters().has_value() ? (std::clamp)(GetParameters()->maxCount, 0, 16) : kDefaultHazardCount;
 }

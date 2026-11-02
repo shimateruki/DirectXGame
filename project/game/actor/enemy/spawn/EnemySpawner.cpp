@@ -34,7 +34,7 @@ void EnemySpawner::Update(float deltaTime) {
 void EnemySpawner::Spawn() {
     if (onSpawnCallback_) {
         // 自分の配置座標をスポーン位置として使う
-        engine::Vector3 spawnPos = {0, 0, 0};
+        engine::Vector3 spawnPos = engine::Vector3::ZERO;
 
         if (GetTransform()) {
             spawnPos = GetTransform()->translate;

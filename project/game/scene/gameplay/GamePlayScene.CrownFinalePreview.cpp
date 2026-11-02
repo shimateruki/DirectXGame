@@ -1,4 +1,5 @@
 #include "game/scene/gameplay/GamePlayScene.h"
+#include <numbers>
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "game/crown/CrownFinaleTuning.h"
 #include "CameraManager.h"
@@ -109,7 +110,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     previewBoss->SetRotation(sourceBoss->GetRotation());
     previewBoss->UpdateWorldMatrix(true);
     player->SetTranslate({0.0f, 0.82f, 12.0f});
-    player->SetMoveYaw(3.14159265f);
+    player->SetMoveYaw(std::numbers::pi_v<float>);
     player->UpdateWorldMatrix(true);
     player_ = player.get();
     p.objects.push_back(player.get());

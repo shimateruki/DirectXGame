@@ -40,7 +40,7 @@ void TrailEmitter::Update(float /*deltaTime*/) {
     // 移動方向からY軸回転を算出 (autoOrient=true のとき使う)
     engine::Vector3 moveDir = engine::Math::Normalize(diff);
     float rotY = atan2f(moveDir.x, moveDir.z);
-    engine::Vector3 effectRot = config_.autoOrient ? engine::Vector3{ 0.0f, rotY, 0.0f } : engine::Vector3{ 0.0f, 0.0f, 0.0f };
+    engine::Vector3 effectRot = config_.autoOrient ? engine::Vector3{ 0.0f, rotY, 0.0f } : engine::Vector3::ZERO;
 
     // 前回位置と現在位置の中間点にSpawn（より自然な配置）
     engine::Vector3 spawnPos = {

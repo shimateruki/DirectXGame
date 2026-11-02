@@ -134,7 +134,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
     RegisterComponent({ "Animator", "Animator", "AnimationとAnimator Controllerを管理します。", 70, false, true, always,
         [](const engine::Object3d& object) {
             return object.HasComponentPresenceMarker("Animator") ||
-                !object.animName_.empty() || !object.GetAnimatorControllerPath().empty();
+                !object.GetAnimationName().empty() || !object.GetAnimatorControllerPath().empty();
         },
         EditorComponentInspectorMode::Custom,
         [](engine::Object3d& object) {
@@ -142,8 +142,8 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
             return true;
         },
         [](engine::Object3d& object) {
-            object.animName_.clear();
-            object.isAnimLoop_ = false;
+            object.SetAnimationName("");
+            object.SetAnimationLoop(false);
             object.ClearAnimatorController();
             object.SetComponentPresenceMarker("Animator", false);
             return true;
@@ -192,7 +192,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
         [](const engine::Object3d& object) { return object.IsCameraObject(); },
         EditorComponentInspectorMode::Custom });
     registerInspectorHiddenComponent({ "Gameplay", "Gameplay", "敵、ギミック、Item固有の配置Parameterです。", 110, false, false, always,
-        [](const engine::Object3d& object) { return object.param_.has_value(); },
+        [](const engine::Object3d& object) { return object.GetParameters().has_value(); },
         EditorComponentInspectorMode::Custom });
     registerInspectorHiddenComponent({ "EditorState", "Editor State", "Editorだけが使用する表示・Lock状態です。", 1000, true, false,
         never, never, EditorComponentInspectorMode::Custom });

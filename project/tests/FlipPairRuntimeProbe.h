@@ -81,7 +81,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     player->SetIsControlActive(false);
     player->SetDamageInvincible(true);
     const float feetY = player->GetAABB().min.y;
-    if (player->isDead || feetY < deckTop.y - 0.3f || ++frames > 240) {
+    if (player->IsDead() || feetY < deckTop.y - 0.3f || ++frames > 240) {
         const auto& collider = floor->GetColliderConfig();
         log << "CONTACT pair=" << pair << " jump=" << jump << " feet=" << feetY
             << " expectedTop=" << deckTop.y << " centerZ=" << collider.center.z

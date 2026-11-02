@@ -59,7 +59,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     if (!scene || manager->GetCurrentSceneName() != "GAMEPLAY")
         return;
     auto* player = GetScenePlayer(scene);
-    if (!player || !player->param_) {
+    if (!player || !player->GetParameters()) {
         finish("FAIL: no runtime player");
         return;
     }
@@ -118,7 +118,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             !saved->sequence.actorControl.enabled) { finish("FAIL: saved data mismatch"); return; }
         EnemyAttackProfile::InvalidateCache("FireSlime");
         auto created = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3dCommon());
-        if (!created || !created->param_) {
+        if (!created || !created->GetParameters()) {
             finish("FAIL: runtime enemy initialization");
             return;
         }
@@ -128,8 +128,8 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         player->SetVelocity({});
         player->SetGravity(0);
         player->SetMaxFallSpeed(0);
-        player->param_->gravity = player->param_->maxFallSpeed = 0;
-        player->param_->hp = player->param_->maxHp = 20;
+        player->SetParameter(&engine::EntityParameter::gravity, player->SetParameter(&engine::EntityParameter::maxFallSpeed, 0));
+        player->SetParameter(&engine::EntityParameter::hp, player->SetParameter(&engine::EntityParameter::maxHp, 20));
         player->SetTutorialSafetyEnabled(false);
         player->SetDamageInvincible(false);
         player->SetDashInvincible(false);
@@ -139,8 +139,8 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         created->SetVelocity({});
         created->SetGravity(0);
         created->SetMaxFallSpeed(0);
-        created->param_->gravity = created->param_->maxFallSpeed = created->param_->speed = 0;
-        created->param_->detectionRange = 30;
+        created->SetParameter(&engine::EntityParameter::gravity, created->SetParameter(&engine::EntityParameter::maxFallSpeed, created->SetParameter(&engine::EntityParameter::speed, 0)));
+        created->SetParameter(&engine::EntityParameter::detectionRange, 30);
         created->SetDetectionRange(30);
         created->SetTarget(player);
         created->ApplyManagedScale({2, 2, 2});

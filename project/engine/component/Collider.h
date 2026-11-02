@@ -11,11 +11,11 @@
 /// <summary>衝突形状と所有Transformからの相対位置・大きさ。</summary>
 struct ColliderConfig {
     ColliderType type = ColliderType::kAABB;
-    engine::Vector3 center = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 center = engine::Vector3::ZERO;
     // sizeの解釈は形状別。箱は半幅、球はxを半径として使い、ObjectのScaleは別に適用する。
     engine::Vector3 size = { 1.0f, 1.0f, 1.0f };
     // 衝突形状のローカル回転をラジアンで指定する。Objectの回転とは別の設定。
-    engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 rotation = engine::Vector3::ZERO;
 
     // ローカルXZ平面の凸な上面輪郭。空なら従来の箱判定を使う。
     std::vector<engine::Vector2> footprint;

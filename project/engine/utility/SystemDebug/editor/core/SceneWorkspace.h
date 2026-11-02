@@ -57,8 +57,8 @@ private:
     // 編集視点の位置・回転と注視対象の識別情報。valid が false の枠は未登録。
     struct CameraBookmark {
         bool valid = false;
-        engine::Vector3 position = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 position = engine::Vector3::ZERO;
+        engine::Vector3 rotation = engine::Vector3::ZERO;
         std::string objectGuid;
         std::string objectName;
     };

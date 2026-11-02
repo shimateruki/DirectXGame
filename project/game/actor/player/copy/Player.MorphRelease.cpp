@@ -1,4 +1,5 @@
 ﻿#include "game/actor/player/Player.Internal.h"
+#include "Easing.h"
 
 #include "game/actor/item/DroppedCopyStar.h"
 #include "game/actor/combat/CombatGroundQuery.h"
@@ -38,7 +39,7 @@ void Player::ActivateCheckpoint(const engine::Vector3& position, const std::stri
 bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuration) {
     const PlayerCopyTypeDescriptor* descriptor = PlayerCopyTypeCatalog::Find(enemyType);
     const EnemyMorphType resolvedType = ResolveEnemyMorphType(enemyType);
-    if (!descriptor || resolvedType == EnemyMorphType::None || isDead ||
+    if (!descriptor || resolvedType == EnemyMorphType::None || IsDead() ||
         (isCinematicLocked_ && resolvedType != EnemyMorphType::Crown) || absorbEffectActive_ ||
         enemyMorphReleaseActive_) {
         return false;
@@ -90,7 +91,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
     // 覇王モデルは顔・金属・布を別材質で持つため、全身ジェル化しない。
     SetMaterialType(resolvedType == EnemyMorphType::Crown ? 0 : 25);
     SetEmissive(1.0f);
-    animName_.clear();
+    SetAnimationName("");
     ResetAnimationTime();
     SetColor(descriptor->displayColor);
     EmitEnemyMorphStartEffects();
@@ -243,13 +244,13 @@ void Player::EmitEnemyMorphReleaseBurst() {
     // 型情報を失う前に、任意解除分だけ回収可能な星へ移します。
     const std::string droppedType = GetEnemyTypeForCurrentMorph();
     auto* sceneManager = SceneManager::GetInstance();
-    if (!enemyMorphReleaseExpired_ && !droppedType.empty() && common_ && sceneManager && sceneManager->IsPlaying() &&
+    if (!enemyMorphReleaseExpired_ && !droppedType.empty() && GetObjectCommon() && sceneManager && sceneManager->IsPlaying() &&
         sceneManager->GetCurrentScene()) {
         engine::Vector3 landing = GetWorldPosition() + enemyMorphReleaseDirection_ * 2.25f;
         landing = CombatGroundQuery::FindGroundPoint(landing, this, {16.0f, 34.0f}, GetWorldPosition().y);
         landing.y += 0.85f;
         auto star = std::make_unique<DroppedCopyStar>();
-        star->InitializeDrop(common_, droppedType, !enemyMorphHasTimeLimit_, enemyMorphReleaseStartPosition_, landing);
+        star->InitializeDrop(GetObjectCommon(), droppedType, !enemyMorphHasTimeLimit_, enemyMorphReleaseStartPosition_, landing);
         sceneManager->GetCurrentScene()->AddObject(std::move(star));
     }
 
@@ -270,7 +271,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
     if (!enemyMorphReleaseBurstStarted_ && enemyMorphReleaseTimer_ < enemyMorphReleaseBurstTime_) {
         const float t =
             std::clamp(enemyMorphReleaseTimer_ / (std::max)(enemyMorphReleaseBurstTime_, 0.001f), 0.0f, 1.0f);
-        const float eased = t * t * (3.0f - 2.0f * t);
+        const float eased = Easing::SmoothStep(t);
         SetScale({enemyMorphReleasePlayerScale_.x * (1.0f + eased * 0.18f),
                   enemyMorphReleasePlayerScale_.y * (1.0f - eased * 0.38f),
                   enemyMorphReleasePlayerScale_.z * (1.0f + eased * 0.18f)});
@@ -287,7 +288,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
     const float flightDuration = (std::max)(enemyMorphReleaseDuration_ - enemyMorphReleaseBurstTime_, 0.001f);
     const float flightTime = (std::max)(0.0f, enemyMorphReleaseTimer_ - enemyMorphReleaseBurstTime_);
     const float t = std::clamp(flightTime / flightDuration, 0.0f, 1.0f);
-    const float eased = 1.0f - std::pow(1.0f - t, 3.0f);
+    const float eased = Easing::OutCubic(t);
     const float wobble = std::sin(t * kPi * 4.0f) * std::pow(1.0f - t, 1.35f);
 
     SetScale({savedMorphScale_.x * (1.0f + wobble * 0.11f), savedMorphScale_.y * (1.0f - wobble * 0.09f),
@@ -373,8 +374,8 @@ void Player::RestoreEnemyMorphAppearance() {
     SetEmissive(savedMorphEmissive_);
     SetColor(savedMorphColor_);
     SetScale(savedMorphScale_);
-    animName_ = savedMorphAnimName_;
-    isAnimLoop_ = savedMorphAnimLoop_;
+    SetAnimationName(savedMorphAnimName_);
+    SetAnimationLoop(savedMorphAnimLoop_);
     ResetAnimationTime();
 
     const auto& children = GetChildren();
@@ -393,7 +394,7 @@ void Player::RestoreEnemyMorphAppearance() {
         }
     }
 
-    if (morphSource && !morphSource->isDead && !morphSource->IsDefeatEffectPlaying()) {
+    if (morphSource && !morphSource->IsDead() && !morphSource->IsDefeatEffectPlaying()) {
         morphSource->SetIsVisible(savedMorphSourceVisible_);
     }
 
@@ -461,7 +462,7 @@ void Player::CancelEnemyMorph() {
 
 #ifdef USE_IMGUI
 void Player::DebugForceEnemyMorph(BaseEnemy* enemy) {
-    if (!enemy || isDead || isCinematicLocked_) {
+    if (!enemy || IsDead() || isCinematicLocked_) {
         return;
     }
 

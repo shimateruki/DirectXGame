@@ -56,16 +56,16 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 	CreateFence();
 
 	// ビューポートとシザー矩形の設定
-	viewport_.Width = (float)WinApp::kClientWidth;
-	viewport_.Height = (float)WinApp::kClientHeight;
+	viewport_.Width = (float)WinApp::GetClientWidth();
+	viewport_.Height = (float)WinApp::GetClientHeight();
 	viewport_.TopLeftX = 0;
 	viewport_.TopLeftY = 0;
 	viewport_.MinDepth = 0.0f;
 	viewport_.MaxDepth = 1.0f;
 	scissorRect_.left = 0;
-	scissorRect_.right = WinApp::kClientWidth;
+	scissorRect_.right = WinApp::GetClientWidth();
 	scissorRect_.top = 0;
-	scissorRect_.bottom = WinApp::kClientHeight;
+	scissorRect_.bottom = WinApp::GetClientHeight();
 
 	DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils_));
 	DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler_));
@@ -105,17 +105,11 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 }
 
 void DirectXCommon::PreDraw() {
-    // バックバッファへ直接描画する前に、コマンドリストと描画ターゲット状態を準備する。
+    // 記録済みのゲーム映像を最終表示するため、バックバッファを準備する。
 	frameCount_++;
+	EnsureCommandListReadyForDraw();
 
-	// コマンドアロケータをリセットします。
-	HRESULT hr = commandAllocator_->Reset();
-	assert(SUCCEEDED(hr));
-
-	// コマンドリストをリセットします。
-	hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
-	assert(SUCCEEDED(hr));
-
+	// シーンと後処理の記録を保持したまま、最終出力先だけ切り替えます。
 	// 現在描画対象となっているバックバッファのインデックスを取得します。
 	backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
 
@@ -132,32 +126,24 @@ void DirectXCommon::PreDraw() {
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
 	rtvHandle.ptr = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart().ptr + (backBufferIndex_ * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
-	// 深度ステンシルビュー(DSV)のディスクリプタハンドルのポインタを取得します。
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+	// 最終合成は深度を使わず、ゲーム用の固定サイズDSVを接続しません。
 
-	// 出力マージャ(OM)ステージに、描画先となるRTVとDSVを設定します。
-	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+	// 出力先のRTVだけを設定します。
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
-	// Scene構築スレッドから背景色が更新されても、描画側では一貫した4要素を使用します。
-	float clearColor[4];
-	{
-		std::lock_guard<std::mutex> lock(clearColorMutex_);
-		clearColor[0] = clearColor_[0];
-		clearColor[1] = clearColor_[1];
-		clearColor[2] = clearColor_[2];
-		clearColor[3] = clearColor_[3];
-	}
-
+	// ゲーム映像の外側を黒帯としてクリアします。
+	const float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-	// 深度バッファをクリアします。値を1.0f(最も遠い)に設定します。
-	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
 
 	// ビューポート（描画する画面内の領域）を設定します。
-	commandList_->RSSetViewports(1, &viewport_);
+	D3D12_VIEWPORT outputViewport{0.0f, 0.0f, static_cast<float>(WinApp::GetWindowWidth()), static_cast<float>(WinApp::GetWindowHeight()), 0.0f, 1.0f};
+	commandList_->RSSetViewports(1, &outputViewport);
 
 	// シザー矩形（ピクセルを描画する範囲を限定する矩形）を設定します。
-	commandList_->RSSetScissorRects(1, &scissorRect_);
+	D3D12_RECT outputScissor{0, 0, WinApp::GetWindowWidth(), WinApp::GetWindowHeight()};
+	commandList_->RSSetScissorRects(1, &outputScissor);
 
 	//SRVManagerからデスクリプタヒープを取得して設定
 	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
@@ -467,7 +453,11 @@ void DirectXCommon::Finalize() {
 	}
 
 	// --- コマンドリストが開いていたら安全に閉じる ---
-	hr = commandList_->Close();
+    if (commandListOpen_) {
+        hr = commandList_->Close();
+        assert(SUCCEEDED(hr));
+        commandListOpen_ = false;
+    }
 
 	// Closeに失敗しても無視
 
@@ -514,6 +504,7 @@ void DirectXCommon::PostDraw() {
 	// コマンドリストへのコマンドの記録を終了します。
 	HRESULT hr = commandList_->Close();
 	assert(SUCCEEDED(hr));
+	commandListOpen_ = false;
 
 	// コマンドリストの配列を作成します
 	ID3D12CommandList* commandLists[] = { commandList_.Get() };
@@ -629,13 +620,27 @@ void DirectXCommon::CreateCommand() {
 	assert(SUCCEEDED(hr));
 	hr = device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator_.Get(), nullptr, IID_PPV_ARGS(&commandList_));
 	assert(SUCCEEDED(hr));
+	commandListOpen_ = SUCCEEDED(hr);
+}
+
+void DirectXCommon::EnsureCommandListReadyForDraw() {
+	// 初回はCreateCommandで開かれたリストを使い、同じフレーム内では二重リセットしない。
+	if (commandListOpen_) {
+		return;
+	}
+
+	HRESULT hr = commandAllocator_->Reset();
+	assert(SUCCEEDED(hr));
+	hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
+	assert(SUCCEEDED(hr));
+	commandListOpen_ = SUCCEEDED(hr);
 }
 
 void DirectXCommon::CreateSwapChain() {
     // ウィンドウへ表示するためのスワップチェーンを作成する。
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-	swapChainDesc.Width = WinApp::kClientWidth;
-	swapChainDesc.Height = WinApp::kClientHeight;
+	swapChainDesc.Width = WinApp::GetWindowWidth();
+	swapChainDesc.Height = WinApp::GetWindowHeight();
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -664,13 +669,19 @@ void DirectXCommon::CreateRTV() {
 
 void DirectXCommon::CreateDSV() {
     // 深度ステンシル用のヒープと深度バッファを作成し、DSVへ登録する。
-	dsvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
-	depthStencilResource_ = CreateDepthStencilTextureResource(WinApp::kClientWidth, WinApp::kClientHeight);
+	dsvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 2, false);
+	depthStencilResource_ = CreateDepthStencilTextureResource(WinApp::GetClientWidth(), WinApp::GetClientHeight());
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
+
+    // 画像参照中も深度テストを続けられるよう、2番目に読み取り専用DSVを置く。
+    dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH | D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+    D3D12_CPU_DESCRIPTOR_HANDLE readOnlyDsv = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+    readOnlyDsv.ptr += device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, readOnlyDsv);
 
 
 }
@@ -721,7 +732,8 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 
 // 読み込んだ画像メタデータに合わせてGPUテクスチャリソースを作成する。
 
-Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const DirectX::TexMetadata& metadata)
+Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(
+    const DirectX::TexMetadata& metadata, D3D12_RESOURCE_STATES initialState)
 {
 	//metadataを軸にResoucesの設定
 	D3D12_RESOURCE_DESC resouceDesc{};
@@ -743,7 +755,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(cons
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
 		&resouceDesc,
-		D3D12_RESOURCE_STATE_COPY_DEST,
+		initialState,
 		nullptr,
 		IID_PPV_ARGS(&resource));
 	assert(SUCCEEDED(hr));
@@ -863,16 +875,15 @@ std::wstring DirectXCommon::ConvertString(const std::string& str) {
 
 // コマンドキューへフェンスを打ち、必要に応じてGPU完了まで待つ。
 void DirectXCommon::FlushCommandQueue(bool reset) {
-	// --- 安全にコマンドリストを閉じる ---
+	// 記録中のリストだけを閉じて実行する。PostDraw後の閉じたリストは再投入しない。
 	HRESULT hr = S_OK;
-	hr = commandList_->Close();
-
-	if (FAILED(hr)) {
+	if (commandListOpen_) {
+		hr = commandList_->Close();
+		assert(SUCCEEDED(hr));
+		commandListOpen_ = false;
+		ID3D12CommandList* commandLists[] = { commandList_.Get() };
+		commandQueue_->ExecuteCommandLists(_countof(commandLists), commandLists);
 	}
-
-	// --- コマンドリストを実行 ---
-	ID3D12CommandList* commandLists[] = { commandList_.Get() };
-	commandQueue_->ExecuteCommandLists(_countof(commandLists), commandLists);
 
 	// --- フェンスシグナル送信 ---
 	fenceValue_++;
@@ -894,6 +905,7 @@ void DirectXCommon::FlushCommandQueue(bool reset) {
 
 		hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
 		assert(SUCCEEDED(hr) && "CommandList reset failed");
+		commandListOpen_ = SUCCEEDED(hr);
 	}
 }
 
@@ -966,11 +978,8 @@ void DirectXCommon::WaitForGPUAndReset() {
 		LogSlowLoadingOperation("DirectXCommon GPU fence wait", waitMs);
 	}
 
-	// --- 再利用可能な状態にリセット ---
-	hr = commandAllocator_->Reset();
-	assert(SUCCEEDED(hr));
-	hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
-	assert(SUCCEEDED(hr));
+	// 記録中のリストは保持し、閉じている場合だけ次の描画用に開く。
+	EnsureCommandListReadyForDraw();
 }
 
 void DirectXCommon::WaitForGPUIdle() {
@@ -997,8 +1006,8 @@ void DirectXCommon::CreateRenderTexture() {
     // ゲーム画面やポストエフェクト用のオフスクリーン描画テクスチャを作成する。
 	// 1. リソース設定
 	D3D12_RESOURCE_DESC resDesc = {};
-	resDesc.Width = WinApp::kClientWidth;
-	resDesc.Height = WinApp::kClientHeight;
+	resDesc.Width = WinApp::GetClientWidth();
+	resDesc.Height = WinApp::GetClientHeight();
 	resDesc.MipLevels = 1;
 	resDesc.DepthOrArraySize = 1;
 
@@ -1101,10 +1110,7 @@ void DirectXCommon::PreDrawRenderTexture() {
 		return;
 	}
 
-	HRESULT hr = commandAllocator_->Reset();
-	assert(SUCCEEDED(hr));
-	hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
-	assert(SUCCEEDED(hr));
+	EnsureCommandListReadyForDraw();
 
 	// --- 以下、既存のコード ---
 	// 1. バリア：読むモード -> 描くモード
@@ -1169,10 +1175,8 @@ void DirectXCommon::PreDrawBackBuffer() {
 	rtvHandle.ptr = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart().ptr +
 		(backBufferIndex_ * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
-
 	// 2. 描画先をセット
-	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
 	// SetRenderClearColorで指定された色でクリアします。
 	float clearColor[4];
@@ -1186,12 +1190,13 @@ void DirectXCommon::PreDrawBackBuffer() {
 
 	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-	// ImGuiが深度を使う場合はクリアが必要
-	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
 
 	// 3. ビューポートなども画面サイズに戻す
-	commandList_->RSSetViewports(1, &viewport_);
-	commandList_->RSSetScissorRects(1, &scissorRect_);
+	D3D12_VIEWPORT outputViewport{0.0f, 0.0f, static_cast<float>(WinApp::GetWindowWidth()), static_cast<float>(WinApp::GetWindowHeight()), 0.0f, 1.0f};
+	commandList_->RSSetViewports(1, &outputViewport);
+	D3D12_RECT outputScissor{0, 0, WinApp::GetWindowWidth(), WinApp::GetWindowHeight()};
+	commandList_->RSSetScissorRects(1, &outputScissor);
 
 	// 4. ImGui用にヒープをセットし直す
 	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
@@ -1422,32 +1427,34 @@ void DirectXCommon::CreateDepthSrv() {
 }
 
 void DirectXCommon::PreDrawLocalFog() {
-    // ローカルフォグ描画用に深度バッファを読み取り可能状態へ切り替える。
-	// バリア：深度「書き込みモード」 -> 「読み込みモード (画像)」に変換！
+    // 書き込み用DSVを外してから、深度テストと画像参照が可能な状態へ切り替える。
+	commandList_->OMSetRenderTargets(0, nullptr, false, nullptr);
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Transition.pResource = depthStencilResource_.Get();
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	commandList_->ResourceBarrier(1, &barrier);
 
-	// =================================================================
+	// 深度SRVと読み取り専用DSVを同時に使い、特殊材質の深度テストを維持する。
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
-	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr); // ← DSVを nullptr にする！
+	D3D12_CPU_DESCRIPTOR_HANDLE readOnlyDsv = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+	readOnlyDsv.ptr += device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &readOnlyDsv);
 }
 
 void DirectXCommon::PostDrawLocalFog() {
-    // ローカルフォグ後に深度バッファを通常の深度書き込み状態へ戻す。
-	// バリア：「読み込みモード」 -> 元の「書き込みモード」に戻す！
+    // 読み取り専用DSVを外し、通常の深度書き込み状態へ戻す。
+	commandList_->OMSetRenderTargets(0, nullptr, false, nullptr);
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Transition.pResource = depthStencilResource_.Get();
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 	commandList_->ResourceBarrier(1, &barrier);
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
-	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle); // ← DSVを復活！
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 }
 
 void DirectXCommon::UpdateGrabTexture() {
@@ -1486,76 +1493,22 @@ void DirectXCommon::UpdateGrabTexture() {
 }
 
 void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
-    // ウィンドウサイズ変更に合わせてバックバッファ、深度、レンダーテクスチャを再作成する。
-	width = (std::max)(width, 640);
-	height = (std::max)(height, 360);
-
-	if (width == WinApp::kClientWidth && height == WinApp::kClientHeight && swapChainResources_[0]) {
-		return;
-	}
-
-	// 1. GPUの完了を待つ。ここではコマンドリストをResetしない。
-	WaitForGPUIdle();
-
-	// 2. 今持っているバックバッファと深度バッファを一度リセットする。
-	for (size_t i = 0; i < backBufferCount_; ++i) {
-		swapChainResources_[i].Reset();
-	}
-
-	depthStencilResource_.Reset();
-
-	// 3. スワップチェーン自体のサイズを変更
-	DXGI_SWAP_CHAIN_DESC1 desc{};
-	swapChain_->GetDesc1(&desc);
-	HRESULT hr = swapChain_->ResizeBuffers(
-		(UINT)backBufferCount_,
-		(UINT)width,
-		(UINT)height,
-		desc.Format,
-		desc.Flags
-	);
-	assert(SUCCEEDED(hr));
-
-	WinApp::kClientWidth = width;
-	WinApp::kClientHeight = height;
-
-	for (UINT i = 0; i < backBufferCount_; ++i) {
-		hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
-		assert(SUCCEEDED(hr));
-
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
-		rtvHandle.ptr += i * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		device_->CreateRenderTargetView(swapChainResources_[i].Get(), &rtvDesc, rtvHandle);
-	}
-
-	// 4. DSV（深度バッファ）を新しいサイズで再作成する。
-	depthStencilResource_ = CreateDepthStencilTextureResource(width, height);
-	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
-
-	// 5. ビューポートとシザー矩形も更新する。
-	viewport_.TopLeftX = 0.0f;
-	viewport_.TopLeftY = 0.0f;
-	viewport_.Width = static_cast<float>(width);
-	viewport_.Height = static_cast<float>(height);
-	viewport_.MinDepth = 0.0f;
-	viewport_.MaxDepth = 1.0f;
-	scissorRect_.left = 0;
-	scissorRect_.top = 0;
-	scissorRect_.right = width;
-	scissorRect_.bottom = height;
-
-	CreateDepthSrv();
-	CreateRenderTexture();
-	PostEffect::GetInstance()->ResizeRenderTextures(width, height);
+    // バックバッファだけ実ウィンドウへ追従させ、ゲームの座標・深度・後処理は保持します。
+    if (width <= 0 || height <= 0)
+        return;
+    DXGI_SWAP_CHAIN_DESC1 desc{};
+    swapChain_->GetDesc1(&desc);
+    if (desc.Width == static_cast<UINT>(width) && desc.Height == static_cast<UINT>(height))
+        return;
+    WaitForGPUIdle();
+    for (auto& resource : swapChainResources_)
+        resource.Reset();
+    HRESULT hr = swapChain_->ResizeBuffers(static_cast<UINT>(backBufferCount_),
+        static_cast<UINT>(width), static_cast<UINT>(height), desc.Format, desc.Flags);
+    assert(SUCCEEDED(hr));
+    WinApp::SetWindowSize(width, height);
+    CreateRTV();
 }
-
 void DirectXCommon::RequestResize(int32_t width, int32_t height) {
     // WM_SIZEなどから受け取ったサイズ変更要求を、次の安全なタイミングまで保留する。
 	if (width <= 0 || height <= 0) {

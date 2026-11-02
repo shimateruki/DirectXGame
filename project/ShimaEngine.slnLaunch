@@ -1,9 +1,9 @@
 [
   {
-    "Name": "DirectXGame",
+    "Name": "ShimaEngine",
     "Projects": [
       {
-        "Path": "DirectXGame.vcxproj",
+        "Path": "ShimaEngine.vcxproj",
         "Action": "Start"
       }
     ]

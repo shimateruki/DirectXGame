@@ -116,7 +116,8 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     initInfo.CommandQueue = dxCommon_->GetCommandQueue();
     initInfo.NumFramesInFlight = 2;
     initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    initInfo.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    // Editor UIは深度を使わず、実ウィンドウ用バックバッファへ直接描画します。
+    initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
     initInfo.SrvDescriptorHeap = srvDescriptorHeap;
 
     initInfo.LegacySingleSrvCpuDescriptor = { 0 };

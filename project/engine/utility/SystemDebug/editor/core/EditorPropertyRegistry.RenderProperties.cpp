@@ -324,21 +324,21 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     // ControllerだけはSetAnimatorControllerの失敗を呼び出し元へ返します。
     Register({
         "component.animation.name", "Animation", "Component", EditorPropertyType::String, CommonFlags(),
-        [](const engine::Object3d& object) { return json(object.animName_); },
+        [](const engine::Object3d& object) { return json(object.GetAnimationName()); },
         [](engine::Object3d& object, const json& value) {
             if (!value.is_string())
                 return false;
-            object.animName_ = value.get<std::string>();
+            object.SetAnimationName(value.get<std::string>());
             return true;
         },
     });
     Register({
         "component.animation.loop", "Animation Loop", "Component", EditorPropertyType::Bool, CommonFlags(),
-        [](const engine::Object3d& object) { return json(object.isAnimLoop_); },
+        [](const engine::Object3d& object) { return json(object.IsAnimationLoop()); },
         [](engine::Object3d& object, const json& value) {
             if (!value.is_boolean())
                 return false;
-            object.isAnimLoop_ = value.get<bool>();
+            object.SetAnimationLoop(value.get<bool>());
             return true;
         },
     });

@@ -1,4 +1,5 @@
 ﻿#include "game/actor/player/Player.Internal.h"
+#include "Easing.h"
 
 #include "VFXSequencer.h"
 
@@ -170,7 +171,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
     absorbEffectEmitTimer_ -= deltaTime;
 
     const float t = std::clamp(absorbEffectTimer_ / kAbsorbEffectDuration, 0.0f, 1.0f);
-    const float ease = t * t * (3.0f - 2.0f * t);
+    const float ease = Easing::SmoothStep(t);
     const engine::Vector3 playerPos = GetWorldPosition();
     const engine::Vector3 targetPos = playerPos + engine::Vector3{0.0f, 1.35f, 0.0f};
 
@@ -328,9 +329,9 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     enemyMorphType_ = resolvedType;
     enemyMorphSource_ = enemy;
     // 練習中は時間切れで能力を奪わず、解除操作を学ぶまでコピーを維持する。
-    enemyMorphHasTimeLimit_ = !tutorialSafetyEnabled_ && (!enemy->param_.has_value() || enemy->param_->morphLimited);
+    enemyMorphHasTimeLimit_ = !tutorialSafetyEnabled_ && (!enemy->GetParameters().has_value() || enemy->GetParameters()->morphLimited);
     enemyMorphDuration_ =
-        enemy->param_.has_value() ? (std::max)(0.1f, enemy->param_->morphDuration) : kEnemyMorphDuration;
+        enemy->GetParameters().has_value() ? (std::max)(0.1f, enemy->GetParameters()->morphDuration) : kEnemyMorphDuration;
     enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;
     enemyMorphEffectTimer_ = 0.0f;
     enemyMorphVisualTimer_ = 0.0f;
@@ -344,11 +345,11 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     CompleteEnemyMorphStart(currentMoveYaw);
     enemy->SetCarried(true);
 
-    if (enemy->param_.has_value()) {
-        enemy->param_->hp = 0.0f;
+    if (enemy->GetParameters().has_value()) {
+        enemy->SetParameter(&engine::EntityParameter::hp, 0.0f);
     }
 
-    enemy->isDead = true;
+    enemy->SetDead(true);
     // コピー元は以後の敵更新・当たり判定から除外し、能力だけをPlayer側へ移す。
     enemy->SetIsVisible(false);
     enemy->SetCollisionAttribute(0);
@@ -370,7 +371,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
 
     SetMaterialType(enemy->GetMaterialType());
     SetEmissive(enemy->GetEmissive());
-    animName_.clear();
+    SetAnimationName("");
     ResetAnimationTime();
     SetColor(enemy->GetColor());
 
@@ -397,8 +398,8 @@ void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible) {
 
     savedMorphModelName_ = GetModelName();
     savedMorphTexturePath_ = GetTexturePath();
-    savedMorphAnimName_ = animName_;
-    savedMorphAnimLoop_ = isAnimLoop_;
+    savedMorphAnimName_ = GetAnimationName();
+    savedMorphAnimLoop_ = IsAnimationLoop();
     savedMorphColor_ = GetColor();
     savedMorphScale_ = GetScale();
     savedMorphMaterialType_ = GetMaterialType();

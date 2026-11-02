@@ -235,7 +235,7 @@ fs::path GetExecutableDirectory() {
 
 bool LooksLikeProjectRoot(const fs::path& path) {
     std::error_code ec;
-    return fs::exists(path / "DirectXGame.sln", ec) && fs::exists(path / "Resources", ec);
+    return fs::exists(path / "ShimaEngine.sln", ec) && fs::exists(path / "Resources", ec);
 }
 
 fs::path FindProjectRoot() {
@@ -850,11 +850,11 @@ bool RunAssetAudit(const fs::path& projectRoot, std::string& errorMessage) {
 
 bool RunMSBuild(const fs::path& projectRoot, const std::string& configuration, std::string& errorMessage) {
     // UI に指定された構成をパッケージ作成前にビルドし、失敗時は収集を始めません。
-    const fs::path solution = projectRoot / "DirectXGame.sln";
+    const fs::path solution = projectRoot / "ShimaEngine.sln";
     std::error_code ec;
 
     if (!fs::exists(solution, ec)) {
-        errorMessage = "DirectXGame.slnが見つかりません: " + PathToUtf8(solution);
+        errorMessage = "ShimaEngine.slnが見つかりません: " + PathToUtf8(solution);
         return false;
     }
 
@@ -1146,7 +1146,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         // 実行ファイルのある出力構成を確かめてから、提出Setの一時・旧版・ZIPのPathを決めます。
         const fs::path outputRoot = fs::weakly_canonical(projectRoot.parent_path() / "generated" / "outputs" / PathFromUtf8(request.configuration));
-        const fs::path sourceExe = outputRoot / "DirectXGame.exe";
+        const fs::path sourceExe = outputRoot / "ShimaEngine.exe";
         std::error_code ec;
 
         if (!fs::exists(sourceExe, ec)) {

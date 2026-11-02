@@ -1,4 +1,5 @@
 #include "EnemyFireSlime.h"
+#include <numbers>
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "game/system/combat/BulletManager.h"
 #include "CollisionConfig.h"
@@ -20,7 +21,7 @@ constexpr float kGroundCollisionWorldRadius = 0.82f;
 constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kMoveHopInterval = 0.28f;
 constexpr float kMoveHopPower = 4.7f;
-constexpr float kFireSlimeModelYawOffset = 3.1415926535f;
+constexpr float kFireSlimeModelYawOffset = std::numbers::pi_v<float>;
 constexpr float kHeadFlameHeight = 0.95f;
 constexpr float kHeadFlameBaseScale = 0.78f;
 constexpr int kHeadFlameMaterialType = 11;
@@ -111,7 +112,7 @@ void EnemyFireSlime::Initialize(engine::Object3dCommon* common, const std::strin
     // 読み込み失敗時は従来の手続きアニメーションへ戻す。
     SetAnimatorController("enemy_fire_slime");
     SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
 
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
@@ -152,7 +153,7 @@ void EnemyFireSlime::Update(float deltaTime) {
 
 bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
     // 死亡・運搬・撃破演出では炎と予告の寿命を通常攻撃から切り離す。
-    if (isDead || !GetIsVisible()) {
+    if (IsDead() || !GetIsVisible()) {
         HideAttackTelegraph();
         breathTimer_ = 0.0f;
         fireballWindupTimer_ = 0.0f;
@@ -166,7 +167,7 @@ bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
         return true;
     }
 
-    if (isCarried_) {
+    if (IsCarried()) {
         HideAttackTelegraph();
         if (headFlameVisual_)
             headFlameVisual_->SetIsVisible(false);
@@ -217,14 +218,14 @@ void EnemyFireSlime::UpdateWildTimers(float deltaTime) {
 }
 
 void EnemyFireSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& velocity) {
-    if (!target_ && fireballSequence_.ControlsActor()) {
+    if (!GetTarget() && fireballSequence_.ControlsActor()) {
         // 対象を失っても時計を止めず、条件評価と終了・後片付けまで進めます。
         UpdateFireballWindup(deltaTime, velocity, {0, 0, 1}, 0);
         return;
     }
 
-    if (target_ && param_.has_value()) {
-        engine::Vector3 toTarget = target_->GetTranslate() - GetTranslate();
+    if (GetTarget() && GetParameters().has_value()) {
+        engine::Vector3 toTarget = GetTarget()->GetTranslate() - GetTranslate();
         engine::Vector3 direction = NormalizePlanar(toTarget);
         const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
@@ -241,7 +242,7 @@ void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, engine::Vector3& velo
     const EnemyAttackDefinition& fireballAttack = GetAttackDefinition(kFireballAttackId);
     const EnemyAttackDefinition* sequenceAttack = SelectSequenceAttack(distance);
     if (breathTimer_ <= 0.0f && fireballWindupTimer_ <= 0.0f && !fireballSequence_.IsRunning() &&
-        UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), direction)) {
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         UpdateFacing(direction);
@@ -257,13 +258,13 @@ void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, engine::Vector3& velo
         StartFireballWindup(direction, distance);
     } else if (distance >= breathAttack.minRange && distance <= breathAttack.maxRange && attackCooldown_ <= 0.0f) {
         StartBreath();
-    } else if (distance <= (std::min)(detectionRange_, fireballAttack.maxRange) &&
+    } else if (distance <= (std::min)(GetDetectionRange(), fireballAttack.maxRange) &&
                distance >= fireballAttack.minRange && attackCooldown_ <= 0.0f &&
                !fireballAttack.sequence.enabled && previewAttackId_.empty()) {
         selectedFireball_ = fireballAttack;
         StartFireballWindup(direction, distance);
-    } else if (distance <= detectionRange_) {
-        const float speed = (std::max)(0.0f, param_->speed);
+    } else if (distance <= GetDetectionRange()) {
+        const float speed = (std::max)(0.0f, GetParameters()->speed);
         const float approach = distance > breathAttack.maxRange * 0.78f ? 1.0f : -0.55f;
         velocity.x = direction.x * speed * approach;
         velocity.z = direction.z * speed * approach;
@@ -274,7 +275,7 @@ void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, engine::Vector3& velo
 
 void EnemyFireSlime::UpdateWanderBehavior(float deltaTime, engine::Vector3& velocity) {
     // 索敵外は攻撃速度より遅い巡回速度で動き、進行方向へ体を向ける。
-    const float speed = (std::max)(0.55f, param_->speed * 0.42f);
+    const float speed = (std::max)(0.55f, GetParameters()->speed * 0.42f);
     velocity = CalculateWanderVelocity(deltaTime, speed, 0.72f);
     UpdateFacing({velocity.x, 0.0f, velocity.z});
 }
@@ -282,7 +283,7 @@ void EnemyFireSlime::UpdateWanderBehavior(float deltaTime, engine::Vector3& velo
 void EnemyFireSlime::ApplyGroundMovementAndAnimation(float deltaTime, engine::Vector3& velocity) {
     // 詠唱中の跳ね動作は止め、飛び道具の発射姿勢と移動を競合させない。
     velocity.y = (std::min)(GetVelocity().y, 0.0f);
-    if (!fireballSequence_.ControlsActor() && breathTimer_ <= 0.0f && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime,
+    if (!fireballSequence_.ControlsActor() && breathTimer_ <= 0.0f && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, IsGrounded(), deltaTime,
                                                                    kMoveHopInterval, 0.10f)) {
         velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
@@ -319,7 +320,7 @@ void EnemyFireSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     fireballAimLocked_ = false;
     HideAttackTelegraph();
     HideBreathFlameVisuals();
-    SetColor(defaultColor_);
+    SetColor(GetDefaultColor());
     SetScale(baseScale_);
     SyncThrownCollisionRadius();
     BaseEnemy::BeginThrown(initialVelocity);
@@ -328,11 +329,11 @@ void EnemyFireSlime::BeginThrown(const engine::Vector3& initialVelocity) {
 std::unique_ptr<engine::Object3d> EnemyFireSlime::Clone() const {
     // シーン配置の複製は初期化後に設定を写し、目標と索敵範囲を引き継ぐ。
     auto clone = std::make_unique<EnemyFireSlime>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     return clone;
 }
 
@@ -402,7 +403,7 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const engine::Vector3& direct
 
     if (breathTimer_ <= 0.0f) {
         HideAttackTelegraph();
-        SetColor(defaultColor_);
+        SetColor(GetDefaultColor());
         HideBreathFlameVisuals();
     }
 }
@@ -476,7 +477,7 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
             attackCooldown_ = attack.cooldown;
             attackTimer_ = attack.recoveryDuration;
             HideAttackTelegraph();
-            SetColor(defaultColor_);
+            SetColor(GetDefaultColor());
         }
 
         return;
@@ -510,18 +511,18 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
     attackCooldown_ = attack.cooldown;
     attackTimer_ = attack.recoveryDuration;
     fireballAimLocked_ = false;
-    SetColor(defaultColor_);
+    SetColor(GetDefaultColor());
 }
 
 void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, float distance) {
     // 扇形に加え、炎メッシュの高さと遮蔽物を確認してから命中を通知する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
 
-    if (!target_ || distance > attack.maxRange + 0.55f) {
+    if (!GetTarget() || distance > attack.maxRange + 0.55f) {
         return;
     }
 
-    engine::Vector3 toTarget = NormalizePlanar(target_->GetTranslate() - GetTranslate());
+    engine::Vector3 toTarget = NormalizePlanar(GetTarget()->GetTranslate() - GetTranslate());
     const float facingDot = direction.x * toTarget.x + direction.z * toTarget.z;
 
     if (facingDot < 0.34f) {
@@ -531,7 +532,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
     const float bodyHeight = (std::max)(0.7f, std::abs(GetScale().y));
     const float visualCenterY = GetTranslate().y + 0.68f * bodyHeight;
     const float visualHalfHeight = 0.75f * (std::max)(0.7f, std::abs(GetScale().x));
-    const AABB targetBounds = target_->GetAABB();
+    const AABB targetBounds = GetTarget()->GetAABB();
     if (targetBounds.max.y < visualCenterY - visualHalfHeight ||
         targetBounds.min.y > visualCenterY + visualHalfHeight) {
         return;
@@ -554,7 +555,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
     }
 
     DamageEvent damageEvent;
-    damageEvent.target = target_;
+    damageEvent.target = GetTarget();
     damageEvent.attacker = this;
     damageEvent.damageAmount = attack.damage;
     damageEvent.knockbackVelocity = attack.ResolveKnockback(direction, {direction.x * 9.5f, 4.4f, direction.z * 9.5f});
@@ -564,19 +565,19 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
     EventManager::GetInstance()->Dispatch(damageEvent);
 
     if (!attack.feedbackCue.empty()) {
-        VFXSequencer::PlayOneShot(attack.feedbackCue, target_->GetWorldPosition());
+        VFXSequencer::PlayOneShot(attack.feedbackCue, GetTarget()->GetWorldPosition());
     }
 }
 
 void EnemyFireSlime::FireFireball(const engine::Vector3& direction, float distance) {
     // 弾の衝突属性・威力・燃焼設定を JSON の攻撃定義から同じ発射要求にまとめる。
-    if (!target_)
+    if (!GetTarget())
         return;
 
     engine::Vector3 spawnPos = GetTranslate() + direction * 0.65f;
     spawnPos.y += 1.05f;
 
-    engine::Vector3 aim = target_->GetTranslate() - spawnPos;
+    engine::Vector3 aim = GetTarget()->GetTranslate() - spawnPos;
     aim.y += 0.35f;
 
     if (engine::Math::Length(aim) <= 0.001f) {
@@ -600,17 +601,17 @@ AttackSequenceContext EnemyFireSlime::MakeSequenceContext(const engine::Vector3&
     context.owner = this;
     context.position = GetWorldPosition();
     context.forward = direction;
-    context.hasTarget = target_ != nullptr;
-    if (target_)
-        context.targetPosition = target_->GetWorldPosition();
+    context.hasTarget = GetTarget() != nullptr;
+    if (GetTarget())
+        context.targetPosition = GetTarget()->GetWorldPosition();
     context.targetDistance = distance;
-    context.grounded = isGrounded_;
+    context.grounded = IsGrounded();
     return context;
 }
 
 const EnemyAttackDefinition* EnemyFireSlime::SelectSequenceAttack(float distance) const {
     // プレビューでは指定攻撃、実戦では距離と索敵範囲に合う攻撃を選ぶ。
-    return attackProfile_.SelectSequence(distance, detectionRange_, previewAttackId_);
+    return GetAttackProfile().SelectSequence(distance, GetDetectionRange(), previewAttackId_);
 }
 
 void EnemyFireSlime::UpdateHeadFlame(float deltaTime) {
@@ -702,7 +703,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     const float width = kHeadFlameBaseScale * (0.94f + pulse + speedRate * 0.06f) * bodyScale;
     const float height = kHeadFlameBaseScale * (0.82f - pulse * 0.16f + speedRate * 0.08f) * bodyScale;
 
-    headFlameVisual_->SetIsVisible(GetIsVisible() && !isDead);
+    headFlameVisual_->SetIsVisible(GetIsVisible() && !IsDead());
     headFlameVisual_->SetTranslate(pos);
     headFlameVisual_->SetRotation({0.0f, yaw, 0.0f});
     headFlameVisual_->SetScale({width, height, width});
@@ -1043,7 +1044,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
             targetRotation.x = charge * 0.12f;
         } else {
             const float recovery = (std::max)(0.01f, selectedFireball_.recoveryDuration);
-            const float recoil = std::sin(std::clamp((elapsed - windup) / recovery, 0.0f, 1.0f) * 3.14159265f);
+            const float recoil = std::sin(std::clamp((elapsed - windup) / recovery, 0.0f, 1.0f) * std::numbers::pi_v<float>);
             targetScale.x = baseScale_.x * (1.0f - recoil * 0.08f);
             targetScale.y = baseScale_.y * (1.0f + recoil * 0.12f);
             targetScale.z = baseScale_.z * (1.0f + recoil * 0.20f);
@@ -1052,7 +1053,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
     } else if (breathTimer_ > 0.0f) {
         const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kBreathAttackId).activeDuration);
         const float t = std::clamp(1.0f - (breathTimer_ / activeDuration), 0.0f, 1.0f);
-        const float inhale = std::sin(std::clamp(t / 0.24f, 0.0f, 1.0f) * 3.14159265f);
+        const float inhale = std::sin(std::clamp(t / 0.24f, 0.0f, 1.0f) * std::numbers::pi_v<float>);
         const float exhale = std::clamp((t - 0.16f) / 0.24f, 0.0f, 1.0f);
         const float pulse = std::sin(t * 22.0f) * 0.035f * exhale;
         targetScale.x = baseScale_.x * (1.0f + inhale * 0.12f + exhale * 0.08f + pulse);
@@ -1072,7 +1073,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         const float recoveryDuration = (std::max)(0.01f, selectedFireball_.id.empty()
             ? GetAttackDefinition(kFireballAttackId).recoveryDuration : selectedFireball_.recoveryDuration);
         const float remaining = std::clamp(attackTimer_ / recoveryDuration, 0.0f, 1.0f);
-        const float recoil = std::sin((1.0f - remaining) * 3.14159265f);
+        const float recoil = std::sin((1.0f - remaining) * std::numbers::pi_v<float>);
         targetScale.x = baseScale_.x * (1.0f - recoil * 0.08f);
         targetScale.y = baseScale_.y * (1.0f + recoil * 0.12f);
         targetScale.z = baseScale_.z * (1.0f + recoil * 0.20f);
@@ -1086,7 +1087,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         params.horizontalSquash = 0.28f;
         params.verticalStretch = 0.35f;
         params.airborneStretch = 0.34f;
-        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     }
 
     ApplyDamageReactionPose(targetScale, targetRotation);

@@ -1,11 +1,12 @@
 #include "CopyAbilitySupport.h"
+#include <numbers>
 #include "game/system/combat/GroundEffectLocator.h"
 
 namespace {
 using namespace CopyAbilityDetail;
 constexpr float kBlastWindupDuration = 0.07f;
 constexpr float kBlastJetDuration = 0.24f;
-constexpr float kBlastJetPitch = 1.5707963f;
+constexpr float kBlastJetPitch = (std::numbers::pi_v<float> * 0.5f);
 
 // 爆弾の設置・投擲と爆風ジャンプを制御し、各操作の再使用待ち時間を独立して持つ。
 class BomberCopyAbility final : public ICopyAbilitySession {

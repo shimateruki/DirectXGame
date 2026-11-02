@@ -115,7 +115,7 @@ void engine::ParticleSystem::SpawnFromParams(const EmitterParams& params, const 
     } else if (params.emitterType == EmitterType::Cone) {
         // Coneは上方向を基準にX/Zを傾けた方向を作る簡易的な放出形状。
 
-        float angleRad = params.coneAngle * (3.14159f / 180.0f);
+        float angleRad = params.coneAngle * (std::numbers::pi_v<float> / 180.0f);
         float r = std::tan(angleRad); // 指定角度をX/Z方向の広がり幅へ変換する。
 
         engine::Vector3 dir;
@@ -162,7 +162,7 @@ void engine::ParticleSystem::SpawnFromParams(const EmitterParams& params, const 
     p.colorOverLife = BakeVFXGradient(params.colorOverLife, params.startColor);
     p.rotation = 0.0f;
     float rotSpeedDeg = params.initialRotationSpeed + dis(randomEngine_) * params.rotationSpeedRandomness;
-    p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
+    p.rotationSpeed = rotSpeedDeg * (std::numbers::pi_v<float> / 180.0f);
 
     particles_.push_back(p);
 }
@@ -237,7 +237,7 @@ void engine::ParticleSystem::SpawnParticles(const engine::Vector3& position, int
             !params_.colorOverLife.keys.empty();
         p.sizeOverLife = BakeVFXCurve(params_.sizeOverLife, startSize);
         p.colorOverLife = BakeVFXGradient(params_.colorOverLife, initialColor);
-        p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
+        p.rotationSpeed = rotSpeedDeg * (std::numbers::pi_v<float> / 180.0f);
         particles_.push_back(p);
     }
 }
@@ -500,7 +500,7 @@ void engine::ParticleSystem::SetTexture(const std::string& texturePath) {
 }
 
 void engine::ParticleSystem::SpawnPrimitiveHitEffect(const engine::Vector3& position) {
-    std::uniform_real_distribution<float> angleDist(0.0f, 3.141592f);
+    std::uniform_real_distribution<float> angleDist(0.0f, std::numbers::pi_v<float>);
     float baseRotation = angleDist(randomEngine_);
 
     // ① 星型の閃光 (4本のラインで十字を作る)
@@ -522,7 +522,7 @@ void engine::ParticleSystem::SpawnPrimitiveHitEffect(const engine::Vector3& posi
         p.startSize = 0.5f;
         p.endSize = 6.0f;   // 大きく広げる
 
-        p.rotation = baseRotation + i * (3.141592f / lineCount);
+        p.rotation = baseRotation + i * (std::numbers::pi_v<float> / lineCount);
         p.rotationSpeed = 0.0f;
         p.acceleration = { 0.0f, 0.0f, 0.0f };
         p.hdrIntensity = 1.5f;
@@ -608,7 +608,7 @@ void engine::ParticleSystem::SpawnSlashEffect(const engine::Vector3& position, f
         float randomY   = distScale(randomEngine_);
         p.baseScale     = { 0.06f, randomY }; // X:細い線, Y:ランダム長さ
 
-        p.rotation      = baseRotation + (i * (3.14159f / 3.0f)) + distRotJitter(randomEngine_);
+        p.rotation      = baseRotation + (i * (std::numbers::pi_v<float> / 3.0f)) + distRotJitter(randomEngine_);
         p.rotationSpeed = 0.0f;
         p.acceleration  = { 0.0f, 0.0f, 0.0f };
         p.hdrIntensity  = 6.0f; // ← 強い刃の輝き

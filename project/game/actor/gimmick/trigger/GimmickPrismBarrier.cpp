@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "GimmickPrismBarrier.h"
+#include "Easing.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 
 #include "CollisionConfig.h"
@@ -12,12 +14,7 @@
 namespace {
 constexpr float kDefaultTransitionDuration = 0.42f;
 
-// 結界の出現・消失率を両端で滑らかにつなぎます。
-float SmoothStep01(float value) {
-    // 壁の出現・消滅で高さの変化が急に止まらないようにします。
-    value = (std::clamp)(value, 0.0f, 1.0f);
-    return value * value * (3.0f - 2.0f * value);
-}
+
 } // namespace
 
 void GimmickPrismBarrier::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
@@ -43,15 +40,15 @@ void GimmickPrismBarrier::Initialize(engine::Object3dCommon* common, const std::
     collider.size = {1.0f, 1.0f, 0.45f};
     SetColliderConfig(collider);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->gimmickType = "PrismBarrier";
-    param_->moveSpeed = kDefaultTransitionDuration;
-    param_->interval = 2.4f;
-    param_->startActive = false;
-    param_->returnOnOff = true;
+    SetParameter(&engine::EntityParameter::gimmickType, "PrismBarrier");
+    SetParameter(&engine::EntityParameter::moveSpeed, kDefaultTransitionDuration);
+    SetParameter(&engine::EntityParameter::interval, 2.4f);
+    SetParameter(&engine::EntityParameter::startActive, false);
+    SetParameter(&engine::EntityParameter::returnOnOff, true);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickPrismBarrier;
@@ -86,7 +83,7 @@ void GimmickPrismBarrier::Update(float deltaTime) {
         initializedForPlay_ = true;
 
         if (!activationRequestReceived_) {
-            targetActivation_ = param_.has_value() && param_->startActive ? 1.0f : 0.0f;
+            targetActivation_ = GetParameters().has_value() && GetParameters()->startActive ? 1.0f : 0.0f;
         }
 
         activation_ = targetActivation_;
@@ -114,11 +111,11 @@ void GimmickPrismBarrier::OnTrigger() {
 
 void GimmickPrismBarrier::OnSwitchEvent(bool active) {
     // 無効化の要求時に衝突を先に消し、見た目の縮退とは切り離します。
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    if (!active && !param_->returnOnOff) {
+    if (!active && !GetParameters()->returnOnOff) {
         return;
     }
 
@@ -143,8 +140,8 @@ void GimmickPrismBarrier::OnSwitchEvent(bool active) {
 std::unique_ptr<engine::Object3d> GimmickPrismBarrier::Clone() const {
     // 初期化後に編集設定を移し、壁の材質と判定を複製先で作り直します。
     auto clone = std::make_unique<GimmickPrismBarrier>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }
@@ -196,15 +193,15 @@ void GimmickPrismBarrier::ResetForEditor() {
 
 void GimmickPrismBarrier::ApplyRuntimeVisual() {
     // 壁の底辺を固定して上へ伸ばし、開閉中の見た目と衝突を同期します。
-    const float eased = SmoothStep01(activation_);
+    const float eased = Easing::SmoothStep01(activation_);
     const float minimumScaleY = (std::max)(0.015f, authoredScale_.y * 0.012f);
     const float currentScaleY = engine::Math::Lerp(minimumScaleY, authoredScale_.y, eased);
     const float authoredBottom = authoredPosition_.y - authoredScale_.y;
     SetTranslate({authoredPosition_.x, authoredBottom + currentScaleY, authoredPosition_.z});
     SetScale({authoredScale_.x, currentScaleY, authoredScale_.z});
 
-    const float pulseSpeed = param_.has_value() ? (std::max)(0.1f, param_->interval) : 2.4f;
-    const float pulse = 0.5f + 0.5f * std::sin(visualTime_ * pulseSpeed * 6.2831853f);
+    const float pulseSpeed = GetParameters().has_value() ? (std::max)(0.1f, GetParameters()->interval) : 2.4f;
+    const float pulse = 0.5f + 0.5f * std::sin(visualTime_ * pulseSpeed * (2.0f * std::numbers::pi_v<float>));
     SetColor({
         authoredColor_.x,
         authoredColor_.y,
@@ -246,5 +243,5 @@ void GimmickPrismBarrier::SetCollisionEnabled(bool enabled) {
 
 float GimmickPrismBarrier::GetTransitionDuration() const {
     // 極端な設定値による瞬間移動や長すぎる閉鎖を防ぎます。
-    return param_.has_value() ? (std::clamp)(param_->moveSpeed, 0.05f, 3.0f) : kDefaultTransitionDuration;
+    return GetParameters().has_value() ? (std::clamp)(GetParameters()->moveSpeed, 0.05f, 3.0f) : kDefaultTransitionDuration;
 }

@@ -62,7 +62,7 @@ public:
         OverrideEyeSource eyeSource = OverrideEyeSource::kFixed;
         std::string eyeObjectName;
         engine::Object3d* eyeObject = nullptr; // CameraEditorが再生開始時に解決する非所有ポインタ。
-        engine::Vector3 eyeObjectOffset = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 eyeObjectOffset = engine::Vector3::ZERO;
         std::string eyeReferenceObjectName;
         engine::Object3d* eyeReferenceObject = nullptr; // 相対方向を決める非所有参照。
         OverrideFollowMode eyeFollowMode = OverrideFollowMode::kSnap;
@@ -72,12 +72,12 @@ public:
         bool trackEyeX = false;
         bool trackEyeY = false;
         bool trackEyeZ = false;
-        engine::Vector3 fixedEyePos = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 fixedEyePos = engine::Vector3::ZERO;
 
         OverrideTargetSource targetSource = OverrideTargetSource::kFixed;
         std::string targetObjectName;
         engine::Object3d* targetFollowObject = nullptr; // CameraEditorが再生開始時に解決する非所有ポインタ。
-        engine::Vector3 targetObjectOffset = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 targetObjectOffset = engine::Vector3::ZERO;
         float eyeForwardDistance = 10.0f;
         OverrideFollowMode targetFollowMode = OverrideFollowMode::kSnap;
         float targetFollowResponse = 14.0f;
@@ -86,7 +86,7 @@ public:
         bool trackTargetX = true;
         bool trackTargetY = true;
         bool trackTargetZ = true;
-        engine::Vector3 fixedTargetPos = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 fixedTargetPos = engine::Vector3::ZERO;
     };
 
 public:
@@ -318,7 +318,7 @@ private:
 private:
     // 現在の視点位置、注視点、上方向。View行列の入力値。
     engine::Vector3 eye_ = { 0.0f, 0.0f, -10.0f };
-    engine::Vector3 target_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 target_ = engine::Vector3::ZERO;
     engine::Vector3 up_ = { 0.0f, 1.0f, 0.0f };
 
     // 垂直画角・画面比・描画する奥行き範囲。Projection行列の入力値。
@@ -349,10 +349,10 @@ private:
     bool isInputEnabled_ = true;
 
     // 追従対象へ滑らかに寄せる途中の視点と注視点。初回だけ即時合わせする。
-    engine::Vector3 smoothTarget_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 smoothEye_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 smoothTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 smoothEye_ = engine::Vector3::ZERO;
     bool isCameraInitialized_ = false;
-    engine::Vector3 previousLockOnPlayerPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 previousLockOnPlayerPosition_ = engine::Vector3::ZERO;
     bool hasLockOnPlayerPosition_ = false;
 
     // 接地時の高さを空中へ引き継ぐ。大きな落下と上昇は追い、画面外への離脱を防ぐ。
@@ -368,19 +368,19 @@ private:
     float minDistance_ = 3.0f;
     float maxDistance_ = 20.0f;
     engine::Vector3 firstPersonOffset_ = { 0.0f, 1.5f, 0.0f };
-    engine::Vector3 rotation_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 rotation_ = engine::Vector3::ZERO;
     engine::Vector3 lockOnOffset_ = { 0.0f, 3.0f, -8.0f };
 
     // 通常の照準カメラの距離・高さ・向きと、一時的な視点固定状態。
     float aimDistance_ = 15.0f;
     float aimHeight_ = 5.0f;
-    engine::Vector3 aimAngle_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 aimAngle_ = engine::Vector3::ZERO;
     bool isEyeFrozen_ = false;
     bool isAimCameraSuppressed_ = false;
 
     // 周回カメラの軌道・角速度と、固定位置カメラの配置。
     float orbitRadius_ = 15.0f;
-    engine::Vector3 orbitCenterOffset_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 orbitCenterOffset_ = engine::Vector3::ZERO;
     float orbitCenterHeight_ = 5.0f;
     float orbitHeight_ = 5.0f;
     float orbitSpeed_ = 0.005f;
@@ -394,14 +394,14 @@ private:
     float overrideTimer_ = 0.0f;
     float overrideDuration_ = 0.0f;
     float overrideWeight_ = 0.0f;
-    engine::Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 overrideFollowEye_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 overrideFollowTarget_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 overrideStartEye_ = engine::Vector3::ZERO;
+    engine::Vector3 overrideStartTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 overrideFollowEye_ = engine::Vector3::ZERO;
+    engine::Vector3 overrideFollowTarget_ = engine::Vector3::ZERO;
     bool overrideFollowInitialized_ = false;
 
     // 固定位置カメラの向きと、現在のView/Projectionから作った視錐台。
-    engine::Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 fixedPointAngle_ = engine::Vector3::ZERO;
     engine::Frustum frustum_;
 
     // 複数の演出要求を加算し、同時発火でも後から来た要求で上書きしません。

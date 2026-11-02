@@ -588,13 +588,18 @@ void ProjectWindow::CapturePendingThumbnails() {
 
         D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
         dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        dsvHeapDesc.NumDescriptors = 1;
+        dsvHeapDesc.NumDescriptors = 2;
         device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&s_studioDsvHeap));
 
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
         device->CreateDepthStencilView(s_studioDepth.Get(), &dsvDesc, s_studioDsvHeap->GetCPUDescriptorHandleForHeapStart());
+        // 特殊材質の撮影中は深度をSRVとDSVの両方から読み、通常の深度テストを維持する。
+        dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH | D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+        D3D12_CPU_DESCRIPTOR_HANDLE readOnlyDsv = s_studioDsvHeap->GetCPUDescriptorHandleForHeapStart();
+        readOnlyDsv.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+        device->CreateDepthStencilView(s_studioDepth.Get(), &dsvDesc, readOnlyDsv);
         D3D12_SHADER_RESOURCE_VIEW_DESC depthSrv{};
         depthSrv.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
         depthSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -604,8 +609,8 @@ void ProjectWindow::CapturePendingThumbnails() {
     }
 
     D3D12_VIEWPORT originalViewport{};
-    originalViewport.Width = (float)WinApp::kClientWidth;
-    originalViewport.Height = (float)WinApp::kClientHeight;
+    originalViewport.Width = (float)WinApp::GetClientWidth();
+    originalViewport.Height = (float)WinApp::GetClientHeight();
     originalViewport.TopLeftX = 0;
     originalViewport.TopLeftY = 0;
     originalViewport.MinDepth = 0.0f;
@@ -613,9 +618,9 @@ void ProjectWindow::CapturePendingThumbnails() {
 
     D3D12_RECT originalScissor{};
     originalScissor.left = 0;
-    originalScissor.right = WinApp::kClientWidth;
+    originalScissor.right = WinApp::GetClientWidth();
     originalScissor.top = 0;
-    originalScissor.bottom = WinApp::kClientHeight;
+    originalScissor.bottom = WinApp::GetClientHeight();
 
     if (!isStudioCameraInitialized_) {
         studioCamera_.Initialize();
@@ -681,7 +686,7 @@ void ProjectWindow::CapturePendingThumbnails() {
 
             // 初期フィット計算
             float autoScale = 1.0f;
-            engine::Vector3 autoTranslate = { 0.0f, 0.0f, 0.0f };
+            engine::Vector3 autoTranslate = engine::Vector3::ZERO;
 
             if (model) {
                 engine::Vector3 modelSize = model->GetSize();
@@ -791,7 +796,7 @@ void ProjectWindow::CapturePendingThumbnails() {
                 if (effect->LoadFromJson(presetName.substr(8))) {
                     effect->SetIsUIPreview(true);
                     effect->SetEditorInternal(true);
-                    effect->editHasCollision_ = false;
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, false);
                     effect->SetCollisionAttribute(0);
                     effect->SetCollisionMask(0);
                     effect->SetTargetObject(nullptr);
@@ -1001,14 +1006,17 @@ void ProjectWindow::CapturePendingThumbnails() {
                     node->Draw(pbrPreviewPointLightsResource_.Get(), pbrPreviewSpotLightsResource_.Get());
             }
 
-            // 不透明物体の深度を特殊材質へ渡すため、DSVを外して読取状態へ遷移します。
-            commandList->OMSetRenderTargets(1,&rtvHandle,false,nullptr);
+            // 不透明物体の深度を特殊材質へ渡し、読み取り専用DSVで深度テストも維持します。
+            commandList->OMSetRenderTargets(0, nullptr, false, nullptr);
             D3D12_RESOURCE_BARRIER depthRead{};
             depthRead.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             depthRead.Transition.pResource = s_studioDepth.Get();
             depthRead.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-            depthRead.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            depthRead.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             commandList->ResourceBarrier(1,&depthRead);
+            D3D12_CPU_DESCRIPTOR_HANDLE readOnlyDsv = s_studioDsvHeap->GetCPUDescriptorHandleForHeapStart();
+            readOnlyDsv.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+            commandList->OMSetRenderTargets(1, &rtvHandle, false, &readOnlyDsv);
             const uint32_t neutralColor = TextureManager::GetInstance()->Load("Resources/sprite/common/white.dds");
 
             for (const auto& node : data.previewObjects) {
@@ -1017,6 +1025,7 @@ void ProjectWindow::CapturePendingThumbnails() {
                     node->DrawSpecialMaterialForCamera(&studioCamera_,s_studioDepthSrv,neutralColor);
             }
 
+            commandList->OMSetRenderTargets(0, nullptr, false, nullptr);
             std::swap(depthRead.Transition.StateBefore,depthRead.Transition.StateAfter);
             commandList->ResourceBarrier(1,&depthRead);
         }

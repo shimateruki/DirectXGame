@@ -177,6 +177,6 @@ class GimmickMagmaGeyser : public BaseGimmick {
     bool active_ = true;
     bool simulationSleeping_ = false;
 
-    engine::Vector4 baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    engine::Vector4 baseColor_ = engine::Colors::White;
     float baseEmissive_ = 1.0f;
 };

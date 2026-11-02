@@ -19,13 +19,13 @@ void GimmickHookPullBlock::Initialize(engine::Object3dCommon* common, const std:
     SetStatic(false);
     SetColor({0.55f, 0.85f, 1.0f, 1.0f});
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->speed = 42.0f;
-    param_->gravity = 50.0f;
-    param_->maxFallSpeed = 60.0f;
+    SetParameter(&engine::EntityParameter::speed, 42.0f);
+    SetParameter(&engine::EntityParameter::gravity, 50.0f);
+    SetParameter(&engine::EntityParameter::maxFallSpeed, 60.0f);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickHookPullBlock;
@@ -39,8 +39,8 @@ void GimmickHookPullBlock::Initialize(engine::Object3dCommon* common, const std:
 
 void GimmickHookPullBlock::Update(float deltaTime) {
     // パラメータ未設定の配置でも既定値を用意してから移動を更新する。
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
     pullTimer_ = std::max(0.0f, pullTimer_ - deltaTime);
@@ -53,7 +53,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
 
         if (dist > 0.05f) {
             engine::Vector3 dir = engine::Math::Normalize(toTarget);
-            float pullSpeed = std::max(1.0f, param_->speed);
+            float pullSpeed = std::max(1.0f, GetParameters()->speed);
             velocity_.x = engine::Math::Lerp(velocity_.x, dir.x * pullSpeed, 0.18f);
             velocity_.z = engine::Math::Lerp(velocity_.z, dir.z * pullSpeed, 0.18f);
         }
@@ -66,10 +66,10 @@ void GimmickHookPullBlock::Update(float deltaTime) {
             velocity_.z = 0.0f;
     }
 
-    velocity_.y -= param_->gravity * deltaTime;
+    velocity_.y -= GetParameters()->gravity * deltaTime;
 
-    if (velocity_.y < -param_->maxFallSpeed) {
-        velocity_.y = -param_->maxFallSpeed;
+    if (velocity_.y < -GetParameters()->maxFallSpeed) {
+        velocity_.y = -GetParameters()->maxFallSpeed;
     }
 
     SetTranslate(GetTranslate() + velocity_ * deltaTime);
@@ -126,7 +126,7 @@ void GimmickHookPullBlock::StartHookPull(const engine::Vector3& hookOwnerPos) {
     pullTarget_.y = GetWorldPosition().y;
     pullTimer_ = 0.45f;
 
-    float pullSpeed = param_.has_value() ? std::max(1.0f, param_->speed) : 42.0f;
+    float pullSpeed = GetParameters().has_value() ? std::max(1.0f, GetParameters()->speed) : 42.0f;
     velocity_.x = dir.x * pullSpeed;
     velocity_.z = dir.z * pullSpeed;
     if (velocity_.y < 3.0f)
@@ -138,8 +138,8 @@ void GimmickHookPullBlock::StartHookPull(const engine::Vector3& hookOwnerPos) {
 std::unique_ptr<engine::Object3d> GimmickHookPullBlock::Clone() const {
     // 新しい実体を初期化してから配置とフック設定を引き継ぐ。
     auto newObj = std::make_unique<GimmickHookPullBlock>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

@@ -659,8 +659,8 @@ void TextSpriteGenerator::DrawPreview() {
     if (gameViewSize_.x <= 0.0f || gameViewSize_.y <= 0.0f)
         return;
 
-    float scaleX = gameViewSize_.x / static_cast<float>(WinApp::kClientWidth);
-    float scaleY = gameViewSize_.y / static_cast<float>(WinApp::kClientHeight);
+    float scaleX = gameViewSize_.x / static_cast<float>(WinApp::GetClientWidth());
+    float scaleY = gameViewSize_.y / static_cast<float>(WinApp::GetClientHeight());
     float viewScale = std::min(scaleX, scaleY);
     float sourceFontSize = std::max(4.0f, fontSize_);
     float drawScale = previewScale_ * viewScale;

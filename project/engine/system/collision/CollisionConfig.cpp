@@ -509,7 +509,7 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     };
 
     float minOverlap = std::numeric_limits<float>::infinity();
-    engine::Vector3 minAxis = { 0,0,0 };
+    engine::Vector3 minAxis = engine::Vector3::ZERO;
 
     // --- 1) Aの3軸をテスト ---
     for (int i = 0; i < 3; ++i) {

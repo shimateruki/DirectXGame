@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/system/cinematic/GateEntryPresentation.h"
+#include "Easing.h"
 #include "Player.h"
 #include "Camera.h"
 #include "CameraManager.h"
@@ -13,11 +14,8 @@
 namespace {
 constexpr float kDuration = 1.55f;
 float Clamp(float t) { return std::clamp(t, 0.0f, 1.0f); }
-float EaseOut(float t) { t = 1.0f - Clamp(t); return 1.0f - t * t * t; }
-float EaseInOut(float t) {
-    t = Clamp(t);
-    return t < 0.5f ? 4.0f * t * t * t : 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;
-}
+
+
 engine::Vector3 Lerp(const engine::Vector3& a, const engine::Vector3& b, float t) {
     return {a.x + (b.x-a.x)*t, a.y + (b.y-a.y)*t, a.z + (b.z-a.z)*t};
 }
@@ -161,13 +159,13 @@ void GateEntryPresentation::Update(float deltaTime) {
     const auto surface = gatePos - s.direction * 1.18f;
     const auto inside = gatePos + s.direction * 1.38f;
     auto centeredStart = s.start;
-    centeredStart.y += (surface.y-s.start.y)*EaseInOut((t-0.06f)/0.36f);
-    const auto alignedStart = Lerp(centeredStart, surface, EaseOut(s.timer/0.28f));
+    centeredStart.y += (surface.y-s.start.y)*Easing::InOutCubic01((t-0.06f)/0.36f);
+    const auto alignedStart = Lerp(centeredStart, surface, Easing::OutCubic01(s.timer/0.28f));
     auto a = Lerp(surface, gatePos, 0.42f);
     auto b = Lerp(gatePos, inside, 0.58f);
     a.y += 0.18f;
     b.y += 0.18f*0.35f;
-    const float dive = EaseInOut((t-0.18f)/(0.88f-0.18f));
+    const float dive = Easing::InOutCubic01((t-0.18f)/(0.88f-0.18f));
     const float u = 1.0f-dive;
     const auto divePos = surface*(u*u*u) + a*(3.0f*u*u*dive) + b*(3.0f*u*dive*dive) + inside*(dive*dive*dive);
     s.player->SetTranslate(Lerp(alignedStart, divePos, Clamp((t-0.08f)/0.28f)));
@@ -177,10 +175,10 @@ void GateEntryPresentation::Update(float deltaTime) {
     s.player->SetVelocity({0.0f,0.0f,0.0f});
     s.player->SetIsControlActive(false);
 
-    const float clipT = EaseInOut((t-0.10f)/(0.74f-0.10f));
-    const float clip = Clamp(0.14f + EaseOut(clipT)*0.86f);
+    const float clipT = Easing::InOutCubic01((t-0.10f)/(0.74f-0.10f));
+    const float clip = Clamp(0.14f + Easing::OutCubic01(clipT)*0.86f);
     const float edgePeak = 1.0f-std::abs(clip*2.0f-1.0f);
-    const float fade = EaseInOut((clip-0.72f)/0.28f);
+    const float fade = Easing::InOutCubic01((clip-0.72f)/0.28f);
     const float heat = Clamp(0.08f+clip*0.18f+edgePeak*0.30f);
     for (const auto& saved : s.materials) {
         auto* object = saved.object;
@@ -206,7 +204,7 @@ void GateEntryPresentation::Update(float deltaTime) {
     s.player->UpdateWorldMatrix(true);
     const engine::Vector3 focus{gatePos.x,gatePos.y+0.92f,gatePos.z};
     const engine::Vector3 endEye{focus.x-s.direction.x*14.25f,focus.y+0.58f,focus.z-s.direction.z*14.25f};
-    const float cameraT = EaseInOut(s.timer/0.34f);
+    const float cameraT = Easing::InOutCubic01(s.timer/0.34f);
     SetCameraPose(s.camera,Lerp(s.eye,endEye,cameraT),Lerp(s.target,focus,cameraT));
     s.player->RefreshRenderCameraData();
     if (s.manageBars) {

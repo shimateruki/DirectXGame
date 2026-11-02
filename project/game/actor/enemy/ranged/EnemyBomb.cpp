@@ -120,7 +120,7 @@ void EnemyBomb::Update(float deltaTime) {
         return;
     }
 
-    if (isCarried_) {
+    if (IsCarried()) {
         // 運搬中はプレイヤーが位置を管理し、導火線だけを進める。
         if (state_ != State::Ignited)
             Ignite(3.0f);
@@ -139,12 +139,12 @@ void EnemyBomb::Update(float deltaTime) {
     SetMotorSuspended(true);
     BaseEnemy::Update(deltaTime);
     SetMotorSuspended(false);
-    if (isDead || ShouldHandleDefeatEffect())
+    if (IsDead() || ShouldHandleDefeatEffect())
         return;
     UpdateBombPhysics(deltaTime);
 
     // 実際の爆発位置は接地後の移動で決まる。現在の爆弾を中心に判定半径を示す。
-    if (state_ == State::Ignited && !isCarried_ && !playerOwned_ && isGrounded_) {
+    if (state_ == State::Ignited && !IsCarried() && !playerOwned_ && IsGrounded()) {
         const float progress = std::clamp(1.0f - fuseTimer_ / 2.8f, 0.0f, 1.0f);
 
         // 爆弾の中心は床より高い。予告円だけ足元の接地面へ投影する。
@@ -181,27 +181,25 @@ void EnemyBomb::UpdateBombPhysics(float deltaTime) {
     const int steps = std::clamp(static_cast<int>(std::ceil(std::min(deltaTime, 0.25f) * 120.0f)), 1, 32);
     const float step = std::min(deltaTime, 0.25f) / static_cast<float>(steps);
     for (int i = 0; i < steps; ++i) {
-        if (isGrounded_ && state_ == State::Ignited) {
+        if (IsGrounded() && state_ == State::Ignited) {
             const float keep = std::exp(-kGroundDragPerSecond * step);
-            velocity_.x *= keep;
-            velocity_.z *= keep;
-            if (velocity_.x * velocity_.x + velocity_.z * velocity_.z < kStopSpeed * kStopSpeed) {
-                velocity_.x = velocity_.z = 0.0f;
+            SetVelocityX(GetVelocity().x * (keep));
+            SetVelocityZ(GetVelocity().z * (keep));
+            if (GetVelocity().x * GetVelocity().x + GetVelocity().z * GetVelocity().z < kStopSpeed * kStopSpeed) {
+                SetVelocityX(SetVelocityZ(0.0f));
                 isThrown_ = false;
             }
         }
-        motor.BeginFrame(isGrounded_);
-        motor.ApplyGravity(velocity_, param_ ? param_->gravity : 60.0f,
-                           param_ ? param_->maxFallSpeed : 60.0f, step);
         auto position = GetTranslate();
-        motor.Move(*this, position, velocity_, isGrounded_, step);
+        SimulateMotorStep(position, GetParameters() ? GetParameters()->gravity : 60.0f,
+                          GetParameters() ? GetParameters()->maxFallSpeed : 60.0f, step);
         SetTranslate(position);
         UpdateWorldMatrix(false);
-        if (isGrounded_) {
+        if (IsGrounded()) {
             const float radius = std::max(0.05f, GetCollider()->GetRadius());
             auto rotation = GetRotation();
-            rotation.x += velocity_.z * step / radius;
-            rotation.z -= velocity_.x * step / radius;
+            rotation.x += GetVelocity().z * step / radius;
+            rotation.z -= GetVelocity().x * step / radius;
             SetRotation(rotation);
         }
     }
@@ -218,18 +216,18 @@ void EnemyBomb::BeginThrown(const engine::Vector3& initialVelocity) {
 }
 
 void EnemyBomb::UpdateChase(float deltaTime) {
-    if (!target_)
+    if (!GetTarget())
         return;
-    engine::Vector3 playerPos = target_->GetTranslate();
+    engine::Vector3 playerPos = GetTarget()->GetTranslate();
     engine::Vector3 myPos = GetTranslate();
     engine::Vector3 toPlayer = playerPos - myPos;
     toPlayer.y = 0.0f; // 追跡は水平面で行い、高低差では点火距離を変えません。
 
     float distance = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
 
-    if (UpdateNoticeReaction(deltaTime, distance, detectionRange_, toPlayer)) {
-        velocity_.x = 0.0f;
-        velocity_.z = 0.0f;
+    if (UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), toPlayer)) {
+        SetVelocityX(0.0f);
+        SetVelocityZ(0.0f);
 
         if (distance > 0.001f) {
             SetRotationY(std::atan2(toPlayer.x, toPlayer.z));
@@ -238,16 +236,16 @@ void EnemyBomb::UpdateChase(float deltaTime) {
         return;
     }
 
-    if (distance > detectionRange_) {
-        const float wanderSpeed = param_.has_value() ? (std::max)(0.35f, param_.value().speed * 4.0f) : 0.55f;
+    if (distance > GetDetectionRange()) {
+        const float wanderSpeed = GetParameters().has_value() ? (std::max)(0.35f, GetParameters().value().speed * 4.0f) : 0.55f;
         engine::Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
-        velocity_.x = wanderVelocity.x;
-        velocity_.z = wanderVelocity.z;
+        SetVelocityX(wanderVelocity.x);
+        SetVelocityZ(wanderVelocity.z);
 
-        const float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
+        const float speedXZ = std::sqrt(GetVelocity().x * GetVelocity().x + GetVelocity().z * GetVelocity().z);
 
         if (speedXZ > 0.05f) {
-            SetRotationY(std::atan2(velocity_.x, velocity_.z));
+            SetRotationY(std::atan2(GetVelocity().x, GetVelocity().z));
         }
 
         return;
@@ -256,17 +254,17 @@ void EnemyBomb::UpdateChase(float deltaTime) {
     // プレイヤーが点火距離に入った時だけ追跡から導火線へ移ります。
     if (distance <= 4.0f) {
         Ignite(3.0f); // 近接点火時も予告と爆発で同じ半径を使います。
-        velocity_.x = 0.0f;
-        velocity_.z = 0.0f;
+        SetVelocityX(0.0f);
+        SetVelocityZ(0.0f);
         return;
     }
 
     // 検知範囲内ではプレイヤーへ向かって移動します。
-    if (distance > 0.1f && param_.has_value()) {
+    if (distance > 0.1f && GetParameters().has_value()) {
         toPlayer.x /= distance;
         toPlayer.z /= distance;
-        velocity_.x = toPlayer.x * param_.value().speed;
-        velocity_.z = toPlayer.z * param_.value().speed;
+        SetVelocityX(toPlayer.x * GetParameters().value().speed);
+        SetVelocityZ(toPlayer.z * GetParameters().value().speed);
 
         // 進行方向へ向きを合わせます。
         SetRotationY(std::atan2(toPlayer.x, toPlayer.z));
@@ -299,7 +297,7 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
             SetColor({2.0f, 0.2f, 0.2f, 1.0f});
         } else {
             // 消灯中は元の色へ戻します。
-            SetColor(defaultColor_);
+            SetColor(GetDefaultColor());
         }
     }
 
@@ -321,7 +319,7 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
     // 見た目のスケールだけを変え、衝突半径を揺らしません。
     engine::Vector3 targetScale = {managedBaseScale_.x * scaleRate, managedBaseScale_.y * scaleRate,
                            managedBaseScale_.z * scaleRate};
-    engine::Vector3 reactionRotation = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 reactionRotation = engine::Vector3::ZERO;
     ApplyDamageReactionPose(targetScale, reactionRotation, nullptr, 0.90f);
     SetScale(targetScale);
 }
@@ -369,9 +367,9 @@ void EnemyBomb::Explode() {
             const auto& activeEffects = effects->GetActiveEffects();
             for (size_t i = firstNewEffect; i < activeEffects.size(); ++i) {
                 auto* visual = activeEffects[i].get();
-                if (visual->editHasCollision_)
+                if (visual->GetMeshSettings().hasCollision)
                     CollisionManager::GetInstance()->RemoveObject(visual);
-                visual->editHasCollision_ = false;
+                visual->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, false);
                 visual->SetCollisionAttribute(0);
                 visual->SetCollisionMask(0);
             }
@@ -398,12 +396,12 @@ void EnemyBomb::Explode() {
     }
 
     // 爆発済みの本体を敵の生存判定に残さないよう、HPをゼロへします。
-    if (param_.has_value()) {
-        param_.value().hp = 0.0f;
+    if (GetParameters().has_value()) {
+        SetParameter(&engine::EntityParameter::hp, 0.0f);
     }
 
     // 共通の敵管理にも死亡を知らせ、後続の更新対象から外します。
-    isDead = true;
+    SetDead(true);
 }
 
 void EnemyBomb::SetCarried(bool isCarried) {
@@ -417,7 +415,7 @@ void EnemyBomb::SetCarried(bool isCarried) {
         // 運搬解除後はプレイヤーから与えられた速度で投擲物理を進めます。
         // 投げ返し後は所有者に応じて接触対象を更新します。
         isThrown_ = true;
-        throwRecoveryTimer_ = 0.0f;
+        SetThrowRecoveryTime(0.0f);
 
         if (playerOwned_) {
             SetCollisionAttribute(CollisionCategories::Get("player_attack"));
@@ -485,7 +483,7 @@ void EnemyBomb::ExecuteAbility(Player* player) {
 bool EnemyBomb::OnCollision(engine::Object3d* other) {
     // プレイヤーの爆弾は敵との実際の接触で導火線を待たずに爆発させます。
     // 爆発後に同じフレームで再接触しても、演出や攻撃判定を作り直しません。
-    if (playerOwned_ && !isCarried_ && state_ == State::Ignited &&
+    if (playerOwned_ && !IsCarried() && state_ == State::Ignited &&
         dynamic_cast<BaseEnemy*>(other) && (other->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
         Explode();
 

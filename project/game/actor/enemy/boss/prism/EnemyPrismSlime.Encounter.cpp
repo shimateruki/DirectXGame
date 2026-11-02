@@ -115,7 +115,7 @@ void EnemyPrismSlime::InitializeEncounterState() {
     attackCycleIndex_ = 0;
     lastAutomaticAttack_ = AttackKind::None;
 
-    const bool startActive = param_.has_value() && param_->startActive;
+    const bool startActive = GetParameters().has_value() && GetParameters()->startActive;
 
     if (startActive || encounterRequestedActive_) {
         BeginEncounterAppearance();
@@ -209,17 +209,17 @@ void EnemyPrismSlime::FinishEncounterAppearance() {
 
 bool EnemyPrismSlime::IsEncounterControlled() const {
     // 通常AIではなくステージ演出で起動する個体だけ登場状態を管理する。
-    return param_.has_value() && param_->actionMode == kEncounterControlledActionMode;
+    return GetParameters().has_value() && GetParameters()->actionMode == kEncounterControlledActionMode;
 }
 
 float EnemyPrismSlime::GetEncounterAppearanceDuration() const {
     // ステージ側の揺れ時間を登場演出に使い、極端な設定値は制限する。
-    return param_.has_value() ? (std::clamp)(param_->shakeDuration, 0.35f, 3.0f) : kDefaultEncounterAppearanceDuration;
+    return GetParameters().has_value() ? (std::clamp)(GetParameters()->shakeDuration, 0.35f, 3.0f) : kDefaultEncounterAppearanceDuration;
 }
 
 bool EnemyPrismSlime::IsEncounterHudActive() const {
     // 登場前と撃破後はボスHP表示を消し、演出開始から戦闘中だけ表示する。
-    if (!IsEncounterControlled() || isDead) {
+    if (!IsEncounterControlled() || IsDead()) {
         return false;
     }
 
@@ -228,12 +228,12 @@ bool EnemyPrismSlime::IsEncounterHudActive() const {
 
 float EnemyPrismSlime::GetEncounterCurrentHp() const {
     // HP未設定時もHUDに負数を渡さない。
-    return param_.has_value() ? (std::max)(0.0f, param_->hp) : 0.0f;
+    return GetParameters().has_value() ? (std::max)(0.0f, GetParameters()->hp) : 0.0f;
 }
 
 float EnemyPrismSlime::GetEncounterMaximumHp() const {
     // 最大HPは表示割合の分母に使うため、最低1を保証する。
-    return param_.has_value() ? (std::max)(1.0f, param_->maxHp) : 1.0f;
+    return GetParameters().has_value() ? (std::max)(1.0f, GetParameters()->maxHp) : 1.0f;
 }
 
 float EnemyPrismSlime::GetEncounterAppearanceProgress() const {
@@ -251,11 +251,11 @@ float EnemyPrismSlime::GetEncounterAppearanceProgress() const {
 
 void EnemyPrismSlime::TriggerDebugDefeat() {
     // デバッグ撃破はHPを0にした上で攻撃状態を片付け、共通撃破更新へ渡す。
-    if (!param_.has_value() || isDead || IsDefeatEffectPlaying()) {
+    if (!GetParameters().has_value() || IsDead() || IsDefeatEffectPlaying()) {
         return;
     }
 
-    param_->hp = 0.0f;
+    SetParameter(&engine::EntityParameter::hp, 0.0f);
     locomotion_.Reset();
     attackState_ = AttackState::Idle;
     currentAttack_ = AttackKind::None;

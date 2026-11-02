@@ -6,6 +6,7 @@
 #include "GhostRecorder.h"
 #include "IconsFontAwesome5.h"
 #include "Object3d.h"
+#include "Player.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "imgui.h"
 
@@ -49,8 +50,8 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
 
     if (ImGui::Selectable("(なし)", isNoneSelected)) {
       selectedObject->SetRecordPathName("");
-      if (selectedObject->recorder_)
-        selectedObject->recorder_->Stop();
+      if (selectedObject->GetRecorder())
+        selectedObject->GetRecorder()->Stop();
     }
 
     if (isNoneSelected)
@@ -67,9 +68,9 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
           if (ImGui::Selectable(fileName.c_str(), isSelected)) {
             selectedObject->SetRecordPathName(fileName);
 
-            if (selectedObject->recorder_) {
+            if (selectedObject->GetRecorder()) {
               bool isCinematic = selectedObject->IsCameraObject();
-              selectedObject->recorder_->Play(
+              selectedObject->GetRecorder()->Play(
                   selectedObject->GetRecordPathName(),
                   selectedObject->IsRecordLoop(),
                   selectedObject->IsRecordRelative(), isCinematic);
@@ -92,9 +93,9 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
     if (ImGui::Combo("再生条件", &playbackMode, modes, IM_ARRAYSIZE(modes))) {
       pathSettings->SetPlaybackMode(static_cast<PathMoverComponent::PlaybackMode>(playbackMode));
       // 再設定時は古い開始ラッチを破棄する。相対基準の累積を避けてから再開する。
-      if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
-        selectedObject->recorder_->Stop();
-        selectedObject->recorder_->Play(selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
+      if (selectedObject->GetRecorder() && !selectedObject->GetRecordPathName().empty()) {
+        selectedObject->GetRecorder()->Stop();
+        selectedObject->GetRecorder()->Play(selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
                                        selectedObject->IsRecordRelative(), false);
       }
     }
@@ -107,10 +108,10 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
 
   if (ImGui::Checkbox("ループ再生##Record", &pathLoop)) {
     selectedObject->SetRecordLoop(pathLoop);
-    if (selectedObject->recorder_ &&
+    if (selectedObject->GetRecorder() &&
         !selectedObject->GetRecordPathName().empty()) {
       bool isCinematic = selectedObject->IsCameraObject();
-      selectedObject->recorder_->Play(
+      selectedObject->GetRecorder()->Play(
           selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
           selectedObject->IsRecordRelative(), isCinematic);
     }
@@ -120,10 +121,10 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
 
   if (ImGui::Checkbox("配置位置を基準に移動（固定座標を解除）##Record", &pathRelative)) {
     selectedObject->SetRecordRelative(pathRelative);
-    if (selectedObject->recorder_ &&
+    if (selectedObject->GetRecorder() &&
         !selectedObject->GetRecordPathName().empty()) {
       bool isCinematic = selectedObject->IsCameraObject();
-      selectedObject->recorder_->Play(
+      selectedObject->GetRecorder()->Play(
           selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
           selectedObject->IsRecordRelative(), isCinematic);
     }
@@ -134,17 +135,17 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3d *selectedObject) {
   float phaseOffset = pathSettings->GetPhaseOffset();
   if (ImGui::SliderFloat("開始タイミング##Record", &phaseOffset, 0.0f, 0.99f, "周期の %.2f")) {
     pathSettings->SetPhaseOffset(phaseOffset);
-    if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
-      selectedObject->recorder_->Play(selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
+    if (selectedObject->GetRecorder() && !selectedObject->GetRecordPathName().empty()) {
+      selectedObject->GetRecorder()->Play(selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
                                       selectedObject->IsRecordRelative(), selectedObject->IsCameraObject());
     }
   }
 
   if (ImGui::Button("テスト再生##Record")) {
-    if (selectedObject->recorder_ &&
+    if (selectedObject->GetRecorder() &&
         !selectedObject->GetRecordPathName().empty()) {
       bool isCinematic = selectedObject->IsCameraObject();
-      selectedObject->recorder_->Play(
+      selectedObject->GetRecorder()->Play(
           selectedObject->GetRecordPathName(), selectedObject->IsRecordLoop(),
           selectedObject->IsRecordRelative(), isCinematic);
     }
@@ -161,6 +162,9 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
   // 偽王の終幕調整は通常の共通パラメータでは表せないため、専用UIへ委譲します。
   if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(selectedObject))
       king->DrawFinaleEditor();
+
+  if (auto* player = dynamic_cast<Player*>(selectedObject))
+      player->DrawWhipEditor();
 
   // --- Game Data (Stats) ---
   ImGui::Separator();
@@ -191,8 +195,8 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       if (std::string(classItems[currentClassIndex]) == "Spawner") {
         if (selectedObject->GetName().find("Object") != std::string::npos)
           selectedObject->SetName("Spawner_New");
-        if (!selectedObject->param_.has_value())
-          selectedObject->param_.emplace();
+        if (!selectedObject->GetParameters().has_value())
+          selectedObject->ResetParameters();
       }
     }
 
@@ -226,8 +230,8 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
       ImGui::SeparatorText("キャラクター・ステータス（表示のみ）");
       ImGui::TextDisabled("共通値の編集は下の「この種類の基本ステータスを調整」から行います。現在HPだけは"
                           "実行中に変動します。");
-      if (selectedObject->param_.has_value()) {
-        const auto &p = selectedObject->param_.value();
+      if (selectedObject->GetParameters().has_value()) {
+        const auto p = selectedObject->GetParameters().value();
         if (ImGui::BeginTable("ManagedCharacterStatus", 2,
                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                   ImGuiTableFlags_SizingStretchProp)) {
@@ -257,10 +261,10 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
 
 
 
-      if (selectedObject->param_.has_value() &&
-          selectedObject->param_->enemyType == "RingBurner") {
+      if (selectedObject->GetParameters().has_value() &&
+          selectedObject->GetParameters()->enemyType == "RingBurner") {
         // リング攻撃の半径・速度・予告は配置ごとの値として保存する。
-        auto &p = selectedObject->param_.value();
+        auto p = selectedObject->GetParameters().value();
         ImGui::SeparatorText("リング攻撃（配置ごとに保存）");
         ImGui::DragFloat("最大半径", &p.moveAmount, 0.25f, 6.0f, 48.0f);
         ImGui::DragFloat("リング拡大速度 (倍率)", &p.ringWaveSpeed, 0.05f, 0.25f, 4.0f, "%.2f x");
@@ -269,6 +273,7 @@ void InspectorWindow::DrawGameplayDataSection(engine::Object3d *selectedObject) 
         ImGui::DragFloat("発射前の予告時間", &p.shakeDuration, 0.05f, 0.45f, 1.4f);
         ImGui::Text("最大半径への到達: %.2f 秒", 3.6f / p.ringWaveSpeed);
         ImGui::TextWrapped("リングは等速に拡大します。頭に乗ると停止し、降りた後も4秒間停止します。感知範囲は上の「この種類の基本ステータスを調整」から変更できます。");
+        selectedObject->SetParameters(p);
       }
     } else if (selectedObject->GetClassName() == "Gimmick") {
       // 種類別の入力欄はクラス側の登録から共通Component欄へ自動生成します。

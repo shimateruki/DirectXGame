@@ -1,4 +1,6 @@
 #include "GimmickEventReceiver.h"
+#include "Easing.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
@@ -17,8 +19,8 @@ void GimmickEventReceiver::Initialize(engine::Object3dCommon* common, const std:
     SetColor({0.65f, 1.0f, 0.65f, 1.0f});
     SetStatic(false);
 
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickEventReceiver;
@@ -28,25 +30,25 @@ void GimmickEventReceiver::Initialize(engine::Object3dCommon* common, const std:
     properties.Parameter("動作モード", "actionMode", &Parameter::actionMode, 0.0f, 6.0f,
         nullptr, {"出現", "Y方向に移動", "X方向に移動", "Z方向に移動", "有効化", "無効化", "ボス王冠落下"});
     properties.Parameter("移動量", "moveAmount", &Parameter::moveAmount, -500.0f, 500.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode >= 1 && object.param_->actionMode <= 3); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode >= 1 && object.GetParameters()->actionMode <= 3); });
     properties.Parameter("移動速度", "moveSpeed", &Parameter::moveSpeed, 0.1f, 60.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode >= 1 && object.param_->actionMode <= 3); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode >= 1 && object.GetParameters()->actionMode <= 3); });
     properties.Parameter("ボスから着地点までの距離", "moveAmount_crown", &Parameter::moveAmount, 0.0f, 80.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); }, {}, {.parameterId = "moveAmount"});
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 6); }, {}, {.parameterId = "moveAmount"});
     properties.Parameter("落下演出時間", "fallDuration", &Parameter::fallDuration, 0.35f, 6.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 6); });
     properties.Parameter("弧の高さ", "jumpPower", &Parameter::jumpPower, 0.0f, 12.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 6); });
     properties.Parameter("王冠の回転速度", "moveSpeed_crown", &Parameter::moveSpeed, -20.0f, 20.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 6); }, {}, {.parameterId = "moveSpeed"});
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 6); }, {}, {.parameterId = "moveSpeed"});
     properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
     properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
 }
 
 void GimmickEventReceiver::Update(float deltaTime) {
     // 編集時の配置を再生基準にし、ボス報酬はイベント発火まで隠します。
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
     bool isPlaying = false;
 
@@ -57,7 +59,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
     if (!isPlaying) {
         initializedForPlay_ = false;
         hasPendingActive_ = false;
-        const bool isBossReward = param_->actionMode == 6;
+        const bool isBossReward = GetParameters()->actionMode == 6;
         SetIsVisible(!isBossReward);
         SetCollisionEnabled(!isBossReward);
         BaseGimmick::Update(deltaTime);
@@ -78,17 +80,17 @@ void GimmickEventReceiver::Update(float deltaTime) {
         if (originalCollisionMask_ == 0)
             originalCollisionMask_ = CollisionCategories::GetDefaultGameplayMask();
 
-        active_ = hasPendingActive_ ? pendingActive_ : param_->startActive;
+        active_ = hasPendingActive_ ? pendingActive_ : GetParameters()->startActive;
         hasPendingActive_ = false;
         ApplyActiveState(active_);
         initializedForPlay_ = true;
     }
 
     // 軸移動モードと報酬の出現演出は同じ受信オブジェクトで処理します。
-    int actionMode = param_->actionMode;
+    int actionMode = GetParameters()->actionMode;
 
     if (actionMode >= 1 && actionMode <= 3) {
-        float speed = (std::max)(0.01f, param_->moveSpeed);
+        float speed = (std::max)(0.01f, GetParameters()->moveSpeed);
         float t = 1.0f - std::exp(-speed * deltaTime);
         engine::Vector3 pos = GetTransform()->translate;
         pos.x = engine::Math::Lerp(pos.x, targetPosition_.x, t);
@@ -97,17 +99,17 @@ void GimmickEventReceiver::Update(float deltaTime) {
         SetTranslate(pos);
     } else if (actionMode == 6 && active_) {
         activationTimer_ += (std::max)(0.0f, deltaTime);
-        const float duration = (std::max)(0.35f, param_->fallDuration);
+        const float duration = (std::max)(0.35f, GetParameters()->fallDuration);
         const float progress = (std::clamp)(activationTimer_ / duration, 0.0f, 1.0f);
-        const float eased = progress * progress * (3.0f - 2.0f * progress);
-        const engine::Vector3 startPosition = basePosition_ + engine::Vector3{0.0f, 4.05f, -param_->moveAmount};
+        const float eased = Easing::SmoothStep(progress);
+        const engine::Vector3 startPosition = basePosition_ + engine::Vector3{0.0f, 4.05f, -GetParameters()->moveAmount};
         engine::Vector3 position = startPosition * (1.0f - eased) + basePosition_ * eased;
-        position.y += std::sin(progress * 3.1415926535f) * (std::max)(0.0f, param_->jumpPower);
+        position.y += std::sin(progress * std::numbers::pi_v<float>) * (std::max)(0.0f, GetParameters()->jumpPower);
         SetTranslate(position);
 
         engine::Vector3 rotation = baseRotation_;
-        rotation.y += activationTimer_ * param_->moveSpeed;
-        rotation.z += std::sin(progress * 3.1415926535f) * 0.52f;
+        rotation.y += activationTimer_ * GetParameters()->moveSpeed;
+        rotation.z += std::sin(progress * std::numbers::pi_v<float>) * 0.52f;
         SetRotation(rotation);
 
         const float startScale = 1.55f;
@@ -135,10 +137,10 @@ void GimmickEventReceiver::OnTrigger() {
 
 void GimmickEventReceiver::OnSwitchEvent(bool active) {
     // 再生開始前に届いたイベントも、基準姿勢の取得後に適用できるよう保留します。
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
-    if (!active && !param_->returnOnOff)
+    if (!active && !GetParameters()->returnOnOff)
         return;
     if (!initializedForPlay_) {
         pendingActive_ = active;
@@ -153,8 +155,8 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
     // モード別に表示・衝突・移動先を切り替え、報酬出現時は着地まで衝突を遅らせます。
     active_ = active;
     activationTimer_ = 0.0f;
-    int actionMode = param_.has_value() ? param_->actionMode : 0;
-    float moveAmount = param_.has_value() ? param_->moveAmount : 10.0f;
+    int actionMode = GetParameters().has_value() ? GetParameters()->actionMode : 0;
+    float moveAmount = GetParameters().has_value() ? GetParameters()->moveAmount : 10.0f;
 
     if (actionMode == 0) {
         SetIsVisible(active);
@@ -209,8 +211,8 @@ void GimmickEventReceiver::SetCollisionEnabled(bool enabled) {
 std::unique_ptr<engine::Object3d> GimmickEventReceiver::Clone() const {
     // 複製先を初期化してから、イベント設定と配置をコピーします。
     auto newObj = std::make_unique<GimmickEventReceiver>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

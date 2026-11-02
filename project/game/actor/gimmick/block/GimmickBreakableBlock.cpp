@@ -51,7 +51,7 @@ void GimmickBreakableBlock::Update(float deltaTime) {
         SetCollisionAttribute(0);
         SetCollisionMask(0);
         SetIsVisible(false);
-        isDead = true;
+        SetDead(true);
         return;
     }
 
@@ -80,11 +80,11 @@ bool GimmickBreakableBlock::OnCollision(engine::Object3d* other) {
 
 bool GimmickBreakableBlock::TryBreakByPlayerImpact(const Player* player) {
     // 破壊済みなら再実行せず、Playerの衝突条件を満たした一回だけ破壊する。
-    if (isBroken_ || !player || !param_.has_value()) {
+    if (isBroken_ || !player || !GetParameters().has_value()) {
         return false;
     }
 
-    const int actionMode = param_->actionMode;
+    const int actionMode = GetParameters()->actionMode;
 
     if (actionMode == 7) {
         if (!player->IsPinkBounceSlamImpactActive()) {
@@ -109,7 +109,7 @@ void GimmickBreakableBlock::Break() {
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetIsVisible(false);
-    isDead = true;
+    SetDead(true);
 
     // 親の地形を含む座標から破片と閃光を出し、ローカル原点へのずれを防ぎます。
     engine::Vector3 myPos = GetWorldPosition();
@@ -150,8 +150,8 @@ void GimmickBreakableBlock::Break() {
 std::unique_ptr<engine::Object3d> GimmickBreakableBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と破壊設定を複製する。
     auto newObj = std::make_unique<GimmickBreakableBlock>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

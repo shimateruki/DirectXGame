@@ -35,7 +35,7 @@ class GimmickPhaseFlipFloor : public BaseGimmick {
 
     uint32_t originalCollisionAttribute_ = 0;
     uint32_t originalCollisionMask_ = 0;
-    engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 baseRotation_ = engine::Vector3::ZERO;
     float cycleTimer_ = 0.0f;
     bool initializedForPlay_ = false;
     bool wasOwnPhase_ = false;

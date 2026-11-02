@@ -1,7 +1,5 @@
 #include "Easing.h"
 
-// 数学定数の定義
-const float PI = std::numbers::pi_v<float>;
 
 // --- 1. Linear ---
 float Easing::Linear(float t) {
@@ -12,17 +10,17 @@ float Easing::Linear(float t) {
 // --- 2. Sine ---
 float Easing::InSine(float t) {
     // 開始時の速度をゼロへ近づけ、徐々に加速する。
-    return 1.0f - std::cos((t * PI) / 2.0f);
+    return 1.0f - std::cos((t * std::numbers::pi_v<float>) / 2.0f);
 }
 
 float Easing::OutSine(float t) {
     // 終了時の速度をゼロへ近づけ、着地や停止を滑らかにする。
-    return std::sin((t * PI) / 2.0f);
+    return std::sin((t * std::numbers::pi_v<float>) / 2.0f);
 }
 
 float Easing::InOutSine(float t) {
     // 開始と終了の両端を減速し、中間で最も速く動かす。
-    return -(std::cos(PI * t) - 1.0f) / 2.0f;
+    return -(std::cos(std::numbers::pi_v<float> * t) - 1.0f) / 2.0f;
 }
 
 // --- 3. Quad ---
@@ -156,19 +154,19 @@ float Easing::InOutBack(float t) {
 // --- 10. Elastic ---
 float Easing::InElastic(float t) {
     // 開始側で振動しながら振幅を増やし、ばねの解放前を表現する。
-    const float c4 = (2.0f * PI) / 3.0f;
+    const float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
     return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : -std::pow(2.0f, 10.0f * t - 10.0f) * std::sin((t * 10.0f - 10.75f) * c4);
 }
 
 float Easing::OutElastic(float t) {
     // 終点をまたぐ振動を減衰させ、ばねが収まる動きを作る。
-    const float c4 = (2.0f * PI) / 3.0f;
+    const float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
     return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : std::pow(2.0f, -10.0f * t) * std::sin((t * 10.0f - 0.75f) * c4) + 1.0f;
 }
 
 float Easing::InOutElastic(float t) {
     // 前半で振幅を増やし後半で減衰させ、両端を正確な値へ戻す。
-    const float c5 = (2.0f * PI) / 4.5f;
+    const float c5 = (2.0f * std::numbers::pi_v<float>) / 4.5f;
     return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : t < 0.5f
         ? -(std::pow(2.0f, 20.0f * t - 10.0f) * std::sin((20.0f * t - 11.125f) * c5)) / 2.0f
         : (std::pow(2.0f, -20.0f * t + 10.0f) * std::sin((20.0f * t - 11.125f) * c5)) / 2.0f + 1.0f;
@@ -201,4 +199,38 @@ float Easing::InOutBounce(float t) {
     return t < 0.5f
         ? (1.0f - OutBounce(1.0f - 2.0f * t)) / 2.0f
         : (1.0f + OutBounce(2.0f * t - 1.0f)) / 2.0f;
+}
+
+// SmoothStepはCubicのInOutとは別の曲線。既存演出の立ち上がりを維持する。
+float Easing::SmoothStep(float t) {
+    return t * t * (3.0f - 2.0f * t);
+}
+
+float Easing::SmoothStep01(float t) {
+    return SmoothStep(std::clamp(t, 0.0f, 1.0f));
+}
+
+float Easing::OutQuad01(float t) {
+    // 経過時間が演出区間の前後でも、端点の姿勢を保つ。
+    return OutQuad(std::clamp(t, 0.0f, 1.0f));
+}
+
+float Easing::OutCubic01(float t) {
+    // 経過時間が演出区間の前後でも、端点の姿勢を保つ。
+    return OutCubic(std::clamp(t, 0.0f, 1.0f));
+}
+
+float Easing::InOutCubic01(float t) {
+    // 経過時間が演出区間の前後でも、端点の姿勢を保つ。
+    return InOutCubic(std::clamp(t, 0.0f, 1.0f));
+}
+
+float Easing::OutBack01(float t) {
+    // 経過時間が演出区間の前後でも、端点の姿勢を保つ。
+    return OutBack(std::clamp(t, 0.0f, 1.0f));
+}
+
+float Easing::OutQuint01(float t) {
+    // 経過時間が演出区間の前後でも、端点の姿勢を保つ。
+    return OutQuint(std::clamp(t, 0.0f, 1.0f));
 }

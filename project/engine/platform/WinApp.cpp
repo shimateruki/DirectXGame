@@ -7,6 +7,7 @@
 #include "json.hpp"
 #include <fstream>
 
+
 #pragma comment(lib, "winmm.lib")
 #ifdef USE_IMGUI
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -38,12 +39,31 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
             const int32_t width = LOWORD(lparam);
             const int32_t height = HIWORD(lparam);
 
+            if (width <= 0 || height <= 0)
+                return 0;
+            WinApp::SetWindowSize(width, height);
             if (DirectXCommon::GetInstance()->GetDevice()) {
                 DirectXCommon::GetInstance()->RequestResize(width, height);
             }
         }
 
         return 0;
+
+    case WM_DPICHANGED: {
+        // モニター移動時はWindowsの推奨矩形へ追従し、WM_SIZEで描画先を更新します。
+        if ((GetWindowLongPtr(hwnd, GWL_STYLE) & WS_OVERLAPPEDWINDOW) == 0) {
+            MONITORINFO monitor{sizeof(MONITORINFO)};
+            if (GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
+                SetWindowPos(hwnd, nullptr, monitor.rcMonitor.left, monitor.rcMonitor.top,
+                    monitor.rcMonitor.right - monitor.rcMonitor.left, monitor.rcMonitor.bottom - monitor.rcMonitor.top,
+                    SWP_NOZORDER | SWP_NOACTIVATE);
+        } else {
+            const RECT& rect = *reinterpret_cast<const RECT*>(lparam);
+            SetWindowPos(hwnd, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        return 0;
+    }
 
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -55,6 +75,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 void WinApp::Initialize(const wchar_t* title, int width, int height) {
     // Win32ウィンドウを作成し、実際のクライアントサイズをエンジン側へ反映する。
+    // ウィンドウ生成前に設定し、座標の仮想化による描画・クリックのずれを防ぎます。
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     hInstance_ = GetModuleHandle(nullptr);
     timeBeginPeriod(1);
 
@@ -66,7 +88,7 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     RegisterClass(&wc);
 
     RECT wrc = { 0, 0, width, height };
-    AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
+    AdjustWindowRectExForDpi(&wrc, WS_OVERLAPPEDWINDOW, FALSE, 0, GetDpiForSystem());
 
 
     hwnd_ = CreateWindow(
@@ -83,8 +105,8 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
 
     RECT clientRect{};
     GetClientRect(hwnd_, &clientRect);
-    kClientWidth = clientRect.right - clientRect.left;
-    kClientHeight = clientRect.bottom - clientRect.top;
+    kWindowWidth = clientRect.right - clientRect.left;
+    kWindowHeight = clientRect.bottom - clientRect.top;
 
     ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
 
@@ -99,8 +121,8 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
         }
     } catch (...) {}
     GetClientRect(hwnd_, &clientRect);
-    kClientWidth = clientRect.right;
-    kClientHeight = clientRect.bottom;
+    kWindowWidth = clientRect.right;
+    kWindowHeight = clientRect.bottom;
 }
 
 WinApp::DisplayState WinApp::CaptureDisplayState() const {
@@ -123,7 +145,7 @@ bool WinApp::SetDisplayMode(int width, int height, bool borderless) {
     if (borderless)
         rect = monitor.rcMonitor;
     else {
-        AdjustWindowRect(&rect, style, FALSE);
+        AdjustWindowRectExForDpi(&rect, style, FALSE, 0, GetDpiForWindow(hwnd_));
         width = rect.right - rect.left;
         height = rect.bottom - rect.top;
         const auto& work = monitor.rcWork;

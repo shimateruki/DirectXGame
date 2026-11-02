@@ -254,9 +254,9 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     // HUD の Sprite 名と基準位置・サイズ・色。Sprite はシーン側が所有する。
     struct StageSelectHudSprite {
         std::string name;
-        engine::Vector2 basePosition = {0.0f, 0.0f};
-        engine::Vector2 baseSize = {0.0f, 0.0f};
-        engine::Vector4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        engine::Vector2 basePosition = engine::Vector2::ZERO;
+        engine::Vector2 baseSize = engine::Vector2::ZERO;
+        engine::Vector4 baseColor = engine::Colors::White;
     };
 
     /// <summary>配置JSONの名前でHUD Spriteを結び、演出前の基準値を保存する。</summary>

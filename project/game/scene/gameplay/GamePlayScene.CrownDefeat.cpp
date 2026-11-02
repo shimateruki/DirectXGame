@@ -9,7 +9,7 @@
 
 bool GamePlayScene::StartCrownDefeat(EnemyFalseKingSlime* boss) {
     // 資源と対象の検証を済ませてから、ゲーム側の操作と撃破判定を止める。
-    if (!boss || !player_ || player_->isDead || crownDefeat_.active || crownDefeat_.completed || crownFinale_.active || isGoal_)
+    if (!boss || !player_ || player_->IsDead() || crownDefeat_.active || crownDefeat_.completed || crownFinale_.active || isGoal_)
         return false;
     if (!crownDefeatVfxSequence_.Load("Resources/json/scenario/crown_defeat.json"))
         return false;
@@ -51,7 +51,7 @@ bool GamePlayScene::StartCrownDefeat(EnemyFalseKingSlime* boss) {
 
 void GamePlayScene::UpdateCrownDefeat(float deltaTime) {
     if (!crownDefeat_.active) return;
-    if (!player_ || !crownDefeat_.boss || player_->isDead) {
+    if (!player_ || !crownDefeat_.boss || player_->IsDead()) {
         ResetCrownDefeat();
         return;
     }

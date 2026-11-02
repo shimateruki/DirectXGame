@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include <numbers>
 #include "SceneManager.h"    
 #include "BaseScene.h"      
 #include "engine/graphics/effect/DecalSystem.h"
@@ -40,9 +41,6 @@
 #include "LightEditor.h"      
 #include "IconsFontAwesome5.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
@@ -53,7 +51,7 @@
 #include <unordered_map>
 #include <utility>
 namespace fs = std::filesystem;
-const float PI = (float)M_PI;
+
 
 
 
@@ -154,12 +152,12 @@ namespace {
 
     engine::Vector3 GetSurfaceAlignedRotation(const engine::Vector3& currentRotation, const engine::Vector3& normal) {
         // 面法線の主軸に合わせて設置物を回し、水平面では現在の向きを残す。
-        constexpr float kHalfPi = PI * 0.5f;
+        constexpr float kHalfPi = std::numbers::pi_v<float> * 0.5f;
         engine::Vector3 n = NormalizeOrUp(normal);
 
         if (std::abs(n.y) >= std::abs(n.x) && std::abs(n.y) >= std::abs(n.z)) {
             if (n.y < 0.0f) {
-                return { PI, currentRotation.y, 0.0f };
+                return { std::numbers::pi_v<float>, currentRotation.y, 0.0f };
             }
 
             return { 0.0f, currentRotation.y, 0.0f };

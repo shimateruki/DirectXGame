@@ -127,10 +127,10 @@ class EnemySlime : public BaseEnemy {
 
     engine::Vector3 baseScale_ = {2.0f, 2.0f, 2.0f};
     engine::Vector3 visualScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 visualScaleVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 visualScaleVelocity_ = engine::Vector3::ZERO;
 
-    engine::Vector3 visualRotation_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 visualRotationVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 visualRotation_ = engine::Vector3::ZERO;
+    engine::Vector3 visualRotationVelocity_ = engine::Vector3::ZERO;
 
     bool hasBaseScale_ = false;
     bool attackWarningTriggered_ = false;

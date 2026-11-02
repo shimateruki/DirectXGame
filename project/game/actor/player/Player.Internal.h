@@ -2,6 +2,8 @@
 // 分割実装専用の定数・補助関数。外部からは公開ヘッダーを使用します。
 #define NOMINMAX
 #include "Player.h"
+#include "Easing.h"
+#include <numbers>
 #include "LightManager.h"
 #include "game/actor/player/copy/PlayerCopyAbilityController.h"
 #include "game/actor/player/copy/PlayerCopyTypeCatalog.h"
@@ -32,7 +34,7 @@
 #include <unordered_set>
 
 namespace PlayerImplementation {
-inline constexpr float kPi = 3.1415926535f;
+inline constexpr float kPi = std::numbers::pi_v<float>;
 inline constexpr float kTwoPi = kPi * 2.0f;
 
 inline constexpr float kEnemyMorphDuration = 5.0f;
@@ -88,8 +90,8 @@ inline float LiquidWaveHeight(const MeshRenderer::WaterParamForGPU& p, float x, 
     z = z * s + p.flowSpeedY * t * .045f - t * .018f;
     const float ix = std::floor(x), iz = std::floor(z);
     const float fx = x - ix, fz = z - iz;
-    const float u = fx * fx * (3.0f - 2.0f * fx);
-    const float v = fz * fz * (3.0f - 2.0f * fz);
+    const float u = Easing::SmoothStep(fx);
+    const float v = Easing::SmoothStep(fz);
     auto noise = [](float nx, float nz) {
         const float n = std::sin(nx * 12.9898f + nz * 78.233f) * 43758.5453123f;
         return n - std::floor(n);

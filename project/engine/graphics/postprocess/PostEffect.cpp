@@ -69,30 +69,30 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-    renderWidth_ = WinApp::kClientWidth;
-    renderHeight_ = WinApp::kClientHeight;
+    renderWidth_ = WinApp::GetClientWidth();
+    renderHeight_ = WinApp::GetClientHeight();
     renderTextures_.resize(8);
     CreateConstBuffer();
     CreateRootSignature();
     CreatePipelineState();
 
 	// [0] シーン描画用 (HDR / 元サイズ)
-    CreateRenderTexture(0, WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(0, WinApp::GetClientWidth(), WinApp::GetClientHeight(), DXGI_FORMAT_R16G16B16A16_FLOAT);
 
     // [1] トーンマップ後・ImGui表示用 (SDR / 元サイズ)
-    CreateRenderTexture(1, WinApp::kClientWidth, WinApp::kClientHeight,  DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(1, WinApp::GetClientWidth(), WinApp::GetClientHeight(),  DXGI_FORMAT_R16G16B16A16_FLOAT);
 
     // [2] 高輝度抽出用 (HDR / 1/2サイズで少し軽くする)
-    CreateRenderTexture(2, WinApp::kClientWidth / 2, WinApp::kClientHeight / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(2, WinApp::GetClientWidth() / 2, WinApp::GetClientHeight() / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
     // [3] 縮小ブラー用1 (HDR / 1/4サイズ)
-    CreateRenderTexture(3, WinApp::kClientWidth / 4, WinApp::kClientHeight / 4, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(3, WinApp::GetClientWidth() / 4, WinApp::GetClientHeight() / 4, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
     // [4] 縮小ブラー用2 (HDR / 1/8サイズ)
-    CreateRenderTexture(4, WinApp::kClientWidth / 8, WinApp::kClientHeight / 8, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(4, WinApp::GetClientWidth() / 8, WinApp::GetClientHeight() / 8, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
     // [5] 縮小ブラー用3 (HDR / 1/16サイズ)
-    CreateRenderTexture(5, WinApp::kClientWidth / 16, WinApp::kClientHeight / 16, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(5, WinApp::GetClientWidth() / 16, WinApp::GetClientHeight() / 16, DXGI_FORMAT_R16G16B16A16_FLOAT);
     ResizeCameraPreviewTextures();
 }
 
@@ -446,7 +446,7 @@ bool PostEffect::BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* comman
 
     RenderTexture& rt = renderTextures_[targetTexIndex];
     if (!rt.resource || !rt.depthResource || !rt.grabResource ||
-        !rt.rtvHeap || rt.depthSrvHandle == 0 || rt.grabSrvHandle == 0) {
+        !rt.rtvHeap || !rt.dsvHeap || rt.depthSrvHandle == 0 || rt.grabSrvHandle == 0) {
         return false;
     }
 
@@ -472,18 +472,22 @@ bool PostEffect::BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* comman
     commandList->ResourceBarrier(2, barriers);
     rt.currentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-    if (rt.depthState != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
+    constexpr D3D12_RESOURCE_STATES kReadOnlyDepthState =
+        D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    if (rt.depthState != kReadOnlyDepthState) {
         D3D12_RESOURCE_BARRIER depthBarrier{};
         depthBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         depthBarrier.Transition.pResource = rt.depthResource.Get();
         depthBarrier.Transition.StateBefore = rt.depthState;
-        depthBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        depthBarrier.Transition.StateAfter = kReadOnlyDepthState;
         commandList->ResourceBarrier(1, &depthBarrier);
-        rt.depthState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        rt.depthState = kReadOnlyDepthState;
     }
 
     const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
-    commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+    D3D12_CPU_DESCRIPTOR_HANDLE readOnlyDsv = rt.dsvHeap->GetCPUDescriptorHandleForHeapStart();
+    readOnlyDsv.ptr += dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    commandList->OMSetRenderTargets(1, &rtvHandle, false, &readOnlyDsv);
     return true;
 }
 
@@ -499,6 +503,7 @@ void PostEffect::EndCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandL
         return;
     }
 
+    commandList->OMSetRenderTargets(0, nullptr, false, nullptr);
     if (rt.depthState != D3D12_RESOURCE_STATE_DEPTH_WRITE) {
         D3D12_RESOURCE_BARRIER depthBarrier{};
         depthBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -634,7 +639,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     }
 
     D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.NumDescriptors = 2;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> newDsvHeap;
     hr = device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&newDsvHeap));
@@ -647,6 +652,12 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     dsvDesc.Format = dxCommon_->GetDSVFormat();
     dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     device->CreateDepthStencilView(newDepthResource.Get(), &dsvDesc, newDsvHeap->GetCPUDescriptorHandleForHeapStart());
+
+    // 深度を画像として読むパスでも、深度テストに使う読み取り専用DSVを接続します。
+    dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH | D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+    D3D12_CPU_DESCRIPTOR_HANDLE readOnlyDsv = newDsvHeap->GetCPUDescriptorHandleForHeapStart();
+    readOnlyDsv.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+    device->CreateDepthStencilView(newDepthResource.Get(), &dsvDesc, readOnlyDsv);
 
     if (needsPreviewSampling) {
         D3D12_SHADER_RESOURCE_VIEW_DESC depthSrvDesc{};

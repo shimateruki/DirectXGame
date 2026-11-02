@@ -13,7 +13,7 @@ void PlayerClone::Initialize(engine::Object3dCommon* common, const engine::Vecto
     SetModel("Characters/slime");
 
     SetTranslate(position);
-    velocity_ = velocity;
+    SetVelocity(velocity);
 
     // 色を少し青みがかった状態にする（薄くしない）
     SetColor({0.4f, 0.7f, 1.0f, 1.0f});
@@ -41,9 +41,9 @@ void PlayerClone::Update(float deltaTime) {
     lifetimeTimer_ -= deltaTime;
 
     // 地面に着いたら水平移動を止める
-    if (isGrounded_) {
-        velocity_.x = 0.0f;
-        velocity_.z = 0.0f;
+    if (IsGrounded()) {
+        SetVelocityX(0.0f);
+        SetVelocityZ(0.0f);
     }
 
     // 重力や移動の計算

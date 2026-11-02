@@ -99,12 +99,12 @@ void CinematicPlayer::RefreshBindings() {
         auto& runtime = transformRuntime_[index];
         runtime.target = ResolveTarget(track.binding);
 
-        if (runtime.target && runtime.target->recorder_) {
-            runtime.target->recorder_->SetSceneManager(sceneManager_);
-            runtime.target->recorder_->SetTarget(runtime.target);
+        if (runtime.target && runtime.target->GetRecorder()) {
+            runtime.target->GetRecorder()->SetSceneManager(sceneManager_);
+            runtime.target->GetRecorder()->SetTarget(runtime.target);
 
             if (!track.legacyPathFile.empty()) {
-                runtime.target->recorder_->Load(track.legacyPathFile);
+                runtime.target->GetRecorder()->Load(track.legacyPathFile);
             }
         }
     }
@@ -475,8 +475,8 @@ float CinematicPlayer::GetTransformTrackDuration(size_t index) const {
     }
 
     if (index < transformRuntime_.size() && transformRuntime_[index].target &&
-        transformRuntime_[index].target->recorder_ && !track.legacyPathFile.empty()) {
-        return transformRuntime_[index].target->recorder_->GetDurationSeconds();
+        transformRuntime_[index].target->GetRecorder() && !track.legacyPathFile.empty()) {
+        return transformRuntime_[index].target->GetRecorder()->GetDurationSeconds();
     }
 
     return 0.0f;
@@ -497,8 +497,8 @@ void CinematicPlayer::CaptureBasePoses() {
         runtime.baseScale = runtime.target->GetScale();
         runtime.captured = true;
 
-        if (runtime.target->recorder_) {
-            runtime.target->recorder_->CaptureBasePose();
+        if (runtime.target->GetRecorder()) {
+            runtime.target->GetRecorder()->CaptureBasePose();
         }
     }
 
@@ -508,9 +508,9 @@ void CinematicPlayer::CaptureBasePoses() {
         }
 
         runtime.animatorSnapshot = runtime.target->CaptureAnimatorSnapshot();
-        runtime.legacyAnimationName = runtime.target->animName_;
+        runtime.legacyAnimationName = runtime.target->GetAnimationName();
         runtime.legacyAnimationTime = runtime.target->GetAnimationTime();
-        runtime.legacyLoop = runtime.target->isAnimLoop_;
+        runtime.legacyLoop = runtime.target->IsAnimationLoop();
 
         if (runtime.bodyClip.IsValid()) {
             if (auto* renderer = runtime.target->GetMeshRenderer()) {
@@ -650,8 +650,8 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
 
     if (track.keys.empty()) {
         // 旧Path Recorder素材はキー配列を持たないため、記録済み軌道へ評価を委譲する。
-        if (runtime.target->recorder_ && !track.legacyPathFile.empty()) {
-            runtime.target->recorder_->EvaluateAtTime(evaluateTime, dispatchEvents, previousLocalTime);
+        if (runtime.target->GetRecorder() && !track.legacyPathFile.empty()) {
+            runtime.target->GetRecorder()->EvaluateAtTime(evaluateTime, dispatchEvents, previousLocalTime);
         }
 
         return;

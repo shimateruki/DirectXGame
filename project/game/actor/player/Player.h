@@ -3,6 +3,7 @@
 #include "game/actor/player/combat/PlayerAttackInputBuffer.h"
 #include "EffectObject3d.h"
 #include "IAnimationState.h"
+#include "game/actor/player/state/PlayerState.Whip.h"
 #include "InputManager.h"
 #include "ParticleSystem.h"
 #include "game/actor/player/animation/PlayerGateReturnAnimation.h"
@@ -208,9 +209,8 @@ class Player : public Character {
     // ==================================================
     // --- 物理・姿勢 ---
     /// <summary>現在の移動速度を取得・設定します。</summary>
-    void SetVelocity(const engine::Vector3& v) { velocity_ = v; }
-
-    engine::Vector3 GetVelocity() const { return velocity_; }
+    using Character::SetVelocity;
+    using Character::GetVelocity;
 
     /// <summary>落下復帰時の位置を取得・設定します。</summary>
     void SetRespawnPosition(const engine::Vector3& pos) { respawnPosition_ = pos; }
@@ -290,13 +290,26 @@ class Player : public Character {
     /// <summary>現在の前方向をワールド座標で返します。</summary>
     engine::Vector3 GetForwardDirection() const;
 
+    // 鞭の起点・方向は発射時の姿勢とロックオン位置から求めます。
+    engine::Vector3 GetWhipOrigin() const;
+    engine::Vector3 GetWhipDirection() const;
+    const PlayerWhipSettings& GetWhipSettings() const { return whipSettings_; }
+    void LoadWhipSettings();
+    bool SaveWhipSettings() const;
+    void DrawWhipEditor();
+    // 鞭と同じ時計で計算した描画用姿勢を渡します。衝突形状は変更しません。
+    void SetWhipBodyPose(const engine::Vector3& scale, const engine::Vector3& rotation) {
+        slimeAnimator_.SetWhipPose(scale, rotation);
+    }
+    void ClearWhipBodyPose();
+
     /// <summary>通常移動と同じカメラ基準で、現在押している移動方向を返します。</summary>
     /// <remarks>操作制限中にも読めるため、攻撃中の方向転換に使用できます。</remarks>
     engine::Vector3 GetMoveInputDirection();
 
     PlayerAttackMovement GetAttackMovement() const {
         // 死亡・コピー解除中に攻撃の減速を通常移動へ持ち越さない。
-        return !isDead && copyAbilityController_ ? copyAbilityController_->GetAttackMovement() : PlayerAttackMovement{};
+        return !IsDead() && copyAbilityController_ ? copyAbilityController_->GetAttackMovement() : PlayerAttackMovement{};
     }
 
     /// <summary>水平面での進行向きをY回転のラジアン値で指定します。</summary>
@@ -392,10 +405,10 @@ class Player : public Character {
     engine::ParticleSystem* GetParticleSystem() { return particleSystem_; }
 
     /// <summary>現在のプレイヤーパラメータからジャンプ力を返します。</summary>
-    float GetJumpPower() const { return param_.has_value() ? param_->jumpPower : 24.0f; }
+    float GetJumpPower() const { return GetParameters().has_value() ? GetParameters()->jumpPower : 24.0f; }
 
     /// <summary>現在のプレイヤーパラメータから移動速度を返します。</summary>
-    float GetMoveSpeed() const { return param_.has_value() ? param_->speed : 27.7f; }
+    float GetMoveSpeed() const { return GetParameters().has_value() ? GetParameters()->speed : 27.7f; }
 
     // ==================================================
     // 無敵フレーム (Invincibility) 管理
@@ -431,7 +444,7 @@ class Player : public Character {
     }
 
     /// <summary>現在のHPを返します。未設定時は既定値を使用します。</summary>
-    float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
+    float GetHp() const { return GetParameters().has_value() ? GetParameters()->hp : 100.0f; }
 
     /// <summary>乗車型床の水平速度を記録し、ジャンプ時に一部を引き継ぎます。</summary>
     void SetPlatformMotion(const engine::Vector3& velocity);
@@ -440,7 +453,7 @@ class Player : public Character {
     void SetAbilityAirImpulse(const engine::Vector3& velocity);
 
     /// <summary>最大HPを返します。未設定時は既定値を使用します。</summary>
-    float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
+    float GetMaxHp() const { return GetParameters().has_value() ? GetParameters()->maxHp : 100.0f; }
 
     /// <summary>チェックポイントなどで現在のHPを最大値まで回復します。</summary>
     void RestoreHpToFull();
@@ -494,6 +507,7 @@ class Player : public Character {
   private:
     // 移動・アクション状態・姿勢・通常攻撃・コピー能力の実行部品をPlayerが所有する。
     std::unique_ptr<PlayerMover> mover_ = nullptr;     // 移動処理の委譲先。
+    PlayerWhipSettings whipSettings_;
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
     PlayerSlimeAnimator slimeAnimator_;
     PlayerGateReturnAnimation gateReturnAnimation_;
@@ -554,7 +568,7 @@ class Player : public Character {
 
     // 複数の無敵理由を個別に管理し、解除時に本体・子パーツの色を戻す。
     bool isInvincible_ = false;
-    engine::Vector4 savedColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 無敵解除時に戻す色。
+    engine::Vector4 savedColor_ = engine::Colors::White; // 無敵解除時に戻す色。
 
     // 子パーツの色を保存して、無敵解除時に復元する
     std::unordered_map<engine::Object3d*, engine::Vector4> childSavedColors_;
@@ -603,8 +617,8 @@ class Player : public Character {
     void UpdateColor();
 
     // 落下復帰位置と初期姿勢。最初の更新時は配置値を基準として記録する。
-    engine::Vector3 respawnPosition_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f}; // 初期回転。モデル姿勢補正にも使う。
+    engine::Vector3 respawnPosition_ = engine::Vector3::ZERO;
+    engine::Vector3 baseRotation_ = engine::Vector3::ZERO; // 初期回転。モデル姿勢補正にも使う。
     bool isFirstUpdate_ = true;
 
     // 有効なチェックポイントのObject名と、その時点のコピー能力。
@@ -618,7 +632,7 @@ class Player : public Character {
     // 保持中の敵と照準先は非所有参照。保持前の姿勢は解放時の復元値。
     engine::Object3d* carriedEnemy_ = nullptr;
     engine::Vector3 carriedEnemyBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 carriedEnemyBaseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 carriedEnemyBaseRotation_ = engine::Vector3::ZERO;
     engine::Quaternion carriedEnemyBaseQuaternion_ = {0.0f, 0.0f, 0.0f, 1.0f};
     bool carriedEnemyBaseQuaternionMaster_ = true;
     bool hasCarriedEnemyBaseScale_ = false;
@@ -647,7 +661,7 @@ class Player : public Character {
     engine::Vector3 enemyMorphReleasePlayerScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 enemyMorphReleaseVisualScale_ = {0.5f, 0.5f, 0.5f};
 
-    engine::Vector3 enemyMorphReleaseStartPosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 enemyMorphReleaseStartPosition_ = engine::Vector3::ZERO;
     engine::Vector3 enemyMorphReleaseDirection_ = {0.0f, 0.0f, -1.0f};
 
     engine::Vector4 enemyMorphReleaseTint_ = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -662,9 +676,9 @@ class Player : public Character {
     float electricShockPendingInvincibleDuration_ = 0.0f;
     bool electricShockControlLocked_ = false;
     bool electricShockWasControlActive_ = true;
-    engine::Vector3 electricShockLockedPosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 electricShockLockedPosition_ = engine::Vector3::ZERO;
     engine::Vector3 electricShockBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 electricShockBaseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 electricShockBaseRotation_ = engine::Vector3::ZERO;
 
     // 感電中にPlayerへ追従するオーラの表示Object。
     std::unique_ptr<EffectObject3d> electricShockAuraEffect_;
@@ -674,7 +688,7 @@ class Player : public Character {
     std::string savedMorphTexturePath_;
     std::string savedMorphAnimName_;
     bool savedMorphAnimLoop_ = true;
-    engine::Vector4 savedMorphColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    engine::Vector4 savedMorphColor_ = engine::Colors::White;
     engine::Vector3 savedMorphScale_ = {1.0f, 1.0f, 1.0f};
     int savedMorphMaterialType_ = 0;
     float savedMorphEmissive_ = 1.0f;
@@ -686,9 +700,9 @@ class Player : public Character {
     BaseEnemy* pendingAbsorbEnemy_ = nullptr;
     EnemyMorphType pendingAbsorbType_ = EnemyMorphType::None;
     engine::Vector3 pendingAbsorbEnemyBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 pendingAbsorbEnemyStartPos_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 pendingAbsorbEnemyStartPos_ = engine::Vector3::ZERO;
     engine::Vector4 pendingAbsorbTint_ = {1.0f, 1.0f, 1.0f, 1.0f};
-    engine::Vector4 pendingAbsorbPlayerBaseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    engine::Vector4 pendingAbsorbPlayerBaseColor_ = engine::Colors::White;
 
     // 吸収演出の経過秒数と粒子発生間隔。
     float absorbEffectTimer_ = 0.0f;

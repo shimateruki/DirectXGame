@@ -306,8 +306,8 @@ bool GameplayStatusManager::ApplyEnemyStatus(engine::Object3d* object, bool rese
 
     std::string enemyType = object->GetEnemyType();
 
-    if (enemyType.empty() && object->param_.has_value()) {
-        enemyType = object->param_->enemyType;
+    if (enemyType.empty() && object->GetParameters().has_value()) {
+        enemyType = object->GetParameters()->enemyType;
     }
 
     const CharacterStatus* status = FindEnemyStatus(enemyType);
@@ -319,11 +319,11 @@ bool GameplayStatusManager::ApplyEnemyStatus(engine::Object3d* object, bool rese
     ApplyStatus(object, *status, resetCurrentHp);
     object->SetEnemyType(enemyType);
 
-    if (!object->param_.has_value()) {
-        object->param_.emplace();
+    if (!object->GetParameters().has_value()) {
+        object->ResetParameters();
     }
 
-    object->param_->enemyType = enemyType;
+    object->SetParameter(&engine::EntityParameter::enemyType, enemyType);
     return true;
 }
 
@@ -437,11 +437,11 @@ void GameplayStatusManager::ApplyStatus(engine::Object3d* object, const Characte
     CharacterStatus status = source;
     Normalize(status);
 
-    if (!object->param_.has_value()) {
-        object->param_.emplace();
+    if (!object->GetParameters().has_value()) {
+        object->ResetParameters();
     }
 
-    auto& param = object->param_.value();
+    auto param = object->GetParameters().value();
 
     const float previousMaxHp = (std::max)(param.maxHp, 1.0f);
     const float previousHp = std::clamp(param.hp, 0.0f, previousMaxHp);
@@ -470,6 +470,8 @@ void GameplayStatusManager::ApplyStatus(engine::Object3d* object, const Characte
     param.motorStepHeight = status.motorStepHeight;
     param.motorGroundProbeDistance = status.motorGroundProbeDistance;
     param.motorSkinWidth = status.motorSkinWidth;
+
+    object->SetParameters(param);
 
     if (!status.modelName.empty() && object->GetModelName() != status.modelName) {
         object->SetModel(status.modelName);

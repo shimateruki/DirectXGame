@@ -91,7 +91,7 @@ struct Cylinder {
 // CollisionInfoは、衝突有無、法線、めり込み量など判定結果をまとめます。
 struct CollisionInfo {
     bool isColliding = false;   // 衝突しているか
-    engine::Vector3 normal = {0, 0, 0}; // 衝突法線 (押し戻す方向)
+    engine::Vector3 normal = engine::Vector3::ZERO; // 衝突法線 (押し戻す方向)
     float penetration = 0.0f;   // めり込み量
 };
 

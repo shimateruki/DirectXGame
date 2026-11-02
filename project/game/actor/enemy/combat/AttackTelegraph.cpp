@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/actor/enemy/combat/AttackTelegraph.h"
+#include "Easing.h"
+#include <numbers>
 #include "Camera.h"
 #include "CameraManager.h"
 #include "TextureManager.h"
@@ -13,7 +15,7 @@ constexpr float kGroundLift = 0.13f;
 constexpr float kTimingLayerLift = 0.012f;
 constexpr float kCircleInnerRate = 0.72f;
 constexpr float kCueOuterScale = 1.24f;
-constexpr float kHalfPi = 1.57079632679f;
+constexpr float kHalfPi = (std::numbers::pi_v<float> * 0.5f);
 constexpr float kWarningCameraOffset = 0.14f;
 constexpr std::size_t kConeSegmentCount = 8;
 constexpr float kCountdownOuterScale = 1.72f;
@@ -35,13 +37,7 @@ engine::Vector3 NormalizePlanar(engine::Vector3 direction) {
     return {direction.x / length, 0.0f, direction.z / length};
 }
 
-// 攻撃予兆の終点で減速する補間率を返します。
-float EaseOut(float t) {
-    // 発生直後を速く、終端を緩くして警告の拡大を読み取りやすくする。
-    t = std::clamp(t, 0.0f, 1.0f);
-    const float inv = 1.0f - t;
-    return 1.0f - inv * inv;
-}
+
 } // namespace
 
 void AttackTelegraph::Initialize(engine::Object3dCommon* common) {
@@ -113,8 +109,8 @@ void AttackTelegraph::EnsureWarningEffect(engine::Object3dCommon* common) {
         warningEffect_->SetEdgeFadeStrength(0.35f);
         warningEffect_->SetAlphaReference(0.008f);
         warningEffect_->SetProceduralType(7);
-        warningEffect_->editPlaneSize_ = {1.0f, 1.0f};
-        warningEffect_->editMeshSegments_ = 1;
+        warningEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::planeSize, {1.0f, 1.0f});
+        warningEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 1);
         warningEffect_->UpdateProceduralMesh();
         warningEffect_->SetTexture(kAttackWarningTexturePath);
         warningEffect_->SetStartScale({0.52f, 0.52f, 0.52f});
@@ -251,25 +247,25 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
 
     if (shape == Shape::Circle || shape == Shape::ImpactDisc) {
         effect->SetProceduralType(10);
-        effect->editRingOuterRadius_ = 1.0f;
-        effect->editRingInnerRadius_ = shape == Shape::ImpactDisc ? 0.0f : kCircleInnerRate;
-        effect->editMeshSegments_ = 64;
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, 1.0f);
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, shape == Shape::ImpactDisc ? 0.0f : kCircleInnerRate);
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 64);
         effect->SetTexture(kWhiteTexturePath);
         effect->SetBlendMode(shape == Shape::ImpactDisc ? BlendMode::kNormal : BlendMode::kAdd);
         effect->SetIntensity(shape == Shape::ImpactDisc ? 0.92f : (isCue ? 4.4f : 2.35f));
         effect->SetEdgeFadeStrength(shape == Shape::ImpactDisc ? 0.0f : (isCue ? 0.35f : 1.0f));
     } else if (shape == Shape::DecalCircle) {
         effect->SetProceduralType(7);
-        effect->editPlaneSize_ = {2.0f, 2.0f};
-        effect->editMeshSegments_ = 1;
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::planeSize, {2.0f, 2.0f});
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 1);
         effect->SetTexture(decalTexturePath_);
         effect->SetBlendMode(isCue ? BlendMode::kAdd : BlendMode::kNormal);
         effect->SetIntensity(isCue ? 2.25f : 1.16f);
         effect->SetEdgeFadeStrength(0.0f);
     } else {
         effect->SetProceduralType(7);
-        effect->editPlaneSize_ = {1.0f, 1.0f};
-        effect->editMeshSegments_ = 1;
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::planeSize, {1.0f, 1.0f});
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 1);
         effect->SetTexture(kWhiteTexturePath);
         effect->SetBlendMode(BlendMode::kAdd);
         effect->SetIntensity(isCue ? 4.4f : 2.35f);
@@ -291,7 +287,7 @@ void AttackTelegraph::ConfigureTimingEffectShape(EffectObject3d* effect, Shape s
     effect->SetEdgeFadeStrength(0.22f);
 
     if (shape == Shape::Circle) {
-        effect->editRingInnerRadius_ = 0.86f;
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, 0.86f);
         effect->UpdateProceduralMesh();
     }
 }
@@ -354,7 +350,7 @@ void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const engine::Vector3&
 
     progress = std::clamp(progress, 0.0f, 1.0f);
     radius = (std::max)(radius, 0.05f);
-    const float scaleRate = (0.58f + EaseOut(progress) * 0.42f) * (std::max)(scaleMultiplier, 0.01f);
+    const float scaleRate = (0.58f + Easing::OutQuad01(progress) * 0.42f) * (std::max)(scaleMultiplier, 0.01f);
 
     engine::Vector3 pos = center;
     pos.y += kGroundLift;
@@ -391,7 +387,7 @@ engine::Vector4 AttackTelegraph::MakeTimingColor(const engine::Vector4& color, f
     // 発生が近づく後半ほど色を強め、攻撃の直前を判別しやすくする。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float urgency = std::clamp((progress - 0.56f) / 0.44f, 0.0f, 1.0f);
-    const float urgencySmooth = urgency * urgency * (3.0f - 2.0f * urgency);
+    const float urgencySmooth = Easing::SmoothStep(urgency);
     const float pulse = 0.5f + std::sin(pulseTimer_ * (10.0f + urgencySmooth * 22.0f)) * 0.5f;
     const float whiteRate = 0.20f + urgencySmooth * 0.56f;
     return {std::clamp(color.x + (1.0f - color.x) * whiteRate, 0.0f, 1.0f),
@@ -412,7 +408,7 @@ void AttackTelegraph::ApplyLine(EffectObject3d* effect, const engine::Vector3& c
     width = (std::max)(width, 0.05f);
     const engine::Vector3 dir = NormalizePlanar(direction);
     const float yaw = std::atan2(dir.x, dir.z);
-    const float scaleRate = (0.50f + EaseOut(progress) * 0.50f) * (std::max)(scaleMultiplier, 0.01f);
+    const float scaleRate = (0.50f + Easing::OutQuad01(progress) * 0.50f) * (std::max)(scaleMultiplier, 0.01f);
 
     engine::Vector3 pos = center + dir * (length * 0.5f * scaleRate);
     pos.y += kGroundLift;
@@ -614,7 +610,7 @@ void AttackTelegraph::ShowReadableImpactAreas(const engine::Vector3* centers, st
     for (std::size_t index = 0; index < centerCount; ++index) {
         const float localProgress = std::clamp(progress - static_cast<float>(index) * sequenceStep, 0.0f, 1.0f);
         const float urgencyT = std::clamp((localProgress - 0.58f) / 0.42f, 0.0f, 1.0f);
-        const float urgency = urgencyT * urgencyT * (3.0f - 2.0f * urgencyT);
+        const float urgency = Easing::SmoothStep(urgencyT);
 
         // 面は攻撃範囲だけを静かに伝え、重なっても白飛びしない通常合成にします。
         engine::Vector4 discColor = color;
@@ -793,7 +789,7 @@ void AttackTelegraph::Update(float deltaTime) {
     if (cueEffect_ && cueTimer_ > 0.0f && hasLastShape_) {
         cueTimer_ = (std::max)(0.0f, cueTimer_ - (std::max)(deltaTime, 0.0f));
         const float progress = 1.0f - std::clamp(cueTimer_ / cueDuration_, 0.0f, 1.0f);
-        const float scaleMultiplier = 1.0f + (kCueOuterScale - 1.0f) * EaseOut(progress);
+        const float scaleMultiplier = 1.0f + (kCueOuterScale - 1.0f) * Easing::OutQuad01(progress);
         const engine::Vector4 cueColor = MakeCueColor(cueColor_, progress);
 
         if (lastShape_ == Shape::Circle) {

@@ -27,6 +27,11 @@ class Character : public engine::Object3d {
 
     void SetVelocity(const engine::Vector3& v) { velocity_ = v; }
 
+    /// <summary>速度の指定軸だけを更新する。他軸は維持する。</summary>
+    float SetVelocityX(float value) { return velocity_.x = value; }
+    float SetVelocityY(float value) { return velocity_.y = value; }
+    float SetVelocityZ(float value) { return velocity_.z = value; }
+
     /// <summary>ダメージ状態へ移らず、指定時間だけ移動へ外力を重ねる。</summary>
     void ApplyExternalImpulse(const engine::Vector3& velocity, float duration = 0.16f);
 
@@ -43,22 +48,12 @@ class Character : public engine::Object3d {
     /// <summary>
     /// このキャラクターに適用する重力を設定する。
     /// </summary>
-    void SetGravity(float gravity) {
-        if (!this->param_.has_value()) {
-            this->param_.emplace();
-        }
-        this->param_->gravity = gravity;
-    }
+    void SetGravity(float gravity);
 
     /// <summary>
     /// 最大落下速度を設定する。
     /// </summary>
-    void SetMaxFallSpeed(float maxFallSpeed) {
-        if (!this->param_.has_value()) {
-            this->param_.emplace();
-        }
-        this->param_->maxFallSpeed = maxFallSpeed;
-    }
+    void SetMaxFallSpeed(float maxFallSpeed);
 
     /// <summary>衝突情報に基づいて押し戻しと速度補正を適用する。</summary>
     void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
@@ -75,17 +70,21 @@ class Character : public engine::Object3d {
     void SyncCharacterMotorSettings();
 
     /// <summary>演出が座標を直接制御するフレームでは重力とMotor移動を止める。</summary>
+    /// <summary>速度・接地状態を所有したまま、一回分の重力と衝突移動を進める。</summary>
+    void SimulateMotorStep(engine::Vector3& position, float gravity, float maxFallSpeed, float deltaTime);
+
     void SetMotorSuspended(bool suspended) { motorSuspended_ = suspended; }
 
     /// <summary>リプレイ用JSONからCharacter固有の状態を戻す。</summary>
     void RestoreReplayCustomState(const json& state) override;
 
-    engine::Vector3 velocity_ = {0.0f, 0.0f, 0.0f}; // 現在速度。
+private:
+    engine::Vector3 velocity_ = engine::Vector3::ZERO; // 現在速度。
     bool isGrounded_ = false;               // 最後の更新で接地しているか。
     bool motorSuspended_ = false;            // 演出が座標を直接決めるフレームだけ有効。
 
 private:
-    engine::Vector3 externalImpulseVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 externalImpulseVelocity_ = engine::Vector3::ZERO;
     float externalImpulseTimer_ = 0.0f;
     float externalImpulseDuration_ = 0.0f;
     CharacterMotor characterMotor_;

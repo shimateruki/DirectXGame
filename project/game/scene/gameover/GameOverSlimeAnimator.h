@@ -1,5 +1,7 @@
 #pragma once
 #include "Object3d.h"
+#include "Easing.h"
+#include <numbers>
 #include "engine/utility/math/Math.h"
 #include <algorithm>
 #include <cmath>
@@ -91,13 +93,13 @@ class GameOverSlimeAnimator {
   private:
     enum class Phase { Downed, ExitRight, ExitFinished };
 
-    static constexpr float kPi = 3.14159265f;
+    static constexpr float kPi = std::numbers::pi_v<float>;
 
     static float Clamp01(float v) { return std::clamp(v, 0.0f, 1.0f); }
 
     static float Smooth(float v) {
         v = Clamp01(v);
-        return v * v * (3.0f - 2.0f * v);
+        return Easing::SmoothStep(v);
     }
 
     // 現在の変形を反映し、モデル境界の最下点を床面と跳ね高さに合わせます。

@@ -1,4 +1,5 @@
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.Internal.h"
+#include <numbers>
 
 using namespace CameraEditorImplementation;
 
@@ -172,7 +173,7 @@ void CameraEditor::Update(engine::Object3d* player, bool isLockingOn) {
                     settings_.gameFollowMode == Camera::FollowMode::kFirstPerson) {
 
                     engine::Vector3 currentRot = camera->GetRotation();
-                    float toDeg = 180.0f / 3.14159265f;
+                    float toDeg = 180.0f / std::numbers::pi_v<float>;
 
                     settings_.angle.x = currentRot.x * toDeg;
                     settings_.angle.y = currentRot.y * toDeg;
@@ -253,7 +254,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ----------------------------------------------------------
     // 3. 移動・ズーム処理
     // ----------------------------------------------------------
-    engine::Vector3 moveVelocity = { 0, 0, 0 };
+    engine::Vector3 moveVelocity = engine::Vector3::ZERO;
 
     // GameViewをホバーしているか、右クリック中のみ移動・ズームを許可
     if (isGameViewHovered_ || input->IsMouseButtonPressed(1)) {

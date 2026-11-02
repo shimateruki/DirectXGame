@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickBossGate.h"
+#include "Easing.h"
 #include "ObjectPropertyDefinition.h"
 
 #include "CollisionConfig.h"
@@ -10,12 +11,7 @@
 #include <cassert>
 
 namespace {
-// ボスゲートの開閉率を両端で滑らかにつなぎます。
-float SmoothStep01(float value) {
-    // 閉鎖率の両端で門の上下移動が急停止しないようにする。
-    const float t = std::clamp(value, 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
-}
+
 } // namespace
 
 void GimmickBossGate::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
@@ -35,13 +31,13 @@ void GimmickBossGate::Initialize(engine::Object3dCommon* common, const std::stri
     collider.size = {6.0f, 3.5f, 0.55f};
     SetColliderConfig(collider);
 
-    if (!param_.has_value())
-        param_.emplace();
-    param_->gimmickType = "BossGate";
-    param_->moveSpeed = 0.58f;
-    param_->moveAmount = 8.0f;
-    param_->startActive = false;
-    param_->returnOnOff = true;
+    if (!GetParameters().has_value())
+        ResetParameters();
+    SetParameter(&engine::EntityParameter::gimmickType, "BossGate");
+    SetParameter(&engine::EntityParameter::moveSpeed, 0.58f);
+    SetParameter(&engine::EntityParameter::moveAmount, 8.0f);
+    SetParameter(&engine::EntityParameter::startActive, false);
+    SetParameter(&engine::EntityParameter::returnOnOff, true);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickBossGate;
@@ -81,7 +77,7 @@ void GimmickBossGate::Update(float deltaTime) {
 
     if (!initializedForPlay_) {
         initializedForPlay_ = true;
-        targetClosure_ = activationRequested_ || (param_.has_value() && param_->startActive) ? 1.0f : 0.0f;
+        targetClosure_ = activationRequested_ || (GetParameters().has_value() && GetParameters()->startActive) ? 1.0f : 0.0f;
         closure_ = targetClosure_;
         ApplyRuntimeState();
     }
@@ -108,7 +104,7 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
     // シネマティック制御中は外部スイッチで門を上書きしない。
     if (cinematicOverride_)
         return;
-    if (!active && param_.has_value() && !param_->returnOnOff) {
+    if (!active && GetParameters().has_value() && !GetParameters()->returnOnOff) {
         return;
     }
 
@@ -132,8 +128,8 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
 std::unique_ptr<engine::Object3d> GimmickBossGate::Clone() const {
     // 編集配置を複製し、実行時の閉鎖率は新しい門で計算する。
     auto clone = std::make_unique<GimmickBossGate>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }
@@ -196,7 +192,7 @@ void GimmickBossGate::ResetForEditor() {
 
 void GimmickBossGate::ApplyRuntimeState() {
     // 閉鎖率に応じて門を上下させ、十分閉じるまで壁の接触を有効にしない。
-    const float eased = SmoothStep01(closure_);
+    const float eased = Easing::SmoothStep01(closure_);
     engine::Vector3 position = authoredPosition_;
     position.y += (1.0f - eased) * GetTravelDistance();
     SetTranslate(position);
@@ -217,10 +213,10 @@ void GimmickBossGate::SetCollisionEnabled(bool enabled) {
 
 float GimmickBossGate::GetTransitionDuration() const {
     // JSON の移動速度欄を演出の所要秒数として安全範囲に収める。
-    return param_.has_value() ? std::clamp(param_->moveSpeed, 0.12f, 2.5f) : 0.58f;
+    return GetParameters().has_value() ? std::clamp(GetParameters()->moveSpeed, 0.12f, 2.5f) : 0.58f;
 }
 
 float GimmickBossGate::GetTravelDistance() const {
     // 門が完全に開く際の上昇距離に下限を設ける。
-    return param_.has_value() ? std::max(2.0f, param_->moveAmount) : 8.0f;
+    return GetParameters().has_value() ? std::max(2.0f, GetParameters()->moveAmount) : 8.0f;
 }

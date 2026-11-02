@@ -80,8 +80,8 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     if (++frames % 30 == 0)
         log << frames << " raft=" << d.x << ',' << d.y << ',' << d.z
             << " player=" << p.x << ',' << p.y << ',' << p.z
-            << " grounded=" << player->IsGrounded() << " dead=" << player->isDead << std::endl;
-    if (player->isDead || p.y < -15) { finish("FAIL rider lost"); return; }
+            << " grounded=" << player->IsGrounded() << " dead=" << player->IsDead() << std::endl;
+    if (player->IsDead() || p.y < -15) { finish("FAIL rider lost"); return; }
     sawSea |= d.y < -10;
     if (!sawPeak && d.y > 21.9f) {
         sawPeak = true;

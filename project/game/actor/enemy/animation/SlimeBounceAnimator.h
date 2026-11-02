@@ -1,6 +1,8 @@
 #pragma once
 
 #include "engine/utility/math/Math.h"
+#include "Easing.h"
+#include <numbers>
 
 #include <algorithm>
 #include <cmath>
@@ -48,7 +50,7 @@ inline bool StepGroundHop(float& hopTimer, const engine::Vector3& velocity, bool
 inline float BossHopAnticipation(float hopTimer, float interval, float anticipationDuration) {
     const float duration = (std::max)(anticipationDuration, 0.01f);
     const float progress = std::clamp((hopTimer - (interval - duration)) / duration, 0.0f, 1.0f);
-    return progress * progress * (3.0f - 2.0f * progress);
+    return Easing::SmoothStep(progress);
 }
 
 // ボスの移動意図を保ちながら、跳ぶ直前だけ足を止めて力をためます。
@@ -140,7 +142,7 @@ inline void ApplyGroundHopPose(engine::Vector3& scale, const engine::Vector3& ba
     const float windup = BossHopAnticipation(hopTimer, hopInterval, anticipationDuration);
     const float landing = std::clamp(landingTimer / (std::max)(landingDuration, 0.01f), 0.0f, 1.0f);
     const float landingAge = 1.0f - landing;
-    const float rebound = std::sin(landingAge * 6.2831853f) * landing * 0.10f;
+    const float rebound = std::sin(landingAge * (2.0f * std::numbers::pi_v<float>)) * landing * 0.10f;
     const float squash = windup * 0.29f + landing * landing * 0.26f + rebound;
     scale.x += baseScale.x * squash;
     scale.y -= baseScale.y * squash * 1.20f;

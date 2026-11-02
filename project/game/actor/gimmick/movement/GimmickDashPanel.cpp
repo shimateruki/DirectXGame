@@ -83,8 +83,8 @@ bool GimmickDashPanel::OnCollision(engine::Object3d* other) {
 std::unique_ptr<engine::Object3d> GimmickDashPanel::Clone() const {
     // 配置と調整値を複製し、実行時のパルス時計は新しい床に持ち込まない。
     auto newObj = std::make_unique<GimmickDashPanel>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

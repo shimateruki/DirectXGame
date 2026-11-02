@@ -39,7 +39,7 @@ void EnemyMagmaSlime::Initialize(engine::Object3dCommon* common, const std::stri
     SetRoughness(0.26f);
     SetEnableEnvMap(true);
     SetEnvIntensity(0.42f);
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
 
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
@@ -47,7 +47,7 @@ void EnemyMagmaSlime::Initialize(engine::Object3dCommon* common, const std::stri
     SyncCollisionRadius();
 
     // Body Clipは描画メッシュだけに掛け、物理座標と攻撃判定には混ぜない。
-    const EnemyAttackDefinition* slamAttack = attackProfile_.FindAttack(kVolcanicSlamAttackId);
+    const EnemyAttackDefinition* slamAttack = GetAttackProfile().FindAttack(kVolcanicSlamAttackId);
     if (slamAttack && !slamAttack->animation.empty() &&
         slamBodyClip_.Load(BodyAnimationClip::ResolveAssetPath(slamAttack->animation))) {
         slamVisualPose_ = std::make_shared<engine::Matrix4x4>(engine::Math::MakeIdentity4x4());
@@ -68,7 +68,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     UpdateMagmaSurges(deltaTime);
     UpdateMagmaFlood(deltaTime);
 
-    if (isDead || !GetIsVisible()) {
+    if (IsDead() || !GetIsVisible()) {
         locomotion_.Reset();
         HideAttackTelegraph();
         ClearTransientVisuals();
@@ -94,10 +94,10 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     engine::Vector3 targetDirection = lockedDirection_;
     float targetDistance = 9999.0f;
 
-    if (target_) {
-        const engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+    if (GetTarget()) {
+        const engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - GetWorldPosition();
         targetDirection = NormalizePlanar(toTarget);
-        targetDistance = PlanarDistance(target_->GetWorldPosition(), GetWorldPosition());
+        targetDistance = PlanarDistance(GetTarget()->GetWorldPosition(), GetWorldPosition());
     }
 
     UpdateBossTargetEngagement(targetDistance);
@@ -191,11 +191,11 @@ void EnemyMagmaSlime::OnSwitchEvent(bool active) {
 std::unique_ptr<engine::Object3d> EnemyMagmaSlime::Clone() const {
     // 複製先へ配置倍率と標的を渡し、攻撃中の一時状態は持ち越さない。
     auto clone = std::make_unique<EnemyMagmaSlime>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     clone->baseScale_ = baseScale_;
     clone->hasBaseScale_ = true;
     return clone;
@@ -341,7 +341,7 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
         return;
     }
 
-    if (!target_ || !param_.has_value()) {
+    if (!GetTarget() || !GetParameters().has_value()) {
         const float verticalVelocity = velocity.y;
         velocity = CalculateWanderVelocity(deltaTime, 0.48f, 0.38f);
         velocity.y = verticalVelocity;
@@ -351,7 +351,7 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
 
     UpdateFacing(targetDirection);
 
-    if (UpdateNoticeReaction(deltaTime, targetDistance, detectionRange_, targetDirection)) {
+    if (UpdateNoticeReaction(deltaTime, targetDistance, GetDetectionRange(), targetDirection)) {
         return;
     }
 
@@ -361,12 +361,12 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
     const EnemyAttackDefinition& planned = GetAttackDefinition(GetAttackId(plannedAttack));
     const bool inRange = targetDistance >= planned.minRange && targetDistance <= planned.maxRange;
 
-    if (isGrounded_ && IsBossTargetEngaged() && attackCooldown_ <= 0.0f && inRange) {
+    if (IsGrounded() && IsBossTargetEngaged() && attackCooldown_ <= 0.0f && inRange) {
         StartAttack(plannedAttack, targetDirection);
         return;
     }
 
-    if (!debugPreviewAttackId_.empty() || !isGrounded_ || !locomotion_.CanBegin()) return;
+    if (!debugPreviewAttackId_.empty() || !IsGrounded() || !locomotion_.CanBegin()) return;
 
     // 重い身体は長く溜めて短めに跳び、近距離では地面を離れず小さく位置を変える。
     const float preferredDistance = std::clamp(planned.recommendedTargetDistance, 4.5f, 11.0f);
@@ -377,18 +377,18 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
     const engine::Vector3 movement = farAway ? NormalizePlanar(targetDirection + lateral * 0.20f)
         : (tooClose ? NormalizePlanar(targetDirection * -1.0f + lateral * 0.18f) : lateral);
     const float stepDistance = farAway ? std::clamp(targetDistance - preferredDistance, 1.9f, 3.4f)
-                                       : std::clamp(param_->speed * 0.55f, 0.65f, 1.15f);
+                                       : std::clamp(GetParameters()->speed * 0.55f, 0.65f, 1.15f);
     ++locomotionStepSerial_;
 
     BossGroundLocomotion::Style style;
     style.windup = farAway ? 0.25f : 0.18f;
-    style.travelSpeed = farAway ? std::clamp(param_->speed * 3.8f, 3.7f, 7.5f)
-                                  : std::clamp(param_->speed * 1.9f, 2.2f, 4.5f);
+    style.travelSpeed = farAway ? std::clamp(GetParameters()->speed * 3.8f, 3.7f, 7.5f)
+                                  : std::clamp(GetParameters()->speed * 1.9f, 2.2f, 4.5f);
     style.minimumTravelTime = farAway ? 0.50f : 0.27f;
     style.maximumTravelTime = farAway ? 0.72f : 0.44f;
     style.landing = farAway ? 0.30f : 0.21f;
     style.cooldown = farAway ? 0.90f : 1.10f;
-    style.arcHeight = farAway ? std::clamp(param_->jumpPower * 0.035f, 0.70f, 1.08f) : 0.0f;
+    style.arcHeight = farAway ? std::clamp(GetParameters()->jumpPower * 0.035f, 0.70f, 1.08f) : 0.0f;
     style.maximumHeightDifference = 1.2f;
 
     const engine::Vector3 current = GetTranslate();
@@ -429,7 +429,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
     currentAttack_ = kind;
     attackState_ = AttackState::Windup;
     lockedDirection_ = NormalizePlanar(targetDirection);
-    lockedTargetPosition_ = target_ ? FindGroundPoint(target_->GetWorldPosition())
+    lockedTargetPosition_ = GetTarget() ? FindGroundPoint(GetTarget()->GetWorldPosition())
                                     : FindGroundPoint(GetTranslate() + lockedDirection_ * 7.0f);
     attackStartPosition_ = GetTranslate();
     attackEndPosition_ = attackStartPosition_;
@@ -471,7 +471,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
         style.fadeStart = (std::max)(0.0f, attack.activeDuration - 0.22f);
         chantVisual_ = std::make_unique<BossChantVisual>();
 
-        if (!chantVisual_->Start(common_, std::move(style))) {
+        if (!chantVisual_->Start(GetObjectCommon(), std::move(style))) {
             chantVisual_.reset();
         }
     }
@@ -487,9 +487,9 @@ void EnemyMagmaSlime::UpdateAttack(float deltaTime, const engine::Vector3& targe
                                    engine::Vector3& velocity) {
     // 警告の終盤で照準を固定し、実行・硬直中は各段階の処理だけを進める。
     if (attackState_ == AttackState::Windup) {
-        if (attackTimer_ > GetCurrentAttackDefinition().warningLeadTime && target_) {
+        if (attackTimer_ > GetCurrentAttackDefinition().warningLeadTime && GetTarget()) {
             lockedDirection_ = NormalizePlanar(targetDirection);
-            lockedTargetPosition_ = FindGroundPoint(target_->GetWorldPosition());
+            lockedTargetPosition_ = FindGroundPoint(GetTarget()->GetWorldPosition());
 
             if (currentAttack_ == AttackKind::MagmaMortar) {
                 PrepareMortarTargets();
@@ -823,12 +823,12 @@ std::unique_ptr<engine::Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::
                                                              int materialType, const engine::Vector4& color,
                                                              float emissive) const {
     // 一時演出は敵本体の衝突対象にせず、種類に応じてマグマ・炎・衝撃波の材質を設定する。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return nullptr;
     }
 
     auto visual = std::make_unique<engine::Object3d>();
-    visual->Initialize(common_);
+    visual->Initialize(GetObjectCommon());
     visual->SetName(name);
     visual->SetClassName("EnemyVisualPart");
     visual->SetModel(model);
@@ -881,18 +881,18 @@ engine::Vector3 EnemyMagmaSlime::FindGroundPoint(const engine::Vector3& samplePo
 void EnemyMagmaSlime::DamageTargetAt(const engine::Vector3& center, float radius, float damage, const engine::Vector3& knockback,
                                      float burnDuration, float burnTickInterval, float burnTickDamage) {
     // 平面半径と高さ差の両方を満たした対象へ、火傷を含む一回の被弾イベントを送る。
-    if (!target_ || target_->isDead || !target_->GetIsVisible()) {
+    if (!GetTarget() || GetTarget()->IsDead() || !GetTarget()->GetIsVisible()) {
         return;
     }
 
-    const engine::Vector3 targetPosition = target_->GetWorldPosition();
+    const engine::Vector3 targetPosition = GetTarget()->GetWorldPosition();
     if (std::abs(targetPosition.y - center.y) > kPoolVerticalTolerance + 1.0f ||
         PlanarDistance(targetPosition, center) > radius) {
         return;
     }
 
     DamageEvent event;
-    event.target = target_;
+    event.target = GetTarget();
     event.attacker = this;
     event.damageAmount = damage;
     event.damageType = DamageType::Fire;
@@ -912,7 +912,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
     params.verticalStretch = 0.24f;
     params.airborneStretch = 0.34f;
 
-    engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+    engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
 
     if (attackState_ == AttackState::Idle && locomotion_.IsActive()) {
@@ -937,7 +937,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
             targetScale = {baseScale_.x * (1.0f + squash * 0.75f), baseScale_.y * (1.0f - squash),
                            baseScale_.z * (1.0f + squash * 0.75f)};
         }
-    } else if (attackState_ == AttackState::Idle && isGrounded_) {
+    } else if (attackState_ == AttackState::Idle && IsGrounded()) {
         // 停止中は縦倍率を固定し、呼吸だけで足元が上下しないようにする。
         const float speedRate = std::clamp(SlimeBounceAnimator::PlanarSpeed(GetVelocity()) / 2.8f, 0.0f, 1.0f);
         const float breath = std::sin(idleTimer_ * 1.8f) * 0.020f * (1.0f - speedRate);
@@ -1088,14 +1088,14 @@ void EnemyMagmaSlime::UpdateBodyHeat(float deltaTime) {
     const float attackGlow = attacking ? 0.58f : 0.0f;
     const float pulse = std::sin(idleTimer_ * (attacking ? 9.0f : 3.8f)) * (attacking ? 0.16f : 0.08f);
     SetEmissive(1.16f + attackGlow * 0.62f + pulse * 0.45f);
-    defaultColor_ = {
+    SetDefaultColor({
         1.0f,
         0.94f + attackGlow * 0.05f,
         0.84f + attackGlow * 0.07f + pulse * 0.04f,
         1.0f,
-    };
+    });
 
-    SetColor(defaultColor_);
+    SetColor(GetDefaultColor());
 
     if (ambientEmberTimer_ <= 0.0f) {
         EmitDirectedPreset(kCoreEmberPreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.58f, 0.0f},

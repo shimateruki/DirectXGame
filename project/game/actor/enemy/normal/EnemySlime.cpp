@@ -1,4 +1,6 @@
 #include "EnemySlime.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "DebrisEffectManager.h"
 #include "game/system/combat/HitEffectDirector.h"
@@ -27,7 +29,7 @@ constexpr const char* kLandingCoreEffectPath = "Resources/json/effect/effect_pin
 constexpr const char* kLandingShockArcEffectPath = "Resources/json/effect/effect_pink_slime_landing_shock_arc.json";
 constexpr const char* kChargeDebrisPresetName = "pink_slime_charge_pebble_pull";
 constexpr const char* kLandingDebrisPresetName = "pink_slime_landing_pebble_burst";
-constexpr float kSlimeModelYawOffset = 3.1415926535f;
+constexpr float kSlimeModelYawOffset = std::numbers::pi_v<float>;
 constexpr float kChargePulseInterval = 0.56f;
 constexpr float kChargeDebrisInterval = 0.64f;
 constexpr float kChargeVortexInterval = 0.34f;
@@ -48,12 +50,7 @@ float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
-// 通常スライムの演出率を両端で滑らかにつなぎます。
-float SmoothStep01(float value) {
-    // 動作の境目でスケールや速度の変化が急にならないよう両端を滑らかにする。
-    const float t = Clamp01(value);
-    return t * t * (3.0f - 2.0f * t);
-}
+
 
 float PlanarLength(const engine::Vector3& value) {
     // 上昇や落下の速度を除き、地面に沿う移動量だけを測る。
@@ -155,7 +152,7 @@ void EnemySlime::Update(float deltaTime) {
         return;
     }
 
-    if (isCarried_) {
+    if (IsCarried()) {
         HideAttackTelegraph();
         return;
     }
@@ -166,7 +163,7 @@ void EnemySlime::Update(float deltaTime) {
         return;
     }
 
-    if (!target_ || !param_.has_value()) {
+    if (!GetTarget() || !GetParameters().has_value()) {
         HideAttackTelegraph();
         BaseEnemy::Update(deltaTime);
         return;
@@ -177,10 +174,10 @@ void EnemySlime::Update(float deltaTime) {
 
     float targetDistance = 0.0f;
     engine::Vector3 targetDirection = GetTargetPlanarDirection(&targetDistance);
-    float effectiveDetectionRange = detectionRange_;
+    float effectiveDetectionRange = GetDetectionRange();
 
-    if (param_.has_value()) {
-        effectiveDetectionRange = (std::max)(effectiveDetectionRange, param_->detectionRange);
+    if (GetParameters().has_value()) {
+        effectiveDetectionRange = (std::max)(effectiveDetectionRange, GetParameters()->detectionRange);
     }
 
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
@@ -198,7 +195,7 @@ void EnemySlime::Update(float deltaTime) {
         return;
     }
 
-    if (moveState_ == MoveState::Dive && isGrounded_ && diveTimer_ > 0.18f && velocity_.y <= 0.0f) {
+    if (moveState_ == MoveState::Dive && IsGrounded() && diveTimer_ > 0.18f && GetVelocity().y <= 0.0f) {
         // 跳び始めの接地判定で即座に着地扱いしないよう、最短滞空時間を設ける。
         BeginLandingRecovery();
     }
@@ -209,7 +206,7 @@ void EnemySlime::Update(float deltaTime) {
         UpdateRise(deltaTime);
     } else if (moveState_ == MoveState::Dive) {
         UpdateDive(deltaTime);
-    } else if (isGrounded_) {
+    } else if (IsGrounded()) {
         if (canDiveAtTarget) {
             UpdateCharge(deltaTime, targetDirection, targetDistance);
         } else {
@@ -312,7 +309,7 @@ const char* EnemySlime::GetDebugMoveStateName() const {
 
 engine::Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
     // 距離は水平面で測り、対象不在なら現在向きを返して攻撃方向を安定させる。
-    if (!target_) {
+    if (!GetTarget()) {
         if (outDistance) {
             *outDistance = 0.0f;
         }
@@ -321,7 +318,7 @@ engine::Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
     }
 
     engine::Vector3 myPos = GetTranslate();
-    engine::Vector3 targetPos = target_->GetWorldPosition();
+    engine::Vector3 targetPos = GetTarget()->GetWorldPosition();
     targetPos.y = myPos.y;
     engine::Vector3 toTarget = targetPos - myPos;
     toTarget.y = 0.0f;
@@ -367,7 +364,7 @@ void EnemySlime::UpdateWander(float deltaTime) {
     diveTrailTimer_ = 0.0f;
     attackWarningTriggered_ = false;
 
-    const float wanderSpeed = (std::max)(1.35f, param_->speed * 3.0f);
+    const float wanderSpeed = (std::max)(1.35f, GetParameters()->speed * 3.0f);
     engine::Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
     engine::Vector3 wanderDirection = NormalizePlanarOr(wanderVelocity, GetFacingPlanarDirection());
     const float wanderPlanarSpeed = PlanarLength(wanderVelocity);
@@ -379,16 +376,16 @@ void EnemySlime::UpdateWander(float deltaTime) {
     jumpTimer_ += deltaTime;
 
     if (jumpTimer_ >= kWanderHopInterval && wanderPlanarSpeed > 0.05f) {
-        const float jumpPower = param_->jumpPower > 0.0f ? param_->jumpPower * 0.46f : 7.5f;
-        velocity_.x = wanderDirection.x * wanderSpeed;
-        velocity_.z = wanderDirection.z * wanderSpeed;
-        velocity_.y = jumpPower;
+        const float jumpPower = GetParameters()->jumpPower > 0.0f ? GetParameters()->jumpPower * 0.46f : 7.5f;
+        SetVelocityX(wanderDirection.x * wanderSpeed);
+        SetVelocityZ(wanderDirection.z * wanderSpeed);
+        SetVelocityY(jumpPower);
         jumpTimer_ = 0.0f;
         return;
     }
 
-    velocity_.x *= 0.82f;
-    velocity_.z *= 0.82f;
+    SetVelocityX(GetVelocity().x * (0.82f));
+    SetVelocityZ(GetVelocity().z * (0.82f));
 }
 
 void EnemySlime::UpdateCharge(float deltaTime, const engine::Vector3& direction, float distance) {
@@ -410,8 +407,8 @@ void EnemySlime::UpdateCharge(float deltaTime, const engine::Vector3& direction,
     SpawnChargeVortexEffect(deltaTime, chargeRate);
     FaceDirection(diveDirection_, 0.11f + chargeRate * 0.10f);
 
-    velocity_.x = 0.0f;
-    velocity_.z = 0.0f;
+    SetVelocityX(0.0f);
+    SetVelocityZ(0.0f);
     chargeTimer_ += deltaTime;
 
     const float remainingChargeTime = (std::max)(0.0f, chargeDuration - chargeTimer_);
@@ -442,10 +439,10 @@ void EnemySlime::BeginRise(const engine::Vector3& direction) {
     HideAttackTelegraph();
     SpawnLaunchEffect();
 
-    isGrounded_ = false;
-    velocity_.x = 0.0f;
-    velocity_.z = 0.0f;
-    velocity_.y = (std::max)(kRiseJumpSpeed, param_.has_value() ? param_->jumpPower * 1.55f : 0.0f);
+    SetGrounded(false);
+    SetVelocityX(0.0f);
+    SetVelocityZ(0.0f);
+    SetVelocityY((std::max)(kRiseJumpSpeed, GetParameters().has_value() ? GetParameters()->jumpPower * 1.55f : 0.0f));
     FaceDirection(diveDirection_, 1.0f);
 }
 
@@ -459,10 +456,10 @@ void EnemySlime::UpdateRise(float deltaTime) {
     diveDirection_ = NormalizePlanarOr(targetDirection, diveDirection_);
 
     FaceDirection(diveDirection_, 0.16f);
-    velocity_.x *= 0.58f;
-    velocity_.z *= 0.58f;
+    SetVelocityX(GetVelocity().x * (0.58f));
+    SetVelocityZ(GetVelocity().z * (0.58f));
 
-    const bool reachedApex = riseTimer_ >= kRiseApexMinTime && velocity_.y <= 0.0f;
+    const bool reachedApex = riseTimer_ >= kRiseApexMinTime && GetVelocity().y <= 0.0f;
     const bool forcedDive = riseTimer_ >= kRiseMaxDuration;
 
     if (reachedApex || forcedDive) {
@@ -485,13 +482,13 @@ void EnemySlime::BeginDive(const engine::Vector3& direction, float distance) {
     diveDirection_ = NormalizePlanarOr(direction, GetFacingPlanarDirection());
 
     const float speedFromDistance = distance * kDiveDistanceSpeedRate;
-    const float speedFromStatus = param_.has_value() ? param_->speed * 2.0f : 0.0f;
+    const float speedFromStatus = GetParameters().has_value() ? GetParameters()->speed * 2.0f : 0.0f;
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
     diveSpeed_ = std::clamp(attack.minSpeed + speedFromDistance + speedFromStatus, attack.minSpeed, attack.maxSpeed);
 
-    velocity_.x = diveDirection_.x * diveSpeed_;
-    velocity_.z = diveDirection_.z * diveSpeed_;
-    velocity_.y = kDiveStartDownSpeed;
+    SetVelocityX(diveDirection_.x * diveSpeed_);
+    SetVelocityZ(diveDirection_.z * diveSpeed_);
+    SetVelocityY(kDiveStartDownSpeed);
     FaceDirection(diveDirection_, 1.0f);
 }
 
@@ -513,15 +510,15 @@ void EnemySlime::UpdateDive(float deltaTime) {
     }
 
     const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).activeDuration);
-    const float curveRate = SmoothStep01(diveTimer_ / activeDuration);
+    const float curveRate = Easing::SmoothStep01(diveTimer_ / activeDuration);
     const float targetSpeed = diveSpeed_ * (1.0f + curveRate * 0.34f);
     const float velocityRate = deltaTime * (kDiveSteerStrength + curveRate * 5.5f);
-    velocity_.x = LerpFloat(velocity_.x, diveDirection_.x * targetSpeed, velocityRate);
-    velocity_.z = LerpFloat(velocity_.z, diveDirection_.z * targetSpeed, velocityRate);
+    SetVelocityX(LerpFloat(GetVelocity().x, diveDirection_.x * targetSpeed, velocityRate));
+    SetVelocityZ(LerpFloat(GetVelocity().z, diveDirection_.z * targetSpeed, velocityRate));
 
-    const float diveRate = SmoothStep01(diveTimer_ / activeDuration);
+    const float diveRate = Easing::SmoothStep01(diveTimer_ / activeDuration);
     const float targetYSpeed = LerpFloat(kDiveStartDownSpeed, kDiveDropSpeed, diveRate);
-    velocity_.y = LerpFloat(velocity_.y, targetYSpeed, deltaTime * 22.0f);
+    SetVelocityY(LerpFloat(GetVelocity().y, targetYSpeed, deltaTime * 22.0f));
 
     if (diveTimer_ > activeDuration) {
         diveTimer_ = activeDuration;
@@ -541,11 +538,11 @@ void EnemySlime::BeginLandingRecovery() {
     chargeVortexTimer_ = 0.0f;
     diveTrailTimer_ = 0.0f;
     SpawnLandingEffect();
-    velocity_.x *= 0.34f;
-    velocity_.z *= 0.34f;
+    SetVelocityX(GetVelocity().x * (0.34f));
+    SetVelocityZ(GetVelocity().z * (0.34f));
 
-    if (velocity_.y < 0.0f) {
-        velocity_.y = 0.0f;
+    if (GetVelocity().y < 0.0f) {
+        SetVelocityY(0.0f);
     }
 }
 
@@ -554,8 +551,8 @@ void EnemySlime::UpdateLandingRecovery(float deltaTime) {
     HideAttackTelegraph();
     recoverTimer_ = (std::max)(0.0f, recoverTimer_ - deltaTime);
     landingSquashTimer_ = (std::max)(0.0f, landingSquashTimer_ - deltaTime);
-    velocity_.x *= 0.62f;
-    velocity_.z *= 0.62f;
+    SetVelocityX(GetVelocity().x * (0.62f));
+    SetVelocityZ(GetVelocity().z * (0.62f));
 
     if (recoverTimer_ <= 0.0f) {
         moveState_ = MoveState::Wander;
@@ -668,7 +665,7 @@ void EnemySlime::SpawnDiveTrailEffect(float deltaTime) {
     position.z -= diveDirection_.z * 0.52f;
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
     const float activeDuration = (std::max)(0.01f, attack.activeDuration);
-    const float diveRate = SmoothStep01(diveTimer_ / activeDuration);
+    const float diveRate = Easing::SmoothStep01(diveTimer_ / activeDuration);
     const float scaleZ = 1.35f + diveRate * 0.80f;
     const char* activeVfx = attack.activeVfx.empty() ? kDiveTrailEffectPath : attack.activeVfx.c_str();
     SpawnMeshEffectAtSafe(activeVfx, position, MakeDiveEffectRotation(diveDirection_, -0.52f), {0.58f, 0.58f, scaleZ});
@@ -695,7 +692,7 @@ void EnemySlime::SpawnLandingEffect() {
 void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     // 行動ごとの目標変形を作り、ばねで補間して物理判定を変えずに見た目だけ動かす。
     engine::Vector3 targetVisualScale = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 targetVisualRotation = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 targetVisualRotation = engine::Vector3::ZERO;
     SlimeBounceAnimator::Params bounceParams;
     bounceParams.speedForFullBounce = 2.2f;
     bounceParams.idleAmplitude = 0.055f;
@@ -714,8 +711,8 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
 
     if (moveState_ == MoveState::Charge) {
         const float windupDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).windupDuration);
-        const float chargeRate = SmoothStep01(chargeTimer_ / windupDuration);
-        const float finalCompression = SmoothStep01((chargeRate - 0.76f) / 0.24f);
+        const float chargeRate = Easing::SmoothStep01(chargeTimer_ / windupDuration);
+        const float finalCompression = Easing::SmoothStep01((chargeRate - 0.76f) / 0.24f);
         const float tremble = std::sin(idleTimer_ * 31.0f) * 0.018f * chargeRate;
         targetVisualScale = {1.0f + chargeRate * 0.25f + finalCompression * 0.08f + tremble,
                              1.0f - chargeRate * 0.24f - finalCompression * 0.12f,
@@ -724,24 +721,24 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
         targetVisualRotation.x = -diveDirection_.z * wobble;
         targetVisualRotation.z = diveDirection_.x * wobble;
     } else if (moveState_ == MoveState::Rise) {
-        const float release = 1.0f - SmoothStep01(riseTimer_ / 0.30f);
-        const float verticalSpeedRate = Clamp01(std::abs(velocity_.y) / kRiseJumpSpeed);
+        const float release = 1.0f - Easing::SmoothStep01(riseTimer_ / 0.30f);
+        const float verticalSpeedRate = Clamp01(std::abs(GetVelocity().y) / kRiseJumpSpeed);
         const float riseStretch = 0.34f + verticalSpeedRate * 0.16f + release * 0.10f;
         targetVisualScale = {1.0f - riseStretch * 0.42f, 1.0f + riseStretch, 1.0f - riseStretch * 0.34f};
         targetVisualRotation.x = -0.08f * release;
     } else if (moveState_ == MoveState::Dive) {
         // 速度と進行度で進行方向に伸ばし、横幅は逆平方根で抑えて体積の急増を防ぐ。
         const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).activeDuration);
-        const float divePose = SmoothStep01(diveTimer_ / activeDuration);
-        const float planarSpeed = PlanarLength(velocity_);
-        const float totalSpeed = std::sqrt(planarSpeed * planarSpeed + velocity_.y * velocity_.y);
+        const float divePose = Easing::SmoothStep01(diveTimer_ / activeDuration);
+        const float planarSpeed = PlanarLength(GetVelocity());
+        const float totalSpeed = std::sqrt(planarSpeed * planarSpeed + GetVelocity().y * GetVelocity().y);
         const float speedRate = Clamp01((totalSpeed - 18.0f) / 38.0f);
         const float stretchRate = 0.52f + divePose * 0.48f;
         const float longitudinalScale = 1.38f + stretchRate * 0.38f + speedRate * 0.16f;
         const float crossScale = 1.0f / std::sqrt(longitudinalScale);
         const float flutter = std::sin(diveTimer_ * 42.0f) * 0.025f * divePose;
         targetVisualScale = {crossScale + flutter, crossScale * 0.94f - flutter * 0.45f, longitudinalScale};
-        const float flightPitch = std::atan2(velocity_.y, (std::max)(planarSpeed, 0.001f));
+        const float flightPitch = std::atan2(GetVelocity().y, (std::max)(planarSpeed, 0.001f));
         targetVisualRotation.x = std::clamp(flightPitch, -1.10f, 0.30f);
         targetVisualRotation.z = flutter * 1.8f;
     } else if (moveState_ == MoveState::Recover) {
@@ -750,15 +747,15 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
         const float recoveryProgress = Clamp01((recoveryDuration - recoverTimer_) / recoveryDuration);
 
         if (recoveryProgress < 0.30f) {
-            const float phase = SmoothStep01(recoveryProgress / 0.30f);
+            const float phase = Easing::SmoothStep01(recoveryProgress / 0.30f);
             targetVisualScale = {LerpFloat(1.40f, 1.23f, phase), LerpFloat(0.56f, 0.72f, phase),
                                  LerpFloat(1.32f, 1.18f, phase)};
         } else if (recoveryProgress < 0.64f) {
-            const float phase = SmoothStep01((recoveryProgress - 0.30f) / 0.34f);
+            const float phase = Easing::SmoothStep01((recoveryProgress - 0.30f) / 0.34f);
             targetVisualScale = {LerpFloat(1.23f, 0.92f, phase), LerpFloat(0.72f, 1.24f, phase),
                                  LerpFloat(1.18f, 0.94f, phase)};
         } else {
-            const float phase = SmoothStep01((recoveryProgress - 0.64f) / 0.36f);
+            const float phase = Easing::SmoothStep01((recoveryProgress - 0.64f) / 0.36f);
             targetVisualScale = {LerpFloat(0.92f, 1.0f, phase), LerpFloat(1.24f, 1.0f, phase),
                                  LerpFloat(0.94f, 1.0f, phase)};
         }
@@ -766,12 +763,12 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
         const float shake = std::sin(idleTimer_ * 34.0f) * (1.0f - recoveryProgress) * 0.055f;
         targetVisualRotation.x = -diveDirection_.z * shake;
         targetVisualRotation.z = diveDirection_.x * shake;
-    } else if (!isGrounded_) {
+    } else if (!IsGrounded()) {
         targetVisualScale =
-            toVisualScale(SlimeBounceAnimator::MakeScale(baseScale_, velocity_, idleTimer_, false, bounceParams));
+            toVisualScale(SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, false, bounceParams));
     } else {
         targetVisualScale =
-            toVisualScale(SlimeBounceAnimator::MakeScale(baseScale_, velocity_, idleTimer_, true, bounceParams));
+            toVisualScale(SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, true, bounceParams));
     }
 
     targetVisualScale.x = std::clamp(targetVisualScale.x, 0.58f, 1.45f);
@@ -789,7 +786,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
 
     engine::Vector3 renderedScale = visualScale_;
     engine::Vector3 renderedRotation = visualRotation_;
-    engine::Vector3 reactionOffset = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 reactionOffset = engine::Vector3::ZERO;
     ApplyDamageReactionPose(renderedScale, renderedRotation, &reactionOffset);
     renderedScale.x = std::clamp(renderedScale.x, 0.52f, 1.58f);
     renderedScale.y = std::clamp(renderedScale.y, 0.40f, 1.68f);
@@ -801,8 +798,8 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
 
     if (MeshRenderer* renderer = GetMeshRenderer()) {
         const bool keepGroundContact =
-            isGrounded_ || moveState_ == MoveState::Charge || moveState_ == MoveState::Recover;
-        engine::Vector3 visualOffset = {0.0f, 0.0f, 0.0f};
+            IsGrounded() || moveState_ == MoveState::Charge || moveState_ == MoveState::Recover;
+        engine::Vector3 visualOffset = engine::Vector3::ZERO;
 
         if (moveState_ == MoveState::Dive) {
             visualOffset = CalculateDiveVisualOffset(renderedScale, renderedRotation);
@@ -820,9 +817,9 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
 std::unique_ptr<engine::Object3d> EnemySlime::Clone() const {
     // 新しい個体を初期化してから、シーン内の配置設定と攻撃対象を引き継ぐ。
     auto newSlime = std::make_unique<EnemySlime>();
-    newSlime->Initialize(common_, this->GetModelName());
+    newSlime->Initialize(GetObjectCommon(), this->GetModelName());
     newSlime->CopyFrom(this);
-    newSlime->SetTarget(this->target_);
-    newSlime->SetDetectionRange(this->detectionRange_);
+    newSlime->SetTarget(this->GetTarget());
+    newSlime->SetDetectionRange(this->GetDetectionRange());
     return newSlime;
 }

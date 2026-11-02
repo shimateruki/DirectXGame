@@ -497,13 +497,13 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* commo
         if (!station) {
             continue;
         }
-        if (!station->param_) {
-            station->param_.emplace();
+        if (!station->GetParameters()) {
+            station->ResetParameters();
         }
-        station->param_->copyMemoryTypeA = copyType;
-        station->param_->copyMemoryTypeB.clear();
-        station->param_->copyMemoryTypeC.clear();
-        station->param_->copyMemoryTypeD.clear();
+        station->SetParameter(&engine::EntityParameter::copyMemoryTypeA, copyType);
+        station->SetParameter(&engine::EntityParameter::copyMemoryTypeB, {});
+        station->SetParameter(&engine::EntityParameter::copyMemoryTypeC, {});
+        station->SetParameter(&engine::EntityParameter::copyMemoryTypeD, {});
         station->SetModel("Gimmicks/copy_memory_station_single");
         changed |= RegisterPresetOnce("Builtin/Gimmick/CopyMemoryStation/" + std::string(copyType),
                                       std::move(station), label);

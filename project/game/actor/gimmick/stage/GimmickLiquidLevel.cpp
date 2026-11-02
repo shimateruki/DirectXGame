@@ -24,12 +24,12 @@ void GimmickLiquidLevel::Initialize(engine::Object3dCommon* common, const std::s
     SetScale({4.0f, 0.08f, 4.0f});
     SetStatic(false);
 
-    if (!param_.has_value())
-        param_.emplace();
-    param_->moveAmount = 6.0f;
-    param_->moveSpeed = 3.0f;
-    param_->startActive = false;
-    param_->returnOnOff = true;
+    if (!GetParameters().has_value())
+        ResetParameters();
+    SetParameter(&engine::EntityParameter::moveAmount, 6.0f);
+    SetParameter(&engine::EntityParameter::moveSpeed, 3.0f);
+    SetParameter(&engine::EntityParameter::startActive, false);
+    SetParameter(&engine::EntityParameter::returnOnOff, true);
 
     ApplyLiquidVisual();
 
@@ -41,7 +41,7 @@ void GimmickLiquidLevel::Initialize(engine::Object3dCommon* common, const std::s
     properties.Parameter("液面の動作", "actionMode", &Parameter::actionMode, 0.0f, 1.0f,
         nullptr, {"従来のスイッチ上下", "マグマ脱出：一定速度で上昇"});
     properties.Parameter("開始前の予告時間", "shakeDuration", &Parameter::shakeDuration, 0.0f, 10.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 1); });
     properties.Parameter("液体の種類", "colorType", &Parameter::colorType, 0.0f, 1.0f,
         nullptr, {"水", "マグマ"});
     properties.Parameter("上下量", "moveAmount", &Parameter::moveAmount, -500.0f, 500.0f);
@@ -52,10 +52,10 @@ void GimmickLiquidLevel::Initialize(engine::Object3dCommon* common, const std::s
 
 void GimmickLiquidLevel::Update(float deltaTime) {
     // 脱出シーケンスだけは通常のスイッチ昇降と別の時間軸で進めます。
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
-    if (param_->actionMode == 1) {
+    if (GetParameters()->actionMode == 1) {
         UpdateEscape(deltaTime);
         return;
     }
@@ -77,13 +77,13 @@ void GimmickLiquidLevel::Update(float deltaTime) {
     if (!initializedForPlay_) {
         basePosition_ = GetTransform()->translate;
         targetPosition_ = basePosition_;
-        active_ = param_->startActive;
+        active_ = GetParameters()->startActive;
         ApplyTarget(active_);
         initializedForPlay_ = true;
     }
 
     // 指数補間を使い、フレーム時間が変わっても目標位置への追従を安定させます。
-    float speed = (std::max)(0.01f, param_->moveSpeed);
+    float speed = (std::max)(0.01f, GetParameters()->moveSpeed);
     float t = 1.0f - std::exp(-speed * deltaTime);
     engine::Vector3 pos = GetTransform()->translate;
     pos.x = engine::Math::Lerp(pos.x, targetPosition_.x, t);
@@ -97,18 +97,18 @@ void GimmickLiquidLevel::Update(float deltaTime) {
 
 void GimmickLiquidLevel::OnTrigger() {
     // 脱出用液面はエリア進行で動くため、通常のトリガー入力を無視します。
-    if (param_ && param_->actionMode == 1)
+    if (GetParameters() && GetParameters()->actionMode == 1)
         return;
     OnSwitchEvent(true);
 }
 
 void GimmickLiquidLevel::OnSwitchEvent(bool active) {
     // オフで戻さない設定なら、解除イベント後も上昇位置を維持します。
-    if (!param_.has_value())
-        param_.emplace();
-    if (param_->actionMode == 1)
+    if (!GetParameters().has_value())
+        ResetParameters();
+    if (GetParameters()->actionMode == 1)
         return;
-    if (!active && !param_->returnOnOff)
+    if (!active && !GetParameters()->returnOnOff)
         return;
     ApplyTarget(active);
 }
@@ -116,13 +116,13 @@ void GimmickLiquidLevel::OnSwitchEvent(bool active) {
 void GimmickLiquidLevel::ApplyTarget(bool active) {
     // 配置時の高さを基準に、設定した距離だけ上下させます。
     active_ = active;
-    float amount = param_.has_value() ? param_->moveAmount : 6.0f;
+    float amount = GetParameters().has_value() ? GetParameters()->moveAmount : 6.0f;
     targetPosition_ = active ? basePosition_ + engine::Vector3{0.0f, amount, 0.0f} : basePosition_;
 }
 
 void GimmickLiquidLevel::ApplyLiquidVisual() {
     // 色種別に合わせて水とマグマの材質・透過色を切り替えます。
-    int colorType = param_.has_value() ? param_->colorType : 0;
+    int colorType = GetParameters().has_value() ? GetParameters()->colorType : 0;
 
     if (colorType == 1) {
         SetMaterialType(9);
@@ -136,8 +136,8 @@ void GimmickLiquidLevel::ApplyLiquidVisual() {
 std::unique_ptr<engine::Object3d> GimmickLiquidLevel::Clone() const {
     // 複製先の描画資源を作った後で、液面の設定を引き継ぎます。
     auto newObj = std::make_unique<GimmickLiquidLevel>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }
@@ -184,7 +184,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         return std::abs(p.x) <= radius.x && std::abs(p.y) <= radius.y && std::abs(p.z) <= radius.z;
     };
 
-    if (player && !player->isDead && player->IsControlActive()) {
+    if (player && !player->IsDead() && player->IsControlActive()) {
         // 開いた入口へ引き返しても上昇は継続。死亡後のScene再生成で初期化します。
         if (!escapeStarted_ && inside(start)) {
             escapeStarted_ = true;
@@ -213,9 +213,9 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
 
     if (escapeStarted_ && !escapeFinished_) {
         escapeTime_ += (std::max)(0.0f, deltaTime);
-        const float elapsed = (std::max)(0.0f, escapeTime_ - param_->shakeDuration);
+        const float elapsed = (std::max)(0.0f, escapeTime_ - GetParameters()->shakeDuration);
         const float rise =
-            (std::min)((std::max)(0.0f, param_->moveAmount), elapsed * (std::max)(0.01f, param_->moveSpeed));
+            (std::min)((std::max)(0.0f, GetParameters()->moveAmount), elapsed * (std::max)(0.01f, GetParameters()->moveSpeed));
         SetTranslate(basePosition_ + engine::Vector3{0.0f, rise, 0.0f});
     }
 

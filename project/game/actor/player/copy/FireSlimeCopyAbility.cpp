@@ -39,7 +39,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
         // ブレスの押し続け状態を保存し、突進中は火球の開始を受け付けない。
         primaryHeld_ = input.primaryHeld;
-        if (player.isDead || player.IsCinematicLocked() || actionMotionTimer_ > 0.0f || fireballSequence_.IsRunning())
+        if (player.IsDead() || player.IsCinematicLocked() || actionMotionTimer_ > 0.0f || fireballSequence_.IsRunning())
             return; // 火球の予備動作・後隙を突進や次の火球で取り消さない。
 
         if (input.secondaryTriggered && !dashActive_ && dashCooldown_ <= 0.0f) {
@@ -51,7 +51,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
     void Update(Player& player, float deltaTime) override {
         // 単発攻撃、突進、継続ブレスの順に更新し、同時実行を避ける。
-        if (player.isDead || player.IsCinematicLocked()) {
+        if (player.IsDead() || player.IsCinematicLocked()) {
             fireballSequence_.Cancel();
             actionMotionTimer_ = 0.0f;
             primaryHeld_ = false;
@@ -147,7 +147,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
     void DrawOwnedVisuals(Player& player, uint32_t depth, uint32_t grab, Camera* camera, int bufferIndex) override {
         // 死亡・演出ロック中は能力固有の見た目を描かず、通常カメラを補助的に使う。
-        if (player.isDead || player.IsCinematicLocked())
+        if (player.IsDead() || player.IsCinematicLocked())
             return;
         if (!camera)
             camera = CameraManager::GetInstance()->GetActiveCamera();
@@ -169,7 +169,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
   private:
     void UpdateHeadVisual(Player& player, float dt) {
         // 頭部の炎は接触判定を持たない表示専用Objectとして遅延生成する。
-        if (player.isDead || player.IsCinematicLocked()) {
+        if (player.IsDead() || player.IsCinematicLocked()) {
             if (headVisual_)
                 headVisual_->SetIsVisible(false);
             return;
@@ -223,7 +223,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void UpdateBreathVisuals(Player& player, const engine::Vector3& origin, const engine::Vector3& direction, float dt) {
-        if (player.isDead || player.IsCinematicLocked())
+        if (player.IsDead() || player.IsCinematicLocked())
             return;
         if (breathVisuals_.empty()) {
             auto* scene = SceneManager::GetInstance()->GetCurrentScene();
@@ -264,7 +264,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         EnemyAttackDefinition fallback;
         fallback.maxRange = 8.0f;
         fallback.radius = 1.4f;
-        const auto& attack = FindAttackOrFallback(profile_, "flame_breath", fallback);
+        const auto& attack = FindAttackOrFallback(GetProfile(), "flame_breath", fallback);
         const float range = std::max(attack.maxRange, 4.0f);
         const float radius = std::max(attack.radius, 1.0f);
         breathVisible_ = true;
@@ -295,7 +295,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         // player_specialに紐づく攻撃から優先度最大の定義を選び、シーケンスを開始する。
         const EnemyAttackDefinition* selected = nullptr;
 
-        for (const auto& candidate : profile_.attacks) {
+        for (const auto& candidate : GetProfile().attacks) {
             if (!candidate.sequence.enabled || candidate.sequence.binding != "player_special")
                 continue;
             if (!previewAttackId_.empty() && candidate.id != previewAttackId_)
@@ -440,7 +440,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             if (!target || !hitTargets_.insert(target).second)
                 continue;
             EnemyAttackDefinition fallback;
-            const EnemyAttackDefinition& attack = FindAttackOrFallback(profile_, "flame_breath", fallback);
+            const EnemyAttackDefinition& attack = FindAttackOrFallback(GetProfile(), "flame_breath", fallback);
             DamageEnemy(player, target, 12.0f, DamageType::Fire,
                         {dashDirection_.x * 11.0f, 5.5f, dashDirection_.z * 11.0f}, MakeBurnStatus(attack));
             VFXSequencer::PlayOneShot("player_fire_dash_hit_cue",
@@ -454,7 +454,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         fallback.maxRange = 8.0f;
         fallback.radius = 1.4f;
         fallback.damage = 0.5f;
-        const EnemyAttackDefinition& attack = FindAttackOrFallback(profile_, "flame_breath", fallback);
+        const EnemyAttackDefinition& attack = FindAttackOrFallback(GetProfile(), "flame_breath", fallback);
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;

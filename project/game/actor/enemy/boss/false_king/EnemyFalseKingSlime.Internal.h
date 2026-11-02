@@ -2,6 +2,7 @@
 // 分割実装専用の定数・補助関数。外部からは公開ヘッダーを使用します。
 #define NOMINMAX
 #include "game/actor/combat/CombatMath.h"
+#include <numbers>
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 
 #include "CollisionConfig.h"
@@ -122,7 +123,7 @@ inline constexpr int kFireMaterialType = 11;
 
 inline constexpr float kDefaultAppearanceDuration = 1.45f;
 
-inline constexpr float kPi = 3.1415926535f;
+inline constexpr float kPi = std::numbers::pi_v<float>;
 inline constexpr float kTwoPi = kPi * 2.0f;
 
 inline constexpr float kModelYawOffset = kPi;

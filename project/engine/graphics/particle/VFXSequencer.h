@@ -27,8 +27,8 @@ struct VFXEvent {
 
     float triggerTime = 0.0f;
 
-    engine::Vector3 offset = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 offset = engine::Vector3::ZERO;
+    engine::Vector3 rotation = engine::Vector3::ZERO;
     engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
 
     bool hasFired = false;
@@ -178,9 +178,9 @@ private:
     // イベントの定義・再生状態と、対象または明示位置に適用するルート変換です。
     std::vector<VFXEvent> events_;
     engine::Object3d* targetObject_ = nullptr;
-    engine::Vector3 rootPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 rootPosition_ = engine::Vector3::ZERO;
     engine::Vector3 rootScale_ = { 1.0f, 1.0f, 1.0f };
-    engine::Vector3 rootRotation_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 rootRotation_ = engine::Vector3::ZERO;
 
     float currentTime_ = 0.0f;
     bool isPlaying_ = false;

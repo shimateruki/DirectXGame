@@ -1,4 +1,5 @@
 #include "TrailEmitterEditor.h"
+#include <numbers>
 #include <imgui.h>
 #include <filesystem>
 #include <fstream>
@@ -55,7 +56,7 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
         }
     }
 
-    engine::Vector3 origin = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 origin = engine::Vector3::ZERO;
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     if (previewStage && previewStage->IsEnabled() &&
         EditorManager::GetInstance()->GetSelectedObject() == this) {
@@ -64,7 +65,7 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
 
     const float t = previewTime_ / duration;
     dummyPos_ = origin;
-    dummyPos_.x += sinf(t * 3.14159f * 2.0f) * previewRange_;
+    dummyPos_.x += sinf(t * std::numbers::pi_v<float> * 2.0f) * previewRange_;
 
     if (dummyFirstFrame_) {
         // 初回やループ直後の座標差で長いTrailを誤発生させない。
@@ -90,7 +91,7 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
         (lastDummyPos_.z + dummyPos_.z) * 0.5f
     };
 
-    const engine::Vector3 rotation = cfg.autoOrient ? engine::Vector3{ 0.0f, rotY, 0.0f } : engine::Vector3{ 0.0f, 0.0f, 0.0f };
+    const engine::Vector3 rotation = cfg.autoOrient ? engine::Vector3{ 0.0f, rotY, 0.0f } : engine::Vector3::ZERO;
 
     if (cfg.emitMesh && !cfg.meshEffectPreset.empty()) {
         // MeshとGPU粒子は同じ中点を使い、複合Trailの見た目を合わせる。

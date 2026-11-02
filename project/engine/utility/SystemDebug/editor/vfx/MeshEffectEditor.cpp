@@ -1,4 +1,5 @@
 #include "MeshEffectEditor.h"
+#include <numbers>
 #include "ModelManager.h"
 #include "TextureManager.h"
 #include "SceneManager.h" 
@@ -334,7 +335,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         engine::Vector3 finalRot = baseRot;
 
         if (editVolumeMode_ == 1 && i == 1) {
-            finalRot.x += 1.570796f;
+            finalRot.x += (std::numbers::pi_v<float> * 0.5f);
         }
         else if (editVolumeMode_ == 2) {
             float gap = 0.02f;
@@ -525,8 +526,8 @@ void MeshEffectEditor::DrawImGui() {
         previewEffect_->SetProceduralType(editProceduralType_);
 
         // スピン形状選択時の初期角度調整
-        if (editProceduralType_ == 2 && previewEffect_->editSlashAngle_ < 360.0f) {
-            previewEffect_->editSlashAngle_ = 400.0f; // 少し余分に回して透明部分を隠す
+        if (editProceduralType_ == 2 && previewEffect_->GetMeshSettings().slashAngle < 360.0f) {
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, 400.0f); // 少し余分に回して透明部分を隠す
         }
 
         previewEffect_->UpdateProceduralMesh();
@@ -540,86 +541,89 @@ void MeshEffectEditor::DrawImGui() {
     if (editProceduralType_ >= 1) {
         ImGui::Indent();
         bool changed = false;
+        auto meshSettings = previewEffect_->GetMeshSettings();
 
         // SlashおよびSpinの両方でパラメータ調整を可能にする
         if (editProceduralType_ == 1 || editProceduralType_ == 2) {
             // スライダーの上限を 1080度（3周）に拡張
-            changed |= ImGui::SliderFloat("斬撃の角度", &previewEffect_->editSlashAngle_, 30.0f, 1080.0f);
-            changed |= ImGui::SliderFloat("内側の半径", &previewEffect_->editInnerRadius_, 0.0f, 5.0f);
-            changed |= ImGui::SliderFloat("外側の半径", &previewEffect_->editOuterRadius_, 1.0f, 15.0f);
-            changed |= ImGui::SliderFloat("軌跡の厚み", &previewEffect_->editThickness_, 0.01f, 3.0f);
-            changed |= ImGui::SliderFloat("螺旋の高さ(Zズレ)", &previewEffect_->editSpiralPitch_, -5.0f, 5.0f);
+            changed |= ImGui::SliderFloat("斬撃の角度", &meshSettings.slashAngle, 30.0f, 1080.0f);
+            changed |= ImGui::SliderFloat("内側の半径", &meshSettings.innerRadius, 0.0f, 5.0f);
+            changed |= ImGui::SliderFloat("外側の半径", &meshSettings.outerRadius, 1.0f, 15.0f);
+            changed |= ImGui::SliderFloat("軌跡の厚み", &meshSettings.thickness, 0.01f, 3.0f);
+            changed |= ImGui::SliderFloat("螺旋の高さ(Zズレ)", &meshSettings.spiralPitch, -5.0f, 5.0f);
         }
         else if (editProceduralType_ == 3) {
-            changed |= ImGui::SliderFloat("突きの長さ", &previewEffect_->editThrustLength_, 1.0f, 20.0f);
-            changed |= ImGui::SliderFloat("根元の太さ", &previewEffect_->editThrustRadius_, 0.1f, 5.0f);
+            changed |= ImGui::SliderFloat("突きの長さ", &meshSettings.thrustLength, 1.0f, 20.0f);
+            changed |= ImGui::SliderFloat("根元の太さ", &meshSettings.thrustRadius, 0.1f, 5.0f);
         }
         else if (editProceduralType_ == 4) {
-            changed |= ImGui::SliderFloat("半径", &previewEffect_->editSphereRadius_, 0.1f, 20.0f);
-            changed |= ImGui::SliderInt("縦の分割数", &previewEffect_->editSphereRings_, 4, 64);
+            changed |= ImGui::SliderFloat("半径", &meshSettings.sphereRadius, 0.1f, 20.0f);
+            changed |= ImGui::SliderInt("縦の分割数", &meshSettings.sphereRings, 4, 64);
         }
         else if (editProceduralType_ == 5) {
-            changed |= ImGui::SliderFloat("半径", &previewEffect_->editCylinderRadius_, 0.1f, 20.0f);
-            changed |= ImGui::SliderFloat("高さ", &previewEffect_->editCylinderHeight_, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("半径", &meshSettings.cylinderRadius, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("高さ", &meshSettings.cylinderHeight, 0.1f, 20.0f);
         }
 
         else if (editProceduralType_ == 6) {
-            changed |= ImGui::DragFloat3("サイズ (W,H,D)", &previewEffect_->editBoxSize_.x, 0.1f);
+            changed |= ImGui::DragFloat3("サイズ (W,H,D)", &meshSettings.boxSize.x, 0.1f);
         }
         else if (editProceduralType_ == 7 || editProceduralType_ == 13 || editProceduralType_ == 14) {
-            changed |= ImGui::DragFloat2("サイズ (W,D)", &previewEffect_->editPlaneSize_.x, 0.1f);
+            changed |= ImGui::DragFloat2("サイズ (W,D)", &meshSettings.planeSize.x, 0.1f);
         }
         else if (editProceduralType_ == 8) {
-            changed |= ImGui::SliderFloat("主半径 (全体サイズ)", &previewEffect_->editTorusMajorRadius_, 0.1f, 20.0f);
-            changed |= ImGui::SliderFloat("副半径 (太さ)", &previewEffect_->editTorusMinorRadius_, 0.01f, 5.0f);
-            changed |= ImGui::SliderInt("断面の分割数", &previewEffect_->editSphereRings_, 3, 64);
+            changed |= ImGui::SliderFloat("主半径 (全体サイズ)", &meshSettings.torusMajorRadius, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("副半径 (太さ)", &meshSettings.torusMinorRadius, 0.01f, 5.0f);
+            changed |= ImGui::SliderInt("断面の分割数", &meshSettings.sphereRings, 3, 64);
         }
         else if (editProceduralType_ == 9 || editProceduralType_ == 12) {
-            changed |= ImGui::SliderFloat("半径", &previewEffect_->editConeRadius_, 0.1f, 20.0f);
-            changed |= ImGui::SliderFloat("高さ", &previewEffect_->editConeHeight_, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("半径", &meshSettings.coneRadius, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("高さ", &meshSettings.coneHeight, 0.1f, 20.0f);
         }
         else if (editProceduralType_ == 10) {
-            changed |= ImGui::SliderFloat("外側の半径", &previewEffect_->editRingOuterRadius_, 0.1f, 20.0f);
-            changed |= ImGui::SliderFloat("内側の半径", &previewEffect_->editRingInnerRadius_, 0.0f, 19.9f);
+            changed |= ImGui::SliderFloat("外側の半径", &meshSettings.ringOuterRadius, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("内側の半径", &meshSettings.ringInnerRadius, 0.0f, 19.9f);
         }
         else if (editProceduralType_ == 11) {
-            changed |= ImGui::SliderFloat("サイズ", &previewEffect_->editTriangleSize_, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("サイズ", &meshSettings.triangleSize, 0.1f, 20.0f);
         }
 
         // 分割数を持たない形状(箱、三角形)以外で表示
         if (editProceduralType_ != 6 && editProceduralType_ != 11) {
-            changed |= ImGui::SliderInt("基本ポリゴン分割数", &previewEffect_->editMeshSegments_, 3, 128);
+            changed |= ImGui::SliderInt("基本ポリゴン分割数", &meshSettings.meshSegments, 3, 128);
         }
 
         ImGui::Spacing();
-        changed |= ImGui::DragFloat2("UVタイリング (Repeat)", &previewEffect_->editUvTiling_.x, 0.05f);
+        changed |= ImGui::DragFloat2("UVタイリング (Repeat)", &meshSettings.uvTiling.x, 0.05f);
+
+        previewEffect_->SetMeshSettings(meshSettings);
 
         if (changed) {
             previewEffect_->UpdateProceduralMesh();
 
             for (auto& ex : extraPreviewEffects_) {
-                ex->editSlashAngle_ = previewEffect_->editSlashAngle_;
-                ex->editInnerRadius_ = previewEffect_->editInnerRadius_;
-                ex->editOuterRadius_ = previewEffect_->editOuterRadius_;
-                ex->editThickness_ = previewEffect_->editThickness_;
-                ex->editSpiralPitch_ = previewEffect_->editSpiralPitch_;
-                ex->editThrustLength_ = previewEffect_->editThrustLength_;
-                ex->editThrustRadius_ = previewEffect_->editThrustRadius_;
-                ex->editSphereRadius_ = previewEffect_->editSphereRadius_;
-                ex->editSphereRings_ = previewEffect_->editSphereRings_;
-                ex->editCylinderRadius_ = previewEffect_->editCylinderRadius_;
-                ex->editCylinderHeight_ = previewEffect_->editCylinderHeight_;
-                ex->editBoxSize_ = previewEffect_->editBoxSize_;
-                ex->editPlaneSize_ = previewEffect_->editPlaneSize_;
-                ex->editTorusMajorRadius_ = previewEffect_->editTorusMajorRadius_;
-                ex->editTorusMinorRadius_ = previewEffect_->editTorusMinorRadius_;
-                ex->editConeRadius_ = previewEffect_->editConeRadius_;
-                ex->editConeHeight_ = previewEffect_->editConeHeight_;
-                ex->editRingOuterRadius_ = previewEffect_->editRingOuterRadius_;
-                ex->editRingInnerRadius_ = previewEffect_->editRingInnerRadius_;
-                ex->editTriangleSize_ = previewEffect_->editTriangleSize_;
-                ex->editMeshSegments_ = previewEffect_->editMeshSegments_;
-                ex->editUvTiling_ = previewEffect_->editUvTiling_;
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, previewEffect_->GetMeshSettings().slashAngle);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, previewEffect_->GetMeshSettings().innerRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, previewEffect_->GetMeshSettings().outerRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, previewEffect_->GetMeshSettings().thickness);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, previewEffect_->GetMeshSettings().spiralPitch);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, previewEffect_->GetMeshSettings().thrustLength);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, previewEffect_->GetMeshSettings().thrustRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, previewEffect_->GetMeshSettings().sphereRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, previewEffect_->GetMeshSettings().sphereRings);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, previewEffect_->GetMeshSettings().cylinderRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, previewEffect_->GetMeshSettings().cylinderHeight);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::boxSize, previewEffect_->GetMeshSettings().boxSize);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::planeSize, previewEffect_->GetMeshSettings().planeSize);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, previewEffect_->GetMeshSettings().torusMajorRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, previewEffect_->GetMeshSettings().torusMinorRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, previewEffect_->GetMeshSettings().coneRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, previewEffect_->GetMeshSettings().coneHeight);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, previewEffect_->GetMeshSettings().ringOuterRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, previewEffect_->GetMeshSettings().ringInnerRadius);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, previewEffect_->GetMeshSettings().triangleSize);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, previewEffect_->GetMeshSettings().meshSegments);
+                ex->SetMeshSetting(&EffectObject3d::MeshSettings::uvTiling, previewEffect_->GetMeshSettings().uvTiling);
                 ex->UpdateProceduralMesh();
             }
         }
@@ -781,27 +785,28 @@ void MeshEffectEditor::DrawImGui() {
     // 当たり判定 (Collision) の設定
     // ---------------------------------------------------------
     if (ImGui::CollapsingHeader("Collision Settings")) {
-        ImGui::Checkbox("Has Collision", &previewEffect_->editHasCollision_);
+        auto meshSettings = previewEffect_->GetMeshSettings();
+        ImGui::Checkbox("Has Collision", &meshSettings.hasCollision);
 
-        if (previewEffect_->editHasCollision_) {
-            ImGui::Combo("Shape", &previewEffect_->editCollisionShape_, "Sphere\0AABB\0OBB\0Cylinder\0\0");
-            ImGui::DragFloat3("Size/Radius", &previewEffect_->editCollisionSize_.x, 0.1f);
-            ImGui::DragFloat3("Offset", &previewEffect_->editCollisionOffset_.x, 0.1f);
+        if (meshSettings.hasCollision) {
+            ImGui::Combo("Shape", &meshSettings.collisionShape, "Sphere\0AABB\0OBB\0Cylinder\0\0");
+            ImGui::DragFloat3("Size/Radius", &meshSettings.collisionSize.x, 0.1f);
+            ImGui::DragFloat3("Offset", &meshSettings.collisionOffset.x, 0.1f);
 
             // 型を決定
             ColliderType cType = ColliderType::kNone;
-            if (previewEffect_->editCollisionShape_ == 0)
+            if (meshSettings.collisionShape == 0)
                 cType = ColliderType::kSphere;
-            else if (previewEffect_->editCollisionShape_ == 1) cType = ColliderType::kAABB;
-            else if (previewEffect_->editCollisionShape_ == 2) cType = ColliderType::kOBB;
+            else if (meshSettings.collisionShape == 1) cType = ColliderType::kAABB;
+            else if (meshSettings.collisionShape == 2) cType = ColliderType::kOBB;
 
             // =======================================================
             //  現在の設定を取り出して、正しく上書きする！
             // =======================================================
             engine::Object3d::ColliderConfig cConfig = previewEffect_->GetColliderConfig();
             cConfig.type = cType; // ここで確実に Sphere や Cylinder をセット！
-            cConfig.size = previewEffect_->editCollisionSize_;
-            cConfig.center = previewEffect_->editCollisionOffset_;
+            cConfig.size = meshSettings.collisionSize;
+            cConfig.center = meshSettings.collisionOffset;
 
             // 設定を戻す
             previewEffect_->SetColliderConfig(cConfig);
@@ -810,6 +815,8 @@ void MeshEffectEditor::DrawImGui() {
         else {
             previewEffect_->SetColliderType(ColliderType::kNone);
         }
+
+        previewEffect_->SetMeshSettings(meshSettings);
 
         MeshEffectManager::GetInstance()->SetPreviewEffectForDebug(previewEffect_.get());
     }
@@ -925,34 +932,34 @@ void MeshEffectEditor::SaveToJson() {
     j["ProceduralType"] = editProceduralType_;
 
     if (previewEffect_) {
-        j["SlashAngle"] = previewEffect_->editSlashAngle_;
-        j["InnerRadius"] = previewEffect_->editInnerRadius_;
-        j["OuterRadius"] = previewEffect_->editOuterRadius_;
-        j["Thickness"] = previewEffect_->editThickness_;
-        j["SpiralPitch"] = previewEffect_->editSpiralPitch_;
-        j["ThrustLength"] = previewEffect_->editThrustLength_;
-        j["ThrustRadius"] = previewEffect_->editThrustRadius_;
-        j["SphereRadius"] = previewEffect_->editSphereRadius_;
-        j["SphereRings"] = previewEffect_->editSphereRings_;
-        j["CylinderRadius"] = previewEffect_->editCylinderRadius_;
-        j["CylinderHeight"] = previewEffect_->editCylinderHeight_;
-        j["BoxSize"] = {previewEffect_->editBoxSize_.x, previewEffect_->editBoxSize_.y, previewEffect_->editBoxSize_.z};
-        j["PlaneSize"] = {previewEffect_->editPlaneSize_.x, previewEffect_->editPlaneSize_.y};
-        j["TorusMajorRadius"] = previewEffect_->editTorusMajorRadius_;
-        j["TorusMinorRadius"] = previewEffect_->editTorusMinorRadius_;
-        j["ConeRadius"] = previewEffect_->editConeRadius_;
-        j["ConeHeight"] = previewEffect_->editConeHeight_;
-        j["RingOuterRadius"] = previewEffect_->editRingOuterRadius_;
-        j["RingInnerRadius"] = previewEffect_->editRingInnerRadius_;
-        j["TriangleSize"] = previewEffect_->editTriangleSize_;
-        j["MeshSegments"] = previewEffect_->editMeshSegments_;
-        j["UvTiling"] = {previewEffect_->editUvTiling_.x, previewEffect_->editUvTiling_.y};
+        j["SlashAngle"] = previewEffect_->GetMeshSettings().slashAngle;
+        j["InnerRadius"] = previewEffect_->GetMeshSettings().innerRadius;
+        j["OuterRadius"] = previewEffect_->GetMeshSettings().outerRadius;
+        j["Thickness"] = previewEffect_->GetMeshSettings().thickness;
+        j["SpiralPitch"] = previewEffect_->GetMeshSettings().spiralPitch;
+        j["ThrustLength"] = previewEffect_->GetMeshSettings().thrustLength;
+        j["ThrustRadius"] = previewEffect_->GetMeshSettings().thrustRadius;
+        j["SphereRadius"] = previewEffect_->GetMeshSettings().sphereRadius;
+        j["SphereRings"] = previewEffect_->GetMeshSettings().sphereRings;
+        j["CylinderRadius"] = previewEffect_->GetMeshSettings().cylinderRadius;
+        j["CylinderHeight"] = previewEffect_->GetMeshSettings().cylinderHeight;
+        j["BoxSize"] = {previewEffect_->GetMeshSettings().boxSize.x, previewEffect_->GetMeshSettings().boxSize.y, previewEffect_->GetMeshSettings().boxSize.z};
+        j["PlaneSize"] = {previewEffect_->GetMeshSettings().planeSize.x, previewEffect_->GetMeshSettings().planeSize.y};
+        j["TorusMajorRadius"] = previewEffect_->GetMeshSettings().torusMajorRadius;
+        j["TorusMinorRadius"] = previewEffect_->GetMeshSettings().torusMinorRadius;
+        j["ConeRadius"] = previewEffect_->GetMeshSettings().coneRadius;
+        j["ConeHeight"] = previewEffect_->GetMeshSettings().coneHeight;
+        j["RingOuterRadius"] = previewEffect_->GetMeshSettings().ringOuterRadius;
+        j["RingInnerRadius"] = previewEffect_->GetMeshSettings().ringInnerRadius;
+        j["TriangleSize"] = previewEffect_->GetMeshSettings().triangleSize;
+        j["MeshSegments"] = previewEffect_->GetMeshSettings().meshSegments;
+        j["UvTiling"] = {previewEffect_->GetMeshSettings().uvTiling.x, previewEffect_->GetMeshSettings().uvTiling.y};
     }
 
-    j["Collision"]["HasCollision"] = previewEffect_->editHasCollision_;
-    j["Collision"]["Shape"] = previewEffect_->editCollisionShape_;
-    j["Collision"]["Size"] = { previewEffect_->editCollisionSize_.x, previewEffect_->editCollisionSize_.y, previewEffect_->editCollisionSize_.z };
-    j["Collision"]["Offset"] = { previewEffect_->editCollisionOffset_.x, previewEffect_->editCollisionOffset_.y, previewEffect_->editCollisionOffset_.z };
+    j["Collision"]["HasCollision"] = previewEffect_->GetMeshSettings().hasCollision;
+    j["Collision"]["Shape"] = previewEffect_->GetMeshSettings().collisionShape;
+    j["Collision"]["Size"] = { previewEffect_->GetMeshSettings().collisionSize.x, previewEffect_->GetMeshSettings().collisionSize.y, previewEffect_->GetMeshSettings().collisionSize.z };
+    j["Collision"]["Offset"] = { previewEffect_->GetMeshSettings().collisionOffset.x, previewEffect_->GetMeshSettings().collisionOffset.y, previewEffect_->GetMeshSettings().collisionOffset.z };
     std::ofstream file(fullPath);
 
     if (file.is_open()) {
@@ -1125,79 +1132,79 @@ void MeshEffectEditor::LoadFromJson() {
         editProceduralType_ = j["ProceduralType"];
     if (previewEffect_) {
         if (j.contains("SlashAngle"))
-            previewEffect_->editSlashAngle_ = j["SlashAngle"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
         if (j.contains("InnerRadius"))
-            previewEffect_->editInnerRadius_ = j["InnerRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
         if (j.contains("OuterRadius"))
-            previewEffect_->editOuterRadius_ = j["OuterRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
         if (j.contains("Thickness"))
-            previewEffect_->editThickness_ = j["Thickness"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
         if (j.contains("SpiralPitch"))
-            previewEffect_->editSpiralPitch_ = j["SpiralPitch"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
         if (j.contains("ThrustLength"))
-            previewEffect_->editThrustLength_ = j["ThrustLength"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
         if (j.contains("ThrustRadius"))
-            previewEffect_->editThrustRadius_ = j["ThrustRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
         if (j.contains("SphereRadius"))
-            previewEffect_->editSphereRadius_ = j["SphereRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, j["SphereRadius"]);
         if (j.contains("SphereRings"))
-            previewEffect_->editSphereRings_ = j["SphereRings"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, j["SphereRings"]);
         if (j.contains("CylinderRadius"))
-            previewEffect_->editCylinderRadius_ = j["CylinderRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, j["CylinderRadius"]);
         if (j.contains("CylinderHeight"))
-            previewEffect_->editCylinderHeight_ = j["CylinderHeight"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, j["CylinderHeight"]);
         if (j.contains("BoxSize")) {
-            previewEffect_->editBoxSize_.x = j["BoxSize"][0];
-            previewEffect_->editBoxSize_.y = j["BoxSize"][1];
-            previewEffect_->editBoxSize_.z = j["BoxSize"][2];
+            previewEffect_->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
+            previewEffect_->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
+            previewEffect_->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
         }
         if (j.contains("PlaneSize")) {
-            previewEffect_->editPlaneSize_.x = j["PlaneSize"][0];
-            previewEffect_->editPlaneSize_.y = j["PlaneSize"][1];
+            previewEffect_->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
+            previewEffect_->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
         }
         if (j.contains("TorusMajorRadius"))
-            previewEffect_->editTorusMajorRadius_ = j["TorusMajorRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
         if (j.contains("TorusMinorRadius"))
-            previewEffect_->editTorusMinorRadius_ = j["TorusMinorRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
         if (j.contains("ConeRadius"))
-            previewEffect_->editConeRadius_ = j["ConeRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, j["ConeRadius"]);
         if (j.contains("ConeHeight"))
-            previewEffect_->editConeHeight_ = j["ConeHeight"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, j["ConeHeight"]);
         if (j.contains("RingOuterRadius"))
-            previewEffect_->editRingOuterRadius_ = j["RingOuterRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
         if (j.contains("RingInnerRadius"))
-            previewEffect_->editRingInnerRadius_ = j["RingInnerRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
         if (j.contains("TriangleSize"))
-            previewEffect_->editTriangleSize_ = j["TriangleSize"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, j["TriangleSize"]);
         if (j.contains("MeshSegments"))
-            previewEffect_->editMeshSegments_ = j["MeshSegments"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
         if (j.contains("UvTiling")) {
-            previewEffect_->editUvTiling_.x = j["UvTiling"][0];
-            previewEffect_->editUvTiling_.y = j["UvTiling"][1];
+            previewEffect_->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
+            previewEffect_->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
         }
         if (j.contains("SlashAngle"))
-            previewEffect_->editSlashAngle_ = j["SlashAngle"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
         if (j.contains("InnerRadius"))
-            previewEffect_->editInnerRadius_ = j["InnerRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
         if (j.contains("OuterRadius"))
-            previewEffect_->editOuterRadius_ = j["OuterRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
         if (j.contains("Thickness"))
-            previewEffect_->editThickness_ = j["Thickness"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
         if (j.contains("SpiralPitch"))
-            previewEffect_->editSpiralPitch_ = j["SpiralPitch"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
         if (j.contains("ThrustLength"))
-            previewEffect_->editThrustLength_ = j["ThrustLength"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
         if (j.contains("ThrustRadius"))
-            previewEffect_->editThrustRadius_ = j["ThrustRadius"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
         if (j.contains("MeshSegments"))
-            previewEffect_->editMeshSegments_ = j["MeshSegments"];
+            previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
     }
 
     if (j.contains("Collision")) {
-        previewEffect_->editHasCollision_ = j["Collision"]["HasCollision"];
-        previewEffect_->editCollisionShape_ = j["Collision"]["Shape"];
-        previewEffect_->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
-        previewEffect_->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
+        previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, j["Collision"]["HasCollision"]);
+        previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::collisionShape, j["Collision"]["Shape"]);
+        previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::collisionSize, { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] });
+        previewEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::collisionOffset, { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] });
     }
 
     targetObject_ = nullptr;
@@ -1244,14 +1251,14 @@ void MeshEffectEditor::LoadFromJson() {
             ex->SetProceduralType(editProceduralType_);
 
             // パラメータを同期
-            ex->editSlashAngle_ = previewEffect_->editSlashAngle_;
-            ex->editInnerRadius_ = previewEffect_->editInnerRadius_;
-            ex->editOuterRadius_ = previewEffect_->editOuterRadius_;
-            ex->editThickness_ = previewEffect_->editThickness_;
-            ex->editSpiralPitch_ = previewEffect_->editSpiralPitch_;
-            ex->editThrustLength_ = previewEffect_->editThrustLength_;
-            ex->editThrustRadius_ = previewEffect_->editThrustRadius_;
-            ex->editMeshSegments_ = previewEffect_->editMeshSegments_;
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, previewEffect_->GetMeshSettings().slashAngle);
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, previewEffect_->GetMeshSettings().innerRadius);
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, previewEffect_->GetMeshSettings().outerRadius);
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, previewEffect_->GetMeshSettings().thickness);
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, previewEffect_->GetMeshSettings().spiralPitch);
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, previewEffect_->GetMeshSettings().thrustLength);
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, previewEffect_->GetMeshSettings().thrustRadius);
+            ex->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, previewEffect_->GetMeshSettings().meshSegments);
 
             ex->UpdateProceduralMesh();
         }

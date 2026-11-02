@@ -1,4 +1,5 @@
 #include "Fade.h"
+#include "Easing.h"
 
 #include "DirectXCommon.h"
 #include "PostEffect.h"
@@ -15,12 +16,12 @@
 namespace {
 // フェード演出に使う画面の設計幅と高さを返します。
 float ScreenW() {
-    return static_cast<float>(WinApp::kClientWidth);
+    return static_cast<float>(WinApp::GetClientWidth());
 }
 
 // フェード演出に使う画面の設計高さを返します。
 float ScreenH() {
-    return static_cast<float>(WinApp::kClientHeight);
+    return static_cast<float>(WinApp::GetClientHeight());
 }
 
 // 補間値を0～1へ制限します。
@@ -28,11 +29,7 @@ float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
-// フェードの始点と終点を滑らかにつなぐ補間率を返します。
-float EaseInOut(float t) {
-    t = Clamp01(t);
-    return t * t * (3.0f - 2.0f * t);
-}
+
 
 // フェード用連番画像の番号を2桁に揃えてファイルパスを作ります。
 std::string MakeFramePath(const std::string& directory, int index) {
@@ -134,7 +131,7 @@ void Fade::Update(float deltaTime) {
     const float t = GetNormalizedTime();
 
     // 開閉を同じ被覆率で表し、連番画像のフレーム選択に使う。
-    coverage_ = IsClosing() ? EaseInOut(t) : 1.0f - EaseInOut(t);
+    coverage_ = IsClosing() ? Easing::SmoothStep01(t) : 1.0f - Easing::SmoothStep01(t);
 
     // このフェードはSpriteで描画し、旧PostEffect側のフェード値は毎回解除する。
     ResetPostEffectFade();

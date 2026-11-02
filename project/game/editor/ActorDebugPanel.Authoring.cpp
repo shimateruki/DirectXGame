@@ -1,5 +1,6 @@
 #ifdef USE_IMGUI
 #include "game/editor/ActorDebugPanel.h"
+#include <numbers>
 #include "game/editor/EnemyAttackPreviewRegistry.h"
 #include "SceneManager.h"
 #include "ProjectWindow.h"
@@ -223,7 +224,7 @@ void ActorDebugPanel::UpdatePlacementPreview() {
             projectileSection_ == 3 ? part.secondaryTrail : projectileSection_ == 4 ? part.secondaryImpact : "";
         AttackSequenceContext context;
         context.position = actor ? actor->GetTranslate() : engine::Vector3{};
-        const float baseYaw = rotation.y - event.yawDegrees * 0.01745329252f;
+        const float baseYaw = rotation.y - event.yawDegrees * (std::numbers::pi_v<float> / 180.0f);
         context.forward = {std::sin(baseYaw),0,std::cos(baseYaw)};
         context.ownerSize = previewBaseScale_;
         context.hasTarget = previewTarget_ != nullptr;
@@ -1454,7 +1455,7 @@ void ActorDebugPanel::DrawAttackOverlay(float x, float y, float width, float hei
         for (int plane = 0; plane < 3; ++plane) {
             for (int i = 0; i < 48; ++i) {
                 auto point = [&](int segment) {
-                    const float angle = segment * 6.28318530718f / 48;
+                    const float angle = segment * (2.0f * std::numbers::pi_v<float>) / 48;
                     const float a = radius * std::cos(angle), b = radius * std::sin(angle);
                     return position + (plane == 0 ? engine::Vector3{a,b,0} : plane == 1 ? engine::Vector3{a,0,b} : engine::Vector3{0,a,b});
                 };
@@ -1522,7 +1523,7 @@ bool ActorDebugPanel::GetPlacementTransform(engine::Vector3& position, engine::V
         if (previewTarget_)
             context.targetPosition = previewTarget_->GetTranslate();
         position = ResolveAttackSequenceEmission(event, context, 0, 0).position;
-        rotation.y = std::atan2(forward.x,forward.z) + event.yawDegrees * 0.01745329252f;
+        rotation.y = std::atan2(forward.x,forward.z) + event.yawDegrees * (std::numbers::pi_v<float> / 180.0f);
         const float size = ResolveProjectileComponent(*attack, event).visualScale;
 
         if (event.operation == "projectile")
@@ -1702,7 +1703,7 @@ void ActorDebugPanel::DrawPlacementGizmo(float x,float y,float width,float heigh
         };
 
         for(int plane=0;plane<3;++plane) for(int i=0;i<48;++i) {
-            auto point=[&](int n) {float a=n*6.28318530718f/48;float c=radius*std::cos(a),s=radius*std::sin(a);
+            auto point=[&](int n) {float a=n*(2.0f * std::numbers::pi_v<float>)/48;float c=radius*std::cos(a),s=radius*std::sin(a);
                 return position+(plane==0?engine::Vector3{c,s,0}:plane==1?engine::Vector3{c,0,s}:engine::Vector3{0,c,s});};
             ImVec2 a,b;
             if(project(point(i),a)&&project(point(i+1),b))
@@ -1740,7 +1741,7 @@ void ActorDebugPanel::DrawPlacementGizmo(float x,float y,float width,float heigh
         if (changed) {
             float p[3],r[3],s[3];
             ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0],p,r,s);
-            ApplyPlacementTransform({p[0],p[1],p[2]},{r[0]*0.01745329252f,r[1]*0.01745329252f,r[2]*0.01745329252f},{s[0],s[1],s[2]});
+            ApplyPlacementTransform({p[0],p[1],p[2]},{r[0]*(std::numbers::pi_v<float> / 180.0f),r[1]*(std::numbers::pi_v<float> / 180.0f),r[2]*(std::numbers::pi_v<float> / 180.0f)},{s[0],s[1],s[2]});
         }
     } else if (placementGizmoUsing_) {
         authoringGestureOpen_ = false;

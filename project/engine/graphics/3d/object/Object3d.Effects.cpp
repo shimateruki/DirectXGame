@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include <numbers>
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "EffectObject3d.h"
@@ -75,7 +76,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         engine::Vector3 localPos = effect->GetTranslate();
 
                         if (volumeMode == 1 && i == 1) {
-                            localRot.x += 1.570796f; // 90度クロス
+                            localRot.x += (std::numbers::pi_v<float> * 0.5f); // 90度クロス
                         }
                         else if (volumeMode == 2) {
                             float gap = 0.02f;
@@ -143,7 +144,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         engine::Vector3 localPos = effect->GetTranslate();
 
                         if (volumeMode == 1 && i == 1) {
-                            localRot.x += 1.570796f;
+                            localRot.x += (std::numbers::pi_v<float> * 0.5f);
                         }
                         else if (volumeMode == 2) {
                             float gap = 0.02f;

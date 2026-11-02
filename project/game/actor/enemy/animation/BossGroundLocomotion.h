@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CollisionConfig.h"
+#include "Easing.h"
+#include <numbers>
 #include "CollisionManager.h"
 #include "engine/utility/math/Math.h"
 
@@ -133,9 +135,9 @@ class BossGroundLocomotion {
         // 水平補間へ正弦波の高さを足して跳躍を作り、終点では高さを確定させる。
         if (phase_ == Phase::Travel) {
             const float progress = GetProgress();
-            const float eased = progress * progress * (3.0f - 2.0f * progress);
+            const float eased = Easing::SmoothStep(progress);
             frame.position = start_ + (end_ - start_) * eased;
-            if (leap_) frame.position.y += std::sin(progress * 3.14159265f) * style_.arcHeight;
+            if (leap_) frame.position.y += std::sin(progress * std::numbers::pi_v<float>) * style_.arcHeight;
             frame.airborne = leap_;
             if (progress >= 1.0f) {
                 frame.position = end_;

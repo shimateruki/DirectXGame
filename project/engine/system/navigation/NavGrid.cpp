@@ -1,4 +1,5 @@
 #include "NavGrid.h"
+#include <numbers>
 #include "engine/system/collision/CollisionManager.h"
 
 #include <algorithm>
@@ -186,7 +187,7 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
         const int dx = std::abs(goalX - x);
         const int dz = std::abs(goalZ - z);
         const int diagonal = (std::min)(dx, dz);
-        return static_cast<float>(dx + dz - diagonal * 2) + static_cast<float>(diagonal) * 1.41421356f;
+        return static_cast<float>(dx + dz - diagonal * 2) + static_cast<float>(diagonal) * std::numbers::sqrt2_v<float>;
     };
 
     cost[static_cast<std::size_t>(startIndex)] = 0.0f;
@@ -223,7 +224,7 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
                 continue;
 
             const int nextIndex = ToIndex(nextX, nextZ);
-            const float stepCost = dx != 0 && dz != 0 ? 1.41421356f : 1.0f;
+            const float stepCost = dx != 0 && dz != 0 ? std::numbers::sqrt2_v<float> : 1.0f;
             const float nextCost = cost[static_cast<std::size_t>(index)] + stepCost;
             if (nextCost >= cost[static_cast<std::size_t>(nextIndex)])
                 continue;

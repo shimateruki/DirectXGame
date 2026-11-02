@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Player.h"
+#include <numbers>
 #include "Model.h"
 #include "game/actor/combat/CombatGroundQuery.h"
 #include "engine/utility/math/AnimationInterpolation.h"
@@ -281,7 +282,7 @@ class GoalClearPlayerAnimator {
     const engine::Vector3& GetMoveRight() const { return moveRight_; }
 
   private:
-    static constexpr float kPi = 3.1415926535f;
+    static constexpr float kPi = std::numbers::pi_v<float>;
     static constexpr float kTwoPi = kPi * 2.0f;
 
     static float NormalizeYaw(float yaw) {

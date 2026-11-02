@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/actor/player/state/PlayerState.h"
+#include <numbers>
 #include "game/actor/player/Player.h"
 #include "InputManager.h"
 #include "DebugConsole.h"
@@ -66,7 +67,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     }
 
     phase_ = Phase::kShootHook;
-    hookTipPos_ = player->GetWorldPosition();
+    hookTipPos_ = alreadyHit_ && targetEnemy_ ? targetEnemy_->GetWorldPosition() : player->GetWorldPosition();
     heavyPullBasePlayerPos_ = hookTipPos_;
     hasHeavyPullBasePlayerPos_ = false;
     normalPullBasePlayerPos_ = hookTipPos_;
@@ -82,6 +83,11 @@ void PlayerStatePullEnemy::Enter(Player* player) {
 }
 
 void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
+    // シーンから除去された対象を逆参照せず、通常操作へ戻します。
+    const auto& registered = CollisionManager::GetInstance()->GetObjects();
+    if (targetEnemy_ && std::find(registered.begin(), registered.end(), targetEnemy_) == registered.end())
+        targetEnemy_ = nullptr;
+
     if (!player) {
         return;
     }
@@ -103,7 +109,8 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         engine::Vector3 toTarget = enemyPos - hookTipPos_;
         float dist = engine::Math::Length(toTarget);
 
-        if (dist < 5.0f) {
+        if (alreadyHit_ || dist < 5.0f) {
+            alreadyHit_ = false;
             hookTipPos_ = enemyPos;
 
             if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_); enemyBase && enemyBase->IsPullImmune()) {
@@ -344,7 +351,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
         // サイン波でY軸に放物線のアーチを加える（easeTではなく純粋なtで綺麗なアーチにする）
         float arcHeight = 7.8f;
-        basePos.y += std::sin(t * 3.14159265f) * arcHeight;
+        basePos.y += std::sin(t * std::numbers::pi_v<float>) * arcHeight;
 
         targetEnemy_->SetTranslate(basePos);
         player->SetSlimePullDirection(basePos - playerPos);
@@ -405,6 +412,11 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStatePullEnemy::Exit(Player* player) {
+    // シーンから除去された対象を逆参照せず、通常操作へ戻します。
+    const auto& registered = CollisionManager::GetInstance()->GetObjects();
+    if (targetEnemy_ && std::find(registered.begin(), registered.end(), targetEnemy_) == registered.end())
+        targetEnemy_ = nullptr;
+
     if (!player) {
         return;
     }

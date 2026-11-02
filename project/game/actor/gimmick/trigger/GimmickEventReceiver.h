@@ -33,10 +33,10 @@ class GimmickEventReceiver : public BaseGimmick {
 
     void SetCollisionEnabled(bool enabled);
 
-    engine::Vector3 basePosition_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 targetPosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 basePosition_ = engine::Vector3::ZERO;
+    engine::Vector3 targetPosition_ = engine::Vector3::ZERO;
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 baseRotation_ = engine::Vector3::ZERO;
 
     uint32_t originalCollisionAttribute_ = 0;
     uint32_t originalCollisionMask_ = 0;

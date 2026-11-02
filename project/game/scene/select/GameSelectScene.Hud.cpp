@@ -181,8 +181,8 @@ void GameSelectScene::UpdateStageGateNameLabels() {
             continue;
         }
 		// NDC座標をスクリーン座標に変換し、ラベルの中心が画面内に収まるように制限します。
-        const float screenWidth = static_cast<float>(WinApp::kClientWidth);
-        const float screenHeight = static_cast<float>(WinApp::kClientHeight);
+        const float screenWidth = static_cast<float>(WinApp::GetClientWidth());
+        const float screenHeight = static_cast<float>(WinApp::GetClientHeight());
         const float halfWidth = label->GetSize().x * 0.5f;
         const float screenX = std::clamp((ndc.x + 1.0f) * 0.5f * screenWidth, halfWidth, screenWidth - halfWidth);
         const float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;

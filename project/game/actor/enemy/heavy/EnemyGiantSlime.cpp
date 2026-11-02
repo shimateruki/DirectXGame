@@ -1,4 +1,6 @@
 #include "EnemyGiantSlime.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "BaseScene.h"
 #include "CollisionConfig.h"
@@ -31,7 +33,7 @@ constexpr float kGroundCollisionWorldCenterY = 0.58f;
 constexpr float kThrownCollisionWorldCenterY = 0.35f;
 constexpr int kSplitSlimeCount = 4;
 constexpr float kSplitSlimeRadius = 3.1f;
-constexpr float kGiantSlimeModelYawOffset = 3.1415926535f;
+constexpr float kGiantSlimeModelYawOffset = std::numbers::pi_v<float>;
 
 engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     // ジャンプとフックの向きは水平面だけで扱い、方向が消えた場合も前方を基準にする。
@@ -45,12 +47,7 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
-// 巨大スライムの攻撃・着地演出を両端で滑らかにつなぎます。
-float SmoothStep01(float value) {
-    // 端点で急に速度が変わらないよう、補間率を範囲内に収めてから滑らかにする。
-    value = std::clamp(value, 0.0f, 1.0f);
-    return value * value * (3.0f - 2.0f * value);
-}
+
 } // namespace
 
 // 大型スライムの初期化
@@ -61,7 +58,7 @@ void EnemyGiantSlime::Initialize(engine::Object3dCommon* common, const std::stri
     SetEnemyType("GiantSlime");
     ReloadAttackProfile();
     SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
     SetScale({2.0f, 2.0f, 2.0f});
     SetRotationY(kGiantSlimeModelYawOffset);
 
@@ -80,7 +77,7 @@ void EnemyGiantSlime::Update(float deltaTime) {
 
     UpdateTimers(deltaTime);
 
-    if (state_ == State::Airborne && isGrounded_ && GetVelocity().y <= 0.5f) {
+    if (state_ == State::Airborne && IsGrounded() && GetVelocity().y <= 0.5f) {
         BeginLandingRecovery();
     }
 
@@ -89,7 +86,7 @@ void EnemyGiantSlime::Update(float deltaTime) {
     UpdateTargetFacing(direction, distance);
     UpdateBossTargetEngagement(distance);
 
-    if (state_ == State::Idle && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+    if (state_ == State::Idle && UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), direction)) {
         SetVelocity({0.0f, GetVelocity().y, 0.0f});
         ApplySlimeAnimation(deltaTime);
         SyncGroundCollisionRadius();
@@ -110,7 +107,7 @@ bool EnemyGiantSlime::UpdateInactiveState(float deltaTime) {
         return true;
     }
 
-    if (isCarried_) {
+    if (IsCarried()) {
         return true;
     }
 
@@ -131,7 +128,7 @@ bool EnemyGiantSlime::UpdateHookSplitState(float deltaTime) {
     idleTimer_ += deltaTime;
 
     if (hookSplitAwaitingLanding_) {
-        if (isGrounded_ && GetVelocity().y <= 0.5f) {
+        if (IsGrounded() && GetVelocity().y <= 0.5f) {
             BeginGroundHookResistance(true);
         } else {
             engine::Vector3 velocity = GetVelocity();
@@ -193,12 +190,12 @@ void EnemyGiantSlime::UpdateTimers(float deltaTime) {
 
 void EnemyGiantSlime::UpdateTargetFacing(engine::Vector3& direction, float& distance) {
     // 高低差は照準に含めず、交戦前は索敵範囲に入った対象だけへ向きを変える。
-    if (target_) {
-        engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+    if (GetTarget()) {
+        engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - GetWorldPosition();
         direction = NormalizePlanar(toTarget);
         distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
-        if (IsBossTargetEngaged() || distance <= detectionRange_) {
+        if (IsBossTargetEngaged() || distance <= GetDetectionRange()) {
             const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
             SetRotation({0.0f, engine::Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f), 0.0f});
         }
@@ -245,7 +242,7 @@ void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const engine::Vector3&
 void EnemyGiantSlime::UpdateIdleState(float deltaTime, const engine::Vector3& direction, float distance) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kJumpPressAttackId);
 
-    if (isGrounded_) {
+    if (IsGrounded()) {
         engine::Vector3 velocity = GetVelocity();
         velocity.x *= 0.65f;
         velocity.z *= 0.65f;
@@ -262,7 +259,7 @@ void EnemyGiantSlime::UpdateIdleState(float deltaTime, const engine::Vector3& di
             engine::Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, 1.25f, 0.55f);
             engine::Vector3 wanderDirection = {wanderVelocity.x, 0.0f, wanderVelocity.z};
 
-            if (IsBossTargetEngaged() && target_) {
+            if (IsBossTargetEngaged() && GetTarget()) {
                 // 交戦後は射程外でも目標へ跳び、ランダム徘徊に戻らないようにします。
                 wanderDirection = direction;
             }
@@ -278,7 +275,7 @@ void EnemyGiantSlime::UpdateIdleState(float deltaTime, const engine::Vector3& di
             if (jumpTimer_ >= 1.75f && wanderLength > 0.05f) {
                 SetVelocity({wanderDirection.x * 4.6f, kHeavyHopDefaultJumpPower * 0.55f, wanderDirection.z * 4.6f});
                 jumpTimer_ = 0.0f;
-                isGrounded_ = false;
+                SetGrounded(false);
             }
         }
     }
@@ -304,7 +301,7 @@ void EnemyGiantSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     hookSplitPhase_ = HookSplitPhase::None;
     ResetHookSplitVisual();
     HideAttackTelegraph();
-    SetColor(defaultColor_);
+    SetColor(GetDefaultColor());
     SetScale(baseScale_);
     SyncThrownCollisionRadius();
     BaseEnemy::BeginThrown(initialVelocity);
@@ -313,11 +310,11 @@ void EnemyGiantSlime::BeginThrown(const engine::Vector3& initialVelocity) {
 std::unique_ptr<engine::Object3d> EnemyGiantSlime::Clone() const {
     // 複製先に配置設定と追跡対象を引き継ぎ、攻撃状態の一時値は初期化し直す。
     auto clone = std::make_unique<EnemyGiantSlime>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     return clone;
 }
 
@@ -348,8 +345,8 @@ void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
     telegraphTimer_ += deltaTime;
     SetVelocity({0.0f, 0.0f, 0.0f});
 
-    if (target_) {
-        engine::Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+    if (GetTarget()) {
+        engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - GetWorldPosition();
         toTarget.y = 0.0f;
         const float targetDistance = engine::Math::Length(toTarget);
 
@@ -372,7 +369,7 @@ void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
     const float t = std::clamp(stateTimer_ / windupDuration, 0.0f, 1.0f);
     ShowAttackTelegraphCircle(HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_), attack.radius,
                               t, {1.0f, 0.36f, 0.82f, 0.82f});
-    const float pulse = std::sin(t * 3.14159265f * 5.0f) * 0.05f;
+    const float pulse = std::sin(t * std::numbers::pi_v<float> * 5.0f) * 0.05f;
     SetScale({baseScale_.x * (1.0f + t * 0.34f + pulse), baseScale_.y * (1.0f - t * 0.34f),
               baseScale_.z * (1.0f + t * 0.34f - pulse)});
 
@@ -419,7 +416,7 @@ void EnemyGiantSlime::UpdateLandingRecovery(float deltaTime) {
         state_ = State::Idle;
         stateTimer_ = 0.0f;
         jumpTimer_ = 0.0f;
-        SetColor(defaultColor_);
+        SetColor(GetDefaultColor());
         SetScale(baseScale_);
     }
 }
@@ -492,7 +489,7 @@ void EnemyGiantSlime::BeginHookSplitPull(const engine::Vector3& hookOwnerPos) {
     jumpTimer_ = 0.0f;
     SetScale(baseScale_);
 
-    hookSplitAwaitingLanding_ = !isGrounded_;
+    hookSplitAwaitingLanding_ = !IsGrounded();
 
     if (hookSplitAwaitingLanding_) {
         hookSplitPhase_ = HookSplitPhase::AirborneTether;
@@ -529,7 +526,7 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const engine::Vector3
     }
 
     if (hookSplitAwaitingLanding_) {
-        if (isGrounded_ && GetVelocity().y <= 0.5f) {
+        if (IsGrounded() && GetVelocity().y <= 0.5f) {
             BeginGroundHookResistance(true);
         }
 
@@ -581,7 +578,7 @@ void EnemyGiantSlime::CancelHookSplitPull() {
     hookSplitPhase_ = HookSplitPhase::None;
     state_ = State::Idle;
     stateTimer_ = 0.0f;
-    SetColor(defaultColor_);
+    SetColor(GetDefaultColor());
     SetScale(baseScale_);
     engine::Vector3 rot = GetRotation();
     rot.x = 0.0f;
@@ -677,8 +674,8 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
     const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
 
     engine::Vector3 targetVisualScale = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 targetVisualRotation = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 targetVisualShear = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 targetVisualRotation = engine::Vector3::ZERO;
+    engine::Vector3 targetVisualShear = engine::Vector3::ZERO;
     engine::Vector3 targetPosition = GetTranslate();
     bool pinGroundAnchor = false;
 
@@ -691,27 +688,27 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
         targetVisualRotation.z = tetherPulse * 0.055f;
         targetVisualShear.z = -0.055f + tetherPulse * 0.018f;
     } else if (hookSplitPhase_ == HookSplitPhase::LandingSquash) {
-        const float t = SmoothStep01(hookSplitPhaseTimer_ / kHookLandingSquashDuration);
+        const float t = Easing::SmoothStep01(hookSplitPhaseTimer_ / kHookLandingSquashDuration);
 
         if (t < 0.48f) {
-            const float impact = SmoothStep01(t / 0.48f);
+            const float impact = Easing::SmoothStep01(t / 0.48f);
             targetVisualScale = {1.0f + impact * 0.34f, 1.0f - impact * 0.42f, 1.0f + impact * 0.22f};
         } else {
-            const float rebound = SmoothStep01((t - 0.48f) / 0.52f);
+            const float rebound = Easing::SmoothStep01((t - 0.48f) / 0.52f);
             targetVisualScale = {1.34f - rebound * 0.30f, 0.58f + rebound * 0.48f, 1.22f - rebound * 0.16f};
         }
 
-        targetVisualRotation.z = std::sin(t * 3.14159265f) * 0.08f;
+        targetVisualRotation.z = std::sin(t * std::numbers::pi_v<float>) * 0.08f;
         pinGroundAnchor = true;
     } else {
         const float progress = GetHookSplitProgress();
-        const float tearProgress = SmoothStep01((progress - 0.82f) / 0.18f);
+        const float tearProgress = Easing::SmoothStep01((progress - 0.82f) / 0.18f);
         const float pullCycle = std::fmod(hookSplitPullTimer_ * 2.55f, 1.0f);
-        const float yankRise = SmoothStep01(pullCycle / 0.14f);
-        const float yankFall = 1.0f - SmoothStep01((pullCycle - 0.14f) / 0.28f);
+        const float yankRise = Easing::SmoothStep01(pullCycle / 0.14f);
+        const float yankFall = 1.0f - Easing::SmoothStep01((pullCycle - 0.14f) / 0.28f);
         const float yankPulse = yankRise * yankFall;
-        const float braceRise = SmoothStep01((pullCycle - 0.30f) / 0.18f);
-        const float braceFall = 1.0f - SmoothStep01((pullCycle - 0.50f) / 0.30f);
+        const float braceRise = Easing::SmoothStep01((pullCycle - 0.30f) / 0.18f);
+        const float braceFall = 1.0f - Easing::SmoothStep01((pullCycle - 0.50f) / 0.30f);
         const float bracePulse = braceRise * braceFall;
         const float struggleSide = std::sin(hookSplitPullTimer_ * 22.0f) * (0.018f + tearProgress * 0.035f);
 
@@ -729,9 +726,9 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
         const engine::Vector3 baseToOwner = hookOwnerPos - hookSplitBasePosition_;
         const float basePlanarDistance = std::sqrt(baseToOwner.x * baseToOwner.x + baseToOwner.z * baseToOwner.z);
         const float maximumSlip = (std::min)(basePlanarDistance * 0.12f, 1.65f);
-        const float slipStep1 = SmoothStep01((progress - 0.50f) / 0.10f);
-        const float slipStep2 = SmoothStep01((progress - 0.68f) / 0.09f);
-        const float slipStep3 = SmoothStep01((progress - 0.84f) / 0.09f);
+        const float slipStep1 = Easing::SmoothStep01((progress - 0.50f) / 0.10f);
+        const float slipStep2 = Easing::SmoothStep01((progress - 0.68f) / 0.09f);
+        const float slipStep3 = Easing::SmoothStep01((progress - 0.84f) / 0.09f);
         const float permanentSlip = maximumSlip * (slipStep1 * 0.28f + slipStep2 * 0.32f + slipStep3 * 0.40f);
         const float temporaryYank = yankPulse * (0.055f + progress * 0.12f);
         const float pushBack = bracePulse * 0.045f * (1.0f - progress);
@@ -754,7 +751,7 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
                                           24.0f, 0.64f);
 
     engine::Vector3 targetVisualOffset =
-        pinGroundAnchor ? CalculateHookAnchorOffset(hookVisualScale_, hookVisualRotation_) : engine::Vector3{0.0f, 0.0f, 0.0f};
+        pinGroundAnchor ? CalculateHookAnchorOffset(hookVisualScale_, hookVisualRotation_) : engine::Vector3::ZERO;
     SlimeBounceAnimator::StepDampedSpring(hookVisualOffset_, hookVisualOffsetVelocity_, targetVisualOffset, deltaTime,
                                           22.0f, 0.78f);
 
@@ -826,9 +823,9 @@ void EnemyGiantSlime::ResetHookSplitVisual() {
 // ジャンプ攻撃、着地衝撃波、伸縮の補助処理
 void EnemyGiantSlime::LaunchJump(const engine::Vector3& direction, float distance) {
     // 重力から滞空時間を概算し、予告地点まで届く水平速度を上限付きで決める。
-    const float gravity = param_.has_value() ? (std::max)(1.0f, param_->gravity) : 70.0f;
+    const float gravity = GetParameters().has_value() ? (std::max)(1.0f, GetParameters()->gravity) : 70.0f;
     const float configuredJumpPower =
-        param_.has_value() && param_->jumpPower > 0.0f ? param_->jumpPower : kHeavyHopDefaultJumpPower;
+        GetParameters().has_value() && GetParameters()->jumpPower > 0.0f ? GetParameters()->jumpPower : kHeavyHopDefaultJumpPower;
     const float jumpPower = std::clamp(configuredJumpPower, kHeavyHopMinJumpPower, kHeavyHopMaxJumpPower);
     const float flightTime = std::clamp((jumpPower * 2.0f) / gravity, 0.42f, 0.68f);
     const float horizontalSpeed = std::clamp(distance / flightTime, kHeavyHopMinSpeed, kHeavyHopMaxSpeed);
@@ -836,13 +833,13 @@ void EnemyGiantSlime::LaunchJump(const engine::Vector3& direction, float distanc
     state_ = State::Airborne;
     stateTimer_ = 0.0f;
     isJumpingAttack_ = true;
-    isGrounded_ = false;
-    SetColor(defaultColor_);
+    SetGrounded(false);
+    SetColor(GetDefaultColor());
 }
 
 float EnemyGiantSlime::GetBodyAttackDamage() const {
     // 上昇中・フック拘束中は無害。下降中の踏みつけだけ本体に攻撃力を持たせます。
-    return state_ == State::Airborne && isJumpingAttack_ && velocity_.y < 0.0f && !isHookSplitPulled_ &&
+    return state_ == State::Airborne && isJumpingAttack_ && GetVelocity().y < 0.0f && !isHookSplitPulled_ &&
                    !hookSplitAwaitingLanding_ && !hasSplit_
                ? GetAttackDefinition(kJumpPressAttackId).damage
                : 0.0f;
@@ -850,10 +847,10 @@ float EnemyGiantSlime::GetBodyAttackDamage() const {
 
 void EnemyGiantSlime::DispatchLandingShockwave() {
     // 着地地点から水平方向の距離で対象を選び、衝撃波のダメージと押し出しを配る。
-    if (!target_)
+    if (!GetTarget())
         return;
 
-    engine::Vector3 diff = target_->GetTranslate() - GetTranslate();
+    engine::Vector3 diff = GetTarget()->GetTranslate() - GetTranslate();
     diff.y = 0.0f;
     const float distance = engine::Math::Length(diff);
     const EnemyAttackDefinition& attack = GetAttackDefinition(kJumpPressAttackId);
@@ -862,7 +859,7 @@ void EnemyGiantSlime::DispatchLandingShockwave() {
 
     engine::Vector3 direction = distance > 0.001f ? diff / distance : engine::Vector3{0.0f, 0.0f, 1.0f};
     DamageEvent damageEvent;
-    damageEvent.target = target_;
+    damageEvent.target = GetTarget();
     damageEvent.attacker = this;
     damageEvent.damageAmount = attack.damage;
     damageEvent.knockbackVelocity = {direction.x * 18.0f, 13.0f, direction.z * 18.0f};
@@ -879,7 +876,7 @@ void EnemyGiantSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.x = baseScale_.x * (1.35f - t * 0.25f);
         targetScale.y = baseScale_.y * (0.62f + t * 0.25f);
         targetScale.z = baseScale_.z * (1.35f - t * 0.25f);
-    } else if (!isGrounded_) {
+    } else if (!IsGrounded()) {
         SlimeBounceAnimator::Params params;
         params.speedForFullBounce = 6.0f;
         params.idleAmplitude = 0.045f;
@@ -961,7 +958,7 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
             if (!slime)
                 continue;
 
-            const float angle = (6.28318531f / static_cast<float>(kSplitSlimeCount)) * static_cast<float>(i);
+            const float angle = ((2.0f * std::numbers::pi_v<float>) / static_cast<float>(kSplitSlimeCount)) * static_cast<float>(i);
             engine::Vector3 dir = {std::sin(angle), 0.0f, std::cos(angle)};
             engine::Vector3 pos = splitCenter + dir * kSplitSlimeRadius;
             pos.y += 0.45f;
@@ -971,7 +968,7 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
             slime->SetRotation({0.0f, yaw, 0.0f});
             slime->SetScale({1.35f, 1.35f, 1.35f});
             slime->SetName(GetName() + "_SplitSlime_" + std::to_string(i));
-            slime->SetTarget(target_);
+            slime->SetTarget(GetTarget());
             slime->SetDetectionRange(18.0f);
             slime->SetVelocity({dir.x * 4.0f, 4.0f, dir.z * 4.0f});
 
@@ -982,12 +979,12 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
                 slime->SetCollisionMask(0);
             }
 
-            if (slime->param_.has_value()) {
-                slime->param_->hp = 25.0f;
-                slime->param_->maxHp = 25.0f;
-                slime->param_->speed = 0.22f;
-                slime->param_->jumpPower = 5.0f;
-                slime->param_->detectionRange = 18.0f;
+            if (slime->GetParameters().has_value()) {
+                slime->SetParameter(&engine::EntityParameter::hp, 25.0f);
+                slime->SetParameter(&engine::EntityParameter::maxHp, 25.0f);
+                slime->SetParameter(&engine::EntityParameter::speed, 0.22f);
+                slime->SetParameter(&engine::EntityParameter::jumpPower, 5.0f);
+                slime->SetParameter(&engine::EntityParameter::detectionRange, 18.0f);
             }
 
             scene->AddObject(std::move(slime));
@@ -997,7 +994,7 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetIsVisible(false);
-    isDead = true;
+    SetDead(true);
 
     if (BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr) {
         scene->RequestRemoveObject(this);

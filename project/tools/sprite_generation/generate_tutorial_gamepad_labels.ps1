@@ -11,7 +11,7 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 $request = Join-Path ([IO.Path]::GetTempPath()) ('tutorial-gamepad-' + [guid]::NewGuid().ToString('N') + '.json')
 $labels = [ordered]@{
     move='左スティックで移動'; look='右スティックでカメラ操作'; jump='Aでジャンプ'
-    pull='LBを押して狙い、離すとつかむ'; throw='Xで投げる'; absorb='Yでスライムを取り込む'
+    pull='LBを1回押して鞭でつかむ'; throw='Xで投げる'; absorb='Yでスライムを取り込む'
     release='Bで能力を解除'; controls='VIEWで操作ガイドを開く'
     lock_on='右スティック押し込みでロックオン'
 }
@@ -22,7 +22,7 @@ $jobs = @(
         @{ FileName=('tutorial_' + $entry.Key + '_gamepad.png'); Text=$entry.Value }
     }
     if ($IncludeKeyboard -and ($Names.Count -eq 0 -or 'pull' -in $Names)) {
-        @{ FileName='tutorial_pull.png'; Text='右クリックを押して狙い、離すとつかむ' }
+        @{ FileName='tutorial_pull.png'; Text='右クリック1回で鞭を出してつかむ' }
     }
 )
 try {
@@ -33,6 +33,9 @@ try {
             outline=@{ enabled=$true; width=2.0; color=@(0.08,0.16,0.22,1.0) }
             shadow=@{ enabled=$false }
         }
+        # 文言を短くしても既存の配置枠と縦横比を維持します。
+        if ($job.FileName -eq 'tutorial_pull.png') { $config.autoCanvas=$false; $config.canvasWidth=995; $config.canvasHeight=118 }
+        if ($job.FileName -eq 'tutorial_pull_gamepad.png') { $config.autoCanvas=$false; $config.canvasWidth=794; $config.canvasHeight=118 }
         [IO.File]::WriteAllText($request, ($config | ConvertTo-Json -Depth 5), $utf8)
         $png = Join-Path $output $job.FileName
         & $TextTool render -config $request -out $png

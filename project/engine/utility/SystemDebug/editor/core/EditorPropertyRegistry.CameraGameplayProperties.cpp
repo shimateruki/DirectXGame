@@ -15,7 +15,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
 
     const auto gameplayParameterOnly = [](const engine::Object3d& object) {
         const std::string className = object.GetClassName();
-        return object.param_.has_value() && className != "Player" && className != "Enemy";
+        return object.GetParameters().has_value() && className != "Player" && className != "Enemy";
     };
 
     // Cameraの有効性と役割は種類を限定し、誤った型・範囲のJSONを受け付けない。
@@ -282,11 +282,11 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         float engine::Object3d::EntityParameter::* member) {
         Register({
             path, displayName, "Gameplay", EditorPropertyType::Number, CommonFlags(true),
-            [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
+            [member](const engine::Object3d& object) { return json(object.GetParameters().value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_number() || !object.param_.has_value())
+                if (!value.is_number() || !object.GetParameters().has_value())
                     return false;
-                object.param_.value().*member = value.get<float>();
+                object.SetParameter(member, value.get<float>());
                 return true;
             },
             gameplayParameterOnly,
@@ -299,11 +299,11 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         int engine::Object3d::EntityParameter::* member) {
         Register({
             path, displayName, "Gameplay", EditorPropertyType::Integer, CommonFlags(),
-            [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
+            [member](const engine::Object3d& object) { return json(object.GetParameters().value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_number_integer() || !object.param_.has_value())
+                if (!value.is_number_integer() || !object.GetParameters().has_value())
                     return false;
-                object.param_.value().*member = value.get<int>();
+                object.SetParameter(member, value.get<int>());
                 return true;
             },
             gameplayParameterOnly,
@@ -316,11 +316,11 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         bool engine::Object3d::EntityParameter::* member) {
         Register({
             path, displayName, "Gameplay", EditorPropertyType::Bool, CommonFlags(),
-            [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
+            [member](const engine::Object3d& object) { return json(object.GetParameters().value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_boolean() || !object.param_.has_value())
+                if (!value.is_boolean() || !object.GetParameters().has_value())
                     return false;
-                object.param_.value().*member = value.get<bool>();
+                object.SetParameter(member, value.get<bool>());
                 return true;
             },
             gameplayParameterOnly,
@@ -333,11 +333,11 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         std::string engine::Object3d::EntityParameter::* member) {
         Register({
             path, displayName, "Gameplay", EditorPropertyType::String, CommonFlags(),
-            [member](const engine::Object3d& object) { return json(object.param_.value().*member); },
+            [member](const engine::Object3d& object) { return json(object.GetParameters().value().*member); },
             [member](engine::Object3d& object, const json& value) {
-                if (!value.is_string() || !object.param_.has_value())
+                if (!value.is_string() || !object.GetParameters().has_value())
                     return false;
-                object.param_.value().*member = value.get<std::string>();
+                object.SetParameter(member, value.get<std::string>());
                 return true;
             },
             gameplayParameterOnly,
@@ -345,19 +345,19 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
     };
 
     // パスはEditorから参照する安定ID。表示名を変えても保存項目との対応は維持する。
-    registerParamNumber("gameplay.healAmount", "回復量", &engine::Object3d::EntityParameter::healAmount);
-    registerParamNumber("gameplay.interval", "間隔", &engine::Object3d::EntityParameter::interval);
-    registerParamInteger("gameplay.maxCount", "最大数", &engine::Object3d::EntityParameter::maxCount);
-    registerParamNumber("gameplay.detectionRange", "感知範囲", &engine::Object3d::EntityParameter::detectionRange);
-    registerParamNumber("gameplay.shakeDuration", "揺れ時間", &engine::Object3d::EntityParameter::shakeDuration);
-    registerParamNumber("gameplay.fallDuration", "落下時間", &engine::Object3d::EntityParameter::fallDuration);
-    registerParamInteger("gameplay.colorType", "色Type", &engine::Object3d::EntityParameter::colorType);
-    registerParamInteger("gameplay.switchMode", "Switch Mode", &engine::Object3d::EntityParameter::switchMode);
-    registerParamInteger("gameplay.actionMode", "Action Mode", &engine::Object3d::EntityParameter::actionMode);
-    registerParamString("gameplay.targetScene", "移動先Scene", &engine::Object3d::EntityParameter::targetScene);
-    registerParamNumber("gameplay.moveAmount", "移動量", &engine::Object3d::EntityParameter::moveAmount);
-    registerParamNumber("gameplay.moveSpeed", "移動速度", &engine::Object3d::EntityParameter::moveSpeed);
-    registerParamNumber("gameplay.ringWaveSpeed", "リング拡大速度", &engine::Object3d::EntityParameter::ringWaveSpeed);
-    registerParamBool("gameplay.startActive", "開始時有効", &engine::Object3d::EntityParameter::startActive);
-    registerParamBool("gameplay.returnOnOff", "OFFで戻る", &engine::Object3d::EntityParameter::returnOnOff);
+    registerParamNumber("gameplay.healAmount", "回復量", &engine::EntityParameter::healAmount);
+    registerParamNumber("gameplay.interval", "間隔", &engine::EntityParameter::interval);
+    registerParamInteger("gameplay.maxCount", "最大数", &engine::EntityParameter::maxCount);
+    registerParamNumber("gameplay.detectionRange", "感知範囲", &engine::EntityParameter::detectionRange);
+    registerParamNumber("gameplay.shakeDuration", "揺れ時間", &engine::EntityParameter::shakeDuration);
+    registerParamNumber("gameplay.fallDuration", "落下時間", &engine::EntityParameter::fallDuration);
+    registerParamInteger("gameplay.colorType", "色Type", &engine::EntityParameter::colorType);
+    registerParamInteger("gameplay.switchMode", "Switch Mode", &engine::EntityParameter::switchMode);
+    registerParamInteger("gameplay.actionMode", "Action Mode", &engine::EntityParameter::actionMode);
+    registerParamString("gameplay.targetScene", "移動先Scene", &engine::EntityParameter::targetScene);
+    registerParamNumber("gameplay.moveAmount", "移動量", &engine::EntityParameter::moveAmount);
+    registerParamNumber("gameplay.moveSpeed", "移動速度", &engine::EntityParameter::moveSpeed);
+    registerParamNumber("gameplay.ringWaveSpeed", "リング拡大速度", &engine::EntityParameter::ringWaveSpeed);
+    registerParamBool("gameplay.startActive", "開始時有効", &engine::EntityParameter::startActive);
+    registerParamBool("gameplay.returnOnOff", "OFFで戻る", &engine::EntityParameter::returnOnOff);
 }

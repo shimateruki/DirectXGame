@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "EnemyRingBurner.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/system/scene/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
@@ -15,7 +17,7 @@
 #include <cmath>
 
 namespace {
-constexpr float kPi = 3.14159265358979323846f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kModelHeight = 1.46f;
 constexpr float kTopRadius = 1.05f;
 constexpr float kWaveStartRadiusRatio = 1.60f / 11.0f;
@@ -33,13 +35,7 @@ constexpr const char* kWaveHeatEffect = "Resources/json/effect/effect_ring_burne
 constexpr const char* kChargeParticle = "ring_burner_charge_sparks";
 constexpr const char* kFireParticle = "ring_burner_discharge_embers";
 
-// 熱輪演出の終点へ向けて強く減速する補間率を返します。
-float EaseOutQuint(float value) {
-    // 発射前の予兆が終盤で急に跳ねないよう、半径の変化を滑らかに収束させる。
-    const float t = (std::clamp)(value, 0.0f, 1.0f);
-    const float inverse = 1.0f - t;
-    return 1.0f - inverse * inverse * inverse * inverse * inverse;
-}
+
 
 float PlanarDistance(const engine::Vector3& first, const engine::Vector3& second) {
     // 床を伝う輪の判定では高さを距離から除き、高さは別条件で調べる。
@@ -84,7 +80,7 @@ class EnemyRingBurner::IdleBehavior final : public StateBehavior {
         owner.cooldownTimer_ = (std::max)(0.0f, owner.cooldownTimer_ - deltaTime);
         owner.HideAttackTelegraph();
 
-        if (owner.target_ && targetDistance <= detectRange && owner.cooldownTimer_ <= 0.0f) {
+        if (owner.GetTarget() && targetDistance <= detectRange && owner.cooldownTimer_ <= 0.0f) {
             owner.EnterState(State::Charge, owner.GetChargeDuration());
         }
     }
@@ -113,7 +109,7 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
         // 充填の進行率で予兆半径を広げ、期限が来た時だけ輪を放出する。
         owner.stateTimer_ -= deltaTime;
         const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
-        const float pulseRadius = engine::Math::Lerp(1.05f, 1.72f, EaseOutQuint(progress));
+        const float pulseRadius = engine::Math::Lerp(1.05f, 1.72f, Easing::OutQuint01(progress));
         owner.ShowAttackTelegraphCircle(owner.GetWorldPosition() + engine::Vector3{0.0f, 0.06f, 0.0f},
                                         pulseRadius * (std::max)(owner.baseScale_.x, owner.baseScale_.z), progress,
                                         {1.0f, 0.20f, 0.025f, 0.92f});
@@ -263,7 +259,7 @@ void EnemyRingBurner::Initialize(engine::Object3dCommon* common, const std::stri
     SetRoughness(0.24f);
     SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     SetEmissive(1.35f);
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
 
     // groundを併記し、上面だけは安全な足場として押し戻せるようにします。
     SetCollisionAttribute(CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"));
@@ -309,7 +305,7 @@ void EnemyRingBurner::Update(float deltaTime) {
 
 void EnemyRingBurner::ResolveRuntimeTarget() {
     // 編集・再生で対象が未接続でも、現在シーンのプレイヤーを後から結び付ける。
-    if (target_) {
+    if (GetTarget()) {
         return;
     }
 
@@ -317,7 +313,7 @@ void EnemyRingBurner::ResolveRuntimeTarget() {
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
 
     if (scene) {
-        target_ = GetScenePlayer(scene);
+        RestoreAITarget(GetScenePlayer(scene));
     }
 }
 
@@ -358,18 +354,18 @@ void EnemyRingBurner::EnterState(State state, float duration) {
 void EnemyRingBurner::UpdateCombat(float deltaTime) {
     // JSONの検知距離を安全範囲へ収めてから、現在状態の振る舞いへ渡す。
     const float targetDistance = GetPlanarTargetDistance();
-    const float configuredRange = param_.has_value() ? param_->detectionRange : detectionRange_;
+    const float configuredRange = GetParameters().has_value() ? GetParameters()->detectionRange : GetDetectionRange();
     const float detectRange = (std::clamp)(configuredRange, 8.0f, 80.0f);
     BehaviorFor(state_).Update(*this, deltaTime, targetDistance, detectRange);
 }
 
 void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
-    if (waveDamageDone_ || !target_) {
+    if (waveDamageDone_ || !GetTarget()) {
         return;
     }
 
     const engine::Vector3 origin = GetWorldPosition();
-    const engine::Vector3 targetPosition = target_->GetWorldPosition();
+    const engine::Vector3 targetPosition = GetTarget()->GetWorldPosition();
     const float targetDistance = PlanarDistance(origin, targetPosition);
     const float targetRelativeHeight = targetPosition.y - origin.y;
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
@@ -387,7 +383,7 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
 
     const engine::Vector3 knockbackDirection = NormalizePlanar(targetPosition - origin);
     DamageEvent damageEvent;
-    damageEvent.target = target_;
+    damageEvent.target = GetTarget();
     damageEvent.attacker = this;
     damageEvent.damageAmount = kWaveDamage;
     damageEvent.damageType = DamageType::Fire;
@@ -400,7 +396,7 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
 void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
     // 各状態が決める目標姿勢を基準スケールから作り、急な切替を補間する。
     engine::Vector3 targetScale = baseScale_;
-    engine::Vector4 targetColor = defaultColor_;
+    engine::Vector4 targetColor = GetDefaultColor();
     float emissive = 1.35f;
 
     BehaviorFor(state_).ApplyVisualPose(*this, targetScale, targetColor, emissive);
@@ -414,7 +410,7 @@ void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
 
 bool EnemyRingBurner::IsTargetStandingOnTop() const {
     // 輪の回避を兼ねた踏みつけを、接地・水平距離・上面との高さで判定する。
-    const Player* player = dynamic_cast<const Player*>(target_);
+    const Player* player = dynamic_cast<const Player*>(GetTarget());
 
     if (!player || !player->IsGrounded()) {
         return false;
@@ -431,29 +427,29 @@ bool EnemyRingBurner::IsTargetStandingOnTop() const {
 
 float EnemyRingBurner::GetPlanarTargetDistance() const {
     // 対象がない間は射程外として扱い、不意に充填状態へ入らない。
-    return target_ ? PlanarDistance(GetWorldPosition(), target_->GetWorldPosition()) : 99999.0f;
+    return GetTarget() ? PlanarDistance(GetWorldPosition(), GetTarget()->GetWorldPosition()) : 99999.0f;
 }
 
 float EnemyRingBurner::GetChargeDuration() const {
     // 既存の揺れ時間を充填時間へ流用し、極端な設定値は制限する。
-    return param_.has_value() ? (std::clamp)(param_->shakeDuration, 0.45f, 1.40f) : 0.78f;
+    return GetParameters().has_value() ? (std::clamp)(GetParameters()->shakeDuration, 0.45f, 1.40f) : 0.78f;
 }
 
 float EnemyRingBurner::GetCooldownDuration() const {
     // 敵の行動間隔を再使用待ちへ流用し、連射や長時間停止を避ける。
-    return param_.has_value() ? (std::clamp)(param_->interval, 1.2f, 8.0f) : 3.0f;
+    return GetParameters().has_value() ? (std::clamp)(GetParameters()->interval, 1.2f, 8.0f) : 3.0f;
 }
 
 float EnemyRingBurner::GetWaveMaximumRadius() const {
     // 設定した移動量を輪の到達距離とし、配置スケールにも追従させる。
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
-    const float configured = param_.has_value() ? param_->moveAmount : 11.0f;
+    const float configured = GetParameters().has_value() ? GetParameters()->moveAmount : 11.0f;
     return (std::clamp)(configured, 6.0f, 48.0f) * horizontalScale;
 }
 
 float EnemyRingBurner::GetWaveDuration() const {
     // 速度を上げた分だけ到達時間を短縮し、判定と表示を同じ進行率に保つ。
-    const float speed = param_.has_value() ? (std::clamp)(param_->ringWaveSpeed, 0.25f, 4.0f) : 1.0f;
+    const float speed = GetParameters().has_value() ? (std::clamp)(GetParameters()->ringWaveSpeed, 0.25f, 4.0f) : 1.0f;
     return kWaveDuration / speed;
 }
 
@@ -502,11 +498,11 @@ void EnemyRingBurner::StopWaveEffects() {
 std::unique_ptr<engine::Object3d> EnemyRingBurner::Clone() const {
     // シーン配置を複製するときも固有AIを新規生成し、対象と調整済みスケールを引き継ぐ。
     auto clone = std::make_unique<EnemyRingBurner>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     clone->baseScale_ = baseScale_;
     clone->hasBaseScale_ = true;
     return clone;

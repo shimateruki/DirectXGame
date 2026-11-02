@@ -16,9 +16,9 @@ void GimmickTrampoline::Initialize(engine::Object3dCommon* common, const std::st
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("Trampoline");
-    if (!param_)
-        param_.emplace();
-    param_->jumpPower = 30.0f;
+    if (!GetParameters())
+        ResetParameters();
+    SetParameter(&engine::EntityParameter::jumpPower, 30.0f);
 
     // 傘全体を床と側面に使い、モデルの曲面から着地高さを求める。
     // 柄と根元はシーン側の子コライダーに分け、反発対象にはしない。
@@ -106,7 +106,7 @@ bool GimmickTrampoline::TryBounce(Player* player, const engine::Vector3& playerG
 
     // 一回の着地に一回だけ上向き速度を与える。見た目の縮みと同時に開始する。
     engine::Vector3 velocity = player->GetVelocity();
-    velocity.y = param_ ? param_->jumpPower : 30.0f;
+    velocity.y = GetParameters() ? GetParameters()->jumpPower : 30.0f;
     player->SetVelocity(velocity);
     player->SetGrounded(false);
     player->ChangeState(std::make_unique<PlayerStateJump>());
@@ -120,7 +120,7 @@ bool GimmickTrampoline::TryBounce(Player* player, const engine::Vector3& playerG
 std::unique_ptr<engine::Object3d> GimmickTrampoline::Clone() const {
     // 複製後も専用の衝突・反発動作を保つ。
     auto clone = std::make_unique<GimmickTrampoline>();
-    clone->Initialize(common_, GetModelName());
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }

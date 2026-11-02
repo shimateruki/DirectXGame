@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include <numbers>
 #include "SceneManager.h"    
 #include "BaseScene.h"      
 #include "Object3d.h"
@@ -40,9 +41,6 @@
 #include "LightEditor.h"      
 #include "IconsFontAwesome5.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用

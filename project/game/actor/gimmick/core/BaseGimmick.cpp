@@ -41,8 +41,8 @@ std::unique_ptr<engine::Object3d> BaseGimmick::Clone() const {
     }
 
     auto newObj = std::make_unique<BaseGimmick>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

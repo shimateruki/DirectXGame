@@ -62,8 +62,8 @@ class Bullet : public engine::Object3d {
 
     float explosionRadius_ = 0.0f;
 
-    engine::Vector3 velocity_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 impactNormal_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 velocity_ = engine::Vector3::ZERO;
+    engine::Vector3 impactNormal_ = engine::Vector3::ZERO;
     float lifeTimer_ = 0.0f;
     float gravity_ = 0.0f;
 

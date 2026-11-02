@@ -45,6 +45,9 @@ class ICopyAbilitySession {
     virtual bool IsPinkBounceSlamImpactActive() const { return false; }
 
   protected:
+    const EnemyAttackProfile& GetProfile() const { return profile_; }
+
+  private:
     EnemyAttackProfile profile_;
 };
 

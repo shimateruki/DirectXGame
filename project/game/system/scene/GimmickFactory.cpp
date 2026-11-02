@@ -39,7 +39,7 @@ GimmickFactory::GimmickFactory() {
         return object;
     }});
     RegisterGimmick<GimmickMovingFloor>("移動床", GimmickMovingFloor::kTypeId, GimmickMovingFloor::kModelPath,
-        [](GimmickMovingFloor& object) { object.param_->speed = 0.05f; });
+        [](GimmickMovingFloor& object) { object.SetParameter(&engine::EntityParameter::speed, 0.05f); });
     RegisterGimmick<GimmickHazardRideFloor>("妨害付き輸送床");
     RegisterGimmick<GimmickTrampoline>("トランポリン");
     RegisterGimmick<GimmickChikuwaBlock>("ちくわブロック");
@@ -64,17 +64,17 @@ GimmickFactory::GimmickFactory() {
         [](GimmickRotatingObject& object) {
             object.SetName("Gimmick_RotatingFloor");
             object.SetScale({3.0f, 0.3f, 1.2f});
-            object.param_->actionMode = 1;
-            object.param_->speed = 45.0f;
-            object.param_->startActive = true;
+            object.SetParameter(&engine::EntityParameter::actionMode, 1);
+            object.SetParameter(&engine::EntityParameter::speed, 45.0f);
+            object.SetParameter(&engine::EntityParameter::startActive, true);
         });
     RegisterGimmick<GimmickRotatingObject>("回転柱", "RotatingPillar", GimmickRotatingObject::kModelPath,
         [](GimmickRotatingObject& object) {
             object.SetName("Gimmick_RotatingPillar");
             object.SetScale({0.75f, 3.0f, 0.75f});
-            object.param_->actionMode = 1;
-            object.param_->speed = 60.0f;
-            object.param_->startActive = true;
+            object.SetParameter(&engine::EntityParameter::actionMode, 1);
+            object.SetParameter(&engine::EntityParameter::speed, 60.0f);
+            object.SetParameter(&engine::EntityParameter::startActive, true);
         });
     RegisterGimmick<GimmickPhaseFlipFloor>("順番反転床");
     RegisterGimmick<GimmickFireCannon>("火球砲台");
@@ -84,10 +84,10 @@ GimmickFactory::GimmickFactory() {
     RegisterGimmick<GimmickSinkingFloor>("沈む床");
     RegisterGimmick<GimmickMagmaGeyser>("水の噴出口", "WaterGeyser", "Stages/magma_pressure_column",
         [](GimmickMagmaGeyser& object) {
-            object.param_->startActive = false;
-            object.param_->returnOnOff = true;
-            object.param_->actionMode = 3;
-            object.param_->detectionRange = 4.0f;
+            object.SetParameter(&engine::EntityParameter::startActive, false);
+            object.SetParameter(&engine::EntityParameter::returnOnOff, true);
+            object.SetParameter(&engine::EntityParameter::actionMode, 3);
+            object.SetParameter(&engine::EntityParameter::detectionRange, 4.0f);
         });
 }
 

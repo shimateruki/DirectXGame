@@ -159,7 +159,7 @@ class AttackTelegraph {
     Shape patternShape_ = Shape::Line;
     Shape timingShape_ = Shape::Circle;
 
-    engine::Vector3 lastCenter_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 lastCenter_ = engine::Vector3::ZERO;
     engine::Vector3 lastDirection_ = {0.0f, 0.0f, 1.0f};
 
     engine::Vector4 lastColor_ = {1.0f, 0.1f, 0.04f, 1.0f};
@@ -189,8 +189,8 @@ class AttackTelegraph {
     float patternCueTimer_ = 0.0f;
     engine::Vector4 patternCueColor_ = {1.0f, 0.05f, 0.02f, 1.0f};
 
-    engine::Vector3 warningCenter_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 warningOffset_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 warningCenter_ = engine::Vector3::ZERO;
+    engine::Vector3 warningOffset_ = engine::Vector3::ZERO;
     engine::Vector4 warningAccentColor_ = {1.0f, 0.45f, 0.08f, 1.0f};
     float warningSize_ = 1.0f;
 

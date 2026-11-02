@@ -90,7 +90,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     if (++frames<=15 || frames%30==0) {
         const auto now=GetTickCount64();
         log<<frames<<" rot="<<r.x<<','<<r.y<<','<<r.z<<" player="<<p.x<<','<<p.y<<','<<p.z
-           <<" grounded="<<player->IsGrounded()<<" dead="<<player->isDead<<" avgMs="<<(now-last)/(frames<=15 ? 1.0:30.0)<<std::endl;
+           <<" grounded="<<player->IsGrounded()<<" dead="<<player->IsDead()<<" avgMs="<<(now-last)/(frames<=15 ? 1.0:30.0)<<std::endl;
         last=now;
     }
     if (detached) { finish("PASS fixed axis, rotation and rider fall"); return; }

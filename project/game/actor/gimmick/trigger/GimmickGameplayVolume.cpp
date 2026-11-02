@@ -35,19 +35,19 @@ void GimmickGameplayVolume::Initialize(engine::Object3dCommon* common, const std
     collider.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(collider);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->gimmickType = "GameplayVolume";
-    param_->volumeMode = static_cast<int>(Mode::Event);
-    param_->volumePayload.clear();
-    param_->volumeTriggerOnce = true;
-    param_->volumeTriggerOnExit = false;
-    param_->volumeRearmDelay = 0.0f;
-    param_->volumeBlendDuration = 0.75f;
-    param_->startActive = true;
-    param_->returnOnOff = false;
+    SetParameter(&engine::EntityParameter::gimmickType, "GameplayVolume");
+    SetParameter(&engine::EntityParameter::volumeMode, static_cast<int>(Mode::Event));
+    SetParameter(&engine::EntityParameter::volumePayload, {});
+    SetParameter(&engine::EntityParameter::volumeTriggerOnce, true);
+    SetParameter(&engine::EntityParameter::volumeTriggerOnExit, false);
+    SetParameter(&engine::EntityParameter::volumeRearmDelay, 0.0f);
+    SetParameter(&engine::EntityParameter::volumeBlendDuration, 0.75f);
+    SetParameter(&engine::EntityParameter::startActive, true);
+    SetParameter(&engine::EntityParameter::returnOnOff, false);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickGameplayVolume;
@@ -57,16 +57,16 @@ void GimmickGameplayVolume::Initialize(engine::Object3dCommon* common, const std
     properties.Parameter("処理", "volumeMode", &Parameter::volumeMode, 0.0f, 5.0f,
         nullptr, {"イベント連携", "チェックポイント", "落下死", "Feedback Cue", "BGM", "Environment Profile"});
     properties.Parameter("Cue / Audio / Profile ID", "volumePayload", &Parameter::volumePayload, 0.0f, 0.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->volumeMode >= 3 && object.param_->volumeMode <= 5); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->volumeMode >= 3 && object.GetParameters()->volumeMode <= 5); });
     properties.Parameter("環境の切替時間", "volumeBlendDuration", &Parameter::volumeBlendDuration, 0.0f, 10.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->volumeMode == 5); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->volumeMode == 5); });
     properties.Parameter("一度だけ実行", "volumeTriggerOnce", &Parameter::volumeTriggerOnce);
     properties.Parameter("退出時に実行", "volumeTriggerOnExit", &Parameter::volumeTriggerOnExit);
     properties.Parameter("再実行まで", "volumeRearmDelay", &Parameter::volumeRearmDelay, 0.0f, 60.0f,
-        +[](const Self& object) { return object.param_ && (!object.param_->volumeTriggerOnce); });
+        +[](const Self& object) { return object.GetParameters() && (!object.GetParameters()->volumeTriggerOnce); });
     properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
     properties.Parameter("退出時にOFFへ戻す", "returnOnOff", &Parameter::returnOnOff, 0.0f, 0.0f,
-        nullptr, {}, {.enabled = +[](const Self& object) { return object.param_ && ((object.param_->volumeMode == 0 || object.param_->volumeMode == 4 || object.param_->volumeMode == 5) && !object.param_->volumeTriggerOnExit); }});
+        nullptr, {}, {.enabled = +[](const Self& object) { return object.GetParameters() && ((object.GetParameters()->volumeMode == 0 || object.GetParameters()->volumeMode == 4 || object.GetParameters()->volumeMode == 5) && !object.GetParameters()->volumeTriggerOnExit); }});
 }
 
 void GimmickGameplayVolume::Update(float deltaTime) {
@@ -137,7 +137,7 @@ void GimmickGameplayVolume::OnSwitchEvent(bool active) {
     runtimeEnabled_ = active;
 
     if (!runtimeEnabled_) {
-        if (occupied_ && param_.has_value() && !param_->volumeTriggerOnExit && param_->returnOnOff) {
+        if (occupied_ && GetParameters().has_value() && !GetParameters()->volumeTriggerOnExit && GetParameters()->returnOnOff) {
             Deactivate();
         }
 
@@ -150,8 +150,8 @@ void GimmickGameplayVolume::OnSwitchEvent(bool active) {
 std::unique_ptr<engine::Object3d> GimmickGameplayVolume::Clone() const {
     // 実行時の占有と一度きりの発動履歴は複製先へ引き継がない。
     auto clone = std::make_unique<GimmickGameplayVolume>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }
@@ -159,7 +159,7 @@ std::unique_ptr<engine::Object3d> GimmickGameplayVolume::Clone() const {
 void GimmickGameplayVolume::InitializeForPlay() {
     // 再生開始時に設定の有効状態へ戻し、編集用の可視化を消す。
     initializedForPlay_ = true;
-    runtimeEnabled_ = param_.has_value() ? param_->startActive : true;
+    runtimeEnabled_ = GetParameters().has_value() ? GetParameters()->startActive : true;
     occupied_ = false;
     collisionObserved_ = false;
     triggered_ = false;
@@ -186,7 +186,7 @@ void GimmickGameplayVolume::ResetForEditor() {
 
 void GimmickGameplayVolume::HandleEnter(Player* player) {
     // 退出時発動の設定なら入場時には何も起動しない。
-    if (!param_.has_value() || param_->volumeTriggerOnExit) {
+    if (!GetParameters().has_value() || GetParameters()->volumeTriggerOnExit) {
         return;
     }
 
@@ -195,9 +195,9 @@ void GimmickGameplayVolume::HandleEnter(Player* player) {
 
 void GimmickGameplayVolume::HandleExit(Player* player) {
     // 退出時発動と、滞在中だけ有効な用途の終了を分けて扱う。
-    if (param_.has_value() && param_->volumeTriggerOnExit) {
+    if (GetParameters().has_value() && GetParameters()->volumeTriggerOnExit) {
         Activate(player);
-    } else if (param_.has_value() && param_->returnOnOff) {
+    } else if (GetParameters().has_value() && GetParameters()->returnOnOff) {
         Deactivate();
     }
 
@@ -207,7 +207,7 @@ void GimmickGameplayVolume::HandleExit(Player* player) {
 
 void GimmickGameplayVolume::Activate(Player* player) {
     // ボリュームの用途に応じてチェックポイント、VFX、BGM、環境光を切り替えます。
-    if (!CanActivate() || !param_.has_value()) {
+    if (!CanActivate() || !GetParameters().has_value()) {
         return;
     }
 
@@ -216,7 +216,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
     switch (GetMode()) {
     case Mode::Event:
         if (scene && GetTargetID() > 0) {
-            if (param_->returnOnOff && !param_->volumeTriggerOnExit) {
+            if (GetParameters()->returnOnOff && !GetParameters()->volumeTriggerOnExit) {
                 scene->SetEventActive(GetTargetID(), true);
             } else {
                 scene->TriggerEvent(GetTargetID());
@@ -252,7 +252,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
         break;
 
     case Mode::FallDeath:
-        if (player && !player->isDead) {
+        if (player && !player->IsDead()) {
             engine::Vector3 position = player->GetTranslate();
             position.y = -19.0f;
             player->SetTranslate(position);
@@ -262,36 +262,36 @@ void GimmickGameplayVolume::Activate(Player* player) {
         break;
 
     case Mode::FeedbackCue:
-        if (!param_->volumePayload.empty()) {
-            VFXSequencer::PlayOneShot(param_->volumePayload, GetWorldPosition());
+        if (!GetParameters()->volumePayload.empty()) {
+            VFXSequencer::PlayOneShot(GetParameters()->volumePayload, GetWorldPosition());
         }
 
         break;
 
     case Mode::Bgm:
-        if (!param_->volumePayload.empty()) {
-            GameAudioSettings::GetInstance()->PlayBGM(param_->volumePayload);
+        if (!GetParameters()->volumePayload.empty()) {
+            GameAudioSettings::GetInstance()->PlayBGM(GetParameters()->volumePayload);
         }
 
         break;
 
     case Mode::Environment:
-        if (!param_->volumePayload.empty()) {
+        if (!GetParameters()->volumePayload.empty()) {
             previousEnvironment_ = LightManager::GetInstance()->CaptureEnvironmentProfile();
             hasPreviousEnvironment_ = true;
-            LightManager::GetInstance()->ApplyEnvironmentProfile(param_->volumePayload, param_->volumeBlendDuration);
+            LightManager::GetInstance()->ApplyEnvironmentProfile(GetParameters()->volumePayload, GetParameters()->volumeBlendDuration);
         }
 
         break;
     }
 
     triggered_ = true;
-    rearmTimer_ = (std::max)(0.0f, param_->volumeRearmDelay);
+    rearmTimer_ = (std::max)(0.0f, GetParameters()->volumeRearmDelay);
 }
 
 void GimmickGameplayVolume::Deactivate() {
     // イベント・BGM・環境設定のうち継続する作用だけを元に戻す。
-    if (!param_.has_value()) {
+    if (!GetParameters().has_value()) {
         return;
     }
 
@@ -299,25 +299,25 @@ void GimmickGameplayVolume::Deactivate() {
 
     if (GetMode() == Mode::Event && scene && GetTargetID() > 0) {
         scene->SetEventActive(GetTargetID(), false);
-    } else if (GetMode() == Mode::Bgm && !param_->volumePayload.empty()) {
-        GameAudioSettings::GetInstance()->Stop(param_->volumePayload);
+    } else if (GetMode() == Mode::Bgm && !GetParameters()->volumePayload.empty()) {
+        GameAudioSettings::GetInstance()->Stop(GetParameters()->volumePayload);
     } else if (GetMode() == Mode::Environment && hasPreviousEnvironment_) {
-        LightManager::GetInstance()->ApplyEnvironmentProfile(previousEnvironment_, param_->volumeBlendDuration);
+        LightManager::GetInstance()->ApplyEnvironmentProfile(previousEnvironment_, GetParameters()->volumeBlendDuration);
         hasPreviousEnvironment_ = false;
     }
 }
 
 bool GimmickGameplayVolume::CanActivate() const {
     // 一度きり指定と再発動待ち時間を合わせて発動可否を決める。
-    if (!runtimeEnabled_ || !param_.has_value() || rearmTimer_ > 0.0f) {
+    if (!runtimeEnabled_ || !GetParameters().has_value() || rearmTimer_ > 0.0f) {
         return false;
     }
 
-    return !param_->volumeTriggerOnce || !triggered_;
+    return !GetParameters()->volumeTriggerOnce || !triggered_;
 }
 
 GimmickGameplayVolume::Mode GimmickGameplayVolume::GetMode() const {
     // 不正な JSON 値は定義済みの用途範囲に丸める。
-    const int mode = param_.has_value() ? (std::clamp)(param_->volumeMode, 0, 5) : 0;
+    const int mode = GetParameters().has_value() ? (std::clamp)(GetParameters()->volumeMode, 0, 5) : 0;
     return static_cast<Mode>(mode);
 }

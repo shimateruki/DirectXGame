@@ -68,8 +68,8 @@ bool GimmickTimedSwitch::OnCollision(engine::Object3d* other) {
 std::unique_ptr<engine::Object3d> GimmickTimedSwitch::Clone() const {
     // 押下タイマーは持ち込まず、配置と接続先の設定だけを複製する。
     auto newObj = std::make_unique<GimmickTimedSwitch>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

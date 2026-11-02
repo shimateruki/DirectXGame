@@ -34,10 +34,11 @@ void Player::Initialize(engine::Object3dCommon* common, engine::InputManager* in
     SetClassName("Player");
     SetSaveCategory("Player");
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
+    LoadWhipSettings();
     jumpCount_ = 0;
 
     // スライムの潰れ・伸びは見た目だけに適用し、接地判定の高さを変化させません。
@@ -103,7 +104,7 @@ void Player::ApplyManagedScale(const engine::Vector3& scale) {
 
 engine::Vector3 Player::GetLockOnAttackDirection() const {
     // 演出中や照準が無効な間は、前回のロックオン位置を攻撃に使わない。
-    if (!isLockingOn_ || !lockOnAimValid_ || isDead || isCinematicLocked_)
+    if (!isLockingOn_ || !lockOnAimValid_ || IsDead() || isCinematicLocked_)
         return GetForwardDirection();
     engine::Vector3 direction = lockOnAimPoint_ - GetWorldPosition();
     direction.y = 0.0f;
@@ -122,17 +123,17 @@ void Player::Update(float deltaTime) {
     if (!copyPreviewActive_ && deltaTime > 0.0f) {
         if (auto* scene = SceneManager::GetInstance()->GetCurrentScene()) {
             for (const auto& object : scene->GetObjects())
-                if (object && object->recorder_) object->recorder_->SetPlayerRiding(false);
+                if (object && object->GetRecorder()) object->GetRecorder()->SetPlayerRiding(false);
         }
     }
     const auto notifyRiding = [&](engine::Object3d* ground) {
         // 子Colliderへ接地した場合も親の録画パスへ通知する。
-        if (copyPreviewActive_ || isDead || deltaTime <= 0.0f || GetVelocity().y > 0.1f) return;
+        if (copyPreviewActive_ || IsDead() || deltaTime <= 0.0f || GetVelocity().y > 0.1f) return;
         for (auto* object = ground; object; object = object->GetParent())
-            if (object->recorder_) object->recorder_->SetPlayerRiding(true);
+            if (object->GetRecorder()) object->GetRecorder()->SetPlayerRiding(true);
     };
     if (mover_ && deltaTime > 0.0f) {
-        mover_->SampleJumpInput(deltaTime, isDead || isCinematicLocked_ || gateReturnAnimation_.IsActive() ||
+        mover_->SampleJumpInput(deltaTime, IsDead() || isCinematicLocked_ || gateReturnAnimation_.IsActive() ||
                                                absorbEffectActive_ ||
                                                enemyMorphReleaseActive_ || copyPreviewActive_ ||
                                                electricShockControlLocked_);
@@ -173,8 +174,10 @@ void Player::Update(float deltaTime) {
     // コピー能力とフックは同じ副操作を使うため、形態から今フレームの入力先を決めます。
     const bool copyAbilityInputMode =
         isEnemyMorphed_ && enemyMorphType_ != EnemyMorphType::None && !enemyMorphReleaseActive_ && !absorbEffectActive_;
-    const bool hookAimHeld =
-        inputManager_ && inputManager_->IsActionPressed("SecondaryAction") && !copyAbilityInputMode && !carriedEnemy_;
+    const bool hookTriggered =
+        deltaTime > 0.0f && isControlActive_ && inputManager_ && inputManager_->IsActionTriggered("SecondaryAction") &&
+        !copyAbilityInputMode && !carriedEnemy_ && !copyPreviewActive_ && !enemyMorphReleaseActive_ &&
+        !absorbEffectActive_ && !IsDead();
 
     if (copyAbilityInputMode || carriedEnemy_) {
         // コピー中と運搬中はフックを使わず、ボタンを離した時に古い照準から発射しない。
@@ -215,123 +218,12 @@ void Player::Update(float deltaTime) {
             SetTranslate(electricShockLockedPosition_);
         }
 
-        // コピー能力に右クリックを渡す間は、通常形態のフック照準を開始しません。
+        // コピー能力に右クリックを渡す間は、通常形態の鞭を発射しません。
         if (isControlActive_ && mover_) {
-            // 右クリック中は移動入力を受け付けず、水平移動を停止させる
-            if (hookAimHeld) {
-                SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::AimHook);
-                engine::Vector3 v = GetVelocity();
-                SetVelocity({0.0f, v.y, 0.0f});
-
-                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
-                if (camera) {
-                    engine::Vector3 camRot = camera->GetRotation();
-                    SetRotation(
-                        {baseRotation_.x + camRot.x, NormalizeYaw(camRot.y + GetVisualYawOffset()), baseRotation_.z});
-
-                    // --- フック到達地点の計算とマーカー表示 ---
-                    if (hookMarker_) {
-                        engine::Vector3 start = camera->GetEye();
-
-                        engine::Vector3 dir;
-                        dir.x = std::sin(camRot.y) * std::cos(camRot.x);
-                        dir.y = -std::sin(camRot.x);
-                        dir.z = std::cos(camRot.y) * std::cos(camRot.x);
-
-                        float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-
-                        if (length > 0.0f) {
-                            dir.x /= length;
-                            dir.y /= length;
-                            dir.z /= length;
-                        }
-
-                        // ロック中はカメラからではなく、自機から対象の判定中心へ狙います。
-                        // 三人称カメラの壁越し判定や、小さい敵の頭上への空振りを防ぎます。
-                        if (isLockingOn_ && lockOnAimValid_) {
-                            const AABB bounds = GetAABB();
-                            start = (bounds.min + bounds.max) * 0.5f;
-                            const engine::Vector3 toTarget = lockOnAimPoint_ - start;
-                            if (engine::Math::Length(toTarget) > 0.001f)
-                                dir = engine::Math::Normalize(toTarget);
-                            const float planarLength = std::sqrt(dir.x * dir.x + dir.z * dir.z);
-                            SetRotation({baseRotation_.x - std::atan2(dir.y, planarLength),
-                                         NormalizeYaw(std::atan2(dir.x, dir.z) + GetVisualYawOffset()),
-                                         baseRotation_.z});
-                        }
-
-                        float maxDistance = 150.0f;
-                        uint32_t mask = CollisionCategories::Get("ground") | CollisionCategories::Get("enemy") | CollisionCategories::Get("hook_anchor");
-
-                        RaycastHit hit;
-
-                        if (isLockingOn_) {
-                            // 球のローカルオフセットにも対応するQuery版を使い、自分と子パーツを除外します。
-                            PhysicsQueryFilter filter;
-                            filter.mask = mask;
-                            filter.ignoredObject = this;
-                            filter.includeTriggers = true;
-
-                            if (lockOnAimValid_) {
-                                hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, filter);
-                            }
-                        } else {
-                            // 非ロック時の自由照準は維持します。
-                            hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, mask);
-                        }
-
-                        if (hit.isHit) {
-                            hookMarker_->SetIsVisible(true);
-                            hookMarker_->SetTranslate(hit.hitPoint);
-                            aimTargetObject_ = hit.hitObject;
-
-                            // 命中先の種類を色と脈動で示し、フック可能な対象を照準中に判別できるようにします。
-                            if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
-                                hookMarker_->SetColor({1.0f, 0.2f, 0.2f, 1.0f}); // 赤色に変更
-                                static float pulseTimer = 0.0f;
-                                pulseTimer += deltaTime;
-                                float pulse = 1.2f + std::sin(pulseTimer * 15.0f) * 0.3f;
-                                hookMarker_->SetScale({pulse, pulse, pulse});
-                            } else {
-                                hookMarker_->SetColor({1.0f, 1.0f, 1.0f, 1.0f}); // 白
-                                hookMarker_->SetScale({1.0f, 1.0f, 1.0f});
-                            }
-
-                            hookMarker_->SetEulerAngles({0.0f, 0.0f, 0.0f});
-                        } else {
-                            hookMarker_->SetIsVisible(false);
-                            aimTargetObject_ = nullptr;
-                        }
-
-                        hookMarker_->Update(deltaTime);
-                        hookMarker_->UpdateLocalMatrix();
-                        hookMarker_->UpdateWorldMatrix();
-                    }
-                }
+            if (hookTriggered) {
+                // 押したフレームで発射し、長押し・解除では追加発射しません。
+                ChangeState(std::make_unique<PlayerStateWhip>(GetWhipDirection()));
             } else {
-                // 右クリック解除時にフックアクションへ移行
-                if (hookMarker_) {
-                    if (hookMarker_->GetIsVisible()) {
-                        engine::Vector3 targetPos = hookMarker_->GetTransform()->translate;
-
-                        if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
-                            ChangeState(std::make_unique<PlayerStatePullObject>(aimTargetObject_, targetPos));
-                        } else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
-                            ChangeState(std::make_unique<PlayerStatePullEnemy>(aimTargetObject_, targetPos));
-                        } else {
-                            hookMarker_->SetIsVisible(false);
-                            aimTargetObject_ = nullptr;
-                        }
-                    }
-                }
-
-                // 通常移動時はX軸（ピッチ）とZ軸（ロール）の回転を初期値に戻す
-                engine::Vector3 rot = GetRotation();
-                rot.x = baseRotation_.x;
-                rot.z = baseRotation_.z;
-                SetRotation(rot);
-
                 mover_->Update(deltaTime);
             }
         }
@@ -341,15 +233,15 @@ void Player::Update(float deltaTime) {
             state_->Update(this, deltaTime);
         }
 
-        if (tutorialSafetyEnabled_ && param_.has_value()) {
-            param_->maxHp = (std::max)(param_->maxHp, 1.0f);
-            param_->hp = param_->maxHp;
+        if (tutorialSafetyEnabled_ && GetParameters().has_value()) {
+            SetParameter(&engine::EntityParameter::maxHp, (std::max)(GetParameters()->maxHp, 1.0f));
+            SetParameter(&engine::EntityParameter::hp, GetParameters()->maxHp);
         }
 
         // 液面への接触は無敵や残HPに関係なく死亡します。安全チュートリアルは従来どおり保護します。
         float liquidY = 0.0f;
-        if (!isDead && !tutorialSafetyEnabled_ && !dynamic_cast<PlayerStateFallingOut*>(state_.get()) &&
-            FindLethalLiquidSurface(*this, liquidY) && param_.has_value()) {
+        if (!IsDead() && !tutorialSafetyEnabled_ && !dynamic_cast<PlayerStateFallingOut*>(state_.get()) &&
+            FindLethalLiquidSurface(*this, liquidY) && GetParameters().has_value()) {
             const float footY = GetModelWorldAABB().min.y;
             engine::Vector3 position = GetTranslate();
             position.y += liquidY - footY + 0.04f;
@@ -357,17 +249,17 @@ void Player::Update(float deltaTime) {
             UpdateLocalMatrix();
             UpdateWorldMatrix();
             SetVelocity({0.0f, 0.0f, 0.0f});
-            param_->hp = 0.0f;
+            SetParameter(&engine::EntityParameter::hp, 0.0f);
         }
 
         // 死亡へ入る前に攻撃とコピーを解除し、イベントを一度だけ通知します。
-        if (GetHp() <= 0.0f && !isDead) {
+        if (GetHp() <= 0.0f && !IsDead()) {
             if (baseCombatController_) {
                 baseCombatController_->Cancel(*this, false);
             }
 
             CancelEnemyMorph();
-            isDead = true;
+            SetDead(true);
             deathTimer_ = 0.0f;
             ChangeState(std::make_unique<PlayerStateDead>());
 
@@ -377,7 +269,7 @@ void Player::Update(float deltaTime) {
         }
 
         // チュートリアル中の落下だけは残機を減らさず、その場で復帰させます。
-        if (GetTranslate().y < -18.0f && !isDead && isControlActive_) {
+        if (GetTranslate().y < -18.0f && !IsDead() && isControlActive_) {
             if (baseCombatController_) {
                 baseCombatController_->Cancel(*this, false);
             }
@@ -392,7 +284,7 @@ void Player::Update(float deltaTime) {
         }
 
         // ピンチ表示は毎フレーム明示的に設定し、回復後の赤枠を残しません。
-        if (!isDead && GetHp() <= 1.0f && GetHp() > 0.0f) {
+        if (!IsDead() && GetHp() <= 1.0f && GetHp() > 0.0f) {
             PostEffect::GetInstance()->GetParams()->dangerVignette = 0.8f;
         } else {
             PostEffect::GetInstance()->GetParams()->dangerVignette = 0.0f;
@@ -402,19 +294,18 @@ void Player::Update(float deltaTime) {
     // 変身元への参照は形態が有効な間だけ渡し、解除後の能力処理へ持ち越しません。
     BaseEnemy* activeMorphSource = isEnemyMorphed_ ? enemyMorphSource_ : nullptr;
 
-    // 照準中の重力は、このフレームの物理計算だけに適用します。
-    // Character::SetGravityはステータス本体を書き換えるため、一時補正には使用しません。
-    const float configuredGravity = param_.has_value() ? param_->gravity : 50.0f;
-    const float configuredMaxFallSpeed = param_.has_value() ? param_->maxFallSpeed : 60.0f;
+    // 長押し照準は廃止したため、鞭の入力中も設定済みの重力を維持します。
+    const float configuredGravity = GetParameters().has_value() ? GetParameters()->gravity : 50.0f;
+    const float configuredMaxFallSpeed = GetParameters().has_value() ? GetParameters()->maxFallSpeed : 60.0f;
     bool hasTemporaryPhysicsOverride = false;
 
     if (isControlActive_) {
-        float gravity = hookAimHeld ? (std::min)(configuredGravity, 10.0f) : configuredGravity;
+        float gravity = configuredGravity;
         float maxFallSpeed = configuredMaxFallSpeed;
 
-        if (param_.has_value()) {
-            param_->gravity = gravity;
-            param_->maxFallSpeed = maxFallSpeed;
+        if (GetParameters().has_value()) {
+            SetParameter(&engine::EntityParameter::gravity, gravity);
+            SetParameter(&engine::EntityParameter::maxFallSpeed, maxFallSpeed);
             hasTemporaryPhysicsOverride = true;
         }
     }
@@ -422,7 +313,7 @@ void Player::Update(float deltaTime) {
     // 状態と入力を確定してから物理を進め、能力入力に必要な接地を再確認します。
     // 破裂中は物理移動を止め、液面に残して演出を見せます。
     const float landingApproachVelocityY = GetVelocity().y;
-    if (isDead) {
+    if (IsDead()) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         engine::Object3d::Update(deltaTime);
     } else {
@@ -442,13 +333,13 @@ void Player::Update(float deltaTime) {
         // 互換モーターは接地をリセットし、シーン末尾の衝突解決まで未接地になります。
         // 能力判定より先に実際の足元接触を確認します。押し戻し・衝突イベントは
         // 従来のCollisionManagerに任せ、ここでは位置や速度を変更しません。
-        if (!copyPreviewActive_ && deltaTime > 0.0f && param_.has_value() && !param_->motorContinuousCollision &&
+        if (!copyPreviewActive_ && deltaTime > 0.0f && GetParameters().has_value() && !GetParameters()->motorContinuousCollision &&
             !IsGrounded() && GetVelocity().y <= 0.0f) {
             UpdateWorldMatrix(false);
             PhysicsQueryFilter filter;
             filter.mask = CollisionCategories::Get("ground") & GetCollisionMask();
             filter.ignoredObject = this;
-            const float maxSlope = std::clamp(param_->motorMaxSlopeDegrees, 0.0f, 89.9f);
+            const float maxSlope = std::clamp(GetParameters()->motorMaxSlopeDegrees, 0.0f, 89.9f);
             const float minimumGroundNormalY = std::cos(maxSlope * kPi / 180.0f);
 
             for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapAABB(GetAABB(), filter)) {
@@ -466,11 +357,11 @@ void Player::Update(float deltaTime) {
         // 隔離空間には物理床がないため、モーターの更新後・能力入力の前に床を解決します。
         // 更新前のSetGroundedだけではBeginFrameで消され、ガードが開始できません。
         if (copyPreviewActive_) {
-            const bool grounded = GetTranslate().y <= copyPreviewGroundHeight_ + 0.001f && velocity_.y <= 0.0f;
+            const bool grounded = GetTranslate().y <= copyPreviewGroundHeight_ + 0.001f && GetVelocity().y <= 0.0f;
 
             if (grounded) {
                 SetTranslateY(copyPreviewGroundHeight_);
-                velocity_.y = 0.0f;
+                SetVelocityY(0.0f);
             }
 
             SetGrounded(grounded);
@@ -479,7 +370,7 @@ void Player::Update(float deltaTime) {
     }
 
     if (mover_) {
-        const bool allowLandingFeedback = !isDead && !isCinematicLocked_ && !gateReturnAnimation_.IsActive() &&
+        const bool allowLandingFeedback = !IsDead() && !isCinematicLocked_ && !gateReturnAnimation_.IsActive() &&
                                           !dynamic_cast<PlayerStateDamage*>(state_.get()) && !absorbEffectActive_ &&
                                           !enemyMorphReleaseActive_ && electricShockFeedbackTimer_ <= 0.0f;
         const float impactRate = mover_->UpdateLandingFeedback(landingApproachVelocityY, deltaTime, allowLandingFeedback);
@@ -489,9 +380,9 @@ void Player::Update(float deltaTime) {
     }
 
     // 物理計算が終わったら照準中だけの重力補正を戻し、保存対象の設定値を汚しません。
-    if (hasTemporaryPhysicsOverride && param_.has_value()) {
-        param_->gravity = configuredGravity;
-        param_->maxFallSpeed = configuredMaxFallSpeed;
+    if (hasTemporaryPhysicsOverride && GetParameters().has_value()) {
+        SetParameter(&engine::EntityParameter::gravity, configuredGravity);
+        SetParameter(&engine::EntityParameter::maxFallSpeed, configuredMaxFallSpeed);
     }
 
     // 感電中は物理更新後のずれも抑え、拘束位置に固定してから視覚効果を更新します。
@@ -552,15 +443,18 @@ void Player::Update(float deltaTime) {
 
     // 通常形態は左クリック／攻撃アクションで必ず攻撃できます。
     // 運搬中は投げ操作、コピー中はコピー能力を優先します。
+    const bool hookActionActive = dynamic_cast<PlayerStateWhip*>(state_.get()) ||
+                                  dynamic_cast<PlayerStatePullEnemy*>(state_.get()) ||
+                                  dynamic_cast<PlayerStatePullObject*>(state_.get());
     const bool baseAttackTriggered =
-        deltaTime > 0.0f && !hookAimHeld &&
+        deltaTime > 0.0f && !hookTriggered && !hookActionActive &&
         ((!copyPreviewActive_ && inputManager_->IsActionTriggered("Attack")) || morphLeftAbilityTriggered);
     if (baseCombatController_) {
         baseCombatController_->ProcessInput(*this, baseAttackTriggered);
         baseCombatController_->Update(*this, deltaTime);
     }
 
-    if (!absorbEffectActive_ && isEnemyMorphed_ && !enemyMorphReleaseActive_ && isControlActive_ && !isDead &&
+    if (!absorbEffectActive_ && isEnemyMorphed_ && !enemyMorphReleaseActive_ && isControlActive_ && !IsDead() &&
         morphReleaseTriggered) {
         BeginEnemyMorphRelease(false);
     }
@@ -738,7 +632,7 @@ void Player::Update(float deltaTime) {
     }
 
     if (!dynamic_cast<PlayerStateDamage*>(state_.get()) && !absorbEffectActive_ && !enemyMorphReleaseActive_ &&
-        electricShockFeedbackTimer_ <= 0.0f && !isDead) {
+        electricShockFeedbackTimer_ <= 0.0f && !IsDead()) {
         slimeAnimator_.Update(this, deltaTime);
     }
 
@@ -858,7 +752,7 @@ void Player::UpdateCopyAdornment() {
 
     if (!copyAdornment_) {
         copyAdornment_ = std::make_unique<engine::Object3d>();
-        copyAdornment_->Initialize(common_);
+        copyAdornment_->Initialize(GetObjectCommon());
         copyAdornment_->SetColliderType(ColliderType::kNone);
         copyAdornment_->SetCollisionAttribute(0);
         copyAdornment_->SetCollisionMask(0);
@@ -955,7 +849,7 @@ void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightR
 // =================================================================
 
 bool Player::OnCollision(engine::Object3d* other) {
-    if (isDead || isCinematicLocked_) {
+    if (IsDead() || isCinematicLocked_) {
         return false;
     }
 
@@ -1122,7 +1016,8 @@ void Player::SetAbilityAirImpulse(const engine::Vector3& velocity) {
 void Player::ChangeState(std::unique_ptr<IAnimationState> newState) {
     // 入力以外の経路でも、保持中の敵を離してフックへ切り替えない。
     // 現在状態のExitより前に拒否し、運搬側の解除処理も発生させない。
-    if (carriedEnemy_ && (dynamic_cast<PlayerStatePullEnemy*>(newState.get()) ||
+    if (carriedEnemy_ && (dynamic_cast<PlayerStateWhip*>(newState.get()) ||
+                          dynamic_cast<PlayerStatePullEnemy*>(newState.get()) ||
                           dynamic_cast<PlayerStatePullObject*>(newState.get()))) {
         return;
     }
@@ -1144,12 +1039,12 @@ void Player::ChangeState(std::unique_ptr<IAnimationState> newState) {
 
 void Player::PlayAnimation(const std::string& animName, bool loop) {
     // 既に同じアニメーションが再生中ならリセットしない (滑らかな遷移のため)
-    if (animName_ != animName) {
-        animName_ = animName;
+    if (GetAnimationName() != animName) {
+        SetAnimationName(animName);
         ResetAnimationTime();
     }
 
-    isAnimLoop_ = loop;
+    SetAnimationLoop(loop);
 }
 
 void Player::SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode) {
@@ -1253,7 +1148,7 @@ void Player::EndCinematicPullVisual() {
 }
 
 void Player::BeginCinematicLock(bool preserveCopyAbility) {
-    if (isCinematicLocked_ || isDead) {
+    if (isCinematicLocked_ || IsDead()) {
         return;
     }
 
@@ -1324,7 +1219,7 @@ void Player::EndCinematicLock(bool restoreControl) {
     SetVelocity({0.0f, 0.0f, 0.0f});
     slimeAnimator_.Reset(managedBaseScale_, this);
     ChangeState(std::make_unique<PlayerStateIdle>());
-    SetIsControlActive(restoreControl && cinematicSavedControlActive_ && !isDead);
+    SetIsControlActive(restoreControl && cinematicSavedControlActive_ && !IsDead());
 }
 
 // =======================================================
@@ -1373,10 +1268,10 @@ void Player::SetTutorialSafetyEnabled(bool enabled) {
     // チュートリアル開始時に残り HP と死亡状態を安全な初期値へ戻す。
     tutorialSafetyEnabled_ = enabled;
 
-    if (enabled && param_.has_value()) {
-        param_->maxHp = (std::max)(param_->maxHp, 1.0f);
-        param_->hp = param_->maxHp;
-        isDead = false;
+    if (enabled && GetParameters().has_value()) {
+        SetParameter(&engine::EntityParameter::maxHp, (std::max)(GetParameters()->maxHp, 1.0f));
+        SetParameter(&engine::EntityParameter::hp, GetParameters()->maxHp);
+        SetDead(false);
         deathTimer_ = 0.0f;
         SetDamageInvincible(false);
     }
@@ -1384,12 +1279,12 @@ void Player::SetTutorialSafetyEnabled(bool enabled) {
 
 void Player::RestoreHpToFull() {
     // 最大HPは現在のプレイヤー設定を使い、取得時に即座にHUDへ反映します。
-    if (!param_.has_value() || isDead) {
+    if (!GetParameters().has_value() || IsDead()) {
         return;
     }
 
-    param_->maxHp = (std::max)(param_->maxHp, 1.0f);
-    param_->hp = param_->maxHp;
+    SetParameter(&engine::EntityParameter::maxHp, (std::max)(GetParameters()->maxHp, 1.0f));
+    SetParameter(&engine::EntityParameter::hp, GetParameters()->maxHp);
 }
 
 void Player::SetTutorialCarryActionPermissions(bool allowThrow, bool allowAbsorb) {

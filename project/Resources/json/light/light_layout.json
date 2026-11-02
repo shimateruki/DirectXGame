@@ -37,5 +37,13 @@
         "volumetricSteps": 8
     },
     "pointLights": [],
+    "shadow": {
+        "areaSize": 160.0,
+        "resolution": 2048
+    },
+    "skybox": {
+        "enabled": true,
+        "texture": "Resources/output_skybox.dds"
+    },
     "spotLights": []
 }

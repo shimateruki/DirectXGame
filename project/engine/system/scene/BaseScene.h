@@ -284,6 +284,11 @@ protected:
     /// <returns>呼び出し後に背景色コピーが済んでいればtrue。</returns>
     bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
 
+    /// <summary>派生シーンが利用するエディターと事前読込結果を借用する。</summary>
+    DebugEditor* GetDebugEditor() const { return debugEditor_; }
+    const std::shared_ptr<ScenePreloadData>& GetPreparedLoadData() const { return preparedLoadData_; }
+private:
+
     // シーン切替を要求する先。BaseSceneは寿命を管理しない。
     SceneManager* sceneManager_ = nullptr;
 

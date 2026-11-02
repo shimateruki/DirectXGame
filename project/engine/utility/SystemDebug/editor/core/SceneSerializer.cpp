@@ -605,8 +605,8 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3d* obj) {
 
     // Cameraは移動と再生設定までを保存し、通常モデルの衝突・材質項目は書き出さない。
     if (obj->IsCameraObject()) {
-        d["animation"]["animName"] = obj->animName_;
-        d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
+        d["animation"]["animName"] = obj->GetAnimationName();
+        d["animation"]["isAnimLoop"] = obj->IsAnimationLoop();
         d["animation"]["animatorController"] = obj->GetAnimatorControllerPath();
         d["recorder"]["recordPathName"] = obj->GetRecordPathName();
         d["recorder"]["isRecordLoop"] = obj->IsRecordLoop();
@@ -701,8 +701,8 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3d* obj) {
     }
 
     // 9. アニメーション
-    d["animation"]["animName"] = obj->animName_;
-    d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
+    d["animation"]["animName"] = obj->GetAnimationName();
+    d["animation"]["isAnimLoop"] = obj->IsAnimationLoop();
     d["animation"]["animatorController"] = obj->GetAnimatorControllerPath();
 
     // 10. レコーダー (Ghost)

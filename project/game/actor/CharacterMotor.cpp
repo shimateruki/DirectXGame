@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "CharacterMotor.h"
+#include <numbers>
 
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
@@ -10,7 +11,7 @@
 
 namespace {
 constexpr float kMinimumDistance = 0.0001f;
-constexpr float kDegreesToRadians = 3.1415926535f / 180.0f;
+constexpr float kDegreesToRadians = std::numbers::pi_v<float> / 180.0f;
 
 float Dot(const engine::Vector3& lhs, const engine::Vector3& rhs) {
     // 衝突法線に対する速度成分を得るための局所的な内積。

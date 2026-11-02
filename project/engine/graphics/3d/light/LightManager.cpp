@@ -1,4 +1,5 @@
 #include "LightManager.h"
+#include "Easing.h"
 #include "Object3d.h" // 追従対象の座標を取得するために必要
 #include "Camera.h"
 #include "CameraManager.h"
@@ -1096,7 +1097,7 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
         environmentBlendElapsed_ / (std::max)(environmentBlendDuration_, 0.0001f),
         0.0f,
         1.0f);
-    const float t = linearT * linearT * (3.0f - 2.0f * linearT);
+    const float t = Easing::SmoothStep(linearT);
     const auto lerp = [t](float from, float to) { return from + (to - from) * t; };
     const auto lerp3 = [&](const engine::Vector3& from, const engine::Vector3& to) {
         return engine::Vector3{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z) };

@@ -26,15 +26,15 @@ void GimmickChainCollapseFloor::Initialize(engine::Object3dCommon* common, const
     SetScale({2.0f, 0.25f, 2.0f});
     SetStatic(false);
 
-    if (!param_.has_value())
-        param_.emplace();
-    param_->shakeDuration = 0.45f;
-    param_->fallDuration = 1.4f;
-    param_->interval = 0.18f;
-    param_->gravity = 48.0f;
+    if (!GetParameters().has_value())
+        ResetParameters();
+    SetParameter(&engine::EntityParameter::shakeDuration, 0.45f);
+    SetParameter(&engine::EntityParameter::fallDuration, 1.4f);
+    SetParameter(&engine::EntityParameter::interval, 0.18f);
+    SetParameter(&engine::EntityParameter::gravity, 48.0f);
 
     // 従来の一度きりの挙動を既定とし、必要なステージだけ明示的に復帰を有効化する。
-    param_->returnOnOff = false;
+    SetParameter(&engine::EntityParameter::returnOnOff, false);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickChainCollapseFloor;
@@ -221,7 +221,7 @@ void GimmickChainCollapseFloor::CheckPlayerContact() {
     BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
     if (!scene) return;
     Player* player = GetScenePlayer(scene);
-    if (!player || player->isDead) {
+    if (!player || player->IsDead()) {
         hasPreviousPlayerFoot_ = false;
         return;
     }
@@ -267,7 +267,7 @@ void GimmickChainCollapseFloor::UpdateRockAppearance() {
 
 bool GimmickChainCollapseFloor::ShouldReturnAfterCollapse() const {
     // 復帰は配置設定で明示された床にだけ許可します。
-    return param_.has_value() && param_->returnOnOff;
+    return GetParameters().has_value() && GetParameters()->returnOnOff;
 }
 
 void GimmickChainCollapseFloor::TriggerNextFloor() {
@@ -287,29 +287,29 @@ void GimmickChainCollapseFloor::TriggerNextFloor() {
 
 float GimmickChainCollapseFloor::GetShakeDuration() const {
     // 旧データに設定がない場合は既定の予告時間を使います。
-    return param_.has_value() ? param_->shakeDuration : 0.45f;
+    return GetParameters().has_value() ? GetParameters()->shakeDuration : 0.45f;
 }
 
 float GimmickChainCollapseFloor::GetFallDuration() const {
     // 落下演出の長さは配置設定から取得します。
-    return param_.has_value() ? param_->fallDuration : 1.4f;
+    return GetParameters().has_value() ? GetParameters()->fallDuration : 1.4f;
 }
 
 float GimmickChainCollapseFloor::GetChainDelay() const {
     // 連鎖する床同士の崩壊開始を少しずつ遅らせます。
-    return param_.has_value() ? param_->interval : 0.18f;
+    return GetParameters().has_value() ? GetParameters()->interval : 0.18f;
 }
 
 float GimmickChainCollapseFloor::GetGravity() const {
     // 落下速度の増加率は配置設定に従います。
-    return param_.has_value() ? param_->gravity : 48.0f;
+    return GetParameters().has_value() ? GetParameters()->gravity : 48.0f;
 }
 
 std::unique_ptr<engine::Object3d> GimmickChainCollapseFloor::Clone() const {
     // 複製先を初期化し、連鎖の設定と元の配置を引き継ぎます。
     auto newObj = std::make_unique<GimmickChainCollapseFloor>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

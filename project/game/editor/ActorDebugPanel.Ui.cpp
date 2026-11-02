@@ -140,8 +140,8 @@ void ActorDebugPanel::DrawPlayerCopySettings() {
     changed |= ImGui::SliderFloat("再生区間", &loopDuration_, 4.0f, 12.0f, "%.1f 秒");
     changed |= ImGui::Checkbox("命中確認ダミー", &showTarget_);
     changed |= ImGui::SliderFloat("ダミーまでの距離", &targetDistance_, 2.0f, 25.0f, "%.1f m");
-    if (previewEnemy_ && previewEnemy_->param_)
-        ImGui::Text("ダミー累計ダメージ: %.1f", 100000.0f - previewEnemy_->param_->hp);
+    if (previewEnemy_ && previewEnemy_->GetParameters())
+        ImGui::Text("ダミー累計ダメージ: %.1f", 100000.0f - previewEnemy_->GetParameters()->hp);
     ImGui::SliderFloat("再生速度", &playbackSpeed_, 0.05f, 2.0f, "%.2fx");
     ImGui::Checkbox("ループ再生", &loop_);
     if (changed && enabled_)

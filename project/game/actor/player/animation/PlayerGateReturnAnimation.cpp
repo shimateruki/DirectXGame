@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/actor/player/animation/PlayerGateReturnAnimation.h"
+#include "Easing.h"
 
 #include "game/actor/player/Player.h"
 #include <algorithm>
@@ -105,22 +106,13 @@ float PlayerGateReturnAnimation::Clamp01(float value) const {
 }
 
 float PlayerGateReturnAnimation::EaseOutCubic(float value) const {
-    // 終点近くで減速する三次曲線を適用する。
-    value = Clamp01(value);
-    const float inv = 1.0f - value;
-    return 1.0f - inv * inv * inv;
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::OutCubic01(value);
 }
 
 float PlayerGateReturnAnimation::EaseInOutCubic(float value) const {
-    // 前半を加速、後半を減速させて切替点の速度をつなぐ。
-    value = Clamp01(value);
-
-    if (value < 0.5f) {
-        return 4.0f * value * value * value;
-    }
-
-    const float f = -2.0f * value + 2.0f;
-    return 1.0f - (f * f * f) * 0.5f;
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::InOutCubic01(value);
 }
 
 void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) {

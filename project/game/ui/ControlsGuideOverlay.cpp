@@ -1,4 +1,6 @@
 #include "game/ui/MenuControls.h"
+#include "Easing.h"
+#include <numbers>
 #define NOMINMAX
 #include "ControlsGuideOverlay.h"
 
@@ -23,12 +25,7 @@
 using json = nlohmann::json;
 
 namespace {
-// ページ移動の補間率を0～1へ収め、両端の速度を滑らかにします。
-float SmoothStep(float value) {
-    // ページ移動の端で速度が急変しないよう、補間率を滑らかにする。
-    value = std::clamp(value, 0.0f, 1.0f);
-    return value * value * (3.0f - 2.0f * value);
-}
+
 
 // 能力ガイドの三行分の説明画像。Sprite の生成や所有は呼出側で行う。
 struct AbilityGuideVisual {
@@ -703,7 +700,7 @@ void ControlsGuideOverlay::UpdateSlide(float deltaTime) {
 
     slideTimer_ += std::max(0.0f, deltaTime);
     const float rate = slideDuration_ > 0.0f ? std::clamp(slideTimer_ / slideDuration_, 0.0f, 1.0f) : 1.0f;
-    const float eased = SmoothStep(rate);
+    const float eased = Easing::SmoothStep01(rate);
     const float slideDistance = background_.baseSize.x > 0.0f ? background_.baseSize.x * 0.86f : 1650.0f;
 
     SetPageOffset(outgoingPage_, -static_cast<float>(slideDirection_) * slideDistance * eased);
@@ -734,7 +731,7 @@ void ControlsGuideOverlay::UpdateStaticVisuals() {
     };
 
     updateArrow(leftArrow_, time_ * 4.4f);
-    updateArrow(rightArrow_, time_ * 4.4f + 3.1415926535f);
+    updateArrow(rightArrow_, time_ * 4.4f + std::numbers::pi_v<float>);
 
     for (int page = 0; page < kPageCount; ++page) {
         Element& dot = pageDots_[static_cast<size_t>(page)];

@@ -2132,7 +2132,7 @@
     <Text Include="externals\imgui\LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="DirectXGame.rc">
+    <ResourceCompile Include="ShimaEngine.rc">
       <Filter>繝ｪ繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ResourceCompile>
   </ItemGroup>

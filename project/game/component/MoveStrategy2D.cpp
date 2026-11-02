@@ -4,7 +4,7 @@
 #include "engine/utility/math/Math.h"
 
 engine::Vector3 MoveStrategy2D::CalculateVelocity(Player* player) {
-    engine::Vector3 move = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 move = engine::Vector3::ZERO;
     float moveSpeed = player->GetMoveSpeed();
 
     engine::InputManager* inputManager = player->GetInputManager();

@@ -1,4 +1,5 @@
 #include "PrimitiveDrawer.h"
+#include <numbers>
 #include "RenderStats.h"
 #include "DirectXCommon.h"
 #include "CameraManager.h"
@@ -91,7 +92,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     uint32_t sphereIdx[kSegments * 6];
 
     for (int i = 0; i < kSegments; ++i) {
-        float theta = (2.0f * 3.14159265f * i) / kSegments;
+        float theta = (2.0f * std::numbers::pi_v<float> * i) / kSegments;
         float cosT = std::cos(theta) * 0.5f; // 半径0.5の基準球
         float sinT = std::sin(theta) * 0.5f;
 
@@ -137,7 +138,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     uint32_t cylinderIdx[kCylinderSegments * 6];
 
     for (int i = 0; i < kCylinderSegments; ++i) {
-        float theta = (2.0f * 3.14159265f * i) / kCylinderSegments;
+        float theta = (2.0f * std::numbers::pi_v<float> * i) / kCylinderSegments;
         float cosT = std::cos(theta) * 0.5f; // 半径0.5
         float sinT = std::sin(theta) * 0.5f;
 

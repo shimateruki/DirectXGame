@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/actor/item/DroppedCopyStar.h"
+#include <numbers>
 #include "Player.h"
 #include "SceneManager.h"
 #include "VFXSequencer.h"
@@ -40,7 +41,7 @@ void DroppedCopyStar::InitializeDrop(engine::Object3dCommon* common, const std::
 }
 
 void DroppedCopyStar::Update(float deltaTime) {
-    if (isDead || isCollected_)
+    if (IsDead() || IsCollected())
         return;
     auto* manager = SceneManager::GetInstance();
     if (!manager || !manager->IsPlaying())
@@ -55,7 +56,7 @@ void DroppedCopyStar::Update(float deltaTime) {
 
     const float t = std::clamp(elapsed_ / kFlightDuration, 0.0f, 1.0f);
     engine::Vector3 position = start_ * (1.0f - t) + destination_ * t;
-    position.y += std::sin(t * 3.14159265f) * 0.85f;
+    position.y += std::sin(t * std::numbers::pi_v<float>) * 0.85f;
     if (t >= 1.0f)
         position.y += std::sin((elapsed_ - kFlightDuration) * 2.15f) * 0.10f;
     SetTranslate(position);
@@ -68,7 +69,7 @@ void DroppedCopyStar::Update(float deltaTime) {
 }
 
 void DroppedCopyStar::Collect(Player* player) {
-    if (!player || isCollected_ || isDead || elapsed_ < kPickupDelay || elapsed_ >= lifetime_)
+    if (!player || IsCollected() || IsDead() || elapsed_ < kPickupDelay || elapsed_ >= lifetime_)
         return;
     auto* manager = SceneManager::GetInstance();
     if (!manager || !manager->IsPlaying())
@@ -84,10 +85,10 @@ void DroppedCopyStar::Collect(Player* player) {
 std::unique_ptr<engine::Object3d> DroppedCopyStar::Clone() const {
     // 軌道と経過時間を引き継ぎ、複製直後の位置が巻き戻らないようにする。
     auto copy = std::make_unique<DroppedCopyStar>();
-    copy->InitializeDrop(common_, enemyType_, unlimitedDuration_, start_, destination_);
+    copy->InitializeDrop(GetObjectCommon(), enemyType_, unlimitedDuration_, start_, destination_);
     copy->CopyFrom(this);
     copy->elapsed_ = elapsed_;
-    copy->isCollected_ = isCollected_;
+    copy->RestoreCollected(IsCollected());
     copy->lifetime_ = lifetime_;
     copy->blinkDuration_ = blinkDuration_;
     return copy;
@@ -99,7 +100,7 @@ void DroppedCopyStar::CaptureReplayCustomState(json& state) const {
     state["copyDropType"] = enemyType_;
     state["copyDropUnlimited"] = unlimitedDuration_;
     state["copyDropElapsed"] = elapsed_;
-    state["copyDropCollected"] = isCollected_;
+    state["copyDropCollected"] = IsCollected();
     state["copyDropLifetime"] = lifetime_;
     state["copyDropBlink"] = blinkDuration_;
     state["copyDropStart"] = {start_.x, start_.y, start_.z};
@@ -112,7 +113,7 @@ void DroppedCopyStar::RestoreReplayCustomState(const json& state) {
     enemyType_ = state.value("copyDropType", enemyType_);
     unlimitedDuration_ = state.value("copyDropUnlimited", unlimitedDuration_);
     elapsed_ = state.value("copyDropElapsed", elapsed_);
-    isCollected_ = state.value("copyDropCollected", isCollected_);
+    RestoreCollected(state.value("copyDropCollected", IsCollected()));
     lifetime_ = state.value("copyDropLifetime", lifetime_);
     blinkDuration_ = state.value("copyDropBlink", blinkDuration_);
     auto restoreVector = [&](const char* key, engine::Vector3& value) {

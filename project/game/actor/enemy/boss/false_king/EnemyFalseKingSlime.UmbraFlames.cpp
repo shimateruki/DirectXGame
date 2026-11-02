@@ -50,7 +50,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
                                           engine::Vector2{nearDistance + fanLength * 0.879f, 0.0f},
                                           engine::Vector2{nearDistance + fanLength * 0.879f, farWidth * 0.380f}};
     umbraFlameNetwork_ = std::make_unique<EffectObject3d>();
-    umbraFlameNetwork_->Initialize(common_);
+    umbraFlameNetwork_->Initialize(GetObjectCommon());
 
     if (!umbraFlameNetwork_->LoadFromJson(kUmbraFlameNetworkEffect)) {
         umbraFlameNetwork_.reset();
@@ -68,7 +68,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
         portal.delay = static_cast<float>(index) * 0.12f;
         portal.age = -portal.delay;
         portal.sigil = std::make_unique<EffectObject3d>();
-        portal.sigil->Initialize(common_);
+        portal.sigil->Initialize(GetObjectCommon());
 
         if (!portal.sigil->LoadFromJson(kUmbraFlameSigilEffect)) {
             portal.sigil.reset();
@@ -237,13 +237,13 @@ void EnemyFalseKingSlime::UpdateUmbraFlames(float deltaTime, bool active) {
     }
 
     // 炎の前縁が届いた時だけ判定し、画面に見える進行と被弾を一致させます。
-    if (!active || umbraFlameFanHit_ || !target_ || target_->isDead || !target_->GetIsVisible())
+    if (!active || umbraFlameFanHit_ || !GetTarget() || GetTarget()->IsDead() || !GetTarget()->GetIsVisible())
         return;
-    const engine::Vector3 targetPosition = target_->GetWorldPosition();
+    const engine::Vector3 targetPosition = GetTarget()->GetWorldPosition();
     const engine::Vector3 offset = targetPosition - attackStartPosition_;
     const float along = offset.x * forward.x + offset.z * forward.z;
     const float side = std::abs(offset.x * right.x + offset.z * right.z);
-    const float collisionRadius = target_->GetCollisionRadius();
+    const float collisionRadius = GetTarget()->GetCollisionRadius();
     const float fanRate = std::clamp((along - nearDistance) / fanLength, 0.0f, 1.0f);
     const float halfWidth = (nearWidth + (farWidth - nearWidth) * fanRate) * 0.5f;
     const engine::Vector3 ground = FindGroundPoint(targetPosition);

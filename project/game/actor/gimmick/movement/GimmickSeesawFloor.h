@@ -23,7 +23,7 @@ class GimmickSeesawFloor : public BaseGimmick {
     std::unique_ptr<engine::Object3d> Clone() const override;
 
   private:
-    engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 baseRotation_ = engine::Vector3::ZERO;
     float contactTimer_ = 0.0f;
     float targetTilt_ = 0.0f;
     float halfLength_ = 5.0f;

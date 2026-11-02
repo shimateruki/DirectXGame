@@ -164,16 +164,16 @@ void GamePlayScene::DrawImGui() {
 
             // HPはデバッグ確認のため実データへ直接書き込み、残機とコインは管理器経由で戻す。
             if (ImGui::Button(ICON_FA_AMBULANCE " HPを1にする (Debug)")) {
-                if (player_->param_.has_value()) {
-                    player_->param_->hp = 1.0f;
+                if (player_->GetParameters().has_value()) {
+                    player_->SetParameter(&engine::EntityParameter::hp, 1.0f);
                 }
             }
 
             ImGui::SameLine();
 
             if (ImGui::Button(ICON_FA_SKULL " HPを0にする (Debug)")) {
-                if (player_->param_.has_value()) {
-                    player_->param_->hp = 0.0f;
+                if (player_->GetParameters().has_value()) {
+                    player_->SetParameter(&engine::EntityParameter::hp, 0.0f);
                 }
             }
 
@@ -201,7 +201,7 @@ void GamePlayScene::DrawImGui() {
             const bool teleportRequestPending = pendingDebugTeleportDestination_ != DebugTeleportDestination::None;
             const bool teleportStateReady =
                 (debugRuntimePlaying || EditorCommandRegistry::GetInstance()->CanExecute(EditorCommandId::Play)) &&
-                !player_->isDead && !isGoal_ && !teleportRequestPending;
+                !player_->IsDead() && !isGoal_ && !teleportRequestPending;
             const bool hasPrismAnchor = FindDebugObjectByName(kDebugPrismArenaAnchorName) != nullptr;
             const bool hasGoalAnchor = FindDebugObjectByName(kDebugGoalEntryAnchorName) != nullptr;
             const float teleportSpacing = ImGui::GetStyle().ItemSpacing.x;
@@ -396,7 +396,7 @@ void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
         return;
     }
 
-    if (player_->isDead || player_->IsCinematicLocked()) {
+    if (player_->IsDead() || player_->IsCinematicLocked()) {
         DebugConsole::GetInstance()->AddLog("Debug morph skipped: player is unavailable.");
         return;
     }
@@ -464,7 +464,7 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
         return;
     }
 
-    if (!player_ || player_->isDead || isGoal_) {
+    if (!player_ || player_->IsDead() || isGoal_) {
         DebugConsole::GetInstance()->AddLog("Debug teleport skipped: player is unavailable.");
         return;
     }
@@ -529,7 +529,7 @@ engine::Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) c
 
 bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const engine::Vector3& anchorOffset,
                                                 const char* facingObjectName, const char* destinationLabel) {
-    if (!player_ || player_->isDead || isGoal_) {
+    if (!player_ || player_->IsDead() || isGoal_) {
         DebugConsole::GetInstance()->AddLog("Debug teleport skipped: player is unavailable.");
         return false;
     }

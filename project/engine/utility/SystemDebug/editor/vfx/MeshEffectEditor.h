@@ -58,14 +58,14 @@ private:
     char jsonSearch_[128] = {};
 
     // 基本Transform。
-    engine::Vector3 editPosition_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 editRotation_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 editPosition_ = engine::Vector3::ZERO;
+    engine::Vector3 editRotation_ = engine::Vector3::ZERO;
     engine::Vector3 editScale_ = { 1.0f, 1.0f, 1.0f };
 
     // 表示素材と見た目。
     char editModelName_[128] = "Primitives/plane";
     char editTexturePath_[256] = "";
-    engine::Vector4 editColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 editColor_ = engine::Colors::White;
     engine::Vector2 editScrollSpeed_ = { 0.0f, -1.0f };
     float editIntensity_ = 2.0f;
 

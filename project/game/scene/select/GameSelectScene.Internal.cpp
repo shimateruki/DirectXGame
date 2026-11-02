@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.Internal.h"
+#include "Easing.h"
 #include "Object3d.h"
 #include "CollisionManager.h"
 #include "CollisionConfig.h"
@@ -15,10 +16,8 @@ float SelectClamp01(float value) {
 
 // ゲート演出の終点で減速する補間率を返します。
 float SelectEaseOutCubic(float value) {
-    // ゲートへの接近を終点付近で減速させる。
-    value = SelectClamp01(value);
-    const float inv = 1.0f - value;
-    return 1.0f - inv * inv * inv;
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::OutCubic01(value);
 }
 
 engine::Vector3 SelectLookAtRotation(const engine::Vector3& eye, const engine::Vector3& target) {
@@ -145,15 +144,8 @@ SelectGateEntryRoute SelectBuildGateEntryRoute(const engine::Vector3& gatePos, c
 
 // ゲート演出の始点と終点を滑らかにつなぎます。
 float SelectEaseInOutCubic(float value) {
-    // 入場の前半を加速・後半を減速し、切替点の速度をつなぐ。
-    value = SelectClamp01(value);
-
-    if (value < 0.5f) {
-        return 4.0f * value * value * value;
-    }
-
-    const float f = -2.0f * value + 2.0f;
-    return 1.0f - (f * f * f) * 0.5f;
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::InOutCubic01(value);
 }
 
 engine::Vector3 SelectLerpVector3(const engine::Vector3& a, const engine::Vector3& b, float t) {
@@ -188,12 +180,8 @@ engine::Vector3 SelectNormalizeXZ(const engine::Vector3& value, const engine::Ve
 
 // 解放演出の終点を少し越えて戻る補間率を返します。
 float SelectEaseOutBack(float value) {
-    // 解放表示の登場時だけ少し行き過ぎて戻る曲線を作る。
-    value = SelectClamp01(value);
-    constexpr float c1 = 1.70158f;
-    constexpr float c3 = c1 + 1.0f;
-    const float x = value - 1.0f;
-    return 1.0f + c3 * x * x * x + c1 * x * x;
+    // 補間曲線と入力範囲の扱いを共通のEasingへ委譲する。
+    return Easing::OutBack01(value);
 }
 
 engine::Vector3 SelectLerp(const engine::Vector3& a, const engine::Vector3& b, float t) {

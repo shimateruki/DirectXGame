@@ -47,7 +47,7 @@ public:
 private:
     std::string presetName_ = "";
     engine::Object3d* targetObject_ = nullptr; // 所有しない追従先。
-    engine::Vector3 offset_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 offset_ = engine::Vector3::ZERO;
 
     bool isPlaying_ = false;
     float emitTimer_ = 0.0f;

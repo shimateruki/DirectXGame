@@ -326,7 +326,10 @@ void SettingsMenuOverlay::SetEditorViewport(int left, int top, int right, int bo
 
 engine::Vector2 SettingsMenuOverlay::Pointer() const {
     engine::Vector2 p = input_->GetMousePosition();
-    float w = static_cast<float>(WinApp::kClientWidth), h = static_cast<float>(WinApp::kClientHeight);
+    const auto area = WinApp::CalculateGameViewRect(WinApp::GetWindowWidth(), WinApp::GetWindowHeight());
+    // 黒帯のクリックは画面外のまま扱い、端のボタンへ吸い寄せません。
+    WinApp::ClientToGamePosition(p.x, p.y, area, p.x, p.y);
+    float w = static_cast<float>(WinApp::GetClientWidth()), h = static_cast<float>(WinApp::GetClientHeight());
 #ifdef USE_IMGUI
     if (hasEditorViewport_) {
         POINT screen{};
@@ -513,7 +516,7 @@ void SettingsMenuOverlay::Picture(const std::string& texture, float x, float y, 
     s->SetTextureRect({0, 0}, {static_cast<float>(meta.width), static_cast<float>(meta.height)});
 
     // Spriteの投影サイズと一致させ、表示とPointerの逆変換で余白の差を作らない。
-    const engine::Vector2 scale{WinApp::kClientWidth / 1280.f, WinApp::kClientHeight / 720.f};
+    const engine::Vector2 scale{WinApp::GetClientWidth() / 1280.f, WinApp::GetClientHeight() / 720.f};
     s->SetAnchorPoint({0, 0});
     s->SetPosition({x * scale.x, y * scale.y});
     s->SetSize({w * scale.x, h * scale.y});

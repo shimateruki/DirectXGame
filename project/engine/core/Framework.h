@@ -39,6 +39,12 @@ protected:
     virtual void Draw() = 0;
 
 protected:
+    /// <summary>Framework所有の基盤サービスを派生アプリへ貸し出す。</summary>
+    WinApp* GetWindow() const { return winApp_.get(); }
+    DirectXCommon* GetDirectX() const { return dxCommon_; }
+    AudioPlayer* GetAudioPlayer() const { return audioPlayer_; }
+private:
+
     // --- エンジンシステム ---
     // ウィンドウはFramework所有。DirectXと音声は共有サービスへの借用参照として保持する。
     std::unique_ptr<WinApp> winApp_;

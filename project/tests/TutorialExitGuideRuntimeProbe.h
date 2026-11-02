@@ -115,7 +115,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             gate->SetGateState(false,true,false); gate->SetTransitionEnabled(true);
             auto pos=gate->GetWorldPosition(); pos.x-=11; pos.y=-.54f;
             player->SetTranslate(pos); player->SetVelocity({}); player->SetIsControlActive(false); player->SetIsVisible(true);
-            player->param_->gravity=0; player->SetCollisionAttribute(0); player->SetCollisionMask(0); player->UpdateWorldMatrix(true);
+            player->SetParameter(&engine::EntityParameter::gravity, 0); player->SetCollisionAttribute(0); player->SetCollisionMask(0); player->UpdateWorldMatrix(true);
             Access::Update(*scene,dt);
         };
         if (phase==1) {
@@ -166,8 +166,8 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
                     "live guide failed to follow moved player");
             Access::Update(*scene,0); Require(!arrow->GetIsVisible(),"editor pause did not hide guide");
             Access::Update(*scene,dt); Require(arrow->GetIsVisible(),"guide did not resume");
-            const float hp=player->param_->hp; player->param_->hp=0;
-            Access::Update(*scene,dt); Require(!arrow->GetIsVisible(),"death did not hide guide"); player->param_->hp=hp;
+            const float hp=player->GetParameters()->hp; player->SetParameter(&engine::EntityParameter::hp, 0);
+            Access::Update(*scene,dt); Require(!arrow->GetIsVisible(),"death did not hide guide"); player->SetParameter(&engine::EntityParameter::hp, hp);
             prepare(); auto arrival=gate->GetWorldPosition(); arrival.x-=1; arrival.y=-.54f;
             player->SetTranslate(arrival); player->UpdateWorldMatrix(true); Access::Update(*scene,dt);
             Require(!arrow->GetIsVisible() && Access::Guide(*scene).HasArrived(),"actual gate arrival did not latch hidden");

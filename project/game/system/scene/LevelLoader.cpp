@@ -979,17 +979,17 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                 // 古いフラットな形式の読み込み（後方互換性用）
                 if (objData.contains("animName"))
-                    targetObject->animName_ = objData["animName"];
+                    targetObject->SetAnimationName(objData["animName"]);
                 if (objData.contains("isAnimLoop"))
-                    targetObject->isAnimLoop_ = objData["isAnimLoop"];
+                    targetObject->SetAnimationLoop(objData["isAnimLoop"]);
 
                 // ネストされた形式の読み込み（最新仕様）
                 if (objData.contains("animation")) {
                     const auto& anim = objData["animation"];
                     if (anim.contains("animName"))
-                        targetObject->animName_ = anim["animName"];
+                        targetObject->SetAnimationName(anim["animName"]);
                     if (anim.contains("isAnimLoop"))
-                        targetObject->isAnimLoop_ = anim["isAnimLoop"];
+                        targetObject->SetAnimationLoop(anim["isAnimLoop"]);
                     if (anim.contains("animatorController")) {
                         targetObject->SetAnimatorController(anim.value("animatorController", ""));
                     }
@@ -999,8 +999,8 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 bool isCinematic = targetObject->IsCameraObject();
 
                 // パスデータが存在する場合に再生を開始
-                if (!targetObject->GetRecordPathName().empty() && targetObject->recorder_) {
-                    targetObject->recorder_->Play(targetObject->GetRecordPathName(), targetObject->IsRecordLoop(),
+                if (!targetObject->GetRecordPathName().empty() && targetObject->GetRecorder()) {
+                    targetObject->GetRecorder()->Play(targetObject->GetRecordPathName(), targetObject->IsRecordLoop(),
                                                   targetObject->IsRecordRelative(), isCinematic);
                 }
 

@@ -75,8 +75,8 @@ class GimmickFireCannon : public BaseGimmick {
 
     float GetTurnSpeedRadians() const;
 
-    engine::Vector3 basePosition_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 basePosition_ = engine::Vector3::ZERO;
+    engine::Vector3 baseRotation_ = engine::Vector3::ZERO;
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     bool initializedForPlay_ = false;
     bool previewActive_ = false;

@@ -40,7 +40,7 @@ struct CinematicVFXTrackData {
     float duration = 0.1f;
     // trueなら開始時の対象位置をワールド座標で確定し、対象の拡縮・回転をVFXへ継承しない。
     bool snapshotTargetPosition = false;
-    engine::Vector3 rootOffset = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 rootOffset = engine::Vector3::ZERO;
     engine::Vector3 rootScale = {1.0f, 1.0f, 1.0f};
     bool enabled = true;
     bool muted = false;

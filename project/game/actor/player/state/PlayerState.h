@@ -7,3 +7,4 @@
 #include "game/actor/player/state/PlayerState.Life.h"
 #include "game/actor/player/state/PlayerState.PullEnemy.h"
 #include "game/actor/player/state/PlayerState.PullObject.h"
+#include "game/actor/player/state/PlayerState.Whip.h"

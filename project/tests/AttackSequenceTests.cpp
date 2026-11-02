@@ -1,4 +1,5 @@
 #include "game/actor/enemy/combat/EnemyAttackProfile.h"
+#include <numbers>
 #include "game/actor/combat/AttackSequence.h"
 #include "game/actor/combat/AttackPlacementMath.h"
 #include <filesystem>
@@ -491,7 +492,7 @@ int main(int argc, char** argv) {
         const auto rotatedPosition = ResolveAttackSequenceEmission(placed,placementContext,0,0).position;
         Check(engine::Math::Length(rotatedPosition-initialPosition)<0.0001f,"gizmo rotation moved emission position");
         const engine::Vector3 worldDelta{3,1,-2};
-        const auto localDelta = AttackPlacementMath::ToLocalDelta(worldDelta,1.57079632679f+placed.yawDegrees*0.01745329252f);
+        const auto localDelta = AttackPlacementMath::ToLocalDelta(worldDelta,(std::numbers::pi_v<float> * 0.5f)+placed.yawDegrees*(std::numbers::pi_v<float> / 180.0f));
         placed.right += localDelta.x;
         placed.up += localDelta.y;
         placed.forward += localDelta.z;

@@ -11,6 +11,17 @@ public:
     // 入力範囲の制限は呼び出し側で行う。Back・Elastic は出力が 0～1 を越える場合がある。
     static float Linear(float t);
 
+    /// <summary>三次のSmoothStep曲線。入力範囲は呼び出し側で決める。</summary>
+    static float SmoothStep(float t);
+
+    // 01付きは入力を0～1へ制限する。Backの出力の行き過ぎは保持する。
+    static float SmoothStep01(float t);
+    static float OutQuad01(float t);
+    static float OutCubic01(float t);
+    static float InOutCubic01(float t);
+    static float OutBack01(float t);
+    static float OutQuint01(float t);
+
     // 2. Sine (サイン波：滑らか)
     static float InSine(float t);
 

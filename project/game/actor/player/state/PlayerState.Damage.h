@@ -18,7 +18,7 @@ class PlayerStateDamage : public IAnimationState {
   private:
     engine::Vector3 knockbackDir_;
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 baseRotation_ = engine::Vector3::ZERO;
     float timer_ = 0.0f;
 
     // 被弾状態を継続する秒数。

@@ -11,8 +11,8 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
     const engine::Vector3 casterPosition = GetWorldPosition();
     engine::Vector3 requestedCenter =
         casterPosition + lockedDirection_ * std::clamp(lockedTargetDistance_, 0.0f, (std::max)(attack.maxRange, 0.1f));
-    if (target_) {
-        requestedCenter = target_->GetWorldPosition();
+    if (GetTarget()) {
+        requestedCenter = GetTarget()->GetWorldPosition();
         engine::Vector3 fromCaster = requestedCenter - casterPosition;
         fromCaster.y = 0.0f;
         const float targetDistance = std::sqrt(fromCaster.x * fromCaster.x + fromCaster.z * fromCaster.z);
@@ -29,7 +29,7 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
     const float sectorAngle = 2.0f * std::asin(sine);
 
     if (prismSpikeSector_) {
-        prismSpikeSector_->editSlashAngle_ = sectorAngle * (180.0f / kPi);
+        prismSpikeSector_->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, sectorAngle * (180.0f / kPi));
         prismSpikeSector_->UpdateProceduralMesh();
     }
 
@@ -40,8 +40,8 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
         if (!sigil)
             continue;
         sigil->SetBlendMode(BlendMode::kAdd);
-        sigil->editInnerRadius_ = sigilIndex < 3 ? 0.975f : 0.06f;
-        sigil->editSlashAngle_ = sigilIndex < 3 ? sectorAngle * (180.0f / kPi) : 1.25f;
+        sigil->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, sigilIndex < 3 ? 0.975f : 0.06f);
+        sigil->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, sigilIndex < 3 ? sectorAngle * (180.0f / kPi) : 1.25f);
         sigil->UpdateProceduralMesh();
     }
 
@@ -68,12 +68,12 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
 
 std::unique_ptr<engine::Object3d> EnemyPrismSlime::CreatePrismSpikeObject(int index) const {
     // 棘は攻撃の視覚部品であり、接触判定は別の扇形攻撃で処理する。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return nullptr;
     }
 
     auto spike = std::make_unique<engine::Object3d>();
-    spike->Initialize(common_);
+    spike->Initialize(GetObjectCommon());
     spike->SetName("PrismSpike_" + std::to_string(index));
     spike->SetClassName("EnemyVisualPart");
     spike->SetModel("Effects/prism_crystal_spike");
@@ -259,12 +259,12 @@ void EnemyPrismSlime::PrepareCrystalLances() {
 
 std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool glow) const {
     // 同じ JSON を通常層と加算発光層で使い、後段で別々の透明度を制御する。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return nullptr;
     }
 
     auto effect = std::make_unique<EffectObject3d>();
-    effect->Initialize(common_);
+    effect->Initialize(GetObjectCommon());
 
     if (!effect->LoadFromJson(kPrismCrystalLanceCircleEffect)) {
         return nullptr;
@@ -284,12 +284,12 @@ std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool 
 
 std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateSpellEffect(const char* path) const {
     // 演出データの再生状態だけ準備し、実際の表示時刻は攻撃状態が決める。
-    if (!common_) {
+    if (!GetObjectCommon()) {
         return nullptr;
     }
 
     auto effect = std::make_unique<EffectObject3d>();
-    effect->Initialize(common_);
+    effect->Initialize(GetObjectCommon());
 
     if (!effect->LoadFromJson(path)) {
         return nullptr;
@@ -544,8 +544,8 @@ void EnemyPrismSlime::LaunchNextCrystalLance() {
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     engine::Vector3 aimPosition = lance.position + lockedDirection_ * (std::max)(attack.maxRange, 1.0f);
 
-    if (target_) {
-        aimPosition = target_->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
+    if (GetTarget()) {
+        aimPosition = GetTarget()->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
     }
 
     engine::Vector3 launchDirection = aimPosition - lance.position;
@@ -608,8 +608,8 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
 
             engine::Vector3 aimPosition = lance->position + lockedDirection_ * (std::max)(attack.maxRange, 1.0f);
 
-            if (target_) {
-                aimPosition = target_->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
+            if (GetTarget()) {
+                aimPosition = GetTarget()->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
             }
 
             engine::Vector3 aimDirection = aimPosition - lance->position;
@@ -665,9 +665,9 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
 
         bool hitTarget = false;
 
-        if (target_) {
-            const engine::Vector3 targetCenter = target_->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
-            const float hitRadius = (std::max)(0.90f, target_->GetCollisionRadius() + 0.34f);
+        if (GetTarget()) {
+            const engine::Vector3 targetCenter = GetTarget()->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
+            const float hitRadius = (std::max)(0.90f, GetTarget()->GetCollisionRadius() + 0.34f);
             hitTarget =
                 DistanceSquaredToSegment(targetCenter, previousPosition, lance->position) <= hitRadius * hitRadius;
         }
@@ -676,7 +676,7 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
         if (hitTarget && !crystalVolleyDamageApplied_) {
             const engine::Vector3 knockbackDirection = NormalizePlanar(lance->velocity);
             DamageEvent event;
-            event.target = target_;
+            event.target = GetTarget();
             event.attacker = this;
             event.damageAmount = attack.damage;
             event.damageType = DamageType::Physical;
@@ -747,12 +747,12 @@ void EnemyPrismSlime::ClearPrismAttackVisuals() {
 
 void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
     // プレイヤーが現在までに伸びた扇形の内側に入ったときだけ一度命中させる。
-    if (!target_ || damageApplied_) {
+    if (!GetTarget() || damageApplied_) {
         return;
     }
 
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    engine::Vector3 difference = target_->GetWorldPosition() - prismSpellOrigin_;
+    engine::Vector3 difference = GetTarget()->GetWorldPosition() - prismSpellOrigin_;
     difference.y = 0.0f;
     const float distance = std::sqrt(difference.x * difference.x + difference.z * difference.z);
     const float forward = engine::Math::Dot(difference, lockedDirection_);
@@ -768,8 +768,8 @@ void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
 
     for (int i = 0; i <= actionIndex_ && i < static_cast<int>(prismSpikePositions_.size()); ++i) {
         const engine::Vector3& spike = prismSpikePositions_[i];
-        const float dx = spike.x - target_->GetWorldPosition().x;
-        const float dz = spike.z - target_->GetWorldPosition().z;
+        const float dx = spike.x - GetTarget()->GetWorldPosition().x;
+        const float dz = spike.z - GetTarget()->GetWorldPosition().z;
         const float distanceSq = dx * dx + dz * dz;
 
         if (distanceSq < nearestDistanceSq) {
@@ -778,7 +778,7 @@ void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
         }
     }
 
-    const AABB targetBounds = target_->GetAABB();
+    const AABB targetBounds = GetTarget()->GetAABB();
     constexpr float kSpikeReachHeight = 2.4f;
     if (targetBounds.min.y > nearbyGroundY + kSpikeReachHeight ||
         targetBounds.max.y < nearbyGroundY - 0.3f) {
@@ -787,7 +787,7 @@ void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
 
     const engine::Vector3 direction = distance > 0.001f ? NormalizePlanar(difference) : lockedDirection_;
     DamageEvent event;
-    event.target = target_;
+    event.target = GetTarget();
     event.attacker = this;
     event.damageAmount = attack.damage;
     event.damageType = DamageType::Physical;
@@ -844,12 +844,12 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
 
     EmitPreset(kThunderImpactPreset, groundPosition + engine::Vector3{0.0f, 0.22f, 0.0f});
 
-    if (!target_ || damageApplied_) {
+    if (!GetTarget() || damageApplied_) {
         return;
     }
 
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    engine::Vector3 difference = target_->GetWorldPosition() - groundPosition;
+    engine::Vector3 difference = GetTarget()->GetWorldPosition() - groundPosition;
     const float verticalDistance = difference.y;
     difference.y = 0.0f;
 
@@ -858,7 +858,7 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
     }
 
     DamageEvent event;
-    event.target = target_;
+    event.target = GetTarget();
     event.attacker = this;
     event.damageAmount = attack.damage;
     event.damageType = DamageType::Electric;
@@ -869,7 +869,7 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
 
 void EnemyPrismSlime::ApplyWindTornado() {
     // 有効化済みの渦だけを調べ、複数重なる場合は中心に近い渦を採用する。
-    if (!target_ || damageApplied_) {
+    if (!GetTarget() || damageApplied_) {
         return;
     }
 
@@ -884,7 +884,7 @@ void EnemyPrismSlime::ApplyWindTornado() {
         if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f)
             continue;
         const WindVortexVisual& vortex = windVortices_[index];
-        engine::Vector3 candidate = target_->GetWorldPosition() - vortex.position;
+        engine::Vector3 candidate = GetTarget()->GetWorldPosition() - vortex.position;
         const float verticalDistance = candidate.y;
         candidate.y = 0.0f;
         const float candidateDistance = engine::Math::Length(candidate);
@@ -907,7 +907,7 @@ void EnemyPrismSlime::ApplyWindTornado() {
     const engine::Vector3 pushDirection = distance > 0.001f ? NormalizePlanar(difference) : lockedDirection_;
     const float falloff = 1.0f - std::clamp(distance / (std::max)(hitRadius, 0.1f), 0.0f, 1.0f);
 
-    if (Character* character = dynamic_cast<Character*>(target_)) {
+    if (Character* character = dynamic_cast<Character*>(GetTarget())) {
         character->ApplyExternalImpulse(
             {
                 pushDirection.x * (13.0f + falloff * 6.0f),
@@ -917,12 +917,12 @@ void EnemyPrismSlime::ApplyWindTornado() {
             0.25f);
     }
 
-    EmitDirectedPreset(kWindImpactPreset, target_->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f}, pushDirection,
+    EmitDirectedPreset(kWindImpactPreset, GetTarget()->GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f}, pushDirection,
                        1.25f);
 
     // 外力とDamageEventは別経路で渡し、既に命中した後は再送しません。
     DamageEvent event;
-    event.target = target_;
+    event.target = GetTarget();
     event.attacker = this;
     event.damageAmount = attack.damage;
     event.damageType = DamageType::Physical;
@@ -1179,7 +1179,7 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
         break;
     }
 
-    std::unique_ptr<BaseEnemy> enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common_);
+    std::unique_ptr<BaseEnemy> enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, GetObjectCommon());
 
     if (!enemy) {
         return;
@@ -1191,7 +1191,7 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
     enemy->SetVelocity({0.0f, 0.0f, 0.0f});
     enemy->SetGrounded(true);
     enemy->SetDetectionRange(24.0f);
-    enemy->SetTarget(target_);
+    enemy->SetTarget(GetTarget());
 
     portal.spawned = true;
     portal.spawnedAge = 0.0f;

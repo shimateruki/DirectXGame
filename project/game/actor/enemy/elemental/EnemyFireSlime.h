@@ -152,7 +152,7 @@ class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
     float pendingFireballDistance_ = 0.0f;
     engine::Vector3 pendingFireballDirection_ = {0.0f, 0.0f, 1.0f};
 
-    engine::Vector3 smoothedFlameVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 smoothedFlameVelocity_ = engine::Vector3::ZERO;
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
 
     engine::Object3d* headFlameVisual_ = nullptr;

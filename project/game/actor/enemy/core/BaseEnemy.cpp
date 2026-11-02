@@ -1,4 +1,6 @@
 #include "BaseEnemy.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/actor/enemy/combat/AttackTelegraph.h"
 #include "CollisionConfig.h" // enemyなどの定義を使うため
 #include "Event.h"           //  DamageEventを使うため
@@ -28,7 +30,7 @@ void BaseEnemy::BindSceneSpawnContext(BaseScene* scene) {
 
 namespace {
 // 共通の徘徊、投げ物理、叩きつけ、撃破演出で使う調整値
-constexpr float kWanderPi = 3.14159265358979323846f;
+constexpr float kWanderPi = std::numbers::pi_v<float>;
 constexpr float kThrownMaxTime = 3.0f;
 constexpr float kThrownSettleTime = 0.22f;
 constexpr float kThrownSettleSpeed = 1.4f;
@@ -96,13 +98,7 @@ engine::Vector3 NormalizePlanarOr(const engine::Vector3& value, const engine::Ve
     return {result.x / length, 0.0f, result.z / length};
 }
 
-// 敵の回復姿勢を前半で戻し、終点で減速させます。
-float EaseOutCubic(float t) {
-    // 回復姿勢を序盤で素早く戻し、終盤だけ滑らかに収束させる。
-    t = (std::clamp)(t, 0.0f, 1.0f);
-    const float inv = 1.0f - t;
-    return 1.0f - inv * inv * inv;
-}
+
 
 // 着地速度を自身と周囲へ共通に使う叩きつけ威力へ変換します。
 float CalculateSlamDamage(float impactSpeed) {
@@ -231,7 +227,7 @@ float BaseEnemy::NextWanderRandom() {
 
 float BaseEnemy::GetWanderRadius(float radiusScale) const {
     // 索敵範囲を基準に巡回半径を決め、設定値が小さくても最低限の距離を確保する。
-    const float range = param_.has_value() ? param_->detectionRange : detectionRange_;
+    const float range = GetParameters().has_value() ? GetParameters()->detectionRange : detectionRange_;
     const float baseRadius = (std::max)(3.0f, range * radiusScale);
     return (std::clamp)(baseRadius, 3.0f, 18.0f);
 }
@@ -346,10 +342,10 @@ void BaseEnemy::BeginThrown(const engine::Vector3& initialVelocity) {
     thrownSettleTimer_ = 0.0f;
     throwRecoveryRotateTimer_ = 0.0f;
     throwRecoveryTimer_ = 0.0f;
-    velocity_ = initialVelocity;
+    SetVelocity(initialVelocity);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
     const float planarSpeed = PlanarLength(initialVelocity);
@@ -366,14 +362,14 @@ void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
     thrownTimer_ += deltaTime;
     slamImpactCooldownTimer_ = (std::max)(0.0f, slamImpactCooldownTimer_ - deltaTime);
 
-    velocity_.x *= kThrownAirDrag;
-    velocity_.z *= kThrownAirDrag;
+    SetVelocityX(GetVelocity().x * (kThrownAirDrag));
+    SetVelocityZ(GetVelocity().z * (kThrownAirDrag));
 
-    if (isGrounded_) {
-        velocity_.x *= kThrownGroundFriction;
-        velocity_.z *= kThrownGroundFriction;
+    if (IsGrounded()) {
+        SetVelocityX(GetVelocity().x * (kThrownGroundFriction));
+        SetVelocityZ(GetVelocity().z * (kThrownGroundFriction));
 
-        if (PlanarLength(velocity_) <= kThrownSettleSpeed && std::abs(velocity_.y) <= 1.0f) {
+        if (PlanarLength(GetVelocity()) <= kThrownSettleSpeed && std::abs(GetVelocity().y) <= 1.0f) {
             thrownSettleTimer_ += deltaTime;
         } else {
             thrownSettleTimer_ = 0.0f;
@@ -401,7 +397,7 @@ void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
 
 void BaseEnemy::HandleThrownCollision(const CollisionInfo& info, uint32_t attribute) {
     // 衝突法線方向の入射速度で着地衝撃と反発を分け、横滑りだけでは着地扱いしない。
-    const engine::Vector3 incomingVelocity = velocity_;
+    const engine::Vector3 incomingVelocity = GetVelocity();
     const float normalSpeed = -engine::Math::Dot(incomingVelocity, info.normal);
     const bool isGroundLike = info.normal.y > kThrownGroundNormal;
 
@@ -428,10 +424,10 @@ void BaseEnemy::HandleThrownCollision(const CollisionInfo& info, uint32_t attrib
     const float tangentKeep = isGroundLike ? 0.62f : 0.78f;
     const float bounceRate = isGroundLike ? 0.34f : 0.36f;
 
-    velocity_ = tangentVelocity * tangentKeep + info.normal * (normalSpeed * bounceRate);
+    SetVelocity(tangentVelocity * tangentKeep + info.normal * (normalSpeed * bounceRate));
 
-    if (isGroundLike && velocity_.y < 3.2f && slamImpactCount_ < kMaxSlamImpacts) {
-        velocity_.y = 3.2f;
+    if (isGroundLike && GetVelocity().y < 3.2f && slamImpactCount_ < kMaxSlamImpacts) {
+        SetVelocityY(3.2f);
     }
 }
 
@@ -456,9 +452,9 @@ void BaseEnemy::StartThrowRecovery() {
     throwRecoveryStartRotation_ = GetRotation();
     isThrowRotationRecovering_ = true;
 
-    if (isGrounded_) {
-        velocity_.x = 0.0f;
-        velocity_.z = 0.0f;
+    if (IsGrounded()) {
+        SetVelocityX(0.0f);
+        SetVelocityZ(0.0f);
     }
 }
 
@@ -468,9 +464,9 @@ void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
         throwRecoveryTimer_ = (std::max)(0.0f, throwRecoveryTimer_ - deltaTime);
     }
 
-    if (isGrounded_) {
-        velocity_.x *= kThrowRecoveryGroundFriction;
-        velocity_.z *= kThrowRecoveryGroundFriction;
+    if (IsGrounded()) {
+        SetVelocityX(GetVelocity().x * (kThrowRecoveryGroundFriction));
+        SetVelocityZ(GetVelocity().z * (kThrowRecoveryGroundFriction));
     }
 
     if (!isThrowRotationRecovering_) {
@@ -478,7 +474,7 @@ void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
     }
 
     throwRecoveryRotateTimer_ += deltaTime;
-    const float t = EaseOutCubic(throwRecoveryRotateTimer_ / kThrowRecoveryDuration);
+    const float t = Easing::OutCubic01(throwRecoveryRotateTimer_ / kThrowRecoveryDuration);
     const engine::Quaternion start = engine::Math::EulerToQuaternion(throwRecoveryStartRotation_);
     const engine::Quaternion target = engine::Math::EulerToQuaternion(throwRecoveryTargetRotation_);
     const engine::Quaternion current = engine::Math::Slerp(start, target, t);
@@ -542,7 +538,7 @@ void BaseEnemy::DamageSlamTargets(const engine::Vector3& impactPosition, float i
     const float damage = CalculateSlamDamage(impactSpeed);
 
     for (engine::Object3d* object : collisionManager->GetObjects()) {
-        if (!object || object == this || object->isDead) {
+        if (!object || object == this || object->IsDead()) {
             continue;
         }
 
@@ -594,7 +590,7 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
 
 void BaseEnemy::PlayDamageReaction(engine::Object3d* attacker, const engine::Vector3& knockbackVelocity, float damage) {
     // 撃破演出中は新しいリアクションで姿勢を上書きしない。
-    if (isDead || isDefeatEffectPlaying_ || isDefeatEffectFinished_) {
+    if (IsDead() || isDefeatEffectPlaying_ || isDefeatEffectFinished_) {
         return;
     }
 
@@ -653,10 +649,10 @@ EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
 
     if (progress < 0.18f) {
         const float t = progress / 0.18f;
-        response = t * t * (3.0f - 2.0f * t);
+        response = Easing::SmoothStep(t);
     } else if (progress < 0.52f) {
         const float t = (progress - 0.18f) / 0.34f;
-        const float eased = t * t * (3.0f - 2.0f * t);
+        const float eased = Easing::SmoothStep(t);
         response = 1.0f + (-0.38f - 1.0f) * eased;
     } else {
         const float t = (progress - 0.52f) / 0.48f;
@@ -699,12 +695,12 @@ void BaseEnemy::ApplyDamageReactionPose(engine::Vector3& scale, engine::Vector3&
 
 void BaseEnemy::EnsureNoticeMarkObject() {
     // 発見マークを初回だけ生成し、索敵の度にシーンへ増殖させない。
-    if (noticeMarkObject_ || !common_) {
+    if (noticeMarkObject_ || !GetObjectCommon()) {
         return;
     }
 
     noticeMarkObject_ = std::make_unique<engine::Object3d>();
-    noticeMarkObject_->Initialize(common_);
+    noticeMarkObject_->Initialize(GetObjectCommon());
     noticeMarkObject_->SetName("__EnemyNoticeMark");
     noticeMarkObject_->SetClassName("Effect");
     noticeMarkObject_->SetModel(kEnemyDetectedMarkModel);
@@ -928,7 +924,7 @@ bool BaseEnemy::ShouldHandleDefeatEffect() const {
         return true;
     }
 
-    return param_.has_value() && param_->hp <= 0.0f && !isDead;
+    return GetParameters().has_value() && GetParameters()->hp <= 0.0f && !IsDead();
 }
 
 engine::ParticleSystem* BaseEnemy::GetCurrentParticleSystem() const {
@@ -1057,7 +1053,7 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
     defeatEffectParticleTimer_ -= deltaTime;
 
     const float progress = (std::clamp)(defeatEffectTimer_ / kDefeatEffectDuration, 0.0f, 1.0f);
-    const float eased = EaseOutCubic(progress);
+    const float eased = Easing::OutCubic01(progress);
     const float pulse = 1.0f + std::sin(progress * kWanderPi * 6.0f) * 0.06f * (1.0f - progress);
     const float shrink = 1.0f - eased * 0.34f;
 
@@ -1076,7 +1072,7 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
     rotation.x += 0.55f * (1.0f - progress) * deltaTime;
     SetRotation(rotation);
 
-    const float dissolveThreshold = 1.0f - (progress * progress * (3.0f - 2.0f * progress));
+    const float dissolveThreshold = 1.0f - (Easing::SmoothStep(progress));
     const engine::Vector3 glowColor = {defeatBaseColor_.x * (1.0f - eased) + 1.0f * eased,
                                defeatBaseColor_.y * (1.0f - eased) + 0.92f * eased,
                                defeatBaseColor_.z * (1.0f - eased) + 0.48f * eased};
@@ -1090,7 +1086,7 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
     if (progress >= 1.0f) {
         isDefeatEffectPlaying_ = false;
         isDefeatEffectFinished_ = true;
-        isDead = true;
+        SetDead(true);
         SetIsVisible(false);
 
         if (BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr) {
@@ -1203,8 +1199,8 @@ void BaseEnemy::Update(float deltaTime) {
     }
 
     // 調整用JSONの検知距離を、共通の見渡し処理へ反映します。
-    if (param_.has_value()) {
-        detectionRange_ = param_->detectionRange;
+    if (GetParameters().has_value()) {
+        detectionRange_ = GetParameters()->detectionRange;
     }
 
     // 固有AIが追跡・攻撃状態へ移っていても、範囲外への遷移と見渡しを共通で更新します。
@@ -1262,9 +1258,9 @@ void BaseEnemy::DrawAttackTelegraph(ID3D12Resource* pointLightResource, ID3D12Re
 
 void BaseEnemy::ShowAttackTelegraphCircle(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color) {
     // 予兆オブジェクトは攻撃開始時に遅延生成し、予兆を使わない敵には割り当てない。
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1275,9 +1271,9 @@ void BaseEnemy::ShowAttackTelegraphCircle(const engine::Vector3& center, float r
 void BaseEnemy::ShowAttackTelegraphDecalCircle(const engine::Vector3& center, float radius, float progress,
                                                const engine::Vector4& color, const std::string& texturePath) {
     // テクスチャ付き円も通常の予兆と同じ描画資源を遅延生成して使う。
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1288,9 +1284,9 @@ void BaseEnemy::ShowAttackTelegraphDecalCircle(const engine::Vector3& center, fl
 void BaseEnemy::ShowAttackTelegraphLine(const engine::Vector3& center, const engine::Vector3& direction, float length, float width,
                                         float progress, const engine::Vector4& color) {
     // 線状攻撃を持つ敵だけに予兆オブジェクトを用意する。
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1299,9 +1295,9 @@ void BaseEnemy::ShowAttackTelegraphLine(const engine::Vector3& center, const eng
 }
 
 void BaseEnemy::TriggerAttackTelegraphCue(const engine::Vector4& color) {
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1325,9 +1321,9 @@ void BaseEnemy::TriggerAttackTelegraphCue(const engine::Vector4& color) {
 void BaseEnemy::ShowAttackTelegraphCone(const engine::Vector3& origin, const engine::Vector3& direction, float length, float startWidth,
                                         float endWidth, float progress, const engine::Vector4& color) {
     // 扇形攻撃の向きと幅は呼び出し元のAIが決め、共通予兆へ渡す。
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1338,9 +1334,9 @@ void BaseEnemy::ShowAttackTelegraphCone(const engine::Vector3& origin, const eng
 void BaseEnemy::ShowAttackTelegraphImpactAreas(const engine::Vector3* centers, std::size_t centerCount, float radius,
                                                float progress, const engine::Vector4& color) {
     // 複数着弾点を一つの予兆にまとめ、各攻撃側で個別オブジェクトを持たずに済ませる。
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1351,9 +1347,9 @@ void BaseEnemy::ShowAttackTelegraphImpactAreas(const engine::Vector3* centers, s
 void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const engine::Vector3* centers, std::size_t centerCount, float radius,
                                                        float progress, const engine::Vector4& color) {
     // 着弾点が重なる攻撃でも見分けられる描画形式を共通予兆へ委譲する。
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1365,9 +1361,9 @@ void BaseEnemy::ShowAttackTelegraphLaneFan(const engine::Vector3& origin, const 
                                            int laneCount, float lateralSpacing, float angleStep, float progress,
                                            const engine::Vector4& color) {
     // レーン数と角度だけ攻撃側から受け取り、床上の複数レーン表示を共通化する。
-    if (!attackTelegraph_ && common_) {
+    if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
-        attackTelegraph_->Initialize(common_);
+        attackTelegraph_->Initialize(GetObjectCommon());
     }
 
     if (attackTelegraph_) {
@@ -1385,8 +1381,8 @@ void BaseEnemy::HideAttackTelegraph() {
 
 float BaseEnemy::GetActiveBodyAttackDamage() const {
     // 中断前のAI状態が残っていても、演出中・運搬中の本体は攻撃にしません。
-    if (isDead || isDormant_ || isCarried_ || IsThrowRecovering() || isDefeatEffectPlaying_ ||
-        (param_.has_value() && param_->hp <= 0.0f)) {
+    if (IsDead() || isDormant_ || isCarried_ || IsThrowRecovering() || isDefeatEffectPlaying_ ||
+        (GetParameters().has_value() && GetParameters()->hp <= 0.0f)) {
         return 0.0f;
     }
 

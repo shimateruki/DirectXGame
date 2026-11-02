@@ -7,6 +7,7 @@ constexpr float kFixedPreviewStep = 1.0f / 60.0f;
 constexpr float kMinLoopDuration = 0.5f;
 constexpr float kMaxLoopDuration = 12.0f;
 constexpr float kDefaultTargetDistanceLimit = 18.0f;
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 
 } // namespace EnemyAttackPreviewConstants
+#include <numbers>

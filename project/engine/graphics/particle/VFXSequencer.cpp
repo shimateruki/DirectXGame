@@ -1,4 +1,5 @@
 #include "VFXSequencer.h"
+#include <numbers>
 #include "AudioPlayer.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
@@ -19,7 +20,7 @@ using json = nlohmann::json;
 
 namespace {
     constexpr const char* kSequenceDirectory = "Resources/json/vfx_sequence/";
-    constexpr float kDegreesToRadians = 3.14159265358979323846f / 180.0f;
+    constexpr float kDegreesToRadians = std::numbers::pi_v<float> / 180.0f;
     float gameplayTimeScale = 1.0f;
 
     std::vector<std::unique_ptr<VFXSequencer>>& ActiveOneShotSequences() {

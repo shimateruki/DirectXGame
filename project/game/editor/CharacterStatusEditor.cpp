@@ -275,7 +275,7 @@ int CharacterStatusEditor::Apply(BaseScene* scene, const std::string& type) {
         // ダミーの固定HPやコピーの実行中姿勢は、プレビューの再生成側に任せます。
         if (!object || object->IsEditorInternal() || object->IsReplayRemoved()) continue;
         std::string enemyType = object->GetEnemyType();
-        if (enemyType.empty() && object->param_) enemyType = object->param_->enemyType;
+        if (enemyType.empty() && object->GetParameters()) enemyType = object->GetParameters()->enemyType;
         const bool matches = type == "*" || (type.empty() ? object->GetClassName() == "Player"
             : object->GetClassName() == "Enemy" && enemyType == type);
         if (matches && manager->ApplyManagedStatus(object.get(), false)) {

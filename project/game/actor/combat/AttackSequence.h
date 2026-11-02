@@ -1,5 +1,6 @@
 #pragma once
 #include "game/actor/enemy/combat/EnemyAttackProfile.h"
+#include <numbers>
 #include <cstdint>
 #include <unordered_set>
 #include <memory>
@@ -51,7 +52,7 @@ struct AttackMotionState {
                 const auto desired = Normalize(target - position, direction);
                 const float dot = std::clamp(direction.x * desired.x + direction.y * desired.y + direction.z * desired.z, -1.0f, 1.0f);
                 const float angle = std::acos(dot);
-                const float turn = (std::min)(angle, track.turnDegreesPerSecond * 0.01745329252f * step);
+                const float turn = (std::min)(angle, track.turnDegreesPerSecond * (std::numbers::pi_v<float> / 180.0f) * step);
                 if (angle > 0.00001f) {
                     auto tangent = desired - direction * dot;
                     if (engine::Math::Length(tangent) < 0.00001f) {
@@ -76,7 +77,7 @@ inline AttackSequenceEmission ResolveAttackSequenceEmission(const AttackSequence
         const float length = engine::Math::Length(value);
         return length > 0.0001f ? value * (1.0f / length) : fallback;
     };
-    const float angle = event.yawDegrees * 0.01745329252f;
+    const float angle = event.yawDegrees * (std::numbers::pi_v<float> / 180.0f);
     auto rotate = [angle](engine::Vector3 value) {
         return engine::Vector3{value.x * std::cos(angle) + value.z * std::sin(angle), value.y,
             value.z * std::cos(angle) - value.x * std::sin(angle)};

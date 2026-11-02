@@ -1,4 +1,5 @@
 ﻿#include "LightEditor.h"
+#include <numbers>
 #include "imgui.h"
 #include "EditorToolSettings.h"
 #include "json.hpp"
@@ -772,10 +773,10 @@ void LightEditor::DrawImGui() {
                 ImGui::DragFloat(" 距離", &data.distance, 0.1f, 0.0f, 100.0f);
 
                 // 保存・描画は角度のcos値、UIは度を使うため、編集があったときだけcos値へ戻す。
-                float angleDeg = std::acos(data.cosAngle) * 180.0f / 3.141592f;
+                float angleDeg = std::acos(data.cosAngle) * 180.0f / std::numbers::pi_v<float>;
 
                 if (ImGui::DragFloat(ICON_FA_COMPASS " 角度", &angleDeg, 1.0f, 0.1f, 179.0f)) {
-                    data.cosAngle = std::cos(angleDeg * 3.141592f / 180.0f);
+                    data.cosAngle = std::cos(angleDeg * std::numbers::pi_v<float> / 180.0f);
                 }
 
                 ImGui::TreePop();

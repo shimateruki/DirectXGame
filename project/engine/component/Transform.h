@@ -5,8 +5,8 @@
 struct Transform {
     // scale・rotate・translateは親に対するローカル値。Euler回転の単位はラジアン。
     engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
-    engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f }; // インスペクター表示・操作用
-    engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 rotate = engine::Vector3::ZERO; // インスペクター表示・操作用
+    engine::Vector3 translate = engine::Vector3::ZERO;
 
     engine::Quaternion quaternion = { 0.0f, 0.0f, 0.0f, 1.0f };
     bool isQuaternionMaster = true; // falseの場合、次のUpdateMatrixでEuler角から再計算する。

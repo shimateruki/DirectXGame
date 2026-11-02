@@ -1,4 +1,5 @@
 #include "game/ui/PlayerHealthHud.h"
+#include <numbers>
 #include "Player.h"
 #include "Sprite.h"
 #include "TextureManager.h"
@@ -79,7 +80,7 @@ void PlayerHealthHud::UpdateSimple(const Player* player, float rate, bool visibl
 void PlayerHealthHud::UpdateAnimated(const Player* player, float hpRate, bool visible) {
     const float pulse = state_.damagePulseTimer > 0.0f ? std::sin(state_.damagePulseTimer * 70.0f) : 0.0f;
     const float damageRate = std::clamp(state_.damagePulseTimer / 0.42f, 0.0f, 1.0f);
-    const float damageImpact = std::sin((1.0f - damageRate) * 3.1415926535f) * damageRate;
+    const float damageImpact = std::sin((1.0f - damageRate) * std::numbers::pi_v<float>) * damageRate;
     const float lowHpRate = visible ? std::clamp((0.34f - hpRate) / 0.34f, 0.0f, 1.0f) : 0.0f;
     const float lowHpPulse = lowHpRate * (0.5f + 0.5f * std::sin(state_.animationTimer * (5.0f + lowHpRate * 3.0f)));
     const float liquidWave = std::sin(state_.animationTimer * 4.6f);

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "game/actor/combat/CombatMath.h"
+#include <numbers>
 #include "CopyAbilitySession.h"
 #define NOMINMAX
 #include "game/actor/player/copy/PlayerCopyAbilityController.h"
@@ -32,7 +33,7 @@
 
 // 命中・演出の共通処理。能力の状態は保持せず、各セッションが管理します。
 namespace CopyAbilityDetail {
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 
 using CombatMath::NormalizePlanar;
 

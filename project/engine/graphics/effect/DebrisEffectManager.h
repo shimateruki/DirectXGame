@@ -25,7 +25,7 @@ struct DebrisEffectConfig {
     int spawnCount = 18;
     // 発生点からのオフセットと各軸のばらつき半幅はワールド距離。
     engine::Vector3 spawnOffset = { 0.0f, 0.4f, 0.0f };
-    engine::Vector3 spawnBoxHalfExtents = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 spawnBoxHalfExtents = engine::Vector3::ZERO;
 
     engine::Vector3 baseDirection = { 0.0f, 0.0f, 1.0f };
     float horizontalSpread = 1.0f;
@@ -138,8 +138,8 @@ private:
     /// <summary>飛散中の破片一個の物理状態と描画用リソース。</summary>
     struct DebrisPiece {
         Model* model = nullptr;
-        engine::Vector3 position = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 position = engine::Vector3::ZERO;
+        engine::Vector3 rotation = engine::Vector3::ZERO;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource;
         Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource;
@@ -149,8 +149,8 @@ private:
         MeshRenderer::TransformationMatrix* shadowWvpData = nullptr;
         MeshRenderer::MaterialData* materialData = nullptr;
 
-        engine::Vector3 velocity = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 velocity = engine::Vector3::ZERO;
+        engine::Vector3 angularVelocity = engine::Vector3::ZERO;
 
         float age = 0.0f;
         float lifetime = 1.0f;

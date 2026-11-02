@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "Easing.h"
 #include "BaseEnemy.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
@@ -28,20 +29,9 @@ float GoalClamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
-// ゴール演出の終点へ向けて減速する補間率を返します。
-float GoalEaseOut(float value) {
-    // 王冠やUIの移動を終点へ向けて減速させる。
-    value = GoalClamp01(value);
-    const float inv = 1.0f - value;
-    return 1.0f - inv * inv * inv;
-}
 
-// ゴール演出の始点と終点を滑らかにつなぐ補間率を返します。
-float GoalEaseInOut(float value) {
-    // 前後の速度が急変しない滑らかな補間率を作る。
-    value = GoalClamp01(value);
-    return value * value * (3.0f - 2.0f * value);
-}
+
+
 
 } // namespace
 
@@ -312,8 +302,8 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
 void GamePlayScene::UpdateGoalPresentationOverlay() {
     // ゴールの再達成では色を変え、同じタイムラインでも報酬の有無を視覚で分ける。
     const bool visible = isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive;
-    const float screenW = static_cast<float>(WinApp::kClientWidth);
-    const float screenH = static_cast<float>(WinApp::kClientHeight);
+    const float screenW = static_cast<float>(WinApp::GetClientWidth());
+    const float screenH = static_cast<float>(WinApp::GetClientHeight());
     const float t = goalPresentationTimer_;
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& presentation = goalPresentationTuning_;
@@ -325,9 +315,9 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
     const float centerX = screenW * presentation.resultUiCenterX;
     const float baselineY = screenH * presentation.resultUiCenterY;
     const float returnStartTime = std::max(animation.resultUiTime + 0.52f, animation.readyTime - 0.48f);
-    const float returnIn = GoalEaseInOut((t - returnStartTime) / 0.34f);
-    const float flashIn = GoalEaseOut((t - animation.resultUiTime) / 0.04f);
-    const float flashOut = 1.0f - GoalEaseOut((t - animation.resultUiTime - 0.04f) / 0.20f);
+    const float returnIn = Easing::SmoothStep01((t - returnStartTime) / 0.34f);
+    const float flashIn = Easing::OutCubic01((t - animation.resultUiTime) / 0.04f);
+    const float flashOut = 1.0f - Easing::OutCubic01((t - animation.resultUiTime - 0.04f) / 0.20f);
     const float flash = visible ? flashIn * flashOut : 0.0f;
 
     if (goalOverlayFlash_) {
@@ -367,13 +357,13 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
         float letterAlpha = 0.0f;
 
         if (localTime >= 0.0f) {
-            letterAlpha = GoalEaseOut(localTime / 0.10f);
+            letterAlpha = Easing::OutCubic01(localTime / 0.10f);
 
             if (localTime < presentation.resultLetterFallDuration) {
                 const float fallRate = GoalClamp01(localTime / presentation.resultLetterFallDuration);
                 const float acceleratedFall = fallRate * fallRate;
                 letterY = baselineY - presentation.resultLetterDropHeight * (1.0f - acceleratedFall) * uiScale;
-                const float approach = GoalEaseInOut(fallRate);
+                const float approach = Easing::SmoothStep01(fallRate);
                 scaleX = 0.82f + 0.18f * approach;
                 scaleY = 1.18f - 0.18f * approach;
                 rotation = kInitialTilts[i] * (1.0f - approach);
@@ -390,7 +380,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
                 scaleY = 1.0f - contact * 0.26f + rebound * 0.11f;
                 rotation = kInitialTilts[i] * std::cos(bouncePhase) * damping * 0.70f;
 
-                const float idleBlend = GoalEaseInOut((bounceTime - 1.15f) / 0.45f);
+                const float idleBlend = Easing::SmoothStep01((bounceTime - 1.15f) / 0.45f);
                 const float idleWobble = std::sin(bounceTime * 2.7f + static_cast<float>(i) * 0.62f);
                 scaleX += idleWobble * 0.018f * idleBlend;
                 scaleY -= idleWobble * 0.014f * idleBlend;
@@ -412,7 +402,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
             const float impactAge = localTime - presentation.resultLetterFallDuration;
             const float splashRate = GoalClamp01(impactAge / 0.30f);
             const float splashAlpha =
-                impactAge >= 0.0f ? std::sin(splashRate * 3.1415926535f) * presentation.resultGlowAlpha : 0.0f;
+                impactAge >= 0.0f ? std::sin(splashRate * std::numbers::pi_v<float>) * presentation.resultGlowAlpha : 0.0f;
             splash->SetPosition({letterCenterX, baselineY + 45.0f * uiScale});
             splash->SetSize({(20.0f + 48.0f * splashRate) * uiScale, (13.0f - 9.0f * splashRate) * uiScale});
             splash->SetRotation(0.0f);

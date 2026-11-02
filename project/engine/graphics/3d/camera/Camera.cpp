@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "Camera.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/system/settings/GameSettingsManager.h"
 #include "WinApp.h" 
 #include "DirectXCommon.h"
@@ -13,12 +15,9 @@
 #include <CollisionManager.h>
 #include "SceneManager.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 // 明示的に float にキャスト
-const float PI = (float)M_PI;
+
 static engine::Math math;
 
 namespace {
@@ -210,7 +209,7 @@ void Camera::Initialize() {
     fixedOffset_ = eye_;
 
     // アスペクト比をウィンドウサイズから計算
-    aspectRatio_ = (float)WinApp::kClientWidth / WinApp::kClientHeight;
+    aspectRatio_ = (float)WinApp::GetClientWidth() / WinApp::GetClientHeight();
 
     // デフォルトのカメラモードを kAimable に設定
     followMode_ = FollowMode::kAimable;
@@ -254,7 +253,8 @@ void Camera::Update(float deltaTime) {
     if (followObject_) {
         engine::Vector3 playerPos = followObject_->GetWorldPosition();
         const bool isAiming = (inputManager_ && inputManager_->IsActionPressed("SecondaryAction") &&
-            !isAimCameraSuppressed_ && followMode_ != FollowMode::kLockOn);
+            !isAimCameraSuppressed_ && followObject_->GetClassName() != "Player" &&
+            followMode_ != FollowMode::kLockOn);
         const bool stabilizeHeight = stabilizeJumpHeight_ && !isAiming &&
             (followMode_ == FollowMode::kAimable || followMode_ == FollowMode::kFixed ||
              followMode_ == FollowMode::kLockOn);
@@ -284,7 +284,7 @@ void Camera::Update(float deltaTime) {
 
         // 各モードで目標視点を作る。以下の補間と衝突回避はこの結果に共通で適用する。
         engine::Vector3 desiredEye = eye_;
-        float toRad = PI / 180.0f;
+        float toRad = std::numbers::pi_v<float> / 180.0f;
 
         switch (followMode_) {
         case FollowMode::kLockOn:
@@ -330,10 +330,10 @@ void Camera::Update(float deltaTime) {
 
                 float angleToEnemy = std::atan2(toEnemy.x, toEnemy.z);
                 auto NormalizeAngle = [](float a) {
-                    while (a > PI)
-                        a -= 2.0f * PI;
-                    while (a < -PI)
-                        a += 2.0f * PI;
+                    while (a > std::numbers::pi_v<float>)
+                        a -= 2.0f * std::numbers::pi_v<float>;
+                    while (a < -std::numbers::pi_v<float>)
+                        a += 2.0f * std::numbers::pi_v<float>;
                     return a;
                     };
 
@@ -735,12 +735,12 @@ void Camera::Update(float deltaTime) {
     // 位置の確定後に手ブレと画角演出を加算し、最後に描画用行列へ変換する。
     engine::Vector3 viewEye = eye_;
     engine::Vector3 viewTarget = target_;
-    engine::Vector3 mixedShakeOffset = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 mixedShakeOffset = engine::Vector3::ZERO;
 
     for (ShakeLayer& layer : shakeLayers_) {
         const float progress = std::clamp(layer.elapsed / layer.duration, 0.0f, 1.0f);
         const float envelope = (1.0f - progress) * (1.0f - progress);
-        const float phase = layer.elapsed * layer.frequency * 2.0f * PI;
+        const float phase = layer.elapsed * layer.frequency * 2.0f * std::numbers::pi_v<float>;
         const float amplitude = layer.amplitude * envelope;
         mixedShakeOffset.x += std::sin(phase * 1.13f) * amplitude * layer.axisWeight.x;
         mixedShakeOffset.y += std::cos(phase * 1.37f) * amplitude * layer.axisWeight.y;
@@ -765,7 +765,7 @@ void Camera::Update(float deltaTime) {
 
         if (progress < layer.attackRatio) {
             const float attack = progress / layer.attackRatio;
-            envelope = attack * attack * (3.0f - 2.0f * attack);
+            envelope = Easing::SmoothStep(attack);
         } else {
             const float release = (progress - layer.attackRatio) / (1.0f - layer.attackRatio);
             const float inverse = 1.0f - release;
@@ -796,7 +796,7 @@ void Camera::Update(float deltaTime) {
     }
 
     viewMatrix_ = math.MakeLookAtMatrix(viewEye, viewTarget, currentUp);
-    const float renderFov = std::clamp(fovY_ + mixedFovOffset, 5.0f * PI / 180.0f, 170.0f * PI / 180.0f);
+    const float renderFov = std::clamp(fovY_ + mixedFovOffset, 5.0f * std::numbers::pi_v<float> / 180.0f, 170.0f * std::numbers::pi_v<float> / 180.0f);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(renderFov, aspectRatio_, nearClip_, farClip_);
     RefreshDerivedMatrices();
 }
@@ -810,7 +810,7 @@ void Camera::ConfigAimable(float distance, float height, const engine::Vector3& 
     aimDistance_ = distance;
     aimHeight_ = height;
     aimAngle_ = angle;
-    float toRad = 3.14159265f / 180.0f;
+    float toRad = std::numbers::pi_v<float> / 180.0f;
     rotation_.x = angle.x * toRad;
     rotation_.y = angle.y * toRad;
     rotation_.z = angle.z * toRad;
@@ -856,15 +856,15 @@ void Camera::AddRotation(const engine::Vector2& mouseDelta) {
     rotation_.y += mouseDelta.x * rotateSpeed * (settings->GetCameraInvertX() ? -1.f : 1.f);
 
     // X軸の回転（ピッチ）に制限をかける
-    const float pitchLimit = PI / 2.0f - 0.01f; // 90度手前
+    const float pitchLimit = std::numbers::pi_v<float> / 2.0f - 0.01f; // 90度手前
     rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
 
     // Y軸の回転（ヨー）は 2PI でラップアラウンド
-    if (rotation_.y > PI) {
-        rotation_.y -= 2.0f * PI;
+    if (rotation_.y > std::numbers::pi_v<float>) {
+        rotation_.y -= 2.0f * std::numbers::pi_v<float>;
     }
-    if (rotation_.y < -PI) {
-        rotation_.y += 2.0f * PI;
+    if (rotation_.y < -std::numbers::pi_v<float>) {
+        rotation_.y += 2.0f * std::numbers::pi_v<float>;
     }
 }
 
@@ -894,7 +894,7 @@ void Camera::SyncRotationToCurrentView() {
     rotation_.x = std::asin(-forward.y);
 
     // 真上・真下を向きすぎないように制限
-    const float pitchLimit = PI / 2.0f - 0.01f;
+    const float pitchLimit = std::numbers::pi_v<float> / 2.0f - 0.01f;
     rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
 
     // カメラの距離も現在の距離に同期する（一瞬で近づくのを防ぐ）

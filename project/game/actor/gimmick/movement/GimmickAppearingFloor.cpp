@@ -27,8 +27,8 @@ void GimmickAppearingFloor::Initialize(engine::Object3dCommon* common, const std
 
 // Play中だけタイマーを進め、Editorでは足場を常に見える状態に戻します。
 void GimmickAppearingFloor::Update(float deltaTime) {
-    if (param_.has_value()) {
-        appearDuration_ = param_->interval;
+    if (GetParameters().has_value()) {
+        appearDuration_ = GetParameters()->interval;
         if (appearDuration_ <= 0.0f)
             appearDuration_ = 3.0f;
     }
@@ -114,8 +114,8 @@ void GimmickAppearingFloor::SetFloorActive(bool active) {
 std::unique_ptr<engine::Object3d> GimmickAppearingFloor::Clone() const {
     // 新しい実体を初期化してから、出現時間と配置を引き継ぐ。
     auto newObj = std::make_unique<GimmickAppearingFloor>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

@@ -27,7 +27,7 @@ class GimmickHookPullBlock : public BaseGimmick {
     void StartHookPull(const engine::Vector3& hookOwnerPos);
 
   private:
-    engine::Vector3 velocity_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 pullTarget_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 velocity_ = engine::Vector3::ZERO;
+    engine::Vector3 pullTarget_ = engine::Vector3::ZERO;
     float pullTimer_ = 0.0f;
 };

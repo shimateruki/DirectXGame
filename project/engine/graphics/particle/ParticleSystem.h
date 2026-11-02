@@ -63,16 +63,16 @@ private:
 public:
     /// <summary>エディタで編集できる自動発生と粒子の初期値。</summary>
     struct EmitterParams {
-        engine::Vector3 spawnPosition = { 0.0f, 0.0f, 0.0f };      // 発生座標
+        engine::Vector3 spawnPosition = engine::Vector3::ZERO;      // 発生座標
         engine::Vector3 spawnArea = { 1.0f, 1.0f, 1.0f };          // 発生範囲 (ランダム幅)
         engine::Vector3 initialVelocity = { 0.0f, 1.0f, 0.0f };    // 初速
         engine::Vector3 velocityRandomness = { 0.5f, 0.5f, 0.5f }; // 初速のランダム幅
-        engine::Vector3 acceleration = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 acceleration = engine::Vector3::ZERO;
         int emitCount = 1;                 // 単発発生1回あたりの粒子数
         float particlesPerSecond = 10.0f; // 毎秒の発生数
         float particleLifetime = 2.0f;    // パーティクルの生存期間
 
-        engine::Vector4 startColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 開始時の色
+        engine::Vector4 startColor = engine::Colors::White; // 開始時の色
         engine::Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f };   // 終了時の色
 
         float startSize = 1.0f; // 開始時のサイズ
@@ -117,7 +117,7 @@ public:
         float initialSpeed = 2.0f,
         const engine::Vector3* direction = nullptr,
         float spreadAngle = 0.0f,
-        engine::Vector4 initialColor = { 1,1,1,1 },
+        engine::Vector4 initialColor = engine::Colors::White,
         engine::Vector4 endColor = { 1,1,1,0 },
         float lifeTimeMin = 1.0f, float lifeTimeMax = 3.0f,
         float startSize = 1.0f,
@@ -156,8 +156,13 @@ public:
     /// <summary>このシステムが保持できる粒子数の上限を返す。</summary>
     static constexpr int GetMaxParticles() { return kMaxParticles; }
 
-    // エディタが直接編集する発生設定。
-    EmitterParams params_;
+    /// <summary>発生設定の読み取りと適用。シミュレーションのリセットは行わない。</summary>
+    const EmitterParams& GetEmitterParams() const { return params_; }
+    void SetEmitterParams(const EmitterParams& parameters) { params_ = parameters; }
+    void SetSizeOverLife(const VFXFloatCurve& curve) { params_.sizeOverLife = curve; }
+    void SetColorOverLife(const VFXColorGradient& gradient) { params_.colorOverLife = gradient; }
+    void SetLodSettings(const VFXLodSettings& settings) { params_.lod = settings; }
+
 
     /// <summary>指定設定で一度だけ粒子を発生させる。</summary>
     void EmitOneShot(const EmitterParams& params, const engine::Vector3& position);
@@ -182,6 +187,8 @@ public:
         engine::Vector2 baseScale);
 
 private:
+    EmitterParams params_;
+
     // 初期化時に描画用バッファを作成する。
     void CreateResources();
 
@@ -241,7 +248,7 @@ private:
     float simulationTimeScale_ = 1.0f;
 
     // エディタプレビューだけで加算する表示位置の差分。
-    engine::Vector3 editorPreviewOffset_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 editorPreviewOffset_ = engine::Vector3::ZERO;
 
     // 直近のUpdateとDrawで測ったCPU処理時間（ミリ秒）。
     float lastUpdateCpuTimeMs_ = 0.0f;

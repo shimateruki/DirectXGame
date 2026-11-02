@@ -74,8 +74,8 @@ private:
         float time = 0.0f;
         int jointIndex = -1;
         std::string jointName;
-        engine::Vector3 translate = { 0.0f, 0.0f, 0.0f };
-        engine::Vector3 rotate = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 translate = engine::Vector3::ZERO;
+        engine::Vector3 rotate = engine::Vector3::ZERO;
         engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
     };
 
@@ -84,7 +84,7 @@ private:
         float time = 0.0f;
         int type = 0;
         std::string name;
-        engine::Vector3 offset = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 offset = engine::Vector3::ZERO;
     };
 
 private:
@@ -307,22 +307,22 @@ private:
     int eventType_ = 0;
     std::string lastEventPreviewText_;
 
-    engine::Vector3 jointTranslateUi_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 jointRotateDegUi_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 jointTranslateUi_ = engine::Vector3::ZERO;
+    engine::Vector3 jointRotateDegUi_ = engine::Vector3::ZERO;
     engine::Vector3 jointScaleUi_ = { 1.0f, 1.0f, 1.0f };
 
-    engine::Vector3 bodyTranslateUi_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 bodyTranslateUi_ = engine::Vector3::ZERO;
     engine::Vector3 bodyShearUi_ = {};
     float bodyShearPivotY_ = 0.0f;
-    engine::Vector3 bodyRotateDegUi_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 bodyRotateDegUi_ = engine::Vector3::ZERO;
     engine::Vector3 bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
     int bodyEasingToNext_ = 4;
 
-    engine::Vector3 eventOffsetUi_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 eventOffsetUi_ = engine::Vector3::ZERO;
 
-    engine::Vector2 gameViewOffset_ = { 0.0f, 0.0f };
+    engine::Vector2 gameViewOffset_ = engine::Vector2::ZERO;
     engine::Vector2 gameViewSize_ = { 1280.0f, 720.0f };
-    engine::Vector2 gameViewMousePos_ = { 0.0f, 0.0f };
+    engine::Vector2 gameViewMousePos_ = engine::Vector2::ZERO;
     bool isGameViewHovered_ = false;
 
     int gizmoOperation_ = 0;

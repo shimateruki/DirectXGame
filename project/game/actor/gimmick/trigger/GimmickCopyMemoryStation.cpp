@@ -1,5 +1,7 @@
 ﻿#define NOMINMAX
 #include "GimmickCopyMemoryStation.h"
+#include "Easing.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include "game/system/scene/SceneGameplayAccess.h"
 
@@ -65,18 +67,18 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const 
     collider.size = {3.1f, 1.6f, 1.85f};
     SetColliderConfig(collider);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->gimmickType = "CopyMemoryStation";
-    param_->copyMemoryTypeA = "FireSlime";
-    param_->copyMemoryTypeB.clear();
-    param_->copyMemoryTypeC.clear();
-    param_->copyMemoryTypeD.clear();
-    param_->copyMemoryActivationRadius = 0.9f;
-    param_->copyMemoryUnlimitedDuration = true;
-    param_->startActive = true;
+    SetParameter(&engine::EntityParameter::gimmickType, "CopyMemoryStation");
+    SetParameter(&engine::EntityParameter::copyMemoryTypeA, "FireSlime");
+    SetParameter(&engine::EntityParameter::copyMemoryTypeB, {});
+    SetParameter(&engine::EntityParameter::copyMemoryTypeC, {});
+    SetParameter(&engine::EntityParameter::copyMemoryTypeD, {});
+    SetParameter(&engine::EntityParameter::copyMemoryActivationRadius, 0.9f);
+    SetParameter(&engine::EntityParameter::copyMemoryUnlimitedDuration, true);
+    SetParameter(&engine::EntityParameter::startActive, true);
 
     for (size_t index = 0; index < kCoreCount; ++index) {
         coreVisuals_[index] = std::make_unique<engine::Object3d>();
@@ -128,22 +130,22 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const 
 
     // 旧4枠は読むだけなら保持し、ユーザーが能力を選び直した時だけ単体へ変更します。
     properties.Accessor<std::string>("コピー能力", "copyMemoryTypeA", "param.copyMemoryTypeA",
-        [](const Self& object) { return object.param_ ? object.param_->copyMemoryTypeA : std::string(); },
+        [](const Self& object) { return object.GetParameters() ? object.GetParameters()->copyMemoryTypeA : std::string(); },
         [](Self& object, const std::string& value) {
-            if (!object.param_) object.param_.emplace();
-            object.param_->copyMemoryTypeA = value;
-            object.param_->copyMemoryTypeB.clear();
-            object.param_->copyMemoryTypeC.clear();
-            object.param_->copyMemoryTypeD.clear();
+            if (!object.GetParameters()) object.ResetParameters();
+            object.SetParameter(&engine::EntityParameter::copyMemoryTypeA, value);
+            object.SetParameter(&engine::EntityParameter::copyMemoryTypeB, {});
+            object.SetParameter(&engine::EntityParameter::copyMemoryTypeC, {});
+            object.SetParameter(&engine::EntityParameter::copyMemoryTypeD, {});
         }, 0, 0, nullptr, {"なし", "ピンクスライム", "炎スライム", "雷スライム", "風スライム", "ボムスライム"},
         {.values = {"", "Slime", "FireSlime", "ThunderSlime", "WindSlime", "Bomber"},
          .help = +[](const Self& object) -> std::string {
-             return object.param_ && (!object.param_->copyMemoryTypeB.empty() || !object.param_->copyMemoryTypeC.empty() || !object.param_->copyMemoryTypeD.empty())
+             return object.GetParameters() && (!object.GetParameters()->copyMemoryTypeB.empty() || !object.GetParameters()->copyMemoryTypeC.empty() || !object.GetParameters()->copyMemoryTypeD.empty())
                  ? "旧式の複数台設定です。能力を選び直した時だけ一台へ変更します。" : "";
          },
          .displayValue = +[](const Self& object) -> nlohmann::json {
-             if (!object.param_) return "";
-             const auto& p = *object.param_;
+             if (!object.GetParameters()) return "";
+             const auto& p = *object.GetParameters();
              return !p.copyMemoryTypeA.empty() ? p.copyMemoryTypeA : !p.copyMemoryTypeB.empty() ? p.copyMemoryTypeB
                  : !p.copyMemoryTypeC.empty() ? p.copyMemoryTypeC : p.copyMemoryTypeD;
          }});
@@ -244,8 +246,8 @@ void GimmickCopyMemoryStation::OnSwitchEvent(bool active) {
 std::unique_ptr<engine::Object3d> GimmickCopyMemoryStation::Clone() const {
     // 内部見本は初期化で作り直し、設定された能力種別だけコピーします。
     auto clone = std::make_unique<GimmickCopyMemoryStation>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }
@@ -253,16 +255,16 @@ std::unique_ptr<engine::Object3d> GimmickCopyMemoryStation::Clone() const {
 GimmickCopyMemoryStation::Settings GimmickCopyMemoryStation::ReadSettings() const {
     // ステーション固有の保存値を読み、未設定項目は既定値で補う。
     Settings settings;
-    if (!param_)
+    if (!GetParameters())
         return settings;
-    settings.types = {param_->copyMemoryTypeA, param_->copyMemoryTypeB,
-                      param_->copyMemoryTypeC, param_->copyMemoryTypeD};
-    settings.activationRadius = param_->copyMemoryActivationRadius;
-    settings.essenceScale = param_->copyMemoryEssenceScale;
-    settings.hoverAmount = param_->copyMemoryHoverAmount;
-    settings.glow = param_->copyMemoryGlow;
-    settings.unlimitedDuration = param_->copyMemoryUnlimitedDuration;
-    settings.startActive = param_->startActive;
+    settings.types = {GetParameters()->copyMemoryTypeA, GetParameters()->copyMemoryTypeB,
+                      GetParameters()->copyMemoryTypeC, GetParameters()->copyMemoryTypeD};
+    settings.activationRadius = GetParameters()->copyMemoryActivationRadius;
+    settings.essenceScale = GetParameters()->copyMemoryEssenceScale;
+    settings.hoverAmount = GetParameters()->copyMemoryHoverAmount;
+    settings.glow = GetParameters()->copyMemoryGlow;
+    settings.unlimitedDuration = GetParameters()->copyMemoryUnlimitedDuration;
+    settings.startActive = GetParameters()->startActive;
     return settings;
 }
 
@@ -293,7 +295,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
     Player* player = manager && manager->IsPlaying() && manager->GetCurrentScene()
                          ? GetScenePlayer(manager->GetCurrentScene())
                          : nullptr;
-    if (player && (player->isDead || player->IsCinematicLocked()))
+    if (player && (player->IsDead() || player->IsCinematicLocked()))
         player = nullptr;
     const Settings settings = ReadSettings();
     const float size = std::clamp(settings.essenceScale, 0.25f, 2.0f);
@@ -354,7 +356,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
                            GetRotation().z + std::sin(phase) * 0.065f});
 
         const float pulseRate = corePulseTimers_[index] > 0.0f ? 1.0f - corePulseTimers_[index] / kPulseDuration : 1.0f;
-        const float pulse = corePulseTimers_[index] > 0.0f ? 1.0f + std::sin(pulseRate * 3.14159265f) * 0.28f : 1.0f;
+        const float pulse = corePulseTimers_[index] > 0.0f ? 1.0f + std::sin(pulseRate * std::numbers::pi_v<float>) * 0.28f : 1.0f;
         const engine::Vector3 rootScale = GetScale();
 
         // 台座の横幅を調整しても能力マークが潰れないよう、縦・奥行きから均一倍率を作ります。
@@ -369,12 +371,12 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
 
             if (elapsed < 0.32f) {
                 const float t = elapsed / 0.32f;
-                const float eased = t * t * (3.0f - 2.0f * t);
+                const float eased = Easing::SmoothStep(t);
                 const engine::Vector3 target =
                     player ? player->GetWorldPosition() + engine::Vector3{0.0f, 0.5f, 0.0f} : transferTargets_[index];
                 transferTargets_[index] = target;
                 position = position * (1.0f - eased) + target * eased;
-                position.y += std::sin(t * 3.14159265f) * 0.35f;
+                position.y += std::sin(t * std::numbers::pi_v<float>) * 0.35f;
                 transferScale = (std::max)(0.015f, 1.0f - eased);
             } else {
                 transferScale = std::clamp((elapsed - 0.40f) / 0.35f, 0.015f, 1.0f);
@@ -427,7 +429,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
             const float seed = static_cast<float>(part) * 2.094395f + static_cast<float>(index) * 0.71f;
             const float cycle = std::fmod(
                 visualTimer_ * 0.60f + static_cast<float>(part) / 3.0f + static_cast<float>(index) * 0.137f, 1.0f);
-            const float twinkle = cycle < 0.45f ? std::sin(cycle / 0.45f * 3.14159265f) : 0.0f;
+            const float twinkle = cycle < 0.45f ? std::sin(cycle / 0.45f * std::numbers::pi_v<float>) : 0.0f;
             alpha = twinkle * (0.38f + approach * 0.35f);
             radius = (0.055f + twinkle * 0.045f) * scale;
             engine::Vector3 offset{std::cos(seed + visualTimer_ * 0.3f) * 0.95f,
@@ -457,11 +459,11 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
 
             if (active) {
                 alpha = (1.0f - elapsed / kPulseDuration) * 0.65f;
-                radius *= 1.0f + std::sin(elapsed / kPulseDuration * 3.14159265f) * 0.20f;
+                radius *= 1.0f + std::sin(elapsed / kPulseDuration * std::numbers::pi_v<float>) * 0.20f;
             }
         }
 
-        alpha *= param_ ? std::clamp(ReadSettings().glow * 2.0f, 0.0f, 1.5f) : 0.9f;
+        alpha *= GetParameters() ? std::clamp(ReadSettings().glow * 2.0f, 0.0f, 1.5f) : 0.9f;
         effect->SetIsVisible(alpha > 0.015f);
         if (!effect->GetIsVisible())
             continue;
@@ -522,7 +524,7 @@ engine::Vector3 GimmickCopyMemoryStation::GetCoreWorldPosition(size_t index) con
 
 std::string GimmickCopyMemoryStation::GetConfiguredType(size_t index) const {
     // 設定されたスロット番号を能力名へ変換します。
-    if (!param_.has_value()) {
+    if (!GetParameters().has_value()) {
         return {};
     }
 
@@ -559,7 +561,7 @@ int GimmickCopyMemoryStation::FindTouchedCore(const engine::Vector3& playerPosit
 
 void GimmickCopyMemoryStation::ActivateCore(Player& player, size_t index) {
     // 能力適用に成功したときだけ再取得制限と吸い込み演出を始めます。
-    if (index >= kCoreCount || player.isDead || player.IsCinematicLocked()) {
+    if (index >= kCoreCount || player.IsDead() || player.IsCinematicLocked()) {
         return;
     }
 

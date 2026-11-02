@@ -93,7 +93,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             attack.damage = 10.0f;
             return attack;
         }();
-        return FindAttackOrFallback(profile_, "player_line_lightning", fallback);
+        return FindAttackOrFallback(GetProfile(), "player_line_lightning", fallback);
     }
 
     void ClearSparkEffects() {

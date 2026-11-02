@@ -1,4 +1,5 @@
 #include "GimmickCoin.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "game/system/progress/GameDataManager.h"
@@ -11,7 +12,7 @@
 #include <string>
 
 namespace {
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kCollectAnimationDuration = 0.58f;
 constexpr float kDropGravity = 22.0f;
 constexpr float kDropBounceRate = 0.42f;
@@ -92,7 +93,7 @@ void GimmickCoin::Update(float deltaTime) {
 
         if (t >= 1.0f) {
             SetIsVisible(false);
-            isDead = true;
+            SetDead(true);
             RequestSelfRemove();
         }
 
@@ -103,7 +104,7 @@ void GimmickCoin::Update(float deltaTime) {
     if (isTemporaryDrop_) {
         UpdateTemporaryDrop(deltaTime);
 
-        if (isDead) {
+        if (IsDead()) {
             BaseGimmick::Update(deltaTime);
             return;
         }
@@ -146,7 +147,7 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
         SetCollisionAttribute(0);
         SetCollisionMask(0);
         SetIsVisible(false);
-        isDead = true;
+        SetDead(true);
         RequestSelfRemove();
         return;
     }
@@ -288,8 +289,8 @@ void GimmickCoin::RestoreReplayCustomState(const json& state) {
 std::unique_ptr<engine::Object3d> GimmickCoin::Clone() const {
     // 複製先の描画資源を初期化した上で、設定されたコインの見た目を引き継ぎます。
     auto newObj = std::make_unique<GimmickCoin>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

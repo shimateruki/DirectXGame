@@ -71,7 +71,7 @@ public:
     /// <summary>
     /// テクスチャ用リソースを作成する。
     /// </summary>
-    Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const DirectX::TexMetadata& metadata);
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const DirectX::TexMetadata& metadata, D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COPY_DEST);
 
     /// <summary>
     /// テクスチャデータをリソースへアップロードする。
@@ -214,6 +214,9 @@ private:
     // コマンドキュー、アロケータ、コマンドリストを作成する。
     void CreateCommand();
 
+    // 記録中の描画命令を保持し、終了済みの場合だけ再利用を準備します。
+    void EnsureCommandListReadyForDraw();
+
     // ウィンドウへ表示するためのスワップチェーンを作成する。
     void CreateSwapChain();
 
@@ -302,4 +305,5 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_;
     uint32_t grabSrvHandle_ = 0;
     uint32_t frameCount_ = 0;
+    bool commandListOpen_ = false; // 作成・Resetで開始、Closeで終了する記録状態。
 };

@@ -1,4 +1,5 @@
 #include "MeshEffectManager.h"
+#include <numbers>
 #include "ModelManager.h"
 #include "TextureManager.h"
 #include "IconsFontAwesome5.h"
@@ -193,55 +194,55 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
 
         if (procType >= 1) {
             if (j.contains("SlashAngle"))
-                effect->editSlashAngle_ = j["SlashAngle"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
             if (j.contains("InnerRadius"))
-                effect->editInnerRadius_ = j["InnerRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
             if (j.contains("OuterRadius"))
-                effect->editOuterRadius_ = j["OuterRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
             if (j.contains("Thickness"))
-                effect->editThickness_ = j["Thickness"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
             if (j.contains("SpiralPitch"))
-                effect->editSpiralPitch_ = j["SpiralPitch"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
             if (j.contains("ThrustLength"))
-                effect->editThrustLength_ = j["ThrustLength"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
             if (j.contains("ThrustRadius"))
-                effect->editThrustRadius_ = j["ThrustRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
             if (j.contains("SphereRadius"))
-                effect->editSphereRadius_ = j["SphereRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, j["SphereRadius"]);
             if (j.contains("SphereRings"))
-                effect->editSphereRings_ = j["SphereRings"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, j["SphereRings"]);
             if (j.contains("CylinderRadius"))
-                effect->editCylinderRadius_ = j["CylinderRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, j["CylinderRadius"]);
             if (j.contains("CylinderHeight"))
-                effect->editCylinderHeight_ = j["CylinderHeight"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, j["CylinderHeight"]);
             if (j.contains("BoxSize")) {
-                effect->editBoxSize_.x = j["BoxSize"][0];
-                effect->editBoxSize_.y = j["BoxSize"][1];
-                effect->editBoxSize_.z = j["BoxSize"][2];
+                effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
+                effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
+                effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
             }
             if (j.contains("PlaneSize")) {
-                effect->editPlaneSize_.x = j["PlaneSize"][0];
-                effect->editPlaneSize_.y = j["PlaneSize"][1];
+                effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
+                effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
             }
             if (j.contains("TorusMajorRadius"))
-                effect->editTorusMajorRadius_ = j["TorusMajorRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
             if (j.contains("TorusMinorRadius"))
-                effect->editTorusMinorRadius_ = j["TorusMinorRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
             if (j.contains("ConeRadius"))
-                effect->editConeRadius_ = j["ConeRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, j["ConeRadius"]);
             if (j.contains("ConeHeight"))
-                effect->editConeHeight_ = j["ConeHeight"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, j["ConeHeight"]);
             if (j.contains("RingOuterRadius"))
-                effect->editRingOuterRadius_ = j["RingOuterRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
             if (j.contains("RingInnerRadius"))
-                effect->editRingInnerRadius_ = j["RingInnerRadius"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
             if (j.contains("TriangleSize"))
-                effect->editTriangleSize_ = j["TriangleSize"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, j["TriangleSize"]);
             if (j.contains("MeshSegments"))
-                effect->editMeshSegments_ = j["MeshSegments"];
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
             if (j.contains("UvTiling")) {
-                effect->editUvTiling_.x = j["UvTiling"][0];
-                effect->editUvTiling_.y = j["UvTiling"][1];
+                effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
+                effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
             }
             effect->UpdateProceduralMesh();
         }
@@ -271,7 +272,7 @@ void MeshEffectManager::Update(float deltaTime) {
         if (!(*it)->IsPlaying()) {
             EffectObject3d* finishedEffect = it->get();
 
-            if ((*it)->editHasCollision_) {
+            if ((*it)->GetMeshSettings().hasCollision) {
                 CollisionManager::GetInstance()->RemoveObject(it->get());
             }
 
@@ -351,7 +352,7 @@ void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
             continue;
         }
 
-        if (effect && effect->editHasCollision_) {
+        if (effect && effect->GetMeshSettings().hasCollision) {
             // 見た目の削除と同時に衝突Managerの登録も外す。
             CollisionManager::GetInstance()->RemoveObject(effect);
         }
@@ -394,9 +395,9 @@ bool MeshEffectManager::StartTimelineEffect(EffectScopeId scopeId, const std::st
             continue;
 
         // 表示物のプリセットに衝突設定があっても、判定は専用トラックだけが担当します。
-        if (effect->editHasCollision_)
+        if (effect->GetMeshSettings().hasCollision)
             CollisionManager::GetInstance()->RemoveObject(effect.get());
-        effect->editHasCollision_ = false;
+        effect->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, false);
         effect->SetTargetObject(nullptr);
         effect->SetAutoLoop(false);
         timelineOffsets_[effect.get()] = {effect->GetTranslate(), effect->GetRotation()};
@@ -461,7 +462,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
     // ==========================================
     // ★ 1. 基準となるターゲットの取得（位置と向きを分離！）
     // ==========================================
-    engine::Vector3 basePos = { 0, 0, 0 };
+    engine::Vector3 basePos = engine::Vector3::ZERO;
     float targetWorldY = 0.0f; // ★プレイヤーの「向き」
 
     engine::Object3d* posTarget = baseObject; // 位置の基準
@@ -528,8 +529,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
     // ==========================================
     // ★ 2. オフセットの読み込みと「回転計算」
     // ==========================================
-    engine::Vector3 offsetPos = { 0, 0, 0 };
-    engine::Vector3 offsetRot = { 0, 0, 0 };
+    engine::Vector3 offsetPos = engine::Vector3::ZERO;
+    engine::Vector3 offsetRot = engine::Vector3::ZERO;
 
     if (j.contains("Position"))
         offsetPos = { j["Position"][0], j["Position"][1], j["Position"][2] };
@@ -638,55 +639,55 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
 
             if (procType >= 1) { // プロシージャルを使用する場合
                 if (j.contains("SlashAngle"))
-                    effect->editSlashAngle_ = j["SlashAngle"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
                 if (j.contains("InnerRadius"))
-                    effect->editInnerRadius_ = j["InnerRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
                 if (j.contains("OuterRadius"))
-                    effect->editOuterRadius_ = j["OuterRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
                 if (j.contains("Thickness"))
-                    effect->editThickness_ = j["Thickness"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
                 if (j.contains("SpiralPitch"))
-                    effect->editSpiralPitch_ = j["SpiralPitch"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
                 if (j.contains("ThrustLength"))
-                    effect->editThrustLength_ = j["ThrustLength"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
                 if (j.contains("ThrustRadius"))
-                    effect->editThrustRadius_ = j["ThrustRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
                 if (j.contains("SphereRadius"))
-                    effect->editSphereRadius_ = j["SphereRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, j["SphereRadius"]);
                 if (j.contains("SphereRings"))
-                    effect->editSphereRings_ = j["SphereRings"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, j["SphereRings"]);
                 if (j.contains("CylinderRadius"))
-                    effect->editCylinderRadius_ = j["CylinderRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, j["CylinderRadius"]);
                 if (j.contains("CylinderHeight"))
-                    effect->editCylinderHeight_ = j["CylinderHeight"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, j["CylinderHeight"]);
                 if (j.contains("BoxSize")) {
-                    effect->editBoxSize_.x = j["BoxSize"][0];
-                    effect->editBoxSize_.y = j["BoxSize"][1];
-                    effect->editBoxSize_.z = j["BoxSize"][2];
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
                 }
                 if (j.contains("PlaneSize")) {
-                    effect->editPlaneSize_.x = j["PlaneSize"][0];
-                    effect->editPlaneSize_.y = j["PlaneSize"][1];
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
                 }
                 if (j.contains("TorusMajorRadius"))
-                    effect->editTorusMajorRadius_ = j["TorusMajorRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
                 if (j.contains("TorusMinorRadius"))
-                    effect->editTorusMinorRadius_ = j["TorusMinorRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
                 if (j.contains("ConeRadius"))
-                    effect->editConeRadius_ = j["ConeRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, j["ConeRadius"]);
                 if (j.contains("ConeHeight"))
-                    effect->editConeHeight_ = j["ConeHeight"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, j["ConeHeight"]);
                 if (j.contains("RingOuterRadius"))
-                    effect->editRingOuterRadius_ = j["RingOuterRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
                 if (j.contains("RingInnerRadius"))
-                    effect->editRingInnerRadius_ = j["RingInnerRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
                 if (j.contains("TriangleSize"))
-                    effect->editTriangleSize_ = j["TriangleSize"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, j["TriangleSize"]);
                 if (j.contains("MeshSegments"))
-                    effect->editMeshSegments_ = j["MeshSegments"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
                 if (j.contains("UvTiling")) {
-                    effect->editUvTiling_.x = j["UvTiling"][0];
-                    effect->editUvTiling_.y = j["UvTiling"][1];
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
                 }
 
                 effect->UpdateProceduralMesh();
@@ -697,26 +698,26 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
         // ★ 当たり判定(Collision)の復元とマネージャーへの登録
         // =========================================================
         if (j.contains("Collision")) {
-            effect->editHasCollision_ = j["Collision"]["HasCollision"];
+            effect->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, j["Collision"]["HasCollision"]);
 
-            if (effect->editHasCollision_) {
-                effect->editCollisionShape_ = j["Collision"]["Shape"];
-                effect->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
-                effect->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
+            if (effect->GetMeshSettings().hasCollision) {
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::collisionShape, j["Collision"]["Shape"]);
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::collisionSize, { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] });
+                effect->SetMeshSetting(&EffectObject3d::MeshSettings::collisionOffset, { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] });
 
                 ColliderType cType = ColliderType::kNone;
-                if (effect->editCollisionShape_ == 0)
+                if (effect->GetMeshSettings().collisionShape == 0)
                     cType = ColliderType::kSphere;
-                else if (effect->editCollisionShape_ == 1) cType = ColliderType::kAABB;
-                else if (effect->editCollisionShape_ == 2) cType = ColliderType::kOBB;
+                else if (effect->GetMeshSettings().collisionShape == 1) cType = ColliderType::kAABB;
+                else if (effect->GetMeshSettings().collisionShape == 2) cType = ColliderType::kOBB;
 
                 // =======================================================
                 // ★ 修正箇所: 現在の設定を取り出して、正しく上書きする！
                 // =======================================================
                 engine::Object3d::ColliderConfig cConfig = effect->GetColliderConfig();
                 cConfig.type = cType;
-                cConfig.size = effect->editCollisionSize_;
-                cConfig.center = effect->editCollisionOffset_;
+                cConfig.size = effect->GetMeshSettings().collisionSize;
+                cConfig.center = effect->GetMeshSettings().collisionOffset;
                 effect->SetColliderConfig(cConfig);
 
                 // --- 属性とマスクの設定 ---
@@ -739,7 +740,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
         localZ.z = cosf(finalRot.y) * cosf(finalRot.x);
 
         if (volumeMode == 1 && i == 1) {
-            finalRot.x += 1.570796f; // 90度
+            finalRot.x += (std::numbers::pi_v<float> * 0.5f); // 90度
         }
         else if (volumeMode == 2) {
             float gap = 0.02f;
@@ -892,55 +893,55 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const eng
 
             if (procType >= 1) {
                 if (j.contains("SlashAngle"))
-                    effect->editSlashAngle_      = j["SlashAngle"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
                 if (j.contains("InnerRadius"))
-                    effect->editInnerRadius_     = j["InnerRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
                 if (j.contains("OuterRadius"))
-                    effect->editOuterRadius_     = j["OuterRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
                 if (j.contains("Thickness"))
-                    effect->editThickness_       = j["Thickness"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
                 if (j.contains("SpiralPitch"))
-                    effect->editSpiralPitch_     = j["SpiralPitch"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
                 if (j.contains("ThrustLength"))
-                    effect->editThrustLength_    = j["ThrustLength"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
                 if (j.contains("ThrustRadius"))
-                    effect->editThrustRadius_    = j["ThrustRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
                 if (j.contains("SphereRadius"))
-                    effect->editSphereRadius_    = j["SphereRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, j["SphereRadius"]);
                 if (j.contains("SphereRings"))
-                    effect->editSphereRings_     = j["SphereRings"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, j["SphereRings"]);
                 if (j.contains("CylinderRadius"))
-                    effect->editCylinderRadius_  = j["CylinderRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, j["CylinderRadius"]);
                 if (j.contains("CylinderHeight"))
-                    effect->editCylinderHeight_  = j["CylinderHeight"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, j["CylinderHeight"]);
                 if (j.contains("BoxSize"))    {
-                    effect->editBoxSize_.x = j["BoxSize"][0];
-                    effect->editBoxSize_.y = j["BoxSize"][1];
-                    effect->editBoxSize_.z = j["BoxSize"][2];
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
                 }
                 if (j.contains("PlaneSize"))  {
-                    effect->editPlaneSize_.x = j["PlaneSize"][0];
-                    effect->editPlaneSize_.y = j["PlaneSize"][1];
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
                 }
                 if (j.contains("TorusMajorRadius"))
-                    effect->editTorusMajorRadius_ = j["TorusMajorRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
                 if (j.contains("TorusMinorRadius"))
-                    effect->editTorusMinorRadius_ = j["TorusMinorRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
                 if (j.contains("ConeRadius"))
-                    effect->editConeRadius_  = j["ConeRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, j["ConeRadius"]);
                 if (j.contains("ConeHeight"))
-                    effect->editConeHeight_  = j["ConeHeight"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, j["ConeHeight"]);
                 if (j.contains("RingOuterRadius"))
-                    effect->editRingOuterRadius_ = j["RingOuterRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
                 if (j.contains("RingInnerRadius"))
-                    effect->editRingInnerRadius_ = j["RingInnerRadius"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
                 if (j.contains("TriangleSize"))
-                    effect->editTriangleSize_ = j["TriangleSize"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, j["TriangleSize"]);
                 if (j.contains("MeshSegments"))
-                    effect->editMeshSegments_ = j["MeshSegments"];
+                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
                 if (j.contains("UvTiling")) {
-                    effect->editUvTiling_.x = j["UvTiling"][0];
-                    effect->editUvTiling_.y = j["UvTiling"][1];
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
+                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
                 }
                 effect->UpdateProceduralMesh();
             }
@@ -952,7 +953,7 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const eng
 
         // VolumeMode 対応
         if (volumeMode == 1 && i == 1) {
-            finalRot.x += 1.570796f; // 90度クロス
+            finalRot.x += (std::numbers::pi_v<float> * 0.5f); // 90度クロス
         } else if (volumeMode == 2) {
             float gap = 0.02f;
 
@@ -1044,9 +1045,9 @@ void MeshEffectManager::SpawnRingWaveEffect(const engine::Vector3& position) {
     effect->SetBlendMode(BlendMode::kAdd);
 
     // リングの幅を設定
-    effect->editRingInnerRadius_ = 0.5f;
-    effect->editRingOuterRadius_ = 1.5f;
-    effect->editMeshSegments_ = 32;
+    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, 0.5f);
+    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, 1.5f);
+    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 32);
 
     // メッシュを更新
     effect->UpdateProceduralMesh();
@@ -1103,12 +1104,12 @@ void MeshEffectManager::SpawnPortalEffect(const engine::Vector3& position, float
 
     // ★ 1. Cylinder メッシュ (ProceduralType = 5)
     effect->SetProceduralType(5);
-    effect->editCylinderRadius_ = 1.5f;   // 半径
-    effect->editCylinderHeight_ = 3.0f;   // 高さ
-    effect->editMeshSegments_   = 32;     // 分割数（スライドの kCylinderDivide と同じ）
+    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, 1.5f);   // 半径
+    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, 3.0f);   // 高さ
+    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 32);     // 分割数（スライドの kCylinderDivide と同じ）
 
     // UVタイリング: U方向に4回タイリングで縞々模様に
-    effect->editUvTiling_ = { 4.0f, 1.0f };
+    effect->SetMeshSetting(&EffectObject3d::MeshSettings::uvTiling, { 4.0f, 1.0f });
     effect->UpdateProceduralMesh();
 
     // ★ 2. 横方向（U方向）にUVスクロール (scrollSpeed.x != 0)

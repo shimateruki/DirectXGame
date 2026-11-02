@@ -214,12 +214,12 @@ private:
     float studioLightIntensity_ = 1.35f;
     float studioAmbientIntensity_ = 0.42f;
 
-    engine::Vector3 origin_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 origin_ = engine::Vector3::ZERO;
     engine::Vector3 isolatedBase_ = { 2048.0f, 2048.0f, 2048.0f };
 
-    engine::Vector3 storedEye_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 storedTarget_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 storedRotation_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 storedEye_ = engine::Vector3::ZERO;
+    engine::Vector3 storedTarget_ = engine::Vector3::ZERO;
+    engine::Vector3 storedRotation_ = engine::Vector3::ZERO;
 
     engine::Vector4 backgroundColor_ = { 0.095f, 0.105f, 0.125f, 1.0f };
     engine::Vector4 floorColor_ = { 0.20f, 0.215f, 0.24f, 1.0f };

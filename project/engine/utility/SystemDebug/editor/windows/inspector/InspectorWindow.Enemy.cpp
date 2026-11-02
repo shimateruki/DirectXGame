@@ -35,8 +35,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
             object->SetColliderConfig(defaults->GetColliderConfig());
             object->SetCollisionAttribute(defaults->GetCollisionAttribute());
             object->SetCollisionMask(defaults->GetCollisionMask());
-            object->param_ = defaults->param_;
-            object->animName_ = defaults->animName_; object->isAnimLoop_ = defaults->isAnimLoop_;
+            object->SetParameters(defaults->GetParameters());
+            object->SetAnimationName(defaults->GetAnimationName()); object->SetAnimationLoop(defaults->IsAnimationLoop());
         }
         ImGui::EndCombo();
     }

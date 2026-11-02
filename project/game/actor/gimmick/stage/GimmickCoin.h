@@ -56,7 +56,7 @@ class GimmickCoin : public BaseGimmick {
     float dropGroundY_ = 0.0f;
     float dropGroundOffset_ = 0.0f;
     float dropSettleTimer_ = 0.0f;
-    engine::Vector3 dropVelocity_{0.0f, 0.0f, 0.0f};
+    engine::Vector3 dropVelocity_ = engine::Vector3::ZERO;
 
     engine::Vector3 collectStartPosition_{};
     engine::Vector3 collectStartScale_{0.6f, 0.6f, 0.15f};

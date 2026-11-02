@@ -1,4 +1,5 @@
 ﻿#include "PresetEditor.h"
+#include <numbers>
 
 #include "ModelManager.h"
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
@@ -712,7 +713,7 @@ void PresetEditor::DrawSettingsPane() {
             // 画像上の操作は視点だけに適用し、配置済みObjectとJSONの回転を変えない。
             if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
                 const ImVec2 delta = ImGui::GetIO().MouseDelta;
-                previewYaw_ = std::remainder(previewYaw_ + delta.x * 0.01f, 6.2831853f);
+                previewYaw_ = std::remainder(previewYaw_ + delta.x * 0.01f, (2.0f * std::numbers::pi_v<float>));
                 previewPitch_ = std::clamp(previewPitch_ + delta.y * 0.01f, -1.2f, 1.2f);
             }
 
@@ -862,8 +863,8 @@ void PresetEditor::DrawSettingsPane() {
     }
 
     const auto drawRotationDegrees = [&](json& node, const char* label) {
-        constexpr float toDegrees = 57.2957795f;
-        constexpr float toRadians = 0.0174532925f;
+        constexpr float toDegrees = (180.0f / std::numbers::pi_v<float>);
+        constexpr float toRadians = (std::numbers::pi_v<float> / 180.0f);
         const engine::Vector3 radians = ReadVector3(node, "rotate", {0.0f, 0.0f, 0.0f});
         float degrees[3] = {radians.x * toDegrees, radians.y * toDegrees, radians.z * toDegrees};
         if (!ImGui::DragFloat3(label, degrees, 1.0f, 0.0f, 0.0f, "%.1f°"))

@@ -1,4 +1,6 @@
 #include "EnemyThunderSlime.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "CameraManager.h"
 #include "CollisionConfig.h"
@@ -23,7 +25,7 @@ constexpr float kGroundCollisionWorldRadius = 0.82f;
 constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kMoveHopInterval = 0.25f;
 constexpr float kMoveHopPower = 5.0f;
-constexpr float kThunderSlimeModelYawOffset = 3.1415926535f;
+constexpr float kThunderSlimeModelYawOffset = std::numbers::pi_v<float>;
 constexpr const char* kDischargePreset = "thunder_slime_discharge";
 constexpr const char* kIdleSparkPreset = "thunder_slime_idle_spark";
 constexpr const char* kRadialChargePreset = "thunder_slime_radial_charge";
@@ -37,8 +39,8 @@ constexpr const char* kLightningImpactEffectPath = "Resources/json/effect/effect
 constexpr const char* kChargeGroundEffectPath = "Resources/json/effect/effect_thunder_charge_ground.json";
 constexpr const char* kScorchMarkEffectPath = "Resources/json/effect/effect_thunder_scorch_mark.json";
 constexpr float kIdleSparkInterval = 0.095f;
-constexpr float kTwoPi = 6.283185307f;
-constexpr float kHalfPi = 1.570796327f;
+constexpr float kTwoPi = (2.0f * std::numbers::pi_v<float>);
+constexpr float kHalfPi = (std::numbers::pi_v<float> * 0.5f);
 
 engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     // 落雷列の向きは水平面に固定し、対象と重なるときは前方を使う。
@@ -75,7 +77,7 @@ void EnemyThunderSlime::Initialize(engine::Object3dCommon* common, const std::st
     SetEnemyType("ThunderSlime");
     ReloadAttackProfile();
     SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-    defaultColor_ = GetColor();
+    SetDefaultColor(GetColor());
 
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
@@ -106,7 +108,7 @@ void EnemyThunderSlime::Update(float deltaTime) {
 
 bool EnemyThunderSlime::UpdateInactiveState(float deltaTime) {
     // 本体が消えた場合は予兆・連続落雷・常時オーラをまとめて停止する。
-    if (isDead || !GetIsVisible()) {
+    if (IsDead() || !GetIsVisible()) {
         HideAttackTelegraph();
         isCharging_ = false;
         chargeWarningTriggered_ = false;
@@ -130,7 +132,7 @@ bool EnemyThunderSlime::UpdateInactiveState(float deltaTime) {
     idleTimer_ += deltaTime;
     UpdateIdleSpark(deltaTime);
 
-    if (isCarried_) {
+    if (IsCarried()) {
         HideAttackTelegraph();
         UpdateAuraEffect(deltaTime);
         return true;
@@ -178,8 +180,8 @@ void EnemyThunderSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& vel
         return;
     }
 
-    if (target_ && param_.has_value()) {
-        engine::Vector3 toTarget = target_->GetTranslate() - GetTranslate();
+    if (GetTarget() && GetParameters().has_value()) {
+        engine::Vector3 toTarget = GetTarget()->GetTranslate() - GetTranslate();
         engine::Vector3 direction = NormalizePlanar(toTarget);
         const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
@@ -200,7 +202,7 @@ void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, engine::Vector3& v
     const bool forceShockPreview = debugPreviewAttackId_ == kShockAttackId;
     const bool forceLinePreview = debugPreviewAttackId_ == kWildLineAttackId;
 
-    if (!isCharging_ && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+    if (!isCharging_ && UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), direction)) {
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         UpdateFacing(direction);
@@ -216,8 +218,8 @@ void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, engine::Vector3& v
     } else if (!forceShockPreview && distance >= lineAttack.minRange && distance <= lineAttack.maxRange &&
                attackCooldown_ <= 0.0f) {
         StartWildLightning(direction);
-    } else if (distance <= detectionRange_) {
-        const float speed = (std::max)(0.0f, param_->speed) * kMoveSpeedScale;
+    } else if (distance <= GetDetectionRange()) {
+        const float speed = (std::max)(0.0f, GetParameters()->speed) * kMoveSpeedScale;
         velocity.x = direction.x * speed;
         velocity.z = direction.z * speed;
     } else {
@@ -358,12 +360,12 @@ void EnemyThunderSlime::SpawnWildLightningStrike(const engine::Vector3& groundPo
 
 void EnemyThunderSlime::DispatchWildLightningDamage(const engine::Vector3& groundPosition) {
     // 一連の落雷で同じ対象を二度傷つけず、水平半径と高さを別々に判定する。
-    if (!target_ || wildLightningHitTarget_) {
+    if (!GetTarget() || wildLightningHitTarget_) {
         return;
     }
 
     const EnemyAttackDefinition& attack = GetAttackDefinition(kWildLineAttackId);
-    const engine::Vector3 targetPosition = target_->GetWorldPosition();
+    const engine::Vector3 targetPosition = GetTarget()->GetWorldPosition();
     const engine::Vector3 horizontal = {
         targetPosition.x - groundPosition.x,
         0.0f,
@@ -377,7 +379,7 @@ void EnemyThunderSlime::DispatchWildLightningDamage(const engine::Vector3& groun
     }
 
     DamageEvent damageEvent;
-    damageEvent.target = target_;
+    damageEvent.target = GetTarget();
     damageEvent.attacker = this;
     damageEvent.damageAmount = attack.damage;
     damageEvent.damageType = DamageType::Electric;
@@ -402,7 +404,7 @@ void EnemyThunderSlime::ResetWildLightning() {
 
 void EnemyThunderSlime::UpdateWanderBehavior(float deltaTime, engine::Vector3& velocity) {
     // 検知範囲外では共通巡回速度を使い、移動方向へモデルを向ける。
-    const float speed = (std::max)(0.65f, param_->speed * 0.48f);
+    const float speed = (std::max)(0.65f, GetParameters()->speed * 0.48f);
     velocity = CalculateWanderVelocity(deltaTime, speed, 0.68f);
     UpdateFacing({velocity.x, 0.0f, velocity.z});
 }
@@ -415,7 +417,7 @@ void EnemyThunderSlime::ApplyGroundMovementAndAnimation(float deltaTime, engine:
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         groundHopTimer_ = 0.0f;
-    } else if (SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime, kMoveHopInterval,
+    } else if (SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, IsGrounded(), deltaTime, kMoveHopInterval,
                                                   0.10f)) {
         velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
@@ -437,11 +439,11 @@ void EnemyThunderSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource*
 std::unique_ptr<engine::Object3d> EnemyThunderSlime::Clone() const {
     // シーン上の複製では固有エフェクトを再初期化し、配置設定と対象を引き継ぐ。
     auto clone = std::make_unique<EnemyThunderSlime>();
-    assert(common_ != nullptr);
-    clone->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
-    clone->SetTarget(target_);
-    clone->SetDetectionRange(detectionRange_);
+    clone->SetTarget(GetTarget());
+    clone->SetDetectionRange(GetDetectionRange());
     return clone;
 }
 
@@ -621,11 +623,11 @@ void EnemyThunderSlime::ReleaseShock(const engine::Vector3& direction) {
 void EnemyThunderSlime::DispatchShockDamage(const engine::Vector3& center, const engine::Vector3& direction, float radius,
                                             float damage) {
     // 高さ方向の差を軽く見て球状範囲を判定し、中心に近いほど押し出しを強める。
-    if (!target_) {
+    if (!GetTarget()) {
         return;
     }
 
-    engine::Vector3 diff = target_->GetTranslate() - center;
+    engine::Vector3 diff = GetTarget()->GetTranslate() - center;
     diff.y *= 0.45f;
     const float distance = engine::Math::Length(diff);
 
@@ -635,7 +637,7 @@ void EnemyThunderSlime::DispatchShockDamage(const engine::Vector3& center, const
 
     const float distanceRate = 1.0f - (std::clamp)(distance / radius, 0.0f, 1.0f);
     DamageEvent damageEvent;
-    damageEvent.target = target_;
+    damageEvent.target = GetTarget();
     damageEvent.attacker = this;
     damageEvent.damageAmount = damage;
     damageEvent.damageType = DamageType::Electric;
@@ -661,7 +663,7 @@ void EnemyThunderSlime::UpdateIdleSpark(float deltaTime) {
 
     if (isCharging_) {
         idleSparkTimer_ = kIdleSparkInterval * 0.62f;
-    } else if (isCarried_) {
+    } else if (IsCarried()) {
         idleSparkTimer_ = kIdleSparkInterval * 0.76f;
     } else {
         idleSparkTimer_ = kIdleSparkInterval;
@@ -671,12 +673,12 @@ void EnemyThunderSlime::UpdateIdleSpark(float deltaTime) {
 // 常時オーラの表示位置と形状同期
 void EnemyThunderSlime::InitializeAuraEffect() {
     // 常時オーラを表示専用として用意し、JSON読込失敗時は本体の動作を続ける。
-    if (!common_ || auraEffect_) {
+    if (!GetObjectCommon() || auraEffect_) {
         return;
     }
 
     auraEffect_ = std::make_unique<EffectObject3d>();
-    auraEffect_->Initialize(common_);
+    auraEffect_->Initialize(GetObjectCommon());
     auraEffect_->SetName("ThunderSlime_RoundAura");
 
     if (!auraEffect_->LoadFromJson(kConstantAuraEffectPath)) {
@@ -728,7 +730,7 @@ void EnemyThunderSlime::UpdateAuraEffect(float deltaTime) {
     auraEffect_->SetIsVisible(true);
     auraEffect_->Update(deltaTime);
     auraEffect_->SetTranslate(auraPos);
-    auraEffect_->SetRotation({1.5707963f, yaw, 0.0f});
+    auraEffect_->SetRotation({(std::numbers::pi_v<float> * 0.5f), yaw, 0.0f});
     auraEffect_->SetScale({horizontalDiameter, 1.0f, verticalDiameter});
     auraEffect_->UpdateLocalMatrix();
     auraEffect_->UpdateWorldMatrix();
@@ -832,7 +834,7 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
     if (isCharging_) {
         const float windupDuration = (std::max)(0.01f, GetAttackDefinition(kShockAttackId).windupDuration);
         const float t = std::clamp(1.0f - (chargeTimer_ / windupDuration), 0.0f, 1.0f);
-        const float slam = t * t * (3.0f - 2.0f * t);
+        const float slam = Easing::SmoothStep(t);
         const float chargePulse = std::sin(t * kTwoPi * 3.0f) * (0.018f + slam * 0.035f);
         const float finalClamp = std::clamp((t - 0.76f) / 0.24f, 0.0f, 1.0f);
         targetScale.x = baseScale_.x * (1.0f + slam * 0.30f + finalClamp * 0.18f + chargePulse);
@@ -851,7 +853,7 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
                 : std::clamp(static_cast<float>(wildStrikeIndex_) / static_cast<float>(wildStrikePositions_.size()),
                              0.0f, 1.0f);
         const float pulse = std::sin(progress * kTwoPi * (isWindup ? 3.5f : 5.0f));
-        const float gather = progress * progress * (3.0f - 2.0f * progress);
+        const float gather = Easing::SmoothStep(progress);
         targetScale = {
             baseScale_.x * (1.0f + gather * 0.24f + pulse * 0.045f),
             baseScale_.y * (1.0f - gather * 0.17f - std::abs(pulse) * 0.025f),
@@ -869,17 +871,17 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
 
         if (elapsed < 0.28f) {
             const float phase = elapsed / 0.28f;
-            const float eased = phase * phase * (3.0f - 2.0f * phase);
+            const float eased = Easing::SmoothStep(phase);
             multiplier = {1.82f + (0.90f - 1.82f) * eased, 0.48f + (1.25f - 0.48f) * eased,
                           1.76f + (0.94f - 1.76f) * eased};
         } else if (elapsed < 0.64f) {
             const float phase = (elapsed - 0.28f) / 0.36f;
-            const float eased = phase * phase * (3.0f - 2.0f * phase);
+            const float eased = Easing::SmoothStep(phase);
             multiplier = {0.90f + (1.12f - 0.90f) * eased, 1.25f + (0.86f - 1.25f) * eased,
                           0.94f + (1.10f - 0.94f) * eased};
         } else {
             const float phase = (elapsed - 0.64f) / 0.36f;
-            const float eased = phase * phase * (3.0f - 2.0f * phase);
+            const float eased = Easing::SmoothStep(phase);
             multiplier = {1.12f + (1.0f - 1.12f) * eased, 0.86f + (1.0f - 0.86f) * eased,
                           1.10f + (1.0f - 1.10f) * eased};
         }
@@ -896,8 +898,8 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
         params.horizontalSquash = 0.30f;
         params.verticalStretch = 0.38f;
         params.airborneStretch = 0.36f;
-        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
-        SetColor(defaultColor_);
+        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
+        SetColor(GetDefaultColor());
     }
 
     ApplyDamageReactionPose(targetScale, targetRotation);

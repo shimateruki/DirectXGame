@@ -196,21 +196,21 @@ private:
     InputManager& operator=(const InputManager&) = delete;
 
     // DirectInput本体と入力デバイス。Initializeで取得し、Finalizeで解放する。
-    IDirectInput8* directInput = nullptr;
-    IDirectInputDevice8* keyboardDevice = nullptr;
-    IDirectInputDevice8* mouseDevice = nullptr;
+    IDirectInput8* directInput_ = nullptr;
+    IDirectInputDevice8* keyboardDevice_ = nullptr;
+    IDirectInputDevice8* mouseDevice_ = nullptr;
 
     // 256キーの現在値と前フレーム値。Triggered判定では両者を比較する。
-    BYTE keyState[256]{};
-    BYTE prevKeyState[256]{};
+    BYTE keyState_[256]{};
+    BYTE prevKeyState_[256]{};
 
     // マウスボタンと移動量の現在値・前フレーム値。
-    DIMOUSESTATE mouseState{};
-    DIMOUSESTATE prevMouseState{};
+    DIMOUSESTATE mouseState_{};
+    DIMOUSESTATE prevMouseState_{};
 
     // XInputの現在値と前フレーム値。ボタンの押下エッジに使用する。
-    XINPUT_STATE gamepadState{};
-    XINPUT_STATE prevGamepadState{};
+    XINPUT_STATE gamepadState_{};
+    XINPUT_STATE prevGamepadState_{};
 
     // DirectInputの協調レベルを設定する対象ウィンドウ。所有しない。
     HWND hwnd_ = nullptr;
@@ -222,11 +222,11 @@ private:
     bool xinputConnected_ = false;
 
     // センサーの直近値。baseAccel_を差し引く前の値を保持する。
-    engine::Vector3 accelData_ = { 0, 0, 0 };
-    engine::Vector3 gyroData_ = { 0, 0, 0 };
+    engine::Vector3 accelData_ = engine::Vector3::ZERO;
+    engine::Vector3 gyroData_ = engine::Vector3::ZERO;
 
     // 校正時の加速度と、校正済みかどうか。
-    engine::Vector3 baseAccel_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 baseAccel_ = engine::Vector3::ZERO;
     bool isCalibrated_ = false;
 
     // 直近に操作したデバイス種別。操作案内の表示切替に使う。

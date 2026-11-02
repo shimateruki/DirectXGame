@@ -123,8 +123,8 @@ class TutorialDirector {
         std::vector<std::string> spawnEnemyObjects;
         std::vector<std::string> despawnEnemyObjects;
 
-        engine::Vector3 targetPosition = {0.0f, 0.0f, 0.0f};
-        engine::Vector3 checkpointPosition = {0.0f, 0.0f, 0.0f};
+        engine::Vector3 targetPosition = engine::Vector3::ZERO;
+        engine::Vector3 checkpointPosition = engine::Vector3::ZERO;
 
         float threshold = 0.0f;
         float radius = 3.0f;
@@ -159,7 +159,7 @@ class TutorialDirector {
         std::string objectName;
         nlohmann::json initialDefinition;
         nlohmann::json initialCustomState;
-        engine::Vector3 initialPosition = {0.0f, 0.0f, 0.0f};
+        engine::Vector3 initialPosition = engine::Vector3::ZERO;
         uint32_t collisionAttribute = 0;
         uint32_t collisionMask = 0;
         float maxHpOverride = -1.0f;
@@ -170,9 +170,9 @@ class TutorialDirector {
     // JSON 配置を維持したまま、手順中の表示とフェードだけ更新します。
     struct PromptVisual {
         engine::Sprite* sprite = nullptr;
-        engine::Vector2 basePosition = {0.0f, 0.0f};
-        engine::Vector2 baseSize = {0.0f, 0.0f};
-        engine::Vector4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        engine::Vector2 basePosition = engine::Vector2::ZERO;
+        engine::Vector2 baseSize = engine::Vector2::ZERO;
+        engine::Vector4 baseColor = engine::Colors::White;
         bool requestedVisible = false;
     };
 
@@ -285,7 +285,7 @@ class TutorialDirector {
     float stepTimer_ = 0.0f;
     float conditionSatisfiedTimer_ = 0.0f;
 
-    engine::Vector3 stepStartPosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 stepStartPosition_ = engine::Vector3::ZERO;
 
     bool started_ = false;
     bool loaded_ = false;

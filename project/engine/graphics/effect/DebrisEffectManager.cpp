@@ -1,4 +1,5 @@
 #include "DebrisEffectManager.h"
+#include <numbers>
 
 #include "BaseScene.h"
 #include "CameraManager.h"
@@ -619,9 +620,9 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         };
 
         piece.rotation = {
-            RandomRange(-3.141592f, 3.141592f),
-            RandomRange(-3.141592f, 3.141592f),
-            RandomRange(-3.141592f, 3.141592f)
+            RandomRange(-std::numbers::pi_v<float>, std::numbers::pi_v<float>),
+            RandomRange(-std::numbers::pi_v<float>, std::numbers::pi_v<float>),
+            RandomRange(-std::numbers::pi_v<float>, std::numbers::pi_v<float>)
         };
 
         // 見た目の大きさと初速度・回転速度を個別に抽選し、同時発生でも動きを揃えない。
@@ -842,7 +843,7 @@ engine::Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& c
         base = { 0.0f, 0.0f, 1.0f };
     }
 
-    float angle = RandomRange(-3.141592f, 3.141592f);
+    float angle = RandomRange(-std::numbers::pi_v<float>, std::numbers::pi_v<float>);
     float spread = (std::max)(0.0f, config.horizontalSpread);
     engine::Vector3 randomHorizontal = { std::cos(angle) * spread, 0.0f, std::sin(angle) * spread };
     engine::Vector3 direction = {

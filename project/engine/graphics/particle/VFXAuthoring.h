@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/utility/math/Math.h"
+#include "Easing.h"
 
 #include <algorithm>
 #include <array>
@@ -29,7 +30,7 @@ inline float ApplyVFXCurveEasing(VFXCurveEasing easing, float value) {
     case VFXCurveEasing::EaseInOut:
         return t < 0.5f ? 2.0f * t * t : 1.0f - std::pow(-2.0f * t + 2.0f, 2.0f) * 0.5f;
     case VFXCurveEasing::SmoothStep:
-        return t * t * (3.0f - 2.0f * t);
+        return Easing::SmoothStep(t);
     case VFXCurveEasing::Linear:
     default:
         return t;
@@ -46,7 +47,7 @@ struct VFXFloatCurveKey {
 /// <summary>寿命に対する色グラデーションのキー。timeは0～1の再生割合。</summary>
 struct VFXColorGradientKey {
     float time = 0.0f;
-    engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 color = engine::Colors::White;
     VFXCurveEasing easing = VFXCurveEasing::Linear;
 };
 

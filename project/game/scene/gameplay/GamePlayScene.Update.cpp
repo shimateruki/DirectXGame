@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "Easing.h"
+#include <numbers>
 #include "game/ui/ControlsGuideOverlay.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SettingsMenuOverlay.h"
@@ -48,7 +50,7 @@ using namespace GamePlayPresentationMath;
 namespace {
 constexpr float kStageEntrySetupRetryTimeout = 2.0f;
 
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kTwoPi = kPi * 2.0f;
 constexpr const char* kGoalCrownSparklePreset = "crown_goal_idle_sparkle";
 constexpr const char* kGoalCrownTwinklePreset = "crown_idle_twinkle";
@@ -158,7 +160,7 @@ bool GamePlayScene::TryStartGoalFromContact(engine::Object3d* actor, engine::Obj
     // 生存中のプレイヤーが触れた場合だけクリア演出を開始し、重複開始は避ける。
     Player* player = dynamic_cast<Player*>(actor);
 
-    if (!player || player->isDead || player->GetHp() <= 0.0f) {
+    if (!player || player->IsDead() || player->GetHp() <= 0.0f) {
         return false;
     }
 
@@ -247,7 +249,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
         return;
     }
 
-    if (!player_ || player_->isDead || player_->GetHp() <= 0.0f) {
+    if (!player_ || player_->IsDead() || player_->GetHp() <= 0.0f) {
         return;
     }
 
@@ -265,7 +267,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
     goalResultCuePlayed_ = false;
     goalCrownObject_ = crownObject;
     goalCrownPosition_ = crownObject ? crownObject->GetWorldPosition()
-                                     : (player_ ? player_->GetWorldPosition() : engine::Vector3{0.0f, 0.0f, 0.0f});
+                                     : (player_ ? player_->GetWorldPosition() : engine::Vector3::ZERO);
     goalCrownSnapshotValid_ = false;
     goalCrownSpringInitialized_ = false;
     goalCrownSpringPosition_ = goalCrownPosition_;
@@ -291,7 +293,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
         goalCrownSnapshotValid_ = true;
     }
 
-    engine::Vector3 preferredForward = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 preferredForward = engine::Vector3::ZERO;
 
     if (player_) {
         Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
@@ -705,8 +707,8 @@ void GamePlayScene::UpdatePausePageSlide(float deltaTime) {
     // 操作説明と能力ページと同じ0.34秒。遷移中は入力を受けず二重決定を防ぐ。
     pausePageSlideTime_ += std::max(0.0f, deltaTime);
     const float t = std::clamp(pausePageSlideTime_ / 0.34f, 0.0f, 1.0f);
-    const float eased = t * t * (3.0f - 2.0f * t);
-    const float distance = static_cast<float>(WinApp::kClientWidth) * 0.86f;
+    const float eased = Easing::SmoothStep(t);
+    const float distance = static_cast<float>(WinApp::GetClientWidth()) * 0.86f;
     controlsGuideOverlay_->Update(deltaTime, false);
     pauseMenuOverlay_->Update(deltaTime, false);
     controlsGuideOverlay_->SetMenuTransitionOffset(-distance * (pausePageToMenu_ ? eased : 1.0f - eased), true);
@@ -1530,8 +1532,8 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3d* target,
         std::abs(ndc.x) > 1.0f || std::abs(ndc.y) > 1.0f)
         return;
 
-    const float screenWidth = static_cast<float>(::WinApp::kClientWidth);
-    const float screenHeight = static_cast<float>(::WinApp::kClientHeight);
+    const float screenWidth = static_cast<float>(::WinApp::GetClientWidth());
+    const float screenHeight = static_cast<float>(::WinApp::GetClientHeight());
     const float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
     const float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
     lockOnSprite_->SetPosition({screenX, screenY});

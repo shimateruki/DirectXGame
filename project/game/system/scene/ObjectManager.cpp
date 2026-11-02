@@ -55,7 +55,7 @@ void ObjectManager::Update(float deltaTime) {
             floor->Update(deltaTime);
         else if (auto* sinking =
                      obj && !obj->IsReplayRemoved() ? dynamic_cast<GimmickSinkingFloor*>(obj.get()) : nullptr;
-                 sinking && sinking->param_ && sinking->param_->actionMode == 1)
+                 sinking && sinking->GetParameters() && sinking->GetParameters()->actionMode == 1)
             sinking->Update(deltaTime);
     }
 
@@ -66,7 +66,7 @@ void ObjectManager::Update(float deltaTime) {
             continue;
         if (dynamic_cast<GimmickMovingFloor*>(obj.get()) || dynamic_cast<GimmickLiquidLevel*>(obj.get()))
             continue;
-        if (dynamic_cast<GimmickSinkingFloor*>(obj.get()) && obj->param_ && obj->param_->actionMode == 1)
+        if (dynamic_cast<GimmickSinkingFloor*>(obj.get()) && obj->GetParameters() && obj->GetParameters()->actionMode == 1)
             continue;
         obj->Update(deltaTime);
     }
@@ -250,7 +250,7 @@ void ObjectManager::ProcessRemovals() {
             // リプレイ記録中は所有権を維持し、過去フレームから復元できるようにする。
             p->SetReplayRemoved(true);
             p->SetIsVisible(false);
-            p->isDead = true;
+            p->SetDead(true);
             return false;
         }
         return true;

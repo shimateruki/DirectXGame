@@ -57,8 +57,8 @@ private:
     float previewTime_ = 0.0f;
     float previewDuration_ = 2.0f;
     float previewRange_ = 5.0f;
-    engine::Vector3 dummyPos_ = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 lastDummyPos_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 dummyPos_ = engine::Vector3::ZERO;
+    engine::Vector3 lastDummyPos_ = engine::Vector3::ZERO;
     bool dummyFirstFrame_ = true;
     int lastStagePlayRequestSerial_ = 0;
     int lastStageStopRequestSerial_ = 0;

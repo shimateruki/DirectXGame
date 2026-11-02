@@ -14,7 +14,7 @@ bool HasRiderOnDeck(engine::Object3d& part, Character& actor) {
     if (const Collider* collider = part.GetCollider(); collider && part.GetCollisionAttribute() != 0) {
         if (!collider->HasModelVolume() && IsStandingOnMovingFloor(part, actor))
             return true;
-        if (!actor.isDead && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
+        if (!actor.IsDead() && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
             collider->HasModelVolume()) {
             // 親の非一様拡縮で傾いた子床は、箱の上端でなく実際の凸形状の上面を測る。
             const AABB body = actor.GetAABB();
@@ -29,7 +29,7 @@ bool HasRiderOnDeck(engine::Object3d& part, Character& actor) {
                 return true;
         }
         // 傾いた子床ではAABB最高点が上面中央より高い。実際のOBB上面で足元を測る。
-        if (!actor.isDead && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
+        if (!actor.IsDead() && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
             collider->GetType() == ColliderType::kOBB && !collider->HasModelVolume()) {
             const OBB box = collider->GetOBB();
             const engine::Vector3 normal = box.orientations[1];
@@ -65,8 +65,8 @@ void GimmickSinkingFloor::Initialize(engine::Object3dCommon* common, const std::
 
     // 登録済みのクラスでは共通処理が二重登録を省きます。個体のアドレスは台帳へ渡しません。
     engine::ObjectPropertyDefinition<GimmickSinkingFloor> properties(*this, kTypeId, "沈む床");
-    const auto shallow = +[](const GimmickSinkingFloor& floor) { return !floor.param_ || floor.param_->actionMode != 1; };
-    const auto submerged = +[](const GimmickSinkingFloor& floor) { return floor.param_ && floor.param_->actionMode == 1; };
+    const auto shallow = +[](const GimmickSinkingFloor& floor) { return !floor.GetParameters() || floor.GetParameters()->actionMode != 1; };
+    const auto submerged = +[](const GimmickSinkingFloor& floor) { return floor.GetParameters() && floor.GetParameters()->actionMode == 1; };
     using Parameter = engine::Object3d::EntityParameter;
     properties.Parameter("沈み方", "actionMode", &Parameter::actionMode, 0, 1, nullptr,
                          {"従来の浅い沈み込み", "踏むと水没して復帰"});
@@ -81,7 +81,7 @@ void GimmickSinkingFloor::Initialize(engine::Object3dCommon* common, const std::
 
 void GimmickSinkingFloor::Update(float deltaTime) {
     // actionMode で単純な踏み込みと、段階的な水没演出を切り替える。
-    if (param_ && param_->actionMode == 1) {
+    if (GetParameters() && GetParameters()->actionMode == 1) {
         UpdateSubmerging(deltaTime);
         return;
     }
@@ -124,8 +124,8 @@ bool GimmickSinkingFloor::OnCollision(engine::Object3d* other) {
 std::unique_ptr<engine::Object3d> GimmickSinkingFloor::Clone() const {
     // 移動中の位相は複製せず、保存された配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickSinkingFloor>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }
@@ -178,8 +178,8 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
     }
 
     const float dt = (std::max)(0.0f, deltaTime);
-    const float depth = (std::max)(0.1f, param_->moveAmount);
-    const float speed = (std::max)(0.1f, param_->speed);
+    const float depth = (std::max)(0.1f, GetParameters()->moveAmount);
+    const float speed = (std::max)(0.1f, GetParameters()->speed);
     const engine::Vector3 before = GetTranslate();
     engine::Vector3 next = before;
 
@@ -198,7 +198,7 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
         }
     } else if (submergePhase_ == 3) {
         submergeTimer_ += dt;
-        if (submergeTimer_ >= (std::max)(0.1f, param_->interval))
+        if (submergeTimer_ >= (std::max)(0.1f, GetParameters()->interval))
             submergePhase_ = 4;
     } else if (submergePhase_ == 4) {
         next.y = (std::min)(startPos_.y, before.y + speed * dt);

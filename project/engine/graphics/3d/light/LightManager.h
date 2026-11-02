@@ -78,7 +78,7 @@ public:
         std::string name = "PointLight";   // 識別名
         LightMode mode = LightMode::None;  // 現在の挙動モード
         engine::Object3d* target = nullptr;        // 追従対象のオブジェクト（nullptrなら追従なし）
-        engine::Vector3 offset = { 0.0f, 0.0f, 0.0f }; // 追従時の位置ズレ補正
+        engine::Vector3 offset = engine::Vector3::ZERO; // 追従時の位置ズレ補正
 
         // アニメーション用パラメータ
         float baseIntensity = 1.0f;        // 点滅時の基準となる明るさ
@@ -97,7 +97,7 @@ public:
         std::string name = "SpotLight";
         LightMode mode = LightMode::None;
         engine::Object3d* target = nullptr;
-        engine::Vector3 offset = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 offset = engine::Vector3::ZERO;
 
         // アニメーション用パラメータ
         float baseIntensity = 1.0f;

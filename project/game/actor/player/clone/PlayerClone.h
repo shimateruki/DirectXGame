@@ -10,7 +10,7 @@ class PlayerClone : public Character {
 
     void Update(float deltaTime) override;
 
-    bool IsGrounded() const { return isGrounded_; }
+    using Character::IsGrounded;
 
     bool IsExpired() const { return lifetimeTimer_ <= 0.0f; }
 

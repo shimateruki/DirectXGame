@@ -1,4 +1,5 @@
 #include "game/ui/MenuControls.h"
+#include "Easing.h"
 #define NOMINMAX
 #include "PauseMenuOverlay.h"
 
@@ -347,7 +348,7 @@ void PauseMenuOverlay::UpdateSprites() {
     // 大きな共通フレームだけを軽く広げ、文字を伸縮させずに読みやすさを守る。
     if (panel_) {
         const float progress = std::clamp(time_ / 0.20f, 0.0f, 1.0f);
-        const float eased = progress * progress * (3.0f - 2.0f * progress);
+        const float eased = Easing::SmoothStep(progress);
         panel_->SetSize({panelBaseSize_.x * (0.98f + 0.02f * eased),
                          panelBaseSize_.y * (0.98f + 0.02f * eased)});
         panel_->SetColor({1.0f, 1.0f, 1.0f, 0.72f + 0.28f * eased});

@@ -144,24 +144,24 @@ class EnemyGiantSlime : public BaseEnemy {
 
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
 
-    engine::Vector3 hookSplitBasePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hookSplitBasePosition_ = engine::Vector3::ZERO;
     engine::Vector3 hookSplitBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 hookSplitOwnerPosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hookSplitOwnerPosition_ = engine::Vector3::ZERO;
     engine::Vector3 hookSplitDirection_ = {0.0f, 0.0f, 1.0f};
 
     engine::Vector3 hookVisualScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 hookVisualScaleVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hookVisualScaleVelocity_ = engine::Vector3::ZERO;
 
-    engine::Vector3 hookVisualRotation_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 hookVisualRotationVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hookVisualRotation_ = engine::Vector3::ZERO;
+    engine::Vector3 hookVisualRotationVelocity_ = engine::Vector3::ZERO;
 
-    engine::Vector3 hookVisualOffset_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 hookVisualOffsetVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hookVisualOffset_ = engine::Vector3::ZERO;
+    engine::Vector3 hookVisualOffsetVelocity_ = engine::Vector3::ZERO;
 
-    engine::Vector3 hookVisualShear_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 hookVisualShearVelocity_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hookVisualShear_ = engine::Vector3::ZERO;
+    engine::Vector3 hookVisualShearVelocity_ = engine::Vector3::ZERO;
 
-    engine::Vector3 landingTelegraphPosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 landingTelegraphPosition_ = engine::Vector3::ZERO;
 
     State state_ = State::Idle;
     HookSplitPhase hookSplitPhase_ = HookSplitPhase::None;

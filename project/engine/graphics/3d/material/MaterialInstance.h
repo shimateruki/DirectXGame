@@ -13,7 +13,7 @@ struct MaterialInstanceData {
     std::string displayName;
     std::string baseAsset;
 
-    engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 color = engine::Colors::White;
     int blendMode = 1;
     int materialType = 0;
     std::string shaderMaterialId;

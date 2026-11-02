@@ -28,7 +28,7 @@ struct EnemyAttackDefinition {
     float minRange = 0.0f;
     float maxRange = 10.0f;
     std::string hitShape = "sphere";
-    engine::Vector3 hitOffset = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 hitOffset = engine::Vector3::ZERO;
     engine::Vector3 hitSize = {1.0f, 1.0f, 1.0f};
     float radius = 1.0f;
 
@@ -43,7 +43,7 @@ struct EnemyAttackDefinition {
 
     // 命中時のダメージ・ノックバック・状態異常です。速度はワールド単位/秒、時間は秒です。
     float damage = 1.0f;
-    engine::Vector3 knockbackVelocity = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 knockbackVelocity = engine::Vector3::ZERO;
     float invincibilityDuration = 0.0f;
     std::string statusEffectType;
     float statusDuration = 0.0f;

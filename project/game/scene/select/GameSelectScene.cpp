@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
+#include "Easing.h"
 #include "engine/system/scene/SceneEngineIncludes.h"
 #include "game/scene/GameSceneDrawing.h"
 #include "game/ui/PauseMenuOverlay.h"
@@ -386,8 +387,8 @@ void GameSelectScene::Update(float deltaTime) {
                      targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) /
                     w;
 
-            float screenWidth = static_cast<float>(::WinApp::kClientWidth);
-            float screenHeight = static_cast<float>(::WinApp::kClientHeight);
+            float screenWidth = static_cast<float>(::WinApp::GetClientWidth());
+            float screenHeight = static_cast<float>(::WinApp::GetClientHeight());
             float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
             float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
 
@@ -850,8 +851,8 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3d* nearestGate, bool canEn
         return;
     }
 
-    const float screenWidth = static_cast<float>(WinApp::kClientWidth);
-    const float screenHeight = static_cast<float>(WinApp::kClientHeight);
+    const float screenWidth = static_cast<float>(WinApp::GetClientWidth());
+    const float screenHeight = static_cast<float>(WinApp::GetClientHeight());
     const float playerScreenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
     const float playerScreenY = (1.0f - ndc.y) * 0.5f * screenHeight;
     const float baseWidth = 192.0f;
@@ -956,7 +957,7 @@ void GameSelectScene::ApplyStageGateStates() {
             const float wakeRadius = gateSelectRadius_ * 1.55f;
             gateActivation =
                 1.0f - engine::Math::Clamp((distance - nearRadius) / std::max(wakeRadius - nearRadius, 0.001f), 0.0f, 1.0f);
-            gateActivation = gateActivation * gateActivation * (3.0f - 2.0f * gateActivation);
+            gateActivation = Easing::SmoothStep(gateActivation);
 
             if (!unlocked) {
                 gateActivation *= 0.18f;
@@ -1146,11 +1147,11 @@ bool GameSelectScene::IsStageGateObject(const engine::Object3d* object) const {
     }
 
     if (object->GetGimmickType() == "StageGate") {
-        if (!object->param_.has_value()) {
+        if (!object->GetParameters().has_value()) {
             return true;
         }
 
-        return object->param_->actionMode == 0;
+        return object->GetParameters()->actionMode == 0;
     }
 
     const std::string& modelName = object->GetModelName();

@@ -1,4 +1,5 @@
 #include "GimmickRotatingObject.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "GhostRecorder.h"
@@ -20,12 +21,12 @@ void GimmickRotatingObject::Initialize(engine::Object3dCommon* common, const std
     SetScale({3.0f, 0.3f, 1.2f});
     SetStatic(false);
 
-    if (!param_.has_value())
-        param_.emplace();
-    param_->speed = 45.0f;
-    param_->actionMode = 1;
-    param_->startActive = true;
-    param_->returnOnOff = true;
+    if (!GetParameters().has_value())
+        ResetParameters();
+    SetParameter(&engine::EntityParameter::speed, 45.0f);
+    SetParameter(&engine::EntityParameter::actionMode, 1);
+    SetParameter(&engine::EntityParameter::startActive, true);
+    SetParameter(&engine::EntityParameter::returnOnOff, true);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickRotatingObject;
@@ -43,8 +44,8 @@ void GimmickRotatingObject::Initialize(engine::Object3dCommon* common, const std
 // Editorでは配置角度を維持し、Play中だけ設定軸の回転を進めます。
 void GimmickRotatingObject::Update(float deltaTime) {
     // 編集中は回転を進めず、Play開始時に初期姿勢を取り直す。
-    if (!param_.has_value())
-        param_.emplace();
+    if (!GetParameters().has_value())
+        ResetParameters();
 
     bool isPlaying = false;
 
@@ -67,7 +68,7 @@ void GimmickRotatingObject::Update(float deltaTime) {
     }
 
     if (!initializedForPlay_) {
-        active_ = param_->startActive;
+        active_ = GetParameters()->startActive;
         pathRotationOffset_ = 0.0f;
         startPosition_ = GetTranslate();
         startRotation_ = GetRotation();
@@ -96,12 +97,12 @@ void GimmickRotatingObject::Update(float deltaTime) {
         }
     }
 
-    const float step = param_->speed * 3.14159265f / 180.0f * (std::max)(0.0f, deltaTime);
-    const bool playingPath = recorder_ && recorder_->GetState() == GhostRecorder::State::Playing &&
+    const float step = GetParameters()->speed * std::numbers::pi_v<float> / 180.0f * (std::max)(0.0f, deltaTime);
+    const bool playingPath = GetRecorder() && GetRecorder()->GetState() == GhostRecorder::State::Playing &&
                              !GetRecordPathName().empty();
     if (supportFloor_) {
         if (active_)
-            pathRotationOffset_ = std::fmod(pathRotationOffset_ + step, 2.0f * 3.14159265f);
+            pathRotationOffset_ = std::fmod(pathRotationOffset_ + step, 2.0f * std::numbers::pi_v<float>);
         supportFloor_->UpdateWorldMatrix(false);
         SetTranslate(engine::Math::Transform(supportLocalPosition_, supportFloor_->GetWorldMatrix()));
         const auto floorRotation = supportFloor_->GetRotation();
@@ -109,8 +110,8 @@ void GimmickRotatingObject::Update(float deltaTime) {
             startRotation_.x + floorRotation.x - supportStartRotation_.x,
             startRotation_.y + floorRotation.y - supportStartRotation_.y,
             startRotation_.z + floorRotation.z - supportStartRotation_.z};
-        if (param_->actionMode == 0) rotation.x += pathRotationOffset_;
-        else if (param_->actionMode == 2) rotation.z += pathRotationOffset_;
+        if (GetParameters()->actionMode == 0) rotation.x += pathRotationOffset_;
+        else if (GetParameters()->actionMode == 2) rotation.z += pathRotationOffset_;
         else rotation.y += pathRotationOffset_;
         SetEulerAngles(rotation);
         SetIsVisible(initialVisible_ && supportFloor_->GetIsVisible());
@@ -119,18 +120,18 @@ void GimmickRotatingObject::Update(float deltaTime) {
         UpdateWorldMatrix(false);
     } else if (playingPath) {
         if (active_) {
-            pathRotationOffset_ = std::fmod(pathRotationOffset_ + step, 2.0f * 3.14159265f);
+            pathRotationOffset_ = std::fmod(pathRotationOffset_ + step, 2.0f * std::numbers::pi_v<float>);
         }
         engine::Vector3 rot = GetRotation();
-        if (param_->actionMode == 0) rot.x += pathRotationOffset_;
-        else if (param_->actionMode == 2) rot.z += pathRotationOffset_;
+        if (GetParameters()->actionMode == 0) rot.x += pathRotationOffset_;
+        else if (GetParameters()->actionMode == 2) rot.z += pathRotationOffset_;
         else rot.y += pathRotationOffset_;
         SetEulerAngles(rot);
     } else if (active_) {
         // 経路を使わない従来の回転床は現在の姿勢から少しずつ進める。
         engine::Vector3 rot = GetRotation();
-        if (param_->actionMode == 0) rot.x += step;
-        else if (param_->actionMode == 2) rot.z += step;
+        if (GetParameters()->actionMode == 0) rot.x += step;
+        else if (GetParameters()->actionMode == 2) rot.z += step;
         else rot.y += step;
         SetEulerAngles(rot);
     }
@@ -144,9 +145,9 @@ void GimmickRotatingObject::OnTrigger() {
 // returnOnOff が無効なら、スイッチ解除後も回転を続けます。
 void GimmickRotatingObject::OnSwitchEvent(bool active) {
     // OFF で停止するかは設定値で決め、スイッチの状態を床の回転へ反映する。
-    if (!param_.has_value())
-        param_.emplace();
-    if (!active && !param_->returnOnOff)
+    if (!GetParameters().has_value())
+        ResetParameters();
+    if (!active && !GetParameters()->returnOnOff)
         return;
     active_ = active;
 }
@@ -154,8 +155,8 @@ void GimmickRotatingObject::OnSwitchEvent(bool active) {
 std::unique_ptr<engine::Object3d> GimmickRotatingObject::Clone() const {
     // 回転開始時刻は複製せず、保存済みの配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickRotatingObject>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

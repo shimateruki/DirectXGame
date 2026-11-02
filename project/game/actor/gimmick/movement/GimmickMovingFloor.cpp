@@ -1,4 +1,5 @@
 #include "GimmickMovingFloor.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include <algorithm>
 #include <cmath>
@@ -26,7 +27,7 @@ constexpr float kLegacyMoveRange = 3.0f;
 constexpr float kMaxFloatAmplitude = 2.0f;
 constexpr float kFloatPitchScale = 0.025f;
 constexpr float kFloatRollScale = 0.035f;
-constexpr float kTwoPi = 6.28318530718f;
+constexpr float kTwoPi = (2.0f * std::numbers::pi_v<float>);
 
 bool HasCurvedSupportBelow(engine::Object3d& floor, const Player& player) {
     // 互換モーターは接地相手を保持しないため、曲面の実形状を足元だけ照会する。
@@ -62,10 +63,10 @@ void GimmickMovingFloor::Initialize(engine::Object3dCommon* common, const std::s
     SetClassName("Gimmick");
     SetGimmickType("MovingFloor");
 
-    if (!param_.has_value())
-        param_.emplace();
-    if (param_->speed == 0.0f)
-        param_->speed = 2.0f; // デフォルト速度
+    if (!GetParameters().has_value())
+        ResetParameters();
+    if (GetParameters()->speed == 0.0f)
+        SetParameter(&engine::EntityParameter::speed, 2.0f); // デフォルト速度
 
     // 当たり判定設定 (地面として扱う)
     SetCollisionAttribute(CollisionCategories::Get("ground"));
@@ -84,7 +85,7 @@ void GimmickMovingFloor::Initialize(engine::Object3dCommon* common, const std::s
             object.EnsurePathMoverComponent()->SetRideSequence(value);
             if (!value.empty()) {
                 object.SetRecordPathName("");
-                if (object.recorder_) object.recorder_->Stop(false);
+                if (object.GetRecorder()) object.GetRecorder()->Stop(false);
             }
         }, 0, 0, nullptr, {},
         {.assetDirectory = "Resources/json/scenario", .assetEditor = EditorPropertyAssetEditor::Scenario,
@@ -101,9 +102,9 @@ void GimmickMovingFloor::Initialize(engine::Object3dCommon* common, const std::s
     properties.Parameter("移動方式", "actionMode", &Parameter::actionMode, 0.0f, 5.0f,
         nullptr, {"従来の上下移動", "浮遊", "X方向に往復", "Z方向に往復", "Y方向に往復", "マグマ噴出口と連動"});
     properties.Parameter("浮き沈み幅", "moveAmount", &Parameter::moveAmount, 0.0f, 2.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); }, {}, {.speed = 0.01f});
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 1); }, {}, {.speed = 0.01f});
     properties.Parameter("往復幅", "moveAmount_travel", &Parameter::moveAmount, 0.0f, 100.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode >= 2 && object.param_->actionMode <= 4); }, {}, {.speed = 0.1f, .parameterId = "moveAmount"});
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode >= 2 && object.GetParameters()->actionMode <= 4); }, {}, {.speed = 0.1f, .parameterId = "moveAmount"});
 }
 
 void GimmickMovingFloor::Update(float deltaTime) {
@@ -114,7 +115,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         hasCapturedStartTransform_ = true;
         time_ = 0.0f;
         frameDelta_ = {};
-        if (param_ && param_->actionMode == 5)
+        if (GetParameters() && GetParameters()->actionMode == 5)
             SetEmissive(0.10f);
         BaseGimmick::Update(deltaTime);
         return;
@@ -139,7 +140,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
             if (standing) passengers.push_back(actor);
             // 既存の乗員走査で通知も集め、Pathごとの追加衝突照会を避ける。
             auto* player = dynamic_cast<Player*>(actor);
-            if (player && !player->isDead && player->IsGrounded() && player->GetVelocity().y <= 0.1f) {
+            if (player && !player->IsDead() && player->IsGrounded() && player->GetVelocity().y <= 0.1f) {
                 const auto& ground = player->GetCharacterMotor().GetResult();
                 if (ground.grounded) {
                     for (auto* support = ground.groundObject; support; support = support->GetParent())
@@ -169,7 +170,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
     // 手続き的な往復移動を先に重ねると、Editorで調整したPathと乗り移り判定がずれる。
     if (!GetRecordPathName().empty()) {
         // 丸い床や傾斜でも、AABB上端ではなくMotorの接地相手で再生を判断する。
-        if (recorder_) recorder_->SetPlayerRiding(playerRidingPath);
+        if (GetRecorder()) GetRecorder()->SetPlayerRiding(playerRidingPath);
         const engine::Vector3 previousPosition = GetTransform()->translate;
         UpdateLocalMatrix();
         UpdateWorldMatrix(false);
@@ -211,8 +212,8 @@ void GimmickMovingFloor::Update(float deltaTime) {
     const engine::Vector3 previousPosition = GetTransform()->translate;
     time_ += deltaTime;
 
-    const float speed = param_.has_value() ? (std::max)(param_->speed, 0.0f) : 0.0f;
-    const int actionMode = param_.has_value() ? param_->actionMode : 0;
+    const float speed = GetParameters().has_value() ? (std::max)(GetParameters()->speed, 0.0f) : 0.0f;
+    const int actionMode = GetParameters().has_value() ? GetParameters()->actionMode : 0;
 
     // 配置位置を往復運動の中心として扱う。位相差は自然な浮遊モードだけに適用する。
     const float waveTime = time_ * speed + (actionMode == 1 ? phaseOffset_ : 0.0f);
@@ -239,7 +240,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         }
     } else if (actionMode == 1) {
         // 溶岩に浮く足場用。移動床の位置を保ったまま、緩やかな浮き沈みと傾きだけを加える。
-        const float amplitude = (std::clamp)(std::abs(param_->moveAmount), 0.0f, kMaxFloatAmplitude);
+        const float amplitude = (std::clamp)(std::abs(GetParameters()->moveAmount), 0.0f, kMaxFloatAmplitude);
         const float tiltWeight = (std::min)(amplitude, 1.0f);
         transform->translate.y += std::sin(waveTime) * amplitude;
         transform->rotate.x += std::sin(waveTime * 0.73f + 1.2f) * kFloatPitchScale * tiltWeight;
@@ -247,7 +248,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         transform->isQuaternionMaster = false;
     } else if (actionMode >= 2 && actionMode <= 4) {
         // ステージ制作用の往復移動。振幅と速度はInspectorから調整できる。
-        const float travel = (std::max)(0.0f, std::abs(param_->moveAmount));
+        const float travel = (std::max)(0.0f, std::abs(GetParameters()->moveAmount));
         const float offset = std::sin(waveTime) * travel;
         if (actionMode == 2)
             transform->translate.x += offset;
@@ -277,7 +278,7 @@ bool GimmickMovingFloor::OnCollision(engine::Object3d* other) {
 std::unique_ptr<engine::Object3d> GimmickMovingFloor::Clone() const {
     // 複製時は配置と設定だけを引き継ぎ、乗員・周期・原点は再生時に再取得する。
     auto clone = std::make_unique<GimmickMovingFloor>();
-    clone->Initialize(common_, GetModelName());
+    clone->Initialize(GetObjectCommon(), GetModelName());
     clone->CopyFrom(this);
     return clone;
 }

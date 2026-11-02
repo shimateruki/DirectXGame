@@ -28,7 +28,7 @@ class GimmickSinkingFloor : public BaseGimmick {
 
     int submergePhase_ = 0;
     float submergeTimer_ = 0.0f;
-    engine::Vector3 startPos_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 startPos_ = engine::Vector3::ZERO;
     float contactTimer_ = 0.0f;
     float sinkDepth_ = 2.0f;
     float sinkSpeed_ = 5.5f;

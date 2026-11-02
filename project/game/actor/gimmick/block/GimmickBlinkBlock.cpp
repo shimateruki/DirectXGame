@@ -1,4 +1,6 @@
 #include "GimmickBlinkBlock.h"
+#include "Easing.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "Model.h"
@@ -9,7 +11,7 @@
 #include <cmath>
 
 namespace {
-constexpr float kPi = 3.14159265358979323846f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr int kFlipFrameCount = 24;
 constexpr const char* kFlipModelPrefix = "Stages/jump_flip_pair/jump_flip_pair_";
 
@@ -87,8 +89,8 @@ void GimmickBlinkBlock::Initialize(engine::Object3dCommon* common, const std::st
     jumpSubscription_ = EventManager::GetInstance()->Subscribe([this](const PlayerJumpEvent& e) { OnPlayerJump(e); });
 
     // 初期パラメータの読み込み
-    if (param_.has_value()) {
-        colorType_ = param_->colorType;
+    if (GetParameters().has_value()) {
+        colorType_ = GetParameters()->colorType;
     }
 
     // 初期状態の反映（ジャンプ0回目を基準にする）
@@ -115,8 +117,8 @@ void GimmickBlinkBlock::Update(float deltaTime) {
 
     // Scene JSONはInitialize後に適用されるため、初回Updateで色種別と初期ON/OFFを同期する。
     // 青(0)は既定値と一致して変更検知だけでは再描画されないので、見た目は毎フレーム確定する。
-    if (param_.has_value() && param_->colorType != colorType_) {
-        colorType_ = param_->colorType;
+    if (GetParameters().has_value() && GetParameters()->colorType != colorType_) {
+        colorType_ = GetParameters()->colorType;
         isActive_ = (colorType_ == 0);
     }
 
@@ -138,7 +140,7 @@ void GimmickBlinkBlock::OnPlayerJump(const PlayerJumpEvent& event) {
             flipFromAngle_ = flipAngle_;
             flipTargetAngle_ = targetAngle;
             flipElapsed_ = 0.0f;
-            const float speed = std::clamp(param_.has_value() ? param_->speed : 1.0f, 0.25f, 3.0f);
+            const float speed = std::clamp(GetParameters().has_value() ? GetParameters()->speed : 1.0f, 0.25f, 3.0f);
             flipDuration_ = (std::max)(0.16f, 0.48f * std::abs(flipTargetAngle_ - flipFromAngle_) / kPi / speed);
             // 移動先の板はジャンプ開始時から着地可能にする。アニメーション中に床判定を消すと、
             // 着地が先行したフレームでプレイヤーが板を通り抜けてしまう。
@@ -172,7 +174,7 @@ void GimmickBlinkBlock::ResetFlipPair() {
         flipPairColliders_[0] = BuildFlipPairCollider(ModelManager::GetInstance()->LoadModel(FlipFrameModelName(0)));
         flipPairColliders_[1] = BuildFlipPairCollider(ModelManager::GetInstance()->LoadModel(FlipFrameModelName(kFlipFrameCount)));
     }
-    flipPairInitialSide_ = param_.has_value() && param_->colorType == 1 ? 1 : 0;
+    flipPairInitialSide_ = GetParameters().has_value() && GetParameters()->colorType == 1 ? 1 : 0;
     flipAngle_ = flipPairInitialSide_ == 0 ? 0.0f : kPi;
     flipFromAngle_ = flipAngle_;
     flipTargetAngle_ = flipAngle_;
@@ -185,7 +187,7 @@ void GimmickBlinkBlock::ResetFlipPair() {
 void GimmickBlinkBlock::UpdateFlipPair(float deltaTime) {
     const SceneManager* sceneManager = SceneManager::GetInstance();
     const bool playing = sceneManager && sceneManager->IsPlaying();
-    const int configuredSide = param_.has_value() && param_->colorType == 1 ? 1 : 0;
+    const int configuredSide = GetParameters().has_value() && GetParameters()->colorType == 1 ? 1 : 0;
     if (!flipPairInitialized_ || playing != flipPairWasPlaying_ ||
         (!playing && configuredSide != flipPairInitialSide_)) {
         ResetFlipPair();
@@ -195,7 +197,7 @@ void GimmickBlinkBlock::UpdateFlipPair(float deltaTime) {
     if (playing && std::abs(flipTargetAngle_ - flipFromAngle_) > 0.001f) {
         flipElapsed_ = (std::min)(flipElapsed_ + (std::max)(deltaTime, 0.0f), flipDuration_);
         const float t = std::clamp(flipElapsed_ / flipDuration_, 0.0f, 1.0f);
-        const float eased = t * t * (3.0f - 2.0f * t);
+        const float eased = Easing::SmoothStep(t);
         flipAngle_ = flipFromAngle_ + (flipTargetAngle_ - flipFromAngle_) * eased;
         if (t >= 1.0f)
             flipFromAngle_ = flipTargetAngle_;
@@ -266,8 +268,8 @@ void GimmickBlinkBlock::UpdateAppearance() {
 std::unique_ptr<engine::Object3d> GimmickBlinkBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     auto newObj = std::make_unique<GimmickBlinkBlock>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

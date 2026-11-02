@@ -177,6 +177,6 @@ void engine::Object3d::RestartDecalPlayback() {
 
     if (decalSettings_.enabled) {
         SetIsVisible(true);
-        isDead = false;
+        SetDead(false);
     }
 }

@@ -84,12 +84,12 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
         }
         if (phase==1 && name=="TUTORIAL" && player) {
             auto* gate=FindGate(scene);
-            Require(gate && gate->param_,"tutorial gate parameter missing");
-            const auto destination=gate->param_->targetScene;
-            gate->param_->targetScene="__MissingGateProbeScene";
+            Require(gate && gate->GetParameters(),"tutorial gate parameter missing");
+            const auto destination=gate->GetParameters()->targetScene;
+            gate->SetParameter(&engine::EntityParameter::targetScene, "__MissingGateProbeScene");
             gate->SetTransitionEnabled(true);
             Require(!gate->OnCollision(player),"invalid destination started a presentation");
-            gate->param_->targetScene=destination;
+            gate->SetParameter(&engine::EntityParameter::targetScene, destination);
             attribute=player->GetCollisionAttribute();mask=player->GetCollisionMask();
             emissive=player->GetEmissive();blend=player->GetBlendMode();scale=player->GetScale();
             Start(gate,player);phase=2;log<<"START tutorial entry"<<std::endl;return;

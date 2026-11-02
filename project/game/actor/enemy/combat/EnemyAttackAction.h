@@ -1,5 +1,6 @@
 #pragma once
 #include "game/actor/combat/AttackSequence.h"
+#include <numbers>
 #include "BaseEnemy.h"
 
 // AIは候補を選んで開始するだけ。予備動作から後隙まで同じ時計で進めます。
@@ -78,7 +79,7 @@ private:
             owner_->SetVelocity(v);
         }
         if (c.faceTarget)
-            owner_->SetRotationY(std::atan2(aim_.forward.x, aim_.forward.z) + c.modelYawOffset * 0.01745329252f);
+            owner_->SetRotationY(std::atan2(aim_.forward.x, aim_.forward.z) + c.modelYawOffset * (std::numbers::pi_v<float> / 180.0f));
         if (c.tint)
             owner_->SetColor(GetElapsed() < c.telegraphEnd ? ToColor(c.color) : originalColor_);
         if (c.telegraph && GetElapsed() < c.telegraphEnd) {

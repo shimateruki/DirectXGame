@@ -55,7 +55,7 @@ void GPUParticleEmitter::Stop() { isPlaying_ = false; emitTimer_ = 0.0f; }
 
 // 発生元Objectのモデル情報と姿勢を収集し、設定済みSystemへ一回分の粒子を発生させます。
 void GPUParticleEmitter::EmitOnce() {
-    engine::Vector3 spawnPos = { 0, 0, 0 };
+    engine::Vector3 spawnPos = engine::Vector3::ZERO;
     ID3D12Resource* vb = nullptr;
     uint32_t vCount = 0;
     uint32_t vStride = 0;

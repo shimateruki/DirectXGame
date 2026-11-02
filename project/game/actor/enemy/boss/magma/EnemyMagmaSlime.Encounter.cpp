@@ -134,7 +134,7 @@ void EnemyMagmaSlime::InitializeEncounterState() {
     CaptureEncounterAuthoredState();
     attackCycleIndex_ = attackCycle_.size();
     lastAutomaticAttack_ = AttackKind::None;
-    const bool startActive = param_.has_value() && param_->startActive;
+    const bool startActive = GetParameters().has_value() && GetParameters()->startActive;
 
     if (startActive || encounterRequestedActive_) {
         BeginEncounterAppearance();
@@ -228,17 +228,17 @@ void EnemyMagmaSlime::FinishEncounterAppearance() {
 
 bool EnemyMagmaSlime::IsEncounterControlled() const {
     // ステージ演出で起動する個体だけ登場状態を管理する。
-    return param_.has_value() && param_->actionMode == kEncounterControlledActionMode;
+    return GetParameters().has_value() && GetParameters()->actionMode == kEncounterControlledActionMode;
 }
 
 float EnemyMagmaSlime::GetEncounterAppearanceDuration() const {
     // 既存の調整値を登場時間へ流用し、極端に短い・長い演出時間を制限する。
-    return param_.has_value() ? (std::clamp)(param_->shakeDuration, 0.45f, 3.0f) : kDefaultEncounterAppearanceDuration;
+    return GetParameters().has_value() ? (std::clamp)(GetParameters()->shakeDuration, 0.45f, 3.0f) : kDefaultEncounterAppearanceDuration;
 }
 
 bool EnemyMagmaSlime::IsEncounterHudActive() const {
     // 登場前と撃破後はHPを隠し、登場演出から戦闘中だけ表示する。
-    if (!IsEncounterControlled() || isDead) {
+    if (!IsEncounterControlled() || IsDead()) {
         return false;
     }
 
@@ -247,12 +247,12 @@ bool EnemyMagmaSlime::IsEncounterHudActive() const {
 
 float EnemyMagmaSlime::GetEncounterCurrentHp() const {
     // 表示側に負のHPを渡さない。
-    return param_.has_value() ? (std::max)(0.0f, param_->hp) : 0.0f;
+    return GetParameters().has_value() ? (std::max)(0.0f, GetParameters()->hp) : 0.0f;
 }
 
 float EnemyMagmaSlime::GetEncounterMaximumHp() const {
     // 表示割合のゼロ除算を避けるため、最大HPの下限を1にする。
-    return param_.has_value() ? (std::max)(1.0f, param_->maxHp) : 1.0f;
+    return GetParameters().has_value() ? (std::max)(1.0f, GetParameters()->maxHp) : 1.0f;
 }
 
 float EnemyMagmaSlime::GetEncounterAppearanceProgress() const {

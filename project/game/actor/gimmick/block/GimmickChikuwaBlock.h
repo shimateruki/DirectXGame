@@ -34,11 +34,11 @@ class GimmickChikuwaBlock : public BaseGimmick {
     float velocityY_ = 0.0f;
 
     // 秒単位の各段階の長さと、ワールド単位/秒² の落下加速度です。
-    float GetShakeDuration() const { return param_.has_value() ? param_->shakeDuration : 1.0f; }
+    float GetShakeDuration() const { return GetParameters().has_value() ? GetParameters()->shakeDuration : 1.0f; }
 
-    float GetFallDuration() const { return param_.has_value() ? param_->fallDuration : 2.0f; }
+    float GetFallDuration() const { return GetParameters().has_value() ? GetParameters()->fallDuration : 2.0f; }
 
-    float GetRespawnDuration() const { return param_.has_value() ? param_->interval : 3.0f; }
+    float GetRespawnDuration() const { return GetParameters().has_value() ? GetParameters()->interval : 3.0f; }
 
-    float GetGravity() const { return param_.has_value() ? param_->gravity : 30.0f; }
+    float GetGravity() const { return GetParameters().has_value() ? GetParameters()->gravity : 30.0f; }
 };

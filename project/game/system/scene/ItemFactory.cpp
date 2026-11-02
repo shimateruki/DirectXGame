@@ -19,11 +19,11 @@ std::unique_ptr<BaseItem> ItemFactory::CreateItem(const std::string& itemName, e
     // タイプ名を本体とパラメータの両方に保存して、エディタ/イベント側から参照できるようにする
     newItem->SetItemType(itemName);
 
-    if (!newItem->param_.has_value()) {
-        newItem->param_.emplace();
+    if (!newItem->GetParameters().has_value()) {
+        newItem->ResetParameters();
     }
 
-    newItem->param_->itemType = itemName;
+    newItem->SetParameter(&engine::EntityParameter::itemType, itemName);
 
     return newItem;
 }

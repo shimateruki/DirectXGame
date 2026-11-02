@@ -270,7 +270,7 @@ private:
     std::string workspaceStatus_;
 
     bool hasPendingPlayStartPosition_ = false;
-    engine::Vector3 pendingPlayStartPosition_ = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 pendingPlayStartPosition_ = engine::Vector3::ZERO;
     std::string pendingPlayStartLabel_;
 };
 

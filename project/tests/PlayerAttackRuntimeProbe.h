@@ -1,6 +1,7 @@
 #pragma once
 #ifdef USE_IMGUI
 #include "SceneManager.h"
+#include <numbers>
 #include "Player.h"
 #include "IMoveStrategy.h"
 #include "game/system/combat/BulletManager.h"
@@ -80,7 +81,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             ability.specialTriggered = true;
             ability.secondaryTriggered = frame > 0 && frame < 34;
             if (phase == 3 && frame == 5) input->value = {-10, 0, 0};
-            if (phase == 3 && frame == 8) actor->SetMoveYaw(3.14159265f);
+            if (phase == 3 && frame == 8) actor->SetMoveYaw(std::numbers::pi_v<float>);
             mover->Update(dt);
             actor->SetCopyPreviewInput(ability);
             actor->Update(dt);

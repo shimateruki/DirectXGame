@@ -2,6 +2,7 @@
 // 分割実装専用の定数・補助関数。外部からは公開ヘッダーを使用します。
 #define NOMINMAX
 #include "game/actor/combat/CombatMath.h"
+#include <numbers>
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 
 #include "game/system/combat/BulletManager.h"
@@ -85,7 +86,7 @@ inline constexpr const char* kPrismWindTornadoInnerEffect =
 // 素材、衝突、技の発生間隔、遭遇演出に使う調整値。
 inline constexpr int kFireMaterialType = 11;
 inline constexpr int kPrismCrystalMaterialType = 27;
-inline constexpr float kPi = 3.1415926535f;
+inline constexpr float kPi = std::numbers::pi_v<float>;
 inline constexpr float kHalfPi = kPi * 0.5f;
 inline constexpr float kGroundCollisionWorldRadius = 3.25f;
 inline const uint32_t kPrismActiveCollisionAttribute = CollisionCategories::Get("enemy");

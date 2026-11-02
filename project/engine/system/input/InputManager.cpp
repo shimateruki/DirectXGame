@@ -75,33 +75,33 @@ void engine::InputManager::Initialize(HWND hwnd)
     hwnd_ = hwnd;
 
     // --- DirectInput初期化 (キーボード・マウス) ---
-    result = DirectInput8Create(GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<void**>(&directInput), nullptr);
+    result = DirectInput8Create(GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<void**>(&directInput_), nullptr);
     assert(SUCCEEDED(result));
 
     // キーボード設定
-    result = directInput->CreateDevice(GUID_SysKeyboard, &keyboardDevice, nullptr);
+    result = directInput_->CreateDevice(GUID_SysKeyboard, &keyboardDevice_, nullptr);
     assert(SUCCEEDED(result));
-    result = keyboardDevice->SetDataFormat(&c_dfDIKeyboard);
+    result = keyboardDevice_->SetDataFormat(&c_dfDIKeyboard);
     assert(SUCCEEDED(result));
-    result = keyboardDevice->SetCooperativeLevel(hwnd_, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+    result = keyboardDevice_->SetCooperativeLevel(hwnd_, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
     assert(SUCCEEDED(result));
-    keyboardDevice->Acquire();
+    keyboardDevice_->Acquire();
 
     // マウス設定
-    result = directInput->CreateDevice(GUID_SysMouse, &mouseDevice, nullptr);
+    result = directInput_->CreateDevice(GUID_SysMouse, &mouseDevice_, nullptr);
     assert(SUCCEEDED(result));
-    result = mouseDevice->SetDataFormat(&c_dfDIMouse);
+    result = mouseDevice_->SetDataFormat(&c_dfDIMouse);
     assert(SUCCEEDED(result));
-    result = mouseDevice->SetCooperativeLevel(hwnd_, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+    result = mouseDevice_->SetCooperativeLevel(hwnd_, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
     assert(SUCCEEDED(result));
-    mouseDevice->Acquire();
+    mouseDevice_->Acquire();
 
     // 初期化直後も前回値を揃え、最初の更新で接続状態の差分を判定できるようにします。
-    prevGamepadState = gamepadState;
+    prevGamepadState_ = gamepadState_;
 
     // 新しい状態を取得
-    ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
-    xinputConnected_ = XInputGetState(0, &gamepadState) == ERROR_SUCCESS;
+    ZeroMemory(&gamepadState_, sizeof(XINPUT_STATE));
+    xinputConnected_ = XInputGetState(0, &gamepadState_) == ERROR_SUCCESS;
 
     // --- SDL2初期化 (Joy-Con用) ---
 
@@ -131,33 +131,33 @@ void engine::InputManager::Initialize(HWND hwnd)
 void engine::InputManager::Update()
 {
     // トリガー判定用の旧状態を保存してから、DirectInputの現在状態を取得する。
-    memcpy(prevKeyState, keyState, sizeof(keyState));
-    prevMouseState = mouseState;
+    memcpy(prevKeyState_, keyState_, sizeof(keyState_));
+    prevMouseState_ = mouseState_;
 
     // 一時的にフォーカスを失ったデバイスは再取得してから読み直す。
-    HRESULT result = keyboardDevice->GetDeviceState(sizeof(keyState), keyState);
+    HRESULT result = keyboardDevice_->GetDeviceState(sizeof(keyState_), keyState_);
 
     if (FAILED(result)) {
-        keyboardDevice->Unacquire();
+        keyboardDevice_->Unacquire();
 
-        while ((result = keyboardDevice->Acquire()) == DIERR_INPUTLOST) {}
-        keyboardDevice->GetDeviceState(sizeof(keyState), keyState);
+        while ((result = keyboardDevice_->Acquire()) == DIERR_INPUTLOST) {}
+        keyboardDevice_->GetDeviceState(sizeof(keyState_), keyState_);
     }
 
-    result = mouseDevice->GetDeviceState(sizeof(mouseState), &mouseState);
+    result = mouseDevice_->GetDeviceState(sizeof(mouseState_), &mouseState_);
 
     if (FAILED(result)) {
-        mouseDevice->Unacquire();
+        mouseDevice_->Unacquire();
 
-        while ((result = mouseDevice->Acquire()) == DIERR_INPUTLOST) {}
-        mouseDevice->GetDeviceState(sizeof(mouseState), &mouseState);
+        while ((result = mouseDevice_->Acquire()) == DIERR_INPUTLOST) {}
+        mouseDevice_->GetDeviceState(sizeof(mouseState_), &mouseState_);
     }
 
     // パッドはXInputを先に試し、未接続時だけSDLのボタン・軸を共通状態へ変換する。
-    prevGamepadState = gamepadState;
+    prevGamepadState_ = gamepadState_;
 
-    ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
-    xinputConnected_ = XInputGetState(0, &gamepadState) == ERROR_SUCCESS;
+    ZeroMemory(&gamepadState_, sizeof(XINPUT_STATE));
+    xinputConnected_ = XInputGetState(0, &gamepadState_) == ERROR_SUCCESS;
 
     // SDL側の接続解除通知と実際の接続状態の両方を確認する。
     SDL_Event event;
@@ -220,80 +220,80 @@ void engine::InputManager::Update()
 
         // SDL の Y 軸は下方向が正なので反転します。最小値は符号反転後に飽和させます。
         if (abs(leftX) > 0 || abs(leftY) > 0) {
-            gamepadState.Gamepad.sThumbLX = leftX;
-            gamepadState.Gamepad.sThumbLY = static_cast<SHORT>(std::clamp(-static_cast<int>(leftY), -32768, 32767));
+            gamepadState_.Gamepad.sThumbLX = leftX;
+            gamepadState_.Gamepad.sThumbLY = static_cast<SHORT>(std::clamp(-static_cast<int>(leftY), -32768, 32767));
         }
 
         if (abs(rightX) > 0 || abs(rightY) > 0) {
-            gamepadState.Gamepad.sThumbRX = rightX;
-            gamepadState.Gamepad.sThumbRY = static_cast<SHORT>(std::clamp(-static_cast<int>(rightY), -32768, 32767));
+            gamepadState_.Gamepad.sThumbRX = rightX;
+            gamepadState_.Gamepad.sThumbRY = static_cast<SHORT>(std::clamp(-static_cast<int>(rightY), -32768, 32767));
         }
 
         // トリガーはSDLの16bit範囲をXInputの8bit範囲へ縮小する。
         int16_t trigLeft = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
         int16_t trigRight = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
         if (trigLeft > 0)
-            gamepadState.Gamepad.bLeftTrigger = (BYTE)(trigLeft >> 7);
+            gamepadState_.Gamepad.bLeftTrigger = (BYTE)(trigLeft >> 7);
         if (trigRight > 0)
-            gamepadState.Gamepad.bRightTrigger = (BYTE)(trigRight >> 7);
+            gamepadState_.Gamepad.bRightTrigger = (BYTE)(trigRight >> 7);
 
 
         // ABXYはSDLとXInputでラベル配置が異なるため、ゲーム内の期待する配置へ対応させる。
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_B)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_A;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_A;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_A)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_B;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_B;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_Y)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_X;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_X;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_X)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_Y;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_Y;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_UP)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_UP;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_UP;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_START)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_START;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_START;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_BACK)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_BACK;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_BACK;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_SHOULDER;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_SHOULDER;
         }
 
         // 押し込みも共通入力へ渡し、R3のロックオンとL3の対象切替を有効にします。
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_LEFTSTICK)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_THUMB;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_THUMB;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_RIGHTSTICK)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_THUMB;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_THUMB;
         }
 
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
+            gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
         }
         }
     }
@@ -312,7 +312,7 @@ void engine::InputManager::Update()
 
     // キーボード入力チェック
     for (int i = 0; i < 256; i++) {
-        if (keyState[i] & 0x80) {
+        if (keyState_[i] & 0x80) {
             isKeyMouseActive = true;
             break;
         }
@@ -321,15 +321,15 @@ void engine::InputManager::Update()
     // マウスセンサーの微小な揺れでは案内表示を切り替えない。
     const long MOUSE_MOVE_THRESHOLD = 5;
 
-    if (abs(mouseState.lX) > MOUSE_MOVE_THRESHOLD ||
-        abs(mouseState.lY) > MOUSE_MOVE_THRESHOLD ||
-        abs(mouseState.lZ) > MOUSE_MOVE_THRESHOLD) {
+    if (abs(mouseState_.lX) > MOUSE_MOVE_THRESHOLD ||
+        abs(mouseState_.lY) > MOUSE_MOVE_THRESHOLD ||
+        abs(mouseState_.lZ) > MOUSE_MOVE_THRESHOLD) {
         isKeyMouseActive = true;
     }
 
     // マウスボタンチェック
     for (int i = 0; i < 4; i++) {
-        if (mouseState.rgbButtons[i] & 0x80) {
+        if (mouseState_.rgbButtons[i] & 0x80) {
             isKeyMouseActive = true;
             break;
         }
@@ -339,7 +339,7 @@ void engine::InputManager::Update()
     bool isGamepadActive = false;
 
     // ボタン入力チェック
-    if (gamepadState.Gamepad.wButtons != 0) {
+    if (gamepadState_.Gamepad.wButtons != 0) {
         isGamepadActive = true;
     }
 
@@ -347,20 +347,20 @@ void engine::InputManager::Update()
     const short DETECTION_DEADZONE = 10000;
 
     // 左スティック
-    if (abs(gamepadState.Gamepad.sThumbLX) > DETECTION_DEADZONE ||
-        abs(gamepadState.Gamepad.sThumbLY) > DETECTION_DEADZONE) {
+    if (abs(gamepadState_.Gamepad.sThumbLX) > DETECTION_DEADZONE ||
+        abs(gamepadState_.Gamepad.sThumbLY) > DETECTION_DEADZONE) {
         isGamepadActive = true;
     }
 
     // 右スティック
-    if (abs(gamepadState.Gamepad.sThumbRX) > DETECTION_DEADZONE ||
-        abs(gamepadState.Gamepad.sThumbRY) > DETECTION_DEADZONE) {
+    if (abs(gamepadState_.Gamepad.sThumbRX) > DETECTION_DEADZONE ||
+        abs(gamepadState_.Gamepad.sThumbRY) > DETECTION_DEADZONE) {
         isGamepadActive = true;
     }
 
     // トリガー入力チェック (閾値を超える入力があるか)
-    if (gamepadState.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD ||
-        gamepadState.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
+    if (gamepadState_.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD ||
+        gamepadState_.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
         isGamepadActive = true;
     }
 
@@ -381,20 +381,20 @@ engine::InputManager::ReplayState engine::InputManager::CaptureReplayState() con
     ReplayState result;
 
     // リプレイのトリガー判定を再現するため、現在値と前回値を対で保存する。
-    std::copy(std::begin(keyState), std::end(keyState), result.keys.begin());
-    std::copy(std::begin(prevKeyState), std::end(prevKeyState), result.previousKeys.begin());
-    std::copy(std::begin(mouseState.rgbButtons), std::end(mouseState.rgbButtons), result.mouseButtons.begin());
-    std::copy(std::begin(prevMouseState.rgbButtons), std::end(prevMouseState.rgbButtons), result.previousMouseButtons.begin());
-    result.mouseX = mouseState.lX;
-    result.mouseY = mouseState.lY;
-    result.mouseWheel = mouseState.lZ;
-    result.previousMouseX = prevMouseState.lX;
-    result.previousMouseY = prevMouseState.lY;
-    result.previousMouseWheel = prevMouseState.lZ;
+    std::copy(std::begin(keyState_), std::end(keyState_), result.keys.begin());
+    std::copy(std::begin(prevKeyState_), std::end(prevKeyState_), result.previousKeys.begin());
+    std::copy(std::begin(mouseState_.rgbButtons), std::end(mouseState_.rgbButtons), result.mouseButtons.begin());
+    std::copy(std::begin(prevMouseState_.rgbButtons), std::end(prevMouseState_.rgbButtons), result.previousMouseButtons.begin());
+    result.mouseX = mouseState_.lX;
+    result.mouseY = mouseState_.lY;
+    result.mouseWheel = mouseState_.lZ;
+    result.previousMouseX = prevMouseState_.lX;
+    result.previousMouseY = prevMouseState_.lY;
+    result.previousMouseWheel = prevMouseState_.lZ;
 
     // SDLもXInput形式へ統合済みなので、記録するパッド状態は一組でよい。
-    const XINPUT_GAMEPAD& pad = gamepadState.Gamepad;
-    const XINPUT_GAMEPAD& previousPad = prevGamepadState.Gamepad;
+    const XINPUT_GAMEPAD& pad = gamepadState_.Gamepad;
+    const XINPUT_GAMEPAD& previousPad = prevGamepadState_.Gamepad;
     result.gamepadButtons = pad.wButtons;
     result.previousGamepadButtons = previousPad.wButtons;
     result.leftTrigger = pad.bLeftTrigger;
@@ -418,25 +418,25 @@ engine::InputManager::ReplayState engine::InputManager::CaptureReplayState() con
 
 void engine::InputManager::ApplyReplayState(const ReplayState& state) {
     // 記録済みの前回値を復元し、シーク直後の押下・離上判定が変わらないようにする。
-    std::copy(state.keys.begin(), state.keys.end(), std::begin(keyState));
-    std::copy(state.previousKeys.begin(), state.previousKeys.end(), std::begin(prevKeyState));
+    std::copy(state.keys.begin(), state.keys.end(), std::begin(keyState_));
+    std::copy(state.previousKeys.begin(), state.previousKeys.end(), std::begin(prevKeyState_));
 
-    mouseState = {};
-    prevMouseState = {};
-    std::copy(state.mouseButtons.begin(), state.mouseButtons.end(), std::begin(mouseState.rgbButtons));
-    std::copy(state.previousMouseButtons.begin(), state.previousMouseButtons.end(), std::begin(prevMouseState.rgbButtons));
-    mouseState.lX = state.mouseX;
-    mouseState.lY = state.mouseY;
-    mouseState.lZ = state.mouseWheel;
-    prevMouseState.lX = state.previousMouseX;
-    prevMouseState.lY = state.previousMouseY;
-    prevMouseState.lZ = state.previousMouseWheel;
+    mouseState_ = {};
+    prevMouseState_ = {};
+    std::copy(state.mouseButtons.begin(), state.mouseButtons.end(), std::begin(mouseState_.rgbButtons));
+    std::copy(state.previousMouseButtons.begin(), state.previousMouseButtons.end(), std::begin(prevMouseState_.rgbButtons));
+    mouseState_.lX = state.mouseX;
+    mouseState_.lY = state.mouseY;
+    mouseState_.lZ = state.mouseWheel;
+    prevMouseState_.lX = state.previousMouseX;
+    prevMouseState_.lY = state.previousMouseY;
+    prevMouseState_.lZ = state.previousMouseWheel;
 
     // パッド状態も同じ形式へ戻してから、案内モードとセンサー基準を揃える。
-    gamepadState = {};
-    prevGamepadState = {};
-    XINPUT_GAMEPAD& pad = gamepadState.Gamepad;
-    XINPUT_GAMEPAD& previousPad = prevGamepadState.Gamepad;
+    gamepadState_ = {};
+    prevGamepadState_ = {};
+    XINPUT_GAMEPAD& pad = gamepadState_.Gamepad;
+    XINPUT_GAMEPAD& previousPad = prevGamepadState_.Gamepad;
     pad.wButtons = state.gamepadButtons;
     previousPad.wButtons = state.previousGamepadButtons;
     pad.bLeftTrigger = state.leftTrigger;
@@ -460,39 +460,39 @@ void engine::InputManager::ApplyReplayState(const ReplayState& state) {
 // 指定されたキーが押されているか
 bool engine::InputManager::IsKeyPressed(BYTE keyCode) const {
     // キーの状態の最上位ビットが1であれば、キーは押されている
-    return (keyState[keyCode] & 0x80) != 0;
+    return (keyState_[keyCode] & 0x80) != 0;
 }
 
 // 指定されたキーがこのフレームで押された瞬間か (トリガー)
 bool engine::InputManager::IsKeyTriggered(BYTE keyCode) const {
     // (現在押されている) かつ (前フレームでは押されていない) 場合にtrue
-    return (keyState[keyCode] & 0x80) && !(prevKeyState[keyCode] & 0x80);
+    return (keyState_[keyCode] & 0x80) && !(prevKeyState_[keyCode] & 0x80);
 }
 
 // 指定されたマウスボタンが押されているか
 bool engine::InputManager::IsMouseButtonPressed(int button) const {
-    if (button < 0 || button >= static_cast<int>(sizeof(mouseState.rgbButtons))) {
+    if (button < 0 || button >= static_cast<int>(sizeof(mouseState_.rgbButtons))) {
         return false;
     }
 
     // マウスボタンの状態の最上位ビットが1であれば、ボタンは押されている
-    return (mouseState.rgbButtons[button] & 0x80) != 0;
+    return (mouseState_.rgbButtons[button] & 0x80) != 0;
 }
 
 // 指定されたマウスボタンがこのフレームで押された瞬間か (トリガー)
 bool engine::InputManager::IsMouseButtonTriggered(int button) const {
-    if (button < 0 || button >= static_cast<int>(sizeof(mouseState.rgbButtons))) {
+    if (button < 0 || button >= static_cast<int>(sizeof(mouseState_.rgbButtons))) {
         return false;
     }
 
     // (現在押されている) かつ (前フレームでは押されていない) 場合にtrue
-    return (mouseState.rgbButtons[button] & 0x80) && !(prevMouseState.rgbButtons[button] & 0x80);
+    return (mouseState_.rgbButtons[button] & 0x80) && !(prevMouseState_.rgbButtons[button] & 0x80);
 }
 
 // マウスの移動量を取得
 engine::Vector2 engine::InputManager::GetMouseMoveDelta() const {
     // DIMOUSESTATE構造体から相対移動量を取得する
-    return { (float)mouseState.lX, (float)mouseState.lY };
+    return { (float)mouseState_.lX, (float)mouseState_.lY };
 }
 
 engine::Vector2 engine::InputManager::GetCameraLookDelta(float deltaTime) const {
@@ -521,26 +521,26 @@ bool engine::InputManager::IsMenuStickTriggered(WORD dpadDirection) const {
 
 // ゲームパッドの左スティックの入力を取得
 engine::Vector2 engine::InputManager::GetGamepadLeftStick() const {
-    return NormalizeStick(gamepadState.Gamepad.sThumbLX, gamepadState.Gamepad.sThumbLY,
+    return NormalizeStick(gamepadState_.Gamepad.sThumbLX, gamepadState_.Gamepad.sThumbLY,
                           XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 }
 
 // ゲームパッドの右スティックの入力を取得
 engine::Vector2 engine::InputManager::GetGamepadRightStick() const {
-    return NormalizeStick(gamepadState.Gamepad.sThumbRX, gamepadState.Gamepad.sThumbRY,
+    return NormalizeStick(gamepadState_.Gamepad.sThumbRX, gamepadState_.Gamepad.sThumbRY,
                           XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 }
 
 // ゲームパッドのボタンが押されているか
 bool engine::InputManager::IsGamepadButtonPressed(WORD button) const {
     // wButtonsはビットマスク。指定されたボタンのビットが立っているかを調べる
-    return (gamepadState.Gamepad.wButtons & button) != 0;
+    return (gamepadState_.Gamepad.wButtons & button) != 0;
 }
 
 // マウスホイールのスクロール量を取得
 float engine::InputManager::GetMouseWheelDelta() const {
     // DIMOUSESTATE構造体のlZメンバがホイールの移動量
-    return (float)mouseState.lZ;
+    return (float)mouseState_.lZ;
 }
 
 /// <summary>
@@ -569,13 +569,13 @@ engine::Vector2 engine::InputManager::GetMousePosition() const {
 /// 指定されたマウスボタンがこのフレームで離された瞬間か (リリース)
 /// </summary>
 bool engine::InputManager::IsMouseButtonReleased(int button) const {
-    if (button < 0 || button >= static_cast<int>(sizeof(mouseState.rgbButtons))) {
+    if (button < 0 || button >= static_cast<int>(sizeof(mouseState_.rgbButtons))) {
         return false;
     }
 
     // (現在 離されている) かつ (前フレームでは 押されていた) 場合にtrue
     // (※ IsMouseButtonTriggered とロジックが逆)
-    return !(mouseState.rgbButtons[button] & 0x80) && (prevMouseState.rgbButtons[button] & 0x80);
+    return !(mouseState_.rgbButtons[button] & 0x80) && (prevMouseState_.rgbButtons[button] & 0x80);
 }
 
 void engine::InputManager::PlayRumble(float lowFrequency, float highFrequency, float duration) {
@@ -658,21 +658,21 @@ void engine::InputManager::Finalize() {
     }
 
     // DirectInputデバイスの解放
-    if (keyboardDevice) {
-        keyboardDevice->Unacquire();
-        keyboardDevice->Release();
-        keyboardDevice = nullptr;
+    if (keyboardDevice_) {
+        keyboardDevice_->Unacquire();
+        keyboardDevice_->Release();
+        keyboardDevice_ = nullptr;
     }
 
-    if (mouseDevice) {
-        mouseDevice->Unacquire();
-        mouseDevice->Release();
-        mouseDevice = nullptr;
+    if (mouseDevice_) {
+        mouseDevice_->Unacquire();
+        mouseDevice_->Release();
+        mouseDevice_ = nullptr;
     }
 
-    if (directInput) {
-        directInput->Release();
-        directInput = nullptr;
+    if (directInput_) {
+        directInput_->Release();
+        directInput_ = nullptr;
     }
 
     // SDL2の終了
@@ -685,7 +685,7 @@ engine::Vector2 engine::InputManager::GetRightStick() const {
 
 bool engine::InputManager::IsGamepadButtonTriggered(WORD button) const {
     // 「今は押されている」かつ「前は押されていなかった」なら true
-    return (gamepadState.Gamepad.wButtons & button) && !(prevGamepadState.Gamepad.wButtons & button);
+    return (gamepadState_.Gamepad.wButtons & button) && !(prevGamepadState_.Gamepad.wButtons & button);
 }
 
 engine::Vector2 engine::InputManager::GetLeftStick() const {
@@ -698,7 +698,7 @@ std::vector<uint8_t> engine::InputManager::GetPressedKeys() const {
 
     // 0〜255の全キーコードを走査
     for (int i = 0; i < 256; ++i) {
-        if (keyState[i] & 0x80) { // 押されていたら
+        if (keyState_[i] & 0x80) { // 押されていたら
             pressedKeys.push_back(static_cast<uint8_t>(i));
         }
     }
@@ -718,7 +718,7 @@ WORD engine::InputManager::GetPressedGamepadButton() const {
     };
 
     for (WORD btn : buttons) {
-        if (gamepadState.Gamepad.wButtons & btn) {
+        if (gamepadState_.Gamepad.wButtons & btn) {
             return btn;
         }
     }
@@ -729,7 +729,7 @@ WORD engine::InputManager::GetPressedGamepadButton() const {
 // 現在押されているマウスボタンを取得する
 int engine::InputManager::GetPressedMouseButton() const {
     for (int i = 0; i < 4; ++i) { // 標準的な4ボタンをチェック
-        if (mouseState.rgbButtons[i] & 0x80) {
+        if (mouseState_.rgbButtons[i] & 0x80) {
             return i;
         }
     }
@@ -784,7 +784,7 @@ bool engine::InputManager::IsActionReleased(const std::string& actionName) const
         return false;
 
     // ① キーボード
-    if (data->keyCode != 0 && !(keyState[data->keyCode] & 0x80) && (prevKeyState[data->keyCode] & 0x80))
+    if (data->keyCode != 0 && !(keyState_[data->keyCode] & 0x80) && (prevKeyState_[data->keyCode] & 0x80))
         return true;
 
     // ② マウス (離した判定)
@@ -792,7 +792,7 @@ bool engine::InputManager::IsActionReleased(const std::string& actionName) const
         return true;
 
     // ③ パッド (離した判定：wButtonsのビットが落ちた瞬間)
-    if (data->padCode != 0 && !(gamepadState.Gamepad.wButtons & data->padCode) && (prevGamepadState.Gamepad.wButtons & data->padCode))
+    if (data->padCode != 0 && !(gamepadState_.Gamepad.wButtons & data->padCode) && (prevGamepadState_.Gamepad.wButtons & data->padCode))
         return true;
 
     return false;

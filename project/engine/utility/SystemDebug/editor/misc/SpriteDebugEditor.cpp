@@ -737,8 +737,8 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 
 		// クイック配置
 		ImGui::Text(ICON_FA_CROSSHAIRS " クイック配置 (Quick Snap)");
-		float gw = (float)WinApp::kClientWidth;
-		float gh = (float)WinApp::kClientHeight;
+		float gw = (float)WinApp::GetClientWidth();
+		float gh = (float)WinApp::GetClientHeight();
 		ImVec2 btnSz(30.0f, 30.0f);
 		auto QuickSnapButton = [&](const char* label, float xRatio, float yRatio) {
 			if (ImGui::Button(label, btnSz)) {
@@ -1023,8 +1023,8 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 	}
 
 	root["designResolution"] = {
-		static_cast<float>(WinApp::kClientWidth),
-		static_cast<float>(WinApp::kClientHeight)
+		static_cast<float>(WinApp::GetClientWidth()),
+		static_cast<float>(WinApp::GetClientHeight())
 	};
 
 	root["scaleToWindow"] = true;

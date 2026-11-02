@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GhostRecorder.h"
+#include <numbers>
 #include "AnimationInterpolation.h"
 #include "imgui.h"
 #include "SceneManager.h"
@@ -269,7 +270,7 @@ void GhostRecorder::Update(float deltaTime) {
 
 	// シーン配置オブジェクトのPathは編集停止中に再生しない。
 	// 編集後のPlay開始時は、移動した配置を相対再生の基準に取り直す。
-	if (target_->recorder_.get() == this && !SceneManager::GetInstance()->IsPlaying()) {
+	if (target_->GetRecorder() == this && !SceneManager::GetInstance()->IsPlaying()) {
 		wasEditorPaused_ = true;
 		return;
 	}
@@ -305,7 +306,7 @@ void GhostRecorder::Update(float deltaTime) {
 	else if (state_ == State::Playing) {
         // 本番Objectの再生だけ乗車条件を適用する。録画編集とカメラ演出は従来どおり。
         const auto* path = target_->GetPathMoverComponent();
-        const auto mode = target_->recorder_.get() == this && !isOverrideCamera_ && path
+        const auto mode = target_->GetRecorder() == this && !isOverrideCamera_ && path
             ? path->GetPlaybackMode() : PathMoverComponent::PlaybackMode::Always;
         if (playerRiding_ && !ridePlaybackStarted_) {
             // 条件付き再生は初回乗車時の配置を基準にする。ロード中の仮座標や
@@ -652,8 +653,8 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 	rotations.reserve(genParams_.waypoints.size() + 2);
 	scales.reserve(genParams_.waypoints.size() + 2);
 
-	engine::Vector3 drawOffset = { 0.0f, 0.0f, 0.0f };
-	engine::Vector3 drawRotOffset = { 0.0f, 0.0f, 0.0f };
+	engine::Vector3 drawOffset = engine::Vector3::ZERO;
+	engine::Vector3 drawRotOffset = engine::Vector3::ZERO;
 
 	if (genParams_.generateRelative) {
 		FindAnchor();
@@ -917,8 +918,8 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	}
 
 	// --- 2. 描画位置のオフセット計算 ---
-	engine::Vector3 drawOffset = { 0, 0, 0 };
-	engine::Vector3 drawRotOffset = { 0, 0, 0 };
+	engine::Vector3 drawOffset = engine::Vector3::ZERO;
+	engine::Vector3 drawRotOffset = engine::Vector3::ZERO;
 
 	if (isReadOnly) {
 		if (isRelative_ && target_) {
@@ -954,8 +955,8 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 				currentRot = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
 			}
 
-			static engine::Vector3 s_cachedOffset = { 0, 0, 0 };
-			static engine::Vector3 s_cachedRotOffset = { 0, 0, 0 };
+			static engine::Vector3 s_cachedOffset = engine::Vector3::ZERO;
+			static engine::Vector3 s_cachedRotOffset = engine::Vector3::ZERO;
 
 			if (isDraggingGizmo_ && selectedPinType_ == SelectedPinType::Start) {
 				drawOffset = s_cachedOffset;
@@ -1053,9 +1054,9 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 					targetPos->y = newTrans.y - drawOffset.y;
 					targetPos->z = newTrans.z - drawOffset.z;
 
-					float radX = newRotDeg.x * (3.14159265f / 180.0f);
-					float radY = newRotDeg.y * (3.14159265f / 180.0f);
-					float radZ = newRotDeg.z * (3.14159265f / 180.0f);
+					float radX = newRotDeg.x * (std::numbers::pi_v<float> / 180.0f);
+					float radY = newRotDeg.y * (std::numbers::pi_v<float> / 180.0f);
+					float radZ = newRotDeg.z * (std::numbers::pi_v<float> / 180.0f);
 					engine::Vector3 newRotRad = { radX, radY, radZ };
 
 					// クォータニオンによる減算 (Gizmo操作の逆適用)
@@ -1545,7 +1546,7 @@ void GhostRecorder::DrawImGui() {
 		if (target_) {
 			// Transformはラジアンで保持し、編集欄だけ馴染みのある度数に変換する。
 			const auto editRotationDegrees = [](const char* label, engine::Vector3& rotation) {
-				constexpr float toDegrees = 180.0f / 3.14159265358979323846f;
+				constexpr float toDegrees = 180.0f / std::numbers::pi_v<float>;
 				constexpr float toRadians = 1.0f / toDegrees;
 				float degrees[3] = { rotation.x * toDegrees, rotation.y * toDegrees, rotation.z * toDegrees };
 				if (ImGui::DragFloat3(label, degrees, 0.5f)) {
@@ -1719,8 +1720,8 @@ void GhostRecorder::DrawImGui() {
 
 				pts.push_back({ genParams_.endPos, genParams_.endRot, genParams_.endScale, genParams_.endEventID, genParams_.endWaitTime, 1.0f, 0 });
 
-				engine::Vector3 offset = genParams_.generateRelative ? genParams_.startPos : engine::Vector3{ 0,0,0 };
-				engine::Vector3 rotOffset = genParams_.generateRelative ? genParams_.startRot : engine::Vector3{ 0,0,0 };
+				engine::Vector3 offset = genParams_.generateRelative ? genParams_.startPos : engine::Vector3::ZERO;
+				engine::Vector3 rotOffset = genParams_.generateRelative ? genParams_.startRot : engine::Vector3::ZERO;
 				const auto relativePosition = [&](const engine::Vector3& position) {
 					engine::Vector3 delta = position - offset;
 					if (genParams_.generateRelative && isLocalSpace_) {

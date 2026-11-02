@@ -1,11 +1,12 @@
 ﻿#include "game/actor/player/Player.Internal.h"
+#include <numbers>
 
 using namespace PlayerImplementation;
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 void Player::StartDamageFeedback(const engine::Vector3& knockbackDirection, float invincibleDuration) {
     // 被弾で通常攻撃を中断し、重なった無敵時間は短くしない。
-    if (tutorialSafetyEnabled_ || isDead || isCinematicLocked_ || electricShockControlLocked_) {
+    if (tutorialSafetyEnabled_ || IsDead() || isCinematicLocked_ || electricShockControlLocked_) {
         return;
     }
 
@@ -107,7 +108,7 @@ void Player::EndElectricShockFeedback() {
         SetVelocity({0.0f, 0.0f, 0.0f});
         SetScale(electricShockBaseScale_);
         SetRotation(electricShockBaseRotation_);
-        SetIsControlActive(!isDead && electricShockWasControlActive_);
+        SetIsControlActive(!IsDead() && electricShockWasControlActive_);
         electricShockControlLocked_ = false;
     }
 
@@ -120,7 +121,7 @@ void Player::EndElectricShockFeedback() {
     const float invincibleDuration = electricShockPendingInvincibleDuration_;
     electricShockPendingInvincibleDuration_ = 0.0f;
 
-    if (invincibleDuration > 0.0f && !isDead) {
+    if (invincibleDuration > 0.0f && !IsDead()) {
         damageCooldownTimer_ = (std::max)(damageCooldownTimer_, invincibleDuration);
         invincibleBlinkTimer_ = 0.0f;
         SetDamageInvincible(true);
@@ -129,12 +130,12 @@ void Player::EndElectricShockFeedback() {
 
 void Player::InitializeElectricShockAuraEffect() {
     // エフェクトJSONの読込に失敗した場合は、半端なObjectを保持しない。
-    if (!common_ || electricShockAuraEffect_) {
+    if (!GetObjectCommon() || electricShockAuraEffect_) {
         return;
     }
 
     electricShockAuraEffect_ = std::make_unique<EffectObject3d>();
-    electricShockAuraEffect_->Initialize(common_);
+    electricShockAuraEffect_->Initialize(GetObjectCommon());
     electricShockAuraEffect_->SetName("Player_ElectricShockAura");
 
     if (!electricShockAuraEffect_->LoadFromJson(kElectricShockAuraEffectPath)) {
@@ -175,7 +176,7 @@ void Player::UpdateElectricShockAuraEffect(float deltaTime) {
     electricShockAuraEffect_->SetIsVisible(true);
     electricShockAuraEffect_->Update(deltaTime);
     electricShockAuraEffect_->SetTranslate(auraPos);
-    electricShockAuraEffect_->SetRotation({1.5707963f, yaw, 0.0f});
+    electricShockAuraEffect_->SetRotation({(std::numbers::pi_v<float> * 0.5f), yaw, 0.0f});
     electricShockAuraEffect_->SetScale({horizontalDiameter, 1.0f, verticalDiameter});
     electricShockAuraEffect_->UpdateLocalMatrix();
     electricShockAuraEffect_->UpdateWorldMatrix();

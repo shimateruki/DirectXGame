@@ -48,15 +48,15 @@ public:
 
     // デバッグリプレイ専用の実行状態です。Scene保存用データとは分離します。
     struct ReplayState {
-        engine::Vector2 position = { 0.0f, 0.0f };
+        engine::Vector2 position = engine::Vector2::ZERO;
         float rotation = 0.0f;
         engine::Vector2 size = { 100.0f, 100.0f };
-        engine::Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        engine::Vector4 color = engine::Colors::White;
         engine::Vector2 anchorPoint = { 0.5f, 0.5f };
         bool flipX = false;
         bool flipY = false;
 
-        engine::Vector2 textureLeftTop = { 0.0f, 0.0f };
+        engine::Vector2 textureLeftTop = engine::Vector2::ZERO;
         engine::Vector2 textureSize = { 100.0f, 100.0f };
         uint32_t textureHandle = 0;
 
@@ -240,7 +240,7 @@ private:
     uint32_t textureHandle_ = 0;
 
     // 画面上の基本変換。
-    engine::Vector2 position_ = { 0.0f, 0.0f };
+    engine::Vector2 position_ = engine::Vector2::ZERO;
     float rotation_ = 0.0f;
     engine::Vector2 size_ = { 100.0f, 100.0f };
     Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
@@ -250,7 +250,7 @@ private:
     engine::Vector2 anchorPoint_ = { 0.5f, 0.5f };
     bool isFlipX_ = false;
     bool isFlipY_ = false;
-    engine::Vector2 textureLeftTop_ = { 0.0f, 0.0f };
+    engine::Vector2 textureLeftTop_ = engine::Vector2::ZERO;
     engine::Vector2 textureSize_ = { 100.0f, 100.0f };
 
     // スプライトシートの簡易アニメーション状態。
@@ -277,7 +277,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_ = nullptr;
     Material* materialData_ = nullptr;
-    engine::Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    engine::Vector4 color_ = engine::Colors::White;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
     TransformationMatrix* wvpData_ = nullptr;

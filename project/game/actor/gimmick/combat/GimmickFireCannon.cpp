@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "GimmickFireCannon.h"
+#include "Easing.h"
+#include <numbers>
 #include "ObjectPropertyDefinition.h"
 #include "game/system/scene/SceneGameplayAccess.h"
 #include "BaseScene.h"
@@ -15,7 +17,7 @@
 #include <cmath>
 
 namespace {
-constexpr float kPi = 3.14159265358979323846f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kDefaultProjectileSpeed = 13.0f;
 constexpr float kDefaultFireInterval = 1.35f;
 constexpr float kDefaultProjectileRadius = 0.55f;
@@ -51,19 +53,19 @@ void GimmickFireCannon::Initialize(engine::Object3dCommon* common, const std::st
     colConfig.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(colConfig);
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->speed = kDefaultProjectileSpeed;
-    param_->interval = kDefaultFireInterval;
-    param_->moveAmount = kDefaultProjectileRadius;
-    param_->moveSpeed = kDefaultTurnSpeedDegrees;
-    param_->detectionRange = kDefaultDetectionRange;
-    param_->projectileLifetime = kDefaultProjectileLifetime;
-    param_->actionMode = 1;
-    param_->startActive = true;
-    param_->returnOnOff = true;
+    SetParameter(&engine::EntityParameter::speed, kDefaultProjectileSpeed);
+    SetParameter(&engine::EntityParameter::interval, kDefaultFireInterval);
+    SetParameter(&engine::EntityParameter::moveAmount, kDefaultProjectileRadius);
+    SetParameter(&engine::EntityParameter::moveSpeed, kDefaultTurnSpeedDegrees);
+    SetParameter(&engine::EntityParameter::detectionRange, kDefaultDetectionRange);
+    SetParameter(&engine::EntityParameter::projectileLifetime, kDefaultProjectileLifetime);
+    SetParameter(&engine::EntityParameter::actionMode, 1);
+    SetParameter(&engine::EntityParameter::startActive, true);
+    SetParameter(&engine::EntityParameter::returnOnOff, true);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickFireCannon;
@@ -77,25 +79,25 @@ void GimmickFireCannon::Initialize(engine::Object3dCommon* common, const std::st
     properties.Parameter("弾の半径", "moveAmount", &Parameter::moveAmount, 0.1f, (std::numeric_limits<float>::max)(),
         nullptr, {}, {.speed = 0.01f});
     properties.Parameter("索敵範囲", "detectionRange", &Parameter::detectionRange, 0.0f, 300.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode != 3); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode != 3); });
     properties.Parameter("旋回速度（度/秒）", "moveSpeed", &Parameter::moveSpeed, 1.0f, 720.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 1); });
     properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
     properties.Parameter("OFFで元に戻す", "returnOnOff", &Parameter::returnOnOff);
     properties.Parameter("編集停止中に発射をプレビュー", "editorPreviewFiring", &Parameter::editorPreviewFiring);
     properties.Parameter("弾道の上昇高さ", "jumpPower", &Parameter::jumpPower, 3.0f, 20.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 2); });
     properties.Parameter("砲弾の重力", "gravity", &Parameter::gravity, 4.0f, 60.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 2); });
     properties.Parameter("爆風半径", "healAmount", &Parameter::healAmount, 1.0f, 8.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 2); });
     properties.Parameter("発射前の予告時間", "shakeDuration", &Parameter::shakeDuration, 0.35f, 4.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 2); });
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 2); });
     properties.Parameter("弾の最大持続時間", "projectileLifetime", &Parameter::projectileLifetime, 0.2f, 20.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 3); }, {}, {.help = +[](const Self& object) { return std::string("最大飛距離の目安: ") + std::to_string(object.param_->speed * object.param_->projectileLifetime) + " m"; }});
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 3); }, {}, {.help = +[](const Self& object) { return std::string("最大飛距離の目安: ") + std::to_string(object.GetParameters()->speed * object.GetParameters()->projectileLifetime) + " m"; }});
     properties.Parameter("爆風半径", "healAmount_straight", &Parameter::healAmount, 0.5f, 8.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 3); }, {}, {.parameterId = "healAmount"});
-    const auto straightOnly = +[](const Self& object) { return object.param_ && object.param_->actionMode == 3; };
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 3); }, {}, {.parameterId = "healAmount"});
+    const auto straightOnly = +[](const Self& object) { return object.GetParameters() && object.GetParameters()->actionMode == 3; };
     properties.Expose("直進砲台のため時間", ENGINE_PROPERTY(bombardAnticipationTime_), 0.0f, 0.6f, straightOnly);
     properties.Expose("直進砲台の反動の強さ", ENGINE_PROPERTY(bombardRecoilStrength_), 0.0f, 0.45f, straightOnly);
     properties.Expose("直進砲台の戻り時間", ENGINE_PROPERTY(bombardRecoveryTime_), 0.12f, 1.0f, straightOnly);
@@ -104,8 +106,8 @@ void GimmickFireCannon::Initialize(engine::Object3dCommon* common, const std::st
 // 編集停止中は無害な弾道プレビューだけを進め、Play 中は通常の攻撃を実行します。
 void GimmickFireCannon::Update(float deltaTime) {
     // 編集配置を再生停止時に復元し、迫撃モードだけ専用の予告と弾道を使います。
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
     // モード変更やプレビュー停止時に、前フレームの描画補正を残しません。
@@ -113,7 +115,7 @@ void GimmickFireCannon::Update(float deltaTime) {
     const bool playing = IsPlaying();
     bool editorPreview = false;
 #ifdef USE_IMGUI
-    editorPreview = !playing && param_->editorPreviewFiring;
+    editorPreview = !playing && GetParameters()->editorPreviewFiring;
 #endif
 
     if (previewActive_ != editorPreview) {
@@ -143,7 +145,7 @@ void GimmickFireCannon::Update(float deltaTime) {
         targetLocked_ = false;
         flightTimer_ = recoilTimer_ = 0.0f;
         initializedForPlay_ = false;
-        active_ = param_->startActive;
+        active_ = GetParameters()->startActive;
         fireTimer_ = 0.0f;
         BaseGimmick::Update(deltaTime);
         return;
@@ -153,7 +155,7 @@ void GimmickFireCannon::Update(float deltaTime) {
         basePosition_ = GetTranslate();
         baseRotation_ = GetRotation();
         baseScale_ = GetScale();
-        active_ = editorPreview || param_->startActive;
+        active_ = editorPreview || GetParameters()->startActive;
         fireTimer_ = editorPreview ? (std::min)(0.15f, GetFireInterval() * 0.35f)
                                    : GetFireInterval() * 0.35f;
         initializedForPlay_ = true;
@@ -167,13 +169,13 @@ void GimmickFireCannon::Update(float deltaTime) {
         active_ = true;
     }
 
-    if (param_->actionMode == 2) {
+    if (GetParameters()->actionMode == 2) {
         UpdateMortar(deltaTime);
         BaseGimmick::Update(deltaTime);
         return;
     }
 
-    if (param_->actionMode == 3) {
+    if (GetParameters()->actionMode == 3) {
         // 発射周期は維持し、その終わりにため、発射直後に反動を重ねます。
         const float dt = (std::max)(0.0f, deltaTime);
         recoilTimer_ = (std::max)(0.0f, recoilTimer_ - dt);
@@ -199,7 +201,7 @@ void GimmickFireCannon::Update(float deltaTime) {
     engine::Vector3 fireDirection = {};
     const bool canFire = active_ && FindFireDirection(fireDirection);
 
-    if (canFire && param_->actionMode == 1) {
+    if (canFire && GetParameters()->actionMode == 1) {
         if (!editorPreview) {
             RotateToward(fireDirection, deltaTime);
             fireDirection = GetForwardDirection();
@@ -227,11 +229,11 @@ void GimmickFireCannon::OnTrigger() {
 
 void GimmickFireCannon::OnSwitchEvent(bool active) {
     // 停止時には照準と着弾予告も消し、旧弾の視覚情報を残しません。
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    if (!active && !param_->returnOnOff) {
+    if (!active && !GetParameters()->returnOnOff) {
         return;
     }
 
@@ -251,7 +253,7 @@ bool GimmickFireCannon::IsPlaying() const {
 
 bool GimmickFireCannon::FindFireDirection(engine::Vector3& outDirection) const {
     // 固定砲は前方へ、追尾砲は射程内のプレイヤー中心へ照準を向けます。
-    if (!param_.has_value() || param_->actionMode == 0) {
+    if (!GetParameters().has_value() || GetParameters()->actionMode == 0) {
         outDirection = GetForwardDirection();
         return true;
     }
@@ -284,7 +286,7 @@ bool GimmickFireCannon::FindFireDirection(engine::Vector3& outDirection) const {
     const engine::Vector3 muzzle = GetMuzzlePosition(GetForwardDirection());
     engine::Vector3 diff = target - muzzle;
     const float distance = engine::Math::Length(diff);
-    const float range = (param_->detectionRange > 0.0f) ? param_->detectionRange : kDefaultDetectionRange;
+    const float range = (GetParameters()->detectionRange > 0.0f) ? GetParameters()->detectionRange : kDefaultDetectionRange;
 
     if (distance > range || distance < 0.001f) {
         if (previewActive_) {
@@ -394,7 +396,7 @@ void GimmickFireCannon::UpdateBombardPose() {
         const float duration = (std::min)(std::clamp(configured, 0.0f, 0.6f), GetFireInterval() * 0.30f);
         if (duration > 0.0001f) {
             float t = std::clamp(1.0f - fireTimer_ / duration, 0.0f, 1.0f);
-            t = t * t * (3.0f - 2.0f * t);
+            t = Easing::SmoothStep(t);
             squash = strength * 0.35f * t;
             retreat = strength * 0.45f * t;
         }
@@ -431,7 +433,7 @@ void GimmickFireCannon::FireBombard() {
     BulletVisualConfig visual;
     visual.visualScale = radius * 0.60f / 1.043f; // 岩の芯を小さくし、外側の炎に輪郭を任せます。
     visual.collisionRadiusIsWorld = true;
-    visual.explosionRadius = std::clamp(param_->healAmount, 0.5f, 8.0f);
+    visual.explosionRadius = std::clamp(GetParameters()->healAmount, 0.5f, 8.0f);
     visual.materialType = 0;
     visual.blendMode = BlendMode::kNormal;
     visual.color = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -470,37 +472,37 @@ void GimmickFireCannon::FireBombard() {
 
 float GimmickFireCannon::GetProjectileSpeed() const {
     // 設定ミスで停止弾を作らないよう最小速度を保証します。
-    return param_.has_value() ? (std::max)(1.0f, param_->speed) : kDefaultProjectileSpeed;
+    return GetParameters().has_value() ? (std::max)(1.0f, GetParameters()->speed) : kDefaultProjectileSpeed;
 }
 
 float GimmickFireCannon::GetFireInterval() const {
     // ゼロ秒連射による弾の増殖を防ぎます。
-    const float interval = param_.has_value() ? (std::max)(0.08f, param_->interval) : kDefaultFireInterval;
+    const float interval = GetParameters().has_value() ? (std::max)(0.08f, GetParameters()->interval) : kDefaultFireInterval;
     return previewActive_ ? (std::max)(0.8f, interval) : interval;
 }
 
 float GimmickFireCannon::GetProjectileRadius() const {
     // 大型化を妨げないよう上限は設けず、不正値と負値だけを除きます。
-    const float configured = param_.has_value() ? param_->moveAmount : kDefaultProjectileRadius;
+    const float configured = GetParameters().has_value() ? GetParameters()->moveAmount : kDefaultProjectileRadius;
     return std::isfinite(configured) ? (std::max)(0.1f, configured) : kDefaultProjectileRadius;
 }
 
 float GimmickFireCannon::GetProjectileLifetime() const {
-    const float configured = param_.has_value() ? param_->projectileLifetime : kDefaultProjectileLifetime;
+    const float configured = GetParameters().has_value() ? GetParameters()->projectileLifetime : kDefaultProjectileLifetime;
     return std::isfinite(configured) ? std::clamp(configured, 0.2f, 20.0f) : kDefaultProjectileLifetime;
 }
 
 float GimmickFireCannon::GetTurnSpeedRadians() const {
     // エディター設定は度毎秒、回転計算はラジアンで扱います。
-    const float degrees = param_.has_value() ? (std::max)(1.0f, param_->moveSpeed) : kDefaultTurnSpeedDegrees;
+    const float degrees = GetParameters().has_value() ? (std::max)(1.0f, GetParameters()->moveSpeed) : kDefaultTurnSpeedDegrees;
     return degrees * (kPi / 180.0f);
 }
 
 std::unique_ptr<engine::Object3d> GimmickFireCannon::Clone() const {
     // 複製先の予告表示と判定資源を初期化してから設定をコピーします。
     auto newObj = std::make_unique<GimmickFireCannon>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }
@@ -514,9 +516,9 @@ void GimmickFireCannon::Draw(ID3D12Resource* pointLightResource, ID3D12Resource*
 void GimmickFireCannon::UpdateMortar(float deltaTime) {
     // 台座は水平に保ち、砲弾の弾道だけを重力で計算する。
     const float dt = (std::max)(0.0f, deltaTime);
-    const float blast = std::clamp(param_->healAmount, 1.0f, 8.0f);
-    const float warning = std::clamp(param_->shakeDuration, 0.35f, 4.0f);
-    const float gravity = std::clamp(param_->gravity, 4.0f, 60.0f);
+    const float blast = std::clamp(GetParameters()->healAmount, 1.0f, 8.0f);
+    const float warning = std::clamp(GetParameters()->shakeDuration, 0.35f, 4.0f);
+    const float gravity = std::clamp(GetParameters()->gravity, 4.0f, 60.0f);
     const float radius = GetProjectileRadius();
     recoilTimer_ = (std::max)(0.0f, recoilTimer_ - dt);
     const float squash = std::sin(recoilTimer_ / 0.28f * kPi) * 0.06f;
@@ -546,12 +548,12 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
         if (!player && !previewActive_)
             return;
         const engine::Vector3 forwardTarget = GetWorldPosition() + GetForwardDirection() *
-            (std::max)(12.0f, (std::min)(param_->detectionRange, 20.0f));
+            (std::max)(12.0f, (std::min)(GetParameters()->detectionRange, 20.0f));
         engine::Vector3 target = player ? player->GetWorldPosition() : forwardTarget;
         const engine::Vector3 targetOffset = target - GetWorldPosition();
         if (previewActive_ && targetOffset.x * targetOffset.x + targetOffset.z * targetOffset.z < 100.0f)
             target = forwardTarget;
-        if (!previewActive_ && engine::Math::Length(target - GetWorldPosition()) > param_->detectionRange)
+        if (!previewActive_ && engine::Math::Length(target - GetWorldPosition()) > GetParameters()->detectionRange)
             return;
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("ground");
@@ -582,7 +584,7 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
     const engine::Vector3 target = lockedTarget_ + engine::Vector3{0, radius + 0.03f, 0};
 
     // 頂点高度から上向き初速と飛行時間を逆算し、水平速度をロック済み着弾点へ合わせます。
-    const float apex = (std::max)(muzzle.y, target.y) + std::clamp(param_->jumpPower, 3.0f, 20.0f);
+    const float apex = (std::max)(muzzle.y, target.y) + std::clamp(GetParameters()->jumpPower, 3.0f, 20.0f);
     const float vy = std::sqrt(2.0f * gravity * (apex - muzzle.y));
     const float flight = vy / gravity + std::sqrt(2.0f * (apex - target.y) / gravity);
     const engine::Vector3 velocity = {(target.x - muzzle.x) / flight, vy, (target.z - muzzle.z) / flight};

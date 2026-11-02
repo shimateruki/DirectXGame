@@ -240,11 +240,11 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
             player->SetGravity(0.0f);
             player->SetMaxFallSpeed(0.0f);
         }
-        if (!playerCopyMode_ && player->param_.has_value()) {
-            player->param_->maxHp = 20.0f;
-            player->param_->hp = 20.0f;
-            player->param_->gravity = 0.0f;
-            player->param_->maxFallSpeed = 0.0f;
+        if (!playerCopyMode_ && player->GetParameters().has_value()) {
+            player->SetParameter(&engine::EntityParameter::maxHp, 20.0f);
+            player->SetParameter(&engine::EntityParameter::hp, 20.0f);
+            player->SetParameter(&engine::EntityParameter::gravity, 0.0f);
+            player->SetParameter(&engine::EntityParameter::maxFallSpeed, 0.0f);
         }
 
         previewPlayer_ = player.get();
@@ -302,8 +302,8 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
                 dummy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
                 dummy->SetCollisionMask(0);
 
-                if (dummy->param_) {
-                    dummy->param_->maxHp = dummy->param_->hp = 100000.0f;
+                if (dummy->GetParameters()) {
+                    dummy->SetParameter(&engine::EntityParameter::maxHp, dummy->SetParameter(&engine::EntityParameter::hp, 100000.0f));
                 }
                 dummy->UpdateWorldMatrix(true);
                 previewEnemy_ = dummy.get();
@@ -713,7 +713,7 @@ void ActorDebugPanel::ApplySealBarrageMovieCamera() {
 }
 
 void ActorDebugPanel::ResolvePreviewProjectileHits() {
-    if (!previewPlayer_ || previewPlayer_->isDead) {
+    if (!previewPlayer_ || previewPlayer_->IsDead()) {
         return;
     }
 

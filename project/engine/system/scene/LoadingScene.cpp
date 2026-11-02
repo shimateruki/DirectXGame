@@ -1,4 +1,5 @@
 #include "LoadingScene.h"
+#include <numbers>
 
 #include "DirectXCommon.h"
 #include "TextureManager.h"
@@ -10,7 +11,7 @@
 #include <random>
 
 namespace {
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kGaugeWidth = 680.0f;
 constexpr float kGaugeHeight = 26.0f;
 constexpr float kSlimeFrameWidth = 543.0f;
@@ -39,12 +40,12 @@ float Clamp01(float value) {
 
 // ロード画面の設計解像度から幅と高さを取得します。
 float ScreenW() {
-    return static_cast<float>(WinApp::kClientWidth);
+    return static_cast<float>(WinApp::GetClientWidth());
 }
 
 // ロード画面の設計高さを返します。
 float ScreenH() {
-    return static_cast<float>(WinApp::kClientHeight);
+    return static_cast<float>(WinApp::GetClientHeight());
 }
 
 // 進捗ゲージの左端を画面中央基準で配置します。

@@ -84,10 +84,10 @@ inline std::unique_ptr<BaseGimmick> CreateConfiguredGimmick(const std::string& t
     if (type == "MovingFloor") {
         auto floor = std::make_unique<GimmickMovingFloor>();
         floor->Initialize(common, "Stages/block");
-        if (!floor->param_.has_value()) {
-            floor->param_.emplace();
+        if (!floor->GetParameters().has_value()) {
+            floor->ResetParameters();
         }
-        floor->param_->speed = 0.05f;
+        floor->SetParameter(&engine::EntityParameter::speed, 0.05f);
         return floor;
     }
 
@@ -98,12 +98,12 @@ inline std::unique_ptr<BaseGimmick> CreateConfiguredGimmick(const std::string& t
         rotating->SetName(isPillar ? "Gimmick_RotatingPillar" : "Gimmick_RotatingFloor");
         rotating->SetScale(isPillar ? engine::Vector3{0.75f, 3.0f, 0.75f}
                                     : engine::Vector3{3.0f, 0.3f, 1.2f});
-        if (!rotating->param_.has_value()) {
-            rotating->param_.emplace();
+        if (!rotating->GetParameters().has_value()) {
+            rotating->ResetParameters();
         }
-        rotating->param_->actionMode = 1;
-        rotating->param_->speed = isPillar ? 60.0f : 45.0f;
-        rotating->param_->startActive = true;
+        rotating->SetParameter(&engine::EntityParameter::actionMode, 1);
+        rotating->SetParameter(&engine::EntityParameter::speed, isPillar ? 60.0f : 45.0f);
+        rotating->SetParameter(&engine::EntityParameter::startActive, true);
         return rotating;
     }
 
@@ -111,10 +111,10 @@ inline std::unique_ptr<BaseGimmick> CreateConfiguredGimmick(const std::string& t
         // 噴出口の描画は共用し、水版だけ起動条件を変更して攻撃を無効にする。
         auto geyser = std::make_unique<GimmickMagmaGeyser>();
         geyser->Initialize(common, "Stages/magma_pressure_column");
-        geyser->param_->startActive = false;
-        geyser->param_->returnOnOff = true;
-        geyser->param_->actionMode = 3;
-        geyser->param_->detectionRange = 4.0f;
+        geyser->SetParameter(&engine::EntityParameter::startActive, false);
+        geyser->SetParameter(&engine::EntityParameter::returnOnOff, true);
+        geyser->SetParameter(&engine::EntityParameter::actionMode, 3);
+        geyser->SetParameter(&engine::EntityParameter::detectionRange, 4.0f);
         return geyser;
     }
 

@@ -61,7 +61,7 @@ struct SceneCameraSettings {
     std::string eyeObjectName;
     // 相対視点ではEye対象から参照対象への方向を前方にする。eyeOffsetは右・上・前の距離。
     std::string eyeReferenceObjectName;
-    engine::Vector3 eyeOffset = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 eyeOffset = engine::Vector3::ZERO;
     SceneCameraFollowMode eyeFollowMode = SceneCameraFollowMode::kSnap;
     float eyeFollowResponse = 12.0f;
 
@@ -69,8 +69,8 @@ struct SceneCameraSettings {
 
     // kSceneObjectでは名前とオフセット、kFixedPointでは固定のワールド座標を使用する。
     std::string targetObjectName;
-    engine::Vector3 targetOffset = { 0.0f, 0.0f, 0.0f };
-    engine::Vector3 fixedTarget = { 0.0f, 0.0f, 0.0f };
+    engine::Vector3 targetOffset = engine::Vector3::ZERO;
+    engine::Vector3 fixedTarget = engine::Vector3::ZERO;
     float forwardDistance = 10.0f;
     SceneCameraFollowMode targetFollowMode = SceneCameraFollowMode::kSnap;
     float targetFollowResponse = 14.0f;

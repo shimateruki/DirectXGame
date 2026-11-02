@@ -475,14 +475,14 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
     // Inline Keyが無い場合だけ、選択中のLegacy PathをGhost Recorderの表示へ渡します。
     if (track.keys.empty()) {
-        if (!track.legacyPathFile.empty() && target->recorder_) {
-            target->recorder_->SetSceneManager(sceneManager_);
+        if (!track.legacyPathFile.empty() && target->GetRecorder()) {
+            target->GetRecorder()->SetSceneManager(sceneManager_);
 
-            if (target->recorder_->GetTarget() != target) {
-                target->recorder_->SetTarget(target);
+            if (target->GetRecorder()->GetTarget() != target) {
+                target->GetRecorder()->SetTarget(target);
             }
 
-            target->recorder_->DrawPreview(viewProjection, offset, size, true);
+            target->GetRecorder()->DrawPreview(viewProjection, offset, size, true);
             drawList->PushClipRect(clipMin, clipMax, true);
             const std::string detail = "Legacy Ghost Path: " + track.legacyPathFile;
             DrawHeader(detail.c_str(), IM_COL32(80, 190, 235, 255));
@@ -1167,8 +1167,8 @@ float GhostDirector::GetTransformTrackDuration(int trackIndex) const {
     }
 
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-        if (object && object->GetName() == track.binding.targetName && object->recorder_) {
-            return object->recorder_->GetDurationSeconds();
+        if (object && object->GetName() == track.binding.targetName && object->GetRecorder()) {
+            return object->GetRecorder()->GetDurationSeconds();
         }
     }
 

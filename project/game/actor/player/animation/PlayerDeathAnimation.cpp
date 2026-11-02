@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/actor/player/animation/PlayerDeathAnimation.h"
+#include "Easing.h"
+#include <numbers>
 
 #include "game/actor/player/Player.h"
 #include "MeshEffectManager.h"
@@ -10,7 +12,7 @@
 #include <cmath>
 
 namespace {
-constexpr float kPi = 3.1415926535f;
+constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kHitStopTime = 0.10f;
 constexpr float kBurstTime = 0.38f;
 constexpr float kFadeReadyTime = 0.88f;
@@ -28,20 +30,9 @@ float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
-// 死亡演出の終点で減速する補間率を返します。
-float EaseOutCubic(float value) {
-    // 破裂直前の動きを終点へ向けて減速させる。
-    value = Clamp01(value);
-    const float inv = 1.0f - value;
-    return 1.0f - inv * inv * inv;
-}
 
-// 死亡演出の始点と終点を滑らかにつなぎます。
-float EaseInOut(float value) {
-    // 前後で速度が急変しないよう、滑らかな曲線へ変換する。
-    value = Clamp01(value);
-    return value * value * (3.0f - 2.0f * value);
-}
+
+
 
 engine::Vector3 MakeSafeScale(const engine::Vector3& scale) {
     // ほぼゼロの軸を既定値へ置き換え、死亡演出の拡縮が消失しないようにする。
@@ -173,7 +164,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
 
     const float hitT = Clamp01(timer_ / kHitStopTime);
     const float chargeT = Clamp01((timer_ - kHitStopTime) / (kBurstTime - kHitStopTime));
-    const float charge = EaseInOut(chargeT);
+    const float charge = Easing::SmoothStep01(chargeT);
     const float pulse = std::sin(chargeT * kPi);
     const float tinyShake = std::sin(timer_ * 84.0f) * (1.0f - chargeT) * 0.035f;
 

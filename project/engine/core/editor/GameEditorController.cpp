@@ -20,8 +20,8 @@ Player* DebugHealthPlayer(SceneManager* manager) {
 void DisableDebugHugeHealth(SceneManager* manager) {
     // 無敵デバッグを解除する際は、通常の最大HPを超えた値も戻す。
     if (debugHugeHealth) {
-        if (auto* player = DebugHealthPlayer(manager); player && player->param_.has_value()) {
-            player->param_->hp = (std::min)(player->param_->hp, player->GetMaxHp());
+        if (auto* player = DebugHealthPlayer(manager); player && player->GetParameters().has_value()) {
+            player->SetParameter(&engine::EntityParameter::hp, (std::min)(player->GetParameters()->hp, player->GetMaxHp()));
         }
     }
 
@@ -368,6 +368,9 @@ void GameEditorController::SetPortfolioCaptureMode(bool enabled) {
 	}
 
 	portfolioCaptureMode_ = enabled;
+    // 撮影モードではGame Viewパネルの古い矩形を入力に使わないよう解除します。
+    if (enabled)
+        SettingsMenuOverlay::SetEditorViewport(0, 0, 0, 0);
 	DebugConsole::GetInstance()->AddLog(
 		portfolioCaptureMode_
 			? "ポートフォリオ撮影モード: ON (F10でエディタ表示に戻ります)"
@@ -481,7 +484,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 #ifdef NDEBUG
     if (ImGui::BeginMenu("デバッグ")) {
         auto* player = DebugHealthPlayer(sceneManager);
-        const bool available = isPlaying && player && !player->isDead && player->GetHp() > 0.0f;
+        const bool available = isPlaying && player && !player->IsDead() && player->GetHp() > 0.0f;
 
         if (ImGui::MenuItem("無敵（HP 1,000,000）", nullptr, debugHugeHealth, available)) {
             if (debugHugeHealth)
@@ -499,8 +502,8 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
     if (debugHugeHealth && isPlaying) {
         // シーン切替後の新しいPlayerにも適用。死亡済みのPlayerは復活させない。
         if (auto* player = DebugHealthPlayer(sceneManager);
-            player && !player->isDead && player->param_.has_value() && player->GetHp() > 0.0f) {
-            player->param_->hp = 1000000.0f;
+            player && !player->IsDead() && player->GetParameters().has_value() && player->GetHp() > 0.0f) {
+            player->SetParameter(&engine::EntityParameter::hp, 1000000.0f);
         }
     }
 #endif
@@ -1135,15 +1138,15 @@ void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, 
 				selectedObject = nullptr;
 			}
 
-			if (selectedObject && selectedObject->recorder_) {
-				selectedObject->recorder_->SetSceneManager(editorSceneManager);
+			if (selectedObject && selectedObject->GetRecorder()) {
+				selectedObject->GetRecorder()->SetSceneManager(editorSceneManager);
 			}
 
             if (EditorToolSettings::Get().IsVisible("ghostModels") &&
                 selectedObject &&
-                selectedObject->recorder_ &&
-                selectedObject->recorder_->HasPreviewData()) {
-				selectedObject->recorder_->DrawObjectGhostPreview(pointLightResource, spotLightResource);
+                selectedObject->GetRecorder() &&
+                selectedObject->GetRecorder()->HasPreviewData()) {
+				selectedObject->GetRecorder()->DrawObjectGhostPreview(pointLightResource, spotLightResource);
 			}
 
             if (EditorToolSettings::Get().IsVisible("placementPreview"))
@@ -1180,16 +1183,16 @@ void GameEditorController::DrawSceneDebug(ID3D12GraphicsCommandList* commandList
         EditorManager::GetInstance()->GetSelectedObject() == meshEffectEditor_.get()) {
 		meshEffectEditor_->Draw();
 	}
+    // Spriteの編集矢印もゲームと同じ座標・HDR描画先へ描き、Game Viewと一緒に拡縮します。
+    if (spriteDebugEditor_ && (!sceneManager_ || !sceneManager_->IsPlaying()) &&
+        EditorToolSettings::Get().IsVisible("spriteGuides")) {
+        spriteDebugEditor_->Draw();
+    }
 }
 
 void GameEditorController::DrawBackBufferUi() {
-    // Sprite編集UIとImGui全体を最終バックバッファへ描画する。
-	if (spriteDebugEditor_ && (!sceneManager_ || !sceneManager_->IsPlaying()) &&
-		EditorToolSettings::Get().IsVisible("spriteGuides")) {
-		spriteDebugEditor_->Draw();
-	}
-
-	ImGuiManager::GetInstance()->Draw();
+    // Editor UIだけを実ウィンドウへ描画します。
+    ImGuiManager::GetInstance()->Draw();
 }
 
 void GameEditorController::EndFrame() {

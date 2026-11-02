@@ -57,7 +57,7 @@ void RidingPlatformController::Reset(GimmickMovingFloor& floor, BaseScene& scene
         boarder.released = false;
         boarder.elapsed = 0;
 
-        if (auto* enemy = FindEnemy(scene, boarder.name); enemy && !enemy->isDead && !enemy->IsCarried()) {
+        if (auto* enemy = FindEnemy(scene, boarder.name); enemy && !enemy->IsDead() && !enemy->IsCarried()) {
             enemy->SetTranslate(boarder.origin);
             enemy->SetCollisionAttribute(boarder.attribute);
             enemy->SetCollisionMask(boarder.mask);
@@ -75,8 +75,8 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
     const std::string path = floor.GetPathMoverComponent()->GetRideSequence();
 
     // 同じ床の旧RecorderとTimelineを同時に動かさない。
-    if (floor.recorder_)
-        floor.recorder_->Stop(false);
+    if (floor.GetRecorder())
+        floor.GetRecorder()->Stop(false);
 
     // Editorで同じファイルへ保存した変更も、次のゲーム開始時に読み直す。
     if (loadedPath_ != path || (manager->IsPlaying() && !wasPlaying_ && ready_)) {
@@ -108,7 +108,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             if (!signal.enabled || signal.signal != "ride.board")
                 continue;
             auto* enemy = FindEnemy(*scene, signal.binding.targetName);
-            if (!enemy || enemy->isDead)
+            if (!enemy || enemy->IsDead())
                 continue;
             Boarder boarder;
             boarder.name = enemy->GetName();
@@ -185,7 +185,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
     if (!rider || deltaTime <= 0)
         return;
     // 出発直後の落水は水平距離が短いため、死亡復帰でも確実に乗り場へ戻す。
-    if (rider->isDead) riderWasDead_ = true;
+    if (rider->IsDead()) riderWasDead_ = true;
     else if (riderWasDead_) {
         riderWasDead_ = false;
         Reset(floor, *scene);
@@ -197,7 +197,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
     if (running_ && !riderOnDeck &&
         (!ferry_ || (rider->IsGrounded() && absentTime_ > 1.2f && rider->GetWorldPosition().y >= start_.y - 0.5f)) &&
         DistanceXZ(previous, start_) > (ferry_ ? 24.0f : 65.0f) &&
-        DistanceXZ(rider->GetWorldPosition(), start_) < (ferry_ ? 36.0f : 22.0f) && !rider->isDead) {
+        DistanceXZ(rider->GetWorldPosition(), start_) < (ferry_ ? 36.0f : 22.0f) && !rider->IsDead()) {
         Reset(floor, *scene);
         return;
     }
@@ -222,7 +222,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         if (ferry_) {
             // 飛び上がり中は止めず、島へ降りた後はその場で再乗車を待つ。
             absentTime_ = riderOnDeck ? 0.0f : absentTime_ + deltaTime;
-            if (rider->isDead || absentTime_ > 1.2f)
+            if (rider->IsDead() || absentTime_ > 1.2f)
                 step = 0.0f;
         }
 
@@ -242,7 +242,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
                         const auto* button = dynamic_cast<GimmickSwitch*>(object.get());
                         return button && !button->IsOutputActive();
                     }
-                    return !object->isDead && object->GetIsVisible();
+                    return !object->IsDead() && object->GetIsVisible();
                 });
             if (blocked)
                 step = std::min(step, std::max(0.0f, signal.time - now));
@@ -264,7 +264,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
 
     for (auto& boarder : boarders_) {
         auto* enemy = FindEnemy(*scene, boarder.name);
-        if (!enemy || enemy->isDead || boarder.released)
+        if (!enemy || enemy->IsDead() || boarder.released)
             continue;
 
         // プレイヤーが先に捕まえた敵を、乗り込み演出で奪い返さない。

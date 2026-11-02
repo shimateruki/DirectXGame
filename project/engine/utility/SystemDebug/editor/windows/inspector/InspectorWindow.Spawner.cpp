@@ -14,11 +14,11 @@ void InspectorWindow::DrawSpawnerSettings() {
     ImGui::Indent();
     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "[ Spawner Config ]");
 
-    if (!selectedObject->param_.has_value()) {
-        selectedObject->param_.emplace();
+    if (!selectedObject->GetParameters().has_value()) {
+        selectedObject->ResetParameters();
     }
 
-    auto& p = selectedObject->param_.value();
+    auto p = selectedObject->GetParameters().value();
 
     static char typeBuf[64] = "";
 
@@ -42,6 +42,7 @@ void InspectorWindow::DrawSpawnerSettings() {
     ImGui::DragFloat("Interval (sec)", &p.interval, 0.1f, 0.1f, 60.0f, "%.1f s");
     ImGui::InputInt("Max Count", &p.maxCount);
 
+    selectedObject->SetParameters(p);
     ImGui::Unindent();
 #endif
 }

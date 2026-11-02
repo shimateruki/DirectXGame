@@ -13,8 +13,8 @@ namespace engine { class ParticleSystem; }
 // scaleは倍率、rotationとoffsetはローカル空間の加算値です。
 struct EnemyVisualReactionPose {
     engine::Vector3 scale = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 rotation = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 offset = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 rotation = engine::Vector3::ZERO;
+    engine::Vector3 offset = engine::Vector3::ZERO;
     float weight = 0.0f;
 };
 
@@ -213,11 +213,24 @@ class BaseEnemy : public Character {
     /// <summary>高速落下が地面に当たった瞬間の敵固有処理を行う。</summary>
     virtual void OnSlamImpact(const engine::Vector3& impactPosition, float impactSpeed);
 
+    /// <summary>派生AIが利用する共通状態を読み取る。</summary>
+    engine::Object3d* GetTarget() const { return target_; }
+    float GetDamageCooldown() const { return damageCooldownTimer_; }
+    void SetDamageCooldown(float seconds) { damageCooldownTimer_ = seconds; }
+    const engine::Vector4& GetDefaultColor() const { return defaultColor_; }
+    void SetDefaultColor(const engine::Vector4& color) { defaultColor_ = color; }
+    float GetThrowRecoveryTime() const { return throwRecoveryTimer_; }
+    void SetThrowRecoveryTime(float seconds) { throwRecoveryTimer_ = seconds; }
+
+    /// <summary>既存AIの対象復元用。交戦状態のリセットは行わない。</summary>
+    void RestoreAITarget(engine::Object3d* target) { target_ = target; }
+private:
+
     engine::Object3d* target_ = nullptr;       // 追いかける対象。基本的にはプレイヤー。
     float detectionRange_ = 20.0f;     // ターゲットを検知して攻撃AIへ入る距離。
     float damageCooldownTimer_ = 0.0f; // 連続ヒットを防ぐ短い無敵時間。
     EnemyAttackProfile attackProfile_;
-    engine::Vector4 defaultColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 被弾演出後に戻す基準色。
+    engine::Vector4 defaultColor_ = engine::Colors::White; // 被弾演出後に戻す基準色。
     bool isCarried_ = false;
     float throwRecoveryTimer_ = 0.0f;
 
@@ -301,8 +314,8 @@ class BaseEnemy : public Character {
     /// <summary>現在のシーンが使う粒子システムを返す。利用できなければnullptr。</summary>
     engine::ParticleSystem* GetCurrentParticleSystem() const;
 
-    engine::Vector3 wanderOrigin_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 wanderTarget_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 wanderOrigin_ = engine::Vector3::ZERO;
+    engine::Vector3 wanderTarget_ = engine::Vector3::ZERO;
 
     float wanderWaitTimer_ = 0.0f;
     float wanderRetargetTimer_ = 0.0f;
@@ -310,9 +323,9 @@ class BaseEnemy : public Character {
     uint32_t wanderSeed_ = 0x12345678u;
     bool hasWanderOrigin_ = false;
 
-    engine::Vector3 thrownAngularVelocity_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 throwRecoveryStartRotation_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector3 throwRecoveryTargetRotation_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 thrownAngularVelocity_ = engine::Vector3::ZERO;
+    engine::Vector3 throwRecoveryStartRotation_ = engine::Vector3::ZERO;
+    engine::Vector3 throwRecoveryTargetRotation_ = engine::Vector3::ZERO;
 
     float thrownTimer_ = 0.0f;
     float thrownSettleTimer_ = 0.0f;
@@ -341,8 +354,8 @@ class BaseEnemy : public Character {
     float noticeMarkYaw_ = 0.0f;
 
     engine::Vector3 noticeBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector3 noticeBaseRotation_ = {0.0f, 0.0f, 0.0f};
-    engine::Vector4 noticeBaseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    engine::Vector3 noticeBaseRotation_ = engine::Vector3::ZERO;
+    engine::Vector4 noticeBaseColor_ = engine::Colors::White;
 
     float defeatEffectTimer_ = 0.0f;
     float defeatEffectParticleTimer_ = 0.0f;
@@ -352,7 +365,7 @@ class BaseEnemy : public Character {
     float damageReactionStrength_ = 0.0f;
     engine::Vector3 damageReactionLocalDirection_ = {0.0f, 0.0f, -1.0f};
 
-    engine::Vector3 defeatBasePosition_ = {0.0f, 0.0f, 0.0f};
+    engine::Vector3 defeatBasePosition_ = engine::Vector3::ZERO;
     engine::Vector3 defeatBaseScale_ = {1.0f, 1.0f, 1.0f};
-    engine::Vector4 defeatBaseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    engine::Vector4 defeatBaseColor_ = engine::Colors::White;
 };

@@ -28,7 +28,7 @@ inline bool RunCase(SceneManager* manager, int mode, float radius, float blast, 
     auto player = std::make_unique<Player>();
     player->Initialize(scene->GetObject3dCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
     player->SetName("__CannonDamageTarget"); player->SetClassName("Player"); player->SetEditorInternal(true);
-    player->param_->hp = player->param_->maxHp = 20;
+    player->SetParameter(&engine::EntityParameter::hp, player->SetParameter(&engine::EntityParameter::maxHp, 20));
     player->SetScale({1, 1, 1});
     engine::Object3d::ColliderConfig collider; collider.type = ColliderType::kSphere; collider.center = {0, 0, 0}; collider.size = {0.5f, 0.5f, 0.5f};
     player->SetColliderConfig(collider);
@@ -40,10 +40,10 @@ inline bool RunCase(SceneManager* manager, int mode, float radius, float blast, 
     auto cannon = std::make_unique<GimmickFireCannon>();
     cannon->Initialize(scene->GetObject3dCommon(), "Gimmicks/volcanic_bombard");
     cannon->SetTranslate({0, 1000, 0}); cannon->SetScale({1, 1, 1}); cannon->SetRotation({0, 0, 0});
-    cannon->param_->actionMode = mode; cannon->param_->speed = 60; cannon->param_->interval = 0.08f;
-    cannon->param_->moveAmount = radius; cannon->param_->healAmount = blast;
-    cannon->param_->projectileLifetime = 3; cannon->param_->startActive = true;
-    cannon->param_->editorPreviewFiring = preview;
+    cannon->SetParameter(&engine::EntityParameter::actionMode, mode); cannon->SetParameter(&engine::EntityParameter::speed, 60); cannon->SetParameter(&engine::EntityParameter::interval, 0.08f);
+    cannon->SetParameter(&engine::EntityParameter::moveAmount, radius); cannon->SetParameter(&engine::EntityParameter::healAmount, blast);
+    cannon->SetParameter(&engine::EntityParameter::projectileLifetime, 3); cannon->SetParameter(&engine::EntityParameter::startActive, true);
+    cannon->SetParameter(&engine::EntityParameter::editorPreviewFiring, preview);
     manager->SetIsPlaying(!preview);
     cannon->Update(0.2f);
     manager->SetIsPlaying(false);
@@ -79,7 +79,7 @@ inline bool RunPlayerProjectileCase(SceneManager* manager, std::ostream& log) {
     bullets->Clear();
     auto enemy = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3dCommon());
     if (!enemy) throw std::runtime_error("regression enemy missing");
-    enemy->param_->hp = enemy->param_->maxHp = 20;
+    enemy->SetParameter(&engine::EntityParameter::hp, enemy->SetParameter(&engine::EntityParameter::maxHp, 20));
     enemy->SetScale({1, 1, 1}); enemy->SetTranslate({0, 1000, 8});
     engine::Object3d::ColliderConfig collider; collider.type = ColliderType::kSphere; collider.size = {0.5f, 0.5f, 0.5f};
     enemy->SetColliderConfig(collider); enemy->SetCollisionRadius(0.5f);
@@ -96,7 +96,7 @@ inline bool RunPlayerProjectileCase(SceneManager* manager, std::ostream& log) {
         if (event.target == enemy.get()) ++events;
     });
     bullets->Update(0.2f); bullets->Update(0.2f);
-    const float damage = 20 - enemy->param_->hp;
+    const float damage = 20 - enemy->GetParameters()->hp;
     const bool ok = std::abs(damage - 2) < 0.001f && events == 1;
     log << (ok ? "OK" : "FAIL") << " player projectile hpDamage=" << damage << " events=" << events << std::endl;
     EventManager::GetInstance()->Unsubscribe(subscription);

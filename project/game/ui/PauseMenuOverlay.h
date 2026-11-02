@@ -60,8 +60,8 @@ class PauseMenuOverlay {
     struct MenuRow {
         engine::Sprite* backdrop = nullptr;
         engine::Sprite* label = nullptr;
-        engine::Vector2 backdropBaseSize = {0.0f, 0.0f};
-        engine::Vector2 labelBaseSize = {0.0f, 0.0f};
+        engine::Vector2 backdropBaseSize = engine::Vector2::ZERO;
+        engine::Vector2 labelBaseSize = engine::Vector2::ZERO;
     };
 
     // レイアウト JSON の読み込み後、Sprite を各 UI 要素へ紐付けます。
@@ -99,7 +99,7 @@ class PauseMenuOverlay {
     engine::Sprite* confirmHintText_ = nullptr;
     engine::Sprite* cursorArrow_ = nullptr;
     engine::Sprite* cursorSlime_ = nullptr;
-    engine::Vector2 panelBaseSize_ = {0.0f, 0.0f};
+    engine::Vector2 panelBaseSize_ = engine::Vector2::ZERO;
     engine::Vector2 layoutRatio_ = {1.0f, 1.0f};
     std::array<MenuRow, static_cast<size_t>(Item::Count)> rows_{};
 

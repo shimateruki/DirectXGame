@@ -1,4 +1,5 @@
 #include "game/system/combat/HitEffectDirector.h"
+#include <numbers>
 
 #include "DebrisEffectManager.h"
 #include "GPUParticleManager.h"
@@ -61,7 +62,7 @@ void SpawnThunderShockHitBurst(engine::Object3d* target) {
     const float horizontalRadius = horizontalDiameter * 0.52f;
     const float verticalRadius = verticalDiameter * 0.38f;
     constexpr int kSparkCount = 5;
-    constexpr float kTwoPi = 6.283185307f;
+    constexpr float kTwoPi = (2.0f * std::numbers::pi_v<float>);
 
     for (int i = 0; i < kSparkCount; ++i) {
         const float angle = kTwoPi * static_cast<float>(i) / static_cast<float>(kSparkCount) + 0.28f;

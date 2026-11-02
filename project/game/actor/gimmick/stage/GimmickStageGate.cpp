@@ -1,4 +1,5 @@
 #include "GimmickStageGate.h"
+#include "Easing.h"
 #include "ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "SceneManager.h"
@@ -33,7 +34,7 @@ float Smoothstep(float edge0, float edge1, float value) {
     const float rawWidth = edge1 - edge0;
     const float width = rawWidth > 0.0001f ? rawWidth : 0.0001f;
     const float t = Clamp01((value - edge0) / width);
-    return t * t * (3.0f - 2.0f * t);
+    return Easing::SmoothStep(t);
 }
 } // namespace
 
@@ -45,13 +46,13 @@ void GimmickStageGate::Initialize(engine::Object3dCommon* common, const std::str
     SetGimmickType("StageGate");
     SetName("Gimmick_StageGate");
 
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->gimmickType = "StageGate";
-    param_->targetScene = param_->targetScene.empty() ? "SELECT" : param_->targetScene;
-    param_->startActive = true;
+    SetParameter(&engine::EntityParameter::gimmickType, "StageGate");
+    SetParameter(&engine::EntityParameter::targetScene, GetParameters()->targetScene.empty() ? "SELECT" : GetParameters()->targetScene);
+    SetParameter(&engine::EntityParameter::startActive, true);
     SetColor({0.35f, 0.75f, 1.0f, 1.0f});
     SetScale({1.4f, 1.4f, 1.4f});
     SetEmissive(1.8f);
@@ -74,12 +75,12 @@ void GimmickStageGate::Initialize(engine::Object3dCommon* common, const std::str
     properties.Accessor<int>("ステージ番号（Target ID）", "stageIndex", "targetID",
         [](const Self& object) { return object.GetTargetID(); },
         [](Self& object, const int& value) { object.SetTargetID(value); }, 0, 0,
-        +[](const Self& object) { return !object.param_ || object.param_->actionMode != 1; });
+        +[](const Self& object) { return !object.GetParameters() || object.GetParameters()->actionMode != 1; });
     properties.Parameter("ゲートモード", "actionMode", &Parameter::actionMode, 0.0f, 2.0f,
         nullptr, {"ステージセレクト用ノード", "シーン転移ゲート", "ステージ開始ゲート"});
     properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
     properties.Parameter("転移先シーン", "targetScene", &Parameter::targetScene, 0.0f, 0.0f,
-        +[](const Self& object) { return object.param_ && (object.param_->actionMode == 1); }, {"タイトル", "チュートリアル", "ステージセレクト", "ゲーム本編", "ゲームオーバー"}, {.values = {"TITLE", "TUTORIAL", "SELECT", "GAMEPLAY", "GAMEOVER"}});
+        +[](const Self& object) { return object.GetParameters() && (object.GetParameters()->actionMode == 1); }, {"タイトル", "チュートリアル", "ステージセレクト", "ゲーム本編", "ゲームオーバー"}, {.values = {"TITLE", "TUTORIAL", "SELECT", "GAMEPLAY", "GAMEOVER"}});
 }
 
 void GimmickStageGate::Update(float deltaTime) {
@@ -161,8 +162,8 @@ bool GimmickStageGate::OnCollision(engine::Object3d* other) {
 std::unique_ptr<engine::Object3d> GimmickStageGate::Clone() const {
     // 複製先の描画資源を初期化した後で、ゲート設定をコピーします。
     auto newObj = std::make_unique<GimmickStageGate>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }
@@ -174,22 +175,22 @@ int GimmickStageGate::GetStageIndex() const {
 
 int GimmickStageGate::GetGateMode() const {
     // 古い配置データにモードがなくても、遷移しない展示ノードとして扱います。
-    if (!param_.has_value()) {
+    if (!GetParameters().has_value()) {
         return kGateModeStageSelectNode;
     }
 
-    return param_->actionMode;
+    return GetParameters()->actionMode;
 }
 
 const std::string& GimmickStageGate::GetTargetSceneName() const {
     // 遷移先が未設定ならステージ選択画面へ戻します。
     static const std::string kDefaultScene = "SELECT";
 
-    if (!param_.has_value() || param_->targetScene.empty()) {
+    if (!GetParameters().has_value() || GetParameters()->targetScene.empty()) {
         return kDefaultScene;
     }
 
-    return param_->targetScene;
+    return GetParameters()->targetScene;
 }
 
 bool GimmickStageGate::IsStageSelectNodeMode() const {
@@ -212,11 +213,11 @@ void GimmickStageGate::SetGateActivation(float activation) {
 
 void GimmickStageGate::SetTransitionEnabled(bool enabled) {
     // 再有効化時は一度きりの遷移記録を戻し、再入場を許可します。
-    if (!param_.has_value()) {
-        param_.emplace();
+    if (!GetParameters().has_value()) {
+        ResetParameters();
     }
 
-    param_->startActive = enabled;
+    SetParameter(&engine::EntityParameter::startActive, enabled);
     if (!enabled && entryPresentation_.IsActive())
         entryPresentation_.Reset();
 
@@ -270,7 +271,7 @@ bool GimmickStageGate::CanTriggerTransition() const {
         return false;
     }
 
-    if (param_.has_value() && !param_->startActive) {
+    if (GetParameters().has_value() && !GetParameters()->startActive) {
         return false;
     }
 

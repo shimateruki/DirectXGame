@@ -1,4 +1,5 @@
 #include "engine/core/editor/GameEditorController.Internal.h"
+#include <numbers>
 
 #ifdef USE_IMGUI
 #include "SelectedActorSession.h"
@@ -75,8 +76,8 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 
             if (spriteDebugEditor_ && canEditViewport && !actorToolsActive && EditorToolSettings::Get().IsVisible("spriteGuides")) {
 				const engine::Vector2 spriteLocalPos = {
-					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::kClientWidth) / area.width),
-					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::kClientHeight) / area.height),
+					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::GetClientWidth()) / area.width),
+					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::GetClientHeight()) / area.height),
 				};
 
 				spriteDebugEditor_->Update(spriteLocalPos, imageHovered);
@@ -145,7 +146,7 @@ void DrawCameraObjectPreviewWindow() {
 	if (ImGui::Begin("Camera Object Preview", nullptr, flags)) {
 		const SceneCameraSettings& settings = cameraObject->GetSceneCameraSettings();
 		const char* roleLabel = settings.role == SceneCameraRole::kMain ? "Main" : "Cinematic";
-		constexpr float kRadToDeg = 180.0f / 3.14159265f;
+		constexpr float kRadToDeg = 180.0f / std::numbers::pi_v<float>;
 
 		ImGui::TextColored(
 			ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
@@ -213,8 +214,8 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 
 				ImVec2 mousePos = ImGui::GetIO().MousePos;
 				engine::Vector2 dropPos = {
-					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::kClientWidth) / area.width),
-					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::kClientHeight) / area.height),
+					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::GetClientWidth()) / area.width),
+					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::GetClientHeight()) / area.height),
 				};
 
 				std::string fullPath = "Resources/sprite/" + std::string(droppedFilename);
@@ -310,12 +311,12 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 
 		if (editorSceneManager && editorSceneManager->GetCurrentScene()) {
 			for (const auto& object : editorSceneManager->GetCurrentScene()->GetObjects()) {
-				if (!object || object->GetRecordPathName().empty() || !object->recorder_)
+				if (!object || object->GetRecordPathName().empty() || !object->GetRecorder())
 					continue;
-				object->recorder_->SetSceneManager(editorSceneManager);
-				if (!object->recorder_->HasPreviewData())
+				object->GetRecorder()->SetSceneManager(editorSceneManager);
+				if (!object->GetRecorder()->HasPreviewData())
 					continue;
-				object->recorder_->DrawPreview(
+				object->GetRecorder()->DrawPreview(
 					camera->GetViewProjectionMatrix(),
 					engine::Vector2{ area.screenX, area.screenY },
 					engine::Vector2{ area.width, area.height }, true);
@@ -323,11 +324,11 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 		}
 
 		// Path未割当でも、選択中のObjectで編集中の経路は表示する。
-		if (selectedObject && selectedObject->GetRecordPathName().empty() && selectedObject->recorder_) {
-			selectedObject->recorder_->SetSceneManager(editorSceneManager);
+		if (selectedObject && selectedObject->GetRecordPathName().empty() && selectedObject->GetRecorder()) {
+			selectedObject->GetRecorder()->SetSceneManager(editorSceneManager);
 
-			if (selectedObject->recorder_->HasPreviewData()) {
-				selectedObject->recorder_->DrawPreview(
+			if (selectedObject->GetRecorder()->HasPreviewData()) {
+				selectedObject->GetRecorder()->DrawPreview(
 					camera->GetViewProjectionMatrix(),
 					engine::Vector2{ area.screenX, area.screenY },
 					engine::Vector2{ area.width, area.height }, true);

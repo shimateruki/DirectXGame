@@ -40,21 +40,21 @@ struct StatusPreviewRuntimeProbe {
         auto dummy = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3dCommon());
         auto* firePtr = fire.get(); auto* otherPtr = thunder.get(); auto* dummyPtr = dummy.get();
         dummy->SetEditorInternal(true);
-        dummy->param_->hp = dummy->param_->maxHp = 100000.0f;
-        fire->param_->hp = fire->param_->maxHp * 0.5f;
-        const auto otherHp = thunder->param_->hp;
+        dummy->SetParameter(&engine::EntityParameter::hp, dummy->SetParameter(&engine::EntityParameter::maxHp, 100000.0f));
+        fire->SetParameter(&engine::EntityParameter::hp, fire->GetParameters()->maxHp * 0.5f);
+        const auto otherHp = thunder->GetParameters()->hp;
         scene->AddObjectImmediate(std::move(fire)); scene->AddObjectImmediate(std::move(thunder)); scene->AddObjectImmediate(std::move(dummy));
         // 旧形式でParamにだけ敵タイプが残った対象も、既存Managerと同じ規則で扱います。
         firePtr->SetEnemyType("");
-        firePtr->param_->enemyType = "FireSlime";
+        firePtr->SetParameter(&engine::EntityParameter::enemyType, "FireSlime");
         auto* status = manager->FindMutableEnemyStatus("FireSlime");
         status->maxHp = 140; status->speed = 17;
         manager->MarkDirty();
         Require(CharacterStatusEditor::Apply(scene, "FireSlime") >= 1, "live status target missing");
-        Near(firePtr->param_->hp, 70, "current HP ratio changed");
-        Near(firePtr->param_->speed, 17, "selected type speed not applied");
-        Near(otherPtr->param_->hp, otherHp, "other type modified");
-        Near(dummyPtr->param_->hp, 100000, "editor dummy overwritten");
+        Near(firePtr->GetParameters()->hp, 70, "current HP ratio changed");
+        Near(firePtr->GetParameters()->speed, 17, "selected type speed not applied");
+        Near(otherPtr->GetParameters()->hp, otherHp, "other type modified");
+        Near(dummyPtr->GetParameters()->hp, 100000, "editor dummy overwritten");
         firePtr->SetEnemyType("FireSlime");
         log << "OK live apply preserves HP ratio, other enemy types and editor dummy" << std::endl;
 
@@ -63,13 +63,13 @@ struct StatusPreviewRuntimeProbe {
         EditorManager::GetInstance()->SetSelectedObject(&preview);
         preview.enabled_ = true; preview.CreatePreviewObjects(); preview.playing_ = false;
         Require(preview.previewEnemy_ && !preview.IsPlayerCopyMode(), "enemy target selection");
-        Near(preview.previewEnemy_->param_->maxHp, 140, "enemy preview did not use edited status");
+        Near(preview.previewEnemy_->GetParameters()->maxHp, 140, "enemy preview did not use edited status");
         status->maxHp = 100; status->speed = 9; manager->MarkDirty();
         CharacterStatusEditor::Apply(scene, "FireSlime");
-        Near(preview.previewEnemy_->param_->maxHp, 140, "live apply touched preview actor");
+        Near(preview.previewEnemy_->GetParameters()->maxHp, 140, "live apply touched preview actor");
         preview.RefreshStatusPreview();
-        Near(preview.previewEnemy_->param_->maxHp, 100, "restart did not refresh status");
-        Near(preview.previewEnemy_->param_->speed, 9, "restart speed stale");
+        Near(preview.previewEnemy_->GetParameters()->maxHp, 100, "restart did not refresh status");
+        Near(preview.previewEnemy_->GetParameters()->speed, 9, "restart speed stale");
         Require(!preview.playing_ && preview.elapsedTime_ == 0, "paused refresh state");
 
         preview.SelectStatusTarget("RingBurner");
@@ -84,10 +84,10 @@ struct StatusPreviewRuntimeProbe {
         preview.copyActionId_ = "acquire";
         preview.enabled_ = true; preview.CreatePreviewObjects(); preview.playing_ = false;
         Require(preview.previewPlayer_ && preview.IsPlayerCopyMode(), "player target selection");
-        Near(preview.previewPlayer_->param_->maxHp, 19, "player preview HP forced to old constant");
-        Near(preview.previewPlayer_->param_->gravity, 21, "player preview gravity forced to old constant");
-        Near(preview.previewPlayer_->param_->maxFallSpeed, 34, "player preview fall speed forced to old constant");
-        if (preview.previewEnemy_) Near(preview.previewEnemy_->param_->maxHp, 100000, "copy hit dummy HP changed");
+        Near(preview.previewPlayer_->GetParameters()->maxHp, 19, "player preview HP forced to old constant");
+        Near(preview.previewPlayer_->GetParameters()->gravity, 21, "player preview gravity forced to old constant");
+        Near(preview.previewPlayer_->GetParameters()->maxFallSpeed, 34, "player preview fall speed forced to old constant");
+        if (preview.previewEnemy_) Near(preview.previewEnemy_->GetParameters()->maxHp, 100000, "copy hit dummy HP changed");
         log << "OK enemy/player selection, restart, pause preservation and Player initial values" << std::endl;
 
         service.savePending();

@@ -38,7 +38,7 @@ public:
 
         // Orbitモード用パラメータ。
         float orbitRadius = 15.0f;
-        engine::Vector3 orbitCenterOffset = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 orbitCenterOffset = engine::Vector3::ZERO;
         float orbitCenterHeight = 5.0f;
         float orbitHeight = 5.0f;
         float orbitSpeed = 0.005f;
@@ -67,11 +67,11 @@ public:
         float boostSpeed = 2.0f;
         float mouseSensitivity = 0.003f;
         engine::Vector3 fixedPointPos = { 0.0f, 5.0f, -15.0f };
-        engine::Vector3 fixedPointAngle = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 fixedPointAngle = engine::Vector3::ZERO;
 
         // Editorカメラの保存用状態。
         engine::Vector3 editorCameraPos = { 0.0f, 5.0f, -15.0f };
-        engine::Vector3 editorCameraAngle = { 0.0f, 0.0f, 0.0f };
+        engine::Vector3 editorCameraAngle = engine::Vector3::ZERO;
     };
 
 public:

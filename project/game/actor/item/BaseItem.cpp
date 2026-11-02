@@ -1,4 +1,5 @@
 #include "BaseItem.h"
+#include <numbers>
 #include "CollisionConfig.h"
 #include "ModelManager.h"
 #include "Player.h"
@@ -33,7 +34,7 @@ void BaseItem::Update(float deltaTime) {
         SetCollisionAttribute(0);
         SetCollisionMask(0);
         SetIsVisible(false);
-        isDead = true;
+        SetDead(true);
         return;
     }
 
@@ -41,8 +42,8 @@ void BaseItem::Update(float deltaTime) {
     engine::Vector3 rotate = GetRotation();
     rotate.y += rotationSpeed_ * deltaTime;
 
-    if (rotate.y > 6.283185f) {
-        rotate.y -= 6.283185f;
+    if (rotate.y > (2.0f * std::numbers::pi_v<float>)) {
+        rotate.y -= (2.0f * std::numbers::pi_v<float>);
     }
 
     SetRotation(rotate);
@@ -86,14 +87,14 @@ void BaseItem::MarkCollected() {
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetIsVisible(false);
-    isDead = true;
+    SetDead(true);
 }
 
 std::unique_ptr<engine::Object3d> BaseItem::Clone() const {
     // 初期化で描画・判定資源を作り直してから、編集可能な設定値を引き継ぎます。
     auto newObj = std::make_unique<BaseItem>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_, GetModelName());
+    assert(GetObjectCommon() != nullptr);
+    newObj->Initialize(GetObjectCommon(), GetModelName());
     newObj->CopyFrom(this);
     return newObj;
 }

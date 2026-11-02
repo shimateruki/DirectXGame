@@ -156,8 +156,8 @@ class CinematicPlayer {
     // 演出開始前の Transform と対象の借用参照。相対トラックの基準と停止時の復元に使う。
     struct TransformRuntime {
         engine::Object3d* target = nullptr;
-        engine::Vector3 basePosition = {0.0f, 0.0f, 0.0f};
-        engine::Vector3 baseRotation = {0.0f, 0.0f, 0.0f};
+        engine::Vector3 basePosition = engine::Vector3::ZERO;
+        engine::Vector3 baseRotation = engine::Vector3::ZERO;
         engine::Vector3 baseScale = {1.0f, 1.0f, 1.0f};
         bool captured = false;
     };
