@@ -1,7 +1,7 @@
 #pragma once
 
 #include "game/system/rules/GameplayStatusManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "json.hpp"
 
 #include <array>
@@ -12,17 +12,19 @@
 #include <utility>
 
 // 実行時に必要な単体プリセットだけを読みます。編集・移行・書き込みは行いません。
+// 関連：LevelLoaderなどへ実行用プリセットを返し、Editor側の編集・保存は行わない。
+// 主な入口：Load / ApplyToObject
 class RuntimePresetCatalog {
   public:
     void Load() {
         presets_.clear();
 
         // 旧ファイルが残る場合の上書き順は PresetManager と同じにします。
-        constexpr std::array<const char*, 3> paths = {
+        constexpr std::array<const char*, 3> kPaths = {
             "Resources/json/preset/presets.json",
             "Resources/json/preset/EnemyPresets.json",
             "Resources/json/preset/GimmickPresets.json"};
-        for (const char* path : paths) {
+        for (const char* path : kPaths) {
             std::ifstream file(path);
             if (!file)
                 continue;
@@ -43,7 +45,7 @@ class RuntimePresetCatalog {
     }
 
     // 名前が存在する場合だけ読込値を適用し、管理対象の共通ステータスを再適用する。保存は行わない。
-    void ApplyToObject(const std::string& name, engine::Object3d* object) const {
+    void ApplyToObject(const std::string& name, engine::Object3D* object) const {
         const auto it = presets_.find(name);
         if (!object || it == presets_.end())
             return;

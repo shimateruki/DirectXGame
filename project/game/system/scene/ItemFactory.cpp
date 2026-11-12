@@ -7,7 +7,7 @@ ItemFactory* ItemFactory::GetInstance() {
 }
 
 // 廃止済み種別は生成せず、それ以外の旧アイテムデータは共通型で読み込みます。
-std::unique_ptr<BaseItem> ItemFactory::CreateItem(const std::string& itemName, engine::Object3dCommon* common) {
+std::unique_ptr<BaseItem> ItemFactory::CreateItem(const std::string& itemName, engine::Object3DCommon* common) {
     // 廃止済みの回復アイテムや種別未設定のデータは、別アイテムへ置き換えず生成しません。
     if (itemName.empty() || itemName == "Heal") {
         return nullptr;

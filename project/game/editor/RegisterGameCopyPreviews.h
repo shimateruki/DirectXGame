@@ -1,7 +1,10 @@
 #pragma once
 
+// ゲーム固有の登録入口：RegisterGameCopyPreviews。登録先の共通Editorに、個別の型名や分岐を持ち込まない。
+
 #include "game/editor/CopyAbilityPreviewRegistry.h"
 #include "Player.h"
+#include "game/actor/player/copy/CrownMeleeSettings.h"
 #include <cassert>
 
 namespace GameCopyPreviewDetail {
@@ -77,10 +80,24 @@ inline void RegisterGameCopyPreviews() {
         entries.push_back(Make("ThunderSlime","雷","ThunderSlime",
             "左長押し: 周囲に帯電 / 離す: 電撃弾（1秒で最大） / 右: 雷移動 / E: 雷の直線攻撃"));
         entries.push_back(Make("WindSlime","風","WindSlime",
-            "左長押し: 竜巻攻撃（最大1.6秒） / 右: 風移動 / E: 上昇気流"));
+            "左長押し: 竜巻攻撃（最大1.6秒） / 右: 風跳び（地上発動・頂点から緩降下） / E: 小型竜巻"));
         entries.push_back(Make("Bomber","ボム","Bomber","左: 設置ボム / 右: 爆風ジャンプ / E: ボム投擲"));
-        entries.push_back(Make("Crown","覇王","FalseKingSlime",
-            "左: 王冠槍 / 左長押し解除: 槍の雨 / 右: 王威の波 / E: 王翼突進"));
+        auto crown = Make("Crown", "覇王", "FalseKingSlime",
+            "左を溜めて離す: ゲート槍1→3→5本 / 最大溜め: 中央槍強化 / 右: ゲート回避 / Eを追加: 近接3段");
+        CopyAbilityPreviewAction crownCombo{"crown_combo", "覇王: 近接3段コンボ"};
+        crownCombo.buildInput = [](const CopyAbilityPreviewFrame& frame) {
+            PlayerCopyAbilityInput input{};
+            const auto& settings = CrownMeleeSettings::Get();
+            const float first = (std::max)(settings.queueStart + 0.01f, settings.duration[0] * 0.72f);
+            const float second = (std::max)(settings.queueStart + 0.01f, settings.duration[1] * 0.72f);
+            input.specialTriggered = frame.triggered
+                || frame.Crossed(frame.startTime + first)
+                || frame.Crossed(frame.startTime + settings.duration[0] + second);
+            return input;
+        };
+        crown.actions.push_back(std::move(crownCombo));
+        crown.bookmarkHelp = "Eを押すたびに次段を1回予約。右クリックは各段の後隙から回避できます。近接設定とBody Clipを調整できます。";
+        entries.push_back(std::move(crown));
         return CopyAbilityPreviewRegistry::Register(std::move(entries));
     }();
     assert(registered && "copy preview registration failed");

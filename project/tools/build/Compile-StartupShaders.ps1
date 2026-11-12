@@ -24,6 +24,8 @@ materials/Fire.VS.hlsl|vs_6_0|main
 materials/Fire.PS.hlsl|ps_6_0|main
 materials/GatePortal.VS.hlsl|vs_6_0|main
 materials/GatePortal.PS.hlsl|ps_6_0|main
+materials/VisibilitySilhouette.VS.hlsl|vs_6_0|main
+materials/VisibilitySilhouette.PS.hlsl|ps_6_0|main
 skybox/Skybox.VS.hlsl|vs_6_0|main
 skybox/Skybox.PS.hlsl|ps_6_0|main
 sprite/Sprite.VS.hlsl|vs_6_0|main

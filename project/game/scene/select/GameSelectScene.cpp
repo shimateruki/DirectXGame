@@ -25,7 +25,7 @@
 #include "game/system/rules/GameRule.h"
 #include "game/system/scene/ObjectManager.h"
 #include "MeshEffectManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include "WinApp.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -36,13 +36,13 @@
 #include <string>
 #include "json.hpp"
 #include <numbers>
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include <BaseEnemy.h>
 #include <game/actor/enemy/spawn/EnemyFactory.h>
 #include <game/actor/enemy/spawn/EnemySpawner.h>
 #include <LightEditor.h>
 #include <ParticleManager.h>
-#include <GPUParticleManager.h>
+#include <GpuParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
 #include "game/system/progress/StageManager.h"
@@ -71,7 +71,7 @@ GameSelectScene::~GameSelectScene() {
 }
 
 SceneLoadManifest GameSelectScene::BuildAsyncLoadManifest() const {
-    // ゲート名とスターも先読みし、入場時の画像読み込み停止を避ける。
+    // ゲート名とスターを先読みし、入場時の画像読み込み停止を避ける。
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
                                  ? GetSceneLoadContext().objectLayoutPath
@@ -115,7 +115,6 @@ bool GameSelectScene::InitializeLoadingStep() {
 
     switch (loadingInitializePhase_) {
     case 0:
-        dxCommon_ = DirectXCommon::GetInstance();
         inputManager_ = engine::InputManager::GetInstance();
         LOG("Game Select Initialized!");
         StageManager::GetInstance()->Initialize();
@@ -163,19 +162,12 @@ bool GameSelectScene::InitializeLoadingStep() {
     case 1:
         CameraManager::GetInstance()->Initialize();
         CameraManager::GetInstance()->SetInputManager(inputManager_);
-        spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-        spriteCommon_->Initialize(dxCommon_);
-        object3dCommon_ = std::make_unique<engine::Object3dCommon>();
-        object3dCommon_->Initialize(dxCommon_);
-        MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
-        particleCommon_ = std::make_unique<engine::ParticleCommon>();
-        particleCommon_->Initialize(dxCommon_);
         particleSystem_ = std::make_unique<engine::ParticleSystem>();
-        particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
+        particleSystem_->Initialize(GetParticleCommon(), "Resources/sprite/common/circle2.png");
         ParticleManager::GetInstance()->Initialize(particleSystem_.get());
         gameRule_ = std::make_unique<GameRule>();
         gameRule_->Initialize(this);
-        LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+        LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
         ++loadingInitializePhase_;
         completeUnit();
         return false;
@@ -186,24 +178,23 @@ bool GameSelectScene::InitializeLoadingStep() {
         lockOnSystem_->Initialize(inputManager_);
         const uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
         lockOnSprite_ = std::make_unique<engine::Sprite>();
-        lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+        lockOnSprite_->Initialize(GetSpriteCommon(), lockOnTex);
         lockOnSprite_->SetAnchorPoint({0.5f, 0.5f});
         lockOnSprite_->SetSize({64.0f, 64.0f});
         gatePromptSprite_ = std::make_unique<engine::Sprite>();
-        gatePromptSprite_->Initialize(spriteCommon_.get(), "Resources/sprite/ui/gate/gate_prompt_player_e.png");
+        gatePromptSprite_->Initialize(GetSpriteCommon(), "Resources/sprite/ui/gate/gate_prompt_player_e.png");
         gatePromptSprite_->SetAnchorPoint({0.5f, 0.5f});
         gatePromptSprite_->SetSize({192.0f, 64.0f});
         gatePromptSprite_->SetVisible(false);
-        BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+        BulletManager::GetInstance()->Initialize(GetObject3DCommon(), CollisionManager::GetInstance());
         ++loadingInitializePhase_;
         completeUnit();
         return false;
     }
 
     case 3:
-        GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-        GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-        GPUParticleManager::GetInstance()->PreloadPresetSystems(
+        PrepareGpuParticles();
+        GpuParticleManager::GetInstance()->PreloadPresetSystems(
             {kCrownUnlockParticlePreset, kCrownUnlockAfterglowParticlePreset, kGateUnlockCoreParticlePreset,
              kGateUnlockSparkParticlePreset});
         gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
@@ -215,7 +206,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         skyboxTextureHandle_ =
             TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
         skybox_ = std::make_unique<Skybox>();
-        skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
+        skybox_->Initialize(GetObject3DCommon(), skyboxTextureHandle_);
         ++loadingInitializePhase_;
         completeUnit();
         return false;
@@ -223,6 +214,12 @@ bool GameSelectScene::InitializeLoadingStep() {
     case 5:
         levelLoader_ = std::make_unique<LevelLoader>();
         levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/stageSelect.json");
+
+        // 旧配置から読み込んだ中央の王冠の常時エフェクトも解除する。
+        if (auto* crown = FindObjectByName("StageSelect_CrownCore")) {
+            crown->RemoveParticleEmitterComponent();
+            crown->RemoveMeshEffectComponent();
+        }
 
         // 旧形式のSceneでPlayerが静的保存されていても、床との衝突解決対象に戻します。
         if (player_) {
@@ -235,13 +232,18 @@ bool GameSelectScene::InitializeLoadingStep() {
 
     case 6:
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/stageSelect_sprite.json");
+        // 旧レイアウトに保存された固定案内の部品も実行時の一覧から除く。
+        std::erase_if(sprites_, [](const auto& sprite) {
+            return sprite && sprite->GetName().starts_with("stage_gate_info_");
+        });
         InitializeStageSelectHUD();
         InitializeStageGateNameLabels();
+        LoadStageGateNameSettings();
         pauseMenuOverlay_ = std::make_unique<PauseMenuOverlay>();
-        pauseMenuOverlay_->Initialize(spriteCommon_.get(), "Resources/json/sprite/selectPauseMenu.json",
+        pauseMenuOverlay_->Initialize(GetSpriteCommon(), "Resources/json/sprite/selectPauseMenu.json",
                                       PauseMenuOverlay::Mode::StageSelect);
         settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
-        settingsOverlay_->Initialize(spriteCommon_.get());
+        settingsOverlay_->Initialize(GetSpriteCommon());
         ++loadingInitializePhase_;
         completeUnit();
         return false;
@@ -305,12 +307,11 @@ void GameSelectScene::Finalize() {
     unlockPlayer_.Stop(false);
     unlockTimelineLoaded_ = false;
     MeshEffectManager::GetInstance()->Clear();
-    VFXSequencer::ClearOneShots();
-    GPUParticleManager::GetInstance()->ClearSceneRuntime();
+    VfxSequencer::ClearOneShots();
+    GpuParticleManager::GetInstance()->ClearSceneRuntime();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     particleSystem_.reset();
-    particleCommon_.reset();
     sprites_.clear();
     stageGateNameLabels_.clear();
     stageGateStarIcons_.clear();
@@ -325,8 +326,6 @@ void GameSelectScene::Finalize() {
         pauseMenuOverlay_.reset();
     }
 
-    spriteCommon_.reset();
-    object3dCommon_.reset();
     objectManager_.reset();
     lockOnSystem_.reset();
 }
@@ -368,11 +367,11 @@ void GameSelectScene::Update(float deltaTime) {
     }
 
     // ロックオンアイコン更新
-    engine::Object3d* target = lockOnSystem_->GetTarget();
+    engine::Object3D* target = lockOnSystem_->GetTarget();
 
     if (target && lockOnSystem_->IsLockingOn()) {
         isDrawLockOn_ = true;
-        AABB aabb = target->GetAABB();
+        Aabb aabb = target->GetAabb();
         engine::Vector3 targetCenter = (aabb.min + aabb.max) * 0.5f;
         engine::Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
         float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] +
@@ -417,7 +416,7 @@ void GameSelectScene::Update(float deltaTime) {
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
 
-        if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+        if (currentMode == Camera::FollowMode::Aimable || currentMode == Camera::FollowMode::FirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f)
@@ -451,13 +450,13 @@ void GameSelectScene::Update(float deltaTime) {
         CameraManager::GetInstance()->Update(0.0f);
     }
 
-    GPUParticleManager::GetInstance()->Update(deltaTime);
+    GpuParticleManager::GetInstance()->Update(deltaTime);
 
     for (auto& sprite : sprites_)
         sprite->Update();
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
-    UpdateUI();
+    UpdateUi();
     UpdateStageGateNameLabels();
     UpdateGateCinematicBars(deltaTime);
 
@@ -529,8 +528,8 @@ void GameSelectScene::Draw() {
         pPos.y += 1.0f;
         engine::Vector3 cPos = camera->GetEye();
         engine::Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
-        float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
-        if (dist < 3.0f)
+        float distanceValue = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
+        if (distanceValue < 3.0f)
             isFirstPerson = true;
     }
 
@@ -542,13 +541,13 @@ void GameSelectScene::Draw() {
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
-    object3dCommon_->SetGraphicsCommand();
+    GetObject3DCommon()->SetGraphicsCommand();
 
     auto& objects = objectManager_->GetObjects();
 
     // 背景の後で不透明物の深度を先に決め、霧と特殊材質はここでは描きません。
     DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Opaque, pointLightRes, spotLightRes,
-        player_, isFirstPerson, true, [](engine::Object3d* object) { return object->GetIsVisible(); });
+        player_, isFirstPerson, true, [](engine::Object3D* object) { return object->GetIsVisible(); });
 
     if (animatedCube_)
         animatedCube_->Draw(pointLightRes, spotLightRes);
@@ -560,22 +559,22 @@ void GameSelectScene::Draw() {
 
     // 半透明と通常粒子は不透明物の後に重ねます。
     DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Transparent, pointLightRes, spotLightRes,
-        player_, isFirstPerson, true, [](engine::Object3d* object) { return object->GetIsVisible(); });
+        player_, isFirstPerson, true, [](engine::Object3D* object) { return object->GetIsVisible(); });
     particleSystem_->Draw();
 
     // 霧の後、GrabTextureと深度を使う材質を描きます。GPU粒子はその画面コピーを再利用します。
-    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
+    DrawLocalFogObjects(objects, player_, isFirstPerson);
 
     const bool grabUpdated =
-        DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+        DrawSpecialMaterialObjects(objects, BulletManager::GetInstance(), player_, isFirstPerson);
 
-    DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
+    DrawGpuParticles(camera, gpuParticleTexHandle_, grabUpdated);
 }
 
-void GameSelectScene::DrawUI() {
+void GameSelectScene::DrawUi() {
     // ゲートの名札と収集済みスターは、3Dの投影後に画面座標へ重ねます。
     // 操作Spriteと照準の後、設定画面をポーズより前面に出します。
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    BeginSpriteDrawing();
 
     // ゲート入退場と解放演出は、黒帯が閉じ終わるまで通常の案内を隠します。
     if (gateCinematicBarOverrideActive_) {
@@ -623,15 +622,19 @@ void GameSelectScene::DrawImGui() {
     ImGui::Separator();
 
     if (ImGui::CollapsingHeader("ゲート名札")) {
-        ImGui::DragFloat("非表示になる距離 (m)", &gateNameHideDistance_, 0.5f, 5.0f, 100.0f);
+        ImGui::DragFloat("完全表示する距離 (m)", &gateNameShowDistance_, 0.5f, 5.0f, 150.0f);
         ImGui::DragFloat("フェード幅 (m)", &gateNameFadeDistance_, 0.5f, 1.0f, 40.0f);
         ImGui::DragFloat("ゲート上の余白 (m)", &gateNameHeightOffset_, 0.1f, 0.0f, 10.0f);
-        ImGui::TextDisabled("橋へ近づくと消え、中央からは各ゲートの上に表示します。");
+        ImGui::TextDisabled("近くでも表示し、指定距離より遠くでフェードアウトします。");
+        if (ImGui::Button("名札の表示設定を保存")) {
+            DebugConsole::GetInstance()->AddLog(SaveStageGateNameSettings()
+                ? "ゲート名札の表示設定を保存しました。" : "ゲート名札の表示設定を保存できませんでした。");
+        }
     }
 
     if (ImGui::CollapsingHeader("ゲート演出デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
         float nearestDistance = std::numeric_limits<float>::max();
-        engine::Object3d* nearestGate = FindNearestStageGate(&nearestDistance);
+        engine::Object3D* nearestGate = FindNearestStageGate(&nearestDistance);
         const int nearestGateStageIndex = GetStageGateIndex(nearestGate);
         const auto& stages = StageManager::GetInstance()->GetStages();
         const bool hasValidGate = player_ && nearestGate && nearestGateStageIndex >= 0 &&
@@ -709,12 +712,12 @@ void GameSelectScene::DrawImGui() {
             }
         }
 
-        engine::Object3d* previewGate = maxUnlockStageIndex >= 1 ? FindStageGateByIndex(debugUnlockStageIndex) : nullptr;
-        engine::Object3d* previewKey =
+        engine::Object3D* previewGate = maxUnlockStageIndex >= 1 ? FindStageGateByIndex(debugUnlockStageIndex) : nullptr;
+        engine::Object3D* previewKey =
             maxUnlockStageIndex >= 1
                 ? FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(debugUnlockStageIndex))
                 : nullptr;
-        engine::Object3d* previewLock =
+        engine::Object3D* previewLock =
             maxUnlockStageIndex >= 1
                 ? FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(debugUnlockStageIndex))
                 : nullptr;
@@ -784,7 +787,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
     }
 
     float nearestDistance = std::numeric_limits<float>::max();
-    engine::Object3d* nearestGate = FindNearestStageGate(&nearestDistance);
+    engine::Object3D* nearestGate = FindNearestStageGate(&nearestDistance);
     bool canEnterGate = false;
 
     if (nearestGate && nearestDistance <= gateSelectRadius_) {
@@ -818,7 +821,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
     }
 }
 
-void GameSelectScene::UpdateGatePrompt(engine::Object3d* nearestGate, bool canEnterGate, float deltaTime) {
+void GameSelectScene::UpdateGatePrompt(engine::Object3D* nearestGate, bool canEnterGate, float deltaTime) {
     // 入場可能なゲートが見えている時だけ、プレイヤー付近の画面内へ案内を置く。
     if (!gatePromptSprite_) {
         return;
@@ -919,7 +922,7 @@ void GameSelectScene::ApplyStageGateStates() {
         // カメラが正面へ到着するまでは、解放済みのセーブデータであっても閉じたゲートとして描画します。
         const bool gateVisualUnlocked =
             unlocking ? (unlockTimelineReady && unlockPresentationTimer_ >= unlockGateActivationTime_) : unlocked;
-        if (engine::Object3d* lockSeal = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex))) {
+        if (engine::Object3D* lockSeal = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex))) {
             const bool showLock =
                 unlocking ? (!unlockPresentationInitialized_ || unlockPresentationTimer_ < unlockLockHideTime_)
                           : !unlocked;
@@ -933,16 +936,16 @@ void GameSelectScene::ApplyStageGateStates() {
             lockSeal->SetEmissive(unlocking && keyEngaged ? 1.45f + pulse * 0.75f : (selected ? 0.42f : 0.20f));
             lockSeal->SetCollisionAttribute(0);
             lockSeal->SetCollisionMask(0);
-            lockSeal->SetColliderType(ColliderType::kNone);
+            lockSeal->SetColliderType(ColliderType::None);
         }
 
-        if (engine::Object3d* crownKey = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex))) {
+        if (engine::Object3D* crownKey = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex))) {
             const bool showKey = unlockTimelineReady && unlockPresentationTimer_ >= unlockKeyAppearTime_ &&
                                  unlockPresentationTimer_ < unlockKeyHideTime_;
             crownKey->SetIsVisible(showKey);
             crownKey->SetCollisionAttribute(0);
             crownKey->SetCollisionMask(0);
-            crownKey->SetColliderType(ColliderType::kNone);
+            crownKey->SetColliderType(ColliderType::None);
         }
 
         float gateActivation = unlocking ? 1.0f : 0.0f;
@@ -985,7 +988,7 @@ void GameSelectScene::ApplyStageGateStates() {
         object->SetIsVisible(true);
         object->SetCollisionAttribute(gateVisualUnlocked ? CollisionCategories::Get("trigger") : 0);
         object->SetCollisionMask(gateVisualUnlocked ? CollisionCategories::Get("player") : 0);
-        object->SetColliderType(ColliderType::kSphere);
+        object->SetColliderType(ColliderType::Sphere);
         object->SetCollisionRadius(gateSelectRadius_ * 0.55f);
         object->SetColor(GetStageGateModelColor(gateVisualUnlocked, selected, cleared, false, pulse));
         object->SetEmissive(GetStageGateModelEmissive(gateVisualUnlocked, selected, cleared, false, pulse));
@@ -1071,7 +1074,7 @@ int GameSelectScene::FindPendingUnlockStage() const {
     return -1;
 }
 
-engine::Object3d* GameSelectScene::FindObjectByName(const std::string& name) const {
+engine::Object3D* GameSelectScene::FindObjectByName(const std::string& name) const {
     // 配置 JSON で名前を変更した演出部品は見つからないものとして扱う。
     if (!objectManager_) {
         return nullptr;
@@ -1102,9 +1105,9 @@ engine::Vector3 GameSelectScene::GetStageNodePosition(int stageIndex) const {
         {8.0f, 1.4f, 3.0f},
     };
 
-    constexpr int fallbackCount = static_cast<int>(sizeof(fallbackPositions) / sizeof(fallbackPositions[0]));
+    constexpr int kFallbackCount = static_cast<int>(sizeof(fallbackPositions) / sizeof(fallbackPositions[0]));
 
-    if (stageIndex >= 0 && stageIndex < fallbackCount) {
+    if (stageIndex >= 0 && stageIndex < kFallbackCount) {
         return fallbackPositions[stageIndex];
     }
 
@@ -1136,7 +1139,7 @@ void GameSelectScene::EnterSelectedStage() {
     StartGateEntryCinematic(selectedStageIndex_);
 }
 
-bool GameSelectScene::IsStageGateObject(const engine::Object3d* object) const {
+bool GameSelectScene::IsStageGateObject(const engine::Object3D* object) const {
     // 新しい Gimmick 型と旧レイアウトの名前・モデル名の両方をゲートとして認識する。
     if (!object) {
         return false;
@@ -1162,7 +1165,7 @@ bool GameSelectScene::IsStageGateObject(const engine::Object3d* object) const {
            objectName.find("portal_surface") != std::string::npos || objectName.find("StageGate") != std::string::npos;
 }
 
-int GameSelectScene::GetStageGateIndex(const engine::Object3d* object) const {
+int GameSelectScene::GetStageGateIndex(const engine::Object3D* object) const {
     // 新型は専用フィールド、旧型は汎用 TargetID からステージ番号を読む。
     if (!object) {
         return -1;
@@ -1172,10 +1175,10 @@ int GameSelectScene::GetStageGateIndex(const engine::Object3d* object) const {
         return gate->GetStageIndex();
     }
 
-    return object->GetTargetID();
+    return object->GetTargetId();
 }
 
-engine::Object3d* GameSelectScene::FindStageGateByIndex(int stageIndex) const {
+engine::Object3D* GameSelectScene::FindStageGateByIndex(int stageIndex) const {
     // 解放演出などが対象とするステージ番号のゲートを探す。
     if (!objectManager_) {
         return nullptr;
@@ -1194,7 +1197,7 @@ engine::Object3d* GameSelectScene::FindStageGateByIndex(int stageIndex) const {
     return nullptr;
 }
 
-engine::Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) const {
+engine::Object3D* GameSelectScene::FindNearestStageGate(float* outDistance) const {
     // 高低差ではなく水平距離で選び、画面上の近いゲートと選択を合わせる。
     if (outDistance) {
         *outDistance = std::numeric_limits<float>::max();
@@ -1205,7 +1208,7 @@ engine::Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) cons
     }
 
     const engine::Vector3 playerPos = player_->GetWorldPosition();
-    engine::Object3d* nearestGate = nullptr;
+    engine::Object3D* nearestGate = nullptr;
     float nearestDistanceSq = std::numeric_limits<float>::max();
 
     for (const auto& object : objectManager_->GetObjects()) {
@@ -1235,7 +1238,7 @@ engine::Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) cons
     return nearestGate;
 }
 
-bool GameSelectScene::IsPlayerTouchingStageGate(engine::Object3d* gate) const {
+bool GameSelectScene::IsPlayerTouchingStageGate(engine::Object3D* gate) const {
     // 門の向きに沿う薄い平面判定を使い、旧配置の X/Z 軸向きも許容する。
     if (!gate || !player_) {
         return false;

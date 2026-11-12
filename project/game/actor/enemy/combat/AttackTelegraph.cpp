@@ -40,7 +40,7 @@ engine::Vector3 NormalizePlanar(engine::Vector3 direction) {
 
 } // namespace
 
-void AttackTelegraph::Initialize(engine::Object3dCommon* common) {
+void AttackTelegraph::Initialize(engine::Object3DCommon* common) {
     common_ = common;
 
     // 初回攻撃の瞬間にDDS読込が走らないよう、シーンロード中に共有テクスチャを温めます。
@@ -48,16 +48,16 @@ void AttackTelegraph::Initialize(engine::Object3dCommon* common) {
     EnsureEffect(common_);
 }
 
-void AttackTelegraph::EnsureEffect(engine::Object3dCommon* common) {
+void AttackTelegraph::EnsureEffect(engine::Object3DCommon* common) {
     // 地面の基本予告は初回だけ生成し、毎フレームの表示で再利用する。
     if (effect_ || !common) {
         return;
     }
 
-    effect_ = std::make_unique<EffectObject3d>();
+    effect_ = std::make_unique<EffectObject3D>();
     effect_->Initialize(common);
     effect_->SetName("AttackTelegraph");
-    effect_->SetBlendMode(BlendMode::kAdd);
+    effect_->SetBlendMode(BlendMode::Add);
     effect_->SetEnableReveal(false);
     effect_->SetEnableDistortion(false);
     effect_->SetEnableNoiseTexture(false);
@@ -69,16 +69,16 @@ void AttackTelegraph::EnsureEffect(engine::Object3dCommon* common) {
     effect_->SetIsVisible(false);
 }
 
-void AttackTelegraph::EnsureCueEffect(engine::Object3dCommon* common) {
+void AttackTelegraph::EnsureCueEffect(engine::Object3DCommon* common) {
     // 命中直前の強調表示を本体の予告と別の寿命で管理する。
     if (cueEffect_ || !common) {
         return;
     }
 
-    cueEffect_ = std::make_unique<EffectObject3d>();
+    cueEffect_ = std::make_unique<EffectObject3D>();
     cueEffect_->Initialize(common);
     cueEffect_->SetName("AttackTelegraphCue");
-    cueEffect_->SetBlendMode(BlendMode::kAdd);
+    cueEffect_->SetBlendMode(BlendMode::Add);
     cueEffect_->SetEnableReveal(false);
     cueEffect_->SetEnableDistortion(false);
     cueEffect_->SetEnableNoiseTexture(false);
@@ -90,18 +90,18 @@ void AttackTelegraph::EnsureCueEffect(engine::Object3dCommon* common) {
     cueEffect_->SetIsVisible(false);
 }
 
-void AttackTelegraph::EnsureWarningEffect(engine::Object3dCommon* common) {
+void AttackTelegraph::EnsureWarningEffect(engine::Object3DCommon* common) {
     if (warningEffect_ || !common) {
         return;
     }
 
-    warningEffect_ = std::make_unique<EffectObject3d>();
+    warningEffect_ = std::make_unique<EffectObject3D>();
     warningEffect_->Initialize(common);
     warningEffect_->SetName("AttackWarningCue");
 
     if (!warningEffect_->LoadFromJson(kAttackWarningEffectPath)) {
         // JSONを編集中でも予兆自体が消えないよう、最小構成へフォールバックします。
-        warningEffect_->SetBlendMode(BlendMode::kAdd);
+        warningEffect_->SetBlendMode(BlendMode::Add);
         warningEffect_->SetEnableReveal(false);
         warningEffect_->SetEnableDistortion(false);
         warningEffect_->SetEnableNoiseTexture(false);
@@ -109,8 +109,8 @@ void AttackTelegraph::EnsureWarningEffect(engine::Object3dCommon* common) {
         warningEffect_->SetEdgeFadeStrength(0.35f);
         warningEffect_->SetAlphaReference(0.008f);
         warningEffect_->SetProceduralType(7);
-        warningEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::planeSize, {1.0f, 1.0f});
-        warningEffect_->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 1);
+        warningEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::planeSize, {1.0f, 1.0f});
+        warningEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 1);
         warningEffect_->UpdateProceduralMesh();
         warningEffect_->SetTexture(kAttackWarningTexturePath);
         warningEffect_->SetStartScale({0.52f, 0.52f, 0.52f});
@@ -131,10 +131,10 @@ void AttackTelegraph::EnsurePatternEffects(std::size_t count) {
     }
 
     while (patternEffects_.size() < count) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(common_);
         effect->SetName("AttackTelegraphPattern_" + std::to_string(patternEffects_.size()));
-        effect->SetBlendMode(BlendMode::kAdd);
+        effect->SetBlendMode(BlendMode::Add);
         effect->SetEnableReveal(false);
         effect->SetEnableDistortion(false);
         effect->SetEnableNoiseTexture(false);
@@ -155,7 +155,7 @@ void AttackTelegraph::EnsureTimingEffects(std::size_t count) {
     }
 
     while (timingEffects_.size() < count) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(common_);
         effect->SetName("AttackTelegraphTiming_" + std::to_string(timingEffects_.size()));
         effect->SetEnableReveal(false);
@@ -237,7 +237,7 @@ void AttackTelegraph::HideTimingEffects() {
     }
 }
 
-void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) {
+void AttackTelegraph::ConfigureEffectShape(EffectObject3D* effect, Shape shape) {
     // 円・線・扇で使う描画設定を選び、形状変更時の見た目を揃える。
     if (!effect) {
         return;
@@ -247,27 +247,27 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
 
     if (shape == Shape::Circle || shape == Shape::ImpactDisc) {
         effect->SetProceduralType(10);
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, 1.0f);
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, shape == Shape::ImpactDisc ? 0.0f : kCircleInnerRate);
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 64);
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, 1.0f);
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, shape == Shape::ImpactDisc ? 0.0f : kCircleInnerRate);
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 64);
         effect->SetTexture(kWhiteTexturePath);
-        effect->SetBlendMode(shape == Shape::ImpactDisc ? BlendMode::kNormal : BlendMode::kAdd);
+        effect->SetBlendMode(shape == Shape::ImpactDisc ? BlendMode::Normal : BlendMode::Add);
         effect->SetIntensity(shape == Shape::ImpactDisc ? 0.92f : (isCue ? 4.4f : 2.35f));
         effect->SetEdgeFadeStrength(shape == Shape::ImpactDisc ? 0.0f : (isCue ? 0.35f : 1.0f));
     } else if (shape == Shape::DecalCircle) {
         effect->SetProceduralType(7);
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::planeSize, {2.0f, 2.0f});
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 1);
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::planeSize, {2.0f, 2.0f});
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 1);
         effect->SetTexture(decalTexturePath_);
-        effect->SetBlendMode(isCue ? BlendMode::kAdd : BlendMode::kNormal);
+        effect->SetBlendMode(isCue ? BlendMode::Add : BlendMode::Normal);
         effect->SetIntensity(isCue ? 2.25f : 1.16f);
         effect->SetEdgeFadeStrength(0.0f);
     } else {
         effect->SetProceduralType(7);
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::planeSize, {1.0f, 1.0f});
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 1);
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::planeSize, {1.0f, 1.0f});
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 1);
         effect->SetTexture(kWhiteTexturePath);
-        effect->SetBlendMode(BlendMode::kAdd);
+        effect->SetBlendMode(BlendMode::Add);
         effect->SetIntensity(isCue ? 4.4f : 2.35f);
         effect->SetEdgeFadeStrength(isCue ? 0.35f : 1.0f);
     }
@@ -275,19 +275,19 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
     effect->UpdateProceduralMesh();
 }
 
-void AttackTelegraph::ConfigureTimingEffectShape(EffectObject3d* effect, Shape shape) {
+void AttackTelegraph::ConfigureTimingEffectShape(EffectObject3D* effect, Shape shape) {
     // 時間マーカーは攻撃範囲と別の材質・サイズで読めるようにする。
     if (!effect) {
         return;
     }
 
     ConfigureEffectShape(effect, shape);
-    effect->SetBlendMode(BlendMode::kAdd);
+    effect->SetBlendMode(BlendMode::Add);
     effect->SetIntensity(5.1f);
     effect->SetEdgeFadeStrength(0.22f);
 
     if (shape == Shape::Circle) {
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, 0.86f);
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, 0.86f);
         effect->UpdateProceduralMesh();
     }
 }
@@ -341,7 +341,7 @@ engine::Vector4 AttackTelegraph::MakeCueColor(const engine::Vector4& color, floa
             std::clamp(color.z * 0.22f + flash * 0.20f, 0.0f, 1.0f), alpha};
 }
 
-void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress,
+void AttackTelegraph::ApplyCircle(EffectObject3D* effect, const engine::Vector3& center, float radius, float progress,
                                   const engine::Vector4& color, float scaleMultiplier) const {
     // 警告範囲の中心は動かさず、進行率によって半径だけ実判定へ近づける。
     if (!effect) {
@@ -362,7 +362,7 @@ void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const engine::Vector3&
     effect->UpdateWorldMatrix();
 }
 
-void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress,
+void AttackTelegraph::ApplyDecalCircle(EffectObject3D* effect, const engine::Vector3& center, float radius, float progress,
                                        const engine::Vector4& color, float scaleMultiplier) const {
     // 地面から僅かに浮かせ、深度競合でデカールがちらつくのを避ける。
     if (!effect) {
@@ -396,7 +396,7 @@ engine::Vector4 AttackTelegraph::MakeTimingColor(const engine::Vector4& color, f
             std::clamp(color.w * (0.72f + urgencySmooth * 0.18f + pulse * 0.10f), 0.0f, 1.0f)};
 }
 
-void AttackTelegraph::ApplyLine(EffectObject3d* effect, const engine::Vector3& center, const engine::Vector3& direction, float length,
+void AttackTelegraph::ApplyLine(EffectObject3D* effect, const engine::Vector3& center, const engine::Vector3& direction, float length,
                                 float width, float progress, const engine::Vector4& color, float scaleMultiplier) const {
     // 始点を固定したまま前方へ伸ばし、射線の向きを予告から読めるようにする。
     if (!effect) {
@@ -420,7 +420,7 @@ void AttackTelegraph::ApplyLine(EffectObject3d* effect, const engine::Vector3& c
     effect->UpdateWorldMatrix();
 }
 
-void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const engine::Vector3& origin, const engine::Vector3& direction,
+void AttackTelegraph::ApplyLineTimingMarker(EffectObject3D* effect, const engine::Vector3& origin, const engine::Vector3& direction,
                                             float length, float width, float progress, const engine::Vector4& color) const {
     // 残り時間を線上の移動マーカーに変え、端を越えないよう位置を制限する。
     if (!effect) {
@@ -547,7 +547,7 @@ void AttackTelegraph::ShowCone(const engine::Vector3& origin, const engine::Vect
     const engine::Vector4 displayColor = MakeDisplayColor(color, progress);
 
     for (std::size_t index = 0; index < kConeSegmentCount; ++index) {
-        EffectObject3d* segment = patternEffects_[index].get();
+        EffectObject3D* segment = patternEffects_[index].get();
         const float startRate = static_cast<float>(index) / static_cast<float>(kConeSegmentCount);
         const float centerRate = (static_cast<float>(index) + 0.5f) / static_cast<float>(kConeSegmentCount);
         const float segmentWidth = startWidth + (endWidth - startWidth) * centerRate;
@@ -579,7 +579,7 @@ void AttackTelegraph::ShowImpactAreas(const engine::Vector3* centers, std::size_
 
     for (std::size_t index = 0; index < centerCount; ++index) {
         const float localProgress = std::clamp(progress - static_cast<float>(index) * sequenceStep, 0.0f, 1.0f);
-        EffectObject3d* area = patternEffects_[index].get();
+        EffectObject3D* area = patternEffects_[index].get();
         engine::Vector4 areaColor = displayColor;
         areaColor.w *= 0.68f + localProgress * 0.32f;
         ApplyCircle(area, centers[index], radius, 1.0f, areaColor, 1.0f);
@@ -720,7 +720,7 @@ void AttackTelegraph::TriggerCueAt(const engine::Vector3& center, float radius, 
     cueEffect_->SetIsVisible(true);
 }
 
-void AttackTelegraph::TriggerWarningCue(engine::Object3d* target, const engine::Vector3& offset, float size,
+void AttackTelegraph::TriggerWarningCue(engine::Object3D* target, const engine::Vector3& offset, float size,
                                         const engine::Vector4& accentColor) {
     // 対象へ追従する警告を開始し、移動中も本体の近くに保持する。
     EnsureWarningEffect(common_);

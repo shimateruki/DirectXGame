@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "94f01ab612560860bd695a0c3438a27f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/08-thunder-tap.png",
+  "version": 1
+}

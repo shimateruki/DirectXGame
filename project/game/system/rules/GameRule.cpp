@@ -9,8 +9,8 @@
 #include "game/system/progress/IStageProgressScene.h"
 #include "game/system/progress/GameDataManager.h"
 #include "game/system/progress/StarCoinPresentation.h"
-#include "GPUParticleManager.h"
-#include "VFXSequencer.h"
+#include "GpuParticleManager.h"
+#include "VfxSequencer.h"
 #include "game/system/combat/HitEffectDirector.h"
 #include "BaseEnemy.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
@@ -65,14 +65,14 @@ class CheckpointRule {
         checkpointRaiseDelay_ = 0.0f;
     }
 
-    void Activate(Player* player, engine::Object3d* checkpoint);
+    void Activate(Player* player, engine::Object3D* checkpoint);
     void Restore(const std::string& checkpointObjectName);
     void Update(float deltaTime);
 
   private:
     BaseScene* scene_ = nullptr;
-    engine::Object3d* activeCheckpoint_ = nullptr;
-    engine::Object3d* raisingCheckpoint_ = nullptr;
+    engine::Object3D* activeCheckpoint_ = nullptr;
+    engine::Object3D* raisingCheckpoint_ = nullptr;
     float checkpointBaseEmissive_ = 1.0f;
     float checkpointPresentationTimer_ = 0.0f;
     float checkpointParticleTimer_ = 0.0f;
@@ -107,8 +107,8 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
 
     // 接触イベントでは対象の EventType を優先し、汎用 TargetID は個別処理の後に使う。
     eventSubscriptions_[0] = EventManager::GetInstance()->Subscribe([this](const PlayerHitEvent& event) {
-        engine::Object3d* whoHit = event.me;           // プレイヤー
-        engine::Object3d* objectHit = event.hitObject; // 当たった物
+        engine::Object3D* whoHit = event.me;           // プレイヤー
+        engine::Object3D* objectHit = event.hitObject; // 当たった物
 
         if (editorOnly_ || !whoHit || !objectHit || whoHit->IsEditorInternal() || objectHit->IsEditorInternal())
             return;
@@ -117,13 +117,13 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
 
         switch (type) {
         case EventType::Warp: {
-            int targetID = objectHit->GetTargetID();
-            if (scene_ && targetID != -1) {
-                engine::Object3d* exitPoint = scene_->FindObjectByEventID(targetID);
+            int targetId = objectHit->GetTargetId();
+            if (scene_ && targetId != -1) {
+                engine::Object3D* exitPoint = scene_->FindObjectByEventId(targetId);
                 if (exitPoint) {
                     engine::Vector3 destPos = exitPoint->GetTransform()->translate;
                     whoHit->SetTranslate(destPos);
-                    DebugConsole::GetInstance()->AddLog("Warped to ID: " + std::to_string(targetID));
+                    DebugConsole::GetInstance()->AddLog("Warped to ID: " + std::to_string(targetId));
                 }
             }
         } break;
@@ -132,7 +132,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             ApplyDamage(whoHit, 10.0f);
             break;
 
-        case EventType::Movie_Bridge:
+        case EventType::MovieBridge:
             if (scene_) {
                 if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
                     gps->StartBridgeDropMovie();
@@ -157,17 +157,17 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             // 上昇中の再接触で取得アニメーションと粒子を繰り返し開始しない。
             if (!objectHit->GetIsVisible() || objectHit->IsCollecting())
                 break;
-            const int coinIdx = objectHit->GetTargetID();
+            const int coinIdx = objectHit->GetTargetId();
 
             if (auto* progress = dynamic_cast<IStageProgressScene*>(scene_)) {
                 progress->CollectStarCoinFromContact(coinIdx, objectHit->GetWorldPosition());
                 objectHit->StartCollectionAnimation();
                 objectHit->SetCollisionAttribute(0);
                 objectHit->SetCollisionMask(0);
-                objectHit->SetGPUParticleName("");
+                objectHit->SetGpuParticleName("");
                 const char* burst = StarCoinPresentation::IsSilver(*objectHit)
                     ? StarCoinPresentation::kSilverGet : "star_sparkleGet";
-                GPUParticleManager::GetInstance()->Emit(burst, objectHit->GetWorldPosition());
+                GpuParticleManager::GetInstance()->Emit(burst, objectHit->GetWorldPosition());
             }
         } break;
 
@@ -185,12 +185,12 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
                 break;
             }
             // 回転棘のTarget IDは追従する床の参照であり、接触イベントではない。
-            if (objectHit->GetGimmickType() == "RotatingFloor" && objectHit->GetTargetID() >= 0) {
+            if (objectHit->GetGimmickType() == "RotatingFloor" && objectHit->GetTargetId() >= 0) {
                 break;
             }
-            int tID = objectHit->GetTargetID();
-            if (tID != -1 && scene_) {
-                scene_->TriggerEvent(tID);
+            int tId = objectHit->GetTargetId();
+            if (tId != -1 && scene_) {
+                scene_->TriggerEvent(tId);
             }
             break;
         }
@@ -226,6 +226,8 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             finalDamage *= kPinkGuardDamageRate;
         }
 
+        const auto& before = event.target->GetParameters();
+        const float previousHp = before ? before->hp : 0.0f;
         const bool damageApplied = ApplyDamage(event.target, finalDamage, event.bypassPlayerInvincibility);
         if (!damageApplied) {
             return;
@@ -237,7 +239,9 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             HitEffectDirector::SpawnDamageEventHit(event.target, event.attacker, event.knockbackVelocity, damageType);
         }
 
-        if (BaseEnemy* enemyTarget = dynamic_cast<BaseEnemy*>(event.target)) {
+        const auto& after = event.target->GetParameters();
+        const bool hpDecreased = after && after->hp < previousHp;
+        if (auto* enemyTarget = dynamic_cast<BaseEnemy*>(event.target); enemyTarget && hpDecreased) {
             enemyTarget->PlayDamageReaction(event.attacker, event.knockbackVelocity, event.damageAmount);
         }
 
@@ -263,6 +267,11 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
                 }
                 playerTarget->StartDamageFeedback(reactionDirection, (std::max)(0.0f, event.invincibilityDuration));
             }
+        }
+
+        // ノックバックや感電への遷移で、先にムチなどの表示を解除させる。
+        if (playerTarget && hpDecreased && !guarded) {
+            playerTarget->StartHurtFace();
         }
 
         // ノックバック（吹き飛ばし）があれば適用
@@ -334,7 +343,7 @@ void GameRule::Update(float deltaTime) {
 
 // 新しいチェックポイントを復帰地点にし、初回取得時だけ残機とHPを補充します。
 // 取得後のモデル切替と発光演出もここで開始します。
-void CheckpointRule::Activate(Player* player, engine::Object3d* checkpoint) {
+void CheckpointRule::Activate(Player* player, engine::Object3D* checkpoint) {
     if (!player || !checkpoint) {
         return;
     }
@@ -372,7 +381,7 @@ void CheckpointRule::Activate(Player* player, engine::Object3d* checkpoint) {
 
     // 素材色を残し、到達した瞬間だけ控えめに明るくします。
     checkpoint->SetEmissive((std::max)(0.28f, checkpointBaseEmissive_));
-    VFXSequencer::PlayOneShot("checkpoint_activate_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
+    VfxSequencer::PlayOneShot("checkpoint_activate_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
                               checkpoint->GetRotation());
     DebugConsole::GetInstance()->AddLog("Checkpoint activated. Respawn and copy memory updated.");
 }
@@ -388,7 +397,7 @@ void CheckpointRule::Restore(const std::string& checkpointObjectName) {
         return;
 
     for (const auto& owned : scene_->GetObjects()) {
-        engine::Object3d* checkpoint = owned.get();
+        engine::Object3D* checkpoint = owned.get();
         if (!checkpoint || checkpoint->GetName() != checkpointObjectName)
             continue;
 
@@ -397,7 +406,7 @@ void CheckpointRule::Restore(const std::string& checkpointObjectName) {
             return;
 
         // SetModelによるコライダー自動調整を戻し、取得済みの待機モーションから再開する。
-        const engine::Object3d::ColliderConfig collider = checkpoint->GetColliderConfig();
+        const engine::Object3D::ColliderConfig collider = checkpoint->GetColliderConfig();
         if (modelName == kCheckpointLoweredModel)
             checkpoint->SetModel(kCheckpointRaisedModel);
         checkpoint->RestoreAnimationPlayback("Idle", 0.0f, true);
@@ -423,7 +432,7 @@ void CheckpointRule::Update(float deltaTime) {
         const bool emitRing = checkpointAmbientRingTimer_ <= 0.0f;
 
         for (const auto& owned : scene_->GetObjects()) {
-            engine::Object3d* checkpoint = owned.get();
+            engine::Object3D* checkpoint = owned.get();
 
             if (!checkpoint || !checkpoint->GetIsVisible()) {
                 continue;
@@ -436,14 +445,14 @@ void CheckpointRule::Update(float deltaTime) {
             }
 
             if (emitMotes) {
-                if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
+                if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized()) {
                     particles->Emit("checkpoint_active_motes",
                                     engine::Math::Transform(engine::Vector3{0.0f, 0.55f, 0.0f}, checkpoint->GetWorldMatrix()));
                 }
             }
 
             if (emitRing) {
-                VFXSequencer::PlayOneShot("checkpoint_idle_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
+                VfxSequencer::PlayOneShot("checkpoint_idle_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
                                           checkpoint->GetRotation());
             }
         }
@@ -462,7 +471,7 @@ void CheckpointRule::Update(float deltaTime) {
 
             if (checkpointRaiseDelay_ <= 0.0f) {
                 // SetModelはコライダーを自動調整するため、起動前の当たり判定を復元します。
-                const engine::Object3d::ColliderConfig collider = raisingCheckpoint_->GetColliderConfig();
+                const engine::Object3D::ColliderConfig collider = raisingCheckpoint_->GetColliderConfig();
                 raisingCheckpoint_->SetModel(kCheckpointRaisedModel);
                 raisingCheckpoint_->RestoreAnimationPlayback("Activate", 0.0f, false);
                 raisingCheckpoint_->SetColliderConfig(collider);
@@ -493,7 +502,7 @@ void CheckpointRule::Update(float deltaTime) {
 }
 
 // 同じ対象・同じ種類の状態異常は重ねず、残り時間と威力を弱めないよう更新します。
-void GameRule::ApplyStatusEffect(engine::Object3d* target, const StatusEffectApplication& application, float damageScale) {
+void GameRule::ApplyStatusEffect(engine::Object3D* target, const StatusEffectApplication& application, float damageScale) {
     if (!target || !application.IsValid()) {
         return;
     }
@@ -531,7 +540,7 @@ void GameRule::ApplyStatusEffect(engine::Object3d* target, const StatusEffectApp
     activeStatusEffects_.push_back(std::move(status));
 }
 
-bool GameRule::IsStatusTargetAlive(engine::Object3d* target) const {
+bool GameRule::IsStatusTargetAlive(engine::Object3D* target) const {
     // シーンから消えた対象へ継続ダメージやパーティクルを送らない。
     if (!target || !scene_) {
         return false;
@@ -548,15 +557,15 @@ bool GameRule::IsStatusTargetAlive(engine::Object3d* target) const {
     return !target->GetParameters().has_value() || target->GetParameters()->hp > 0.0f;
 }
 
-void GameRule::EmitStatusVisual(engine::Object3d* target, const std::string& presetName) const {
+void GameRule::EmitStatusVisual(engine::Object3D* target, const std::string& presetName) const {
     // 身体の高さから中心を求め、サイズの異なる敵でも状態異常が体に重なるようにする。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (!target || !particles || !particles->IsInitialized()) {
         return;
     }
 
-    const AABB aabb = target->GetAABB();
+    const Aabb aabb = target->GetAabb();
     engine::Vector3 position = target->GetWorldPosition();
     const float height = (std::max)(0.25f, aabb.max.y - aabb.min.y);
     position.y = aabb.min.y + height * 0.48f;
@@ -564,7 +573,7 @@ void GameRule::EmitStatusVisual(engine::Object3d* target, const std::string& pre
 }
 
 // ボス固有の軽減とプレイヤーの無敵判定を通した後、共通 HP を更新します。
-bool GameRule::ApplyDamage(engine::Object3d* target, float damage, bool bypassPlayerInvincibility) {
+bool GameRule::ApplyDamage(engine::Object3D* target, float damage, bool bypassPlayerInvincibility) {
     if (!target) {
         return false;
     }

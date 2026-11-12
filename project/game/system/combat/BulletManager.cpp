@@ -1,6 +1,6 @@
 #include "game/system/combat/BulletManager.h"
 #include "CollisionManager.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include <algorithm>
 
@@ -10,7 +10,7 @@ BulletManager* BulletManager::GetInstance() {
     return &instance;
 }
 
-void BulletManager::Initialize(engine::Object3dCommon* common, CollisionManager* colManager) {
+void BulletManager::Initialize(engine::Object3DCommon* common, CollisionManager* colManager) {
     // 新しいシーンの描画・衝突基盤へ付け替え、旧弾を残さない。
     common_ = common;
     colManager_ = colManager;
@@ -37,7 +37,7 @@ void BulletManager::Clear() {
     bullets_.clear();
 }
 
-void BulletManager::ClearPreviewForOwner(const engine::Object3d* owner) {
+void BulletManager::ClearPreviewForOwner(const engine::Object3D* owner) {
     // 編集を止めた砲台の弾だけ消し、他の砲台やゲーム用の弾を保ちます。
     bullets_.remove_if([owner](const std::unique_ptr<Bullet>& bullet) {
         return bullet && bullet->IsPreviewOnly() && bullet->GetPreviewOwner() == owner;
@@ -102,7 +102,7 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
         }
     }
 
-    bullet->SetColliderType(ColliderType::kSphere);
+    bullet->SetColliderType(ColliderType::Sphere);
     bullet->SetCollisionRadius(radius);
     bullet->SetCollisionSize({radius, radius, radius});
     if (visualConfig.collisionRadiusIsWorld && bullet->GetCollider())

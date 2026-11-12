@@ -4,13 +4,13 @@
 #include "ParticleSystem.h"
 #include "IMoveStrategy.h"
 #include "MoveStrategy3D.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include <algorithm>
 #include <cmath>
 #include <game/actor/player/state/PlayerState.h>
 #include "game/system/rules/EventManager.h"
 #include "DebugConsole.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/combat/GroundEffectLocator.h"
 #include "MeshEffectManager.h"
 #include "game/system/rules/GameplayStatusManager.h"
@@ -24,7 +24,7 @@ PlayerMover::~PlayerMover() {
     // 念のためデストラクタでも子の衝突属性を復帰する
     if (player_) {
         for (auto& kv : childOriginalAttributes_) {
-            engine::Object3d* child = kv.first;
+            engine::Object3D* child = kv.first;
             uint32_t attr = kv.second;
             if (child)
                 child->SetCollisionAttribute(attr);
@@ -48,7 +48,7 @@ void PlayerMover::StopDashOnImpact() {
     }
 
     for (auto& kv : childOriginalAttributes_) {
-        engine::Object3d* child = kv.first;
+        engine::Object3D* child = kv.first;
 
         if (child) {
             child->SetCollisionAttribute(kv.second);
@@ -344,7 +344,7 @@ void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const {
     if (!player_ || !presetName)
         return;
 
-    GPUParticleManager* particleManager = GPUParticleManager::GetInstance();
+    GpuParticleManager* particleManager = GpuParticleManager::GetInstance();
     if (!particleManager || !particleManager->IsInitialized())
         return;
 

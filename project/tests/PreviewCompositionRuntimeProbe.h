@@ -17,11 +17,11 @@ struct PreviewCompositionRuntimeProbe {
     struct Case { std::string type, action; };
     static bool Enabled() { return GetEnvironmentVariableA("CG2_PREVIEW_COMPOSITION_TEST",nullptr,0)>0; }
     static void Require(bool value,const char* text) { if(!value)throw std::runtime_error(text); }
-    static PlayerCopyAbilityInput LegacyInput(int action,float time,float dt,bool trigger) {
+    static PlayerCopyAbilityInput LegacyInput(int action,float time,float deltaTime,bool trigger) {
         PlayerCopyAbilityInput input{};
         const bool held=time>=0.5f && time<2.0f;
         input.primaryTriggered=trigger && (action==1 || action==2);
-        if(action==7) input.primaryTriggered=trigger || (time>=0.90f && time-dt<0.90f) || (time>=1.55f && time-dt<1.55f);
+        if(action==7) input.primaryTriggered=trigger || (time>=0.90f && time-deltaTime<0.90f) || (time>=1.55f && time-deltaTime<1.55f);
         input.primaryHeld=(action==2 && held) || (action==1 && trigger);
         input.secondaryTriggered=trigger && action==3;
         input.secondaryHeld=held && action==3;
@@ -46,11 +46,11 @@ struct PreviewCompositionRuntimeProbe {
                 Require(static_cast<bool>(action.onTrigger)==(a==0 || a==5),"acquire/release callback");
                 bool triggered=false;int events=0;
                 for(int f=0;f<=180;++f) {
-                    const float time=static_cast<float>(f)/60.0f,dt=1.0f/60.0f;
+                    const float time=static_cast<float>(f)/60.0f,deltaTime=1.0f/60.0f;
                     const bool trigger=!triggered && time>=0.5f;
-                    CopyAbilityPreviewFrame frame{time,dt,1.5f,action.startTime,trigger};
+                    CopyAbilityPreviewFrame frame{time,deltaTime,1.5f,action.startTime,trigger};
                     const auto actual=action.buildInput?action.buildInput(frame):PlayerCopyAbilityInput{};
-                    const auto expected=LegacyInput(static_cast<int>(a),time,dt,trigger);
+                    const auto expected=LegacyInput(static_cast<int>(a),time,deltaTime,trigger);
                     Require(actual.primaryTriggered==expected.primaryTriggered && actual.primaryHeld==expected.primaryHeld &&
                         actual.secondaryTriggered==expected.secondaryTriggered && actual.secondaryHeld==expected.secondaryHeld &&
                         actual.specialTriggered==expected.specialTriggered,"registered input differs from legacy timing");
@@ -84,7 +84,7 @@ struct PreviewCompositionRuntimeProbe {
         log<<"OK actual prism attack spawned isolated actors count="<<preview.spawnedPreviewObjects_.size()<<std::endl;
 
         // 召喚されたボマーにも同じ追加先が再帰的に接続されることを、実投擲で確認します。
-        auto nested=EnemyFactory::GetInstance()->CreateEnemy("Bomber",preview.previewScene_->GetObject3dCommon());
+        auto nested=EnemyFactory::GetInstance()->CreateEnemy("Bomber",preview.previewScene_->GetObject3DCommon());
         auto* bomber=dynamic_cast<EnemyBomber*>(nested.get());Require(bomber!=nullptr,"nested bomber create");
         nested->SetTranslate(preview.previewEnemy_->GetTranslate());
         preview.AddPreviewSpawn(std::move(nested));

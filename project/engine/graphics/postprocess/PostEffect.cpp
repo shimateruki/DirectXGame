@@ -1,5 +1,5 @@
 #include "PostEffect.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include"WinApp.h"
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h"
@@ -244,7 +244,7 @@ void PostEffect::CreateRootSignature() {
     // =================================================================
 
     // [0] 定数バッファ (CBV b0 - PixelShader用)
-    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    builder.AddCbv(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
     // [1] メイン画像 (DescriptorTable t0 - PixelShader用)
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -301,7 +301,7 @@ void PostEffect::CreatePipelineState() {
     builder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_UNKNOWN);
 
     // 基本はブレンドなし（不透明描画/上書き）
-    builder.SetBlendMode(::BlendMode::kNone);
+    builder.SetBlendMode(::BlendMode::None);
 
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
 
@@ -337,21 +337,21 @@ void PostEffect::CreatePipelineState() {
     // [PSO 4] 加算合成用 (HDR出力)
     // ==========================================================
     builder.SetShaders(vsBlob.Get(), psAdd.Get());
-    builder.SetBlendMode(::BlendMode::kAdd); 
+    builder.SetBlendMode(::BlendMode::Add); 
     builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 
     // バックバッファはsRGB形式なので、HDR中間ターゲットとは別のPSOを使用する。
-    const DXGI_FORMAT backBufferFormat[] = { dxCommon_->GetRTVFormat() };
+    const DXGI_FORMAT backBufferFormat[] = { dxCommon_->GetRtvFormat() };
     builder.SetRenderTargets(1, backBufferFormat, DXGI_FORMAT_UNKNOWN);
-    builder.SetBlendMode(::BlendMode::kNone);
+    builder.SetBlendMode(::BlendMode::None);
     builder.SetShaders(vsBlob.Get(), psComposite.Get());
     builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 }
 
 // 同一テクスチャを描画先とサンプリング元に使い分けるため、現在状態を追跡して遷移します。
-void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int texIndex) {
+void PostEffect::TransitionToRtv(ID3D12GraphicsCommandList* commandList, int texIndex) {
     RenderTexture& rt = renderTextures_[texIndex];
     if (rt.currentState == D3D12_RESOURCE_STATE_RENDER_TARGET)
         return; // 既にRTVなら何もしない
@@ -366,7 +366,7 @@ void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int tex
 }
 
 // 次の描画パスが結果をサンプルできるよう、描画先をSRV状態へ遷移します。
-void PostEffect::TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex) {
+void PostEffect::TransitionToSrv(ID3D12GraphicsCommandList* commandList, int texIndex) {
     RenderTexture& rt = renderTextures_[texIndex];
     if (rt.currentState == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
         return; // 既にSRVなら何もしない
@@ -383,7 +383,7 @@ void PostEffect::TransitionToSRV(ID3D12GraphicsCommandList* commandList, int tex
 
 void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex, bool clear) {
     // 指定されたテクスチャを描画先(RTV)に切り替える
-    TransitionToRTV(commandList, targetTexIndex);
+    TransitionToRtv(commandList, targetTexIndex);
 
     RenderTexture& rt = renderTextures_[targetTexIndex];
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -408,7 +408,7 @@ void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int target
 
 void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, int targetTexIndex, bool clear) {
     // 色と深度のRender Targetを同時に束ね、特殊パスが深度判定を使えるようにします。
-    TransitionToRTV(commandList, targetTexIndex);
+    TransitionToRtv(commandList, targetTexIndex);
 
     RenderTexture& rt = renderTextures_[targetTexIndex];
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -434,7 +434,7 @@ void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, i
     commandList->RSSetViewports(1, &viewport);
     commandList->RSSetScissorRects(1, &scissorRect);
 
-    ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+    ID3D12DescriptorHeap* descriptorHeaps[] = { SrvManager::GetInstance()->GetDescriptorHeap() };
     commandList->SetDescriptorHeaps(1, descriptorHeaps);
 }
 
@@ -528,18 +528,18 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     commandList->SetGraphicsRootConstantBufferView(0, constBuffer_->GetGPUVirtualAddress());
 
     // [1] t0 のセット (メイン画像)
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, srvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, srvHandle);
 
     // [2] t1 のセット (LUT画像) 
     uint32_t currentLutHandle = (lutSrvHandle_ > 0) ? lutSrvHandle_ : srvHandle;
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, currentLutHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, currentLutHandle);
 
     // [3] t2 のセット (深度テクスチャ)
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, dxCommon_->GetDepthSrvHandle());
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, dxCommon_->GetDepthSrvHandle());
 
     // [4] t3 のセット (ノイズテクスチャ)
     uint32_t currentNoiseHandle = (noiseSrvHandle_ > 0) ? noiseSrvHandle_ : srvHandle;
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, currentNoiseHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, currentNoiseHandle);
 
     commandList->DrawInstanced(3, 1, 0, 0); // 3頂点に変更
     engine::RenderStats::GetInstance()->RecordNonIndexedDraw(3, 1, 1);
@@ -623,7 +623,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
     D3D12_CLEAR_VALUE depthClearValue = {};
-    depthClearValue.Format = dxCommon_->GetDSVFormat();
+    depthClearValue.Format = dxCommon_->GetDsvFormat();
     depthClearValue.DepthStencil.Depth = 1.0f;
     depthClearValue.DepthStencil.Stencil = 0;
 
@@ -649,7 +649,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     }
 
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-    dsvDesc.Format = dxCommon_->GetDSVFormat();
+    dsvDesc.Format = dxCommon_->GetDsvFormat();
     dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     device->CreateDepthStencilView(newDepthResource.Get(), &dsvDesc, newDsvHeap->GetCPUDescriptorHandleForHeapStart());
 
@@ -667,10 +667,10 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
         depthSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
         if (rt.depthSrvHandle != 0) {
-            SRVManager::GetInstance()->CreateSRVforResource(rt.depthSrvHandle, newDepthResource.Get(), depthSrvDesc);
+            SrvManager::GetInstance()->CreateSrvForResource(rt.depthSrvHandle, newDepthResource.Get(), depthSrvDesc);
         }
         else {
-            rt.depthSrvHandle = SRVManager::GetInstance()->CreateSRV(newDepthResource.Get(), depthSrvDesc);
+            rt.depthSrvHandle = SrvManager::GetInstance()->CreateSrv(newDepthResource.Get(), depthSrvDesc);
         }
     }
 
@@ -683,9 +683,9 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
 
     // SRVManagerを使ってインデックスを取得
     if (rt.srvHandle != 0) {
-        SRVManager::GetInstance()->CreateSRVforResource(rt.srvHandle, newResource.Get(), srvDesc);
+        SrvManager::GetInstance()->CreateSrvForResource(rt.srvHandle, newResource.Get(), srvDesc);
     } else {
-        rt.srvHandle = SRVManager::GetInstance()->CreateSRV(newResource.Get(), srvDesc);
+        rt.srvHandle = SrvManager::GetInstance()->CreateSrv(newResource.Get(), srvDesc);
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> newGrabResource;
@@ -706,10 +706,10 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
         }
 
         if (rt.grabSrvHandle != 0) {
-            SRVManager::GetInstance()->CreateSRVforResource(rt.grabSrvHandle, newGrabResource.Get(), srvDesc);
+            SrvManager::GetInstance()->CreateSrvForResource(rt.grabSrvHandle, newGrabResource.Get(), srvDesc);
         }
         else {
-            rt.grabSrvHandle = SRVManager::GetInstance()->CreateSRV(newGrabResource.Get(), srvDesc);
+            rt.grabSrvHandle = SrvManager::GetInstance()->CreateSrv(newGrabResource.Get(), srvDesc);
         }
     }
 

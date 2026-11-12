@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "cef27c39397f4f6ab96834feddea4da3",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/magma_slime/magma_slime_hurt.obj",
+  "version": 1
+}

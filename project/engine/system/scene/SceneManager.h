@@ -12,7 +12,9 @@
 
 class DebugEditor;
 
-/// <summary>現在シーンの更新描画、非同期ロード、ロード画面とフェード付き遷移を管理する。</summary>
+// 担当：現在シーンを所有し、更新描画・事前ロード・フェード付き遷移を管理する。
+// 関連：BaseScene（所有）、AbstractSceneFactory（生成）、ScenePreloader（準備）、Fade（遷移演出）
+// 主な入口：Initialize / ChangeScene / Update / Draw / Finalize
 class SceneManager {
 public:
     /// <summary>エンジン全体で共有するシーン管理インスタンスを返す。</summary>
@@ -30,6 +32,10 @@ public:
     /// <summary>現在シーンを終了し、ロード中のタスクとリソースを片付ける。</summary>
     void Finalize();
 
+    /// <summary>Framework所有の共通描画基盤を借用する。Sceneを生成する前に設定する。</summary>
+    void SetRenderCommonResources(engine::RenderCommonResources* resources) { renderCommonResources_ = resources; }
+    engine::RenderCommonResources* GetRenderCommonResources() const { return renderCommonResources_; }
+
     /// <summary>現在シーンの更新と、フェード付きシーン遷移を進める。</summary>
     void Update(float deltaTime);
 
@@ -37,7 +43,7 @@ public:
     void Draw();
 
     /// <summary>現在シーンのUI描画を委譲する。</summary>
-    void DrawUI();
+    void DrawUi();
 
     /// <summary>現在シーンの影マップ描画を委譲する。</summary>
     void DrawShadow();
@@ -135,6 +141,12 @@ public:
     void ClearActiveSceneAsset();
 
 private:
+    /// <summary>必要範囲を準備する。incremental時は一段だけ進める。</summary>
+    bool PrepareRenderCommons(BaseScene* scene, bool incremental = false);
+
+    // 全Sceneより長く生存するFrameworkからの借用参照。
+    engine::RenderCommonResources* renderCommonResources_ = nullptr;
+
     /// <summary>暗転、ロード、切替で進むシーン遷移の内部段階。</summary>
     enum class TransitionPhase {
         Idle,

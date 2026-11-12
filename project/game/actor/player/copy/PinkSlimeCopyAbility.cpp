@@ -5,6 +5,7 @@ namespace {
 using namespace CopyAbilityDetail;
 
 // ピンク能力の攻撃・ガード状態を制御し、ガード表示の寿命を能力セッションに結び付ける。
+// PlayerCopyAbilityControllerが所有するピンク形態の移動と攻撃の実装。入力はProcessInput、進行はUpdate、一時表示の回収はCancelが担当する。
 class PinkSlimeCopyAbility final : public ICopyAbilitySession {
   public:
     explicit PinkSlimeCopyAbility(EnemyAttackProfile profile) : ICopyAbilitySession(std::move(profile)) {
@@ -314,7 +315,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
 
             for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
                      center, bodySize * (comboStage_ == 2 ? 1.05f : 0.78f), filter)) {
-                engine::Object3d* target = FindEnemyRoot(hit.object);
+                engine::Object3D* target = FindEnemyRoot(hit.object);
                 if (!target || !hitTargets_.insert(target).second)
                     continue;
                 const engine::Vector3 push = NormalizePlanar(target->GetWorldPosition() - player.GetWorldPosition());
@@ -372,7 +373,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         direction_ = NormalizePlanar(sourcePosition - player.GetWorldPosition());
         player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
         player.PlaySlimeAbilityMotion("player_ability_pink_guard_hit", false, 1.0f, 0.015f, 0.045f);
-        const AABB bounds = player.GetAABB();
+        const Aabb bounds = player.GetAabb();
         const float radius = std::max(0.35f, (bounds.max.x - bounds.min.x) * 0.5f);
         const engine::Vector3 contact = player.GetWorldPosition() + direction_ * radius +
                                 engine::Vector3{0.0f, (bounds.max.y - bounds.min.y) * 0.32f, 0.0f};
@@ -399,7 +400,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
     void UpdateGuardVisuals(Player& player) {
         // 球体の膜と交差する輪郭で、どの視点からでも防御範囲が読めるバリアにします。
         StopGuardVisuals();
-        const AABB bounds = player.GetModelWorldAABB();
+        const Aabb bounds = player.GetModelWorldAabb();
         const float radius = std::max(0.35f, std::max(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z) * 0.5f);
         const float height = bounds.max.y - bounds.min.y;
         const float yaw = std::atan2(direction_.x, direction_.z);
@@ -537,7 +538,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.68f, 0.0f};
 
         for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.35f, filter)) {
-            engine::Object3d* target = FindEnemyRoot(hit.object);
+            engine::Object3D* target = FindEnemyRoot(hit.object);
 
             if (!target || !hitTargets_.insert(target).second) {
                 continue;
@@ -583,7 +584,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
     State state_ = State::Idle;
     MeshEffectManager::EffectScopeId guardScope_ = 0;
     engine::Vector3 direction_{0.0f, 0.0f, 1.0f};
-    std::unordered_set<engine::Object3d*> hitTargets_;
+    std::unordered_set<engine::Object3D*> hitTargets_;
     float timer_ = 0.0f;
     float duration_ = 0.0f;
     float startSpeed_ = 0.0f;

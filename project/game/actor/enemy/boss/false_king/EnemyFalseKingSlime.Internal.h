@@ -1,4 +1,6 @@
 ﻿#pragma once
+
+// EnemyFalseKingSlimeの分割実装で共有する定数・計算。ボス個体の状態や所有物は保持しない。
 // 分割実装専用の定数・補助関数。外部からは公開ヘッダーを使用します。
 #define NOMINMAX
 #include "game/actor/combat/CombatMath.h"
@@ -10,12 +12,12 @@
 #include "Camera.h"
 #include "CameraManager.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshRenderer.h"
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include "SceneManager.h"
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/crown/CrownFinaleTuning.h"
 #ifdef USE_IMGUI

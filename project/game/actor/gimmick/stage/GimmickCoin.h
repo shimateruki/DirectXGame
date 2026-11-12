@@ -2,6 +2,8 @@
 #include "BaseGimmick.h"
 
 // プレイヤーが取得できるコインギミック
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision
 class GimmickCoin : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -10,16 +12,16 @@ class GimmickCoin : public BaseGimmick {
 
     virtual ~GimmickCoin() = default;
 
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 取得時の跳ね上がりと、一時ドロップの落下・寿命は通常の回転より優先します。
     void Update(float deltaTime) override;
 
     // 取得済みなら同じ接触から枚数を二度加算しません。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     // 複製先の描画資源を初期化した上で、設定されたコインの見た目を引き継ぎます。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // 敵からの一時ドロップに切り替えます。速度はワールド単位/秒、各時刻は秒、groundY はワールド Y 座標です。
     // 寿命は最低 0.2 秒に補正され、blinkStartTime は寿命を超えない値に丸められます。

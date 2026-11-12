@@ -9,11 +9,11 @@
 
 | 種類 | 主な場所 | 役割 |
 | --- | --- | --- |
-| Editor内ツール | `engine/utility/SystemDebug/editor/` | ImGui上で操作する制作支援ツール。ゲーム中の配置、プレビュー、調整、保存を担当します。 |
+| Editor内ツール | `engine/editor/` | ImGui上で操作する制作支援ツール。ゲーム中の配置、プレビュー、調整、保存を担当します。 |
 | 外部/補助ツール | `tools/` | PowerShell、C++ CLI、Pythonなどで重い生成処理や監査処理を行います。Editorから呼ばれるものと、手動実行するものがあります。 |
 
 基本方針は、ゲーム本体の毎フレーム処理を重くしないことです。
-PNG生成、DDS変換、LOD生成、アセット監査などは、Editor操作時または外部ツール側に寄せています。
+PNG生成、DDS変換、アセット監査などは、Editor操作時または外部ツール側に寄せています。
 
 ## 主要ディレクトリ
 
@@ -22,7 +22,6 @@ PNG生成、DDS変換、LOD生成、アセット監査などは、Editor操作�
 | `tools/TextPngTool/` | テキストPNG生成用の外部CLI。現在の本命は `TextPngTool.exe` です。 |
 | `tools/asset_audit/` | Resources配下のアセット監査ツール。重い素材、未使用候補、欠落参照を検出します。 |
 | `tools/dds_cache/` | 画像からDDSキャッシュを作るツール。マニフェストとハッシュで不要な再変換を避けます。 |
-| `tools/model_lod/` | モデルLOD生成ツール。Blenderまたはnative簡易生成を使います。 |
 | `tools/shader_texture/` | シェーダー用の補助テクスチャを生成するツール。水、ゲート、炎、ガラスなどのマスクを作ります。 |
 | `tools/terrain/` | 地形メッシュ、ペイントマップ、衝突用メタ情報を生成します。 |
 | `tools/level_editor/` | BlenderでCG2のレベルJSONを読み込み、配置とスポーン地点を編集して書き戻すアドオンです。 |
@@ -77,8 +76,8 @@ UI文字、看板、説明テキスト、演出用テキスト素材を作るた
 
 | ファイル | 役割 |
 | --- | --- |
-| `engine/utility/SystemDebug/editor/windows/TextSpriteGenerator.h` | Editor側の状態、UI、プレビュー管理を持つクラス定義。 |
-| `engine/utility/SystemDebug/editor/windows/TextSpriteGenerator.cpp` | ImGui、フォント一覧、外部CLI呼び出し、Sprite配置処理。 |
+| `engine/editor/assets/TextSpriteGenerator.h` | Editor側の状態、UI、プレビュー管理を持つクラス定義。 |
+| `engine/editor/assets/TextSpriteGenerator.cpp` | ImGui、フォント一覧、外部CLI呼び出し、Sprite配置処理。 |
 | `tools/TextPngTool/TextPngTool.cpp` | 現在のPNG生成本体。DirectWrite、Direct2D、WICで描画してPNG保存します。 |
 | `tools/TextPngTool/TextPngTool.vcxproj` | TextPngTool.exeのビルド設定。 |
 
@@ -187,8 +186,8 @@ UI文字、看板、説明テキスト、演出用テキスト素材を作るた
 
 | ファイル | 役割 |
 | --- | --- |
-| `engine/utility/SystemDebug/editor/windows/AssetAuditWindow.h` | Editor側UIと状態。 |
-| `engine/utility/SystemDebug/editor/windows/AssetAuditWindow.cpp` | 監査実行、結果表示、プレビュー、削除処理。 |
+| `engine/editor/assets/AssetAuditWindow.h` | Editor側UIと状態。 |
+| `engine/editor/assets/AssetAuditWindow.cpp` | 監査実行、結果表示、プレビュー、削除処理。 |
 | `tools/asset_audit/asset_audit.ps1` | 実際にResourcesを走査する外部監査スクリプト。 |
 | `tools/asset_audit/build_asset_audit.bat` | 監査ツール起動補助。 |
 
@@ -351,65 +350,6 @@ Editorの一括変換とRuntime要求の変換が重なった場合は、`Global
 | `Resources/.cache/dds_cache_notifications.jsonl` | DDS生成完了通知ログ。 |
 | 元画像と同じ場所の `.dds` | 実際のDDSキャッシュ。 |
 
-## Model Optimizer / LOD Tool
-
-### 目的
-
-モデルのLODを制作時に生成し、ゲーム実行時はカメラ距離に応じて軽いモデルへ切り替えるためのツールです。
-ゲーム中に毎回LODを生成するのではなく、Editorで作ってObjectに設定します。
-
-### 関連ファイル
-
-| ファイル | 役割 |
-| --- | --- |
-| `engine/utility/SystemDebug/editor/windows/ModelOptimizerWindow.h` | LOD Editorの状態。 |
-| `engine/utility/SystemDebug/editor/windows/ModelOptimizerWindow.cpp` | UI、外部LOD生成、プレビュー、Object反映。 |
-| `tools/model_lod/model_lod_builder.ps1` | LOD解析/生成スクリプト。 |
-| `tools/model_lod/blender_lod.py` | Blender Decimate経路で使うPython。 |
-
-### 生成バックエンド
-
-| Backend | 内容 |
-| --- | --- |
-| Auto | Blenderが見つかればBlender、なければnative簡易生成。 |
-| Blender | Blender CLIでDecimate系のLODを生成します。品質優先。 |
-| Native | 内部の簡易グリッド/削減処理。速いが品質は落ちます。 |
-
-### 対象モデル
-
-| 対象 | 備考 |
-| --- | --- |
-| OBJ | 基本対応。 |
-| GLB | 対応。 |
-| glTF | 非スキン、非アニメーション、非モーフなど安全なものだけ対応。 |
-
-スキン、アニメーション、モーフターゲット、非三角形primitiveなどがあるglTFは自動LOD生成から外します。
-壊してはいけないモデルを無理に軽量化しないためです。
-
-### 処理フロー
-
-1. Editorで対象モデルを選びます。
-2. LOD1/LOD2の保持率と距離を設定します。
-3. `model_lod_builder.ps1` をバックグラウンド起動します。
-4. 解析のみ、またはLOD生成を実行します。
-5. `Resources/.cache/model_lod/latest_report.json` を読みます。
-6. Previewを作ると、`__Editor_LODPreview_LOD0` などのEditorOnly Objectを並べます。
-7. 見た目を確認して採用すると、選択ObjectへLOD設定を反映します。
-8. Object側に `lod.enabled` と `lod.levels` が入り、シーン保存/読み込み経由でゲーム実行時にも使われます。
-
-### 採用/破棄
-
-| 操作 | 内容 |
-| --- | --- |
-| 採用 | 選択ObjectへLODモデル名と距離を設定し、距離LODを有効化します。 |
-| 破棄 | 生成LODファイルとレポート候補を削除し、Preview Objectも消します。 |
-
-### 実行時の考え方
-
-LOD選択はEditorだけでは終わりません。
-Objectに保存されたLOD設定を、シーンロード時に復元し、描画時にカメラ距離で切り替える必要があります。
-現在はこの方針で組まれています。
-
 ## Camera Editor / Cinematic Camera
 
 ### 目的
@@ -420,8 +360,8 @@ Objectに保存されたLOD設定を、シーンロード時に復元し、描�
 
 | ファイル | 役割 |
 | --- | --- |
-| `engine/utility/SystemDebug/editor/graphics/CameraEditor.h` | カメラ設定、演出用カメラ一覧、プレビュー状態。 |
-| `engine/utility/SystemDebug/editor/graphics/CameraEditor.cpp` | ImGui、自由カメラ更新、ガイド描画、ImGuizmo編集。 |
+| `engine/editor/graphics/camera/CameraEditor.h` | カメラ設定、演出用カメラ一覧、プレビュー状態。 |
+| `engine/editor/graphics/camera/CameraEditor.cpp` | ImGui、自由カメラ更新、ガイド描画、ImGuizmo編集。 |
 | `Resources/json/camera/*.json` | カメラ設定ファイル。 |
 | `Resources/json/camera/editor_camera_state.json` | 自由カメラの位置/角度保存。 |
 
@@ -496,15 +436,14 @@ Objectに保存されたLOD設定を、シーンロード時に復元し、描�
 
 | ファイル | 役割 |
 | --- | --- |
-| `engine/utility/SystemDebug/editor/windows/ProjectWindow.h` | サムネイル情報、ProjectWindow状態。 |
-| `engine/utility/SystemDebug/editor/windows/ProjectWindow.cpp` | モデル一覧、プリセット一覧、サムネイル描画、ドラッグ&ドロップ。 |
+| `engine/editor/assets/ProjectWindow.h` | サムネイル情報、ProjectWindow状態。 |
+| `engine/editor/assets/ProjectWindow.cpp` | モデル一覧、プリセット一覧、サムネイル描画、ドラッグ&ドロップ。 |
 
 ### モデル一覧
 
 - `Resources/3DModel/` をブラウズします。
 - `.obj/.gltf/.glb` をモデルとして扱います。
 - フォルダ単位のモデルも表示します。
-- LOD生成物は黄色っぽく表示し、通常モデルと区別します。
 - `MODEL_ASSET` payloadとしてドラッグできます。
 
 ### サムネイル生成
@@ -706,7 +645,6 @@ SDL2の `.lib/.dll/include` をリポジトリへ直接持ち続けず、必要�
 | 立体文字モデルを作る | Text 3D Generator |
 | 未使用素材を探す | Asset Audit |
 | PNGをDDSへ変換する | DDS Cache Builder |
-| モデルを軽量化して距離LODを作る | Model Optimizer / LOD Tool |
 | 演出カメラを保存/確認/動かす | Camera Editor / Cinematic Camera |
 | モデルやプリセットを配置する | Project Window |
 | 水/ゲート/炎などのマスクテクスチャを生成する | Shader Texture Baker |

@@ -2,6 +2,8 @@
 #include "BaseGimmick.h"
 
 // 乗ると揺れ、落下・非表示を経て再出現する足場です。時間は param_ があればその設定を使います。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision
 class GimmickChikuwaBlock : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -15,15 +17,15 @@ class GimmickChikuwaBlock : public BaseGimmick {
         Hidden   // 消滅中（リスポーン待ち）
     };
 
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     void Update(float deltaTime) override;
 
     // 待機中のみプレイヤーの搭乗を判定
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     void ChangeState(State newState);

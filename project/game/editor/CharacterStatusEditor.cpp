@@ -224,7 +224,7 @@ bool Draw(BaseScene* scene, const std::string& type) {
                 ImGui::TreePop();
             }
             if (statusChanged) {
-                manager->MarkDirty();
+                manager->MarkDirty(type);
                 const int count = CharacterStatusEditor::Apply(scene, type);
                 statusText = "配置済みの対象へ反映: " + std::to_string(count) + " 件";
                 changed = true;
@@ -257,7 +257,7 @@ bool Draw(BaseScene* scene, const std::string& type) {
         }
         SavePending();
         ImGui::TextWrapped("%s", statusText.c_str());
-        ImGui::TextWrapped("保存先: %s", GameplayStatusManager::GetSettingsPath());
+        ImGui::TextWrapped("保存先: %s", GameplayStatusManager::GetSettingsPath(type).c_str());
     }
     return changed;
 #else

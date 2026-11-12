@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickEventReceiver::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickEventReceiver::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // イベントを受けた際に表示・移動する地形なので、通常時の地面属性を保持します。
@@ -26,7 +26,7 @@ void GimmickEventReceiver::Initialize(engine::Object3dCommon* common, const std:
     using Self = GimmickEventReceiver;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "イベント受信ギミック",
         "My Event IDとスイッチのTarget IDを合わせます。王冠落下は編集時は非表示で、撃破通知後にボス頭上から着地点へ落下します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("動作モード", "actionMode", &Parameter::actionMode, 0.0f, 6.0f,
         nullptr, {"出現", "Y方向に移動", "X方向に移動", "Z方向に移動", "有効化", "無効化", "ボス王冠落下"});
     properties.Parameter("移動量", "moveAmount", &Parameter::moveAmount, -500.0f, 500.0f,
@@ -208,7 +208,7 @@ void GimmickEventReceiver::SetCollisionEnabled(bool enabled) {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickEventReceiver::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickEventReceiver::Clone() const {
     // 複製先を初期化してから、イベント設定と配置をコピーします。
     auto newObj = std::make_unique<GimmickEventReceiver>();
     assert(GetObjectCommon() != nullptr);

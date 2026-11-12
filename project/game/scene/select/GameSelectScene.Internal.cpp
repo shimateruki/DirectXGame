@@ -1,7 +1,7 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.Internal.h"
 #include "Easing.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "CollisionManager.h"
 #include "CollisionConfig.h"
 #include <algorithm>
@@ -61,7 +61,7 @@ engine::Vector3 SelectNormalizeGateDirectionXZ(const engine::Vector3& value, con
 
 float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const engine::Vector3& gatePos,
                                      const engine::Vector3& stageNodePosition, const engine::Vector3& playerPosition,
-                                     const engine::Object3d* ignoredObject) {
+                                     const engine::Object3D* ignoredObject) {
     // ゲートの原点や縁は浮いていることがあるため、帰還演出の接地Yにはそのまま使いません。
     // まず着地予定XZから下向きレイを飛ばし、本当に床として登録されている位置を優先します。
     const float gateBasedGroundY = gatePos.y - kGateReturnGroundOffsetFromGateOrigin;
@@ -91,7 +91,7 @@ float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const
     return resolvedGroundY;
 }
 
-engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const engine::Vector3& fallbackDirection) {
+engine::Vector3 SelectGateEntryDirection(engine::Object3D* gateObject, const engine::Vector3& fallbackDirection) {
     // 配置されたゲートの回転から入場方向を得て、欠けた場合は指定方向へ戻す。
     const engine::Vector3 fallback = SelectNormalizeGateDirectionXZ(fallbackDirection, {0.0f, 0.0f, 1.0f});
 

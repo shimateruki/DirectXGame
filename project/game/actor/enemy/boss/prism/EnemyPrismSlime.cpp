@@ -6,8 +6,8 @@
 using namespace EnemyPrismSlimeImplementation;
 
 namespace {
-BlendMode GetOwnedEffectBlendMode(engine::Object3d* visual) {
-    if (auto* effect = dynamic_cast<EffectObject3d*>(visual)) {
+BlendMode GetOwnedEffectBlendMode(engine::Object3D* visual) {
+    if (auto* effect = dynamic_cast<EffectObject3D*>(visual)) {
         return effect->GetBlendMode();
     }
     return visual->GetBlendMode();
@@ -36,7 +36,7 @@ void EnemyPrismSlime::BindSceneSpawnContext(BaseScene* scene) {
     });
 }
 
-void EnemyPrismSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyPrismSlime::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 本体判定と、属性で色を変える顔・コアの独立描画部品を準備する。
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_PrismSlime");
@@ -53,7 +53,7 @@ void EnemyPrismSlime::Initialize(engine::Object3dCommon* common, const std::stri
 
     SetCollisionAttribute(kPrismActiveCollisionAttribute);
     SetCollisionMask(kPrismActiveCollisionMask);
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SyncCollisionRadius();
 
     InitializeFaceParts();
@@ -137,8 +137,8 @@ void EnemyPrismSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* s
         }
     }
 
-    ForEachOwnedEffect([&](engine::Object3d* visual) {
-        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) == BlendMode::kNone) {
+    ForEachOwnedEffect([&](engine::Object3D* visual) {
+        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) == BlendMode::None) {
             visual->RefreshRenderCameraData();
             visual->Draw(pointLightResource, spotLightResource);
         }
@@ -156,14 +156,19 @@ void EnemyPrismSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* s
         corePart_->Draw(pointLightResource, spotLightResource);
     }
 
-    for (const auto& eye : eyeParts_) {
-        if (eye) {
-            eye->Draw(pointLightResource, spotLightResource);
+    if (hurtEyesPart_ && IsHurtFaceActive()) {
+        hurtEyesPart_->RefreshRenderCameraData();
+        hurtEyesPart_->Draw(pointLightResource, spotLightResource);
+    } else {
+        for (const auto& eye : eyeParts_) {
+            if (eye) {
+                eye->Draw(pointLightResource, spotLightResource);
+            }
         }
     }
 }
 
-void EnemyPrismSlime::ForEachOwnedEffect(const std::function<void(engine::Object3d*)>& visit) const {
+void EnemyPrismSlime::ForEachOwnedEffect(const std::function<void(engine::Object3D*)>& visit) const {
     visit(crystalCircle_.get());
     visit(crystalCircleGlow_.get());
     visit(prismSpikeSector_.get());
@@ -186,8 +191,8 @@ void EnemyPrismSlime::DrawOwnedTransparentVisuals(ID3D12Resource* pointLightReso
                                                    ID3D12Resource* spotLightResource) {
     if (!GetIsRenderVisible()) return;
     // 床の深度が揃った後に、加算・半透明の魔法陣と詠唱を描画する。
-    ForEachOwnedEffect([&](engine::Object3d* visual) {
-        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) != BlendMode::kNone) {
+    ForEachOwnedEffect([&](engine::Object3D* visual) {
+        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) != BlendMode::None) {
             visual->RefreshRenderCameraData();
             visual->Draw(pointLightResource, spotLightResource);
         }
@@ -198,38 +203,42 @@ void EnemyPrismSlime::DrawOwnedTransparentVisuals(ID3D12Resource* pointLightReso
 void EnemyPrismSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
                                     ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!camera || !GetIsRenderVisible() || debugPreviewChantOnly_) return;
-    engine::Object3d::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    engine::Object3D::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     for (const PrismSpikeVisual& spike : prismSpikeVisuals_) {
         if (spike.object) spike.object->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     }
     for (const CrystalLanceVisual& lance : crystalLanceVisuals_) {
         if (lance.object) lance.object->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     }
-    ForEachOwnedEffect([&](engine::Object3d* visual) {
-        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) == BlendMode::kNone) {
+    ForEachOwnedEffect([&](engine::Object3D* visual) {
+        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) == BlendMode::None) {
             visual->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     });
     if (!GetIsVisible()) return;
     if (coreFramePart_) coreFramePart_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     if (corePart_) corePart_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
-    for (const auto& eye : eyeParts_) {
-        if (eye) eye->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    if (hurtEyesPart_ && IsHurtFaceActive()) {
+        hurtEyesPart_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    } else {
+        for (const auto& eye : eyeParts_) {
+            if (eye) eye->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+        }
     }
 }
 
 void EnemyPrismSlime::DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
                                                             ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!camera || !GetIsRenderVisible()) return;
-    ForEachOwnedEffect([&](engine::Object3d* visual) {
-        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) != BlendMode::kNone) {
+    ForEachOwnedEffect([&](engine::Object3D* visual) {
+        if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) != BlendMode::None) {
             visual->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     });
     if (chantVisual_) chantVisual_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
 }
 
-std::unique_ptr<engine::Object3d> EnemyPrismSlime::Clone() const {
+std::unique_ptr<engine::Object3D> EnemyPrismSlime::Clone() const {
     // 配置値と追跡対象を引き継ぎ、攻撃中の一時状態は新しい個体で初期化する。
     auto clone = std::make_unique<EnemyPrismSlime>();
     assert(GetObjectCommon() != nullptr);
@@ -567,7 +576,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
             vortex.circle = CreateSpellEffect(kWindChantSigilEffect);
             vortex.circleGlow = CreateSpellEffect(kWindChantSigilEffect);
             if (vortex.circleGlow)
-                vortex.circleGlow->SetBlendMode(BlendMode::kAdd);
+                vortex.circleGlow->SetBlendMode(BlendMode::Add);
             for (auto& effect : vortex.outer)
                 effect = CreateSpellEffect(kPrismWindTornadoOuterEffect);
             for (auto& effect : vortex.inner)
@@ -1075,11 +1084,7 @@ void EnemyPrismSlime::PrepareAttackCycle() {
         attackCycle_[attackCycleCount_++] = AttackKind::SlimeSummon;
     }
 
-    std::shuffle(attackCycle_.begin(), attackCycle_.begin() + attackCycleCount_, attackRandom_);
-
-    if (attackCycleCount_ > 1 && attackCycle_[0] == lastAutomaticAttack_) {
-        std::swap(attackCycle_[0], attackCycle_[1]);
-    }
+    EnemyAttackSelection::Shuffle(std::span{attackCycle_}.first(attackCycleCount_), lastAutomaticAttack_, attackRandom_);
 
     attackCycleIndex_ = 0;
     attackCyclePhase_ = elementPhase_;
@@ -1091,36 +1096,20 @@ EnemyPrismSlime::AttackKind EnemyPrismSlime::ResolveAutomaticAttack(float target
         PrepareAttackCycle();
     }
 
-    for (std::size_t index = attackCycleIndex_; index < attackCycleCount_; ++index) {
-        if (attackCycleIndex_ == 0 && attackCycle_[index] == lastAutomaticAttack_) {
-            continue;
-        }
-
-        const EnemyAttackDefinition& attack = attackCycle_[index] == AttackKind::FireFan
-            ? SelectFireFanDefinition(targetDistance) : GetAttackDefinition(GetAttackId(attackCycle_[index]));
-        if (targetDistance >= attack.minRange && targetDistance <= attack.maxRange) {
-            std::swap(attackCycle_[attackCycleIndex_], attackCycle_[index]);
-            break;
-        }
-    }
-
-    return attackCycle_[attackCycleIndex_];
+    return EnemyAttackSelection::SelectInRange(
+        std::span{attackCycle_}.first(attackCycleCount_), attackCycleIndex_, lastAutomaticAttack_,
+        [&](AttackKind kind) {
+            const auto& attack = kind == AttackKind::FireFan
+                ? SelectFireFanDefinition(targetDistance) : GetAttackDefinition(GetAttackId(kind));
+            return targetDistance >= attack.minRange && targetDistance <= attack.maxRange;
+        });
 }
 
 EnemyPrismSlime::AttackKind EnemyPrismSlime::ResolveDebugAttack() const {
-    // 固定技IDとデータ定義シーケンスの両方をプレビュー可能な攻撃種別へ対応付ける。
-    if (debugPreviewAttackId_ == kCrystalSpikesAttackId)
-        return AttackKind::PrismSpikes;
-    if (debugPreviewAttackId_ == kCrystalLanceVolleyAttackId)
-        return AttackKind::CrystalLanceVolley;
-    if (debugPreviewAttackId_ == kFireFanAttackId)
-        return AttackKind::FireFan;
-    if (debugPreviewAttackId_ == kThunderChainAttackId)
-        return AttackKind::ThunderChain;
-    if (debugPreviewAttackId_ == kWindWaveAttackId)
-        return AttackKind::WindWave;
-    if (debugPreviewAttackId_ == kSlimeSummonAttackId)
-        return AttackKind::SlimeSummon;
+    const auto kind = EnemyAttackSelection::FindKind(GetAttackEntries(), debugPreviewAttackId_, AttackKind::None);
+    if (kind != AttackKind::None)
+        return kind;
+    // 固定ID以外の敵用シーケンスも、従来どおり炎攻撃の接続先でプレビューする。
     if (const auto* selected = GetAttackProfile().FindAttack(debugPreviewAttackId_);
         selected && selected->sequence.binding == "enemy" && (!selected->sequence.events.empty() || !selected->sequence.tracks.empty()))
         return AttackKind::FireFan;
@@ -1165,27 +1154,23 @@ const char* EnemyPrismSlime::GetSequenceStateLabel() const {
         ? attackSequence_.GetStateLabel() : nullptr;
 }
 
+std::span<const EnemyAttackSelection::Entry<EnemyPrismSlime::AttackKind>>
+EnemyPrismSlime::GetAttackEntries() const {
+    // 本編のID参照とエディターの攻撃指定で同じ対応を使う。
+    static constexpr EnemyAttackSelection::Entry<AttackKind> kEntries[] = {
+        {AttackKind::PrismSpikes, kCrystalSpikesAttackId},
+        {AttackKind::CrystalLanceVolley, kCrystalLanceVolleyAttackId},
+        {AttackKind::FireFan, kFireFanAttackId},
+        {AttackKind::ThunderChain, kThunderChainAttackId},
+        {AttackKind::WindWave, kWindWaveAttackId},
+        {AttackKind::SlimeSummon, kSlimeSummonAttackId},
+    };
+    return kEntries;
+}
+
 const char* EnemyPrismSlime::GetAttackId(AttackKind kind) const {
-    // 内部の攻撃種別をJSON側の攻撃IDへ変換し、未指定なら通常の棘を使う。
-    switch (kind) {
-    case AttackKind::CrystalLanceVolley:
-        return kCrystalLanceVolleyAttackId;
-
-    case AttackKind::FireFan:
-        return kFireFanAttackId;
-
-    case AttackKind::ThunderChain:
-        return kThunderChainAttackId;
-
-    case AttackKind::WindWave:
-        return kWindWaveAttackId;
-
-    case AttackKind::SlimeSummon:
-        return kSlimeSummonAttackId;
-
-    default:
-        return kCrystalSpikesAttackId;
-    }
+    // 未対応の種類に対する既定IDも敵ごとの従来値を維持する。
+    return EnemyAttackSelection::FindId(GetAttackEntries(), kind, kCrystalSpikesAttackId);
 }
 
 engine::Vector3 EnemyPrismSlime::FindGroundPoint(const engine::Vector3& samplePosition) const {
@@ -1204,7 +1189,13 @@ void EnemyPrismSlime::InitializeFaceParts() {
     eyeParts_[1] = CreatePart("PrismSlime_EyeRight", "Primitives/sphere", {0.19f, 0.555f, 0.442f},
                               {0.055f, 0.078f, 0.040f}, {0.07f, 0.20f, 0.39f, 1.0f}, 1.12f);
 
-    for (engine::Object3d* prismPart : {coreFramePart_.get(), corePart_.get()}) {
+    hurtEyesPart_ = CreatePart("PrismSlime_HurtEyes", "Characters/prism_slime/prism_slime_hurt_eyes.obj",
+                               {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.025f, 0.075f, 0.20f, 1.0f}, 1.12f);
+    if (hurtEyesPart_ && !hurtEyesPart_->GetModel()) {
+        hurtEyesPart_.reset();
+    }
+
+    for (engine::Object3D* prismPart : {coreFramePart_.get(), corePart_.get()}) {
         if (!prismPart) {
             continue;
         }
@@ -1217,7 +1208,7 @@ void EnemyPrismSlime::InitializeFaceParts() {
     }
 }
 
-std::unique_ptr<engine::Object3d> EnemyPrismSlime::CreatePart(const std::string& name, const std::string& modelName,
+std::unique_ptr<engine::Object3D> EnemyPrismSlime::CreatePart(const std::string& name, const std::string& modelName,
                                                       const engine::Vector3& localPosition, const engine::Vector3& localScale,
                                                       const engine::Vector4& color, float emissive) {
     // 本体に追従する子オブジェクトを作り、衝突対象からは除外する。
@@ -1225,12 +1216,12 @@ std::unique_ptr<engine::Object3d> EnemyPrismSlime::CreatePart(const std::string&
         return nullptr;
     }
 
-    auto part = std::make_unique<engine::Object3d>();
+    auto part = std::make_unique<engine::Object3D>();
     part->Initialize(GetObjectCommon());
     part->SetName(name);
     part->SetClassName("EnemyVisualPart");
     part->SetModel(modelName);
-    part->SetColliderType(ColliderType::kNone);
+    part->SetColliderType(ColliderType::None);
     part->SetCollisionAttribute(0);
     part->SetCollisionMask(0);
     part->SetColor(color);
@@ -1276,6 +1267,9 @@ void EnemyPrismSlime::UpdateFaceParts(float deltaTime) {
         eye->SetIsVisible(visible);
         eye->SetScale({0.055f, 0.078f * eyeSquash, 0.040f});
         eye->Update(deltaTime);
+    }
+    if (hurtEyesPart_) {
+        hurtEyesPart_->Update(deltaTime);
     }
 }
 
@@ -1457,7 +1451,7 @@ void EnemyPrismSlime::UpdateFacing(const engine::Vector3& direction) {
 
 void EnemyPrismSlime::EmitPreset(const char* presetName, const engine::Vector3& position) {
     // 名称で指定された粒子プリセットを指定位置へ発生させる。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->Emit(presetName, position);
@@ -1467,7 +1461,7 @@ void EnemyPrismSlime::EmitPreset(const char* presetName, const engine::Vector3& 
 void EnemyPrismSlime::EmitDirectedPreset(const char* presetName, const engine::Vector3& position, const engine::Vector3& direction,
                                          float speedScale) {
     // 指向性のあるプリセットには発射方向と速度倍率を渡す。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);

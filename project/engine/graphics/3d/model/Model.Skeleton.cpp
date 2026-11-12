@@ -13,7 +13,7 @@
 #include <cstring>
 #include <limits>
 #include <string_view>
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include <DebugConsole.h>
 #include <LightManager.h>
 
@@ -177,38 +177,38 @@ void Model::ApplyBlendedAnimation(
     const float weight = std::clamp(blendWeight, 0.0f, 1.0f);
 
     for (Joint& joint : modelData_.skeleton.joints) {
-        const auto FindNodeAnimation = [&joint](const Animation& animation) -> const NodeAnimation* {
+        const auto findNodeAnimation = [&joint](const Animation& animation) -> const NodeAnimation* {
             const auto it = std::find_if(
                 animation.nodeAnimations.begin(), animation.nodeAnimations.end(),
                 [&joint](const NodeAnimation& node) { return node.name == joint.name; });
             return it == animation.nodeAnimations.end() ? nullptr : &(*it);
         };
 
-        const NodeAnimation* fromNode = FindNodeAnimation(fromAnimation);
-        const NodeAnimation* toNode = FindNodeAnimation(toAnimation);
+        const NodeAnimation* fromNode = findNodeAnimation(fromAnimation);
+        const NodeAnimation* toNode = findNodeAnimation(toAnimation);
 
         if (!fromNode && !toNode) {
             continue;
         }
 
-        auto SampleScale = [](const NodeAnimation* node, float time, const engine::Vector3& fallback) {
+        auto sampleScale = [](const NodeAnimation* node, float time, const engine::Vector3& fallback) {
             return node && !node->scale.empty() ? CalculateValue(node->scale, time) : fallback;
         };
 
-        auto SampleTranslate = [](const NodeAnimation* node, float time, const engine::Vector3& fallback) {
+        auto sampleTranslate = [](const NodeAnimation* node, float time, const engine::Vector3& fallback) {
             return node && !node->translate.empty() ? CalculateValue(node->translate, time) : fallback;
         };
 
-        auto SampleRotate = [](const NodeAnimation* node, float time, const engine::Quaternion& fallback) {
+        auto sampleRotate = [](const NodeAnimation* node, float time, const engine::Quaternion& fallback) {
             return node && !node->rotate.empty() ? CalculateValue(node->rotate, time) : fallback;
         };
 
-        const engine::Vector3 fromScale = SampleScale(fromNode, fromTime, joint.transform.scale);
-        const engine::Vector3 fromTranslate = SampleTranslate(fromNode, fromTime, joint.transform.translate);
-        const engine::Quaternion fromRotate = SampleRotate(fromNode, fromTime, joint.transform.rotate);
-        const engine::Vector3 toScale = SampleScale(toNode, toTime, fromScale);
-        const engine::Vector3 toTranslate = SampleTranslate(toNode, toTime, fromTranslate);
-        const engine::Quaternion toRotate = SampleRotate(toNode, toTime, fromRotate);
+        const engine::Vector3 fromScale = sampleScale(fromNode, fromTime, joint.transform.scale);
+        const engine::Vector3 fromTranslate = sampleTranslate(fromNode, fromTime, joint.transform.translate);
+        const engine::Quaternion fromRotate = sampleRotate(fromNode, fromTime, joint.transform.rotate);
+        const engine::Vector3 toScale = sampleScale(toNode, toTime, fromScale);
+        const engine::Vector3 toTranslate = sampleTranslate(toNode, toTime, fromTranslate);
+        const engine::Quaternion toRotate = sampleRotate(toNode, toTime, fromRotate);
 
         joint.transform.scale = {
             std::lerp(fromScale.x, toScale.x, weight),

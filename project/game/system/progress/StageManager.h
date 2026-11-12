@@ -9,6 +9,8 @@
 #include "game/system/progress/StageCatalog.h"
 
 // ステージ一覧と現在の選択を管理します。JSON が読めない場合は内蔵の一覧へ戻します。
+// 関連：StageCatalogから一覧を作り、シーンが選択したステージ番号を共有する。
+// 主な入口：Initialize / GetCurrentStage / SetCurrentStage
 class StageManager {
   public:
     /// <summary>共有のStageManagerを返す。</summary>

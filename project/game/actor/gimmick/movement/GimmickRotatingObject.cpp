@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickRotatingObject::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickRotatingObject::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 回転軸と速度の旧既定値を用意し、地形として足場判定を有効にする。
     BaseGimmick::Initialize(common, modelName);
 
@@ -32,7 +32,7 @@ void GimmickRotatingObject::Initialize(engine::Object3dCommon* common, const std
     using Self = GimmickRotatingObject;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "回転床・回転柱",
         "スイッチ連動で回転の開始・停止ができます。回転床と回転柱は同じクラスで動きます。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("回転軸", "actionMode", &Parameter::actionMode, 0.0f, 2.0f,
         nullptr, {"X", "Y", "Z"});
     properties.Parameter("回転速度（度/秒）", "speed", &Parameter::speed, -720.0f, 720.0f,
@@ -81,10 +81,10 @@ void GimmickRotatingObject::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 
     // Target IDに対応する床の剛体移動だけを追う。親の非等方スケールを棘へ掛けない。
-    if (GetTargetID() >= 0 && !supportFloor_) {
+    if (GetTargetId() >= 0 && !supportFloor_) {
         if (auto* scene = SceneManager::GetInstance()->GetCurrentScene()) {
             for (const auto& object : scene->GetObjects()) {
-                if (object && object.get() != this && object->GetEventID() == GetTargetID()) {
+                if (object && object.get() != this && object->GetEventId() == GetTargetId()) {
                     supportFloor_ = object.get();
                     supportFloor_->UpdateLocalMatrix();
                     supportFloor_->UpdateWorldMatrix(false);
@@ -152,7 +152,7 @@ void GimmickRotatingObject::OnSwitchEvent(bool active) {
     active_ = active;
 }
 
-std::unique_ptr<engine::Object3d> GimmickRotatingObject::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickRotatingObject::Clone() const {
     // 回転開始時刻は複製せず、保存済みの配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickRotatingObject>();
     assert(GetObjectCommon() != nullptr);

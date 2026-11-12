@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "0dcf5d058358462eb4e505262c7a5a5e",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/effect/effect_player_wind_lift_glide.json",
+  "version": 1
+}

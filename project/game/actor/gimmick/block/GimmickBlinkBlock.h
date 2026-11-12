@@ -3,6 +3,8 @@
 #include "game/system/rules/EventManager.h"
 
 /// <summary>プレイヤーのジャンプに合わせて出現状態が切り替わるブロックです。</summary>
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update
 class GimmickBlinkBlock : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -11,12 +13,12 @@ class GimmickBlinkBlock : public BaseGimmick {
 
     ~GimmickBlinkBlock() override;
 
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     void Update(float deltaTime) override;
 
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     // ジャンプ通知を受けて、ブロックの表示と衝突を切り替えます。

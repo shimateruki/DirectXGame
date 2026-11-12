@@ -10,7 +10,9 @@
 namespace engine { class Sprite; }
 namespace engine { class SpriteCommon; }
 
-/// <summary>画面全体を覆うフェードとアイリス演出を管理する。</summary>
+// 担当：画面全体のフェードと、注目点を囲むアイリス演出を管理する。
+// 関連：Sprite（被覆描画）、PostEffect（画面効果）、SceneManager（遷移）
+// 主な入口：Initialize / StartFadeIn / StartFadeOut / Update / Draw
 class Fade {
 public:
     /// <summary>現在進行中の画面遷移。</summary>
@@ -64,6 +66,7 @@ private:
     };
 
     /// <summary>連番テクスチャとその描画Sprite。</summary>
+    // 関連：Fade（この型を使う機能の本体）
     struct FrameSequence {
         std::unique_ptr<engine::Sprite> sprite;
         std::vector<uint32_t> textureHandles;
@@ -95,6 +98,7 @@ private:
     // 被覆率に対応するフレームを描画し、画像がなければ黒画面へフォールバックする。
     void DrawFrameSequence(FrameSequence& sequence, float coverage);
 
+    // 代替の黒い全画面Spriteを指定アルファで描画する。
     void DrawFallbackBlack(float alpha);
 
     // 現在の演出時間を 0～1 に正規化し、閉じる方向の演出かを判定する。

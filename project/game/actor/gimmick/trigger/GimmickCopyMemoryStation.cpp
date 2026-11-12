@@ -10,7 +10,7 @@
 #include "Player.h"
 #include "game/actor/player/copy/PlayerCopyTypeCatalog.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -41,7 +41,7 @@ constexpr int kCorePreviewMaterialType = 0;
 constexpr const char* kActivationCue = "copy_memory_station_activate_cue";
 } // namespace
 
-void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickCopyMemoryStation::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 台座だけをシーンへ登録し、能力見本は内部の描画物として再利用します。
@@ -61,8 +61,8 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const 
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
 
-    engine::Object3d::ColliderConfig collider;
-    collider.type = ColliderType::kOBB;
+    engine::Object3D::ColliderConfig collider;
+    collider.type = ColliderType::Obb;
     collider.center = {0.0f, 0.95f, 0.0f};
     collider.size = {3.1f, 1.6f, 1.85f};
     SetColliderConfig(collider);
@@ -81,11 +81,11 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const 
     SetParameter(&engine::EntityParameter::startActive, true);
 
     for (size_t index = 0; index < kCoreCount; ++index) {
-        coreVisuals_[index] = std::make_unique<engine::Object3d>();
+        coreVisuals_[index] = std::make_unique<engine::Object3D>();
         coreVisuals_[index]->Initialize(common);
         coreVisuals_[index]->SetName("CopyMemoryStation_Core_" + std::to_string(index + 1));
         coreVisuals_[index]->SetClassName("Object");
-        coreVisuals_[index]->SetColliderType(ColliderType::kNone);
+        coreVisuals_[index]->SetColliderType(ColliderType::None);
         coreVisuals_[index]->SetCollisionAttribute(0);
         coreVisuals_[index]->SetCollisionMask(0);
         coreVisuals_[index]->SetMaterialType(kCorePreviewMaterialType);
@@ -105,16 +105,16 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const 
         // 常駐する小数の描画物を使い回し、取得を繰り返しても粒を増殖させません。
         for (size_t part = 0; part < 4; ++part) {
             auto& effect = effects_[index * 4 + part];
-            effect = std::make_unique<engine::Object3d>();
+            effect = std::make_unique<engine::Object3D>();
             effect->Initialize(common);
             effect->SetModel(part == 3 ? "Gimmicks/copy_essence_halo" : "Gimmicks/copy_essence_spark");
-            effect->SetColliderType(ColliderType::kNone);
+            effect->SetColliderType(ColliderType::None);
             effect->SetCollisionAttribute(0);
             effect->SetCollisionMask(0);
             effect->SetEnableLighting(false);
             effect->SetEnableEnvMap(false);
             effect->SetCastShadow(false);
-            effect->SetBlendMode(BlendMode::kAdd);
+            effect->SetBlendMode(BlendMode::Add);
             effect->SetEmissive(1.0f);
             effect->SetIsVisible(false);
         }
@@ -126,7 +126,7 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3dCommon* common, const 
     using Self = GimmickCopyMemoryStation;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "コピー記憶台",
         "操作キー不要で、浮いている能力エッセンスへ触れると変身します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
 
     // 旧4枠は読むだけなら保持し、ユーザーが能力を選び直した時だけ単体へ変更します。
     properties.Accessor<std::string>("コピー能力", "copyMemoryTypeA", "param.copyMemoryTypeA",
@@ -191,7 +191,7 @@ void GimmickCopyMemoryStation::Draw(ID3D12Resource* pointLightResource, ID3D12Re
         return;
     }
 
-    for (const std::unique_ptr<engine::Object3d>& core : coreVisuals_) {
+    for (const std::unique_ptr<engine::Object3D>& core : coreVisuals_) {
         if (core && core->GetIsVisible()) {
             core->Draw(pointLightResource, spotLightResource);
         }
@@ -203,7 +203,7 @@ void GimmickCopyMemoryStation::Draw(ID3D12Resource* pointLightResource, ID3D12Re
     }
 }
 
-bool GimmickCopyMemoryStation::OnCollision(engine::Object3d* other) {
+bool GimmickCopyMemoryStation::OnCollision(engine::Object3D* other) {
     // コアごとの接触を調べ、同じ接触が続く間の連続取得を防ぎます。
     auto* player = dynamic_cast<Player*>(other);
     SceneManager* sceneManager = SceneManager::GetInstance();
@@ -243,7 +243,7 @@ void GimmickCopyMemoryStation::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickCopyMemoryStation::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickCopyMemoryStation::Clone() const {
     // 内部見本は初期化で作り直し、設定された能力種別だけコピーします。
     auto clone = std::make_unique<GimmickCopyMemoryStation>();
     assert(GetObjectCommon() != nullptr);
@@ -330,7 +330,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
             ConfigureCore(index, configuredType);
         }
 
-        engine::Object3d* core = coreVisuals_[index].get();
+        engine::Object3D* core = coreVisuals_[index].get();
 
         if (!core || !core->GetIsVisible()) {
             continue;
@@ -395,7 +395,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
         core->Update(deltaTime);
 
         // 見本モデルはObjectManagerへ登録しない内部描画物です。
-        // Object3d::Updateは描画定数の確定をObjectManagerへ遅延するため、
+        // Object3D::Updateは描画定数の確定をObjectManagerへ遅延するため、
         // ここで明示的に確定しないと初期位置へ重なり、カメラへ張り付いて見えます。
         core->UpdateWorldMatrix();
         UpdateCoreEffects(index, deltaTime, approach, visualScale);
@@ -479,7 +479,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
 void GimmickCopyMemoryStation::ConfigureCore(size_t index, const std::string& enemyType) {
     // 能力カタログに登録された型だけ対応モデルを表示します。
     displayedTypes_[index] = enemyType;
-    engine::Object3d* core = coreVisuals_[index].get();
+    engine::Object3D* core = coreVisuals_[index].get();
     const PlayerCopyTypeDescriptor* descriptor = PlayerCopyTypeCatalog::Find(enemyType);
 
     if (!core || !descriptor) {
@@ -576,5 +576,5 @@ void GimmickCopyMemoryStation::ActivateCore(Player& player, size_t index) {
     selectionCooldown_ = kSelectionCooldown;
     corePulseTimers_[index] = kPulseDuration;
     transferTargets_[index] = player.GetWorldPosition() + engine::Vector3{0.0f, 0.5f, 0.0f};
-    VFXSequencer::PlayOneShot(kActivationCue, player.GetWorldPosition(), {0.65f, 0.65f, 0.65f});
+    VfxSequencer::PlayOneShot(kActivationCue, player.GetWorldPosition(), {0.65f, 0.65f, 0.65f});
 }

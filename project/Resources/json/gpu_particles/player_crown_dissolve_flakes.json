@@ -1,0 +1,68 @@
+{
+  "emitPos": [
+    0,
+    0,
+    0
+  ],
+  "emitArea": [
+    0.03,
+    0.03,
+    0.03
+  ],
+  "emitVelocity": [
+    0,
+    1.65,
+    0
+  ],
+  "emitCount": 2,
+  "emitLife": 0.2,
+  "velocityVariance": 0.38,
+  "baseColor": [
+    1.5,
+    1.1,
+    0.42,
+    0.88
+  ],
+  "midColor": [
+    1.15,
+    0.72,
+    0.25,
+    0.75
+  ],
+  "endColor": [
+    0.39,
+    0.17,
+    0.52,
+    0
+  ],
+  "colorMidTime": 0.1,
+  "colorEaseType": 0,
+  "colorIntensity": 1.2,
+  "baseSize": 0.035,
+  "midSize": 0.075,
+  "endSize": 0.008,
+  "sizeMidTime": 0.12,
+  "sizeEaseType": 2,
+  "rotSpeed": 4,
+  "blendModeIndex": 1,
+  "envGravity": [
+    0,
+    -2.4,
+    0
+  ],
+  "envDrag": 1.5,
+  "envWind": [
+    0,
+    0,
+    0
+  ],
+  "envTurbulence": 0,
+  "isLooping": false,
+  "emitInterval": 0.1,
+  "shapeType": 2,
+  "shapeRadius": 0.12,
+  "shapeAngle": 55,
+  "softParticleFade": 0.12,
+  "maxParticles": 512,
+  "texturePath": "Resources/sprite/particle/diamond_shard.png"
+}

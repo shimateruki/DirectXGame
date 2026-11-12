@@ -5,9 +5,21 @@
             "guid": "63926d58-8c12-4c25-a24b-698159fb28d3",
             "type": "Camera",
             "saveCategory": "Camera",
-            "position": [2.6, 6.07, 21.2],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
+            "position": [
+                2.6,
+                6.07,
+                21.2
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
             "camera": {
                 "version": 1,
                 "enabled": true,
@@ -17,7 +29,11 @@
                 "farClip": 1000.0,
                 "eyeSource": 0,
                 "targetMode": 0,
-                "fixedTarget": [0.0, 4.57, 43.2],
+                "fixedTarget": [
+                    0.0,
+                    4.57,
+                    43.2
+                ],
                 "blendInDuration": 0.0,
                 "blendOutDuration": 0.0,
                 "easing": 4
@@ -28,9 +44,21 @@
             "guid": "d826981b-308d-4d2b-ad5f-bf76e9ab3ff9",
             "type": "Camera",
             "saveCategory": "Camera",
-            "position": [2.6, 6.84, 15.0],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
+            "position": [
+                2.6,
+                6.84,
+                15.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
             "camera": {
                 "version": 1,
                 "enabled": true,
@@ -40,7 +68,11 @@
                 "farClip": 1000.0,
                 "eyeSource": 0,
                 "targetMode": 0,
-                "fixedTarget": [0.0, 5.744, -16.0],
+                "fixedTarget": [
+                    0.0,
+                    5.744,
+                    -16.0
+                ],
                 "blendInDuration": 0.5,
                 "blendOutDuration": 0.0,
                 "easing": 4
@@ -51,9 +83,21 @@
             "guid": "66ce025f-8729-4eaa-8da8-18e82790dfaa",
             "type": "Camera",
             "saveCategory": "Camera",
-            "position": [0.0, 8.0, 40.0],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
+            "position": [
+                0.0,
+                8.0,
+                40.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
             "camera": {
                 "version": 1,
                 "enabled": true,
@@ -63,10 +107,18 @@
                 "farClip": 1000.0,
                 "eyeSource": 1,
                 "eyeObjectName": "Stage3_HighCrown_Player",
-                "eyeOffset": [0.0, 7.5, 11.5],
+                "eyeOffset": [
+                    0.0,
+                    7.5,
+                    11.5
+                ],
                 "targetMode": 1,
                 "targetObjectName": "Stage3_HighCrown_Player",
-                "targetOffset": [0.0, 3.8, 0.0],
+                "targetOffset": [
+                    0.0,
+                    3.8,
+                    0.0
+                ],
                 "blendInDuration": 1.0,
                 "blendOutDuration": 0.0,
                 "easing": 4
@@ -77,9 +129,21 @@
             "guid": "c0980e75-3bb8-45aa-87a4-bde221e486d7",
             "type": "Camera",
             "saveCategory": "Camera",
-            "position": [0.0, 0.0, 0.0],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
             "camera": {
                 "version": 1,
                 "enabled": true,
@@ -91,10 +155,18 @@
                 "eyeSource": 2,
                 "eyeObjectName": "Stage3_HighCrown_VictoryCrown",
                 "eyeReferenceObjectName": "Stage3_HighCrown_Player",
-                "eyeOffset": [2.9, 3.4, 7.4],
+                "eyeOffset": [
+                    2.9,
+                    3.4,
+                    7.4
+                ],
                 "targetMode": 1,
                 "targetObjectName": "Stage3_HighCrown_VictoryCrown",
-                "targetOffset": [0.0, 1.15, 0.0],
+                "targetOffset": [
+                    0.0,
+                    1.15,
+                    0.0
+                ],
                 "blendInDuration": 0.32,
                 "blendOutDuration": 0.0,
                 "easing": 4
@@ -105,9 +177,21 @@
             "guid": "6017a854-7b44-4822-a4df-1374a89be80b",
             "type": "Camera",
             "saveCategory": "Camera",
-            "position": [0.0, 0.0, 0.0],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
             "camera": {
                 "version": 1,
                 "enabled": true,
@@ -118,14 +202,827 @@
                 "farClip": 1000.0,
                 "eyeSource": 1,
                 "eyeObjectName": "Stage3_HighCrown_VictoryCrown",
-                "eyeOffset": [6.2, 3.3, 7.4],
+                "eyeOffset": [
+                    6.2,
+                    3.3,
+                    7.4
+                ],
                 "targetMode": 1,
                 "targetObjectName": "Stage3_HighCrown_VictoryCrown",
-                "targetOffset": [0.0, 1.0, 0.0],
+                "targetOffset": [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
                 "blendInDuration": 1.5,
                 "blendOutDuration": 0.96,
                 "easing": 4
             }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 5,
+                "eyeObjectName": "Stage3_HighCrown_Player",
+                "eyeOffset": [
+                    0,
+                    18,
+                    14
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.85,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 5,
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_Player",
+                "targetOffset": [
+                    -1.5,
+                    1,
+                    -4
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        0,
+                        5,
+                        89.5
+                    ],
+                    "size": [
+                        44,
+                        40,
+                        23
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.0,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "pathEnd": [
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "06becce2-1248-5d6d-9dd8-8bf60fba5dbd",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage3_Shot_01_Entry",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                0,
+                16.52,
+                105
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 5,
+                "eyeObjectName": "Stage3_HighCrown_Player",
+                "eyeOffset": [
+                    0,
+                    23,
+                    32
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.8,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 5,
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_Player",
+                "targetOffset": [
+                    0,
+                    2,
+                    -8
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        0.0,
+                        5.0,
+                        54.5
+                    ],
+                    "size": [
+                        48,
+                        40,
+                        21
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.0,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "pathEnd": [
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "58f76781-6968-5c99-8fbe-1f886c874f4a",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage3_Shot_02_Stairs",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                28.0,
+                86.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 5,
+                "eyeObjectName": "Stage3_HighCrown_Player",
+                "eyeOffset": [
+                    0,
+                    29,
+                    40
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.86,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 5,
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_Player",
+                "targetOffset": [
+                    0,
+                    2,
+                    -8
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        0.0,
+                        11.5,
+                        36.5
+                    ],
+                    "size": [
+                        114,
+                        53,
+                        15
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 30,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.0,
+                    "routeEnabled": true,
+                    "endCameraGuid": "d6fe87c5-99f9-593e-bc4b-1782e7cf012c",
+                    "pathStart": [
+                        0,
+                        0,
+                        44
+                    ],
+                    "pathEnd": [
+                        0,
+                        0,
+                        29
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "ca864108-5a5a-541b-9401-7dc2f6291547",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage3_Shot_03_ArenaEntry",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                40.5,
+                76.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 5,
+                "eyeObjectName": "Stage3_HighCrown_Player",
+                "eyeOffset": [
+                    0,
+                    42,
+                    59
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.94,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 5,
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_Player",
+                "targetOffset": [
+                    0,
+                    2,
+                    -10
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": false,
+                    "center": [
+                        0.0,
+                        11.5,
+                        36.5
+                    ],
+                    "size": [
+                        114,
+                        53,
+                        15
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 30,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.0,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "pathEnd": [
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "d6fe87c5-99f9-593e-bc4b-1782e7cf012c",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage3_Shot_03_ArenaEntry_End",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                40.5,
+                76.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 5,
+                "eyeObjectName": "",
+                "eyeOffset": [
+                    0,
+                    0,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 0,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    0,
+                    1,
+                    -30
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 1.0,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 5,
+                "targetMode": 0,
+                "targetObjectName": "",
+                "targetOffset": [
+                    0,
+                    2,
+                    -10
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        0.0,
+                        17.5,
+                        -10.0
+                    ],
+                    "size": [
+                        120,
+                        65,
+                        78
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 35,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.0,
+                    "routeEnabled": true,
+                    "endCameraGuid": "da45d0fe-cc41-5221-9e66-e17acfba4f24",
+                    "pathStart": [
+                        0,
+                        0,
+                        -44
+                    ],
+                    "pathEnd": [
+                        0,
+                        0,
+                        29
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "b461840b-8b0e-53af-a3e1-80d6d9307945",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage3_Shot_04_Battle",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                0,
+                51,
+                30
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 5,
+                "eyeObjectName": "",
+                "eyeOffset": [
+                    0,
+                    0,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 0,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    0,
+                    1,
+                    0
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 1.0,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 5,
+                "targetMode": 0,
+                "targetObjectName": "",
+                "targetOffset": [
+                    0,
+                    2,
+                    -10
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": false,
+                    "center": [
+                        0.0,
+                        17.5,
+                        -10.0
+                    ],
+                    "size": [
+                        120,
+                        65,
+                        78
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 35,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.0,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "pathEnd": [
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "da45d0fe-cc41-5221-9e66-e17acfba4f24",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage3_Shot_04_Battle_End",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                0,
+                55,
+                78
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 5,
+                "eyeObjectName": "Stage3_HighCrown_Player",
+                "eyeOffset": [
+                    0,
+                    18,
+                    14
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.85,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 5,
+                "targetMode": 1,
+                "targetObjectName": "Stage3_HighCrown_Player",
+                "targetOffset": [
+                    -1.5,
+                    1,
+                    -4
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        0,
+                        5,
+                        71.5
+                    ],
+                    "size": [
+                        44,
+                        40,
+                        13
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 21,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.0,
+                    "routeEnabled": true,
+                    "endCameraGuid": "58f76781-6968-5c99-8fbe-1f886c874f4a",
+                    "pathStart": [
+                        0,
+                        0,
+                        78
+                    ],
+                    "pathEnd": [
+                        0,
+                        0,
+                        65
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "edadfc28-1d50-56b3-af46-a518671e4eec",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage3_Shot_01_Approach",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                0,
+                16.52,
+                85.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
         }
     ]
 }

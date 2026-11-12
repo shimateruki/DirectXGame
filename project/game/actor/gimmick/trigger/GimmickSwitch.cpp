@@ -4,7 +4,7 @@
 #include "SceneManager.h"
 #include <cmath>
 
-void GimmickSwitch::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickSwitch::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -24,7 +24,7 @@ void GimmickSwitch::Initialize(engine::Object3dCommon* common, const std::string
     using Self = GimmickSwitch;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "汎用スイッチ",
         "Target IDと受信側のMy Event IDを合わせてください。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("スイッチ方式", "switchMode", &Parameter::switchMode, 0.0f, 3.0f,
         nullptr, {"押している間だけ", "押すたび切替", "一定時間だけ", "一度押すと保持"});
     properties.Parameter("有効時間", "interval", &Parameter::interval, 0.1f, 60.0f,
@@ -85,7 +85,7 @@ void GimmickSwitch::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickSwitch::OnCollision(engine::Object3d* other) {
+bool GimmickSwitch::OnCollision(engine::Object3D* other) {
     // プレイヤーが上から踏んだ接触だけ押下に数え、側面衝突を除外する。
     if (!other || other->GetClassName() != "Player")
         return true;
@@ -105,12 +105,12 @@ void GimmickSwitch::SendActive(bool active) {
         return;
 
     isOutputActive_ = active;
-    int targetID = GetTargetID();
-    if (targetID == -1)
+    int targetId = GetTargetId();
+    if (targetId == -1)
         return;
 
     if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
-        scene->SetEventActive(targetID, active);
+        scene->SetEventActive(targetId, active);
     }
 }
 
@@ -119,7 +119,7 @@ int GimmickSwitch::GetSwitchMode() const {
     return GetParameters().has_value() ? GetParameters()->switchMode : 0;
 }
 
-std::unique_ptr<engine::Object3d> GimmickSwitch::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickSwitch::Clone() const {
     // スイッチ固有の設定も含めて配置物を複製する。
     auto newObj = std::make_unique<GimmickSwitch>();
     assert(GetObjectCommon() != nullptr);

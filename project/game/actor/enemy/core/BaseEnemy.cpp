@@ -6,7 +6,7 @@
 #include "Event.h"           //  DamageEventを使うため
 #include "game/system/rules/EventManager.h"    //  イベントを発行(Dispatch)するため
 #include "Player.h"          //  プレイヤーの状態を見るため
-#include "Bullet.h"
+#include "game/actor/bullet/Bullet.h"
 
 #include "CollisionManager.h"
 #include "SceneManager.h"
@@ -15,13 +15,16 @@
 #include "ParticleSystem.h"
 #include "game/system/combat/HitEffectDirector.h"
 #include "MeshEffectManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include "GimmickCoin.h"
 #include "game/system/combat/GroundEffectLocator.h"
 
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <string_view>
+#include "ModelManager.h"
+#include "engine/graphics/3d/MeshRenderer.h"
 
 void BaseEnemy::BindSceneSpawnContext(BaseScene* scene) {
     // シーン登録後に目標を結び、生成順に依存してプレイヤー参照を失わないようにする。
@@ -66,6 +69,40 @@ constexpr float kEnemyLostDuration = 1.55f;
 constexpr float kEnemyNoticeCooldown = 1.25f;
 constexpr float kDamageReactionMinDuration = 0.22f;
 constexpr float kDamageReactionMaxDuration = 0.34f;
+constexpr float kEnemyHurtFaceSeconds = 0.18f;
+
+struct EnemyHurtFaceModel {
+    std::string_view baseName;
+    std::string_view fileName;
+    const char* hurtModel;
+};
+
+// 通常敵とボスの本体に対応する被弾素材。プリズムの目は固有クラスで切り替える。
+constexpr EnemyHurtFaceModel kEnemyHurtFaceModels[] = {
+    {"Characters/slime", "Characters/slime/slime.gltf", "Characters/slime/slime_hurt.gltf"},
+    {"Characters/slime_pink", "Characters/slime_pink/slime_pink.gltf", "Characters/slime_pink/slime_pink_hurt.gltf"},
+    {"Characters/slime_red", "Characters/slime_red/slime_red.gltf", "Characters/slime_red/slime_red_hurt.gltf"},
+    {"Characters/slime_yellow", "Characters/slime_yellow/slime_yellow.gltf", "Characters/slime_yellow/slime_yellow_hurt.gltf"},
+    {"Characters/slime_wind", "Characters/slime_wind/slime_wind.gltf", "Characters/slime_wind/slime_wind_hurt.gltf"},
+    {"Characters/slime_black", "Characters/slime_black/slime_black.gltf", "Characters/slime_black/slime_black_hurt.gltf"},
+    {"Characters/magma_slime", "Characters/magma_slime/magma_slime.obj", "Characters/magma_slime/magma_slime_hurt.obj"},
+    {"Characters/false_king_slime", "Characters/false_king_slime/false_king_slime.obj",
+     "Characters/false_king_slime/false_king_slime_hurt.obj"},
+    {"Characters/false_king_slime/false_king_slime_without_emblem",
+     "Characters/false_king_slime/false_king_slime_without_emblem.obj",
+     "Characters/false_king_slime/false_king_slime_without_emblem_hurt.obj"},
+};
+
+// 保存済みのフォルダー名・ファイル名の両方を受け取り、対応素材がない場合はnullptrを返す。
+const char* FindEnemyHurtFaceModel(std::string_view name) {
+    for (const auto& model : kEnemyHurtFaceModels) {
+        if (name == model.baseName || name == model.fileName) {
+            return model.hurtModel;
+        }
+    }
+    return nullptr;
+}
+
 
 float PlanarDistance(const engine::Vector3& a, const engine::Vector3& b) {
     // 高低差は索敵距離へ含めず、地上での追跡範囲を安定させる。
@@ -137,12 +174,16 @@ int GetCoinDropCountByEnemyType(const std::string& enemyType) {
 } // namespace
 
 // 基本初期化
-void BaseEnemy::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void BaseEnemy::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 1. 親クラス(Character)の初期化
     Character::Initialize(common);
 
     // 2. モデルをセット
     SetModel(modelName);
+    hurtFaceModel_ = nullptr;
+    if (const char* hurtModel = FindEnemyHurtFaceModel(GetModelName())) {
+        ModelManager::GetInstance()->LoadModel(hurtModel);
+    }
 
     // 3. 当たり判定の設定
     SetCollisionAttribute(CollisionCategories::Get("enemy")); // 自分は「敵」グループ
@@ -537,7 +578,7 @@ void BaseEnemy::DamageSlamTargets(const engine::Vector3& impactPosition, float i
     const float radius = kSlamRadiusBase + (std::clamp)((impactSpeed - kThrownSlamMinSpeed) * 0.06f, 0.0f, 1.8f);
     const float damage = CalculateSlamDamage(impactSpeed);
 
-    for (engine::Object3d* object : collisionManager->GetObjects()) {
+    for (engine::Object3D* object : collisionManager->GetObjects()) {
         if (!object || object == this || object->IsDead()) {
             continue;
         }
@@ -586,11 +627,15 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
     if (damageReactionTimer_ > 0.0f) {
         damageReactionTimer_ = (std::max)(0.0f, damageReactionTimer_ - deltaTime);
     }
+    if (hurtFaceModel_ && !IsHurtFaceActive()) {
+        ClearHurtFaceModel();
+    }
 }
 
-void BaseEnemy::PlayDamageReaction(engine::Object3d* attacker, const engine::Vector3& knockbackVelocity, float damage) {
+void BaseEnemy::PlayDamageReaction(engine::Object3D* attacker, const engine::Vector3& knockbackVelocity, float damage) {
     // 撃破演出中は新しいリアクションで姿勢を上書きしない。
     if (IsDead() || isDefeatEffectPlaying_ || isDefeatEffectFinished_) {
+        ClearHurtFaceModel();
         return;
     }
 
@@ -625,6 +670,37 @@ void BaseEnemy::PlayDamageReaction(engine::Object3d* attacker, const engine::Vec
         kDamageReactionMinDuration + (kDamageReactionMaxDuration - kDamageReactionMinDuration) * damageStrength;
     damageReactionTimer_ = damageReactionDuration_;
     colorResetTimer_ = (std::max)(colorResetTimer_, 0.11f);
+
+    if (!IsHurtFaceActive()) {
+        ClearHurtFaceModel();
+        return;
+    }
+
+    // プリズムは別描画の目で同じ時間を使うため、ここでは本体を差し替えない。
+    if (auto* renderer = GetMeshRenderer(); renderer &&
+        (!renderer->GetVisualModelOverride() || renderer->GetVisualModelOverride() == hurtFaceModel_)) {
+        if (const char* hurtModel = FindEnemyHurtFaceModel(GetModelName())) {
+            hurtFaceModel_ = ModelManager::GetInstance()->LoadModel(hurtModel);
+            if (hurtFaceModel_) {
+                renderer->SetVisualModelOverride(hurtFaceModel_);
+            }
+        }
+    }
+}
+
+bool BaseEnemy::IsHurtFaceActive() const {
+    const auto& parameters = GetParameters();
+    return damageReactionTimer_ > 0.0f && damageReactionDuration_ - damageReactionTimer_ < kEnemyHurtFaceSeconds &&
+           !IsDead() && !isDormant_ && !isCarried_ && !isDefeatEffectPlaying_ && !isDefeatEffectFinished_ &&
+           (!parameters || parameters->hp > 0.0f);
+}
+
+void BaseEnemy::ClearHurtFaceModel() {
+    if (auto* renderer = GetMeshRenderer(); hurtFaceModel_ && renderer &&
+        renderer->GetVisualModelOverride() == hurtFaceModel_) {
+        renderer->SetVisualModelOverride(nullptr);
+    }
+    hurtFaceModel_ = nullptr;
 }
 
 float BaseEnemy::GetDamageReactionWeight() const {
@@ -699,14 +775,14 @@ void BaseEnemy::EnsureNoticeMarkObject() {
         return;
     }
 
-    noticeMarkObject_ = std::make_unique<engine::Object3d>();
+    noticeMarkObject_ = std::make_unique<engine::Object3D>();
     noticeMarkObject_->Initialize(GetObjectCommon());
     noticeMarkObject_->SetName("__EnemyNoticeMark");
     noticeMarkObject_->SetClassName("Effect");
     noticeMarkObject_->SetModel(kEnemyDetectedMarkModel);
     noticeMarkObject_->SetTexture("Resources/sprite/common/white.png");
     noticeMarkObject_->SetMaterialType(0);
-    noticeMarkObject_->SetBlendMode(BlendMode::kNormal);
+    noticeMarkObject_->SetBlendMode(BlendMode::Normal);
     noticeMarkObject_->SetColor({1.0f, 0.88f, 0.16f, 1.0f});
     noticeMarkObject_->SetEmissive(4.0f);
     noticeMarkObject_->SetCollisionAttribute(0);
@@ -949,7 +1025,7 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
 
-    if (!scene || !scene->GetObject3dCommon()) {
+    if (!scene || !scene->GetObject3DCommon()) {
         return;
     }
 
@@ -977,7 +1053,7 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
 
     for (int i = 0; i < dropCount; ++i) {
         auto coin = std::make_unique<GimmickCoin>();
-        coin->Initialize(scene->GetObject3dCommon(), kEnemyDropCoinModel);
+        coin->Initialize(scene->GetObject3DCommon(), kEnemyDropCoinModel);
 
         const float angleBase = (kWanderPi * 2.0f / static_cast<float>(dropCount)) * static_cast<float>(i);
         const float angle = angleBase + (NextDropRandom(seed) - 0.5f) * 0.72f;
@@ -1022,13 +1098,13 @@ void BaseEnemy::BeginDefeatEffect() {
     SetCollisionMask(0);
     SetSelectedLighting(2);
     SetMaterialType(4);
-    SetBlendMode(BlendMode::kNormal);
+    SetBlendMode(BlendMode::Normal);
     SetEmissive(2.4f);
     SetColor({1.0f, 0.96f, 0.72f, 1.0f});
 
     engine::Vector3 cuePosition = GetWorldPosition();
     cuePosition.y += (std::max)(0.42f, defeatBaseScale_.y * 0.48f);
-    VFXSequencer::PlayOneShot(kEnemyDefeatPopSequence, cuePosition);
+    VfxSequencer::PlayOneShot(kEnemyDefeatPopSequence, cuePosition);
 
     const float rawBodyScale =
         (std::max)({0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z)});
@@ -1090,10 +1166,10 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
         SetIsVisible(false);
 
         if (BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr) {
-            const int defeatEventID = GetTargetID();
+            const int defeatEventId = GetTargetId();
 
-            if (defeatEventID > 0) {
-                scene->TriggerEvent(defeatEventID);
+            if (defeatEventId > 0) {
+                scene->TriggerEvent(defeatEventId);
             }
 
             scene->RequestRemoveObject(this);
@@ -1170,10 +1246,13 @@ void BaseEnemy::SetDormant(bool dormant) {
 
 // 個別AIが速度と状態を決めた後の共通更新です。休眠、撃破、運搬は通常物理より優先します。
 void BaseEnemy::Update(float deltaTime) {
+    if (hurtFaceModel_ && !IsHurtFaceActive()) {
+        ClearHurtFaceModel();
+    }
     if (isDormant_) {
         HideAttackTelegraph();
         SetVelocity({0.0f, 0.0f, 0.0f});
-        engine::Object3d::Update(deltaTime);
+        engine::Object3D::Update(deltaTime);
         return;
     }
 
@@ -1189,7 +1268,7 @@ void BaseEnemy::Update(float deltaTime) {
         }
 
         UpdateDefeatEffect(deltaTime);
-        engine::Object3d::Update(deltaTime);
+        engine::Object3D::Update(deltaTime);
         return;
     }
 
@@ -1389,7 +1468,7 @@ float BaseEnemy::GetActiveBodyAttackDamage() const {
     return (std::max)(0.0f, GetBodyAttackDamage());
 }
 
-bool BaseEnemy::OnCollision(engine::Object3d* other) {
+bool BaseEnemy::OnCollision(engine::Object3D* other) {
     if (isDormant_ || !other) {
         return false;
     }
@@ -1472,7 +1551,7 @@ void BaseEnemy::SetCarried(bool isCarried) {
         throwRecoveryTargetRotation_ = GetRotation();
 
         // --- 無力化 ---
-        // ★ 修正: Object3d の関数を使って完全に当たり判定を消滅させる！
+        // ★ 修正: Object3D の関数を使って完全に当たり判定を消滅させる！
         SetCollisionAttribute(0);
         SetCollisionMask(0);
 

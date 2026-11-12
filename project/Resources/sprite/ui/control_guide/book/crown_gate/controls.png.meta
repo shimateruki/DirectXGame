@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6271b861741b6501f433a6f29359a622",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown_gate/controls.png",
+  "version": 1
+}

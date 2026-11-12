@@ -55,7 +55,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             if (++frame < 3) return;
             auto* scene = manager->GetCurrentScene();
             actor = std::make_unique<Player>();
-            actor->Initialize(scene->GetObject3dCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
+            actor->Initialize(scene->GetObject3DCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
             actor->SetEditorInternal(true);
             actor->SetCollisionAttribute(0); actor->SetCollisionMask(0);
             actor->SetTranslate({0, 1000, 0}); actor->SetGrounded(true);
@@ -74,7 +74,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             frame = 0; phase = 2;
             return;
         }
-        constexpr float dt = 1.0f / 60;
+        constexpr float kFixedDeltaTime = 1.0f / 60;
         if (phase == 2 || phase == 3) {
             // 開始フレームの次からMove→物理→攻撃の順に進め、実プレイヤーと更新順を揃えます。
             PlayerCopyAbilityInput ability;
@@ -82,10 +82,10 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             ability.secondaryTriggered = frame > 0 && frame < 34;
             if (phase == 3 && frame == 5) input->value = {-10, 0, 0};
             if (phase == 3 && frame == 8) actor->SetMoveYaw(std::numbers::pi_v<float>);
-            mover->Update(dt);
+            mover->Update(kFixedDeltaTime);
             actor->SetCopyPreviewInput(ability);
-            actor->Update(dt);
-            const float elapsed = (frame + 1) * dt;
+            actor->Update(kFixedDeltaTime);
+            const float elapsed = (frame + 1) * kFixedDeltaTime;
             const int expectedBefore = phase == 2 ? 0 : 2;
             if (frame < 11) require(shots() == expectedBefore, "fireball emitted before windup");
             if (frame == 12) require(shots() == expectedBefore + 1, "fireball did not emit once");
@@ -108,10 +108,10 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
                 // 次の予備動作中にコピーを切り替え、古い発射イベントと減速を破棄する。
                 actor->SetCopyPreviewProfile(profile);
                 require(!actor->GetAttackMovement().enabled, "copy reset retained restriction");
-                actor->SetCopyPreviewInput({true, false, false, false, false}); actor->Update(dt);
-                for (int i = 0; i < 5; ++i) { actor->SetCopyPreviewInput({}); actor->Update(dt); }
+                actor->SetCopyPreviewInput({true, false, false, false, false}); actor->Update(kFixedDeltaTime);
+                for (int i = 0; i < 5; ++i) { actor->SetCopyPreviewInput({}); actor->Update(kFixedDeltaTime); }
                 actor->SetCopyPreviewProfile(profile);
-                for (int i = 0; i < 40; ++i) { actor->SetCopyPreviewInput({}); actor->Update(dt); }
+                for (int i = 0; i < 40; ++i) { actor->SetCopyPreviewInput({}); actor->Update(kFixedDeltaTime); }
                 require(shots() == expectedBefore + 2, "canceled attack fired later");
                 if (phase == 2) {
                     actor->SetTranslate({0, 1030, 0}); actor->SetVelocity({10, 4, 0}); actor->SetGrounded(false);

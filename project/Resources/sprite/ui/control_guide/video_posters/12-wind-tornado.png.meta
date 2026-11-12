@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e15d25d531f70b678ef15b5f2d61abdb",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/12-wind-tornado.png",
+  "version": 1
+}

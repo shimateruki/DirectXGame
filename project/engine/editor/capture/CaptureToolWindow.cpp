@@ -1,0 +1,1058 @@
+#define NOMINMAX
+#include "CaptureToolWindow.h"
+
+#include "DebugEditor.h"
+#include "DirectXCommon.h"
+#include "IconsFontAwesome5.h"
+#include "InputManager.h"
+#include "WinApp.h"
+#include "imgui.h"
+
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
+#include <wincodec.h>
+#include <wrl/client.h>
+
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <exception>
+#include <cmath>
+#include <cstring>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <system_error>
+#include <utility>
+#include <vector>
+
+#pragma comment(lib, "windowscodecs.lib")
+#pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "mfreadwrite.lib")
+#pragma comment(lib, "mfuuid.lib")
+
+namespace fs = std::filesystem;
+
+namespace {
+
+// 画像保存へ渡す CPU 側 BGRA 画素列。width と height はピクセル数。
+// 担当：撮影した画像の幅・高さ（ピクセル）とBGRA画素列。
+// 関連：CaptureToolWindowの内部処理だけで使う補助型。
+struct CapturedImage {
+    int width = 0;
+    int height = 0;
+    std::vector<unsigned char> bgra;
+};
+
+std::string HresultToString(HRESULT hr) {
+    std::ostringstream stream;
+    stream << "0x" << std::hex << std::uppercase << static_cast<unsigned long>(hr);
+    return stream.str();
+}
+
+std::string WideToUtf8(const std::wstring& text) {
+    // Windows APIから得た文字列を画面やレポートで使うUTF-8へ変換する。
+    if (text.empty()) {
+        return {};
+    }
+
+    int size = WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0, nullptr, nullptr);
+
+    if (size <= 0) {
+        return {};
+    }
+
+    std::string utf8(size, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), utf8.data(), size, nullptr, nullptr);
+    return utf8;
+}
+
+std::string PathToUtf8(const fs::path& path) {
+    return WideToUtf8(path.wstring());
+}
+
+std::string MakeTimestamp() {
+    // 撮影ファイルを時刻順に並べられる固定幅のローカル時刻を作る。
+    std::time_t now = std::time(nullptr);
+    std::tm localTime{};
+    localtime_s(&localTime, &now);
+
+    std::ostringstream stream;
+    stream << std::put_time(&localTime, "%Y%m%d_%H%M%S");
+    return stream.str();
+}
+
+fs::path GetCaptureRoot() {
+    // プロジェクト直下から起動した場合は成果物を親階層へ分けて保存する。
+    std::error_code ec;
+    fs::path root = fs::current_path(ec);
+
+    if (ec || root.empty()) {
+        root = fs::path(L".");
+    }
+
+    if (root.filename() == L"project" && root.has_parent_path()) {
+        return root.parent_path() / "captures";
+    }
+
+    return root / "captures";
+}
+
+fs::path GetScreenshotDirectory(CaptureToolWindow::ScreenshotTag tag) {
+    return GetCaptureRoot() /
+        (tag == CaptureToolWindow::ScreenshotTag::Slides ? "slides" : "debug");
+}
+
+fs::path MakeUniqueScreenshotPath(const fs::path& directory, const std::string& stem) {
+    // 同じ秒に連続撮影した画像や、用途変更先の既存ファイルを上書きしない。
+    for (int suffix = 1; suffix <= 9999; ++suffix) {
+        const fs::path candidate = directory /
+            (stem + (suffix == 1 ? "" : "_" + std::to_string(suffix)) + ".png");
+        std::error_code ec;
+
+        if (!fs::exists(candidate, ec)) {
+            return ec ? fs::path{} : candidate;
+        }
+    }
+
+    return {};
+}
+
+// 撮影矩形を全モニターを含む仮想画面の範囲へ収めます。
+RECT ClampRectToVirtualScreen(const RECT& source) {
+    // 複数モニターを含む仮想画面の外へ撮影矩形がはみ出さないようにする。
+    RECT screen{
+        GetSystemMetrics(SM_XVIRTUALSCREEN),
+        GetSystemMetrics(SM_YVIRTUALSCREEN),
+        GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN),
+        GetSystemMetrics(SM_YVIRTUALSCREEN) + GetSystemMetrics(SM_CYVIRTUALSCREEN)
+    };
+
+    RECT result{
+        std::max(source.left, screen.left),
+        std::max(source.top, screen.top),
+        std::min(source.right, screen.right),
+        std::min(source.bottom, screen.bottom)
+    };
+
+    return result;
+}
+
+// 動画エンコーダーに渡す矩形の幅・高さを偶数へ揃えます。
+RECT MakeEvenSizedRect(const RECT& source) {
+    // 動画エンコーダーに渡す幅と高さを偶数へ揃える。
+    RECT result = source;
+    int width = static_cast<int>(result.right - result.left);
+    int height = static_cast<int>(result.bottom - result.top);
+
+    if (width % 2 != 0) {
+        --width;
+    }
+
+    if (height % 2 != 0) {
+        --height;
+    }
+
+    result.right = result.left + std::max(2, width);
+    result.bottom = result.top + std::max(2, height);
+    return result;
+}
+
+// エンジンのメインウィンドウを優先して撮影対象のハンドルを取得します。
+HWND GetMainWindowHandle() {
+    // エンジンのメインウィンドウを優先し、取得前だけアクティブウィンドウへ後退する。
+    DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+
+    if (dxCommon && dxCommon->GetWinApp()) {
+        HWND hwnd = dxCommon->GetWinApp()->GetHwnd();
+
+        if (hwnd) {
+            return hwnd;
+        }
+    }
+
+    HWND active = GetActiveWindow();
+
+    if (active) {
+        return active;
+    }
+
+    return GetForegroundWindow();
+}
+
+bool ResolveClientRect(RECT& outRect, std::string& errorMessage) {
+    // クライアント座標を画面座標へ変換し、ウィンドウ枠を撮影範囲に含めない。
+    HWND hwnd = GetMainWindowHandle();
+
+    if (!hwnd || !::IsWindow(hwnd)) {
+        errorMessage = "メインウィンドウを取得できませんでした。";
+        return false;
+    }
+
+    RECT client{};
+
+    if (!::GetClientRect(hwnd, &client)) {
+        errorMessage = "クライアント領域を取得できませんでした。";
+        return false;
+    }
+
+    POINT topLeft{ client.left, client.top };
+    POINT bottomRight{ client.right, client.bottom };
+    ::ClientToScreen(hwnd, &topLeft);
+    ::ClientToScreen(hwnd, &bottomRight);
+    outRect = { topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
+    return true;
+}
+
+bool ResolveCaptureRect(DebugEditor* editor, CaptureToolWindow::CaptureArea area, bool forceGameViewClientCapture, RECT& outRect, std::string& errorMessage) {
+    // ウィンドウ全体と Game View の座標系を区別し、画面内の有効な矩形へ解決します。
+    switch (area) {
+    case CaptureToolWindow::CaptureArea::GameView: {
+        // 撮影モード中だけEditor UIがないため、ゲームだけを表示するクライアント領域を使う。
+        if (forceGameViewClientCapture) {
+            return ResolveClientRect(outRect, errorMessage);
+        }
+
+        int left = 0;
+        int top = 0;
+        int right = 0;
+        int bottom = 0;
+
+        if (!editor || !editor->GetGameViewScreenRect(left, top, right, bottom)) {
+            errorMessage = "Game Viewの画像領域を取得できません。Game Viewを表示してから撮影してください。";
+            return false;
+        }
+
+        outRect = { left, top, right, bottom };
+        outRect = ClampRectToVirtualScreen(outRect);
+        break;
+    }
+
+    case CaptureToolWindow::CaptureArea::Window: {
+        HWND hwnd = GetMainWindowHandle();
+
+        if (!hwnd || !GetWindowRect(hwnd, &outRect)) {
+            errorMessage = "ウィンドウ全体の撮影範囲を取得できませんでした。";
+            return false;
+        }
+
+        outRect = ClampRectToVirtualScreen(outRect);
+        break;
+    }
+
+    case CaptureToolWindow::CaptureArea::Desktop:
+        outRect = {
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+            GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN) + GetSystemMetrics(SM_CYVIRTUALSCREEN)
+        };
+
+        break;
+    }
+
+    if (outRect.right <= outRect.left || outRect.bottom <= outRect.top) {
+        errorMessage = "撮影範囲のサイズが不正です。";
+        return false;
+    }
+
+    return true;
+}
+
+bool CaptureScreenRect(const RECT& rect, CapturedImage& outImage, std::string& errorMessage) {
+    const int width = rect.right - rect.left;
+    const int height = rect.bottom - rect.top;
+
+    if (width <= 0 || height <= 0) {
+        errorMessage = "撮影範囲のサイズが不正です。";
+        return false;
+    }
+
+    HDC screenDc = GetDC(nullptr);
+
+    if (!screenDc) {
+        errorMessage = "画面のDCを取得できませんでした。";
+        return false;
+    }
+
+    // 上から下へ連続する32bit DIBを作り、画面DCから指定領域だけコピーする。
+    BITMAPINFO bitmapInfo{};
+    bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bitmapInfo.bmiHeader.biWidth = width;
+    bitmapInfo.bmiHeader.biHeight = -height;
+    bitmapInfo.bmiHeader.biPlanes = 1;
+    bitmapInfo.bmiHeader.biBitCount = 32;
+    bitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+    void* bits = nullptr;
+    HBITMAP bitmap = CreateDIBSection(screenDc, &bitmapInfo, DIB_RGB_COLORS, &bits, nullptr, 0);
+
+    if (!bitmap || !bits) {
+        ReleaseDC(nullptr, screenDc);
+        errorMessage = "キャプチャ用ビットマップを作成できませんでした。";
+        return false;
+    }
+
+    HDC memoryDc = CreateCompatibleDC(screenDc);
+
+    if (!memoryDc) {
+        DeleteObject(bitmap);
+        ReleaseDC(nullptr, screenDc);
+        errorMessage = "キャプチャ用DCを作成できませんでした。";
+        return false;
+    }
+
+    HGDIOBJ oldObject = SelectObject(memoryDc, bitmap);
+    BOOL copied = BitBlt(memoryDc, 0, 0, width, height, screenDc, rect.left, rect.top, SRCCOPY | CAPTUREBLT);
+
+    // 画素を読み取る前に選択中のGDIオブジェクトとDCだけを戻す。
+    if (oldObject) {
+        SelectObject(memoryDc, oldObject);
+    }
+
+    DeleteDC(memoryDc);
+    ReleaseDC(nullptr, screenDc);
+
+    if (!copied) {
+        DeleteObject(bitmap);
+        errorMessage = "画面のコピーに失敗しました。";
+        return false;
+    }
+
+    const size_t byteSize = static_cast<size_t>(width) * static_cast<size_t>(height) * 4u;
+    outImage.width = width;
+    outImage.height = height;
+    outImage.bgra.resize(byteSize);
+    std::memcpy(outImage.bgra.data(), bits, byteSize);
+    DeleteObject(bitmap);
+
+    // デスクトップの取得画素は透過を保証しないため、PNGでは不透明へ固定する。
+    for (size_t i = 3; i < outImage.bgra.size(); i += 4) {
+        outImage.bgra[i] = 255;
+    }
+
+    return true;
+}
+
+bool SavePngWithWic(const fs::path& path, const CapturedImage& image, std::string& errorMessage) {
+    if (image.width <= 0 || image.height <= 0 || image.bgra.empty()) {
+        errorMessage = "保存する画像データが空です。";
+        return false;
+    }
+
+    std::error_code ec;
+    fs::create_directories(path.parent_path(), ec);
+
+    if (ec) {
+        errorMessage = "保存先フォルダを作成できませんでした: " + ec.message();
+        return false;
+    }
+
+    // 呼び出しスレッド側のCOM状態に合わせて、ここで初期化した場合だけ終了処理を行う。
+    HRESULT coResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    const bool shouldUninitialize = SUCCEEDED(coResult);
+
+    if (FAILED(coResult) && coResult != RPC_E_CHANGED_MODE) {
+        errorMessage = "COMの初期化に失敗しました。";
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<IWICImagingFactory> factory;
+    HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
+
+    if (FAILED(hr)) {
+        if (shouldUninitialize) {
+            CoUninitialize();
+        }
+
+        errorMessage = "WIC Factoryを作成できませんでした。";
+        return false;
+    }
+
+    // Stream、Encoder、Frameの順に用意し、各段階のHRESULTを次へ伝える。
+    Microsoft::WRL::ComPtr<IWICStream> stream;
+    hr = factory->CreateStream(&stream);
+
+    if (SUCCEEDED(hr)) {
+        hr = stream->InitializeFromFilename(path.wstring().c_str(), GENERIC_WRITE);
+    }
+
+    Microsoft::WRL::ComPtr<IWICBitmapEncoder> encoder;
+
+    if (SUCCEEDED(hr)) {
+        hr = factory->CreateEncoder(GUID_ContainerFormatPng, nullptr, &encoder);
+    }
+
+    if (SUCCEEDED(hr)) {
+        hr = encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache);
+    }
+
+    Microsoft::WRL::ComPtr<IWICBitmapFrameEncode> frame;
+
+    if (SUCCEEDED(hr)) {
+        hr = encoder->CreateNewFrame(&frame, nullptr);
+    }
+
+    if (SUCCEEDED(hr)) {
+        hr = frame->Initialize(nullptr);
+    }
+
+    if (SUCCEEDED(hr)) {
+        hr = frame->SetSize(static_cast<UINT>(image.width), static_cast<UINT>(image.height));
+    }
+
+    if (SUCCEEDED(hr)) {
+        WICPixelFormatGUID format = GUID_WICPixelFormat32bppBGRA;
+        hr = frame->SetPixelFormat(&format);
+    }
+
+    if (SUCCEEDED(hr)) {
+        const UINT stride = static_cast<UINT>(image.width * 4);
+        const UINT bufferSize = static_cast<UINT>(image.bgra.size());
+        hr = frame->WritePixels(static_cast<UINT>(image.height), stride, bufferSize, const_cast<BYTE*>(image.bgra.data()));
+    }
+
+    // 画素を書いたFrameを先に確定し、その後Encoderを確定してPNGの出力を完了する。
+    if (SUCCEEDED(hr)) {
+        hr = frame->Commit();
+    }
+
+    if (SUCCEEDED(hr)) {
+        hr = encoder->Commit();
+    }
+
+    if (shouldUninitialize) {
+        CoUninitialize();
+    }
+
+    if (FAILED(hr)) {
+        errorMessage = "PNG保存に失敗しました。";
+        return false;
+    }
+
+    return true;
+}
+
+} // namespace
+
+CaptureToolWindow::~CaptureToolWindow() {
+    StopRecordingWorker();
+    CloseRecordingResources();
+}
+
+void CaptureToolWindow::Initialize(DebugEditor* editor) {
+    // Game Viewの表示範囲を取得するため、Editor参照だけ保持します。
+    editor_ = editor;
+}
+
+void CaptureToolWindow::DrawImGui() {
+#ifdef USE_IMGUI
+    // 録画Workerの完了を先に反映してから、現在の撮影設定と操作を表示します。
+    UpdateRecording();
+
+    ImGui::TextColored(ImVec4(0.45f, 0.95f, 1.0f, 1.0f), ICON_FA_CAMERA " キャプチャツール");
+    ImGui::TextWrapped("スクリーンショットはPNG、録画はWindows Media Foundationで直接MP4として保存します。ffmpegは不要です。");
+    ImGui::TextDisabled("ショートカット: F = スクリーンショット / G = 録画開始・停止 / F10 = 撮影モード切替");
+    ImGui::TextDisabled("保存先: %s", PathToUtf8(GetCaptureRoot()).c_str());
+    ImGui::Separator();
+
+    // 録画Workerへ渡した矩形とFPSは開始時に固定されるため、録画中は設定変更を受け付けない。
+    ImGui::BeginDisabled(recording_);
+    int areaIndex = static_cast<int>(captureArea_);
+    constexpr std::array<const char*, 3> kCaptureAreas = {
+        "ゲーム画面のみ (Game View)",
+        "ウィンドウ全体",
+        "デスクトップ全体"
+    };
+
+    if (ImGui::Combo("撮影範囲", &areaIndex, kCaptureAreas.data(), static_cast<int>(kCaptureAreas.size()))) {
+        captureArea_ = static_cast<CaptureArea>(std::clamp(areaIndex, 0, static_cast<int>(kCaptureAreas.size()) - 1));
+    }
+
+    ImGui::SliderFloat("録画FPS", &recordFps_, 1.0f, 60.0f, "%.0f fps");
+    ImGui::EndDisabled();
+    int tagIndex = static_cast<int>(screenshotTag_);
+    constexpr std::array<const char*, 2> kScreenshotTags = {"スライド用", "デバッグ用"};
+
+    if (ImGui::Combo("スクショ用途", &tagIndex, kScreenshotTags.data(), static_cast<int>(kScreenshotTags.size()))) {
+        screenshotTag_ = static_cast<ScreenshotTag>(std::clamp(tagIndex, 0, static_cast<int>(kScreenshotTags.size()) - 1));
+    }
+
+    ImGui::TextDisabled("PNG保存先: %s", PathToUtf8(GetScreenshotDirectory(screenshotTag_)).c_str());
+
+    if (captureArea_ == CaptureArea::GameView) {
+        ImGui::TextDisabled("Game Viewの画像部分だけを保存します。タブやメニューバーは含みません。");
+    }
+
+    ImGui::Separator();
+
+    ImGui::BeginDisabled(recording_);
+
+    if (ImGui::Button(ICON_FA_CAMERA " スクリーンショット", ImVec2(210.0f, 0.0f))) {
+        CaptureScreenshot();
+    }
+
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    if (!recording_) {
+        if (ImGui::Button(ICON_FA_VIDEO " 録画開始", ImVec2(150.0f, 0.0f))) {
+            StartRecording();
+        }
+    } else {
+        if (ImGui::Button(ICON_FA_STOP " 録画停止", ImVec2(150.0f, 0.0f))) {
+            StopRecording();
+        }
+
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.35f, 1.0f), "REC MP4");
+
+        ImGui::TextDisabled(
+            "非同期録画: %llu frames / 取りこぼし %llu / 直近 %.1f ms",
+            static_cast<unsigned long long>(recordedFrameCount_.load(std::memory_order_relaxed)),
+            static_cast<unsigned long long>(skippedFrameCount_.load(std::memory_order_relaxed)),
+            lastRecordingFrameCostMs_.load(std::memory_order_relaxed));
+    }
+
+    ImGui::Separator();
+    ImGui::TextWrapped("%s", statusText_.c_str());
+
+    if (!lastOutputPath_.empty()) {
+        ImGui::TextWrapped("最後の出力: %s", PathToUtf8(lastOutputPath_).c_str());
+    }
+
+    if (!lastScreenshotPath_.empty()) {
+        const bool canRetag = lastScreenshotPath_.parent_path() != GetScreenshotDirectory(screenshotTag_);
+        ImGui::BeginDisabled(!canRetag);
+
+        if (ImGui::Button("直前のスクショを選択中の用途へ移動")) {
+            RetagLastScreenshot();
+        }
+
+        ImGui::EndDisabled();
+    }
+#endif
+}
+
+void CaptureToolWindow::UpdateHotkeys() {
+    // テキスト編集中は撮影キーを奪わず、録画状態の更新だけ続けます。
+    UpdateRecording();
+
+#ifdef USE_IMGUI
+    bool canUseShortcut = true;
+
+    if (ImGui::GetCurrentContext()) {
+        const ImGuiIO& io = ImGui::GetIO();
+        canUseShortcut = !io.WantTextInput && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper;
+    }
+
+    if (!canUseShortcut) {
+        return;
+    }
+#endif
+
+    engine::InputManager* input = engine::InputManager::GetInstance();
+
+    if (!input) {
+        return;
+    }
+
+    if (!recording_ && input->IsKeyTriggered(DIK_F)) {
+        CaptureScreenshot();
+    }
+
+    if (input->IsKeyTriggered(DIK_G)) {
+        if (recording_) {
+            StopRecording();
+        } else {
+            StartRecording();
+        }
+    }
+}
+
+void CaptureToolWindow::CaptureScreenshot() {
+    // 用途ごとのフォルダへ保存し、成功した画像だけ後から分類し直せるようにする。
+    const fs::path output = MakeUniqueScreenshotPath(
+        GetScreenshotDirectory(screenshotTag_), "screenshot_" + MakeTimestamp());
+    if (output.empty()) {
+        statusText_ = "保存先の空きファイル名を決定できませんでした。";
+        return;
+    }
+
+    if (CaptureToFile(output)) {
+        lastOutputPath_ = output;
+        lastScreenshotPath_ = output;
+        statusText_ = "スクリーンショットを保存しました: " + PathToUtf8(output);
+    }
+}
+
+void CaptureToolWindow::RetagLastScreenshot() {
+    if (lastScreenshotPath_.empty()) {
+        return;
+    }
+
+    const fs::path directory = GetScreenshotDirectory(screenshotTag_);
+
+    if (lastScreenshotPath_.parent_path() == directory) {
+        return;
+    }
+
+    std::error_code ec;
+    fs::create_directories(directory, ec);
+
+    if (ec) {
+        statusText_ = "用途フォルダを作成できませんでした: " + ec.message();
+        return;
+    }
+
+    const fs::path destination = MakeUniqueScreenshotPath(directory, lastScreenshotPath_.stem().string());
+
+    if (destination.empty()) {
+        statusText_ = "移動先の空きファイル名を決定できませんでした。";
+        return;
+    }
+
+    // 実ファイルの移動が成功してから履歴を更新し、失敗時は元の保存先を表示し続ける。
+    fs::rename(lastScreenshotPath_, destination, ec);
+
+    if (ec) {
+        statusText_ = "スクリーンショットを移動できませんでした: " + ec.message();
+        return;
+    }
+
+    if (lastOutputPath_ == lastScreenshotPath_) {
+        lastOutputPath_ = destination;
+    }
+
+    lastScreenshotPath_ = destination;
+    statusText_ = "スクリーンショットの用途を変更しました: " + PathToUtf8(destination);
+}
+
+bool CaptureToolWindow::CaptureGameViewToFile(const fs::path& path) {
+    // 一時的にGame Viewへ範囲を切り替え、撮影後は元の設定へ戻します。
+    const CaptureArea previousArea = captureArea_;
+    captureArea_ = CaptureArea::GameView;
+    const bool succeeded = CaptureToFile(path);
+    captureArea_ = previousArea;
+
+    if (succeeded) {
+        lastOutputPath_ = path;
+        statusText_ = "Game Viewを保存しました。";
+    }
+
+    return succeeded;
+}
+
+void CaptureToolWindow::StartRecording() {
+    // Worker起動前に撮影矩形を確定し、無効な領域では録画を始めません。
+    if (recording_) {
+        return;
+    }
+
+    RECT captureRect{};
+    std::string errorMessage;
+
+    if (!ResolveCaptureRect(editor_, captureArea_, forceGameViewClientCapture_, captureRect, errorMessage)) {
+        statusText_ = errorMessage;
+        return;
+    }
+
+    captureRect = MakeEvenSizedRect(captureRect);
+    const int width = static_cast<int>(captureRect.right - captureRect.left);
+    const int height = static_cast<int>(captureRect.bottom - captureRect.top);
+
+    if (width < 2 || height < 2) {
+        statusText_ = "録画範囲が小さすぎます。";
+        return;
+    }
+
+    std::error_code ec;
+    fs::create_directories(GetCaptureRoot(), ec);
+
+    if (ec) {
+        statusText_ = "録画保存先フォルダを作成できませんでした: " + ec.message();
+        return;
+    }
+
+    // 前回Workerを回収した後に、今回の完了フラグ・統計・結果メッセージを初期化する。
+    StopRecordingWorker();
+    recordingTimestamp_ = MakeTimestamp();
+    recordingOutputPath_ = GetCaptureRoot() / ("recording_" + recordingTimestamp_ + ".mp4");
+    recordingFps_ = std::clamp(recordFps_, 1.0f, 60.0f);
+    recordingStopRequested_.store(false, std::memory_order_release);
+    recordingWorkerFinished_.store(false, std::memory_order_release);
+    recordingWorkerSucceeded_.store(false, std::memory_order_release);
+    recordedFrameCount_.store(0, std::memory_order_relaxed);
+    skippedFrameCount_.store(0, std::memory_order_relaxed);
+    lastRecordingFrameCostMs_.store(0.0f, std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> lock(recordingResultMutex_);
+        recordingWorkerMessage_.clear();
+    }
+
+    try {
+        recordingWorker_ = std::thread(
+            &CaptureToolWindow::RecordingWorkerMain,
+            this,
+            recordingOutputPath_,
+            captureRect,
+            recordingFps_);
+    } catch (const std::system_error& error) {
+        statusText_ = "録画ワーカーを開始できませんでした: " + std::string(error.what());
+        return;
+    }
+
+    // スレッド作成が成功した時点で録画中へ切り替え、エンコーダー準備の成否は後で結果として受け取る。
+    recording_ = true;
+    statusText_ = "録画を開始しました。画面取得とMP4圧縮はバックグラウンドで実行しています。";
+}
+
+void CaptureToolWindow::StopRecording() {
+    // Workerの終了を待ってから結果を回収し、未書込の動画を成功扱いしません。
+    if (!recording_ && !recordingWorker_.joinable()) {
+        return;
+    }
+
+    StopRecordingWorker();
+    ApplyRecordingWorkerResult();
+}
+
+void CaptureToolWindow::UpdateRecording() {
+    // Workerが非同期に終了した場合も、UI側で停止処理と結果表示を完了します。
+    if (!recording_) {
+        return;
+    }
+
+    if (recordingWorkerFinished_.load(std::memory_order_acquire)) {
+        StopRecordingWorker();
+        ApplyRecordingWorkerResult();
+    }
+}
+
+void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRect, float fps) {
+    // キャプチャと動画エンコードを描画スレッドから切り離して実行します。
+    std::string resultMessage;
+    bool succeeded = false;
+
+    try {
+        succeeded = StartMediaFoundationRecording(outputPath, captureRect, fps, resultMessage);
+
+        if (succeeded) {
+            using Clock = std::chrono::steady_clock;
+            const auto frameInterval = std::chrono::duration_cast<Clock::duration>(
+                std::chrono::duration<double>(1.0 / static_cast<double>(std::max(fps, 1.0f))));
+            const auto recordingStart = Clock::now();
+            auto nextFrameTime = recordingStart;
+
+            // 実際の取得時刻をMP4のPresentation Timeへ変換する。
+            while (!recordingStopRequested_.load(std::memory_order_acquire)) {
+                {
+                    std::unique_lock<std::mutex> lock(recordingWaitMutex_);
+
+                    if (recordingWaitCondition_.wait_until(lock, nextFrameTime, [this]() {
+                            return recordingStopRequested_.load(std::memory_order_acquire);
+                        })) {
+                        break;
+                    }
+                }
+
+                const auto frameStart = Clock::now();
+                const LONGLONG sampleTime100ns = static_cast<LONGLONG>(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(frameStart - recordingStart).count() / 100);
+                if (!WriteRecordingFrame(sampleTime100ns, resultMessage)) {
+                    succeeded = false;
+                    break;
+                }
+
+                recordedFrameCount_.fetch_add(1, std::memory_order_relaxed);
+                const auto frameEnd = Clock::now();
+                const float frameCostMs = std::chrono::duration<float, std::milli>(frameEnd - frameStart).count();
+                lastRecordingFrameCostMs_.store(frameCostMs, std::memory_order_relaxed);
+
+                nextFrameTime += frameInterval;
+
+                if (nextFrameTime <= frameEnd) {
+                    // 遅延分のフレームは撮影し直さず、次の予定時刻まで飛ばして負荷の累積を防ぐ。
+                    const auto skipped = static_cast<std::uint64_t>((frameEnd - nextFrameTime) / frameInterval) + 1u;
+                    skippedFrameCount_.fetch_add(skipped, std::memory_order_relaxed);
+                    nextFrameTime += frameInterval * static_cast<Clock::duration::rep>(skipped);
+                }
+            }
+
+            // 録画停止時もSink Writerを確定しないと、MP4の索引が未完成になる。
+            HRESULT finalizeResult = S_OK;
+
+            if (sinkWriter_) {
+                finalizeResult = sinkWriter_->Finalize();
+            }
+
+            if (FAILED(finalizeResult)) {
+                succeeded = false;
+                resultMessage = "MP4の保存確定に失敗しました: " + HresultToString(finalizeResult);
+            } else if (succeeded) {
+                resultMessage = "録画を停止し、MP4を保存しました。";
+            }
+        }
+    } catch (const std::exception& error) {
+        succeeded = false;
+        resultMessage = "録画ワーカーで例外が発生しました: " + std::string(error.what());
+    } catch (...) {
+        succeeded = false;
+        resultMessage = "録画ワーカーで不明な例外が発生しました。";
+    }
+
+    // COMと録画資源は使用したWorker内で片付けてから、完了メッセージとフラグを公開する。
+    CloseRecordingResources();
+    {
+        std::lock_guard<std::mutex> lock(recordingResultMutex_);
+        recordingWorkerMessage_ = std::move(resultMessage);
+    }
+
+    recordingWorkerSucceeded_.store(succeeded, std::memory_order_release);
+    recordingWorkerFinished_.store(true, std::memory_order_release);
+}
+
+void CaptureToolWindow::StopRecordingWorker() {
+    // 停止要求を通知し、自スレッドをjoinしないようにしてWorkerを回収します。
+    recordingStopRequested_.store(true, std::memory_order_release);
+    recordingWaitCondition_.notify_all();
+
+    if (recordingWorker_.joinable() && recordingWorker_.get_id() != std::this_thread::get_id()) {
+        recordingWorker_.join();
+    }
+}
+
+void CaptureToolWindow::ApplyRecordingWorkerResult() {
+    // Worker共有メッセージをロック下で読み、UIの録画状態へ確定します。
+    recording_ = false;
+
+    std::string workerMessage;
+    {
+        std::lock_guard<std::mutex> lock(recordingResultMutex_);
+        workerMessage = recordingWorkerMessage_;
+    }
+
+    if (recordingWorkerSucceeded_.load(std::memory_order_acquire)) {
+        lastOutputPath_ = recordingOutputPath_;
+        statusText_ = workerMessage.empty() ? "録画を停止し、MP4を保存しました。" : workerMessage;
+    } else {
+        statusText_ = workerMessage.empty() ? "録画を完了できませんでした。" : workerMessage;
+    }
+}
+
+bool CaptureToolWindow::CaptureToFile(const fs::path& path) {
+    // 選択した画面範囲を確定してから画素を取得し、PNGへ保存します。
+    RECT rect{};
+    std::string errorMessage;
+
+    if (!ResolveCaptureRect(editor_, captureArea_, forceGameViewClientCapture_, rect, errorMessage)) {
+        statusText_ = errorMessage;
+        return false;
+    }
+
+    CapturedImage image;
+
+    if (!CaptureScreenRect(rect, image, errorMessage)) {
+        statusText_ = errorMessage;
+        return false;
+    }
+
+    if (!SavePngWithWic(path, image, errorMessage)) {
+        statusText_ = errorMessage;
+        return false;
+    }
+
+    return true;
+}
+
+bool CaptureToolWindow::StartMediaFoundationRecording(
+    const fs::path& outputPath,
+    const RECT& captureRect,
+    float fps,
+    std::string& errorMessage) {
+    CloseRecordingResources();
+
+    HRESULT coResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+    if (FAILED(coResult) && coResult != RPC_E_CHANGED_MODE) {
+        errorMessage = "COMの初期化に失敗しました: " + HresultToString(coResult);
+        return false;
+    }
+
+    recordingComInitialized_ = SUCCEEDED(coResult);
+
+    HRESULT hr = MFStartup(MF_VERSION);
+
+    if (FAILED(hr)) {
+        if (recordingComInitialized_) {
+            CoUninitialize();
+            recordingComInitialized_ = false;
+        }
+
+        errorMessage = "Media Foundationの初期化に失敗しました: " + HresultToString(hr);
+        return false;
+    }
+
+    mediaFoundationStarted_ = true;
+
+    recordingRect_ = captureRect;
+    recordingWidth_ = static_cast<int>(recordingRect_.right - recordingRect_.left);
+    recordingHeight_ = static_cast<int>(recordingRect_.bottom - recordingRect_.top);
+    // フレーム長はMedia Foundationの100ns単位へ変換し、サンプルの時刻も同じ単位で渡す。
+    recordingFrameDuration100ns_ = static_cast<LONGLONG>(
+        10000000.0 / static_cast<double>(std::max(fps, 1.0f)));
+
+    // 対応GPUがある環境ではH.264のハードウェア変換を優先し、SinkWriter側の待機は無効化する。
+    Microsoft::WRL::ComPtr<IMFAttributes> writerAttributes;
+
+    if (SUCCEEDED(MFCreateAttributes(&writerAttributes, 2))) {
+        writerAttributes->SetUINT32(MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, TRUE);
+        writerAttributes->SetUINT32(MF_SINK_WRITER_DISABLE_THROTTLING, TRUE);
+    }
+
+    Microsoft::WRL::ComPtr<IMFSinkWriter> writer;
+    hr = MFCreateSinkWriterFromURL(
+        outputPath.wstring().c_str(),
+        nullptr,
+        writerAttributes.Get(),
+        &writer);
+    if (FAILED(hr)) {
+        CloseRecordingResources();
+        errorMessage = "MP4書き込み先の作成に失敗しました: " + HresultToString(hr);
+        return false;
+    }
+
+    // 保存先の圧縮形式をH.264で定義し、続く入力形式とは別に解像度とFPSを設定する。
+    Microsoft::WRL::ComPtr<IMFMediaType> outputType;
+    hr = MFCreateMediaType(&outputType);
+    if (SUCCEEDED(hr))
+        hr = outputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+    if (SUCCEEDED(hr))
+        hr = outputType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+    if (SUCCEEDED(hr))
+        hr = outputType->SetUINT32(MF_MT_AVG_BITRATE, 8000000);
+    if (SUCCEEDED(hr))
+        hr = outputType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+    if (SUCCEEDED(hr))
+        hr = MFSetAttributeSize(outputType.Get(), MF_MT_FRAME_SIZE, static_cast<UINT32>(recordingWidth_), static_cast<UINT32>(recordingHeight_));
+    if (SUCCEEDED(hr))
+        hr = MFSetAttributeRatio(outputType.Get(), MF_MT_FRAME_RATE, static_cast<UINT32>(std::round(fps)), 1);
+    if (SUCCEEDED(hr))
+        hr = MFSetAttributeRatio(outputType.Get(), MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+    if (SUCCEEDED(hr))
+        hr = writer->AddStream(outputType.Get(), &videoStreamIndex_);
+
+    // 画面から取得するRGB32を入力形式に指定し、Sink WriterにH.264への変換を任せる。
+    Microsoft::WRL::ComPtr<IMFMediaType> inputType;
+    if (SUCCEEDED(hr))
+        hr = MFCreateMediaType(&inputType);
+    if (SUCCEEDED(hr))
+        hr = inputType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+    if (SUCCEEDED(hr))
+        hr = inputType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
+    if (SUCCEEDED(hr))
+        hr = inputType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+    if (SUCCEEDED(hr))
+        hr = MFSetAttributeSize(inputType.Get(), MF_MT_FRAME_SIZE, static_cast<UINT32>(recordingWidth_), static_cast<UINT32>(recordingHeight_));
+    if (SUCCEEDED(hr))
+        hr = MFSetAttributeRatio(inputType.Get(), MF_MT_FRAME_RATE, static_cast<UINT32>(std::round(fps)), 1);
+    if (SUCCEEDED(hr))
+        hr = MFSetAttributeRatio(inputType.Get(), MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+    if (SUCCEEDED(hr))
+        hr = writer->SetInputMediaType(videoStreamIndex_, inputType.Get(), nullptr);
+    if (SUCCEEDED(hr))
+        hr = writer->BeginWriting();
+
+    if (FAILED(hr)) {
+        CloseRecordingResources();
+        errorMessage = "MP4エンコーダーの準備に失敗しました: " + HresultToString(hr);
+        return false;
+    }
+
+    // 書込開始まで成功したWriterだけを録画資源へ移し、終了処理で解放する。
+    sinkWriter_ = writer.Detach();
+    return true;
+}
+
+bool CaptureToolWindow::WriteRecordingFrame(LONGLONG sampleTime100ns, std::string& errorMessage) {
+    if (!sinkWriter_) {
+        errorMessage = "録画ライターが初期化されていません。";
+        return false;
+    }
+
+    // 同じ録画スレッド内で画素バッファを再利用し、毎フレームの再確保を避ける。
+    thread_local CapturedImage image;
+
+    if (!CaptureScreenRect(recordingRect_, image, errorMessage)) {
+        return false;
+    }
+
+    const DWORD bufferSize = static_cast<DWORD>(image.bgra.size());
+    Microsoft::WRL::ComPtr<IMFMediaBuffer> buffer;
+    HRESULT hr = MFCreateMemoryBuffer(bufferSize, &buffer);
+    BYTE* destination = nullptr;
+    DWORD maxLength = 0;
+    if (SUCCEEDED(hr))
+        hr = buffer->Lock(&destination, &maxLength, nullptr);
+    if (SUCCEEDED(hr)) {
+        if (maxLength < bufferSize) {
+            hr = E_FAIL;
+        } else {
+            // キャプチャの上から下への画素列を、RGB32動画入力に合わせて行単位で上下反転する。
+            const size_t stride = static_cast<size_t>(image.width) * 4u;
+
+            for (int y = 0; y < image.height; ++y) {
+                const size_t sourceOffset = static_cast<size_t>(image.height - 1 - y) * stride;
+                const size_t destinationOffset = static_cast<size_t>(y) * stride;
+                std::memcpy(destination + destinationOffset, image.bgra.data() + sourceOffset, stride);
+            }
+        }
+    }
+
+    if (destination) {
+        buffer->Unlock();
+    }
+
+    if (SUCCEEDED(hr))
+        hr = buffer->SetCurrentLength(bufferSize);
+
+    // 画素バッファに取得時刻とフレーム長を付け、圧縮側へ一枚のサンプルとして渡す。
+    Microsoft::WRL::ComPtr<IMFSample> sample;
+    if (SUCCEEDED(hr))
+        hr = MFCreateSample(&sample);
+    if (SUCCEEDED(hr))
+        hr = sample->AddBuffer(buffer.Get());
+    if (SUCCEEDED(hr))
+        hr = sample->SetSampleTime(sampleTime100ns);
+    if (SUCCEEDED(hr))
+        hr = sample->SetSampleDuration(recordingFrameDuration100ns_);
+    if (SUCCEEDED(hr))
+        hr = sinkWriter_->WriteSample(videoStreamIndex_, sample.Get());
+
+    if (FAILED(hr)) {
+        errorMessage = "録画フレームの書き込みに失敗しました: " + HresultToString(hr);
+        return false;
+    }
+
+    return true;
+}
+
+void CaptureToolWindow::CloseRecordingResources() {
+    // Media FoundationのWriterを解放してからランタイムを終了します。
+    if (sinkWriter_) {
+        sinkWriter_->Release();
+        sinkWriter_ = nullptr;
+    }
+
+    if (mediaFoundationStarted_) {
+        MFShutdown();
+        mediaFoundationStarted_ = false;
+    }
+
+    if (recordingComInitialized_) {
+        CoUninitialize();
+        recordingComInitialized_ = false;
+    }
+}

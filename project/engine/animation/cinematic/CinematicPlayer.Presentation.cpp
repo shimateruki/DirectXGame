@@ -4,7 +4,7 @@
 #include "SceneManager.h"
 #include "CameraManager.h"
 #include "PostEffect.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include <algorithm>
 #include <cmath>
 #include <unordered_set>
@@ -65,8 +65,8 @@ std::vector<CinematicPlayer::AudioEntry> CinematicPlayer::GetAudioEntries() {
     return audioEntries_ ? audioEntries_() : std::vector<AudioEntry>{};
 }
 
-std::unordered_set<engine::Object3d*> CinematicPlayer::GetLiveTargets() const {
-    std::unordered_set<engine::Object3d*> live;
+std::unordered_set<engine::Object3D*> CinematicPlayer::GetLiveTargets() const {
+    std::unordered_set<engine::Object3D*> live;
     if (sceneManager_ && sceneManager_->GetCurrentScene()==boundScene_ && boundScene_)
         for (const auto& object:boundScene_->GetObjects())
             if (object && !object->IsReplayRemoved()) live.insert(object.get());
@@ -81,16 +81,16 @@ void CinematicPlayer::PreparePresentation() {
     for (const auto& clip:sequence_->presentation.objects) {
         PresentationObject s;
         s.source=ResolveTarget({clip.source,-1});
-        if (clip.spawn && s.source && boundScene_->GetObject3dCommon()) {
-            s.owned=std::make_unique<engine::Object3d>();
-            s.owned->Initialize(boundScene_->GetObject3dCommon());
+        if (clip.spawn && s.source && boundScene_->GetObject3DCommon()) {
+            s.owned=std::make_unique<engine::Object3D>();
+            s.owned->Initialize(boundScene_->GetObject3DCommon());
             if (!clip.model.empty()) s.owned->SetModel(clip.model);
             s.target=s.owned.get();
             s.target->SetName(clip.name); s.target->SetEditorInternal(true);
             s.target->SetCollisionAttribute(0); s.target->SetCollisionMask(0);
             s.target->SetMaterialType(clip.additive?1:0); s.target->SetEnableLighting(clip.lit);
             s.target->SetEnableEnvMap(clip.lit); s.target->SetEnvIntensity(0.55f);
-            if (clip.additive) s.target->SetBlendMode(BlendMode::kAdd);
+            if (clip.additive) s.target->SetBlendMode(BlendMode::Add);
         } else if (!clip.spawn) s.target=ResolveTarget({clip.name,-1});
         presentationObjects_.push_back(std::move(s));
     }
@@ -133,7 +133,7 @@ void CinematicPlayer::AddPresentationIssues(std::vector<std::string>& issues) co
 }
 
 std::optional<engine::Vector3> CinematicPlayer::PresentationPosition(const std::string& name,
-    const std::unordered_set<engine::Object3d*>& live) const {
+    const std::unordered_set<engine::Object3D*>& live) const {
     if (positionResolver_)
         if (const auto position=positionResolver_({name,-1})) return position;
     auto* target=ResolveTarget({name,-1});
@@ -225,7 +225,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
         s.target->SetColor(k.color); s.target->SetEmissive(k.emissive);
         s.target->SetIsVisible(k.visible && (!clip.inheritVisibility || s.source->GetIsVisible()));
         {
-            engine::Object3d::PortalClipSettings clipSettings;
+            engine::Object3D::PortalClipSettings clipSettings;
             clipSettings.enabled=k.clipEnabled; clipSettings.progress=0;
             clipSettings.center=position+engine::Vector3{0,k.clipHeight*(clip.clipScaleHeight?pose.scale.y:1.0f)+clip.clipCenterOffset,0};
             clipSettings.normal={0,1,0}; clipSettings.edgeWidth=clip.clipEdgeWidth;
@@ -250,7 +250,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
                     const auto d=s.origin-position; const float length=std::sqrt(d.x*d.x+d.z*d.z);
                     if (length>0.001f) direction={d.x/length,clip.direction.y,d.z/length};
                 }
-                GPUParticleManager::GetInstance()->EmitDirected(clip.preset,position,direction,clip.scale);
+                GpuParticleManager::GetInstance()->EmitDirected(clip.preset,position,direction,clip.scale);
             }
         }
     if (presentationCamera_ && !p.view.empty()) {

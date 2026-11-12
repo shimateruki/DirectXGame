@@ -49,14 +49,14 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 // MeshRenderer 基本更新
 // ------------------------------------------------------------------------
 // GPUバッファ初期化、カメラ依存データ更新、通常更新を担当する。
-// 材質設定、LOD、特殊マテリアル、影描画は別ファイルへ分けて見通しを保つ。
+// 材質設定、モデル、特殊マテリアル、影描画は別ファイルへ分けて見通しを保つ。
 // ========================================================================
 MeshRenderer::MeshRenderer(Transform* transform) {
     assert(transform);
     transform_ = transform;
 }
 
-void MeshRenderer::Initialize(engine::Object3dCommon* common) {
+void MeshRenderer::Initialize(engine::Object3DCommon* common) {
     assert(common);
     common_ = common;
     DirectXCommon* dxCommon = common_->GetDxCommon();
@@ -67,16 +67,16 @@ void MeshRenderer::Initialize(engine::Object3dCommon* common) {
         return;
     }
 
-    wvpData_->WVP = engine::Math::MakeIdentity4x4();
+    wvpData_->wvp = engine::Math::MakeIdentity4x4();
     wvpData_->world = engine::Math::MakeIdentity4x4();
 
     // 3. Cameraバッファ
-    if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGPU), cameraResource_, cameraData_, "Camera")) {
+    if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGpu), cameraResource_, cameraData_, "Camera")) {
         common_ = nullptr;
         return;
     }
 
-    cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
+    *cameraData_ = {};
 
     // Camera Previewでは通常描画用のWVP/Camera定数を上書きしないよう、専用バッファを使います。
     // 右パネルPreviewと演出用Previewを同じフレームで描くため、GPU実行前の上書きを避ける目的で2面分確保します。
@@ -86,16 +86,16 @@ void MeshRenderer::Initialize(engine::Object3dCommon* common) {
             return;
         }
 
-        previewWvpData_[i]->WVP = engine::Math::MakeIdentity4x4();
+        previewWvpData_[i]->wvp = engine::Math::MakeIdentity4x4();
         previewWvpData_[i]->world = engine::Math::MakeIdentity4x4();
-        previewWvpData_[i]->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
+        previewWvpData_[i]->worldInverseTranspose = engine::Math::MakeIdentity4x4();
 
-        if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGPU), previewCameraResources_[i], previewCameraData_[i], "PreviewCamera")) {
+        if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGpu), previewCameraResources_[i], previewCameraData_[i], "PreviewCamera")) {
             common_ = nullptr;
             return;
         }
 
-        previewCameraData_[i]->worldPosition = { 0.0f, 0.0f, 0.0f };
+        *previewCameraData_[i] = {};
     }
 
     // 4. Materialバッファ
@@ -131,9 +131,9 @@ void MeshRenderer::Initialize(engine::Object3dCommon* common) {
         return;
     }
 
-    shadowWvpData_->WVP = engine::Math::MakeIdentity4x4();
+    shadowWvpData_->wvp = engine::Math::MakeIdentity4x4();
     shadowWvpData_->world = engine::Math::MakeIdentity4x4();
-    shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
+    shadowWvpData_->worldInverseTranspose = engine::Math::MakeIdentity4x4();
 
     if (!CreateMappedBuffer(dxCommon, sizeof(LocalFogData), localFogResource_, localFogData_, "LocalFog")) {
         common_ = nullptr;
@@ -143,12 +143,13 @@ void MeshRenderer::Initialize(engine::Object3dCommon* common) {
     localFogData_->fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // 毒沼カラー
     localFogData_->fogDensity = 0.5f;
 
-    if (!CreateMappedBuffer(dxCommon, sizeof(WaterParamForGPU), waterParamResource_, waterParamData_, "WaterParam")) {
+    if (!CreateMappedBuffer(dxCommon, sizeof(WaterParamForGpu), waterParamResource_, waterParamData_, "WaterParam")) {
         common_ = nullptr;
         return;
     }
 
     // デフォルト値のセット
+    *waterParamData_ = {};
     waterParamData_->time = 0.0f;
     waterParamData_->waveSpeed = 2.0f;
     waterParamData_->waveHeight = 0.5f;
@@ -178,7 +179,7 @@ void MeshRenderer::Initialize(engine::Object3dCommon* common) {
         padding = 0.0f;
 
     for (int i = 0; i < kPreviewBufferCount; ++i) {
-        if (!CreateMappedBuffer(dxCommon, sizeof(WaterParamForGPU),
+        if (!CreateMappedBuffer(dxCommon, sizeof(WaterParamForGpu),
             previewWaterResources_[i], previewWaterData_[i], "PreviewWater")) {
             common_ = nullptr;
             return;
@@ -257,33 +258,34 @@ void MeshRenderer::RefreshCameraDependentData() {
         const engine::Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
         const engine::Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
 
-        wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
+        wvpData_->wvp = math.Multiply(worldMatrix, viewProj);
         wvpData_->world = worldMatrix;
-        wvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
+        wvpData_->worldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
         cameraData_->worldPosition = camera->GetEye();
+        UpdateCameraVisibility(camera);
         waterParamData_->cameraWorldPosition = camera->GetEye();
         waterParamData_->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
         localFogData_->cameraPos = camera->GetEye();
         localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
     } else {
-        wvpData_->WVP = engine::Math::MakeIdentity4x4();
+        wvpData_->wvp = engine::Math::MakeIdentity4x4();
         wvpData_->world = engine::Math::MakeIdentity4x4();
     }
 
-    if (isUIPreview_) {
+    if (isUiPreview_) {
         // UIプレビューにはワールド影を投影しない。
-        shadowWvpData_->WVP = engine::Math::MakeIdentity4x4();
+        shadowWvpData_->wvp = engine::Math::MakeIdentity4x4();
         shadowWvpData_->world = engine::Math::MakeIdentity4x4();
-        shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
+        shadowWvpData_->worldInverseTranspose = engine::Math::MakeIdentity4x4();
         return;
     }
 
     const engine::Matrix4x4& lightVP =
         LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
     const engine::Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
-    shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
+    shadowWvpData_->wvp = math.Multiply(shadowWorld, lightVP);
     shadowWvpData_->world = shadowWorld;
-    shadowWvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
+    shadowWvpData_->worldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
 }
 
 void MeshRenderer::AdvanceWaterAnimation(float deltaTime) {
@@ -355,10 +357,11 @@ void MeshRenderer::Update() {
             // Transform側ですでに計算されたワールド行列を使う
             const engine::Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
 
-            wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
+            wvpData_->wvp = math.Multiply(worldMatrix, viewProj);
             wvpData_->world = worldMatrix;
-            wvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
+            wvpData_->worldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
             cameraData_->worldPosition = camera->GetEye();
+        UpdateCameraVisibility(camera);
 
             if (waterParamData_) {
                 waterParamData_->cameraWorldPosition = camera->GetEye();
@@ -368,16 +371,16 @@ void MeshRenderer::Update() {
             localFogData_->cameraPos = camera->GetEye();
             localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
         } else {
-            wvpData_->WVP = engine::Math::MakeIdentity4x4();
+            wvpData_->wvp = engine::Math::MakeIdentity4x4();
             wvpData_->world = engine::Math::MakeIdentity4x4();
         }
 
-        if (isUIPreview_) {
+        if (isUiPreview_) {
             if (shadowWvpData_) {
                 // 影マップの影響を受けないように、行列を初期化しておく
-                shadowWvpData_->WVP = engine::Math::MakeIdentity4x4();
+                shadowWvpData_->wvp = engine::Math::MakeIdentity4x4();
                 shadowWvpData_->world = engine::Math::MakeIdentity4x4();
-                shadowWvpData_->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
+                shadowWvpData_->worldInverseTranspose = engine::Math::MakeIdentity4x4();
             }
 
             return; 
@@ -387,10 +390,60 @@ void MeshRenderer::Update() {
             const engine::Matrix4x4& lightVP =
                 LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
             const engine::Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
-            shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
+            shadowWvpData_->wvp = math.Multiply(shadowWorld, lightVP);
             shadowWvpData_->world = shadowWorld;
-            shadowWvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
+            shadowWvpData_->worldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
         }
     }
 }
 
+
+void MeshRenderer::UpdateCameraVisibility(Camera* camera) {
+    if (!cameraData_ || !waterParamData_) return;
+    auto* manager = CameraManager::GetInstance();
+    const auto& frame = manager->GetVisibilityFrame();
+    const bool allowed = !isUiPreview_ && manager->CanFadeObject(visibilityOwner_, camera);
+    if (!allowed) {
+        visibilityAmount_ = 0.0f;
+        cameraData_->visibilityParameters = {};
+        waterParamData_->visibilityParameters = {};
+        waterParamData_->foregroundBarrierCenter = {};
+        waterParamData_->foregroundBarrierParameters = {};
+        return;
+    }
+    if (visibilitySerial_ != frame.serial) {
+        // モデル境界で候補だけ絞る。最後の前後関係と円形範囲は画素ごとに判定する。
+        const auto bounds = visibilityOwner_->GetModelWorldAabb();
+        const engine::Vector3 center{frame.centerRadius.x, frame.centerRadius.y, frame.centerRadius.z};
+        const auto eye = camera->GetEye();
+        const auto delta = center - eye;
+        const float length = engine::Math::Length(delta);
+        bool intersects = false;
+        if (length > frame.parameters.w + 0.1f) {
+            const auto direction = delta * (1.0f / length);
+            const auto boxCenter = (bounds.min + bounds.max) * 0.5f;
+            const float boxRadius = engine::Math::Length(bounds.max - bounds.min) * 0.5f;
+            const float along = engine::Math::Dot(boxCenter - eye, direction);
+            const float t = std::clamp(along, 0.0f, length);
+            const float radius = frame.centerRadius.w * t / length;
+            intersects = along + boxRadius > 0.0f && along - boxRadius < length - frame.parameters.w &&
+                engine::Math::Length(boxCenter - (eye + direction * t)) <= boxRadius + radius;
+        }
+        // 専用バリアは代理メッシュで描画するため、元モデルの境界では候補を棄却しない。
+        if (GetMaterialType() == 22) intersects = true;
+        visibilitySerial_ = frame.serial;
+        const auto& settings = camera->GetVisibilitySettings();
+        const float duration = intersects ? settings.fadeIn : settings.fadeOut;
+        const float alpha = 1.0f - std::exp(-frame.deltaTime * 3.0f / duration);
+        visibilityAmount_ += ((intersects ? 1.0f : 0.0f) - visibilityAmount_) * alpha;
+    }
+    cameraData_->visibilityCenterRadius = frame.centerRadius;
+    cameraData_->visibilityParameters = frame.parameters;
+    cameraData_->visibilityParameters.x *= visibilityAmount_;
+    waterParamData_->visibilityCenterRadius = cameraData_->visibilityCenterRadius;
+    waterParamData_->visibilityParameters = cameraData_->visibilityParameters;
+    // 特殊バリアだけが参照する定数。通常区画では有効な重みが0になります。
+    waterParamData_->foregroundBarrierCenter = frame.foregroundBarrierCenter;
+    waterParamData_->foregroundBarrierCenter.w *= visibilityAmount_;
+    waterParamData_->foregroundBarrierParameters = frame.foregroundBarrierParameters;
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e2e8704554ab4cdf32fbb3e60e11fc6b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/18-crown-one.png",
+  "version": 1
+}

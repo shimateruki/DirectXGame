@@ -18,7 +18,7 @@
 #include <Windows.h> // OutputDebugStringA用
 
 // 生成するクラス群のインクルード
-#include "Object3d.h"
+#include "Object3D.h"
 #include "CollisionConfig.h"
 #include "Sprite.h"
 #include "Player.h"
@@ -76,14 +76,14 @@ bool IsSlimeModelName(std::string modelName) {
     return modelName.find("Characters/slime") != std::string::npos;
 }
 
-void ApplySlimeSoftMaterialIfStandard(engine::Object3d* object) {
+void ApplySlimeSoftMaterialIfStandard(engine::Object3D* object) {
     // エディターで明示した材質は尊重し、標準材質の時だけ柔らかい見た目へ変える。
     if (object && object->GetMaterialType() == 0) {
         object->SetMaterialType(kSlimeSoftMaterialType);
     }
 }
 
-void ApplySlimeMaterialDefault(engine::Object3d* object) {
+void ApplySlimeMaterialDefault(engine::Object3D* object) {
     if (!object) {
         return;
     }
@@ -112,40 +112,6 @@ void ApplySlimeMaterialDefault(engine::Object3d* object) {
     }
 
     ApplySlimeSoftMaterialIfStandard(object);
-}
-
-void ApplyLodConfig(engine::Object3d* object, const json& objData) {
-    // 個々の配置物の LOD 設定を読み、未設定なら既存の描画設定を保つ。
-    if (!object || !objData.contains("lod") || !objData["lod"].is_object()) {
-        return;
-    }
-
-    const auto& lodJson = objData["lod"];
-    std::vector<engine::Object3d::LodLevel> levels;
-
-    if (lodJson.contains("levels") && lodJson["levels"].is_array()) {
-        for (const auto& levelJson : lodJson["levels"]) {
-            if (!levelJson.is_object()) {
-                continue;
-            }
-
-            engine::Object3d::LodLevel level;
-            level.level = levelJson.value("level", 0);
-            level.modelName = levelJson.value("modelName", "");
-            level.distance = levelJson.value("distance", 0.0f);
-
-            if (level.level > 0 && !level.modelName.empty()) {
-                levels.push_back(level);
-            }
-        }
-    }
-
-    // 有効な段階だけを登録し、空の設定では既存のLOD構成を消しません。
-    if (!levels.empty()) {
-        object->SetLodLevels(levels);
-    }
-
-    object->SetLodEnabled(lodJson.value("enabled", true));
 }
 
 // 3数値の配列だけを読みます。形式が違う場合は出力値を維持してfalseを返します。
@@ -445,7 +411,7 @@ bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) 
     scene->EnsureUniquePersistentObjectGuids();
 
     for (auto const& [childObj, parentReference] : parentPendingList_) {
-        engine::Object3d* parentObj = scene->FindObjectByPersistentGuid(parentReference.guid);
+        engine::Object3D* parentObj = scene->FindObjectByPersistentGuid(parentReference.guid);
 
         if (!parentObj && !parentReference.legacyName.empty()) {
             for (auto& obj : objects) {
@@ -483,7 +449,7 @@ float LevelLoader::GetObjectLayoutLoadProgress() const {
 // JSON一件ごとに種類別のFactoryで生成し、保存値の復元後にランタイム参照をつなぎます。
 bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, size_t& remainingObjects) {
     auto& objects = scene->GetObjects();
-    engine::Object3dCommon* object3dCommon = scene->GetObject3dCommon();
+    engine::Object3DCommon* object3dCommon = scene->GetObject3DCommon();
 
     try {
         if (!pendingFileLoaded_) {
@@ -522,7 +488,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 std::string name = objData["name"].get<std::string>();
 
                 // 1. 既存チェック
-                engine::Object3d* targetObject = nullptr;
+                engine::Object3D* targetObject = nullptr;
 
                 for (auto& obj : objects) {
                     if (obj && !obj->GetName().empty() && obj->GetName() == name) {
@@ -533,7 +499,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                 // 2. 新規生成
                 if (!targetObject && object3dCommon) {
-                    std::unique_ptr<engine::Object3d> newObj = nullptr;
+                    std::unique_ptr<engine::Object3D> newObj = nullptr;
 
                     std::string enemyType = "";
 
@@ -611,7 +577,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                         // スポーン時のコールバック
                         spawner->SetOnSpawnCallback([scene, spawnEnemyType](const engine::Vector3& spawnPos) {
                             auto newEnemy =
-                                EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, scene->GetObject3dCommon());
+                                EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, scene->GetObject3DCommon());
                             if (newEnemy) {
                                 newEnemy->SetTranslate(spawnPos);
                                 newEnemy->UpdateLocalMatrix();
@@ -653,7 +619,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                     // パターンF: 通常オブジェクト
                     else {
-                        newObj = std::make_unique<engine::Object3d>();
+                        newObj = std::make_unique<engine::Object3D>();
                         newObj->Initialize(object3dCommon);
                     }
 
@@ -704,7 +670,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                 if (objData.contains("prefabInstance") && objData["prefabInstance"].is_object()) {
                     const auto& prefab = objData["prefabInstance"];
-                    engine::Object3d::PrefabInstanceInfo info;
+                    engine::Object3D::PrefabInstanceInfo info;
                     info.assetId = prefab.value("assetId", "");
                     info.prefabName = prefab.value("prefabName", "");
                     info.instanceId = prefab.value("instanceId", "");
@@ -719,8 +685,8 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                     targetObject->SetModel("Editor/camera_gizmo");
                     targetObject->SetColor({0.25f, 0.75f, 1.0f, 1.0f});
                     targetObject->SetCastShadow(false);
-                    engine::Object3d::ColliderConfig cameraCollider;
-                    cameraCollider.type = ColliderType::kNone;
+                    engine::Object3D::ColliderConfig cameraCollider;
+                    cameraCollider.type = ColliderType::None;
                     targetObject->SetColliderConfig(cameraCollider);
 
                     if (objData.contains("camera")) {
@@ -881,7 +847,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 // 5. Collider
                 if (!targetObject->IsCameraObject() && objData.contains("collider")) {
                     json colData = objData["collider"];
-                    engine::Object3d::ColliderConfig config = targetObject->GetColliderConfig();
+                    engine::Object3D::ColliderConfig config = targetObject->GetColliderConfig();
                     if (colData.contains("type"))
                         config.type = (ColliderType)colData["type"].get<int>();
                     if (colData.contains("center")) {
@@ -969,7 +935,6 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
                 ApplySlimeMaterialDefault(targetObject);
                 GameplayStatusManager::GetInstance()->ApplyManagedStatus(targetObject, true);
-                ApplyLodConfig(targetObject, objData);
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();
 

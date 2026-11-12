@@ -3,9 +3,11 @@
 #include "engine/utility/math/Math.h"
 #include "Event.h"
 
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 
 // ダメージや攻撃ヒットに応じて、適切な GPU 粒子/破片エフェクトを呼び出す窓口
+// 関連：GameRuleや攻撃処理からヒット情報を受け、粒子・破片などの表示を起動する。
+// 主な入口：SpawnDamageEventHit / SpawnEnemyAbilityHit
 class HitEffectDirector {
   public:
     // 弾力のある命中演出はVFXシーケンス側の時間設定で再生する。
@@ -28,7 +30,7 @@ class HitEffectDirector {
 
     // ダメージ成立後に呼ぶ。攻撃者・対象のどちらかがなければ何も出さない。
     // knockbackVelocity は打撃面の向きとエフェクト配置に使うワールド空間の速度。
-    static void SpawnDamageEventHit(engine::Object3d* target, engine::Object3d* attacker, const engine::Vector3& knockbackVelocity,
+    static void SpawnDamageEventHit(engine::Object3D* target, engine::Object3D* attacker, const engine::Vector3& knockbackVelocity,
                                     DamageType damageType = DamageType::Physical);
 
     // 地面に広がる衝撃波・破片の高さを共通Locatorで求める。

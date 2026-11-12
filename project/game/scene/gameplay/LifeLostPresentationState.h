@@ -34,6 +34,7 @@ class LifeLostPresentationState {
     // 呼び出し側の経過時間を加算します。負値の補正は行いません。
     void Advance(float deltaTime) { timer_ += deltaTime; }
 
+    // 残機数を減らす表示を実行済みとし、同じ演出中の二重更新を防ぐ。
     void MarkNumberDropped() { numberDropped_ = true; }
 
     // 再生を終え、後続の画面遷移まで暗転を保持します。

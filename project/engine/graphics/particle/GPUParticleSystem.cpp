@@ -1,6 +1,6 @@
-#include "GPUParticleSystem.h"
+#include "GpuParticleSystem.h"
 #include "RenderStats.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include <d3dcompiler.h>
 #include <cassert>
 #include "DebugConsole.h"
@@ -15,7 +15,7 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
-void GPUParticleSystem::Initialize(DirectXCommon* dxCommon, uint32_t maxParticles) {
+void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, uint32_t maxParticles) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     maxParticles_ = std::clamp(maxParticles, kMinParticles, kMaxParticles);
@@ -23,7 +23,7 @@ void GPUParticleSystem::Initialize(DirectXCommon* dxCommon, uint32_t maxParticle
     CreateComputePipeline();
 }
 
-void GPUParticleSystem::CreateBuffer() {
+void GpuParticleSystem::CreateBuffer() {
     auto device = dxCommon_->GetDevice();
 
     // UAVバッファ作成
@@ -76,34 +76,34 @@ void GPUParticleSystem::CreateBuffer() {
     assert(SUCCEEDED(hr));
 
     // Computeのu0～u4を一つのDescriptor Tableで渡すため、以下の5つは連続した順序で確保する。
-    uavIndex_ = SRVManager::GetInstance()->Allocate();
-    freeListIndexUav_ = SRVManager::GetInstance()->Allocate();
-    freeListUav_ = SRVManager::GetInstance()->Allocate();
-    aliveParticleIndexUav_ = SRVManager::GetInstance()->Allocate();
-    indirectDrawArgumentUav_ = SRVManager::GetInstance()->Allocate();
-    srvIndex_ = SRVManager::GetInstance()->Allocate();
-    aliveParticleIndexSrv_ = SRVManager::GetInstance()->Allocate();
+    uavIndex_ = SrvManager::GetInstance()->Allocate();
+    freeListIndexUav_ = SrvManager::GetInstance()->Allocate();
+    freeListUav_ = SrvManager::GetInstance()->Allocate();
+    aliveParticleIndexUav_ = SrvManager::GetInstance()->Allocate();
+    indirectDrawArgumentUav_ = SrvManager::GetInstance()->Allocate();
+    srvIndex_ = SrvManager::GetInstance()->Allocate();
+    aliveParticleIndexSrv_ = SrvManager::GetInstance()->Allocate();
 
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
     uavDesc.Format = DXGI_FORMAT_UNKNOWN;
     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
     uavDesc.Buffer.NumElements = maxParticles_;
     uavDesc.Buffer.StructureByteStride = sizeof(Particle);
-    device->CreateUnorderedAccessView(particleBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(uavIndex_));
+    device->CreateUnorderedAccessView(particleBuffer_.Get(), nullptr, &uavDesc, SrvManager::GetInstance()->GetCpuDescriptorHandle(uavIndex_));
 
     uavDesc.Buffer.NumElements = 1;
     uavDesc.Buffer.StructureByteStride = sizeof(int32_t);
-    device->CreateUnorderedAccessView(freeListIndexBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(freeListIndexUav_));
+    device->CreateUnorderedAccessView(freeListIndexBuffer_.Get(), nullptr, &uavDesc, SrvManager::GetInstance()->GetCpuDescriptorHandle(freeListIndexUav_));
 
     uavDesc.Buffer.NumElements = maxParticles_;
     uavDesc.Buffer.StructureByteStride = sizeof(uint32_t);
-    device->CreateUnorderedAccessView(freeListBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(freeListUav_));
+    device->CreateUnorderedAccessView(freeListBuffer_.Get(), nullptr, &uavDesc, SrvManager::GetInstance()->GetCpuDescriptorHandle(freeListUav_));
 
-    device->CreateUnorderedAccessView(aliveParticleIndexBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(aliveParticleIndexUav_));
+    device->CreateUnorderedAccessView(aliveParticleIndexBuffer_.Get(), nullptr, &uavDesc, SrvManager::GetInstance()->GetCpuDescriptorHandle(aliveParticleIndexUav_));
 
     uavDesc.Buffer.NumElements = 4;
     uavDesc.Buffer.StructureByteStride = sizeof(uint32_t);
-    device->CreateUnorderedAccessView(indirectDrawArgumentBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(indirectDrawArgumentUav_));
+    device->CreateUnorderedAccessView(indirectDrawArgumentBuffer_.Get(), nullptr, &uavDesc, SrvManager::GetInstance()->GetCpuDescriptorHandle(indirectDrawArgumentUav_));
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -111,11 +111,11 @@ void GPUParticleSystem::CreateBuffer() {
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
     srvDesc.Buffer.NumElements = maxParticles_;
     srvDesc.Buffer.StructureByteStride = sizeof(Particle);
-    SRVManager::GetInstance()->CreateSRVforResource(srvIndex_, particleBuffer_.Get(), srvDesc);
+    SrvManager::GetInstance()->CreateSrvForResource(srvIndex_, particleBuffer_.Get(), srvDesc);
 
     srvDesc.Buffer.NumElements = maxParticles_;
     srvDesc.Buffer.StructureByteStride = sizeof(uint32_t);
-    SRVManager::GetInstance()->CreateSRVforResource(aliveParticleIndexSrv_, aliveParticleIndexBuffer_.Get(), srvDesc);
+    SrvManager::GetInstance()->CreateSrvForResource(aliveParticleIndexSrv_, aliveParticleIndexBuffer_.Get(), srvDesc);
 
     // 0番は更新用、1番以降は各Emit用。CSConfigの256バイト境界により各CBVの先頭位置を揃える。
     configBuffer_ = dxCommon_->CreateBufferResource(sizeof(CSConfig) * (kMaxEmitRequests + 1));
@@ -151,8 +151,8 @@ void GPUParticleSystem::CreateBuffer() {
     boneSrvDesc.Buffer.StructureByteStride = sizeof(engine::Matrix4x4);
     boneSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
-    dummyBoneSrvIndex_ = SRVManager::GetInstance()->Allocate();
-    SRVManager::GetInstance()->CreateSRVforResource(dummyBoneSrvIndex_, dummyBoneBuffer_.Get(), boneSrvDesc);
+    dummyBoneSrvIndex_ = SrvManager::GetInstance()->Allocate();
+    SrvManager::GetInstance()->CreateSrvForResource(dummyBoneSrvIndex_, dummyBoneBuffer_.Get(), boneSrvDesc);
 
     // ★追加: 初期状態で真っ白なテクスチャをロードしておく（テクスチャ未設定によるクラッシュ防止）
     currentTextureHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/particle/white.png");
@@ -160,12 +160,12 @@ void GPUParticleSystem::CreateBuffer() {
     CreateGraphicsPipeline();
 }
 
-void GPUParticleSystem::CreateComputePipeline() {
+void GpuParticleSystem::CreateComputePipeline() {
     auto device = dxCommon_->GetDevice();
     RootSignatureBuilder rsBuilder;
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 5, 0, D3D12_SHADER_VISIBILITY_ALL);
-    rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-    rsBuilder.AddSRV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+    rsBuilder.AddCbv(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+    rsBuilder.AddSrv(0, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_ALL, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
@@ -232,11 +232,11 @@ void GPUParticleSystem::CreateComputePipeline() {
     assert(SUCCEEDED(hr));
 }
 
-void GPUParticleSystem::CreateGraphicsPipeline() {
+void GpuParticleSystem::CreateGraphicsPipeline() {
     auto device = dxCommon_->GetDevice();
     RootSignatureBuilder rsBuilder;
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
-    rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+    rsBuilder.AddCbv(0, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
@@ -258,9 +258,9 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
     DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
     psoBuilder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_UNKNOWN);
 
-    psoBuilder.SetBlendMode(::BlendMode::kAdd);
+    psoBuilder.SetBlendMode(::BlendMode::Add);
     psoBuilder.Build(device, graphicsPipelineStateAdd_.GetAddressOf());
-    psoBuilder.SetBlendMode(::BlendMode::kNormal);
+    psoBuilder.SetBlendMode(::BlendMode::Normal);
     psoBuilder.Build(device, graphicsPipelineStateAlpha_.GetAddressOf());
     psoBuilder.Build(device, graphicsPipelineStateDistortion_.GetAddressOf());
 
@@ -277,7 +277,7 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
     assert(SUCCEEDED(hr));
 }
 
-void GPUParticleSystem::Update(float deltaTime) {
+void GpuParticleSystem::Update(float deltaTime) {
     // CPU側は時間だけを蓄積する。Drawを挟まない複数回のUpdateは、GPU上の複数ステップとは異なる。
     float scaledDeltaTime = deltaTime * timeScale_;
     totalTime_ += scaledDeltaTime;
@@ -287,7 +287,7 @@ void GPUParticleSystem::Update(float deltaTime) {
     lastEmitTimer_ += scaledDeltaTime;
 }
 
-void GPUParticleSystem::RequestSimulationReset() {
+void GpuParticleSystem::RequestSimulationReset() {
     // プリセット再利用時は次回のウォームアップを残し、粒子の時刻だけ初期状態へ戻す。
     emitRequests_.clear();
     emitCountThisFrame_ = 0;
@@ -299,7 +299,7 @@ void GPUParticleSystem::RequestSimulationReset() {
     warmupRequested_ = true;
 }
 
-void GPUParticleSystem::ResetForSceneTransition() {
+void GpuParticleSystem::ResetForSceneTransition() {
     // シーン切替時は旧シーンの発生要求を破棄し、自動ウォームアップも持ち越さない。
     emitRequests_.clear();
     emitCountThisFrame_ = 0;
@@ -311,7 +311,7 @@ void GPUParticleSystem::ResetForSceneTransition() {
     warmupRequested_ = false;
 }
 
-void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
+void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
     if (!commandList)
         return;
 
@@ -325,9 +325,9 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     const bool rebuiltSimulationThisDraw = !isInitialized_;
 
     // --- Compute Shader ---
-    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
+    SrvManager::GetInstance()->SetDescriptorHeaps(commandList);
     commandList->SetComputeRootSignature(computeRootSignature_.Get());
-    SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 0, uavIndex_);
+    SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 0, uavIndex_);
 
     if (!isInitialized_) {
         commandList->SetPipelineState(computePipelineStateInit_.Get());
@@ -397,12 +397,12 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
         commandList->SetComputeRootConstantBufferView(1, configBuffer_->GetGPUVirtualAddress());
         commandList->SetComputeRootShaderResourceView(2, dummyVertexBuffer_->GetGPUVirtualAddress());
         const uint32_t updateBoneSrv = (dummyBoneSrvIndex_ > 0) ? dummyBoneSrvIndex_ : 0;
-        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, updateBoneSrv);
+        SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, updateBoneSrv);
 
         if (depthSrvHandle > 0) {
-            SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
+            SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
         } else {
-            SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
+            SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
         }
 
         const UINT groupCountUpdate = (maxParticles_ + 255) / 256;
@@ -444,12 +444,12 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
             commandList->SetComputeRootShaderResourceView(2, targetVB->GetGPUVirtualAddress());
 
             uint32_t boneSrv = (req.boneSrv > 0) ? req.boneSrv : dummyBoneSrvIndex_;
-            SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, boneSrv);
+            SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, boneSrv);
 
             if (depthSrvHandle > 0) {
-                SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
+                SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
             } else {
-                SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
+                SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
             }
 
             UINT groupCountEmit = (req.config.emitCount + 255) / 256;
@@ -535,33 +535,33 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     commandList->IASetVertexBuffers(0, 0, nullptr);
     commandList->IASetIndexBuffer(nullptr);
 
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 0, srvIndex_);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 0, srvIndex_);
     commandList->SetGraphicsRootConstantBufferView(1, cameraBuffer_->GetGPUVirtualAddress());
 
 
     uint32_t texToUse = (currentTextureHandle_ > 0) ? currentTextureHandle_ : dummyTex;
 
     if (texToUse > 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, texToUse);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, texToUse);
     } else {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, dummyTex);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, dummyTex);
     }
 
     if (depthSrvHandle > 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     } else {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, dummyTex);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, dummyTex);
     }
 
     uint32_t grabSrvHandle = dxCommon_->GetGrabSrvHandle();
 
     if (grabSrvHandle > 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
     } else {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, dummyTex);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, dummyTex);
     }
 
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, aliveParticleIndexSrv_);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, aliveParticleIndexSrv_);
 
     commandList->ExecuteIndirect(
         indirectDrawCommandSignature_.Get(),
@@ -580,7 +580,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     commandList->ResourceBarrier(3, drawBarriers);
 }
 
-void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
+void GpuParticleSystem::EmitFromConfig(const GpuParticleConfig& config) {
     if (emitRequests_.size() >= kMaxEmitRequests)
         return;
 
@@ -650,7 +650,8 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     spriteSheetFps_ = config.spriteSheetFps > 0.0f ? config.spriteSheetFps : 0.0f;
     spriteSheetLoop_ = config.spriteSheetLoop != 0 ? 1u : 0u;
     spriteSheetRandomStart_ = config.spriteSheetRandomStart != 0 ? 1u : 0u;
-    alignToVelocity_ = config.alignToVelocity != 0 ? 1u : 0u;
+    // 固定整列の2をGPUまで渡し、旧0/1の意味は保持します。
+    alignToVelocity_ = static_cast<uint32_t>(std::clamp(config.alignToVelocity, 0, 2));
     velocityStretch_ = (std::max)(config.velocityStretch, 0.0f);
     particleType_ = config.particleType == 1 ? 1u : 0u;
     trailLength_ = (std::max)(config.trailLength, 0.0f);
@@ -660,7 +661,7 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     lightColor_ = config.lightColor;
 }
 
-size_t GPUParticleSystem::GetEstimatedMemoryBytes() const {
+size_t GpuParticleSystem::GetEstimatedMemoryBytes() const {
     // CPU側の放出要求とGPUリソースの確保幅を合算し、診断表示用の概算値にする。
     size_t bytes = emitRequests_.capacity() * sizeof(EmitRequest);
     ID3D12Resource* resources[] = {
@@ -684,7 +685,7 @@ size_t GPUParticleSystem::GetEstimatedMemoryBytes() const {
     return bytes;
 }
 
-void GPUParticleSystem::SetCurrentTexture(const std::string& path) {
+void GpuParticleSystem::SetCurrentTexture(const std::string& path) {
     if (!path.empty()) {
         // 描画ループ中のLoadはGPUクラッシュを引き起こすため、GetSrvHandleを使用
         uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(path);

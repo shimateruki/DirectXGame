@@ -5,11 +5,11 @@
 #include <unordered_set>
 #include <memory>
 #include "engine/animation/BodyAnimationClip.h"
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 
 // 対象は更新中だけ借用します。役者種別をエディターへ持ち込まず実行条件を渡します。
 struct AttackSequenceContext {
-    engine::Object3d* owner = nullptr; // 更新中だけ借用。攻撃者の除外とDamageEventの発生元に使います。
+    engine::Object3D* owner = nullptr; // 更新中だけ借用。攻撃者の除外とDamageEventの発生元に使います。
     engine::Vector3 position{}, forward{0, 0, 1}, targetPosition{};
     engine::Vector3 ownerSize{1, 1, 1}; // 右・上・前に使う基準サイズ。見た目の瞬間的な伸縮とは分離します。
     float targetDistance = 0;
@@ -99,6 +99,8 @@ inline AttackSequenceEmission ResolveAttackSequenceEmission(const AttackSequence
 }
 
 // 本編とプレビューで同じ命令を実行する。実行中の設定はコピーしてリロードから保護します。
+// 関連：EnemyAttackProfileの定義を読み、弾はBulletManager、継続効果は各Effect管理へ渡す。
+// 主な入口：Start / Update / Cancel
 class AttackSequence {
   public:
     ~AttackSequence();
@@ -113,7 +115,7 @@ class AttackSequence {
     bool Start(const EnemyAttackDefinition& definition, const AttackSequenceContext& context);
 
     // 経過時間を進め、条件を満たしたトラックとイベントを実行する。
-    void Update(float dt, const AttackSequenceContext& context);
+    void Update(float deltaTime, const AttackSequenceContext& context);
 
     // 実行中の効果と姿勢の参照を解放して停止する。
     void Cancel();

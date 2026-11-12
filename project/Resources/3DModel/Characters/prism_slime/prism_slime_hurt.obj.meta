@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d2d1ff3a3d0a4aafb3bd8aa8226f506e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/prism_slime/prism_slime_hurt.obj",
+  "version": 1
+}

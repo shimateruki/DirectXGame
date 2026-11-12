@@ -8,6 +8,7 @@ namespace {
 using namespace CopyAbilityDetail;
 
 // 炎コピーの入力と継続攻撃を管理し、専用 EffectScope で所有エフェクトをまとめて片付ける。
+// PlayerCopyAbilityControllerが所有する炎ブレス・火球の実装。入力はProcessInput、進行はUpdate、一時表示の回収はCancelが担当する。
 class FireSlimeCopyAbility final : public ICopyAbilitySession {
   public:
     explicit FireSlimeCopyAbility(EnemyAttackProfile profile) : ICopyAbilitySession(std::move(profile)) {
@@ -167,7 +168,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
   private:
-    void UpdateHeadVisual(Player& player, float dt) {
+    void UpdateHeadVisual(Player& player, float frameDeltaTime) {
         // 頭部の炎は接触判定を持たない表示専用Objectとして遅延生成する。
         if (player.IsDead() || player.IsCinematicLocked()) {
             if (headVisual_)
@@ -177,16 +178,16 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
         if (!headVisual_) {
             auto* scene = SceneManager::GetInstance()->GetCurrentScene();
-            if (!scene || !scene->GetObject3dCommon())
+            if (!scene || !scene->GetObject3DCommon())
                 return;
-            headVisual_ = std::make_unique<engine::Object3d>();
-            headVisual_->Initialize(scene->GetObject3dCommon());
+            headVisual_ = std::make_unique<engine::Object3D>();
+            headVisual_->Initialize(scene->GetObject3DCommon());
             headVisual_->SetModel("Primitives/sphere");
-            headVisual_->SetColliderType(ColliderType::kNone);
+            headVisual_->SetColliderType(ColliderType::None);
             headVisual_->SetCollisionAttribute(0);
             headVisual_->SetCollisionMask(0);
             headVisual_->SetMaterialType(11);
-            headVisual_->SetBlendMode(BlendMode::kNormal);
+            headVisual_->SetBlendMode(BlendMode::Normal);
             headVisual_->SetEnableLighting(false);
             headVisual_->SetEmissive(1.7f);
 
@@ -207,7 +208,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
         headVisual_->SetIsVisible(player.GetIsVisible());
         headVisual_->SetColor({1.0f, 0.26f, 0.04f, 0.75f});
-        headVisual_->Update(dt);
+        headVisual_->Update(frameDeltaTime);
         SyncHeadVisualTransform(player);
     }
 
@@ -222,24 +223,24 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         headVisual_->UpdateWorldMatrix(true);
     }
 
-    void UpdateBreathVisuals(Player& player, const engine::Vector3& origin, const engine::Vector3& direction, float dt) {
+    void UpdateBreathVisuals(Player& player, const engine::Vector3& origin, const engine::Vector3& direction, float frameDeltaTime) {
         if (player.IsDead() || player.IsCinematicLocked())
             return;
         if (breathVisuals_.empty()) {
             auto* scene = SceneManager::GetInstance()->GetCurrentScene();
-            if (!scene || !scene->GetObject3dCommon())
+            if (!scene || !scene->GetObject3DCommon())
                 return;
 
             // 立体ブレスは能力側で所有し、能力解除時にまとめて破棄します。
             for (int i = 0; i < 7; ++i) {
-                auto flame = std::make_unique<engine::Object3d>();
-                flame->Initialize(scene->GetObject3dCommon());
+                auto flame = std::make_unique<engine::Object3D>();
+                flame->Initialize(scene->GetObject3DCommon());
                 flame->SetModel("Primitives/sphere");
-                flame->SetColliderType(ColliderType::kNone);
+                flame->SetColliderType(ColliderType::None);
                 flame->SetCollisionAttribute(0);
                 flame->SetCollisionMask(0);
                 flame->SetMaterialType(11);
-                flame->SetBlendMode(BlendMode::kNormal);
+                flame->SetBlendMode(BlendMode::Normal);
                 flame->SetEnableLighting(false);
                 flame->SetEmissive(1.8f);
 
@@ -268,7 +269,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         const float range = std::max(attack.maxRange, 4.0f);
         const float radius = std::max(attack.radius, 1.0f);
         breathVisible_ = true;
-        breathVisualTime_ += dt;
+        breathVisualTime_ += frameDeltaTime;
 
         for (size_t i = 0; i < breathVisuals_.size(); ++i) {
             auto& flame = breathVisuals_[i];
@@ -287,7 +288,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
                 p->effectScaleZ = 1.15f;
             }
 
-            flame->Update(dt);
+            flame->Update(frameDeltaTime);
         }
     }
 
@@ -436,14 +437,14 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f};
 
         for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.55f, filter)) {
-            engine::Object3d* target = FindEnemyRoot(hit.object);
+            engine::Object3D* target = FindEnemyRoot(hit.object);
             if (!target || !hitTargets_.insert(target).second)
                 continue;
             EnemyAttackDefinition fallback;
             const EnemyAttackDefinition& attack = FindAttackOrFallback(GetProfile(), "flame_breath", fallback);
             DamageEnemy(player, target, 12.0f, DamageType::Fire,
                         {dashDirection_.x * 11.0f, 5.5f, dashDirection_.z * 11.0f}, MakeBurnStatus(attack));
-            VFXSequencer::PlayOneShot("player_fire_dash_hit_cue",
+            VfxSequencer::PlayOneShot("player_fire_dash_hit_cue",
                                       target->GetWorldPosition() + engine::Vector3{0.0f, 0.58f, 0.0f});
         }
     }
@@ -458,12 +459,12 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
-        std::unordered_set<engine::Object3d*> damaged;
+        std::unordered_set<engine::Object3D*> damaged;
         const engine::Vector3 end = origin + direction * std::max(attack.maxRange, 4.0f);
 
         for (const PhysicsOverlapHit& hit :
              CollisionManager::GetInstance()->OverlapCapsule(origin, end, std::max(attack.radius, 1.0f), filter)) {
-            engine::Object3d* target = FindEnemyRoot(hit.object);
+            engine::Object3D* target = FindEnemyRoot(hit.object);
             if (!target || !damaged.insert(target).second)
                 continue;
             DamageEnemy(player, target, std::max(attack.damage, 2.5f), DamageType::Fire,
@@ -476,11 +477,11 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     std::string previewAttackId_;
     // 表示Objectより先に確保し、親参照より長く生存させる。
     Transform headVisualAnchor_;
-    std::unique_ptr<engine::Object3d> headVisual_;
-    std::vector<std::unique_ptr<engine::Object3d>> breathVisuals_;
+    std::unique_ptr<engine::Object3D> headVisual_;
+    std::vector<std::unique_ptr<engine::Object3D>> breathVisuals_;
     bool breathVisible_ = false;
     float breathVisualTime_ = 0.0f;
-    std::unordered_set<engine::Object3d*> hitTargets_;
+    std::unordered_set<engine::Object3D*> hitTargets_;
     float fireballCooldown_ = 0.0f;
     float dashCooldown_ = 0.0f;
     float dashTimer_ = 0.0f;

@@ -4,7 +4,7 @@
 #include <array>
 #include <string>
 #include <vector>
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Event.h"
 #include "game/system/rules/EventManager.h"
 
@@ -13,6 +13,8 @@ class Player;
 class CheckpointRule;
 
 // 衝突イベントからダメージ、ゴール、クリア演出などのゲームルールを処理するクラス
+// 関連：EventManagerを購読し、ダメージ・状態異常・チェックポイント・クリアを進行先へ接続する。
+// 主な入口：Initialize / Update
 class GameRule {
   public:
     /// <summary>ゲームルールの初期状態を作る。</summary>
@@ -41,20 +43,20 @@ class GameRule {
 
     /// <summary>指定対象へダメージを適用し、HP減少と撃破を判定する。</summary>
     /// <returns>ダメージを適用できた場合はtrue。</returns>
-    bool ApplyDamage(engine::Object3d* target, float damage, bool bypassPlayerInvincibility = false);
+    bool ApplyDamage(engine::Object3D* target, float damage, bool bypassPlayerInvincibility = false);
 
     /// <summary>ダメージに伴う状態異常を対象へ付与する。</summary>
-    void ApplyStatusEffect(engine::Object3d* target, const StatusEffectApplication& application, float damageScale);
+    void ApplyStatusEffect(engine::Object3D* target, const StatusEffectApplication& application, float damageScale);
 
     /// <summary>対象が状態異常を受けられる生存状態か返す。</summary>
-    bool IsStatusTargetAlive(engine::Object3d* target) const;
+    bool IsStatusTargetAlive(engine::Object3D* target) const;
 
     /// <summary>指定対象の位置へ状態異常の演出を発生させる。</summary>
-    void EmitStatusVisual(engine::Object3d* target, const std::string& presetName) const;
+    void EmitStatusVisual(engine::Object3D* target, const std::string& presetName) const;
 
     // 状態異常の残り秒と継続ダメージ・演出の独立した時計。target はシーン内 Object の借用参照。
     struct ActiveStatusEffect {
-        engine::Object3d* target = nullptr;
+        engine::Object3D* target = nullptr;
         StatusEffectType type = StatusEffectType::None;
         float remainingTime = 0.0f;
         float tickTimer = 0.0f;

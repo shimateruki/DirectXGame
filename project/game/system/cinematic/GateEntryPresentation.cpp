@@ -4,7 +4,7 @@
 #include "Player.h"
 #include "Camera.h"
 #include "CameraManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Model.h"
 #include "PostEffect.h"
 #include <algorithm>
@@ -25,7 +25,7 @@ engine::Vector3 LookAt(const engine::Vector3& eye, const engine::Vector3& target
     return length > 0.0001f ? engine::Vector3{-std::asin(std::clamp(d.y/length, -0.98f, 0.98f)),
                                             std::atan2(d.x, d.z), 0.0f} : engine::Vector3{};
 }
-engine::Object3d* ResolveAnchor(engine::Object3d* gate) {
+engine::Object3D* ResolveAnchor(engine::Object3D* gate) {
     // 判定面が見た目の枠の子なら、枠の中心へ入ります。地形などの整理用の親は使いません。
     for (auto* parent = gate->GetParent(); parent; parent = parent->GetParent()) {
         const auto model = parent->GetModelName();
@@ -33,12 +33,12 @@ engine::Object3d* ResolveAnchor(engine::Object3d* gate) {
     }
     return gate;
 }
-engine::Vector3 PortalPosition(engine::Object3d* gate, bool useModelCenter) {
+engine::Vector3 PortalPosition(engine::Object3D* gate, bool useModelCenter) {
     if (!useModelCenter || !gate->GetModel()) return gate->GetWorldPosition();
-    const auto bounds = gate->GetModelWorldAABB();
+    const auto bounds = gate->GetModelWorldAabb();
     return (bounds.min + bounds.max) * 0.5f;
 }
-engine::Vector3 Direction(engine::Object3d* gate, const engine::Vector3& from, bool useModelCenter) {
+engine::Vector3 Direction(engine::Object3D* gate, const engine::Vector3& from, bool useModelCenter) {
     auto fallback = PortalPosition(gate,useModelCenter) - from;
     float length = std::sqrt(fallback.x*fallback.x + fallback.z*fallback.z);
     fallback = length > 0.0001f ? engine::Vector3{fallback.x/length, 0.0f, fallback.z/length}
@@ -62,7 +62,7 @@ void SetCameraPose(Camera* camera, const engine::Vector3& eye, const engine::Vec
     const auto rotation = LookAt(eye, target);
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
     camera->ConfigFixedPoint(eye, rotation);
     // ConfigFixedPoint は設定値の保存だけなので、追従対象のないカメラにも現在姿勢を直接渡します。
     camera->SetEye(eye);
@@ -72,21 +72,23 @@ void SetCameraPose(Camera* camera, const engine::Vector3& eye, const engine::Vec
 }
 }
 
+// ゲート通過中だけ所有する進行状態。Actor・Cameraは借用し、開始前の姿勢・材質・追従先を退避する。
 struct GateEntryPresentation::State {
+    // 一つの本体・子モデルの元材質と表示状態。Resetでディゾルブ前の値へ戻す。
     struct MaterialState {
-        engine::Object3d* object = nullptr;
-        engine::Object3d::MaterialState material{};
+        engine::Object3D* object = nullptr;
+        engine::Object3D::MaterialState material{};
         engine::Vector4 color{};
-        BlendMode blend = BlendMode::kNormal;
+        BlendMode blend = BlendMode::Normal;
         int materialType = 0;
         float emissive = 0.0f;
         bool visible = true;
     };
     Player* player = nullptr;
-    engine::Object3d* gate = nullptr;
+    engine::Object3D* gate = nullptr;
     Camera* camera = nullptr;
-    engine::Object3d* cameraFollow = nullptr;
-    Camera::FollowMode cameraMode = Camera::FollowMode::kAimable;
+    engine::Object3D* cameraFollow = nullptr;
+    Camera::FollowMode cameraMode = Camera::FollowMode::Aimable;
     bool cameraInput = true;
     engine::Vector3 start{}, scale{}, rotation{}, direction{};
     engine::Vector3 eye{}, target{}, cameraRotation{};
@@ -104,7 +106,7 @@ bool GateEntryPresentation::IsActive() const { return state_ != nullptr; }
 bool GateEntryPresentation::IsFinished() const { return state_ && state_->timer >= kDuration; }
 float GateEntryPresentation::GetProgress() const { return state_ ? Clamp(state_->timer/kDuration) : 0.0f; }
 
-bool GateEntryPresentation::Start(Player* player, engine::Object3d* gate, bool manageCinemaBars) {
+bool GateEntryPresentation::Start(Player* player, engine::Object3D* gate, bool manageCinemaBars) {
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (state_ || !player || !gate || !camera || player->GetHp() <= 0.0f || player->IsCinematicLocked() ||
         player->IsGateReturnAnimationActive())
@@ -130,7 +132,7 @@ bool GateEntryPresentation::Start(Player* player, engine::Object3d* gate, bool m
 
     // 衝突フレーム内で操作・被弾・物理を止め、コピー形態はそのままゲートへ入れます。
     player->BeginCinematicLock(true);
-    std::vector<engine::Object3d*> pending{player};
+    std::vector<engine::Object3D*> pending{player};
     while (!pending.empty()) {
         auto* object = pending.back();
         pending.pop_back();
@@ -183,13 +185,13 @@ void GateEntryPresentation::Update(float deltaTime) {
     for (const auto& saved : s.materials) {
         auto* object = saved.object;
         object->SetMaterialType(4);
-        object->SetBlendMode(BlendMode::kNormal);
+        object->SetBlendMode(BlendMode::Normal);
         object->SetEmissive((std::max)(saved.emissive,1.25f+clip*0.95f+edgePeak*1.45f));
         object->SetColor({saved.color.x*(1.0f-heat)+heat, saved.color.y*(1.0f-heat)+0.76f*heat,
                           saved.color.z*(1.0f-heat)+0.34f*heat, 1.0f-fade});
         object->SetIsVisible(saved.visible && clipT < 0.995f && t < 0.94f);
         {
-            engine::Object3d::PortalClipSettings clipSettings;
+            engine::Object3D::PortalClipSettings clipSettings;
             clipSettings.enabled = true;
             clipSettings.progress = clip;
             clipSettings.center = gatePos;

@@ -1,4 +1,6 @@
 ﻿#pragma once
+
+// EnemyPrismSlimeの分割実装で共有する定数・計算。攻撃の選択と進行はEnemyPrismSlimeが担当する。
 // 分割実装専用の定数・補助関数。外部からは公開ヘッダーを使用します。
 #define NOMINMAX
 #include "game/actor/combat/CombatMath.h"
@@ -10,16 +12,16 @@
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "DebrisEffectManager.h"
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshEffectManager.h"
 #include "Player.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -118,7 +120,6 @@ inline constexpr int kMaxSummonWaves = 2;
 inline constexpr int kEncounterControlledActionMode = 1;
 inline constexpr float kDefaultEncounterAppearanceDuration = 1.08f;
 inline constexpr float kEncounterAppearanceRise = 1.85f;
-inline constexpr const char* kEncounterAppearanceSequence = "prism_midboss_appear_cue";
 
 inline constexpr float kRepositionMinimumDistance = 4.5f;
 inline constexpr float kRepositionMaximumDistance = 8.0f;
@@ -180,7 +181,7 @@ inline float DistanceSquaredToSegment(const engine::Vector3& point, const engine
 inline BulletVisualConfig MakePrismFireVisual() {
     BulletVisualConfig visual;
     visual.materialType = kFireMaterialType;
-    visual.blendMode = BlendMode::kNormal;
+    visual.blendMode = BlendMode::Normal;
     visual.color = {1.0f, 0.30f, 0.055f, 0.98f};
     visual.emissive = 3.0f;
     visual.visualScale = 1.22f;

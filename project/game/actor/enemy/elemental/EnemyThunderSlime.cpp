@@ -5,9 +5,9 @@
 #include "CameraManager.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshEffectManager.h"
 #include <algorithm>
 #include <cmath>
@@ -54,9 +54,9 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
-engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
+engine::Object3D* FindEnemyDamageTarget(engine::Object3D* object) {
     // 子メッシュとの接触を本体の敵へたどり、被弾対象を統一する。
-    for (engine::Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3D* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -70,7 +70,7 @@ engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
 EnemyThunderSlime::~EnemyThunderSlime() = default;
 
 // 雷スライム本体と常時オーラの初期化
-void EnemyThunderSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyThunderSlime::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 常時オーラと地上時の球判定を、敵本体の初期化後に結び付ける。
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_ThunderSlime");
@@ -81,7 +81,7 @@ void EnemyThunderSlime::Initialize(engine::Object3dCommon* common, const std::st
 
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SyncGroundCollisionRadius();
     InitializeAuraEffect();
 }
@@ -436,7 +436,7 @@ void EnemyThunderSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource*
     }
 }
 
-std::unique_ptr<engine::Object3d> EnemyThunderSlime::Clone() const {
+std::unique_ptr<engine::Object3D> EnemyThunderSlime::Clone() const {
     // シーン上の複製では固有エフェクトを再初期化し、配置設定と対象を引き継ぐ。
     auto clone = std::make_unique<EnemyThunderSlime>();
     assert(GetObjectCommon() != nullptr);
@@ -472,7 +472,7 @@ void EnemyThunderSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     BaseEnemy::BeginThrown(initialVelocity);
 }
 
-engine::Vector3 EnemyThunderSlime::FindStrikeGround(const engine::Vector3& samplePosition, engine::Object3d* ignoredObject,
+engine::Vector3 EnemyThunderSlime::FindStrikeGround(const engine::Vector3& samplePosition, engine::Object3D* ignoredObject,
                                             float fallbackHeight) const {
     // 上から地形を探して雷を接地させ、地形がなければ指定高さを使う。
     engine::Vector3 rayStart = samplePosition;
@@ -677,7 +677,7 @@ void EnemyThunderSlime::InitializeAuraEffect() {
         return;
     }
 
-    auraEffect_ = std::make_unique<EffectObject3d>();
+    auraEffect_ = std::make_unique<EffectObject3D>();
     auraEffect_->Initialize(GetObjectCommon());
     auraEffect_->SetName("ThunderSlime_RoundAura");
 
@@ -817,7 +817,7 @@ void EnemyThunderSlime::EmitLineChargeEffect(const char* presetName, float progr
 
 void EnemyThunderSlime::EmitThunderPreset(const char* presetName, const engine::Vector3& position) {
     // GPU粒子が未初期化のプレビューでも本体の攻撃は継続する。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (!particles || !particles->IsInitialized()) {
         return;

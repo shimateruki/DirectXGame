@@ -1,0 +1,48 @@
+{
+  "AutoLoop": false,
+  "ProceduralType": 2,
+  "SlashAngle": 470.0,
+  "SpiralPitch": 2.05,
+  "InnerRadius": 0.72,
+  "OuterRadius": 1.04,
+  "Thickness": 0.085,
+  "MeshSegments": 68,
+  "Lifetime": 0.32,
+  "BlendMode": 2,
+  "TexturePath": "Resources/sprite/particle/slash_streak.png",
+  "StartScale": [
+    0.88,
+    0.52,
+    0.88
+  ],
+  "EndScale": [
+    1.16,
+    1.8,
+    1.16
+  ],
+  "StartColor": [
+    0.68,
+    1.0,
+    0.92,
+    0.88
+  ],
+  "EndColor": [
+    0.36,
+    0.86,
+    1.0,
+    0
+  ],
+  "Intensity": 2.6,
+  "EnableReveal": false,
+  "AlphaReference": 0.004,
+  "UvTiling": [
+    1,
+    1
+  ],
+  "ScrollSpeed": [
+    -4.4,
+    0
+  ],
+  "EasingType": 11,
+  "NoiseTexturePath": "Resources/sprite/common/white.png"
+}

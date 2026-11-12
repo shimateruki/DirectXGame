@@ -5,7 +5,7 @@
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "game/system/progress/StageManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshEffectManager.h"
 #include "SceneManager.h"
 #include <algorithm>
@@ -30,7 +30,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         unlockKeyObject_->SetIsVisible(false);
         unlockKeyObject_->SetColor({1.0f, 0.84f, 0.24f, 1.0f});
         unlockKeyObject_->SetEmissive(2.8f);
-        unlockKeyObject_->SetGPUParticleName("");
+        unlockKeyObject_->SetGpuParticleName("");
     }
 
     if (unlockLockObject_) {
@@ -45,7 +45,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         unlockPlayer_.Initialize(SceneManager::GetInstance());
         unlockPlayer_.SetBindingResolver({});
         unlockPlayer_.SetSequence(&unlockSequence_);
-        unlockPlayer_.SetSignalCallback([this](engine::Object3d*, const CinematicSignalMarker& signal, bool isPreview) {
+        unlockPlayer_.SetSignalCallback([this](engine::Object3D*, const CinematicSignalMarker& signal, bool isPreview) {
             if (!isPreview) {
                 HandleUnlockSignal(signal);
             }
@@ -68,7 +68,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         unlockLockHideTime_ = signalTime("lock_hide");
         unlockGateActivationTime_ = signalTime("gate_activate");
         unlockGateActivationEndTime_ = signalTime("gate_active_full");
-        const auto hasTrack = [this](const engine::Object3d* object) {
+        const auto hasTrack = [this](const engine::Object3D* object) {
             return object && std::any_of(unlockSequence_.transformTracks.begin(), unlockSequence_.transformTracks.end(),
                                          [object](const CinematicTransformTrack& track) {
                                              return track.enabled && !track.muted &&
@@ -107,7 +107,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         unlockCameraStartTarget_ = camera->GetTargetPoint();
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
         camera->ConfigFixedPoint(unlockCameraStartEye_,
                                  SelectLookAtRotation(unlockCameraStartEye_, unlockCameraStartTarget_));
     }
@@ -137,9 +137,9 @@ void GameSelectScene::StartDebugUnlockPresentation(int stageIndex) {
         return;
     }
 
-    engine::Object3d* gate = FindStageGateByIndex(stageIndex);
-    engine::Object3d* key = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex));
-    engine::Object3d* lock = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex));
+    engine::Object3D* gate = FindStageGateByIndex(stageIndex);
+    engine::Object3D* key = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex));
+    engine::Object3D* lock = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex));
 
     if (!gate || !key || !lock) {
         DebugConsole::GetInstance()->AddLog("Stage Select: debug crown unlock cinematic assets are missing.");
@@ -190,7 +190,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
     if (unlockParticleTimer_ <= 0.0f && time >= unlockKeyAppearTime_ && time < unlockLockReleaseTime_) {
         unlockParticleTimer_ = 0.15f;
         const engine::Vector3 particlePosition = unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition;
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, particlePosition);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, particlePosition);
     }
 
     if (time >= unlockPlayer_.GetDuration()) {
@@ -208,29 +208,29 @@ void GameSelectScene::HandleUnlockSignal(const CinematicSignalMarker& signal) {
         const engine::Vector3 position = unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition;
         MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, position,
                                                         {0.0f, 0.0f, 0.0f}, {0.30f, 0.30f, 0.30f});
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, position);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, position);
     } else if (signal.signal == "key_turn") {
         MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, lockPosition,
                                                         {0.0f, 0.0f, 0.0f}, {0.34f, 0.34f, 0.34f});
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, lockPosition);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, lockPosition);
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
             camera->StartShake(0.10f, 0.025f, 28.0f, {0.45f, 0.45f, 0.16f});
         }
     } else if (signal.signal == "lock_release") {
         MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, lockPosition,
                                                         {0.0f, 0.0f, 0.0f}, {0.58f, 0.58f, 0.58f});
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, lockPosition);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, lockPosition);
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
             camera->StartShake(0.22f, 0.065f, 24.0f, {0.62f, 0.50f, 0.18f});
         }
     } else if (signal.signal == "gate_activate") {
         engine::Vector3 position = lockPosition;
         if (unlockTargetGate_) {
-            const AABB bounds = unlockTargetGate_->GetAABB();
+            const Aabb bounds = unlockTargetGate_->GetAabb();
             position = (bounds.min + bounds.max) * 0.5f;
         }
-        GPUParticleManager::GetInstance()->Emit(kGateUnlockCoreParticlePreset, position);
-        GPUParticleManager::GetInstance()->Emit(kGateUnlockSparkParticlePreset, position);
+        GpuParticleManager::GetInstance()->Emit(kGateUnlockCoreParticlePreset, position);
+        GpuParticleManager::GetInstance()->Emit(kGateUnlockSparkParticlePreset, position);
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
             camera->StartShake(0.16f, 0.035f, 22.0f, {0.42f, 0.42f, 0.20f});
         }
@@ -280,7 +280,7 @@ void GameSelectScene::RestoreUnlockPresentationState() {
     unlockTimelineLoaded_ = false;
     if (unlockKeyObject_) {
         unlockKeyObject_->SetIsVisible(false);
-        unlockKeyObject_->SetGPUParticleName("");
+        unlockKeyObject_->SetGpuParticleName("");
     }
     if (unlockLockObject_) {
         unlockLockObject_->SetIsVisible(false);
@@ -297,7 +297,7 @@ void GameSelectScene::RestoreUnlockPresentationState() {
         camera->SyncRotationToCurrentView();
         if (player_) {
             camera->SetFollowTarget(player_);
-            camera->SetFollowMode(Camera::FollowMode::kAimable);
+            camera->SetFollowMode(Camera::FollowMode::Aimable);
             camera->ResetFollowSmoothing();
         }
         camera->SetInputEnabled(true);

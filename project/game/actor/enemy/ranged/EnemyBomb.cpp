@@ -66,7 +66,7 @@ float LoadExplosionRadiusFromEffectJson() {
 }
 } // namespace
 
-void EnemyBomb::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyBomb::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     managedBaseScale_ = {kBombVisualScale, kBombVisualScale, kBombVisualScale};
     SetScale(managedBaseScale_);
@@ -80,7 +80,7 @@ void EnemyBomb::Initialize(engine::Object3dCommon* common, const std::string& mo
     isAbilityExecuted_ = false;
     playerOwned_ = false;
 
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SetCollisionRadius(kBombCollisionRadius);
     auto collider = GetColliderConfig();
     collider.center = {0.0f, 0.0f, 0.0f};
@@ -338,7 +338,7 @@ void EnemyBomb::Explode() {
     // プレイヤーの爆風はワールド単位で扱い、小さな爆弾モデルの縮小率を掛けない。
     // 敵の爆弾は既存の予告・攻撃設定を維持する。
     const float effectScale = playerOwned_ ? kPlayerExplosionScale : 1.0f;
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     if (playerOwned_ && GetCollider())
         GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
     SetCollisionRadius(explosionRadius_ * effectScale);
@@ -369,7 +369,7 @@ void EnemyBomb::Explode() {
                 auto* visual = activeEffects[i].get();
                 if (visual->GetMeshSettings().hasCollision)
                     CollisionManager::GetInstance()->RemoveObject(visual);
-                visual->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, false);
+                visual->SetMeshSetting(&EffectObject3D::MeshSettings::hasCollision, false);
                 visual->SetCollisionAttribute(0);
                 visual->SetCollisionMask(0);
             }
@@ -383,7 +383,7 @@ void EnemyBomb::Explode() {
         filter.ignoredObject = this;
         for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
                  myPos, GetCollider()->GetRadius(), filter)) {
-            engine::Object3d* target = hit.object;
+            engine::Object3D* target = hit.object;
             if ((dynamic_cast<BaseEnemy*>(target) || dynamic_cast<GimmickBreakableBlock*>(target)) &&
                 (GetCollisionMask() & target->GetCollisionAttribute()) &&
                 (target->GetCollisionMask() & GetCollisionAttribute())) {
@@ -462,11 +462,11 @@ void EnemyBomb::ExecuteAbility(Player* player) {
     // 爆発時のノックバック方向をボムからプレイヤーへ向けます。
     engine::Vector3 throwBackDir = playerPos - myPos;
     throwBackDir.y = 0.0f;
-    float dist = std::sqrt(throwBackDir.x * throwBackDir.x + throwBackDir.z * throwBackDir.z);
+    float distanceValue = std::sqrt(throwBackDir.x * throwBackDir.x + throwBackDir.z * throwBackDir.z);
 
-    if (dist > 0.001f) {
-        throwBackDir.x /= dist;
-        throwBackDir.z /= dist;
+    if (distanceValue > 0.001f) {
+        throwBackDir.x /= distanceValue;
+        throwBackDir.z /= distanceValue;
     } else {
         throwBackDir = {0.0f, 0.0f, -1.0f}; // 位置が重なる場合のノックバック方向です。
     }
@@ -480,7 +480,7 @@ void EnemyBomb::ExecuteAbility(Player* player) {
     Explode();
 }
 
-bool EnemyBomb::OnCollision(engine::Object3d* other) {
+bool EnemyBomb::OnCollision(engine::Object3D* other) {
     // プレイヤーの爆弾は敵との実際の接触で導火線を待たずに爆発させます。
     // 爆発後に同じフレームで再接触しても、演出や攻撃判定を作り直しません。
     if (playerOwned_ && !IsCarried() && state_ == State::Ignited &&

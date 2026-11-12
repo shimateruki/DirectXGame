@@ -10,13 +10,13 @@ struct AttackFireAppearance {
     float red = 1.0f, green = 0.34f, blue = 0.07f, alpha = 0.96f;
     float emissive = 2.8f;
     float effectScale = 1.15f, softness = 0.42f, intensity = 0.96f, billboardScale = 0.68f;
-    float trailInterval = 0.030f, trailSpeedScale = 1.0f;
+    float trailInterval = 0.030f, trailSpeedScale = 1.0f; // trailIntervalは粒子の発生間隔（秒）、trailSpeedScaleは速度倍率。
 };
 
 // 発射する弾の構成。未指定の旧JSONでは攻撃全体の設定を引き継ぎます。
 struct AttackProjectileComponent {
-    bool configured = false;
-    bool collisionEnabled = true;
+    bool configured = false; // falseならこの部品の値を使わず、攻撃全体の旧設定を引き継ぐ。
+    bool collisionEnabled = true; // falseでも見た目は発射するが、弾の衝突ダメージを無効にする。
     std::string model = "Primitives/sphere";
     std::string style = "fire";
     float radius = 0.5f, lifetime = 2.65f, minSpeed = 15, maxSpeed = 28, damage = 1;
@@ -51,10 +51,10 @@ struct AttackSequenceEvent {
     std::string name;
     bool enabled = true;
     AttackProjectileComponent projectile;
-    float time = 0.0f;
+    float time = 0.0f; // シーケンス開始からの発生秒数。
     std::string operation = "projectile"; // projectile / gpu_vfx
     std::string condition = "always"; // always / grounded / airborne / target_in_range
-    bool stopOnFalse = false;
+    bool stopOnFalse = false; // 条件不成立時に後続命令・トラックの再生も止めるか。
     float right = 0.0f, up = 1.05f, forward = 0.65f;
 
     // 通常の位置に加算する、術者の基準サイズに比例した位置。伸縮アニメーションには追従しません。
@@ -62,11 +62,11 @@ struct AttackSequenceEvent {
 
     float yawDegrees = 0.0f; // 術者の前方を基準に、発生位置と発射方向を水平回転します。
     bool aimAtTarget = true;
-    float targetHeight = 0.35f;
+    float targetHeight = 0.35f; // 狙う対象の基準位置から上に足す距離（ワールド単位）。
 
     float distanceSpeedScale = 1.65f; // 0なら攻撃定義の最高速度を使います。
     float distanceSpeedBias = 0.0f; // 距離×倍率に加え、最後に攻撃の最低・最高速度で制限します。
-    float verticalSpeed = 0.0f;
+    float verticalSpeed = 0.0f; // 発射後の速度へ加える上向き成分。重力の設定とは別。
 
     int count = 1;
     float spreadDegrees = 0.0f;
@@ -86,10 +86,10 @@ struct AttackActorControl {
     float modelYawOffset = 180.0f; // モデル正面の補正角（度）。
 
     bool telegraph = true;
-    float telegraphEnd = 0.42f;
-    float telegraphWidth = 1.0f;
+    float telegraphEnd = 0.42f; // シーケンス開始から予告を消すまでの秒数。
+    float telegraphWidth = 1.0f; // 予告線の幅（ワールド単位）。
 
-    float cueTime = 0.24f;
+    float cueTime = 0.24f; // シーケンス開始から予告を強調するまでの秒数。
 
     bool tint = true;
     std::array<float, 4> color{1, 0.72f, 0.48f, 1};
@@ -208,6 +208,8 @@ struct AttackSequenceDefinition {
 };
 
 // 描画やPlayer型に依存しない時計。大きなdtで通過した命令も時刻順に一度ずつ通知します。
+// 関連：AttackSequenceが通知先を渡す。ここでは弾やObjectを生成しない。
+// 主な入口：Start / Update / Reset
 class AttackSequenceClock {
   public:
     // 定義を検証して値コピーし、同時刻の命令順を保持したまま時刻順に並べる。
@@ -223,11 +225,11 @@ class AttackSequenceClock {
     }
 
     template<class Condition, class Execute>
-    void Update(float dt, Condition condition, Execute execute) {
-        if (!running_ || !std::isfinite(dt) || dt < 0)
+    void Update(float deltaTime, Condition condition, Execute execute) {
+        if (!running_ || !std::isfinite(deltaTime) || deltaTime < 0)
             return;
-        // dt は秒。大きな刻みでも通過した未処理命令を順番に取り出す。
-        elapsed_ = (std::min)(definition_.duration, elapsed_ + dt);
+        // deltaTime は秒。大きな刻みでも通過した未処理命令を順番に取り出す。
+        elapsed_ = (std::min)(definition_.duration, elapsed_ + deltaTime);
         while (running_ && next_ < definition_.events.size() && definition_.events[next_].time <= elapsed_ + 0.000001f) {
             const auto& event = definition_.events[next_++];
             if (!event.enabled) {

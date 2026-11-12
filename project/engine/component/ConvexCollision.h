@@ -1,4 +1,8 @@
 #pragma once
+
+// 担当：モデル頂点から凸包を作り、レイ・球・箱との交差を計算する。
+// 関連：Collider（呼出側）、MathのVector3（同一座標系の入力）
+// 主な入口：Build / Ray / Sphere / Box
 #include "engine/utility/math/Math.h"
 #include <algorithm>
 #include <array>
@@ -7,11 +11,14 @@
 #include <vector>
 
 // 描画頂点から作る凸包。凹形状の門などは、柱・梁を別Colliderにして使用する。
-namespace convex_collision {
+namespace ConvexCollision {
 using V = engine::Vector3;
 using Face = std::array<V, 3>;
+// 二つのベクトルの内積を返す。
 inline float Dot(const V& a, const V& b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+// 二つのベクトルに垂直な外積ベクトルを返す。
 inline V Cross(const V& a, const V& b) { return {a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x}; }
+// 三角形の単位法線を返す。面積ゼロならゼロベクトル。
 inline V Normal(const Face& f) {
     // 面積ゼロの面からNaNを広げない。
     const V n = Cross(f[1]-f[0], f[2]-f[0]);
@@ -99,6 +106,7 @@ inline std::vector<Face> Build(const std::vector<V>& input) {
     return result;
 }
 
+// 三角形の面・辺・頂点から、指定点に最も近い位置を求める。
 inline V Closest(const V& p,const Face& f) {
     // 三角形の面・辺・頂点の領域を分け、球が角に触れる場合も距離を正しく求める。
     const V a=f[0],b=f[1],c=f[2],ab=b-a,ac=c-a,ap=p-a;
@@ -160,6 +168,7 @@ inline bool Ray(const std::vector<Face>& hull,const V& start,const V& direction,
     return distance>=0 && distance<=limit && Dot(normal,normal)>0.5f;
 }
 
+// 凸包と球の重なりを調べ、接触時に深さと法線を返す。
 inline bool Sphere(const std::vector<Face>& hull,const V& center,float radius,float& depth,V& normal) {
     // 外側は最近接点、内側は最寄りの面から押し出す。
     float nearest=(std::numeric_limits<float>::max)(),plane=-nearest;
@@ -283,4 +292,4 @@ inline bool Box(const std::vector<V>& points, const std::vector<V>& normals, con
                 return false;
     return !points.empty();
 }
-} // namespace convex_collision
+} // namespace ConvexCollision

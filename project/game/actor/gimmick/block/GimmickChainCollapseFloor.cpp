@@ -13,7 +13,7 @@ namespace {
 constexpr float kReturnDelaySeconds = 5.0f;
 } // namespace
 
-void GimmickChainCollapseFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickChainCollapseFloor::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 踏まれる前は通常の床として衝突し、落下開始時に判定を外します。
@@ -40,7 +40,7 @@ void GimmickChainCollapseFloor::Initialize(engine::Object3dCommon* common, const
     using Self = GimmickChainCollapseFloor;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "連鎖崩れ床",
         "Target IDに次の床のMy Event IDを入れると連鎖します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("揺れ時間", "shakeDuration", &Parameter::shakeDuration, 0.0f, 10.0f);
     properties.Parameter("連鎖までの時間", "interval", &Parameter::interval, 0.0f, 10.0f,
         nullptr, {}, {.speed = 0.01f});
@@ -127,7 +127,7 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickChainCollapseFloor::OnCollision(engine::Object3d* other) {
+bool GimmickChainCollapseFloor::OnCollision(engine::Object3D* other) {
     // 横から触れただけでは崩れず、プレイヤーが上面に乗った場合に始動します。
     if (state_ == State::Idle && other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
@@ -230,8 +230,8 @@ void GimmickChainCollapseFloor::CheckPlayerContact() {
     UpdateWorldMatrix(false);
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix(false);
-    const auto deck = GetAABB();
-    const auto body = player->GetAABB();
+    const auto deck = GetAabb();
+    const auto body = player->GetAabb();
     const float footY = body.min.y;
     const float topY = deck.max.y;
     const bool overlapsXZ = body.max.x > deck.min.x + 0.02f && body.min.x < deck.max.x - 0.02f &&
@@ -276,12 +276,12 @@ void GimmickChainCollapseFloor::TriggerNextFloor() {
         return;
 
     triggeredNext_ = true;
-    int targetID = GetTargetID();
-    if (targetID == -1)
+    int targetId = GetTargetId();
+    if (targetId == -1)
         return;
 
     if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
-        scene->TriggerEvent(targetID);
+        scene->TriggerEvent(targetId);
     }
 }
 
@@ -305,7 +305,7 @@ float GimmickChainCollapseFloor::GetGravity() const {
     return GetParameters().has_value() ? GetParameters()->gravity : 48.0f;
 }
 
-std::unique_ptr<engine::Object3d> GimmickChainCollapseFloor::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickChainCollapseFloor::Clone() const {
     // 複製先を初期化し、連鎖の設定と元の配置を引き継ぎます。
     auto newObj = std::make_unique<GimmickChainCollapseFloor>();
     assert(GetObjectCommon() != nullptr);

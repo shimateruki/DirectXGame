@@ -1,8 +1,8 @@
 #include "game/actor/enemy/spawn/EnemySpawner.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 
-void EnemySpawner::Initialize(engine::Object3dCommon* common, const std::string& enemyType, float interval, int maxCount) {
-    engine::Object3d::Initialize(common);
+void EnemySpawner::Initialize(engine::Object3DCommon* common, const std::string& enemyType, float interval, int maxCount) {
+    engine::Object3D::Initialize(common);
     common_ = common;
     enemyType_ = enemyType;
     spawnInterval_ = interval;
@@ -28,7 +28,7 @@ void EnemySpawner::Update(float deltaTime) {
         spawnCount_++;
     }
 
-    engine::Object3d::Update(deltaTime);
+    engine::Object3D::Update(deltaTime);
 }
 
 void EnemySpawner::Spawn() {

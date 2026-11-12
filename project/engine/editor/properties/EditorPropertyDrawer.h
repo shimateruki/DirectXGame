@@ -1,0 +1,26 @@
+#pragma once
+
+// 担当：Propertyの型と表示条件から、共通のImGui入力欄を描画する。
+// 関連：EditorPropertyRegistry（定義）、InspectorWindow（利用）、EditorPropertyDrawOptions（表示条件）
+// 主な入口：DrawValue
+
+#include "EditorPropertyRegistry.h"
+
+/// Inspectorなどの編集画面で共有するProperty描画設定です。
+struct EditorPropertyDrawOptions {
+    bool compact = false;
+    bool mixed = false;
+    float width = 0.0f;
+};
+
+namespace EditorPropertyDrawer {
+
+/// Registryの型情報とUI Hintから、1つのImGui入力欄を描画します。
+/// 戻り値がtrueの場合、valueには編集後のJSON値が入ります。
+bool DrawValue(
+    const EditorPropertyDescriptor& property,
+    nlohmann::json& value,
+    const char* id,
+    const EditorPropertyDrawOptions& options = {});
+
+}

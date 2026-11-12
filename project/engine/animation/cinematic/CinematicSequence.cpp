@@ -64,7 +64,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicTransformKey,
     time, position, rotation, scale, easingToNext)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicTransformTrack,
     name, binding, legacyPathFile, startTime, enabled, muted, locked, relative, anchorRelative, holdLast, keys)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicVFXTrackData,
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicVfxTrackData,
     name, binding, sequenceName, startTime, duration, snapshotTargetPosition, rootOffset, rootScale, enabled, muted)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicCameraShot,
     name, binding, startTime, duration, blendInDuration, blendOutDuration, easing, enabled, muted)

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "db5a0f57458c7820f950e36a09050a9a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/controller_notice/recommendation.png",
+  "version": 1
+}

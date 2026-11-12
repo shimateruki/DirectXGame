@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "7f3b9caea88245869b9e5424cd6d0ffd",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_ability_wind_lift.json",
+  "version": 1
+}

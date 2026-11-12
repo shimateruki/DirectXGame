@@ -1,0 +1,17 @@
+{
+    "attackPower": 1.45,
+    "detectionRange": 90.0,
+    "gravity": 72.0,
+    "jumpPower": 22.0,
+    "maxFallSpeed": 62.0,
+    "maxHp": 270.0,
+    "modelName": "Characters/magma_slime",
+    "morphDuration": 5.0,
+    "morphLimited": true,
+    "scale": [
+        3.8,
+        3.8,
+        3.8
+    ],
+    "speed": 1.45
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "12f51e71845584d238f06687e815c802",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/stage_select/select_route_stage1.dds",
+  "version": 1
+}

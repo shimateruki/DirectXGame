@@ -5,7 +5,9 @@
 #include <vector>
 #include <wrl.h>
 
-/// <summary>ルートパラメータと静的サンプラーを積み上げてルートシグネチャを作成します。</summary>
+// 担当：ルートパラメータとサンプラーを組み立て、ルートシグネチャを作る。
+// 関連：GraphicsPipelineBuilder（PSO構築）、DirectXCommon（デバイス）
+// 主な入口：AddCbv / AddDescriptorTable / AddStaticSamplerCustom / Build
 class RootSignatureBuilder {
 public:
     RootSignatureBuilder() = default;
@@ -16,19 +18,19 @@ public:
     /// <param name="shaderRegister">CBV の b レジスタ番号。</param>
     /// <param name="registerSpace">レジスタ空間番号。</param>
     /// <param name="visibility">参照できるシェーダーステージ。</param>
-    void AddCBV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+    void AddCbv(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
 
     /// <summary>指定レジスタを直接参照する SRV を追加します。</summary>
     /// <param name="shaderRegister">SRV の t レジスタ番号。</param>
     /// <param name="registerSpace">レジスタ空間番号。</param>
     /// <param name="visibility">参照できるシェーダーステージ。</param>
-    void AddSRV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+    void AddSrv(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
 
     /// <summary>指定レジスタを直接参照する UAV を追加します。</summary>
     /// <param name="shaderRegister">UAV の u レジスタ番号。</param>
     /// <param name="registerSpace">レジスタ空間番号。</param>
     /// <param name="visibility">参照できるシェーダーステージ。</param>
-    void AddUAV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+    void AddUav(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
 
     /// <summary>32 ビット値をルート定数として追加します。</summary>
     /// <param name="shaderRegister">定数の b レジスタ番号。</param>

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3ba81ea996cd6cb02c59b07d85ca1bd5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown_gate/move_2_description.png",
+  "version": 1
+}

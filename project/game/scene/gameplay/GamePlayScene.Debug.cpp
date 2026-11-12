@@ -1,7 +1,8 @@
+#include "game/actor/enemy/boss/false_king/BossIntroSettings.h"
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/ui/SaveIndicatorOverlay.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
@@ -18,7 +19,7 @@
 #include <numbers>
 #ifdef USE_IMGUI
 #include "imgui.h"
-#include "engine/utility/SystemDebug/editor/core/EditorCommandRegistry.h"
+#include "engine/editor/core/commands/EditorCommandRegistry.h"
 #include "IconsFontAwesome5.h"
 #endif
 
@@ -318,6 +319,7 @@ void GamePlayScene::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader(ICON_FA_CROWN " 偽王スライム Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+        BossIntroSettings::Get().DrawEditor();
         // 各段階を飛ばす処理の可否はボス自身に問い合わせ、無効な操作を押せないようにする。
         EnemyFalseKingSlime* falseKing = FindFalseKingBossForHUD();
 
@@ -392,7 +394,7 @@ void GamePlayScene::DrawImGui() {
 
 #ifdef USE_IMGUI
 void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
-    if (!player_ || !object3dCommon_ || !enemyType || enemyType[0] == '\0') {
+    if (!player_ || !GetObject3DCommon() || !enemyType || enemyType[0] == '\0') {
         return;
     }
 
@@ -404,7 +406,7 @@ void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
     // 先にプレイヤー側の参照を解除してから、以前のデバッグ用変身元を破棄します。
     ClearDebugPlayerMorph();
 
-    std::unique_ptr<BaseEnemy> source = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon_.get());
+    std::unique_ptr<BaseEnemy> source = EnemyFactory::GetInstance()->CreateEnemy(enemyType, GetObject3DCommon());
 
     if (!source || source->GetEnemyType().empty()) {
         DebugConsole::GetInstance()->AddLog(std::string("Debug morph create failed: ") + enemyType);
@@ -494,13 +496,13 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
     }
 }
 
-engine::Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
+engine::Object3D* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
     // デバッグ操作用に現在のシーン配置から名前を解決する。
     if (!objectManager_ || !objectName || objectName[0] == '\0') {
         return nullptr;
     }
 
-    std::vector<engine::Object3d*> objectsToVisit;
+    std::vector<engine::Object3D*> objectsToVisit;
     objectsToVisit.reserve(objectManager_->GetObjects().size());
 
     for (const auto& object : objectManager_->GetObjects()) {
@@ -510,14 +512,14 @@ engine::Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) c
     }
 
     while (!objectsToVisit.empty()) {
-        engine::Object3d* object = objectsToVisit.back();
+        engine::Object3D* object = objectsToVisit.back();
         objectsToVisit.pop_back();
 
         if (object->GetName() == objectName) {
             return object;
         }
 
-        for (engine::Object3d* child : object->GetChildren()) {
+        for (engine::Object3D* child : object->GetChildren()) {
             if (child) {
                 objectsToVisit.push_back(child);
             }
@@ -534,7 +536,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
         return false;
     }
 
-    engine::Object3d* anchor = FindDebugObjectByName(anchorName);
+    engine::Object3D* anchor = FindDebugObjectByName(anchorName);
 
     if (!anchor) {
         DebugConsole::GetInstance()->AddLog(std::string("Debug teleport anchor not found: ") +
@@ -543,7 +545,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
     }
 
     // 親子階層を含む編集直後のTransformも確定してから、コライダー上面を着地点にします。
-    engine::Object3d* anchorRoot = anchor;
+    engine::Object3D* anchorRoot = anchor;
 
     while (anchorRoot->GetParent()) {
         anchorRoot = anchorRoot->GetParent();
@@ -552,7 +554,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
     anchorRoot->UpdateWorldMatrix(false);
 
     engine::Vector3 destination = anchor->GetWorldPosition() + anchorOffset;
-    const AABB anchorBounds = anchor->GetAABB();
+    const Aabb anchorBounds = anchor->GetAabb();
 
     if (anchorBounds.max.y > anchorBounds.min.y) {
         destination.y = anchorBounds.max.y + kDebugTeleportPlayerFloorClearance;
@@ -560,7 +562,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
 
     engine::Vector3 facingDirection = {1.0f, 0.0f, 0.0f};
 
-    if (engine::Object3d* facingObject = FindDebugObjectByName(facingObjectName)) {
+    if (engine::Object3D* facingObject = FindDebugObjectByName(facingObjectName)) {
         facingDirection = facingObject->GetWorldPosition() - destination;
         facingDirection.y = 0.0f;
         const float facingLength =
@@ -606,7 +608,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
         CameraManager::GetInstance()->SetActiveCamera(camera);
         camera->SetInputEnabled(true);
         camera->SetFollowTarget(player_);
-        camera->SetFollowMode(Camera::FollowMode::kAimable);
+        camera->SetFollowMode(Camera::FollowMode::Aimable);
         camera->SetRotation({kDebugTeleportCameraPitch, std::atan2(facingDirection.x, facingDirection.z), 0.0f});
         camera->SnapToThirdPerson(kDebugTeleportCameraDistance, kDebugTeleportCameraHeight, kDebugTeleportCameraPitch);
         camera->Update(0.0f);

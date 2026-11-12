@@ -16,9 +16,9 @@ struct PlayerLocomotionSettings {
     }
 
     engine::Vector3 Apply(const engine::Vector3& current, const engine::Vector3& desired,
-                         float maximumSpeed, bool grounded, float dt) const {
+                         float maximumSpeed, bool grounded, float deltaTime) const {
         auto result = current;
-        if (!std::isfinite(dt) || dt <= 0.0f || !std::isfinite(maximumSpeed))
+        if (!std::isfinite(deltaTime) || deltaTime <= 0.0f || !std::isfinite(maximumSpeed))
             return result;
         if (maximumSpeed <= 0.0f) {
             result.x = result.z = 0.0f;
@@ -33,7 +33,7 @@ struct PlayerLocomotionSettings {
             targetX *= limit; targetZ *= limit;
         }
         const float response = grounded ? 1.0f : settings.airControl;
-        float remaining = dt;
+        float remaining = deltaTime;
         float speed = std::hypot(result.x, result.z);
 
         // 逆入力では一度止める。停止後の余り時間も加速へ使い、FPSで切り返し時間を変えない。

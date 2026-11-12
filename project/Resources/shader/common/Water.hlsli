@@ -35,6 +35,10 @@ cbuffer cbWaterParam : register(b1)
     // Runtime-only water diagnostics; not part of saved material settings.
     float waterDebugView;
     float3 waterDebugPadding;
+    float4 visibilityCenterRadius;
+    float4 visibilityParameters;
+    float4 foregroundBarrierCenter;
+    float4 foregroundBarrierParameters;
 };
 
 // [2] Material color from the inspector.

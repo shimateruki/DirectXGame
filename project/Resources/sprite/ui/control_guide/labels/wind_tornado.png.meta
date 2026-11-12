@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9fb1ec274c05498baff1b5de58eb6a07",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/wind_tornado.png",
+  "version": 1
+}

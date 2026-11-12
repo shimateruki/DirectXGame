@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickDashPanel::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickDashPanel::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 地面として接触し、踏んだ時の光が読める材質を既定にする。
     BaseGimmick::Initialize(common, modelName);
 
@@ -16,7 +16,7 @@ void GimmickDashPanel::Initialize(engine::Object3dCommon* common, const std::str
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetMaterialType(24);
-    SetBlendMode(BlendMode::kNone);
+    SetBlendMode(BlendMode::None);
     SetColor({1.0f, 0.38f, 0.04f, 1.0f});
     SetRoughness(0.42f);
     SetMetallic(0.28f);
@@ -60,7 +60,7 @@ void GimmickDashPanel::Update(float deltaTime) {
 }
 
 // 上面に乗ったプレイヤーへ加速を与え、発光パルスは短いクールダウンで抑えます。
-bool GimmickDashPanel::OnCollision(engine::Object3d* other) {
+bool GimmickDashPanel::OnCollision(engine::Object3D* other) {
     // 上面から踏んだプレイヤーだけを加速し、接触し続けても発光を連射しない。
     Player* player = dynamic_cast<Player*>(other);
     if (!player)
@@ -80,7 +80,7 @@ bool GimmickDashPanel::OnCollision(engine::Object3d* other) {
     return true;
 }
 
-std::unique_ptr<engine::Object3d> GimmickDashPanel::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickDashPanel::Clone() const {
     // 配置と調整値を複製し、実行時のパルス時計は新しい床に持ち込まない。
     auto newObj = std::make_unique<GimmickDashPanel>();
     assert(GetObjectCommon() != nullptr);

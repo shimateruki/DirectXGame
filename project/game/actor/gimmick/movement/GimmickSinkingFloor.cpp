@@ -1,5 +1,5 @@
 #include "GimmickSinkingFloor.h"
-#include "engine/utility/SystemDebug/editor/core/ObjectPropertyDefinition.h"
+#include "engine/editor/properties/ObjectPropertyDefinition.h"
 #include "CollisionConfig.h"
 #include "MovingFloorSupport.h"
 #include "SceneManager.h"
@@ -10,14 +10,14 @@
 
 namespace {
 // 一つの沈む床を構成する子の上面も調べ、どの部品を踏んでも親を始動する。
-bool HasRiderOnDeck(engine::Object3d& part, Character& actor) {
+bool HasRiderOnDeck(engine::Object3D& part, Character& actor) {
     if (const Collider* collider = part.GetCollider(); collider && part.GetCollisionAttribute() != 0) {
         if (!collider->HasModelVolume() && IsStandingOnMovingFloor(part, actor))
             return true;
         if (!actor.IsDead() && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
             collider->HasModelVolume()) {
             // 親の非一様拡縮で傾いた子床は、箱の上端でなく実際の凸形状の上面を測る。
-            const AABB body = actor.GetAABB();
+            const Aabb body = actor.GetAabb();
             const engine::Vector3 origin = {
                 (body.min.x + body.max.x) * 0.5f, body.min.y + 0.35f,
                 (body.min.z + body.max.z) * 0.5f
@@ -30,11 +30,11 @@ bool HasRiderOnDeck(engine::Object3d& part, Character& actor) {
         }
         // 傾いた子床ではAABB最高点が上面中央より高い。実際のOBB上面で足元を測る。
         if (!actor.IsDead() && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
-            collider->GetType() == ColliderType::kOBB && !collider->HasModelVolume()) {
-            const OBB box = collider->GetOBB();
+            collider->GetType() == ColliderType::Obb && !collider->HasModelVolume()) {
+            const Obb box = collider->GetObb();
             const engine::Vector3 normal = box.orientations[1];
-            const auto body = actor.GetAABB();
-            const auto bounds = part.GetAABB();
+            const auto body = actor.GetAabb();
+            const auto bounds = part.GetAabb();
             if (normal.y > 0.5f && body.max.x > bounds.min.x && body.min.x < bounds.max.x &&
                 body.max.z > bounds.min.z && body.min.z < bounds.max.z) {
                 const float x = (body.min.x + body.max.x) * 0.5f;
@@ -47,7 +47,7 @@ bool HasRiderOnDeck(engine::Object3d& part, Character& actor) {
             }
         }
     }
-    for (engine::Object3d* child : part.GetChildren()) {
+    for (engine::Object3D* child : part.GetChildren()) {
         if (child && !child->IsReplayRemoved() && HasRiderOnDeck(*child, actor))
             return true;
     }
@@ -55,7 +55,7 @@ bool HasRiderOnDeck(engine::Object3d& part, Character& actor) {
 }
 } // namespace
 
-void GimmickSinkingFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickSinkingFloor::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // プレイヤーが乗れる床として衝突属性を設定する。
     BaseGimmick::Initialize(common, modelName);
 
@@ -67,7 +67,7 @@ void GimmickSinkingFloor::Initialize(engine::Object3dCommon* common, const std::
     engine::ObjectPropertyDefinition<GimmickSinkingFloor> properties(*this, kTypeId, "沈む床");
     const auto shallow = +[](const GimmickSinkingFloor& floor) { return !floor.GetParameters() || floor.GetParameters()->actionMode != 1; };
     const auto submerged = +[](const GimmickSinkingFloor& floor) { return floor.GetParameters() && floor.GetParameters()->actionMode == 1; };
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("沈み方", "actionMode", &Parameter::actionMode, 0, 1, nullptr,
                          {"従来の浅い沈み込み", "踏むと水没して復帰"});
     properties.Expose("浅い沈み深さ", ENGINE_PROPERTY(sinkDepth_), 0.1f, 100.0f, shallow);
@@ -108,7 +108,7 @@ void GimmickSinkingFloor::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickSinkingFloor::OnCollision(engine::Object3d* other) {
+bool GimmickSinkingFloor::OnCollision(engine::Object3D* other) {
     // プレイヤーが上面を踏んだ短い間だけ、目標の沈み位置を維持する。
     if (other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
@@ -121,7 +121,7 @@ bool GimmickSinkingFloor::OnCollision(engine::Object3d* other) {
     return true;
 }
 
-std::unique_ptr<engine::Object3d> GimmickSinkingFloor::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickSinkingFloor::Clone() const {
     // 移動中の位相は複製せず、保存された配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickSinkingFloor>();
     assert(GetObjectCommon() != nullptr);
@@ -177,7 +177,7 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
         }
     }
 
-    const float dt = (std::max)(0.0f, deltaTime);
+    const float frameDeltaTime = (std::max)(0.0f, deltaTime);
     const float depth = (std::max)(0.1f, GetParameters()->moveAmount);
     const float speed = (std::max)(0.1f, GetParameters()->speed);
     const engine::Vector3 before = GetTranslate();
@@ -190,18 +190,18 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
 
     // 一度踏んだら最深部まで沈む。接地が一瞬切れても途中で浮き戻らない。
     if (submergePhase_ == 2) {
-        next.y = (std::max)(startPos_.y - depth, before.y - speed * dt);
+        next.y = (std::max)(startPos_.y - depth, before.y - speed * frameDeltaTime);
 
         if (next.y <= startPos_.y - depth) {
             submergePhase_ = 3;
             submergeTimer_ = 0.0f;
         }
     } else if (submergePhase_ == 3) {
-        submergeTimer_ += dt;
+        submergeTimer_ += frameDeltaTime;
         if (submergeTimer_ >= (std::max)(0.1f, GetParameters()->interval))
             submergePhase_ = 4;
     } else if (submergePhase_ == 4) {
-        next.y = (std::min)(startPos_.y, before.y + speed * dt);
+        next.y = (std::min)(startPos_.y, before.y + speed * frameDeltaTime);
         if (next.y >= startPos_.y)
             submergePhase_ = 0;
     }
@@ -216,7 +216,7 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
         rider->SetTranslate(rider->GetTranslate() + displacement);
         rider->UpdateLocalMatrix();
         rider->UpdateWorldMatrix(false);
-        if (auto* player = dynamic_cast<Player*>(rider); player && dt > 0.0f)
-            player->SetPlatformMotion(displacement * (1.0f / dt));
+        if (auto* player = dynamic_cast<Player*>(rider); player && frameDeltaTime > 0.0f)
+            player->SetPlatformMotion(displacement * (1.0f / frameDeltaTime));
     }
 }

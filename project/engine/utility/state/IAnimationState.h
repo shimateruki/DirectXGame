@@ -2,7 +2,8 @@
 
 class Player;
 
-/// <summary>プレイヤーのアニメーション状態の開始、更新、終了を受け取る境界。</summary>
+// 担当：プレイヤーのアニメーション状態の開始・更新・終了を定義する。
+// 関連：Player（状態の所有・切替）、各PlayerState（実装）
 class IAnimationState {
 public:
     virtual ~IAnimationState() = default;

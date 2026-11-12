@@ -1,6 +1,6 @@
 #include "NavAgentComponent.h"
 
-#include "Object3d.h"
+#include "Object3D.h"
 #include "engine/system/collision/CollisionManager.h"
 
 #include <algorithm>
@@ -62,7 +62,7 @@ void NavAgentComponent::InvalidatePath() {
 }
 
 engine::Vector3 NavAgentComponent::CalculateDirection(
-    engine::Object3d* owner, const engine::Vector3& currentPosition,
+    engine::Object3D* owner, const engine::Vector3& currentPosition,
     const engine::Vector3& targetPosition, float deltaTime) {
     engine::Vector3 direct = targetPosition - currentPosition;
     direct.y = 0.0f;
@@ -96,7 +96,7 @@ engine::Vector3 NavAgentComponent::CalculateDirection(
 }
 
 bool NavAgentComponent::RebuildPath(
-    engine::Object3d* owner, const engine::Vector3& currentPosition, const engine::Vector3& targetPosition) {
+    engine::Object3D* owner, const engine::Vector3& currentPosition, const engine::Vector3& targetPosition) {
     // 全マップではなく現在地と目標を囲う領域だけを探索し、グリッドの生成量を抑える。
     const float padding = (std::max)(searchPadding_, cellSize_ * 2.0f);
     NavGridBuildSettings settings;

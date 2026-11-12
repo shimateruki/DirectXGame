@@ -1,17 +1,17 @@
 #pragma once
-#include "Object3d.h"
+#include "Object3D.h"
 #include"Model.h"
 #include <algorithm>
 #include <vector>
 #include <wrl.h>
 
-// ========================================================
-// 斬撃・魔法陣などのメッシュエフェクト専用クラス
-// ========================================================
-// EffectObject3dは、メッシュベースのVFXをObject3dとして扱い、寿命、色、拡大、ディゾルブを制御します。
-class EffectObject3d : public engine::Object3d {
+// 担当：Object3dを土台に、メッシュVFXの寿命・色・拡大・ディゾルブを制御する。
+// 関連：Object3D（共通機能）、MeshEffectManager（生成・再利用）、MeshEffectEditor（編集）
+// 主な入口：Initialize / Play / Update / Draw / ResetForReuse
+class EffectObject3D : public engine::Object3D {
 public:
     /// <summary>エフェクトシェーダーの cbuffer と一致する描画パラメータ。</summary>
+    // 関連：EffectObject3D（この型を使う機能の本体）
     struct EffectMaterial {
         engine::Vector4 color;
         engine::Vector2 scrollSpeed;
@@ -43,8 +43,11 @@ public:
         float ringSpinSpeed;
     };
 
-    /// <summary>Object3d とエフェクト専用マテリアルバッファを初期化する。</summary>
-    void Initialize(engine::Object3dCommon* common);
+    /// <summary>Object3D とエフェクト専用マテリアルバッファを初期化する。</summary>
+    void Initialize(engine::Object3DCommon* common);
+
+    /// <summary>GPUバッファを保持し、単発演出の状態を新規生成時の値へ戻す。</summary>
+    void ResetForReuse();
 
     /// <summary>再生時間に応じてスケール、色、ディゾルブを更新する。</summary>
     void Update(float deltaTime) override;
@@ -62,14 +65,15 @@ public:
 
     void SetIntensity(float intensity) { if (materialData_) materialData_->intensity = intensity; }
 
+    // 材質シェーダーの時間だけを0へ戻す。寿命の再生位置とは別。
     void ResetTime() { if (materialData_) materialData_->time = 0.0f; }
 
     EffectMaterial* GetMaterialData() const { return materialData_; }
 
     /// <summary>寿命を指定し、再生位置を先頭に戻して開始する。</summary>
     void Play(float lifetime) {
-        currentTime_ = 0.0f;
-        lifetime_ = lifetime;
+        currentTime_ = 0.0f; // 再生開始からの経過秒数。
+        lifetime_ = lifetime; // 一回の再生の長さ（秒）。
         isPlaying_ = true;
         if (materialData_)
             materialData_->time = 0.0f;
@@ -77,7 +81,7 @@ public:
 
     /// <summary>設定済みの寿命を保って先頭から再生する。</summary>
     void Restart() {
-        currentTime_ = 0.0f;
+        currentTime_ = 0.0f; // 再生開始からの経過秒数。
         isPlaying_ = true;
         if (materialData_)
             materialData_->time = 0.0f;
@@ -156,21 +160,25 @@ public:
     /// <summary>JSONプリセットから形状とマテリアル設定を読み込む。</summary>
     bool LoadFromJson(const std::string& jsonFilePath);
 
-    void SetTargetObject(engine::Object3d* target) { targetObject_ = target; }
+    void SetTargetObject(engine::Object3D* target) { targetObject_ = target; }
 
     void SetOffsets(const engine::Vector3& pos, const engine::Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
 
-    engine::Object3d* GetTargetObject() const { return targetObject_; }
+    engine::Object3D* GetTargetObject() const { return targetObject_; }
 
     void SetProceduralType(int type) { if (materialData_) materialData_->proceduralType = type; }
 
     /// <summary>編集パラメータから手続き生成メッシュを再構築する。</summary>
     void UpdateProceduralMesh();
 
+    /// <summary>シーン終了時に球・リングの共有形状を解放する。表示中の参照は維持する。</summary>
+    static void ClearProceduralMeshCache();
+
     /// <summary>現在の手続き生成メッシュを OBJ 形式で書き出す。</summary>
     void ExportToObj(const std::string& filePath) const;
 
     /// <summary>手続き形状・UV・衝突の編集用データ。保持状態への変更は適用関数を使う。</summary>
+    // 関連：EffectObject3D（この型を使う機能の本体）
     struct MeshSettings {
         // --- プロシージャルメッシュ用パラメータ ---
         float slashAngle = 360.0f; // 斬撃の角度（360度以上も可能に）
@@ -208,7 +216,7 @@ public:
         engine::Vector2 uvTiling = {1.0f, 1.0f};
 
         bool hasCollision = false;
-        int collisionShape = 0; // 0:Sphere, 1:AABB, 2:OBB, 3:Cylinder
+        int collisionShape = 0; // 0:Sphere, 1:Aabb, 2:Obb, 3:Cylinder
         engine::Vector3 collisionSize = { 1.0f, 1.0f, 1.0f };
         engine::Vector3 collisionOffset = engine::Vector3::ZERO;
 
@@ -230,28 +238,29 @@ public:
 private:
     MeshSettings meshSettings_;
 
+    // 呼出側が用意した変換バッファを使ってエフェクトを描画する。
     void DrawWithWvp(ID3D12Resource* wvpResource);
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
     EffectMaterial* materialData_ = nullptr;
-    engine::Object3d* targetObject_ = nullptr;
-    engine::Vector3 offsetPos_ = engine::Vector3::ZERO;
-    engine::Vector3 offsetRot_ = engine::Vector3::ZERO;
+    engine::Object3D* targetObject_ = nullptr; // 追従するObject。借用参照。
+    engine::Vector3 offsetPos_ = engine::Vector3::ZERO; // 追従対象からの位置補正。
+    engine::Vector3 offsetRot_ = engine::Vector3::ZERO; // 追従対象からの回転補正（ラジアン）。
 
     // エフェクト用マテリアルをGPUへ渡す定数バッファを作る。
     bool CreateMaterialBuffer(ID3D12Device* device);
 
-    BlendMode blendMode_ = BlendMode::kAdd;
+    BlendMode blendMode_ = BlendMode::Add;
 
-    float currentTime_ = 0.0f;
-    float lifetime_ = 1.0f;
+    float currentTime_ = 0.0f; // 再生開始からの経過秒数。
+    float lifetime_ = 1.0f; // 一回の再生の長さ（秒）。
     bool isPlaying_ = false;
 
     uint32_t noiseTextureHandle_ = 0;
     uint32_t rampTextureHandle_ = 0;
 
-    engine::Vector3 startScale_ = { 1.0f, 1.0f, 1.0f };
-    engine::Vector3 endScale_ = { 1.0f, 1.0f, 1.0f };
+    engine::Vector3 startScale_ = { 1.0f, 1.0f, 1.0f }; // 再生開始時の拡縮。
+    engine::Vector3 endScale_ = { 1.0f, 1.0f, 1.0f }; // 再生終了時の拡縮。
 
     engine::Vector4 startColor_ = engine::Colors::White;
     engine::Vector4 endColor_ = engine::Colors::White;
@@ -260,18 +269,21 @@ private:
     bool isAutoLoop_ = false;
 
     // 動的生成専用のモデル
-    std::unique_ptr<Model> dynamicModel_;
+    // キャッシュした形状は読み取り専用で共有し、再編集時は別Modelへ切り替えます。
+    std::shared_ptr<Model> dynamicModel_;
     std::vector<Model::VertexData> proceduralVertices_;
     std::vector<uint32_t> proceduralIndices_;
 
     // 以下の Generate* は形状別の頂点・インデックスを proceduralVertices_ / proceduralIndices_ に生成する。
     void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
 
+    // 長さ・半径・分割数から突き形状の頂点を作る。
     void GenerateThrustVertices(float length, float radius, int segments);
 
     // 緯度ごとのリングを作り、UVの継ぎ目用に各リングの端点を重複させる。
     void GenerateSphereVertices(float radius, int segments, int rings);
 
+    // 半径・高さ・周方向の分割数から円柱の頂点を作る。
     void GenerateCylinderVertices(float radius, float height, int segments);
 
     // 各面に独立した法線とUVを持たせ、箱の角が滑らかに補間されないようにする。
@@ -283,11 +295,13 @@ private:
     // 大円に沿って小円を並べ、継ぎ目のUVを複製して輪状Meshを作る。
     void GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings);
 
+    // 半径・高さ・周方向の分割数から円錐の頂点を作る。
     void GenerateConeVertices(float radius, float height, int segments);
 
     // 円錐一枚では表現できない刃・鍔・柄の輪郭を持つ槍を生成します。
     void GenerateLanceVertices(float radius, float height, int segments);
 
+    // 外半径・内半径・分割数から輪の頂点を作る。
     void GenerateRingVertices(float outerRad, float innerRad, int segments);
 
     // 重心が原点に来る正三角形をXZ平面へ作り、法線を上向きに揃える。

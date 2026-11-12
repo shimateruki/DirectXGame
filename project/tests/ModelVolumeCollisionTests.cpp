@@ -55,7 +55,7 @@ int main(){
         Transform groundTransform;
         Collider ground(&groundTransform);
         ColliderConfig config;
-        config.type=ColliderType::kOBB;
+        config.type=ColliderType::Obb;
         config.useModelVolume=true;
         ground.SetConfig(config);
         ground.SetModelSurface(ReadObj("Stages/magma_fortress_foundation"));
@@ -69,7 +69,7 @@ int main(){
         Transform actorTransform;
         Collider actor(&actorTransform);
         ColliderConfig actorConfig;
-        actorConfig.type=ColliderType::kAABB;
+        actorConfig.type=ColliderType::Aabb;
         actorConfig.size={.5f,.5f,.5f};
         actor.SetConfig(actorConfig);
         const auto contact=[&](engine::Vector3 position){actorTransform.translate=position;actorTransform.UpdateMatrix();return actor.CheckCollision(&ground);};
@@ -80,7 +80,7 @@ int main(){
         hit=contact({16.6f,-2,0});
         Require(hit.isColliding&&hit.normal.x>.8f,"box side contact");
         Require(!contact({16.5f,.5f,12.4f}).isColliding,"chamfer corner must be empty");
-        actorConfig.type=ColliderType::kSphere;
+        actorConfig.type=ColliderType::Sphere;
         actor.SetConfig(actorConfig);
         hit=contact({16.6f,-2,0});
         Require(hit.isColliding&&hit.normal.x>.8f,"sphere side");
@@ -96,7 +96,7 @@ int main(){
         groundTransform.parent=&parent;
         groundTransform.UpdateMatrix();
         Require(ground.RaycastModelVolume({10,10,20},{0,-1,0},30,distance,normal)&&std::abs(distance-5)<.01f,"parent scale ray");
-        Require(ground.GetAABB().min.y< -9.39f,"parent scale bounds");
+        Require(ground.GetAabb().min.y< -9.39f,"parent scale bounds");
         groundTransform.parent=nullptr;
         groundTransform.rotate={0,0,.2f};
         groundTransform.isQuaternionMaster=false;
@@ -138,7 +138,7 @@ int main(){
         Require(slopedChild.RaycastModelVolume(deckCenter+engine::Vector3{0,10,0},
             {0,-1,0},20,distance,normal)&&normal.y>.5f&&std::abs(distance-10)<.2f,
             "scaled parent sloped child top ray");
-        actorConfig.type=ColliderType::kSphere;
+        actorConfig.type=ColliderType::Sphere;
         actor.SetConfig(actorConfig);
         actorTransform.translate=deckCenter+normal*.4f;
         actorTransform.UpdateMatrix();
@@ -157,8 +157,8 @@ int main(){
             const auto hull=ground.GetWorldHull();
 
             for(const auto& t:triangles)for(const auto& p:{t.a,t.b,t.c})for(const auto& f:hull)
-                Require(convex_collision::Dot(convex_collision::Normal(f),p-f[0])<.0003f,"hull clips visible mesh");
-            const auto bounds=ground.GetAABB();
+                Require(ConvexCollision::Dot(ConvexCollision::Normal(f),p-f[0])<.0003f,"hull clips visible mesh");
+            const auto bounds=ground.GetAabb();
             const auto center=(bounds.min+bounds.max)*.5f;
             Require(ground.RaycastModelVolume({center.x,bounds.max.y+10,center.z},{0,-1,0},100,distance,normal)&&normal.y>0,"terrain top");
             Require(ground.RaycastModelVolume({center.x,bounds.min.y-10,center.z},{0,1,0},100,distance,normal)&&normal.y<0,"terrain bottom");
@@ -204,7 +204,7 @@ int main(){
             const auto attrA=first.data.value("collisionAttribute",0u), attrB=second.data.value("collisionAttribute",0u);
             if (!(maskA&attrB) || !(maskB&attrA))
                 continue;
-            const auto ba=first.collider->GetAABB(),bb=second.collider->GetAABB();
+            const auto ba=first.collider->GetAabb(),bb=second.collider->GetAabb();
             int cells=1;
 
             for(int axis=0;axis<3;++axis){
@@ -256,7 +256,7 @@ int main(){
         // 門の中央には判定を置かず、左右の柱だけに接触することを子Colliderで確認する。
         bool touchedPost=false;
         size_t gateParts=0;
-        actorConfig.type=ColliderType::kAABB;
+        actorConfig.type=ColliderType::Aabb;
         actor.SetConfig(actorConfig);
 
         for(const auto& obj:scene["objects"]){
@@ -265,7 +265,7 @@ int main(){
             Transform partTransform;
             Collider part(&partTransform);
             ColliderConfig partConfig;
-            partConfig.type=ColliderType::kOBB;
+            partConfig.type=ColliderType::Obb;
             const auto& col=obj.at("collider");
             partConfig.center={col["center"][0],col["center"][1],col["center"][2]};
             partConfig.size={col["size"][0],col["size"][1],col["size"][2]};

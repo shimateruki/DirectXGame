@@ -13,11 +13,13 @@ class Player;
 namespace engine { class InputManager; }
 namespace engine { class ParticleSystem; } // ジャンプエフェクト用
 class IMoveStrategy;  // 戦略インターフェース
-namespace engine { class Object3d; }       // 子オブジェクト用
+namespace engine { class Object3D; }       // 子オブジェクト用
 
 /// <summary>
 /// プレイヤーの移動制御コンポーネント
 /// </summary>
+// 関連：Playerの入力と移動戦略を使い、Characterの速度・接地状態へ反映する。
+// 主な入口：Initialize / Update
 class PlayerMover {
   public:
     PlayerMover();
@@ -77,9 +79,9 @@ class PlayerMover {
 #ifdef USE_IMGUI
     friend struct PlayerLocomotionRuntimeProbe::Access;
 #endif
-    engine::Vector3 platformVelocity_{};
-    engine::Vector3 platformAirVelocity_{};
-    engine::Vector3 abilityAirVelocity_{};
+    engine::Vector3 platformVelocity_{}; // 接地中の床から受け取る移動速度。
+    engine::Vector3 platformAirVelocity_{}; // 床から離れた後も保持する床由来の速度。
+    engine::Vector3 abilityAirVelocity_{}; // 空中で能力から加えられた追加速度。
     engine::Vector3 previousAddedAirVelocity_{}; // 空中攻撃の補間へ床・爆風を二重加算しないための前回加算値。
     PlayerJumpRequest jumpRequest_;
     const char* jumpStatus_ = "入力待ち";
@@ -88,15 +90,12 @@ class PlayerMover {
     void EmitGroundDust(const char* presetName, float yOffset) const;
 
     // 参照用ポインタ
-    Player* player_ = nullptr;
+    Player* player_ = nullptr; // 更新対象のPlayerの借用参照。PlayerがこのMoverを所有する。
     engine::InputManager* inputManager_ = nullptr;
     engine::ParticleSystem* particleSystem_ = nullptr;
 
     // 移動戦略 (2D/3Dなど)
     std::unique_ptr<IMoveStrategy> strategy_ = nullptr;
-
-    // パラメータ
-    float jumpPower_ = 2.0f; // ジャンプ力
 
     // --- ダッシュ回避関連 ---
     bool isDashing_ = false;
@@ -106,7 +105,7 @@ class PlayerMover {
     engine::Vector3 dashDirection_{};    // 値初期化（{0,0,0}）
 
     // 子オブジェクトの元の衝突属性を保存して復元するためのマップ
-    std::unordered_map<engine::Object3d*, uint32_t> childOriginalAttributes_;
+    std::unordered_map<engine::Object3D*, uint32_t> childOriginalAttributes_;
 
     // --- スライム挙動関連 ---
     float slimeTimer_ = 0.0f;                // 伸縮アニメーション用タイマー
@@ -125,12 +124,12 @@ class PlayerMover {
 
     // --- Surface gimmick effects ---
     float dashPanelTimer_ = 0.0f;
-    float dashPanelSpeedMultiplier_ = 1.0f;
-    float dashPanelTurnMultiplier_ = 1.0f;
+    float dashPanelSpeedMultiplier_ = 1.0f; // ダッシュパネルの速度倍率。1なら通常値。
+    float dashPanelTurnMultiplier_ = 1.0f; // パネル効果中の方向転換倍率。1なら通常値。
 
-    bool hasGroundedHistory_ = false;
+    bool hasGroundedHistory_ = false; // 前フレームとの接地比較が可能になったか。
     bool wasGroundedLastFrame_ = false;
-    float landingDustCooldown_ = 0.0f;
-    float airborneDuration_ = 0.0f;
-    float airborneMaxDownSpeed_ = 0.0f;
+    float landingDustCooldown_ = 0.0f; // 着地粒子の再発生までの残り秒数。
+    float airborneDuration_ = 0.0f; // 空中状態に使う経過秒数。
+    float airborneMaxDownSpeed_ = 0.0f; // 着地演出の強さを決めるために記録した最大下降速度。
 };

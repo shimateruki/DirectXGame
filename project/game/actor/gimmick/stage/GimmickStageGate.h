@@ -6,6 +6,8 @@
 class BaseScene;
 
 /// <summary>ステージ選択ノードと入場ゲートの表示・遷移を管理します。</summary>
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision
 class GimmickStageGate : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -14,16 +16,16 @@ class GimmickStageGate : public BaseGimmick {
 
     ~GimmickStageGate() override = default;
 
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 目標開放度に滑らかに追従させ、開放の閾値をまたいだ瞬間だけ発光を強めます。
     void Update(float deltaTime) override;
 
     // ステージ選択用の展示ノードは、触れてもシーン遷移を起こしません。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     // 複製先の描画資源を初期化した後で、ゲート設定をコピーします。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // エディターで設定された行き先情報とノードの動作モードを取得します。
     int GetStageIndex() const;
@@ -77,16 +79,16 @@ class GimmickStageGate : public BaseGimmick {
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     float pulseTimer_ = 0.0f;
 
-    float activation_ = 1.0f;
-    float targetActivation_ = 1.0f;
+    float activation_ = 1.0f; // 現在のゲート出現率。
+    float targetActivation_ = 1.0f; // 解錠・演出から要求された出現率。
     float activationBurst_ = 0.0f;
     float lastAppliedPulse_ = 1.0f;
 
     GateEntryPresentation entryPresentation_;
-    bool transitionQueued_ = false;
+    bool transitionQueued_ = false; // 重複したシーン遷移要求を送らないための予約状態。
 
     bool hasBaseScale_ = false;
-    bool hasTriggeredTransition_ = false;
+    bool hasTriggeredTransition_ = false; // この入口からシーン遷移を一度要求済みか。
 
     bool isSelected_ = false;
     bool isUnlocked_ = true;

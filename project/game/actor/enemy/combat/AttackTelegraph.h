@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include "engine/utility/math/Math.h"
 
 #include <cstddef>
@@ -10,13 +10,15 @@
 
 // 敵の攻撃予兆を円形・線形などのメッシュエフェクトとして表示します。
 // 位置はワールド座標、半径・長さ・幅はワールド距離、progress は 0～1 の予兆進行率です。
+// 関連：BaseEnemyが予告を指定し、MeshEffectとDecalで形・タイミングを表示する。
+// 主な入口：Initialize / ShowCircle / ShowLine / Hide / Update
 class AttackTelegraph {
   public:
     // 予兆として表示する形状の種類です。
     enum class Shape { Circle, ImpactDisc, Line, DecalCircle };
 
     // 描画用エフェクトを必要時に生成するための共有コンテキストを借ります。
-    void Initialize(engine::Object3dCommon* common);
+    void Initialize(engine::Object3DCommon* common);
 
     // 円形範囲攻撃の予兆を表示します。
     void ShowCircle(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color);
@@ -52,7 +54,7 @@ class AttackTelegraph {
     void TriggerCueAt(const engine::Vector3& center, float radius, const engine::Vector4& color);
 
     // 敵本体の上へ、回避入力の瞬間を伝える短い共通フラッシュを表示します。
-    void TriggerWarningCue(engine::Object3d* target, const engine::Vector3& offset, float size, const engine::Vector4& accentColor);
+    void TriggerWarningCue(engine::Object3D* target, const engine::Vector3& offset, float size, const engine::Vector4& accentColor);
 
     // 表示中の予兆を非表示にします。
     void Hide();
@@ -70,12 +72,12 @@ class AttackTelegraph {
 
   private:
     // 必要数だけ予兆・強調用Effectを遅延生成する。
-    void EnsureEffect(engine::Object3dCommon* common);
+    void EnsureEffect(engine::Object3DCommon* common);
 
     // 命中直前の強調表示を本体の予告と別の寿命で管理する。
-    void EnsureCueEffect(engine::Object3dCommon* common);
+    void EnsureCueEffect(engine::Object3DCommon* common);
 
-    void EnsureWarningEffect(engine::Object3dCommon* common);
+    void EnsureWarningEffect(engine::Object3DCommon* common);
 
     // 複数着弾地点に必要な数だけ表示物を増やし、既存分は再利用する。
     void EnsurePatternEffects(std::size_t count);
@@ -105,25 +107,25 @@ class AttackTelegraph {
     void ConfigureCueShape(Shape shape);
 
     // EffectObject3dの手続き生成形状を予兆用に設定します。
-    void ConfigureEffectShape(EffectObject3d* effect, Shape shape);
+    void ConfigureEffectShape(EffectObject3D* effect, Shape shape);
 
     // 発動タイミング表示は範囲本体より細く明るい形状に設定します。
-    void ConfigureTimingEffectShape(EffectObject3d* effect, Shape shape);
+    void ConfigureTimingEffectShape(EffectObject3D* effect, Shape shape);
 
     // 個別Effectへ円、デカール、線の寸法と進行率を反映する。
-    void ApplyCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress, const engine::Vector4& color,
+    void ApplyCircle(EffectObject3D* effect, const engine::Vector3& center, float radius, float progress, const engine::Vector4& color,
                      float scaleMultiplier) const;
 
     // 地面から僅かに浮かせ、深度競合でデカールがちらつくのを避ける。
-    void ApplyDecalCircle(EffectObject3d* effect, const engine::Vector3& center, float radius, float progress,
+    void ApplyDecalCircle(EffectObject3D* effect, const engine::Vector3& center, float radius, float progress,
                           const engine::Vector4& color, float scaleMultiplier) const;
 
     // 始点を固定したまま前方へ伸ばし、射線の向きを予告から読めるようにする。
-    void ApplyLine(EffectObject3d* effect, const engine::Vector3& center, const engine::Vector3& direction, float length, float width,
+    void ApplyLine(EffectObject3D* effect, const engine::Vector3& center, const engine::Vector3& direction, float length, float width,
                    float progress, const engine::Vector4& color, float scaleMultiplier) const;
 
     // 残り時間を線上の移動マーカーに変え、端を越えないよう位置を制限する。
-    void ApplyLineTimingMarker(EffectObject3d* effect, const engine::Vector3& origin, const engine::Vector3& direction, float length,
+    void ApplyLineTimingMarker(EffectObject3D* effect, const engine::Vector3& origin, const engine::Vector3& direction, float length,
                                float width, float progress, const engine::Vector4& color) const;
 
     // 予兆本体とは別に発動タイミング用のマーカーを表示する。
@@ -145,13 +147,13 @@ class AttackTelegraph {
     // 発生が近づく後半ほど色を強め、攻撃の直前を判別しやすくする。
     engine::Vector4 MakeTimingColor(const engine::Vector4& color, float progress) const;
 
-    std::unique_ptr<EffectObject3d> effect_;
-    std::unique_ptr<EffectObject3d> cueEffect_;
-    std::unique_ptr<EffectObject3d> warningEffect_;
-    std::vector<std::unique_ptr<EffectObject3d>> patternEffects_;
-    std::vector<std::unique_ptr<EffectObject3d>> timingEffects_;
+    std::unique_ptr<EffectObject3D> effect_;
+    std::unique_ptr<EffectObject3D> cueEffect_;
+    std::unique_ptr<EffectObject3D> warningEffect_;
+    std::vector<std::unique_ptr<EffectObject3D>> patternEffects_;
+    std::vector<std::unique_ptr<EffectObject3D>> timingEffects_;
 
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
 
     Shape shape_ = Shape::Circle;
     Shape cueShape_ = Shape::Circle;
@@ -195,5 +197,5 @@ class AttackTelegraph {
     float warningSize_ = 1.0f;
 
     // シーンが所有する対象への非所有参照。予告を対象に追従させる間だけ使います。
-    engine::Object3d* warningTarget_ = nullptr;
+    engine::Object3D* warningTarget_ = nullptr;
 };

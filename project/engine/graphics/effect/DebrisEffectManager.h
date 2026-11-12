@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "MeshRenderer.h"
 #include "Model.h"
 #include "engine/utility/math/Math.h"
@@ -14,10 +14,11 @@
 #include <vector>
 #include <wrl.h>
 
-namespace engine { class Object3dCommon; }
+namespace engine { class Object3DCommon; }
 struct ID3D12Resource;
 
 /// <summary>破片の発生数、飛散速度、重力、衝突、見た目をまとめたプリセット設定。</summary>
+// 関連：DebrisEffectManager（この型を使う機能の本体）
 struct DebrisEffectConfig {
     std::string name = "rock_burst";
     std::vector<std::string> modelNames = { "Primitives/cube" };
@@ -34,17 +35,17 @@ struct DebrisEffectConfig {
 
     // 初速はワールド単位/秒。下の角速度はラジアン/秒。
     float speedMin = 7.0f;
-    float speedMax = 16.0f;
+    float speedMax = 16.0f; // 初速の上限（ワールド単位/秒）。
 
-    float angularSpeedMin = 3.0f;
-    float angularSpeedMax = 12.0f;
+    float angularSpeedMin = 3.0f; // 角速度の下限（ラジアン/秒）。
+    float angularSpeedMax = 12.0f; // 角速度の上限（ラジアン/秒）。
 
     float scaleMin = 0.15f;
     float scaleMax = 0.45f;
 
     // 生存時間は秒。フェード開始位置は全寿命に対する fadeStartRatio の割合。
     float lifetimeMin = 1.0f;
-    float lifetimeMax = 1.8f;
+    float lifetimeMax = 1.8f; // 破片寿命の上限（秒）。
 
     float gravity = 28.0f;
     float airDrag = 0.08f;
@@ -68,14 +69,16 @@ struct DebrisEffectConfig {
     bool shrinkOnFade = true;
 };
 
-/// <summary>破片のプリセット、発生・更新・描画と再利用プールを管理する。</summary>
+// 担当：破片のプリセット、飛散・衝突・描画と再利用プールを管理する。
+// 関連：DebrisEffectConfig（設定）、Model / Object3DCommon（描画）、DebrisEffectEditor（編集）
+// 主な入口：Initialize / Spawn / Update / Draw / Clear
 class DebrisEffectManager {
 public:
     /// <summary>エンジン全体で共有する破片管理インスタンスを返す。</summary>
     static DebrisEffectManager* GetInstance();
 
     /// <summary>破片描画に必要な3D共通機能とGPUリソースを準備する。</summary>
-    void Initialize(engine::Object3dCommon* common);
+    void Initialize(engine::Object3DCommon* common);
 
     /// <summary>生存中の破片の移動、回転、衝突とフェードを更新する。</summary>
     void Update(float deltaTime);
@@ -91,6 +94,7 @@ public:
 #ifdef USE_IMGUI
     // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
     void BeginEditorSession();
+    // 確認用の実行状態を片付け、開始前に退避した状態へ戻す。
     void EndEditorSession();
 #endif
 
@@ -136,6 +140,7 @@ public:
 
 private:
     /// <summary>飛散中の破片一個の物理状態と描画用リソース。</summary>
+    // 関連：DebrisEffectManager（この型を使う機能の本体）
     struct DebrisPiece {
         Model* model = nullptr;
         engine::Vector3 position = engine::Vector3::ZERO;
@@ -149,11 +154,11 @@ private:
         MeshRenderer::TransformationMatrix* shadowWvpData = nullptr;
         MeshRenderer::MaterialData* materialData = nullptr;
 
-        engine::Vector3 velocity = engine::Vector3::ZERO;
-        engine::Vector3 angularVelocity = engine::Vector3::ZERO;
+        engine::Vector3 velocity = engine::Vector3::ZERO; // 破片の移動速度（ワールド単位/秒）。
+        engine::Vector3 angularVelocity = engine::Vector3::ZERO; // 破片の角速度（ラジアン/秒）。
 
         float age = 0.0f;
-        float lifetime = 1.0f;
+        float lifetime = 1.0f; // 破片の寿命（秒）。
 
         float baseScale = 1.0f;
         float currentScale = 1.0f;
@@ -176,11 +181,12 @@ private:
     DebrisEffectManager();
 
     // 描画基盤を解決し、プールから破片を確保・返却する。
-    engine::Object3dCommon* ResolveCommon();
+    engine::Object3DCommon* ResolveCommon();
 
     // プールに残る GPU リソースを移動して取得し、空なら新規初期化へ任せる。
     DebrisPiece AcquirePiece();
 
+    // 指定番号の破片を稼働一覧から外し、再利用プールへ戻す。
     void RecyclePiece(size_t index);
 
     // 確保した破片のGPU定数を準備し、移動後の描画行列を更新する。
@@ -201,18 +207,18 @@ private:
     // パス指定はそのまま使い、短い名前だけ標準プリセットディレクトリへ解決する。
     std::string ResolvePresetPath(const std::string& presetName) const;
 
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
-    MeshRenderer::CameraForGPU* cameraData_ = nullptr;
+    MeshRenderer::CameraForGpu* cameraData_ = nullptr;
     std::vector<DebrisPiece> activePieces_;
     std::vector<DebrisPiece> pooledPieces_;
     std::map<std::string, DebrisEffectConfig> presets_;
     mutable std::recursive_mutex mutex_;
     mutable std::mt19937 randomEngine_;
-    float timeScale_ = 1.0f;
+    float timeScale_ = 1.0f; // 破片の更新時間倍率。
 #ifdef USE_IMGUI
     bool editorSession_ = false;
-    float savedEditorScale_ = 1;
+    float savedEditorScale_ = 1; // 単体確認を始める前の時間倍率。
     decltype(activePieces_) savedEditorPieces_;
     std::mt19937 savedEditorRandom_;
 #endif

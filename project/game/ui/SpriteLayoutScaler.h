@@ -1,5 +1,7 @@
 #pragma once
 
+// 各UIがJSONの設計解像度を実画面の位置・サイズへ変換する。入力判定用の基準値も同じ倍率で解決する。
+
 #include "Math.h"
 #include "WinApp.h"
 #include "json.hpp"

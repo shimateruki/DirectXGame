@@ -1,0 +1,68 @@
+{
+  "emitPos": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "emitArea": [
+    0.055,
+    0.13,
+    0.055
+  ],
+  "emitVelocity": [
+    0,
+    3.6,
+    0
+  ],
+  "emitCount": 4,
+  "emitLife": 0.43,
+  "velocityVariance": 0.27,
+  "baseColor": [
+    0.5,
+    1.0,
+    0.86,
+    0
+  ],
+  "midColor": [
+    0.57,
+    1.0,
+    0.92,
+    0.78
+  ],
+  "endColor": [
+    0.52,
+    0.88,
+    1.0,
+    0.0
+  ],
+  "colorMidTime": 0.22,
+  "baseSize": 0.04,
+  "midSize": 0.23,
+  "endSize": 0.018,
+  "sizeMidTime": 0.42,
+  "rotSpeed": 3.0,
+  "blendModeIndex": 1,
+  "envGravity": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "envDrag": 0.38,
+  "envWind": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "envTurbulence": 0.38,
+  "isLooping": false,
+  "emitInterval": 0.03,
+  "shapeType": 2,
+  "shapeRadius": 0.07,
+  "shapeAngle": 12.0,
+  "sizeEaseType": 3,
+  "colorEaseType": 2,
+  "colorIntensity": 1.75,
+  "texturePath": "Resources/sprite/particle/slash_streak.png",
+  "alignToVelocity": true,
+  "velocityStretch": 0.13
+}

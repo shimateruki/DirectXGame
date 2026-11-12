@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f742b2ffc63b4a8cb4df316c3f8c1eb4",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_wind_lift_burst.json",
+  "version": 1
+}

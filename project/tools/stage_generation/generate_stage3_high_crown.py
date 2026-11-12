@@ -391,13 +391,6 @@ def build_encounter_objects() -> list[dict]:
         "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
         "version": 1,
     }
-    reward["lod"] = {
-        "enabled": False,
-        "levels": [
-            {"distance": 35.0, "level": 1, "modelName": "Stages/crown/crown_lod1.obj"},
-            {"distance": 70.0, "level": 2, "modelName": "Stages/crown/crown_lod2.obj"},
-        ],
-    }
     objects.append(reward)
     return objects
 

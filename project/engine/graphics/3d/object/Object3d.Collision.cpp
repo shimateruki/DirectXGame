@@ -1,9 +1,9 @@
 #define NOMINMAX
-#include "Object3d.h"
+#include "Object3D.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
-#include "EffectObject3d.h"
-#include "SRVManager.h"
+#include "EffectObject3D.h"
+#include "SrvManager.h"
 #include "CameraManager.h"
 #include "SceneManager.h"
 #include "GhostRecorder.h"
@@ -13,8 +13,8 @@
 #include <cmath>
 #include <utility>
 #include <ParticleManager.h>
-#include <GPUParticleManager.h>
-#include <GPUParticleEmitter.h>
+#include <GpuParticleManager.h>
+#include <GpuParticleEmitter.h>
 #include <DebugConsole.h>
 #include <ProfilerManager.h>
 #include <fstream>
@@ -44,14 +44,14 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
 }
 
 // ========================================================================
-// Object3d コリジョン処理
+// Object3D コリジョン処理
 // ------------------------------------------------------------------------
-// Collider設定、地形コリジョン読み込み、AABB/OBB取得、衝突チェックを担当する。
+// Collider設定、地形コリジョン読み込み、Aabb/OBB取得、衝突チェックを担当する。
 // TransformやRenderer本体の更新処理とは分け、当たり判定の責務を追いやすくする。
 // ========================================================================
 // ========================================================================
 
-void Object3d::SetColliderConfig(const ColliderConfig& config) {
+void Object3D::SetColliderConfig(const ColliderConfig& config) {
     // 静的オブジェクトの形状変更は空間グリッドの再構築を要求する。
     if (collider_) {
         collider_->SetConfig(config);
@@ -61,7 +61,7 @@ void Object3d::SetColliderConfig(const ColliderConfig& config) {
     }
 }
 
-void Object3d::RefreshModelSurfaceCollision() {
+void Object3D::RefreshModelSurfaceCollision() {
     // 接地用の面は描画モデルから一度だけ抽出し、毎フレームの衝突判定では再生成しない。
     if (!collider_)
         return;
@@ -106,12 +106,12 @@ void Object3d::RefreshModelSurfaceCollision() {
     collider_->SetModelSurface(std::move(triangles));
 }
 
-const Object3d::ColliderConfig& Object3d::GetColliderConfig() const {
+const Object3D::ColliderConfig& Object3D::GetColliderConfig() const {
     // Collider所有の設定を参照で返すため、呼び出し中はColliderが有効であることが前提。
     return collider_->GetConfig();
 }
 
-void Object3d::SetColliderType(ColliderType type) {
+void Object3D::SetColliderType(ColliderType type) {
     // 形状種別の変更後は静的衝突グリッドを無効化し、古い登録位置を使わせない。
     if (!collider_)
         return;
@@ -122,12 +122,12 @@ void Object3d::SetColliderType(ColliderType type) {
         CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
-ColliderType Object3d::GetColliderType() const {
+ColliderType Object3D::GetColliderType() const {
     // Colliderが無い場合は衝突しない形状として扱う。
-    return collider_ ? collider_->GetType() : ColliderType::kNone;
+    return collider_ ? collider_->GetType() : ColliderType::None;
 }
 
-void Object3d::SetCollisionSize(const engine::Vector3& size) {
+void Object3D::SetCollisionSize(const engine::Vector3& size) {
     // 大きさを変更した静的物体は衝突グリッドへ再登録する。
     if (!collider_)
         return;
@@ -138,22 +138,22 @@ void Object3d::SetCollisionSize(const engine::Vector3& size) {
         CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
-engine::Vector3 Object3d::GetCollisionSize() const {
+engine::Vector3 Object3D::GetCollisionSize() const {
     // Collider未作成時は各軸0の範囲を返す。
     return collider_ ? collider_->GetSize() : engine::Vector3::ZERO;
 }
 
-void Object3d::SetCollisionRadius(float radius) {
+void Object3D::SetCollisionRadius(float radius) {
     // 半径を各軸へ渡すため、球など等方的な判定の大きさに使う。
     SetCollisionSize({ radius, radius, radius });
 }
 
-float Object3d::GetCollisionRadius() const {
+float Object3D::GetCollisionRadius() const {
     // Colliderが無い場合は有効な半径も無い。
     return collider_ ? collider_->GetRadius() : 0.0f;
 }
 
-void Object3d::SetCollisionAttribute(uint32_t attribute) {
+void Object3D::SetCollisionAttribute(uint32_t attribute) {
     // 衝突カテゴリ変更は静的グリッド内の検索対象を変えるため、再構築を要求する。
     if (collider_) {
         collider_->SetAttribute(attribute);
@@ -162,12 +162,12 @@ void Object3d::SetCollisionAttribute(uint32_t attribute) {
     }
 }
 
-uint32_t Object3d::GetCollisionAttribute() const {
+uint32_t Object3D::GetCollisionAttribute() const {
     // Collider未作成時のカテゴリ0は衝突対象外を示す。
     return collider_ ? collider_->GetAttribute() : 0;
 }
 
-void Object3d::SetCollisionMask(uint32_t mask) {
+void Object3D::SetCollisionMask(uint32_t mask) {
     // 衝突相手の選別条件が変わったら静的グリッドを更新する。
     if (collider_) {
         collider_->SetMask(mask);
@@ -176,12 +176,12 @@ void Object3d::SetCollisionMask(uint32_t mask) {
     }
 }
 
-uint32_t Object3d::GetCollisionMask() const {
+uint32_t Object3D::GetCollisionMask() const {
     // Colliderが無い場合は相手との接触を全て無効にする。
     return collider_ ? collider_->GetMask() : 0;
 }
 
-bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
+bool Object3D::LoadTerrainCollisionFromFile(const std::string& path) {
     // 高さ配列が解像度に足りないJSONは採用せず、既存の地形判定を保持する。
     if (!collider_ || path.empty())
         return false;
@@ -240,7 +240,7 @@ bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
     return true;
 }
 
-void Object3d::SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path) {
+void Object3D::SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path) {
     // 判定本体と再読込用パスを同時に保存し、静的グリッドへ変更を通知する。
     if (!collider_)
         return;
@@ -250,7 +250,7 @@ void Object3d::SetTerrainCollisionData(const TerrainCollisionData& data, const s
         CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
-const TerrainCollisionData* Object3d::GetTerrainCollisionData() const {
+const TerrainCollisionData* Object3D::GetTerrainCollisionData() const {
     // 地形判定が無効ならデータ参照を返さず、通常Colliderと区別する。
     if (!collider_)
         return nullptr;
@@ -258,17 +258,17 @@ const TerrainCollisionData* Object3d::GetTerrainCollisionData() const {
     return data.enabled ? &data : nullptr;
 }
 
-AABB Object3d::GetAABB() const {
+Aabb Object3D::GetAabb() const {
     // Colliderが無ければ空の軸平行範囲を返す。
-    return collider_ ? collider_->GetAABB() : AABB{};
+    return collider_ ? collider_->GetAabb() : Aabb{};
 }
 
-OBB Object3d::GetOBB() const {
+Obb Object3D::GetObb() const {
     // Colliderが無ければ空の回転付き範囲を返す。
-    return collider_ ? collider_->GetOBB() : OBB{};
+    return collider_ ? collider_->GetObb() : Obb{};
 }
 
-AABB Object3d::GetModelWorldAABB() const {
+Aabb Object3D::GetModelWorldAabb() const {
     Model* model = GetModel();
 
     if (!model) {
@@ -292,24 +292,24 @@ AABB Object3d::GetModelWorldAABB() const {
         {max.x, max.y, max.z}
     };
 
-    AABB worldAABB;
-    worldAABB.min = { FLT_MAX, FLT_MAX, FLT_MAX };
-    worldAABB.max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+    Aabb worldAabb;
+    worldAabb.min = { FLT_MAX, FLT_MAX, FLT_MAX };
+    worldAabb.max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 
     for (int i = 0; i < 8; ++i) {
         engine::Vector3 worldPos = engine::Math::Transform(corners[i], transform_.matWorld);
-        worldAABB.min.x = (std::min)(worldAABB.min.x, worldPos.x);
-        worldAABB.min.y = (std::min)(worldAABB.min.y, worldPos.y);
-        worldAABB.min.z = (std::min)(worldAABB.min.z, worldPos.z);
-        worldAABB.max.x = (std::max)(worldAABB.max.x, worldPos.x);
-        worldAABB.max.y = (std::max)(worldAABB.max.y, worldPos.y);
-        worldAABB.max.z = (std::max)(worldAABB.max.z, worldPos.z);
+        worldAabb.min.x = (std::min)(worldAabb.min.x, worldPos.x);
+        worldAabb.min.y = (std::min)(worldAabb.min.y, worldPos.y);
+        worldAabb.min.z = (std::min)(worldAabb.min.z, worldPos.z);
+        worldAabb.max.x = (std::max)(worldAabb.max.x, worldPos.x);
+        worldAabb.max.y = (std::max)(worldAabb.max.y, worldPos.y);
+        worldAabb.max.z = (std::max)(worldAabb.max.z, worldPos.z);
     }
 
-    return worldAABB;
+    return worldAabb;
 }
 
-CollisionInfo Object3d::CheckCollision(Object3d* other) {
+CollisionInfo Object3D::CheckCollision(Object3D* other) {
     // 双方に有効な形状・カテゴリ・マスクがある場合だけ狭域判定へ進む。
     if (!collider_ || !other || !other->GetCollider()) {
         CollisionInfo info;
@@ -317,8 +317,8 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
         return info;
     }
 
-    if (GetColliderType() == ColliderType::kNone ||
-        other->GetColliderType() == ColliderType::kNone ||
+    if (GetColliderType() == ColliderType::None ||
+        other->GetColliderType() == ColliderType::None ||
         GetCollisionAttribute() == 0 || other->GetCollisionAttribute() == 0 ||
         GetCollisionMask() == 0 || other->GetCollisionMask() == 0) {
         CollisionInfo info;

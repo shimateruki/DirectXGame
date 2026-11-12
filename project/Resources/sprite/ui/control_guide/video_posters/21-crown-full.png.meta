@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "568b782174d2e5b53d702c29ca763650",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/21-crown-full.png",
+  "version": 1
+}

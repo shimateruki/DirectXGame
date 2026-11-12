@@ -1,0 +1,58 @@
+{
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 11,
+  "EnableDistortion": false,
+  "EnableReveal": false,
+  "EndColor": [
+    0.27,
+    0.89,
+    1.0,
+    0
+  ],
+  "EndScale": [
+    3.15,
+    3.15,
+    3.15
+  ],
+  "Intensity": 2.8,
+  "Lifetime": 0.28,
+  "MeshSegments": 64,
+  "ModelName": "Primitives/plane",
+  "Position": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ProceduralType": 10,
+  "RingInnerRadius": 0.74,
+  "RingOuterRadius": 1.0,
+  "Rotation": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ScrollSpeed": [
+    0,
+    -1.6
+  ],
+  "StartColor": [
+    0.69,
+    1.0,
+    0.92,
+    0.92
+  ],
+  "StartScale": [
+    0.42,
+    0.42,
+    0.42
+  ],
+  "TexturePath": "Resources/sprite/effect/gradationLine.png",
+  "UvTiling": [
+    1.0,
+    1.0
+  ],
+  "VolumeMode": 0,
+  "EdgeFadeStrength": 0.45,
+  "NoiseTexturePath": "Resources/sprite/common/white.png"
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "00111af0623667caf4c8291a3e2ad8a8",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_melee_shards.json",
+  "version": 1
+}

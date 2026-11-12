@@ -1,5 +1,5 @@
 #include "ImGuiManager.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include "IconsFontAwesome5.h"
 ImGuiManager* ImGuiManager::GetInstance() {
     static ImGuiManager instance;
@@ -84,14 +84,14 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     config.GlyphMinAdvanceX = fontSize; // アイコンの幅をフォントサイズに合わせる
 
     // ③ アイコンの文字コード範囲を指定（IconsFontAwesome5.hで定義されている範囲）
-    static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+    static const ImWchar kIconRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
 
     // ④ アイコンフォントを読み込んで合体！
     io.Fonts->AddFontFromFileTTF(
         "Resources/font/fa-solid-900.ttf",
         fontSize,
         &config,
-        icon_ranges
+        kIconRanges
     );
 
 
@@ -99,15 +99,15 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     ImGui_ImplWin32_Init(winApp->GetHwnd());
 
     // 2. DX12レンダラーの初期化 (マルチテクスチャ対応版)
-    ID3D12DescriptorHeap* srvDescriptorHeap = SRVManager::GetInstance()->GetDescriptorHeap();
+    ID3D12DescriptorHeap* srvDescriptorHeap = SrvManager::GetInstance()->GetDescriptorHeap();
 
-    auto AllocSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle) {
-        uint32_t index = SRVManager::GetInstance()->Allocate();
-        *out_cpu_handle = SRVManager::GetInstance()->GetCPUDescriptorHandle(index);
-        *out_gpu_handle = SRVManager::GetInstance()->GetGPUDescriptorHandle(index);
+    auto allocSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle) {
+        uint32_t index = SrvManager::GetInstance()->Allocate();
+        *outCpuHandle = SrvManager::GetInstance()->GetCpuDescriptorHandle(index);
+        *outGpuHandle = SrvManager::GetInstance()->GetGpuDescriptorHandle(index);
     };
 
-    auto FreeSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle) {
+    auto freeSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) {
     
     };
 
@@ -122,8 +122,8 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
 
     initInfo.LegacySingleSrvCpuDescriptor = { 0 };
     initInfo.LegacySingleSrvGpuDescriptor = { 0 };
-    initInfo.SrvDescriptorAllocFn = AllocSrv;
-    initInfo.SrvDescriptorFreeFn = FreeSrv;
+    initInfo.SrvDescriptorAllocFn = allocSrv;
+    initInfo.SrvDescriptorFreeFn = freeSrv;
 
     ImGui_ImplDX12_Init(&initInfo);
 #endif
@@ -157,7 +157,7 @@ void ImGuiManager::Draw() {
     // 2. DX12のコマンドリストに記録
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     assert(commandList != nullptr);
-    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
+    SrvManager::GetInstance()->SetDescriptorHeaps(commandList);
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 #endif
 }
@@ -168,7 +168,7 @@ void ImGuiManager::EndFrame() {
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
         // 1. 今のコンテキストをバックアップ
-        ImGuiContext* backup_current_context = ImGui::GetCurrentContext();
+        ImGuiContext* previousContext = ImGui::GetCurrentContext();
 
         // 2. ウィンドウの位置などを更新
         ImGui::UpdatePlatformWindows();
@@ -179,7 +179,7 @@ void ImGuiManager::EndFrame() {
         ImGui::RenderPlatformWindowsDefault(nullptr, nullptr);
 
         // 4. コンテキストを復元
-        ImGui::SetCurrentContext(backup_current_context);
+        ImGui::SetCurrentContext(previousContext);
     }
 #endif
 }

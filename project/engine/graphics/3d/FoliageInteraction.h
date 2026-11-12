@@ -1,4 +1,8 @@
 #pragma once
+
+// 担当：草を倒す現在位置と通過履歴を、描画用に保持・減衰する。
+// 関連：MeshRenderer（描画データへ反映）。物理判定は変更しない。
+// 主な入口：Reset / Update
 #include <array>
 #include <cmath>
 
@@ -12,16 +16,16 @@ inline float sampleTimer = 0.0f;
 inline void Reset() { samples.fill(0.0f); sampleTimer = 0.0f; }
 
 /// <summary>現在位置を記録し、古い草の倒れ跡を時間経過で減衰させる。</summary>
-inline void Update(float x, float y, float z, float dt) {
-    if (!std::isfinite(dt) || dt < 0.0f)
+inline void Update(float x, float y, float z, float deltaTime) {
+    if (!std::isfinite(deltaTime) || deltaTime < 0.0f)
         return;
     const float dx = x - samples[0], dz = z - samples[2];
     const float distanceSquared = dx * dx + dz * dz;
     if (distanceSquared > 64.0f)
         Reset(); // ワープ時は途中に跡を作らない。
-    // dt は秒。履歴の強さだけ指数減衰させ、座標は記録地点に残す。
-    const float decay = std::exp(-3.5f * dt);
-    sampleTimer += dt;
+    // deltaTime は秒。履歴の強さだけ指数減衰させ、座標は記録地点に残す。
+    const float decay = std::exp(-3.5f * deltaTime);
+    sampleTimer += deltaTime;
     for (int i = 1; i < 8; ++i)
         samples[i * 4 + 3] *= decay;
     if (samples[3] > 0.0f && distanceSquared > 0.0001f && sampleTimer >= 0.06f) {

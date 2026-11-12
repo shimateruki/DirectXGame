@@ -28,7 +28,6 @@ constexpr float kLifeGainPulseDuration = 0.62f;
 constexpr float kCoinPulseDuration = 0.24f;
 
 
-
 engine::Vector2 Lerp(const engine::Vector2& a, const engine::Vector2& b, float t) {
     // HUDの二点間移動に共通の補間率を使う。
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t};
@@ -55,7 +54,7 @@ void SetFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
 
 // HUD はシーンの現在状態を読み取って更新します。収集演出とボス表示はゲーム進行の判定を書き換えません。
 
-void GamePlayScene::UpdateUI(float deltaTime) {
+void GamePlayScene::UpdateUi(float deltaTime) {
     // ゲーム進行に合わせて通常HUDとボスHUDの表示を更新する。
     UpdateGameplayHUD(deltaTime);
     UpdateLifeLostPresentation(deltaTime);
@@ -285,7 +284,7 @@ engine::Vector2 GamePlayScene::ProjectWorldToScreen(const engine::Vector3& world
 
 void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::Vector3& worldPosition) {
     // 星本体と火花を取得位置からHUD枠へ飛ばし、到着時に取得済み表示へ切り替える。
-    if (starIndex < 0 || starIndex >= static_cast<int>(hudStageStarSlots_.size()) || !spriteCommon_) {
+    if (starIndex < 0 || starIndex >= static_cast<int>(hudStageStarSlots_.size()) || !GetSpriteCommon()) {
         if (starIndex >= 0 && starIndex < 3) {
             hudStageStarVisualCollected_[starIndex] = true;
             hudStageStarPulseTimers_[starIndex] = 0.45f;
@@ -302,9 +301,9 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::
     auto addParticle = [&](const std::string& texturePath, const engine::Vector2& particleStart, const engine::Vector2& particleEnd,
                            const engine::Vector2& control, float duration, float baseSize, float rotationSpeed,
                            bool fillsSlot) {
-        StageStarUIFlyParticle particle;
+        StageStarUiFlyParticle particle;
         particle.sprite = std::make_unique<engine::Sprite>();
-        particle.sprite->Initialize(spriteCommon_.get(), texturePath);
+        particle.sprite->Initialize(GetSpriteCommon(), texturePath);
         particle.sprite->SetAnchorPoint({0.5f, 0.5f});
         particle.sprite->SetPosition(particleStart);
         particle.sprite->SetSize({baseSize, baseSize});
@@ -348,7 +347,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
     const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
 
     for (auto it = hudStageStarFlyParticles_.begin(); it != hudStageStarFlyParticles_.end();) {
-        StageStarUIFlyParticle& particle = *it;
+        StageStarUiFlyParticle& particle = *it;
         particle.timer += deltaTime;
         const float t = particle.duration > 0.0f ? std::clamp(particle.timer / particle.duration, 0.0f, 1.0f) : 1.0f;
         const float eased = Easing::SmoothStep01(t);
@@ -508,88 +507,75 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     SetGameplayHUDNumber(hudCoinDigits_, coins, {coinNumberRight.x, coinNumberRight.y + coinBounceOffsetY * 0.55f},
                          coinDigitHeight * coinCountScale, hudCoinDigits_[1].baseColor, visible);
     UpdateStageStarHUD(deltaTime, visible);
-    UpdatePrismBossHUD(deltaTime);
+    UpdateBossHud(FindBossHudDisplay(), deltaTime);
 }
 
-EnemyPrismSlime* GamePlayScene::FindPrismBossForHUD() {
-    // 現シーンのプリズムボスを探し、HP表示の参照先にする。
-    if (!objectManager_) {
-        return nullptr;
-    }
+namespace {
+template<class Boss>
+Boss* FindActiveHudBoss(ObjectManager* manager) {
+    if (!manager) return nullptr;
 
-    for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
-        auto* boss = dynamic_cast<EnemyPrismSlime*>(object.get());
-
-        if (boss && boss->IsEncounterHudActive()) {
+    // 同じ種類が複数いる場合は、従来どおりシーン内で最初の有効なボスを選ぶ。
+    for (const auto& object : manager->GetObjects()) {
+        if (auto* boss = dynamic_cast<Boss*>(object.get()); boss && boss->IsEncounterHudActive()) {
             return boss;
         }
     }
-
     return nullptr;
+}
+} // namespace
+
+EnemyPrismSlime* GamePlayScene::FindPrismBossForHUD() {
+    return FindActiveHudBoss<EnemyPrismSlime>(objectManager_.get());
 }
 
 EnemyMagmaSlime* GamePlayScene::FindMagmaBossForHUD() {
-    // 現シーンのマグマボスを探し、HP表示の参照先にする。
-    if (!objectManager_) {
-        return nullptr;
-    }
-
-    for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
-        auto* boss = dynamic_cast<EnemyMagmaSlime*>(object.get());
-
-        if (boss && boss->IsEncounterHudActive()) {
-            return boss;
-        }
-    }
-
-    return nullptr;
+    return FindActiveHudBoss<EnemyMagmaSlime>(objectManager_.get());
 }
 
 EnemyFalseKingSlime* GamePlayScene::FindFalseKingBossForHUD() {
-    // 現シーンの偽王ボスを探し、HP表示の参照先にする。
-    if (!objectManager_) {
-        return nullptr;
-    }
-
-    for (const std::unique_ptr<engine::Object3d>& object : objectManager_->GetObjects()) {
-        auto* boss = dynamic_cast<EnemyFalseKingSlime*>(object.get());
-
-        if (boss && boss->IsEncounterHudActive()) {
-            return boss;
-        }
-    }
-
-    return nullptr;
+    return FindActiveHudBoss<EnemyFalseKingSlime>(objectManager_.get());
 }
 
-// 戦闘中のボスを選び、登場・戦闘・退場の表示状態を同じ HUD で管理します。
-void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
+GamePlayScene::BossHudDisplay GamePlayScene::FindBossHudDisplay() {
+    // 全ボスで共通のHPと登場進捗を、表示側に渡す値へ変換する。
+    const auto makeDisplay = [](const auto& boss, BossHudTheme theme) {
+        BossHudDisplay display;
+        display.theme = theme;
+        display.visible = true;
+        display.maximumHp = boss.GetEncounterMaximumHp();
+        display.currentHp = (std::clamp)(boss.GetEncounterCurrentHp(), 0.0f, display.maximumHp);
+        display.appearanceProgress = boss.GetEncounterAppearanceProgress();
+        return display;
+    };
+
+    // 一度に表示するのは一体。既存のプリズム、マグマ、偽王の優先順を保つ。
+    if (const auto* boss = FindPrismBossForHUD()) return makeDisplay(*boss, BossHudTheme::Prism);
+    if (const auto* boss = FindMagmaBossForHUD()) return makeDisplay(*boss, BossHudTheme::Magma);
+    if (const auto* boss = FindFalseKingBossForHUD()) {
+        auto display = makeDisplay(*boss, BossHudTheme::FalseKing);
+        display.falseKingPhase = (std::clamp)(boss->GetBattlePhase(), 1, 3);
+        display.falseKingPhaseTransition = boss->GetPhaseTransitionProgress();
+        display.sealCastRemaining = boss->GetSealCastRemainingTime();
+        return display;
+    }
+    return {};
+}
+
+void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime) {
     constexpr float kIntroDuration = 1.62f;
     constexpr float kDismissDuration = 0.38f;
     deltaTime = (std::max)(0.0f, deltaTime);
     prismBossHudAnimationTimer_ = std::fmod(prismBossHudAnimationTimer_ + deltaTime, 1000.0f);
 
-    // 候補の探索順はプリズム、マグマ、偽王。HUDは一度に一体だけ表示する。
-    EnemyPrismSlime* prismBoss = FindPrismBossForHUD();
-    EnemyMagmaSlime* magmaBoss = prismBoss ? nullptr : FindMagmaBossForHUD();
-    EnemyFalseKingSlime* falseKingBoss = (prismBoss || magmaBoss) ? nullptr : FindFalseKingBossForHUD();
-    const BossHudTheme requestedTheme =
-        falseKingBoss ? BossHudTheme::FalseKing : (magmaBoss ? BossHudTheme::Magma : BossHudTheme::Prism);
+    const auto requestedTheme = display.theme;
     const bool usesMagmaTheme = requestedTheme == BossHudTheme::Magma;
     const bool usesFalseKingTheme = requestedTheme == BossHudTheme::FalseKing;
-    const bool requestedVisible = prismBoss != nullptr || magmaBoss != nullptr || falseKingBoss != nullptr;
-    const float maximumHp = prismBoss ? prismBoss->GetEncounterMaximumHp()
-                                      : (magmaBoss ? magmaBoss->GetEncounterMaximumHp()
-                                                   : (falseKingBoss ? falseKingBoss->GetEncounterMaximumHp() : 1.0f));
-    const float currentHp =
-        prismBoss
-            ? (std::clamp)(prismBoss->GetEncounterCurrentHp(), 0.0f, maximumHp)
-            : (magmaBoss
-                   ? (std::clamp)(magmaBoss->GetEncounterCurrentHp(), 0.0f, maximumHp)
-                   : (falseKingBoss ? (std::clamp)(falseKingBoss->GetEncounterCurrentHp(), 0.0f, maximumHp) : 0.0f));
-    const float actualRate = (std::clamp)(currentHp / maximumHp, 0.0f, 1.0f);
-    const int falseKingPhase = falseKingBoss ? (std::clamp)(falseKingBoss->GetBattlePhase(), 1, 3) : 1;
-    const float falseKingPhaseTransition = falseKingBoss ? falseKingBoss->GetPhaseTransitionProgress() : 1.0f;
+    const bool requestedVisible = display.visible;
+    const float currentHp = display.currentHp;
+    const float actualRate = (std::clamp)(currentHp / display.maximumHp, 0.0f, 1.0f);
+    const int falseKingPhase = display.falseKingPhase;
+    const float falseKingPhaseTransition = display.falseKingPhaseTransition;
 
     // テーマが切り替わったときだけ名前と左右の装飾テクスチャを差し替える。
     if (requestedVisible && prismBossHudTheme_ != requestedTheme) {
@@ -634,10 +620,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
     case PrismBossHudPhase::Introducing: {
         // ボス本体の登場進捗も枠の開きに反映し、HPバーは名前より遅れて見せる。
         prismBossHudTimer_ += deltaTime;
-        const float appearanceProgress =
-            prismBoss ? prismBoss->GetEncounterAppearanceProgress()
-                      : (magmaBoss ? magmaBoss->GetEncounterAppearanceProgress()
-                                   : (falseKingBoss ? falseKingBoss->GetEncounterAppearanceProgress() : 1.0f));
+        const float appearanceProgress = display.appearanceProgress;
         frameReveal = (std::max)(Easing::SmoothStep01(prismBossHudTimer_ / 0.34f), Easing::SmoothStep01(appearanceProgress * 1.25f));
         nameReveal = Easing::SmoothStep01((prismBossHudTimer_ - 0.08f) / 0.32f);
         prismBossHudDisplayedRate_ = Easing::SmoothStep01((prismBossHudTimer_ - 0.42f) / 1.06f);
@@ -664,7 +647,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
         const bool tookDamage = currentHp < prismBossHudPreviousHp_ - 0.01f;
 
         if (tookDamage) {
-            const float previousRate = (std::clamp)(prismBossHudPreviousHp_ / maximumHp, 0.0f, 1.0f);
+            const float previousRate = (std::clamp)(prismBossHudPreviousHp_ / display.maximumHp, 0.0f, 1.0f);
             prismBossHudDamagePulseTimer_ = 0.44f;
             prismBossHudDamageHoldTimer_ = 0.20f;
             prismBossHudDelayedRate_ = (std::max)(prismBossHudDelayedRate_, previousRate);
@@ -892,7 +875,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
     }
 
     // 第二段階の詠唱中は残り時間に比例したゲージを表示する。
-    const float castRemaining = falseKingBoss ? falseKingBoss->GetSealCastRemainingTime() : 0.0f;
+    const float castRemaining = display.sealCastRemaining;
     const bool showCast = showFalseKingPhases && falseKingPhase == 2 && castRemaining > 0.0f;
     const float castRate = showCast
                                ? (std::clamp)(castRemaining / CrownFinaleTuning::Get().sealCastTime, 0.0f, 1.0f)
@@ -951,7 +934,7 @@ void GamePlayScene::DrawGameplayHUD() {
     }
 
     DrawStageStarHUD();
-    DrawPrismBossHUD();
+    DrawBossHud();
 
     // HPは枠の上へ遅延帯・現在値・光を順に重ねる。
     healthHud_.Draw();
@@ -960,8 +943,8 @@ void GamePlayScene::DrawGameplayHUD() {
     DrawLifeLostPresentation();
 }
 
-void GamePlayScene::DrawPrismBossHUD() {
-    // UpdatePrismBossHUDで各Spriteの可視性と色を決め、ここでは重ね順だけ管理する。
+void GamePlayScene::DrawBossHud() {
+    // UpdateBossHudで各Spriteの可視性と色を決め、ここでは重ね順だけ管理する。
     DrawGameplayHUDSprite(prismBossHudGlow_);
     DrawGameplayHUDSprite(prismBossHudBack_);
     DrawGameplayHUDSprite(prismBossHudTrack_);

@@ -1,5 +1,7 @@
 #pragma once
 
+// 偽王の槍攻撃とシーン演出が共用するカメラ姿勢の計算。Cameraの所有や切替は呼出側が担当する。
+
 #include "game/crown/CrownFinaleTuning.h"
 #include "Easing.h"
 #include "engine/utility/math/Math.h"

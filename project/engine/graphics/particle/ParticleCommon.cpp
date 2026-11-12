@@ -20,7 +20,7 @@ void engine::ParticleCommon::CreateRootSignature() {
     // =================================================================
 
     // [0] Camera (CBV b0 - VertexShader用)
-    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    builder.AddCbv(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
     // [1] Texture (DescriptorTable t0 - PixelShader用)
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -41,7 +41,7 @@ void engine::ParticleCommon::CreateRootSignature() {
 
 void engine::ParticleCommon::SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode) {
     // 範囲チェック（念のため）
-    if ((int)mode >= (int)ParticleBlendMode::kCount)
+    if ((int)mode >= (int)ParticleBlendMode::Count)
         return;
 
     commandList->SetPipelineState(graphicsPipelines_[(int)mode].Get());
@@ -87,26 +87,26 @@ void engine::ParticleCommon::CreatePipeline() {
     // =================================================================
     // 3. ブレンドモードごとの生成ループ
     // =================================================================
-    for (int i = 0; i < (int)ParticleBlendMode::kCount; ++i) {
+    for (int i = 0; i < (int)ParticleBlendMode::Count; ++i) {
         ParticleBlendMode pMode = static_cast<ParticleBlendMode>(i);
 
         // ① 独自の ParticleBlendMode から、共通の BlendMode へ変換
-        ::BlendMode globalMode = ::BlendMode::kNormal;
+        ::BlendMode globalMode = ::BlendMode::Normal;
 
         switch (pMode) {
-        case ParticleBlendMode::kAlpha:    globalMode = ::BlendMode::kNormal;
+        case ParticleBlendMode::Alpha:    globalMode = ::BlendMode::Normal;
         break;
 
-        case ParticleBlendMode::kAdd:      globalMode = ::BlendMode::kAdd;
+        case ParticleBlendMode::Add:      globalMode = ::BlendMode::Add;
         break;
 
-        case ParticleBlendMode::kSubtract: globalMode = ::BlendMode::kSubtract;
+        case ParticleBlendMode::Subtract: globalMode = ::BlendMode::Subtract;
         break;
 
-        case ParticleBlendMode::kMultiply: globalMode = ::BlendMode::kMultiply;
+        case ParticleBlendMode::Multiply: globalMode = ::BlendMode::Multiply;
         break;
 
-        case ParticleBlendMode::kScreen:   globalMode = ::BlendMode::kScreen;
+        case ParticleBlendMode::Screen:   globalMode = ::BlendMode::Screen;
         break;
         }
 

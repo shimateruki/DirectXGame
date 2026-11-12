@@ -1,5 +1,5 @@
 #pragma once
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include "engine/utility/math/Math.h"
 #include <algorithm>
 #include <cstdint>
@@ -9,7 +9,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
-/// <summary>EffectObject3dの生成、再生、描画、プリロードを管理する。</summary>
+// 担当：メッシュVFXを事前読込し、生成・再生・描画と再利用を管理する。
+// 関連：EffectObject3D（本体）、VfxSequencer（発火要求）、MeshEffectEditor（編集）
+// 主な入口：Initialize / PreloadEffect / SpawnEffect / Update / Draw
 class MeshEffectManager {
 public:
     using EffectScopeId = uint64_t;
@@ -20,7 +22,7 @@ public:
 
     /// <summary>エフェクト生成に必要なObject3dCommonを設定する。</summary>
     /// <remarks>commonは所有しないため、利用中は呼び出し側で保持する。</remarks>
-    void Initialize(engine::Object3dCommon* common);
+    void Initialize(engine::Object3DCommon* common);
 
     /// <summary>1フレーム内の更新済み状態を初期化する。</summary>
     void BeginFrame();
@@ -55,11 +57,13 @@ public:
     // 攻撃タイムラインが所有する表示物。管理側のdtを加算せず、指定秒の姿を描画します。
     bool StartTimelineEffect(EffectScopeId scopeId, const std::string& path);
 
+    // durationが0以下ならプリセットの寿命を保ち、preservePresetScaleでJSONの拡縮も合成します。
     void EvaluateTimelineEffect(EffectScopeId scopeId, float time, float duration,
-        const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale);
+        const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale,
+        bool preservePresetScale = false);
 
     /// <summary>対象Object3dに追従するメッシュエフェクトを生成する。</summary>
-    void SpawnEffect(const std::string& jsonFilePath, engine::Object3d* baseObject = nullptr, const engine::Vector3& extOffset = { 0,0,0 }, const engine::Vector3& extRot = { 0,0,0 }, const engine::Vector3& extScale = { 1,1,1 });
+    void SpawnEffect(const std::string& jsonFilePath, engine::Object3D* baseObject = nullptr, const engine::Vector3& extOffset = { 0,0,0 }, const engine::Vector3& extRot = { 0,0,0 }, const engine::Vector3& extScale = { 1,1,1 });
 
     /// <summary>JSON側の配置値に代えて、指定のワールド座標・回転で生成する。</summary>
     void SpawnEffectAt(const std::string& jsonFilePath, const engine::Vector3& worldPos, const engine::Vector3& worldRot,
@@ -81,6 +85,7 @@ public:
 #ifdef USE_IMGUI
     // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
     void BeginEditorSession();
+    // 確認用の実行状態を片付け、開始前に退避した状態へ戻す。
     void EndEditorSession();
 #endif
 
@@ -89,13 +94,13 @@ public:
     void Clear();
 
     /// <summary>現在再生中のエフェクトを返す。</summary>
-    const std::vector<std::unique_ptr<EffectObject3d>>& GetActiveEffects() const { return activeEffects_; }
+    const std::vector<std::unique_ptr<EffectObject3D>>& GetActiveEffects() const { return activeEffects_; }
 
     /// <summary>エディタで表示中のエフェクトを指定する。所有しない。</summary>
-    void SetPreviewEffectForDebug(EffectObject3d* effect) { previewEffectForDebug_ = effect; }
+    void SetPreviewEffectForDebug(EffectObject3D* effect) { previewEffectForDebug_ = effect; }
 
     /// <summary>エディタで表示中のエフェクトを返す。</summary>
-    EffectObject3d* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }
+    EffectObject3D* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }
 
 private:
     MeshEffectManager() = default;
@@ -106,26 +111,33 @@ private:
 
     MeshEffectManager& operator=(const MeshEffectManager&) = delete;
 
-    engine::Object3dCommon* common_ = nullptr;
+    // 単発の表示物だけを回収し、GPU定数バッファの再確保を避けます。
+    void RecycleEffect(std::unique_ptr<EffectObject3D> effect);
+    std::vector<std::unique_ptr<EffectObject3D>> recycledEffects_;
+    std::unordered_set<EffectObject3D*> reusableEffects_;
+    static constexpr size_t kMaxRecycledEffects = 32;
+
+    engine::Object3DCommon* common_ = nullptr;
 
     // 現在再生中のエフェクトリスト
-    std::vector<std::unique_ptr<EffectObject3d>> activeEffects_;
-    std::unordered_map<EffectObject3d*, EffectScopeId> effectScopes_;
-    std::unordered_set<EffectScopeId> timelineScopes_;
+    std::vector<std::unique_ptr<EffectObject3D>> activeEffects_;
+    std::unordered_map<EffectObject3D*, EffectScopeId> effectScopes_;
+    std::unordered_set<EffectScopeId> timelineScopes_; // 時間軸再生から作成したエフェクト範囲ID。
     EffectScopeId nextEffectScopeId_ = 1;
-    EffectObject3d* previewEffectForDebug_ = nullptr;
+    EffectObject3D* previewEffectForDebug_ = nullptr;
     std::unordered_set<std::string> preloadedEffects_;
     bool updatedThisFrame_ = false;
-    float timeScale_ = 1.0f;
+    float timeScale_ = 1.0f; // メッシュVFXの更新時間倍率。
 
     /// <summary>タイムライン編集時に各エフェクトへ加える位置と回転の補正値。</summary>
+    // 関連：MeshEffectManager（この型を使う機能の本体）
     struct TimelineOffset { engine::Vector3 position, rotation; };
 
-    std::unordered_map<EffectObject3d*, TimelineOffset> timelineOffsets_;
+    std::unordered_map<EffectObject3D*, TimelineOffset> timelineOffsets_; // 時間軸編集の位置・回転補正。
 #ifdef USE_IMGUI
-    EffectObject3d* savedEditorDebugEffect_ = nullptr;
+    EffectObject3D* savedEditorDebugEffect_ = nullptr;
     bool editorSession_ = false;
-    float savedEditorScale_ = 1;
+    float savedEditorScale_ = 1; // 確認開始前の時間倍率。
     decltype(activeEffects_) savedEditorEffects_;
     decltype(effectScopes_) savedEditorScopes_;
     decltype(timelineScopes_) savedEditorTimelineScopes_;

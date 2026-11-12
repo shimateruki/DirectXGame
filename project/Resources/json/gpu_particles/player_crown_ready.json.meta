@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "567f25f9bf56caab09d2a0f0cf2fd48b",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_ready.json",
+  "version": 1
+}

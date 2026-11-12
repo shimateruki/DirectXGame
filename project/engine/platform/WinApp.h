@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <string>
 
-/// <summary>Win32ウィンドウの生成、メッセージ処理、表示とカーソルを管理する。</summary>
+// 担当：Win32ウィンドウ、メッセージ、表示モードとカーソルを管理する。
+// 関連：Framework（寿命とループ）、DirectXCommon（描画先）、InputManager（入力）
+// 主な入口：Initialize / Update / RequestClose
 class WinApp {
 public:
     // ゲームとSpriteの基準座標。実ウィンドウのサイズやDPIから独立させます。
@@ -16,6 +18,8 @@ public:
     /// <summary>論理解像度を変えず、実ウィンドウの幅・高さを一緒に更新する。</summary>
     static void SetWindowSize(int32_t width, int32_t height) { kWindowWidth = width; kWindowHeight = height; }
 
+    // クライアント内に配置する映像領域。位置・大きさはピクセル。
+    // 関連：WinApp（この型を使う機能の本体）
     struct GameViewRect {
         float x = 0.0f, y = 0.0f, width = 0.0f, height = 0.0f;
     };
@@ -56,6 +60,7 @@ public:
     HINSTANCE GetHInstance() const { return hInstance_; }
 
     /// <summary>表示モード変更前のスタイルとウィンドウ位置を保持する。</summary>
+    // 関連：WinApp（この型を使う機能の本体）
     struct DisplayState {
         LONG_PTR style = 0;
 

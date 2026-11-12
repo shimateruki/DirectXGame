@@ -157,7 +157,7 @@ bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageS
             focus.z - gateDirection.z * kGateReturnCameraBackDistance + side.z * kGateReturnCameraSideOffset};
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
         camera->ConfigFixedPoint(gateReturnCameraStartEye_,
                                  SelectLookAtRotation(gateReturnCameraStartEye_, gateReturnCameraStartTarget_));
     }
@@ -208,7 +208,7 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
 
         engine::Vector3 eye = gateReturnCameraEndEye_;
         engine::Vector3 target = gateReturnCameraEndTarget_;
@@ -258,7 +258,7 @@ void GameSelectScene::FinishStageReturnPresentation() {
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         if (player_) {
             camera->SetFollowTarget(player_);
-            camera->SetFollowMode(Camera::FollowMode::kAimable);
+            camera->SetFollowMode(Camera::FollowMode::Aimable);
             camera->SnapToThirdPerson(kGateReturnThirdPersonDistance, kGateReturnThirdPersonHeight,
                                       kGateReturnThirdPersonPitch);
         }

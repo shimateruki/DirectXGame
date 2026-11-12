@@ -1,5 +1,7 @@
 #pragma once
-#include "Object3d.h"
+
+// GameDataManagerの取得履歴をスターコインの見た目へ反映する。取得判定や保存の確定はここでは行わない。
+#include "Object3D.h"
 
 // 銀スターのモデルと粒子名を共有し、取得時も同じ配色の演出を選ぶ。
 namespace StarCoinPresentation {
@@ -8,16 +10,15 @@ inline constexpr const char* kSilverModel = "Gimmicks/star/star_silver.gltf";
 inline constexpr const char* kSilverIdle = "star_sparkle_silver";
 inline constexpr const char* kSilverGet = "star_sparkleGet_silver";
 
-inline bool IsSilver(const engine::Object3d& object) {
+inline bool IsSilver(const engine::Object3D& object) {
     return object.GetModelName() == kSilverModel;
 }
 
-inline void ApplyPreviouslyCollected(engine::Object3d& object) {
+inline void ApplyPreviouslyCollected(engine::Object3D& object) {
     // SetModelの自動フィットでは配置時に調整した取得範囲を変えない。
     const auto collider = object.GetColliderConfig();
     object.SetModel(kSilverModel);
     object.SetColliderConfig(collider);
-    object.SetLodEnabled(false);
     object.SetTexture("Resources/sprite/common/white.png");
     object.SetOrmMap("");
     object.SetMaterialType(0);
@@ -27,16 +28,15 @@ inline void ApplyPreviouslyCollected(engine::Object3d& object) {
     object.SetParticleName("");
     object.SetMeshEffect1Name("");
     object.SetMeshEffect2Name("");
-    object.SetGPUParticleName(kSilverIdle);
+    object.SetGpuParticleName(kSilverIdle);
 }
 // 編集時に銀モデルで保存された配置も、未取得のセーブでは金色へ戻す。
-inline void RestoreUncollectedIfSilver(engine::Object3d& object) {
+inline void RestoreUncollectedIfSilver(engine::Object3D& object) {
     if (!IsSilver(object))
         return;
     const auto collider = object.GetColliderConfig();
     object.SetModel(kGoldModel);
     object.SetColliderConfig(collider);
-    object.SetLodEnabled(false);
     object.SetTexture("");
     object.SetOrmMap("");
     object.SetMaterialType(0);
@@ -45,6 +45,6 @@ inline void RestoreUncollectedIfSilver(engine::Object3d& object) {
     object.SetRoughness(0.32f);
     object.SetEnableEnvMap(false);
     object.SetEmissive(1.65f);
-    object.SetGPUParticleName("star_sparkle");
+    object.SetGpuParticleName("star_sparkle");
 }
 } // namespace StarCoinPresentation

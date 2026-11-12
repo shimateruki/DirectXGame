@@ -3,6 +3,8 @@
 #include "engine/utility/math/Math.h"
 
 // 指定位置の下にある地面を探し、接地エフェクトを出すべき座標を返す
+// 関連：CollisionManagerへ下向きに問い合わせ、HitEffectDirectorなどへ接地座標を返す。
+// 主な入口：ResolveGroundPosition
 class GroundEffectLocator {
   public:
     // position の上 6 ワールド単位から下へ 16 単位を調べ、開始点に最も近い地表を返す。

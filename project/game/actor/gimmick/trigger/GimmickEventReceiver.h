@@ -2,6 +2,8 @@
 #include "BaseGimmick.h"
 
 // スイッチからの有効/無効イベントを、配置物の位置・表示・衝突状態へ反映します。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnTrigger / OnSwitchEvent
 class GimmickEventReceiver : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -10,7 +12,7 @@ class GimmickEventReceiver : public BaseGimmick {
 
     virtual ~GimmickEventReceiver() = default;
 
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 編集時の配置を再生基準にし、ボス報酬はイベント発火まで隠します。
     void Update(float deltaTime) override;
@@ -25,7 +27,7 @@ class GimmickEventReceiver : public BaseGimmick {
     void RelocateRuntimeBase(const engine::Vector3& position);
 
     // 複製先を初期化してから、イベント設定と配置をコピーします。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     // モード別に表示・衝突・移動先を切り替え、報酬出現時は着地まで衝突を遅らせます。

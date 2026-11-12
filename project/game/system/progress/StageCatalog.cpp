@@ -77,6 +77,7 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
         data.skyboxPath = readString(stageJson, "skyboxPath", "");
         data.gateNameTexturePath = readString(stageJson, "gateNameTexturePath", "");
         data.hasStarCoins = readBool(stageJson, "hasStarCoins", data.id != "stage3");
+        data.cameraPath = readString(stageJson, "cameraPath", "");
 
         if (data.id.empty() || data.levelPath.empty() || !usedIds.insert(data.id).second) {
             continue;

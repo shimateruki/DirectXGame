@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f7e97e0c36f0fc9fd5c7701afce2e213",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/wind_slime/parameters.json",
+  "version": 1
+}

@@ -1,3 +1,4 @@
+#include "game/actor/enemy/boss/false_king/BossIntroSettings.h"
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "Easing.h"
@@ -11,8 +12,8 @@
 #include "CameraManager.h"
 #include "PostEffect.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
-#include "GPUParticleManager.h"
+#include "VfxSequencer.h"
+#include "GpuParticleManager.h"
 #include "DebrisEffectManager.h"
 #include "game/ui/SpriteLayoutScaler.h"
 #include "TextureManager.h"
@@ -33,7 +34,6 @@ constexpr std::pair<const char*, float CrownFinaleTuning::*> kFinaleMarkers[] = 
     {"absorb", &CrownFinaleTuning::movieFragmentAbsorbTime}, {"body", &CrownFinaleTuning::movieBodyTime},
     {"crown", &CrownFinaleTuning::movieCrownTime}, {"wings", &CrownFinaleTuning::movieWingsTime},
     {"escape", &CrownFinaleTuning::movieEscapeTime}, {"arrive", &CrownFinaleTuning::movieArriveTime}};
-
 
 
 engine::Vector3 CrownLerp(const engine::Vector3& a, const engine::Vector3& b, float t) {
@@ -80,7 +80,7 @@ bool GamePlayScene::StartSealBarrageMovie(EnemyFalseKingSlime* boss, const engin
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
     camera->SetLockOnTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
     return true;
 }
 
@@ -113,7 +113,7 @@ void GamePlayScene::UpdateSealBarrageMovie(float deltaTime) {
     pose.fov += (movie.fov - pose.fov) * finish;
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
     camera->SetEye(pose.eye);
     camera->SetTarget(pose.target);
     camera->SetRotation(CrownLook(pose.eye, pose.target));
@@ -213,7 +213,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     s.playerModel = player_->GetModelName();
     s.playerColor = player_->GetColor();
     s.playerMaterial = player_->GetMaterialType();
-    std::vector<std::unique_ptr<engine::Object3d>> previewArenaCopies;
+    std::vector<std::unique_ptr<engine::Object3D>> previewArenaCopies;
 
     for (const auto& object : GetObjects()) {
         // プレビューでは複製だけを崩壊させ、編集対象のTransformを変更しません。
@@ -256,8 +256,8 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
                 chunk->SetName("CrownFracture_" + std::to_string(i));
                 chunk->ClearEditorHiddenReasons();
                 chunk->SetEditorInternal(crownMoviePreview_.active);
-                chunk->SetEventID(-1);
-                chunk->SetTargetID(-1);
+                chunk->SetEventId(-1);
+                chunk->SetTargetId(-1);
                 chunk->SetCollisionAttribute(0);
                 chunk->SetCollisionMask(0);
                 const engine::Vector3 position = engine::Math::Transform({-35.0f + x * 10.0f, 0.0f, 35.0f - z * 10.0f}, object->GetWorldMatrix());
@@ -281,8 +281,8 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
                 copy->SetIsLocked(true);
             }
 
-            copy->SetEventID(-1);
-            copy->SetTargetID(-1);
+            copy->SetEventId(-1);
+            copy->SetTargetId(-1);
             copy->SetTranslate(object->GetTranslate() + s.offset);
 
             if (arena) {
@@ -317,7 +317,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     s.fragmentGround.y += 0.51f * s.bossScale.y * tuning.movieFragmentScale;
     // 装飾・追従・カメラは同じDirector素材から再生し、ゲーム固有の位置だけ接続する。
     crownFinalePlayer_.Initialize(SceneManager::GetInstance());
-    crownFinalePlayer_.SetBindingResolver([this](const CinematicObjectBinding& binding) -> engine::Object3d* {
+    crownFinalePlayer_.SetBindingResolver([this](const CinematicObjectBinding& binding) -> engine::Object3D* {
         if (binding.targetName == "boss" || binding.targetName == "$Actor") return crownFinale_.boss;
         if (binding.targetName == "player" || binding.targetName == "$Gate") return player_;
         return CinematicPlayer::ResolveSceneTarget(this, binding);
@@ -368,7 +368,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     return true;
 }
 
-void GamePlayScene::UpdateCrownFinale(float dt) {
+void GamePlayScene::UpdateCrownFinale(float frameDeltaTime) {
     auto& s = crownFinale_;
     if (!s.active)
         return;
@@ -380,7 +380,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     }
     const auto tuning = GetCrownFinaleTiming();
     const float previousTime = s.time;
-    s.time += std::max(0.0f, dt);
+    s.time += std::max(0.0f, frameDeltaTime);
     const float t = std::clamp(s.time / s.duration, 0.0f, 1.0f);
     const float breakTime = tuning.movieFragmentBreakTime, landTime = tuning.movieFragmentLandTime;
     const float rageTime = tuning.movieRageTime, pullTime = tuning.movieFragmentPullTime;
@@ -391,11 +391,11 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     const engine::Vector3 destination = s.offset + engine::Vector3{0.0f, 0.82f, 12.0f};
     const float flightYaw = std::atan2(destination.x - s.start.x, destination.z - s.start.z);
     auto crossed = [&](float when) { return previousTime < when * s.duration && s.time >= when * s.duration; };
-    auto periodic = [&](float rate) { return dt > 0.0f && static_cast<int>(s.time * rate) != static_cast<int>(previousTime * rate); };
+    auto periodic = [&](float rate) { return frameDeltaTime > 0.0f && static_cast<int>(s.time * rate) != static_cast<int>(previousTime * rate); };
 
     // 一度だけの破壊音と破片は時刻の通過で発火し、フレーム落ちでも重複させません。
     if (crossed(.005f)) {
-        VFXSequencer::PlayOneShot("pull_catch_cue",s.lastSealPosition,{1.4f,1.4f,1.4f});
+        VfxSequencer::PlayOneShot("pull_catch_cue",s.lastSealPosition,{1.4f,1.4f,1.4f});
         DebrisEffectConfig debris;
 
         if (DebrisEffectManager::GetInstance()->LoadConfig("Resources/json/debris/false_king_seal_shatter.json",debris)) {
@@ -453,13 +453,13 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     s.fragment->SetRotation(fragmentRotation);
     s.fragment->SetEmissive(1.2f + (t >= landTime ? 0.4f + 0.15f * std::sin(s.time * 6.0f) : 0.0f));
     if (crossed(0.04f))
-        VFXSequencer::PlayOneShot("pull_catch_cue", release, {0.7f,0.7f,0.7f});
+        VfxSequencer::PlayOneShot("pull_catch_cue", release, {0.7f,0.7f,0.7f});
     if (crossed(breakTime)) {
-        VFXSequencer::PlayOneShot("pull_catch_cue", release, {0.9f,0.9f,0.9f});
+        VfxSequencer::PlayOneShot("pull_catch_cue", release, {0.9f,0.9f,0.9f});
     }
 
     if (t>=landTime && t<pullTime && periodic(5))
-        GPUParticleManager::GetInstance()->EmitDirected("crown_goal_idle_sparkle",s.fragmentGround,{0,1,0},.4f);
+        GpuParticleManager::GetInstance()->EmitDirected("crown_goal_idle_sparkle",s.fragmentGround,{0,1,0},.4f);
 
     // プレイヤーの向きを先に欠片へ寄せ、引き寄せ区間でだけ操作用のフック表示を使います。
     engine::Vector3 playerPosition=s.start;
@@ -470,9 +470,9 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     if (t>=pullTime && t<absorbTime) {
         const float receive=std::clamp((t-pullTime)/(absorbTime-pullTime),0.0f,1.0f);
         player_->SetMoveYaw(pullYaw);
-        player_->StepCinematicPullVisual(dt,towardFragment,receive);
+        player_->StepCinematicPullVisual(frameDeltaTime,towardFragment,receive);
 
-        if (engine::Object3d* marker=player_->GetHookMarker()) {
+        if (engine::Object3D* marker=player_->GetHookMarker()) {
             const float shot=Easing::SmoothStep01((t-pullTime)/.012f);
             const engine::Vector3 tip=CrownLerp(mouth,fragmentPosition,shot),diff=tip-mouth;
             marker->SetIsVisible(true);
@@ -490,7 +490,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->EndCinematicPullVisual();
         player_->SetScale(s.playerScale);
         player_->SetMoveYaw(pullYaw);
-        VFXSequencer::PlayOneShot("pull_catch_cue",mouth,{.8f,.8f,.8f});
+        VfxSequencer::PlayOneShot("pull_catch_cue",mouth,{.8f,.8f,.8f});
     }
 
     if (t>=absorbTime && t<bodyTime) {
@@ -499,7 +499,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->SetScale(s.playerScale*(1+.04f*std::sin(s.time*11)));
 
         if (periodic(8))
-            GPUParticleManager::GetInstance()->EmitDirected("goal_clear_gold_motes",s.start+engine::Vector3{0,.8f,0},{0,1,0},.45f);
+            GpuParticleManager::GetInstance()->EmitDirected("goal_clear_gold_motes",s.start+engine::Vector3{0,.8f,0},{0,1,0},.45f);
     }
 
     // 実Playerの置換面だけを設定する。金色の仮ボディは共通再生器が逆側から形成する。
@@ -508,7 +508,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->SetScale(s.playerScale);
         player_->SetMaterialType(25);
         player_->SetColor(s.playerColor);
-        engine::Object3d::PortalClipSettings clipSettings;
+        engine::Object3D::PortalClipSettings clipSettings;
         clipSettings.enabled = progress < .999f;
         clipSettings.progress = 0;
         clipSettings.center = s.start + engine::Vector3{0,-.1f+1.75f*progress+.52f,0};
@@ -560,7 +560,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         player_->SetRotation({-.25f*(1-2*travel),flightYaw+player_->GetVisualYawOffset(),std::sin(travel*(2.0f * std::numbers::pi_v<float>))*.12f});
 
         if (periodic(15))
-            GPUParticleManager::GetInstance()->EmitDirected("false_king_rush_wake",playerPosition,{-std::sin(flightYaw),0,-std::cos(flightYaw)},.75f);
+            GpuParticleManager::GetInstance()->EmitDirected("false_king_rush_wake",playerPosition,{-std::sin(flightYaw),0,-std::cos(flightYaw)},.75f);
     } else if (t>=arriveTime) {
         playerPosition=destination;
         const float settle=Easing::SmoothStep01((t-arriveTime)/.035f),squash=(1-settle)*std::cos(settle*(std::numbers::pi_v<float> * 1.5f));
@@ -570,7 +570,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
 
         if (!s.landed) {
             s.landed=true;
-            VFXSequencer::PlayOneShot("crown_victory_land_cue",destination);
+            VfxSequencer::PlayOneShot("crown_victory_land_cue",destination);
         }
         s.boss->SetTranslate(s.offset+engine::Vector3{0,.82f+(1-Easing::SmoothStep01((t-arriveTime)/.065f))*8,-12});
     }
@@ -593,11 +593,11 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
         pose.object->UpdateWorldMatrix(false);
 
         if (crossed(begin) && distance>10)
-            VFXSequencer::PlayOneShot("crown_inheritance_floor_break_cue",pose.position+engine::Vector3{0,.8f,0});
+            VfxSequencer::PlayOneShot("crown_inheritance_floor_break_cue",pose.position+engine::Vector3{0,.8f,0});
     }
 
     // 親子を両方動かすと子だけ落下量が二重になるため、親が演出対象なら子の姿勢は親に追従させます。
-    std::unordered_set<engine::Object3d*> animatedObjects;
+    std::unordered_set<engine::Object3D*> animatedObjects;
     animatedObjects.reserve(s.originalObjects.size());
     for (const auto& pose : s.originalObjects)
         animatedObjects.insert(pose.object);
@@ -633,7 +633,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     }
 
     // 対象の姿勢を確定してから、同じ時刻の装飾・VFX・カメラを評価する。
-    crownFinalePlayer_.SetTime(s.time, dt > 0.0f);
+    crownFinalePlayer_.SetTime(s.time, frameDeltaTime > 0.0f);
     if (!crownFinalePlayer_.IsPlaying() && !crownFinalePlayer_.IsPreviewing()) {
         ResetCrownFinaleWorld();
         return;
@@ -643,7 +643,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
     for (auto& object:GetObjects())
         if (object && !object->IsReplayRemoved())
             object->UpdateWorldMatrix(true);
-    if (engine::Object3d* marker=player_->GetHookMarker())
+    if (engine::Object3D* marker=player_->GetHookMarker())
         marker->UpdateWorldMatrix(true);
     if (t>=1 && !crownMoviePreview_.active)
         FinishCrownFinale(true);
@@ -675,7 +675,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         if (completed) {
             player_->StartEvasionInvincibility(2.5f);
             if (!s.landed)
-                VFXSequencer::PlayOneShot("crown_victory_land_cue", player_->GetWorldPosition());
+                VfxSequencer::PlayOneShot("crown_victory_land_cue", player_->GetWorldPosition());
         }
     }
 
@@ -720,7 +720,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         camera->SetFovY(s.fov);
         camera->SetFollowTarget(player_);
         camera->SetLockOnTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kAimable);
+        camera->SetFollowMode(Camera::FollowMode::Aimable);
         camera->SetRotation({0.24f, std::numbers::pi_v<float>, 0.0f});
         camera->SnapToThirdPerson(18.0f, 2.5f, 0.24f);
         camera->SetInputEnabled(true);
@@ -773,12 +773,13 @@ void GamePlayScene::ResetCrownFinaleWorld() {
     s = CrownFinaleState{};
 }
 
-void GamePlayScene::DrawCrownFinaleWorld() {
+void GamePlayScene::DrawCrownFinaleWorld(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // Drawで取得した共有ライトを渡し、直前の描画が残したGPU状態に依存させない。
     if (crownFinale_.active)
-        crownFinalePlayer_.DrawPresentation(pointLightResource_.Get(), spotLightResource_.Get());
+        crownFinalePlayer_.DrawPresentation(pointLightResource, spotLightResource);
 }
 
-void GamePlayScene::DrawCrownFinaleUI() {
+void GamePlayScene::DrawCrownFinaleUi() {
     if (!player_ || (!SceneManager::GetInstance()->IsPlaying() && !crownMoviePreview_.active) || isGoal_ ||
         (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) ||
         (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()))
@@ -808,11 +809,11 @@ void GamePlayScene::DrawCrownFinaleUI() {
         return;
     if (!crownFinaleMessages_[index]) {
         const char* paths[] = {"ui/crown_finale/seals.png",    "ui/crown_finale/inherit.png",
-                               "ui/crown_finale/controls.png", "ui/crown_finale/boss_intro.png",
+                               "ui/control_guide/book/crown_gate/controls.png", "ui/crown_finale/boss_intro_title.png",
                                "ui/crown_finale/release.png",  "ui/crown_finale/awaken.png"};
         crownFinaleMessages_[index] = std::make_unique<engine::Sprite>();
         const uint32_t texture = engine::Sprite::LoadTexture(paths[index]);
-        crownFinaleMessages_[index]->Initialize(spriteCommon_.get(), texture);
+        crownFinaleMessages_[index]->Initialize(GetSpriteCommon(), texture);
         crownFinaleMessages_[index]->SetTextureName(paths[index]);
         crownFinaleMessages_[index]->SetAnchorPoint({0.5f, 0.5f});
     }
@@ -823,9 +824,11 @@ void GamePlayScene::DrawCrownFinaleUI() {
 
     // 透過文字の実寸比率を維持し、通常時は左下のHPと中央のプレイヤーを避けます。
     const auto& metadata = TextureManager::GetInstance()->GetMetadata(message->GetTextureHandle());
-    const float fit = std::min((movie ? 1020.0f : 820.0f) / std::max(1.0f, static_cast<float>(metadata.width)),
-                               (movie ? 72.0f : 64.0f) / std::max(1.0f, static_cast<float>(metadata.height)));
-    message->SetPosition(SpriteLayoutScaler::ScaleDesignPosition({movie ? 640.0f : 830.0f, movie ? 620.0f : 662.0f}, {1280.0f, 720.0f}));
+    const auto& introStyle = BossIntroSettings::Get();
+    const float titlePop = arenaBossIntroActive_ ? std::lerp(1.12f,1.0f,Easing::SmoothStep01((arenaBossIntroTimer_-arenaBossIntroMessageInTime_)/.18f)) : 1.0f;
+    const float fit = titlePop * std::min((arenaBossIntroActive_ ? introStyle.titleWidth : movie ? 1020.0f : 820.0f) / std::max(1.0f, static_cast<float>(metadata.width)),
+                               (arenaBossIntroActive_ ? 190.0f : movie ? 72.0f : 64.0f) / std::max(1.0f, static_cast<float>(metadata.height)));
+    message->SetPosition(SpriteLayoutScaler::ScaleDesignPosition({movie ? 640.0f : 830.0f, arenaBossIntroActive_ ? introStyle.titleY : movie ? 620.0f : 662.0f}, {1280.0f, 720.0f}));
     message->SetSize(
         SpriteLayoutScaler::ScaleDesignSize({metadata.width * fit, metadata.height * fit}, {1280.0f, 720.0f}));
     message->Update();

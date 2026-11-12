@@ -2,8 +2,8 @@
 #include "ModelManager.h"
 #include <typeinfo>
 
-void BaseGimmick::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
-    engine::Object3d::Initialize(common);
+void BaseGimmick::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
+    engine::Object3D::Initialize(common);
 
     // モデル読み込みと設定
     ModelManager::GetInstance()->LoadModel(modelName);
@@ -11,7 +11,7 @@ void BaseGimmick::Initialize(engine::Object3dCommon* common, const std::string& 
 
     // デフォルトの当たり判定設定 (OBB想定)
     ColliderConfig config;
-    config.type = ColliderType::kOBB;
+    config.type = ColliderType::Obb;
     config.size = {1.0f, 1.0f, 1.0f}; // 仮のサイズ
     SetColliderConfig(config);
 
@@ -25,16 +25,16 @@ void BaseGimmick::Initialize(engine::Object3dCommon* common, const std::string& 
 
 void BaseGimmick::Update(float deltaTime) {
     // 共通の Transform・描画・当たり判定更新を派生ギミックにも適用する。
-    engine::Object3d::Update(deltaTime);
+    engine::Object3D::Update(deltaTime);
 }
 
-bool BaseGimmick::OnCollision(engine::Object3d* other) {
+bool BaseGimmick::OnCollision(engine::Object3D* other) {
     // 基底クラスでは特に何もしない。派生クラスで処理する
     (void)other;
     return false;
 }
 
-std::unique_ptr<engine::Object3d> BaseGimmick::Clone() const {
+std::unique_ptr<engine::Object3D> BaseGimmick::Clone() const {
     // 派生型を基底型として複製しない。各派生クラスが自分の複製を担当する。
     if (typeid(*this) != typeid(BaseGimmick)) {
         return nullptr;

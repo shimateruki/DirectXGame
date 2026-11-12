@@ -1,12 +1,13 @@
 #define NOMINMAX
 #include "EnemyRingBurner.h"
+#include "engine/editor/properties/ObjectPropertyDefinition.h"
 #include "Easing.h"
 #include <numbers>
 #include "game/system/scene/SceneGameplayAccess.h"
 
 #include "CollisionConfig.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/combat/HitEffectDirector.h"
 #include "MeshEffectManager.h"
 #include "Player.h"
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 
 namespace {
 constexpr float kPi = std::numbers::pi_v<float>;
@@ -114,7 +116,7 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
                                         pulseRadius * (std::max)(owner.baseScale_.x, owner.baseScale_.z), progress,
                                         {1.0f, 0.20f, 0.025f, 0.92f});
         if (owner.particleTimer_ <= 0.0f) {
-            if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
+            if (auto* particles = GpuParticleManager::GetInstance(); particles->IsInitialized()) {
                 particles->Emit(kChargeParticle, owner.GetWorldPosition() +
                                                  engine::Vector3{0.0f, 1.12f * owner.baseScale_.y, 0.0f});
             }
@@ -249,10 +251,35 @@ const EnemyRingBurner::StateBehavior& EnemyRingBurner::BehaviorFor(State state) 
     return *behaviors[static_cast<std::size_t>(state)];
 }
 
-void EnemyRingBurner::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyRingBurner::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_RingBurner");
     SetEnemyType("RingBurner");
+
+    // 配置固有の攻撃設定はクラス側で公開し、従来のparamをそのまま読み書きする。
+    // 登録処理は現在の個体値を変更せず、二個目以降の同型登録は共通側で省く。
+    engine::ObjectPropertyDefinition<EnemyRingBurner> properties(*this, "RingBurner", "リングバーナー（配置ごとの攻撃）");
+    using Parameter = engine::Object3D::EntityParameter;
+    properties.Parameter("最大半径", "moveAmount", &Parameter::moveAmount, 6.0f, 48.0f,
+        nullptr, {}, {.speed = 0.25f});
+    // 倍率だけは旧UIと同じ上下限をSetterでも守り、直接入力でも範囲外にしない。
+    properties.Accessor<float>("リング拡大速度 (倍率)", "ringWaveSpeed", "param.ringWaveSpeed",
+        [](const EnemyRingBurner& object) {
+            return object.GetParameters() ? object.GetParameters()->ringWaveSpeed : Parameter{}.ringWaveSpeed;
+        },
+        [](EnemyRingBurner& object, const float& value) {
+            if (!object.GetParameters()) object.ResetParameters();
+            object.SetParameter(&Parameter::ringWaveSpeed, (std::clamp)(value, 0.25f, 4.0f));
+        }, 0.25f, 4.0f, nullptr, {},
+        {.speed = 0.05f, .format = "%.2f x",
+         .help = +[](const EnemyRingBurner& object) -> std::string {
+             return std::format("最大半径への到達: {:.2f} 秒\n"
+                 "リングは等速に拡大します。頭に乗ると停止し、降りた後も4秒間停止します。"
+                 "感知範囲は「この種類の基本ステータスを調整」から変更できます。", object.GetWaveDuration());
+         }});
+    properties.Parameter("攻撃の待機時間", "interval", &Parameter::interval, 1.2f, 8.0f);
+    properties.Parameter("発射前の予告時間", "shakeDuration", &Parameter::shakeDuration, 0.45f, 1.4f);
+
     SetStatic(false);
     SetMaterialType(0);
     SetMetallic(0.72f);
@@ -264,7 +291,7 @@ void EnemyRingBurner::Initialize(engine::Object3dCommon* common, const std::stri
     // groundを併記し、上面だけは安全な足場として押し戻せるようにします。
     SetCollisionAttribute(CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-    SetColliderType(ColliderType::kOBB);
+    SetColliderType(ColliderType::Obb);
     SetCollisionSize({1.25f, kModelHeight * 0.5f, 1.25f});
     ColliderConfig collider = GetColliderConfig();
     collider.center = {0.0f, kModelHeight * 0.5f, 0.0f};
@@ -462,7 +489,7 @@ void EnemyRingBurner::SpawnChargeEffects() {
         meshEffects->SpawnEffectAt(kChargeEffect, origin, {0.0f, 0.0f, 0.0f}, {scale, baseScale_.y, scale});
     }
 
-    if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
+    if (auto* particles = GpuParticleManager::GetInstance(); particles->IsInitialized()) {
         particles->Emit(kChargeParticle, origin + engine::Vector3{0.0f, 1.12f * baseScale_.y, 0.0f});
     }
 }
@@ -482,7 +509,7 @@ void EnemyRingBurner::SpawnWaveEffects() {
         meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, {0.0f, 0.0f, 0.0f}, scale, waveDuration);
     }
 
-    if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
+    if (auto* particles = GpuParticleManager::GetInstance(); particles->IsInitialized()) {
         particles->Emit(kFireParticle, origin + engine::Vector3{0.0f, 1.05f * baseScale_.y, 0.0f});
     }
 }
@@ -495,7 +522,7 @@ void EnemyRingBurner::StopWaveEffects() {
     }
 }
 
-std::unique_ptr<engine::Object3d> EnemyRingBurner::Clone() const {
+std::unique_ptr<engine::Object3D> EnemyRingBurner::Clone() const {
     // シーン配置を複製するときも固有AIを新規生成し、対象と調整済みスケールを引き継ぐ。
     auto clone = std::make_unique<EnemyRingBurner>();
     assert(GetObjectCommon() != nullptr);

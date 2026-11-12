@@ -249,7 +249,7 @@ void TutorialDirector::NotifyControlsGuideOpened() {
     controlsGuideOpened_ = true;
 }
 
-void TutorialDirector::NotifyLockOnTarget(const engine::Object3d* target) {
+void TutorialDirector::NotifyLockOnTarget(const engine::Object3D* target) {
     // 生ポインタの寿命に依存せず、目標名だけを課題判定へ渡す。
     lockedTargetName_ = target ? target->GetName() : std::string{};
 }
@@ -265,7 +265,7 @@ const std::string& TutorialDirector::GetCurrentStepId() const {
     return steps_[static_cast<size_t>(currentStepIndex_)].id;
 }
 
-engine::Object3d* TutorialDirector::GetDirectionGuideTarget() const {
+engine::Object3D* TutorialDirector::GetDirectionGuideTarget() const {
     if (!loaded_ || completed_ || cinematicActive_ || stepConditionSatisfied_ ||
         GetCurrentStepId() != "reach_exit_gate")
         return nullptr;
@@ -276,7 +276,7 @@ engine::Object3d* TutorialDirector::GetDirectionGuideTarget() const {
 
 void TutorialDirector::CaptureReplayState(json& state) const {
     // 対象物はポインタでなく名前を保存し、復元時に現シーンから解決する。
-    const auto objectName = [this](const engine::Object3d* object) {
+    const auto objectName = [this](const engine::Object3D* object) {
         for (const auto& candidate : scene_->GetObjects())
             if (candidate && candidate.get() == object) return candidate->GetName();
         return std::string{};
@@ -376,7 +376,7 @@ void TutorialDirector::RestoreReplayState(const json& state) {
             player_->SetTutorialCarryActionPermissions(currentStep->allowCarriedThrow, currentStep->allowCarriedAbsorb);
 
             const std::string carriedEnemyName = state.value("playerCarriedEnemy", std::string{});
-            engine::Object3d* savedCarriedEnemy = FindObjectByName(carriedEnemyName);
+            engine::Object3D* savedCarriedEnemy = FindObjectByName(carriedEnemyName);
 
             if (savedCarriedEnemy) {
                 player_->SetCarriedEnemy(savedCarriedEnemy);
@@ -593,30 +593,30 @@ bool TutorialDirector::LoadFlow(const std::string& flowPath) {
 TutorialDirector::CompletionCondition TutorialDirector::ParseCondition(const std::string& conditionName) {
     // 未知の条件は時間待ちへフォールバックし、読込時に無効な列挙値を作らない。
     if (conditionName == "cinematic_finished")
-        return CompletionCondition::kCinematicFinished;
+        return CompletionCondition::CinematicFinished;
     if (conditionName == "move_distance")
-        return CompletionCondition::kMoveDistance;
+        return CompletionCondition::MoveDistance;
     if (conditionName == "action_triggered")
-        return CompletionCondition::kActionTriggered;
+        return CompletionCondition::ActionTriggered;
     if (conditionName == "target_locked")
-        return CompletionCondition::kTargetLocked;
+        return CompletionCondition::TargetLocked;
     if (conditionName == "reach_position")
-        return CompletionCondition::kReachPosition;
+        return CompletionCondition::ReachPosition;
     if (conditionName == "carry_enemy")
-        return CompletionCondition::kCarryEnemy;
+        return CompletionCondition::CarryEnemy;
     if (conditionName == "enemy_thrown")
-        return CompletionCondition::kEnemyThrown;
+        return CompletionCondition::EnemyThrown;
     if (conditionName == "enemy_defeated" || conditionName == "enemies_defeated") {
-        return CompletionCondition::kEnemiesDefeated;
+        return CompletionCondition::EnemiesDefeated;
     }
 
     if (conditionName == "morph_active")
-        return CompletionCondition::kMorphActive;
+        return CompletionCondition::MorphActive;
     if (conditionName == "morph_released")
-        return CompletionCondition::kMorphReleased;
+        return CompletionCondition::MorphReleased;
     if (conditionName == "controls_guide_opened")
-        return CompletionCondition::kControlsGuideOpened;
-    return CompletionCondition::kTimer;
+        return CompletionCondition::ControlsGuideOpened;
+    return CompletionCondition::Timer;
 }
 
 bool TutorialDirector::ReadVector3(const json& value, engine::Vector3& destination) {
@@ -661,7 +661,7 @@ void TutorialDirector::EnterStep(int stepIndex) {
 
     Step& step = steps_[static_cast<size_t>(currentStepIndex_)];
 
-    if (step.condition == CompletionCondition::kControlsGuideOpened) {
+    if (step.condition == CompletionCondition::ControlsGuideOpened) {
         controlsGuideOpened_ = false;
     }
 
@@ -754,19 +754,19 @@ bool TutorialDirector::EvaluateCurrentStep() const {
     }
 
     switch (step.condition) {
-    case CompletionCondition::kCinematicFinished:
+    case CompletionCondition::CinematicFinished:
         return !cinematicActive_;
 
-    case CompletionCondition::kMoveDistance:
+    case CompletionCondition::MoveDistance:
         return HorizontalDistance(player_->GetWorldPosition(), stepStartPosition_) >= step.threshold;
 
-    case CompletionCondition::kActionTriggered:
+    case CompletionCondition::ActionTriggered:
         return IsActionTriggered(step.action);
 
-    case CompletionCondition::kTargetLocked:
+    case CompletionCondition::TargetLocked:
         return !step.objectiveTarget.empty() && lockedTargetName_ == step.objectiveTarget;
 
-    case CompletionCondition::kReachPosition: {
+    case CompletionCondition::ReachPosition: {
         // 目標Objectがある課題ではEditorで移動した実体を追う。固定座標だけの課題は従来どおり。
         const auto* target = FindObjectByName(step.objectiveTarget);
         if (target)
@@ -775,28 +775,28 @@ bool TutorialDirector::EvaluateCurrentStep() const {
                HorizontalDistance(player_->GetWorldPosition(), step.targetPosition) <= step.radius;
     }
 
-    case CompletionCondition::kCarryEnemy:
+    case CompletionCondition::CarryEnemy:
         return player_->GetCarriedEnemy() != nullptr &&
                (step.objectiveTarget.empty() || player_->GetCarriedEnemy() == FindObjectByName(step.objectiveTarget));
 
-    case CompletionCondition::kEnemyThrown: {
+    case CompletionCondition::EnemyThrown: {
         auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(carriedEnemyOnStepEntryName_.empty() ? step.objectiveTarget : carriedEnemyOnStepEntryName_));
         return enemy && player_->GetCarriedEnemy() == nullptr && !player_->IsEnemyMorphed() && enemy->IsThrownPhysics();
     }
 
-    case CompletionCondition::kEnemiesDefeated:
+    case CompletionCondition::EnemiesDefeated:
         return AreTargetEnemiesDefeated(step);
 
-    case CompletionCondition::kMorphActive:
+    case CompletionCondition::MorphActive:
         return player_->IsEnemyMorphed();
 
-    case CompletionCondition::kMorphReleased:
+    case CompletionCondition::MorphReleased:
         return !player_->IsEnemyMorphed() && !player_->IsEnemyMorphReleasing();
 
-    case CompletionCondition::kControlsGuideOpened:
+    case CompletionCondition::ControlsGuideOpened:
         return controlsGuideOpened_;
 
-    case CompletionCondition::kTimer:
+    case CompletionCondition::Timer:
     default:
         return stepTimer_ >= step.threshold;
     }
@@ -813,7 +813,7 @@ bool TutorialDirector::AreTargetEnemiesDefeated(const Step& step) const {
         const auto slot = std::find_if(spawnEnemies_.begin(), spawnEnemies_.end(),
                                       [&](const SpawnEnemySlot& value) { return value.objectName == objectName; });
         if (slot == spawnEnemies_.end() || !slot->active) return false;
-        engine::Object3d* object = FindObjectByName(objectName);
+        engine::Object3D* object = FindObjectByName(objectName);
 
         if (!object) {
             continue;
@@ -832,17 +832,17 @@ bool TutorialDirector::AreTargetEnemiesDefeated(const Step& step) const {
 
 bool TutorialDirector::RecoverMissingPracticeEnemy(const Step& step) {
     if (stepConditionSatisfied_ || cinematicActive_ || step.objectiveTarget.empty()) return false;
-    const bool practice = step.condition == CompletionCondition::kTargetLocked ||
-                          step.condition == CompletionCondition::kCarryEnemy ||
-                          step.condition == CompletionCondition::kEnemyThrown ||
-                          step.condition == CompletionCondition::kMorphActive;
-    if (!practice || (step.condition == CompletionCondition::kMorphActive && player_->IsEnemyMorphed())) return false;
+    const bool practice = step.condition == CompletionCondition::TargetLocked ||
+                          step.condition == CompletionCondition::CarryEnemy ||
+                          step.condition == CompletionCondition::EnemyThrown ||
+                          step.condition == CompletionCondition::MorphActive;
+    if (!practice || (step.condition == CompletionCondition::MorphActive && player_->IsEnemyMorphed())) return false;
     auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(step.objectiveTarget));
-    if (step.condition == CompletionCondition::kEnemyThrown && enemy && enemy->IsThrownPhysics() &&
+    if (step.condition == CompletionCondition::EnemyThrown && enemy && enemy->IsThrownPhysics() &&
         !player_->GetCarriedEnemy() && !player_->IsEnemyMorphed()) return false;
     const bool lost = !enemy || enemy->IsReplayRemoved() || enemy->IsDead() ||
                       (enemy->GetParameters() && enemy->GetParameters()->hp <= 0.0f);
-    const bool lostCarry = step.condition == CompletionCondition::kEnemyThrown &&
+    const bool lostCarry = step.condition == CompletionCondition::EnemyThrown &&
                            player_->GetCarriedEnemy() != enemy;
     if (!lost && !lostCarry) return false;
     // 参照先がなくなった運搬・吸収演出も解放してから、必要な操作だけをやり直す。
@@ -1021,7 +1021,7 @@ void TutorialDirector::SetSpawnEnemyActive(const std::string& objectName, bool a
     auto* enemy = dynamic_cast<BaseEnemy*>(FindObjectByName(objectName));
     if (!enemy && active) {
         // 通常の撃破処理で実体が削除されても、配置時の定義から同じ練習対象を作り直す。
-        auto created = EnemyFactory::GetInstance()->CreateEnemy(slot.initialDefinition.value("enemyType", "Slime"), scene_->GetObject3dCommon());
+        auto created = EnemyFactory::GetInstance()->CreateEnemy(slot.initialDefinition.value("enemyType", "Slime"), scene_->GetObject3DCommon());
         if (created) {
             created->ImportFromJson(slot.initialDefinition);
             created->SetName(slot.objectName);
@@ -1131,7 +1131,7 @@ void TutorialDirector::RestoreSpawnEnemyStateBeforeStep(int stepIndex) {
     }
 }
 
-engine::Object3d* TutorialDirector::FindObjectByName(const std::string& name) const {
+engine::Object3D* TutorialDirector::FindObjectByName(const std::string& name) const {
     // 名前から現在のシーン内で解決し、前回シーンのポインタを使わない。
     if (!scene_ || name.empty()) {
         return nullptr;
@@ -1363,7 +1363,7 @@ void TutorialDirector::UpdateObjectiveMarker(float deltaTime) {
             continue;
         }
 
-        engine::Object3d* target =
+        engine::Object3D* target =
             objectiveTargetNames_[index].empty() ? nullptr : FindObjectByName(objectiveTargetNames_[index]);
         bool canShow = camera && target && target->GetIsVisible();
 
@@ -1374,7 +1374,7 @@ void TutorialDirector::UpdateObjectiveMarker(float deltaTime) {
         engine::Vector2 screenPosition = marker.basePosition;
 
         if (canShow) {
-            const AABB bounds = target->GetModelWorldAABB();
+            const Aabb bounds = target->GetModelWorldAabb();
             const engine::Vector3 markerWorld = {(bounds.min.x + bounds.max.x) * 0.5f, bounds.max.y + objectiveOffsetY_,
                                          (bounds.min.z + bounds.max.z) * 0.5f};
             const float w = markerWorld.x * viewProjection.m[0][3] + markerWorld.y * viewProjection.m[1][3] +

@@ -1,14 +1,19 @@
 #pragma once
 
-#include "GPUParticleConfig.h"
+// 担当：GPU粒子プリセットのJSONを読み書きし、旧形式の値も解釈する。
+// 関連：GpuParticleConfig（設定）、GpuParticleManager / GpuParticleEditor（利用）
+// 主な入口：Read / Write
+
+#include "GpuParticleConfig.h"
 #include "json.hpp"
 
 // 実行時とEditorで同じプリセット項目を読書きする。
 // 呼び出し側が初期値を決め、この読込処理はJSONに存在する項目だけを上書きする。
-namespace GPUParticlePresetJsonCodec {
+namespace GpuParticlePresetJsonCodec {
 using Json = nlohmann::json;
 
 template <typename T>
+// 指定キーがある場合だけ値を読む。型変換の例外は呼出側で扱う。
 inline void ReadValue(const Json& json, const char* key, T& target) {
     if (const auto found = json.find(key); found != json.end()) {
         target = found->get<T>();
@@ -24,6 +29,7 @@ inline void ReadVector3(const Json& json, const char* key, engine::Vector3& targ
     }
 }
 
+// 指定キーの四成分配列を読む。型・成分不足の例外は呼出側で扱う。
 inline void ReadVector4(const Json& json, const char* key, engine::Vector4& target) {
     if (const auto found = json.find(key); found != json.end()) {
         target.x = (*found)[0].get<float>();
@@ -33,6 +39,7 @@ inline void ReadVector4(const Json& json, const char* key, engine::Vector4& targ
     }
 }
 
+// 旧形式の真偽値・数値フラグを整数設定へ読み込む。
 inline void ReadLegacyFlag(const Json& json, const char* key, int& target) {
     if (const auto found = json.find(key); found != json.end()) {
         // 古いプリセットの整数値と、Editorが保存するbool値をどちらも受け取る。
@@ -40,7 +47,8 @@ inline void ReadLegacyFlag(const Json& json, const char* key, int& target) {
     }
 }
 
-inline void Read(const Json& json, GPUParticleConfig& config) {
+// JSONにある項目だけを設定へ反映する。旧形式より新しいまとまりの指定を優先する。
+inline void Read(const Json& json, GpuParticleConfig& config) {
     ReadVector3(json, "emitPos", config.emitPos);
     ReadVector3(json, "emitArea", config.emitArea);
     ReadVector3(json, "emitVelocity", config.emitVelocity);
@@ -117,7 +125,7 @@ inline void Read(const Json& json, GPUParticleConfig& config) {
 }
 
 // 実行時の粒子やGPUバッファは含めず、編集可能なプリセット設定をJSONへ変換する。
-inline Json Write(const GPUParticleConfig& config) {
+inline Json Write(const GpuParticleConfig& config) {
     Json json;
     json["emitPos"] = {config.emitPos.x, config.emitPos.y, config.emitPos.z};
     json["emitArea"] = {config.emitArea.x, config.emitArea.y, config.emitArea.z};
@@ -157,7 +165,8 @@ inline Json Write(const GPUParticleConfig& config) {
     json["restitution"] = config.restitution;
     json["colorIntensity"] = config.colorIntensity;
     json["texturePath"] = config.texturePath;
-    json["alignToVelocity"] = config.alignToVelocity != 0;
+    // 0/1の旧設定と、2の速度固定モードを整数で往復保存します。
+    json["alignToVelocity"] = config.alignToVelocity;
     json["velocityStretch"] = config.velocityStretch;
     json["particleType"] = config.particleType;
     json["trailLength"] = config.trailLength;
@@ -178,4 +187,4 @@ inline Json Write(const GPUParticleConfig& config) {
                    {"maxAliveParticles", config.lod.maxAliveParticles}};
     return json;
 }
-} // namespace GPUParticlePresetJsonCodec
+} // namespace GpuParticlePresetJsonCodec

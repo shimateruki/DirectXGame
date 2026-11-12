@@ -7,6 +7,8 @@
 #include <array>
 
 // 警告、噴出、休止を周期的に繰り返すマグマ噴出口です。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision / OnTrigger
 class GimmickMagmaGeyser : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -14,7 +16,7 @@ class GimmickMagmaGeyser : public BaseGimmick {
     static constexpr const char* kModelPath = "Stages/magma_vent";
 
     /// 噴出口のモデル、周期、攻撃予告を初期化する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 警告、噴出、休止の周期を進める。
     void Update(float deltaTime) override;
@@ -27,7 +29,7 @@ class GimmickMagmaGeyser : public BaseGimmick {
                        int previewBufferIndex = 0) override;
 
     /// 接触対象への攻撃判定を処理する。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     /// 外部トリガーによる噴出を要求する。
     void OnTrigger() override;
@@ -46,7 +48,7 @@ class GimmickMagmaGeyser : public BaseGimmick {
                                                   int previewBufferIndex = 0) override;
 
     /// 配置用の噴出口複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // 移動床は同じ周期から上昇量を取得し、独立したタイマーを持たない。
     // ワールド距離の上昇量と、0～1 に収まる予兆/圧力の進行率を同一周期から返します。
@@ -156,10 +158,10 @@ class GimmickMagmaGeyser : public BaseGimmick {
     float GetSimulationWakeDistance() const;
 
     AttackTelegraph warningTelegraph_;
-    std::unique_ptr<engine::Object3d> eruptionVisual_;
+    std::unique_ptr<engine::Object3D> eruptionVisual_;
 
     // 泡は使い回し、予告中に生成・破棄を繰り返さない。
-    std::array<std::unique_ptr<engine::Object3d>, 4> boilingVisuals_;
+    std::array<std::unique_ptr<engine::Object3D>, 4> boilingVisuals_;
     float boilingClock_ = 0.0f;
     bool ventInLiquid_ = false;
 

@@ -1,7 +1,94 @@
-﻿#include "game/actor/player/Player.Internal.h"
+#include "game/actor/player/Player.Internal.h"
 #include <numbers>
+#include <string_view>
+#include "ModelManager.h"
+#include "engine/graphics/3d/MeshRenderer.h"
 
 using namespace PlayerImplementation;
+
+namespace {
+
+constexpr float kPlayerHurtFaceSeconds = 0.18f;
+
+struct PlayerHurtFaceModel {
+    std::string_view baseName;
+    std::string_view fileName;
+    const char* hurtModel;
+    bool includesBand;
+};
+
+// 通常モデル名とフルファイル名のどちらでも、同じ被弾素材へ対応づけます。
+constexpr PlayerHurtFaceModel kPlayerHurtFaceModels[] = {
+    {"Characters/slime", "Characters/slime/slime.gltf", "Characters/slime/slime_hurt.gltf", false},
+    {"Characters/slime_pink", "Characters/slime_pink/slime_pink.gltf", "Characters/slime_pink/player_copy_pink_hurt.gltf", true},
+    {"Characters/slime_red", "Characters/slime_red/slime_red.gltf", "Characters/slime_red/player_copy_fire_hurt.gltf", true},
+    {"Characters/slime_yellow", "Characters/slime_yellow/slime_yellow.gltf", "Characters/slime_yellow/player_copy_thunder_hurt.gltf", true},
+    {"Characters/slime_wind", "Characters/slime_wind/slime_wind.gltf", "Characters/slime_wind/player_copy_wind_hurt.gltf", true},
+    {"Characters/slime_black", "Characters/slime_black/slime_black.gltf", "Characters/slime_black/player_copy_bomb_hurt.gltf", true},
+    {"Characters/slime_crown", "Characters/slime_crown/slime_crown.gltf", "Characters/slime_crown/slime_crown_hurt.gltf", false},
+    {"Characters/slime_crown/slime_crown_body.gltf", "Characters/slime_crown/slime_crown_body.gltf",
+     "Characters/slime_crown/slime_crown_body_hurt.gltf", false},
+};
+
+} // namespace
+
+void Player::PrepareHurtFaceModel() {
+    Model* baseModel = GetModel();
+    if (hurtFaceBaseModel_ == baseModel) {
+        return;
+    }
+
+    // コピー解除などで本体が変わった場合は、前の形態の被弾顔を持ち越さない。
+    ClearHurtFace();
+    hurtFaceBaseModel_ = baseModel;
+    hurtFaceModel_ = nullptr;
+    hurtFaceIncludesBand_ = false;
+    const std::string modelName = GetModelName();
+    for (const auto& model : kPlayerHurtFaceModels) {
+        if (modelName == model.baseName || modelName == model.fileName) {
+            hurtFaceModel_ = ModelManager::GetInstance()->LoadModel(model.hurtModel);
+            hurtFaceIncludesBand_ = model.includesBand;
+            break;
+        }
+    }
+}
+
+void Player::StartHurtFace() {
+    PrepareHurtFaceModel();
+    if (!hurtFaceModel_ || GetHp() <= 0.0f || IsDead() || isCinematicLocked_ || enemyMorphReleaseActive_) {
+        ClearHurtFace();
+        return;
+    }
+
+    hurtFaceRemaining_ = kPlayerHurtFaceSeconds;
+    UpdateHurtFace(0.0f);
+}
+
+void Player::UpdateHurtFace(float deltaTime) {
+    PrepareHurtFaceModel();
+    if (hurtFaceRemaining_ <= 0.0f) {
+        return;
+    }
+    hurtFaceRemaining_ -= (std::max)(0.0f, deltaTime);
+    if (hurtFaceRemaining_ <= 0.0f || GetHp() <= 0.0f || IsDead() || isCinematicLocked_ ||
+        enemyMorphReleaseActive_ || gateReturnAnimation_.IsActive()) {
+        ClearHurtFace();
+        return;
+    }
+
+    // ムチ変形などが表示枠を使っている間は、終了後の更新まで差し替えを待つ。
+    if (auto* renderer = GetMeshRenderer(); renderer && !renderer->GetVisualModelOverride()) {
+        renderer->SetVisualModelOverride(hurtFaceModel_);
+    }
+}
+
+void Player::ClearHurtFace() {
+    hurtFaceRemaining_ = 0.0f;
+    if (auto* renderer = GetMeshRenderer(); hurtFaceModel_ && renderer &&
+        renderer->GetVisualModelOverride() == hurtFaceModel_) {
+        renderer->SetVisualModelOverride(nullptr);
+    }
+}
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 void Player::StartDamageFeedback(const engine::Vector3& knockbackDirection, float invincibleDuration) {
@@ -14,6 +101,9 @@ void Player::StartDamageFeedback(const engine::Vector3& knockbackDirection, floa
         baseCombatController_->Cancel(*this, false);
     }
 
+    // 近接が確保した操作権を戻してから、被弾側が操作不能を引き受けます。
+    if (copyAbilityController_)
+        copyAbilityController_->NotifyDamageStarted(*this);
     damageCooldownTimer_ = (std::max)(damageCooldownTimer_, (std::max)(0.0f, invincibleDuration));
     SetDamageInvincible(damageCooldownTimer_ > 0.0f);
     ChangeState(std::make_unique<PlayerStateDamage>(knockbackDirection));
@@ -34,6 +124,8 @@ void Player::StartElectricShockFeedback(float duration, float invincibleDuration
         return;
     }
 
+    if (copyAbilityController_)
+        copyAbilityController_->NotifyDamageStarted(*this);
     RestoreDamageBlinkVisibility();
 
     if (!electricShockControlLocked_) {
@@ -134,7 +226,7 @@ void Player::InitializeElectricShockAuraEffect() {
         return;
     }
 
-    electricShockAuraEffect_ = std::make_unique<EffectObject3d>();
+    electricShockAuraEffect_ = std::make_unique<EffectObject3D>();
     electricShockAuraEffect_->Initialize(GetObjectCommon());
     electricShockAuraEffect_->SetName("Player_ElectricShockAura");
 

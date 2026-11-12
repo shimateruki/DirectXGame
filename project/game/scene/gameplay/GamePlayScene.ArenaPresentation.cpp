@@ -80,7 +80,7 @@ void EndArenaFixedCamera(Player* player, bool hadControl) {
 } // namespace
 
 // ボス登場・撃破報酬演出。ロック開始と復帰処理を対で管理し、進行フラグの更新順を維持する。
-bool GamePlayScene::StartArenaBossIntro(engine::Object3d* bossObject, engine::Object3d* gateObject,
+bool GamePlayScene::StartArenaBossIntro(engine::Object3D* bossObject, engine::Object3D* gateObject,
                                         const std::string& cinematicPath) {
     if (arenaBossIntroActive_ || isGoal_ || !player_ || !bossObject || !gateObject) {
         return false;
@@ -92,7 +92,11 @@ bool GamePlayScene::StartArenaBossIntro(engine::Object3d* bossObject, engine::Ob
     }
 
     // 編集データと参照先を確かめてから操作をロックする。欠損時は通常の戦闘進行を続ける。
-    if (cinematicPath.empty() || !arenaBossIntroSequence_.Load(cinematicPath)) {
+    // 従来のデータは保存し、標準登場だけ新しいTimelineへ切り替えます。
+    const bool portalIntro = cinematicPath == "Resources/json/scenario/stage3_boss_intro.json" ||
+                             cinematicPath == "Resources/json/scenario/stage3_boss_portal_intro.json";
+    const std::string path = portalIntro ? "Resources/json/scenario/stage3_boss_portal_intro.json" : cinematicPath;
+    if (path.empty() || !arenaBossIntroSequence_.Load(path)) {
         DebugConsole::GetInstance()->AddLog("Stage 3 boss intro timeline missing; cinematic skipped.");
         return false;
     }
@@ -146,7 +150,7 @@ bool GamePlayScene::StartArenaBossIntro(engine::Object3d* bossObject, engine::Ob
         } else if (signal.signal == "arena.activate_boss") {
             auto* encounter = dynamic_cast<GimmickArenaEncounter*>(arenaBossIntroPlayer_.ResolveBinding(signal.binding));
             hasBossActivation = hasBossActivation ||
-                                (encounter && encounter->GetTargetID() == bossObject->GetEventID());
+                                (encounter && encounter->GetTargetId() == bossObject->GetEventId());
         }
     }
     if (messageInTime < 0.0f || messageOutTime <= messageInTime || barOpenEnd <= 0.0f || !hasBossActivation) {
@@ -185,6 +189,16 @@ bool GamePlayScene::StartArenaBossIntro(engine::Object3d* bossObject, engine::Ob
     arenaBossIntroBoss_ = bossObject;
     if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(bossObject)) {
         king->SetIntroPresentationActive(true, bossTrack->keys.back().time);
+        king->EnableIntroPortal(portalIntro);
+        auto cueTime = [this](const char* name, float fallback) {
+            for (const auto& cue : arenaBossIntroSequence_.signals)
+                if (cue.enabled && cue.signal == name && std::isfinite(cue.time))
+                    return cue.time;
+            return fallback;
+        };
+        king->ConfigureIntroTiming(bossTrack->startTime,
+            cueTime("boss_intro_landing", 3.45f), cueTime("boss_intro_pose", messageInTime),
+            cueTime("boss_intro_gate_close", 4.3f), cueTime("boss_intro_aura_out", 6.0f));
     }
     arenaBossIntroGate_ = gateObject;
 
@@ -205,7 +219,7 @@ bool GamePlayScene::StartArenaBossIntro(engine::Object3d* bossObject, engine::Ob
         static_cast<GimmickBossGate*>(gateObject)->SetIntroTimelineControl(true);
     }
 
-    arenaBossIntroPlayer_.SetSignalCallback([](engine::Object3d* target, const CinematicSignalMarker& signal,
+    arenaBossIntroPlayer_.SetSignalCallback([](engine::Object3D* target, const CinematicSignalMarker& signal,
                                                bool isPreview) {
         if (isPreview || signal.signal != "arena.activate_boss") {
             return;
@@ -229,6 +243,8 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
 
     arenaBossIntroPlayer_.Update((std::max)(deltaTime, 0.0f));
     arenaBossIntroTimer_ = arenaBossIntroPlayer_.GetCurrentTime();
+    if(auto* king=dynamic_cast<EnemyFalseKingSlime*>(arenaBossIntroBoss_))
+        king->UpdateIntroPortal(arenaBossIntroTimer_,(std::max)(deltaTime,0.0f));
     player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
     // シネマバーは冒頭で開き、戦闘画面に戻す終盤で閉じます。
@@ -284,7 +300,7 @@ void GamePlayScene::FinishArenaBossIntro() {
     EndArenaFixedCamera(player_, arenaBossIntroHadPlayerControl_);
 }
 
-void GamePlayScene::StartArenaBossDefeatReward(engine::Object3d* rewardObject) {
+void GamePlayScene::StartArenaBossDefeatReward(engine::Object3D* rewardObject) {
     if (crownDefeat_.active || crownDefeat_.completed || arenaBossRewardActive_ || isGoal_ || !player_ || !rewardObject) {
         return;
     }
@@ -330,7 +346,7 @@ void GamePlayScene::StartArenaBossDefeatReward(engine::Object3d* rewardObject) {
     arenaBossRewardGameplayTarget_ = camera->GetTargetPoint();
     CaptureArenaCinemaBar(arenaBossRewardCinemaBarOverrideActive_, arenaBossRewardCinemaBarBaseHeight_);
 
-    arenaBossRewardPlayer_.SetSignalCallback([this](engine::Object3d*, const CinematicSignalMarker& signal,
+    arenaBossRewardPlayer_.SetSignalCallback([this](engine::Object3D*, const CinematicSignalMarker& signal,
                                                     bool isPreview) {
         if (!isPreview && signal.signal == "camera.resume_gameplay") {
             CameraManager::GetInstance()->PrepareMainCameraReturn(player_, arenaBossRewardGameplayEye_,

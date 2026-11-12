@@ -42,9 +42,9 @@
         }
     },
     "angle": [
-        18.0,
-        180.0,
-        0.0
+        35,
+        60,
+        0
     ],
     "boostSpeed": 2.0,
     "cameraBodyVisible": true,
@@ -55,7 +55,7 @@
     "cameraPreviewVisible": false,
     "cameraSensitivity": 0,
     "cinematicPreviewSource": 1,
-    "distance": 22.0,
+    "distance": 28,
     "fixedPointAngle": [
         0.0,
         0.0,
@@ -67,7 +67,7 @@
         -15.0
     ],
     "gameFollowMode": 1,
-    "height": 3.799999952316284,
+    "height": 1.8,
     "lockOnOffset": [
         0.0,
         4.0,
@@ -88,5 +88,17 @@
     "orbitRadius": 18.39358139038086,
     "orbitSpeed": 0.004999999888241291,
     "orbitStartAngleDeg": -107.30278015136719,
-    "selectedSceneCameraName": "Cinematic_Camera_01"
+    "selectedSceneCameraName": "Cinematic_Camera_01",
+    "gameplayStyle": 1,
+    "guidedControl": {
+        "yawLimit": 10,
+        "pitchLimit": 5,
+        "returnResponse": 5,
+        "fov": 0.65,
+        "obstacleResponse": 1,
+        "lookAhead": 6,
+        "deadZoneWidth": 0.1,
+        "deadZoneHeight": 0.1,
+        "framingResponse": 3
+    }
 }

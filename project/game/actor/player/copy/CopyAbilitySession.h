@@ -8,6 +8,8 @@
 
 namespace CopyAbilityDetail {
 // コピー中の能力ごとの状態と演出を持つ境界。攻撃設定は値で保持し、解除時は Cancel で後始末する。
+// 関連：PlayerCopyAbilityControllerが保持する、能力ごとの入力・更新・解放の契約。
+// 主な入口：ProcessInput / Update / Cancel
 class ICopyAbilitySession {
   public:
     explicit ICopyAbilitySession(EnemyAttackProfile profile) : profile_(std::move(profile)) {}
@@ -21,6 +23,9 @@ class ICopyAbilitySession {
 
     // 能力切替や形態解除時に、能力が所有する演出・一時状態を後始末します。
     virtual void Cancel(Player& player) = 0;
+
+    // 被弾の操作ロックより先に、対応する能力だけが攻撃を終了します。
+    virtual void NotifyDamageStarted(Player&) {}
 
     // 通常描画用。能力に表示物がなければ既定の空実装を使う。
     virtual void Draw(Player&, ID3D12Resource*, ID3D12Resource*, Camera*, int) {}

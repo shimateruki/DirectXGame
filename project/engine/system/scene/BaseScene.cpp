@@ -1,15 +1,17 @@
+#include "CameraManager.h"
 #include "BaseScene.h"
 #include "DirectXCommon.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "game/system/combat/BulletManager.h"
 #include "Camera.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "LightManager.h"
 #include "PostEffect.h"
 #include "SceneManager.h"
 #include "ScenePreloader.h"
 #include "Skybox.h"
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
+#include "engine/graphics/scene/SceneRenderCommands.h"
 #include <algorithm>
 #include <stdexcept>
 #include <unordered_set>
@@ -42,19 +44,19 @@ bool BaseScene::MoveSprite(engine::Sprite* sprite, int offset) {
     return true;
 }
 
-void BaseScene::AddObject(std::unique_ptr<engine::Object3d> object) {
+void BaseScene::AddObject(std::unique_ptr<engine::Object3D> object) {
     // オブジェクトを持たない派生シーンは、この操作を明示的に拒否します。
     (void)object;
     throw std::logic_error("This scene does not own Object3d objects");
 }
 
-engine::Object3d* BaseScene::AddObjectImmediate(std::unique_ptr<engine::Object3d> object) {
+engine::Object3D* BaseScene::AddObjectImmediate(std::unique_ptr<engine::Object3D> object) {
     // 即時追加も所有権を持つ派生シーンだけが実装します。
     (void)object;
     throw std::logic_error("This scene does not own Object3d objects");
 }
 
-std::unique_ptr<engine::Object3d> BaseScene::TakeObjectImmediate(engine::Object3d* object) {
+std::unique_ptr<engine::Object3D> BaseScene::TakeObjectImmediate(engine::Object3D* object) {
     // 所有権のない基底シーンでは持ち出す対象がありません。
     (void)object;
     return nullptr;
@@ -121,7 +123,7 @@ std::string BaseScene::ResolvePrimarySpriteLayoutPath(const std::string& default
     return assetPath.empty() ? defaultPath : assetPath;
 }
 
-bool BaseScene::Destroy(engine::Object3d* object) {
+bool BaseScene::Destroy(engine::Object3D* object) {
     // 3D オブジェクトの削除は生存確認と遅延破棄を行う共通経路へ渡します。
     return DestroyObject(object);
 }
@@ -205,7 +207,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
         skybox->Draw(camera->GetConstantBuffer());
     }
 
-    auto drawObject = [&](engine::Object3d* object, bool transparentPass) {
+    auto drawObject = [&](engine::Object3D* object, bool transparentPass) {
         if (!object || !object->GetIsRenderVisible()) {
             return;
         }
@@ -269,8 +271,8 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     }
 
     // 特殊材質には現在のプレビューバッファに対応するSRVだけを渡します。
-    const uint32_t depthSrvHandle = postEffect->GetDepthSRVHandle(targetTextureIndex);
-    const uint32_t grabSrvHandle = postEffect->GetGrabSRVHandle(targetTextureIndex);
+    const uint32_t depthSrvHandle = postEffect->GetDepthSrvHandle(targetTextureIndex);
+    const uint32_t grabSrvHandle = postEffect->GetGrabSrvHandle(targetTextureIndex);
 
     for (auto& object : objects) {
         if (!object || !object->GetIsRenderVisible()) {
@@ -297,7 +299,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     postEffect->EndCameraPreviewSpecialPass(commandList, targetTextureIndex);
 }
 
-bool BaseScene::DestroyObject(engine::Object3d* object) {
+bool BaseScene::DestroyObject(engine::Object3D* object) {
     // 走査中の即時破棄を避け、先に非表示にして削除を予約します。
     if (!IsAlive(object)) {
         return false;
@@ -350,14 +352,14 @@ bool BaseScene::DestroySprite(engine::Sprite* sprite) {
     return true;
 }
 
-bool BaseScene::IsAlive(engine::Object3d* object) {
+bool BaseScene::IsAlive(engine::Object3D* object) {
     // 生存判定は所有配列内に同じポインタがあるかで確認します。
     if (!object) {
         return false;
     }
 
     auto& objects = GetObjects();
-    return std::any_of(objects.begin(), objects.end(), [object](const std::unique_ptr<engine::Object3d>& candidate) {
+    return std::any_of(objects.begin(), objects.end(), [object](const std::unique_ptr<engine::Object3D>& candidate) {
         return candidate && candidate.get() == object;
     });
 }
@@ -379,13 +381,13 @@ bool BaseScene::IsSpecialMaterialType(int materialType) const {
     return MaterialRenderPolicy::IsSpecial(materialType);
 }
 
-bool BaseScene::IsHiddenByFirstPerson(engine::Object3d* object, engine::Object3d* viewActor, bool isFirstPerson) const {
+bool BaseScene::IsHiddenByFirstPerson(engine::Object3D* object, engine::Object3D* viewActor, bool isFirstPerson) const {
     // 一人称視点では視点の主体とその子オブジェクトを隠します。
     if (!isFirstPerson || !object || !viewActor) {
         return false;
     }
 
-    engine::Object3d* current = object;
+    engine::Object3D* current = object;
 
     while (current) {
         if (current == viewActor) {
@@ -398,13 +400,14 @@ bool BaseScene::IsHiddenByFirstPerson(engine::Object3d* object, engine::Object3d
     return false;
 }
 
-bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<engine::Object3d>>& objects, DirectXCommon* dxCommon, engine::Object3d* viewActor, bool isFirstPerson) {
+bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<engine::Object3D>>& objects, engine::Object3D* viewActor, bool isFirstPerson) {
     // 対象がないフレームは専用パスの開始と終了を省略します。
-    if (!dxCommon) {
+    auto* commands = GetRenderCommands();
+    if (!commands) {
         return false;
     }
 
-    if (dxCommon->IsCameraPreviewRendering()) {
+    if (commands->IsCameraPreviewRendering()) {
         return false;
     }
 
@@ -421,25 +424,26 @@ bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<engine::Ob
         return false;
     }
 
-    dxCommon->PreDrawLocalFog();
+    commands->BeginDepthRead();
 
     for (auto& obj : objects) {
         if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), viewActor, isFirstPerson)) {
-            obj->DrawLocalFog(dxCommon->GetDepthSrvHandle());
+            obj->DrawLocalFog(commands->GetDepthSrvHandle());
         }
     }
 
-    dxCommon->PostDrawLocalFog();
+    commands->EndDepthRead();
     return true;
 }
 
-bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<engine::Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, engine::Object3d* viewActor, bool isFirstPerson) {
+bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<engine::Object3D>>& objects, BulletManager* bulletManager, engine::Object3D* viewActor, bool isFirstPerson) {
     // 深度・背景色を読む材質をまとめ、必要な時だけ Grab Texture を更新します。
-    if (!dxCommon) {
+    auto* commands = GetRenderCommands();
+    if (!commands) {
         return false;
     }
 
-    if (dxCommon->IsCameraPreviewRendering()) {
+    if (commands->IsCameraPreviewRendering()) {
         return false;
     }
 
@@ -456,18 +460,32 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<eng
 
     const bool hasSpecialBullets = bulletManager && bulletManager->HasSpecialMaterialBullets();
 
-    if (!hasSpecialObjects && !hasSpecialBullets) {
+    auto* cameraManager = CameraManager::GetInstance();
+    auto* activeCamera = cameraManager->GetActiveCamera();
+    engine::Object3D* silhouetteSubject = nullptr;
+    if (!isFirstPerson && cameraManager->GetVisibilityFrame().enabled &&
+        activeCamera && activeCamera == cameraManager->GetMainCamera() &&
+        activeCamera->GetVisibilitySettings().silhouetteColor[3] > 0.0f) {
+        // シーンにまだ所属している実体だけ使う。装飾を何重にも重ねず本体を一度描く。
+        for (const auto& object : objects) {
+            if (object && object.get() == activeCamera->GetFollowTarget() && object->GetIsRenderVisible()) {
+                silhouetteSubject = object.get(); break;
+            }
+        }
+    }
+    if (!hasSpecialObjects && !hasSpecialBullets && !silhouetteSubject) {
         return false;
     }
 
-    dxCommon->UpdateGrabTexture();
+    const bool grabUpdated = hasSpecialObjects || hasSpecialBullets;
+    if (grabUpdated) commands->CopySceneColor();
 
     // 特殊マテリアルはScene深度をSRVとして読むため、描画中だけDSVを読み取り状態へ切り替えます。
-    dxCommon->PreDrawLocalFog();
+    commands->BeginDepthRead();
 
     if (hasSpecialObjects) {
-        const uint32_t depthSrvHandle = dxCommon->GetDepthSrvHandle();
-        const uint32_t grabSrvHandle = dxCommon->GetGrabSrvHandle();
+        const uint32_t depthSrvHandle = commands->GetDepthSrvHandle();
+        const uint32_t grabSrvHandle = commands->GetSceneColorSrvHandle();
 
         for (auto& obj : objects) {
             if (!obj || !obj->GetIsRenderVisible() || IsHiddenByFirstPerson(obj.get(), viewActor, isFirstPerson)) {
@@ -480,46 +498,45 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<eng
     }
 
     if (hasSpecialBullets) {
-        bulletManager->DrawSpecial(dxCommon->GetDepthSrvHandle(), dxCommon->GetGrabSrvHandle());
+        bulletManager->DrawSpecial(commands->GetDepthSrvHandle(), commands->GetSceneColorSrvHandle());
     }
 
-    dxCommon->PostDrawLocalFog();
-    return true;
+    if (silhouetteSubject && silhouetteSubject->GetMeshRenderer()) {
+        silhouetteSubject->GetMeshRenderer()->DrawVisibilitySilhouette(
+            commands->GetDepthSrvHandle(), commands->GetSceneColorSrvHandle());
+    }
+    commands->EndDepthRead();
+    return grabUpdated;
 }
 
-bool BaseScene::DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated) {
+bool BaseScene::DrawGpuParticles(Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated) {
     // 背景色が必要な粒子だけコピーを追加し、既済みなら再利用します。
-    GPUParticleManager* particleManager = GPUParticleManager::GetInstance();
+    GpuParticleManager* particleManager = GpuParticleManager::GetInstance();
+    auto* commands = GetRenderCommands();
 
-    if (!dxCommon || !camera || particleManager->IsEmpty()) {
+    if (!commands || !camera || particleManager->IsEmpty()) {
         return grabAlreadyUpdated;
     }
 
-    if (dxCommon->IsCameraPreviewRendering()) {
+    if (commands->IsCameraPreviewRendering()) {
         return grabAlreadyUpdated;
     }
 
     // 加算・半透明パーティクルは背景色を参照しないため、全画面コピーを省略します。
     if (!grabAlreadyUpdated && particleManager->RequiresSceneColorCopy()) {
-        dxCommon->UpdateGrabTexture();
+        commands->CopySceneColor();
         grabAlreadyUpdated = true;
     }
 
-    dxCommon->PreDrawLocalFog();
-    particleManager->Draw(
-        dxCommon->GetCommandList(),
-        camera->GetViewMatrix(),
-        camera->GetProjectionMatrix(),
-        textureHandle,
-        dxCommon->GetDepthSrvHandle()
-    );
-    dxCommon->PostDrawLocalFog();
+    commands->BeginDepthRead();
+    commands->RecordGpuParticles(*particleManager, *camera, textureHandle);
+    commands->EndDepthRead();
     return grabAlreadyUpdated;
 }
 
-void BaseScene::TriggerEvent(int targetID) {
+void BaseScene::TriggerEvent(int targetId) {
     // IDが -1 (設定なし) なら何もしない
-    if (targetID == -1)
+    if (targetId == -1)
         return;
 
     // シーン内の全オブジェクトを取得 
@@ -527,36 +544,36 @@ void BaseScene::TriggerEvent(int targetID) {
 
     for (auto& obj : objects) {
         // 「俺の受信ID、呼ばれた番号と同じだ！」
-        if (obj->GetEventID() == targetID) {
+        if (obj->GetEventId() == targetId) {
             // アクションを実行！
             obj->OnTrigger();
         }
     }
 }
 
-void BaseScene::SetEventActive(int targetID, bool active) {
+void BaseScene::SetEventActive(int targetId, bool active) {
     // 同じ受信 ID の全オブジェクトへオン・オフ状態を伝えます。
-    if (targetID == -1)
+    if (targetId == -1)
         return;
 
     auto& objects = GetObjects();
 
     for (auto& obj : objects) {
-        if (obj->GetEventID() == targetID) {
+        if (obj->GetEventId() == targetId) {
             obj->OnSwitchEvent(active);
         }
     }
 }
 
-engine::Object3d* BaseScene::FindObjectByEventID(int eventID) {
+engine::Object3D* BaseScene::FindObjectByEventId(int eventId) {
     // IDなしなら無視
-    if (eventID == -1)
+    if (eventId == -1)
         return nullptr;
 
     auto& objects = GetObjects();
 
     for (auto& obj : objects) {
-        if (obj->GetEventID() == eventID) {
+        if (obj->GetEventId() == eventId) {
             return obj.get(); // 見つけたオブジェクトそのものを返す！
         }
     }
@@ -564,9 +581,9 @@ engine::Object3d* BaseScene::FindObjectByEventID(int eventID) {
     return nullptr;
 }
 
-engine::Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
+engine::Object3D* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
     // 保存用 GUID の形式を確かめてからシーン内を探索します。
-    if (!engine::Object3d::IsPersistentGuidValid(guid)) {
+    if (!engine::Object3D::IsPersistentGuidValid(guid)) {
         return nullptr;
     }
 
@@ -579,7 +596,7 @@ engine::Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid)
     return nullptr;
 }
 
-const engine::Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) const {
+const engine::Object3D* BaseScene::FindObjectByPersistentGuid(const std::string& guid) const {
     // 読み取り側も同じ GUID 探索規則を使います。
     return const_cast<BaseScene*>(this)->FindObjectByPersistentGuid(guid);
 }
@@ -620,4 +637,59 @@ engine::Sprite* BaseScene::GetSpriteByName(const std::string& name) {
     }
 
     return nullptr; // 見つからなかった場合
+}
+
+// CommonはFramework所有。SceneはManager経由で借りるだけで、解放操作を持たない。
+engine::Object3DCommon* BaseScene::GetObject3DCommon() {
+    if (GetRenderPreparation() == engine::RenderPreparation::SpritesOnly || !sceneManager_) return nullptr;
+    auto* resources = sceneManager_->GetRenderCommonResources();
+    return resources ? resources->GetObject3DCommon() : nullptr;
+}
+
+engine::SpriteCommon* BaseScene::GetSpriteCommon() {
+    auto* resources = sceneManager_ ? sceneManager_->GetRenderCommonResources() : nullptr;
+    return resources ? resources->GetSpriteCommon() : nullptr;
+}
+
+engine::ParticleCommon* BaseScene::GetParticleCommon() const {
+    if (GetRenderPreparation() == engine::RenderPreparation::SpritesOnly || !sceneManager_) return nullptr;
+    auto* resources = sceneManager_->GetRenderCommonResources();
+    return resources ? resources->GetParticleCommon() : nullptr;
+}
+
+engine::SceneRenderCommands* BaseScene::GetRenderCommands() const {
+    auto* resources = sceneManager_ ? sceneManager_->GetRenderCommonResources() : nullptr;
+    return resources ? resources->GetSceneRenderCommands() : nullptr;
+}
+
+void BaseScene::BeginSpriteDrawing() {
+    auto* commands = GetRenderCommands();
+    auto* sprites = GetSpriteCommon();
+    if (!commands || !sprites) {
+        throw std::logic_error("Scene sprite drawing requires prepared render resources");
+    }
+    commands->BindSprites(*sprites);
+}
+
+void BaseScene::PrepareGpuParticles(GpuParticlePresetScope scope) {
+    // GPU基盤の取得・受け渡しは共通層に置き、シーンは準備範囲だけを選ぶ。
+    auto* particles = GpuParticleManager::GetInstance();
+    auto* dxCommon = DirectXCommon::GetInstance();
+#ifndef USE_IMGUI
+    // 配布版の軽量起動では、先読み結果が空でも「指定対象なし」として維持する。
+    // 先読み自体が無い場合だけ従来のInitializeへ戻す。
+    if (scope == GpuParticlePresetScope::PreparedScene) {
+        if (GetPreparedLoadData()) {
+            particles->InitializeWithPresets(dxCommon, GetPreparedLoadData()->gpuParticlePresetNames);
+        } else {
+            particles->Initialize(dxCommon);
+        }
+        return;
+    }
+#else
+    // Editorで他のプリセットを選べるよう、軽量範囲の指定でも全件を読み込む。
+    (void)scope;
+#endif
+    particles->Initialize(dxCommon);
+    particles->LoadAllPresets("Resources/json/gpu_particles/");
 }

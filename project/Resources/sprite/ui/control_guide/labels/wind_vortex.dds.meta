@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a1ed20ea7646474993a087a3d4ac43f8",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/wind_vortex.dds",
+  "version": 1
+}

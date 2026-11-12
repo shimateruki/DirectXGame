@@ -8,10 +8,12 @@ namespace EnemyProjectileRuntimeProbe { struct Access; }
 #endif
 
 // 距離を保ちながら爆弾を生成して投げる、ボム使いの敵。
+// 関連：BaseEnemyの索敵を使い、投擲用のEnemyBombを生成して投げる。
+// 主な入口：Initialize / Update
 class EnemyBomber : public BaseEnemy {
   public:
     /// 投擲敵のモデル、当たり判定、爆弾表示を準備する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 間合いを保ちながら投擲状態と移動を進める。
     void Update(float deltaTime) override;
@@ -115,7 +117,7 @@ class EnemyBomber : public BaseEnemy {
     float footworkTimer_ = 0.0f;
     float footworkDirection_ = 1.0f;
 
-    float idleTimer_ = 0.0f;
+    float idleTimer_ = 0.0f; // 待機中の見た目に使う経過秒数。
 
     ThrowState throwState_ = ThrowState::Idle;
     float throwRecoilTimer_ = 0.0f;
@@ -129,8 +131,8 @@ class EnemyBomber : public BaseEnemy {
 
     bool throwBombReleased_ = false;
     std::function<void(std::unique_ptr<BaseEnemy>)> spawnCallback_ = nullptr;
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
     engine::Vector3 baseScale_ = {2.0f, 2.0f, 2.0f};
     bool hasBaseScale_ = false;
-    std::unique_ptr<engine::Object3d> heldBombVisual_ = nullptr;
+    std::unique_ptr<engine::Object3D> heldBombVisual_ = nullptr;
 };

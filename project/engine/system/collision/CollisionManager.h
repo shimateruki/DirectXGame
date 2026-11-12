@@ -1,5 +1,5 @@
 #pragma once
-#include "Object3d.h"
+#include "Object3D.h"
 #include <cstdint>
 #include <functional>
 #include <list>
@@ -8,23 +8,26 @@
 #include <vector>
 
 /// <summary>空間分割グリッドの整数座標です。</summary>
+// 関連：CollisionManager（この型を使う機能の本体）
 struct Vector3i {
     int x, y, z;
 };
 
 /// <summary>順序を統一したオブジェクトペアをハッシュ化します。</summary>
+// 関連：CollisionManager（この型を使う機能の本体）
 struct PairHash {
-    std::size_t operator()(const std::pair<engine::Object3d*, engine::Object3d*>& p) const {
-        auto hashA = std::hash<engine::Object3d*>{}(p.first);
-        auto hashB = std::hash<engine::Object3d*>{}(p.second);
+    std::size_t operator()(const std::pair<engine::Object3D*, engine::Object3D*>& p) const {
+        auto hashA = std::hash<engine::Object3D*>{}(p.first);
+        auto hashB = std::hash<engine::Object3D*>{}(p.second);
         return hashA ^ (hashB << 1);
     }
 };
 
 /// <summary>レイキャストで最初に見つかった衝突情報です。</summary>
+// 関連：CollisionManager（この型を使う機能の本体）
 struct RaycastHit {
     bool isHit = false;            // 衝突したか。
-    engine::Object3d* hitObject = nullptr; // 衝突したオブジェクト。
+    engine::Object3D* hitObject = nullptr; // 衝突したオブジェクト。
     engine::Vector3 hitPoint;              // 衝突座標。
     float distance = 0.0f;         // レイ始点からの距離。
     engine::Vector3 normal;                // 衝突面の法線。
@@ -32,32 +35,39 @@ struct RaycastHit {
 
 /// <summary>Physics Query の対象レイヤーや除外条件を指定します。</summary>
 // クエリ専用の絞り込み条件。Object同士の接触通知用マスクを書き換える設定ではない。
+// 関連：CollisionManager（この型を使う機能の本体）
 struct PhysicsQueryFilter {
     uint32_t mask = 0xFFFFFFFFu;
-    engine::Object3d* ignoredObject = nullptr;
+    engine::Object3D* ignoredObject = nullptr;
     bool ignoreDescendants = true;
     bool includeTriggers = false;
     bool includeDisabled = false;
     bool refineSphereCastHit = false; // 高速弾など、最初の接触位置を細かく求める場合に指定する。
     // 用途固有の除外はこのクエリだけに適用し、接触判定や他のクエリへ波及させない。
-    std::function<bool(const engine::Object3d*)> acceptsObject;
+    std::function<bool(const engine::Object3D*)> acceptsObject;
+    // 球の接触結果だけを選別します。未指定なら従来どおり全接触を採用します。
+    // SphereCastの各サンプルと接触位置の絞り込みにも同じ条件を適用します。
+    std::function<bool(const engine::Object3D*, const CollisionInfo&)> acceptsSphereContact;
 };
 
 /// <summary>Overlap Query の対象と、押し戻し情報です。</summary>
+// 関連：CollisionManager（この型を使う機能の本体）
 struct PhysicsOverlapHit {
-    engine::Object3d* object = nullptr;
+    engine::Object3D* object = nullptr;
     CollisionInfo collision;
 };
 
-/// <summary>登録オブジェクトの接触判定と Physics Query を管理します。</summary>
+// 担当：登録Objectの接触を判定して通知し、レイ・重なり照会を提供する。
+// 関連：Object3D（接触通知先）、Collider（形状判定）、PhysicsQueryFilter（照会条件）
+// 主な入口：AddObject / Update / RemoveObject / ClearObjects
 class CollisionManager {
 public:
     /// <summary>エンジンで共有する衝突管理インスタンスを取得します。</summary>
     static CollisionManager* GetInstance();
 #ifdef USE_IMGUI
     // 既存の検索条件へ一時条件を重ね、終了時に元の条件へ戻せるよう交換する。
-    std::function<bool(const engine::Object3d*)> ExchangeEditorQueryFilter(
-        std::function<bool(const engine::Object3d*)> filter) {
+    std::function<bool(const engine::Object3D*)> ExchangeEditorQueryFilter(
+        std::function<bool(const engine::Object3D*)> filter) {
         editorQueryFilter_.swap(filter); return filter;
     }
 #endif
@@ -66,11 +76,11 @@ public:
     void Update();
 
     /// <summary>オブジェクトを衝突管理対象から外します。</summary>
-    void RemoveObject(engine::Object3d* object);
+    void RemoveObject(engine::Object3D* object);
 
     /// <summary>オブジェクトを衝突管理対象へ追加します。</summary>
     /// <remarks>所有権は受け取らない。破棄前に RemoveObject で登録を解除する。</remarks>
-    void AddObject(engine::Object3d* object);
+    void AddObject(engine::Object3D* object);
 
     /// <summary>登録オブジェクトと接触状態をすべてクリアします。</summary>
     void ClearObjects();
@@ -95,9 +105,9 @@ public:
         const engine::Vector3& center, float radius,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
-    /// <summary>AABB と重なる対象の押し戻し情報を取得します。</summary>
-    std::vector<PhysicsOverlapHit> OverlapAABB(
-        const AABB& bounds,
+    /// <summary>Aabb と重なる対象の押し戻し情報を取得します。</summary>
+    std::vector<PhysicsOverlapHit> OverlapAabb(
+        const Aabb& bounds,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
     /// <summary>カプセルと重なる対象の押し戻し情報を取得します。</summary>
@@ -121,11 +131,11 @@ public:
 
     /// <summary>登録中のオブジェクト一覧を取得します。</summary>
     // 登録中の借用一覧。Add/Remove/Clearで変化し、列挙中に登録内容を変更しない。
-    const std::list<engine::Object3d*>& GetObjects() const { return objects_; }
+    const std::list<engine::Object3D*>& GetObjects() const { return objects_; }
 
 private:
 #ifdef USE_IMGUI
-    std::function<bool(const engine::Object3d*)> editorQueryFilter_;
+    std::function<bool(const engine::Object3D*)> editorQueryFilter_;
 #endif
     CollisionManager() = default;
 
@@ -139,45 +149,52 @@ private:
     float gridSize_ = 5.0f;
 
     // ワールド座標とグリッド座標の変換に使用します。
-    int64_t GetGridID(const engine::Vector3& pos);
+    int64_t GetGridId(const engine::Vector3& pos);
 
     // ワールド座標を整数のセル座標へ、またセル座標を格納用IDへ変換します。
     Vector3i GetGridIndices(const engine::Vector3& pos);
 
-    int64_t GetGridIDFromIndices(int x, int y, int z);
+    int64_t GetGridIdFromIndices(int x, int y, int z);
 
     // 2 つの Collider を調べ、当フレームの接触ペアへ登録します。
-    void CheckCollisionPair(engine::Object3d* objA, engine::Object3d* objB);
+    void CheckCollisionPair(engine::Object3D* objA, engine::Object3D* objB);
 
     // 前フレームとの差から Enter、Stay、Exit を通知します。
     void DispatchContactEvents();
 
     // 各 Query で共通のレイヤー・親子・Trigger 条件を評価します。
-    bool PassesQueryFilter(engine::Object3d* object, const PhysicsQueryFilter& filter) const;
+    bool PassesQueryFilter(engine::Object3D* object, const PhysicsQueryFilter& filter) const;
 
     // レイキャストのオーバーロードから共通処理へ合流します。
     RaycastHit RaycastInternal(
         const engine::Vector3& start, const engine::Vector3& direction, float maxDistance,
         const PhysicsQueryFilter& filter, bool excludePlayerHierarchy) const;
 
+    // centerはワールド中心、radiusはワールド単位の半径です。
+    // 1回のCast内で絞った候補を再利用します。nullptrなら登録順に全対象を調べます。
+    std::vector<PhysicsOverlapHit> OverlapSphereCandidates(
+        const engine::Vector3& center, float radius, const PhysicsQueryFilter& filter,
+        const std::vector<engine::Object3D*>* candidates) const;
+
     // 静的オブジェクトをセルへ登録し直します。
     void BuildStaticGrid();
 
-    std::unordered_map<int64_t, std::list<engine::Object3d*>> staticGrid_;
+    std::unordered_map<int64_t, std::list<engine::Object3D*>> staticGrid_;
     bool needsStaticGridRebuild_ = true;
 
 private:
     // 動的な衝突ペアの候補と、前・現在フレームの接触状態を分けて保持します。
-    std::list<engine::Object3d*> objects_;
-    std::unordered_map<int64_t, std::list<engine::Object3d*>> grid_;
-    std::unordered_set<std::pair<engine::Object3d*, engine::Object3d*>, PairHash> checkedPairs_;
+    std::list<engine::Object3D*> objects_;
+    std::unordered_map<int64_t, std::list<engine::Object3D*>> grid_;
+    std::unordered_set<std::pair<engine::Object3D*, engine::Object3D*>, PairHash> checkedPairs_;
 
     /// <summary>前後フレームで比較する接触情報とTrigger種別。</summary>
+    // 関連：CollisionManager（この型を使う機能の本体）
     struct ContactState {
         CollisionInfo firstInfo;
         bool isTrigger = false;
     };
 
-    std::unordered_map<std::pair<engine::Object3d*, engine::Object3d*>, ContactState, PairHash> previousContacts_;
-    std::unordered_map<std::pair<engine::Object3d*, engine::Object3d*>, ContactState, PairHash> currentContacts_;
+    std::unordered_map<std::pair<engine::Object3D*, engine::Object3D*>, ContactState, PairHash> previousContacts_;
+    std::unordered_map<std::pair<engine::Object3D*, engine::Object3D*>, ContactState, PairHash> currentContacts_;
 };

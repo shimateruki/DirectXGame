@@ -1,6 +1,6 @@
 #pragma once
 #ifdef USE_IMGUI
-#include "engine/core/editor/SelectedActorSession.h"
+#include "engine/editor/preview/SelectedActorSession.h"
 
 #include "IEditable.h"
 #include "game/actor/enemy/combat/EnemyAttackProfile.h"
@@ -21,12 +21,14 @@ struct EnemyAttackPreviewContext;
 struct CopyAbilityPreviewDescriptor;
 struct CopyAbilityPreviewAction;
 class BaseScene;
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 class Player;
 class SceneManager;
 class ProjectWindow;
 
 /// スライム系敵の実際のAIと攻撃演出を、選択位置で確認し、既存データの編集欄を提供するゲーム側の共通パネル。
+// 関連：各PreviewRegistryの登録内容を使い、敵・コピー能力の本編処理をプレビューする。
+// 主な入口：Initialize / Update / DrawImGui / Finalize
 class ActorDebugPanel : public IEditable {
     friend void RegisterGameActorDebug();
 public:
@@ -94,10 +96,14 @@ private:
     bool effectsOwned_ = false;
     std::function<void()> restoreMovieCamera_;
     engine::Vector3 GetGroundPosition() const { return sourcePosition_; }
+    // プレビュー用Actorを生成・接続する。既存のプレビューはReleaseRuntimeで先に回収する。
     void BuildRuntime(bool requestCameraRecenter = false);
+    // 登録したプレビューActor・弾・演出を回収し、借用参照を無効にする。
     void ReleaseRuntime();
     float ResolveGroundHeight(const engine::Vector3& position, float fallback) const;
+    // プレビューの表示・再生状態を準備する。保存用Profileの数値はここでは書き換えない。
     void BeginEffects();
+    // 確認中の演出を終了し、次回の再生へ一時状態を持ち越さない。
     void EndEffects();
     ProjectWindow* authoringAssets_ = nullptr; // Editorが所有。素材サムネイルだけを借用します。
 
@@ -111,6 +117,7 @@ private:
     // ゲーム側の編集欄を描き、操作確定時だけプレビューを再生成します。
     bool DrawStatusSettings();
     bool statusTab_ = false; // 基本値と攻撃設定を同時に縦へ積まず、対象を共有して切り替えます。
+    // 変更した共通ステータスを現在のプレビュー対象へ適用し直す。
     void RefreshStatusPreview();
     bool statusRefreshPending_ = false;
 
@@ -170,7 +177,7 @@ private:
     bool placementGizmoUsing_ = false;
     AttackSequenceDefinition placementGestureBefore_;
 
-    engine::Object3d* placementObject_ = nullptr; // Sceneが所有する無害な弾モデルの表示用Object。
+    engine::Object3D* placementObject_ = nullptr; // Sceneが所有する無害な弾モデルの表示用Object。
     std::string placementGpuSignature_;
     std::string placementMessage_;
 
@@ -223,6 +230,7 @@ private:
     std::function<void(std::unique_ptr<BaseEnemy>)> MakePreviewSpawnCallback();
     void AddPreviewSpawn(std::unique_ptr<BaseEnemy> enemy);
     void PreparePreviewMetadata(BaseEnemy& enemy, const std::string& name);
+    // 敵が追加生成するActorの登録先を、プレビューの寿命と結び付ける。
     void ConnectPreviewSpawns(BaseEnemy& enemy);
     EnemyAttackPreviewContext GetEnemyPreviewContext() const;
 
@@ -331,11 +339,11 @@ private:
 
 private:
     SceneManager* sceneManager_ = nullptr;
-    BaseScene* previewScene_ = nullptr;
-    BaseEnemy* previewEnemy_ = nullptr;
-    engine::Object3d* previewTarget_ = nullptr;
-    Player* previewPlayer_ = nullptr;
-    std::vector<engine::Object3d*> spawnedPreviewObjects_;
+    BaseScene* previewScene_ = nullptr; // プレビュー中に参照するシーン。パネル自身は所有しない。
+    BaseEnemy* previewEnemy_ = nullptr; // プレビュー生成物への借用参照。ReleaseRuntime後は無効。
+    engine::Object3D* previewTarget_ = nullptr;
+    Player* previewPlayer_ = nullptr; // コピー能力プレビューの借用参照。ReleaseRuntime後は無効。
+    std::vector<engine::Object3D*> spawnedPreviewObjects_;
 
     bool enabled_ = false;
     bool playing_ = true;
@@ -353,14 +361,14 @@ private:
     std::string previewOptionId_; // 保存しない追加確認項目の安定ID。
     bool sealBarrageMovieCameraPreview_ = true;
 
-    float elapsedTime_ = 0.0f;
-    float simulationAccumulator_ = 0.0f;
-    float playbackSpeed_ = 1.0f;
+    float elapsedTime_ = 0.0f; // プレビュー開始からの再生秒数。
+    float simulationAccumulator_ = 0.0f; // 固定刻みのAI更新へまだ渡していない蓄積秒数。
+    float playbackSpeed_ = 1.0f; // プレビュー時間の倍率。1が等速。
 
-    float targetDistance_ = 6.0f;
-    float loopDuration_ = 4.6f;
+    float targetDistance_ = 6.0f; // 確認対象までの距離（ワールド単位）。
+    float loopDuration_ = 4.6f; // プレビューを作り直す周期（秒）。
 
-    float timelinePixelsPerSecond_ = 150.0f;
+    float timelinePixelsPerSecond_ = 150.0f; // Timelineの横方向表示倍率（ピクセル／秒）。
     bool timelineFollowPlayhead_ = true;
 
     bool previewHitReaction_ = false;
@@ -373,15 +381,15 @@ private:
 
     EnemyAttackProfile editableProfile_;
     std::string profileStatus_;
-    bool profileDirty_ = false;
+    bool profileDirty_ = false; // 編集中の攻撃Profileに未保存の変更があるか。
 
-    int selectedTrack_ = -1;
+    int selectedTrack_ = -1; // 選択中のトラック番号。-1は未選択。
 
     std::string authoringIdentity_;
     std::string authoringAssetName_ = "new_attack";
 
     std::vector<AttackSequenceDefinition> authoringUndo_, authoringRedo_;
-    bool authoringGestureOpen_ = false;
+    bool authoringGestureOpen_ = false; // ドラッグ操作を一回のUndo履歴にまとめているか。
     int authoringDragMode_ = 0; // 0=全体移動、1=開始端、2=終了端
 };
 

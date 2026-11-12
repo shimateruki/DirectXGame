@@ -81,7 +81,7 @@ void PlayerStateDead::Enter(Player* player) {
         player->SetDamageInvincible(false);
         deathAnimation_.Start(player, finalDeath_);
 
-        if (engine::Object3d* hookMarker = player->GetHookMarker()) {
+        if (engine::Object3D* hookMarker = player->GetHookMarker()) {
             hookMarker->SetIsVisible(false);
         }
 
@@ -98,7 +98,7 @@ void PlayerStateDead::Enter(Player* player) {
                 Camera::CameraOverrideParams cameraOverride;
                 cameraOverride.duration = 0.24f;
                 cameraOverride.exitDuration = 0.0f;
-                cameraOverride.easing = Camera::OverrideEasing::kEaseOut;
+                cameraOverride.easing = Camera::OverrideEasing::EaseOut;
                 cameraOverride.fixedEyePos = focusEye;
                 cameraOverride.fixedTargetPos = focus;
                 cameraOverride.trackEyeX = false;

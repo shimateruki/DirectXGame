@@ -1,6 +1,6 @@
 #include "MaterialInstance.h"
 
-#include "Object3d.h"
+#include "Object3D.h"
 #include "engine/graphics/3d/MeshRenderer.h"
 #include "engine/graphics/3d/material/ShaderMaterialRegistry.h"
 #include "json.hpp"
@@ -170,7 +170,7 @@ bool LoadResolvedInternal(
 }
 }
 
-MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3d& object) {
+MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3D& object) {
     MaterialInstanceData material;
 
     // まずObject3dの共通マテリアル値を取り出す。
@@ -193,7 +193,7 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3d& obje
 
     // Rendererが特殊GPUパラメータを持つ場合だけ追加項目を取得する。
     if (const MeshRenderer* renderer = object.GetMeshRenderer()) {
-        if (const MeshRenderer::WaterParamForGPU* special = renderer->GetWaterParamData()) {
+        if (const MeshRenderer::WaterParamForGpu* special = renderer->GetWaterParamData()) {
             material.waveSpeed = special->waveSpeed;
             material.waveHeight = special->waveHeight;
             material.waveFrequency = special->waveFrequency;
@@ -213,7 +213,7 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3d& obje
     return material;
 }
 
-void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, engine::Object3d& object) {
+void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, engine::Object3D& object) {
     // Setterを通してObject3d側のマテリアルとテクスチャ状態を更新する。
     object.SetColor(material.color);
     object.SetBlendMode(static_cast<BlendMode>(std::clamp(material.blendMode, 0, 5)));
@@ -234,7 +234,7 @@ void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, engine::
 
     // 特殊パラメータはRendererのGPU用データに対応するものだけ反映する。
     if (MeshRenderer* renderer = object.GetMeshRenderer()) {
-        if (MeshRenderer::WaterParamForGPU* special = renderer->GetWaterParamData()) {
+        if (MeshRenderer::WaterParamForGpu* special = renderer->GetWaterParamData()) {
             special->waveSpeed = material.waveSpeed;
             special->waveHeight = material.waveHeight;
             special->waveFrequency = material.waveFrequency;
@@ -367,7 +367,7 @@ std::vector<std::string> MaterialInstanceAsset::Discover(const std::string& root
     return assets;
 }
 
-bool engine::Object3d::ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+bool engine::Object3D::ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
     // 継承を解決した材質が読めた場合だけ適用し、参照パスを更新する。
     MaterialInstanceData material;
 
@@ -380,7 +380,7 @@ bool engine::Object3d::ApplyMaterialInstance(const std::string& assetPath, std::
     return true;
 }
 
-bool engine::Object3d::SaveMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+bool engine::Object3D::SaveMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
     // 現在の材質を保存できた場合だけ、Objectの参照先を新しいアセットへ切り替える。
     MaterialInstanceData material = MaterialInstanceAsset::Capture(*this);
     material.displayName = std::filesystem::path(assetPath).stem().string();

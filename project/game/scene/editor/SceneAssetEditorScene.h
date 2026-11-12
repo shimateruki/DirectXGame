@@ -9,7 +9,7 @@
 class DirectXCommon;
 namespace engine { class InputManager; }
 class LevelLoader;
-namespace engine { class Object3dCommon; }
+namespace engine { class Object3DCommon; }
 class ObjectManager;
 namespace engine { class ParticleCommon; }
 namespace engine { class ParticleSystem; }
@@ -20,6 +20,8 @@ namespace engine { class SpriteCommon; }
 /// <summary>
 /// Scene Assetをゲームロジックから分離して編集するための専用シーン。
 /// </summary>
+// 関連：BaseSceneの配置読込を使い、ゲーム固有の進行を持たない編集用シーンを作る。
+// 主な入口：Initialize / Update / Finalize
 class SceneAssetEditorScene : public BaseScene, public ISceneGameplayAccess {
   public:
     SceneAssetEditorScene() = default;
@@ -42,7 +44,7 @@ class SceneAssetEditorScene : public BaseScene, public ISceneGameplayAccess {
     void Draw() override;
 
     /// 編集シーンのスプライトを描画する。
-    void DrawUI() override;
+    void DrawUi() override;
 
     /// 編集対象の影を描画する。
     void DrawShadow() override;
@@ -50,27 +52,25 @@ class SceneAssetEditorScene : public BaseScene, public ISceneGameplayAccess {
     std::string GetName() override { return "Scene Asset Editor"; }
 
     /// 現在シーンが所有する配置オブジェクトを返す。
-    const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const override;
+    const std::vector<std::unique_ptr<engine::Object3D>>& GetObjects() const override;
 
     /// オブジェクトの追加を更新時の反映まで保留する。
-    void AddObject(std::unique_ptr<engine::Object3d> object) override;
+    void AddObject(std::unique_ptr<engine::Object3D> object) override;
 
     /// オブジェクトを直ちに登録し、登録後の参照を返す。
-    engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object) override;
+    engine::Object3D* AddObjectImmediate(std::unique_ptr<engine::Object3D> object) override;
 
     /// 指定オブジェクトの所有権をシーンから取り出す。
-    std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object) override;
+    std::unique_ptr<engine::Object3D> TakeObjectImmediate(engine::Object3D* object) override;
 
     /// 指定オブジェクトの削除を予約する。
-    void RequestRemoveObject(engine::Object3d* object) override;
+    void RequestRemoveObject(engine::Object3D* object) override;
 
     const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
 
-    engine::Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
 
     Skybox* GetSkybox() override { return skybox_.get(); }
 
-    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
 
     engine::ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
@@ -86,9 +86,7 @@ class SceneAssetEditorScene : public BaseScene, public ISceneGameplayAccess {
 
     std::unique_ptr<ObjectManager> objectManager_;
     std::unique_ptr<LevelLoader> levelLoader_;
-    std::unique_ptr<engine::Object3dCommon> object3dCommon_;
-    std::unique_ptr<engine::SpriteCommon> spriteCommon_;
-    std::unique_ptr<engine::ParticleCommon> particleCommon_;
+
     std::unique_ptr<engine::ParticleSystem> particleSystem_;
     std::unique_ptr<Skybox> skybox_;
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;

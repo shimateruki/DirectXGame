@@ -8,9 +8,11 @@
 
 // 前方宣言
 class BaseScene;
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 
 // JSON に保存されたステージ配置データを、シーン上のオブジェクトへ復元するローダー
+// 関連：各Factoryで配置物を作り、BaseSceneへ追加して親子関係やゲーム用参照を接続する。
+// 主な入口：BeginObjectLayoutLoad / ContinueObjectLayoutLoad / LoadSpriteLayout
 class LevelLoader {
   public:
     /// <summary>
@@ -49,7 +51,7 @@ class LevelLoader {
     };
 
     // 子オブジェクト読み込み後に親子関係を解決するための待機リスト。
-    std::map<engine::Object3d*, PendingParentReference> parentPendingList_;
+    std::map<engine::Object3D*, PendingParentReference> parentPendingList_;
     std::vector<std::string> pendingObjectFiles_;
     size_t pendingFileIndex_ = 0;
     size_t pendingObjectIndex_ = 0;

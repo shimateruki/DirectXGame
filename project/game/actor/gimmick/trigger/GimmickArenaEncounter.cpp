@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GimmickArenaEncounter.h"
+#include "game/actor/enemy/boss/core/MidbossEncounterEffects.h"
 #include "ObjectPropertyDefinition.h"
 
 #include "BaseScene.h"
@@ -10,7 +11,7 @@
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "Player.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include "game/system/progress/GameDataManager.h"
 #include "game/system/progress/StageManager.h"
 
@@ -20,15 +21,11 @@
 namespace {
 constexpr float kDefaultBossRevealDelay = 0.72f;
 constexpr int kDefaultBarrierCount = 4;
-constexpr const char* kSealSequence = "prism_arena_seal_cue";
-constexpr const char* kReleaseSequence = "prism_arena_release_cue";
-constexpr const char* kMagmaSealSequence = "magma_arena_seal_cue";
-constexpr const char* kMagmaReleaseSequence = "magma_arena_release_cue";
 constexpr int kHighCrownActionMode = 2;
 constexpr const char* kHighCrownReleaseSequence = "false_king_defeat_reward_cue";
 } // namespace
 
-void GimmickArenaEncounter::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickArenaEncounter::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 入場範囲はプレイヤー専用のトリガーとし、ボスや壁はイベント ID で参照します。
@@ -40,8 +37,8 @@ void GimmickArenaEncounter::Initialize(engine::Object3dCommon* common, const std
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
 
-    engine::Object3d::ColliderConfig collider;
-    collider.type = ColliderType::kOBB;
+    engine::Object3D::ColliderConfig collider;
+    collider.type = ColliderType::Obb;
     collider.center = {0.0f, 1.5f, 0.0f};
     collider.size = {3.0f, 3.0f, 8.0f};
     SetColliderConfig(collider);
@@ -60,7 +57,7 @@ void GimmickArenaEncounter::Initialize(engine::Object3dCommon* common, const std
     using Self = GimmickArenaEncounter;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "中ボス遭遇管理",
         "Target IDは中ボスのMy Event ID、My Event IDは撃破通知の受信先です。障壁はTarget ID + 1から連番で指定します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("障壁数", "maxCount", &Parameter::maxCount, 1.0f, 16.0f);
     properties.Parameter("ボス出現まで", "shakeDuration", &Parameter::shakeDuration, 0.05f, 3.0f);
     properties.Parameter("遭遇を有効にする", "startActive", &Parameter::startActive);
@@ -112,7 +109,7 @@ void GimmickArenaEncounter::Draw(ID3D12Resource* pointLightResource, ID3D12Resou
     }
 }
 
-bool GimmickArenaEncounter::OnCollision(engine::Object3d* other) {
+bool GimmickArenaEncounter::OnCollision(engine::Object3D* other) {
     // 待機中に有効な入場範囲へプレイヤーが触れた時だけ戦闘を開始します。
     if (state_ != State::Waiting || !other || other->GetClassName() != "Player") {
         return false;
@@ -134,7 +131,7 @@ void GimmickArenaEncounter::OnTrigger() {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickArenaEncounter::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickArenaEncounter::Clone() const {
     // 進行状態は持ち込まず、配置とイベント設定を複製します。
     auto clone = std::make_unique<GimmickArenaEncounter>();
     assert(GetObjectCommon() != nullptr);
@@ -181,8 +178,8 @@ void GimmickArenaEncounter::BeginEncounter() {
     SetBarriersActive(true);
 
     if (!IsHighCrownMode()) {
-        VFXSequencer::PlayOneShot(IsMagmaMode() ? kMagmaSealSequence : kSealSequence, GetWorldPosition(),
-                                  {4.0f, 1.0f, 4.0f});
+        const auto& effects = IsMagmaMode() ? MidbossEncounterEffects::Magma() : MidbossEncounterEffects::Prism();
+        VfxSequencer::PlayOneShot(effects.seal, GetWorldPosition(), {4.0f, 1.0f, 4.0f});
     }
 
     introTimelineActive_ = StartBossPresentation();
@@ -193,7 +190,7 @@ void GimmickArenaEncounter::CompleteEncounter() {
     // 最終ボスの報酬演出は別経路で管理するため、この一時記録には含めない。
     if (!IsHighCrownMode())
         GameDataManager::GetInstance()->RememberCheckpointEncounter(StageManager::GetInstance()->GetCurrentStageIndex(),
-                                                                    GetEventID());
+                                                                    GetEventId());
     state_ = State::Cleared;
     stateTimer_ = 0.0f;
     introTimelineActive_ = false;
@@ -210,10 +207,10 @@ void GimmickArenaEncounter::CompleteEncounter() {
 
     if (IsHighCrownMode()) {
         BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
-        const int rewardEventID = GetTargetID() + GetBarrierCount() + 1;
+        const int rewardEventId = GetTargetId() + GetBarrierCount() + 1;
 
         if (scene) {
-            if (engine::Object3d* reward = scene->FindObjectByEventID(rewardEventID)) {
+            if (engine::Object3D* reward = scene->FindObjectByEventId(rewardEventId)) {
                 cuePosition = reward->GetTranslate();
 
                 if (auto* gameplay = dynamic_cast<GamePlayScene*>(scene)) {
@@ -223,20 +220,23 @@ void GimmickArenaEncounter::CompleteEncounter() {
         }
     }
 
-    VFXSequencer::PlayOneShot(
-        IsHighCrownMode() ? kHighCrownReleaseSequence : (IsMagmaMode() ? kMagmaReleaseSequence : kReleaseSequence),
-        cuePosition, IsHighCrownMode() ? engine::Vector3{1.25f, 1.25f, 1.25f} : engine::Vector3{4.0f, 1.0f, 4.0f});
+    if (IsHighCrownMode()) {
+        VfxSequencer::PlayOneShot(kHighCrownReleaseSequence, cuePosition, {1.25f, 1.25f, 1.25f});
+    } else {
+        const auto& effects = IsMagmaMode() ? MidbossEncounterEffects::Magma() : MidbossEncounterEffects::Prism();
+        VfxSequencer::PlayOneShot(effects.release, cuePosition, {4.0f, 1.0f, 4.0f});
+    }
 }
 
 bool GimmickArenaEncounter::IsBossDefeated() const {
     // 最終撃破演出の保留中は HP がゼロでも解放を始めません。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
-    if (!scene || GetTargetID() <= 0) {
+    if (!scene || GetTargetId() <= 0) {
         return false;
     }
 
-    auto* boss = dynamic_cast<BaseEnemy*>(scene->FindObjectByEventID(GetTargetID()));
+    auto* boss = dynamic_cast<BaseEnemy*>(scene->FindObjectByEventId(GetTargetId()));
 
     if (!boss) {
         return false;
@@ -252,25 +252,25 @@ void GimmickArenaEncounter::SetBossActive(bool active) {
     // Target ID が指すボスへ有効状態を送ります。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
-    if (!scene || GetTargetID() <= 0) {
+    if (!scene || GetTargetId() <= 0) {
         return;
     }
 
-    scene->SetEventActive(GetTargetID(), active);
+    scene->SetEventActive(GetTargetId(), active);
 }
 
 void GimmickArenaEncounter::SetBarriersActive(bool active) {
     // ボスの後続 ID を隔離壁の連番として扱います。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
-    if (!scene || GetTargetID() <= 0) {
+    if (!scene || GetTargetId() <= 0) {
         return;
     }
 
-    const int firstBarrierEventID = GetTargetID() + 1;
+    const int firstBarrierEventId = GetTargetId() + 1;
 
     for (int index = 0; index < GetBarrierCount(); ++index) {
-        scene->SetEventActive(firstBarrierEventID + index, active);
+        scene->SetEventActive(firstBarrierEventId + index, active);
     }
 }
 
@@ -278,12 +278,12 @@ void GimmickArenaEncounter::SetRewardActive(bool active) {
     // 報酬はボスと壁の連番の直後に配置されます。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
-    if (!scene || GetTargetID() <= 0) {
+    if (!scene || GetTargetId() <= 0) {
         return;
     }
 
-    const int rewardEventID = GetTargetID() + GetBarrierCount() + 1;
-    scene->SetEventActive(rewardEventID, active);
+    const int rewardEventId = GetTargetId() + GetBarrierCount() + 1;
+    scene->SetEventActive(rewardEventId, active);
 }
 
 bool GimmickArenaEncounter::StartBossPresentation() {
@@ -298,8 +298,8 @@ bool GimmickArenaEncounter::StartBossPresentation() {
         return false;
     }
 
-    engine::Object3d* boss = scene->FindObjectByEventID(GetTargetID());
-    engine::Object3d* gate = scene->FindObjectByEventID(GetTargetID() + 1);
+    engine::Object3D* boss = scene->FindObjectByEventId(GetTargetId());
+    engine::Object3D* gate = scene->FindObjectByEventId(GetTargetId() + 1);
     return gameplay->StartArenaBossIntro(boss, gate, GetParameters()->cinematicPath);
 }
 
@@ -335,7 +335,7 @@ bool GimmickArenaEncounter::IsHighCrownMode() const {
 bool GimmickArenaEncounter::IsMagmaMode() const {
     // 配置先ボスの型から封鎖・解放 VFX を選びます。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
-    const engine::Object3d* boss = scene && GetTargetID() > 0 ? scene->FindObjectByEventID(GetTargetID()) : nullptr;
+    const engine::Object3D* boss = scene && GetTargetId() > 0 ? scene->FindObjectByEventId(GetTargetId()) : nullptr;
     return boss && boss->GetEnemyType() == "MagmaSlime";
 }
 

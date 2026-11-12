@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "9073c8f003b50b762076891e942c3e51",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_melee_sparks.json",
+  "version": 1
+}

@@ -37,10 +37,10 @@ void from_json(const json& j, engine::Vector4& v) { j.at("x").get_to(v.x); j.at(
 
 namespace {
 // 時刻と値のキー列をParticle保存JSONへ変換します。
-json WriteFloatCurve(const VFXFloatCurve& curve) {
+json WriteFloatCurve(const VfxFloatCurve& curve) {
     json result = json::array();
 
-    for (const VFXFloatCurveKey& key : curve.keys) {
+    for (const VfxFloatCurveKey& key : curve.keys) {
         result.push_back({
             { "time", key.time },
             { "value", key.value },
@@ -52,10 +52,10 @@ json WriteFloatCurve(const VFXFloatCurve& curve) {
 }
 
 // 時刻と色のキー列をParticle保存JSONへ変換します。
-json WriteColorGradient(const VFXColorGradient& gradient) {
+json WriteColorGradient(const VfxColorGradient& gradient) {
     json result = json::array();
 
-    for (const VFXColorGradientKey& key : gradient.keys) {
+    for (const VfxColorGradientKey& key : gradient.keys) {
         result.push_back({
             { "time", key.time },
             { "color", key.color },
@@ -67,7 +67,7 @@ json WriteColorGradient(const VFXColorGradient& gradient) {
 }
 
 // 保存済みの数値カーブキーをEmitter設定へ復元します。
-void ReadFloatCurve(const json& source, VFXFloatCurve& curve) {
+void ReadFloatCurve(const json& source, VfxFloatCurve& curve) {
     // 保存値を曲線キーへ戻し、時刻順や境界値はNormalizeで整える。
     if (!source.is_array())
         return;
@@ -76,10 +76,10 @@ void ReadFloatCurve(const json& source, VFXFloatCurve& curve) {
     for (const json& item : source) {
         if (!item.is_object())
             continue;
-        VFXFloatCurveKey key;
+        VfxFloatCurveKey key;
         key.time = item.value("time", 0.0f);
         key.value = item.value("value", 1.0f);
-        key.easing = static_cast<VFXCurveEasing>(
+        key.easing = static_cast<VfxCurveEasing>(
             std::clamp(item.value("easing", 0), 0, 4));
         curve.keys.push_back(key);
     }
@@ -88,7 +88,7 @@ void ReadFloatCurve(const json& source, VFXFloatCurve& curve) {
 }
 
 // 保存済みの色グラデーションキーをEmitter設定へ復元します。
-void ReadColorGradient(const json& source, VFXColorGradient& gradient) {
+void ReadColorGradient(const json& source, VfxColorGradient& gradient) {
     // 色キーと補間方法を読み戻し、不正な補間番号は有効範囲へ丸める。
     if (!source.is_array())
         return;
@@ -97,14 +97,14 @@ void ReadColorGradient(const json& source, VFXColorGradient& gradient) {
     for (const json& item : source) {
         if (!item.is_object())
             continue;
-        VFXColorGradientKey key;
+        VfxColorGradientKey key;
         key.time = item.value("time", 0.0f);
 
         if (item.contains("color")) {
             item.at("color").get_to(key.color);
         }
 
-        key.easing = static_cast<VFXCurveEasing>(
+        key.easing = static_cast<VfxCurveEasing>(
             std::clamp(item.value("easing", 0), 0, 4));
         gradient.keys.push_back(key);
     }
@@ -113,7 +113,7 @@ void ReadColorGradient(const json& source, VFXColorGradient& gradient) {
 }
 
 // VFXの距離別詳細度設定を保存JSONへ変換します。
-json WriteLod(const VFXLodSettings& lod) {
+json WriteLod(const VfxLodSettings& lod) {
     return {
         { "enabled", lod.enabled },
         { "nearDistance", lod.nearDistance },
@@ -124,7 +124,7 @@ json WriteLod(const VFXLodSettings& lod) {
 }
 
 // 保存JSONで指定された距離別詳細度設定を復元します。
-void ReadLod(const json& source, VFXLodSettings& lod) {
+void ReadLod(const json& source, VfxLodSettings& lod) {
     if (!source.is_object())
         return;
     lod.enabled = source.value("enabled", false);
@@ -216,7 +216,7 @@ void from_json(const json& j, engine::ParticleSystem::EmitterParams& p) {
     p.coneAngle = j.value("coneAngle", 30.0f);
     if (j.contains("acceleration"))
         j.at("acceleration").get_to(p.acceleration);
-    p.blendMode = (ParticleBlendMode)j.value("blendMode", (int)ParticleBlendMode::kAlpha);
+    p.blendMode = (ParticleBlendMode)j.value("blendMode", (int)ParticleBlendMode::Alpha);
 
     if (j.contains("legacySizeCurve") && j["legacySizeCurve"].is_array()) {
         // 古いサイズカーブは固定長なので配列境界で切って読み込む。

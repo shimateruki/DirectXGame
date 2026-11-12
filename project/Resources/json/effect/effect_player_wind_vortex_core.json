@@ -1,0 +1,75 @@
+{
+  "AlphaReference": 0.003,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "Collision": {
+    "HasCollision": false,
+    "Offset": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "Shape": 0,
+    "Size": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "DistortionSpeed": 1.4,
+  "DistortionStrength": 0.0,
+  "EasingType": 11,
+  "EdgeFadeStrength": 0.38,
+  "EnableDistortion": false,
+  "EnableReveal": false,
+  "EndColor": [
+    0.22,
+    0.78,
+    0.69,
+    0.28
+  ],
+  "EndScale": [
+    1,
+    1,
+    1
+  ],
+  "Intensity": 1.65,
+  "Lifetime": 1.8,
+  "MeshSegments": 40,
+  "ModelName": "",
+  "Position": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ProceduralType": 5,
+  "Rotation": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ScrollSpeed": [
+    0.0,
+    0.0
+  ],
+  "StartColor": [
+    0.22,
+    0.78,
+    0.69,
+    0.32
+  ],
+  "StartScale": [
+    1,
+    1,
+    1
+  ],
+  "TargetName": "",
+  "TexturePath": "Resources/sprite/particle/soft_circle.png",
+  "UvTiling": [
+    1,
+    1
+  ],
+  "VolumeMode": 0,
+  "CylinderRadius": 0.86,
+  "CylinderHeight": 1.48
+}

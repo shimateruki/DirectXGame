@@ -6,7 +6,7 @@
 #include "game/actor/player/Player.h"
 #include "MeshEffectManager.h"
 #include "ParticleSystem.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 
 #include <algorithm>
 #include <cmath>
@@ -66,13 +66,13 @@ void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
 
     childVisible_.reserve(player->GetChildren().size());
 
-    for (engine::Object3d* child : player->GetChildren()) {
+    for (engine::Object3D* child : player->GetChildren()) {
         childVisible_.push_back(child ? child->GetIsVisible() : false);
     }
 
     player->SetIsVisible(true);
 
-    for (engine::Object3d* child : player->GetChildren()) {
+    for (engine::Object3D* child : player->GetChildren()) {
         if (child) {
             child->SetIsVisible(true);
         }
@@ -122,7 +122,7 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
     const auto& children = player->GetChildren();
 
     for (size_t i = 0; i < children.size(); ++i) {
-        engine::Object3d* child = children[i];
+        engine::Object3D* child = children[i];
 
         if (!child) {
             continue;
@@ -192,7 +192,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
     player->SetRotation(rotation);
     player->SetColor(color);
 
-    for (engine::Object3d* child : player->GetChildren()) {
+    for (engine::Object3D* child : player->GetChildren()) {
         if (child) {
             child->SetColor(color);
         }
@@ -248,7 +248,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
         }
     }
 
-    GPUParticleManager* gpuParticles = GPUParticleManager::GetInstance();
+    GpuParticleManager* gpuParticles = GpuParticleManager::GetInstance();
 
     if (gpuParticles && gpuParticles->IsInitialized()) {
         gpuParticles->Emit(kDeathSplashStreakPreset, center);
@@ -279,7 +279,7 @@ void PlayerDeathAnimation::HidePlayerBody(Player* player) {
 
     player->SetIsVisible(false);
 
-    for (engine::Object3d* child : player->GetChildren()) {
+    for (engine::Object3D* child : player->GetChildren()) {
         if (child) {
             child->SetIsVisible(false);
         }

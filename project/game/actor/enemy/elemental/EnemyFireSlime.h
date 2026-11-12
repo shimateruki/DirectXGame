@@ -5,10 +5,12 @@
 #include "game/actor/enemy/combat/ISequencePreviewEnemy.h"
 
 // 近距離では炎ブレス、遠距離では火球で攻撃し、頭上の炎で属性を示すスライム敵です。
+// 関連：BaseEnemyの索敵と予告、EnemyAttackActionの火球再生を組み合わせる。
+// 主な入口：Initialize / Update
 class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
   public:
     // 炎スライム用モデル、Collider、初期能力値、炎エフェクトを準備します。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 徘徊、追跡、炎攻撃、投げ復帰、炎見た目を更新します。
     void Update(float deltaTime) override;
@@ -17,7 +19,7 @@ class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
     void BeginThrown(const engine::Vector3& initialVelocity) override;
 
     /// 配置に使う炎スライムの複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     /// プレビューで再生する攻撃 ID を指定する。
     void SetSequencePreviewAttackId(const std::string& id) override { previewAttackId_ = id; }
@@ -142,30 +144,30 @@ class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
     float breathParticleTimer_ = 0.0f; // ブレス粒子の発生間隔。
     float breathEmberTimer_ = 0.0f;    // ブレスの火の粉発生間隔。
 
-    float headFlameParticleTimer_ = 0.0f;
-    float headEmberParticleTimer_ = 0.0f;
+    float headFlameParticleTimer_ = 0.0f; // 頭の炎粒子の発生までの残り秒数。
+    float headEmberParticleTimer_ = 0.0f; // 頭の火の粉の発生までの残り秒数。
 
     float attackTimer_ = 0.0f;    // 攻撃中の伸縮演出。
     float idleTimer_ = 0.0f;      // 待機呼吸アニメーション用。
     float groundHopTimer_ = 0.0f; // 通常移動中の小ホップ周期。
 
-    float pendingFireballDistance_ = 0.0f;
-    engine::Vector3 pendingFireballDirection_ = {0.0f, 0.0f, 1.0f};
+    float pendingFireballDistance_ = 0.0f; // 予告の照準固定時に確定した、速度計算用の水平距離。
+    engine::Vector3 pendingFireballDirection_ = {0.0f, 0.0f, 1.0f}; // 予告の照準固定時に確定した水平方向。
 
-    engine::Vector3 smoothedFlameVelocity_ = engine::Vector3::ZERO;
+    engine::Vector3 smoothedFlameVelocity_ = engine::Vector3::ZERO; // 頭の炎を移動に追従させるために平滑化した速度。
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
 
-    engine::Object3d* headFlameVisual_ = nullptr;
-    engine::Object3d* breathFlameVisuals_[7] = {};
+    engine::Object3D* headFlameVisual_ = nullptr;
+    engine::Object3D* breathFlameVisuals_[7] = {};
 
-    int breathParticleCursor_ = 0;
+    int breathParticleCursor_ = 0; // 粒子を扇形の発生点へ順に割り当てる番号。
     int headFlameParticleCursor_ = 0;
 
     bool hasBaseScale_ = false;
     bool breathDamageDone_ = false;
     bool breathWarningTriggered_ = false;
     bool fireballWarningTriggered_ = false;
-    bool fireballAimLocked_ = false;
+    bool fireballAimLocked_ = false; // 警告後は火球の方向と速度計算用距離を追従更新しない。
 
     bool headFlameRemoveRequested_ = false;
     bool breathFlameRemoveRequested_ = false;

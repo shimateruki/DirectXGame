@@ -87,7 +87,9 @@ def validate(scene, enemies):
     assert sum(o.get('enemyType') == 'RingBurner' for o in enemies['objects']) == 1
     assert math.dist(ring['position'][::2], switch['position'][::2]) < ring['param']['moveAmount']
     settings = read(ROOT/'Resources/json/gameplay/status_settings.json')
-    assert settings['enemies']['RingBurner']['detectionRange'] >= ring['param']['moveAmount']
+    ring_settings_path = ROOT/'Resources/json/enemy/ring_burner/parameters.json'
+    ring_settings = read(ring_settings_path) if ring_settings_path.exists() else settings['enemies']['RingBurner']
+    assert ring_settings['detectionRange'] >= ring['param']['moveAmount']
     # 入口・出口と常設本線はスター取得状態に依存しない。
     assert by[PREFIX+'MainCollision']['position'] == [50, -4, -10]
     assert by[PREFIX+'MainCollision']['collider']['size'] == [50, 12, 26]

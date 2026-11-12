@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "57f5b136b012097c839de1aaa9768834",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/stage_select/gate_info_locked.png",
+  "version": 1
+}

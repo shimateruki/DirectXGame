@@ -6,7 +6,7 @@
         "id": "stage3",
         "resources": {
             "bgm": "",
-            "camera": "",
+            "camera": "Resources/json/camera/stage3_game_camera.json",
             "light": "Resources/json/light/stage3_high_crown.json",
             "skybox": "Resources/skybox/stage3_high_crown.dds"
         },

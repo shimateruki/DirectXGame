@@ -2,7 +2,7 @@
 #include <type_traits>
 #include <utility>
 #include "engine/utility/math/Math.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "Model.h"
 #include <functional>
 #include <wrl.h>
@@ -33,15 +33,21 @@ using json = nlohmann::json;
 class GhostRecorder;
 class SceneManager;
 class Camera;
-#include "GPUParticleEmitter.h"
-class EffectObject3d;
+#include "GpuParticleEmitter.h"
+class EffectObject3D;
 
 namespace engine {
 
-// Object3dは、Transform、階層、描画、衝突、エフェクト連携を持つ3Dオブジェクトの基本クラスです。
-class Object3d {
+// 担当：3Dオブジェクトの配置・階層・描画・衝突・Component連携をまとめる。
+// 関連：Transform（姿勢）、MeshRenderer（描画）、Collider（形状）、BaseScene（配置先）
+// 主な入口：Initialize / Update / Draw / ExportToJson / ImportFromJson
+class Object3D {
 public:
+    /// <summary>遮蔽物の視界確保。自動は従来動作、透過は装飾の個別許可、維持は攻撃予告などに使う。</summary>
+    enum class CameraOcclusionMode { Automatic = 0, Fade = 1, KeepVisible = 2 };
+
     // DecalSettingsは、通常のObject3dを地面・壁へ沿う永続/一時Decalとして扱う設定です。
+    // 関連：Object3D（この型を使う機能の本体）
     struct DecalSettings {
         bool enabled = false;
         engine::Vector2 size = { 2.0f, 2.0f };
@@ -54,6 +60,7 @@ public:
 
     /// 既存機能をComponentとして公開するための軽量な型情報です。
     /// 実データの所有場所は移さず、Editorと将来のRegistryから共通参照できます。
+    // 関連：Object3D（この型を使う機能の本体）
     struct BuiltInComponentInfo {
         std::string_view typeId;
         std::string_view displayName;
@@ -73,13 +80,13 @@ public:
     // 互換性維持のためエイリアスを作成
     using TransformationMatrix = MeshRenderer::TransformationMatrix;
     using DirectionalLight = MeshRenderer::DirectionalLight;
-    using CameraForGPU = MeshRenderer::CameraForGPU;
+    using CameraForGpu = MeshRenderer::CameraForGpu;
     using Material = MeshRenderer::MaterialData;
     using MaterialState = MeshRenderer::MaterialState;
     using PortalClipSettings = MeshRenderer::PortalClipSettings;
-    using LodLevel = MeshRenderer::LodLevel;
 
     // ゲームロジック用パラメータ
+    // 関連：Object3D（この型を使う機能の本体）
     struct EntityParameter {
         float hp = 100.0f;
         float maxHp = 100.0f;
@@ -152,6 +159,7 @@ public:
 
     // デバッグリプレイで1フレーム分の実行状態を保持します。
     // シーン保存用JSONとは分離し、実行中だけ変化するHPやアニメーション時刻も扱います。
+    // 関連：Object3D（この型を使う機能の本体）
     struct ReplayState {
         engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
         engine::Vector3 rotation = engine::Vector3::ZERO;
@@ -193,6 +201,7 @@ public:
     };
 
     /// Prefab Asset内の元Objectと、Scene上のInstanceを結び付ける情報です。
+    // 関連：Object3D（この型を使う機能の本体）
     struct PrefabInstanceInfo {
         std::string assetId;
         std::string prefabName;
@@ -210,13 +219,13 @@ public:
 
 public:
     /// <summary>描画や衝突の実行基盤をInitializeで受け取る前の状態を作る。</summary>
-    Object3d();
+    Object3D();
 
     /// <summary>所有する描画・衝突コンポーネントを破棄する。</summary>
-    virtual ~Object3d();
+    virtual ~Object3D();
 
     /// <summary>描画共通機能を受け取り、オブジェクトの実行用コンポーネントを初期化する。</summary>
-    virtual void Initialize(engine::Object3dCommon* common);
+    virtual void Initialize(engine::Object3DCommon* common);
 
     /// <summary>1フレーム分のアニメーション、移動、付随効果を更新する。</summary>
     virtual void Update(float deltaTime);
@@ -259,7 +268,7 @@ public:
     MeshRenderer::LocalFogData* GetLocalFogData();
 
     /// <summary>このオブジェクトの複製を作る。</summary>
-    virtual std::unique_ptr<Object3d> Clone() const;
+    virtual std::unique_ptr<Object3D> Clone() const;
 
     /// <summary>Scene保存・Prefab・Undoで共通利用する永続GUIDを新規発行する。</summary>
     /// <remarks>Replay ID、Prefab内のSource ID、ゲームイベントIDとは別の識別子。</remarks>
@@ -411,13 +420,13 @@ public:
     }
 
     /// <summary>親オブジェクトを設定する。keepWorldTransformが真なら現在の世界姿勢を維持する。</summary>
-    void SetParent(Object3d* parent, bool keepWorldTransform = false);
+    void SetParent(Object3D* parent, bool keepWorldTransform = false);
 
     /// <summary>現在の親Objectへの非所有参照を返す。親がなければnullptr。</summary>
-    Object3d* GetParent() const { return parent_; }
+    Object3D* GetParent() const { return parent_; }
 
-    // 以下のモデル、LOD、マテリアル操作はMeshRendererへ委譲する。
-    /// <summary>描画マテリアルやLODを扱うレンダラーを返す。</summary>
+    // 以下のモデルとマテリアル操作はMeshRendererへ委譲する。
+    /// <summary>描画マテリアルを扱うレンダラーを返す。</summary>
     MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
 
     /// <summary>既存のモデルを描画対象に設定する。</summary>
@@ -440,39 +449,6 @@ public:
 
     /// <summary>特定メッシュだけを描画する設定か返す。</summary>
     bool IsMeshDrawFiltered() const;
-
-    /// <summary>カメラ距離に応じたLOD切り替えを有効化する。</summary>
-    void SetLodEnabled(bool enabled);
-
-    /// <summary>LOD切り替えが有効か返す。</summary>
-    bool IsLodEnabled() const;
-
-    /// <summary>切り替え候補のLODが登録されているか返す。</summary>
-    bool HasLodLevels() const;
-
-    /// <summary>登録済みのLOD段階を参照する。</summary>
-    const std::vector<LodLevel>& GetLodLevels() const;
-
-    /// <summary>カメラ距離ごとのLOD段階を設定する。</summary>
-    void SetLodLevels(const std::vector<LodLevel>& levels);
-
-    /// <summary>登録済みのLOD段階を削除する。</summary>
-    void ClearLodLevels();
-
-    /// <summary>指定したLOD段階への切替距離を変更する。</summary>
-    bool SetLodLevelDistance(int level, float distance);
-
-    /// <summary>現在のモデルのLOD定義を読み直す。</summary>
-    bool ReloadLodManifest();
-
-    /// <summary>現在選ばれているLOD段階を返す。</summary>
-    int GetActiveLodLevel() const;
-
-    /// <summary>現在描画しているLODモデル名を返す。</summary>
-    std::string GetActiveLodModelName() const;
-
-    /// <summary>オブジェクトからカメラまでのLOD判定距離を返す。</summary>
-    float GetLodCameraDistance() const;
 
     /// <summary>描画マテリアルの色を返す。</summary>
     engine::Vector4 GetColor() const;
@@ -533,6 +509,7 @@ public:
     void RestoreMaterialState(const MaterialState& state);
     // 形成・消滅演出用のクリップ設定を描画器へ渡す。物理Colliderは変更しない。
     void SetPortalClip(const PortalClipSettings& settings);
+    // ポータル用のクリップ演出を無効にする。
     void ClearPortalClip();
     // 特殊材質の演出時計を秒で指定する。通常のObject更新とは独立したシークにも使う。
     void SetMaterialTime(float time);
@@ -606,6 +583,10 @@ public:
     /// <summary>判定対象となる衝突カテゴリのビットを返す。</summary>
     uint32_t GetCollisionMask() const;
 
+    // 接触通知だけに使う実行時マスクです。保存値とPhysics Queryの条件は変えません。
+    virtual uint32_t GetContactCollisionMask() const { return GetCollisionMask(); }
+
+
     /// <summary>地形の衝突データをファイルから読み込む。</summary>
     bool LoadTerrainCollisionFromFile(const std::string& path);
 
@@ -631,19 +612,19 @@ public:
     float GetRoughness() const { return meshRenderer_ ? meshRenderer_->GetRoughness() : 0.3f; }
 
     /// <summary>衝突形状のワールド空間AABBを返す。</summary>
-    AABB GetAABB() const;
+    Aabb GetAabb() const;
 
     /// <summary>衝突形状のワールド空間OBBを返す。</summary>
-    OBB GetOBB() const;
+    Obb GetObb() const;
 
     /// <summary>モデル形状からワールド空間のAABBを求める。</summary>
-    AABB GetModelWorldAABB() const;
+    Aabb GetModelWorldAabb() const;
 
     /// <summary>指定オブジェクトとの衝突状態を調べる。</summary>
-    CollisionInfo CheckCollision(Object3d* other);
+    CollisionInfo CheckCollision(Object3D* other);
 
     /// <summary>衝突時に派生クラスの応答を受け取る拡張点。基底では未処理を返す。</summary>
-    virtual bool OnCollision(Object3d* other) { (void)other; return false; }
+    virtual bool OnCollision(Object3D* other) { (void)other; return false; }
 
     /// <summary>衝突開始フレームのイベントを派生クラスへ通知する。</summary>
     virtual void OnCollisionEnter(const CollisionEvent& event) { (void)event; }
@@ -700,7 +681,7 @@ public:
     EventType GetEventType() const { return eventType_; }
 
     /// <summary>子Objectへの非所有参照一覧を返す。</summary>
-    const std::vector<Object3d*>& GetChildren() const { return children_; }
+    const std::vector<Object3D*>& GetChildren() const { return children_; }
 
     /// <summary>Scene保存や生成処理で使う分類名を設定・取得する。C++の実体の型は変更しない。</summary>
     void SetClassName(const std::string& name) { className_ = name; }
@@ -763,6 +744,14 @@ public:
 
     bool GetCastShadow() const { return castShadow_; }
 
+    /// <summary>視界を遮った際の透過方針を指定する。プレイヤーと敵本体の保護は解除しない。</summary>
+    void SetCameraOcclusionMode(CameraOcclusionMode mode) {
+        cameraOcclusionMode_ = mode >= CameraOcclusionMode::Automatic && mode <= CameraOcclusionMode::KeepVisible
+            ? mode : CameraOcclusionMode::Automatic;
+    }
+    /// <summary>遮蔽物の個別設定を返す。未指定の旧データでは自動を返す。</summary>
+    CameraOcclusionMode GetCameraOcclusionMode() const { return cameraOcclusionMode_; }
+
     /// <summary>ゲームイベント連携コンポーネントを取得し、なければ追加する。</summary>
     GameplayLinkComponent* EnsureGameplayLinkComponent();
 
@@ -794,16 +783,16 @@ public:
     const NavAgentComponent* GetNavAgentComponent() const;
 
     /// <summary>発行するゲームイベントのIDを設定する。</summary>
-    void SetEventID(int id);
+    void SetEventId(int id);
 
     /// <summary>発行するゲームイベントのIDを返す。</summary>
-    int GetEventID() const;
+    int GetEventId() const;
 
     /// <summary>イベントの接続先IDを設定する。</summary>
-    void SetTargetID(int id);
+    void SetTargetId(int id);
 
     /// <summary>イベントの接続先IDを返す。</summary>
-    int GetTargetID() const;
+    int GetTargetId() const;
 
     /// <summary>パーティクル発生器を取得し、なければ追加する。</summary>
     ParticleEmitterComponent* EnsureParticleEmitterComponent();
@@ -827,10 +816,10 @@ public:
     const std::string& GetParticleName() const;
 
     /// <summary>GPUパーティクルの設定名を指定する。</summary>
-    void SetGPUParticleName(const std::string& name);
+    void SetGpuParticleName(const std::string& name);
 
     /// <summary>GPUパーティクルの設定名を返す。</summary>
-    const std::string& GetGPUParticleName() const;
+    const std::string& GetGpuParticleName() const;
 
     /// <summary>メッシュエフェクトを取得し、なければ追加する。</summary>
     MeshEffectComponent* EnsureMeshEffectComponent();
@@ -1005,7 +994,7 @@ public:
     void InitializeRecorder(SceneManager* sceneManager);
 
     /// <summary>別オブジェクトから複製対象の設定をコピーする。</summary>
-    void CopyFrom(const Object3d* other);
+    void CopyFrom(const Object3D* other);
 
     /// <summary>シーン保存や生成に使う敵の種別名を設定・取得する。</summary>
     void SetEnemyType(const std::string& type) { enemyType_ = type; }
@@ -1023,7 +1012,7 @@ public:
     std::string GetItemType() const { return itemType_; }
 
     /// <summary>録画イベントを派生クラスへ通知する拡張点。基底では何もしない。</summary>
-    virtual void OnRecordEvent(int eventID) {}
+    virtual void OnRecordEvent(int eventId) {}
 
     /// <summary>法線マップの使用状態をレンダラーへ設定・取得する。未初期化時は無効。</summary>
     void SetEnableNormalMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableNormalMap(enable); }
@@ -1077,9 +1066,9 @@ public:
     float GetEmissive() const { return meshRenderer_ ? meshRenderer_->GetEmissive() : 1.0f; }
 
     /// <summary>UIプレビュー向けの描画設定をレンダラーへ伝える。</summary>
-    void SetIsUIPreview(bool isPreview) { 
+    void SetIsUiPreview(bool isPreview) { 
         if (meshRenderer_)
-            meshRenderer_->SetIsUIPreview(isPreview);
+            meshRenderer_->SetIsUiPreview(isPreview);
     }
 
     // 以下の特殊マテリアル描画はMeshRendererへ委譲する。第一引数はシーン深度、
@@ -1180,7 +1169,7 @@ public:
     const GhostRecorder* GetRecorder() const { return recorder_.get(); }
 
     /// <summary>生成時に使用する描画環境を借用する。</summary>
-    engine::Object3dCommon* GetObjectCommon() const { return common_; }
+    engine::Object3DCommon* GetObjectCommon() const { return common_; }
 
     /// <summary>Scene保存先のカテゴリ名を設定・取得する。</summary>
     void SetSaveCategory(const std::string& category) { saveCategory_ = category; }
@@ -1209,7 +1198,7 @@ protected:
     void ResetAnimationTime() { animationTime_ = 0.0f; }
 
     /// <summary>派生クラスの複製で、行列と外部アンカーを含む姿勢を引き継ぐ。</summary>
-    void CopyTransformStateFrom(const Object3d& source) { transform_ = source.transform_; }
+    void CopyTransformStateFrom(const Object3D& source) { transform_ = source.transform_; }
 
 private:
     // --- ボーンアニメーション用 ---
@@ -1219,7 +1208,7 @@ private:
     // GhostRecorder本体はPathMoverComponentの再生Runtimeとして段階的に分離します。
     std::unique_ptr<GhostRecorder> recorder_;
 
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
 
     // ゲーム設定と実行値。読み取りと更新の入口を分けて保持する。
     std::optional<EntityParameter> param_;
@@ -1242,7 +1231,7 @@ private:
     Transform effectAnchor_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 
     // 階層の親への非所有参照。子の所有権はchildren_にも持たせない。
-    Object3d* parent_ = nullptr;
+    Object3D* parent_ = nullptr;
 
     // 現在再生中のアニメーションの経過秒数。
     float animationTime_ = 0.0f;
@@ -1284,7 +1273,7 @@ private:
     bool isStatic_ = false;
 
     // 階層に登録された子への非所有参照。親子関係の変更時に更新する。
-    std::vector<Object3d*> children_;
+    std::vector<Object3D*> children_;
 
     // 配置JSONに保存する実行クラス識別子。
     std::string className_ = "Model";
@@ -1302,6 +1291,7 @@ private:
 
     // 影パスへの参加可否。通常の表示状態とは独立している。
     bool castShadow_ = true;
+    CameraOcclusionMode cameraOcclusionMode_ = CameraOcclusionMode::Automatic;
 
     // Prefabの元データと上書き状態を保持する配置情報。
     PrefabInstanceInfo prefabInstanceInfo_;
@@ -1341,15 +1331,15 @@ private:
     bool replayRemoved_ = false;
 
     // 有効化されたGPUパーティクル発生器をObject3dが所有する。
-    std::unique_ptr<GPUParticleEmitter> gpuEmitter_ = nullptr;
+    std::unique_ptr<GpuParticleEmitter> gpuEmitter_ = nullptr;
 
     // MeshEffectComponentの再生中InstanceはObject3d側の描画Runtimeとして保持します。
     std::string currentMeshEffect1_ = "";
     std::string currentMeshEffect2_ = "";
 
     // それぞれのエフェクト枠で生成した子Objectを再生中だけ所有する。
-    std::vector<std::unique_ptr<Object3d>> attachedEffects1_;
-    std::vector<std::unique_ptr<Object3d>> attachedEffects2_;
+    std::vector<std::unique_ptr<Object3D>> attachedEffects1_;
+    std::vector<std::unique_ptr<Object3D>> attachedEffects2_;
 
 
     // 直近フレームの更新・描画・アニメーション・行列更新のCPU時間（ミリ秒）。
@@ -1373,6 +1363,6 @@ public:
 };
 
 // 共通登録や派生クラスから、保存用パラメータ型を短い名前で参照する。
-using EntityParameter = Object3d::EntityParameter;
+using EntityParameter = Object3D::EntityParameter;
 
 } // namespace engine

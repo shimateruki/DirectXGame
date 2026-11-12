@@ -1,18 +1,18 @@
-#include "GPUParticleEmitter.h"
-#include "GPUParticleManager.h"
-#include "Object3d.h" 
+#include "GpuParticleEmitter.h"
+#include "GpuParticleManager.h"
+#include "Object3D.h" 
 #include "Model.h"    
 #include <cmath>
 
 namespace {
 // エミッターが空の親に付いていても、子階層にある描画メッシュを使う。
-engine::Object3d* FindModelObject(engine::Object3d* obj) {
+engine::Object3D* FindModelObject(engine::Object3D* obj) {
     if (!obj)
         return nullptr;
     if (obj->GetModel())
         return obj;
     for (auto child : obj->GetChildren()) {
-        engine::Object3d* found = FindModelObject(child);
+        engine::Object3D* found = FindModelObject(child);
         if (found)
             return found;
     }
@@ -21,7 +21,7 @@ engine::Object3d* FindModelObject(engine::Object3d* obj) {
 }
 } // namespace
 
-void GPUParticleEmitter::Initialize(const std::string& presetName, engine::Object3d* targetObject) {
+void GpuParticleEmitter::Initialize(const std::string& presetName, engine::Object3D* targetObject) {
     presetName_ = presetName;
     targetObject_ = targetObject;
     isPlaying_ = false;
@@ -29,7 +29,7 @@ void GPUParticleEmitter::Initialize(const std::string& presetName, engine::Objec
 }
 
 
-void GPUParticleEmitter::Update(float deltaTime) {
+void GpuParticleEmitter::Update(float deltaTime) {
     if (!isPlaying_ || presetName_.empty())
         return;
     if (!std::isfinite(deltaTime) || deltaTime < 0.0f)
@@ -50,11 +50,11 @@ void GPUParticleEmitter::Update(float deltaTime) {
     }
 }
 
-void GPUParticleEmitter::Play() { isPlaying_ = true; emitTimer_ = emitInterval_; }
-void GPUParticleEmitter::Stop() { isPlaying_ = false; emitTimer_ = 0.0f; }
+void GpuParticleEmitter::Play() { isPlaying_ = true; emitTimer_ = emitInterval_; }
+void GpuParticleEmitter::Stop() { isPlaying_ = false; emitTimer_ = 0.0f; }
 
 // 発生元Objectのモデル情報と姿勢を収集し、設定済みSystemへ一回分の粒子を発生させます。
-void GPUParticleEmitter::EmitOnce() {
+void GpuParticleEmitter::EmitOnce() {
     engine::Vector3 spawnPos = engine::Vector3::ZERO;
     ID3D12Resource* vb = nullptr;
     uint32_t vCount = 0;
@@ -64,7 +64,7 @@ void GPUParticleEmitter::EmitOnce() {
 
     if (targetObject_) {
         // ルートにメッシュがない場合は、子階層のモデルを発生元として使う。
-        engine::Object3d* modelObj = FindModelObject(targetObject_);
+        engine::Object3D* modelObj = FindModelObject(targetObject_);
 
         if (modelObj && modelObj->GetModel()) {
             worldMat = modelObj->GetWorldMatrix();
@@ -92,6 +92,6 @@ void GPUParticleEmitter::EmitOnce() {
         spawnPos = offset_;
     }
 
-    GPUParticleManager::GetInstance()->SetEmitterMesh(vb, vCount, vStride, boneSrv);
-    GPUParticleManager::GetInstance()->Emit(presetName_, spawnPos, worldMat);
+    GpuParticleManager::GetInstance()->SetEmitterMesh(vb, vCount, vStride, boneSrv);
+    GpuParticleManager::GetInstance()->Emit(presetName_, spawnPos, worldMat);
 }

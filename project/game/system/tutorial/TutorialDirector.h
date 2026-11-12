@@ -17,11 +17,13 @@ class BaseScene;
 class BaseEnemy;
 class GimmickStageGate;
 namespace engine { class InputManager; }
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 class Player;
 namespace engine { class Sprite; }
 
 // チュートリアルの手順、短時間演出、操作表示、チェックポイントをJSONから進行します。
+// 関連：TutorialSceneのActorを借用し、JSONの手順・練習敵・案内表示・チェックポイントを進める。
+// 主な入口：Initialize / Update / Restart / Finalize
 class TutorialDirector {
   public:
     using CompletionCallback = std::function<void()>;
@@ -42,7 +44,7 @@ class TutorialDirector {
     void NotifyControlsGuideOpened();
 
     /// ロックオン対象を現在手順の達成条件へ通知する。
-    void NotifyLockOnTarget(const engine::Object3d* target);
+    void NotifyLockOnTarget(const engine::Object3D* target);
 
     /// 進行完了を保存する呼び出し側の処理を登録する。
     void SetCompletionCallback(CompletionCallback callback) { completionCallback_ = std::move(callback); }
@@ -52,7 +54,7 @@ class TutorialDirector {
     bool IsCompleted() const { return completed_; }
 
     // 最後の移動課題で、まだ到着していない間だけ案内先を返す。実体はシーンが所有する。
-    engine::Object3d* GetDirectionGuideTarget() const;
+    engine::Object3D* GetDirectionGuideTarget() const;
 
     /// <summary>完了後の出口をセーブ成功時だけ開けます。</summary>
     void SetCompletionGateEnabled(bool enabled) {
@@ -86,25 +88,25 @@ class TutorialDirector {
 
   private:
     enum class CompletionCondition {
-        kTimer,
-        kCinematicFinished,
-        kMoveDistance,
-        kActionTriggered,
-        kTargetLocked,
-        kReachPosition,
-        kCarryEnemy,
-        kEnemyThrown,
-        kEnemiesDefeated,
-        kMorphActive,
-        kMorphReleased,
-        kControlsGuideOpened,
+        Timer,
+        CinematicFinished,
+        MoveDistance,
+        ActionTriggered,
+        TargetLocked,
+        ReachPosition,
+        CarryEnemy,
+        EnemyThrown,
+        EnemiesDefeated,
+        MorphActive,
+        MorphReleased,
+        ControlsGuideOpened,
     };
 
     // JSON の一手順。完了条件と、その間に表示・生成・解除する対象をまとめます。
     struct Step {
         std::string id;
 
-        CompletionCondition condition = CompletionCondition::kTimer;
+        CompletionCondition condition = CompletionCondition::Timer;
         std::string action;
 
         std::string cinematicPath;
@@ -241,7 +243,7 @@ class TutorialDirector {
     void RestoreSpawnEnemyStateBeforeStep(int stepIndex);
 
     // 名前から現在のシーン内で解決し、前回シーンのポインタを使わない。
-    engine::Object3d* FindObjectByName(const std::string& name) const;
+    engine::Object3D* FindObjectByName(const std::string& name) const;
 
     // 操作案内と目標マーカーは JSON から取得した Sprite を更新します。
     void BindPromptSprites();

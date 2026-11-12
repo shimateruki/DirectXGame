@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "b4e9288bee741f5a89e5c22c304f0e33",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/giant_slime/parameters.json",
+  "version": 1
+}

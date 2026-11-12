@@ -1,10 +1,10 @@
-#include "GPUParticleManager.h"
-#include "GPUParticlePresetJsonCodec.h"
+#include "GpuParticleManager.h"
+#include "GpuParticlePresetJsonCodec.h"
 #include <filesystem>
 #include <fstream>
 #include "json.hpp"
 #include "DebugConsole.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include <TextureManager.h>
 #include "CameraManager.h"
 #include <d3d12.h>
@@ -17,7 +17,7 @@ namespace fs = std::filesystem;
 
 namespace {
 // GPUパーティクルの描画状態と容量から、共有可能なSystemを識別するキーを作ります。
-std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
+std::string MakeParticleSystemKey(const GpuParticleConfig& config) {
     // 粒子ごとに持たない描画設定をキーに含め、同じSystemへ異なる材質状態が混ざるのを防ぐ。
     // softParticleFadeや衝突設定など、このキーに含まれない値の共有範囲にも注意する。
     std::ostringstream key;
@@ -37,19 +37,19 @@ std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
         << "_lightStrength" << config.lightingStrength
         << "_lightDir" << config.lightDirection.x << ',' << config.lightDirection.y << ',' << config.lightDirection.z
         << "_lightColor" << config.lightColor.x << ',' << config.lightColor.y << ',' << config.lightColor.z
-        << "_capacity" << GPUParticleManager::ResolveParticleCapacity(config);
+        << "_capacity" << GpuParticleManager::ResolveParticleCapacity(config);
     return key.str();
 }
 }
 
-GPUParticleManager* GPUParticleManager::GetInstance() {
-    static GPUParticleManager instance;
+GpuParticleManager* GpuParticleManager::GetInstance() {
+    static GpuParticleManager instance;
     return &instance;
 }
 
 // 最大数の明示設定を優先し、未指定なら寿命中に重なる放出回数から2の累乗で容量を見積もります。
 // LOD上限とGPU Systemの許容範囲を最後に適用します。
-uint32_t GPUParticleManager::ResolveParticleCapacity(const GPUParticleConfig& config) {
+uint32_t GpuParticleManager::ResolveParticleCapacity(const GpuParticleConfig& config) {
     const auto applyLodLimit = [&config](uint32_t capacity) {
         if (!config.lod.enabled || config.lod.maxAliveParticles <= 0) {
             return capacity;
@@ -57,16 +57,16 @@ uint32_t GPUParticleManager::ResolveParticleCapacity(const GPUParticleConfig& co
 
         const uint32_t lodCapacity = static_cast<uint32_t>(std::clamp(
             config.lod.maxAliveParticles,
-            static_cast<int>(GPUParticleSystem::kMinParticles),
-            static_cast<int>(GPUParticleSystem::kMaxParticles)));
+            static_cast<int>(GpuParticleSystem::kMinParticles),
+            static_cast<int>(GpuParticleSystem::kMaxParticles)));
         return (std::min)(capacity, lodCapacity);
     };
 
     if (config.maxParticles > 0) {
         return applyLodLimit(static_cast<uint32_t>(std::clamp(
             config.maxParticles,
-            static_cast<int>(GPUParticleSystem::kMinParticles),
-            static_cast<int>(GPUParticleSystem::kMaxParticles))));
+            static_cast<int>(GpuParticleSystem::kMinParticles),
+            static_cast<int>(GpuParticleSystem::kMaxParticles))));
     }
 
     const uint64_t emitCount = static_cast<uint64_t>((std::max)(config.emitCount, 1));
@@ -85,21 +85,21 @@ uint32_t GPUParticleManager::ResolveParticleCapacity(const GPUParticleConfig& co
 
     requiredCapacity = (std::max)(
         requiredCapacity,
-        static_cast<uint64_t>(GPUParticleSystem::kMinParticles));
-    if (requiredCapacity >= GPUParticleSystem::kMaxParticles) {
-        return applyLodLimit(GPUParticleSystem::kMaxParticles);
+        static_cast<uint64_t>(GpuParticleSystem::kMinParticles));
+    if (requiredCapacity >= GpuParticleSystem::kMaxParticles) {
+        return applyLodLimit(GpuParticleSystem::kMaxParticles);
     }
 
-    uint32_t capacity = GPUParticleSystem::kMinParticles;
+    uint32_t capacity = GpuParticleSystem::kMinParticles;
 
-    while (capacity < requiredCapacity && capacity < GPUParticleSystem::kMaxParticles) {
+    while (capacity < requiredCapacity && capacity < GpuParticleSystem::kMaxParticles) {
         capacity *= 2u;
     }
 
-    return applyLodLimit((std::min)(capacity, GPUParticleSystem::kMaxParticles));
+    return applyLodLimit((std::min)(capacity, GpuParticleSystem::kMaxParticles));
 }
 
-void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
+void GpuParticleManager::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
 
     // テクスチャはScenePreloaderの転送バッチで準備します。
@@ -109,9 +109,9 @@ void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
     }
 }
 
-void GPUParticleManager::InitializeForTitle(
+void GpuParticleManager::InitializeWithPresets(
     DirectXCommon* dxCommon, const std::vector<std::string>& presetNames) {
-    // タイトルでは配置JSONが参照するものだけを登録し、他シーンでは従来どおり全件を読み込む。
+    // 呼出し側が指定したプリセットだけを登録する。空の一覧では追加読込を行わない。
     dxCommon_ = dxCommon;
 
     if (!presetNames.empty()) {
@@ -119,12 +119,12 @@ void GPUParticleManager::InitializeForTitle(
     }
 }
 
-void GPUParticleManager::BeginFrame() {
+void GpuParticleManager::BeginFrame() {
     updatedThisFrame_ = false;
 }
 
 // 1フレーム1回だけ自動Emitterと各GPU Systemを更新し、設定された時間倍率を反映します。
-void GPUParticleManager::Update(float deltaTime) {
+void GpuParticleManager::Update(float deltaTime) {
     if (updatedThisFrame_) {
         return;
     }
@@ -158,13 +158,13 @@ void GPUParticleManager::Update(float deltaTime) {
     lastUpdateCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
 
-void GPUParticleManager::UpdateEditorPreviewStep(float deltaTime) {
+void GpuParticleManager::UpdateEditorPreviewStep(float deltaTime) {
     updatedThisFrame_ = false;
     Update(deltaTime);
 }
 
 // 通常Systemと表示中の制作用プレビューを、同じディスクリプタヒープで描画します。
-void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummy, uint32_t depthSrvHandle) {
+void GpuParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& viewMatrix, const engine::Matrix4x4& projectionMatrix, uint32_t dummy, uint32_t depthSrvHandle) {
     if (systems_.empty() && !authoringPreviewVisible_) {
         lastDrawCpuTimeMs_ = 0.0f;
         return;
@@ -174,7 +174,7 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const engi
     dxCommon_->StartGpuProfile("Particle GPU pass");
 
     // 全 System が使うディスクリプタヒープを一度だけ設定します。
-    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
+    SrvManager::GetInstance()->SetDescriptorHeaps(commandList);
 
     for (auto& pair : systems_) {
         // 各 System が自身のテクスチャとブレンド設定を使います。
@@ -192,11 +192,11 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const engi
 }
 
 // 描画設定・容量を含むMakeParticleSystemKeyで共有し、未登録の組み合わせだけ生成する。
-GPUParticleSystem* GPUParticleManager::GetOrCreateSystem(const GPUParticleConfig& config) {
+GpuParticleSystem* GpuParticleManager::GetOrCreateSystem(const GpuParticleConfig& config) {
     std::string key = MakeParticleSystemKey(config);
 
     if (systems_.find(key) == systems_.end()) {
-        auto newSystem = std::make_unique<GPUParticleSystem>();
+        auto newSystem = std::make_unique<GpuParticleSystem>();
         newSystem->Initialize(dxCommon_, ResolveParticleCapacity(config));
         systems_[key] = std::move(newSystem);
         DebugConsole::GetInstance()->AddLog("Created new Particle System for: " + key);
@@ -205,7 +205,7 @@ GPUParticleSystem* GPUParticleManager::GetOrCreateSystem(const GPUParticleConfig
     return systems_[key].get();
 }
 
-void GPUParticleManager::PreloadPresetSystem(const std::string& presetName) {
+void GpuParticleManager::PreloadPresetSystem(const std::string& presetName) {
     // 初回放出前に使用予定のGPU粒子設定と素材を準備する。
     auto it = presets_.find(presetName);
 
@@ -214,20 +214,20 @@ void GPUParticleManager::PreloadPresetSystem(const std::string& presetName) {
         return;
     }
 
-    GPUParticleSystem* targetSystem = GetOrCreateSystem(it->second);
+    GpuParticleSystem* targetSystem = GetOrCreateSystem(it->second);
     targetSystem->SetEmitterMesh(meshVb_, meshVCount_, meshVStride_, meshBoneSrv_);
     targetSystem->SetCurrentTexture(it->second.texturePath);
     targetSystem->RequestWarmup();
 }
 
 // シーンが使うPresetだけを列挙してGPU Systemを事前準備します。
-void GPUParticleManager::PreloadPresetSystems(const std::vector<std::string>& presetNames) {
+void GpuParticleManager::PreloadPresetSystems(const std::vector<std::string>& presetNames) {
     for (const std::string& presetName : presetNames) {
         PreloadPresetSystem(presetName);
     }
 }
 
-bool GPUParticleManager::IsEmpty() const {
+bool GpuParticleManager::IsEmpty() const {
     // 制作プレビューが表示中なら、通常システムが休止していても描画対象ありとする。
     if (authoringPreviewVisible_)
         return false;
@@ -240,7 +240,7 @@ bool GPUParticleManager::IsEmpty() const {
     return true;
 }
 
-int GPUParticleManager::GetActiveSystemCount() const {
+int GpuParticleManager::GetActiveSystemCount() const {
     // 共有済みシステムの総数ではなく、実際に粒子を保持するものだけ数える。
     int activeCount = 0;
 
@@ -253,7 +253,7 @@ int GPUParticleManager::GetActiveSystemCount() const {
     return activeCount;
 }
 
-size_t GPUParticleManager::GetEstimatedMemoryBytesForConfig(const GPUParticleConfig& config) const {
+size_t GpuParticleManager::GetEstimatedMemoryBytesForConfig(const GpuParticleConfig& config) const {
     const auto it = systems_.find(MakeParticleSystemKey(config));
 
     if (it == systems_.end() || !it->second) {
@@ -263,7 +263,7 @@ size_t GPUParticleManager::GetEstimatedMemoryBytesForConfig(const GPUParticleCon
     return it->second->GetEstimatedMemoryBytes();
 }
 
-bool GPUParticleManager::RequiresSceneColorCopy() const {
+bool GpuParticleManager::RequiresSceneColorCopy() const {
     // プレビュー系も通常系も、背景色を参照する描画が一つでもあればコピーを要求する。
     if (authoringPreviewVisible_) for (const auto& [key, system] : authoringSystems_)
         if (system && system->RequiresSceneColorCopy())
@@ -278,8 +278,8 @@ bool GPUParticleManager::RequiresSceneColorCopy() const {
 }
 
 // カメラ距離によるLODを放出数へ適用し、描画設定を共有するGPU Systemへ放出します。
-void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
-    GPUParticleConfig resolvedConfig = config;
+void GpuParticleManager::EmitFromConfig(const GpuParticleConfig& config) {
+    GpuParticleConfig resolvedConfig = config;
 
     if (config.lod.enabled) {
         if (const Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
@@ -306,7 +306,7 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
     }
 
     // GPU側の容量と描画設定に対応するSystemを取得します。放出数だけはLOD適用後の値を渡します。
-    GPUParticleSystem* targetSystem = GetOrCreateSystem(config);
+    GpuParticleSystem* targetSystem = GetOrCreateSystem(config);
 
     // メッシュ表面から放出するPresetに備え、現在の発生元モデル情報を渡します。
     targetSystem->SetEmitterMesh(meshVb_, meshVCount_, meshVStride_, meshBoneSrv_);
@@ -314,19 +314,19 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
     targetSystem->EmitFromConfig(resolvedConfig);
 }
 
-void GPUParticleManager::Emit(const std::string& presetName, const engine::Vector3& position, const engine::Matrix4x4& emitterWorldMatrix) {
+void GpuParticleManager::Emit(const std::string& presetName, const engine::Vector3& position, const engine::Matrix4x4& emitterWorldMatrix) {
     // 登録済みの設定をコピーし、今回の発生位置と親行列だけ上書きして流す。
     auto it = presets_.find(presetName);
 
     if (it != presets_.end()) {
-        GPUParticleConfig config = it->second;
+        GpuParticleConfig config = it->second;
         config.emitPos = position;
         config.emitterWorldMatrix = emitterWorldMatrix;
         EmitFromConfig(config);
     }
 }
 
-void GPUParticleManager::EmitDirected(
+void GpuParticleManager::EmitDirected(
     const std::string& presetName,
     const engine::Vector3& position,
     const engine::Vector3& direction,
@@ -338,7 +338,7 @@ void GPUParticleManager::EmitDirected(
         return;
     }
 
-    GPUParticleConfig config = it->second;
+    GpuParticleConfig config = it->second;
     config.emitPos = position;
     config.emitterWorldMatrix = emitterWorldMatrix;
 
@@ -356,11 +356,11 @@ void GPUParticleManager::EmitDirected(
 // ====================================================================
 // 以下、旧コードからの移植（JSON読み込みとオートエミッター）
 // ====================================================================
-void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
+void GpuParticleManager::LoadAllPresets(const std::string& directoryPath) {
     LoadPresetFiles(directoryPath, {});
 }
 
-void GPUParticleManager::LoadPresetFiles(
+void GpuParticleManager::LoadPresetFiles(
     const std::string& directoryPath, const std::vector<std::string>& presetNames) {
     const bool loadAll = presetNames.empty();
     std::string normalizedDirectory = directoryPath;
@@ -394,8 +394,8 @@ void GPUParticleManager::LoadPresetFiles(
             if (file.is_open()) {
                 json j;
                 file >> j;
-                GPUParticleConfig config;
-                GPUParticlePresetJsonCodec::Read(j, config);
+                GpuParticleConfig config;
+                GpuParticlePresetJsonCodec::Read(j, config);
 
                 // 実行時だけの描画モード互換補正は、Editorの読込とは分けて維持する。
                 if (config.blendModeIndex >= 2) {
@@ -413,18 +413,18 @@ void GPUParticleManager::LoadPresetFiles(
     }
 }
 
-void GPUParticleManager::ReloadAllPresets(const std::string& directoryPath) {
+void GpuParticleManager::ReloadAllPresets(const std::string& directoryPath) {
     presets_.clear();
     loadedPresetDirectory_.clear();
     LoadAllPresets(directoryPath);
 }
 
-uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, const engine::Vector3& position) {
+uint32_t GpuParticleManager::PlayAutoEmitter(const std::string& presetName, const engine::Vector3& position) {
     engine::Matrix4x4 identity = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
     return PlayAutoEmitter(presetName, position, identity);
 }
 
-uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, const engine::Vector3& position, const engine::Matrix4x4& transform) {
+uint32_t GpuParticleManager::PlayAutoEmitter(const std::string& presetName, const engine::Vector3& position, const engine::Matrix4x4& transform) {
     // 登録時に一回発生させ、更新ループの次回周期まで何も表示されない時間を作らない。
     AutoEmitter em;
     em.id = nextAutoEmitterId_++;
@@ -437,14 +437,14 @@ uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, cons
     return em.id;
 }
 
-void GPUParticleManager::StopAutoEmitter(uint32_t id) {
+void GpuParticleManager::StopAutoEmitter(uint32_t id) {
     autoEmitters_.erase(std::remove_if(autoEmitters_.begin(), autoEmitters_.end(), [id](const AutoEmitter& e) { return e.id == id; }), autoEmitters_.end());
 }
 
-void GPUParticleManager::ClearAllAutoEmitters() { autoEmitters_.clear(); }
+void GpuParticleManager::ClearAllAutoEmitters() { autoEmitters_.clear(); }
 
 // 自動Emitterを破棄し、各GPU Systemの初期化を次回更新へ予約します。
-void GPUParticleManager::ResetSimulation() {
+void GpuParticleManager::ResetSimulation() {
     // 自動エミッターを止めたうえで、各GPUシステムへ次回更新時の初期化を予約する。
     autoEmitters_.clear();
 
@@ -460,7 +460,7 @@ void GPUParticleManager::ResetSimulation() {
 }
 
 // シーン固有のEmitterと借用メッシュ参照を解除し、GPU Systemを次シーン用に戻します。
-void GPUParticleManager::ClearSceneRuntime() {
+void GpuParticleManager::ClearSceneRuntime() {
     ClearAuthoringPreview();
     autoEmitters_.clear();
 
@@ -485,7 +485,7 @@ void GPUParticleManager::ClearSceneRuntime() {
     meshBoneSrv_ = 0;
 }
 
-void GPUParticleManager::ClearAuthoringPreview() {
+void GpuParticleManager::ClearAuthoringPreview() {
     authoringPreviewVisible_ = false;
 
     for (auto& [key, system] : authoringSystems_)
@@ -493,7 +493,7 @@ void GPUParticleManager::ClearAuthoringPreview() {
 }
 
 // 制作用の独立SystemでPresetを指定年齢まで進め、通常再生中のSystemへ状態を混ぜません。
-bool GPUParticleManager::ShowAuthoringPreview(const std::string& preset, const engine::Vector3& position,
+bool GpuParticleManager::ShowAuthoringPreview(const std::string& preset, const engine::Vector3& position,
     const engine::Vector3& direction, bool directed, float speedScale, float age) {
     const auto found = presets_.find(preset);
     if (!dxCommon_ || found == presets_.end())
@@ -515,7 +515,7 @@ bool GPUParticleManager::ShowAuthoringPreview(const std::string& preset, const e
     const bool created = !system;
 
     if (!system) {
-        system = std::make_unique<GPUParticleSystem>();
+        system = std::make_unique<GpuParticleSystem>();
         system->Initialize(dxCommon_, ResolveParticleCapacity(config));
     }
 
@@ -532,7 +532,7 @@ bool GPUParticleManager::ShowAuthoringPreview(const std::string& preset, const e
 }
 
 #ifdef USE_IMGUI
-void GPUParticleManager::BeginEditorSession() {
+void GpuParticleManager::BeginEditorSession() {
     if (editorSession_) return;
     savedEditorScale_ = timeScale_;
     savedEditorMesh_ = meshVb_; savedEditorMeshCount_ = meshVCount_; savedEditorMeshStride_ = meshVStride_; savedEditorMeshBones_ = meshBoneSrv_;
@@ -540,7 +540,7 @@ void GPUParticleManager::BeginEditorSession() {
     // 前回の確認用GPUバッファは再利用し、開始前のバッファには触れない。
     ResetSimulation(); timeScale_ = 1; updatedThisFrame_ = false; editorSession_ = true;
 }
-void GPUParticleManager::EndEditorSession() {
+void GpuParticleManager::EndEditorSession() {
     if (!editorSession_) return;
     ResetSimulation();
     systems_.swap(savedEditorSystems_); autoEmitters_.swap(savedEditorEmitters_);

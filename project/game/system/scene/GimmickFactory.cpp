@@ -31,9 +31,9 @@
 
 GimmickFactory::GimmickFactory() {
     // 保存ID・日本語名・生成クラスを一度だけ対応付け、Editorもこの一覧を使用します。
-    registered_.push_back({{"Default", "通常", [](const engine::Object3d& object) {
+    registered_.push_back({{"Default", "通常", [](const engine::Object3D& object) {
         return typeid(object) == typeid(BaseGimmick);
-    }}, [](engine::Object3dCommon* common) {
+    }}, [](engine::Object3DCommon* common) {
         auto object = std::make_unique<BaseGimmick>();
         object->Initialize(common, "Primitives/cube");
         return object;
@@ -109,7 +109,7 @@ std::string GimmickFactory::GetCreationType(const BaseGimmick& object) const {
     return object.GetGimmickType();
 }
 
-std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gimmickName, engine::Object3dCommon* common) {
+std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gimmickName, engine::Object3DCommon* common) {
     std::unique_ptr<BaseGimmick> gimmick;
     for (const auto& entry : registered_) if (entry.info.id == gimmickName) { gimmick = entry.create(common); break; }
     if (!gimmick) {

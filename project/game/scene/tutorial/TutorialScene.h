@@ -1,9 +1,9 @@
 #pragma once
 #include "BaseScene.h"
 #include "game/system/scene/SceneGameplayAccess.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "SpriteCommon.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Sprite.h"
 #include "AudioPlayer.h"
 #include "ParticleSystem.h"
@@ -33,7 +33,6 @@ namespace TutorialExitGuideRuntimeProbe { struct Access; }
 #include <Skybox.h>
 
 // --- 前方宣言 ---
-class DirectXCommon;
 namespace engine { class InputManager; }
 class SceneManager;
 class LevelLoader;
@@ -44,6 +43,8 @@ class TutorialDirector;
 /// <summary>
 /// TutorialDirector の手順進行と、プレイヤー・配置・操作ガイド・完了後の遷移をまとめるシーン。
 /// </summary>
+// 関連：TutorialDirectorへ手順進行を任せ、Player・練習用Actor・HUDをシーンとして更新する。
+// 主な入口：Initialize / Update / Draw / Finalize
 class TutorialScene : public BaseScene, public ISceneGameplayAccess {
   public:
     /// チュートリアル用の管理対象を準備・破棄する。
@@ -73,13 +74,13 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     void Update(float deltaTime) override;
 
     /// シーン専用 UI の状態を更新する。
-    void UpdateUI();
+    void UpdateUi();
 
     /// チュートリアル内の 3D オブジェクトを描画する。
     void Draw() override;
 
     /// 操作ガイドと HUD を描画する。
-    void DrawUI() override;
+    void DrawUi() override;
 
     /// チュートリアルの影を描画する。
     void DrawShadow() override;
@@ -97,15 +98,15 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     // --- BaseScene インターフェース実装 ---
 
     // オブジェクト管理は ObjectManager に委譲
-    const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<engine::Object3D>>& GetObjects() const override { return objectManager_->GetObjects(); }
 
-    engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    engine::Object3D* AddObjectImmediate(std::unique_ptr<engine::Object3D> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
 
-    std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
+    std::unique_ptr<engine::Object3D> TakeObjectImmediate(engine::Object3D* object) override { return objectManager_->TakeObjectImmediate(object); }
 
-    void AddObject(std::unique_ptr<engine::Object3d> object) override { objectManager_->AddObject(std::move(object)); }
+    void AddObject(std::unique_ptr<engine::Object3D> object) override { objectManager_->AddObject(std::move(object)); }
 
-    void RequestRemoveObject(engine::Object3d* object) override { objectManager_->RequestRemove(object); }
+    void RequestRemoveObject(engine::Object3D* object) override { objectManager_->RequestRemove(object); }
 
     // スプライトはシーンで保持 (ObjectManagerを拡張すれば移動可能)
     const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
@@ -120,11 +121,10 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     void RestoreReplaySceneState(const json& state) override;
 
     // 各種コモンクラス
-    engine::Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+
 
     Skybox* GetSkybox() override { return skybox_.get(); }
 
-    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
 
     engine::ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
@@ -168,28 +168,22 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     friend struct TutorialExitGuideRuntimeProbe::Access;
 #endif
 
-    enum class MovieState { kNone, kBridgeDrop };
+    enum class MovieState { None, BridgeDrop };
 
-    MovieState movieState_ = MovieState::kNone;
+    MovieState movieState_ = MovieState::None;
     float movieTimer_ = 0.0f;
     engine::Vector3 movieStartCameraEye_;
     engine::Vector3 movieStartCameraTarget_;
     bool hasBridgeDropped_ = false;
 
   private:
-    // --- エンジンシステムへのポインタ ---
-    DirectXCommon* dxCommon_ = nullptr;
+    // 入力基盤への非所有参照。描画操作はBaseSceneの窓口へ委譲する。
     engine::InputManager* inputManager_ = nullptr;
 
     // --- サブシステム (機能を委譲するクラスたち) ---
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;     // 配置読み込み
     std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr;   // ロックオン管理
     std::unique_ptr<ObjectManager> objectManager_ = nullptr; //  オブジェクト管理
-
-    // --- ゲームオブジェクト共通基盤 ---
-    std::unique_ptr<engine::Object3dCommon> object3dCommon_ = nullptr;
-    std::unique_ptr<engine::SpriteCommon> spriteCommon_ = nullptr;
-    std::unique_ptr<engine::ParticleCommon> particleCommon_ = nullptr;
 
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
     std::unique_ptr<engine::ParticleSystem> particleSystem_ = nullptr;
@@ -202,12 +196,7 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 
-    // ライト
-    Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
-    MeshRenderer::PointLight* pointLightData_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
-    MeshRenderer::SpotLight* spotLightData_ = nullptr;
+    // GPU粒子画像とロックオン表示はScene固有の状態として保持する。
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<engine::Sprite> lockOnSprite_;
     bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
@@ -234,5 +223,5 @@ class TutorialScene : public BaseScene, public ISceneGameplayAccess {
 
     // フラスタムカリング判定
     /// オブジェクトがカメラの表示範囲に入るか判定する。
-    bool IsVisible(engine::Object3d* obj);
+    bool IsVisible(engine::Object3D* obj);
 };

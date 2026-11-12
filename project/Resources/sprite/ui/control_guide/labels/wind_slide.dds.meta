@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "69db8d13d6774fc5bf497d39707e7267",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/wind_slide.dds",
+  "version": 1
+}

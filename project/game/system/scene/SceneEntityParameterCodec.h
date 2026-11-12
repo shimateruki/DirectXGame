@@ -1,7 +1,9 @@
 #pragma once
 
+// シーンJSONとEntityParameterの対応をまとめる。タイプ共通ステータスを配置値から上書きしない読込経路も含む。
+
 #include "game/system/rules/GameplayStatusManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "json.hpp"
 
 #include <algorithm>
@@ -11,7 +13,7 @@ namespace SceneEntityParameterCodec {
 
 // 配置Objectの param をScene JSONへ変換する。
 // 共通ステータス管理対象は個体値を出力せず、敵種別とボス固有の動作設定だけを残す。
-inline nlohmann::json Serialize(const engine::Object3d& object) {
+inline nlohmann::json Serialize(const engine::Object3D& object) {
     if (!object.GetParameters())
         return nlohmann::json();
     const auto p = *object.GetParameters();
@@ -91,7 +93,7 @@ inline nlohmann::json Serialize(const engine::Object3d& object) {
 
 // Scene JSON の既存項目だけを param に反映する。
 // 共通ステータス管理対象のHPや移動値を上書きせず、個体値は有効範囲へ補正する。
-inline void Apply(engine::Object3d& object, const nlohmann::json& source) {
+inline void Apply(engine::Object3D& object, const nlohmann::json& source) {
     if (!source.is_object())
         return;
     if (!object.GetParameters())

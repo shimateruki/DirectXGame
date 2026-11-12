@@ -136,7 +136,8 @@ VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     float maxStretch = particleType == uint(1) ? 8.0f : 2.5f;
     localPos.x *= 1.0f + min(velocityLength * stretchAmount, maxStretch);
 
-    float rotation = p.rotation;
+    // Mode 2 locks the sprite axis to velocity; legacy modes keep their random spin.
+    float rotation = alignToVelocity == uint(2) ? 0.0f : p.rotation;
     if ((alignToVelocity != uint(0) || particleType == uint(1)) && velocityLength > 0.0001f)
     {
         float3 cameraRight = normalize(float3(billboardMatrix._11, billboardMatrix._12, billboardMatrix._13));

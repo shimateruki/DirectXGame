@@ -9,15 +9,15 @@
 #include "game/system/scene/ItemFactory.h"
 #include "game/system/scene/LevelLoader.h"
 #include "BaseEnemy.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
 
 // リプレイの再生成・状態退避・復元。JSONキーと復元順を維持し、保存形式は変更しない。
-std::unique_ptr<engine::Object3d> GamePlayScene::CreateReplayObject(const json& descriptor) {
+std::unique_ptr<engine::Object3D> GamePlayScene::CreateReplayObject(const json& descriptor) {
     // 記録された型情報から実体を作り直し、シーンの描画基盤がない場合は復元しない。
-    engine::Object3dCommon* common = GetObject3dCommon();
+    engine::Object3DCommon* common = GetObject3DCommon();
 
     if (!common || !descriptor.is_object()) {
         return nullptr;
@@ -27,7 +27,7 @@ std::unique_ptr<engine::Object3d> GamePlayScene::CreateReplayObject(const json& 
     const std::string enemyType = descriptor.value("enemyType", std::string{});
     const std::string gimmickType = descriptor.value("gimmickType", std::string{});
     const std::string itemType = descriptor.value("itemType", std::string{});
-    std::unique_ptr<engine::Object3d> object;
+    std::unique_ptr<engine::Object3D> object;
 
     if (!enemyType.empty()) {
         object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
@@ -44,7 +44,7 @@ std::unique_ptr<engine::Object3d> GamePlayScene::CreateReplayObject(const json& 
             return nullptr;
         }
     } else if (className == "Model" || className == "Object") {
-        object = std::make_unique<engine::Object3d>();
+        object = std::make_unique<engine::Object3D>();
         object->Initialize(common);
     }
 

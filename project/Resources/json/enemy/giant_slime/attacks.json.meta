@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "afbf8bcf2a1a4c360fca8bdb44c7e636",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/giant_slime/attacks.json",
+  "version": 1
+}

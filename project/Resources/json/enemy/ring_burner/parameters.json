@@ -1,0 +1,17 @@
+{
+    "attackPower": 1.0,
+    "detectionRange": 30.0,
+    "gravity": 0.0,
+    "jumpPower": 10.0,
+    "maxFallSpeed": 60.0,
+    "maxHp": 135.0,
+    "modelName": "Characters/ring_burner",
+    "morphDuration": 5.0,
+    "morphLimited": true,
+    "scale": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "speed": 0.0
+}

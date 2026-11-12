@@ -13,6 +13,8 @@ namespace engine { class Sprite; }
 namespace engine { class SpriteCommon; }
 
 // JSON 配置のポーズメニューを操作し、確定した項目をゲームシーンへ返します。
+// 関連：ゲームシーンへ確定したActionを返し、操作ガイドとのページ遷移も扱う。
+// 主な入口：Initialize / SetActive / Update / Draw / Finalize
 class PauseMenuOverlay {
   public:
     enum class Action { None, Resume, OpenGuide, Retry, StageSelect, OpenSettings, ReturnTitle };

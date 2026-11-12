@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "be26f99c8fbfd29cee207445a0e54c3b",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/prism_slime/parameters.json",
+  "version": 1
+}

@@ -1,5 +1,5 @@
 #ifdef USE_IMGUI
-#include "engine/core/editor/SelectedActorSession.h"
+#include "engine/editor/preview/SelectedActorSession.h"
 #endif
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -8,7 +8,7 @@
 #define NOMINMAX
 #include "Game.h"
 
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "AudioPlayer.h"
 #include "CameraManager.h"
 #include "DebrisEffectManager.h"
@@ -23,7 +23,7 @@
 #include "LightManager.h"
 #include "MeshEffectManager.h"
 #include "ModelManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "PostEffect.h"
 #include "ProfilerManager.h"
 #include "RenderStats.h"
@@ -40,9 +40,9 @@
 #include "SrvManager.h"
 #include "game/system/progress/StageManager.h"
 #include "TextureManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include "WinApp.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "engine/graphics/postprocess/Fade.h"
 #include "engine/graphics/core/ColorSpace.h"
 #include "engine/graphics/3d/FoliageInteraction.h"
@@ -154,6 +154,7 @@ void Game::InitializeEngineServices() {
 #endif
 	sceneFactory_ = std::move(gameSceneFactory);
 	sceneManager_ = std::make_unique<SceneManager>();
+	sceneManager_->SetRenderCommonResources(GetRenderCommonResources());
 }
 
 void Game::InitializeScene() {
@@ -232,7 +233,7 @@ void Game::InitializeEditorTools() {
 	editorController_->Initialize(sceneManager_.get(), GetDirectX());
 
 	if (sceneManager_ && sceneManager_->GetCurrentScene()) {
-		BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
+		BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3DCommon());
 	}
 #endif
 }
@@ -299,16 +300,16 @@ void Game::Update() {
 	AudioEventSystem::GetInstance()->Update();
 	float deltaTime = CalculateDeltaTime();
 	engine::InputManager::GetInstance()->UpdateRumble(deltaTime);
-	VFXSequencer::UpdateFeedbackRuntime(deltaTime);
+	VfxSequencer::UpdateFeedbackRuntime(deltaTime);
 	const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
 
 	if (!sceneTransitioning) {
-		GPUParticleManager::GetInstance()->BeginFrame();
+		GpuParticleManager::GetInstance()->BeginFrame();
 		MeshEffectManager::GetInstance()->BeginFrame();
 	}
 
 	if (isPlaying_) {
-		GPUParticleManager::GetInstance()->SetTimeScale(1.0f);
+		GpuParticleManager::GetInstance()->SetTimeScale(1.0f);
 	}
 
 #ifdef USE_IMGUI
@@ -335,7 +336,7 @@ void Game::Update() {
         sceneManager_->SetIsPlaying(isPlaying_);
     }
 #endif
-	const float feedbackTimeScale = VFXSequencer::GetGameplayTimeScale();
+	const float feedbackTimeScale = VfxSequencer::GetGameplayTimeScale();
 	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ * feedbackTimeScale : 0.0f;
 #ifdef USE_IMGUI
 	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get()) || RaftRuntimeProbe::WantsPlay(sceneManager_.get()))
@@ -460,7 +461,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
                 BulletManager::GetInstance()->UpdatePreview(deltaTime);
                 if (BulletManager::GetInstance()->HasPreviewBullets()) {
                     // シーン側の時間0更新後でも、このプレビューだけは粒子の寿命を進めます。
-                    GPUParticleManager::GetInstance()->UpdateEditorPreviewStep(deltaTime);
+                    GpuParticleManager::GetInstance()->UpdateEditorPreviewStep(deltaTime);
                 }
             }
         }
@@ -505,8 +506,8 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	if (!sceneTransitioning) {
 		PROFILE_SCOPE("パーティクル");
 		const float effectDeltaTime = isPlaying_ && !simulationPaused ? finalDeltaTime : 0.0f;
-		VFXSequencer::UpdateOneShots(effectDeltaTime);
-		GPUParticleManager::GetInstance()->Update(effectDeltaTime);
+		VfxSequencer::UpdateOneShots(effectDeltaTime);
+		GpuParticleManager::GetInstance()->Update(effectDeltaTime);
 #ifndef USE_IMGUI
 		MeshEffectManager::GetInstance()->Update(effectDeltaTime);
 #endif
@@ -514,7 +515,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 
 	if (sceneManager_ && !sceneManager_->IsTransitioning()) {
 		if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
-			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3dCommon());
+			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3DCommon());
 		}
 
 		#ifdef USE_IMGUI
@@ -720,7 +721,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	(void)editorMode;
 #endif
 	GetDirectX()->PreDrawShadow();
-	SRVManager::GetInstance()->SetDescriptorHeaps(GetDirectX()->GetCommandList());
+	SrvManager::GetInstance()->SetDescriptorHeaps(GetDirectX()->GetCommandList());
 
 	GetDirectX()->StartGpuProfile("影描画");
 	{
@@ -769,10 +770,10 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 
 		GetDirectX()->StartGpuProfile("  ゲームUI");
 		{
-			engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
+			engine::ScopedRenderPass renderPass(engine::RenderPass::GameUi);
 
 			if (sceneManager_) {
-				sceneManager_->DrawUI();
+				sceneManager_->DrawUi();
 			}
 		}
 
@@ -813,8 +814,8 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			}
 
 			{
-				engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
-				sceneManager_->DrawUI();
+				engine::ScopedRenderPass renderPass(engine::RenderPass::GameUi);
+				sceneManager_->DrawUi();
 			}
 		}
 	}
@@ -822,7 +823,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	GetDirectX()->StartGpuProfile("Fade");
 
 	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
-		engine::ScopedRenderPass renderPass(engine::RenderPass::GameUI);
+		engine::ScopedRenderPass renderPass(engine::RenderPass::GameUi);
 		Fade::GetInstance()->Draw();
 	}
 
@@ -866,7 +867,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 				currentScene->DrawCameraPreview(previewCamera, 0);
 			}
 
-			postEffect->TransitionToSRV(commandList, PostEffect::kCameraPreviewTextureIndex);
+			postEffect->TransitionToSrv(commandList, PostEffect::kCameraPreviewTextureIndex);
 			cameraEditor->NotifyCameraPreviewRendered(false);
 		}
 	}
@@ -881,7 +882,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 				currentScene->DrawCameraPreview(cinematicPreviewCamera, 1);
 			}
 
-			postEffect->TransitionToSRV(commandList, PostEffect::kCinematicCameraPreviewTextureIndex);
+			postEffect->TransitionToSrv(commandList, PostEffect::kCinematicCameraPreviewTextureIndex);
 			cameraEditor->NotifyCameraPreviewRendered(true);
 		}
 	}
@@ -902,15 +903,15 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	auto drawFinalComposite = [&](uint32_t sourceHandle) {
 		if (outputForEditorGameView) {
 			postEffect->PreDrawScene(commandList, 1);
-			postEffect->Draw(commandList, sourceHandle, PostEffect::kCompositeHdrPipeline);
-			postEffect->TransitionToSRV(commandList, 1);
+			postEffect->Draw(commandList, sourceHandle, PostEffect::CompositeHdrPipeline);
+			postEffect->TransitionToSrv(commandList, 1);
 		} else {
 			GetDirectX()->PreDraw();
 			// 黒帯は後処理を掛けず、完成したゲーム映像だけを等比で配置します。
 			const auto area = WinApp::CalculateGameViewRect(WinApp::GetWindowWidth(), WinApp::GetWindowHeight());
 			D3D12_VIEWPORT viewport{area.x, area.y, area.width, area.height, 0.0f, 1.0f};
 			commandList->RSSetViewports(1, &viewport);
-			postEffect->Draw(commandList, sourceHandle, PostEffect::kCompositeBackBufferPipeline);
+			postEffect->Draw(commandList, sourceHandle, PostEffect::CompositeBackBufferPipeline);
 		}
 	};
 
@@ -926,32 +927,32 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	const int bloomLevelCount = postEffect->GetBloomLevelCount();
 
 	postEffect->PreDrawScene(commandList, kBloomTextureIndices[0]);
-	postEffect->Draw(commandList, renderTextureHandle, PostEffect::kExtractPipeline);
-	postEffect->TransitionToSRV(commandList, kBloomTextureIndices[0]);
+	postEffect->Draw(commandList, renderTextureHandle, PostEffect::ExtractPipeline);
+	postEffect->TransitionToSrv(commandList, kBloomTextureIndices[0]);
 
 	for (int level = 1; level < bloomLevelCount; ++level) {
 		const int sourceIndex = kBloomTextureIndices[level - 1];
 		const int targetIndex = kBloomTextureIndices[level];
 		postEffect->PreDrawScene(commandList, targetIndex);
-		postEffect->Draw(commandList, postEffect->GetSRVHandle(sourceIndex), PostEffect::kDownsamplePipeline);
-		postEffect->TransitionToSRV(commandList, targetIndex);
+		postEffect->Draw(commandList, postEffect->GetSrvHandle(sourceIndex), PostEffect::DownsamplePipeline);
+		postEffect->TransitionToSrv(commandList, targetIndex);
 	}
 
 	postEffect->PreDrawScene(commandList, 0);
-	postEffect->Draw(commandList, renderTextureHandle, PostEffect::kCopyPipeline);
+	postEffect->Draw(commandList, renderTextureHandle, PostEffect::CopyPipeline);
 
 	postEffect->PreDrawScene(commandList, 0, false);
 
 	for (int level = 0; level < bloomLevelCount; ++level) {
 		postEffect->Draw(
 			commandList,
-			postEffect->GetSRVHandle(kBloomTextureIndices[level]),
-			PostEffect::kAddPipeline);
+			postEffect->GetSrvHandle(kBloomTextureIndices[level]),
+			PostEffect::AddPipeline);
 	}
 
-	postEffect->TransitionToSRV(commandList, 0);
+	postEffect->TransitionToSrv(commandList, 0);
 
-	drawFinalComposite(postEffect->GetSRVHandle(0));
+	drawFinalComposite(postEffect->GetSrvHandle(0));
 
 	GetDirectX()->EndGpuProfile("後処理");
 }
@@ -978,18 +979,18 @@ void Game::RecordDrawProfile(const std::chrono::high_resolution_clock::time_poin
 
 void Game::RecordFixedFpsProfile() {
 	// 固定FPS待機時間とフレーム間隔を計測し、負荷表示に反映する。
-	auto preFixFPS = std::chrono::high_resolution_clock::now();
-	GetDirectX()->UpdateFixFPS();
-	auto postFixFPS = std::chrono::high_resolution_clock::now();
+	auto preFixFps = std::chrono::high_resolution_clock::now();
+	GetDirectX()->UpdateFixedFps();
+	auto postFixFps = std::chrono::high_resolution_clock::now();
 
 	static std::chrono::high_resolution_clock::time_point lastFrameStart;
-	float frameDelta = std::chrono::duration<float, std::milli>(postFixFPS - lastFrameStart).count();
-	lastFrameStart = postFixFPS;
+	float frameDelta = std::chrono::duration<float, std::milli>(postFixFps - lastFrameStart).count();
+	lastFrameStart = postFixFps;
 
 	if (frameDelta > 0.0f && frameDelta < 200.0f) {
 		ProfilerManager::GetInstance()->RecordCpuTime("フレーム間隔", frameDelta);
 	}
 
-	float fixFpsWait = std::chrono::duration<float, std::milli>(postFixFPS - preFixFPS).count();
+	float fixFpsWait = std::chrono::duration<float, std::milli>(postFixFps - preFixFps).count();
 	ProfilerManager::GetInstance()->RecordCpuTime("  FPS固定待ち", fixFpsWait);
 }

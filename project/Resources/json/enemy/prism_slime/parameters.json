@@ -1,0 +1,17 @@
+{
+    "attackPower": 1.350000023841858,
+    "detectionRange": 90.0,
+    "gravity": 72.0,
+    "jumpPower": 22.0,
+    "maxFallSpeed": 62.0,
+    "maxHp": 315.0,
+    "modelName": "Characters/prism_slime",
+    "morphDuration": 5.0,
+    "morphLimited": true,
+    "scale": [
+        4.199999809265137,
+        4.199999809265137,
+        4.199999809265137
+    ],
+    "speed": 1.350000023841858
+}

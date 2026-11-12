@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2e367729fe54e0a034849d016513a8ba",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/04-pink-guard.png",
+  "version": 1
+}

@@ -1,9 +1,9 @@
 #pragma once
 #include "BaseScene.h"
 #include "game/system/scene/SceneGameplayAccess.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "SpriteCommon.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Sprite.h"
 #include "AudioPlayer.h"
 #include "ParticleSystem.h"
@@ -31,6 +31,8 @@ namespace engine { class InputManager; }
 /// <summary>
 /// ゲームオーバーシーン
 /// </summary>
+// 関連：GameDataManagerの残機・保存状態を使い、再開先とタイトルへの遷移を要求する。
+// 主な入口：Initialize / Update / Draw / Finalize
 class GameOverScene : public BaseScene, public ISceneGameplayAccess {
   public:
     GameOverScene() = default;
@@ -64,7 +66,7 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     void Draw() override;
 
     /// 背景、タイトル文字、選択メニューを描画する。
-    void DrawUI() override;
+    void DrawUi() override;
 
     /// ゲームオーバーシーンの開発用設定を表示する。
     void DrawImGui() override;
@@ -73,22 +75,19 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     void DrawShadow() override;
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
-    const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<engine::Object3D>>& GetObjects() const override { return objectManager_->GetObjects(); }
 
-    engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    engine::Object3D* AddObjectImmediate(std::unique_ptr<engine::Object3D> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
 
-    std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
+    std::unique_ptr<engine::Object3D> TakeObjectImmediate(engine::Object3D* object) override { return objectManager_->TakeObjectImmediate(object); }
 
-    void AddObject(std::unique_ptr<engine::Object3d> object) override { objectManager_->AddObject(std::move(object)); }
+    void AddObject(std::unique_ptr<engine::Object3D> object) override { objectManager_->AddObject(std::move(object)); }
 
-    void RequestRemoveObject(engine::Object3d* object) override { objectManager_->RequestRemove(object); }
+    void RequestRemoveObject(engine::Object3D* object) override { objectManager_->RequestRemove(object); }
 
     // 各種マネージャ・コモンの取得
     const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
 
-    engine::Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
-
-    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
 
     engine::ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
@@ -223,14 +222,9 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
     std::unique_ptr<GameRule> gameRule_ = nullptr;
 
-    // --- 共通基盤クラス ---
-    std::unique_ptr<engine::Object3dCommon> object3dCommon_ = nullptr;
-    std::unique_ptr<engine::SpriteCommon> spriteCommon_ = nullptr;
-    std::unique_ptr<engine::ParticleCommon> particleCommon_ = nullptr;
-
     // --- オブジェクト・リソース ---
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
-    engine::Object3d* gameOverSlimeObject_ = nullptr;
+    engine::Object3D* gameOverSlimeObject_ = nullptr;
     GameOverSlimeAnimator gameOverSlimeAnimator_;
     engine::Vector3 gameOverSlimeBasePosition_ = engine::Vector3::ZERO;
     engine::Vector3 gameOverSlimeBaseScale_ = {1.0f, 1.0f, 1.0f};
@@ -241,10 +235,6 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     Player* player_ = nullptr;
 
     // --- BGM・オーディオ ---
-
-    // --- ライト ---
-    Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;

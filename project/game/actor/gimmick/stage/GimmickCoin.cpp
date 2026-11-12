@@ -34,13 +34,13 @@ engine::Vector3 ReplayJsonToVector3(const json& value, const engine::Vector3& fa
 }
 } // namespace
 
-void GimmickCoin::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickCoin::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // コインはプレイヤーだけが拾える球トリガーとして初期化します。
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SetCollisionRadius(1.0f);
     SetColor({1.0f, 0.9f, 0.0f, 1.0f});
     SetScale({0.6f, 0.6f, 0.15f});
@@ -131,7 +131,7 @@ void GimmickCoin::ConfigureTemporaryDrop(const engine::Vector3& initialVelocity,
     dropAge_ = 0.0f;
     UpdateLocalMatrix();
     UpdateWorldMatrix();
-    const AABB bounds = GetModelWorldAABB();
+    const Aabb bounds = GetModelWorldAabb();
     dropGroundOffset_ = (std::max)(0.03f, GetTranslate().y - bounds.min.y + 0.03f);
     dropGroundY_ = groundY + dropGroundOffset_;
     dropSettleTimer_ = 0.0f;
@@ -197,7 +197,7 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
     }
 }
 
-bool GimmickCoin::OnCollision(engine::Object3d* other) {
+bool GimmickCoin::OnCollision(engine::Object3D* other) {
     // 取得済みなら同じ接触から枚数を二度加算しません。
     if (isCollected_) {
         return false;
@@ -286,7 +286,7 @@ void GimmickCoin::RestoreReplayCustomState(const json& state) {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickCoin::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickCoin::Clone() const {
     // 複製先の描画資源を初期化した上で、設定されたコインの見た目を引き継ぎます。
     auto newObj = std::make_unique<GimmickCoin>();
     assert(GetObjectCommon() != nullptr);

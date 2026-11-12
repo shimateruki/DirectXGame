@@ -6,7 +6,7 @@
 #include "game/system/progress/StageManager.h"
 #include "game/system/progress/StarCoinPresentation.h"
 #include "tests/GateEntryRuntimeProbe.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/rules/EventManager.h"
 #include "CollisionConfig.h"
 #include "json.hpp"
@@ -17,9 +17,9 @@
 namespace StarCoinRuntimeProbe {
 inline bool Enabled() { return GetEnvironmentVariableA("CG2_SILVER_STAR_TEST",nullptr,0)>0; }
 inline void Require(bool condition,const char* message) { if(!condition) throw std::runtime_error(message); }
-inline engine::Object3d* Find(BaseScene* scene,int index) {
+inline engine::Object3D* Find(BaseScene* scene,int index) {
     for(auto& object:scene->GetObjects())
-        if(object && object->GetEventType()==EventType::StarCoin && object->GetTargetID()==index)return object.get();
+        if(object && object->GetEventType()==EventType::StarCoin && object->GetTargetId()==index)return object.get();
     return nullptr;
 }
 inline bool Near(float a,float b) { return std::abs(a-b)<0.001f; }
@@ -30,8 +30,8 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
     static bool done=false;
     static std::unique_ptr<Camera> camera;
     static Camera* previousCamera=nullptr;
-    static engine::Object3d* silver=nullptr;
-    static engine::Object3d* gold=nullptr;
+    static engine::Object3D* silver=nullptr;
+    static engine::Object3D* gold=nullptr;
     auto finish=[&](const std::string& message){log<<message<<std::endl;done=true;CameraManager::GetInstance()->SetActiveCamera(previousCamera);WinApp::CloseNow();};
     if(done || !manager)return;
     try {
@@ -56,7 +56,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
                 auto* object=Find(scene,i);Require(object,"missing stage star ID");
                 Require(StarCoinPresentation::IsSilver(*object)==(i!=1),"save flag did not select model");
                 if(i!=1) {
-                    Require(object->GetGPUParticleName()==StarCoinPresentation::kSilverIdle,"silver idle preset missing");
+                    Require(object->GetGpuParticleName()==StarCoinPresentation::kSilverIdle,"silver idle preset missing");
                     const auto c=object->GetColor();Require(c.z>=c.x && c.x>0.4f,"silver material still gold or too dark");
                     for(const auto& entry:authored.at("objects"))if(entry.value("name","")==object->GetName()) {
                         Require(object->GetCollisionAttribute()==entry.at("collisionAttribute").get<uint32_t>(),"authored collision attribute changed");
@@ -66,7 +66,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
                     }
                 }
             }
-            const auto& presets=GPUParticleManager::GetInstance()->GetPresets();
+            const auto& presets=GpuParticleManager::GetInstance()->GetPresets();
             Require(presets.count(StarCoinPresentation::kSilverIdle) && presets.count(StarCoinPresentation::kSilverGet),"silver GPU presets not loaded");
             silver=Find(scene,0);gold=Find(scene,1);
             // 銀の状態で保存した配置でも、別セーブの未取得状態へ復元できる。
@@ -102,7 +102,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
                 Require(player->OnCollision(object),"player contact rejected");
                 Require(object->IsCollecting(),"contact did not start collection");
                 Require(object->GetCollisionAttribute()==0 && object->GetCollisionMask()==0,"collection collision stayed enabled");
-                Require(object->GetGPUParticleName().empty(),"idle particles remained during collection");
+                Require(object->GetGpuParticleName().empty(),"idle particles remained during collection");
                 object->Update(0.30f);
                 PlayerHitEvent repeated;repeated.me=player;repeated.hitObject=object;EventManager::GetInstance()->Dispatch(repeated);
                 object->Update(0.21f);

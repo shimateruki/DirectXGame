@@ -90,8 +90,57 @@ float fbm_light(float2 uv)
     }
     return v;
 }
+// Continuous lance wake. U runs down the shaft and V spans the ribbon.
+float4 CrownLanceWake(float2 uv)
+{
+    float along = saturate(uv.x);
+    float flow = valueNoise(float2(along * 9.0 - time * 8.0, 3.7));
+    float across = abs(2.0 * uv.y - 1.0 + (flow - 0.5) * 0.38 * along * distortionStrength);
+    float fringe = saturate(1.0 - across);
+    float core = exp2(-11.0 * across);
+    float silk = 0.72 + 0.28 * cos((across * 2.5 + along * 1.4 - time * 2.0) * 6.28318);
+    float tail = (1.0 - smoothstep(0.40, 1.0, along));
+    float alpha = (core + 0.46 * fringe * silk) * tail * color.a;
+    alpha *= smoothstep(-0.12, 0.22, 1.0 - along - dissolveFade + (flow - 0.5) * distortionStrength * 0.20);
+    float3 tint = lerp(float3(0.51, 0.20, 0.58), color.rgb * float3(1.05, 0.80, 0.70), saturate(1.15 - along + core));
+    tint = lerp(tint, float3(1.65, 1.40, 0.93), core);
+    // Transparent pixels must not cover water in the later depth-sampled pass.
+    // Stable mesh-space coverage splits the outer wake into fine filaments.
+    float fiber = valueNoise(float2(uv.y * 31.0, along * 3.0 - time * 1.4));
+    clip(alpha - lerp(0.085, 0.33, fiber));
+    return float4(tint, saturate(alpha));
+}
+
 float4 main(VertexOutput input) : SV_TARGET
 {
+    // Crown melee ribbon: bright edge, translucent gold body, violet eroded tail.
+    if (proceduralType == 16)
+    {
+        float age = saturate(input.uv.x);
+        float across = saturate(input.uv.y);
+        float noise = valueNoise(float2(across * 18.0, age * 14.0 - time * 4.0));
+        float core = exp2(-48.0 * abs(across - 0.87));
+        float body = pow(saturate(sin(across * 3.14159265)), 1.5) * 0.17;
+        float fade = 1.0 - smoothstep(0.20, 1.0, age);
+        float erosion = smoothstep(age * 0.8 - 0.10, age * 0.8 + 0.18, noise);
+        float alpha = (core * 0.85 + body) * fade * erosion * color.a;
+        float3 tint = lerp(float3(1.1,0.55,0.13), float3(0.40,0.10,0.65), smoothstep(0.22,0.85,age));
+        tint = lerp(tint, float3(1.8,1.55,0.95), core * (1.0-age));
+        clip(alpha - 0.015);
+        return float4(tint, alpha);
+    }
+    // Thin surface-oriented annulus; no opaque disc over the enemy or player.
+    if (proceduralType == 17)
+    {
+        float rim = sin(saturate(input.uv.y) * 3.14159265);
+        float noise = valueNoise(float2(input.uv.x * 48.0, time * 2.5));
+        float dissolve = 1.0 - smoothstep(0.38, 1.0, dissolveFade + noise * 0.24);
+        float alpha = rim * dissolve * color.a;
+        clip(alpha - 0.012);
+        return float4(lerp(float3(1.25,0.67,0.12), float3(0.48,0.14,0.72), dissolveFade), alpha);
+    }
+    if (proceduralType == 15)
+        return CrownLanceWake(input.uv);
     // Reveal mode 1 wipes horizontally; mode 2 draws a clockwise arc from the top.
     if (enableReveal == 1 && input.uv.x > revealProgress)
         discard;

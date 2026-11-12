@@ -1,4 +1,6 @@
 ﻿# Editor State
+# ImGuiの個人用ウィンドウ配置設定
+/imgui.ini
 Resources/json/camera/editor_camera_state.json
 Resources/json/user_config.json
 

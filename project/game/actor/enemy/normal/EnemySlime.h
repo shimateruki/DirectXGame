@@ -2,16 +2,18 @@
 #include "BaseEnemy.h"
 
 // 基礎変身の見本になる、溜めジャンプから急降下を行うピンクスライム。
+// 関連：BaseEnemyの標的情報と接触処理を使い、歩行と跳躍の判断を行う。
+// 主な入口：Initialize / Update
 class EnemySlime : public BaseEnemy {
   public:
     /// 基本スライムのモデル、当たり判定、攻撃状態を初期化する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 徘徊から急降下、着地回復までの行動を進める。
     void Update(float deltaTime) override;
 
     /// 現在の配置設定を引き継ぐ基本スライムを生成する。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     /// 配置側で指定した大きさを攻撃演出の基準として反映する。
     void ApplyManagedScale(const engine::Vector3& scale) override;
@@ -106,8 +108,8 @@ class EnemySlime : public BaseEnemy {
     // 各攻撃フェーズの時刻と、現在の飛行方向を保持します。
     MoveState moveState_ = MoveState::Wander;
 
-    float jumpTimer_ = 0.0f;
-    float idleTimer_ = 0.0f;
+    float jumpTimer_ = 0.0f; // 跳躍の段階切替に使う経過秒数。
+    float idleTimer_ = 0.0f; // 待機中の見た目に使う経過秒数。
 
     float chargeTimer_ = 0.0f;
     float riseTimer_ = 0.0f;
@@ -120,7 +122,7 @@ class EnemySlime : public BaseEnemy {
     float diveTrailTimer_ = 0.0f;
 
     float recoverTimer_ = 0.0f;
-    float landingSquashTimer_ = 0.0f;
+    float landingSquashTimer_ = 0.0f; // 着地時の潰れまでの残り秒数。
 
     float diveSpeed_ = 0.0f;
     engine::Vector3 diveDirection_ = {0.0f, 0.0f, 1.0f};

@@ -5,6 +5,8 @@
 /// <summary>
 /// プレイヤーの乗車で動き始め、道中の妨害を順番に起動して終点で落下する輸送床。
 /// </summary>
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision / OnTrigger
 class GimmickHazardRideFloor : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -12,19 +14,19 @@ class GimmickHazardRideFloor : public BaseGimmick {
     static constexpr const char* kModelPath = "Stages/star_garden_ride_platform";
 
     /// 乗車床の移動距離、速度、妨害配置を初期化する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 乗車から終点落下までの状態を進める。
     void Update(float deltaTime) override;
 
     /// プレイヤーの乗車を検知する。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     /// 外部トリガーから床の移動を要求する。
     void OnTrigger() override;
 
     /// 配置用の輸送床複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     enum class State {
@@ -76,7 +78,7 @@ class GimmickHazardRideFloor : public BaseGimmick {
     engine::Vector3 startPosition_{};
     engine::Vector3 startRotation_{};
     engine::Vector3 frameDelta_{};
-    float stateTimer_ = 0.0f;
+    float stateTimer_ = 0.0f; // 現在の状態に使う経過秒数。
     float travelledDistance_ = 0.0f;
     float fallVelocityY_ = 0.0f;
     int nextHazardIndex_ = 0;

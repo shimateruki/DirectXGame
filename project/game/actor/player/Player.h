@@ -1,7 +1,8 @@
 #pragma once
 #include "Character.h"
+#include "game/actor/player/PlayerDefaults.h"
 #include "game/actor/player/combat/PlayerAttackInputBuffer.h"
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include "IAnimationState.h"
 #include "game/actor/player/state/PlayerState.Whip.h"
 #include "InputManager.h"
@@ -23,6 +24,8 @@ namespace engine { class SpriteCommon; }
 class BaseEnemy;
 
 /// <summary>プレイヤーの入力、移動、戦闘状態、コピー能力を統合します。</summary>
+// 関連：移動はPlayerMover、基本戦闘はPlayerBaseCombatController、コピー能力はPlayerCopyAbilityControllerへ委譲する。
+// 主な入口：Initialize / Update / Draw
 class Player : public Character {
   public:
     enum class EnemyMorphType {
@@ -47,7 +50,7 @@ class Player : public Character {
     /// <param name="inputManager">操作入力の参照元。</param>
     /// <param name="particleSystem">プレイヤー演出に使う粒子システム。</param>
     /// <param name="spriteCommon">UIスプライトの描画基盤。省略可能です。</param>
-    void Initialize(engine::Object3dCommon* common, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem,
+    void Initialize(engine::Object3DCommon* common, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem,
                     engine::SpriteCommon* spriteCommon = nullptr);
 
     /// <summary>入力、移動、戦闘状態、コピー能力と演出を一フレーム進めます。</summary>
@@ -77,7 +80,7 @@ class Player : public Character {
                                                   int previewBufferIndex = 0) override;
 
     /// <summary>プレイヤー専用のUIを描画します。</summary>
-    void DrawUI();
+    void DrawUi();
 
     /// <summary>管理対象の本体スケールを変更し、現在の姿に反映します。</summary>
     void ApplyManagedScale(const engine::Vector3& scale) override;
@@ -87,7 +90,7 @@ class Player : public Character {
     // ==================================================
     /// <summary>他のオブジェクトとの接触を処理します。</summary>
     /// <returns>この接触を処理した場合は true。</returns>
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     // ==================================================
     // アニメーション・状態管理 (State Pattern)
@@ -248,7 +251,7 @@ class Player : public Character {
 
     /// <summary>隔離プレビューが所有する一時オブジェクトを追加します。</summary>
     /// <param name="object">所有権を移すオブジェクト。</param>
-    void AddCopyPreviewObject(std::unique_ptr<engine::Object3d> object) {
+    void AddCopyPreviewObject(std::unique_ptr<engine::Object3D> object) {
         if (IsEditorInternal())
             copyPreviewObjects_.push_back(std::move(object));
     }
@@ -279,7 +282,7 @@ class Player : public Character {
     void ClearCrownPower();
 
     /// <summary>Object3dが保持するEuler回転を返します。</summary>
-    engine::Vector3 GetRotation() const { return engine::Object3d::GetRotation(); }
+    engine::Vector3 GetRotation() const { return engine::Object3D::GetRotation(); }
 
     /// <summary>表示モデル固有のY回転補正を返します。</summary>
     float GetVisualYawOffset() const;
@@ -298,10 +301,22 @@ class Player : public Character {
     bool SaveWhipSettings() const;
     void DrawWhipEditor();
     // 鞭と同じ時計で計算した描画用姿勢を渡します。衝突形状は変更しません。
-    void SetWhipBodyPose(const engine::Vector3& scale, const engine::Vector3& rotation) {
-        slimeAnimator_.SetWhipPose(scale, rotation);
+    void SetWhipBodyPose(const engine::Vector3& scale, const engine::Vector3& rotation, const engine::Vector3& shear = {}) {
+        slimeAnimator_.SetWhipPose(scale, rotation, shear);
     }
+    const BodyAnimationClip::Sample& GetWhipBodyPose() const { return slimeAnimator_.GetWhipPose(); }
+    float GetSlimePullProgress() const { return slimeAnimator_.GetPullProgress(); }
     void ClearWhipBodyPose();
+    engine::Vector3 GetWhipVisualOrigin() const;
+    std::shared_ptr<class PlayerWhipDeformer> AcquireWhipDeformer();
+    void SetActiveWhipVisual(const std::weak_ptr<PlayerWhipVisual>& visual) { activeWhipVisual_ = visual; }
+    void RefreshWhipVisual();
+    // 操作状態から独立して、終了した鞭の描画だけを短時間保持します。
+    void BeginWhipReturn(const std::shared_ptr<PlayerWhipVisual>& visual);
+    void UpdateWhipReturn(float deltaTime);
+    void CancelWhipReturn();
+    bool IsWhipReturnPending(const PlayerWhipVisual* visual) const { return pendingWhipReturn_.get() == visual; }
+    void SetWhipReturnPose(const BodyAnimationClip::Sample& pose) { slimeAnimator_.SetWhipReturnPose(pose); }
 
     /// <summary>通常移動と同じカメラ基準で、現在押している移動方向を返します。</summary>
     /// <remarks>操作制限中にも読めるため、攻撃中の方向転換に使用できます。</remarks>
@@ -404,11 +419,11 @@ class Player : public Character {
 
     engine::ParticleSystem* GetParticleSystem() { return particleSystem_; }
 
-    /// <summary>現在のプレイヤーパラメータからジャンプ力を返します。</summary>
-    float GetJumpPower() const { return GetParameters().has_value() ? GetParameters()->jumpPower : 24.0f; }
+    /// <summary>設定済みのジャンプ力を返し、パラメーター自体が未設定のときだけ既定値を使う。</summary>
+    float GetJumpPower() const { return GetParameters().has_value() ? GetParameters()->jumpPower : PlayerDefaults::kJumpPower; }
 
-    /// <summary>現在のプレイヤーパラメータから移動速度を返します。</summary>
-    float GetMoveSpeed() const { return GetParameters().has_value() ? GetParameters()->speed : 27.7f; }
+    /// <summary>設定済みの移動速度を返し、パラメーター自体が未設定のときだけ既定値を使う。</summary>
+    float GetMoveSpeed() const { return GetParameters().has_value() ? GetParameters()->speed : PlayerDefaults::kMoveSpeed; }
 
     // ==================================================
     // 無敵フレーム (Invincibility) 管理
@@ -428,7 +443,11 @@ class Player : public Character {
     void NotifyGuardedHit(const engine::Vector3& sourcePosition);
 
     /// <summary>能力回避用に攻撃判定を伴わない無敵時間を開始します。</summary>
-    void StartEvasionInvincibility(float duration);
+    enum class EvasionFeedback { BodyFlash, PortalEdge };
+    void StartEvasionInvincibility(float duration, EvasionFeedback feedback = EvasionFeedback::BodyFlash);
+
+    // 有効な被弾が確定したフレームに、現在の形態の被弾顔を短時間表示します。
+    void StartHurtFace();
 
     /// <summary>被弾演出とノックバック、被弾後の無敵時間を開始します。</summary>
     /// <param name="knockbackDirection">吹き飛ばす方向。</param>
@@ -462,13 +481,13 @@ class Player : public Character {
     float GetDeathTimer() const { return deathTimer_; }
 
     /// <summary>頭上に保持する敵を設定します。所有権は受け取りません。</summary>
-    void SetCarriedEnemy(engine::Object3d* enemy);
+    void SetCarriedEnemy(engine::Object3D* enemy);
 
     /// <summary>保持中の敵を離し、必要なら元の姿勢を復元します。</summary>
     void ReleaseCarriedEnemy(bool restorePose = true);
 
     /// <summary>保持中の敵への参照を返します。所有権は移しません。</summary>
-    engine::Object3d* GetCarriedEnemy() const { return carriedEnemy_; }
+    engine::Object3D* GetCarriedEnemy() const { return carriedEnemy_; }
 
     /// <summary>現在、敵のコピー能力に変身しているか返します。</summary>
     bool IsEnemyMorphed() const { return isEnemyMorphed_; }
@@ -508,6 +527,10 @@ class Player : public Character {
     // 移動・アクション状態・姿勢・通常攻撃・コピー能力の実行部品をPlayerが所有する。
     std::unique_ptr<PlayerMover> mover_ = nullptr;     // 移動処理の委譲先。
     PlayerWhipSettings whipSettings_;
+    std::weak_ptr<PlayerWhipVisual> activeWhipVisual_;
+    std::shared_ptr<PlayerWhipVisual> returningWhipVisual_;
+    std::shared_ptr<PlayerWhipVisual> pendingWhipReturn_;
+    std::shared_ptr<class PlayerWhipDeformer> whipDeformer_;
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
     PlayerSlimeAnimator slimeAnimator_;
     PlayerGateReturnAnimation gateReturnAnimation_;
@@ -521,14 +544,20 @@ class Player : public Character {
     // 装飾を破棄するまで保持し、本体の描画専用姿勢を親行列として渡す。
     Transform copyAdornmentAnchor_;
     // コピー能力中だけ表示する装飾Objectを所有する。
-    std::unique_ptr<engine::Object3d> copyAdornment_;
+    std::unique_ptr<engine::Object3D> copyAdornment_;
 
     /// <summary>現在のコピー能力に付随する表示物を更新します。</summary>
     void UpdateCopyAdornment();
+    // 現在の通常モデルに対応する被弾素材を準備し、形態変更時に古い表示を解除する。
+    void PrepareHurtFaceModel();
+    // 秒単位の経過時間で被弾顔を更新する。0秒では表示状態だけを同期する。
+    void UpdateHurtFace(float deltaTime);
+    // この演出が所有する描画差し替えだけを解除する。
+    void ClearHurtFace();
 
     // プレビュー用入力と一時Object。実プレイの入力・Scene配置とは分離する。
     PlayerCopyAbilityInput copyPreviewInput_{};
-    std::vector<std::unique_ptr<engine::Object3d>> copyPreviewObjects_;
+    std::vector<std::unique_ptr<engine::Object3D>> copyPreviewObjects_;
 
     // 変身演出後に戻すためのプレイヤー基準倍率。
     engine::Vector3 managedBaseScale_ = {2.0f, 2.0f, 2.0f};
@@ -539,8 +568,8 @@ class Player : public Character {
 
     // ロックオン位置は対象Objectの寿命と切り離して値として保持する。
     bool isLockingOn_ = false; // 敵をロックオンしているか。
-    engine::Vector3 lockOnAimPoint_{};
-    bool lockOnAimValid_ = false;
+    engine::Vector3 lockOnAimPoint_{}; // ロックオン対象へ向ける照準のワールド座標。
+    bool lockOnAimValid_ = false; // 照準座標を利用できるフレームか。
     bool isControlActive_ = true; // 入力を受け付ける状態か。
 
     // ムービーなどから通常の移動アニメーションを一時上書きする設定。
@@ -550,14 +579,14 @@ class Player : public Character {
 
     // ムービー中に操作・衝突を制限し、終了時の復元値を保存する。
     bool isCinematicLocked_ = false;
-    bool cinematicSavedControlActive_ = true;
-    uint32_t cinematicSavedCollisionAttribute_ = 0;
-    uint32_t cinematicSavedCollisionMask_ = 0;
+    bool cinematicSavedControlActive_ = true; // 演出に入る前の操作許可。演出終了時に復元する。
+    uint32_t cinematicSavedCollisionAttribute_ = 0; // 演出で衝突を無効化する前の属性。
+    uint32_t cinematicSavedCollisionMask_ = 0; // 演出で衝突を無効化する前のマスク。
 
     // チュートリアル中の被害防止と、保持した敵の投げ・吸収許可。
     bool tutorialSafetyEnabled_ = false;
-    bool tutorialCarryThrowEnabled_ = true;
-    bool tutorialCarryAbsorbEnabled_ = true;
+    bool tutorialCarryThrowEnabled_ = true; // 練習手順から持ち運び中の投げ操作だけを許可・禁止する。
+    bool tutorialCarryAbsorbEnabled_ = true; // 練習手順から持ち運び中の吸収操作だけを許可・禁止する。
 
 
     // 攻撃1終了後に次のクリックで攻撃2へつなげるための予約フラグ
@@ -571,21 +600,26 @@ class Player : public Character {
     engine::Vector4 savedColor_ = engine::Colors::White; // 無敵解除時に戻す色。
 
     // 子パーツの色を保存して、無敵解除時に復元する
-    std::unordered_map<engine::Object3d*, engine::Vector4> childSavedColors_;
+    std::unordered_map<engine::Object3D*, engine::Vector4> childSavedColors_;
 
     // 被弾後・ダッシュ・回避の無敵と、無敵を伴わないピンクガードの構え。
     float damageCooldownTimer_ = 0.0f;
-    float guardContactCooldownTimer_ = 0.0f;
+    float hurtFaceRemaining_ = 0.0f; // 被弾顔の残り秒数。
+    Model* hurtFaceBaseModel_ = nullptr; // 被弾モデルの対応を確認した通常モデル。
+    Model* hurtFaceModel_ = nullptr; // ModelManagerが所有する描画差し替え用モデル。
+    bool hurtFaceIncludesBand_ = false; // 被弾モデルにコピー用装飾が含まれる場合は別描画を省く。
+    float guardContactCooldownTimer_ = 0.0f; // ガード接触の再発生までの残り秒数。
     bool isDamageInvincible_ = false;
     bool isDashInvincible_ = false;
     bool isGuarding_ = false;
-    float evasionInvincibleTimer_ = 0.0f;
+    float evasionInvincibleTimer_ = 0.0f; // 回避の無敵終了までの残り秒数。
+    EvasionFeedback evasionFeedback_ = EvasionFeedback::BodyFlash;
     bool isEvasionInvincible_ = false;
 
     // 被弾点滅の時計と、点滅開始前に表示されていた本体・子の状態。
     float invincibleBlinkTimer_ = 0.0f;
-    bool damageBlinkVisibilityApplied_ = false;
-    bool damageBlinkBodyVisible_ = true;
+    bool damageBlinkVisibilityApplied_ = false; // 被弾点滅が本体の表示状態を上書きしているか。
+    bool damageBlinkBodyVisible_ = true; // 点滅開始前に戻すための本体の表示状態。
     std::vector<bool> damageBlinkChildVisible_;
     float deathTimer_ = 0.0f; // 死亡してからの経過時間。
 
@@ -627,22 +661,22 @@ class Player : public Character {
     std::string checkpointMorphEnemyType_;
 
     // フックの狙い位置を示す補助ObjectをPlayerが所有する。
-    std::unique_ptr<engine::Object3d> hookMarker_;
+    std::unique_ptr<engine::Object3D> hookMarker_;
 
     // 保持中の敵と照準先は非所有参照。保持前の姿勢は解放時の復元値。
-    engine::Object3d* carriedEnemy_ = nullptr;
+    engine::Object3D* carriedEnemy_ = nullptr;
     engine::Vector3 carriedEnemyBaseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 carriedEnemyBaseRotation_ = engine::Vector3::ZERO;
     engine::Quaternion carriedEnemyBaseQuaternion_ = {0.0f, 0.0f, 0.0f, 1.0f};
-    bool carriedEnemyBaseQuaternionMaster_ = true;
+    bool carriedEnemyBaseQuaternionMaster_ = true; // 運搬前の敵の回転方式。手放した際の復元に使う。
     bool hasCarriedEnemyBaseScale_ = false;
-    engine::Object3d* aimTargetObject_ = nullptr;
+    engine::Object3D* aimTargetObject_ = nullptr;
 
     // コピー元の敵は借用し、能力種別・制限時間・経過時間をPlayerが管理する。
     EnemyMorphType enemyMorphType_ = EnemyMorphType::None;
     BaseEnemy* enemyMorphSource_ = nullptr;
     bool isEnemyMorphed_ = false;
-    bool enemyMorphHasTimeLimit_ = true;
+    bool enemyMorphHasTimeLimit_ = true; // コピー形態に時間制限を設けるか。
     float enemyMorphTimer_ = 0.0f;
     float enemyMorphDuration_ = 5.0f;
     float enemyMorphEffectTimer_ = 0.0f;
@@ -667,7 +701,7 @@ class Player : public Character {
     engine::Vector4 enemyMorphReleaseTint_ = {1.0f, 1.0f, 1.0f, 1.0f};
 
     // 解除中だけ表示する一時Objectを所有する。
-    std::unique_ptr<engine::Object3d> enemyMorphReleaseVisual_;
+    std::unique_ptr<engine::Object3D> enemyMorphReleaseVisual_;
 
     // 感電中の停止時間、粒子間隔、終了後の無敵時間を別々に保持する。
     float electricShockFeedbackTimer_ = 0.0f;
@@ -681,7 +715,7 @@ class Player : public Character {
     engine::Vector3 electricShockBaseRotation_ = engine::Vector3::ZERO;
 
     // 感電中にPlayerへ追従するオーラの表示Object。
-    std::unique_ptr<EffectObject3d> electricShockAuraEffect_;
+    std::unique_ptr<EffectObject3D> electricShockAuraEffect_;
 
     // 変身前のモデル・画像・アニメーション・色を保存し、解除時に戻す。
     std::string savedMorphModelName_;
@@ -776,7 +810,7 @@ class Player : public Character {
 
   public:
     /// <summary>フック位置を示す補助オブジェクトを返します。所有権は移しません。</summary>
-    engine::Object3d* GetHookMarker() const { return hookMarker_.get(); }
+    engine::Object3D* GetHookMarker() const { return hookMarker_.get(); }
 
   private:
     // ジャンプ回数を必要とするギミック・実績向けの通算値。

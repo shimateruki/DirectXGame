@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/scene/gameplay/GoalCinematicVfx.h"
 #include "Easing.h"
 #include <numbers>
 #include "game/ui/ControlsGuideOverlay.h"
@@ -10,12 +11,12 @@
 #include "SceneController.h"
 
 #include "game/system/combat/BulletManager.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "DebugConsole.h"
 #include "Fade.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/progress/GameDataManager.h"
 #include "game/system/settings/GameSettingsManager.h"
 #include "game/system/rules/GameRule.h"
@@ -30,7 +31,7 @@
 #include "ProfilerManager.h"
 #include "SceneManager.h"
 #include "game/system/progress/StageManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include "WinApp.h"
 #include "game/actor/gimmick/stage/GimmickStageGate.h"
 #include "game/actor/gimmick/trigger/GimmickBossGate.h"
@@ -133,18 +134,18 @@ float NormalizeYaw(float yaw) {
 }
 
 // 王冠や体の寸法は配置倍率ではなく、描画に使うワールド変換から求める。
-engine::Vector3 GoalWorldScale(engine::Object3d* object) {
+engine::Vector3 GoalWorldScale(engine::Object3D* object) {
     if (!object) return {1,1,1};
     const auto& m=object->GetWorldMatrix();
     return {engine::Math::Length({m.m[0][0],m.m[0][1],m.m[0][2]}),
         engine::Math::Length({m.m[1][0],m.m[1][1],m.m[1][2]}),
         engine::Math::Length({m.m[2][0],m.m[2][1],m.m[2][2]})};
 }
-engine::Vector3 GoalLocalPosition(engine::Object3d* object, const engine::Vector3& world) {
+engine::Vector3 GoalLocalPosition(engine::Object3D* object, const engine::Vector3& world) {
     return object && object->GetParent()
         ? engine::Math::Transform(world,engine::Math::Inverse(object->GetParent()->GetWorldMatrix())) : world;
 }
-std::array<engine::Vector3,8> GoalWorldCorners(engine::Object3d* object) {
+std::array<engine::Vector3,8> GoalWorldCorners(engine::Object3D* object) {
     std::array<engine::Vector3,8> result{};
     const auto lo=object->GetModel() ? object->GetModel()->GetLocalAabbMin() : engine::Vector3{-0.5f,-0.5f,-0.5f};
     const auto hi=object->GetModel() ? object->GetModel()->GetLocalAabbMax() : engine::Vector3{0.5f,0.5f,0.5f};
@@ -156,7 +157,7 @@ std::array<engine::Vector3,8> GoalWorldCorners(engine::Object3d* object) {
 } // namespace
 
 // ゴール状態を解除する際は、プレイヤー・王冠・カメラの演出前の状態を戻します。
-bool GamePlayScene::TryStartGoalFromContact(engine::Object3d* actor, engine::Object3d* goal) {
+bool GamePlayScene::TryStartGoalFromContact(engine::Object3D* actor, engine::Object3D* goal) {
     // 生存中のプレイヤーが触れた場合だけクリア演出を開始し、重複開始は避ける。
     Player* player = dynamic_cast<Player*>(actor);
 
@@ -243,7 +244,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
 }
 
 // ゴール演出の入力ロックと初期姿勢を確定してから、演出用カメラへ制御を渡します。
-void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
+void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
     // プレイヤーと王冠の初期姿勢を保存し、初回クリアか再クリアかで演出素材を選ぶ。
     if (isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
         return;
@@ -339,28 +340,21 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
         for (auto& clip : goalCinematicSequence_.animationClips) {
             if (clip.driver == "GoalClearPlayer" && player_) {
                 clip.binding.targetName = player_->GetName();
-                clip.binding.targetEventId = player_->GetEventID();
+                clip.binding.targetEventId = player_->GetEventId();
             }
         }
 
         for (auto& track : goalCinematicSequence_.vfxTracks) {
-            if (track.sequenceName.rfind("crown_focus", 0) == 0) {
-                track.sequenceName = goalWasStageCleared_ ? "crown_focus_silver_cue" : "crown_focus_cue";
-            } else if (track.sequenceName.rfind("crown_get", 0) == 0) {
-                track.sequenceName = goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue";
-            } else if (track.sequenceName.rfind("crown_result", 0) == 0) {
-                track.sequenceName = goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue";
-            } else if (track.sequenceName.rfind("crown_victory_land", 0) == 0) {
-                track.sequenceName = goalWasStageCleared_ ? "crown_victory_land_silver_cue" : "crown_victory_land_cue";
+            const auto* cue = GoalCinematicVfx::FindCue(track.sequenceName);
+            if (cue) {
+                track.sequenceName = goalWasStageCleared_ ? cue->silver : cue->gold;
             }
 
-            const bool followsCrown =
-                track.sequenceName.rfind("crown_focus", 0) == 0 || track.sequenceName.rfind("crown_get", 0) == 0;
-            engine::Object3d* target = followsCrown ? crownObject : player_;
+            engine::Object3D* target = cue && cue->followsCrown ? crownObject : player_;
 
             if (target) {
                 track.binding.targetName = target->GetName();
-                track.binding.targetEventId = target->GetEventID();
+                track.binding.targetEventId = target->GetEventId();
             }
         }
 
@@ -375,7 +369,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3d* crownObject) {
 // 演出モードは互いに排他的です。早期終了で通常入力と敵更新の二重実行を防ぎます。
 void GamePlayScene::Update(float deltaTime) {
     if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) {
-        UpdateUI(deltaTime);
+        UpdateUi(deltaTime);
         return;
     }
     // ムービープレビューはEditorが時間とエフェクトを所有し、通常AI・衝突を進めません。
@@ -399,13 +393,13 @@ void GamePlayScene::Update(float deltaTime) {
             particleSystem_->Update(deltaTime);
         }
 
-        GPUParticleManager::GetInstance()->Update(deltaTime);
+        GpuParticleManager::GetInstance()->Update(deltaTime);
 
         for (auto& object : GetObjects()) {
             object->UpdateWorldMatrix(true);
         }
 
-        UpdateUI(deltaTime);
+        UpdateUi(deltaTime);
         return;
     }
 
@@ -417,7 +411,7 @@ void GamePlayScene::Update(float deltaTime) {
         UpdatePostEffectState(deltaTime);
         UpdateCrownFinale(deltaTime);
         UpdateSceneSystems(deltaTime);
-        UpdateUI(deltaTime);
+        UpdateUi(deltaTime);
         return;
     }
 
@@ -465,7 +459,7 @@ void GamePlayScene::Update(float deltaTime) {
 
                 if (stageEntryPresentationRetryTimer_ < kStageEntrySetupRetryTimeout) {
                     UpdatePostEffectState(deltaTime);
-                    UpdateUI(deltaTime);
+                    UpdateUi(deltaTime);
                     return;
                 }
 
@@ -489,7 +483,7 @@ void GamePlayScene::Update(float deltaTime) {
     if (stageEntryPresentationActive_) {
         UpdatePostEffectState(deltaTime);
         UpdateStageEntryPresentation(deltaTime);
-        UpdateUI(deltaTime);
+        UpdateUi(deltaTime);
         return;
     }
 
@@ -502,7 +496,7 @@ void GamePlayScene::Update(float deltaTime) {
         UpdatePostEffectState(deltaTime);
         UpdateArenaBossIntro(deltaTime);
         UpdateSceneSystems(deltaTime);
-        UpdateUI(deltaTime);
+        UpdateUi(deltaTime);
         return;
     }
 
@@ -510,7 +504,7 @@ void GamePlayScene::Update(float deltaTime) {
         UpdatePostEffectState(deltaTime);
         UpdateArenaBossDefeatReward(deltaTime);
         UpdateSceneSystems(deltaTime);
-        UpdateUI(deltaTime);
+        UpdateUi(deltaTime);
         return;
     }
 
@@ -533,7 +527,7 @@ void GamePlayScene::Update(float deltaTime) {
     UpdatePostEffectState(deltaTime);
 
     if (lifeLostState_.IsActive()) {
-        UpdateUI(deltaTime);
+        UpdateUi(deltaTime);
         return;
     }
 
@@ -544,7 +538,7 @@ void GamePlayScene::Update(float deltaTime) {
 
     // 敵更新後にカメラを確定し、槍の位置とカットの時刻を同じフレームへ揃えます。
     UpdateSealBarrageMovie(deltaTime);
-    UpdateUI(deltaTime);
+    UpdateUi(deltaTime);
 
     // 対象とカメラの更新が完了してから、実際に描画する視点へマーカーを投影します。
     if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
@@ -628,14 +622,14 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
 
         if (emitSparkle) {
             const engine::Vector3& localOffset = kSparkleOffsets[goalCrownSparklePatternIndex_ % kSparkleOffsets.size()];
-            GPUParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, engine::Math::Transform(localOffset, crownWorld));
+            GpuParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, engine::Math::Transform(localOffset, crownWorld));
 
             const bool emitHeroTwinkle =
                 goalCrownSparklePatternIndex_ % 4 == 0 || (nearRate >= 0.55f && goalCrownSparklePatternIndex_ % 2 == 0);
             if (emitHeroTwinkle) {
                 const engine::Vector3& twinkleOffset =
                     kSparkleOffsets[(goalCrownSparklePatternIndex_ + 3) % kSparkleOffsets.size()];
-                GPUParticleManager::GetInstance()->Emit(kGoalCrownTwinklePreset,
+                GpuParticleManager::GetInstance()->Emit(kGoalCrownTwinklePreset,
                                                         engine::Math::Transform(twinkleOffset, crownWorld));
             }
         }
@@ -876,8 +870,8 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         particleSystem_->Update(deltaTime);
     }
 
-    GPUParticleManager::GetInstance()->Update(deltaTime);
-    UpdateUI(deltaTime);
+    GpuParticleManager::GetInstance()->Update(deltaTime);
+    UpdateUi(deltaTime);
 
     if (goalSavePerformed_ && !goalEditorPreviewMode_ && goalPresentationState_ == GoalPresentationState::ReadyToReturn) {
         constexpr float kAutomaticReturnDelay = 0.85f;
@@ -1088,9 +1082,9 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         }
 
         // 長いフレームを制限し、必要なら小刻みに積分して王冠の揺れを安定させる。
-        const float dt = std::clamp(deltaTime, 0.0f, 1.0f / 30.0f);
-        const int substepCount = std::max(1, static_cast<int>(std::ceil(dt / (1.0f / 120.0f))));
-        const float substep = dt / static_cast<float>(substepCount);
+        const float frameDeltaTime = std::clamp(deltaTime, 0.0f, 1.0f / 30.0f);
+        const int substepCount = std::max(1, static_cast<int>(std::ceil(frameDeltaTime / (1.0f / 120.0f))));
+        const float substep = frameDeltaTime / static_cast<float>(substepCount);
 
         for (int step = 0; step < substepCount; ++step) {
             const engine::Vector3 springDelta = targetPosition - goalCrownSpringPosition_;
@@ -1188,7 +1182,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
                                                       std::abs(goalCrownBaseScale_.z)}) *
                                                 0.72f,
                                             0.80f, 1.80f);
-        VFXSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue", goalCrownPosition_,
+        VfxSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue", goalCrownPosition_,
                                   {crownScale, crownScale, crownScale});
         goalLandingCuePlayed_ = true;
     }
@@ -1196,7 +1190,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
     if (!goalResultCuePlayed_ && t >= animation.apexTime) {
         engine::Vector3 resultPosition = goalPlayerPosePosition_;
         resultPosition.y += std::max(1.25f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.50f);
-        VFXSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue",
+        VfxSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue",
                                   resultPosition);
         goalResultCuePlayed_ = true;
     }
@@ -1250,7 +1244,7 @@ void GamePlayScene::SetupGoalPresentationCamera() {
     goalPresentationCamera_->SetInputEnabled(false);
     goalPresentationCamera_->SetFollowTarget(nullptr);
     goalPresentationCamera_->SetLockOnTarget(nullptr);
-    goalPresentationCamera_->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    goalPresentationCamera_->SetFollowMode(Camera::FollowMode::FixedPoint);
     goalPresentationCamera_->SetFovY(goalCameraGameplayFov_);
     goalPresentationCamera_->SetEye(goalCameraGameplayEye_);
     goalPresentationCamera_->SetTarget(goalCameraGameplayTarget_);
@@ -1474,7 +1468,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
 
-        if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+        if (currentMode == Camera::FollowMode::Aimable || currentMode == Camera::FollowMode::FirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
 
@@ -1485,7 +1479,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     }
 }
 
-void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3d* target, float deltaTime) {
+void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3D* target, float deltaTime) {
     isDrawLockOn_ = false;
     if (lockOnSprite_)
         lockOnSprite_->SetVisible(false);
@@ -1502,7 +1496,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3d* target,
     if (!target->GetIsVisible())
         return;
 
-    const AABB aabb = target->GetAABB();
+    const Aabb aabb = target->GetAabb();
     engine::Vector3 targetCenter;
     targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
     targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
@@ -1567,7 +1561,7 @@ void GamePlayScene::UpdateSceneSystems(float deltaTime) {
         gameRule_->Update(deltaTime);
     }
 
-    GPUParticleManager::GetInstance()->Update(deltaTime);
+    GpuParticleManager::GetInstance()->Update(deltaTime);
 
     for (auto& sprite : sprites_) {
         sprite->Update();

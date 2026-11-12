@@ -1,4 +1,4 @@
-﻿#include "Player.h"
+#include "Player.h"
 #include "game/actor/player/copy/PlayerCopyAbilityController.h"
 
 namespace {
@@ -68,6 +68,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerGuarding"] = isGuarding_;
     state["playerEvasionInvincibleTimer"] = evasionInvincibleTimer_;
     state["playerEvasionInvincible"] = isEvasionInvincible_;
+    state["playerEvasionPortalEdge"] = evasionFeedback_ == EvasionFeedback::PortalEdge;
     state["playerInvincibleBlinkTimer"] = invincibleBlinkTimer_;
     state["playerDeathTimer"] = deathTimer_;
     state["playerRespawnPosition"] = ToJson(respawnPosition_);
@@ -134,6 +135,7 @@ void Player::RestoreReplayCustomState(const json& state) {
     isGuarding_ = state.value("playerGuarding", state.value("playerGuardInvincible", false));
     evasionInvincibleTimer_ = state.value("playerEvasionInvincibleTimer", evasionInvincibleTimer_);
     isEvasionInvincible_ = state.value("playerEvasionInvincible", isEvasionInvincible_);
+    evasionFeedback_ = state.value("playerEvasionPortalEdge", false) ? EvasionFeedback::PortalEdge : EvasionFeedback::BodyFlash;
     invincibleBlinkTimer_ = state.value("playerInvincibleBlinkTimer", invincibleBlinkTimer_);
     deathTimer_ = state.value("playerDeathTimer", deathTimer_);
 

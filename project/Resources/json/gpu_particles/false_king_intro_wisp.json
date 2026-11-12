@@ -1,0 +1,68 @@
+{
+  "emitPos": [
+    0,
+    0,
+    0
+  ],
+  "emitArea": [
+    0.03,
+    0.03,
+    0.03
+  ],
+  "emitVelocity": [
+    0,
+    2.0,
+    -0.3
+  ],
+  "emitCount": 6,
+  "emitLife": 1.1,
+  "velocityVariance": 0.35,
+  "baseColor": [
+    0.35,
+    0.08,
+    0.6,
+    0
+  ],
+  "midColor": [
+    0.32,
+    0.08,
+    0.7,
+    0.55
+  ],
+  "endColor": [
+    0.12,
+    0.02,
+    0.28,
+    0
+  ],
+  "colorMidTime": 0.1,
+  "colorEaseType": 0,
+  "colorIntensity": 1.1,
+  "baseSize": 0.65,
+  "midSize": 1.35,
+  "endSize": 0.12,
+  "sizeMidTime": 0.12,
+  "sizeEaseType": 2,
+  "rotSpeed": 0.5,
+  "blendModeIndex": 1,
+  "envGravity": [
+    0,
+    0.5,
+    0
+  ],
+  "envDrag": 1.5,
+  "envWind": [
+    0,
+    0,
+    0
+  ],
+  "envTurbulence": 0,
+  "isLooping": false,
+  "emitInterval": 0.1,
+  "shapeType": 0,
+  "shapeRadius": 0.12,
+  "shapeAngle": 66,
+  "softParticleFade": 0.12,
+  "maxParticles": 512,
+  "texturePath": "Resources/sprite/particle/dust_soft.png"
+}

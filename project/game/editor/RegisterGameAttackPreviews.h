@@ -1,5 +1,7 @@
 #pragma once
 
+// ゲーム固有の登録入口：RegisterGameAttackPreviews。登録先の共通Editorに、個別の型名や分岐を持ち込まない。
+
 #include "game/editor/EnemyAttackPreviewRegistry.h"
 #include "EnemySlime.h"
 #include "EnemyFireSlime.h"
@@ -97,11 +99,11 @@ inline void RegisterGameAttackPreviews() {
             }
             concrete->BeginHookSplitPull(context.target->GetWorldPosition());
         };
-        giant.updateInteraction = [](BaseEnemy& enemy, float dt, const EnemyAttackPreviewContext& context) {
+        giant.updateInteraction = [](BaseEnemy& enemy, float deltaTime, const EnemyAttackPreviewContext& context) {
             auto* concrete = dynamic_cast<EnemyGiantSlime*>(&enemy);
             return concrete && context.target &&
                 (context.optionId == "hook_split_ground" || context.optionId == "hook_split_air") &&
-                concrete->UpdateHookSplitPull(dt, context.target->GetWorldPosition(), context.particles);
+                concrete->UpdateHookSplitPull(deltaTime, context.target->GetWorldPosition(), context.particles);
         };
         entries.push_back(std::move(giant));
 

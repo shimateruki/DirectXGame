@@ -3,7 +3,8 @@
 #include "Easing.h"
 #include <numbers>
 #include "game/actor/player/Player.h"
-#include "VFXSequencer.h"
+#include "game/actor/player/PlayerDefaults.h"
+#include "VfxSequencer.h"
 #include "InputManager.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 #include <algorithm>
@@ -237,7 +238,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
 
         for (const AnimatorEventInstance& event : controllerRuntime_.ConsumeEvents()) {
             if (event.name == "FeedbackCue" && !event.payload.empty()) {
-                VFXSequencer::PlayOneShotOnTarget(event.payload, player);
+                VfxSequencer::PlayOneShotOnTarget(event.payload, player);
             }
         }
 
@@ -347,13 +348,21 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     UpdateAbilityMotion(deltaTime, abilityVisualScale, abilityVisualRotation, visualOffset, abilityVisualShear,
                         abilityShearPivotY);
     // 鞭は物理Transformを潰さず、描画だけで溜め・ひねり・振り抜きを表現します。
-    if (whipPoseActive_ && mode_ == Mode::ShootHook) {
+    if (whipPoseActive_ && (whipReturnPoseActive_ || mode_ == Mode::ShootHook || mode_ == Mode::PullEnemy)) {
         targetScale = baseScale_;
         targetRotation = {0.0f, player->GetRotation().y, 0.0f};
-        abilityVisualScale = whipVisualScale_;
-        abilityVisualRotation = whipVisualRotation_;
-        abilityVisualShear = {};
-        visualOffset = {};
+        abilityVisualScale = whipPose_.scale;
+        abilityVisualRotation = whipPose_.rotate;
+        abilityVisualShear = whipPose_.shear;
+        // 足元の中心を支点にし、上半身だけが横へ流れる輪郭にします。
+        engine::Vector3 foot{};
+        if (player->GetModel()) {
+            foot = player->GetModel()->GetCenter();
+            foot.y -= player->GetModel()->GetSize().y * 0.5f;
+        }
+        abilityShearPivotY = foot.y;
+        const auto affine = engine::Math::MakeAffineMatrix(abilityVisualScale, abilityVisualRotation, {});
+        visualOffset = foot - engine::Math::Transform(foot, affine);
     }
     if (player->GetMeshRenderer()) {
         player->GetMeshRenderer()->SetVisualTransform(abilityVisualScale, abilityVisualRotation, visualOffset);
@@ -694,7 +703,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
 
     case Mode::Jump: {
         // 速度の絶対値から頂点付近を推定し、溜め・上昇・下降で別の伸縮を作る。
-        const float jumpPower = player ? (std::max)(player->GetJumpPower(), 0.01f) : 24.0f;
+        const float jumpPower = player ? (std::max)(player->GetJumpPower(), 0.01f) : PlayerDefaults::kJumpPower;
         const float apexRate = 1.0f - std::clamp(std::abs(velocity.y) / (jumpPower * 0.82f), 0.0f, 1.0f);
         const float airWave = std::sin(modeTimer_ * 12.5f);
         const float airRipple = std::sin(modeTimer_ * 21.0f + 0.8f);

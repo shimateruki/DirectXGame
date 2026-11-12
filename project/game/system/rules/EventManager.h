@@ -6,6 +6,8 @@
 
 // ダメージ、弾ヒット、死亡などのイベントを同期的に配信する。
 // 購読IDで個別解除でき、購読者の破棄時にも解除できる。
+// 関連：GameRuleなどが購読し、攻撃側のDispatch呼出し中にコールバックを同期実行する。
+// 主な入口：Subscribe / Dispatch / Unsubscribe
 class EventManager {
   public:
     using SubscriptionId = uint64_t;
@@ -57,6 +59,7 @@ class EventManager {
     EventManager& operator=(const EventManager&) = delete;
 
   private:
+    // 一件の購読。配信中の解除ではactiveだけを落とし、安全な時点で一覧から除く。
     template <typename Event> struct Listener {
         SubscriptionId id = kInvalidSubscriptionId;
         std::function<void(const Event&)> callback;

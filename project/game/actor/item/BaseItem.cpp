@@ -5,8 +5,8 @@
 #include "Player.h"
 #include <cassert>
 
-void BaseItem::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
-    engine::Object3d::Initialize(common);
+void BaseItem::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
+    engine::Object3D::Initialize(common);
 
     // アイテムの見た目は派生型ごとに選び、取得判定の土台だけを共通化します。
     ModelManager::GetInstance()->LoadModel(modelName);
@@ -19,7 +19,7 @@ void BaseItem::Initialize(engine::Object3dCommon* common, const std::string& mod
 
     // プレイヤーとの接触だけを拾うトリガーにし、地形の物理衝突には参加させません。
     ColliderConfig config;
-    config.type = ColliderType::kSphere;
+    config.type = ColliderType::Sphere;
     config.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(config);
     SetCollisionRadius(1.0f);
@@ -48,11 +48,11 @@ void BaseItem::Update(float deltaTime) {
 
     SetRotation(rotate);
 
-    engine::Object3d::Update(deltaTime);
+    engine::Object3D::Update(deltaTime);
 }
 
 // 対象がプレイヤーで実際に重なった時だけ、派生クラスの取得処理を呼びます。
-bool BaseItem::OnCollision(engine::Object3d* other) {
+bool BaseItem::OnCollision(engine::Object3D* other) {
     // 属性だけで確定せず、相手の型と実際の重なりを確認してから取得します。
     if (isCollected_ || !other) {
         return false;
@@ -90,7 +90,7 @@ void BaseItem::MarkCollected() {
     SetDead(true);
 }
 
-std::unique_ptr<engine::Object3d> BaseItem::Clone() const {
+std::unique_ptr<engine::Object3D> BaseItem::Clone() const {
     // 初期化で描画・判定資源を作り直してから、編集可能な設定値を引き継ぎます。
     auto newObj = std::make_unique<BaseItem>();
     assert(GetObjectCommon() != nullptr);

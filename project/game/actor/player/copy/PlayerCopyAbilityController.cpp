@@ -100,12 +100,20 @@ void PlayerCopyAbilityController::Update(Player& player, float deltaTime) {
     }
 }
 
+void PlayerCopyAbilityController::NotifyDamageStarted(Player& player) {
+    if (impl_->session)
+        impl_->session->NotifyDamageStarted(player);
+}
+
+void PlayerCopyAbilityController::Interrupt(Player& player) {
+    if (impl_->session)
+        impl_->session->Cancel(player);
+}
+
 void PlayerCopyAbilityController::Cancel(Player& player) {
     // セッションに演出を片付けさせてから破棄し、変身種別を未コピーへ戻す。
-    if (impl_->session) {
-        impl_->session->Cancel(player);
-        impl_->session.reset();
-    }
+    Interrupt(player);
+    impl_->session.reset();
 
     impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
 }

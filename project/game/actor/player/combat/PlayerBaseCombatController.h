@@ -3,11 +3,13 @@
 #include "engine/utility/math/Math.h"
 #include <unordered_set>
 
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 class Player;
 
 // 通常スライムでも敵へ対抗できる、形態に依存しない基礎攻撃を管理します。
 // コピー能力の入力処理と分離し、ボス戦で能力を失っても詰まない状態を保証します。
+// 関連：Playerが入力・更新を渡し、体当たり・急降下の段階、判定、演出をまとめて進める。
+// 主な入口：ProcessInput / Update / Cancel
 class PlayerBaseCombatController {
   public:
     // 通常攻撃の押下エッジを渡します。継続押下を毎フレーム true にしないでください。
@@ -65,9 +67,9 @@ class PlayerBaseCombatController {
 
     Phase phase_ = Phase::Idle;
     engine::Vector3 direction_{0.0f, 0.0f, 1.0f};
-    std::unordered_set<engine::Object3d*> hitTargets_;
+    std::unordered_set<engine::Object3D*> hitTargets_;
     float timer_ = 0.0f;
     float effectTimer_ = 0.0f;
-    float inputBufferTimer_ = 0.0f;
+    float inputBufferTimer_ = 0.0f; // 攻撃入力の保持期限までの残り秒数。
     bool pressHitEnemy_ = false;
 };

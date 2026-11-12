@@ -3,6 +3,7 @@
 #include <string>
 
 /// <summary>Scene Asset から実行シーンへ渡す初期化情報です。</summary>
+// 関連：SceneSerializer（設定解決）、SceneManager / BaseScene（受渡し）
 struct SceneLoadContext {
     // シーンの識別子、表示名、実行クラスを分けて保持します。
     std::string sceneAssetId;

@@ -1,14 +1,16 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "Object3d.h"
+#include "Object3D.h"
 
 // 前方宣言
 class CollisionManager;
 
 /// <summary>
-/// ゲーム内 Object3d の追加、更新、描画、削除予約をまとめて扱う管理クラス。
+/// ゲーム内 Object3D の追加、更新、描画、削除予約をまとめて扱う管理クラス。
 /// </summary>
+// 関連：BaseSceneが追加・削除を要求し、更新中は予約して安全な時点でコンテナへ反映する。
+// 主な入口：AddObject / RequestRemove / ApplyPendingChanges / Update
 class ObjectManager {
   public:
     /// <summary>
@@ -24,21 +26,21 @@ class ObjectManager {
     /// <summary>
     /// 所有権を受け取り、衝突管理へは直ちに登録する。描画・更新リストへは次の反映時に追加する。
     /// </summary>
-    void AddObject(std::unique_ptr<engine::Object3d> object);
+    void AddObject(std::unique_ptr<engine::Object3D> object);
 
     /// <summary>EditorやReplayが直後に参照・描画できるよう、行列を確定して即時登録する。</summary>
     /// <returns>登録したオブジェクトへの非所有ポインター。</returns>
-    engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object);
+    engine::Object3D* AddObjectImmediate(std::unique_ptr<engine::Object3D> object);
 
     /// <summary>衝突登録と削除予約を外し、管理中のオブジェクトの所有権を取り出す。</summary>
     /// <returns>対象が見つからなければ空のunique_ptr。</returns>
-    std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object);
+    std::unique_ptr<engine::Object3D> TakeObjectImmediate(engine::Object3D* object);
 
     /// <summary>
     /// 管理中のオブジェクトを即座に非表示にし、走査終了後に衝突登録を解除する。
     /// リプレイ保持中を除き、所有権もその時点で破棄する。
     /// </summary>
-    void RequestRemove(engine::Object3d* object);
+    void RequestRemove(engine::Object3D* object);
 
     /// <summary>AIを進めず、新規Objectの描画行列を確定して保留中の追加・削除を反映する。</summary>
     void ApplyPendingChanges();
@@ -46,7 +48,7 @@ class ObjectManager {
     /// <summary>
     /// シーンやローダーから直接参照するためのオブジェクトリスト。
     /// </summary>
-    const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const { return objects_; }
+    const std::vector<std::unique_ptr<engine::Object3D>>& GetObjects() const { return objects_; }
 
     /// <summary>
     /// シャドウパス用の描画を行う。
@@ -58,7 +60,7 @@ class ObjectManager {
     void ProcessRemovals();
 
   private:
-    std::vector<std::unique_ptr<engine::Object3d>> objects_;
-    std::vector<std::unique_ptr<engine::Object3d>> pendingObjects_; // 更新中に追加されたオブジェクトの待機場所。
-    std::vector<engine::Object3d*> removalList_;                    // 削除予約されたオブジェクト。
+    std::vector<std::unique_ptr<engine::Object3D>> objects_;
+    std::vector<std::unique_ptr<engine::Object3D>> pendingObjects_; // 更新中に追加されたオブジェクトの待機場所。
+    std::vector<engine::Object3D*> removalList_;                    // 削除予約されたオブジェクト。
 };

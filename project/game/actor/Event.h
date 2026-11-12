@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 #include <string>
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 class Bullet;
 
 /// <summary>
@@ -9,14 +9,14 @@ class Bullet;
 /// </summary>
 // PlayerHitEventは、プレイヤーが何かに接触したときの通知データです。
 struct PlayerHitEvent {
-    engine::Object3d* me = nullptr;
-    engine::Object3d* hitObject = nullptr; // ぶつかった相手（罠、アイテムなど）
+    engine::Object3D* me = nullptr;
+    engine::Object3D* hitObject = nullptr; // ぶつかった相手（罠、アイテムなど）
     engine::Vector3 normal = engine::Vector3::ZERO;
 };
 
 // BulletHitEventは、弾がObject3dへ当たったときの通知データです。
 struct BulletHitEvent {
-    engine::Object3d* hitObject; // 衝突した相手
+    engine::Object3D* hitObject; // 衝突した相手
     Bullet* bullet;      // 衝突した弾
 };
 
@@ -40,7 +40,7 @@ enum class DamageType {
 struct StatusEffectApplication {
     StatusEffectType type = StatusEffectType::None;
     float duration = 0.0f;
-    float tickInterval = 0.5f;
+    float tickInterval = 0.5f; // 継続ダメージを発生させる間隔（秒）。
     float tickDamage = 0.0f;
     std::string vfxPreset;
 
@@ -49,8 +49,8 @@ struct StatusEffectApplication {
 
 // DamageEventは、ダメージ対象、攻撃者、ダメージ量、ノックバックをまとめます。
 struct DamageEvent {
-    engine::Object3d* target = nullptr;            // ダメージを受ける人
-    engine::Object3d* attacker = nullptr;          // 攻撃した人
+    engine::Object3D* target = nullptr;            // ダメージを受ける人
+    engine::Object3D* attacker = nullptr;          // 攻撃した人
     float damageAmount = 0.0f;             // ダメージ量
     engine::Vector3 knockbackVelocity = engine::Vector3::ZERO; // 追加：吹き飛ばしベクトル
     float invincibilityDuration = 1.0f;    // 被弾後に操作を守る無敵時間
@@ -77,7 +77,7 @@ enum class EventType {
     None = 0,     // なし
     Damage,       // ダメージ
     Warp,         // ワープ
-    Movie_Bridge, // 映像演出
+    MovieBridge, // 映像演出
     Checkpoint,   // 中間地点
     Goal,         // ゴール
     StageSelect,  // ステージセレクト

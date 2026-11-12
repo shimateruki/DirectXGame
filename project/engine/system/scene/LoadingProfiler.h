@@ -33,17 +33,22 @@ inline std::chrono::steady_clock::time_point& StartupProfileStartTime() {
     return startTime;
 }
 
+// 起動時間の計測基準を現在時刻へ戻す。
 inline void BeginStartupProfile() {
     StartupProfileStartTime() = std::chrono::steady_clock::now();
 }
 
+// 起動基準からの経過ミリ秒を、指定の区切り名で記録する。
 inline void LogStartupProfileCheckpoint(const std::string& checkpoint) {
     const double elapsedMs = std::chrono::duration<double, std::milli>(
         std::chrono::steady_clock::now() - StartupProfileStartTime()).count();
     LogSlowLoadingOperation("Startup / " + checkpoint + " (elapsed)", elapsedMs);
 }
 
-// スコープ内の同期処理を測る。16ms未満の短い処理は従来のログ方針に従い省略する。
+// 担当：スコープの処理時間を測り、起動・ロード計測ログへ記録する。
+// 関連：LogSlowLoadingOperation（出力）、BeginStartupProfile（起動計測の基準）
+// 主な入口：StartupProfileScope / ~StartupProfileScope
+// 16ms未満は既存のログ出力方針に従い省略する。
 class StartupProfileScope {
 public:
     explicit StartupProfileScope(std::string operation)

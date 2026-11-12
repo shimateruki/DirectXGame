@@ -1,4 +1,6 @@
 ﻿#pragma once
+
+// 各ICopyAbilitySessionが使う照準・ダメージ通知・表示生成の補助。能力の入力状態や寿命は各セッションが管理する。
 #include "game/actor/combat/CombatMath.h"
 #include <numbers>
 #include "CopyAbilitySession.h"
@@ -17,13 +19,13 @@
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "game/crown/CrownFinaleTuning.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/combat/HitEffectDirector.h"
 #include "MeshEffectManager.h"
 #include "Player.h"
 #include "game/actor/player/state/PlayerState.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -55,7 +57,7 @@ inline void SpawnScopedEffect(MeshEffectManager::EffectScopeId scopeId, const ch
 
 inline void EmitPreset(const char* preset, const engine::Vector3& position) {
     // 初期化前に能力演出が要求されても GPU エミッタへは渡さない。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
     if (particles && particles->IsInitialized()) {
         particles->Emit(preset, position);
     }
@@ -63,7 +65,7 @@ inline void EmitPreset(const char* preset, const engine::Vector3& position) {
 
 inline void EmitDirectedPreset(const char* preset, const engine::Vector3& position, const engine::Vector3& direction,
                                float scale = 1.0f) {
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
     if (particles && particles->IsInitialized()) {
         particles->EmitDirected(preset, position, direction, scale);
     }
@@ -79,9 +81,9 @@ inline void SpawnDebrisOnGround(const char* presetName, const engine::Vector3& p
     }
 }
 
-inline engine::Object3d* FindEnemyRoot(engine::Object3d* object) {
+inline engine::Object3D* FindEnemyRoot(engine::Object3D* object) {
     // 当たった子オブジェクトから親をたどり、ダメージを受ける敵本体を返す。
-    for (engine::Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3D* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -89,7 +91,7 @@ inline engine::Object3d* FindEnemyRoot(engine::Object3d* object) {
     return nullptr;
 }
 
-inline void DamageEnemy(Player& player, engine::Object3d* target, float damage, DamageType type, const engine::Vector3& knockback,
+inline void DamageEnemy(Player& player, engine::Object3D* target, float damage, DamageType type, const engine::Vector3& knockback,
                         const StatusEffectApplication& status = {}) {
     if (!target) {
         return;
@@ -110,9 +112,9 @@ inline void DamageSphere(Player& player, const engine::Vector3& center, float ra
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("enemy");
     filter.ignoredObject = &player;
-    std::unordered_set<engine::Object3d*> damaged;
+    std::unordered_set<engine::Object3D*> damaged;
     for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, radius, filter)) {
-        engine::Object3d* target = FindEnemyRoot(hit.object);
+        engine::Object3D* target = FindEnemyRoot(hit.object);
         if (!target || !damaged.insert(target).second) {
             continue;
         }

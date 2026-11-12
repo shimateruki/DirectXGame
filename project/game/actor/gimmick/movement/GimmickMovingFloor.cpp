@@ -29,21 +29,21 @@ constexpr float kFloatPitchScale = 0.025f;
 constexpr float kFloatRollScale = 0.035f;
 constexpr float kTwoPi = (2.0f * std::numbers::pi_v<float>);
 
-bool HasCurvedSupportBelow(engine::Object3d& floor, const Player& player) {
+bool HasCurvedSupportBelow(engine::Object3D& floor, const Player& player) {
     // 互換モーターは接地相手を保持しないため、曲面の実形状を足元だけ照会する。
     // AABB最高点との比較では、円柱が少し回っただけで乗車が途切れてしまう。
     if (auto* collider = floor.GetCollider(); collider && collider->HasModelVolume() &&
         (floor.GetCollisionAttribute() & CollisionCategories::Get("ground"))) {
         // 足の中心だけのレイでは、箱形の足の端が曲面に乗る接触を見落とす。
         // 実際の身体の幅を使い、押し戻し直後の隙間だけ下へ補う。
-        auto bounds = player.GetAABB();
+        auto bounds = player.GetAabb();
         bounds.min.y -= 0.08f;
         Transform queryTransform;
         queryTransform.translate = (bounds.min + bounds.max) * 0.5f;
         queryTransform.UpdateMatrix();
         Collider query(&queryTransform);
         ColliderConfig config;
-        config.type = ColliderType::kAABB;
+        config.type = ColliderType::Aabb;
         config.size = (bounds.max - bounds.min) * 0.5f;
         query.SetConfig(config);
         const auto contact = query.CheckCollision(collider);
@@ -57,7 +57,7 @@ bool HasCurvedSupportBelow(engine::Object3d& floor, const Player& player) {
 }
 } // namespace
 
-void GimmickMovingFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickMovingFloor::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 床として接地判定できる属性を与え、旧データの速度欠落を補う。
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
@@ -75,7 +75,7 @@ void GimmickMovingFloor::Initialize(engine::Object3dCommon* common, const std::s
     using Self = GimmickMovingFloor;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "移動床",
         "噴出口連動ではTarget IDを噴出口のMy Event IDへ接続します。高さと周期は噴出口側、記録軌道はGhost Recorderで調整します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Accessor<std::string>("乗車開始タイムライン", "rideSequence", "components.PathMover.rideSequence",
         [](const Self& object) {
             const auto* path = object.GetPathMoverComponent();
@@ -186,7 +186,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         // キャラクター自身を回転させず、ジャンプで離れた後はこの処理の対象外にする。
         for (auto* actor : passengers) {
             const auto worldPosition = actor->GetWorldPosition();
-            const engine::Vector3 contact = {worldPosition.x, actor->GetAABB().min.y, worldPosition.z};
+            const engine::Vector3 contact = {worldPosition.x, actor->GetAabb().min.y, worldPosition.z};
             const auto localContact = engine::Math::Transform(contact, previousInverse);
             const auto displacement = engine::Math::Transform(localContact, GetWorldMatrix()) - contact;
             const auto nextWorld = worldPosition + displacement;
@@ -224,11 +224,11 @@ void GimmickMovingFloor::Update(float deltaTime) {
 
     if (actionMode == 5) {
         // Target IDで噴出口に接続する。未接続なら原点で待機する。
-        if (scene && GetTargetID() >= 0 && SceneManager::GetInstance()->IsPlaying()) {
+        if (scene && GetTargetId() >= 0 && SceneManager::GetInstance()->IsPlaying()) {
             for (const auto& object : scene->GetObjects()) {
                 auto* geyser = dynamic_cast<GimmickMagmaGeyser*>(object.get());
 
-                if (geyser && geyser->GetEventID() == GetTargetID()) {
+                if (geyser && geyser->GetEventId() == GetTargetId()) {
                     SetEmissive(0.10f + geyser->GetWarningProgress() * 0.65f);
                     const float desiredY = startPosition_.y + geyser->GetLiftOffset();
                     const float maxStep = 12.0f * (std::max)(0.0f, deltaTime);
@@ -269,13 +269,13 @@ void GimmickMovingFloor::Update(float deltaTime) {
     carryPassengers();
 }
 
-bool GimmickMovingFloor::OnCollision(engine::Object3d* other) {
+bool GimmickMovingFloor::OnCollision(engine::Object3D* other) {
     // 全移動床で更新前に乗員を運ぶ。衝突処理は押し戻しだけにする。
     (void)other;
     return true;
 }
 
-std::unique_ptr<engine::Object3d> GimmickMovingFloor::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickMovingFloor::Clone() const {
     // 複製時は配置と設定だけを引き継ぎ、乗員・周期・原点は再生時に再取得する。
     auto clone = std::make_unique<GimmickMovingFloor>();
     clone->Initialize(GetObjectCommon(), GetModelName());

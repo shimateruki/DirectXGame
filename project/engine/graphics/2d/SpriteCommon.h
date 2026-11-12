@@ -6,9 +6,9 @@ class DirectXCommon;
 
 namespace engine {
 
-/// <summary>
-/// Sprite描画で共有するルートシグネチャとパイプラインを管理する。
-/// </summary>
+// 担当：Sprite描画で共有するルートシグネチャとパイプラインを管理する。
+// 関連：RenderCommonResources（所有）、DirectXCommon（GPU基盤）、Sprite（利用）
+// 主な入口：Initialize / SetPipeline
 class SpriteCommon {
 public:
     /// <summary>DirectX基盤からSprite用GPUパイプラインを作成する。</summary>

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "45e2fbf011634c31f18a582d39c843e4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/crown_lance_trail/crown_lance_trail.obj",
+  "version": 1
+}

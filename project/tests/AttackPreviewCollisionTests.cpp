@@ -28,7 +28,7 @@ int main() {
         projectileTransform.UpdateMatrix();
         Collider projectile(&projectileTransform);
         ColliderConfig projectileConfig;
-        projectileConfig.type = ColliderType::kSphere;
+        projectileConfig.type = ColliderType::Sphere;
         projectileConfig.size = {0.6f, 0.6f, 0.6f};
         projectile.SetConfig(projectileConfig);
         projectile.SetScaleOverride({1, 1, 1});
@@ -42,7 +42,7 @@ int main() {
         projectileTransform.UpdateMatrix();
         if (projectile.CheckCollision(&target).isColliding)
             throw std::runtime_error("separated projectile reported contact");
-        targetConfig.type = ColliderType::kNone;
+        targetConfig.type = ColliderType::None;
         target.SetConfig(targetConfig);
         projectileTransform.translate = {};
         projectileTransform.UpdateMatrix();

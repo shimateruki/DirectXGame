@@ -473,14 +473,14 @@ def build_step() -> ObjBuilder:
     tread_depth = total_depth / step_count
     base_bottom = -3.15
 
-    # カメラが最下段の前面へ潜り込まないよう、階段の手前に十分な奥行きの到着床を設けます。
-    # Stage3上ではこのモデルをZ=37へ置くため、到着床はZ=49～59の範囲になります。
-    landing_center_z = total_depth * 0.5 + 5.0
-    model.box("StoneDark", (0.0, (base_bottom - 2.40) * 0.5, landing_center_z), (6.20, 0.42, 5.0))
-    model.box("PavingA", (0.0, -2.365, landing_center_z), (6.20, 0.035, 4.96))
-    model.box("Grass", (0.0, -2.315, landing_center_z), (4.95, 0.025, 4.42))
+    # 階段と同じ幅・素材で準備用の踊り場を延長する。Stage3の配置Z=55.2で世界Z=68.7～101.0。
+    landing_half_depth = (45.8 - total_depth * 0.5) * 0.5
+    landing_center_z = total_depth * 0.5 + landing_half_depth
+    model.box("StoneDark", (0.0, (base_bottom - 2.40) * 0.5, landing_center_z), (6.20, 0.42, landing_half_depth))
+    model.box("PavingA", (0.0, -2.365, landing_center_z), (6.20, 0.035, landing_half_depth - 0.04))
+    model.box("Grass", (0.0, -2.315, landing_center_z), (4.95, 0.025, landing_half_depth - 0.08))
     for x in (-5.72, 5.72):
-        model.box("StoneLight", (x, -2.04, landing_center_z), (0.48, 0.36, 4.94))
+        model.box("StoneLight", (x, -2.04, landing_center_z), (0.48, 0.36, landing_half_depth - 0.06))
 
     for index in range(step_count):
         # 入口側を2.4m下げ、闘技場側まで一段0.4mずつ上る九段の実階段にします。

@@ -4,21 +4,23 @@
 class Player;
 
 // 上から踏むと大ジャンプするジャンプ台ギミック
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision
 class GimmickTrampoline : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
     static constexpr const char* kTypeId = "Trampoline";
     static constexpr const char* kModelPath = "Gimmicks/mushroom_trampoline";
 
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 保存済みの配置スケールを基準に、着地直後につぶれ、ばねで戻る。
     void Update(float deltaTime) override;
 
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     // 複製後も専用の衝突・反発動作を保つ。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // プレイヤーから見た接触法線を受け取り、上面への着地だけを反発へ変える。
     bool TryBounce(Player* player, const engine::Vector3& playerGroundNormal);

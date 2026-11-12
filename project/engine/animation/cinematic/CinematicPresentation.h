@@ -8,6 +8,7 @@
 namespace engine {
 
 // 既存移動トラックと見た目キーで、姿勢の形式を共有する。
+// 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicTransformKey {
     // 時刻はシーケンス先頭からの秒数、rotation はラジアン、scale は各軸の倍率。
     float time = 0.0f;
@@ -18,6 +19,7 @@ struct CinematicTransformKey {
 // 区間探索は全キー列で共有する。離散値の補間方法は呼び出し側で指定する。
 // keys は time の昇順が前提。空なら既定値、範囲外なら端のキーを返す。
 template<class Key, class Blend>
+// 指定秒の両側のキーを探し、呼出側の補間関数で値を求める。
 Key SampleCinematicKeys(const std::vector<Key>& keys, float time, Blend blend) {
     if (keys.empty()) return {};
     auto upper = std::upper_bound(keys.begin(), keys.end(), time,
@@ -31,6 +33,7 @@ Key SampleCinematicKeys(const std::vector<Key>& keys, float time, Blend blend) {
 CinematicTransformKey InterpolateCinematicTransform(const CinematicTransformKey& a,
     const CinematicTransformKey& b, float time, bool continuousRotation = false);
 
+// 指定秒の位置・回転・拡縮をキー間で補間する。
 inline CinematicTransformKey SampleCinematicTransform(const std::vector<CinematicTransformKey>& keys, float time) {
     return SampleCinematicKeys(keys, time, [](const auto& a, const auto& b, float t) {
         return InterpolateCinematicTransform(a, b, t);
@@ -38,6 +41,7 @@ inline CinematicTransformKey SampleCinematicTransform(const std::vector<Cinemati
 }
 
 // 演出Objectの姿勢と見た目を同じ時刻から評価する。再生時の所有状態は含めない。
+// 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicVisualKey : CinematicTransformKey {
     CinematicVisualKey() { easingToNext = 0; }
     engine::Vector4 color{1, 1, 1, 1};
@@ -49,6 +53,7 @@ struct CinematicVisualKey : CinematicTransformKey {
 };
 
 // spawn=trueの部品は再生器が所有する。falseならシーンの既存Objectを操作する。
+// 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicObjectClip {
     std::string name, model, source;
     std::string positionSpace = "world";
@@ -67,6 +72,7 @@ struct CinematicObjectClip {
 };
 
 // 2対象の間へ注視点を補間し、対象に向いた座標系でカメラ位置を指定する。
+// 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicViewKey {
     // 空なら従来の2対象を使用する。指定時はその時刻の対象位置を注視する。
     std::string reference, lookToward, eyeReference;
@@ -76,6 +82,7 @@ struct CinematicViewKey {
 };
 
 // 移動する発生点から一定間隔で粒子を出す。シーク中は発火しない。
+// 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicParticleClip {
     std::string target, preset, directionMode = "fixed";
     // 開始・終了時刻と発生間隔は秒単位。方向と拡縮は粒子生成時に適用する。
@@ -84,6 +91,7 @@ struct CinematicParticleClip {
 };
 
 // カットシーンに含まれる一時部品・カメラ・粒子。ゲーム固有のクラスや状態は参照しない。
+// 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicPresentation {
     std::string reference, lookToward;
     bool viewWorldSpace = false;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "97055caa77d94dfba0e60e4cebd0e8c5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_red/slime_red_hurt.gltf",
+  "version": 1
+}

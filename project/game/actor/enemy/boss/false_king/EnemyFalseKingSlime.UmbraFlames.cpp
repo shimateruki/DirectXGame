@@ -49,7 +49,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
                                           engine::Vector2{nearDistance + fanLength * 0.879f, -farWidth * 0.380f},
                                           engine::Vector2{nearDistance + fanLength * 0.879f, 0.0f},
                                           engine::Vector2{nearDistance + fanLength * 0.879f, farWidth * 0.380f}};
-    umbraFlameNetwork_ = std::make_unique<EffectObject3d>();
+    umbraFlameNetwork_ = std::make_unique<EffectObject3D>();
     umbraFlameNetwork_->Initialize(GetObjectCommon());
 
     if (!umbraFlameNetwork_->LoadFromJson(kUmbraFlameNetworkEffect)) {
@@ -67,7 +67,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
             FindGroundPoint(attackStartPosition_ + forward * nodes[index].x + right * nodes[index].y);
         portal.delay = static_cast<float>(index) * 0.12f;
         portal.age = -portal.delay;
-        portal.sigil = std::make_unique<EffectObject3d>();
+        portal.sigil = std::make_unique<EffectObject3D>();
         portal.sigil->Initialize(GetObjectCommon());
 
         if (!portal.sigil->LoadFromJson(kUmbraFlameSigilEffect)) {
@@ -86,7 +86,7 @@ void EnemyFalseKingSlime::PrepareUmbraFlames() {
         }
 
         if (portal.flame) {
-            portal.flame->SetBlendMode(BlendMode::kNormal);
+            portal.flame->SetBlendMode(BlendMode::Normal);
             portal.flame->SetIsVisible(false);
 
             if (MeshRenderer* renderer = portal.flame->GetMeshRenderer()) {

@@ -6,9 +6,9 @@
 
 namespace engine { class SpriteCommon; }
 
-/// <summary>
-/// フォント画像を文字ごとのSpriteへ分けて描画する。
-/// </summary>
+// 担当：フォント画像を文字ごとのSpriteとして並べ、文字列を描画する。
+// 関連：Sprite（文字の描画）、SpriteCommon（共有描画基盤）
+// 主な入口：Initialize / SetString / Update / Draw
 class Text {
 public:
     /// <summary>フォント画像を読み込み、文字Spriteを生成できる状態にする。</summary>
@@ -37,8 +37,8 @@ public:
 
 
 private:
-    engine::SpriteCommon* common_ = nullptr;
-    uint32_t fontTextureHandle_ = 0;
+    engine::SpriteCommon* common_ = nullptr; // 文字Spriteが使う共有描画基盤。
+    uint32_t fontTextureHandle_ = 0; // 文字を切り出すフォント画像のハンドル。
 
     // 1文字あたりのスプライトを保持する
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
@@ -49,7 +49,7 @@ private:
 
     // フォントテクスチャの1文字分のサイズ
     int fontWidth_ = 16;
-    int fontHeight_ = 16;
+    int fontHeight_ = 16; // 一文字の元画像の高さ（ピクセル）。
 
     // フォントテクスチャの横に並んでいる文字数
     int fontCharsPerRow_ = 7;

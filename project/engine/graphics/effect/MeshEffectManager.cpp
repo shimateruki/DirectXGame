@@ -17,6 +17,8 @@ using json = nlohmann::json;
 
 namespace {
 // 解析済みのプリセットと取得できた更新時刻。時刻が一致するときだけ再読込を省く。
+// 担当：解析済みエフェクトJSONと、再読込判定用の更新時刻。
+// 関連：MeshEffectManagerの内部処理だけで使う補助型。
 struct EffectJsonCacheEntry {
     json data;
     std::filesystem::file_time_type writeTime{};
@@ -63,7 +65,7 @@ MeshEffectManager* MeshEffectManager::GetInstance() {
     return &instance;
 }
 
-void MeshEffectManager::Initialize(engine::Object3dCommon* common) {
+void MeshEffectManager::Initialize(engine::Object3DCommon* common) {
     // エフェクト自身も生成時のcommonを保持します。管理側のポインタだけを
     // 差し替えると、前Sceneの描画基盤を参照したエフェクトが描画されます。
     if (common_ != common)
@@ -76,8 +78,10 @@ void MeshEffectManager::ClearActiveEffects() {
     // 所有物を消す前に、衝突管理とデバッグ表示の非所有参照を解除します。
     for (const auto& effect : activeEffects_) {
         // 編集途中で判定フラグをOFFにした場合も、以前の登録を残しません。
-        if (effect)
+        if (effect) {
             CollisionManager::GetInstance()->RemoveObject(effect.get());
+            reusableEffects_.erase(effect.get());
+        }
     }
 
     previewEffectForDebug_ = nullptr;
@@ -90,9 +94,27 @@ void MeshEffectManager::ClearActiveEffects() {
 
 void MeshEffectManager::Clear() {
     ClearActiveEffects();
+    recycledEffects_.clear();
+    reusableEffects_.clear();
     preloadedEffects_.clear();
+    EffectObject3D::ClearProceduralMeshCache();
     common_ = nullptr;
     timeScale_ = 1.0f;
+}
+
+void MeshEffectManager::RecycleEffect(std::unique_ptr<EffectObject3D> effect) {
+    if (!effect) return;
+    const bool reusable = reusableEffects_.erase(effect.get()) != 0;
+    // 編集対象の個体は回収せず、未保存の変更が他の演出へ混ざるのを防ぎます。
+    if (previewEffectForDebug_ == effect.get()) {
+        previewEffectForDebug_ = nullptr;
+        return;
+    }
+    if (reusable && !effect->GetMeshSettings().hasCollision && !effect->GetParent() &&
+        recycledEffects_.size() < kMaxRecycledEffects) {
+        CollisionManager::GetInstance()->RemoveObject(effect.get());
+        recycledEffects_.push_back(std::move(effect));
+    }
 }
 
 void MeshEffectManager::BeginFrame() {
@@ -109,7 +131,7 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
         SceneManager* sm = SceneManager::GetInstance();
 
         if (sm && sm->GetCurrentScene()) {
-            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+            common_ = sm->GetCurrentScene()->GetObject3DCommon();
         }
     }
 
@@ -133,7 +155,7 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
         return;
     }
 
-    auto effect = std::make_unique<EffectObject3d>();
+    auto effect = std::make_unique<EffectObject3D>();
 
     // 設定ファイルに値がない項目は安全な初期値に戻してから、存在する項目だけ適用する。
     effect->Initialize(common_);
@@ -194,60 +216,63 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
 
         if (procType >= 1) {
             if (j.contains("SlashAngle"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, j["SlashAngle"]);
             if (j.contains("InnerRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, j["InnerRadius"]);
             if (j.contains("OuterRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::outerRadius, j["OuterRadius"]);
             if (j.contains("Thickness"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::thickness, j["Thickness"]);
             if (j.contains("SpiralPitch"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::spiralPitch, j["SpiralPitch"]);
             if (j.contains("ThrustLength"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::thrustLength, j["ThrustLength"]);
             if (j.contains("ThrustRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::thrustRadius, j["ThrustRadius"]);
             if (j.contains("SphereRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, j["SphereRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRadius, j["SphereRadius"]);
             if (j.contains("SphereRings"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, j["SphereRings"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRings, j["SphereRings"]);
             if (j.contains("CylinderRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, j["CylinderRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderRadius, j["CylinderRadius"]);
             if (j.contains("CylinderHeight"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, j["CylinderHeight"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderHeight, j["CylinderHeight"]);
             if (j.contains("BoxSize")) {
-                effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
-                effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
-                effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
+                effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
+                effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
+                effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
             }
             if (j.contains("PlaneSize")) {
-                effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
-                effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
+                effect->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
+                effect->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
             }
             if (j.contains("TorusMajorRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
             if (j.contains("TorusMinorRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
             if (j.contains("ConeRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, j["ConeRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::coneRadius, j["ConeRadius"]);
             if (j.contains("ConeHeight"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, j["ConeHeight"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::coneHeight, j["ConeHeight"]);
             if (j.contains("RingOuterRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
             if (j.contains("RingInnerRadius"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
             if (j.contains("TriangleSize"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, j["TriangleSize"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::triangleSize, j["TriangleSize"]);
             if (j.contains("MeshSegments"))
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, j["MeshSegments"]);
             if (j.contains("UvTiling")) {
-                effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
-                effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
+                effect->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
+                effect->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
             }
             effect->UpdateProceduralMesh();
         }
     }
 
+    // プリロードで確保した表示物も、単発演出の初回に再利用します。
+    if (recycledEffects_.size() < kMaxRecycledEffects)
+        recycledEffects_.push_back(std::move(effect));
     preloadedEffects_.insert(jsonFilePath);
 }
 
@@ -270,7 +295,7 @@ void MeshEffectManager::Update(float deltaTime) {
         }
 
         if (!(*it)->IsPlaying()) {
-            EffectObject3d* finishedEffect = it->get();
+            EffectObject3D* finishedEffect = it->get();
 
             if ((*it)->GetMeshSettings().hasCollision) {
                 CollisionManager::GetInstance()->RemoveObject(it->get());
@@ -279,10 +304,7 @@ void MeshEffectManager::Update(float deltaTime) {
             // 再生が終了したエフェクトは、所有スコープの追跡情報も同時に破棄します。
             effectScopes_.erase(finishedEffect);
 
-            if (previewEffectForDebug_ == finishedEffect) {
-                previewEffectForDebug_ = nullptr;
-            }
-
+            RecycleEffect(std::move(*it));
             it = activeEffects_.erase(it);
         }
         else {
@@ -319,7 +341,7 @@ bool MeshEffectManager::RequiresSceneColorCopy() const {
     return std::any_of(
         activeEffects_.begin(),
         activeEffects_.end(),
-        [](const std::unique_ptr<EffectObject3d>& effect) {
+        [](const std::unique_ptr<EffectObject3D>& effect) {
             return effect && effect->IsPlaying() && effect->IsDistortionEnabled();
         });
 }
@@ -344,7 +366,7 @@ void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
     timelineScopes_.erase(scopeId);
 
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
-        EffectObject3d* effect = it->get();
+        EffectObject3D* effect = it->get();
         const auto scopeIt = effectScopes_.find(effect);
 
         if (scopeIt == effectScopes_.end() || scopeIt->second != scopeId) {
@@ -357,12 +379,9 @@ void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
             CollisionManager::GetInstance()->RemoveObject(effect);
         }
 
-        if (previewEffectForDebug_ == effect) {
-            previewEffectForDebug_ = nullptr;
-        }
-
         effectScopes_.erase(scopeIt);
         timelineOffsets_.erase(effect);
+        RecycleEffect(std::move(*it));
         it = activeEffects_.erase(it);
     }
 }
@@ -379,6 +398,7 @@ bool MeshEffectManager::StartTimelineEffect(EffectScopeId scopeId, const std::st
     } catch (const std::exception& exception) {
         while (activeEffects_.size() > firstEffect) {
             effectScopes_.erase(activeEffects_.back().get());
+            reusableEffects_.erase(activeEffects_.back().get());
             activeEffects_.pop_back();
         }
 
@@ -397,7 +417,7 @@ bool MeshEffectManager::StartTimelineEffect(EffectScopeId scopeId, const std::st
         // 表示物のプリセットに衝突設定があっても、判定は専用トラックだけが担当します。
         if (effect->GetMeshSettings().hasCollision)
             CollisionManager::GetInstance()->RemoveObject(effect.get());
-        effect->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, false);
+        effect->SetMeshSetting(&EffectObject3D::MeshSettings::hasCollision, false);
         effect->SetTargetObject(nullptr);
         effect->SetAutoLoop(false);
         timelineOffsets_[effect.get()] = {effect->GetTranslate(), effect->GetRotation()};
@@ -410,15 +430,17 @@ bool MeshEffectManager::StartTimelineEffect(EffectScopeId scopeId, const std::st
 }
 
 void MeshEffectManager::EvaluateTimelineEffect(EffectScopeId scopeId, float time, float duration,
-    const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale) {
+    const engine::Vector3& position, const engine::Vector3& rotation, const engine::Vector3& scale,
+    bool preservePresetScale) {
     if (!timelineScopes_.count(scopeId))
         return;
     for (auto& effect : activeEffects_) {
         const auto it = effectScopes_.find(effect.get());
         if (it == effectScopes_.end() || it->second != scopeId)
             continue;
-        effect->Play(duration);
-        effect->Update(std::clamp(time, 0.0f, duration));
+        const float resolvedDuration = duration > 0.0f ? duration : effect->GetLifetime();
+        effect->Play(resolvedDuration);
+        effect->Update(std::clamp(time, 0.0f, (std::max)(0.0f, resolvedDuration)));
 
         // プリセット内部の位置・スケールアニメーションに重ねず、制作者のキーを優先します。
         const auto& offset = timelineOffsets_.at(effect.get());
@@ -426,19 +448,21 @@ void MeshEffectManager::EvaluateTimelineEffect(EffectScopeId scopeId, float time
         // VolumeModeの交差面・厚み用の相対配置を残して、部品全体を動かします。
         effect->SetTranslate(engine::Math::Transform(offset.position, engine::Math::MakeAffineMatrix(scale, rotation, position)));
         effect->SetRotation(rotation + offset.rotation);
-        effect->SetScale(scale);
+        const auto presetScale = effect->GetScale();
+        effect->SetScale(preservePresetScale ? engine::Vector3{
+            presetScale.x * scale.x, presetScale.y * scale.y, presetScale.z * scale.z} : scale);
         effect->UpdateLocalMatrix();
         effect->UpdateWorldMatrix();
     }
 }
 
-void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Object3d* baseObject, const engine::Vector3& extOffset, const engine::Vector3& extRot, const engine::Vector3& extScale) {
+void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Object3D* baseObject, const engine::Vector3& extOffset, const engine::Vector3& extRot, const engine::Vector3& extScale) {
     // common_ が null のとき、現在シーンから自動取得を試みる（Initialize呼び忘れ対策）
     if (!common_) {
         SceneManager* sm = SceneManager::GetInstance();
 
         if (sm && sm->GetCurrentScene()) {
-            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+            common_ = sm->GetCurrentScene()->GetObject3DCommon();
         }
     }
 
@@ -465,8 +489,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
     engine::Vector3 basePos = engine::Vector3::ZERO;
     float targetWorldY = 0.0f; // ★プレイヤーの「向き」
 
-    engine::Object3d* posTarget = baseObject; // 位置の基準
-    engine::Object3d* rotTarget = baseObject; // 向きの基準
+    engine::Object3D* posTarget = baseObject; // 位置の基準
+    engine::Object3D* rotTarget = baseObject; // 向きの基準
 
     // JSONでTargetNameが指定されている場合、特定のボーンなどを探す
     if (j.contains("TargetName")) {
@@ -477,13 +501,13 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
 
             if (sm && sm->GetCurrentScene()) {
                 auto& objects = sm->GetCurrentScene()->GetObjects();
-                std::function<engine::Object3d* (engine::Object3d*, const std::string&)> findObj = [&](engine::Object3d* obj, const std::string& name) -> engine::Object3d* {
+                std::function<engine::Object3D* (engine::Object3D*, const std::string&)> findObj = [&](engine::Object3D* obj, const std::string& name) -> engine::Object3D* {
                     if (!obj)
                         return nullptr;
                     if (obj->GetName() == name)
                         return obj;
                     for (auto* child : obj->GetChildren()) {
-                        engine::Object3d* found = findObj(child, name);
+                        engine::Object3D* found = findObj(child, name);
                         if (found)
                             return found;
                     }
@@ -492,7 +516,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
                     };
 
                 for (auto& obj : objects) {
-                    engine::Object3d* found = findObj(obj.get(), targetName);
+                    engine::Object3D* found = findObj(obj.get(), targetName);
 
                     if (found) {
                         posTarget = found; // 見つかったボーンを位置の基準にする
@@ -514,7 +538,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
 
     // ② 向き（Y回転）はボーンのねじれを完全に無視し、一番大元（ルート）の向きだけを取る！
     if (rotTarget) {
-        engine::Object3d* rootObj = rotTarget;
+        engine::Object3D* rootObj = rotTarget;
 
         // 親を辿って一番上のノード（プレイヤー本体など）を見つける
         while (rootObj && rootObj->GetParent()) {
@@ -563,7 +587,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
     // ★ 3. ループ生成
     // ==========================================
     for (int i = 0; i < numSpawns; ++i) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(common_);
 
         // 初期化リセット
@@ -639,55 +663,55 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
 
             if (procType >= 1) { // プロシージャルを使用する場合
                 if (j.contains("SlashAngle"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, j["SlashAngle"]);
                 if (j.contains("InnerRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, j["InnerRadius"]);
                 if (j.contains("OuterRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::outerRadius, j["OuterRadius"]);
                 if (j.contains("Thickness"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::thickness, j["Thickness"]);
                 if (j.contains("SpiralPitch"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::spiralPitch, j["SpiralPitch"]);
                 if (j.contains("ThrustLength"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::thrustLength, j["ThrustLength"]);
                 if (j.contains("ThrustRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::thrustRadius, j["ThrustRadius"]);
                 if (j.contains("SphereRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, j["SphereRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRadius, j["SphereRadius"]);
                 if (j.contains("SphereRings"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, j["SphereRings"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRings, j["SphereRings"]);
                 if (j.contains("CylinderRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, j["CylinderRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderRadius, j["CylinderRadius"]);
                 if (j.contains("CylinderHeight"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, j["CylinderHeight"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderHeight, j["CylinderHeight"]);
                 if (j.contains("BoxSize")) {
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
                 }
                 if (j.contains("PlaneSize")) {
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
                 }
                 if (j.contains("TorusMajorRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
                 if (j.contains("TorusMinorRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
                 if (j.contains("ConeRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, j["ConeRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::coneRadius, j["ConeRadius"]);
                 if (j.contains("ConeHeight"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, j["ConeHeight"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::coneHeight, j["ConeHeight"]);
                 if (j.contains("RingOuterRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
                 if (j.contains("RingInnerRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
                 if (j.contains("TriangleSize"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, j["TriangleSize"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::triangleSize, j["TriangleSize"]);
                 if (j.contains("MeshSegments"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, j["MeshSegments"]);
                 if (j.contains("UvTiling")) {
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
                 }
 
                 effect->UpdateProceduralMesh();
@@ -698,23 +722,23 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, engine::Obj
         // ★ 当たり判定(Collision)の復元とマネージャーへの登録
         // =========================================================
         if (j.contains("Collision")) {
-            effect->SetMeshSetting(&EffectObject3d::MeshSettings::hasCollision, j["Collision"]["HasCollision"]);
+            effect->SetMeshSetting(&EffectObject3D::MeshSettings::hasCollision, j["Collision"]["HasCollision"]);
 
             if (effect->GetMeshSettings().hasCollision) {
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::collisionShape, j["Collision"]["Shape"]);
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::collisionSize, { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] });
-                effect->SetMeshSetting(&EffectObject3d::MeshSettings::collisionOffset, { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] });
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::collisionShape, j["Collision"]["Shape"]);
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::collisionSize, { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] });
+                effect->SetMeshSetting(&EffectObject3D::MeshSettings::collisionOffset, { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] });
 
-                ColliderType cType = ColliderType::kNone;
+                ColliderType cType = ColliderType::None;
                 if (effect->GetMeshSettings().collisionShape == 0)
-                    cType = ColliderType::kSphere;
-                else if (effect->GetMeshSettings().collisionShape == 1) cType = ColliderType::kAABB;
-                else if (effect->GetMeshSettings().collisionShape == 2) cType = ColliderType::kOBB;
+                    cType = ColliderType::Sphere;
+                else if (effect->GetMeshSettings().collisionShape == 1) cType = ColliderType::Aabb;
+                else if (effect->GetMeshSettings().collisionShape == 2) cType = ColliderType::Obb;
 
                 // =======================================================
                 // ★ 修正箇所: 現在の設定を取り出して、正しく上書きする！
                 // =======================================================
-                engine::Object3d::ColliderConfig cConfig = effect->GetColliderConfig();
+                engine::Object3D::ColliderConfig cConfig = effect->GetColliderConfig();
                 cConfig.type = cType;
                 cConfig.size = effect->GetMeshSettings().collisionSize;
                 cConfig.center = effect->GetMeshSettings().collisionOffset;
@@ -787,7 +811,7 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const eng
         SceneManager* sm = SceneManager::GetInstance();
 
         if (sm && sm->GetCurrentScene()) {
-            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+            common_ = sm->GetCurrentScene()->GetObject3DCommon();
         }
     }
 
@@ -819,8 +843,15 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const eng
     localZ.z = cosf(worldRot.y) * cosf(worldRot.x);
 
     for (int i = 0; i < numSpawns; ++i) {
-        auto effect = std::make_unique<EffectObject3d>();
-        effect->Initialize(common_);
+        std::unique_ptr<EffectObject3D> effect;
+        if (!recycledEffects_.empty()) {
+            effect = std::move(recycledEffects_.back());
+            recycledEffects_.pop_back();
+            effect->ResetForReuse();
+        } else {
+            effect = std::make_unique<EffectObject3D>();
+            effect->Initialize(common_);
+        }
 
         // 初期化リセット
         effect->SetProceduralType(0);
@@ -893,55 +924,55 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const eng
 
             if (procType >= 1) {
                 if (j.contains("SlashAngle"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, j["SlashAngle"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, j["SlashAngle"]);
                 if (j.contains("InnerRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, j["InnerRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, j["InnerRadius"]);
                 if (j.contains("OuterRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::outerRadius, j["OuterRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::outerRadius, j["OuterRadius"]);
                 if (j.contains("Thickness"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thickness, j["Thickness"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::thickness, j["Thickness"]);
                 if (j.contains("SpiralPitch"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::spiralPitch, j["SpiralPitch"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::spiralPitch, j["SpiralPitch"]);
                 if (j.contains("ThrustLength"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustLength, j["ThrustLength"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::thrustLength, j["ThrustLength"]);
                 if (j.contains("ThrustRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::thrustRadius, j["ThrustRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::thrustRadius, j["ThrustRadius"]);
                 if (j.contains("SphereRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRadius, j["SphereRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRadius, j["SphereRadius"]);
                 if (j.contains("SphereRings"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::sphereRings, j["SphereRings"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRings, j["SphereRings"]);
                 if (j.contains("CylinderRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, j["CylinderRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderRadius, j["CylinderRadius"]);
                 if (j.contains("CylinderHeight"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, j["CylinderHeight"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderHeight, j["CylinderHeight"]);
                 if (j.contains("BoxSize"))    {
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
                 }
                 if (j.contains("PlaneSize"))  {
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
                 }
                 if (j.contains("TorusMajorRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
                 if (j.contains("TorusMinorRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
                 if (j.contains("ConeRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneRadius, j["ConeRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::coneRadius, j["ConeRadius"]);
                 if (j.contains("ConeHeight"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::coneHeight, j["ConeHeight"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::coneHeight, j["ConeHeight"]);
                 if (j.contains("RingOuterRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
                 if (j.contains("RingInnerRadius"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
                 if (j.contains("TriangleSize"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::triangleSize, j["TriangleSize"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::triangleSize, j["TriangleSize"]);
                 if (j.contains("MeshSegments"))
-                    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, j["MeshSegments"]);
+                    effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, j["MeshSegments"]);
                 if (j.contains("UvTiling")) {
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
-                    effect->SetMeshComponent(&EffectObject3d::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
+                    effect->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
                 }
                 effect->UpdateProceduralMesh();
             }
@@ -976,6 +1007,9 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const eng
         effect->UpdateLocalMatrix();
         effect->UpdateWorldMatrix();
 
+        // 衝突付きや親子付きのObjectは回収対象にしません。
+        if (!effect->GetMeshSettings().hasCollision && !effect->GetParent())
+            reusableEffects_.insert(effect.get());
         activeEffects_.push_back(std::move(effect));
     }
 }
@@ -1005,14 +1039,14 @@ void MeshEffectManager::SpawnRingWaveEffect(const engine::Vector3& position) {
         auto sm = SceneManager::GetInstance();
 
         if (sm->GetCurrentScene()) {
-            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+            common_ = sm->GetCurrentScene()->GetObject3DCommon();
         }
     }
 
     if (!common_)
         return;
 
-    auto effect = std::make_unique<EffectObject3d>();
+    auto effect = std::make_unique<EffectObject3D>();
     effect->Initialize(common_);
 
     // エフェクトの基本設定リセット
@@ -1042,12 +1076,12 @@ void MeshEffectManager::SpawnRingWaveEffect(const engine::Vector3& position) {
     effect->SetIntensity(2.0f);
 
     // 加算合成（透けるように光らせる）
-    effect->SetBlendMode(BlendMode::kAdd);
+    effect->SetBlendMode(BlendMode::Add);
 
     // リングの幅を設定
-    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringInnerRadius, 0.5f);
-    effect->SetMeshSetting(&EffectObject3d::MeshSettings::ringOuterRadius, 1.5f);
-    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 32);
+    effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, 0.5f);
+    effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, 1.5f);
+    effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 32);
 
     // メッシュを更新
     effect->UpdateProceduralMesh();
@@ -1083,14 +1117,14 @@ void MeshEffectManager::SpawnPortalEffect(const engine::Vector3& position, float
         auto sm = SceneManager::GetInstance();
 
         if (sm->GetCurrentScene()) {
-            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+            common_ = sm->GetCurrentScene()->GetObject3DCommon();
         }
     }
 
     if (!common_)
         return;
 
-    auto effect = std::make_unique<EffectObject3d>();
+    auto effect = std::make_unique<EffectObject3D>();
     effect->Initialize(common_);
 
     // --- デフォルトリセット ---
@@ -1104,12 +1138,12 @@ void MeshEffectManager::SpawnPortalEffect(const engine::Vector3& position, float
 
     // ★ 1. Cylinder メッシュ (ProceduralType = 5)
     effect->SetProceduralType(5);
-    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderRadius, 1.5f);   // 半径
-    effect->SetMeshSetting(&EffectObject3d::MeshSettings::cylinderHeight, 3.0f);   // 高さ
-    effect->SetMeshSetting(&EffectObject3d::MeshSettings::meshSegments, 32);     // 分割数（スライドの kCylinderDivide と同じ）
+    effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderRadius, 1.5f);   // 半径
+    effect->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderHeight, 3.0f);   // 高さ
+    effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 32);     // 分割数（スライドの kCylinderDivide と同じ）
 
     // UVタイリング: U方向に4回タイリングで縞々模様に
-    effect->SetMeshSetting(&EffectObject3d::MeshSettings::uvTiling, { 4.0f, 1.0f });
+    effect->SetMeshSetting(&EffectObject3D::MeshSettings::uvTiling, { 4.0f, 1.0f });
     effect->UpdateProceduralMesh();
 
     // ★ 2. 横方向（U方向）にUVスクロール (scrollSpeed.x != 0)
@@ -1126,7 +1160,7 @@ void MeshEffectManager::SpawnPortalEffect(const engine::Vector3& position, float
     effect->SetAlphaReference(0.0f);
 
     // 加算合成でポータルらしく光らせる
-    effect->SetBlendMode(BlendMode::kAdd);
+    effect->SetBlendMode(BlendMode::Add);
 
     // グラデーションラインテクスチャで縦縞を作る
     if (effect->GetMeshRenderer()) {

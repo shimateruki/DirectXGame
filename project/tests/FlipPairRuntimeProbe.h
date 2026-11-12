@@ -49,7 +49,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             return;
         phase = 2;
     }
-    engine::Object3d* floor = nullptr;
+    engine::Object3D* floor = nullptr;
     const std::string name = "Stage1_RingCourt_EntryFlipPair_" + std::to_string(pair);
     for (const auto& object : scene->GetObjects()) {
         if (object && object->GetName() == name)
@@ -69,7 +69,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         stableFrames = frames = 0;
         // Assimpの左手座標変換後、青板はローカル+Zにある。判定設定とは独立した期待位置。
         deckTop = engine::Math::Transform({0.0f, 0.27f, 5.0f}, floor->GetTransform()->matWorld);
-        const float feetOffset = player->GetAABB().min.y - player->GetWorldPosition().y;
+        const float feetOffset = player->GetAabb().min.y - player->GetWorldPosition().y;
         player->SetTranslate({deckTop.x, deckTop.y - feetOffset + 2.0f, deckTop.z});
         player->SetGrounded(false);
         player->SetVelocity({0.0f, -60.0f, 0.0f});
@@ -80,7 +80,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     }
     player->SetIsControlActive(false);
     player->SetDamageInvincible(true);
-    const float feetY = player->GetAABB().min.y;
+    const float feetY = player->GetAabb().min.y;
     if (player->IsDead() || feetY < deckTop.y - 0.3f || ++frames > 240) {
         const auto& collider = floor->GetColliderConfig();
         log << "CONTACT pair=" << pair << " jump=" << jump << " feet=" << feetY
@@ -114,7 +114,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     emptyTransform.UpdateMatrix();
     Collider emptyProbe(&emptyTransform);
     ColliderConfig probeConfig;
-    probeConfig.type = ColliderType::kSphere;
+    probeConfig.type = ColliderType::Sphere;
     probeConfig.size = {0.25f, 0.25f, 0.25f};
     emptyProbe.SetConfig(probeConfig);
     if (emptyProbe.CheckCollision(floor->GetCollider()).isColliding) {

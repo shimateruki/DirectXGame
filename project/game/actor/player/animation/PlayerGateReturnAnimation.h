@@ -6,6 +6,8 @@
 class Player;
 
 // クリア後にステージセレクトへ戻った時、ゲートからプレイヤーを飛び出させる専用アニメーション。
+// 関連：シーンがゲートと経路を渡し、Playerの復帰動作と姿勢を同期する。
+// 主な入口：Start / Update / Stop
 class PlayerGateReturnAnimation {
   public:
     // ゲート帰還の始点・通過点・終点と基準姿勢。通常移動を再開するまでの専用経路。
@@ -52,11 +54,13 @@ class PlayerGateReturnAnimation {
     // 前半を加速、後半を減速させて切替点の速度をつなぐ。
     float EaseInOutCubic(float value) const;
 
+    // normalizedTimeは経路の進行率（0〜1）。Playerの座標と見た目を同じ時刻で更新する。
     void ApplyPose(Player* player, float normalizedTime);
 
     // 演出中の傾きと移動を消し、経路の終点へ確定させる。
     void ApplyFinishedPose(Player* player, bool restoreControl);
 
+    // 初回だけ属性・マスクを退避して衝突を止める。復帰時はRestoreCollisionと対にする。
     void SuspendCollision(Player* player);
 
     // 開始前に保存した属性とマスクだけを戻す。
@@ -66,8 +70,8 @@ class PlayerGateReturnAnimation {
     float timer_ = 0.0f;
     bool active_ = false;
     bool finished_ = false;
-    bool savedControlActive_ = true;
-    uint32_t savedCollisionAttribute_ = 0;
-    uint32_t savedCollisionMask_ = 0;
-    bool collisionSuspended_ = false;
+    bool savedControlActive_ = true; // 演出開始前の操作許可。Stopで復帰する際に使う。
+    uint32_t savedCollisionAttribute_ = 0; // 一時停止する前の衝突属性。
+    uint32_t savedCollisionMask_ = 0; // 一時停止する前の衝突マスク。
+    bool collisionSuspended_ = false; // 衝突を停止しており、まだ復元していないか。
 };

@@ -27,9 +27,12 @@
 #pragma comment(lib, "mfuuid.lib")
 #pragma comment(lib, "uuid.lib")
 
-/// <summary>XAudio2 のバッファ再生完了をデコードスレッドへ通知します。</summary>
+// 担当：XAudio2のバッファ再生完了をデコード処理へ通知する。
+// 関連：SoundDataStreaming（待機イベント）、AudioPlayer（再生管理）
+// 主な入口：OnBufferEnd
 class AudioVoiceCallback : public IXAudio2VoiceCallback {
 public:
+	// 再生済みバッファの待機条件を通知し、デコード側を起こす。
 	void OnBufferEnd(void* pBufferContext) override {
 		std::condition_variable* cv = reinterpret_cast<std::condition_variable*>(pBufferContext);
 		if (cv) {
@@ -37,20 +40,27 @@ public:
 		}
 	}
 
+	// この通知では追加処理を行わない。
 	void OnStreamEnd() override {}
 
+	// この通知では追加処理を行わない。
 	void OnVoiceProcessingPassStart(UINT32 BytesRequired) override {}
 
+	// この通知では追加処理を行わない。
 	void OnVoiceProcessingPassEnd() override {}
 
+	// この通知では追加処理を行わない。
 	void OnBufferStart(void* pBufferContext) override {}
 
+	// この通知では追加処理を行わない。
 	void OnLoopEnd(void* pBufferContext) override {}
 
+	// このコールバックではエラー処理を行わない。
 	void OnVoiceError(void* pBufferContext, HRESULT Error) override {}
 };
 
 /// <summary>Media Foundation で逐次デコードする音声の再生状態です。</summary>
+// 関連：AudioPlayer（再生状態の管理）、AudioVoiceCallback（完了通知）
 struct SoundDataStreaming {
 	Microsoft::WRL::ComPtr<IMFSourceReader> sourceReader;
 	WAVEFORMATEX* waveFormat = nullptr;
@@ -79,7 +89,9 @@ struct SoundDataStreaming {
 };
 
 
-/// <summary>SE と BGM の読み込み、再生、停止、音量を管理します。</summary>
+// 担当：SE・BGMの読込、再生・停止、音量とストリーミングを管理する。
+// 関連：AudioEventSystem（イベント選択）、AudioVoiceCallback（完了通知）、Framework（寿命）
+// 主な入口：Initialize / LoadSoundFile / PlaySE / PlayBGM / Update / Finalize
 class AudioPlayer
 {
 public:
@@ -198,6 +210,7 @@ private:
 };
 
 /// <summary>SE の候補、音量・ピッチ揺らぎ、多重数、距離減衰の設定です。</summary>
+// 関連：AudioEventSystem（定義の読込・候補選択）、AudioPlayer（音声再生）
 struct AudioEventDefinition {
     std::vector<std::string> clips;
     float volumeMin = 1.0f;
@@ -210,7 +223,9 @@ struct AudioEventDefinition {
     float maxDistance = 30.0f;
 };
 
-/// <summary>JSON 定義に基づき、SE の候補選択と再生制限を管理します。</summary>
+// 担当：SE定義から音源を選び、多重数や距離減衰を考慮して再生する。
+// 関連：AudioEventDefinition（定義）、AudioPlayer（音声再生）
+// 主な入口：Update / Prewarm
 class AudioEventSystem {
 public:
 	/// <summary>エンジンで共有する音声イベント管理インスタンスを取得します。</summary>
@@ -252,6 +267,7 @@ public:
 
 private:
     /// <summary>再生中のイベント定義と音声ハンドルの対応。</summary>
+    // 関連：AudioEventSystem（同時再生数と終了の管理）
     struct ActiveInstance {
         std::string eventPath;
         AudioPlayer::PlaybackHandle handle = AudioPlayer::kInvalidPlaybackHandle;

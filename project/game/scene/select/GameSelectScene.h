@@ -13,7 +13,6 @@
 #include <vector>
 
 // 前方宣言
-class DirectXCommon;
 namespace engine { class InputManager; }
 class SceneManager;
 class LevelLoader;
@@ -22,7 +21,7 @@ class GameRule;
 class GimmickStageGate;
 class PauseMenuOverlay;
 class SettingsMenuOverlay;
-namespace engine { class Object3dCommon; }
+namespace engine { class Object3DCommon; }
 namespace engine { class ParticleCommon; }
 namespace engine { class ParticleSystem; }
 class Player;
@@ -33,6 +32,8 @@ class Text;
 /// <summary>
 /// ステージ選択シーン。ステージゲート、解放演出、王冠/スター/コイン HUD を扱う。
 /// </summary>
+// 関連：StageManagerとGameDataManagerから選択・解錠状態を読み、Playerとゲート演出へ反映する。
+// 主な入口：Initialize / Update / Draw / Finalize
 class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
   public:
     /// <summary>ステージ選択画面の初期状態を作る。</summary>
@@ -67,13 +68,13 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     void Update(float deltaTime) override;
 
     /// <summary>ステージ選択画面のUI状態を更新する。</summary>
-    void UpdateUI();
+    void UpdateUi();
 
     /// <summary>ステージ選択画面の3Dオブジェクトを描画する。</summary>
     void Draw() override;
 
     /// <summary>ゲート名、収集状況、操作案内などのUIを描画する。</summary>
-    void DrawUI() override;
+    void DrawUi() override;
 
     /// <summary>3Dオブジェクトの影を描画する。</summary>
     void DrawShadow() override;
@@ -83,30 +84,29 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
 
     // --- BaseScene インターフェース ---
     /// <summary>シーンが所有する3Dオブジェクトの一覧を返す。</summary>
-    const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<engine::Object3D>>& GetObjects() const override { return objectManager_->GetObjects(); }
 
     /// <summary>所有権を受け取って3Dオブジェクトを即時登録する。</summary>
-    engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    engine::Object3D* AddObjectImmediate(std::unique_ptr<engine::Object3D> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
 
     /// <summary>指定オブジェクトの所有権をシーンから取り出す。</summary>
-    std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
+    std::unique_ptr<engine::Object3D> TakeObjectImmediate(engine::Object3D* object) override { return objectManager_->TakeObjectImmediate(object); }
 
     /// <summary>所有権を受け取って3Dオブジェクトの追加を予約する。</summary>
-    void AddObject(std::unique_ptr<engine::Object3d> object) override { objectManager_->AddObject(std::move(object)); }
+    void AddObject(std::unique_ptr<engine::Object3D> object) override { objectManager_->AddObject(std::move(object)); }
 
     /// <summary>指定オブジェクトの削除を予約する。</summary>
-    void RequestRemoveObject(engine::Object3d* object) override { objectManager_->RequestRemove(object); }
+    void RequestRemoveObject(engine::Object3D* object) override { objectManager_->RequestRemove(object); }
 
     /// <summary>シーンが所有するSpriteの一覧を返す。</summary>
     const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
 
     /// <summary>3D描画基盤、Skybox、Sprite描画基盤、粒子システムをそれぞれ返す。</summary>
     /// <remarks>いずれも所有権を移さない。</remarks>
-    engine::Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+
 
     Skybox* GetSkybox() override { return skybox_.get(); }
 
-    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
 
     engine::ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
@@ -159,23 +159,23 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     void FinishStageReturnPresentation();
 
     /// <summary>最寄りゲートの操作案内と入場可否を表示へ反映する。</summary>
-    void UpdateGatePrompt(engine::Object3d* nearestGate, bool canEnterGate, float deltaTime);
+    void UpdateGatePrompt(engine::Object3D* nearestGate, bool canEnterGate, float deltaTime);
 
     /// <summary>指定オブジェクトがステージゲートか判定する。</summary>
-    bool IsStageGateObject(const engine::Object3d* object) const;
+    bool IsStageGateObject(const engine::Object3D* object) const;
 
     /// <summary>ゲートの名前などからステージ番号を返す。</summary>
-    int GetStageGateIndex(const engine::Object3d* object) const;
+    int GetStageGateIndex(const engine::Object3D* object) const;
 
     /// <summary>指定ステージ番号のゲートを探す。見つからなければnullptr。</summary>
-    engine::Object3d* FindStageGateByIndex(int stageIndex) const;
+    engine::Object3D* FindStageGateByIndex(int stageIndex) const;
 
     /// <summary>プレイヤーに最も近いステージゲートを探す。</summary>
     /// <param name="outDistance">見つかったゲートまでの距離を受け取る任意の出力先。</param>
-    engine::Object3d* FindNearestStageGate(float* outDistance) const;
+    engine::Object3D* FindNearestStageGate(float* outDistance) const;
 
     /// <summary>プレイヤーが指定ゲートの判定範囲に触れているか返す。</summary>
-    bool IsPlayerTouchingStageGate(engine::Object3d* gate) const;
+    bool IsPlayerTouchingStageGate(engine::Object3D* gate) const;
 
     /// <summary>解放条件を満たし、まだ演出していないステージ番号を返す。</summary>
     int FindPendingUnlockStage() const;
@@ -210,7 +210,7 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     void UpdateStarCoinDisplays(float deltaTime);
 
     /// <summary>指定ステージのクリア王冠を探すか生成する。</summary>
-    engine::Object3d* EnsureStageClearCrown(int stageIndex);
+    engine::Object3D* EnsureStageClearCrown(int stageIndex);
 
     /// <summary>ステージごとのクリア王冠の見た目を更新する。</summary>
     void UpdateStageClearCrownDisplays(float deltaTime);
@@ -222,7 +222,7 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     void UpdateStageClearRewardPresentation(float deltaTime);
 
     /// <summary>演出対象の王冠の位置と姿勢を更新する。</summary>
-    void UpdateStageClearRewardCrown(engine::Object3d* crown, int stageIndex, float deltaTime);
+    void UpdateStageClearRewardCrown(engine::Object3D* crown, int stageIndex, float deltaTime);
 
     /// <summary>王冠獲得数をHUDの演出へ反映する。</summary>
     void UpdateStageSelectCrownHudReward();
@@ -234,7 +234,7 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     engine::Vector3 GetStageClearCrownPosition(int stageIndex) const;
 
     /// <summary>名前が一致するシーン内オブジェクトを返す。見つからなければnullptr。</summary>
-    engine::Object3d* FindObjectByName(const std::string& name) const;
+    engine::Object3D* FindObjectByName(const std::string& name) const;
 
     /// <summary>指定ステージの選択画面上のノード位置を返す。</summary>
     engine::Vector3 GetStageNodePosition(int stageIndex) const;
@@ -247,6 +247,12 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
 
     /// <summary>各ステージゲートの名前ラベルの位置と表示を更新する。</summary>
     void UpdateStageGateNameLabels();
+
+    /// 距離・高さ設定を専用JSONから読み、欠損・不正な値は既定値を維持する。
+    void LoadStageGateNameSettings();
+
+    /// 専用JSONの表示設定だけを更新する。成功時true、保存に失敗した場合false。
+    bool SaveStageGateNameSettings() const;
 
     /// <summary>ポーズ画面を更新し、通常シーン更新を止めるべきか返す。</summary>
     bool HandlePauseOverlay(float deltaTime);
@@ -269,19 +275,13 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     void SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value, bool visible);
 
   private:
-    // Game/Frameworkが所有する描画・入力基盤への非所有参照。
-    DirectXCommon* dxCommon_ = nullptr;
+    // 入力基盤への非所有参照。描画基盤はBaseSceneの共通窓口を利用する。
     engine::InputManager* inputManager_ = nullptr;
 
     // 配置読込、照準、Object一覧をこのシーンが所有する。
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
     std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr;
     std::unique_ptr<ObjectManager> objectManager_ = nullptr;
-
-    // 3D・2D・CPU粒子の描画共通基盤をシーンの寿命で管理する。
-    std::unique_ptr<engine::Object3dCommon> object3dCommon_ = nullptr;
-    std::unique_ptr<engine::SpriteCommon> spriteCommon_ = nullptr;
-    std::unique_ptr<engine::ParticleCommon> particleCommon_ = nullptr;
 
     // 配置SpriteとCPU粒子の実行インスタンスを所有する。
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
@@ -296,13 +296,6 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 
-    // 点光源・スポット光のGPUバッファを所有し、Dataポインタから内容を更新する。
-    Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
-    MeshRenderer::PointLight* pointLightData_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
-    MeshRenderer::SpotLight* spotLightData_ = nullptr;
-
     // GPU粒子画像と、ロックオン・ゲート操作案内の表示部品。
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<engine::Sprite> lockOnSprite_;
@@ -315,7 +308,7 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     uint32_t skyboxTextureHandle_ = 0;
 
     // エディタでアニメーションを確認するための補助Object。
-    std::unique_ptr<engine::Object3d> animatedCube_;
+    std::unique_ptr<engine::Object3D> animatedCube_;
 
     // --- ステージゲート選択状態 ---
     // 選択中と前回のゲートを比較し、距離・決定待ち時間・遷移中状態を管理する。
@@ -328,14 +321,14 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     // 通常ゲートと同じ再生器を使い、シーン固有の選択状態だけ保持します。
     GateEntryPresentation gateEntryPresentation_;
     bool gateEntryCinematicActive_ = false;
-    engine::Object3d* gateEntryTargetGate_ = nullptr;
+    engine::Object3D* gateEntryTargetGate_ = nullptr;
 
     // クリア後の帰還ムービー。帰還ゲートと入場前の操作権は終了時に復元する。
     bool gateReturnPresentationActive_ = false;
     float gateReturnPresentationTimer_ = 0.0f;
 
     int gateReturnStageIndex_ = -1;
-    engine::Object3d* gateReturnTargetGate_ = nullptr;
+    engine::Object3D* gateReturnTargetGate_ = nullptr;
 
     engine::Vector3 gateReturnDirection_{0.0f, 0.0f, 1.0f};
 
@@ -388,9 +381,9 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     int unlockDebugPreviousSelectedStageIndex_ = -1;
 
     // 解放演出で操作するゲート・鍵・錠は配置済みObjectを借用する。
-    engine::Object3d* unlockTargetGate_ = nullptr;
-    engine::Object3d* unlockKeyObject_ = nullptr;
-    engine::Object3d* unlockLockObject_ = nullptr;
+    engine::Object3D* unlockTargetGate_ = nullptr;
+    engine::Object3D* unlockKeyObject_ = nullptr;
+    engine::Object3D* unlockLockObject_ = nullptr;
 
     // 粒子の発生位置には移動後ではなく、開始時の錠の位置を使う。
     engine::Vector3 unlockLockBasePosition_{};
@@ -432,10 +425,10 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     std::unique_ptr<PauseMenuOverlay> pauseMenuOverlay_;
     std::unique_ptr<SettingsMenuOverlay> settingsOverlay_;
 
-    // ゲート名札の非表示・フェード開始距離と、ワールド上の表示高さ。
-    float gateNameHideDistance_ = 40.0f;
-    float gateNameFadeDistance_ = 10.0f;
-    float gateNameHeightOffset_ = 1.5f;
+    // 名札は近距離から表示し、この水平距離を超えたらフェードする（m）。
+    float gateNameShowDistance_ = 60.0f;
+    float gateNameFadeDistance_ = 15.0f; // 遠方で完全に消えるまでの幅（m）。
+    float gateNameHeightOffset_ = 1.5f; // ゲート上端から名札までの高さ（m）。
 
     // ロード画面中の段階初期化フェーズと完了/総作業単位。
     int loadingInitializePhase_ = 0;

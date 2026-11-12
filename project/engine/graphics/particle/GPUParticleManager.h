@@ -1,6 +1,6 @@
 #pragma once
-#include "GPUParticleSystem.h"
-#include "GPUParticleConfig.h"
+#include "GpuParticleSystem.h"
+#include "GpuParticleConfig.h"
 #include <unordered_map>
 #include <map>
 #include <string>
@@ -9,17 +9,19 @@
 #include <vector>
 #include <DirectXCommon.h>
 
-/// <summary>GPU パーティクルのプリセット、発生、更新、描画を管理します。</summary>
-class GPUParticleManager {
+// 担当：GPU粒子のプリセット・システム・自動発生器を管理する。
+// 関連：GpuParticleConfig（設定）、GpuParticleSystem（GPU処理）、GpuParticleEditor（編集）
+// 主な入口：Initialize / BeginFrame / Emit / Update / Draw / ClearSceneRuntime
+class GpuParticleManager {
 public:
     /// <summary>エンジンで共有する GPU パーティクル管理インスタンスを取得します。</summary>
-    static GPUParticleManager* GetInstance();
+    static GpuParticleManager* GetInstance();
 
     /// <summary>描画と Compute に必要な DirectX リソースを準備します。</summary>
     void Initialize(DirectXCommon* dxCommon);
 
-    /// <summary>タイトルで参照するプリセットだけを読み込み、描画基盤を初期化します。</summary>
-    void InitializeForTitle(DirectXCommon* dxCommon, const std::vector<std::string>& presetNames);
+    /// <summary>指定されたプリセットだけを読み込み、描画基盤を初期化します。</summary>
+    void InitializeWithPresets(DirectXCommon* dxCommon, const std::vector<std::string>& presetNames);
 
     /// <summary>フレーム内の更新済み状態を初期化します。</summary>
     void BeginFrame();
@@ -53,7 +55,7 @@ public:
         float speedScale = 1.0f, const engine::Matrix4x4& emitterWorldMatrix = engine::Math::MakeIdentity4x4());
 
     /// <summary>一時的な設定から直接粒子を発生させます。</summary>
-    void EmitFromConfig(const GPUParticleConfig& config);
+    void EmitFromConfig(const GpuParticleConfig& config);
 
     // 攻撃エディターの単独配置確認。通常の粒子とはGPUバッファと時間を分離します。
     void ClearAuthoringPreview();
@@ -71,10 +73,10 @@ public:
     bool IsInitialized() const { return dxCommon_ != nullptr; }
 
     /// <summary>設定に必要な GPU パーティクル容量を計算します。</summary>
-    static uint32_t ResolveParticleCapacity(const GPUParticleConfig& config);
+    static uint32_t ResolveParticleCapacity(const GpuParticleConfig& config);
 
     /// <summary>読み込み済みプリセットを返します。</summary>
-    const std::map<std::string, GPUParticleConfig>& GetPresets() const { return presets_; }
+    const std::map<std::string, GpuParticleConfig>& GetPresets() const { return presets_; }
 
     /// <summary>自動発生エミッターを開始し、停止用 ID を返します。</summary>
     uint32_t PlayAutoEmitter(const std::string& presetName, const engine::Vector3& position);
@@ -93,6 +95,7 @@ public:
 #ifdef USE_IMGUI
     // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
     void BeginEditorSession();
+    // 確認用の実行状態を片付け、開始前に退避した状態へ戻す。
     void EndEditorSession();
 #endif
 
@@ -113,7 +116,7 @@ public:
     float GetLastDrawCpuTimeMs() const { return lastDrawCpuTimeMs_; }
 
     /// <summary>設定から推定される GPU メモリ使用量を返します。</summary>
-    size_t GetEstimatedMemoryBytesForConfig(const GPUParticleConfig& config) const;
+    size_t GetEstimatedMemoryBytesForConfig(const GpuParticleConfig& config) const;
 
     /// <summary>背景色コピーが必要な歪みパーティクルが含まれるか返します。</summary>
     bool RequiresSceneColorCopy() const;
@@ -127,47 +130,49 @@ public:
     }
 
 private:
+    // 対象プリセットのJSONを指定ディレクトリから読み込む。
     void LoadPresetFiles(const std::string& directoryPath, const std::vector<std::string>& presetNames);
 
     DirectXCommon* dxCommon_ = nullptr;
 
     // プリセット名から設定を引き、必要な GPU システムを共有します。
-    std::map<std::string, GPUParticleConfig> presets_;
+    std::map<std::string, GpuParticleConfig> presets_;
     std::string loadedPresetDirectory_;
 
     // 同じテクスチャとブレンドモードの粒子は 1 つの GPU システムでまとめます。
     // キーは "TexturePath_BlendModeIndex" です。
-    std::unordered_map<std::string, std::unique_ptr<GPUParticleSystem>> systems_;
+    std::unordered_map<std::string, std::unique_ptr<GpuParticleSystem>> systems_;
 
     // 設定に対応する共有システムを取得し、なければ作成します。
-    GPUParticleSystem* GetOrCreateSystem(const GPUParticleConfig& config);
+    GpuParticleSystem* GetOrCreateSystem(const GpuParticleConfig& config);
 
     // 自動発生エミッターの再生状態と管理 ID。
+    // 関連：GpuParticleManager（この型を使う機能の本体）
     struct AutoEmitter {
         uint32_t id;
         std::string presetName;
         engine::Vector3 position;
         engine::Matrix4x4 transform;
-        float timer;
+        float timer; // 自動発生の間隔を数える秒数。
     };
 
     std::vector<AutoEmitter> autoEmitters_;
     uint32_t nextAutoEmitterId_ = 0;
-    float timeScale_ = 1.0f;
-    std::unordered_map<std::string, std::unique_ptr<GPUParticleSystem>> authoringSystems_;
+    float timeScale_ = 1.0f; // GPU粒子の更新時間倍率。
+    std::unordered_map<std::string, std::unique_ptr<GpuParticleSystem>> authoringSystems_;
     bool authoringPreviewVisible_ = false;
     bool updatedThisFrame_ = false;
 #ifdef USE_IMGUI
     bool editorSession_ = false;
-    float savedEditorScale_ = 1;
+    float savedEditorScale_ = 1; // 確認開始前の時間倍率。
     ID3D12Resource* savedEditorMesh_ = nullptr;
     uint32_t savedEditorMeshCount_ = 0, savedEditorMeshStride_ = 0, savedEditorMeshBones_ = 0;
     decltype(systems_) savedEditorSystems_;
     decltype(autoEmitters_) savedEditorEmitters_;
 #endif
 
-    float lastUpdateCpuTimeMs_ = 0.0f;
-    float lastDrawCpuTimeMs_ = 0.0f;
+    float lastUpdateCpuTimeMs_ = 0.0f; // 直近更新のCPU所要時間（ミリ秒）。
+    float lastDrawCpuTimeMs_ = 0.0f; // 直近描画のCPU所要時間（ミリ秒）。
 
     // メッシュデータ保持用
     ID3D12Resource* meshVb_ = nullptr;

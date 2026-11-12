@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "0dad6638d6584332967dedf61458e23e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_crown/slime_crown_body_hurt.gltf",
+  "version": 1
+}

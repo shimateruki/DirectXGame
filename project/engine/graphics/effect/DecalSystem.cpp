@@ -3,7 +3,7 @@
 #include "BaseScene.h"
 #include "CollisionManager.h"
 #include "ModelManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 
 #include <algorithm>
 #include <cmath>
@@ -47,8 +47,8 @@ engine::Quaternion BuildSurfaceQuaternion(const engine::Vector3& normal, float r
 }
 }
 
-std::unique_ptr<engine::Object3d> DecalSystem::Create(
-    engine::Object3dCommon* common,
+std::unique_ptr<engine::Object3D> DecalSystem::Create(
+    engine::Object3DCommon* common,
     const engine::Vector3& surfacePoint,
     const engine::Vector3& surfaceNormal,
     const DecalSpawnDesc& desc) {
@@ -56,7 +56,7 @@ std::unique_ptr<engine::Object3d> DecalSystem::Create(
         return nullptr;
 
     // Decalは通常のObject3dをPlaneとして生成し、照明・影・衝突を無効にする。
-    auto decal = std::make_unique<engine::Object3d>();
+    auto decal = std::make_unique<engine::Object3D>();
     decal->Initialize(common);
     ModelManager::GetInstance()->LoadModel("Primitives/plane");
     decal->SetModel("Primitives/plane");
@@ -74,12 +74,12 @@ std::unique_ptr<engine::Object3d> DecalSystem::Create(
     decal->SetCollisionAttribute(0);
     decal->SetCollisionMask(0);
 
-    engine::Object3d::ColliderConfig collider = decal->GetColliderConfig();
-    collider.type = ColliderType::kNone;
+    engine::Object3D::ColliderConfig collider = decal->GetColliderConfig();
+    collider.type = ColliderType::None;
     decal->SetColliderConfig(collider);
 
     // 尺寸や時間を有効範囲へ揃え、再生状態を初期化してから面に置く。
-    engine::Object3d::DecalSettings settings;
+    engine::Object3D::DecalSettings settings;
     settings.enabled = true;
     settings.size = {
         (std::max)(desc.size.x, 0.01f),
@@ -97,21 +97,21 @@ std::unique_ptr<engine::Object3d> DecalSystem::Create(
     return decal;
 }
 
-engine::Object3d* DecalSystem::Spawn(
+engine::Object3D* DecalSystem::Spawn(
     BaseScene& scene,
     const engine::Vector3& surfacePoint,
     const engine::Vector3& surfaceNormal,
     const DecalSpawnDesc& desc) {
-    std::unique_ptr<engine::Object3d> decal = Create(
-        scene.GetObject3dCommon(), surfacePoint, surfaceNormal, desc);
+    std::unique_ptr<engine::Object3D> decal = Create(
+        scene.GetObject3DCommon(), surfacePoint, surfaceNormal, desc);
     if (!decal)
         return nullptr;
 
     // 所有権をSceneへ移したあと、実際にSceneへ保持されたときだけ非所有ポインタを返す。
-    engine::Object3d* result = decal.get();
+    engine::Object3D* result = decal.get();
     scene.AddObject(std::move(decal));
 
-    for (const std::unique_ptr<engine::Object3d>& ownedObject : scene.GetObjects()) {
+    for (const std::unique_ptr<engine::Object3D>& ownedObject : scene.GetObjects()) {
         if (ownedObject.get() == result) {
             return result;
         }
@@ -120,7 +120,7 @@ engine::Object3d* DecalSystem::Spawn(
     return nullptr;
 }
 
-engine::Object3d* DecalSystem::SpawnFromRaycast(
+engine::Object3D* DecalSystem::SpawnFromRaycast(
     BaseScene& scene,
     const engine::Vector3& rayStart,
     const engine::Vector3& rayDirection,
@@ -137,14 +137,14 @@ engine::Object3d* DecalSystem::SpawnFromRaycast(
 }
 
 void DecalSystem::AlignToSurface(
-    engine::Object3d& object,
+    engine::Object3D& object,
     const engine::Vector3& surfacePoint,
     const engine::Vector3& surfaceNormal,
     float rotationRadians,
     float depthOffset) {
     // Z-fightingを避けるため法線方向へ少し浮かせ、Planeの寸法と向きを接地面に揃える。
     const engine::Vector3 normal = SafeNormal(surfaceNormal);
-    engine::Object3d::DecalSettings settings = object.GetDecalSettings();
+    engine::Object3D::DecalSettings settings = object.GetDecalSettings();
     settings.depthOffset = (std::max)(depthOffset, 0.0001f);
     object.SetDecalSettings(settings);
     object.SetTranslate(surfacePoint + normal * settings.depthOffset);
@@ -156,7 +156,7 @@ void DecalSystem::AlignToSurface(
     object.UpdateWorldMatrix();
 }
 
-void engine::Object3d::SetDecalSettings(const DecalSettings& settings) {
+void engine::Object3D::SetDecalSettings(const DecalSettings& settings) {
     // デカールの寸法と演出時間を安全な範囲へ丸め、無効化時は経過時間を戻す。
     decalSettings_ = settings;
     decalSettings_.size.x = (std::max)(decalSettings_.size.x, 0.01f);
@@ -171,7 +171,7 @@ void engine::Object3d::SetDecalSettings(const DecalSettings& settings) {
     }
 }
 
-void engine::Object3d::RestartDecalPlayback() {
+void engine::Object3D::RestartDecalPlayback() {
     decalElapsedTime_ = 0.0f;
     decalAuthoredAlpha_ = GetColor().w;
 

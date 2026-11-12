@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "579fa8450e674bcea269482c6a881b94",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/prism_slime/prism_slime_hurt_eyes.obj",
+  "version": 1
+}

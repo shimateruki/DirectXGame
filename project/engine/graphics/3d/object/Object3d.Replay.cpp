@@ -1,4 +1,4 @@
-#include "Object3d.h"
+#include "Object3D.h"
 #include "EditorPropertyRegistry.h"
 
 #include <atomic>
@@ -9,7 +9,7 @@ namespace {
 std::atomic<uint64_t> gNextReplayId{ 1 };
 }
 
-uint64_t Object3d::EnsureReplayId() {
+uint64_t Object3D::EnsureReplayId() {
     // IDは識別だけに使用するため、スレッド間の更新順を同期する必要はない。
     if (replayId_ == 0) {
         replayId_ = gNextReplayId.fetch_add(1, std::memory_order_relaxed);
@@ -18,7 +18,7 @@ uint64_t Object3d::EnsureReplayId() {
     return replayId_;
 }
 
-Object3d::ReplayState Object3d::CaptureReplayState() const {
+Object3D::ReplayState Object3D::CaptureReplayState() const {
     // TransformだけでなくAnimator・衝突属性・素材と各Componentも同じフレームへ保存する。
     ReplayState state;
     state.scale = transform_.scale;
@@ -69,7 +69,7 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     return state;
 }
 
-void Object3d::RestoreReplayState(const ReplayState& state) {
+void Object3D::RestoreReplayState(const ReplayState& state) {
     transform_.scale = state.scale;
     transform_.rotate = state.rotation;
     transform_.translate = state.translation;
@@ -154,11 +154,11 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     UpdateWorldMatrix();
 }
 
-void Object3d::CaptureReplayCustomState(json& state) const {
+void Object3D::CaptureReplayCustomState(json& state) const {
     state = json::object();
 }
 
-void Object3d::RestoreReplayCustomState(const json& state) {
+void Object3D::RestoreReplayCustomState(const json& state) {
     (void)state;
 }
 

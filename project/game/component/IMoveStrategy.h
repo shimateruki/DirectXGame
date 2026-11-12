@@ -10,6 +10,8 @@ class Player;
 /// <summary>
 /// プレイヤーの移動戦略（アルゴリズム）を定義するインターフェース
 /// </summary>
+// 関連：PlayerMoverが現在の操作方式に合わせて移動速度の計算を呼び出す。
+// 主な入口：CalculateVelocity
 class IMoveStrategy {
   public:
     virtual ~IMoveStrategy() = default;

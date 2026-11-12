@@ -1,10 +1,10 @@
 #include "TrailEmitter.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "MeshEffectManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include <cmath>
 
-void TrailEmitter::Start(engine::Object3d* target) {
+void TrailEmitter::Start(engine::Object3D* target) {
     target_     = target;
     isActive_   = true;
     hasLastPos_ = false; // 位置履歴をリセットして初回は即Emitしない
@@ -32,9 +32,9 @@ void TrailEmitter::Update(float /*deltaTime*/) {
 
     // 移動距離を計算
     engine::Vector3 diff = currentPos - lastEmitPos_;
-    float dist = engine::Math::Length(diff);
+    float distance = engine::Math::Length(diff);
 
-    if (dist < config_.emitDistance)
+    if (distance < config_.emitDistance)
         return; // まだ足りない
 
     // 移動方向からY軸回転を算出 (autoOrient=true のとき使う)
@@ -61,7 +61,7 @@ void TrailEmitter::Update(float /*deltaTime*/) {
         emitMat.m[3][0] = spawnPos.x;
         emitMat.m[3][1] = spawnPos.y;
         emitMat.m[3][2] = spawnPos.z;
-        GPUParticleManager::GetInstance()->Emit(config_.gpuParticlePreset, spawnPos, emitMat);
+        GpuParticleManager::GetInstance()->Emit(config_.gpuParticlePreset, spawnPos, emitMat);
     }
 
     lastEmitPos_ = currentPos;

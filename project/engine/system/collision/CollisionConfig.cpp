@@ -23,8 +23,12 @@ constexpr std::array<std::pair<const char*, unsigned>, 9> kLegacyCategories = {{
 }};
 
 /// <summary>衝突カテゴリの定義とIDからビット値への検索表を保持する。</summary>
+// 担当：衝突カテゴリ定義とIDからビットへの検索表を保持する。
+// 関連：CollisionConfigの内部処理だけで使う補助型。
 struct CategoryState {
     /// <summary>カテゴリIDを一時文字列なしで検索するためのハッシュ関数。</summary>
+    // 担当：文字列を一時生成せずにカテゴリIDを検索するハッシュ。
+    // 関連：CollisionConfigの内部処理だけで使う補助型。
     struct StringHash {
         using is_transparent = void;
         size_t operator()(std::string_view value) const noexcept {
@@ -269,8 +273,8 @@ uint32_t CollisionCategories::GetDefaultGameplayMask() {
     return mask;
 }
 
-// [1] AABB vs AABB 判定
-CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
+// [1] Aabb vs Aabb 判定
+CollisionInfo CheckAabbCollision(const Aabb& a, const Aabb& b) {
     CollisionInfo info;
     info.isColliding = false; // 初期化
 
@@ -351,9 +355,9 @@ CollisionInfo CheckSphereCollision(
     return info;
 }
 
-// [3] Sphere vs AABB 判定 
-CollisionInfo CheckSphereAABBCollision(
-    const engine::Vector3& spherePos, float sphereRadius, const AABB& aabb) {
+// [3] Sphere vs Aabb 判定 
+CollisionInfo CheckSphereAabbCollision(
+    const engine::Vector3& spherePos, float sphereRadius, const Aabb& aabb) {
     // (以前のコードのまま)
     CollisionInfo info;
     engine::Math math;
@@ -397,36 +401,36 @@ CollisionInfo CheckSphereAABBCollision(
 CollisionFace GetCollisionFace(const engine::Vector3& normal, float threshold) {
     // Y軸 (上下) の判定を優先
     if (normal.y > threshold) {
-        return CollisionFace::kTop;
+        return CollisionFace::Top;
     }
     if (normal.y < -threshold) {
-        return CollisionFace::kBottom;
+        return CollisionFace::Bottom;
     }
 
     // X軸 (左右) の判定
     if (normal.x > threshold) {
-        return CollisionFace::kRight;
+        return CollisionFace::Right;
     }
     if (normal.x < -threshold) {
-        return CollisionFace::kLeft;
+        return CollisionFace::Left;
     }
 
     // Z軸 (前後) の判定
     if (normal.z > threshold) {
-        return CollisionFace::kFront;
+        return CollisionFace::Front;
     }
     if (normal.z < -threshold) {
-        return CollisionFace::kBack;
+        return CollisionFace::Back;
     }
 
     // どの軸にも強く当たっていない場合は「斜め」
-    return CollisionFace::kOther;
+    return CollisionFace::Other;
 }
 
 // ------------------------------------------------------------
-//  Sphere vs OBB
+//  Sphere vs Obb
 // ------------------------------------------------------------
-CollisionInfo CheckSphereOBBCollision(const engine::Vector3& spherePos, float sphereRadius, const OBB& obb) {
+CollisionInfo CheckSphereObbCollision(const engine::Vector3& spherePos, float sphereRadius, const Obb& obb) {
     CollisionInfo info = { false, {0,0,0}, 0.0f };
 
     // 球の中心をOBBのローカル空間に変換するイメージで、
@@ -439,16 +443,16 @@ CollisionInfo CheckSphereOBBCollision(const engine::Vector3& spherePos, float sp
     // 各軸(X, Y, Z)について投影してクランプ
     for (int i = 0; i < 3; ++i) {
         // 距離を軸に投影
-        float dist = math.Dot(centerToSphere, obb.orientations[i]);
+        float distanceValue = math.Dot(centerToSphere, obb.orientations[i]);
 
         // OBBのサイズ(半サイズ)で制限
-        float clamped = std::clamp(dist, -obb.size.x, obb.size.x);
+        float clamped = std::clamp(distanceValue, -obb.size.x, obb.size.x);
 
         // ※ size.x, y, z を配列的にアクセスできない場合は以下のように分岐するか、sizeを配列にする
         if (i == 1)
-            clamped = std::clamp(dist, -obb.size.y, obb.size.y);
+            clamped = std::clamp(distanceValue, -obb.size.y, obb.size.y);
         if (i == 2)
-            clamped = std::clamp(dist, -obb.size.z, obb.size.z);
+            clamped = std::clamp(distanceValue, -obb.size.z, obb.size.z);
 
         // 最短点を加算
         closestPoint += obb.orientations[i] * clamped;
@@ -478,9 +482,9 @@ CollisionInfo CheckSphereOBBCollision(const engine::Vector3& spherePos, float sp
 }
 
 // -----------------------------------------------------------------
-// OBB vs OBB（改良版） - 標準的な回転行列 + absR を使った SAT 実装
+// Obb vs Obb（改良版） - 標準的な回転行列 + absR を使った SAT 実装
 // -----------------------------------------------------------------
-CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
+CollisionInfo CheckObbCollision(const Obb& a, const Obb& b) {
     CollisionInfo info = { false, {0,0,0}, 0.0f };
     engine::Math math;
 
@@ -515,8 +519,8 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     for (int i = 0; i < 3; ++i) {
         float ra = aH[i];
         float rb = bH[0] * absR[i][0] + bH[1] * absR[i][1] + bH[2] * absR[i][2];
-        float dist = std::fabs(tA[i]);
-        float overlap = (ra + rb) - dist;
+        float distanceValue = std::fabs(tA[i]);
+        float overlap = (ra + rb) - distanceValue;
         if (overlap <= 0.0f)
             return info;
         if (overlap < minOverlap) {
@@ -584,10 +588,10 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
 }
 
 // ========================================================================
-// AABB vs OBB 衝突判定
+// Aabb vs Obb 衝突判定
 // ========================================================================
-CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b) {
-    OBB obbA;
+CollisionInfo CheckAabbObbCollision(const Aabb& a, const Obb& b) {
+    Obb obbA;
 
     // AABBの中心とサイズを算出
     obbA.center = (a.min + a.max) * 0.5f;
@@ -599,7 +603,7 @@ CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b) {
     obbA.orientations[2] = { 0.0f, 0.0f, 1.0f };
 
     // OBB同士として判定
-    return CheckOBBCollision(obbA, b);
+    return CheckObbCollision(obbA, b);
 }
 
 // -----------------------------------------------------------------
@@ -667,9 +671,9 @@ CollisionInfo CheckRingSphereCollision(const Ring& ring, const engine::Vector3& 
 }
 
 // -----------------------------------------------------------------
-// Ring vs OBB
+// Ring vs Obb
 // -----------------------------------------------------------------
-CollisionInfo CheckRingOBBCollision(const Ring& ring, const OBB& obb) {
+CollisionInfo CheckRingObbCollision(const Ring& ring, const Obb& obb) {
     // 簡易化：OBBの中心に対してリング上の最短点を求め、その点がOBB内部にあるか判定
     // あるいは、球としての判定に飛ばす（OBBのサイズを考慮した球として）
     // ここでは一番シンプルな「中心点への最短距離」ベース
@@ -694,14 +698,14 @@ CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const engine::Ve
 
     // P から球の中心への距離
     engine::Vector3 diff = spherePos - P;
-    float dist = math.Length(diff);
+    float distanceValue = math.Length(diff);
 
-    if (dist <= cyl.radius + sphereRadius) {
+    if (distanceValue <= cyl.radius + sphereRadius) {
         info.isColliding = true;
-        info.penetration = (cyl.radius + sphereRadius) - dist;
+        info.penetration = (cyl.radius + sphereRadius) - distanceValue;
 
-        if (dist > 0.0001f) {
-            info.normal = diff / dist;
+        if (distanceValue > 0.0001f) {
+            info.normal = diff / distanceValue;
         } else {
             info.normal = { 0, 1, 0 };
         }
@@ -711,13 +715,13 @@ CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const engine::Ve
 }
 
 // -----------------------------------------------------------------
-// Cylinder vs OBB
+// Cylinder vs Obb
 // -----------------------------------------------------------------
-CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb) {
+CollisionInfo CheckCylinderObbCollision(const Cylinder& cyl, const Obb& obb) {
     // 簡易化：円柱をOBBに変換して判定するか、中心点ベースで判定
     // ここでは円柱をその向きのOBBとして近似して判定に投げる
     engine::Math math;
-    OBB cylObb;
+    Obb cylObb;
     cylObb.center = cyl.center;
     cylObb.orientations[1] = cyl.axis;
     
@@ -731,5 +735,5 @@ CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb) {
     
     cylObb.size = { cyl.radius, cyl.height * 0.5f, cyl.radius };
 
-    return CheckOBBCollision(cylObb, obb);
+    return CheckObbCollision(cylObb, obb);
 }

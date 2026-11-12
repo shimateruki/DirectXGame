@@ -4,7 +4,7 @@
 #include "DirectXCommon.h"
 #include "TextureManager.h"
 #include "CameraManager.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include "engine/utility/math/Math.h"
 #include <cassert>
 #include <chrono>
@@ -16,6 +16,8 @@ static std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
 static engine::Math math;
 
 // 板ポリゴン頂点
+// 担当：粒子の描画矩形一頂点分の位置とUV。
+// 関連：ParticleSystemの内部処理だけで使う補助型。
 struct ParticleVertex {
     engine::Vector4 position;
     engine::Vector2 texcoord;
@@ -34,8 +36,8 @@ void engine::ParticleSystem::Initialize(engine::ParticleCommon* common, const st
     assert(textureHandle_ != 0);
     CreateResources();
     particles_.reserve(kMaxParticles);
-    std::random_device seed_gen;
-    randomEngine_.seed(seed_gen());
+    std::random_device seedGenerator;
+    randomEngine_.seed(seedGenerator());
 
     // Emitterの初期設定
     spawnTimer_ = 0.0f;
@@ -99,9 +101,9 @@ void engine::ParticleSystem::SpawnFromParams(const EmitterParams& params, const 
         engine::Vector3 dir = { dis(randomEngine_), dis(randomEngine_), dis(randomEngine_) };
 
         // 乱数がゼロベクトルになったときは上方向を使う。
-        float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-        if (len != 0.0f)
-            dir = dir / len;
+        float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+        if (length != 0.0f)
+            dir = dir / length;
         else dir = { 0, 1, 0 }; // ゼロなら上へ
 
         pos += dir * params.spawnRadius;
@@ -124,9 +126,9 @@ void engine::ParticleSystem::SpawnFromParams(const EmitterParams& params, const 
         dir.y = 1.0f; // 上向き
 
         // 初速へ使うため方向を正規化する。
-        float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-        if (len != 0)
-            dir = dir / len;
+        float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+        if (length != 0)
+            dir = dir / length;
 
         // 発生点は原点から同じ方向へ0～1の範囲で散らす。
         pos += dir * (dis(randomEngine_) * 0.5f + 0.5f);
@@ -158,8 +160,8 @@ void engine::ParticleSystem::SpawnFromParams(const EmitterParams& params, const 
         params.useAuthoringCurves &&
         !params.sizeOverLife.keys.empty() &&
         !params.colorOverLife.keys.empty();
-    p.sizeOverLife = BakeVFXCurve(params.sizeOverLife, params.startSize);
-    p.colorOverLife = BakeVFXGradient(params.colorOverLife, params.startColor);
+    p.sizeOverLife = BakeVfxCurve(params.sizeOverLife, params.startSize);
+    p.colorOverLife = BakeVfxGradient(params.colorOverLife, params.startColor);
     p.rotation = 0.0f;
     float rotSpeedDeg = params.initialRotationSpeed + dis(randomEngine_) * params.rotationSpeedRandomness;
     p.rotationSpeed = rotSpeedDeg * (std::numbers::pi_v<float> / 180.0f);
@@ -205,8 +207,8 @@ void engine::ParticleSystem::SpawnParticles(const engine::Vector3& position, int
                 spawnDir = math.TransformNormal(spawnDir, rotX * rotY);
             }
         } else { // 方向指定なし (ランダム)
-            std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-            spawnDir = { dist(randomEngine_), dist(randomEngine_), dist(randomEngine_) };
+            std::uniform_real_distribution<float> distance(-1.0f, 1.0f);
+            spawnDir = { distance(randomEngine_), distance(randomEngine_), distance(randomEngine_) };
         }
 
         if (math.Length(spawnDir) < 0.001f) {
@@ -235,8 +237,8 @@ void engine::ParticleSystem::SpawnParticles(const engine::Vector3& position, int
             params_.useAuthoringCurves &&
             !params_.sizeOverLife.keys.empty() &&
             !params_.colorOverLife.keys.empty();
-        p.sizeOverLife = BakeVFXCurve(params_.sizeOverLife, startSize);
-        p.colorOverLife = BakeVFXGradient(params_.colorOverLife, initialColor);
+        p.sizeOverLife = BakeVfxCurve(params_.sizeOverLife, startSize);
+        p.colorOverLife = BakeVfxGradient(params_.colorOverLife, initialColor);
         p.rotationSpeed = rotSpeedDeg * (std::numbers::pi_v<float> / 180.0f);
         particles_.push_back(p);
     }
@@ -413,7 +415,7 @@ void engine::ParticleSystem::Draw() {
     commandList->IASetIndexBuffer(&indexBufferView_);
 
     commandList->SetGraphicsRootConstantBufferView(0, matrixResource_->GetGPUVirtualAddress());
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, textureHandle_);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, textureHandle_);
 
     commandList->DrawIndexedInstanced(6, particleCount_, 0, 0, 0);
     dxCommon->EndGpuProfile("Particle CPU pass");
@@ -452,8 +454,8 @@ void engine::ParticleSystem::CreateResources() {
     indexResource_->Unmap(0, nullptr);
 
     // --- インスタンシング用リソース ---
-    instancingResource_ = dxCommon->CreateBufferResource(sizeof(ParticleForGPU) * kMaxParticles);
-    instancingBufferView_ = { instancingResource_->GetGPUVirtualAddress(), sizeof(ParticleForGPU) * kMaxParticles, sizeof(ParticleForGPU) };
+    instancingResource_ = dxCommon->CreateBufferResource(sizeof(ParticleForGpu) * kMaxParticles);
+    instancingBufferView_ = { instancingResource_->GetGPUVirtualAddress(), sizeof(ParticleForGpu) * kMaxParticles, sizeof(ParticleForGpu) };
     instancingResource_->Map(0, nullptr, reinterpret_cast<void**>(&instancingData_));
 
     // --- カメラ行列用リソース ---

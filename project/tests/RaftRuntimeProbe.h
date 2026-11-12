@@ -52,14 +52,14 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     auto* scene = manager->GetCurrentScene();
     auto* player = GetScenePlayer(scene);
     if (!player || manager->GetCurrentSceneName() != "GAMEPLAY") return;
-    engine::Object3d* deck = nullptr;
+    engine::Object3D* deck = nullptr;
     for (auto& object : scene->GetObjects())
         if (object && object->GetName() == "Stage1_Coaster_Deck") deck = object.get();
     if (!deck) { finish("FAIL missing deck"); return; }
     if (phase == 1) {
         if (++frames < 180 || player->IsCinematicLocked()) return;
-        const auto top = deck->GetAABB().max.y;
-        const float feetOffset = player->GetAABB().min.y - player->GetTranslate().y;
+        const auto top = deck->GetAabb().max.y;
+        const float feetOffset = player->GetAabb().min.y - player->GetTranslate().y;
         auto position = deck->GetTranslate();
         position.y = top - feetOffset + .05f;
         player->SetTranslate(position);

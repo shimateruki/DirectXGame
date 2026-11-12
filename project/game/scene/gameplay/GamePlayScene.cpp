@@ -35,7 +35,7 @@
 #include <string>
 #include "json.hpp"
 #include <numbers>
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include <BaseEnemy.h>
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
@@ -45,7 +45,7 @@
 #include <game/system/scene/ItemFactory.h>
 #include <LightEditor.h>
 #include <ParticleManager.h>
-#include <GPUParticleManager.h>
+#include <GpuParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
 #include "Fade.h"
@@ -72,7 +72,7 @@ void GamePlayScene::Draw() {
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
-    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::FirstPerson) {
         isFirstPerson = true;
     }
 #endif
@@ -83,10 +83,10 @@ void GamePlayScene::Draw() {
         pPos.y += 1.0f; // プレイヤーの胸の高さを基準にする
         engine::Vector3 cPos = camera->GetEye();
         engine::Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
-        float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
+        float distance = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
         // 距離が 3.0m 未満なら、プレイヤーを完全に消す判定フラグを立てる
-        if (dist < 3.0f) {
+        if (distance < 3.0f) {
             isFirstPerson = true;
         }
     }
@@ -115,15 +115,15 @@ void GamePlayScene::Draw() {
     }
 
     // 不透明パスでは、別のパイプラインを必要とする霧・流体・半透明を除きます。
-    object3dCommon_->SetGraphicsCommand();
-    object3dCommon_->SetPipelineState(BlendMode::kNone); // 不透明設定
+    GetObject3DCommon()->SetGraphicsCommand();
+    GetObject3DCommon()->SetPipelineState(BlendMode::None); // 不透明設定
 
     DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Opaque, pointLightRes, spotLightRes,
-        player_, isFirstPerson, true, [this](engine::Object3d* object) { return IsVisible(object); });
+        player_, isFirstPerson, true, [this](engine::Object3D* object) { return IsVisible(object); });
 
     // フックマーカーの描画（プレイヤーがカメラ外に判定されて非表示になってもマーカーだけは描画する）
-    DrawCrownFinaleWorld();
-    DrawCrownDefeatWorld();
+    DrawCrownFinaleWorld(pointLightRes, spotLightRes);
+    DrawCrownDefeatWorld(pointLightRes, spotLightRes);
 
     // ロック対象の印は本体の視点非表示判定から独立させます。
     if (player_ && player_->GetHookMarker()) {
@@ -152,7 +152,7 @@ void GamePlayScene::Draw() {
     particleSystem_->Draw();
 
     // ローカルフォグは通常モデルと分け、深度を参照する描画区間へつなぎます。
-    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
+    DrawLocalFogObjects(objects, player_, isFirstPerson);
 
     // 画面色のコピーは高コストなので、流体または歪み粒子が必要なフレームだけ行います。
     // hasFluidにはObjectが所有する追加の特殊材質と弾の特殊描画も含めます。
@@ -166,13 +166,13 @@ void GamePlayScene::Draw() {
     }
 
     // GPU粒子には背景色が必要な種類と深度だけを読む種類があるため、コピー要否を分けます。
-    GPUParticleManager* gpuParticleManager = GPUParticleManager::GetInstance();
-    const bool hasGPUParticles = !gpuParticleManager->IsEmpty();
-    const bool gpuParticlesNeedGrab = hasGPUParticles && gpuParticleManager->RequiresSceneColorCopy();
+    GpuParticleManager* gpuParticleManager = GpuParticleManager::GetInstance();
+    const bool hasGpuParticles = !gpuParticleManager->IsEmpty();
+    const bool gpuParticlesNeedGrab = hasGpuParticles && gpuParticleManager->RequiresSceneColorCopy();
     bool grabUpdated = false;
     const bool isCameraPreview = dxCommon_ && dxCommon_->IsCameraPreviewRendering();
 
-    if (!isCameraPreview && (hasFluid || hasGPUParticles)) {
+    if (!isCameraPreview && (hasFluid || hasGpuParticles)) {
         // 特殊マテリアルか歪みパーティクルが背景色を使う時だけ、画面全体をコピーする。
         if (hasFluid || gpuParticlesNeedGrab) {
             dxCommon_->UpdateGrabTexture();
@@ -188,7 +188,7 @@ void GamePlayScene::Draw() {
                 bool isPlayerPart = false;
 
                 if (isFirstPerson) {
-                    engine::Object3d* current = obj.get();
+                    engine::Object3D* current = obj.get();
 
                     while (current) {
                         if (current == player_) {
@@ -211,7 +211,7 @@ void GamePlayScene::Draw() {
             BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
         }
 
-        if (hasGPUParticles) {
+        if (hasGpuParticles) {
             gpuParticleManager->Draw(dxCommon_->GetCommandList(), camera->GetViewMatrix(),
                                      camera->GetProjectionMatrix(), gpuParticleTexHandle_,
                                      dxCommon_->GetDepthSrvHandle());
@@ -253,9 +253,9 @@ void GamePlayScene::Draw() {
 // ====================================================================
 // UI描画専用の関数
 // ====================================================================
-void GamePlayScene::DrawUI() {
+void GamePlayScene::DrawUi() {
     // ワールド描画の後に2Dを重ねます。早期returnする演出は通常HUDと同時表示しません。
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    BeginSpriteDrawing();
 
     if (lifeLostState_.IsActive() || lifeLostState_.HoldsBlack()) {
         DrawGameplayHUD();
@@ -266,6 +266,11 @@ void GamePlayScene::DrawUI() {
     if (isGoal_) {
         DrawGoalPresentationOverlay();
         return;
+    }
+
+    // ボス登場中は名前だけを描き、通常HUDは下の分岐で隠します。
+    if (arenaBossIntroActive_) {
+        DrawCrownFinaleUi();
     }
 
     // 黒帯を使うムービーでは通常HUD、照準、配置Sprite、案内をまとめて隠します。
@@ -284,7 +289,7 @@ void GamePlayScene::DrawUI() {
 
     // プレイヤー固有のUIはJSON配置の背景より手前、HUDとモーダルより奥に置きます。
     if (player_) {
-        player_->DrawUI();
+        player_->DrawUi();
     }
 
     // プレイヤーの照準UIに埋もれないよう、選択対象のマーカーを後から描きます。
@@ -293,7 +298,7 @@ void GamePlayScene::DrawUI() {
     }
 
     DrawGameplayHUD();
-    DrawCrownFinaleUI();
+    DrawCrownFinaleUi();
 
     // 設定画面はポーズより手前に置き、保存通知はモーダルの後段へ描画します。
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
@@ -326,7 +331,7 @@ void GamePlayScene::StartBridgeDropMovie() {
     // 互換用の呼び出し口。現時点ではこの経路で演出を開始しない。
 }
 
-bool GamePlayScene::IsVisible(engine::Object3d* obj) {
+bool GamePlayScene::IsVisible(engine::Object3D* obj) {
     if (!obj || !obj->GetIsVisible()) {
         return false;
     }

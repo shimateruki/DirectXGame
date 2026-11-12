@@ -3,9 +3,11 @@
 #include <d3d12.h>
 #include <vector>
 #include <wrl.h>
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 
-/// <summary>D3D12 の描画パイプライン設定を段階的に組み立てます。</summary>
+// 担当：描画パイプラインの各設定をまとめ、D3D12のPSOを作る。
+// 関連：DirectXCommon（デバイス）、RootSignatureBuilder（ルート構成）
+// 主な入口：SetRootSignature / SetShaders / Build / TryBuild
 class GraphicsPipelineBuilder {
 public:
     /// <summary>共通の初期値でパイプライン記述を作ります。</summary>

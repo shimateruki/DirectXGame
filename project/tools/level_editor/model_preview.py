@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+from pathlib import Path
 
 import bpy
 from bpy.props import BoolProperty
@@ -27,12 +28,18 @@ def _read_source_data(obj):
 
 
 def _load_managed_model_names(project_root):
-    """共有ステータスのモデル名を取得し、設定ファイルの更新時刻まで再読込を省く。"""
+    """共有・敵別ステータスのモデル名を取得し、設定ファイルの更新時刻まで再読込を省く。"""
     settings_path = os.path.join(project_root, "Resources", "json", "gameplay", "status_settings.json")
-    try:
-        settings_mtime = os.path.getmtime(settings_path)
-    except OSError:
-        settings_mtime = -1.0
+    enemy_root = Path(project_root) / "Resources" / "json" / "enemy"
+    enemy_paths = sorted(enemy_root.glob("*/parameters.json"))
+
+    def modified_at(path):
+        try:
+            return os.path.getmtime(path)
+        except OSError:
+            return -1.0
+
+    settings_mtime = (modified_at(settings_path), tuple((path, modified_at(path)) for path in enemy_paths))
     cache_key = os.path.normcase(os.path.abspath(project_root))
     cached = _MANAGED_MODEL_CACHE.get(cache_key)
     if cached is not None and cached[0] == settings_mtime:
@@ -66,6 +73,16 @@ def _load_managed_model_names(project_root):
                     result["Enemy"][enemy_type] = status["modelName"]
     except (OSError, ValueError, json.JSONDecodeError):
         pass
+    # false_king_slime などのフォルダー名を配置データの敵タイプに戻す。
+    for path in enemy_paths:
+        try:
+            with path.open("r", encoding="utf-8-sig") as stream:
+                status = json.load(stream)
+            if isinstance(status, dict) and isinstance(status.get("modelName"), str) and status["modelName"]:
+                enemy_type = "".join(word.capitalize() for word in path.parent.name.split("_"))
+                result["Enemy"][enemy_type] = status["modelName"]
+        except (OSError, ValueError):
+            continue
     _MANAGED_MODEL_CACHE[cache_key] = (settings_mtime, result)
     return result
 

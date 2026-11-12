@@ -7,7 +7,7 @@ using namespace EnemyFalseKingSlimeImplementation;
 namespace {
 constexpr const char* kAstralReaverChargePreset = "false_king_astral_reaver_charge";
 
-void PlaceMagicLayer(EffectObject3d* effect, float deltaTime, bool visible, const engine::Vector3& position,
+void PlaceMagicLayer(EffectObject3D* effect, float deltaTime, bool visible, const engine::Vector3& position,
                      const engine::Vector3& rotation, const engine::Vector3& scale, const engine::Vector4& color) {
     // 魔法陣の各層を同じ時刻で更新し、描画前にワールド行列を確定します。
     if (!effect)
@@ -132,7 +132,7 @@ void EnemyFalseKingSlime::SpawnCrownLance(const engine::Vector3& groundPosition,
     lance.visual->UpdateWorldMatrix(true);
 
     if (lance.portal) {
-        lance.portal->SetBlendMode(BlendMode::kNormal);
+        lance.portal->SetBlendMode(BlendMode::Normal);
         lance.portal->SetTranslate(lance.portalPosition);
         lance.portal->SetScale({0.16f, 0.16f, 0.16f});
         lance.portal->SetQuaternion(MakeAxisToDirectionQuaternion({0.0f, 0.0f, 1.0f}, lance.flightDirection));
@@ -140,7 +140,7 @@ void EnemyFalseKingSlime::SpawnCrownLance(const engine::Vector3& groundPosition,
         lance.portal->SetIsVisible(false);
 
         if (MeshRenderer* renderer = lance.portal->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGPU* portal = renderer->GetWaterParamData()) {
+            if (MeshRenderer::WaterParamForGpu* portal = renderer->GetWaterParamData()) {
                 portal->waveSpeed = battlePhase_ >= 3 ? 2.8f : 2.25f;
                 portal->waveHeight = 1.18f;
                 portal->waveFrequency = 19.0f;
@@ -209,12 +209,12 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
         if (impactAge >= lance->impactHoldDuration) {
             const float edgePeak = 1.0f - std::abs(dissolveProgress * 2.0f - 1.0f);
             lance->visual->SetMaterialType(4);
-            lance->visual->SetBlendMode(BlendMode::kNormal);
+            lance->visual->SetBlendMode(BlendMode::Normal);
             lance->visual->SetEmissive(1.65f + edgePeak * 1.35f);
             lance->visual->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 
             {
-                engine::Object3d::PortalClipSettings clipSettings;
+                engine::Object3D::PortalClipSettings clipSettings;
                 clipSettings.enabled = true;
                 clipSettings.progress = dissolveProgress;
                 clipSettings.center = impactPosition + lance->flightDirection * 0.52f;
@@ -240,7 +240,7 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
             lance->portal->SetColor(battlePhase_ >= 3 ? engine::Vector4{0.94f, 0.30f, 1.0f, 0.94f * portalVisibility}
                                                       : engine::Vector4{1.0f, 0.66f, 0.18f, 0.94f * portalVisibility});
             if (MeshRenderer* renderer = lance->portal->GetMeshRenderer()) {
-                if (MeshRenderer::WaterParamForGPU* portal = renderer->GetWaterParamData()) {
+                if (MeshRenderer::WaterParamForGpu* portal = renderer->GetWaterParamData()) {
                     portal->effectIntensity = 0.08f + portalVisibility * 1.74f;
                     portal->uvOffsetY = portalVisibility;
                     portal->uvOffsetX =
@@ -315,13 +315,13 @@ void EnemyFalseKingSlime::SpawnRoyalWaves() {
             continue;
         }
 
-        wave.visual->SetBlendMode(BlendMode::kAdd);
+        wave.visual->SetBlendMode(BlendMode::Add);
         wave.visual->SetEnableLighting(false);
         wave.visual->SetEnableEnvMap(false);
         wave.visual->SetMetallic(0.0f);
 
         if (wave.glow) {
-            wave.glow->SetBlendMode(BlendMode::kAdd);
+            wave.glow->SetBlendMode(BlendMode::Add);
             wave.glow->SetEnableLighting(false);
             wave.glow->SetEnableEnvMap(false);
             wave.glow->SetMetallic(0.0f);
@@ -698,7 +698,7 @@ void EnemyFalseKingSlime::UpdateDominion(float deltaTime) {
     dominionLanceTimer_ += kDominionLanceInterval;
 }
 
-std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalVisual(const std::string& name, const std::string& model,
+std::unique_ptr<engine::Object3D> EnemyFalseKingSlime::CreateRoyalVisual(const std::string& name, const std::string& model,
                                                                  int materialType, const engine::Vector4& color,
                                                                  float emissive) const {
     // 特殊材質の演出物には衝突を付けず、実ダメージは攻撃側の時刻処理で管理します。
@@ -706,18 +706,18 @@ std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalVisual(const s
         return nullptr;
     }
 
-    auto visual = std::make_unique<engine::Object3d>();
+    auto visual = std::make_unique<engine::Object3D>();
     visual->Initialize(GetObjectCommon());
     visual->SetName(name);
     visual->SetClassName("EnemyVisualPart");
     visual->SetModel(model);
-    visual->SetColliderType(ColliderType::kNone);
+    visual->SetColliderType(ColliderType::None);
     visual->SetCollisionAttribute(0);
     visual->SetCollisionMask(0);
     visual->SetMaterialType(materialType);
 
     // 通常描画の発光コアと特殊マテリアルの外周を重ねても暗くならないようにします。
-    visual->SetBlendMode(BlendMode::kAdd);
+    visual->SetBlendMode(BlendMode::Add);
     visual->SetSelectedLighting(0);
     visual->SetEnableLighting(false);
     visual->SetEnableEnvMap(false);
@@ -727,7 +727,7 @@ std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalVisual(const s
     visual->SetMetallic(0.0f);
 
     if (MeshRenderer* renderer = visual->GetMeshRenderer()) {
-        if (MeshRenderer::WaterParamForGPU* parameter = renderer->GetWaterParamData()) {
+        if (MeshRenderer::WaterParamForGpu* parameter = renderer->GetWaterParamData()) {
             const bool shockwave = materialType == kShockwaveMaterialType;
             const bool crown = materialType == kCrownMaterialType;
             parameter->waveSpeed = shockwave ? 2.0f : 3.1f;
@@ -746,23 +746,23 @@ std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalVisual(const s
     return visual;
 }
 
-std::unique_ptr<engine::Object3d> EnemyFalseKingSlime::CreateRoyalMesh(const std::string& name, const std::string& model,
+std::unique_ptr<engine::Object3D> EnemyFalseKingSlime::CreateRoyalMesh(const std::string& name, const std::string& model,
                                                                const engine::Vector4& color, float emissive) const {
     // 通常 PBR で描く王冠部品を作り、光の演出物とは別に保持します。
     if (!GetObjectCommon()) {
         return nullptr;
     }
 
-    auto visual = std::make_unique<engine::Object3d>();
+    auto visual = std::make_unique<engine::Object3D>();
     visual->Initialize(GetObjectCommon());
     visual->SetName(name);
     visual->SetClassName("EnemyVisualPart");
     visual->SetModel(model);
-    visual->SetColliderType(ColliderType::kNone);
+    visual->SetColliderType(ColliderType::None);
     visual->SetCollisionAttribute(0);
     visual->SetCollisionMask(0);
     visual->SetMaterialType(0);
-    visual->SetBlendMode(BlendMode::kNone);
+    visual->SetBlendMode(BlendMode::None);
     visual->SetEnableLighting(true);
     visual->SetEnableEnvMap(true);
     visual->SetEnvIntensity(0.72f);
@@ -809,14 +809,14 @@ void EnemyFalseKingSlime::PrepareAstralReaver() {
     astralReaverDamageApplied_ = false;
     const engine::Vector3 forward = NormalizePlanar(lockedDirection_);
     const engine::Vector3 right{forward.z, 0.0f, -forward.x};
-    const AABB bounds = GetModelWorldAABB();
+    const Aabb bounds = GetModelWorldAabb();
     const float casterRadius = (std::max)(baseScale_.x * 0.84f, (bounds.max.x - bounds.min.x) * 0.5f);
     const float casterHeight = (std::max)(baseScale_.y * 1.2f, bounds.max.y - bounds.min.y);
     auto makeEffect = [this](const char* path, const std::string& name) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
-            return std::unique_ptr<EffectObject3d>{};
+            return std::unique_ptr<EffectObject3D>{};
         effect->SetName(name);
         effect->SetIsVisible(false);
         effect->Play(10.0f);
@@ -1015,10 +1015,10 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
     // 天空・着弾点・衝撃の各層を JSON エフェクトから個別に読み込みます。
     nightfallLances_ = {};
     auto makeEffect = [this](const char* path, const std::string& name) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
-            return std::unique_ptr<EffectObject3d>{};
+            return std::unique_ptr<EffectObject3D>{};
         effect->SetName(name);
         effect->SetIsVisible(false);
         effect->Play(10.0f);
@@ -1165,7 +1165,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
     }
 
     // Update が再計算するディゾルブ値を描画直前に上書きし、槍の形を保ったまま粒状に削ります。
-    auto applySpearDissolve = [dissolveProgress](EffectObject3d* effect) {
+    auto applySpearDissolve = [dissolveProgress](EffectObject3D* effect) {
         if (effect && effect->GetMaterialData()) {
             effect->GetMaterialData()->dissolveFade = dissolveProgress * 0.88f;
         }
@@ -1336,10 +1336,10 @@ void EnemyFalseKingSlime::PrepareSealNightfallSatellites() {
     // 封印戦専用の小槍を個別の着弾時刻で準備します。
     sealNightfallSatellites_ = {};
     auto makeEffect = [this](const char* path, const std::string& name) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
-            return std::unique_ptr<EffectObject3d>{};
+            return std::unique_ptr<EffectObject3D>{};
         effect->SetName(name);
         effect->SetIsVisible(false);
         effect->Play(10.0f);

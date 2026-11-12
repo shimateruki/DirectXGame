@@ -1,7 +1,8 @@
 #ifdef USE_IMGUI
-#include "engine/core/editor/SelectedActorSession.h"
+#include "engine/editor/preview/SelectedActorSession.h"
 #endif
 #include "SceneManager.h"
+#include <stdexcept>
 
 #include "DirectXCommon.h"
 #include "LoadingScene.h"
@@ -9,9 +10,10 @@
 #include "ModelManager.h"
 #include "TextureManager.h"
 #include "MeshEffectManager.h"
+#include "DebrisEffectManager.h"
 #include "engine/graphics/postprocess/Fade.h"
 #ifdef USE_IMGUI
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #endif
 #include "json.hpp"
 
@@ -26,11 +28,14 @@
 using json = nlohmann::json;
 
 namespace {
-// GPU待機後、SceneのObject3dCommonを破棄する前に呼びます。
-// LoadingSceneは描画基盤を持たないため、準備済みの次Sceneの演出は消しません。
-void ReleaseSceneMeshEffects(BaseScene* scene) {
-    if (scene && scene->GetObject3dCommon())
+// GPU待機後、Scene固有の実行中演出を片付ける。共有Common自体は破棄しない。
+// LoadingSceneから次Sceneへ渡る際は、準備中に生成した演出を消さない。
+void ReleaseSceneEffects(BaseScene* scene) {
+    if (scene && scene->GetObject3DCommon()) {
         MeshEffectManager::GetInstance()->Clear();
+        // Commonのアドレスが変わらなくても、前Sceneの破片は持ち越さない。
+        DebrisEffectManager::GetInstance()->Clear();
+    }
 }
 
 void LogSlowLoadingStep(const char* operation, const std::string& sceneName,
@@ -90,7 +95,21 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
     const bool initialUploadBatch = textureManager->BeginAsyncUploadBatch();
     textureManager->SetAsyncUploadRecording(initialUploadBatch);
     try {
+        // アセットのCPU先読みとCommonのGPU準備を重ね、起動時の並列性を維持する。
+        // 初期シーンでも、通常のシーン遷移と同じManifest契約を使用する。
+        auto manifest = currentScene_->BuildAsyncLoadManifest();
+        auto preload = std::async(std::launch::async, [manifest]() {
+            return ScenePreloader::Prepare(manifest, nullptr);
+        });
+        PrepareRenderCommons(currentScene_.get());
+        try {
+            currentScene_->SetPreparedLoadData(preload.get());
+        } catch (...) {
+            // CPU先読みの失敗時は既存の同期読込経路を使う。GPU準備失敗は外側で扱う。
+            currentScene_->SetPreparedLoadData(nullptr);
+        }
         currentScene_->Initialize();
+        currentScene_->SetPreparedLoadData(nullptr);
     }
     catch (...) {
         textureManager->SetAsyncUploadRecording(false);
@@ -100,7 +119,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
             textureManager->WaitForAsyncUploadBatch();
         }
 
-        ReleaseSceneMeshEffects(currentScene_.get());
+        ReleaseSceneEffects(currentScene_.get());
         currentScene_.reset();
         currentSceneName_.clear();
         throw;
@@ -144,17 +163,17 @@ void SceneManager::Finalize() {
         }
     }
 
-    DirectXCommon::GetInstance()->WaitForGPUAndReset();
+    DirectXCommon::GetInstance()->WaitForGpuAndReset();
 
     if (currentScene_) {
-        ReleaseSceneMeshEffects(currentScene_.get());
+        ReleaseSceneEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }
 
     ++sceneGeneration_;
 
-    ReleaseSceneMeshEffects(preparedScene_.get());
+    ReleaseSceneEffects(preparedScene_.get());
 
     if (preparedScene_ && preparedSceneInitialized_) {
         preparedScene_->Finalize();
@@ -280,10 +299,10 @@ void SceneManager::Draw() {
     }
 }
 
-void SceneManager::DrawUI() {
+void SceneManager::DrawUi() {
     // LoadingSceneへ切り替わっている間は、そのシーンのUIを描く。
     if (currentScene_) {
-        currentScene_->DrawUI();
+        currentScene_->DrawUi();
     }
 }
 
@@ -459,11 +478,11 @@ void SceneManager::BeginLoadingTransition() {
     // GPUが旧シーンを使い終えてから解放し、LoadingSceneへ所有権を切り替える。
     const auto transitionWaitStart = std::chrono::steady_clock::now();
     TextureManager::GetInstance()->WaitForAsyncUploadBatch();
-    DirectXCommon::GetInstance()->WaitForGPUAndReset();
+    DirectXCommon::GetInstance()->WaitForGpuAndReset();
     LogSlowLoadingStep("old scene GPU synchronization", currentSceneName_, transitionWaitStart);
 
     if (currentScene_) {
-        ReleaseSceneMeshEffects(currentScene_.get());
+        ReleaseSceneEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }
@@ -497,6 +516,7 @@ void SceneManager::BeginLoadingTransition() {
         currentScene_->SetDebugEditor(debugEditor_);
     }
 
+    PrepareRenderCommons(currentScene_.get());
     currentScene_->Initialize();
     SetLoadingProgress(0.08f);
 
@@ -656,6 +676,9 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
     }
 
     if (!sceneInitializationStarted_) {
+        // Scene固有の初期化前に、共有GPU基盤だけを一段進める。
+        // 完了後は毎フレーム再接続せず、エフェクトの時間設定も維持する。
+        if (!PrepareRenderCommons(preparedScene_.get(), true)) return;
         preparedScene_->SetSceneManager(this);
         preparedScene_->SetSceneLoadContext(activeSceneLoadContext_);
 
@@ -777,11 +800,15 @@ float SceneManager::CalculateLoadingProgress() const {
         : static_cast<float>(completedAssets) / static_cast<float>(totalAssets);
     const float assetProgress = 0.60f + (std::min)(1.0f, assetRatio) * 0.36f;
 
+    if (preparedAssetsReady_ && !sceneInitializationStarted_ && preparedScene_ && renderCommonResources_) {
+        return 0.96f + renderCommonResources_->GetPreparationProgress(preparedScene_->GetRenderPreparation()) * 0.01f;
+    }
+
     if (sceneInitializationStarted_ && !sceneInitializationFinished_) {
         const float initializeRatio = preparedScene_
             ? std::clamp(preparedScene_->GetLoadingInitializeProgress(), 0.0f, 1.0f)
             : 0.0f;
-        return 0.96f + initializeRatio * 0.025f;
+        return 0.97f + initializeRatio * 0.015f;
     }
 
     if (sceneInitializationFinished_ &&
@@ -804,11 +831,11 @@ void SceneManager::SwapToPreparedScene() {
 
     // GPU使用が終わってからLoadingSceneを解放し、準備済みシーンを有効化する。
     const auto swapWaitStart = std::chrono::steady_clock::now();
-    DirectXCommon::GetInstance()->WaitForGPUAndReset();
+    DirectXCommon::GetInstance()->WaitForGpuAndReset();
     LogSlowLoadingStep("loading scene GPU synchronization", loadingTargetSceneName_, swapWaitStart);
 
     if (currentScene_) {
-        ReleaseSceneMeshEffects(currentScene_.get());
+        ReleaseSceneEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }
@@ -818,8 +845,8 @@ void SceneManager::SwapToPreparedScene() {
 #ifdef USE_IMGUI
     CameraEditor* cameraEditor = CameraEditor::GetInstance();
     cameraEditor->InvalidatePreviewForSceneChange();
-    cameraEditor->SetObject3dCommon(
-        currentScene_ ? currentScene_->GetObject3dCommon() : nullptr);
+    cameraEditor->SetObject3DCommon(
+        currentScene_ ? currentScene_->GetObject3DCommon() : nullptr);
 #endif
     preparedSceneInitialized_ = false;
     preparedLoadData_.reset();
@@ -857,10 +884,10 @@ void SceneManager::SwapToDirectNextScene() {
 #endif
 
     // ロード画面を挟まない遷移でも、旧シーンのGPU参照を待ってから交換する。
-    DirectXCommon::GetInstance()->WaitForGPUAndReset();
+    DirectXCommon::GetInstance()->WaitForGpuAndReset();
 
     if (currentScene_) {
-        ReleaseSceneMeshEffects(currentScene_.get());
+        ReleaseSceneEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }
@@ -885,9 +912,10 @@ void SceneManager::SwapToDirectNextScene() {
             currentScene_->SetDebugEditor(debugEditor_);
         }
 
+        PrepareRenderCommons(currentScene_.get());
         currentScene_->Initialize();
 #ifdef USE_IMGUI
-        CameraEditor::GetInstance()->SetObject3dCommon(currentScene_->GetObject3dCommon());
+        CameraEditor::GetInstance()->SetObject3DCommon(currentScene_->GetObject3DCommon());
 #endif
         currentScene_->OnActivated();
     }
@@ -956,4 +984,19 @@ std::string SceneManager::LoadLastSceneName() {
     }
 
     return "";
+}
+
+bool SceneManager::PrepareRenderCommons(BaseScene* scene, bool incremental) {
+    if (!scene || !renderCommonResources_) {
+        throw std::logic_error("SceneManager requires Framework render resources before scene initialization");
+    }
+    const auto preparation = scene->GetRenderPreparation();
+    if (incremental) {
+        if (!renderCommonResources_->PrepareStep(preparation)) return false;
+    } else {
+        renderCommonResources_->Prepare(preparation);
+    }
+    // エンジンのエフェクト描画器も共有Commonを借用する。Sceneに接続作業を要求しない。
+    if (auto* common = scene->GetObject3DCommon()) MeshEffectManager::GetInstance()->Initialize(common);
+    return true;
 }

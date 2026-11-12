@@ -1,206 +1,235 @@
 #include "CopyAbilitySupport.h"
+#include "CrownLanceSettings.h"
+#include "CrownLanceTrail.h"
+#include "CrownGateWarp.h"
+#include "CrownMeleeCombo.h"
+#include "CameraManager.h"
+#include <array>
 
 namespace {
 using namespace CopyAbilityDetail;
 
-// 王冠能力の射撃と降下弾を制御し、弾の表示・移動・寿命をセッション内で管理する。
+// 王冠能力の溜めゲート槍・近接コンボ・ゲート回避と、その表示物の寿命を管理する。
+// PlayerCopyAbilityControllerが所有する王冠の槍・ゲート回避の実装。入力はProcessInput、進行はUpdate、一時表示の回収はCancelが担当する。
 class CrownCopyAbility final : public ICopyAbilitySession {
   public:
     using ICopyAbilitySession::ICopyAbilitySession;
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
-        // 演出ロック中は受け付けず、突進・衝撃波・槍・溜め落下弾を各再使用時間で分ける。
-        if (player.IsCinematicLocked() || player.IsDead())
+        // 演出中は解除し、近接コンボ・ゲート回避・ゲート槍の入力を分けます。
+        if (player.IsCinematicLocked() || player.IsDead()) {
+            Cancel(player);
             return;
-        held_ = input.primaryHeld;
-        if (dashTime_ > 0.0f)
+        }
+        if (warp_.Active())
             return;
-        if (input.specialTriggered && dashCooldown_ <= 0.0f) {
-            direction_ = NormalizePlanar(player.GetLockOnAttackDirection());
-            dashTime_ = 0.38f;
-            dashCooldown_ = 1.3f;
-            dashHits_.clear();
-            player.SetIsControlActive(false);
-            player.StartEvasionInvincibility(0.38f);
-            player.TriggerSlimeImpulse({1.3f, 1.4f, 2.8f}, 0.16f);
-            EmitDirectedPreset("false_king_rush_wake", player.GetWorldPosition(), direction_);
-        }
-
-        if (input.secondaryTriggered && waveCooldown_ <= 0.0f) {
-            waveCenter_ = player.GetWorldPosition();
-            waveTime_ = 0.01f;
-            waveCooldown_ = 2.4f;
-            waveHits_.clear();
-            player.TriggerSlimeImpulse({2.6f, 0.75f, 2.6f}, 0.2f);
-            EmitPreset("false_king_shockwave", waveCenter_);
-        }
-
-        if (input.primaryTriggered && lanceCooldown_ <= 0.0f) {
-            const engine::Vector3 forward = NormalizePlanar(player.GetLockOnAttackDirection());
-            const engine::Vector3 side{forward.z, 0.0f, -forward.x};
-
-            for (int i = -1; i <= 1; ++i) {
-                SpawnShot(player.GetWorldPosition() + engine::Vector3{0.0f, 1.7f, 0.0f} + side * (0.65f * i),
-                          NormalizePlanar(forward + side * (0.08f * i)) * 36.0f, false);
-            }
-
-            lanceCooldown_ = 0.55f;
-        }
-
-        if (!input.primaryHeld && chargeTime_ > 0.85f && rainCooldown_ <= 0.0f) {
-            engine::Vector3 center = player.GetWorldPosition() + NormalizePlanar(player.GetForwardDirection()) * 14.0f;
-
-            if (auto* scene = SceneManager::GetInstance()->GetCurrentScene()) {
-                float nearest = 32.0f;
-
-                for (const auto& object : scene->GetObjects()) {
-                    auto* enemy = dynamic_cast<BaseEnemy*>(object.get());
-                    if (!enemy || enemy->IsDead() || !enemy->GetIsVisible())
-                        continue;
-                    const float distance = engine::Math::Length(enemy->GetWorldPosition() - player.GetWorldPosition());
-
-                    if (distance < nearest) {
-                        nearest = distance;
-                        center = enemy->GetWorldPosition();
-                    }
+        if (melee_.Active()) {
+            if (input.secondaryTriggered && melee_.CanDodge() && warp_.Ready()) {
+                // 回避の経路確認に成功した時だけ近接を終了します。壁際で失敗したら近接を続けます。
+                player.SetIsControlActive(true);
+                if (BeginWarp(player)) {
+                    melee_.End(player, false);
+                    player.PlaySlimeAbilityMotion("player_ability_crown_warp_enter", false, 1.0f, 0.0f, 0.0f);
+                    return;
                 }
+                player.SetIsControlActive(false);
             }
-
-            for (int i = 0; i < 6; ++i) {
-                const float angle = static_cast<float>(i) * kPi / 3.0f;
-                SpawnShot(center + engine::Vector3{std::sin(angle) * 1.5f, 12.0f + i * 1.3f, std::cos(angle) * 1.5f},
-                          {0.0f, -32.0f, 0.0f}, true);
-            }
-
-            rainCooldown_ = 3.0f;
-            chargeTime_ = 0.0f;
+            if (input.specialTriggered) melee_.QueueNext();
+            return;
         }
+        if (input.secondaryTriggered && BeginWarp(player))
+            return;
+        if (input.specialTriggered && melee_.Ready()) {
+            StopLanceCharge(player);
+            melee_.Begin(player, [this](const char* model) { return MakeVisual(model); },
+                          [this] { return MakeGatePortal(); });
+            return;
+        }
+
+        // 押した時に形成を始め、離した時だけ発射予約を作ります。
+        if (!input.specialTriggered && !input.secondaryTriggered && input.primaryTriggered && lanceCooldown_ <= 0.0f &&
+            !charging_ && gates_.empty())
+            BeginLanceCharge(player);
+        if (charging_ && !input.primaryHeld)
+            ReleaseLances(player);
     }
 
-    void Update(Player& player, float dt) override {
-        // 突進と衝撃波は領域判定、槍は移動線分判定でフレーム間のすり抜けを防ぐ。
-        time_ += dt;
-        lanceCooldown_ = std::max(0.0f, lanceCooldown_ - dt);
-        waveCooldown_ = std::max(0.0f, waveCooldown_ - dt);
-        dashCooldown_ = std::max(0.0f, dashCooldown_ - dt);
-        rainCooldown_ = std::max(0.0f, rainCooldown_ - dt);
-        chargeTime_ = held_ ? std::min(1.5f, chargeTime_ + dt) : 0.0f;
-        EnsureVisuals();
+    void Update(Player& player, float deltaTime) override {
+        // 近接は槍の弧、飛び道具は移動線分を検査してフレーム間のすり抜けを防ぎます。
+        if (!std::isfinite(deltaTime) || deltaTime <= 0.0f)
+            return;
+        if (player.IsCinematicLocked() || player.IsDead()) {
+            Cancel(player);
+            return;
+        }
+        time_ += deltaTime;
+        effects_.Update(deltaTime);
+        readyFlashTime_ = (std::max)(0.0f, readyFlashTime_ - deltaTime);
+        lanceCooldown_ = std::max(0.0f, lanceCooldown_ - deltaTime);
+        warp_.Update(player, deltaTime);
+        melee_.Update(player, deltaTime);
+        UpdateLanceCharge(player, deltaTime);
         const auto& tuning = CrownFinaleTuning::Get();
 
-        if (dashTime_ > 0.0f) {
-            dashTime_ = std::max(0.0f, dashTime_ - dt);
-            player.SetVelocity({direction_.x * 32.0f, player.GetVelocity().y, direction_.z * 32.0f});
-            HitArea(player, player.GetWorldPosition() + direction_ * 1.2f, 2.8f, tuning.dashDamage, dashHits_, false);
-
-            if (dashTime_ <= 0.0f) {
-                player.SetIsControlActive(true);
-                player.SetVelocity({0.0f, player.GetVelocity().y, 0.0f});
-            }
-        }
-
-        if (waveTime_ > 0.0f) {
-            waveTime_ += dt;
-            const float radius = std::min(16.0f, waveTime_ * 22.0f);
-            HitArea(player, waveCenter_ + engine::Vector3{0.0f, 1.0f, 0.0f}, radius, tuning.waveDamage, waveHits_, true);
-
-            if (wave_) {
-                wave_->SetTranslate(waveCenter_ + engine::Vector3{0.0f, 0.15f, 0.0f});
-                wave_->SetScale({radius / 1.115f, 0.8f, radius / 1.115f});
-                wave_->Update(dt);
-            }
-
-            if (waveTime_ > 0.8f)
-                waveTime_ = 0.0f;
-        }
-
+        std::erase_if(remnants_, [deltaTime](Shot& shot) { return UpdateShotDissolve(shot, deltaTime); });
+        UpdateGates(player, deltaTime);
         for (auto it = shots_.begin(); it != shots_.end();) {
-            it->life -= dt;
-            const engine::Vector3 movement = it->velocity * dt;
+            // 低fpsでも同じフレーム内の発射順が距離へ反映されるよう、発射後の残り時間だけ進めます。
+            const float step = it->firstStep >= 0.0f ? (std::min)(it->firstStep, deltaTime) : deltaTime;
+            it->firstStep = -1.0f;
+            it->life -= step;
+            const engine::Vector3 movement = it->velocity * step;
 
             // 高速弾は線分で調べ、フレーム間で敵や地形を飛び越えません。
             PhysicsQueryFilter filter;
             filter.mask = CollisionCategories::Get("enemy") | CollisionCategories::Get("ground");
             filter.ignoredObject = &player;
             const float length = engine::Math::Length(movement);
-            const auto hit = CollisionManager::GetInstance()->Raycast(
-                it->position, length > 0.0001f ? movement / length : engine::Vector3{0.0f, -1.0f, 0.0f}, length, filter);
+            const auto hit = CollisionManager::GetInstance()->SphereCast(
+                it->position, 0.16f * it->scale,
+                length > 0.0001f ? movement / length : engine::Vector3{0.0f, -1.0f, 0.0f}, length, filter);
             if (hit.isHit) {
-                if (engine::Object3d* enemy = FindEnemyRoot(hit.hitObject)) {
-                    DamageEnemy(player, enemy, tuning.lanceDamage * (it->rain ? 1.4f : 1.0f), DamageType::Physical, {});
+                if (engine::Object3D* enemy = FindEnemyRoot(hit.hitObject)) {
+                    const auto generation = cancelGeneration_;
+                    DamageEnemy(player, enemy, tuning.lanceDamage * it->damageScale, DamageType::Physical, {});
+                    // 命中イベント内でコピー解除されたら、消された弾の参照を使いません。
+                    if (generation != cancelGeneration_) return;
                 }
 
-                EmitPreset("false_king_lance_impact", hit.hitPoint);
+                const auto direction = Unit(it->velocity);
+                const auto normal = Unit(hit.normal, direction * -1.0f);
+                // 接触時の球の中心で槍を固定し、残り時間だけ消散の時計を進めます。
+                const float travel = std::clamp(hit.distance, 0.0f, length);
+                it->position += direction * travel;
+                it->visual->SetTranslate(it->position);
+                EmitLanceImpact(hit.hitPoint, normal, it->isFullChargeCenter, it->presentation);
+                BeginShotDissolve(*it);
+                const float remaining = step - travel / (std::max)(0.001f, engine::Math::Length(it->velocity));
+                if (!UpdateShotDissolve(*it, (std::max)(0.0f, remaining)))
+                    remnants_.push_back(std::move(*it));
                 it = shots_.erase(it);
                 continue;
             }
 
             it->position += movement;
             it->visual->SetTranslate(it->position);
-            it->visual->Update(dt);
-            if (it->life <= 0.0f)
+            it->visual->Update(step);
+            const auto direction = Unit(it->velocity);
+            if (it->emerging && engine::Math::Dot(it->position - it->gateOrigin, direction) >= RearOffset(it->scale)) {
+                it->visual->ClearPortalClip();
+                it->emerging = false;
+            }
+            UpdateTrail(*it, 0.0f, step);
+            if (it->life <= 0.0f) {
+                BeginShotDissolve(*it);
+                UpdateShotDissolve(*it, 0.0f);
+                remnants_.push_back(std::move(*it));
                 it = shots_.erase(it);
+            }
             else
                 ++it;
         }
 
-        ambientTimer_ -= dt;
+        ambientTimer_ -= deltaTime;
 
         if (ambientTimer_ <= 0.0f) {
-            EmitPreset(chargeTime_ > 0.85f ? "false_king_charge" : "crown_goal_idle_sparkle",
-                       player.GetWorldPosition() + engine::Vector3{0.0f, 1.8f, 0.0f});
-            ambientTimer_ = chargeTime_ > 0.85f ? 0.18f : 0.65f;
+            EmitPreset("crown_goal_idle_sparkle", player.GetWorldPosition() + engine::Vector3{0.0f, 1.8f, 0.0f});
+            ambientTimer_ = 0.65f;
         }
     }
 
     void Draw(Player& player, ID3D12Resource* point, ID3D12Resource* spot, Camera* camera,
               int previewBufferIndex) override {
-        EnsureVisuals();
+        melee_.Draw(point, spot, camera, previewBufferIndex);
+        effects_.Draw(point, spot, camera, previewBufferIndex);
+        warp_.DrawEffects(point, spot, camera, previewBufferIndex);
 
-        // 王冠は覇王スライム本体に一体化し、離れた頭上へ二重表示しない。
-        if (wings_ && dashTime_ > 0.0f && !player.IsCinematicLocked()) {
-            wings_->SetTranslate(player.GetWorldPosition() + engine::Vector3{0.0f, 0.9f, 0.0f});
-            wings_->SetScale({0.48f, 0.48f, 0.48f});
-            wings_->SetRotation({0.0f, player.GetMoveYaw(), 0.0f});
-            DrawVisual(wings_.get(), point, spot, camera, previewBufferIndex);
+        for (const auto& gate : gates_) {
+            if (!gate.fired)
+                DrawVisual(gate.lance.get(), point, spot, camera, previewBufferIndex);
         }
-
-        if (waveTime_ > 0.0f)
-            DrawVisual(wave_.get(), point, spot, camera, previewBufferIndex);
         for (const auto& shot : shots_)
             DrawVisual(shot.visual.get(), point, spot, camera, previewBufferIndex);
+        for (const auto& shot : remnants_)
+            DrawVisual(shot.visual.get(), point, spot, camera, previewBufferIndex);
+        for (auto& shot : shots_)
+            shot.trail.Draw(point, spot, camera, previewBufferIndex);
+        for (auto& shot : remnants_)
+            shot.trail.Draw(point, spot, camera, previewBufferIndex);
     }
 
+    bool HasOwnedVisuals() const override { return melee_.Active() || warp_.Active() || !gates_.empty(); }
+    void DrawOwnedVisuals(Player& player, uint32_t depth, uint32_t grab, Camera* camera, int bufferIndex) override {
+        // ゲートは深度・画面色を参照する専用パスへ渡し、通常の槍と二重描画しません。
+        if (player.IsDead() || player.IsCinematicLocked())
+            return;
+        if (!camera)
+            camera = CameraManager::GetInstance()->GetActiveCamera();
+        if (!camera)
+            return;
+        warp_.Draw(camera, depth, grab, bufferIndex);
+        melee_.DrawGate(camera, depth, grab, bufferIndex);
+        for (auto& gate : gates_) {
+            gate.portal->UpdateWorldMatrix(true);
+            gate.portal->DrawSpecialMaterialForCamera(camera, depth, grab, bufferIndex);
+        }
+    }
+    const char* GetStateLabel() const override {
+        if (warp_.Active()) return "覇王・ゲート回避";
+        if (melee_.Active()) {
+            static constexpr const char* kLabels[]{"覇王・横薙ぎ", "覇王・斬り上げ", "覇王・叩きつけ"};
+            return kLabels[melee_.Stage()];
+        }
+        if (charging_)
+            return chargeTime_ >= lanceSettings_.fullChargeTime  ? "覇王・最大溜め"
+                   : chargeTime_ >= lanceSettings_.fiveGateTime  ? "覇王・5ゲート"
+                   : chargeTime_ >= lanceSettings_.threeGateTime ? "覇王・3ゲート"
+                                                                 : "覇王・1ゲート";
+        return gates_.empty() ? "覇王・待機" : "覇王・ゲート槍発射";
+    }
+    void NotifyDamageStarted(Player& player) override {
+        melee_.End(player);
+    }
     void Cancel(Player& player) override {
-        // 突進中に解除した場合は操作権を戻し、能力側の表示弾を消す。
-        if (dashTime_ > 0.0f && !player.IsCinematicLocked())
-            player.SetIsControlActive(true);
-        dashTime_ = waveTime_ = 0.0f;
+        ++cancelGeneration_;
+        melee_.End(player);
+        melee_.ClearEffects();
+        effects_.Clear();
+        warp_.ClearEffects();
+        StopLanceCharge(player);
+        player.ClearSlimeAbilityMotion();
+        warp_.End(player);
         shots_.clear();
-        wings_.reset();
-        wave_.reset();
+        remnants_.clear();
     }
 
   private:
-    // 王冠能力の弾表示と移動状態。life は残り秒、rain は落下弾の扱いを選ぶ。
+    // 王冠能力の弾表示と移動状態。lifeは残り秒、scaleは外観と命中半径の倍率です。
     struct Shot {
-        std::unique_ptr<engine::Object3d> visual;
-        engine::Vector3 position{}, velocity{};
+        std::unique_ptr<engine::Object3D> visual;
+        engine::Vector3 position{}, velocity{}, gateOrigin{};
+        CrownLanceTrail trail;
+        CrownLanceSettings::Appearance appearance;
+        CrownPresentationSettings presentation;
+        float dissolveAge = 0.0f;
+        int nextFlake = 0;
+        bool emerging = true;
         float life = 2.2f;
-        bool rain = false;
+        float scale = 1.0f, damageScale = 1.0f, firstStep = -1.0f;
+        bool isFullChargeCenter = false;
     };
 
-    std::unique_ptr<engine::Object3d> MakeVisual(const char* model) {
+    std::unique_ptr<engine::Object3D> MakeVisual(const char* model) {
         // 弾や翼は表示専用で生成し、物理Colliderの対象には入れない。
         auto* scene = SceneManager::GetInstance()->GetCurrentScene();
-        if (!scene || !scene->GetObject3dCommon())
+        if (!scene || !scene->GetObject3DCommon())
             return {};
-        auto visual = std::make_unique<engine::Object3d>();
-        visual->Initialize(scene->GetObject3dCommon());
+        auto visual = std::make_unique<engine::Object3D>();
+        visual->Initialize(scene->GetObject3DCommon());
         visual->SetModel(model);
         visual->SetMaterialType(0);
-        visual->SetBlendMode(BlendMode::kNone);
-        visual->SetColliderType(ColliderType::kNone);
+        visual->SetBlendMode(BlendMode::None);
+        visual->SetColliderType(ColliderType::None);
         visual->SetCollisionAttribute(0);
         visual->SetCollisionMask(0);
         visual->SetColor({1.0f, 0.92f, 0.58f, 1.0f});
@@ -209,15 +238,44 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         return visual;
     }
 
-    void EnsureVisuals() {
-        // シーンが利用できる時点で表示モデルを遅延生成する。
-        if (!wings_)
-            wings_ = MakeVisual("Effects/false_king_rush_wings");
-        if (!wave_)
-            wave_ = MakeVisual("Effects/false_king_royal_wave");
+    std::unique_ptr<engine::Object3D> MakeGatePortal() {
+        auto portal = MakeVisual("Gimmicks/portal_surface");
+        if (!portal) return {};
+        portal->SetMaterialType(22);
+        portal->SetBlendMode(BlendMode::Normal);
+        portal->SetEnableLighting(false);
+        portal->SetEmissive(2.5f);
+        portal->SetQuaternionMaster(true);
+        if (auto* material = portal->GetMeshRenderer()->GetWaterParamData()) {
+            material->waveSpeed = 2.25f;
+            material->waveHeight = 1.18f;
+            material->waveFrequency = 19;
+            material->effectSoftness = 0.56f;
+            material->effectScale = 1.12f;
+            material->effectScaleX = material->effectScaleY = 1;
+            material->effectScaleZ = 0.12f;
+            material->effectType = 1;
+            material->flowSpeedX = material->flowSpeedY = 0;
+            material->billboardScale = 1;
+        }
+        return portal;
+    }
+    bool BeginWarp(Player& player) {
+        if (!warp_.Ready()) return false;
+        if (!warp_.Begin(player, CrownLanceSettings::Get(), [this](const auto& normal) {
+                auto gate = MakeGatePortal();
+                if (gate) {
+                    gate->SetQuaternionMaster(false);
+                    gate->SetEulerAngles({-std::asin(normal.y), std::atan2(normal.x, normal.z), 0});
+                }
+                return gate;
+            })) return false;
+        StopLanceCharge(player);
+        player.PlaySlimeAbilityMotion("player_ability_crown_warp_enter", false, 1.0f, 0.0f, 0.0f);
+        return true;
     }
 
-    static void DrawVisual(engine::Object3d* visual, ID3D12Resource* point, ID3D12Resource* spot, Camera* camera,
+    static void DrawVisual(engine::Object3D* visual, ID3D12Resource* point, ID3D12Resource* spot, Camera* camera,
                            int previewBufferIndex) {
         // 指定カメラがあればプレビューへ描き、なければ現在シーンのカメラを使う。
         if (!visual)
@@ -231,54 +289,362 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         }
     }
 
-    void SpawnShot(const engine::Vector3& position, const engine::Vector3& velocity, bool rain) {
+    // 溜め中は追従し、解除時に射出口・方向・発射時刻を固定します。
+    struct Gate {
+        std::unique_ptr<engine::Object3D> portal, lance;
+        engine::Vector3 position{}, direction{0, 0, 1};
+        float age = 0.0f, releaseAt = 0.0f, closeAge = 0.0f, scale = 1.0f;
+        int index = 0;
+        bool fired = false;
+    };
+    static engine::Vector3 Unit(const engine::Vector3& v, const engine::Vector3& fallback = {0, 0, 1}) {
+        return engine::Math::Length(v) > 0.0001f ? engine::Math::Normalize(v) : fallback;
+    }
+    static engine::Quaternion AimRotation(const engine::Vector3& axis, const engine::Vector3& direction) {
+        const auto to = Unit(direction, axis);
+        const float dot = std::clamp(engine::Math::Dot(axis, to), -1.0f, 1.0f);
+        if (dot > 0.9999f)
+            return {0, 0, 0, 1};
+        if (dot < -0.9999f) {
+            const auto perpendicular = Unit(engine::Math::Cross(axis, {1, 0, 0}), {0, 1, 0});
+            return {perpendicular.x, perpendicular.y, perpendicular.z, 0};
+        }
+        const auto cross = engine::Math::Cross(axis, to);
+        const float q = std::sqrt((1 + dot) * 2);
+        return {cross.x / q, cross.y / q, cross.z / q, q * 0.5f};
+    }
+    // プリセットは共有のまま保持し、今回の位置・方向・大きさだけをコピーへ反映します。
+    static void EmitLanceEffect(const char* preset, const engine::Vector3& position,
+                                const engine::Vector3& direction = {0, 1, 0}, float scale = 1.0f,
+                                bool directed = false) {
+        auto* particles = GpuParticleManager::GetInstance();
+        if (!particles || !particles->IsInitialized())
+            return;
+        const auto& presets = particles->GetPresets();
+        const auto found = presets.find(preset);
+        if (found == presets.end())
+            return;
+        auto config = found->second;
+        config.emitPos = position;
+        config.baseSize *= scale;
+        config.midSize *= scale;
+        config.endSize *= scale;
+        config.emitArea = config.emitArea * scale;
+        config.shapeRadius *= scale;
+        config.fieldRadius *= scale;
+        if (directed)
+            config.emitVelocity = Unit(direction) * engine::Math::Length(config.emitVelocity);
+        particles->EmitFromConfig(config);
+    }
+    static void EmitLanceImpact(const engine::Vector3& position, const engine::Vector3& normal, bool full,
+                                const CrownPresentationSettings& style) {
+        // 接触面の手前へ少し出し、敵・壁の中へ閃光が埋まるのを防ぎます。
+        const auto origin = position + normal * 0.08f;
+        EmitLanceEffect(full ? "player_crown_impact_full" : "player_crown_impact", origin, normal, (full ? 0.65f : 0.46f) * style.particleScale);
+        EmitLanceEffect("player_crown_impact_sparks", origin, normal, (full ? 1.4f : 1.1f) * style.particleScale, true);
+        if (full)
+            EmitLanceEffect("player_crown_impact_shards", origin, normal, style.particleScale, true);
+    }
+    // 槍モデルのローカルY範囲は -2.02（穂先）～+1.63（柄尻）。縦倍率はモデルと共有します。
+    static constexpr float kAxialScale = 0.8f;
+    static float RearOffset(float scale) { return 1.63f * kAxialScale * scale; }
+    static engine::Object3D::PortalClipSettings GateClip(const Gate& gate,
+                                                         const CrownLanceSettings::Appearance& style) {
+        engine::Object3D::PortalClipSettings clip;
+        clip.enabled = true;
+        clip.center = gate.position;
+        clip.normal = gate.direction * -1.0f;
+        clip.progress = 0.5f;
+        clip.edgeWidth = style.edgeWidth;
+        clip.dissolve = 0.12f;
+        clip.color = {style.edgeColor[0], style.edgeColor[1], style.edgeColor[2], 1.0f};
+        return clip;
+    }
+    static void UpdateTrail(Shot& shot, float fade, float deltaTime) {
+        const auto direction = Unit(shot.velocity);
+        // 柄がゲートから出る前の帯はゲート面へ畳み、溜め側へ突き抜けないようにします。
+        const float fromGate = engine::Math::Dot(shot.position - shot.gateOrigin, direction);
+        const auto root = shot.gateOrigin + direction * (std::max)(0.0f, fromGate - RearOffset(shot.scale));
+        shot.trail.Update(root, shot.appearance, shot.isFullChargeCenter, fade, deltaTime);
+    }
+    static void BeginShotDissolve(Shot& shot) {
+        shot.visual->ClearPortalClip();
+        shot.dissolveAge = 0.0f;
+    }
+    static bool UpdateShotDissolve(Shot& shot, float deltaTime) {
+        shot.dissolveAge += deltaTime;
+        const float duration = shot.appearance.dissolveTime * (shot.isFullChargeCenter ? 1.25f : 1.0f);
+        // 約2フレームだけ金属の姿を残し、衝撃と崩れ始めを区別します。
+        constexpr float kImpactHoldSeconds = 0.03f;
+        if (shot.dissolveAge < kImpactHoldSeconds) {
+            shot.visual->Update(deltaTime);
+            UpdateTrail(shot, 0.0f, deltaTime);
+            return false;
+        }
+        const float t = SmoothStep((shot.dissolveAge - kImpactHoldSeconds) / duration);
+        if (t >= 1.0f)
+            return true;
+        const auto direction = Unit(shot.velocity);
+        // 一斉命中時も金属の輪郭が残るよう、ボスの強い発光は最大溜めの中央だけに使います。
+        if (shot.isFullChargeCenter && shot.visual->GetMaterialType() != 4) {
+            shot.visual->SetMaterialType(4);
+            shot.visual->SetBlendMode(BlendMode::Normal);
+            shot.visual->SetColor({1, 1, 1, 1});
+            shot.visual->SetEmissive(1.35f);
+        }
+        const auto& tint = shot.appearance.edgeColor;
+        engine::Object3D::PortalClipSettings clip;
+        clip.enabled = true;
+        clip.center = shot.position;
+        clip.normal = direction;
+        if (shot.isFullChargeCenter) {
+            clip.progress = t;
+        } else {
+            // 材質0のノイズ付き断面を穂先から柄尻へ通します。
+            const float tip = 2.02f * kAxialScale * shot.scale;
+            const float rear = RearOffset(shot.scale);
+            const float margin = 0.30f + shot.appearance.edgeWidth;
+            const float cut = std::lerp(tip + margin, -rear - margin, t);
+            clip.center = shot.position + direction * cut;
+            clip.progress = 0.5f;
+            clip.dissolve = 0.38f;
+        }
+        clip.edgeWidth = shot.appearance.edgeWidth * (1.0f - 0.30f * t);
+        clip.color = {tint[0], tint[1], tint[2], 1.0f};
+        shot.visual->SetPortalClip(clip);
+        shot.visual->Update(deltaTime);
+        UpdateTrail(shot, t, deltaTime);
+        // 発生回数は槍ごとに制限。穂先から柄へ崩れる位置に小片を置きます。
+        constexpr std::array<float, 3> kDissolveFlakeThresholds{0.22f, 0.50f, 0.76f};
+        const int count = shot.isFullChargeCenter ? 3 : 1;
+        while (shot.nextFlake < count && t >= kDissolveFlakeThresholds[shot.nextFlake]) {
+            const float offset = (0.40f - kDissolveFlakeThresholds[shot.nextFlake] * 1.85f) * shot.scale;
+            EmitLanceEffect("player_crown_dissolve_flakes", shot.position + direction * offset);
+            ++shot.nextFlake;
+        }
+        return false;
+    }
+    void BeginLanceCharge(Player& player) {
+        lanceSettings_ = CrownLanceSettings::Get();
+        lanceSettings_.Sanitize();
+        presentation_ = CrownPresentationSettings::Get();
+        presentation_.Sanitize();
+        charging_ = true;
+        fullCuePlayed_ = false;
+        chargeVfxTimer_ = readyFlashTime_ = 0.0f;
+        chargeTime_ = releaseTime_ = 0;
+        player.PlaySlimeAbilityMotion("player_ability_crown_charge", true, 1.0f, 0.05f, 0.08f);
+        UpdateLanceCharge(player, 0.0f);
+    }
+    void StopLanceCharge(Player& player) {
+        if (charging_ || !gates_.empty())
+            player.StopSlimeAbilityMotion(0.08f);
+        charging_ = false;
+        chargeTime_ = releaseTime_ = 0;
+        gates_.clear();
+        chargeVfxTimer_ = readyFlashTime_ = 0.0f;
+    }
+    void UpdateLanceCharge(Player& player, float deltaTime) {
+        if (!charging_)
+            return;
+        const float previousCharge = chargeTime_;
+        chargeTime_ = (std::min)(lanceSettings_.fullChargeTime, chargeTime_ + deltaTime);
+        const int count = lanceSettings_.GateCount(chargeTime_);
+        while (static_cast<int>(gates_.size()) < count) {
+            Gate gate;
+            gate.index = static_cast<int>(gates_.size());
+            const float birth = gate.index == 0   ? 0.0f
+                                : gate.index <= 2 ? lanceSettings_.threeGateTime
+                                                  : lanceSettings_.fiveGateTime;
+            // 段階を跨いだフレームの途中から開き始め、低fpsでも突然全開にしません。
+            gate.age = -std::clamp(birth - previousCharge, 0.0f, deltaTime);
+            gate.portal = MakeGatePortal();
+            gate.lance = MakeVisual("Effects/false_king_crown_lance");
+            if (!gate.portal || !gate.lance)
+                break;
+            gate.portal->SetIsVisible(false);
+            gate.lance->SetIsVisible(false);
+            // 本体の金属色を残し、強い発光はゲートと軌跡に受け持たせます。
+            gate.lance->SetEmissive(1.05f);
+            gate.lance->SetEnableEnvMap(true);
+            gate.lance->SetEnvIntensity(0.5f);
+            gate.lance->SetRoughness(0.28f);
+            gate.lance->SetMetallic(0.55f);
+            gate.lance->SetQuaternionMaster(true);
+            gates_.push_back(std::move(gate));
+        }
+        UpdateGateFormation(player);
+        if (!fullCuePlayed_ && chargeTime_ >= lanceSettings_.fullChargeTime) {
+            fullCuePlayed_ = true;
+            readyFlashTime_ = 0.16f;
+            if (!gates_.empty())
+                EmitLanceEffect("player_crown_ready", gates_.front().position, {0,1,0}, presentation_.particleScale);
+        }
+        chargeVfxTimer_ -= deltaTime;
+        if (chargeVfxTimer_ <= 0.0f) {
+            for (const auto& gate : gates_)
+                EmitLanceEffect("player_crown_charge", gate.position, gate.direction, presentation_.lanceGateScale);
+            // 自動ループを使わず、溜め解除後には新しい粒子を発生させません。
+            chargeVfxTimer_ = 0.10f;
+        }
+    }
+    void UpdateGateFormation(Player& player) {
+        const auto forward = NormalizePlanar(player.GetForwardDirection());
+        const engine::Vector3 right{forward.z, 0, -forward.x};
+        const auto aim = Unit(player.GetLockOnAttackDirection(), forward);
+        const auto anchor = player.GetWorldPosition() + engine::Vector3{0, 1.2f, 0};
+        PhysicsQueryFilter filter;
+        filter.mask = CollisionCategories::Get("enemy") | CollisionCategories::Get("ground");
+        filter.ignoredObject = &player;
+        const auto hit = CollisionManager::GetInstance()->Raycast(anchor, aim, 32, filter);
+        const auto target = hit.isHit ? hit.hitPoint : anchor + aim * 18;
+        const float full = SmoothStep((chargeTime_ - lanceSettings_.fiveGateTime) /
+                                      (lanceSettings_.fullChargeTime - lanceSettings_.fiveGateTime));
+        for (auto& gate : gates_) {
+            const int column = gate.index == 0 ? 0 : (gate.index + 1) / 2 * (gate.index % 2 ? -1 : 1);
+            gate.position = player.GetWorldPosition() - forward * 0.35f +
+                            right * (static_cast<float>(column) * lanceSettings_.gateSpacing * std::sqrt(presentation_.lanceGateScale)) +
+                            engine::Vector3{0, lanceSettings_.gateHeight - std::abs(column) * 0.30f, 0};
+            gate.direction = Unit(target - gate.position, aim);
+            gate.scale = (gate.index == 0 ? 1 + (lanceSettings_.fullCenterScale - 1) * full : 1) * presentation_.lanceScale;
+        }
+    }
+    void ReleaseLances(Player& player) {
+        if (!charging_)
+            return;
+        UpdateGateFormation(player);
+        charging_ = false;
+        releaseTime_ = 0;
+        lanceCooldown_ = lanceSettings_.cooldown;
+        float readyWait = 0.0f;
+        for (const auto& gate : gates_)
+            readyWait = (std::max)(readyWait, lanceSettings_.openDuration - gate.age);
+        for (auto& gate : gates_) {
+            const int rank = gate.index == 0 ? static_cast<int>(gates_.size()) - 1 : gate.index - 1;
+            gate.releaseAt = readyWait + rank * lanceSettings_.shotInterval;
+        }
+        // 発射反動は最初の槍が実際に出る時に始めます。
+        player.StopSlimeAbilityMotion(0.08f);
+        releasePosePlayed_ = false;
+    }
+    void FireGate(Player& player, Gate& gate) {
+        gate.fired = true;
+        gate.closeAge = 0;
+        if (!releasePosePlayed_) {
+            player.PlaySlimeAbilityMotion("player_ability_crown_release", false, 1.0f, 0.02f, 0.08f);
+            releasePosePlayed_ = true;
+        }
         if (shots_.size() >= 24)
             return;
-        Shot shot;
-        shot.visual = MakeVisual("Effects/false_king_crown_lance");
-        if (!shot.visual)
+        const auto position = gate.position + gate.direction * 0.45f;
+        const auto anchor = player.GetWorldPosition() + engine::Vector3{0, 1.2f, 0};
+        const auto delta = position - anchor;
+        const float distance = engine::Math::Length(delta);
+        PhysicsQueryFilter wall;
+        wall.mask = CollisionCategories::Get("ground");
+        wall.ignoredObject = &player;
+        const auto obstruction =
+            CollisionManager::GetInstance()->SphereCast(anchor, 0.16f * gate.scale, Unit(delta), distance, wall);
+        if (obstruction.isHit) {
+            EmitLanceImpact(obstruction.hitPoint, Unit(obstruction.normal, gate.direction * -1.0f), false, presentation_);
             return;
-        shot.position = position;
-        shot.velocity = velocity;
-        shot.rain = rain;
-        shot.visual->SetTranslate(position);
-        shot.visual->SetScale({0.6f, 0.8f, 0.6f});
-
-        // 元モデルは下向きの槍。射撃時は穂先を進行方向へ向けます。
-        if (!rain)
-            shot.visual->SetRotation({-kPi / 2.0f, std::atan2(velocity.x, velocity.z), 0.0f});
-        shots_.push_back(std::move(shot));
-    }
-
-    static void HitArea(Player& player, const engine::Vector3& center, float radius, float damage,
-                        std::unordered_set<engine::Object3d*>& hits, bool openArmor) {
-        // 同じ攻撃の多重ヒットを除き、衝撃波では王冠装甲を開く処理も行う。
-        PhysicsQueryFilter filter;
-        filter.mask = CollisionCategories::Get("enemy");
-        filter.ignoredObject = &player;
-
-        for (const auto& hit : CollisionManager::GetInstance()->OverlapSphere(center, radius, filter)) {
-            engine::Object3d* target = FindEnemyRoot(hit.object);
-            if (!target || !hits.insert(target).second)
-                continue;
-            if (openArmor) {
-                if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(target))
-                    king->OpenCrownArmor();
-            }
-
-            DamageEnemy(player, target, damage, DamageType::Physical, {});
-            EmitPreset("false_king_lance_impact", target->GetWorldPosition() + engine::Vector3{0.0f, 1.0f, 0.0f});
         }
+        Shot shot;
+        shot.visual = std::move(gate.lance);
+        shot.visual->SetIsVisible(true);
+        shot.position = gate.position;
+        shot.velocity = gate.direction * lanceSettings_.shotSpeed;
+        shot.scale = gate.scale;
+        // 外観倍率で威力まで増えないよう、溜めによる倍率だけを使います。
+        shot.damageScale = gate.scale / presentation_.lanceScale;
+        shot.presentation = presentation_;
+        shot.isFullChargeCenter = gate.index == 0 && chargeTime_ >= lanceSettings_.fullChargeTime;
+        shot.gateOrigin = gate.position;
+        shot.appearance = lanceSettings_.appearance;
+        shot.appearance.trailWidth *= presentation_.trailScale;
+        shot.appearance.trailLength *= std::sqrt(presentation_.lanceScale);
+        shot.trail.Initialize(shot.visual->GetObjectCommon(), gate.position, AimRotation({0, -1, 0}, gate.direction));
+        shot.visual->SetPortalClip(GateClip(gate, shot.appearance));
+        shot.visual->SetQuaternion(AimRotation({0, -1, 0}, gate.direction));
+        shot.visual->SetTranslate(shot.position);
+        shot.visual->SetScale({0.6f * gate.scale, kAxialScale * gate.scale, 0.6f * gate.scale});
+        shots_.push_back(std::move(shot));
+        EmitLanceEffect(shots_.back().isFullChargeCenter ? "player_crown_muzzle_full" : "player_crown_muzzle",
+                        gate.position, gate.direction, presentation_.particleScale);
+        effects_.Ring(gate.position, gate.direction, lanceSettings_.gateScale * presentation_.lanceGateScale * 1.3f);
+        EmitLanceEffect("player_crown_launch_streak", gate.position, gate.direction,
+                        (shots_.back().isFullChargeCenter ? 1.4f : 1.1f) * presentation_.particleScale, true);
+    }
+    void UpdateGates(Player& player, float deltaTime) {
+        if (!charging_)
+            releaseTime_ += deltaTime;
+        std::array<Gate*, 5> due{};
+        size_t count = 0;
+        for (auto& gate : gates_) {
+            if (gate.fired)
+                gate.closeAge += deltaTime;
+            else if (!charging_ && releaseTime_ + 0.00001f >= gate.releaseAt)
+                due[count++] = &gate;
+        }
+        // 同一フレームに複数本が発射されても、予約時刻順に出し中央槍を最後に保ちます。
+        std::sort(due.begin(), due.begin() + count,
+                  [](const Gate* a, const Gate* b) { return a->releaseAt < b->releaseAt; });
+        for (size_t i = 0; i < count; ++i) {
+            auto& gate = *due[i];
+            const auto before = shots_.size();
+            FireGate(player, gate);
+            gate.closeAge = std::clamp(releaseTime_ - gate.releaseAt, 0.0f, deltaTime);
+            if (shots_.size() > before)
+                shots_.back().firstStep = gate.closeAge;
+        }
+        for (auto& gate : gates_) {
+            gate.age += deltaTime;
+            const float visibility = gate.fired ? 1 - SmoothStep(gate.closeAge / lanceSettings_.closeDuration)
+                                                : SmoothStep(gate.age / lanceSettings_.openDuration);
+            const float visibleScale = (std::max)(0.001f, visibility);
+            const float size = lanceSettings_.gateScale * gate.scale / presentation_.lanceScale *
+                               presentation_.lanceGateScale * visibleScale;
+            gate.portal->SetIsVisible(visibility > 0.02f);
+            gate.portal->SetTranslate(gate.position);
+            gate.portal->SetScale({size, size, size});
+            gate.portal->SetQuaternion(AimRotation({0, 0, 1}, gate.direction));
+            gate.portal->SetColor({1.0f, 0.70f, 0.22f, 0.92f * visibility});
+            if (auto* material = gate.portal->GetMeshRenderer()->GetWaterParamData()) {
+                material->effectIntensity =
+                    0.08f + 1.6f * visibility + (gate.index == 0 ? 0.8f * readyFlashTime_ / 0.16f : 0.0f);
+                material->uvOffsetY = visibility;
+                material->uvOffsetX = visibility * (0.45f + 0.55f * chargeTime_ / lanceSettings_.fullChargeTime);
+            }
+            gate.portal->Update(deltaTime);
+            if (!gate.fired) {
+                gate.lance->SetIsVisible(visibility > 0.02f);
+                const float tip = 2.02f * kAxialScale * gate.scale;
+                gate.lance->SetTranslate(gate.position - gate.direction * (tip * (1.0f - visibility)));
+                gate.lance->SetScale({0.6f * gate.scale, kAxialScale * gate.scale, 0.6f * gate.scale});
+                gate.lance->SetPortalClip(GateClip(gate, lanceSettings_.appearance));
+                gate.lance->SetQuaternion(AimRotation({0, -1, 0}, gate.direction));
+                gate.lance->Update(deltaTime);
+            }
+        }
+        std::erase_if(gates_,
+                      [&](const Gate& gate) { return gate.fired && gate.closeAge >= lanceSettings_.closeDuration; });
     }
 
     std::vector<Shot> shots_;
-    std::unique_ptr<engine::Object3d> wings_, wave_;
-    std::unordered_set<engine::Object3d*> dashHits_, waveHits_;
-    engine::Vector3 direction_{0.0f, 0.0f, 1.0f}, waveCenter_{};
+    // 命中済みの表示だけを持つ。こちらにはSphereCastやダメージ処理を呼びません。
+    std::vector<Shot> remnants_;
+    std::vector<Gate> gates_;
+    CrownLanceSettings lanceSettings_;
+    CrownPresentationSettings presentation_;
+    CrownAbilityEffects effects_;
+    float releaseTime_ = 0;
+    float chargeVfxTimer_ = 0.0f, readyFlashTime_ = 0.0f;
+    bool charging_ = false, fullCuePlayed_ = false, releasePosePlayed_ = false;
+    CrownGateWarp warp_;
+    CrownMeleeCombo melee_;
     float time_ = 0.0f, ambientTimer_ = 0.0f, chargeTime_ = 0.0f;
-    float dashTime_ = 0.0f, waveTime_ = 0.0f;
-    float lanceCooldown_ = 0.0f, waveCooldown_ = 0.0f, dashCooldown_ = 0.0f, rainCooldown_ = 0.0f;
-    bool held_ = false;
+    float lanceCooldown_ = 0.0f;
+    uint64_t cancelGeneration_ = 0;
 };
 } // namespace
 

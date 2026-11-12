@@ -15,7 +15,7 @@ struct CopyAbilityPreviewFrame {
     float elapsed = 0.0f;
     float deltaTime = 0.0f;
     float holdTime = 1.5f;
-    float startTime = 0.5f;
+    float startTime = 0.5f; // 操作を発火させるプレビュー開始からの秒数。
     bool triggered = false;
 
     bool IsHeld() const { return elapsed >= startTime && elapsed < startTime + holdTime; }
@@ -27,12 +27,13 @@ struct CopyAbilityPreviewFrame {
 struct CopyAbilityPreviewAction {
     std::string id;
     std::string displayName;
-    bool startsUncopied = false;
+    bool startsUncopied = false; // コピー前のPlayerから開始して、取得過程も確認するか。
     float startTime = 0.5f;
     std::function<PlayerCopyAbilityInput(const CopyAbilityPreviewFrame&)> buildInput;
     std::function<void(Player&, const std::string&)> onTrigger;
 };
 
+// プレビューの技・確認時刻・距離をまとめたジャンプ先。能力の保存設定とは別に扱う。
 struct CopyAbilityPreviewBookmark {
     std::string displayName;
     std::string actionId;
@@ -57,6 +58,8 @@ struct CopyAbilityPreviewDescriptor {
     }
 };
 
+// 関連：ゲーム側の登録関数とActorDebugPanelをつなぎ、能力入力とブックマークを保持する。
+// 主な入口：Register / Find
 class CopyAbilityPreviewRegistry {
 public:
     // 起動時に登録します。型や操作の重複を検証してから一括で追加します。

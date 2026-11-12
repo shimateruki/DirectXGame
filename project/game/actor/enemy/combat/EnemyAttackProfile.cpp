@@ -1,4 +1,5 @@
 #include "game/actor/enemy/combat/EnemyAttackProfile.h"
+#include "game/actor/enemy/core/EnemySettingsPaths.h"
 
 #include "json.hpp"
 
@@ -19,7 +20,7 @@ using json = nlohmann::json;
 
 namespace {
 constexpr int kCurrentVersion = 7;
-constexpr const char* kProfileDirectory = "Resources/json/enemy_attack/";
+constexpr const char* kLegacyProfileDirectory = "Resources/json/enemy_attack/";
 std::mutex gProfileCacheMutex;
 std::unordered_map<std::string, EnemyAttackProfile> gProfileCache;
 
@@ -834,23 +835,8 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
 }
 
 std::string EnemyAttackProfile::GetDefaultPath(const std::string& type) {
-    // C++の敵タイプ名をスネークケースへ変換し、既定の攻撃JSON名と揃える。
-    std::string fileName;
-    fileName.reserve(type.size());
-
-    for (char character : type) {
-        if (character >= 'A' && character <= 'Z') {
-            if (!fileName.empty()) {
-                fileName.push_back('_');
-            }
-
-            fileName.push_back(static_cast<char>(character - 'A' + 'a'));
-        } else {
-            fileName.push_back(character);
-        }
-    }
-
-    return std::string(kProfileDirectory) + fileName + ".json";
+    const std::string directory = EnemySettingsPaths::Directory(type);
+    return directory.empty() ? std::string{} : directory + "attacks.json";
 }
 
 bool EnemyAttackProfile::LoadCachedForEnemy(const std::string& type, EnemyAttackProfile& destination,
@@ -898,7 +884,18 @@ void EnemyAttackProfile::InvalidateCache(const std::string& type) {
 bool EnemyAttackProfile::LoadForEnemy(const std::string& type, std::string* errorMessage) {
     // 読み込み前に既定攻撃を用意し、ファイル欠損時も呼び出し元が使える状態を保つ。
     *this = CreateDefault(type);
-    const std::string path = GetDefaultPath(type);
+    std::string path = GetDefaultPath(type);
+    if (path.empty()) {
+        if (errorMessage) {
+            *errorMessage = "攻撃プロフィールの敵タイプ名が無効です。";
+        }
+        return false;
+    }
+
+    // 旧ファイルは新しい保存先にまだデータがない場合だけ参照する。
+    if (!std::filesystem::exists(path)) {
+        path = kLegacyProfileDirectory + EnemySettingsPaths::FolderName(type) + ".json";
+    }
 
     if (!std::filesystem::exists(path)) {
         if (errorMessage) {

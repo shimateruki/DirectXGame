@@ -3,6 +3,8 @@
 
 // 旧コンボ入力APIの状態を所有します。時間の進行や入力取得は行いません。
 // 現行のコピー能力のコンボ制御とは独立し、既存リプレイとの互換性を保ちます。
+// 関連：攻撃側が入力を取り出すまで押下を短時間保持し、移動入力とは分ける。
+// 主な入口：Record / Consume / ClearPendingInput
 class PlayerAttackInputBuffer {
   public:
     // 値コピーで受け渡し、リプレイ側から内部状態を直接変更させません。
@@ -13,6 +15,7 @@ class PlayerAttackInputBuffer {
         float inputBufferTimer = 0.0f;
     };
 
+    // 次のコンボ入力を受け付ける残り時間を設定する。単位は秒。
     void StartComboWindow(float duration) { state_.comboWindowTimer = (std::max)(0.0f, duration); }
 
     bool IsComboWindowActive() const { return state_.comboWindowTimer > 0.0f; }
@@ -24,6 +27,7 @@ class PlayerAttackInputBuffer {
         state_.usedForStateStart = false;
     }
 
+    // この押下を状態開始に使用済みとし、同じ入力の再消費を防ぐ。
     void MarkUsedForStateStart() {
         if (state_.buffered)
             state_.usedForStateStart = true;
@@ -40,6 +44,7 @@ class PlayerAttackInputBuffer {
         return false;
     }
 
+    // 未消費の残り時間を消す。次のRecordまでは使用済みフラグを保持する。
     void ClearPendingInput() {
         state_.comboWindowTimer = 0.0f;
         state_.buffered = false;

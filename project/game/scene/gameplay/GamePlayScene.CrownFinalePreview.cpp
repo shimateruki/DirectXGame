@@ -5,7 +5,7 @@
 #include "CameraManager.h"
 #include "InputManager.h"
 #include "SceneManager.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include <algorithm>
 
 namespace {
@@ -46,7 +46,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     p.followMode = camera->GetFollowMode();
     p.follow = camera->GetFollowTarget();
     p.fov = camera->GetFovY();
-    std::vector<std::unique_ptr<engine::Object3d>> copies;
+    std::vector<std::unique_ptr<engine::Object3D>> copies;
     EnemyFalseKingSlime* previewBoss = nullptr;
 
     // 生成前に走査を終え、元のScene保存値から表示だけを一時的に分離します。
@@ -64,8 +64,8 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
         copy->ClearEditorHiddenReasons();
         copy->SetEditorInternal(true);
         copy->SetIsLocked(true);
-        copy->SetEventID(-1);
-        copy->SetTargetID(-1);
+        copy->SetEventId(-1);
+        copy->SetTargetId(-1);
         copy->SetCollisionAttribute(0);
         copy->SetCollisionMask(0);
 
@@ -85,7 +85,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     }
 
     auto player = std::make_unique<Player>();
-    player->Initialize(GetObject3dCommon(), engine::InputManager::GetInstance(), GetParticleSystem(), GetSpriteCommon());
+    player->Initialize(GetObject3DCommon(), engine::InputManager::GetInstance(), GetParticleSystem(), GetSpriteCommon());
 
     // Initializeだけでは本体モデルが設定されません。実Playerの基本形を明示します。
     player->SetModel("Characters/slimeBody");
@@ -118,7 +118,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     p.active = true;
     CameraManager::GetInstance()->SetActiveCamera(p.camera.get());
 
-    for (engine::Object3d* object : p.hiddenObjects)
+    for (engine::Object3D* object : p.hiddenObjects)
         object->SetEditorHiddenReason(kCrownMovieHiddenReason, true);
 
     // Editor更新の安全な境界で登録し、開始時の床・壁の走査から参照可能にします。
@@ -193,10 +193,10 @@ void GamePlayScene::StepCrownMoviePreview(float deltaTime) {
     if (crownMoviePreview_.active && crownMoviePreview_.defeat) {
         UpdateCrownDefeat(deltaTime);
 
-        for(engine::Object3d* object:crownMoviePreview_.objects)
+        for(engine::Object3D* object:crownMoviePreview_.objects)
             object->UpdateWorldMatrix(true);
 
-        for(engine::Object3d* object:crownFinale_.generatedObjects)
+        for(engine::Object3D* object:crownFinale_.generatedObjects)
             object->UpdateWorldMatrix(true);
         return;
     }
@@ -205,11 +205,11 @@ void GamePlayScene::StepCrownMoviePreview(float deltaTime) {
         return;
     UpdateCrownFinale(deltaTime);
 
-    // Object3d::Updateは描画定数を確定しません。カメラの確定後に全モデルへ転送します。
-    for (engine::Object3d* object : crownMoviePreview_.objects)
+    // Object3D::Updateは描画定数を確定しません。カメラの確定後に全モデルへ転送します。
+    for (engine::Object3D* object : crownMoviePreview_.objects)
         object->UpdateWorldMatrix(true);
 
-    for (engine::Object3d* object : crownFinale_.generatedObjects)
+    for (engine::Object3D* object : crownFinale_.generatedObjects)
         object->UpdateWorldMatrix(true);
 }
 
@@ -223,10 +223,10 @@ void GamePlayScene::EndCrownMoviePreview() {
     objectManager_->ApplyPendingChanges();
     player_ = p.originalPlayer;
 
-    for (engine::Object3d* object : p.hiddenObjects)
+    for (engine::Object3D* object : p.hiddenObjects)
         object->SetEditorHiddenReason(kCrownMovieHiddenReason, false);
 
-    for (engine::Object3d* object : p.objects) {
+    for (engine::Object3D* object : p.objects) {
         object->SetIsVisible(false);
         object->SetReplayRemoved(true);
         RequestRemoveObject(object);
@@ -238,7 +238,7 @@ void GamePlayScene::EndCrownMoviePreview() {
         camera->SetEye(p.eye);
         camera->SetTarget(p.target);
         camera->SetRotation(p.rotation);
-        if (p.followMode == Camera::FollowMode::kFixedPoint)
+        if (p.followMode == Camera::FollowMode::FixedPoint)
             camera->ConfigFixedPoint(p.eye, p.rotation);
         camera->SetFovY(p.fov);
         camera->SetInputEnabled(true);

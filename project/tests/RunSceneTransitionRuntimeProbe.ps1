@@ -36,8 +36,9 @@ $previousCinematicMode = $env:CG2_CINEMATIC_TEST
 $previousFlipMode = $env:CG2_FLIP_PAIR_TEST
 $previousGimmickMode = $env:CG2_GIMMICK_PROPERTY_TEST
 $previousGateMode = $env:CG2_GATE_ENTRY_TEST
-$attackPath = Join-Path $projectPath 'Resources/json/enemy_attack/fire_slime.json'
-$attackBytes = if ($AttackLifecycle) { [IO.File]::ReadAllBytes($attackPath) } else { $null }
+$attackPath = Join-Path $projectPath 'Resources/json/enemy/fire_slime/attacks.json'
+$attackExisted = Test-Path -LiteralPath $attackPath
+$attackBytes = if ($AttackLifecycle -and $attackExisted) { [IO.File]::ReadAllBytes($attackPath) } else { $null }
 $saveDirectory = Join-Path $projectPath 'Resources/json/save'
 $flipSaveSnapshot = @{}
 if ($FlipPair -or $GimmickProperties -or $GateEntry -or $EditorEvents -or $AttackPreviewRegistry -or $PreviewComposition -or $StatusPreview -or $AttackEditor) {
@@ -51,6 +52,13 @@ $presetPath = Join-Path $projectPath 'Resources/json/preset/presets.json'
 $presetBytes = [IO.File]::ReadAllBytes($presetPath)
 $statusPath = Join-Path $projectPath 'Resources/json/gameplay/status_settings.json'
 $statusBytes = [IO.File]::ReadAllBytes($statusPath)
+$enemyStatusRoot = Join-Path $projectPath 'Resources/json/enemy'
+$enemyStatusSnapshots = @{}
+if ($StatusPreview) {
+    Get-ChildItem -LiteralPath $enemyStatusRoot -Recurse -File -Filter 'parameters.json' -ErrorAction SilentlyContinue | ForEach-Object {
+        $enemyStatusSnapshots[$_.FullName] = [IO.File]::ReadAllBytes($_.FullName)
+    }
+}
 $previousStatusPreview = $env:CG2_STATUS_PREVIEW_TEST
 $gameProcess = $null
 try {
@@ -117,6 +125,18 @@ try {
 finally {
     $env:CG2_STATUS_PREVIEW_TEST = $previousStatusPreview
     [IO.File]::WriteAllBytes($statusPath, $statusBytes)
+    if ($StatusPreview) {
+        Get-ChildItem -LiteralPath $enemyStatusRoot -Recurse -File -Filter 'parameters.json' -ErrorAction SilentlyContinue | ForEach-Object {
+            if (-not $enemyStatusSnapshots.ContainsKey($_.FullName)) { Remove-Item -LiteralPath $_.FullName }
+        }
+        foreach ($path in $enemyStatusSnapshots.Keys) {
+            $saved = $enemyStatusSnapshots[$path]
+            if (-not (Test-Path -LiteralPath $path) -or
+                [Convert]::ToBase64String([IO.File]::ReadAllBytes($path)) -cne [Convert]::ToBase64String($saved)) {
+                [IO.File]::WriteAllBytes($path, $saved)
+            }
+        }
+    }
     $env:CG2_SCENE_TRANSITION_TEST_LOG = $previousLogPath
     $env:CG2_EDITOR_EVENT_TEST = $previousEditorEvents
     $env:CG2_ATTACK_PREVIEW_REGISTRY_TEST = $previousPreviewRegistry
@@ -128,7 +148,10 @@ finally {
     $env:CG2_FLIP_PAIR_TEST = $previousFlipMode
     $env:CG2_GIMMICK_PROPERTY_TEST = $previousGimmickMode
     $env:CG2_GATE_ENTRY_TEST = $previousGateMode
-    if ($AttackLifecycle) { [IO.File]::WriteAllBytes($attackPath, $attackBytes) }
+    if ($AttackLifecycle) {
+        if ($attackExisted) { [IO.File]::WriteAllBytes($attackPath, $attackBytes) }
+        elseif (Test-Path -LiteralPath $attackPath) { Remove-Item -LiteralPath $attackPath }
+    }
     if ($FlipPair -or $GimmickProperties -or $GateEntry -or $EditorEvents -or $AttackPreviewRegistry -or $PreviewComposition -or $StatusPreview -or $AttackEditor) {
         Get-ChildItem -LiteralPath $saveDirectory -File -ErrorAction SilentlyContinue | ForEach-Object {
             if (-not $flipSaveSnapshot.ContainsKey($_.Name)) { Remove-Item -LiteralPath $_.FullName }

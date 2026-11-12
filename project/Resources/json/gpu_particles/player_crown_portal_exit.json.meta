@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "0aa2f408a90752a77e9ec64935643973",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_portal_exit.json",
+  "version": 1
+}

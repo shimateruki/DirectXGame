@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8facf5cf8a0a32afdbbec5049cad8c63",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/06-fire-dash.png",
+  "version": 1
+}

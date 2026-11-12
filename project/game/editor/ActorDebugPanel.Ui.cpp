@@ -1,3 +1,7 @@
+#include "game/actor/player/copy/WindCopySettings.h"
+#include "game/actor/player/copy/CrownPresentationSettings.h"
+#include "game/actor/player/copy/CrownLanceSettings.h"
+#include "game/actor/player/copy/CrownMeleeSettings.h"
 #ifdef USE_IMGUI
 #include "game/editor/ActorDebugPanel.h"
 #include "game/editor/EnemyAttackPreviewRegistry.h"
@@ -10,7 +14,7 @@
 #include "BaseScene.h"
 #include "Camera.h"
 #include "CameraManager.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "game/system/combat/BulletManager.h"
 #include "CollisionConfig.h"
 #include "DebrisEffectManager.h"
@@ -24,17 +28,17 @@
 #include "EnemySlime.h"
 #include "EnemyThunderSlime.h"
 #include "EnemyWindSlime.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/rules/GameRule.h"
 #include "game/system/rules/EventManager.h"
 #include "InputManager.h"
 #include "MeshEffectManager.h"
 #include "MeshRenderer.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "ParticleSystem.h"
 #include "Player.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #ifdef USE_IMGUI
 #include "IconsFontAwesome5.h"
@@ -108,6 +112,12 @@ void ActorDebugPanel::DrawPlayerCopySettings() {
             }
         }
         ImGui::EndCombo();
+    }
+    if (copyType_ == "WindSlime") WindCopySettings::Get().DrawEditor();
+    if (copyType_ == "Crown") {
+        CrownLanceSettings::Get().DrawEditor();
+        CrownMeleeSettings::Get().DrawEditor();
+        CrownPresentationSettings::Get().DrawEditor();
     }
     // 種類共通の基本値は上部の専用タブで編集します。
     if (sceneManager_->IsPlaying()) {

@@ -69,7 +69,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
     static int frames=0;
     static uint32_t attribute=0,mask=0;
     static float emissive=0;
-    static BlendMode blend=BlendMode::kNormal;
+    static BlendMode blend=BlendMode::Normal;
     static engine::Vector3 scale{};
     auto finish=[&](const std::string& message) { log<<message<<std::endl;done=true;WinApp::CloseNow(); };
     if (done) return;

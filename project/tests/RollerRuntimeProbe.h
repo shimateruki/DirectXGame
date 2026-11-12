@@ -27,7 +27,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     auto* scene=manager->GetCurrentScene();
     auto* player=GetScenePlayer(scene);
     if (!player || manager->GetCurrentSceneName()!="GAMEPLAY") return;
-    engine::Object3d* roller=nullptr;
+    engine::Object3D* roller=nullptr;
     for (const auto& o:scene->GetObjects())
         if (o && o->GetName()=="Stage2_Route_11_RollingBasalt") roller=o.get();
     if (!roller) { finish("FAIL missing roller"); return; }
@@ -37,13 +37,13 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         origin=roller->GetWorldPosition();
         for (const auto& o:scene->GetObjects()) {
             if (o && o->GetName()=="Stage2_Route_11_RollingBasalt_Collision") {
-                const auto c=o->GetWorldPosition(); const auto bounds=o->GetAABB();
+                const auto c=o->GetWorldPosition(); const auto bounds=o->GetAabb();
                 log<<"COLLIDER position="<<c.x<<','<<c.y<<','<<c.z<<" attr="<<o->GetCollisionAttribute()
                    <<" volume="<<o->GetCollider()->HasModelVolume()<<" top="<<bounds.max.y<<std::endl;
             }
         }
         auto position=origin;
-        position.y=roller->GetAABB().max.y-(player->GetAABB().min.y-player->GetWorldPosition().y)+0.05f;
+        position.y=roller->GetAabb().max.y-(player->GetAabb().min.y-player->GetWorldPosition().y)+0.05f;
         player->DebugPrepareForTeleport();
         player->SetIsControlActive(true);
         player->SetGrounded(false);
@@ -60,11 +60,11 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             float distance=0; engine::Vector3 normal{};
             const bool ray=o->GetCollider()->RaycastModelVolume(origin+engine::Vector3{0,10,0},{0,-1,0},20,distance,normal);
             const auto contact=player->CheckCollision(o.get());
-            const auto a=o->GetAABB(), b=player->GetAABB();
+            const auto a=o->GetAabb(), b=player->GetAabb();
             PhysicsQueryFilter filter;
             filter.mask=CollisionCategories::Get("ground");
             filter.ignoredObject=player;
-            const auto overlaps=CollisionManager::GetInstance()->OverlapAABB(b,filter);
+            const auto overlaps=CollisionManager::GetInstance()->OverlapAabb(b,filter);
             log<<"BOUNDS floor="<<a.min.x<<','<<a.max.x<<','<<a.min.y<<','<<a.max.y<<','<<a.min.z<<','<<a.max.z
                <<" player="<<b.min.x<<','<<b.max.x<<','<<b.min.y<<','<<b.max.y<<','<<b.min.z<<','<<b.max.z
                <<" overlaps="<<overlaps.size()<<" groundBit="<<CollisionCategories::Get("ground")<<std::endl;

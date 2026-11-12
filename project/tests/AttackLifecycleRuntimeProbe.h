@@ -117,7 +117,7 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         if (!saved || saved->sequence.events.front().projectile.collisionEnabled != hitEnabled ||
             !saved->sequence.actorControl.enabled) { finish("FAIL: saved data mismatch"); return; }
         EnemyAttackProfile::InvalidateCache("FireSlime");
-        auto created = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3dCommon());
+        auto created = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3DCommon());
         if (!created || !created->GetParameters()) {
             finish("FAIL: runtime enemy initialization");
             return;

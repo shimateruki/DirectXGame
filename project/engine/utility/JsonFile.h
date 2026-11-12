@@ -1,5 +1,9 @@
 #pragma once
 
+// 担当：既存JSONの指定キーを更新・削除し、ファイルへ保存する。
+// 関連：Editorや設定保存の呼出側、nlohmann::json（JSON表現）
+// 主な入口：UpdateObject
+
 #include "json_fwd.hpp"
 #include <filesystem>
 #include <initializer_list>

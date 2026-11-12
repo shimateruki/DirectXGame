@@ -7,6 +7,7 @@
 namespace engine {
 
 // 画面ごとの割り当てを受け取る。入力の消費やリピート時計は保持しない。
+// 関連：InputManager（入力状態）、各画面のメニュー操作
 struct MenuButtonBinding {
     // キー・ボタンの0は未割当。stickDirectionにはXInputの十字方向を一つ指定する。
     std::array<BYTE, 3> keys{};
@@ -40,19 +41,24 @@ struct MenuButtonBinding {
     }
 };
 
+// メニューの方向・決定・取消・削除に使う入力割当。
+// 関連：InputManager（入力状態）、各画面のメニュー操作
 struct MenuInputBindings {
     MenuButtonBinding up, down, left, right, confirm, cancel, remove;
 };
 
 // このフレームの操作結果。複数画面から読んでも入力を消費しない。
+// 関連：InputManager（入力状態）、各画面のメニュー操作
 struct MenuInputFrame {
     bool up = false, down = false, left = false, right = false;
     bool confirm = false, cancel = false, remove = false, gamepad = false;
     // 軸の符号は右・下が正。左右または上下の同時入力は0に相殺する。
     int Horizontal() const { return static_cast<int>(right) - static_cast<int>(left); }
+    // 下を+1、上を-1とした方向を返す。同時入力は0。
     int Vertical() const { return static_cast<int>(down) - static_cast<int>(up); }
 };
 
+// 割当からこのフレームのメニュー操作を読み取る。入力は消費しない。
 inline MenuInputFrame ReadMenuInput(const InputManager& input, const MenuInputBindings& bindings) {
     return {bindings.up.Triggered(input), bindings.down.Triggered(input),
             bindings.left.Triggered(input), bindings.right.Triggered(input),

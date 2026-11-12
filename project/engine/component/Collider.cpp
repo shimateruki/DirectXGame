@@ -89,7 +89,7 @@ void Collider::SetModelSurface(std::vector<ModelSurfaceTriangle> triangles) {
         points.push_back(t.b);
         points.push_back(t.c);
     }
-    modelHull_ = convex_collision::Build(points);
+    modelHull_ = ConvexCollision::Build(points);
     if (modelHull_.empty())
         return;
     engine::Vector3 minimum=points.front(), maximum=minimum;
@@ -107,7 +107,7 @@ void Collider::SetModelSurface(std::vector<ModelSurfaceTriangle> triangles) {
     config_.size=(maximum-minimum)*0.5f;
     config_.rotation={};
     config_.footprint.clear();
-    config_.type=ColliderType::kOBB;
+    config_.type=ColliderType::Obb;
 }
 
 void Collider::UpdateWorldHullCache() const {
@@ -128,18 +128,20 @@ void Collider::UpdateWorldHullCache() const {
     const engine::Vector3 x{world.m[0][0],world.m[0][1],world.m[0][2]};
     const engine::Vector3 y{world.m[1][0],world.m[1][1],world.m[1][2]};
     const engine::Vector3 z{world.m[2][0],world.m[2][1],world.m[2][2]};
-    const bool mirrored=convex_collision::Dot(x,convex_collision::Cross(y,z))<0;
+    const bool mirrored=ConvexCollision::Dot(x,ConvexCollision::Cross(y,z))<0;
     const auto addDirection=[](std::vector<engine::Vector3>& list,engine::Vector3 direction){
-        const float length=std::sqrt(convex_collision::Dot(direction,direction));
+        const float length=std::sqrt(ConvexCollision::Dot(direction,direction));
         if(length<1e-6f)
             return;
         direction=direction/length;
         for(const auto& n:list)
-            if(std::abs(convex_collision::Dot(n,direction))>0.99999f)
+            if(std::abs(ConvexCollision::Dot(n,direction))>0.99999f)
                 return;
         list.push_back(direction);
     };
 
+    // 担当：凸包の共有辺に接する面数と、折れ目の有無を集計する。
+    // 関連：Colliderの内部処理だけで使う補助型。
     struct EdgeFaces {
         engine::Vector3 firstNormal{};
         int count = 0;
@@ -153,13 +155,13 @@ void Collider::UpdateWorldHullCache() const {
             point = engine::Math::Transform(point, world);
         if (mirrored)
             std::swap(face[1], face[2]);
-        const auto normal = convex_collision::Normal(face);
+        const auto normal = ConvexCollision::Normal(face);
         addDirection(hullNormals_, normal);
         size_t indices[3]{};
 
         for (int i = 0; i < 3; ++i) {
             auto it = std::find_if(hullPoints_.begin(), hullPoints_.end(), [&](const auto& p) {
-                return convex_collision::Dot(face[i]-p,face[i]-p)<1e-10f;
+                return ConvexCollision::Dot(face[i]-p,face[i]-p)<1e-10f;
             });
             indices[i] = static_cast<size_t>(it-hullPoints_.begin());
             if (it == hullPoints_.end())
@@ -170,7 +172,7 @@ void Collider::UpdateWorldHullCache() const {
             auto& edge = sharedEdges[std::minmax(indices[i],indices[(i+1)%3])];
             if (edge.count == 0)
                 edge.firstNormal = normal;
-            else if (convex_collision::Dot(edge.firstNormal,normal)<0.999999f) edge.crease = true;
+            else if (ConvexCollision::Dot(edge.firstNormal,normal)<0.999999f) edge.crease = true;
             ++edge.count;
         }
     }
@@ -184,7 +186,7 @@ void Collider::UpdateWorldHullCache() const {
 
 }
 
-std::vector<convex_collision::Face> Collider::GetWorldHull() const {
+std::vector<ConvexCollision::Face> Collider::GetWorldHull() const {
     // エディター側にはコピーを渡し、キャッシュを変更させない。
     UpdateWorldHullCache();
     return worldHull_;
@@ -196,25 +198,25 @@ bool Collider::RaycastModelVolume(const engine::Vector3& start, const engine::Ve
     if(!HasModelVolume())
         return false;
     UpdateWorldHullCache();
-    return convex_collision::Ray(worldHull_,start,direction,maxDistance,distance,normal);
+    return ConvexCollision::Ray(worldHull_,start,direction,maxDistance,distance,normal);
 }
 
 CollisionInfo Collider::CheckModelVolume(const Collider* other) const {
     // 戻す法線は通常のCheckCollisionと同様、このColliderを押し出す方向。
     CollisionInfo result;
-    if (!CheckAABBCollision(GetAABB(),other->GetAABB()).isColliding)
+    if (!CheckAabbCollision(GetAabb(),other->GetAabb()).isColliding)
         return result;
     UpdateWorldHullCache();
     const auto& hull=worldHull_;
 
-    if(other->GetType()==ColliderType::kSphere){
-        result.isColliding=convex_collision::Sphere(hull,other->GetSphereCenter(),other->GetRadius(),result.penetration,result.normal);
+    if(other->GetType()==ColliderType::Sphere){
+        result.isColliding=ConvexCollision::Sphere(hull,other->GetSphereCenter(),other->GetRadius(),result.penetration,result.normal);
     } else {
         if(!other->HasModelVolume()){
-            OBB box=other->GetOBB();
+            Obb box=other->GetObb();
 
-            if(other->GetType()==ColliderType::kAABB){
-                const AABB bounds=other->GetAABB();
+            if(other->GetType()==ColliderType::Aabb){
+                const Aabb bounds=other->GetAabb();
                 box.center=(bounds.min+bounds.max)*0.5f;
                 box.size=(bounds.max-bounds.min)*0.5f;
                 box.orientations[0]={1,0,0};
@@ -222,12 +224,12 @@ CollisionInfo Collider::CheckModelVolume(const Collider* other) const {
                 box.orientations[2]={0,0,1};
             }
 
-            result.isColliding=convex_collision::Box(hullPoints_,hullNormals_,hullEdges_,box.center,
+            result.isColliding=ConvexCollision::Box(hullPoints_,hullNormals_,hullEdges_,box.center,
                                                      box.orientations,box.size,result.penetration,result.normal);
         } else {
             // 相手の形状も行列変更時だけ更新し、接触のたびに凸包をコピーしない。
             other->UpdateWorldHullCache();
-            result.isColliding=convex_collision::Polyhedra(hullPoints_,hullNormals_,hullEdges_,
+            result.isColliding=ConvexCollision::Polyhedra(hullPoints_,hullNormals_,hullEdges_,
                 other->hullPoints_,other->hullNormals_,other->hullEdges_,result.penetration,result.normal);
         }
     }
@@ -290,10 +292,22 @@ engine::Vector3 Collider::GetSphereCenter() const {
     return { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
 }
 
-OBB Collider::GetOBB() const {
-    OBB obb;
+Obb Collider::GetObb() const {
+    Obb obb;
     if (!transform_)
         return obb;
+
+    // 円柱などの判定へ箱を渡す場合も、AABBは持ち主の傾きに追従させません。
+    // GetAABBと同じ範囲を使い、広域判定と接触時の形状を一致させます。
+    if (config_.type == ColliderType::Aabb) {
+        const Aabb bounds = GetAabb();
+        obb.center = (bounds.min + bounds.max) * 0.5f;
+        obb.size = (bounds.max - bounds.min) * 0.5f;
+        obb.orientations[0] = {1.0f, 0.0f, 0.0f};
+        obb.orientations[1] = {0.0f, 1.0f, 0.0f};
+        obb.orientations[2] = {0.0f, 0.0f, 1.0f};
+        return obb;
+    }
 
     engine::Math math;
 
@@ -340,8 +354,8 @@ OBB Collider::GetOBB() const {
     return obb;
 }
 
-AABB Collider::GetAABB() const {
-    if (config_.type == ColliderType::kAABB && transform_) {
+Aabb Collider::GetAabb() const {
+    if (config_.type == ColliderType::Aabb && transform_) {
         // AABBは所有Objectの見た目の傾きへ追従させません。
         // 親Transformは維持しつつ、ローカル回転だけを除いた行列で中心を求めます。
         engine::Math math;
@@ -370,7 +384,7 @@ AABB Collider::GetAABB() const {
         return { center - extent, center + extent };
     }
 
-    OBB obb = GetOBB();
+    Obb obb = GetObb();
     engine::Vector3 axisX = obb.orientations[0] * obb.size.x;
     engine::Vector3 axisY = obb.orientations[1] * obb.size.y;
     engine::Vector3 axisZ = obb.orientations[2] * obb.size.z;
@@ -406,7 +420,7 @@ std::vector<engine::Vector3> Collider::GetFootprintWorldVertices(float localY) c
     // 床の輪郭点を回転・親変換込みのワールド座標へ移し、見た目の縁と揃える。
     std::vector<engine::Vector3> vertices;
     if (config_.footprint.size() < 3 || !transform_ ||
-        (config_.type != ColliderType::kAABB && config_.type != ColliderType::kOBB)) return vertices;
+        (config_.type != ColliderType::Aabb && config_.type != ColliderType::Obb)) return vertices;
     vertices.reserve(config_.footprint.size());
     engine::Math math;
     const engine::Matrix4x4 rotation = math.Multiply(
@@ -533,7 +547,7 @@ bool Collider::OverlapsFootprint(const Collider* other, engine::Vector3* normal,
     float minimumDepth = std::numeric_limits<float>::max();
     engine::Vector3 outward = engine::Vector3::ZERO;
 
-    if (other->GetType() == ColliderType::kSphere) {
+    if (other->GetType() == ColliderType::Sphere) {
         const engine::Vector3 center = other->GetSphereCenter();
         const float radius = other->GetRadius();
 
@@ -587,14 +601,14 @@ bool Collider::OverlapsFootprint(const Collider* other, engine::Vector3* normal,
     } else {
         std::vector<engine::Vector3> section;
 
-        if (other->GetType() == ColliderType::kOBB) {
-            const OBB box = other->GetOBB();
+        if (other->GetType() == ColliderType::Obb) {
+            const Obb box = other->GetObb();
             const engine::Vector3 x = box.orientations[0] * box.size.x;
             const engine::Vector3 z = box.orientations[2] * box.size.z;
             section = { box.center - x - z, box.center + x - z,
                         box.center + x + z, box.center - x + z };
         } else {
-            const AABB box = other->GetAABB();
+            const Aabb box = other->GetAabb();
             section = { { box.min.x, 0.0f, box.min.z }, { box.max.x, 0.0f, box.min.z },
                         { box.max.x, 0.0f, box.max.z }, { box.min.x, 0.0f, box.max.z } };
         }
@@ -747,12 +761,12 @@ bool Collider::SampleTerrain(const Collider* terrain, const engine::Vector3& wor
     const float gradX = ((heightAt(xp, z0) - heightAt(xm, z0)) * scaleY) / cellX;
     const float gradZ = ((heightAt(x0, zp) - heightAt(x0, zm)) * scaleY) / cellZ;
     outNormal = { -gradX, 1.0f, -gradZ };
-    const float len = std::sqrt(outNormal.x * outNormal.x + outNormal.y * outNormal.y + outNormal.z * outNormal.z);
+    const float vectorLength = std::sqrt(outNormal.x * outNormal.x + outNormal.y * outNormal.y + outNormal.z * outNormal.z);
 
-    if (len > 0.0001f) {
-        outNormal.x /= len;
-        outNormal.y /= len;
-        outNormal.z /= len;
+    if (vectorLength > 0.0001f) {
+        outNormal.x /= vectorLength;
+        outNormal.y /= vectorLength;
+        outNormal.z /= vectorLength;
     } else {
         outNormal = { 0.0f, 1.0f, 0.0f };
     }
@@ -780,7 +794,7 @@ CollisionInfo Collider::CheckSphereTerrainCollision(const engine::Vector3& spher
     return collision;
 }
 
-CollisionInfo Collider::CheckAABBTerrainCollision(const AABB& aabb, const Collider* terrain) const {
+CollisionInfo Collider::CheckAabbTerrainCollision(const Aabb& aabb, const Collider* terrain) const {
     // 中心と四隅を採点し、斜面で最も深く侵入した位置を基準にする。
     CollisionInfo collision;
     const engine::Vector3 points[5] = {
@@ -828,12 +842,12 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
     ColliderType myType = this->GetType();
     ColliderType otherType = other->GetType();
 
-    if (myType == ColliderType::kNone || otherType == ColliderType::kNone) {
+    if (myType == ColliderType::None || otherType == ColliderType::None) {
         return collision;
     }
 
     // 箱・球との接触は厚みのあるモデル形状を優先し、上面専用補正へ戻さない。
-    const auto supported=[](ColliderType type){return type==ColliderType::kSphere || type==ColliderType::kAABB || type==ColliderType::kOBB;};
+    const auto supported=[](ColliderType type){return type==ColliderType::Sphere || type==ColliderType::Aabb || type==ColliderType::Obb;};
     if(HasModelVolume() && supported(otherType))
         return CheckModelVolume(other);
     if(other->HasModelVolume() && supported(myType)) {
@@ -843,80 +857,80 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
     }
 
     // 自身のワールド座標 
-    engine::Vector3 myPos = myType == ColliderType::kSphere ? GetSphereCenter() : transform_->translate;
-    engine::Vector3 otherPos = otherType == ColliderType::kSphere ? other->GetSphereCenter() : other->transform_->translate;
+    engine::Vector3 myPos = myType == ColliderType::Sphere ? GetSphereCenter() : transform_->translate;
+    engine::Vector3 otherPos = otherType == ColliderType::Sphere ? other->GetSphereCenter() : other->transform_->translate;
 
-    if (myType == ColliderType::kSphere && otherType == ColliderType::kTerrain) {
+    if (myType == ColliderType::Sphere && otherType == ColliderType::Terrain) {
         collision = CheckSphereTerrainCollision(myPos, this->GetRadius(), other);
-    } else if (myType == ColliderType::kTerrain && otherType == ColliderType::kSphere) {
+    } else if (myType == ColliderType::Terrain && otherType == ColliderType::Sphere) {
         collision = other->CheckSphereTerrainCollision(otherPos, other->GetRadius(), this);
         collision.normal = collision.normal * -1.0f;
-    } else if ((myType == ColliderType::kAABB || myType == ColliderType::kOBB || myType == ColliderType::kCylinder) && otherType == ColliderType::kTerrain) {
-        collision = CheckAABBTerrainCollision(this->GetAABB(), other);
-    } else if (myType == ColliderType::kTerrain && (otherType == ColliderType::kAABB || otherType == ColliderType::kOBB || otherType == ColliderType::kCylinder)) {
-        collision = other->CheckAABBTerrainCollision(other->GetAABB(), this);
+    } else if ((myType == ColliderType::Aabb || myType == ColliderType::Obb || myType == ColliderType::Cylinder) && otherType == ColliderType::Terrain) {
+        collision = CheckAabbTerrainCollision(this->GetAabb(), other);
+    } else if (myType == ColliderType::Terrain && (otherType == ColliderType::Aabb || otherType == ColliderType::Obb || otherType == ColliderType::Cylinder)) {
+        collision = other->CheckAabbTerrainCollision(other->GetAabb(), this);
         collision.normal = collision.normal * -1.0f;
     }
 
     // --- 同種形状 ---
-    else if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
-        collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
+    else if (myType == ColliderType::Aabb && otherType == ColliderType::Aabb) {
+        collision = CheckAabbCollision(this->GetAabb(), other->GetAabb());
+    } else if (myType == ColliderType::Sphere && otherType == ColliderType::Sphere) {
         collision = CheckSphereCollision(
             myPos, this->GetRadius(),
             otherPos, other->GetRadius());
-    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
-        collision = CheckOBBCollision(this->GetOBB(), other->GetOBB());
+    } else if (myType == ColliderType::Obb && otherType == ColliderType::Obb) {
+        collision = CheckObbCollision(this->GetObb(), other->GetObb());
     }
 
     // --- 異種形状 ---
-    else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
-        collision = CheckSphereAABBCollision(myPos, this->GetRadius(), other->GetAABB());
-    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
-        collision = CheckSphereAABBCollision(otherPos, other->GetRadius(), this->GetAABB());
+    else if (myType == ColliderType::Sphere && otherType == ColliderType::Aabb) {
+        collision = CheckSphereAabbCollision(myPos, this->GetRadius(), other->GetAabb());
+    } else if (myType == ColliderType::Aabb && otherType == ColliderType::Sphere) {
+        collision = CheckSphereAabbCollision(otherPos, other->GetRadius(), this->GetAabb());
         collision.normal = collision.normal * -1.0f;
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
-        collision = CheckSphereOBBCollision(myPos, this->GetRadius(), other->GetOBB());
-    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
-        collision = CheckSphereOBBCollision(otherPos, other->GetRadius(), this->GetOBB());
+    } else if (myType == ColliderType::Sphere && otherType == ColliderType::Obb) {
+        collision = CheckSphereObbCollision(myPos, this->GetRadius(), other->GetObb());
+    } else if (myType == ColliderType::Obb && otherType == ColliderType::Sphere) {
+        collision = CheckSphereObbCollision(otherPos, other->GetRadius(), this->GetObb());
         collision.normal = collision.normal * -1.0f;
-    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
-        collision = CheckAABBOBBCollision(this->GetAABB(), other->GetOBB());
+    } else if (myType == ColliderType::Aabb && otherType == ColliderType::Obb) {
+        collision = CheckAabbObbCollision(this->GetAabb(), other->GetObb());
 
-    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
-        collision = CheckAABBOBBCollision(other->GetAABB(), this->GetOBB());
+    } else if (myType == ColliderType::Obb && otherType == ColliderType::Aabb) {
+        collision = CheckAabbObbCollision(other->GetAabb(), this->GetObb());
         collision.normal = collision.normal * -1.0f;
     }
 
     // --- Ring 関連 ---
-    else if (myType == ColliderType::kRing && otherType == ColliderType::kSphere) {
+    else if (myType == ColliderType::Ring && otherType == ColliderType::Sphere) {
         collision = CheckRingSphereCollision(this->GetRing(), otherPos, other->GetRadius());
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kRing) {
+    } else if (myType == ColliderType::Sphere && otherType == ColliderType::Ring) {
         collision = CheckRingSphereCollision(other->GetRing(), myPos, this->GetRadius());
         collision.normal = collision.normal * -1.0f;
     }
-    else if (myType == ColliderType::kRing && (otherType == ColliderType::kOBB || otherType == ColliderType::kAABB)) {
-        collision = CheckRingOBBCollision(this->GetRing(), other->GetOBB());
-    } else if ((myType == ColliderType::kOBB || myType == ColliderType::kAABB) && otherType == ColliderType::kRing) {
-        collision = CheckRingOBBCollision(other->GetRing(), this->GetOBB());
+    else if (myType == ColliderType::Ring && (otherType == ColliderType::Obb || otherType == ColliderType::Aabb)) {
+        collision = CheckRingObbCollision(this->GetRing(), other->GetObb());
+    } else if ((myType == ColliderType::Obb || myType == ColliderType::Aabb) && otherType == ColliderType::Ring) {
+        collision = CheckRingObbCollision(other->GetRing(), this->GetObb());
         collision.normal = collision.normal * -1.0f;
     }
 
     // --- Cylinder 関連 ---
-    else if (myType == ColliderType::kCylinder && otherType == ColliderType::kSphere) {
+    else if (myType == ColliderType::Cylinder && otherType == ColliderType::Sphere) {
         collision = CheckCylinderSphereCollision(this->GetCylinder(), otherPos, other->GetRadius());
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kCylinder) {
+    } else if (myType == ColliderType::Sphere && otherType == ColliderType::Cylinder) {
         collision = CheckCylinderSphereCollision(other->GetCylinder(), myPos, this->GetRadius());
         collision.normal = collision.normal * -1.0f;
     }
-    else if (myType == ColliderType::kCylinder && (otherType == ColliderType::kOBB || otherType == ColliderType::kAABB)) {
-        collision = CheckCylinderOBBCollision(this->GetCylinder(), other->GetOBB());
-    } else if ((myType == ColliderType::kOBB || myType == ColliderType::kAABB) && otherType == ColliderType::kCylinder) {
-        collision = CheckCylinderOBBCollision(other->GetCylinder(), this->GetOBB());
+    else if (myType == ColliderType::Cylinder && (otherType == ColliderType::Obb || otherType == ColliderType::Aabb)) {
+        collision = CheckCylinderObbCollision(this->GetCylinder(), other->GetObb());
+    } else if ((myType == ColliderType::Obb || myType == ColliderType::Aabb) && otherType == ColliderType::Cylinder) {
+        collision = CheckCylinderObbCollision(other->GetCylinder(), this->GetObb());
         collision.normal = collision.normal * -1.0f;
     }
 
-    if (collision.isColliding && (myType == ColliderType::kAABB || myType == ColliderType::kOBB) &&
+    if (collision.isColliding && (myType == ColliderType::Aabb || myType == ColliderType::Obb) &&
         config_.footprint.size() >= 3) {
         engine::Vector3 horizontalNormal;
         float horizontalDepth = 0.0f;
@@ -931,7 +945,7 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
         }
     }
 
-    if (collision.isColliding && (otherType == ColliderType::kAABB || otherType == ColliderType::kOBB) &&
+    if (collision.isColliding && (otherType == ColliderType::Aabb || otherType == ColliderType::Obb) &&
         other->config_.footprint.size() >= 3) {
         engine::Vector3 horizontalNormal;
         float horizontalDepth = 0.0f;
@@ -951,12 +965,12 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
         const Collider* surface = HasModelSurface() ? this : (other->HasModelSurface() ? other : nullptr);
         const Collider* mover = surface == this ? other : this;
         if (surface && mover != surface &&
-            (mover->GetType() == ColliderType::kSphere || mover->GetType() == ColliderType::kAABB ||
-             mover->GetType() == ColliderType::kOBB || mover->GetType() == ColliderType::kCylinder)) {
-            const AABB moverBounds = mover->GetAABB();
-            const engine::Vector3 center = mover->GetType() == ColliderType::kSphere
+            (mover->GetType() == ColliderType::Sphere || mover->GetType() == ColliderType::Aabb ||
+             mover->GetType() == ColliderType::Obb || mover->GetType() == ColliderType::Cylinder)) {
+            const Aabb moverBounds = mover->GetAabb();
+            const engine::Vector3 center = mover->GetType() == ColliderType::Sphere
                 ? mover->GetSphereCenter() : (moverBounds.min + moverBounds.max) * 0.5f;
-            const float bottom = mover->GetType() == ColliderType::kSphere
+            const float bottom = mover->GetType() == ColliderType::Sphere
                 ? center.y - mover->GetRadius() : moverBounds.min.y;
             float surfaceHeight = 0.0f;
             engine::Vector3 surfaceNormal{};

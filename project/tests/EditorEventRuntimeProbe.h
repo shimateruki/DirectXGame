@@ -15,7 +15,7 @@
 namespace EditorEventRuntimeProbe {
 inline bool Enabled() { return GetEnvironmentVariableA("CG2_EDITOR_EVENT_TEST", nullptr, 0) > 0; }
 inline void Require(bool value, const char* message) { if (!value) throw std::runtime_error(message); }
-inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor* editor, std::ofstream& log) {
+inline void Check(engine::Object3DCommon* common, BaseScene* scene, DebugEditor* editor, std::ofstream& log) {
     using json = nlohmann::json;
     auto* registry = EditorPropertyRegistry::GetInstance();
     const auto* property = registry->Find(EditorEventRegistry::kTypePath);
@@ -25,7 +25,7 @@ inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor*
     for (const auto& value : property->enumValues) ids.insert(value.get<int>());
     Require(ids == std::set<int>({0,1,2,3,4,5,6,7}), "legacy numeric identifiers changed");
     Require(property->enumLabels[5] == "ゴール", "game label mismatch");
-    auto object = std::make_unique<engine::Object3d>();
+    auto object = std::make_unique<engine::Object3D>();
     object->Initialize(common);
     auto defaults = object->ExportToJson();
     SceneSerializer legacySerializer;
@@ -38,7 +38,7 @@ inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor*
         // 旧形式の数値Maskを検証します。現行形式ではID配列が数値より優先されます。
         saved.erase("collisionAttributeIds");
         saved.erase("collisionMaskIds");
-        saved["collider"]["type"] = static_cast<int>(ColliderType::kNone);
+        saved["collider"]["type"] = static_cast<int>(ColliderType::None);
         object->ImportFromJson(saved);
         Require(registry->GetValue(object.get(), property->path) == id, "legacy read");
         Require(object->ExportToJson()["eventType"] == id, "legacy write");
@@ -47,7 +47,7 @@ inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor*
         Require(targets.size() == 1 && targets[0].data["objects"][0]["eventID"] == id,
             "legacy scene eventID save key");
         Require(object->GetCollisionAttribute() == 123u && object->GetCollisionMask() == 456u &&
-            object->GetColliderType() == ColliderType::kNone, "load reapplied editor defaults");
+            object->GetColliderType() == ColliderType::None, "load reapplied editor defaults");
         auto clone = object->Clone();
         Require(clone && static_cast<int>(clone->GetEventType()) == id, "clone event identifier");
         auto replay = object->CaptureReplayState();
@@ -60,11 +60,11 @@ inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor*
     log << "OK all 8 legacy IDs: import, export, clone, Replay; loading does not apply editor defaults" << std::endl;
 
     object->ImportFromJson(defaults);
-    engine::Object3d::ColliderConfig config;
-    config.type = ColliderType::kNone;
+    engine::Object3D::ColliderConfig config;
+    config.type = ColliderType::None;
     object->SetColliderConfig(config);
     Require(registry->SetValue(object.get(), property->path, 5), "Goal selection rejected");
-    Require(object->GetColliderType() == ColliderType::kSphere && object->GetColliderConfig().size.x == 1.2f,
+    Require(object->GetColliderType() == ColliderType::Sphere && object->GetColliderConfig().size.x == 1.2f,
         "missing Goal sphere default");
     Require(object->GetCollisionAttribute() == CollisionCategories::Get("trigger") &&
         object->GetCollisionMask() == CollisionCategories::Get("player"), "Goal collision categories");
@@ -72,7 +72,7 @@ inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor*
     Require(!registry->SetValue(object.get(), property->path, 5) && object->GetCollisionMask() == 789u,
         "reselection overwrote adjusted collision mask");
     object->SetEventType(EventType::None);
-    config.type = ColliderType::kAABB;
+    config.type = ColliderType::Aabb;
     config.size = {3.0f,4.0f,5.0f};
     config.center = {1.0f,2.0f,3.0f};
     object->SetColliderConfig(config);
@@ -100,7 +100,7 @@ inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor*
         preset["children"] == original["children"], "preset lost unrelated payload");
     Require(preset["collisionAttribute"] == CollisionCategories::Get("trigger") &&
         preset["collisionMask"] == CollisionCategories::Get("player"), "preset missed initializer side effects");
-    auto second = std::make_unique<engine::Object3d>();
+    auto second = std::make_unique<engine::Object3D>();
     second->Initialize(common);
     second->ImportFromJson(preset);
     Require(second->ExportToJson()["eventType"] == 5, "preset roundtrip");
@@ -118,7 +118,7 @@ inline void Check(engine::Object3dCommon* common, BaseScene* scene, DebugEditor*
     Require(registry->SetValue(raw, property->path, 5), "editor selection");
     editor->RegisterObjectEdited(raw, before, "検証・接触イベント変更");
     const auto afterSaved = raw->ExportToJson();
-    const auto find = [&]() -> engine::Object3d* {
+    const auto find = [&]() -> engine::Object3D* {
         for (const auto& entry : scene->GetObjects()) if (entry->GetPersistentGuid() == guid) return entry.get();
         return nullptr;
     };
@@ -148,7 +148,7 @@ inline void AfterDraw(SceneManager* manager, DebugEditor* editor, const std::str
     try {
         manager->SetIsPlaying(false);
         auto* scene = manager->GetCurrentScene();
-        Check(scene->GetObject3dCommon(), scene, editor, log);
+        Check(scene->GetObject3DCommon(), scene, editor, log);
         log << "PASS: event registration, existing behavior, serialization and shared editor binding" << std::endl;
     } catch (const std::exception& error) {
         log << "FAIL: " << error.what() << std::endl;

@@ -9,6 +9,7 @@ constexpr float kBlastJetDuration = 0.24f;
 constexpr float kBlastJetPitch = (std::numbers::pi_v<float> * 0.5f);
 
 // 爆弾の設置・投擲と爆風ジャンプを制御し、各操作の再使用待ち時間を独立して持つ。
+// PlayerCopyAbilityControllerが所有する爆弾の設置・投擲と爆風ジャンプの実装。入力はProcessInput、進行はUpdate、一時表示の回収はCancelが担当する。
 class BomberCopyAbility final : public ICopyAbilitySession {
   public:
     using ICopyAbilitySession::ICopyAbilitySession;
@@ -72,9 +73,9 @@ class BomberCopyAbility final : public ICopyAbilitySession {
     void SpawnBomb(Player& player, bool placed) {
         SceneManager* manager = SceneManager::GetInstance();
         BaseScene* scene = manager ? manager->GetCurrentScene() : nullptr;
-        if (!scene || !scene->GetObject3dCommon())
+        if (!scene || !scene->GetObject3DCommon())
             return;
-        auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", scene->GetObject3dCommon());
+        auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", scene->GetObject3DCommon());
         if (!bomb)
             return;
         const engine::Vector3 forward = NormalizePlanar(player.GetLockOnAttackDirection());

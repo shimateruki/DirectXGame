@@ -1,0 +1,155 @@
+﻿#pragma once
+#include <d3d12.h>
+#include "Camera.h"
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+#include <wrl.h>
+
+class DebugEditor;
+class DirectXCommon;
+namespace engine { class Object3D; }
+namespace engine { class Object3DCommon; }
+
+/// <summary>
+/// Projectウィンドウで表示するモデル/プリセットのサムネイル情報。
+/// </summary>
+/// Projectウィンドウで表示するモデル/プリセットのサムネイルとプレビュー用Objectを保持する。
+// 関連：ProjectWindow（この型を使う機能の本体）
+struct ThumbnailData {
+    Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
+    uint32_t srvHandle = 0;
+
+    bool isCaptured = false;
+    bool isHudPortrait = false;
+
+    bool exportRequested = false;
+    std::string exportFileStem;
+    // キューへ入れた時点の保存先。後から登録が変わっても出力待ちの画像を別の場所へ書かない。
+    std::string exportDirectory;
+
+    float portraitYaw = 0.0f;
+    float portraitPitch = -0.2f;
+    float portraitScale = 1.0f;
+    float portraitOffsetY = 0.0f;
+
+    float previewYaw = 0.0f;
+    float previewPitch = 0.0f;
+    float previewZoom = 1.0f;
+
+    engine::Vector3 previewCenter{};
+    engine::Vector3 previewExtent{};
+    bool previewHasBounds = false;
+
+    bool contentDirty = true;
+    std::shared_ptr<engine::Object3D> previewObject;
+
+    // セットの各ノードを所有し、親子関係と元の相対サイズを保持します。
+    std::vector<std::shared_ptr<engine::Object3D>> previewObjects;
+
+    // 再撮影直前のGPU参照が残り得るため、旧プレビューはGPUの処理完了まで保持します。
+    std::vector<std::shared_ptr<engine::Object3D>> retiredPreviewObjects;
+    uint64_t retiredPreviewFence = 0;
+};
+
+// 担当：モデル・Preset・Sceneなどの資産を一覧し、ドラッグ配置とサムネイル生成を行う。
+// 関連：AssetDatabase（索引）、PresetManager（Preset）、DebugEditor（配置）、PortraitExportRegistry
+// 主な入口：Initialize / Draw / CapturePendingThumbnails
+class ProjectWindow {
+public:
+    ProjectWindow() = default;
+
+    ~ProjectWindow() = default;
+
+    /// <summary>
+    /// 親EditorとDirectX基盤を登録する。
+    /// </summary>
+    /// エディタ、DirectX、サムネイル描画用の共通リソースを受け取る。
+    void Initialize(DebugEditor* editor, DirectXCommon* dxCommon);
+
+    /// <summary>
+    /// ProjectウィンドウのUIを描画する。
+    /// </summary>
+    /// アセット一覧、検索、フォルダ移動、サムネイル表示などのProject UIを描画する。
+    void Draw();
+
+    /// <summary>
+    /// 未撮影のサムネイルをGameView描画ループの先頭で撮影する。
+    /// </summary>
+    /// まだ撮影されていないモデル/プリセットのサムネイルを順次生成する。
+    void CapturePendingThumbnails();
+
+    /// <summary>
+    /// 描画済みのHUD用ポートレートを透過PNGへ書き出します。
+    /// </summary>
+    void ExportCapturedHudPortraits();
+
+    uint64_t GetPresetThumbnailGpuPtr(const std::string& presetName);
+
+    /// 選択中プリセットの視点だけを変えて再撮影する。配置Transformは変更しない。
+    uint64_t GetPresetPreviewGpuPtr(const std::string& presetName, float yaw, float pitch, float zoom);
+
+    // エフェクトJSONを独立した描画Objectで撮影します。ゲームのSceneへは登録しません。
+    uint64_t GetEffectThumbnailGpuPtr(const std::string& path) { return GetPresetThumbnailGpuPtr("@effect:" + path); }
+
+    // 保存値が変わったときは一覧写真と操作用プレビューの両方でObjectを組み直す。
+    void InvalidatePresetThumbnail(const std::string& presetName);
+
+    /// PBRの3枚セットを球で撮影したサムネイルを取得する。未撮影なら次の描画時に生成する。
+    uint64_t GetPbrThumbnailGpuPtr(const std::string& name, const std::string& albedoPath,
+        const std::string& normalPath, const std::string& ormPath);
+
+    /// テクスチャの再読込後に、表示済みの球を撮り直す。
+    void InvalidatePbrThumbnails();
+
+private:
+    /// 指定モデルのプレビューObjectと描画先を作り、サムネイル撮影の準備をする。
+    void CreateThumbnailResource(const std::string& modelName);
+
+    // Presetのプレビューとサムネイル描画先を準備する。
+    void CreatePresetThumbnailResource(const std::string& presetName);
+
+    // PBRセットのサムネイル描画先を準備する。
+    void CreatePbrThumbnailResource(const std::string& name);
+
+    // 通常・被弾PNGの不足分だけ撮影対象とし、強制更新時は既存ファイルも撮り直す。
+    void QueueHudPortraitExports(bool forceAll);
+
+    // EditorとDirectX基盤への参照。ProjectWindowは所有しない。
+    DebugEditor* editor_ = nullptr;
+    DirectXCommon* dxCommon_ = nullptr;
+
+    std::unique_ptr<engine::Object3DCommon> previewObject3DCommon_;
+
+    // モデル/プリセット名からサムネイル情報を引くキャッシュ。
+    std::map<std::string, ThumbnailData> thumbnailAlbum_;
+    std::map<std::string, ThumbnailData> presetThumbnailAlbum_;
+
+    // 削除対象は確認ダイアログが閉じるまで保持し、一覧の描画中には消さない。
+    std::string pendingDeletePresetName_;
+
+    /// <summary>PBRプリセットの画像パスと、描画完了まで必要なサムネイル情報を保持する。</summary>
+    // 関連：ProjectWindow（この型を使う機能の本体）
+    struct PbrThumbnailData {
+        ThumbnailData thumbnail;
+        std::string albedoPath;
+        std::string normalPath;
+        std::string ormPath;
+        uint64_t lastUseFence = 0;
+    };
+
+    std::map<std::string, PbrThumbnailData> pbrThumbnailAlbum_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> pbrPreviewLightResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> pbrPreviewPointLightsResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> pbrPreviewSpotLightsResource_;
+    const int kThumbnailSize = 256;
+
+    std::string currentModelDirectory_ = "Resources/3DModel/";
+
+    // サムネイル撮影用の簡易スタジオカメラ。
+    Camera studioCamera_;
+    bool isStudioCameraInitialized_ = false;
+    bool hudPortraitAutoScanDone_ = false;
+};

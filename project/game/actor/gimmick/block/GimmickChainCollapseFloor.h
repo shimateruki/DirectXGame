@@ -2,6 +2,8 @@
 #include "BaseGimmick.h"
 
 // 踏まれた床が揺れて落下し、次の床へ連鎖する足場です。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision / OnTrigger
 class GimmickChainCollapseFloor : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -11,19 +13,19 @@ class GimmickChainCollapseFloor : public BaseGimmick {
     virtual ~GimmickChainCollapseFloor() = default;
 
     /// 配置床の初期姿勢と連鎖先を準備する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 連鎖待ち、揺れ、落下、再試行の状態を進める。
     void Update(float deltaTime) override;
 
     /// プレイヤーが乗ったとき落下を開始する。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     /// 前の床からの連鎖要求を受け取る。
     void OnTrigger() override;
 
     /// 配置用の崩落床複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     // 待機中の連鎖遅延と、実際の揺れ・落下を区別します。

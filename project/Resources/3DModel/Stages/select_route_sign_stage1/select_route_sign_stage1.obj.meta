@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e0a0f78a8d6d45f98a861e2bf1edc0d3",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/select_route_sign_stage1/select_route_sign_stage1.obj",
+  "version": 1
+}

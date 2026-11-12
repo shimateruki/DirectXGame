@@ -8,15 +8,16 @@
 #include "Light.h"
 
 // 前方宣言
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 class Camera;
 
-/// <summary>
-/// 平行光源・点光源・スポットライトと環境設定を共有する。
-/// </summary>
+// 担当：ライトと環境設定を管理し、描画用バッファと環境補間を更新する。
+// 関連：DirectXCommon（GPU資源）、MeshRenderer（照明利用）、LightEditor（編集）
+// 主な入口：Initialize / Update / SaveState / LoadState
 class LightManager {
 public:
     /// <summary>ライティングとポストエフェクトをまとめて保存する設定。</summary>
+    // 関連：LightManager（この型を使う機能の本体）
     struct EnvironmentPostSettings {
         bool bloomEnabled = true;
         int bloomQuality = 2;
@@ -43,6 +44,7 @@ public:
     };
 
     /// <summary>ライト、空、色調補正をまとめて保存・補間する設定。</summary>
+    // 関連：LightManager（この型を使う機能の本体）
     struct EnvironmentProfileState {
         DirectionalLight directionalLight{};
         engine::Vector4 clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
@@ -70,6 +72,7 @@ public:
     /// <summary>
     /// 点光源のインスタンス（GPUデータ + 制御用ロジック）
     /// </summary>
+    // 関連：LightManager（この型を使う機能の本体）
     struct PointLightInstance {
         // GPUに送るデータ（位置、色、輝度など）
         MeshRenderer::PointLight data;
@@ -77,7 +80,7 @@ public:
         // エディタ・制御用データ
         std::string name = "PointLight";   // 識別名
         LightMode mode = LightMode::None;  // 現在の挙動モード
-        engine::Object3d* target = nullptr;        // 追従対象のオブジェクト（nullptrなら追従なし）
+        engine::Object3D* target = nullptr;        // 追従対象のオブジェクト（nullptrなら追従なし）
         engine::Vector3 offset = engine::Vector3::ZERO; // 追従時の位置ズレ補正
 
         // アニメーション用パラメータ
@@ -89,6 +92,7 @@ public:
     /// <summary>
     /// スポットライトのインスタンス（GPUデータ + 制御用ロジック）
     /// </summary>
+    // 関連：LightManager（この型を使う機能の本体）
     struct SpotLightInstance {
         // GPUに送るデータ
         MeshRenderer::SpotLight data;
@@ -96,7 +100,7 @@ public:
         // エディタ・制御用データ
         std::string name = "SpotLight";
         LightMode mode = LightMode::None;
-        engine::Object3d* target = nullptr;
+        engine::Object3D* target = nullptr;
         engine::Vector3 offset = engine::Vector3::ZERO;
 
         // アニメーション用パラメータ
@@ -108,6 +112,7 @@ public:
     /// <summary>
     /// 定数バッファ転送用構造体（点光源）
     /// </summary>
+    // 関連：LightManager（この型を使う機能の本体）
     struct PointLightConstData {
         MeshRenderer::PointLight lights[kMaxPointLights];
         int activeCount;   // 現在有効なライトの数
@@ -117,6 +122,7 @@ public:
     /// <summary>
     /// 定数バッファ転送用構造体（スポットライト）
     /// </summary>
+    // 関連：LightManager（この型を使う機能の本体）
     struct SpotLightConstData {
         MeshRenderer::SpotLight lights[kMaxSpotLights];
         int activeCount;
@@ -228,8 +234,10 @@ public:
     // 不正インデックスでは一覧を変更せず、呼び出し側へ失敗を返します。
     bool RemoveSpotLight(std::size_t index);
 
+    // 登録済みの点光源をすべて取り除く。
     void ClearPointLights();
 
+    // 登録済みのスポットライトをすべて取り除く。
     void ClearSpotLights();
 
     /// <summary>登録された点光源、スポットライト、一時点光源をすべて削除する。</summary>
@@ -252,6 +260,7 @@ public:
 
     const std::string& GetCurrentStateFile() const { return currentStateFile_; }
 
+    // 直近のライト設定読込が成功したかを返す。
     bool WasLastLoadSuccessful() const { return lastLoadSucceeded_; }
 
     uint32_t GetEnvironmentMapHandle() const { return environmentMapHandle_; }
@@ -285,6 +294,7 @@ private:
     PointLightConstData* pointLightConstData_ = nullptr;
 
     /// <summary>寿命付き点光源の基準強度と経過時間。</summary>
+    // 関連：LightManager（この型を使う機能の本体）
     struct TransientPointLight {
         MeshRenderer::PointLight data;
         float baseIntensity = 1.0f;

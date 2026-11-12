@@ -6,17 +6,20 @@ class DirectXCommon;
 
 /// <summary>CPUパーティクル描画で使う色合成方式。</summary>
 enum class ParticleBlendMode {
-    kAlpha,     // 通常 (Alpha Blend)
-    kAdd,       // 加算 (Additive)
-    kSubtract,  // 減算 (Subtract)
-    kMultiply,  // 乗算 (Multiply)
-    kScreen,    // スクリーン (Screen)
-    kCount      // 最大数
+    Alpha,     // 通常 (Alpha Blend)
+    Add,       // 加算 (Additive)
+    Subtract,  // 減算 (Subtract)
+    Multiply,  // 乗算 (Multiply)
+    Screen,    // スクリーン (Screen)
+    Count      // 最大数
 };
 
 /// <summary>CPUパーティクル描画用の共通ルートシグネチャと合成方式別パイプラインを管理する。</summary>
 namespace engine {
 
+// 担当：CPU粒子の描画で共有するルートシグネチャとパイプラインを管理する。
+// 関連：RenderCommonResources（所有）、ParticleSystem（利用）、DirectXCommon
+// 主な入口：Initialize / SetPipeline
 class ParticleCommon {
 public:
 
@@ -27,12 +30,13 @@ public:
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
     /// <summary>指定した合成方式のパイプラインをコマンドリストに設定する。</summary>
-    void SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode = ParticleBlendMode::kAlpha);
+    void SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode = ParticleBlendMode::Alpha);
 
 private:
     // CPUパーティクル描画で使うルートシグネチャと合成方式別PipelineStateを作る。
     void CreateRootSignature();
 
+    // 描画で共有するパイプラインを作る。
     void CreatePipeline();
 
 private:
@@ -46,7 +50,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
 
     // ParticleBlendModeの値を添字として選ぶ描画PSO。
-    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)ParticleBlendMode::kCount> graphicsPipelines_;
+    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)ParticleBlendMode::Count> graphicsPipelines_;
 };
 
 } // namespace engine

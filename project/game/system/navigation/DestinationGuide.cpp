@@ -1,6 +1,6 @@
 #define NOMINMAX
 #include "game/system/navigation/DestinationGuide.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 #include "json.hpp"
 #include <Windows.h>
@@ -46,12 +46,12 @@ void DestinationGuide::Reset() {
     poseInitialized_ = arrived_ = false;
 }
 
-void DestinationGuide::Hide(engine::Object3d& arrow) {
+void DestinationGuide::Hide(engine::Object3D& arrow) {
     arrow.SetIsVisible(false);
     poseInitialized_ = false;
 }
 
-void DestinationGuide::Update(engine::Object3d& arrow, const engine::Vector3& followerPosition,
+void DestinationGuide::Update(engine::Object3D& arrow, const engine::Vector3& followerPosition,
                               const engine::Vector3& targetPosition, float deltaTime) {
     if (!settings_.enabled || arrived_ || !Finite(followerPosition) || !Finite(targetPosition)) {
         Hide(arrow);

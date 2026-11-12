@@ -1,30 +1,33 @@
 #pragma once
+#include "engine/graphics/core/RenderCommonResources.h"
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
 // 継承先でも頻繁に使うため、基底クラス側で共通 include しておく
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Sprite.h"
 
 // 前方宣言
 class SceneManager;
-namespace engine { class Object3dCommon; }
+namespace engine { class Object3DCommon; }
 namespace engine { class SpriteCommon; }
 namespace engine { class ParticleSystem; }
+namespace engine { class SceneRenderCommands; }
 class DebugEditor;
 class Camera;
-class DirectXCommon;
 class BulletManager;
 class Skybox;
 class ScenePreloadData;
 struct SceneLoadManifest;
 
-#include "engine/utility/state/IEditable.h"
+#include "engine/editor/core/IEditable.h"
 #include "SceneLoadContext.h"
 
-/// <summary>シーンの初期化、更新、描画と Editor・ロード連携の共通入口です。</summary>
+// 担当：シーンの初期化・更新・描画と、Editor・保存・ロード連携の共通入口を定義する。
+// 関連：SceneManager（切替と呼出し）、SceneLoadContext（初期設定）、Object3D / Sprite（配置）
+// 主な入口：Initialize / Update / Draw / Finalize
 class BaseScene : public IEditable {
 public:
     /// <summary>派生シーンを基底ポインタから安全に破棄する。</summary>
@@ -38,6 +41,9 @@ public:
 
     /// <summary>シーン固有のオブジェクト、カメラ、UI を初期化します。</summary>
     virtual void Initialize() = 0;
+
+    /// <summary>必要な共有描画基盤を宣言するだけで、生成・段階準備はSceneManagerに任せる。</summary>
+    virtual engine::RenderPreparation GetRenderPreparation() const { return engine::RenderPreparation::Full; }
 
     /// <summary>ロード画面と並行する段階初期化を開始します。</summary>
     /// <remarks>既定実装は何もしません。次の InitializeLoadingStep() が Initialize() を一度呼びます。</remarks>
@@ -122,8 +128,8 @@ public:
 
     /// <summary>派生シーンが所有する3Dオブジェクトを返す。基底の既定実装は空の一覧。</summary>
     // 走査で得たポインタはシーン所有。削除予約・遷移の後に参照を持ち越さない。
-    virtual const std::vector<std::unique_ptr<engine::Object3d>>& GetObjects() const {
-        static const std::vector<std::unique_ptr<engine::Object3d>> empty;
+    virtual const std::vector<std::unique_ptr<engine::Object3D>>& GetObjects() const {
+        static const std::vector<std::unique_ptr<engine::Object3D>> empty;
         return empty;
     }
 
@@ -155,46 +161,46 @@ public:
     /// <summary>Replay が保持する Sprite 参照を解放します。</summary>
     void ReleaseReplaySprites();
 
-    /// <summary>Editor やロード処理から Object3d を追加する入口です。</summary>
-    virtual void AddObject(std::unique_ptr<engine::Object3d> object);
+    /// <summary>Editor やロード処理から Object3D を追加する入口です。</summary>
+    virtual void AddObject(std::unique_ptr<engine::Object3D> object);
 
     /// <summary>EditorとReplayが同じフレームで参照できるよう、Object3dを即時登録する。</summary>
     /// <returns>登録したObject3dの非所有参照。</returns>
     /// <remarks>Object3dを所有しない基底の既定実装は例外を投げる。</remarks>
-    virtual engine::Object3d* AddObjectImmediate(std::unique_ptr<engine::Object3d> object);
+    virtual engine::Object3D* AddObjectImmediate(std::unique_ptr<engine::Object3D> object);
 
     /// <summary>UndoやPrefab編集のため、Object3dをシーンから外して所有権を返す。</summary>
     /// <returns>取り出したObject3d。見つからない場合はnullptr。</returns>
-    virtual std::unique_ptr<engine::Object3d> TakeObjectImmediate(engine::Object3d* object);
+    virtual std::unique_ptr<engine::Object3D> TakeObjectImmediate(engine::Object3D* object);
 
     /// <summary>派生シーンが管理するオブジェクトの削除を予約する拡張点。</summary>
-    virtual void RequestRemoveObject(engine::Object3d* object) { (void)object; }
+    virtual void RequestRemoveObject(engine::Object3D* object) { (void)object; }
 
-    /// <summary>Replay に記録した動的 Object3d を派生シーンで再生成します。</summary>
-    virtual std::unique_ptr<engine::Object3d> CreateReplayObject(const json& descriptor) {
+    /// <summary>Replay に記録した動的 Object3D を派生シーンで再生成します。</summary>
+    virtual std::unique_ptr<engine::Object3D> CreateReplayObject(const json& descriptor) {
         (void)descriptor;
         return nullptr;
     }
 
-    /// <summary>Replay の動的 Object3d 再生成後、シーン固有の参照を接続し直します。</summary>
+    /// <summary>Replay の動的 Object3D 再生成後、シーン固有の参照を接続し直します。</summary>
     virtual void OnReplayObjectsRecreated() {}
 
     /// <summary>指定オブジェクトの生存を確認し、削除を予約する。</summary>
     /// <returns>対象がこのシーンに存在し、削除を予約できた場合はtrue。</returns>
-    bool Destroy(engine::Object3d* object);
+    bool Destroy(engine::Object3D* object);
 
     /// <summary>指定Spriteを削除する。Replay保持中なら非表示にして記録上の削除とする。</summary>
     /// <returns>対象がこのシーンに存在した場合はtrue。</returns>
     bool Destroy(engine::Sprite* sprite);
 
     /// <summary>所有中のObject3dを非表示にし、走査後の破棄を予約する。</summary>
-    bool DestroyObject(engine::Object3d* object);
+    bool DestroyObject(engine::Object3D* object);
 
     /// <summary>所有中のSpriteをReplayの保持状態に合わせて削除する。</summary>
     bool DestroySprite(engine::Sprite* sprite);
 
     /// <summary>Object3dのポインタがこのシーンの所有配列にあるか返す。</summary>
-    bool IsAlive(engine::Object3d* object);
+    bool IsAlive(engine::Object3D* object);
 
     /// <summary>Spriteがこのシーンに属し、Replay上でも削除されていないか返す。</summary>
     bool IsAlive(engine::Sprite* sprite);
@@ -203,10 +209,15 @@ public:
     virtual void RefreshRenderCameraData();
 
     /// <summary>派生シーンが所有する3D描画基盤への非所有参照を返す。</summary>
-    virtual engine::Object3dCommon* GetObject3dCommon() { return nullptr; }
+    virtual engine::Object3DCommon* GetObject3DCommon();
+    engine::Object3DCommon* GetObject3DCommon() const { return const_cast<BaseScene*>(this)->GetObject3DCommon(); }
 
     /// <summary>派生シーンが所有するSprite描画基盤への非所有参照を返す。</summary>
-    virtual engine::SpriteCommon* GetSpriteCommon() { return nullptr; }
+    virtual engine::SpriteCommon* GetSpriteCommon();
+    engine::SpriteCommon* GetSpriteCommon() const { return const_cast<BaseScene*>(this)->GetSpriteCommon(); }
+
+    /// <summary>シーン所有のParticleSystemへ渡す共有描画基盤を借用する。</summary>
+    engine::ParticleCommon* GetParticleCommon() const;
 
     /// <summary>派生シーンが所有する粒子システムへの非所有参照を返す。</summary>
     virtual engine::ParticleSystem* GetParticleSystem() { return nullptr; }
@@ -214,27 +225,27 @@ public:
     /// <summary>派生シーンが所有するスカイボックスへの非所有参照を返す。</summary>
     virtual Skybox* GetSkybox() { return nullptr; }
 
-    /// <summary>targetID に紐づくイベント受信オブジェクトへ通知します。</summary>
-    void TriggerEvent(int targetID);
+    /// <summary>targetId に紐づくイベント受信オブジェクトへ通知します。</summary>
+    void TriggerEvent(int targetId);
 
     /// <summary>指定IDへ接続されたイベントの有効状態を切り替える。</summary>
-    void SetEventActive(int targetID, bool active);
+    void SetEventActive(int targetId, bool active);
 
     /// <summary>イベントIDに対応するオブジェクトを探す。</summary>
-    virtual engine::Object3d* FindObjectByEventID(int eventID);
+    virtual engine::Object3D* FindObjectByEventId(int eventId);
 
     /// <summary>永続GUIDでシーン内のオブジェクトを探す。</summary>
-    engine::Object3d* FindObjectByPersistentGuid(const std::string& guid);
+    engine::Object3D* FindObjectByPersistentGuid(const std::string& guid);
 
     /// <summary>永続GUIDでシーン内のオブジェクトを読み取り専用で探す。</summary>
-    const engine::Object3d* FindObjectByPersistentGuid(const std::string& guid) const;
+    const engine::Object3D* FindObjectByPersistentGuid(const std::string& guid) const;
 
     /// <summary>旧シーンの GUID 不足と重複を補正します。</summary>
-    /// <returns>GUID を再発行した Object3d の数。</returns>
+    /// <returns>GUID を再発行した Object3D の数。</returns>
     std::size_t EnsureUniquePersistentObjectGuids();
 
     /// <summary>派生シーンのUI描画を行う拡張点。</summary>
-    virtual void DrawUI() {}
+    virtual void DrawUi() {}
 
     /// <summary>指定カメラから見たシーンを独立バッファへ描画する。</summary>
     virtual void DrawCameraPreview(Camera* camera, int previewBufferIndex = 0);
@@ -256,6 +267,18 @@ public:
     std::string GetLoadedSpriteFilename() const { return loadedSpriteFilename_; }
 
 protected:
+    /// <summary>初期化済みの描画命令窓口を借用する。描画基盤が未接続ならnullptr。</summary>
+    engine::SceneRenderCommands* GetRenderCommands() const;
+
+    /// <summary>現在の描画先へSpriteの設定を適用する。共有基盤が未準備ならlogic_errorを送出する。</summary>
+    void BeginSpriteDrawing();
+
+    /// <summary>GPU粒子のプリセットを全件または事前読込結果から準備する範囲。</summary>
+    enum class GpuParticlePresetScope { All, PreparedScene };
+
+    /// <summary>DirectXの接続とプリセット読込をエンジン側で行う。Editorでは常に全件を使用する。</summary>
+    void PrepareGpuParticles(GpuParticlePresetScope scope = GpuParticlePresetScope::All);
+
     /// <summary>派生シーンの可変Sprite所有コンテナを返す。基底ではnullptr。</summary>
     virtual std::vector<std::unique_ptr<engine::Sprite>>* GetMutableSprites() { return nullptr; }
 
@@ -263,26 +286,25 @@ protected:
     bool IsSpecialMaterialType(int materialType) const;
 
     /// <summary>一人称視点で視点Actorまたはその子として隠す対象か判定する。</summary>
-    bool IsHiddenByFirstPerson(engine::Object3d* object, engine::Object3d* viewActor, bool isFirstPerson) const;
+    bool IsHiddenByFirstPerson(engine::Object3D* object, engine::Object3D* viewActor, bool isFirstPerson) const;
 
     // 敵の予兆を不透明モデルの後、パーティクルや特殊材質の前に描画します。
 
     /// <summary>対象一覧からローカルフォグを描画し、描画したか返す。</summary>
-    bool DrawLocalFogObjects(const std::vector<std::unique_ptr<engine::Object3d>>& objects, DirectXCommon* dxCommon, engine::Object3d* viewActor = nullptr, bool isFirstPerson = false);
+    bool DrawLocalFogObjects(const std::vector<std::unique_ptr<engine::Object3D>>& objects, engine::Object3D* viewActor = nullptr, bool isFirstPerson = false);
 
     /// <summary>水やポータルなどの特殊材質を描き、背景色コピーの有無を返す。</summary>
     /// <returns>特殊材質用の背景色をコピーして描画した場合はtrue。</returns>
     bool DrawSpecialMaterialObjects(
-        const std::vector<std::unique_ptr<engine::Object3d>>& objects,
-        DirectXCommon* dxCommon,
+        const std::vector<std::unique_ptr<engine::Object3D>>& objects,
         BulletManager* bulletManager = nullptr,
-        engine::Object3d* viewActor = nullptr,
+        engine::Object3D* viewActor = nullptr,
         bool isFirstPerson = false);
 
     /// <summary>GPU粒子を描画し、背景色コピーが済んでいるか返す。</summary>
     /// <param name="grabAlreadyUpdated">先行する特殊材質パスで背景色をコピー済みならtrue。</param>
     /// <returns>呼び出し後に背景色コピーが済んでいればtrue。</returns>
-    bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
+    bool DrawGpuParticles(Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
 
     /// <summary>派生シーンが利用するエディターと事前読込結果を借用する。</summary>
     DebugEditor* GetDebugEditor() const { return debugEditor_; }

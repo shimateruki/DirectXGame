@@ -3,6 +3,8 @@
 #include "BaseGimmick.h"
 
 // プレイヤーの進入を検知し、中ボス・封鎖壁・撃破後の開放を一つの状態で管理します。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision / OnTrigger
 class GimmickArenaEncounter : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -10,7 +12,7 @@ class GimmickArenaEncounter : public BaseGimmick {
     static constexpr const char* kModelPath = "Primitives/cube";
 
     /// ボス、封鎖壁、報酬との紐付けを初期化する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 進入、封鎖、戦闘、撃破後の状態を進める。
     void Update(float deltaTime) override;
@@ -19,13 +21,13 @@ class GimmickArenaEncounter : public BaseGimmick {
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     /// プレイヤーの進入を検知して戦闘開始を判断する。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     /// 外部トリガーから遭遇開始を要求する。
     void OnTrigger() override;
 
     /// 配置用の遭遇装置複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // 保存済みチェックポイントから再開する際、ボス戦を再開せず障壁と報酬をクリア状態へ戻します。
     void RestoreCheckpointClear();

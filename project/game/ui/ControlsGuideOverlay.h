@@ -11,12 +11,16 @@
 
 namespace engine { class InputManager; }
 class Player;
+class VideoSpritePlayer;
 namespace engine { class Sprite; }
 namespace engine { class SpriteCommon; }
 
 /// <summary>Tabで開く操作ガイド。基本操作とコピー能力の図鑑を表示します。</summary>
+// 関連：PauseMenuOverlayや各シーンが開閉を要求し、基本操作と能力ページの表示を切り替える。
+// 主な入口：Initialize / SetActive / Update / Draw / Finalize
 class ControlsGuideOverlay : public IEditable {
   public:
+    ControlsGuideOverlay();
     ~ControlsGuideOverlay() override;
 
     /// 操作ガイドの開発用設定を表示する。
@@ -109,6 +113,12 @@ class ControlsGuideOverlay : public IEditable {
     /// 現在のコピー能力に合わせて図鑑の内容を更新する。
     void RefreshBook();
 
+    // 技を選んだときに素材を切り替え、描画時に映像枠へ収める。
+    void UpdateMovePreview(float deltaTime);
+    void DrawMovePreview();
+    void DrawMovePreviewEditor();
+    void CloseMovePreview();
+
     // JSON 配置の Sprite を生成し、ページ・矢印・図鑑要素へ紐付けます。
     void LoadLayout(const std::string& layoutPath);
 
@@ -192,6 +202,24 @@ class ControlsGuideOverlay : public IEditable {
     // 図鑑の表示状態は通常操作ページのスライド状態と独立しています。
     std::vector<BookElement> bookElements_;
     nlohmann::json bookData_;
+    std::unique_ptr<VideoSpritePlayer> videoPlayer_;
+    std::unique_ptr<engine::Sprite> movePreviewSprite_;
+    std::unique_ptr<engine::Sprite> movePreviewDescription_;
+    engine::Vector2 movePreviewPosition_{1008.0f, 418.0f}; // 設計解像度での映像枠の左上。
+    engine::Vector2 movePreviewSize_{568.0f, 320.0f}; // 設計解像度での映像枠。
+    std::string previewBookPath_;
+    std::string previewMoveKey_;
+    std::string previewVideoPath_;
+    std::string previewPosterPath_;
+    uint32_t previewPosterHandle_ = 0;
+    uint32_t previewDescriptionHandle_ = 0;
+    int previewMoveIndex_ = 0;
+    bool previewPlaybackEnabled_ = true;
+#ifdef USE_IMGUI
+    std::array<char, 1024> previewVideoInput_{};
+    std::array<char, 1024> previewPosterInput_{};
+    std::string previewEditorMove_;
+#endif
     std::string bookKey_;
 
     bool bookEnabled_ = false;

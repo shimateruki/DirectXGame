@@ -28,7 +28,7 @@ ColliderConfig BuildFlipPairCollider(const Model* model) {
     // OBJのZ座標は読込時に反転するため、描画に使う変換済み頂点から板の位置を得る。
     // 固定枠・軸・模様より大きい、上向きの水平三角形が回転板の天面に相当する。
     ColliderConfig config;
-    config.type = ColliderType::kNone;
+    config.type = ColliderType::None;
     if (!model)
         return config;
 
@@ -67,7 +67,7 @@ ColliderConfig BuildFlipPairCollider(const Model* model) {
                 maximum.y = (std::max)(maximum.y, p.y);
         }
     }
-    config.type = ColliderType::kOBB;
+    config.type = ColliderType::Obb;
     config.center = {(minimum.x + maximum.x) * 0.5f, maximum.y - 0.125f,
                      (minimum.z + maximum.z) * 0.5f};
     config.size = {(maximum.x - minimum.x) * 0.5f, 0.125f, (maximum.z - minimum.z) * 0.5f};
@@ -79,7 +79,7 @@ GimmickBlinkBlock::~GimmickBlinkBlock() {
     EventManager::GetInstance()->Unsubscribe(jumpSubscription_);
 }
 
-void GimmickBlinkBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickBlinkBlock::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("BlinkBlock");
@@ -101,7 +101,7 @@ void GimmickBlinkBlock::Initialize(engine::Object3dCommon* common, const std::st
     using Self = GimmickBlinkBlock;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "点滅・ジャンプ反転ブロック",
         "反転板モデルは枠の中央を軸に回転し、着地側の板だけが床になります。通常モデルはジャンプ回数で出現面を切り替えます。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("初期の色・反転面", "colorType", &Parameter::colorType, 0.0f, 1.0f,
         nullptr, {"青（ジャンプ偶数回）", "赤（ジャンプ奇数回）"});
     properties.Parameter("反転速度倍率", "speed", &Parameter::speed, 0.25f, 3.0f,
@@ -229,7 +229,7 @@ void GimmickBlinkBlock::ApplyFlipPairAppearance() {
     if (colliderChanged)
         SetColliderConfig(config);
 
-    const uint32_t attribute = config.type == ColliderType::kNone ? 0 : CollisionCategories::Get("ground");
+    const uint32_t attribute = config.type == ColliderType::None ? 0 : CollisionCategories::Get("ground");
     if (GetCollisionAttribute() != attribute)
         SetCollisionAttribute(attribute);
     const uint32_t mask = CollisionCategories::GetDefaultGameplayMask();
@@ -265,7 +265,7 @@ void GimmickBlinkBlock::UpdateAppearance() {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickBlinkBlock::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickBlinkBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     auto newObj = std::make_unique<GimmickBlinkBlock>();
     assert(GetObjectCommon() != nullptr);

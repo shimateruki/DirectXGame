@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "462f73af0692489d944fa3c30ee01f71",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_yellow/player_copy_thunder_hurt.gltf",
+  "version": 1
+}

@@ -18,9 +18,9 @@
 #include <set>
 #include <tuple>
 #include <thread>
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include "PostEffect.h"
-#include"ImguiManager.h"
+#include"ImGuiManager.h"
 
 // ログ出力用のヘルパー関数（グローバル）
 // デバッグ出力へ文字列を流し、DirectX初期化やリソース生成の状態を追えるようにする。
@@ -45,14 +45,14 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 	assert(winApp);
 	winApp_ = winApp;
 
-	InitalaizeFixFPS();
+	InitializeFixedFps();
 
 	// 各種初期化処理
 	InitializeDXGIDevice();
 	CreateCommand();
 	CreateSwapChain();
-	CreateRTV();
-	CreateDSV();
+	CreateRtv();
+	CreateDsv();
 	CreateFence();
 
 	// ビューポートとシザー矩形の設定
@@ -146,7 +146,7 @@ void DirectXCommon::PreDraw() {
 	commandList_->RSSetScissorRects(1, &outputScissor);
 
 	//SRVManagerからデスクリプタヒープを取得して設定
-	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { SrvManager::GetInstance()->GetDescriptorHeap() };
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
 
@@ -190,7 +190,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 // 固定FPS制御の基準時刻を初期化する。
 
 
-void DirectXCommon::InitalaizeFixFPS()
+void DirectXCommon::InitializeFixedFps()
 {
 	// 現在の時刻を取得して記録
 	reference_ = std::chrono::steady_clock::now();
@@ -198,7 +198,7 @@ void DirectXCommon::InitalaizeFixFPS()
 
 // 1フレームが短すぎる場合に待機し、60FPS基準のフレーム間隔へ寄せる。
 
-void DirectXCommon::UpdateFixFPS()
+void DirectXCommon::UpdateFixedFps()
 {
 	//1/60秒びったりの時間
 	const std::chrono::microseconds kMinTimer(uint64_t(1000000.0f / 60.0f));
@@ -285,6 +285,8 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	using ShaderKey = std::tuple<std::wstring, std::wstring, std::wstring>;
 
 	/// <summary>コンパイル済みシェーダーと依存ファイルを一緒に保持し、更新判定に使う。</summary>
+	// 担当：依存ファイル情報とコンパイル済みシェーダーを保持する。
+	// 関連：DirectXCommonの内部処理だけで使う補助型。
 	struct CachedShader {
 		std::vector<ShaderDependency> dependencies;
 		Microsoft::WRL::ComPtr<IDxcBlob> blob;
@@ -650,7 +652,7 @@ void DirectXCommon::CreateSwapChain() {
 	assert(SUCCEEDED(hr));
 }
 
-void DirectXCommon::CreateRTV() {
+void DirectXCommon::CreateRtv() {
     // スワップチェーンの各バックバッファに対応するRTVを作成する。
 	rtvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, (UINT)backBufferCount_, false);
 
@@ -667,7 +669,7 @@ void DirectXCommon::CreateRTV() {
 	}
 }
 
-void DirectXCommon::CreateDSV() {
+void DirectXCommon::CreateDsv() {
     // 深度ステンシル用のヒープと深度バッファを作成し、DSVへ登録する。
 	dsvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 2, false);
 	depthStencilResource_ = CreateDepthStencilTextureResource(WinApp::GetClientWidth(), WinApp::GetClientHeight());
@@ -950,14 +952,14 @@ D3D12_DEPTH_STENCIL_DESC DirectXCommon::GetDefaultDepthStencilDesc() const {
 /// <summary>
 /// 深度ステンシルビューのフォーマットを取得する
 /// </summary>
-DXGI_FORMAT DirectXCommon::GetDSVFormat() const {
+DXGI_FORMAT DirectXCommon::GetDsvFormat() const {
 	// 深度とステンシルを共用するビューの固定フォーマットを返す。
 
 	return DXGI_FORMAT_D24_UNORM_S8_UINT;
 }
 
 // GPU完了待ち後にコマンドアロケータとコマンドリストを再利用できる状態へ戻す。
-void DirectXCommon::WaitForGPUAndReset() {
+void DirectXCommon::WaitForGpuAndReset() {
 	// --- フェンス未生成または破棄済みならスキップ ---
 	if (!fence_ || !commandQueue_ || !commandAllocator_ || !commandList_) {
 		Log("[DirectXCommon] WaitForGPUAndReset skipped (resources not ready)\n");
@@ -982,7 +984,7 @@ void DirectXCommon::WaitForGPUAndReset() {
 	EnsureCommandListReadyForDraw();
 }
 
-void DirectXCommon::WaitForGPUIdle() {
+void DirectXCommon::WaitForGpuIdle() {
     // 現在キューに積まれているGPU処理が完了するまでCPU側で待機する。
 	if (!fence_ || !commandQueue_) {
 		return;
@@ -1067,9 +1069,9 @@ void DirectXCommon::CreateRenderTexture() {
 	uint32_t newRenderTextureSrvHandle = renderTextureSrvHandle_;
 
 	if (newRenderTextureSrvHandle != 0) {
-		SRVManager::GetInstance()->CreateSRVforResource(newRenderTextureSrvHandle, newRenderTexture.Get(), srvDesc);
+		SrvManager::GetInstance()->CreateSrvForResource(newRenderTextureSrvHandle, newRenderTexture.Get(), srvDesc);
 	} else {
-		newRenderTextureSrvHandle = SRVManager::GetInstance()->CreateSRV(newRenderTexture.Get(), srvDesc);
+		newRenderTextureSrvHandle = SrvManager::GetInstance()->CreateSrv(newRenderTexture.Get(), srvDesc);
 	}
 
 	// =======================================================
@@ -1092,9 +1094,9 @@ void DirectXCommon::CreateRenderTexture() {
 	uint32_t newGrabSrvHandle = grabSrvHandle_;
 
 	if (newGrabSrvHandle != 0) {
-		SRVManager::GetInstance()->CreateSRVforResource(newGrabSrvHandle, newGrabTexture.Get(), srvDesc);
+		SrvManager::GetInstance()->CreateSrvForResource(newGrabSrvHandle, newGrabTexture.Get(), srvDesc);
 	} else {
-		newGrabSrvHandle = SRVManager::GetInstance()->CreateSRV(newGrabTexture.Get(), srvDesc);
+		newGrabSrvHandle = SrvManager::GetInstance()->CreateSrv(newGrabTexture.Get(), srvDesc);
 	}
 
 	renderTexture_ = newRenderTexture;
@@ -1135,7 +1137,7 @@ void DirectXCommon::PreDrawRenderTexture() {
 	commandList_->RSSetScissorRects(1, &scissorRect_);
 
 	// 5. ヒープ設定
-	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { SrvManager::GetInstance()->GetDescriptorHeap() };
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
 
@@ -1199,7 +1201,7 @@ void DirectXCommon::PreDrawBackBuffer() {
 	commandList_->RSSetScissorRects(1, &outputScissor);
 
 	// 4. ImGui用にヒープをセットし直す
-	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { SrvManager::GetInstance()->GetDescriptorHeap() };
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
 
@@ -1257,10 +1259,10 @@ void DirectXCommon::CreateShadowMap() {
 
 	// 解像度変更時は既存のSRV番号を再利用し、Descriptorの消費を増やさない。
 	if (shadowMapSrvHandle_ != 0) {
-		SRVManager::GetInstance()->CreateSRVforResource(shadowMapSrvHandle_, shadowMapResource_.Get(), srvDesc);
+		SrvManager::GetInstance()->CreateSrvForResource(shadowMapSrvHandle_, shadowMapResource_.Get(), srvDesc);
 	}
 	else {
-		shadowMapSrvHandle_ = SRVManager::GetInstance()->CreateSRV(shadowMapResource_.Get(), srvDesc);
+		shadowMapSrvHandle_ = SrvManager::GetInstance()->CreateSrv(shadowMapResource_.Get(), srvDesc);
 	}
 
 	Log("Created Shadow Map successfully.\n");
@@ -1288,7 +1290,7 @@ void DirectXCommon::SetShadowMapResolution(int resolution) {
 	}
 
 	// 前フレームが参照している可能性があるため、解放前にGPU完了を保証する。
-	WaitForGPUIdle();
+	WaitForGpuIdle();
 	shadowMapResolution_ = normalizedResolution;
 	shadowMapResource_.Reset();
 	shadowDsvHeap_.Reset();
@@ -1420,9 +1422,9 @@ void DirectXCommon::CreateDepthSrv() {
 
 	// ここでSRVを作る！
 	if (depthSrvHandle_ != 0) {
-		SRVManager::GetInstance()->CreateSRVforResource(depthSrvHandle_, depthStencilResource_.Get(), srvDesc);
+		SrvManager::GetInstance()->CreateSrvForResource(depthSrvHandle_, depthStencilResource_.Get(), srvDesc);
 	} else {
-		depthSrvHandle_ = SRVManager::GetInstance()->CreateSRV(depthStencilResource_.Get(), srvDesc);
+		depthSrvHandle_ = SrvManager::GetInstance()->CreateSrv(depthStencilResource_.Get(), srvDesc);
 	}
 }
 
@@ -1500,14 +1502,14 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
     swapChain_->GetDesc1(&desc);
     if (desc.Width == static_cast<UINT>(width) && desc.Height == static_cast<UINT>(height))
         return;
-    WaitForGPUIdle();
+    WaitForGpuIdle();
     for (auto& resource : swapChainResources_)
         resource.Reset();
     HRESULT hr = swapChain_->ResizeBuffers(static_cast<UINT>(backBufferCount_),
         static_cast<UINT>(width), static_cast<UINT>(height), desc.Format, desc.Flags);
     assert(SUCCEEDED(hr));
     WinApp::SetWindowSize(width, height);
-    CreateRTV();
+    CreateRtv();
 }
 void DirectXCommon::RequestResize(int32_t width, int32_t height) {
     // WM_SIZEなどから受け取ったサイズ変更要求を、次の安全なタイミングまで保留する。

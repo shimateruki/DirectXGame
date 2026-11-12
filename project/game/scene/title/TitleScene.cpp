@@ -17,19 +17,36 @@
 #include "game/system/combat/BulletManager.h"
 #include "game/system/scene/LevelLoader.h"
 #include "game/system/rules/GameRule.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "LightEditor.h"
 #include "ParticleManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/progress/GameDataManager.h"
 #include "WinApp.h"
 #include "Fade.h"
 
 #include <algorithm>
 #include <cmath>
-#include <future>
 
 namespace {
+// Spriteの所有権や配置は変えず、セーブUIで繰り返す表示更新だけをまとめる。
+void SetSaveUiVisible(engine::Sprite* sprite, bool visible) {
+    if (sprite) sprite->SetVisible(visible);
+}
+
+void SetSaveUiAppearance(engine::Sprite* sprite, bool visible, const engine::Vector4& color) {
+    if (!sprite) return;
+    sprite->SetVisible(visible);
+    sprite->SetColor(color);
+}
+
+void SetSaveUiPose(engine::Sprite* sprite, bool visible, const engine::Vector2& position, const engine::Vector4& color) {
+    if (!sprite) return;
+    sprite->SetVisible(visible);
+    sprite->SetPosition(position);
+    sprite->SetColor(color);
+}
+
 // 全体画像の切り替え時はUV範囲も更新します。共通Spriteのアトラス用設定は変更しません。
 void SetFullSaveUiTexture(engine::Sprite* sprite, uint32_t handle, bool keepTextScale = false) {
     const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
@@ -75,9 +92,18 @@ constexpr const char* kSaveSlotCardEmpty = "ui/title/save_slot_card_empty.png";
 constexpr const char* kSaveDeleteButton = "ui/title/save_delete_button.png";
 constexpr const char* kSaveDeleteButtonSelected = "ui/title/save_delete_button_selected.png";
 constexpr const char* kTitleHeroSlimeName = "TitleHeroSlime";
-constexpr const char* kTitleBackgroundLayoutPath = "Resources/json/3Dobject/stageSelect_object.json";
+constexpr const char* kTitleBackgroundLayoutPath = "Resources/json/3Dobject/titleBackground_object.json";
 constexpr const char* kTitleSkyboxPath = "Resources/output_skybox.dds";
 constexpr const char* kTitleLightPath = "Resources/json/light/stageSelect.json";
+// プロセス内で一度だけ案内する。セーブデータへは保存しない。
+bool controllerNoticeCompleted = false;
+constexpr float kControllerNoticeFadeIn = 0.30f;
+constexpr float kControllerNoticeHoldEnd = 1.80f;
+constexpr float kControllerNoticeTextOutEnd = 2.10f;
+constexpr float kControllerNoticeEnd = 2.40f;
+
+constexpr const char* kTitleSpriteLayoutPath = "Resources/json/sprite/titleScene.json";
+constexpr int kTitleIntroGlyphIntervalMs = 55;
 constexpr float kTitleIntroLastDelay = 0.385f;
 constexpr float kTitleIntroGlyphDuration = 0.45f;
 constexpr float kTitleIntroMenuDelay = kTitleIntroLastDelay + kTitleIntroGlyphDuration + 0.20f;
@@ -99,35 +125,6 @@ const std::array<engine::Vector3, 7> kTitleHeroPatrolOffsets = {
 
 const std::array<const char*, 3> kFileTextPaths = {kTextFile1, kTextFile2, kTextFile3};
 
-// タイトル一文字分の画像と初期配置、出現をずらす遅延秒。
-struct TitleLogoGlyphLayout {
-    const char* name;
-    const char* texture;
-    engine::Vector2 position;
-    engine::Vector2 size;
-    float delay;
-};
-
-const std::array<TitleLogoGlyphLayout, 8> kTitleLogoGlyphLayouts = {
-    TitleLogoGlyphLayout{
-        "titleLogoChar_0", "title/logo/slime_adventure_char_00_su.png", {596.5f, 147.3f}, {102.8f, 101.1f}, 0.000f},
-    TitleLogoGlyphLayout{
-        "titleLogoChar_1", "title/logo/slime_adventure_char_01_ra.png", {699.6f, 142.7f}, {101.6f, 102.8f}, 0.055f},
-    TitleLogoGlyphLayout{
-        "titleLogoChar_2", "title/logo/slime_adventure_char_02_i.png", {801.8f, 146.3f}, {103.7f, 104.1f}, 0.110f},
-    TitleLogoGlyphLayout{
-        "titleLogoChar_3", "title/logo/slime_adventure_char_03_mu.png", {902.3f, 147.7f}, {108.3f, 102.8f}, 0.165f},
-    TitleLogoGlyphLayout{
-        "titleLogoChar_4", "title/logo/slime_adventure_char_04_no.png", {1018.5f, 139.1f}, {107.4f, 101.6f}, 0.220f},
-    TitleLogoGlyphLayout{
-        "titleLogoChar_5", "title/logo/slime_adventure_char_05_dai.png", {1114.9f, 147.3f}, {109.5f, 110.3f}, 0.275f},
-    TitleLogoGlyphLayout{
-        "titleLogoChar_6", "title/logo/slime_adventure_char_06_bou.png", {1221.7f, 150.6f}, {104.9f, 109.5f}, 0.330f},
-    TitleLogoGlyphLayout{
-        "titleLogoChar_7", "title/logo/slime_adventure_char_07_ken.png", {1327.3f, 147.5f}, {110.4f, 111.6f}, 0.385f}};
-
-
-
 engine::Vector3 LerpTitleVector3(const engine::Vector3& from, const engine::Vector3& to, float t) {
     // 巡回経路の区間外へ飛び出さないよう補間率を丸める。
     const float clamped = std::clamp(t, 0.0f, 1.0f);
@@ -142,7 +139,7 @@ bool IsFadePlayingForSceneIntro() {
            status == Fade::Status::IrisOut;
 }
 
-engine::Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
+engine::Object3D* FindObjectByName(BaseScene* scene, const std::string& name) {
     // 配置 JSON に主人公がない場合は、呼び出し元が実行時モデルを生成できる。
     if (!scene)
         return nullptr;
@@ -168,7 +165,7 @@ SceneLoadManifest TitleScene::BuildAsyncLoadManifest() const {
     manifest.AddObjectLayout(kTitleBackgroundLayoutPath);
     manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
                                  ? GetSceneLoadContext().spriteLayoutPath
-                                 : "Resources/json/sprite/titleScene.json");
+                                 : kTitleSpriteLayoutPath);
     manifest.AddModel("Characters/slime");
     manifest.AddTexture(kTitleSkyboxPath);
     manifest.includeSharedParticleTextures = false;
@@ -179,7 +176,6 @@ void TitleScene::Initialize() {
     StartupProfileScope titleProfile("TitleScene::Initialize");
 
     // --- 1. システム基盤の取得 ---
-    dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = engine::InputManager::GetInstance();
 
     // --- 2. タイトル演出で使うモデルのプリロード ---
@@ -190,45 +186,26 @@ void TitleScene::Initialize() {
 
     LOG("TitleScene Initialized!");
 
-    // 描画パイプラインの生成中に、タイトル配置のJSONとモデル・画像をCPU側で先読みする。
-    // GPUリソースの生成とオブジェクトの登録は従来どおりメインスレッドで行う。
-    const SceneLoadManifest startupManifest = BuildAsyncLoadManifest();
-    auto startupPreload = std::async(std::launch::async, [startupManifest]() {
-        StartupProfileScope phase("title CPU preload worker");
-        return ScenePreloader::Prepare(startupManifest, nullptr);
-    });
+    // CPU先読みと共有描画基盤の準備はSceneManagerが完了させている。
+    // ここからはカメラ、発生中の粒子、配置ObjectなどScene固有の状態を用意する。
 
-
-    // --- 3. マネージャ・共通クラスの初期化 ---
+    // --- 3. シーンで使用するカメラ・粒子の初期化 ---
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    // 3D、2D、粒子の共通描画基盤を作ってからScene所有の描画物を読み込みます。
-    object3dCommon_ = std::make_unique<engine::Object3dCommon>();
-#ifdef USE_IMGUI
-    object3dCommon_->Initialize(dxCommon_);
-#else
-    object3dCommon_->InitializeForTitle(dxCommon_);
-#endif
-
-    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_);
-
-    particleCommon_ = std::make_unique<engine::ParticleCommon>();
-    particleCommon_->Initialize(dxCommon_);
-
+    // 粒子の発生状態はSceneが所有し、描画基盤だけをエンジンから借りる。
     particleSystem_ = std::make_unique<engine::ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
+    particleSystem_->Initialize(GetParticleCommon(), "Resources/sprite/common/white.png");
 
     // SkyboxはObject3d共通基盤へ結び付け、背景配置より先に利用可能にします。
     skyboxTextureHandle_ = TextureManager::GetInstance()->Load(kTitleSkyboxPath);
     skybox_ = std::make_unique<Skybox>();
-    skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
+    skybox_->Initialize(GetObject3DCommon(), skyboxTextureHandle_);
 
     // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
-    LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+    LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
 
     // --- 4. サブシステムの生成 ---
     objectManager_ = std::make_unique<ObjectManager>();
@@ -236,53 +213,32 @@ void TitleScene::Initialize() {
     gameRule_ = std::make_unique<GameRule>();
     gameRule_->Initialize(this);
 
-    BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+    BulletManager::GetInstance()->Initialize(GetObject3DCommon(), CollisionManager::GetInstance());
 
     // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
-    // タイトルUIは維持し、3D背景だけをステージセレクトと共有する。
-    {
-        StartupProfileScope phase("title CPU preload wait");
-        try {
-            auto data = startupPreload.get();
+    // タイトル用の背景配置を読み込む。配置はステージセレクトを元に、道案内の番号を除いたもの。
 #ifndef USE_IMGUI
-            // タイトルでは操作キャラクターがいない。背景から借りた当たり判定専用の
-            // InvisibleBoxだけをメモリ上で除き、元の配置JSONと編集用ビルドは維持する。
-            auto layout = data->jsonDocuments.find(kTitleBackgroundLayoutPath);
-            if (layout != data->jsonDocuments.end() && layout->second.contains("objects") &&
-                layout->second["objects"].is_array()) {
-                auto& objects = layout->second["objects"];
-                nlohmann::json visibleObjects = nlohmann::json::array();
-
-                for (auto& object : objects) {
-                    if (object.value("type", std::string{}) != "InvisibleBox") {
-                        visibleObjects.push_back(std::move(object));
-                    }
+    if (auto data = GetPreparedLoadData()) {
+        // タイトルでは操作キャラクターがいない。背景に含まれる当たり判定専用の
+        // InvisibleBoxだけをメモリ上で除き、元の配置JSONと編集用ビルドは維持する。
+        auto layout = data->jsonDocuments.find(kTitleBackgroundLayoutPath);
+        if (layout != data->jsonDocuments.end() && layout->second.contains("objects") &&
+            layout->second["objects"].is_array()) {
+            auto& objects = layout->second["objects"];
+            nlohmann::json visibleObjects = nlohmann::json::array();
+            for (auto& object : objects) {
+                if (object.value("type", std::string{}) != "InvisibleBox") {
+                    visibleObjects.push_back(std::move(object));
                 }
-
-                objects = std::move(visibleObjects);
             }
-#endif
-            SetPreparedLoadData(std::move(data));
-        } catch (...) {
-            // 先読みだけが失敗した場合は、従来の同期ロードへ戻す。
-            SetPreparedLoadData(nullptr);
+            objects = std::move(visibleObjects);
         }
     }
+#endif
 
     {
         StartupProfileScope phase("title GPU particle presets");
-#ifdef USE_IMGUI
-        GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-        GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-#else
-        if (GetPreparedLoadData()) {
-            GPUParticleManager::GetInstance()->InitializeForTitle(
-                dxCommon_, GetPreparedLoadData()->gpuParticlePresetNames);
-        } else {
-            // CPU先読みが失敗した場合は、既存の全プリセット読込経路を使う。
-            GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-        }
-#endif
+        PrepareGpuParticles(GpuParticlePresetScope::PreparedScene);
     }
 
     // パーティクルの描画用テクスチャを確保してから、配置JSONの実体化へ進みます。
@@ -295,7 +251,7 @@ void TitleScene::Initialize() {
 
     {
         StartupProfileScope phase("title sprite layout");
-        levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/titleScene.json");
+        levelLoader_->LoadSpriteLayout(this, kTitleSpriteLayoutPath);
     }
 
     // 背景配置を作った後、タイトル固有の光とカメラ設定を適用します。
@@ -312,8 +268,8 @@ void TitleScene::Initialize() {
 
     // 配置JSONに演出用ヒーローがない場合だけ補い、二重生成を防ぎます。
     if (!titleHeroSlime_) {
-        auto hero = std::make_unique<engine::Object3d>();
-        hero->Initialize(object3dCommon_.get());
+        auto hero = std::make_unique<engine::Object3D>();
+        hero->Initialize(GetObject3DCommon());
         hero->SetName(kTitleHeroSlimeName);
         hero->SetClassName("Model");
         hero->SetSaveCategory("Object");
@@ -336,8 +292,8 @@ void TitleScene::Initialize() {
         titleHeroBaseRotation_ = titleHeroSlime_->GetRotation();
         titleHeroBaseCaptured_ = true;
 
-        titleCameraAnchor_ = std::make_unique<engine::Object3d>();
-        titleCameraAnchor_->Initialize(object3dCommon_.get());
+        titleCameraAnchor_ = std::make_unique<engine::Object3D>();
+        titleCameraAnchor_->Initialize(GetObject3DCommon());
         titleCameraAnchor_->SetName("TitleCameraAnchor");
         titleCameraAnchor_->SetTranslate(titleHeroBasePosition_);
         titleCameraAnchor_->UpdateLocalMatrix();
@@ -348,7 +304,7 @@ void TitleScene::Initialize() {
     titleHeroSequenceTime_ = 0.0f;
     titleIntroTime_ = 0.0f;
     titleIntroComplete_ = false;
-    InitializeMainMenuUI();
+    InitializeMainMenuUi();
 
     if (startTextSprite_) {
         startTextBaseSize_ = startTextSprite_->GetSize();
@@ -360,11 +316,12 @@ void TitleScene::Initialize() {
         settingTextBasePosition_ = settingTextSprite_->GetPosition();
     }
 
-    InitializeTitleLogoUI();
+    InitializeTitleLogoUi();
     settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
-    settingsOverlay_->Initialize(spriteCommon_.get());
-    InitializeSaveSlotUI();
-    UpdateSaveSlotUI(0.0f);
+    settingsOverlay_->Initialize(GetSpriteCommon());
+    InitializeSaveSlotUi();
+    UpdateSaveSlotUi(0.0f);
+    InitializeControllerNotice();
     SetPreparedLoadData(nullptr);
 }
 
@@ -375,6 +332,8 @@ void TitleScene::Finalize() {
 
     objectManager_.reset();
     titleUiSprites_.clear();
+    controllerNoticeSprites_.fill(nullptr);
+    controllerNoticeActive_ = false;
     saveSlotCards_.fill(nullptr);
 
     for (auto& frame : saveSlotFrames_) {
@@ -447,15 +406,14 @@ void TitleScene::Finalize() {
     skybox_.reset();
     skyboxTextureHandle_ = 0;
     particleSystem_.reset();
-    particleCommon_.reset();
-    spriteCommon_.reset();
-    object3dCommon_.reset();
 }
 
 void TitleScene::Update(float deltaTime) {
     // 設定・メインメニュー・セーブ選択の入力を分けつつ、背景の演出は継続する。
-    titleUiTime_ += deltaTime;
-    const float introDeltaTime = IsFadePlayingForSceneIntro() ? 0.0f : deltaTime;
+    const float sceneDeltaTime = IsFadePlayingForSceneIntro() ? 0.0f : deltaTime;
+    const bool waitingForNotice = UpdateControllerNotice(sceneDeltaTime);
+    const float introDeltaTime = waitingForNotice ? 0.0f : sceneDeltaTime;
+    titleUiTime_ += introDeltaTime;
     UpdateTitleLogoIntro(introDeltaTime);
 
     const bool isSettingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
@@ -464,10 +422,10 @@ void TitleScene::Update(float deltaTime) {
         settingsOverlay_->Update(deltaTime);
     } else if (titleMode_ == TitleMode::MainMenu) {
         if (!titleIntroComplete_) {
-            UpdateSaveSlotUI(deltaTime);
+            UpdateSaveSlotUi(deltaTime);
             LightEditor::GetInstance()->Update();
             objectManager_->Update(deltaTime);
-            UpdateTitleHeroAnimation(deltaTime);
+            UpdateTitleHeroAnimation(introDeltaTime);
             CameraEditor::GetInstance()->Update(titleCameraAnchor_ ? titleCameraAnchor_.get() : titleHeroSlime_, false);
             CameraManager::GetInstance()->Update(deltaTime);
             particleSystem_->Update(deltaTime);
@@ -500,14 +458,14 @@ void TitleScene::Update(float deltaTime) {
         UpdateSaveSelect(deltaTime);
     }
 
-    UpdateSaveSlotUI(deltaTime);
+    UpdateSaveSlotUi(deltaTime);
 
     // 常に実行されるマネージャ更新
     LightEditor::GetInstance()->Update();
 
     // オブジェクト一括更新 (ObjectManagerに委譲)
     objectManager_->Update(deltaTime);
-    UpdateTitleHeroAnimation(deltaTime);
+    UpdateTitleHeroAnimation(introDeltaTime);
     CameraEditor::GetInstance()->Update(titleCameraAnchor_ ? titleCameraAnchor_.get() : titleHeroSlime_, false);
     CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
@@ -535,35 +493,104 @@ void TitleScene::Update(float deltaTime) {
     CollisionManager::GetInstance()->Update();
 }
 
-void TitleScene::InitializeTitleLogoUI() {
-    // ロゴを一文字ずつ分け、エディター配置があればそれを優先する。
+void TitleScene::InitializeControllerNotice() {
+    controllerNoticeTime_ = 0.0f;
+    controllerNoticeActive_ = !controllerNoticeCompleted;
+
+    // 暗幕を最初に描き、残りの部品を案内として重ねる。
+    constexpr std::array names{
+        "controllerNoticeBackdrop",
+        "controllerNoticeIcon",
+        "controllerNoticeText",
+        "controllerNoticeKeyboard",
+        "controllerNoticeSkip",
+    };
+    static_assert(names.size() == std::tuple_size_v<decltype(controllerNoticeSprites_)>);
+    for (size_t i = 0; i < names.size(); ++i) {
+        auto* sprite = GetSpriteByName(names[i]);
+        controllerNoticeSprites_[i] = sprite;
+        if (!sprite) {
+            DebugConsole::GetInstance()->AddLog(std::string("[Title] Missing controller notice sprite: ") + names[i]);
+            continue;
+        }
+        auto color = sprite->GetColor();
+        color.w = i == 0 ? 1.0f : 0.0f;
+        sprite->SetColor(color);
+        sprite->SetVisible(controllerNoticeActive_);
+        sprite->Update();
+    }
+}
+
+bool TitleScene::UpdateControllerNotice(float deltaTime) {
+    if (!controllerNoticeActive_)
+        return false;
+
+    controllerNoticeTime_ += (std::max)(0.0f, deltaTime);
+    // 押下直後だけで閉じ、接続直後の状態や長押しでタイトル決定まで連鎖させない。
+    constexpr WORD kSkipButtons = XINPUT_GAMEPAD_A | XINPUT_GAMEPAD_B | XINPUT_GAMEPAD_X | XINPUT_GAMEPAD_Y |
+                             XINPUT_GAMEPAD_START | XINPUT_GAMEPAD_BACK;
+    bool skip = inputManager_->IsMouseButtonTriggered(0) || inputManager_->IsMouseButtonTriggered(1) ||
+                inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsKeyTriggered(DIK_RETURN) ||
+                inputManager_->IsKeyTriggered(DIK_ESCAPE);
+    for (WORD button = 1; button != 0; button = static_cast<WORD>(button << 1)) {
+        if ((kSkipButtons & button) && inputManager_->IsGamepadButtonTriggered(button))
+            skip = true;
+    }
+    if (deltaTime > 0.0f && controllerNoticeTime_ >= kControllerNoticeFadeIn &&
+        controllerNoticeTime_ < kControllerNoticeHoldEnd && skip) {
+        controllerNoticeTime_ = kControllerNoticeHoldEnd;
+    }
+
+    const float textAlpha = Easing::SmoothStep01(std::clamp(controllerNoticeTime_ / kControllerNoticeFadeIn, 0.0f, 1.0f)) *
+        (1.0f - Easing::SmoothStep01(std::clamp((controllerNoticeTime_ - kControllerNoticeHoldEnd) /
+                                             (kControllerNoticeTextOutEnd - kControllerNoticeHoldEnd), 0.0f, 1.0f)));
+    const float backdropAlpha = 1.0f - Easing::SmoothStep01(std::clamp(
+        (controllerNoticeTime_ - kControllerNoticeTextOutEnd) / (kControllerNoticeEnd - kControllerNoticeTextOutEnd), 0.0f, 1.0f));
+    for (size_t i = 0; i < controllerNoticeSprites_.size(); ++i) {
+        auto* sprite = controllerNoticeSprites_[i];
+        if (!sprite) {
+            continue;
+        }
+        auto color = sprite->GetColor();
+        color.w = i == 0 ? backdropAlpha : textAlpha;
+        sprite->SetColor(color);
+        sprite->SetVisible(controllerNoticeTime_ < kControllerNoticeEnd);
+        sprite->Update();
+    }
+    if (controllerNoticeTime_ >= kControllerNoticeEnd) {
+        controllerNoticeActive_ = false;
+        controllerNoticeCompleted = true;
+    }
+    // 終了したフレームも待ち、スキップに使った入力をメニューへ渡さない。
+    return true;
+}
+
+void TitleScene::InitializeTitleLogoUi() {
+    // JSONの配置を登場アニメーションの基準にする。
     if (titleTextSprite_) {
         titleTextSprite_->SetVisible(false);
     }
 
-    for (size_t i = 0; i < kTitleLogoGlyphLayouts.size(); ++i) {
-        const auto& layout = kTitleLogoGlyphLayouts[i];
-        engine::Sprite* sprite = GetSpriteByName(layout.name);
-
+    for (size_t i = 0; i < titleLogoGlyphs_.size(); ++i) {
+        const std::string name = "titleLogoChar_" + std::to_string(i);
+        auto* sprite = GetSpriteByName(name);
+        auto& glyph = titleLogoGlyphs_[i];
+        glyph.sprite = sprite;
         if (!sprite) {
-            sprite = CreateUISprite("Resources/sprite/" + std::string(layout.texture), layout.position, layout.size,
-                                    {1.0f, 1.0f, 1.0f, 0.0f});
-            sprite->SetName(layout.name);
-            sprite->SetTextureName(layout.texture);
+            DebugConsole::GetInstance()->AddLog("[Title] Missing logo sprite: " + name);
+            continue;
         }
 
         sprite->SetAnchorPoint({0.5f, 0.5f});
         sprite->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         sprite->SetVisible(false);
-
-        titleLogoGlyphs_[i].sprite = sprite;
-        titleLogoGlyphs_[i].basePosition = sprite->GetPosition();
-        titleLogoGlyphs_[i].baseSize = sprite->GetSize();
-        titleLogoGlyphs_[i].delay = layout.delay;
+        glyph.basePosition = sprite->GetPosition();
+        glyph.baseSize = sprite->GetSize();
+        glyph.delay = static_cast<float>(i * kTitleIntroGlyphIntervalMs) / 1000.0f;
     }
 }
 
-void TitleScene::InitializeMainMenuUI() {
+void TitleScene::InitializeMainMenuUi() {
     // ボタン枠を基準に、文字・カーソルの相対位置を保存する。
     if (startTextSprite_) {
         startTextSprite_->SetAnchorPoint({0.5f, 0.5f});
@@ -1012,7 +1039,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
     }
 }
 
-void TitleScene::InitializeSaveSlotUI() {
+void TitleScene::InitializeSaveSlotUi() {
     // セーブ枠の部品を配置 JSON の名前から結び、未配置分だけ補う。
     // Scene を再初期化すると以前の Sprite は破棄され得るため、借用ポインタを先に全て外す。
     titleUiSprites_.clear();
@@ -1084,7 +1111,7 @@ void TitleScene::InitializeSaveSlotUI() {
             // 既存レイアウトにない部品だけ C++ の既定配置で補い、Editor で置いた値は上書きしない。
             const std::string fullTexture =
                 texture.rfind("Resources/", 0) == 0 ? texture : "Resources/sprite/" + texture;
-            target = CreateUISprite(fullTexture, position, size, color);
+            target = CreateUiSprite(fullTexture, position, size, color);
             target->SetName(name);
             target->SetTextureName(texture);
         }
@@ -1231,11 +1258,11 @@ void TitleScene::SetNumberSprites(std::array<engine::Sprite*, 2>& digits, int va
     }
 }
 
-engine::Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const engine::Vector2& position, const engine::Vector2& size,
+engine::Sprite* TitleScene::CreateUiSprite(const std::string& texturePath, const engine::Vector2& position, const engine::Vector2& size,
                                    const engine::Vector4& color) {
     // 実行時に補う UI も配置済み Sprite と同じ所有コンテナへ登録する。
     auto sprite = std::make_unique<engine::Sprite>();
-    sprite->Initialize(spriteCommon_.get(), texturePath);
+    sprite->Initialize(GetSpriteCommon(), texturePath);
     sprite->SetPosition(position);
     sprite->SetSize(size);
     sprite->SetColor(color);
@@ -1248,7 +1275,7 @@ engine::Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const
     return raw;
 }
 
-void TitleScene::UpdateSaveSlotUI(float deltaTime) {
+void TitleScene::UpdateSaveSlotUi(float deltaTime) {
     // セーブ記録と選択状態を基準配置へ毎フレーム反映し、画面の再開閉でもずれを残さない。
     // 入場の時間差と起動中の強調を先に数値化し、個々のSpriteへ同じ進捗を配る。
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
@@ -1264,82 +1291,50 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
     const bool showMainMenu = !settingsOpen && !inSaveSelect && titleIntroComplete_;
 
     // メインメニューとセーブ選択画面を同時に見せないよう、共通部品の可視性を揃える。
-    if (titleTextSprite_)
-        titleTextSprite_->SetVisible(false);
-    if (startTextSprite_)
-        startTextSprite_->SetVisible(showMainMenu);
-    if (settingTextSprite_)
-        settingTextSprite_->SetVisible(showMainMenu);
-    if (mainMenuStartFrameSprite_)
-        mainMenuStartFrameSprite_->SetVisible(showMainMenu);
-    if (mainMenuSettingFrameSprite_)
-        mainMenuSettingFrameSprite_->SetVisible(showMainMenu);
-    if (mainMenuArrowSprite_)
-        mainMenuArrowSprite_->SetVisible(showMainMenu);
-    if (mainMenuCursorSprite_)
-        mainMenuCursorSprite_->SetVisible(showMainMenu);
-    if (mainMenuPromptSprite_)
-        mainMenuPromptSprite_->SetVisible(showMainMenu);
-    if (auto* suffix = GetSpriteByName("mainMenuPromptSuffix"))
-        suffix->SetVisible(showMainMenu);
-    if (saveSelectHeader_)
-        saveSelectHeader_->SetVisible(false);
+    SetSaveUiVisible(titleTextSprite_, false);
+    for (auto* sprite : {startTextSprite_, settingTextSprite_, mainMenuStartFrameSprite_, mainMenuSettingFrameSprite_,
+                         mainMenuArrowSprite_, mainMenuCursorSprite_, mainMenuPromptSprite_}) {
+        SetSaveUiVisible(sprite, showMainMenu);
+    }
+    SetSaveUiVisible(GetSpriteByName("mainMenuPromptSuffix"), showMainMenu);
+    SetSaveUiVisible(saveSelectHeader_, false);
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f);
 
     // 暗幕は削除確認で濃くし、起動中は選択カードを目立たせる。
-    if (saveSelectBackdrop_) {
-        saveSelectBackdrop_->SetVisible(inSaveSelect);
-        saveSelectBackdrop_->SetColor(deleteConfirm ? engine::Vector4{0.03f, 0.05f, 0.08f, 0.82f}
-                                    : launching ? engine::Vector4{0.04f, 0.08f, 0.13f, 0.58f + 0.08f * launchFocus}
-                                                : engine::Vector4{0.04f, 0.08f, 0.13f, 0.58f});
-    }
+    SetSaveUiAppearance(saveSelectBackdrop_, inSaveSelect,
+        deleteConfirm ? engine::Vector4{0.03f, 0.05f, 0.08f, 0.82f}
+        : launching ? engine::Vector4{0.04f, 0.08f, 0.13f, 0.58f + 0.08f * launchFocus}
+                    : engine::Vector4{0.04f, 0.08f, 0.13f, 0.58f});
 
     // 詳細パネル、タイトル、操作ガイドは異なる遅延で現れる。
     const bool gamepadHints = engine::InputManager::GetInstance()->IsGamepadMode();
 
-    if (saveDetailPanel_) {
-        saveDetailPanel_->SetVisible(inSaveSelect && panelReveal > 0.0f);
-        saveDetailPanel_->SetPosition({saveDetailPanelBasePosition_.x,
-                                       saveDetailPanelBasePosition_.y + 24.0f * (1.0f - panelReveal)});
-        saveDetailPanel_->SetColor({1.0f, 1.0f, 1.0f, panelReveal});
-    }
+    SetSaveUiPose(saveDetailPanel_, inSaveSelect && panelReveal > 0.0f,
+                  {saveDetailPanelBasePosition_.x, saveDetailPanelBasePosition_.y + 24.0f * (1.0f - panelReveal)},
+                  {1.0f, 1.0f, 1.0f, panelReveal});
 
-    if (saveSelectTitle_) {
-        saveSelectTitle_->SetVisible(inSaveSelect && titleReveal > 0.0f);
-        saveSelectTitle_->SetPosition({saveSelectTitleBasePosition_.x,
-                                       saveSelectTitleBasePosition_.y - 18.0f * (1.0f - titleReveal)});
-        saveSelectTitle_->SetColor({1.0f, 1.0f, 1.0f, titleReveal});
-    }
+    SetSaveUiPose(saveSelectTitle_, inSaveSelect && titleReveal > 0.0f,
+                  {saveSelectTitleBasePosition_.x, saveSelectTitleBasePosition_.y - 18.0f * (1.0f - titleReveal)},
+                  {1.0f, 1.0f, 1.0f, titleReveal});
 
-    if (saveHintBackdrop_) {
-        // 操作が多いファイル選択では、設定画面と共通の配色で一つのガイド帯にまとめる。
-        saveHintBackdrop_->SetVisible(inSaveSelect && !deleteConfirm && !launching && hintReveal > 0.0f);
-        saveHintBackdrop_->SetColor({1.0f, 1.0f, 1.0f, hintReveal});
-    }
+    // 操作が多いファイル選択では、設定画面と共通の配色で一つのガイド帯にまとめる。
+    const bool showHint = inSaveSelect && !deleteConfirm && !launching && hintReveal > 0.0f;
+    SetSaveUiAppearance(saveHintBackdrop_, showHint, {1.0f, 1.0f, 1.0f, hintReveal});
 
     for (const char* name : {"saveHintFrame_left", "saveHintFrame_right"}) {
-        if (auto* frame = GetSpriteByName(name)) {
-            frame->SetVisible(inSaveSelect && !deleteConfirm && !launching && hintReveal > 0.0f);
-            frame->SetColor({1.0f, 1.0f, 1.0f, hintReveal});
-        }
+        SetSaveUiAppearance(GetSpriteByName(name), showHint, {1.0f, 1.0f, 1.0f, hintReveal});
     }
 
-    if (saveKeyboardHint_) {
-        saveKeyboardHint_->SetVisible(inSaveSelect && !gamepadHints && !deleteConfirm && !launching && hintReveal > 0.0f);
-        saveKeyboardHint_->SetColor({1.0f, 1.0f, 1.0f, hintReveal});
-    }
+    SetSaveUiAppearance(saveKeyboardHint_, showHint && !gamepadHints, {1.0f, 1.0f, 1.0f, hintReveal});
 
-    if (saveGamepadHint_) {
-        saveGamepadHint_->SetVisible(inSaveSelect && gamepadHints && !deleteConfirm && !launching && hintReveal > 0.0f);
-        saveGamepadHint_->SetColor({1.0f, 1.0f, 1.0f, hintReveal});
-    }
+    SetSaveUiAppearance(saveGamepadHint_, showHint && gamepadHints, {1.0f, 1.0f, 1.0f, hintReveal});
 
     // 選択中スロットのファイル番号と空欄表示は保存要約から毎フレーム更新する。
     if (saveDetailFileName_) {
         const auto summary = GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
-        saveDetailFileName_->SetVisible(inSaveSelect && summary.exists && panelReveal > 0.0f);
-        saveDetailFileName_->SetColor({0.20f, 0.26f, 0.38f, panelReveal});
+        SetSaveUiAppearance(saveDetailFileName_, inSaveSelect && summary.exists && panelReveal > 0.0f,
+                            {0.20f, 0.26f, 0.38f, panelReveal});
         const std::string fileTexture = kFileTextPaths[currentSaveSlotIndex_];
         SetFullSaveUiTexture(saveDetailFileName_,
                              engine::Sprite::LoadTexture(fileTexture.substr(std::string("Resources/sprite/").size())), true);
@@ -1355,17 +1350,16 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
 
     if (saveLaunchLabel_) {
         const float reveal = Easing::SmoothStep01(std::clamp((saveLaunchTime_ - 0.08f) / 0.24f, 0.0f, 1.0f));
-        saveLaunchLabel_->SetVisible(launching && reveal > 0.0f);
-        saveLaunchLabel_->SetColor({0.17f, 0.39f, 0.65f, reveal});
+        SetSaveUiAppearance(saveLaunchLabel_, launching && reveal > 0.0f, {0.17f, 0.39f, 0.65f, reveal});
     }
 
     // 各行の登場時間、選択強調、起動時の減光を計算してからカードと文字へ反映する。
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
         const float rowReveal = Easing::SmoothStep01(std::clamp((saveSelectOpenTime_ - i * 0.065f) / 0.26f, 0.0f, 1.0f));
-        const float selectionTarget = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == i ? 1.0f : 0.0f;
+        const bool selected = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == i;
+        const float selectionTarget = selected ? 1.0f : 0.0f;
         saveSlotSelectionWeights_[i] += (selectionTarget - saveSlotSelectionWeights_[i]) *
                                         std::clamp(deltaTime * 12.0f, 0.0f, 1.0f);
-        const bool selected = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == i;
         const float launchDim = launching && !selected ? 1.0f - 0.58f * launchFocus : 1.0f;
         const float launchLift = launching && selected ? -9.0f * launchFocus : 0.0f;
         const float launchScale = launching && selected ? launchBounce : 0.0f;
@@ -1382,6 +1376,9 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
                                                : engine::Vector4{0.20f, 0.34f, 0.52f, summary.exists ? 1.0f : 0.82f};
         const engine::Vector4 textColor = emphasized ? engine::Vector4{0.32f, 0.16f, 0.20f, 1.0f} : engine::Vector4{0.16f, 0.25f, 0.38f, 1.0f};
 
+        const engine::Vector2 cardPosition = {saveSlotCardBasePositions_[i].x,
+                                              saveSlotCardBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift};
+
         if (saveSlotCards_[i]) {
             saveSlotCards_[i]->SetVisible(inSaveSelect && rowReveal > 0.0f);
             const char* cardTexture =
@@ -1394,46 +1391,35 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
                                        baseSize.y + 8.0f * launchScale});
 
             // JSON の基準位置から毎フレーム再計算し、開閉を繰り返しても座標がずれないようにする。
-            saveSlotCards_[i]->SetPosition({saveSlotCardBasePositions_[i].x,
-                                            saveSlotCardBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
+            saveSlotCards_[i]->SetPosition(cardPosition);
             saveSlotCards_[i]->SetColor({cardColor.x, cardColor.y, cardColor.z, cardColor.w * rowReveal * launchDim});
         }
 
         // 古いフレーム部品は表示せず、カード画像を選択状態に合わせて差し替える。
         for (auto* frame : saveSlotFrames_[i]) {
-            if (frame) {
-                frame->SetVisible(false);
-            }
+            SetSaveUiVisible(frame, false);
         }
 
         if (saveSlotNumberSprites_[i]) {
             const uint32_t handle = engine::Sprite::LoadTexture("number/big" + std::to_string(i + 1) + ".png");
             saveSlotNumberSprites_[i]->SetTextureHandle(handle);
-            saveSlotNumberSprites_[i]->SetVisible(inSaveSelect && rowReveal > 0.0f);
-            saveSlotNumberSprites_[i]->SetPosition({saveSlotNumberBasePositions_[i].x,
-                                                    saveSlotNumberBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
-            saveSlotNumberSprites_[i]->SetColor({numberColor.x, numberColor.y, numberColor.z,
-                                                  numberColor.w * rowReveal * launchDim});
+            SetSaveUiPose(saveSlotNumberSprites_[i], inSaveSelect && rowReveal > 0.0f,
+                          {saveSlotNumberBasePositions_[i].x, saveSlotNumberBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift},
+                          {numberColor.x, numberColor.y, numberColor.z, numberColor.w * rowReveal * launchDim});
         }
 
-        if (saveSlotFileNameTexts_[i]) {
-            saveSlotFileNameTexts_[i]->SetVisible(inSaveSelect && summary.exists && rowReveal > 0.0f);
-            saveSlotFileNameTexts_[i]->SetPosition({saveSlotCardBasePositions_[i].x,
-                                                   saveSlotCardBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
-            saveSlotFileNameTexts_[i]->SetColor({textColor.x, textColor.y, textColor.z,
-                                                 textColor.w * rowReveal * launchDim});
-        }
+        SetSaveUiPose(saveSlotFileNameTexts_[i], inSaveSelect && summary.exists && rowReveal > 0.0f,
+                      cardPosition,
+                      {textColor.x, textColor.y, textColor.z, textColor.w * rowReveal * launchDim});
 
         if (saveSlotStatusTexts_[i]) {
             // 空の枠だけ初回開始を示し、保存済みの枠はファイル名だけ表示する。
             const std::string statusTexture = kTextStartFromBeginning;
             SetFullSaveUiTexture(saveSlotStatusTexts_[i],
                                  engine::Sprite::LoadTexture(statusTexture.substr(std::string("Resources/sprite/").size())));
-            saveSlotStatusTexts_[i]->SetVisible(inSaveSelect && !summary.exists && rowReveal > 0.0f);
-            saveSlotStatusTexts_[i]->SetPosition({saveSlotCardBasePositions_[i].x,
-                                                 saveSlotCardBasePositions_[i].y + 25.0f * (1.0f - rowReveal) + launchLift});
-            saveSlotStatusTexts_[i]->SetColor({textColor.x, textColor.y, textColor.z,
-                                               textColor.w * rowReveal * launchDim});
+            SetSaveUiPose(saveSlotStatusTexts_[i], inSaveSelect && !summary.exists && rowReveal > 0.0f,
+                          cardPosition,
+                          {textColor.x, textColor.y, textColor.z, textColor.w * rowReveal * launchDim});
         }
 
         // 詳細欄は実データがある選択行だけに出し、王冠・スター・残機を同じ透明度で見せる。
@@ -1442,46 +1428,18 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         const engine::Vector4 detailNumberColor = {numberColor.x, numberColor.y, numberColor.z, numberColor.w * panelReveal};
         const engine::Vector4 detailTextColor = {textColor.x, textColor.y, textColor.z, textColor.w * panelReveal};
 
-        if (saveSlotCrownIcons_[i]) {
-            saveSlotCrownIcons_[i]->SetVisible(showDetails);
-            saveSlotCrownIcons_[i]->SetColor(detailIconColor);
-        }
+        // 王冠・星・残機は、Spriteと値だけを差し替えて同じ手順で更新する。
+        auto updateDetailNumber = [&](engine::Sprite* icon, engine::Sprite* multiplier,
+                                      std::array<engine::Sprite*, 2>& digits, int value) {
+            SetSaveUiAppearance(icon, showDetails, detailIconColor);
+            SetSaveUiAppearance(multiplier, showDetails, detailNumberColor);
+            SetNumberSprites(digits, value, detailNumberColor, showDetails);
+        };
+        updateDetailNumber(saveSlotCrownIcons_[i], saveSlotCrownXIcons_[i], saveSlotCrownDigits_[i], summary.clearedStageCount);
+        updateDetailNumber(saveSlotStarIcons_[i], saveSlotStarXIcons_[i], saveSlotStarDigits_[i], summary.collectedStarCoins);
+        updateDetailNumber(saveSlotLifeIcons_[i], saveSlotLifeXIcons_[i], saveSlotLifeDigits_[i], summary.lives);
 
-        if (saveSlotCrownXIcons_[i]) {
-            saveSlotCrownXIcons_[i]->SetVisible(showDetails);
-            saveSlotCrownXIcons_[i]->SetColor(detailNumberColor);
-        }
-
-        SetNumberSprites(saveSlotCrownDigits_[i], summary.clearedStageCount, detailNumberColor, showDetails);
-
-        if (saveSlotStarIcons_[i]) {
-            saveSlotStarIcons_[i]->SetVisible(showDetails);
-            saveSlotStarIcons_[i]->SetColor(detailIconColor);
-        }
-
-        if (saveSlotStarXIcons_[i]) {
-            saveSlotStarXIcons_[i]->SetVisible(showDetails);
-            saveSlotStarXIcons_[i]->SetColor(detailNumberColor);
-        }
-
-        SetNumberSprites(saveSlotStarDigits_[i], summary.collectedStarCoins, detailNumberColor, showDetails);
-
-        if (saveSlotLifeIcons_[i]) {
-            saveSlotLifeIcons_[i]->SetVisible(showDetails);
-            saveSlotLifeIcons_[i]->SetColor(detailIconColor);
-        }
-
-        if (saveSlotLifeXIcons_[i]) {
-            saveSlotLifeXIcons_[i]->SetVisible(showDetails);
-            saveSlotLifeXIcons_[i]->SetColor(detailNumberColor);
-        }
-
-        SetNumberSprites(saveSlotLifeDigits_[i], summary.lives, detailNumberColor, showDetails);
-
-        if (saveSlotPlayTimeLabels_[i]) {
-            saveSlotPlayTimeLabels_[i]->SetVisible(showDetails);
-            saveSlotPlayTimeLabels_[i]->SetColor(detailTextColor);
-        }
+        SetSaveUiAppearance(saveSlotPlayTimeLabels_[i], showDetails, detailTextColor);
 
         // 既存の5枚の数字Spriteを時:分として使い、長時間プレイでも値を止めない。
         const int totalMinutes = std::clamp(summary.playTimeSeconds / 60, 0, 99 * 60 + 59);
@@ -1526,35 +1484,19 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
         saveSelectionGlow_->SetColor({1.0f, 1.0f, 1.0f, (0.38f + 0.36f * launchBounce) * reveal});
     }
 
-    if (saveDeleteButtonBack_) {
-        saveDeleteButtonBack_->SetVisible(false);
-    }
+    SetSaveUiVisible(saveDeleteButtonBack_, false);
 
-    if (saveDeleteButtonText_) {
-        saveDeleteButtonText_->SetVisible(false);
-    }
+    SetSaveUiVisible(saveDeleteButtonText_, false);
 
     // 削除確認中だけ確認Popupを出し、Yes/Backの選択側を点滅させる。
-    if (savePromptBubble_) {
-        savePromptBubble_->SetVisible(deleteConfirm);
-        savePromptBubble_->SetColor({1.0f, 0.86f, 0.64f, 0.94f});
-    }
+    SetSaveUiAppearance(savePromptBubble_, deleteConfirm, {1.0f, 0.86f, 0.64f, 0.94f});
 
-    if (saveDeleteQuestionText_) {
-        saveDeleteQuestionText_->SetVisible(deleteConfirm);
-    }
+    SetSaveUiVisible(saveDeleteQuestionText_, deleteConfirm);
 
-    if (saveConfirmYesText_) {
-        saveConfirmYesText_->SetVisible(deleteConfirm);
-        saveConfirmYesText_->SetColor(deleteConfirmIndex_ == 0 ? engine::Vector4{0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f}
-                                                               : engine::Vector4{0.28f, 0.20f, 0.14f, 0.70f});
-    }
-
-    if (saveConfirmBackText_) {
-        saveConfirmBackText_->SetVisible(deleteConfirm);
-        saveConfirmBackText_->SetColor(deleteConfirmIndex_ == 1 ? engine::Vector4{0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f}
-                                                                : engine::Vector4{0.28f, 0.20f, 0.14f, 0.70f});
-    }
+    const engine::Vector4 confirmSelectedColor = {0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f};
+    const engine::Vector4 confirmOtherColor = {0.28f, 0.20f, 0.14f, 0.70f};
+    SetSaveUiAppearance(saveConfirmYesText_, deleteConfirm, deleteConfirmIndex_ == 0 ? confirmSelectedColor : confirmOtherColor);
+    SetSaveUiAppearance(saveConfirmBackText_, deleteConfirm, deleteConfirmIndex_ == 1 ? confirmSelectedColor : confirmOtherColor);
 }
 
 // 空スロットは初期データで開始します。チュートリアルの完了記録がない場合は選択画面を飛ばします。
@@ -1589,8 +1531,8 @@ void TitleScene::DeleteSelectedSaveSlot() {
     DebugConsole::GetInstance()->AddLog(deleted ? "[Title] Save slot deleted." : "[Title] Save slot delete failed.");
 }
 
-void TitleScene::DrawSaveSlotUI() {
-    // 暗幕は DrawUI で先に描くため、ここではカードと文字だけを重ねる。
+void TitleScene::DrawSaveSlotUi() {
+    // 暗幕は DrawUi で先に描くため、ここではカードと文字だけを重ねる。
     for (auto& sprite : titleUiSprites_) {
         if (sprite.get() != saveSelectBackdrop_) {
             sprite->Draw();
@@ -1603,7 +1545,7 @@ void TitleScene::Draw() {
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
-    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::FirstPerson) {
         isFirstPerson = true;
     }
 #endif
@@ -1616,7 +1558,7 @@ void TitleScene::Draw() {
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
-    object3dCommon_->SetGraphicsCommand();
+    GetObject3DCommon()->SetGraphicsCommand();
 
     auto& objects = objectManager_->GetObjects();
 
@@ -1634,15 +1576,24 @@ void TitleScene::Draw() {
         player_, isFirstPerson, false, {});
     particleSystem_->Draw();
 
-    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
+    DrawLocalFogObjects(objects, player_, isFirstPerson);
     const bool grabUpdated =
-        DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
-    DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
+        DrawSpecialMaterialObjects(objects, BulletManager::GetInstance(), player_, isFirstPerson);
+    DrawGpuParticles(camera, gpuParticleTexHandle_, grabUpdated);
 }
 
 // タイトルとセーブ選択の2D部品を、暗幕から設定画面まで順に重ねる。
-void TitleScene::DrawUI() {
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+void TitleScene::DrawUi() {
+    BeginSpriteDrawing();
+
+    if (controllerNoticeActive_) {
+        for (auto* sprite : controllerNoticeSprites_) {
+            if (sprite) {
+                sprite->Draw();
+            }
+        }
+        return;
+    }
 
     // 背景用の暗幕は、JSON配置と実行時生成のどちらでもカード・文字より先に一度だけ描画します。
     if (saveSelectBackdrop_) {
@@ -1655,7 +1606,7 @@ void TitleScene::DrawUI() {
         }
     }
 
-    DrawSaveSlotUI();
+    DrawSaveSlotUi();
 
     if (settingsOverlay_) {
         settingsOverlay_->Draw();

@@ -79,7 +79,10 @@ function Save-GuideTextCanvas($source, $destination, $width, $height, [bool]$cen
         if ($LASTEXITCODE -ne 0) { throw "文字画像のDDS生成に失敗しました: $destination`n$conversion" }
         $dds = [IO.Path]::ChangeExtension($destination, '.dds')
         if (Test-Path -LiteralPath $dds) {
-            [IO.File]::Replace($temporaryDds, $dds, [NullString]::Value)
+            # 同じ内容の再生成で更新日時を変えず、不要なキャッシュ更新を避ける。
+            if ((Get-FileHash -LiteralPath $temporaryDds).Hash -ne (Get-FileHash -LiteralPath $dds).Hash) {
+                [IO.File]::Replace($temporaryDds, $dds, [NullString]::Value)
+            }
         } else {
             [IO.File]::Move($temporaryDds, $dds)
         }

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "863a1ce7e35447a4abf33195dddd5245",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_black/slime_black_hurt.gltf",
+  "version": 1
+}

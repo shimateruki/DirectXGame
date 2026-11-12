@@ -132,6 +132,8 @@ struct AttackAbilityUpdateResult {
 };
 
 /// <summary>攻撃定義を値として保持し、時間経過とフェーズ遷移を管理します。</summary>
+// 関連：EnemyAttackDefinitionの段階時間を進め、発生通知を敵の実装へ返す。
+// 主な入口：Start / Update
 class AttackAbilityRuntime {
   public:
     /// <summary>待機中なら攻撃を開始します。</summary>
@@ -159,6 +161,7 @@ class AttackAbilityRuntime {
 
     bool IsHitWindowOpen() const { return phase_ == AttackAbilityPhase::Active; }
 
+    // 現在のフェーズと定義の中断可否を照合する。中断や状態変更そのものは行わない。
     bool CanCancel() const;
 
     const AttackAbilityDefinition* GetDefinition() const { return hasDefinition_ ? &definition_ : nullptr; }
@@ -175,6 +178,8 @@ class AttackAbilityRuntime {
 };
 
 /// <summary>敵1種類の攻撃をJSONで読み書きします。読込失敗時は既定値を保持します。</summary>
+// 関連：JSONと攻撃定義を対応させ、選択した定義の実行は敵・コピー能力側へ任せる。
+// 主な入口：LoadForEnemy / FindAttack / SelectSequence
 class EnemyAttackProfile {
   public:
     // 敵種・入力割当から独立した攻撃内容。bindingとpriorityは利用先の値を維持します。

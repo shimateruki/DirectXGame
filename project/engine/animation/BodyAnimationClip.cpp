@@ -114,7 +114,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
         sampleTime = std::min(sampleTime, duration_);
     }
 
-    const auto CopyKeyToSample = [&sampleOut](const Key& key) {
+    const auto copyKeyToSample = [&sampleOut](const Key& key) {
         sampleOut.translate = key.translate;
         sampleOut.rotate = key.rotate;
         sampleOut.scale = key.scale;
@@ -123,12 +123,12 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
     };
 
     if (keys_.size() == 1 || sampleTime <= keys_.front().time) {
-        CopyKeyToSample(keys_.front());
+        copyKeyToSample(keys_.front());
         return true;
     }
 
     if (sampleTime >= keys_.back().time) {
-        CopyKeyToSample(keys_.back());
+        copyKeyToSample(keys_.back());
         return true;
     }
 
@@ -153,7 +153,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
         return true;
     }
 
-    CopyKeyToSample(keys_.back());
+    copyKeyToSample(keys_.back());
     return true;
 }
 

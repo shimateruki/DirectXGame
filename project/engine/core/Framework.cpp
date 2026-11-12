@@ -1,8 +1,8 @@
 #include "Framework.h"
 #include "TextureManager.h"
 #include "ModelManager.h"
-#include "SRVManager.h" 
-#include"ImguiManager.h"
+#include "SrvManager.h" 
+#include"ImGuiManager.h"
 #include"LightManager.h"
 #include "engine/system/scene/LoadingProfiler.h"
 void Framework::Initialize() {
@@ -24,7 +24,7 @@ void Framework::Initialize() {
     audioPlayer_ = AudioPlayer::GetInstance();
     audioPlayer_->Initialize();
 
-    SRVManager::GetInstance()->Initialize(dxCommon_);
+    SrvManager::GetInstance()->Initialize(dxCommon_);
     dxCommon_->CreateDepthSrv();
     dxCommon_->CreateShadowMap();
     ImGuiManager::GetInstance()->Initialize(winApp_.get(), dxCommon_);
@@ -37,6 +37,10 @@ void Framework::Initialize() {
 
     TextureManager::GetInstance()->Initialize(dxCommon_);
     LightManager::GetInstance()->Initialize(dxCommon_);
+
+    // 重いGPU準備はSceneManagerが必要な範囲だけ行う。ここでは所有者とDeviceを結び付ける。
+    renderCommonResources_ = std::make_unique<engine::RenderCommonResources>();
+    renderCommonResources_->Initialize(dxCommon_);
 
 }
 
@@ -51,6 +55,8 @@ void Framework::Finalize() {
     ImGuiManager::GetInstance()->Finalize();
     ModelManager::GetInstance()->Finalize();
 
+    // SceneとEditorの終了・GPU待機が完了してから、共有PSOをDeviceより先に破棄する。
+    renderCommonResources_.reset();
     dxCommon_->Finalize();
     CoUninitialize();
 }

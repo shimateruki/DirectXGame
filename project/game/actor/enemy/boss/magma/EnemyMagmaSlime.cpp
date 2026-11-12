@@ -7,12 +7,12 @@
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshRenderer.h"
 #include "SceneManager.h"
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "game/actor/enemy/animation/BossGroundHopVfx.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -25,7 +25,7 @@ using namespace EnemyMagmaSlimeImplementation;
 EnemyMagmaSlime::EnemyMagmaSlime() = default;
 EnemyMagmaSlime::~EnemyMagmaSlime() = default;
 
-void EnemyMagmaSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyMagmaSlime::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_MagmaSlime");
     SetEnemyType("MagmaSlime");
@@ -43,7 +43,7 @@ void EnemyMagmaSlime::Initialize(engine::Object3dCommon* common, const std::stri
 
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SyncCollisionRadius();
 
     // Body Clipは描画メッシュだけに掛け、物理座標と攻撃判定には混ぜない。
@@ -149,7 +149,7 @@ void EnemyMagmaSlime::DrawOwnedTransparentVisuals(ID3D12Resource* pointLightReso
 void EnemyMagmaSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
                                     ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!camera || !GetIsRenderVisible()) return;
-    engine::Object3d::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    engine::Object3D::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
 }
 
 void EnemyMagmaSlime::DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
@@ -188,7 +188,7 @@ void EnemyMagmaSlime::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<engine::Object3d> EnemyMagmaSlime::Clone() const {
+std::unique_ptr<engine::Object3D> EnemyMagmaSlime::Clone() const {
     // 複製先へ配置倍率と標的を渡し、攻撃中の一時状態は持ち越さない。
     auto clone = std::make_unique<EnemyMagmaSlime>();
     assert(GetObjectCommon() != nullptr);
@@ -262,14 +262,14 @@ void EnemyMagmaSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, u
         }
     }
 
-    for (const std::unique_ptr<engine::Object3d>& flame : rushFlameVisuals_) {
+    for (const std::unique_ptr<engine::Object3D>& flame : rushFlameVisuals_) {
         if (flame && flame->GetIsVisible()) {
             flame->RefreshRenderCameraData();
             flame->DrawFire(depthSrvHandle, grabSrvHandle);
         }
     }
 
-    for (const std::unique_ptr<engine::Object3d>& flame : fireColumnVisuals_) {
+    for (const std::unique_ptr<engine::Object3D>& flame : fireColumnVisuals_) {
         if (flame && flame->GetIsVisible()) {
             flame->RefreshRenderCameraData();
             flame->DrawFire(depthSrvHandle, grabSrvHandle);
@@ -464,7 +464,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
         BossChantStyle style;
         style.sigilEffectPath = kind == AttackKind::FireColumn ? kFireChantEffect : kMagmaChantEffect;
         style.motePreset = kFireChantMotesPreset;
-        style.releasePreset = kind == AttackKind::MagmaFlood ? kFloodSplashPreset : "";
+        style.releasePreset = kind == AttackKind::MagmaFlood ? MagmaAttackVfx::kFlood.Resolve(&attack) : "";
         style.accentColor =
             kind == AttackKind::FireColumn ? engine::Vector4{1.0f, 0.42f, 0.08f, 1.0f} : engine::Vector4{0.95f, 0.20f, 0.035f, 1.0f};
         style.radius = std::clamp(baseScale_.x * 1.35f, 2.4f, 4.0f);
@@ -735,11 +735,7 @@ void EnemyMagmaSlime::PrepareAttackCycle() {
         AttackKind::LavaSpiral,  AttackKind::FireColumn, AttackKind::MagmaFlood,
     };
 
-    std::shuffle(attackCycle_.begin(), attackCycle_.end(), attackRandom_);
-
-    if (attackCycle_[0] == lastAutomaticAttack_) {
-        std::swap(attackCycle_[0], attackCycle_[1]);
-    }
+    EnemyAttackSelection::Shuffle(std::span{attackCycle_}.first(attackCycle_.size()), lastAutomaticAttack_, attackRandom_);
 
     attackCycleIndex_ = 0;
 }
@@ -750,68 +746,36 @@ EnemyMagmaSlime::AttackKind EnemyMagmaSlime::ResolveAutomaticAttack(float target
         PrepareAttackCycle();
     }
 
-    for (std::size_t index = attackCycleIndex_; index < attackCycle_.size(); ++index) {
-        if (attackCycleIndex_ == 0 && attackCycle_[index] == lastAutomaticAttack_) {
-            continue;
-        }
-
-        const EnemyAttackDefinition& attack = GetAttackDefinition(GetAttackId(attackCycle_[index]));
-
-        if (targetDistance >= attack.minRange && targetDistance <= attack.maxRange) {
-            std::swap(attackCycle_[attackCycleIndex_], attackCycle_[index]);
-            break;
-        }
-    }
-
-    return attackCycle_[attackCycleIndex_];
+    return EnemyAttackSelection::SelectInRange(
+        std::span{attackCycle_}.first(attackCycle_.size()), attackCycleIndex_, lastAutomaticAttack_,
+        [&](AttackKind kind) {
+            const auto& attack = GetAttackDefinition(GetAttackId(kind));
+            return targetDistance >= attack.minRange && targetDistance <= attack.maxRange;
+        });
 }
 
 EnemyMagmaSlime::AttackKind EnemyMagmaSlime::ResolveDebugAttack() const {
-    // JSONの攻撃IDをプレビュー用の内部種別へ対応付ける。
-    if (debugPreviewAttackId_ == kMagmaMortarAttackId)
-        return AttackKind::MagmaMortar;
-    if (debugPreviewAttackId_ == kLavaRushAttackId)
-        return AttackKind::LavaRush;
-    if (debugPreviewAttackId_ == kVolcanicSlamAttackId)
-        return AttackKind::VolcanicSlam;
-    if (debugPreviewAttackId_ == kEruptionFieldAttackId)
-        return AttackKind::EruptionField;
-    if (debugPreviewAttackId_ == kLavaSpiralAttackId)
-        return AttackKind::LavaSpiral;
-    if (debugPreviewAttackId_ == kFireColumnAttackId)
-        return AttackKind::FireColumn;
-    if (debugPreviewAttackId_ == kMagmaFloodAttackId)
-        return AttackKind::MagmaFlood;
-    return AttackKind::None;
+    return EnemyAttackSelection::FindKind(GetAttackEntries(), debugPreviewAttackId_, AttackKind::None);
+}
+
+std::span<const EnemyAttackSelection::Entry<EnemyMagmaSlime::AttackKind>>
+EnemyMagmaSlime::GetAttackEntries() const {
+    // 本編のID参照とエディターの攻撃指定で同じ対応を使う。
+    static constexpr EnemyAttackSelection::Entry<AttackKind> kEntries[] = {
+        {AttackKind::MagmaMortar, kMagmaMortarAttackId},
+        {AttackKind::LavaRush, kLavaRushAttackId},
+        {AttackKind::VolcanicSlam, kVolcanicSlamAttackId},
+        {AttackKind::EruptionField, kEruptionFieldAttackId},
+        {AttackKind::LavaSpiral, kLavaSpiralAttackId},
+        {AttackKind::FireColumn, kFireColumnAttackId},
+        {AttackKind::MagmaFlood, kMagmaFloodAttackId},
+    };
+    return kEntries;
 }
 
 const char* EnemyMagmaSlime::GetAttackId(AttackKind kind) const {
-    // 内部の攻撃種別をプロファイル参照用のIDに変える。
-    switch (kind) {
-    case AttackKind::MagmaMortar:
-        return kMagmaMortarAttackId;
-
-    case AttackKind::LavaRush:
-        return kLavaRushAttackId;
-
-    case AttackKind::VolcanicSlam:
-        return kVolcanicSlamAttackId;
-
-    case AttackKind::EruptionField:
-        return kEruptionFieldAttackId;
-
-    case AttackKind::LavaSpiral:
-        return kLavaSpiralAttackId;
-
-    case AttackKind::FireColumn:
-        return kFireColumnAttackId;
-
-    case AttackKind::MagmaFlood:
-        return kMagmaFloodAttackId;
-
-    default:
-        return "";
-    }
+    // 未対応の種類に対する既定IDも敵ごとの従来値を維持する。
+    return EnemyAttackSelection::FindId(GetAttackEntries(), kind, "");
 }
 
 const EnemyAttackDefinition& EnemyMagmaSlime::GetCurrentAttackDefinition() const {
@@ -819,7 +783,7 @@ const EnemyAttackDefinition& EnemyMagmaSlime::GetCurrentAttackDefinition() const
     return GetAttackDefinition(GetAttackId(currentAttack_));
 }
 
-std::unique_ptr<engine::Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::string& name, const std::string& model,
+std::unique_ptr<engine::Object3D> EnemyMagmaSlime::CreateMagmaVisual(const std::string& name, const std::string& model,
                                                              int materialType, const engine::Vector4& color,
                                                              float emissive) const {
     // 一時演出は敵本体の衝突対象にせず、種類に応じてマグマ・炎・衝撃波の材質を設定する。
@@ -827,16 +791,16 @@ std::unique_ptr<engine::Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::
         return nullptr;
     }
 
-    auto visual = std::make_unique<engine::Object3d>();
+    auto visual = std::make_unique<engine::Object3D>();
     visual->Initialize(GetObjectCommon());
     visual->SetName(name);
     visual->SetClassName("EnemyVisualPart");
     visual->SetModel(model);
-    visual->SetColliderType(ColliderType::kNone);
+    visual->SetColliderType(ColliderType::None);
     visual->SetCollisionAttribute(0);
     visual->SetCollisionMask(0);
     visual->SetMaterialType(materialType);
-    visual->SetBlendMode(BlendMode::kNormal);
+    visual->SetBlendMode(BlendMode::Normal);
     visual->SetSelectedLighting(0);
     visual->SetEnableLighting(false);
     visual->SetEnableEnvMap(false);
@@ -846,7 +810,7 @@ std::unique_ptr<engine::Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::
     visual->SetMetallic(0.0f);
 
     if (MeshRenderer* renderer = visual->GetMeshRenderer()) {
-        if (MeshRenderer::WaterParamForGPU* parameter = renderer->GetWaterParamData()) {
+        if (MeshRenderer::WaterParamForGpu* parameter = renderer->GetWaterParamData()) {
             const bool isShockwave = materialType == kShockwaveMaterialType;
             const bool isFire = materialType == kFireMaterialType;
             parameter->waveSpeed = isShockwave ? 1.8f : (isFire ? 3.4f : 3.2f);
@@ -1106,7 +1070,7 @@ void EnemyMagmaSlime::UpdateBodyHeat(float deltaTime) {
 
 void EnemyMagmaSlime::EmitPreset(const char* presetName, const engine::Vector3& position) const {
     // GPU粒子が利用できる場合だけ指定プリセットを発生させる。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->Emit(presetName, position);
@@ -1116,7 +1080,7 @@ void EnemyMagmaSlime::EmitPreset(const char* presetName, const engine::Vector3& 
 void EnemyMagmaSlime::EmitDirectedPreset(const char* presetName, const engine::Vector3& position, const engine::Vector3& direction,
                                          float speedScale) const {
     // 発射方向と速度倍率を持つ粒子だけを、GPU粒子管理器が有効な場合に放出する。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);

@@ -1,9 +1,9 @@
 ﻿#include "BuiltInCreatePresetRegistry.h"
 
 #include "EditorObjectFactoryRegistry.h"
-#include "Object3d.h"
-#include "Object3dCommon.h"
-#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
+#include "Object3D.h"
+#include "Object3DCommon.h"
+#include "engine/editor/assets/preset/PresetManager.h"
 #include "json.hpp"
 
 #include <array>
@@ -25,7 +25,7 @@ void PreservePresetCatalogFields(const json& current, json& replacement) {
     }
 }
 
-bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr<engine::Object3d> object, const std::string& displayName) {
+bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr<engine::Object3D> object, const std::string& displayName) {
     if (!object) {
         return false;
     }
@@ -60,7 +60,7 @@ bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr
     return true;
 }
 
-bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<engine::Object3d> object, const std::string& displayName) {
+bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<engine::Object3D> object, const std::string& displayName) {
     // 既存のユーザープリセットを保護し、未登録の内蔵テンプレートだけ追加する。
     if (!object || PresetManager::GetInstance()->HasPreset(presetName)) {
         return false;
@@ -421,15 +421,15 @@ bool RegisterStage1LibraryPresets() {
     return changed;
 }
 
-std::unique_ptr<engine::Object3d> CreateSpriteCardPreset(engine::Object3dCommon* common) {
-    auto object = std::make_unique<engine::Object3d>();
+std::unique_ptr<engine::Object3D> CreateSpriteCardPreset(engine::Object3DCommon* common) {
+    auto object = std::make_unique<engine::Object3D>();
     object->Initialize(common);
     object->SetClassName("Model");
     object->SetModel("Primitives/plane");
     object->SetName("SpriteCard_2_5D");
     object->SetScale({ 1.8f, 1.8f, 1.0f });
     object->SetTexture("Resources/sprite/common/white.png");
-    object->SetBlendMode(BlendMode::kNormal);
+    object->SetBlendMode(BlendMode::Normal);
     object->SetMaterialType(0);
     object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     object->SetEnableLighting(false);
@@ -440,14 +440,14 @@ std::unique_ptr<engine::Object3d> CreateSpriteCardPreset(engine::Object3dCommon*
 
     // 2.5D 板は描画専用なので、既定の Collider と衝突カテゴリを持たせません。
     ColliderConfig colliderConfig = object->GetColliderConfig();
-    colliderConfig.type = ColliderType::kNone;
+    colliderConfig.type = ColliderType::None;
     object->SetColliderConfig(colliderConfig);
 
     return object;
 }
 }
 
-void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* common) {
+void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3DCommon* common) {
     if (!common) {
         return;
     }
@@ -483,14 +483,14 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3dCommon* commo
     }
 
     // コピー台は一台ごとに配置・移動できるよう、通常の五能力を個別Presetにします。
-    constexpr std::array<std::pair<const char*, const char*>, 5> copyStations = {{
+    constexpr std::array<std::pair<const char*, const char*>, 5> kCopyStations = {{
         {"Slime", "コピー台・ピンク"},
         {"FireSlime", "コピー台・炎"},
         {"ThunderSlime", "コピー台・雷"},
         {"WindSlime", "コピー台・風"},
         {"Bomber", "コピー台・ボム"},
     }};
-    for (const auto& [copyType, label] : copyStations) {
+    for (const auto& [copyType, label] : kCopyStations) {
         if (PresetManager::GetInstance()->HasPreset("Builtin/Gimmick/CopyMemoryStation/" + std::string(copyType))) continue;
         auto station = EditorObjectFactoryRegistry::Create(
             EditorObjectFactoryRegistry::Kind::Gimmick, "CopyMemoryStation", common);

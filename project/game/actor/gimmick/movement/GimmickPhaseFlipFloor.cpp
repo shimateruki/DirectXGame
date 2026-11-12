@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickPhaseFlipFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickPhaseFlipFloor::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 床の衝突を維持したまま、色別の順番で回転する初期値を用意します。
@@ -31,7 +31,7 @@ void GimmickPhaseFlipFloor::Initialize(engine::Object3dCommon* common, const std
     using Self = GimmickPhaseFlipFloor;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "順番反転床",
         "床番号1→2→3…の順に、当たり判定を残したまま180度回転します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
 
     // 表示だけ1始まりにし、従来のcolorType（0始まり）をそのまま保存します。
     properties.Accessor<int>("床番号", "colorType", "param.colorType",
@@ -178,7 +178,7 @@ float GimmickPhaseFlipFloor::SmoothStep(float t) const {
     return Easing::SmoothStep01(t);
 }
 
-std::unique_ptr<engine::Object3d> GimmickPhaseFlipFloor::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickPhaseFlipFloor::Clone() const {
     // 複製先の基本資源を作ってから配置と周期設定を移します。
     auto newObj = std::make_unique<GimmickPhaseFlipFloor>();
     assert(GetObjectCommon() != nullptr);

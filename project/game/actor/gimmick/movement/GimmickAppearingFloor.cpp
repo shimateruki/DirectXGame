@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickAppearingFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickAppearingFloor::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 表示と当たり判定を同時に切り替える床として登録する。
     BaseGimmick::Initialize(common, modelName);
 
@@ -21,7 +21,7 @@ void GimmickAppearingFloor::Initialize(engine::Object3dCommon* common, const std
     using Self = GimmickAppearingFloor;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "出現床",
         "イベントを受けた後に出現します。0以下は従来どおり3秒として実行し、保存値自体は書き換えません。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("出現する時間", "interval", &Parameter::interval, 0.0f, 60.0f);
 }
 
@@ -111,7 +111,7 @@ void GimmickAppearingFloor::SetFloorActive(bool active) {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickAppearingFloor::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickAppearingFloor::Clone() const {
     // 新しい実体を初期化してから、出現時間と配置を引き継ぐ。
     auto newObj = std::make_unique<GimmickAppearingFloor>();
     assert(GetObjectCommon() != nullptr);

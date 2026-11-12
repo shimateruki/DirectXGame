@@ -26,19 +26,19 @@ inline void Run(BaseScene* scene, std::ostream& log) {
     const auto original = settings->GetPlayerLocomotion();
     settings->GetMutablePlayerLocomotion() = {};
     auto actor = std::make_unique<Player>();
-    actor->Initialize(scene->GetObject3dCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
+    actor->Initialize(scene->GetObject3DCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
     actor->SetEditorInternal(true); actor->SetCollisionAttribute(0); actor->SetCollisionMask(0);
     actor->SetCopyPreviewInput({}); actor->SetCopyPreviewGroundHeight(1000);
     actor->SetParameter(&engine::EntityParameter::speed, 10); actor->SetParameter(&engine::EntityParameter::gravity, 50); actor->SetParameter(&engine::EntityParameter::maxFallSpeed, 60);
     auto mover = std::make_unique<PlayerMover>();
     mover->Initialize(actor.get(), engine::InputManager::GetInstance(), scene->GetParticleSystem());
     auto strategy = std::make_unique<MoveInput>(); auto* input = strategy.get(); mover->SetStrategy(std::move(strategy));
-    constexpr float dt = 1.0f / 60;
+    constexpr float kFixedDeltaTime = 1.0f / 60;
     auto reset = [&] {
         mover->ResetTransientState(); actor->SetTranslate({0, 1000, 0}); actor->SetVelocity({}); actor->SetGrounded(true);
         actor->UpdateWorldMatrix(true); input->value = {};
     };
-    auto step = [&] { mover->Update(dt); actor->SetCopyPreviewInput({}); actor->Update(dt); };
+    auto step = [&] { mover->Update(kFixedDeltaTime); actor->SetCopyPreviewInput({}); actor->Update(kFixedDeltaTime); };
     reset(); input->value = {10, 0, 0}; step();
     Require(actor->GetVelocity().x > 0 && actor->GetVelocity().x < 1, "runtime startup snapped to full speed");
     for (int i = 0; i < 23; ++i) step();

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "4cfa800550978891d5ab4529d081eca6",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/bomb/parameters.json",
+  "version": 1
+}

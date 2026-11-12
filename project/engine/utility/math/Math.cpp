@@ -437,7 +437,7 @@ Vector3 Math::Transform(const Vector3& v, const Matrix4x4& m) {
 }
 
 
-bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit) {
+bool Math::IntersectRayAabb(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit) {
 	float tMin = 0.0f;
 	float tMax = 100000.0f; // 十分大きな値
 
@@ -529,13 +529,13 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 float Math::LerpShortAngle(float a, float b, float t) {
 	float diff = b - a;
 
-	const float PI2 = std::numbers::pi_v<float> * 2.0f;
+	constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 
 	// 角度を [-std::numbers::pi_v<float>, std::numbers::pi_v<float>] の範囲に補正
 	while (diff < -std::numbers::pi_v<float>)
-		diff += PI2;
+		diff += kTwoPi;
 	while (diff > std::numbers::pi_v<float>)
-		diff -= PI2;
+		diff -= kTwoPi;
 
 	return a + diff * t;
 }
@@ -752,13 +752,13 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 	}
 
 	// 行列からの変換で生じた丸め誤差を除き、ゼロ長なら単位クォータニオンへ戻します。
-	float len = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+	float vectorLength = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 
-	if (len > 0.0001f) {
-		q.x /= len;
-		q.y /= len;
-		q.z /= len;
-		q.w /= len;
+	if (vectorLength > 0.0001f) {
+		q.x /= vectorLength;
+		q.y /= vectorLength;
+		q.z /= vectorLength;
+		q.w /= vectorLength;
 	}
 	else {
 		q = { 0.0f, 0.0f, 0.0f, 1.0f }; // 安全な初期値
@@ -821,7 +821,7 @@ Frustum Math::ExtractFrustumPlanes(const Matrix4x4& vp) {
 	return f;
 }
 
-bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const Vector3& maxBox) {
+bool Math::IntersectFrustumAabb(const Frustum& f, const Vector3& minBox, const Vector3& maxBox) {
 	for (int i = 0; i < 6; ++i) {
 		// AABBの中で一番「平面の法線方向にある点(p)」を調べる
 		Vector3 p = minBox;
@@ -843,7 +843,7 @@ bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const V
 	return true;
 }
 
-float Math::DistanceSquaredPointAABB(const Vector3& point, const Vector3& minBox, const Vector3& maxBox) {
+float Math::DistanceSquaredPointAabb(const Vector3& point, const Vector3& minBox, const Vector3& maxBox) {
     // 各軸の箱外距離だけを足し、平方根なしで交差比較に使えます。
 	const float dx = point.x < minBox.x ? minBox.x - point.x : (point.x > maxBox.x ? point.x - maxBox.x : 0.0f);
 	const float dy = point.y < minBox.y ? minBox.y - point.y : (point.y > maxBox.y ? point.y - maxBox.y : 0.0f);

@@ -4,6 +4,7 @@ namespace {
 using namespace CopyAbilityDetail;
 
 // 雷コピーの攻撃状態と火花表示を管理し、解除時に専用スコープの演出を消す。
+// PlayerCopyAbilityControllerが所有する雷攻撃の実装。入力はProcessInput、進行はUpdate、一時表示の回収はCancelが担当する。
 class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
   public:
     explicit ThunderSlimeCopyAbility(EnemyAttackProfile profile) : ICopyAbilitySession(std::move(profile)) {
@@ -110,12 +111,12 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         ClearSparkEffects();
     }
 
-    void UpdateCharge(Player& player, float dt) {
+    void UpdateCharge(Player& player, float frameDeltaTime) {
         // 溜め量は上限で止めても、電撃の走る時間は止めない。
-        sparkVisualTime_ += dt;
-        chargeTime_ = std::min(1.0f, chargeTime_ + dt);
-        sparkEffectTimer_ -= dt;
-        sparkDamageTimer_ -= dt;
+        sparkVisualTime_ += frameDeltaTime;
+        chargeTime_ = std::min(1.0f, chargeTime_ + frameDeltaTime);
+        sparkEffectTimer_ -= frameDeltaTime;
+        sparkDamageTimer_ -= frameDeltaTime;
         const engine::Vector3 center = player.GetWorldPosition() + engine::Vector3{0.0f, 0.85f, 0.0f};
 
         if (!primaryHeld_) {
@@ -202,7 +203,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
 
         for (const PhysicsOverlapHit& hit :
              CollisionManager::GetInstance()->OverlapSphere(ground + engine::Vector3{0.0f, 1.1f, 0.0f}, LineAttack().radius, filter)) {
-            engine::Object3d* target = FindEnemyRoot(hit.object);
+            engine::Object3D* target = FindEnemyRoot(hit.object);
             if (!target || !lineHitTargets_.insert(target).second)
                 continue;
             DamageEnemy(player, target, LineAttack().damage, DamageType::Electric,
@@ -235,7 +236,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     engine::Vector3 lineDirection_{0.0f, 0.0f, 1.0f};
-    std::unordered_set<engine::Object3d*> lineHitTargets_;
+    std::unordered_set<engine::Object3D*> lineHitTargets_;
     float lineCooldown_ = 0.0f;
     float dischargeCooldown_ = 0.0f;
     float evadeCooldown_ = 0.0f;

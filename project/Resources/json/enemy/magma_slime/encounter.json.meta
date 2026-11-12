@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "e3bb6bc4f1c780e0cb75fec02fc14108",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/magma_slime/encounter.json",
+  "version": 1
+}

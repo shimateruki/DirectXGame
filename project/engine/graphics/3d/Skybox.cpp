@@ -1,12 +1,12 @@
 #include "Skybox.h"
 #include "RenderStats.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #ifdef USE_IMGUI
 #include "DebugConsole.h"
 #endif
 #include <cassert>
 
-void Skybox::Initialize(engine::Object3dCommon* common, uint32_t textureHandle) {
+void Skybox::Initialize(engine::Object3DCommon* common, uint32_t textureHandle) {
     // 描画基盤とテクスチャを確定してから、空を囲むメッシュを一度だけ作る。
     assert(common);
     common_ = common;
@@ -96,13 +96,13 @@ void Skybox::Draw(ID3D12Resource* vpResource) {
     commandList->SetGraphicsRootSignature(common_->GetSkyboxRootSignature());
 
     // ：SRVヒープをコマンドリストにセットする
-    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
+    SrvManager::GetInstance()->SetDescriptorHeaps(commandList);
 
     // RootParameter 0: ViewProjection (定数バッファ)
     commandList->SetGraphicsRootConstantBufferView(0, vpResource->GetGPUVirtualAddress());
 
     // RootParameter 1: キューブマップテクスチャ
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, textureHandle_);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, textureHandle_);
 
     // 描画設定
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

@@ -51,7 +51,7 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
 } // namespace
 
 // 大型スライムの初期化
-void EnemyGiantSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyGiantSlime::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // モデルの基準姿勢と接地中の判定を先に揃え、以後のジャンプ・投げ状態の起点にする。
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_GiantSlime");
@@ -64,7 +64,7 @@ void EnemyGiantSlime::Initialize(engine::Object3dCommon* common, const std::stri
 
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SyncGroundCollisionRadius();
 }
 
@@ -307,7 +307,7 @@ void EnemyGiantSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     BaseEnemy::BeginThrown(initialVelocity);
 }
 
-std::unique_ptr<engine::Object3d> EnemyGiantSlime::Clone() const {
+std::unique_ptr<engine::Object3D> EnemyGiantSlime::Clone() const {
     // 複製先に配置設定と追跡対象を引き継ぎ、攻撃状態の一時値は初期化し直す。
     auto clone = std::make_unique<EnemyGiantSlime>();
     assert(GetObjectCommon() != nullptr);
@@ -952,9 +952,9 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
 
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
-    if (scene && scene->GetObject3dCommon()) {
+    if (scene && scene->GetObject3DCommon()) {
         for (int i = 0; i < kSplitSlimeCount; ++i) {
-            auto slime = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3dCommon());
+            auto slime = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3DCommon());
             if (!slime)
                 continue;
 

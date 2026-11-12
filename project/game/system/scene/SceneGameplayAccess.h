@@ -7,6 +7,8 @@ class Player;
 class GameRule;
 
 // ゲーム固有のPlayerとルールへの参照を、汎用BaseSceneから分離します。
+// 関連：BaseSceneからゲーム固有型への直接依存を外し、Player・GameRuleの借用参照を公開する。
+// 主な入口：GetPlayer / SetPlayer / GetGameRule
 class ISceneGameplayAccess {
   public:
     virtual ~ISceneGameplayAccess() = default;

@@ -1,0 +1,17 @@
+{
+    "attackPower": 1.0,
+    "detectionRange": 20.0,
+    "gravity": 60.0,
+    "jumpPower": 16.0,
+    "maxFallSpeed": 60.0,
+    "maxHp": 23.0,
+    "modelName": "Gimmicks/blob",
+    "morphDuration": 5.0,
+    "morphLimited": true,
+    "scale": [
+        0.1599999964237213,
+        0.1599999964237213,
+        0.1599999964237213
+    ],
+    "speed": 0.03999999910593033
+}

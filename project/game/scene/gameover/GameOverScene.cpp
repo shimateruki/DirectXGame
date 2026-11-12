@@ -6,9 +6,9 @@
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "SpriteCommon.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Sprite.h"
 #include "ModelManager.h"
 #include "TextureManager.h"
@@ -21,11 +21,11 @@
 #include "game/system/combat/BulletManager.h"
 #include "game/system/scene/LevelLoader.h"
 #include "game/system/rules/GameRule.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "LightEditor.h"
 #include "ParticleManager.h"
-#include "GPUParticleManager.h"
-#include "VFXSequencer.h"
+#include "GpuParticleManager.h"
+#include "VfxSequencer.h"
 #include "Fade.h"
 #include "PostEffect.h"
 #include "game/system/progress/GameDataManager.h"
@@ -46,6 +46,23 @@ constexpr const char* kFallingCrownSpritePrefix = "gameover_falling_crown_";
 constexpr const char* kDizzyStarSpritePrefix = "gameover_dizzy_star_";
 constexpr const char* kGameOverImpactCue = "game_over_impact_cue";
 
+// 落下する王冠と回転する星を透明で作り、シーンへ所有権を渡す。
+engine::Sprite* AddDecorationSprite(engine::SpriteCommon* common,
+                                    std::vector<std::unique_ptr<engine::Sprite>>& sprites, uint32_t texture,
+                                    std::string name, const engine::Vector2& size) {
+    auto sprite = std::make_unique<engine::Sprite>();
+    sprite->Initialize(common, texture);
+    sprite->SetName(name);
+    sprite->SetAnchorPoint({0.5f, 0.5f});
+    sprite->SetSize(size);
+    sprite->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
+    sprite->SetVisible(false);
+
+    auto* result = sprite.get();
+    sprites.push_back(std::move(sprite));
+    return result;
+}
+
 // タイトル・リトライへの退出前に残機を保存します。失敗時は通知して遷移を止めます。
 bool TryResetLivesForExit() {
     // タイトルでもリトライでも、残機の初期値が保存できるまで次のシーンへ進めない。
@@ -63,11 +80,6 @@ float Clamp01(float value) {
     // 演出の前後を含む経過時間でも補間率を有効域に保つ。
     return std::clamp(value, 0.0f, 1.0f);
 }
-
-
-
-
-
 
 
 // 区間外のtを丸め、指定範囲を越えない線形補間値を返します。
@@ -118,30 +130,21 @@ void GameOverScene::Initialize() {
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    object3dCommon_ = std::make_unique<engine::Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_);
-
-    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_);
-
-    particleCommon_ = std::make_unique<engine::ParticleCommon>();
-    particleCommon_->Initialize(dxCommon_);
 
     particleSystem_ = std::make_unique<engine::ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
+    particleSystem_->Initialize(GetParticleCommon(), "Resources/sprite/common/white.png");
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
-    LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+    LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
 
     objectManager_ = std::make_unique<ObjectManager>();
     levelLoader_ = std::make_unique<LevelLoader>();
     gameRule_ = std::make_unique<GameRule>();
     gameRule_->Initialize(this);
 
-    BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+    BulletManager::GetInstance()->Initialize(GetObject3DCommon(), CollisionManager::GetInstance());
 
-    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+    PrepareGpuParticles();
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameOverScene.json");
@@ -168,7 +171,7 @@ void GameOverScene::OnActivated() {
     retryExitActive_ = false;
     retrySceneChangeRequested_ = false;
     retryExitTimer_ = 0.0f;
-    VFXSequencer::ClearOneShots();
+    VfxSequencer::ClearOneShots();
     ResetGameOverPostEffects();
 
     if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
@@ -190,7 +193,7 @@ void GameOverScene::OnActivated() {
 void GameOverScene::Finalize() {
     // シーンに属する生ポインタを所有物の破棄と同時に無効化する。
     ResetGameOverPostEffects();
-    VFXSequencer::ClearOneShots();
+    VfxSequencer::ClearOneShots();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
 
@@ -206,9 +209,6 @@ void GameOverScene::Finalize() {
     dizzyStars_.clear();
     sprites_.clear();
     particleSystem_.reset();
-    particleCommon_.reset();
-    spriteCommon_.reset();
-    object3dCommon_.reset();
 }
 
 // 導入フェード中は演出時計とメニュー入力を止め、シーンの通常更新だけ継続します。
@@ -257,14 +257,14 @@ void GameOverScene::Draw() {
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
-    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::FirstPerson) {
         isFirstPerson = true;
     }
 #endif
 
     ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
     ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
-    object3dCommon_->SetGraphicsCommand();
+    GetObject3DCommon()->SetGraphicsCommand();
 
     auto& objects = objectManager_->GetObjects();
 
@@ -280,16 +280,16 @@ void GameOverScene::Draw() {
 
     particleSystem_->Draw();
 
-    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
+    DrawLocalFogObjects(objects, player_, isFirstPerson);
 
     const bool grabUpdated =
-        DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
-    DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
+        DrawSpecialMaterialObjects(objects, BulletManager::GetInstance(), player_, isFirstPerson);
+    DrawGpuParticles(camera, gpuParticleTexHandle_, grabUpdated);
 }
 
-void GameOverScene::DrawUI() {
+void GameOverScene::DrawUi() {
     // 動的な王冠・星は専用リストで先に描き、通常 Sprite 側からの二重描画を避ける。
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    BeginSpriteDrawing();
 
     for (const FallingCrown& crown : fallingCrowns_) {
         if (crown.sprite && IsAlive(crown.sprite)) {
@@ -348,12 +348,12 @@ void GameOverScene::BindLayoutSprites() {
     // 編集可能な配置 JSON の名前から参照を結び、拡縮前の基準サイズを保存する。
     backgroundSprite_ = FindSprite("gameover_background");
 
-    constexpr std::array<const char*, 8> titleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
+    constexpr std::array<const char*, 8> kTitleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
                                                        "gameover_letter_e1", "gameover_letter_o", "gameover_letter_v",
                                                        "gameover_letter_e2", "gameover_letter_r"};
 
-    for (size_t i = 0; i < titleNames.size(); ++i) {
-        titleLetters_[i] = FindSprite(titleNames[i]);
+    for (size_t i = 0; i < kTitleNames.size(); ++i) {
+        titleLetters_[i] = FindSprite(kTitleNames[i]);
 
         if (titleLetters_[i]) {
             titleLetterBasePositions_[i] = titleLetters_[i]->GetPosition();
@@ -361,11 +361,11 @@ void GameOverScene::BindLayoutSprites() {
         }
     }
 
-    constexpr std::array<const char*, 2> rowPrefixes = {"gameover_retry", "gameover_title"};
+    constexpr std::array<const char*, 2> kRowPrefixes = {"gameover_retry", "gameover_title"};
 
-    for (size_t i = 0; i < rowPrefixes.size(); ++i) {
+    for (size_t i = 0; i < kRowPrefixes.size(); ++i) {
         MenuRow& row = menuRows_[i];
-        const std::string prefix = rowPrefixes[i];
+        const std::string prefix = kRowPrefixes[i];
         row.backdrop = FindSprite(prefix + "_row");
         row.label = FindSprite(prefix + "_label");
 
@@ -383,13 +383,13 @@ void GameOverScene::RefreshLayoutSpritePointers() {
     // Sprite Editor の再読込で実体が入れ替わっても、参照と基準サイズを取得し直す。
     backgroundSprite_ = IsAlive(backgroundSprite_) ? backgroundSprite_ : FindSprite("gameover_background");
 
-    constexpr std::array<const char*, 8> titleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
+    constexpr std::array<const char*, 8> kTitleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
                                                        "gameover_letter_e1", "gameover_letter_o", "gameover_letter_v",
                                                        "gameover_letter_e2", "gameover_letter_r"};
 
-    for (size_t i = 0; i < titleNames.size(); ++i) {
+    for (size_t i = 0; i < kTitleNames.size(); ++i) {
         if (!IsAlive(titleLetters_[i])) {
-            titleLetters_[i] = FindSprite(titleNames[i]);
+            titleLetters_[i] = FindSprite(kTitleNames[i]);
 
             if (titleLetters_[i]) {
                 titleLetterBasePositions_[i] = titleLetters_[i]->GetPosition();
@@ -401,11 +401,11 @@ void GameOverScene::RefreshLayoutSpritePointers() {
         }
     }
 
-    constexpr std::array<const char*, 2> rowPrefixes = {"gameover_retry", "gameover_title"};
+    constexpr std::array<const char*, 2> kRowPrefixes = {"gameover_retry", "gameover_title"};
 
-    for (size_t i = 0; i < rowPrefixes.size(); ++i) {
+    for (size_t i = 0; i < kRowPrefixes.size(); ++i) {
         MenuRow& row = menuRows_[i];
-        const std::string prefix = rowPrefixes[i];
+        const std::string prefix = kRowPrefixes[i];
 
         if (!IsAlive(row.backdrop)) {
             row.backdrop = FindSprite(prefix + "_row");
@@ -434,7 +434,7 @@ void GameOverScene::InitializeFallingCrowns() {
     // 周期と位相をずらした装飾 Sprite を作り、画面全体に同時落下しない配置にする。
     fallingCrowns_.clear();
 
-    if (!spriteCommon_) {
+    if (!GetSpriteCommon()) {
         return;
     }
 
@@ -452,7 +452,7 @@ void GameOverScene::InitializeFallingCrowns() {
         float alpha;
     };
 
-    constexpr std::array<CrownSetup, 10> setups = {
+    constexpr std::array<CrownSetup, 10> kSetups = {
         CrownSetup{170.0f, -170.0f, 122.0f, 1.5f, 24.0f, 26.0f, 0.55f, 0.10f, 0.1f, 0.68f},
         CrownSetup{380.0f, -220.0f, 86.0f, 9.2f, 27.0f, 18.0f, 0.62f, -0.08f, 1.4f, 0.48f},
         CrownSetup{650.0f, -185.0f, 104.0f, 14.0f, 29.0f, 22.0f, 0.48f, 0.07f, 2.1f, 0.52f},
@@ -467,18 +467,11 @@ void GameOverScene::InitializeFallingCrowns() {
 
     const uint32_t textureHandle = engine::Sprite::LoadTexture("ui/gameover/gameover_crown_falling.png");
 
-    for (size_t i = 0; i < setups.size(); ++i) {
-        const CrownSetup& setup = setups[i];
-        auto sprite = std::make_unique<engine::Sprite>();
-        sprite->Initialize(spriteCommon_.get(), textureHandle);
-        sprite->SetName(std::string(kFallingCrownSpritePrefix) + std::to_string(i));
-        sprite->SetAnchorPoint({0.5f, 0.5f});
-        sprite->SetSize({setup.width, setup.width * 0.75f});
-        sprite->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
-        sprite->SetVisible(false);
-
-        engine::Sprite* spritePtr = sprite.get();
-        sprites_.push_back(std::move(sprite));
+    for (size_t i = 0; i < kSetups.size(); ++i) {
+        const CrownSetup& setup = kSetups[i];
+        auto* spritePtr = AddDecorationSprite(GetSpriteCommon(), sprites_, textureHandle,
+                                              std::string(kFallingCrownSpritePrefix) + std::to_string(i),
+                                              {setup.width, setup.width * 0.75f});
         fallingCrowns_.push_back(FallingCrown{spritePtr, engine::Vector2{setup.x, setup.y},
                                               engine::Vector2{setup.width, setup.width * 0.75f}, setup.timeOffset,
                                               setup.cycleDuration, 1420.0f, setup.driftAmplitude, setup.driftSpeed,
@@ -526,26 +519,19 @@ void GameOverScene::InitializeDizzyStars() {
     // スライムの頭上を回る星を個別の位相とサイズで用意する。
     dizzyStars_.clear();
 
-    if (!spriteCommon_) {
+    if (!GetSpriteCommon()) {
         return;
     }
 
     const uint32_t textureHandle = engine::Sprite::LoadTexture("ui/gameover/gameover_dizzy_star.png");
-    constexpr std::array<float, 3> baseAngles = {0.0f, 2.0943951f, 4.1887902f};
-    constexpr std::array<float, 3> sizes = {42.0f, 34.0f, 38.0f};
+    constexpr std::array<float, 3> kBaseAngles = {0.0f, 2.0943951f, 4.1887902f};
+    constexpr std::array<float, 3> kSizes = {42.0f, 34.0f, 38.0f};
 
-    for (size_t i = 0; i < baseAngles.size(); ++i) {
-        auto sprite = std::make_unique<engine::Sprite>();
-        sprite->Initialize(spriteCommon_.get(), textureHandle);
-        sprite->SetName(std::string(kDizzyStarSpritePrefix) + std::to_string(i));
-        sprite->SetAnchorPoint({0.5f, 0.5f});
-        sprite->SetSize({sizes[i], sizes[i]});
-        sprite->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
-        sprite->SetVisible(false);
-
-        engine::Sprite* spritePtr = sprite.get();
-        sprites_.push_back(std::move(sprite));
-        dizzyStars_.push_back(DizzyStar{spritePtr, baseAngles[i], sizes[i], static_cast<float>(i) * 0.18f});
+    for (size_t i = 0; i < kBaseAngles.size(); ++i) {
+        auto* spritePtr = AddDecorationSprite(GetSpriteCommon(), sprites_, textureHandle,
+                                              std::string(kDizzyStarSpritePrefix) + std::to_string(i),
+                                              {kSizes[i], kSizes[i]});
+        dizzyStars_.push_back(DizzyStar{spritePtr, kBaseAngles[i], kSizes[i], static_cast<float>(i) * 0.18f});
     }
 
     UpdateDizzyStars(0.0f);
@@ -793,7 +779,7 @@ void GameOverScene::InitializeGameOverPresentation() {
     if (camera) {
         camera->SetFollowTarget(nullptr);
         camera->SetInputEnabled(false);
-        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
     }
 
     UpdateGameOverPresentation(0.0f);
@@ -862,7 +848,7 @@ void GameOverScene::UpdateGameOverCamera() {
     const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
     camera->ConfigFixedPoint(eye, rotation);
     camera->SetEye(eye);
     camera->SetTarget(target);
@@ -882,7 +868,7 @@ void GameOverScene::EmitGameOverImpactCue() {
         return;
     }
 
-    VFXSequencer::PlayOneShot(kGameOverImpactCue, gameOverSlimeObject_->GetWorldPosition());
+    VfxSequencer::PlayOneShot(kGameOverImpactCue, gameOverSlimeObject_->GetWorldPosition());
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (camera) {
@@ -933,7 +919,7 @@ void GameOverScene::DrawBackgroundSprite() {
         return;
     }
 
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    BeginSpriteDrawing();
     backgroundSprite_->Draw();
 }
 

@@ -26,9 +26,9 @@ VSOutput main(VSInput input)
             input.pos.y * portalScale.y, input.pos.z * max(effectScaleZ, 0.05f)) *
             max(billboardScale, 0.05f);
     }
-    else if (effectType > 2.5f)
+    else if (effectType > 2.5f || effectType <= -1.0f)
     {
-        // Arena barriers must preserve the authored rectangular wall dimensions.
+        // Arena walls, warp slits and boss entrance layers retain independent axes at the object origin.
         // The circular gate path intentionally uses the largest axis instead.
         portalLocalPos = float3(
             quad.x * portalScale.x * max(billboardScale, 0.05f),

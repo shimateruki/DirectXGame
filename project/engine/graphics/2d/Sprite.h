@@ -11,12 +11,14 @@ class DirectXCommon;
 
 namespace engine {
 
-/// <summary>
-/// 2D画像の変換、UV、親子関係、簡易アニメーションを管理して描画する。
-/// </summary>
+// 担当：2D画像の配置・UV・親子関係・簡易アニメーションを管理して描画する。
+// 関連：SpriteCommon（共有描画基盤）、TextureManager（画像）、BaseScene（配置先）
+// 主な入口：Initialize / Update / Draw / SetParent
 class Sprite {
 public:
-    /// <summary>画面上に配置するための基本変換。</summary>
+    // 担当：ローカル姿勢と親子関係から、ローカル・ワールド行列を計算する。
+    // 関連：Object3D / Collider（姿勢を参照）、Math（行列計算）
+    // 主な入口：UpdateMatrix
     struct Transform {
         engine::Vector3 scale;
         engine::Vector3 rotate;
@@ -24,6 +26,7 @@ public:
     };
 
     /// <summary>Spriteの頂点位置、UV、法線を保持する。</summary>
+    // 関連：Sprite（この型を使う機能の本体）
     struct VertexData {
         engine::Vector4 position;
         engine::Vector2 texcoord;
@@ -31,6 +34,7 @@ public:
     };
 
     /// <summary>GPUへ渡す色、UV変換、発光などの描画属性。</summary>
+    // 関連：Sprite（この型を使う機能の本体）
     struct Material {
         engine::Vector4 color;
         int32_t enableLighting;
@@ -41,12 +45,14 @@ public:
     };
 
     /// <summary>Sprite描画に使用するGPU向け変換行列。</summary>
+    // 関連：Sprite（この型を使う機能の本体）
     struct TransformationMatrix {
-        engine::Matrix4x4 WVP;
-        engine::Matrix4x4 World;
+        engine::Matrix4x4 wvp;
+        engine::Matrix4x4 world;
     };
 
     // デバッグリプレイ専用の実行状態です。Scene保存用データとは分離します。
+    // 関連：Sprite（この型を使う機能の本体）
     struct ReplayState {
         engine::Vector2 position = engine::Vector2::ZERO;
         float rotation = 0.0f;
@@ -73,7 +79,7 @@ public:
         int frameWidth = 0;
         int frameHeight = 0;
 
-        uint64_t parentReplayId = 0;
+        uint64_t parentReplayId = 0; // 復元先の親ID。0は親なし。
         bool replayRemoved = false;
     };
 
@@ -131,8 +137,8 @@ public:
 
     /// <summary>テクスチャから表示するUV範囲をピクセル単位で指定する。</summary>
     void SetTextureRect(const engine::Vector2& texLeftTop, const engine::Vector2& texSize) {
-        textureLeftTop_ = texLeftTop;
-        textureSize_ = texSize;
+        textureLeftTop_ = texLeftTop; // 切り出す画像領域の左上（ピクセル）。
+        textureSize_ = texSize; // 切り出す画像領域の大きさ（ピクセル）。
     }
 
     /// <summary>初期化済みの描画マテリアルの発光量を変更する。未初期化時は設定を保持しない。</summary>
@@ -235,33 +241,33 @@ public:
     void SetReplayRemoved(bool removed) { replayRemoved_ = removed; }
 
 private:
-    engine::SpriteCommon* common_ = nullptr;
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::SpriteCommon* common_ = nullptr; // 共有Sprite描画基盤。借用参照。
+    DirectXCommon* dxCommon_ = nullptr; // 共有DirectX基盤。借用参照。
     uint32_t textureHandle_ = 0;
 
     // 画面上の基本変換。
     engine::Vector2 position_ = engine::Vector2::ZERO;
-    float rotation_ = 0.0f;
-    engine::Vector2 size_ = { 100.0f, 100.0f };
+    float rotation_ = 0.0f; // 画面内の回転角（ラジアン）。
+    engine::Vector2 size_ = { 100.0f, 100.0f }; // 画面上の大きさ（ピクセル）。
     Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 
     // エディタ識別とテクスチャ切り出し設定。
     std::string name_ = "Sprite";
-    engine::Vector2 anchorPoint_ = { 0.5f, 0.5f };
+    engine::Vector2 anchorPoint_ = { 0.5f, 0.5f }; // 画像内の基準位置。0が左上、1が右下。
     bool isFlipX_ = false;
     bool isFlipY_ = false;
-    engine::Vector2 textureLeftTop_ = engine::Vector2::ZERO;
-    engine::Vector2 textureSize_ = { 100.0f, 100.0f };
+    engine::Vector2 textureLeftTop_ = engine::Vector2::ZERO; // 切り出す画像領域の左上（ピクセル）。
+    engine::Vector2 textureSize_ = { 100.0f, 100.0f }; // 切り出す画像領域の大きさ（ピクセル）。
 
     // スプライトシートの簡易アニメーション状態。
     bool isPlaying_ = false;
     bool isLooping_ = false;
-    float frameDuration_ = 1.0f;
-    float animationTimer_ = 0.0f;
+    float frameDuration_ = 1.0f; // アニメーション一コマの秒数。
+    float animationTimer_ = 0.0f; // 次コマまでの蓄積秒数。
     int totalFrames_ = 1;
-    int currentFrame_ = 0;
-    int frameWidth_ = 0;
-    int frameHeight_ = 0;
+    int currentFrame_ = 0; // 現在表示するコマ番号。
+    int frameWidth_ = 0; // 一コマの幅（ピクセル）。
+    int frameHeight_ = 0; // 一コマの高さ（ピクセル）。
 
     // テクスチャのピクセルサイズに合わせて描画サイズとUVを更新する。
     void AdjustTextureSize();
@@ -276,20 +282,20 @@ private:
     uint32_t* indexData_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_ = nullptr;
-    Material* materialData_ = nullptr;
+    Material* materialData_ = nullptr; // マップ済み定数バッファへの参照。
     engine::Vector4 color_ = engine::Colors::White;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
-    TransformationMatrix* wvpData_ = nullptr;
+    TransformationMatrix* wvpData_ = nullptr; // マップ済み変換バッファへの参照。
 
     // エディタ操作と階層表示用の状態。
     bool isVisible_ = true;
     bool isLocked_ = false;
     std::string textureName_ = "";
-    Sprite* parent_ = nullptr;
-    std::vector<Sprite*> children_;
+    Sprite* parent_ = nullptr; // 親Sprite。借用参照。
+    std::vector<Sprite*> children_; // 子Spriteへの借用参照一覧。
 
-    uint64_t replayId_ = 0;
+    uint64_t replayId_ = 0; // 実行中の追跡ID。0は未発行。
     bool replayRetained_ = false;
     bool replayRemoved_ = false;
 };

@@ -1,11 +1,15 @@
 #pragma once
 
+// 担当：行列を分解し、Transformの姿勢へ反映する共通処理。
+// 関連：Object3D（姿勢操作）、Transform（反映先）、Math（分解）
+// 主な入口：ApplyMatrixToTransform
+
 #include "Transform.h"
 #include "engine/utility/math/Math.h"
 
 #include <algorithm>
 
-namespace Object3dTransformUtils {
+namespace Object3DTransformUtils {
 
 // 行列から移動・倍率・回転を復元し、親変更と実行時コピーで同じ姿勢を使います。
 inline void ApplyMatrixToTransform(Transform& transform, const engine::Matrix4x4& matrix) {
@@ -39,4 +43,4 @@ inline void ApplyMatrixToTransform(Transform& transform, const engine::Matrix4x4
     transform.isQuaternionMaster = true;
 }
 
-} // namespace Object3dTransformUtils
+} // namespace Object3DTransformUtils

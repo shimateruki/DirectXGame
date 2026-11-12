@@ -10,7 +10,7 @@
 #include "SceneManager.h"
 #include "GhostRecorder.h"
 #include "DebugConsole.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MovingFloorSupport.h"
 #include <algorithm>
 #include <cmath>
@@ -133,7 +133,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             boarders_.push_back(boarder);
         }
 
-        player_.SetSignalCallback([this, &floor](engine::Object3d* target, const CinematicSignalMarker& signal, bool preview) {
+        player_.SetSignalCallback([this, &floor](engine::Object3D* target, const CinematicSignalMarker& signal, bool preview) {
             if (preview || !target)
                 return;
             if (signal.signal == "ride.waterjet") {
@@ -143,7 +143,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
                 return;
             }
             if (signal.signal == "ride.splash") {
-                if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized())
+                if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized())
                     particles->Emit("raft_water_landing", floor.GetTranslate());
                 return;
             }

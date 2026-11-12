@@ -26,11 +26,12 @@ inline bool RunCase(SceneManager* manager, int mode, float radius, float blast, 
     auto* collisions = CollisionManager::GetInstance();
     bullets->Clear();
     auto player = std::make_unique<Player>();
-    player->Initialize(scene->GetObject3dCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
-    player->SetName("__CannonDamageTarget"); player->SetClassName("Player"); player->SetEditorInternal(true);
+    player->Initialize(scene->GetObject3DCommon(), engine::InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
+    // 通常GameRuleの被弾領域で検証します。EditorInternalは現在、無害プレビューとの領域分離にも使われます。
+    player->SetName("__CannonDamageTarget"); player->SetClassName("Player"); player->SetEditorInternal(false);
     player->SetParameter(&engine::EntityParameter::hp, player->SetParameter(&engine::EntityParameter::maxHp, 20));
     player->SetScale({1, 1, 1});
-    engine::Object3d::ColliderConfig collider; collider.type = ColliderType::kSphere; collider.center = {0, 0, 0}; collider.size = {0.5f, 0.5f, 0.5f};
+    engine::Object3D::ColliderConfig collider; collider.type = ColliderType::Sphere; collider.center = {0, 0, 0}; collider.size = {0.5f, 0.5f, 0.5f};
     player->SetColliderConfig(collider);
     player->SetCollisionRadius(0.5f);
     if (player->GetCollider()) player->GetCollider()->SetScaleOverride({1, 1, 1});
@@ -38,11 +39,13 @@ inline bool RunCase(SceneManager* manager, int mode, float radius, float blast, 
     player->SetCollisionMask(CollisionCategories::Get("enemy_attack"));
     player->SetDamageInvincible(invincible);
     auto cannon = std::make_unique<GimmickFireCannon>();
-    cannon->Initialize(scene->GetObject3dCommon(), "Gimmicks/volcanic_bombard");
+    cannon->Initialize(scene->GetObject3DCommon(), "Gimmicks/volcanic_bombard");
     cannon->SetTranslate({0, 1000, 0}); cannon->SetScale({1, 1, 1}); cannon->SetRotation({0, 0, 0});
     cannon->SetParameter(&engine::EntityParameter::actionMode, mode); cannon->SetParameter(&engine::EntityParameter::speed, 60); cannon->SetParameter(&engine::EntityParameter::interval, 0.08f);
     cannon->SetParameter(&engine::EntityParameter::moveAmount, radius); cannon->SetParameter(&engine::EntityParameter::healAmount, blast);
     cannon->SetParameter(&engine::EntityParameter::projectileLifetime, 3); cannon->SetParameter(&engine::EntityParameter::startActive, true);
+    // 被弾確認用の高空配置ではSceneのプレイヤーから離れているため常時発射にします。
+    cannon->SetParameter(&engine::EntityParameter::detectionRange, 0);
     cannon->SetParameter(&engine::EntityParameter::editorPreviewFiring, preview);
     manager->SetIsPlaying(!preview);
     cannon->Update(0.2f);
@@ -77,11 +80,11 @@ inline bool RunPlayerProjectileCase(SceneManager* manager, std::ostream& log) {
     auto* bullets = BulletManager::GetInstance();
     auto* collisions = CollisionManager::GetInstance();
     bullets->Clear();
-    auto enemy = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3dCommon());
+    auto enemy = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3DCommon());
     if (!enemy) throw std::runtime_error("regression enemy missing");
     enemy->SetParameter(&engine::EntityParameter::hp, enemy->SetParameter(&engine::EntityParameter::maxHp, 20));
     enemy->SetScale({1, 1, 1}); enemy->SetTranslate({0, 1000, 8});
-    engine::Object3d::ColliderConfig collider; collider.type = ColliderType::kSphere; collider.size = {0.5f, 0.5f, 0.5f};
+    engine::Object3D::ColliderConfig collider; collider.type = ColliderType::Sphere; collider.size = {0.5f, 0.5f, 0.5f};
     enemy->SetColliderConfig(collider); enemy->SetCollisionRadius(0.5f);
     enemy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
     enemy->SetCollisionMask(CollisionCategories::Get("player_attack"));

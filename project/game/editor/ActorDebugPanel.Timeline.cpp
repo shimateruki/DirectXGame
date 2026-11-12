@@ -8,7 +8,7 @@
 #include "BaseEnemy.h"
 #include "BaseScene.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Player.h"
 #include "SceneManager.h"
 
@@ -619,7 +619,7 @@ void ActorDebugPanel::DrawCrownMovieTimeline() {
 
     // 再生終端から再開する場合は先頭へ戻し、時間スライダーも同じ Seek 処理を使います。
     const auto* game = sceneManager_ ? dynamic_cast<GamePlayScene*>(sceneManager_->GetCurrentScene()) : nullptr;
-    const auto t = game ? game->GetCrownFinaleTiming() : CrownFinaleTuning::Get();
+    const auto finaleTiming = game ? game->GetCrownFinaleTiming() : CrownFinaleTuning::Get();
 
     if (ImGui::Button(playing_ ? "一時停止" : "再生")) {
         if (!playing_ && elapsedTime_ >= loopDuration_ - .001f) {
@@ -691,9 +691,9 @@ void ActorDebugPanel::DrawCrownMovieTimeline() {
 
     // 継承ムービーは Tuning の各時点へ直接移動できるようにし、二段に並べます。
     const char* names[] = { "破断", "欠片着地", "暴走", "吸い込み", "体内模様", "金色の体", "王冠", "翼", "脱出", "最終ステージ" };
-    const float points[] = { t.movieFragmentBreakTime, t.movieFragmentLandTime, t.movieRageTime,
-        t.movieFragmentPullTime, t.movieFragmentAbsorbTime, t.movieBodyTime, t.movieCrownTime,
-        t.movieWingsTime, t.movieEscapeTime, t.movieArriveTime };
+    const float points[] = { finaleTiming.movieFragmentBreakTime, finaleTiming.movieFragmentLandTime, finaleTiming.movieRageTime,
+        finaleTiming.movieFragmentPullTime, finaleTiming.movieFragmentAbsorbTime, finaleTiming.movieBodyTime, finaleTiming.movieCrownTime,
+        finaleTiming.movieWingsTime, finaleTiming.movieEscapeTime, finaleTiming.movieArriveTime };
     for (int index = 0; index < 10; ++index) {
         if (index && index != 5) {
             ImGui::SameLine();
@@ -752,24 +752,24 @@ void ActorDebugPanel::DrawCrownMovieTimeline() {
     };
 
     // 以下の区間は Tuning 側の 0〜1 の時刻を実秒へ変換して重ねます。
-    block(0, 0, t.movieFragmentBreakTime, IM_COL32(192, 153, 70, 240), "亀裂");
-    block(0, t.movieFragmentBreakTime, t.movieFragmentLandTime, IM_COL32(245, 169, 75, 240), "落下");
-    block(0, t.movieFragmentLandTime, t.movieFragmentPullTime, IM_COL32(185, 172, 100, 240), "着地");
-    block(0, t.movieFragmentPullTime, t.movieFragmentAbsorbTime, IM_COL32(85, 191, 221, 240), "吸収");
+    block(0, 0, finaleTiming.movieFragmentBreakTime, IM_COL32(192, 153, 70, 240), "亀裂");
+    block(0, finaleTiming.movieFragmentBreakTime, finaleTiming.movieFragmentLandTime, IM_COL32(245, 169, 75, 240), "落下");
+    block(0, finaleTiming.movieFragmentLandTime, finaleTiming.movieFragmentPullTime, IM_COL32(185, 172, 100, 240), "着地");
+    block(0, finaleTiming.movieFragmentPullTime, finaleTiming.movieFragmentAbsorbTime, IM_COL32(85, 191, 221, 240), "吸収");
 
-    block(1, t.movieFragmentAbsorbTime, t.movieBodyTime, IM_COL32(114, 218, 223, 240), "体内模様");
-    block(1, t.movieBodyTime, t.movieCrownTime, IM_COL32(239, 190, 56, 240), "金色の体");
-    block(1, t.movieCrownTime, t.movieWingsTime, IM_COL32(239, 164, 56, 240), "王冠");
-    block(1, t.movieWingsTime, t.movieEscapeTime, IM_COL32(235, 213, 156, 240), "翼");
-    block(1, t.movieEscapeTime, t.movieArriveTime, IM_COL32(125, 177, 236, 240), "飛行脱出");
-    block(1, t.movieArriveTime, 1, IM_COL32(112, 205, 168, 240), "着地");
+    block(1, finaleTiming.movieFragmentAbsorbTime, finaleTiming.movieBodyTime, IM_COL32(114, 218, 223, 240), "体内模様");
+    block(1, finaleTiming.movieBodyTime, finaleTiming.movieCrownTime, IM_COL32(239, 190, 56, 240), "金色の体");
+    block(1, finaleTiming.movieCrownTime, finaleTiming.movieWingsTime, IM_COL32(239, 164, 56, 240), "王冠");
+    block(1, finaleTiming.movieWingsTime, finaleTiming.movieEscapeTime, IM_COL32(235, 213, 156, 240), "翼");
+    block(1, finaleTiming.movieEscapeTime, finaleTiming.movieArriveTime, IM_COL32(125, 177, 236, 240), "飛行脱出");
+    block(1, finaleTiming.movieArriveTime, 1, IM_COL32(112, 205, 168, 240), "着地");
 
-    block(2, t.movieRageTime, t.movieRageTime + .07f, IM_COL32(236, 190, 116, 240), "衝撃");
-    block(2, t.movieRageTime + .02f, t.movieArriveTime, IM_COL32(218, 95, 91, 240), "床・壁の崩壊");
+    block(2, finaleTiming.movieRageTime, finaleTiming.movieRageTime + .07f, IM_COL32(236, 190, 116, 240), "衝撃");
+    block(2, finaleTiming.movieRageTime + .02f, finaleTiming.movieArriveTime, IM_COL32(218, 95, 91, 240), "床・壁の崩壊");
 
-    block(3, 0, t.movieFragmentLandTime, IM_COL32(134, 145, 222, 240), "装飾を追う");
-    block(3, t.movieFragmentLandTime, t.movieEscapeTime, IM_COL32(152, 135, 206, 240), "吸収・変身");
-    block(3, t.movieEscapeTime, 1, IM_COL32(109, 159, 204, 240), "脱出・最終戦");
+    block(3, 0, finaleTiming.movieFragmentLandTime, IM_COL32(134, 145, 222, 240), "装飾を追う");
+    block(3, finaleTiming.movieFragmentLandTime, finaleTiming.movieEscapeTime, IM_COL32(152, 135, 206, 240), "吸収・変身");
+    block(3, finaleTiming.movieEscapeTime, 1, IM_COL32(109, 159, 204, 240), "脱出・最終戦");
 
     // 再生ヘッドを全レーンに通し、Dummy で描画領域の高さを ImGui へ通知します。
     float x = origin.x + labelWidth + elapsedTime_ * pixels;

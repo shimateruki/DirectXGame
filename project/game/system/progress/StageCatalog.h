@@ -22,9 +22,14 @@ struct StageData {
 
     // 収集要素のないボスステージでは、ゲートとゲームHUDのスター欄を表示しない。
     bool hasStarCoins = true;
+
+    // 通常のステージ選択から開く際のカメラ設定。空なら共通設定を使います。
+    std::string cameraPath;
 };
 
 // ステージ JSON の検証と変換を担当し、現在選択中のステージ状態は保持しません。
+// 関連：StageManagerへ検証済みのStageData一覧を返す。現在の選択や保存は管理しない。
+// 主な入口：LoadFromJson / CreateFallback
 class StageCatalog {
   public:
     /// <summary>有効なステージだけを読み込みます。失敗時は output を変更しません。</summary>

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "33b9bfa86eeb445d9dba36b4b103d241",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_wind_vortex_rise.json",
+  "version": 1
+}

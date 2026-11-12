@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "cdece1239bb62162b9fceb89a1cf67b3",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/ring_burner/parameters.json",
+  "version": 1
+}

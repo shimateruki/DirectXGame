@@ -19,6 +19,8 @@
 #include <Windows.h>
 
 // セーブデータ、ステージクリア状況、スターコイン、残機/コインを一元管理する
+// 関連：各シーンが進行を読み書きし、通常コインなどの保存予約と一時的な演出要求も保持する。
+// 主な入口：Initialize / CommitStageClear / FlushPendingSave
 class GameDataManager {
   public:
     static constexpr int kSaveSlotCount = 3;
@@ -727,17 +729,17 @@ class GameDataManager {
 
     int playTimeSeconds_ = 0;
     static constexpr int kMaxPlayTimeSeconds = 99 * 60 * 60 + 59 * 60 + 59;
-    float playTimeRemainder_ = 0.0f;
+    float playTimeRemainder_ = 0.0f; // プレイ時間を整数秒へ加える前の端数秒。
 
-    float saveDelaySeconds_ = 0.0f;
-    bool dirty_ = false;
-    int activeSlot_ = 0;
+    float saveDelaySeconds_ = 0.0f; // まとめて保存するまでの待ち秒数。
+    bool dirty_ = false; // メモリ上の進行が保存ファイルへ未反映か。
+    int activeSlot_ = 0; // 現在のセーブ枠。0始まり。
 
-    bool pendingRespawnIrisIn_ = false;
-    StageCheckpointRespawn pendingStageCheckpointRespawn_;
+    bool pendingRespawnIrisIn_ = false; // 再生成したシーンが一度だけ消費する復帰アイリス要求。
+    StageCheckpointRespawn pendingStageCheckpointRespawn_; // ファイル保存せず、次のシーン生成へ一度だけ渡す再開情報。
 
-    StageClearRewardPresentation pendingStageClearReward_;
-    StageSelectReturnPresentation pendingStageSelectReturn_;
+    StageClearRewardPresentation pendingStageClearReward_; // ステージセレクトが一度だけ消費する王冠数の演出要求。
+    StageSelectReturnPresentation pendingStageSelectReturn_; // ステージセレクトが一度だけ消費するゲート帰還演出の情報。
 
     std::vector<int> clearedStages_;
     std::vector<int> seenUnlockedStages_;

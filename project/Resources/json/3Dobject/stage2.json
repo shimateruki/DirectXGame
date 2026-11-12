@@ -6,7 +6,7 @@
         "id": "stage2",
         "resources": {
             "bgm": "",
-            "camera": "",
+            "camera": "Resources/json/camera/stage2_game_camera.json",
             "light": "Resources/json/light/stage2_magma.json",
             "skybox": "Resources/skybox/stage2_magma_fortress.dds"
         },

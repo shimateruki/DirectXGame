@@ -1,12 +1,14 @@
 #pragma once
 
-#include "GPUParticleManager.h"
+// BossGroundLocomotionの離着地に合わせる粒子発生。移動状態や攻撃の選択は呼出側が管理する。
+
+#include "GpuParticleManager.h"
 
 // 通常移動の着地だけに使う短い粉塵。攻撃の予告リングとは見分けられる形にします。
 namespace BossGroundHopVfx {
 
 inline void EmitPuff(const engine::Vector3& groundPosition, const engine::Vector4& color, float radius, bool landing) {
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
     if (!particles || !particles->IsInitialized()) {
         return;
     }
@@ -16,7 +18,7 @@ inline void EmitPuff(const engine::Vector3& groundPosition, const engine::Vector
         return;
     }
 
-    GPUParticleConfig config = preset->second;
+    GpuParticleConfig config = preset->second;
     config.emitPos = groundPosition;
     config.emitArea = {radius * 0.55f, 0.04f, radius * 0.55f};
     config.shapeRadius = radius * 0.62f;

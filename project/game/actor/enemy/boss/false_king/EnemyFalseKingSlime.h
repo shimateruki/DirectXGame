@@ -1,4 +1,5 @@
 #pragma once
+#include "game/actor/enemy/combat/EnemyAttackSelection.h"
 
 #include "BaseEnemy.h"
 
@@ -9,10 +10,12 @@
 #include <string>
 #include <vector>
 
-class EffectObject3d;
+class EffectObject3D;
 class BossChantVisual;
 
 /// <summary>ステージ3の最終ボス。3形態の攻撃と王冠ギミックを管理します。</summary>
+// 関連：BaseEnemyの戦闘基盤を使い、登場・戦闘・撃破と王冠封印をシーンの演出へ接続する。
+// 主な入口：Initialize / Update / SetIntroPresentationActive
 class EnemyFalseKingSlime final : public BaseEnemy {
   public:
     /// <summary>ボスの攻撃選択と形態遷移の初期状態を作る。</summary>
@@ -22,7 +25,7 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     ~EnemyFalseKingSlime() override;
 
     /// <summary>モデル、攻撃プロファイル、初期姿勢と演出資源を準備する。</summary>
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// <summary>登場、形態遷移、攻撃、撃破の各状態を進める。</summary>
     void Update(float deltaTime) override;
@@ -45,7 +48,7 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     void OnSwitchEvent(bool active) override;
 
     /// <summary>Editor配置用にボスの設定を複製する。</summary>
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     /// <summary>管理スケールをボス本体と関連表示へ適用する。</summary>
     void ApplyManagedScale(const engine::Vector3& scale) override;
@@ -114,6 +117,10 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     /// <summary>登場カット中は通常攻撃を抑止し、姿勢の再生時間をTimelineへ合わせる。</summary>
     void SetIntroPresentationActive(bool active, float duration = 0.0f);
+    void EnableIntroPortal(bool enabled);
+    void UpdateIntroPortal(float time, float frameDeltaTime);
+    // Timelineの合図を受け取り、着地・構え・消失の演出を同じ時刻へ揃えます。
+    void ConfigureIntroTiming(float start, float landing, float pose, float closing, float auraEnd);
 
     /// <summary>形態を飛ばさないよう、HP変更前に最終戦の被ダメージを調整する。</summary>
     float FilterFinaleDamage(float damage);
@@ -156,8 +163,8 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
   private:
     /// <summary>通常材質で描く所有表示物を一箇所で列挙する。</summary>
-    void ForEachOwnedStandardVisual(const std::function<void(engine::Object3d*)>& visit) const;
-    bool finalDefeatHeld_ = false;
+    void ForEachOwnedStandardVisual(const std::function<void(engine::Object3D*)>& visit) const;
+    bool finalDefeatHeld_ = false; // シーンの撃破演出が終わるまで敵の最終解放を保留する。
     bool finalDefeatCompleted_ = false;
 
     enum class EncounterState {
@@ -189,9 +196,9 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     // 槍一本の予告・飛翔・着弾・消滅を追跡する。表示 Object を所有し、各 duration は秒。
     struct CrownLance {
-        std::unique_ptr<engine::Object3d> visual;
-        std::unique_ptr<engine::Object3d> aura;
-        std::unique_ptr<engine::Object3d> portal;
+        std::unique_ptr<engine::Object3D> visual;
+        std::unique_ptr<engine::Object3D> aura;
+        std::unique_ptr<engine::Object3D> portal;
 
         engine::Vector3 groundPosition{};
         engine::Vector3 portalPosition{};
@@ -215,8 +222,8 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     // 拡大する衝撃波の表示と前回半径。hitTarget で同じ波による重複命中を抑える。
     struct RoyalWave {
-        std::unique_ptr<engine::Object3d> visual;
-        std::unique_ptr<engine::Object3d> glow;
+        std::unique_ptr<engine::Object3D> visual;
+        std::unique_ptr<engine::Object3D> glow;
 
         engine::Vector3 center{};
 
@@ -236,8 +243,8 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     // 回転ビームの表示と寿命・再ダメージ用時計。angle と angularSpeed は回転計算に使う。
     struct RoyalBeam {
-        std::unique_ptr<engine::Object3d> visual;
-        std::unique_ptr<engine::Object3d> glow;
+        std::unique_ptr<engine::Object3D> visual;
+        std::unique_ptr<engine::Object3D> glow;
         engine::Vector3 origin{};
         float age = 0.0f;
         float delay = 0.0f;
@@ -251,8 +258,8 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     // 地面の予告印と炎を所有し、全体の経過と発動後の経過・ダメージ間隔を分けて保持する。
     struct UmbraFlamePortal {
-        std::unique_ptr<EffectObject3d> sigil;
-        std::unique_ptr<engine::Object3d> flame;
+        std::unique_ptr<EffectObject3D> sigil;
+        std::unique_ptr<engine::Object3D> flame;
         engine::Vector3 groundPosition{};
         float delay = 0.0f;
         float age = 0.0f;
@@ -263,10 +270,10 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     // 飛翔エフェクト一組と始終点。launchDelay・flightDuration・trailTimer は秒で扱う。
     struct AstralReaverOrb {
-        std::unique_ptr<EffectObject3d> halo;
-        std::unique_ptr<EffectObject3d> blade;
-        std::unique_ptr<EffectObject3d> arc;
-        std::unique_ptr<EffectObject3d> core;
+        std::unique_ptr<EffectObject3D> halo;
+        std::unique_ptr<EffectObject3D> blade;
+        std::unique_ptr<EffectObject3D> arc;
+        std::unique_ptr<EffectObject3D> core;
         engine::Vector3 origin{};
         engine::Vector3 destination{};
         float launchDelay = 0.0f;
@@ -277,30 +284,30 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     // 大槍の着弾演出を構成する表示部品をまとめて所有し、攻撃終了時の片付けを揃える。
     struct NightfallLancesVisual {
         // 一本の大槍が着地した後、エネルギーを収束させて範囲攻撃を放ちます。
-        std::unique_ptr<EffectObject3d> skySigil;
-        std::unique_ptr<EffectObject3d> skyCounterSigil;
-        std::unique_ptr<EffectObject3d> skyOuterRing;
-        std::unique_ptr<EffectObject3d> skyInnerRing;
+        std::unique_ptr<EffectObject3D> skySigil;
+        std::unique_ptr<EffectObject3D> skyCounterSigil;
+        std::unique_ptr<EffectObject3D> skyOuterRing;
+        std::unique_ptr<EffectObject3D> skyInnerRing;
 
-        std::unique_ptr<EffectObject3d> targetSigil;
-        std::unique_ptr<EffectObject3d> targetRing;
-        std::unique_ptr<EffectObject3d> innerRing;
+        std::unique_ptr<EffectObject3D> targetSigil;
+        std::unique_ptr<EffectObject3D> targetRing;
+        std::unique_ptr<EffectObject3D> innerRing;
 
-        std::unique_ptr<EffectObject3d> spearCore;
-        std::unique_ptr<EffectObject3d> spearGlow;
-        std::array<std::unique_ptr<EffectObject3d>, 3> barbs;
+        std::unique_ptr<EffectObject3D> spearCore;
+        std::unique_ptr<EffectObject3D> spearGlow;
+        std::array<std::unique_ptr<EffectObject3D>, 3> barbs;
 
-        std::unique_ptr<EffectObject3d> impactRing;
-        std::unique_ptr<EffectObject3d> impactCore;
-        std::unique_ptr<EffectObject3d> groundArc;
-        std::array<std::unique_ptr<EffectObject3d>, 6> groundLightning;
+        std::unique_ptr<EffectObject3D> impactRing;
+        std::unique_ptr<EffectObject3D> impactCore;
+        std::unique_ptr<EffectObject3D> groundArc;
+        std::array<std::unique_ptr<EffectObject3D>, 6> groundLightning;
 
-        std::unique_ptr<EffectObject3d> impactBeam;
-        std::unique_ptr<EffectObject3d> impactBeamHalo;
-        std::array<std::unique_ptr<EffectObject3d>, 3> impactLightning;
+        std::unique_ptr<EffectObject3D> impactBeam;
+        std::unique_ptr<EffectObject3D> impactBeamHalo;
+        std::array<std::unique_ptr<EffectObject3D>, 3> impactLightning;
 
-        std::unique_ptr<EffectObject3d> blastRing;
-        std::unique_ptr<EffectObject3d> blastShell;
+        std::unique_ptr<EffectObject3D> blastRing;
+        std::unique_ptr<EffectObject3D> blastShell;
 
         float activeAge = 0.0f;
         float particleTimer = 0.0f;
@@ -312,9 +319,9 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     // 第2形態の主槍を囲む小槍。着弾時刻をずらして回避経路を作ります。
     struct SealNightfallSatellite {
-        std::unique_ptr<EffectObject3d> sigil;
-        std::unique_ptr<EffectObject3d> core;
-        std::unique_ptr<EffectObject3d> glow;
+        std::unique_ptr<EffectObject3D> sigil;
+        std::unique_ptr<EffectObject3D> core;
+        std::unique_ptr<EffectObject3D> glow;
         engine::Vector3 ground{};
         float impactAge = 0.0f;
         bool damageApplied = false;
@@ -364,6 +371,9 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     /// <summary>プレビューで指定された攻撃種別を返す。</summary>
     AttackKind ResolveDebugAttack() const;
+
+    /// 本編とプレビューが共有する攻撃種別・IDの対応表を返す。
+    std::span<const EnemyAttackSelection::Entry<AttackKind>> GetAttackEntries() const;
 
     /// <summary>攻撃種別に対応するプロファイルIDを返す。</summary>
     const char* GetAttackId(AttackKind kind) const;
@@ -456,11 +466,11 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     void UpdateSealNightfallSatellites(float deltaTime, bool active);
 
     /// <summary>指定モデルと材質設定の王冠攻撃用Objectを生成する。</summary>
-    std::unique_ptr<engine::Object3d> CreateRoyalVisual(const std::string& name, const std::string& model, int materialType,
+    std::unique_ptr<engine::Object3D> CreateRoyalVisual(const std::string& name, const std::string& model, int materialType,
                                                 const engine::Vector4& color, float emissive) const;
 
     /// <summary>指定モデルの王冠攻撃用Meshを生成する。</summary>
-    std::unique_ptr<engine::Object3d> CreateRoyalMesh(const std::string& name, const std::string& model, const engine::Vector4& color,
+    std::unique_ptr<engine::Object3D> CreateRoyalMesh(const std::string& name, const std::string& model, const engine::Vector4& color,
                                               float emissive) const;
 
     /// <summary>指定位置の真下にある地面の着弾点を探す。</summary>
@@ -532,9 +542,9 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     AttackKind currentAttack_ = AttackKind::None;
     AttackState attackState_ = AttackState::Idle;
 
-    engine::Vector3 baseScale_{1.0f, 1.0f, 1.0f};
+    engine::Vector3 baseScale_{1.0f, 1.0f, 1.0f}; // 攻撃・被弾の変形を重ねる前の基準倍率。
 
-    engine::Vector3 lockedDirection_{0.0f, 0.0f, 1.0f};
+    engine::Vector3 lockedDirection_{0.0f, 0.0f, 1.0f}; // 攻撃の狙いを確定した水平単位方向。
     engine::Vector3 lockedTargetPosition_{};
 
     engine::Vector3 attackStartPosition_{};
@@ -547,32 +557,32 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     std::vector<RoyalBeam> royalBeams_;
 
     std::vector<UmbraFlamePortal> umbraFlames_;
-    std::unique_ptr<EffectObject3d> umbraFlameNetwork_;
+    std::unique_ptr<EffectObject3D> umbraFlameNetwork_;
     std::unique_ptr<BossChantVisual> spellChant_;
     bool umbraFlameFanHit_ = false;
 
     std::array<AstralReaverOrb, 3> astralReaverOrbs_;
-    std::array<std::unique_ptr<EffectObject3d>, 3> astralReaverImpactRings_;
-    std::unique_ptr<EffectObject3d> astralReaverTargetRing_;
-    std::unique_ptr<EffectObject3d> astralReaverImpactCore_;
+    std::array<std::unique_ptr<EffectObject3D>, 3> astralReaverImpactRings_;
+    std::unique_ptr<EffectObject3D> astralReaverTargetRing_;
+    std::unique_ptr<EffectObject3D> astralReaverImpactCore_;
 
     float astralReaverElapsed_ = 0.0f;
-    float astralReaverImpactAge_ = -1.0f;
+    float astralReaverImpactAge_ = -1.0f; // 主弾が着弾してからの秒数。負値なら未着弾。
     bool astralReaverDamageApplied_ = false;
 
     NightfallLancesVisual nightfallLances_;
     std::array<SealNightfallSatellite, 3> sealNightfallSatellites_;
 
-    std::unique_ptr<engine::Object3d> shockwaveChargeVisual_;
-    std::unique_ptr<engine::Object3d> rushWingsVisual_;
-    std::unique_ptr<engine::Object3d> dominionSigilVisual_;
+    std::unique_ptr<engine::Object3D> shockwaveChargeVisual_;
+    std::unique_ptr<engine::Object3D> rushWingsVisual_;
+    std::unique_ptr<engine::Object3D> dominionSigilVisual_;
 
-    float attackTimer_ = 0.0f;
-    float attackStateDuration_ = 0.0f;
-    float attackCooldown_ = 1.2f;
+    float attackTimer_ = 0.0f; // 攻撃の段階切替までの残り秒数。
+    float attackStateDuration_ = 0.0f; // 現在の攻撃段階の全長（秒）。残り時間の正規化に使う。
+    float attackCooldown_ = 1.2f; // 攻撃の再使用までの残り秒数。
 
-    float actionTimer_ = 0.0f;
-    float effectTimer_ = 0.0f;
+    float actionTimer_ = 0.0f; // 技内の次の発生処理までの残り秒数。
+    float effectTimer_ = 0.0f; // 次の粒子・表示更新までの残り秒数。
 
     float phaseTransitionTimer_ = 0.0f;
     float phaseTransitionDuration_ = 1.55f;
@@ -585,11 +595,11 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     float shockwaveJumpHeight_ = 6.4f;
 
     float dominionLanceTimer_ = 0.0f;
-    float ambientSparkTimer_ = 0.0f;
+    float ambientSparkTimer_ = 0.0f; // 周囲の火花の発生までの残り秒数。
 
-    int actionIndex_ = 0;
+    int actionIndex_ = 0; // 技内で次に発生させる弾・着弾点の番号。
     int lanceSpawnSerial_ = 0;
-    int automaticAttackSerial_ = 0;
+    int automaticAttackSerial_ = 0; // 自動選択した技の通算番号。攻撃周期をまたいで進む。
 
     // 一巡するまで技を再選択しないシャッフル袋です。
     std::array<AttackKind, 8> attackCycle_{};
@@ -598,13 +608,13 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     int attackCyclePhase_ = 0;
     AttackKind lastAutomaticAttack_ = AttackKind::None;
     std::mt19937 attackRandom_{std::random_device{}()};
-    int battlePhase_ = 1;
-    int pendingBattlePhase_ = 1;
+    int battlePhase_ = 1; // 現在の戦闘形態。1から始まる。
+    int pendingBattlePhase_ = 1; // 形態移行演出の完了後に確定する形態番号。
     int rushStep_ = 0;
     bool rushDamageApplied_ = false;
     bool shockwaveLanded_ = false;
-    bool warningTriggered_ = false;
-    bool hasBaseScale_ = false;
+    bool warningTriggered_ = false; // 現在の技で予告の強調を一度だけ発生させるための印。
+    bool hasBaseScale_ = false; // モデルの基準倍率を一度取得したか。
     std::string debugPreviewAttackId_;
 
     EncounterState encounterState_ = EncounterState::Normal;
@@ -621,7 +631,7 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     float authoredEmissive_ = 1.0f;
 
     float encounterTimer_ = 0.0f;
-    float idleTimer_ = 0.0f;
+    float idleTimer_ = 0.0f; // 待機中の見た目に使う経過秒数。
     float travelPhase_ = 0.0f;
     bool scriptedMovementThisFrame_ = false;
 
@@ -645,10 +655,10 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     struct CrownSeal {
         // 攻撃可能な結晶本体。所有権はボス、衝突登録は明示的に解除します。
         std::unique_ptr<BaseEnemy> crystal;
-        std::unique_ptr<engine::Object3d> ring;
-        std::unique_ptr<engine::Object3d> link;
-        std::unique_ptr<engine::Object3d> gem;
-        std::array<std::unique_ptr<EffectObject3d>, 3> energyPulses;
+        std::unique_ptr<engine::Object3D> ring;
+        std::unique_ptr<engine::Object3D> link;
+        std::unique_ptr<engine::Object3D> gem;
+        std::array<std::unique_ptr<EffectObject3D>, 3> energyPulses;
         engine::Vector3 position{};
         bool broken = false;
         float breakAge = 0.0f;
@@ -676,35 +686,51 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     bool pendingDebugSeals_ = false;
     bool introPresentationActive_ = false;
+    void UpdateState(float deltaTime);
+    void UpdateBossAura(float deltaTime);
+    void UpdateAuraVisual(float strength, float poseBurst, float deltaTime);
+    void AlignBossAura(Camera* camera);
+    void ClearBossAura();
+    float bossAuraStrength_ = 0.0f;
+    float bossAuraTime_ = 0.0f;
+    bool introPortalEnabled_ = false;
+    float bossAuraTimer_ = 0.0f;
+    std::unique_ptr<engine::Object3D> introPortal_;
+    std::unique_ptr<engine::Object3D> bossAura_;
+    std::unique_ptr<engine::Object3D> introShockwave_;
+    float introWidth_ = 0.0f, introHeight_ = 0.0f;
+    float introPreviousTime_ = 0.0f;
+    float introStartTime_ = 1.1f, introLandTime_ = 3.45f, introPoseTime_ = 4.1f;
+    float introCloseTime_ = 4.3f, introAuraEndTime_ = 6.0f;
     float introPresentationDuration_ = 4.2f;
     bool pendingDebugInterlude_ = false;
 
     engine::Vector3 sealLockedTarget_{};
 
     // 第二形態の障壁、足元の術式、全域攻撃の光をボスが所有します。
-    std::unique_ptr<EffectObject3d> crownShieldRing_;
-    std::unique_ptr<EffectObject3d> crownShieldShell_;
-    std::unique_ptr<engine::Object3d> crownShieldBarrier_;
-    std::unique_ptr<EffectObject3d> crownCastFloor_;
-    std::unique_ptr<EffectObject3d> crownArenaRing_;
-    std::unique_ptr<EffectObject3d> crownBarrageFlash_;
-    std::unique_ptr<EffectObject3d> crownBarrageSkySigil_;
-    std::unique_ptr<EffectObject3d> crownBarrageSkyCounterSigil_;
-    std::unique_ptr<EffectObject3d> crownBarrageSkyOuterRing_;
-    std::unique_ptr<EffectObject3d> crownBarrageSkyInnerRing_;
+    std::unique_ptr<EffectObject3D> crownShieldRing_;
+    std::unique_ptr<EffectObject3D> crownShieldShell_;
+    std::unique_ptr<engine::Object3D> crownShieldBarrier_;
+    std::unique_ptr<EffectObject3D> crownCastFloor_;
+    std::unique_ptr<EffectObject3D> crownArenaRing_;
+    std::unique_ptr<EffectObject3D> crownBarrageFlash_;
+    std::unique_ptr<EffectObject3D> crownBarrageSkySigil_;
+    std::unique_ptr<EffectObject3D> crownBarrageSkyCounterSigil_;
+    std::unique_ptr<EffectObject3D> crownBarrageSkyOuterRing_;
+    std::unique_ptr<EffectObject3D> crownBarrageSkyInnerRing_;
 
     // 地表の赤い蓄積光、立体オーラ、二重の全域放電、着弾光、頭上の蓄積光。
-    std::array<std::unique_ptr<EffectObject3d>, 6> crownBarrageLayers_;
+    std::array<std::unique_ptr<EffectObject3D>, 6> crownBarrageLayers_;
 
     // 詠唱失敗時に円形闘技場へ分散して落ちる槍です。
     struct SealBarrageSpear {
-        std::unique_ptr<engine::Object3d> model;
-        std::unique_ptr<EffectObject3d> glow;
-        std::unique_ptr<EffectObject3d> portal;
-        std::unique_ptr<EffectObject3d> impactLightning;
-        std::unique_ptr<EffectObject3d> groundArc;
-        std::unique_ptr<EffectObject3d> impactArc;
-        std::unique_ptr<EffectObject3d> impactBeam;
+        std::unique_ptr<engine::Object3D> model;
+        std::unique_ptr<EffectObject3D> glow;
+        std::unique_ptr<EffectObject3D> portal;
+        std::unique_ptr<EffectObject3D> impactLightning;
+        std::unique_ptr<EffectObject3D> groundArc;
+        std::unique_ptr<EffectObject3D> impactArc;
+        std::unique_ptr<EffectObject3D> impactBeam;
         engine::Vector3 ground{};
         float delay = 0.0f;
         float size = 1.0f;

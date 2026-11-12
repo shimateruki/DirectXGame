@@ -162,6 +162,7 @@ void Player::BeginEnemyMorphRelease(bool expired) {
     UpdateColor();
 
     enemyMorphReleaseActive_ = true;
+    ClearHurtFace();
     enemyMorphReleaseBurstStarted_ = false;
     enemyMorphReleaseExpired_ = expired;
     enemyMorphReleaseTimer_ = 0.0f;
@@ -381,7 +382,7 @@ void Player::RestoreEnemyMorphAppearance() {
     const auto& children = GetChildren();
 
     for (size_t i = 0; i < children.size(); ++i) {
-        engine::Object3d* child = children[i];
+        engine::Object3D* child = children[i];
 
         if (child) {
             child->SetColor(savedMorphColor_);

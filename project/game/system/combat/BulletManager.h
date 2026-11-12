@@ -1,24 +1,24 @@
 #pragma once
-#include "Bullet.h"
+#include "game/actor/bullet/Bullet.h"
 #include <list>
 #include <memory>
 #include <string>
 
 // 前方宣言
-namespace engine { class Object3dCommon; }
+namespace engine { class Object3DCommon; }
 class CollisionManager;
 
 // 弾の描画と追跡・着弾演出をまとめて指定します。衝突半径と寿命は Fire() の引数です。
 struct BulletVisualConfig {
     std::string debugLabel; // 攻撃の構成名。生成元の弾部品をプレビューで識別します。
     bool previewOnly = false;
-    const engine::Object3d* previewOwner = nullptr;
+    const engine::Object3D* previewOwner = nullptr; // プレビュー生成元の借用参照。終了時にその所有者の弾だけを回収するための識別子。
 
     bool collisionRadiusIsWorld = false; // 新しい弾部品では表示スケールと判定半径を独立させます。
-    float explosionRadius = 0.0f;
+    float explosionRadius = 0.0f; // 0なら爆発範囲を付けない。正値は爆風判定の半径。
 
     int32_t materialType = 0;
-    BlendMode blendMode = BlendMode::kNormal;
+    BlendMode blendMode = BlendMode::Normal;
     engine::Vector4 color = engine::Colors::White;
     float emissive = 1.0f;
     float visualScale = 1.0f;
@@ -44,12 +44,12 @@ struct BulletVisualConfig {
     std::string impactDebrisSecondaryPreset = "";
     float impactDebrisScale = 1.0f;
     bool impactOnExpiry = false;
-    bool destroyOnSolidCastHit = false;
+    bool destroyOnSolidCastHit = false; // 通常の衝突通知に加え、移動経路の遮蔽物Castでも弾を終了させる。
 
     // 炎をまとわせる弾の専用プリセット。弾の半径に合わせて粒子を拡大します。
     std::string burningPreset = "";
 
-    float trailInterval = 0.05f;
+    float trailInterval = 0.05f; // 軌跡粒子を出す間隔（秒）。
     float trailSpeedScale = 1.0f;
     bool trailReverseDirection = false;
 
@@ -62,6 +62,8 @@ struct BulletVisualConfig {
 /// <summary>
 /// ゲーム中の弾の生成、更新、描画を管理します。
 /// </summary>
+// 関連：Bulletを所有し、本編とEditorのプレビュー弾を分けて更新・描画する。
+// 主な入口：Initialize / Update / Clear / Finalize
 class BulletManager {
   public:
     static BulletManager* GetInstance();
@@ -69,7 +71,7 @@ class BulletManager {
     /// <summary>
     /// 描画と衝突管理への参照を受け取る。どちらも所有しない。
     /// </summary>
-    void Initialize(engine::Object3dCommon* common, CollisionManager* colManager);
+    void Initialize(engine::Object3DCommon* common, CollisionManager* colManager);
 
     /// <summary>
     /// 終了処理
@@ -79,7 +81,7 @@ class BulletManager {
     // リプレイ分岐など、時間軸を切り替える際に残存弾を安全に破棄します。
     void Clear();
     // 編集を止めた砲台の弾だけ消し、他の砲台やゲーム用の弾を保ちます。
-    void ClearPreviewForOwner(const engine::Object3d* owner);
+    void ClearPreviewForOwner(const engine::Object3D* owner);
 
     /// <summary>
     /// 全ての弾を更新し、死亡した弾を衝突管理から解除して破棄する。
@@ -138,6 +140,6 @@ class BulletManager {
     decltype(bullets_) savedEditorBullets_;
 #endif
 
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
     CollisionManager* colManager_ = nullptr;
 };

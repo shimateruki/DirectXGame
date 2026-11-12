@@ -7,12 +7,12 @@
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshRenderer.h"
 #include "SceneManager.h"
 #include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "game/actor/enemy/animation/BossGroundHopVfx.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -72,13 +72,21 @@ void EnemyMagmaSlime::LaunchNextMagmaBlob() {
     blob.visual->UpdateWorldMatrix(true);
 
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    const char* activePreset = attack.activeVfx.empty() ? kMortarTrailPreset : attack.activeVfx.c_str();
+    // 発射直後も飛行中と同じ攻撃設定から軌跡を選ぶ。
+    const char* activePreset = MagmaAttackVfx::kMortar.Resolve(&attack);
     EmitDirectedPreset(activePreset, blob.start, lockedDirection_ + engine::Vector3{0.0f, 1.0f, 0.0f}, 1.18f);
     magmaBlobs_.push_back(std::move(blob));
 }
 
 void EnemyMagmaSlime::UpdateMagmaBlobs(float deltaTime) {
     // 二次ベジエ曲線で弾を飛ばし、終点へ達した一度だけ着弾処理を行う。
+    if (magmaBlobs_.empty()) {
+        return;
+    }
+
+    // 攻撃状態が次の技へ移っても、飛行中の溶岩弾は溶岩弾の設定を使う。
+    const auto& attack = GetAttackDefinition(kMagmaMortarAttackId);
+    const char* trailPreset = MagmaAttackVfx::kMortar.Resolve(&attack);
     auto blob = magmaBlobs_.begin();
 
     while (blob != magmaBlobs_.end()) {
@@ -102,7 +110,7 @@ void EnemyMagmaSlime::UpdateMagmaBlobs(float deltaTime) {
         blob->visual->UpdateWorldMatrix(true);
 
         if (std::fmod(blob->age, kMortarTrailInterval) < deltaTime) {
-            EmitDirectedPreset(kMortarTrailPreset, position, NormalizePlanar(blob->target - blob->start) * -1.0f, 1.1f);
+            EmitDirectedPreset(trailPreset, position, NormalizePlanar(blob->target - blob->start) * -1.0f, 1.1f);
         }
 
         if (progress >= 1.0f && !blob->impacted) {
@@ -283,7 +291,7 @@ void EnemyMagmaSlime::EnsureRushFlameVisuals() {
         rushFlameVisuals_[index] =
             CreateMagmaVisual("MagmaSlime_RushFlame_" + std::to_string(index), "Primitives/sphere", kFireMaterialType,
                               {1.0f, 0.19f, 0.018f, 0.78f}, 2.9f);
-        engine::Object3d* flame = rushFlameVisuals_[index].get();
+        engine::Object3D* flame = rushFlameVisuals_[index].get();
 
         if (!flame) {
             continue;
@@ -292,7 +300,7 @@ void EnemyMagmaSlime::EnsureRushFlameVisuals() {
         flame->SetIsVisible(false);
 
         if (MeshRenderer* renderer = flame->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
+            if (MeshRenderer::WaterParamForGpu* fire = renderer->GetWaterParamData()) {
                 fire->effectType = 2.0f;
                 fire->waveSpeed = 3.4f;
                 fire->waveFrequency = 3.2f;
@@ -309,10 +317,10 @@ void EnemyMagmaSlime::EnsureRushFlameVisuals() {
 
 void EnemyMagmaSlime::UpdateRushFlameVisuals(const engine::Vector3& position, float progress, float deltaTime) {
     // 本体の前後左右へ炎を追従させ、突進の開始と終了では明るさを弱める。
-    constexpr std::array<float, 5> sideOffsets = {-0.74f, 0.0f, 0.74f, -0.42f, 0.42f};
-    constexpr std::array<float, 5> backOffsets = {0.20f, -0.08f, 0.20f, 0.92f, 0.92f};
-    constexpr std::array<float, 5> heightOffsets = {0.52f, 0.70f, 0.52f, 0.36f, 0.36f};
-    constexpr std::array<float, 5> sizeMultipliers = {1.04f, 1.34f, 1.04f, 0.82f, 0.82f};
+    constexpr std::array<float, 5> kSideOffsets = {-0.74f, 0.0f, 0.74f, -0.42f, 0.42f};
+    constexpr std::array<float, 5> kBackOffsets = {0.20f, -0.08f, 0.20f, 0.92f, 0.92f};
+    constexpr std::array<float, 5> kHeightOffsets = {0.52f, 0.70f, 0.52f, 0.36f, 0.36f};
+    constexpr std::array<float, 5> kSizeMultipliers = {1.04f, 1.34f, 1.04f, 0.82f, 0.82f};
     const engine::Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
     const float horizontalScale = (std::max)(1.0f, (std::abs(baseScale_.x) + std::abs(baseScale_.z)) * 0.5f);
     const float verticalScale = (std::max)(1.0f, std::abs(baseScale_.y));
@@ -321,17 +329,17 @@ void EnemyMagmaSlime::UpdateRushFlameVisuals(const engine::Vector3& position, fl
                            SmoothStep01(std::clamp((1.0f - progress) / 0.10f, 0.0f, 1.0f));
 
     for (std::size_t index = 0; index < rushFlameVisuals_.size(); ++index) {
-        engine::Object3d* flame = rushFlameVisuals_[index].get();
+        engine::Object3D* flame = rushFlameVisuals_[index].get();
 
         if (!flame) {
             continue;
         }
 
         engine::Vector3 flamePosition = position;
-        flamePosition = flamePosition + side * (sideOffsets[index] * horizontalScale);
-        flamePosition = flamePosition - lockedDirection_ * (backOffsets[index] * horizontalScale);
-        flamePosition.y += heightOffsets[index] * verticalScale;
-        const float scale = horizontalScale * sizeMultipliers[index] * speedPulse * (0.78f + envelope * 0.44f);
+        flamePosition = flamePosition + side * (kSideOffsets[index] * horizontalScale);
+        flamePosition = flamePosition - lockedDirection_ * (kBackOffsets[index] * horizontalScale);
+        flamePosition.y += kHeightOffsets[index] * verticalScale;
+        const float scale = horizontalScale * kSizeMultipliers[index] * speedPulse * (0.78f + envelope * 0.44f);
         flame->SetTranslate(flamePosition);
         flame->SetScale({scale, scale * (0.88f + verticalScale * 0.08f), scale});
         flame->SetColor({
@@ -343,8 +351,8 @@ void EnemyMagmaSlime::UpdateRushFlameVisuals(const engine::Vector3& position, fl
         flame->SetIsVisible(envelope > 0.01f || progress <= 0.02f);
 
         if (MeshRenderer* renderer = flame->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
-                fire->flowSpeedX = sideOffsets[index] * -0.18f;
+            if (MeshRenderer::WaterParamForGpu* fire = renderer->GetWaterParamData()) {
+                fire->flowSpeedX = kSideOffsets[index] * -0.18f;
                 fire->flowSpeedY = 1.0f;
                 fire->effectIntensity = 1.45f + envelope * 0.32f;
             }
@@ -357,7 +365,7 @@ void EnemyMagmaSlime::UpdateRushFlameVisuals(const engine::Vector3& position, fl
 
 void EnemyMagmaSlime::ClearRushFlameVisuals() {
     // 次回の突進で古い炎が出現位置に残らないよう、所有するメッシュを解放する。
-    for (std::unique_ptr<engine::Object3d>& flame : rushFlameVisuals_) {
+    for (std::unique_ptr<engine::Object3D>& flame : rushFlameVisuals_) {
         flame.reset();
     }
 }
@@ -395,7 +403,7 @@ void EnemyMagmaSlime::UpdateVolcanicSlam(float, engine::Vector3& velocity) {
     SetGrounded(slamImpactSpawned_);
 
     if (effectTimer_ <= 0.0f && progress < 0.90f) {
-        EmitDirectedPreset(attack.activeVfx.empty() ? kMortarTrailPreset : attack.activeVfx.c_str(),
+        EmitDirectedPreset(attack.activeVfx.empty() ? MagmaAttackVfx::kMortar.defaultName : attack.activeVfx.c_str(),
                            position + engine::Vector3{0.0f, 0.20f, 0.0f},
                            {-lockedDirection_.x * 0.22f, -1.0f, -lockedDirection_.z * 0.22f}, 1.18f);
         effectTimer_ += 0.058f;
@@ -439,9 +447,9 @@ void EnemyMagmaSlime::ImpactVolcanicSlam() {
 void EnemyMagmaSlime::SpawnSlamRings(const engine::Vector3& position) {
     // 三つの波紋を時間差で準備し、前の波紋の外周から順に広げる。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    constexpr std::array<float, 3> delays = {0.0f, 0.14f, 0.29f};
+    constexpr std::array<float, 3> kDelays = {0.0f, 0.14f, 0.29f};
 
-    for (std::size_t index = 0; index < delays.size(); ++index) {
+    for (std::size_t index = 0; index < kDelays.size(); ++index) {
         MagmaRing ring;
         ring.visual = CreateMagmaVisual("MagmaSlime_Shockwave_" + std::to_string(index), "Primitives/cylinder",
                                         kShockwaveMaterialType, {1.0f, 0.22f, 0.015f, 0.82f}, 2.4f);
@@ -451,7 +459,7 @@ void EnemyMagmaSlime::SpawnSlamRings(const engine::Vector3& position) {
 
         ring.position = FindGroundPoint(position);
         ring.position.y += 0.065f + static_cast<float>(index) * 0.012f;
-        ring.delay = delays[index];
+        ring.delay = kDelays[index];
         ring.lifetime = 0.72f + static_cast<float>(index) * 0.06f;
         ring.startRadius = 0.75f + static_cast<float>(index) * 0.25f;
         ring.endRadius = (std::max)(6.5f, attack.radius * 1.65f) + static_cast<float>(index) * 1.35f;
@@ -623,7 +631,7 @@ void EnemyMagmaSlime::UpdateMagmaPillars(float deltaTime) {
         pillar->visual->SetIsVisible(envelope > 0.015f);
 
         if (MeshRenderer* renderer = pillar->visual->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
+            if (MeshRenderer::WaterParamForGpu* fire = renderer->GetWaterParamData()) {
                 fire->effectScaleX = std::clamp((pillar->radius * 2.0f * radiusPulse) / activeHeight, 0.18f, 2.6f);
                 fire->effectScaleY = 1.0f;
                 fire->flowSpeedX = std::sin(localAge * 2.2f) * 0.16f;
@@ -708,7 +716,7 @@ void EnemyMagmaSlime::BeginLavaSpiral() {
                 surge.crestVisual->SetIsVisible(false);
 
                 if (MeshRenderer* renderer = surge.crestVisual->GetMeshRenderer()) {
-                    if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
+                    if (MeshRenderer::WaterParamForGpu* fire = renderer->GetWaterParamData()) {
                         fire->effectType = 2.0f;
                         fire->waveSpeed = 3.1f;
                         fire->waveFrequency = 3.6f;
@@ -785,7 +793,7 @@ void EnemyMagmaSlime::UpdateMagmaSurges(float deltaTime) {
             surge->crestVisual->SetIsVisible(progress < 1.0f);
 
             if (MeshRenderer* renderer = surge->crestVisual->GetMeshRenderer()) {
-                if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
+                if (MeshRenderer::WaterParamForGpu* fire = renderer->GetWaterParamData()) {
                     fire->flowSpeedX = surge->curveAmount * 0.42f;
                     fire->flowSpeedY = 0.92f;
                     fire->effectIntensity = 1.48f + (1.0f - progress) * 0.24f;
@@ -837,7 +845,7 @@ void EnemyMagmaSlime::PrepareFireColumnTargets() {
 
     // 炎柱の外周は中央の攻撃半径より広く取り、3本の柱と線を読み分けやすくします。
     const float orbitRadius = attack.radius * 1.6f;
-    const AABB bounds = GetModelWorldAABB();
+    const Aabb bounds = GetModelWorldAabb();
     const float bossRadius =
         (std::max)({(bounds.max.x - bounds.min.x) * 0.5f, (bounds.max.z - bounds.min.z) * 0.5f, baseScale_.x * 0.84f});
     const float maxDistance = (std::max)(attack.maxRange, 1.0f);
@@ -860,24 +868,24 @@ void EnemyMagmaSlime::CreateFireColumnSigils() {
     if (!GetObjectCommon())
         return;
     for (std::size_t index = 0; index < fireColumnSigils_.size(); ++index) {
-        auto sigil = std::make_unique<EffectObject3d>();
+        auto sigil = std::make_unique<EffectObject3D>();
         sigil->Initialize(GetObjectCommon());
         if (!sigil->LoadFromJson(kFireChantEffect))
             continue;
         sigil->SetName("MagmaSlime_FireColumnSigil_" + std::to_string(index));
-        sigil->SetBlendMode(BlendMode::kAdd);
+        sigil->SetBlendMode(BlendMode::Add);
         sigil->SetRevealProgress(0.0f);
         sigil->SetIsVisible(false);
         fireColumnSigils_[index] = std::move(sigil);
     }
 
     for (std::size_t index = 0; index < fireColumnLinks_.size(); ++index) {
-        auto link = std::make_unique<EffectObject3d>();
+        auto link = std::make_unique<EffectObject3D>();
         link->Initialize(GetObjectCommon());
         if (!link->LoadFromJson(kFireColumnLinkEffect))
             continue;
         link->SetName("MagmaSlime_FireColumnLink_" + std::to_string(index));
-        link->SetBlendMode(BlendMode::kAdd);
+        link->SetBlendMode(BlendMode::Add);
         link->SetRevealMode(1);
         link->SetRevealProgress(0.0f);
         link->SetIsVisible(false);
@@ -896,7 +904,7 @@ void EnemyMagmaSlime::UpdateFireColumnSigils(float deltaTime) {
     const float fade = windingUp ? 1.0f : SmoothStep01(std::clamp(attackTimer_ / 0.95f, 0.0f, 1.0f));
 
     for (std::size_t index = 0; index < fireColumnSigils_.size(); ++index) {
-        EffectObject3d* sigil = fireColumnSigils_[index].get();
+        EffectObject3D* sigil = fireColumnSigils_[index].get();
         if (!sigil)
             continue;
         const bool center = index == fireColumnOuterPositions_.size();
@@ -924,7 +932,7 @@ void EnemyMagmaSlime::UpdateFireColumnSigils(float deltaTime) {
     const float linkReveal = SmoothStep01(std::clamp((windupProgress - 0.38f) / 0.52f, 0.0f, 1.0f));
 
     for (std::size_t index = 0; index < fireColumnLinks_.size(); ++index) {
-        EffectObject3d* link = fireColumnLinks_[index].get();
+        EffectObject3D* link = fireColumnLinks_[index].get();
         if (!link)
             continue;
         const engine::Vector3& a = fireColumnOuterPositions_[index];
@@ -955,7 +963,7 @@ void EnemyMagmaSlime::BeginFireColumn() {
                                   kFireMaterialType, {1.0f, 0.44f, 0.06f, 0.82f}, 3.0f);
         if (flame) {
             if (MeshRenderer* renderer = flame->GetMeshRenderer()) {
-                if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
+                if (MeshRenderer::WaterParamForGpu* fire = renderer->GetWaterParamData()) {
                     // 閉じたメッシュの内部に連続した炎柱を描きます。
                     fire->effectType = 6.0f;
                     fire->waveSpeed = index < 3 ? 1.35f : 1.55f;
@@ -988,7 +996,7 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
 
     // 三本を順に立て、中央の紋章が完成してから主柱を噴き上げます。
     for (std::size_t index = 0; index < fireColumnVisuals_.size(); ++index) {
-        engine::Object3d* flame = fireColumnVisuals_[index].get();
+        engine::Object3D* flame = fireColumnVisuals_[index].get();
         if (!flame)
             continue;
         const bool center = index == fireColumnOuterPositions_.size();
@@ -1014,7 +1022,7 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
         flame->SetColor({1.0f, center ? 0.58f : 0.38f, 0.035f, (center ? 0.94f : 0.75f) * envelope});
 
         if (MeshRenderer* renderer = flame->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
+            if (MeshRenderer::WaterParamForGpu* fire = renderer->GetWaterParamData()) {
                 // 炎柱だけでディゾルブ進行値として使い、下部から徐々にほどけさせます。
                 fire->effectSoftness = dissolve;
             }
@@ -1029,17 +1037,19 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
 
     // 終了前に発生を止めると、残った火の粉が炎柱より遅れて自然に消えます。
     if (effectTimer_ <= 0.0f && attackTimer_ > 0.78f) {
+        // 外周と中央の柱に使う火の粉を同じ設定から選ぶ。
+        const char* streamPreset = MagmaAttackVfx::kFireColumn.Resolve(&attack);
         const float layerY = (static_cast<int>(elapsed / 0.16f) % 2 == 0) ? 2.0f : 6.0f;
 
         for (std::size_t index = 0; index < fireColumnOuterPositions_.size(); ++index) {
             if (elapsed <= static_cast<float>(index) * outerSpacing)
                 continue;
-            EmitDirectedPreset(kFireColumnStreamPreset, fireColumnOuterPositions_[index] + engine::Vector3{0.0f, layerY, 0.0f},
+            EmitDirectedPreset(streamPreset, fireColumnOuterPositions_[index] + engine::Vector3{0.0f, layerY, 0.0f},
                                {0.0f, 1.0f, 0.0f}, 0.82f);
         }
 
         if (elapsed >= blastStart) {
-            EmitDirectedPreset(kFireColumnStreamPreset, fireColumnCenter_ + engine::Vector3{0.0f, layerY + 1.0f, 0.0f},
+            EmitDirectedPreset(streamPreset, fireColumnCenter_ + engine::Vector3{0.0f, layerY + 1.0f, 0.0f},
                                {0.0f, 1.0f, 0.0f}, 1.16f);
             for (int sparkIndex = 0; sparkIndex < 3; ++sparkIndex) {
                 const float angle = idleTimer_ * 0.95f + static_cast<float>(sparkIndex) * (2.0f * kPi / 3.0f);
@@ -1049,7 +1059,7 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
                     std::sin(angle) * attack.radius * 0.77f,
                 };
 
-                EmitDirectedPreset(kFireColumnStreamPreset, fireColumnCenter_ + rim, {0.0f, 1.0f, 0.0f}, 1.05f);
+                EmitDirectedPreset(streamPreset, fireColumnCenter_ + rim, {0.0f, 1.0f, 0.0f}, 1.05f);
             }
         }
 
@@ -1113,7 +1123,8 @@ void EnemyMagmaSlime::UpdateMagmaFlood(float deltaTime) {
         }
 
         if (!cell->burstSpawned) {
-            EmitDirectedPreset(kFloodSplashPreset, cell->position, cell->direction + engine::Vector3{0.0f, 0.72f, 0.0f}, 1.2f);
+            // 各セルの出現時に、詠唱解放と同じ飛沫プリセットを使う。
+            EmitDirectedPreset(MagmaAttackVfx::kFlood.Resolve(&attack), cell->position, cell->direction + engine::Vector3{0.0f, 0.72f, 0.0f}, 1.2f);
 
             if (cell->leavesPool) {
                 SpawnMagmaPool(cell->position, cell->radius * 0.82f, 2.75f);
@@ -1172,7 +1183,7 @@ void EnemyMagmaSlime::UpdateChantVisual(float deltaTime) {
     BossChantFrame frame;
     frame.casterPosition = GetWorldPosition();
     frame.groundPosition = FindGroundPoint(frame.casterPosition);
-    const AABB bounds = GetModelWorldAABB();
+    const Aabb bounds = GetModelWorldAabb();
     frame.casterRadius =
         (std::max)({(bounds.max.x - bounds.min.x) * 0.5f, (bounds.max.z - bounds.min.z) * 0.5f, baseScale_.x * 0.84f});
     frame.casterHeight = (std::max)(bounds.max.y - bounds.min.y, baseScale_.y * 1.2f);

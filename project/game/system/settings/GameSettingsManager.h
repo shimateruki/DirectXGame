@@ -3,6 +3,8 @@
 #include <string>
 
 // ユーザー設定ファイルから音量と操作設定を読み書きするクラス。
+// 関連：SettingsMenuOverlayが変更し、音量はAudioPlayer、カメラ操作は利用側へ渡す。
+// 主な入口：Initialize / Load / Save / ApplyAudioSettings
 class GameSettingsManager {
   public:
     // ステージセレクトの天候を自動、晴れ、雨に切り替える設定。

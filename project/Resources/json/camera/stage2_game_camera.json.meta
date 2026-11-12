@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "bf91a9bf3770e38e08082e756f172e05",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/camera/stage2_game_camera.json",
+  "version": 1
+}

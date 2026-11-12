@@ -5,7 +5,7 @@
 #include "game/system/navigation/DestinationGuide.h"
 #include "GateEntryRuntimeProbe.h"
 #include "Fade.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -17,12 +17,12 @@ inline bool play = false;
 inline bool WantsPlay() { return play; }
 struct Access {
     static TutorialDirector* Director(TutorialScene& scene) { return scene.tutorialDirector_.get(); }
-    static void Update(TutorialScene& scene, float dt) { scene.UpdateExitGuide(dt); }
+    static void Update(TutorialScene& scene, float deltaTime) { scene.UpdateExitGuide(deltaTime); }
     static DestinationGuide& Guide(TutorialScene& scene) { return scene.exitGuide_; }
 };
 inline void Require(bool value, const char* error) { if (!value) throw std::runtime_error(error); }
 inline bool Near(float a, float b) { return std::abs(a-b) < .002f; }
-inline engine::Object3d* Find(TutorialScene& scene, const char* name) {
+inline engine::Object3D* Find(TutorialScene& scene, const char* name) {
     for (const auto& object : scene.GetObjects()) if (object && object->GetName() == name) return object.get();
     return nullptr;
 }
@@ -52,7 +52,7 @@ inline void PrepareCaptureCamera(SceneManager* manager) {
     camera->ApplyReplayView(eye,target,{std::asin(-difference.y/length),std::atan2(difference.x,difference.z),0},.65f,.1f,1000);
     for (const auto& object : scene->GetObjects()) if (object) object->RefreshRenderCameraData();
 }
-inline void GenericCases(engine::Object3d& arrow, const std::string& path, std::ostream& log) {
+inline void GenericCases(engine::Object3D& arrow, const std::string& path, std::ostream& log) {
     DestinationGuide guide;
     guide.Initialize({});
     for (const auto& target : {engine::Vector3{20,0,0}, {0,0,20}, {-20,0,0}, {0,0,-20}}) {
@@ -109,14 +109,14 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         auto* gate=dynamic_cast<GimmickStageGate*>(Find(*scene,"Gimmick_StageGate"));
         auto* director=Access::Director(*scene);
         Require(arrow && gate && director,"guide, exit gate or director missing");
-        constexpr float dt=1.0f/60;
+        constexpr float kFixedDeltaTime=1.0f/60;
         auto prepare=[&] {
             Require(director->JumpToStep("reach_exit_gate"),"final tutorial step missing");
             gate->SetGateState(false,true,false); gate->SetTransitionEnabled(true);
             auto pos=gate->GetWorldPosition(); pos.x-=11; pos.y=-.54f;
             player->SetTranslate(pos); player->SetVelocity({}); player->SetIsControlActive(false); player->SetIsVisible(true);
             player->SetParameter(&engine::EntityParameter::gravity, 0); player->SetCollisionAttribute(0); player->SetCollisionMask(0); player->UpdateWorldMatrix(true);
-            Access::Update(*scene,dt);
+            Access::Update(*scene,kFixedDeltaTime);
         };
         if (phase==1) {
             if (++frames<3) return;
@@ -125,15 +125,15 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
                     "guide participates in collisions or scene serialization");
             GenericCases(*arrow,path,log); Access::Guide(*scene).Reset();
             Require(director->JumpToStep("move"),"move step missing");
-            Access::Update(*scene,dt); Require(!arrow->GetIsVisible(),"early tutorial step shows exit guide");
+            Access::Update(*scene,kFixedDeltaTime); Require(!arrow->GetIsVisible(),"early tutorial step shows exit guide");
             Require(director->JumpToStep("gate_unlock_cinematic"),"unlock cinematic missing");
-            Access::Update(*scene,dt); Require(!arrow->GetIsVisible(),"cinematic shows exit guide");
+            Access::Update(*scene,kFixedDeltaTime); Require(!arrow->GetIsVisible(),"cinematic shows exit guide");
             prepare(); Require(arrow->GetIsVisible(),"final tutorial step did not show guide");
             auto* camera=CameraManager::GetInstance()->GetActiveCamera();
             const auto p=player->GetWorldPosition();
             CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
             camera->SetInputEnabled(false); camera->SetFollowTarget(nullptr);
-            camera->SetEye(p+engine::Vector3{-7,9,-12}); camera->SetTarget(p+engine::Vector3{4,1,0}); camera->Update(dt);
+            camera->SetEye(p+engine::Vector3{-7,9,-12}); camera->SetTarget(p+engine::Vector3{4,1,0}); camera->Update(kFixedDeltaTime);
             log << "OK actual final-step activation; gate at " << gate->GetWorldPosition().x << ',' << gate->GetWorldPosition().y << ',' << gate->GetWorldPosition().z << std::endl;
             frames=0; phase=2; play=true; return;
         }
@@ -155,31 +155,31 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
             player->SetTranslate({oldDestination.x,-.54f,oldDestination.z}); player->UpdateWorldMatrix(true);
             director->Update(.1f);
             Require(director->GetDirectionGuideTarget()==gate,"arrival used stale JSON position after gate moved");
-            Access::Update(*scene,dt); Require(arrow->GetIsVisible(),"edited gate lost its guide target");
+            Access::Update(*scene,kFixedDeltaTime); Require(arrow->GetIsVisible(),"edited gate lost its guide target");
             gate->SetTranslate(originalGatePosition); gate->UpdateWorldMatrix(true);
-            Require(director->JumpToStep("move"),"move reset after edited gate failed"); Access::Update(*scene,dt); prepare();
+            Require(director->JumpToStep("move"),"move reset after edited gate failed"); Access::Update(*scene,kFixedDeltaTime); prepare();
             log << "OK arrival follows the actual edited gate instead of old JSON coordinates" << std::endl;
             const auto previous=arrow->GetWorldPosition();
             player->SetTranslate(player->GetTranslate()+engine::Vector3{0,0,2}); player->UpdateWorldMatrix(true);
-            Access::Update(*scene,dt);
+            Access::Update(*scene,kFixedDeltaTime);
             Require(std::hypot(arrow->GetWorldPosition().x-previous.x,arrow->GetWorldPosition().z-previous.z)>0,
                     "live guide failed to follow moved player");
             Access::Update(*scene,0); Require(!arrow->GetIsVisible(),"editor pause did not hide guide");
-            Access::Update(*scene,dt); Require(arrow->GetIsVisible(),"guide did not resume");
+            Access::Update(*scene,kFixedDeltaTime); Require(arrow->GetIsVisible(),"guide did not resume");
             const float hp=player->GetParameters()->hp; player->SetParameter(&engine::EntityParameter::hp, 0);
-            Access::Update(*scene,dt); Require(!arrow->GetIsVisible(),"death did not hide guide"); player->SetParameter(&engine::EntityParameter::hp, hp);
+            Access::Update(*scene,kFixedDeltaTime); Require(!arrow->GetIsVisible(),"death did not hide guide"); player->SetParameter(&engine::EntityParameter::hp, hp);
             prepare(); auto arrival=gate->GetWorldPosition(); arrival.x-=1; arrival.y=-.54f;
-            player->SetTranslate(arrival); player->UpdateWorldMatrix(true); Access::Update(*scene,dt);
+            player->SetTranslate(arrival); player->UpdateWorldMatrix(true); Access::Update(*scene,kFixedDeltaTime);
             Require(!arrow->GetIsVisible() && Access::Guide(*scene).HasArrived(),"actual gate arrival did not latch hidden");
-            player->SetTranslate(arrival+engine::Vector3{-12,0,0}); player->UpdateWorldMatrix(true); Access::Update(*scene,dt);
+            player->SetTranslate(arrival+engine::Vector3{-12,0,0}); player->UpdateWorldMatrix(true); Access::Update(*scene,kFixedDeltaTime);
             Require(!arrow->GetIsVisible(),"actual guide reappeared after arrival");
-            Require(director->JumpToStep("move"),"restart failed"); Access::Update(*scene,dt); prepare();
+            Require(director->JumpToStep("move"),"restart failed"); Access::Update(*scene,kFixedDeltaTime); prepare();
             Require(arrow->GetIsVisible(),"new tutorial attempt retained arrived state");
             log << "OK actual follow, orientation, pause, death, automatic arrival and restart" << std::endl;
             // 最後に実際のゲート入場を開始し、早期return経路でも矢印が残らないことを確認する。
             manager->SetIsPlaying(true); player->SetCollisionAttribute(CollisionCategories::Get("player"));
             Require(gate->OnCollision(player),"gate entry did not start");
-            scene->Update(dt); Require(!arrow->GetIsVisible(),"gate entry presentation left guide visible");
+            scene->Update(kFixedDeltaTime); Require(!arrow->GetIsVisible(),"gate entry presentation left guide visible");
             finish("PASS: tutorial exit guide visibility, follow, gate direction, arrival latch, pause, death, restart, settings and gate entry");
         }
     } catch(const std::exception& error) { finish(std::string("FAIL: ")+error.what()); }

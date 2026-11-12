@@ -231,11 +231,11 @@ void PauseMenuOverlay::BindLayoutSprites() {
 
     panelBaseSize_ = panel_ ? panel_->GetSize() : engine::Vector2{};
 
-    constexpr std::array<const char*, 6> prefixes = {"pause_resume", "pause_guide", "pause_retry",
+    constexpr std::array<const char*, 6> kPrefixes = {"pause_resume", "pause_guide", "pause_retry",
                                                      "pause_stage_select", "pause_settings", "pause_title_return"};
 
     for (int i = 0; i < static_cast<int>(Item::Count); ++i) {
-        const std::string prefix = prefixes[static_cast<size_t>(i)];
+        const std::string prefix = kPrefixes[static_cast<size_t>(i)];
         rows_[static_cast<size_t>(i)].backdrop = FindSprite(prefix + "_row");
         rows_[static_cast<size_t>(i)].label = FindSprite(prefix + "_label");
 

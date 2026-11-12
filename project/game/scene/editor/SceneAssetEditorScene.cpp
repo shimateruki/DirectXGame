@@ -5,19 +5,19 @@
 
 #include "game/system/combat/BulletManager.h"
 #include "Camera.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "DirectXCommon.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "InputManager.h"
 #include "game/system/scene/LevelLoader.h"
 #include "LightEditor.h"
 #include "LightManager.h"
 #include "MeshEffectManager.h"
-#include "Object3d.h"
-#include "Object3dCommon.h"
+#include "Object3D.h"
+#include "Object3DCommon.h"
 #include "game/system/scene/ObjectManager.h"
 #include "ParticleCommon.h"
 #include "ParticleManager.h"
@@ -61,30 +61,23 @@ void SceneAssetEditorScene::Initialize() {
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    object3dCommon_ = std::make_unique<engine::Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_);
-    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_);
-    particleCommon_ = std::make_unique<engine::ParticleCommon>();
-    particleCommon_->Initialize(dxCommon_);
     particleSystem_ = std::make_unique<engine::ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
+    particleSystem_->Initialize(GetParticleCommon(), "Resources/sprite/common/white.png");
 
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
-    LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+    LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
 
     objectManager_ = std::make_unique<ObjectManager>();
     levelLoader_ = std::make_unique<LevelLoader>();
-    BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+    BulletManager::GetInstance()->Initialize(GetObject3DCommon(), CollisionManager::GetInstance());
 
-    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+    PrepareGpuParticles();
     gpuParticleTextureHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
     const uint32_t skyboxTexture =
         TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
     skybox_ = std::make_unique<Skybox>();
-    skybox_->Initialize(object3dCommon_.get(), skyboxTexture);
+    skybox_->Initialize(GetObject3DCommon(), skyboxTexture);
 
     const std::string objectLayoutPath = GetSceneManager() ? GetSceneManager()->GetEditorSceneAssetObjectPath() : std::string();
     const std::string spriteLayoutPath = GetSceneManager() ? GetSceneManager()->GetEditorSceneAssetSpritePath() : std::string();
@@ -115,9 +108,6 @@ void SceneAssetEditorScene::Finalize() {
     levelLoader_.reset();
     objectManager_.reset();
     particleSystem_.reset();
-    particleCommon_.reset();
-    spriteCommon_.reset();
-    object3dCommon_.reset();
 }
 
 void SceneAssetEditorScene::Update(float deltaTime) {
@@ -135,7 +125,7 @@ void SceneAssetEditorScene::Update(float deltaTime) {
         particleSystem_->Update(deltaTime);
     }
 
-    GPUParticleManager::GetInstance()->Update(deltaTime);
+    GpuParticleManager::GetInstance()->Update(deltaTime);
 
     for (auto& sprite : sprites_) {
         if (sprite) {
@@ -149,7 +139,7 @@ void SceneAssetEditorScene::Update(float deltaTime) {
 
 void SceneAssetEditorScene::Draw() {
     // 描画基盤か配置管理が未初期化なら、シーン描画を行わない。
-    if (!objectManager_ || !object3dCommon_) {
+    if (!objectManager_ || !GetObject3DCommon()) {
         return;
     }
 
@@ -162,7 +152,7 @@ void SceneAssetEditorScene::Draw() {
 
     ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
     ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
-    object3dCommon_->SetGraphicsCommand();
+    GetObject3DCommon()->SetGraphicsCommand();
     objectManager_->Draw(pointLight, spotLight);
     DrawEnemyTelegraphs(*this, pointLight, spotLight);
     BulletManager::GetInstance()->Draw(pointLight, spotLight);
@@ -173,9 +163,9 @@ void SceneAssetEditorScene::Draw() {
     }
 
     auto& objects = objectManager_->GetObjects();
-    DrawLocalFogObjects(objects, dxCommon_, player_, false);
-    bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, false);
-    grabUpdated = DrawGPUParticles(dxCommon_, camera, gpuParticleTextureHandle_, grabUpdated);
+    DrawLocalFogObjects(objects, player_, false);
+    bool grabUpdated = DrawSpecialMaterialObjects(objects, BulletManager::GetInstance(), player_, false);
+    grabUpdated = DrawGpuParticles(camera, gpuParticleTextureHandle_, grabUpdated);
 
     bool hasAttachedEffects = false;
 
@@ -199,13 +189,13 @@ void SceneAssetEditorScene::Draw() {
     }
 }
 
-void SceneAssetEditorScene::DrawUI() {
+void SceneAssetEditorScene::DrawUi() {
     // Sprite基盤がある場合だけ共通パイプラインを設定してUIを描く。
-    if (!spriteCommon_) {
+    if (!GetSpriteCommon()) {
         return;
     }
 
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    BeginSpriteDrawing();
 
     for (const auto& sprite : sprites_) {
         if (sprite) {
@@ -221,28 +211,28 @@ void SceneAssetEditorScene::DrawShadow() {
     }
 }
 
-const std::vector<std::unique_ptr<engine::Object3d>>& SceneAssetEditorScene::GetObjects() const {
+const std::vector<std::unique_ptr<engine::Object3D>>& SceneAssetEditorScene::GetObjects() const {
     // 編集ツールへ現在の配置集合を参照で公開し、所有権は移さない。
     return objectManager_->GetObjects();
 }
 
 
-engine::Object3d* SceneAssetEditorScene::AddObjectImmediate(std::unique_ptr<engine::Object3d> object) {
+engine::Object3D* SceneAssetEditorScene::AddObjectImmediate(std::unique_ptr<engine::Object3D> object) {
     // 編集操作の直後に選択できるよう、即時登録した実体を返す。
     return objectManager_->AddObjectImmediate(std::move(object));
 }
 
-std::unique_ptr<engine::Object3d> SceneAssetEditorScene::TakeObjectImmediate(engine::Object3d* object) {
+std::unique_ptr<engine::Object3D> SceneAssetEditorScene::TakeObjectImmediate(engine::Object3D* object) {
     // Undoなどが所有権を保持できるよう、実体を配置集合から取り出す。
     return objectManager_->TakeObjectImmediate(object);
 }
 
-void SceneAssetEditorScene::AddObject(std::unique_ptr<engine::Object3d> object) {
+void SceneAssetEditorScene::AddObject(std::unique_ptr<engine::Object3D> object) {
     // 通常の追加は管理側の追加処理へ渡し、ここで所有し続けない。
     objectManager_->AddObject(std::move(object));
 }
 
-void SceneAssetEditorScene::RequestRemoveObject(engine::Object3d* object) {
+void SceneAssetEditorScene::RequestRemoveObject(engine::Object3D* object) {
     // 更新中の走査を壊さないよう、削除要求を管理側へ預ける。
     objectManager_->RequestRemove(object);
 }

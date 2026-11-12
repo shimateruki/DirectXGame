@@ -1,17 +1,19 @@
 #pragma once
 #include "BaseEnemy.h"
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include <array>
 #include <memory>
 
 // EnemyThunderSlimeは、チャージ放電、雷オーラ、待機火花を使う属性スライム敵です。
+// 関連：BaseEnemyの標的と予告を使い、放電の段階と雷の表示物を更新する。
+// 主な入口：Initialize / Update
 class EnemyThunderSlime : public BaseEnemy {
   public:
     /// 所有する雷オーラの表示を解放する。
     ~EnemyThunderSlime() override;
 
     // 雷スライム用モデル、Collider、雷演出の初期状態を準備します。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 徘徊、追跡、チャージ、放電、雷オーラを更新します。
     void Update(float deltaTime) override;
@@ -23,7 +25,7 @@ class EnemyThunderSlime : public BaseEnemy {
     void BeginThrown(const engine::Vector3& initialVelocity) override;
 
     /// 配置用の雷スライム複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // 攻撃候補を限定し、進行中のチャージと再使用待ちをリセットする。
     void SetDebugPreviewAttackId(const std::string& attackId);
@@ -119,7 +121,7 @@ class EnemyThunderSlime : public BaseEnemy {
     void EmitThunderPreset(const char* presetName, const engine::Vector3& position);
 
     // 上から地形を探して雷を接地させ、地形がなければ指定高さを使う。
-    engine::Vector3 FindStrikeGround(const engine::Vector3& samplePosition, engine::Object3d* ignoredObject, float fallbackHeight) const;
+    engine::Vector3 FindStrikeGround(const engine::Vector3& samplePosition, engine::Object3D* ignoredObject, float fallbackHeight) const;
 
     // 柱状の雷は着地点を基準に上へ伸ばし、床の閃光と焦げ跡は地面へ置く。
     void SpawnLightningStrikeVisual(const engine::Vector3& groundPosition, const engine::Vector3& direction);
@@ -158,16 +160,16 @@ class EnemyThunderSlime : public BaseEnemy {
     std::array<engine::Vector3, 5> wildStrikePositions_{};
     engine::Vector3 wildLightningDirection_ = {0.0f, 0.0f, 1.0f};
 
-    float wildLightningTimer_ = 0.0f;
-    float wildLightningEffectTimer_ = 0.0f;
+    float wildLightningTimer_ = 0.0f; // 暴走雷の段階切替までの残り秒数。
+    float wildLightningEffectTimer_ = 0.0f; // 暴走雷の表示更新までの残り秒数。
 
-    int wildStrikeIndex_ = 0;
-    bool wildLightningHitTarget_ = false;
+    int wildStrikeIndex_ = 0; // 暴走中の次の落雷位置を選ぶ番号。
+    bool wildLightningHitTarget_ = false; // 同じ暴走攻撃で対象に繰り返し命中させないための印。
 
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 lastShockDirection_ = {0.0f, 0.0f, 1.0f};
 
-    std::unique_ptr<EffectObject3d> auraEffect_;
+    std::unique_ptr<EffectObject3D> auraEffect_;
 
     bool hasBaseScale_ = false;
     bool isCharging_ = false;

@@ -8,6 +8,7 @@
 struct PhysicsQueryFilter;
 
 /// <summary>物理障害物から 2D 経路探索グリッドを作るための設定です。</summary>
+// 関連：NavGrid（この型を使う機能の本体）
 struct NavGridBuildSettings {
     // XZ の探索領域と、移動面の高さ。Y の境界値はグリッド寸法に使いません。
     engine::Vector3 boundsMin = { -10.0f, 0.0f, -10.0f };
@@ -22,7 +23,9 @@ struct NavGridBuildSettings {
     int maxCellsPerAxis = 128; // 広い領域でのメモリ使用量を制限します。
 };
 
-/// <summary>物理障害物を XZ グリッドに投影し、A* で経路を求めます。</summary>
+// 担当：障害物をXZ平面のグリッドへ投影し、A*で経路を探索する。
+// 関連：NavAgentComponent（利用）、NavGridBuildSettings（条件）、CollisionManager（照会）
+// 主な入口：Build / FindPath / IsBlocked
 class NavGrid {
 public:
     /// <summary>指定領域の障害物を収集し、通行可能セルを構築します。</summary>

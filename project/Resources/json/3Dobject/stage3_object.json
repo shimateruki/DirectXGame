@@ -11608,7 +11608,7 @@
             "scale": [
                 1.0,
                 1.0,
-                1.928540825843811
+                1.0
             ],
             "tag": "",
             "targetID": -1,
@@ -11630,9 +11630,9 @@
             "castShadow": false,
             "collider": {
                 "center": [
-                    0.0,
-                    -5.159999847412109,
-                    0.0
+                    0,
+                    -2.79,
+                    0
                 ],
                 "rotation": [
                     0.0,
@@ -11640,9 +11640,9 @@
                     0.0
                 ],
                 "size": [
-                    6.199999809265137,
-                    2.740000009536743,
-                    5.0
+                    6.2,
+                    0.5,
+                    16.15
                 ],
                 "type": 3
             },
@@ -11710,9 +11710,9 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                0.0,
-                0.0,
-                73.69999694824219
+                0,
+                0,
+                84.85
             ],
             "quaternion": [
                 0.0,
@@ -13386,7 +13386,7 @@
             "position": [
                 0.0,
                 -0.4855000126361847,
-                78.30944061279297
+                96.0
             ],
             "quaternion": [
                 0.0,
@@ -13423,8 +13423,8 @@
                 "billboardScale": 1.48,
                 "effectIntensity": 1.5800000429153442,
                 "effectScale": 1.1799999475479126,
-                "effectScaleX": 1.198,
-                "effectScaleY": 1.215,
+                "effectScaleX": 1.46,
+                "effectScaleY": 1.72,
                 "effectScaleZ": 0.425,
                 "effectSoftness": 0.6600000262260437,
                 "effectType": 1.0,
@@ -14082,15 +14082,15 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                -4.580399836680947,
-                -2.4000000953674316,
-                74.46399702840836
+                -3.1,
+                -2.29,
+                78.5
             ],
             "quaternion": [
                 0,
-                0.7071067690849304,
                 0,
-                0.7071067690849304
+                0,
+                1
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -14099,7 +14099,7 @@
             },
             "rotation": [
                 0,
-                1.5707963705062866,
+                0,
                 0
             ],
             "roughness": 0.3400000035762787,
@@ -14243,15 +14243,15 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                -3.889199886322022,
-                -2.4000000953674316,
-                72.69999692809998
+                -3.1,
+                -2.29,
+                83.5
             ],
             "quaternion": [
                 0,
-                0.7071067690849304,
                 0,
-                0.7071067690849304
+                0,
+                1
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -14260,7 +14260,7 @@
             },
             "rotation": [
                 0,
-                1.5707963705062866,
+                0,
                 0
             ],
             "roughness": 0.3400000035762787,
@@ -14404,15 +14404,15 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                -4.580399990894737,
-                -2.4000000953674316,
-                70.93599688821823
+                -3.1,
+                -2.29,
+                88.5
             ],
             "quaternion": [
                 0,
-                0.7071067690849304,
                 0,
-                0.7071067690849304
+                0,
+                1
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -14421,7 +14421,7 @@
             },
             "rotation": [
                 0,
-                1.5707963705062866,
+                0,
                 0
             ],
             "roughness": 0.3400000035762787,
@@ -14439,133 +14439,6 @@
                 1
             ],
             "type": "Gimmick"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 1,
-            "castShadow": false,
-            "collider": {
-                "center": [
-                    0.0,
-                    -3.4200000762939453,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    18.850000381469727,
-                    1.0,
-                    16.850000381469727
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionAttributeIds": [
-                "ground"
-            ],
-            "collisionAttributeUnknownBits": 0,
-            "collisionMask": 4294967295,
-            "collisionMaskIds": [
-                "player",
-                "enemy",
-                "ground",
-                "player_bullet",
-                "trigger",
-                "map_block",
-                "player_attack",
-                "enemy_attack",
-                "hook_anchor"
-            ],
-            "collisionMaskUnknownBits": 4294966784,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableLighting": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "guid": "0cb9731f-9db2-547a-b75a-519f4426c7f1",
-            "isStatic": true,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.2199999988079071,
-                    0.14000000059604645,
-                    0.36000001430511475,
-                    1.0
-                ],
-                "density": 0.0,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "myEventID": -1,
-            "name": "[Collision] Stage3_HighCrown_EntranceCourtyard",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
-            "particleName": "",
-            "position": [
-                0.0,
-                0.0,
-                84.19999694824219
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5199999809265137,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "InvisibleBox"
         },
         {
             "animation": {
@@ -14672,7 +14545,7 @@
             "scale": [
                 1.0,
                 1.0,
-                1.912843108177185
+                1.0
             ],
             "tag": "",
             "targetID": -1,
@@ -15483,7 +15356,7 @@
             "parentName": "Stage3_HighCrown_EntranceGate",
             "particleName": "",
             "position": [
-                4.59259251148449,
+                3.3,
                 -1.43296292829579,
                 -0.0
             ],
@@ -15599,7 +15472,7 @@
             "parentName": "Stage3_HighCrown_EntranceGate",
             "particleName": "",
             "position": [
-                4.59259251148449,
+                3.3,
                 -0.3366666513607828,
                 -0.0
             ],
@@ -15997,7 +15870,7 @@
             "parentName": "Stage3_HighCrown_EntranceGate",
             "particleName": "",
             "position": [
-                -4.59259251148449,
+                -3.3,
                 -1.43296292829579,
                 -0.0
             ],
@@ -16113,7 +15986,7 @@
             "parentName": "Stage3_HighCrown_EntranceGate",
             "particleName": "",
             "position": [
-                -4.59259251148449,
+                -3.3,
                 -0.3366666513607828,
                 -0.0
             ],
@@ -16409,6 +16282,133 @@
                 0.33333332744645494,
                 0.4888888802548006,
                 0.4444444365952732
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0,
+                    0,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "size": [
+                    5.15,
+                    0.15,
+                    13.6194713553794
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "d42949e7-a12d-524a-8da4-3befe62dac70",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2199999988079071,
+                    0.14000000059604645,
+                    0.36000001430511475,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "[Collision] Stage3_HighCrown_ApproachWalkRamp",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0,
+                -0.7486841851023952,
+                55.2
+            ],
+            "quaternion": [
+                0.06622725767146535,
+                0,
+                0,
+                0.9978045652036862
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.13255153229667402,
+                0,
+                0
+            ],
+            "roughness": 0.5199999809265137,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
             ],
             "tag": "",
             "targetID": -1,

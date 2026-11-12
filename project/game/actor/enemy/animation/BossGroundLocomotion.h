@@ -10,6 +10,8 @@
 #include <cmath>
 
 // ボスの通常移動だけを扱う。攻撃の跳躍や再配置とは状態を共有しない。
+// 関連：各ボスがFrameを読み、実際の座標・速度・見た目へ反映する。
+// 主な入口：Reset / Begin / Advance
 class BossGroundLocomotion {
   public:
     enum class Phase { None, Windup, Travel, Landing };
@@ -44,10 +46,12 @@ class BossGroundLocomotion {
         leap_ = false;
     }
 
+    // dt秒だけ次の通常移動までの待ち時間を減らす。攻撃の再使用時間とは別。
     void TickCooldown(float deltaTime) { cooldown_ = (std::max)(0.0f, cooldown_ - (std::max)(deltaTime, 0.0f)); }
     // 現在の待ち時間を短縮せず、指定秒数以上になるよう延長する。
     void Delay(float seconds) { cooldown_ = (std::max)(cooldown_, seconds); }
     bool IsActive() const { return phase_ != Phase::None; }
+    // 進行中の移動がなく、通常移動の待ち時間も終わっているかを返す。
     bool CanBegin() const { return !IsActive() && cooldown_ <= 0.0f; }
     bool IsLeap() const { return leap_; }
     Phase GetPhase() const { return phase_; }
@@ -56,7 +60,7 @@ class BossGroundLocomotion {
 
     // 出発・中間・到達地点の地面を確認して開始する。不安全なら距離を半分にして一度再試行する。
     bool Begin(const engine::Vector3& current, const engine::Vector3& desired, bool leap,
-               const engine::Object3d* owner, const Style& style) {
+               const engine::Object3D* owner, const Style& style) {
         if (!CanBegin()) return false;
 
         engine::Vector3 displacement = desired - current;
@@ -66,7 +70,7 @@ class BossGroundLocomotion {
 
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("ground");
-        filter.ignoredObject = const_cast<engine::Object3d*>(owner);
+        filter.ignoredObject = const_cast<engine::Object3D*>(owner);
         const auto groundAt = [&](const engine::Vector3& position) {
             return CollisionManager::GetInstance()->Raycast(position + engine::Vector3{0.0f, 5.0f, 0.0f},
                                                             {0.0f, -1.0f, 0.0f}, 14.0f, filter);

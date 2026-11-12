@@ -9,6 +9,8 @@
 class GamePlayScene;
 
 // GamePlaySceneを共有したまま、Scene Asset固有の処理だけを差し替えます。
+// 関連：シーンが保持する制御部品の契約。ゲーム本編のScene自体とは別の役割を持つ。
+// 主な入口：OnInitialize / OnUpdate / OnFinalize
 class ISceneController {
   public:
     virtual ~ISceneController() = default;
@@ -27,6 +29,8 @@ class ISceneController {
 };
 
 // Scene Asset に指定された名前から、対応するシーン固有処理を生成します。
+// 関連：シーン制御部品の生成を集約し、所有権をシーン側へ返す。
+// 主な入口：Create
 class SceneControllerFactory {
   public:
     using Creator = std::function<std::unique_ptr<ISceneController>()>;

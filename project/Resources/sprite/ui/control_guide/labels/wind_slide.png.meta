@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b9f404436d144e73a8986e6a69094f5e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/wind_slide.png",
+  "version": 1
+}

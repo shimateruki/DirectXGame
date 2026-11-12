@@ -7,6 +7,9 @@
 #include "WinApp.h"
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include "json.hpp"
+#include "engine/utility/JsonFile.h"
 
 namespace {
 constexpr const char* kSpriteResourcePrefix = "Resources/sprite/";
@@ -17,6 +20,14 @@ std::string ToSpriteRelativePath(const std::string& path) {
     }
 
     return path;
+}
+
+// 近距離は不透明のまま表示し、遠方のフェード区間だけ薄くする。距離はm、戻り値は0～1。
+float GateNameAlpha(float distance, float showDistance, float fadeDistance) {
+    if (!std::isfinite(distance) || distance < 0.0f) {
+        return 0.0f;
+    }
+    return std::clamp(1.0f - (distance - std::max(showDistance, 0.0f)) / std::max(fadeDistance, 0.1f), 0.0f, 1.0f);
 }
 
 } // namespace
@@ -75,14 +86,14 @@ void GameSelectScene::InitializeStageGateNameLabels() {
         const bool tutorial = index == tutorialIndex;
         const std::string texturePath = tutorial ? "Resources/sprite/ui/stage_select/tutorial_gate_name.png"
                                                  : stages[index].gateNameTexturePath;
-        engine::Object3d* gate = tutorial ? FindObjectByName("TutorialArrivalGate")
+        engine::Object3D* gate = tutorial ? FindObjectByName("TutorialArrivalGate")
                                   : FindStageGateByIndex(static_cast<int>(index));
         if (texturePath.empty() || !gate) {
             continue;
         }
 
         auto label = std::make_unique<engine::Sprite>();
-        label->Initialize(spriteCommon_.get(), texturePath);
+        label->Initialize(GetSpriteCommon(), texturePath);
         label->SetName("stage_gate_name_" + std::to_string(index));
         label->SetTextureName(ToSpriteRelativePath(texturePath));
         label->SetAnchorPoint({0.5f, 1.0f});
@@ -100,7 +111,7 @@ void GameSelectScene::InitializeStageGateNameLabels() {
         // 名札と同じスクリーン座標で描き、セーブ済みの3個の収集状況を並べます。
         for (int coinIndex = 0; coinIndex < GameDataManager::kStarCoinsPerStage; ++coinIndex) {
             auto star = std::make_unique<engine::Sprite>();
-            star->Initialize(spriteCommon_.get(), "Resources/sprite/ui/hud/stage_star_empty.png");
+            star->Initialize(GetSpriteCommon(), "Resources/sprite/ui/hud/stage_star_empty.png");
             star->SetName("stage_gate_star_" + std::to_string(index) + "_" + std::to_string(coinIndex));
             star->SetTextureName("ui/hud/stage_star_empty.png");
             star->SetAnchorPoint({0.5f, 0.5f});
@@ -140,7 +151,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
             }
         };
 
-        engine::Object3d* gate = showLabels ? (tutorial ? FindObjectByName("TutorialArrivalGate")
+        engine::Object3D* gate = showLabels ? (tutorial ? FindObjectByName("TutorialArrivalGate")
                                             : FindStageGateByIndex(static_cast<int>(index))) : nullptr;
         if (!gate) {
             hide();
@@ -153,18 +164,13 @@ void GameSelectScene::UpdateStageGateNameLabels() {
         const float dz = gatePosition.z - playerPosition.z;
         const float distance = std::sqrt(dx * dx + dz * dz);
 
-        // 中央から識別できる距離では固定サイズで見せ、橋に差しかかる距離から消します。
-        // チュートリアル入口は初期位置の近くにあるため、通常ゲートと同じ40mでは常時隠れます。
-        const float hideDistance = tutorial ? 8.0f : gateNameHideDistance_;
-        const float fadeDistance = tutorial ? 6.0f : gateNameFadeDistance_;
-        const float alpha = std::clamp((distance - hideDistance) /
-                                           std::max(fadeDistance, 0.1f), 0.0f, 1.0f);
+        const float alpha = GateNameAlpha(distance, gateNameShowDistance_, gateNameFadeDistance_);
         if (alpha <= 0.0f) {
             hide();
             continue;
         }
 
-        const AABB bounds = gate->GetModelWorldAABB();
+        const Aabb bounds = gate->GetModelWorldAabb();
         const engine::Vector3 worldPosition = {gatePosition.x, bounds.max.y + gateNameHeightOffset_, gatePosition.z};
         const float w = worldPosition.x * viewProjection.m[0][3] + worldPosition.y * viewProjection.m[1][3] +
                         worldPosition.z * viewProjection.m[2][3] + viewProjection.m[3][3];
@@ -220,6 +226,36 @@ void GameSelectScene::UpdateStageGateNameLabels() {
     }
 }
 
+void GameSelectScene::LoadStageGateNameSettings() {
+    std::ifstream input("Resources/json/ui/stage_gate_info_settings.json");
+    if (!input.is_open()) {
+        return;
+    }
+    const json data = json::parse(input, nullptr, false);
+    if (data.is_discarded() || !data.is_object()) {
+        LOG_ERROR("stage_gate_info_settings.json: invalid settings object");
+        return;
+    }
+    auto read = [&data](const char* key, float current, float minimum, float maximum) {
+        if (!data.contains(key) || !data[key].is_number()) {
+            return current;
+        }
+        const float value = data[key].get<float>();
+        return std::isfinite(value) ? std::clamp(value, minimum, maximum) : current;
+    };
+    gateNameShowDistance_ = read("nameShowDistance", gateNameShowDistance_, 5.0f, 150.0f);
+    gateNameFadeDistance_ = read("nameFadeDistance", gateNameFadeDistance_, 1.0f, 40.0f);
+    gateNameHeightOffset_ = read("nameHeightOffset", gateNameHeightOffset_, 0.0f, 10.0f);
+}
+
+bool GameSelectScene::SaveStageGateNameSettings() const {
+    // 配置JSONとは別のファイルへ、この機能の設定キーだけ保存する。
+    return JsonFile::UpdateObject("Resources/json/ui/stage_gate_info_settings.json", {
+        {"nameShowDistance", gateNameShowDistance_}, {"nameFadeDistance", gateNameFadeDistance_},
+        {"nameHeightOffset", gateNameHeightOffset_}
+    });
+}
+
 void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value, bool visible) {
     // 桁数に応じて先頭のゼロを隠し、固定長の Sprite 配列を再利用する。
     value = std::clamp(value, 0, 999);
@@ -248,7 +284,7 @@ void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3
     }
 }
 
-void GameSelectScene::UpdateUI() {
+void GameSelectScene::UpdateUi() {
     // 取得数をセーブデータから読み直し、ステージ選択へ戻った直後も最新値を見せる。
     auto* save = GameDataManager::GetInstance();
 

@@ -7,14 +7,16 @@
 
 class DirectXCommon;
 
-/// <summary>シェーダー可視の SRV ヒープと、ゲーム用スロットの払い出しを管理します。</summary>
-class SRVManager {
+// 担当：シェーダー可視の記述子ヒープとスロットの払い出しを管理する。
+// 関連：DirectXCommon（デバイス）、TextureManager / Model / 粒子描画（利用）
+// 主な入口：Initialize / Allocate / CreateSrvForResource / SetDescriptorHeaps
+class SrvManager {
 public:
     // 先頭の 2 スロットは ImGui が使用します。
-    static const size_t kMaxSRVCount = 2018;
+    static const size_t kMaxSrvCount = 2018;
 
     /// <summary>エンジンで共有する管理インスタンスを取得します。</summary>
-    static SRVManager* GetInstance();
+    static SrvManager* GetInstance();
 
     /// <summary>DirectX デバイスから SRV ヒープを作成し、払い出し位置を初期化します。</summary>
     /// <param name="dxCommon">初期化済みの DirectX 管理オブジェクト。</param>
@@ -24,7 +26,7 @@ public:
     /// <param name="resource">参照対象の GPU リソース。</param>
     /// <param name="srvDesc">作成する SRV の記述。</param>
     /// <returns>作成した SRV のヒープ内インデックス。</returns>
-    uint32_t CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+    uint32_t CreateSrv(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 
     /// <summary>管理中のディスクリプタヒープを取得します。</summary>
     ID3D12DescriptorHeap* GetDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
@@ -43,14 +45,14 @@ public:
     /// <param name="index">事前に確保したヒープ内インデックス。</param>
     /// <param name="pResource">参照対象の GPU リソース。</param>
     /// <param name="srvDesc">作成する SRV の記述。</param>
-    void CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+    void CreateSrvForResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 
     /// <summary>後から SRV を作成できるよう、ゲーム用スロットだけを確保します。</summary>
     /// <returns>確保したヒープ内インデックス。</returns>
     uint32_t Allocate();
 
     /// <summary>SRV インデックスに対応する GPU ハンドルを取得します。</summary>
-    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t index);
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGpuDescriptorHandle(uint32_t index);
 
     /// <summary>指定した SRV をコンピュート用ルートパラメータへ設定します。</summary>
     /// <param name="commandList">設定先のコマンドリスト。</param>
@@ -59,16 +61,16 @@ public:
     void SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
 
     /// <summary>SRV インデックスに対応する CPU ハンドルを取得します。</summary>
-    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(uint32_t index);
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCpuDescriptorHandle(uint32_t index);
 
 private:
-    SRVManager() = default;
+    SrvManager() = default;
 
-    ~SRVManager() = default;
+    ~SrvManager() = default;
 
-    SRVManager(const SRVManager&) = delete;
+    SrvManager(const SrvManager&) = delete;
 
-    SRVManager& operator=(const SRVManager&) = delete;
+    SrvManager& operator=(const SrvManager&) = delete;
 
     Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_ = nullptr;

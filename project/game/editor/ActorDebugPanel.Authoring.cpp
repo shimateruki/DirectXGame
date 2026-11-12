@@ -13,7 +13,7 @@
 #include "ModelManager.h"
 #include "BaseScene.h"
 #include "MeshRenderer.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "EditorManager.h"
 #include "game/actor/combat/AttackSequence.h"
 #include "game/actor/combat/AttackPlacementMath.h"
@@ -100,7 +100,7 @@ void ActorDebugPanel::StopPlacementPreview() {
         authoringGestureOpen_ = false;
     }
 
-    GPUParticleManager::GetInstance()->ClearAuthoringPreview();
+    GpuParticleManager::GetInstance()->ClearAuthoringPreview();
 
     if (sceneManager_ && sceneManager_->GetCurrentScene() == previewScene_ && previewScene_) {
         if (placementObject_) {
@@ -162,7 +162,7 @@ void ActorDebugPanel::UpdatePlacementPreview() {
     }
 
     // 作者が選んだ表示設定を術者と標的へ反映し、座標評価の前提を揃えます。
-    engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
+    engine::Object3D* actor = playerCopyMode_ ? static_cast<engine::Object3D*>(previewPlayer_) : static_cast<engine::Object3D*>(previewEnemy_);
     if (actor)
         actor->SetIsVisible(!hidePlacementActor_);
     if (previewTarget_)
@@ -180,8 +180,8 @@ void ActorDebugPanel::UpdatePlacementPreview() {
 
         if (event.operation == "projectile") {
             if (!placementObject_) {
-                auto object = std::make_unique<engine::Object3d>();
-                object->Initialize(previewScene_->GetObject3dCommon());
+                auto object = std::make_unique<engine::Object3D>();
+                object->Initialize(previewScene_->GetObject3DCommon());
                 object->SetName("AttackPlacementObject");
                 object->SetClassName("EditorOnly");
                 object->SetEditorInternal(true);
@@ -242,7 +242,7 @@ void ActorDebugPanel::UpdatePlacementPreview() {
         // 素材・姿勢・時刻に変化があった時だけGPUプレビューを作り直します。
         if (signature != placementGpuSignature_) {
             placementGpuSignature_ = signature;
-            auto* gpu = GPUParticleManager::GetInstance();
+            auto* gpu = GpuParticleManager::GetInstance();
             gpu->ClearAuthoringPreview();
             placementMessage_ = primary.empty() ?
                 (event.operation == "gpu_vfx" || projectileSection_ >= 3 ? "GPU素材は未指定です。" : "生成Objectの配置確認です。衝突は発生しません。") :
@@ -280,7 +280,7 @@ void ActorDebugPanel::UpdatePlacementPreview() {
     }
 
     // プリセットが用意できた後、術者の向きとキー時刻から世界座標を評価します。
-    engine::Object3d* owner = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
+    engine::Object3D* owner = playerCopyMode_ ? static_cast<engine::Object3D*>(previewPlayer_) : static_cast<engine::Object3D*>(previewEnemy_);
     if (!owner)
         return;
     const float duration = (std::max)(0.01f, track.end - track.begin);
@@ -317,10 +317,8 @@ void ActorDebugPanel::ReloadAuthoringProfile() {
     const std::string id = selected ? selected->id : "";
     EnemyAttackProfile loaded;
     std::string error;
-    const auto path = EnemyAttackProfile::GetDefaultPath(GetSelectedEnemyType());
-
-    // 失敗時に編集内容を失わないよう、一時プロファイルで読込が完了してから置換します。
-    if (!loaded.LoadFromFile(path, &error) || loaded.attacks.empty()) {
+    // 実行時と同じ経路で読み、旧保存先しかない場合も編集内容を再読込できるようにする。
+    if (!loaded.LoadForEnemy(GetSelectedEnemyType(), &error) || loaded.attacks.empty()) {
         profileStatus_ = "再読込できません。編集中の内容は保持しました: " + error;
         return;
     }
@@ -346,7 +344,8 @@ void ActorDebugPanel::ReloadAuthoringProfile() {
     profileDirty_ = false;
     EnemyAttackProfile::InvalidateCache(GetSelectedEnemyType());
     ApplyRecommendedSettings();
-    profileStatus_ = "保存済みの攻撃を開き直しました: " + path;
+    profileStatus_ = "保存済みの攻撃を開き直しました。保存先: " +
+                     EnemyAttackProfile::GetDefaultPath(GetSelectedEnemyType());
 }
 
 void ActorDebugPanel::RememberSequenceEdit(const AttackSequenceDefinition& before) {
@@ -1499,7 +1498,7 @@ bool ActorDebugPanel::IsAuthoringViewportActive() const {
 bool ActorDebugPanel::GetPlacementTransform(engine::Vector3& position, engine::Vector3& rotation, engine::Vector3& scale) {
     // 術者と標的からローカル基準を作り、選択した構成のギズモ位置に変換します。
     const auto* attack = GetSelectedAttackDefinition();
-    engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
+    engine::Object3D* actor = playerCopyMode_ ? static_cast<engine::Object3D*>(previewPlayer_) : static_cast<engine::Object3D*>(previewEnemy_);
     if (!attack || !actor || GetAuthoringSelectionKind() == AuthoringSelectionKind::Actor || selectedTrack_ == -1)
         return false;
     engine::Vector3 forward{0,0,1};

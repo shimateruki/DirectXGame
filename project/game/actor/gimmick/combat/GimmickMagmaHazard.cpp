@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickMagmaHazard::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickMagmaHazard::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -27,8 +27,8 @@ void GimmickMagmaHazard::Initialize(engine::Object3dCommon* common, const std::s
     // マグマ面は移動しないため、巨大Colliderを静的グリッドへ一度だけ登録する。
     SetStatic(true);
 
-    engine::Object3d::ColliderConfig collider;
-    collider.type = ColliderType::kOBB;
+    engine::Object3D::ColliderConfig collider;
+    collider.type = ColliderType::Obb;
     collider.center = {0.0f, 0.0f, 0.0f};
     collider.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(collider);
@@ -44,7 +44,7 @@ void GimmickMagmaHazard::Initialize(engine::Object3dCommon* common, const std::s
     using Self = GimmickMagmaHazard;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "マグマダメージ床",
         "触れたプレイヤーを炎上させ、上方向へ弾き返します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("接触ダメージ", "speed", &Parameter::speed, 0.0f, 100.0f);
     properties.Parameter("ダメージ間隔", "interval", &Parameter::interval, 0.1f, 10.0f);
 }
@@ -80,7 +80,7 @@ void GimmickMagmaHazard::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickMagmaHazard::OnCollision(engine::Object3d* /*other*/) {
+bool GimmickMagmaHazard::OnCollision(engine::Object3D* /*other*/) {
     // 液面接触による死亡はPlayer側で波の高さも含めて判定します。
     // 旧Colliderによるダメージ・炎上・ノックバックを重ねないようにします。
     return true;
@@ -96,7 +96,7 @@ float GimmickMagmaHazard::GetDamageInterval() const {
     return GetParameters().has_value() ? (std::max)(0.1f, GetParameters()->interval) : 0.8f;
 }
 
-std::unique_ptr<engine::Object3d> GimmickMagmaHazard::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickMagmaHazard::Clone() const {
     // 複製先を初期化してから危険域の設定と配置を移す。
     auto clone = std::make_unique<GimmickMagmaHazard>();
     assert(GetObjectCommon() != nullptr);

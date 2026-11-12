@@ -5,9 +5,9 @@
 #include "ParticleSystem.h"
 #include "engine/utility/math/Math.h"
 
-/// <summary>
-/// CPUパーティクルの設定保存・読み込みと発生要求を管理する。
-/// </summary>
+// 担当：CPU粒子の設定を保存・読込し、ParticleSystemへ発生を要求する。
+// 関連：ParticleSystem（実行）、ParticleEditor（編集）
+// 主な入口：Initialize / SaveParam / LoadParam / Emit
 class ParticleManager {
 public:
     /// <summary>共有のCPUパーティクル管理インスタンスを取得する。</summary>

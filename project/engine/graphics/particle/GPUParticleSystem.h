@@ -4,16 +4,17 @@
 #include <wrl.h>
 #include <cstddef>
 #include <string>
-#include "GPUParticleConfig.h"
+#include "GpuParticleConfig.h"
 #include <vector>
-#include <Object3dCommon.h>
+#include <Object3DCommon.h>
 
-/// <summary>
-/// 1種類のGPUパーティクルをCompute Shaderで更新し、描画する。
-/// </summary>
-class GPUParticleSystem {
+// 担当：一つのGPU粒子システムの発生要求・Compute更新・描画を処理する。
+// 関連：GpuParticleManager（管理）、GpuParticleConfig（設定）、DirectXCommon（GPU基盤）
+// 主な入口：Initialize / EmitFromConfig / Update / Draw / ResetForSceneTransition
+class GpuParticleSystem {
 public:
     // GPUとの共有レイアウト。フィールド順とアラインメントは対応するHLSLに合わせる。
+    // 関連：GpuParticleSystem（この型を使う機能の本体）
     struct Particle {
         engine::Vector3 position;
         float life;
@@ -23,7 +24,7 @@ public:
         float scale;
         float rotation;
         float rotSpeed;
-        uint32_t configIndex;
+        uint32_t configIndex; // 発生時に割り当てた設定スロット番号。
 
         engine::Vector4 memBaseColor;
         engine::Vector4 memMidColor;
@@ -55,8 +56,9 @@ public:
     };
 
     /// <summary>Compute Shaderに渡す発生・更新設定。HLSLの定数バッファ配置と一致させる。</summary>
+    // 関連：GpuParticleSystem（この型を使う機能の本体）
     struct alignas(256) CSConfig {
-        float deltaTime;
+        float deltaTime; // GPUへ渡す一更新の秒数。
         float time;
         uint32_t startIndex;
         uint32_t emitCount;
@@ -121,6 +123,7 @@ public:
     };
 
     /// <summary>次回GPU更新で処理する粒子発生要求とメッシュ表面参照。</summary>
+    // 関連：GpuParticleSystem（この型を使う機能の本体）
     struct EmitRequest {
         CSConfig config;
         ID3D12Resource* vb;
@@ -130,6 +133,7 @@ public:
     };
 
     /// <summary>描画シェーダーに渡すカメラとSprite表示設定。</summary>
+    // 関連：GpuParticleSystem（この型を使う機能の本体）
     struct alignas(256) CameraData {
         engine::Matrix4x4 viewProj;
         engine::Matrix4x4 billboardMatrix;
@@ -160,9 +164,9 @@ public:
         float cameraPadding1;
     };
 
-    GPUParticleSystem() = default;
+    GpuParticleSystem() = default;
 
-    ~GPUParticleSystem() = default;
+    ~GpuParticleSystem() = default;
 
     /// <summary>粒子バッファとCompute/描画パイプラインを初期化する。</summary>
     /// <param name="dxCommon">有効期間中に保持するDirectXの管理インスタンス。</param>
@@ -185,7 +189,7 @@ public:
 
     /// <summary>設定をコピーし、次のDrawで発生させる。要求が256件に達した場合は追加しない。</summary>
     /// <remarks>頂点バッファは借用。描画設定はSystemで共有するため、Managerの共有キーが一致する設定を渡す。</remarks>
-    void EmitFromConfig(const GPUParticleConfig& config);
+    void EmitFromConfig(const GpuParticleConfig& config);
 
     /// <summary>以後の描画に使用するテクスチャを切り替える。</summary>
     void SetCurrentTexture(const std::string& path);
@@ -194,9 +198,9 @@ public:
     /// <remarks>頂点バッファは所有しないため、描画完了まで呼び出し側で保持する。</remarks>
     void SetEmitterMesh(ID3D12Resource* vb, uint32_t vCount, uint32_t vStride, uint32_t boneSrvIndex) {
         emitterVertexBuffer_ = vb;
-        emitterVertexCount_ = vCount;
+        emitterVertexCount_ = vCount; // モデル表面発生に使う頂点数。
         emitterVertexStride_ = vStride;
-        emitterBoneSrvIndex_ = boneSrvIndex;
+        emitterBoneSrvIndex_ = boneSrvIndex; // 発生元モデルのボーン行列SRV。
     }
 
     /// <summary>シミュレーションの時間倍率を指定する。</summary>
@@ -232,8 +236,10 @@ private:
     // 初期化時に一度だけ作るGPUリソースとパイプライン。
     void CreateBuffer();
 
+    // GPU更新に使うCompute Shaderとパイプラインを作る。
     void CreateComputePipeline();
 
+    // 粒子描画用のルートシグネチャとパイプラインを作る。
     void CreateGraphicsPipeline();
 
     // コマンド発行とリソース確保に使用するDirectX基盤への非所有参照。
@@ -261,7 +267,7 @@ private:
 
     // GPU描画に必要な視点情報のバッファとマップ済み領域。
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraBuffer_;
-    CameraData* cameraData_ = nullptr;
+    CameraData* cameraData_ = nullptr; // マップ済みカメラ定数バッファへの参照。
 
     // 頂点・ボーン入力が必要な描画経路へ渡す代替バッファ。
     Microsoft::WRL::ComPtr<ID3D12Resource> dummyVertexBuffer_;
@@ -291,14 +297,14 @@ private:
 
     // シミュレーションの総時刻、1フレームの秒数、再生倍率。
     float totalTime_ = 0.0f;
-    float frameDeltaTime_ = 0.0f;
-    float timeScale_ = 1.0f;
+    float frameDeltaTime_ = 0.0f; // このフレームで進めるシミュレーション秒数。
+    float timeScale_ = 1.0f; // シミュレーションの時間倍率。
 
     // 最後の発生からの秒数と、新規発生を要求した状態。
     // 寿命の残存期間を過ぎたら更新・描画を省略する。
     float lastEmitTimer_ = 0.0f;
     bool warmupRequested_ = false;
-    float activeLifetimeWindow_ = 2.0f;
+    float activeLifetimeWindow_ = 2.0f; // 稼働判定に使う発生後の保持秒数。
     uint32_t maxParticles_ = kMaxParticles;
 
     // このフレームの発生数と、粒子の描画・アニメーション設定。
@@ -332,7 +338,7 @@ private:
 
     // メッシュ表面から発生させるときの頂点情報。元バッファは借用する。
     ID3D12Resource* emitterVertexBuffer_ = nullptr;
-    uint32_t emitterVertexCount_ = 0;
+    uint32_t emitterVertexCount_ = 0; // モデル表面発生に使う頂点数。
     uint32_t emitterVertexStride_ = 0;
-    uint32_t emitterBoneSrvIndex_ = 0;
+    uint32_t emitterBoneSrvIndex_ = 0; // 発生元モデルのボーン行列SRV。
 };

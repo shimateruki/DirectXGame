@@ -10,8 +10,10 @@
 #include <vector>
 
 /// <summary>シーン初期化前に必要なアセットを列挙します。</summary>
+// 関連：ScenePreloader（準備）、SceneManager / BaseScene（結果利用）
 struct SceneLoadManifest {
     /// <summary>画像パスと、線形色空間で扱うかどうかの指定です。</summary>
+    // 関連：ScenePreloader（準備）、SceneManager / BaseScene（結果利用）
     struct TextureRequest {
         std::string path;
         bool linear = false;
@@ -57,6 +59,7 @@ enum class SceneDependencyType {
 };
 
 /// <summary>検出した依存アセットの種類、パス、存在状態です。</summary>
+// 関連：ScenePreloader（準備）、SceneManager / BaseScene（結果利用）
 struct SceneDependencyRecord {
     SceneDependencyType type = SceneDependencyType::Other;
     std::string path;
@@ -64,6 +67,7 @@ struct SceneDependencyRecord {
 };
 
 /// <summary>依存アセットと見つからなかったパスをまとめます。</summary>
+// 関連：ScenePreloader（準備）、SceneManager / BaseScene（結果利用）
 struct SceneDependencyReport {
     std::vector<SceneDependencyRecord> assets;
     std::vector<std::string> missingPaths;
@@ -72,7 +76,9 @@ struct SceneDependencyReport {
     std::size_t Count(SceneDependencyType type) const;
 };
 
-/// <summary>ワーカースレッドと LoadingScene の間で共有する進行状況です。</summary>
+// 担当：ワーカーの進行状況を、スレッド間で安全に共有する。
+// 関連：ScenePreloader（進捗更新）、SceneManager / LoadingScene（表示）
+// 主な入口：Begin / Advance / Finish / GetRatio
 class ScenePreloadProgress {
 public:
     /// <summary>既知のタスク数で進捗を初期化します。</summary>
@@ -102,7 +108,9 @@ private:
     std::string currentTask_;
 };
 
-/// <summary>ワーカー側で準備し、シーン初期化へ渡す CPU データです。</summary>
+// 担当：事前準備したJSONとアセット一覧を、シーン初期化へ引き渡す。
+// 関連：ScenePreloader（生成）、BaseScene（利用）、SceneManager（保持）
+// 主な入口：TakeJson
 class ScenePreloadData {
 public:
     /// <summary>読み込み済み JSON を取り出し、保持領域から削除します。</summary>
@@ -123,8 +131,10 @@ public:
     std::vector<std::string> warnings;
 };
 
-/// <summary>シーン依存ファイルを調べ、ワーカーで可能な CPU 側の準備を行います。</summary>
-/// <remarks>DirectX リソースの最終生成はメインスレッド側で行います。</remarks>
+// 担当：シーンの依存ファイルを調べ、ワーカーで可能なCPU側準備を行う。
+// 関連：SceneLoadManifest（要求）、ScenePreloadData（結果）、ModelManager / TextureManager
+// 主な入口：Prepare / Inspect
+// GPU資源の最終生成・転送の確定はメインスレッド側で行う。
 class ScenePreloader {
 public:
     /// <summary>JSON の解析から参照アセットを辿り、画像・モデル・音声を事前準備します。</summary>

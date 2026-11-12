@@ -1,0 +1,17 @@
+{
+    "attackPower": 1.0,
+    "detectionRange": 24.0,
+    "gravity": 60.0,
+    "jumpPower": 18.0,
+    "maxFallSpeed": 60.0,
+    "maxHp": 34.0,
+    "modelName": "Characters/slime_red",
+    "morphDuration": 5.0,
+    "morphLimited": false,
+    "scale": [
+        2.0,
+        2.0,
+        2.0
+    ],
+    "speed": 2.3499999046325684
+}

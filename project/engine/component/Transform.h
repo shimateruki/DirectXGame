@@ -1,7 +1,9 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 
-/// <summary>位置、回転、拡縮、親子関係とローカル/ワールド行列を保持する。</summary>
+// 担当：ローカル姿勢と親子関係から、ローカル・ワールド行列を計算する。
+// 関連：Object3D / Collider（姿勢を参照）、Math（行列計算）
+// 主な入口：UpdateMatrix
 struct Transform {
     // scale・rotate・translateは親に対するローカル値。Euler回転の単位はラジアン。
     engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };

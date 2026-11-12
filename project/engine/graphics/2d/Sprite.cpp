@@ -3,7 +3,7 @@
 #include "WinApp.h"
 #include <cassert>
 #include "TextureManager.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include "engine/graphics/core/ColorSpace.h"
 #include "RenderStats.h"
 #include <algorithm>
@@ -142,8 +142,8 @@ void Sprite::Initialize(engine::SpriteCommon* common, uint32_t textureHandle) {
 	}
 
 	engine::Math math;
-	wvpData_->WVP = math.MakeIdentity4x4();
-	wvpData_->World = math.MakeIdentity4x4();
+	wvpData_->wvp = math.MakeIdentity4x4();
+	wvpData_->world = math.MakeIdentity4x4();
 
 	materialResource_ = dxCommon_->CreateBufferResource(sizeof(Material));
 	if (!materialResource_ || FAILED(materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_))) || !materialData_) {
@@ -228,15 +228,15 @@ void Sprite::Update() {
 		const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle_);
 		float texWidth = (float)metadata.width;
 		float texHeight = (float)metadata.height;
-		float tex_left = textureLeftTop_.x / texWidth;
-		float tex_right = (textureLeftTop_.x + textureSize_.x) / texWidth;
-		float tex_top = textureLeftTop_.y / texHeight;
-		float tex_bottom = (textureLeftTop_.y + textureSize_.y) / texHeight;
+		float texLeft = textureLeftTop_.x / texWidth;
+		float texRight = (textureLeftTop_.x + textureSize_.x) / texWidth;
+		float texTop = textureLeftTop_.y / texHeight;
+		float texBottom = (textureLeftTop_.y + textureSize_.y) / texHeight;
 
-		vertexData_[0].texcoord = { tex_left, tex_bottom };
-		vertexData_[1].texcoord = { tex_left, tex_top };
-		vertexData_[2].texcoord = { tex_right, tex_bottom };
-		vertexData_[3].texcoord = { tex_right, tex_top };
+		vertexData_[0].texcoord = { texLeft, texBottom };
+		vertexData_[1].texcoord = { texLeft, texTop };
+		vertexData_[2].texcoord = { texRight, texBottom };
+		vertexData_[3].texcoord = { texRight, texTop };
 	}
 
 	// 親子変換を含むワールド行列へ画面の正射影を掛ける。
@@ -246,8 +246,8 @@ void Sprite::Update() {
 	engine::Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::GetClientWidth(), (float)WinApp::GetClientHeight(), 0.0f, 100.0f);
 	engine::Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
 
-	wvpData_->WVP = worldViewProjectionMatrix;
-	wvpData_->World = worldMatrix;
+	wvpData_->wvp = worldViewProjectionMatrix;
+	wvpData_->world = worldMatrix;
 	materialData_->enableLighting = false;
 	materialData_->uvTransform = math.MakeIdentity4x4();
 }
@@ -282,7 +282,7 @@ void Sprite::Draw() {
 	commandList->IASetIndexBuffer(&indexBufferView_);
 	commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
 	commandList->SetGraphicsRootConstantBufferView(1, materialResource_->GetGPUVirtualAddress());
-	SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle_);
+	SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle_);
 	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 	engine::RenderStats::GetInstance()->RecordIndexedDraw(6);
 }

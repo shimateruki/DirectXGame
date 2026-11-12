@@ -1,9 +1,9 @@
 #pragma once
 
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include "Easing.h"
 #include <numbers>
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 
 #include <algorithm>
 #include <cmath>
@@ -52,13 +52,15 @@ struct BossChantFrame {
 };
 
 /// <summary>ボス共通の詠唱陣、足元の発光、収束粒子を一括して更新します。</summary>
+// 関連：ボスが詠唱の進行度と姿勢を渡し、MeshEffect・GPU粒子をまとめて更新する。
+// 主な入口：Start / Update / Reset
 class BossChantVisual {
   public:
     /// <summary>JSON プリセットから詠唱の描画層を生成します。</summary>
     /// <param name="common">エフェクト生成に使う描画共通オブジェクト。</param>
     /// <param name="style">魔法陣のパス、色、半径、粒子プリセット。</param>
     /// <returns>必須の魔法陣を生成できた場合は true。</returns>
-    bool Start(engine::Object3dCommon* common, BossChantStyle style) {
+    bool Start(engine::Object3DCommon* common, BossChantStyle style) {
         // 必須の魔法陣三層を先に検証し、任意の光の層だけ欠けても演出を続ける。
         Reset();
         if (!common || style.sigilEffectPath.empty()) {
@@ -78,27 +80,27 @@ class BossChantVisual {
             Reset();
             return false;
         }
-        if (const EffectObject3d::EffectMaterial* material = sigil_->GetMaterialData()) {
+        if (const EffectObject3D::EffectMaterial* material = sigil_->GetMaterialData()) {
             presetAlpha_ = material->color.w;
             presetIntensity_ = material->intensity;
         }
         if (groundLight_ && groundLight_->GetMaterialData()) {
-            const EffectObject3d::EffectMaterial* material = groundLight_->GetMaterialData();
+            const EffectObject3D::EffectMaterial* material = groundLight_->GetMaterialData();
             groundLightAlpha_ = material->color.w;
             groundLightIntensity_ = material->intensity;
         }
         if (groundCore_ && groundCore_->GetMaterialData()) {
-            const EffectObject3d::EffectMaterial* material = groundCore_->GetMaterialData();
+            const EffectObject3D::EffectMaterial* material = groundCore_->GetMaterialData();
             groundCoreAlpha_ = material->color.w;
             groundCoreIntensity_ = material->intensity;
         }
         if (risingLight_ && risingLight_->GetMaterialData()) {
-            const EffectObject3d::EffectMaterial* material = risingLight_->GetMaterialData();
+            const EffectObject3D::EffectMaterial* material = risingLight_->GetMaterialData();
             risingLightAlpha_ = material->color.w;
             risingLightIntensity_ = material->intensity;
         }
         if (footRibbon_ && footRibbon_->GetMaterialData()) {
-            const EffectObject3d::EffectMaterial* material = footRibbon_->GetMaterialData();
+            const EffectObject3D::EffectMaterial* material = footRibbon_->GetMaterialData();
             footRibbonAlpha_ = material->color.w;
             footRibbonIntensity_ = material->intensity;
         }
@@ -107,14 +109,14 @@ class BossChantVisual {
         sigil_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         glow_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         floor_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
-        glow_->SetBlendMode(BlendMode::kAdd);
+        glow_->SetBlendMode(BlendMode::Add);
         glow_->SetUseTextureColor(false);
-        for (EffectObject3d* effect : {groundLight_.get(), groundCore_.get(), footRibbon_.get(), risingLight_.get(),
+        for (EffectObject3D* effect : {groundLight_.get(), groundCore_.get(), footRibbon_.get(), risingLight_.get(),
                                        risingLightCounter_.get()}) {
             if (!effect) {
                 continue;
             }
-            effect->SetBlendMode(BlendMode::kAdd);
+            effect->SetBlendMode(BlendMode::Add);
             effect->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         }
 
@@ -126,7 +128,7 @@ class BossChantVisual {
     // 攻撃プレビューの遮蔽確認用に、表示中の描画層だけ数えます。
     int GetVisibleLayerCount() const {
         int count = 0;
-        for (const EffectObject3d* effect :
+        for (const EffectObject3D* effect :
              {sigil_.get(), glow_.get(), floor_.get(), groundLight_.get(), groundCore_.get(), footRibbon_.get(),
               risingLight_.get(), risingLightCounter_.get()}) {
             if (effect && effect->GetIsVisible()) {
@@ -172,7 +174,7 @@ class BossChantVisual {
             sigil_->SetIsVisible(false);
             glow_->SetIsVisible(false);
             floor_->SetIsVisible(false);
-            for (EffectObject3d* effect : {groundLight_.get(), groundCore_.get(), footRibbon_.get(), risingLight_.get(),
+            for (EffectObject3D* effect : {groundLight_.get(), groundCore_.get(), footRibbon_.get(), risingLight_.get(),
                                            risingLightCounter_.get()}) {
                 if (effect) {
                     effect->SetIsVisible(false);
@@ -201,7 +203,7 @@ class BossChantVisual {
         const float casterHeight = (std::max)(frame.casterHeight, casterRadius * 1.2f);
 
         if (frame.releasing && !wasReleasing_ && !style_.releasePreset.empty()) {
-            if (GPUParticleManager* particles = GPUParticleManager::GetInstance();
+            if (GpuParticleManager* particles = GpuParticleManager::GetInstance();
                 particles && particles->IsInitialized()) {
                 particles->EmitDirected(style_.releasePreset, frame.sigilCenter, forward, 1.0f);
             }
@@ -310,7 +312,7 @@ class BossChantVisual {
                        ID3D12Resource* spotLightResource, int previewBufferIndex) {
         if (!camera) return;
         // 本編と同じ層順で、Editorの表示カメラへ詠唱を描画する。
-        for (EffectObject3d* effect : {floor_.get(), groundLight_.get(), groundCore_.get(), footRibbon_.get(),
+        for (EffectObject3D* effect : {floor_.get(), groundLight_.get(), groundCore_.get(), footRibbon_.get(),
                                        risingLight_.get(), risingLightCounter_.get(), sigil_.get(), glow_.get()}) {
             if (effect && effect->GetIsVisible()) {
                 effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
@@ -337,9 +339,9 @@ class BossChantVisual {
     }
 
     // 必須・任意のどちらの層も、生成失敗時は nullptr を返して呼び出し側で判定します。
-    static std::unique_ptr<EffectObject3d> CreateEffect(engine::Object3dCommon* common, const std::string& path,
+    static std::unique_ptr<EffectObject3D> CreateEffect(engine::Object3DCommon* common, const std::string& path,
                                                         const std::string& name) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(common);
         if (!effect->LoadFromJson(path)) {
             return nullptr;
@@ -349,7 +351,7 @@ class BossChantVisual {
         return effect;
     }
 
-    static void DrawEffect(EffectObject3d* effect, ID3D12Resource* pointLightResource,
+    static void DrawEffect(EffectObject3D* effect, ID3D12Resource* pointLightResource,
                            ID3D12Resource* spotLightResource) {
         if (effect && effect->GetIsVisible()) {
             effect->RefreshRenderCameraData();
@@ -360,7 +362,7 @@ class BossChantVisual {
     /// <summary>任意の発光層へ位置、透明度、強度を反映します。</summary>
     /// <param name="alpha">表示判定にも使う最終透明度。</param>
     /// <param name="intensity">プリセットの強度を加味した発光強度。</param>
-    static void UpdateLightLayer(EffectObject3d* effect, float deltaTime, const engine::Vector3& position,
+    static void UpdateLightLayer(EffectObject3D* effect, float deltaTime, const engine::Vector3& position,
                                  const engine::Vector3& rotation, const engine::Vector3& scale, engine::Vector4 color, float alpha,
                                  float intensity) {
         if (!effect) {
@@ -381,7 +383,7 @@ class BossChantVisual {
     // 足元と胴体の外周に粒子を散らし、術者の顔を覆わずに収束感を出します。
     void EmitGatheringMotes(const BossChantFrame& frame, const engine::Vector3& side, float casterRadius, float casterHeight,
                             float charge) {
-        GPUParticleManager* particles = GPUParticleManager::GetInstance();
+        GpuParticleManager* particles = GpuParticleManager::GetInstance();
         if (!particles || !particles->IsInitialized() || style_.motePreset.empty()) {
             return;
         }
@@ -429,15 +431,15 @@ class BossChantVisual {
 
     BossChantStyle style_{};
 
-    std::unique_ptr<EffectObject3d> sigil_;
-    std::unique_ptr<EffectObject3d> glow_;
-    std::unique_ptr<EffectObject3d> floor_;
+    std::unique_ptr<EffectObject3D> sigil_;
+    std::unique_ptr<EffectObject3D> glow_;
+    std::unique_ptr<EffectObject3D> floor_;
 
-    std::unique_ptr<EffectObject3d> groundLight_;
-    std::unique_ptr<EffectObject3d> groundCore_;
-    std::unique_ptr<EffectObject3d> footRibbon_;
-    std::unique_ptr<EffectObject3d> risingLight_;
-    std::unique_ptr<EffectObject3d> risingLightCounter_;
+    std::unique_ptr<EffectObject3D> groundLight_;
+    std::unique_ptr<EffectObject3D> groundCore_;
+    std::unique_ptr<EffectObject3D> footRibbon_;
+    std::unique_ptr<EffectObject3D> risingLight_;
+    std::unique_ptr<EffectObject3D> risingLightCounter_;
 
     float moteTimer_ = 0.0f;
     bool wasReleasing_ = false;

@@ -14,7 +14,7 @@
 #include <cstring>
 #include <limits>
 #include <string_view>
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include <DebugConsole.h>
 #include <LightManager.h>
 
@@ -36,12 +36,12 @@ void Model::DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     engine::RenderStats::GetInstance()->RecordObjectDraw();
 
-    // [0] WVP
+    // [0] wvp
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
 
     // [1] ボーン情報
     if (!modelData_.bones.empty()) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, boneSrvIndex_);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, boneSrvIndex_);
     }
 
     // 各メッシュの頂点を描画

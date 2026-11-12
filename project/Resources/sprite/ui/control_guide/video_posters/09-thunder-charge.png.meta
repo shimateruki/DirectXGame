@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "08227f5d70cb48814ee94e176707aa85",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/09-thunder-charge.png",
+  "version": 1
+}

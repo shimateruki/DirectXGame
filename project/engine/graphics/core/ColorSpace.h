@@ -7,7 +7,9 @@
 
 namespace engine::ColorSpace {
 
-/// <summary>Editor の sRGB 入力を、GPU に渡す直前に変換するか管理します。</summary>
+// 担当：Editorで入力したsRGB色を、GPUへ渡す前に線形化するか保持する。
+// 関連：ColorSpaceの変換関数、MeshRenderer / LightManager（色の受渡し）
+// 主な入口：GetInstance / IsLinearWorkflowEnabled / SetLinearWorkflowEnabled
 class WorkflowSettings {
 public:
     /// <summary>共有する色空間設定を取得します。</summary>

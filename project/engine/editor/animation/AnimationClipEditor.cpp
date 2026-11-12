@@ -1,0 +1,1696 @@
+#ifdef USE_IMGUI
+#include "AnimationClipEditor.h"
+#include <numbers>
+#include "EditorCommon.h"
+
+#include "EditorToolSettings.h"
+
+#include "BaseScene.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
+#include "CameraManager.h"
+#include "DebugConsole.h"
+#include "DirectXCommon.h"
+#ifdef USE_IMGUI
+#include "IconsFontAwesome5.h"
+#include "imgui.h"
+#include "ImGuizmo.h"
+#endif
+#include "ModelManager.h"
+#include "MeshRenderer.h"
+#include "Object3D.h"
+#include "SceneManager.h"
+#include "engine/utility/math/AnimationInterpolation.h"
+#include "json.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <optional>
+
+namespace {
+constexpr const char* kPreviewObjectName = "__Editor_AnimationClipVisual";
+constexpr const char* kSaveDirectory = "Resources/json/animation_clip/";
+constexpr const char* kLegacySaveDirectory = "Resources/json/enemy_animation/";
+constexpr float kPi = std::numbers::pi_v<float>;
+constexpr float kKeyEpsilon = 0.001f;
+
+const char* kEasingNames[] = {
+    "Linear",
+    "Ease In",
+    "Ease Out",
+    "Ease In Out",
+    "Smoother Step"
+};
+
+const char* kEventTypeNames[] = {
+    "Attack On",
+    "Attack Off",
+    "Move Start",
+    "Move End",
+    "Effect",
+    "SE"
+};
+
+constexpr int kEventTypeCount = static_cast<int>(sizeof(kEventTypeNames) / sizeof(kEventTypeNames[0]));
+
+void CopyToBuffer(char* buffer, size_t size, const std::string& text) {
+    if (!buffer || size == 0)
+        return;
+    strncpy_s(buffer, size, text.c_str(), _TRUNCATE);
+}
+}
+
+void AnimationClipEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+    // プレビューのシーンと描画基盤は借用し、ワークベンチ側で所有しない。
+    sceneManager_ = sceneManager;
+    dxCommon_ = dxCommon;
+    RefreshAssetFiles();
+}
+
+void AnimationClipEditor::Finalize() {
+StopPreview(); sceneManager_ = nullptr; previewModel_ = nullptr;
+}
+
+void AnimationClipEditor::StartPreview() {
+enabled_ = FindSourceObject() != nullptr && previewObject_ != nullptr;
+}
+
+void AnimationClipEditor::Update(float deltaTime) {
+if (!enabled_) return;
+    if (!sceneManager_ || sceneManager_->IsPlaying() || sceneManager_->IsTransitioning() || !FindSourceObject()) {
+        StopPreview(); return;
+    }
+    previewObject_ = FindPreviewObject();
+    if (!previewObject_) { StopPreview(); return; }
+    const float previous = currentTime_;
+    if (play_ && duration_ > 0) {
+        currentTime_ += std::clamp(deltaTime, 0.0f, 0.25f) * playbackSpeed_;
+        if (loop_) currentTime_ = std::fmod(currentTime_, duration_);
+        else if (currentTime_ >= duration_) { currentTime_ = duration_; play_ = false; }
+        if (previewEvents_) UpdateEventPreview(previous, currentTime_);
+    }
+    eventPreviewTimer_ = (std::max)(0.0f, eventPreviewTimer_ - deltaTime);
+    if (autoApply_) ApplyTimelinePose();
+}
+
+void AnimationClipEditor::StopPreview() {
+if (auto* source = FindSourceObject()) source->SetEditorHiddenReason(1u << 9, false);
+    RemovePreviewObject();
+    enabled_ = wasEnabled_ = play_ = false;
+    previewObject_ = nullptr; previewModel_ = nullptr; previewScene_ = nullptr;
+    targetId_ = 0; timelineDragKind_ = timelineDragIndex_ = -1;
+}
+
+void AnimationClipEditor::DrawImGui() {
+#ifdef USE_IMGUI
+    ImGui::Text(ICON_FA_RUNNING " アニメーション制作");
+    ImGui::TextWrapped("1. モデル・クリップを選ぶ → 2. 下で時刻を選ぶ → 3. 姿勢を編集してキー登録");
+    ImGui::Separator();
+
+    ImGui::TextDisabled("選択位置で姿勢を確認 / 配置Objectの保存値は変更しません");
+    ImGui::Checkbox("自動反映", &autoApply_);
+
+    ImGui::SeparatorText("編集対象");
+
+    if (ImGui::RadioButton("身体全体の変形", editBodyTransform_)) {
+        editBodyTransform_ = true;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::RadioButton("ボーンの姿勢", !editBodyTransform_)) {
+        editBodyTransform_ = false;
+    }
+
+    ImGui::TextWrapped("身体全体：伸縮・傾き / ボーン：関節の姿勢。再生・時刻は画面下で操作します。");
+
+    DrawPreviewControls();
+    DrawAssetControls();
+
+    // クリップ切り替えで編集中のキーを無言で捨てない。
+    if (pendingClipAction_ != 0)
+        ImGui::OpenPopup("クリップの切り替え確認");
+    if (ImGui::BeginPopupModal("クリップの切り替え確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("現在の編集内容を置き換えます。必要な場合は先に保存してください。");
+
+        if (ImGui::Button("置き換える")) {
+            play_ = false;
+            if (pendingClipAction_ == 1)
+                NewAuthoringClip();
+            else {
+                CopyToBuffer(saveFileBuffer_, sizeof(saveFileBuffer_), pendingClipPath_);
+                LoadAuthoringJson();
+            }
+
+            pendingClipAction_ = 0;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("キャンセル")) {
+            pendingClipAction_ = 0;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    if (editBodyTransform_) {
+        DrawBodyControls();
+    } else {
+        DrawJointControls();
+        DrawKeyframeControls();
+    }
+
+    if (ImGui::CollapsingHeader("イベント（上級）"))
+        DrawEventControls();
+    if (editBodyTransform_) {
+        DrawBodyGizmo();
+    } else {
+        DrawBoneOverlayAndGizmo();
+    }
+#endif
+}
+
+
+void AnimationClipEditor::DrawPreviewControls() {
+#ifdef USE_IMGUI
+    ImGui::TextWrapped("モデル: %s（選択対象のモデルを使用）", modelNameBuffer_);
+    if (!previewModel_) {
+        ImGui::TextWrapped("別モデルのボーンキーを編集中の場合は、先に保存するか新規クリップを作成してください。");
+        return;
+    }
+    const auto& data = previewModel_->GetModelData();
+    ImGui::Text("メッシュ %u / ボーン %zu", previewModel_->GetMeshCount(), data.skeleton.joints.size());
+    if (ImGui::BeginCombo("ベースアニメーション", animationNameBuffer_[0] ? animationNameBuffer_ : "なし")) {
+        if (ImGui::Selectable("なし", !useBaseAnimation_)) { animationNameBuffer_[0] = '\0'; useBaseAnimation_ = false; }
+        for (const auto& anim : data.animations)
+            if (ImGui::Selectable(anim.name.c_str(), anim.name == animationNameBuffer_)) {
+                CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), anim.name); useBaseAnimation_ = true;
+            }
+        ImGui::EndCombo();
+    }
+    DrawTimelinePanel();
+#endif
+}
+
+
+void AnimationClipEditor::DrawAssetControls() {
+    // モデル、基礎アニメーション、作業 JSON の選択と保存をここに集める。
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("クリップの読み込み・保存", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
+
+    const char* currentFile = saveFileBuffer_[0] ? saveFileBuffer_ : "(新規)";
+
+    // クリップの選択は予約だけ行い、実際の置換はDrawImGui側の確認後に実行する。
+    if (ImGui::BeginCombo("既存Clip", currentFile)) {
+        for (const std::string& fileName : assetFiles_) {
+            const bool selected = fileName == std::filesystem::path(saveFileBuffer_).stem().string();
+
+            if (ImGui::Selectable(fileName.c_str(), selected)) {
+                pendingClipPath_ = fileName + ".json";
+                pendingClipAction_ = 2;
+            }
+
+            if (selected)
+                ImGui::SetItemDefaultFocus();
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputText("保存ファイル", saveFileBuffer_, sizeof(saveFileBuffer_));
+
+    if (ImGui::Button(ICON_FA_FILE " 新規")) {
+        pendingClipAction_ = 1;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_SAVE " 保存")) {
+        SaveAuthoringJson();
+        RefreshAssetFiles();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_FOLDER_OPEN " 再読込")) {
+        pendingClipPath_ = saveFileBuffer_;
+        pendingClipAction_ = 2;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_SYNC " 一覧更新")) {
+        RefreshAssetFiles();
+    }
+
+    ImGui::Text("Body %zu / Bone %zu / Event %zu", bodyKeys_.size(), keys_.size(), events_.size());
+    ImGui::TextDisabled("保存先: %s", GetSavePath().c_str());
+#endif
+}
+
+void AnimationClipEditor::DrawBodyControls() {
+    // 本体の移動・回転・伸縮・せん断を関節キーとは分けて編集する。
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("身体の姿勢", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
+
+    ImGui::TextDisabled("Scaleは基準Scaleへの倍率、RotationとPositionは見た目用Offsetです。");
+    ImGui::TextDisabled("Player Runtimeでは物理座標を守るためPosition Offsetを移動処理へ加算しません。");
+
+    bool edited = false;
+    edited |= ImGui::DragFloat3("位置のずれ", &bodyTranslateUi_.x, 0.01f);
+    edited |= ImGui::DragFloat3("回転（度）", &bodyRotateDegUi_.x, 0.5f);
+    edited |= ImGui::DragFloat3("伸縮倍率", &bodyScaleUi_.x, 0.01f, 0.01f, 8.0f);
+    edited |= ImGui::DragFloat("上体の傾き X", &bodyShearUi_.x, 0.01f, -2.0f, 2.0f);
+    edited |= ImGui::DragFloat("上体の傾き Z", &bodyShearUi_.z, 0.01f, -2.0f, 2.0f);
+    edited |= ImGui::DragFloat("傾きの支点 Y", &bodyShearPivotY_, 0.005f);
+    edited |= ImGui::Combo("次のキーへのEasing", &bodyEasingToNext_, kEasingNames, IM_ARRAYSIZE(kEasingNames));
+    if (ImGui::RadioButton("移動##BodyGizmo", gizmoOperation_ == 0))
+        gizmoOperation_ = 0;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("回転##BodyGizmo", gizmoOperation_ == 1))
+        gizmoOperation_ = 1;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("拡縮##BodyGizmo", gizmoOperation_ == 2))
+        gizmoOperation_ = 2;
+    ImGui::Checkbox("Body Gizmo", &enableBodyGizmo_);
+    ImGui::SameLine();
+    ImGui::Checkbox("Gizmo操作で自動キー", &autoKeyBodyOnGizmo_);
+
+    // 数値編集は未登録の上書き姿勢として表示し、キー登録されるまで保存キーを変更しない。
+    if (edited) {
+        bodyEditOverrideActive_ = true;
+        ApplyTimelinePose();
+    }
+
+    if (bodyEditOverrideActive_) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.25f, 1.0f), "編集中: キー未登録のBody姿勢があります");
+    }
+
+    if (ImGui::Button(ICON_FA_KEY " 現在Body姿勢をキー登録")) {
+        AddOrUpdateBodyKey();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_UNDO " 編集姿勢を破棄")) {
+        bodyEditOverrideActive_ = false;
+        SyncBodyUiFromTimeline();
+        ApplyTimelinePose();
+    }
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size()));
+
+    if (ImGui::Button(ICON_FA_TRASH " 選択キー削除")) {
+        DeleteSelectedBodyKey();
+    }
+
+    ImGui::EndDisabled();
+
+    if (ImGui::BeginTable("AnimationClipEditorBodyKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 190.0f))) {
+        ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 62.0f);
+        ImGui::TableSetupColumn("Position");
+        ImGui::TableSetupColumn("Rotation");
+        ImGui::TableSetupColumn("Scale");
+        ImGui::TableSetupColumn("Easing", ImGuiTableColumnFlags_WidthFixed, 105.0f);
+        ImGui::TableHeadersRow();
+
+        for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
+            const BodyAnimationClip::Key& key = bodyKeys_[index];
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::PushID(20000 + index);
+            char timeLabel[32]{};
+            std::snprintf(timeLabel, sizeof(timeLabel), "%.3f", key.time);
+
+            // キー行を選ぶと未登録姿勢を解除し、選択した時刻とキーの値へ編集欄を揃える。
+            if (ImGui::Selectable(timeLabel, selectedBodyKeyIndex_ == index, ImGuiSelectableFlags_SpanAllColumns)) {
+                selectedBodyKeyIndex_ = index;
+                currentTime_ = key.time;
+                bodyEditOverrideActive_ = false;
+                SyncBodyUiFromKey(key);
+                ApplyTimelinePose();
+            }
+
+            ImGui::PopID();
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%.2f %.2f %.2f", key.translate.x, key.translate.y, key.translate.z);
+            ImGui::TableSetColumnIndex(2);
+            const engine::Vector3 rotateDeg = ToDegrees(key.rotate);
+            ImGui::Text("%.1f %.1f %.1f", rotateDeg.x, rotateDeg.y, rotateDeg.z);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%.2f %.2f %.2f", key.scale.x, key.scale.y, key.scale.z);
+            ImGui::TableSetColumnIndex(4);
+            ImGui::TextUnformatted(kEasingNames[std::clamp(key.easingToNext, 0, 4)]);
+        }
+
+        ImGui::EndTable();
+    }
+#endif
+}
+
+void AnimationClipEditor::DrawJointControls() {
+    // 選択関節のローカル姿勢だけを編集し、全身の基礎アニメーションに重ねる。
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("ボーン編集", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
+    if (!previewModel_ || !previewModel_->HasSkeleton()) {
+        ImGui::TextDisabled("モデルを読み込むとボーン一覧が表示されます。");
+        return;
+    }
+
+    ImGui::Checkbox("ボーン表示", &showBoneOverlay_);
+    ImGui::SameLine();
+    ImGui::Checkbox("名前表示", &showBoneNames_);
+    ImGui::SameLine();
+    ImGui::Checkbox("選択軸表示", &showBoneAxes_);
+    ImGui::Checkbox("ボーンギズモ", &enableBoneGizmo_);
+    ImGui::SameLine();
+    ImGui::Checkbox("ギズモ操作で自動キー", &autoKeyOnGizmo_);
+    ImGui::DragFloat("ボーン点サイズ", &bonePointRadius_, 0.1f, 2.0f, 16.0f);
+    ImGui::DragFloat("ボーン線の太さ", &boneLineThickness_, 0.1f, 1.0f, 8.0f);
+
+    if (ImGui::RadioButton("移動", gizmoOperation_ == 0))
+        gizmoOperation_ = 0;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("回転", gizmoOperation_ == 1))
+        gizmoOperation_ = 1;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("拡縮", gizmoOperation_ == 2))
+        gizmoOperation_ = 2;
+
+    ImGui::InputText("検索", jointSearchBuffer_, sizeof(jointSearchBuffer_));
+
+    const auto& joints = previewModel_->GetJoints();
+    ImGui::BeginChild("AnimationClipEditorJoints", ImVec2(0, 180), true);
+
+    for (const auto& joint : joints) {
+        if (jointSearchBuffer_[0] != '\0' && joint.name.find(jointSearchBuffer_) == std::string::npos) {
+            continue;
+        }
+
+        int depth = 0;
+        std::optional<int> parent = joint.parent;
+
+        // 親の深さで一覧を字下げする。親参照が循環しても関節数までで探索を打ち切る。
+        while (parent && *parent >= 0 && *parent < static_cast<int>(joints.size()) && depth < static_cast<int>(joints.size())) {
+            ++depth;
+            parent = joints[*parent].parent;
+        }
+
+        ImGui::Indent(static_cast<float>(depth) * 12.0f);
+        const std::string label = joint.name + "##joint" + std::to_string(joint.index);
+        bool selected = (selectedJointIndex_ == joint.index);
+
+        if (ImGui::Selectable(label.c_str(), selected)) {
+            selectedJointIndex_ = joint.index;
+            SyncUiFromJoint(selectedJointIndex_);
+        }
+
+        ImGui::Unindent(static_cast<float>(depth) * 12.0f);
+    }
+
+    ImGui::EndChild();
+
+    if (selectedJointIndex_ < 0)
+        return;
+
+    bool edited = false;
+    edited |= ImGui::DragFloat3("移動", &jointTranslateUi_.x, 0.01f);
+    edited |= ImGui::DragFloat3("回転", &jointRotateDegUi_.x, 0.5f);
+    edited |= ImGui::DragFloat3("拡縮", &jointScaleUi_.x, 0.01f, 0.01f, 100.0f);
+
+    // 入力した姿勢は選択関節の一時上書きへ保存し、他の関節の編集中姿勢も保持する。
+    if (edited && previewModel_) {
+        StoreEditOverrideFromUi();
+        ApplyTimelinePose();
+    }
+
+    if (editPoseOverrides_.find(selectedJointIndex_) != editPoseOverrides_.end()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.25f, 1.0f), "編集中: キー未登録の姿勢があります");
+    }
+
+    if (ImGui::Button(ICON_FA_KEY " 現在ポーズをキー登録")) {
+        AddOrUpdateKey();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_UNDO " 編集ポーズを破棄")) {
+        ClearEditOverride(selectedJointIndex_);
+        ApplyTimelinePose();
+        SyncUiFromJoint(selectedJointIndex_);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_TRASH " 全編集ポーズ破棄")) {
+        ClearAllEditOverrides();
+        ApplyTimelinePose();
+        SyncUiFromJoint(selectedJointIndex_);
+    }
+#endif
+}
+
+void AnimationClipEditor::DrawKeyframeControls() {
+    // タイムラインのキーを選択し、同時刻の値を更新できるようにする。
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("キー", ImGuiTreeNodeFlags_DefaultOpen))
+        return;
+
+    if (ImGui::Button(ICON_FA_KEY " 選択ボーンにキー登録")) {
+        AddOrUpdateKey();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_TRASH " 現在時間のキー削除")) {
+        DeleteSelectedJointKeyAtCurrentTime();
+    }
+
+    if (ImGui::BeginTable("AnimationClipEditorKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Time");
+        ImGui::TableSetupColumn("Joint");
+        ImGui::TableSetupColumn("Move");
+        ImGui::TableSetupColumn("Rot");
+        ImGui::TableSetupColumn("Scale");
+        ImGui::TableHeadersRow();
+
+        for (const PoseKey& key : keys_) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%.3f", key.time);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextUnformatted(key.jointName.c_str());
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%.2f %.2f %.2f", key.translate.x, key.translate.y, key.translate.z);
+            ImGui::TableSetColumnIndex(3);
+            engine::Vector3 rotDeg = ToDegrees(key.rotate);
+            ImGui::Text("%.1f %.1f %.1f", rotDeg.x, rotDeg.y, rotDeg.z);
+            ImGui::TableSetColumnIndex(4);
+            ImGui::Text("%.2f %.2f %.2f", key.scale.x, key.scale.y, key.scale.z);
+        }
+
+        ImGui::EndTable();
+    }
+
+#endif
+}
+
+void AnimationClipEditor::DrawEventControls() {
+    // 音や演出の発火点は姿勢キーと別のイベント列で管理する。
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("イベントマーカー"))
+        return;
+
+    ImGui::Combo("種類", &eventType_, kEventTypeNames, IM_ARRAYSIZE(kEventTypeNames));
+    ImGui::InputText("名前", eventNameBuffer_, sizeof(eventNameBuffer_));
+    ImGui::DragFloat3("オフセット", &eventOffsetUi_.x, 0.01f);
+    ImGui::Checkbox("再生時にイベントをプレビュー発火", &previewEvents_);
+
+    if (!lastEventPreviewText_.empty()) {
+        ImVec4 color = eventPreviewTimer_ > 0.0f ? ImVec4(1.0f, 0.78f, 0.2f, 1.0f) : ImVec4(0.65f, 0.65f, 0.65f, 1.0f);
+        ImGui::TextColored(color, "Last: %s", lastEventPreviewText_.c_str());
+    }
+
+    if (ImGui::Button(ICON_FA_PLUS " 現在時間に追加")) {
+        EventMarker marker;
+        marker.time = currentTime_;
+        marker.type = eventType_;
+        marker.name = eventNameBuffer_;
+        marker.offset = eventOffsetUi_;
+        // 追加位置に関係なく時刻順へ整列し、一覧を再生順に並べ直す。
+        events_.push_back(marker);
+        std::sort(events_.begin(), events_.end(), [](const EventMarker& a, const EventMarker& b) { return a.time < b.time; });
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_TRASH " 選択削除") && selectedEventIndex_ >= 0 && selectedEventIndex_ < static_cast<int>(events_.size())) {
+        events_.erase(events_.begin() + selectedEventIndex_);
+        selectedEventIndex_ = -1;
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_BOLT " 選択イベントを発火") &&
+        selectedEventIndex_ >= 0 && selectedEventIndex_ < static_cast<int>(events_.size())) {
+        FireEventPreview(events_[selectedEventIndex_]);
+    }
+
+    if (ImGui::BeginTable("AnimationClipEditorEventTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Time");
+        ImGui::TableSetupColumn("Type");
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("Offset");
+        ImGui::TableHeadersRow();
+
+        for (int i = 0; i < static_cast<int>(events_.size()); ++i) {
+            const EventMarker& marker = events_[i];
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            std::string rowId = std::to_string(i) + "##event";
+
+            if (ImGui::Selectable(rowId.c_str(), selectedEventIndex_ == i, ImGuiSelectableFlags_SpanAllColumns)) {
+                selectedEventIndex_ = i;
+                currentTime_ = marker.time;
+                SyncBodyUiFromTimeline();
+                ApplyTimelinePose();
+            }
+
+            ImGui::SameLine();
+            ImGui::Text("%.3f", marker.time);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextUnformatted(kEventTypeNames[(std::clamp)(marker.type, 0, static_cast<int>(IM_ARRAYSIZE(kEventTypeNames)) - 1)]);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextUnformatted(marker.name.c_str());
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%.2f %.2f %.2f", marker.offset.x, marker.offset.y, marker.offset.z);
+        }
+
+        ImGui::EndTable();
+    }
+#endif
+}
+
+bool AnimationClipEditor::LoadPreviewModel(const std::string& modelName) {
+// クリップの保存形式は維持し、別モデルへの差し替えは選択Objectを変えて行う。
+    if (!previewObject_ || modelName != modelNameBuffer_) {
+        DebugConsole::GetInstance()->AddLog("クリップのモデルと選択対象が異なります。対象モデルを選び直してください。");
+        return false;
+    }
+    previewModel_ = previewObject_->GetModel();
+    return previewModel_ != nullptr;
+}
+
+void AnimationClipEditor::CreatePreviewObject() {
+auto* source = FindSourceObject();
+    if (!source || !source->GetModel() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    auto* scene = sceneManager_->GetCurrentScene();
+    auto object = std::make_unique<engine::Object3D>();
+    object->Initialize(scene->GetObject3DCommon());
+    object->SetName(kPreviewObjectName); object->SetClassName("EditorOnly"); object->SetEditorInternal(true);
+    object->SetIsLocked(true); object->SetCollisionAttribute(0); object->SetCollisionMask(0);
+    // ModelManagerの共有骨格を直接編集せず、CPUデータから確認用モデルを作る。
+    auto data = source->GetModel()->GetModelData();
+    for (auto& mesh : data.meshes) {
+        mesh.vertexResource.Reset(); mesh.indexResource.Reset(); mesh.computeSkinnedVertexResource.Reset();
+    }
+    for (auto& material : data.materials) { material.materialResource.Reset(); material.materialData = nullptr; }
+    previewModelOwner_ = std::make_unique<Model>();
+    previewModelOwner_->InitializeFromCpuData(ModelManager::GetInstance()->GetModelCommon(), std::move(data), source->GetModelName());
+    object->SetModel(previewModelOwner_.get());
+    object->SetMaterialType(source->GetMaterialType()); object->SetColor(source->GetColor()); object->SetEmissive(source->GetEmissive());
+    previewObject_ = object.get(); previewModel_ = object->GetModel();
+    scene->AddObjectImmediate(std::move(object));
+    source->SetEditorHiddenReason(1u << 9, true);
+}
+
+void AnimationClipEditor::RemovePreviewObject() {
+    // Scene の走査中に直接消さず、非表示にして削除要求へ渡す。
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        previewObject_ = nullptr;
+        return;
+    }
+
+    if (engine::Object3D* object = FindPreviewObject()) {
+        object->SetIsVisible(false);
+        object->SetModel(nullptr);
+        object->SetReplayRemoved(true);
+        object->SetName("__Editor_AnimationClipEditorRetired");
+        sceneManager_->GetCurrentScene()->RequestRemoveObject(object);
+    }
+
+    previewObject_ = nullptr;
+    // 前フレームのGPU描画が終了してから、この編集だけが持つモデルを解放する。
+    if (previewModelOwner_ && dxCommon_) dxCommon_->WaitForGpuIdle();
+    previewModelOwner_.reset();
+}
+
+engine::Object3D* AnimationClipEditor::FindPreviewObject() const {
+if (!sceneManager_ || sceneManager_->GetSceneGeneration() != sceneGeneration_) return nullptr;
+    auto* scene = sceneManager_->GetCurrentScene();
+    if (!scene) return nullptr;
+    for (const auto& object : scene->GetObjects())
+        if (object && object.get() == previewObject_ && !object->IsReplayRemoved()) return object.get();
+    return nullptr;
+}
+
+void AnimationClipEditor::ApplyTimelinePose() {
+    if (!previewModel_ || !previewObject_)
+        return;
+
+    // UI の一時調整を保存済みキーより優先し、未確定の姿勢をその場で確認できるようにする。
+    BodyAnimationClip::Key bodyPose;
+    const bool hasBodyPose = bodyEditOverrideActive_
+        ? (bodyPose = BuildBodyKeyFromUi(), true)
+        : TryGetInterpolatedBodyKey(currentTime_, bodyPose);
+    if (hasBodyPose) {
+        previewObject_->SetTranslate({
+            previewOrigin_.x + bodyPose.translate.x,
+            previewOrigin_.y + bodyPose.translate.y,
+            previewOrigin_.z + bodyPose.translate.z
+        });
+        previewObject_->SetRotation(sourceRotation_ + bodyPose.rotate);
+        previewObject_->SetScale({
+            previewScale_.x * bodyPose.scale.x,
+            previewScale_.y * bodyPose.scale.y,
+            previewScale_.z * bodyPose.scale.z
+        });
+    } else {
+        previewObject_->SetTranslate(previewOrigin_);
+        previewObject_->SetRotation(sourceRotation_);
+        previewObject_->SetScale(previewScale_);
+    }
+
+    previewObject_->UpdateLocalMatrix();
+    previewObject_->UpdateWorldMatrix();
+
+    if (auto* renderer = previewObject_->GetMeshRenderer()) {
+        renderer->SetVisualShear(hasBodyPose ? bodyPose.shear : engine::Vector3{}, hasBodyPose ? bodyPose.shearPivotY : 0.0f);
+    }
+
+    // 毎フレーム基準姿勢から組み立て直し、前フレームの関節回転を蓄積させない。
+    previewModel_->ResetSkeletonPose();
+
+    if (useBaseAnimation_ && animationNameBuffer_[0] != '\0') {
+        if (const Model::Animation* anim = previewModel_->GetAnimation(animationNameBuffer_)) {
+            float time = currentTime_;
+
+            if (anim->duration > 0.0f) {
+                time = (std::min)(time, anim->duration);
+            }
+
+            previewModel_->ApplyAnimation(*anim, time);
+            previewModel_->RebuildSkeletonForEditor();
+        }
+    }
+
+    // 関節ごとの補間結果を一つにまとめ、同じ関節のキー数だけ姿勢を重ねて適用しない。
+    std::map<int, PoseKey> poseByJoint;
+
+    for (const PoseKey& key : keys_) {
+        PoseKey interpolated;
+
+        if (TryGetInterpolatedKey(key.jointIndex, currentTime_, interpolated)) {
+            poseByJoint[key.jointIndex] = interpolated;
+        }
+    }
+
+    for (const auto& [jointIndex, key] : poseByJoint) {
+        ApplyPoseKey(key);
+    }
+
+    // 個別関節の一時編集は、ベースアニメと補間済みキーを適用した最後に重ねる。
+    for (const auto& [jointIndex, key] : editPoseOverrides_) {
+        (void)jointIndex;
+        ApplyPoseKey(key);
+    }
+}
+
+BodyAnimationClip::Key AnimationClipEditor::BuildBodyKeyFromUi() const {
+    // UI の角度を保存形式のラジアンへ変換し、ゼロに近いスケールを制限する。
+    BodyAnimationClip::Key key;
+    key.time = currentTime_;
+    key.translate = bodyTranslateUi_;
+    key.shear = bodyShearUi_;
+    key.shearPivotY = bodyShearPivotY_;
+    key.rotate = ToRadians(bodyRotateDegUi_);
+    key.scale = {
+        (std::max)(0.01f, bodyScaleUi_.x),
+        (std::max)(0.01f, bodyScaleUi_.y),
+        (std::max)(0.01f, bodyScaleUi_.z)
+    };
+
+    key.easingToNext = std::clamp(bodyEasingToNext_, 0, 4);
+    return key;
+}
+
+void AnimationClipEditor::AddOrUpdateBodyKey() {
+    // 同時刻のキーを上書きし、新しい時刻だけ追加して並びを維持する。
+    BodyAnimationClip::Key key = BuildBodyKeyFromUi();
+
+    for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
+        if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
+            bodyKeys_[index] = key;
+            selectedBodyKeyIndex_ = index;
+            bodyEditOverrideActive_ = false;
+            SortBodyKeys();
+            ApplyTimelinePose();
+            return;
+        }
+    }
+
+    bodyKeys_.push_back(key);
+    bodyEditOverrideActive_ = false;
+    duration_ = (std::max)(duration_, key.time);
+    SortBodyKeys();
+
+    // 新規追加後はソートで添字が変わるため、登録時刻から選択キーの位置を探し直す。
+    for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
+        if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
+            selectedBodyKeyIndex_ = index;
+            break;
+        }
+    }
+
+    ApplyTimelinePose();
+}
+
+void AnimationClipEditor::DeleteSelectedBodyKey() {
+    // 削除後はその時刻の補間姿勢へ UI を戻し、未保存の一時姿勢を消す。
+    if (selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size())) {
+        return;
+    }
+
+    bodyKeys_.erase(bodyKeys_.begin() + selectedBodyKeyIndex_);
+    selectedBodyKeyIndex_ = -1;
+    bodyEditOverrideActive_ = false;
+    SyncBodyUiFromTimeline();
+    ApplyTimelinePose();
+}
+
+bool AnimationClipEditor::TryGetInterpolatedBodyKey(float time, BodyAnimationClip::Key& keyOut) const {
+    // 区間の開始キーに保存されたイージングを補間率へ適用する。
+    if (bodyKeys_.empty()) {
+        return false;
+    }
+
+    // キー区間の外側は端の姿勢を維持し、外挿で位置や大きさを伸ばさない。
+    if (bodyKeys_.size() == 1 || time <= bodyKeys_.front().time) {
+        keyOut = bodyKeys_.front();
+        return true;
+    }
+
+    if (time >= bodyKeys_.back().time) {
+        keyOut = bodyKeys_.back();
+        return true;
+    }
+
+    for (size_t index = 0; index + 1 < bodyKeys_.size(); ++index) {
+        const BodyAnimationClip::Key& from = bodyKeys_[index];
+        const BodyAnimationClip::Key& to = bodyKeys_[index + 1];
+
+        if (time < from.time || time > to.time) {
+            continue;
+        }
+
+        const float segmentDuration = (std::max)(kKeyEpsilon, to.time - from.time);
+        const float rawRate = (time - from.time) / segmentDuration;
+        const float rate = AnimationInterpolation::ApplyEasing(
+            rawRate,
+            static_cast<AnimationInterpolation::EasingType>(std::clamp(from.easingToNext, 0, 4)));
+        keyOut = from;
+        keyOut.time = time;
+        keyOut.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
+        keyOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
+        keyOut.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
+        keyOut.shear = AnimationInterpolation::Lerp(from.shear, to.shear, rate);
+        keyOut.shearPivotY = engine::Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
+        return true;
+    }
+
+    keyOut = bodyKeys_.back();
+    return true;
+}
+
+void AnimationClipEditor::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
+    // 保存値の回転はラジアンなので、操作欄には度へ戻して表示する。
+    bodyTranslateUi_ = key.translate;
+    bodyShearUi_ = key.shear;
+    bodyShearPivotY_ = key.shearPivotY;
+    bodyRotateDegUi_ = ToDegrees(key.rotate);
+    bodyScaleUi_ = key.scale;
+    bodyEasingToNext_ = std::clamp(key.easingToNext, 0, 4);
+}
+
+void AnimationClipEditor::SyncBodyUiFromTimeline() {
+    // キーが無い場合は単位姿勢に戻し、前クリップの値を UI に残さない。
+    BodyAnimationClip::Key key;
+
+    if (TryGetInterpolatedBodyKey(currentTime_, key)) {
+        SyncBodyUiFromKey(key);
+    } else {
+        bodyTranslateUi_ = {};
+        bodyShearUi_ = {};
+        bodyShearPivotY_ = 0.0f;
+        bodyRotateDegUi_ = {};
+        bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
+        bodyEasingToNext_ = 4;
+    }
+
+    bodyEditOverrideActive_ = false;
+}
+
+void AnimationClipEditor::SortBodyKeys() {
+    // 補間時に隣接キーを探せるよう時刻順を維持する。
+    std::sort(bodyKeys_.begin(), bodyKeys_.end(), [](const BodyAnimationClip::Key& lhs, const BodyAnimationClip::Key& rhs) {
+        return lhs.time < rhs.time;
+    });
+}
+
+void AnimationClipEditor::ApplyPoseKey(const PoseKey& key) {
+    // 関節の Euler 回転を骨格が使う Quaternion へ変換して適用する。
+    if (!previewModel_)
+        return;
+    previewModel_->SetJointTransform(key.jointIndex, {
+        key.scale,
+        engine::Math::EulerToQuaternion(key.rotate),
+        key.translate
+    });
+}
+
+AnimationClipEditor::PoseKey AnimationClipEditor::BuildPoseKeyFromUi() const {
+    // 保存時は関節番号と名前を両方持ち、モデル更新後の再割り当てに備える。
+    PoseKey key;
+    key.time = currentTime_;
+    key.jointIndex = selectedJointIndex_;
+    key.translate = jointTranslateUi_;
+    key.rotate = ToRadians(jointRotateDegUi_);
+    key.scale = jointScaleUi_;
+
+    if (previewModel_ && selectedJointIndex_ >= 0 && selectedJointIndex_ < static_cast<int>(previewModel_->GetJoints().size())) {
+        key.jointName = previewModel_->GetJoints()[selectedJointIndex_].name;
+    }
+
+    return key;
+}
+
+void AnimationClipEditor::AddOrUpdateKey() {
+    // 同じ関節・同じ時刻のキーは置換し、一時プレビュー値を確定値へ移す。
+    if (!previewModel_ || selectedJointIndex_ < 0)
+        return;
+
+    PoseKey key = BuildPoseKeyFromUi();
+
+    for (PoseKey& existing : keys_) {
+        if (existing.jointIndex == key.jointIndex && std::abs(existing.time - key.time) <= kKeyEpsilon) {
+            existing = key;
+            SortKeys();
+            ClearEditOverride(key.jointIndex);
+            ApplyTimelinePose();
+            return;
+        }
+    }
+
+    keys_.push_back(key);
+    SortKeys();
+    ClearEditOverride(key.jointIndex);
+    ApplyTimelinePose();
+}
+
+void AnimationClipEditor::DeleteSelectedJointKeyAtCurrentTime() {
+    // 他の関節や別時刻のキーを残して、選択関節の現在キーだけ消す。
+    if (selectedJointIndex_ < 0)
+        return;
+    keys_.erase(
+        std::remove_if(keys_.begin(), keys_.end(), [&](const PoseKey& key) {
+            return key.jointIndex == selectedJointIndex_ && std::abs(key.time - currentTime_) <= kKeyEpsilon;
+        }),
+        keys_.end());
+    ApplyTimelinePose();
+}
+
+bool AnimationClipEditor::TryGetInterpolatedKey(int jointIndex, float time, PoseKey& keyOut) const {
+    // 対象関節の前後キーだけを取り、回転は Quaternion 補間でつなぐ。
+    std::vector<PoseKey> jointKeys;
+
+    for (const PoseKey& key : keys_) {
+        if (key.jointIndex == jointIndex) {
+            jointKeys.push_back(key);
+        }
+    }
+
+    if (jointKeys.empty())
+        return false;
+    std::sort(jointKeys.begin(), jointKeys.end(), [](const PoseKey& a, const PoseKey& b) { return a.time < b.time; });
+
+    if (time <= jointKeys.front().time) {
+        keyOut = jointKeys.front();
+        return true;
+    }
+
+    if (time >= jointKeys.back().time) {
+        keyOut = jointKeys.back();
+        return true;
+    }
+
+    for (size_t i = 0; i + 1 < jointKeys.size(); ++i) {
+        const PoseKey& a = jointKeys[i];
+        const PoseKey& b = jointKeys[i + 1];
+
+        if (time >= a.time && time <= b.time) {
+            float t = (time - a.time) / (b.time - a.time);
+            keyOut = a;
+            keyOut.time = time;
+            keyOut.translate = engine::Math::Lerp(a.translate, b.translate, t);
+            engine::Quaternion qA = engine::Math::EulerToQuaternion(a.rotate);
+            engine::Quaternion qB = engine::Math::EulerToQuaternion(b.rotate);
+            keyOut.rotate = engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(engine::Math::Slerp(qA, qB, t)));
+            keyOut.scale = engine::Math::Lerp(a.scale, b.scale, t);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void AnimationClipEditor::SyncUiFromJoint(int jointIndex) {
+    // プレビュー骨格の現在姿勢を編集欄へ戻す際は角度を度へ変換する。
+    if (!previewModel_)
+        return;
+    Model::QuaternionTransform transform = previewModel_->GetJointTransform(jointIndex);
+    jointTranslateUi_ = transform.translate;
+    jointRotateDegUi_ = ToDegrees(engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(transform.rotate)));
+    jointScaleUi_ = transform.scale;
+}
+
+void AnimationClipEditor::SortKeys() {
+    // 時刻が近いキーは関節番号で整列し、一覧の順序を安定させる。
+    std::sort(keys_.begin(), keys_.end(), [](const PoseKey& a, const PoseKey& b) {
+        if (std::abs(a.time - b.time) > kKeyEpsilon)
+            return a.time < b.time;
+        return a.jointIndex < b.jointIndex;
+    });
+}
+
+void AnimationClipEditor::RefreshAssetFiles() {
+    // 作業ディレクトリ内の JSON だけを候補にし、名前順で表示する。
+    namespace fs = std::filesystem;
+    assetFiles_.clear();
+
+    if (!fs::exists(kSaveDirectory)) {
+        return;
+    }
+
+    for (const auto& entry : fs::directory_iterator(kSaveDirectory)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".json") {
+            assetFiles_.push_back(entry.path().stem().string());
+        }
+    }
+
+    std::sort(assetFiles_.begin(), assetFiles_.end());
+}
+
+void AnimationClipEditor::NewAuthoringClip() {
+    // モデルは維持したままキー・イベント・一時姿勢を初期状態へ戻す。
+    CopyToBuffer(saveFileBuffer_, sizeof(saveFileBuffer_), "new_body_animation.json");
+    bodyKeys_.clear();
+    keys_.clear();
+    events_.clear();
+    ClearAllEditOverrides();
+    bodyEditOverrideActive_ = false;
+    selectedBodyKeyIndex_ = -1;
+    selectedJointIndex_ = -1;
+    selectedEventIndex_ = -1;
+    currentTime_ = 0.0f;
+    duration_ = 1.0f;
+    playbackSpeed_ = 1.0f;
+    loop_ = true;
+    play_ = false;
+    bodyTranslateUi_ = {};
+    bodyShearUi_ = {};
+    bodyShearPivotY_ = 0.0f;
+    bodyRotateDegUi_ = {};
+    bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
+    bodyEasingToNext_ = 4;
+    lastEventPreviewText_.clear();
+    eventPreviewTimer_ = 0.0f;
+    ApplyTimelinePose();
+}
+
+void AnimationClipEditor::SaveAuthoringJson() {
+    // 本体キー、関節キー、イベントを同じファイルに保存して再編集可能にする。
+    namespace fs = std::filesystem;
+    fs::create_directories(kSaveDirectory);
+
+    nlohmann::json data;
+    data["version"] = BodyAnimationClip::kCurrentVersion;
+    data["name"] = fs::path(saveFileBuffer_).stem().string();
+    data["model"] = modelNameBuffer_;
+    data["baseAnimation"] = animationNameBuffer_;
+    data["duration"] = duration_;
+    data["loop"] = loop_;
+    data["previewPlaybackSpeed"] = playbackSpeed_;
+    data["bodyKeys"] = nlohmann::json::array();
+
+    // 保存対象は確定済みキー。UIだけの一時上書きは含めず、回転も保存値のラジアンを使う。
+    for (const BodyAnimationClip::Key& key : bodyKeys_) {
+        data["bodyKeys"].push_back({
+            {"time", key.time},
+            {"translate", {key.translate.x, key.translate.y, key.translate.z}},
+            {"rotate", {key.rotate.x, key.rotate.y, key.rotate.z}},
+            {"scale", {key.scale.x, key.scale.y, key.scale.z}},
+            {"shear", {key.shear.x, 0.0f, key.shear.z}},
+            {"shearPivotY", key.shearPivotY},
+            {"easingToNext", key.easingToNext}
+        });
+    }
+
+    // 関節キーには名前も持たせ、読込先モデルで関節番号が変わった場合に照合できるようにする。
+    data["keys"] = nlohmann::json::array();
+
+    for (const PoseKey& key : keys_) {
+        data["keys"].push_back({
+            {"time", key.time},
+            {"jointIndex", key.jointIndex},
+            {"jointName", key.jointName},
+            {"translate", {key.translate.x, key.translate.y, key.translate.z}},
+            {"rotate", {key.rotate.x, key.rotate.y, key.rotate.z}},
+            {"scale", {key.scale.x, key.scale.y, key.scale.z}}
+        });
+    }
+
+    data["events"] = nlohmann::json::array();
+
+    for (const EventMarker& marker : events_) {
+        data["events"].push_back({
+            {"time", marker.time},
+            {"type", marker.type},
+            {"name", marker.name},
+            {"offset", {marker.offset.x, marker.offset.y, marker.offset.z}}
+        });
+    }
+
+    std::ofstream ofs(GetSavePath(), std::ios::binary);
+    ofs << data.dump(2);
+    DebugConsole::GetInstance()->AddLog(("Animation Workbench saved: " + GetSavePath()).c_str());
+}
+
+void AnimationClipEditor::LoadAuthoringJson() {
+    // 現行保存先を優先し、旧フォルダのファイルも読み込めるようにする。
+    std::ifstream ifs(GetSavePath(), std::ios::binary);
+
+    if (!ifs) {
+        std::string legacyFileName = saveFileBuffer_;
+        if (legacyFileName.empty())
+            legacyFileName = "enemy_animation.json";
+        if (legacyFileName.find(".json") == std::string::npos)
+            legacyFileName += ".json";
+        const std::string legacyPath = std::string(kLegacySaveDirectory) + legacyFileName;
+        ifs.clear();
+        ifs.open(legacyPath, std::ios::binary);
+        if (!ifs) {
+            DebugConsole::GetInstance()->AddLog(("Animation Workbench json not found: " + GetSavePath()).c_str());
+            return;
+        }
+    }
+
+    // ファイルが開けてもJSON全体が不正なら、現在のキーを置換する前に中断する。
+    nlohmann::json data = nlohmann::json::parse(ifs, nullptr, false);
+
+    if (data.is_discarded() || !data.is_object()) {
+        DebugConsole::GetInstance()->AddLog("Animation Workbench: invalid clip JSON");
+        return;
+    }
+
+    const std::string savedModel = data.value("model", "");
+    if (const auto* target = FindSourceObject(); target && !data.value("keys", nlohmann::json::array()).empty() &&
+        !savedModel.empty() && savedModel != target->GetModelName()) {
+        DebugConsole::GetInstance()->AddLog("骨格用クリップのモデルと選択対象が異なります。対応するモデルを選択してください。");
+        return;
+    }
+    ClearAllEditOverrides();
+    lastEventPreviewText_.clear();
+    eventPreviewTimer_ = 0.0f;
+
+    std::string modelName = data.value("model", "");
+    std::string baseAnimation = data.value("baseAnimation", "");
+    float loadedDuration = data.value("duration", 2.0f);
+    CopyToBuffer(modelNameBuffer_, sizeof(modelNameBuffer_), modelName);
+
+    // モデル読込が編集状態を初期化するため、保存されたキーと再生設定の復元より先に行う。
+    if (modelNameBuffer_[0] != '\0') {
+        LoadPreviewModel(modelNameBuffer_);
+    }
+
+    CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), baseAnimation);
+    duration_ = loadedDuration;
+    loop_ = data.value("loop", true);
+    playbackSpeed_ = data.value("previewPlaybackSpeed", 1.0f);
+    useBaseAnimation_ = animationNameBuffer_[0] != '\0';
+
+    // 旧ファイルにBodyキーがなくても読み進め、せん断などの追加項目は既定値で補う。
+    bodyKeys_.clear();
+
+    for (const auto& item : data.value("bodyKeys", nlohmann::json::array())) {
+        BodyAnimationClip::Key key;
+        key.time = item.value("time", 0.0f);
+        auto translate = item.value("translate", std::vector<float>{0.0f, 0.0f, 0.0f});
+        auto rotate = item.value("rotate", std::vector<float>{0.0f, 0.0f, 0.0f});
+        auto scale = item.value("scale", std::vector<float>{1.0f, 1.0f, 1.0f});
+
+        if (translate.size() >= 3)
+            key.translate = { translate[0], translate[1], translate[2] };
+        if (rotate.size() >= 3)
+            key.rotate = { rotate[0], rotate[1], rotate[2] };
+        if (scale.size() >= 3)
+            key.scale = { scale[0], scale[1], scale[2] };
+        const auto shear = item.value("shear", std::vector<float>{0.0f, 0.0f, 0.0f});
+
+        if (shear.size() >= 3)
+            key.shear = { shear[0], 0.0f, shear[2] };
+        key.shearPivotY = item.value("shearPivotY", 0.0f);
+        key.easingToNext = std::clamp(item.value("easingToNext", 4), 0, 4);
+        bodyKeys_.push_back(key);
+    }
+
+    keys_.clear();
+
+    for (const auto& item : data.value("keys", nlohmann::json::array())) {
+        PoseKey key;
+        key.time = item.value("time", 0.0f);
+        key.jointIndex = item.value("jointIndex", -1);
+        key.jointName = item.value("jointName", "");
+
+        // 保存時の番号より現在モデルの関節名を優先し、名前が見つからない場合は元の番号を残す。
+        if (previewModel_ && !key.jointName.empty()) {
+            int index = previewModel_->FindJointIndex(key.jointName);
+            if (index >= 0)
+                key.jointIndex = index;
+        }
+
+        auto translate = item.value("translate", std::vector<float>{0.0f, 0.0f, 0.0f});
+        auto rotate = item.value("rotate", std::vector<float>{0.0f, 0.0f, 0.0f});
+        auto scale = item.value("scale", std::vector<float>{1.0f, 1.0f, 1.0f});
+
+        if (translate.size() >= 3)
+            key.translate = { translate[0], translate[1], translate[2] };
+        if (rotate.size() >= 3)
+            key.rotate = { rotate[0], rotate[1], rotate[2] };
+        if (scale.size() >= 3)
+            key.scale = { scale[0], scale[1], scale[2] };
+        keys_.push_back(key);
+    }
+
+    events_.clear();
+
+    for (const auto& item : data.value("events", nlohmann::json::array())) {
+        EventMarker marker;
+        marker.time = item.value("time", 0.0f);
+        marker.type = item.value("type", 0);
+        marker.name = item.value("name", "");
+        auto offset = item.value("offset", std::vector<float>{0.0f, 0.0f, 0.0f});
+
+        if (offset.size() >= 3)
+            marker.offset = { offset[0], offset[1], offset[2] };
+        events_.push_back(marker);
+    }
+
+    // 全キーを読んでから補間用の順序へ揃え、現在時刻の編集欄と見た目を再構築する。
+    SortBodyKeys();
+    SortKeys();
+    selectedBodyKeyIndex_ = -1;
+    bodyEditOverrideActive_ = false;
+    SyncBodyUiFromTimeline();
+    ApplyTimelinePose();
+    DebugConsole::GetInstance()->AddLog(("Animation Workbench loaded json: " + GetSavePath()).c_str());
+}
+
+std::string AnimationClipEditor::GetSavePath() const {
+    // 拡張子が省略された名前でもワークベンチ専用ディレクトリの JSON へ揃える。
+    std::string filename = saveFileBuffer_;
+    if (filename.empty())
+        filename = "new_body_animation.json";
+    if (filename.find(".json") == std::string::npos) {
+        filename += ".json";
+    }
+
+    return std::string(kSaveDirectory) + filename;
+}
+
+void AnimationClipEditor::StoreEditOverrideFromUi() {
+    // ギズモ操作中の未確定姿勢をキーへ保存せず、プレビュー上だけ優先する。
+    if (!previewModel_ || selectedJointIndex_ < 0)
+        return;
+    editPoseOverrides_[selectedJointIndex_] = BuildPoseKeyFromUi();
+}
+
+void AnimationClipEditor::ClearEditOverride(int jointIndex) {
+    // 確定した関節の一時姿勢だけ消し、他の編集中関節には触れない。
+    editPoseOverrides_.erase(jointIndex);
+}
+
+void AnimationClipEditor::ClearAllEditOverrides() {
+    // クリップやモデル変更時に旧骨格の一時編集を持ち越さない。
+    editPoseOverrides_.clear();
+}
+
+// 順再生・逆再生の双方で、前回時刻と今回時刻の間を横切ったイベントだけをプレビューします。
+// 終端から先頭へループした場合は区間を二つに分け、境界での二重発火を避けます。
+void AnimationClipEditor::UpdateEventPreview(float previousTime, float currentTime) {
+    // 順再生と逆再生で区間境界を変え、キー通過時の二重発火を防ぐ。
+    if (events_.empty())
+        return;
+
+    bool forward = playbackSpeed_ >= 0.0f;
+
+    for (const EventMarker& marker : events_) {
+        bool crossed = false;
+
+        if (forward) {
+            if (currentTime >= previousTime) {
+                crossed = marker.time > previousTime + kKeyEpsilon && marker.time <= currentTime + kKeyEpsilon;
+            } else {
+                crossed = marker.time > previousTime + kKeyEpsilon || marker.time <= currentTime + kKeyEpsilon;
+            }
+        } else {
+            if (currentTime <= previousTime) {
+                crossed = marker.time < previousTime - kKeyEpsilon && marker.time >= currentTime - kKeyEpsilon;
+            } else {
+                crossed = marker.time < previousTime - kKeyEpsilon || marker.time >= currentTime - kKeyEpsilon;
+            }
+        }
+
+        if (crossed) {
+            FireEventPreview(marker);
+        }
+    }
+}
+
+void AnimationClipEditor::FireEventPreview(const EventMarker& marker) {
+    // ゲーム本体のイベント処理は呼ばず、内容を画面とログへ短時間表示する。
+    lastEventPreviewText_ = FormatEventMarker(marker);
+    eventPreviewTimer_ = 1.5f;
+    DebugConsole::GetInstance()->AddLog(("Animation Event Preview: " + lastEventPreviewText_).c_str());
+}
+
+std::string AnimationClipEditor::FormatEventMarker(const EventMarker& marker) const {
+    // 時刻・種類・位置を一行にまとめてイベントの確認欄へ表示する。
+    int typeIndex = (std::clamp)(marker.type, 0, kEventTypeCount - 1);
+    char buffer[256] = {};
+    std::snprintf(
+        buffer,
+        sizeof(buffer),
+        "[%.3f] %s : %s (%.2f, %.2f, %.2f)",
+        marker.time,
+        kEventTypeNames[typeIndex],
+        marker.name.c_str(),
+        marker.offset.x,
+        marker.offset.y,
+        marker.offset.z);
+    return buffer;
+}
+
+engine::Vector3 AnimationClipEditor::ToDegrees(const engine::Vector3& radians) const {
+    // 保存と骨格で使うラジアンを UI の度へ戻す。
+    return {
+        radians.x * 180.0f / kPi,
+        radians.y * 180.0f / kPi,
+        radians.z * 180.0f / kPi
+    };
+}
+
+engine::Vector3 AnimationClipEditor::ToRadians(const engine::Vector3& degrees) const {
+    // UI で入力した度を保存と骨格で使うラジアンへ変換する。
+    return {
+        degrees.x * kPi / 180.0f,
+        degrees.y * kPi / 180.0f,
+        degrees.z * kPi / 180.0f
+    };
+}
+
+void AnimationClipEditor::SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
+    // 3D ギズモの入力と投影を Game View の表示矩形に合わせる。
+    gameViewOffset_ = offset;
+    gameViewSize_ = size;
+}
+
+void AnimationClipEditor::DrawBodyGizmo() {
+    // ワールド操作をプレビュー原点からの相対値に戻して本体キーへ反映する。
+#ifdef USE_IMGUI
+    if (!EditorToolSettings::Get().IsVisible("transformGizmo"))
+        return;
+    if (!enabled_ || !previewObject_ || !enableBodyGizmo_)
+        return;
+    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f)
+        return;
+
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera)
+        return;
+
+    engine::Matrix4x4 view = camera->GetViewMatrix();
+    engine::Matrix4x4 projection = camera->GetProjectionMatrix();
+    engine::Matrix4x4 bodyWorld = previewObject_->GetWorldMatrix();
+
+    ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
+    ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
+
+    ImGuizmo::OPERATION operation = ImGuizmo::TRANSLATE;
+    if (gizmoOperation_ == 1)
+        operation = ImGuizmo::ROTATE;
+    if (gizmoOperation_ == 2)
+        operation = ImGuizmo::SCALE;
+
+    ImGuizmo::Manipulate(
+        &view.m[0][0],
+        &projection.m[0][0],
+        operation,
+        ImGuizmo::WORLD,
+        &bodyWorld.m[0][0],
+        nullptr,
+        nullptr);
+
+    if (!ImGuizmo::IsUsing())
+        return;
+
+    engine::Vector3 worldScale;
+    engine::Vector3 worldRotateDeg;
+    engine::Vector3 worldTranslate;
+    ImGuizmo::DecomposeMatrixToComponents(
+        &bodyWorld.m[0][0],
+        &worldTranslate.x,
+        &worldRotateDeg.x,
+        &worldScale.x);
+
+    // ワールド位置からプレビュー原点を引き、大きさも基準Scaleに対する倍率へ戻す。
+    bodyTranslateUi_ = {
+        worldTranslate.x - previewOrigin_.x,
+        worldTranslate.y - previewOrigin_.y,
+        worldTranslate.z - previewOrigin_.z
+    };
+
+    bodyRotateDegUi_ = worldRotateDeg;
+    bodyScaleUi_ = {
+        worldScale.x / (std::max)(previewScale_.x, 0.0001f),
+        worldScale.y / (std::max)(previewScale_.y, 0.0001f),
+        worldScale.z / (std::max)(previewScale_.z, 0.0001f)
+    };
+
+    bodyEditOverrideActive_ = true;
+    ApplyTimelinePose();
+
+    if (autoKeyBodyOnGizmo_) {
+        AddOrUpdateBodyKey();
+    }
+#endif
+}
+
+void AnimationClipEditor::DrawBoneOverlayAndGizmo() {
+#ifdef USE_IMGUI
+    if (!EditorToolSettings::Get().IsVisible("bones"))
+        return;
+    if (!enabled_ || !previewModel_ || !previewObject_ || !showBoneOverlay_)
+        return;
+    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f)
+        return;
+
+    const auto& joints = previewModel_->GetJoints();
+    if (joints.empty())
+        return;
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    const ImVec2 clipMin(gameViewOffset_.x, gameViewOffset_.y);
+    const ImVec2 clipMax(gameViewOffset_.x + gameViewSize_.x, gameViewOffset_.y + gameViewSize_.y);
+    drawList->PushClipRect(clipMin, clipMax, true);
+
+    const ImVec2 mouseScreen = ImGui::GetIO().MousePos;
+    int hoveredJoint = -1;
+    float bestHoverDistance = (std::max)(bonePointRadius_ + 4.0f, boneLineThickness_ + 4.0f);
+
+    // 点だけでなく画面上のボーン線も選択候補にし、マウスに最も近い候補へ絞る。
+    auto distanceToSegment = [](const ImVec2& point, const ImVec2& start, const ImVec2& end) {
+        const float segmentX = end.x - start.x;
+        const float segmentY = end.y - start.y;
+        const float lengthSquared = segmentX * segmentX + segmentY * segmentY;
+
+        if (lengthSquared <= 0.0001f) {
+            const float dx = point.x - start.x;
+            const float dy = point.y - start.y;
+            return std::sqrt(dx * dx + dy * dy);
+        }
+
+        const float projection = std::clamp(
+            ((point.x - start.x) * segmentX + (point.y - start.y) * segmentY) / lengthSquared,
+            0.0f,
+            1.0f);
+        const float closestX = start.x + segmentX * projection;
+        const float closestY = start.y + segmentY * projection;
+        const float dx = point.x - closestX;
+        const float dy = point.y - closestY;
+        return std::sqrt(dx * dx + dy * dy);
+    };
+
+    // 選択関節から親へたどって強調する鎖を求め、循環・範囲外参照では探索を止める。
+    auto isSelectedAncestor = [&](int jointIndex) {
+        if (selectedJointIndex_ < 0 || selectedJointIndex_ >= static_cast<int>(joints.size()))
+            return false;
+        int current = selectedJointIndex_;
+
+        for (size_t guard = 0; guard < joints.size(); ++guard) {
+            if (current == jointIndex)
+                return true;
+            if (!joints[current].parent)
+                break;
+            current = *joints[current].parent;
+            if (current < 0 || current >= static_cast<int>(joints.size()))
+                break;
+        }
+
+        return false;
+    };
+
+    // ボーン線を先に描き、ジョイント点が常に手前に見えるようにする。
+    for (const auto& joint : joints) {
+        if (!joint.parent || *joint.parent < 0 || *joint.parent >= static_cast<int>(joints.size()))
+            continue;
+
+        const engine::Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
+        const engine::Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joint.parent));
+        engine::Vector2 jointScreen{};
+        engine::Vector2 parentScreen{};
+        if (!ProjectWorldToGameView(jointWorld, jointScreen) || !ProjectWorldToGameView(parentWorld, parentScreen))
+            continue;
+
+        const bool selectedChain = joint.index == selectedJointIndex_ ||
+            *joint.parent == selectedJointIndex_ || isSelectedAncestor(joint.index);
+        const ImU32 lineColor = selectedChain
+            ? IM_COL32(255, 205, 64, 245)
+            : IM_COL32(90, 215, 255, 215);
+        const ImVec2 start(parentScreen.x, parentScreen.y);
+        const ImVec2 end(jointScreen.x, jointScreen.y);
+        drawList->AddLine(start, end, IM_COL32(5, 18, 28, 235), boneLineThickness_ + 3.0f);
+        drawList->AddLine(start, end, lineColor, boneLineThickness_);
+
+        if (isGameViewHovered_) {
+            const float distance = distanceToSegment(mouseScreen, start, end);
+
+            if (distance < bestHoverDistance) {
+                bestHoverDistance = distance;
+                hoveredJoint = joint.index;
+            }
+        }
+    }
+
+    // 線よりジョイント点を後で描き、選択位置が骨格線に埋もれないようにする。
+    for (const auto& joint : joints) {
+        const engine::Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
+        engine::Vector2 jointScreen{};
+        if (!ProjectWorldToGameView(jointWorld, jointScreen))
+            continue;
+
+        const float dx = mouseScreen.x - jointScreen.x;
+        const float dy = mouseScreen.y - jointScreen.y;
+        const float distance = std::sqrt(dx * dx + dy * dy);
+
+        if (isGameViewHovered_ && distance < bestHoverDistance) {
+            bestHoverDistance = distance;
+            hoveredJoint = joint.index;
+        }
+
+        const bool selected = joint.index == selectedJointIndex_;
+        const bool hovered = joint.index == hoveredJoint;
+        const ImU32 fillColor = selected
+            ? IM_COL32(255, 210, 40, 255)
+            : (hovered ? IM_COL32(150, 245, 255, 255) : IM_COL32(75, 185, 255, 235));
+        const ImU32 outlineColor = selected || hovered
+            ? IM_COL32(255, 255, 255, 255)
+            : IM_COL32(6, 24, 36, 240);
+        const float radius = selected ? bonePointRadius_ + 2.0f : (hovered ? bonePointRadius_ + 1.0f : bonePointRadius_);
+
+        drawList->AddCircleFilled(ImVec2(jointScreen.x, jointScreen.y), radius, fillColor, 18);
+        drawList->AddCircle(ImVec2(jointScreen.x, jointScreen.y), radius + 1.0f, outlineColor, 18, 1.5f);
+
+        if (showBoneNames_ || hovered) {
+            drawList->AddText(
+                ImVec2(jointScreen.x + radius + 5.0f, jointScreen.y - 8.0f),
+                hovered ? IM_COL32(255, 240, 150, 255) : IM_COL32(255, 255, 255, 225),
+                joint.name.c_str());
+        }
+    }
+
+    if (showBoneAxes_ && selectedJointIndex_ >= 0 && selectedJointIndex_ < static_cast<int>(joints.size())) {
+        const engine::Matrix4x4 selectedWorld = GetJointWorldMatrix(selectedJointIndex_);
+        const engine::Vector3 originWorld = GetMatrixTranslation(selectedWorld);
+        engine::Vector2 originScreen{};
+
+        if (ProjectWorldToGameView(originWorld, originScreen)) {
+            float axisLength = 0.5f;
+
+            if (joints[selectedJointIndex_].parent) {
+                const engine::Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joints[selectedJointIndex_].parent));
+                axisLength = std::clamp(engine::Math::Length(originWorld - parentWorld) * 0.45f, 0.2f, 0.85f);
+            }
+
+            const engine::Vector3 axes[] = {
+                engine::Math::Normalize(engine::Math::TransformNormal({ 1.0f, 0.0f, 0.0f }, selectedWorld)),
+                engine::Math::Normalize(engine::Math::TransformNormal({ 0.0f, 1.0f, 0.0f }, selectedWorld)),
+                engine::Math::Normalize(engine::Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, selectedWorld)),
+            };
+
+            const ImU32 axisColors[] = {
+                IM_COL32(255, 82, 82, 255),
+                IM_COL32(92, 235, 112, 255),
+                IM_COL32(84, 145, 255, 255),
+            };
+
+            for (int axisIndex = 0; axisIndex < 3; ++axisIndex) {
+                engine::Vector2 axisScreen{};
+
+                if (ProjectWorldToGameView(originWorld + axes[axisIndex] * axisLength, axisScreen)) {
+                    drawList->AddLine(
+                        ImVec2(originScreen.x, originScreen.y),
+                        ImVec2(axisScreen.x, axisScreen.y),
+                        axisColors[axisIndex],
+                        2.5f);
+                }
+            }
+        }
+    }
+
+    // Game View用の描画クリップを閉じてから、選択操作とギズモ操作の判定へ移る。
+    drawList->PopClipRect();
+
+    if (hoveredJoint >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing()) {
+        selectedJointIndex_ = hoveredJoint;
+        SyncUiFromJoint(selectedJointIndex_);
+    }
+
+    if (!enableBoneGizmo_ ||
+        !EditorToolSettings::Get().IsVisible("transformGizmo") ||
+        selectedJointIndex_ < 0 ||
+        selectedJointIndex_ >= static_cast<int>(joints.size()))
+        return;
+
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera)
+        return;
+
+    engine::Matrix4x4 view = camera->GetViewMatrix();
+    engine::Matrix4x4 proj = camera->GetProjectionMatrix();
+    engine::Matrix4x4 jointWorld = GetJointWorldMatrix(selectedJointIndex_);
+
+    ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
+    ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
+
+    ImGuizmo::OPERATION operation = ImGuizmo::TRANSLATE;
+    if (gizmoOperation_ == 1)
+        operation = ImGuizmo::ROTATE;
+    if (gizmoOperation_ == 2)
+        operation = ImGuizmo::SCALE;
+
+    ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], operation, ImGuizmo::WORLD, &jointWorld.m[0][0], nullptr, nullptr);
+
+    if (ImGuizmo::IsUsing()) {
+        const auto& selectedJoint = joints[selectedJointIndex_];
+        engine::Matrix4x4 parentWorld = previewObject_->GetWorldMatrix();
+
+        if (selectedJoint.parent) {
+            parentWorld = GetJointWorldMatrix(*selectedJoint.parent);
+        }
+
+        // ワールドで操作した行列から親の変換を取り除き、保存する関節ローカルの姿勢へ戻す。
+        engine::Matrix4x4 localMatrix = engine::Math::Multiply(jointWorld, engine::Math::Inverse(parentWorld));
+
+        engine::Vector3 scale;
+        engine::Vector3 rotateDeg;
+        engine::Vector3 translate;
+        ImGuizmo::DecomposeMatrixToComponents(&localMatrix.m[0][0], &translate.x, &rotateDeg.x, &scale.x);
+
+        jointTranslateUi_ = translate;
+        jointRotateDegUi_ = rotateDeg;
+        jointScaleUi_ = scale;
+
+        StoreEditOverrideFromUi();
+        ApplyTimelinePose();
+
+        // 通常は一時姿勢として保持し、自動キーが有効な場合だけ現在時刻のキーへ確定する。
+        if (autoKeyOnGizmo_) {
+            AddOrUpdateKey();
+        }
+    }
+#endif
+}
+
+bool AnimationClipEditor::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
+    // 骨格のワールド位置を Game View 内のピクセル座標へ変換する。
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera)
+        return false;
+
+    engine::Matrix4x4 viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    engine::Vector3 ndc = engine::Math::Transform(world, viewProjection);
+    if (ndc.z < 0.0f || ndc.z > 1.0f)
+        return false;
+
+    screenOut.x = gameViewOffset_.x + (ndc.x + 1.0f) * 0.5f * gameViewSize_.x;
+    screenOut.y = gameViewOffset_.y + (1.0f - ndc.y) * 0.5f * gameViewSize_.y;
+    return screenOut.x >= gameViewOffset_.x - 64.0f &&
+           screenOut.x <= gameViewOffset_.x + gameViewSize_.x + 64.0f &&
+           screenOut.y >= gameViewOffset_.y - 64.0f &&
+           screenOut.y <= gameViewOffset_.y + gameViewSize_.y + 64.0f;
+}
+
+engine::Matrix4x4 AnimationClipEditor::GetJointWorldMatrix(int jointIndex) const {
+    // 骨格空間の行列へプレビュー Object のワールド行列を重ねる。
+    if (!previewModel_ || !previewObject_) {
+        return engine::Math::MakeIdentity4x4();
+    }
+
+    const auto& joints = previewModel_->GetJoints();
+
+    if (jointIndex < 0 || jointIndex >= static_cast<int>(joints.size())) {
+        return previewObject_->GetWorldMatrix();
+    }
+
+    return engine::Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, previewObject_->GetWorldMatrix());
+}
+
+engine::Vector3 AnimationClipEditor::GetMatrixTranslation(const engine::Matrix4x4& matrix) const {
+    // 行列の平行移動成分を骨表示の起点として取り出す。
+    return { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
+}
+
+
+
+engine::Object3D* AnimationClipEditor::FindSourceObject() const {
+    if (!targetId_ || !sceneManager_ || sceneManager_->GetSceneGeneration() != sceneGeneration_) return nullptr;
+    auto* scene = sceneManager_->GetCurrentScene();
+    if (!scene) return nullptr;
+    for (const auto& object : scene->GetObjects())
+        if (object && object->GetReplayId() == targetId_ && !object->IsReplayRemoved()) return object.get();
+    return nullptr;
+}
+void AnimationClipEditor::SetTarget(engine::Object3D* target) {
+    if (!target || target->IsEditorInternal() || !sceneManager_ || sceneManager_->IsPlaying()) { StopPreview(); return; }
+    // 別骨格の編集中キーは無言で上書きしない。保存・新規クリップの操作を先に行ってもらう。
+    if (!keys_.empty() && modelNameBuffer_[0] && target->GetModelName() != modelNameBuffer_) {
+        StopPreview(); return;
+    }
+    const auto id = target->EnsureReplayId();
+    if (enabled_ && targetId_ == id && sceneGeneration_ == sceneManager_->GetSceneGeneration()) return;
+    StopPreview(); targetId_ = id; sceneGeneration_ = sceneManager_->GetSceneGeneration();
+    previewScene_ = sceneManager_->GetCurrentScene();
+    EditorCommon::DecomposeWorldPose(target->GetWorldMatrix(), previewOrigin_, sourceRotation_, previewScale_);
+    CopyToBuffer(modelNameBuffer_, sizeof(modelNameBuffer_), target->GetModelName());
+    CreatePreviewObject(); enabled_ = previewObject_ && previewModel_;
+}
+
+#endif

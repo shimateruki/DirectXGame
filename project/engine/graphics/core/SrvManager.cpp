@@ -1,18 +1,18 @@
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include "DirectXCommon.h"
 #include <cassert>
-SRVManager* SRVManager::GetInstance() {
-    static SRVManager instance;
+SrvManager* SrvManager::GetInstance() {
+    static SrvManager instance;
     return &instance;
 }
 
-void SRVManager::Initialize(DirectXCommon* dxCommon) {
+void SrvManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     device_ = dxCommon->GetDevice();
 
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = kMaxSRVCount;
+    srvHeapDesc.NumDescriptors = kMaxSrvCount;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
     HRESULT hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvDescriptorHeap_));
@@ -24,23 +24,23 @@ void SRVManager::Initialize(DirectXCommon* dxCommon) {
     nextIndex_ = 2;
 }
 
-uint32_t SRVManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
+uint32_t SrvManager::CreateSrv(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
     // 記述子の払い出しとビュー作成を同じロック内で行い、並列登録時の重複を防ぐ。
     std::lock_guard<std::mutex> lock(mutex_);
-    assert(nextIndex_ < kMaxSRVCount);
+    assert(nextIndex_ < kMaxSrvCount);
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
     cpuHandle.ptr += (descriptorSize_ * nextIndex_);
     device_->CreateShaderResourceView(resource, &srvDesc, cpuHandle);
     return nextIndex_++;
 }
 
-void SRVManager::SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
+void SrvManager::SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = srvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart();
     gpuHandle.ptr += (descriptorSize_ * srvHandle);
     commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuHandle);
 }
 
-void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
+void SrvManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
     // 描画コマンドにこの SRV ヒープを明示してから記述子テーブルを使用する。
     assert(srvDescriptorHeap_);
 
@@ -48,16 +48,16 @@ void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
     commandList->SetDescriptorHeaps(1, pHeaps);
 }
 
-uint32_t SRVManager::Allocate() {
+uint32_t SrvManager::Allocate() {
     // ビューを後で作る呼び出しにも、同じ連番から記述子枠を確保する。
     std::lock_guard<std::mutex> lock(mutex_);
-    assert(nextIndex_ < kMaxSRVCount);
+    assert(nextIndex_ < kMaxSrvCount);
     uint32_t index = nextIndex_;
     nextIndex_++;
     return index;
 }
 
-void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
+void SrvManager::CreateSrvForResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
     // 事前に確保した枠へビューを書き込み、払い出し位置は進めない。
     std::lock_guard<std::mutex> lock(mutex_);
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
@@ -65,9 +65,9 @@ void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource,
     device_->CreateShaderResourceView(pResource, &srvDesc, cpuHandle);
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
+D3D12_GPU_DESCRIPTOR_HANDLE SrvManager::GetGpuDescriptorHandle(uint32_t index) {
     // SRVヒープの先頭から記述子一個分の幅で進め、シェーダーに渡す位置を求める。
-    if (index >= kMaxSRVCount) {
+    if (index >= kMaxSrvCount) {
         assert(false && "SRV Index out of range!");
     }
 
@@ -77,14 +77,14 @@ D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
     return handle;
 }
 
-void SRVManager::SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
-    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = GetGPUDescriptorHandle(srvHandle);
+void SrvManager::SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = GetGpuDescriptorHandle(srvHandle);
     commandList->SetComputeRootDescriptorTable(rootParameterIndex, gpuHandle);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE SRVManager::GetCPUDescriptorHandle(uint32_t index) {
+D3D12_CPU_DESCRIPTOR_HANDLE SrvManager::GetCpuDescriptorHandle(uint32_t index) {
     // CPUから記述子を書き換える際はGPU用とは別のヒープ先頭ハンドルを使う。
-    if (index >= kMaxSRVCount) {
+    if (index >= kMaxSrvCount) {
         assert(false && "SRV Index out of range!");
     }
 

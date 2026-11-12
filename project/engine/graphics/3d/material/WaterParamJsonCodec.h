@@ -1,12 +1,16 @@
 #pragma once
 
+// 担当：水・特殊材質のGPU設定とJSONの変換を共通化する。
+// 関連：MeshRenderer::WaterParamForGpu、Object3D（保存・読込）
+// 主な入口：Read / Write
+
 #include "MeshRenderer.h"
 #include "json.hpp"
 
 namespace WaterParamJsonCodec {
 
 // シーンと単体Objectの保存経路で、同じ authored パラメータだけを書き出します。
-inline nlohmann::json Write(const MeshRenderer::WaterParamForGPU& water) {
+inline nlohmann::json Write(const MeshRenderer::WaterParamForGpu& water) {
     // GPU定数全体ではなく、利用者が調整する項目だけをシーンへ保存する。
     nlohmann::json result;
     result["waveSpeed"] = water.waveSpeed;
@@ -27,7 +31,7 @@ inline nlohmann::json Write(const MeshRenderer::WaterParamForGPU& water) {
 }
 
 // 旧JSONで省略された項目は、既に設定されている値を維持します。
-inline void Read(const nlohmann::json& value, MeshRenderer::WaterParamForGPU& water) {
+inline void Read(const nlohmann::json& value, MeshRenderer::WaterParamForGpu& water) {
     // 欠けているキーは既定値を保ち、古い水面設定も読み込めるようにする。
     if (value.contains("waveSpeed"))
         water.waveSpeed = value["waveSpeed"];

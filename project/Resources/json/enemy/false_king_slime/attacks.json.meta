@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "ca563e6e671c4fb899691c51c31c1d43",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/false_king_slime/attacks.json",
+  "version": 1
+}

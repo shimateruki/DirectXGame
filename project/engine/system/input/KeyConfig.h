@@ -8,6 +8,7 @@
 // ：1つのアクションにつき「キー」と「パッド」両方を保持する構造体
 // ==================================================
 // BindDataは、1つのアクションに割り当てるキーボード、マウス、パッド入力をまとめます。
+// 関連：KeyConfig（この型を使う機能の本体）
 struct BindData {
     int keyCode = 0;   // キーボードのキー (DIK_***)
     // マウスは0が左ボタンとして有効なため、未割当には-1を使う。
@@ -15,7 +16,9 @@ struct BindData {
     WORD padCode = 0;  // コントローラーのボタン (XINPUT_GAMEPAD_***)
 };
 
-/// <summary>ゲーム内アクションの固定入力表。変更・保存・読み込み機能は持たない。</summary>
+// 担当：アクション名からキーボード・マウス・パッドの固定割当を返す。
+// 関連：BindData（割当）、InputManager（判定）
+// 主な入口：Initialize / GetBindData / GetKeyCode / GetPadCode
 class KeyConfig {
 public:
     /// <summary>共通利用するキー設定インスタンスを取得する。</summary>

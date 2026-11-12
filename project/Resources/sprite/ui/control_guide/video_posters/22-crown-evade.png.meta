@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e1546d30c4ed27e9fdb0bc4902f2a6e0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/22-crown-evade.png",
+  "version": 1
+}

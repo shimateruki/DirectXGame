@@ -6,6 +6,8 @@
 class Player;
 
 // 配置した範囲への進入・退出を、イベントやチェックポイントなどのゲーム処理へ変換します。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision / OnTrigger
 class GimmickGameplayVolume : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -13,7 +15,7 @@ class GimmickGameplayVolume : public BaseGimmick {
     static constexpr const char* kModelPath = "Primitives/cube";
 
     /// 範囲の種類と Scene JSON の設定を初期化する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 進入・退出と再起動待ちを更新する。
     void Update(float deltaTime) override;
@@ -22,7 +24,7 @@ class GimmickGameplayVolume : public BaseGimmick {
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     /// プレイヤーとの接触を今回フレームの進入判定へ記録する。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     /// 外部トリガーから範囲効果を起動する。
     void OnTrigger() override;
@@ -31,7 +33,7 @@ class GimmickGameplayVolume : public BaseGimmick {
     void OnSwitchEvent(bool active) override;
 
     /// 配置用の範囲ギミック複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     enum class Mode {
@@ -69,13 +71,13 @@ class GimmickGameplayVolume : public BaseGimmick {
 
     bool initializedForPlay_ = false;
     bool runtimeEnabled_ = true;
-    bool occupied_ = false;
-    bool collisionObserved_ = false;
-    bool triggered_ = false;
+    bool occupied_ = false; // 前回更新時にプレイヤーが範囲内にいたか。出入りの差分判定に使う。
+    bool collisionObserved_ = false; // 現在の更新で処理する接触通知の有無。
+    bool triggered_ = false; // 一回限りの設定で再発火を抑えるための印。
     float rearmTimer_ = 0.0f;
 
     // シーンが所有するプレイヤーへの非所有参照。退出検出後はクリアします。
     Player* occupant_ = nullptr;
     LightManager::EnvironmentProfileState previousEnvironment_{};
-    bool hasPreviousEnvironment_ = false;
+    bool hasPreviousEnvironment_ = false; // 退場時に戻す環境設定を退避してあるか。
 };

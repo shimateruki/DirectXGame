@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "6f87fd41a9ae4035a45d95361df63c01",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/false_king_slime/false_king_slime_hurt.obj",
+  "version": 1
+}

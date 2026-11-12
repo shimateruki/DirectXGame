@@ -73,12 +73,12 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
     blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     switch (mode) {
-    case BlendMode::kNone:
+    case BlendMode::None:
         blendDesc.RenderTarget[0].BlendEnable = FALSE;
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
         break;
 
-    case BlendMode::kNormal:
+    case BlendMode::Normal:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
         blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -89,7 +89,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
         break;
 
-    case BlendMode::kAdd:
+    case BlendMode::Add:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
         blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -100,7 +100,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO; // 深度書き込みOFF
         break;
 
-    case BlendMode::kSubtract:
+    case BlendMode::Subtract:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
         blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
@@ -111,7 +111,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         break;
 
-    case BlendMode::kMultiply:
+    case BlendMode::Multiply:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_ZERO;
         blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -122,7 +122,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         break;
 
-    case BlendMode::kScreen:
+    case BlendMode::Screen:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_INV_DEST_COLOR;
         blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;

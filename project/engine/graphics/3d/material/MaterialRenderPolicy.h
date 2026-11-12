@@ -14,6 +14,8 @@ enum class SpecialKind : std::uint8_t {
 };
 // 追加で必要な描画入力のビット集合。画面色・深度・エフェクト定数を個別に表す。
 enum Input : std::uint8_t { NoExtraInput = 0, SceneColor = 1, SceneDepth = 2, EffectParameters = 4 };
+// 保存済み材質番号とID・描画パス・必要入力の対応。
+// 関連：BaseScene / MeshRenderer / Object3DCommon（描画分類）
 struct LegacyMaterial {
     std::int32_t type;
     std::string_view id;
@@ -63,6 +65,7 @@ constexpr const LegacyMaterial* Find(std::int32_t type) noexcept {
         if (material.type == type) return &material;
     return nullptr;
 }
+// 保存IDまたは旧番号から定義を探す。未登録ならnullptr。
 constexpr const LegacyMaterial* Find(std::string_view id) noexcept {
     for (const auto& material : kLegacyMaterials)
         if (material.id == id) return &material;

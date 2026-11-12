@@ -7,15 +7,14 @@
 #include <memory>
 #include <mutex>
 
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 
 #ifdef USE_IMGUI
 #include "imgui.h"
 #endif
 
-/// <summary>
-/// ロード時間とCPU/GPU計測値を集計し、デバッグ画面へ表示する。
-/// </summary>
+// 担当：CPU・GPU・ロードの計測値と履歴を集計し、Editorへ表示する。
+// 関連：ScopedCpuProfiler（CPU計測）、DirectXCommon（GPU計測）
 class ProfilerManager {
 public:
     /// <summary>共有の計測マネージャを取得する。</summary>
@@ -56,7 +55,7 @@ public:
 
     /// <summary>オブジェクト別計測の表示対象を設定する。</summary>
     /// <remarks>リストは所有しないため、表示中は呼び出し側で保持する。</remarks>
-    void SetObjectList(const std::vector<std::unique_ptr<engine::Object3d>>* objects) { currentObjects_ = objects; }
+    void SetObjectList(const std::vector<std::unique_ptr<engine::Object3D>>* objects) { currentObjects_ = objects; }
 
     /// <summary>GPU計測のサンプリング中かを返す。</summary>
     bool IsGpuSampling() const { return isGpuSampling_; }
@@ -80,15 +79,17 @@ private:
     ProfilerManager& operator=(const ProfilerManager&) = delete;
 
     /// <summary>単一の読み込み処理名と所要時間。</summary>
+    // 関連：ProfilerManager（この型を使う機能の本体）
     struct LoadData {
         std::string name;
-        float timeMs;
+        float timeMs; // 計測した所要時間（ミリ秒）。
     };
 
     // 直近フレームの計測値をリングバッファに保持する。
     static const int kHistorySize = 120;
 
     /// <summary>現在値、平滑化値、直近フレームの履歴を保持する。</summary>
+    // 関連：ProfilerManager（この型を使う機能の本体）
     struct TimelineData {
         float current = 0.0f;        // 今フレームの生値
         float smoothed = 0.0f;       // スムージング後の値
@@ -96,12 +97,12 @@ private:
         int historyIndex = 0;
     };
 
-    std::map<std::string, std::vector<LoadData>> loadDataMap_;
-    std::map<std::string, TimelineData> gpuDataMap_;
-    std::map<std::string, TimelineData> cpuDataMap_;
-    std::map<std::string, float> latestGpuTimeMap_;
+    std::map<std::string, std::vector<LoadData>> loadDataMap_; // カテゴリごとの読込時間一覧。
+    std::map<std::string, TimelineData> gpuDataMap_; // GPU計測名ごとの表示履歴。
+    std::map<std::string, TimelineData> cpuDataMap_; // CPU計測名ごとの表示履歴。
+    std::map<std::string, float> latestGpuTimeMap_; // 計測名ごとの最新GPU時間（ミリ秒）。
     mutable std::recursive_mutex mutex_;
-    const std::vector<std::unique_ptr<engine::Object3d>>* currentObjects_ = nullptr;
+    const std::vector<std::unique_ptr<engine::Object3D>>* currentObjects_ = nullptr; // Object別計測に使う外部所有の一覧。
     bool isOpen_ = false;
     int selectedIndex_ = 0;
 
@@ -109,12 +110,14 @@ private:
     bool isGpuSampling_ = false;
     int remainingSamplingFrames_ = 0;
     const int kMaxSamplingFrames = 60;
-    std::map<std::string, float> gpuSampleAccum_;
-    std::map<std::string, int> gpuSampleCount_;
-    std::map<std::string, float> gpuSampleResult_;
+    std::map<std::string, float> gpuSampleAccum_; // 複数フレームのGPU時間の合計。
+    std::map<std::string, int> gpuSampleCount_; // 計測名ごとの採取件数。
+    std::map<std::string, float> gpuSampleResult_; // 採取完了後の平均GPU時間（ミリ秒）。
 };
 
-/// <summary>スコープを抜けるまでのCPU所要時間を自動で記録する。</summary>
+// 担当：スコープ終了までのCPU時間を測り、指定ラベルへ記録する。
+// 関連：ProfilerManager（集計・表示）
+// 主な入口：ScopedCpuProfiler / ~ScopedCpuProfiler
 class ScopedCpuProfiler {
 public:
     // name の文字列は借用するため、この計測スコープの終了まで保持する。

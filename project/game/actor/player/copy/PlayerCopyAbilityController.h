@@ -23,6 +23,8 @@ struct PlayerCopyAbilityInput {
 
 // 吸収後のコピー能力をプレイヤーの寿命で管理します。
 // 元になった敵は設定値の提供だけを担当し、能力中の状態や更新処理は保持しません。
+// 関連：Playerから受けた入力と更新を、形態に対応するICopyAbilitySessionへ渡す。
+// 主な入口：ProcessInput / Update / Cancel
 class PlayerCopyAbilityController {
   public:
     PlayerCopyAbilityController();
@@ -57,6 +59,12 @@ class PlayerCopyAbilityController {
 
     // 能力側の終了処理を呼んでからセッションを破棄する。
     void Cancel(Player& player);
+
+    /// <summary>コピーを装備したまま進行中の技と、その技が確保した操作・描画を解除します。</summary>
+    void Interrupt(Player& player);
+
+    // 被弾による操作ロックの前に呼び、対応セッションの継続攻撃を中断させる。
+    void NotifyDamageStarted(Player& player);
 
     // ガード中に攻撃を受け止めたことを能力へ通知します。
     // ダメージ判定とコピー固有の反応を分離し、敵クラスへ能力処理を戻しません。

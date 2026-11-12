@@ -19,7 +19,7 @@ bool Player::IsPinkBounceSlamImpactActive() const {
     return copyAbilityController_ && copyAbilityController_->IsPinkBounceSlamImpactActive();
 }
 
-void Player::Initialize(engine::Object3dCommon* common, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem,
+void Player::Initialize(engine::Object3DCommon* common, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem,
                         engine::SpriteCommon* spriteCommon) {
     // 親クラス(Character)の初期化
     Character::Initialize(common);
@@ -55,12 +55,16 @@ void Player::Initialize(engine::Object3dCommon* common, engine::InputManager* in
     statusManager->Initialize();
     statusManager->ApplyPlayerStatus(this, true);
 
+    // サイズが設定値と同じ場合はApplyManagedScaleが省略されるため、
+    // 移動アニメーションの初期化はプレイヤー自身でも必ず行います。
+    slimeAnimator_.Reset(managedBaseScale_, this);
+
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());
 
     // フック用の到達地点マーカーを初期化
     if (common) {
-        hookMarker_ = std::make_unique<engine::Object3d>();
+        hookMarker_ = std::make_unique<engine::Object3D>();
         hookMarker_->Initialize(common);
         hookMarker_->SetModel("Characters/slimeBody");
 
@@ -76,7 +80,7 @@ void Player::Initialize(engine::Object3dCommon* common, engine::InputManager* in
         hookMarker_->SetScale({0.5f, 0.5f, 0.5f});
 
         // 解除時に排出するスライム成分。シーンへ登録せず、Playerが描画まで管理します。
-        enemyMorphReleaseVisual_ = std::make_unique<engine::Object3d>();
+        enemyMorphReleaseVisual_ = std::make_unique<engine::Object3D>();
         enemyMorphReleaseVisual_->Initialize(common);
         enemyMorphReleaseVisual_->SetName("EnemyMorphReleaseResidue");
         enemyMorphReleaseVisual_->SetClassName("Effect");
@@ -117,8 +121,9 @@ engine::Vector3 Player::GetMoveInputDirection() {
     return mover_ ? mover_->GetMoveInputDirection() : engine::Vector3{};
 }
 
-// 入力、状態、移動、見た目の順に更新します。演出が操作権を持つ間は通常操作へ流しません。
+// 被弾表示の期限を更新してから入力・状態・移動を進めます。演出中は通常操作へ流しません。
 void Player::Update(float deltaTime) {
+    UpdateHurtFace(deltaTime);
     // 接地通知は毎更新で消去する。死亡や演出の早期returnでも乗車が残らないようにする。
     if (!copyPreviewActive_ && deltaTime > 0.0f) {
         if (auto* scene = SceneManager::GetInstance()->GetCurrentScene()) {
@@ -126,7 +131,7 @@ void Player::Update(float deltaTime) {
                 if (object && object->GetRecorder()) object->GetRecorder()->SetPlayerRiding(false);
         }
     }
-    const auto notifyRiding = [&](engine::Object3d* ground) {
+    const auto notifyRiding = [&](engine::Object3D* ground) {
         // 子Colliderへ接地した場合も親の録画パスへ通知する。
         if (copyPreviewActive_ || IsDead() || deltaTime <= 0.0f || GetVelocity().y > 0.1f) return;
         for (auto* object = ground; object; object = object->GetParent())
@@ -159,6 +164,7 @@ void Player::Update(float deltaTime) {
 
     // ムービーが操作を握る間は速度も消し、通常の状態・物理更新へ進ませません。
     if (isCinematicLocked_) {
+        CancelWhipReturn();
         SetIsControlActive(false);
         SetVelocity({0.0f, 0.0f, 0.0f});
         return;
@@ -166,6 +172,7 @@ void Player::Update(float deltaTime) {
 
     // ゲート復帰は専用アニメーションが座標を決めるため、通常移動を重ねません。
     if (gateReturnAnimation_.IsActive()) {
+        CancelWhipReturn();
         gateReturnAnimation_.Update(this, deltaTime);
         UpdateEnemyMorph(deltaTime);
         return;
@@ -208,7 +215,9 @@ void Player::Update(float deltaTime) {
             if (evasionInvincibleTimer_ <= 0.0f) {
                 evasionInvincibleTimer_ = 0.0f;
                 isEvasionInvincible_ = false;
-                UpdateColor();
+                if (evasionFeedback_ == EvasionFeedback::BodyFlash)
+                    UpdateColor();
+                evasionFeedback_ = EvasionFeedback::BodyFlash;
             }
         }
 
@@ -242,7 +251,7 @@ void Player::Update(float deltaTime) {
         float liquidY = 0.0f;
         if (!IsDead() && !tutorialSafetyEnabled_ && !dynamic_cast<PlayerStateFallingOut*>(state_.get()) &&
             FindLethalLiquidSurface(*this, liquidY) && GetParameters().has_value()) {
-            const float footY = GetModelWorldAABB().min.y;
+            const float footY = GetModelWorldAabb().min.y;
             engine::Vector3 position = GetTranslate();
             position.y += liquidY - footY + 0.04f;
             SetTranslate(position);
@@ -295,19 +304,12 @@ void Player::Update(float deltaTime) {
     BaseEnemy* activeMorphSource = isEnemyMorphed_ ? enemyMorphSource_ : nullptr;
 
     // 長押し照準は廃止したため、鞭の入力中も設定済みの重力を維持します。
-    const float configuredGravity = GetParameters().has_value() ? GetParameters()->gravity : 50.0f;
     const float configuredMaxFallSpeed = GetParameters().has_value() ? GetParameters()->maxFallSpeed : 60.0f;
-    bool hasTemporaryPhysicsOverride = false;
-
-    if (isControlActive_) {
-        float gravity = configuredGravity;
-        float maxFallSpeed = configuredMaxFallSpeed;
-
-        if (GetParameters().has_value()) {
-            SetParameter(&engine::EntityParameter::gravity, gravity);
-            SetParameter(&engine::EntityParameter::maxFallSpeed, maxFallSpeed);
-            hasTemporaryPhysicsOverride = true;
-        }
+    const float abilityFallSpeed = GetAttackMovement().maxFallSpeedOverride;
+    const bool hasTemporaryPhysicsOverride = isControlActive_ && GetParameters().has_value() && abilityFallSpeed > 0.0f;
+    if (hasTemporaryPhysicsOverride) {
+        // 能力の落下上限をこの物理更新だけ使い、元のステータスには残さない。
+        SetParameter(&engine::EntityParameter::maxFallSpeed, std::min(configuredMaxFallSpeed, abilityFallSpeed));
     }
 
     // 状態と入力を確定してから物理を進め、能力入力に必要な接地を再確認します。
@@ -315,7 +317,7 @@ void Player::Update(float deltaTime) {
     const float landingApproachVelocityY = GetVelocity().y;
     if (IsDead()) {
         SetVelocity({0.0f, 0.0f, 0.0f});
-        engine::Object3d::Update(deltaTime);
+        engine::Object3D::Update(deltaTime);
     } else {
         Character::Update(deltaTime);
 
@@ -342,7 +344,7 @@ void Player::Update(float deltaTime) {
             const float maxSlope = std::clamp(GetParameters()->motorMaxSlopeDegrees, 0.0f, 89.9f);
             const float minimumGroundNormalY = std::cos(maxSlope * kPi / 180.0f);
 
-            for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapAABB(GetAABB(), filter)) {
+            for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapAabb(GetAabb(), filter)) {
                 // 広域の箱判定だけで接地扱いにせず、自機本来のCollider形状で確認します。
                 const CollisionInfo contact = CheckCollision(hit.object);
 
@@ -379,9 +381,8 @@ void Player::Update(float deltaTime) {
         }
     }
 
-    // 物理計算が終わったら照準中だけの重力補正を戻し、保存対象の設定値を汚しません。
+    // このフレームの落下速度上限を使い終えたら、保存対象の設定値へ戻す。
     if (hasTemporaryPhysicsOverride && GetParameters().has_value()) {
-        SetParameter(&engine::EntityParameter::gravity, configuredGravity);
         SetParameter(&engine::EntityParameter::maxFallSpeed, configuredMaxFallSpeed);
     }
 
@@ -393,7 +394,8 @@ void Player::Update(float deltaTime) {
 
     UpdateElectricShockFeedback(deltaTime);
 
-    const bool hasVisibleInvincibility = isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_;
+    const bool evasionFlash = isEvasionInvincible_ && evasionFeedback_ == EvasionFeedback::BodyFlash;
+    const bool hasVisibleInvincibility = isDamageInvincible_ || isDashInvincible_ || evasionFlash;
     if (hasVisibleInvincibility && deltaTime > 0.0f) {
         invincibleBlinkTimer_ += deltaTime;
     }
@@ -403,7 +405,7 @@ void Player::Update(float deltaTime) {
     if (electricShockFeedbackTimer_ <= 0.0f && hasVisibleInvincibility && deltaTime > 0.0f) {
         const float blink = 0.5f + 0.5f * std::sin(invincibleBlinkTimer_ * 42.0f);
         const engine::Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : engine::Vector4{1.0f, 1.0f, 1.0f, 1.0f};
-        const engine::Vector4 flash = (isDashInvincible_ || isEvasionInvincible_)
+        const engine::Vector4 flash = (isDashInvincible_ || evasionFlash)
                                           ? engine::Vector4{0.34f, 0.74f, 1.0f, 1.0f}
                                           : engine::Vector4{1.0f, 0.78f, 0.32f, 1.0f};
         const float flashRate = blink > 0.48f ? 0.72f : 0.12f;
@@ -413,7 +415,7 @@ void Player::Update(float deltaTime) {
         SetColor(color);
 
         if (!isEnemyMorphed_) {
-            for (engine::Object3d* child : GetChildren()) {
+            for (engine::Object3D* child : GetChildren()) {
                 if (child) {
                     child->SetColor(color);
                 }
@@ -631,19 +633,23 @@ void Player::Update(float deltaTime) {
         forcedSlimeAnimationModeActive_ = false;
     }
 
+    UpdateWhipReturn(deltaTime);
+
     if (!dynamic_cast<PlayerStateDamage*>(state_.get()) && !absorbEffectActive_ && !enemyMorphReleaseActive_ &&
         electricShockFeedbackTimer_ <= 0.0f && !IsDead()) {
         slimeAnimator_.Update(this, deltaTime);
     }
 
     UpdateEnemyMorph(deltaTime);
+    // 本体の描画姿勢が確定してから接続し、付け根の一フレーム遅れを防ぎます。
+    RefreshWhipVisual();
 
     // 能力による跳ね上がりも含めて接地確定後の状態を渡し、ゲーム固有の型はカメラへ持ち込まない。
     if (auto* camera = CameraManager::GetInstance()->GetMainCamera(); camera && camera->GetFollowTarget() == this)
         camera->SetFollowTargetGrounded(IsGrounded());
 }
 
-void Player::DrawUI() {
+void Player::DrawUi() {
     // HUD はシーン側で描画するため、Player 自身は UI 描画を持たない。
 }
 
@@ -714,10 +720,13 @@ void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
 }
 
 void Player::UpdateCopyAdornment() {
-    // コピー種別に対応する装飾だけを表示し、解除中は残さない。
+    // コピー装飾を同期し、被弾モデルに含まれる間とコピー解除中は別描画を省く。
     const char* model = nullptr;
 
-    if (isEnemyMorphed_ && !enemyMorphReleaseActive_) {
+    const auto* renderer = GetMeshRenderer();
+    const bool bandInHurtModel = hurtFaceIncludesBand_ && hurtFaceModel_ && renderer &&
+                                 renderer->GetVisualModelOverride() == hurtFaceModel_;
+    if (isEnemyMorphed_ && !enemyMorphReleaseActive_ && !bandInHurtModel) {
         switch (enemyMorphType_) {
         case EnemyMorphType::Slime:
             model = "Characters/copy_band_pink";
@@ -751,9 +760,9 @@ void Player::UpdateCopyAdornment() {
     }
 
     if (!copyAdornment_) {
-        copyAdornment_ = std::make_unique<engine::Object3d>();
+        copyAdornment_ = std::make_unique<engine::Object3D>();
         copyAdornment_->Initialize(GetObjectCommon());
-        copyAdornment_->SetColliderType(ColliderType::kNone);
+        copyAdornment_->SetColliderType(ColliderType::None);
         copyAdornment_->SetCollisionAttribute(0);
         copyAdornment_->SetCollisionMask(0);
         copyAdornment_->SetMaterialType(0);
@@ -848,7 +857,7 @@ void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightR
 // 衝突処理
 // =================================================================
 
-bool Player::OnCollision(engine::Object3d* other) {
+bool Player::OnCollision(engine::Object3D* other) {
     if (IsDead() || isCinematicLocked_) {
         return false;
     }
@@ -879,7 +888,7 @@ bool Player::OnCollision(engine::Object3d* other) {
     CollisionInfo info = CheckCollision(other);
 
     // ② 子オブジェクト（パーツ）の当たり判定も全てチェックする
-    for (engine::Object3d* child : GetChildren()) {
+    for (engine::Object3D* child : GetChildren()) {
         if (!child)
             continue;
         CollisionInfo childInfo = child->CheckCollision(other);
@@ -1022,6 +1031,10 @@ void Player::ChangeState(std::unique_ptr<IAnimationState> newState) {
         return;
     }
 
+    // 通常移動への遷移は余韻を維持し、次の技・被弾などは即座に解除します。
+    if (!dynamic_cast<PlayerStateIdle*>(newState.get()) && !dynamic_cast<PlayerStateRun*>(newState.get()) &&
+        !dynamic_cast<PlayerStateJump*>(newState.get())) CancelWhipReturn();
+
     // 現在の状態を終了
     if (state_) {
         state_->Exit(this);
@@ -1032,6 +1045,7 @@ void Player::ChangeState(std::unique_ptr<IAnimationState> newState) {
 
     if (state_) {
         state_->Enter(this);
+        UpdateWhipReturn(0.0f);
     } else {
         DebugConsole::GetInstance()->AddLog("[ERROR] Failed to set new state.");
     }
@@ -1152,8 +1166,13 @@ void Player::BeginCinematicLock(bool preserveCopyAbility) {
         return;
     }
 
+    // ゲート回避・突進で一時停止した操作を先に返し、演出終了後の復元値を確定します。
+    if (enemyMorphType_ == EnemyMorphType::Crown && copyAbilityController_)
+        copyAbilityController_->Interrupt(*this);
+
     // 同じ衝突フレームで後続の被弾イベントが来ても、先に演出専用状態へ切り替えます。
     isCinematicLocked_ = true;
+    ClearHurtFace();
     cinematicSavedControlActive_ = isControlActive_;
     cinematicSavedCollisionAttribute_ = GetCollisionAttribute();
     cinematicSavedCollisionMask_ = GetCollisionMask();
@@ -1303,11 +1322,14 @@ void Player::ResetTutorialCarryActionState() {
     ReleaseCarriedEnemy(true);
 }
 
-void Player::StartEvasionInvincibility(float duration) {
+void Player::StartEvasionInvincibility(float duration, EvasionFeedback feedback) {
     // 重なる回避受付で既存の無敵時間を短縮しない。
     evasionInvincibleTimer_ = (std::max)(evasionInvincibleTimer_, (std::max)(0.0f, duration));
     isEvasionInvincible_ = evasionInvincibleTimer_ > 0.0f;
-    UpdateColor();
+    evasionFeedback_ = feedback;
+    // ゲート回避は断面の白金光で無敵を示し、モデル本来の材質色を使います。
+    if (evasionFeedback_ == EvasionFeedback::BodyFlash)
+        UpdateColor();
 }
 
 void Player::RestoreDamageBlinkVisibility() {
@@ -1322,7 +1344,7 @@ void Player::RestoreDamageBlinkVisibility() {
         const auto& children = GetChildren();
 
         for (size_t i = 0; i < children.size(); ++i) {
-            engine::Object3d* child = children[i];
+            engine::Object3D* child = children[i];
 
             if (!child) {
                 continue;
@@ -1355,7 +1377,7 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
             if (!isEnemyMorphed_) {
                 damageBlinkChildVisible_.reserve(GetChildren().size());
 
-                for (engine::Object3d* child : GetChildren()) {
+                for (engine::Object3D* child : GetChildren()) {
                     damageBlinkChildVisible_.push_back(child ? child->GetIsVisible() : false);
                 }
             }
@@ -1369,7 +1391,7 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
             const auto& children = GetChildren();
 
             for (size_t i = 0; i < children.size(); ++i) {
-                engine::Object3d* child = children[i];
+                engine::Object3D* child = children[i];
 
                 if (!child) {
                     continue;
@@ -1398,7 +1420,7 @@ void Player::UpdateColor() {
     if (isGuarding_) {
         // 通常のピンクと区別できる、身を固めた濃いローズ色。
         targetColor = {0.78f, 0.12f, 0.34f, 1.0f};
-    } else if (isDashInvincible_ || isEvasionInvincible_) {
+    } else if (isDashInvincible_ || (isEvasionInvincible_ && evasionFeedback_ == EvasionFeedback::BodyFlash)) {
         targetColor = {0.18f, 0.82f, 1.0f, 1.0f}; // 回避中は雷を思わせる水色を設定
     }
 
@@ -1406,7 +1428,7 @@ void Player::UpdateColor() {
     SetColor(targetColor);
 
     if (!isEnemyMorphed_) {
-        for (engine::Object3d* child : GetChildren()) {
+        for (engine::Object3D* child : GetChildren()) {
             if (child)
                 child->SetColor(targetColor);
         }

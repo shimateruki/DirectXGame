@@ -6,10 +6,12 @@
 #include <memory>
 
 // 持続する突風で相手を押し流す、吹き飛ばし特化の属性スライムです。
+// 関連：BaseEnemyの標的情報を使い、風攻撃の予備動作・発生・後隙を切り替える。
+// 主な入口：Initialize / Update
 class EnemyWindSlime : public BaseEnemy {
   public:
     /// 風スライムのモデル、当たり判定、攻撃状態を準備する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 突風または空中弾幕の攻撃段階を更新する。
     void Update(float deltaTime) override;
@@ -24,7 +26,7 @@ class EnemyWindSlime : public BaseEnemy {
     void BeginThrown(const engine::Vector3& initialVelocity) override;
 
     /// 配置用の風スライム複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // プレビュー対象の攻撃 ID を固定し、進行中の予備動作と再使用待ちをリセットする。
     void SetDebugPreviewAttackId(const std::string& attackId);
@@ -133,32 +135,32 @@ class EnemyWindSlime : public BaseEnemy {
 
     // 攻撃の進行と予告表示のためのタイマーです。
     AttackState attackState_ = AttackState::Idle;
-    float attackStateTimer_ = 0.0f;
-    float attackCooldown_ = 0.75f;
+    float attackStateTimer_ = 0.0f; // 攻撃状態の切替までの残り秒数。
+    float attackCooldown_ = 0.75f; // 攻撃の再使用までの残り秒数。
     float recoveryDuration_ = 0.0f;
 
-    float idleTimer_ = 0.0f;
+    float idleTimer_ = 0.0f; // 待機中の見た目に使う経過秒数。
     float groundHopTimer_ = 0.0f;
 
-    float ambientParticleTimer_ = 0.0f;
-    float breathParticleTimer_ = 0.0f;
-    float breathPushTimer_ = 0.0f;
+    float ambientParticleTimer_ = 0.0f; // 周囲の粒子の発生までの残り秒数。
+    float breathParticleTimer_ = 0.0f; // ブレス粒子の発生までの残り秒数。
+    float breathPushTimer_ = 0.0f; // ブレスの押し出し判定までの残り秒数。
 
-    float lockedTargetDistance_ = 0.0f;
+    float lockedTargetDistance_ = 0.0f; // 連射などの開始時に確定する水平距離。
 
-    float volleyGroundY_ = 0.0f;
+    float volleyGroundY_ = 0.0f; // 連射動作から戻る地面の高さ。
     float volleyHoverY_ = 0.0f;
     float volleyLandingStartY_ = 0.0f;
 
-    float volleyShotTimer_ = 0.0f;
-    float volleyVisualTimer_ = 0.0f;
-    float volleyRecoilTimer_ = 0.0f;
+    float volleyShotTimer_ = 0.0f; // 連射の次弾までの残り秒数。
+    float volleyVisualTimer_ = 0.0f; // 連射中の表示までの残り秒数。
+    float volleyRecoilTimer_ = 0.0f; // 発射反動までの残り秒数。
 
     engine::Vector3 lockedAttackDirection_ = {0.0f, 0.0f, 1.0f};
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
 
     int breathParticleCursor_ = 0;
-    int volleyShotCount_ = 0;
+    int volleyShotCount_ = 0; // 現在の連射で発射済みの弾数。
 
     bool hasBaseScale_ = false;
     bool warningTriggered_ = false;
@@ -166,5 +168,5 @@ class EnemyWindSlime : public BaseEnemy {
     std::string debugPreviewAttackId_;
 
     std::array<engine::Vector3, 3> volleyImpactCenters_{};
-    std::array<std::unique_ptr<engine::Object3d>, 3> heldWindOrbVisuals_;
+    std::array<std::unique_ptr<engine::Object3D>, 3> heldWindOrbVisuals_;
 };

@@ -1,20 +1,23 @@
 #pragma once
 #include "engine/utility/math/Math.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <stdint.h>
 
-/// <summary>シーン背景のキューブマップ用メッシュと描画処理を管理する。</summary>
+// 担当：キューブマップを背景として描画するメッシュと資源を管理する。
+// 関連：Camera（視点）、Object3DCommon（背景パイプライン）、LightManager（環境設定）
+// 主な入口：Initialize / SetTextureHandle / Draw
 class Skybox {
 public:
     /// <summary>背景用キューブメッシュの頂点位置。</summary>
+    // 関連：Skybox（この型を使う機能の本体）
     struct VertexData {
         engine::Vector4 position;
     };
 
     /// <summary>共通描画機能とキューブマップテクスチャで初期化する。</summary>
-    void Initialize(engine::Object3dCommon* common, uint32_t textureHandle);
+    void Initialize(engine::Object3DCommon* common, uint32_t textureHandle);
 
     /// <summary>描画に使うキューブマップのハンドルを変更する。</summary>
     void SetTextureHandle(uint32_t textureHandle) { textureHandle_ = textureHandle; }
@@ -30,7 +33,7 @@ private:
     void CreateMesh();
 
 private:
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
     uint32_t textureHandle_ = 0;
 
     // メッシュリソース

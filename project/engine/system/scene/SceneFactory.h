@@ -6,7 +6,9 @@
 #include <unordered_map>
 #include <vector>
 
-/// <summary>登録されたシーン名を対応するBaseScene派生クラスの生成関数へ結び付ける。</summary>
+// 担当：シーン名と生成関数を登録し、指定されたBaseScene派生型を作る。
+// 関連：AbstractSceneFactory（契約）、SceneManager（生成要求）
+// 主な入口：RegisterScene / CreateScene / GetRegisteredSceneNames
 class SceneFactory : public AbstractSceneFactory {
 public:
     using SceneCreator = std::function<std::unique_ptr<BaseScene>()>;

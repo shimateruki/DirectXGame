@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e7388a592b04f16fe79b2d3a2c204859",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/01-pink-strike.png",
+  "version": 1
+}

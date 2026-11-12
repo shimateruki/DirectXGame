@@ -47,7 +47,7 @@ EnemyFactory* EnemyFactory::GetInstance() {
 }
 
 // 敵タイプ名ごとに専用クラスを生成します。共通ステータスはGameplayStatusManagerが設定します。
-std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, engine::Object3dCommon* common) {
+std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, engine::Object3DCommon* common) {
     std::unique_ptr<BaseEnemy> newEnemy = nullptr;
 
     if (enemyName == "Slime") {

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bcb9864c17bfa3cd041b16c031d2aa8e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/20-crown-five.png",
+  "version": 1
+}

@@ -2,7 +2,9 @@
 
 #include <string_view>
 
-/// <summary>Object3dが所有する実行時Componentの最小共通型。</summary>
+// 担当：Object3dに付加する機能の共通型と、保存用の種別IDを定義する。
+// 関連：Object3D（保持）、PathMoverComponent / ParticleEmitterComponent（派生）
+// 主な入口：GetTypeId
 class ObjectComponent {
 public:
     virtual ~ObjectComponent() = default;

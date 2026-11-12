@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b0d970cc6b644ec78777c8b9eb8c8e21",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_wind/slime_wind_hurt.gltf",
+  "version": 1
+}

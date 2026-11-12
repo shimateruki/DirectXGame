@@ -1,0 +1,557 @@
+{
+  "version": 6,
+  "name": "stage3_boss_portal_intro",
+  "duration": 7.6,
+  "anchor": {
+    "targetName": "Stage3_HighCrown_BossGateFrame",
+    "targetEventId": -1
+  },
+  "tracks": [
+    {
+      "name": "格子ゲートを閉じる",
+      "targetName": "Stage3_HighCrown_BossGate",
+      "targetEventId": -1,
+      "startTime": 0.0,
+      "enabled": true,
+      "muted": false,
+      "relative": false,
+      "anchorRelative": true,
+      "holdLast": true,
+      "keys": [
+        {
+          "time": 0.0,
+          "position": [
+            0.0,
+            8.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 0.58,
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        }
+      ]
+    },
+    {
+      "name": "ゲートの奥から前進して構える",
+      "targetName": "Stage3_HighCrown_FalseKingSlime",
+      "targetEventId": -1,
+      "startTime": 1.1,
+      "enabled": true,
+      "muted": false,
+      "relative": true,
+      "anchorRelative": false,
+      "holdLast": true,
+      "keys": [
+        {
+          "time": 0,
+          "position": [
+            0,
+            0,
+            -9
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 0.75,
+          "position": [
+            0,
+            -0.08,
+            -9
+          ],
+          "rotation": [
+            -0.1,
+            0,
+            0
+          ],
+          "scale": [
+            1.12,
+            0.82,
+            1.12
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 1.2,
+          "position": [
+            0,
+            0.6,
+            -6.5
+          ],
+          "rotation": [
+            0.08,
+            0,
+            0
+          ],
+          "scale": [
+            0.87,
+            1.24,
+            0.92
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 1.8,
+          "position": [
+            0,
+            0.8,
+            -2
+          ],
+          "rotation": [
+            0.06,
+            0,
+            0
+          ],
+          "scale": [
+            0.94,
+            1.15,
+            0.97
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 2.35,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -0.08,
+            0,
+            0
+          ],
+          "scale": [
+            1.25,
+            0.7,
+            1.18
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 2.62,
+          "position": [
+            0,
+            0.22,
+            0
+          ],
+          "rotation": [
+            0.05,
+            0,
+            0
+          ],
+          "scale": [
+            0.91,
+            1.18,
+            0.95
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 3.0,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -0.025,
+            0,
+            0
+          ],
+          "scale": [
+            1.05,
+            0.94,
+            1.04
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 3.22,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 5.5,
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "easingToNext": 4
+        }
+      ]
+    },
+    {
+      "name": "格子ゲートへ寄る",
+      "targetName": "Stage3_BossIntro_GateCamera",
+      "targetEventId": -1,
+      "startTime": 0.0,
+      "enabled": true,
+      "muted": false,
+      "relative": false,
+      "holdLast": true,
+      "keys": [
+        {
+          "time": 0.0,
+          "position": [
+            2.93,
+            6.07,
+            18.42
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 0.74,
+          "position": [
+            2.6,
+            6.07,
+            21.2
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        }
+      ]
+    },
+    {
+      "name": "ボスの全身から少し寄る",
+      "targetName": "Stage3_BossIntro_BossCamera",
+      "targetEventId": -1,
+      "startTime": 0.0,
+      "enabled": true,
+      "muted": false,
+      "relative": false,
+      "holdLast": true,
+      "keys": [
+        {
+          "time": 0.0,
+          "position": [
+            2.6,
+            6.84,
+            15.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 1.55,
+          "position": [
+            2.6,
+            6.84,
+            15.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 3.4,
+          "position": [
+            1.6,
+            6.5,
+            14.2
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 3.48,
+          "position": [
+            1.6,
+            6.3,
+            14.05
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 3.62,
+          "position": [
+            1.6,
+            6.53,
+            14.2
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 3.8,
+          "position": [
+            1.5,
+            6.45,
+            14.1
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        },
+        {
+          "time": 6.6,
+          "position": [
+            0.2,
+            6.04,
+            13.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "easingToNext": 4
+        }
+      ]
+    }
+  ],
+  "cameraShots": [
+    {
+      "name": "格子ゲートの封鎖",
+      "targetName": "Stage3_BossIntro_GateCamera",
+      "targetEventId": -1,
+      "startTime": 0.0,
+      "duration": 1.05,
+      "blendInDuration": 0.0,
+      "blendOutDuration": 0.0,
+      "easing": 4,
+      "enabled": true,
+      "muted": false
+    },
+    {
+      "name": "偽王の登場",
+      "targetName": "Stage3_BossIntro_BossCamera",
+      "targetEventId": -1,
+      "startTime": 1.05,
+      "duration": 5.55,
+      "blendInDuration": 0.5,
+      "blendOutDuration": 0.0,
+      "easing": 4,
+      "enabled": true,
+      "muted": false
+    },
+    {
+      "name": "戦闘視点へ戻る",
+      "targetName": "Stage3_BossIntro_ReturnCamera",
+      "targetEventId": -1,
+      "startTime": 6.6,
+      "duration": 1.0,
+      "blendInDuration": 1.0,
+      "blendOutDuration": 0.0,
+      "easing": 4,
+      "enabled": true,
+      "muted": false
+    }
+  ],
+  "vfxCues": [],
+  "animationClips": [],
+  "audioClips": [],
+  "signals": [
+    {
+      "time": 0.24,
+      "name": "シネマバー展開完了",
+      "signal": "boss_intro_bar_open_end",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 1.1,
+      "name": "偽王の戦闘開始",
+      "signal": "arena.activate_boss",
+      "payload": "",
+      "targetName": "Stage3_HighCrown_Encounter",
+      "targetEventId": 6101,
+      "enabled": true
+    },
+    {
+      "time": 3.45,
+      "name": "着地の衝撃波",
+      "signal": "boss_intro_landing",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 4.1,
+      "name": "登場文字を表示",
+      "signal": "boss_intro_message_in",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 4.1,
+      "name": "構えのオーラ",
+      "signal": "boss_intro_pose",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 4.3,
+      "name": "ゲート消失開始",
+      "signal": "boss_intro_gate_close",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 6.0,
+      "name": "オーラの余韻終了",
+      "signal": "boss_intro_aura_out",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    },
+    {
+      "time": 6.2,
+      "name": "登場文字を隠す",
+      "signal": "boss_intro_message_out",
+      "payload": "",
+      "targetName": "",
+      "targetEventId": -1,
+      "enabled": true
+    }
+  ],
+  "events": []
+}

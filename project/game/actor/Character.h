@@ -1,17 +1,19 @@
 #pragma once
 #include "InputManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "CharacterMotor.h"
 
 /// <summary>
 /// 速度、重力、接地判定など、物理的に動くキャラクターの基底クラス。
 /// </summary>
 // Characterは、重力、速度、接地判定、物理衝突補正を持つ移動キャラクターの基底クラスです。
-class Character : public engine::Object3d {
+// 関連：Object3dの表示・衝突情報を使い、移動の衝突補正はCharacterMotorへ任せる。
+// 主な入口：Update / OnCollision / SimulateMotorStep
+class Character : public engine::Object3D {
   public:
     /// <summary>衝突相手から受ける押し戻しなどの物理補正を適用する。</summary>
     /// <returns>衝突を処理した場合はtrue。</returns>
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     /// <summary>
     /// 速度と重力を反映して座標を更新する。
@@ -60,7 +62,7 @@ class Character : public engine::Object3d {
 
     /// <summary>Character自身の配置と移動状態を複製する。</summary>
     /// <returns>派生型から呼ばれた場合はnullptr。派生側でCloneを実装する。</returns>
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   protected:
     /// <summary>速度や接地などCharacter固有の状態をリプレイ用JSONへ書く。</summary>

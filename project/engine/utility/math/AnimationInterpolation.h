@@ -1,5 +1,8 @@
 #pragma once
 
+// 担当：キー間の進行割合を補間方式に応じて変換する。
+// 関連：BodyAnimationClip / AnimatorControllerRuntime / CinematicPlayer（補間）
+
 #include "engine/utility/math/Math.h"
 
 #include <algorithm>

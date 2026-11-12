@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c75b26342a23f7d1164e73af6884f035",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/24-crown-combo.png",
+  "version": 1
+}

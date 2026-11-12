@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "1e33ec7bc9f206dec9b86a4664ab7fc3",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/magma_slime/parameters.json",
+  "version": 1
+}

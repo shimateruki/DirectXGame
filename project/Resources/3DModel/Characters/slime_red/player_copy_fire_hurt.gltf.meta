@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ab08db8ca8e94e6f9f9dc10e5ab56125",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_red/player_copy_fire_hurt.gltf",
+  "version": 1
+}

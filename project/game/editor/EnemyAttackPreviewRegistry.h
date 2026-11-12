@@ -12,23 +12,23 @@
 class BaseEnemy;
 class BaseScene;
 struct EnemyAttackDefinition;
-namespace engine { class Object3d; class ParticleSystem; }
+namespace engine { class Object3D; class ParticleSystem; }
 using PreviewEnemySpawn = std::function<void(std::unique_ptr<BaseEnemy>)>;
 
 // 一回の準備・更新にだけ渡す非所有参照です。生成物の所有権はspawn経由でSceneへ移します。
 struct EnemyAttackPreviewContext {
-    engine::Object3d* target = nullptr;
+    engine::Object3D* target = nullptr;
     engine::ParticleSystem* particles = nullptr;
     engine::Vector3 ground{};
     std::string optionId;
-    bool preparationOnly = false;
+    bool preparationOnly = false; // 準備だけの呼出しか。通常の毎フレーム再生と同じ処理を重ねないために使う。
 };
 
 // 保存用の攻撃定義とは分離した、プレビュー専用の追加確認項目です。
 struct EnemyAttackPreviewOption {
     std::string id;
     std::string displayName;
-    float targetDistance = 6.0f;
+    float targetDistance = 6.0f; // 確認用の対象距離（ワールド単位）。
     std::function<float()> duration;
     bool suppressProfile = false;
 };
@@ -53,8 +53,11 @@ struct EnemyAttackPreviewDescriptor {
     std::vector<EnemyAttackPreviewOption> options;
 };
 
+// 関連：ゲーム側の登録関数とActorDebugPanelをつなぎ、敵固有処理をコールバックとして保持する。
+// 主な入口：Register / Find / FindOption
 class EnemyAttackPreviewRegistry {
 public:
+    // ステータス編集対象の内部タイプIDと、一覧へ表示する名前。
     struct StatusTarget { std::string type, displayName; };
 
     // 編集内容と保存先はゲーム側に任せます。空のtypeはPlayer共通値を表します。
@@ -63,6 +66,7 @@ public:
         std::function<bool(BaseScene*, const std::string&)> draw;
         std::function<void()> savePending;
     };
+    // 共通のステータス編集サービスをゲーム側の実装へ差し替える。登録情報は値で保持する。
     static void RegisterStatusEditor(StatusEditor editor) { StatusServices() = std::move(editor); }
     static const StatusEditor& GetStatusEditor() { return StatusServices(); }
 

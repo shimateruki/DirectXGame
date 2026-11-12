@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cea4a469435367746712023cc04c14c4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/11-thunder-line.png",
+  "version": 1
+}

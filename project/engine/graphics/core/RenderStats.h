@@ -11,7 +11,7 @@ enum class RenderPass : uint8_t {
     MainScene,
     Shadow,
     CameraPreview,
-    GameUI,
+    GameUi,
     PostProcess,
     EditorOverlay,
     Other,
@@ -21,6 +21,7 @@ enum class RenderPass : uint8_t {
 constexpr size_t kRenderPassCount = static_cast<size_t>(RenderPass::Count);
 
 /// <summary>1 種類の描画パスで GPU へ送った処理量です。</summary>
+// 関連：RenderStats（この型を使う機能の本体）
 struct RenderPassStats {
     uint64_t drawCalls = 0;
     uint64_t indexedDrawCalls = 0;
@@ -29,26 +30,28 @@ struct RenderPassStats {
     uint64_t culledObjects = 0;
     uint64_t submittedVertices = 0;
     uint64_t submittedIndices = 0;
-    uint64_t submittedTriangles = 0;
-    uint64_t submittedInstances = 0;
+    uint64_t submittedTriangles = 0; // 発行した描画命令から集計した三角形数。
+    uint64_t submittedInstances = 0; // 発行した描画のインスタンス数。
     uint64_t computeDispatches = 0;
-    uint64_t computeThreadGroups = 0;
+    uint64_t computeThreadGroups = 0; // Dispatchで指定したスレッドグループ数。
 };
 
 /// <summary>Editor へ公開する 1 フレーム分の描画統計です。</summary>
+// 関連：RenderStats（この型を使う機能の本体）
 struct RenderFrameStats {
     uint64_t frameNumber = 0;
     std::array<RenderPassStats, kRenderPassCount> passes{};
     uint32_t activePointLights = 0;
     uint32_t activeSpotLights = 0;
     uint32_t gpuParticleSystems = 0;
-    uint64_t gpuParticleCapacity = 0;
-    uint64_t cpuParticleCount = 0;
+    uint64_t gpuParticleCapacity = 0; // 有効なGPU粒子システムの確保枠数。
+    uint64_t cpuParticleCount = 0; // CPU粒子の稼働数。
     uint32_t postProcessPasses = 0;
 };
 
-/// <summary>実際に発行した Draw/Dispatch をフレーム単位で集計します。</summary>
-/// 描画内容には干渉せず、軽量化前後を同じ指標で比較するために使います。
+// 担当：実際に発行した描画・Compute処理の量をフレーム単位で集計する。
+// 関連：ScopedRenderPass（集計先の切替）、Model / Sprite / PostEffectなど（記録元）
+// 主な入口：BeginFrame / RecordIndexedDraw / RecordComputeDispatch / EndFrame
 class RenderStats {
 public:
     /// <summary>エンジンで共有する統計インスタンスを取得します。</summary>
@@ -114,12 +117,14 @@ private:
     // 集計中と Editor 向けに公開済みのフレームを分離します。
     RenderFrameStats currentFrame_{};
     RenderFrameStats completedFrame_{};
-    RenderPass currentPass_ = RenderPass::Other;
+    RenderPass currentPass_ = RenderPass::Other; // 現在の記録先となる描画パス。
     uint64_t nextFrameNumber_ = 1;
-    bool frameActive_ = false;
+    bool frameActive_ = false; // BeginFrameからEndFrameの記録区間内か。
 };
 
-/// <summary>スコープを抜けたときに、元の描画パスへ戻します。</summary>
+// 担当：スコープ中の集計パスを変更し、終了時に元のパスへ戻す。
+// 関連：RenderStats（現在パスと集計値）
+// 主な入口：ScopedRenderPass / ~ScopedRenderPass
 class ScopedRenderPass {
 public:
     /// <summary>現在の描画パスを保存し、一時的な分類を設定します。</summary>
@@ -133,7 +138,7 @@ public:
     ScopedRenderPass& operator=(const ScopedRenderPass&) = delete;
 
 private:
-    RenderPass previousPass_ = RenderPass::Other;
+    RenderPass previousPass_ = RenderPass::Other; // スコープ終了時に戻す集計パス。
 };
 
 } // namespace engine

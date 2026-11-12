@@ -4,10 +4,12 @@
 
 #include <string>
 
-/// <summary>Ghost Recorderで再生する経路名と再生方法を保持する。</summary>
+// 担当：記録経路の名前、ループ・相対再生・乗車条件を保持する。
+// 関連：ObjectComponent（共通型）、Object3D（保持）、GhostRecorder（経路再生）
+// 主な入口：GetPathName / SetPathName / GetPlaybackMode
 class PathMoverComponent final : public ObjectComponent {
 public:
-    static constexpr std::string_view kTypeId = "PathMover";
+    static constexpr std::string_view kTypeId = "PathMover"; // 保存と実行時の型判定に使う固定ID。
 
     /// <summary>保存と型判定に使うComponent種別を返す。</summary>
     std::string_view GetTypeId() const override { return kTypeId; }
@@ -54,10 +56,10 @@ public:
     void SetRideSequence(const std::string& path) { rideSequence_ = path; }
 
 private:
-    PlaybackMode playbackMode_ = PlaybackMode::Always;
-    std::string pathName_;
-    bool loop_ = false;
-    bool relative_ = false;
-    float phaseOffset_ = 0.0f;
-    std::string rideSequence_;
+    PlaybackMode playbackMode_ = PlaybackMode::Always; // 常時・乗車中・乗車後終端までの再生条件。
+    std::string pathName_; // 記録経路の名前。空なら未設定。
+    bool loop_ = false; // 経路の終端から先頭へ戻すか。
+    bool relative_ = false; // 記録経路を基準姿勢に対する相対座標で使うか。
+    float phaseOffset_ = 0.0f; // ループ開始位置の割合。保持時には範囲制限しない。
+    std::string rideSequence_; // 乗車時の演出シーケンス。空なら通常の経路再生。
 };

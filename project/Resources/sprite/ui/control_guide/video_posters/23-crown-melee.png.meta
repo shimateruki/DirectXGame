@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8b228248f54bea7728c017ceb5f031b9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/23-crown-melee.png",
+  "version": 1
+}

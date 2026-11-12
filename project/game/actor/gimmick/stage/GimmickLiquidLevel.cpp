@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickLiquidLevel::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickLiquidLevel::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 液面は足場の衝突には使わず、表示と高さの制御を担当します。
@@ -37,7 +37,7 @@ void GimmickLiquidLevel::Initialize(engine::Object3dCommon* common, const std::s
     using Self = GimmickLiquidLevel;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "水位・マグマ上下",
         "脱出モードのTarget IDは開始マーカー、+1は終了、+2は復帰です。マーカーのScaleが進入範囲です。連動床・火山弾のTarget IDを液面のMy Event IDへ接続します。出現床とスイッチは液面ID+4、入口岩戸はID+5です。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("液面の動作", "actionMode", &Parameter::actionMode, 0.0f, 1.0f,
         nullptr, {"従来のスイッチ上下", "マグマ脱出：一定速度で上昇"});
     properties.Parameter("開始前の予告時間", "shakeDuration", &Parameter::shakeDuration, 0.0f, 10.0f,
@@ -133,7 +133,7 @@ void GimmickLiquidLevel::ApplyLiquidVisual() {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickLiquidLevel::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickLiquidLevel::Clone() const {
     // 複製先の描画資源を作った後で、液面の設定を引き継ぎます。
     auto newObj = std::make_unique<GimmickLiquidLevel>();
     assert(GetObjectCommon() != nullptr);
@@ -173,10 +173,10 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
             break;
     }
 
-    auto* start = scene->FindObjectByEventID(GetTargetID());
-    auto* finish = scene->FindObjectByEventID(GetTargetID() + 1);
-    auto* checkpoint = scene->FindObjectByEventID(GetTargetID() + 2);
-    const auto inside = [&](engine::Object3d* marker) {
+    auto* start = scene->FindObjectByEventId(GetTargetId());
+    auto* finish = scene->FindObjectByEventId(GetTargetId() + 1);
+    auto* checkpoint = scene->FindObjectByEventId(GetTargetId() + 2);
+    const auto inside = [&](engine::Object3D* marker) {
         if (!marker || !player)
             return false;
         const engine::Vector3 p = player->GetTranslate() - marker->GetTranslate();
@@ -202,7 +202,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
 
             // 到達後は追撃を止め、頂上のゴールへ安全に進めるようにします。
             for (auto& obj : scene->GetObjects())
-                if (obj->GetTargetID() == GetEventID()) {
+                if (obj->GetTargetId() == GetEventId()) {
                     if (auto* geyser = dynamic_cast<GimmickMagmaGeyser*>(obj.get()))
                         geyser->ResetEscapeCycle(false);
                     else if (auto* cannon = dynamic_cast<GimmickFireCannon*>(obj.get()))
@@ -229,7 +229,7 @@ void GimmickLiquidLevel::ResetEscapeObjects(bool active) {
     if (!scene)
         return;
     for (auto& obj : scene->GetObjects()) {
-        if (!obj || obj.get() == this || obj->GetTargetID() != GetEventID())
+        if (!obj || obj.get() == this || obj->GetTargetId() != GetEventId())
             continue;
         if (auto* floor = dynamic_cast<GimmickMovingFloor*>(obj.get()))
             floor->ResetEscapeCycle();
@@ -243,8 +243,8 @@ void GimmickLiquidLevel::ResetEscapeObjects(bool active) {
 
     // 出現床のスイッチは独立したリンクなので、受信側IDから同じ組を探します。
     for (auto& obj : scene->GetObjects())
-        if (obj->GetTargetID() == GetEventID() + 4)
+        if (obj->GetTargetId() == GetEventId() + 4)
             if (auto* button = dynamic_cast<GimmickSwitch*>(obj.get()))
                 button->ResetEscapeCycle();
-    scene->SetEventActive(GetEventID() + 5, active);
+    scene->SetEventActive(GetEventId() + 5, active);
 }

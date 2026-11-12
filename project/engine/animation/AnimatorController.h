@@ -28,6 +28,7 @@ enum class AnimatorConditionMode {
 /// 遷移判定に使うパラメータの宣言と型別の初期値です。
 /// type に対応する初期値だけを使用し、Trigger は false から開始します。
 /// </summary>
+// 関連：AnimatorControllerAsset（定義）、AnimatorControllerRuntime（再生）
 struct AnimatorParameterDefinition {
     std::string name;
     AnimatorParameterType type = AnimatorParameterType::Float;
@@ -40,15 +41,17 @@ struct AnimatorParameterDefinition {
 /// 状態の再生中に発火するイベントの定義です。
 /// normalizedTime は再生開始を 0、末尾を 1 とした発火位置です。
 /// </summary>
+// 関連：AnimatorControllerAsset（定義）、AnimatorControllerRuntime（再生）
 struct AnimatorEventDefinition {
     std::string name = "FeedbackCue";
     std::string payload;
-    float normalizedTime = 0.0f;
+    float normalizedTime = 0.0f; // 発火位置。再生開始0、末尾1の割合。
 };
 
 /// <summary>
 /// 1 つの再生状態で使用するクリップ、再生設定、発火イベントをまとめます。
 /// </summary>
+// 関連：AnimatorControllerAsset（定義）、AnimatorControllerRuntime（再生）
 struct AnimatorStateDefinition {
     std::string name;
     std::string clipName;     // Model 内の Skeletal Animation 名。
@@ -56,8 +59,8 @@ struct AnimatorStateDefinition {
 
     float speed = 1.0f;
     bool loop = true;
-    float blendDuration = 0.12f;
-    int blendEasing = 4;
+    float blendDuration = 0.12f; // 状態へ入る際の補間時間（秒）。
+    int blendEasing = 4; // AnimationInterpolationの補間方式。
     float eventTimelineDuration = 1.0f; // クリップ長が不明なときのイベント・exitTime 判定用時間（秒）。
 
     std::vector<AnimatorEventDefinition> events;
@@ -67,17 +70,19 @@ struct AnimatorStateDefinition {
 /// Runtime が発火し、呼び出し側へ渡すイベントです。
 /// stateName は発火元の状態名です。
 /// </summary>
+// 関連：AnimatorControllerAsset（定義）、AnimatorControllerRuntime（再生）
 struct AnimatorEventInstance {
     std::string stateName;
     std::string name;
     std::string payload;
-    float normalizedTime = 0.0f;
+    float normalizedTime = 0.0f; // 発火位置。再生開始0、末尾1の割合。
 };
 
 /// <summary>
 /// 遷移条件で参照するパラメータと比較方法です。
 /// threshold は Float の大小比較、または Int の等価比較に使用します。
 /// </summary>
+// 関連：AnimatorControllerAsset（定義）、AnimatorControllerRuntime（再生）
 struct AnimatorConditionDefinition {
     std::string parameter;
     AnimatorConditionMode mode = AnimatorConditionMode::Greater;
@@ -88,20 +93,21 @@ struct AnimatorConditionDefinition {
 /// 状態間の遷移と、その成立条件を定義します。
 /// fromState が空文字または "*" なら Any State、conditions はすべて満たす必要があります。
 /// </summary>
+// 関連：AnimatorControllerAsset（定義）、AnimatorControllerRuntime（再生）
 struct AnimatorTransitionDefinition {
-    std::string fromState;
-    std::string toState;
+    std::string fromState; // 遷移元。空文字または*はAny State。
+    std::string toState; // 遷移先の状態名。
     float duration = 0.12f;
     int easing = 4;
-    bool hasExitTime = false;
+    bool hasExitTime = false; // 再生割合の到達を遷移条件に使うか。
     float exitTime = 0.9f; // hasExitTime が true のときに待つ正規化時刻。
     std::vector<AnimatorConditionDefinition> conditions;
 };
 
-/// <summary>
-/// エディターで編集し、JSON に保存するアニメーション状態機械の定義です。
-/// 再生時刻や現在のパラメータ値は保持しません。
-/// </summary>
+// 担当：アニメーションの状態・遷移・パラメータを定義してJSONへ保存する。
+// 関連：AnimatorControllerRuntime（再生）、AnimatorControllerEditor（編集）
+// 主な入口：Load / Save / FindState
+// 再生時刻と現在のパラメータ値はRuntime側が保持する。
 class AnimatorControllerAsset {
 public:
     static constexpr int kCurrentVersion = 2;
@@ -145,10 +151,9 @@ public:
     std::vector<AnimatorTransitionDefinition> transitions;
 };
 
-/// <summary>
-/// 再生対象ごとの時刻、遷移、パラメータ、イベントを管理します。
-/// Asset は共有参照し、所有しません。
-/// </summary>
+// 担当：対象ごとの再生時刻・遷移・パラメータと発火イベントを管理する。
+// 関連：AnimatorControllerAsset（借用する定義）、Object3D（再生と姿勢適用）
+// 主な入口：SetController / Update / Play / ConsumeEvents
 class AnimatorControllerRuntime {
 public:
     // クリップ長を秒で返します。0 以下は長さ不明として扱います。
@@ -158,14 +163,15 @@ public:
     /// リプレイ等で保存する再生位置です。
     /// 時刻は秒単位で、パラメータ値と未消費イベントは含みません。
     /// </summary>
+    // 関連：AnimatorControllerAsset（定義）、AnimatorControllerRuntime（再生）
     struct Snapshot {
         std::string currentState;
         std::string previousState;
-        float currentTime = 0.0f;
-        float previousTime = 0.0f;
-        float transitionElapsed = 0.0f;
-        float transitionDuration = 0.0f;
-        int transitionEasing = 4;
+        float currentTime = 0.0f; // 現在状態の再生位置（秒）。
+        float previousTime = 0.0f; // 遷移元の再生位置（秒）。
+        float transitionElapsed = 0.0f; // ブレンド開始からの経過秒数。
+        float transitionDuration = 0.0f; // ブレンド全体の秒数。
+        int transitionEasing = 4; // ブレンドに使う補間方式。
         bool valid = false; // 再生中の状態があり、復元できる場合に true。
     };
 

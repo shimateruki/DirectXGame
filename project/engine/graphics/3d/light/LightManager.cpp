@@ -1,6 +1,6 @@
 #include "LightManager.h"
 #include "Easing.h"
-#include "Object3d.h" // 追従対象の座標を取得するために必要
+#include "Object3D.h" // 追従対象の座標を取得するために必要
 #include "Camera.h"
 #include "CameraManager.h"
 #include <cassert>
@@ -227,10 +227,10 @@ void LightManager::Update() {
             engine::Vector3 forward = { worldMat.m[0][2], worldMat.m[1][2], worldMat.m[2][2] };
 
             // 正規化
-            float len = std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+            float length = std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
 
-            if (len > 0.0001f) {
-                instance.data.direction = { forward.x / len, forward.y / len, forward.z / len };
+            if (length > 0.0001f) {
+                instance.data.direction = { forward.x / length, forward.y / length, forward.z / length };
             }
         }
 

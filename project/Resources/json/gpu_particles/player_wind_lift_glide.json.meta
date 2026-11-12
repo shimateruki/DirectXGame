@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f7b0817f71ac4432a5ba27e731a1a276",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_wind_lift_glide.json",
+  "version": 1
+}

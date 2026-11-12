@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-void GimmickSeesawFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickSeesawFloor::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // シーソーの天面を地面として扱い、乗員を支えられるようにする。
     BaseGimmick::Initialize(common, modelName);
 
@@ -48,7 +48,7 @@ void GimmickSeesawFloor::Update(float deltaTime) {
 }
 
 // プレイヤーの接触位置を床のローカル左右方向へ変換して傾きを決めます。
-bool GimmickSeesawFloor::OnCollision(engine::Object3d* other) {
+bool GimmickSeesawFloor::OnCollision(engine::Object3D* other) {
     // 上面に乗ったPlayerの位置から左右どちらへ傾けるかを決める。
     if (other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
@@ -67,7 +67,7 @@ bool GimmickSeesawFloor::OnCollision(engine::Object3d* other) {
     return true;
 }
 
-std::unique_ptr<engine::Object3d> GimmickSeesawFloor::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickSeesawFloor::Clone() const {
     // 揺れの途中状態は持ち越さず、配置と設定から新しい床を作る。
     auto newObj = std::make_unique<GimmickSeesawFloor>();
     assert(GetObjectCommon() != nullptr);

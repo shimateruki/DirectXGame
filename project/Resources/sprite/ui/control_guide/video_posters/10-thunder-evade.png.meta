@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c628abda731c5646abaa48055fe98ea0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/10-thunder-evade.png",
+  "version": 1
+}

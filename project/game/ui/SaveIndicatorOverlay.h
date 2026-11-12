@@ -11,6 +11,8 @@ namespace engine { class Sprite; }
 namespace engine { class SpriteCommon; }
 
 // セーブ発生時に一時表示する HUD。表示継続時間は Play で指定します。
+// 関連：各シーンが保存通知を受けてPlayし、配置JSONから作った表示を一定時間だけ描く。
+// 主な入口：Initialize / Play / Update / Draw / Finalize
 class SaveIndicatorOverlay {
   public:
     // Sprite配置JSONを読み込み、セーブ表示を生成する。spriteCommon は借用する。

@@ -37,13 +37,13 @@ namespace LegacyGimmickCreation {
 
 
 template <typename T>
-std::unique_ptr<BaseGimmick> CreateSimpleGimmick(engine::Object3dCommon* common, const char* modelPath) {
+std::unique_ptr<BaseGimmick> CreateSimpleGimmick(engine::Object3DCommon* common, const char* modelPath) {
     auto gimmick = std::make_unique<T>();
     gimmick->Initialize(common, modelPath);
     return gimmick;
 }
 
-using Creator = std::unique_ptr<BaseGimmick> (*)(engine::Object3dCommon*, const char*);
+using Creator = std::unique_ptr<BaseGimmick> (*)(engine::Object3DCommon*, const char*);
 
 struct SimpleGimmickEntry {
     const char* type;
@@ -80,7 +80,7 @@ constexpr SimpleGimmickEntry kSimpleGimmicks[] = {
     {"StageGate", "Gimmicks/portal_surface", &CreateSimpleGimmick<GimmickStageGate>},
 };
 
-inline std::unique_ptr<BaseGimmick> CreateConfiguredGimmick(const std::string& type, engine::Object3dCommon* common) {
+inline std::unique_ptr<BaseGimmick> CreateConfiguredGimmick(const std::string& type, engine::Object3DCommon* common) {
     if (type == "MovingFloor") {
         auto floor = std::make_unique<GimmickMovingFloor>();
         floor->Initialize(common, "Stages/block");
@@ -122,7 +122,7 @@ inline std::unique_ptr<BaseGimmick> CreateConfiguredGimmick(const std::string& t
 }
 
 
-inline std::unique_ptr<BaseGimmick> Create(const std::string& type, engine::Object3dCommon* common) {
+inline std::unique_ptr<BaseGimmick> Create(const std::string& type, engine::Object3DCommon* common) {
     auto object = CreateConfiguredGimmick(type, common);
     if (type == "SinkingFloor") object = CreateSimpleGimmick<GimmickSinkingFloor>(common, "Stages/block");
     for (const auto& entry : kSimpleGimmicks) if (!object && type == entry.type) object = entry.create(common, entry.modelPath);

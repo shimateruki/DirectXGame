@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3d994340c270903ec74f6aed3efd6bed",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/07-fire-ball.png",
+  "version": 1
+}

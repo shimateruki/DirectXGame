@@ -2,12 +2,12 @@
 #include <numbers>
 
 #include "DebrisEffectManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/combat/GroundEffectLocator.h"
 #include "MeshEffectManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Player.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,9 +43,9 @@ constexpr float kGroundEffectLift = 0.035f;
 bool IsTinyPlanar(const engine::Vector3& value);
 engine::Vector3 NormalizePlanar(engine::Vector3 value);
 
-void SpawnThunderShockHitBurst(engine::Object3d* target) {
+void SpawnThunderShockHitBurst(engine::Object3D* target) {
     // 対象の横幅・高さに合わせて電撃を周囲へ分散し、大型敵でも接触位置を見せる。
-    auto* manager = GPUParticleManager::GetInstance();
+    auto* manager = GpuParticleManager::GetInstance();
 
     if (!target || !manager || !manager->IsInitialized()) {
         return;
@@ -74,7 +74,7 @@ void SpawnThunderShockHitBurst(engine::Object3d* target) {
     }
 }
 
-engine::Vector3 ResolveBodyHitPosition(engine::Object3d* target, engine::Object3d* attacker, const engine::Vector3& knockbackVelocity) {
+engine::Vector3 ResolveBodyHitPosition(engine::Object3D* target, engine::Object3D* attacker, const engine::Vector3& knockbackVelocity) {
     // ノックバックが水平にほぼ無い場合は、攻撃者から対象へ向かう方向で打撃面を決める。
     engine::Vector3 awayDirection = knockbackVelocity;
     awayDirection.y = 0.0f;
@@ -94,9 +94,9 @@ engine::Vector3 ResolveBodyHitPosition(engine::Object3d* target, engine::Object3
     return position;
 }
 
-void SpawnFireDamageHit(engine::Object3d* target, engine::Object3d* attacker, const engine::Vector3& knockbackVelocity) {
+void SpawnFireDamageHit(engine::Object3D* target, engine::Object3D* attacker, const engine::Vector3& knockbackVelocity) {
     // 攻撃方向に炎と火の粉を飛ばし、ノックバックが無い場合は上向きへ補う。
-    auto* manager = GPUParticleManager::GetInstance();
+    auto* manager = GpuParticleManager::GetInstance();
 
     if (!target || !manager || !manager->IsInitialized()) {
         return;
@@ -114,9 +114,9 @@ void SpawnFireDamageHit(engine::Object3d* target, engine::Object3d* attacker, co
     manager->EmitDirected(kPlayerFireEmberPreset, position, direction, 1.0f);
 }
 
-void SpawnExplosionDamageHit(engine::Object3d* target, engine::Object3d* attacker, const engine::Vector3& knockbackVelocity) {
+void SpawnExplosionDamageHit(engine::Object3D* target, engine::Object3D* attacker, const engine::Vector3& knockbackVelocity) {
     // 衝突面から爆発の核と火花を出し、煙だけは上昇方向へ流す。
-    auto* manager = GPUParticleManager::GetInstance();
+    auto* manager = GpuParticleManager::GetInstance();
 
     if (!target || !manager || !manager->IsInitialized()) {
         return;
@@ -152,7 +152,7 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
-void SpawnPlayerPuniDamageHit(engine::Object3d* target, engine::Object3d* attacker, const engine::Vector3& knockbackVelocity) {
+void SpawnPlayerPuniDamageHit(engine::Object3D* target, engine::Object3D* attacker, const engine::Vector3& knockbackVelocity) {
     // 被弾した身体の手前側へ演出を置き、対象の大きさに応じて広げる。
     if (!target) {
         return;
@@ -179,23 +179,23 @@ void SpawnPlayerPuniDamageHit(engine::Object3d* target, engine::Object3d* attack
     const engine::Vector3 effectScale = {readableScale, readableScale, readableScale};
     const engine::Vector3 effectRotation = {0.0f, std::atan2(incomingDirection.x, incomingDirection.z), 0.0f};
 
-    VFXSequencer::PlayOneShot(kDamagePuniBurstSequence, effectPosition, effectScale, effectRotation);
+    VfxSequencer::PlayOneShot(kDamagePuniBurstSequence, effectPosition, effectScale, effectRotation);
 }
 } // namespace
 
 void HitEffectDirector::SpawnSlimeElasticHit(const engine::Vector3& position) {
     // 弾力のある命中演出はVFXシーケンス側の時間設定で再生する。
-    VFXSequencer::PlayOneShot(kSlimeElasticSequence, position);
+    VfxSequencer::PlayOneShot(kSlimeElasticSequence, position);
 }
 
 void HitEffectDirector::SpawnPullBindHit(const engine::Vector3& position) {
     // 引き寄せの拘束開始を単発シーケンスへ委ねる。
-    VFXSequencer::PlayOneShot(kPullBindSequence, position);
+    VfxSequencer::PlayOneShot(kPullBindSequence, position);
 }
 
 void HitEffectDirector::SpawnPullCatchHit(const engine::Vector3& position) {
     // 対象を捕まえた時点の演出を拘束開始とは別に再生する。
-    VFXSequencer::PlayOneShot(kPullCatchSequence, position);
+    VfxSequencer::PlayOneShot(kPullCatchSequence, position);
 }
 
 void HitEffectDirector::SpawnThrowSlamShockwave(const engine::Vector3& position, float impactSpeed) {
@@ -205,7 +205,7 @@ void HitEffectDirector::SpawnThrowSlamShockwave(const engine::Vector3& position,
     engine::Vector3 effectPos = groundPos;
     effectPos.y += kGroundEffectLift;
 
-    VFXSequencer::PlayOneShot(kThrowSlamSequence, effectPos);
+    VfxSequencer::PlayOneShot(kThrowSlamSequence, effectPos);
     SpawnDebris(kThrowSlamDebrisPreset, effectPos, groundPos.y);
 
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
@@ -222,16 +222,16 @@ void HitEffectDirector::SpawnBombExplosionHit(const engine::Vector3& position) {
     const engine::Vector3 groundPos = ResolveGroundEffectPosition(position);
     const engine::Vector3 effectBase = groundPos + engine::Vector3{0.0f, kGroundEffectLift, 0.0f};
 
-    VFXSequencer::PlayOneShot(kBombExplosionSequence, effectBase);
+    VfxSequencer::PlayOneShot(kBombExplosionSequence, effectBase);
     SpawnDebris(kBombDebrisPreset, effectBase, groundPos.y);
 }
 
 void HitEffectDirector::SpawnEnemyAbilityHit(const engine::Vector3& position) {
     // 能力攻撃の共通ヒット演出は一つのシーケンス名から解決する。
-    VFXSequencer::PlayOneShot(kEnemyAbilitySequence, position);
+    VfxSequencer::PlayOneShot(kEnemyAbilitySequence, position);
 }
 
-void HitEffectDirector::SpawnDamageEventHit(engine::Object3d* target, engine::Object3d* attacker, const engine::Vector3& knockbackVelocity,
+void HitEffectDirector::SpawnDamageEventHit(engine::Object3D* target, engine::Object3D* attacker, const engine::Vector3& knockbackVelocity,
                                             DamageType damageType) {
     if (!target || !attacker) {
         return;
@@ -293,7 +293,7 @@ engine::Vector3 HitEffectDirector::ResolveGroundEffectPosition(const engine::Vec
 
 void HitEffectDirector::EmitGpu(const char* presetName, const engine::Vector3& position) {
     // 先読み前などManager未初期化の場面では放出を見送る。
-    auto* manager = GPUParticleManager::GetInstance();
+    auto* manager = GpuParticleManager::GetInstance();
 
     if (!manager || !manager->IsInitialized()) {
         return;

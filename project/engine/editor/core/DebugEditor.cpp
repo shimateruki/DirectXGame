@@ -1,0 +1,1560 @@
+#define NOMINMAX
+#include "DebugEditor.h"
+#include <numbers>
+#include "EditorToolSettings.h"
+#include "game/ui/SettingsMenuOverlay.h"
+#include "SceneManager.h"
+#include "BaseScene.h"
+#include "Object3D.h"
+#include "imgui.h"
+#include <fstream>
+#include <string>
+#include <vector>
+#include "json.hpp"
+#include "ImGuizmo.h"
+#include "CameraManager.h"
+#include "WinApp.h"
+#include "Math.h"
+#include "DirectXCommon.h"
+#include "CollisionConfig.h"
+#include "ModelManager.h"
+#include "InputManager.h"
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+#include <chrono>
+#include <cctype>
+#include <ctime>
+#include <cwctype>
+#include <iomanip>
+#include <sstream>
+#include "GhostRecorder.h"
+#include "game/system/cinematic/GhostDirector.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
+#include "Transform.h"
+#include "ParticleManager.h"
+#include "EditorManager.h"
+#include "PostEffectEditor.h"
+#include "SpriteDebugEditor.h"
+#include "ParticleEditor.h"
+#include "GpuParticleEditor.h"
+#include "VfxSequencerEditor.h"
+#include "LightEditor.h"
+#include "IconsFontAwesome5.h"
+#include "AssetDatabase.h"
+
+#include <DebugConsole.h>
+#include <CollisionManager.h>
+#include <filesystem> // ファイル操作用
+#include <game/system/combat/BulletManager.h>
+#include "engine/editor/assets/preset/PresetManager.h"
+#include <PresetEditor.h>
+#include <MeshEffectManager.h>
+#include "EditorCommandRegistry.h"
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+namespace fs = std::filesystem;
+
+
+
+
+// Gizmoが返す度単位の回転を、Object3dへ渡すラジアン値に変換します。
+float ToRadians(float degrees) { return degrees * (std::numbers::pi_v<float> / 180.0f); }
+
+namespace {
+    std::string GetLeafName(const std::string& path) {
+        size_t slash = path.find_last_of("/\\");
+
+        if (slash == std::string::npos) {
+            return path.empty() ? "Preset" : path;
+        }
+
+        std::string leaf = path.substr(slash + 1);
+        return leaf.empty() ? "Preset" : leaf;
+    }
+
+    bool SceneHasObjectName(BaseScene* scene, const std::string& name) {
+        // 現在シーン内だけを調べ、別シーンの同名Objectは配置名の衝突としない。
+        if (!scene)
+            return false;
+
+        for (const auto& object : scene->GetObjects()) {
+            if (object && object->GetName() == name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool ReservedHasName(const std::vector<std::string>& reservedNames, const std::string& name) {
+        return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
+    }
+
+    std::string MakeUniquePresetObjectNameImpl(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
+    // シーンと今回の配置候補の両方を調べ、衝突しない名前を作る。
+        std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
+
+        if (!SceneHasObjectName(scene, base) && !ReservedHasName(reservedNames, base)) {
+            return base;
+        }
+
+        for (int index = 1; index < 10000; ++index) {
+            std::string candidate = base + "_" + std::to_string(index);
+
+            if (!SceneHasObjectName(scene, candidate) && !ReservedHasName(reservedNames, candidate)) {
+                return candidate;
+            }
+        }
+
+        return base + "_New";
+    }
+}
+
+std::string DebugEditor::MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName,
+    const std::vector<std::string>& reservedNames) {
+    return MakeUniquePresetObjectNameImpl(scene, baseName, reservedNames);
+}
+
+bool DebugEditor::IsValidAabb(const Aabb& aabb) {
+    return aabb.max.x > aabb.min.x &&
+        aabb.max.y > aabb.min.y &&
+        aabb.max.z > aabb.min.z;
+}
+
+engine::Vector3 DebugEditor::GetAabbCenter(const Aabb& aabb) {
+    return {
+        (aabb.min.x + aabb.max.x) * 0.5f,
+        (aabb.min.y + aabb.max.y) * 0.5f,
+        (aabb.min.z + aabb.max.z) * 0.5f
+    };
+}
+
+void DebugEditor::AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName,
+    std::vector<std::unique_ptr<engine::Object3D>>& objects, PresetRootName rootNameSource) {
+    if (objects.empty())
+        return;
+
+    std::vector<std::string> reservedNames;
+    std::string baseName = GetLeafName(presetName);
+
+    if (rootNameSource == PresetRootName::DisplayName) {
+        const json& preset = PresetManager::GetInstance()->GetPreset(presetName);
+        baseName = preset.value("presetDisplayName", baseName);
+    }
+
+    const std::string rootName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
+    objects.front()->SetName(rootName);
+    reservedNames.push_back(rootName);
+
+    for (size_t index = 1; index < objects.size(); ++index) {
+        if (!objects[index])
+            continue;
+
+        std::string childBaseName = objects[index]->GetName();
+
+        if (childBaseName.empty()) {
+            childBaseName = rootName + "_Child";
+        }
+
+        const std::string uniqueName = MakeUniquePresetObjectName(scene, childBaseName, reservedNames);
+        objects[index]->SetName(uniqueName);
+        reservedNames.push_back(uniqueName);
+    }
+}
+
+// ========================================================================
+// 初期化
+// ========================================================================
+void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+    // Editor各機能へSceneと描画基盤を接続し、前Sceneの選択・Undo状態は破棄します。
+    sceneManager_ = sceneManager;
+    dxCommon_ = dxCommon;
+    selectedObject_ = nullptr;
+    selectedObjects_.clear();
+    lastUpdatedScene_ = nullptr;
+    EditorPropertyRegistry::GetInstance()->InitializeBuiltInProperties();
+    EditorTransactionManager::GetInstance()->Clear();
+    AssetDatabase* assetDatabase = AssetDatabase::GetInstance();
+
+    if (!assetDatabase->Initialize("Resources", true)) {
+        DebugConsole::GetInstance()->AddLog("Asset Database Error: Resourcesを初期化できませんでした。");
+    }
+    else {
+        DebugConsole::GetInstance()->AddLog("Asset Database: 起動時の差分索引を開始しました。");
+    }
+
+    PresetManager::GetInstance()->Initialize();
+    PresetEditor::GetInstance()->Initialize();
+    PresetEditor::GetInstance()->SetPlacePresetCallback([this](const std::string& presetName) {
+        if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+            return;
+        if (sceneManager_->IsPlaying() || previewObject_ || isPathEditMode_)
+            return;
+
+        BaseScene* currentScene = sceneManager_->GetCurrentScene();
+        engine::Object3DCommon* common = currentScene->GetObject3DCommon();
+        if (!common)
+            return;
+
+        auto objects = PresetManager::GetInstance()->CreateObjectsFromPreset(presetName, common);
+        if (objects.empty())
+            return;
+
+        AssignPresetInstanceNames(currentScene, presetName, objects, PresetRootName::DisplayName);
+
+        gameViewCreateMenuMousePos_ = gameViewMousePos_;
+        StartGameViewCreatePreview(std::move(objects), "Create Preset: " + presetName);
+    });
+    PresetEditor::GetInstance()->SetBrushPresetCallback([this](const std::string& presetName) {
+        StartPresetBrush(presetName);
+    });
+    hierarchyWindow_.Initialize(this);
+    projectWindow_.Initialize(this, dxCommon);
+    PresetEditor::GetInstance()->SetThumbnailProvider([this](const std::string& presetName) {
+        return projectWindow_.GetPresetThumbnailGpuPtr(presetName);
+    });
+    PresetEditor::GetInstance()->SetPreviewProvider([this](const std::string& presetName, float yaw, float pitch, float zoom) {
+        return projectWindow_.GetPresetPreviewGpuPtr(presetName, yaw, pitch, zoom);
+    });
+    PresetEditor::GetInstance()->SetSelectionCallback([this]() {
+        SetSelectedObject(nullptr);
+        EditorManager::GetInstance()->SetSelectedObject(PresetEditor::GetInstance());
+    });
+    PresetEditor::GetInstance()->SetThumbnailInvalidator([this](const std::string& name) {
+        projectWindow_.InvalidatePresetThumbnail(name);
+    });
+    inspectorWindow_.Initialize(this);
+    serializer_.Initialize(this);
+    primitiveDrawer_.Initialize(dxCommon);
+    sceneInventoryWindow_.Initialize(sceneManager, this);
+    materialPreviewBoard_.Initialize(sceneManager, this);
+    EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
+#ifdef USE_IMGUI
+    animationWorkbench_.Initialize(sceneManager, dxCommon);
+#endif
+    animatorControllerEditor_.Initialize(sceneManager, this);
+    textSpriteGenerator_.Initialize(sceneManager, this);
+    assetAuditWindow_.Initialize(this);
+
+    gameDataDebugEditor_.Initialize(sceneManager);
+    audioSettingsWindow_.Initialize(this);
+    executablePackageWindow_.Initialize(this);
+    captureToolWindow_.Initialize(this);
+    InitializeCrashRecovery();
+
+    const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
+    ddsCacheNotificationReadOffset_ = 0;
+
+    if (fs::exists(notificationLog)) {
+        std::error_code ec;
+        ddsCacheNotificationReadOffset_ = fs::file_size(notificationLog, ec);
+
+        if (ec) {
+            ddsCacheNotificationReadOffset_ = 0;
+        }
+        else {
+            const auto writeTime = fs::last_write_time(notificationLog, ec);
+
+            if (!ec) {
+                const auto now = fs::file_time_type::clock::now();
+                const auto recentWindow = std::chrono::seconds(30);
+
+                if (writeTime <= now && now - writeTime <= recentWindow) {
+                    ddsCacheNotificationReadOffset_ = 0;
+                }
+            }
+        }
+    }
+}
+
+bool DebugEditor::BeginPrefabEditSession(const std::string& prefabName) {
+    // 再生中や未登録Prefabは開かず、編集対象だけを隔離するセッションを作ります。
+    if (prefabName.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene() ||
+        sceneManager_->IsPlaying() || !PresetManager::GetInstance()->HasPrefab(prefabName)) {
+        return false;
+    }
+
+    if (prefabEditMode_) {
+        if (prefabEditName_ == prefabName) {
+            return true;
+        }
+
+        CancelPrefabEditSession();
+    }
+
+    BaseScene* scene = sceneManager_->GetCurrentScene();
+    engine::Object3DCommon* common = scene->GetObject3DCommon();
+
+    if (!common) {
+        return false;
+    }
+
+    auto prefabObjects = PresetManager::GetInstance()->CreateObjectsFromPrefab(prefabName, common);
+
+    if (prefabObjects.empty() || !prefabObjects.front()) {
+        return false;
+    }
+
+    ClearObjectSelection();
+    EditorManager::GetInstance()->ClearSelection();
+    EditorTransactionManager::GetInstance()->Clear();
+    prefabEditPreviousVisibility_.clear();
+
+    for (auto& sceneObject : scene->GetObjects()) {
+        if (!sceneObject)
+            continue;
+        prefabEditPreviousVisibility_[sceneObject.get()] = sceneObject->GetIsVisible();
+        sceneObject->SetIsVisible(false);
+    }
+
+    prefabEditMode_ = true;
+    prefabEditDirty_ = false;
+    prefabEditName_ = prefabName;
+    prefabEditScene_ = scene;
+    prefabEditRoot_ = prefabObjects.front().get();
+
+    for (auto& object : prefabObjects) {
+        if (!object)
+            continue;
+        scene->AddObjectImmediate(std::move(object));
+    }
+
+    SetSelectedObject(prefabEditRoot_);
+    EditorManager::GetInstance()->SetSelectedObject(this);
+    CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
+    DebugConsole::GetInstance()->AddLog("Prefab Mode: " + prefabName);
+    return true;
+}
+
+bool DebugEditor::SavePrefabEditSession() {
+    if (!prefabEditMode_ || !prefabEditRoot_ || !prefabEditScene_ ||
+        !prefabEditScene_->IsAlive(prefabEditRoot_)) {
+        return false;
+    }
+
+    // 一時Objectを指すUndoを先に破棄し、Asset更新だけをUndo履歴へ残します。
+    EditorTransactionManager::GetInstance()->Clear();
+    const std::string savedPrefabName = prefabEditName_;
+    PresetManager* prefabManager = PresetManager::GetInstance();
+    const auto beforePrefabs = prefabManager->GetPrefabs();
+
+    if (!prefabManager->UpdatePrefabFromObject(savedPrefabName, prefabEditRoot_)) {
+        return false;
+    }
+
+    const int synchronizedObjects = prefabManager->SynchronizePrefabInstances(
+        beforePrefabs,
+        *prefabEditScene_,
+        prefabEditScene_->GetObject3DCommon());
+
+    EndPrefabEditSession(false);
+
+    if (synchronizedObjects > 0) {
+        // 現行Scene形式はPrefab Instanceの実値も保存するため、同期結果をScene保存対象にします。
+        MarkDirty(SaveMode::All);
+    }
+
+    DebugConsole::GetInstance()->AddLog(
+        "Saved Prefab: " + savedPrefabName +
+        " / synchronized " + std::to_string(synchronizedObjects) + " objects");
+    return true;
+}
+
+void DebugEditor::CancelPrefabEditSession() {
+    // 未保存のPrefab編集を破棄し、隔離前のScene表示へ戻します。
+    if (!prefabEditMode_) {
+        return;
+    }
+
+    const std::string cancelledPrefabName = prefabEditName_;
+    EndPrefabEditSession(true);
+    DebugConsole::GetInstance()->AddLog("Discarded Prefab Mode: " + cancelledPrefabName);
+}
+
+bool DebugEditor::IsPrefabEditObject(const engine::Object3D* object) const {
+    // 編集ルートの子孫だけを対象にし、外側のScene Objectを誤保存しません。
+    if (!prefabEditMode_ || !object || !prefabEditRoot_) {
+        return false;
+    }
+
+    const engine::Object3D* current = object;
+
+    for (int depth = 0; current && depth < 512; ++depth) {
+        if (current == prefabEditRoot_) {
+            return true;
+        }
+
+        current = current->GetParent();
+    }
+
+    return false;
+}
+
+void DebugEditor::EndPrefabEditSession(bool clearTransactions) {
+    // 一時Objectと可視状態を復元し、必要なら専用Undo履歴も破棄します。
+    BaseScene* scene = prefabEditScene_;
+    std::unordered_set<engine::Object3D*> editObjects;
+
+    if (scene) {
+        for (auto& object : scene->GetObjects()) {
+            if (object && IsPrefabEditObject(object.get())) {
+                editObjects.insert(object.get());
+            }
+        }
+
+        std::vector<std::unique_ptr<engine::Object3D>> removedObjects;
+        removedObjects.reserve(editObjects.size());
+
+        for (engine::Object3D* object : editObjects) {
+            if (auto removed = scene->TakeObjectImmediate(object)) {
+                removedObjects.push_back(std::move(removed));
+            }
+        }
+
+        for (const auto& [object, wasVisible] : prefabEditPreviousVisibility_) {
+            if (scene->IsAlive(object)) {
+                object->SetIsVisible(wasVisible);
+            }
+        }
+    }
+
+    ClearObjectSelection();
+    EditorManager::GetInstance()->ClearSelection();
+    prefabEditMode_ = false;
+    prefabEditDirty_ = false;
+    prefabEditName_.clear();
+    prefabEditRoot_ = nullptr;
+    prefabEditScene_ = nullptr;
+    prefabEditPreviousVisibility_.clear();
+
+    if (clearTransactions) {
+        EditorTransactionManager::GetInstance()->Clear();
+    }
+}
+
+void DebugEditor::ResetPrefabEditSessionForSceneChange() {
+    // Sceneの寿命を越えるPrefab参照をすべて無効にします。
+    prefabEditMode_ = false;
+    prefabEditDirty_ = false;
+    prefabEditName_.clear();
+    prefabEditRoot_ = nullptr;
+    prefabEditScene_ = nullptr;
+    prefabEditPreviousVisibility_.clear();
+    EditorTransactionManager::GetInstance()->Clear();
+}
+
+// ========================================================================
+// 更新 (ImGui処理)
+// ========================================================================
+// ========================================================================
+// 更新 (ImGui処理 / エディタ操作のコア)
+// ========================================================================
+void DebugEditor::Update() {
+#ifdef USE_IMGUI
+    AssetDatabase::GetInstance()->Update();
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene())
+        return;
+
+    EffectPreviewStage::GetInstance()->Update();
+
+    textSpriteGenerator_.Update();
+
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    engine::InputManager* input = engine::InputManager::GetInstance();
+    engine::Math math;
+
+    // =========================================================
+    // 1. シーン変更リセット (最優先で行う: ダングリングポインタ防止)
+    // =========================================================
+    if (lastUpdatedScene_ != currentScene) {
+        PresetEditor::GetInstance()->ClearPropertyEditors();
+        if (prefabEditMode_) {
+            ResetPrefabEditSessionForSceneChange();
+        }
+
+        ClearObjectSelection();
+        isSelectionRectDragging_ = false;
+        isSelectionRectReady_ = false;
+        previewObject_ = nullptr;
+        previewChildObjects_.clear();
+        brushPreviewObjects_.clear();
+        brushPlacement_ = {};
+        brushPresetSource_ = {};
+        brushStampedRootGuids_.clear();
+        isPresetBrushMode_ = false;
+        brushPresetName_.clear();
+        hasLastBrushStamp_ = false;
+        previewCreateCommandLabel_ = "Place Preview Object";
+        lastUpdatedScene_ = currentScene;
+        EditorTransactionManager::GetInstance()->Clear();
+        ClearDirty(SaveMode::All);
+        hasInspectorEditStart_ = false;
+        inspectorEditStartStates_.clear();
+        requestGameViewCreateMenu_ = false;
+        EditorManager::GetInstance()->ClearSelection();
+    }
+
+    // =========================================================
+    // 2. エディタ状態の同期と更新
+    // =========================================================
+    // Inspectorが前フレームの借用参照を使い終わってから、実体を交換します。
+    if (pendingObjectTypeChange_) {
+        auto change = std::move(pendingObjectTypeChange_);
+        pendingObjectTypeChange_ = {};
+        change();
+    }
+    IEditable* current = EditorManager::GetInstance()->GetSelectedObject();
+    static std::string lastSyncedSceneFilename = "";
+    std::string currentLoadedName = currentScene->GetLoadedFilename();
+
+    // ファイル名が前フレームから変わった時「だけ」同期する
+    if (!sceneManager_->IsTransitioning() &&
+        !currentLoadedName.empty() &&
+        lastSyncedSceneFilename != currentLoadedName) {
+        SetSceneFilename(currentLoadedName);
+        lastSyncedSceneFilename = currentLoadedName;
+    }
+
+    ClearInvalidSelectedObject();
+
+    // 動作・クリップ確認中だけ配置操作を止め、元Objectをギズモで動かさない。
+    // 再生時計はGameEditorControllerから更新するため、通常編集へ必ず復帰できる。
+    const bool actorToolsActive = (actorSession_ && actorSession_->IsActive()) || animationWorkbench_.IsEnabled();
+    CameraEditor::GetInstance()->SetGameViewHovered(isGameViewHovered_ && !actorToolsActive);
+    if (actorToolsActive)
+        return;
+
+    // 選択対象が「DebugEditor自身」である間は、以前選んだオブジェクトを保持し続ける
+    if (current != nullptr && current != this) {
+        engine::Object3D* obj = dynamic_cast<engine::Object3D*>(current);
+
+        if (obj) {
+            SetSelectedObject(obj);
+        }
+    }
+
+    // --- カメラ制御 (設置モード用) ---
+    bool isPreviewActive = (previewObject_ != nullptr);
+
+    if (isPreviewActive && !wasPreviewActive_) {
+        CameraEditor* camEditor = CameraEditor::GetInstance();
+        previousCameraMode_ = (int)camEditor->GetMode();
+        camEditor->SetMode(CameraEditor::Mode::Editor);
+
+        // カメラを強制的に上空へ移動させる機能を削除し、現在の視点を維持
+    }
+    else if (!isPreviewActive && wasPreviewActive_) {
+        CameraEditor::GetInstance()->SetMode((CameraEditor::Mode)previousCameraMode_);
+    }
+
+    wasPreviewActive_ = isPreviewActive;
+
+    // =========================================================
+    //  モードA: 古い設置モード (Hierarchy等からのプレビュー配置)
+    // =========================================================
+    if (SettingsMenuOverlay::IsAnyActive()) {
+        // 設定項目をクリックしても背後のオブジェクトを選択・移動しないようにします。
+    }
+    else if (previewObject_) {
+        UpdatePreviewPlacement();
+
+        if (EditorToolSettings::Get().IsVisible("placementPreview") && isGameViewHovered_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+            ConfirmPreviewPlacement();
+        }
+
+        // 右クリック または Eキー で配置モードキャンセル
+        if (input->IsKeyTriggered(DIK_E) || (isGameViewHovered_ && ImGui::IsMouseClicked(ImGuiMouseButton_Right))) {
+            CancelPreviewPlacement();
+        }
+    }
+    else if (isPresetBrushMode_) {
+        // 非表示のブラシで誤って配置しないよう、表示を戻すまで操作を待ちます。
+        if (EditorToolSettings::Get().IsVisible("placementPreview"))
+            UpdatePresetBrush();
+    }
+
+    // =========================================================
+    //  モードB: 通常選択・編集モード
+    // =========================================================
+    else {
+        if (!ImGui::GetIO().WantCaptureKeyboard) {
+
+            // --- ショートカットキー処理 ---
+            if (input->IsKeyTriggered(DIK_DELETE)) {
+                // パス編集モード中なら「点」を消す！
+                if (isPathEditMode_ && selectedObject_ && selectedObject_->GetRecorder() && selectedObject_->GetRecorder()->IsPinSelected()) {
+                    selectedObject_->GetRecorder()->DeleteSelectedPin();
+                }
+
+                // 通常モードなら「オブジェクト」を消す！
+                else if (!isPathEditMode_) {
+                    EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDelete);
+                }
+            }
+
+            const bool isControlPressed =
+                input->IsKeyPressed(DIK_LCONTROL) || input->IsKeyPressed(DIK_RCONTROL);
+            if (isControlPressed && (input->IsKeyTriggered(DIK_C) || input->IsKeyTriggered(DIK_D))) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDuplicate);
+            }
+
+            if (isControlPressed && input->IsKeyTriggered(DIK_Z)) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditUndo);
+            }
+
+            if (isControlPressed && input->IsKeyTriggered(DIK_Y)) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditRedo);
+            }
+
+            if (input->IsKeyTriggered(DIK_END)) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::ObjectDropToFloor);
+            }
+
+            // カメラフォーカス機能
+            if (input->IsKeyTriggered(DIK_F) && current == CameraEditor::GetInstance()) {
+                CameraEditor::GetInstance()->FocusSelectedCameraObject();
+            }
+            else if (input->IsKeyTriggered(DIK_F) && selectedObject_) {
+                FocusSceneObject(selectedObject_);
+            }
+        }
+
+        CameraEditor* cameraEditor = CameraEditor::GetInstance();
+        const bool isCameraEditorSelected = current == cameraEditor;
+
+        if (isCameraEditorSelected) {
+            cameraEditor->DrawOrbitCenterGizmo(gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_);
+        }
+
+        const bool editingCameraRegion = cameraEditor->DrawRegionGizmo(
+            gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_, this);
+
+        // --- マウス選択処理 (ギズモを触っていない ＆ パス編集中じゃない時) ---
+        // 範囲編集中のドラッグが背後の地形選択へ流れないようにする。選択変更はHierarchyで行える。
+        const bool canStartSelection = !editingCameraRegion && !isPathEditMode_ && !isCameraEditorSelected &&
+            isGameViewHovered_ && !ImGuizmo::IsOver();
+        if (canStartSelection || isSelectionRectDragging_) {
+            const bool isShiftPressed = ImGui::GetIO().KeyShift;
+            constexpr float kSelectionDragThreshold = 6.0f;
+
+            if (canStartSelection && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                selectionRectStart_ = gameViewMousePos_;
+                selectionRectEnd_ = gameViewMousePos_;
+                isSelectionRectDragging_ = true;
+                isSelectionRectReady_ = false;
+            }
+
+            if (isSelectionRectDragging_ && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                selectionRectEnd_ = gameViewMousePos_;
+                const float diffX = selectionRectEnd_.x - selectionRectStart_.x;
+                const float diffY = selectionRectEnd_.y - selectionRectStart_.y;
+                const float absX = diffX < 0.0f ? -diffX : diffX;
+                const float absY = diffY < 0.0f ? -diffY : diffY;
+                isSelectionRectReady_ = absX >= kSelectionDragThreshold || absY >= kSelectionDragThreshold;
+            }
+
+            if (isSelectionRectDragging_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                if (isSelectionRectReady_) {
+                    SelectObjectsInGameViewRect(selectionRectStart_, selectionRectEnd_, isShiftPressed);
+                } else {
+                    engine::Object3D* hit = PickObjectAtGameViewPos(selectionRectStart_);
+
+                    if (hit) {
+                        if (isShiftPressed) {
+                            ToggleSelectedObject(hit);
+                        } else {
+                            SetSelectedObject(hit);
+                        }
+
+                        SyncObjectSelectionToInspector();
+                    } else if (!isShiftPressed) {
+                        ClearObjectSelection();
+                        SyncObjectSelectionToInspector();
+                    }
+                }
+
+                isSelectionRectDragging_ = false;
+                isSelectionRectReady_ = false;
+            }
+        }
+
+        // --- ギズモ (ImGuizmo) 操作 ---
+        if (selectedObject_ && !editingCameraRegion) {
+            if (!isPathEditMode_ && !selectedObject_->GetIsLocked() && EditorToolSettings::Get().IsVisible("transformGizmo")) {
+                static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
+
+                if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantTextInput) {
+                    if (input->IsKeyTriggered(DIK_T))
+                        curOp = ImGuizmo::TRANSLATE;
+                    if (input->IsKeyTriggered(DIK_R))
+                        curOp = ImGuizmo::ROTATE;
+                    if (input->IsKeyTriggered(DIK_S))
+                        curOp = ImGuizmo::SCALE;
+                }
+
+                Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+
+                if (cam) {
+                    ImGuizmo::SetDrawlist();
+                    ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
+
+                    engine::Matrix4x4 view = cam->GetViewMatrix();
+                    engine::Matrix4x4 proj = cam->GetProjectionMatrix();
+                    const Transform* tr = selectedObject_->GetTransform();
+
+                    selectedObject_->UpdateWorldMatrix();
+                    engine::Matrix4x4 world = selectedObject_->GetWorldMatrix();
+
+                    float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
+                    float snapArr[3] = { snapVal, snapVal, snapVal };
+
+                    // ピボット変更はImGuizmo上の操作点だけをずらし、モデル本体のWorld行列は維持する。
+                    engine::Matrix4x4 gizmoWorld = world;
+                    engine::Vector3 gizmoPivotWorld = { world.m[3][0], world.m[3][1], world.m[3][2] };
+                    bool useTranslatedPivot = curOp == ImGuizmo::TRANSLATE && gizmoPivotMode_ != 0;
+
+                    if (useTranslatedPivot) {
+                        Aabb pivotAabb{};
+                        bool hasPivotAabb = false;
+
+                        if (gizmoPivotMode_ == 1) {
+                            pivotAabb = selectedObject_->GetModelWorldAabb();
+                            hasPivotAabb = IsValidAabb(pivotAabb);
+                        }
+                        else if (gizmoPivotMode_ == 2) {
+                            pivotAabb = selectedObject_->GetAabb();
+                            hasPivotAabb = IsValidAabb(pivotAabb);
+                        }
+
+                        if (hasPivotAabb) {
+                            gizmoPivotWorld = GetAabbCenter(pivotAabb);
+                            gizmoWorld.m[3][0] = gizmoPivotWorld.x;
+                            gizmoWorld.m[3][1] = gizmoPivotWorld.y;
+                            gizmoWorld.m[3][2] = gizmoPivotWorld.z;
+                        }
+                        else {
+                            useTranslatedPivot = false;
+                        }
+                    }
+
+                    ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], curOp, ImGuizmo::WORLD, &gizmoWorld.m[0][0], nullptr, isGridSnapEnabled_ ? snapArr : nullptr);
+
+                    if (ImGuizmo::IsUsing()) {
+                        if (!isDraggingTransform_) {
+                            // ドラッグ開始時の全選択状態を記録し、連続操作を一つのUndoとして戻せるようにする。
+                            isDraggingTransform_ = true;
+                            tempTransformStart_ = *tr;
+                            tempObjectStateStart_ = CaptureObjectState(selectedObject_);
+                            groupTransformStartStates_.clear();
+
+                            for (engine::Object3D* object : selectedObjects_) {
+                                if (!object || !IsObjectInCurrentScene(object))
+                                    continue;
+                                ObjectStateSnapshot snapshot;
+                                snapshot.object = object;
+                                snapshot.beforeState = CaptureObjectState(object);
+                                groupTransformStartStates_.push_back(snapshot);
+                            }
+                        }
+
+                        engine::Matrix4x4 primaryWorldBefore = world;
+                        engine::Matrix4x4 editedWorld = gizmoWorld;
+
+                        if (useTranslatedPivot) {
+                            // 操作点の移動差分だけを元のWorld行列へ戻し、ピボットの移動をObjectの移動へ変換する。
+                            engine::Vector3 editedPivotWorld = {
+                                gizmoWorld.m[3][0],
+                                gizmoWorld.m[3][1],
+                                gizmoWorld.m[3][2]
+                            };
+
+                            engine::Vector3 pivotDelta = {
+                                editedPivotWorld.x - gizmoPivotWorld.x,
+                                editedPivotWorld.y - gizmoPivotWorld.y,
+                                editedPivotWorld.z - gizmoPivotWorld.z
+                            };
+
+                            editedWorld = world;
+                            editedWorld.m[3][0] += pivotDelta.x;
+                            editedWorld.m[3][1] += pivotDelta.y;
+                            editedWorld.m[3][2] += pivotDelta.z;
+                        }
+
+                        engine::Matrix4x4 newLocalMat = editedWorld;
+
+                        // 親付きObjectはWorldのまま保存せず、親の逆行列でローカル姿勢へ戻す。
+                        if (selectedObject_->GetParent()) {
+                            engine::Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
+                            newLocalMat = math.Multiply(editedWorld, parentWorldInv);
+                        }
+
+                        engine::Vector3 s, rDeg, t;
+                        ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
+
+                        selectedObject_->SetTranslate(t);
+                        selectedObject_->SetScale(s);
+                        selectedObject_->SetQuaternionWithEulerHint(math_.MatrixToQuaternion(newLocalMat), { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
+
+                        selectedObject_->UpdateLocalMatrix();
+                        selectedObject_->UpdateWorldMatrix();
+
+                        engine::Matrix4x4 primaryWorldAfter = selectedObject_->GetWorldMatrix();
+                        engine::Matrix4x4 groupDelta = math.Multiply(math.Inverse(primaryWorldBefore), primaryWorldAfter);
+                        // 複数選択では主ObjectのWorld差分を配る。親子を同時選択した場合は二重変換を避ける。
+
+                        for (engine::Object3D* object : selectedObjects_) {
+                            if (!object || object == selectedObject_ || !IsObjectInCurrentScene(object) || object->GetIsLocked())
+                                continue;
+
+                            bool hasSelectedAncestor = false;
+
+                            for (engine::Object3D* parent = object->GetParent(); parent != nullptr; parent = parent->GetParent()) {
+                                if (IsObjectSelected(parent)) {
+                                    hasSelectedAncestor = true;
+                                    break;
+                                }
+                            }
+
+                            if (hasSelectedAncestor) {
+                                continue;
+                            }
+
+                            object->UpdateWorldMatrix();
+                            engine::Matrix4x4 objectWorldBefore = object->GetWorldMatrix();
+                            engine::Matrix4x4 objectWorldAfter = math.Multiply(objectWorldBefore, groupDelta);
+                            engine::Matrix4x4 objectLocalAfter = objectWorldAfter;
+
+                            if (object->GetParent()) {
+                                engine::Matrix4x4 parentWorldInv = math.Inverse(object->GetParent()->GetWorldMatrix());
+                                objectLocalAfter = math.Multiply(objectWorldAfter, parentWorldInv);
+                            }
+
+                            engine::Vector3 otherScale, otherRotDeg, otherTranslate;
+                            ImGuizmo::DecomposeMatrixToComponents(&objectLocalAfter.m[0][0], &otherTranslate.x, &otherRotDeg.x, &otherScale.x);
+
+                            object->SetTranslate(otherTranslate);
+                            object->SetScale(otherScale);
+                            object->SetQuaternionWithEulerHint(math_.MatrixToQuaternion(objectLocalAfter), { ToRadians(otherRotDeg.x), ToRadians(otherRotDeg.y), ToRadians(otherRotDeg.z) });
+                            object->UpdateLocalMatrix();
+                            object->UpdateWorldMatrix();
+                        }
+
+                    }
+                    else if (isDraggingTransform_) {
+                        isDraggingTransform_ = false;
+
+                        if (!groupTransformStartStates_.empty()) {
+                            RegisterObjectsEdited(groupTransformStartStates_,
+                                groupTransformStartStates_.size() > 1 ? "Gizmo Group Transform" : "Gizmo Transform");
+                            groupTransformStartStates_.clear();
+                        } else {
+                            RegisterObjectEdited(selectedObject_, tempObjectStateStart_, "Gizmo Transform");
+                        }
+
+                        if (ghostDirector_ &&
+                            EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_ &&
+                            ghostDirector_->IsAutoKeyEnabled()) {
+                            for (engine::Object3D* object : selectedObjects_) {
+                                if (object && IsObjectInCurrentScene(object)) {
+                                    ghostDirector_->RecordTransformKey(object);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (EditorToolSettings::Get().IsVisible("selectionBounds")) {
+            DrawSelectionRectangleOverlay();
+            DrawSelectedObjectBoundsOverlay();
+        }
+    }
+
+    // =========================================================
+    // 3. UI描画関連 (最前面)
+    // =========================================================
+    PollDdsCacheNotifications();
+    UpdateCrashRecovery(1.0f / 60.0f);
+    DrawSaveNotification();
+    DrawSavePreview();
+    DrawCrashRecoveryPrompt();
+
+    // 再生中はゲーム画面を優先し、編集用のアイコンを重ねない。
+    if (!sceneManager_->IsPlaying() && EditorToolSettings::Get().IsVisible("sceneIcons"))
+        Draw3DIcons();
+    if (!SettingsMenuOverlay::IsAnyActive()) {
+        if (!sceneManager_->IsPlaying() && EditorToolSettings::Get().IsVisible("eventIds"))
+            DrawEventIdOverlay();
+        if (!sceneManager_->IsPlaying() && EditorToolSettings::Get().IsVisible("placementPreview")) {
+            DrawPreviewMarker();
+            DrawPresetBrushOverlay();
+            textSpriteGenerator_.DrawPreview();
+        }
+    }
+#endif
+}
+
+// ========================================================================
+// 終了処理
+// ========================================================================
+void DebugEditor::Finalize() {
+    // プレビューと復元セッションを先に閉じ、借用していたScene参照を解放します。
+    if (prefabEditMode_) {
+        EndPrefabEditSession(true);
+    }
+
+    PresetEditor::GetInstance()->ClearPropertyEditors();
+    FinalizeCrashRecovery();
+#ifdef USE_IMGUI
+    animationWorkbench_.Finalize();
+#endif
+    primitiveDrawer_.Finalize();
+    EditorTransactionManager::GetInstance()->Clear();
+}
+
+
+// ========================================================================
+// コライダー描画処理
+// ========================================================================
+void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
+#ifdef USE_IMGUI
+    if (EditorToolSettings::Get().IsTemporarilyHidden())
+        return;
+    if (sceneManager_ && sceneManager_->IsPlaying())
+        return;
+#endif
+    // メニュー中だけ抑制し、エディターの表示設定そのものは変更しません。
+    if (SettingsMenuOverlay::IsAnyActive())
+        return;
+    if (sceneManager_ == nullptr)
+        return;
+
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (!currentScene)
+        return;
+
+    // PrimitiveDrawer にパイプライン設定を委譲
+    primitiveDrawer_.PreDraw(commandList);
+
+    int instanceCount = 0;
+    const int kMaxDrawLimit = 8192; // 描画上限（PrimitiveDrawerのバッファサイズと合わせる）
+    engine::Math math;
+
+    // =========================================================
+    // 1. シーン内のオブジェクトを描画 (統合版)
+    // =========================================================
+    auto& objects = currentScene->GetObjects();
+
+    for (const auto& obj : objects) {
+        if (!obj)
+            continue;
+        if (!obj->GetIsRenderVisible())
+            continue;
+
+        // インスタンス描画の上限チェック
+        if (instanceCount >= kMaxDrawLimit)
+            break;
+
+        ColliderType type = obj->GetColliderType();
+        bool isInvisibleObj = (obj->GetClassName() == "InvisibleBox");
+
+        // --- 描画判定 ---
+        // コライダーがなく、かつ「見える物体（モデルあり）」ならデバッグ線は不要
+        if (type == ColliderType::None && !isInvisibleObj)
+            continue;
+
+        // コライダー表示OFF設定の時、「見える物体」のコライダーは消すが、
+        // 「見えない物体(透明な壁など)」は編集用に表示したままにする
+        if (!drawColliders_ && !isInvisibleObj)
+            continue;
+#ifdef USE_IMGUI
+        if (isInvisibleObj && !drawInvisibleBounds_)
+            continue;
+#endif
+
+        // --- 行列計算 (サイズと位置) ---
+        engine::Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+
+        // コライダーがある場合は、その形状データ(Size/Center/Rotation)に合わせて枠を変形させる
+        if (type != ColliderType::None) {
+            // コライダー設定を直接取得 (ImGuiでの変更を即座に反映させるため)
+            engine::Object3D::ColliderConfig config = obj->GetColliderConfig();
+
+            if (type == ColliderType::Obb) {
+                // Obb (回転ありボックス) の計算
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                engine::Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
+                engine::Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
+                engine::Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
+                engine::Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+
+            }
+            else if (type == ColliderType::Aabb || type == ColliderType::Terrain) {
+                // Aabb (軸平行ボックス) の計算
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+
+            }
+            else if (type == ColliderType::Sphere) {
+                // Sphere (球) の計算
+                float radius = config.size.x; // Sphereはxを半径とする
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+            }
+            else if (type == ColliderType::Cylinder) {
+                // size.x を半径、size.y を高さ(の半分)として扱っている想定
+                float radius = config.size.x;
+                float height = config.size.y;
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+            }
+
+        }
+        else {
+            // コライダー未設定の「見えない箱」の場合の救済措置
+            // Transformそのままで表示（これがないと選択すらできなくなる）
+            drawWorldMatrix = obj->GetWorldMatrix();
+        }
+
+        // --- 色の決定 ---
+        engine::Vector4 color;
+
+        if (isInvisibleObj) { // isInvisible ではなく isInvisibleObj を使用
+            // 見えないオブジェクトは「紫」固定
+            color = { 0.6f, 0.0f, 0.8f, 1.0f };
+        }
+        else {
+            // 通常オブジェクトはコライダー種別ごとの色
+            switch (type) {
+            case ColliderType::Obb:    color = { 1.0f, 0.2f, 0.2f, 1.0f }; break; // 赤
+
+            case ColliderType::Aabb:   color = { 0.0f, 1.0f, 0.0f, 1.0f }; break; // 緑
+
+            case ColliderType::Terrain: color = { 0.25f, 1.0f, 0.65f, 1.0f };
+            break;
+
+            case ColliderType::Sphere: color = { 0.0f, 0.5f, 1.0f, 1.0f }; break; // 青
+
+            case ColliderType::Cylinder: color = { 1.0f, 0.5f, 0.0f, 1.0f }; break; // オレンジ
+
+            case ColliderType::Ring:   color = { 1.0f, 1.0f, 0.0f, 1.0f }; break; // 黄色
+
+            default:                    color = { 1.0f, 1.0f, 1.0f, 1.0f }; break; // 白
+            }
+        }
+
+        // モデル全体の判定は三角形の辺を表示し、薄い上面だけと誤認させない。
+        if (obj->GetCollider() && obj->GetCollider()->HasModelVolume()) {
+            const auto hull = obj->GetCollider()->GetWorldHull();
+            std::vector<std::pair<engine::Vector3, engine::Vector3>> edges;
+
+            for (const auto& face : hull) for (int i=0; i<3; ++i) {
+                const auto from=face[i],to=face[(i+1)%3];
+                const auto same=[](const engine::Vector3& a,const engine::Vector3& b){return engine::Math::Length(a-b)<0.0001f;};
+
+                if (std::any_of(edges.begin(),edges.end(),[&](const auto& e){return
+                    (same(e.first,from)&&same(e.second,to)) || (same(e.first,to)&&same(e.second,from));})) continue;
+                edges.push_back({from,to});
+                if (instanceCount>=kMaxDrawLimit)
+                    break;
+                const auto delta=to-from;
+                const float length=math.Length(delta);
+                if (length<0.0001f)
+                    continue;
+                const float horizontal=std::sqrt(delta.x*delta.x+delta.z*delta.z);
+                const auto world=math.Multiply(math.Multiply(math.MakeScaleMatrix({0.025f,0.025f,length}),
+                    math.Multiply(math.MakeRotateXMatrix(-std::atan2(delta.y,horizontal)),
+                                  math.MakeRotateYMatrix(std::atan2(delta.x,delta.z)))),math.MakeTranslateMatrix((from+to)*0.5f));
+                primitiveDrawer_.DrawWireCube(commandList,world,{0.25f,1.0f,0.65f,1.0f},instanceCount++);
+            }
+
+            continue;
+        }
+
+        // 判定に使う凸輪郭をそのまま表示し、箱の四隅を判定面として誤認させない。
+        if (obj->GetCollider() && obj->GetColliderConfig().footprint.size() >= 3) {
+            const Collider* collider = obj->GetCollider();
+            const auto top = collider->GetFootprintWorldVertices(obj->GetColliderConfig().size.y);
+            const auto drawSegment = [&](const engine::Vector3& from, const engine::Vector3& to) {
+                if (instanceCount >= kMaxDrawLimit)
+                    return;
+                const engine::Vector3 delta = to - from;
+                const float horizontal = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+                const float length = math.Length(delta);
+                if (length < 0.0001f)
+                    return;
+                const engine::Matrix4x4 world = math.Multiply(
+                    math.Multiply(math.MakeScaleMatrix({ 0.04f, 0.04f, length }),
+                                  math.Multiply(math.MakeRotateXMatrix(-std::atan2(delta.y, horizontal)),
+                                                math.MakeRotateYMatrix(std::atan2(delta.x, delta.z)))),
+                    math.MakeTranslateMatrix((from + to) * 0.5f));
+                primitiveDrawer_.DrawWireCube(commandList, world, color, instanceCount++);
+            };
+
+            for (size_t i = 0; i < top.size(); ++i) {
+                const size_t next = (i + 1) % top.size();
+                drawSegment(top[i], top[next]);
+            }
+
+            continue;
+        }
+
+        // PrimitiveDrawer で描画実行
+        if (type == ColliderType::Sphere) {
+            primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+        }
+        else if (type == ColliderType::Cylinder) {
+            primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+        }
+        else if (type == ColliderType::Ring) {
+            // リング形状の描画 (クリーン版)
+            Ring ring = obj->GetCollider()->GetRing();
+            float outerR = ring.outerRadius;
+            float innerR = ring.innerRadius;
+
+            float halfH = (obj->GetColliderConfig().size.y > 0.01f) ? obj->GetColliderConfig().size.y : 0.1f;
+            halfH *= std::abs(obj->GetTransform()->scale.y);
+
+            // 基準行列 (回転 * 平行移動 * オブジェクトのワールド(スケール抜き))
+            engine::Matrix4x4 matRotX = math.MakeRotateXMatrix(obj->GetColliderConfig().rotation.x);
+            engine::Matrix4x4 matRotY = math.MakeRotateYMatrix(obj->GetColliderConfig().rotation.y);
+            engine::Matrix4x4 matRotZ = math.MakeRotateZMatrix(obj->GetColliderConfig().rotation.z);
+            engine::Matrix4x4 matCollRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+
+            engine::Matrix4x4 matObjWorldNoScale = obj->GetWorldMatrix();
+
+            for (int i = 0; i < 3; ++i) {
+                engine::Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                matObjWorldNoScale.m[i][0] = axis.x;
+                matObjWorldNoScale.m[i][1] = axis.y;
+                matObjWorldNoScale.m[i][2] = axis.z;
+            }
+
+            engine::Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(obj->GetColliderConfig().center)), matObjWorldNoScale);
+
+            // 1. 外周・内周のワイヤーフレーム (上下の円)
+            if (instanceCount < kMaxDrawLimit) {
+                // 外周
+                engine::Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                primitiveDrawer_.DrawWireCylinder(commandList, matOuter, color, instanceCount++);
+            }
+
+            if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
+                // 内周
+                engine::Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                primitiveDrawer_.DrawWireCylinder(commandList, matInner, { color.x, color.y * 0.5f, 0, 1 }, instanceCount++);
+            }
+
+            // 2. 断面をつなぐ線 (上下それぞれ8方向)
+            const int kLineCount = 8;
+
+            for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
+                float angle = (2.0f * std::numbers::pi_v<float> / kLineCount) * i;
+                float s = std::sin(angle);
+                float c = std::cos(angle);
+
+                // 上下の断面をつなぐ線 (内径から外径へ)
+                for (float h : {-halfH, halfH}) {
+                    engine::Vector3 pInner = { innerR * c, h, innerR * s };
+                    engine::Vector3 pOuter = { outerR * c, h, outerR * s };
+
+                    // 線を細い箱で代用 (PrimitiveDrawerにDrawLineがあればそちらが良いが、無ければ極小Box)
+                    engine::Vector3 center = (pInner + pOuter) * 0.5f;
+                    engine::Vector3 diff = pOuter - pInner;
+                    float vectorLength = math.Length(diff);
+
+                    engine::Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, vectorLength });
+                    engine::Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                    engine::Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                    engine::Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+
+                    primitiveDrawer_.DrawWireCube(commandList, lineWorld, color, instanceCount++);
+                }
+            }
+
+            continue;
+        }
+        else {
+            primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+        }
+
+        instanceCount++; // あたり判定を描画したのでカウントを進める
+
+        // 検知範囲の可視化 (敵のみ)
+        if (obj->GetClassName() == "Enemy") {
+            float range = 0.0f;
+
+            if (obj->GetParameters().has_value()) {
+                range = obj->GetParameters()->detectionRange;
+            }
+
+            // インスタンス描画の上限チェック
+            if (instanceCount < kMaxDrawLimit && range > 0.0f) {
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ range * 2.0f, range * 2.0f, range * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(obj->GetWorldPosition());
+                engine::Matrix4x4 rangeWorldMatrix = math.Multiply(matScale, matTrans);
+
+                // 検知範囲は薄い赤色
+                engine::Vector4 rangeColor = { 1.0f, 0.0f, 0.0f, 0.3f };
+                primitiveDrawer_.DrawWireSphere(commandList, rangeWorldMatrix, rangeColor, instanceCount);
+                instanceCount++; // 検知範囲を描画したのでカウントを進める
+            }
+        }
+
+    }
+
+    // 選択中のNav Agentが計算した経路を、Scene上で確認できるようにします。
+    engine::Object3D* navObject = GetSelectedObject3D();
+
+    if (navObject) {
+        if (const NavAgentComponent* navAgent = navObject->GetNavAgentComponent()) {
+            const std::vector<engine::Vector3>& path = navAgent->GetCurrentPath();
+
+            for (std::size_t index = 0; index < path.size() && instanceCount < kMaxDrawLimit; ++index) {
+                const bool isCurrent = index == navAgent->GetCurrentWaypointIndex();
+                const engine::Vector4 pointColor = isCurrent
+                    ? engine::Vector4{ 1.0f, 0.85f, 0.15f, 1.0f }
+                    : engine::Vector4{ 0.10f, 0.95f, 1.0f, 1.0f };
+                const engine::Vector3 point = path[index] + engine::Vector3{ 0.0f, 0.12f, 0.0f };
+                const engine::Matrix4x4 pointWorld = math.Multiply(
+                    math.MakeScaleMatrix({ 0.20f, 0.20f, 0.20f }),
+                    math.MakeTranslateMatrix(point));
+                primitiveDrawer_.DrawWireSphere(commandList, pointWorld, pointColor, instanceCount++);
+
+                if (index == 0 || instanceCount >= kMaxDrawLimit)
+                    continue;
+                const engine::Vector3 previous = path[index - 1] + engine::Vector3{ 0.0f, 0.12f, 0.0f };
+                const engine::Vector3 difference = point - previous;
+                const float length = std::sqrt(difference.x * difference.x + difference.z * difference.z);
+                if (length <= 0.001f)
+                    continue;
+                const float yaw = std::atan2(difference.x, difference.z);
+                const engine::Vector3 center = (previous + point) * 0.5f;
+                const engine::Matrix4x4 lineWorld = math.Multiply(
+                    math.MakeScaleMatrix({ 0.05f, 0.05f, length }),
+                    math.Multiply(math.MakeRotateYMatrix(yaw), math.MakeTranslateMatrix(center)));
+                primitiveDrawer_.DrawWireCube(
+                    commandList, lineWorld, { 0.10f, 0.95f, 1.0f, 1.0f }, instanceCount++);
+            }
+        }
+    }
+
+    // =========================================================
+    // 2. 弾のコライダー描画
+    // =========================================================
+    CameraEditor::GetInstance()->DrawOrbitGuide(primitiveDrawer_, commandList, instanceCount, kMaxDrawLimit);
+#ifdef USE_IMGUI
+    if (EditorToolSettings::Get().IsVisible("placementPreview"))
+#endif
+        DrawPreviewWire(commandList, instanceCount, kMaxDrawLimit);
+
+    if (drawColliders_) {
+        const auto& bullets = BulletManager::GetInstance()->GetBullets();
+
+        for (const auto& bullet : bullets) {
+            if (!bullet || bullet->IsDead())
+                continue;
+            if (instanceCount >= kMaxDrawLimit)
+                break;
+
+            ColliderType type = bullet->GetColliderType();
+            if (type == ColliderType::None)
+                continue;
+
+            // 弾は黄色固定
+            engine::Vector4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
+            engine::Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+
+            // 弾の場合は物理挙動の結果(GetObb)をそのまま信じて描画する
+            if (type == ColliderType::Obb) {
+                Obb obb = bullet->GetObb();
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
+
+                // OBBの軸から回転行列を復元
+                engine::Matrix4x4 matRot = math.MakeIdentity4x4();
+                matRot.m[0][0] = obb.orientations[0].x;
+                matRot.m[0][1] = obb.orientations[0].y;
+                matRot.m[0][2] = obb.orientations[0].z;
+                matRot.m[1][0] = obb.orientations[1].x;
+                matRot.m[1][1] = obb.orientations[1].y;
+                matRot.m[1][2] = obb.orientations[1].z;
+                matRot.m[2][0] = obb.orientations[2].x;
+                matRot.m[2][1] = obb.orientations[2].y;
+                matRot.m[2][2] = obb.orientations[2].z;
+
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
+                drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+
+            }
+            else if (type == ColliderType::Aabb) {
+                Aabb aabb = bullet->GetAabb();
+                engine::Vector3 center = (aabb.min + aabb.max) * 0.5f;
+                engine::Vector3 size = aabb.max - aabb.min;
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix(size);
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                drawWorldMatrix = math.Multiply(matScale, matTrans);
+
+            }
+            else if (type == ColliderType::Sphere) {
+                float radius = bullet->GetCollisionRadius();
+                engine::Vector3 center = bullet->GetWorldPosition();
+                engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                drawWorldMatrix = math.Multiply(matScale, matTrans);
+            }
+
+            // PrimitiveDrawer で弾も描画実行
+            if (type == ColliderType::Sphere) {
+                primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+            }
+            else if (type == ColliderType::Cylinder) {
+                primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+            }
+            else {
+                primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+            }
+
+            instanceCount++;
+        }
+
+        // =========================================================
+    // 3. エフェクトのコライダー描画
+    // =========================================================
+        if (drawColliders_) {
+            // ゲーム中のエフェクト ＋ エディタのプレビューエフェクトを両方収集
+            std::vector<EffectObject3D*> effectsToDraw;
+
+            for (const auto& eff : MeshEffectManager::GetInstance()->GetActiveEffects()) {
+                if (eff)
+                    effectsToDraw.push_back(eff.get());
+            }
+
+            if (EffectObject3D* preview = MeshEffectManager::GetInstance()->GetPreviewEffectForDebug()) {
+                effectsToDraw.push_back(preview);
+            }
+
+            // 集めたエフェクトを描画！
+            for (EffectObject3D* effect : effectsToDraw) {
+                if (instanceCount >= kMaxDrawLimit)
+                    break;
+
+                ColliderType type = effect->GetColliderType();
+                if (type == ColliderType::None)
+                    continue;
+
+                // エフェクトの判定枠はシアン（水色）にして区別
+                engine::Vector4 color = { 0.0f, 1.0f, 1.0f, 1.0f };
+                engine::Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+
+                engine::Object3D::ColliderConfig config = effect->GetColliderConfig();
+
+                if (type == ColliderType::Obb) {
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    engine::Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
+                    engine::Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
+                    engine::Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
+                    engine::Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+
+                }
+                else if (type == ColliderType::Aabb) {
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+
+                }
+                else if (type == ColliderType::Sphere) {
+                    float radius = config.size.x;
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+
+                }
+                else if (type == ColliderType::Cylinder) {
+                    float radius = config.size.x;
+                    float height = config.size.y;
+                    engine::Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
+                    engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    engine::Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                }
+
+                // Ring形状の場合
+                if (type == ColliderType::Ring) {
+                    Ring ring;
+
+                    if (effect->GetCollider()) {
+                        ring = effect->GetCollider()->GetRing();
+                    } else {
+                        // コライダーがない場合(エフェクト単体)の救済
+                        ring.center = effect->GetWorldPosition();
+                        ring.normal = { 0, 1, 0 };
+                        ring.innerRadius = effect->GetMeshSettings().ringInnerRadius;
+                        ring.outerRadius = effect->GetMeshSettings().ringOuterRadius;
+                    }
+
+                    float outerR = ring.outerRadius;
+                    float innerR = ring.innerRadius;
+                    if (innerR > outerR)
+                        std::swap(innerR, outerR);
+
+                    float halfH = (config.size.y > 0.01f) ? config.size.y : 0.1f;
+                    halfH *= std::abs(effect->GetTransform()->scale.y);
+
+                    // リングの基準行列
+                    engine::Matrix4x4 matCollRot = math.MakeIdentity4x4();
+
+                    if (effect->GetCollider()) {
+                        engine::Matrix4x4 mRX = math.MakeRotateXMatrix(config.rotation.x);
+                        engine::Matrix4x4 mRY = math.MakeRotateYMatrix(config.rotation.y);
+                        engine::Matrix4x4 mRZ = math.MakeRotateZMatrix(config.rotation.z);
+                        matCollRot = math.Multiply(mRZ, math.Multiply(mRX, mRY));
+                    }
+
+                    engine::Matrix4x4 matObjWorldNoScale = effect->GetWorldMatrix();
+
+                    for (int i = 0; i < 3; ++i) {
+                        engine::Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                        matObjWorldNoScale.m[i][0] = axis.x;
+                        matObjWorldNoScale.m[i][1] = axis.y;
+                        matObjWorldNoScale.m[i][2] = axis.z;
+                    }
+
+                    engine::Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(config.center)), matObjWorldNoScale);
+
+                    engine::Vector4 ringColor = { 1.0f, 1.0f, 0.0f, 1.0f };
+
+                    // 1. シリンダー (外周・内周)
+                    if (instanceCount < kMaxDrawLimit) {
+                        engine::Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                        primitiveDrawer_.DrawWireCylinder(commandList, matOuter, { 1.0f, 0.9f, 0.0f, 0.8f }, instanceCount++);
+                    }
+
+                    if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
+                        engine::Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                        primitiveDrawer_.DrawWireCylinder(commandList, matInner, { 1.0f, 0.5f, 0.0f, 0.8f }, instanceCount++);
+                    }
+
+                    // 2. 断面をつなぐ線
+                    const int kLineCount = 8;
+
+                    for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
+                        float angle = (2.0f * std::numbers::pi_v<float> / kLineCount) * i;
+                        float s = std::sin(angle);
+                        float c = std::cos(angle);
+
+                        for (float h : { -halfH, halfH }) {
+                            engine::Vector3 pInner = { innerR * c, h, innerR * s };
+                            engine::Vector3 pOuter = { outerR * c, h, outerR * s };
+                            engine::Vector3 center = (pInner + pOuter) * 0.5f;
+                            engine::Vector3 diff = pOuter - pInner;
+                            float vectorLength = math.Length(diff);
+                            engine::Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, vectorLength });
+                            engine::Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                            engine::Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                            engine::Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+                            primitiveDrawer_.DrawWireCube(commandList, lineWorld, ringColor, instanceCount++);
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (type == ColliderType::Sphere) {
+                    primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                else if (type == ColliderType::Cylinder) {
+                    primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                else {
+                    primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+                }
+
+                instanceCount++;
+            }
+        }
+    }
+
+
+}
+
+// ==========================================================================================
+// 1. 左パネル：Hierarchy (階層構造) と 生成メニュー
+// ==========================================================================================
+void DebugEditor::DrawHierarchy() {
+    // Hierarchyの表示と選択操作は専用Windowへ委譲します。
+    hierarchyWindow_.Draw();
+}
+
+// ==========================================================================================
+// 2. 右パネル：Inspector (選択したオブジェクトの詳細設定)
+// ==========================================================================================
+void DebugEditor::DrawImGui() {
+    // Inspector操作前後のObject状態を比較し、編集履歴へ渡します。
+    const std::vector<ObjectStateSnapshot> beforeStates = CaptureObjectStates(selectedObjects_);
+
+    inspectorWindow_.Draw();
+
+#ifdef USE_IMGUI
+    if (selectedObject_) {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader("ギズモ設定", ImGuiTreeNodeFlags_DefaultOpen)) {
+            const char* pivotModes[] = { "原点", "モデル中心", "コリジョン中心" };
+            ImGui::Combo("ギズモ基準", &gizmoPivotMode_, pivotModes, IM_ARRAYSIZE(pivotModes));
+
+            if (gizmoPivotMode_ != 0) {
+                ImGui::TextDisabled("移動ギズモの表示位置だけを補正します。回転とスケールは原点基準です。");
+            }
+
+            ImGui::SeparatorText("選択表示");
+            int overlayMode = static_cast<int>(selectionOverlayMode_);
+            const char* overlayModes[] = { "スマート", "詳細", "非表示" };
+
+            if (ImGui::Combo("選択オブジェクトの可視化", &overlayMode, overlayModes, IM_ARRAYSIZE(overlayModes))) {
+                selectionOverlayMode_ = static_cast<SelectionOverlayMode>(overlayMode);
+            }
+
+            const std::string activeName = selectedObject_->GetName().empty() ? "Selected" : selectedObject_->GetName();
+            ImGui::Text("選択: %zu個 / 操作対象: %s", selectedObjects_.size(), activeName.c_str());
+
+            if (selectionOverlayMode_ == SelectionOverlayMode::Compact) {
+                ImGui::TextDisabled("四隅だけを表示し、巨大物や画面外の物体はマーカーへ自動で切り替えます。");
+                ImGui::TextDisabled("Altを押している間は回転に追従した詳細境界を表示します。");
+            } else if (selectionOverlayMode_ == SelectionOverlayMode::Hidden) {
+                ImGui::TextDisabled("選択枠を隠し、ImGuizmoだけを表示します。");
+            }
+        }
+    }
+
+    TrackInspectorEdit(beforeStates);
+#endif
+}
+
+#ifdef USE_IMGUI
+void DebugEditor::DrawProjectWindow() {
+    // パネルを閉じたときはAsset一覧の描画を止めます。
+    if (!projectWindowVisible_) {
+        return;
+    }
+
+    projectWindow_.Draw();
+}
+#endif
+

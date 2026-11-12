@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0a499e16596a0d5907e1d4374e173d2d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/14-wind-vortex.png",
+  "version": 1
+}

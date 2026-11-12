@@ -5,16 +5,18 @@
 
 // 近づくと地面すれすれの熱輪を全方向へ放つ固定砲台です。
 // 天板は足場として使え、上に乗っている間は発射を停止します。
+// 関連：BaseEnemyの標的と予告を使い、内部のStateへ各段階の処理を委譲する。
+// 主な入口：Initialize / Update
 class EnemyRingBurner : public BaseEnemy {
   public:
     /// 固定砲台の当たり判定、攻撃半径、初期状態を設定する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// 上に乗られた状態と熱輪の攻撃段階を進める。
     void Update(float deltaTime) override;
 
     /// 配置用の熱輪砲台複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     /// 持ち上げ状態を基底側へ通知する。
     void SetCarried(bool isCarried) override;
@@ -94,11 +96,11 @@ class EnemyRingBurner : public BaseEnemy {
 
     State state_ = State::Idle;
     engine::Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
-    float stateTimer_ = 0.0f;
+    float stateTimer_ = 0.0f; // 現在の状態までの残り秒数。
     float stateDuration_ = 0.0f;
-    float cooldownTimer_ = 0.65f;
+    float cooldownTimer_ = 0.65f; // 再使用可能な状態までの残り秒数。
     float waveRadius_ = 0.0f;
-    float idleTimer_ = 0.0f;
+    float idleTimer_ = 0.0f; // 待機中の見た目に使う経過秒数。
     float particleTimer_ = 0.0f;
     bool hasBaseScale_ = false;
     bool waveDamageDone_ = false;

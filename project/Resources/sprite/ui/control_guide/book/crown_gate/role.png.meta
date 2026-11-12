@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "751c775b1e4faac25b7aad8aa93db3a1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown_gate/role.png",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "551ffe99082b2df7e6f5b98b59891e25",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_muzzle.json",
+  "version": 1
+}

@@ -1,14 +1,17 @@
 #pragma once
 
-#include "Object3d.h"
+#include "Object3D.h"
 #include "game/actor/player/movement/PlayerLocomotion.h"
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 /// PlayerとEnemyのタイプ共通ステータスを一元管理します。
 /// シーンJSONや配置プリセットには個体別ステータスを持たせません。
+// 関連：JSONの共通数値をPlayer・BaseEnemyへ適用し、配置個体の設定とは分離する。
+// 主な入口：Initialize / ApplyPlayerStatus / ApplyEnemyStatus / SaveIfDirty
 class GameplayStatusManager {
   public:
     // キャラクター種ごとの共通調整値。配置個体の現在 HP ではなく、適用時の基準値を保持する。
@@ -72,25 +75,29 @@ class GameplayStatusManager {
     // 保存済みの全種類を返します。プレビュー未登録の敵も調整対象から落としません。
     std::vector<std::string> GetEnemyTypes() const;
 
+    // 共通数値を未保存として記録する。実際の保存はSaveIfDirtyなどの入口で行う。
     void MarkDirty() { dirty_ = true; }
 
-    bool IsDirty() const { return dirty_; }
+    // 空文字は従来どおり全件保存、敵タイプ指定時は該当するファイルだけ保存する。
+    void MarkDirty(const std::string& enemyType);
+
+    bool IsDirty() const { return dirty_ || !dirtyEnemies_.empty(); }
 
     // 未変更なら書き込まず true。変更があれば保存結果を返す。
     bool SaveIfDirty();
 
     /// resetCurrentHpがtrueなら出現時として全回復し、falseなら現在HP率を維持します。
-    bool ApplyPlayerStatus(engine::Object3d* object, bool resetCurrentHp) const;
+    bool ApplyPlayerStatus(engine::Object3D* object, bool resetCurrentHp) const;
 
     // 敵タイプに対応する設定だけを適用し、旧データではParam内のタイプ名も参照する。
-    bool ApplyEnemyStatus(engine::Object3d* object, bool resetCurrentHp) const;
+    bool ApplyEnemyStatus(engine::Object3D* object, bool resetCurrentHp) const;
 
     // クラス名でプレイヤー・敵を振り分け、それ以外のシーン物体には値を適用しない。
-    bool ApplyManagedStatus(engine::Object3d* object, bool resetCurrentHp) const;
+    bool ApplyManagedStatus(engine::Object3D* object, bool resetCurrentHp) const;
 
-    static bool IsManagedCharacter(const engine::Object3d* object);
+    static bool IsManagedCharacter(const engine::Object3D* object);
 
-    static const char* GetSettingsPath();
+    static std::string GetSettingsPath(const std::string& enemyType = {});
 
   private:
     GameplayStatusManager() = default;
@@ -101,12 +108,13 @@ class GameplayStatusManager {
 
     // 指定した設定JSONを読み込み、現在の調整値へ反映する。
     bool LoadFromFile(const std::string& path);
+    bool LoadDedicatedEnemyParameters();
 
     // 読み込んだ値の範囲を調整し、Objectへ基本ステータスを適用する。
     static void Normalize(CharacterStatus& status);
 
     // HP以外の値は正規化済み設定へ揃え、HPだけは残量比または明示リセットを基準にする。
-    static void ApplyStatus(engine::Object3d* object, const CharacterStatus& status, bool resetCurrentHp);
+    static void ApplyStatus(engine::Object3D* object, const CharacterStatus& status, bool resetCurrentHp);
 
   private:
     CharacterStatus playerStatus_;
@@ -114,4 +122,5 @@ class GameplayStatusManager {
     std::unordered_map<std::string, CharacterStatus> enemyStatuses_;
     bool initialized_ = false;
     bool dirty_ = false;
+    std::unordered_set<std::string> dirtyEnemies_;
 };

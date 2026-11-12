@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "654e5f4579f244b6bbd366af0f914a94",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/02-pink-combo.png",
+  "version": 1
+}

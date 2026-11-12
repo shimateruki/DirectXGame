@@ -68,7 +68,7 @@ DebrisEffectManager::DebrisEffectManager()
     : randomEngine_(std::random_device{}()) {
 }
 
-void DebrisEffectManager::Initialize(engine::Object3dCommon* common) {
+void DebrisEffectManager::Initialize(engine::Object3DCommon* common) {
     // 描画共通資源が切り替わったときは旧 GPU バッファを再利用せず作り直す。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -80,7 +80,7 @@ void DebrisEffectManager::Initialize(engine::Object3dCommon* common) {
         cameraData_ = nullptr;
 
         if (common_ && common_->GetDxCommon()) {
-            cameraResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(MeshRenderer::CameraForGPU));
+            cameraResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(MeshRenderer::CameraForGpu));
 
             if (!cameraResource_) {
                 DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] camera buffer creation failed.");
@@ -96,18 +96,18 @@ void DebrisEffectManager::Initialize(engine::Object3dCommon* common) {
                 return;
             }
 
-            cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
+            *cameraData_ = {}; // 破片には視界確保の透過を適用しない。
         }
     }
 }
 
-engine::Object3dCommon* DebrisEffectManager::ResolveCommon() {
+engine::Object3DCommon* DebrisEffectManager::ResolveCommon() {
     // 現在 Scene の描画資源へ追従し、前 Scene のリソース参照を残さない。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
-    engine::Object3dCommon* sceneCommon = scene ? scene->GetObject3dCommon() : nullptr;
+    engine::Object3DCommon* sceneCommon = scene ? scene->GetObject3DCommon() : nullptr;
 
     if (sceneCommon && sceneCommon != common_) {
         Initialize(sceneCommon);
@@ -203,7 +203,7 @@ void DebrisEffectManager::Update(float deltaTime) {
 }
 
 void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    // 破片ごとの WVP・材質を渡し、共通のカメラとライトでメッシュ描画する。
+    // 破片ごとの wvp・材質を渡し、共通のカメラとライトでメッシュ描画する。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     if (activePieces_.empty() || !common_ || !cameraResource_) {
@@ -211,7 +211,7 @@ void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resourc
     }
 
     common_->SetGraphicsCommand();
-    common_->SetPipelineState(BlendMode::kNormal);
+    common_->SetPipelineState(BlendMode::Normal);
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     uint32_t shadowMapSrvHandle = common_->GetDxCommon()->GetShadowMapSrvHandle();
 
@@ -224,7 +224,7 @@ void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resourc
             commandList->SetGraphicsRootConstantBufferView(11, piece.shadowWvpResource->GetGPUVirtualAddress());
         }
 
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
         piece.model->Draw(
             piece.wvpResource.Get(),
             LightManager::GetInstance()->GetDirectionalLightResource(),
@@ -451,7 +451,7 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
         return;
     }
 
-    engine::Object3dCommon* common = ResolveCommon();
+    engine::Object3DCommon* common = ResolveCommon();
 
     if (!common) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[DebrisEffect] prewarm skipped without Object3dCommon: " + presetName);
@@ -552,7 +552,7 @@ void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const eng
 void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, const engine::Vector3& position) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    engine::Object3dCommon* common = ResolveCommon();
+    engine::Object3DCommon* common = ResolveCommon();
 
     if (!common) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] Object3dCommon is null.");
@@ -765,14 +765,14 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     }
 
     // 再利用したバッファにも単位行列を書き、前の破片の変換を残さない。
-    piece.wvpData->WVP = engine::Math::MakeIdentity4x4();
+    piece.wvpData->wvp = engine::Math::MakeIdentity4x4();
     piece.wvpData->world = engine::Math::MakeIdentity4x4();
-    piece.wvpData->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
+    piece.wvpData->worldInverseTranspose = engine::Math::MakeIdentity4x4();
 
     if (piece.shadowWvpData) {
-        piece.shadowWvpData->WVP = engine::Math::MakeIdentity4x4();
+        piece.shadowWvpData->wvp = engine::Math::MakeIdentity4x4();
         piece.shadowWvpData->world = engine::Math::MakeIdentity4x4();
-        piece.shadowWvpData->WorldInverseTranspose = engine::Math::MakeIdentity4x4();
+        piece.shadowWvpData->worldInverseTranspose = engine::Math::MakeIdentity4x4();
     }
 
     // 以前の材質値が混ざらないよう、今回のプリセット値で全体を初期化する。
@@ -800,18 +800,18 @@ void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const engine::Ma
 
     engine::Vector3 scale = { piece.currentScale, piece.currentScale, piece.currentScale };
     engine::Matrix4x4 world = engine::Math::MakeAffineMatrix(scale, piece.rotation, piece.position);
-    piece.wvpData->WVP = engine::Math::Multiply(world, viewProjection);
+    piece.wvpData->wvp = engine::Math::Multiply(world, viewProjection);
     piece.wvpData->world = world;
-    piece.wvpData->WorldInverseTranspose = engine::Math::Transpose(engine::Math::Inverse(world));
+    piece.wvpData->worldInverseTranspose = engine::Math::Transpose(engine::Math::Inverse(world));
 
     if (piece.materialData) {
         piece.materialData->time = piece.age;
     }
 
     if (piece.shadowWvpData && lightViewProjection) {
-        piece.shadowWvpData->WVP = engine::Math::Multiply(world, *lightViewProjection);
+        piece.shadowWvpData->wvp = engine::Math::Multiply(world, *lightViewProjection);
         piece.shadowWvpData->world = world;
-        piece.shadowWvpData->WorldInverseTranspose = piece.wvpData->WorldInverseTranspose;
+        piece.shadowWvpData->worldInverseTranspose = piece.wvpData->worldInverseTranspose;
     }
 }
 

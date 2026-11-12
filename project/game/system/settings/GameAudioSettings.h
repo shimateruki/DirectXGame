@@ -7,6 +7,8 @@
 #include <vector>
 
 // 効果音/BGM の個別音量と再生ハンドルを管理する
+// 関連：AudioPlayerのハンドルをキャッシュし、登録名ごとの音量と再生を扱う。
+// 主な入口：Initialize / LoadHandle / PlaySE / PlayBGM
 class GameAudioSettings {
   public:
     // JSON に保存する音声1件分の設定
@@ -15,7 +17,7 @@ class GameAudioSettings {
         std::string displayName;
         std::string category;
         std::string path;
-        float volume = 1.0f;
+        float volume = 1.0f; // 音声一件ごとの音量倍率。カテゴリの全体音量とは別に掛ける。
         bool loop = false;
     };
 

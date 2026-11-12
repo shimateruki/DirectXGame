@@ -1,4 +1,6 @@
 #pragma once
+
+// AttackSequenceの配置キーを、術者・親トラックの姿勢を基準に合成する計算。描画物やActorは所有しない。
 #include "AttackSequenceData.h"
 #include <numbers>
 #include "engine/utility/math/Math.h"

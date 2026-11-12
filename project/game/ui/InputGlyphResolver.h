@@ -1,5 +1,7 @@
 #pragma once
 
+// 画面が指定した操作に対応する固定キー・パッド画像の切り抜き情報を返す。Spriteの所有や配置は行わない。
+
 #include "KeyConfig.h"
 
 #include <Xinput.h>

@@ -5,7 +5,7 @@
 #ifdef USE_IMGUI
 #include "imgui.h"
 #include "IconsFontAwesome5.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Model.h"
 #endif
 
@@ -400,17 +400,17 @@ void ProfilerManager::DrawImGui() {
                     ImGui::TableHeadersRow();
 
                     auto& objects = *currentObjects_;
-                    std::vector<engine::Object3d*> sortedList;
+                    std::vector<engine::Object3D*> sortedList;
 
                     for (auto& obj : objects)
                         sortedList.push_back(obj.get());
 
-                    ImGuiTableSortSpecs* sort_specs = ImGui::TableGetSortSpecs();
+                    ImGuiTableSortSpecs* sortSpecs = ImGui::TableGetSortSpecs();
 
-                    if (sort_specs && sort_specs->SpecsDirty) {
-                        std::sort(sortedList.begin(), sortedList.end(), [&](engine::Object3d* a, engine::Object3d* b) {
-                            for (int n = 0; n < sort_specs->SpecsCount; n++) {
-                                const ImGuiTableColumnSortSpecs* spec = &sort_specs->Specs[n];
+                    if (sortSpecs && sortSpecs->SpecsDirty) {
+                        std::sort(sortedList.begin(), sortedList.end(), [&](engine::Object3D* a, engine::Object3D* b) {
+                            for (int n = 0; n < sortSpecs->SpecsCount; n++) {
+                                const ImGuiTableColumnSortSpecs* spec = &sortSpecs->Specs[n];
                                 
                                 if (spec->ColumnIndex == 0) { // 名前
                                     if (a->GetName() != b->GetName())
@@ -439,7 +439,7 @@ void ProfilerManager::DrawImGui() {
                             }
                             return a < b;
                         });
-                        sort_specs->SpecsDirty = false;
+                        sortSpecs->SpecsDirty = false;
                     }
 
                     for (auto* obj : sortedList) {

@@ -2,7 +2,7 @@
 
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,8 +13,8 @@ constexpr float kGroundRayStartHeight = 6.0f;
 constexpr float kGroundRayDistance = 16.0f;
 
 // 地形の高さ配列をワールドXZ座標で標本化し、範囲外や無効データなら失敗を返します。
-bool SampleTerrainSurface(engine::Object3d* terrainObject, const engine::Vector3& worldPosition, engine::Vector3& outPoint) {
-    if (!terrainObject || terrainObject->GetColliderType() != ColliderType::kTerrain) {
+bool SampleTerrainSurface(engine::Object3D* terrainObject, const engine::Vector3& worldPosition, engine::Vector3& outPoint) {
+    if (!terrainObject || terrainObject->GetColliderType() != ColliderType::Terrain) {
         return false;
     }
 
@@ -88,7 +88,7 @@ engine::Vector3 GroundEffectLocator::ResolveGroundPosition(const engine::Vector3
     }
 
     // Terrain は高さマップで管理されるため、レイキャストとは別に表面高度を求める。
-    for (engine::Object3d* object : collisionManager->GetObjects()) {
+    for (engine::Object3D* object : collisionManager->GetObjects()) {
         if (!object || !(object->GetCollisionAttribute() & CollisionCategories::Get("ground"))) {
             continue;
         }

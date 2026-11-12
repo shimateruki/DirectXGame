@@ -10,6 +10,8 @@
 class Player;
 
 // 通常移動とコピー能力の姿勢を合成し、Player のスライムモデルへ適用します。
+// 関連：Playerの状態から見た目の伸縮と能力姿勢を求め、移動・命中判定は変更しない。
+// 主な入口：Reset / Update
 class PlayerSlimeAnimator {
   public:
     // 基本姿勢。コピー技の一時姿勢は AbilityPose で重ねます。
@@ -27,10 +29,15 @@ class PlayerSlimeAnimator {
     void Reset(const engine::Vector3& baseScale, Player* player = nullptr);
 
     void SetMode(Mode mode);
-    void SetWhipPose(const engine::Vector3& scale, const engine::Vector3& rotation) {
-        whipPoseActive_ = true; whipVisualScale_ = scale; whipVisualRotation_ = rotation;
+    void SetWhipPose(const engine::Vector3& scale, const engine::Vector3& rotation, const engine::Vector3& shear = {}) {
+        whipReturnPoseActive_ = false; whipPoseActive_ = true; whipPose_.scale = scale; whipPose_.rotate = rotation; whipPose_.shear = shear;
     }
-    void ClearWhipPose() { whipPoseActive_ = false; }
+    const BodyAnimationClip::Sample& GetWhipPose() const { return whipPose_; }
+    float GetPullProgress() const { return pullProgress_; }
+    void SetWhipReturnPose(const BodyAnimationClip::Sample& pose) {
+        whipReturnPoseActive_ = true; whipPoseActive_ = true; whipPose_ = pose;
+    }
+    void ClearWhipPose() { whipReturnPoseActive_ = false; whipPoseActive_ = false; whipPose_ = {}; }
 
     Mode GetMode() const { return mode_; }
 
@@ -107,15 +114,15 @@ class PlayerSlimeAnimator {
     static const char* GetStateName(Mode mode);
 
     // 通常移動、着地反動、能力モーションの時間は独立して進めます。
+    bool whipReturnPoseActive_ = false;
     bool whipPoseActive_ = false;
-    engine::Vector3 whipVisualScale_{1.0f, 1.0f, 1.0f};
-    engine::Vector3 whipVisualRotation_{};
+    BodyAnimationClip::Sample whipPose_;
     Mode mode_ = Mode::Idle;
-    float modeTimer_ = 0.0f;
+    float modeTimer_ = 0.0f; // アニメーションモードに使う経過秒数。
     float runMotionTime_ = 0.0f;
     float runSpeedRate_ = 0.0f;
-    engine::Vector3 previousPosition_{};
-    bool hasPositionHistory_ = false;
+    engine::Vector3 previousPosition_{}; // 移動量から向き・速度を求めるための前回位置。
+    bool hasPositionHistory_ = false; // 前回位置が有効か。リセット直後の見かけの大移動を除外する。
 
     float jumpChargeRate_ = 0.0f;
     float pullProgress_ = 0.0f;
@@ -123,18 +130,18 @@ class PlayerSlimeAnimator {
     AbilityPose abilityPose_ = AbilityPose::None;
     float abilityPoseStrength_ = 0.0f;
 
-    float impulseTimer_ = 0.0f;
+    float impulseTimer_ = 0.0f; // 一時的な伸縮までの残り秒数。
     float impulseDuration_ = 0.0f;
 
-    float modeTransitionTimer_ = 0.0f;
+    float modeTransitionTimer_ = 0.0f; // 表示姿勢の切替までの残り秒数。
     bool modeTransitionCapturePending_ = false;
     engine::Vector3 modeTransitionStartScale_ = {2.0f, 2.0f, 2.0f};
     engine::Vector3 modeTransitionStartRotation_ = engine::Vector3::ZERO;
 
-    float jumpTakeoffStretchTimer_ = 0.0f;
-    float landingHoldTimer_ = 0.0f;
-    float landingSquashTimer_ = 0.0f;
-    float landingReboundTimer_ = 0.0f;
+    float jumpTakeoffStretchTimer_ = 0.0f; // 離陸時の伸びまでの残り秒数。
+    float landingHoldTimer_ = 0.0f; // 着地の溜めまでの残り秒数。
+    float landingSquashTimer_ = 0.0f; // 着地時の潰れまでの残り秒数。
+    float landingReboundTimer_ = 0.0f; // 着地後の反動までの残り秒数。
     float landingImpactRate_ = 1.0f;
 
     engine::Vector3 baseScale_ = {2.0f, 2.0f, 2.0f};
@@ -152,20 +159,20 @@ class PlayerSlimeAnimator {
     std::string abilityMotionName_;
     std::string abilityMotionClipAssetName_; // Stateの参照先変更後に同名攻撃を再読込するための実ファイル名。
 
-    float abilityMotionTimer_ = 0.0f;
-    float abilityMotionPlaybackSpeed_ = 1.0f;
+    float abilityMotionTimer_ = 0.0f; // 能力クリップの再生に使う経過秒数。
+    float abilityMotionPlaybackSpeed_ = 1.0f; // 能力クリップの再生倍率。1が等速。
 
     float abilityMotionBlendInDuration_ = 0.06f;
     float abilityMotionBlendOutDuration_ = 0.10f;
 
-    float abilityMotionStopTimer_ = 0.0f;
+    float abilityMotionStopTimer_ = 0.0f; // 能力クリップの停止ブレンドまでの残り秒数。
     float abilityMotionStopDuration_ = 0.0f;
 
     bool abilityMotionActive_ = false;
-    bool abilityMotionLoop_ = false;
+    bool abilityMotionLoop_ = false; // クリップ終端で先頭へ戻すか。
     bool abilityMotionStopping_ = false;
 
-    bool controllerLoaded_ = false;
+    bool controllerLoaded_ = false; // AnimatorControllerの読込が成功しているか。
 
     // LocomotionMode(Int) が定義されたAssetでは遷移条件をJSON側で評価します。
     bool useModeTransitions_ = false;

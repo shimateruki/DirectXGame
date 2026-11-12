@@ -13,7 +13,7 @@
 
 #include "AudioPlayer.h"
 #include "game/system/combat/BulletManager.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "DebrisEffectManager.h"
@@ -23,16 +23,19 @@
 #include "game/system/progress/GameDataManager.h"
 #include "game/system/progress/StarCoinPresentation.h"
 #include "game/actor/gimmick/trigger/GimmickArenaEncounter.h"
+#include "game/actor/enemy/boss/magma/MagmaAttackVfx.h"
+#include "game/actor/enemy/boss/core/MidbossEncounterEffects.h"
+#include <string_view>
 #include "game/system/rules/GameRule.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/scene/LevelLoader.h"
 #include "LightEditor.h"
 #include "LightManager.h"
 #include "Log.h"
 #include "game/system/combat/LockOnSystem.h"
 #include "MeshEffectManager.h"
-#include "Object3d.h"
-#include "Object3dCommon.h"
+#include "Object3D.h"
+#include "Object3DCommon.h"
 #include "game/system/scene/ObjectManager.h"
 #include "ParticleManager.h"
 #include "ParticleSystem.h"
@@ -41,7 +44,7 @@
 #include "SpriteCommon.h"
 #include "game/system/progress/StageManager.h"
 #include "TextureManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -256,6 +259,8 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {StarCoinPresenta
                                                                 "player_wind_morph_aura",
                                                                 "player_wind_updraft",
                                                                 "player_wind_dash",
+                                                                "player_wind_lift_burst",
+                                                                "player_wind_lift_glide",
                                                                 "wind_slime_gust_impact",
 
                                                                 // チェックポイント、記憶台、リングバーナー。
@@ -268,7 +273,7 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {StarCoinPresenta
                                                                 // マグマと偽王の多段攻撃。途中の演出段階も先読みします。
                                                                 "magma_slime_core_embers",
                                                                 "magma_slime_charge",
-                                                                "magma_slime_mortar_trail",
+                                                                MagmaAttackVfx::kMortar.defaultName,
                                                                 "magma_slime_impact",
                                                                 "magma_slime_rush_wake",
                                                                 "magma_slime_rush_splash",
@@ -277,8 +282,24 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {StarCoinPresenta
                                                                 "magma_slime_geyser_stream",
                                                                 "magma_slime_spiral_surge",
                                                                 "magma_slime_spiral_trail",
-                                                                "magma_slime_fire_column_stream",
-                                                                "magma_slime_flood_splash",
+                                                                "player_crown_melee_flash",
+                                                                "player_crown_melee_sparks",
+                                                                "player_crown_melee_shards",
+                                                                "player_crown_portal_dust",
+                                                                "player_crown_portal_exit",
+                                                                "player_crown_charge",
+                                                                "player_crown_ready",
+                                                                "player_crown_muzzle",
+                                                                "player_crown_muzzle_full",
+                                                                "player_crown_launch_streak",
+                                                                "player_crown_trail",
+                                                                "player_crown_impact",
+                                                                "player_crown_impact_full",
+                                                                "player_crown_impact_sparks",
+                                                                "player_crown_impact_shards",
+                                                                "player_crown_dissolve_flakes",
+                                                                "false_king_intro_wisp",
+                                                                "false_king_intro_gold",
                                                                 "false_king_charge",
                                                                 "false_king_lance_trail",
                                                                 "false_king_lance_impact",
@@ -293,45 +314,70 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {StarCoinPresenta
                                                                 "false_king_shockwave_charge_ring",
                                                                 "false_king_dominion"};
 
+// マグマの技で指定された粒子を、シーンの読込と実行時の先読みへ渡す。
+std::vector<std::string> LoadMagmaAttackPresets() {
+    EnemyAttackProfile profile;
+    EnemyAttackProfile::LoadCachedForEnemy("MagmaSlime", profile);
+
+    std::vector<std::string> names;
+    names.reserve(MagmaAttackVfx::kProfilePresets.size());
+    for (const auto& preset : MagmaAttackVfx::kProfilePresets) {
+        const std::string_view name = preset.Resolve(profile.FindAttack(preset.attackId));
+        const auto end = std::end(kGameplayGpuParticlePresetsToPreload);
+        if (std::find(std::begin(kGameplayGpuParticlePresetsToPreload), end, name) == end &&
+            std::find(names.begin(), names.end(), name) == names.end()) {
+            names.emplace_back(name);
+        }
+    }
+    return names;
+}
+
 // VFX Sequenceは個々の粒子・メッシュを束ねる発火順を持つため、素材とは別にロードします。
-constexpr const char* kGameplayVfxSequencesToPreload[] = {"bomb_explosion_cue",
-                                                          "player_base_bash_hit_cue",
-                                                          "player_base_press_enemy_hit_cue",
-                                                          "player_base_press_land_cue",
-                                                          "player_pink_bounce_slam_cue",
-                                                          "player_fire_dash_hit_cue",
-                                                          "player_wind_soar_land_cue",
-                                                          "damage_puni_burst_cue",
-                                                          "enemy_defeat_pop_cue",
-                                                          "slime_elastic_hit_cue",
-                                                          "pull_bind_cue",
-                                                          "pull_catch_cue",
-                                                          "throw_slam_cue",
-                                                          "enemy_ability_hit_cue",
+const auto& GameplayVfxSequencesToPreload() {
+    const auto& prism = MidbossEncounterEffects::Prism();
+    const auto& magma = MidbossEncounterEffects::Magma();
+    static const std::string sequences[] = {
+        "bomb_explosion_cue",
+        "player_base_bash_hit_cue",
+        "player_base_press_enemy_hit_cue",
+        "player_base_press_land_cue",
+        "player_pink_bounce_slam_cue",
+        "player_fire_dash_hit_cue",
+        "player_wind_soar_land_cue",
+        "damage_puni_burst_cue",
+        "enemy_defeat_pop_cue",
+        "slime_elastic_hit_cue",
+        "pull_bind_cue",
+        "pull_catch_cue",
+        "throw_slam_cue",
+        "enemy_ability_hit_cue",
 
-                                                          // 王冠取得とゴールの色違いは個別シーケンスです。
-                                                          "crown_get_cue",
-                                                          "crown_focus_cue",
-                                                          "crown_result_cue",
-                                                          "crown_victory_land_cue",
-                                                          "crown_focus_silver_cue",
-                                                          "crown_get_silver_cue",
-                                                          "crown_result_silver_cue",
-                                                          "crown_victory_land_silver_cue",
+        // 王冠取得とゴールの色違いは個別シーケンスです。
+        "crown_get_cue",
+        "crown_focus_cue",
+        "crown_result_cue",
+        "crown_victory_land_cue",
+        "crown_focus_silver_cue",
+        "crown_get_silver_cue",
+        "crown_result_silver_cue",
+        "crown_victory_land_silver_cue",
 
-                                                          // ボス部屋の封鎖から解放、チェックポイントまで。
-                                                          "prism_arena_seal_cue",
-                                                          "prism_midboss_appear_cue",
-                                                          "prism_arena_release_cue",
-                                                          "magma_arena_seal_cue",
-                                                          "magma_midboss_appear_cue",
-                                                          "magma_arena_release_cue",
-                                                          "false_king_appear_cue",
-                                                          "false_king_phase_shift_cue",
-                                                          "false_king_dominion_cue",
-                                                          "checkpoint_activate_cue",
-                                                          "checkpoint_idle_cue",
-                                                          "copy_memory_station_activate_cue"};
+        // ボス部屋の封鎖から解放、チェックポイントまで。
+        prism.seal,
+        prism.appearance,
+        prism.release,
+        magma.seal,
+        magma.appearance,
+        magma.release,
+        "false_king_appear_cue",
+        "false_king_phase_shift_cue",
+        "false_king_dominion_cue",
+        "checkpoint_activate_cue",
+        "checkpoint_idle_cue",
+        "copy_memory_station_activate_cue"
+    };
+    return sequences;
+}
 
 // 破片はGPU粒子とは別のランタイムで生成され、最初の衝突で待たないよう予熱します。
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {"bomb_hit_fragment_burst",
@@ -392,6 +438,10 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
         manifest.AddJson("Resources/json/gpu_particles/" + std::string(presetName) + ".json");
     }
 
+    for (const auto& presetName : LoadMagmaAttackPresets()) {
+        manifest.AddJson("Resources/json/gpu_particles/" + presetName + ".json");
+    }
+
     for (const char* path : kGameplayMeshEffectsToPreload) {
         manifest.AddJson(path);
     }
@@ -400,8 +450,8 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
         manifest.AddJson("Resources/json/debris/" + std::string(presetName) + ".json");
     }
 
-    for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
-        manifest.AddJson("Resources/json/vfx_sequence/" + std::string(sequenceName) + ".json");
+    for (const auto& sequenceName : GameplayVfxSequencesToPreload()) {
+        manifest.AddJson("Resources/json/vfx_sequence/" + sequenceName + ".json");
     }
 
     // 操作ガイドとコピー能力HUDの画像はcontrolsGuide.jsonの参照から収集します。
@@ -464,7 +514,6 @@ void GamePlayScene::BeginLoadingInitialize() {
     loadingInitializeItemIndex_ = 0;
     loadingInitializeCompletedUnits_ = 0;
     loadingStageObjectsStarted_ = false;
-    loadingRenderCommonPhase_ = 0;
 #ifdef USE_IMGUI
     pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
 #endif
@@ -480,8 +529,8 @@ void GamePlayScene::BeginLoadingInitialize() {
     // 固定フェーズの完了通知13件と、実際に1件ずつ処理する素材数を足します。
     // フェーズ追加時はInitializeLoadingStepのcompleteUnitとの対応も更新が必要です。
     loadingInitializeTotalUnits_ =
-        13 + std::size(kGameplayGpuParticlePresetsToPreload) + std::size(kGameplayMeshEffectsToPreload) +
-        std::size(kGameplayDebrisPresetsToPreload) + std::size(kGameplayVfxSequencesToPreload);
+        14 + std::size(kGameplayGpuParticlePresetsToPreload) + std::size(kGameplayMeshEffectsToPreload) +
+        std::size(kGameplayDebrisPresetsToPreload) + std::size(GameplayVfxSequencesToPreload());
 }
 
 bool GamePlayScene::InitializeLoadingStep() {
@@ -510,9 +559,7 @@ bool GamePlayScene::InitializeLoadingStep() {
             return false;
 
         case 2:
-            if (!InitializeRenderCommons()) {
-                return false;
-            }
+            InitializeSceneParticles();
 
             ++loadingInitializePhase_;
             completeUnit();
@@ -534,7 +581,7 @@ bool GamePlayScene::InitializeLoadingStep() {
 
         case 5:
             if (loadingInitializeItemIndex_ < std::size(kGameplayGpuParticlePresetsToPreload)) {
-                GPUParticleManager::GetInstance()->PreloadPresetSystem(
+                GpuParticleManager::GetInstance()->PreloadPresetSystem(
                     kGameplayGpuParticlePresetsToPreload[loadingInitializeItemIndex_++]);
                 completeUnit();
                 return false;
@@ -542,7 +589,9 @@ bool GamePlayScene::InitializeLoadingStep() {
 
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
-            continue;
+            GpuParticleManager::GetInstance()->PreloadPresetSystems(LoadMagmaAttackPresets());
+            completeUnit();
+            return false;
 
         case 6:
             if (loadingInitializeItemIndex_ < std::size(kGameplayMeshEffectsToPreload)) {
@@ -576,9 +625,9 @@ bool GamePlayScene::InitializeLoadingStep() {
             continue;
 
         case 9:
-            if (loadingInitializeItemIndex_ < std::size(kGameplayVfxSequencesToPreload)) {
-                VFXSequencer sequence;
-                sequence.Load(kGameplayVfxSequencesToPreload[loadingInitializeItemIndex_++]);
+            if (loadingInitializeItemIndex_ < std::size(GameplayVfxSequencesToPreload())) {
+                VfxSequencer sequence;
+                sequence.Load(GameplayVfxSequencesToPreload()[loadingInitializeItemIndex_++]);
                 completeUnit();
                 return false;
             }
@@ -673,16 +722,11 @@ float GamePlayScene::GetLoadingInitializeProgress() const {
         return 1.0f;
     }
 
-    const float renderProgress = loadingInitializePhase_ == 2
-        ? (loadingRenderCommonPhase_ == 2 && object3dCommon_
-            ? (1.0f + object3dCommon_->GetInitializationProgress()) / 3.0f
-            : static_cast<float>(loadingRenderCommonPhase_) / 3.0f)
-        : 0.0f;
     const float stageProgress = loadingInitializePhase_ == 11 && loadingStageObjectsStarted_ && levelLoader_
         ? levelLoader_->GetObjectLayoutLoadProgress()
         : 0.0f;
     return std::clamp((static_cast<float>(loadingInitializeCompletedUnits_) +
-                           renderProgress + stageProgress) /
+                           stageProgress) /
                           static_cast<float>(loadingInitializeTotalUnits_),
                       0.0f, 1.0f);
 }
@@ -755,46 +799,14 @@ void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 }
 
-bool GamePlayScene::InitializeRenderCommons() {
-    // 2D・3D・通常粒子の共通描画器を先に用意して各マネージャーへ渡す。
-    if (loadingRenderCommonPhase_ == 0) {
-        spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-        spriteCommon_->Initialize(dxCommon_);
-        ++loadingRenderCommonPhase_;
-        return false;
-    }
-
-    if (loadingRenderCommonPhase_ == 1) {
-        object3dCommon_ = std::make_unique<engine::Object3dCommon>();
-        object3dCommon_->BeginInitialize(dxCommon_);
-        ++loadingRenderCommonPhase_;
-        return false;
-    }
-
-    if (loadingRenderCommonPhase_ == 2) {
-        if (!object3dCommon_->InitializeStep()) {
-            return false;
-        }
-
-        MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
-        ++loadingRenderCommonPhase_;
-        return false;
-    }
-
-    particleCommon_ = std::make_unique<engine::ParticleCommon>();
-    particleCommon_->Initialize(dxCommon_);
-
+void GamePlayScene::InitializeSceneParticles() {
+    // 描画CommonはSceneManagerが準備済み。発生中の粒子だけをこのSceneが所有する。
     particleSystem_ = std::make_unique<engine::ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
-
+    particleSystem_->Initialize(GetParticleCommon(), "Resources/sprite/common/circle2.png");
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
-
     gameRule_ = std::make_unique<GameRule>();
     gameRule_->Initialize(this);
-
-    LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
-    ++loadingRenderCommonPhase_;
-    return true;
+    LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
 }
 
 void GamePlayScene::InitializeGameplaySystems() {
@@ -803,8 +815,10 @@ void GamePlayScene::InitializeGameplaySystems() {
     InitializeGameplayParticleRuntime();
 
     for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
-        GPUParticleManager::GetInstance()->PreloadPresetSystem(presetName);
+        GpuParticleManager::GetInstance()->PreloadPresetSystem(presetName);
     }
+
+    GpuParticleManager::GetInstance()->PreloadPresetSystems(LoadMagmaAttackPresets());
 
     for (const char* path : kGameplayMeshEffectsToPreload) {
         MeshEffectManager::GetInstance()->PreloadEffect(path);
@@ -816,8 +830,8 @@ void GamePlayScene::InitializeGameplaySystems() {
         DebrisEffectManager::GetInstance()->PrewarmPreset(presetName);
     }
 
-    for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
-        VFXSequencer sequence;
+    for (const auto& sequenceName : GameplayVfxSequencesToPreload()) {
+        VfxSequencer sequence;
         sequence.Load(sequenceName);
     }
 
@@ -833,26 +847,25 @@ void GamePlayScene::InitializeGameplayObjectSystems() {
 
     uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
     lockOnSprite_ = std::make_unique<engine::Sprite>();
-    lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+    lockOnSprite_->Initialize(GetSpriteCommon(), lockOnTex);
     lockOnSprite_->SetName("HUD_LockOn");
     lockOnSprite_->SetTextureName("ui/hud/lockOn.png");
     lockOnSprite_->SetAnchorPoint({0.5f, 0.5f});
     lockOnSprite_->SetSize({64.0f, 64.0f});
     lockOnSprite_->SetVisible(false);
 
-    BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+    BulletManager::GetInstance()->Initialize(GetObject3DCommon(), CollisionManager::GetInstance());
 }
 
 void GamePlayScene::InitializeGameplayParticleRuntime() {
     // プリセット JSON を読み、シーン描画用の粒子テクスチャを確保する。
-    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+    PrepareGpuParticles();
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 }
 
 void GamePlayScene::InitializeGameplayDebrisRuntime() {
     // 破片演出を現在の 3D 描画器へ結び、プリセットを読み込む。
-    DebrisEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+    DebrisEffectManager::GetInstance()->Initialize(GetObject3DCommon());
     DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
 }
 
@@ -871,7 +884,7 @@ void GamePlayScene::InitializeGameplaySkybox() {
 
     skyboxTextureHandle_ = TextureManager::GetInstance()->Load(skyboxPath, TextureManager::TextureColorSpace::SRGB);
     skybox_ = std::make_unique<Skybox>();
-    skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
+    skybox_->Initialize(GetObject3DCommon(), skyboxTextureHandle_);
 }
 
 void GamePlayScene::ApplyGameplayRenderState(const StageData& currentStage) {
@@ -917,7 +930,9 @@ void GamePlayScene::LoadCurrentStageSpritesAndView(const StageData& currentStage
 
     ApplyGameplayRenderState(currentStage);
     CameraEditor::GetInstance()->Initialize();
-    CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
+    // Editorのシーン指定を優先し、通常起動ではステージ一覧の指定へそろえる。
+    const std::string defaultCameraPath = currentStage.cameraPath.empty() ? "game_camera.json" : currentStage.cameraPath;
+    CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath(defaultCameraPath));
 }
 
 void GamePlayScene::InitializeGameplayOverlays() {
@@ -926,16 +941,16 @@ void GamePlayScene::InitializeGameplayOverlays() {
     pausePageSliding_ = false;
     pausePageSlideTime_ = 0.0f;
     controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
-    controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
+    controlsGuideOverlay_->Initialize(GetSpriteCommon(), player_);
 
     pauseMenuOverlay_ = std::make_unique<PauseMenuOverlay>();
-    pauseMenuOverlay_->Initialize(spriteCommon_.get());
+    pauseMenuOverlay_->Initialize(GetSpriteCommon());
 
     settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
-    settingsOverlay_->Initialize(spriteCommon_.get());
+    settingsOverlay_->Initialize(GetSpriteCommon());
 
     saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
-    saveIndicatorOverlay_->Initialize(spriteCommon_.get());
+    saveIndicatorOverlay_->Initialize(GetSpriteCommon());
 
     InitializeGoalPresentationOverlay();
 }
@@ -954,8 +969,7 @@ void GamePlayScene::ApplyGoalCrownState() {
             continue;
         }
 
-        object->SetLodEnabled(false);
-        object->SetGPUParticleName("");
+        object->SetGpuParticleName("");
 
         if (isCleared) {
             object->SetTexture("Resources/sprite/common/white.png");
@@ -984,8 +998,7 @@ void GamePlayScene::ApplyStageStarCoinState() {
             continue;
         }
 
-        object->SetLodEnabled(false);
-        const int starCoinIndex = object->GetTargetID();
+        const int starCoinIndex = object->GetTargetId();
 
         if (!GameDataManager::GetInstance()->IsStarCoinCollected(stageIndex, starCoinIndex)) {
             StarCoinPresentation::RestoreUncollectedIfSilver(*object);
@@ -1016,7 +1029,7 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
 
         for (int id : checkpoint.clearedEncounterIds) {
             GameDataManager::GetInstance()->RememberCheckpointEncounter(checkpoint.stageIndex, id);
-            if (auto* encounter = dynamic_cast<GimmickArenaEncounter*>(FindObjectByEventID(id)))
+            if (auto* encounter = dynamic_cast<GimmickArenaEncounter*>(FindObjectByEventId(id)))
                 encounter->RestoreCheckpointClear();
         }
 
@@ -1093,8 +1106,8 @@ void GamePlayScene::FinalizeGameplayResources() {
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
 
     MeshEffectManager::GetInstance()->Clear();
-    VFXSequencer::ClearOneShots();
-    GPUParticleManager::GetInstance()->ClearSceneRuntime();
+    VfxSequencer::ClearOneShots();
+    GpuParticleManager::GetInstance()->ClearSceneRuntime();
 
     // Managerが保持する参照を先に外し、その後でScene所有のObjectとSpriteを破棄する。
     CollisionManager::GetInstance()->ClearObjects();
@@ -1170,12 +1183,9 @@ void GamePlayScene::FinalizeGameplayResources() {
     lifeLostCamera_.reset();
 
     particleSystem_.reset();
-    particleCommon_.reset();
 
     sprites_.clear();
-    spriteCommon_.reset();
 
-    object3dCommon_.reset();
     objectManager_.reset();
 
     lockOnSystem_.reset();

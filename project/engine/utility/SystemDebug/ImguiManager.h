@@ -8,9 +8,8 @@
 #include "imgui_impl_win32.h"
 #endif
 
-/// <summary>
-/// ImGuiの管理クラス
-/// </summary>
+// 担当：ImGuiのコンテキスト・フレーム・描画と後片付けを管理する。
+// 関連：Framework（寿命）、WinApp（入力）、DirectXCommon / SrvManager（描画）
 class ImGuiManager {
 public:
     /// <summary>

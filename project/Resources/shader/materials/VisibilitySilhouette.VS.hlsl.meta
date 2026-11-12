@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "3d0e8bfee4de69b38d8e6cb3e64a6024",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/VisibilitySilhouette.VS.hlsl",
+  "version": 1
+}

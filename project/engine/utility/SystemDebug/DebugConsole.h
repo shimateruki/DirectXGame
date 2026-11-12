@@ -9,7 +9,8 @@
 #endif
 #include "Log.h" 
 
-/// <summary>スレッド間でログを受け取り、ImGui上に表示するデバッグコンソール。</summary>
+// 担当：スレッド間で受け取ったログを蓄積し、ImGuiに表示する。
+// 関連：Log（出力）、ImGuiManager（UI基盤）
 class DebugConsole {
 public:
     /// <summary>共有のデバッグコンソールを取得する。</summary>
@@ -43,6 +44,7 @@ private:
     DebugConsole& operator=(const DebugConsole&) = delete;
 
     /// <summary>表示するメッセージと重大度の組。</summary>
+    // 関連：DebugConsole（この型を使う機能の本体）
     struct LogEntry {
         std::string message;
         LogLevel level;

@@ -1,5 +1,7 @@
 #pragma once
 
+// メニュー画面別の決定・取消入力と案内画像を対応させる。選択中の行やページ遷移は各画面が保持する。
+
 #include "engine/system/input/MenuInput.h"
 
 namespace MenuControls {
@@ -14,6 +16,7 @@ struct Hint {
     const char* Resolve(bool useGamepad) const { return useGamepad ? gamepad : keyboard; }
 };
 
+// 一画面の決定・取消などのキーと案内。選択中の項目は各メニューが保持する。
 struct Scheme {
     engine::MenuInputBindings bindings;
     Hint confirmHint, closeHint, footerHint;

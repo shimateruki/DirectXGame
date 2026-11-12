@@ -74,7 +74,7 @@ struct CrownFinaleTuning {
     float dashDamage = 16.0f;
     float armorOpenTime = 5.0f;
 
-    static constexpr const char* Path = "Resources/json/scenario/crown_finale_tuning.json";
+    static constexpr const char* kConfigPath = "Resources/json/scenario/crown_finale_tuning.json";
 
     // 外部設定の NaN や範囲外の値を除き、演出と判定を有効な範囲に保ちます。
     void Sanitize() {
@@ -147,7 +147,7 @@ struct CrownFinaleTuning {
     // 設定ファイルを読み込みます。存在しない場合は既定値を維持します。
     bool Load() {
         // 省略された調整項目は現行の既定値を維持し、読み込み後に安全な範囲へ直す。
-        std::ifstream stream(Path);
+        std::ifstream stream(kConfigPath);
         if (!stream)
             return false;
         auto data = nlohmann::json::parse(stream, nullptr, false);
@@ -261,7 +261,7 @@ struct CrownFinaleTuning {
                                {"waveDamage", waveDamage},
                                {"dashDamage", dashDamage},
                                {"armorOpenTime", armorOpenTime}};
-        std::ofstream stream(Path);
+        std::ofstream stream(kConfigPath);
         if (!stream)
             return false;
         stream << data.dump(2) << '\n';

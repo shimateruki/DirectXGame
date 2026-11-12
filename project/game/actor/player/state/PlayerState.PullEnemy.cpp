@@ -17,7 +17,13 @@
 #include <cstdlib>
 #include <memory>
 namespace {
-engine::Vector3 GetStablePullEnemyScale(engine::Object3d* enemy) {
+engine::Vector3 GetWhipPullAnchor(engine::Object3D* enemy) {
+    if (const auto* giant = dynamic_cast<EnemyGiantSlime*>(enemy)) return giant->GetHookAttachmentPosition();
+    if (enemy->GetModel()) return engine::Math::Transform(enemy->GetModel()->GetCenter(), enemy->GetWorldMatrix());
+    return enemy->GetWorldPosition();
+}
+
+engine::Vector3 GetStablePullEnemyScale(engine::Object3D* enemy) {
     // 引き伸ばし中の一時的な縦横比ではなく、体積を保つ基準尺度で捕獲演出を始める。
     if (!enemy) {
         return {1.0f, 1.0f, 1.0f};
@@ -66,20 +72,21 @@ void PlayerStatePullEnemy::Enter(Player* player) {
         enemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
     }
 
-    phase_ = Phase::kShootHook;
+    phase_ = Phase::ShootHook;
     hookTipPos_ = alreadyHit_ && targetEnemy_ ? targetEnemy_->GetWorldPosition() : player->GetWorldPosition();
     heavyPullBasePlayerPos_ = hookTipPos_;
     hasHeavyPullBasePlayerPos_ = false;
     normalPullBasePlayerPos_ = hookTipPos_;
     hasNormalPullBasePlayerPos_ = false;
 
-    engine::Object3d* marker = player->GetHookMarker();
+    engine::Object3D* marker = player->GetHookMarker();
 
-    if (marker) {
+    if (marker && !whipVisual_) {
         marker->SetIsVisible(true);
         marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
         marker->SetTranslate(hookTipPos_);
     }
+    if (whipVisual_) whipVisual_->UpdatePull(player, GetWhipPullAnchor(targetEnemy_), 0.0f);
 }
 
 void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
@@ -100,23 +107,23 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
     engine::Vector3 playerPos = player->GetWorldPosition();
 
-    if (phase_ == Phase::kShootHook) {
+    if (phase_ == Phase::ShootHook) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
         player->SetSlimeAnimationDirection(targetEnemy_->GetWorldPosition() - playerPos);
 
         // フックの先端を対象へ進め、到達した時点で引き寄せ可否を判定します。
         engine::Vector3 enemyPos = targetEnemy_->GetTransform()->translate;
         engine::Vector3 toTarget = enemyPos - hookTipPos_;
-        float dist = engine::Math::Length(toTarget);
+        float distance = engine::Math::Length(toTarget);
 
-        if (alreadyHit_ || dist < 5.0f) {
+        if (alreadyHit_ || distance < 5.0f) {
             alreadyHit_ = false;
             hookTipPos_ = enemyPos;
 
             if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_); enemyBase && enemyBase->IsPullImmune()) {
                 HitEffectDirector::SpawnPullBindHit(enemyPos);
 
-                if (engine::Object3d* marker = player->GetHookMarker()) {
+                if (engine::Object3D* marker = player->GetHookMarker()) {
                     marker->SetIsVisible(false);
                 }
 
@@ -125,7 +132,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 return;
             }
 
-            phase_ = Phase::kPullEnemy;
+            phase_ = Phase::PullEnemy;
             enemyStartPos_ = enemyPos;
             HitEffectDirector::SpawnPullBindHit(enemyPos);
             pullTimer_ = -0.12f; // ヒットストップ：命中後0.12秒間タメる
@@ -157,9 +164,9 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             hookTipPos_ = hookTipPos_ + dir * (150.0f * deltaTime);
         }
 
-        engine::Object3d* marker = player->GetHookMarker();
+        engine::Object3D* marker = player->GetHookMarker();
 
-        if (marker) {
+        if (marker && !whipVisual_) {
             engine::Vector3 diff = hookTipPos_ - playerPos;
             marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
                                                  playerPos.z + diff.z * 0.5f});
@@ -174,7 +181,8 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
         }
-    } else if (phase_ == Phase::kPullEnemy) {
+        if (whipVisual_) whipVisual_->UpdatePull(player, GetWhipPullAnchor(targetEnemy_), deltaTime);
+    } else if (phase_ == Phase::PullEnemy) {
         // 命中後は短いヒットストップを挟み、敵をプレイヤーの手元へ移動します。
         pullTimer_ += deltaTime;
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::PullEnemy);
@@ -205,22 +213,23 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 targetEnemy_->UpdateWorldMatrix();
             }
 
-            engine::Object3d* marker = player->GetHookMarker();
+            engine::Object3D* marker = player->GetHookMarker();
 
-            if (marker) {
+            if (marker && !whipVisual_) {
                 engine::Vector3 diff = tetherEnemyPos - playerPos;
                 marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
                                                      playerPos.z + diff.z * 0.5f});
 
                 // ヒットストップ中は「ピンッ」と極限まで細く張り詰める
-                float len = engine::Math::Length(diff);
-                marker->SetScale({0.13f, 0.10f, len});
+                float length = engine::Math::Length(diff);
+                marker->SetScale({0.13f, 0.10f, length});
                 marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
 
                 marker->UpdateLocalMatrix();
                 marker->UpdateWorldMatrix();
             }
 
+            if (whipVisual_) whipVisual_->UpdatePull(player, GetWhipPullAnchor(targetEnemy_), deltaTime);
             return; // これ以上は更新しない（時を止める）
         }
 
@@ -252,18 +261,20 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             engine::Vector3 visualPlayerPos = heavyPullBasePlayerPos_ - pullDir * braceAmount;
             visualPlayerPos.y += std::sin(pullTimer_ * 52.0f) * 0.035f * (1.0f - progress * 0.25f);
             player->SetTranslate(visualPlayerPos);
+            player->UpdateLocalMatrix();
+            player->UpdateWorldMatrix();
             playerPos = visualPlayerPos;
 
             player->SetSlimePullDirection(hookAttachmentPos - playerPos);
             player->SetSlimePullProgress(progress);
 
-            engine::Object3d* marker = player->GetHookMarker();
+            engine::Object3D* marker = player->GetHookMarker();
 
-            if (marker) {
+            if (marker && !whipVisual_) {
                 engine::Vector3 diff = hookAttachmentPos - playerPos;
-                float len = engine::Math::Length(diff);
-                if (len < 0.01f)
-                    len = 0.01f;
+                float length = engine::Math::Length(diff);
+                if (length < 0.01f)
+                    length = 0.01f;
 
                 marker->SetTranslate(playerPos + diff * 0.5f);
                 marker->SetEulerAngles({std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
@@ -275,12 +286,13 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 float thickness = engine::Math::Lerp(0.30f, 0.12f, progress);
                 marker->SetScale({(std::max)(0.06f, thickness + tension),
                                                  (std::max)(0.06f, thickness - tension * 0.55f),
-                                                 len * (1.0f + std::abs(pulse) * 0.018f)});
+                                                 length * (1.0f + std::abs(pulse) * 0.018f)});
                 marker->SetColor({0.10f, 0.82f + progress * 0.06f, 1.0f, 1.0f});
                 marker->UpdateLocalMatrix();
                 marker->UpdateWorldMatrix();
             }
 
+            if (whipVisual_) whipVisual_->UpdatePull(player, hookAttachmentPos, deltaTime);
             if (hasSplit) {
                 // 分裂成立時に踏ん張りのため動かしたPlayerを戻してから通常状態へ移る。
                 if (hasHeavyPullBasePlayerPos_) {
@@ -289,7 +301,8 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                     player->UpdateWorldMatrix();
                 }
 
-                player->TriggerSlimeImpulse({2.4f, 0.45f, 2.4f}, 0.24f);
+                if (whipVisual_) player->BeginWhipReturn(whipVisual_);
+                else player->TriggerSlimeImpulse({2.4f, 0.45f, 2.4f}, 0.24f);
                 player->ChangeState(std::make_unique<PlayerStateIdle>());
             }
 
@@ -367,7 +380,8 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                                                             0.2f, 0.4f, 0.6f, 0.05f);
             }
 
-            player->TriggerSlimeImpulse({2.2f, 0.4f, 2.2f}, 0.24f);
+            if (whipVisual_) player->BeginWhipReturn(whipVisual_);
+            else player->TriggerSlimeImpulse({2.2f, 0.4f, 2.2f}, 0.24f);
 
             if (hasNormalPullBasePlayerPos_) {
                 player->SetTranslate(normalPullBasePlayerPos_);
@@ -381,9 +395,9 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             return;
         }
 
-        engine::Object3d* marker = player->GetHookMarker();
+        engine::Object3D* marker = player->GetHookMarker();
 
-        if (marker) {
+        if (marker && !whipVisual_) {
             engine::Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
             engine::Vector3 diff = enemyCurrentPos - playerPos;
             marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
@@ -394,7 +408,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             marker->SetQuaternionMaster(false);
 
             // 手元に近づくにつれて太く戻る（イージングを利用）
-            float len = engine::Math::Length(diff);
+            float length = engine::Math::Length(diff);
             float thickness = engine::Math::Lerp(0.12f, 0.22f, easeT);
 
             // 引っ張る反動でブルンブルン震える（近づくと収まる）
@@ -402,11 +416,17 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             float tensionPulse = std::abs(std::sin(pullTimer_ * 44.0f)) * (1.0f - easeT) * 0.040f;
             marker->SetScale({(std::max)(0.09f, thickness + wobble + tensionPulse),
                                              (std::max)(0.09f, thickness - wobble * 0.55f),
-                                             len * (1.0f + tensionPulse * 0.35f)});
+                                             length * (1.0f + tensionPulse * 0.35f)});
             marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
 
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
+        }
+        // 回転するモデルの中心へ同フレームで追従し、足元の原点から先端が浮くのを防ぎます。
+        if (whipVisual_) {
+            targetEnemy_->UpdateLocalMatrix();
+            targetEnemy_->UpdateWorldMatrix();
+            whipVisual_->UpdatePull(player, GetWhipPullAnchor(targetEnemy_), deltaTime);
         }
     }
 }
@@ -421,6 +441,7 @@ void PlayerStatePullEnemy::Exit(Player* player) {
         return;
     }
 
+    if (whipVisual_) { whipVisual_->Finish(player); whipVisual_.reset(); }
     player->SetIsControlActive(true);
     {
         if (targetEnemy_ && player->GetCarriedEnemy() != targetEnemy_) {
@@ -457,9 +478,9 @@ void PlayerStatePullEnemy::Exit(Player* player) {
             player->UpdateWorldMatrix();
         }
 
-        engine::Object3d* marker = player->GetHookMarker();
+        engine::Object3D* marker = player->GetHookMarker();
 
-        if (marker) {
+        if (marker && !whipVisual_) {
             marker->SetIsVisible(false);
             marker->SetScale({1.0f, 1.0f, 1.0f});
             marker->SetEulerAngles({0.0f, 0.0f, 0.0f});

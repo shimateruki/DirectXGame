@@ -7,9 +7,9 @@
 #include <memory>
 #include <vector>
 
-/// <summary>
-/// シーン切り替え中に進捗、アニメーション、ヒントを表示する専用シーン。
-/// </summary>
+// 担当：シーン切替中の進捗・アニメーション・ヒントをSpriteで表示する。
+// 関連：BaseScene（共通契約）、SceneManager（進捗通知）、Sprite（表示）
+// 主な入口：Initialize / SetProgress / Update / Draw / Finalize
 class LoadingScene : public BaseScene {
 public:
     LoadingScene() = default;
@@ -19,6 +19,8 @@ public:
     /// <summary>ロード表示に使うSpriteと素材を準備する。</summary>
     void Initialize() override;
 
+    engine::RenderPreparation GetRenderPreparation() const override { return engine::RenderPreparation::SpritesOnly; }
+
     /// <summary>進捗表示とアニメーションを更新する。</summary>
     void Update(float deltaTime) override;
 
@@ -26,12 +28,11 @@ public:
     void Draw() override;
 
     /// <summary>ロード画面のUIを描画する。</summary>
-    void DrawUI() override;
+    void DrawUi() override;
 
     /// <summary>ロード画面で保持した描画資源を解放する。</summary>
     void Finalize() override;
 
-    engine::SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
 
     const std::vector<std::unique_ptr<engine::Sprite>>& GetSprites() const override { return sprites_; }
 
@@ -49,12 +50,14 @@ private:
     // ロード中のスライム・点滅ドット・進捗ゲージをそれぞれ更新する。
     void UpdateSlimeRunAnimation();
 
+    // ロード表示のドットの見た目を経過時間から更新する。
     void UpdateDotAnimation();
 
+    // 表示用の進捗率からゲージの位置・大きさ・演出を更新する。
     void UpdateProgressGauge();
 
 private:
-    std::unique_ptr<engine::SpriteCommon> spriteCommon_;
+
     std::vector<std::unique_ptr<engine::Sprite>> sprites_;
 
     // 以下のパーツ参照はsprites_が所有するSpriteを指す。Finalize後は利用しない。

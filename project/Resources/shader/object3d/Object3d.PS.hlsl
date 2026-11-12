@@ -1,4 +1,5 @@
 #include "Object3d.hlsli"
+#include "../common/CameraVisibility.hlsli"
 
 static const int kMaxPointLights = 100;
 static const int kMaxSpotLights = 100;
@@ -55,6 +56,9 @@ struct DirectionalLight
 struct Camera
 {
     float32_t3 worldPosition;
+    float visibilityPadding;
+    float4 visibilityCenterRadius;
+    float4 visibilityParameters;
 };
 
 struct PointLight
@@ -467,6 +471,9 @@ float3 BuildDashPanelColor(float2 uv, float3 textureBase, float3 normal, float s
 
 PixelShaderOutput main(VertexShaderOutput input)
 {
+    ApplyCameraVisibilityDither(CameraVisibilityMask(input.worldPosition, normalize(input.normal),
+        gCamera.worldPosition, gCamera.visibilityCenterRadius, gCamera.visibilityParameters), input.position.xy);
+
     PixelShaderOutput output;
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);

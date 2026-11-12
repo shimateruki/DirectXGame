@@ -12,9 +12,9 @@
 
 class WinApp;
 
-/// <summary>
-/// DirectX 12の初期化、描画先、コマンド実行、GPU同期を管理する。
-/// </summary>
+// 担当：DirectX 12のデバイス・描画先・コマンド実行・GPU同期を管理する。
+// 関連：Framework（初期化と寿命）、WinApp（ウィンドウ）、SrvManager（記述子）
+// 主な入口：Initialize / PreDraw / PostDraw / WaitForGpuIdle / Finalize
 class DirectXCommon {
 public:
     /// <summary>エンジン全体で共有するDirectX管理インスタンスを取得する。</summary>
@@ -40,20 +40,20 @@ public:
 
     ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
 
-    DXGI_FORMAT GetRTVFormat() const { return rtvFormat_; }
+    DXGI_FORMAT GetRtvFormat() const { return rtvFormat_; }
 
     size_t GetBackBufferCount() const { return backBufferCount_; }
 
     uint32_t GetFrameCount() const { return frameCount_; }
 
     // SRVの最大数。
-    static const uint32_t kMaxSRVCount = 512;
+    static const uint32_t kMaxSrvCount = 512;
 
     /// <summary>固定FPS用の基準時刻を初期化する。</summary>
-    void InitalaizeFixFPS();
+    void InitializeFixedFps();
 
     /// <summary>固定FPSの待機を行い、次フレームの基準時刻を更新する。</summary>
-    void UpdateFixFPS();
+    void UpdateFixedFps();
 
     /// <summary>HLSLファイルを指定プロファイルでコンパイルする。</summary>
     /// <param name="filePath">読み込むシェーダーファイル。</param>
@@ -104,13 +104,13 @@ public:
     /// <summary>
     /// 深度ステンシルビューのフォーマットを取得する。
     /// </summary>
-    DXGI_FORMAT GetDSVFormat() const;
+    DXGI_FORMAT GetDsvFormat() const;
 
     /// <summary>GPUの完了を待ち、コマンドリストを再利用可能な状態へ戻す。</summary>
-    void WaitForGPUAndReset();
+    void WaitForGpuAndReset();
 
     /// <summary>GPUに送信済みの作業が終わるまで待つ。</summary>
-    void WaitForGPUIdle();
+    void WaitForGpuIdle();
 
     ID3D12CommandAllocator* GetCommandAllocator() const { return commandAllocator_.Get(); }
 
@@ -128,6 +128,7 @@ public:
     // シーンをレンダーテクスチャへ描画する前に、RTV状態と描画先を準備する。
     void PreDrawRenderTexture();
 
+    // 描画テクスチャへの出力を終え、後続処理で参照できる状態へ戻す。
     void PostDrawRenderTexture();
 
     uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
@@ -221,10 +222,10 @@ private:
     void CreateSwapChain();
 
     // スワップチェーンの各バックバッファに対応するRTVを作成する。
-    void CreateRTV();
+    void CreateRtv();
 
     // 深度ステンシル用のヒープと深度バッファを作成し、DSVへ登録する。
-    void CreateDSV();
+    void CreateDsv();
 
     // CPUがGPUの処理完了を待てるよう、フェンスと通知イベントを対で作る。
     void CreateFence();
@@ -235,43 +236,43 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(int32_t width, int32_t height);
 
 private:
-    WinApp* winApp_ = nullptr;
+    WinApp* winApp_ = nullptr; // 描画先ウィンドウ。借用参照。
 
     // 固定FPS制御用の基準時刻。
     std::chrono::steady_clock::time_point reference_;
 
     // DirectXの主要リソース。
     Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr; // GPU資源を作成するD3D12デバイス。
 
-    Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue_ = nullptr; // 描画コマンドをGPUへ送るキュー。
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator_ = nullptr; // 描画コマンドの記憶領域。
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList_ = nullptr; // 現在記録する描画コマンド列。
 
-    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_ = nullptr;
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_ = nullptr; // 画面表示用のバッファ切替。
     Microsoft::WRL::ComPtr<ID3D12Resource> swapChainResources_[2] = {};
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_ = nullptr;
-    uint32_t depthSrvHandle_ = 0;
+    uint32_t depthSrvHandle_ = 0; // 深度をシェーダー参照するSRV番号。
 
-    bool pendingResize_ = false;
-    int32_t pendingResizeWidth_ = 0;
-    int32_t pendingResizeHeight_ = 0;
+    bool pendingResize_ = false; // 次の安全なタイミングでリサイズするか。
+    int32_t pendingResizeWidth_ = 0; // 予約したクライアント幅（ピクセル）。
+    int32_t pendingResizeHeight_ = 0; // 予約したクライアント高さ（ピクセル）。
 
     // GPU同期用。
     Microsoft::WRL::ComPtr<ID3D12Fence> fence_ = nullptr;
-    uint64_t fenceValue_ = 0;
-    HANDLE fenceEvent_ = nullptr;
+    uint64_t fenceValue_ = 0; // 次のGPU同期で待つフェンス値。
+    HANDLE fenceEvent_ = nullptr; // GPU処理の完了待機用イベント。
 
     // 描画領域。
     D3D12_VIEWPORT viewport_{};
     D3D12_RECT scissorRect_{};
-    bool cameraPreviewRendering_ = false;
+    bool cameraPreviewRendering_ = false; // カメラプレビュー用の描画経路か。
 
     DXGI_FORMAT rtvFormat_ = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    UINT backBufferIndex_ = 0;
+    UINT backBufferIndex_ = 0; // 現在描画するバックバッファの番号。
     const size_t backBufferCount_ = 2;
 
     // シェーダーコンパイル用。
@@ -282,28 +283,28 @@ private:
     // GameView用レンダーテクスチャ。
     Microsoft::WRL::ComPtr<ID3D12Resource> renderTexture_;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtRtvHeap_;
-    uint32_t renderTextureSrvHandle_ = 0;
+    uint32_t renderTextureSrvHandle_ = 0; // シーン描画テクスチャのSRV番号。
     float clearColor_[4] = { 0.1f, 0.25f, 0.5f, 1.0f };
     mutable std::mutex clearColorMutex_;
 
     // シャドウマップ。
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowMapResource_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;
-    uint32_t shadowMapSrvHandle_ = 0;
-    int shadowMapResolution_ = 2048;
+    uint32_t shadowMapSrvHandle_ = 0; // 影マップのSRV番号。
+    int shadowMapResolution_ = 2048; // 影マップ一辺の解像度（ピクセル）。
 
     // GPU計測。
     static const uint32_t kMaxGpuQueries = 128;
     Microsoft::WRL::ComPtr<ID3D12QueryHeap> queryHeap_;
     Microsoft::WRL::ComPtr<ID3D12Resource> queryResultBuffer_;
-    uint64_t gpuFrequency_ = 0;
-    float gpuDrawTimeMs_ = 0.0f;
-    std::map<std::string, uint32_t> gpuProfileMap_;
-    uint32_t nextQueryIndex_ = 0;
+    uint64_t gpuFrequency_ = 0; // GPUタイムスタンプの毎秒カウント数。
+    float gpuDrawTimeMs_ = 0.0f; // GPU描画時間（ミリ秒）。
+    std::map<std::string, uint32_t> gpuProfileMap_; // 計測名からタイムスタンプ枠への対応。
+    uint32_t nextQueryIndex_ = 0; // 次に使うタイムスタンプ枠。
 
     bool useVSync_ = true;
-    Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_;
-    uint32_t grabSrvHandle_ = 0;
-    uint32_t frameCount_ = 0;
+    Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_; // 背景参照用にコピーする画面色。
+    uint32_t grabSrvHandle_ = 0; // 背景コピーのSRV番号。
+    uint32_t frameCount_ = 0; // PreDrawを呼んだ回数。
     bool commandListOpen_ = false; // 作成・Resetで開始、Closeで終了する記録状態。
 };

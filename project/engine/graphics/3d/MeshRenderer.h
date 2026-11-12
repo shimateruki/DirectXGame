@@ -1,6 +1,6 @@
 #pragma once
 #include "Model.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "Transform.h"
 #include "engine/utility/math/Math.h"
 #include <array>
@@ -9,20 +9,24 @@
 #include <vector>
 #include <wrl.h>
 
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 class Camera;
 
-/// <summary>Object3dのモデル描画、マテリアル、LOD、特殊マテリアル描画を担当する。</summary>
+// 担当：モデルの材質・見た目変形を管理し、通常・影・特殊材質を描画する。
+// 関連：Object3D（所有）、Model（メッシュ）、Object3DCommon（共通描画状態）、Camera
+// 主な入口：Initialize / Update / Draw / DrawSpecialMaterial / SetModel
 class MeshRenderer {
 public:
     /// <summary>モデル描画時にGPUへ渡す座標変換行列。</summary>
+    // 関連：MeshRenderer（この型を使う機能の本体）
     struct TransformationMatrix {
-        engine::Matrix4x4 WVP;
+        engine::Matrix4x4 wvp;
         engine::Matrix4x4 world;
-        engine::Matrix4x4 WorldInverseTranspose;
+        engine::Matrix4x4 worldInverseTranspose;
     };
 
     /// <summary>GPUへ渡す平行光源の色、向き、強度。</summary>
+    // 関連：MeshRenderer（この型を使う機能の本体）
     struct DirectionalLight {
         engine::Vector4 color;
         engine::Vector3 direction;
@@ -30,11 +34,16 @@ public:
     };
 
     /// <summary>GPUへ渡すカメラのワールド位置。</summary>
-    struct CameraForGPU {
+    // 関連：MeshRenderer（この型を使う機能の本体）
+    struct CameraForGpu {
         engine::Vector3 worldPosition;
+        float visibilityPadding = 0;
+        engine::Vector4 visibilityCenterRadius{};
+        engine::Vector4 visibilityParameters{};
     };
 
     /// <summary>色、PBR、ポータル演出を含むGPUマテリアル定数。</summary>
+    // 関連：MeshRenderer（この型を使う機能の本体）
     struct MaterialData {
         engine::Vector4 color;
         int32_t enableLighting;
@@ -65,7 +74,8 @@ public:
         engine::Vector4 portalClipColor;
     };
 
-    /// <summary>演出前の材質定数・入力色・ブレンド方式を保持する。テクスチャの差し替えは含まない。</summary>
+    // 担当：演出前の材質定数・入力色・ブレンド方式を退避する。
+    // 関連：MeshRenderer（取得・復元）。テクスチャ差し替えは退避対象に含まない。
     class MaterialState {
     public:
         MaterialState() = default;
@@ -75,11 +85,12 @@ public:
         friend class MeshRenderer;
         MaterialData parameters_{};
         engine::Vector4 authoringColor_{1, 1, 1, 1};
-        BlendMode blendMode_ = BlendMode::kNone;
+        BlendMode blendMode_ = BlendMode::None;
         bool valid_ = false;
     };
 
     /// <summary>ポータル・形成・消滅で使うクリップ面の設定。</summary>
+    // 関連：MeshRenderer（この型を使う機能の本体）
     struct PortalClipSettings {
         bool enabled = false;
         float progress = 0.0f;
@@ -91,6 +102,7 @@ public:
     };
 
     /// <summary>GPUへ渡す点光源の位置、色、減衰パラメータ。</summary>
+    // 関連：MeshRenderer（この型を使う機能の本体）
     struct PointLight {
         engine::Vector4 color;
         engine::Vector3 position;
@@ -101,6 +113,7 @@ public:
     };
 
     /// <summary>GPUへ渡すスポットライトの位置、方向、照射角と減衰。</summary>
+    // 関連：MeshRenderer（この型を使う機能の本体）
     struct SpotLight {
         engine::Vector4 color;
         engine::Vector3 position;
@@ -114,6 +127,7 @@ public:
     };
 
     /// <summary>ローカルフォグの密度、光散乱、カメラ逆行列などのGPU定数。</summary>
+    // 関連：MeshRenderer（この型を使う機能の本体）
     struct LocalFogData {
         engine::Vector4 fogColor = { 0.2f, 0.8f, 0.5f, 1.0f };
         engine::Vector3 cameraPos;
@@ -133,7 +147,8 @@ public:
     };
 
     /// <summary>水面と特殊マテリアルで共用する時間、変形、照明パラメータ。</summary>
-    struct WaterParamForGPU {
+    // 関連：MeshRenderer（この型を使う機能の本体）
+    struct WaterParamForGpu {
         float time;
         float waveSpeed;
         float waveHeight;
@@ -167,32 +182,33 @@ public:
         // 描画の切り分け専用。マテリアルやシーンには保存しません。
         float waterDebugView = 0.0f;
         float waterDebugPadding[3] = {};
-    };
-
-    /// <summary>カメラ距離で切り替えるLODの一段階。</summary>
-    struct LodLevel {
-        int level = 0;
-        std::string modelName;
-        float distance = 0.0f;
-        Model* model = nullptr;
+        engine::Vector4 visibilityCenterRadius{};
+        engine::Vector4 visibilityParameters{};
+        engine::Vector4 foregroundBarrierCenter{};
+        engine::Vector4 foregroundBarrierParameters{};
     };
 
 public:
-    /// <summary>描画対象のTransformを参照してレンダラーを作る。</summary>
     MeshRenderer(Transform* transform);
 
     ~MeshRenderer() = default;
 
     /// <summary>描画用GPUバッファと既定のマテリアルを初期化する。</summary>
-    void Initialize(engine::Object3dCommon* common);
+    void Initialize(engine::Object3DCommon* common);
+    // 所有Objectと寿命を共有する非所有参照。ゲームの材質値には保存しない。
+    void SetVisibilityOwner(engine::Object3D* owner) { visibilityOwner_ = owner; }
+    // 指定カメラの視界確保設定を描画用定数へ反映する。
+    void UpdateCameraVisibility(Camera* camera);
+    // 実画面の深度を使う追加描画。材質やプレビューの定数には書き込まない。
+    void DrawVisibilitySilhouette(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
-    /// <summary>Transform、LOD、マテリアルの描画状態を更新する。</summary>
+    /// <summary>Transformとマテリアルの描画状態を更新する。</summary>
     void Update();
 
     // 水の時間は描画回数ではなく、シーンの経過秒数で進めます。
     void AdvanceWaterAnimation(float deltaTime);
 
-    /// <summary>カメラに依存するLODと描画定数だけを更新する。演出時間は進めない。</summary>
+    /// <summary>カメラに依存する描画定数だけを更新する。演出時間は進めない。</summary>
     void RefreshCameraDependentData();
 
     /// <summary>現在のモデルとマテリアルで通常の3Dメッシュを描画する。</summary>
@@ -207,7 +223,7 @@ public:
     /// <summary>現在の材質番号に対応する特殊描画を、通常カメラの定数で実行する。</summary>
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
-    // モデルとLOD設定。
+    // モデル設定。
     /// <summary>既存のModelを描画対象に設定する。</summary>
     void SetModel(Model* model);
 
@@ -216,6 +232,11 @@ public:
 
     /// <summary>現在の描画モデルを返す。</summary>
     Model* GetModel() const { return model_; }
+
+    // 元モデル・材質・コライダーを維持して、描画と影だけを一時的な形状に差し替えます。
+    // 所有者は解除までModelを保持し、別モデルへの変更時は自動解除します。
+    void SetVisualModelOverride(Model* model) { visualModelOverride_ = model; }
+    Model* GetVisualModelOverride() const { return visualModelOverride_; }
 
     /// <summary>現在の描画モデル名を返す。</summary>
     const std::string& GetModelName() const { return modelName_; }
@@ -228,39 +249,6 @@ public:
 
     /// <summary>特定メッシュだけを描画する設定か返す。</summary>
     bool IsMeshDrawFiltered() const { return meshDrawIndex_ >= 0; }
-
-    /// <summary>カメラ距離に応じたLOD切り替えを有効化する。</summary>
-    void SetLodEnabled(bool enabled) { lodEnabled_ = enabled; }
-
-    /// <summary>LOD切り替えが有効か返す。</summary>
-    bool IsLodEnabled() const { return lodEnabled_; }
-
-    /// <summary>LOD段階が登録されているか返す。</summary>
-    bool HasLodLevels() const { return !lodLevels_.empty(); }
-
-    /// <summary>登録済みLOD段階を参照する。</summary>
-    const std::vector<LodLevel>& GetLodLevels() const { return lodLevels_; }
-
-    /// <summary>カメラ距離ごとのLODモデル一覧を設定する。</summary>
-    void SetLodLevels(const std::vector<LodLevel>& levels);
-
-    /// <summary>LOD段階の登録をすべて解除する。</summary>
-    void ClearLodLevels();
-
-    /// <summary>指定段階への切替距離を変更する。</summary>
-    bool SetLodLevelDistance(int level, float distance);
-
-    /// <summary>モデル名に対応するLOD定義ファイルを読み込む。</summary>
-    bool LoadLodManifestForModel(const std::string& modelName);
-
-    /// <summary>現在選択されているLOD段階を返す。</summary>
-    int GetActiveLodLevel() const;
-
-    /// <summary>現在描画するLODモデル名を返す。</summary>
-    std::string GetActiveModelName() const;
-
-    /// <summary>LOD判定で使うカメラとオブジェクトの距離を返す。</summary>
-    float GetCameraDistanceToObject() const;
 
     // マテリアル設定。
     /// <summary>描画マテリアルの色を設定する。</summary>
@@ -409,7 +397,7 @@ public:
     /// <summary>自己発光の強度を返す。</summary>
     float GetEmissive() const;
 
-    void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
+    void SetIsUiPreview(bool isPreview) { isUiPreview_ = isPreview; }
 
     // エディターの材質撮影だけで使う平行光源。所有権は呼び出し側にある。
     void SetPreviewDirectionalLightResource(ID3D12Resource* resource) { previewDirectionalLightResource_ = resource; }
@@ -490,9 +478,15 @@ public:
     /// <summary>風の球の特殊マテリアルで描画する。</summary>
     void DrawWindOrb(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
-    WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
+    WaterParamForGpu* GetWaterParamData() const { return waterParamData_; }
 
 private:
+    engine::Object3D* visibilityOwner_ = nullptr;
+    float visibilityAmount_ = 0.0f;
+    Microsoft::WRL::ComPtr<ID3D12Resource> silhouetteResource_;
+    WaterParamForGpu* silhouetteData_ = nullptr;
+    uint64_t visibilitySerial_ = 0;
+
     // 描画に必要な行列、マテリアル、カメラのGPUバッファがそろっているか確認する。
     bool HasRequiredBuffers() const;
 
@@ -510,11 +504,12 @@ private:
     // 半透明の氷も水系ルートの定数とテクスチャ配置を共用する。
     void DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
+    // 指定の変換バッファ・深度・画面色で炎を描画する。
     void DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     // 指定パイプラインで特殊マテリアルを描画する。useProxyModelは代理形状の使用、
     // bakedTextureModeは使用するベイク済みテクスチャ組（0:既定、1:ゲート）を選ぶ。
-    void DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
+    void DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3DCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0, ID3D12Resource* effectResource = nullptr);
 
     // ワールド行列が前回と同じなら法線変換行列のキャッシュを返す。
     const engine::Matrix4x4& GetCachedWorldInverseTranspose(const engine::Matrix4x4& worldMatrix);
@@ -525,6 +520,7 @@ private:
     // 平面型の炎で使う代理メッシュを必要時に生成する。
     void InitializeFireProxyModel();
 
+    // 立体炎の描画範囲に使う代理モデルを準備する。
     void InitializeVolumetricFireProxyModel();
 
     // ポータルを描くための代理形状を元モデルとは別に保持する。
@@ -534,16 +530,16 @@ private:
     void InitializeGateBarrierCylinderProxyModel();
 
     // 通常描画用WVPから共通の特殊マテリアル描画へ委譲する。
-    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
+    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3DCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0, ID3D12Resource* effectResource = nullptr);
 
-    // 現在のLODから実際に描画するモデルを選ぶ。
+    // 表示用の差し替えがあれば優先し、実際に描画するモデルを選ぶ。
     Model* ResolveDrawModel() const;
 
     // マテリアルへ渡すUV変換行列を更新する。
     void UpdateUvTransform();
 
     // 描画基盤とObject本体の姿勢は借用する。以下は描画だけに加える見た目補正。
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
     Transform* transform_ = nullptr;
     engine::Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
     engine::Vector3 visualRotation_ = engine::Vector3::ZERO;
@@ -554,16 +550,14 @@ private:
     // タイムラインが所有する追加姿勢への弱参照。再生終了後は寿命を延ばさない。
     std::weak_ptr<engine::Matrix4x4> timelineVisualPose_;
 
-    // ModelはModelManagerから借用し、名前・メッシュ番号・LOD選択を別に保持する。
+    // ModelはModelManagerから借用し、名前とメッシュ番号も保持する。
     Model* model_ = nullptr;
+    Model* visualModelOverride_ = nullptr;
     std::string modelName_;
     int meshDrawIndex_ = -1;
-    bool lodEnabled_ = true;
-    std::vector<LodLevel> lodLevels_;
-    mutable int activeLodLevel_ = 0;
 
     // 通常材質を描くときの合成方式。
-    BlendMode blendMode_ = BlendMode::kNormal;
+    BlendMode blendMode_ = BlendMode::Normal;
     std::string shaderMaterialId_;
 
     // ワールド/View/Projection行列のGPUバッファとマップ済み書込先。
@@ -580,16 +574,16 @@ private:
     DirectionalLight* directionalLightData_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
-    CameraForGPU* cameraData_ = nullptr;
+    CameraForGpu* cameraData_ = nullptr;
 
     // Camera Preview用の一時描画定数です。右パネルPreviewと演出用Previewを分けて、GPU実行時の上書きを防ぎます。
     static constexpr int kPreviewBufferCount = 2;
     std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPreviewBufferCount> previewWvpResources_;
     std::array<TransformationMatrix*, kPreviewBufferCount> previewWvpData_{};
     std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPreviewBufferCount> previewCameraResources_;
-    std::array<CameraForGPU*, kPreviewBufferCount> previewCameraData_{};
+    std::array<CameraForGpu*, kPreviewBufferCount> previewCameraData_{};
     std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPreviewBufferCount> previewWaterResources_;
-    std::array<WaterParamForGPU*, kPreviewBufferCount> previewWaterData_{};
+    std::array<WaterParamForGpu*, kPreviewBufferCount> previewWaterData_{};
 
     // マテリアル定数バッファと編集値の色。
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
@@ -610,7 +604,7 @@ private:
 
     // 水面の描画パラメータと、特殊材質用の代理形状をMeshRendererが所有する。
     Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
-    WaterParamForGPU* waterParamData_ = nullptr;
+    WaterParamForGpu* waterParamData_ = nullptr;
     std::unique_ptr<Model> waterProxyModel_;
     std::unique_ptr<Model> fireProxyModel_;
     std::unique_ptr<Model> volumetricFireProxyModel_;
@@ -627,6 +621,6 @@ private:
     float time_ = 0.0f;
 
     // UIプレビュー時だけ差し替える描画設定と外部ライトへの非所有参照。
-    bool isUIPreview_ = false;
+    bool isUiPreview_ = false;
     ID3D12Resource* previewDirectionalLightResource_ = nullptr;
 };

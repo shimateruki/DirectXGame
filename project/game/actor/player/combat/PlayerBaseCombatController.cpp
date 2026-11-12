@@ -5,10 +5,10 @@
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshEffectManager.h"
 #include "game/actor/player/Player.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -34,9 +34,9 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
-engine::Object3d* FindEnemyRoot(engine::Object3d* object) {
+engine::Object3D* FindEnemyRoot(engine::Object3D* object) {
     // 子Colliderで当たった場合も敵本体へまとめ、多重被弾を避ける。
-    for (engine::Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3D* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -53,14 +53,14 @@ void SpawnEffect(const char* path, const engine::Vector3& position, const engine
 }
 
 void EmitDirectedPreset(const char* preset, const engine::Vector3& position, const engine::Vector3& direction, float scale = 1.0f) {
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized()) {
         particles->EmitDirected(preset, position, direction, scale);
     }
 }
 
-void DispatchDamage(Player& player, engine::Object3d* target, float damage, const engine::Vector3& knockback) {
+void DispatchDamage(Player& player, engine::Object3D* target, float damage, const engine::Vector3& knockback) {
     // 直接HPを書き換えず、共通のDamageEvent経由で耐性や被弾処理へ渡す。
     DamageEvent event;
     event.target = target;
@@ -265,7 +265,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
             player.TriggerSlimeImpulse({1.55f, 0.68f, 1.55f}, 0.14f);
         } else if (player.IsGrounded() || timer_ <= 0.0f) {
             DamagePress(player, true);
-            VFXSequencer::PlayOneShot("player_base_press_land_cue",
+            VfxSequencer::PlayOneShot("player_base_press_land_cue",
                                       player.GetWorldPosition() + engine::Vector3{0.0f, 0.06f, 0.0f});
             phase_ = Phase::PressRecovery;
             timer_ = kPressRecoveryDuration;
@@ -290,14 +290,14 @@ void PlayerBaseCombatController::DamageBash(Player& player) {
     const engine::Vector3 center = player.GetWorldPosition() + direction_ * 1.0f + engine::Vector3{0.0f, 0.62f, 0.0f};
 
     for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, 1.38f, filter)) {
-        engine::Object3d* target = FindEnemyRoot(hit.object);
+        engine::Object3D* target = FindEnemyRoot(hit.object);
 
         if (!target || !hitTargets_.insert(target).second) {
             continue;
         }
 
         DispatchDamage(player, target, 9.0f, {direction_.x * 10.0f, 4.5f, direction_.z * 10.0f});
-        VFXSequencer::PlayOneShot("player_base_bash_hit_cue", target->GetWorldPosition() + engine::Vector3{0.0f, 0.55f, 0.0f});
+        VfxSequencer::PlayOneShot("player_base_bash_hit_cue", target->GetWorldPosition() + engine::Vector3{0.0f, 0.55f, 0.0f});
     }
 }
 
@@ -310,7 +310,7 @@ void PlayerBaseCombatController::DamagePress(Player& player, bool landingImpact)
     const float radius = landingImpact ? 2.35f : 1.48f;
 
     for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, radius, filter)) {
-        engine::Object3d* target = FindEnemyRoot(hit.object);
+        engine::Object3D* target = FindEnemyRoot(hit.object);
 
         if (!target || !hitTargets_.insert(target).second) {
             continue;
@@ -319,7 +319,7 @@ void PlayerBaseCombatController::DamagePress(Player& player, bool landingImpact)
         engine::Vector3 knockback = NormalizePlanar(target->GetWorldPosition() - center);
         DispatchDamage(player, target, landingImpact ? 8.0f : 12.0f,
                        {knockback.x * 7.5f, landingImpact ? 7.0f : 10.0f, knockback.z * 7.5f});
-        VFXSequencer::PlayOneShot("player_base_press_enemy_hit_cue",
+        VfxSequencer::PlayOneShot("player_base_press_enemy_hit_cue",
                                   target->GetWorldPosition() + engine::Vector3{0.0f, 0.45f, 0.0f},
                                   landingImpact ? engine::Vector3{1.15f, 1.15f, 1.15f} : engine::Vector3{0.86f, 0.86f, 0.86f});
         pressHitEnemy_ = !landingImpact;

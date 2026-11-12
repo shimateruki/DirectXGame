@@ -1,4 +1,5 @@
 #include "../common/Water.hlsli"
+#include "../common/CameraVisibility.hlsli"
 
 Texture2D<float> depthTex : register(t0);
 Texture2D<float4> grabTex : register(t1);
@@ -122,6 +123,7 @@ float4 main(VSOutput input) : SV_TARGET
 
     float2 p = input.localPos.xy;
 
+    bool warpRim = mode == -1.0f;
     if (mode > 2.5f)
     {
         // Fade a barrier only while the camera is crossing its surface.
@@ -150,6 +152,25 @@ float4 main(VSOutput input) : SV_TARGET
         float revealTop = -1.04f + activation * 2.12f;
         float revealMask = 1.0f - smoothstep(revealTop - 0.045f, revealTop + 0.075f, p.y);
         revealMask *= outerMask;
+
+        // Fade the camera-side half of arena boundaries above a persistent ground rim.
+        // Use an authored floor height so jumping never moves the visible boundary.
+        float arenaOpacity = 1.0f;
+        if (foregroundBarrierCenter.w > 0.0001f)
+        {
+            float2 arenaToEye = cameraWorldPosition.xz - foregroundBarrierCenter.xz;
+            float arenaEyeLength = max(length(arenaToEye), 0.001f);
+            float frontDistance = dot(input.worldPos.xz - foregroundBarrierCenter.xz, arenaToEye / arenaEyeLength);
+            float feather = max(foregroundBarrierParameters.w, 0.01f);
+            float cameraSide = smoothstep(-feather, feather, frontDistance);
+            float aboveRim = smoothstep(foregroundBarrierParameters.y,
+                foregroundBarrierParameters.y + 0.65f, input.worldPos.y - foregroundBarrierParameters.x);
+            float arenaClear = saturate(foregroundBarrierCenter.w) * cameraSide * aboveRim;
+            arenaOpacity = lerp(1.0f, saturate(foregroundBarrierParameters.z), arenaClear);
+        }
+        float subjectOpacity = 1.0f - CameraVisibilityMask(input.worldPos, normalize(input.normal),
+            cameraWorldPosition, visibilityCenterRadius, visibilityParameters);
+        float viewOpacity = arenaOpacity * subjectOpacity;
 
         float2 barrierUV = p * float2(mode > 3.5f ? 20.0f : 8.0f + detail * 0.11f,
             4.2f + detail * 0.045f);
@@ -184,7 +205,7 @@ float4 main(VSOutput input) : SV_TARGET
         float2 distortDirection = float2(
             sin(p.y * 12.0f + t * 1.7f),
             cos(p.x * 9.0f - t * 1.3f));
-        float distortStrength = (0.0018f + energy * 0.0065f) * activation;
+        float distortStrength = (0.0018f + energy * 0.0065f) * activation * viewOpacity;
         float3 scene = grabTex.SampleLevel(smp, saturate(screenUV + distortDirection * distortStrength), 0).rgb;
 
         float3 deepColor = float3(0.015f, 0.055f, 0.145f);
@@ -198,16 +219,53 @@ float4 main(VSOutput input) : SV_TARGET
 
         float veil = 0.15f + diamondLattice * 0.08f + scanBand * 0.055f;
         float alpha = saturate((veil + energy * 0.48f + border * 0.26f) * revealMask * color.a);
-        alpha *= cameraSurfaceFade;
+        alpha *= cameraSurfaceFade * viewOpacity;
         float3 refractedScene = scene * lerp(0.88f, 0.30f, alpha);
         float3 finalBarrierColor = lerp(refractedScene, barrierColor * (0.70f + intensity * 0.38f), alpha);
-        finalBarrierColor += barrierColor * energy * (0.22f + intensity * 0.16f) * revealMask;
+        finalBarrierColor += barrierColor * energy * (0.22f + intensity * 0.16f) * revealMask * viewOpacity;
 
         if (alpha < 0.008f)
         {
             discard;
         }
+
         return float4(finalBarrierColor, alpha);
+    }
+
+    // Boss entrance modes are isolated from select, barrier and player warp materials.
+    if (mode == -3.0f)
+    {
+        float2 q = input.localPos.xy;
+        float y = q.y * 0.5f + 0.5f;
+        float n = Fbm2(float2(q.x * 4.0f, y * 3.0f - time * 0.7f));
+        float taper = smoothstep(0.02f, 0.20f, y) * (1.0f - smoothstep(0.68f, 1.0f, y));
+        float envelope = 0.54f + 0.13f * sin(y * 4.0f + time * 1.3f) + (n - 0.5f) * 0.20f;
+        float side = abs(q.x);
+        float plume = exp(-pow((side - envelope) / 0.18f, 2.0f)) * taper;
+        float stream = pow(saturate(0.5f + 0.5f * sin(y * 18.0f - time * 5.0f + n * 6.0f + side * 8.0f)), 5.0f);
+        float filament = exp(-pow((side - envelope) / 0.035f, 2.0f)) * stream * taper;
+        float edgeFade = 1.0f - smoothstep(0.82f, 0.98f, side);
+        float alpha = saturate((plume * 0.62f + filament * 0.55f) * color.a) * edgeFade;
+        float3 aura = lerp(float3(0.10f,0.018f,0.25f), color.rgb * 1.9f,
+            saturate(n * 0.4f + filament));
+        return float4(aura, alpha);
+    }
+    if (mode == -4.0f)
+    {
+        float radius = length(input.localPos.xy);
+        float a = atan2(input.localPos.y, input.localPos.x);
+        float n = Noise2D(float2(a * 5.0f, time * 2.0f));
+        float rim = 1.0f - smoothstep(0.015f, 0.055f, abs(radius - 0.72f - n * 0.025f));
+        float wake = exp(-pow((radius - 0.65f) / 0.10f, 2.0f)) * 0.18f;
+        return float4(color.rgb * (1.2f + rim), saturate((rim + wake) * color.a));
+    }
+    bool bossEntrance = mode == -2.0f;
+    float closeProgress = bossEntrance ? saturate(flowSpeedX) : 0.0f;
+    if (bossEntrance)
+    {
+        // Contract only near the end; dissolve the membrane before extinguishing the rim.
+        p /= lerp(1.0f, 0.35f, smoothstep(0.50f, 1.0f, closeProgress));
+        t += closeProgress * closeProgress * 4.0f;
     }
 
     // Circular portals: three readable ribbons, a quiet throat and a luminous rim.
@@ -223,6 +281,13 @@ float4 main(VSOutput input) : SV_TARGET
     float3 midColor = cleared ? float3(0.035f, 0.22f, 0.35f) : float3(0.32f, 0.13f, 0.075f);
     float3 ribbonColor = cleared ? float3(0.12f, 0.58f, 0.72f) : float3(0.90f, 0.43f, 0.095f);
     float3 hotColor = cleared ? float3(0.65f, 0.96f, 1.0f) : float3(1.0f, 0.85f, 0.46f);
+    if (bossEntrance)
+    {
+        deepColor = color.rgb * 0.035f;
+        midColor = color.rgb * 0.32f;
+        ribbonColor = color.rgb * 1.65f;
+        hotColor = lerp(color.rgb, float3(0.78f,0.82f,1.0f), 0.65f) * 1.3f;
+    }
     float depth = smoothstep(0.12f, 0.98f, r);
     float3 portalColor = lerp(deepColor, midColor, depth);
     float ribbon = 0.0f;
@@ -292,5 +357,30 @@ float4 main(VSOutput input) : SV_TARGET
     portalColor = lerp(dormant, portalColor, activation);
     // Standard alpha blending composites once; no precomposited scene color here.
     float alpha = mask * saturate(color.a) * lerp(0.18f, 0.98f, activation);
+    // Preserve the emerging silhouette behind the warp membrane; concentrate light on the lip.
+    if (warpRim)
+    {
+        float lip = smoothstep(0.80f, 0.98f, r);
+        float threads = saturate(ribbon * 0.25f + innerRim * 0.12f);
+        // UV offset X carries the opening/closing envelope in this mode.
+        alpha = mask * saturate(uvOffsetX) * saturate(color.a + lip * 0.62f + rim * 0.70f + threads);
+        portalColor += float3(1.20f, 0.91f, 0.50f) * (rim * 0.55f + glints * 0.32f);
+    }
+    if (bossEntrance)
+    {
+        float noise = Fbm2(p * 5.0f + float2(time * 0.15f, -time * 0.23f));
+        float threshold = closeProgress * 1.45f - 0.20f;
+        float remaining = smoothstep(threshold, threshold + 0.16f, noise);
+        float burningEdge = (1.0f - smoothstep(0.005f, 0.035f, abs(noise - threshold)))
+            * smoothstep(0.0f, 0.12f, closeProgress);
+        float rimLife = 1.0f - smoothstep(0.60f, 1.0f, closeProgress);
+        float rimMask = saturate(rim + rimHalo * 0.35f);
+        alpha = mask * saturate(uvOffsetX) *
+            saturate(remaining * color.a * 0.62f + rimMask * rimLife + burningEdge * 0.18f);
+        portalColor = portalColor * remaining
+            + lerp(ribbonColor, hotColor, 0.25f) * burningEdge * 0.45f
+            + hotColor * rimMask * rimLife;
+        alpha *= 1.0f - smoothstep(0.94f, 1.0f, closeProgress);
+    }
     return float4(portalColor, alpha);
 }

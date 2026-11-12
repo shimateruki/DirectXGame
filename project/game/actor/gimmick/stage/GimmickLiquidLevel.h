@@ -2,6 +2,8 @@
 #include "BaseGimmick.h"
 
 // スイッチ操作で液面を移動し、脱出中のシーンオブジェクトも制御します。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnTrigger / OnSwitchEvent
 class GimmickLiquidLevel : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -10,7 +12,7 @@ class GimmickLiquidLevel : public BaseGimmick {
 
     virtual ~GimmickLiquidLevel() = default;
 
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 脱出シーケンスだけは通常のスイッチ昇降と別の時間軸で進めます。
     void Update(float deltaTime) override;
@@ -22,7 +24,7 @@ class GimmickLiquidLevel : public BaseGimmick {
     void OnSwitchEvent(bool active) override;
 
     // 複製先の描画資源を作った後で、液面の設定を引き継ぎます。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     // 脱出演出の開始・終了に合わせて関連オブジェクトを切り替えます。

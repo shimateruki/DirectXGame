@@ -1,5 +1,7 @@
 #pragma once
 
+// 敵・プレイヤーの戦闘演出で使う補間計算。入力を0〜1に収める補助関数を提供する。
+
 #include "engine/utility/math/Math.h"
 #include "Easing.h"
 #include <algorithm>

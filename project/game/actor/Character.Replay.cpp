@@ -19,7 +19,7 @@ engine::Vector3 ReadVector3(const json& value, const engine::Vector3& fallback) 
 // 位置だけでなく外力の残り時間も保存し、巻き戻し後の移動を再現します。
 void Character::CaptureReplayCustomState(json& state) const {
     // 位置だけでは再生後の動きが一致しないため、接地と外力の残り時間も記録する。
-    engine::Object3d::CaptureReplayCustomState(state);
+    engine::Object3D::CaptureReplayCustomState(state);
     state["characterVelocity"] = ToJson(velocity_);
     state["characterGrounded"] = isGrounded_;
     state["externalImpulseVelocity"] = ToJson(externalImpulseVelocity_);
@@ -30,7 +30,7 @@ void Character::CaptureReplayCustomState(json& state) const {
 
 void Character::RestoreReplayCustomState(const json& state) {
     // 記録に存在する項目だけ戻し、古いリプレイ形式でも再生を継続できるようにする。
-    engine::Object3d::RestoreReplayCustomState(state);
+    engine::Object3D::RestoreReplayCustomState(state);
 
     if (state.contains("characterVelocity")) {
         velocity_ = ReadVector3(state["characterVelocity"], velocity_);

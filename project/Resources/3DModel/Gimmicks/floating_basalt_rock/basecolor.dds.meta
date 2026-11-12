@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "06fa6bdf2b9f9ae8aa0e71e3a4d8d268",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/floating_basalt_rock/basecolor.dds",
+  "version": 1
+}

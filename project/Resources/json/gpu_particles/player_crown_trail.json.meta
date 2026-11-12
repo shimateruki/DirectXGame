@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "cda765e2b2f0e58e76290e6b2c9d81ed",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_trail.json",
+  "version": 1
+}

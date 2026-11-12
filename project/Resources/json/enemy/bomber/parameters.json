@@ -1,0 +1,17 @@
+{
+    "attackPower": 1.149999976158142,
+    "detectionRange": 32.0,
+    "gravity": 60.0,
+    "jumpPower": 16.0,
+    "maxFallSpeed": 60.0,
+    "maxHp": 45.0,
+    "modelName": "Characters/slime_black",
+    "morphDuration": 5.0,
+    "morphLimited": false,
+    "scale": [
+        2.0,
+        2.0,
+        2.0
+    ],
+    "speed": 0.0
+}

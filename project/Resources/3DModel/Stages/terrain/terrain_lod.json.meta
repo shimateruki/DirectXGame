@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "8be245c8755eda1a5e3f033e54a5e046",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/3DModel/Stages/terrain/terrain_lod.json",
-  "version": 1
-}

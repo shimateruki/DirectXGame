@@ -1,13 +1,13 @@
 ﻿#include "game/actor/player/Player.Internal.h"
 #include "Easing.h"
 
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 using namespace PlayerImplementation;
 
 namespace {
 // 削除された練習相手を、運搬・吸収の演出から参照し続けない。
-bool IsTutorialEnemyPresent(const engine::Object3d* enemy) {
+bool IsTutorialEnemyPresent(const engine::Object3D* enemy) {
     const auto* scene = SceneManager::GetInstance()->GetCurrentScene();
     if (!scene) return false;
     const auto& objects = scene->GetObjects();
@@ -18,7 +18,7 @@ bool IsTutorialEnemyPresent(const engine::Object3d* enemy) {
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 // 敵の運搬・吸収からコピー開始までを扱います。途中キャンセルでも敵とプレイヤーの見た目を戻せる順序にします。
 
-void Player::SetCarriedEnemy(engine::Object3d* enemy) {
+void Player::SetCarriedEnemy(engine::Object3D* enemy) {
     if (enemy) {
         // 照準中に捕獲した場合も、その場でマーカーと対象を破棄する。
         if (hookMarker_)
@@ -80,7 +80,7 @@ void Player::ReleaseCarriedEnemy(bool restorePose) {
         CancelAbsorbEffect(restorePose);
     }
 
-    engine::Object3d* enemy = carriedEnemy_;
+    engine::Object3D* enemy = carriedEnemy_;
 
     if (!enemy) {
         return;
@@ -213,7 +213,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
                        1.0f};
     SetColor(flashColor);
 
-    for (engine::Object3d* child : GetChildren()) {
+    for (engine::Object3D* child : GetChildren()) {
         if (child) {
             child->SetColor(flashColor);
         }
@@ -256,7 +256,7 @@ void Player::FinishAbsorbEffect() {
 
     SetColor(pendingAbsorbPlayerBaseColor_);
 
-    for (engine::Object3d* child : GetChildren()) {
+    for (engine::Object3D* child : GetChildren()) {
         if (child) {
             child->SetColor(pendingAbsorbPlayerBaseColor_);
         }
@@ -288,7 +288,7 @@ void Player::CancelAbsorbEffect(bool restoreEnemy) {
     SetColor(pendingAbsorbPlayerBaseColor_);
 
     if (!isEnemyMorphed_) {
-        for (engine::Object3d* child : GetChildren()) {
+        for (engine::Object3D* child : GetChildren()) {
             if (child) {
                 child->SetColor(pendingAbsorbPlayerBaseColor_);
             }
@@ -355,7 +355,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     enemy->SetCollisionAttribute(0);
     enemy->SetCollisionMask(0);
     enemy->SetParticleName("");
-    enemy->SetGPUParticleName("");
+    enemy->SetGpuParticleName("");
     enemy->SetMeshEffect1Name("");
     enemy->SetMeshEffect2Name("");
 
@@ -408,7 +408,7 @@ void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible) {
     savedMorphChildVisible_.clear();
     savedMorphChildVisible_.reserve(GetChildren().size());
 
-    for (engine::Object3d* child : GetChildren()) {
+    for (engine::Object3D* child : GetChildren()) {
         savedMorphChildVisible_.push_back(child ? child->GetIsVisible() : false);
     }
 }
@@ -435,7 +435,7 @@ void Player::CompleteEnemyMorphStart(float moveYaw) {
     aimTargetObject_ = nullptr;
     SetMoveYaw(moveYaw);
 
-    for (engine::Object3d* child : GetChildren()) {
+    for (engine::Object3D* child : GetChildren()) {
         if (child) {
             child->SetIsVisible(false);
         }
@@ -475,7 +475,7 @@ void Player::EmitEnemyMorphStartEffects() {
         // 攻撃は同じモーション枠を上書きでき、ジャンプ時はAnimator側で解除する。
         ClearSlimeAbilityMotion();
         PlaySlimeAbilityMotion("player_copy_acquire", false, 1.0f, 0.025f, 0.08f);
-        VFXSequencer::PlayOneShotOnTarget(cue, this);
+        VfxSequencer::PlayOneShotOnTarget(cue, this);
 
         // 獲得演出中に常時オーラを重ねない。
         enemyMorphEffectTimer_ = 0.55f;
@@ -525,7 +525,7 @@ void Player::UpdateEnemyMorph(float deltaTime) {
         return;
     }
 
-    for (engine::Object3d* child : GetChildren()) {
+    for (engine::Object3D* child : GetChildren()) {
         if (child) {
             child->SetIsVisible(false);
         }

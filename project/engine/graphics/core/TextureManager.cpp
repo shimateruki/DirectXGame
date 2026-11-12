@@ -1,4 +1,5 @@
 #include "TextureManager.h"
+#include <cstring>
 #include "engine/system/scene/LoadingProfiler.h"
 
 #include <algorithm>
@@ -14,17 +15,17 @@
 
 #include "DirectXCommon.h"
 #include "ProfilerManager.h"
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include "d3dx12.h"
 
 #pragma comment(lib, "shell32.lib")
 
 namespace {
-const std::filesystem::path kDDSCacheRequestPath = "Resources/.cache/dds_cache_requests.jsonl";
-const std::filesystem::path kDDSCacheDisableFlagPath = "Resources/.cache/disable_dds_cache.flag";
+const std::filesystem::path kDdsCacheRequestPath = "Resources/.cache/dds_cache_requests.jsonl";
+const std::filesystem::path kDdsCacheDisableFlagPath = "Resources/.cache/disable_dds_cache.flag";
 
 // この時間未満の読み込みはDDS化しても効果が薄いため、変換要求を出さない。
-constexpr float kDDSCacheRequestMinDurationMs = 2.0f;
+constexpr float kDdsCacheRequestMinDurationMs = 2.0f;
 std::string ToLower(std::string text) {
     // 文字列を小文字化し、拡張子やパスの比較を大文字小文字に左右されない形へ揃える。
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
@@ -89,13 +90,13 @@ bool IsSourceTextureExtension(const std::string& ext) {
 }
 
 // 開発用フラグファイルの有無からDDSキャッシュ停止を判定します。
-bool IsDDSCacheDisabled() {
+bool IsDdsCacheDisabled() {
     // 原因調査用に、フラグファイルだけでDDSキャッシュの使用を一時停止できるようにする。
     std::error_code ec;
-    return std::filesystem::exists(kDDSCacheDisableFlagPath, ec) && !ec;
+    return std::filesystem::exists(kDdsCacheDisableFlagPath, ec) && !ec;
 }
 
-std::filesystem::path FindSourceTextureForDDS(const std::filesystem::path& ddsPath) {
+std::filesystem::path FindSourceTextureForDds(const std::filesystem::path& ddsPath) {
     // DDS指定時に元画像が存在するか探し、古いDDSを元画像から再生成できるようにする。
     static const char* kSourceExts[] = { ".png", ".jpg", ".jpeg", ".tga", ".hdr" };
 
@@ -134,7 +135,7 @@ bool IsLinearTexturePath(const std::string& path) {
            lowerPath.find("ao") != std::string::npos;
 }
 
-std::string GetDDSFormat(const std::string& filePath, bool isLinearTexture) {
+std::string GetDdsFormat(const std::string& filePath, bool isLinearTexture) {
     // テクスチャ用途に応じて、DDS変換時に使用する圧縮フォーマット名を決める。
     const std::string ext = ToLower(PathFromUtf8(filePath).extension().string());
 
@@ -150,7 +151,7 @@ std::string GetDDSFormat(const std::string& filePath, bool isLinearTexture) {
 }
 
 // DDS生成要求用の監視スクリプトを最初の必要時に一度だけ起動します。
-void StartDDSCacheWatcherIfNeeded() {
+void StartDdsCacheWatcherIfNeeded() {
     // DDS生成要求を処理する監視スクリプトを、必要になったタイミングで一度だけ起動する。
     static bool watcherStartTried = false;
 
@@ -201,7 +202,7 @@ std::string EscapeJson(const std::string& text) {
     return escaped;
 }
 
-void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float durationMs) {
+void AppendDdsCacheRequest(const std::string& filePath, bool isNormalMap, float durationMs) {
     // 読み込んだ元画像に対応するDDS生成要求をJSONLへ追記し、次回以降の読み込みを軽くする。
     const std::filesystem::path sourcePath = PathFromUtf8(filePath);
     const std::string ext = ToLower(sourcePath.extension().string());
@@ -211,7 +212,7 @@ void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float 
     }
 
     // 読み込みが軽い画像はDDS化しても効果が薄いため、変換キューへ積まない。
-    if (durationMs < kDDSCacheRequestMinDurationMs) {
+    if (durationMs < kDdsCacheRequestMinDurationMs) {
         return;
     }
 
@@ -223,7 +224,7 @@ void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float 
     }
 
     std::error_code ec;
-    std::filesystem::create_directories(kDDSCacheRequestPath.parent_path(), ec);
+    std::filesystem::create_directories(kDdsCacheRequestPath.parent_path(), ec);
 
     if (ec) {
         return;
@@ -232,7 +233,7 @@ void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float 
     std::filesystem::path ddsPath = sourcePath;
     ddsPath.replace_extension(".dds");
 
-    std::ofstream ofs(kDDSCacheRequestPath, std::ios::app);
+    std::ofstream ofs(kDdsCacheRequestPath, std::ios::app);
 
     if (!ofs) {
         return;
@@ -240,11 +241,11 @@ void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float 
 
     ofs << "{\"source\":\"" << EscapeJson(source)
         << "\",\"dds\":\"" << EscapeJson(ToProjectPath(ddsPath))
-        << "\",\"format\":\"" << EscapeJson(GetDDSFormat(filePath, isNormalMap))
+        << "\",\"format\":\"" << EscapeJson(GetDdsFormat(filePath, isNormalMap))
         << "\",\"durationMs\":" << durationMs
         << "}\n";
 
-    StartDDSCacheWatcherIfNeeded();
+    StartDdsCacheWatcherIfNeeded();
 }
 
 std::string GetTextureBasePath(const std::filesystem::path& path) {
@@ -310,12 +311,14 @@ std::string MakeTextureCacheKey(const std::string& path, bool isLinearTexture) {
 }
 
 // 元画像、実際の読込先、キャッシュ識別子を分離する。DDS を使っても元画像の参照を失わない。
+// 担当：要求パスから解決した読込先・キャッシュキー・DDS利用条件。
+// 関連：TextureManagerの内部処理だけで使う補助型。
 struct ResolvedTexturePath {
     std::string effectiveFilePath;
     std::string loadPath;
     std::string cacheKey;
     bool isLinearTexture = false;
-    bool useDDSCache = false;
+    bool useDdsCache = false;
     bool isSourceTexture = false;
     bool ddsIsUpToDate = false;
 };
@@ -324,24 +327,24 @@ struct ResolvedTexturePath {
 ResolvedTexturePath ResolveTexturePath(
     const std::string& filePath,
     TextureManager::TextureColorSpace colorSpace,
-    bool allowDDSCache) {
+    bool allowDdsCache) {
     // DDSの欠落・古さを確認し、必要なら元画像へ読み込み先を戻す。
     ResolvedTexturePath resolved;
     resolved.isLinearTexture = colorSpace == TextureManager::TextureColorSpace::Linear ||
         (colorSpace == TextureManager::TextureColorSpace::Auto && IsLinearTexturePath(filePath));
 
     std::filesystem::path path = PathFromUtf8(filePath);
-    resolved.useDDSCache = allowDDSCache && !IsDDSCacheDisabled();
-    const bool requestedDDS = ToLower(path.extension().string()) == ".dds";
+    resolved.useDdsCache = allowDdsCache && !IsDdsCacheDisabled();
+    const bool requestedDds = ToLower(path.extension().string()) == ".dds";
 
-    if (requestedDDS) {
-        const std::filesystem::path sourcePath = FindSourceTextureForDDS(path);
+    if (requestedDds) {
+        const std::filesystem::path sourcePath = FindSourceTextureForDds(path);
 
         if (!sourcePath.empty()) {
             const bool ddsMissing = !std::filesystem::exists(path);
             const bool ddsOutdated = !ddsMissing &&
                 std::filesystem::last_write_time(sourcePath) > std::filesystem::last_write_time(path);
-            if (!resolved.useDDSCache || ddsMissing || ddsOutdated) {
+            if (!resolved.useDdsCache || ddsMissing || ddsOutdated) {
                 path = sourcePath;
             }
         }
@@ -359,7 +362,7 @@ ResolvedTexturePath ResolveTexturePath(
     ddsPath.replace_extension(".dds");
     resolved.loadPath = resolved.effectiveFilePath;
 
-    if (resolved.useDDSCache && resolved.isSourceTexture && std::filesystem::exists(ddsPath)) {
+    if (resolved.useDdsCache && resolved.isSourceTexture && std::filesystem::exists(ddsPath)) {
         if (!std::filesystem::exists(path)) {
             resolved.loadPath = NormalizeTexturePath(PathToUtf8(ddsPath));
             resolved.ddsIsUpToDate = true;
@@ -394,7 +397,7 @@ DirectX::ScratchImage DecodeResolvedTexture(const ResolvedTexturePath& resolved,
     // PNG指定からDDSを選んだ場合は、別形式の同名画像より指定された元画像を優先する。
     std::filesystem::path sourcePath = PathFromUtf8(resolved.effectiveFilePath);
     if (!IsSourceTextureExtension(sourcePath.extension().string())) {
-        sourcePath = FindSourceTextureForDDS(PathFromUtf8(resolved.loadPath));
+        sourcePath = FindSourceTextureForDds(PathFromUtf8(resolved.loadPath));
     }
     if (sourcePath.empty()) {
         return image;
@@ -460,21 +463,21 @@ bool UploadTextureDataWithDedicatedCommandList(
         return false;
     }
 
-    constexpr UINT64 fenceValue = 1;
-    hr = commandQueue->Signal(fence.Get(), fenceValue);
+    constexpr UINT64 kFenceValue = 1;
+    hr = commandQueue->Signal(fence.Get(), kFenceValue);
 
     if (FAILED(hr)) {
         return false;
     }
 
-    if (fence->GetCompletedValue() < fenceValue) {
+    if (fence->GetCompletedValue() < kFenceValue) {
         HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 
         if (!fenceEvent) {
             return false;
         }
 
-        hr = fence->SetEventOnCompletion(fenceValue, fenceEvent);
+        hr = fence->SetEventOnCompletion(kFenceValue, fenceEvent);
 
         if (FAILED(hr)) {
             CloseHandle(fenceEvent);
@@ -708,30 +711,30 @@ void TextureManager::ReleaseCompletedAsyncUploadBatch() {
     asyncUploadAllocator_.Reset();
 }
 
-uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, bool allowDDSCache, bool forceReload) {
+uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, bool allowDdsCache, bool forceReload) {
     // テクスチャを読み込み、必要ならDDSキャッシュを優先しながらSRVハンドルとして登録する。
     return LoadInternal(
         filePath,
         isNormalMap ? TextureColorSpace::Linear : TextureColorSpace::Auto,
-        allowDDSCache,
+        allowDdsCache,
         forceReload);
 }
 
 uint32_t TextureManager::Load(
     const std::string& filePath,
     TextureColorSpace colorSpace,
-    bool allowDDSCache,
+    bool allowDdsCache,
     bool forceReload) {
     // 色空間の指定を保ったまま共通の読込経路へ渡す。
-    return LoadInternal(filePath, colorSpace, allowDDSCache, forceReload);
+    return LoadInternal(filePath, colorSpace, allowDdsCache, forceReload);
 }
 
 bool TextureManager::Prepare(
     const std::string& filePath,
     TextureColorSpace colorSpace,
-    bool allowDDSCache) {
+    bool allowDdsCache) {
     // デコードはGPU転送より先に行い、同じキャッシュキーの準備済み画像は再利用する。
-    const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDDSCache);
+    const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDdsCache);
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (textureHandleMap_.contains(resolved.cacheKey) ||
@@ -763,11 +766,11 @@ bool TextureManager::Prepare(
 uint32_t TextureManager::LoadInternal(
     const std::string& filePath,
     TextureColorSpace colorSpace,
-    bool allowDDSCache,
+    bool allowDdsCache,
     bool forceReload) {
-    const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDDSCache);
+    const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDdsCache);
     const bool isLinearTexture = resolved.isLinearTexture;
-    const bool useDDSCache = resolved.useDDSCache;
+    const bool useDdsCache = resolved.useDdsCache;
     const bool isSourceTexture = resolved.isSourceTexture;
     const bool ddsIsUpToDate = resolved.ddsIsUpToDate;
     const std::string& effectiveFilePath = resolved.effectiveFilePath;
@@ -856,9 +859,9 @@ uint32_t TextureManager::LoadInternal(
         // forceReload時は既存SRV番号を再利用し、参照しているSpriteやMaterialを壊さない。
         if (forceReload && existingIt != textureHandleMap_.end()) {
             srvHandle = existingIt->second;
-            SRVManager::GetInstance()->CreateSRVforResource(srvHandle, resource.Get(), srvDesc);
+            SrvManager::GetInstance()->CreateSrvForResource(srvHandle, resource.Get(), srvDesc);
         } else {
-            srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
+            srvHandle = SrvManager::GetInstance()->CreateSrv(resource.Get(), srvDesc);
         }
 
         TextureData& newData = textureDatas_[srvHandle];
@@ -876,11 +879,111 @@ uint32_t TextureManager::LoadInternal(
     ProfilerManager::GetInstance()->RecordLoadTime("Sprite", filePath, duration);
 
     // まだ有効なDDSがない元画像は、裏側でDDS生成できるよう要求を積む。
-    if (useDDSCache && isSourceTexture && !ddsIsUpToDate) {
-        AppendDDSCacheRequest(effectiveFilePath, isLinearTexture, duration);
+    if (useDdsCache && isSourceTexture && !ddsIsUpToDate) {
+        AppendDdsCacheRequest(effectiveFilePath, isLinearTexture, duration);
     }
 
     return srvHandle;
+}
+
+std::optional<uint32_t> TextureManager::AcquireVideoSurface(const void* owner) {
+    std::lock_guard lock(mutex_);
+    if (!owner || !device_ || (videoOwner_ && videoOwner_ != owner))
+        return std::nullopt;
+    if (!videoHandle_) {
+        constexpr UINT width = 640;
+        constexpr UINT height = 360;
+        constexpr auto format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+        D3D12_HEAP_PROPERTIES gpuHeap{};
+        gpuHeap.Type = D3D12_HEAP_TYPE_DEFAULT;
+        D3D12_RESOURCE_DESC texture{};
+        texture.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        texture.Width = width;
+        texture.Height = height;
+        texture.DepthOrArraySize = texture.MipLevels = 1;
+        texture.Format = format;
+        texture.SampleDesc.Count = 1;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        if (FAILED(device_->CreateCommittedResource(&gpuHeap, D3D12_HEAP_FLAG_NONE, &texture,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&resource))))
+            return std::nullopt;
+        UINT64 bytes = 0;
+        device_->GetCopyableFootprints(&texture, 0, 1, 0, &videoFootprint_, nullptr, nullptr, &bytes);
+        D3D12_HEAP_PROPERTIES uploadHeap{};
+        uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
+        D3D12_RESOURCE_DESC upload{};
+        upload.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        upload.Width = bytes;
+        upload.Height = upload.DepthOrArraySize = upload.MipLevels = 1;
+        upload.SampleDesc.Count = 1;
+        upload.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        if (FAILED(device_->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &upload,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&videoUpload_))))
+            return std::nullopt;
+        D3D12_SHADER_RESOURCE_VIEW_DESC view{};
+        view.Format = format;
+        view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        view.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        view.Texture2D.MipLevels = 1;
+        const auto handle = SrvManager::GetInstance()->CreateSrv(resource.Get(), view);
+        TextureData data{};
+        data.metadata.width = width;
+        data.metadata.height = height;
+        data.metadata.depth = data.metadata.arraySize = data.metadata.mipLevels = 1;
+        data.metadata.format = format;
+        data.metadata.dimension = DirectX::TEX_DIMENSION_TEXTURE2D;
+        data.resource = std::move(resource);
+        data.srvHandle = handle;
+        textureDatas_.emplace(handle, std::move(data));
+        videoHandle_ = handle;
+    }
+    videoOwner_ = owner;
+    return videoHandle_;
+}
+
+void TextureManager::ReleaseVideoSurface(const void* owner) {
+    std::lock_guard lock(mutex_);
+    if (videoOwner_ == owner)
+        videoOwner_ = nullptr;
+}
+
+bool TextureManager::UploadVideoSurface(const void* owner, ID3D12GraphicsCommandList& commands,
+                                        std::span<const uint8_t> pixels) {
+    std::lock_guard lock(mutex_);
+    if (!videoHandle_ || !dxCommon_ || !owner || videoOwner_ != owner)
+        return false;
+    if (videoUploadFence_ && dxCommon_->GetFence()->GetCompletedValue() < *videoUploadFence_)
+        return false;
+    const auto& footprint = videoFootprint_.Footprint;
+    const size_t rowBytes = static_cast<size_t>(footprint.Width) * 4;
+    if (pixels.size() != rowBytes * footprint.Height)
+        return false;
+    void* mapped = nullptr;
+    const D3D12_RANGE noRead{0, 0};
+    if (FAILED(videoUpload_->Map(0, &noRead, &mapped)))
+        return false;
+    auto* destination = static_cast<uint8_t*>(mapped) + videoFootprint_.Offset;
+    for (UINT row = 0; row < footprint.Height; ++row)
+        std::memcpy(destination + row * footprint.RowPitch, pixels.data() + row * rowBytes, rowBytes);
+    videoUpload_->Unmap(0, nullptr);
+    auto* resource = textureDatas_.at(*videoHandle_).resource.Get();
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition = {resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+                         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST};
+    commands.ResourceBarrier(1, &barrier);
+    D3D12_TEXTURE_COPY_LOCATION from{};
+    from.pResource = videoUpload_.Get();
+    from.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+    from.PlacedFootprint = videoFootprint_;
+    D3D12_TEXTURE_COPY_LOCATION to{};
+    to.pResource = resource;
+    to.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    commands.CopyTextureRegion(&to, 0, 0, 0, &from, nullptr);
+    std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
+    commands.ResourceBarrier(1, &barrier);
+    videoUploadFence_ = dxCommon_->GetFenceValue() + 1;
+    return true;
 }
 
 const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {

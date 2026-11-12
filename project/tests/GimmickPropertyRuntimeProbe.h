@@ -7,7 +7,7 @@
 #include "game/system/scene/GimmickFactory.h"
 #include "game/system/scene/SceneEntityParameterCodec.h"
 #include "game/actor/gimmick/movement/GimmickSinkingFloor.h"
-#include "engine/utility/SystemDebug/editor/core/ObjectPropertyDefinition.h"
+#include "engine/editor/properties/ObjectPropertyDefinition.h"
 #include <fstream>
 #include <stdexcept>
 #include <cmath>
@@ -22,7 +22,7 @@ inline void Require(bool success, const char* message) { if (!success) throw std
 inline bool Near(float left, float right) { return std::abs(left - right) < 0.0001f; }
 
 // 別クラスでもエンジンへ型名分岐を追加せず、同じAPIだけで公開できることを確認します。
-class Fixture : public engine::Object3d {
+class Fixture : public engine::Object3D {
 public:
     void Bind() {
         engine::ObjectPropertyDefinition<Fixture> properties(*this, "ProbeFixture", "検証用");
@@ -36,7 +36,7 @@ private:
     std::string text_ = "保存互換";
 };
 
-inline void CheckSettings(engine::Object3dCommon* common, DebugEditor* editor, BaseScene* scene, std::ofstream& log) {
+inline void CheckSettings(engine::Object3DCommon* common, DebugEditor* editor, BaseScene* scene, std::ofstream& log) {
     using json = nlohmann::json;
     auto* registry = EditorPropertyRegistry::GetInstance();
     const std::string prefix = "class.Game_SinkingFloor.";
@@ -133,7 +133,7 @@ inline void CheckSettings(engine::Object3dCommon* common, DebugEditor* editor, B
 
 
 // 全生成IDを旧Factoryの設定と比較します。旧データは専用worktreeのコピーを読みます。
-inline void CheckAllGimmicks(engine::Object3dCommon* common, DebugEditor* editor, BaseScene* scene, std::ofstream& log) {
+inline void CheckAllGimmicks(engine::Object3DCommon* common, DebugEditor* editor, BaseScene* scene, std::ofstream& log) {
     using json = nlohmann::json;
     auto* factory = GimmickFactory::GetInstance();
     auto* registry = EditorPropertyRegistry::GetInstance();
@@ -326,7 +326,7 @@ inline void CheckAllGimmicks(engine::Object3dCommon* common, DebugEditor* editor
     start->SetTranslate({10000, 3, 10000});
     auto* raw = scene->AddObjectImmediate(std::move(start));
     const auto guid = raw->EnsurePersistentGuid();
-    const auto find = [&]() -> engine::Object3d* {
+    const auto find = [&]() -> engine::Object3D* {
         for (const auto& object : scene->GetObjects()) if (object->GetPersistentGuid() == guid) return object.get();
         return nullptr;
     };
@@ -348,9 +348,9 @@ inline void CheckAllGimmicks(engine::Object3dCommon* common, DebugEditor* editor
         << ", copy legacy slots, phase numbering, alias visibility, volume guards, scene choices and all-type Undo/Redo" << std::endl;
 }
 
-inline std::string CheckTypeChange(engine::Object3dCommon* common, DebugEditor* editor, BaseScene* scene) {
+inline std::string CheckTypeChange(engine::Object3DCommon* common, DebugEditor* editor, BaseScene* scene) {
     using Registry = EditorObjectFactoryRegistry;
-    auto object = std::make_unique<engine::Object3d>();
+    auto object = std::make_unique<engine::Object3D>();
     object->Initialize(common);
     object->SetModel("Stages/block");
     object->SetClassName("Gimmick");
@@ -358,18 +358,18 @@ inline std::string CheckTypeChange(engine::Object3dCommon* common, DebugEditor* 
     object->SetName("__PropertyProbe");
     object->SetTranslate({10000, 5, 10000});
     auto* raw = scene->AddObjectImmediate(std::move(object));
-    auto parent = std::make_unique<engine::Object3d>();
+    auto parent = std::make_unique<engine::Object3D>();
     parent->Initialize(common);
     auto* parentRaw = scene->AddObjectImmediate(std::move(parent));
     raw->SetParent(parentRaw);
-    auto child = std::make_unique<engine::Object3d>();
+    auto child = std::make_unique<engine::Object3D>();
     child->Initialize(common);
     child->SetTranslate({1, 2, 3});
     child->SetParent(raw);
     auto* childRaw = scene->AddObjectImmediate(std::move(child));
     const auto guid = raw->EnsurePersistentGuid();
     const auto count = scene->GetObjects().size();
-    auto find = [&]() -> engine::Object3d* {
+    auto find = [&]() -> engine::Object3D* {
         for (const auto& candidate : scene->GetObjects()) if (candidate->GetPersistentGuid() == guid) return candidate.get();
         return nullptr;
     };
@@ -383,7 +383,7 @@ inline std::string CheckTypeChange(engine::Object3dCommon* common, DebugEditor* 
             "replacement identity/hierarchy/transform");
     editor->PerformUndo();
     raw = find();
-    Require(raw && typeid(*raw) == typeid(engine::Object3d) && childRaw->GetParent() == raw, "type undo");
+    Require(raw && typeid(*raw) == typeid(engine::Object3D) && childRaw->GetParent() == raw, "type undo");
     editor->PerformRedo();
     raw = find();
     Require(dynamic_cast<GimmickSinkingFloor*>(raw) && childRaw->GetParent() == raw, "type redo");
@@ -429,7 +429,7 @@ inline void AfterDraw(SceneManager* manager, DebugEditor* editor, const std::str
         manager->SetIsPlaying(false);
         auto* scene = manager->GetCurrentScene();
         if (phase == 1) {
-            auto* common = scene->GetObject3dCommon();
+            auto* common = scene->GetObject3DCommon();
             log << "HOST: TITLE, isolated factory/serialization/editor compatibility tests" << std::endl;
             CheckSettings(common, editor, scene, log);
             CheckAllGimmicks(common, editor, scene, log);
@@ -437,7 +437,7 @@ inline void AfterDraw(SceneManager* manager, DebugEditor* editor, const std::str
             phase = 2;
             return;
         }
-        engine::Object3d* changed = nullptr;
+        engine::Object3D* changed = nullptr;
         for (const auto& object : scene->GetObjects()) if (object->GetPersistentGuid() == guid) changed = object.get();
         Require(dynamic_cast<GimmickSinkingFloor*>(changed) && editor->GetSelectedObject() == changed, "deferred type change or selection");
         log << "OK actual class replacement, GUID, parent/children, transform, selection, type Undo/Redo and deferred Inspector change" << std::endl;

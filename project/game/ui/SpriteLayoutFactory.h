@@ -1,5 +1,7 @@
 #pragma once
 
+// 各画面が配置JSONからSpriteを生成し、名前と基本姿勢を設定する共通入口。表示条件や入力処理は画面側が担当する。
+
 #include "Sprite.h"
 #include "SpriteCommon.h"
 #include "game/ui/SpriteLayoutScaler.h"

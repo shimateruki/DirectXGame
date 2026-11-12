@@ -1379,9 +1379,9 @@
             "roughness": 1.0,
             "saveCategory": "Object",
             "scale": [
+                2.0,
                 1.0,
-                1.0,
-                1.0
+                2.7
             ],
             "tag": "",
             "targetID": -1,
@@ -1495,9 +1495,9 @@
             "roughness": 0.6200000047683716,
             "saveCategory": "Object",
             "scale": [
-                720.0,
+                1450.0,
                 3.5,
-                320.0
+                850.0
             ],
             "tag": "",
             "targetID": -1,
@@ -8484,21 +8484,14 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 16,
             "collisionAttributeIds": [
-                "ground"
+                "trigger"
             ],
             "collisionAttributeUnknownBits": 0,
-            "collisionMask": 255,
+            "collisionMask": 1,
             "collisionMaskIds": [
-                "player",
-                "enemy",
-                "ground",
-                "player_bullet",
-                "trigger",
-                "map_block",
-                "player_attack",
-                "enemy_attack"
+                "player"
             ],
             "collisionMaskUnknownBits": 0,
             "color": [
@@ -8658,21 +8651,14 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 16,
             "collisionAttributeIds": [
-                "ground"
+                "trigger"
             ],
             "collisionAttributeUnknownBits": 0,
-            "collisionMask": 255,
+            "collisionMask": 1,
             "collisionMaskIds": [
-                "player",
-                "enemy",
-                "ground",
-                "player_bullet",
-                "trigger",
-                "map_block",
-                "player_attack",
-                "enemy_attack"
+                "player"
             ],
             "collisionMaskUnknownBits": 0,
             "color": [
@@ -8832,21 +8818,14 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 16,
             "collisionAttributeIds": [
-                "ground"
+                "trigger"
             ],
             "collisionAttributeUnknownBits": 0,
-            "collisionMask": 255,
+            "collisionMask": 1,
             "collisionMaskIds": [
-                "player",
-                "enemy",
-                "ground",
-                "player_bullet",
-                "trigger",
-                "map_block",
-                "player_attack",
-                "enemy_attack"
+                "player"
             ],
             "collisionMaskUnknownBits": 0,
             "color": [
@@ -34683,9 +34662,9 @@
             "roughness": 0.7799999713897705,
             "saveCategory": "Object",
             "scale": [
+                1.1,
                 1.0,
-                1.0,
-                1.0
+                1.35
             ],
             "tag": "",
             "targetID": -1,
@@ -39968,7 +39947,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                875.0,
+                876,
                 17.0,
                 13.0
             ],
@@ -42166,7 +42145,7 @@
             "position": [
                 798.0,
                 2.0,
-                16.0
+                22.25
             ],
             "quaternion": [
                 0.0,

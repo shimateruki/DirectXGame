@@ -5,6 +5,7 @@
 namespace engine {
 
 /// <summary>二次元の座標や方向を表す浮動小数ベクトル。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Vector2
 {
 	/// <summary>全成分が0の値。座標や速度の初期化に使う。</summary>
@@ -14,6 +15,7 @@ struct Vector2
 };
 
 /// <summary>三次元の座標や方向を表す浮動小数ベクトル。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Vector3
 {
 	/// <summary>全成分が0の値。座標や速度の初期化に使う。</summary>
@@ -34,6 +36,7 @@ struct Vector3
 
 
 /// <summary>四次元のベクトル。RGBA色や同次座標にも使う。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Vector4
 {
 	/// <summary>全成分が0の値。座標や速度の初期化に使う。</summary>
@@ -59,6 +62,7 @@ inline constexpr Vector4 Transparent = Vector4::ZERO;
 }
 
 /// <summary>四成分で三次元回転を表すクォータニオン。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Quaternion {
 	float x;
 	float y;
@@ -77,6 +81,7 @@ struct Quaternion {
 };
 
 /// <summary>三次元の線形変換を表す3×3行列。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Matrix3x3
 {
 	float m[3][3];
@@ -84,18 +89,21 @@ struct Matrix3x3
 
 
 /// <summary>三次元のアフィン変換や投影を表す4×4行列。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Matrix4x4
 {
 	float m[4][4];
 };
 
 /// <summary>始点と方向ベクトルで表す半直線です。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Ray {
 	Vector3 origin;
 	Vector3 diff;
 };
 
 /// <summary>レイと形状の交差結果です。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct RayResult {
 	bool isHit;
 	float distance;
@@ -116,17 +124,20 @@ Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2);
 Vector3& operator+=(Vector3& v1, const Vector3& v2);
 
 /// <summary>法線と原点からの距離で表す平面。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Plane {
 	Vector3 normal;
 	float distance;
 };
 
 /// <summary>左右・上下・近遠の六平面からなる視錐台。</summary>
+// 関連：Math（この型を使う機能の本体）
 struct Frustum {
 	Plane planes[6]; // 左右上下・近遠の6面
 };
 
-/// <summary>ベクトル、行列、投影、交差判定の共通関数を提供します。</summary>
+// 担当：ベクトル・行列・回転・投影・交差判定の計算を提供する。
+// 関連：Transform（行列）、Camera（視点）、Collider（形状計算）
 class Math
 {
 
@@ -215,7 +226,7 @@ public:
 	/// <param name="maxBox">箱の各軸の最大座標。</param>
 	/// <param name="hit">交差時に結果を書き込む先。</param>
 	/// <returns>交差する場合は true。</returns>
-	static bool IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit);
+	static bool IntersectRayAabb(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit);
 
 	// Vector3 の線形補間 (座標の移動用)
 	static Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t);
@@ -245,10 +256,10 @@ public:
 	static Frustum ExtractFrustumPlanes(const Matrix4x4& vp);
 
 	/// <summary>視錐台と軸平行ボックスが交差するか判定します。</summary>
-	static bool IntersectFrustumAABB(const Frustum& frustum, const Vector3& minBox, const Vector3& maxBox);
+	static bool IntersectFrustumAabb(const Frustum& frustum, const Vector3& minBox, const Vector3& maxBox);
 
 	/// <summary>点から軸平行ボックスまでの最短距離の二乗を返します。</summary>
-	static float DistanceSquaredPointAABB(const Vector3& point, const Vector3& minBox, const Vector3& maxBox);
+	static float DistanceSquaredPointAabb(const Vector3& point, const Vector3& minBox, const Vector3& maxBox);
 };
 
 } // namespace engine

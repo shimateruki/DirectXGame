@@ -1,10 +1,10 @@
 #define NOMINMAX
-#include "Object3d.h"
+#include "Object3D.h"
 #include <numbers>
 #include "DirectXCommon.h"
 #include "ModelManager.h"
-#include "EffectObject3d.h"
-#include "SRVManager.h"
+#include "EffectObject3D.h"
+#include "SrvManager.h"
 #include "CameraManager.h"
 #include "SceneManager.h"
 #include "GhostRecorder.h"
@@ -12,8 +12,8 @@
 #include <cassert>
 #include <algorithm> // min, max
 #include <ParticleManager.h>
-#include <GPUParticleManager.h>
-#include <GPUParticleEmitter.h>
+#include <GpuParticleManager.h>
+#include <GpuParticleEmitter.h>
 #include <DebugConsole.h>
 #include <ProfilerManager.h>
 #include <fstream>
@@ -26,13 +26,13 @@ namespace engine {
 // Object3dに追従するMeshEffectを生成、更新、描画する処理を担当する。
 // 歪み系エフェクトは描画順が重要なので、通常Drawとは分けて管理する。
 // ========================================================================
-void Object3d::UpdateAttachedEffects(float deltaTime) {
+void Object3D::UpdateAttachedEffects(float deltaTime) {
     effectAnchor_.translate = GetWorldPosition();
     effectAnchor_.scale = { 1.0f, 1.0f, 1.0f };
 
     // ルート（大元）のY軸回転を取得
     float rootRotY = transform_.rotate.y;
-    Object3d* rootObj = this;
+    Object3D* rootObj = this;
 
     while (rootObj && rootObj->GetParent()) {
         rootObj = rootObj->GetParent();
@@ -67,7 +67,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                 int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
 
                 for (int i = 0; i < numSpawns; ++i) {
-                    auto effect = std::make_unique<EffectObject3d>();
+                    auto effect = std::make_unique<EffectObject3D>();
                     effect->Initialize(common_);
                     effect->SetName(primaryEffect + "_" + std::to_string(i));
 
@@ -135,7 +135,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                 int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
 
                 for (int i = 0; i < numSpawns; ++i) {
-                    auto effect = std::make_unique<EffectObject3d>();
+                    auto effect = std::make_unique<EffectObject3D>();
                     effect->Initialize(common_);
                     effect->SetName(secondaryEffect + "_" + std::to_string(i));
 
@@ -194,7 +194,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
     }
 }
 
-void Object3d::DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+void Object3D::DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!GetIsRenderVisible())
         return;
 

@@ -11,17 +11,21 @@
 #include <string>
 #include <vector>
 
-// 通常3D描画と同じ入力を使うPixel ShaderだけをJSONから追加する。
-// 新しい描画資源が必要な特殊材質は従来の専用経路を使う。
+// 担当：通常3D描画へ追加するPixel ShaderのIDと定義をJSONから管理する。
+// 関連：Object3DCommon（パイプライン）、MeshRenderer（材質指定）
+// 主な入口：Instance / Find / Reload / Generation
+// 通常3Dと同じ入力で描けるPixel Shaderのみ対象。専用資源が必要な材質は特殊描画経路を使う。
 class ShaderMaterialRegistry final {
 public:
     // 不透明な通常3D描画へ追加する材質の保存ID、表示名、Pixel Shaderパス。
+    // 関連：ShaderMaterialRegistry（この型を使う機能の本体）
     struct Definition {
         std::string id;
         std::string displayName;
         std::string pixelShader;
     };
 
+    // 通常材質の追加定義を管理する共有台帳を返す。
     static ShaderMaterialRegistry& Instance() {
         static ShaderMaterialRegistry instance;
         return instance;
@@ -62,6 +66,7 @@ public:
     }
 
 private:
+    // 未読込の場合だけ材質定義を読み込む。
     void EnsureLoaded() {
         // 初回または明示的な再読込でだけ走査し、毎フレームのファイル探索を避ける。
         if (loaded_)

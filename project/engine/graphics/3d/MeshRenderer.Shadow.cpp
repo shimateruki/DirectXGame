@@ -55,7 +55,7 @@ void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
 
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, depthSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, depthSrvHandle);
 
 
     commandList->SetGraphicsRootConstantBufferView(3, localFogResource_->GetGPUVirtualAddress());

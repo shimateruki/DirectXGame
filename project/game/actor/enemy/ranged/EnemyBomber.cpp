@@ -9,7 +9,7 @@
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "game/system/rules/EventManager.h"
 #include "MeshEffectManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include "Player.h"
@@ -71,9 +71,9 @@ float LerpFloat(float start, float end, float rate) {
     return start + (end - start) * rate;
 }
 
-engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
+engine::Object3D* FindEnemyDamageTarget(engine::Object3D* object) {
     // 子オブジェクトに当たった場合も、被弾対象となる親の敵を探す。
-    for (engine::Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3D* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -100,7 +100,7 @@ void EnemyBomber::BindSceneSpawnContext(BaseScene* scene) {
     });
 }
 
-void EnemyBomber::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyBomber::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 最初の投擲だけ初期待機を使い、以後の投擲状態は待機から始める。
     BaseEnemy::Initialize(common, modelName);
     common_ = common;
@@ -482,7 +482,7 @@ void EnemyBomber::EnsureHeldBombVisual() {
         return;
     }
 
-    heldBombVisual_ = std::make_unique<engine::Object3d>();
+    heldBombVisual_ = std::make_unique<engine::Object3D>();
     heldBombVisual_->Initialize(common_);
     heldBombVisual_->SetModel(kHeldBombModelName);
     heldBombVisual_->SetCollisionAttribute(0);
@@ -707,7 +707,7 @@ void EnemyBomber::ThrowBomb() {
                                                         {0.65f, 0.65f, 0.65f});
     }
 
-    if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+    if (auto* gpuParticleManager = GpuParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
         gpuParticleManager->Emit(kCarryBomberSparkPreset, releasePos);
     }
 

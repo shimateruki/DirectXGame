@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "name": "player_ability_crown_release",
+  "model": "Characters/slime_crown",
+  "baseAnimation": "",
+  "duration": 0.36,
+  "loop": false,
+  "previewPlaybackSpeed": 1,
+  "bodyKeys": [
+    {
+      "time": 0,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        -0.07,
+        0,
+        0
+      ],
+      "scale": [
+        1.12,
+        0.84,
+        1.07
+      ],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.07,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0.1,
+        0,
+        0
+      ],
+      "scale": [
+        0.94,
+        1.1,
+        1.04
+      ],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.18,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        -0.035,
+        0,
+        0
+      ],
+      "scale": [
+        1.06,
+        0.94,
+        1.02
+      ],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.36,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "easingToNext": 2
+    }
+  ],
+  "keys": [],
+  "events": []
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9e3296adde6b408a87ae310f3c9de8a6",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_yellow/slime_yellow_hurt.gltf",
+  "version": 1
+}

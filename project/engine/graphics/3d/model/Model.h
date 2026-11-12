@@ -13,12 +13,15 @@
 #include <map>
 #include <optional>
 
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 
-/// <summary>モデルのCPU側データと描画用GPUリソースを保持する。</summary>
+// 担当：モデルのCPUデータ、スケルトンと描画用GPU資源を保持する。
+// 関連：ModelManager（読込・キャッシュ）、ModelCommon（共有基盤）、MeshRenderer（描画）
+// 主な入口：Initialize / LoadCpuData / ApplyAnimation / PrepareComputeSkinning
 class Model {
 public:
     /// <summary>スキニングに使うボーンと逆バインド姿勢。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct Bone {
         std::string name;
         engine::Matrix4x4 inverseBindPoseMatrix; // メッシュの初期姿勢へ戻す行列。
@@ -26,6 +29,7 @@ public:
 
     /// <summary>アニメーションの時刻（秒）と、その時点の値を保持する。</summary>
     template <typename T>
+    // 関連：Model（この型を使う機能の本体）
     struct Keyframe {
         float time;
         T value;
@@ -34,6 +38,7 @@ public:
     using KeyframeQuaternion = Keyframe<engine::Quaternion>;
 
     /// <summary>一つのノードに適用する拡縮・回転・移動のキーフレーム群。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct NodeAnimation {
         std::vector<KeyframeVector3> scale;
         std::vector<KeyframeQuaternion> rotate;
@@ -42,6 +47,7 @@ public:
     };
 
     /// <summary>モデルに含まれる名前付きアニメーション。長さと各キーの時刻は秒単位。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct Animation {
         std::string name;
         float duration; // 長さ（秒）。Assimpのtick値は読み込み時に変換する。
@@ -50,6 +56,7 @@ public:
     };
 
     /// <summary>モデル用シェーダーへ渡すマテリアル定数。GPU側のレイアウトと一致させる。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct Material {
         engine::Vector4 color;
         int32_t enableLighting;
@@ -82,6 +89,7 @@ public:
     };
 
     /// <summary>ノードやジョイントのローカル姿勢を拡縮・クォータニオン・移動で表す。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct QuaternionTransform {
         engine::Vector3 scale = {1.0f, 1.0f, 1.0f};
         engine::Quaternion rotate = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -89,6 +97,7 @@ public:
     };
 
     /// <summary>スケルトン内の一関節と、親子関係および計算済み行列を保持する。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct Joint {
         QuaternionTransform transform;
         engine::Matrix4x4 localMatrix;
@@ -100,6 +109,7 @@ public:
     };
 
     /// <summary>ルート関節、名前からの索引、全関節の姿勢をまとめる。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct Skeleton {
         int32_t root;
         std::map<std::string, int32_t> jointMap;
@@ -107,6 +117,7 @@ public:
     };
 
     /// <summary>読み込んだモデルの階層ノード。親から累積した変換も保持する。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct Node {
         QuaternionTransform transform;
         engine::Matrix4x4 localMatrix;
@@ -116,6 +127,7 @@ public:
     };
 
     /// <summary>モデルメッシュ1頂点分の属性。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct VertexData {
         engine::Vector4 position;
         engine::Vector2 texcoord;
@@ -128,6 +140,7 @@ public:
 
 
     /// <summary>モデルファイルから読んだマテリアルとテクスチャ参照。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct MaterialData {
         std::string textureFilePath;
         std::string normalMapPath;
@@ -150,6 +163,7 @@ public:
     };
 
     /// <summary>一メッシュの頂点・インデックスと、通常描画／Compute Skinning用GPUバッファ。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct Mesh {
         std::vector<VertexData> vertices;
         std::vector<uint32_t> indices;
@@ -164,6 +178,7 @@ public:
     };
 
     /// <summary>ファイル読込で得るCPU側のメッシュ、マテリアル、階層、アニメーション一式。</summary>
+    // 関連：Model（この型を使う機能の本体）
     struct ModelData {
         std::vector<Mesh> meshes;
         std::vector<MaterialData> materials;
@@ -177,7 +192,8 @@ public:
     };
 
     /// <summary>スキニング用にGPUへ転送するボーンの最終変換行列。</summary>
-    struct BoneForGPU {
+    // 関連：Model（この型を使う機能の本体）
+    struct BoneForGpu {
         engine::Matrix4x4 finalMatrix;
     };
 
@@ -344,11 +360,13 @@ private:
     // 指定秒を挟むキーフレームから値を補間する。
     static engine::Vector3 CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time);
 
+    // キー時刻は秒。回転キー間を球面補間して姿勢を求める。
     static engine::Quaternion CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time);
 
     // 読み込んだノード階層から関節一覧と名前索引を組み立てる。
     static int32_t CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints);
 
+    // モデル階層から関節配列・親子関係と名前索引を作る。
     static Skeleton CreateSkeleton(const Node& rootNode);
 
     // 現在のローカル姿勢を親から積み上げ、スケルトン空間の行列を更新する。
@@ -360,6 +378,7 @@ private:
     // ボーン行列を格納するGPUバッファの生成・転送。
     void CreateBoneBuffer();
 
+    // 計算済みの骨格姿勢をGPU用ボーン行列へ転送する。
     void UpdateBoneBuffer();
 
     // Compute Skinning用の入出力バッファとディスクリプタを準備する。
@@ -381,7 +400,7 @@ private:
 
     // ボーン行列のGPU転送状態。
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
-    BoneForGPU* boneMappedData_ = nullptr;
+    BoneForGpu* boneMappedData_ = nullptr;
     uint32_t boneSrvIndex_ = 0; // ボーン行列を参照するSRV番号。
     uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // 最後に更新したフレーム番号。
     bool computeSkinningAvailable_ = false;

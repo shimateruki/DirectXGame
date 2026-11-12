@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "1808d9d57df9ec50ab448d86ee14e874",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/03-pink-rush.png",
+  "version": 1
+}

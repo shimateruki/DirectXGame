@@ -29,7 +29,7 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
     const float sectorAngle = 2.0f * std::asin(sine);
 
     if (prismSpikeSector_) {
-        prismSpikeSector_->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, sectorAngle * (180.0f / kPi));
+        prismSpikeSector_->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, sectorAngle * (180.0f / kPi));
         prismSpikeSector_->UpdateProceduralMesh();
     }
 
@@ -39,9 +39,9 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
         sigil = CreateSpellEffect(kPrismSpikeSectorEffect);
         if (!sigil)
             continue;
-        sigil->SetBlendMode(BlendMode::kAdd);
-        sigil->SetMeshSetting(&EffectObject3d::MeshSettings::innerRadius, sigilIndex < 3 ? 0.975f : 0.06f);
-        sigil->SetMeshSetting(&EffectObject3d::MeshSettings::slashAngle, sigilIndex < 3 ? sectorAngle * (180.0f / kPi) : 1.25f);
+        sigil->SetBlendMode(BlendMode::Add);
+        sigil->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, sigilIndex < 3 ? 0.975f : 0.06f);
+        sigil->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, sigilIndex < 3 ? sectorAngle * (180.0f / kPi) : 1.25f);
         sigil->UpdateProceduralMesh();
     }
 
@@ -66,18 +66,18 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
     prismSpikePositions_.back() = prismSpellCenter_;
 }
 
-std::unique_ptr<engine::Object3d> EnemyPrismSlime::CreatePrismSpikeObject(int index) const {
+std::unique_ptr<engine::Object3D> EnemyPrismSlime::CreatePrismSpikeObject(int index) const {
     // 棘は攻撃の視覚部品であり、接触判定は別の扇形攻撃で処理する。
     if (!GetObjectCommon()) {
         return nullptr;
     }
 
-    auto spike = std::make_unique<engine::Object3d>();
+    auto spike = std::make_unique<engine::Object3D>();
     spike->Initialize(GetObjectCommon());
     spike->SetName("PrismSpike_" + std::to_string(index));
     spike->SetClassName("EnemyVisualPart");
     spike->SetModel("Effects/prism_crystal_spike");
-    spike->SetColliderType(ColliderType::kNone);
+    spike->SetColliderType(ColliderType::None);
     spike->SetCollisionAttribute(0);
     spike->SetCollisionMask(0);
     spike->SetMaterialType(kPrismCrystalMaterialType);
@@ -94,7 +94,7 @@ std::unique_ptr<engine::Object3d> EnemyPrismSlime::CreatePrismSpikeObject(int in
     spike->SetEnableEnvMap(true);
     spike->SetEnvIntensity(1.12f);
     spike->SetEmissive(0.96f);
-    spike->SetBlendMode(BlendMode::kNone);
+    spike->SetBlendMode(BlendMode::None);
     return spike;
 }
 
@@ -257,13 +257,13 @@ void EnemyPrismSlime::PrepareCrystalLances() {
     }
 }
 
-std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool glow) const {
+std::unique_ptr<EffectObject3D> EnemyPrismSlime::CreateCrystalCircleEffect(bool glow) const {
     // 同じ JSON を通常層と加算発光層で使い、後段で別々の透明度を制御する。
     if (!GetObjectCommon()) {
         return nullptr;
     }
 
-    auto effect = std::make_unique<EffectObject3d>();
+    auto effect = std::make_unique<EffectObject3D>();
     effect->Initialize(GetObjectCommon());
 
     if (!effect->LoadFromJson(kPrismCrystalLanceCircleEffect)) {
@@ -273,7 +273,7 @@ std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool 
     effect->SetName(glow ? "PrismCrystalCircleGlow" : "PrismCrystalCircle");
 
     if (glow) {
-        effect->SetBlendMode(BlendMode::kAdd);
+        effect->SetBlendMode(BlendMode::Add);
         effect->SetUseTextureColor(false);
     }
 
@@ -282,13 +282,13 @@ std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool 
     return effect;
 }
 
-std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateSpellEffect(const char* path) const {
+std::unique_ptr<EffectObject3D> EnemyPrismSlime::CreateSpellEffect(const char* path) const {
     // 演出データの再生状態だけ準備し、実際の表示時刻は攻撃状態が決める。
     if (!GetObjectCommon()) {
         return nullptr;
     }
 
-    auto effect = std::make_unique<EffectObject3d>();
+    auto effect = std::make_unique<EffectObject3D>();
     effect->Initialize(GetObjectCommon());
 
     if (!effect->LoadFromJson(path)) {
@@ -386,7 +386,7 @@ void EnemyPrismSlime::UpdateWindSpellVisual(float deltaTime) {
 
         // 陣は召喚地点に固定し、移動する竜巻とは別の存在として見せます。
         const engine::Vector3 circlePosition = vortex.origin;
-        auto updateCircle = [&](std::unique_ptr<EffectObject3d>& circle, bool glow) {
+        auto updateCircle = [&](std::unique_ptr<EffectObject3D>& circle, bool glow) {
             if (!circle)
                 return;
             circle->Update(deltaTime);
@@ -460,7 +460,7 @@ void EnemyPrismSlime::UpdateChantSigilVisual(float deltaTime) {
     BossChantFrame frame;
     frame.casterPosition = GetWorldPosition();
     frame.groundPosition = FindGroundPoint(frame.casterPosition);
-    const AABB bodyBounds = GetModelWorldAABB();
+    const Aabb bodyBounds = GetModelWorldAabb();
     frame.casterRadius = (std::max)({(bodyBounds.max.x - bodyBounds.min.x) * 0.5f,
                                      (bodyBounds.max.z - bodyBounds.min.z) * 0.5f, baseScale_.x * 0.84f});
     frame.casterHeight = (std::max)(bodyBounds.max.y - bodyBounds.min.y, baseScale_.y * 1.20f);
@@ -778,7 +778,7 @@ void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
         }
     }
 
-    const AABB targetBounds = GetTarget()->GetAABB();
+    const Aabb targetBounds = GetTarget()->GetAabb();
     constexpr float kSpikeReachHeight = 2.4f;
     if (targetBounds.min.y > nearbyGroundY + kSpikeReachHeight ||
         targetBounds.max.y < nearbyGroundY - 0.3f) {
@@ -829,9 +829,9 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
 
     const engine::Vector3 groundPosition = thunderStrikePositions_[actionIndex_];
     const float yaw = std::atan2(lockedDirection_.x, lockedDirection_.z);
-    constexpr float strikeHeight = 10.5f;
+    constexpr float kStrikeHeight = 10.5f;
     engine::Vector3 strikeCenter = groundPosition;
-    strikeCenter.y += strikeHeight * 0.5f;
+    strikeCenter.y += kStrikeHeight * 0.5f;
 
     if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
         effects->SpawnEffectAt(kThunderBoltEffect, strikeCenter, {kHalfPi, yaw, 0.0f}, {1.15f, 1.18f, 1.15f});
@@ -853,7 +853,7 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
     const float verticalDistance = difference.y;
     difference.y = 0.0f;
 
-    if (engine::Math::Length(difference) > attack.radius || verticalDistance < -0.6f || verticalDistance > strikeHeight) {
+    if (engine::Math::Length(difference) > attack.radius || verticalDistance < -0.6f || verticalDistance > kStrikeHeight) {
         return;
     }
 
@@ -1020,7 +1020,7 @@ void EnemyPrismSlime::PrepareSummonPortals() {
     ++summonRandomSerial_;
 }
 
-std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateSummonPortalEffect(bool glow) const {
+std::unique_ptr<EffectObject3D> EnemyPrismSlime::CreateSummonPortalEffect(bool glow) const {
     // 召喚陣は結晶円の材質を使い、名前だけを用途に合わせて区別する。
     auto effect = CreateCrystalCircleEffect(glow);
 

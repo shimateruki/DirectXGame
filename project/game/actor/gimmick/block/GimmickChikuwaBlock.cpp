@@ -4,7 +4,7 @@
 #include "Math.h"
 #include <random>
 
-void GimmickChikuwaBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickChikuwaBlock::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("ChikuwaBlock");
@@ -21,7 +21,7 @@ void GimmickChikuwaBlock::Initialize(engine::Object3dCommon* common, const std::
     using Self = GimmickChikuwaBlock;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ちくわブロック",
         "");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("震え時間", "shakeDuration", &Parameter::shakeDuration, 0.0f, 10.0f);
     properties.Parameter("落下時間", "fallDuration", &Parameter::fallDuration, 0.0f, 10.0f);
     properties.Parameter("リスポーン間隔", "interval", &Parameter::interval, 0.0f, 10.0f);
@@ -83,7 +83,7 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickChikuwaBlock::OnCollision(engine::Object3d* other) {
+bool GimmickChikuwaBlock::OnCollision(engine::Object3D* other) {
     // 待機中のみプレイヤーの搭乗を判定
     if (state_ == State::Idle) {
         if (other->GetClassName() == "Player") {
@@ -130,7 +130,7 @@ void GimmickChikuwaBlock::ChangeState(State newState) {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickChikuwaBlock::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickChikuwaBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と設定値を複製する。
     auto newObj = std::make_unique<GimmickChikuwaBlock>();
     assert(GetObjectCommon() != nullptr);

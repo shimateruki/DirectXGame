@@ -15,7 +15,7 @@
 #include <cstring>
 #include <limits>
 #include <string_view>
-#include "SRVManager.h"
+#include "SrvManager.h"
 #include <DebugConsole.h>
 #include <LightManager.h>
 
@@ -85,7 +85,7 @@ void Model::InitializeFromCpuData(
             }),
         modelData_.meshes.end());
 
-    // --- AABB（モデルのサイズ）計算 ---
+    // --- Aabb（モデルのサイズ）計算 ---
     engine::Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
     engine::Vector3 max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
     bool hasVertices = false;
@@ -260,7 +260,7 @@ void Model::CreateBoneBuffer() {
     }
 
     // 1. リソース作成
-    UINT sizeInBytes = sizeof(BoneForGPU) * static_cast<UINT>(modelData_.bones.size());
+    UINT sizeInBytes = sizeof(BoneForGpu) * static_cast<UINT>(modelData_.bones.size());
     boneResource_ = dxCommon->CreateBufferResource(sizeInBytes);
 
     if (!boneResource_) {
@@ -296,12 +296,12 @@ void Model::CreateBoneBuffer() {
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
     srvDesc.Buffer.FirstElement = 0;
     srvDesc.Buffer.NumElements = UINT(modelData_.bones.size());
-    srvDesc.Buffer.StructureByteStride = sizeof(BoneForGPU);
+    srvDesc.Buffer.StructureByteStride = sizeof(BoneForGpu);
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
     // SRVManagerでディスクリプタを確保して作成
-    boneSrvIndex_ = SRVManager::GetInstance()->Allocate();
-    SRVManager::GetInstance()->CreateSRVforResource(boneSrvIndex_, boneResource_.Get(), srvDesc);
+    boneSrvIndex_ = SrvManager::GetInstance()->Allocate();
+    SrvManager::GetInstance()->CreateSrvForResource(boneSrvIndex_, boneResource_.Get(), srvDesc);
 }
 
 // ==========================================
@@ -546,13 +546,13 @@ void Model::Draw(
 
 
     if (!modelData_.bones.empty() && boneResource_ && boneSrvIndex_ != 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
     }
 
     uint32_t envMapHandle = LightManager::GetInstance()->GetEnvironmentMapHandle();
 
     if (envMapHandle != 0) { // 念のため0（未読み込み）じゃないかチェック
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
     }
 
     // 3. メッシュごとの描画ループ
@@ -581,7 +581,7 @@ void Model::Draw(
 
         const MaterialData* primaryMaterial = GetPrimaryMaterialData();
         const bool usesModelTexture =
-            overrideTextureHandle == 0 || overrideTextureHandle >= DirectXCommon::kMaxSRVCount;
+            overrideTextureHandle == 0 || overrideTextureHandle >= DirectXCommon::kMaxSrvCount;
         if (usesModelTexture && meshMaterial && primaryMaterial) {
             meshMaterialFactors[0] = CalculateMaterialMultiplier(
                 meshMaterial->baseColorFactor.x, primaryMaterial->baseColorFactor.x);
@@ -603,43 +603,43 @@ void Model::Draw(
             0);
 
         uint32_t meshNormalHandle = normalMapHandle;
-        if ((meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) &&
+        if ((meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSrvCount) &&
             meshMaterial && meshMaterial->hasNormalMap &&
-            meshMaterial->normalMapHandle > 0 && meshMaterial->normalMapHandle < DirectXCommon::kMaxSRVCount) {
+            meshMaterial->normalMapHandle > 0 && meshMaterial->normalMapHandle < DirectXCommon::kMaxSrvCount) {
             meshNormalHandle = meshMaterial->normalMapHandle;
         }
 
-        if (meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) {
+        if (meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSrvCount) {
             meshNormalHandle = GetDefaultWhiteTextureHandle();
         }
 
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, meshNormalHandle);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, meshNormalHandle);
 
         uint32_t meshOrmHandle = ormMapHandle;
-        if ((meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) &&
+        if ((meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSrvCount) &&
             meshMaterial && meshMaterial->hasOrmMap &&
-            meshMaterial->ormMapHandle > 0 && meshMaterial->ormMapHandle < DirectXCommon::kMaxSRVCount) {
+            meshMaterial->ormMapHandle > 0 && meshMaterial->ormMapHandle < DirectXCommon::kMaxSrvCount) {
             meshOrmHandle = meshMaterial->ormMapHandle;
         }
 
-        if (meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) {
+        if (meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSrvCount) {
             meshOrmHandle = GetDefaultWhiteTextureHandle();
         }
 
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
 
         const D3D12_VERTEX_BUFFER_VIEW& activeVertexBufferView = GetActiveVertexBufferView(mesh);
         commandList->IASetVertexBuffers(0, 1, &activeVertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
-        if (overrideTextureHandle > 0 && overrideTextureHandle < DirectXCommon::kMaxSRVCount) {
+        if (overrideTextureHandle > 0 && overrideTextureHandle < DirectXCommon::kMaxSrvCount) {
             // エディタで画像が選ばれていたら、そっちを優先して貼る！
-            SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
+            SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
         }
         else if (mesh.materialIndex < modelData_.materials.size()) {
             // 選ばれていない場合は、モデル本来のテクスチャを貼る
             uint32_t handle = modelData_.materials[mesh.materialIndex].textureHandle;
-            SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, handle);
+            SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, handle);
         }
 
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), instanceCount, 0, 0, startInstanceLocation);

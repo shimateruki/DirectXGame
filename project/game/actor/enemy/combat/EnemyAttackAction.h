@@ -5,10 +5,13 @@
 
 // AIは候補を選んで開始するだけ。予備動作から後隙まで同じ時計で進めます。
 // ownerはこの部品を所有するActorで、Cancelまたは部品の破棄まで生存する必要があります。
+// 関連：AttackSequenceの命令再生に、BaseEnemyの向き・予告・色の制御と復元を加える。
+// 主な入口：Start / Update / Cancel
 class EnemyAttackAction : public AttackSequence {
 public:
     ~EnemyAttackAction() { Cancel(); }
 
+    // 開始中ならfalse。攻撃定義をコピーし、Actor制御が有効なら開始前の色を退避する。
     bool Start(const EnemyAttackDefinition& definition, const AttackSequenceContext& context) {
         // 前回の色と予告表示を戻してから、新しい攻撃の照準を固定する。
         if (IsRunning())
@@ -31,9 +34,9 @@ public:
         return true;
     }
 
-    // dt は秒。照準固定時刻までは対象を追い、以降は固定した照準と現在の成立条件で進める。
-    void Update(float dt, const AttackSequenceContext& context) {
-        if (!IsRunning() || !std::isfinite(dt) || dt < 0)
+    // deltaTime は秒。照準固定時刻までは対象を追い、以降は固定した照準と現在の成立条件で進める。
+    void Update(float deltaTime, const AttackSequenceContext& context) {
+        if (!IsRunning() || !std::isfinite(deltaTime) || deltaTime < 0)
             return;
         const auto& control = GetDefinition().sequence.actorControl;
         if (controlled_ && context.hasTarget && GetElapsed() < control.aimLockTime) {
@@ -48,13 +51,13 @@ public:
 
             // 対象消失時の条件判定は現在の情報を使い、固定座標で命令を発行します。
             ApplyPresentation(context);
-            if (!cuePlayed_ && GetElapsed() + dt >= control.cueTime) {
+            if (!cuePlayed_ && GetElapsed() + deltaTime >= control.cueTime) {
                 cuePlayed_ = true;
                 if (control.telegraph && owner_)
                     owner_->TriggerAttackTelegraphCue(ToColor(control.telegraphColor));
             }
         }
-        AttackSequence::Update(dt, execution);
+        AttackSequence::Update(deltaTime, execution);
         if (!IsRunning())
             Restore();
         else ApplyPresentation(context);
@@ -63,6 +66,7 @@ public:
     // 命令列を止め、攻撃中に変えた色と予告表示も同時に戻す。
     void Cancel() { AttackSequence::Cancel(); Restore(); }
 
+    // Actor制御付きの攻撃が再生中の場合だけtrue。単にシーケンスがあるだけではtrueにしない。
     bool ControlsActor() const { return controlled_ && IsRunning(); }
 
 private:
@@ -100,8 +104,8 @@ private:
         controlled_ = false;
     }
 
-    BaseEnemy* owner_ = nullptr;
-    engine::Vector4 originalColor_{1, 1, 1, 1};
-    AttackSequenceContext aim_;
-    bool controlled_ = false, cuePlayed_ = false;
+    BaseEnemy* owner_ = nullptr; // 予告と色を変更する敵の借用参照。Cancelまで生存している必要がある。
+    engine::Vector4 originalColor_{1, 1, 1, 1}; // 攻撃開始前の色。終了・中断時に戻す。
+    AttackSequenceContext aim_; // 照準固定時の座標・方向。Actorの所有権は持たない。
+    bool controlled_ = false, cuePlayed_ = false; // Actor制御の有効状態、cuePlayed_は現在の攻撃での予告強調済み状態。
 };

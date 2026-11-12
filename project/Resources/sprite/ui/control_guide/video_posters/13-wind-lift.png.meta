@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7140ab97dbfd77f3f58a8f9a86378b9a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/13-wind-lift.png",
+  "version": 1
+}

@@ -10,6 +10,8 @@
 class Player;
 
 // 一台に一能力を置くコピー台です。旧シーンの複数コア設定も読み込めます。
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision / OnTrigger
 class GimmickCopyMemoryStation final : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -17,7 +19,7 @@ class GimmickCopyMemoryStation final : public BaseGimmick {
     static constexpr const char* kModelPath = "Gimmicks/copy_memory_station";
 
     /// コアの種類と配置設定を読み込み、表示を準備する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     /// コアの浮遊表示と接触選択の状態を更新する。
     void Update(float deltaTime) override;
@@ -26,7 +28,7 @@ class GimmickCopyMemoryStation final : public BaseGimmick {
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     /// プレイヤーが触れたコアを判定する。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     /// 外部トリガーで記憶台を起動する。
     void OnTrigger() override;
@@ -35,7 +37,7 @@ class GimmickCopyMemoryStation final : public BaseGimmick {
     void OnSwitchEvent(bool active) override;
 
     /// 配置用の記憶台複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
   private:
     static constexpr size_t kCoreCount = 4;
@@ -84,15 +86,15 @@ class GimmickCopyMemoryStation final : public BaseGimmick {
     /// 指定コアのコピー能力をプレイヤーへ付与する。
     void ActivateCore(Player& player, size_t index);
 
-    std::array<std::unique_ptr<engine::Object3d>, kCoreCount> coreVisuals_{};
+    std::array<std::unique_ptr<engine::Object3D>, kCoreCount> coreVisuals_{};
     std::array<std::string, kCoreCount> displayedTypes_{};
     std::array<float, kCoreCount> corePulseTimers_{};
     std::array<engine::Vector3, kCoreCount> transferTargets_{};
-    std::array<std::unique_ptr<engine::Object3d>, kCoreCount * 4> effects_{};
+    std::array<std::unique_ptr<engine::Object3D>, kCoreCount * 4> effects_{};
     float visualTimer_ = 0.0f;
     float selectionCooldown_ = 0.0f;
-    int latchedCore_ = -1;
+    int latchedCore_ = -1; // 前回接触したコア番号。-1は未接触。
     bool initializedForPlay_ = false;
     bool runtimeEnabled_ = true;
-    bool collisionObserved_ = false;
+    bool collisionObserved_ = false; // 直近の衝突通知でプレイヤー接触を検出したか。
 };

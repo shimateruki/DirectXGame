@@ -2,6 +2,8 @@
 #include "BaseEnemy.h"
 
 // プレイヤーに接近して点火する爆弾型の敵。運搬・投擲後も導火線の残り時間を引き継ぎます。
+// 関連：BaseEnemyの接触情報を使い、起動から爆発までの段階を進める。
+// 主な入口：Initialize / Update
 class EnemyBomb : public BaseEnemy {
   public:
     enum class State {
@@ -15,7 +17,7 @@ class EnemyBomb : public BaseEnemy {
     ~EnemyBomb() override = default;
 
     // 爆弾モデル、衝突判定、追跡状態を初期化する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // 追跡、導火線、投擲後の移動を状態に応じて進める。
     void Update(float deltaTime) override;
@@ -24,7 +26,7 @@ class EnemyBomb : public BaseEnemy {
     void BeginThrown(const engine::Vector3& initialVelocity) override;
 
     // プレイヤーの爆弾が敵に当たったら即座に爆発し、通常の接触は基底クラスへ渡す。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     // 運搬時の移動状態を切り替え、自爆能力を実行する。
     void SetCarried(bool isCarried) override;

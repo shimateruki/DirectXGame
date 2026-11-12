@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ea2e7eac020896e8b48e3e32d2954b16",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/16-bomb-jump.png",
+  "version": 1
+}

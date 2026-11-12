@@ -21,7 +21,7 @@ constexpr float kReturnDelaySeconds = 5.0f;
 constexpr int kDefaultHazardCount = 4;
 } // namespace
 
-void GimmickHazardRideFloor::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickHazardRideFloor::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // プレイヤーを運ぶ床として衝突を持ち、移動距離と途中の危険イベント数を設定します。
@@ -52,7 +52,7 @@ void GimmickHazardRideFloor::Initialize(engine::Object3dCommon* common, const st
     using Self = GimmickHazardRideFloor;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "妨害付き輸送床",
         "Target IDを先頭に、Target ID + 妨害番号を順番に起動します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("移動速度", "speed", &Parameter::speed, 0.1f, 40.0f);
     properties.Parameter("移動距離", "moveAmount", &Parameter::moveAmount, 1.0f, 300.0f);
     properties.Parameter("発進前の予告", "shakeDuration", &Parameter::shakeDuration, 0.0f, 5.0f);
@@ -153,7 +153,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickHazardRideFloor::OnCollision(engine::Object3d* other) {
+bool GimmickHazardRideFloor::OnCollision(engine::Object3D* other) {
     // 上面へ乗ったプレイヤーだけを運び、横からの接触では発進させません。
     if (!other || other->GetClassName() != "Player") {
         return true;
@@ -181,7 +181,7 @@ void GimmickHazardRideFloor::OnTrigger() {
     BeginRide();
 }
 
-std::unique_ptr<engine::Object3d> GimmickHazardRideFloor::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickHazardRideFloor::Clone() const {
     // 複製先を初期化してから走行設定と配置を引き継ぎます。
     auto clone = std::make_unique<GimmickHazardRideFloor>();
     assert(GetObjectCommon() != nullptr);
@@ -222,11 +222,11 @@ void GimmickHazardRideFloor::TriggerPendingHazards(float progress) {
             break;
         }
 
-        const int baseEventID = GetTargetID();
+        const int baseEventId = GetTargetId();
 
-        if (baseEventID > 0) {
+        if (baseEventId > 0) {
             if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
-                scene->TriggerEvent(baseEventID + nextHazardIndex_);
+                scene->TriggerEvent(baseEventId + nextHazardIndex_);
             }
         }
 

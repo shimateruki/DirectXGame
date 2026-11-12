@@ -1,5 +1,5 @@
 #ifdef USE_IMGUI
-#include "engine/core/editor/SelectedActorSession.h"
+#include "engine/editor/preview/SelectedActorSession.h"
 #endif
 #include "game/system/scene/ObjectManager.h"
 #include "CollisionManager.h"
@@ -17,7 +17,7 @@
 
 namespace {
 // 透明面を除いたStageGateの枠だけを通常の不透明描画へ送ります。
-bool ShouldDrawStageGateFrame(const std::unique_ptr<engine::Object3d>& obj) {
+bool ShouldDrawStageGateFrame(const std::unique_ptr<engine::Object3D>& obj) {
     // 透明なゲート面と枠を区別し、枠だけを不透明パスへ残す。
     if (!obj || obj->GetMaterialType() != 22)
         return false;
@@ -74,7 +74,7 @@ void ObjectManager::Update(float deltaTime) {
     // 全ロジック更新後に Transform と描画定数を確定します。
     // 親を持つObjectは親側の再帰更新に含め、同じMeshRenderer::Updateが
     // 1フレームに複数回走らないようにする。
-    std::unordered_set<engine::Object3d*> managedObjects;
+    std::unordered_set<engine::Object3D*> managedObjects;
     managedObjects.reserve(objects_.size());
 
     for (const auto& obj : objects_) {
@@ -87,7 +87,7 @@ void ObjectManager::Update(float deltaTime) {
         if (!obj || obj->IsReplayRemoved())
             continue;
 
-        engine::Object3d* parent = obj->GetParent();
+        engine::Object3D* parent = obj->GetParent();
         const bool hierarchyRoot = parent == nullptr || managedObjects.find(parent) == managedObjects.end();
 
         if (hierarchyRoot) {
@@ -145,7 +145,7 @@ void ObjectManager::Draw(ID3D12Resource* pointLight, ID3D12Resource* spotLight) 
     }
 }
 
-void ObjectManager::AddObject(std::unique_ptr<engine::Object3d> object) {
+void ObjectManager::AddObject(std::unique_ptr<engine::Object3D> object) {
     if (!object)
         return;
 
@@ -156,34 +156,34 @@ void ObjectManager::AddObject(std::unique_ptr<engine::Object3d> object) {
     pendingObjects_.push_back(std::move(object));
 }
 
-engine::Object3d* ObjectManager::AddObjectImmediate(std::unique_ptr<engine::Object3d> object) {
+engine::Object3D* ObjectManager::AddObjectImmediate(std::unique_ptr<engine::Object3D> object) {
     // 編集などで即時参照が必要な場合も、所有権と衝突登録を同時に移す。
     if (!object)
         return nullptr;
     // 即時登録も、次の通常更新を待たず正しい姿勢で描画できる状態にする。
     object->UpdateWorldMatrix();
-    engine::Object3d* raw = object.get();
+    engine::Object3D* raw = object.get();
     CollisionManager::GetInstance()->AddObject(raw);
     objects_.push_back(std::move(object));
     return raw;
 }
 
-std::unique_ptr<engine::Object3d> ObjectManager::TakeObjectImmediate(engine::Object3d* object) {
+std::unique_ptr<engine::Object3D> ObjectManager::TakeObjectImmediate(engine::Object3D* object) {
     // 所有権の移譲前に衝突・削除予約から外し、旧 Manager に参照を残さない。
     if (!object)
         return nullptr;
-    auto takeFrom = [object](std::vector<std::unique_ptr<engine::Object3d>>& storage) -> std::unique_ptr<engine::Object3d> {
+    auto takeFrom = [object](std::vector<std::unique_ptr<engine::Object3D>>& storage) -> std::unique_ptr<engine::Object3D> {
         auto it = std::find_if(storage.begin(), storage.end(), [object](const auto& candidate) {
             return candidate.get() == object;
         });
         if (it == storage.end())
             return nullptr;
-        std::unique_ptr<engine::Object3d> result = std::move(*it);
+        std::unique_ptr<engine::Object3D> result = std::move(*it);
         storage.erase(it);
         return result;
     };
 
-    std::unique_ptr<engine::Object3d> result = takeFrom(objects_);
+    std::unique_ptr<engine::Object3D> result = takeFrom(objects_);
     if (!result)
         result = takeFrom(pendingObjects_);
     if (!result)
@@ -194,11 +194,11 @@ std::unique_ptr<engine::Object3d> ObjectManager::TakeObjectImmediate(engine::Obj
 }
 
 // 所有中のObjectだけ削除予約し、同フレームの描画を防ぐため先に非表示へします。
-void ObjectManager::RequestRemove(engine::Object3d* object) {
+void ObjectManager::RequestRemove(engine::Object3D* object) {
     if (!object)
         return;
 
-    const auto matches = [object](const std::unique_ptr<engine::Object3d>& candidate) {
+    const auto matches = [object](const std::unique_ptr<engine::Object3D>& candidate) {
         return candidate && candidate.get() == object;
     };
 
@@ -227,22 +227,22 @@ void ObjectManager::ProcessRemovals() {
     std::sort(removalList_.begin(), removalList_.end());
     removalList_.erase(std::unique(removalList_.begin(), removalList_.end()), removalList_.end());
 
-    auto isRequestedForRemoval = [this](engine::Object3d* object) {
+    auto isRequestedForRemoval = [this](engine::Object3D* object) {
         return std::binary_search(removalList_.begin(), removalList_.end(), object);
     };
 
     // CollisionManagerから登録解除
-    for (engine::Object3d* obj : removalList_) {
+    for (engine::Object3D* obj : removalList_) {
         colManager->RemoveObject(obj);
     }
 
     // リストから削除
     pendingObjects_.erase(
         std::remove_if(pendingObjects_.begin(), pendingObjects_.end(),
-                       [&](const std::unique_ptr<engine::Object3d>& p) { return p && isRequestedForRemoval(p.get()); }),
+                       [&](const std::unique_ptr<engine::Object3D>& p) { return p && isRequestedForRemoval(p.get()); }),
         pendingObjects_.end());
 
-    auto it = std::remove_if(objects_.begin(), objects_.end(), [&](const std::unique_ptr<engine::Object3d>& p) {
+    auto it = std::remove_if(objects_.begin(), objects_.end(), [&](const std::unique_ptr<engine::Object3D>& p) {
         if (!p || !isRequestedForRemoval(p.get())) {
             return false;
         }
@@ -285,9 +285,9 @@ void ObjectManager::DrawShadow() {
 
         // ライトの視錐台外にある物体はシャドウマップへ書き込まれないため除外する。
         // 画面外から影だけを落とす物体は残るので、メインカメラ基準より見た目も正確になる。
-        AABB worldAabb = obj->GetModelWorldAABB();
+        Aabb worldAabb = obj->GetModelWorldAabb();
 
-        if (!engine::Math::IntersectFrustumAABB(shadowFrustum, worldAabb.min, worldAabb.max)) {
+        if (!engine::Math::IntersectFrustumAabb(shadowFrustum, worldAabb.min, worldAabb.max)) {
             engine::RenderStats::GetInstance()->RecordCulledObject();
             continue;
         }

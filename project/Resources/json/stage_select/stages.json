@@ -10,7 +10,8 @@
             "bgmPath": "",
             "defaultUnlocked": true,
             "unlockStageIndex": -1,
-            "hasStarCoins": true
+            "hasStarCoins": true,
+            "cameraPath": "Resources/json/camera/stage1_game_camera.json"
         },
         {
             "id": "stage2",
@@ -24,7 +25,8 @@
             "skyboxPath": "Resources/skybox/stage2_magma_fortress.dds",
             "defaultUnlocked": false,
             "unlockStageIndex": 0,
-            "hasStarCoins": true
+            "hasStarCoins": true,
+            "cameraPath": "Resources/json/camera/stage2_game_camera.json"
         },
         {
             "id": "stage3",
@@ -38,7 +40,8 @@
             "unlockStageIndex": 1,
             "lightPath": "Resources/json/light/stage3_high_crown.json",
             "skyboxPath": "Resources/skybox/stage3_high_crown.dds",
-            "hasStarCoins": false
+            "hasStarCoins": false,
+            "cameraPath": "Resources/json/camera/stage3_game_camera.json"
         },
         {
             "id": "stage4",

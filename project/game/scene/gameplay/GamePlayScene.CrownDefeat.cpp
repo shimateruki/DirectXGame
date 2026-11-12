@@ -14,7 +14,7 @@ bool GamePlayScene::StartCrownDefeat(EnemyFalseKingSlime* boss) {
     if (!crownDefeatVfxSequence_.Load("Resources/json/scenario/crown_defeat.json"))
         return false;
     crownDefeatVfxPlayer_.Initialize(SceneManager::GetInstance());
-    crownDefeatVfxPlayer_.SetBindingResolver([this,boss](const CinematicObjectBinding& binding) -> engine::Object3d* {
+    crownDefeatVfxPlayer_.SetBindingResolver([this,boss](const CinematicObjectBinding& binding) -> engine::Object3D* {
         if (binding.targetName=="$Actor") return boss;
         if (binding.targetName=="$Gate") return player_;
         return nullptr;
@@ -108,6 +108,7 @@ void GamePlayScene::ResetCrownDefeat() {
     s=CrownDefeatState{};
 }
 
-void GamePlayScene::DrawCrownDefeatWorld() {
-    crownDefeatVfxPlayer_.DrawPresentation(pointLightResource_.Get(),spotLightResource_.Get());
+void GamePlayScene::DrawCrownDefeatWorld(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // Drawで取得した共有ライトを渡し、直前の描画が残したGPU状態に依存させない。
+    crownDefeatVfxPlayer_.DrawPresentation(pointLightResource, spotLightResource);
 }

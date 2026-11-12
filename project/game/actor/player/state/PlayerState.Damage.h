@@ -4,6 +4,8 @@
 #include "engine/utility/math/Math.h"
 
 /// <summary>被弾時のノックバックと姿勢の復元を管理します。</summary>
+// 関連：Playerの被ダメージ時に入り、通常操作へ戻るまでの硬直を扱う。
+// 主な入口：Enter / Update / Exit
 class PlayerStateDamage : public IAnimationState {
   public:
     explicit PlayerStateDamage(const engine::Vector3& knockbackDir) : knockbackDir_(knockbackDir) {}

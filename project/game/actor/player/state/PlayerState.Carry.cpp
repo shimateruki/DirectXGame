@@ -23,7 +23,7 @@ void PlayerStateCarry::Enter(Player* player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Carry);
         struggleTimer_ = 0.0f;
 
-        engine::Object3d* enemy = player->GetCarriedEnemy();
+        engine::Object3D* enemy = player->GetCarriedEnemy();
 
         if (enemy) {
             // 抵抗演出の基準サイズを保持し、持ち運び終了時に元へ戻せるようにする。
@@ -38,7 +38,7 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
 
     struggleTimer_ += deltaTime;
 
-    engine::Object3d* enemy = player->GetCarriedEnemy();
+    engine::Object3D* enemy = player->GetCarriedEnemy();
 
     if (enemy) {
         engine::Vector3 playerPos = player->GetWorldPosition();
@@ -72,13 +72,13 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
         enemy->UpdateWorldMatrix();
     }
 
-    // （※ここに後で「左クリックで投げる」処理を追加します）
+    // 投げ・吸収の入力はPlayer側が処理し、この状態では運搬姿勢の更新だけを担当する。
 }
 
 void PlayerStateCarry::Exit(Player* player) {
     // 投げた時などに呼ばれる
     if (player) {
-        engine::Object3d* enemy = player->GetCarriedEnemy();
+        engine::Object3D* enemy = player->GetCarriedEnemy();
 
         if (enemy) {
             // 持ち運びが終わったら（投げる等）、姿勢とスケールを元に戻す

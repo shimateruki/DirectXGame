@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "a949c1ef941e5cdb05425df547bf47bd",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_charge.json",
+  "version": 1
+}

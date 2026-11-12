@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5791b2d6c64f874141427ae629d6eda7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown_gate/tip.png",
+  "version": 1
+}

@@ -4,7 +4,9 @@
 #include <string>
 #include <vector>
 
-/// <summary>SceneManagerが具体型を知らずにシーン名から生成するための抽象ファクトリ。</summary>
+// 担当：シーン名からBaseSceneを作る契約を定義する。
+// 関連：SceneManager（利用）、SceneFactory（登録表による実装）
+// 主な入口：CreateScene / GetRegisteredSceneNames
 class AbstractSceneFactory {
 public:
     virtual ~AbstractSceneFactory() = default;

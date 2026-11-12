@@ -2,7 +2,7 @@
 #include <numbers>
 #include "game/system/combat/BulletManager.h"
 #include "CollisionConfig.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshEffectManager.h"
 #include "CollisionManager.h"
 #include "game/system/rules/EventManager.h"
@@ -41,11 +41,11 @@ bool AttackSequence::Start(const EnemyAttackDefinition& definition, const Attack
     return true;
 }
 
-void AttackSequence::Update(float dt, const AttackSequenceContext& context) {
-    if (!IsRunning() || !std::isfinite(dt) || dt < 0)
+void AttackSequence::Update(float deltaTime, const AttackSequenceContext& context) {
+    if (!IsRunning() || !std::isfinite(deltaTime) || deltaTime < 0)
         return;
     const float previous = clock_.GetElapsed();
-    clock_.Update(dt, [&](const std::string& condition) { return CheckCondition(condition, context); },
+    clock_.Update(deltaTime, [&](const std::string& condition) { return CheckCondition(condition, context); },
         [&](const AttackSequenceEvent& event) { Execute(event, context); });
 
     // 条件停止の前に通過した判定区間は処理し、停止時刻より後は処理しません。
@@ -303,7 +303,7 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
 
     if (event.operation == "gpu_vfx") {
         // 見た目だけのイベントは弾と当たり判定を作らず、その場で発生を終える。
-        auto* particles = GPUParticleManager::GetInstance();
+        auto* particles = GpuParticleManager::GetInstance();
 
         if (particles->IsInitialized() && !event.preset.empty()) {
             if (event.directed)

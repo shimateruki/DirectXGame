@@ -4,10 +4,12 @@
 
 #include <string>
 
-/// <summary>Objectへ追従するCPU/GPU粒子プリセットと発生間隔の状態を保持する。</summary>
+// 担当：CPU・GPU粒子の設定名と、発生間隔の経過時間を保持する。
+// 関連：ObjectComponent（共通型）、Object3D（発生処理）、ParticleManager / GpuParticleManager
+// 主な入口：GetCpuParticle / GetGpuParticle / ResetEmissionTimer
 class ParticleEmitterComponent final : public ObjectComponent {
 public:
-    static constexpr std::string_view kTypeId = "ParticleEmitter";
+    static constexpr std::string_view kTypeId = "ParticleEmitter"; // 保存と実行時の型判定に使う固定ID。
 
     /// <summary>保存と型判定に使うComponent種別を返す。</summary>
     std::string_view GetTypeId() const override { return kTypeId; }
@@ -26,10 +28,11 @@ public:
 
     float GetEmissionTimer() const { return emissionTimer_; }
 
+    // 発生間隔の経過秒数を0へ戻す。
     void ResetEmissionTimer() { emissionTimer_ = 0.0f; }
 
 private:
-    std::string cpuParticle_;
-    std::string gpuParticle_;
-    float emissionTimer_ = 0.0f;
+    std::string cpuParticle_; // CPU粒子の設定名。空なら未設定。
+    std::string gpuParticle_; // GPU粒子の設定名。空なら未設定。
+    float emissionTimer_ = 0.0f; // 前回の発生からの蓄積秒数。
 };

@@ -31,13 +31,14 @@ void PlayerStatePullObject::Enter(Player* player) {
     timer_ = 0.0f;
     pullStarted_ = false;
 
-    engine::Object3d* marker = player->GetHookMarker();
+    engine::Object3D* marker = player->GetHookMarker();
 
-    if (marker) {
+    if (marker && !whipVisual_) {
         marker->SetIsVisible(true);
         marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
         marker->SetTranslate(hookTipPos_);
     }
+    if (whipVisual_) whipVisual_->UpdatePull(player, targetObject_->GetWorldPosition(), 0.0f);
 }
 
 void PlayerStatePullObject::Update(Player* player, float deltaTime) {
@@ -56,14 +57,14 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
 
     engine::Vector3 targetPos = targetObject_->GetWorldPosition();
     engine::Vector3 toTarget = targetPos - hookTipPos_;
-    float dist = engine::Math::Length(toTarget);
+    float distance = engine::Math::Length(toTarget);
 
     if (!pullStarted_) {
         // フック先端が対象に十分近付くまでは、対象の引き寄せを開始しない。
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
         player->SetSlimeAnimationDirection(targetPos - player->GetWorldPosition());
 
-        if (alreadyHit_ || dist < 3.0f) {
+        if (alreadyHit_ || distance < 3.0f) {
             alreadyHit_ = false;
             hookTipPos_ = targetPos;
 
@@ -79,16 +80,19 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
             hookTipPos_ = hookTipPos_ + dir * (180.0f * deltaTime);
         }
 
-        UpdateRopeMarker(player, hookTipPos_, 0.22f);
+        if (whipVisual_) whipVisual_->UpdatePull(player, targetPos, deltaTime);
+        else UpdateRopeMarker(player, hookTipPos_, 0.22f);
         return;
     }
 
-    UpdateRopeMarker(player, targetObject_->GetWorldPosition(), 0.18f);
+    if (whipVisual_) whipVisual_->UpdatePull(player, targetObject_->GetWorldPosition(), deltaTime);
+    else UpdateRopeMarker(player, targetObject_->GetWorldPosition(), 0.18f);
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::PullEnemy);
     player->SetSlimePullDirection(targetObject_->GetWorldPosition() - player->GetWorldPosition());
     player->SetSlimePullProgress(std::clamp(timer_ / 0.35f, 0.0f, 1.0f));
 
     if (timer_ > 0.35f) {
+        if (whipVisual_) player->BeginWhipReturn(whipVisual_);
         // 引き寄せ演出の終了時に Idle へ戻し、Exit で入力とマーカーを復元する。
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     }
@@ -104,10 +108,11 @@ void PlayerStatePullObject::Exit(Player* player) {
     if (!player)
         return;
 
+    if (whipVisual_) { whipVisual_->Finish(player); whipVisual_.reset(); }
     player->SetIsControlActive(true);
-    engine::Object3d* marker = player->GetHookMarker();
+    engine::Object3D* marker = player->GetHookMarker();
 
-    if (marker) {
+    if (marker && !whipVisual_) {
         marker->SetIsVisible(false);
         marker->SetScale({1.0f, 1.0f, 1.0f});
         marker->SetEulerAngles({0.0f, 0.0f, 0.0f});
@@ -122,15 +127,15 @@ void PlayerStatePullObject::UpdateRopeMarker(Player* player, const engine::Vecto
     if (!player)
         return;
 
-    engine::Object3d* marker = player->GetHookMarker();
+    engine::Object3D* marker = player->GetHookMarker();
     if (!marker)
         return;
 
     engine::Vector3 startPos = player->GetWorldPosition();
     engine::Vector3 diff = endPos - startPos;
-    float len = engine::Math::Length(diff);
-    if (len < 0.01f)
-        len = 0.01f;
+    float length = engine::Math::Length(diff);
+    if (length < 0.01f)
+        length = 0.01f;
 
     marker->SetIsVisible(true);
     marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
@@ -138,7 +143,7 @@ void PlayerStatePullObject::UpdateRopeMarker(Player* player, const engine::Vecto
     marker->SetEulerAngles({std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
                                       std::atan2(diff.x, diff.z), 0.0f});
     marker->SetQuaternionMaster(false);
-    marker->SetScale({thickness, thickness, len});
+    marker->SetScale({thickness, thickness, length});
     marker->UpdateLocalMatrix();
     marker->UpdateWorldMatrix();
 }

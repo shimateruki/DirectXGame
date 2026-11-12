@@ -7,7 +7,7 @@
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "MeshEffectManager.h"
 #include "engine/utility/math/Math.h"
 
@@ -106,16 +106,16 @@ void SpawnDebrisOnGroundSafe(const char* presetName, const engine::Vector3& posi
 
 void EmitGpuPresetSafe(const char* presetName, const engine::Vector3& position) {
     // GPU粒子が未初期化のプレビューでも、攻撃処理を継続する。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized()) {
         particles->Emit(presetName, position);
     }
 }
 
-engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
+engine::Object3D* FindEnemyDamageTarget(engine::Object3D* object) {
     // 子メッシュとの接触を親の敵へたどり、ダメージ対象を統一する。
-    for (engine::Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3D* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -124,7 +124,7 @@ engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
     return nullptr;
 }
 
-void EnemySlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemySlime::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 攻撃設定を読み直してから見た目の変形を初期化し、配置済み個体に旧姿勢を残さない。
     BaseEnemy::Initialize(common, modelName);
     SetEnemyType("Slime");
@@ -165,6 +165,10 @@ void EnemySlime::Update(float deltaTime) {
 
     if (!GetTarget() || !GetParameters().has_value()) {
         HideAttackTelegraph();
+        // 標的がないプレビューでも待機・被弾の表示を更新し、外力による移動は基底へ任せる。
+        EnsureBaseScale();
+        idleTimer_ += deltaTime;
+        ApplySlimeAnimation(deltaTime);
         BaseEnemy::Update(deltaTime);
         return;
     }
@@ -814,7 +818,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     }
 }
 
-std::unique_ptr<engine::Object3d> EnemySlime::Clone() const {
+std::unique_ptr<engine::Object3D> EnemySlime::Clone() const {
     // 新しい個体を初期化してから、シーン内の配置設定と攻撃対象を引き継ぐ。
     auto newSlime = std::make_unique<EnemySlime>();
     newSlime->Initialize(GetObjectCommon(), this->GetModelName());

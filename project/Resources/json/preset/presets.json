@@ -8,6 +8,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -132,6 +133,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -254,6 +256,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -381,6 +384,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -505,6 +509,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -629,6 +634,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -754,6 +760,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -881,6 +888,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -1009,6 +1017,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -1133,6 +1142,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -1257,6 +1267,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "cameraOcclusionMode": 0,
         "castShadow": true,
         "collider": {
             "center": [
@@ -8280,21 +8291,14 @@
             ],
             "type": 3
         },
-        "collisionAttribute": 4,
+        "collisionAttribute": 16,
         "collisionAttributeIds": [
-            "ground"
+            "trigger"
         ],
         "collisionAttributeUnknownBits": 0,
-        "collisionMask": 255,
+        "collisionMask": 1,
         "collisionMaskIds": [
-            "player",
-            "enemy",
-            "ground",
-            "player_bullet",
-            "trigger",
-            "map_block",
-            "player_attack",
-            "enemy_attack"
+            "player"
         ],
         "collisionMaskUnknownBits": 0,
         "color": [

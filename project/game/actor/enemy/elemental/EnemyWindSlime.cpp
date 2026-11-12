@@ -7,7 +7,7 @@
 #include "Character.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/combat/GroundEffectLocator.h"
 #include "MeshEffectManager.h"
 #include "SceneManager.h"
@@ -53,8 +53,6 @@ constexpr const char* kBreathDustPreset = "wind_slime_breath_dust";
 constexpr const char* kBurstPreset = "wind_slime_gust_burst";
 constexpr const char* kImpactPreset = "wind_slime_gust_impact";
 constexpr const char* kOrbHoldPreset = "wind_slime_orb_hold";
-constexpr const char* kOrbTrailPreset = "wind_slime_orb_trail";
-constexpr const char* kOrbImpactPreset = "wind_slime_orb_impact";
 constexpr const char* kUpdraftPreset = "player_wind_updraft";
 constexpr const char* kSoarTrailPreset = "player_wind_dash";
 constexpr const char* kBurstRingEffectPath = "Resources/json/effect/effect_wind_gust_ring.json";
@@ -68,11 +66,11 @@ constexpr const char* kSoarLandEffectPath = "Resources/json/effect/effect_player
 
 
 // 風弾の材質、軌跡、着弾の見た目を一つの設定として組み立てます。
-BulletVisualConfig MakeWindOrbVisual() {
-    // 発射後の弾にも手持ち時と同じ材質・色・軌跡を適用する。
+BulletVisualConfig MakeWindOrbVisual(const EnemyAttackDefinition& attack) {
+    // 発射後も手持ち時の材質と色を使い、軌跡と着弾は攻撃設定から選ぶ。
     BulletVisualConfig visual;
     visual.materialType = kWindOrbMaterialType;
-    visual.blendMode = BlendMode::kNormal;
+    visual.blendMode = BlendMode::Normal;
     visual.color = {0.42f, 1.0f, 0.80f, 0.96f};
     visual.emissive = 1.9f;
     visual.visualScale = 0.82f;
@@ -84,8 +82,16 @@ BulletVisualConfig MakeWindOrbVisual() {
     visual.effectSoftness = 0.32f;
     visual.effectIntensity = 1.72f;
     visual.billboardScale = 1.0f;
-    visual.trailPreset = kOrbTrailPreset;
-    visual.impactPreset = kOrbImpactPreset;
+    visual.trailPreset = attack.activeVfx;
+    visual.impactPreset = attack.impactVfx;
+    if (visual.trailPreset.empty() || visual.impactPreset.empty()) {
+        // 旧設定や保存前のプレビューの空欄でも、従来の弾の見た目を保つ。
+        static const auto defaults = EnemyAttackProfile::CreateDefault("WindSlime");
+        if (const auto* volley = defaults.FindAttack(kVolleyAttackId)) {
+            if (visual.trailPreset.empty()) visual.trailPreset = volley->activeVfx;
+            if (visual.impactPreset.empty()) visual.impactPreset = volley->impactVfx;
+        }
+    }
     visual.trailInterval = 0.055f;
     visual.trailSpeedScale = 1.25f;
     return visual;
@@ -103,9 +109,9 @@ engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
-engine::Object3d* FindEnemyRoot(engine::Object3d* object) {
+engine::Object3D* FindEnemyRoot(engine::Object3D* object) {
     // 子オブジェクトへの接触から被弾すべき親の敵を探す。
-    for (engine::Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3D* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -115,7 +121,7 @@ engine::Object3d* FindEnemyRoot(engine::Object3d* object) {
 }
 } // namespace
 
-void EnemyWindSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyWindSlime::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 攻撃プロフィールと地上時の球判定を本体初期化後に設定する。
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_WindSlime");
@@ -125,7 +131,7 @@ void EnemyWindSlime::Initialize(engine::Object3dCommon* common, const std::strin
     SetDefaultColor(GetColor());
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SyncGroundCollisionRadius();
 }
 
@@ -564,7 +570,7 @@ void EnemyWindSlime::FireAerialWindOrb(int orbIndex) {
     const float lifetime = attack.lifetime > 0.0f ? attack.lifetime : 2.8f;
     const float radius = (std::max)(0.32f, attack.radius);
     BulletManager::GetInstance()->Fire(spawnPosition, aim * speed, CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") | CollisionCategories::Get("ground"),
-                                       "Primitives/sphere", radius, lifetime, MakeWindOrbVisual(), attack.damage, {},
+                                       "Primitives/sphere", radius, lifetime, MakeWindOrbVisual(attack), attack.damage, {},
                                        DamageType::Physical);
 
     EmitDirectedWindPreset(kBurstPreset, spawnPosition, aim, 1.12f);
@@ -662,14 +668,14 @@ void EnemyWindSlime::EnsureHeldWindOrbs() {
             continue;
         }
 
-        auto orb = std::make_unique<engine::Object3d>();
+        auto orb = std::make_unique<engine::Object3D>();
         orb->Initialize(GetObjectCommon());
         orb->SetName("WindSlime_HeldOrb_" + std::to_string(index));
         orb->SetModel("Primitives/sphere");
         orb->SetCollisionAttribute(0);
         orb->SetCollisionMask(0);
         orb->SetMaterialType(kWindOrbMaterialType);
-        orb->SetBlendMode(BlendMode::kNormal);
+        orb->SetBlendMode(BlendMode::Normal);
         orb->SetColor({0.46f, 1.0f, 0.82f, 0.94f});
         orb->SetEmissive(1.8f);
         orb->SetMetallic(0.0f);
@@ -699,7 +705,7 @@ void EnemyWindSlime::UpdateHeldWindOrbs(float deltaTime, float appearProgress) {
     volleyVisualTimer_ -= deltaTime;
 
     for (int index = 0; index < static_cast<int>(heldWindOrbVisuals_.size()); ++index) {
-        engine::Object3d* orb = heldWindOrbVisuals_[index].get();
+        engine::Object3D* orb = heldWindOrbVisuals_[index].get();
 
         if (!orb) {
             continue;
@@ -792,7 +798,7 @@ void EnemyWindSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     BaseEnemy::BeginThrown(initialVelocity);
 }
 
-std::unique_ptr<engine::Object3d> EnemyWindSlime::Clone() const {
+std::unique_ptr<engine::Object3D> EnemyWindSlime::Clone() const {
     // 複製先を初期化してから配置設定と対象を引き継ぐ。
     auto clone = std::make_unique<EnemyWindSlime>();
     clone->Initialize(GetObjectCommon(), GetModelName());
@@ -975,7 +981,7 @@ void EnemyWindSlime::EmitWindBreathParticles(const engine::Vector3& origin, cons
 
 void EnemyWindSlime::EmitWindPreset(const char* presetName, const engine::Vector3& position) {
     // GPU粒子が未初期化なら演出だけ省き、攻撃処理は続ける。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->Emit(presetName, position);
@@ -985,7 +991,7 @@ void EnemyWindSlime::EmitWindPreset(const char* presetName, const engine::Vector
 void EnemyWindSlime::EmitDirectedWindPreset(const char* presetName, const engine::Vector3& position, const engine::Vector3& direction,
                                             float speedScale) {
     // 吹き出す方向と速度倍率をプリセットへ渡し、攻撃ごとに粒子の向きを揃える。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);

@@ -12,11 +12,11 @@ class CrownSealTarget final : public BaseEnemy {
     void Update(float deltaTime) override {
         // 結晶も通常の敵ダメージ間隔を使い、連続接触で一瞬に壊れないようにします。
         SetDamageCooldown(std::max(0.0f, GetDamageCooldown() - deltaTime));
-        engine::Object3d::Update(deltaTime);
+        engine::Object3D::Update(deltaTime);
     }
 };
 
-void UpdateFinaleLayer(EffectObject3d* effect, float deltaTime, bool visible, const engine::Vector3& position,
+void UpdateFinaleLayer(EffectObject3D* effect, float deltaTime, bool visible, const engine::Vector3& position,
                        const engine::Vector3& scale, const engine::Vector4& color, const engine::Vector3& rotation = {}) {
     // 複数の演出層を同じ更新順で配置し、描画前に行列を確定します。
     if (!effect)
@@ -68,7 +68,7 @@ void EnemyFalseKingSlime::OpenCrownArmor() {
     if (battlePhase_ != 3 || crownInterlude_)
         return;
     armorOpenTimer_ = CrownFinaleTuning::Get().armorOpenTime;
-    VFXSequencer::PlayOneShot(kPhaseShiftSequence, GetWorldPosition(), {1.1f, 1.1f, 1.1f});
+    VfxSequencer::PlayOneShot(kPhaseShiftSequence, GetWorldPosition(), {1.1f, 1.1f, 1.1f});
 }
 
 void EnemyFalseKingSlime::ResetCrownFinale() {
@@ -140,7 +140,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
         crystal->SetCollisionAttribute(debugPreviewAttackId_ == kSealBarragePreviewId ? 0 : CollisionCategories::Get("enemy"));
         crystal->SetCollisionMask(debugPreviewAttackId_ == kSealBarragePreviewId ? 0
                                                                                  : CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-        crystal->SetColliderType(ColliderType::kSphere);
+        crystal->SetColliderType(ColliderType::Sphere);
         crystal->SetCollisionRadius(1.8f);
         crystal->SetEnableLighting(true);
         crystal->SetEnableEnvMap(true);
@@ -162,7 +162,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
         seal.gem = CreateRoyalMesh("CrownSealGem", "Effects/false_king_seal_core",
                                    {0.86f, 0.48f, 1.0f, 1.0f}, 2.0f);
         if (seal.link) {
-            seal.link->SetBlendMode(BlendMode::kNone);
+            seal.link->SetBlendMode(BlendMode::None);
             seal.link->SetEnableLighting(false);
         }
     }
@@ -187,10 +187,10 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
     if (!spellChant_->Start(GetObjectCommon(), std::move(chantStyle)))
         spellChant_.reset();
     auto makeShield = [this](const char* path, const char* name) {
-        auto effect = std::make_unique<EffectObject3d>();
+        auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(GetObjectCommon());
         if (!effect->LoadFromJson(path))
-            return std::unique_ptr<EffectObject3d>{};
+            return std::unique_ptr<EffectObject3D>{};
         effect->SetName(name);
         effect->SetIsVisible(false);
         effect->Play(100.0f);
@@ -209,12 +209,14 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
     crownShieldBarrier_ = CreateRoyalVisual("FalseKing_CrownBarrier", "Gimmicks/portal_surface",
                                             kGatePortalMaterialType, {0.30f, 0.86f, 1.0f, 0.84f}, 2.4f);
     if (crownShieldBarrier_) {
-        crownShieldBarrier_->SetBlendMode(BlendMode::kNormal);
+        crownShieldBarrier_->SetBlendMode(BlendMode::Normal);
         crownShieldBarrier_->SetCastShadow(false);
+        // 敵本体や床の予告は残し、視界を塞ぐ王冠バリアだけを個別に透過許可する。
+        crownShieldBarrier_->SetCameraOcclusionMode(engine::Object3D::CameraOcclusionMode::Fade);
         crownShieldBarrier_->SetIsVisible(false);
 
         if (MeshRenderer* renderer = crownShieldBarrier_->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGPU* effect = renderer->GetWaterParamData()) {
+            if (MeshRenderer::WaterParamForGpu* effect = renderer->GetWaterParamData()) {
                 effect->waveSpeed = 1.25f;
                 effect->waveHeight = 0.72f;
                 effect->waveFrequency = 18.0f;
@@ -247,7 +249,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
     for (size_t index = 0; index < crownBarrageLayers_.size(); ++index)
         crownBarrageLayers_[index] = makeShield(layerPaths[index], "FalseKing_SealBarrageLayer");
     DebrisEffectManager::GetInstance()->PrewarmPreset("false_king_seal_shatter");
-    GPUParticleManager::GetInstance()->PreloadPresetSystems(
+    GpuParticleManager::GetInstance()->PreloadPresetSystems(
         {"false_king_seal_embers", "false_king_seal_impact", "false_king_seal_dissolve",
          "false_king_seal_ground_sparks", "false_king_seal_air_aura"});
     HideAttackTelegraph();
@@ -404,7 +406,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         crownShieldBarrier_->SetColor({0.30f, 0.86f, 1.0f,
                                       0.84f * barrierBuild * (0.70f + 0.30f * crystalPower)});
         if (MeshRenderer* renderer = crownShieldBarrier_->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGPU* effect = renderer->GetWaterParamData()) {
+            if (MeshRenderer::WaterParamForGpu* effect = renderer->GetWaterParamData()) {
                 effect->effectIntensity = 0.06f + barrierBuild * 1.72f;
                 effect->uvOffsetY = barrierBuild;
                 effect->uvOffsetX = sealState_ == SealState::Reveal ? 1.0f - barrierBuild : 0.0f;
@@ -590,10 +592,10 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         sealBarrageDamageApplied_ = false;
         sealBarrage_.clear();
         const auto makeEffect = [this](const char* path) {
-            auto effect = std::make_unique<EffectObject3d>();
+            auto effect = std::make_unique<EffectObject3D>();
             effect->Initialize(GetObjectCommon());
             if (!effect->LoadFromJson(path))
-                return std::unique_ptr<EffectObject3d>{};
+                return std::unique_ptr<EffectObject3D>{};
             effect->SetIsVisible(false);
             effect->Play(8.0f);
             return effect;
@@ -676,7 +678,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
 
                 // 槍を上端からノイズ付きの赤い縁で崩し、破片と火花に引き継ぎます。
                 {
-                    engine::Object3d::PortalClipSettings clipSettings;
+                    engine::Object3D::PortalClipSettings clipSettings;
                     spear.model->SetMaterialTime(idleTimer_);
                     clipSettings.enabled = dissolve > 0.0f ? true : false;
                     clipSettings.progress = 0.5f;

@@ -18,6 +18,8 @@ namespace {
 namespace fs = std::filesystem;
 
 // 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
+// 担当：特殊材質が参照する三枠の画像ハンドル。
+// 関連：MeshRendererの内部処理だけで使う補助型。
 struct BakedShaderTextureSet {
     uint32_t slot0 = 0;
     uint32_t slot1 = 0;
@@ -25,6 +27,8 @@ struct BakedShaderTextureSet {
 };
 
 // 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
+// 担当：水・炎・ポータル用の画像と代替画像を再利用するキャッシュ。
+// 関連：MeshRendererの内部処理だけで使う補助型。
 struct BakedShaderTextureCache {
     BakedShaderTextureSet fallback;
     BakedShaderTextureSet water;
@@ -100,9 +104,9 @@ const BakedShaderTextureSet& GetGatePortalBakedShaderTextures() {
 void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const BakedShaderTextureSet& textures) {
     // 水系の共有ルートにある t2～t4 相当の三スロットを常に埋める。
     EnsureBakedShaderTexturesLoaded();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, textures.slot0);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, textures.slot1);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, textures.slot2);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, textures.slot0);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, textures.slot1);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, textures.slot2);
 }
 
 }
@@ -114,6 +118,7 @@ void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const Baked
 // 焼き込みテクスチャと代理モデルもここに集約し、特殊表現の追加場所を明確にする。
 // ========================================================================
 void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    UpdateCameraVisibility(CameraManager::GetInstance()->GetActiveCamera());
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers())
         return;
@@ -129,12 +134,12 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
 
     // [12] シャドウマップのテクスチャ (t5) をセット
     uint32_t shadowMapSrvHandle = common_->GetDxCommon()->GetShadowMapSrvHandle();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
 
     // ModelのDrawを呼ぶ
     drawModel->Draw(
         wvpResource_.Get(),
-        isUIPreview_ && previewDirectionalLightResource_
+        isUiPreview_ && previewDirectionalLightResource_
             ? previewDirectionalLightResource_ : LightManager::GetInstance()->GetDirectionalLightResource(),
         cameraResource_.Get(),
         pointLightResource,
@@ -145,7 +150,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
 }
 
 void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
-    // 別カメラ用の定数バッファを使い、通常画面の WVP と視点情報を上書きしない。
+    // 別カメラ用の定数バッファを使い、通常画面の wvp と視点情報を上書きしない。
     Model* drawModel = ResolveDrawModel();
     ID3D12Resource* previewWvpResource = nullptr;
     ID3D12Resource* previewCameraResource = nullptr;
@@ -164,11 +169,11 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
     }
 
     const uint32_t shadowMapSrvHandle = common_->GetDxCommon()->GetShadowMapSrvHandle();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
 
     drawModel->Draw(
         previewWvpResource,
-        isUIPreview_ && previewDirectionalLightResource_
+        isUiPreview_ && previewDirectionalLightResource_
             ? previewDirectionalLightResource_ : LightManager::GetInstance()->GetDirectionalLightResource(),
         previewCameraResource,
         pointLightResource,
@@ -191,7 +196,7 @@ bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferInd
     wvpResource = previewWvpResources_[safePreviewIndex].Get();
     cameraResource = previewCameraResources_[safePreviewIndex].Get();
     TransformationMatrix* previewWvpData = previewWvpData_[safePreviewIndex];
-    CameraForGPU* previewCameraData = previewCameraData_[safePreviewIndex];
+    CameraForGpu* previewCameraData = previewCameraData_[safePreviewIndex];
 
     if (!wvpResource || !cameraResource || !previewWvpData || !previewCameraData) {
         return false;
@@ -199,14 +204,16 @@ bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferInd
 
     engine::Math math;
     const engine::Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
-    previewWvpData->WVP = math.Multiply(worldMatrix, camera->GetViewProjectionMatrix());
+    previewWvpData->wvp = math.Multiply(worldMatrix, camera->GetViewProjectionMatrix());
     previewWvpData->world = worldMatrix;
-    previewWvpData->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
+    previewWvpData->worldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
+    *previewCameraData = {};
     previewCameraData->worldPosition = camera->GetEye();
     return true;
 }
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    UpdateCameraVisibility(CameraManager::GetInstance()->GetActiveCamera());
     // 通常画面の材質選択を描画コンポーネントへ集約する。各描画関数は既存のPSOを使う。
     using MaterialRenderPolicy::SpecialKind;
     switch (MaterialRenderPolicy::GetSpecialKind(GetMaterialType())) {
@@ -298,51 +305,63 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
         break;
 
     case SpecialKind::Laser:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetLaserGraphicsCommand);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLaserGraphicsCommand);
         break;
 
     case SpecialKind::SlimeGel:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetSlimeGelGraphicsCommand);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetSlimeGelGraphicsCommand);
         break;
 
     case SpecialKind::Shockwave:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetShockwaveGraphicsCommand);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetShockwaveGraphicsCommand);
         break;
 
     case SpecialKind::LiquidContact:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetLiquidContactGraphicsCommand);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLiquidContactGraphicsCommand);
         break;
 
     case SpecialKind::DamageCrack:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetDamageCrackGraphicsCommand);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetDamageCrackGraphicsCommand);
         break;
 
     case SpecialKind::Updraft:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetUpdraftGraphicsCommand, true);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetUpdraftGraphicsCommand, true);
         break;
 
     case SpecialKind::StunBind:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetStunBindGraphicsCommand, true);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetStunBindGraphicsCommand, true);
         break;
 
     case SpecialKind::CrownUnlock:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetCrownUnlockGraphicsCommand, true);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCrownUnlockGraphicsCommand, true);
         break;
 
     case SpecialKind::PoisonSpore:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetPoisonSporeGraphicsCommand, true);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetPoisonSporeGraphicsCommand, true);
         break;
 
     case SpecialKind::Cloud:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetCloudGraphicsCommand, true);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCloudGraphicsCommand, true);
         break;
 
     case SpecialKind::GatePortal:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
+    {
+        // プレビューでは別の定数を使い、実画面の透過円を持ち込まない。
+        const int index = std::clamp(previewBufferIndex, 0, kPreviewBufferCount - 1);
+        if (!waterParamData_ || !previewWaterData_[index]) return;
+        *previewWaterData_[index] = *waterParamData_;
+        previewWaterData_[index]->visibilityParameters = {};
+        previewWaterData_[index]->foregroundBarrierCenter = {};
+        previewWaterData_[index]->foregroundBarrierParameters = {};
+        previewWaterData_[index]->cameraWorldPosition = camera->GetEye();
+        previewWaterData_[index]->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle,
+            &engine::Object3DCommon::SetGatePortalGraphicsCommand, true, 1, previewWaterResources_[index].Get());
         break;
+    }
 
     case SpecialKind::WindOrb:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetWindOrbGraphicsCommand);
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetWindOrbGraphicsCommand);
         break;
 
     default:
@@ -351,7 +370,7 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
 }
 
 void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 通常画面の WVP を使って水材質の共通描画経路へ渡す。
+    // 通常画面の wvp を使って水材質の共通描画経路へ渡す。
     DrawWaterWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
@@ -373,10 +392,10 @@ void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, (waterResource ? waterResource : waterParamResource_.Get())->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
 
     //  4番目にカラーテクスチャをセット
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetWaterBakedShaderTextures());
 
     drawModel = (useWaterGrid && waterProxyModel_) ? waterProxyModel_.get() : drawModel;
@@ -384,7 +403,7 @@ void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
 }
 
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 通常画面の WVP を使って不透明マグマの共通描画経路へ渡す。
+    // 通常画面の wvp を使って不透明マグマの共通描画経路へ渡す。
     DrawMagmaWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
@@ -400,15 +419,15 @@ void MeshRenderer::DrawMagmaWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetDefaultBakedShaderTextures());
 
     drawModel->DrawMeshOnly(meshDrawIndex_);
 }
 
 void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 通常画面の WVP を使って氷材質の共通描画経路へ渡す。
+    // 通常画面の wvp を使って氷材質の共通描画経路へ渡す。
     DrawIceWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
@@ -425,14 +444,14 @@ void MeshRenderer::DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrv
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetDefaultBakedShaderTextures());
     drawModel->DrawMeshOnly(meshDrawIndex_);
 }
 
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 通常画面の WVP を使って炎材質の共通描画経路へ渡す。
+    // 通常画面の wvp を使って炎材質の共通描画経路へ渡す。
     DrawFireWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
@@ -458,26 +477,26 @@ void MeshRenderer::DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSr
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetFireBakedShaderTextures());
     Model* proxyModel = useVolumetricProxy ? volumetricFireProxyModel_.get() : fireProxyModel_.get();
     drawModel = proxyModel ? proxyModel : drawModel;
     drawModel->DrawMeshOnly(proxyModel ? -1 : meshDrawIndex_);
 }
 
-void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
-    // 通常画面用の WVP を添えて各特殊材質の共有描画処理へ渡す。
-    DrawSpecialMaterialWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle, setGraphicsCommand, useProxyModel, bakedTextureMode);
+void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (engine::Object3DCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode, ID3D12Resource* effectResource) {
+    // 通常画面用の wvp を添えて各特殊材質の共有描画処理へ渡す。
+    DrawSpecialMaterialWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle, setGraphicsCommand, useProxyModel, bakedTextureMode, effectResource);
 }
 
 void MeshRenderer::DrawSpecialMaterialWithWvp(
     ID3D12Resource* wvpResource,
     uint32_t depthSrvHandle,
     uint32_t colorSrvHandle,
-    void (engine::Object3dCommon::*setGraphicsCommand)(),
+    void (engine::Object3DCommon::*setGraphicsCommand)(),
     bool useProxyModel,
-    int bakedTextureMode) {
+    int bakedTextureMode, ID3D12Resource* effectResource) {
     // 代理形状が必要な演出だけ差し替え、定数と SRV のルート番号は全材質で統一する。
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !setGraphicsCommand || !wvpResource)
@@ -514,10 +533,10 @@ void MeshRenderer::DrawSpecialMaterialWithWvp(
     (common_->*setGraphicsCommand)();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
-    commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, (effectResource ? effectResource : waterParamResource_.Get())->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     const BakedShaderTextureSet& bakedTextures =
         (bakedTextureMode == 1) ? GetGatePortalBakedShaderTextures() : GetDefaultBakedShaderTextures();
     BindBakedShaderTextures(commandList, bakedTextures);
@@ -527,62 +546,62 @@ void MeshRenderer::DrawSpecialMaterialWithWvp(
 
 void MeshRenderer::DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 加算ビーム用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetLaserGraphicsCommand);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLaserGraphicsCommand);
 }
 
 void MeshRenderer::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // ゼリー材質用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetSlimeGelGraphicsCommand);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetSlimeGelGraphicsCommand);
 }
 
 void MeshRenderer::DrawShockwave(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 地面衝撃波用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetShockwaveGraphicsCommand);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetShockwaveGraphicsCommand);
 }
 
 void MeshRenderer::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 液面接触用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetLiquidContactGraphicsCommand);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLiquidContactGraphicsCommand);
 }
 
 void MeshRenderer::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // ひび割れ用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetDamageCrackGraphicsCommand);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetDamageCrackGraphicsCommand);
 }
 
 void MeshRenderer::DrawUpdraft(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 上昇気流は代理メッシュを使ってボリュームの見た目を作る。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetUpdraftGraphicsCommand, true);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetUpdraftGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawStunBind(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 拘束光は代理メッシュで視点から形が読めるようにする。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetStunBindGraphicsCommand, true);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetStunBindGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 王冠解除の光は代理メッシュを使う。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetCrownUnlockGraphicsCommand, true);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCrownUnlockGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 胞子は代理メッシュで薄い面を重ねる。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetPoisonSporeGraphicsCommand, true);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetPoisonSporeGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 雲は代理メッシュを使用して体積感を出す。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetCloudGraphicsCommand, true);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCloudGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // ポータルは専用焼き込みマスクと代理形状を組み合わせる。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetGatePortalGraphicsCommand, true, 1);
 }
 
 void MeshRenderer::DrawWindOrb(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     // 風の球は元モデルの形状を維持したまま専用 PSO へ切り替える。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3dCommon::SetWindOrbGraphicsCommand);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetWindOrbGraphicsCommand);
 }
 
 void MeshRenderer::InitializeWaterProxyModel() {
@@ -819,3 +838,26 @@ void MeshRenderer::InitializeGateBarrierCylinderProxyModel() {
     gateBarrierCylinderProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
 }
 
+
+void MeshRenderer::DrawVisibilitySilhouette(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    auto* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!common_ || !camera || !waterParamData_ || !HasRequiredBuffers() || isUiPreview_) return;
+    const auto& color = camera->GetVisibilitySettings().silhouetteColor;
+    if (color[3] <= 0.0f) return;
+    // 自機だけが必要になった時に確保する。実画面や別カメラのCBVを流用すると、
+    // 同じフレーム内の後続描画による書換えが先行コマンドにも見えてしまう。
+    if (!silhouetteResource_) {
+        silhouetteResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(WaterParamForGpu));
+        if (!silhouetteResource_ || FAILED(silhouetteResource_->Map(0, nullptr, reinterpret_cast<void**>(&silhouetteData_)))) {
+            silhouetteResource_.Reset(); silhouetteData_ = nullptr; return;
+        }
+    }
+    *silhouetteData_ = *waterParamData_;
+    silhouetteData_->cameraWorldPosition = camera->GetEye();
+    silhouetteData_->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
+    silhouetteData_->waterLightColor = {color[0], color[1], color[2]};
+    silhouetteData_->visibilityParameters.x = color[3];
+    if (auto* model = ResolveDrawModel()) model->PrepareComputeSkinning();
+    DrawSpecialMaterialWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle,
+        &engine::Object3DCommon::SetVisibilitySilhouetteGraphicsCommand, false, 0, silhouetteResource_.Get());
+}

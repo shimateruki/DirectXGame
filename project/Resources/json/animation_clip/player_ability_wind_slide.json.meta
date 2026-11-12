@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "3104d1e8eb614ad794fe4271e5d2abfb",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_ability_wind_slide.json",
+  "version": 1
+}

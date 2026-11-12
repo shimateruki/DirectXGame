@@ -17,25 +17,25 @@ constexpr float kDefaultTransitionDuration = 0.42f;
 
 } // namespace
 
-void GimmickPrismBarrier::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickPrismBarrier::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
-    // 薄い OBB を壁面として使い、開放時には通行を妨げるようにします。
+    // 薄い Obb を壁面として使い、開放時には通行を妨げるようにします。
     SetClassName("Gimmick");
     SetGimmickType("PrismBarrier");
     SetName("Gimmick_PrismBarrier");
     SetStatic(false);
     SetCastShadow(false);
     SetMaterialType(22);
-    SetBlendMode(BlendMode::kNormal);
+    SetBlendMode(BlendMode::Normal);
     SetEnableEnvMap(false);
     SetColor({0.30f, 0.86f, 1.0f, 0.84f});
     SetEmissive(2.4f);
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(0xffffffffu);
 
-    engine::Object3d::ColliderConfig collider;
-    collider.type = ColliderType::kOBB;
+    engine::Object3D::ColliderConfig collider;
+    collider.type = ColliderType::Obb;
     collider.center = {0.0f, 0.0f, 0.0f};
     collider.size = {1.0f, 1.0f, 0.45f};
     SetColliderConfig(collider);
@@ -54,7 +54,7 @@ void GimmickPrismBarrier::Initialize(engine::Object3dCommon* common, const std::
     using Self = GimmickPrismBarrier;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "プリズム障壁",
         "My Event IDは遭遇管理のTarget ID + 連番へ接続します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("展開・解除時間", "moveSpeed", &Parameter::moveSpeed, 0.05f, 3.0f);
     properties.Parameter("発光パルス速度", "interval", &Parameter::interval, 0.1f, 8.0f);
     properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
@@ -137,7 +137,7 @@ void GimmickPrismBarrier::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickPrismBarrier::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickPrismBarrier::Clone() const {
     // 初期化後に編集設定を移し、壁の材質と判定を複製先で作り直します。
     auto clone = std::make_unique<GimmickPrismBarrier>();
     assert(GetObjectCommon() != nullptr);

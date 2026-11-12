@@ -1,9 +1,9 @@
 #pragma once
 #ifdef USE_IMGUI
 #include "game/editor/RegisterGameActorDebug.h"
-#include "engine/utility/SystemDebug/editor/windows/EffectPreviewStage.h"
-#include "engine/utility/SystemDebug/editor/core/EditorManager.h"
-#include "engine/utility/SystemDebug/editor/core/DebugEditor.h"
+#include "engine/editor/preview/EffectPreviewStage.h"
+#include "engine/editor/core/EditorManager.h"
+#include "engine/editor/core/DebugEditor.h"
 #include "SceneManager.h"
 #include "WinApp.h"
 #include <fstream>

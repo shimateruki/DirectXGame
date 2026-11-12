@@ -5,6 +5,8 @@
 #include "engine/utility/math/Math.h"
 
 /// <summary>死亡演出を再生し、残機に応じて次のシーンへ進めます。</summary>
+// 関連：Playerの死亡時に入り、PlayerDeathAnimationと再開処理を進める。
+// 主な入口：Enter / Update / Exit
 class PlayerStateDead : public IAnimationState {
   public:
     // 死亡アニメーションを開始し、残機に応じた暗転と遷移の一度きりのフラグを初期化する。
@@ -26,6 +28,8 @@ class PlayerStateDead : public IAnimationState {
 };
 
 /// <summary>落下時の残機減少、待機、アイリス演出を順番に処理します。</summary>
+// 関連：Playerの落下失敗時に入り、通常の移動更新と分けて再開へ進める。
+// 主な入口：Enter / Update / Exit
 class PlayerStateFallingOut : public IAnimationState {
   public:
     // 落下直後の投影位置を暗転の中心に固定し、入力を止めて残機減少の段階へ入る。

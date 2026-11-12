@@ -1,8 +1,10 @@
 #pragma once
+
+// GameSelectSceneの解錠・ゲート演出で共有する時刻と計算。シーン個体の演出状態は保持しない。
 #include "engine/utility/math/Math.h"
 #include <cstdint>
 #include <string>
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 
 // ステージセレクト内部の共通計算。状態やObjectの所有権は保持しない。
 // 演出時刻はシナリオ JSON に置き、ここには共通の計算と固定設定だけを持つ。
@@ -116,10 +118,10 @@ engine::Vector3 SelectNormalizeGateDirectionXZ(const engine::Vector3& value, con
 // 帰還地点の地面を調べ、安全に配置できる高さを返す。
 float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const engine::Vector3& gatePos,
                                      const engine::Vector3& stageNodePosition, const engine::Vector3& playerPosition,
-                                     const engine::Object3d* ignoredObject);
+                                     const engine::Object3D* ignoredObject);
 
 // ゲートの向きから突入方向と通過用の三点経路を組み立てる。
-engine::Vector3 SelectGateEntryDirection(engine::Object3d* gateObject, const engine::Vector3& fallbackDirection);
+engine::Vector3 SelectGateEntryDirection(engine::Object3D* gateObject, const engine::Vector3& fallbackDirection);
 // ゲート面を基準に前後の通過点を作り、入場経路を配置向きへ合わせる。
 SelectGateEntryRoute SelectBuildGateEntryRoute(const engine::Vector3& gatePos, const engine::Vector3& direction, float entryY);
 

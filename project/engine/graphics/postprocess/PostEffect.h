@@ -8,9 +8,9 @@
 
 class DirectXCommon;
 
-/// <summary>
-/// 描画済み画面へブルーム、色調補正、輪郭などの画面効果を適用する。
-/// </summary>
+// 担当：描画済み画面へブルーム・色調補正・輪郭などの画面効果を適用する。
+// 関連：DirectXCommon（GPU基盤）、Game（合成経路）、PostEffectEditor（編集）
+// 主な入口：Initialize / PreDrawScene / Update / Draw / ResizeRenderTextures
 class PostEffect {
 public:
     static constexpr int kCameraPreviewTextureIndex = 6;
@@ -18,12 +18,12 @@ public:
 
     /// <summary>画面効果に使う全画面描画パイプラインの種類。</summary>
     enum PipelineIndex : int {
-        kCopyPipeline = 0,
-        kCompositeHdrPipeline,
-        kExtractPipeline,
-        kDownsamplePipeline,
-        kAddPipeline,
-        kCompositeBackBufferPipeline,
+        CopyPipeline = 0,
+        CompositeHdrPipeline,
+        ExtractPipeline,
+        DownsamplePipeline,
+        AddPipeline,
+        CompositeBackBufferPipeline,
     };
 
     // ブルームで生成する縮小テクスチャ段数です。
@@ -42,6 +42,7 @@ public:
 
     /// <summary>ポストエフェクトシェーダーへ渡す定数バッファの配置。</summary>
     /// <remarks>フィールド順とアラインメントをHLSL側に合わせる。</remarks>
+    // 関連：PostEffect（この型を使う機能の本体）
     struct Params {
         // --- Bloom ---
         float threshold = 1.0f;             // 高輝度抽出しきい値
@@ -94,23 +95,23 @@ public:
         float linearWorkflowEnabled = 0.0f; // 1: Editor色をsRGBからリニアへ変換
 
         engine::Vector3 dissolveEdgeColor = { 1.0f, 0.4f, 0.3f }; // エッジの色
-        float padding_m2 = 0.0f;            // 144バイト境界に合わせる
+        float dissolvePadding = 0.0f;            // 144バイト境界に合わせる
         
         engine::Matrix4x4 projectionInverse;            // 深度復元用の逆行列
 
         // --- Slime Fade ---
         float slimeFadeIntensity = 0.0f;    // スライムフェードの進捗 (0.0 - 1.0)
         float slimeDensity = 1.0f;          // スライムの密度（ノイズのスケール）
-        float padding_s1 = 0.0f;
-        float padding_s2 = 0.0f;
+        float slimePadding1 = 0.0f;
+        float slimePadding2 = 0.0f;
         engine::Vector3 slimeColor = { 0.18f, 0.8f, 0.44f }; // スライムの色 (Emerald Green)
-        float padding_s3 = 0.0f;
+        float slimePadding3 = 0.0f;
 
         // --- Iris Out ---
         float irisFadeIntensity = 0.0f;     // アイリスフェードの進捗 (0.0: 開, 1.0: 閉)
         float irisCenterX = 0.5f;           // 中心X
         float irisCenterY = 0.5f;           // 中心Y
-        float padding_i1 = 0.0f;
+        float irisPadding = 0.0f;
     };
 
     /// <summary>画面効果の描画リソースとパイプラインを初期化する。</summary>
@@ -135,18 +136,19 @@ public:
     void EndCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandList, int targetTexIndex);
 
     // リソースバリア管理
-    void TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex);
+    void TransitionToSrv(ID3D12GraphicsCommandList* commandList, int texIndex);
 
-    void TransitionToRTV(ID3D12GraphicsCommandList* commandList, int texIndex);
+    // 指定描画テクスチャをレンダーターゲット状態へ遷移させる。
+    void TransitionToRtv(ID3D12GraphicsCommandList* commandList, int texIndex);
 
     // アクセッサ
-    uint32_t GetSRVHandle(int texIndex = 0) const { return renderTextures_[texIndex].srvHandle; }
+    uint32_t GetSrvHandle(int texIndex = 0) const { return renderTextures_[texIndex].srvHandle; }
 
     ID3D12Resource* GetRenderTexture(int texIndex = 0) const { return renderTextures_[texIndex].resource.Get(); }
 
-    uint32_t GetDepthSRVHandle(int texIndex) const { return renderTextures_[texIndex].depthSrvHandle; }
+    uint32_t GetDepthSrvHandle(int texIndex) const { return renderTextures_[texIndex].depthSrvHandle; }
 
-    uint32_t GetGrabSRVHandle(int texIndex) const { return renderTextures_[texIndex].grabSrvHandle; }
+    uint32_t GetGrabSrvHandle(int texIndex) const { return renderTextures_[texIndex].grabSrvHandle; }
 
     Params* GetParams() { return paramsData_; }
 
@@ -196,19 +198,24 @@ private:
     // 全画面矩形、共通ルートシグネチャ、画面効果の各パイプラインを作る。
     void CreateMesh();
 
+    // 描画で使うルートパラメータとサンプラーを作る。
     void CreateRootSignature();
 
+    // 画面効果を描画するパイプラインを作る。
     void CreatePipelineState();
 
     // 描画先テクスチャ、カメラプレビューと画面効果定数を準備・再生成する。
     void CreateRenderTexture(int texIndex, int width, int height, DXGI_FORMAT format);
 
+    // 現在のプレビュー解像度に合わせて描画先を再作成する。
     void ResizeCameraPreviewTextures();
 
+    // 画面効果のパラメータを送る定数バッファを作る。
     void CreateConstBuffer();
 
 private:
     // 各パスの色・深度・Grabリソースと現在のバリア状態をひとまとまりで管理する。
+    // 関連：PostEffect（この型を使う機能の本体）
     struct RenderTexture {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
@@ -240,6 +247,7 @@ private:
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
 
     /// <summary>全画面矩形一頂点分の位置とUV。</summary>
+    // 関連：PostEffect（この型を使う機能の本体）
     struct VertexPosUv {
         engine::Vector3 pos;
         engine::Vector2 uv;

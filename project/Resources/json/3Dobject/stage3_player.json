@@ -79,19 +79,8 @@
                 "scatteringIntensity": 0.0
             },
             "lod": {
-                "enabled": true,
-                "levels": [
-                    {
-                        "distance": 35.0,
-                        "level": 1,
-                        "modelName": "Characters/slime/slime_lod1.gltf"
-                    },
-                    {
-                        "distance": 70.0,
-                        "level": 2,
-                        "modelName": "Characters/slime/slime_lod2.gltf"
-                    }
-                ]
+                "enabled": false,
+                "levels": []
             },
             "materialType": 25,
             "meshDrawIndex": -1,
@@ -108,7 +97,7 @@
             "position": [
                 0.0,
                 -1.4800000190734863,
-                73.69999694824219
+                91.0
             ],
             "quaternion": [
                 0.0,

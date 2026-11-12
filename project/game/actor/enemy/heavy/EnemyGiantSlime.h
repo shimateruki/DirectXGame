@@ -2,10 +2,12 @@
 #include "BaseEnemy.h"
 
 // EnemyGiantSlimeは、大型ジャンプ攻撃、着地衝撃波、フック分裂を持つ重量級スライム敵です。
+// 関連：BaseEnemyの移動と被ダメージ処理を使い、突進・フック時の分裂を制御する。
+// 主な入口：Initialize / Update
 class EnemyGiantSlime : public BaseEnemy {
   public:
     // 巨大スライム用モデル、Collider、基準スケール、ステートを初期化します。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // ステートマシン、ジャンプ攻撃、着地回復、分裂処理を更新します。
     void Update(float deltaTime) override;
@@ -14,7 +16,7 @@ class EnemyGiantSlime : public BaseEnemy {
     void BeginThrown(const engine::Vector3& initialVelocity) override;
 
     /// 配置用の巨大スライム複製を作る。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     // フックで分裂させるための引っ張り状態を開始します。
     void BeginHookSplitPull(const engine::Vector3& hookOwnerPos);
@@ -131,9 +133,9 @@ class EnemyGiantSlime : public BaseEnemy {
     // フック分裂完了時に小型スライムを生成します。
     void SplitIntoSmallSlimes(engine::ParticleSystem* particleSystem);
 
-    float jumpTimer_ = 0.0f;
-    float landingPulseTimer_ = 0.0f;
-    float idleTimer_ = 0.0f;
+    float jumpTimer_ = 0.0f; // 跳躍の段階切替に使う経過秒数。
+    float landingPulseTimer_ = 0.0f; // 着地の変形までの残り秒数。
+    float idleTimer_ = 0.0f; // 待機中の見た目に使う経過秒数。
 
     float hookSplitPullTimer_ = 0.0f;
     float hookSplitPhaseTimer_ = 0.0f;
@@ -165,7 +167,7 @@ class EnemyGiantSlime : public BaseEnemy {
 
     State state_ = State::Idle;
     HookSplitPhase hookSplitPhase_ = HookSplitPhase::None;
-    float stateTimer_ = 0.0f;
+    float stateTimer_ = 0.0f; // 現在の状態に使う経過秒数。
     float telegraphTimer_ = 0.0f;
 
     bool hookSplitWeakPoint_ = false;

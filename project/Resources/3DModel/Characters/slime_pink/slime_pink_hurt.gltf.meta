@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8b1cbc525e3a4b229f994cd120d9bf04",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_pink/slime_pink_hurt.gltf",
+  "version": 1
+}

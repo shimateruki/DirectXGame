@@ -13,6 +13,8 @@ namespace engine { class Sprite; }
 namespace engine { class SpriteCommon; }
 
 // ゲーム中・タイトル共通の設定画面。編集中の値と確定済みの値を分離します。
+// 関連：GameSettingsManagerと編集用Valuesを分け、確定・破棄・カーソル制御をまとめる。
+// 主な入口：Initialize / SetActive / Update / Draw / Finalize
 class SettingsMenuOverlay {
   public:
     enum class Result { None, Closed };
@@ -29,6 +31,7 @@ class SettingsMenuOverlay {
     void Finalize();
 
     /// メニューの開閉と編集開始値を切り替える。
+    // 開く時に確定値を読み直し、選択・入力状態を初期化する。開閉に合わせてカーソル制御も変更する。
     void SetActive(bool active);
 
     bool IsActive() const { return active_; }
@@ -75,6 +78,7 @@ class SettingsMenuOverlay {
     void Apply();
 
     /// 編集値を確定して保存する。
+    // 編集値を適用して設定JSONへ保存する。編集中の音量プレビューだけでは確定しない。
     void Commit();
 
     /// 選択カテゴリの値を既定値へ戻す。
@@ -114,6 +118,7 @@ class SettingsMenuOverlay {
 
     // レイアウト未登録ならnullptr。返す参照はこのメニューのレイアウト保持中だけ有効。
     const LayoutSprite* FindLayoutSprite(const std::string& name) const;
+    // layoutの画面上の矩形にポインターが入るかを返す。未登録名ならfalse。
     bool InsideLayout(const engine::Vector2& point, const std::string& name) const;
     void PictureLayout(const std::string& name, bool selected = false, float offsetX = 0.0f,
                        float offsetY = 0.0f, float widthScale = 1.0f);
@@ -132,19 +137,19 @@ class SettingsMenuOverlay {
     engine::SpriteCommon* common_ = nullptr;
     engine::InputManager* input_ = nullptr;
 
-    std::vector<std::unique_ptr<engine::Sprite>> sprites_;
+    std::vector<std::unique_ptr<engine::Sprite>> sprites_; // この画面で生成したSpriteの所有先。検索用の参照とは分ける。
     std::unordered_map<std::string, std::string> labelTextures_;
     std::unordered_map<std::string, LayoutSprite> layoutSprites_;
 
     size_t usedSprites_ = 0;
 
-    Values original_, draft_;
+    Values original_, draft_; // 開いた時の確定値と、編集中の値。破棄時はoriginal_へ戻す。
     Modal modal_ = Modal::None;
     std::string status_;
 
-    int category_ = 0, row_ = 0, scroll_ = 0, footer_ = -1;
-    bool active_ = false, suppressInput_ = false;
-    bool replayOnly_ = false;
+    int category_ = 0, row_ = 0, scroll_ = 0, footer_ = -1; // カテゴリ・行・スクロール位置。footer_=-1はフッター未選択。
+    bool active_ = false, suppressInput_ = false; // 画面の開閉状態と、開いた直後の持ち越し入力の抑止状態。
+    bool replayOnly_ = false; // 復元表示用の状態。通常の操作・適用と区別する。
 
     int modalSelection_ = 1;
 
@@ -153,10 +158,10 @@ class SettingsMenuOverlay {
 
     float animationTime_ = 0.f;
 
-    int horizontalHeldDirection_ = 0;
+    int horizontalHeldDirection_ = 0; // 左右の長押し方向。-1が左、0がなし、1が右。
     // 左右の連続調整に使う実時刻はミリ秒。animationTime_の経過秒数とは別に管理する。
-    uint64_t horizontalHoldStartMs_ = 0;
-    uint64_t horizontalNextRepeatMs_ = 0;
+    uint64_t horizontalHoldStartMs_ = 0; // 左右キーの長押し開始時刻（ミリ秒）。
+    uint64_t horizontalNextRepeatMs_ = 0; // 次の左右リピートを受け付ける時刻（ミリ秒）。
 
     inline static int activeCount_ = 0;
     inline static RECT editorViewport_{};

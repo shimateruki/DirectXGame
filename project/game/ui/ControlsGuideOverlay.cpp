@@ -3,6 +3,7 @@
 #include <numbers>
 #define NOMINMAX
 #include "ControlsGuideOverlay.h"
+#include "engine/graphics/2d/VideoSpritePlayer.h"
 
 #include "InputManager.h"
 #include "game/ui/InputGlyphResolver.h"
@@ -90,8 +91,8 @@ AbilityGuideVisual ResolveAbilityGuide(const Player* player) {
                  "ui/control_guide/labels/thunder_step.png"}};
 
     case Player::EnemyMorphType::WindSlime:
-        return {{"ui/control_guide/labels/updraft.png", "ui/control_guide/labels/wind_breath.png",
-                 "ui/control_guide/labels/wind_dash.png"}};
+        return {{"ui/control_guide/labels/wind_vortex.png", "ui/control_guide/labels/wind_tornado.png",
+                 "ui/control_guide/labels/wind_slide.png"}};
 
     default:
         return {};
@@ -126,6 +127,12 @@ const char* ResolvePortraitTexture(const Player* player) {
     }
 }
 
+// UI画像はsRGBで統一し、normalや_nameを含む名前が法線画像と誤判定されるのを防ぐ。
+uint32_t LoadGuideTexture(const std::string& path) {
+    return TextureManager::GetInstance()->Load(engine::Sprite::ResolveTexturePath(path),
+                                               TextureManager::TextureColorSpace::SRGB);
+}
+
 void SetFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
     // 差し替え画像の元サイズをUV範囲へ反映し、旧画像の切り抜きが残らないようにする。
     if (!sprite || textureHandle == 0) {
@@ -139,7 +146,7 @@ void SetFullTextureRect(engine::Sprite* sprite, uint32_t textureHandle) {
 
 engine::Vector2 SetGlyphTexture(engine::Sprite* sprite, const InputGlyphSpec& glyph) {
     // アトラス画像は全体の大きさではなく、該当キーの領域だけをSpriteへ渡す。
-    const uint32_t handle = engine::Sprite::LoadTexture(glyph.path);
+    const uint32_t handle = LoadGuideTexture(glyph.path);
     SetFullTextureRect(sprite, handle);
     sprite->SetTextureName(glyph.path);
 
@@ -183,12 +190,18 @@ void ControlsGuideOverlay::Initialize(engine::SpriteCommon* spriteCommon, Player
 #endif
 }
 
+ControlsGuideOverlay::ControlsGuideOverlay() = default;
+
 ControlsGuideOverlay::~ControlsGuideOverlay() {
     // 編集コマンドと所有スプライトを破棄する共通経路を使う。
     Finalize();
 }
 
 void ControlsGuideOverlay::Finalize() {
+    CloseMovePreview();
+    videoPlayer_.reset();
+    movePreviewSprite_.reset();
+    movePreviewDescription_.reset();
     // エディターの選択参照を先に外し、所有する表示要素とプレイヤー参照を解放する。
 #ifdef USE_IMGUI
     EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
@@ -230,6 +243,10 @@ void ControlsGuideOverlay::SetActive(bool active) {
     }
 
     isActive_ = active;
+    if (!active) {
+        CloseMovePreview();
+        previewPlaybackEnabled_ = true;
+    }
     menuPageRequested_ = false;
     if (!active)
         bookPreviewKey_.clear();
@@ -305,6 +322,9 @@ void ControlsGuideOverlay::Update(float deltaTime, bool acceptInput) {
         }
 
         if (!isSliding_) {
+            if (currentPage_ == 1 && bookMoveCount_ > 0 && menu.up != menu.down) {
+                previewMoveIndex_ = (previewMoveIndex_ + (menu.down ? 1 : -1) + bookMoveCount_) % bookMoveCount_;
+            }
             const bool left = menu.left, right = menu.right;
             const bool confirm = menu.confirm;
             if (confirm) {
@@ -325,6 +345,7 @@ void ControlsGuideOverlay::Update(float deltaTime, bool acceptInput) {
 
     UpdateBook(deltaTime);
     UpdateSlide(deltaTime);
+    UpdateMovePreview(deltaTime);
     UpdateStaticVisuals();
 
     for (auto& sprite : sprites_) {
@@ -352,10 +373,21 @@ void ControlsGuideOverlay::Draw() {
         return;
     }
 
+    engine::Sprite* videoFrame = FindSprite("controls_guide_page_1_book_video_frame");
     for (auto& sprite : sprites_) {
-        if (sprite && sprite->IsVisible()) {
+        if (sprite && sprite.get() != videoFrame && sprite->IsVisible()) {
             sprite->Draw();
         }
+    }
+    DrawMovePreview();
+    // 映像の上へ縁を重ねる。再生画像がない間やページ移動中は枠も表示しない。
+    if (videoFrame && videoFrame->IsVisible()) {
+        videoFrame->SetVisible(movePreviewSprite_ && movePreviewSprite_->IsVisible());
+    }
+    if (videoFrame && videoFrame->IsVisible()) {
+        videoFrame->SetPosition(movePreviewSprite_->GetPosition());
+        videoFrame->SetSize(movePreviewSprite_->GetSize());
+        videoFrame->Draw();
     }
 }
 
@@ -392,6 +424,8 @@ void ControlsGuideOverlay::RestoreReplayState(const json& state) {
     if (!state.is_object()) {
         return;
     }
+    // リプレイにはデコード中のフレームを記録しないため、ライブ表示を先に外す。
+    CloseMovePreview();
 
     isActive_ = state.value("active", isActive_);
     pauseMode_ = state.value("pauseMode", pauseMode_);
@@ -461,9 +495,14 @@ void ControlsGuideOverlay::LoadLayout(const std::string& layoutPath) {
         bookScrollSpeed_ = std::max(1.0f, SpriteLayoutScaler::ReadFloat(book, "scrollSpeed", 650.0f)) * scaleY;
         bookWheelStep_ = std::max(1.0f, SpriteLayoutScaler::ReadFloat(book, "wheelStep", 125.0f)) * scaleY;
         bookBob_ = std::clamp(SpriteLayoutScaler::ReadFloat(book, "portraitBob", 4.0f), 0.0f, 12.0f) * scaleY;
+        const auto preview = book.value("movePreview", json::object());
+        if (preview.is_object()) {
+            movePreviewPosition_ = SpriteLayoutScaler::ReadVector2(preview.value("position", json::array()), {1008.0f, 418.0f});
+            movePreviewSize_ = SpriteLayoutScaler::ReadVector2(preview.value("size", json::array()), {568.0f, 320.0f});
+        }
+        previewBookPath_ = SpriteLayoutScaler::ReadString(book, "dataPath", "Resources/json/ui/abilityGuideBook.json");
         try {
-            std::ifstream dataFile(SpriteLayoutScaler::ReadString(book, "dataPath",
-                                                               "Resources/json/ui/abilityGuideBook.json"));
+            std::ifstream dataFile(previewBookPath_);
             if (dataFile)
                 dataFile >> bookData_;
         } catch (...) {
@@ -762,7 +801,7 @@ void ControlsGuideOverlay::RefreshAbilityVisuals() {
         engine::Sprite* portrait = pages_[1].portrait.sprite;
 
         if (portrait) {
-            const uint32_t textureHandle = engine::Sprite::LoadTexture(nextPath);
+            const uint32_t textureHandle = LoadGuideTexture(nextPath);
             SetFullTextureRect(portrait, textureHandle);
             portrait->SetTextureName(nextPath);
         }
@@ -788,7 +827,7 @@ void ControlsGuideOverlay::RefreshAbilityVisuals() {
         engine::Sprite* label = pages_[1].actionLabels[static_cast<size_t>(action)].sprite;
 
         if (label && available) {
-            const uint32_t textureHandle = engine::Sprite::LoadTexture(nextLabelPath);
+            const uint32_t textureHandle = LoadGuideTexture(nextLabelPath);
             SetFullTextureRect(label, textureHandle);
             label->SetTextureName(nextLabelPath);
         }
@@ -822,7 +861,7 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
         const std::string path = (std::string(action) == "close" ? controls.closeHint : controls.confirmHint).Resolve(gamepadMode);
 
         if (footer->GetTextureName() != path) {
-            SetFullTextureRect(footer, engine::Sprite::LoadTexture(path));
+            SetFullTextureRect(footer, LoadGuideTexture(path));
             footer->SetTextureName(path);
         }
     }
@@ -833,7 +872,7 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
             const std::string path = "ui/control_guide/book/basics/move_" + std::to_string(action) +
                                      (gamepadMode ? "_condition_gamepad.png" : "_condition.png");
             if (condition->GetTextureName() != path) {
-                SetFullTextureRect(condition, engine::Sprite::LoadTexture(path));
+                SetFullTextureRect(condition, LoadGuideTexture(path));
                 condition->SetTextureName(path);
             }
         }
@@ -846,19 +885,19 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
                                      : (gamepadMode ? "ui/control_guide/book/basics/footer_gamepad.png"
                                                     : "ui/control_guide/book/basics/footer.png");
         if (footer->GetTextureName() != path) {
-            SetFullTextureRect(footer, engine::Sprite::LoadTexture(path));
+            SetFullTextureRect(footer, LoadGuideTexture(path));
             footer->SetTextureName(path);
         }
     }
 
-    constexpr std::array<const char*, kActionCount> basicGlyphs = {
+    constexpr std::array<const char*, kActionCount> kBasicGlyphs = {
         "ui/input/combo/combo_wasd.png", "ui/input/keyboard/key_space.png", "ui/input/mouse/mouse_move.png"};
     for (int action = 0; action < kActionCount; ++action) {
         Element& visual = pages_[0].actionGlyphs[static_cast<size_t>(action)];
         if (!visual.sprite)
             continue;
         basicGlyphTextureSizes_[static_cast<size_t>(action)] = SetGlyphTexture(
-            visual.sprite, ResolveInputGlyph(basicGlyphs[static_cast<size_t>(action)], gamepadMode));
+            visual.sprite, ResolveInputGlyph(kBasicGlyphs[static_cast<size_t>(action)], gamepadMode));
     }
 
     const json fallback = json::object();
@@ -872,7 +911,7 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
                                          : (gamepadMode ? "ui/control_guide/book/footer_gamepad.png"
                                                         : "ui/control_guide/book/footer.png");
             if (item.visual.sprite->GetTextureName() != path) {
-                const uint32_t handle = engine::Sprite::LoadTexture(path);
+                const uint32_t handle = LoadGuideTexture(path);
                 SetFullTextureRect(item.visual.sprite, handle);
                 item.visual.sprite->SetTextureName(path);
                 const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
@@ -881,7 +920,7 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
             }
         }
 
-        if (item.slot.rfind("glyph_", 0) != 0 || !item.visual.sprite)
+        if ((item.slot.rfind("glyph_", 0) != 0 && item.slot.rfind("selected_glyph_", 0) != 0) || !item.visual.sprite)
             continue;
         const std::string keyboardPath =
             item.row >= 0 && item.row < bookMoveCount_
@@ -903,17 +942,23 @@ void ControlsGuideOverlay::RefreshBook() {
     if (nextKey == bookKey_)
         return;
     bookKey_ = nextKey;
+    previewMoveIndex_ = 0;
     bookScroll_ = bookTargetScroll_ = 0.0f;
     const json fallback = json::object();
     const json& entry = bookData_.contains(bookKey_) ? bookData_[bookKey_] : fallback;
     bookMoveCount_ = entry.contains("moves") && entry["moves"].is_array() ? static_cast<int>(entry["moves"].size()) : 0;
 
     for (BookElement& item : bookElements_) {
-        if (item.slot.empty() || !item.visual.sprite)
+        if (item.slot.empty() || item.slot.rfind("static_", 0) == 0 || !item.visual.sprite)
             continue;
-        std::string path = "ui/control_guide/book/" + bookKey_ + "/" + item.slot + ".png";
+        // selected_ は選択中の技だけ表示する詳細欄。画像は一覧と同じ素材を共有する。
+        const std::string slot = (item.slot.rfind("selected_", 0) == 0 || item.slot.rfind("fallback_", 0) == 0) ? item.slot.substr(9) : item.slot;
+        std::string path = "ui/control_guide/book/" + bookKey_ + "/" + slot + ".png";
+        // 技名・操作・説明は全能力で同じ寸法の画像を使う。覇王の補足だけ既存素材を共有する。
+        if (bookKey_ == "crown" && (slot == "role" || slot == "traits" || slot == "tip"))
+            path = "ui/control_guide/book/crown_gate/" + slot + ".png";
 
-        if (item.slot.rfind("glyph_", 0) == 0) {
+        if (slot.rfind("glyph_", 0) == 0) {
             path = item.row >= 0 && item.row < bookMoveCount_
                        ? entry["moves"][item.row].value("glyph", std::string("ui/input/keyboard/key_e.png"))
                        : "ui/input/keyboard/key_e.png";
@@ -923,7 +968,7 @@ void ControlsGuideOverlay::RefreshBook() {
             continue;
         }
 
-        const uint32_t handle = engine::Sprite::LoadTexture(path);
+        const uint32_t handle = LoadGuideTexture(path);
         SetFullTextureRect(item.visual.sprite, handle);
         item.visual.sprite->SetTextureName(path);
         const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
@@ -933,7 +978,7 @@ void ControlsGuideOverlay::RefreshBook() {
     portraitTexturePath_ =
         nextKey == "other" ? ResolvePortraitTexture(player_) : "ui/control_guide/book/portraits/" + nextKey + ".png";
     if (engine::Sprite* portrait = pages_[1].portrait.sprite) {
-        SetFullTextureRect(portrait, engine::Sprite::LoadTexture(portraitTexturePath_));
+        SetFullTextureRect(portrait, LoadGuideTexture(portraitTexturePath_));
         portrait->SetTextureName(portraitTexturePath_);
     }
 
@@ -954,19 +999,33 @@ void ControlsGuideOverlay::UpdateBook(float deltaTime) {
 void ControlsGuideOverlay::LayoutBook(float offsetX) {
     bookOffsetX_ = offsetX;
 
+    bool hasMedia = false;
+    if (bookData_.contains(bookKey_) && bookData_[bookKey_].contains("moves")) {
+        const auto& moves = bookData_[bookKey_]["moves"];
+        if (moves.is_array() && previewMoveIndex_ >= 0 && static_cast<size_t>(previewMoveIndex_) < moves.size()) {
+            const auto& move = moves[previewMoveIndex_];
+            for (const char* field : {"previewVideo", "previewPoster"})
+                hasMedia |= move.contains(field) && move[field].is_string() && !move[field].get_ref<const std::string&>().empty();
+        }
+    }
     for (BookElement& item : bookElements_) {
         Element& element = item.visual;
         engine::Sprite* sprite = element.sprite;
         if (!sprite)
             continue;
         const bool available = item.row < 0 || item.row < bookMoveCount_;
-        sprite->SetVisible(bookVisible_ && available);
+        const bool selectedOnly = item.slot.rfind("selected_", 0) == 0 || item.slot == "static_selection";
+        const bool fallbackOnly = item.slot.rfind("fallback_", 0) == 0;
+        sprite->SetVisible(bookVisible_ && available && (!selectedOnly || item.row == previewMoveIndex_) &&
+                           (!fallbackOnly || !hasMedia));
+        // 非選択の技も読みやすさを保ち、選択は背景枠で示す。
+        sprite->SetColor(element.baseColor);
         engine::Vector2 position = {element.basePosition.x + offsetX, element.basePosition.y};
         engine::Vector2 size = element.baseSize;
         engine::Vector2 uv = item.textureOrigin;
         engine::Vector2 uvSize = item.textureSize;
 
-        if (item.slot.rfind("glyph_", 0) == 0 && item.textureSize.x > 0.0f && item.textureSize.y > 0.0f) {
+        if ((item.slot.rfind("glyph_", 0) == 0 || item.slot.rfind("selected_glyph_", 0) == 0) && item.textureSize.x > 0.0f && item.textureSize.y > 0.0f) {
             const float fit =
                 (std::min)(element.baseSize.x / item.textureSize.x, element.baseSize.y / item.textureSize.y);
             size = {item.textureSize.x * fit, item.textureSize.y * fit};
@@ -999,13 +1058,9 @@ void ControlsGuideOverlay::LayoutBook(float offsetX) {
     if (engine::Sprite* portrait = pages_[1].portrait.sprite) {
         const Element& element = pages_[1].portrait;
 
-        // 立ち絵を小さく呼吸させ、説明を読む間も現在の能力が生きて見えるようにする。
-        const float breath = 1.0f + std::sin(time_ * 2.4f) * 0.025f;
-        const engine::Vector2 size{element.baseSize.x * breath, element.baseSize.y * breath};
-        portrait->SetSize(size);
-        portrait->SetPosition({element.basePosition.x + offsetX - (size.x - element.baseSize.x) * 0.5f,
-                               element.basePosition.y + std::sin(time_ * 2.0f) * bookBob_ -
-                                   (size.y - element.baseSize.y) * 0.5f});
+        // 説明中の視線を映像へ集めるため、肖像はEditorで指定した位置・サイズに固定する。
+        portrait->SetSize(element.baseSize);
+        portrait->SetPosition({element.basePosition.x + offsetX, element.basePosition.y});
     }
 }
 
@@ -1013,14 +1068,14 @@ void ControlsGuideOverlay::DrawImGui() {
     // 実レイアウトを見ながら図鑑の配置とスクロールを調整する編集欄を出す。
 #ifdef USE_IMGUI
     ImGui::TextWrapped("Tabの能力図鑑。表示確認だけでプレイヤーの能力は変更しません。");
-    const char* keys[] = {"", "normal", "pink", "fire", "thunder", "wind", "bomb"};
-    const char* names[] = {"現在のプレイヤー", "通常", "ピンク", "炎", "雷", "風", "ボム"};
+    const char* keys[] = {"", "normal", "pink", "fire", "thunder", "wind", "bomb", "crown"};
+    const char* names[] = {"現在のプレイヤー", "通常", "ピンク", "炎", "雷", "風", "ボム", "覇王"};
     int selected = 0;
 
-    for (int i = 0; i < 7; ++i)
+    for (int i = 0; i < 8; ++i)
         if (bookPreviewKey_ == keys[i])
             selected = i;
-    if (ImGui::Combo("表示能力", &selected, names, 7)) {
+    if (ImGui::Combo("表示能力", &selected, names, 8)) {
         bookPreviewKey_ = keys[selected];
         RefreshBook();
     }
@@ -1040,7 +1095,7 @@ void ControlsGuideOverlay::DrawImGui() {
         SetActive(false);
     }
 
-    ImGui::DragFloat("肖像の上下揺れ", &bookBob_, 0.1f, 0.0f, 12.0f * layoutRatio_.y);
+    ImGui::TextUnformatted("肖像は静止表示です。位置・サイズは下の実モデル肖像で調整できます。");
     const auto editElement = [](const char* label, Element& element) {
         if (!element.sprite || !ImGui::TreeNode(label))
             return;
@@ -1052,6 +1107,7 @@ void ControlsGuideOverlay::DrawImGui() {
 
     editElement("巻物パネル", pages_[1].panel);
     editElement("実モデル肖像", pages_[1].portrait);
+    DrawMovePreviewEditor();
 
     if (ImGui::Button("基本操作を表示")) {
         currentPage_ = 0;
@@ -1117,6 +1173,9 @@ void ControlsGuideOverlay::DrawImGui() {
             for (const BookElement& item : bookElements_)
                 saveElement(item.visual);
             layout["abilityBook"]["portraitBob"] = bookBob_ / layoutRatio_.y;
+            auto& preview = layout["abilityBook"]["movePreview"];
+            preview["position"] = {movePreviewPosition_.x, movePreviewPosition_.y};
+            preview["size"] = {movePreviewSize_.x, movePreviewSize_.y};
             std::ofstream output(layoutPath_);
             output << layout.dump(2) << '\n';
             output.flush();

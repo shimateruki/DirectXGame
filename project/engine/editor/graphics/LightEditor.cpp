@@ -1,0 +1,790 @@
+﻿#include "LightEditor.h"
+#include <numbers>
+#include "imgui.h"
+#include "EditorToolSettings.h"
+#include "json.hpp"
+#include <fstream>
+#include <cmath>
+#include <algorithm>
+#include <cstring>
+#include <filesystem>
+#include "DirectXCommon.h"
+#include "ModelManager.h"
+#include "imgui_internal.h"
+#include "CameraManager.h"
+#include "Camera.h"
+#include "SceneManager.h" 
+#include "IconsFontAwesome5.h"
+#include "DebugConsole.h"
+using json = nlohmann::json;
+
+#ifdef USE_IMGUI
+static ImVec2 WorldToScreen(const engine::Vector3& worldPos, const engine::Matrix4x4& mat) {
+    // 背面の点は画面外へ退避し、透視除算後にImGuiの左上原点へ変換する。
+    float w = worldPos.x * mat.m[0][3] + worldPos.y * mat.m[1][3] + worldPos.z * mat.m[2][3] + mat.m[3][3];
+    if (w < 0.001f)
+        return ImVec2(-10000.0f, -10000.0f);
+
+    float x = (worldPos.x * mat.m[0][0] + worldPos.y * mat.m[1][0] + worldPos.z * mat.m[2][0] + mat.m[3][0]) / w;
+    float y = (worldPos.x * mat.m[0][1] + worldPos.y * mat.m[1][1] + worldPos.z * mat.m[2][1] + mat.m[3][1]) / w;
+
+    ImGuiIO& io = ImGui::GetIO();
+    float screenX = (x + 1.0f) * 0.5f * io.DisplaySize.x;
+    float screenY = (1.0f - y) * 0.5f * io.DisplaySize.y;
+    return ImVec2(screenX, screenY);
+}
+#endif
+
+LightEditor* LightEditor::GetInstance() {
+    // Sceneをまたぐ照明編集状態を一つのEditorへ集約します。
+    static LightEditor instance;
+    return &instance;
+}
+
+void LightEditor::SetStatusMessage(const std::string& message, bool success) {
+    // 操作結果を一定時間だけ表示し、ImGuiがない構成では期限を持たせません。
+    statusMessage_ = message;
+    statusSuccess_ = success;
+#ifdef USE_IMGUI
+    statusVisibleUntil_ = ImGui::GetTime() + 3.0;
+#else
+    statusVisibleUntil_ = 0.0;
+#endif
+}
+
+std::string LightEditor::BuildFullPathFromFileName() const {
+    // 保存名を照明設定用JSONディレクトリに固定します。
+    return "Resources/json/light/" + std::string(currentFileName_);
+}
+
+void LightEditor::SyncCurrentFileNameFromManager() {
+    // 実行側で切り替わった照明ファイル名をUIへ取り込みます。
+    if (!lightManager_) {
+        return;
+    }
+
+    const std::string& currentPath = lightManager_->GetCurrentStateFile();
+
+    if (currentPath.empty() || currentPath == syncedLightPath_) {
+        return;
+    }
+
+    std::filesystem::path path(currentPath);
+    std::string fileName = path.filename().string();
+
+    if (fileName.empty()) {
+        fileName = currentPath;
+    }
+
+    strncpy_s(currentFileName_, sizeof(currentFileName_), fileName.c_str(), _TRUNCATE);
+    syncedLightPath_ = currentPath;
+}
+
+void LightEditor::DrawLightFileList() {
+#ifdef USE_IMGUI
+    // 現在適用中のファイルと保存済み候補を並べ、読込結果も同じ場所に示します。
+    SyncCurrentFileNameFromManager();
+
+    const std::string currentPath = lightManager_ ? lightManager_->GetCurrentStateFile() : "";
+    ImGui::Text(ICON_FA_FOLDER_OPEN " 現在のライト設定");
+    ImGui::SameLine();
+    ImGui::TextColored(
+        lightManager_ && lightManager_->WasLastLoadSuccessful() ? ImVec4(0.45f, 1.0f, 0.65f, 1.0f) : ImVec4(1.0f, 0.75f, 0.25f, 1.0f),
+        "%s",
+        currentPath.empty() ? "(未設定)" : currentPath.c_str()
+    );
+
+    if (lightManager_ && !lightManager_->WasLastLoadSuccessful()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " ファイルが未作成です。保存するとこの名前で作成されます。");
+    }
+
+    std::vector<std::string> fileNames;
+    const std::filesystem::path lightDir("Resources/json/light");
+
+    if (std::filesystem::exists(lightDir)) {
+        for (const auto& entry : std::filesystem::directory_iterator(lightDir)) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".json") {
+                continue;
+            }
+
+            fileNames.push_back(entry.path().filename().string());
+        }
+    }
+
+    std::sort(fileNames.begin(), fileNames.end());
+
+    ImGui::BeginChild("##LightFileList", ImVec2(0.0f, 92.0f), true);
+
+    if (fileNames.empty()) {
+        ImGui::TextDisabled("ライト設定ファイルがありません");
+    }
+
+    for (const auto& name : fileNames) {
+        const bool selected = (name == currentFileName_);
+
+        // 一覧の選択は入出力先の名前だけを変更し、照明への適用はLoadボタンで行う。
+        if (ImGui::Selectable(name.c_str(), selected)) {
+            strncpy_s(currentFileName_, sizeof(currentFileName_), name.c_str(), _TRUNCATE);
+            syncedLightPath_ = currentPath;
+        }
+    }
+
+    ImGui::EndChild();
+#endif
+}
+
+void LightEditor::DrawSkyboxTextureList() {
+#ifdef USE_IMGUI
+    // Resources内のテクスチャだけを候補にし、参照できるSkyboxを選ばせます。
+    if (!lightManager_) {
+        return;
+    }
+
+    std::vector<std::string> texturePaths;
+    const std::filesystem::path resourceDir("Resources");
+
+    if (std::filesystem::exists(resourceDir)) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(resourceDir)) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".dds") {
+                continue;
+            }
+
+            texturePaths.push_back(entry.path().generic_string());
+        }
+    }
+
+    std::sort(texturePaths.begin(), texturePaths.end());
+
+    bool enabled = lightManager_->IsSkyboxEnabled();
+
+    if (ImGui::Checkbox(ICON_FA_CLOUD_SUN " スカイボックスを表示", &enabled)) {
+        lightManager_->SetSkyboxEnabled(enabled);
+    }
+
+    const std::string& currentTexture = lightManager_->GetSkyboxTexturePath();
+
+    if (ImGui::BeginCombo(ICON_FA_IMAGE " スカイボックスDDS", currentTexture.c_str())) {
+        for (const auto& path : texturePaths) {
+            const bool selected = (path == currentTexture);
+
+            if (ImGui::Selectable(path.c_str(), selected)) {
+                const bool applied = lightManager_->SetSkyboxTexturePath(path);
+                SetStatusMessage(applied ? "スカイボックスを差し替えました" : "スカイボックスの差し替えに失敗しました", applied);
+            }
+
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::TextDisabled("ライト設定JSONにON/OFFとDDSパスを保存します。");
+#endif
+}
+
+void LightEditor::Initialize() {
+    // 実際の照明状態を持つManagerへ編集UIを接続します。
+    lightManager_ = LightManager::GetInstance();
+}
+
+void LightEditor::SetObject3DCommon(engine::Object3DCommon* common) {
+    // 描画基盤の切り替えで旧ギズモを残さないよう、表示オブジェクトを作り直します。
+    common_ = common;
+    pointLightGizmos_.clear();
+    spotLightGizmos_.clear();
+}
+
+void LightEditor::Update() {
+    if (!lightManager_ || !common_)
+        return;
+
+    // ==========================================================
+    // 1. 点光源 (Point Lights) のギズモ同期
+    // ==========================================================
+    auto& pointLights = lightManager_->GetPointLights(); // 今や vector<Instance>
+
+    // ギズモの数を合わせる
+    if (pointLightGizmos_.size() != pointLights.size()) {
+        pointLightGizmos_.resize(pointLights.size());
+
+        for (size_t i = 0; i < pointLightGizmos_.size(); ++i) {
+            if (!pointLightGizmos_[i]) {
+                pointLightGizmos_[i] = std::make_unique<engine::Object3D>();
+                pointLightGizmos_[i]->Initialize(common_);
+                pointLightGizmos_[i]->SetModel("Primitives/sphere");
+                pointLightGizmos_[i]->SetMaterialType(0);
+            }
+        }
+    }
+
+    // 位置情報をコピー
+    for (size_t i = 0; i < pointLights.size(); ++i) {
+        if (pointLightGizmos_[i]) {
+
+            pointLightGizmos_[i]->SetTranslate(pointLights[i].data.position);
+            pointLightGizmos_[i]->SetScale({ gizmoScale_, gizmoScale_, gizmoScale_ });
+
+            // 暗いライトでも位置を識別できるよう、ギズモの表示色だけに明るさの下限を設ける。
+            engine::Vector4 color = pointLights[i].data.color;
+            color.x = color.x < 0.35f ? 0.35f : color.x;
+            color.y = color.y < 0.35f ? 0.35f : color.y;
+            color.z = color.z < 0.1f ? 0.1f : color.z;
+            color.w = 0.9f;
+            pointLightGizmos_[i]->SetColor(color);
+            pointLightGizmos_[i]->SetEmissive(2.5f);
+
+            pointLightGizmos_[i]->Update(0.0f);
+            pointLightGizmos_[i]->UpdateLocalMatrix();
+            pointLightGizmos_[i]->UpdateWorldMatrix();
+        }
+    }
+
+    // ==========================================================
+    // 2. スポットライト (Spot Lights) のギズモ同期
+    // ==========================================================
+    auto& spotLights = lightManager_->GetSpotLights();
+
+    if (spotLightGizmos_.size() != spotLights.size()) {
+        spotLightGizmos_.resize(spotLights.size());
+
+        for (size_t i = 0; i < spotLightGizmos_.size(); ++i) {
+            if (!spotLightGizmos_[i]) {
+                spotLightGizmos_[i] = std::make_unique<engine::Object3D>();
+                spotLightGizmos_[i]->Initialize(common_);
+                spotLightGizmos_[i]->SetModel("Primitives/sphere");
+                spotLightGizmos_[i]->SetMaterialType(0);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < spotLights.size(); ++i) {
+        if (spotLightGizmos_[i]) {
+            // スポットライト位置をギズモに反映
+            spotLightGizmos_[i]->SetTranslate(spotLights[i].data.position);
+            spotLightGizmos_[i]->SetScale({ gizmoScale_ * 0.85f, gizmoScale_ * 1.35f, gizmoScale_ * 0.85f });
+            engine::Vector4 color = spotLights[i].data.color;
+            color.x = color.x < 0.15f ? 0.15f : color.x;
+            color.y = color.y < 0.55f ? 0.55f : color.y;
+            color.z = color.z < 0.85f ? 0.85f : color.z;
+            color.w = 0.9f;
+            spotLightGizmos_[i]->SetColor(color);
+            spotLightGizmos_[i]->SetEmissive(2.5f);
+
+            // 向きに合わせて回転させると完璧だが、今回は省略
+            spotLightGizmos_[i]->Update(0.0f);
+            spotLightGizmos_[i]->UpdateLocalMatrix();
+            spotLightGizmos_[i]->UpdateWorldMatrix();
+        }
+    }
+}
+
+void LightEditor::Draw3D() {
+#ifdef USE_IMGUI
+    // Editorの可視設定とギズモ設定が両方有効なときだけ補助形状を描画します。
+    if (!EditorToolSettings::Get().IsVisible("light"))
+        return;
+#endif
+    if (!isVisibleGizmos_ || !lightManager_)
+        return;
+
+    ID3D12Resource* plRes = lightManager_->GetPointLightResource();
+    ID3D12Resource* slRes = lightManager_->GetSpotLightResource();
+
+    for (auto& gizmo : pointLightGizmos_) {
+        if (gizmo)
+            gizmo->Draw(plRes, slRes);
+    }
+
+    for (auto& gizmo : spotLightGizmos_) {
+        if (gizmo)
+            gizmo->Draw(plRes, slRes);
+    }
+}
+
+void LightEditor::DrawEnvironmentProfilePanel() {
+#ifdef USE_IMGUI
+    // 照明・空・PostEffectの組を一つのEnvironment Profileとして編集します。
+    if (!lightManager_) {
+        return;
+    }
+
+    ImGui::Separator();
+    ImGui::Text(ICON_FA_PALETTE " Environment Profile");
+    ImGui::TextWrapped(
+        "太陽光、環境光、フォグ、背景、影、Bloom、Tone Mapping、色調補正をまとめて保存します。");
+
+    const std::filesystem::path directory("Resources/json/environment");
+    std::vector<std::string> fileNames;
+    std::error_code error;
+
+    if (std::filesystem::exists(directory, error) && !error) {
+        for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                fileNames.push_back(entry.path().filename().string());
+            }
+        }
+    }
+
+    std::sort(fileNames.begin(), fileNames.end());
+
+    if (ImGui::BeginCombo(
+        ICON_FA_FOLDER_OPEN " Profile",
+        environmentProfileFileName_)) {
+        for (const std::string& fileName : fileNames) {
+            const bool selected = fileName == environmentProfileFileName_;
+
+            if (ImGui::Selectable(fileName.c_str(), selected)) {
+                strncpy_s(
+                    environmentProfileFileName_,
+                    sizeof(environmentProfileFileName_),
+                    fileName.c_str(),
+                    _TRUNCATE);
+            }
+
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputText(
+        "Profileファイル名",
+        environmentProfileFileName_,
+        sizeof(environmentProfileFileName_));
+    ImGui::DragFloat(
+        "切替時間",
+        &environmentProfileBlendDuration_,
+        0.05f,
+        0.0f,
+        10.0f,
+        "%.2f s");
+    environmentProfileBlendDuration_ =
+        (std::max)(0.0f, environmentProfileBlendDuration_);
+
+    std::filesystem::path profilePath =
+        directory / std::filesystem::path(environmentProfileFileName_);
+    if (profilePath.extension().empty()) {
+        profilePath.replace_extension(".json");
+    }
+
+    // Profileは一覧で選ぶだけでは適用せず、保存または切替ボタンの操作先として使う。
+    const std::string profilePathString = profilePath.generic_string();
+
+    if (ImGui::Button(ICON_FA_SAVE " 現在の環境を保存")) {
+        const bool saved =
+            lightManager_->SaveEnvironmentProfile(profilePathString);
+        SetStatusMessage(
+            saved ? "Environment Profileを保存しました"
+                  : "Environment Profileの保存に失敗しました",
+            saved);
+        DebugConsole::GetInstance()->AddLog(
+            saved ? "Environment Profile saved: " + profilePathString
+                  : "Environment Profile save failed: " + profilePathString);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(ICON_FA_PLAY " Profileを適用")) {
+        const bool applied = lightManager_->ApplyEnvironmentProfile(
+            profilePathString,
+            environmentProfileBlendDuration_);
+        SetStatusMessage(
+            applied ? "Environment Profileを適用しました"
+                    : "Environment Profileの読込に失敗しました",
+            applied);
+    }
+
+    if (lightManager_->IsEnvironmentProfileBlending()) {
+        const float progress =
+            lightManager_->GetEnvironmentProfileBlendProgress();
+        ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), "切替中");
+    }
+
+    const std::string& currentProfile =
+        lightManager_->GetCurrentEnvironmentProfileFile();
+    if (!currentProfile.empty()) {
+        ImGui::TextDisabled("現在: %s", currentProfile.c_str());
+    }
+#endif
+}
+
+void LightEditor::DrawImGui() {
+#ifdef USE_IMGUI
+    if (!lightManager_)
+        return;
+
+    ImGui::Checkbox(ICON_FA_EYE " ライト位置を表示 (Gizmos)", &isVisibleGizmos_);
+    ImGui::TextWrapped("読込ライト: %s", lightManager_->GetCurrentStateFile().c_str());
+    ImGui::Text("読込結果: %s", lightManager_->WasLastLoadSuccessful() ? "成功" : "未読込 / 失敗");
+
+    // 設定値を変更せず、実際に使用中の光を確認する。
+    const auto& comparisonSun = lightManager_->GetDirectionalLight();
+    ImGui::Text("実効太陽設定: 強度 %.2f / 方向 %.2f, %.2f, %.2f",
+        comparisonSun.intensity, comparisonSun.direction.x, comparisonSun.direction.y, comparisonSun.direction.z);
+    ImGui::Text("環境光 RGB: %.2f, %.2f, %.2f", comparisonSun.ambientColor.x,
+        comparisonSun.ambientColor.y, comparisonSun.ambientColor.z);
+    ImGui::DragFloat(ICON_FA_EXPAND_ARROWS_ALT " ギズモサイズ", &gizmoScale_, 0.01f, 0.2f, 2.0f);
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    engine::Vector4& clearColor = lightManager_->GetSceneClearColor();
+
+    // 背景色はManagerの保存値に加えて、実際の画面クリアに使う値も同時に更新する。
+    if (ImGui::ColorEdit4(ICON_FA_PALETTE " 背景色 (Clear Color)", &clearColor.x)) {
+        DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+    }
+
+    ImGui::Spacing();
+
+    if (ImGui::CollapsingHeader(ICON_FA_CLOUD_SUN " 環境設定 (Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawSkyboxTextureList();
+        DrawEnvironmentProfilePanel();
+    }
+
+    ImGui::Spacing();
+
+    // -------------------------------------------------------------
+    // 1. ファイル操作
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawLightFileList();
+        ImGui::Spacing();
+
+        ImGui::InputText(ICON_FA_FILE_CODE " ファイル名 (.json)", currentFileName_, sizeof(currentFileName_));
+        std::string fullPath = BuildFullPathFromFileName();
+
+        if (ImGui::Button(ICON_FA_DOWNLOAD " セーブ (Save)")) {
+            const bool saved = lightManager_->SaveState(fullPath);
+            syncedLightPath_.clear();
+            SetStatusMessage(saved ? "ライト設定を保存しました" : "ライト設定の保存に失敗しました", saved);
+            DebugConsole::GetInstance()->AddLog(saved ? "Light Editor: saved " + fullPath : "Light Editor: save failed " + fullPath);
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button(ICON_FA_UPLOAD " ロード (Load)")) {
+            const bool loaded = lightManager_->LoadState(fullPath);
+            syncedLightPath_.clear();
+            SetStatusMessage(loaded ? "ライト設定をロードしました" : "ライト設定のロードに失敗しました", loaded);
+            DebugConsole::GetInstance()->AddLog(loaded ? "Light Editor: loaded " + fullPath : "Light Editor: load failed " + fullPath);
+        }
+
+        ImGui::TextDisabled("ターゲットパス: %s", fullPath.c_str());
+
+        if (!statusMessage_.empty() && ImGui::GetTime() < statusVisibleUntil_) {
+            const ImVec4 statusColor = statusSuccess_
+                ? ImVec4(0.35f, 1.0f, 0.55f, 1.0f)
+                : ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+            ImGui::TextColored(statusColor, "%s", statusMessage_.c_str());
+        }
+    }
+
+    ImGui::Separator();
+
+    // -------------------------------------------------------------
+    // 2. 太陽設定 (Directional Light)
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader(ICON_FA_SUN " 太陽設定 (Directional Light)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        auto& sun = lightManager_->GetDirectionalLight();
+
+        ImGui::Text(ICON_FA_LOCATION_ARROW " 光の向き");
+        ImGui::DragFloat3("##Dir", &sun.direction.x, 0.01f, -1.0f, 1.0f);
+
+        ImGui::ColorEdit4(ICON_FA_PALETTE " 光の色", &sun.color.x);
+        ImGui::DragFloat(ICON_FA_SUN " 輝度", &sun.intensity, 0.01f, 0.0f, 5.0f);
+
+        ImGui::Separator();
+        ImGui::ColorEdit3(ICON_FA_CLOUD " 環境光 (Ambient)", &sun.ambientColor.x);
+
+        if (ImGui::Button(ICON_FA_MAGIC " 明るい影プリセット")) {
+            sun.color = { 1.0f, 0.96f, 0.88f, 1.0f };
+            sun.direction = { -0.35f, -0.82f, 0.45f };
+            sun.intensity = 0.86f;
+            sun.ambientColor = { 0.34f, 0.38f, 0.42f };
+            sun.fogColor = { 0.66f, 0.76f, 0.86f };
+            clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
+            DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            SetStatusMessage("明るい影プリセットを適用しました", true);
+        }
+
+        ImGui::Separator();
+        ImGui::Text(ICON_FA_ADJUST " シャドウ品質");
+        // Comboの選択番号を実際の解像度へ変換し、影リソースの変更はManagerへ任せる。
+        constexpr int kShadowResolutions[] = { 1024, 2048, 4096 };
+        const char* shadowResolutionLabels[] = {
+            "1024 x 1024 (軽量)",
+            "2048 x 2048 (標準)",
+            "4096 x 4096 (高精細)",
+        };
+
+        int shadowResolutionIndex = 1;
+        const int currentShadowResolution = lightManager_->GetShadowMapResolution();
+
+        for (int i = 0; i < IM_ARRAYSIZE(kShadowResolutions); ++i) {
+            if (currentShadowResolution == kShadowResolutions[i]) {
+                shadowResolutionIndex = i;
+                break;
+            }
+        }
+
+        if (ImGui::Combo(
+            "シャドウマップ解像度",
+            &shadowResolutionIndex,
+            shadowResolutionLabels,
+            IM_ARRAYSIZE(shadowResolutionLabels))) {
+            lightManager_->SetShadowMapResolution(kShadowResolutions[shadowResolutionIndex]);
+            SetStatusMessage("シャドウマップ解像度を変更しました。保存するとLight JSONへ記録されます。", true);
+        }
+
+        float shadowAreaSize = lightManager_->GetShadowAreaSize();
+
+        if (ImGui::DragFloat("影を作る範囲", &shadowAreaSize, 1.0f, 20.0f, 240.0f, "%.0f")) {
+            lightManager_->SetShadowAreaSize(shadowAreaSize);
+        }
+
+        ImGui::TextDisabled("範囲を狭くすると影が鮮明になり、ライト視錐台外のShadow Drawも減ります。");
+        ImGui::TextDisabled("1024は2048に対して生成ピクセル数と深度メモリが1/4です。");
+
+        ImGui::Separator();
+        bool isFogEnabled = (sun.enableFog != 0);
+
+        if (ImGui::Checkbox(ICON_FA_SMOG " フォグ関連をすべて有効化 (Enable All Fog)", &isFogEnabled)) {
+            sun.enableFog = isFogEnabled ? 1 : 0;
+        }
+
+        if (isFogEnabled) {
+            ImGui::Text(ICON_FA_CLOUD " フォグ (Fog)");
+            ImGui::DragFloat(" 開始距離", &sun.fogStart, 1.0f, 0.0f, 5000.0f);
+            ImGui::DragFloat(" 終了距離", &sun.fogEnd, 1.0f, 0.0f, 5000.0f);
+            ImGui::ColorEdit3(" フォグ色", &sun.fogColor.x);
+            ImGui::DragFloat(" 高さの底", &sun.fogHeightMin, 0.1f, -100.0f, 100.0f);
+            ImGui::DragFloat(" 晴れる高さ", &sun.fogHeightMax, 0.1f, -100.0f, 100.0f);
+
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), ICON_FA_MAGIC " ボリューメトリックフォグ (God Rays)");
+            ImGui::DragFloat(" 強さ (Intensity)", &sun.volumetricIntensity, 0.01f, 0.0f, 5.0f);
+            ImGui::DragInt(" 精密さ (Steps)", &sun.volumetricSteps, 1, 0, 64);
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), ICON_FA_GLOBE " 環境マップ (Environment Map / IBL)");
+    }
+
+    ImGui::Separator();
+
+    // -------------------------------------------------------------
+    // 3. 点光源設定 (Point Light)
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader(ICON_FA_LIGHTBULB " 点光源 (Point Light)")) {
+        if (ImGui::Button(ICON_FA_PLUS " 追加##Point"))
+            lightManager_->AddPointLight();
+        ImGui::SameLine();
+
+        if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Point")) {
+            lightManager_->ClearPointLights();
+            selectedPointLightIndex_ = -1;
+        }
+
+        auto& pointLights = lightManager_->GetPointLights();
+
+        if (selectedPointLightIndex_ >= static_cast<int>(pointLights.size())) {
+            selectedPointLightIndex_ = -1;
+        }
+
+        ImGui::TextDisabled("点光源: %d", static_cast<int>(pointLights.size()));
+        ImGui::BeginChild("##PointLightList", ImVec2(0.0f, 92.0f), true);
+
+        for (int i = 0; i < static_cast<int>(pointLights.size()); ++i) {
+            const auto& data = pointLights[i].data;
+            std::string label = pointLights[i].name + "  (" +
+                std::to_string(static_cast<int>(data.position.x)) + ", " +
+                std::to_string(static_cast<int>(data.position.y)) + ", " +
+                std::to_string(static_cast<int>(data.position.z)) + ")";
+            if (ImGui::Selectable(label.c_str(), selectedPointLightIndex_ == i)) {
+                selectedPointLightIndex_ = i;
+            }
+        }
+
+        ImGui::EndChild();
+
+        for (int i = 0; i < pointLights.size(); ++i) {
+            ImGui::PushID(i);
+            // 編集中はInstanceのコピーを使い、末尾のSetterでライト管理側へ書き戻す。
+            LightManager::PointLightInstance instance = pointLights[i];
+            auto& data = instance.data;
+
+            if (selectedPointLightIndex_ == i) {
+                ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            }
+
+            if (ImGui::TreeNode("点光源", ICON_FA_LIGHTBULB " Point Light %d", i)) {
+                char nameBuffer[128]{};
+                strncpy_s(nameBuffer, sizeof(nameBuffer), instance.name.c_str(), _TRUNCATE);
+
+                if (ImGui::InputText(ICON_FA_TAG " 名前", nameBuffer, sizeof(nameBuffer))) {
+                    instance.name = nameBuffer;
+                }
+
+                if (ImGui::Button(ICON_FA_TRASH " 削除")) {
+                    // 削除後はこのInstanceを書き戻さず、開いているTreeとIDを閉じて次の要素へ進む。
+                    lightManager_->RemovePointLight(static_cast<std::size_t>(i));
+                    selectedPointLightIndex_ = -1;
+                    ImGui::TreePop();
+                    ImGui::PopID();
+                    continue;
+                }
+
+                ImGui::Text(ICON_FA_COGS " --- 挙動設定 ---");
+                // 追従対象があるライトは絶対位置でなく対象からのオフセットを編集する。
+                std::string currentTargetName = instance.target ? instance.target->GetName() : "(None)";
+
+                if (ImGui::BeginCombo(ICON_FA_LINK " 追従対象", currentTargetName.c_str())) {
+                    BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
+
+                    if (scene) {
+                        if (ImGui::Selectable("(None)", instance.target == nullptr))
+                            instance.target = nullptr;
+                        for (auto& obj : scene->GetObjects()) {
+                            if (!obj || obj->IsEditorInternal())
+                                continue;
+                            bool isSelected = (instance.target == obj.get());
+                            std::string name = obj->GetName().empty() ? "Object" : obj->GetName();
+                            if (ImGui::Selectable(name.c_str(), isSelected))
+                                instance.target = obj.get();
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                const char* modes[] = { "通常", "追従のみ(Follow)", "点滅(Flicker)", "明滅(Sine)" };
+                int currentMode = (int)instance.mode;
+
+                if (ImGui::Combo(ICON_FA_PLAY_CIRCLE " モード", &currentMode, modes, IM_ARRAYSIZE(modes))) {
+                    instance.mode = (LightManager::LightMode)currentMode;
+                }
+
+                if (instance.target) {
+                    ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 位置ズレ (Offset)", &instance.offset.x, 0.1f);
+                }
+                else {
+                    ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 位置 (Position)", &data.position.x, 0.1f);
+                }
+
+                ImGui::DragFloat(ICON_FA_SUN " 基準の明るさ", &instance.baseIntensity, 0.01f, 0.0f, 10.0f);
+
+                ImGui::Text(ICON_FA_ADJUST " --- 基本設定 ---");
+                ImGui::ColorEdit4(" 色", &data.color.x);
+                ImGui::DragFloat(" 半径", &data.radius, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat(" 減衰", &data.decay, 0.01f, 0.0f, 10.0f);
+
+                ImGui::TreePop();
+            }
+
+            lightManager_->SetPointLight(static_cast<std::size_t>(i), instance);
+            ImGui::PopID();
+        }
+    }
+
+    ImGui::Separator();
+
+    // -------------------------------------------------------------
+    // 4. スポットライト設定 (Spot Light)
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader(ICON_FA_STREET_VIEW " スポットライト (Spot Light)")) {
+        if (ImGui::Button(ICON_FA_PLUS " 追加##Spot"))
+            lightManager_->AddSpotLight();
+        ImGui::SameLine();
+
+        if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Spot")) {
+            lightManager_->ClearSpotLights();
+            selectedSpotLightIndex_ = -1;
+        }
+
+        auto& spotLights = lightManager_->GetSpotLights();
+
+        if (selectedSpotLightIndex_ >= static_cast<int>(spotLights.size())) {
+            selectedSpotLightIndex_ = -1;
+        }
+
+        ImGui::TextDisabled("スポットライト: %d", static_cast<int>(spotLights.size()));
+        ImGui::BeginChild("##SpotLightList", ImVec2(0.0f, 92.0f), true);
+
+        for (int i = 0; i < static_cast<int>(spotLights.size()); ++i) {
+            const auto& data = spotLights[i].data;
+            std::string label = spotLights[i].name + "  (" +
+                std::to_string(static_cast<int>(data.position.x)) + ", " +
+                std::to_string(static_cast<int>(data.position.y)) + ", " +
+                std::to_string(static_cast<int>(data.position.z)) + ")";
+            if (ImGui::Selectable(label.c_str(), selectedSpotLightIndex_ == i)) {
+                selectedSpotLightIndex_ = i;
+            }
+        }
+
+        ImGui::EndChild();
+
+        for (int i = 0; i < spotLights.size(); ++i) {
+            ImGui::PushID(i + 1000);
+            // スポットライトもコピーを編集して最後に書き戻し、削除した要素への反映は飛ばす。
+            LightManager::SpotLightInstance instance = spotLights[i];
+            auto& data = instance.data;
+
+            if (selectedSpotLightIndex_ == i) {
+                ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            }
+
+            if (ImGui::TreeNode("スポットライト", ICON_FA_STREET_VIEW " Spot Light %d", i)) {
+                char nameBuffer[128]{};
+                strncpy_s(nameBuffer, sizeof(nameBuffer), instance.name.c_str(), _TRUNCATE);
+
+                if (ImGui::InputText(ICON_FA_TAG " 名前", nameBuffer, sizeof(nameBuffer))) {
+                    instance.name = nameBuffer;
+                }
+
+                if (ImGui::Button(ICON_FA_TRASH " 削除")) {
+                    lightManager_->RemoveSpotLight(static_cast<std::size_t>(i));
+                    selectedSpotLightIndex_ = -1;
+                    ImGui::TreePop();
+                    ImGui::PopID();
+                    continue;
+                }
+
+                ImGui::Text(ICON_FA_COGS " --- 挙動設定 ---");
+
+                // (PointLightと同様の追従対象Combo)
+                // ... (中略) ...
+
+                if (instance.target) {
+                    ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 位置ズレ (Offset)", &instance.offset.x, 0.1f);
+                }
+                else {
+                    ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 位置", &data.position.x, 0.1f);
+                    ImGui::DragFloat3(ICON_FA_LOCATION_ARROW " 向き", &data.direction.x, 0.01f, -1.0f, 1.0f);
+                }
+
+                ImGui::DragFloat(ICON_FA_SUN " 基準の明るさ", &instance.baseIntensity, 0.01f, 0.0f, 10.0f);
+
+                ImGui::Text(ICON_FA_ADJUST " --- 基本設定 ---");
+                ImGui::ColorEdit4(" 色", &data.color.x);
+                ImGui::DragFloat(" 距離", &data.distance, 0.1f, 0.0f, 100.0f);
+
+                // 保存・描画は角度のcos値、UIは度を使うため、編集があったときだけcos値へ戻す。
+                float angleDeg = std::acos(data.cosAngle) * 180.0f / std::numbers::pi_v<float>;
+
+                if (ImGui::DragFloat(ICON_FA_COMPASS " 角度", &angleDeg, 1.0f, 0.1f, 179.0f)) {
+                    data.cosAngle = std::cos(angleDeg * std::numbers::pi_v<float> / 180.0f);
+                }
+
+                ImGui::TreePop();
+            }
+
+            lightManager_->SetSpotLight(static_cast<std::size_t>(i), instance);
+            ImGui::PopID();
+        }
+    }
+#endif
+}

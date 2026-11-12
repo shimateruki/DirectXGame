@@ -4,7 +4,7 @@
 #include "SceneManager.h"
 #include <cmath>
 
-void GimmickTimedSwitch::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickTimedSwitch::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 上面を踏める地面として登録し、待機時の色を設定する。
     BaseGimmick::Initialize(common, modelName);
 
@@ -43,7 +43,7 @@ void GimmickTimedSwitch::Update(float deltaTime) {
 }
 
 // 上面への接触中だけタイマーを更新し、接続先イベントを通知します。
-bool GimmickTimedSwitch::OnCollision(engine::Object3d* other) {
+bool GimmickTimedSwitch::OnCollision(engine::Object3D* other) {
     // 上面から踏まれた間だけ指定 EventID へ通知する。
     if (!other || other->GetClassName() != "Player")
         return true;
@@ -53,11 +53,11 @@ bool GimmickTimedSwitch::OnCollision(engine::Object3d* other) {
     if (info.isColliding && info.normal.y < -0.5f) {
         contactTimer_ = 0.12f;
 
-        int targetID = GetTargetID();
+        int targetId = GetTargetId();
 
-        if (targetID != -1) {
+        if (targetId != -1) {
             if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
-                scene->TriggerEvent(targetID);
+                scene->TriggerEvent(targetId);
             }
         }
     }
@@ -65,7 +65,7 @@ bool GimmickTimedSwitch::OnCollision(engine::Object3d* other) {
     return true;
 }
 
-std::unique_ptr<engine::Object3d> GimmickTimedSwitch::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickTimedSwitch::Clone() const {
     // 押下タイマーは持ち込まず、配置と接続先の設定だけを複製する。
     auto newObj = std::make_unique<GimmickTimedSwitch>();
     assert(GetObjectCommon() != nullptr);

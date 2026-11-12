@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "5da80bad8b18ae43aec1347cb6ee88c3",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy/fire_slime/parameters.json",
+  "version": 1
+}

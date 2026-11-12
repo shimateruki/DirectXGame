@@ -5,9 +5,9 @@
 
 class DirectXCommon;
 
-/// <summary>
-/// 3Dモデル描画で共有するDirectX基盤と共通パイプラインを保持します。
-/// </summary>
+// 担当：モデルで共有するDirectX基盤とCompute Skinning用パイプラインを保持する。
+// 関連：ModelManager（共有）、Model（スキニング実行）、DirectXCommon
+// 主な入口：Initialize / IsComputeSkinningAvailable
 class ModelCommon {
 public:
     /// <summary>

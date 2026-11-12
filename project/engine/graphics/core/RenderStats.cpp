@@ -139,7 +139,7 @@ const char* RenderStats::GetPassDisplayName(RenderPass pass) {
 
     case RenderPass::CameraPreview: return "カメラPreview";
 
-    case RenderPass::GameUI: return "ゲームUI";
+    case RenderPass::GameUi: return "ゲームUI";
 
     case RenderPass::PostProcess: return "後処理";
 

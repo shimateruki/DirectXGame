@@ -8,19 +8,22 @@
 
 // BlendModeは、3D描画で使う合成方式を表します。
 enum class BlendMode {
-    kNone,             // ブレンドなし
-    kNormal,           // 通常ブレンド
-    kAdd,              // 加算
-    kSubtract,         // 減算
-    kMultiply,         // 乗算
-    kScreen,           // スクリーン
-    kCountOfBlendMode, // ブレンドモード数
+    None,             // ブレンドなし
+    Normal,           // 通常ブレンド
+    Add,              // 加算
+    Subtract,         // 減算
+    Multiply,         // 乗算
+    Screen,           // スクリーン
+    Count, // ブレンドモード数
 };
 
 /// <summary>3Dモデル、影、特殊マテリアル、スカイボックスの共通描画パイプラインを管理する。</summary>
 namespace engine {
 
-class Object3dCommon {
+// 担当：通常・影・特殊材質の3D描画パイプラインと共有描画状態を管理する。
+// 関連：RenderCommonResources（所有）、MeshRenderer（利用）、DirectXCommon（GPU基盤）
+// 主な入口：Initialize / BeginInitialize / InitializeStep / SetGraphicsCommand
+class Object3DCommon {
 public:
     /// <summary>DirectX基盤を受け取り、3D描画用の各パイプラインを作成する。</summary>
     void Initialize(DirectXCommon* dxCommon);
@@ -57,6 +60,7 @@ public:
 
     void SetShadowGraphicsCommand();
 
+    // 影描画用のルートパラメータを作る。
     void CreateShadowRootSignature();
 
     // ローカルフォグ用のパイプライン作成と描画時設定。
@@ -67,6 +71,7 @@ public:
     // エフェクト描画用のルートシグネチャ、パイプライン、描画コマンド。
     void CreateEffectRootSignature();
 
+    // メッシュエフェクト用の描画パイプラインを作る。
     void CreateEffectPipeline();
 
     void SetEffectGraphicsCommand(BlendMode blendMode);
@@ -74,6 +79,7 @@ public:
     // 水面描画用のルートシグネチャ、パイプライン、描画コマンド。
     void CreateWaterRootSignature();
 
+    // 水面用の描画パイプラインを作る。
     void CreateWaterPipeline();
 
     void SetWaterGraphicsCommand();
@@ -82,8 +88,10 @@ public:
     // 対応するSet*GraphicsCommandがそのPipelineStateと共通ルートシグネチャを設定する。
     void CreateMagmaPipeline();
 
+    // 氷用の描画パイプラインを作る。
     void CreateIcePipeline();
 
+    // 炎用の描画パイプラインを作る。
     void CreateFirePipeline();
 
     // ビームは加算合成し、深度テクスチャによる遮蔽をシェーダー側で判定する。
@@ -118,6 +126,9 @@ public:
 
     // ゲート面は通過前後の両側から見えるよう両面描画する。
     void CreateGatePortalPipeline();
+    // 通常深度の背後にあるプレイヤーだけを薄く描く補助パス。
+    void CreateVisibilitySilhouettePipeline();
+    void SetVisibilitySilhouetteGraphicsCommand();
 
     // 風の球は閉じた形状なので裏面を除き、半透明で合成する。
     void CreateWindOrbPipeline();
@@ -172,8 +183,9 @@ private:
 
     /// <summary>タイトルで先送りした特殊材質のパイプラインを初回使用時に作る。</summary>
     void EnsurePipelineState(Microsoft::WRL::ComPtr<ID3D12PipelineState>& state,
-                             void (Object3dCommon::*createPipeline)());
+                             void (Object3DCommon::*createPipeline)());
 
+    // 指定に応じてタイトル用または全ブレンド方式のパイプラインを作る。
     void CreatePipelineStatesInternal(bool titleBlendModesOnly);
 
     /// <summary>通常描画と同じルート・深度・合成設定で材質専用のピクセルシェーダを組み込む。</summary>
@@ -196,14 +208,14 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
 
     // 添字はBlendModeに対応し、通常材質の合成方式を切り替える。
-    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> graphicsPipelineStates_;
+    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::Count)> graphicsPipelineStates_;
 
     // ダッシュ床材質の専用シェーダとブレンド方式の組み合わせ。
-    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> dashPanelPipelineStates_;
+    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::Count)> dashPanelPipelineStates_;
 
     // デカール材質の専用シェーダとブレンド方式の組み合わせ。
-    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> decalPipelineStates_;
-    std::map<std::string, std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)>> shaderMaterialPipelineStates_;
+    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::Count)> decalPipelineStates_;
+    std::map<std::string, std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::Count)>> shaderMaterialPipelineStates_;
     std::set<std::string> failedShaderMaterials_;
 
     // 通常モデルを深度へ描く影パスのPSO。
@@ -242,6 +254,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> poisonSporePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> cloudPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> gatePortalPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> visibilitySilhouettePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> windOrbPipelineState_;
 
     // スカイボックスだけが使用する結合定義とPSO。
@@ -249,7 +262,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> skyboxPipelineState_;
 
     // 添字をBlendModeに対応させたエフェクト描画用PSO。
-    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;
+    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::Count)> effectPipelineStates_;
 };
 
 } // namespace engine

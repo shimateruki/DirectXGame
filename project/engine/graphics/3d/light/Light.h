@@ -6,6 +6,7 @@
 /// 平行光源
 /// </summary>
 // DirectionalLightは、太陽光のように方向だけを持つライト情報です。
+// 関連：LightManager（管理・GPU転送）、MeshRenderer（照明利用）
 struct DirectionalLight {
     engine::Vector4 color;         // 16 byte
     engine::Vector3 direction;     // 12 byte
@@ -29,6 +30,7 @@ struct DirectionalLight {
 /// 点光源
 /// </summary>
 // PointLightは、位置から周囲へ減衰しながら照らすライト情報です。
+// 関連：LightManager（管理・GPU転送）、MeshRenderer（照明利用）
 struct PointLight {
     engine::Vector4 color;      // ライトの色
     engine::Vector3 position;   // 位置
@@ -44,6 +46,7 @@ struct PointLight {
 const int kMaxPointLights = 50;
 
 /// <summary>平行光源と固定上限の点光源を束ねる描画用データ。</summary>
+// 関連：LightManager（管理・GPU転送）、MeshRenderer（照明利用）
 struct LightGroup {
     DirectionalLight directionalLight;
     PointLight pointLights[kMaxPointLights];

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d559c219beb80e9fa926ca2d83f42b3a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown_gate/move_0_description.png",
+  "version": 1
+}

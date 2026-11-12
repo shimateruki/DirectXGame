@@ -1,4 +1,6 @@
 #pragma once
+
+// GamePlaySceneの演出で使う補間・角度計算。演出の開始条件とタイマーはシーン側が保持する。
 #include "engine/utility/math/Math.h"
 #include <cmath>
 

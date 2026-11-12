@@ -1,6 +1,6 @@
 #define NOMINMAX
-#include "Object3d.h"
-#include "VFXSequencer.h"
+#include "Object3D.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -30,7 +30,7 @@ std::string ResolveAnimatorControllerPath(const std::string& assetPath) {
 }
 }
 
-bool Object3d::SetAnimatorController(const std::string& assetPath) {
+bool Object3D::SetAnimatorController(const std::string& assetPath) {
     // 全 Body Clip の読み込み成功後にだけ現行 Controller を置き換える。
     if (assetPath.empty()) {
         ClearAnimatorController();
@@ -63,7 +63,7 @@ bool Object3d::SetAnimatorController(const std::string& assetPath) {
     return true;
 }
 
-void Object3d::ClearAnimatorController() {
+void Object3D::ClearAnimatorController() {
     // 身体補正を外してからアセットを破棄し、次のモデルへ変形を持ち越さない。
     if (animatorBodyPoseApplied_ && meshRenderer_)
         meshRenderer_->ResetVisualTransform();
@@ -75,7 +75,7 @@ void Object3d::ClearAnimatorController() {
     animatorControllerLoaded_ = false;
 }
 
-bool Object3d::PlayAnimatorState(const std::string& stateName, float blendDuration, int easing) {
+bool Object3D::PlayAnimatorState(const std::string& stateName, float blendDuration, int easing) {
     // Controller 未設定時に状態遷移だけを先行させない。
     if (!animatorControllerLoaded_) {
         return false;
@@ -84,7 +84,7 @@ bool Object3d::PlayAnimatorState(const std::string& stateName, float blendDurati
     return animatorControllerRuntime_.CrossFade(stateName, blendDuration, easing);
 }
 
-bool Object3d::EvaluateAnimatorState(
+bool Object3D::EvaluateAnimatorState(
     const std::string& stateName,
     float timeSeconds,
     bool loop,
@@ -133,18 +133,18 @@ bool Object3d::EvaluateAnimatorState(
     return ApplyAnimatorControllerPose(model, true);
 }
 
-std::string Object3d::GetAnimatorCurrentStateName() const {
+std::string Object3D::GetAnimatorCurrentStateName() const {
     // Controller に状態がない間は空名を返し、呼び出し側の代替表示に任せる。
     const AnimatorStateDefinition* state = animatorControllerRuntime_.GetCurrentState();
     return state ? state->name : std::string{};
 }
 
-AnimatorControllerRuntime::Snapshot Object3d::CaptureAnimatorSnapshot() const {
+AnimatorControllerRuntime::Snapshot Object3D::CaptureAnimatorSnapshot() const {
     // プレビューを抜けた後に元の再生時刻へ戻せるよう、実行状態を保存する。
     return animatorControllerRuntime_.CaptureSnapshot();
 }
 
-void Object3d::RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot& snapshot) {
+void Object3D::RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot& snapshot) {
     // 時刻だけでなく見た目の姿勢も同期して、プレビュー終了時の残像を防ぐ。
     if (!animatorControllerLoaded_ || !snapshot.valid) {
         return;
@@ -154,7 +154,7 @@ void Object3d::RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot
     ApplyAnimatorControllerPose(GetModel(), true);
 }
 
-void Object3d::RestoreAnimationPlayback(const std::string& animationName, float timeSeconds, bool loop) {
+void Object3D::RestoreAnimationPlayback(const std::string& animationName, float timeSeconds, bool loop) {
     // Controller を使わないモデルの再生時刻も、巻き戻し直後に姿勢へ反映する。
     animName_ = animationName;
     animationTime_ = std::max(0.0f, timeSeconds);
@@ -179,8 +179,8 @@ void Object3d::RestoreAnimationPlayback(const std::string& animationName, float 
     }
 }
 
-bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, engine::Matrix4x4& outMatrix) const {
-    // ボーンの局所姿勢と Object3d のワールド行列を合成して装着位置を得る。
+bool Object3D::TryGetJointWorldMatrix(const std::string& jointName, engine::Matrix4x4& outMatrix) const {
+    // ボーンの局所姿勢と Object3D のワールド行列を合成して装着位置を得る。
     Model* model = GetModel();
 
     if (!model || jointName.empty()) {
@@ -198,7 +198,7 @@ bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, engine::Matr
     return true;
 }
 
-bool Object3d::TryGetJointWorldPosition(const std::string& jointName, engine::Vector3& outPosition) const {
+bool Object3D::TryGetJointWorldPosition(const std::string& jointName, engine::Vector3& outPosition) const {
     // ジョイントが見つからない場合は出力位置を変更しない。
     engine::Matrix4x4 jointWorld = engine::Math::MakeIdentity4x4();
 
@@ -210,7 +210,7 @@ bool Object3d::TryGetJointWorldPosition(const std::string& jointName, engine::Ve
     return true;
 }
 
-bool Object3d::UpdateAnimatorController(float deltaTime, Model* model) {
+bool Object3D::UpdateAnimatorController(float deltaTime, Model* model) {
     if (!animatorControllerLoaded_ || !model) {
         return false;
     }
@@ -225,7 +225,7 @@ bool Object3d::UpdateAnimatorController(float deltaTime, Model* model) {
     for (const AnimatorEventInstance& event : animatorControllerRuntime_.ConsumeEvents()) {
         // FeedbackCueはVFX、SE、カメラ、振動、ヒットストップを一つのAssetから再生します。
         if (event.name == "FeedbackCue" && !event.payload.empty()) {
-            VFXSequencer::PlayOneShotOnTarget(event.payload, this);
+            VfxSequencer::PlayOneShotOnTarget(event.payload, this);
         }
 
         if (animatorEventCallback_) {
@@ -236,7 +236,7 @@ bool Object3d::UpdateAnimatorController(float deltaTime, Model* model) {
     return ApplyAnimatorControllerPose(model, false);
 }
 
-bool Object3d::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) {
+bool Object3D::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) {
     // 前後状態を同じ時刻基準で標本化し、骨格と身体変形を一つの補間率で合成する。
     if (!animatorControllerLoaded_ || !model) {
         return false;

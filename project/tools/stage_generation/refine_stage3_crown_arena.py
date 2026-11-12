@@ -30,9 +30,9 @@ def build_support_models():
     for y,rx,rz in ((-3.0,40.7,34.7),(-13.4,36.5,30.5),(-24.4,28.4,23.4)):
         add_elliptic_cylinder(foundation,'StoneLight','StoneLight',(0,y,0),rx,rz,.35,64)
     support = ObjBuilder()
-    # 上端を階段本体の底へ差し込み、全段が同じ橋台へ載る形にする。
-    support.box('StoneDark',(0,-10.55,5),(6.65,7.5,18.5))
-    for z in (-11,-3,5,13,21):
+    # 上端を階段本体の底へ差し込み、手前へ延長した踊り場も同じ橋台で支える。
+    support.box('StoneDark',(0,-10.55,16.15),(6.65,7.5,29.65))
+    for z in (-11,-3,5,13,21,29,37,43):
         for side in (-1,1):
             support.box('Stone',(side*6.4,-21,z),(1.0,18.1,1.65))
             support.box('StoneLight',(side*6.4,-3.28,z),(1.15,.30,1.90))

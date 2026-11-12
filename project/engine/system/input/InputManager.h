@@ -27,9 +27,13 @@
 /// <summary>物理入力、アクション入力、振動、SDL センサーをフレーム単位で管理します。</summary>
 namespace engine {
 
+// 担当：キーボード・マウス・パッド入力、操作判定と振動を管理する。
+// 関連：WinApp（入力元）、KeyConfig（割当）、MenuInput（メニュー用の読出し）
+// 主な入口：Initialize / Update / IsActionTriggered / PlayRumble / Finalize
 class InputManager {
 public:
     /// <summary>回帰再生用に、現在と前フレームの物理入力をまとめた状態です。</summary>
+    // 関連：InputManager（この型を使う機能の本体）
     struct ReplayState {
         std::array<uint8_t, 256> keys{};
         std::array<uint8_t, 256> previousKeys{};
@@ -248,6 +252,7 @@ private:
     void UpdateMenuStickNavigation();
 
     /// <summary>強弱の振動量と残り時間を持つ一時的な振動要求。</summary>
+    // 関連：InputManager（この型を使う機能の本体）
     struct RumbleRequest {
         float lowFrequency = 0.0f;
         float highFrequency = 0.0f;

@@ -4,7 +4,7 @@
 // =================================================================================
 // 1. 直接指定系 (CBV / SRV / UAV)
 // =================================================================================
-void RootSignatureBuilder::AddCBV(uint32_t shaderRegister, uint32_t registerSpace, D3D12_SHADER_VISIBILITY visibility) {
+void RootSignatureBuilder::AddCbv(uint32_t shaderRegister, uint32_t registerSpace, D3D12_SHADER_VISIBILITY visibility) {
     // ルートシグネチャへ直接参照型のCBVパラメータを追加する。
     D3D12_ROOT_PARAMETER param{};
     param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -14,7 +14,7 @@ void RootSignatureBuilder::AddCBV(uint32_t shaderRegister, uint32_t registerSpac
     parameters_.push_back(param);
 }
 
-void RootSignatureBuilder::AddSRV(uint32_t shaderRegister, uint32_t registerSpace, D3D12_SHADER_VISIBILITY visibility) {
+void RootSignatureBuilder::AddSrv(uint32_t shaderRegister, uint32_t registerSpace, D3D12_SHADER_VISIBILITY visibility) {
     // ルートシグネチャへ直接参照型のSRVパラメータを追加する。
     D3D12_ROOT_PARAMETER param{};
     param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
@@ -24,7 +24,7 @@ void RootSignatureBuilder::AddSRV(uint32_t shaderRegister, uint32_t registerSpac
     parameters_.push_back(param);
 }
 
-void RootSignatureBuilder::AddUAV(uint32_t shaderRegister, uint32_t registerSpace, D3D12_SHADER_VISIBILITY visibility) {
+void RootSignatureBuilder::AddUav(uint32_t shaderRegister, uint32_t registerSpace, D3D12_SHADER_VISIBILITY visibility) {
     // ルートシグネチャへ直接参照型のUAVパラメータを追加する。
     D3D12_ROOT_PARAMETER param{};
     param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;

@@ -8,6 +8,8 @@ class BaseScene;
 class BaseEnemy;
 
 // 乗車開始と乗員追従だけを担当し、軌道・停車・敵の登場時刻はTimelineへ委譲する。
+// 関連：床側がCinematicSequenceと開始条件を渡し、シーン内の登場Actorと乗員を接続する。
+// 主な入口：Update / Reset
 class RidingPlatformController {
   public:
     // deltaTime は秒。前フレームの接地から乗員を確定し、タイムラインで床と乗員を進めます。

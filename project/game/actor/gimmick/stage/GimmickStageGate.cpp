@@ -38,7 +38,7 @@ float Smoothstep(float edge0, float edge1, float value) {
 }
 } // namespace
 
-void GimmickStageGate::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickStageGate::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     // 未設定の遷移先はステージ選択にし、ポータル専用材質を割り当てます。
@@ -57,24 +57,24 @@ void GimmickStageGate::Initialize(engine::Object3dCommon* common, const std::str
     SetScale({1.4f, 1.4f, 1.4f});
     SetEmissive(1.8f);
     SetMaterialType(kGatePortalMaterialType);
-    SetBlendMode(BlendMode::kNormal);
+    SetBlendMode(BlendMode::Normal);
     SetEnableEnvMap(false);
 
     // プレイヤーだけがゲートへの入場を開始できます。
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SetCollisionRadius(4.0f);
 
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickStageGate;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ステージゲート",
         "セレクト用ノードは接近して決定した時、転移・開始ゲートは接触時に作動します。未設定の転移先は実行時にSELECTとして扱います。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
 
     properties.Accessor<int>("ステージ番号（Target ID）", "stageIndex", "targetID",
-        [](const Self& object) { return object.GetTargetID(); },
-        [](Self& object, const int& value) { object.SetTargetID(value); }, 0, 0,
+        [](const Self& object) { return object.GetTargetId(); },
+        [](Self& object, const int& value) { object.SetTargetId(value); }, 0, 0,
         +[](const Self& object) { return !object.GetParameters() || object.GetParameters()->actionMode != 1; });
     properties.Parameter("ゲートモード", "actionMode", &Parameter::actionMode, 0.0f, 2.0f,
         nullptr, {"ステージセレクト用ノード", "シーン転移ゲート", "ステージ開始ゲート"});
@@ -135,7 +135,7 @@ void GimmickStageGate::Update(float deltaTime) {
     }
 }
 
-bool GimmickStageGate::OnCollision(engine::Object3d* other) {
+bool GimmickStageGate::OnCollision(engine::Object3D* other) {
     // ステージ選択用の展示ノードは、触れてもシーン遷移を起こしません。
     if (!other || !(other->GetCollisionAttribute() & CollisionCategories::Get("player"))) {
         return false;
@@ -159,7 +159,7 @@ bool GimmickStageGate::OnCollision(engine::Object3d* other) {
     return true;
 }
 
-std::unique_ptr<engine::Object3d> GimmickStageGate::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickStageGate::Clone() const {
     // 複製先の描画資源を初期化した後で、ゲート設定をコピーします。
     auto newObj = std::make_unique<GimmickStageGate>();
     assert(GetObjectCommon() != nullptr);
@@ -170,7 +170,7 @@ std::unique_ptr<engine::Object3d> GimmickStageGate::Clone() const {
 
 int GimmickStageGate::GetStageIndex() const {
     // ステージ番号はシーンの Target ID と共有します。
-    return GetTargetID();
+    return GetTargetId();
 }
 
 int GimmickStageGate::GetGateMode() const {

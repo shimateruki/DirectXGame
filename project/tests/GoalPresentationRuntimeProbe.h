@@ -6,7 +6,7 @@
 #include "game/system/scene/SceneGameplayAccess.h"
 #include "tests/GateEntryRuntimeProbe.h"
 #include "MeshEffectManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "SceneManager.h"
 #include "WinApp.h"
 #include "CollisionManager.h"
@@ -22,10 +22,10 @@ struct Access {
     static void End(GamePlayScene* game) { game->StopGoalPresentationPreview(); }
     static Camera* CameraFor(GamePlayScene* game) { return game->goalPresentationCamera_.get(); }
     static float Time(GamePlayScene* game) { return game->goalPresentationTimer_; }
-    static engine::Object3d* Crown(GamePlayScene* game) { return game->FindGoalCrownObject(); }
+    static engine::Object3D* Crown(GamePlayScene* game) { return game->FindGoalCrownObject(); }
 };
 inline void Require(bool value,const char* error) { if (!value) throw std::runtime_error(error); }
-inline void CheckFrame(engine::Object3d* object,Camera* camera,float top) {
+inline void CheckFrame(engine::Object3D* object,Camera* camera,float top) {
     const auto lo=object->GetModel()->GetLocalAabbMin(),hi=object->GetModel()->GetLocalAabbMax();
     for(int i=0;i<8;++i) {
         const auto world=engine::Math::Transform({(i&1)?hi.x:lo.x,(i&2)?hi.y:lo.y,(i&4)?hi.z:lo.z},object->GetWorldMatrix());

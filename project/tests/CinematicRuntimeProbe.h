@@ -53,7 +53,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
         fixture.presentation.objects.push_back(part);
         engine::CinematicPlayer probe;
         int resolutions=0;
-        auto resolveActor=[&](const auto& binding) -> engine::Object3d* {
+        auto resolveActor=[&](const auto& binding) -> engine::Object3D* {
             if (binding.targetName!="$Actor") return nullptr;
             ++resolutions;
             return originalPlayer;
@@ -65,7 +65,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
         probe.Play(false);
         if (!probe.IsPlaying() || resolutions!=prepared) { finish("FAIL: Play rebuilt prepared objects");return; }
         // 退避値のまま止まらず、現在の位置・拡縮・表示を借り、指定軸だけを継承する。
-        const auto savedTransform=static_cast<const engine::Object3d*>(originalPlayer)->GetTransform();
+        const auto savedTransform=static_cast<const engine::Object3D*>(originalPlayer)->GetTransform();
         const bool savedVisible=originalPlayer->GetIsVisible();
         originalPlayer->SetTranslate(savedTransform.translate+engine::Vector3{2,3,4});
         originalPlayer->SetRotation({.7f,.4f,.3f});

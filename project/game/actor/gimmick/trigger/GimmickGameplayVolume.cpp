@@ -8,14 +8,14 @@
 #include "game/system/progress/GameDataManager.h"
 #include "Player.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 
-void GimmickGameplayVolume::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
-    // プレイヤーだけを検知する透明な OBB とし、用途は JSON の volumeMode で選ぶ。
+void GimmickGameplayVolume::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
+    // プレイヤーだけを検知する透明な Obb とし、用途は JSON の volumeMode で選ぶ。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -24,13 +24,13 @@ void GimmickGameplayVolume::Initialize(engine::Object3dCommon* common, const std
     SetStatic(false);
     SetCastShadow(false);
     SetColor({0.15f, 0.75f, 1.0f, 0.3f});
-    SetBlendMode(BlendMode::kNormal);
+    SetBlendMode(BlendMode::Normal);
     SetScale({3.0f, 3.0f, 3.0f});
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
 
-    engine::Object3d::ColliderConfig collider;
-    collider.type = ColliderType::kOBB;
+    engine::Object3D::ColliderConfig collider;
+    collider.type = ColliderType::Obb;
     collider.center = {0.0f, 0.0f, 0.0f};
     collider.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(collider);
@@ -53,7 +53,7 @@ void GimmickGameplayVolume::Initialize(engine::Object3dCommon* common, const std
     using Self = GimmickGameplayVolume;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ゲームプレイボリューム",
         "イベント連携はTarget IDを接続します。チェックポイントは中心位置を記録、落下死は既存の残機処理へ接続します。退出時のOFFは対応モードだけ編集できます。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("処理", "volumeMode", &Parameter::volumeMode, 0.0f, 5.0f,
         nullptr, {"イベント連携", "チェックポイント", "落下死", "Feedback Cue", "BGM", "Environment Profile"});
     properties.Parameter("Cue / Audio / Profile ID", "volumePayload", &Parameter::volumePayload, 0.0f, 0.0f,
@@ -104,7 +104,7 @@ void GimmickGameplayVolume::Draw(ID3D12Resource* pointLightResource, ID3D12Resou
     }
 }
 
-bool GimmickGameplayVolume::OnCollision(engine::Object3d* other) {
+bool GimmickGameplayVolume::OnCollision(engine::Object3D* other) {
     // プレイヤーが入った最初のフレームだけ入場処理を呼び、物理的には押し戻さない。
     auto* player = dynamic_cast<Player*>(other);
 
@@ -147,7 +147,7 @@ void GimmickGameplayVolume::OnSwitchEvent(bool active) {
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickGameplayVolume::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickGameplayVolume::Clone() const {
     // 実行時の占有と一度きりの発動履歴は複製先へ引き継がない。
     auto clone = std::make_unique<GimmickGameplayVolume>();
     assert(GetObjectCommon() != nullptr);
@@ -215,11 +215,11 @@ void GimmickGameplayVolume::Activate(Player* player) {
 
     switch (GetMode()) {
     case Mode::Event:
-        if (scene && GetTargetID() > 0) {
+        if (scene && GetTargetId() > 0) {
             if (GetParameters()->returnOnOff && !GetParameters()->volumeTriggerOnExit) {
-                scene->SetEventActive(GetTargetID(), true);
+                scene->SetEventActive(GetTargetId(), true);
             } else {
-                scene->TriggerEvent(GetTargetID());
+                scene->TriggerEvent(GetTargetId());
             }
         }
 
@@ -246,7 +246,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
                 player->RestoreHpToFull();
             }
 
-            VFXSequencer::PlayOneShot("checkpoint_activate_cue", checkpointPosition);
+            VfxSequencer::PlayOneShot("checkpoint_activate_cue", checkpointPosition);
         }
 
         break;
@@ -263,7 +263,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
 
     case Mode::FeedbackCue:
         if (!GetParameters()->volumePayload.empty()) {
-            VFXSequencer::PlayOneShot(GetParameters()->volumePayload, GetWorldPosition());
+            VfxSequencer::PlayOneShot(GetParameters()->volumePayload, GetWorldPosition());
         }
 
         break;
@@ -297,8 +297,8 @@ void GimmickGameplayVolume::Deactivate() {
 
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
-    if (GetMode() == Mode::Event && scene && GetTargetID() > 0) {
-        scene->SetEventActive(GetTargetID(), false);
+    if (GetMode() == Mode::Event && scene && GetTargetId() > 0) {
+        scene->SetEventActive(GetTargetId(), false);
     } else if (GetMode() == Mode::Bgm && !GetParameters()->volumePayload.empty()) {
         GameAudioSettings::GetInstance()->Stop(GetParameters()->volumePayload);
     } else if (GetMode() == Mode::Environment && hasPreviousEnvironment_) {

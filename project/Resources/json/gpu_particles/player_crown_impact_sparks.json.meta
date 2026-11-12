@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "74642249dbf1c92ca7a07bd85be436d2",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_crown_impact_sparks.json",
+  "version": 1
+}

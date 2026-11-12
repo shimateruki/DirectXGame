@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cassert>
 
-void GimmickHookPullBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickHookPullBlock::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 共通ギミックとして登録した後、フック対象として識別できる型を設定する。
     BaseGimmick::Initialize(common, modelName);
 
@@ -31,7 +31,7 @@ void GimmickHookPullBlock::Initialize(engine::Object3dCommon* common, const std:
     using Self = GimmickHookPullBlock;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "フック可動ブロック",
         "フックを当てるとプレイヤー側へ引き寄せます。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("引っ張り速度", "speed", &Parameter::speed, 1.0f, 120.0f);
     properties.Parameter("重力", "gravity", &Parameter::gravity, 0.0f, 200.0f);
     properties.Parameter("最大落下速度", "maxFallSpeed", &Parameter::maxFallSpeed, 0.0f, 200.0f);
@@ -49,9 +49,9 @@ void GimmickHookPullBlock::Update(float deltaTime) {
         engine::Vector3 toTarget = pullTarget_ - GetWorldPosition();
         toTarget.y = 0.0f;
 
-        float dist = engine::Math::Length(toTarget);
+        float distance = engine::Math::Length(toTarget);
 
-        if (dist > 0.05f) {
+        if (distance > 0.05f) {
             engine::Vector3 dir = engine::Math::Normalize(toTarget);
             float pullSpeed = std::max(1.0f, GetParameters()->speed);
             velocity_.x = engine::Math::Lerp(velocity_.x, dir.x * pullSpeed, 0.18f);
@@ -86,7 +86,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickHookPullBlock::OnCollision(engine::Object3d* other) {
+bool GimmickHookPullBlock::OnCollision(engine::Object3D* other) {
     // 地面属性以外との接触では引き寄せ中の位置補正を行わない。
     if (!other || other == this)
         return false;
@@ -135,7 +135,7 @@ void GimmickHookPullBlock::StartHookPull(const engine::Vector3& hookOwnerPos) {
     DebugConsole::GetInstance()->AddLog("HookPullBlock pulled");
 }
 
-std::unique_ptr<engine::Object3d> GimmickHookPullBlock::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickHookPullBlock::Clone() const {
     // 新しい実体を初期化してから配置とフック設定を引き継ぐ。
     auto newObj = std::make_unique<GimmickHookPullBlock>();
     assert(GetObjectCommon() != nullptr);

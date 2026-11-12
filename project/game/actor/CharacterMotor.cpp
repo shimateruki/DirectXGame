@@ -4,7 +4,7 @@
 
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
-#include "Object3d.h"
+#include "Object3D.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,13 +29,13 @@ engine::Vector3 NormalizeOrZero(const engine::Vector3& value) {
     return length > kMinimumDistance ? value * (1.0f / length) : engine::Vector3{};
 }
 
-engine::Vector3 ResolveQueryCenter(const engine::Object3d& owner, const engine::Vector3& position) {
+engine::Vector3 ResolveQueryCenter(const engine::Object3D& owner, const engine::Vector3& position) {
     // モデル原点ではなくコライダー中心から Sweep を始める。
-    const engine::Object3d::ColliderConfig& collider = owner.GetColliderConfig();
+    const engine::Object3D::ColliderConfig& collider = owner.GetColliderConfig();
     return position + collider.center;
 }
 
-float ResolveQueryRadius(const engine::Object3d& owner, float skinWidth) {
+float ResolveQueryRadius(const engine::Object3D& owner, float skinWidth) {
     // 接触面にわずかな隙間を残して次フレームの押し戻しを安定させる。
     const Collider* collider = owner.GetCollider();
     const float radius = collider ? collider->GetRadius() : 0.5f;
@@ -71,7 +71,7 @@ void CharacterMotor::ApplyGravity(engine::Vector3& velocity, float gravity, floa
     }
 }
 
-void CharacterMotor::Move(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, float deltaTime) {
+void CharacterMotor::Move(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, float deltaTime) {
     if (deltaTime <= 0.0f) {
         return;
     }
@@ -121,7 +121,7 @@ bool CharacterMotor::IsWalkable(const engine::Vector3& normal) const {
     return normal.y > minimumNormalY;
 }
 
-bool CharacterMotor::TryStep(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
+bool CharacterMotor::TryStep(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
                              const engine::Vector3& planarDisplacement, float queryRadius) {
     // 一度上へ持ち上げて前方の空きを調べ、着地できる段差だけ越える。
     if (settings_.stepHeight <= 0.0f || Length(planarDisplacement) <= kMinimumDistance) {
@@ -155,7 +155,7 @@ bool CharacterMotor::TryStep(engine::Object3d& owner, engine::Vector3& position,
     return true;
 }
 
-void CharacterMotor::MoveSwept(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
+void CharacterMotor::MoveSwept(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
                                const engine::Vector3& displacement) {
     PhysicsQueryFilter filter;
     filter.mask = settings_.collisionMask;
@@ -229,7 +229,7 @@ void CharacterMotor::MoveSwept(engine::Object3d& owner, engine::Vector3& positio
     }
 }
 
-void CharacterMotor::SnapToGround(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
+void CharacterMotor::SnapToGround(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
                                   float queryRadius, float maximumDistance) {
     // 小さな段差からの離陸を防ぐため、歩行可能な面に限って下方へ吸着する。
     if (maximumDistance <= 0.0f) {

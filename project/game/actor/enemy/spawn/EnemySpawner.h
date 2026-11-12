@@ -1,18 +1,20 @@
 #pragma once
-#include "Object3d.h"
+#include "Object3D.h"
 #include <functional>
 #include <string>
 
 // 前方宣言
-namespace engine { class Object3dCommon; }
+namespace engine { class Object3DCommon; }
 
 // 一定間隔で敵を発生させるための配置用オブジェクト
-class EnemySpawner : public engine::Object3d {
+// 関連：生成したBaseEnemyの所有権を登録済みコールバックへ渡す。
+// 主な入口：Initialize / Update / SetOnSpawnCallback
+class EnemySpawner : public engine::Object3D {
   public:
     /// <summary>
     /// スポナーの初期化
     /// </summary>
-    void Initialize(engine::Object3dCommon* common, const std::string& enemyType, float interval, int maxCount);
+    void Initialize(engine::Object3DCommon* common, const std::string& enemyType, float interval, int maxCount);
 
     // タイマーを進め、条件を満たしたらスポーン通知を出す
     void Update(float deltaTime) override;
@@ -28,7 +30,7 @@ class EnemySpawner : public engine::Object3d {
 
   private:
     // Factory に渡す共通描画情報。スポーン時の敵初期化で使う。
-    engine::Object3dCommon* common_ = nullptr;
+    engine::Object3DCommon* common_ = nullptr;
 
     std::string enemyType_;      // 生成したい敵タイプ名。
     float spawnInterval_ = 1.0f; // 次のスポーンまでの間隔。

@@ -8,6 +8,8 @@ class Player;
 namespace engine { class Sprite; }
 
 // 配置はシーン所有のSpriteを借用し、描画と演出は専用実装へまとめる。
+// 関連：Playerとシーン所有のSpriteを借用し、HP表示・被ダメージ時の補間を更新する。
+// 主な入口：Bind / Update / Draw / Reset
 class PlayerHealthHud {
 public:
     enum class Style { Simple, Animated };

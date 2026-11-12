@@ -3,12 +3,11 @@
 #include "game/scene/GameSceneDrawing.h"
 #include "GimmickStageGate.h"
 #include "ScenePreloader.h"
-#include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
-#include "Object3dCommon.h"
+#include "Object3DCommon.h"
 #include "SpriteCommon.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "Sprite.h"
 #include "ModelManager.h"
 #include "TextureManager.h"
@@ -32,7 +31,7 @@
 #include "game/system/scene/ObjectManager.h"
 #include "DebrisEffectManager.h"
 #include "MeshEffectManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include "WinApp.h"
 #include "IconsFontAwesome5.h"
 #ifdef _DEBUG
@@ -44,13 +43,13 @@
 #include <string>
 #include "json.hpp"
 #include <numbers>
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include <BaseEnemy.h>
 #include <game/actor/enemy/spawn/EnemyFactory.h>
 #include <game/actor/enemy/spawn/EnemySpawner.h>
 #include <LightEditor.h>
 #include <ParticleManager.h>
-#include <GPUParticleManager.h>
+#include <GpuParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
 #include "game/system/progress/StageManager.h"
@@ -66,7 +65,7 @@ constexpr const char* kExitGuideName = "Tutorial_ExitGuideArrow";
 constexpr const char* kExitGuideModel = "Stages/tutorial_gate_arrow/tutorial_gate_arrow.obj";
 constexpr const char* kExitGuideSettings = "Resources/json/navigation/tutorial_exit_guide.json";
 
-engine::Object3d* FindExitGuideArrow(const BaseScene& scene) {
+engine::Object3D* FindExitGuideArrow(const BaseScene& scene) {
     for (const auto& object : scene.GetObjects())
         if (object && object->GetName() == kExitGuideName && !object->IsReplayRemoved())
             return object.get();
@@ -331,7 +330,6 @@ bool TutorialScene::InitializeLoadingStep() {
     for (;;) {
         switch (loadingInitializePhase_) {
         case 0: {
-            dxCommon_ = DirectXCommon::GetInstance();
             inputManager_ = engine::InputManager::GetInstance();
             LOG("Tutorial Scene Initialized!");
             const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
@@ -344,19 +342,12 @@ bool TutorialScene::InitializeLoadingStep() {
 
         case 1:
             // Sceneが所有する描画基盤を先に作る。各Managerにはその後で借用ポインタを渡す。
-            spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-            spriteCommon_->Initialize(dxCommon_);
-            object3dCommon_ = std::make_unique<engine::Object3dCommon>();
-            object3dCommon_->Initialize(dxCommon_);
-            MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
-            particleCommon_ = std::make_unique<engine::ParticleCommon>();
-            particleCommon_->Initialize(dxCommon_);
             particleSystem_ = std::make_unique<engine::ParticleSystem>();
-            particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
+            particleSystem_->Initialize(GetParticleCommon(), "Resources/sprite/common/circle2.png");
             ParticleManager::GetInstance()->Initialize(particleSystem_.get());
             gameRule_ = std::make_unique<GameRule>();
             gameRule_->Initialize(this);
-            LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+            LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
             ++loadingInitializePhase_;
             completeUnit();
             return false;
@@ -367,10 +358,10 @@ bool TutorialScene::InitializeLoadingStep() {
             lockOnSystem_->Initialize(inputManager_);
             const uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
             lockOnSprite_ = std::make_unique<engine::Sprite>();
-            lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+            lockOnSprite_->Initialize(GetSpriteCommon(), lockOnTex);
             lockOnSprite_->SetAnchorPoint({0.5f, 0.5f});
             lockOnSprite_->SetSize({64.0f, 64.0f});
-            BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+            BulletManager::GetInstance()->Initialize(GetObject3DCommon(), CollisionManager::GetInstance());
             ++loadingInitializePhase_;
             completeUnit();
             return false;
@@ -378,8 +369,7 @@ bool TutorialScene::InitializeLoadingStep() {
 
         case 3:
             // プリセットの先読みより前にGPU粒子の管理器と共有テクスチャを用意する。
-            GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-            GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+            PrepareGpuParticles();
             gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
@@ -389,7 +379,7 @@ bool TutorialScene::InitializeLoadingStep() {
         case 4:
             // 重い先読みは一項目ずつ返し、ロード画面の描画機会を残す。
             if (loadingInitializeItemIndex_ < std::size(kTutorialGpuParticlePresetsToPreload)) {
-                GPUParticleManager::GetInstance()->PreloadPresetSystem(
+                GpuParticleManager::GetInstance()->PreloadPresetSystem(
                     kTutorialGpuParticlePresetsToPreload[loadingInitializeItemIndex_++]);
                 completeUnit();
                 return false;
@@ -412,7 +402,7 @@ bool TutorialScene::InitializeLoadingStep() {
             continue;
 
         case 6:
-            DebrisEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+            DebrisEffectManager::GetInstance()->Initialize(GetObject3DCommon());
             DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
             ++loadingInitializePhase_;
             loadingInitializeItemIndex_ = 0;
@@ -433,7 +423,7 @@ bool TutorialScene::InitializeLoadingStep() {
 
         case 8:
             if (loadingInitializeItemIndex_ < std::size(kTutorialVfxSequencesToPreload)) {
-                VFXSequencer sequence;
+                VfxSequencer sequence;
                 sequence.Load(kTutorialVfxSequencesToPreload[loadingInitializeItemIndex_++]);
                 completeUnit();
                 return false;
@@ -446,7 +436,7 @@ bool TutorialScene::InitializeLoadingStep() {
             skyboxTextureHandle_ =
                 TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
             skybox_ = std::make_unique<Skybox>();
-            skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
+            skybox_->Initialize(GetObject3DCommon(), skyboxTextureHandle_);
             ++loadingInitializePhase_;
             completeUnit();
             return false;
@@ -475,9 +465,9 @@ bool TutorialScene::InitializeLoadingStep() {
 
         case 12:
             controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
-            controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
+            controlsGuideOverlay_->Initialize(GetSpriteCommon(), player_);
             saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
-            saveIndicatorOverlay_->Initialize(spriteCommon_.get());
+            saveIndicatorOverlay_->Initialize(GetSpriteCommon());
             InitializeExitGuide();
             tutorialDirector_ = std::make_unique<TutorialDirector>();
 
@@ -537,18 +527,15 @@ void TutorialScene::Finalize() {
 
     controlsGuideOverlay_.reset();
     MeshEffectManager::GetInstance()->Clear();
-    VFXSequencer::ClearOneShots();
-    GPUParticleManager::GetInstance()->ClearSceneRuntime();
+    VfxSequencer::ClearOneShots();
+    GpuParticleManager::GetInstance()->ClearSceneRuntime();
     DebrisEffectManager::GetInstance()->Clear();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     saveIndicatorOverlay_.reset();
     particleSystem_.reset();
-    particleCommon_.reset();
     healthHud_.Reset();
     sprites_.clear();
-    spriteCommon_.reset();
-    object3dCommon_.reset();
     objectManager_.reset();
     lockOnSystem_.reset();
 }
@@ -557,7 +544,7 @@ void TutorialScene::Update(float deltaTime) {
     if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) {
         HideExitGuide();
         if (saveIndicatorOverlay_) saveIndicatorOverlay_->Update(deltaTime);
-        UpdateUI();
+        UpdateUi();
         return;
     }
     // 手順完了後に保存できなければ出口を閉じたまま、一定間隔で再試行する。
@@ -629,11 +616,11 @@ void TutorialScene::Update(float deltaTime) {
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_, deltaTime);
     CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
 
-    engine::Object3d* target = lockOnSystem_->GetTarget();
+    engine::Object3D* target = lockOnSystem_->GetTarget();
 
     if (target && lockOnSystem_->IsLockingOn()) {
         isDrawLockOn_ = true;
-        AABB aabb = target->GetAABB();
+        Aabb aabb = target->GetAabb();
 
         engine::Vector3 targetCenter;
         targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
@@ -684,7 +671,7 @@ void TutorialScene::Update(float deltaTime) {
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
 
-        if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+        if (currentMode == Camera::FollowMode::Aimable || currentMode == Camera::FollowMode::FirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
 
@@ -709,7 +696,7 @@ void TutorialScene::Update(float deltaTime) {
         gameRule_->Update(deltaTime);
     }
 
-    GPUParticleManager::GetInstance()->Update(deltaTime);
+    GpuParticleManager::GetInstance()->Update(deltaTime);
     copyStyleHud_.Update(player_, deltaTime);
     healthHud_.Update(player_, deltaTime);
 
@@ -725,7 +712,7 @@ void TutorialScene::Update(float deltaTime) {
     CollisionManager::GetInstance()->Update();
     // 接地・衝突で修正された最新の足元へ追従し、移動に対する一フレームの遅れを作らない。
     UpdateExitGuide(deltaTime);
-    UpdateUI();
+    UpdateUi();
 }
 
 void TutorialScene::Draw() {
@@ -739,9 +726,9 @@ void TutorialScene::Draw() {
         pPos.y += 1.0f;
         engine::Vector3 cPos = camera->GetEye();
         engine::Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
-        float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
+        float distance = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
-        if (dist < 3.0f) {
+        if (distance < 3.0f) {
             isFirstPerson = true;
         }
     }
@@ -757,11 +744,11 @@ void TutorialScene::Draw() {
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
-    object3dCommon_->SetGraphicsCommand();
-    object3dCommon_->SetPipelineState(BlendMode::kNone);
+    GetObject3DCommon()->SetGraphicsCommand();
+    GetObject3DCommon()->SetPipelineState(BlendMode::None);
 
     DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Opaque, pointLightRes, spotLightRes,
-        player_, isFirstPerson, true, [this](engine::Object3d* object) { return IsVisible(object); });
+        player_, isFirstPerson, true, [this](engine::Object3D* object) { return IsVisible(object); });
 
     // 身体を隠した近距離でも、操作の目印であるフックマーカーは残します。
     if (player_ && player_->GetHookMarker()) {
@@ -778,20 +765,20 @@ void TutorialScene::Draw() {
     particleSystem_->Draw();
 
     // 霧と特殊材質は画面色・深度を読むため、通常のObject描画とは分けます。
-    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
+    DrawLocalFogObjects(objects, player_, isFirstPerson);
 
-    bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
+    bool hasGpuParticles = !GpuParticleManager::GetInstance()->IsEmpty();
     bool grabUpdated =
-        DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
-    if (hasGPUParticles) {
-        DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
+        DrawSpecialMaterialObjects(objects, BulletManager::GetInstance(), player_, isFirstPerson);
+    if (hasGpuParticles) {
+        DrawGpuParticles(camera, gpuParticleTexHandle_, grabUpdated);
     }
 }
 
-void TutorialScene::DrawUI() {
+void TutorialScene::DrawUi() {
     // 背景Sprite→照準→プレイヤーUI→操作案内→保存通知の順で重ねます。
     // 案内と保存通知はゲーム本体のSpriteより手前に置き、表示中に読めるようにします。
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    BeginSpriteDrawing();
 
     // チュートリアルのムービー中は画面上の操作UIを描かず、終了後に戻します。
     if (tutorialDirector_ && tutorialDirector_->IsCinematicPlaying()) {
@@ -804,7 +791,7 @@ void TutorialScene::DrawUI() {
     if (isDrawLockOn_ && lockOnSprite_)
         lockOnSprite_->Draw();
     if (player_)
-        player_->DrawUI();
+        player_->DrawUi();
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
         controlsGuideOverlay_->Draw();
     }
@@ -819,7 +806,7 @@ void TutorialScene::DrawShadow() {
         objectManager_->DrawShadow();
 }
 
-void TutorialScene::UpdateUI() {
+void TutorialScene::UpdateUi() {
     // 専用のUI更新はUpdate内で行うため、共通フックでは追加処理をしない。
 }
 
@@ -903,8 +890,8 @@ void TutorialScene::InitializeExitGuide() {
     exitGuide_.Initialize({});
     exitGuide_.LoadSettings(kExitGuideSettings);
     exitGuideRequested_ = false;
-    auto arrow = std::make_unique<engine::Object3d>();
-    arrow->Initialize(object3dCommon_.get());
+    auto arrow = std::make_unique<engine::Object3D>();
+    arrow->Initialize(GetObject3DCommon());
     arrow->SetModel(kExitGuideModel);
     arrow->SetName(kExitGuideName);
     // 実行中に作る案内をシーン保存へ混ぜず、衝突・影にも参加させない。
@@ -945,7 +932,7 @@ void TutorialScene::UpdateExitGuide(float deltaTime) {
         exitGuideRequested_ = true;
     }
     auto anchor = player_->GetWorldPosition();
-    anchor.y = player_->GetModelWorldAABB().min.y;
+    anchor.y = player_->GetModelWorldAabb().min.y;
     exitGuide_.Update(*arrow, anchor, target->GetWorldPosition(), deltaTime);
 }
 
@@ -975,6 +962,6 @@ void TutorialScene::HandleTutorialFlowCompleted() {
     }
 }
 
-bool TutorialScene::IsVisible(engine::Object3d* obj) {
+bool TutorialScene::IsVisible(engine::Object3D* obj) {
     return IsSceneObjectVisibleByFrustum(obj, CameraManager::GetInstance()->GetActiveCamera());
 }

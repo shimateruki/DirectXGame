@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
+#include "game/scene/gameplay/GoalCinematicVfx.h"
 #include "Easing.h"
 #include "BaseEnemy.h"
 #include "CameraManager.h"
@@ -30,9 +31,6 @@ float GoalClamp01(float value) {
 }
 
 
-
-
-
 } // namespace
 
 // タイムラインを読み、見つからない場合は現在の調整値から同等の演出を組み立てます。
@@ -40,11 +38,11 @@ void GamePlayScene::InitializeGoalCinematicTimeline() {
     // タイムラインのアニメーションと合図をPlayer用処理へ結び付けてから読込む。
     goalCinematicPlayer_.Initialize(SceneManager::GetInstance());
     goalCinematicPlayer_.SetAnimationCallback(
-        [this](engine::Object3d* target, const CinematicAnimationClipData& clip, float localTime, bool isPreview) {
+        [this](engine::Object3D* target, const CinematicAnimationClipData& clip, float localTime, bool isPreview) {
             HandleGoalCinematicAnimation(target, clip, localTime, isPreview);
         });
     goalCinematicPlayer_.SetSignalCallback(
-        [this](engine::Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
+        [this](engine::Object3D* target, const CinematicSignalMarker& signal, bool isPreview) {
             HandleGoalCinematicSignal(target, signal, isPreview);
         });
 
@@ -101,7 +99,7 @@ void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
 // エディターで変更した時刻をタイムラインへ戻し、該当トラックがなければ追加します。
 void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
-    auto SetSignalTime = [this](const char* signalId, const char* displayName, float time) {
+    auto setSignalTime = [this](const char* signalId, const char* displayName, float time) {
         for (auto& marker : goalCinematicSequence_.signals) {
             if (marker.signal == signalId) {
                 marker.time = time;
@@ -117,15 +115,15 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         goalCinematicSequence_.signals.push_back(marker);
     };
 
-    SetSignalTime("goal.crown_focus_end", "Crown Focus End", goalPresentationTuning_.crownFocusEndTime);
-    SetSignalTime("goal.crown_move_start", "Crown Move Start", goalPresentationTuning_.crownMoveStartTime);
-    SetSignalTime("goal.crown_land", "Crown Land", animation.crownLandTime);
-    SetSignalTime("goal.anticipation", "Anticipation", animation.anticipationStartTime);
-    SetSignalTime("goal.jump", "Celebration Bounce", animation.jumpStartTime);
-    SetSignalTime("goal.apex", "First Bounce Apex", animation.apexTime);
-    SetSignalTime("goal.result", "Result UI", animation.resultUiTime);
-    SetSignalTime("goal.victory_land", "First Bounce Landing", animation.victoryLandTime);
-    SetSignalTime("goal.ready", "Ready To Return", animation.readyTime);
+    setSignalTime("goal.crown_focus_end", "Crown Focus End", goalPresentationTuning_.crownFocusEndTime);
+    setSignalTime("goal.crown_move_start", "Crown Move Start", goalPresentationTuning_.crownMoveStartTime);
+    setSignalTime("goal.crown_land", "Crown Land", animation.crownLandTime);
+    setSignalTime("goal.anticipation", "Anticipation", animation.anticipationStartTime);
+    setSignalTime("goal.jump", "Celebration Bounce", animation.jumpStartTime);
+    setSignalTime("goal.apex", "First Bounce Apex", animation.apexTime);
+    setSignalTime("goal.result", "Result UI", animation.resultUiTime);
+    setSignalTime("goal.victory_land", "First Bounce Landing", animation.victoryLandTime);
+    setSignalTime("goal.ready", "Ready To Return", animation.readyTime);
 
     // タイムラインを手編集した後も、プレイヤー姿勢を駆動するクリップの終端を結果待ち時刻へ合わせる。
     bool hasAnimationDriver = false;
@@ -135,7 +133,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
             clip.startTime = 0.0f;
             clip.duration = animation.readyTime;
             clip.binding.targetName = player_ ? player_->GetName() : "player";
-            clip.binding.targetEventId = player_ ? player_->GetEventID() : -1;
+            clip.binding.targetEventId = player_ ? player_->GetEventId() : -1;
             hasAnimationDriver = true;
         }
     }
@@ -147,79 +145,42 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         clip.clipName = "goal_clear";
         clip.duration = animation.readyTime;
         clip.binding.targetName = player_ ? player_->GetName() : "player";
-        clip.binding.targetEventId = player_ ? player_->GetEventID() : -1;
+        clip.binding.targetEventId = player_ ? player_->GetEventId() : -1;
         goalCinematicSequence_.animationClips.push_back(clip);
     }
 
     // 調整値と既存 VFX の開始時刻を同期し、未設定の演出だけ補完する。
-    bool hasCrownFocusVfx = false;
-    bool hasCrownVfx = false;
-    bool hasResultVfx = false;
-    bool hasVictoryLandVfx = false;
-
-    for (auto& track : goalCinematicSequence_.vfxTracks) {
-        if (track.sequenceName.rfind("crown_focus", 0) == 0) {
-            track.startTime = std::max(0.05f, goalPresentationTuning_.crownFocusEndTime - 0.22f);
-            hasCrownFocusVfx = true;
-        } else if (track.sequenceName.rfind("crown_get", 0) == 0) {
-            track.startTime = animation.crownLandTime;
-            hasCrownVfx = true;
-        } else if (track.sequenceName.rfind("crown_result", 0) == 0) {
-            track.startTime = animation.apexTime;
-            hasResultVfx = true;
-        } else if (track.sequenceName.rfind("crown_victory_land", 0) == 0) {
-            track.startTime = animation.victoryLandTime;
-            hasVictoryLandVfx = true;
+    const auto* crown = FindGoalCrownObject();
+    auto syncVfxTrack = [this, crown](const GoalCinematicVfx::Cue& cue, float time) {
+        bool found = false;
+        for (auto& track : goalCinematicSequence_.vfxTracks) {
+            if (GoalCinematicVfx::FindCue(track.sequenceName) == &cue) {
+                track.startTime = time;
+                found = true;
+            }
         }
-    }
+        if (!found) {
+            CinematicVfxTrackData track;
+            const auto* target = cue.followsCrown ? crown : player_;
+            track.name = cue.label;
+            track.sequenceName = cue.gold;
+            track.startTime = time;
+            track.binding.targetName = target ? target->GetName() : (cue.followsCrown ? "goal" : "player");
+            track.binding.targetEventId = target ? target->GetEventId() : -1;
+            goalCinematicSequence_.vfxTracks.push_back(track);
+        }
+    };
 
-    engine::Object3d* crown = FindGoalCrownObject();
-
-    if (!hasCrownFocusVfx) {
-        CinematicVFXTrackData track;
-        track.name = "Crown Focus VFX";
-        track.sequenceName = "crown_focus_cue";
-        track.startTime = std::max(0.05f, goalPresentationTuning_.crownFocusEndTime - 0.22f);
-        track.binding.targetName = crown ? crown->GetName() : "goal";
-        track.binding.targetEventId = crown ? crown->GetEventID() : -1;
-        goalCinematicSequence_.vfxTracks.push_back(track);
-    }
-
-    if (!hasCrownVfx) {
-        CinematicVFXTrackData track;
-        track.name = "Crown Landing VFX";
-        track.sequenceName = "crown_get_cue";
-        track.startTime = animation.crownLandTime;
-        track.binding.targetName = crown ? crown->GetName() : "goal";
-        track.binding.targetEventId = crown ? crown->GetEventID() : -1;
-        goalCinematicSequence_.vfxTracks.push_back(track);
-    }
-
-    if (!hasResultVfx) {
-        CinematicVFXTrackData track;
-        track.name = "Result Burst VFX";
-        track.sequenceName = "crown_result_cue";
-        track.startTime = animation.apexTime;
-        track.binding.targetName = player_ ? player_->GetName() : "player";
-        track.binding.targetEventId = player_ ? player_->GetEventID() : -1;
-        goalCinematicSequence_.vfxTracks.push_back(track);
-    }
-
-    if (!hasVictoryLandVfx) {
-        CinematicVFXTrackData track;
-        track.name = "Victory Landing VFX";
-        track.sequenceName = "crown_victory_land_cue";
-        track.startTime = animation.victoryLandTime;
-        track.binding.targetName = player_ ? player_->GetName() : "player";
-        track.binding.targetEventId = player_ ? player_->GetEventID() : -1;
-        goalCinematicSequence_.vfxTracks.push_back(track);
-    }
+    syncVfxTrack(GoalCinematicVfx::kFocus, std::max(0.05f, goalPresentationTuning_.crownFocusEndTime - 0.22f));
+    syncVfxTrack(GoalCinematicVfx::kLanding, animation.crownLandTime);
+    syncVfxTrack(GoalCinematicVfx::kResult, animation.apexTime);
+    syncVfxTrack(GoalCinematicVfx::kVictory, animation.victoryLandTime);
 
     goalCinematicSequence_.duration = animation.readyTime;
     goalCinematicSequence_.Sort();
 }
 
-void GamePlayScene::HandleGoalCinematicAnimation(engine::Object3d* target, const CinematicAnimationClipData& clip,
+void GamePlayScene::HandleGoalCinematicAnimation(engine::Object3D* target, const CinematicAnimationClipData& clip,
                                                  float localTime, bool isPreview) {
     // GoalClearPlayerドライバだけをPlayerへ適用し、他の対象のClipは無視する。
     (void)isPreview;
@@ -237,7 +198,7 @@ void GamePlayScene::HandleGoalCinematicAnimation(engine::Object3d* target, const
     }
 }
 
-void GamePlayScene::HandleGoalCinematicSignal(engine::Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
+void GamePlayScene::HandleGoalCinematicSignal(engine::Object3D* target, const CinematicSignalMarker& signal, bool isPreview) {
     // goal.readyの合図で帰還可能状態へ進み、時計だけに依存しない。
     (void)target;
     (void)isPreview;
@@ -249,7 +210,7 @@ void GamePlayScene::HandleGoalCinematicSignal(engine::Object3d* target, const Ci
 
 void GamePlayScene::InitializeGoalPresentationOverlay() {
     // Sprite基盤が揃ってからフラッシュ・火花・帰還案内を生成する。
-    if (!spriteCommon_) {
+    if (!GetSpriteCommon()) {
         return;
     }
 
@@ -259,7 +220,7 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
         TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/returning_select_text.png");
 
     goalOverlayFlash_ = std::make_unique<engine::Sprite>();
-    goalOverlayFlash_->Initialize(spriteCommon_.get(), whiteHandle);
+    goalOverlayFlash_->Initialize(GetSpriteCommon(), whiteHandle);
     goalOverlayFlash_->SetName("GoalClear_Flash");
     goalOverlayFlash_->SetAnchorPoint({0.5f, 0.5f});
 
@@ -278,20 +239,20 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
     for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
         auto& letter = goalOverlayStageClearLetters_[i];
         letter = std::make_unique<engine::Sprite>();
-        letter->Initialize(spriteCommon_.get(), TextureManager::GetInstance()->Load(kLetterTexturePaths[i]));
+        letter->Initialize(GetSpriteCommon(), TextureManager::GetInstance()->Load(kLetterTexturePaths[i]));
         letter->SetName("GoalClear_Letter_" + std::to_string(i));
         letter->SetAnchorPoint({0.5f, 0.5f});
     }
 
     goalOverlayReturnText_ = std::make_unique<engine::Sprite>();
-    goalOverlayReturnText_->Initialize(spriteCommon_.get(), returnTextHandle);
+    goalOverlayReturnText_->Initialize(GetSpriteCommon(), returnTextHandle);
     goalOverlayReturnText_->SetName("GoalClear_ReturnText");
     goalOverlayReturnText_->SetAnchorPoint({0.5f, 0.5f});
 
     for (size_t i = 0; i < goalOverlaySparkles_.size(); ++i) {
         auto& sparkle = goalOverlaySparkles_[i];
         sparkle = std::make_unique<engine::Sprite>();
-        sparkle->Initialize(spriteCommon_.get(), splashHandle);
+        sparkle->Initialize(GetSpriteCommon(), splashHandle);
         sparkle->SetName("GoalClear_LetterSplash_" + std::to_string(i));
         sparkle->SetAnchorPoint({0.5f, 0.5f});
     }
@@ -778,7 +739,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
 #endif
 }
 
-engine::Object3d* GamePlayScene::FindGoalCrownObject() const {
+engine::Object3D* GamePlayScene::FindGoalCrownObject() const {
     // シーン内のゴールイベントを持つ王冠を、プレビュー対象として探す。
     if (!objectManager_) {
         return nullptr;
@@ -804,7 +765,7 @@ void GamePlayScene::StartGoalPresentationPreview() {
         StopGoalPresentationPreview();
     }
 
-    engine::Object3d* crown = FindGoalCrownObject();
+    engine::Object3D* crown = FindGoalCrownObject();
 
     if (!crown || !player_) {
         DebugConsole::GetInstance()->AddLog("Goal presentation preview requires player and crown.");

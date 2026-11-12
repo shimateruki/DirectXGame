@@ -1,12 +1,12 @@
 #define NOMINMAX
-#include "Object3d.h"
+#include "Object3D.h"
 #include "EditorPropertyRegistry.h"
 #include "engine/graphics/3d/material/MaterialRenderPolicy.h"
 #include "engine/graphics/3d/material/WaterParamJsonCodec.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
-#include "EffectObject3d.h"
-#include "SRVManager.h"
+#include "EffectObject3D.h"
+#include "SrvManager.h"
 #include "CameraManager.h"
 #include "SceneManager.h"
 #include "GhostRecorder.h"
@@ -14,8 +14,8 @@
 #include <cassert>
 #include <algorithm> // min, max
 #include <ParticleManager.h>
-#include <GPUParticleManager.h>
-#include <GPUParticleEmitter.h>
+#include <GpuParticleManager.h>
+#include <GpuParticleEmitter.h>
 #include <DebugConsole.h>
 #include <ProfilerManager.h>
 #include <fstream>
@@ -26,12 +26,12 @@ namespace engine {
 
 
 // ========================================================================
-// Object3d JSON保存・読み込み
+// Object3D JSON保存・読み込み
 // ------------------------------------------------------------------------
 // Editor保存、シーンロード、Prefab的な複製で使うObject3dの入出力を担当する。
 // 保存項目が増えた時は、このファイル内でExport/Importの対応をそろえる。
 // ========================================================================
-bool Object3d::HasComponentPresenceMarker(const std::string& componentTypeId) const {
+bool Object3D::HasComponentPresenceMarker(const std::string& componentTypeId) const {
     // 設定値が空でも Editor 上に配置したコンポーネントを区別する。
     if (componentTypeId.empty()) {
         return false;
@@ -42,7 +42,7 @@ bool Object3d::HasComponentPresenceMarker(const std::string& componentTypeId) co
         component->value("_editorPresent", false);
 }
 
-void Object3d::SetComponentPresenceMarker(const std::string& componentTypeId, bool present) {
+void Object3D::SetComponentPresenceMarker(const std::string& componentTypeId, bool present) {
     // コンポーネントの存在印だけを変更し、未知の設定値は消さない。
     if (componentTypeId.empty()) {
         return;
@@ -72,7 +72,7 @@ void Object3d::SetComponentPresenceMarker(const std::string& componentTypeId, bo
     }
 }
 
-json Object3d::SerializeFeatureComponents() const {
+json Object3D::SerializeFeatureComponents() const {
     // 既知項目を現在の状態で書き直す前に、未知の拡張項目を残す。
     json components = opaqueComponents_.is_object() ? opaqueComponents_ : json::object();
 
@@ -177,7 +177,7 @@ json Object3d::SerializeFeatureComponents() const {
     return components;
 }
 
-void Object3d::DeserializeFeatureComponents(const json& objectData) {
+void Object3D::DeserializeFeatureComponents(const json& objectData) {
     // 保存データの未知項目は後で再保存できるよう保持し、既知項目だけ実体へ反映する。
     opaqueComponents_ = objectData.contains("components") && objectData["components"].is_object()
         ? objectData["components"]
@@ -318,7 +318,7 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     }
 }
 
-json Object3d::ExportToJson() {
+json Object3D::ExportToJson() {
     json d;
     const bool isManagedCharacter = className_ == "Player" || className_ == "Enemy";
 
@@ -346,6 +346,7 @@ json Object3d::ExportToJson() {
     d["isLocked"] = isLocked_;
     d["isStatic"] = isStatic_;
     d["castShadow"] = castShadow_;
+    d["cameraOcclusionMode"] = static_cast<int>(cameraOcclusionMode_);
 
     if (prefabInstanceInfo_.IsLinked()) {
         d["prefabInstance"]["assetId"] = prefabInstanceInfo_.assetId;
@@ -405,8 +406,8 @@ json Object3d::ExportToJson() {
 
     // 4. イベント関連
     d["eventType"] = static_cast<int>(eventType_);
-     d["targetID"] = GetTargetID();
-     d["myEventID"] = GetEventID();
+     d["targetID"] = GetTargetId();
+     d["myEventID"] = GetEventId();
 
     // 5. パラメータ。Player/Enemyの共通ステータスは配置プリセットへ保存しません。
     if (param_.has_value()) {
@@ -506,7 +507,7 @@ json Object3d::ExportToJson() {
     d["meshEffect1"] = GetMeshEffect1Name();
     d["meshEffect2"] = GetMeshEffect2Name();
     d["particleName"] = GetParticleName();
-    d["gpuParticleName"] = GetGPUParticleName();
+    d["gpuParticleName"] = GetGpuParticleName();
 
     d["enableNormalMap"] = GetEnableNormalMap();
     d["normalMapPath"] = GetNormalMapPath();
@@ -530,22 +531,6 @@ json Object3d::ExportToJson() {
             { "fadeOut", decalSettings_.fadeOut },
             { "transient", decalSettings_.transient }
         };
-    }
-
-    if (HasLodLevels()) {
-        json lodJson;
-        lodJson["enabled"] = IsLodEnabled();
-        lodJson["levels"] = json::array();
-
-        for (const auto& lod : GetLodLevels()) {
-            json levelJson;
-            levelJson["level"] = lod.level;
-            levelJson["modelName"] = lod.modelName;
-            levelJson["distance"] = lod.distance;
-            lodJson["levels"].push_back(levelJson);
-        }
-
-        d["lod"] = lodJson;
     }
 
     if ((MaterialRenderPolicy::IsSpecial(GetMaterialType()) ||
@@ -579,7 +564,7 @@ json Object3d::ExportToJson() {
     return d;
 }
 
-void Object3d::ImportFromJson(const json& j) {
+void Object3D::ImportFromJson(const json& j) {
     // 1. 基本設定
     if (j.contains("guid") && j["guid"].is_string()) {
         SetPersistentGuid(j["guid"].get<std::string>());
@@ -620,6 +605,14 @@ void Object3d::ImportFromJson(const json& j) {
         isStatic_ = j["isStatic"];
     if (j.contains("castShadow"))
         castShadow_ = j["castShadow"].get<bool>();
+    // 旧JSONは生成時の方針を維持する。不正な指定では安全な自動へ戻す。
+    if (j.contains("cameraOcclusionMode")) {
+        cameraOcclusionMode_ = CameraOcclusionMode::Automatic;
+        if (j["cameraOcclusionMode"].is_number_integer()) {
+            const auto value = j["cameraOcclusionMode"].get<int64_t>();
+            if (value >= 0 && value <= 2) cameraOcclusionMode_ = static_cast<CameraOcclusionMode>(value);
+        }
+    }
     if (j.contains("prefabInstance")) {
         if (j["prefabInstance"].is_object()) {
             const auto& prefab = j["prefabInstance"];
@@ -884,32 +877,6 @@ void Object3d::ImportFromJson(const json& j) {
         SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive"))
         SetEmissive(j["emissive"].get<float>());
-    if (j.contains("lod") && j["lod"].is_object()) {
-        const auto& lodJson = j["lod"];
-        const bool enabled = lodJson.value("enabled", true);
-
-        if (lodJson.contains("levels") && lodJson["levels"].is_array()) {
-            std::vector<LodLevel> levels;
-
-            for (const auto& levelJson : lodJson["levels"]) {
-                if (!levelJson.is_object())
-                    continue;
-                LodLevel level;
-                level.level = levelJson.value("level", 0);
-                level.modelName = levelJson.value("modelName", "");
-                level.distance = levelJson.value("distance", 0.0f);
-
-                if (level.level > 0 && !level.modelName.empty()) {
-                    levels.push_back(level);
-                }
-            }
-
-            SetLodLevels(levels);
-        }
-
-        SetLodEnabled(enabled);
-    }
-
     if (j.contains("waterParam") && (MaterialRenderPolicy::IsSpecial(GetMaterialType()) ||
         EditorPropertyRegistry::GetInstance()->HasSerializedProperties(*this, "waterParam."))) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {

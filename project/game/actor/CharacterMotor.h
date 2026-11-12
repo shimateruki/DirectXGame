@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 struct CollisionInfo;
 
 /// Character共通の接地・Sweep・坂・段差設定です。
@@ -18,7 +18,7 @@ struct CharacterMotorSettings {
     float stepHeight = 0.0f;
     float groundProbeDistance = 0.18f;
     float skinWidth = 0.025f;
-    std::uint32_t collisionMask = 0xffffffffu;
+    std::uint32_t collisionMask = 0xffffffffu; // 移動経路の問い合わせ対象。各ビットは衝突カテゴリ。
 };
 
 /// 最後に解決した接地面と移動結果を、ゲーム処理とデバッグ表示へ公開します。
@@ -27,10 +27,12 @@ struct CharacterMotorResult {
     bool blocked = false;
     bool steppedUp = false;
     engine::Vector3 groundNormal = {0.0f, 1.0f, 0.0f};
-    engine::Object3d* groundObject = nullptr;
+    engine::Object3D* groundObject = nullptr; // 最後に接地したObjectの借用参照。接地解決ごとに更新する。
 };
 
 /// Characterの重力・移動・衝突補正を一か所へ集約する共通Motorです。
+// 関連：Characterから速度とコライダーを受け取り、CollisionManagerへ移動経路を問い合わせる。
+// 主な入口：BeginFrame / Move / ResolveCollision
 class CharacterMotor {
   public:
     /// <summary>Sweep、接地吸着、坂、段差の移動設定を適用する。</summary>
@@ -51,7 +53,7 @@ class CharacterMotor {
 
     /// <summary>ワールド座標で位置と速度を更新する。</summary>
     /// <remarks>continuousCollisionが無効ならSweepをせず単純積分する。</remarks>
-    void Move(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, float deltaTime);
+    void Move(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, float deltaTime);
 
     /// <summary>接触情報から位置、速度、接地状態を補正する。</summary>
     void ResolveCollision(engine::Vector3& position, engine::Vector3& velocity, bool& grounded, const CollisionInfo& info,
@@ -62,14 +64,14 @@ class CharacterMotor {
     bool IsWalkable(const engine::Vector3& normal) const;
 
     /// <summary>移動経路にある段差を登れるか試す。</summary>
-    bool TryStep(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
+    bool TryStep(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded,
                  const engine::Vector3& planarDisplacement, float queryRadius);
 
     /// <summary>水平・垂直方向をSweepし、段差と接触面に合わせて位置と速度を補正する。</summary>
-    void MoveSwept(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, const engine::Vector3& displacement);
+    void MoveSwept(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, const engine::Vector3& displacement);
 
     /// <summary>近い地面へ位置を吸着し、接地状態を更新する。</summary>
-    void SnapToGround(engine::Object3d& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, float queryRadius,
+    void SnapToGround(engine::Object3D& owner, engine::Vector3& position, engine::Vector3& velocity, bool& grounded, float queryRadius,
                       float maximumDistance);
 
     CharacterMotorSettings settings_{};

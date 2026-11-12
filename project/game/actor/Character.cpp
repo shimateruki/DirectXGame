@@ -10,7 +10,7 @@
 
 // 派生キャラクターが決めた速度へ重力と外力を加え、最後に Motor で衝突込みの移動を行います。
 void Character::Update(float deltaTime) {
-    engine::Object3d::Update(deltaTime);
+    engine::Object3D::Update(deltaTime);
 
     if (!GetParameters().has_value()) {
         return;
@@ -95,14 +95,14 @@ void Character::ApplyExternalImpulse(const engine::Vector3& velocity, float dura
 
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // キャラクター固有の描画はここで加えず、共通のライト付き 3D 描画経路を使う。
-    engine::Object3d::Draw(pointLightResource, spotLightResource);
+    engine::Object3D::Draw(pointLightResource, spotLightResource);
 }
 
 // =================================================================
 // 衝突判定・物理挙動
 // =================================================================
 
-bool Character::OnCollision(engine::Object3d* other) {
+bool Character::OnCollision(engine::Object3D* other) {
     CollisionInfo info = CheckCollision(other);
 
     if (!info.isColliding) {
@@ -128,7 +128,7 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
 }
 
 // 編集用の複製ではステータスと移動設定を引き継ぎ、経路レコーダーは新しい実体として初期化します。
-std::unique_ptr<engine::Object3d> Character::Clone() const {
+std::unique_ptr<engine::Object3D> Character::Clone() const {
     if (typeid(*this) != typeid(Character)) {
         return nullptr;
     }

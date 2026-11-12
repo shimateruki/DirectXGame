@@ -5,11 +5,11 @@
 #include "Player.h"
 #include <DebrisEffectManager.h>
 #include <MeshEffectManager.h>
-#include <GPUParticleManager.h>
+#include <GpuParticleManager.h>
 #include <DebugConsole.h>
 #include <cmath>
 
-void GimmickBreakableBlock::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickBreakableBlock::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
     if (modelName == "Stages/bomb_break_block") {
@@ -30,7 +30,7 @@ void GimmickBreakableBlock::Initialize(engine::Object3dCommon* common, const std
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask()); // すべてのオブジェクトと衝突して押し戻す
 
     // OBBコライダーでモデルの大きさに自動フィットさせる
-    SetColliderType(ColliderType::kOBB);
+    SetColliderType(ColliderType::Obb);
 
     isBroken_ = false;
     SetClassName("Gimmick");
@@ -40,7 +40,7 @@ void GimmickBreakableBlock::Initialize(engine::Object3dCommon* common, const std
     using Self = GimmickBreakableBlock;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "破壊ブロック",
         "プレイヤーの爆風で破壊できます。衝撃による破壊だけをactionModeで追加指定します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("追加の破壊条件", "actionMode", &Parameter::actionMode, 0.0f, 7.0f,
         nullptr, {"爆風のみ", "汎用衝撃でも破壊", "ピンクのバウンド落下でも破壊"}, {.values = {0, 6, 7}});
 }
@@ -58,7 +58,7 @@ void GimmickBreakableBlock::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickBreakableBlock::OnCollision(engine::Object3d* other) {
+bool GimmickBreakableBlock::OnCollision(engine::Object3D* other) {
     if (isBroken_)
         return false;
 
@@ -68,7 +68,7 @@ bool GimmickBreakableBlock::OnCollision(engine::Object3d* other) {
     // プレイヤーが生成したボムの爆風だけを破壊条件にする。
     if (bomb && bomb->IsPlayerOwned() && bomb->IsExploded() &&
         (attribute & CollisionCategories::Get("player_attack")) &&
-        other->GetColliderType() == ColliderType::kSphere) {
+        other->GetColliderType() == ColliderType::Sphere) {
 
         Break();
         return true;
@@ -119,16 +119,16 @@ void GimmickBreakableBlock::Break() {
         const bool isGiantGate = GetModelName() == "Stages/star_garden_giant_gate";
 
         if (isGiantGate) {
-            const AABB bounds = GetModelWorldAABB();
+            const Aabb bounds = GetModelWorldAabb();
             const float groundY = std::isfinite(bounds.min.y) ? bounds.min.y : myPos.y - 4.2f;
             DebrisEffectManager::GetInstance()->SpawnOnGround("star_garden_gate_glass_shatter", myPos, groundY);
         } else {
             DebrisEffectManager::GetInstance()->Spawn("star_garden_glass_shatter", myPos);
         }
 
-        if (GPUParticleManager::GetInstance()) {
-            GPUParticleManager::GetInstance()->Emit("star_garden_glass_shards", myPos);
-            GPUParticleManager::GetInstance()->Emit("hit_bomb_flash_core", myPos);
+        if (GpuParticleManager::GetInstance()) {
+            GpuParticleManager::GetInstance()->Emit("star_garden_glass_shards", myPos);
+            GpuParticleManager::GetInstance()->Emit("hit_bomb_flash_core", myPos);
         }
 
         return;
@@ -142,12 +142,12 @@ void GimmickBreakableBlock::Break() {
 
     DebrisEffectManager::GetInstance()->Spawn("bomb_hit_fragment_burst", myPos);
 
-    if (GPUParticleManager::GetInstance()) {
-        GPUParticleManager::GetInstance()->Emit("star_sparkleGet", myPos);
+    if (GpuParticleManager::GetInstance()) {
+        GpuParticleManager::GetInstance()->Emit("star_sparkleGet", myPos);
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickBreakableBlock::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickBreakableBlock::Clone() const {
     // 同じモデルで新しい実体を初期化してから、配置と破壊設定を複製する。
     auto newObj = std::make_unique<GimmickBreakableBlock>();
     assert(GetObjectCommon() != nullptr);

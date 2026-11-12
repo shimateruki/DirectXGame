@@ -5,8 +5,11 @@
 #include "InputManager.h"
 #include "WinApp.h"
 #include <memory>
+#include "engine/graphics/core/RenderCommonResources.h"
 
-/// <summary>アプリ起動から終了までの共通ループと基盤サービスを管理する。</summary>
+// 担当：起動・メインループ・終了と、基盤サービスの寿命を管理する。
+// 関連：Game（更新・描画を実装）、WinApp、DirectXCommon、RenderCommonResources
+// 主な入口：Initialize / Run / Finalize
 class Framework {
 public:
     /// <summary>
@@ -43,11 +46,14 @@ protected:
     WinApp* GetWindow() const { return winApp_.get(); }
     DirectXCommon* GetDirectX() const { return dxCommon_; }
     AudioPlayer* GetAudioPlayer() const { return audioPlayer_; }
+    engine::RenderCommonResources* GetRenderCommonResources() const { return renderCommonResources_.get(); }
 private:
 
     // --- エンジンシステム ---
     // ウィンドウはFramework所有。DirectXと音声は共有サービスへの借用参照として保持する。
-    std::unique_ptr<WinApp> winApp_;
-    DirectXCommon* dxCommon_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
+    // CommonのGPU資源は全Sceneより長く、DirectXより短く所有する。
+    std::unique_ptr<engine::RenderCommonResources> renderCommonResources_;
+    std::unique_ptr<WinApp> winApp_; // ウィンドウ管理を所有する。
+    DirectXCommon* dxCommon_ = nullptr; // 共有DirectX基盤への参照。
+    AudioPlayer* audioPlayer_ = nullptr; // 共有音声管理への参照。
 };

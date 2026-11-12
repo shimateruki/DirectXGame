@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ee3fc460c7fb4c3899a70fda7f6138b1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_black/player_copy_bomb_hurt.gltf",
+  "version": 1
+}

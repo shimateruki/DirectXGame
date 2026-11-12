@@ -2,6 +2,8 @@
 #include "BaseGimmick.h"
 
 /// <summary>フックに引かれた位置へ移動するブロックです。</summary>
+// 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
+// 主な入口：Initialize / Update / OnCollision
 class GimmickHookPullBlock : public BaseGimmick {
   public:
     // 表示名とは独立した、既存シーンの保存IDと生成モデルです。
@@ -11,16 +13,16 @@ class GimmickHookPullBlock : public BaseGimmick {
     virtual ~GimmickHookPullBlock() = default;
 
     // 共通ギミックとして登録した後、フック対象として識別できる型を設定する。
-    void Initialize(engine::Object3dCommon* common, const std::string& modelName) override;
+    void Initialize(engine::Object3DCommon* common, const std::string& modelName) override;
 
     // パラメータ未設定の配置でも既定値を用意してから移動を更新する。
     void Update(float deltaTime) override;
 
     // 地面属性以外との接触では引き寄せ中の位置補正を行わない。
-    bool OnCollision(engine::Object3d* other) override;
+    bool OnCollision(engine::Object3D* other) override;
 
     // 新しい実体を初期化してから配置とフック設定を引き継ぐ。
-    std::unique_ptr<engine::Object3d> Clone() const override;
+    std::unique_ptr<engine::Object3D> Clone() const override;
 
     /// <summary>フックを持つキャラクターへ向けてブロックの移動を開始します。</summary>
     /// <param name="hookOwnerPos">引き寄せ先となるフック使用者のワールド座標。</param>
@@ -29,5 +31,5 @@ class GimmickHookPullBlock : public BaseGimmick {
   private:
     engine::Vector3 velocity_ = engine::Vector3::ZERO;
     engine::Vector3 pullTarget_ = engine::Vector3::ZERO;
-    float pullTimer_ = 0.0f;
+    float pullTimer_ = 0.0f; // 引き寄せまでの残り秒数。
 };

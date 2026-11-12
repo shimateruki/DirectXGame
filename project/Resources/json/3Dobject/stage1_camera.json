@@ -161,6 +161,2425 @@
             ],
             "tag": "",
             "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -30,
+                    22,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.7,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    6,
+                    1.8,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        -327.5,
+                        15.0,
+                        -48.5
+                    ],
+                    "size": [
+                        77,
+                        106,
+                        47
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        -366,
+                        0,
+                        -48.5
+                    ],
+                    "pathEnd": [
+                        -289,
+                        0,
+                        -48.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "f81be285-4cbb-529a-920c-294980133c64",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_01_Entry",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                -357.5,
+                32,
+                -48.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -34,
+                    27,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.76,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    8,
+                    1.8,
+                    1
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        -246.5,
+                        15.0,
+                        -49.0
+                    ],
+                    "size": [
+                        87,
+                        106,
+                        62
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        -290,
+                        0,
+                        -49.0
+                    ],
+                    "pathEnd": [
+                        -203,
+                        0,
+                        -49.0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "b62fe466-2176-53ed-8704-224ed11e141b",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_02_MovingFloors",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                -280.5,
+                37,
+                -49.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -31,
+                    24,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.72,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    6,
+                    1.8,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        -140.5,
+                        15.0,
+                        -40.5
+                    ],
+                    "size": [
+                        127,
+                        106,
+                        55
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        -204,
+                        0,
+                        -40.5
+                    ],
+                    "pathEnd": [
+                        -77,
+                        0,
+                        -40.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "f9e0b353-2e64-53dd-a5fe-a403d6cb9e50",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_03_Garden",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                -171.5,
+                34,
+                -40.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -3,
+                    20,
+                    29
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.75,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    0,
+                    2,
+                    -6
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        -123.0,
+                        15.0,
+                        -81.5
+                    ],
+                    "size": [
+                        40,
+                        106,
+                        57
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 50,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        -143,
+                        0,
+                        -81.5
+                    ],
+                    "pathEnd": [
+                        -103,
+                        0,
+                        -81.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "8141e71c-25ba-5b8a-b379-cb1223a50143",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_04_ShrineApproach",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                -126.0,
+                30,
+                -52.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    0,
+                    5.5,
+                    10
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.85,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    0,
+                    1.2,
+                    -5
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        -122.5,
+                        15.0,
+                        -96.5
+                    ],
+                    "size": [
+                        31,
+                        106,
+                        29
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 55,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        -138,
+                        0,
+                        -96.5
+                    ],
+                    "pathEnd": [
+                        -107,
+                        0,
+                        -96.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "43d6ea21-56aa-5557-ad38-622c09bb63d5",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_04B_ShrineInterior",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                -122.5,
+                15.5,
+                -86.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -34,
+                    29,
+                    -1
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.78,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    7,
+                    1.8,
+                    1
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        -35.0,
+                        15.0,
+                        -32.0
+                    ],
+                    "size": [
+                        86,
+                        106,
+                        104
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        -78,
+                        0,
+                        -32.0
+                    ],
+                    "pathEnd": [
+                        8,
+                        0,
+                        -32.0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "d5e9fa16-e85e-5e68-a7f5-9ee9d81310a1",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_05_BlinkPlatforms",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                -69.0,
+                39,
+                -33.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -35,
+                    30,
+                    -2
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.79,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    7,
+                    1.8,
+                    1
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        62.0,
+                        15.0,
+                        -13.5
+                    ],
+                    "size": [
+                        110,
+                        106,
+                        67
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        7,
+                        0,
+                        -13.5
+                    ],
+                    "pathEnd": [
+                        117,
+                        0,
+                        -13.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "0fe0f7af-8267-527d-b713-18e906fc4c15",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_06_RingCourt",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                27.0,
+                40,
+                -15.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -4,
+                    27,
+                    -34
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.78,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    0,
+                    2,
+                    8
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        87.0,
+                        15.0,
+                        36.5
+                    ],
+                    "size": [
+                        48,
+                        106,
+                        63
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 45,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        63,
+                        0,
+                        36.5
+                    ],
+                    "pathEnd": [
+                        111,
+                        0,
+                        36.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "aeeb3a88-2604-58f4-b7e3-b488c1c946e7",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_07_StarBridge",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                83.0,
+                37,
+                2.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -30,
+                    31,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.8,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    4,
+                    2,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        67.5,
+                        15.0,
+                        83.0
+                    ],
+                    "size": [
+                        85,
+                        106,
+                        42
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 46,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        25,
+                        0,
+                        83.0
+                    ],
+                    "pathEnd": [
+                        110,
+                        0,
+                        83.0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "484b6e86-b096-5f29-a090-42d049a947fc",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_08_HighReturn",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                37.5,
+                41,
+                83.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -33,
+                    26,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.75,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    7,
+                    1.8,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        160.0,
+                        15.0,
+                        1.5
+                    ],
+                    "size": [
+                        88,
+                        106,
+                        69
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        116,
+                        0,
+                        1.5
+                    ],
+                    "pathEnd": [
+                        204,
+                        0,
+                        1.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "0a7bcf36-9271-5138-bf77-62996e24cc05",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_09_MainExit",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                127.0,
+                36,
+                1.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -36,
+                    32,
+                    -12
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.84,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    7,
+                    1.8,
+                    -12
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        242.5,
+                        15,
+                        -16
+                    ],
+                    "size": [
+                        79,
+                        106,
+                        102
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        203,
+                        0,
+                        -5.0
+                    ],
+                    "pathEnd": [
+                        282,
+                        0,
+                        -5.0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "11cef50d-f93f-58bb-aeb6-d756ccd1e54a",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_10_PreBoss",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                206.5,
+                42,
+                -28
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.4,
+                "blendOutDuration": 1.4,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "",
+                "eyeOffset": [
+                    0,
+                    0,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 0,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    312.5,
+                    11.0,
+                    -20.0
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.32,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 0,
+                "targetObjectName": "",
+                "targetOffset": [
+                    0,
+                    0,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        317.5,
+                        15.0,
+                        -19.5
+                    ],
+                    "size": [
+                        75,
+                        106,
+                        79
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 35,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "4260a314-0928-53de-bd9d-38bb9f4ddfa5",
+                    "pathStart": [
+                        280,
+                        10,
+                        -20
+                    ],
+                    "pathEnd": [
+                        355,
+                        10,
+                        -20
+                    ],
+                    "clearForegroundBarriers": true,
+                    "barrierFloorHeight": 10.0,
+                    "barrierEdgeHeight": 0.55,
+                    "barrierOpacity": 0.02
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "b51625ab-399f-50e5-855d-9c374f7b9093",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_11_PrismArena",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                197.81871379954114,
+                91.30070108914644,
+                -20.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -34,
+                    28,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.77,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    7,
+                    1.8,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        368.0,
+                        15.0,
+                        -16.5
+                    ],
+                    "size": [
+                        28,
+                        106,
+                        57
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        354,
+                        0,
+                        -16.5
+                    ],
+                    "pathEnd": [
+                        382,
+                        0,
+                        -16.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "2bdc2d47-5906-5983-87bd-36aea50a45ca",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_12_ArenaExit",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                334.0,
+                38,
+                -16.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -38,
+                    30,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.78,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    11,
+                    1.8,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        460.5,
+                        15.0,
+                        -18.0
+                    ],
+                    "size": [
+                        159,
+                        106,
+                        60
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        381,
+                        0,
+                        -18.0
+                    ],
+                    "pathEnd": [
+                        540,
+                        0,
+                        -18.0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "6aa5b0a4-b2fe-5fb1-a114-c30e242ab535",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_13_DashRun",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                422.5,
+                40,
+                -18.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -34,
+                    27,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.75,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    8,
+                    1.8,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        561.5,
+                        15.0,
+                        -15.5
+                    ],
+                    "size": [
+                        45,
+                        106,
+                        61
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        539,
+                        0,
+                        -15.5
+                    ],
+                    "pathEnd": [
+                        584,
+                        0,
+                        -15.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "a55f1ff7-7b3a-5e7a-be26-b51da0101e30",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_14_PostDash",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                527.5,
+                37,
+                -15.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -34,
+                    29,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.78,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    8,
+                    1.8,
+                    1
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        612.5,
+                        15.0,
+                        -9.5
+                    ],
+                    "size": [
+                        59,
+                        106,
+                        67
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        583,
+                        0,
+                        -9.5
+                    ],
+                    "pathEnd": [
+                        642,
+                        0,
+                        -9.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "eaecf9b6-7d08-5665-9737-28ee8db408fa",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_15_RideDeparture",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                578.5,
+                39,
+                -9.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -37,
+                    33,
+                    -2
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.82,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    10,
+                    2,
+                    1
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        744.0,
+                        18.5,
+                        -2.5
+                    ],
+                    "size": [
+                        204,
+                        133,
+                        123
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        642,
+                        0,
+                        -2.5
+                    ],
+                    "pathEnd": [
+                        846,
+                        0,
+                        -2.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "cd667cd1-f5d9-5d2b-a5a2-fa9460d891a4",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_16_Raft",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                707.0,
+                43,
+                -4.5
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -35,
+                    32,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.8,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    8,
+                    2,
+                    1
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        871.5,
+                        26.0,
+                        24.0
+                    ],
+                    "size": [
+                        53,
+                        148,
+                        84
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": true,
+                    "endCameraGuid": "f8059697-14ce-5f3a-afc8-de08a8ef68b8",
+                    "pathStart": [
+                        845,
+                        0,
+                        29
+                    ],
+                    "pathEnd": [
+                        898,
+                        0,
+                        29
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "f8ec0a2a-c3bc-5221-8587-55a0f3004262",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_17_RaftLanding",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                836.5,
+                42,
+                24.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.6,
+                "blendOutDuration": 1.6,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -2,
+                    25,
+                    -34
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.78,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    8,
+                    2,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": true,
+                    "center": [
+                        934.0,
+                        15.0,
+                        25.0
+                    ],
+                    "size": [
+                        74,
+                        106,
+                        74
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        897,
+                        0,
+                        25.0
+                    ],
+                    "pathEnd": [
+                        971,
+                        0,
+                        25.0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "5fc04577-19fc-5f47-a443-41198bef2747",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_18_GoalApproach",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                932.0,
+                35,
+                -9.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "",
+                "eyeOffset": [
+                    0,
+                    0,
+                    0
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 0,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    341,
+                    12,
+                    -20
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.9,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 0,
+                "targetObjectName": "",
+                "targetOffset": [
+                    0,
+                    0,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": false,
+                    "center": [
+                        317.5,
+                        15.0,
+                        -19.5
+                    ],
+                    "size": [
+                        75,
+                        106,
+                        79
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 35,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        280,
+                        0,
+                        -19.5
+                    ],
+                    "pathEnd": [
+                        355,
+                        0,
+                        -19.5
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "4260a314-0928-53de-bd9d-38bb9f4ddfa5",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_11_PrismArena_End",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                290,
+                46,
+                -20
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendFov": true,
+                "blendInDuration": 1.0,
+                "blendOutDuration": 1.0,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 1,
+                "eyeFollowResponse": 6,
+                "eyeObjectName": "player",
+                "eyeOffset": [
+                    -2,
+                    25,
+                    -34
+                ],
+                "eyeReferenceObjectName": "",
+                "eyeSource": 1,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    -344,
+                    1.8,
+                    -50
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.8,
+                "nearClip": 0.10000000149011612,
+                "role": 0,
+                "targetFollowMode": 1,
+                "targetFollowResponse": 6,
+                "targetMode": 1,
+                "targetObjectName": "player",
+                "targetOffset": [
+                    8,
+                    2,
+                    0
+                ],
+                "version": 1,
+                "region": {
+                    "enabled": false,
+                    "center": [
+                        871.5,
+                        26.0,
+                        24.0
+                    ],
+                    "size": [
+                        53,
+                        148,
+                        84
+                    ],
+                    "color": [
+                        0.3,
+                        0.85,
+                        1,
+                        0.8
+                    ],
+                    "priority": 20,
+                    "activationDelay": 0.12,
+                    "exitMargin": 1.2,
+                    "routeEnabled": false,
+                    "endCameraGuid": "",
+                    "pathStart": [
+                        845,
+                        0,
+                        24.0
+                    ],
+                    "pathEnd": [
+                        898,
+                        0,
+                        24.0
+                    ]
+                }
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "guid": "f8059697-14ce-5f3a-afc8-de08a8ef68b8",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Stage1_Shot_17_RaftLanding_End",
+            "parentGuid": "",
+            "parentName": "",
+            "position": [
+                836.5,
+                42,
+                24.0
+            ],
+            "quaternion": [
+                0,
+                0,
+                0,
+                1
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "tag": "",
+            "type": "Camera"
         }
     ]
 }

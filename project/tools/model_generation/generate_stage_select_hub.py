@@ -1217,13 +1217,6 @@ def build_player_scene() -> dict:
             "collisionMask": 4294967295,
             "envIntensity": 0.0,
             "isStatic": False,
-            "lod": {
-                "enabled": True,
-                "levels": [
-                    {"distance": 35.0, "level": 1, "modelName": "Characters/slime/slime_lod1.gltf"},
-                    {"distance": 70.0, "level": 2, "modelName": "Characters/slime/slime_lod2.gltf"},
-                ],
-            },
             "param": {
                 "actionMode": 0,
                 "attackPower": 1.0,

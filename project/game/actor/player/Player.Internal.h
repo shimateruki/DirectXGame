@@ -1,4 +1,6 @@
 #pragma once
+
+// Playerの分割実装から使う、コピー・引き寄せ・シーン参照の内部補助。Playerの代わりに状態を所有しない。
 // 分割実装専用の定数・補助関数。外部からは公開ヘッダーを使用します。
 #define NOMINMAX
 #include "Player.h"
@@ -19,17 +21,17 @@
 #include "game/system/rules/GameplayStatusManager.h"
 #include "SceneManager.h"
 #include "game/system/progress/StageManager.h"
-#include "Winapp.h"
+#include "WinApp.h"
 #include <DebugConsole.h>
 #include <algorithm>
 #include <CollisionManager.h>
 #include "DirectXCommon.h"
 #include "BaseEnemy.h"
-#include "Bullet.h"
+#include "game/actor/bullet/Bullet.h"
 #include "GimmickHookPullBlock.h"
 #include "GimmickBreakableBlock.h"
 #include "MeshEffectManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include <cmath>
 #include <unordered_set>
 
@@ -68,7 +70,7 @@ inline constexpr const char* kElectricShockAuraEffectPath =
 
 // 描画用の液体には固体Colliderがないため、液面を直接評価します。
 // Water.hlsli / Magma.VS.hlsl と同じ式。波の設定は既存のInspectorに追従します。
-inline float LiquidWaveHeight(const MeshRenderer::WaterParamForGPU& p, float x, float z, bool magma) {
+inline float LiquidWaveHeight(const MeshRenderer::WaterParamForGpu& p, float x, float z, bool magma) {
     if (!magma) {
         // 穏やかな海はWater.VS.hlslと同じ固定液面で判定します。
         if (p.effectType >= 1.5f)
@@ -108,7 +110,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
         return false;
     player.UpdateLocalMatrix();
     player.UpdateWorldMatrix();
-    const AABB body = player.GetModelWorldAABB();
+    const Aabb body = player.GetModelWorldAabb();
     const float cx = (body.min.x + body.max.x) * .5f;
     const float cz = (body.min.z + body.max.z) * .5f;
 
@@ -123,7 +125,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
     bool touched = false;
     contactY = -1.0e30f;
     for (const auto& owned : manager->GetCurrentScene()->GetObjects()) {
-        engine::Object3d* liquid = owned.get();
+        engine::Object3D* liquid = owned.get();
         if (!liquid || liquid == &player || !liquid->GetIsVisible())
             continue;
         const int material = liquid->GetMaterialType();
@@ -146,7 +148,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
         if (std::abs(world.m[1][0]) > .001f || std::abs(world.m[1][2]) > .001f || world.m[1][1] <= .001f)
             continue;
         const engine::Matrix4x4 inverse = engine::Math::Inverse(world);
-        const AABB bounds = liquid->GetModelWorldAABB();
+        const Aabb bounds = liquid->GetModelWorldAabb();
         for (const engine::Vector3& probe : probes) {
             const engine::Vector3 local = engine::Math::Transform(probe, inverse);
             float surface = 0.0f;
@@ -178,7 +180,7 @@ inline float NormalizeYaw(float yaw) {
     return yaw;
 }
 
-inline engine::Vector3 GetStableEnemyCarryScale(engine::Object3d* enemy) {
+inline engine::Vector3 GetStableEnemyCarryScale(engine::Object3D* enemy) {
     // 敵の大きな縦横変形だけ体積相当の等方倍率に戻し、運搬姿勢の暴れを抑える。
     if (!enemy) {
         return {1.0f, 1.0f, 1.0f};
@@ -225,7 +227,7 @@ inline void CalculateThunderAuraShape(const engine::Vector3& position, const eng
 
 inline void EmitOuterThunderParticles(const engine::Vector3& position, const engine::Vector3& scale, float phase, int count,
                                       const char* presetName = "thunder_slime_idle_spark") {
-    auto* gpuParticleManager = GPUParticleManager::GetInstance();
+    auto* gpuParticleManager = GpuParticleManager::GetInstance();
     if (!gpuParticleManager || !gpuParticleManager->IsInitialized() || count <= 0) {
         return;
     }
@@ -253,7 +255,7 @@ inline void EmitThunderMorphBurst(const engine::Vector3& position, const engine:
 }
 
 inline void EmitCopyMorphPreset(const char* presetName, const engine::Vector3& position) {
-    auto* gpuParticleManager = GPUParticleManager::GetInstance();
+    auto* gpuParticleManager = GpuParticleManager::GetInstance();
     if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
         gpuParticleManager->Emit(presetName, position);
     }

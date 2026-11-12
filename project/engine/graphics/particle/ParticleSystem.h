@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 #include "ParticleCommon.h"
-#include "VFXAuthoring.h"
+#include "VfxAuthoring.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <algorithm>
@@ -23,12 +23,16 @@ enum class EmitterType {
 /// </summary>
 namespace engine {
 
+// 担当：CPUで粒子の位置・寿命を更新し、GPUへ描画用データを送る。
+// 関連：ParticleCommon（共有描画基盤）、ParticleManager（設定と発生要求）
+// 主な入口：Initialize / EmitOneShot / Update / Draw / Clear
 class ParticleSystem {
 private:
     // 1粒分のシミュレーション状態。描画用データとは分けて保持する。
+    // 関連：ParticleSystem（この型を使う機能の本体）
     struct Particle {
         engine::Vector3 position;
-        engine::Vector3 velocity;
+        engine::Vector3 velocity; // 粒子の移動速度（ワールド単位/秒）。
         float lifeTime;       // 生存期間
         float currentTime;    // 現在の時間
 
@@ -44,24 +48,27 @@ private:
         float hdrIntensity;
         engine::Vector2 baseScale = { 1.0f, 1.0f };
         bool useAuthoringCurves = false;
-        VFXBakedFloatCurve sizeOverLife;
-        VFXBakedColorGradient colorOverLife;
+        VfxBakedFloatCurve sizeOverLife;
+        VfxBakedColorGradient colorOverLife;
 
     };
 
     /// <summary>頂点シェーダーへ渡す粒子の色とワールド行列。</summary>
-    struct ParticleForGPU {
+    // 関連：ParticleSystem（この型を使う機能の本体）
+    struct ParticleForGpu {
         engine::Vector4 color;
         engine::Matrix4x4 world;
     };
 
     // 描画時に頂点シェーダーへ渡すカメラ行列。
+    // 関連：ParticleSystem（この型を使う機能の本体）
     struct TransformationMatrix {
         engine::Matrix4x4 viewProjection;
     };
 
 public:
     /// <summary>エディタで編集できる自動発生と粒子の初期値。</summary>
+    // 関連：ParticleSystem（この型を使う機能の本体）
     struct EmitterParams {
         engine::Vector3 spawnPosition = engine::Vector3::ZERO;      // 発生座標
         engine::Vector3 spawnArea = { 1.0f, 1.0f, 1.0f };          // 発生範囲 (ランダム幅)
@@ -82,10 +89,10 @@ public:
         bool isEmitting = true; // 発生させるかどうか
         float sizeCurve[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
         bool useAuthoringCurves = false;
-        VFXFloatCurve sizeOverLife;
-        VFXColorGradient colorOverLife;
-        VFXLodSettings lod;
-        ParticleBlendMode blendMode = ParticleBlendMode::kAlpha;
+        VfxFloatCurve sizeOverLife;
+        VfxColorGradient colorOverLife;
+        VfxLodSettings lod;
+        ParticleBlendMode blendMode = ParticleBlendMode::Alpha;
         float initialRotationSpeed = 0.0f;      // 基本の回転スピード
         float rotationSpeedRandomness = 0.0f;   // 回転スピードのバラつき
         EmitterType emitterType = EmitterType::Box;
@@ -131,6 +138,7 @@ public:
 #ifdef USE_IMGUI
     // 元の再生状態を退避し、確認用の生成物だけを更新・破棄する。
     void BeginEditorSession();
+    // 確認用の実行状態を片付け、開始前に退避した状態へ戻す。
     void EndEditorSession();
 #endif
 
@@ -159,9 +167,9 @@ public:
     /// <summary>発生設定の読み取りと適用。シミュレーションのリセットは行わない。</summary>
     const EmitterParams& GetEmitterParams() const { return params_; }
     void SetEmitterParams(const EmitterParams& parameters) { params_ = parameters; }
-    void SetSizeOverLife(const VFXFloatCurve& curve) { params_.sizeOverLife = curve; }
-    void SetColorOverLife(const VFXColorGradient& gradient) { params_.colorOverLife = gradient; }
-    void SetLodSettings(const VFXLodSettings& settings) { params_.lod = settings; }
+    void SetSizeOverLife(const VfxFloatCurve& curve) { params_.sizeOverLife = curve; }
+    void SetColorOverLife(const VfxColorGradient& gradient) { params_.colorOverLife = gradient; }
+    void SetLodSettings(const VfxLodSettings& settings) { params_.lod = settings; }
 
 
     /// <summary>指定設定で一度だけ粒子を発生させる。</summary>
@@ -224,7 +232,7 @@ private:
     D3D12_VERTEX_BUFFER_VIEW instancingBufferView_{};
 
     // instancingResource_のマップ済み書込先。単独では所有しない。
-    ParticleForGPU* instancingData_ = nullptr;
+    ParticleForGpu* instancingData_ = nullptr;
 
     // 粒子描画に使用するViewProjection行列の定数バッファ。
     Microsoft::WRL::ComPtr<ID3D12Resource> matrixResource_;
@@ -242,7 +250,7 @@ private:
     UINT particleCount_ = 0;
 
     // 自動発生の端数秒。発生間隔をまたいだ余りを次フレームへ引き継ぐ。
-    float spawnTimer_ = 0.0f;
+    float spawnTimer_ = 0.0f; // 未発生分を小数で蓄積する粒子数。秒数ではない。
 
     // 粒子更新にだけ掛ける時間倍率。プレビューの一時停止にも使う。
     float simulationTimeScale_ = 1.0f;
@@ -252,7 +260,7 @@ private:
 
     // 直近のUpdateとDrawで測ったCPU処理時間（ミリ秒）。
     float lastUpdateCpuTimeMs_ = 0.0f;
-    float lastDrawCpuTimeMs_ = 0.0f;
+    float lastDrawCpuTimeMs_ = 0.0f; // 直近描画のCPU所要時間（ミリ秒）。
 #ifdef USE_IMGUI
     bool editorSession_ = false;
     decltype(particles_) savedEditorParticles_;

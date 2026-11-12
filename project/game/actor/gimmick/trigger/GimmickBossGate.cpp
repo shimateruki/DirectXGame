@@ -5,7 +5,7 @@
 
 #include "CollisionConfig.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -14,7 +14,7 @@ namespace {
 
 } // namespace
 
-void GimmickBossGate::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickBossGate::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     // 閉鎖中の門を壁として扱い、開く方向と所要時間の既定値を用意する。
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
@@ -25,8 +25,8 @@ void GimmickBossGate::Initialize(engine::Object3dCommon* common, const std::stri
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(0xffffffffu);
 
-    engine::Object3d::ColliderConfig collider;
-    collider.type = ColliderType::kOBB;
+    engine::Object3D::ColliderConfig collider;
+    collider.type = ColliderType::Obb;
     collider.center = {0.0f, 3.5f, 0.0f};
     collider.size = {6.0f, 3.5f, 0.55f};
     SetColliderConfig(collider);
@@ -43,7 +43,7 @@ void GimmickBossGate::Initialize(engine::Object3dCommon* common, const std::stri
     using Self = GimmickBossGate;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ボス闘技場・格子ゲート",
         "Transformは閉鎖位置です。演出中はタイムライン制御、通常時はイベント通知で開閉します。");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("開門時の退避距離", "moveAmount", &Parameter::moveAmount, 0.0f, 100.0f);
     properties.Parameter("開閉にかかる時間", "moveSpeed", &Parameter::moveSpeed, 0.05f, 10.0f);
     properties.Parameter("開始時に有効", "startActive", &Parameter::startActive);
@@ -118,14 +118,14 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
         if (closure_ <= 0.001f) {
             engine::Vector3 cue = authoredPosition_;
             cue.y += 0.1f;
-            VFXSequencer::PlayOneShot("high_crown_gate_close_cue", cue, {1.0f, 1.0f, 1.0f});
+            VfxSequencer::PlayOneShot("high_crown_gate_close_cue", cue, {1.0f, 1.0f, 1.0f});
         }
     } else {
         SetCollisionEnabled(false);
     }
 }
 
-std::unique_ptr<engine::Object3d> GimmickBossGate::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickBossGate::Clone() const {
     // 編集配置を複製し、実行時の閉鎖率は新しい門で計算する。
     auto clone = std::make_unique<GimmickBossGate>();
     assert(GetObjectCommon() != nullptr);

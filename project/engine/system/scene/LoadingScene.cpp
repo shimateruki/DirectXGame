@@ -1,7 +1,6 @@
 #include "LoadingScene.h"
 #include <numbers>
 
-#include "DirectXCommon.h"
 #include "TextureManager.h"
 #include "WinApp.h"
 
@@ -61,8 +60,6 @@ float GaugeY() {
 
 void LoadingScene::Initialize() {
     // ロード中だけ使うSpriteを作り、進捗表示とキャラクター演出を同じ座標系へ揃えます。
-    spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-    spriteCommon_->Initialize(DirectXCommon::GetInstance());
 
     const uint32_t whiteHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
     const uint32_t glowHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/circle2.png");
@@ -199,13 +196,13 @@ void LoadingScene::Draw() {
     // 3D描画は行わず、表示物はDrawUIでまとめて描きます。
 }
 
-void LoadingScene::DrawUI() {
+void LoadingScene::DrawUi() {
     // SpriteCommonのパイプラインを設定してから、保持した表示順で描画します。
-    if (!spriteCommon_) {
+    if (!GetSpriteCommon()) {
         return;
     }
 
-    spriteCommon_->SetPipeline(DirectXCommon::GetInstance()->GetCommandList());
+    BeginSpriteDrawing();
 
     for (auto& sprite : sprites_) {
         if (sprite) {
@@ -230,7 +227,6 @@ void LoadingScene::Finalize() {
     gaugeHighlight_ = nullptr;
     gaugeGlow_ = nullptr;
     sprites_.clear();
-    spriteCommon_.reset();
 }
 
 void LoadingScene::SetProgress(float progress) {
@@ -241,7 +237,7 @@ void LoadingScene::SetProgress(float progress) {
 engine::Sprite* LoadingScene::CreateSprite(uint32_t textureHandle, const engine::Vector2& position, const engine::Vector2& size, const engine::Vector4& color) {
     // Spriteの所有権はSceneへ残し、部品更新用に生ポインタだけ返します。
     auto sprite = std::make_unique<engine::Sprite>();
-    sprite->Initialize(spriteCommon_.get(), textureHandle);
+    sprite->Initialize(GetSpriteCommon(), textureHandle);
     sprite->SetAnchorPoint({ 0.5f, 0.5f });
     sprite->SetPosition(position);
     sprite->SetSize(size);

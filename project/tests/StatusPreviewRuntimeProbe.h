@@ -35,9 +35,9 @@ struct StatusPreviewRuntimeProbe {
 
         const auto originalFire = *manager->FindEnemyStatus("FireSlime");
         const auto originalPlayer = manager->GetPlayerStatus();
-        auto fire = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3dCommon());
-        auto thunder = EnemyFactory::GetInstance()->CreateEnemy("ThunderSlime", scene->GetObject3dCommon());
-        auto dummy = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3dCommon());
+        auto fire = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3DCommon());
+        auto thunder = EnemyFactory::GetInstance()->CreateEnemy("ThunderSlime", scene->GetObject3DCommon());
+        auto dummy = EnemyFactory::GetInstance()->CreateEnemy("FireSlime", scene->GetObject3DCommon());
         auto* firePtr = fire.get(); auto* otherPtr = thunder.get(); auto* dummyPtr = dummy.get();
         dummy->SetEditorInternal(true);
         dummy->SetParameter(&engine::EntityParameter::hp, dummy->SetParameter(&engine::EntityParameter::maxHp, 100000.0f));

@@ -5,7 +5,9 @@
 
 namespace engine {
 
-// ゲームのPlayerやSpriteを参照せず、数値と時間だけを受け取るゲージの状態。
+// 担当：HPの割合と、遅れて追従するゲージ表示の状態を計算する。
+// 関連：Spriteなどの呼出側が結果を表示。Playerや描画資源は参照しない。
+// 主な入口：Reset / Update / Rate
 struct HealthBarState {
     // 被弾判定の前回値と遅延ゲージの残量率を別々に保持する。
     float previousHp = 0.0f, previousRate = 0.0f;
@@ -27,7 +29,7 @@ struct HealthBarState {
 
     // deltaTimeは秒。visibleは被弾検出、animatedはHP実値での検出と被弾演出の有無に使う。
     void Update(float hp, float maxHp, float deltaTime, bool visible, bool animated) {
-        const float dt = (std::max)(0.0f, deltaTime);
+        const float frameDeltaTime = (std::max)(0.0f, deltaTime);
         const float rate = Rate(hp, maxHp);
         // 既存の本編はHP値、簡素表示は残量率で被弾を検出する。
         const bool damaged = visible && (animated ? hp < previousHp - 0.01f
@@ -42,8 +44,8 @@ struct HealthBarState {
         }
         previousHp = hp;
         previousRate = rate;
-        damagePulseTimer = (std::max)(0.0f, damagePulseTimer - dt);
-        hurtIconTimer = (std::max)(0.0f, hurtIconTimer - dt);
+        damagePulseTimer = (std::max)(0.0f, damagePulseTimer - frameDeltaTime);
+        hurtIconTimer = (std::max)(0.0f, hurtIconTimer - frameDeltaTime);
         if (!visible && animated) {
             delayedRate = 0.0f;
             damageHoldTimer = 0.0f;
@@ -52,11 +54,11 @@ struct HealthBarState {
             delayedRate = rate;
             damageHoldTimer = 0.0f;
         } else if (damageHoldTimer > 0.0f) {
-            damageHoldTimer = (std::max)(0.0f, damageHoldTimer - dt);
+            damageHoldTimer = (std::max)(0.0f, damageHoldTimer - frameDeltaTime);
         } else {
-            delayedRate = (std::max)(rate, delayedRate - dt * 0.62f);
+            delayedRate = (std::max)(rate, delayedRate - frameDeltaTime * 0.62f);
         }
-        animationTimer = std::fmod(animationTimer + dt, 1000.0f);
+        animationTimer = std::fmod(animationTimer + frameDeltaTime, 1000.0f);
     }
 };
 

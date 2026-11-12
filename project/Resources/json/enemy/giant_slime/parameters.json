@@ -1,0 +1,17 @@
+{
+    "attackPower": 1.25,
+    "detectionRange": 26.0,
+    "gravity": 70.0,
+    "jumpPower": 24.0,
+    "maxFallSpeed": 60.0,
+    "maxHp": 120.0,
+    "modelName": "Characters/slime_pink",
+    "morphDuration": 5.0,
+    "morphLimited": true,
+    "scale": [
+        3.5999999046325684,
+        3.5999999046325684,
+        3.5999999046325684
+    ],
+    "speed": 0.0
+}

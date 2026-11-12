@@ -12,7 +12,7 @@
 #include "BaseScene.h"
 #include "Camera.h"
 #include "CameraManager.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "game/system/combat/BulletManager.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
@@ -20,17 +20,17 @@
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "game/crown/CrownBarrageCamera.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/rules/GameRule.h"
 #include "game/system/rules/EventManager.h"
 #include "InputManager.h"
 #include "MeshEffectManager.h"
 #include "MeshRenderer.h"
-#include "Object3d.h"
+#include "Object3D.h"
 #include "ParticleSystem.h"
 #include "Player.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 
 #ifdef USE_IMGUI
 #include "IconsFontAwesome5.h"
@@ -53,7 +53,7 @@ constexpr const char* kPreviewNamePrefix = "__Editor_EnemyAttackPreview_";
 constexpr const char* kPreviewEnemyName = "__Editor_EnemyAttackPreview_Enemy";
 constexpr const char* kPreviewTargetName = "__Editor_EnemyAttackPreview_Target";
 
-bool HasPreviewPrefix(const engine::Object3d* object) {
+bool HasPreviewPrefix(const engine::Object3D* object) {
     return object && object->GetName().rfind(kPreviewNamePrefix, 0) == 0;
 }
 
@@ -209,7 +209,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
     if (playerCopyMode_ || (usePlayerTarget_ && !IsGiantHookSplitPreview())) {
         auto player = std::make_unique<Player>();
         player->Initialize(
-            scene->GetObject3dCommon(),
+            scene->GetObject3DCommon(),
             engine::InputManager::GetInstance(),
             scene->GetParticleSystem(),
             scene->GetSpriteCommon());
@@ -252,14 +252,14 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         scene->AddObjectImmediate(std::move(player));
     }
     else {
-        auto target = std::make_unique<engine::Object3d>();
-        target->Initialize(scene->GetObject3dCommon());
+        auto target = std::make_unique<engine::Object3D>();
+        target->Initialize(scene->GetObject3DCommon());
         target->SetName(kPreviewTargetName);
         target->SetClassName("EditorOnly");
         target->SetEditorInternal(true);
         target->SetIsLocked(true);
         target->SetModel("Primitives/cylinder");
-        target->SetColliderType(ColliderType::kNone);
+        target->SetColliderType(ColliderType::None);
         target->SetCollisionAttribute(0);
         target->SetCollisionMask(0);
         target->SetEnableLighting(false);
@@ -292,7 +292,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         previewBaseScale_ = previewPlayer_->GetScale();
 
         if (showTarget_) {
-            auto dummy = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3dCommon());
+            auto dummy = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3DCommon());
 
             if (dummy) {
                 dummy->SetName(kPreviewEnemyName);
@@ -320,7 +320,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         return;
     }
 
-    std::unique_ptr<BaseEnemy> enemy = EnemyFactory::GetInstance()->CreateEnemy(GetSelectedEnemyType(), scene->GetObject3dCommon());
+    std::unique_ptr<BaseEnemy> enemy = EnemyFactory::GetInstance()->CreateEnemy(GetSelectedEnemyType(), scene->GetObject3DCommon());
 
     if (!enemy) {
         RemovePreviewObjects();
@@ -358,12 +358,12 @@ void ActorDebugPanel::ReleaseRuntime() {
     crownMoviePrepared_ = false;
 
     if (currentScene && currentScene == previewScene_) {
-        std::unordered_set<engine::Object3d*> removalTargets;
+        std::unordered_set<engine::Object3D*> removalTargets;
         if (previewEnemy_)
             removalTargets.insert(previewEnemy_);
         if (previewTarget_)
             removalTargets.insert(previewTarget_);
-        for (engine::Object3d* object : spawnedPreviewObjects_) {
+        for (engine::Object3D* object : spawnedPreviewObjects_) {
             if (object)
                 removalTargets.insert(object);
         }
@@ -374,7 +374,7 @@ void ActorDebugPanel::ReleaseRuntime() {
             }
         }
 
-        for (engine::Object3d* object : removalTargets) {
+        for (engine::Object3D* object : removalTargets) {
             const bool present = std::any_of(currentScene->GetObjects().begin(), currentScene->GetObjects().end(),
                 [object](const auto& entry) { return entry.get() == object; });
             if (present) {
@@ -416,9 +416,9 @@ void ActorDebugPanel::ClearPreviewTransientState() {
     MeshEffectManager::GetInstance()->ClearActiveEffects();
     DebrisEffectManager::GetInstance()->Clear();
     BulletManager::GetInstance()->Clear();
-    VFXSequencer::ClearOneShots();
+    VfxSequencer::ClearOneShots();
 
-    GPUParticleManager* gpuParticles = GPUParticleManager::GetInstance();
+    GpuParticleManager* gpuParticles = GpuParticleManager::GetInstance();
 
     if (gpuParticles->IsInitialized()) {
         gpuParticles->ResetSimulation();
@@ -439,7 +439,7 @@ void ActorDebugPanel::SetEffectSimulationScale(float timeScale) {
     MeshEffectManager::GetInstance()->SetTimeScale(safeScale);
     DebrisEffectManager::GetInstance()->SetTimeScale(safeScale);
 
-    GPUParticleManager* gpuParticles = GPUParticleManager::GetInstance();
+    GpuParticleManager* gpuParticles = GpuParticleManager::GetInstance();
 
     if (gpuParticles->IsInitialized()) {
         gpuParticles->SetTimeScale(safeScale);
@@ -467,12 +467,12 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
         if (auto* game = dynamic_cast<GamePlayScene*>(previewScene_)) {
             SetEffectSimulationScale(1.0f);
             game->StepCrownMoviePreview(deltaTime);
-            VFXSequencer::UpdateOneShots(deltaTime);
+            VfxSequencer::UpdateOneShots(deltaTime);
             if (auto* particles = game->GetParticleSystem())
                 particles->Update(deltaTime);
             MeshEffectManager::GetInstance()->UpdateEditorPreviewStep(deltaTime);
             DebrisEffectManager::GetInstance()->Update(deltaTime);
-            if (auto* gpu = GPUParticleManager::GetInstance(); gpu->IsInitialized())
+            if (auto* gpu = GpuParticleManager::GetInstance(); gpu->IsInitialized())
                 gpu->UpdateEditorPreviewStep(deltaTime);
             elapsedTime_ += deltaTime;
             ApplyEffectPlaybackState();
@@ -659,7 +659,7 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
 
             resolveBodyHit(previewEnemy_);
 
-            for (engine::Object3d* object : spawnedPreviewObjects_) {
+            for (engine::Object3D* object : spawnedPreviewObjects_) {
                 resolveBodyHit(dynamic_cast<BaseEnemy*>(object));
             }
         }
@@ -672,10 +672,10 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
     }
 
     // GPUパーティクルエディターと同じ固定刻みで、1画面フレーム内の複数ステップも確実に進めます。
-    VFXSequencer::UpdateOneShots(deltaTime);
+    VfxSequencer::UpdateOneShots(deltaTime);
     MeshEffectManager::GetInstance()->UpdateEditorPreviewStep(deltaTime);
     DebrisEffectManager::GetInstance()->Update(deltaTime);
-    GPUParticleManager* gpuParticles = GPUParticleManager::GetInstance();
+    GpuParticleManager* gpuParticles = GpuParticleManager::GetInstance();
 
     if (gpuParticles->IsInitialized()) {
         gpuParticles->SetTimeScale(1.0f);
@@ -731,7 +731,7 @@ void ActorDebugPanel::ResolvePreviewProjectileHits() {
 
         // Bullet::UpdateのSphereCastと同じ実Colliderで命中を確認します。
         // 原点中心の簡易球だと、中心がずれた標的の手前で弾だけが停止し、ダメージが発生しません。
-        // 標的のmask=0は隔離用のため、Object3d::CheckCollisionによる応答除外は適用しません。
+        // 標的のmask=0は隔離用のため、Object3D::CheckCollisionによる応答除外は適用しません。
         if (!bullet->GetCollider() || !previewPlayer_->GetCollider() ||
             !bullet->GetCollider()->CheckCollision(previewPlayer_->GetCollider()).isColliding) {
             continue;
@@ -830,7 +830,7 @@ StatusEffectApplication ActorDebugPanel::GetPreviewStatusEffect() const {
 
 void ActorDebugPanel::RecordTimelineSample() {
     // 実際のプレビュー対象から速度・高さ・変形量・演出数を取得し、同時刻の標本は置換する。
-    engine::Object3d* actor = playerCopyMode_ ? static_cast<engine::Object3d*>(previewPlayer_) : static_cast<engine::Object3d*>(previewEnemy_);
+    engine::Object3D* actor = playerCopyMode_ ? static_cast<engine::Object3D*>(previewPlayer_) : static_cast<engine::Object3D*>(previewEnemy_);
 
     if (!actor) {
         return;
@@ -866,7 +866,7 @@ void ActorDebugPanel::RecordTimelineSample() {
         std::abs(scaleMultiplier.z - 1.0f)
     });
     sample.hitReaction = previewEnemy_ ? previewEnemy_->GetDamageReactionWeight() : 0.0f;
-    sample.gpuParticleSystems = static_cast<float>(GPUParticleManager::GetInstance()->GetActiveSystemCount());
+    sample.gpuParticleSystems = static_cast<float>(GpuParticleManager::GetInstance()->GetActiveSystemCount());
 
     if (previewScene_) {
         if (const engine::ParticleSystem* particles = previewScene_->GetParticleSystem()) {
@@ -1070,7 +1070,7 @@ void ActorDebugPanel::LoadSelectedProfile() {
     if (editableProfile_.attacks.empty()) {
         profileStatus_ = enemyType + " は攻撃プロファイル編集の対象外です。";
     } else if (loaded) {
-        profileStatus_ = "読み込みました: " + EnemyAttackProfile::GetDefaultPath(enemyType);
+        profileStatus_ = "読み込みました。保存先: " + EnemyAttackProfile::GetDefaultPath(enemyType);
     }
 
     profileDirty_ = false;
@@ -1190,7 +1190,7 @@ const char* ActorDebugPanel::GetSelectedEnemyType() const {
 
 bool ActorDebugPanel::IsCurrentSceneReady() const {
     // 現シーンと描画基盤が揃うまで観測用 Object を生成しない。
-    return sceneManager_ && sceneManager_->GetCurrentScene() && sceneManager_->GetCurrentScene()->GetObject3dCommon();
+    return sceneManager_ && sceneManager_->GetCurrentScene() && sceneManager_->GetCurrentScene()->GetObject3DCommon();
 }
 
 float ActorDebugPanel::GetCrownMovieDuration() const {
@@ -1254,7 +1254,7 @@ void ActorDebugPanel::BeginEffects() {
                 if (!manager || manager->GetSceneGeneration() != generation) return;
                 auto* restored = CameraManager::GetInstance()->GetMainCamera();
                 if (!restored) return;
-                engine::Object3d* follow = nullptr;
+                engine::Object3D* follow = nullptr;
                 if (followId && manager->GetCurrentScene())
                     for (const auto& object : manager->GetCurrentScene()->GetObjects())
                         if (object && object->GetReplayId() == followId) follow = object.get();
@@ -1265,10 +1265,10 @@ void ActorDebugPanel::BeginEffects() {
 
     if (effectsOwned_) return;
     BulletManager::GetInstance()->BeginEditorSession();
-    GPUParticleManager::GetInstance()->BeginEditorSession();
+    GpuParticleManager::GetInstance()->BeginEditorSession();
     MeshEffectManager::GetInstance()->BeginEditorSession();
     DebrisEffectManager::GetInstance()->BeginEditorSession();
-    VFXSequencer::BeginEditorSession();
+    VfxSequencer::BeginEditorSession();
     if (auto* scene = sceneManager_->GetCurrentScene())
         if (auto* particles = scene->GetParticleSystem()) particles->BeginEditorSession();
     effectsOwned_ = true;
@@ -1276,9 +1276,9 @@ void ActorDebugPanel::BeginEffects() {
 void ActorDebugPanel::EndEffects() {
     if (!effectsOwned_) return;
     // OneShotの停止で他の管理系へ終了通知が出るため、依存先より先に閉じる。
-    VFXSequencer::EndEditorSession();
+    VfxSequencer::EndEditorSession();
     BulletManager::GetInstance()->EndEditorSession();
-    GPUParticleManager::GetInstance()->EndEditorSession();
+    GpuParticleManager::GetInstance()->EndEditorSession();
     MeshEffectManager::GetInstance()->EndEditorSession();
     DebrisEffectManager::GetInstance()->EndEditorSession();
     if (auto* scene = sceneManager_->GetCurrentScene())
@@ -1290,7 +1290,7 @@ void ActorDebugPanel::EndEffects() {
 float ActorDebugPanel::ResolveGroundHeight(const engine::Vector3& position, float fallback) const {
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("ground");
-    filter.acceptsObject = [](const engine::Object3d* object) { return object && !object->IsEditorInternal(); };
+    filter.acceptsObject = [](const engine::Object3D* object) { return object && !object->IsEditorInternal(); };
     const auto hit = CollisionManager::GetInstance()->Raycast(position + engine::Vector3{0,2,0}, {0,-1,0}, 80, filter);
     // 対象が地形のない位置に置かれた場合も、表示確認を続けられるよう元の高さを使う。
     return hit.isHit && hit.normal.y > .2f ? hit.hitPoint.y : fallback;

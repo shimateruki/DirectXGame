@@ -12,7 +12,7 @@ constexpr float kSquashStiffness = 110.0f;
 constexpr float kSquashDamping = 16.0f;
 }
 
-void GimmickTrampoline::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void GimmickTrampoline::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("Trampoline");
@@ -23,7 +23,7 @@ void GimmickTrampoline::Initialize(engine::Object3dCommon* common, const std::st
     // 傘全体を床と側面に使い、モデルの曲面から着地高さを求める。
     // 柄と根元はシーン側の子コライダーに分け、反発対象にはしない。
     ColliderConfig config = GetColliderConfig();
-    config.type = ColliderType::kOBB;
+    config.type = ColliderType::Obb;
     config.center = {0.0f, 1.20f, 0.0f};
     config.size = {1.40f, 0.40f, 1.40f};
     config.useModelSurface = true;
@@ -35,7 +35,7 @@ void GimmickTrampoline::Initialize(engine::Object3dCommon* common, const std::st
     using Self = GimmickTrampoline;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "トランポリン",
         "");
-    using Parameter = engine::Object3d::EntityParameter;
+    using Parameter = engine::Object3D::EntityParameter;
     properties.Parameter("ジャンプ力", "jumpPower", &Parameter::jumpPower, 0.0f, 100.0f,
         nullptr, {}, {.speed = 1.0f});
 }
@@ -52,11 +52,11 @@ void GimmickTrampoline::Update(float deltaTime) {
             GetCollider()->SetScaleOverride(authoredScale_);
     }
 
-    const float dt = (std::clamp)(deltaTime, 0.0f, 0.05f);
-    bounceCooldown_ = (std::max)(0.0f, bounceCooldown_ - dt);
-    wobbleTime_ = (std::max)(0.0f, wobbleTime_ - dt);
-    squashVelocity_ += (-kSquashStiffness * squash_ - kSquashDamping * squashVelocity_) * dt;
-    squash_ += squashVelocity_ * dt;
+    const float frameDeltaTime = (std::clamp)(deltaTime, 0.0f, 0.05f);
+    bounceCooldown_ = (std::max)(0.0f, bounceCooldown_ - frameDeltaTime);
+    wobbleTime_ = (std::max)(0.0f, wobbleTime_ - frameDeltaTime);
+    squashVelocity_ += (-kSquashStiffness * squash_ - kSquashDamping * squashVelocity_) * frameDeltaTime;
+    squash_ += squashVelocity_ * frameDeltaTime;
 
     if (std::abs(squash_) < 0.001f && std::abs(squashVelocity_) < 0.01f) {
         squash_ = 0.0f;
@@ -70,7 +70,7 @@ void GimmickTrampoline::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickTrampoline::OnCollision(engine::Object3d* other) {
+bool GimmickTrampoline::OnCollision(engine::Object3D* other) {
     Player* player = dynamic_cast<Player*>(other);
     if (!player)
         return false;
@@ -90,7 +90,7 @@ bool GimmickTrampoline::TryBounce(Player* player, const engine::Vector3& playerG
     const Collider* capCollider = GetCollider();
     if (!capCollider)
         return false;
-    const AABB playerBounds = player->GetAABB();
+    const Aabb playerBounds = player->GetAabb();
     const engine::Vector3 footCenter = {
         (playerBounds.min.x + playerBounds.max.x) * 0.5f,
         playerBounds.min.y,
@@ -117,7 +117,7 @@ bool GimmickTrampoline::TryBounce(Player* player, const engine::Vector3& playerG
     return true;
 }
 
-std::unique_ptr<engine::Object3d> GimmickTrampoline::Clone() const {
+std::unique_ptr<engine::Object3D> GimmickTrampoline::Clone() const {
     // 複製後も専用の衝突・反発動作を保つ。
     auto clone = std::make_unique<GimmickTrampoline>();
     clone->Initialize(GetObjectCommon(), GetModelName());

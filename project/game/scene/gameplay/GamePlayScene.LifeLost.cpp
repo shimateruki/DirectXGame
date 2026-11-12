@@ -220,7 +220,7 @@ void GamePlayScene::DrawLifeLostPresentation() {
 // ライフ減少専用の3D表示物は初期化時に用意し、演出中は表示だけ切り替えます。
 void GamePlayScene::InitializeLifeLostPresentationObjects() {
     // 専用カメラとモデルは3D描画基盤の初期化後に生成する。
-    if (!object3dCommon_) {
+    if (!GetObject3DCommon()) {
         return;
     }
 
@@ -228,27 +228,27 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
     lifeLostCamera_->Initialize();
     lifeLostCamera_->SetInputEnabled(false);
     lifeLostCamera_->SetFollowTarget(nullptr);
-    lifeLostCamera_->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    lifeLostCamera_->SetFollowMode(Camera::FollowMode::FixedPoint);
     lifeLostCamera_->SetFovY(0.48f);
     lifeLostCamera_->ConfigFixedPoint({0.0f, 2.25f, -7.2f}, {0.10f, 0.0f, 0.0f});
     lifeLostCamera_->Update();
 
-    lifeLostSlimeObject_ = std::make_unique<engine::Object3d>();
-    lifeLostSlimeObject_->Initialize(object3dCommon_.get());
+    lifeLostSlimeObject_ = std::make_unique<engine::Object3D>();
+    lifeLostSlimeObject_->Initialize(GetObject3DCommon());
     lifeLostSlimeObject_->SetName("LifeLostSlime");
     lifeLostSlimeObject_->SetModel("Characters/slime");
-    lifeLostSlimeObject_->SetBlendMode(BlendMode::kNormal);
+    lifeLostSlimeObject_->SetBlendMode(BlendMode::Normal);
     lifeLostSlimeObject_->SetEnableEnvMap(false);
     lifeLostSlimeObject_->SetEmissive(1.22f);
     lifeLostSlimeObject_->SetColor({0.38f, 0.92f, 1.0f, 1.0f});
     lifeLostSlimeObject_->SetIsVisible(false);
 
-    lifeLostStunObject_ = std::make_unique<engine::Object3d>();
-    lifeLostStunObject_->Initialize(object3dCommon_.get());
+    lifeLostStunObject_ = std::make_unique<engine::Object3D>();
+    lifeLostStunObject_->Initialize(GetObject3DCommon());
     lifeLostStunObject_->SetName("LifeLostStun");
     lifeLostStunObject_->SetModel("Primitives/sphere");
     lifeLostStunObject_->SetMaterialType(18);
-    lifeLostStunObject_->SetBlendMode(BlendMode::kNormal);
+    lifeLostStunObject_->SetBlendMode(BlendMode::Normal);
     lifeLostStunObject_->SetColor({1.0f, 0.94f, 0.28f, 0.78f});
     lifeLostStunObject_->SetIsVisible(false);
 
@@ -291,12 +291,12 @@ void GamePlayScene::DrawLifeLostPresentationWorld(ID3D12Resource* pointLightReso
         return;
     }
 
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    BeginSpriteDrawing();
     DrawGameplayHUDSprite(lifeLostBackdrop_);
 
     if (lifeLostSlimeObject_ && lifeLostSlimeObject_->GetIsVisible()) {
-        object3dCommon_->SetGraphicsCommand();
-        object3dCommon_->SetPipelineState(BlendMode::kNormal);
+        GetObject3DCommon()->SetGraphicsCommand();
+        GetObject3DCommon()->SetPipelineState(BlendMode::Normal);
         lifeLostSlimeObject_->Draw(pointLightResource, spotLightResource);
     }
 

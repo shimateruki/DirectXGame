@@ -3,7 +3,7 @@
 #include "ParticleSystem.h"
 #include "DebugConsole.h"
 #include "game/system/progress/StageManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "ParticleSystem.h"
 #include "MeshEffectManager.h"
 #include "game/system/settings/GameAudioSettings.h"
@@ -21,21 +21,21 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
     const auto& stages = StageManager::GetInstance()->GetStages();
     float pulse = (std::sin(stageSelectTime_ * 5.0f) + 1.0f) * 0.5f;
 
-    engine::Object3d* crown = FindObjectByName("StageSelect_CrownCore");
+    engine::Object3D* crown = FindObjectByName("StageSelect_CrownCore");
 
+    // セレクトに入口があるステージ1～3を全てクリアした時だけ、中央に王冠を飾る。
+    const auto* save = GameDataManager::GetInstance();
+    const bool showCentralCrown = save && save->IsStageCleared(0) &&
+        save->IsStageCleared(1) && save->IsStageCleared(2);
     if (crown) {
-        // 解放演出中も材質のない遠距離LODへ切り替わらないようにします。
-        crown->SetLodEnabled(false);
+        crown->SetIsVisible(showCentralCrown);
     }
 
-    if (crown && unlockingStageIndex_ < 0) {
+    if (crown && showCentralCrown && unlockingStageIndex_ < 0) {
         crown->SetEulerY(crown->GetRotation().y + deltaTime * 0.55f);
         crown->SetQuaternionMaster(false);
         crown->SetColor({1.0f, 0.72f, 0.18f, 1.0f});
         crown->SetEmissive(1.5f + pulse * 0.45f);
-        crown->SetGPUParticleName(kCrownIdleParticlePreset);
-        crown->SetMeshEffect1Name(kCrownAuraEffectPath);
-        crown->SetMeshEffect2Name(kCrownRayEffectPath);
     }
 
     for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
@@ -43,7 +43,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
         bool unlocking = stageIndex == unlockingStageIndex_;
         bool selected = stageIndex == selectedStageIndex_;
 
-        engine::Object3d* island = FindObjectByName("StageIsland_" + std::to_string(stageIndex));
+        engine::Object3D* island = FindObjectByName("StageIsland_" + std::to_string(stageIndex));
 
         if (island) {
             island->SetIsVisible(true);
@@ -62,7 +62,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
 
         // 楕円の輪郭に沿う短冊Colliderを重ね、外周や短冊間の隙間から落下しないようにする。
         for (int stripIndex = 0; stripIndex < kStageIslandCollisionStripCount; ++stripIndex) {
-            engine::Object3d* islandCollision = FindObjectByName("StageIslandCollision_" + std::to_string(stageIndex) + "_" +
+            engine::Object3D* islandCollision = FindObjectByName("StageIslandCollision_" + std::to_string(stageIndex) + "_" +
                                                          std::to_string(stripIndex));
             if (!islandCollision) {
                 continue;
@@ -75,7 +75,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
 
         // 旧形式のSceneを開いた場合も、従来の十字Colliderを地形として維持する。
         for (const char* suffix : {"_X", "_Z"}) {
-            engine::Object3d* legacyCollision = FindObjectByName("StageIslandCollision_" + std::to_string(stageIndex) + suffix);
+            engine::Object3D* legacyCollision = FindObjectByName("StageIslandCollision_" + std::to_string(stageIndex) + suffix);
 
             if (legacyCollision) {
                 legacyCollision->SetIsVisible(false);
@@ -84,7 +84,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
             }
         }
 
-        engine::Object3d* bridge = FindObjectByName("StageSelect_Bridge_" + std::to_string(stageIndex));
+        engine::Object3D* bridge = FindObjectByName("StageSelect_Bridge_" + std::to_string(stageIndex));
 
         if (bridge) {
             bridge->SetIsVisible(true);
@@ -103,7 +103,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
             }
         }
 
-        engine::Object3d* markerPad = FindObjectByName("StageMarkerPad_" + std::to_string(stageIndex));
+        engine::Object3D* markerPad = FindObjectByName("StageMarkerPad_" + std::to_string(stageIndex));
 
         if (markerPad) {
             markerPad->SetIsVisible(true);
@@ -120,7 +120,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
             }
         }
 
-        engine::Object3d* flag = FindObjectByName("StageFlag_" + std::to_string(stageIndex));
+        engine::Object3D* flag = FindObjectByName("StageFlag_" + std::to_string(stageIndex));
 
         if (flag) {
             flag->SetIsVisible(true);
@@ -149,7 +149,7 @@ void GameSelectScene::UpdatePathDisplay(int stageIndex, bool active, bool unlock
     for (int segmentIndex = 0; segmentIndex < 12; ++segmentIndex) {
         std::ostringstream name;
         name << "StagePath_" << stageIndex << "_" << segmentIndex;
-        engine::Object3d* path = FindObjectByName(name.str());
+        engine::Object3D* path = FindObjectByName(name.str());
 
         if (!path) {
             continue;
@@ -186,7 +186,7 @@ void GameSelectScene::UpdateStarCoinDisplays(float deltaTime) {
         for (int coinIndex = 0; coinIndex < 3; ++coinIndex) {
             std::ostringstream name;
             name << "StageCoin_" << stageIndex << "_" << coinIndex;
-            engine::Object3d* coin = FindObjectByName(name.str());
+            engine::Object3D* coin = FindObjectByName(name.str());
 
             if (!coin) {
                 continue;
@@ -211,44 +211,42 @@ void GameSelectScene::UpdateStarCoinDisplays(float deltaTime) {
     }
 }
 
-engine::Object3d* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
+engine::Object3D* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
     // 保存レイアウトに王冠がない場合だけ演出用モデルを生成し、重複を避ける。
-    if (!objectManager_ || !object3dCommon_) {
+    if (!objectManager_ || !GetObject3DCommon()) {
         return nullptr;
     }
 
     const std::string name = MakeStageClearCrownName(stageIndex);
 
-    if (engine::Object3d* existing = FindObjectByName(name)) {
+    if (engine::Object3D* existing = FindObjectByName(name)) {
         return existing;
     }
 
-    auto crown = std::make_unique<engine::Object3d>();
-    crown->Initialize(object3dCommon_.get());
+    auto crown = std::make_unique<engine::Object3D>();
+    crown->Initialize(GetObject3DCommon());
     crown->SetModel(kStageClearCrownModel);
     crown->SetName(name);
     crown->SetClassName("EditorOnly");
     crown->SetSaveCategory("Object");
     crown->SetIsLocked(true);
-    crown->SetTargetID(stageIndex);
-    crown->SetColliderType(ColliderType::kNone);
+    crown->SetTargetId(stageIndex);
+    crown->SetColliderType(ColliderType::None);
     crown->SetCollisionAttribute(0);
     crown->SetCollisionMask(0);
     crown->SetScale({kStageClearCrownBaseScale, kStageClearCrownBaseScale, kStageClearCrownBaseScale});
 
-    // 自動生成LODのOBJには材質がないため、色の失われない元の王冠モデルを描きます。
-    crown->SetLodEnabled(false);
     crown->SetEnableLighting(false);
     crown->SetColor({1.18f, 1.10f, 0.94f, 1.0f});
     crown->SetEmissive(2.0f);
-    crown->SetGPUParticleName(kCrownIdleParticlePreset);
+    crown->SetGpuParticleName(kCrownIdleParticlePreset);
     crown->SetMeshEffect1Name("");
     crown->SetMeshEffect2Name("");
     crown->SetTranslate(GetStageClearCrownPosition(stageIndex));
     crown->UpdateLocalMatrix();
     crown->UpdateWorldMatrix();
 
-    engine::Object3d* raw = crown.get();
+    engine::Object3D* raw = crown.get();
     AddObjectImmediate(std::move(crown));
     return raw;
 }
@@ -260,14 +258,13 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
     const float pulse = (std::sin(stageSelectTime_ * 4.2f) + 1.0f) * 0.5f;
 
     for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
-        engine::Object3d* crown = EnsureStageClearCrown(stageIndex);
+        engine::Object3D* crown = EnsureStageClearCrown(stageIndex);
 
         if (!crown) {
             continue;
         }
 
         const bool cleared = save->IsStageCleared(stageIndex);
-        crown->SetLodEnabled(false);
         crown->SetEnableLighting(false);
         crown->SetIsVisible(cleared);
         crown->SetCollisionAttribute(0);
@@ -294,7 +291,7 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
         crown->SetScale({scale, scale, scale});
         crown->SetColor({1.18f, 1.06f + pulse * 0.08f, 0.90f + pulse * 0.08f, 1.0f});
         crown->SetEmissive(1.9f + pulse * 0.65f);
-        crown->SetGPUParticleName(kCrownIdleParticlePreset);
+        crown->SetGpuParticleName(kCrownIdleParticlePreset);
         crown->SetMeshEffect1Name("");
         crown->SetMeshEffect2Name("");
         crown->UpdateLocalMatrix();
@@ -334,7 +331,7 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
     crownCountPresentationParticleTimer_ -= deltaTime;
     selectedStageIndex_ = crownCountPresentationStageIndex_;
 
-    engine::Object3d* crown = EnsureStageClearCrown(crownCountPresentationStageIndex_);
+    engine::Object3D* crown = EnsureStageClearCrown(crownCountPresentationStageIndex_);
     const engine::Vector3 targetPos = GetStageClearCrownPosition(crownCountPresentationStageIndex_);
     const engine::Vector3 crownPos = crown ? crown->GetWorldPosition() : targetPos;
     const engine::Vector3 burstPos =
@@ -342,10 +339,10 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
 
     if (crownCountPresentationParticleTimer_ <= 0.0f) {
         crownCountPresentationParticleTimer_ = kCrownCountParticleInterval;
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockFountainParticlePreset, burstPos);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockFountainParticlePreset, burstPos);
 
         if (crownCountPresentationTimer_ >= kCrownCountImpactTime) {
-            GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
+            GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
         }
     }
 
@@ -356,9 +353,9 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
                                                         {1.15f, 1.0f, 1.15f});
         MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockRayFlashEffectPath, burstPos, {0.0f, 0.0f, 0.0f},
                                                         {1.05f, 1.05f, 1.05f});
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, burstPos);
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockRayParticlePreset, burstPos);
-        GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, burstPos);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockRayParticlePreset, burstPos);
+        GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
 
         if (particleSystem_) {
             engine::Vector3 up = {0.0f, 1.0f, 0.0f};
@@ -385,7 +382,7 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
     }
 }
 
-void GameSelectScene::UpdateStageClearRewardCrown(engine::Object3d* crown, int stageIndex, float deltaTime) {
+void GameSelectScene::UpdateStageClearRewardCrown(engine::Object3D* crown, int stageIndex, float deltaTime) {
     // 獲得王冠が落下して跳ね返る時刻を、HUD の数字更新と揃える。
     if (!crown) {
         return;
@@ -430,7 +427,7 @@ void GameSelectScene::UpdateStageClearRewardCrown(engine::Object3d* crown, int s
     silverFlash = SelectClamp01(silverFlash);
     crown->SetColor({1.0f, 0.94f + silverFlash * 0.06f, 0.76f + silverFlash * 0.20f, 1.0f});
     crown->SetEmissive(emissive);
-    crown->SetGPUParticleName(kCrownIdleParticlePreset);
+    crown->SetGpuParticleName(kCrownIdleParticlePreset);
     crown->SetMeshEffect1Name("");
     crown->SetMeshEffect2Name("");
     crown->UpdateLocalMatrix();
@@ -495,7 +492,7 @@ int GameSelectScene::GetDisplayedCrownCount() const {
 }
 
 engine::Vector3 GameSelectScene::GetStageClearCrownPosition(int stageIndex) const {
-    // ゲートモデルの上端を優先し、AABB が無効ならノード基準の高さへ戻す。
+    // ゲートモデルの上端を優先し、Aabb が無効ならノード基準の高さへ戻す。
     engine::Vector3 fallback = GetStageNodePosition(stageIndex) + engine::Vector3{0.0f, 3.0f, 0.0f};
 
     if (!objectManager_) {
@@ -507,7 +504,7 @@ engine::Vector3 GameSelectScene::GetStageClearCrownPosition(int stageIndex) cons
             continue;
         }
 
-        AABB gateAabb = object->GetModelWorldAABB();
+        Aabb gateAabb = object->GetModelWorldAabb();
         const bool validAabb = std::isfinite(gateAabb.min.x) && std::isfinite(gateAabb.min.y) &&
                                std::isfinite(gateAabb.min.z) && std::isfinite(gateAabb.max.x) &&
                                std::isfinite(gateAabb.max.y) && std::isfinite(gateAabb.max.z) &&

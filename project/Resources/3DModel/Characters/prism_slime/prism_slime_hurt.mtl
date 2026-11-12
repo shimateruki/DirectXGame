@@ -1,0 +1,31 @@
+newmtl PrismGel
+Ka 0.08 0.20 0.24
+Kd 0.34 0.22 0.62
+Ks 0.72 0.92 1.00
+Ns 72.0
+d 1.0
+illum 2
+
+newmtl PrismFrame
+Ka 0.12 0.28 0.36
+Kd 0.58 0.34 0.90
+Ks 1.00 1.00 1.00
+Ns 96.0
+d 1.0
+illum 2
+
+newmtl PrismCore
+Ka 0.18 0.34 0.42
+Kd 0.94 0.42 0.88
+Ks 1.00 1.00 1.00
+Ns 110.0
+d 1.0
+illum 2
+
+newmtl PrismHurtEyes
+Ka 0.02 0.03 0.12
+Kd 0.025 0.075 0.20
+Ks 0.24 0.38 0.56
+Ns 48.0
+d 1.0
+illum 2

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6d0fda9c163cff8a9ec7ce21bfde92bf",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/19-crown-three.png",
+  "version": 1
+}

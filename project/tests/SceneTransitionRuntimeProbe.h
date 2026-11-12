@@ -2,6 +2,8 @@
 
 #ifdef USE_IMGUI
 #include "SceneManager.h"
+#include "SharedRenderCommonsRuntimeProbe.h"
+#include <span>
 #include "StatusPreviewRuntimeProbe.h"
 #include "PreviewCompositionRuntimeProbe.h"
 #include "AttackPreviewRegistryRuntimeProbe.h"
@@ -44,6 +46,7 @@ inline bool Enabled() { return !LogPath().empty(); }
 inline void AfterDraw(SceneManager* manager, DebugEditor* editor = nullptr) {
     if (!Enabled() || !manager)
         return;
+    if (!SharedRenderCommonsRuntimeProbe::CheckAfterDraw(manager, LogPath())) return;
     if (StatusPreviewRuntimeProbe::Enabled()) {
         StatusPreviewRuntimeProbe::AfterDraw(manager, editor, LogPath());
         return;
@@ -151,7 +154,10 @@ inline void AfterDraw(SceneManager* manager, DebugEditor* editor = nullptr) {
     }
     if (manager->IsTransitioning())
         return;
-    const char* scenes[] = {"TITLE", "GAMEPLAY", "SELECT", "GAMEPLAY", "GAMEPLAY"};
+    const char* normalScenes[] = {"TITLE", "GAMEPLAY", "SELECT", "GAMEPLAY", "GAMEPLAY"};
+    const char* commonScenes[] = {"TITLE", "GAMEPLAY", "SELECT", "GAMEOVER", "TUTORIAL", "SCENE_EDITOR", "GAMEPLAY", "GAMEPLAY"};
+    const std::span<const char* const> scenes = SharedRenderCommonsRuntimeProbe::Enabled()
+        ? std::span<const char* const>(commonScenes) : std::span<const char* const>(normalScenes);
     if (manager->GetCurrentSceneName() != scenes[step]) {
         finish("FAIL: unexpected scene");
         return;
@@ -180,13 +186,13 @@ inline void AfterDraw(SceneManager* manager, DebugEditor* editor = nullptr) {
         return;
     log << "DRAWN " << scenes[step] << " frames=" << frames
         << " activeMesh=" << MeshEffectManager::GetInstance()->GetActiveEffects().size() << std::endl;
-    if (++step == 5) {
+    if (++step == static_cast<int>(scenes.size())) {
         finish("PASS: loading transitions and direct reload rendered successfully");
         return;
     }
     frames = 0;
     phaseStarted = GetTickCount64();
-    if (step == 4)
+    if (step == static_cast<int>(scenes.size()) - 1)
         manager->ChangeSceneWithoutLoading(scenes[step]);
     else manager->ChangeScene(scenes[step]);
     log << "REQUEST " << scenes[step] << std::endl;

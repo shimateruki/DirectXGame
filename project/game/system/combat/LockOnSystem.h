@@ -3,12 +3,14 @@
 #include <memory>
 
 // 前方宣言
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 class Camera;
 class Player;
 namespace engine { class InputManager; }
 
 /// <summary>視界内の敵を選び、カメラ追従とプレイヤーの照準点を同期する。</summary>
+// 関連：Player・Camera・InputManagerを借用し、選択中の敵と照準を同期する。
+// 主な入口：Initialize / Update / ResetLockOn
 class LockOnSystem {
   public:
     LockOnSystem();
@@ -27,7 +29,7 @@ class LockOnSystem {
     /// <param name="camera">メインカメラ</param>
     /// <param name="player">操作中のプレイヤー</param>
     /// <param name="deltaTime">前フレームからの経過秒数</param>
-    void Update(const std::vector<std::unique_ptr<engine::Object3d>>& objects, Camera* camera, Player* player, float deltaTime);
+    void Update(const std::vector<std::unique_ptr<engine::Object3D>>& objects, Camera* camera, Player* player, float deltaTime);
 
     /// <summary>
     /// 現在ロックオン中かどうか
@@ -37,7 +39,7 @@ class LockOnSystem {
     /// <summary>
     /// 現在の対象を返す。対象はシーン所有で、ロック解除後は保持しない。
     /// </summary>
-    engine::Object3d* GetTarget() const { return lockOnTarget_; }
+    engine::Object3D* GetTarget() const { return lockOnTarget_; }
 
     /// <summary>
     /// 保持中の対象を外し、ロック用カメラを通常の照準モードへ戻す。
@@ -48,12 +50,12 @@ class LockOnSystem {
     /// <summary>
     /// 最も適したターゲットを検索する内部関数
     /// </summary>
-    engine::Object3d* FindBestTarget(const std::vector<std::unique_ptr<engine::Object3d>>& objects, Camera* camera, Player* player,
+    engine::Object3D* FindBestTarget(const std::vector<std::unique_ptr<engine::Object3D>>& objects, Camera* camera, Player* player,
                              bool next = false);
 
   private:
     engine::InputManager* inputManager_ = nullptr;
-    engine::Object3d* lockOnTarget_ = nullptr; // ロックオン対象
+    engine::Object3D* lockOnTarget_ = nullptr; // ロックオン対象
     bool isLockingOn_ = false;         // ロックオン中フラグ
 
     // 定数パラメータ

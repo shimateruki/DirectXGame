@@ -5,9 +5,10 @@
 #include <string>
 #include <vector>
 
-namespace engine { class Object3d; }
+namespace engine { class Object3D; }
 
 // MaterialInstanceDataは、Object3dの描画設定を共有Assetとして再利用するための解決済みデータです。
+// 関連：MaterialInstanceAsset（読込・適用）、Object3D（材質設定）
 struct MaterialInstanceData {
     int version = 1;
     std::string displayName;
@@ -51,14 +52,16 @@ struct MaterialInstanceData {
     float effectScaleZ = 1.0f;
 };
 
-// MaterialInstanceAssetは、継承可能なMaterial Instance JSONの入出力とObject3dへの適用を担当します。
+// 担当：継承可能な材質JSONを読み書きし、Object3dへ適用する。
+// 関連：MaterialInstanceData（解決済み設定）、Object3D / MeshRenderer（適用先）
+// 主な入口：Capture / Apply
 class MaterialInstanceAsset final {
 public:
     /// <summary>オブジェクトの現在のマテリアル設定を共有アセット用データに取り出す。</summary>
-    static MaterialInstanceData Capture(const engine::Object3d& object);
+    static MaterialInstanceData Capture(const engine::Object3D& object);
 
     /// <summary>共有アセットのマテリアル設定をオブジェクトへ適用する。</summary>
-    static void Apply(const MaterialInstanceData& material, engine::Object3d& object);
+    static void Apply(const MaterialInstanceData& material, engine::Object3D& object);
 
     // baseAsset を親から先に読み、子 JSON にある値だけ上書きする。
     // 循環参照と 16 段を超える継承は失敗する。失敗時の material は部分的に更新され得る。

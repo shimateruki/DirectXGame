@@ -5,11 +5,11 @@
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "game/system/rules/EventManager.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "game/system/combat/HitEffectDirector.h"
 #include "MeshEffectManager.h"
 #include "SceneManager.h"
-#include "VFXSequencer.h"
+#include "VfxSequencer.h"
 #include <algorithm>
 #include <cmath>
 
@@ -53,7 +53,7 @@ BulletVisualConfig MakeFireVisual(float scale) {
     // シーケンスを使わない火球も、床・壁で停止したまま残さない。
     visual.destroyOnSolidCastHit = true;
     visual.materialType = 11;
-    visual.blendMode = BlendMode::kNormal;
+    visual.blendMode = BlendMode::Normal;
     visual.color = {1.0f, 0.34f, 0.07f, 0.96f};
     visual.emissive = 2.8f;
     visual.visualScale = scale;
@@ -89,9 +89,9 @@ StatusEffectApplication MakeStatusEffect(const EnemyAttackDefinition& attack) {
     return status;
 }
 
-engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
+engine::Object3D* FindEnemyDamageTarget(engine::Object3D* object) {
     // 子メッシュとの接触も所有する敵本体への命中として扱う。
-    for (engine::Object3d* current = object; current; current = current->GetParent()) {
+    for (engine::Object3D* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
         }
@@ -102,7 +102,7 @@ engine::Object3d* FindEnemyDamageTarget(engine::Object3d* object) {
 } // namespace
 
 // 炎スライムの初期化
-void EnemyFireSlime::Initialize(engine::Object3dCommon* common, const std::string& modelName) {
+void EnemyFireSlime::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_FireSlime");
     SetEnemyType("FireSlime");
@@ -116,7 +116,7 @@ void EnemyFireSlime::Initialize(engine::Object3dCommon* common, const std::strin
 
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-    SetColliderType(ColliderType::kSphere);
+    SetColliderType(ColliderType::Sphere);
     SyncGroundCollisionRadius();
 }
 
@@ -326,7 +326,7 @@ void EnemyFireSlime::BeginThrown(const engine::Vector3& initialVelocity) {
     BaseEnemy::BeginThrown(initialVelocity);
 }
 
-std::unique_ptr<engine::Object3d> EnemyFireSlime::Clone() const {
+std::unique_ptr<engine::Object3D> EnemyFireSlime::Clone() const {
     // シーン配置の複製は初期化後に設定を写し、目標と索敵範囲を引き継ぐ。
     auto clone = std::make_unique<EnemyFireSlime>();
     assert(GetObjectCommon() != nullptr);
@@ -532,7 +532,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
     const float bodyHeight = (std::max)(0.7f, std::abs(GetScale().y));
     const float visualCenterY = GetTranslate().y + 0.68f * bodyHeight;
     const float visualHalfHeight = 0.75f * (std::max)(0.7f, std::abs(GetScale().x));
-    const AABB targetBounds = GetTarget()->GetAABB();
+    const Aabb targetBounds = GetTarget()->GetAabb();
     if (targetBounds.max.y < visualCenterY - visualHalfHeight ||
         targetBounds.min.y > visualCenterY + visualHalfHeight) {
         return;
@@ -565,7 +565,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
     EventManager::GetInstance()->Dispatch(damageEvent);
 
     if (!attack.feedbackCue.empty()) {
-        VFXSequencer::PlayOneShot(attack.feedbackCue, GetTarget()->GetWorldPosition());
+        VfxSequencer::PlayOneShot(attack.feedbackCue, GetTarget()->GetWorldPosition());
     }
 }
 
@@ -627,22 +627,22 @@ void EnemyFireSlime::EnsureHeadFlameVisual() {
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
 
-    if (!scene || !scene->GetObject3dCommon()) {
+    if (!scene || !scene->GetObject3DCommon()) {
         return;
     }
 
-    auto flame = std::make_unique<engine::Object3d>();
-    flame->Initialize(scene->GetObject3dCommon());
+    auto flame = std::make_unique<engine::Object3D>();
+    flame->Initialize(scene->GetObject3DCommon());
     flame->SetName(GetName() + "_HeadFlameShader");
     flame->SetClassName("Effect");
 
     // 敵に追従する一時演出はシーン保存の対象にしない。
     flame->SetEditorInternal(true);
     flame->SetModel("Primitives/sphere");
-    flame->SetColliderType(ColliderType::kNone);
+    flame->SetColliderType(ColliderType::None);
     flame->SetCollisionAttribute(0);
     flame->SetCollisionMask(0);
-    flame->SetBlendMode(BlendMode::kNormal);
+    flame->SetBlendMode(BlendMode::Normal);
     flame->SetMaterialType(kHeadFlameMaterialType);
     flame->SetSelectedLighting(0);
     flame->SetEnableLighting(false);
@@ -798,7 +798,7 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
 
-    if (!scene || !scene->GetObject3dCommon()) {
+    if (!scene || !scene->GetObject3DCommon()) {
         return;
     }
 
@@ -807,18 +807,18 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
             continue;
         }
 
-        auto flame = std::make_unique<engine::Object3d>();
-        flame->Initialize(scene->GetObject3dCommon());
+        auto flame = std::make_unique<engine::Object3D>();
+        flame->Initialize(scene->GetObject3DCommon());
         flame->SetName(GetName() + "_BreathFlameShader_" + std::to_string(i));
         flame->SetClassName("Effect");
 
         // ブレスの一時演出も配置オブジェクトとして保存しない。
         flame->SetEditorInternal(true);
         flame->SetModel("Primitives/sphere");
-        flame->SetColliderType(ColliderType::kNone);
+        flame->SetColliderType(ColliderType::None);
         flame->SetCollisionAttribute(0);
         flame->SetCollisionMask(0);
-        flame->SetBlendMode(BlendMode::kNormal);
+        flame->SetBlendMode(BlendMode::Normal);
         flame->SetMaterialType(kHeadFlameMaterialType);
         flame->SetSelectedLighting(0);
         flame->SetEnableLighting(false);
@@ -864,7 +864,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const engine::Vector3& direction, 
     const engine::Vector3 side = {-direction.z, 0.0f, direction.x};
 
     for (int i = 0; i < kBreathFlameVisualCount; ++i) {
-        engine::Object3d* flame = breathFlameVisuals_[i];
+        engine::Object3D* flame = breathFlameVisuals_[i];
 
         if (!flame) {
             continue;
@@ -908,7 +908,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const engine::Vector3& direction, 
 
 void EnemyFireSlime::HideBreathFlameVisuals() {
     // 運搬や攻撃終了時はシーンから消す前にまず描画を止める。
-    for (engine::Object3d* flame : breathFlameVisuals_) {
+    for (engine::Object3D* flame : breathFlameVisuals_) {
         if (flame) {
             flame->SetIsVisible(false);
         }
@@ -925,7 +925,7 @@ void EnemyFireSlime::RequestRemoveBreathFlameVisuals() {
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
 
-    for (engine::Object3d*& flame : breathFlameVisuals_) {
+    for (engine::Object3D*& flame : breathFlameVisuals_) {
         if (!flame) {
             continue;
         }
@@ -964,7 +964,7 @@ void EnemyFireSlime::EmitBreathParticles(const engine::Vector3& origin, const en
 
 void EnemyFireSlime::EmitFirePreset(const char* presetName, const engine::Vector3& position) {
     // 未初期化の GPU パーティクル管理には要求を送らない。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (!particles || !particles->IsInitialized()) {
         return;
@@ -976,7 +976,7 @@ void EnemyFireSlime::EmitFirePreset(const char* presetName, const engine::Vector
 void EnemyFireSlime::EmitDirectedFirePreset(const char* presetName, const engine::Vector3& position, const engine::Vector3& direction,
                                             float speedScale) {
     // 火の粉の流れる向きを指定できる場合だけ方向付きプリセットを使う。
-    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    GpuParticleManager* particles = GpuParticleManager::GetInstance();
 
     if (!particles || !particles->IsInitialized()) {
         return;

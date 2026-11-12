@@ -9,12 +9,16 @@
 
 namespace {
 // A* の未処理候補。index は一次元セル番号、score は到達コストと残距離推定の合計。
+// 担当：A*の探索候補セル番号と推定総コスト。
+// 関連：NavGridの内部処理だけで使う補助型。
 struct OpenNode {
     int index = -1;
     float score = 0.0f;
 };
 
 // priority_queue の先頭を最小 score にする比較。通常の最大値優先を反転する。
+// 担当：推定総コストが小さい候補を先に取り出す比較。
+// 関連：NavGridの内部処理だけで使う補助型。
 struct OpenNodeGreater {
     bool operator()(const OpenNode& lhs, const OpenNode& rhs) const {
         // 推定総コストの低いセルを先に取り出すため比較を逆転する。
@@ -63,17 +67,17 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
 
     // 範囲全体を一度だけPhysics Queryし、得られた障害物AABBをGridへラスタライズします。
     // セルごとのQueryを避けることで、再探索時のスパイクを抑えます。
-    const AABB queryBounds = {
+    const Aabb queryBounds = {
         { settings_.boundsMin.x, settings_.planeY - 0.05f, settings_.boundsMin.z },
         { settings_.boundsMax.x, settings_.planeY + settings_.agentHeight, settings_.boundsMax.z },
     };
 
-    const auto obstacles = physics->OverlapAABB(queryBounds, filter);
+    const auto obstacles = physics->OverlapAabb(queryBounds, filter);
 
     for (const PhysicsOverlapHit& hit : obstacles) {
         if (!hit.object)
             continue;
-        AABB obstacle = hit.object->GetAABB();
+        Aabb obstacle = hit.object->GetAabb();
 
         // 足元より低い床面は障害物にせず、進行を遮る高さの形状だけを採用します。
         if (obstacle.max.y <= blockingHeight ||

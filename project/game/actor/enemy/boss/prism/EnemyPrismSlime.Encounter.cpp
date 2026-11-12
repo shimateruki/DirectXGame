@@ -1,4 +1,5 @@
 ﻿#include "game/actor/enemy/boss/prism/EnemyPrismSlime.Internal.h"
+#include "game/actor/enemy/boss/core/MidbossEncounterEffects.h"
 
 using namespace EnemyPrismSlimeImplementation;
 
@@ -168,7 +169,7 @@ void EnemyPrismSlime::BeginEncounterAppearance() {
 
     engine::Vector3 effectPosition = encounterBasePosition_;
     effectPosition.y += 0.15f;
-    VFXSequencer::PlayOneShot(kEncounterAppearanceSequence, effectPosition, {1.65f, 1.65f, 1.65f});
+    VfxSequencer::PlayOneShot(MidbossEncounterEffects::Prism().appearance, effectPosition, {1.65f, 1.65f, 1.65f});
 }
 
 void EnemyPrismSlime::ApplyDormantEncounterState() {

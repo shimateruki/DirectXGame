@@ -1,9 +1,9 @@
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
-#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
+#include "engine/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
-#include "GPUParticleManager.h"
+#include "GpuParticleManager.h"
 #include "PostEffect.h"
 #include "game/actor/gimmick/stage/GimmickStageGate.h"
 #include "engine/utility/math/AnimationInterpolation.h"
@@ -37,13 +37,13 @@ constexpr const char* kStageEntryCameraFallbackObjectName = "Cinematic_Camera_01
 // ステージ入場演出の開始・更新・復帰。PlayerとCameraは借用し、終了時の操作復帰とゲート再有効化を維持する。
 // 入口演出中はプレイヤー操作とカメラを一時的に預かり、終了時に元の状態へ戻します。
 
-engine::Object3d* GamePlayScene::FindStageEntryGate() const {
+engine::Object3D* GamePlayScene::FindStageEntryGate() const {
     // ステージ開始演出の対象ゲートを現在の配置オブジェクトから探す。
     if (!objectManager_) {
         return nullptr;
     }
 
-    engine::Object3d* nameMatchedGate = nullptr;
+    engine::Object3D* nameMatchedGate = nullptr;
 
     for (const auto& object : objectManager_->GetObjects()) {
         if (!object || object->GetName().find("_EntranceGate") == std::string::npos) {
@@ -78,7 +78,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
 
     // OnActivated直後は、ロードしたTransformのワールド行列がまだ更新されていない場合があります。
     // 親階層を含めて確定してから入口演出の基準座標を取得します。
-    engine::Object3d* gateTransformRoot = stageEntryGate_;
+    engine::Object3D* gateTransformRoot = stageEntryGate_;
 
     while (gateTransformRoot->GetParent()) {
         gateTransformRoot = gateTransformRoot->GetParent();
@@ -147,8 +147,8 @@ bool GamePlayScene::StartStageEntryPresentation() {
 
     // 入口専用名を最優先し、旧データでは入口ゲートに最も近い汎用カメラを採用します。
     // 名前を分けることで、JSON読込時に同名Objectとして上書きされることも防ぎます。
-    engine::Object3d* authoredEntryCamera = nullptr;
-    engine::Object3d* fallbackEntryCamera = nullptr;
+    engine::Object3D* authoredEntryCamera = nullptr;
+    engine::Object3D* fallbackEntryCamera = nullptr;
     float nearestCameraDistanceSq = (std::numeric_limits<float>::max)();
 
     if (objectManager_) {
@@ -166,7 +166,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
                 continue;
             }
 
-            engine::Object3d* candidateTransformRoot = object.get();
+            engine::Object3D* candidateTransformRoot = object.get();
 
             while (candidateTransformRoot->GetParent()) {
                 candidateTransformRoot = candidateTransformRoot->GetParent();
@@ -191,7 +191,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     stageEntryCameraFocusFov_ = stageEntryCameraBaseFov_;
 
     if (authoredEntryCamera) {
-        engine::Object3d* cameraTransformRoot = authoredEntryCamera;
+        engine::Object3D* cameraTransformRoot = authoredEntryCamera;
 
         while (cameraTransformRoot->GetParent()) {
             cameraTransformRoot = cameraTransformRoot->GetParent();
@@ -217,7 +217,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
     camera->SetLockOnTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
     camera->SetEye(stageEntryCameraStartEye_);
     camera->SetTarget(stageEntryCameraStartTarget_);
     const engine::Vector3 startRotation = MakeLookAtEuler(stageEntryCameraStartEye_, stageEntryCameraStartTarget_);
@@ -304,7 +304,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
 
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
 
         // 追従対象がない演出カメラでは、固定点設定ではなく実際の視点を直接更新します。
         camera->SetEye(eye);
@@ -316,7 +316,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         camera->Update(deltaTime);
     }
 
-    // 通常更新へ入る前に入口演出が始まるため、全Objectの描画TransformとLODを
+    // 通常更新へ入る前に入口演出が始まるため、全Objectの描画Transformを
     // 演出カメラ確定後に更新します。deltaTimeは進めず、敵やギミックの時間は停止させます。
     if (objectManager_) {
         objectManager_->Update(0.0f);
@@ -326,7 +326,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         particleSystem_->Update(deltaTime);
     }
 
-    GPUParticleManager::GetInstance()->Update(deltaTime);
+    GpuParticleManager::GetInstance()->Update(deltaTime);
 
     if (stageEntryPresentationTimer_ >= kStageEntryPresentationDuration) {
         FinishStageEntryPresentation();
@@ -379,7 +379,7 @@ void GamePlayScene::FinishStageEntryPresentation() {
         {
             if (player_) {
                 camera->SetFollowTarget(player_);
-                camera->SetFollowMode(Camera::FollowMode::kAimable);
+                camera->SetFollowMode(Camera::FollowMode::Aimable);
                 camera->SetRotation(
                     {kStageEntryThirdPersonPitch,
                      std::atan2(stageEntryDirection_.x, stageEntryDirection_.z) + kStageEntryCameraYawOffset, 0.0f});

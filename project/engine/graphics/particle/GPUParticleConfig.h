@@ -1,11 +1,12 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 #include <string>
-#include "VFXAuthoring.h"
+#include "VfxAuthoring.h"
 
 
 // GPUParticleConfigは、GPUパーティクルの発生形状、色、サイズ、環境影響、衝突をまとめた設定です。
-struct GPUParticleConfig {
+// 関連：GpuParticleManager / GpuParticleSystem（実行）、GpuParticleEditor（編集）
+struct GpuParticleConfig {
     int shapeType = 0;         // 0: Box、1: Sphere、2: Cone、3: Mesh頂点、4: Heart。ParticleCS.hlslと対応。
     float shapeRadius = 2.0f;  // 球や円錐の時の半径
     float shapeAngle = 30.0f;  // 円錐の時の広がり角度（度数法）
@@ -16,25 +17,25 @@ struct GPUParticleConfig {
     engine::Vector3 emitVelocity = { 0.0f, 1.0f, 0.0f }; // ワールド単位/秒。Coneでは方向と基準速さを兼ねる。
     int emitCount = 1000; // 一回の発生数。空きスロット不足時は全数出るとは限らない。
     float emitLife = 2.0f; // 発生から消滅までの秒数。使用側では正の値を指定する。
-    float velocityVariance = 1.0f;
+    float velocityVariance = 1.0f; // 初速度へ加える乱数の幅。
 
     // 0は発生数・寿命・間隔から容量を推定する。256～10000とLOD上限で制限され、溢れない保証ではない。
     int maxParticles = 0;
 
-    VFXLodSettings lod;
+    VfxLodSettings lod;
 
     // --- 見た目パラメータ ---
-    engine::Vector4 baseColor = engine::Colors::White;
+    engine::Vector4 baseColor = engine::Colors::White; // 発生直後のRGBA。
     engine::Vector4 midColor = { 1.0f, 0.5f, 0.0f, 1.0f }; // 途中の色
     float colorMidTime = 0.2f;                     // 色がMidになるタイミング (0.0~1.0)
-    engine::Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f };
+    engine::Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f }; // 寿命末尾のRGBA。
 
     float baseSize = 1.0f;
     float midSize = 2.0f;                          // 途中の大きさ
     float sizeMidTime = 0.2f;                      // 大きさがMidになるタイミング (0.0~1.0)
     float endSize = 0.0f;
 
-    float colorIntensity = 1.0f;
+    float colorIntensity = 1.0f; // 粒子色の明るさ倍率。
     std::string texturePath = "Resources/sprite/Particle.png";
     float rotSpeed = 0.0f; // 回転速度の乱数範囲の絶対値。ラジアン/秒。
     int blendModeIndex = 0; // 0: 加算、1: 通常α、2: 背景コピーを参照する歪み。
@@ -47,13 +48,13 @@ struct GPUParticleConfig {
     int spriteSheetLoop = 0;
     int spriteSheetRandomStart = 0;
 
-    int alignToVelocity = 0;
-    float velocityStretch = 0.0f;
+    int alignToVelocity = 0; // 進行方向へ向きをそろえる指定（0/1）。
+    float velocityStretch = 0.0f; // 速度に応じた伸長の強さ。
 
     int particleType = 0;       // 0: Billboard, 1: Trail
     float trailLength = 0.15f;
 
-    int receiveLighting = 0;
+    int receiveLighting = 0; // 照明を反映する指定（0/1）。
     engine::Vector3 lightDirection = { -0.4f, -1.0f, 0.3f };
     engine::Vector3 lightColor = { 1.0f, 1.0f, 1.0f };
     float lightingStrength = 1.0f;
@@ -65,9 +66,9 @@ struct GPUParticleConfig {
     float envTurbulence = 0.0f;
     int fieldType = 0;         // 0: None, 1: Attract, 2: Vortex, 3: Repulse
     engine::Vector3 fieldPosition = engine::Vector3::ZERO; // エミッター基準の相対位置
-    float fieldStrength = 0.0f;
-    float fieldRadius = 5.0f;
-    float fieldFalloff = 1.0f;
+    float fieldStrength = 0.0f; // 吸引・渦・反発フィールドの強さ。
+    float fieldRadius = 5.0f; // フィールドの作用半径。
+    float fieldFalloff = 1.0f; // 距離に応じた作用の減衰指数。
 
     // --- エディタ・プレビュー用設定 ---
     bool isLooping = false;
@@ -75,8 +76,8 @@ struct GPUParticleConfig {
     float emitInterval = 0.1f;
     float softParticleFade = 5.0f; // 背景との視点空間深度差でαを減衰する距離。ほぼ0なら減衰を無効化。
     int sizeEaseType = 0; // ParticleCS.hlslのApplyEasingの0～30。VFXCurveEasingの0～4とは別の番号体系。
-    int colorEaseType = 0;
+    int colorEaseType = 0; // 色補間の方式。ParticleCS側の番号体系。
     int enableCollision = 0;   // 0: 無効, 1: 有効
     float restitution = 0.5f;  // 跳ね返り係数 (0.0=弾まない ~ 1.0=完全弾性)
-    engine::Matrix4x4 emitterWorldMatrix = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
+    engine::Matrix4x4 emitterWorldMatrix = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f }; // モデル表面発生の頂点をワールドへ変換する行列。
 };

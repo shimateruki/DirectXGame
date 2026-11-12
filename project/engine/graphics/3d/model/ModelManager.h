@@ -9,7 +9,9 @@
 class DirectXCommon;
 class ModelCommon;
 
-/// <summary>モデルの読み込み、再読み込み、キャッシュ、名前解決を管理する。</summary>
+// 担当：モデルの名前解決、CPU読込、GPU生成とキャッシュを管理する。
+// 関連：Model（モデル本体）、ModelCommon（共有基盤）、ScenePreloader（事前準備）
+// 主な入口：Initialize / PrepareModel / LoadModel / ReloadModel / Finalize
 class ModelManager {
 public:
     /// <summary>共通利用するモデル管理インスタンスを取得する。</summary>
@@ -55,6 +57,7 @@ public:
 
 private:
     /// <summary>GPUリソース作成前に読み込んだモデルのCPU側データ。</summary>
+    // 関連：ModelManager（この型を使う機能の本体）
     struct PreparedModel {
         std::string directoryPath;
         std::string fileName;

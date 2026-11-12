@@ -11,6 +11,8 @@
 
 // 現在のコピー能力名を、チュートリアル・本編・プレビューで同じ条件で表示する。
 // 位置と大きさは各シーンが所有する Sprite の配置設定から受け取る。
+// 関連：各シーンのSpriteを借用し、Playerの現在形態に対応する表示へ切り替える。
+// 主な入口：Bind / Update
 class CopyStyleHud {
   public:
     // コピー能力ごとの表示画像。事前ロードは操作ガイドのUIデータから収集する。
@@ -18,6 +20,7 @@ class CopyStyleHud {
         "ui/hud/copy_name/pink.png", "ui/hud/copy_name/fire.png", "ui/hud/copy_name/thunder.png",
         "ui/hud/copy_name/wind.png", "ui/hud/copy_name/bomb.png", "ui/hud/copy_name/crown.png"};
 
+    // 表示先Spriteを借用し、現在配置を表示の基準値として退避する。生成・所有は呼出側が担当する。
     void Bind(engine::Sprite* sprite) {
         // シーン所有のSpriteから基準座標と寸法だけ保持し、能力表示は一度隠す。
         sprite_ = sprite;
@@ -39,6 +42,7 @@ class CopyStyleHud {
         sprite_->SetVisible(false);
     }
 
+    // 現在のPlayer形態に対応する画像・表示状態へ切り替える。Playerは所有しない。
     void Update(const Player* player, float deltaTime) {
         // 能力の種類が変わったフレームだけ画像を差し替え、表示アニメーションを始め直す。
         if (!sprite_)

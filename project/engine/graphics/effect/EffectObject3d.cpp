@@ -1,7 +1,11 @@
-#include "EffectObject3d.h"
+#include "EffectObject3D.h"
 #include <numbers>
-#include "SRVManager.h"
-#include "Winapp.h"
+#include <array>
+#include <bit>
+#include <map>
+#include <mutex>
+#include "SrvManager.h"
+#include "WinApp.h"
 #include "Easing.h"
 #include <cassert>
 #include <DebugConsole.h>
@@ -11,6 +15,11 @@
 #include <nlohmann/json.hpp>
 
 namespace {
+// 球とリングだけを形状・UV・ModelCommon別に共有し、色や再生状態は個体側へ残します。
+using MeshCacheKey = std::pair<uintptr_t, std::array<uint32_t, 7>>;
+std::map<MeshCacheKey, std::shared_ptr<Model>> proceduralMeshCache;
+std::mutex proceduralMeshCacheMutex;
+constexpr size_t kMaxCachedProceduralMeshes = 32;
 constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png";
 
 // 未設定テクスチャ用SRVを共有し、Effectの描画ごとのファイル確認を避けます。
@@ -24,13 +33,13 @@ uint32_t GetDefaultWhiteTextureHandle() {
     return handle;
 }
 
-float ResolveTargetRootYaw(engine::Object3d* targetObject) {
+float ResolveTargetRootYaw(engine::Object3D* targetObject) {
     // エフェクトの追従向きを、対象のルートが持つ水平方向の角度から決める。
     if (!targetObject) {
         return 0.0f;
     }
 
-    engine::Object3d* rootObject = targetObject;
+    engine::Object3D* rootObject = targetObject;
 
     while (rootObject && rootObject->GetParent()) {
         rootObject = rootObject->GetParent();
@@ -91,14 +100,14 @@ float ApplyEasing1(int type, float t) {
 }
 
 // Object3dの描画基盤を確認してから、エフェクト専用マテリアル定数を準備します。
-void EffectObject3d::Initialize(engine::Object3dCommon* common) {
+void EffectObject3D::Initialize(engine::Object3DCommon* common) {
     if (!common || !common->GetDxCommon() || !common->GetDxCommon()->GetDevice()) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] Initialize failed: invalid Object3dCommon.");
         return;
     }
 
     // 親クラスの初期化
-    engine::Object3d::Initialize(common);
+    engine::Object3D::Initialize(common);
 
     // エフェクト用マテリアルバッファの生成
     CreateMaterialBuffer(common->GetDxCommon()->GetDevice());
@@ -106,7 +115,7 @@ void EffectObject3d::Initialize(engine::Object3dCommon* common) {
 
 // GPU定数バッファを256バイト境界で作成・Mapし、各効果を中立値から初期化します。
 // 作成またはMapに失敗したら参照を空へ戻してfalseを返します。
-bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
+bool EffectObject3D::CreateMaterialBuffer(ID3D12Device* device) {
     materialBuffer_.Reset();
     materialData_ = nullptr;
 
@@ -154,6 +163,30 @@ bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
         return false;
     }
 
+    ResetForReuse();
+    return true;
+}
+
+void EffectObject3D::ResetForReuse() {
+    // 再利用前の追従先・描画素材・形状・アニメーションを持ち越さない。
+    targetObject_ = nullptr;
+    offsetPos_ = offsetRot_ = {};
+    meshSettings_ = {};
+    currentTime_ = 0.0f; lifetime_ = 1.0f;
+    isPlaying_ = isAutoLoop_ = false;
+    easingType_ = 0; blendMode_ = BlendMode::Add;
+    startScale_ = endScale_ = {1.0f, 1.0f, 1.0f};
+    startColor_ = endColor_ = engine::Colors::White;
+    noiseTextureHandle_ = rampTextureHandle_ = 0;
+    SetTranslate({}); SetRotation({}); SetScale({1.0f, 1.0f, 1.0f}); SetIsVisible(true);
+    if (GetMeshRenderer()) {
+        GetMeshRenderer()->SetModel(static_cast<Model*>(nullptr));
+        GetMeshRenderer()->SetTexture(kDefaultWhiteTexture);
+    }
+    dynamicModel_.reset();
+    proceduralVertices_.clear(); proceduralIndices_.clear();
+    if (!materialData_) return;
+    *materialData_ = {};
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->scrollSpeed = { 0.0f, -1.0f }; // デフォルトはV方向に流れる
     materialData_->time = 0.0f;
@@ -168,10 +201,9 @@ bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
     materialData_->chantRibbonStrength = 0.0f;
     materialData_->ringEnergyStrength = 0.0f;
     materialData_->ringSpinSpeed = 0.0f;
-    return true;
 }
 
-void EffectObject3d::Update(float deltaTime) {
+void EffectObject3D::Update(float deltaTime) {
     if (!isPlaying_ || !materialData_)
         return;
 
@@ -229,7 +261,7 @@ void EffectObject3d::Update(float deltaTime) {
         }
     }
 
-    // 行列の更新だけ行う（Object3d::Update を丸ごと呼ぶと
+    // 行列の更新だけ行う（Object3D::Update を丸ごと呼ぶと
     // UpdateAttachedEffects や UpdateParticle が再帰的に走ってしまうため）
     UpdateLocalMatrix();
     UpdateWorldMatrix();
@@ -240,13 +272,13 @@ void EffectObject3d::Update(float deltaTime) {
 }
 
 // 専用パイプラインと必要なSRVを束ねて描画し、未設定素材には白画像を代用します。
-void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+void EffectObject3D::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     (void)pointLightResource;
     (void)spotLightResource;
     DrawWithWvp(GetMeshRenderer() ? GetMeshRenderer()->GetWvpResource() : nullptr);
 }
 
-void EffectObject3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+void EffectObject3D::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
                                    ID3D12Resource* spotLightResource, int previewBufferIndex) {
     (void)pointLightResource;
     (void)spotLightResource;
@@ -258,7 +290,7 @@ void EffectObject3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightRes
     DrawWithWvp(previewWvpResource);
 }
 
-void EffectObject3d::DrawWithWvp(ID3D12Resource* wvpResource) {
+void EffectObject3D::DrawWithWvp(ID3D12Resource* wvpResource) {
 
     if (!GetObjectCommon() || !GetMeshRenderer() || !wvpResource)
         return;
@@ -292,11 +324,11 @@ void EffectObject3d::DrawWithWvp(ID3D12Resource* wvpResource) {
         texHandle = fallbackTextureHandle;
     }
 
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, texHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, texHandle);
     uint32_t grabSrvHandle = GetObjectCommon()->GetDxCommon()->GetGrabSrvHandle();
 
     if (grabSrvHandle > 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
+        SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
     }
 
     uint32_t noiseHandle = noiseTextureHandle_;
@@ -306,21 +338,21 @@ void EffectObject3d::DrawWithWvp(ID3D12Resource* wvpResource) {
         noiseHandle = fallbackTextureHandle;
     }
 
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, noiseHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, noiseHandle);
     uint32_t rampHandle = rampTextureHandle_;
 
     if (rampHandle == 0) {
         rampHandle = fallbackTextureHandle;
     }
 
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, rampHandle);
+    SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, rampHandle);
 
     // 頂点構造とマテリアルが確定してからメッシュ本体を描く。
     model->DrawMeshOnly();
 }
 
 // 弧の内外径と厚みからSlash形状を組み、三日月形では両端を細く絞ります。
-void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent) {
+void EffectObject3D::GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
@@ -416,7 +448,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
 }
 
 // ② 円錐形（突き）の頂点生成：底面にフタをして、両面ポリゴン化
-void EffectObject3d::GenerateThrustVertices(float length, float radius, int segments) {
+void EffectObject3D::GenerateThrustVertices(float length, float radius, int segments) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
@@ -476,7 +508,7 @@ void EffectObject3d::GenerateThrustVertices(float length, float radius, int segm
 }
 
 #include <fstream>
-void EffectObject3d::ExportToObj(const std::string& filePath) const {
+void EffectObject3D::ExportToObj(const std::string& filePath) const {
     std::ofstream file(filePath);
     if (!file.is_open())
         return;
@@ -507,7 +539,7 @@ void EffectObject3d::ExportToObj(const std::string& filePath) const {
     file.close();
 }
 
-void EffectObject3d::GenerateSphereVertices(float radius, int segments, int rings) {
+void EffectObject3D::GenerateSphereVertices(float radius, int segments, int rings) {
     // 緯度ごとのリングを作り、UVの継ぎ目用に各リングの端点を重複させる。
     proceduralVertices_.clear();
     proceduralIndices_.clear();
@@ -528,12 +560,12 @@ void EffectObject3d::GenerateSphereVertices(float radius, int segments, int ring
             vertex.position = {x, y, z, 1.0f};
             vertex.texcoord = {u, v};
             engine::Vector3 norm = {x, y, z};
-            float len = sqrtf(x*x + y*y + z*z);
+            float vectorLength = sqrtf(x*x + y*y + z*z);
 
-            if (len > 0.0001f) {
-                norm.x /= len;
-                norm.y /= len;
-                norm.z /= len;
+            if (vectorLength > 0.0001f) {
+                norm.x /= vectorLength;
+                norm.y /= vectorLength;
+                norm.z /= vectorLength;
             }
             vertex.normal = norm;
             proceduralVertices_.push_back(vertex);
@@ -557,7 +589,7 @@ void EffectObject3d::GenerateSphereVertices(float radius, int segments, int ring
     }
 }
 
-void EffectObject3d::GenerateCylinderVertices(float radius, float height, int segments) {
+void EffectObject3D::GenerateCylinderVertices(float radius, float height, int segments) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
@@ -642,7 +674,7 @@ void EffectObject3d::GenerateCylinderVertices(float radius, float height, int se
     }
 }
 
-void EffectObject3d::GenerateBoxVertices(const engine::Vector3& size) {
+void EffectObject3D::GenerateBoxVertices(const engine::Vector3& size) {
     // 各面に独立した法線とUVを持たせ、箱の角が滑らかに補間されないようにする。
     proceduralVertices_.clear();
     proceduralIndices_.clear();
@@ -674,7 +706,7 @@ void EffectObject3d::GenerateBoxVertices(const engine::Vector3& size) {
     }
 }
 
-void EffectObject3d::GeneratePlaneVertices(const engine::Vector2& size, int subdivisions) {
+void EffectObject3D::GeneratePlaneVertices(const engine::Vector2& size, int subdivisions) {
     // 平面を等間隔の格子に分け、変形可能な頂点とUVを生成する。
     proceduralVertices_.clear();
     proceduralIndices_.clear();
@@ -712,7 +744,7 @@ void EffectObject3d::GeneratePlaneVertices(const engine::Vector2& size, int subd
     }
 }
 
-void EffectObject3d::GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings) {
+void EffectObject3D::GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings) {
     // 大円に沿って小円を並べ、継ぎ目のUVを複製して輪状Meshを作る。
     proceduralVertices_.clear();
     proceduralIndices_.clear();
@@ -736,12 +768,12 @@ void EffectObject3d::GenerateTorusVertices(float majorRad, float minorRad, int s
             vert.texcoord = {u, v};
             engine::Vector3 center = {majorRad * cosTheta, 0, majorRad * sinTheta};
             engine::Vector3 norm = {x - center.x, y - center.y, z - center.z};
-            float len = sqrtf(norm.x*norm.x + norm.y*norm.y + norm.z*norm.z);
+            float vectorLength = sqrtf(norm.x*norm.x + norm.y*norm.y + norm.z*norm.z);
 
-            if(len>0) {
-                norm.x/=len;
-                norm.y/=len;
-                norm.z/=len;
+            if(vectorLength>0) {
+                norm.x/=vectorLength;
+                norm.y/=vectorLength;
+                norm.z/=vectorLength;
             }
             vert.normal = norm;
             proceduralVertices_.push_back(vert);
@@ -762,7 +794,7 @@ void EffectObject3d::GenerateTorusVertices(float majorRad, float minorRad, int s
     }
 }
 
-void EffectObject3d::GenerateConeVertices(float radius, float height, int segments) {
+void EffectObject3D::GenerateConeVertices(float radius, float height, int segments) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
     float halfH = height / 2.0f;
@@ -784,12 +816,12 @@ void EffectObject3d::GenerateConeVertices(float radius, float height, int segmen
         v.position = {x, -halfH, z, 1.0f};
         v.texcoord = {u, 1.0f};
         engine::Vector3 norm = {sinf(theta), radius/height, cosf(theta)};
-        float len = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
+        float vectorLength = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
 
-        if(len>0){
-            norm.x/=len;
-            norm.y/=len;
-            norm.z/=len;
+        if(vectorLength>0){
+            norm.x/=vectorLength;
+            norm.y/=vectorLength;
+            norm.z/=vectorLength;
         }
         v.normal = norm;
         proceduralVertices_.push_back(v);
@@ -825,7 +857,7 @@ void EffectObject3d::GenerateConeVertices(float radius, float height, int segmen
     }
 }
 
-void EffectObject3d::GenerateRingVertices(float outerRad, float innerRad, int segments) {
+void EffectObject3D::GenerateRingVertices(float outerRad, float innerRad, int segments) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
@@ -856,7 +888,7 @@ void EffectObject3d::GenerateRingVertices(float outerRad, float innerRad, int se
     }
 }
 
-void EffectObject3d::GenerateTriangleVertices(float size) {
+void EffectObject3D::GenerateTriangleVertices(float size) {
     // 重心が原点に来る正三角形をXZ平面へ作り、法線を上向きに揃える。
     proceduralVertices_.clear();
     proceduralIndices_.clear();
@@ -879,40 +911,40 @@ void EffectObject3d::GenerateTriangleVertices(float size) {
     proceduralIndices_.push_back(2);
 }
 
-void EffectObject3d::GenerateLanceVertices(float radius, float height, int segments) {
+void EffectObject3D::GenerateLanceVertices(float radius, float height, int segments) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
     // 下端を刃先にし、刃の肩・鍔・細い柄・石突きを一つの連続した輪郭にします。
-    constexpr float profile[][2] = {
+    constexpr float kProfile[][2] = {
         { -0.50f, 0.00f }, { -0.43f, 0.25f }, { -0.29f, 0.76f },
         { -0.15f, 1.00f }, { -0.07f, 0.57f }, { -0.02f, 0.27f },
         {  0.03f, 0.64f }, {  0.09f, 0.22f }, {  0.39f, 0.16f },
         {  0.45f, 0.35f }, {  0.50f, 0.00f }
     };
 
-    constexpr int ringCount = static_cast<int>(sizeof(profile) / sizeof(profile[0]));
+    constexpr int kRingCount = static_cast<int>(sizeof(kProfile) / sizeof(kProfile[0]));
     const int sideCount = (std::max)(6, segments);
 
-    for (int ring = 0; ring < ringCount; ++ring) {
+    for (int ring = 0; ring < kRingCount; ++ring) {
         for (int side = 0; side <= sideCount; ++side) {
             const float angle = static_cast<float>(side) * 2.0f * std::numbers::pi_v<float> /
                 static_cast<float>(sideCount);
             const float facet = (side % 2 == 0) ? 1.0f : 0.78f;
-            const float radial = radius * profile[ring][1] * facet;
+            const float radial = radius * kProfile[ring][1] * facet;
             const float cosine = std::cos(angle);
             const float sine = std::sin(angle);
             Model::VertexData vertex{};
-            vertex.position = { cosine * radial, profile[ring][0] * height,
+            vertex.position = { cosine * radial, kProfile[ring][0] * height,
                 sine * radial, 1.0f };
             vertex.texcoord = { static_cast<float>(side) / static_cast<float>(sideCount),
-                static_cast<float>(ring) / static_cast<float>(ringCount - 1) };
+                static_cast<float>(ring) / static_cast<float>(kRingCount - 1) };
             vertex.normal = { cosine, 0.0f, sine };
             proceduralVertices_.push_back(vertex);
         }
     }
 
-    for (int ring = 0; ring < ringCount - 1; ++ring) {
+    for (int ring = 0; ring < kRingCount - 1; ++ring) {
         for (int side = 0; side < sideCount; ++side) {
             const uint32_t lower = static_cast<uint32_t>(ring * (sideCount + 1) + side);
             const uint32_t upper = lower + static_cast<uint32_t>(sideCount + 1);
@@ -924,16 +956,35 @@ void EffectObject3d::GenerateLanceVertices(float radius, float height, int segme
     }
 }
 
-// 形状番号に対応する頂点を再生成し、共通UV倍率を掛けて動的Modelへ反映します。
-void EffectObject3d::UpdateProceduralMesh() {
-    if (!dynamicModel_) {
-        dynamicModel_ = std::make_unique<Model>();
-    }
-    if (GetMeshRenderer()) {
-        GetMeshRenderer()->SetModel(dynamicModel_.get());
-    }
+// シーンが保持していた共有形状だけを解放します。使用中のModelは個体が保持します。
+void EffectObject3D::ClearProceduralMeshCache() {
+    std::lock_guard<std::mutex> lock(proceduralMeshCacheMutex);
+    proceduralMeshCache.clear();
+}
 
-    int type = materialData_ ? materialData_->proceduralType : 0;
+// 形状番号とUVから生成し、球・リングは同じ形状を再利用します。
+void EffectObject3D::UpdateProceduralMesh() {
+    const int type = materialData_ ? materialData_->proceduralType : 0;
+    const bool cacheable = type == 4 || type == 10;
+    MeshCacheKey key{};
+    if (cacheable) {
+        // 浮動小数点のビットをキーにし、微小なEditor調整も別の形状として扱います。
+        key.first = reinterpret_cast<uintptr_t>(ModelManager::GetInstance()->GetModelCommon());
+        key.second = {static_cast<uint32_t>(type),
+            std::bit_cast<uint32_t>(type == 4 ? meshSettings_.sphereRadius : meshSettings_.ringOuterRadius),
+            type == 4 ? static_cast<uint32_t>(meshSettings_.sphereRings) : std::bit_cast<uint32_t>(meshSettings_.ringInnerRadius),
+            static_cast<uint32_t>(meshSettings_.meshSegments),
+            std::bit_cast<uint32_t>(meshSettings_.uvTiling.x), std::bit_cast<uint32_t>(meshSettings_.uvTiling.y), 0};
+        std::lock_guard<std::mutex> lock(proceduralMeshCacheMutex);
+        if (const auto it = proceduralMeshCache.find(key); it != proceduralMeshCache.end()) {
+            dynamicModel_ = it->second;
+            if (GetMeshRenderer()) GetMeshRenderer()->SetModel(dynamicModel_.get());
+            return;
+        }
+    }
+    // 共有済みModelを上書きせず、編集した個体だけを新しい形状へ切り替えます。
+    dynamicModel_ = std::make_shared<Model>();
+    if (GetMeshRenderer()) GetMeshRenderer()->SetModel(dynamicModel_.get());
 
     // 材質の形状番号に対応する頂点生成器を選ぶ。1と2だけ同じ生成器の形を切り替える。
     if (type == 1) {
@@ -981,11 +1032,17 @@ void EffectObject3d::UpdateProceduralMesh() {
     }
 
     dynamicModel_->CreateFromVertices(ModelManager::GetInstance()->GetModelCommon(), proceduralVertices_, proceduralIndices_);
+    if (cacheable) {
+        std::lock_guard<std::mutex> lock(proceduralMeshCacheMutex);
+        // Editorで多数の寸法を試しても無制限にGPU資源を保持しません。
+        if (proceduralMeshCache.size() >= kMaxCachedProceduralMeshes) proceduralMeshCache.clear();
+        proceduralMeshCache[key] = dynamicModel_;
+    }
 }
 
 // エフェクト設定を読み込み、前回の特殊効果を初期化してから存在する項目を適用します。
 // ファイルを開けない場合やJSON構文が不正な場合はfalseを返します。
-bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
+bool EffectObject3D::LoadFromJson(const std::string& jsonFilePath) {
     std::ifstream file(jsonFilePath);
 
     if (!file.is_open()) {

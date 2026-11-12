@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "48419977947a1f64acb1306881c2b3b0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/stage_select/gate_info_unlocked.dds",
+  "version": 1
+}
