@@ -41,30 +41,30 @@ void AudioPlayer::Finalize() {
 		}
 
 		// 再生中は StopSe がデコードスレッドの join と Voice 破棄をまとめて行います。
-		if (data->isPlaying) {
+		if (data->isPlaying_) {
 			StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
 		}
 
 		// 自然終了したワンショットにも Voice が残り得るため、終了後の分も回収します。
-		else if (data->sourceVoice) {
-			if (data->decodeThread.joinable()) {
-				data->decodeThread.join();
+		else if (data->sourceVoice_) {
+			if (data->decodeThread_.joinable()) {
+				data->decodeThread_.join();
 			}
 
-			data->sourceVoice->Stop(0);
-			data->sourceVoice->FlushSourceBuffers();
-			data->sourceVoice->DestroyVoice();
-			data->sourceVoice = nullptr;
+			data->sourceVoice_->Stop(0);
+			data->sourceVoice_->FlushSourceBuffers();
+			data->sourceVoice_->DestroyVoice();
+			data->sourceVoice_ = nullptr;
 		}
 
 		// Voice が先に解放されていても、残るデコードスレッドの終了を待ちます。
-		else if (data->decodeThread.joinable()) {
-			data->decodeThread.join();
+		else if (data->decodeThread_.joinable()) {
+			data->decodeThread_.join();
 		}
 
 
-		if (data->sourceReader) {
-			data->sourceReader.Reset();
+		if (data->sourceReader_) {
+			data->sourceReader_.Reset();
 		}
 	}
 
@@ -92,7 +92,7 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 		CP_UTF8, 0, filename.c_str(), -1, wideFilename.data(), stringSize);
 
 	HRESULT result = MFCreateSourceReaderFromURL(
-		wideFilename.c_str(), nullptr, &data->sourceReader);
+		wideFilename.c_str(), nullptr, &data->sourceReader_);
 	if (FAILED(result)) {
 		return nullptr;
 	}
@@ -108,7 +108,7 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 
 	// デコード結果を PCM に揃え、XAudio2 に渡す WAVEFORMATEX を取得する。
 	mediaType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
-	result = data->sourceReader->SetCurrentMediaType(
+	result = data->sourceReader_->SetCurrentMediaType(
 		static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM),
 		nullptr,
 		mediaType.Get());
@@ -117,7 +117,7 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 	}
 
 	Microsoft::WRL::ComPtr<IMFMediaType> outputMediaType;
-	result = data->sourceReader->GetCurrentMediaType(
+	result = data->sourceReader_->GetCurrentMediaType(
 		static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM),
 		&outputMediaType);
 	if (FAILED(result)) {
@@ -126,8 +126,8 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 
 	UINT32 waveFormatSize = 0;
 	result = MFCreateWaveFormatExFromMFMediaType(
-		outputMediaType.Get(), &data->waveFormat, &waveFormatSize);
-	if (FAILED(result) || !data->waveFormat) {
+		outputMediaType.Get(), &data->waveFormat_, &waveFormatSize);
+	if (FAILED(result) || !data->waveFormat_) {
 		return nullptr;
 	}
 
@@ -140,21 +140,21 @@ void AudioPlayer::DestroyStreamingData(SoundDataStreaming* data) {
 		return;
 	}
 
-	data->isPlaying = false;
-	data->cv.notify_one();
+	data->isPlaying_ = false;
+	data->cv_.notify_one();
 
-	if (data->decodeThread.joinable()) {
-		data->decodeThread.join();
+	if (data->decodeThread_.joinable()) {
+		data->decodeThread_.join();
 	}
 
-	if (data->sourceVoice) {
-		data->sourceVoice->Stop(0);
-		data->sourceVoice->FlushSourceBuffers();
-		data->sourceVoice->DestroyVoice();
-		data->sourceVoice = nullptr;
+	if (data->sourceVoice_) {
+		data->sourceVoice_->Stop(0);
+		data->sourceVoice_->FlushSourceBuffers();
+		data->sourceVoice_->DestroyVoice();
+		data->sourceVoice_ = nullptr;
 	}
 
-	data->sourceReader.Reset();
+	data->sourceReader_.Reset();
 }
 
 AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename) {
@@ -208,112 +208,112 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 
 
 	// 同じロード済み音源を再生し直す前に、前回のデコードと Voice を閉じます。
-	if (data->isPlaying) {
+	if (data->isPlaying_) {
 		StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
 	}
 
 	// 自然終了後に残った Voice も使い回さず破棄します。
-	else if (data->sourceVoice) {
+	else if (data->sourceVoice_) {
 		// 以前のデコードがまだ終了処理中なら、バッファ解放より先に待ちます。
-		if (data->decodeThread.joinable()) {
-			data->decodeThread.join();
+		if (data->decodeThread_.joinable()) {
+			data->decodeThread_.join();
 		}
 
-		data->sourceVoice->Stop(0);
-		data->sourceVoice->FlushSourceBuffers();
-		data->sourceVoice->DestroyVoice();
-		data->sourceVoice = nullptr;
+		data->sourceVoice_->Stop(0);
+		data->sourceVoice_->FlushSourceBuffers();
+		data->sourceVoice_->DestroyVoice();
+		data->sourceVoice_ = nullptr;
 	}
 
 	PROPVARIANT var = {};
 	PropVariantInit(&var);
 	var.vt = VT_I8;
 	var.hVal.QuadPart = 0;
-	data->sourceReader->SetCurrentPosition(GUID_NULL, var);
+	data->sourceReader_->SetCurrentPosition(GUID_NULL, var);
 	PropVariantClear(&var);
 
 
-	xAudio2_->CreateSourceVoice(&data->sourceVoice, data->waveFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback, NULL, NULL);
+	xAudio2_->CreateSourceVoice(&data->sourceVoice_, data->waveFormat_, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback_, NULL, NULL);
 
 	// 呼び出し側の音量を 0～1 に収めて新しい Voice へ適用します。
-	data->sourceVoice->SetVolume(std::clamp(volume, 0.0f, 1.0f));
+	data->sourceVoice_->SetVolume(std::clamp(volume, 0.0f, 1.0f));
 
-	data->sourceVoice->Start(0);
+	data->sourceVoice_->Start(0);
 
 	// 次のデコードループ用に再生中・終端・ループの状態を確定します。
-	data->isPlaying = true;
-	data->isEndOfStream = false;
-	data->loop = loop;
+	data->isPlaying_ = true;
+	data->isEndOfStream_ = false;
+	data->loop_ = loop;
 
 	// 新しいデコードスレッドを開始
-	data->decodeThread = std::thread(&AudioPlayer::DecodeThread, this, data);
+	data->decodeThread_ = std::thread(&AudioPlayer::DecodeThread, this, data);
 }
 
 void AudioPlayer::StopSe(AudioHandle handle) {
 	// デコード停止を通知し、スレッド終了後に Voice を破棄する。
 	auto it = streamingSoundDatas_.find(handle);
 
-	if (it == streamingSoundDatas_.end() || !it->second->isPlaying) {
+	if (it == streamingSoundDatas_.end() || !it->second->isPlaying_) {
 		return;
 	}
 
 	SoundDataStreaming* data = it->second.get();
-	data->isPlaying = false;
-	data->cv.notify_one();
+	data->isPlaying_ = false;
+	data->cv_.notify_one();
 
-	if (data->decodeThread.joinable()) {
-		data->decodeThread.join();
+	if (data->decodeThread_.joinable()) {
+		data->decodeThread_.join();
 	}
 
-	if (data->sourceVoice) {
-		data->sourceVoice->Stop(0);
-		data->sourceVoice->FlushSourceBuffers();
-		data->sourceVoice->DestroyVoice();
-		data->sourceVoice = nullptr;
+	if (data->sourceVoice_) {
+		data->sourceVoice_->Stop(0);
+		data->sourceVoice_->FlushSourceBuffers();
+		data->sourceVoice_->DestroyVoice();
+		data->sourceVoice_ = nullptr;
 	}
 
 	PROPVARIANT var = {};
 	PropVariantInit(&var);
 	var.vt = VT_I8;
 	var.hVal.QuadPart = 0;
-	data->sourceReader->SetCurrentPosition(GUID_NULL, var);
+	data->sourceReader_->SetCurrentPosition(GUID_NULL, var);
 	PropVariantClear(&var);
 
-	data->isEndOfStream = false;
+	data->isEndOfStream_ = false;
 }
 
 void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 	if (!data)
 		return;
 
-	while (data->isPlaying) {
+	while (data->isPlaying_) {
 		XAUDIO2_VOICE_STATE state = {};
-		data->sourceVoice->GetState(&state);
+		data->sourceVoice_->GetState(&state);
 
 		// バッファの空きができたらデコードを進める
 		if (state.BuffersQueued < SoundDataStreaming::kNumBuffers) {
 
 			DWORD streamFlags = 0;
 			Microsoft::WRL::ComPtr<IMFSample> mfSample;
-			HRESULT hr = data->sourceReader->ReadSample(
+			HRESULT hr = data->sourceReader_->ReadSample(
 				(DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM,
 				0, NULL, &streamFlags, NULL, &mfSample);
 
 			if (SUCCEEDED(hr) && (streamFlags & MF_SOURCE_READERF_ENDOFSTREAM)) {
-				if (data->loop) {
+				if (data->loop_) {
 					// ループ再生: ストリームの先頭に戻す
 					PROPVARIANT var = {};
 					PropVariantInit(&var);
 					var.vt = VT_I8;
 					var.hVal.QuadPart = 0;
-					data->sourceReader->SetCurrentPosition(GUID_NULL, var);
+					data->sourceReader_->SetCurrentPosition(GUID_NULL, var);
 					PropVariantClear(&var);
 
 					// この後、次のループで通常通りデコード処理に進む
 				} else {
 					// ループしない: 再生キューが空になるのを待ってスレッド終了
-					while (state.BuffersQueued > 0 && data->isPlaying) {
-						data->sourceVoice->GetState(&state);
+					while (state.BuffersQueued > 0 && data->isPlaying_) {
+						data->sourceVoice_->GetState(&state);
 						std::this_thread::sleep_for(std::chrono::milliseconds(10));
 					}
 
@@ -330,7 +330,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 				mfBuffer->Lock(&localAudioData, NULL, &localAudioDataBytes);
 
 				// ★★★ バグ修正: リングバッファの該当インデックスのバッファにデータをコピー ★★★
-				auto& currentBuffer = data->buffers[data->currentBufferIndex];
+				auto& currentBuffer = data->buffers_[data->currentBufferIndex_];
 				currentBuffer.assign(localAudioData, localAudioData + localAudioDataBytes);
 
 				mfBuffer->Unlock();
@@ -339,21 +339,21 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 				XAUDIO2_BUFFER audioBuffer = {};
 				audioBuffer.pAudioData = currentBuffer.data();
 				audioBuffer.AudioBytes = (UINT32)currentBuffer.size();
-				audioBuffer.pContext = &data->cv;
-				data->sourceVoice->SubmitSourceBuffer(&audioBuffer);
+				audioBuffer.pContext = &data->cv_;
+				data->sourceVoice_->SubmitSourceBuffer(&audioBuffer);
 
 				// ★★★ バグ修正: 次に使うバッファのインデックスを更新 ★★★
-				data->currentBufferIndex = (data->currentBufferIndex + 1) % SoundDataStreaming::kNumBuffers;
+				data->currentBufferIndex_ = (data->currentBufferIndex_ + 1) % SoundDataStreaming::kNumBuffers;
 			}
 		} else {
 			// バッファが一杯なら、コールバックからの通知を待つ
-			std::unique_lock<std::mutex> lock(data->mtx);
-			data->cv.wait_for(lock, std::chrono::milliseconds(10));
+			std::unique_lock<std::mutex> lock(data->mtx_);
+			data->cv_.wait_for(lock, std::chrono::milliseconds(10));
 		}
 	}
 
 	// isPlayingがfalseになったらループを抜けてスレッド終了
-	data->isPlaying = false;
+	data->isPlaying_ = false;
 }
 
 // --- 既存のWAV再生関数（変更なし） ---
@@ -399,8 +399,8 @@ bool AudioPlayer::IsPlaying(AudioHandle handle) const {
 		return false; // ロードされていない
 	}
 
-	// スレッドが動作中か (isPlaying フラグ) で判断
-	return it->second->isPlaying;
+	// スレッドが動作中か (isPlaying_ フラグ) で判断
+	return it->second->isPlaying_;
 }
 
 void AudioPlayer::ApplyCurrentBGMVolume() {
@@ -411,11 +411,11 @@ void AudioPlayer::ApplyCurrentBGMVolume() {
 
 	auto it = streamingSoundDatas_.find(currentBgmHandle_);
 
-	if (it == streamingSoundDatas_.end() || !it->second || !it->second->sourceVoice) {
+	if (it == streamingSoundDatas_.end() || !it->second || !it->second->sourceVoice_) {
 		return;
 	}
 
-	it->second->sourceVoice->SetVolume(currentBgmBaseVolume_ * bgmMasterVolume_);
+	it->second->sourceVoice_->SetVolume(currentBgmBaseVolume_ * bgmMasterVolume_);
 }
 
 AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
@@ -431,35 +431,35 @@ AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
 
 	auto data = CreateStreamingData(filename);
 
-	if (!data || !data->waveFormat) {
+	if (!data || !data->waveFormat_) {
 		return kInvalidPlaybackHandle;
 	}
 
 	HRESULT result = xAudio2_->CreateSourceVoice(
-		&data->sourceVoice,
-		data->waveFormat,
+		&data->sourceVoice_,
+		data->waveFormat_,
 		0,
 		XAUDIO2_DEFAULT_FREQ_RATIO,
-		&data->voiceCallback,
+		&data->voiceCallback_,
 		nullptr,
 		nullptr);
-	if (FAILED(result) || !data->sourceVoice) {
+	if (FAILED(result) || !data->sourceVoice_) {
 		return kInvalidPlaybackHandle;
 	}
 
-	data->sourceVoice->SetVolume(
+	data->sourceVoice_->SetVolume(
 		std::clamp(volume, 0.0f, 1.0f) * seMasterVolume_);
-	data->sourceVoice->SetFrequencyRatio(std::clamp(pitch, 0.5f, 2.0f));
-	data->isEndOfStream = false;
-	data->loop = false;
-	data->currentBufferIndex = 0;
-	data->isPlaying = true;
-	data->sourceVoice->Start(0);
+	data->sourceVoice_->SetFrequencyRatio(std::clamp(pitch, 0.5f, 2.0f));
+	data->isEndOfStream_ = false;
+	data->loop_ = false;
+	data->currentBufferIndex_ = 0;
+	data->isPlaying_ = true;
+	data->sourceVoice_->Start(0);
 
 	const PlaybackHandle handle = nextPlaybackHandle_++;
 	SoundDataStreaming* rawData = data.get();
 	transientSoundDatas_.emplace(handle, std::move(data));
-	rawData->decodeThread = std::thread(&AudioPlayer::DecodeThread, this, rawData);
+	rawData->decodeThread_ = std::thread(&AudioPlayer::DecodeThread, this, rawData);
 	return handle;
 }
 
@@ -468,7 +468,7 @@ bool AudioPlayer::IsTransientPlaying(PlaybackHandle handle) const {
 	const auto found = transientSoundDatas_.find(handle);
 	return found != transientSoundDatas_.end() &&
 		found->second &&
-		found->second->isPlaying.load();
+		found->second->isPlaying_.load();
 }
 
 void AudioPlayer::StopTransient(PlaybackHandle handle) {
@@ -487,7 +487,7 @@ void AudioPlayer::Update() {
 	// 自然終了した一時 SE をここで回収し、同時発音数を増やし続けない。
 	for (auto iterator = transientSoundDatas_.begin();
 		iterator != transientSoundDatas_.end();) {
-		if (iterator->second && iterator->second->isPlaying.load()) {
+		if (iterator->second && iterator->second->isPlaying_.load()) {
 			++iterator;
 			continue;
 		}

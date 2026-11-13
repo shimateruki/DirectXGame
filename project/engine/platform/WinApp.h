@@ -13,10 +13,10 @@ public:
     inline static constexpr int32_t kClientHeight = 1080;
     static constexpr int32_t GetClientWidth() { return kClientWidth; }
     static constexpr int32_t GetClientHeight() { return kClientHeight; }
-    static int32_t GetWindowWidth() { return kWindowWidth; }
-    static int32_t GetWindowHeight() { return kWindowHeight; }
+    static int32_t GetWindowWidth() { return windowWidth_; }
+    static int32_t GetWindowHeight() { return windowHeight_; }
     /// <summary>論理解像度を変えず、実ウィンドウの幅・高さを一緒に更新する。</summary>
-    static void SetWindowSize(int32_t width, int32_t height) { kWindowWidth = width; kWindowHeight = height; }
+    static void SetWindowSize(int32_t width, int32_t height) { windowWidth_ = width; windowHeight_ = height; }
 
     // クライアント内に配置する映像領域。位置・大きさはピクセル。
     // 関連：WinApp（この型を使う機能の本体）
@@ -98,8 +98,8 @@ public:
     void SetCursorRecenteringSuppressed(bool suppressed) { cursorRecenteringSuppressed_ = suppressed; }
 
 private:
-    inline static int32_t kWindowWidth = 1280;
-    inline static int32_t kWindowHeight = 720;
+    inline static int32_t windowWidth_ = 1280;
+    inline static int32_t windowHeight_ = 720;
     HWND hwnd_ = nullptr;
     HINSTANCE hInstance_ = nullptr;
     bool isCursorClipping_ = false;

@@ -105,8 +105,8 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
 
     RECT clientRect{};
     GetClientRect(hwnd_, &clientRect);
-    kWindowWidth = clientRect.right - clientRect.left;
-    kWindowHeight = clientRect.bottom - clientRect.top;
+    windowWidth_ = clientRect.right - clientRect.left;
+    windowHeight_ = clientRect.bottom - clientRect.top;
 
     ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
 
@@ -121,8 +121,8 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
         }
     } catch (...) {}
     GetClientRect(hwnd_, &clientRect);
-    kWindowWidth = clientRect.right;
-    kWindowHeight = clientRect.bottom;
+    windowWidth_ = clientRect.right;
+    windowHeight_ = clientRect.bottom;
 }
 
 WinApp::DisplayState WinApp::CaptureDisplayState() const {

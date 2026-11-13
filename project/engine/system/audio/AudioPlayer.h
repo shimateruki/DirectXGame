@@ -62,28 +62,28 @@ public:
 /// <summary>Media Foundation で逐次デコードする音声の再生状態です。</summary>
 // 関連：AudioPlayer（再生状態の管理）、AudioVoiceCallback（完了通知）
 struct SoundDataStreaming {
-	Microsoft::WRL::ComPtr<IMFSourceReader> sourceReader;
-	WAVEFORMATEX* waveFormat = nullptr;
+	Microsoft::WRL::ComPtr<IMFSourceReader> sourceReader_;
+	WAVEFORMATEX* waveFormat_ = nullptr;
 
-	IXAudio2SourceVoice* sourceVoice = nullptr;
-	AudioVoiceCallback voiceCallback;
+	IXAudio2SourceVoice* sourceVoice_ = nullptr;
+	AudioVoiceCallback voiceCallback_;
 
-	std::thread decodeThread;
-	std::mutex mtx;
-	std::condition_variable cv;
+	std::thread decodeThread_;
+	std::mutex mtx_;
+	std::condition_variable cv_;
 
-	std::atomic_bool isPlaying = false;
-	bool isEndOfStream = false;
-	bool loop = false;
+	std::atomic_bool isPlaying_ = false;
+	bool isEndOfStream_ = false;
+	bool loop_ = false;
 
 	static const int kNumBuffers = 3;
-	std::vector<BYTE> buffers[kNumBuffers];
-	int currentBufferIndex = 0;
+	std::vector<BYTE> buffers_[kNumBuffers];
+	int currentBufferIndex_ = 0;
 
 	~SoundDataStreaming() {
-		if (waveFormat) {
-			CoTaskMemFree(waveFormat);
-			waveFormat = nullptr;
+		if (waveFormat_) {
+			CoTaskMemFree(waveFormat_);
+			waveFormat_ = nullptr;
 		}
 	}
 };

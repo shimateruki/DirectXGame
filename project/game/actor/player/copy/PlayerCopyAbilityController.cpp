@@ -55,8 +55,8 @@ const char* GetEnemyTypeForMorph(int morphType) {
 // 現在のコピー種別と能力セッションの所有者。具体的な能力型を公開ヘッダーから隠す。
 class PlayerCopyAbilityController::Impl {
   public:
-    int morphType = static_cast<int>(Player::EnemyMorphType::None);
-    std::unique_ptr<ICopyAbilitySession> session;
+    int morphType_ = static_cast<int>(Player::EnemyMorphType::None);
+    std::unique_ptr<ICopyAbilitySession> session_;
 };
 
 PlayerCopyAbilityController::PlayerCopyAbilityController() : impl_(std::make_unique<Impl>()) {
@@ -67,8 +67,8 @@ PlayerCopyAbilityController::~PlayerCopyAbilityController() = default;
 
 void PlayerCopyAbilityController::Activate(int morphType, const EnemyAttackProfile& attackProfile) {
     // 種別を切り替える時に新しいセッションへ置き換え、前の状態を持ち越さない。
-    impl_->morphType = morphType;
-    impl_->session = CreateSession(morphType, attackProfile);
+    impl_->morphType_ = morphType;
+    impl_->session_ = CreateSession(morphType, attackProfile);
 }
 
 void PlayerCopyAbilityController::ActivateDefault(int morphType) {
@@ -76,8 +76,8 @@ void PlayerCopyAbilityController::ActivateDefault(int morphType) {
     const char* enemyType = GetEnemyTypeForMorph(morphType);
 
     if (!enemyType || enemyType[0] == '\0') {
-        impl_->session.reset();
-        impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
+        impl_->session_.reset();
+        impl_->morphType_ = static_cast<int>(Player::EnemyMorphType::None);
         return;
     }
 
@@ -88,93 +88,93 @@ void PlayerCopyAbilityController::ActivateDefault(int morphType) {
 
 void PlayerCopyAbilityController::ProcessInput(Player& player, const PlayerCopyAbilityInput& input) {
     // 入力の意味付けは能力別セッションへ委譲する。
-    if (impl_->session) {
-        impl_->session->ProcessInput(player, input);
+    if (impl_->session_) {
+        impl_->session_->ProcessInput(player, input);
     }
 }
 
 void PlayerCopyAbilityController::Update(Player& player, float deltaTime) {
     // 時間が進まないフレームでは能力の時計も進めない。
-    if (impl_->session && deltaTime > 0.0f) {
-        impl_->session->Update(player, deltaTime);
+    if (impl_->session_ && deltaTime > 0.0f) {
+        impl_->session_->Update(player, deltaTime);
     }
 }
 
 void PlayerCopyAbilityController::NotifyDamageStarted(Player& player) {
-    if (impl_->session)
-        impl_->session->NotifyDamageStarted(player);
+    if (impl_->session_)
+        impl_->session_->NotifyDamageStarted(player);
 }
 
 void PlayerCopyAbilityController::Interrupt(Player& player) {
-    if (impl_->session)
-        impl_->session->Cancel(player);
+    if (impl_->session_)
+        impl_->session_->Cancel(player);
 }
 
 void PlayerCopyAbilityController::Cancel(Player& player) {
     // セッションに演出を片付けさせてから破棄し、変身種別を未コピーへ戻す。
     Interrupt(player);
-    impl_->session.reset();
+    impl_->session_.reset();
 
-    impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
+    impl_->morphType_ = static_cast<int>(Player::EnemyMorphType::None);
 }
 
 void PlayerCopyAbilityController::Draw(Player& player, ID3D12Resource* pointLight, ID3D12Resource* spotLight,
                                        Camera* camera, int previewBufferIndex) {
     // 能力固有の3D表示を、現在のセッションがある時だけ描く。
-    if (impl_->session)
-        impl_->session->Draw(player, pointLight, spotLight, camera, previewBufferIndex);
+    if (impl_->session_)
+        impl_->session_->Draw(player, pointLight, spotLight, camera, previewBufferIndex);
 }
 
 bool PlayerCopyAbilityController::HasOwnedVisuals() const {
     // 専用描画パスが必要かどうかを能力側の所有状態で決める。
-    return impl_->session && impl_->session->HasOwnedVisuals();
+    return impl_->session_ && impl_->session_->HasOwnedVisuals();
 }
 
 const char* PlayerCopyAbilityController::GetStateLabel() const {
     // コピーがない間はUIへ「未コピー」を返す。
-    return impl_->session ? impl_->session->GetStateLabel() : "未コピー";
+    return impl_->session_ ? impl_->session_->GetStateLabel() : "未コピー";
 }
 
 void PlayerCopyAbilityController::SetPreviewAttackId(const std::string& id) {
     // 攻撃プレビュー中の絞り込み指定だけを現セッションへ渡す。
-    if (impl_->session)
-        impl_->session->SetPreviewAttackId(id);
+    if (impl_->session_)
+        impl_->session_->SetPreviewAttackId(id);
 }
 
 void PlayerCopyAbilityController::DrawOwnedVisuals(Player& player, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
                                                    Camera* camera, int previewBufferIndex) {
     // 深度・画面取得テクスチャを使う能力の見た目を専用パスへ転送する。
-    if (impl_->session) {
-        impl_->session->DrawOwnedVisuals(player, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
+    if (impl_->session_) {
+        impl_->session_->DrawOwnedVisuals(player, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
     }
 }
 
 bool PlayerCopyAbilityController::NotifyGuardedHit(Player& player, const engine::Vector3& sourcePosition) {
     // ガード成功後の能力固有反応が発生したかを呼び出し元へ返す。
-    return impl_->session && impl_->session->NotifyGuardedHit(player, sourcePosition);
+    return impl_->session_ && impl_->session_->NotifyGuardedHit(player, sourcePosition);
 }
 
 bool PlayerCopyAbilityController::HandlesMorphType(int morphType) const {
     // セッションの実在と変身種別の一致をともに確認する。
-    return impl_->session && impl_->morphType == morphType;
+    return impl_->session_ && impl_->morphType_ == morphType;
 }
 
 bool PlayerCopyAbilityController::IsActive() const {
     // 種別だけ残っていても、実行可能なセッションがなければ無効とみなす。
-    return impl_->session != nullptr;
+    return impl_->session_ != nullptr;
 }
 
 PlayerAttackMovement PlayerCopyAbilityController::GetAttackMovement() const {
     // 制限の寿命は能力側が所有するため、コピー解除後にタイマーだけ残りません。
-    return impl_->session ? impl_->session->GetAttackMovement() : PlayerAttackMovement{};
+    return impl_->session_ ? impl_->session_->GetAttackMovement() : PlayerAttackMovement{};
 }
 
 bool PlayerCopyAbilityController::CanBreakImpactGate() const {
     // ゲート破壊の可否は現在の能力動作に応じて変わる。
-    return impl_->session && impl_->session->CanBreakImpactGate();
+    return impl_->session_ && impl_->session_->CanBreakImpactGate();
 }
 
 bool PlayerCopyAbilityController::IsPinkBounceSlamImpactActive() const {
     // ピンク能力の着地衝撃が有効な瞬間だけ判定を通す。
-    return impl_->session && impl_->session->IsPinkBounceSlamImpactActive();
+    return impl_->session_ && impl_->session_->IsPinkBounceSlamImpactActive();
 }
