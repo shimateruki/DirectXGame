@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "game/actor/enemy/combat/EnemyAttackSelection.h"
 
 #include "BaseEnemy.h"
@@ -130,6 +130,9 @@ class EnemyFalseKingSlime final : public BaseEnemy {
 
     /// <summary>指定位置を中心に最終戦の闘技場を開始する。</summary>
     void BeginFinalArena(const engine::Vector3& position);
+
+    /// <summary>王冠継承の演出開始を受けて、戦闘中の表示を片付ける。</summary>
+    void OnCrownFinaleStarted();
 
     /// <summary>王冠封印から最終戦までの進行を中断・片付ける。</summary>
     void AbortCrownFinale();
