@@ -37,7 +37,6 @@
 #include "game/actor/gimmick/trigger/GimmickBossGate.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 #ifdef USE_IMGUI
-#include "EditorToolSettings.h"
 #include "imgui.h"
 #endif
 
@@ -56,66 +55,6 @@ constexpr float kTwoPi = kPi * 2.0f;
 constexpr const char* kGoalCrownSparklePreset = "crown_goal_idle_sparkle";
 constexpr const char* kGoalCrownTwinklePreset = "crown_idle_twinkle";
 
-// 頭上の王冠のばね・減衰・移動上限。見た目の揺れを調整し、プレイヤーの物理位置とは分離する。
-struct GoalCrownPhysicsTuning {
-    float positionStiffness = 76.0f;
-    float positionDamping = 8.8f;
-    float angularStiffness = 52.0f;
-    float angularDamping = 7.4f;
-    float maxPlanarOffset = 0.32f;
-    float maxSink = 0.18f;
-    float maxLift = 0.23f;
-    float tiltFromOffset = 1.65f;
-    float tiltFromVelocity = 0.045f;
-    float bodyTiltFollow = 0.34f;
-    float landingDownVelocity = -1.15f;
-    float landingRollVelocity = 2.20f;
-    float compressionScale = 0.14f;
-};
-
-GoalCrownPhysicsTuning& GetGoalCrownPhysicsTuning() {
-    // ImGui調整値をフレーム間で保持し、ゴール演出の疑似物理へ反映する。
-    static GoalCrownPhysicsTuning tuning;
-    return tuning;
-}
-
-#ifdef USE_IMGUI
-// 開発時だけ王冠のばね、着地、変形の調整UIを表示します。
-void DrawGoalCrownPhysicsTuning() {
-    // 診断表示が有効なときだけ王冠のばね・着地係数を調整可能にする。
-    if (!EditorToolSettings::Get().IsVisible("diagnosticWindows"))
-        return;
-    GoalCrownPhysicsTuning& tuning = GetGoalCrownPhysicsTuning();
-
-    if (ImGui::Begin("ゴール王冠・疑似物理調整")) {
-        ImGui::TextUnformatted("位置バネ");
-        ImGui::SliderFloat("硬さ##CrownPosition", &tuning.positionStiffness, 20.0f, 180.0f, "%.1f");
-        ImGui::SliderFloat("減衰##CrownPosition", &tuning.positionDamping, 2.0f, 24.0f, "%.2f");
-        ImGui::SliderFloat("横ずれ上限", &tuning.maxPlanarOffset, 0.05f, 0.60f, "%.3f");
-        ImGui::SliderFloat("沈み上限", &tuning.maxSink, 0.02f, 0.35f, "%.3f");
-        ImGui::SliderFloat("浮き上限", &tuning.maxLift, 0.02f, 0.45f, "%.3f");
-
-        ImGui::TextUnformatted("傾きバネ");
-        ImGui::SliderFloat("硬さ##CrownRotation", &tuning.angularStiffness, 10.0f, 140.0f, "%.1f");
-        ImGui::SliderFloat("減衰##CrownRotation", &tuning.angularDamping, 1.0f, 20.0f, "%.2f");
-        ImGui::SliderFloat("ずれから傾く量", &tuning.tiltFromOffset, 0.0f, 3.0f, "%.2f");
-        ImGui::SliderFloat("速度から傾く量", &tuning.tiltFromVelocity, 0.0f, 0.12f, "%.3f");
-        ImGui::SliderFloat("スライム傾き追従", &tuning.bodyTiltFollow, 0.0f, 1.0f, "%.2f");
-
-        ImGui::TextUnformatted("着地と変形");
-        ImGui::SliderFloat("着地下向き速度", &tuning.landingDownVelocity, -3.0f, 0.0f, "%.2f");
-        ImGui::SliderFloat("着地回転速度", &tuning.landingRollVelocity, -5.0f, 5.0f, "%.2f");
-        ImGui::SliderFloat("王冠の潰れ量", &tuning.compressionScale, 0.0f, 0.30f, "%.2f");
-
-        if (ImGui::Button("既定値に戻す")) {
-            tuning = GoalCrownPhysicsTuning{};
-        }
-    }
-
-    ImGui::End();
-}
-#endif
-
 engine::Vector3 QuadraticBezier(const engine::Vector3& start, const engine::Vector3& control, const engine::Vector3& end, float rate) {
     // 始点と終点を正確に通る二次曲線で、王冠の移動に弧を付ける。
     const float t = std::clamp(rate, 0.0f, 1.0f);
@@ -123,15 +62,6 @@ engine::Vector3 QuadraticBezier(const engine::Vector3& start, const engine::Vect
     return start * (inv * inv) + control * (2.0f * inv * t) + end * (t * t);
 }
 
-// 回転補間が大回りしないようYawを±πへ折り返します。
-float NormalizeYaw(float yaw) {
-    // 回転差の補間で大回りしないよう角度を±πへ折り返す。
-    while (yaw > kPi)
-        yaw -= kTwoPi;
-    while (yaw < -kPi)
-        yaw += kTwoPi;
-    return yaw;
-}
 
 // 王冠や体の寸法は配置倍率ではなく、描画に使うワールド変換から求める。
 engine::Vector3 GoalWorldScale(engine::Object3D* object) {
@@ -220,11 +150,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
         goalBurstEmitTimer_ = 0.0f;
         goalPlayerSnapshotValid_ = false;
         goalCrownSnapshotValid_ = false;
-        goalCrownSpringInitialized_ = false;
-        goalCrownSpringPosition_ = {};
-        goalCrownSpringVelocity_ = {};
-        goalCrownSpringRotation_ = {};
-        goalCrownSpringRotationVelocity_ = {};
+        goalCinematicPlayer_.ResetSpringAttachment("goalCrown");
         goalCameraSnapshotValid_ = false;
         goalReturnFadeStarted_ = false;
         goalLandingCuePlayed_ = false;
@@ -270,11 +196,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
     goalCrownPosition_ = crownObject ? crownObject->GetWorldPosition()
                                      : (player_ ? player_->GetWorldPosition() : engine::Vector3::ZERO);
     goalCrownSnapshotValid_ = false;
-    goalCrownSpringInitialized_ = false;
-    goalCrownSpringPosition_ = goalCrownPosition_;
-    goalCrownSpringVelocity_ = {};
-    goalCrownSpringRotation_ = {};
-    goalCrownSpringRotationVelocity_ = {};
+    goalCinematicPlayer_.ResetSpringAttachment("goalCrown");
 
     if (crownObject) {
         // 演出で王冠を動かす前のTransformを控え、終了時に配置状態へ戻せるようにする。
@@ -932,9 +854,6 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     }
 
     UpdateGoalPlayerCelebration(deltaTime);
-#ifdef USE_IMGUI
-    if (ImGui::GetCurrentContext() && !ImGui::GetDrawData()) DrawGoalCrownPhysicsTuning();
-#endif
     UpdateGoalCrownMotion(deltaTime);
     // AIや物理を再開せず、動かした表示物の付属エフェクトだけを同フレームで追従させる。
     if (goalCrownObject_) goalCrownObject_->UpdateAttachedEffects(deltaTime);
@@ -973,7 +892,6 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     }
 
     // 王冠の着地点はプレイヤーの現在姿勢とモデルの下端から求め、潰れ・伸びにも追従させる。
-    const GoalCrownPhysicsTuning& physics = GetGoalCrownPhysicsTuning();
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& presentation = goalPresentationTuning_;
     const float t = goalPresentationTimer_;
@@ -1056,12 +974,8 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             crownScale.z *= 1.0f + descentPulse * 0.016f;
         }
 
-        // 着地前の毎フレームは王冠の見た目の位置をバネの初期値へ揃える。
-        goalCrownSpringInitialized_ = false;
-        goalCrownSpringPosition_ = crownPosition;
-        goalCrownSpringVelocity_ = {};
-        goalCrownSpringRotation_ = crownRotation;
-        goalCrownSpringRotationVelocity_ = {};
+        // 着地前は積分状態を破棄し、着地したフレームで装着先から初期化する。
+        goalCinematicPlayer_.ResetSpringAttachment("goalCrown");
     } else {
         engine::Vector3 targetPosition = headPosition + goalMoveForward_ * (squashRate * 0.055f);
         float motionEnergy = 0.0f;
@@ -1072,86 +986,12 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             motionEnergy = std::sin(jumpRate * kPi);
         }
 
-        if (!goalCrownSpringInitialized_) {
-            goalCrownSpringPosition_ = targetPosition + engine::Vector3{0.0f, -0.08f, 0.0f};
-            goalCrownSpringVelocity_ = goalMoveForward_ * -0.18f + engine::Vector3{0.0f, physics.landingDownVelocity, 0.0f};
-            goalCrownSpringRotation_ = {goalCrownBaseRotation_.x + 0.10f, goalCrownBaseRotation_.y + 0.52f,
-                                        goalCrownBaseRotation_.z - 0.12f};
-            goalCrownSpringRotationVelocity_ = {0.0f, 0.0f, physics.landingRollVelocity};
-            goalCrownSpringInitialized_ = true;
-        }
-
-        // 長いフレームを制限し、必要なら小刻みに積分して王冠の揺れを安定させる。
-        const float frameDeltaTime = std::clamp(deltaTime, 0.0f, 1.0f / 30.0f);
-        const int substepCount = std::max(1, static_cast<int>(std::ceil(frameDeltaTime / (1.0f / 120.0f))));
-        const float substep = frameDeltaTime / static_cast<float>(substepCount);
-
-        for (int step = 0; step < substepCount; ++step) {
-            const engine::Vector3 springDelta = targetPosition - goalCrownSpringPosition_;
-            const engine::Vector3 acceleration = springDelta * (physics.positionStiffness + motionEnergy * 8.0f) -
-                                         goalCrownSpringVelocity_ * physics.positionDamping;
-            goalCrownSpringVelocity_ = goalCrownSpringVelocity_ + acceleration * substep;
-            goalCrownSpringPosition_ = goalCrownSpringPosition_ + goalCrownSpringVelocity_ * substep;
-        }
-
-        // バネが跳ね過ぎても頭から大きく外れないよう、水平と上下の偏差を別々に制限する。
-        engine::Vector3 crownOffset = goalCrownSpringPosition_ - targetPosition;
-        const float maxPlanarOffset = physics.maxPlanarOffset + motionEnergy * 0.05f;
-        const float planarLength = std::sqrt(crownOffset.x * crownOffset.x + crownOffset.z * crownOffset.z);
-
-        if (planarLength > maxPlanarOffset && planarLength > 0.0001f) {
-            const float rate = maxPlanarOffset / planarLength;
-            crownOffset.x *= rate;
-            crownOffset.z *= rate;
-            goalCrownSpringVelocity_.x *= 0.55f;
-            goalCrownSpringVelocity_.z *= 0.55f;
-        }
-
-        const float unclampedY = crownOffset.y;
-        crownOffset.y = std::clamp(crownOffset.y, -physics.maxSink, physics.maxLift + motionEnergy * 0.04f);
-
-        if (crownOffset.y != unclampedY) {
-            goalCrownSpringVelocity_.y *= 0.32f;
-        }
-
-        crownPosition = targetPosition + crownOffset;
-        goalCrownSpringPosition_ = crownPosition;
-
-        // 王冠の位置ずれと速度から前後・左右の傾きを求め、プレイヤー本体の傾きも加える。
-        const float forwardOffset = engine::Math::Dot(crownOffset, goalMoveForward_);
-        const float rightOffset = engine::Math::Dot(crownOffset, goalMoveRight_);
-        const float forwardSpeed = engine::Math::Dot(goalCrownSpringVelocity_, goalMoveForward_);
-        const float rightSpeed = engine::Math::Dot(goalCrownSpringVelocity_, goalMoveRight_);
-        engine::Vector3 targetRotation = goalCrownBaseRotation_;
-        targetRotation.x += (playerRotation.x - goalPlayerBaseRotation_.x) * physics.bodyTiltFollow -
-                            forwardOffset * physics.tiltFromOffset - forwardSpeed * physics.tiltFromVelocity;
-        targetRotation.z += (playerRotation.z - goalPlayerBaseRotation_.z) * physics.bodyTiltFollow +
-                            rightOffset * physics.tiltFromOffset + rightSpeed * physics.tiltFromVelocity;
-        targetRotation.x =
-            std::clamp(targetRotation.x, goalCrownBaseRotation_.x - 0.52f, goalCrownBaseRotation_.x + 0.52f);
-        targetRotation.z =
-            std::clamp(targetRotation.z, goalCrownBaseRotation_.z - 0.52f, goalCrownBaseRotation_.z + 0.52f);
-        const float targetYaw = goalCrownBaseRotation_.y + NormalizeYaw(playerRotation.y - goalPlayerBaseRotation_.y);
-        targetRotation.y = goalCrownSpringRotation_.y + NormalizeYaw(targetYaw - goalCrownSpringRotation_.y);
-
-        // Yaw差を最短角へ畳んでから回転バネを積分する。
-        for (int step = 0; step < substepCount; ++step) {
-            engine::Vector3 rotationDelta = targetRotation - goalCrownSpringRotation_;
-            rotationDelta.y = NormalizeYaw(rotationDelta.y);
-            const engine::Vector3 acceleration =
-                rotationDelta * physics.angularStiffness - goalCrownSpringRotationVelocity_ * physics.angularDamping;
-            goalCrownSpringRotationVelocity_ = goalCrownSpringRotationVelocity_ + acceleration * substep;
-            goalCrownSpringRotation_ = goalCrownSpringRotation_ + goalCrownSpringRotationVelocity_ * substep;
-        }
-
-        crownRotation = goalCrownSpringRotation_;
-
-        // 下向きの偏差と速度が大きいときだけ、王冠を少し潰して着地感を出す。
-        const float compression =
-            std::clamp(-crownOffset.y * 2.2f + std::max(0.0f, -goalCrownSpringVelocity_.y) * 0.045f, 0.0f, 0.35f);
-        crownScale.x *= 1.0f + compression * physics.compressionScale;
-        crownScale.y *= 1.0f - compression * physics.compressionScale * 0.72f;
-        crownScale.z *= 1.0f + compression * physics.compressionScale;
+        const auto pose = goalCinematicPlayer_.UpdateSpringAttachment("goalCrown",
+            {targetPosition, goalCrownBaseRotation_, playerRotation - goalPlayerBaseRotation_,
+             goalMoveForward_, goalMoveRight_, motionEnergy}, deltaTime);
+        crownPosition = pose.position;
+        crownRotation = pose.rotation;
+        crownScale = {crownScale.x * pose.scale.x, crownScale.y * pose.scale.y, crownScale.z * pose.scale.z};
     }
 
     // 描画と後続の演出から参照される確定位置を、Object3dとSceneの状態へ反映する。
@@ -1335,43 +1175,21 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
     if (player_ && goalCrownObject_) {
         const auto body=GoalWorldCorners(player_);
         const auto crown=GoalWorldCorners(goalCrownObject_);
-        auto low=body[0],high=body[0];
-        for (const auto& points:{body,crown}) for (const auto& p:points) {
-            low={(std::min)(low.x,p.x),(std::min)(low.y,p.y),(std::min)(low.z,p.z)};
-            high={(std::max)(high.x,p.x),(std::max)(high.y,p.y),(std::max)(high.z,p.z)};
-        }
-        auto direction=target-eye;
-        if (engine::Math::Length(direction)<0.001f) direction=goalMoveForward_*-1.0f+engine::Vector3{0,-0.25f,0};
-        auto forward=engine::Math::Normalize(direction);
-        if (std::abs(forward.y)>0.95f) forward=engine::Math::Normalize(goalMoveForward_*-0.5f+engine::Vector3{0,forward.y,0});
-        const auto right=engine::Math::Normalize(engine::Math::Cross({0,1,0},forward));
-        const auto up=engine::Math::Cross(forward,right);
-        auto center=(low+high)*0.5f;
-        const float tanY=std::tan(fov*0.5f);
-        // エディターのウィンドウ寸法とGame Viewの描画比率は異なるため、実投影行列から求める。
-        const auto& projection=presentationCamera->GetProjectionMatrix();
-        const float aspect=std::abs(projection.m[0][0])>0.0001f ? std::abs(projection.m[1][1]/projection.m[0][0]) : 16.0f/9.0f;
-        const float tanX=tanY*aspect;
-        const float margin=camera.cameraSafeMargin;
-        const float uiBlend=AnimationInterpolation::ApplyEasing(AnimationInterpolation::SegmentRate(t,animation.resultUiTime-0.35f,animation.resultUiTime),AnimationInterpolation::EasingType::SmootherStep);
-        center=center+goalMoveRight_*(camera.resultTargetSide*uiBlend);
-        const float reserved=(std::max)(margin,(std::min)(0.65f,camera.resultUiCenterY+0.14f*camera.resultUiScale));
-        const float top=1.0f-2.0f*(margin+(reserved-margin)*uiBlend);
-        const float bottom=-1.0f+2.0f*margin;
-        const float middle=(top+bottom)*0.5f;
-        const float horizontal=1.0f-2.0f*margin;
-        float distance=engine::Math::Length(target-eye);
-        for (const auto& points:{body,crown}) for (const auto& p:points) {
-            const auto delta=p-center;
-            const float x=engine::Math::Dot(delta,right),y=engine::Math::Dot(delta,up),z=engine::Math::Dot(delta,forward);
-            distance=(std::max)({distance,0.25f-z,
-                std::abs(x)/(tanX*horizontal)-z,
-                (y-top*tanY*z)/(tanY*(top-middle)),
-                (-y+bottom*tanY*z)/(tanY*(middle-bottom))});
-        }
-        // 開始時の向きを保持しつつ対象の中心へ寄せ、結果UIのための上側余白を確保する。
-        target=center-up*(middle*tanY*distance);
-        eye=target-forward*distance;
+        std::array<engine::Vector3, 16> points;
+        std::copy(body.begin(), body.end(), points.begin());
+        std::copy(crown.begin(), crown.end(), points.begin() + body.size());
+        const auto& projection = presentationCamera->GetProjectionMatrix();
+        const float aspect = std::abs(projection.m[0][0]) > 0.0001f
+            ? std::abs(projection.m[1][1] / projection.m[0][0]) : 16.0f / 9.0f;
+        const float uiBlend = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(t, animation.resultUiTime - 0.35f, animation.resultUiTime),
+            AnimationInterpolation::EasingType::SmootherStep);
+        const float reserved = (std::max)(camera.cameraSafeMargin,
+            (std::min)(0.65f, camera.resultUiCenterY + 0.14f * camera.resultUiScale));
+        // UIの実寸から必要な余白を渡し、対象サイズに応じた距離計算は共通再生器へ任せる。
+        engine::CinematicPlayer::FitCameraToPoints(points, fov, aspect, camera.cameraSafeMargin,
+            camera.cameraSafeMargin + (reserved - camera.cameraSafeMargin) * uiBlend,
+            goalMoveRight_ * (camera.resultTargetSide * uiBlend), goalMoveForward_, eye, target);
     }
     presentationCamera->SetFovY(fov);
     const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
@@ -1556,6 +1374,8 @@ void GamePlayScene::UpdateSceneSystems(float deltaTime) {
     CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
     objectManager_->Update(deltaTime);
+    // 走査が終わってから、闘技場の破片を即時登録できる演出を始める。
+    StartPendingCrownFinale();
 
     if (gameRule_) {
         gameRule_->Update(deltaTime);

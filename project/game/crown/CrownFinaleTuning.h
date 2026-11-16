@@ -44,7 +44,6 @@ struct CrownFinaleTuning {
 
     // 決着演出の長さ、移動量、カメラ揺れ。
     float movieDuration = 18.0f;
-    float escapeHeight = 32.0f;
     float movieShake = 1.0f;
     float movieWingScale = 1.0f;
     float destinationX = 160.0f;
@@ -55,8 +54,6 @@ struct CrownFinaleTuning {
     float movieFragmentPullTime = 0.35f;
     float movieFragmentAbsorbTime = 0.46f;
     float movieFragmentDistance = 3.0f;
-    float movieFragmentScale = 1.0f;
-    float movieFragmentFallArc = 2.0f;
     float movieFragmentCameraDistance = 1.0f;
 
 
@@ -107,7 +104,6 @@ struct CrownFinaleTuning {
         limit(sealBarrageDamage, 1.0f, 40.0f, 12.0f);
         limit(sealBarrageRecovery, 1.0f, 8.0f, 3.5f);
         limit(movieDuration, 12.0f, 24.0f, 14.0f);
-        limit(escapeHeight, 18.0f, 60.0f, 32.0f);
         limit(movieShake, 0.0f, 2.0f, 1.0f);
         limit(movieWingScale, 0.5f, 2.0f, 1.0f);
         limit(destinationX, 130.0f, 240.0f, 160.0f);
@@ -116,8 +112,6 @@ struct CrownFinaleTuning {
         limit(movieFragmentPullTime, 0.28f, 0.40f, 0.35f);
         limit(movieFragmentAbsorbTime, 0.40f, 0.49f, 0.46f);
         limit(movieFragmentDistance, 1.5f, 5.5f, 3.0f);
-        limit(movieFragmentScale, 0.65f, 1.5f, 1.0f);
-        limit(movieFragmentFallArc, 0.0f, 6.0f, 2.0f);
         limit(movieFragmentCameraDistance, 0.7f, 1.5f, 1.0f);
 
         // 編集や外部JSONで工程が逆転しないよう、各カットの最低時間を保証します。
@@ -184,7 +178,6 @@ struct CrownFinaleTuning {
         read("sealBarrageCameraHeight", sealBarrageCameraHeight);
         read("sealBarrageDamage", sealBarrageDamage);
         read("sealBarrageRecovery", sealBarrageRecovery);
-        read("escapeHeight", escapeHeight);
         read("destinationX", destinationX);
         read("movieShake", movieShake);
         read("movieWingScale", movieWingScale);
@@ -193,8 +186,6 @@ struct CrownFinaleTuning {
         read("movieFragmentPullTime", movieFragmentPullTime);
         read("movieFragmentAbsorbTime", movieFragmentAbsorbTime);
         read("movieFragmentDistance", movieFragmentDistance);
-        read("movieFragmentScale", movieFragmentScale);
-        read("movieFragmentFallArc", movieFragmentFallArc);
         read("movieFragmentCameraDistance", movieFragmentCameraDistance);
         read("movieRageTime", movieRageTime);
         read("movieBodyTime", movieBodyTime);
@@ -239,7 +230,6 @@ struct CrownFinaleTuning {
                                {"sealBarrageCameraHeight", sealBarrageCameraHeight},
                                {"sealBarrageDamage", sealBarrageDamage},
                                {"sealBarrageRecovery", sealBarrageRecovery},
-                               {"escapeHeight", escapeHeight},
                                {"destinationX", destinationX},
                                {"movieShake", movieShake},
                                {"movieWingScale", movieWingScale},
@@ -248,8 +238,6 @@ struct CrownFinaleTuning {
                                {"movieFragmentPullTime", movieFragmentPullTime},
                                {"movieFragmentAbsorbTime", movieFragmentAbsorbTime},
                                {"movieFragmentDistance", movieFragmentDistance},
-                               {"movieFragmentScale", movieFragmentScale},
-                               {"movieFragmentFallArc", movieFragmentFallArc},
                                {"movieFragmentCameraDistance", movieFragmentCameraDistance},
                                {"movieRageTime", movieRageTime},
                                {"movieBodyTime", movieBodyTime},

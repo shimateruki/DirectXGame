@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 0,
+      "triggerTime": 0,
+      "presetName": "gate_entry_core_mist"
+    },
+    {
+      "type": 0,
+      "triggerTime": 0.12,
+      "presetName": "gate_entry_pull_sparks"
+    }
+  ]
+}

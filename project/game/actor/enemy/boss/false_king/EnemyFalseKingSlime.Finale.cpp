@@ -518,10 +518,8 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         if (sealStateTimer_ >= 1.2f) {
             auto* scene = dynamic_cast<GamePlayScene*>(SceneManager::GetInstance()->GetCurrentScene());
 
-            if (scene && scene->StartCrownFinale(this)) {
-                crownInterlude_ = true;
-                ClearTransientVisuals();
-            }
+            if (scene)
+                scene->RequestCrownFinale(this);
         }
 
         return;
@@ -799,6 +797,11 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
         InitializeCrownSeals();
 }
 
+void EnemyFalseKingSlime::OnCrownFinaleStarted() {
+    crownInterlude_ = true;
+    ClearTransientVisuals();
+}
+
 void EnemyFalseKingSlime::BeginFinalArena(const engine::Vector3& position) {
     // 王冠結晶戦から最終決戦へ移り、戦闘位置と残った演出を切り替えます。
     // 次の闘技場へ持ち越す前に、結晶の衝突登録を含む第二形態の所有物を破棄します。
@@ -863,11 +866,8 @@ void EnemyFalseKingSlime::DrawFinaleEditor() {
     ImGui::SliderFloat("槍雨カメラの高さ", &t.sealBarrageCameraHeight, 0.7f, 1.5f);
     ImGui::TextUnformatted("全域放電：HPと回避無敵に関係なく即死");
     ImGui::SliderFloat("失敗後の再詠唱待ち", &t.sealBarrageRecovery, 1.0f, 8.0f);
-    ImGui::TextWrapped("王冠継承の装飾・カメラ・時刻は、演出タイムラインの crown_finale で編集します。");
+    ImGui::TextWrapped("プレイヤーの飛行・着地、王冠片の移動・大きさ、継承のカメラ・時刻は、演出タイムラインの crown_finale で編集します。");
     ImGui::SliderFloat("欠片とプレイヤーの距離", &t.movieFragmentDistance, 1.5f, 5.5f, "%.2f m");
-    ImGui::SliderFloat("中央装飾の大きさ", &t.movieFragmentScale, 0.65f, 1.5f, "%.2f 倍");
-    ImGui::SliderFloat("欠片の放物線の高さ", &t.movieFragmentFallArc, 0.0f, 6.0f, "%.2f m");
-    ImGui::SliderFloat("脱出軌道の高さ", &t.escapeHeight, 18.0f, 60.0f);
     ImGui::SliderFloat("最終闘技場 X", &t.destinationX, 130.0f, 240.0f);
     ImGui::SliderFloat("王冠槍ダメージ", &t.lanceDamage, 1.0f, 40.0f);
     ImGui::SliderFloat("王威波ダメージ", &t.waveDamage, 1.0f, 60.0f);

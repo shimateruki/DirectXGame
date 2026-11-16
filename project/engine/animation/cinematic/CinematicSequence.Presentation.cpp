@@ -7,6 +7,31 @@ namespace engine {
 
 using json = nlohmann::json;
 
+// この翻訳単位の保存処理だけで使う。配列の長さも読み込み時に検証する。
+static void to_json(json& data, const engine::Vector3& v) { data = {v.x, v.y, v.z}; }
+static void from_json(const json& data, engine::Vector3& v) {
+    if (!data.is_array() || data.size() != 3) throw std::runtime_error("Invalid spring vector");
+    v = {data.at(0).get<float>(), data.at(1).get<float>(), data.at(2).get<float>()};
+}
+
+static void to_json(json& data, const engine::Vector4& v) { data={v.x,v.y,v.z,v.w}; }
+static void from_json(const json& data, engine::Vector4& v) {
+    if (!data.is_array() || data.size()!=4) throw std::runtime_error("Invalid visual color");
+    v={data.at(0).get<float>(),data.at(1).get<float>(),data.at(2).get<float>(),data.at(3).get<float>()};
+}
+// 区間の始終点は意味のある名前で保存する。旧キーの数値配列は変更しない。
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicVisualKey,
+    positionReference,position,rotation,scale,color,emissive,visible)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicMotionSegment,
+    name,startTime,endTime,startSignal,endSignal,from,to,smoothProgress,arcHeight,rotationArc,
+    rotationCycles,smoothScale,scaleDecay,scaleCycles,scaleStart,minimumScale,bounceHeight,bounceDuration,bounceCycles,emissiveAmplitude,emissiveFrequency)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicSpringSettings,
+    initialPositionOffset, initialRotationOffset, initialForwardVelocity,
+    positionStiffness, positionDamping, angularStiffness, angularDamping,
+    maxPlanarOffset, maxSink, maxLift, tiltFromOffset, tiltFromVelocity,
+    sourceTiltFollow, initialVerticalVelocity, initialRollVelocity, compressionScale)
+
 namespace {
 engine::Vector3 V3(const json& a) { return {a.at(0).get<float>(), a.at(1).get<float>(), a.at(2).get<float>()}; }
 engine::Vector4 V4(const json& a) { return {a.at(0).get<float>(), a.at(1).get<float>(), a.at(2).get<float>(), a.at(3).get<float>()}; }
@@ -27,6 +52,7 @@ void SaveCinematicPresentation(json& root, const CinematicPresentation& p) {
     auto& data = root["presentation"];
     data = {{"reference", p.reference}, {"lookToward", p.lookToward}, {"hideObjects", p.hideObjects},
             {"objects", json::array()}, {"view", json::array()}, {"particles", json::array()}};
+    if (!p.springs.empty()) data["springs"] = p.springs;
     if (p.viewWorldSpace) data["viewWorldSpace"] = true;
     for (const auto& clip : p.objects) {
         json item = {{"name", clip.name}, {"model", clip.model}, {"source", clip.source},
@@ -37,6 +63,7 @@ void SaveCinematicPresentation(json& root, const CinematicPresentation& p) {
             {"clipCenterOffset", clip.clipCenterOffset},
             {"clipEdgeWidth", clip.clipEdgeWidth}, {"clipDissolve", clip.clipDissolve},
             {"clipColor", J4(clip.clipColor)}, {"keys", json::array()}};
+        if (!clip.motions.empty()) item["motions"] = clip.motions;
         if (!clip.animate) item["animate"] = false;
         if (clip.followPosition) item["followPosition"] = true;
         if (clip.followRotation) item["followRotation"] = true;
@@ -44,11 +71,17 @@ void SaveCinematicPresentation(json& root, const CinematicPresentation& p) {
         if (clip.inheritVisibility) item["inheritVisibility"] = true;
         if (clip.rotationMask.x != 1 || clip.rotationMask.y != 1 || clip.rotationMask.z != 1)
             item["rotationMask"] = J3(clip.rotationMask);
-        for (const auto& k : clip.keys)
+        for (const auto& k : clip.keys) {
             item["keys"].push_back({k.time, k.position.x, k.position.y, k.position.z,
                 k.rotation.x, k.rotation.y, k.rotation.z, k.scale.x, k.scale.y, k.scale.z,
                 k.color.x, k.color.y, k.color.z, k.color.w, k.emissive, k.clipHeight,
                 k.bounce, k.visible ? 1 : 0, k.clipEnabled ? 1 : 0});
+            if (!k.positionReference.empty()) {
+                item["keys"].back().push_back(k.positionReference);
+                item["keys"].back().push_back(k.positionTarget);
+                item["keys"].back().push_back(k.positionMix);
+            }
+        }
         data["objects"].push_back(std::move(item));
     }
     for (const auto& k : p.view) {
@@ -71,6 +104,19 @@ void LoadCinematicPresentation(const json& root, CinematicPresentation& p) {
     if (!root.contains("presentation"))
         return;
     const auto& data = root.at("presentation");
+    p.springs = data.value("springs", std::unordered_map<std::string, CinematicSpringSettings>{});
+    for (const auto& [name, settings] : p.springs) {
+        if (name.empty()) throw std::runtime_error("Empty cinematic spring name");
+        const json values = settings;
+        for (const auto& value : values.flatten())
+            if (!std::isfinite(value.get<float>())) throw std::runtime_error("Non-finite cinematic spring setting");
+        if (settings.positionStiffness < 0 || settings.positionDamping < 0 ||
+            settings.angularStiffness < 0 || settings.angularDamping < 0 ||
+            settings.maxPlanarOffset < 0 || settings.maxSink < 0 || settings.maxLift < 0 ||
+            settings.compressionScale < 0 || settings.compressionScale > 1)
+            throw std::runtime_error("Invalid cinematic spring coefficient");
+    }
+
     p.reference = data.value("reference", "");
     p.lookToward = data.value("lookToward", "");
     p.viewWorldSpace = data.value("viewWorldSpace", false);
@@ -102,15 +148,37 @@ void LoadCinematicPresentation(const json& root, CinematicPresentation& p) {
         clip.clipEdgeWidth = item.value("clipEdgeWidth", 0.075f);
         clip.clipDissolve = item.value("clipDissolve", 0.20f);
         clip.clipColor = V4(item.value("clipColor", json::array({1, 1, 1, 1})));
-        for (const auto& row : item.at("keys")) {
-            CheckRow(row, 19);
+        for (const auto& row : item.value("keys",json::array())) {
+            if (!row.is_array() || (row.size() != 19 && row.size() != 22))
+                throw std::runtime_error("Invalid visual key size");
+            CheckRow(json(row.begin(), row.begin() + 19), 19);
             CinematicVisualKey k;
             k.time = row[0]; k.position = {row[1], row[2], row[3]};
             k.rotation = {row[4], row[5], row[6]}; k.scale = {row[7], row[8], row[9]};
             k.color = {row[10], row[11], row[12], row[13]};
             k.emissive = row[14]; k.clipHeight = row[15]; k.bounce = row[16];
             k.visible = row[17].get<float>() != 0; k.clipEnabled = row[18].get<float>() != 0;
+            if (row.size() == 22) {
+                k.positionReference = row[19].get<std::string>();
+                k.positionTarget = row[20].get<std::string>();
+                k.positionMix = row[21].get<float>();
+                if (k.positionReference.empty() || !std::isfinite(k.positionMix) || k.positionMix < 0 || k.positionMix > 1)
+                    throw std::runtime_error("Invalid visual position binding");
+            }
             clip.keys.push_back(k);
+        }
+        clip.motions=item.value("motions",std::vector<CinematicMotionSegment>{});
+        if (!clip.motions.empty() && !clip.keys.empty()) throw std::runtime_error("Conflicting cinematic key and motion data");
+        float previousEnd=-1;
+        for (const auto& motion : clip.motions) {
+            const json values=motion;
+            for (const auto& value : values.flatten())
+                if (value.is_number() && !std::isfinite(value.get<float>())) throw std::runtime_error("Non-finite motion value");
+            if (motion.startTime<0 || motion.endTime<=motion.startTime || motion.startTime<previousEnd ||
+                motion.scaleStart<0 || motion.scaleStart>=1 || motion.minimumScale<0 || motion.bounceDuration<=0 ||
+                motion.bounceHeight<0 || motion.bounceCycles<0 || motion.rotationCycles<0 || motion.scaleDecay<0 || motion.scaleCycles<0 || motion.from.positionReference.empty()!=motion.to.positionReference.empty())
+                throw std::runtime_error("Invalid cinematic motion interval");
+            previousEnd=motion.endTime;
         }
         p.objects.push_back(std::move(clip));
     }

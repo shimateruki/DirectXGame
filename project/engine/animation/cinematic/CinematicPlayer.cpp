@@ -275,6 +275,7 @@ void CinematicPlayer::Pause() {
 }
 
 void CinematicPlayer::Stop(bool restorePose) {
+    springStates_.clear();
     // 停止時はVFX・音・カメラを解除し、必要なら開始前の姿勢へ戻す。
     for (auto& runtime : vfxRuntime_) {
         runtime.sequencer.Stop();
@@ -569,6 +570,7 @@ void CinematicPlayer::RestoreBasePoses() {
 }
 
 void CinematicPlayer::ResetRuntimeEvents() {
+    springStates_.clear();
     // ループの次周で一回限りのVFX・音・イベントが再び発火できるようにする。
     for (auto& runtime : vfxRuntime_) {
         runtime.sequencer.Stop();

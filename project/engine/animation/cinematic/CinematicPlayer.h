@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 #include <unordered_set>
+#include <span>
 
 class BaseScene;
 namespace engine { class Object3D; }
@@ -67,6 +68,13 @@ class CinematicPlayer {
     /// <summary>JSONの対象指定を、現在のシーンのObjectへ解決する。</summary>
     engine::Object3D* ResolveBinding(const CinematicObjectBinding& binding) const { return ResolveTarget(binding); }
 
+    // 描画と同じ式で指定秒の部品位置を求める。イベントや再生時刻は変更しない。
+    std::optional<engine::Vector3> SampleObjectPosition(const std::string& name, float timeSeconds) const;
+
+    // 指定部品の位置・回転・大きさだけを適用。秒指定で、材質・表示・イベント・時計は変えない。
+    // 未準備、部品名・基準点・対象の欠落時はfalseを返し、対象を変更しない。
+    bool ApplyObjectTransform(const std::string& name, float timeSeconds);
+
     // Directorの選択と本番再生で、ID優先・名前による対象探索を共有する。
     static engine::Object3D* ResolveSceneTarget(BaseScene* scene, const CinematicObjectBinding& binding);
 
@@ -121,7 +129,33 @@ class CinematicPlayer {
 
     engine::Object3D* GetLastEventTarget() const { return lastEventTarget_; }
 
+    // 記録・復元用の値コピー。再生中の状態を外から直接書き換える参照は公開しない。
+    struct SpringState {
+        engine::Vector3 position{}, velocity{}, rotation{}, angularVelocity{};
+        bool initialized = false;
+    };
+    SpringState GetSpringState(const std::string& name) const;
+    void RestoreSpringState(const std::string& name, const SpringState& state);
+
+    // 基準位置はワールド座標。forward/rightは水平の単位ベクトル、回転差はラジアン。
+    struct SpringInput {
+        engine::Vector3 targetPosition{}, baseRotation{}, sourceRotationDelta{};
+        engine::Vector3 forward{0, 0, 1}, right{1, 0, 0};
+        float motionEnergy = 0.0f; // 0～1の運動量。跳ねる動きの追従幅を少し広げる。
+    };
+    // 呼出側は装着先を計算するだけ。戻り値は位置・回転と、元サイズへ掛ける倍率。
+    CinematicTransformKey UpdateSpringAttachment(const std::string& name, const SpringInput& input, float deltaTime);
+    void ResetSpringAttachment(const std::string& name) { springStates_.erase(name); }
+
+    // 実投影比率とワールド座標の包囲点から、両対象を収めるeye/targetを更新する。
+    // margin/topMarginは画面寸法に対する割合。centerOffsetでUIを避ける中心補正を渡す。
+    static void FitCameraToPoints(std::span<const engine::Vector3> points, float fov, float aspect,
+        float margin, float topMargin, const engine::Vector3& centerOffset,
+        const engine::Vector3& fallbackForward, engine::Vector3& eye, engine::Vector3& target);
+
   private:
+    std::unordered_map<std::string, SpringState> springStates_;
+
     // 演出で所有・借用するObjectと、停止時に戻す姿勢・材質。
     // 関連：CinematicPlayer（この型を使う機能の本体）
     struct PresentationObject {
@@ -145,6 +179,10 @@ class CinematicPlayer {
     // 対象不足や名前重複、視点キーとCamera Shotの競合を診断結果へ追記する。
     void AddPresentationIssues(std::vector<std::string>& issues) const;
     // 外部の位置解決を優先し、解決できない名前は nullopt を返す。
+    std::optional<engine::Vector3> SampleObjectPosition(size_t index, float timeSeconds,
+        const std::unordered_set<engine::Object3D*>& live) const;
+    bool ApplyPresentationTransform(size_t index, float timeSeconds,
+        const std::unordered_set<engine::Object3D*>& live);
     std::optional<engine::Vector3> PresentationPosition(const std::string& name,
         const std::unordered_set<engine::Object3D*>& live) const;
     std::vector<PresentationObject> presentationObjects_;

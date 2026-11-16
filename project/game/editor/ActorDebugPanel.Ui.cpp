@@ -668,13 +668,10 @@ void ActorDebugPanel::DrawCrownMovieSettings() {
     }
     ImGui::SeparatorText("本番に反映する演出設定");
     auto& t = CrownFinaleTuning::Get();
-    ImGui::TextWrapped("装飾・翼・消失・カメラ・黒帯は、演出タイムラインの crown_finale で編集します。ゲーム処理の節目も同素材のSignalを使います。");
+    ImGui::TextWrapped("プレイヤーの飛行・着地、王冠片の移動・大きさ・翼・消失・カメラ・黒帯は、演出タイムラインの crown_finale で編集します。ゲーム処理の節目も同素材のSignalを使います。");
     if (ImGui::Button("継承の演出素材を再読込") && enabled_) RestartPreview();
     bool changed = false;
     changed |= ImGui::SliderFloat("欠片までの距離",&t.movieFragmentDistance,1.5f,5.5f,"%.2f m");
-    changed |= ImGui::SliderFloat("欠片の大きさ",&t.movieFragmentScale,.65f,1.5f,"%.2f 倍");
-    changed |= ImGui::SliderFloat("落下の弧の高さ",&t.movieFragmentFallArc,0.0f,6.0f,"%.2f m");
-    changed |= ImGui::SliderFloat("脱出の高さ",&t.escapeHeight,18.0f,60.0f,"%.1f m");
     t.Sanitize();
     loopDuration_=GetCrownMovieDuration();
 

@@ -145,5 +145,35 @@
       "enabled": true
     }
   ],
-  "events": []
+  "events": [],
+  "presentation": {
+    "springs": {
+      "goalCrown": {
+        "positionStiffness": 76.0,
+        "positionDamping": 8.8,
+        "angularStiffness": 52.0,
+        "angularDamping": 7.4,
+        "maxPlanarOffset": 0.32,
+        "maxSink": 0.18,
+        "maxLift": 0.23,
+        "tiltFromOffset": 1.65,
+        "tiltFromVelocity": 0.045,
+        "sourceTiltFollow": 0.34,
+        "initialVerticalVelocity": -1.15,
+        "initialRollVelocity": 2.2,
+        "compressionScale": 0.14,
+        "initialPositionOffset": [
+          0,
+          -0.08,
+          0
+        ],
+        "initialRotationOffset": [
+          0.1,
+          0.52,
+          -0.12
+        ],
+        "initialForwardVelocity": -0.18
+      }
+    }
+  }
 }

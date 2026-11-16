@@ -23,7 +23,6 @@
   "sealTargetAssistRadius": 5,
   "sealSatelliteSpread": 5.5,
   "movieDuration": 18,
-  "escapeHeight": 32,
   "destinationX": 160,
   "lanceDamage": 12,
   "waveDamage": 20,

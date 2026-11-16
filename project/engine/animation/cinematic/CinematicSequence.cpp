@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <cmath>
+#include <numbers>
 #include "engine/utility/math/AnimationInterpolation.h"
 
 namespace engine {
@@ -14,6 +15,74 @@ namespace engine {
 using json = nlohmann::json;
 void SaveCinematicPresentation(json&, const CinematicPresentation&);
 void LoadCinematicPresentation(const json&, CinematicPresentation&);
+
+CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float time, const CinematicSequence* sequence) {
+    if (clip.motions.empty()) {
+        return SampleCinematicKeys(clip.keys, time, [](const auto& a, const auto& b, float seconds) {
+            auto k = a;
+            static_cast<CinematicTransformKey&>(k) = InterpolateCinematicTransform(a,b,seconds,true);
+            const float rate = std::clamp((seconds-a.time)/std::max(0.000001f,b.time-a.time),0.0f,1.0f);
+            k.color = Math::Lerp(a.color,b.color,rate);
+            k.emissive = Math::Lerp(a.emissive,b.emissive,rate);
+            k.clipHeight = Math::Lerp(a.clipHeight,b.clipHeight,rate);
+            k.bounce = Math::Lerp(a.bounce,b.bounce,rate);
+            return k;
+        });
+    }
+    // Signalがある区間は同じ節目を参照し、時刻を別のキー列へ複製しない。
+    const auto timing = [sequence](float seconds, const std::string& signal) {
+        return sequence && !signal.empty() ? sequence->GetSignalTime(signal,seconds) : seconds;
+    };
+
+    // 区間の隙間では直前の終点を保持し、先頭より前は始点を返す。
+    const CinematicMotionSegment* selected = &clip.motions.back();
+    float sampleTime = time;
+    for (size_t i=0; i<clip.motions.size(); ++i) {
+        const auto& motion = clip.motions[i];
+        const float begin = timing(motion.startTime,motion.startSignal);
+        if (time < begin) {
+            selected = &clip.motions[i==0?0:i-1];
+            sampleTime = i==0 ? begin : timing(selected->endTime,selected->endSignal);
+            break;
+        }
+        if (time < timing(motion.endTime,motion.endSignal)) { selected=&motion; break; }
+    }
+
+    const auto& motion = *selected;
+    const float begin = timing(motion.startTime,motion.startSignal);
+    const float end = timing(motion.endTime,motion.endSignal);
+    const float raw = std::clamp((sampleTime-begin)/std::max(0.000001f,end-begin),0.0f,1.0f);
+    const auto smooth=[](float x) { x=std::clamp(x,0.0f,1.0f); return x*x*(3.0f-2.0f*x); };
+    const float progress = motion.smoothProgress ? smooth(raw) : raw;
+    auto k = motion.from;
+    k.time = time;
+    k.positionReference = motion.from.positionReference;
+    k.positionTarget = motion.to.positionReference;
+    k.positionMix = progress;
+    // 基準点間の補間は再生器が担当し、ここでは共通の弧と姿勢だけを評価する。
+    const float arc = std::sin(progress*std::numbers::pi_v<float>);
+    k.position = Math::Lerp(motion.from.position,motion.to.position,progress);
+    k.position.y += arc*motion.arcHeight;
+
+    // 着地の揺れは時間とともにゼロへ収束する。フレーム積分を使わず巻戻しも再現する。
+    const float settle = std::clamp((sampleTime-begin)/std::max(0.000001f,motion.bounceDuration),0.0f,1.0f);
+    k.position.y += std::abs(std::sin(settle*2.0f*std::numbers::pi_v<float>*motion.bounceCycles))*(1.0f-settle)*motion.bounceHeight;
+    k.rotation = Math::Lerp(motion.from.rotation,motion.to.rotation,progress)+motion.rotationArc*std::sin(progress*2.0f*std::numbers::pi_v<float>*motion.rotationCycles);
+
+    // 移動の後半だけ縮める場合も、同じ進行割合から倍率を求める。
+    float scaleRate = std::clamp((progress-motion.scaleStart)/std::max(0.000001f,1.0f-motion.scaleStart),0.0f,1.0f);
+    if (motion.smoothScale) scaleRate=smooth(scaleRate);
+    // 初期の伸びを指数的に戻す場合と、着地で潰れを揺らして戻す場合を共有する。
+    const float envelope = motion.scaleDecay > 0 ? std::exp(-scaleRate*motion.scaleDecay) : 1.0f-scaleRate;
+    const float remaining = envelope*std::cos(scaleRate*2.0f*std::numbers::pi_v<float>*motion.scaleCycles);
+    k.scale = Math::Lerp(motion.to.scale,motion.from.scale,remaining);
+    k.scale = {std::max(k.scale.x,motion.minimumScale),std::max(k.scale.y,motion.minimumScale),std::max(k.scale.z,motion.minimumScale)};
+
+    k.color = Math::Lerp(motion.from.color,motion.to.color,raw);
+    k.emissive = Math::Lerp(motion.from.emissive,motion.to.emissive,raw)+motion.emissiveAmplitude*std::sin(time*motion.emissiveFrequency);
+    k.visible = raw>=1.0f ? motion.to.visible : motion.from.visible;
+    return k;
+}
 
 float CinematicSequence::GetSignalTime(const std::string& name, float fallback) const {
     const auto marker = std::find_if(signals.begin(), signals.end(), [&](const auto& signal) {
@@ -171,6 +240,9 @@ float CinematicSequence::GetAuthoredDuration() const {
     float result = std::max(0.0f, duration);
     for (const auto& clip : presentation.objects)
         if (clip.enabled && !clip.keys.empty()) result = std::max(result, clip.keys.back().time);
+    for (const auto& clip : presentation.objects)
+        if (clip.enabled) for (const auto& motion : clip.motions)
+            result = std::max(result, motion.endSignal.empty() ? motion.endTime : GetSignalTime(motion.endSignal,motion.endTime));
     if (!presentation.view.empty()) result = std::max(result, presentation.view.back().time);
 
     for (const auto& track : transformTracks) {

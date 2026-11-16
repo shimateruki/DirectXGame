@@ -4,6 +4,46 @@
   "duration": 18,
   "tracks": [],
   "vfxCues": [
+{
+  "name": "fragment_crack",
+  "targetName": "fragment_release",
+  "targetEventId": -1,
+  "sequenceName": "pull_catch_cue",
+  "startTime": 0.72,
+  "duration": 0.1,
+  "snapshotTargetPosition": true,
+  "rootOffset": [0,0,0],
+  "rootScale": [0.7,0.7,0.7],
+  "enabled": true,
+  "muted": false
+},
+{
+  "name": "fragment_break",
+  "targetName": "fragment_release",
+  "targetEventId": -1,
+  "sequenceName": "pull_catch_cue",
+  "startTime": 1.656,
+  "duration": 0.1,
+  "snapshotTargetPosition": true,
+  "rootOffset": [0,0,0],
+  "rootScale": [0.9,0.9,0.9],
+  "enabled": true,
+  "muted": false
+},
+{
+  "name": "fragment_absorb",
+  "targetName": "mouth",
+  "targetEventId": -1,
+  "sequenceName": "pull_catch_cue",
+  "startTime": 8.280000000000001,
+  "duration": 0.1,
+  "snapshotTargetPosition": true,
+  "rootOffset": [0,0,0],
+  "rootScale": [0.8,0.8,0.8],
+  "enabled": true,
+  "muted": false
+},
+
     {
       "name": "fragment_land",
       "targetName": "fragment_ground",
@@ -100,6 +140,13 @@
   "animationClips": [],
   "audioClips": [],
   "signals": [
+{
+  "time": 17.37,
+  "name": "landing_settled",
+  "signal": "landing_settled",
+  "payload": "",
+  "enabled": true
+},
     {
       "time": 1.656,
       "name": "break",
@@ -177,15 +224,212 @@
     "lookToward": "$Actor",
     "viewWorldSpace": true,
     "objects": [
-      {
-        "name": "fragment",
-        "model": "Characters/false_king_slime/false_king_crown_emblem.obj",
-        "source": "$Actor",
-        "animate": false,
-        "keys": [
-          [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,1,0]
+{
+  "name": "player_flight",
+  "source": "$Gate",
+  "spawn": false,
+  "animate": false,
+  "followRotation": true,
+  "rotationMask": [
+    0,
+    1,
+    0
+  ],
+  "keys": [],
+  "motions": [
+    {
+      "name": "飛行",
+      "startTime": 13.68,
+      "endTime": 16.740000000000002,
+      "startSignal": "escape",
+      "endSignal": "arrive",
+      "from": {
+        "positionReference": "player_start",
+        "rotation": [
+          -0.25,
+          0,
+          0
+        ],
+        "scale": [
+          0.86,
+          1.24,
+          1
         ]
       },
+      "to": {
+        "positionReference": "destination",
+        "rotation": [
+          0.25,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "arcHeight": 32,
+      "rotationArc": [
+        0,
+        0,
+        0.12
+      ],
+      "rotationCycles": 1,
+      "scaleDecay": 18
+    },
+    {
+      "name": "着地の潰れ",
+      "startTime": 16.740000000000002,
+      "endTime": 17.37,
+      "startSignal": "arrive",
+      "endSignal": "landing_settled",
+      "from": {
+        "positionReference": "destination",
+        "scale": [
+          1.23,
+          0.7,
+          1.18
+        ]
+      },
+      "to": {
+        "positionReference": "destination",
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "smoothScale": true,
+      "scaleCycles": 0.75
+    }
+  ]
+},
+{
+  "name": "fragment_ground_anchor",
+  "source": "$Actor",
+  "model": "",
+  "keys": [
+    [0,0,0,0,0,6.283185307179586,0.16,1.0,1.0,1.0,1,1,1,1,1.2,0,0,0,0,"fragment_ground","",0]
+  ]
+},
+
+      {
+  "name": "fragment",
+  "model": "Characters/false_king_slime/false_king_crown_emblem.obj",
+  "source": "$Actor",
+  "animate": true,
+  "keys": [],
+  "motions": [
+    {
+      "name": "本体に追従",
+      "startTime": 0,
+      "endTime": 1.656,
+      "startSignal": "",
+      "endSignal": "break",
+      "from": {
+        "positionReference": "fragment_attached",
+        "rotation": [0,0,0],
+        "scale": [1,1,1],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.2,
+        "visible": true
+      },
+      "to": {
+        "positionReference": "fragment_attached",
+        "rotation": [0,0,0],
+        "scale": [1,1,1],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.2,
+        "visible": true
+      }
+    },
+    {
+      "name": "落下",
+      "startTime": 1.656,
+      "endTime": 3.6,
+      "startSignal": "break",
+      "endSignal": "land",
+      "from": {
+        "positionReference": "fragment_release",
+        "rotation": [0,0,0],
+        "scale": [1,1,1],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.2,
+        "visible": true
+      },
+      "to": {
+        "positionReference": "fragment_ground",
+        "rotation": [0,6.283185307179586,0.16],
+        "scale": [1,1,1],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.2,
+        "visible": true
+      },
+      "arcHeight": 2,
+      "rotationArc": [0.55,0,0],
+      "smoothScale": true
+    },
+    {
+      "name": "待機",
+      "startTime": 3.6,
+      "endTime": 6.3,
+      "startSignal": "land",
+      "endSignal": "pull",
+      "from": {
+        "positionReference": "fragment_ground",
+        "rotation": [0,6.283185307179586,0.16],
+        "scale": [1,1,1],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.6,
+        "visible": true
+      },
+      "to": {
+        "positionReference": "fragment_ground",
+        "rotation": [0,6.283185307179586,0.16],
+        "scale": [1,1,1],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.6,
+        "visible": true
+      },
+      "bounceHeight": 0.25,
+      "bounceDuration": 0.72,
+      "bounceCycles": 1,
+      "emissiveAmplitude": 0.15,
+      "emissiveFrequency": 6
+    },
+    {
+      "name": "吸収",
+      "startTime": 6.3,
+      "endTime": 8.280000000000001,
+      "startSignal": "pull",
+      "endSignal": "absorb",
+      "from": {
+        "positionReference": "fragment_ground",
+        "rotation": [0,6.283185307179586,0.16],
+        "scale": [1,1,1],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.6,
+        "visible": true
+      },
+      "to": {
+        "positionReference": "mouth",
+        "rotation": [0,7.483185307179586,0.16],
+        "scale": [0,0,0],
+        "color": [0.6,0.6,0.6,1],
+        "emissive": 1.6,
+        "visible": false
+      },
+      "arcHeight": 0.22,
+      "smoothProgress": true,
+      "smoothScale": true,
+      "scaleStart": 0.65,
+      "minimumScale": 0.001,
+      "emissiveAmplitude": 0.15,
+      "emissiveFrequency": 6
+    }
+  ]
+},
       {
         "name": "seal_anchor",
         "model": "",
@@ -4357,7 +4601,18 @@
       [17.995833333333334,0.49998363299597826,-3.517034845169598e-17,0.600019640404826,0.0,0,0,0,8,10,32,-6.531636141029255e-17,-6.283460134928714e-17,0.0,0.58,7.50613347038076e-06,"destination","final_arena_focus",""],
       [18.0,0.5,-4.1900082059074725e-17,0.6,0.0,0,0,0,8,10,32,-7.78144381097102e-17,-6.398074200831316e-17,0.0,0.58,0.0,"destination","final_arena_focus",""]
     ],
-    "particles": []
+    "particles": [
+{
+  "target": "fragment_ground_anchor",
+  "preset": "crown_goal_idle_sparkle",
+  "startTime": 3.6,
+  "endTime": 6.2999,
+  "interval": 0.2,
+  "scale": 0.4,
+  "direction": [0,1,0],
+  "directionMode": "fixed"
+}
+]
   },
   "roleBindings": [
     {

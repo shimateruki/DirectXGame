@@ -192,8 +192,6 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     /// <summary>演出とデバッグ中断に共通する操作権・視点の復元。</summary>
     void RestoreUnlockPresentationState();
 
-    /// <summary>Director の Signal に対応する単発エフェクトを再生する。</summary>
-    void HandleUnlockSignal(const CinematicSignalMarker& signal);
 #ifdef USE_IMGUI
 
     /// <summary>指定ステージの解放演出をデバッグ用に強制開始する。</summary>
@@ -368,11 +366,6 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     CinematicSequence unlockSequence_;
     CinematicPlayer unlockPlayer_;
     bool unlockTimelineLoaded_ = false;
-    float unlockKeyAppearTime_ = 0.0f;
-    float unlockKeyApproachEndTime_ = 0.0f;
-    float unlockLockReleaseTime_ = 0.0f;
-    float unlockKeyHideTime_ = 0.0f;
-    float unlockLockHideTime_ = 0.0f;
     float unlockGateActivationTime_ = 0.0f;
     float unlockGateActivationEndTime_ = 0.0f;
     bool unlockPresentationInitialized_ = false;
@@ -384,9 +377,6 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
     engine::Object3D* unlockTargetGate_ = nullptr;
     engine::Object3D* unlockKeyObject_ = nullptr;
     engine::Object3D* unlockLockObject_ = nullptr;
-
-    // 粒子の発生位置には移動後ではなく、開始時の錠の位置を使う。
-    engine::Vector3 unlockLockBasePosition_{};
 
     // 解放前の視点。ムービー中の視点は Camera Track が管理する。
     engine::Vector3 unlockCameraStartEye_{};

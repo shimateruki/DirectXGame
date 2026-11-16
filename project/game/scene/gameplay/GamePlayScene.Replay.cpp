@@ -123,6 +123,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
     if (saveIndicatorOverlay_)
         saveIndicatorOverlay_->CaptureReplayState(saveIndicatorState);
 
+    const auto spring = goalCinematicPlayer_.GetSpringState("goalCrown");
     state = {
         {"goal",
          {{"active", isGoal_},
@@ -134,13 +135,13 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
           {"crownIdleTime", goalCrownIdleTime_},
           {"crownSparkleTimer", goalCrownSparkleTimer_},
           {"crownSparklePattern", goalCrownSparklePatternIndex_},
-          {"crownSpringPosition", {goalCrownSpringPosition_.x, goalCrownSpringPosition_.y, goalCrownSpringPosition_.z}},
-          {"crownSpringVelocity", {goalCrownSpringVelocity_.x, goalCrownSpringVelocity_.y, goalCrownSpringVelocity_.z}},
-          {"crownSpringRotation", {goalCrownSpringRotation_.x, goalCrownSpringRotation_.y, goalCrownSpringRotation_.z}},
+          {"crownSpringPosition", {spring.position.x, spring.position.y, spring.position.z}},
+          {"crownSpringVelocity", {spring.velocity.x, spring.velocity.y, spring.velocity.z}},
+          {"crownSpringRotation", {spring.rotation.x, spring.rotation.y, spring.rotation.z}},
           {"crownSpringRotationVelocity",
-           {goalCrownSpringRotationVelocity_.x, goalCrownSpringRotationVelocity_.y,
-            goalCrownSpringRotationVelocity_.z}},
-          {"crownSpringInitialized", goalCrownSpringInitialized_},
+           {spring.angularVelocity.x, spring.angularVelocity.y,
+            spring.angularVelocity.z}},
+          {"crownSpringInitialized", spring.initialized},
           {"returnFadeStarted", goalReturnFadeStarted_},
           {"landingCuePlayed", goalLandingCuePlayed_},
           {"resultCuePlayed", goalResultCuePlayed_},
@@ -187,6 +188,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 
     if (const auto found = state.find("goal"); found != state.end() && found->is_object()) {
         const json& goal = *found;
+        auto spring = goalCinematicPlayer_.GetSpringState("goalCrown");
         // 冠のばね位置だけでなく速度も戻し、シーク直後の跳ね方を記録時と揃える。
         isGoal_ = goal.value("active", isGoal_);
         goalWasStageCleared_ = goal.value("wasStageCleared", goalWasStageCleared_);
@@ -198,11 +200,11 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         goalCrownIdleTime_ = goal.value("crownIdleTime", goalCrownIdleTime_);
         goalCrownSparkleTimer_ = goal.value("crownSparkleTimer", goalCrownSparkleTimer_);
         goalCrownSparklePatternIndex_ = goal.value("crownSparklePattern", goalCrownSparklePatternIndex_);
-        restoreVector3(goal, "crownSpringPosition", goalCrownSpringPosition_);
-        restoreVector3(goal, "crownSpringVelocity", goalCrownSpringVelocity_);
-        restoreVector3(goal, "crownSpringRotation", goalCrownSpringRotation_);
-        restoreVector3(goal, "crownSpringRotationVelocity", goalCrownSpringRotationVelocity_);
-        goalCrownSpringInitialized_ = goal.value("crownSpringInitialized", goalCrownSpringInitialized_);
+        restoreVector3(goal, "crownSpringPosition", spring.position);
+        restoreVector3(goal, "crownSpringVelocity", spring.velocity);
+        restoreVector3(goal, "crownSpringRotation", spring.rotation);
+        restoreVector3(goal, "crownSpringRotationVelocity", spring.angularVelocity);
+        spring.initialized = goal.value("crownSpringInitialized", spring.initialized);
         goalReturnFadeStarted_ = goal.value("returnFadeStarted", goalReturnFadeStarted_);
         goalLandingCuePlayed_ = goal.value("landingCuePlayed", goalLandingCuePlayed_);
         goalResultCuePlayed_ = goal.value("resultCuePlayed", goalResultCuePlayed_);
@@ -218,6 +220,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
                 goalCinematicPlayer_.Pause();
             }
         }
+        goalCinematicPlayer_.RestoreSpringState("goalCrown", spring);
     }
 
     if (const auto found = state.find("hud"); found != state.end() && found->is_object()) {

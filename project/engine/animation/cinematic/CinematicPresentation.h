@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 
 namespace engine {
 
@@ -45,11 +46,32 @@ inline CinematicTransformKey SampleCinematicTransform(const std::vector<Cinemati
 struct CinematicVisualKey : CinematicTransformKey {
     CinematicVisualKey() { easingToNext = 0; }
     engine::Vector4 color{1, 1, 1, 1};
+    // 指定した2点間のワールド位置へpositionを加算。空なら従来の座標系を使う。
+    std::string positionReference, positionTarget;
+    float positionMix = 0.0f; // 0で基準点、1で移動先。
     float emissive = 1.0f;
     float clipHeight = 0.0f;
     float bounce = 0.0f;
     bool visible = true;
     bool clipEnabled = false;
+};
+
+// 2地点間の移動を少数の値で作る区間。キーの大量生成やゲーム固有の分岐は持たない。
+// 時刻・揺れの長さは秒、回転はrad、位置・弧・揺れ幅はワールド単位。
+struct CinematicMotionSegment {
+    std::string name;
+    float startTime = 0.0f, endTime = 1.0f;
+    std::string startSignal, endSignal; // 指定時はSignalの時刻を使い、秒数欄は未指定時の値になる。
+    CinematicVisualKey from, to; // 基準点・位置補正・姿勢・発光・表示。キー時刻は使用しない。
+    bool smoothProgress = false; // 位置と回転を始終点で滑らかに停止させる。
+    float arcHeight = 0.0f;
+    engine::Vector3 rotationArc{}; // 正弦波で加える傾きの振幅。
+    float rotationCycles = 0.5f; // 区間内の周期数。0.5なら従来の中央で山になる傾き。
+    bool smoothScale = false;
+    float scaleDecay = 0.0f, scaleCycles = 0.0f; // 0なら従来の補間。減衰率と区間内の揺れ周期数。
+    float scaleStart = 0.0f, minimumScale = 0.0f; // 移動の進行割合で縮小開始を指定。下限は各軸の倍率。
+    float bounceHeight = 0.0f, bounceDuration = 1.0f, bounceCycles = 1.0f;
+    float emissiveAmplitude = 0.0f, emissiveFrequency = 0.0f; // 発光の振幅と角速度(rad/秒)。
 };
 
 // spawn=trueの部品は再生器が所有する。falseならシーンの既存Objectを操作する。
@@ -69,7 +91,13 @@ struct CinematicObjectClip {
     float clipEdgeWidth = 0.075f, clipDissolve = 0.20f;
     engine::Vector4 clipColor{1, 1, 1, 1};
     std::vector<CinematicVisualKey> keys;
+    std::vector<CinematicMotionSegment> motions; // キー形式とは排他。区間そのものを保存・評価する。
 };
+
+class CinematicSequence;
+// 見た目キーと区間設定の評価を共有する。sequence指定時はSignalの編集時刻を反映する。
+CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float time,
+    const CinematicSequence* sequence = nullptr);
 
 // 2対象の間へ注視点を補間し、対象に向いた座標系でカメラ位置を指定する。
 // 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
@@ -90,9 +118,38 @@ struct CinematicParticleClip {
     engine::Vector3 direction{0, 1, 0};
 };
 
+// Y-upの追従部品に使う位置・回転ばね。距離はワールド単位、速度は毎秒、回転はラジアン。
+// Directorで保存する係数だけを持ち、積分中の位置と速度はCinematicPlayerが所有する。
+struct CinematicSpringSettings {
+    // 初回だけ足す位置差（ワールドY-up）と回転差（ラジアン）。装着部品ごとに保存する。
+    engine::Vector3 initialPositionOffset{0.0f, -0.08f, 0.0f};
+    engine::Vector3 initialRotationOffset{0.10f, 0.52f, -0.12f};
+    float initialForwardVelocity = -0.18f; // 基準対象の前方向へ与える初速。負なら後ろへ揺れる。
+    // 追従位置・回転の硬さと減衰。毎秒の積分に使用する。
+
+    float positionStiffness = 76.0f;
+    float positionDamping = 8.8f;
+    float angularStiffness = 52.0f;
+    float angularDamping = 7.4f;
+    // ワールド距離で制限する横ずれ・沈み・浮き。
+    float maxPlanarOffset = 0.32f;
+    float maxSink = 0.18f;
+    float maxLift = 0.23f;
+    // 偏差と速度から作る傾き、および基準対象の回転を受け継ぐ倍率。
+    float tiltFromOffset = 1.65f;
+    float tiltFromVelocity = 0.045f;
+    float sourceTiltFollow = 0.34f;
+    // 初回の上下速度とロール角速度。圧縮は元スケールへの倍率。
+    float initialVerticalVelocity = -1.15f;
+    float initialRollVelocity = 2.20f;
+    float compressionScale = 0.14f;
+};
+
 // カットシーンに含まれる一時部品・カメラ・粒子。ゲーム固有のクラスや状態は参照しない。
 // 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicPresentation {
+    // 名前は呼出側の追従部品ID。シーンや敵の型には依存しない。
+    std::unordered_map<std::string, CinematicSpringSettings> springs;
     std::string reference, lookToward;
     bool viewWorldSpace = false;
     std::vector<std::string> hideObjects;

@@ -5,11 +5,8 @@
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "game/system/progress/StageManager.h"
-#include "GpuParticleManager.h"
-#include "MeshEffectManager.h"
 #include "SceneManager.h"
 #include <algorithm>
-#include <cmath>
 #include "game/scene/select/GameSelectScene.Internal.h"
 using namespace StageSelectDetail;
 
@@ -25,31 +22,15 @@ void GameSelectScene::BeginUnlockPresentation() {
     unlockKeyObject_ = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(unlockingStageIndex_));
     unlockLockObject_ = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(unlockingStageIndex_));
 
-    if (unlockKeyObject_) {
-        // 正面カメラが閉じた南京錠を見せ終えるまでは、王冠鍵を画面へ出しません。
-        unlockKeyObject_->SetIsVisible(false);
-        unlockKeyObject_->SetColor({1.0f, 0.84f, 0.24f, 1.0f});
-        unlockKeyObject_->SetEmissive(2.8f);
-        unlockKeyObject_->SetGpuParticleName("");
-    }
+    // 鍵・錠の色、発光、表示は Director の見た目キーが管理する。
 
-    if (unlockLockObject_) {
-        unlockLockBasePosition_ = unlockLockObject_->GetTranslate();
-        unlockLockObject_->SetIsVisible(true);
-    }
-
-    // 動作と表示の節目は JSON の Signal だけから読み取る。
+    // ゲート固有の開通状態に必要な2つの節目だけを Signal から読み取る。
     unlockTimelineLoaded_ = unlockSequence_.Load("Resources/json/scenario/stage_select_unlock_" +
                                                  std::to_string(unlockingStageIndex_) + ".json");
     if (unlockTimelineLoaded_) {
         unlockPlayer_.Initialize(SceneManager::GetInstance());
         unlockPlayer_.SetBindingResolver({});
         unlockPlayer_.SetSequence(&unlockSequence_);
-        unlockPlayer_.SetSignalCallback([this](engine::Object3D*, const CinematicSignalMarker& signal, bool isPreview) {
-            if (!isPreview) {
-                HandleUnlockSignal(signal);
-            }
-        });
         auto issues = unlockPlayer_.ValidateBindings();
         auto signalTime = [this, &issues](const char* name) {
             for (const auto& signal : unlockSequence_.signals) {
@@ -60,12 +41,6 @@ void GameSelectScene::BeginUnlockPresentation() {
             issues.emplace_back(std::string("必須 Signal がありません: ") + name);
             return 0.0f;
         };
-        unlockKeyAppearTime_ = signalTime("key_appear");
-        unlockKeyApproachEndTime_ = signalTime("key_insert");
-        signalTime("key_turn");
-        unlockLockReleaseTime_ = signalTime("lock_release");
-        unlockKeyHideTime_ = signalTime("key_hide");
-        unlockLockHideTime_ = signalTime("lock_hide");
         unlockGateActivationTime_ = signalTime("gate_activate");
         unlockGateActivationEndTime_ = signalTime("gate_active_full");
         const auto hasTrack = [this](const engine::Object3D* object) {
@@ -77,6 +52,14 @@ void GameSelectScene::BeginUnlockPresentation() {
         };
         if (!hasTrack(unlockKeyObject_) || !hasTrack(unlockLockObject_)) {
             issues.emplace_back("鍵または南京錠の Transform Track が対象ステージを指していません。");
+        }
+        for (const auto* object : {unlockKeyObject_, unlockLockObject_}) {
+            if (!object || !std::any_of(unlockSequence_.presentation.objects.begin(),
+                    unlockSequence_.presentation.objects.end(), [object](const CinematicObjectClip& clip) {
+                        return clip.enabled && !clip.spawn && clip.name == object->GetName();
+                    })) {
+                issues.emplace_back("鍵または錠の見た目トラックがありません。");
+            }
         }
         const std::string cameraName = "StageSelect_UnlockCamera_" + std::to_string(unlockingStageIndex_);
         if (!std::any_of(unlockSequence_.cameraShots.begin(), unlockSequence_.cameraShots.end(),
@@ -172,68 +155,14 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
     unlockPresentationTimer_ = unlockPlayer_.GetCurrentTime();
     unlockParticleTimer_ -= deltaTime;
     selectedStageIndex_ = unlockingStageIndex_;
-    const float time = unlockPresentationTimer_;
-    const engine::Vector3 lockPosition = unlockLockObject_
-                                     ? unlockLockBasePosition_
-                                     : GetStageNodePosition(unlockingStageIndex_) + engine::Vector3{0.0f, 0.35f, 0.0f};
 
     if (player_) {
         player_->SetIsControlActive(false);
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
 
-    if (unlockKeyObject_) {
-        unlockKeyObject_->SetEmissive(2.7f + std::sin(time * 9.0f) * 0.35f);
-    }
-
-    // 接近中の残光だけは一定間隔で追加し、節目の単発演出と分ける。
-    if (unlockParticleTimer_ <= 0.0f && time >= unlockKeyAppearTime_ && time < unlockLockReleaseTime_) {
-        unlockParticleTimer_ = 0.15f;
-        const engine::Vector3 particlePosition = unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition;
-        GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, particlePosition);
-    }
-
-    if (time >= unlockPlayer_.GetDuration()) {
+    if (unlockPresentationTimer_ >= unlockPlayer_.GetDuration()) {
         FinishUnlockPresentation();
-    }
-}
-
-void GameSelectScene::HandleUnlockSignal(const CinematicSignalMarker& signal) {
-    // 一度通過した Signal は Director が再通知しないため、シーン側の発火済みフラグは不要。
-    const engine::Vector3 lockPosition = unlockLockObject_
-                                     ? unlockLockBasePosition_
-                                     : GetStageNodePosition(unlockingStageIndex_) + engine::Vector3{0.0f, 0.35f, 0.0f};
-
-    if (signal.signal == "key_appear") {
-        const engine::Vector3 position = unlockKeyObject_ ? unlockKeyObject_->GetTranslate() : lockPosition;
-        MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, position,
-                                                        {0.0f, 0.0f, 0.0f}, {0.30f, 0.30f, 0.30f});
-        GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, position);
-    } else if (signal.signal == "key_turn") {
-        MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, lockPosition,
-                                                        {0.0f, 0.0f, 0.0f}, {0.34f, 0.34f, 0.34f});
-        GpuParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, lockPosition);
-        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-            camera->StartShake(0.10f, 0.025f, 28.0f, {0.45f, 0.45f, 0.16f});
-        }
-    } else if (signal.signal == "lock_release") {
-        MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, lockPosition,
-                                                        {0.0f, 0.0f, 0.0f}, {0.58f, 0.58f, 0.58f});
-        GpuParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, lockPosition);
-        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-            camera->StartShake(0.22f, 0.065f, 24.0f, {0.62f, 0.50f, 0.18f});
-        }
-    } else if (signal.signal == "gate_activate") {
-        engine::Vector3 position = lockPosition;
-        if (unlockTargetGate_) {
-            const Aabb bounds = unlockTargetGate_->GetAabb();
-            position = (bounds.min + bounds.max) * 0.5f;
-        }
-        GpuParticleManager::GetInstance()->Emit(kGateUnlockCoreParticlePreset, position);
-        GpuParticleManager::GetInstance()->Emit(kGateUnlockSparkParticlePreset, position);
-        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-            camera->StartShake(0.16f, 0.035f, 22.0f, {0.42f, 0.42f, 0.20f});
-        }
     }
 }
 

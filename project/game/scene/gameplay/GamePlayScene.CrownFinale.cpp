@@ -25,6 +25,8 @@
 #include <cstdio>
 #include <optional>
 #include <unordered_set>
+#include <utility>
+#include "game/system/scene/ObjectManager.h"
 
 namespace {
 constexpr const char* kCrownFinalePath = "Resources/json/scenario/crown_finale.json";
@@ -159,6 +161,31 @@ CrownFinaleTuning GamePlayScene::GetCrownFinaleTiming() const {
     return tuning;
 }
 
+void GamePlayScene::RequestCrownFinale(EnemyFalseKingSlime* boss) {
+    if (!pendingCrownFinaleBoss_ && !crownFinale_.prepared)
+        pendingCrownFinaleBoss_ = boss;
+}
+
+void GamePlayScene::StartPendingCrownFinale() {
+    auto* boss = std::exchange(pendingCrownFinaleBoss_, nullptr);
+    if (!boss)
+        return;
+
+    // 更新の末尾で削除済みのObjectには触れない。
+    const auto& objects = GetObjects();
+    const auto owned = std::find_if(objects.begin(), objects.end(), [boss](const auto& object) {
+        return object.get() == boss && !object->IsReplayRemoved();
+    });
+    if (owned == objects.end() || boss->IsDead())
+        return;
+
+    if (StartCrownFinale(boss))
+        boss->OnCrownFinaleStarted();
+
+    // 最終闘技場の通常追加と、開始失敗時の削除予約も同フレームで反映する。
+    objectManager_->ApplyPendingChanges();
+}
+
 bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     if (crownFinale_.active || crownFinale_.prepared || !boss || !player_ || player_->IsDead() ||
         player_->IsCinematicLocked() || isGoal_)
@@ -179,6 +206,12 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
         return false;
     if (!crownFinaleSequence_.Load(kCrownFinalePath))
         return false;
+    const auto& clips = crownFinaleSequence_.presentation.objects;
+    const auto fragmentClip = std::find_if(clips.begin(), clips.end(), [](const auto& clip) { return clip.name == "fragment"; });
+    if (fragmentClip == clips.end() || (fragmentClip->keys.empty() && fragmentClip->motions.empty())) return false;
+    if (std::none_of(clips.begin(),clips.end(),[](const auto& clip) {
+        return clip.name=="player_flight" && clip.enabled && !clip.motions.empty();
+    })) return false;
     auto& s = crownFinale_;
     const auto tuning = GetCrownFinaleTiming();
     // 編集した節目が欠けたり逆転した場合は、世界を変更する前に停止する。
@@ -314,18 +347,24 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
                                   : engine::Vector3{std::sin(s.playerYaw), 0.0f, std::cos(s.playerYaw)};
     const engine::Vector3 sample = s.start + direction * tuning.movieFragmentDistance;
     s.fragmentGround = CombatGroundQuery::FindGroundPoint(sample, player_, {8.0f, 24.0f}, s.start.y - 0.75f);
-    s.fragmentGround.y += 0.51f * s.bossScale.y * tuning.movieFragmentScale;
+    // 接地時の大きさも見た目キーから取り、床に埋まらない高さへ合わせる。
+    const auto resting = engine::SampleCinematicVisual(*fragmentClip,
+        tuning.movieFragmentLandTime*s.duration,&crownFinaleSequence_);
+    s.fragmentGround.y += 0.51f * s.bossScale.y * resting.scale.y;
     // 装飾・追従・カメラは同じDirector素材から再生し、ゲーム固有の位置だけ接続する。
     crownFinalePlayer_.Initialize(SceneManager::GetInstance());
     crownFinalePlayer_.SetBindingResolver([this](const CinematicObjectBinding& binding) -> engine::Object3D* {
         if (binding.targetName == "boss" || binding.targetName == "$Actor") return crownFinale_.boss;
-        if (binding.targetName == "player" || binding.targetName == "$Gate") return player_;
+        if (binding.targetName == "player" || binding.targetName == "$Gate" || binding.targetName == "player_flight") return player_;
         return CinematicPlayer::ResolveSceneTarget(this, binding);
     });
     crownFinalePlayer_.SetPositionResolver([this](const CinematicObjectBinding& binding)
         -> std::optional<engine::Vector3> {
         const auto& state = crownFinale_;
         if (binding.targetName == "fragment_ground") return state.fragmentGround;
+        if (binding.targetName == "fragment_release") return state.fragmentStart;
+        if (binding.targetName == "fragment_attached" && state.boss)
+            return engine::Math::Transform({0.0f,3.44f,-1.76f},state.boss->GetWorldMatrix());
         if (binding.targetName == "player_start") return state.start;
         if (binding.targetName == "boss_start") return state.bossStart;
         if (binding.targetName == "destination") return state.offset + engine::Vector3{0,.82f,12};
@@ -382,7 +421,7 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime) {
     const float previousTime = s.time;
     s.time += std::max(0.0f, frameDeltaTime);
     const float t = std::clamp(s.time / s.duration, 0.0f, 1.0f);
-    const float breakTime = tuning.movieFragmentBreakTime, landTime = tuning.movieFragmentLandTime;
+    const float breakTime = tuning.movieFragmentBreakTime;
     const float rageTime = tuning.movieRageTime, pullTime = tuning.movieFragmentPullTime;
     const float absorbTime = tuning.movieFragmentAbsorbTime, bodyTime = tuning.movieBodyTime;
     const float crownTime = tuning.movieCrownTime, wingsTime = tuning.movieWingsTime;
@@ -417,49 +456,16 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime) {
     s.boss->SetScale(bossPose(t));
     s.boss->SetTranslate(s.bossStart);
     s.boss->UpdateWorldMatrix(false);
-    const engine::Vector3 release = engine::Math::Transform({0.0f, 3.44f, -1.76f}, engine::Math::MakeAffineMatrix(bossPose(breakTime), s.bossRotation, s.bossStart));
     const engine::Vector3 towardFragment = s.fragmentGround - s.start;
     const float pullYaw = std::atan2(towardFragment.x, towardFragment.z);
     const engine::Vector3 pullDirection{std::sin(pullYaw), 0.0f, std::cos(pullYaw)};
     const engine::Vector3 mouth = s.start + pullDirection * 0.70f + engine::Vector3{0.0f, 0.22f, 0.0f};
-    engine::Vector3 fragmentPosition = release, fragmentRotation = s.bossRotation, fragmentScale = s.bossScale;
-
-    // 王冠片は本体への固定、落下、着地、吸収の順に同じObjectの姿勢を切り替えます。
-    if (t < breakTime) {
-        fragmentPosition = engine::Math::Transform({0.0f, 3.44f, -1.76f}, s.boss->GetWorldMatrix());
-        fragmentScale = bossPose(t);
-    } else if (t < landTime) {
-        const float fall = (t - breakTime) / (landTime - breakTime);
-        fragmentPosition = CrownLerp(release, s.fragmentGround, fall);
-        fragmentPosition.y += std::sin(fall * std::numbers::pi_v<float>) * tuning.movieFragmentFallArc;
-        fragmentRotation = s.bossRotation + engine::Vector3{std::sin(fall * std::numbers::pi_v<float>) * 0.55f, fall * (2.0f * std::numbers::pi_v<float>), fall * 0.16f};
-        fragmentScale = s.bossScale * (1.0f + (tuning.movieFragmentScale - 1.0f) * Easing::SmoothStep01(fall));
-    } else if (t < pullTime) {
-        const float settle = std::clamp((t - landTime) / 0.04f, 0.0f, 1.0f);
-        fragmentPosition = s.fragmentGround + engine::Vector3{0.0f, std::fabs(std::sin(settle * (2.0f * std::numbers::pi_v<float>))) * (1.0f - settle) * 0.25f, 0.0f};
-        fragmentRotation = s.bossRotation + engine::Vector3{0.0f, (2.0f * std::numbers::pi_v<float>), 0.16f};
-        fragmentScale = s.bossScale * tuning.movieFragmentScale;
-    } else {
-        const float receive = Easing::SmoothStep01((t - pullTime) / (absorbTime - pullTime));
-        fragmentPosition = CrownLerp(s.fragmentGround, mouth, receive);
-        fragmentPosition.y += std::sin(receive * std::numbers::pi_v<float>) * 0.22f;
-        fragmentScale = s.bossScale * (tuning.movieFragmentScale * std::max(0.001f, 1.0f - Easing::SmoothStep01((receive - 0.65f) / 0.35f)));
-        fragmentRotation = s.bossRotation + engine::Vector3{0.0f, (2.0f * std::numbers::pi_v<float>) + receive * 1.2f, 0.16f};
+    // 腕の先端と描画で同じ時刻の位置を使い、評価順による一フレームの遅れを防ぐ。
+    const auto fragmentPosition = crownFinalePlayer_.SampleObjectPosition("fragment", s.time);
+    if (!fragmentPosition) {
+        ResetCrownFinaleWorld();
+        return;
     }
-
-    s.fragment->SetIsVisible(t < absorbTime);
-    s.fragment->SetTranslate(fragmentPosition);
-    s.fragment->SetScale(fragmentScale);
-    s.fragment->SetRotation(fragmentRotation);
-    s.fragment->SetEmissive(1.2f + (t >= landTime ? 0.4f + 0.15f * std::sin(s.time * 6.0f) : 0.0f));
-    if (crossed(0.04f))
-        VfxSequencer::PlayOneShot("pull_catch_cue", release, {0.7f,0.7f,0.7f});
-    if (crossed(breakTime)) {
-        VfxSequencer::PlayOneShot("pull_catch_cue", release, {0.9f,0.9f,0.9f});
-    }
-
-    if (t>=landTime && t<pullTime && periodic(5))
-        GpuParticleManager::GetInstance()->EmitDirected("crown_goal_idle_sparkle",s.fragmentGround,{0,1,0},.4f);
 
     // プレイヤーの向きを先に欠片へ寄せ、引き寄せ区間でだけ操作用のフック表示を使います。
     engine::Vector3 playerPosition=s.start;
@@ -474,7 +480,7 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime) {
 
         if (engine::Object3D* marker=player_->GetHookMarker()) {
             const float shot=Easing::SmoothStep01((t-pullTime)/.012f);
-            const engine::Vector3 tip=CrownLerp(mouth,fragmentPosition,shot),diff=tip-mouth;
+            const engine::Vector3 tip=CrownLerp(mouth,*fragmentPosition,shot),diff=tip-mouth;
             marker->SetIsVisible(true);
             marker->SetColor({.10f,.82f,1,1});
             marker->SetTranslate(mouth+diff*.5f);
@@ -490,7 +496,6 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime) {
         player_->EndCinematicPullVisual();
         player_->SetScale(s.playerScale);
         player_->SetMoveYaw(pullYaw);
-        VfxSequencer::PlayOneShot("pull_catch_cue",mouth,{.8f,.8f,.8f});
     }
 
     if (t>=absorbTime && t<bodyTime) {
@@ -549,25 +554,18 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime) {
         player_->SetScale({s.playerScale.x*(1+anticipation*.20f),s.playerScale.y*(1-anticipation*.30f),s.playerScale.z});
     }
 
-    // 飛行中は弧と伸びを評価し、着地後は位置を固定してつぶれを減衰させます。
-    if (t>=escapeTime && t<arriveTime) {
-        const float travel=(t-escapeTime)/(arriveTime-escapeTime);
-        playerPosition=CrownLerp(s.start,destination,travel);
-        playerPosition.y+=std::sin(travel*std::numbers::pi_v<float>)*tuning.escapeHeight;
-        const float stretch=std::exp(-travel*18);
-        player_->SetScale({s.playerScale.x*(1-stretch*.14f),s.playerScale.y*(1+stretch*.24f),s.playerScale.z});
-        player_->SetMoveYaw(flightYaw);
-        player_->SetRotation({-.25f*(1-2*travel),flightYaw+player_->GetVisualYawOffset(),std::sin(travel*(2.0f * std::numbers::pi_v<float>))*.12f});
-
-        if (periodic(15))
+    // 操作用の向きだけを決め、飛行・着地の姿勢はDirectorの区間設定へ任せる。
+    if (t>=escapeTime) {
+        player_->SetMoveYaw(t<arriveTime ? flightYaw : std::numbers::pi_v<float>);
+        if (!crownFinalePlayer_.ApplyObjectTransform("player_flight",s.time)) {
+            ResetCrownFinaleWorld();
+            return;
+        }
+        playerPosition=player_->GetTranslate();
+        if (t<arriveTime && periodic(15))
             GpuParticleManager::GetInstance()->EmitDirected("false_king_rush_wake",playerPosition,{-std::sin(flightYaw),0,-std::cos(flightYaw)},.75f);
-    } else if (t>=arriveTime) {
-        playerPosition=destination;
-        const float settle=Easing::SmoothStep01((t-arriveTime)/.035f),squash=(1-settle)*std::cos(settle*(std::numbers::pi_v<float> * 1.5f));
-        player_->SetScale({s.playerScale.x*(1+squash*.23f),s.playerScale.y*(1-squash*.30f),s.playerScale.z*(1+squash*.18f)});
-        player_->SetMoveYaw(std::numbers::pi_v<float>);
-        player_->SetRotation({0,std::numbers::pi_v<float>+player_->GetVisualYawOffset(),0});
-
+    }
+    if (t>=arriveTime) {
         if (!s.landed) {
             s.landed=true;
             VfxSequencer::PlayOneShot("crown_victory_land_cue",destination);
@@ -637,6 +635,12 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime) {
     if (!crownFinalePlayer_.IsPlaying() && !crownFinalePlayer_.IsPreviewing()) {
         ResetCrownFinaleWorld();
         return;
+    }
+
+    // 外れる前だけは本体の変形を継承する。外れた後の拡縮は見た目キーが担当する。
+    if (t < breakTime) {
+        s.fragment->SetScale(s.boss->GetScale());
+        s.fragment->UpdateWorldMatrix(true);
     }
 
     // 通常Updateもカメラ変更前にモデルを更新していました。最後に全描画定数を揃えます。
@@ -732,6 +736,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
 }
 
 void GamePlayScene::ResetCrownFinaleWorld() {
+    pendingCrownFinaleBoss_ = nullptr;
     // プレビューや中断後に生成した演出Objectを片付け、元の世界へ戻す。
     auto& s = crownFinale_;
     if (!s.prepared)

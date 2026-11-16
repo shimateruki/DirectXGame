@@ -923,26 +923,22 @@ void GameSelectScene::ApplyStageGateStates() {
         const bool gateVisualUnlocked =
             unlocking ? (unlockTimelineReady && unlockPresentationTimer_ >= unlockGateActivationTime_) : unlocked;
         if (engine::Object3D* lockSeal = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex))) {
-            const bool showLock =
-                unlocking ? (!unlockPresentationInitialized_ || unlockPresentationTimer_ < unlockLockHideTime_)
-                          : !unlocked;
-
-            // 南京錠と鎖はゲートとは別サイズなので、Sceneで調整したTransformを維持します。
-            lockSeal->SetIsVisible(showLock);
-            const bool keyEngaged = unlockTimelineReady && unlockPresentationTimer_ >= unlockKeyApproachEndTime_;
-            lockSeal->SetColor(unlocking && keyEngaged ? engine::Vector4{1.0f, 0.78f, 0.24f, 1.0f}
-                                                       : (selected ? engine::Vector4{0.86f, 0.68f, 0.34f, 1.0f}
-                                                                   : engine::Vector4{0.64f, 0.52f, 0.30f, 1.0f}));
-            lockSeal->SetEmissive(unlocking && keyEngaged ? 1.45f + pulse * 0.75f : (selected ? 0.42f : 0.20f));
+            // 演出中は Director が表示と発光を所有し、通常の選択表示で上書きしない。
+            if (!unlockTimelineReady) {
+                lockSeal->SetIsVisible(unlocking || !unlocked);
+                lockSeal->SetColor(selected ? engine::Vector4{0.86f, 0.68f, 0.34f, 1.0f}
+                                            : engine::Vector4{0.64f, 0.52f, 0.30f, 1.0f});
+                lockSeal->SetEmissive(selected ? 0.42f : 0.20f);
+            }
             lockSeal->SetCollisionAttribute(0);
             lockSeal->SetCollisionMask(0);
             lockSeal->SetColliderType(ColliderType::None);
         }
 
         if (engine::Object3D* crownKey = FindObjectByName(std::string(kStageGateCrownKeyPrefix) + std::to_string(stageIndex))) {
-            const bool showKey = unlockTimelineReady && unlockPresentationTimer_ >= unlockKeyAppearTime_ &&
-                                 unlockPresentationTimer_ < unlockKeyHideTime_;
-            crownKey->SetIsVisible(showKey);
+            if (!unlockTimelineReady) {
+                crownKey->SetIsVisible(false);
+            }
             crownKey->SetCollisionAttribute(0);
             crownKey->SetCollisionMask(0);
             crownKey->SetColliderType(ColliderType::None);
@@ -1164,6 +1160,7 @@ bool GameSelectScene::IsStageGateObject(const engine::Object3D* object) const {
            objectName.find("portal_gate") != std::string::npos ||
            objectName.find("portal_surface") != std::string::npos || objectName.find("StageGate") != std::string::npos;
 }
+
 
 int GameSelectScene::GetStageGateIndex(const engine::Object3D* object) const {
     // 新型は専用フィールド、旧型は汎用 TargetID からステージ番号を読む。

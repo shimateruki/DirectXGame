@@ -120,6 +120,8 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     /// <summary>最終ボスの王冠演出を開始します。</summary>
     /// <returns>演出を開始できた場合は true。</returns>
     bool StartCrownFinale(class EnemyFalseKingSlime* boss);
+    // ボスの更新中は演出を開始せず、Objectの走査後に開始する。
+    void RequestCrownFinale(class EnemyFalseKingSlime* boss);
 
     /// <summary>編集用の複製ステージで王冠ムービーのプレビューを開始する。</summary>
     /// <param name="defeat">撃破ムービーを試す場合はtrue。</param>
@@ -326,6 +328,8 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
         // 共通再生器が所有する王冠片への借用参照。操作用フックと接続する。
         engine::Object3D* fragment = nullptr;
     } crownFinale_;
+    // 同じ更新内でのみ保持する非所有参照。開始前にシーン内の所有を確認する。
+    class EnemyFalseKingSlime* pendingCrownFinaleBoss_ = nullptr;
     // 王冠継承の装飾・VFX・カメラをまとめたDirector素材。
     CinematicSequence crownFinaleSequence_;
     CinematicPlayer crownFinalePlayer_;
@@ -407,6 +411,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
     /// <summary>最終演出で変更したオブジェクトの姿勢と表示状態を戻します。</summary>
     /// <summary>最終演出で変えたワールドObjectの姿勢と表示状態を復元する。</summary>
+    void StartPendingCrownFinale();
     void ResetCrownFinaleWorld();
 
     /// <summary>このフレームの共有ライトを借り、最終演出の3Dオブジェクトを描画する。</summary>
@@ -600,12 +605,6 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     engine::Vector3 goalCrownBaseScale_ = {1.0f, 1.0f, 1.0f};
     engine::Vector3 goalCrownBaseRotation_ = engine::Vector3::ZERO;
 
-    // 王冠着地後の揺れを位置・回転それぞれのバネ状態で積分する。
-    engine::Vector3 goalCrownSpringPosition_ = engine::Vector3::ZERO;
-    engine::Vector3 goalCrownSpringVelocity_ = engine::Vector3::ZERO;
-    engine::Vector3 goalCrownSpringRotation_ = engine::Vector3::ZERO;
-    engine::Vector3 goalCrownSpringRotationVelocity_ = engine::Vector3::ZERO;
-    bool goalCrownSpringInitialized_ = false;
 
     // 通常・王冠注視・着地・ジャンプ・結果表示の各カメラ構図。
     engine::Vector3 goalCameraGameplayEye_ = engine::Vector3::ZERO;

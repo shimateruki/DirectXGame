@@ -19,6 +19,33 @@ void GhostDirector::DrawPresentationEditor() {
         if (DrawObjectBindingEditor(label,b,false,false)) value=b.targetName;
         text((std::string(label)+" 名・役割").c_str(),value);
     };
+    if (ImGui::TreeNode("追従部品のばね（ゲーム側の装着先を使用）")) {
+        ImGui::TextWrapped("装着先のモデル寸法はゲーム側から渡します。再生を停止して調整し、シーケンスを保存してください。");
+        for (auto& [name, settings] : p.springs) {
+            ImGui::PushID(name.c_str());
+            if (ImGui::TreeNode(name.c_str())) {
+                ImGui::DragFloat3("初期位置の差分", &settings.initialPositionOffset.x, 0.01f);
+                ImGui::DragFloat3("初期回転の差分（rad）", &settings.initialRotationOffset.x, 0.01f);
+                ImGui::SliderFloat("初期の前後速度", &settings.initialForwardVelocity, -5.0f, 5.0f);
+                ImGui::SliderFloat("位置ばねの硬さ", &settings.positionStiffness, 0.0f, 200.0f);
+                ImGui::SliderFloat("位置ばねの減衰", &settings.positionDamping, 0.0f, 30.0f);
+                ImGui::SliderFloat("回転ばねの硬さ", &settings.angularStiffness, 0.0f, 200.0f);
+                ImGui::SliderFloat("回転ばねの減衰", &settings.angularDamping, 0.0f, 30.0f);
+                ImGui::SliderFloat("水平偏差の上限", &settings.maxPlanarOffset, 0.0f, 30.0f);
+                ImGui::SliderFloat("沈みの上限", &settings.maxSink, 0.0f, 30.0f);
+                ImGui::SliderFloat("浮きの上限", &settings.maxLift, 0.0f, 30.0f);
+                ImGui::SliderFloat("偏差による傾き", &settings.tiltFromOffset, 0.0f, 30.0f);
+                ImGui::SliderFloat("速度による傾き", &settings.tiltFromVelocity, 0.0f, 30.0f);
+                ImGui::SliderFloat("基準対象の傾き追従", &settings.sourceTiltFollow, 0.0f, 1.0f);
+                ImGui::SliderFloat("初期の上下速度", &settings.initialVerticalVelocity, -5.0f, 30.0f);
+                ImGui::SliderFloat("初期のロール速度", &settings.initialRollVelocity, -5.0f, 30.0f);
+                ImGui::SliderFloat("圧縮倍率", &settings.compressionScale, 0.0f, 1.0f);
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        }
+        ImGui::TreePop();
+    }
     binding("視点の基準",p.reference); binding("視点が向く対象",p.lookToward);
     if (ImGui::TreeNode("再生中に隠すObject")) {
         for (size_t i=0;i<p.hideObjects.size();++i) {
@@ -47,7 +74,8 @@ void GhostDirector::DrawPresentationEditor() {
         text("部品名",clip.name); text("モデル（Resources/3DModel以下）",clip.model);
         binding("部品の基準対象",clip.source);
         ImGui::Checkbox("一時Objectを生成",&clip.spawn); ImGui::SameLine(); ImGui::Checkbox("部品を有効化",&clip.enabled);
-        ImGui::Checkbox("キーで姿勢を動かす",&clip.animate);
+        ImGui::Checkbox("自動再生で姿勢・見た目を適用",&clip.animate);
+        if (!clip.animate) ImGui::TextDisabled("ゲームからの姿勢適用と位置参照には、OFFのまま使用できます。");
         ImGui::Checkbox("基準の現在位置に追従",&clip.followPosition); ImGui::SameLine(); ImGui::Checkbox("現在の回転に追従",&clip.followRotation);
         ImGui::Checkbox("現在の大きさに追従",&clip.followScale); ImGui::SameLine(); ImGui::Checkbox("基準が隠れたら隠す",&clip.inheritVisibility);
         ImGui::DragFloat3("継承する回転軸（0で除外）",&clip.rotationMask.x,.1f,0,1);
@@ -63,6 +91,88 @@ void GhostDirector::DrawPresentationEditor() {
         ImGui::DragFloat("消失面の縁幅",&clip.clipEdgeWidth,.005f,0,3);
         ImGui::DragFloat("消失面のぼかし",&clip.clipDissolve,.005f,0,3);
         ImGui::ColorEdit4("消失面の色",&clip.clipColor.x);
+        if (clip.motions.empty() && ImGui::Button("キーを置き換えて移動区間を作成")) {
+            engine::CinematicMotionSegment motion;
+            motion.name="移動";
+            if (!clip.keys.empty()) {
+                motion.from=clip.keys.front(); motion.to=clip.keys.back();
+                motion.startTime=clip.keys.front().time;
+                motion.endTime=(std::max)(motion.startTime+.001f,clip.keys.back().time);
+            }
+            clip.motions.push_back(motion); clip.keys.clear(); selectedVisualKey_=0;
+        }
+        if (!clip.motions.empty()) {
+            ImGui::SeparatorText("移動区間（細かなキーの生成は不要）");
+            selectedVisualKey_=std::clamp(selectedVisualKey_,0,static_cast<int>(clip.motions.size())-1);
+            if (ImGui::BeginCombo("区間",clip.motions[selectedVisualKey_].name.c_str())) {
+                for (int i=0;i<static_cast<int>(clip.motions.size());++i) {
+                    ImGui::PushID(i);
+                    if (ImGui::Selectable(clip.motions[i].name.c_str(),i==selectedVisualKey_)) selectedVisualKey_=i;
+                    ImGui::PopID();
+                }
+                ImGui::EndCombo();
+            }
+            auto& motion=clip.motions[selectedVisualKey_];
+            text("区間名",motion.name);
+            auto timing=[&](const char* label,std::string& signal,float& seconds) {
+                ImGui::PushID(label);
+                if (ImGui::BeginCombo(label,signal.empty()?"秒数で指定":signal.c_str())) {
+                    if (ImGui::Selectable("秒数で指定",signal.empty())) signal.clear();
+                    for (const auto& marker:sequence_.signals)
+                        if (marker.enabled && ImGui::Selectable(marker.name.c_str(),signal==marker.name)) signal=marker.name;
+                    ImGui::EndCombo();
+                }
+                if (signal.empty()) ImGui::DragFloat("秒",&seconds,.01f,0,600);
+                else ImGui::Text("Signal: %.3f 秒",sequence_.GetSignalTime(signal,-1));
+                ImGui::PopID();
+            };
+            timing("開始",motion.startSignal,motion.startTime);
+            timing("終了",motion.endSignal,motion.endTime);
+            auto point=[&](const char* label,engine::CinematicVisualKey& key) {
+                if (ImGui::TreeNode(label)) {
+                    binding("基準点",key.positionReference);
+                    ImGui::DragFloat3("位置の補正",&key.position.x,.01f);
+                    ImGui::DragFloat3("回転（rad）",&key.rotation.x,.01f);
+                    ImGui::DragFloat3("大きさ（倍率）",&key.scale.x,.01f,0,100);
+                    ImGui::DragFloat("発光",&key.emissive,.01f,0,100);
+                    ImGui::ColorEdit4("色",&key.color.x); ImGui::Checkbox("表示",&key.visible);
+                    ImGui::TreePop();
+                }
+            };
+            point("始点",motion.from); point("終点",motion.to);
+            ImGui::DragFloat("弧の高さ",&motion.arcHeight,.01f);
+            ImGui::Checkbox("始終点を滑らかにする",&motion.smoothProgress);
+            if (ImGui::TreeNode("回転・拡縮")) {
+                ImGui::DragFloat3("中央で加える傾き（rad）",&motion.rotationArc.x,.01f);
+                ImGui::DragFloat("傾きの周期数",&motion.rotationCycles,.05f,0,100);
+                ImGui::Checkbox("拡縮を滑らかにする",&motion.smoothScale);
+                ImGui::DragFloat("拡縮の減衰率（0で通常補間）",&motion.scaleDecay,.1f,0,100);
+                ImGui::DragFloat("拡縮の揺れ周期数",&motion.scaleCycles,.05f,0,100);
+                ImGui::SliderFloat("拡縮を始める進行割合",&motion.scaleStart,0,.99f);
+                ImGui::DragFloat("最小倍率",&motion.minimumScale,.001f,0,100);
+                ImGui::TreePop();
+            }
+            if (ImGui::TreeNode("着地の揺れ・発光")) {
+                ImGui::DragFloat("揺れ幅",&motion.bounceHeight,.01f,0,100);
+                ImGui::DragFloat("揺れが収まる秒数",&motion.bounceDuration,.01f,.001f,600);
+                ImGui::DragFloat("揺れの周期数",&motion.bounceCycles,.1f,0,100);
+                ImGui::DragFloat("発光の振幅",&motion.emissiveAmplitude,.01f);
+                ImGui::DragFloat("発光の角速度（rad/秒）",&motion.emissiveFrequency,.1f);
+                ImGui::TreePop();
+            }
+            if (ImGui::Button("末尾に区間を追加")) {
+                engine::CinematicMotionSegment next;
+                next.name="移動"; next.from=next.to=clip.motions.back().to;
+                const auto& last=clip.motions.back();
+                next.startSignal=last.endSignal;
+                next.startTime=last.endSignal.empty()?last.endTime:sequence_.GetSignalTime(last.endSignal,last.endTime);
+                next.endTime=next.startTime+1; clip.motions.push_back(next);
+                selectedVisualKey_=static_cast<int>(clip.motions.size())-1;
+            }
+            ImGui::SameLine();
+            if (clip.motions.size()>1 && ImGui::Button("選択区間を削除")) clip.motions.erase(clip.motions.begin()+selectedVisualKey_);
+            ImGui::TextWrapped("時刻の重複・Signal不足は再生前の検証で確認してください。調整後は再評価して保存します。");
+        }
         if (!clip.keys.empty()) {
             selectedVisualKey_=std::clamp(selectedVisualKey_,0,static_cast<int>(clip.keys.size())-1);
             if (ImGui::Button("現在時刻に近いキーを選択")) {
@@ -72,6 +182,12 @@ void GhostDirector::DrawPresentationEditor() {
             ImGui::SliderInt("見た目キー",&selectedVisualKey_,0,static_cast<int>(clip.keys.size())-1);
             auto& k=clip.keys[selectedVisualKey_];
             ImGui::DragFloat("キー時刻",&k.time,.005f,0,sequence_.GetAuthoredDuration());
+            binding("位置の基準点（空なら従来の座標系）",k.positionReference);
+            if (!k.positionReference.empty()) {
+                binding("位置の移動先（空なら基準点のみ）",k.positionTarget);
+                ImGui::SliderFloat("基準点から移動先への割合",&k.positionMix,0.0f,1.0f);
+                ImGui::TextDisabled("位置は基準点に加えるワールド座標の補正です。");
+            }
             ImGui::DragFloat3("位置・半径",&k.position.x,.01f); ImGui::DragFloat3("回転（rad）",&k.rotation.x,.01f);
             ImGui::DragFloat3("大きさ",&k.scale.x,.01f); ImGui::ColorEdit4("色・透明度",&k.color.x);
             ImGui::DragFloat("発光",&k.emissive,.02f,0,100); ImGui::DragFloat("消失面の高さ",&k.clipHeight,.01f);
