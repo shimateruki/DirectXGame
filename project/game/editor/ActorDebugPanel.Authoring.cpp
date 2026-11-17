@@ -35,6 +35,12 @@ bool EditText(const char* label, std::string& text) {
     return true;
 }
 
+// 実行時に使う素材IDはフォルダーを含み、表示用の末尾名とは分ける。
+std::string AssetKey(const std::string& file, const char* root) {
+    auto relative = std::filesystem::path(file).lexically_relative(root);
+    return relative.replace_extension().generic_string();
+}
+
 bool SelectJson(const char* label, const char* directory, std::string& path, ProjectWindow* assets = nullptr) {
     // JSONを名前で絞り込み、表示範囲に入った候補だけサムネイルを要求する。
     bool changed = false;
@@ -46,7 +52,7 @@ bool SelectJson(const char* label, const char* directory, std::string& path, Pro
         std::error_code error;
         std::vector<std::string> paths;
 
-        for (std::filesystem::directory_iterator it(directory, error), end; !error && it != end; it.increment(error))
+        for (std::filesystem::recursive_directory_iterator it(directory, error), end; !error && it != end; it.increment(error))
             if (it->path().extension() == ".json")
                 paths.push_back(it->path().generic_string());
         std::sort(paths.begin(), paths.end());
@@ -774,7 +780,7 @@ bool ActorDebugPanel::DrawAttackAuthoringHierarchy() {
                         event.projectile.impact.clear();
                         event.projectile.secondaryImpact.clear();
                     } else { event.operation = "gpu_vfx";
-                    event.preset = event.name;
+                    event.preset = AssetKey(picked, "Resources/json/gpu_particles");
                     }
                     sequence.events.push_back(event);
                     selectedTrack_ = -1 - static_cast<int>(sequence.events.size());
@@ -1168,7 +1174,7 @@ void ActorDebugPanel::DrawProjectileInspector() {
         std::string path = name.empty() ? "" : "Resources/json/gpu_particles/" + name + ".json";
         bool edited = SelectJson(label, "Resources/json/gpu_particles", path);
         if (edited)
-            name = std::filesystem::path(path).stem().string();
+            name = AssetKey(path, "Resources/json/gpu_particles");
         if (ImGui::SmallButton("なしにする")) {
             name.clear();
             edited = true;

@@ -168,6 +168,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="engine\editor\assets\JsonAssetBrowser.cpp" />
+    <ClCompile Include="engine\utility\time\Timer.cpp" />
     <ClCompile Include="game\system\cinematic\GateEntryPresentation.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomber.cpp" />
     <ClCompile Include="game\actor\enemy\combat\AttackTelegraph.cpp" />
@@ -651,6 +653,10 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="engine\graphics\effect\VfxAssetPath.h" />
+    <ClInclude Include="engine\animation\cinematic\CinematicAssetPath.h" />
+    <ClInclude Include="engine\editor\assets\JsonAssetBrowser.h" />
+    <ClInclude Include="engine\utility\time\Timer.h" />
     <ClInclude Include="game\actor\player\copy\WindCopySettings.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomber.h" />
     <ClInclude Include="game\actor\enemy\combat\AttackTelegraph.h" />

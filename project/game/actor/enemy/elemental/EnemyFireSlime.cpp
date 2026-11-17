@@ -28,11 +28,11 @@ constexpr int kHeadFlameMaterialType = 11;
 constexpr float kHeadFlameEffectType = 2.0f;
 constexpr float kBreathFlameEffectType = 5.0f;
 constexpr int kBreathFlameVisualCount = 7;
-constexpr const char* kBreathPreset = "fire_slime_breath";
-constexpr const char* kBreathEmberPreset = "fire_slime_breath_embers";
-constexpr const char* kCastPreset = "fire_slime_cast";
-constexpr const char* kHeadFlamePreset = "fire_slime_head_flame";
-constexpr const char* kHeadEmberPreset = "fire_slime_head_embers";
+constexpr const char* kBreathPreset = "shared/fire_slime_breath";
+constexpr const char* kBreathEmberPreset = "shared/fire_slime_breath_embers";
+constexpr const char* kCastPreset = "shared/fire_slime_cast";
+constexpr const char* kHeadFlamePreset = "enemy/fire_slime/fire_slime_head_flame";
+constexpr const char* kHeadEmberPreset = "enemy/fire_slime/fire_slime_head_embers";
 
 engine::Vector3 NormalizePlanar(engine::Vector3 value) {
     // 目標と重なって方向を失った場合も、攻撃とエフェクトに有効な前方を返す。
@@ -62,10 +62,10 @@ BulletVisualConfig MakeFireVisual(float scale) {
     visual.effectSoftness = 0.42f;
     visual.effectIntensity = 0.96f;
     visual.billboardScale = 0.68f;
-    visual.trailPreset = "fireball_trail_flame";
-    visual.trailSecondaryPreset = "fireball_trail_embers";
-    visual.impactPreset = "fireball_impact_flame";
-    visual.impactSecondaryPreset = "fireball_impact_sparks";
+    visual.trailPreset = "shared/fireball_trail_flame";
+    visual.trailSecondaryPreset = "shared/fireball_trail_embers";
+    visual.impactPreset = "shared/fireball_impact_flame";
+    visual.impactSecondaryPreset = "shared/fireball_impact_sparks";
     visual.trailInterval = 0.030f;
     visual.trailSpeedScale = 1.0f;
     visual.trailReverseDirection = true;

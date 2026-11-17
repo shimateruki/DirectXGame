@@ -129,7 +129,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
          {{"active", isGoal_},
           {"wasStageCleared", goalWasStageCleared_},
           {"state", static_cast<int>(goalPresentationState_)},
-          {"timer", goalPresentationTimer_},
+          {"timer", goalPresentationTimer_.Elapsed()},
           {"starEmitTimer", goalStarEmitTimer_},
           {"burstEmitTimer", goalBurstEmitTimer_},
           {"crownIdleTime", goalCrownIdleTime_},
@@ -194,7 +194,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         goalWasStageCleared_ = goal.value("wasStageCleared", goalWasStageCleared_);
         const int stateValue = std::clamp(goal.value("state", static_cast<int>(goalPresentationState_)), 0, 3);
         goalPresentationState_ = static_cast<GoalPresentationState>(stateValue);
-        goalPresentationTimer_ = goal.value("timer", goalPresentationTimer_);
+        goalPresentationTimer_.Seek(goal.value("timer", goalPresentationTimer_.Elapsed()));
         goalStarEmitTimer_ = goal.value("starEmitTimer", goalStarEmitTimer_);
         goalBurstEmitTimer_ = goal.value("burstEmitTimer", goalBurstEmitTimer_);
         goalCrownIdleTime_ = goal.value("crownIdleTime", goalCrownIdleTime_);
@@ -212,7 +212,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         if (goalCinematicTimelineLoaded_ && isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
             // 演出の時刻と再生/停止を別々に復元し、停止中のフレームへも戻せるようにする。
             const bool shouldPlay = goal.value("cinematicPlaying", goalCinematicPlayer_.IsPlaying());
-            goalCinematicPlayer_.SetTime(goalPresentationTimer_, false);
+            goalCinematicPlayer_.SetTime(goalPresentationTimer_.Elapsed(), false);
 
             if (shouldPlay && !goalCinematicPlayer_.IsPlaying()) {
                 goalCinematicPlayer_.Resume(false);

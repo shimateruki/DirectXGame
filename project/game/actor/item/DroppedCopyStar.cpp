@@ -79,7 +79,7 @@ void DroppedCopyStar::Collect(Player* player) {
 
     // 成功した瞬間に消費し、同フレームの重複衝突でも二重取得させません。
     MarkCollected();
-    VfxSequencer::PlayOneShot("copy_memory_station_activate_cue", player->GetWorldPosition(), {0.65f, 0.65f, 0.65f});
+    VfxSequencer::PlayOneShot("shared/copy_memory_station_activate_cue", player->GetWorldPosition(), {0.65f, 0.65f, 0.65f});
 }
 
 std::unique_ptr<engine::Object3D> DroppedCopyStar::Clone() const {

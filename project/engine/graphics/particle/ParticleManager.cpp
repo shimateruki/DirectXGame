@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "ParticleManager.h"
 #include <fstream>
 #include <filesystem>
@@ -266,49 +267,59 @@ void ParticleManager::SaveParam(const std::string& name, const engine::ParticleS
     }
 
     // ファイル書き出し
-    std::string filePath = kDirectoryPath + name + ".json";
-    std::ofstream o(filePath);
+    const auto utf8Path = kDirectoryPath + name + ".json";
+    const std::filesystem::path filePath(std::u8string(utf8Path.begin(), utf8Path.end()));
+    WriteParamFile(filePath, param);
+}
 
-    if (o.is_open()) {
-        json j = param;
-        o << std::setw(4) << j << std::endl; // 綺麗に整形して保存
-    }
+bool ParticleManager::WriteParamFile(const std::filesystem::path& path, const engine::ParticleSystem::EmitterParams& param) {
+    std::ofstream file(path);
+    file << std::setw(4) << json(param) << std::endl;
+    file.close();
+    return file.good();
 }
 
 void ParticleManager::LoadAllParams() {
     if (!std::filesystem::exists(kDirectoryPath))
         return;
 
-    for (const auto& entry : std::filesystem::directory_iterator(kDirectoryPath)) {
-        if (entry.path().extension() == ".json") {
-            // ファイル名(拡張子なし)をキーにする
-            std::string name = entry.path().stem().string();
-            LoadParam(name);
-        }
+    const std::filesystem::path root = std::filesystem::path(kDirectoryPath).parent_path();
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+        if (!entry.is_regular_file() || entry.path().extension() != ".json") continue;
+        auto relative = entry.path().lexically_relative(root);
+        const auto key = relative.replace_extension().generic_u8string();
+        engine::ParticleSystem::EmitterParams param;
+        if (ReadParamFile(entry.path(), param)) paramsMap_[std::string(key.begin(), key.end())] = std::move(param);
     }
 }
 
 // 名前に対応するEmitter設定を読み、成功したものだけ登録済みパラメータへ反映します。
 void ParticleManager::LoadParam(const std::string& name) {
-    std::string filePath = kDirectoryPath + name + ".json";
-    std::ifstream i(filePath);
+    const auto utf8Path = kDirectoryPath + name + ".json";
+    const std::filesystem::path filePath(std::u8string(utf8Path.begin(), utf8Path.end()));
+    engine::ParticleSystem::EmitterParams param;
+    if (ReadParamFile(filePath, param)) paramsMap_[name] = std::move(param);
+}
 
-    if (i.is_open()) {
-        json j;
-        i >> j;
-        engine::ParticleSystem::EmitterParams param;
-        from_json(j, param);
-        paramsMap_[name] = param;
-    }
+bool ParticleManager::ReadParamFile(const std::filesystem::path& path, engine::ParticleSystem::EmitterParams& out) {
+    std::ifstream file(path);
+    if (!file) return false;
+    json j;
+    file >> j;
+    engine::ParticleSystem::EmitterParams loaded;
+    from_json(j, loaded);
+    out = std::move(loaded);
+    return true;
 }
 
 void ParticleManager::Emit(const std::string& name, const engine::Vector3& position, float& timer) {
     // 登録されていない名前なら何もしない
-    if (paramsMap_.find(name) == paramsMap_.end())
+    const auto preset = VfxAssetPath::FindPreset(paramsMap_, name);
+    if (preset == paramsMap_.end())
         return;
 
     // パラメータ取得
-    const auto& params = paramsMap_[name];
+    const auto& params = preset->second;
 
     if (params.particlesPerSecond <= 0.0f) {
         return;

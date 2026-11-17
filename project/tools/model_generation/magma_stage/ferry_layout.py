@@ -84,7 +84,7 @@ def add_ferry_layout(objects):
     for i, seq in enumerate(sequences().values(),1):
         raft=make('Raft_'+str(i),seq['tracks'][0]['keys'][0]['position'],(10,3,6),'Stages/magma_escape_rock_'+str(i),'MovingFloor')
         raft['components']={'PathMover':dict(version=1,_editorPresent=True,path='',loop=False,relative=False,
-                                rideSequence=f'Resources/json/scenario/stage2_ferry_{i}.json')}
+                                rideSequence=f'Resources/json/scenario/stage2/stage2_ferry_{i}.json')}
         raft['param'].update(speed=1,moveAmount=0)
 
     # 第1航路だけボム壁。左右の岸を広げ、船の見た目の幅でも接触させない。

@@ -7,8 +7,8 @@
 namespace StarCoinPresentation {
 inline constexpr const char* kGoldModel = "Gimmicks/star";
 inline constexpr const char* kSilverModel = "Gimmicks/star/star_silver.gltf";
-inline constexpr const char* kSilverIdle = "star_sparkle_silver";
-inline constexpr const char* kSilverGet = "star_sparkleGet_silver";
+inline constexpr const char* kSilverIdle = "shared/star_sparkle_silver";
+inline constexpr const char* kSilverGet = "shared/star_sparkleGet_silver";
 
 inline bool IsSilver(const engine::Object3D& object) {
     return object.GetModelName() == kSilverModel;
@@ -45,6 +45,6 @@ inline void RestoreUncollectedIfSilver(engine::Object3D& object) {
     object.SetRoughness(0.32f);
     object.SetEnableEnvMap(false);
     object.SetEmissive(1.65f);
-    object.SetGpuParticleName("star_sparkle");
+    object.SetGpuParticleName("shared/star_sparkle");
 }
 } // namespace StarCoinPresentation

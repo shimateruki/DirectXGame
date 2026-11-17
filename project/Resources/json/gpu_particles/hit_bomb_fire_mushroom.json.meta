@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "dbaec409617636969a1982ab18f815e1",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hit_bomb_fire_mushroom.json",
-  "version": 1
-}

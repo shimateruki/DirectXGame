@@ -13,9 +13,9 @@
       "preview": { "targetDistance": 6.0, "duration": 4.6 },
       "presentation": {
         "animation": "",
-        "windupVfx": "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
-        "activeVfx": "Resources/json/effect/effect_pink_slime_dive_streak.json",
-        "impactVfx": "Resources/json/effect/effect_pink_slime_landing_burst_ring.json",
+        "windupVfx": "Resources/json/effect/shared/effect_pink_slime_charge_pulse_ring.json",
+        "activeVfx": "Resources/json/effect/shared/effect_pink_slime_dive_streak.json",
+        "impactVfx": "Resources/json/effect/shared/effect_pink_slime_landing_burst_ring.json",
         "audioCue": ""
       }
     }

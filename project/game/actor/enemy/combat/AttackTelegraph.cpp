@@ -21,7 +21,7 @@ constexpr std::size_t kConeSegmentCount = 8;
 constexpr float kCountdownOuterScale = 1.72f;
 constexpr float kTimingMarkerMinLength = 0.18f;
 constexpr float kTimingMarkerMaxLength = 0.78f;
-constexpr const char* kAttackWarningEffectPath = "Resources/json/effect/effect_attack_warning_flash.json";
+constexpr const char* kAttackWarningEffectPath = "Resources/json/effect/shared/effect_attack_warning_flash.json";
 constexpr const char* kAttackWarningTexturePath = "Resources/sprite/effect/attack_warning_flash.dds";
 constexpr const char* kWhiteTexturePath = "Resources/sprite/common/white.dds";
 

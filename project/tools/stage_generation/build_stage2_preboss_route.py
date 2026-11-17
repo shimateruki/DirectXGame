@@ -137,7 +137,7 @@ def main():
         o=clone(presets['Stage2/Gimmick/VolcanicSpikeBar'],suffix,
                 [parent['position'][0],parent['position'][1]+1.2,parent['position'][2]], [1,1,1],yaw)
         collision(o,128,['enemy_attack'])
-        path='stage2_route_'+suffix.lower()
+        path='stage2/stage2_route_'+suffix.lower()
         frames=[]
         for i in range(240):
             t=i/240*math.tau
@@ -239,6 +239,7 @@ def main():
         for name,data in motions.items():
             path=ROOT/'Resources/json/animation'/f'{name}.json'
             assert not path.exists(),path
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(data,separators=(',',':')),encoding='utf-8')
         assert SCENE.read_bytes()==original,'Scene edited concurrently'
         scene['objects']=all_objects

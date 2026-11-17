@@ -19,27 +19,27 @@ constexpr const char* kLavaSpiralAttackId = "lava_spiral";
 constexpr const char* kFireColumnAttackId = MagmaAttackVfx::kFireColumn.attackId;
 constexpr const char* kMagmaFloodAttackId = MagmaAttackVfx::kFlood.attackId;
 
-constexpr const char* kFireChantEffect = "Resources/json/effect/effect_boss_chant_fire.json";
-constexpr const char* kFireColumnLinkEffect = "Resources/json/effect/effect_magma_fire_column_link.json";
-constexpr const char* kMagmaChantEffect = "Resources/json/effect/effect_boss_chant_magma.json";
+constexpr const char* kFireChantEffect = "Resources/json/effect/shared/effect_boss_chant_fire.json";
+constexpr const char* kFireColumnLinkEffect = "Resources/json/effect/enemy/magma_slime/effect_magma_fire_column_link.json";
+constexpr const char* kMagmaChantEffect = "Resources/json/effect/enemy/magma_slime/effect_boss_chant_magma.json";
 
-constexpr const char* kFireChantMotesPreset = "boss_chant_fire_motes";
+constexpr const char* kFireChantMotesPreset = "shared/boss_chant_fire_motes";
 
-constexpr const char* kCoreEmberPreset = "magma_slime_core_embers";
-constexpr const char* kChargePreset = "magma_slime_charge";
+constexpr const char* kCoreEmberPreset = "enemy/magma_slime/magma_slime_core_embers";
+constexpr const char* kChargePreset = "enemy/magma_slime/magma_slime_charge";
 
-constexpr const char* kImpactPreset = "magma_slime_impact";
+constexpr const char* kImpactPreset = "enemy/magma_slime/magma_slime_impact";
 
-constexpr const char* kRushWakePreset = "magma_slime_rush_wake";
-constexpr const char* kRushSplashPreset = "magma_slime_rush_splash";
+constexpr const char* kRushWakePreset = "enemy/magma_slime/magma_slime_rush_wake";
+constexpr const char* kRushSplashPreset = "shared/magma_slime_rush_splash";
 
-constexpr const char* kSlamBurstPreset = "magma_slime_slam_burst";
+constexpr const char* kSlamBurstPreset = "enemy/magma_slime/magma_slime_slam_burst";
 
-constexpr const char* kGeyserBurstPreset = "magma_slime_geyser_burst";
-constexpr const char* kGeyserStreamPreset = "magma_slime_geyser_stream";
+constexpr const char* kGeyserBurstPreset = "enemy/magma_slime/magma_slime_geyser_burst";
+constexpr const char* kGeyserStreamPreset = "enemy/magma_slime/magma_slime_geyser_stream";
 
-constexpr const char* kSpiralSurgePreset = "magma_slime_spiral_surge";
-constexpr const char* kSpiralTrailPreset = "magma_slime_spiral_trail";
+constexpr const char* kSpiralSurgePreset = "enemy/magma_slime/magma_slime_spiral_surge";
+constexpr const char* kSpiralTrailPreset = "enemy/magma_slime/magma_slime_spiral_trail";
 
 
 constexpr int kMagmaMaterialType = 9;

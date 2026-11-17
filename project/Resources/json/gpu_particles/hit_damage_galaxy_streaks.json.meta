@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "6bb453462c92ceccab0c5a776e375594",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hit_damage_galaxy_streaks.json",
-  "version": 1
-}

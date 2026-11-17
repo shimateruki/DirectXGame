@@ -18,11 +18,11 @@ constexpr float kBurstTime = 0.38f;
 constexpr float kFadeReadyTime = 0.88f;
 constexpr float kFinishTime = 1.08f;
 constexpr float kTwoPi = kPi * 2.0f;
-constexpr const char* kDeathCoreFlashEffect = "Resources/json/effect/effect_player_death_slime_core_flash.json";
-constexpr const char* kDeathSplashRingEffect = "Resources/json/effect/effect_player_death_slime_splash_ring.json";
-constexpr const char* kDeathSplashArcEffect = "Resources/json/effect/effect_player_death_slime_splash_arc.json";
-constexpr const char* kDeathSplashStreakPreset = "player_death_slime_splash_streaks";
-constexpr const char* kDeathSoftMistPreset = "player_death_slime_soft_mist";
+constexpr const char* kDeathCoreFlashEffect = "Resources/json/effect/shared/effect_player_death_slime_core_flash.json";
+constexpr const char* kDeathSplashRingEffect = "Resources/json/effect/shared/effect_player_death_slime_splash_ring.json";
+constexpr const char* kDeathSplashArcEffect = "Resources/json/effect/shared/effect_player_death_slime_splash_arc.json";
+constexpr const char* kDeathSplashStreakPreset = "shared/player_death_slime_splash_streaks";
+constexpr const char* kDeathSoftMistPreset = "shared/player_death_slime_soft_mist";
 
 // 死亡演出の補間率を0～1へ制限します。
 float Clamp01(float value) {

@@ -935,7 +935,7 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const engine::Vector3& ta
         BossChantStyle style;
         style.sigilEffectPath = kUmbraFlameSigilEffect;
         style.motePreset =
-            kind == AttackKind::NightfallLances ? kNightfallLancesChargePreset : "false_king_chant_motes";
+            kind == AttackKind::NightfallLances ? kNightfallLancesChargePreset : "enemy/false_king/false_king_chant_motes";
         style.accentColor = kind == AttackKind::NightfallLances
                                 ? engine::Vector4{0.90f, 0.08f, 0.24f, 1.0f}
                                 : (kind == AttackKind::AstralReaver ? engine::Vector4{0.82f, 0.22f, 1.0f, 1.0f}

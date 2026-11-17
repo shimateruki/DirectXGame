@@ -42,7 +42,7 @@ def main():
         # 寸法はモデルと共通。側面・底面もある軽量な凸柱判定にする。
         preset=copy.deepcopy(presets['Builtin/Gimmick/MovingFloor'])
         preset.pop('builtinCreateTemplate',None)
-        path='sinking_basalt_'+key+'_ride'
+        path='shared/sinking_basalt_'+key+'_ride'
         preset.update(name='SinkingBasalt_'+key,presetDisplayName=label,presetUsage='ギミック',
             modelName='Gimmicks/'+name+'/'+name+'_pbr.gltf',blendMode=0,color=[1,1,1,1],
             emissive=0.,metallic=0.,roughness=1.,enableNormalMap=True,enableEnvMap=True,envIntensity=.25,

@@ -35,7 +35,6 @@ void MeshEffectEditor::Initialize(SceneManager* sceneManager) {
     // SceneManager のポインタを保持
     sceneManager_ = sceneManager;
     RefreshTextureList();
-    RefreshJsonFileList();
 }
 
 void MeshEffectEditor::RefreshTextureList() {
@@ -79,25 +78,6 @@ void MeshEffectEditor::RefreshTextureList() {
     }
 
     SyncTextureIndices();
-}
-
-void MeshEffectEditor::RefreshJsonFileList() {
-    jsonFileList_.clear();
-    std::string path = "Resources/json/effect/";
-
-    // フォルダが無ければ自動で作る（クラッシュ防止）
-    std::filesystem::create_directories(path);
-
-    // フォルダ内の .json ファイルだけをリストアップする
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".json") {
-            jsonFileList_.push_back(entry.path().filename().string());
-        }
-    }
-
-    std::sort(jsonFileList_.begin(), jsonFileList_.end());
-
-    currentJsonIndex_ = -1; // 初期状態は未選択（新規作成）
 }
 
 void MeshEffectEditor::Update(float deltaTime) {
@@ -821,62 +801,18 @@ void MeshEffectEditor::DrawImGui() {
         MeshEffectManager::GetInstance()->SetPreviewEffectForDebug(previewEffect_.get());
     }
 
-    // ==========================================
-       // 7. 保存と読み込み (Save & Load)
-       // ==========================================
-    if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
-
-        currentJsonIndex_ = -1;
-
-        for (int i = 0; i < static_cast<int>(jsonFileList_.size()); ++i) {
-            if (jsonFileList_[i] == saveFileName_) {
-                currentJsonIndex_ = i;
-                break;
-            }
-        }
-
-        if (VfxAssetPicker::DrawCombo(ICON_FA_FILE_ALT " 保存済みメッシュ設定", jsonFileList_,
-                                      currentJsonIndex_, jsonSearch_, sizeof(jsonSearch_),
-                                      "新規作成", true)) {
-            if (currentJsonIndex_ < 0)
-                saveFileName_[0] = '\0';
-            else strcpy_s(saveFileName_, sizeof(saveFileName_), jsonFileList_[currentJsonIndex_].c_str());
-        }
-
-        ImGui::Spacing();
-
-        ImGui::TextDisabled("一覧選択はファイル名のみ変更します。反映には JSON 読込を押します。");
-        ImGui::InputText("ファイル名", saveFileName_, sizeof(saveFileName_));
-
-        float halfWidth = (availWidth - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
-
-        // 保存ボタン
-        if (ImGui::Button(ICON_FA_SAVE " JSON 保存", ImVec2(halfWidth, 0))) {
-            SaveToJson();
-            RefreshJsonFileList(); // 保存したらリストを最新に更新する！
-        }
-
-        ImGui::SameLine();
-
-        // 読込ボタン
-        if (ImGui::Button(ICON_FA_FOLDER_OPEN " JSON 読込", ImVec2(halfWidth, 0))) {
-            LoadFromJson();
-        }
-    }
+    files_.Draw("メッシュエフェクトJSONファイル", "Resources/json/effect",
+        [this](const std::filesystem::path& path) { return LoadFromJson(path); },
+        [this](const std::filesystem::path& path, const std::string&) { return SaveToJson(path); },
+        [this] { ResetDocument(); });
 #endif
 }
 
 // ==========================================
 // JSON 保存処理
 // ==========================================
-void MeshEffectEditor::SaveToJson() {
-    std::string directoryPath = "Resources/json/effect/";
-
-    // フォルダが無ければ自動で作ってくれる魔法の1行！
-    std::filesystem::create_directories(directoryPath);
-
-    // ファイル名と合体させてフルパスを作る
-    std::string fullPath = directoryPath + saveFileName_;
+bool MeshEffectEditor::SaveToJson(const std::filesystem::path& path) const {
+    if (!previewEffect_) return false;
 
     json j;
 
@@ -960,34 +896,19 @@ void MeshEffectEditor::SaveToJson() {
     j["Collision"]["Shape"] = previewEffect_->GetMeshSettings().collisionShape;
     j["Collision"]["Size"] = { previewEffect_->GetMeshSettings().collisionSize.x, previewEffect_->GetMeshSettings().collisionSize.y, previewEffect_->GetMeshSettings().collisionSize.z };
     j["Collision"]["Offset"] = { previewEffect_->GetMeshSettings().collisionOffset.x, previewEffect_->GetMeshSettings().collisionOffset.y, previewEffect_->GetMeshSettings().collisionOffset.z };
-    std::ofstream file(fullPath);
-
-    if (file.is_open()) {
-        file << j.dump(4);
-        file.close();
-        DebugConsole::GetInstance()->AddLog("Saved Effect JSON: " + fullPath);
-    }
-    else {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "Failed to save Effect JSON: " + fullPath);
-    }
+    std::ofstream file(path);
+    file << j.dump(4);
+    file.close();
+    return file.good();
 }
 
-// ==========================================
-// JSON 読み込み処理
-// ==========================================
-void MeshEffectEditor::LoadFromJson() {
-    std::string fullPath = "Resources/json/effect/" + std::string(saveFileName_);
-
-    std::ifstream file(fullPath);
-
-    if (!file.is_open()) {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "Failed to load Effect JSON: " + fullPath);
-        return;
-    }
+bool MeshEffectEditor::LoadFromJson(const std::filesystem::path& path) {
+    std::ifstream file(path);
+    if (!file || !previewEffect_) return false;
 
     json j;
     file >> j;
-    file.close();
+    if (!j.is_object() || (j.contains("ModelName") && !j["ModelName"].is_string())) return false;
 
     // ==========================================
     // 読み込んだデータをUIバッファと実際のプレビューに反映
@@ -1263,8 +1184,50 @@ void MeshEffectEditor::LoadFromJson() {
             ex->UpdateProceduralMesh();
         }
     }
+    return true;
 }
 
+void MeshEffectEditor::ResetDocument() {
+    // 編集値を初期値に戻し、次の更新で既定のプレビューを作る。
+    const MeshEffectEditor defaults;
+    editPosition_ = defaults.editPosition_;
+    editRotation_ = defaults.editRotation_;
+    editScale_ = defaults.editScale_;
+    std::copy_n(defaults.editModelName_, sizeof(editModelName_), editModelName_);
+    std::copy_n(defaults.editTexturePath_, sizeof(editTexturePath_), editTexturePath_);
+    editColor_ = defaults.editColor_;
+    editScrollSpeed_ = defaults.editScrollSpeed_;
+    editIntensity_ = defaults.editIntensity_;
+    isAutoLoop_ = defaults.isAutoLoop_;
+    editLifetime_ = defaults.editLifetime_;
+    editStartScale_ = defaults.editStartScale_;
+    editEndScale_ = defaults.editEndScale_;
+    editStartColor_ = defaults.editStartColor_;
+    editEndColor_ = defaults.editEndColor_;
+    editEnableDistortion_ = defaults.editEnableDistortion_;
+    editAlphaReference_ = defaults.editAlphaReference_;
+    editDistortionStrength_ = defaults.editDistortionStrength_;
+    editDistortionSpeed_ = defaults.editDistortionSpeed_;
+    editEdgeFadeStrength_ = defaults.editEdgeFadeStrength_;
+    std::copy_n(defaults.editNoiseTexturePath_, sizeof(editNoiseTexturePath_), editNoiseTexturePath_);
+    std::copy_n(defaults.editRampTexturePath_, sizeof(editRampTexturePath_), editRampTexturePath_);
+    currentBlendModeIndex_ = defaults.currentBlendModeIndex_;
+    editEnableReveal_ = defaults.editEnableReveal_;
+    editUseTextureColor_ = defaults.editUseTextureColor_;
+    editChantFlowStrength_ = defaults.editChantFlowStrength_;
+    editChantRibbonStrength_ = defaults.editChantRibbonStrength_;
+    editRingEnergyStrength_ = defaults.editRingEnergyStrength_;
+    editRingSpinSpeed_ = defaults.editRingSpinSpeed_;
+    editRevealMode_ = defaults.editRevealMode_;
+    editEasingType_ = defaults.editEasingType_;
+    editProceduralType_ = defaults.editProceduralType_;
+    editVolumeMode_ = defaults.editVolumeMode_;
+    targetObject_ = nullptr;
+    previewEffect_.reset();
+    extraPreviewEffects_.clear();
+    forcePlayRequest_ = false;
+    SyncTextureIndices();
+}
 
 void MeshEffectEditor::SyncTextureIndices() {
     // 保存済みパスの表記ゆれを吸収し、画像一覧の選択位置へ戻す。

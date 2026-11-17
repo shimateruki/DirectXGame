@@ -297,8 +297,8 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
         bool landed = false;
         float playerYaw = 0.0f;
 
-        // 演出開始からの秒数、総尺、上書きする視野角とシネマバー量。
-        float time = 0.0f;
+        // 再生器の秒数を参照する。ゲーム側では独自に加算しない。
+        engine::TimerView time;
         float duration = 9.0f;
         float fov = 0.45f;
         float bars = 0.0f;
@@ -330,8 +330,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     } crownFinale_;
     // 同じ更新内でのみ保持する非所有参照。開始前にシーン内の所有を確認する。
     class EnemyFalseKingSlime* pendingCrownFinaleBoss_ = nullptr;
-    // 王冠継承の装飾・VFX・カメラをまとめたDirector素材。
-    CinematicSequence crownFinaleSequence_;
+    // 王冠継承のDirector素材を所有し、装飾・VFX・カメラを同じ時計で再生する。
     CinematicPlayer crownFinalePlayer_;
 
     // ゲーム側は撃破の確定とPlayerの操作状態だけを保持する。
@@ -404,7 +403,10 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
     // 最終演出で一時的に変更したワールドの状態は Finish で復元します。
     /// <summary>王冠の結晶防衛と最終演出の進行を更新する。</summary>
-    void UpdateCrownFinale(float deltaTime);
+    // seekSeconds指定時はイベントを発火せず指定秒を再現する。
+    void UpdateCrownFinale(float deltaTime, std::optional<float> seekSeconds = std::nullopt);
+    // 共通再生器が決めた時刻で、能力・材質・床などゲーム固有の状態を先に準備する。
+    bool PrepareCrownFinaleFrame(float previousTime, float timeSeconds, float deltaTime);
 
     /// <summary>最終演出の成否を確定し、次の進行状態へ移す。</summary>
     void FinishCrownFinale(bool completed);
@@ -579,8 +581,10 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     // ゴール後の入力受付と選択画面への復帰を切り替える段階。
     GoalPresentationState goalPresentationState_ = GoalPresentationState::Inactive;
 
-    // 王冠・星・画面演出の発生間隔を別々の時計で管理する。
-    float goalPresentationTimer_ = 0.0f;
+    // 再生中は演出時刻へ同期し、終了後もUI点滅と自動帰還まで進める秒時計。
+    engine::Timer goalPresentationTimer_;
+
+    // 星・画面演出の発生間隔と、待機中の王冠演出を管理する。
     float goalStarEmitTimer_ = 0.0f;
     float goalBurstEmitTimer_ = 0.0f;
     float goalCrownIdleTime_ = 0.0f;

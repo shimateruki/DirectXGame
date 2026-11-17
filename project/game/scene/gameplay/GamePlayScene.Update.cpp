@@ -52,8 +52,8 @@ constexpr float kStageEntrySetupRetryTimeout = 2.0f;
 
 constexpr float kPi = std::numbers::pi_v<float>;
 constexpr float kTwoPi = kPi * 2.0f;
-constexpr const char* kGoalCrownSparklePreset = "crown_goal_idle_sparkle";
-constexpr const char* kGoalCrownTwinklePreset = "crown_idle_twinkle";
+constexpr const char* kGoalCrownSparklePreset = "player/copy/crown/crown_goal_idle_sparkle";
+constexpr const char* kGoalCrownTwinklePreset = "shared/crown_idle_twinkle";
 
 engine::Vector3 QuadraticBezier(const engine::Vector3& start, const engine::Vector3& control, const engine::Vector3& end, float rate) {
     // 始点と終点を正確に通る二次曲線で、王冠の移動に弧を付ける。
@@ -145,7 +145,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
         goalSavePerformed_ = false;
         goalWasStageCleared_ = false;
         goalPresentationState_ = GoalPresentationState::Inactive;
-        goalPresentationTimer_ = 0.0f;
+        goalPresentationTimer_.Start();
         goalStarEmitTimer_ = 0.0f;
         goalBurstEmitTimer_ = 0.0f;
         goalPlayerSnapshotValid_ = false;
@@ -186,7 +186,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
     player_->BeginCinematicLock();
     SetIsGoal(true);
     goalPresentationState_ = GoalPresentationState::Celebrating;
-    goalPresentationTimer_ = 0.0f;
+    goalPresentationTimer_.Start();
     goalStarEmitTimer_ = 0.0f;
     goalBurstEmitTimer_ = 0.0f;
     goalReturnFadeStarted_ = false;
@@ -280,9 +280,12 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
             }
         }
 
-        goalCinematicPlayer_.SetSequence(&goalCinematicSequence_);
-        goalCinematicPlayer_.Play(false);
-        goalPresentationTimer_ = goalCinematicPlayer_.GetCurrentTime();
+        // 編集用Sequenceは借用したまま、変更した対象とVFXを共通処理で準備する。
+        goalCinematicTimelineLoaded_ = goalCinematicPlayer_.Prepare();
+        if (goalCinematicTimelineLoaded_) {
+            goalCinematicPlayer_.Play(false);
+            goalPresentationTimer_.Seek(goalCinematicPlayer_.GetCurrentTime());
+        }
     }
 
     UpdateGoalPresentationOverlay();
@@ -799,7 +802,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         constexpr float kAutomaticReturnDelay = 0.85f;
         const bool confirmPressed = inputManager_ && inputManager_->IsActionTriggered("Jump");
         const bool automaticReturn =
-            goalPresentationTimer_ >= goalClearPlayerAnimator_.GetTuning().readyTime + kAutomaticReturnDelay;
+            goalPresentationTimer_.Elapsed() >= goalClearPlayerAnimator_.GetTuning().readyTime + kAutomaticReturnDelay;
         if (confirmPressed || automaticReturn) {
             RequestGoalReturnToSelect();
         }
@@ -827,8 +830,8 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     if (crownDefeat_.completed) {
         if (goalPresentationState_ == GoalPresentationState::Returning)
             return;
-        goalPresentationTimer_ += deltaTime;
-        if (goalPresentationTimer_ >= goalClearPlayerAnimator_.GetTuning().readyTime)
+        goalPresentationTimer_.Update(deltaTime);
+        if (goalPresentationTimer_.Elapsed() >= goalClearPlayerAnimator_.GetTuning().readyTime)
             goalPresentationState_ = GoalPresentationState::ReadyToReturn;
         UpdateGoalPresentationOverlay();
         return;
@@ -839,18 +842,16 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
         return;
     }
 
+    const bool wasTimelinePlaying = goalCinematicTimelineLoaded_ && goalCinematicPlayer_.IsPlaying();
     if (goalCinematicTimelineLoaded_) {
-        const bool wasTimelinePlaying = goalCinematicPlayer_.IsPlaying();
         goalCinematicPlayer_.Update(deltaTime);
+    }
 
-        if (wasTimelinePlaying) {
-            goalPresentationTimer_ = goalCinematicPlayer_.GetCurrentTime();
-        } else {
-            // Ready後もUIの点滅と王冠のばね物理は動かし続けます。
-            goalPresentationTimer_ += deltaTime;
-        }
+    if (wasTimelinePlaying) {
+        goalPresentationTimer_.Seek(goalCinematicPlayer_.GetCurrentTime());
     } else {
-        goalPresentationTimer_ += deltaTime;
+        // 終了後と代替再生では、UI点滅・王冠のばね・自動帰還用の時計を進める。
+        goalPresentationTimer_.Update(deltaTime);
     }
 
     UpdateGoalPlayerCelebration(deltaTime);
@@ -867,7 +868,7 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     UpdateGoalPresentationOverlay();
 
     if (goalPresentationState_ == GoalPresentationState::Celebrating &&
-        goalPresentationTimer_ >= goalClearPlayerAnimator_.GetTuning().readyTime) {
+        goalPresentationTimer_.Elapsed() >= goalClearPlayerAnimator_.GetTuning().readyTime) {
         goalPresentationState_ = GoalPresentationState::ReadyToReturn;
     }
 }
@@ -881,7 +882,7 @@ void GamePlayScene::UpdateGoalPlayerCelebration(float deltaTime) {
     }
 
     if (!goalCinematicTimelineLoaded_) {
-        goalClearPlayerAnimator_.Update(goalPresentationTimer_);
+        goalClearPlayerAnimator_.Update(goalPresentationTimer_.Elapsed());
         goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
     }
 }
@@ -894,7 +895,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     // 王冠の着地点はプレイヤーの現在姿勢とモデルの下端から求め、潰れ・伸びにも追従させる。
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& presentation = goalPresentationTuning_;
-    const float t = goalPresentationTimer_;
+    const float t = goalPresentationTimer_.Elapsed();
     const engine::Vector3 playerScale = goalClearPlayerAnimator_.GetCurrentScale();
     const engine::Vector3 playerRotation = player_ ? player_->GetRotation() : goalPlayerBaseRotation_;
     const float baseScaleY = std::max(std::abs(goalPlayerBaseScale_.y), 0.001f);
@@ -1014,7 +1015,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
 void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
     // 王冠とプレイヤーの位置に合わせて、演出段階ごとの粒子を発生させる。
     (void)deltaTime;
-    const float t = goalPresentationTimer_;
+    const float t = goalPresentationTimer_.Elapsed();
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
 
     if (!goalLandingCuePlayed_ && t >= animation.crownLandTime) {
@@ -1022,7 +1023,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
                                                       std::abs(goalCrownBaseScale_.z)}) *
                                                 0.72f,
                                             0.80f, 1.80f);
-        VfxSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue", goalCrownPosition_,
+        VfxSequencer::PlayOneShot(goalWasStageCleared_ ? "shared/crown_get_silver_cue" : "shared/crown_get_cue", goalCrownPosition_,
                                   {crownScale, crownScale, crownScale});
         goalLandingCuePlayed_ = true;
     }
@@ -1030,7 +1031,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
     if (!goalResultCuePlayed_ && t >= animation.apexTime) {
         engine::Vector3 resultPosition = goalPlayerPosePosition_;
         resultPosition.y += std::max(1.25f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.50f);
-        VfxSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue",
+        VfxSequencer::PlayOneShot(goalWasStageCleared_ ? "shared/crown_result_silver_cue" : "shared/crown_result_cue",
                                   resultPosition);
         goalResultCuePlayed_ = true;
     }
@@ -1107,7 +1108,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
 
     CameraManager::GetInstance()->SetActiveCamera(presentationCamera);
 
-    const float t = goalPresentationTimer_;
+    const float t = goalPresentationTimer_.Elapsed();
     const GoalPresentationTuning& camera = goalPresentationTuning_;
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     engine::Vector3 eye = goalCameraGameplayEye_;
@@ -1445,9 +1446,9 @@ void GamePlayScene::UpdateEffectDebugShortcuts() {
             spawnPos = {playerPos.x + forward.x * 3.0f, playerPos.y, playerPos.z + forward.z * 3.0f};
         }
 
-        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_floor.json", spawnPos,
+        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/shared/effect_warp_gate_floor.json", spawnPos,
                                                         {0.0f, 0.0f, 0.0f});
-        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_pillar.json", spawnPos,
+        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/shared/effect_warp_gate_pillar.json", spawnPos,
                                                         {0.0f, 0.0f, 0.0f});
     }
 }

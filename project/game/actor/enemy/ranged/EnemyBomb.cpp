@@ -17,7 +17,7 @@
 
 namespace {
 // 爆発判定と描画の大きさ、投擲後の接地・反射をそろえる調整値です。
-constexpr const char* kExplosionEffectPath = "Resources/json/effect/effect_bakuhatu.json";
+constexpr const char* kExplosionEffectPath = "Resources/json/effect/shared/effect_bakuhatu.json";
 constexpr float kFallbackExplosionRadius = 3.0f;
 // プレイヤーの設置・投擲は、編集した爆発エフェクトより1.5倍広い爆風でまとめて攻撃する。
 constexpr float kPlayerExplosionScale = 1.5f;

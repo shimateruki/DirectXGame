@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/editor/assets/JsonAssetBrowser.h"
 #include "EffectObject3D.h"
 #include "IEditable.h"
 #include "Object3D.h"
@@ -41,16 +42,16 @@ void RefreshTextureList();
     // 保存済みパスの表記ゆれを吸収し、画像一覧の選択位置へ戻す。
     void SyncTextureIndices();
 
-    // 保存済みメッシュVFX設定の一覧を更新する。
-    void RefreshJsonFileList();
-
     // 編集中のメッシュVFX設定をJSONへ保存する。
-    void SaveToJson();
+    bool SaveToJson(const std::filesystem::path& path) const;
 
     // 選択したJSONからメッシュVFX設定を読み込む。
-    void LoadFromJson();
+    bool LoadFromJson(const std::filesystem::path& path);
+
+    void ResetDocument();
 
 private:
+    JsonAssetBrowser files_;
     SceneManager* sceneManager_ = nullptr; // 現在シーンの取得元。借用参照。
     BaseScene* lastScene_ = nullptr; // 前回プレビューを更新したシーン。借用参照。
     std::unique_ptr<EffectObject3D> previewEffect_;
@@ -59,7 +60,6 @@ private:
     int currentTextureIndex_ = 0;
     char textureSearch_[3][128] = {};
     char modelSearch_[128] = {};
-    char jsonSearch_[128] = {};
 
     // 基本Transform。
     engine::Vector3 editPosition_ = engine::Vector3::ZERO;
@@ -88,7 +88,6 @@ private:
     float editDistortionStrength_ = 0.0f;
     float editDistortionSpeed_ = 15.0f;
     float editEdgeFadeStrength_ = 1.5f;
-    char saveFileName_[128] = "effect_slash.json";
 
     char editNoiseTexturePath_[256] = "";
     int currentNoiseTextureIndex_ = 0;
@@ -109,8 +108,6 @@ private:
 
     int editRevealMode_ = 1;
 
-    std::vector<std::string> jsonFileList_;
-    int currentJsonIndex_ = -1; // 選択設定ファイル。-1は未選択。
 
     int editEasingType_ = 0;
     int editProceduralType_ = 0;

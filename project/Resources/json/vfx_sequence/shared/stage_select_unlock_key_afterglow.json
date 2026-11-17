@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 0,
+      "triggerTime": 0.0,
+      "presetName": "shared/stage_unlock_key_glint"
+    },
+    {
+      "type": 0,
+      "triggerTime": 0.18,
+      "presetName": "shared/stage_unlock_key_glint"
+    },
+    {
+      "type": 0,
+      "triggerTime": 0.36,
+      "presetName": "shared/stage_unlock_key_glint"
+    },
+    {
+      "type": 0,
+      "triggerTime": 0.54,
+      "presetName": "shared/stage_unlock_key_glint"
+    },
+    {
+      "type": 0,
+      "triggerTime": 0.72,
+      "presetName": "shared/stage_unlock_key_glint"
+    },
+    {
+      "type": 0,
+      "triggerTime": 0.9,
+      "presetName": "shared/stage_unlock_key_glint"
+    },
+    {
+      "type": 0,
+      "triggerTime": 1.08,
+      "presetName": "shared/stage_unlock_key_glint"
+    },
+    {
+      "type": 0,
+      "triggerTime": 1.26,
+      "presetName": "shared/stage_unlock_key_glint"
+    }
+  ]
+}

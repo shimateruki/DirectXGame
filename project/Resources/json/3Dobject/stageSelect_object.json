@@ -35398,7 +35398,7 @@
                 0.46679021324860076
             ],
             "recorder": {
-                "recordPathName": "stage_select_route_number_pulse",
+                "recordPathName": "stage_select/stage_select_route_number_pulse",
                 "isRecordLoop": true,
                 "isRecordRelative": true
             },
@@ -35505,7 +35505,7 @@
                 0.46679021324860076
             ],
             "recorder": {
-                "recordPathName": "stage_select_route_number_pulse",
+                "recordPathName": "stage_select/stage_select_route_number_pulse",
                 "isRecordLoop": true,
                 "isRecordRelative": true
             },

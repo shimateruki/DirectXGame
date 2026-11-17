@@ -593,7 +593,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
     BossChantStyle chantStyle;
     chantStyle.sigilEffectPath = kPrismChantSigilEffect;
     chantStyle.motePreset = kPrismSpellMotesPreset;
-    chantStyle.glintPreset = "prism_chant_glints";
+    chantStyle.glintPreset = "enemy/prism_slime/prism_chant_glints";
     chantStyle.releasePreset = kPrismLanceReleasePreset;
     chantStyle.accentColor = {0.40f, 0.75f, 1.0f, 1.0f};
     chantStyle.radius = std::clamp(baseScale_.x * 1.55f, 2.2f, 3.0f);
@@ -617,7 +617,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
         chantStyle.glintPreset.clear();
         chantStyle.sigilEffectPath = kThunderChantSigilEffect;
         chantStyle.motePreset = kThunderChantMotesPreset;
-        chantStyle.releasePreset = "thunder_slime_discharge";
+        chantStyle.releasePreset = "shared/thunder_slime_discharge";
         chantStyle.accentColor = {1.0f, 0.90f, 0.28f, 1.0f};
     } else if (kind == AttackKind::WindWave) {
         chantStyle.glintPreset.clear();

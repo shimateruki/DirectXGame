@@ -44,7 +44,7 @@ constexpr float kTitleLetterPopDuration = 0.28f;
 constexpr float kMenuRevealDelay = 0.62f;
 constexpr const char* kFallingCrownSpritePrefix = "gameover_falling_crown_";
 constexpr const char* kDizzyStarSpritePrefix = "gameover_dizzy_star_";
-constexpr const char* kGameOverImpactCue = "game_over_impact_cue";
+constexpr const char* kGameOverImpactCue = "shared/game_over_impact_cue";
 
 // 落下する王冠と回転する星を透明で作り、シーンへ所有権を渡す。
 engine::Sprite* AddDecorationSprite(engine::SpriteCommon* common,

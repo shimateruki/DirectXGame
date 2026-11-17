@@ -5,7 +5,7 @@
 using namespace EnemyFalseKingSlimeImplementation;
 
 namespace {
-constexpr const char* kAstralReaverChargePreset = "false_king_astral_reaver_charge";
+constexpr const char* kAstralReaverChargePreset = "enemy/false_king/false_king_astral_reaver_charge";
 
 void PlaceMagicLayer(EffectObject3D* effect, float deltaTime, bool visible, const engine::Vector3& position,
                      const engine::Vector3& rotation, const engine::Vector3& scale, const engine::Vector4& color) {

@@ -11,7 +11,7 @@ int main(int argc,char** argv) {
     try {
         Check(argc==2,"temporary output path required");
         engine::CinematicSequence asset;
-        Check(asset.Load("Resources/json/scenario/crown_defeat.json"),"migrated asset did not load");
+        Check(asset.Load("Resources/json/scenario/stage3/crown_defeat.json"),"migrated asset did not load");
         Check(asset.presentation.objects.size()==49,"missing cinematic objects");
         Check(asset.presentation.particles.size()==3 && !asset.presentation.view.empty(),"missing particles/camera");
         Check(asset.presentation.hideObjects==std::vector<std::string>{"$Actor"},"hide policy changed");
@@ -34,7 +34,7 @@ int main(int argc,char** argv) {
         }
         Check(copy.presentation.view.size()==asset.presentation.view.size(),"roundtrip camera loss");
         engine::CinematicSequence finale, finaleCopy;
-        Check(finale.Load("Resources/json/scenario/crown_finale.json"),"inheritance asset did not load");
+        Check(finale.Load("Resources/json/scenario/stage3/crown_finale.json"),"inheritance asset did not load");
         Check(finale.presentation.objects.size()==69 && finale.presentation.viewWorldSpace,"inheritance presentation missing");
         Check(finale.GetSignalTime("absorb")<finale.GetSignalTime("wings"),"inheritance markers out of order");
         Check(finale.Save(path.string()) && finaleCopy.Load(path.string()),"inheritance roundtrip failed");
@@ -49,7 +49,7 @@ int main(int argc,char** argv) {
         Check(asset.Save(path.string()),"defeat fixture restore failed");
         // 古いVFX専用素材と通常の移動トラックも新しいCodecで読めることを確かめる。
         engine::CinematicSequence old;
-        Check(old.Load("Resources/json/scenario/crown_defeat_vfx.json"),"v6 compatibility failed");
+        Check(old.Load("Resources/json/scenario/stage3/crown_defeat_vfx.json"),"v6 compatibility failed");
         Check(old.vfxTracks.size()==2 && old.presentation.objects.empty(),"legacy VFX changed");
         // 不正なサンプルは途中まで生成せず、読込全体を失敗させる。
         nlohmann::json invalid;

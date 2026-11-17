@@ -7,7 +7,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 OBJECTS = ROOT / 'Resources/json/3Dobject/stage1_object.json'
 ENEMIES = ROOT / 'Resources/json/3Dobject/stage1_enemy.json'
-ROUTE = ROOT / 'Resources/json/scenario/stage1_coaster.json'
+ROUTE = ROOT / 'Resources/json/scenario/stage1/stage1_coaster.json'
 
 
 def read(path):

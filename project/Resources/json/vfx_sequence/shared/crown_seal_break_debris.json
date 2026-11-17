@@ -1,0 +1,19 @@
+{
+  "version": 3,
+  "events": [
+    {
+      "type": 10,
+      "presetName": "shared/false_king_seal_shatter",
+      "triggerTime": 0,
+      "debrisGroundRelative": true,
+      "debrisGroundOffset": -2,
+      "debrisOverrideColor": true,
+      "debrisColor": [
+        0.85,
+        0.3,
+        1,
+        1
+      ]
+    }
+  ]
+}

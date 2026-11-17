@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "01928ca104df87609f52efa3397f3f1c",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player/copy/bomb/copy_acquire_bomb.json",
+  "version": 1
+}

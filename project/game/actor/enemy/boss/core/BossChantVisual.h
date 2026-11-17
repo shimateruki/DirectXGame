@@ -15,10 +15,10 @@
 // 紋章と粒子の外観はそれぞれの JSON プリセットからエディターで調整できます。
 struct BossChantStyle {
     std::string sigilEffectPath;
-    std::string groundLightEffectPath = "Resources/json/effect/effect_boss_chant_ground_light.json";
-    std::string groundCoreEffectPath = "Resources/json/effect/effect_boss_chant_ground_core.json";
-    std::string footRibbonEffectPath = "Resources/json/effect/effect_boss_chant_foot_ribbon.json";
-    std::string risingLightEffectPath = "Resources/json/effect/effect_boss_chant_rising_light.json";
+    std::string groundLightEffectPath = "Resources/json/effect/shared/effect_boss_chant_ground_light.json";
+    std::string groundCoreEffectPath = "Resources/json/effect/shared/effect_boss_chant_ground_core.json";
+    std::string footRibbonEffectPath = "Resources/json/effect/shared/effect_boss_chant_foot_ribbon.json";
+    std::string risingLightEffectPath = "Resources/json/effect/shared/effect_boss_chant_rising_light.json";
 
     std::string motePreset;
     std::string glintPreset;

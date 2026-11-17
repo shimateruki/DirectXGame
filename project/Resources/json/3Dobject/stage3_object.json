@@ -13526,7 +13526,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 2,
-                "cinematicPath": "Resources/json/scenario/stage3_boss_intro.json",
+                "cinematicPath": "Resources/json/scenario/stage3/stage3_boss_intro.json",
                 "attackPower": 1.0,
                 "colorType": 0,
                 "copyMemoryActivationRadius": 0.8999999761581421,
@@ -13819,8 +13819,8 @@
                 },
                 "MeshEffect": {
                     "_editorPresent": true,
-                    "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-                    "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
+                    "primary": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+                    "secondary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
                     "version": 1
                 }
             },
@@ -13868,8 +13868,8 @@
             },
             "materialType": 0,
             "meshDrawIndex": -1,
-            "meshEffect1": "Resources/json/effect/effect_crown_idle_shell.json",
-            "meshEffect2": "Resources/json/effect/effect_crown_aura_ring.json",
+            "meshEffect1": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+            "meshEffect2": "Resources/json/effect/shared/effect_crown_aura_ring.json",
             "metallic": 0.3799999952316284,
             "modelName": "Characters/false_king_slime/false_king_crown",
             "myEventID": 6104,

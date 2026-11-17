@@ -22,7 +22,7 @@
 namespace {
 
 constexpr const char* kGoalPresentationTuningPath = "Resources/json/cinematic/goal_clear.json";
-constexpr const char* kGoalCinematicTimelinePath = "Resources/json/scenario/goal_clear_timeline.json";
+constexpr const char* kGoalCinematicTimelinePath = "Resources/json/scenario/shared/goal_clear_timeline.json";
 
 // ゴール演出の補間率を0～1へ制限します。
 float GoalClamp01(float value) {
@@ -193,7 +193,7 @@ void GamePlayScene::HandleGoalCinematicAnimation(engine::Object3D* target, const
     goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
     if (isGoal_) {
         // 同じ時刻の王冠を確定してから、共通再生器が着地VFXを発火する。
-        goalPresentationTimer_=clip.startTime+localTime/(std::max)(clip.playbackSpeed,0.001f);
+        goalPresentationTimer_.Seek(clip.startTime+localTime/(std::max)(clip.playbackSpeed,0.001f));
         UpdateGoalCrownMotion(0.0f);
     }
 }
@@ -265,7 +265,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
     const bool visible = isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive;
     const float screenW = static_cast<float>(WinApp::GetClientWidth());
     const float screenH = static_cast<float>(WinApp::GetClientHeight());
-    const float t = goalPresentationTimer_;
+    const float t = goalPresentationTimer_.Elapsed();
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& presentation = goalPresentationTuning_;
     const bool replayClear = goalWasStageCleared_;

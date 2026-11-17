@@ -3,7 +3,7 @@
 using namespace EnemyFalseKingSlimeImplementation;
 
 namespace {
-constexpr const char* kUmbraFlameRedEnergyPreset = "false_king_umbra_flame_charge_red";
+constexpr const char* kUmbraFlameRedEnergyPreset = "enemy/false_king/false_king_umbra_flame_charge_red";
 
 // 魔法陣、炎の描画、当たり判定が同じ扇形範囲を参照するための幾何情報です。
 struct UmbraFlameGeometry {

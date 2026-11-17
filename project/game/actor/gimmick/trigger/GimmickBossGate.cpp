@@ -118,7 +118,7 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
         if (closure_ <= 0.001f) {
             engine::Vector3 cue = authoredPosition_;
             cue.y += 0.1f;
-            VfxSequencer::PlayOneShot("high_crown_gate_close_cue", cue, {1.0f, 1.0f, 1.0f});
+            VfxSequencer::PlayOneShot("shared/high_crown_gate_close_cue", cue, {1.0f, 1.0f, 1.0f});
         }
     } else {
         SetCollisionEnabled(false);

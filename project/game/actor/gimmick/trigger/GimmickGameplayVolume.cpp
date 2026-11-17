@@ -246,7 +246,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
                 player->RestoreHpToFull();
             }
 
-            VfxSequencer::PlayOneShot("checkpoint_activate_cue", checkpointPosition);
+            VfxSequencer::PlayOneShot("shared/checkpoint_activate_cue", checkpointPosition);
         }
 
         break;

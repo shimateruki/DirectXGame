@@ -361,9 +361,7 @@ class GameSelectScene : public BaseScene, public ISceneGameplayAccess {
 
     // 新ステージ解放の対象、Director の再生時計と JSON の節目。
     int unlockingStageIndex_ = -1;
-    float unlockPresentationTimer_ = 0.0f;
-    float unlockParticleTimer_ = 0.0f;
-    CinematicSequence unlockSequence_;
+    engine::TimerView unlockTime_; // 再生器の秒数を参照し、ゲートの点灯と演出を同期する。
     CinematicPlayer unlockPlayer_;
     bool unlockTimelineLoaded_ = false;
     float unlockGateActivationTime_ = 0.0f;

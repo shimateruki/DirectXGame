@@ -38,7 +38,7 @@ constexpr float kPulseDuration = 0.85f;
 // 記憶台の子モデルはシーンの特殊マテリアル一覧へ直接登録されないため、
 // 通常PBRで確実に描画し、台座と3つの能力見本を一体として読めるようにします。
 constexpr int kCorePreviewMaterialType = 0;
-constexpr const char* kActivationCue = "copy_memory_station_activate_cue";
+constexpr const char* kActivationCue = "shared/copy_memory_station_activate_cue";
 } // namespace
 
 void GimmickCopyMemoryStation::Initialize(engine::Object3DCommon* common, const std::string& modelName) {

@@ -85,7 +85,7 @@
     {
       "id": "throw_enemy_spawn",
       "condition": "cinematic_finished",
-      "cinematic": "Resources/json/scenario/tutorial_throw_enemy_reveal.json",
+      "cinematic": "Resources/json/scenario/tutorial/tutorial_throw_enemy_reveal.json",
       "spawnEnemyObject": "Tutorial_PinkSlime_Throw",
       "spawnEnemiesDormant": true,
       "showPrompt": false,
@@ -228,7 +228,7 @@
     {
       "id": "ability_targets_spawn",
       "condition": "cinematic_finished",
-      "cinematic": "Resources/json/scenario/tutorial_ability_targets_reveal.json",
+      "cinematic": "Resources/json/scenario/tutorial/tutorial_ability_targets_reveal.json",
       "spawnEnemyObjects": [
         "Tutorial_AbilityTarget_0",
         "Tutorial_AbilityTarget_1",
@@ -278,7 +278,7 @@
     {
       "id": "gate_unlock_cinematic",
       "condition": "cinematic_finished",
-      "cinematic": "Resources/json/scenario/tutorial_gate_unlock.json",
+      "cinematic": "Resources/json/scenario/tutorial/tutorial_gate_unlock.json",
       "showPrompt": false,
       "checkpoint": [
         34,

@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "BossIntroSettings.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.Internal.h"
 #include <cmath>
@@ -458,7 +459,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
     auto emit = [&](const char* name, const engine::Vector3& position, const engine::Vector3& velocity,
                     float size, int count, const engine::Vector3& area) {
         if (!particles || !particles->IsInitialized()) return;
-        const auto found = particles->GetPresets().find(name);
+        const auto found = VfxAssetPath::FindPreset(particles->GetPresets(), name);
         if (found == particles->GetPresets().end()) return;
         auto config = found->second;
         config.emitPos = position; config.emitVelocity = velocity; config.emitArea = area;
@@ -472,12 +473,12 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
         for (int i = 0; i < 12; ++i) {
             const float angle = i * kFullTurn / 12;
             const engine::Vector3 direction{std::cos(angle), 0, std::sin(angle)};
-            emit("false_king_intro_gold", FindGroundPoint(authoredPosition_) + direction * width * .3f + engine::Vector3{0,.12f,0},
+            emit("enemy/false_king/false_king_intro_gold", FindGroundPoint(authoredPosition_) + direction * width * .3f + engine::Vector3{0,.12f,0},
                  direction * 5.0f + engine::Vector3{0, 1.5f, 0}, style.impactScale, 4, {.1f,.1f,.1f});
         }
     }
     if (introPreviousTime_ < introPoseTime_ && time >= introPoseTime_)
-        emit("false_king_intro_gold", GetWorldPosition() + engine::Vector3{0,height*.52f,0},
+        emit("enemy/false_king/false_king_intro_gold", GetWorldPosition() + engine::Vector3{0,height*.52f,0},
              {0,4,0}, 1.35f * style.auraScale, 32, {width*.35f,height*.2f,.4f});
     // 消失の後半には縁から中心へ流れる粒子を残します。
     if (time > introCloseTime_ && closing < .98f && introPreviousTime_ < time &&
@@ -485,7 +486,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
         for (int i = 0; i < 5; ++i) {
             const float angle = time * 1.7f + i * 1.256637f;
             const engine::Vector3 offset{std::cos(angle)*width*.48f, std::sin(angle)*height*.48f, .12f};
-            emit("false_king_intro_gold", center + offset, offset * -1.4f,
+            emit("enemy/false_king/false_king_intro_gold", center + offset, offset * -1.4f,
                  1-closing*.65f, 2, {.08f,.08f,.08f});
         }
     }
@@ -589,8 +590,8 @@ void EnemyFalseKingSlime::UpdateAuraVisual(float strength, float poseBurst, floa
     for (float side:{-1.0f,1.0f}) {
         const auto pos=GetWorldPosition()+right*(side*introWidth_*(.43f+.04f*std::sin(bossAuraTime_*2.6f+side)))+
             engine::Vector3{0,introHeight_*.18f,0}+forward*.12f;
-        for (const char* name:{"false_king_intro_wisp","false_king_intro_gold"}) {
-            const auto found=particles->GetPresets().find(name);
+        for (const char* name:{"enemy/false_king/false_king_intro_wisp","enemy/false_king/false_king_intro_gold"}) {
+            const auto found=VfxAssetPath::FindPreset(particles->GetPresets(), name);
             if(found==particles->GetPresets().end())continue;
             auto config=found->second;
             config.emitPos=pos;config.emitVelocity=right*(-side*.6f)+engine::Vector3{0,3.5f,0};

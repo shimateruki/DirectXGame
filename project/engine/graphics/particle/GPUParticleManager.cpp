@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "GpuParticleManager.h"
 #include "GpuParticlePresetJsonCodec.h"
 #include <filesystem>
@@ -136,7 +137,7 @@ void GpuParticleManager::Update(float deltaTime) {
 
     // オートエミッターの処理
     for (auto& emitter : autoEmitters_) {
-        auto it = presets_.find(emitter.presetName);
+        auto it = VfxAssetPath::FindPreset(presets_, emitter.presetName);
 
         if (it != presets_.end() && it->second.isLooping) {
             emitter.timer += scaledDelta;
@@ -207,7 +208,7 @@ GpuParticleSystem* GpuParticleManager::GetOrCreateSystem(const GpuParticleConfig
 
 void GpuParticleManager::PreloadPresetSystem(const std::string& presetName) {
     // 初回放出前に使用予定のGPU粒子設定と素材を準備する。
-    auto it = presets_.find(presetName);
+    auto it = VfxAssetPath::FindPreset(presets_, presetName);
 
     if (it == presets_.end()) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[GPUParticleManager] preload preset not found: " + presetName);
@@ -316,7 +317,7 @@ void GpuParticleManager::EmitFromConfig(const GpuParticleConfig& config) {
 
 void GpuParticleManager::Emit(const std::string& presetName, const engine::Vector3& position, const engine::Matrix4x4& emitterWorldMatrix) {
     // 登録済みの設定をコピーし、今回の発生位置と親行列だけ上書きして流す。
-    auto it = presets_.find(presetName);
+    auto it = VfxAssetPath::FindPreset(presets_, presetName);
 
     if (it != presets_.end()) {
         GpuParticleConfig config = it->second;
@@ -332,7 +333,7 @@ void GpuParticleManager::EmitDirected(
     const engine::Vector3& direction,
     float speedScale,
     const engine::Matrix4x4& emitterWorldMatrix) {
-    const auto it = presets_.find(presetName);
+    const auto it = VfxAssetPath::FindPreset(presets_, presetName);
 
     if (it == presets_.end()) {
         return;
@@ -377,18 +378,25 @@ void GpuParticleManager::LoadPresetFiles(
     std::vector<fs::path> presetPaths;
 
     if (loadAll) {
-        for (const auto& entry : fs::directory_iterator(directoryPath)) {
-            presetPaths.push_back(entry.path());
+        for (const auto& entry : fs::recursive_directory_iterator(directoryPath)) {
+            if (entry.is_regular_file()) presetPaths.push_back(entry.path());
         }
     } else {
         for (const std::string& name : presetNames) {
-            presetPaths.push_back(fs::path(directoryPath) / (name + ".json"));
+            fs::path root(directoryPath);
+            if (!root.has_filename()) root = root.parent_path();
+            const auto requested = root / fs::path(std::u8string(name.begin(), name.end()) + u8".json");
+            presetPaths.push_back(VfxAssetPath::Resolve(root, requested));
         }
     }
 
     for (const fs::path& presetPath : presetPaths) {
         if (presetPath.extension() == ".json") {
-            std::string filename = presetPath.stem().string();
+            fs::path root(directoryPath);
+            if (!root.has_filename()) root = root.parent_path();
+            auto relative = presetPath.lexically_relative(root);
+            const auto key = relative.replace_extension().generic_u8string();
+            const std::string filename(key.begin(), key.end());
             std::ifstream file(presetPath);
 
             if (file.is_open()) {
@@ -495,7 +503,7 @@ void GpuParticleManager::ClearAuthoringPreview() {
 // 制作用の独立SystemでPresetを指定年齢まで進め、通常再生中のSystemへ状態を混ぜません。
 bool GpuParticleManager::ShowAuthoringPreview(const std::string& preset, const engine::Vector3& position,
     const engine::Vector3& direction, bool directed, float speedScale, float age) {
-    const auto found = presets_.find(preset);
+    const auto found = VfxAssetPath::FindPreset(presets_, preset);
     if (!dxCommon_ || found == presets_.end())
         return false;
     auto config = found->second;

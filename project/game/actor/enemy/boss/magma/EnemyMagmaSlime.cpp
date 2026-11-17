@@ -861,7 +861,7 @@ void EnemyMagmaSlime::DamageTargetAt(const engine::Vector3& center, float radius
     event.damageAmount = damage;
     event.damageType = DamageType::Fire;
     event.knockbackVelocity = knockback;
-    event.statusEffect = MakeBurningStatus(burnDuration, burnTickInterval, burnTickDamage, "status_burning_flame");
+    event.statusEffect = MakeBurningStatus(burnDuration, burnTickInterval, burnTickDamage, "shared/status_burning_flame");
     EventManager::GetInstance()->Dispatch(event);
 }
 

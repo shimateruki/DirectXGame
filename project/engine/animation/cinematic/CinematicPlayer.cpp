@@ -9,6 +9,7 @@
 #include "Object3D.h"
 #include "MeshRenderer.h"
 #include "SceneManager.h"
+#include "Log.h"
 
 #include <algorithm>
 #include <cmath>
@@ -60,8 +61,9 @@ void CinematicPlayer::Initialize(SceneManager* sceneManager) {
     vfxRuntime_.clear();
     audioRuntime_.clear();
     animationRuntime_.clear();
-    currentTime_ = 0.0f;
-    isPlaying_ = false;
+    ownedSequence_.reset();
+    playbackTimer_.Seek(0.0f);
+    playbackTimer_.Pause();
     isPreviewing_ = false;
     isLooping_ = false;
     activeCameraObject_ = nullptr;
@@ -70,11 +72,33 @@ void CinematicPlayer::Initialize(SceneManager* sceneManager) {
     positionResolver_ = {};
 }
 
+bool CinematicPlayer::Load(const std::string& path, SceneManager* sceneManager) {
+    Initialize(sceneManager);
+    auto loaded = std::make_unique<CinematicSequence>();
+    if (!loaded->Load(path)) {
+        LOG_ERROR("Cinematic load failed: {}", path);
+        return false;
+    }
+    ownedSequence_ = std::move(loaded);
+    sequence_ = ownedSequence_.get();
+    return true;
+}
+
+bool CinematicPlayer::Prepare() {
+    RefreshBindings();
+    const auto issues = ValidateBindings();
+    for (const auto& issue : issues) LOG_ERROR("Cinematic preparation failed: {}", issue);
+    if (issues.empty()) return true;
+    Stop(true);
+    return false;
+}
+
 void CinematicPlayer::SetSequence(CinematicSequence* sequence) {
     // 再生中の演出を停止して姿勢を戻し、新しいシーケンスへ束縛し直す。
     Stop(true);
+    if (sequence != ownedSequence_.get()) ownedSequence_.reset();
     sequence_ = sequence;
-    currentTime_ = 0.0f;
+    playbackTimer_.Seek(0.0f);
     RefreshBindings();
 }
 
@@ -189,6 +213,8 @@ std::vector<std::string> CinematicPlayer::ValidateBindings() const {
         if (!track.enabled || track.muted) {
             continue;
         }
+        if (!track.startSignal.empty() && sequence_->GetSignalTime(track.startSignal, -1) < 0)
+            issues.push_back(track.name + ": 開始Signalが見つかりません: " + track.startSignal);
         if (track.snapshotTargetPosition &&
             (track.sequenceName.empty() || index >= vfxRuntime_.size() ||
              vfxRuntime_[index].sequencer.GetEvents().empty())) {
@@ -211,11 +237,12 @@ std::vector<std::string> CinematicPlayer::ValidateBindings() const {
     return issues;
 }
 
-void CinematicPlayer::Play(bool loop) {
+void CinematicPlayer::Play(bool loop, TimerView* timeView) {
+    if (timeView) *timeView = {};
     finished_ = false;
     // 基準姿勢と発火状態を取り直し、時刻0の演出も評価する。
-    if (isPlaying_ || isPreviewing_ || presentationCaptured_) Stop(true);
-    if (!sequence_) return;
+    if (playbackTimer_.IsRunning() || isPreviewing_ || presentationCaptured_) Stop(true);
+    if (!sequence_ || !sceneManager_) return;
     if (!bindingsReady_ || sceneManager_->GetCurrentScene() != boundScene_) RefreshBindings();
     if (!bindingsReady_) return;
     if ((!sequence_->presentation.objects.empty() || !sequence_->presentation.view.empty()) && !ValidateBindings().empty())
@@ -223,11 +250,12 @@ void CinematicPlayer::Play(bool loop) {
     CapturePresentation();
     CaptureBasePoses();
     ResetRuntimeEvents();
-    currentTime_ = 0.0f;
+    playbackTimer_.Seek(0.0f);
     isLooping_ = loop;
-    isPlaying_ = true;
+    playbackTimer_.Resume();
     isPreviewing_ = false;
     Evaluate(0.0f, -1.0f / 60.0f, true);
+    if (timeView && playbackTimer_.IsRunning()) *timeView = playbackTimer_.GetView();
 }
 
 void CinematicPlayer::Resume(bool loop) {
@@ -244,14 +272,14 @@ void CinematicPlayer::Resume(bool loop) {
 
     isLooping_ = loop;
     isPreviewing_ = false;
-    isPlaying_ = true;
+    playbackTimer_.Resume();
     ResetRuntimeEvents();
 
     for (size_t index = 0; index < sequence_->audioClips.size() && index < audioRuntime_.size(); ++index) {
         const auto& clip = sequence_->audioClips[index];
         const float endTime = clip.startTime + std::max(0.05f, clip.duration);
-        if (clip.enabled && !clip.muted && clip.loop && !clip.audioId.empty() && currentTime_ >= clip.startTime &&
-            currentTime_ < endTime) {
+        if (clip.enabled && !clip.muted && clip.loop && !clip.audioId.empty() && playbackTimer_.Elapsed() >= clip.startTime &&
+            playbackTimer_.Elapsed() < endTime) {
             if (playAudio_) playAudio_(clip.audioId, clip.volume, true);
             audioRuntime_[index].started = true;
         }
@@ -260,7 +288,7 @@ void CinematicPlayer::Resume(bool loop) {
 
 void CinematicPlayer::Pause() {
     // 姿勢はプレビューとして残し、音とVFXの副作用だけ止める。
-    if (!isPlaying_) {
+    if (!playbackTimer_.IsRunning()) {
         return;
     }
 
@@ -270,7 +298,7 @@ void CinematicPlayer::Pause() {
     }
 
     StopAudioClips();
-    isPlaying_ = false;
+    playbackTimer_.Pause();
     isPreviewing_ = true;
 }
 
@@ -290,10 +318,10 @@ void CinematicPlayer::Stop(bool restorePose) {
         ReleasePresentation(true);
     }
 
-    isPlaying_ = false;
+    playbackTimer_.Pause();
     isPreviewing_ = false;
     finished_ = false;
-    currentTime_ = 0.0f;
+    playbackTimer_.Seek(0.0f);
     lastEventId_ = 0;
     lastEventTarget_ = nullptr;
 }
@@ -308,13 +336,13 @@ void CinematicPlayer::Update(float deltaTime) {
         return;
     }
 
-    if (!isPlaying_ || !sequence_ || deltaTime <= 0.0f) {
+    if (!playbackTimer_.IsRunning() || !sequence_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f) {
         return;
     }
 
     const float duration = GetDuration();
-    const float previousTime = currentTime_;
-    float nextTime = currentTime_ + deltaTime;
+    const float previousTime = playbackTimer_.Elapsed();
+    float nextTime = playbackTimer_.Elapsed() + deltaTime;
 
     if (nextTime >= duration) {
         if (isLooping_) {
@@ -324,16 +352,16 @@ void CinematicPlayer::Update(float deltaTime) {
             CaptureBasePoses();
             ResetRuntimeEvents();
             nextTime = std::fmod(nextTime, std::max(duration, 0.1f));
-            currentTime_ = 0.0f;
+            playbackTimer_.Seek(0.0f);
             Evaluate(nextTime, -1.0f / 60.0f, true);
-            currentTime_ = nextTime;
+            playbackTimer_.Seek(nextTime);
             return;
         }
 
         Evaluate(duration, previousTime, true);
-        if (!isPlaying_) return;
-        currentTime_ = duration;
-        isPlaying_ = false;
+        if (!playbackTimer_.IsRunning()) return;
+        playbackTimer_.Seek(duration);
+        playbackTimer_.Pause();
         finished_ = true;
 
         // 終端ポーズを保持したプレビューとして扱い、再編集時にも開始前へ復元する。
@@ -342,22 +370,28 @@ void CinematicPlayer::Update(float deltaTime) {
     }
 
     Evaluate(nextTime, previousTime, true);
-    currentTime_ = nextTime;
+    playbackTimer_.Seek(nextTime);
 }
 
-void CinematicPlayer::SetTime(float timeSeconds, bool dispatchEvents) {
+void CinematicPlayer::Step(float deltaTime, const FramePreparation& prepare) {
+    if (!std::isfinite(deltaTime)) return;
+    SetTime(playbackTimer_.Elapsed() + std::max(0.0f, deltaTime), deltaTime > 0.0f, prepare);
+}
+
+void CinematicPlayer::SetTime(float timeSeconds, bool dispatchEvents, const FramePreparation& prepare) {
     finished_ = false;
     // シーク時のイベント再発火は呼び出し側に選ばせ、姿勢は指定時刻から再評価する。
     if (!sequence_) {
         return;
     }
 
-    if (!isPlaying_ && !isPreviewing_) {
+    if (!playbackTimer_.IsRunning() && !isPreviewing_) {
         BeginPreview();
     }
 
+    if (!std::isfinite(timeSeconds)) return;
     const float nextTime = std::clamp(timeSeconds, 0.0f, GetDuration());
-    const float previousTime = currentTime_;
+    const float previousTime = playbackTimer_.Elapsed();
     if (nextTime < previousTime) {
         // 巻き戻した後の再生でVFXと音が再び発火できるよう、実行状態を戻す。
         for (auto& runtime : vfxRuntime_) {
@@ -366,13 +400,18 @@ void CinematicPlayer::SetTime(float timeSeconds, bool dispatchEvents) {
         }
         StopAudioClips();
     }
+    // 外部の準備も同じ時計を見る。対象の材質・能力・床を確定してからVFXを評価する。
+    if (prepare) {
+        playbackTimer_.Seek(nextTime);
+        if (!prepare(previousTime, nextTime)) return;
+    }
     Evaluate(nextTime, previousTime, dispatchEvents);
-    currentTime_ = nextTime;
+    playbackTimer_.Seek(nextTime);
 }
 
 void CinematicPlayer::BeginPreview() {
     // 編集前の姿勢を一度だけ保存し、シーク終了時に復元できるようにする。
-    if (isPlaying_ || isPreviewing_ || !sequence_) {
+    if (playbackTimer_.IsRunning() || isPreviewing_ || !sequence_) {
         return;
     }
 
@@ -404,7 +443,7 @@ float CinematicPlayer::GetDuration() const {
     }
 
     for (size_t index = 0; index < sequence_->vfxTracks.size() && index < vfxRuntime_.size(); ++index) {
-        result = std::max(result, sequence_->vfxTracks[index].startTime + vfxRuntime_[index].sequencer.GetDuration());
+        result = std::max(result, sequence_->GetVfxStartTime(sequence_->vfxTracks[index]) + vfxRuntime_[index].sequencer.GetDuration());
     }
 
     return std::max(result, 0.1f);
@@ -616,7 +655,7 @@ void CinematicPlayer::Evaluate(float timeSeconds, float previousTimeSeconds, boo
     }
 
     // 音とVFXは実再生中だけ進め、シークでプレビューの副作用を増やしません。
-    if (isPlaying_ && dispatchEvents) {
+    if (playbackTimer_.IsRunning() && dispatchEvents) {
         UpdateVFXTracks(timeSeconds, previousTimeSeconds);
         UpdateAudioClips(timeSeconds, previousTimeSeconds);
     }
@@ -680,16 +719,16 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
 }
 
 void CinematicPlayer::ApplyBodyPose() {
-    if ((isPlaying_ || isPreviewing_) && sceneManager_ && sceneManager_->GetCurrentScene() == boundScene_) {
+    if ((playbackTimer_.IsRunning() || isPreviewing_) && sceneManager_ && sceneManager_->GetCurrentScene() == boundScene_) {
         // 編集用の基準移動も通常更新後に保持する。イベントは再発火しない。
         for (size_t index = 0; sequence_ && index < sequence_->transformTracks.size(); ++index) {
             if (sequence_->transformTracks[index].anchorRelative && index < transformRuntime_.size() &&
                 transformRuntime_[index].target == ResolveTarget(sequence_->transformTracks[index].binding))
-                EvaluateTransformTrack(index, currentTime_, currentTime_, false);
+                EvaluateTransformTrack(index, playbackTimer_.Elapsed(), playbackTimer_.Elapsed(), false);
         }
 
-        EvaluateAnimationClips(currentTime_, true);
-        EvaluatePresentation(currentTime_, currentTime_, false);
+        EvaluateAnimationClips(playbackTimer_.Elapsed(), true);
+        EvaluatePresentation(playbackTimer_.Elapsed(), playbackTimer_.Elapsed(), false);
     }
 }
 
@@ -820,7 +859,8 @@ void CinematicPlayer::UpdateVFXTracks(float timeSeconds, float previousTimeSecon
             continue;
         }
 
-        if (!runtime.started && timeSeconds >= track.startTime) {
+        const float startTime = sequence_->GetVfxStartTime(track);
+        if (!runtime.started && timeSeconds >= startTime) {
             if (track.snapshotTargetPosition) {
                 std::optional<engine::Vector3> position;
                 if (positionResolver_) {
@@ -842,7 +882,7 @@ void CinematicPlayer::UpdateVFXTracks(float timeSeconds, float previousTimeSecon
             }
             runtime.sequencer.Play();
             runtime.started = true;
-            const float catchUp = std::max(0.0f, timeSeconds - track.startTime);
+            const float catchUp = std::max(0.0f, timeSeconds - startTime);
 
             if (catchUp > 0.0f) {
                 runtime.sequencer.Update(catchUp);

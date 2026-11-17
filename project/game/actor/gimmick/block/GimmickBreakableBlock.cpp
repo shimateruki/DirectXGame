@@ -121,14 +121,14 @@ void GimmickBreakableBlock::Break() {
         if (isGiantGate) {
             const Aabb bounds = GetModelWorldAabb();
             const float groundY = std::isfinite(bounds.min.y) ? bounds.min.y : myPos.y - 4.2f;
-            DebrisEffectManager::GetInstance()->SpawnOnGround("star_garden_gate_glass_shatter", myPos, groundY);
+            DebrisEffectManager::GetInstance()->SpawnOnGround("shared/star_garden_gate_glass_shatter", myPos, groundY);
         } else {
-            DebrisEffectManager::GetInstance()->Spawn("star_garden_glass_shatter", myPos);
+            DebrisEffectManager::GetInstance()->Spawn("shared/star_garden_glass_shatter", myPos);
         }
 
         if (GpuParticleManager::GetInstance()) {
-            GpuParticleManager::GetInstance()->Emit("star_garden_glass_shards", myPos);
-            GpuParticleManager::GetInstance()->Emit("hit_bomb_flash_core", myPos);
+            GpuParticleManager::GetInstance()->Emit("shared/star_garden_glass_shards", myPos);
+            GpuParticleManager::GetInstance()->Emit("shared/hit_bomb_flash_core", myPos);
         }
 
         return;
@@ -136,14 +136,14 @@ void GimmickBreakableBlock::Break() {
 
     // 石ブロックは従来どおり小規模な爆発と火花で破壊する。
     if (MeshEffectManager::GetInstance()) {
-        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_bakuhatu.json", myPos,
+        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/shared/effect_bakuhatu.json", myPos,
                                                         {0.0f, 0.0f, 0.0f}, {0.5f, 0.5f, 0.5f});
     }
 
-    DebrisEffectManager::GetInstance()->Spawn("bomb_hit_fragment_burst", myPos);
+    DebrisEffectManager::GetInstance()->Spawn("shared/bomb_hit_fragment_burst", myPos);
 
     if (GpuParticleManager::GetInstance()) {
-        GpuParticleManager::GetInstance()->Emit("star_sparkleGet", myPos);
+        GpuParticleManager::GetInstance()->Emit("shared/star_sparkleGet", myPos);
     }
 }
 

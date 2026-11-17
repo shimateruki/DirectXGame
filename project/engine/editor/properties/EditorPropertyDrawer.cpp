@@ -1,3 +1,4 @@
+#include "engine/animation/cinematic/CinematicAssetPath.h"
 #include "EditorPropertyDrawer.h"
 #include <numbers>
 
@@ -153,23 +154,32 @@ bool EditorPropertyDrawer::DrawValue(
             }
         } else if (!ui.assetDirectory.empty()) {
             namespace fs = std::filesystem;
-            const auto preview = current.empty() ? std::string("(なし)") : fs::path(current).stem().string();
+            const auto utf8 = [](const fs::path& path) {
+                const auto bytes = path.generic_u8string();
+                return std::string(bytes.begin(), bytes.end());
+            };
+            const fs::path root(ui.assetDirectory);
+            const fs::path stored(std::u8string(current.begin(), current.end()));
+            const auto resolved = ui.assetEditor == EditorPropertyAssetEditor::Scenario
+                ? CinematicAssetPath::Resolve(root, stored) : stored;
+            const auto preview = current.empty() ? std::string("(なし)") : utf8(resolved.lexically_relative(root));
             if (ImGui::BeginCombo(id, preview.c_str())) {
                 if (ImGui::Selectable("(なし)", current.empty())) { value = ""; changed = true; }
                 std::vector<fs::path> files;
                 std::error_code error;
-                for (fs::directory_iterator it(ui.assetDirectory, error), end; !error && it != end; it.increment(error)) {
+                for (fs::recursive_directory_iterator it(root, error), end; !error && it != end; it.increment(error)) {
                     if (it->is_regular_file(error) && it->path().extension() == ".json") files.push_back(it->path());
                 }
                 std::sort(files.begin(), files.end());
                 for (const auto& file : files) {
-                    const auto path = file.generic_string();
-                    if (ImGui::Selectable(file.stem().string().c_str(), current == path)) { value = path; changed = true; }
+                    const auto path = utf8(file);
+                    const auto label = utf8(file.lexically_relative(root));
+                    if (ImGui::Selectable(label.c_str(), resolved == file)) { value = path; changed = true; }
                 }
                 ImGui::EndCombo();
             }
             std::error_code error;
-            if (!current.empty() && !fs::is_regular_file(current, error))
+            if (!current.empty() && !fs::is_regular_file(resolved, error))
                 ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.3f, 1.0f), "指定されたJSONが見つかりません");
         } else {
             std::array<char, 512> buffer = {};

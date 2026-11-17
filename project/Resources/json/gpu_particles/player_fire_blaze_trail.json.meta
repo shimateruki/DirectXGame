@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "b9016a6b2ecb4a10b1446626252dd003",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/player_fire_blaze_trail.json",
-  "version": 1
-}

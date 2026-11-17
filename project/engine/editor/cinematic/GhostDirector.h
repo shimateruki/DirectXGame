@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/editor/assets/JsonAssetBrowser.h"
 
 #include "engine/animation/cinematic/CinematicPlayer.h"
 #include "engine/animation/cinematic/CinematicSequence.h"
@@ -57,9 +58,6 @@ class GhostDirector : public IEditable {
 
     /// 選択トラックの演出ガイドを Game View に描画する。
     void DrawPreview(const engine::Matrix4x4& viewProjection, const engine::Vector2& offset, const engine::Vector2& size);
-
-    // 指定名の演出 JSON を保存・読み込みます。
-    void SaveScenario(const std::string& fileName);
 
     // 読込後は再生器と選択状態を新しいシーケンスへ合わせ、古いプレビューを残さない。
     void LoadScenario(const std::string& fileName);
@@ -203,7 +201,10 @@ class GhostDirector : public IEditable {
     float templateDistance_ = 5.0f;
     float templateHeight_ = 2.0f;
     CinematicPlayer player_;
-    char scenarioNameBuf_[64] = "boss_attack_1";
+    JsonAssetBrowser scenarioFiles_;
+    void DrawScenarioFiles();
+    bool LoadScenarioFile(const std::filesystem::path& path, const std::filesystem::path& relative);
+    void ResetScenarioDocument();
 
     // プレビュー時刻とタイムラインの UI 状態は、演出データには保存しません。
     float currentScrubTime_ = 0.0f;

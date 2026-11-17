@@ -114,7 +114,7 @@ void GhostDirector::DrawPresentationEditor() {
             }
             auto& motion=clip.motions[selectedVisualKey_];
             text("区間名",motion.name);
-            auto timing=[&](const char* label,std::string& signal,float& seconds) {
+            auto timing=[&](const char* label,std::string& signal,float& seconds,float& offset) {
                 ImGui::PushID(label);
                 if (ImGui::BeginCombo(label,signal.empty()?"秒数で指定":signal.c_str())) {
                     if (ImGui::Selectable("秒数で指定",signal.empty())) signal.clear();
@@ -123,11 +123,14 @@ void GhostDirector::DrawPresentationEditor() {
                     ImGui::EndCombo();
                 }
                 if (signal.empty()) ImGui::DragFloat("秒",&seconds,.01f,0,600);
-                else ImGui::Text("Signal: %.3f 秒",sequence_.GetSignalTime(signal,-1));
+                else {
+                    ImGui::DragFloat("Signalからの時間差（秒）",&offset,.01f,-600,600);
+                    ImGui::Text("開始/終了: %.3f 秒",sequence_.GetSignalTime(signal,-1)+offset);
+                }
                 ImGui::PopID();
             };
-            timing("開始",motion.startSignal,motion.startTime);
-            timing("終了",motion.endSignal,motion.endTime);
+            timing("開始",motion.startSignal,motion.startTime,motion.startSignalOffset);
+            timing("終了",motion.endSignal,motion.endTime,motion.endSignalOffset);
             auto point=[&](const char* label,engine::CinematicVisualKey& key) {
                 if (ImGui::TreeNode(label)) {
                     binding("基準点",key.positionReference);
@@ -148,6 +151,9 @@ void GhostDirector::DrawPresentationEditor() {
                 ImGui::Checkbox("拡縮を滑らかにする",&motion.smoothScale);
                 ImGui::DragFloat("拡縮の減衰率（0で通常補間）",&motion.scaleDecay,.1f,0,100);
                 ImGui::DragFloat("拡縮の揺れ周期数",&motion.scaleCycles,.05f,0,100);
+                ImGui::DragFloat3("周期的な拡縮の振幅",&motion.scaleWaveAmplitude.x,.001f);
+                ImGui::DragFloat("拡縮の角速度（rad/秒）",&motion.scaleWaveFrequency,.1f,0,1000);
+                ImGui::Checkbox("区間内で揺れ幅を徐々に増やす",&motion.scaleWaveFadeIn);
                 ImGui::SliderFloat("拡縮を始める進行割合",&motion.scaleStart,0,.99f);
                 ImGui::DragFloat("最小倍率",&motion.minimumScale,.001f,0,100);
                 ImGui::TreePop();
@@ -164,8 +170,8 @@ void GhostDirector::DrawPresentationEditor() {
                 engine::CinematicMotionSegment next;
                 next.name="移動"; next.from=next.to=clip.motions.back().to;
                 const auto& last=clip.motions.back();
-                next.startSignal=last.endSignal;
-                next.startTime=last.endSignal.empty()?last.endTime:sequence_.GetSignalTime(last.endSignal,last.endTime);
+                next.startSignal=last.endSignal; next.startSignalOffset=last.endSignalOffset;
+                next.startTime=last.endSignal.empty()?last.endTime:sequence_.GetSignalTime(last.endSignal,last.endTime)+last.endSignalOffset;
                 next.endTime=next.startTime+1; clip.motions.push_back(next);
                 selectedVisualKey_=static_cast<int>(clip.motions.size())-1;
             }

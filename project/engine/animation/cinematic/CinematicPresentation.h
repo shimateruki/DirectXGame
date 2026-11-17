@@ -62,12 +62,17 @@ struct CinematicMotionSegment {
     std::string name;
     float startTime = 0.0f, endTime = 1.0f;
     std::string startSignal, endSignal; // 指定時はSignalの時刻を使い、秒数欄は未指定時の値になる。
+    float startSignalOffset = 0.0f, endSignalOffset = 0.0f; // Signal指定時だけ加える秒数。負なら節目より前。
     CinematicVisualKey from, to; // 基準点・位置補正・姿勢・発光・表示。キー時刻は使用しない。
     bool smoothProgress = false; // 位置と回転を始終点で滑らかに停止させる。
     float arcHeight = 0.0f;
     engine::Vector3 rotationArc{}; // 正弦波で加える傾きの振幅。
     float rotationCycles = 0.5f; // 区間内の周期数。0.5なら従来の中央で山になる傾き。
     bool smoothScale = false;
+    // 区間内だけ加える各軸の拡縮倍率。位相は演出先頭の秒数から計算し、シークでも一致する。
+    engine::Vector3 scaleWaveAmplitude{};
+    float scaleWaveFrequency = 0.0f; // 角速度(rad/秒)。0なら揺れを加えない。
+    bool scaleWaveFadeIn = false; // 区間の進行に沿って揺れ幅をSmoothStepで立ち上げる。
     float scaleDecay = 0.0f, scaleCycles = 0.0f; // 0なら従来の補間。減衰率と区間内の揺れ周期数。
     float scaleStart = 0.0f, minimumScale = 0.0f; // 移動の進行割合で縮小開始を指定。下限は各軸の倍率。
     float bounceHeight = 0.0f, bounceDuration = 1.0f, bounceCycles = 1.0f;

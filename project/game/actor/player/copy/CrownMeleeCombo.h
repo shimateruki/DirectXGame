@@ -95,7 +95,7 @@ class CrownMeleeCombo {
         // クリップの基準尺は1秒。Editorの段時間に合わせて全身と武器を同期します。
         player.PlaySlimeAbilityMotion(kClips[stage_], false, 1.0f / settings_.duration[stage_], 0.015f, 0.04f);
         UpdateVisuals(player, 0);
-        CrownAbilityEffects::Emit("player_crown_portal_dust", gateCenter_, gateNormal_,
+        CrownAbilityEffects::Emit("player/copy/crown/player_crown_portal_dust", gateCenter_, gateNormal_,
                                  presentation_.meleeGateScale * (stage_ == 2 ? 1.1f : 0.7f));
     }
     // この段で未命中の敵だけに通知する。同期DamageEventによる技の中断後は処理を続けない。

@@ -4,8 +4,10 @@
 #include "engine/animation/BodyAnimationClip.h"
 #include "VfxSequencer.h"
 #include "Camera.h"
+#include "engine/utility/time/Timer.h"
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -20,7 +22,7 @@ namespace engine {
 
 // 担当：一本の再生時刻からカットシーンの全トラックを評価する。
 // 関連：CinematicSequence（定義）、Object3D / Camera（対象）、GhostDirector（編集）
-// 主な入口：Update / IsPlaying / GetCurrentTime
+// 主な入口：Load / Prepare / Play / Update。EditorはSetSequenceで編集中の設定を借用する。
 class CinematicPlayer {
   public:
     // ゲームの音声ID表は起動時に一度だけ接続する。再生器からゲーム層へ依存しない。
@@ -38,6 +40,16 @@ class CinematicPlayer {
     // SceneManager を借用し、再生・プレビュー状態を初期化する。
     void Initialize(SceneManager* sceneManager);
 
+    // ゲーム用：前回を停止してJSONを所有する。対象はまだ生成せず、失敗時は未読込に戻る。
+    bool Load(const std::string& path, SceneManager* sceneManager);
+
+    // Resolver設定後に対象を準備し、共通検証を行う。失敗理由をログへ出し、生成物を復元する。
+    bool Prepare();
+
+    // 読込済み設定への読み取り専用参照。Load失敗・Initialize後はnullptr。
+    const CinematicSequence* GetSequence() const { return sequence_; }
+
+    // Editor用：外部で編集する系列を借用する。Loadで所有した系列は切替時に解放する。
     // 再生中の系列を切り替える際は姿勢を戻し、新しい系列の対象を解決する。
     // sequence の所有権は受け取らず、再生中は呼び出し側が保持する。
     void SetSequence(CinematicSequence* sequence);
@@ -79,7 +91,8 @@ class CinematicPlayer {
     static engine::Object3D* ResolveSceneTarget(BaseScene* scene, const CinematicObjectBinding& binding);
 
     // 先頭から再生し、時刻0のイベントも一度評価する。
-    void Play(bool loop);
+    // timeViewは任意の出力先。成功時に時計へ接続し、失敗時は無効にする。
+    void Play(bool loop, TimerView* timeView = nullptr);
 
     // プレビュー中なら現在時刻から再生し、それ以外は先頭から開始する。
     void Resume(bool loop);
@@ -94,7 +107,13 @@ class CinematicPlayer {
     void Update(float deltaTime);
 
     // 時刻は秒で範囲内に丸める。通常のシークではイベントを再発火させない。
-    void SetTime(float timeSeconds, bool dispatchEvents = false);
+    // prepareは評価前に対象を準備する任意処理（前回秒、今回秒）。falseなら評価を中断する。
+    using FramePreparation = std::function<bool(float, float)>;
+    void SetTime(float timeSeconds, bool dispatchEvents = false, const FramePreparation& prepare = {});
+
+    // 編集プレビューも指定秒だけ進める。0秒なら現在姿勢のみ再評価し、イベントは発火しない。
+    // 終端は保持し、自動停止しない。通常の自動完走・ループにはUpdateを使う。
+    void Step(float deltaTime, const FramePreparation& prepare = {});
 
     // 現在姿勢を退避して編集用シークを開始する。再生中は開始しない。
     void BeginPreview();
@@ -105,7 +124,7 @@ class CinematicPlayer {
     // 通常のキャラクター更新後、イベントを再発火せず身体姿勢だけを保持する。
     void ApplyBodyPose();
 
-    bool IsPlaying() const { return isPlaying_; }
+    bool IsPlaying() const { return playbackTimer_.IsRunning(); }
 
     bool IsPreviewing() const { return isPreviewing_; }
 
@@ -114,7 +133,7 @@ class CinematicPlayer {
     // 演出素材が所有する部品だけを描画する。生成・並び順・寿命は再生器側で管理する。
     void DrawPresentation(ID3D12Resource* pointLight, ID3D12Resource* spotLight);
 
-    float GetCurrentTime() const { return currentTime_; }
+    float GetCurrentTime() const { return playbackTimer_.Elapsed(); }
 
     /// 現在シーケンスの再生尺を秒で返す。
     float GetDuration() const;
@@ -279,7 +298,8 @@ class CinematicPlayer {
 
     SceneManager* sceneManager_ = nullptr; // シーン取得元。借用参照。
     BaseScene* boundScene_ = nullptr; // 対象を解決したシーン。切替後は再解決する。
-    CinematicSequence* sequence_ = nullptr; // 再生する定義への借用参照。
+    std::unique_ptr<CinematicSequence> ownedSequence_; // Loadで読んだ設定。Editorから借用するときは空。
+    CinematicSequence* sequence_ = nullptr; // 所有またはEditorから借用する、現在の設定。
     std::vector<TransformRuntime> transformRuntime_;
     std::vector<VfxRuntime> vfxRuntime_;
     std::vector<AudioRuntime> audioRuntime_;
@@ -292,8 +312,7 @@ class CinematicPlayer {
     std::function<std::optional<engine::Vector3>(const CinematicObjectBinding&)> positionResolver_;
     SignalCallback signalCallback_;
 
-    float currentTime_ = 0.0f; // 共通再生時刻（秒）。
-    bool isPlaying_ = false;
+    Timer playbackTimer_; // 共通再生時刻と進行状態。外部には読み取り専用ビューを渡す。
     bool isPreviewing_ = false;
     bool isLooping_ = false;
     bool anchorCaptured_ = false;

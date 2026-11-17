@@ -623,30 +623,30 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         profile.displayName = "通常スライム";
         auto attack = MakeAttack("dive_slam", "溜めジャンプ急降下", 0.35f, 20.0f, 1.35f, 1.35f, 0.46f, 0.24f, 0.0f,
                                  0.18f, 1.0f, 22.0f, 40.0f, 0.0f, 6.0f, 4.6f);
-        attack.windupVfx = "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json";
-        attack.activeVfx = "Resources/json/effect/effect_pink_slime_dive_streak.json";
-        attack.impactVfx = "Resources/json/effect/effect_pink_slime_landing_burst_ring.json";
+        attack.windupVfx = "Resources/json/effect/shared/effect_pink_slime_charge_pulse_ring.json";
+        attack.activeVfx = "Resources/json/effect/shared/effect_pink_slime_dive_streak.json";
+        attack.impactVfx = "Resources/json/effect/shared/effect_pink_slime_landing_burst_ring.json";
         profile.attacks.push_back(std::move(attack));
     } else if (type == "FireSlime") {
         profile.displayName = "炎スライム";
         auto breath = MakeAttack("flame_breath", "近距離炎ブレス", 0.0f, 4.3f, 1.65f, 0.0f, 0.62f, 0.0f, 1.55f, 0.18f,
                                  1.0f, 0.0f, 0.0f, 0.0f, 3.2f, 3.0f);
-        breath.activeVfx = "fire_slime_breath";
+        breath.activeVfx = "shared/fire_slime_breath";
         breath.statusEffectType = "burning";
         breath.statusDuration = 2.2f;
         breath.statusTickInterval = 0.55f;
         breath.statusTickDamage = 0.12f;
-        breath.statusVfx = "status_burning_flame";
+        breath.statusVfx = "shared/status_burning_flame";
         profile.attacks.push_back(std::move(breath));
 
         auto fireball = MakeAttack("fireball", "中距離火球", 6.2f, 20.0f, 0.5f, 0.42f, 0.0f, 0.38f, 1.45f, 0.18f, 1.0f,
                                    15.0f, 28.0f, 2.65f, 8.0f, 3.35f);
-        fireball.activeVfx = "fire_slime_cast";
+        fireball.activeVfx = "shared/fire_slime_cast";
         fireball.statusEffectType = "burning";
         fireball.statusDuration = 2.8f;
         fireball.statusTickInterval = 0.55f;
         fireball.statusTickDamage = 0.16f;
-        fireball.statusVfx = "status_burning_flame";
+        fireball.statusVfx = "shared/status_burning_flame";
         profile.attacks.push_back(std::move(fireball));
 
         // 古いJSONでもコピー火球の威力・入力感を保つための移行時既定値です。
@@ -658,7 +658,7 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         playerFireball.statusDuration = 2.8f;
         playerFireball.statusTickInterval = 0.55f;
         playerFireball.statusTickDamage = 0.16f;
-        playerFireball.statusVfx = "status_burning_flame";
+        playerFireball.statusVfx = "shared/status_burning_flame";
         playerFireball.sequence.enabled = true;
         playerFireball.sequence.binding = "player_special";
         playerFireball.sequence.duration = 0.58f;
@@ -681,40 +681,40 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         shot.verticalSpeed = 1.4f;
         playerFireball.sequence.events.push_back(shot);
         shot.operation = "gpu_vfx";
-        shot.preset = "fire_slime_cast";
+        shot.preset = "shared/fire_slime_cast";
         playerFireball.sequence.events.push_back(shot);
         profile.attacks.push_back(std::move(playerFireball));
     } else if (type == "ThunderSlime") {
         profile.displayName = "雷スライム";
         auto attack = MakeAttack("radial_shock", "チャージ放電", 0.0f, 4.1f, 5.2f, 0.52f, 0.0f, 0.34f, 2.35f, 0.18f,
                                  1.0f, 0.0f, 0.0f, 0.0f, 3.2f, 3.2f);
-        attack.windupVfx = "thunder_slime_radial_charge";
-        attack.activeVfx = "thunder_slime_discharge";
+        attack.windupVfx = "enemy/thunder_slime/thunder_slime_radial_charge";
+        attack.activeVfx = "shared/thunder_slime_discharge";
         profile.attacks.push_back(std::move(attack));
 
         auto lineLightning = MakeAttack("line_lightning", "中距離連続落雷", 5.8f, 15.5f, 1.35f, 0.65f, 0.13f, 0.44f,
                                         3.2f, 0.22f, 1.0f, 0.0f, 0.0f, 0.0f, 9.0f, 4.0f);
-        lineLightning.windupVfx = "thunder_slime_charge";
-        lineLightning.activeVfx = "player_thunder_strike_impact";
-        lineLightning.impactVfx = "Resources/json/effect/effect_thunder_scorch_mark.json";
+        lineLightning.windupVfx = "shared/thunder_slime_charge";
+        lineLightning.activeVfx = "shared/player_thunder_strike_impact";
+        lineLightning.impactVfx = "Resources/json/effect/shared/effect_thunder_scorch_mark.json";
         profile.attacks.push_back(std::move(lineLightning));
     } else if (type == "WindSlime") {
         profile.displayName = "風スライム";
         auto gust = MakeAttack("gust_breath", "暴風ブレス", 0.0f, 7.2f, 2.4f, 0.38f, 1.55f, 0.34f, 2.05f, 0.18f, 0.0f,
                                0.0f, 0.0f, 0.0f, 4.2f, 4.4f);
         gust.animation = "wind_breath_squash";
-        gust.windupVfx = "wind_slime_charge";
-        gust.activeVfx = "wind_slime_breath_stream";
-        gust.impactVfx = "Resources/json/effect/effect_wind_gust_ring.json";
+        gust.windupVfx = "shared/wind_slime_charge";
+        gust.activeVfx = "shared/wind_slime_breath_stream";
+        gust.impactVfx = "Resources/json/effect/shared/effect_wind_gust_ring.json";
         gust.audioCue = "wind_breath_loop";
         profile.attacks.push_back(std::move(gust));
 
         auto volley = MakeAttack("aerial_wind_volley", "空中三連風弾", 6.2f, 18.0f, 0.58f, 0.62f, 1.60f, 0.46f, 2.45f,
                                  0.20f, 1.0f, 14.0f, 22.0f, 2.8f, 9.5f, 5.0f);
         volley.animation = "aerial_wind_orb_volley";
-        volley.windupVfx = "wind_slime_orb_hold";
-        volley.activeVfx = "wind_slime_orb_trail";
-        volley.impactVfx = "wind_slime_orb_impact";
+        volley.windupVfx = "enemy/wind_slime/wind_slime_orb_hold";
+        volley.activeVfx = "enemy/wind_slime/wind_slime_orb_trail";
+        volley.impactVfx = "enemy/wind_slime/wind_slime_orb_impact";
         volley.audioCue = "wind_orb_volley";
         profile.attacks.push_back(std::move(volley));
     } else if (type == "PrismSlime") {
@@ -724,52 +724,52 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         auto spikes = MakeAttack("crystal_spikes", "晶槍召喚陣", 2.0f, 12.0f, 3.6f, 0.88f, 0.82f, 0.62f, 2.9f, 0.28f,
                                  1.0f, 0.0f, 0.0f, 0.0f, 7.5f, 4.8f);
         spikes.animation = "prism_spike_summon";
-        spikes.windupVfx = "prism_spike_warning";
-        spikes.activeVfx = "prism_spike_burst";
-        spikes.impactVfx = "prism_spike_shatter";
+        spikes.windupVfx = "enemy/prism_slime/prism_spike_warning";
+        spikes.activeVfx = "enemy/prism_slime/prism_spike_burst";
+        spikes.impactVfx = "enemy/prism_slime/prism_spike_shatter";
         profile.attacks.push_back(std::move(spikes));
 
         auto crystalVolley = MakeAttack("crystal_lance_volley", "浮遊晶槍斉射", 4.0f, 22.0f, 0.85f, 0.95f, 0.85f, 0.55f,
                                         3.8f, 0.24f, 1.0f, 18.0f, 24.0f, 2.4f, 10.0f, 5.0f);
         crystalVolley.animation = "crystal_lance_volley";
-        crystalVolley.windupVfx = "prism_slime_charge";
-        crystalVolley.activeVfx = "prism_lance_trail";
-        crystalVolley.impactVfx = "prism_spike_shatter";
+        crystalVolley.windupVfx = "enemy/prism_slime/prism_slime_charge";
+        crystalVolley.activeVfx = "enemy/prism_slime/prism_lance_trail";
+        crystalVolley.impactVfx = "enemy/prism_slime/prism_spike_shatter";
         profile.attacks.push_back(std::move(crystalVolley));
 
         auto fireFan = MakeAttack("fire_fan", "炎の扇状連射", 4.0f, 18.0f, 0.48f, 0.65f, 0.52f, 0.48f, 2.9f, 0.20f,
                                   1.0f, 13.0f, 28.0f, 2.8f, 9.0f, 4.2f);
         fireFan.animation = "fire_fan_recoil";
-        fireFan.windupVfx = "fire_slime_cast";
-        fireFan.activeVfx = "fire_slime_breath_embers";
+        fireFan.windupVfx = "shared/fire_slime_cast";
+        fireFan.activeVfx = "shared/fire_slime_breath_embers";
         fireFan.statusEffectType = "burning";
         fireFan.statusDuration = 2.4f;
         fireFan.statusTickInterval = 0.55f;
         fireFan.statusTickDamage = 0.14f;
-        fireFan.statusVfx = "status_burning_flame";
+        fireFan.statusVfx = "shared/status_burning_flame";
         profile.attacks.push_back(std::move(fireFan));
 
         auto thunder = MakeAttack("thunder_chain", "直線連続落雷", 4.0f, 18.0f, 1.42f, 0.76f, 0.62f, 0.48f, 3.15f,
                                   0.23f, 1.0f, 0.0f, 0.0f, 0.0f, 10.0f, 4.4f);
         thunder.animation = "thunder_chain_tremble";
-        thunder.windupVfx = "thunder_slime_charge";
-        thunder.activeVfx = "player_thunder_strike_impact";
-        thunder.impactVfx = "Resources/json/effect/effect_thunder_scorch_mark.json";
+        thunder.windupVfx = "shared/thunder_slime_charge";
+        thunder.activeVfx = "shared/player_thunder_strike_impact";
+        thunder.impactVfx = "Resources/json/effect/shared/effect_thunder_scorch_mark.json";
         profile.attacks.push_back(std::move(thunder));
 
         auto wind = MakeAttack("wind_wave", "持続する暴風波", 0.0f, 10.5f, 3.1f, 0.58f, 1.12f, 0.46f, 2.75f, 0.20f,
                                0.65f, 0.0f, 0.0f, 0.0f, 6.8f, 4.3f);
         wind.animation = "wind_wave_stretch";
-        wind.windupVfx = "wind_slime_charge";
-        wind.activeVfx = "wind_slime_breath_stream";
-        wind.impactVfx = "Resources/json/effect/effect_wind_gust_ring.json";
+        wind.windupVfx = "shared/wind_slime_charge";
+        wind.activeVfx = "shared/wind_slime_breath_stream";
+        wind.impactVfx = "Resources/json/effect/shared/effect_wind_gust_ring.json";
         profile.attacks.push_back(std::move(wind));
 
         auto summon = MakeAttack("slime_summon", "彩色スライム召喚陣", 0.0f, 30.0f, 6.0f, 1.25f, 0.72f, 0.55f, 5.5f,
                                  0.28f, 0.0f, 0.0f, 0.0f, 0.0f, 8.0f, 5.4f);
         summon.animation = "slime_summon_cast";
-        summon.windupVfx = "prism_slime_charge";
-        summon.activeVfx = "prism_slime_pulse";
+        summon.windupVfx = "enemy/prism_slime/prism_slime_charge";
+        summon.activeVfx = "shared/prism_slime_pulse";
         profile.attacks.push_back(std::move(summon));
     } else if (type == "FalseKingSlime") {
         // 偽王の攻撃は距離・予兆・発動時間を個別に持ち、攻撃選択時には同じ Profile から参照する。
@@ -778,49 +778,49 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
         auto lanceRain = MakeAttack("crown_lance_rain", "王冠晶槍雨", 0.0f, 34.0f, 2.15f, 1.15f, 2.65f, 0.68f, 3.25f,
                                     0.34f, 0.90f, 0.0f, 0.0f, 3.0f, 11.0f, 6.8f);
         lanceRain.animation = "crown_lance_cast";
-        lanceRain.windupVfx = "false_king_charge";
-        lanceRain.activeVfx = "false_king_lance_trail";
-        lanceRain.impactVfx = "false_king_lance_impact";
+        lanceRain.windupVfx = "enemy/false_king/false_king_charge";
+        lanceRain.activeVfx = "enemy/false_king/false_king_lance_trail";
+        lanceRain.impactVfx = "enemy/false_king/false_king_lance_impact";
         profile.attacks.push_back(std::move(lanceRain));
 
         auto shockwave = MakeAttack("royal_shockwave", "王威連環波", 0.0f, 30.0f, 0.95f, 0.96f, 2.95f, 0.72f, 3.55f,
                                     0.30f, 0.72f, 0.0f, 0.0f, 3.0f, 10.0f, 6.5f);
         shockwave.animation = "royal_shockwave_slam";
-        shockwave.windupVfx = "false_king_charge";
-        shockwave.activeVfx = "false_king_shockwave";
-        shockwave.impactVfx = "false_king_shockwave";
+        shockwave.windupVfx = "enemy/false_king/false_king_charge";
+        shockwave.activeVfx = "enemy/false_king/false_king_shockwave";
+        shockwave.impactVfx = "enemy/false_king/false_king_shockwave";
         profile.attacks.push_back(std::move(shockwave));
 
         auto rush = MakeAttack("king_rush", "覇王三連突進", 3.0f, 27.0f, 2.65f, 0.86f, 2.75f, 0.88f, 3.75f, 0.28f,
                                1.25f, 22.0f, 34.0f, 2.8f, 13.0f, 6.5f);
         rush.animation = "king_rush_squash";
-        rush.windupVfx = "false_king_charge";
-        rush.activeVfx = "false_king_rush_wake";
-        rush.impactVfx = "false_king_lance_impact";
+        rush.windupVfx = "enemy/false_king/false_king_charge";
+        rush.activeVfx = "shared/false_king_rush_wake";
+        rush.impactVfx = "enemy/false_king/false_king_lance_impact";
         profile.attacks.push_back(std::move(rush));
 
         auto cross = MakeAttack("royal_cross", "王冠十字掃射", 0.0f, 32.0f, 1.45f, 1.12f, 3.55f, 0.78f, 4.35f, 0.36f,
                                 0.62f, 0.0f, 0.0f, 3.6f, 12.0f, 7.2f);
         cross.animation = "royal_cross_cast";
-        cross.windupVfx = "false_king_charge";
-        cross.activeVfx = "false_king_dominion";
-        cross.impactVfx = "false_king_lance_impact";
+        cross.windupVfx = "enemy/false_king/false_king_charge";
+        cross.activeVfx = "enemy/false_king/false_king_dominion";
+        cross.impactVfx = "enemy/false_king/false_king_lance_impact";
         profile.attacks.push_back(std::move(cross));
 
         auto dominion = MakeAttack("crown_dominion", "王冠領域・終幕", 0.0f, 34.0f, 1.55f, 1.68f, 5.60f, 1.12f, 7.20f,
                                    0.48f, 0.58f, 0.0f, 0.0f, 5.7f, 14.0f, 10.0f);
         dominion.animation = "crown_dominion_cast";
-        dominion.windupVfx = "false_king_dominion";
-        dominion.activeVfx = "false_king_dominion";
-        dominion.impactVfx = "false_king_lance_impact";
+        dominion.windupVfx = "enemy/false_king/false_king_dominion";
+        dominion.activeVfx = "enemy/false_king/false_king_dominion";
+        dominion.impactVfx = "enemy/false_king/false_king_lance_impact";
         profile.attacks.push_back(std::move(dominion));
 
         auto umbraFlame = MakeAttack("umbra_flame", "双極冥炎陣", 0.0f, 34.0f, 1.75f, 2.25f, 2.65f, 0.82f, 5.80f, 0.42f,
                                      1.05f, 0.0f, 0.0f, 2.8f, 14.0f, 8.4f);
         umbraFlame.animation = "crown_dominion_cast";
-        umbraFlame.windupVfx = "false_king_umbra_flame_charge";
-        umbraFlame.activeVfx = "false_king_umbra_flame_flame";
-        umbraFlame.impactVfx = "false_king_umbra_flame_flame";
+        umbraFlame.windupVfx = "enemy/false_king/false_king_umbra_flame_charge";
+        umbraFlame.activeVfx = "enemy/false_king/false_king_umbra_flame_flame";
+        umbraFlame.impactVfx = "enemy/false_king/false_king_umbra_flame_flame";
         profile.attacks.push_back(std::move(umbraFlame));
     } else if (type == "GiantSlime") {
         profile.displayName = "巨大スライム";

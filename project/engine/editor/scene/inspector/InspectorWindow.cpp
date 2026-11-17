@@ -1,3 +1,4 @@
+#include "engine/editor/assets/JsonAssetBrowser.h"
 #include "engine/editor/scene/inspector/InspectorWindow.Internal.h"
 #include "engine/editor/assets/ProjectWindow.h"
 
@@ -1345,13 +1346,9 @@ void InspectorWindow::Draw() {
 
                 std::string effectDir = "Resources/json/effect";
 
-                if (fs::exists(effectDir) && fs::is_directory(effectDir)) {
-                    for (const auto& entry : fs::directory_iterator(effectDir)) {
-                        if (entry.is_regular_file() && entry.path().extension() == ".json") {
-                            effectPaths.push_back(entry.path().generic_string());
-                            effectDisplayNames.push_back(entry.path().filename().generic_string());
-                        }
-                    }
+                for (const auto& key : JsonAssetBrowser::ListKeys(effectDir)) {
+                    effectPaths.push_back(effectDir + "/" + key + ".json");
+                    effectDisplayNames.push_back(key);
                 }
 
                 std::vector<const char*> itemNames;

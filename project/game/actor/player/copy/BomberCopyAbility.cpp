@@ -51,14 +51,14 @@ class BomberCopyAbility final : public ICopyAbilitySession {
             const engine::Vector3 position = player.GetWorldPosition() - blastDirection_ * 0.18f + engine::Vector3{0.0f, 0.12f, 0.0f};
 
             // 突き形状の軸を下へ向け、上昇する体の下側に噴流を残す。
-            SpawnEffect("Resources/json/effect/effect_player_bomb_blast_jump_trail.json", position,
+            SpawnEffect("Resources/json/effect/shared/effect_player_bomb_blast_jump_trail.json", position,
                         {kBlastJetPitch, 0.0f, 0.0f});
-            EmitDirectedPreset("player_bomb_blast_jump", position, {0.0f, -1.0f, 0.0f}, 0.62f);
+            EmitDirectedPreset("shared/player_bomb_blast_jump", position, {0.0f, -1.0f, 0.0f}, 0.62f);
             trailTimer_ = 0.075f;
         }
 
         if (blastElapsed_ > 0.16f && player.IsGrounded() && player.GetVelocity().y <= 0.0f) {
-            SpawnEffect("Resources/json/effect/effect_player_bomb_blast_jump_land.json", player.GetWorldPosition());
+            SpawnEffect("Resources/json/effect/shared/effect_player_bomb_blast_jump_land.json", player.GetWorldPosition());
             blastActive_ = false;
         }
     }
@@ -98,10 +98,10 @@ class BomberCopyAbility final : public ICopyAbilitySession {
 
         bomb->SetCarried(false);
         bomb->SetVelocity(placed ? engine::Vector3{0.0f, 1.8f, 0.0f} : engine::Vector3{forward.x * 24.0f, 8.0f, forward.z * 24.0f});
-        SpawnEffect(placed ? "Resources/json/effect/effect_player_bomb_place.json"
-                           : "Resources/json/effect/effect_carry_bomber_throw_burst.json",
+        SpawnEffect(placed ? "Resources/json/effect/shared/effect_player_bomb_place.json"
+                           : "Resources/json/effect/shared/effect_carry_bomber_throw_burst.json",
                     position);
-        EmitPreset(placed ? "player_bomb_place_fuse" : "carry_bomber_throw_sparks", position);
+        EmitPreset(placed ? "shared/player_bomb_place_fuse" : "shared/carry_bomber_throw_sparks", position);
 
         // プレビューはシーンの追加待ちキューを経由せず、巻き戻し中も同じ固定刻みで爆弾を更新します。
         if (player.IsEditorInternal())
@@ -142,11 +142,11 @@ class BomberCopyAbility final : public ICopyAbilitySession {
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, blastDirection_);
         player.TriggerSlimeImpulse({0.78f, 2.70f, 0.78f}, 0.16f);
         DamageSphere(player, center + engine::Vector3{0.0f, 0.58f, 0.0f}, 3.2f, 8.0f, DamageType::Explosion, 13.0f, 9.5f);
-        SpawnEffect("Resources/json/effect/effect_player_bomb_blast_jump.json", blastOrigin);
-        EmitPreset("player_bomb_blast_jump", blastOrigin);
+        SpawnEffect("Resources/json/effect/shared/effect_player_bomb_blast_jump.json", blastOrigin);
+        EmitPreset("shared/player_bomb_blast_jump", blastOrigin);
 
         // 離陸の瞬間にも一筋出し、次フレームの更新を待たずに爆風の向きを見せる。
-        SpawnEffect("Resources/json/effect/effect_player_bomb_blast_jump_trail.json", blastOrigin,
+        SpawnEffect("Resources/json/effect/shared/effect_player_bomb_blast_jump_trail.json", blastOrigin,
                     {kBlastJetPitch, 0.0f, 0.0f});
         trailTimer_ = 0.075f;
         blastElapsed_ = 0.0f;

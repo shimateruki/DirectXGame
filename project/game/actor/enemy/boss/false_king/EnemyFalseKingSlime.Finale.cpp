@@ -178,7 +178,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
     ClearTransientVisuals();
     BossChantStyle chantStyle;
     chantStyle.sigilEffectPath = kUmbraFlameSigilEffect;
-    chantStyle.motePreset = "false_king_seal_embers";
+    chantStyle.motePreset = "enemy/false_king/false_king_seal_embers";
     chantStyle.completeAtRelease = true;
     chantStyle.accentColor = {1.0f, 0.06f, 0.015f, 1.0f};
     chantStyle.radius = std::clamp(baseScale_.x * 1.45f, 2.4f, 4.2f);
@@ -233,25 +233,25 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
     }
 
     crownCastFloor_ = makeShield(kUmbraFlameSigilEffect, "FalseKing_CrownCastFloor");
-    crownArenaRing_ = makeShield("Resources/json/effect/effect_false_king_seal_ground_current.json", "FalseKing_CrownArenaCharge");
-    crownBarrageFlash_ = makeShield("Resources/json/effect/effect_false_king_seal_ground_aura.json", "FalseKing_CrownBarrageFlash");
-    crownBarrageSkySigil_ = makeShield("Resources/json/effect/effect_false_king_seal_sky_sigil.json", "FalseKing_CrownBarrageSkySigil");
-    crownBarrageSkyCounterSigil_ = makeShield("Resources/json/effect/effect_false_king_seal_sky_sigil.json", "FalseKing_CrownBarrageSkyCounterSigil");
+    crownArenaRing_ = makeShield("Resources/json/effect/enemy/false_king/effect_false_king_seal_ground_current.json", "FalseKing_CrownArenaCharge");
+    crownBarrageFlash_ = makeShield("Resources/json/effect/enemy/false_king/effect_false_king_seal_ground_aura.json", "FalseKing_CrownBarrageFlash");
+    crownBarrageSkySigil_ = makeShield("Resources/json/effect/enemy/false_king/effect_false_king_seal_sky_sigil.json", "FalseKing_CrownBarrageSkySigil");
+    crownBarrageSkyCounterSigil_ = makeShield("Resources/json/effect/enemy/false_king/effect_false_king_seal_sky_sigil.json", "FalseKing_CrownBarrageSkyCounterSigil");
     crownBarrageSkyOuterRing_ = makeShield(kNightfallLancesRingEffect, "FalseKing_CrownBarrageSkyOuterRing");
     crownBarrageSkyInnerRing_ = makeShield(kNightfallLancesRingEffect, "FalseKing_CrownBarrageSkyInnerRing");
     const char* layerPaths[] = {
-        "Resources/json/effect/effect_false_king_seal_ground_aura.json",
-        "Resources/json/effect/effect_false_king_seal_red_aura.json",
-        "Resources/json/effect/effect_false_king_seal_ground_current.json", "Resources/json/effect/effect_false_king_seal_ground_current.json",
-        "Resources/json/effect/effect_false_king_seal_red_aura.json",
-        "Resources/json/effect/effect_false_king_seal_red_aura.json"};
+        "Resources/json/effect/enemy/false_king/effect_false_king_seal_ground_aura.json",
+        "Resources/json/effect/enemy/false_king/effect_false_king_seal_red_aura.json",
+        "Resources/json/effect/enemy/false_king/effect_false_king_seal_ground_current.json", "Resources/json/effect/enemy/false_king/effect_false_king_seal_ground_current.json",
+        "Resources/json/effect/enemy/false_king/effect_false_king_seal_red_aura.json",
+        "Resources/json/effect/enemy/false_king/effect_false_king_seal_red_aura.json"};
 
     for (size_t index = 0; index < crownBarrageLayers_.size(); ++index)
         crownBarrageLayers_[index] = makeShield(layerPaths[index], "FalseKing_SealBarrageLayer");
-    DebrisEffectManager::GetInstance()->PrewarmPreset("false_king_seal_shatter");
+    DebrisEffectManager::GetInstance()->PrewarmPreset("shared/false_king_seal_shatter");
     GpuParticleManager::GetInstance()->PreloadPresetSystems(
-        {"false_king_seal_embers", "false_king_seal_impact", "false_king_seal_dissolve",
-         "false_king_seal_ground_sparks", "false_king_seal_air_aura"});
+        {"enemy/false_king/false_king_seal_embers", "enemy/false_king/false_king_seal_impact", "enemy/false_king/false_king_seal_dissolve",
+         "enemy/false_king/false_king_seal_ground_sparks", "enemy/false_king/false_king_seal_air_aura"});
     HideAttackTelegraph();
 }
 
@@ -544,7 +544,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
 
         if (sealVfxTimer_ >= 0.18f) {
             sealVfxTimer_ = 0.0f;
-            EmitDirectedPreset("false_king_seal_embers",
+            EmitDirectedPreset("enemy/false_king/false_king_seal_embers",
                                GetTranslate() + engine::Vector3{0.0f, baseScale_.y * 1.5f, 0.0f},
                                {0.0f, 1.0f, 0.0f}, 1.2f + sealStateTimer_ / tuning.sealCastTime);
 
@@ -554,7 +554,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             for (int index = 0; index < emberSites; ++index) {
                 const float angle = index * 2.4f + idleTimer_ * 0.47f;
                 const float radius = tuning.sealBarrageRadius * (0.18f + 0.09f * index);
-                EmitDirectedPreset("false_king_seal_embers",
+                EmitDirectedPreset("enemy/false_king/false_king_seal_embers",
                     ground + engine::Vector3{radius * std::cos(angle), 0.24f, radius * std::sin(angle)},
                     {0.0f, 1.0f, 0.0f}, 0.6f + chantProgress * 1.4f);
             }
@@ -564,7 +564,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
             for (int index = 0; index < currentSites; ++index) {
                 const float angle = index * 2.39996f + std::floor(idleTimer_ * 5.0f) * 0.23f;
                 const float radius = tuning.sealBarrageRadius * std::sqrt((index + 0.5f) / currentSites);
-                EmitDirectedPreset("false_king_seal_ground_sparks",
+                EmitDirectedPreset("enemy/false_king/false_king_seal_ground_sparks",
                     ground + engine::Vector3{radius * std::cos(angle), 0.28f, radius * std::sin(angle)},
                     {std::cos(angle + 1.5f), 0.025f, std::sin(angle + 1.5f)}, 6.0f + chantProgress * 8.0f);
             }
@@ -619,11 +619,11 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                     spear.model->SetIsVisible(false);
                 }
 
-                spear.glow = makeEffect("Resources/json/effect/effect_false_king_seal_red_aura.json");
+                spear.glow = makeEffect("Resources/json/effect/enemy/false_king/effect_false_king_seal_red_aura.json");
                 spear.portal = makeEffect(kNightfallLancesRingEffect);
-                spear.impactLightning = makeEffect("Resources/json/effect/effect_false_king_seal_discharge_burst.json");
-                spear.groundArc = makeEffect("Resources/json/effect/effect_false_king_seal_ground_current.json");
-                spear.impactArc = makeEffect("Resources/json/effect/effect_false_king_seal_ground_current.json");
+                spear.impactLightning = makeEffect("Resources/json/effect/enemy/false_king/effect_false_king_seal_discharge_burst.json");
+                spear.groundArc = makeEffect("Resources/json/effect/enemy/false_king/effect_false_king_seal_ground_current.json");
+                spear.impactArc = makeEffect("Resources/json/effect/enemy/false_king/effect_false_king_seal_ground_current.json");
                 if (spear.hero)
                     spear.impactBeam = makeEffect(kNightfallImpactBeamEffect);
                 sealBarrage_.push_back(std::move(spear));
@@ -647,10 +647,10 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                 const float angle = index * 2.39996f + std::floor(idleTimer_ * 7.0f) * 0.31f;
                 const float radius = tuning.sealBarrageRadius * std::sqrt((index + 0.5f) / sites);
                 const engine::Vector3 site = ground + engine::Vector3{radius * std::cos(angle), 0.3f, radius * std::sin(angle)};
-                EmitDirectedPreset("false_king_seal_ground_sparks", site,
+                EmitDirectedPreset("enemy/false_king/false_king_seal_ground_sparks", site,
                     {std::cos(angle), 0.03f, std::sin(angle)}, discharge > 0.0f ? 18.0f : 10.0f);
                 if (discharge > 0.0f)
-                    EmitDirectedPreset("false_king_seal_air_aura", site + engine::Vector3{0.0f, 1.6f, 0.0f},
+                    EmitDirectedPreset("enemy/false_king/false_king_seal_air_aura", site + engine::Vector3{0.0f, 1.6f, 0.0f},
                         {0.0f, 1.0f, 0.0f}, 4.0f);
             }
         }
@@ -699,9 +699,9 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                               {1.0f, 0.018f, 0.008f, reveal * fade * (0.36f + 0.16f * fall)},
                               FinaleBillboardRotation(center));
             if (emitAirAura && visible) {
-                EmitDirectedPreset("false_king_seal_air_aura", center,
+                EmitDirectedPreset("enemy/false_king/false_king_seal_air_aura", center,
                     {0.0f, 1.0f, 0.0f}, 1.0f);
-                EmitPreset("false_king_seal_embers", center);
+                EmitPreset("enemy/false_king/false_king_seal_embers", center);
             }
 
             const float portalFade = reveal * (1.0f - SmoothStep01(age / 0.45f));
@@ -741,21 +741,21 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
                               spear.ground + engine::Vector3{0.0f, 8.2f, 0.0f},
                               {2.8f, 1.8f, 2.8f}, {1.0f, 0.84f, 0.90f, beamFade});
             if (age >= 0.0f && age - deltaTime < 0.0f)
-                EmitDirectedPreset("false_king_seal_embers",
+                EmitDirectedPreset("enemy/false_king/false_king_seal_embers",
                                    spear.ground + engine::Vector3{0.0f, tuning.sealBarrageSkyHeight, 0.0f},
                                    {0.0f, -1.0f, 0.0f}, spear.hero ? 4.1f : 1.6f);
             if (strikeAge >= 0.0f && strikeAge - deltaTime < 0.0f) {
-                EmitDirectedPreset("false_king_seal_impact", spear.ground,
+                EmitDirectedPreset("enemy/false_king/false_king_seal_impact", spear.ground,
                                    {0.0f, 1.0f, 0.0f}, spear.hero ? 4.5f : 1.7f);
-                EmitPreset("false_king_seal_embers", spear.ground + engine::Vector3{0.0f, 0.24f, 0.0f});
+                EmitPreset("enemy/false_king/false_king_seal_embers", spear.ground + engine::Vector3{0.0f, 0.24f, 0.0f});
             }
         }
 
         if (sealStateTimer_ >= dissolveStart && sealStateTimer_ - deltaTime < dissolveStart) {
             for (const auto& spear : sealBarrage_) {
                 const engine::Vector3 breakup = spear.ground + engine::Vector3{0.0f, 3.4f * spear.size, 0.0f};
-                DebrisEffectManager::GetInstance()->SpawnOnGround("false_king_seal_shatter", breakup, spear.ground.y);
-                EmitPreset("false_king_seal_dissolve", breakup);
+                DebrisEffectManager::GetInstance()->SpawnOnGround("shared/false_king_seal_shatter", breakup, spear.ground.y);
+                EmitPreset("enemy/false_king/false_king_seal_dissolve", breakup);
             }
         }
 
@@ -777,7 +777,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
 
             // 主槍の着弾を合図に、全ての接地点から同時に放電粒子を噴き上げます。
             for (const auto& spear : sealBarrage_)
-                EmitDirectedPreset("false_king_seal_impact", spear.ground + engine::Vector3{0.0f, 0.2f, 0.0f},
+                EmitDirectedPreset("enemy/false_king/false_king_seal_impact", spear.ground + engine::Vector3{0.0f, 0.2f, 0.0f},
                     {0.0f, 1.0f, 0.0f}, spear.hero ? 2.0f : 1.0f);
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera())
                 camera->StartShake(0.65f, 0.22f, 23.0f, {0.7f, 0.7f, 0.35f});

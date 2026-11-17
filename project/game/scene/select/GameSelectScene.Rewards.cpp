@@ -375,8 +375,7 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
 
         if (unlockingStageIndex_ >= 0) {
             selectedStageIndex_ = unlockingStageIndex_;
-            unlockPresentationTimer_ = 0.0f;
-            unlockParticleTimer_ = 0.0f;
+            unlockTime_ = {};
             DebugConsole::GetInstance()->AddLog("Stage Select: crown unlock presentation start.");
         }
     }

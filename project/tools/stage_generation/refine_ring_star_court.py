@@ -108,7 +108,7 @@ def validate(scene, enemies):
     assert longest_wait + approach_time < 8.5
     # 描画の半径・寿命・補間方法と、ゲーム側の波を一致させる。
     for suffix in ('wave', 'wave_heat'):
-        effect = read(ROOT/f'Resources/json/effect/effect_ring_burner_{suffix}.json')
+        effect = read(ROOT/f'Resources/json/effect/enemy/ring_burner/effect_ring_burner_{suffix}.json')
         assert effect['Lifetime'] == 3.6 and effect['EasingType'] == 0
         assert effect['EnableReveal'] is False
         assert effect['StartScale'][0] == 1.6 and effect['EndScale'][0] == 11

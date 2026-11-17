@@ -1409,9 +1409,9 @@ def validate_stage_v4(data: dict[str, Any], player_data: dict[str, Any]) -> list
                 )
 
     ghost_specs = {
-        "Stage1_V4_MovingIntro_A": ("stage1_v4_moving_intro_a", "Stages/star_garden_moving_platform", 0.0),
-        "Stage1_V4_MovingIntro_B": ("stage1_v4_moving_intro_b", "Stages/star_garden_moving_platform", math.pi * 0.5),
-        "Stage1_V4_MovingIntro_C": ("stage1_v4_moving_intro_c", "Stages/star_garden_lift_platform", 0.0),
+        "Stage1_V4_MovingIntro_A": ("stage1/stage1_v4_moving_intro_a", "Stages/star_garden_moving_platform", 0.0),
+        "Stage1_V4_MovingIntro_B": ("stage1/stage1_v4_moving_intro_b", "Stages/star_garden_moving_platform", math.pi * 0.5),
+        "Stage1_V4_MovingIntro_C": ("stage1/stage1_v4_moving_intro_c", "Stages/star_garden_lift_platform", 0.0),
     }
     for object_name, (path_name, model_name, yaw) in ghost_specs.items():
         moving_floor = by_name.get(object_name, {})

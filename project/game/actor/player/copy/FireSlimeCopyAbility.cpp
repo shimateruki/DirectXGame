@@ -95,8 +95,8 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         UpdateBreathVisuals(player, origin, direction, deltaTime);
 
         if (breathEffectTimer_ <= 0.0f) {
-            EmitDirectedPreset("fire_slime_breath", origin, direction, 1.0f);
-            EmitDirectedPreset("fire_slime_breath_embers", origin, direction, 0.85f);
+            EmitDirectedPreset("shared/fire_slime_breath", origin, direction, 1.0f);
+            EmitDirectedPreset("shared/fire_slime_breath_embers", origin, direction, 0.85f);
             breathEffectTimer_ = 0.065f;
         }
 
@@ -347,12 +347,12 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         actionMotionTimer_ = 0.0f;
         hitTargets_.clear();
         const engine::Vector3 position = player.GetWorldPosition();
-        SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_burst.json",
+        SpawnScopedEffect(effectScope_, "Resources/json/effect/player/copy/fire/effect_player_fire_blaze_burst.json",
                           position + engine::Vector3{0.0f, 0.18f, 0.0f});
-        SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_body.json",
+        SpawnScopedEffect(effectScope_, "Resources/json/effect/player/copy/fire/effect_player_fire_blaze_body.json",
                           position + engine::Vector3{0.0f, 0.60f, 0.0f},
                           {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f});
-        EmitPreset("player_fire_blaze_burst", position + engine::Vector3{0.0f, 0.42f, 0.0f});
+        EmitPreset("player/copy/fire/player_fire_blaze_burst", position + engine::Vector3{0.0f, 0.42f, 0.0f});
         player.SetVelocity(
             {dashDirection_.x * 38.0f, std::max(player.GetVelocity().y, 0.0f), dashDirection_.z * 38.0f});
         player.SetMoveYaw(std::atan2(dashDirection_.x, dashDirection_.z));
@@ -381,17 +381,17 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
         if (dashEffectTimer_ <= 0.0f) {
             const engine::Vector3 trail = player.GetWorldPosition() - dashDirection_ * 0.72f + engine::Vector3{0.0f, 0.12f, 0.0f};
-            SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_trail.json", trail,
+            SpawnScopedEffect(effectScope_, "Resources/json/effect/player/copy/fire/effect_player_fire_blaze_trail.json", trail,
                               {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f});
-            SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_core.json",
+            SpawnScopedEffect(effectScope_, "Resources/json/effect/player/copy/fire/effect_player_fire_blaze_core.json",
                               trail + engine::Vector3{0.0f, 0.36f, 0.0f});
-            EmitDirectedPreset("player_fire_blaze_trail", trail, dashDirection_ * -1.0f, 0.85f);
+            EmitDirectedPreset("player/copy/fire/player_fire_blaze_trail", trail, dashDirection_ * -1.0f, 0.85f);
             dashEffectTimer_ = 0.055f;
         }
 
         if (player.IsGrounded() && dashGroundWakeTimer_ <= 0.0f) {
             const engine::Vector3 wake = player.GetWorldPosition() - dashDirection_ * 0.42f + engine::Vector3{0.0f, 0.04f, 0.0f};
-            SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_ground_wake.json", wake,
+            SpawnScopedEffect(effectScope_, "Resources/json/effect/player/copy/fire/effect_player_fire_blaze_ground_wake.json", wake,
                               {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f}, {0.92f, 0.92f, 1.16f});
             dashGroundWakeTimer_ = 0.10f;
         }
@@ -406,7 +406,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             velocity.z *= 0.30f;
             player.SetVelocity(velocity);
             hitTargets_.clear();
-            EmitPreset("player_fire_blaze_burst", player.GetWorldPosition() + engine::Vector3{0.0f, 0.20f, 0.0f});
+            EmitPreset("player/copy/fire/player_fire_blaze_burst", player.GetWorldPosition() + engine::Vector3{0.0f, 0.20f, 0.0f});
         }
     }
 
@@ -444,7 +444,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             const EnemyAttackDefinition& attack = FindAttackOrFallback(GetProfile(), "flame_breath", fallback);
             DamageEnemy(player, target, 12.0f, DamageType::Fire,
                         {dashDirection_.x * 11.0f, 5.5f, dashDirection_.z * 11.0f}, MakeBurnStatus(attack));
-            VfxSequencer::PlayOneShot("player_fire_dash_hit_cue",
+            VfxSequencer::PlayOneShot("player/copy/fire/player_fire_dash_hit_cue",
                                       target->GetWorldPosition() + engine::Vector3{0.0f, 0.58f, 0.0f});
         }
     }

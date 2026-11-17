@@ -52,21 +52,21 @@ inline constexpr float kAbsorbEffectParticleInterval = 0.035f;
 
 inline constexpr float kPlayerModelYawOffset = kPi;
 
-inline constexpr const char* kPinkSlimeMorphBurstPreset = "pink_slime_morph_burst";
-inline constexpr const char* kPinkSlimeMorphIdlePreset = "pink_slime_morph_glint";
+inline constexpr const char* kPinkSlimeMorphBurstPreset = "player/copy/pink/pink_slime_morph_burst";
+inline constexpr const char* kPinkSlimeMorphIdlePreset = "player/copy/pink/pink_slime_morph_glint";
 inline constexpr float kPinkSlimeMorphParticleInterval = 0.78f;
 
-inline constexpr const char* kBomberMorphAuraPreset = "player_bomb_morph_aura";
-inline constexpr const char* kFireMorphAuraPreset = "player_fire_morph_aura";
-inline constexpr const char* kWindMorphAuraPreset = "player_wind_morph_aura";
+inline constexpr const char* kBomberMorphAuraPreset = "player/copy/bomb/player_bomb_morph_aura";
+inline constexpr const char* kFireMorphAuraPreset = "player/copy/fire/player_fire_morph_aura";
+inline constexpr const char* kWindMorphAuraPreset = "player/copy/wind/player_wind_morph_aura";
 
-inline constexpr const char* kBomberMorphPulseEffectPath = "Resources/json/effect/effect_player_bomb_morph_pulse.json";
-inline constexpr const char* kFireMorphPulseEffectPath = "Resources/json/effect/effect_player_fire_morph_pulse.json";
-inline constexpr const char* kWindMorphPulseEffectPath = "Resources/json/effect/effect_player_wind_morph_pulse.json";
+inline constexpr const char* kBomberMorphPulseEffectPath = "Resources/json/effect/player/copy/bomb/effect_player_bomb_morph_pulse.json";
+inline constexpr const char* kFireMorphPulseEffectPath = "Resources/json/effect/player/copy/fire/effect_player_fire_morph_pulse.json";
+inline constexpr const char* kWindMorphPulseEffectPath = "Resources/json/effect/player/copy/wind/effect_player_wind_morph_pulse.json";
 
 inline constexpr float kElectricShockShakeAmount = 0.045f;
 inline constexpr const char* kElectricShockAuraEffectPath =
-    "Resources/json/effect/effect_thunder_slime_constant_aura.json";
+    "Resources/json/effect/shared/effect_thunder_slime_constant_aura.json";
 
 // 描画用の液体には固体Colliderがないため、液面を直接評価します。
 // Water.hlsli / Magma.VS.hlsl と同じ式。波の設定は既存のInspectorに追従します。
@@ -226,7 +226,7 @@ inline void CalculateThunderAuraShape(const engine::Vector3& position, const eng
 }
 
 inline void EmitOuterThunderParticles(const engine::Vector3& position, const engine::Vector3& scale, float phase, int count,
-                                      const char* presetName = "thunder_slime_idle_spark") {
+                                      const char* presetName = "shared/thunder_slime_idle_spark") {
     auto* gpuParticleManager = GpuParticleManager::GetInstance();
     if (!gpuParticleManager || !gpuParticleManager->IsInitialized() || count <= 0) {
         return;

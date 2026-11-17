@@ -18,17 +18,17 @@
 
 namespace {
 constexpr const char* kDiveAttackId = "dive_slam";
-constexpr const char* kChargePulseEffectPath = "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json";
-constexpr const char* kChargeCoreEffectPath = "Resources/json/effect/effect_pink_slime_charge_core_flash.json";
-constexpr const char* kChargeVortexEffectPath = "Resources/json/effect/effect_pink_slime_charge_vortex_streak.json";
-constexpr const char* kLaunchRingEffectPath = "Resources/json/effect/effect_pink_slime_launch_kick_ring.json";
-constexpr const char* kApexFlashEffectPath = "Resources/json/effect/effect_pink_slime_apex_focus_flash.json";
-constexpr const char* kDiveTrailEffectPath = "Resources/json/effect/effect_pink_slime_dive_streak.json";
-constexpr const char* kLandingRingEffectPath = "Resources/json/effect/effect_pink_slime_landing_burst_ring.json";
-constexpr const char* kLandingCoreEffectPath = "Resources/json/effect/effect_pink_slime_landing_core_flash.json";
-constexpr const char* kLandingShockArcEffectPath = "Resources/json/effect/effect_pink_slime_landing_shock_arc.json";
-constexpr const char* kChargeDebrisPresetName = "pink_slime_charge_pebble_pull";
-constexpr const char* kLandingDebrisPresetName = "pink_slime_landing_pebble_burst";
+constexpr const char* kChargePulseEffectPath = "Resources/json/effect/shared/effect_pink_slime_charge_pulse_ring.json";
+constexpr const char* kChargeCoreEffectPath = "Resources/json/effect/player/copy/pink/effect_pink_slime_charge_core_flash.json";
+constexpr const char* kChargeVortexEffectPath = "Resources/json/effect/player/copy/pink/effect_pink_slime_charge_vortex_streak.json";
+constexpr const char* kLaunchRingEffectPath = "Resources/json/effect/player/copy/pink/effect_pink_slime_launch_kick_ring.json";
+constexpr const char* kApexFlashEffectPath = "Resources/json/effect/player/copy/pink/effect_pink_slime_apex_focus_flash.json";
+constexpr const char* kDiveTrailEffectPath = "Resources/json/effect/shared/effect_pink_slime_dive_streak.json";
+constexpr const char* kLandingRingEffectPath = "Resources/json/effect/shared/effect_pink_slime_landing_burst_ring.json";
+constexpr const char* kLandingCoreEffectPath = "Resources/json/effect/player/copy/pink/effect_pink_slime_landing_core_flash.json";
+constexpr const char* kLandingShockArcEffectPath = "Resources/json/effect/player/copy/pink/effect_pink_slime_landing_shock_arc.json";
+constexpr const char* kChargeDebrisPresetName = "player/copy/pink/pink_slime_charge_pebble_pull";
+constexpr const char* kLandingDebrisPresetName = "player/copy/pink/pink_slime_landing_pebble_burst";
 constexpr float kSlimeModelYawOffset = std::numbers::pi_v<float>;
 constexpr float kChargePulseInterval = 0.56f;
 constexpr float kChargeDebrisInterval = 0.64f;

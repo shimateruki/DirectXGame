@@ -1028,7 +1028,7 @@ void ActorDebugPanel::DrawAttackProfileEditor() {
                     editedAttack->statusDuration = 2.2f;
                     editedAttack->statusTickInterval = 0.55f;
                     editedAttack->statusTickDamage = 0.12f;
-                    editedAttack->statusVfx = "status_burning_flame";
+                    editedAttack->statusVfx = "shared/status_burning_flame";
                 }
 
                 changed = true;

@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "9c74a4065f36e812a446c60dc9dfa5b4",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/enemy_defeat_pop_smoke.json",
-  "version": 1
-}

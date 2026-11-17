@@ -220,7 +220,7 @@ public:
         player.StartEvasionInvincibility(settings.warpInvincibility, Player::EvasionFeedback::PortalEdge);
         Pose(player,0.0f);
         const Vec cue = start_ + direction_ * entranceOffset_ + Vec{0,body.center.y-start_.y,0};
-        CrownAbilityEffects::Emit("player_crown_portal_dust", cue, direction_, gateExtent_);
+        CrownAbilityEffects::Emit("player/copy/crown/player_crown_portal_dust", cue, direction_, gateExtent_);
         effects_.Ring(cue, PortalNormal(false), gateExtent_ * 1.08f);
         return true;
     }
@@ -249,7 +249,7 @@ public:
             player.TriggerSlimeImpulse({1.16f,0.82f,1.20f},0.13f);
             crossed_ = true;
             const Vec cue = body.center + direction_ * distance;
-            CrownAbilityEffects::Emit("player_crown_portal_exit", cue, direction_, presentation_.particleScale);
+            CrownAbilityEffects::Emit("player/copy/crown/player_crown_portal_exit", cue, direction_, presentation_.particleScale);
             effects_.Ring(cue, PortalNormal(true), gateExtent_ * 1.10f);
         }
         if (age_ >= kDuration) {

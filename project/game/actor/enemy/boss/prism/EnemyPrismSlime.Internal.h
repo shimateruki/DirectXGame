@@ -37,53 +37,53 @@ inline constexpr const char* kWindWaveAttackId = "wind_wave";
 inline constexpr const char* kSlimeSummonAttackId = "slime_summon";
 
 // パーティクル、メッシュ効果、魔法陣の資産名。
-inline constexpr const char* kPrismChargePreset = "prism_slime_charge";
-inline constexpr const char* kPrismPhasePulsePreset = "prism_slime_pulse";
+inline constexpr const char* kPrismChargePreset = "enemy/prism_slime/prism_slime_charge";
+inline constexpr const char* kPrismPhasePulsePreset = "shared/prism_slime_pulse";
 
-inline constexpr const char* kPrismSpikeWarningPreset = "prism_spike_warning";
-inline constexpr const char* kPrismSpikeBurstPreset = "prism_spike_burst";
-inline constexpr const char* kPrismSpikeShatterDebrisPreset = "prism_crystal_shatter";
+inline constexpr const char* kPrismSpikeWarningPreset = "enemy/prism_slime/prism_spike_warning";
+inline constexpr const char* kPrismSpikeBurstPreset = "enemy/prism_slime/prism_spike_burst";
+inline constexpr const char* kPrismSpikeShatterDebrisPreset = "enemy/prism_slime/prism_crystal_shatter";
 
-inline constexpr const char* kPrismLanceTrailPreset = "prism_lance_trail";
+inline constexpr const char* kPrismLanceTrailPreset = "enemy/prism_slime/prism_lance_trail";
 
-inline constexpr const char* kPrismSpellMotesPreset = "prism_spell_motes";
-inline constexpr const char* kFireChantMotesPreset = "boss_chant_fire_motes";
-inline constexpr const char* kThunderChantMotesPreset = "boss_chant_thunder_motes";
-inline constexpr const char* kWindChantMotesPreset = "boss_chant_wind_motes";
+inline constexpr const char* kPrismSpellMotesPreset = "enemy/prism_slime/prism_spell_motes";
+inline constexpr const char* kFireChantMotesPreset = "shared/boss_chant_fire_motes";
+inline constexpr const char* kThunderChantMotesPreset = "enemy/prism_slime/boss_chant_thunder_motes";
+inline constexpr const char* kWindChantMotesPreset = "enemy/prism_slime/boss_chant_wind_motes";
 
-inline constexpr const char* kPrismLanceReleasePreset = "prism_lance_release";
+inline constexpr const char* kPrismLanceReleasePreset = "enemy/prism_slime/prism_lance_release";
 
 inline constexpr const char* kPrismSpellTelegraphTexture = "Resources/sprite/effect/prism/prism_spell_circle.dds";
 inline constexpr const char* kPrismCrystalLanceCircleEffect =
-    "Resources/json/effect/effect_prism_crystal_lance_circle.json";
+    "Resources/json/effect/enemy/prism_slime/effect_prism_crystal_lance_circle.json";
 
-inline constexpr const char* kPrismChantSigilEffect = "Resources/json/effect/effect_prism_chant_sigil.json";
-inline constexpr const char* kFireChantSigilEffect = "Resources/json/effect/effect_boss_chant_fire.json";
-inline constexpr const char* kThunderChantSigilEffect = "Resources/json/effect/effect_boss_chant_thunder.json";
-inline constexpr const char* kWindChantSigilEffect = "Resources/json/effect/effect_boss_chant_wind.json";
+inline constexpr const char* kPrismChantSigilEffect = "Resources/json/effect/enemy/prism_slime/effect_prism_chant_sigil.json";
+inline constexpr const char* kFireChantSigilEffect = "Resources/json/effect/shared/effect_boss_chant_fire.json";
+inline constexpr const char* kThunderChantSigilEffect = "Resources/json/effect/enemy/prism_slime/effect_boss_chant_thunder.json";
+inline constexpr const char* kWindChantSigilEffect = "Resources/json/effect/enemy/prism_slime/effect_boss_chant_wind.json";
 
-inline constexpr const char* kPrismSpikeGroundEffect = "Resources/json/effect/effect_prism_spike_ground_flash.json";
-inline constexpr const char* kPrismSpikeSectorEffect = "Resources/json/effect/effect_prism_spike_sector.json";
+inline constexpr const char* kPrismSpikeGroundEffect = "Resources/json/effect/enemy/prism_slime/effect_prism_spike_ground_flash.json";
+inline constexpr const char* kPrismSpikeSectorEffect = "Resources/json/effect/enemy/prism_slime/effect_prism_spike_sector.json";
 
-inline constexpr const char* kFireCastPreset = "fire_slime_cast";
+inline constexpr const char* kFireCastPreset = "shared/fire_slime_cast";
 
-inline constexpr const char* kThunderChargePreset = "thunder_slime_charge";
-inline constexpr const char* kThunderImpactPreset = "player_thunder_strike_impact";
+inline constexpr const char* kThunderChargePreset = "shared/thunder_slime_charge";
+inline constexpr const char* kThunderImpactPreset = "shared/player_thunder_strike_impact";
 
-inline constexpr const char* kWindChargePreset = "wind_slime_charge";
-inline constexpr const char* kWindStreamPreset = "wind_slime_breath_stream";
-inline constexpr const char* kWindDustPreset = "wind_slime_breath_dust";
-inline constexpr const char* kWindImpactPreset = "wind_slime_gust_impact";
+inline constexpr const char* kWindChargePreset = "shared/wind_slime_charge";
+inline constexpr const char* kWindStreamPreset = "shared/wind_slime_breath_stream";
+inline constexpr const char* kWindDustPreset = "shared/wind_slime_breath_dust";
+inline constexpr const char* kWindImpactPreset = "shared/wind_slime_gust_impact";
 
-inline constexpr const char* kThunderWarningEffect = "Resources/json/effect/effect_player_thunder_warning.json";
-inline constexpr const char* kThunderBoltEffect = "Resources/json/effect/effect_player_thunder_bolt.json";
-inline constexpr const char* kThunderCoreEffect = "Resources/json/effect/effect_player_thunder_core.json";
-inline constexpr const char* kThunderImpactEffect = "Resources/json/effect/effect_player_thunder_impact_ring.json";
-inline constexpr const char* kThunderScorchEffect = "Resources/json/effect/effect_thunder_scorch_mark.json";
-inline constexpr const char* kWindRingEffect = "Resources/json/effect/effect_wind_gust_ring.json";
-inline constexpr const char* kPrismWindTornadoOuterEffect = "Resources/json/effect/effect_player_wind_tornado.json";
+inline constexpr const char* kThunderWarningEffect = "Resources/json/effect/shared/effect_player_thunder_warning.json";
+inline constexpr const char* kThunderBoltEffect = "Resources/json/effect/shared/effect_player_thunder_bolt.json";
+inline constexpr const char* kThunderCoreEffect = "Resources/json/effect/shared/effect_player_thunder_core.json";
+inline constexpr const char* kThunderImpactEffect = "Resources/json/effect/shared/effect_player_thunder_impact_ring.json";
+inline constexpr const char* kThunderScorchEffect = "Resources/json/effect/shared/effect_thunder_scorch_mark.json";
+inline constexpr const char* kWindRingEffect = "Resources/json/effect/shared/effect_wind_gust_ring.json";
+inline constexpr const char* kPrismWindTornadoOuterEffect = "Resources/json/effect/shared/effect_player_wind_tornado.json";
 inline constexpr const char* kPrismWindTornadoInnerEffect =
-    "Resources/json/effect/effect_player_wind_tornado_inner.json";
+    "Resources/json/effect/shared/effect_player_wind_tornado_inner.json";
 
 // 素材、衝突、技の発生間隔、遭遇演出に使う調整値。
 inline constexpr int kFireMaterialType = 11;
@@ -190,10 +190,10 @@ inline BulletVisualConfig MakePrismFireVisual() {
     visual.effectSoftness = 0.38f;
     visual.effectIntensity = 1.08f;
     visual.billboardScale = 0.74f;
-    visual.trailPreset = "fireball_trail_flame";
-    visual.trailSecondaryPreset = "fireball_trail_embers";
-    visual.impactPreset = "fireball_impact_flame";
-    visual.impactSecondaryPreset = "fireball_impact_sparks";
+    visual.trailPreset = "shared/fireball_trail_flame";
+    visual.trailSecondaryPreset = "shared/fireball_trail_embers";
+    visual.impactPreset = "shared/fireball_impact_flame";
+    visual.impactSecondaryPreset = "shared/fireball_impact_sparks";
     visual.trailInterval = 0.025f;
     visual.trailSpeedScale = 1.16f;
     visual.trailReverseDirection = true;

@@ -3,6 +3,8 @@
 #include "game/actor/enemy/core/EnemySettingsPaths.h"
 #include "json.hpp"
 
+#include <algorithm>
+#include <filesystem>
 #include <fstream>
 
 namespace {
@@ -15,13 +17,16 @@ void ReadSequence(const nlohmann::json& settings, const char* key, std::string& 
     }
 
     const auto& name = it->get_ref<const std::string&>();
-    if (!name.empty() && name.find_first_of(R"(/\:)") == std::string::npos) {
+    const std::filesystem::path path(std::u8string(name.begin(), name.end()));
+    const bool safe = !path.has_root_path() && !path.has_extension() &&
+        std::none_of(path.begin(), path.end(), [](const auto& part) { return part.empty() || part == ".." || part == "."; });
+    if (!name.empty() && safe) {
         sequence = name;
     }
 }
 
 MidbossEncounterEffects LoadEncounterEffects(const char* enemyType, const char* prefix) {
-    const std::string name = prefix;
+    const std::string name = std::string("enemy/") + prefix + "_slime/" + prefix;
     MidbossEncounterEffects effects{
         name + "_arena_seal_cue", name + "_midboss_appear_cue", name + "_arena_release_cue"
     };

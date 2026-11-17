@@ -266,7 +266,6 @@ void VfxSequencerEditor::Update(float deltaTime) {
 void VfxSequencerEditor::RefreshFileList() {
     // GPU Particle・Mesh Effect・SE・Sequenceを再走査し、選択候補を更新します。
     particlePresetList_.clear();
-    sequenceFileList_.clear();
     meshEffectList_.clear();
     seFileList_.clear();
 
@@ -276,33 +275,18 @@ void VfxSequencerEditor::RefreshFileList() {
         GpuParticleManager::GetInstance()->ReloadAllPresets(particleDir);
     }
 
-    if (fs::exists(particleDir)) {
-        for (const auto& entry : fs::directory_iterator(particleDir)) {
-            if (entry.path().extension() == ".json") {
-                particlePresetList_.push_back(entry.path().stem().string());
+    const fs::path particleRoot = fs::path(particleDir).parent_path();
+    if (fs::exists(particleRoot)) {
+        for (const auto& entry : fs::recursive_directory_iterator(particleRoot)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                auto relative = entry.path().lexically_relative(particleRoot);
+                const auto key = relative.replace_extension().generic_u8string();
+                particlePresetList_.emplace_back(key.begin(), key.end());
             }
         }
     }
 
-    const std::string meshDir = "Resources/json/effect/";
-
-    if (fs::exists(meshDir)) {
-        for (const auto& entry : fs::directory_iterator(meshDir)) {
-            if (entry.path().extension() == ".json") {
-                meshEffectList_.push_back(entry.path().stem().string());
-            }
-        }
-    }
-
-    const std::string sequenceDir = "Resources/json/vfx_sequence/";
-
-    if (fs::exists(sequenceDir)) {
-        for (const auto& entry : fs::directory_iterator(sequenceDir)) {
-            if (entry.path().extension() == ".json") {
-                sequenceFileList_.push_back(entry.path().stem().string());
-            }
-        }
-    }
+    meshEffectList_ = JsonAssetBrowser::ListKeys("Resources/json/effect");
 
     const std::string seDir = "Resources/audio/se/";
 
@@ -317,7 +301,6 @@ void VfxSequencerEditor::RefreshFileList() {
     }
 
     std::sort(particlePresetList_.begin(), particlePresetList_.end());
-    std::sort(sequenceFileList_.begin(), sequenceFileList_.end());
     const std::string audioEventDir = "Resources/json/audio_events/";
 
     if (fs::exists(audioEventDir)) {
@@ -328,7 +311,6 @@ void VfxSequencerEditor::RefreshFileList() {
         }
     }
 
-    std::sort(meshEffectList_.begin(), meshEffectList_.end());
     std::sort(seFileList_.begin(), seFileList_.end());
 }
 
@@ -435,6 +417,8 @@ void VfxSequencerEditor::DrawImGui() {
 
     ImGui::SameLine();
 
+    if (ImGui::Button("Debris", ImVec2(buttonWidth, 32))) AddDefaultEvent(VfxEventType::Debris);
+    ImGui::SameLine();
     if (ImGui::Button("FOV Pulse", ImVec2(buttonWidth, 32))) {
         AddDefaultEvent(VfxEventType::CameraFovPulse);
     }
@@ -477,37 +461,15 @@ void VfxSequencerEditor::DrawImGui() {
 
     ImGui::EndDisabled();
 
-    ImGui::SeparatorText("保存と読み込み");
-
-    // 別Sequenceの読込は未保存編集を捨てるため、モーダルで置換を確認する。
-    if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存ファイル", sequenceNameInput_)) {
-        for (const auto& seqName : sequenceFileList_) {
-            const bool isSelected = (std::string(sequenceNameInput_) == seqName);
-
-            if (ImGui::Selectable(seqName.c_str(), isSelected)) {
-                strcpy_s(sequenceNameInput_, sizeof(sequenceNameInput_), seqName.c_str());
-            }
-
-            if (isSelected) {
-                ImGui::SetItemDefaultFocus();
-            }
-        }
-
-        ImGui::EndCombo();
-    }
-
-    ImGui::InputText(ICON_FA_FILE_SIGNATURE " 保存名", sequenceNameInput_, sizeof(sequenceNameInput_));
-
-    if (ImGui::Button(ICON_FA_DOWNLOAD " 保存", ImVec2(120, 0))) {
-        previewSequencer_.Save(sequenceNameInput_);
-        RefreshFileList();
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button(ICON_FA_UPLOAD " 読み込み", ImVec2(120, 0))) {
-        RequestOpenSequence(sequenceNameInput_);
-    }
+    files_.Draw("VFXシーケンスJSONファイル", "Resources/json/vfx_sequence",
+        [this](const fs::path& path) { return LoadSequenceFile(path); },
+        [this](const fs::path& path, const std::string&) { return previewSequencer_.SaveFile(path); },
+        [this] {
+            previewSequencer_.Stop();
+            previewSequencer_.GetEvents().clear();
+            selectedEvent_ = -1;
+            timelineDuration_ = 3.0f;
+        });
 
     ImGui::TextWrapped("保存は手動です。素材側を変更した後は、停止して先頭から再生してください。");
     if (!fileStatus_.empty())
@@ -528,30 +490,11 @@ void VfxSequencerEditor::DrawImGui() {
         ImGui::TextUnformatted("現在の未保存の編集は置き換わります。先に保存する場合はキャンセルしてください。");
 
         if (ImGui::Button("置き換えて読み込む")) {
-            try {
-                const fs::path name(pendingSequence_);
-                if (pendingSequence_.empty() || name.has_parent_path() || name.has_extension() || pendingSequence_.size() >= sizeof(sequenceNameInput_))
-                    throw std::runtime_error("invalid sequence name");
-                std::ifstream input(fs::path("Resources/json/vfx_sequence") / (pendingSequence_ + ".json"));
-                const auto root = nlohmann::json::parse(input);
-                if (!root.contains("events") || !root["events"].is_array())
-                    throw std::runtime_error("missing events");
-
-                // 一時オブジェクトに読み込み、失敗時は現在の編集を残します。
-                VfxSequencer loaded;
-                loaded.Load(pendingSequence_);
-                previewSequencer_.Stop();
-                previewSequencer_.GetEvents() = loaded.GetEvents();
-                strcpy_s(sequenceNameInput_, pendingSequence_.c_str());
-                selectedEvent_ = loaded.GetEvents().empty() ? -1 : 0;
-                timelineDuration_ = 3.0f;
-
-                for (const auto& event : loaded.GetEvents())
-                    timelineDuration_ = (std::max)(timelineDuration_, GetEventEndTime(event) + 0.5f);
+            const fs::path relative(std::u8string(pendingSequence_.begin(), pendingSequence_.end()) + u8".json");
+            if (LoadSequenceFile(fs::path("Resources/json/vfx_sequence") / relative))
                 fileStatus_ = "読込完了: " + pendingSequence_;
-            } catch (const std::exception&) {
-                fileStatus_ = "読込失敗。ファイル名とJSONを確認してください。現在の編集は保持しています。";
-            }
+            else
+                fileStatus_ = "読込失敗。現在の編集は保持しています。";
 
             ImGui::CloseCurrentPopup();
         }
@@ -562,6 +505,35 @@ void VfxSequencerEditor::DrawImGui() {
         ImGui::EndPopup();
     }
 #endif
+}
+
+bool VfxSequencerEditor::LoadSequenceFile(const fs::path& path) {
+    const fs::path root("Resources/json/vfx_sequence");
+    try {
+        const auto relative = path.lexically_relative(root);
+        if (relative.empty() || relative.is_absolute() || relative.has_root_path() || path.extension() != ".json") return false;
+        for (const auto& part : relative) if (part == ".." || part == ".") return false;
+
+        std::ifstream input(path);
+        const auto document = nlohmann::json::parse(input);
+        if (!document.contains("events") || !document["events"].is_array()) return false;
+        auto keyPath = relative;
+        const auto key = keyPath.replace_extension().generic_u8string();
+
+        // 既存の形式と互換処理を使い、解析完了後にだけプレビュー内容を置き換える。
+        VfxSequencer loaded;
+        loaded.Load(std::string(key.begin(), key.end()));
+        previewSequencer_.Stop();
+        previewSequencer_.GetEvents() = std::move(loaded.GetEvents());
+        files_.SetDocument(relative);
+        selectedEvent_ = previewSequencer_.GetEvents().empty() ? -1 : 0;
+        timelineDuration_ = 3.0f;
+        for (const auto& event : previewSequencer_.GetEvents())
+            timelineDuration_ = (std::max)(timelineDuration_, GetEventEndTime(event) + 0.5f);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
 }
 
 void VfxSequencerEditor::DrawTimelinePreview() {
@@ -704,6 +676,14 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
 
         if (event.type == VfxEventType::GpuParticle) {
             DrawPresetCombo("プリセット", event.presetName, particlePresetList_);
+            ImGui::DragFloat("毎秒発生数（0で単発）", &event.emissionRate, .1f, 0, 120);
+            if (event.emissionRate > 0) {
+                ImGui::DragFloat("発生継続時間", &event.duration, .01f, .01f, 120);
+                ImGui::DragFloat3("発生方向", &event.emissionDirection.x, .01f);
+                ImGui::Checkbox("対象の水平回転に方向を合わせる", &event.directionFollowsYaw);
+                ImGui::DragFloat("速度倍率", &event.emissionScale, .01f, 0, 10);
+                ImGui::TextDisabled("シーケンス先頭基準。遅延時も1フレーム最大1回。位置補正はワールド単位。");
+            }
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " オフセット", &event.offset.x, 0.1f);
         }
         else if (event.type == VfxEventType::MovingParticle) {
@@ -746,6 +726,23 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
             ImGui::DragFloat("Radius", &event.lightRadius, 0.1f, 0.1f, 80.0f, "%.1f");
             ImGui::DragFloat("Decay", &event.lightDecay, 0.05f, 0.1f, 8.0f, "%.2f");
             ImGui::ColorEdit4("Color", &event.lightColor.x);
+        }
+        else if (event.type == VfxEventType::Debris) {
+            // 一覧を開いた時だけディスクを調べ、追加した素材も再起動なしで選べるようにする。
+            if (ImGui::BeginCombo("破片素材", event.presetName.empty() ? "(なし)" : event.presetName.c_str())) {
+                const auto names = JsonAssetBrowser::ListKeys("Resources/json/debris");
+                for (const auto& name : names) {
+                    if (ImGui::Selectable(name.c_str(), event.presetName == name)) event.presetName = name;
+                }
+                if (names.empty()) ImGui::TextDisabled("破片素材が見つかりません。");
+                ImGui::EndCombo();
+            }
+            ImGui::TextDisabled("Resources/json/debris の素材を使用。形・数・大きさ・速度は破片エディターで調整します。");
+            ImGui::DragFloat3("発生位置補正", &event.offset.x, .01f);
+            ImGui::Checkbox("発生位置から地面高さを指定", &event.debrisGroundRelative);
+            if (event.debrisGroundRelative) ImGui::DragFloat("地面の相対高さ", &event.debrisGroundOffset, .01f);
+            ImGui::Checkbox("素材色を上書き", &event.debrisOverrideColor);
+            if (event.debrisOverrideColor) ImGui::ColorEdit4("破片の色", &event.debrisColor.x);
         }
         else if (event.type == VfxEventType::CameraFovPulse) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " 継続時間", &event.duration, 0.01f, 0.03f, 3.0f, "%.2f s");
@@ -882,6 +879,9 @@ const char* VfxSequencerEditor::GetEventTypeName(VfxEventType type) const {
 
     case VfxEventType::ControllerRumble:
         return "Controller Rumble";
+
+    case VfxEventType::Debris:
+        return "Debris";
 
     case VfxEventType::CameraFovPulse:
         return "Camera FOV Pulse";

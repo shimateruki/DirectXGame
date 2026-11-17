@@ -144,7 +144,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             }
             if (signal.signal == "ride.splash") {
                 if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized())
-                    particles->Emit("raft_water_landing", floor.GetTranslate());
+                    particles->Emit("shared/raft_water_landing", floor.GetTranslate());
                 return;
             }
             if (signal.signal == "ride.fireball") {

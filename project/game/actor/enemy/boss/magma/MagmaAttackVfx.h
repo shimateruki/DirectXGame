@@ -22,9 +22,9 @@ struct ActivePreset {
     }
 };
 
-inline constexpr ActivePreset kMortar{"magma_mortar", "magma_slime_mortar_trail"};
-inline constexpr ActivePreset kFireColumn{"fire_column", "magma_slime_fire_column_stream"};
-inline constexpr ActivePreset kFlood{"magma_flood", "magma_slime_flood_splash"};
+inline constexpr ActivePreset kMortar{"magma_mortar", "enemy/magma_slime/magma_slime_mortar_trail"};
+inline constexpr ActivePreset kFireColumn{"fire_column", "enemy/magma_slime/magma_slime_fire_column_stream"};
+inline constexpr ActivePreset kFlood{"magma_flood", "enemy/magma_slime/magma_slime_flood_splash"};
 inline constexpr std::array kProfilePresets{kMortar, kFireColumn, kFlood};
 
 } // namespace MagmaAttackVfx

@@ -1,4 +1,5 @@
-﻿#define NOMINMAX
+﻿#include "engine/editor/assets/JsonAssetBrowser.h"
+#define NOMINMAX
 #include "ProjectWindow.h"
 #include "engine/editor/assets/PortraitExportRegistry.h"
 #include "PresetEditor.h"
@@ -1829,9 +1830,7 @@ if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) 
             int columnCount = std::max(1, (int)(panelWidth / cellSize));
 
             if (ImGui::BeginTable("ParticleAssetTable", columnCount)) {
-                for (const auto& entry : fs::directory_iterator(particleDir)) {
-                    if (entry.path().extension() == ".json") {
-                        std::string presetName = entry.path().stem().string();
+                for (const auto& presetName : JsonAssetBrowser::ListKeys("Resources/json/gpu_particles")) {
                         ImGui::TableNextColumn();
 
                         ImGui::PushID(("Particle_" + presetName).c_str());
@@ -1859,7 +1858,6 @@ if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) 
 
                         ImGui::EndGroup();
                         ImGui::PopID();
-                    }
                 }
 
                 ImGui::EndTable();

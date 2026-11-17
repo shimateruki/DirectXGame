@@ -1,3 +1,4 @@
+#include "engine/animation/cinematic/CinematicAssetPath.h"
 #define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
@@ -20,7 +21,7 @@ constexpr float kArenaBossGameplayCameraDistance = 11.5f;
 constexpr float kArenaBossGameplayCameraHeight = 3.8f;
 constexpr float kArenaBossGameplayCameraPitch = 0.31415927f;
 constexpr float kArenaBossRewardCinemaBarHeight = 0.115f;
-constexpr const char* kArenaBossRewardSequencePath = "Resources/json/scenario/stage3_boss_reward.json";
+constexpr const char* kArenaBossRewardSequencePath = "Resources/json/scenario/stage3/stage3_boss_reward.json";
 
 // Arena内の演出で共通する操作停止と固定カメラへの切替。
 bool BeginArenaFixedCamera(Player& player, bool preserveCopyAbility, bool& hadControl) {
@@ -93,9 +94,10 @@ bool GamePlayScene::StartArenaBossIntro(engine::Object3D* bossObject, engine::Ob
 
     // 編集データと参照先を確かめてから操作をロックする。欠損時は通常の戦闘進行を続ける。
     // 従来のデータは保存し、標準登場だけ新しいTimelineへ切り替えます。
-    const bool portalIntro = cinematicPath == "Resources/json/scenario/stage3_boss_intro.json" ||
-                             cinematicPath == "Resources/json/scenario/stage3_boss_portal_intro.json";
-    const std::string path = portalIntro ? "Resources/json/scenario/stage3_boss_portal_intro.json" : cinematicPath;
+    const auto resolvedPath = CinematicAssetPath::Resolve("Resources/json/scenario", cinematicPath);
+    const bool portalIntro = resolvedPath == "Resources/json/scenario/stage3/stage3_boss_intro.json" ||
+                             resolvedPath == "Resources/json/scenario/stage3/stage3_boss_portal_intro.json";
+    const std::string path = portalIntro ? "Resources/json/scenario/stage3/stage3_boss_portal_intro.json" : cinematicPath;
     if (path.empty() || !arenaBossIntroSequence_.Load(path)) {
         DebugConsole::GetInstance()->AddLog("Stage 3 boss intro timeline missing; cinematic skipped.");
         return false;

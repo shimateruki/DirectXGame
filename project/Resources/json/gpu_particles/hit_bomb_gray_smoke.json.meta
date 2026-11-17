@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "9a0086c5c31ddda40213dc46932f1eae",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hit_bomb_gray_smoke.json",
-  "version": 1
-}

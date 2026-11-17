@@ -11,7 +11,7 @@
       "combat": { "damage": 1.0 },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
       "preview": { "targetDistance": 3.2, "duration": 3.2 },
-      "presentation": { "animation": "", "windupVfx": "thunder_slime_radial_charge", "activeVfx": "thunder_slime_discharge", "impactVfx": "", "audioCue": "" }
+      "presentation": { "animation": "", "windupVfx": "enemy/thunder_slime/thunder_slime_radial_charge", "activeVfx": "shared/thunder_slime_discharge", "impactVfx": "", "audioCue": "" }
     },
     {
       "id": "line_lightning",
@@ -21,7 +21,7 @@
       "combat": { "damage": 1.0 },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
       "preview": { "targetDistance": 9.0, "duration": 4.0 },
-      "presentation": { "animation": "", "windupVfx": "thunder_slime_charge", "activeVfx": "player_thunder_strike_impact", "impactVfx": "Resources/json/effect/effect_thunder_scorch_mark.json", "audioCue": "" }
+      "presentation": { "animation": "", "windupVfx": "shared/thunder_slime_charge", "activeVfx": "shared/player_thunder_strike_impact", "impactVfx": "Resources/json/effect/shared/effect_thunder_scorch_mark.json", "audioCue": "" }
     },
     {
       "id": "player_line_lightning",

@@ -48,7 +48,7 @@ def main():
     half = deck['collider']['size'][0]
     assert abs(deck['position'][1]+.65-start[1])<1e-4
     assert 0 < deck['position'][0]-half-(start[0]+18) < 2
-    route=json.loads((ROOT/'Resources/json/scenario/stage1_coaster.json').read_text(encoding='utf-8-sig'))
+    route=json.loads((ROOT/'Resources/json/scenario/stage1/stage1_coaster.json').read_text(encoding='utf-8-sig'))
     end=route['tracks'][0]['keys'][-1]['position']
     landing=objects['Stage1_TerrainPart_AppearingMainLanding']['position']
     assert abs(end[1]+.65-landing[1])<1e-4

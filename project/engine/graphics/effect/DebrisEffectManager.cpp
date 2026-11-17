@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "DebrisEffectManager.h"
 #include <numbers>
 
@@ -262,7 +263,7 @@ int DebrisEffectManager::GetActivePieceCount() const {
 }
 
 void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
-    // 指定フォルダ直下の JSON を名前で登録し、実ファイルの無い候補は飛ばす。
+    // 下位フォルダーを含む相対パスをプリセットIDとして登録する。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     namespace fs = std::filesystem;
@@ -271,22 +272,26 @@ void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
         return;
     }
 
-    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+    fs::path root(directoryPath);
+    if (!root.has_filename()) root = root.parent_path();
+    for (const auto& entry : fs::recursive_directory_iterator(root)) {
         if (!entry.is_regular_file() || entry.path().extension() != ".json") {
             continue;
         }
 
         DebrisEffectConfig config;
 
-        if (LoadConfig(entry.path().generic_string(), config)) {
-            presets_[entry.path().stem().string()] = config;
+        if (LoadConfig(entry.path(), config)) {
+            auto relative = entry.path().lexically_relative(root);
+            const auto key = relative.replace_extension().generic_u8string();
+            presets_[std::string(key.begin(), key.end())] = config;
         }
     }
 }
 
-bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectConfig& outConfig) const {
+bool DebrisEffectManager::LoadConfig(const std::filesystem::path& filePath, DebrisEffectConfig& outConfig) const {
     // 欠けた項目は Config の初期値を使い、古い JSON も読めるようにする。
-    std::ifstream file(filePath);
+    std::ifstream file(VfxAssetPath::ResolveDependency(filePath));
 
     if (!file.is_open()) {
         return false;
@@ -377,7 +382,7 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
     return true;
 }
 
-bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEffectConfig& config) const {
+bool DebrisEffectManager::SaveConfig(const std::filesystem::path& filePath, const DebrisEffectConfig& config) const {
     // 編集した発生範囲・物理・材質を同じ JSON キーへ戻す。
     namespace fs = std::filesystem;
     fs::create_directories(fs::path(filePath).parent_path());
@@ -423,7 +428,8 @@ bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEf
     }
 
     file << j.dump(4);
-    return true;
+    file.close();
+    return file.good();
 }
 
 void DebrisEffectManager::RegisterPreset(const std::string& presetName, const DebrisEffectConfig& config) {
@@ -438,7 +444,7 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     DebrisEffectConfig config;
-    auto it = presets_.find(presetName);
+    auto it = VfxAssetPath::FindPreset(presets_, presetName);
 
     if (it != presets_.end()) {
         config = it->second;
@@ -506,7 +512,7 @@ void DebrisEffectManager::Spawn(const std::string& presetName, const engine::Vec
     // 登録済み設定を優先し、無いときだけ JSON を読んでキャッシュする。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    auto it = presets_.find(presetName);
+    auto it = VfxAssetPath::FindPreset(presets_, presetName);
 
     if (it != presets_.end()) {
         SpawnFromConfig(it->second, position);
@@ -528,7 +534,7 @@ void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const eng
     // プリセット本体は変更せず、今回の発生に限って衝突面の高さを差し替える。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    auto it = presets_.find(presetName);
+    auto it = VfxAssetPath::FindPreset(presets_, presetName);
 
     if (it != presets_.end()) {
         DebrisEffectConfig config = it->second;
@@ -855,13 +861,11 @@ engine::Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& c
     return engine::Math::Normalize(direction);
 }
 
-std::string DebrisEffectManager::ResolvePresetPath(const std::string& presetName) const {
-    // パス指定はそのまま使い、短い名前だけ標準プリセットディレクトリへ解決する。
-    if (presetName.find('/') != std::string::npos || presetName.find('\\') != std::string::npos) {
-        return presetName;
-    }
-
-    return std::string(kDebrisPresetDirectory) + presetName + ".json";
+std::filesystem::path DebrisEffectManager::ResolvePresetPath(const std::string& presetName) const {
+    const std::filesystem::path path(std::u8string(presetName.begin(), presetName.end()));
+    if (path.is_absolute() || path.extension() == ".json") return path;
+    return std::filesystem::path(kDebrisPresetDirectory) /
+        std::filesystem::path(std::u8string(presetName.begin(), presetName.end()) + u8".json");
 }
 
 #ifdef USE_IMGUI

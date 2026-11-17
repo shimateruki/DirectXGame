@@ -32,9 +32,9 @@
       },
       "presentation": {
         "animation": "prism_spike_summon",
-        "windupVfx": "prism_spike_warning",
-        "activeVfx": "prism_spike_burst",
-        "impactVfx": "prism_spike_shatter",
+        "windupVfx": "enemy/prism_slime/prism_spike_warning",
+        "activeVfx": "enemy/prism_slime/prism_spike_burst",
+        "impactVfx": "enemy/prism_slime/prism_spike_shatter",
         "audioCue": ""
       }
     },
@@ -67,9 +67,9 @@
       },
       "presentation": {
         "animation": "crystal_lance_volley",
-        "windupVfx": "prism_slime_charge",
-        "activeVfx": "prism_lance_trail",
-        "impactVfx": "prism_spike_shatter",
+        "windupVfx": "enemy/prism_slime/prism_slime_charge",
+        "activeVfx": "enemy/prism_slime/prism_lance_trail",
+        "impactVfx": "enemy/prism_slime/prism_spike_shatter",
         "audioCue": ""
       }
     },
@@ -129,10 +129,10 @@
               "maxSpeed": 28.0,
               "damage": 1.0,
               "visualScale": 1.22,
-              "trail": "fireball_trail_flame",
-              "secondaryTrail": "fireball_trail_embers",
-              "impact": "fireball_impact_flame",
-              "secondaryImpact": "fireball_impact_sparks",
+              "trail": "shared/fireball_trail_flame",
+              "secondaryTrail": "shared/fireball_trail_embers",
+              "impact": "shared/fireball_impact_flame",
+              "secondaryImpact": "shared/fireball_impact_sparks",
               "appearance": {
                 "color": [
                   1,
@@ -168,7 +168,7 @@
             "distanceSpeedScale": 1.55,
             "distanceSpeedBias": 4,
             "verticalSpeed": 0.45,
-            "preset": "fire_slime_cast",
+            "preset": "shared/fire_slime_cast",
             "directed": true,
             "particleSpeedScale": 1.15,
             "name": "発射エフェクト 2",
@@ -204,10 +204,10 @@
               "maxSpeed": 28.0,
               "damage": 1.0,
               "visualScale": 1.22,
-              "trail": "fireball_trail_flame",
-              "secondaryTrail": "fireball_trail_embers",
-              "impact": "fireball_impact_flame",
-              "secondaryImpact": "fireball_impact_sparks",
+              "trail": "shared/fireball_trail_flame",
+              "secondaryTrail": "shared/fireball_trail_embers",
+              "impact": "shared/fireball_impact_flame",
+              "secondaryImpact": "shared/fireball_impact_sparks",
               "appearance": {
                 "color": [
                   1,
@@ -243,7 +243,7 @@
             "distanceSpeedScale": 1.55,
             "distanceSpeedBias": 4,
             "verticalSpeed": 0.45,
-            "preset": "fire_slime_cast",
+            "preset": "shared/fire_slime_cast",
             "directed": true,
             "particleSpeedScale": 1.15,
             "name": "発射エフェクト 4",
@@ -279,10 +279,10 @@
               "maxSpeed": 28.0,
               "damage": 1.0,
               "visualScale": 1.22,
-              "trail": "fireball_trail_flame",
-              "secondaryTrail": "fireball_trail_embers",
-              "impact": "fireball_impact_flame",
-              "secondaryImpact": "fireball_impact_sparks",
+              "trail": "shared/fireball_trail_flame",
+              "secondaryTrail": "shared/fireball_trail_embers",
+              "impact": "shared/fireball_impact_flame",
+              "secondaryImpact": "shared/fireball_impact_sparks",
               "appearance": {
                 "color": [
                   1,
@@ -318,7 +318,7 @@
             "distanceSpeedScale": 1.55,
             "distanceSpeedBias": 4,
             "verticalSpeed": 0.45,
-            "preset": "fire_slime_cast",
+            "preset": "shared/fire_slime_cast",
             "directed": true,
             "particleSpeedScale": 1.15,
             "name": "発射エフェクト 6",
@@ -354,10 +354,10 @@
               "maxSpeed": 28.0,
               "damage": 1.0,
               "visualScale": 1.22,
-              "trail": "fireball_trail_flame",
-              "secondaryTrail": "fireball_trail_embers",
-              "impact": "fireball_impact_flame",
-              "secondaryImpact": "fireball_impact_sparks",
+              "trail": "shared/fireball_trail_flame",
+              "secondaryTrail": "shared/fireball_trail_embers",
+              "impact": "shared/fireball_impact_flame",
+              "secondaryImpact": "shared/fireball_impact_sparks",
               "appearance": {
                 "color": [
                   1,
@@ -393,7 +393,7 @@
             "distanceSpeedScale": 1.55,
             "distanceSpeedBias": 4,
             "verticalSpeed": 0.45,
-            "preset": "fire_slime_cast",
+            "preset": "shared/fire_slime_cast",
             "directed": true,
             "particleSpeedScale": 1.15,
             "name": "発射エフェクト 8",
@@ -429,10 +429,10 @@
               "maxSpeed": 28.0,
               "damage": 1.0,
               "visualScale": 1.22,
-              "trail": "fireball_trail_flame",
-              "secondaryTrail": "fireball_trail_embers",
-              "impact": "fireball_impact_flame",
-              "secondaryImpact": "fireball_impact_sparks",
+              "trail": "shared/fireball_trail_flame",
+              "secondaryTrail": "shared/fireball_trail_embers",
+              "impact": "shared/fireball_impact_flame",
+              "secondaryImpact": "shared/fireball_impact_sparks",
               "appearance": {
                 "color": [
                   1,
@@ -468,7 +468,7 @@
             "distanceSpeedScale": 1.55,
             "distanceSpeedBias": 4,
             "verticalSpeed": 0.45,
-            "preset": "fire_slime_cast",
+            "preset": "shared/fire_slime_cast",
             "directed": true,
             "particleSpeedScale": 1.15,
             "name": "発射エフェクト 10",
@@ -495,7 +495,7 @@
           "duration": 2.4,
           "tickInterval": 0.55,
           "tickDamage": 0.14,
-          "vfx": "status_burning_flame"
+          "vfx": "shared/status_burning_flame"
         }
       },
       "movement": {
@@ -509,9 +509,9 @@
       },
       "presentation": {
         "animation": "fire_fan_recoil",
-        "windupVfx": "fire_slime_cast",
-        "activeVfx": "fire_slime_breath_embers",
-        "impactVfx": "fire_slime_cast",
+        "windupVfx": "shared/fire_slime_cast",
+        "activeVfx": "shared/fire_slime_breath_embers",
+        "impactVfx": "shared/fire_slime_cast",
         "audioCue": ""
       }
     },
@@ -544,9 +544,9 @@
       },
       "presentation": {
         "animation": "thunder_chain_tremble",
-        "windupVfx": "thunder_slime_charge",
-        "activeVfx": "player_thunder_strike_impact",
-        "impactVfx": "Resources/json/effect/effect_thunder_scorch_mark.json",
+        "windupVfx": "shared/thunder_slime_charge",
+        "activeVfx": "shared/player_thunder_strike_impact",
+        "impactVfx": "Resources/json/effect/shared/effect_thunder_scorch_mark.json",
         "audioCue": ""
       }
     },
@@ -579,9 +579,9 @@
       },
       "presentation": {
         "animation": "wind_wave_stretch",
-        "windupVfx": "wind_slime_charge",
-        "activeVfx": "wind_slime_breath_stream",
-        "impactVfx": "Resources/json/effect/effect_wind_gust_ring.json",
+        "windupVfx": "shared/wind_slime_charge",
+        "activeVfx": "shared/wind_slime_breath_stream",
+        "impactVfx": "Resources/json/effect/shared/effect_wind_gust_ring.json",
         "audioCue": ""
       }
     },
@@ -614,8 +614,8 @@
       },
       "presentation": {
         "animation": "slime_summon_cast",
-        "windupVfx": "prism_slime_charge",
-        "activeVfx": "prism_slime_pulse",
+        "windupVfx": "enemy/prism_slime/prism_slime_charge",
+        "activeVfx": "shared/prism_slime_pulse",
         "impactVfx": "",
         "audioCue": ""
       }

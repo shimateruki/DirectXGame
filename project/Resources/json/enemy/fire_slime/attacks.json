@@ -25,7 +25,7 @@
           "duration": 2.2,
           "tickInterval": 0.55,
           "tickDamage": 0.12,
-          "vfx": "status_burning_flame"
+          "vfx": "shared/status_burning_flame"
         }
       },
       "movement": {
@@ -40,7 +40,7 @@
       "presentation": {
         "animation": "Breath",
         "windupVfx": "",
-        "activeVfx": "fire_slime_breath",
+        "activeVfx": "shared/fire_slime_breath",
         "impactVfx": "",
         "audioCue": ""
       }
@@ -67,7 +67,7 @@
           "duration": 2.8,
           "tickInterval": 0.55,
           "tickDamage": 0.16,
-          "vfx": "status_burning_flame"
+          "vfx": "shared/status_burning_flame"
         }
       },
       "movement": {
@@ -82,7 +82,7 @@
       "presentation": {
         "animation": "Fireball",
         "windupVfx": "",
-        "activeVfx": "fire_slime_cast",
+        "activeVfx": "shared/fire_slime_cast",
         "impactVfx": "",
         "audioCue": ""
       },
@@ -123,10 +123,10 @@
               "maxSpeed": 28.0,
               "damage": 1.0,
               "visualScale": 1.2,
-              "trail": "fireball_trail_flame",
-              "secondaryTrail": "fireball_trail_embers",
-              "impact": "fireball_impact_flame",
-              "secondaryImpact": "fireball_impact_sparks",
+              "trail": "shared/fireball_trail_flame",
+              "secondaryTrail": "shared/fireball_trail_embers",
+              "impact": "shared/fireball_impact_flame",
+              "secondaryImpact": "shared/fireball_impact_sparks",
               "appearance": {
                 "color": [
                   1,
@@ -160,7 +160,7 @@
             "verticalSpeed": 0,
             "count": 1,
             "spreadDegrees": 0,
-            "preset": "fire_slime_cast",
+            "preset": "shared/fire_slime_cast",
             "name": "発射エフェクト 2",
             "enabled": true
           }
@@ -214,7 +214,7 @@
           "duration": 2.8,
           "tickInterval": 0.55,
           "tickDamage": 0.16,
-          "vfx": "status_burning_flame"
+          "vfx": "shared/status_burning_flame"
         }
       },
       "movement": {
@@ -236,7 +236,7 @@
       "presentation": {
         "animation": "player_ability_fireball",
         "windupVfx": "",
-        "activeVfx": "fire_slime_cast",
+        "activeVfx": "shared/fire_slime_cast",
         "impactVfx": "",
         "audioCue": ""
       },
@@ -289,10 +289,10 @@
               "maxSpeed": 28.0,
               "damage": 14,
               "visualScale": 1.28,
-              "trail": "fireball_trail_flame",
-              "secondaryTrail": "fireball_trail_embers",
-              "impact": "fireball_impact_flame",
-              "secondaryImpact": "fireball_impact_sparks",
+              "trail": "shared/fireball_trail_flame",
+              "secondaryTrail": "shared/fireball_trail_embers",
+              "impact": "shared/fireball_impact_flame",
+              "secondaryImpact": "shared/fireball_impact_sparks",
               "appearance": {
                 "color": [
                   1,
@@ -326,7 +326,7 @@
             "verticalSpeed": 1.4,
             "count": 1,
             "spreadDegrees": 0,
-            "preset": "fire_slime_cast",
+            "preset": "shared/fire_slime_cast",
             "name": "発射エフェクト 2",
             "enabled": true
           }

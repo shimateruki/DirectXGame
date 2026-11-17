@@ -7,7 +7,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 SCENE = ROOT / 'Resources/json/3Dobject/stage1_object.json'
-ROUTE = ROOT / 'Resources/json/scenario/stage1_coaster.json'
+ROUTE = ROOT / 'Resources/json/scenario/stage1/stage1_coaster.json'
 PRESETS = ROOT / 'Resources/json/preset/presets.json'
 JET = 'Stage1_Raft_WaterJet'
 
@@ -89,9 +89,9 @@ def apply():
 
     # 既存の水滴テクスチャを使い、単発・少数の放出で負荷を限定する。
     particle_dir = ROOT / 'Resources/json/gpu_particles'
-    base = read(particle_dir / 'player_base_press_splash.json')
-    for name, count, area, speed, life in [('raft_water_landing', 72, [9, .2, 6], 10, 1.1),
-                                           ('raft_water_spray', 8, [4, .5, 4], 5, .65)]:
+    base = read(particle_dir / 'player/base/player_base_press_splash.json')
+    for name, count, area, speed, life in [('shared/raft_water_landing', 72, [9, .2, 6], 10, 1.1),
+                                           ('shared/raft_water_spray', 8, [4, .5, 4], 5, .65)]:
         effect = copy.deepcopy(base)
         effect.update(emitCount=count, emitArea=area, emitVelocity=[0, speed, 0], emitLife=life,
                       baseSize=.3, midSize=.65, endSize=.08, velocityVariance=5,

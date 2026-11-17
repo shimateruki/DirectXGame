@@ -262,9 +262,11 @@ void CinematicPlayer::AddPresentationIssues(std::vector<std::string>& issues) co
                     issues.push_back(clip.name + ": 位置の基準点が見つかりません: " + name);
         float previousEnd = -1.0f;
         for (const auto& motion : clip.motions) {
-            const float begin=motion.startSignal.empty()?motion.startTime:sequence_->GetSignalTime(motion.startSignal,-1);
-            const float end=motion.endSignal.empty()?motion.endTime:sequence_->GetSignalTime(motion.endSignal,-1);
-            if (begin<0 || end<=begin || begin<previousEnd)
+            const float begin=motion.startSignal.empty()?motion.startTime:sequence_->GetSignalTime(motion.startSignal,-1) + motion.startSignalOffset;
+            const float end=motion.endSignal.empty()?motion.endTime:sequence_->GetSignalTime(motion.endSignal,-1) + motion.endSignalOffset;
+            const bool missingSignal = (!motion.startSignal.empty() && sequence_->GetSignalTime(motion.startSignal,-1)<0) ||
+                (!motion.endSignal.empty() && sequence_->GetSignalTime(motion.endSignal,-1)<0);
+            if (missingSignal || begin<0 || end<=begin || begin<previousEnd)
                 issues.push_back(clip.name+": 区間のSignal不足、時刻の逆転または重複があります。");
             previousEnd=end;
             for (const auto& point : {motion.from.positionReference,motion.to.positionReference})
@@ -435,7 +437,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
         const auto& clip=p.objects[i]; auto& s=presentationObjects_[i];
         if (!clip.enabled || (clip.keys.empty() && clip.motions.empty())) continue;
         if (!live.contains(s.source) || !live.contains(s.target)) {
-            isPlaying_=false; isPreviewing_=false; finished_=false;
+            playbackTimer_.Pause(); isPreviewing_=false; finished_=false;
             ReleasePresentation(true);
             return;
         }
@@ -443,7 +445,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
         const auto k=SampleCinematicVisual(clip,time,sequence_);
         const auto scale=clip.followScale?s.source->GetScale():s.scale;
         if (!ApplyPresentationTransform(i,time,live)) {
-            isPlaying_=false; isPreviewing_=false; finished_=false; ReleasePresentation(true); return;
+            playbackTimer_.Pause(); isPreviewing_=false; finished_=false; ReleasePresentation(true); return;
         }
         const auto position=s.target->GetTranslate();
         s.target->SetColor(k.color); s.target->SetEmissive(k.emissive);
@@ -459,7 +461,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
         s.target->UpdateWorldMatrix(true);
     }
     // 遅延フレームでも区間内の粒子を順に出す。停止・巻戻しのシークでは発火しない。
-    if (dispatch && isPlaying_ && time>=previous)
+    if (dispatch && playbackTimer_.IsRunning() && time>=previous)
         for (const auto& clip:p.particles) {
             size_t i=0;
             while (i<p.objects.size() && p.objects[i].name!=clip.target) ++i;
@@ -491,7 +493,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
         const auto to=k.lookToward.empty()?std::optional(presentationLookAt_):PresentationPosition(k.lookToward,live);
         const auto eyeAnchor=k.eyeReference.empty()?std::optional(engine::Vector3{}):PresentationPosition(k.eyeReference,live);
         if (!from || !to || !eyeAnchor) {
-            isPlaying_=false; isPreviewing_=false; finished_=false; ReleasePresentation(true); return;
+            playbackTimer_.Pause(); isPreviewing_=false; finished_=false; ReleasePresentation(true); return;
         }
         const float yaw=p.viewWorldSpace?0.0f:presentationYaw_;
         const auto target=engine::Math::Lerp(*from,*to,k.focusMix)+

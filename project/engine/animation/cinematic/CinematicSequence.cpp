@@ -1,3 +1,4 @@
+#include "engine/animation/cinematic/CinematicAssetPath.h"
 #define NOMINMAX
 #include "engine/animation/cinematic/CinematicSequence.h"
 
@@ -30,8 +31,8 @@ CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float 
         });
     }
     // Signalがある区間は同じ節目を参照し、時刻を別のキー列へ複製しない。
-    const auto timing = [sequence](float seconds, const std::string& signal) {
-        return sequence && !signal.empty() ? sequence->GetSignalTime(signal,seconds) : seconds;
+    const auto timing = [sequence](float seconds, const std::string& signal, float offset) {
+        return sequence && !signal.empty() ? sequence->GetSignalTime(signal,seconds) + offset : seconds;
     };
 
     // 区間の隙間では直前の終点を保持し、先頭より前は始点を返す。
@@ -39,18 +40,18 @@ CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float 
     float sampleTime = time;
     for (size_t i=0; i<clip.motions.size(); ++i) {
         const auto& motion = clip.motions[i];
-        const float begin = timing(motion.startTime,motion.startSignal);
+        const float begin = timing(motion.startTime,motion.startSignal,motion.startSignalOffset);
         if (time < begin) {
             selected = &clip.motions[i==0?0:i-1];
-            sampleTime = i==0 ? begin : timing(selected->endTime,selected->endSignal);
+            sampleTime = i==0 ? begin : timing(selected->endTime,selected->endSignal,selected->endSignalOffset);
             break;
         }
-        if (time < timing(motion.endTime,motion.endSignal)) { selected=&motion; break; }
+        if (time < timing(motion.endTime,motion.endSignal,motion.endSignalOffset)) { selected=&motion; break; }
     }
 
     const auto& motion = *selected;
-    const float begin = timing(motion.startTime,motion.startSignal);
-    const float end = timing(motion.endTime,motion.endSignal);
+    const float begin = timing(motion.startTime,motion.startSignal,motion.startSignalOffset);
+    const float end = timing(motion.endTime,motion.endSignal,motion.endSignalOffset);
     const float raw = std::clamp((sampleTime-begin)/std::max(0.000001f,end-begin),0.0f,1.0f);
     const auto smooth=[](float x) { x=std::clamp(x,0.0f,1.0f); return x*x*(3.0f-2.0f*x); };
     const float progress = motion.smoothProgress ? smooth(raw) : raw;
@@ -76,12 +77,20 @@ CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float 
     const float envelope = motion.scaleDecay > 0 ? std::exp(-scaleRate*motion.scaleDecay) : 1.0f-scaleRate;
     const float remaining = envelope*std::cos(scaleRate*2.0f*std::numbers::pi_v<float>*motion.scaleCycles);
     k.scale = Math::Lerp(motion.to.scale,motion.from.scale,remaining);
+    if (time >= begin && time < end) {
+        const float amplitude = motion.scaleWaveFadeIn ? smooth(raw) : 1.0f;
+        k.scale += motion.scaleWaveAmplitude * (std::sin(time * motion.scaleWaveFrequency) * amplitude);
+    }
     k.scale = {std::max(k.scale.x,motion.minimumScale),std::max(k.scale.y,motion.minimumScale),std::max(k.scale.z,motion.minimumScale)};
 
     k.color = Math::Lerp(motion.from.color,motion.to.color,raw);
     k.emissive = Math::Lerp(motion.from.emissive,motion.to.emissive,raw)+motion.emissiveAmplitude*std::sin(time*motion.emissiveFrequency);
     k.visible = raw>=1.0f ? motion.to.visible : motion.from.visible;
     return k;
+}
+
+float CinematicSequence::GetVfxStartTime(const CinematicVfxTrackData& track) const {
+    return track.startSignal.empty() ? track.startTime : GetSignalTime(track.startSignal, track.startTime);
 }
 
 float CinematicSequence::GetSignalTime(const std::string& name, float fallback) const {
@@ -134,7 +143,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicTransformKey,
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicTransformTrack,
     name, binding, legacyPathFile, startTime, enabled, muted, locked, relative, anchorRelative, holdLast, keys)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicVfxTrackData,
-    name, binding, sequenceName, startTime, duration, snapshotTargetPosition, rootOffset, rootScale, enabled, muted)
+    name, binding, sequenceName, startTime, duration, startSignal, snapshotTargetPosition, rootOffset, rootScale, enabled, muted)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicCameraShot,
     name, binding, startTime, duration, blendInDuration, blendOutDuration, easing, enabled, muted)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicAnimationClipData,
@@ -242,7 +251,7 @@ float CinematicSequence::GetAuthoredDuration() const {
         if (clip.enabled && !clip.keys.empty()) result = std::max(result, clip.keys.back().time);
     for (const auto& clip : presentation.objects)
         if (clip.enabled) for (const auto& motion : clip.motions)
-            result = std::max(result, motion.endSignal.empty() ? motion.endTime : GetSignalTime(motion.endSignal,motion.endTime));
+            result = std::max(result, motion.endSignal.empty() ? motion.endTime : GetSignalTime(motion.endSignal,motion.endTime) + motion.endSignalOffset);
     if (!presentation.view.empty()) result = std::max(result, presentation.view.back().time);
 
     for (const auto& track : transformTracks) {
@@ -252,7 +261,7 @@ float CinematicSequence::GetAuthoredDuration() const {
     }
 
     for (const auto& track : vfxTracks) {
-        result = std::max(result, track.startTime + std::max(0.1f, track.duration));
+        result = std::max(result, GetVfxStartTime(track) + std::max(0.1f, track.duration));
     }
 
     for (const auto& shot : cameraShots) {
@@ -279,7 +288,7 @@ float CinematicSequence::GetAuthoredDuration() const {
 }
 
 // 保存と読込は同じ型変換を通す。旧項目の扱いは上の互換入口へ閉じ込める。
-bool CinematicSequence::Save(const std::string& filePath) const {
+bool CinematicSequence::Save(const std::filesystem::path& filePath) const {
     json root = {{"version", kCurrentVersion}, {"name", name}, {"duration", duration},
         {"anchor", anchor}, {"anchorYawOffset", anchorYawOffset},
         {"roleBindings", roleBindings}, {"previewModels", previewModels},
@@ -291,11 +300,13 @@ bool CinematicSequence::Save(const std::string& filePath) const {
     if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
     std::ofstream file(path, std::ios::binary);
     file << root.dump(4);
+    file.close();
     return file.good();
 }
 
-bool CinematicSequence::Load(const std::string& filePath) {
-    std::ifstream file(filePath, std::ios::binary);
+bool CinematicSequence::Load(const std::filesystem::path& filePath) {
+    const auto resolved = CinematicAssetPath::Resolve("Resources/json/scenario", filePath);
+    std::ifstream file(resolved, std::ios::binary);
     if (!file) return false;
     json root;
     try { file >> root; }
@@ -303,7 +314,8 @@ bool CinematicSequence::Load(const std::string& filePath) {
     try {
         Clear();
         version = root.value("version", 1);
-        name = root.value("name", std::filesystem::path(filePath).stem().string());
+        const auto stem = filePath.stem().u8string();
+        name = root.value("name", std::string(stem.begin(), stem.end()));
         duration = root.value("duration", 0.0f);
         anchor = root.value("anchor", json::object()).get<CinematicObjectBinding>();
         anchorYawOffset = root.value("anchorYawOffset", 0.0f);

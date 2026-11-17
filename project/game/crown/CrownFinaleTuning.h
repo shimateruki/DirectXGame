@@ -71,7 +71,7 @@ struct CrownFinaleTuning {
     float dashDamage = 16.0f;
     float armorOpenTime = 5.0f;
 
-    static constexpr const char* kConfigPath = "Resources/json/scenario/crown_finale_tuning.json";
+    static constexpr const char* kConfigPath = "Resources/json/scenario/stage3/crown_finale_tuning.json";
 
     // 外部設定の NaN や範囲外の値を除き、演出と判定を有効な範囲に保ちます。
     void Sanitize() {

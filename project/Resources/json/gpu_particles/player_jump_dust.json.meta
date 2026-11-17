@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "89ac8bcca1cd4a7b50fe42d7f7a741a0",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/player_jump_dust.json",
-  "version": 1
-}

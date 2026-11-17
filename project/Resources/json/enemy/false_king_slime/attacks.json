@@ -11,7 +11,7 @@
       "combat": { "damage": 0.90, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.0 },
       "preview": { "targetDistance": 11.0, "duration": 6.8 },
-      "presentation": { "animation": "crown_lance_cast", "windupVfx": "false_king_charge", "activeVfx": "false_king_lance_trail", "impactVfx": "false_king_lance_impact", "audioCue": "" }
+      "presentation": { "animation": "crown_lance_cast", "windupVfx": "enemy/false_king/false_king_charge", "activeVfx": "enemy/false_king/false_king_lance_trail", "impactVfx": "enemy/false_king/false_king_lance_impact", "audioCue": "" }
     },
     {
       "id": "royal_shockwave",
@@ -21,7 +21,7 @@
       "combat": { "damage": 0.72, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.0 },
       "preview": { "targetDistance": 10.0, "duration": 6.5 },
-      "presentation": { "animation": "royal_shockwave_slam", "windupVfx": "false_king_charge", "activeVfx": "false_king_shockwave", "impactVfx": "false_king_shockwave", "audioCue": "" }
+      "presentation": { "animation": "royal_shockwave_slam", "windupVfx": "enemy/false_king/false_king_charge", "activeVfx": "enemy/false_king/false_king_shockwave", "impactVfx": "enemy/false_king/false_king_shockwave", "audioCue": "" }
     },
     {
       "id": "king_rush",
@@ -31,7 +31,7 @@
       "combat": { "damage": 1.25, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 22.0, "maxSpeed": 34.0, "lifetime": 2.8 },
       "preview": { "targetDistance": 13.0, "duration": 6.5 },
-      "presentation": { "animation": "king_rush_squash", "windupVfx": "false_king_charge", "activeVfx": "false_king_rush_wake", "impactVfx": "false_king_lance_impact", "audioCue": "" }
+      "presentation": { "animation": "king_rush_squash", "windupVfx": "enemy/false_king/false_king_charge", "activeVfx": "shared/false_king_rush_wake", "impactVfx": "enemy/false_king/false_king_lance_impact", "audioCue": "" }
     },
     {
       "id": "royal_cross",
@@ -41,7 +41,7 @@
       "combat": { "damage": 0.62, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.6 },
       "preview": { "targetDistance": 12.0, "duration": 7.2 },
-      "presentation": { "animation": "royal_cross_cast", "windupVfx": "false_king_charge", "activeVfx": "false_king_dominion", "impactVfx": "false_king_lance_impact", "audioCue": "" }
+      "presentation": { "animation": "royal_cross_cast", "windupVfx": "enemy/false_king/false_king_charge", "activeVfx": "enemy/false_king/false_king_dominion", "impactVfx": "enemy/false_king/false_king_lance_impact", "audioCue": "" }
     },
     {
       "id": "crown_dominion",
@@ -51,7 +51,7 @@
       "combat": { "damage": 0.58, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 5.7 },
       "preview": { "targetDistance": 14.0, "duration": 10.0 },
-      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_dominion", "activeVfx": "false_king_dominion", "impactVfx": "false_king_lance_impact", "audioCue": "" }
+      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "enemy/false_king/false_king_dominion", "activeVfx": "enemy/false_king/false_king_dominion", "impactVfx": "enemy/false_king/false_king_lance_impact", "audioCue": "" }
     },
     {
       "id": "umbra_flame",
@@ -61,7 +61,7 @@
       "combat": { "damage": 1.05, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 2.8 },
       "preview": { "targetDistance": 14.0, "duration": 8.4 },
-      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_umbra_flame_charge", "activeVfx": "false_king_umbra_flame_flame", "impactVfx": "false_king_umbra_flame_flame", "audioCue": "" }
+      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "enemy/false_king/false_king_umbra_flame_charge", "activeVfx": "enemy/false_king/false_king_umbra_flame_flame", "impactVfx": "enemy/false_king/false_king_umbra_flame_flame", "audioCue": "" }
     },
     {
       "id": "astral_reaver",
@@ -71,7 +71,7 @@
       "combat": { "damage": 1.05, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 1.8 },
       "preview": { "targetDistance": 13.0, "duration": 6.2 },
-      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_chant_motes", "activeVfx": "false_king_astral_reaver_trail", "impactVfx": "false_king_astral_reaver_impact", "audioCue": "" }
+      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "enemy/false_king/false_king_chant_motes", "activeVfx": "enemy/false_king/false_king_astral_reaver_trail", "impactVfx": "enemy/false_king/false_king_astral_reaver_impact", "audioCue": "" }
     },
     {
       "id": "nightfall_lances",
@@ -81,7 +81,7 @@
       "combat": { "damage": 1.20, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
         "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 2.30 },
         "preview": { "targetDistance": 15.0, "duration": 7.3 },
-      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_nightfall_lances_charge", "activeVfx": "false_king_nightfall_lances_trail", "impactVfx": "false_king_nightfall_lances_impact", "audioCue": "" }
+      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "enemy/false_king/false_king_nightfall_lances_charge", "activeVfx": "enemy/false_king/false_king_nightfall_lances_trail", "impactVfx": "enemy/false_king/false_king_nightfall_lances_impact", "audioCue": "" }
     }
   ]
 }

@@ -1,3 +1,4 @@
+#include "engine/animation/cinematic/CinematicAssetPath.h"
 #define NOMINMAX
 #include "engine/editor/cinematic/GhostDirector.h"
 
@@ -26,24 +27,6 @@ namespace {
 constexpr const char* kScenarioDirectory = "Resources/json/scenario/";
 constexpr const char* kAnimationDirectory = "Resources/json/animation/";
 constexpr const char* kVfxDirectory = "Resources/json/vfx_sequence/";
-
-std::vector<std::string> CollectJsonStems(const std::string& directory) {
-    // 選択欄には拡張子を除いた名前だけを並べ、ファイルがまだ無い場合は空一覧にする。
-    std::vector<std::string> names;
-
-    if (!fs::exists(directory)) {
-        return names;
-    }
-
-    for (const auto& entry : fs::directory_iterator(directory)) {
-        if (entry.path().extension() == ".json") {
-            names.push_back(entry.path().stem().string());
-        }
-    }
-
-    std::sort(names.begin(), names.end());
-    return names;
-}
 
 void AddDebugLog(const std::string& text) {
     // デバッグ表示が使えない環境でも演出処理自体は続ける。
@@ -92,7 +75,7 @@ void GhostDirector::Initialize(SceneManager* sceneManager, DebugEditor* editor) 
     sceneManager_ = sceneManager;
     editor_ = editor;
     sequence_.Clear();
-    sequence_.name = scenarioNameBuf_;
+    sequence_.name = "boss_attack_1";
     player_.Initialize(sceneManager_);
     player_.SetBindingResolver([this](const CinematicObjectBinding& binding) { return ResolveTrackTarget(binding); });
     player_.SetSequence(&sequence_);
@@ -121,55 +104,7 @@ void GhostDirector::DrawInspectorContents() {
     DrawPresentationEditor();
     ImGui::TextUnformatted("素材とタイミングを編集");
 
-    if (ImGui::CollapsingHeader(ICON_FA_SAVE " シーケンス", ImGuiTreeNodeFlags_DefaultOpen)) {
-        const auto scenarioFiles = CollectJsonStems(kScenarioDirectory);
-
-        if (ImGui::BeginCombo("既存シーケンス", scenarioNameBuf_)) {
-            for (const auto& fileName : scenarioFiles) {
-                const bool selected = fileName == scenarioNameBuf_;
-
-                if (ImGui::Selectable(fileName.c_str(), selected)) {
-                    strncpy_s(scenarioNameBuf_, sizeof(scenarioNameBuf_), fileName.c_str(), _TRUNCATE);
-                }
-
-                if (selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-
-            ImGui::EndCombo();
-        }
-
-        ImGui::InputText("ファイル名", scenarioNameBuf_, sizeof(scenarioNameBuf_));
-
-        if (ImGui::Button(ICON_FA_DOWNLOAD " 保存")) {
-            SaveScenario(scenarioNameBuf_);
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button(ICON_FA_UPLOAD " 読込")) {
-            ImGui::OpenPopup("演出シーケンスの読込確認");
-        }
-
-        ImGui::TextWrapped("一覧の選択だけでは読み込みません。編集内容は保存ボタンで保存してください。");
-        if (!fileOperationStatus_.empty())
-            ImGui::TextWrapped("直近の操作: %s", fileOperationStatus_.c_str());
-        if (ImGui::BeginPopupModal("演出シーケンスの読込確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("読込先: %s", scenarioNameBuf_);
-            ImGui::TextUnformatted("未保存の編集を置き換えます。必要ならキャンセルして先に保存してください。");
-
-            if (ImGui::Button("置き換えて読み込む")) {
-                LoadScenario(scenarioNameBuf_);
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("キャンセル"))
-                ImGui::CloseCurrentPopup();
-            ImGui::EndPopup();
-        }
-    }
+    DrawScenarioFiles();
 
     // ファイル操作からトラック編集へ移り、選択した種類の編集欄だけを表示します。
     const char* trackTypes[] = {"移動", "VFX", "カメラ", "身体・動作", "音", "Signal（上級）"};
@@ -289,7 +224,7 @@ void GhostDirector::DrawAuthoringGuide() {
                     checkTarget(track.name, track.binding);
                 std::error_code error;
                 if (track.sequenceName.empty() ||
-                    !fs::is_regular_file(fs::path(kVfxDirectory) / (track.sequenceName + ".json"), error))
+                    !fs::is_regular_file(fs::path(kVfxDirectory) / fs::path(std::u8string(track.sequenceName.begin(), track.sequenceName.end()) + u8".json"), error))
                     warn(track.name + ": VFXシーケンスが見つかりません。");
             }
 
@@ -748,52 +683,65 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 #endif
 }
 
-void GhostDirector::SaveScenario(const std::string& fileName) {
-    // トラックを時刻順に整え、ファイル名を確定してから編集内容をJSONへ保存する。
-    if (fileName.empty()) {
-        return;
-    }
-
-    sequence_.name = fileName;
-    sequence_.Sort();
-    const std::string path = std::string(kScenarioDirectory) + fileName + ".json";
-
-    if (sequence_.Save(path)) {
-        fileOperationStatus_ = "保存完了: " + fileName;
-        AddDebugLog("Cinematic Director: Saved " + path);
-    } else {
-        fileOperationStatus_ = "保存失敗: " + fileName;
-        AddDebugLog("Cinematic Director: Save failed " + path);
-    }
+void GhostDirector::DrawScenarioFiles() {
+    const fs::path root(kScenarioDirectory);
+    scenarioFiles_.Draw("演出JSONファイル", root,
+        [this, &root](const fs::path& path) {
+            return LoadScenarioFile(path, path.lexically_relative(root));
+        },
+        [this](const fs::path& path, const std::string& name) {
+            auto saved = sequence_;
+            saved.name = name;
+            saved.Sort();
+            return saved.Save(path);
+        },
+        [this] { ResetScenarioDocument(); });
 }
 
-// 読み込み成功後にだけ現在のシーケンスを差し替えます。再生・Studio の参照は差し替え後に結び直します。
-void GhostDirector::LoadScenario(const std::string& fileName) {
-    // 読込後は再生器と選択状態を新しいシーケンスへ合わせ、古いプレビューを残さない。
-    const std::string path = std::string(kScenarioDirectory) + fileName + ".json";
-    CinematicSequence loaded;
+void GhostDirector::ResetScenarioDocument() {
+    player_.Stop(true);
+    const bool reopenStudio = studioEnabled_;
+    if (reopenStudio) EndStudio();
+    sequence_.Clear();
+    player_.SetSequence(&sequence_);
+    currentScrubTime_ = 0.0f;
+    selectedTrackKind_ = 0;
+    selectedTrackIndex_ = selectedKeyIndex_ = -1;
+    if (reopenStudio) BeginStudio();
+}
 
-    if (!loaded.Load(path)) {
-        fileOperationStatus_ = "読込失敗（現在の編集は保持）: " + fileName;
-        AddDebugLog("Cinematic Director: Load failed " + path);
-        return;
-    }
+// Inspectorに保存されたパスを保持し、旧形式なら移動先を解決してから開く。
+void GhostDirector::LoadScenario(const std::string& fileName) {
+    const fs::path root = fs::path(kScenarioDirectory).parent_path();
+    auto path = fs::path(std::u8string(fileName.begin(), fileName.end()));
+    if (!path.has_extension()) path += L".json";
+    if (path.is_absolute()) return;
+    if (path.lexically_relative(root).empty() || *path.lexically_relative(root).begin() == "..") path = root / path;
+    path = CinematicAssetPath::Resolve(root, path.lexically_normal());
+    const auto relative = path.lexically_relative(root);
+    if (relative.empty()) return;
+    for (const auto& part : relative) if (part == "..") return;
+    LoadScenarioFile(path, relative);
+}
+
+bool GhostDirector::LoadScenarioFile(const fs::path& path, const fs::path& relative) {
+    CinematicSequence loaded;
+    if (!loaded.Load(path)) return false;
 
     player_.Stop(true);
     const bool reopenStudio = studioEnabled_;
     if (reopenStudio)
         EndStudio();
     sequence_ = std::move(loaded);
-    fileOperationStatus_ = "読込完了: " + fileName;
-    strncpy_s(scenarioNameBuf_, sizeof(scenarioNameBuf_), fileName.c_str(), _TRUNCATE);
+    scenarioFiles_.SetDocument(relative);
     player_.SetSequence(&sequence_);
     currentScrubTime_ = 0.0f;
     selectedTrackKind_ = 0;
     selectedTrackIndex_ = sequence_.transformTracks.empty() ? -1 : 0;
     selectedKeyIndex_ = -1;
-    AddDebugLog("Cinematic Director: Loaded " + path);
     if (reopenStudio)
         BeginStudio();
+    return true;
 }
 
 bool GhostDirector::IsFinished() const {
@@ -1320,7 +1268,7 @@ void GhostDirector::DrawTransformTrackEditor() {
     }
 
     // Legacy Path を残しますが、Inline Key がある場合はそちらを優先することを表示します。
-    const auto pathFiles = CollectJsonStems(kAnimationDirectory);
+    const auto pathFiles = JsonAssetBrowser::ListKeys(fs::path(kAnimationDirectory).parent_path());
     const std::string pathLabel = track.legacyPathFile.empty() ? "Inline Keys" : track.legacyPathFile;
 
     if (ImGui::BeginCombo("Legacy Ghost Path", pathLabel.c_str())) {
@@ -1467,7 +1415,19 @@ void GhostDirector::DrawVfxTrackEditor() {
     ImGui::SameLine();
     changed |= ImGui::Checkbox("VFX Mute", &track.muted);
     const bool crownVfx = sequence_.name == "crown_defeat_vfx" || sequence_.name == "crown_finale_vfx";
-    ImGui::BeginDisabled(crownVfx);
+    if (ImGui::BeginCombo("開始Signal", track.startSignal.empty() ? "秒数で指定" : track.startSignal.c_str())) {
+        if (ImGui::Selectable("秒数で指定", track.startSignal.empty())) { track.startSignal.clear(); changed = true; }
+        for (const auto& signal : sequence_.signals) {
+            if (!signal.enabled) continue;
+            if (ImGui::Selectable(signal.name.c_str(), track.startSignal == signal.name)) {
+                track.startSignal = signal.name; changed = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (!track.startSignal.empty())
+        ImGui::Text("Signal開始: %.3f sec", sequence_.GetVfxStartTime(track));
+    ImGui::BeginDisabled(crownVfx || !track.startSignal.empty());
     changed |= ImGui::DragFloat("VFX開始時刻", &track.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec");
     ImGui::EndDisabled();
     if (crownVfx)
@@ -1489,7 +1449,7 @@ void GhostDirector::DrawVfxTrackEditor() {
                                "実際の表示は王冠演出プレビューで確認してください。");
     }
 
-    const auto vfxFiles = CollectJsonStems(kVfxDirectory);
+    const auto vfxFiles = JsonAssetBrowser::ListKeys(fs::path(kVfxDirectory).parent_path());
     const std::string sequenceLabel = track.sequenceName.empty() ? "(未設定)" : track.sequenceName;
 
     if (ImGui::BeginCombo("VFX Sequence", sequenceLabel.c_str())) {
@@ -2013,7 +1973,7 @@ void GhostDirector::DrawTimelineCanvas() {
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
                               selected ? IM_COL32(255, 210, 125, 255) : IM_COL32(215, 220, 230, 255),
                               track.name.c_str());
-            const float startX = origin.x + kLabelWidth + track.startTime * timelinePixelsPerSecond_;
+            const float startX = origin.x + kLabelWidth + sequence_.GetVfxStartTime(track) * timelinePixelsPerSecond_;
             const float finishX = startX + std::max(0.1f, track.duration) * timelinePixelsPerSecond_;
             drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), IM_COL32(165, 85, 215, 220),
                                     4.0f);

@@ -1,3 +1,4 @@
+#include "engine/editor/assets/JsonAssetBrowser.h"
 #include "engine/editor/scene/inspector/InspectorWindow.h"
 #include "EditorPropertyRegistry.h"
 
@@ -59,9 +60,7 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3D *selectedObject) {
     std::string dirPath = "Resources/json/animation/";
 
     if (fs::exists(dirPath) && fs::is_directory(dirPath)) {
-      for (const auto &entry : fs::directory_iterator(dirPath)) {
-        if (entry.path().extension() == ".json") {
-          std::string fileName = entry.path().stem().string();
+      for (const auto& fileName : JsonAssetBrowser::ListKeys("Resources/json/animation")) {
           bool isSelected = (selectedObject->GetRecordPathName() == fileName);
 
           if (ImGui::Selectable(fileName.c_str(), isSelected)) {
@@ -78,7 +77,6 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3D *selectedObject) {
 
           if (isSelected)
             ImGui::SetItemDefaultFocus();
-        }
       }
     }
 

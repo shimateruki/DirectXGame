@@ -125,7 +125,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         // UIを見なくても強化が残っていることをプレイヤー本体から読み取れます。
         if (state_ == State::Idle && storedBouncePower_ > 0.0f && storedPowerEffectTimer_ <= 0.0f) {
             const float effectScale = 0.56f + storedBouncePower_ * 0.34f;
-            SpawnEffect("Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
+            SpawnEffect("Resources/json/effect/shared/effect_pink_slime_charge_pulse_ring.json",
                         player.GetWorldPosition() + engine::Vector3{0.0f, 0.62f, 0.0f}, {},
                         {effectScale, effectScale, effectScale});
             storedPowerEffectTimer_ = 0.32f;
@@ -157,7 +157,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
 
             if (effectTimer_ <= 0.0f) {
                 const float pulseScale = 0.72f + activeBouncePower_ * 0.28f;
-                SpawnEffect("Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
+                SpawnEffect("Resources/json/effect/shared/effect_pink_slime_charge_pulse_ring.json",
                             player.GetWorldPosition() + engine::Vector3{0.0f, 0.12f, 0.0f}, {},
                             {pulseScale, pulseScale, pulseScale});
                 effectTimer_ = 0.065f;
@@ -207,9 +207,9 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             if (effectTimer_ <= 0.0f) {
                 const engine::Vector3 trailPosition =
                     player.GetWorldPosition() - direction_ * 0.62f + engine::Vector3{0.0f, 0.52f, 0.0f};
-                SpawnEffect("Resources/json/effect/effect_player_pink_straight_arc.json", trailPosition,
+                SpawnEffect("Resources/json/effect/player/copy/pink/effect_player_pink_straight_arc.json", trailPosition,
                             {0.0f, std::atan2(direction_.x, direction_.z), 0.0f}, {0.88f, 0.78f, 1.12f});
-                EmitDirectedPreset("player_pink_bounce_droplets", trailPosition,
+                EmitDirectedPreset("player/copy/pink/player_pink_bounce_droplets", trailPosition,
                                    direction_ * -1.0f + engine::Vector3{0.0f, 0.16f, 0.0f}, 0.82f);
                 effectTimer_ = 0.055f;
             }
@@ -282,25 +282,25 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
                 for (int i = 0; i < 7; ++i) {
                     const float yaw = effectYaw + (static_cast<float>(i) - 3.0f) * 0.48f;
                     const engine::Vector3 offset{std::sin(yaw) * 0.30f, 0.05f, std::cos(yaw) * 0.30f};
-                    SpawnEffect("Resources/json/effect/effect_player_pink_combo_press.json", origin + offset,
+                    SpawnEffect("Resources/json/effect/player/copy/pink/effect_player_pink_combo_press.json", origin + offset,
                                 {-0.20f - 0.08f * static_cast<float>(i % 2), yaw, 0.0f});
                 }
 
                 // 打点の縦方向にも短い衝撃を立て、地面の線だけに見えないようにします。
                 for (int i = -1; i <= 1; ++i) {
-                    SpawnEffect("Resources/json/effect/effect_player_pink_guard_impact.json", origin,
+                    SpawnEffect("Resources/json/effect/player/copy/pink/effect_player_pink_guard_impact.json", origin,
                                 {-kPi * 0.5f + i * 0.30f, effectYaw, 0.0f}, {1.3f, 1.3f, 1.8f});
                 }
             } else {
                 // Z軸半回転で三日月の先端と尾を反転。1段目は既存設定を維持。
-                SpawnEffect(comboStage_ == 1 ? "Resources/json/effect/effect_player_pink_return_sweep.json"
-                                             : "Resources/json/effect/effect_player_pink_body_sweep.json",
+                SpawnEffect(comboStage_ == 1 ? "Resources/json/effect/player/copy/pink/effect_player_pink_return_sweep.json"
+                                             : "Resources/json/effect/player/copy/pink/effect_player_pink_body_sweep.json",
                             origin, {0.0f, effectYaw, comboStage_ == 1 ? kPi - 0.28f : 0.28f});
             }
 
             // 粒の散布ではなく、叩きつけた地面から短命の立体破片を出します。
             if (comboStage_ == 2)
-                SpawnDebrisOnGround("player_pink_press_chips", origin);
+                SpawnDebrisOnGround("player/copy/pink/player_pink_press_chips", origin);
         }
 
         if (elapsed >= hitStart && previousElapsed <= hitEnd && player.IsGrounded()) {
@@ -380,7 +380,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const float yaw = std::atan2(direction_.x, direction_.z);
 
         for (int i = -1; i <= 1; ++i) {
-            SpawnEffect("Resources/json/effect/effect_player_pink_guard_impact.json", contact,
+            SpawnEffect("Resources/json/effect/player/copy/pink/effect_player_pink_guard_impact.json", contact,
                         {-0.25f, yaw + i * 0.65f, 0.0f});
         }
 
@@ -407,11 +407,11 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const engine::Vector3 position{(bounds.min.x + bounds.max.x) * 0.5f, bounds.min.y + height * 0.34f,
                                (bounds.min.z + bounds.max.z) * 0.5f};
         const engine::Vector3 size{radius * 1.62f, std::max(height * 0.64f, radius), radius * 1.62f};
-        SpawnScopedEffect(guardScope_, "Resources/json/effect/effect_player_pink_guard_barrier.json", position, {},
+        SpawnScopedEffect(guardScope_, "Resources/json/effect/player/copy/pink/effect_player_pink_guard_barrier.json", position, {},
                           size);
-        SpawnScopedEffect(guardScope_, "Resources/json/effect/effect_player_pink_guard_barrier_rim.json", position,
+        SpawnScopedEffect(guardScope_, "Resources/json/effect/player/copy/pink/effect_player_pink_guard_barrier_rim.json", position,
                           {0.0f, yaw, 0.0f}, size);
-        SpawnScopedEffect(guardScope_, "Resources/json/effect/effect_player_pink_guard_barrier_rim.json", position,
+        SpawnScopedEffect(guardScope_, "Resources/json/effect/player/copy/pink/effect_player_pink_guard_barrier_rim.json", position,
                           {kPi * 0.5f, yaw, 0.0f}, {size.x, size.z, size.y});
         effectTimer_ = 0.12f;
     }
@@ -462,7 +462,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetVelocity({0.0f, std::min(player.GetVelocity().y, 0.0f), 0.0f});
         player.PlaySlimeAbilityMotion("player_ability_pink_bounce_charge", false, 1.0f, 0.015f, 0.035f);
         player.TriggerSlimeImpulse({2.82f, 0.74f, 2.82f}, 0.11f);
-        SpawnDebrisOnGround("pink_slime_charge_pebble_pull", player.GetWorldPosition());
+        SpawnDebrisOnGround("player/copy/pink/pink_slime_charge_pebble_pull", player.GetWorldPosition());
         bounceCooldown_ = 1.15f;
     }
 
@@ -483,10 +483,10 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.PlaySlimeAbilityMotion("player_ability_pink_bounce_rise", false, 1.0f, 0.018f, 0.045f);
         player.TriggerSlimeImpulse({0.72f, 1.70f, 0.72f}, 0.16f);
         SpawnEffect(
-            "Resources/json/effect/effect_player_pink_bounce_launch.json",
+            "Resources/json/effect/player/copy/pink/effect_player_pink_bounce_launch.json",
             player.GetWorldPosition() + engine::Vector3{0.0f, 0.08f, 0.0f}, {},
             {1.0f + activeBouncePower_ * 0.24f, 1.0f + activeBouncePower_ * 0.24f, 1.0f + activeBouncePower_ * 0.24f});
-        EmitDirectedPreset("player_pink_bounce_droplets", player.GetWorldPosition() + engine::Vector3{0.0f, 0.15f, 0.0f},
+        EmitDirectedPreset("player/copy/pink/player_pink_bounce_droplets", player.GetWorldPosition() + engine::Vector3{0.0f, 0.15f, 0.0f},
                            {0.0f, -1.0f, 0.0f}, 0.78f + activeBouncePower_ * 0.28f);
     }
 
@@ -511,7 +511,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction_);
         player.PlaySlimeAbilityMotion("player_ability_pink_rush", false, 0.78f / duration_, 0.02f, 0.05f);
         player.TriggerSlimeImpulse({1.56f, 1.04f, 1.56f}, 0.12f);
-        SpawnEffect("Resources/json/effect/effect_pink_slime_apex_focus_flash.json",
+        SpawnEffect("Resources/json/effect/player/copy/pink/effect_pink_slime_apex_focus_flash.json",
                     player.GetWorldPosition() + engine::Vector3{0.0f, 0.72f, 0.0f}, {}, {0.82f, 0.82f, 0.82f});
     }
 
@@ -520,8 +520,8 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         const engine::Vector3 groundPosition = HitEffectDirector::ResolveGroundEffectPosition(player.GetWorldPosition());
 
         if (player.IsGrounded()) {
-            SpawnDebrisOnGround("pink_slime_landing_pebble_burst", groundPosition);
-            SpawnEffect("Resources/json/effect/effect_player_pink_straight_impact.json",
+            SpawnDebrisOnGround("player/copy/pink/pink_slime_landing_pebble_burst", groundPosition);
+            SpawnEffect("Resources/json/effect/player/copy/pink/effect_player_pink_straight_impact.json",
                         groundPosition + engine::Vector3{0.0f, 0.10f, 0.0f}, {}, {0.72f, 0.72f, 0.72f});
             player.TriggerSlimeImpulse({2.36f, 0.42f, 2.36f}, 0.12f);
         }
@@ -546,7 +546,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
 
             DamageEnemy(player, target, rushDamage_, DamageType::Physical,
                         {direction_.x * 12.0f, 5.5f, direction_.z * 12.0f});
-            SpawnEffect("Resources/json/effect/effect_player_pink_straight_impact.json",
+            SpawnEffect("Resources/json/effect/player/copy/pink/effect_player_pink_straight_impact.json",
                         target->GetWorldPosition() + engine::Vector3{0.0f, 0.55f, 0.0f});
         }
     }

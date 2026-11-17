@@ -155,10 +155,10 @@ inline BulletVisualConfig MakeFireVisual() {
     visual.effectSoftness = 0.42f;
     visual.effectIntensity = 0.96f;
     visual.billboardScale = 0.68f;
-    visual.trailPreset = "fireball_trail_flame";
-    visual.trailSecondaryPreset = "fireball_trail_embers";
-    visual.impactPreset = "fireball_impact_flame";
-    visual.impactSecondaryPreset = "fireball_impact_sparks";
+    visual.trailPreset = "shared/fireball_trail_flame";
+    visual.trailSecondaryPreset = "shared/fireball_trail_embers";
+    visual.impactPreset = "shared/fireball_impact_flame";
+    visual.impactSecondaryPreset = "shared/fireball_impact_sparks";
     visual.trailInterval = 0.025f;
     visual.trailSpeedScale = 1.08f;
     visual.trailReverseDirection = true;

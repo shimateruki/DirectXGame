@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/editor/assets/JsonAssetBrowser.h"
 
 #include "IEditable.h"
 #include "VfxSequencer.h"
@@ -28,6 +29,8 @@ void RefreshFileList();
     void RequestOpenSequence(const std::string& name);
 
 private:
+    JsonAssetBrowser files_;
+    bool LoadSequenceFile(const std::filesystem::path& path);
     // 専用Stageを優先し、通常画面ではカメラ基準の再生位置へ戻します。
     engine::Vector3 ResolvePreviewPosition() const;
 
@@ -62,10 +65,8 @@ void DrawTimelinePreview();
     float timelineDuration_ = 5.0f; // タイムラインの表示時間範囲（秒）。
     bool snapTimeline_ = true;
 
-    char sequenceNameInput_[64] = "UltimateMeteor";
 
     std::vector<std::string> particlePresetList_;
-    std::vector<std::string> sequenceFileList_;
     std::vector<std::string> meshEffectList_;
     std::vector<std::string> seFileList_;
 

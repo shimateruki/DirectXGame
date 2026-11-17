@@ -3285,7 +3285,7 @@
                 "ParticleEmitter": {
                     "_editorPresent": true,
                     "cpuParticle": "",
-                    "gpuParticle": "brazier_embers",
+                    "gpuParticle": "shared/brazier_embers",
                     "version": 1
                 }
             },
@@ -3297,7 +3297,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
-            "gpuParticleName": "brazier_embers",
+            "gpuParticleName": "shared/brazier_embers",
             "guid": "406f643f-8f39-560e-9e6c-507ab053b560",
             "isStatic": false,
             "itemType": "",
@@ -3553,7 +3553,7 @@
                 "ParticleEmitter": {
                     "_editorPresent": true,
                     "cpuParticle": "",
-                    "gpuParticle": "brazier_embers",
+                    "gpuParticle": "shared/brazier_embers",
                     "version": 1
                 }
             },
@@ -3565,7 +3565,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
-            "gpuParticleName": "brazier_embers",
+            "gpuParticleName": "shared/brazier_embers",
             "guid": "94859034-6319-5f1b-bc74-df9495a546d8",
             "isStatic": false,
             "itemType": "",
@@ -3704,7 +3704,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage1_v4_moving_intro_a",
+                    "path": "stage1/stage1_v4_moving_intro_a",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": true,
@@ -3813,7 +3813,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage1_v4_moving_intro_a"
+                "recordPathName": "stage1/stage1_v4_moving_intro_a"
             },
             "rotation": [
                 -0.0,
@@ -3890,7 +3890,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage1_v4_moving_intro_b",
+                    "path": "stage1/stage1_v4_moving_intro_b",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": true,
@@ -3999,7 +3999,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage1_v4_moving_intro_b"
+                "recordPathName": "stage1/stage1_v4_moving_intro_b"
             },
             "rotation": [
                 0.0,
@@ -4076,7 +4076,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage1_v4_moving_intro_c",
+                    "path": "stage1/stage1_v4_moving_intro_c",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": true,
@@ -4185,7 +4185,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage1_v4_moving_intro_c"
+                "recordPathName": "stage1/stage1_v4_moving_intro_c"
             },
             "rotation": [
                 0.0,
@@ -5294,7 +5294,7 @@
                 "ParticleEmitter": {
                     "_editorPresent": true,
                     "cpuParticle": "",
-                    "gpuParticle": "star_sparkle",
+                    "gpuParticle": "shared/star_sparkle",
                     "version": 1
                 }
             },
@@ -5306,7 +5306,7 @@
             "envIntensity": 1.25,
             "eventID": 7,
             "gimmickType": "",
-            "gpuParticleName": "star_sparkle",
+            "gpuParticleName": "shared/star_sparkle",
             "guid": "28b6cb5c-11a0-5712-9dbe-0f4742a14101",
             "isStatic": false,
             "itemType": "",
@@ -7194,7 +7194,7 @@
                 "ParticleEmitter": {
                     "_editorPresent": true,
                     "cpuParticle": "",
-                    "gpuParticle": "star_sparkle",
+                    "gpuParticle": "shared/star_sparkle",
                     "version": 1
                 }
             },
@@ -7206,7 +7206,7 @@
             "envIntensity": 1.25,
             "eventID": 7,
             "gimmickType": "",
-            "gpuParticleName": "star_sparkle",
+            "gpuParticleName": "shared/star_sparkle",
             "guid": "5e516941-cafb-56aa-9830-2849771ee102",
             "isStatic": false,
             "itemType": "",
@@ -11632,7 +11632,7 @@
                 "ParticleEmitter": {
                     "_editorPresent": true,
                     "cpuParticle": "",
-                    "gpuParticle": "star_sparkle_silver",
+                    "gpuParticle": "shared/star_sparkle_silver",
                     "version": 1
                 }
             },
@@ -11644,7 +11644,7 @@
             "envIntensity": 0.6499999761581421,
             "eventID": 7,
             "gimmickType": "",
-            "gpuParticleName": "star_sparkle_silver",
+            "gpuParticleName": "shared/star_sparkle_silver",
             "guid": "1337691d-e52f-5303-bd8c-a131ff8c4103",
             "isStatic": false,
             "itemType": "",
@@ -15956,8 +15956,8 @@
             "components": {
                 "MeshEffect": {
                     "_editorPresent": true,
-                    "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-                    "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
+                    "primary": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+                    "secondary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
                     "version": 1
                 }
             },
@@ -16005,8 +16005,8 @@
             },
             "materialType": 0,
             "meshDrawIndex": -1,
-            "meshEffect1": "Resources/json/effect/effect_crown_idle_shell.json",
-            "meshEffect2": "Resources/json/effect/effect_crown_aura_ring.json",
+            "meshEffect1": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+            "meshEffect2": "Resources/json/effect/shared/effect_crown_aura_ring.json",
             "metallic": 0.3799999952316284,
             "modelName": "Stages/crown",
             "myEventID": -1,
@@ -34547,7 +34547,7 @@
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": false,
-                    "rideSequence": "Resources/json/scenario/stage1_coaster.json",
+                    "rideSequence": "Resources/json/scenario/stage1/stage1_coaster.json",
                     "version": 1
                 }
             },
@@ -44109,7 +44109,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage1_v4_moving_intro_a",
+                    "path": "stage1/stage1_v4_moving_intro_a",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": true,
@@ -44218,7 +44218,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage1_v4_moving_intro_a"
+                "recordPathName": "stage1/stage1_v4_moving_intro_a"
             },
             "rotation": [
                 0.0,

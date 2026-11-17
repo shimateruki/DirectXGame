@@ -256,7 +256,7 @@ void GhostDirector::DrawStudioControls() {
                     if (auto* reference = FindStudioObject(1))
                         reference->SetModel(sequence_.previewModels[1]);
                     sequence_.name = "entry_studio";
-                    strcpy_s(scenarioNameBuf_, "entry_studio");
+                    scenarioFiles_.SetDocument({});
                     sequence_.anchor = {"$Gate", -1};
                     templateActor_ = {"$Actor", -1};
                     templateCamera_ = {"$Camera", -1};

@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT/'tools/cinematic'))
 spec=importlib.util.spec_from_file_location('finale_bake',ROOT/'tools/cinematic/bake_crown_finale.py')
 legacy=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(legacy)
-asset=json.loads((ROOT/'Resources/json/scenario/crown_finale.json').read_text(encoding='utf-8'))
+asset=json.loads((ROOT/'Resources/json/scenario/stage3/crown_finale.json').read_text(encoding='utf-8'))
 
 
 def sample(rows, stamps, time, discrete=()):

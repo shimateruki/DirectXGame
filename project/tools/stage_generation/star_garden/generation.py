@@ -1224,9 +1224,9 @@ def revise_stage_v4(
 
     # 1. 導入はGhost Recorderの三軌道だけに絞り、水平→奥行き→上下の順で学習する。
     moving_specs = (
-        ("Stage1_V4_MovingIntro_A", [-267.0, 0.70, -50.0], "stage1_v4_moving_intro_a", "Stages/star_garden_moving_platform", 0.0),
-        ("Stage1_V4_MovingIntro_B", [-239.0, 2.40, -50.0], "stage1_v4_moving_intro_b", "Stages/star_garden_moving_platform", math.pi * 0.5),
-        ("Stage1_V4_MovingIntro_C", [-222.0, 4.50, -42.0], "stage1_v4_moving_intro_c", "Stages/star_garden_lift_platform", 0.0),
+        ("Stage1_V4_MovingIntro_A", [-267.0, 0.70, -50.0], "stage1/stage1_v4_moving_intro_a", "Stages/star_garden_moving_platform", 0.0),
+        ("Stage1_V4_MovingIntro_B", [-239.0, 2.40, -50.0], "stage1/stage1_v4_moving_intro_b", "Stages/star_garden_moving_platform", math.pi * 0.5),
+        ("Stage1_V4_MovingIntro_C", [-222.0, 4.50, -42.0], "stage1/stage1_v4_moving_intro_c", "Stages/star_garden_lift_platform", 0.0),
     )
     for name, position, path_name, model_name, yaw in moving_specs:
         floor = make_ghost_moving_floor(templates["MovingFloor"], name, position, path_name, yaw)

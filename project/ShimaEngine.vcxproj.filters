@@ -387,6 +387,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="engine\editor\assets\JsonAssetBrowser.cpp">
+      <Filter>Engine\Editor\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\time\Timer.cpp">
+      <Filter>Engine\Utility</Filter>
+    </ClCompile>
     <ClCompile Include="game\system\cinematic\GateEntryPresentation.cpp">
       <Filter>Game\System\cinematic</Filter>
     </ClCompile>
@@ -1376,6 +1382,18 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="engine\graphics\effect\VfxAssetPath.h">
+      <Filter>Engine\Graphics\effect</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\animation\cinematic\CinematicAssetPath.h">
+      <Filter>Engine\Animation\cinematic</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\editor\assets\JsonAssetBrowser.h">
+      <Filter>Engine\Editor\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\time\Timer.h">
+      <Filter>Engine\Utility</Filter>
+    </ClInclude>
     <ClInclude Include="game\actor\player\copy\WindCopySettings.h">
       <Filter>Game\Actor\Player\copy</Filter>
     </ClInclude>

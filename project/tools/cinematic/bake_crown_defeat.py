@@ -5,8 +5,8 @@ import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "Resources/json/scenario/crown_defeat.json"
-T = json.loads((ROOT / "Resources/json/scenario/crown_defeat_tuning.json").read_text(encoding="utf-8-sig"))
+OUT = ROOT / "Resources/json/scenario/stage3/crown_defeat.json"
+T = json.loads((ROOT / "Resources/json/scenario/stage3/crown_defeat_tuning.json").read_text(encoding="utf-8-sig"))
 D, R, S, E, V = (T[x] for x in ("duration", "rupture", "shrink", "settle", "victory"))
 PI = math.pi
 
@@ -149,7 +149,7 @@ def particles(target,preset,start,end,scale,direction=(0,1,0),mode="fixed"):
         endTime=(math.ceil(end*9)-1)/9,interval=1/9,scale=scale,direction=list(direction),directionMode=mode)
 
 
-asset=json.loads((ROOT / "Resources/json/scenario/crown_defeat_vfx.json").read_text())
+asset=json.loads((ROOT / "Resources/json/scenario/stage3/crown_defeat_vfx.json").read_text())
 asset.update(version=7,name="crown_defeat",duration=D,
     roleBindings=[dict(targetName="Stage3_HighCrown_FalseKingSlime",targetEventId=-1),
                   dict(targetName="Stage3_HighCrown_Player",targetEventId=-1),dict(targetName="",targetEventId=-1)],
@@ -160,9 +160,9 @@ asset['vfxCues'][1].update(startTime=(V+.11)*D,targetName="$Gate")
 asset['signals']=[dict(time=ratio*D,name=name,signal=name,payload="",enabled=True) for name,ratio in
                   [('rupture',R),('shrink',S),('settle',E),('victory',V)]]
 asset['presentation']=dict(reference="$Actor",lookToward="$Gate",hideObjects=["$Actor"],objects=objects,view=view_keys,
-    particles=[particles("charge_orbit","crown_defeat_charge",.09*D,R*D,.16*T['energy'],(0,-.4,0),"radialIn"),
-               particles("charge_body","crown_defeat_charge",S*D,E*D,.2*T['energy']),
-               particles("victory_sparkles","goal_clear_gold_motes",V*D,D,.35)])
+    particles=[particles("charge_orbit","enemy/false_king/crown_defeat_charge",.09*D,R*D,.16*T['energy'],(0,-.4,0),"radialIn"),
+               particles("charge_body","enemy/false_king/crown_defeat_charge",S*D,E*D,.2*T['energy']),
+               particles("victory_sparkles","shared/goal_clear_gold_motes",V*D,D,.35)])
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__); parser.add_argument('--force',action='store_true')

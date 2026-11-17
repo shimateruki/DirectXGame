@@ -12,7 +12,7 @@ inline void EmitPuff(const engine::Vector3& groundPosition, const engine::Vector
     if (!particles || !particles->IsInitialized()) {
         return;
     }
-    const char* presetName = landing ? "player_land_dust" : "player_jump_dust";
+    const char* presetName = landing ? "shared/player_land_dust" : "player/base/player_jump_dust";
     const auto preset = particles->GetPresets().find(presetName);
     if (preset == particles->GetPresets().end()) {
         return;

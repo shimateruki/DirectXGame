@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "85bebb6cab82378dad415e7e106d6501",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/wind_slime_charge.json",
-  "version": 1
-}

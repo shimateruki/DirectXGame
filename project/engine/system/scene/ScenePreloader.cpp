@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "ScenePreloader.h"
 
 #include "ModelManager.h"
@@ -140,7 +141,7 @@ void RecordDependency(
 
 void AddJsonDependency(ScenePreloadData& data, const std::string& path) {
     // JSON参照も欠落調査の対象へ記録する。
-    RecordDependency(data, SceneDependencyType::Json, path);
+    RecordDependency(data, SceneDependencyType::Json, PathToUtf8(VfxAssetPath::ResolveDependency(PathFromUtf8(path))));
 }
 
 void AddAudioDependency(ScenePreloadData& data, std::string path) {

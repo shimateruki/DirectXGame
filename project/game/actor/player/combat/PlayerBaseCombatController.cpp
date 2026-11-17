@@ -189,10 +189,10 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
             timer_ = kBashActiveDuration;
             player.SetVelocity({direction_.x * 22.0f, std::max(player.GetVelocity().y, 0.0f), direction_.z * 22.0f});
             player.TriggerSlimeImpulse({0.84f, 1.12f, 1.92f}, 0.14f);
-            SpawnEffect("Resources/json/effect/effect_player_base_bash_arc.json",
+            SpawnEffect("Resources/json/effect/player/base/effect_player_base_bash_arc.json",
                         player.GetWorldPosition() + direction_ * 0.7f + engine::Vector3{0.0f, 0.58f, 0.0f},
                         {0.0f, std::atan2(direction_.x, direction_.z), 0.0f}, {0.82f, 0.82f, 1.10f});
-            EmitDirectedPreset("player_base_bash_droplets",
+            EmitDirectedPreset("player/base/player_base_bash_droplets",
                                player.GetWorldPosition() - direction_ * 0.34f + engine::Vector3{0.0f, 0.34f, 0.0f},
                                direction_ * -1.0f, 0.78f);
             effectTimer_ = 0.08f;
@@ -211,7 +211,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
         effectTimer_ -= deltaTime;
 
         if (effectTimer_ <= 0.0f) {
-            EmitDirectedPreset("player_base_bash_droplets",
+            EmitDirectedPreset("player/base/player_base_bash_droplets",
                                player.GetWorldPosition() - direction_ * 0.38f + engine::Vector3{0.0f, 0.30f, 0.0f},
                                direction_ * -1.0f, 0.46f);
             effectTimer_ = 0.085f;
@@ -265,7 +265,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
             player.TriggerSlimeImpulse({1.55f, 0.68f, 1.55f}, 0.14f);
         } else if (player.IsGrounded() || timer_ <= 0.0f) {
             DamagePress(player, true);
-            VfxSequencer::PlayOneShot("player_base_press_land_cue",
+            VfxSequencer::PlayOneShot("player/base/player_base_press_land_cue",
                                       player.GetWorldPosition() + engine::Vector3{0.0f, 0.06f, 0.0f});
             phase_ = Phase::PressRecovery;
             timer_ = kPressRecoveryDuration;
@@ -297,7 +297,7 @@ void PlayerBaseCombatController::DamageBash(Player& player) {
         }
 
         DispatchDamage(player, target, 9.0f, {direction_.x * 10.0f, 4.5f, direction_.z * 10.0f});
-        VfxSequencer::PlayOneShot("player_base_bash_hit_cue", target->GetWorldPosition() + engine::Vector3{0.0f, 0.55f, 0.0f});
+        VfxSequencer::PlayOneShot("player/base/player_base_bash_hit_cue", target->GetWorldPosition() + engine::Vector3{0.0f, 0.55f, 0.0f});
     }
 }
 
@@ -319,7 +319,7 @@ void PlayerBaseCombatController::DamagePress(Player& player, bool landingImpact)
         engine::Vector3 knockback = NormalizePlanar(target->GetWorldPosition() - center);
         DispatchDamage(player, target, landingImpact ? 8.0f : 12.0f,
                        {knockback.x * 7.5f, landingImpact ? 7.0f : 10.0f, knockback.z * 7.5f});
-        VfxSequencer::PlayOneShot("player_base_press_enemy_hit_cue",
+        VfxSequencer::PlayOneShot("player/base/player_base_press_enemy_hit_cue",
                                   target->GetWorldPosition() + engine::Vector3{0.0f, 0.45f, 0.0f},
                                   landingImpact ? engine::Vector3{1.15f, 1.15f, 1.15f} : engine::Vector3{0.86f, 0.86f, 0.86f});
         pressHitEnemy_ = !landingImpact;

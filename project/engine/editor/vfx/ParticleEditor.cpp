@@ -398,57 +398,22 @@ void ParticleEditor::DrawImGui() {
     // -------------------------------------------------------------
     ImGui::Separator();
 
-    if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        std::vector<std::string> savedNames;
-        const fs::path presetDirectory = "Resources/json/particle";
-
-        if (fs::exists(presetDirectory)) {
-            for (const auto& entry : fs::directory_iterator(presetDirectory)) {
-                if (entry.is_regular_file() && entry.path().extension() == ".json") {
-                    savedNames.push_back(entry.path().stem().string());
-                }
-            }
-        }
-
-        std::sort(savedNames.begin(), savedNames.end());
-        int selectedPreset = -1;
-
-        for (int i = 0; i < static_cast<int>(savedNames.size()); ++i) {
-            if (savedNames[i] == saveName_) {
-                selectedPreset = i;
-                break;
-            }
-        }
-
-        if (VfxAssetPicker::DrawCombo(ICON_FA_FOLDER_OPEN " 保存済み設定", savedNames,
-                                      selectedPreset, presetSearch_, sizeof(presetSearch_))) {
-            strcpy_s(saveName_, sizeof(saveName_), savedNames[selectedPreset].c_str());
-        }
-
-        ImGui::TextDisabled("一覧で選んだ後、「読み込み」で設定を反映します");
-        ImGui::InputText(ICON_FA_FILE_SIGNATURE " Name", saveName_, sizeof(saveName_));
-
-        if (ImGui::Button(ICON_FA_DOWNLOAD " Save JSON", ImVec2(120, 0))) {
-            ParticleManager::GetInstance()->SaveParam(std::string(saveName_), params);
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button(ICON_FA_UPLOAD " Load JSON", ImVec2(120, 0))) {
-            if (fs::exists(presetDirectory / (std::string(saveName_) + ".json"))) {
-                ParticleManager::GetInstance()->LoadParam(std::string(saveName_));
-                params = ParticleManager::GetInstance()->GetParam(std::string(saveName_));
-                targetSystem->SetTexture(params.textureName);
-            } else {
-                ImGui::OpenPopup("通常パーティクル設定が見つかりません");
-            }
-        }
-
-        if (ImGui::BeginPopup("通常パーティクル設定が見つかりません")) {
-            ImGui::TextUnformatted("読み込む JSON がありません。保存済み設定から選んでください。");
-            ImGui::EndPopup();
-        }
-    }
+    files_.Draw("パーティクルJSONファイル", "Resources/json/particle",
+        [&](const fs::path& path) {
+            if (!ParticleManager::ReadParamFile(path, params)) return false;
+            targetSystem->SetTexture(params.textureName);
+            return true;
+        },
+        [&](const fs::path& path, const std::string&) { return ParticleManager::WriteParamFile(path, params); },
+        [&] {
+            params = engine::ParticleSystem::EmitterParams{};
+            if (!params.textureName.empty()) targetSystem->SetTexture(params.textureName);
+        },
+        [&](const fs::path& relative) {
+            auto stem = relative;
+            const auto key = stem.replace_extension().generic_u8string();
+            ParticleManager::GetInstance()->GetParam(std::string(key.begin(), key.end())) = params;
+        });
 
     // このフレームに編集した値を、次の更新・描画で使う設定へ適用する。
     targetSystem->SetEmitterParams(params);

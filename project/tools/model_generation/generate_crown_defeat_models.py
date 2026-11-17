@@ -61,13 +61,13 @@ def main():
     save(ray,'false_king_defeat_ray')
     print(f'Verified {written} source triangles -> body and {len(manifest)} crown fragments')
     # 粒子は既存の適した火花から専用品へ分離し、GPUパーティクルエディターで調整可能にする。
-    base=json.loads((ROOT/'Resources/json/gpu_particles/false_king_seal_impact.json').read_text(encoding='utf-8-sig'))
+    base=json.loads((ROOT/'Resources/json/gpu_particles/enemy/false_king/false_king_seal_impact.json').read_text(encoding='utf-8-sig'))
     base.update(alignToVelocity=True,velocityStretch=.10,emitCount=140,emitLife=1.6,baseColor=[2.6,1.9,4,1],midColor=[1,.12,2.4,.8],endColor=[.12,.015,.3,0],colorIntensity=1.3,baseSize=.075,midSize=.13,endSize=.005,emitVelocity=[0,3,0],velocityVariance=7,envGravity=[0,-3,0])
-    (ROOT/'Resources/json/gpu_particles/crown_defeat_sparks.json').write_text(json.dumps(base,indent=2)+'\n',encoding='utf-8')
-    charge=json.loads((ROOT/'Resources/json/gpu_particles/goal_clear_gold_motes.json').read_text(encoding='utf-8-sig'))
+    (ROOT/'Resources/json/gpu_particles/enemy/false_king/crown_defeat_sparks.json').write_text(json.dumps(base,indent=2)+'\n',encoding='utf-8')
+    charge=json.loads((ROOT/'Resources/json/gpu_particles/shared/goal_clear_gold_motes.json').read_text(encoding='utf-8-sig'))
     charge.update(emitCount=12,emitLife=.85,baseColor=[.65,.18,1,0],midColor=[1,.55,1,.75],endColor=[.3,.02,.7,0],colorIntensity=2.0,midSize=.16,emitVelocity=[0,.7,0],velocityVariance=.55,envGravity=[0,0,0],envDrag=.2)
-    (ROOT/'Resources/json/gpu_particles/crown_defeat_charge.json').write_text(json.dumps(charge,indent=2)+'\n',encoding='utf-8')
-    cue={'version':2,'events':[{'type':0,'presetName':'crown_defeat_sparks','triggerTime':0,'offset':[0,0,0],'rotation':[0,0,0],'scale':[1,1,1]}, {'type':6,'presetName':'','triggerTime':0,'duration':.55,'intensity':4,'lightRadius':22,'lightDecay':1.8,'lightColor':[.7,.25,1,1]}]}
-    (ROOT/'Resources/json/vfx_sequence/crown_defeat_rupture_cue.json').write_text(json.dumps(cue,indent=2)+'\n',encoding='utf-8')
+    (ROOT/'Resources/json/gpu_particles/enemy/false_king/crown_defeat_charge.json').write_text(json.dumps(charge,indent=2)+'\n',encoding='utf-8')
+    cue={'version':2,'events':[{'type':0,'presetName':'enemy/false_king/crown_defeat_sparks','triggerTime':0,'offset':[0,0,0],'rotation':[0,0,0],'scale':[1,1,1]}, {'type':6,'presetName':'','triggerTime':0,'duration':.55,'intensity':4,'lightRadius':22,'lightDecay':1.8,'lightColor':[.7,.25,1,1]}]}
+    (ROOT/'Resources/json/vfx_sequence/enemy/false_king/crown_defeat_rupture_cue.json').write_text(json.dumps(cue,indent=2)+'\n',encoding='utf-8')
 
 if __name__=='__main__':main()

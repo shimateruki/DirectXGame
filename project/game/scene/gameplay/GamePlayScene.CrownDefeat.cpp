@@ -11,7 +11,7 @@ bool GamePlayScene::StartCrownDefeat(EnemyFalseKingSlime* boss) {
     // 資源と対象の検証を済ませてから、ゲーム側の操作と撃破判定を止める。
     if (!boss || !player_ || player_->IsDead() || crownDefeat_.active || crownDefeat_.completed || crownFinale_.active || isGoal_)
         return false;
-    if (!crownDefeatVfxSequence_.Load("Resources/json/scenario/crown_defeat.json"))
+    if (!crownDefeatVfxSequence_.Load("Resources/json/scenario/stage3/crown_defeat.json"))
         return false;
     crownDefeatVfxPlayer_.Initialize(SceneManager::GetInstance());
     crownDefeatVfxPlayer_.SetBindingResolver([this,boss](const CinematicObjectBinding& binding) -> engine::Object3D* {
@@ -88,7 +88,8 @@ void GamePlayScene::FinishCrownDefeat() {
     goalWasStageCleared_=GameDataManager::GetInstance()->IsStageCleared(StageManager::GetInstance()->GetCurrentStageIndex());
     SetIsGoal(true);
     goalPresentationState_=GoalPresentationState::Celebrating;
-    goalPresentationTimer_=(std::max)(0.0f,goalClearPlayerAnimator_.GetTuning().readyTime-2.5f);
+    goalPresentationTimer_.Seek((std::max)(0.0f,goalClearPlayerAnimator_.GetTuning().readyTime-2.5f));
+    goalPresentationTimer_.Resume();
     goalPlayerSnapshotValid_=goalCrownSnapshotValid_=goalCameraSnapshotValid_=false;
     goalCinematicPlayer_.Stop(false);
     UpdateGoalPresentationOverlay();

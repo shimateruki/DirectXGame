@@ -47,65 +47,65 @@ inline constexpr const char* kNightfallLancesAttackId = "nightfall_lances";
 inline constexpr const char* kSealBarragePreviewId = "seal_barrage_preview";
 
 // 魔法陣と攻撃時の VFX 資産名。
-inline constexpr const char* kUmbraFlameSigilEffect = "Resources/json/effect/effect_false_king_umbra_flame.json";
+inline constexpr const char* kUmbraFlameSigilEffect = "Resources/json/effect/enemy/false_king/effect_false_king_umbra_flame.json";
 inline constexpr const char* kUmbraFlameNetworkEffect =
-    "Resources/json/effect/effect_false_king_umbra_flame_network.json";
-inline constexpr const char* kUmbraFlameChargePreset = "false_king_umbra_flame_charge";
-inline constexpr const char* kUmbraFlameFlamePreset = "false_king_umbra_flame_flame";
-inline constexpr const char* kAstralReaverOrbEffect = "Resources/json/effect/effect_false_king_astral_reaver_orb.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_umbra_flame_network.json";
+inline constexpr const char* kUmbraFlameChargePreset = "enemy/false_king/false_king_umbra_flame_charge";
+inline constexpr const char* kUmbraFlameFlamePreset = "enemy/false_king/false_king_umbra_flame_flame";
+inline constexpr const char* kAstralReaverOrbEffect = "Resources/json/effect/enemy/false_king/effect_false_king_astral_reaver_orb.json";
 inline constexpr const char* kAstralReaverCutterHaloEffect =
-    "Resources/json/effect/effect_false_king_astral_reaver_cutter_halo.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_astral_reaver_cutter_halo.json";
 inline constexpr const char* kAstralReaverCutterBladeEffect =
-    "Resources/json/effect/effect_false_king_astral_reaver_cutter_blade.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_astral_reaver_cutter_blade.json";
 inline constexpr const char* kAstralReaverCutterArcEffect =
-    "Resources/json/effect/effect_false_king_astral_reaver_cutter_arc.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_astral_reaver_cutter_arc.json";
 inline constexpr const char* kAstralReaverRingEffect =
-    "Resources/json/effect/effect_false_king_astral_reaver_ring.json";
-inline constexpr const char* kAstralReaverTrailPreset = "false_king_astral_reaver_trail";
-inline constexpr const char* kAstralReaverImpactPreset = "false_king_astral_reaver_impact";
+    "Resources/json/effect/enemy/false_king/effect_false_king_astral_reaver_ring.json";
+inline constexpr const char* kAstralReaverTrailPreset = "enemy/false_king/false_king_astral_reaver_trail";
+inline constexpr const char* kAstralReaverImpactPreset = "enemy/false_king/false_king_astral_reaver_impact";
 inline constexpr const char* kNightfallLancesRingEffect =
-    "Resources/json/effect/effect_false_king_nightfall_lances_ring.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_lances_ring.json";
 inline constexpr const char* kNightfallLancesSkySigilEffect =
-    "Resources/json/effect/effect_false_king_nightfall_lances_sky_sigil.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_lances_sky_sigil.json";
 inline constexpr const char* kCrownTransferPulseEffect =
-    "Resources/json/effect/effect_false_king_crown_transfer_pulse.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_crown_transfer_pulse.json";
 inline constexpr const char* kNightfallLancesCoreEffect =
-    "Resources/json/effect/effect_false_king_nightfall_lances_core.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_lances_core.json";
 inline constexpr const char* kCrownBarrageSpearModel = "Effects/false_king_shadow_spear";
 inline constexpr const char* kNightfallLancesGlowEffect =
-    "Resources/json/effect/effect_false_king_nightfall_lances_glow.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_lances_glow.json";
 inline constexpr const char* kNightfallLancesShaftEffect =
-    "Resources/json/effect/effect_false_king_nightfall_lances_shaft.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_lances_shaft.json";
 inline constexpr const char* kNightfallGroundArcEffect =
-    "Resources/json/effect/effect_false_king_nightfall_ground_arc.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_ground_arc.json";
 inline constexpr const char* kNightfallImpactBeamEffect =
-    "Resources/json/effect/effect_false_king_nightfall_impact_beam.json";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_impact_beam.json";
 inline constexpr const char* kNightfallImpactLightningEffect =
-    "Resources/json/effect/effect_false_king_nightfall_impact_lightning.json";
-inline constexpr const char* kNightfallLancesChargePreset = "false_king_nightfall_lances_charge";
-inline constexpr const char* kNightfallLancesTrailPreset = "false_king_nightfall_lances_trail";
-inline constexpr const char* kNightfallLancesImpactPreset = "false_king_nightfall_lances_impact";
-inline constexpr const char* kNightfallLancesRimPreset = "false_king_nightfall_lances_rim";
-inline constexpr const char* kNightfallLancesDissolvePreset = "false_king_nightfall_lances_dissolve";
+    "Resources/json/effect/enemy/false_king/effect_false_king_nightfall_impact_lightning.json";
+inline constexpr const char* kNightfallLancesChargePreset = "enemy/false_king/false_king_nightfall_lances_charge";
+inline constexpr const char* kNightfallLancesTrailPreset = "enemy/false_king/false_king_nightfall_lances_trail";
+inline constexpr const char* kNightfallLancesImpactPreset = "enemy/false_king/false_king_nightfall_lances_impact";
+inline constexpr const char* kNightfallLancesRimPreset = "enemy/false_king/false_king_nightfall_lances_rim";
+inline constexpr const char* kNightfallLancesDissolvePreset = "enemy/false_king/false_king_nightfall_lances_dissolve";
 
-inline constexpr const char* kChargePreset = "false_king_charge";
+inline constexpr const char* kChargePreset = "enemy/false_king/false_king_charge";
 
-inline constexpr const char* kLanceTrailPreset = "false_king_lance_trail";
-inline constexpr const char* kLanceImpactPreset = "false_king_lance_impact";
+inline constexpr const char* kLanceTrailPreset = "enemy/false_king/false_king_lance_trail";
+inline constexpr const char* kLanceImpactPreset = "enemy/false_king/false_king_lance_impact";
 
-inline constexpr const char* kRushWakePreset = "false_king_rush_wake";
+inline constexpr const char* kRushWakePreset = "shared/false_king_rush_wake";
 
-inline constexpr const char* kShockwavePreset = "false_king_shockwave";
-inline constexpr const char* kShockwaveChargeRingPreset = "false_king_shockwave_charge_ring";
-inline constexpr const char* kShockwaveDustPreset = "false_king_shockwave_dust";
-inline constexpr const char* kShockwaveCrestPreset = "false_king_shockwave_crest";
-inline constexpr const char* kShockwaveShardPreset = "false_king_shockwave_shard";
+inline constexpr const char* kShockwavePreset = "enemy/false_king/false_king_shockwave";
+inline constexpr const char* kShockwaveChargeRingPreset = "enemy/false_king/false_king_shockwave_charge_ring";
+inline constexpr const char* kShockwaveDustPreset = "enemy/false_king/false_king_shockwave_dust";
+inline constexpr const char* kShockwaveCrestPreset = "enemy/false_king/false_king_shockwave_crest";
+inline constexpr const char* kShockwaveShardPreset = "enemy/false_king/false_king_shockwave_shard";
 
-inline constexpr const char* kDominionPreset = "false_king_dominion";
+inline constexpr const char* kDominionPreset = "enemy/false_king/false_king_dominion";
 
-inline constexpr const char* kAppearanceSequence = "false_king_appear_cue";
-inline constexpr const char* kPhaseShiftSequence = "false_king_phase_shift_cue";
-inline constexpr const char* kDominionSequence = "false_king_dominion_cue";
+inline constexpr const char* kAppearanceSequence = "enemy/false_king/false_king_appear_cue";
+inline constexpr const char* kPhaseShiftSequence = "enemy/false_king/false_king_phase_shift_cue";
+inline constexpr const char* kDominionSequence = "enemy/false_king/false_king_dominion_cue";
 
 // ボス専用の表示モデル。
 inline constexpr const char* kCrownLanceModel = "Effects/false_king_crown_lance";

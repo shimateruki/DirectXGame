@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "CopyAbilitySupport.h"
 #include "CrownLanceSettings.h"
 #include "CrownLanceTrail.h"
@@ -133,7 +134,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         ambientTimer_ -= deltaTime;
 
         if (ambientTimer_ <= 0.0f) {
-            EmitPreset("crown_goal_idle_sparkle", player.GetWorldPosition() + engine::Vector3{0.0f, 1.8f, 0.0f});
+            EmitPreset("player/copy/crown/crown_goal_idle_sparkle", player.GetWorldPosition() + engine::Vector3{0.0f, 1.8f, 0.0f});
             ambientTimer_ = 0.65f;
         }
     }
@@ -321,7 +322,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         if (!particles || !particles->IsInitialized())
             return;
         const auto& presets = particles->GetPresets();
-        const auto found = presets.find(preset);
+        const auto found = VfxAssetPath::FindPreset(presets, preset);
         if (found == presets.end())
             return;
         auto config = found->second;
@@ -340,10 +341,10 @@ class CrownCopyAbility final : public ICopyAbilitySession {
                                 const CrownPresentationSettings& style) {
         // 接触面の手前へ少し出し、敵・壁の中へ閃光が埋まるのを防ぎます。
         const auto origin = position + normal * 0.08f;
-        EmitLanceEffect(full ? "player_crown_impact_full" : "player_crown_impact", origin, normal, (full ? 0.65f : 0.46f) * style.particleScale);
-        EmitLanceEffect("player_crown_impact_sparks", origin, normal, (full ? 1.4f : 1.1f) * style.particleScale, true);
+        EmitLanceEffect(full ? "player/copy/crown/player_crown_impact_full" : "player/copy/crown/player_crown_impact", origin, normal, (full ? 0.65f : 0.46f) * style.particleScale);
+        EmitLanceEffect("player/copy/crown/player_crown_impact_sparks", origin, normal, (full ? 1.4f : 1.1f) * style.particleScale, true);
         if (full)
-            EmitLanceEffect("player_crown_impact_shards", origin, normal, style.particleScale, true);
+            EmitLanceEffect("player/copy/crown/player_crown_impact_shards", origin, normal, style.particleScale, true);
     }
     // 槍モデルのローカルY範囲は -2.02（穂先）～+1.63（柄尻）。縦倍率はモデルと共有します。
     static constexpr float kAxialScale = 0.8f;
@@ -419,7 +420,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         const int count = shot.isFullChargeCenter ? 3 : 1;
         while (shot.nextFlake < count && t >= kDissolveFlakeThresholds[shot.nextFlake]) {
             const float offset = (0.40f - kDissolveFlakeThresholds[shot.nextFlake] * 1.85f) * shot.scale;
-            EmitLanceEffect("player_crown_dissolve_flakes", shot.position + direction * offset);
+            EmitLanceEffect("player/copy/crown/player_crown_dissolve_flakes", shot.position + direction * offset);
             ++shot.nextFlake;
         }
         return false;
@@ -478,12 +479,12 @@ class CrownCopyAbility final : public ICopyAbilitySession {
             fullCuePlayed_ = true;
             readyFlashTime_ = 0.16f;
             if (!gates_.empty())
-                EmitLanceEffect("player_crown_ready", gates_.front().position, {0,1,0}, presentation_.particleScale);
+                EmitLanceEffect("player/copy/crown/player_crown_ready", gates_.front().position, {0,1,0}, presentation_.particleScale);
         }
         chargeVfxTimer_ -= deltaTime;
         if (chargeVfxTimer_ <= 0.0f) {
             for (const auto& gate : gates_)
-                EmitLanceEffect("player_crown_charge", gate.position, gate.direction, presentation_.lanceGateScale);
+                EmitLanceEffect("player/copy/crown/player_crown_charge", gate.position, gate.direction, presentation_.lanceGateScale);
             // 自動ループを使わず、溜め解除後には新しい粒子を発生させません。
             chargeVfxTimer_ = 0.10f;
         }
@@ -569,10 +570,10 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         shot.visual->SetTranslate(shot.position);
         shot.visual->SetScale({0.6f * gate.scale, kAxialScale * gate.scale, 0.6f * gate.scale});
         shots_.push_back(std::move(shot));
-        EmitLanceEffect(shots_.back().isFullChargeCenter ? "player_crown_muzzle_full" : "player_crown_muzzle",
+        EmitLanceEffect(shots_.back().isFullChargeCenter ? "player/copy/crown/player_crown_muzzle_full" : "player/copy/crown/player_crown_muzzle",
                         gate.position, gate.direction, presentation_.particleScale);
         effects_.Ring(gate.position, gate.direction, lanceSettings_.gateScale * presentation_.lanceGateScale * 1.3f);
-        EmitLanceEffect("player_crown_launch_streak", gate.position, gate.direction,
+        EmitLanceEffect("player/copy/crown/player_crown_launch_streak", gate.position, gate.direction,
                         (shots_.back().isFullChargeCenter ? 1.4f : 1.1f) * presentation_.particleScale, true);
     }
     void UpdateGates(Player& player, float deltaTime) {

@@ -98,7 +98,7 @@ def main():
 
     def path(o,name,frames,mode='always'):
         # EditorのPathMoverで再生条件と軌道を再調整できる形式にする。
-        name='stage2_revised_'+name
+        name='stage2/stage2_revised_'+name
         motions[name]=dict(frames=frames,genParams=dict(generateRelative=True))
         o['recorder']=dict(recordPathName=name,isRecordLoop=True,isRecordRelative=True)
         o['components']={'PathMover':dict(version=1,_editorPresent=True,path=name,loop=True,relative=True,playbackMode=mode,rideSequence='')}
@@ -211,6 +211,7 @@ def main():
         assert (backup/SCENE.name).read_bytes()==original
         for name,data in motions.items():
             target=ROOT/'Resources/json/animation'/f'{name}.json';assert not target.exists()
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps(data,separators=(',',':')),encoding='utf-8')
         assert SCENE.read_bytes()==original,'Scene edited concurrently'
         scene['objects']=all_objects;SCENE.write_text(json.dumps(scene,ensure_ascii=False,indent=4)+'\n',encoding='utf-8')

@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "Bullet.h"
 #include "CameraManager.h"
 #include "MeshEffectManager.h"
@@ -250,7 +251,7 @@ void Bullet::EmitBurningVfx() {
         return;
     }
 
-    const auto it = particles->GetPresets().find(burningPreset_);
+    const auto it = VfxAssetPath::FindPreset(particles->GetPresets(), burningPreset_);
     if (it == particles->GetPresets().end()) {
         return;
     }
@@ -312,7 +313,7 @@ void Bullet::EmitImpactVfx() {
             }
 
             DebrisEffectConfig config;
-            const auto found = debris->GetPresets().find(*preset);
+            const auto found = VfxAssetPath::FindPreset(debris->GetPresets(), *preset);
             if (found != debris->GetPresets().end()) {
                 config = found->second;
             } else if (!debris->LoadConfig("Resources/json/debris/" + *preset + ".json", config)) {
@@ -366,7 +367,7 @@ void Bullet::Explode(engine::Object3D* directHit) {
     if (auto* effects = MeshEffectManager::GetInstance()) {
         const float core = explosionRadius_ / 3.0f;
         const float ring = explosionRadius_ / 5.8f;
-        effects->SpawnEffectAt("Resources/json/effect/effect_bomb_core_flash.json", center, {0, 0, 0},
+        effects->SpawnEffectAt("Resources/json/effect/shared/effect_bomb_core_flash.json", center, {0, 0, 0},
                                {core, core, core});
         PhysicsQueryFilter groundFilter;
         groundFilter.mask = CollisionCategories::Get("ground");
@@ -374,14 +375,14 @@ void Bullet::Explode(engine::Object3D* directHit) {
         const auto ground =
             CollisionManager::GetInstance()->Raycast(center, {0, -1, 0}, explosionRadius_ + 1.0f, groundFilter);
         const engine::Vector3 ringPosition = ground.isHit ? ground.hitPoint + engine::Vector3{0, 0.06f, 0} : center;
-        effects->SpawnEffectAt("Resources/json/effect/effect_bomb_shockwave_ring.json", ringPosition, {0, 0, 0},
+        effects->SpawnEffectAt("Resources/json/effect/shared/effect_bomb_shockwave_ring.json", ringPosition, {0, 0, 0},
                                {ring, ring, ring});
     }
 
     if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized()) {
-        particles->Emit("hit_bomb_fire_core", center);
-        particles->Emit("hit_bomb_fire_sparks", center);
-        particles->Emit("hit_bomb_orange_smoke", center);
+        particles->Emit("shared/hit_bomb_fire_core", center);
+        particles->Emit("shared/hit_bomb_fire_sparks", center);
+        particles->Emit("shared/hit_bomb_orange_smoke", center);
     }
 
     PhysicsQueryFilter filter;

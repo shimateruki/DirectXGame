@@ -357,12 +357,12 @@ void GimmickFireCannon::FireProjectile(const engine::Vector3& direction) {
     visual.color = {1.0f, 1.0f, 1.0f, 1.0f};
     visual.emissive = 1.7f;
     visual.visualScale = radius * 0.60f / 1.043f;
-    visual.burningPreset = "cannon_burning_flame";
-    visual.trailSecondaryPreset = "fireball_trail_embers";
-    visual.impactPreset = "fireball_impact_flame";
-    visual.impactSecondaryPreset = "fireball_impact_sparks";
-    visual.impactDebrisPreset = "cannon_shell_basalt_shatter";
-    visual.impactDebrisSecondaryPreset = "cannon_shell_ember_shatter";
+    visual.burningPreset = "shared/cannon_burning_flame";
+    visual.trailSecondaryPreset = "shared/fireball_trail_embers";
+    visual.impactPreset = "shared/fireball_impact_flame";
+    visual.impactSecondaryPreset = "shared/fireball_impact_sparks";
+    visual.impactDebrisPreset = "shared/cannon_shell_basalt_shatter";
+    visual.impactDebrisSecondaryPreset = "shared/cannon_shell_ember_shatter";
     visual.impactDebrisScale = radius;
     visual.impactOnExpiry = true;
     visual.trailInterval = 0.06f;
@@ -470,13 +470,13 @@ void GimmickFireCannon::FireBombard() {
     visual.blendMode = BlendMode::Normal;
     visual.color = {1.0f, 1.0f, 1.0f, 1.0f};
     visual.emissive = 1.7f;
-    visual.burningPreset = "cannon_burning_flame";
-    visual.trailPreset = "fireball_trail_flame";
-    visual.trailSecondaryPreset = "fireball_trail_embers";
-    visual.impactPreset = "fireball_impact_flame";
-    visual.impactSecondaryPreset = "fireball_impact_sparks";
-    visual.impactDebrisPreset = "cannon_shell_basalt_shatter";
-    visual.impactDebrisSecondaryPreset = "cannon_shell_ember_shatter";
+    visual.burningPreset = "shared/cannon_burning_flame";
+    visual.trailPreset = "shared/fireball_trail_flame";
+    visual.trailSecondaryPreset = "shared/fireball_trail_embers";
+    visual.impactPreset = "shared/fireball_impact_flame";
+    visual.impactSecondaryPreset = "shared/fireball_impact_sparks";
+    visual.impactDebrisPreset = "shared/cannon_shell_basalt_shatter";
+    visual.impactDebrisSecondaryPreset = "shared/cannon_shell_ember_shatter";
     visual.impactDebrisScale = radius;
     visual.impactOnExpiry = true;
     visual.trailInterval = 0.04f;
@@ -493,11 +493,11 @@ void GimmickFireCannon::FireBombard() {
     // 編集停止中は演出時間も停止しているため、蓄積する発射エフェクトは生成しません。
     if (!previewActive_) {
         if (auto* effects = MeshEffectManager::GetInstance()) {
-            effects->SpawnEffectAt("Resources/json/effect/effect_bomb_core_flash.json", muzzle,
+            effects->SpawnEffectAt("Resources/json/effect/shared/effect_bomb_core_flash.json", muzzle,
                                    {0, 0, 0}, {0.5f, 0.5f, 0.5f});
         }
         if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized()) {
-            particles->EmitDirected("hit_bomb_fire_sparks", muzzle, forward, 0.7f);
+            particles->EmitDirected("shared/hit_bomb_fire_sparks", muzzle, forward, 0.7f);
         }
     }
 }
@@ -632,9 +632,9 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
                                        flight + 2.0f, visual, 1.0f, {}, DamageType::Explosion, gravity);
     if (!previewActive_) {
         if (auto* effects = MeshEffectManager::GetInstance())
-            effects->SpawnEffectAt("Resources/json/effect/effect_bomb_core_flash.json", muzzle, {0, 0, 0}, {.4f, .4f, .4f});
+            effects->SpawnEffectAt("Resources/json/effect/shared/effect_bomb_core_flash.json", muzzle, {0, 0, 0}, {.4f, .4f, .4f});
         if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized())
-            particles->EmitDirected("hit_bomb_fire_sparks", muzzle, forward, 0.6f);
+            particles->EmitDirected("shared/hit_bomb_fire_sparks", muzzle, forward, 0.6f);
     }
     targetLocked_ = false;
     flightTimer_ = flight;

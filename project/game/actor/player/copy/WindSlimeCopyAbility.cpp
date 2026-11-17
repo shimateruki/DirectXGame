@@ -95,7 +95,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             DamageSphere(player, center, 3.3f, 8.0f, DamageType::Physical, 13.0f, 6.0f);
             if (!tornadoActive_) return; // 同期ダメージ通知で終了した場合は演出を再開しない。
             StopTornado(player);
-            SpawnEffect("Resources/json/effect/effect_player_wind_tornado_finish.json",
+            SpawnEffect("Resources/json/effect/player/copy/wind/effect_player_wind_tornado_finish.json",
                         player.GetWorldPosition() + engine::Vector3{0.0f, 0.25f, 0.0f}, {0.0f, tornadoTime_ * 15.0f, 0.0f});
             tornadoCooldown_ = 0.65f;
             actionMotionTimer_ = 0.24f;
@@ -118,8 +118,8 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             const float layer = static_cast<float>(inner ? i - 5 : i);
             if (!tornadoVisualsReady_)
                 effects->StartTimelineEffect(tornadoScopes_[i], inner
-                    ? "Resources/json/effect/effect_player_wind_tornado_inner.json"
-                    : "Resources/json/effect/effect_player_wind_tornado.json");
+                    ? "Resources/json/effect/shared/effect_player_wind_tornado_inner.json"
+                    : "Resources/json/effect/shared/effect_player_wind_tornado.json");
 
             const float radius = inner ? 1.6f + layer * 0.4f : 1.10f + layer * 0.45f;
             const auto position = tornadoSamplePosition_ + engine::Vector3{
@@ -171,9 +171,9 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetGrounded(false);
         player.StartEvasionInvincibility(liftSettings_.invincibleTime);
         player.PlaySlimeAbilityMotion("player_ability_wind_lift", false, 1.0f, 0.0f, 0.12f);
-        SpawnScopedEffect(windScope_, "Resources/json/effect/effect_player_wind_lift_ring.json", base);
+        SpawnScopedEffect(windScope_, "Resources/json/effect/player/copy/wind/effect_player_wind_lift_ring.json", base);
         StartWindLaunch(player, base);
-        EmitPreset("player_wind_lift_burst", base);
+        EmitPreset("player/copy/wind/player_wind_lift_burst", base);
     }
 
     void EndWindLift(Player& player) {
@@ -231,11 +231,11 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         const engine::Vector3 offset{std::cos(yaw) * radius, -0.38f, std::sin(yaw) * radius};
         const engine::Vector3 opposite{-offset.x, offset.y, -offset.z};
         const engine::Vector3 up{0.0f, 1.0f, 0.0f};
-        const char* ribbon = "Resources/json/effect/effect_player_wind_lift_glide.json";
+        const char* ribbon = "Resources/json/effect/player/copy/wind/effect_player_wind_lift_glide.json";
         SpawnScopedEffect(windScope_, ribbon, center + offset, {0.0f, -yaw, 0.0f});
         SpawnScopedEffect(windScope_, ribbon, center + opposite, {0.0f, -yaw + kPi, 0.0f});
-        EmitDirectedPreset("player_wind_lift_glide", center + offset, up);
-        EmitDirectedPreset("player_wind_lift_glide", center + opposite, up);
+        EmitDirectedPreset("player/copy/wind/player_wind_lift_glide", center + offset, up);
+        EmitDirectedPreset("player/copy/wind/player_wind_lift_glide", center + opposite, up);
     }
 
     // 左クリックの外周と内周のプリセットを、命中判定を持たない離陸演出として再生する。
@@ -247,8 +247,8 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             for (std::size_t i = 0; i < liftLaunchScopes_.size(); ++i) {
                 const bool inner = i == liftLaunchScopes_.size() - 1;
                 effects->StartTimelineEffect(liftLaunchScopes_[i], inner
-                    ? "Resources/json/effect/effect_player_wind_tornado_inner.json"
-                    : "Resources/json/effect/effect_player_wind_tornado.json");
+                    ? "Resources/json/effect/shared/effect_player_wind_tornado_inner.json"
+                    : "Resources/json/effect/shared/effect_player_wind_tornado.json");
             }
         }
     }
@@ -304,16 +304,16 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         player.TriggerSlimeImpulse({1.22f, 0.72f, 1.22f}, 0.13f);
         auto* effects = MeshEffectManager::GetInstance();
         for (std::size_t layer = 0; layer < vortexScopes_.size(); ++layer) {
-            const char* path = "Resources/json/effect/effect_player_wind_vortex_core.json";
+            const char* path = "Resources/json/effect/player/copy/wind/effect_player_wind_vortex_core.json";
             if (layer < kVortexOuterLayers)
-                path = "Resources/json/effect/effect_player_wind_tornado.json";
+                path = "Resources/json/effect/shared/effect_player_wind_tornado.json";
             else if (layer == kVortexOuterLayers)
-                path = "Resources/json/effect/effect_player_wind_tornado_inner.json";
+                path = "Resources/json/effect/shared/effect_player_wind_tornado_inner.json";
             effects->StartTimelineEffect(vortexScopes_[layer], path);
         }
-        EmitDirectedPreset("wind_slime_charge", vortexPosition_ - engine::Vector3{0.0f, 0.65f, 0.0f},
+        EmitDirectedPreset("shared/wind_slime_charge", vortexPosition_ - engine::Vector3{0.0f, 0.65f, 0.0f},
                            vortexDirection_ + engine::Vector3{0.0f, 0.65f, 0.0f}, 0.65f);
-        EmitDirectedPreset("wind_slime_breath_stream", vortexPosition_, vortexDirection_, 0.75f);
+        EmitDirectedPreset("shared/wind_slime_breath_stream", vortexPosition_, vortexDirection_, 0.75f);
     }
 
     // 被弾や解除では、飛行中・消散中にかかわらず表示を即座に回収する。
@@ -336,7 +336,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         vortexPhase_ = VortexPhase::Dissipating;
         vortexPhaseRemaining_ = kVortexDissipationDuration;
         const auto direction = hitWall ? engine::Vector3{0.0f, 1.0f, 0.0f} : vortexDirection_;
-        EmitDirectedPreset("wind_slime_breath_stream", vortexPosition_, direction, 0.65f);
+        EmitDirectedPreset("shared/wind_slime_breath_stream", vortexPosition_, direction, 0.65f);
     }
 
     // 判定中心にクリスタル由来の風帯とE専用の芯を重ねる。releaseは消散の進行率（0～1）。
@@ -491,7 +491,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             const float lift = holding ? 0.2f : 0.2f + height * std::fmod(vortexAge_ * 1.7f + i * 0.5f, 1.0f);
             const auto position = vortexPosition_ + engine::Vector3{
                 std::cos(azimuth) * radius, lift - 1.0f, std::sin(azimuth) * radius};
-            EmitDirectedPreset("player_wind_vortex_rise", position,
+            EmitDirectedPreset("player/copy/wind/player_wind_vortex_rise", position,
                                {-std::sin(azimuth), 1.65f, std::cos(azimuth)}, holding ? 1.1f : 0.9f);
         }
         vortexVfxTimer_ = holding ? 0.040f : 0.060f;

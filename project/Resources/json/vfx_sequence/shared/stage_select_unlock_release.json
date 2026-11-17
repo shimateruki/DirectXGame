@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 4,
+      "triggerTime": 0,
+      "presetName": "",
+      "duration": 0.18,
+      "intensity": 0.05,
+      "frequency": 24,
+      "scale": [
+        0.6,
+        0.45,
+        0.15
+      ]
+    },
+    {
+      "type": 1,
+      "triggerTime": 0,
+      "presetName": "shared/effect_crown_get_flash_ring",
+      "scale": [
+        0.32,
+        0.32,
+        0.32
+      ]
+    },
+    {
+      "type": 0,
+      "triggerTime": 0.03,
+      "presetName": "shared/crown_get_burst"
+    }
+  ]
+}

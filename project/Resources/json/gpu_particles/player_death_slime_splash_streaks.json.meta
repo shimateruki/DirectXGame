@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "2e634099aeb2b0ea3186c2d2bc56d560",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/player_death_slime_splash_streaks.json",
-  "version": 1
-}

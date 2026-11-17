@@ -166,7 +166,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
                 objectHit->SetCollisionMask(0);
                 objectHit->SetGpuParticleName("");
                 const char* burst = StarCoinPresentation::IsSilver(*objectHit)
-                    ? StarCoinPresentation::kSilverGet : "star_sparkleGet";
+                    ? StarCoinPresentation::kSilverGet : "shared/star_sparkleGet";
                 GpuParticleManager::GetInstance()->Emit(burst, objectHit->GetWorldPosition());
             }
         } break;
@@ -381,7 +381,7 @@ void CheckpointRule::Activate(Player* player, engine::Object3D* checkpoint) {
 
     // 素材色を残し、到達した瞬間だけ控えめに明るくします。
     checkpoint->SetEmissive((std::max)(0.28f, checkpointBaseEmissive_));
-    VfxSequencer::PlayOneShot("checkpoint_activate_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
+    VfxSequencer::PlayOneShot("shared/checkpoint_activate_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
                               checkpoint->GetRotation());
     DebugConsole::GetInstance()->AddLog("Checkpoint activated. Respawn and copy memory updated.");
 }
@@ -446,13 +446,13 @@ void CheckpointRule::Update(float deltaTime) {
 
             if (emitMotes) {
                 if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized()) {
-                    particles->Emit("checkpoint_active_motes",
+                    particles->Emit("shared/checkpoint_active_motes",
                                     engine::Math::Transform(engine::Vector3{0.0f, 0.55f, 0.0f}, checkpoint->GetWorldMatrix()));
                 }
             }
 
             if (emitRing) {
-                VfxSequencer::PlayOneShot("checkpoint_idle_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
+                VfxSequencer::PlayOneShot("shared/checkpoint_idle_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
                                           checkpoint->GetRotation());
             }
         }

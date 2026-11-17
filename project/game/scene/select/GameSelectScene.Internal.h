@@ -17,22 +17,22 @@ constexpr const char* kStageClearCrownModel = "Stages/crown";
 constexpr float kStageClearCrownBaseScale = 0.42f;
 constexpr float kStageClearCrownHeightOffset = 0.85f;
 
-constexpr const char* kCrownIdleParticlePreset = "crown_idle_sparkle";
-constexpr const char* kCrownUnlockParticlePreset = "crown_get_burst";
-constexpr const char* kCrownUnlockRayParticlePreset = "crown_get_rays";
-constexpr const char* kCrownUnlockFountainParticlePreset = "crown_get_twinkle_fountain";
-constexpr const char* kCrownUnlockAfterglowParticlePreset = "crown_get_afterglow";
+constexpr const char* kCrownIdleParticlePreset = "shared/crown_idle_sparkle";
+constexpr const char* kCrownUnlockParticlePreset = "shared/crown_get_burst";
+constexpr const char* kCrownUnlockRayParticlePreset = "shared/crown_get_rays";
+constexpr const char* kCrownUnlockFountainParticlePreset = "shared/crown_get_twinkle_fountain";
+constexpr const char* kCrownUnlockAfterglowParticlePreset = "shared/crown_get_afterglow";
 
-constexpr const char* kGateUnlockCoreParticlePreset = "gate_entry_core_mist";
-constexpr const char* kGateUnlockSparkParticlePreset = "gate_entry_pull_sparks";
+constexpr const char* kGateUnlockCoreParticlePreset = "shared/gate_entry_core_mist";
+constexpr const char* kGateUnlockSparkParticlePreset = "shared/gate_entry_pull_sparks";
 
 constexpr const char* kStageGateLockPrefix = "StageSelect_LockSeal_";
 constexpr const char* kStageGateCrownKeyPrefix = "StageSelect_CrownKey_";
 
-constexpr const char* kCrownAuraEffectPath = "Resources/json/effect/effect_crown_aura_ring.json";
-constexpr const char* kCrownRayEffectPath = "Resources/json/effect/effect_crown_ray_plane.json";
-constexpr const char* kCrownUnlockFlashRingEffectPath = "Resources/json/effect/effect_crown_get_flash_ring.json";
-constexpr const char* kCrownUnlockRayFlashEffectPath = "Resources/json/effect/effect_crown_get_ray_flash.json";
+constexpr const char* kCrownAuraEffectPath = "Resources/json/effect/shared/effect_crown_aura_ring.json";
+constexpr const char* kCrownRayEffectPath = "Resources/json/effect/shared/effect_crown_ray_plane.json";
+constexpr const char* kCrownUnlockFlashRingEffectPath = "Resources/json/effect/shared/effect_crown_get_flash_ring.json";
+constexpr const char* kCrownUnlockRayFlashEffectPath = "Resources/json/effect/shared/effect_crown_get_ray_flash.json";
 
 constexpr float kCrownCountPresentationDuration = 2.65f;
 constexpr float kCrownCountImpactTime = 1.05f;

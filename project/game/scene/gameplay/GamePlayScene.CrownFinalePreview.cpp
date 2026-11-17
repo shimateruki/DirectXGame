@@ -132,8 +132,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     }
     if (defeat) {
         // 継承完了時の実際の闘技場を用意し、同じ配置・能力で撃破を確認します。
-        crownFinale_.time=crownFinale_.duration;
-        UpdateCrownFinale(0);
+        UpdateCrownFinale(0, crownFinale_.duration);
         FinishCrownFinale(true);
         CameraManager::GetInstance()->SetActiveCamera(p.camera.get());
 
@@ -173,7 +172,6 @@ void GamePlayScene::RewindCrownMoviePreview() {
     player_->SetRotation(rotation);
     player_->SetTranslate(s.start);
     player_->SetVelocity({});
-    s.time = 0.0f;
     s.duration = GetCrownFinaleTiming().movieDuration;
     s.bodyFormed = false;
     s.granted = s.landed = false;
@@ -186,6 +184,7 @@ void GamePlayScene::RewindCrownMoviePreview() {
         pose.object->SetIsVisible(pose.visible);
     }
 
+    UpdateCrownFinale(0.0f, 0.0f);
     StepCrownMoviePreview(0.0f);
 }
 

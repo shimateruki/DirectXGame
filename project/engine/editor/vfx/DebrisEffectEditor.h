@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/editor/assets/JsonAssetBrowser.h"
 
 #include "DebrisEffectManager.h"
 #include "IEditable.h"
@@ -26,14 +27,15 @@ void DrawImGui() override;
     std::string GetName() override { return "Debris Effect Editor"; }
 
 private:
+    JsonAssetBrowser files_;
         // 利用可能なモデルや保存済み設定の一覧を更新します。
 void RefreshLists();
 
     // モデル入力欄を設定へ同期してからJSONを保存し、実行時のPreset登録も更新します。
-    void Save(const std::string& presetName);
+    bool Save(const std::filesystem::path& path, const std::string& name);
 
     // 読込成功時だけ現在の設定と入力欄を差し替えます。
-    void Load(const std::string& presetName);
+    bool Load(const std::filesystem::path& path);
 
         // 現在の設定で破片エフェクトを発生させ、見た目を確認します。
 void Preview();
@@ -58,7 +60,6 @@ void SyncModelBuffersFromConfig();
     SceneManager* sceneManager_ = nullptr; // 現在シーンの取得元。借用参照。
 
     DebrisEffectConfig config_;
-    char presetNameBuffer_[64] = "rock_burst";
 
     std::array<char, 128> modelBuffer0_ = {};
     std::array<char, 128> modelBuffer1_ = {};
@@ -66,8 +67,6 @@ void SyncModelBuffersFromConfig();
     std::array<char, 128> modelBuffer3_ = {};
 
     std::vector<std::string> modelList_;
-    std::vector<std::string> presetList_;
-    int selectedPresetIndex_ = -1; // 選択プリセット。-1は未選択。
 
     float previewTime_ = 0.0f;
 

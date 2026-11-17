@@ -1,5 +1,5 @@
 {
-    "seal": "prism_arena_seal_cue",
-    "appearance": "prism_midboss_appear_cue",
-    "release": "prism_arena_release_cue"
+    "seal": "enemy/prism_slime/prism_arena_seal_cue",
+    "appearance": "enemy/prism_slime/prism_midboss_appear_cue",
+    "release": "enemy/prism_slime/prism_arena_release_cue"
 }

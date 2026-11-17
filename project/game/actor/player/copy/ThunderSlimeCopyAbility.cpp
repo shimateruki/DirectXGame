@@ -41,7 +41,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             lineCooldown_ = 1.65f;
             lineHitTargets_.clear();
             player.PlaySlimeAbilityMotion("player_ability_thunder_cast", false, 1.0f, 0.04f, 0.08f);
-            SpawnEffect("Resources/json/effect/effect_player_thunder_warning.json",
+            SpawnEffect("Resources/json/effect/shared/effect_player_thunder_warning.json",
                         player.GetWorldPosition() + lineDirection_ * LineAttack().minRange);
         } else if (input.primaryTriggered && dischargeCooldown_ <= 0.0f && lineTimer_ <= 0.0f && !charging_) {
             charging_ = true;
@@ -141,15 +141,15 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             visual.effectIntensity = 2.4f;
             visual.visualScale = 2.0f;
             visual.billboardScale = 1.2f;
-            visual.trailPreset = "player_thunder_evade_sparks";
-            visual.impactPreset = "player_thunder_strike_impact";
+            visual.trailPreset = "player/copy/thunder/player_thunder_evade_sparks";
+            visual.impactPreset = "shared/player_thunder_strike_impact";
             BulletManager::GetInstance()->Fire(muzzle, direction * 28.0f, CollisionCategories::Get("player_attack"), CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"),
                                                "Primitives/sphere", radius, 0.9f, visual,
                                                7.0f + 13.0f * chargeTime_, {}, DamageType::Electric);
             StopCharge(player);
             player.PlaySlimeAbilityMotion("player_ability_thunder_cast", false, 1.0f, 0.02f, 0.08f);
             player.TriggerSlimeImpulse({1.6f, 0.55f, 1.6f}, 0.16f);
-            EmitPreset("player_thunder_discharge_burst", center);
+            EmitPreset("player/copy/thunder/player_thunder_discharge_burst", center);
             dischargeCooldown_ = 0.45f;
             return;
         }
@@ -167,7 +167,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
                 const float angle = i * 2.15f + phase * 2.4f;
                 const float flicker = std::sin(phase * 1.7f + i * 2.3f);
                 SpawnScopedEffect(
-                    sparkScope_, "Resources/json/effect/effect_player_thunder_spark_arc.json",
+                    sparkScope_, "Resources/json/effect/player/copy/thunder/effect_player_thunder_spark_arc.json",
                     center + engine::Vector3{std::sin(angle) * radius, 0.10f + flicker * 0.20f, std::cos(angle) * radius},
                     {0.12f * flicker, angle, kPi * 0.5f + flicker * 0.28f},
                     {0.8f + pulse * 0.12f, 0.85f + chargeTime_ * 0.15f, 1.0f});
@@ -175,7 +175,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
 
             // 完了時も大きく増殖させず、頭上の小さな明滅だけで知らせる。
             if (chargeTime_ >= 1.0f && pulse > 0.70f) {
-                SpawnScopedEffect(sparkScope_, "Resources/json/effect/effect_player_thunder_spark_arc.json",
+                SpawnScopedEffect(sparkScope_, "Resources/json/effect/player/copy/thunder/effect_player_thunder_spark_arc.json",
                                   center + engine::Vector3{0.0f, 0.65f, 0.0f}, {kPi * 0.5f, phase * 1.3f, 0.0f},
                                   {0.75f, 0.85f, 1.0f});
             }
@@ -192,11 +192,11 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     void SpawnStrike(Player& player, const engine::Vector3& ground) {
         // 見た目と球状判定を同じ着地点へ置き、連続落雷中は敵ごとに一度だけ当てる。
         const float yaw = std::atan2(lineDirection_.x, lineDirection_.z);
-        SpawnEffect("Resources/json/effect/effect_player_thunder_bolt.json", ground + engine::Vector3{0.0f, 4.75f, 0.0f},
+        SpawnEffect("Resources/json/effect/shared/effect_player_thunder_bolt.json", ground + engine::Vector3{0.0f, 4.75f, 0.0f},
                     {kPi * 0.5f, yaw, 0.0f});
-        SpawnEffect("Resources/json/effect/effect_player_thunder_impact_ring.json",
+        SpawnEffect("Resources/json/effect/shared/effect_player_thunder_impact_ring.json",
                     ground + engine::Vector3{0.0f, 0.06f, 0.0f});
-        EmitPreset("player_thunder_strike_impact", ground + engine::Vector3{0.0f, 0.22f, 0.0f});
+        EmitPreset("shared/player_thunder_strike_impact", ground + engine::Vector3{0.0f, 0.22f, 0.0f});
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
@@ -222,10 +222,10 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
                                                                            direction, 9.5f, filter);
         const float distance = hit.isHit ? std::max(1.15f, hit.distance - 0.75f) : 9.5f;
         const engine::Vector3 destination = start + direction * distance;
-        SpawnEffect("Resources/json/effect/effect_player_thunder_evade_cross.json", start + engine::Vector3{0.0f, 0.62f, 0.0f});
-        SpawnEffect("Resources/json/effect/effect_player_thunder_evade_seal.json",
+        SpawnEffect("Resources/json/effect/player/copy/thunder/effect_player_thunder_evade_cross.json", start + engine::Vector3{0.0f, 0.62f, 0.0f});
+        SpawnEffect("Resources/json/effect/player/copy/thunder/effect_player_thunder_evade_seal.json",
                     destination + engine::Vector3{0.0f, 0.08f, 0.0f});
-        EmitDirectedPreset("player_thunder_evade_sparks", start, direction, 1.0f);
+        EmitDirectedPreset("player/copy/thunder/player_thunder_evade_sparks", start, direction, 1.0f);
         player.SetTranslate(destination);
         player.SetMoveYaw(std::atan2(direction.x, direction.z));
         player.PlaySlimeAbilityMotion("player_ability_thunder_evade", false, 1.0f, 0.02f, 0.06f);

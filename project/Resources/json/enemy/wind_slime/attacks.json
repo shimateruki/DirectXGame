@@ -13,9 +13,9 @@
       "preview": { "targetDistance": 4.2, "duration": 4.4 },
       "presentation": {
         "animation": "wind_breath_squash",
-        "windupVfx": "wind_slime_charge",
-        "activeVfx": "wind_slime_breath_stream",
-        "impactVfx": "Resources/json/effect/effect_wind_gust_ring.json",
+        "windupVfx": "shared/wind_slime_charge",
+        "activeVfx": "shared/wind_slime_breath_stream",
+        "impactVfx": "Resources/json/effect/shared/effect_wind_gust_ring.json",
         "audioCue": "wind_breath_loop"
       }
     },
@@ -29,9 +29,9 @@
       "preview": { "targetDistance": 9.5, "duration": 5.0 },
       "presentation": {
         "animation": "aerial_wind_orb_volley",
-        "windupVfx": "wind_slime_orb_hold",
-        "activeVfx": "wind_slime_orb_trail",
-        "impactVfx": "wind_slime_orb_impact",
+        "windupVfx": "enemy/wind_slime/wind_slime_orb_hold",
+        "activeVfx": "enemy/wind_slime/wind_slime_orb_trail",
+        "impactVfx": "enemy/wind_slime/wind_slime_orb_impact",
         "audioCue": "wind_orb_volley"
       }
     }

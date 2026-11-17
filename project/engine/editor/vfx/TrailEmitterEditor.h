@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/editor/assets/JsonAssetBrowser.h"
 #include "IEditable.h"
 #include "TrailEmitter.h"
 #include <string>
@@ -28,11 +29,12 @@ void DrawImGui() override;
 void RefreshFileLists();
 
 private:
+    JsonAssetBrowser files_;
     // 軌跡の参照プリセットと放出条件をJSONに書き出し、一覧へ即時反映する。
-    void Save(const std::string& name);
+    bool Save(const std::filesystem::path& path);
 
     // 保存された放出条件をエミッターへ反映し、参照する素材名も復元する。
-    void Load(const std::string& name);
+    bool Load(const std::filesystem::path& path);
 
     // 再生時計は常に戻し、既存の効果を消すかは呼び出し側の指定に従う。
     void ResetDummyPreview(bool clearEffects);
@@ -50,7 +52,6 @@ private:
     engine::Object3D* targetObject_ = nullptr;
     bool isTracking_ = false;
 
-    char configNameBuf_[64] = "myTrail";
 
     // 対象未選択時に動きを確認するためのダミープレビュー。
     bool isDummyRunning_ = false;
@@ -69,5 +70,4 @@ private:
     // 選択肢として表示するファイル一覧。
     std::vector<std::string> meshEffectList_;
     std::vector<std::string> gpuParticleList_;
-    std::vector<std::string> savedConfigList_;
 };

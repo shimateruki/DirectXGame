@@ -382,13 +382,13 @@ def build_encounter_objects() -> list[dict]:
         collision_attribute=16, collision_mask=1, gimmick_type="EventReceiver", event_type=5,
         my_event_id=6104, param=reward_param, color=[1.0, 1.0, 1.0, 1.0],
         material_type=0, emissive=1.18, metallic=0.38, roughness=0.30,
-        env_map=True, env_intensity=0.48, mesh_effect1="Resources/json/effect/effect_crown_idle_shell.json",
-        mesh_effect2="Resources/json/effect/effect_crown_aura_ring.json",
+        env_map=True, env_intensity=0.48, mesh_effect1="Resources/json/effect/shared/effect_crown_idle_shell.json",
+        mesh_effect2="Resources/json/effect/shared/effect_crown_aura_ring.json",
     )
     reward["components"]["MeshEffect"] = {
         "_editorPresent": True,
-        "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-        "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
+        "primary": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+        "secondary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
         "version": 1,
     }
     objects.append(reward)

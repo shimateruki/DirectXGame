@@ -14,30 +14,30 @@
 #include <string>
 
 namespace {
-constexpr const char* kSlimeElasticPreset = "hit_slime_elastic";
-constexpr const char* kPullBindPreset = "hit_pull_bind";
-constexpr const char* kPullCatchPreset = "hit_pull_catch";
-constexpr const char* kThrowSlamDustPreset = "hit_throw_slam_dust";
-constexpr const char* kThrowSlamDebrisPreset = "throw_slam_pebble_burst";
-constexpr const char* kBombFireCorePreset = "hit_bomb_fire_core";
-constexpr const char* kBombSparkPreset = "hit_bomb_fire_sparks";
-constexpr const char* kBombGoldenSparkPreset = "hit_bomb_golden_sparks";
-constexpr const char* kBombSmokePreset = "hit_bomb_black_smoke";
-constexpr const char* kBombDebrisPreset = "bomb_hit_fragment_burst";
-constexpr const char* kEnemyAbilityPreset = "hit_enemy_ability";
-constexpr const char* kThunderShockPreset = "thunder_slime_idle_spark";
-constexpr const char* kPlayerFireFlamePreset = "hit_player_fire_flame";
-constexpr const char* kPlayerFireEmberPreset = "hit_player_fire_embers";
-constexpr const char* kPlayerExplosionCorePreset = "hit_player_explosion_core";
-constexpr const char* kPlayerExplosionSparkPreset = "hit_player_explosion_sparks";
-constexpr const char* kPlayerExplosionSmokePreset = "hit_player_explosion_smoke";
-constexpr const char* kDamagePuniBurstSequence = "damage_puni_burst_cue";
-constexpr const char* kSlimeElasticSequence = "slime_elastic_hit_cue";
-constexpr const char* kPullBindSequence = "pull_bind_cue";
-constexpr const char* kPullCatchSequence = "pull_catch_cue";
-constexpr const char* kThrowSlamSequence = "throw_slam_cue";
-constexpr const char* kBombExplosionSequence = "bomb_explosion_cue";
-constexpr const char* kEnemyAbilitySequence = "enemy_ability_hit_cue";
+constexpr const char* kSlimeElasticPreset = "shared/hit_slime_elastic";
+constexpr const char* kPullBindPreset = "shared/hit_pull_bind";
+constexpr const char* kPullCatchPreset = "shared/hit_pull_catch";
+constexpr const char* kThrowSlamDustPreset = "shared/hit_throw_slam_dust";
+constexpr const char* kThrowSlamDebrisPreset = "shared/throw_slam_pebble_burst";
+constexpr const char* kBombFireCorePreset = "shared/hit_bomb_fire_core";
+constexpr const char* kBombSparkPreset = "shared/hit_bomb_fire_sparks";
+constexpr const char* kBombGoldenSparkPreset = "shared/hit_bomb_golden_sparks";
+constexpr const char* kBombSmokePreset = "shared/hit_bomb_black_smoke";
+constexpr const char* kBombDebrisPreset = "shared/bomb_hit_fragment_burst";
+constexpr const char* kEnemyAbilityPreset = "shared/hit_enemy_ability";
+constexpr const char* kThunderShockPreset = "shared/thunder_slime_idle_spark";
+constexpr const char* kPlayerFireFlamePreset = "player/copy/fire/hit_player_fire_flame";
+constexpr const char* kPlayerFireEmberPreset = "player/copy/fire/hit_player_fire_embers";
+constexpr const char* kPlayerExplosionCorePreset = "shared/hit_player_explosion_core";
+constexpr const char* kPlayerExplosionSparkPreset = "shared/hit_player_explosion_sparks";
+constexpr const char* kPlayerExplosionSmokePreset = "shared/hit_player_explosion_smoke";
+constexpr const char* kDamagePuniBurstSequence = "shared/damage_puni_burst_cue";
+constexpr const char* kSlimeElasticSequence = "shared/slime_elastic_hit_cue";
+constexpr const char* kPullBindSequence = "shared/pull_bind_cue";
+constexpr const char* kPullCatchSequence = "shared/pull_catch_cue";
+constexpr const char* kThrowSlamSequence = "shared/throw_slam_cue";
+constexpr const char* kBombExplosionSequence = "shared/bomb_explosion_cue";
+constexpr const char* kEnemyAbilitySequence = "shared/enemy_ability_hit_cue";
 constexpr float kGroundEffectLift = 0.035f;
 
 bool IsTinyPlanar(const engine::Vector3& value);
@@ -247,13 +247,13 @@ void HitEffectDirector::SpawnDamageEventHit(engine::Object3D* target, engine::Ob
             const engine::Vector3 position = ResolveBodyHitPosition(target, attacker, knockbackVelocity);
             const engine::Vector3 direction = NormalizePlanar(target->GetWorldPosition() - attacker->GetWorldPosition());
             const float yaw = std::atan2(direction.x, direction.z);
-            meshes->SpawnEffectAt("Resources/json/effect/effect_player_pink_hit_core.json", position,
+            meshes->SpawnEffectAt("Resources/json/effect/player/copy/pink/effect_player_pink_hit_core.json", position,
                                   {0.0f, yaw, 0.0f});
 
             // 打撃の接触点から短い衝撃線を出し、魔法陣に見える閉じた輪は使いません。
             for (int i = 0; i < 3; ++i) {
                 meshes->SpawnEffectAt(
-                    "Resources/json/effect/effect_player_pink_hit_spoke.json", position,
+                    "Resources/json/effect/player/copy/pink/effect_player_pink_hit_spoke.json", position,
                     {-0.35f - 0.35f * static_cast<float>(i % 2), yaw + (static_cast<float>(i) - 1.0f) * 1.5f, 0.0f});
             }
         }

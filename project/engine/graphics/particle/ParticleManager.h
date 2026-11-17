@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include <string>
 #include <map>
 #include <vector>
@@ -21,6 +22,10 @@ public:
 
     /// <summary>指定名のJSONからパーティクル設定を読み込む。</summary>
     void LoadParam(const std::string& name);
+
+    // エディターと実行時で同じEmitter JSON形式を使う。読込が成功した時だけoutを書き換える。
+    static bool ReadParamFile(const std::filesystem::path& path, engine::ParticleSystem::EmitterParams& out);
+    static bool WriteParamFile(const std::filesystem::path& path, const engine::ParticleSystem::EmitterParams& param);
 
     /// <summary>Resources/json/particle 内の設定を一括読み込みする。</summary>
     void LoadAllParams();

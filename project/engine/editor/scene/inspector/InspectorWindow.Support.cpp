@@ -502,7 +502,7 @@ void DrawAutomaticComponentProperties(
             if (property->ui.assetEditor == EditorPropertyAssetEditor::Scenario && value.is_string() &&
                 !value.get_ref<const std::string&>().empty() &&
                 ImGui::Button("GhostDirectorで編集") && editor->GetGhostDirector()) {
-                editor->GetGhostDirector()->LoadScenario(fs::path(value.get<std::string>()).stem().string());
+                editor->GetGhostDirector()->LoadScenario(value.get_ref<const std::string&>());
                 EditorManager::GetInstance()->SetSelectedObject(editor->GetGhostDirector());
             }
 

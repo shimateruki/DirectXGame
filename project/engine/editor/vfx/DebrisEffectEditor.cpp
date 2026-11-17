@@ -22,14 +22,6 @@ void CopyToBuffer(std::array<char, 128>& buffer, const std::string& text) {
     strncpy_s(buffer.data(), buffer.size(), text.c_str(), _TRUNCATE);
 }
 
-void CopyToBuffer(char* buffer, size_t bufferSize, const std::string& text) {
-    if (!buffer || bufferSize == 0) {
-        return;
-    }
-
-    buffer[0] = '\0';
-    strncpy_s(buffer, bufferSize, text.c_str(), _TRUNCATE);
-}
 
 std::string GetBufferText(const std::array<char, 128>& buffer) {
     return std::string(buffer.data());
@@ -244,8 +236,9 @@ void DebrisEffectEditor::DrawImGui() {
         }
 
         if (ImGui::Button("プリズム破砕", ImVec2(120.0f, 28.0f))) {
-            Load("prism_crystal_shatter");
-            CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), "prism_crystal_shatter");
+            if (Load(std::filesystem::path(kDebrisPresetDirectory) / "enemy/prism_slime/prism_crystal_shatter.json"))
+                files_.SetDocument("enemy/prism_slime/prism_crystal_shatter.json");
+
         }
     }
 
@@ -314,38 +307,18 @@ void DebrisEffectEditor::DrawImGui() {
         }
     }
 
-    if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // 入力欄の文字列は保存・読込時に確定し、編集中だけなら既存Presetを上書きしない。
-        if (!presetList_.empty()) {
-            std::vector<const char*> presetNames;
-
-            for (const auto& name : presetList_) {
-                presetNames.push_back(name.c_str());
-            }
-
-            if (selectedPresetIndex_ < 0 || selectedPresetIndex_ >= static_cast<int>(presetList_.size())) {
-                selectedPresetIndex_ = 0;
-            }
-
-            if (ImGui::Combo("既存プリセット", &selectedPresetIndex_, presetNames.data(), static_cast<int>(presetNames.size()))) {
-                CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), presetList_[selectedPresetIndex_]);
-            }
-        } else {
-            ImGui::TextDisabled("まだDebrisプリセットがありません。");
-        }
-
-        ImGui::InputText("保存名", presetNameBuffer_, sizeof(presetNameBuffer_));
-
-        if (ImGui::Button(ICON_FA_DOWNLOAD " 保存", ImVec2(120.0f, 0.0f))) {
-            Save(presetNameBuffer_);
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button(ICON_FA_UPLOAD " 読み込み", ImVec2(120.0f, 0.0f))) {
-            Load(presetNameBuffer_);
-        }
-    }
+    files_.Draw("3D破片JSONファイル", std::filesystem::path(kDebrisPresetDirectory).parent_path(),
+        [this](const std::filesystem::path& path) { return Load(path); },
+        [this](const std::filesystem::path& path, const std::string& name) { return Save(path, name); },
+        [this] {
+            config_ = DebrisEffectConfig{};
+            SyncModelBuffersFromConfig();
+        },
+        [this](const std::filesystem::path& relative) {
+            auto path = relative;
+            const auto key = path.replace_extension().generic_u8string();
+            DebrisEffectManager::GetInstance()->RegisterPreset(std::string(key.begin(), key.end()), config_);
+        });
 #endif
 }
 
@@ -354,48 +327,22 @@ void DebrisEffectEditor::RefreshLists() {
     modelList_ = ModelManager::GetInstance()->GetAvailableModelNames();
     std::sort(modelList_.begin(), modelList_.end());
 
-    presetList_.clear();
-    namespace fs = std::filesystem;
-
-    if (fs::exists(kDebrisPresetDirectory)) {
-        for (const auto& entry : fs::directory_iterator(kDebrisPresetDirectory)) {
-            if (entry.is_regular_file() && entry.path().extension() == ".json") {
-                presetList_.push_back(entry.path().stem().string());
-            }
-        }
-    }
-
-    std::sort(presetList_.begin(), presetList_.end());
     DebrisEffectManager::GetInstance()->LoadAllPresets(kDebrisPresetDirectory);
 }
 
-void DebrisEffectEditor::Save(const std::string& presetName) {
-    // モデル入力欄を設定へ同期してからJSONを保存し、実行時のPreset登録も更新します。
+bool DebrisEffectEditor::Save(const std::filesystem::path& path, const std::string& name) {
     SyncConfigFromModelBuffers();
-    config_.name = presetName.empty() ? "debris" : presetName;
-    std::string filePath = std::string(kDebrisPresetDirectory) + config_.name + ".json";
-
-    if (DebrisEffectManager::GetInstance()->SaveConfig(filePath, config_)) {
-        DebrisEffectManager::GetInstance()->RegisterPreset(config_.name, config_);
-        DebugConsole::GetInstance()->AddLog("Saved Debris Preset: " + config_.name);
-        RefreshLists();
-    }
+    auto saved = config_;
+    saved.name = name;
+    return DebrisEffectManager::GetInstance()->SaveConfig(path, saved);
 }
 
-void DebrisEffectEditor::Load(const std::string& presetName) {
-    // 読込成功時だけ現在の設定と入力欄を差し替えます。
-    if (presetName.empty()) {
-        return;
-    }
-
+bool DebrisEffectEditor::Load(const std::filesystem::path& path) {
     DebrisEffectConfig loaded;
-    std::string filePath = std::string(kDebrisPresetDirectory) + presetName + ".json";
-
-    if (DebrisEffectManager::GetInstance()->LoadConfig(filePath, loaded)) {
-        config_ = loaded;
-        SyncModelBuffersFromConfig();
-        DebugConsole::GetInstance()->AddLog("Loaded Debris Preset: " + presetName);
-    }
+    if (!DebrisEffectManager::GetInstance()->LoadConfig(path, loaded)) return false;
+    config_ = std::move(loaded);
+    SyncModelBuffersFromConfig();
+    return true;
 }
 
 void DebrisEffectEditor::Preview() {
@@ -473,7 +420,7 @@ void DebrisEffectEditor::SyncConfigFromModelBuffers() {
 void DebrisEffectEditor::ApplyQuickPresetRock() {
     // 岩の塊向けに大きめの破片と上方向の初速を設定します。
     config_ = DebrisEffectConfig{};
-    config_.name = "rock_burst";
+    config_.name = "shared/rock_burst";
     config_.modelNames = { "Primitives/cube", "Stages/block" };
     config_.spawnCount = 22;
     config_.spawnOffset = { 0.0f, 0.35f, 0.0f };
@@ -490,13 +437,13 @@ void DebrisEffectEditor::ApplyQuickPresetRock() {
     config_.restitution = 0.38f;
     config_.friction = 0.72f;
     config_.color = { 0.62f, 0.56f, 0.49f, 1.0f };
-    CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), "rock_burst");
+
 }
 
 void DebrisEffectEditor::ApplyQuickPresetWood() {
     // 木片向けに少数の破片と横への散り方を設定します。
     config_ = DebrisEffectConfig{};
-    config_.name = "wood_splinter_burst";
+    config_.name = "shared/wood_splinter_burst";
     config_.modelNames = { "Stages/block", "Primitives/cube" };
     config_.spawnCount = 16;
     config_.horizontalSpread = 0.9f;
@@ -512,13 +459,13 @@ void DebrisEffectEditor::ApplyQuickPresetWood() {
     config_.restitution = 0.25f;
     config_.friction = 0.82f;
     config_.color = { 0.55f, 0.34f, 0.18f, 1.0f };
-    CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), "wood_splinter_burst");
+
 }
 
 void DebrisEffectEditor::ApplyQuickPresetPebble() {
     // 小石向けに小粒の破片を多めに散らす設定へ戻します。
     config_ = DebrisEffectConfig{};
-    config_.name = "small_pebble_scatter";
+    config_.name = "shared/small_pebble_scatter";
     config_.modelNames = { "Primitives/sphere", "Primitives/cube" };
     config_.spawnCount = 34;
     config_.horizontalSpread = 1.5f;
@@ -534,5 +481,5 @@ void DebrisEffectEditor::ApplyQuickPresetPebble() {
     config_.restitution = 0.42f;
     config_.friction = 0.7f;
     config_.color = { 0.58f, 0.58f, 0.54f, 1.0f };
-    CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), "small_pebble_scatter");
+
 }

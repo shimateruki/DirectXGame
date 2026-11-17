@@ -31,11 +31,11 @@ constexpr float kSuppressedReleaseDuration = 4.0f;
 constexpr float kWaveBandHalfWidth = 0.72f;
 constexpr float kWaveJumpClearHeight = 1.52f;
 constexpr float kWaveDamage = 1.0f;
-constexpr const char* kChargeEffect = "Resources/json/effect/effect_ring_burner_charge.json";
-constexpr const char* kWaveEffect = "Resources/json/effect/effect_ring_burner_wave.json";
-constexpr const char* kWaveHeatEffect = "Resources/json/effect/effect_ring_burner_wave_heat.json";
-constexpr const char* kChargeParticle = "ring_burner_charge_sparks";
-constexpr const char* kFireParticle = "ring_burner_discharge_embers";
+constexpr const char* kChargeEffect = "Resources/json/effect/enemy/ring_burner/effect_ring_burner_charge.json";
+constexpr const char* kWaveEffect = "Resources/json/effect/enemy/ring_burner/effect_ring_burner_wave.json";
+constexpr const char* kWaveHeatEffect = "Resources/json/effect/enemy/ring_burner/effect_ring_burner_wave_heat.json";
+constexpr const char* kChargeParticle = "enemy/ring_burner/ring_burner_charge_sparks";
+constexpr const char* kFireParticle = "enemy/ring_burner/ring_burner_discharge_embers";
 
 
 

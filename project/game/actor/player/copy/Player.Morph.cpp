@@ -447,23 +447,23 @@ void Player::EmitEnemyMorphStartEffects() {
 
     switch (enemyMorphType_) {
     case EnemyMorphType::Slime:
-        cue = "player_copy_pink";
+        cue = "player/copy/pink/player_copy_pink";
         break;
 
     case EnemyMorphType::FireSlime:
-        cue = "player_copy_fire";
+        cue = "player/copy/fire/player_copy_fire";
         break;
 
     case EnemyMorphType::ThunderSlime:
-        cue = "player_copy_thunder";
+        cue = "player/copy/thunder/player_copy_thunder";
         break;
 
     case EnemyMorphType::WindSlime:
-        cue = "player_copy_wind";
+        cue = "player/copy/wind/player_copy_wind";
         break;
 
     case EnemyMorphType::Bomber:
-        cue = "player_copy_bomb";
+        cue = "player/copy/bomb/player_copy_bomb";
         break;
 
     default:

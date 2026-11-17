@@ -21,7 +21,7 @@ struct Access {
     static void Begin(GamePlayScene* game) { game->StartGoalPresentationPreview(); }
     static void End(GamePlayScene* game) { game->StopGoalPresentationPreview(); }
     static Camera* CameraFor(GamePlayScene* game) { return game->goalPresentationCamera_.get(); }
-    static float Time(GamePlayScene* game) { return game->goalPresentationTimer_; }
+    static float Time(GamePlayScene* game) { return game->goalPresentationTimer_.Elapsed(); }
     static engine::Object3D* Crown(GamePlayScene* game) { return game->FindGoalCrownObject(); }
 };
 inline void Require(bool value,const char* error) { if (!value) throw std::runtime_error(error); }

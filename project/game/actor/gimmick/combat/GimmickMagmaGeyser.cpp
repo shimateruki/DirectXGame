@@ -31,7 +31,7 @@ constexpr float kDefaultSimulationWakeDistance = 110.0f;
 constexpr float kVentMouthLocalHeight = 0.72f;
 constexpr float kDamageRepeatInterval = 0.25f;
 constexpr float kParticleInterval = 0.075f;
-constexpr const char* kEruptionBurstEffect = "Resources/json/effect/effect_bakuhatu.json";
+constexpr const char* kEruptionBurstEffect = "Resources/json/effect/shared/effect_bakuhatu.json";
 
 
 
@@ -837,9 +837,9 @@ void GimmickMagmaGeyser::SpawnEruptionBurst() {
         return;
     }
 
-    particles->Emit("hit_bomb_fire_core", mouth);
-    particles->Emit("hit_bomb_fire_mushroom", mouth);
-    particles->Emit("fire_slime_cast", mouth);
+    particles->Emit("shared/hit_bomb_fire_core", mouth);
+    particles->Emit("shared/hit_bomb_fire_mushroom", mouth);
+    particles->Emit("shared/fire_slime_cast", mouth);
 }
 
 void GimmickMagmaGeyser::EmitEruptionParticles() {
@@ -856,10 +856,10 @@ void GimmickMagmaGeyser::EmitEruptionParticles() {
     const float bandRate = 0.10f + static_cast<float>(particleBandIndex_) * 0.28f;
     const engine::Vector3 position = GetMouthPosition() + engine::Vector3{0.0f, height * bandRate, 0.0f};
     const float speedScale = std::clamp(height / 6.5f, 0.85f, 2.2f);
-    particles->EmitDirected("fire_slime_breath", position, {0.0f, 1.0f, 0.0f}, speedScale);
+    particles->EmitDirected("shared/fire_slime_breath", position, {0.0f, 1.0f, 0.0f}, speedScale);
 
     if (particleBandIndex_ == 0) {
-        particles->EmitDirected("fire_slime_breath_embers", position, {0.0f, 1.0f, 0.0f}, speedScale * 1.15f);
+        particles->EmitDirected("shared/fire_slime_breath_embers", position, {0.0f, 1.0f, 0.0f}, speedScale * 1.15f);
     }
 
     particleBandIndex_ = (particleBandIndex_ + 1) % 3;
@@ -972,7 +972,7 @@ void GimmickMagmaGeyser::FireMagmaProjectiles() {
     visual.effectIntensity = 1.0f;
     visual.billboardScale = 1.0f;
     visual.trailPreset = "";
-    visual.impactPreset = "magma_slime_rush_splash";
+    visual.impactPreset = "shared/magma_slime_rush_splash";
     visual.trailInterval = 0.10f;
     visual.magmaHopperPresentation = true;
 
@@ -983,7 +983,7 @@ void GimmickMagmaGeyser::FireMagmaProjectiles() {
                                        CollisionCategories::Get("player") | CollisionCategories::Get("ground"), "Characters/magma_hopper", radius,
                                        GetFireballFlightDuration(), visual, GetDamage(), {}, DamageType::Fire, 20.0f);
     if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized()) {
-        particles->Emit("magma_slime_rush_splash", mouth);
+        particles->Emit("shared/magma_slime_rush_splash", mouth);
     }
 }
 
@@ -1078,7 +1078,7 @@ void GimmickMagmaGeyser::UpdateWaterJet(float deltaTime) {
     particleTimer_ -= frameDeltaTime;
     if (emitting && height > 1.0f && particleTimer_ <= 0.0f) {
         if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized())
-            particles->Emit("raft_water_spray", mouth + engine::Vector3{0, height*.9f, 0});
+            particles->Emit("shared/raft_water_spray", mouth + engine::Vector3{0, height*.9f, 0});
         particleTimer_ = .12f;
     }
     BaseGimmick::Update(deltaTime);

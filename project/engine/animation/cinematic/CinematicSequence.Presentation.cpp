@@ -23,8 +23,8 @@ static void from_json(const json& data, engine::Vector4& v) {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicVisualKey,
     positionReference,position,rotation,scale,color,emissive,visible)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicMotionSegment,
-    name,startTime,endTime,startSignal,endSignal,from,to,smoothProgress,arcHeight,rotationArc,
-    rotationCycles,smoothScale,scaleDecay,scaleCycles,scaleStart,minimumScale,bounceHeight,bounceDuration,bounceCycles,emissiveAmplitude,emissiveFrequency)
+    name,startTime,endTime,startSignal,endSignal,startSignalOffset,endSignalOffset,from,to,smoothProgress,arcHeight,rotationArc,
+    rotationCycles,smoothScale,scaleWaveAmplitude,scaleWaveFrequency,scaleWaveFadeIn,scaleDecay,scaleCycles,scaleStart,minimumScale,bounceHeight,bounceDuration,bounceCycles,emissiveAmplitude,emissiveFrequency)
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicSpringSettings,
     initialPositionOffset, initialRotationOffset, initialForwardVelocity,
@@ -176,7 +176,7 @@ void LoadCinematicPresentation(const json& root, CinematicPresentation& p) {
                 if (value.is_number() && !std::isfinite(value.get<float>())) throw std::runtime_error("Non-finite motion value");
             if (motion.startTime<0 || motion.endTime<=motion.startTime || motion.startTime<previousEnd ||
                 motion.scaleStart<0 || motion.scaleStart>=1 || motion.minimumScale<0 || motion.bounceDuration<=0 ||
-                motion.bounceHeight<0 || motion.bounceCycles<0 || motion.rotationCycles<0 || motion.scaleDecay<0 || motion.scaleCycles<0 || motion.from.positionReference.empty()!=motion.to.positionReference.empty())
+                motion.scaleWaveFrequency<0 || motion.bounceHeight<0 || motion.bounceCycles<0 || motion.rotationCycles<0 || motion.scaleDecay<0 || motion.scaleCycles<0 || motion.from.positionReference.empty()!=motion.to.positionReference.empty())
                 throw std::runtime_error("Invalid cinematic motion interval");
             previousEnd=motion.endTime;
         }

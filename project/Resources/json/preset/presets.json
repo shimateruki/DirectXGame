@@ -7381,7 +7381,7 @@
             "ParticleEmitter": {
                 "_editorPresent": true,
                 "cpuParticle": "",
-                "gpuParticle": "star_sparkle",
+                "gpuParticle": "shared/star_sparkle",
                 "version": 1
             }
         },
@@ -7393,7 +7393,7 @@
         "envIntensity": 1.25,
         "eventID": 7,
         "gimmickType": "",
-        "gpuParticleName": "star_sparkle",
+        "gpuParticleName": "shared/star_sparkle",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -7558,7 +7558,7 @@
             "ParticleEmitter": {
                 "_editorPresent": true,
                 "cpuParticle": "",
-                "gpuParticle": "star_sparkle",
+                "gpuParticle": "shared/star_sparkle",
                 "version": 1
             }
         },
@@ -7570,7 +7570,7 @@
         "envIntensity": 1.25,
         "eventID": 7,
         "gimmickType": "",
-        "gpuParticleName": "star_sparkle",
+        "gpuParticleName": "shared/star_sparkle",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -7723,7 +7723,7 @@
             "ParticleEmitter": {
                 "_editorPresent": true,
                 "cpuParticle": "",
-                "gpuParticle": "star_sparkle_silver",
+                "gpuParticle": "shared/star_sparkle_silver",
                 "version": 1
             }
         },
@@ -7735,7 +7735,7 @@
         "envIntensity": 0.6499999761581421,
         "eventID": 7,
         "gimmickType": "",
-        "gpuParticleName": "star_sparkle_silver",
+        "gpuParticleName": "shared/star_sparkle_silver",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -9059,7 +9059,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_a",
+                "path": "stage1/stage1_v4_moving_intro_a",
                 "relative": true,
                 "version": 1
             }
@@ -9241,7 +9241,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_a",
+                "path": "stage1/stage1_v4_moving_intro_a",
                 "phaseOffset": 0.0,
                 "playbackMode": "always",
                 "relative": true,
@@ -9359,7 +9359,7 @@
         "recorder": {
             "isRecordLoop": true,
             "isRecordRelative": true,
-            "recordPathName": "stage1_v4_moving_intro_a"
+            "recordPathName": "stage1/stage1_v4_moving_intro_a"
         },
         "rotate": [
             0.0,
@@ -9447,7 +9447,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_c",
+                "path": "stage1/stage1_v4_moving_intro_c",
                 "phaseOffset": 0.0,
                 "playbackMode": "always",
                 "relative": true,
@@ -9565,7 +9565,7 @@
         "recorder": {
             "isRecordLoop": true,
             "isRecordRelative": true,
-            "recordPathName": "stage1_v4_moving_intro_c"
+            "recordPathName": "stage1/stage1_v4_moving_intro_c"
         },
         "rotate": [
             0.0,
@@ -10692,7 +10692,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_a",
+                "path": "stage1/stage1_v4_moving_intro_a",
                 "phaseOffset": 0.0,
                 "playbackMode": "always",
                 "relative": true,
@@ -10993,7 +10993,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": false,
-                "path": "sinking_basalt_long_ride",
+                "path": "shared/sinking_basalt_long_ride",
                 "playbackMode": "whileRiding",
                 "relative": true,
                 "rideSequence": "",
@@ -11069,7 +11069,7 @@
         "recorder": {
             "isRecordLoop": false,
             "isRecordRelative": true,
-            "recordPathName": "sinking_basalt_long_ride"
+            "recordPathName": "shared/sinking_basalt_long_ride"
         },
         "rotate": [
             0.0,
@@ -11164,7 +11164,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": false,
-                "path": "sinking_basalt_short_ride",
+                "path": "shared/sinking_basalt_short_ride",
                 "playbackMode": "whileRiding",
                 "relative": true,
                 "rideSequence": "",
@@ -11240,7 +11240,7 @@
         "recorder": {
             "isRecordLoop": false,
             "isRecordRelative": true,
-            "recordPathName": "sinking_basalt_short_ride"
+            "recordPathName": "shared/sinking_basalt_short_ride"
         },
         "rotate": [
             0.0,
@@ -11474,7 +11474,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": false,
-                "path": "sinking_basalt_wide_ride",
+                "path": "shared/sinking_basalt_wide_ride",
                 "playbackMode": "whileRiding",
                 "relative": true,
                 "rideSequence": "",
@@ -11550,7 +11550,7 @@
         "recorder": {
             "isRecordLoop": false,
             "isRecordRelative": true,
-            "recordPathName": "sinking_basalt_wide_ride"
+            "recordPathName": "shared/sinking_basalt_wide_ride"
         },
         "rotate": [
             0.0,
@@ -12504,7 +12504,7 @@
                             "PathMover": {
                                 "_editorPresent": true,
                                 "loop": true,
-                                "path": "stage2_revised_roller",
+                                "path": "stage2/stage2_revised_roller",
                                 "playbackMode": "whileRiding",
                                 "relative": true,
                                 "rideSequence": "",
@@ -12584,7 +12584,7 @@
                         "recorder": {
                             "isRecordLoop": true,
                             "isRecordRelative": true,
-                            "recordPathName": "stage2_revised_roller"
+                            "recordPathName": "stage2/stage2_revised_roller"
                         },
                         "rotate": [
                             0,
@@ -13753,7 +13753,7 @@
                     "PathMover": {
                         "_editorPresent": true,
                         "loop": true,
-                        "path": "stage2_revised_bar_lift",
+                        "path": "stage2/stage2_revised_bar_lift",
                         "playbackMode": "always",
                         "relative": true,
                         "rideSequence": "",
@@ -13809,7 +13809,7 @@
                 "recorder": {
                     "isRecordLoop": true,
                     "isRecordRelative": true,
-                    "recordPathName": "stage2_revised_bar_lift"
+                    "recordPathName": "stage2/stage2_revised_bar_lift"
                 },
                 "rotate": [
                     0,
@@ -14203,7 +14203,7 @@
                     "PathMover": {
                         "_editorPresent": true,
                         "loop": true,
-                        "path": "stage2_revised_bar_slide",
+                        "path": "stage2/stage2_revised_bar_slide",
                         "playbackMode": "always",
                         "relative": true,
                         "rideSequence": "",
@@ -14259,7 +14259,7 @@
                 "recorder": {
                     "isRecordLoop": true,
                     "isRecordRelative": true,
-                    "recordPathName": "stage2_revised_bar_slide"
+                    "recordPathName": "stage2/stage2_revised_bar_slide"
                 },
                 "rotate": [
                     0,
@@ -14789,7 +14789,7 @@
                     "PathMover": {
                         "_editorPresent": true,
                         "loop": true,
-                        "path": "stage2_revised_bar_spin",
+                        "path": "stage2/stage2_revised_bar_spin",
                         "playbackMode": "always",
                         "relative": true,
                         "rideSequence": "",
@@ -14845,7 +14845,7 @@
                 "recorder": {
                     "isRecordLoop": true,
                     "isRecordRelative": true,
-                    "recordPathName": "stage2_revised_bar_spin"
+                    "recordPathName": "stage2/stage2_revised_bar_spin"
                 },
                 "rotate": [
                     0,
@@ -15103,7 +15103,7 @@
                     "PathMover": {
                         "_editorPresent": true,
                         "loop": true,
-                        "path": "stage2_revised_bar_swing",
+                        "path": "stage2/stage2_revised_bar_swing",
                         "playbackMode": "always",
                         "relative": true,
                         "rideSequence": "",
@@ -15159,7 +15159,7 @@
                 "recorder": {
                     "isRecordLoop": true,
                     "isRecordRelative": true,
-                    "recordPathName": "stage2_revised_bar_swing"
+                    "recordPathName": "stage2/stage2_revised_bar_swing"
                 },
                 "rotate": [
                     0,
@@ -15536,7 +15536,7 @@
                 "loop": false,
                 "path": "",
                 "relative": false,
-                "rideSequence": "Resources/json/scenario/stage1_coaster.json",
+                "rideSequence": "Resources/json/scenario/stage1/stage1_coaster.json",
                 "version": 1
             }
         },
@@ -19828,7 +19828,7 @@
             "ParticleEmitter": {
                 "_editorPresent": true,
                 "cpuParticle": "",
-                "gpuParticle": "brazier_embers",
+                "gpuParticle": "shared/brazier_embers",
                 "version": 1
             }
         },
@@ -19840,7 +19840,7 @@
         "envIntensity": 1.0,
         "eventID": 0,
         "gimmickType": "",
-        "gpuParticleName": "brazier_embers",
+        "gpuParticleName": "shared/brazier_embers",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -19976,7 +19976,7 @@
             "ParticleEmitter": {
                 "_editorPresent": true,
                 "cpuParticle": "",
-                "gpuParticle": "brazier_embers",
+                "gpuParticle": "shared/brazier_embers",
                 "version": 1
             }
         },
@@ -19988,7 +19988,7 @@
         "envIntensity": 1.0,
         "eventID": 0,
         "gimmickType": "",
-        "gpuParticleName": "brazier_embers",
+        "gpuParticleName": "shared/brazier_embers",
         "isLocked": false,
         "isStatic": false,
         "itemType": "",
@@ -29075,7 +29075,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_a",
+                "path": "stage1/stage1_v4_moving_intro_a",
                 "relative": true,
                 "rideSequence": "",
                 "version": 1
@@ -29183,7 +29183,7 @@
         "recorder": {
             "isRecordLoop": true,
             "isRecordRelative": true,
-            "recordPathName": "stage1_v4_moving_intro_a"
+            "recordPathName": "stage1/stage1_v4_moving_intro_a"
         },
         "rotate": [
             -0.0,
@@ -29250,7 +29250,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_b",
+                "path": "stage1/stage1_v4_moving_intro_b",
                 "relative": true,
                 "rideSequence": "",
                 "version": 1
@@ -29358,7 +29358,7 @@
         "recorder": {
             "isRecordLoop": true,
             "isRecordRelative": true,
-            "recordPathName": "stage1_v4_moving_intro_b"
+            "recordPathName": "stage1/stage1_v4_moving_intro_b"
         },
         "rotate": [
             0.0,
@@ -29425,7 +29425,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_c",
+                "path": "stage1/stage1_v4_moving_intro_c",
                 "relative": true,
                 "rideSequence": "",
                 "version": 1
@@ -29533,7 +29533,7 @@
         "recorder": {
             "isRecordLoop": true,
             "isRecordRelative": true,
-            "recordPathName": "stage1_v4_moving_intro_c"
+            "recordPathName": "stage1/stage1_v4_moving_intro_c"
         },
         "rotate": [
             -0.0,
@@ -30966,8 +30966,8 @@
         "components": {
             "MeshEffect": {
                 "_editorPresent": true,
-                "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-                "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
+                "primary": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+                "secondary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
                 "version": 1
             }
         },
@@ -31015,8 +31015,8 @@
         },
         "materialType": 0,
         "meshDrawIndex": -1,
-        "meshEffect1": "Resources/json/effect/effect_crown_idle_shell.json",
-        "meshEffect2": "Resources/json/effect/effect_crown_aura_ring.json",
+        "meshEffect1": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+        "meshEffect2": "Resources/json/effect/shared/effect_crown_aura_ring.json",
         "metallic": 0.3799999952316284,
         "modelName": "Stages/crown",
         "myEventID": -1,
@@ -37643,7 +37643,7 @@
                 "loop": false,
                 "path": "",
                 "relative": false,
-                "rideSequence": "Resources/json/scenario/stage2_ferry_1.json",
+                "rideSequence": "Resources/json/scenario/stage2/stage2_ferry_1.json",
                 "version": 1
             }
         },
@@ -37818,7 +37818,7 @@
                 "loop": false,
                 "path": "",
                 "relative": false,
-                "rideSequence": "Resources/json/scenario/stage2_ferry_2.json",
+                "rideSequence": "Resources/json/scenario/stage2/stage2_ferry_2.json",
                 "version": 1
             }
         },
@@ -42839,8 +42839,8 @@
         "components": {
             "MeshEffect": {
                 "_editorPresent": true,
-                "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-                "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
+                "primary": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+                "secondary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
                 "version": 1
             }
         },
@@ -42888,8 +42888,8 @@
         },
         "materialType": 0,
         "meshDrawIndex": -1,
-        "meshEffect1": "Resources/json/effect/effect_crown_idle_shell.json",
-        "meshEffect2": "Resources/json/effect/effect_crown_aura_ring.json",
+        "meshEffect1": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+        "meshEffect2": "Resources/json/effect/shared/effect_crown_aura_ring.json",
         "metallic": 0.3799999952316284,
         "modelName": "Stages/crown",
         "myEventID": -1,
@@ -50630,8 +50630,8 @@
             },
             "MeshEffect": {
                 "_editorPresent": true,
-                "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-                "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
+                "primary": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+                "secondary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
                 "version": 1
             }
         },
@@ -50679,8 +50679,8 @@
         },
         "materialType": 0,
         "meshDrawIndex": -1,
-        "meshEffect1": "Resources/json/effect/effect_crown_idle_shell.json",
-        "meshEffect2": "Resources/json/effect/effect_crown_aura_ring.json",
+        "meshEffect1": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+        "meshEffect2": "Resources/json/effect/shared/effect_crown_aura_ring.json",
         "metallic": 0.38,
         "modelName": "Characters/false_king_slime/false_king_crown",
         "myEventID": -1,
@@ -59700,14 +59700,14 @@
                 "components": {
                     "MeshEffect": {
                         "_editorPresent": true,
-                        "primary": "Resources/json/effect/effect_crown_aura_ring.json",
-                        "secondary": "Resources/json/effect/effect_crown_ray_plane.json",
+                        "primary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
+                        "secondary": "Resources/json/effect/shared/effect_crown_ray_plane.json",
                         "version": 1
                     },
                     "ParticleEmitter": {
                         "_editorPresent": true,
                         "cpuParticle": "",
-                        "gpuParticle": "crown_idle_sparkle",
+                        "gpuParticle": "shared/crown_idle_sparkle",
                         "version": 1
                     }
                 },
@@ -59719,7 +59719,7 @@
                 "envIntensity": 0.550000011920929,
                 "eventID": 0,
                 "gimmickType": "",
-                "gpuParticleName": "crown_idle_sparkle",
+                "gpuParticleName": "shared/crown_idle_sparkle",
                 "isLocked": false,
                 "isStatic": true,
                 "itemType": "",
@@ -59755,8 +59755,8 @@
                 },
                 "materialType": 0,
                 "meshDrawIndex": -1,
-                "meshEffect1": "Resources/json/effect/effect_crown_aura_ring.json",
-                "meshEffect2": "Resources/json/effect/effect_crown_ray_plane.json",
+                "meshEffect1": "Resources/json/effect/shared/effect_crown_aura_ring.json",
+                "meshEffect2": "Resources/json/effect/shared/effect_crown_ray_plane.json",
                 "metallic": 0.0,
                 "modelName": "Stages/crown",
                 "myEventID": -1,
@@ -65425,14 +65425,14 @@
                 "components": {
                     "MeshEffect": {
                         "_editorPresent": true,
-                        "primary": "Resources/json/effect/effect_crown_aura_ring.json",
-                        "secondary": "Resources/json/effect/effect_crown_ray_plane.json",
+                        "primary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
+                        "secondary": "Resources/json/effect/shared/effect_crown_ray_plane.json",
                         "version": 1
                     },
                     "ParticleEmitter": {
                         "_editorPresent": true,
                         "cpuParticle": "",
-                        "gpuParticle": "crown_idle_sparkle",
+                        "gpuParticle": "shared/crown_idle_sparkle",
                         "version": 1
                     }
                 },
@@ -65444,7 +65444,7 @@
                 "envIntensity": 0.550000011920929,
                 "eventID": 0,
                 "gimmickType": "",
-                "gpuParticleName": "crown_idle_sparkle",
+                "gpuParticleName": "shared/crown_idle_sparkle",
                 "isLocked": false,
                 "isStatic": true,
                 "itemType": "",
@@ -65480,8 +65480,8 @@
                 },
                 "materialType": 0,
                 "meshDrawIndex": -1,
-                "meshEffect1": "Resources/json/effect/effect_crown_aura_ring.json",
-                "meshEffect2": "Resources/json/effect/effect_crown_ray_plane.json",
+                "meshEffect1": "Resources/json/effect/shared/effect_crown_aura_ring.json",
+                "meshEffect2": "Resources/json/effect/shared/effect_crown_ray_plane.json",
                 "metallic": 0.0,
                 "modelName": "Stages/crown",
                 "myEventID": -1,
@@ -131327,14 +131327,14 @@
         "components": {
             "MeshEffect": {
                 "_editorPresent": true,
-                "primary": "Resources/json/effect/effect_crown_aura_ring.json",
-                "secondary": "Resources/json/effect/effect_crown_ray_plane.json",
+                "primary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
+                "secondary": "Resources/json/effect/shared/effect_crown_ray_plane.json",
                 "version": 1
             },
             "ParticleEmitter": {
                 "_editorPresent": true,
                 "cpuParticle": "",
-                "gpuParticle": "crown_idle_sparkle",
+                "gpuParticle": "shared/crown_idle_sparkle",
                 "version": 1
             }
         },
@@ -131346,7 +131346,7 @@
         "envIntensity": 0.550000011920929,
         "eventID": 0,
         "gimmickType": "",
-        "gpuParticleName": "crown_idle_sparkle",
+        "gpuParticleName": "shared/crown_idle_sparkle",
         "isLocked": false,
         "isStatic": true,
         "itemType": "",
@@ -131382,8 +131382,8 @@
         },
         "materialType": 0,
         "meshDrawIndex": -1,
-        "meshEffect1": "Resources/json/effect/effect_crown_aura_ring.json",
-        "meshEffect2": "Resources/json/effect/effect_crown_ray_plane.json",
+        "meshEffect1": "Resources/json/effect/shared/effect_crown_aura_ring.json",
+        "meshEffect2": "Resources/json/effect/shared/effect_crown_ray_plane.json",
         "metallic": 0.0,
         "modelName": "Stages/crown",
         "myEventID": -1,

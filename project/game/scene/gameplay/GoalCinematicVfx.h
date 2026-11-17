@@ -14,11 +14,11 @@ struct Cue {
     bool followsCrown;
 };
 
-inline constexpr Cue kFocus{"crown_focus", "Crown Focus VFX", "crown_focus_cue", "crown_focus_silver_cue", true};
-inline constexpr Cue kLanding{"crown_get", "Crown Landing VFX", "crown_get_cue", "crown_get_silver_cue", true};
-inline constexpr Cue kResult{"crown_result", "Result Burst VFX", "crown_result_cue", "crown_result_silver_cue", false};
-inline constexpr Cue kVictory{"crown_victory_land", "Victory Landing VFX", "crown_victory_land_cue",
-                              "crown_victory_land_silver_cue", false};
+inline constexpr Cue kFocus{"crown_focus", "Crown Focus VFX", "shared/crown_focus_cue", "shared/crown_focus_silver_cue", true};
+inline constexpr Cue kLanding{"crown_get", "Crown Landing VFX", "shared/crown_get_cue", "shared/crown_get_silver_cue", true};
+inline constexpr Cue kResult{"crown_result", "Result Burst VFX", "shared/crown_result_cue", "shared/crown_result_silver_cue", false};
+inline constexpr Cue kVictory{"crown_victory_land", "Victory Landing VFX", "shared/crown_victory_land_cue",
+                              "shared/crown_victory_land_silver_cue", false};
 inline constexpr std::array kCues{&kFocus, &kLanding, &kResult, &kVictory};
 
 inline const Cue* FindCue(std::string_view sequenceName) {

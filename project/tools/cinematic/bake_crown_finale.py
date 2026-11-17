@@ -10,10 +10,10 @@ sys.dont_write_bytecode = True
 from bake_crown_defeat import key, reduce_keys, ease, clamp, mix
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / 'Resources/json/scenario/crown_finale.json'
+OUT = ROOT / 'Resources/json/scenario/stage3/crown_finale.json'
 defaults = (ROOT / 'game/crown/CrownFinaleTuning.h').read_text(encoding='utf-8-sig')
 T = {k: float(v) for k, v in re.findall(r'float (\w+) = ([\d.]+)f;', defaults)}
-T.update(json.loads((ROOT / 'Resources/json/scenario/crown_finale_tuning.json').read_text(encoding='utf-8-sig')))
+T.update(json.loads((ROOT / 'Resources/json/scenario/stage3/crown_finale_tuning.json').read_text(encoding='utf-8-sig')))
 D = T['movieDuration']
 B, L, R, P, A, BODY, C, W, E, LAND = (T[k] for k in (
     'movieFragmentBreakTime', 'movieFragmentLandTime', 'movieRageTime', 'movieFragmentPullTime',
@@ -129,7 +129,7 @@ for i in range(1,len(raw)+1):
     if i<len(raw) and raw[i][16:]==raw[first][16:]: continue
     rows=reduce_keys([r[:16] for r in raw[first:i]], [.00001]+[.001]*12+[.0001,.0001]) if i-first>1 else [raw[first][:16]]
     view_keys.extend([r+raw[first][16:] for r in rows]); first=i
-asset=json.loads((ROOT/'Resources/json/scenario/crown_finale_vfx.json').read_text(encoding='utf-8-sig'))
+asset=json.loads((ROOT/'Resources/json/scenario/stage3/crown_finale_vfx.json').read_text(encoding='utf-8-sig'))
 asset.update(version=8,name='crown_finale',duration=D)
 asset['signals']=[dict(time=n*D,name=name,signal=name,payload='',enabled=True) for name,n in zip(
     ('break','land','rage','pull','absorb','body','crown','wings','escape','arrive'),(B,L,R,P,A,BODY,C,W,E,LAND))]

@@ -266,10 +266,10 @@ void PlayerMover::Update(float deltaTime) {
             engine::Vector3 effectPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
             effectPos.y += 0.08f;
             MeshEffectManager::GetInstance()->SpawnEffectAt(
-                "Resources/json/effect/effect_pink_slime_launch_kick_ring.json", effectPos, {0.0f, 0.0f, 0.0f},
+                "Resources/json/effect/player/copy/pink/effect_pink_slime_launch_kick_ring.json", effectPos, {0.0f, 0.0f, 0.0f},
                 {1.25f, 0.9f, 1.25f});
         } else {
-            EmitGroundDust("player_jump_dust", 0.035f);
+            EmitGroundDust("player/base/player_jump_dust", 0.035f);
         }
 
         // 踏み切りでは確定済みの水平速度を保ち、加速途中のジャンプで最高速へ飛ばさない。
@@ -325,7 +325,7 @@ float PlayerMover::UpdateLandingFeedback(float prePhysicsVelocityY, float deltaT
         const float impactRange = (std::max)(jumpPower - 3.5f, 1.0f);
         impactRate = std::clamp((impactSpeed - 3.5f) / impactRange, 0.0f, 1.65f);
         if (impactRate >= 0.18f && landingDustCooldown_ <= 0.0f) {
-            EmitGroundDust("player_land_dust", 0.035f);
+            EmitGroundDust("shared/player_land_dust", 0.035f);
             landingDustCooldown_ = 0.12f;
         }
     }

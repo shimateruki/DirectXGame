@@ -1,6 +1,7 @@
 #include "engine/editor/core/GameEditorController.Internal.h"
 
 #ifdef USE_IMGUI
+#include "engine/editor/assets/JsonAssetBrowser.h"
 using namespace GameEditorControllerImplementation;
 
 // ワークスペース配置の保存と復元。
@@ -181,6 +182,7 @@ void GameEditorController::SetupDefaultDockspace() {
         if (bottom && gameView && gameView->DockNode && bottom->ParentNode &&
             bottom->ParentNode == gameView->DockNode->ParentNode) {
             const ImGuiID bottomId = bottom->ID;
+            JsonAssetBrowser::SetBottomDock(bottomId);
             ImGuiDockNode* parent = bottom->ParentNode;
             const float height = parent->Size.y * 0.50f;
             ImGui::DockBuilderRemoveNodeChildNodes(bottomId);
@@ -226,29 +228,31 @@ void GameEditorController::SetupDefaultDockspace() {
 	ImGui::DockBuilderDockWindow(ICON_FA_LIST_UL " Sprite Hierarchy", dockLeftId);
 	ImGui::DockBuilderDockWindow("Inspector", dockRightId);
 	ImGui::DockBuilderDockWindow(ICON_FA_INFO_CIRCLE " Sprite Inspector", dockRightId);
+    // ファイル画面・計測・タイムラインは下段のドックを共用する。
+    JsonAssetBrowser::SetBottomDock(dockBottomId);
+    ImGui::DockBuilderDockWindow("ステータス", dockBottomId);
 	if (showEnemyAttackTimeline_) {
         ImGui::DockBuilderDockWindow("攻撃・能力プレビュー - Timeline", dockBottomId);
 		if (ImGuiDockNode* timelineNode = ImGui::DockBuilderGetNode(dockBottomId)) {
-			timelineNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit;
+			timelineNode->LocalFlags |= ImGuiDockNodeFlags_NoDockingSplit;
 		}
 	} else if (showEffectPreviewTimeline_) {
 		ImGui::DockBuilderDockWindow("エフェクトプレビュー - Timeline", dockBottomId);
 
 		if (ImGuiDockNode* timelineNode = ImGui::DockBuilderGetNode(dockBottomId)) {
-			timelineNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit;
+			timelineNode->LocalFlags |= ImGuiDockNodeFlags_NoDockingSplit;
 		}
 	} else if (showAnimationTimeline_ || showCinematicTimeline_) {
         ImGui::DockBuilderDockWindow(showAnimationTimeline_ ?
             "アニメーション制作 - Timeline" : "演出制作 - Timeline", dockBottomId);
         if (ImGuiDockNode* node = ImGui::DockBuilderGetNode(dockBottomId)) {
-            node->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit;
+            node->LocalFlags |= ImGuiDockNodeFlags_NoDockingSplit;
         }
 	} else {
         // Asset一覧は下部の横幅を使い、ログ・計測は同じ領域のタブで切り替えます。
         ImGui::DockBuilderDockWindow("Project (Assets)", dockBottomId);
         ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dockBottomId);
         ImGui::DockBuilderDockWindow("Debug Console", dockBottomId);
-        ImGui::DockBuilderDockWindow("ステータス", dockBottomId);
         ImGui::DockBuilderDockWindow("Camera Object Preview", dockBottomId);
 	}
 

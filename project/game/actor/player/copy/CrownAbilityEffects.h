@@ -97,9 +97,9 @@ public:
         if (hitCooldown_ > 0) return;
         hitCooldown_ = 0.045f;
         const float weight = stage == 2 ? 1.35f : stage == 1 ? 1.05f : 0.90f;
-        Emit("player_crown_melee_flash", position + Unit(normal)*0.07f, normal, style.particleScale*weight);
-        Emit("player_crown_melee_sparks", position, swing, style.particleScale*weight, weight);
-        if (stage == 2) Emit("player_crown_melee_shards", position, normal, style.particleScale);
+        Emit("player/copy/crown/player_crown_melee_flash", position + Unit(normal)*0.07f, normal, style.particleScale*weight);
+        Emit("player/copy/crown/player_crown_melee_sparks", position, swing, style.particleScale*weight, weight);
+        if (stage == 2) Emit("player/copy/crown/player_crown_melee_shards", position, normal, style.particleScale);
     }
     // dtは秒。遅延を含む効果の時間を進め、寿命を終えた表示物を取り除く。
     void Update(float deltaTime) {
@@ -109,7 +109,7 @@ public:
             pulse.age += deltaTime;
             if (pulse.age < 0 || pulse.age >= pulse.duration) continue;
             if (before <= 0 && pulse.fragments)
-                Emit("player_crown_melee_shards", pulse.position, pulse.normal, 1.2f);
+                Emit("player/copy/crown/player_crown_melee_shards", pulse.position, pulse.normal, 1.2f);
             const float t = pulse.age / pulse.duration;
             const float radius = pulse.size * (0.18f + 0.82f * (1 - (1-t)*(1-t)));
             pulse.visual->SetTranslate(pulse.position);

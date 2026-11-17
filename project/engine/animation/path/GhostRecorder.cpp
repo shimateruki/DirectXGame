@@ -1,3 +1,5 @@
+#include "engine/animation/cinematic/CinematicAssetPath.h"
+#include "engine/editor/assets/JsonAssetBrowser.h"
 #define NOMINMAX
 #include "GhostRecorder.h"
 #include <numbers>
@@ -1396,71 +1398,52 @@ void GhostRecorder::DrawImGui() {
 		}
 	}
 
-	static char fName[64] = "anim_path";
-	static engine::Object3D* fileTarget = nullptr;
-	if (fileTarget != target_) {
-		fileTarget = target_;
-		if (target_) {
-			const std::string assignedPath = target_->GetRecordPathName();
-			if (!assignedPath.empty() && assignedPath.size() < sizeof(fName) &&
-				std::filesystem::exists("Resources/json/animation/" + assignedPath + ".json")) {
-				strncpy_s(fName, sizeof(fName), assignedPath.c_str(), _TRUNCATE);
-				Load(fName);
-			} else {
-				// 新しい対象では、前のObjectの中継点やサンプルを引き継がない。
-				std::string newName = target_->GetName() + "_path";
-				for (char& character : newName) {
-					if (!std::isalnum(static_cast<unsigned char>(character)) && character != '_' && character != '-')
-						character = '_';
-				}
-				strncpy_s(fName, sizeof(fName), newName.c_str(), _TRUNCATE);
-				frames_.clear();
-				genParams_ = GenerationParams{};
-				genParams_.startPos = genParams_.endPos = target_->GetTranslate();
-				genParams_.startRot = genParams_.endRot = target_->GetRotation();
-				genParams_.startScale = genParams_.endScale = target_->GetScale();
-				isLocalSpace_ = false;
-			}
-			isLoop_ = target_->IsRecordLoop();
-			isRelative_ = target_->IsRecordRelative();
-		}
-	}
-
-	// -------------------------------------------------------------
-	// 1. ファイル管理
-	// -------------------------------------------------------------
-	if (ImGui::CollapsingHeader(ICON_FA_FOLDER_OPEN " ファイル管理 (File IO)", ImGuiTreeNodeFlags_DefaultOpen)) {
-		std::string dirPath = "Resources/json/animation/";
-
-		if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
-			if (ImGui::BeginCombo(ICON_FA_HISTORY " 既存データからロード", fName)) {
-				for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
-					if (entry.path().extension() == ".json") {
-						std::string fileName = entry.path().stem().string();
-						bool isSelected = (std::string(fName) == fileName);
-
-						if (ImGui::Selectable(fileName.c_str(), isSelected)) {
-							strncpy_s(fName, sizeof(fName), fileName.c_str(), _TRUNCATE);
-							Load(fName);
-						}
-
-						if (isSelected)
-							ImGui::SetItemDefaultFocus();
-					}
-				}
-
-				ImGui::EndCombo();
-			}
-		}
-
-		ImGui::InputText(ICON_FA_FILE_SIGNATURE " ファイル名", fName, sizeof(fName));
-
-		if (ImGui::Button(ICON_FA_DOWNLOAD " Save"))
-			Save(fName);
-		ImGui::SameLine();
-		if (ImGui::Button(ICON_FA_UPLOAD " Load"))
-			Load(fName);
-	}
+    namespace fs = std::filesystem;
+    const fs::path root("Resources/json/animation");
+    // Objectごとにブラウザーを持たせず、現在開いている録画ツールの表示状態だけを保持する。
+    static JsonAssetBrowser files;
+    static GhostRecorder* fileRecorder = nullptr;
+    static engine::Object3D* fileTarget = nullptr;
+    static bool attachOnSave = false;
+    auto resetPath = [this] {
+        Stop();
+        frames_.clear();
+        genParams_ = GenerationParams{};
+        if (target_) {
+            genParams_.startPos = genParams_.endPos = target_->GetTranslate();
+            genParams_.startRot = genParams_.endRot = target_->GetRotation();
+            genParams_.startScale = genParams_.endScale = target_->GetScale();
+        }
+        isLocalSpace_ = false;
+    };
+    if (fileRecorder != this || fileTarget != target_) {
+        fileRecorder = this;
+        fileTarget = target_;
+        attachOnSave = false;
+        files.SetDocument({});
+        if (target_) {
+            const auto& assigned = target_->GetRecordPathName();
+            const fs::path relative(std::u8string(assigned.begin(), assigned.end()) + u8".json");
+            const auto path = CinematicAssetPath::Resolve(root, root / relative);
+            if (!assigned.empty() && LoadFile(path)) files.SetDocument(path.lexically_relative(root));
+            else resetPath();
+            isLoop_ = target_->IsRecordLoop();
+            isRelative_ = target_->IsRecordRelative();
+        }
+    }
+    files.Draw("ゴースト録画JSONファイル", root,
+        [this](const fs::path& path) { return LoadFile(path); },
+        [this](const fs::path& path, const std::string&) { return SaveFile(path); },
+        resetPath,
+        [this](const fs::path& relative) {
+            if (!attachOnSave || !target_) return;
+            auto path = relative;
+            const auto key = path.replace_extension().generic_u8string();
+            target_->SetRecordPathName(std::string(key.begin(), key.end()));
+            target_->SetRecordRelative(isRelative_);
+            target_->SetRecordLoop(isLoop_);
+            attachOnSave = false;
+        });
 
 	ImGui::Separator();
 
@@ -1684,7 +1667,7 @@ void GhostRecorder::DrawImGui() {
 			ImGui::TextDisabled("各点の到達時間は、その点から次の点までの移動時間です。");
 
 			// パス生成実行ロジック (クォータニオン対応)
-			if (ImGui::Button(ICON_FA_MAGIC " 生成実行 (Generate & AutoSave)", ImVec2(-1, 40))) {
+			if (ImGui::Button(ICON_FA_MAGIC " 経路を生成して保存先を選択", ImVec2(-1, 40))) {
 				frames_.clear();
 				FindAnchor();
 
@@ -1774,21 +1757,10 @@ void GhostRecorder::DrawImGui() {
 
 				isRelative_ = genParams_.generateRelative;
 				Stop();
-				Save(fName);
-				target_->SetRecordPathName(fName);
-				target_->SetRecordRelative(isRelative_);
-				target_->SetRecordLoop(isLoop_);
-				ImGui::OpenPopup("Done");
-			}
-
-			if (ImGui::BeginPopupModal("Done", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::Text("生成＆セーブ完了!");
-
-				if (ImGui::Button("OK", ImVec2(120, 0))) {
-					ImGui::CloseCurrentPopup();
-				}
-				ImGui::EndPopup();
-			}
+                attachOnSave = true;
+                const auto stem = files.GetDocument().stem().u8string();
+                files.RequestSaveAs(stem.empty() ? "anim_path" : std::string(stem.begin(), stem.end()));
+            }
 		}
 	}
 
@@ -1828,9 +1800,11 @@ void GhostRecorder::DrawImGui() {
 
 		ImGui::SameLine();
 
-		if (ImGui::Button(ICON_FA_FILM " ファイルからPlay")) {
+		if (!files.GetDocument().empty() && ImGui::Button(ICON_FA_FILM " ファイルからPlay")) {
 			bool isCinematic = target_->IsCameraObject();
-			Play(fName, isLoop_, isRelative_, isCinematic);
+			auto relative = files.GetDocument();
+            const auto key = relative.replace_extension().generic_u8string();
+            Play(std::string(key.begin(), key.end()), isLoop_, isRelative_, isCinematic);
 		}
 	}
 
@@ -1854,10 +1828,10 @@ void GhostRecorder::DrawImGui() {
 #endif
 }
 
-void GhostRecorder::Save(const std::string& fileName) {
+bool GhostRecorder::SaveFile(const std::filesystem::path& path) const {
 	// 再生用フレームと編集用の経路設定を同じ JSON に保存する。
 	if (frames_.empty())
-		return;
+		return false;
 	json root;
 	root["frames"] = json::array();
 
@@ -1912,34 +1886,38 @@ void GhostRecorder::Save(const std::string& fileName) {
 	root["localSpace"] = isLocalSpace_;
 
 
-	std::string path = "Resources/json/animation/" + fileName + ".json";
-	std::ofstream file(path);
-
-	if (file.is_open()) {
-		file << root.dump(4);
-		file.close();
-	}
+    std::ofstream file(path);
+    file << root.dump(4);
+    file.close();
+    return file.good();
 }
 
 void GhostRecorder::Load(const std::string& fileName) {
-	std::string path = "Resources/json/animation/" + fileName + ".json";
+    const std::filesystem::path relative(std::u8string(fileName.begin(), fileName.end()) + u8".json");
+    const std::filesystem::path root("Resources/json/animation");
+    LoadFile(CinematicAssetPath::Resolve(root, root / relative));
+}
+
+bool GhostRecorder::LoadFile(const std::filesystem::path& path) try {
 	std::ifstream file(path);
 	if (!file.is_open())
-		return;
+		return false;
 	json root;
 	file >> root;
-	frames_.clear();
+	if (!root.contains("frames") || !root["frames"].is_array()) return false;
+	std::vector<GhostFrame> loadedFrames;
+	auto settings = genParams_;
+	bool relative = isRelative_;
+	std::string anchorName;
 
 	if (root.contains("anchorName")) {
 		// 保存するのは名前だけ。以前のSceneのObjectポインタは使わず、読込後に接続し直す。
-		anchorName_ = root["anchorName"].get<std::string>();
-		anchor_ = nullptr;
+		anchorName = root["anchorName"].get<std::string>();
 	}
 	else {
-		anchorName_ = "";
-		anchor_ = nullptr;
+		anchorName = "";
 	}
-	isLocalSpace_ = root.value("localSpace", false);
+	const bool local = root.value("localSpace", false);
 	if (root.contains("frames")) {
 		for (const auto& j : root["frames"]) {
 			GhostFrame f;
@@ -1954,7 +1932,7 @@ void GhostRecorder::Load(const std::string& fileName) {
 			}
 
 			f.eventId = j.value("eventID", 0);
-			frames_.push_back(f);
+			loadedFrames.push_back(f);
 		}
 	}
 
@@ -1962,52 +1940,52 @@ void GhostRecorder::Load(const std::string& fileName) {
 		const auto& pj = root["genParams"];
 
 		if (pj.contains("startPos"))
-			genParams_.startPos = { pj["startPos"][0], pj["startPos"][1], pj["startPos"][2] };
+			settings.startPos = { pj["startPos"][0], pj["startPos"][1], pj["startPos"][2] };
 		if (pj.contains("startRot"))
-			genParams_.startRot = { pj["startRot"][0], pj["startRot"][1], pj["startRot"][2] };
+			settings.startRot = { pj["startRot"][0], pj["startRot"][1], pj["startRot"][2] };
 		if (pj.contains("startScale")) {
-			genParams_.startScale = { pj["startScale"][0], pj["startScale"][1], pj["startScale"][2] };
+			settings.startScale = { pj["startScale"][0], pj["startScale"][1], pj["startScale"][2] };
 		}
 		else {
-			genParams_.startScale = { 1.0f, 1.0f, 1.0f };
+			settings.startScale = { 1.0f, 1.0f, 1.0f };
 		}
 
-		genParams_.startEventId = pj.value("startEventID", 0);
-		genParams_.startWaitTime = pj.value("startWaitTime", 0.0f);
+		settings.startEventId = pj.value("startEventID", 0);
+		settings.startWaitTime = pj.value("startWaitTime", 0.0f);
 
 
 		if (pj.contains("endPos"))
-			genParams_.endPos = { pj["endPos"][0], pj["endPos"][1], pj["endPos"][2] };
+			settings.endPos = { pj["endPos"][0], pj["endPos"][1], pj["endPos"][2] };
 		if (pj.contains("endRot"))
-			genParams_.endRot = { pj["endRot"][0], pj["endRot"][1], pj["endRot"][2] };
+			settings.endRot = { pj["endRot"][0], pj["endRot"][1], pj["endRot"][2] };
 		if (pj.contains("endScale")) {
-			genParams_.endScale = { pj["endScale"][0], pj["endScale"][1], pj["endScale"][2] };
+			settings.endScale = { pj["endScale"][0], pj["endScale"][1], pj["endScale"][2] };
 		}
 		else {
-			genParams_.endScale = { 1.0f, 1.0f, 1.0f };
+			settings.endScale = { 1.0f, 1.0f, 1.0f };
 		}
 
 		if (pj.contains("anchorOffsetPos")) {
-			genParams_.anchorOffsetPos = { pj["anchorOffsetPos"][0], pj["anchorOffsetPos"][1], pj["anchorOffsetPos"][2] };
+			settings.anchorOffsetPos = { pj["anchorOffsetPos"][0], pj["anchorOffsetPos"][1], pj["anchorOffsetPos"][2] };
 		}
 		else {
-			genParams_.anchorOffsetPos = { 0.0f, 0.0f, 0.0f };
+			settings.anchorOffsetPos = { 0.0f, 0.0f, 0.0f };
 		}
 
 		if (pj.contains("anchorOffsetRot")) {
-			genParams_.anchorOffsetRot = { pj["anchorOffsetRot"][0], pj["anchorOffsetRot"][1], pj["anchorOffsetRot"][2] };
+			settings.anchorOffsetRot = { pj["anchorOffsetRot"][0], pj["anchorOffsetRot"][1], pj["anchorOffsetRot"][2] };
 		}
 		else {
-			genParams_.anchorOffsetRot = { 0.0f, 0.0f, 0.0f };
+			settings.anchorOffsetRot = { 0.0f, 0.0f, 0.0f };
 		}
 
-		genParams_.endEventId = pj.value("endEventID", 0);
-		genParams_.endWaitTime = pj.value("endWaitTime", 0.0f);
-		genParams_.startDurationToNext = pj.value("startDurationToNext", 1.0f);
-		genParams_.startEasingToNext = pj.value("startEasingToNext", 0);
+		settings.endEventId = pj.value("endEventID", 0);
+		settings.endWaitTime = pj.value("endWaitTime", 0.0f);
+		settings.startDurationToNext = pj.value("startDurationToNext", 1.0f);
+		settings.startEasingToNext = pj.value("startEasingToNext", 0);
 
 		if (pj.contains("waypoints") && pj["waypoints"].is_array()) {
-			genParams_.waypoints.clear();
+			settings.waypoints.clear();
 
 			for (const auto& wj : pj["waypoints"]) {
 				GenerationParams::Waypoint wp;
@@ -2025,21 +2003,30 @@ void GhostRecorder::Load(const std::string& fileName) {
 				wp.waitTime = wj.value("waitTime", 0.0f);
 				wp.durationToNext = wj.value("durationToNext", 1.0f);
 				wp.easingToNext = wj.value("easingToNext", 0);
-				genParams_.waypoints.push_back(wp);
+				settings.waypoints.push_back(wp);
 			}
 		}
 
 		if (pj.contains("useSpline"))
-			genParams_.useSpline = pj["useSpline"];
+			settings.useSpline = pj["useSpline"];
 
 
 		if (pj.contains("generateRelative")) {
-			genParams_.generateRelative = pj["generateRelative"];
-			isRelative_ = genParams_.generateRelative;
+			settings.generateRelative = pj["generateRelative"];
+			relative = settings.generateRelative;
 		}
 
 
 	}
+    frames_ = std::move(loadedFrames);
+    genParams_ = std::move(settings);
+    anchorName_ = std::move(anchorName);
+    anchor_ = nullptr;
+    isLocalSpace_ = local;
+    isRelative_ = relative;
+    return true;
+} catch (const std::exception&) {
+    return false;
 }
 
 void GhostRecorder::EvaluateAtFrame(int frameIndex) {

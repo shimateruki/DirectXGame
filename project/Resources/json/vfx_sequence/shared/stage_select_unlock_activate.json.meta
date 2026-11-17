@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "d478e97b62af014c14267bc2331b057e",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/vfx_sequence/shared/stage_select_unlock_activate.json",
+  "version": 1
+}

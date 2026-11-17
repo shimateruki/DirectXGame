@@ -22,7 +22,7 @@ namespace {
 constexpr float kDefaultBossRevealDelay = 0.72f;
 constexpr int kDefaultBarrierCount = 4;
 constexpr int kHighCrownActionMode = 2;
-constexpr const char* kHighCrownReleaseSequence = "false_king_defeat_reward_cue";
+constexpr const char* kHighCrownReleaseSequence = "shared/false_king_defeat_reward_cue";
 } // namespace
 
 void GimmickArenaEncounter::Initialize(engine::Object3DCommon* common, const std::string& modelName) {

@@ -806,12 +806,13 @@ def build_loop_path_frames(
 def write_stage1_v4_ghost_paths() -> None:
     """導入区画の三つの移動床PathとAssetメタ情報を同時に保存する。"""
     path_specs = {
-        "stage1_v4_moving_intro_a": build_loop_path_frames(0, -9.0, 9.0, 4.2, -math.pi * 0.5),
-        "stage1_v4_moving_intro_b": build_loop_path_frames(2, -8.5, 8.5, 4.8, 0.0),
-        "stage1_v4_moving_intro_c": build_loop_path_frames(1, 0.0, 4.0, 4.0, -math.pi * 0.5),
+        "stage1/stage1_v4_moving_intro_a": build_loop_path_frames(0, -9.0, 9.0, 4.2, -math.pi * 0.5),
+        "stage1/stage1_v4_moving_intro_b": build_loop_path_frames(2, -8.5, 8.5, 4.8, 0.0),
+        "stage1/stage1_v4_moving_intro_c": build_loop_path_frames(1, 0.0, 4.0, 4.0, -math.pi * 0.5),
     }
     for name, frames in path_specs.items():
         path = ANIMATION_ROOT / f"{name}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
         write_json(path, {
             "anchorName": "",
             "frames": frames,
@@ -837,7 +838,7 @@ def write_stage1_v4_ghost_paths() -> None:
         })
         write_json(path.with_suffix(path.suffix + ".meta"), {
             "assetType": "JSON",
-            "guid": uuid.uuid5(GUID_NAMESPACE, f"animation/{name}").hex,
+            "guid": uuid.uuid5(GUID_NAMESPACE, f"animation/{Path(name).name}").hex,
             "importSettings": {},
             "importer": "JsonImporter",
             "source": f"Resources/json/animation/{name}.json",

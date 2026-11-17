@@ -22,8 +22,8 @@ struct AttackProjectileComponent {
     float radius = 0.5f, lifetime = 2.65f, minSpeed = 15, maxSpeed = 28, damage = 1;
     float visualScale = 1.2f;
     AttackFireAppearance appearance;
-    std::string trail = "fireball_trail_flame", secondaryTrail = "fireball_trail_embers";
-    std::string impact = "fireball_impact_flame", secondaryImpact = "fireball_impact_sparks";
+    std::string trail = "shared/fireball_trail_flame", secondaryTrail = "shared/fireball_trail_embers";
+    std::string impact = "shared/fireball_impact_flame", secondaryImpact = "shared/fireball_impact_sparks";
 
     bool Validate() const {
         // 未設定の弾は使わず、有効時だけ描画値と速度の範囲を検証する。

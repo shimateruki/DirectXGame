@@ -1,3 +1,4 @@
+#include "engine/graphics/effect/VfxAssetPath.h"
 #include "MeshEffectManager.h"
 #include <numbers>
 #include "ModelManager.h"
@@ -30,7 +31,8 @@ bool LoadEffectJsonCached(const std::string& jsonFilePath, json& outJson) {
     static std::unordered_map<std::string, EffectJsonCacheEntry> cache;
 
     std::error_code ec;
-    const auto writeTime = std::filesystem::last_write_time(jsonFilePath, ec);
+    const auto path = VfxAssetPath::ResolveDependency(std::filesystem::path(std::u8string(jsonFilePath.begin(), jsonFilePath.end())));
+    const auto writeTime = std::filesystem::last_write_time(path, ec);
     const bool hasWriteTime = !ec;
 
     auto it = cache.find(jsonFilePath);
@@ -40,7 +42,7 @@ bool LoadEffectJsonCached(const std::string& jsonFilePath, json& outJson) {
         return true;
     }
 
-    std::ifstream file(jsonFilePath);
+    std::ifstream file(path);
 
     if (!file.is_open()) {
         return false;

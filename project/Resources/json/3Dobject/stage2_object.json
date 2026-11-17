@@ -6576,8 +6576,8 @@
             "components": {
                 "MeshEffect": {
                     "_editorPresent": true,
-                    "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-                    "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
+                    "primary": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+                    "secondary": "Resources/json/effect/shared/effect_crown_aura_ring.json",
                     "version": 1
                 }
             },
@@ -6625,8 +6625,8 @@
             },
             "materialType": 0,
             "meshDrawIndex": -1,
-            "meshEffect1": "Resources/json/effect/effect_crown_idle_shell.json",
-            "meshEffect2": "Resources/json/effect/effect_crown_aura_ring.json",
+            "meshEffect1": "Resources/json/effect/shared/effect_crown_idle_shell.json",
+            "meshEffect2": "Resources/json/effect/shared/effect_crown_aura_ring.json",
             "metallic": 0.3799999952316284,
             "modelName": "Stages/crown",
             "myEventID": -1,
@@ -11729,7 +11729,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage2_escape_grate_ferry_a",
+                    "path": "stage2/stage2_escape_grate_ferry_a",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": true,
@@ -11838,7 +11838,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage2_escape_grate_ferry_a"
+                "recordPathName": "stage2/stage2_escape_grate_ferry_a"
             },
             "rotation": [
                 0.0,
@@ -12096,7 +12096,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage2_escape_grate_ferry_b",
+                    "path": "stage2/stage2_escape_grate_ferry_b",
                     "phaseOffset": 0.5,
                     "playbackMode": "always",
                     "relative": true,
@@ -12205,7 +12205,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage2_escape_grate_ferry_b"
+                "recordPathName": "stage2/stage2_escape_grate_ferry_b"
             },
             "rotation": [
                 0.0,
@@ -13863,7 +13863,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage2_escape_final_ferry_a",
+                    "path": "stage2/stage2_escape_final_ferry_a",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": true,
@@ -13972,7 +13972,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage2_escape_final_ferry_a"
+                "recordPathName": "stage2/stage2_escape_final_ferry_a"
             },
             "rotation": [
                 0.0,
@@ -14230,7 +14230,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage2_escape_final_ferry_b",
+                    "path": "stage2/stage2_escape_final_ferry_b",
                     "phaseOffset": 0.47999998927116394,
                     "playbackMode": "always",
                     "relative": true,
@@ -14339,7 +14339,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": true,
-                "recordPathName": "stage2_escape_final_ferry_b"
+                "recordPathName": "stage2/stage2_escape_final_ferry_b"
             },
             "rotation": [
                 0.0,
@@ -30979,7 +30979,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": " Moving bed 1",
+                    "path": "stage2/ Moving bed 1",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": false,
@@ -31088,7 +31088,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": false,
-                "recordPathName": " Moving bed 1"
+                "recordPathName": "stage2/ Moving bed 1"
             },
             "rotation": [
                 -0.0,
@@ -31164,7 +31164,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": " Moving bed 2",
+                    "path": "stage2/ Moving bed 2",
                     "phaseOffset": 0.0,
                     "playbackMode": "always",
                     "relative": false,
@@ -31273,7 +31273,7 @@
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": false,
-                "recordPathName": " Moving bed 2"
+                "recordPathName": "stage2/ Moving bed 2"
             },
             "rotation": [
                 0.0,

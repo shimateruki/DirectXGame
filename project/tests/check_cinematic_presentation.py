@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('legacy_bake',ROOT/'tools/cinematic/bake_crown_defeat.py')
 legacy=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(legacy)
-asset=json.loads((ROOT/'Resources/json/scenario/crown_defeat.json').read_text(encoding='utf-8'))
+asset=json.loads((ROOT/'Resources/json/scenario/stage3/crown_defeat.json').read_text(encoding='utf-8'))
 
 
 def sample(rows,time,discrete=()):

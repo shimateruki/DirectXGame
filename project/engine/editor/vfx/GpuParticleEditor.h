@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/editor/assets/JsonAssetBrowser.h"
 #include "GpuParticleConfig.h"
 #include "GpuParticleManager.h"
 #include "IEditable.h"
@@ -20,20 +21,19 @@ void Update(float deltaTime, bool sceneIsPlaying = false);
 void DrawImGui() override;
 
     // Preview Stageの一時座標は保存せず、実行設定だけを共通形式へ変換する。
-    void Save(const std::string& presetName);
+    bool Save(const std::filesystem::path& path);
 
     // 指定名のプリセットを編集用設定へ読み込む。
-    void Load(const std::string& presetName);
+    bool Load(const std::filesystem::path& path);
 
     std::string GetName() override { return "GPU Particle Editor"; }
 
 private:
+    JsonAssetBrowser files_;
     GpuParticleConfig config_;
 
     // Editor内プレビューと保存名入力の状態。
     float emitTimer_ = 0.0f;
-    char presetNameInput_[64] = "FirePreset";
-    char presetSearch_[128] = {};
     char textureSearch_[128] = {};
     bool isPreviewMode_ = true;
     float previewDistance_ = 5.0f;

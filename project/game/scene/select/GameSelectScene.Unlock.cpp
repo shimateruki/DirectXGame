@@ -25,15 +25,15 @@ void GameSelectScene::BeginUnlockPresentation() {
     // 鍵・錠の色、発光、表示は Director の見た目キーが管理する。
 
     // ゲート固有の開通状態に必要な2つの節目だけを Signal から読み取る。
-    unlockTimelineLoaded_ = unlockSequence_.Load("Resources/json/scenario/stage_select_unlock_" +
-                                                 std::to_string(unlockingStageIndex_) + ".json");
+    unlockTimelineLoaded_ = unlockPlayer_.Load("Resources/json/scenario/stage_select/stage_select_unlock_" +
+                                               std::to_string(unlockingStageIndex_) + ".json",
+                                               SceneManager::GetInstance());
     if (unlockTimelineLoaded_) {
-        unlockPlayer_.Initialize(SceneManager::GetInstance());
-        unlockPlayer_.SetBindingResolver({});
-        unlockPlayer_.SetSequence(&unlockSequence_);
-        auto issues = unlockPlayer_.ValidateBindings();
-        auto signalTime = [this, &issues](const char* name) {
-            for (const auto& signal : unlockSequence_.signals) {
+        const auto* sequence = unlockPlayer_.GetSequence();
+        // ゲーム固有の節目と役割だけを確認し、対象の共通検証はPrepareへ任せる。
+        std::vector<std::string> issues;
+        auto signalTime = [sequence, &issues](const char* name) {
+            for (const auto& signal : sequence->signals) {
                 if (signal.enabled && signal.signal == name) {
                     return signal.time;
                 }
@@ -43,8 +43,8 @@ void GameSelectScene::BeginUnlockPresentation() {
         };
         unlockGateActivationTime_ = signalTime("gate_activate");
         unlockGateActivationEndTime_ = signalTime("gate_active_full");
-        const auto hasTrack = [this](const engine::Object3D* object) {
-            return object && std::any_of(unlockSequence_.transformTracks.begin(), unlockSequence_.transformTracks.end(),
+        const auto hasTrack = [sequence](const engine::Object3D* object) {
+            return object && std::any_of(sequence->transformTracks.begin(), sequence->transformTracks.end(),
                                          [object](const CinematicTransformTrack& track) {
                                              return track.enabled && !track.muted &&
                                                     track.binding.targetName == object->GetName();
@@ -54,15 +54,15 @@ void GameSelectScene::BeginUnlockPresentation() {
             issues.emplace_back("鍵または南京錠の Transform Track が対象ステージを指していません。");
         }
         for (const auto* object : {unlockKeyObject_, unlockLockObject_}) {
-            if (!object || !std::any_of(unlockSequence_.presentation.objects.begin(),
-                    unlockSequence_.presentation.objects.end(), [object](const CinematicObjectClip& clip) {
+            if (!object || !std::any_of(sequence->presentation.objects.begin(),
+                    sequence->presentation.objects.end(), [object](const CinematicObjectClip& clip) {
                         return clip.enabled && !clip.spawn && clip.name == object->GetName();
                     })) {
                 issues.emplace_back("鍵または錠の見た目トラックがありません。");
             }
         }
         const std::string cameraName = "StageSelect_UnlockCamera_" + std::to_string(unlockingStageIndex_);
-        if (!std::any_of(unlockSequence_.cameraShots.begin(), unlockSequence_.cameraShots.end(),
+        if (!std::any_of(sequence->cameraShots.begin(), sequence->cameraShots.end(),
                          [&cameraName](const CinematicCameraShot& shot) {
                              return shot.enabled && !shot.muted && shot.binding.targetName == cameraName;
                          })) {
@@ -73,6 +73,8 @@ void GameSelectScene::BeginUnlockPresentation() {
             for (const auto& issue : issues) {
                 DebugConsole::GetInstance()->AddLog("Stage Select unlock timeline: " + issue);
             }
+        } else {
+            unlockTimelineLoaded_ = unlockPlayer_.Prepare();
         }
     } else {
         DebugConsole::GetInstance()->AddLog("Stage Select: unlock timeline missing; presentation canceled for retry.");
@@ -101,7 +103,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         return;
     }
 
-    unlockPlayer_.Play(false);
+    unlockPlayer_.Play(false, &unlockTime_);
     stageDecisionCooldown_ = unlockPlayer_.GetDuration() + 0.25f;
     DebugConsole::GetInstance()->AddLog("Stage Select: crown key unlock cinematic start.");
 }
@@ -133,8 +135,7 @@ void GameSelectScene::StartDebugUnlockPresentation(int stageIndex) {
     unlockPresentationDebugReplay_ = true;
     unlockPresentationInitialized_ = false;
     unlockingStageIndex_ = stageIndex;
-    unlockPresentationTimer_ = 0.0f;
-    unlockParticleTimer_ = 0.0f;
+    unlockTime_ = {};
     selectedStageIndex_ = stageIndex;
     ApplyStageGateStates();
     DebugConsole::GetInstance()->AddLog("Stage Select: debug crown unlock cinematic requested.");
@@ -152,8 +153,6 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         return;
     }
     unlockPlayer_.Update(deltaTime);
-    unlockPresentationTimer_ = unlockPlayer_.GetCurrentTime();
-    unlockParticleTimer_ -= deltaTime;
     selectedStageIndex_ = unlockingStageIndex_;
 
     if (player_) {
@@ -161,7 +160,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
 
-    if (unlockPresentationTimer_ >= unlockPlayer_.GetDuration()) {
+    if (unlockTime_.Elapsed() >= unlockPlayer_.GetDuration()) {
         FinishUnlockPresentation();
     }
 }
@@ -183,8 +182,7 @@ void GameSelectScene::FinishUnlockPresentation(bool markSeen) {
 
     // 次の解放演出へ対象ポインタと再生時計を引き継がないよう初期化する。
     unlockingStageIndex_ = -1;
-    unlockPresentationTimer_ = 0.0f;
-    unlockParticleTimer_ = 0.0f;
+    unlockTime_ = {};
     unlockPresentationInitialized_ = false;
     unlockTargetGate_ = nullptr;
     unlockKeyObject_ = nullptr;

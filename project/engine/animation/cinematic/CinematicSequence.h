@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <filesystem>
 
 namespace engine {
 
@@ -37,6 +38,7 @@ struct CinematicTransformTrack {
 // 関連：CinematicSequence（この型を使う機能の本体）
 struct CinematicVfxTrackData {
     std::string name;
+    std::string startSignal; // 空なら開始秒数を使用。指定時は同名Signalの時刻へ追従する。
     CinematicObjectBinding binding;
     std::string sequenceName;
     float startTime = 0.0f; // シーケンス先頭からの開始秒数。
@@ -139,16 +141,18 @@ class CinematicSequence {
 
     // ゲーム処理と見た目で同じSignal時刻を使い、別のタイマー設定を持たない。
     float GetSignalTime(const std::string& name, float fallback = 0.0f) const;
+    // VFXの開始時刻を再生・尺の計算・Editor表示で共有する。
+    float GetVfxStartTime(const CinematicVfxTrackData& track) const;
 
     /// <summary>現在のシーケンスを JSON ファイルへ保存します。</summary>
     /// <param name="filePath">保存先のファイルパス。</param>
     /// <returns>ファイルを開いて保存できた場合は true。</returns>
-    bool Save(const std::string& filePath) const;
+    bool Save(const std::filesystem::path& filePath) const;
 
     /// <summary>JSON ファイルを読み込み、各トラックの時刻順を整えます。</summary>
     /// <param name="filePath">読み込むファイルパス。</param>
     /// <returns>読み込みと形式の検証に成功した場合は true。</returns>
-    bool Load(const std::string& filePath);
+    bool Load(const std::filesystem::path& filePath);
 
     int version = kCurrentVersion;
     std::string name = "cinematic_sequence";

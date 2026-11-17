@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include "Object3D.h"
 #include "engine/utility/math/Math.h"
 #include "IEditable.h"
@@ -117,10 +118,13 @@ public:
 
     /// <summary>メモリ上の記録と生成パラメータをResources/json/animationへ保存する。</summary>
     /// <remarks>記録が空、またはファイルを開けない場合は保存しない。</remarks>
-    void Save(const std::string& fileName);
+    bool SaveFile(const std::filesystem::path& path) const;
 
     /// <summary>同じ場所のJSONを読み込む。ファイルがなければ現在の記録を維持する。</summary>
     void Load(const std::string& fileName);
+
+    // 読み込み成功時だけ再生フレームと経路設定を差し替える。
+    bool LoadFile(const std::filesystem::path& path);
 
     int GetTotalFrames() const { return static_cast<int>(frames_.size()); }
 

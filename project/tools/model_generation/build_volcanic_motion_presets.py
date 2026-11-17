@@ -24,7 +24,7 @@ def main():
             keys=[dict(time=t,position=p,rotation=r,scale=[1,1,1],easingToNext=3 if key in ('slide','lift') else 0)
                   for t,p,r in poses])])
         # 回転は90度ずつ記録し、Quaternion補間で一周が消える問題を避ける。
-        (ROOT/'Resources/json/scenario'/f'{name}.json').write_text(
+        (ROOT/'Resources/json/scenario/samples'/f'{name}.json').write_text(
             json.dumps(data,ensure_ascii=False,indent=4)+'\n',encoding='utf-8')
     path=ROOT/'Resources/json/preset/presets.json'
     presets=json.loads(path.read_text(encoding='utf-8-sig'))

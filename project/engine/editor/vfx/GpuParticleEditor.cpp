@@ -568,58 +568,11 @@ void GpuParticleEditor::DrawImGui() {
 
     ImGui::Separator();
 
-    // 💾 保存と読み込み
-    if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // 保存先JSONを毎回列挙し、名前入力とギャラリーを同じプリセット群に揃える。
-        std::string dirPath = "Resources/json/gpu_particles/";
-        std::vector<std::string> presetList;
-
-        if (std::filesystem::exists(dirPath)) {
-            for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
-                if (entry.path().extension() == ".json") {
-                    presetList.push_back(entry.path().stem().string());
-                }
-            }
-        }
-
-        std::sort(presetList.begin(), presetList.end());
-        int selectedIndex = -1;
-
-        for (int i = 0; i < static_cast<int>(presetList.size()); ++i) {
-            if (presetList[i] == presetNameInput_) {
-                selectedIndex = i;
-                break;
-            }
-        }
-
-        if (VfxAssetPicker::DrawCombo(ICON_FA_FOLDER_OPEN " 保存済みGPU設定", presetList,
-                                      selectedIndex, presetSearch_, sizeof(presetSearch_))) {
-            strcpy_s(presetNameInput_, sizeof(presetNameInput_), presetList[selectedIndex].c_str());
-        }
-
-        if (presetList.empty())
-            ImGui::TextDisabled("保存済み設定はありません");
-        ImGui::TextDisabled("一覧の選択は名前だけを変更します。読み込み後にプレビューできます。");
-
-        if (selectedIndex >= 0 && ImGui::Button(ICON_FA_PLAY " 選択した設定をプレビュー")) {
-            Load(presetList[selectedIndex]);
-            EmitWithPreview();
-        }
-
-        ImGui::Separator();
-
-        ImGui::InputText(ICON_FA_FILE_SIGNATURE " プリセット名", presetNameInput_, sizeof(presetNameInput_));
-
-        if (ImGui::Button(ICON_FA_DOWNLOAD " 保存 (Save)", ImVec2(120, 0))) {
-            Save(presetNameInput_);
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button(ICON_FA_UPLOAD " 読み込み (Load)", ImVec2(120, 0))) {
-            Load(presetNameInput_);
-        }
-    }
+    files_.Draw("GPUパーティクルJSONファイル", "Resources/json/gpu_particles",
+        [this](const std::filesystem::path& path) { return Load(path); },
+        [this](const std::filesystem::path& path, const std::string&) { return Save(path); },
+        [this] { config_ = GpuParticleConfig{}; });
+    if (ImGui::Button(ICON_FA_PLAY " 現在の設定をプレビュー")) EmitWithPreview();
 
     ImGui::Separator();
 
@@ -705,59 +658,49 @@ void GpuParticleEditor::EmitWithPreview() {
     GpuParticleManager::GetInstance()->EmitFromConfig(tempConfig);
 }
 
-void GpuParticleEditor::Save(const std::string& presetName) {
-    // Preview Stageの一時座標は保存せず、実行設定だけを共通形式へ変換する。
-    const json j = GpuParticlePresetJsonCodec::Write(config_);
-
-    std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
-    std::ofstream file(filepath);
-    if (file.is_open()) {
-        file << j.dump(4);
-        file.close();
-
-        if (DebugConsole::GetInstance()) {
-            DebugConsole::GetInstance()->AddLog("Saved GPU Particle Preset: " + presetName);
-        }
-    }
+bool GpuParticleEditor::Save(const std::filesystem::path& path) {
+    // プレビュー中の座標は保存せず、既存のプリセット形式へ変換する。
+    std::ofstream file(path);
+    file << GpuParticlePresetJsonCodec::Write(config_).dump(4);
+    file.close();
+    return file.good();
 }
 
-void GpuParticleEditor::Load(const std::string& presetName) {
-    std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
-    std::ifstream file(filepath);
+bool GpuParticleEditor::Load(const std::filesystem::path& path) {
+    std::ifstream file(path);
+    if (!file) return false;
 
-    if (file.is_open()) {
-        json j;
-        file >> j;
-        file.close();
-
+    nlohmann::json j;
+    file >> j;
+    auto loaded = config_;
+    {
         // 旧プリセットで省略された項目は、従来どおりEditor用の既定値へ戻す。
         const GpuParticleConfig defaults;
-        config_.spriteSheetColumns = defaults.spriteSheetColumns;
-        config_.spriteSheetRows = defaults.spriteSheetRows;
-        config_.spriteSheetFrameCount = defaults.spriteSheetFrameCount;
-        config_.spriteSheetFps = defaults.spriteSheetFps;
-        config_.spriteSheetLoop = defaults.spriteSheetLoop;
-        config_.spriteSheetRandomStart = defaults.spriteSheetRandomStart;
-        config_.alignToVelocity = defaults.alignToVelocity;
-        config_.velocityStretch = defaults.velocityStretch;
-        config_.particleType = defaults.particleType;
-        config_.trailLength = defaults.trailLength;
-        config_.receiveLighting = defaults.receiveLighting;
-        config_.lightDirection = defaults.lightDirection;
-        config_.lightColor = defaults.lightColor;
-        config_.lightingStrength = defaults.lightingStrength;
-        config_.fieldType = defaults.fieldType;
-        config_.fieldPosition = defaults.fieldPosition;
-        config_.fieldStrength = defaults.fieldStrength;
-        config_.fieldRadius = defaults.fieldRadius;
-        config_.fieldFalloff = defaults.fieldFalloff;
-        config_.maxParticles = defaults.maxParticles;
-        config_.lod = defaults.lod;
+        loaded.spriteSheetColumns = defaults.spriteSheetColumns;
+        loaded.spriteSheetRows = defaults.spriteSheetRows;
+        loaded.spriteSheetFrameCount = defaults.spriteSheetFrameCount;
+        loaded.spriteSheetFps = defaults.spriteSheetFps;
+        loaded.spriteSheetLoop = defaults.spriteSheetLoop;
+        loaded.spriteSheetRandomStart = defaults.spriteSheetRandomStart;
+        loaded.alignToVelocity = defaults.alignToVelocity;
+        loaded.velocityStretch = defaults.velocityStretch;
+        loaded.particleType = defaults.particleType;
+        loaded.trailLength = defaults.trailLength;
+        loaded.receiveLighting = defaults.receiveLighting;
+        loaded.lightDirection = defaults.lightDirection;
+        loaded.lightColor = defaults.lightColor;
+        loaded.lightingStrength = defaults.lightingStrength;
+        loaded.fieldType = defaults.fieldType;
+        loaded.fieldPosition = defaults.fieldPosition;
+        loaded.fieldStrength = defaults.fieldStrength;
+        loaded.fieldRadius = defaults.fieldRadius;
+        loaded.fieldFalloff = defaults.fieldFalloff;
+        loaded.maxParticles = defaults.maxParticles;
+        loaded.lod = defaults.lod;
 
-        GpuParticlePresetJsonCodec::Read(j, config_);
+        GpuParticlePresetJsonCodec::Read(j, loaded);
 
-        if (DebugConsole::GetInstance()) {
-            DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);
-        }
     }
+    config_ = std::move(loaded);
+    return true;
 }

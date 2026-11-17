@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "da9f2a60341038daac7cb977bd3dfd5b",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/stage_select_rain_ripple.json",
-  "version": 1
-}

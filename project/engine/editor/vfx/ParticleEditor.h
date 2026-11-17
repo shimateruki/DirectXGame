@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/editor/assets/JsonAssetBrowser.h"
 #include "IEditable.h"
 #include <string>
 
@@ -22,6 +23,7 @@ void DrawImGui() override;
     std::string GetName() override { return "Particle Editor"; }
 
 private:
+    JsonAssetBrowser files_;
     SceneManager* sceneManager_ = nullptr; // 現在シーンの取得元。借用参照。
     engine::ParticleSystem* targetSystem_ = nullptr;
     float previewTime_ = 0.0f;
@@ -29,6 +31,4 @@ private:
     int lastStageStopRequestSerial_ = 0; // 前回処理したプレビュー停止要求の番号。
     int lastStageSeekRequestSerial_ = 0; // 前回処理したプレビューシーク要求の番号。
     char textureSearch_[128] = {};
-    char presetSearch_[128] = {};
-    char saveName_[64] = "NewEffect";
 };

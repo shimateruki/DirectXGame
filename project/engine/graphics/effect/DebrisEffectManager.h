@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 
 #include "Object3DCommon.h"
 #include "MeshRenderer.h"
@@ -20,7 +21,7 @@ struct ID3D12Resource;
 /// <summary>破片の発生数、飛散速度、重力、衝突、見た目をまとめたプリセット設定。</summary>
 // 関連：DebrisEffectManager（この型を使う機能の本体）
 struct DebrisEffectConfig {
-    std::string name = "rock_burst";
+    std::string name = "shared/rock_burst";
     std::vector<std::string> modelNames = { "Primitives/cube" };
 
     int spawnCount = 18;
@@ -112,10 +113,10 @@ public:
     void LoadAllPresets(const std::string& directoryPath);
 
     /// <summary>単一の破片設定をファイルから読み込む。</summary>
-    bool LoadConfig(const std::string& filePath, DebrisEffectConfig& outConfig) const;
+    bool LoadConfig(const std::filesystem::path& filePath, DebrisEffectConfig& outConfig) const;
 
     /// <summary>破片設定をファイルに保存する。</summary>
-    bool SaveConfig(const std::string& filePath, const DebrisEffectConfig& config) const;
+    bool SaveConfig(const std::filesystem::path& filePath, const DebrisEffectConfig& config) const;
 
     /// <summary>名前付きの破片プリセットを登録する。</summary>
     void RegisterPreset(const std::string& presetName, const DebrisEffectConfig& config);
@@ -205,7 +206,7 @@ private:
     engine::Vector3 RandomDirection(const DebrisEffectConfig& config);
 
     // パス指定はそのまま使い、短い名前だけ標準プリセットディレクトリへ解決する。
-    std::string ResolvePresetPath(const std::string& presetName) const;
+    std::filesystem::path ResolvePresetPath(const std::string& presetName) const;
 
     engine::Object3DCommon* common_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;

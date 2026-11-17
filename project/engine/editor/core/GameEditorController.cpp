@@ -937,7 +937,10 @@ void GameEditorController::DrawStatusWindow(
 	float* drawTimeHistory,
 	int timeHistoryIndex) {
     // FPS、CPU/GPU負荷、時間倍率などを確認するステータスウィンドウを描画する。
-	ImGui::Begin("ステータス", &showTimeController_, ImGuiWindowFlags_HorizontalScrollbar);
+	if (!ImGui::Begin("ステータス", &showTimeController_, ImGuiWindowFlags_HorizontalScrollbar)) {
+		ImGui::End();
+		return;
+	}
 
 	float fps = ImGui::GetIO().Framerate;
 	ImGui::Text("FPS: %.1f", fps);

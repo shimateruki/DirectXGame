@@ -10,11 +10,11 @@
       "timing": { "windup": 1.12, "active": 1.72, "recovery": 0.70, "cooldown": 3.45, "warningLead": 0.34 },
       "combat": {
         "damage": 0.62,
-        "statusEffect": { "type": "burning", "duration": 2.8, "tickInterval": 0.55, "tickDamage": 0.14, "vfx": "status_burning_flame" }
+        "statusEffect": { "type": "burning", "duration": 2.8, "tickInterval": 0.55, "tickDamage": 0.14, "vfx": "shared/status_burning_flame" }
       },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.6 },
       "preview": { "targetDistance": 10.0, "duration": 6.4 },
-      "presentation": { "animation": "magma_mortar_recoil", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_mortar_trail", "impactVfx": "magma_slime_impact", "audioCue": "" }
+      "presentation": { "animation": "magma_mortar_recoil", "windupVfx": "enemy/magma_slime/magma_slime_charge", "activeVfx": "enemy/magma_slime/magma_slime_mortar_trail", "impactVfx": "enemy/magma_slime/magma_slime_impact", "audioCue": "" }
     },
     {
       "id": "lava_rush",
@@ -23,11 +23,11 @@
       "timing": { "windup": 0.88, "active": 0.82, "recovery": 0.82, "cooldown": 3.35, "warningLead": 0.28 },
       "combat": {
         "damage": 1.35,
-        "statusEffect": { "type": "burning", "duration": 2.5, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "status_burning_flame" }
+        "statusEffect": { "type": "burning", "duration": 2.5, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "shared/status_burning_flame" }
       },
       "movement": { "minSpeed": 16.0, "maxSpeed": 24.0, "lifetime": 0.82 },
       "preview": { "targetDistance": 9.0, "duration": 5.2 },
-      "presentation": { "animation": "lava_rush_squash", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_rush_wake", "impactVfx": "magma_slime_impact", "audioCue": "" }
+      "presentation": { "animation": "lava_rush_squash", "windupVfx": "enemy/magma_slime/magma_slime_charge", "activeVfx": "enemy/magma_slime/magma_slime_rush_wake", "impactVfx": "enemy/magma_slime/magma_slime_impact", "audioCue": "" }
     },
     {
       "id": "volcanic_slam",
@@ -36,11 +36,11 @@
       "timing": { "windup": 1.05, "active": 0.98, "recovery": 0.96, "cooldown": 4.2, "warningLead": 0.34 },
       "combat": {
         "damage": 1.55,
-        "statusEffect": { "type": "burning", "duration": 3.0, "tickInterval": 0.55, "tickDamage": 0.20, "vfx": "status_burning_flame" }
+        "statusEffect": { "type": "burning", "duration": 3.0, "tickInterval": 0.55, "tickDamage": 0.20, "vfx": "shared/status_burning_flame" }
       },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 1.0 },
       "preview": { "targetDistance": 6.5, "duration": 5.2 },
-      "presentation": { "animation": "magma_volcanic_slam", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_mortar_trail", "impactVfx": "magma_slime_slam_burst", "audioCue": "" }
+      "presentation": { "animation": "magma_volcanic_slam", "windupVfx": "enemy/magma_slime/magma_slime_charge", "activeVfx": "enemy/magma_slime/magma_slime_mortar_trail", "impactVfx": "enemy/magma_slime/magma_slime_slam_burst", "audioCue": "" }
     },
     {
       "id": "eruption_field",
@@ -49,11 +49,11 @@
       "timing": { "windup": 1.08, "active": 1.48, "recovery": 0.76, "cooldown": 3.85, "warningLead": 0.36 },
       "combat": {
         "damage": 1.05,
-        "statusEffect": { "type": "burning", "duration": 2.9, "tickInterval": 0.55, "tickDamage": 0.18, "vfx": "status_burning_flame" }
+        "statusEffect": { "type": "burning", "duration": 2.9, "tickInterval": 0.55, "tickDamage": 0.18, "vfx": "shared/status_burning_flame" }
       },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 1.5 },
       "preview": { "targetDistance": 9.0, "duration": 5.8 },
-      "presentation": { "animation": "eruption_field_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_geyser_burst", "impactVfx": "magma_slime_impact", "audioCue": "" }
+      "presentation": { "animation": "eruption_field_cast", "windupVfx": "enemy/magma_slime/magma_slime_charge", "activeVfx": "enemy/magma_slime/magma_slime_geyser_burst", "impactVfx": "enemy/magma_slime/magma_slime_impact", "audioCue": "" }
     },
     {
       "id": "lava_spiral",
@@ -62,11 +62,11 @@
       "timing": { "windup": 1.02, "active": 1.62, "recovery": 0.88, "cooldown": 4.0, "warningLead": 0.34 },
       "combat": {
         "damage": 0.75,
-        "statusEffect": { "type": "burning", "duration": 2.6, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "status_burning_flame" }
+        "statusEffect": { "type": "burning", "duration": 2.6, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "shared/status_burning_flame" }
       },
       "movement": { "minSpeed": 8.0, "maxSpeed": 15.0, "lifetime": 1.6 },
       "preview": { "targetDistance": 7.0, "duration": 5.9 },
-      "presentation": { "animation": "lava_spiral_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_spiral_surge", "impactVfx": "magma_slime_impact", "audioCue": "" }
+      "presentation": { "animation": "lava_spiral_cast", "windupVfx": "enemy/magma_slime/magma_slime_charge", "activeVfx": "enemy/magma_slime/magma_slime_spiral_surge", "impactVfx": "enemy/magma_slime/magma_slime_impact", "audioCue": "" }
     },
     {
       "id": "fire_column",
@@ -75,11 +75,11 @@
       "timing": { "windup": 1.50, "active": 3.40, "recovery": 0.78, "cooldown": 3.70, "warningLead": 0.36 },
       "combat": {
         "damage": 0.52,
-        "statusEffect": { "type": "burning", "duration": 2.8, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "status_burning_flame" }
+        "statusEffect": { "type": "burning", "duration": 2.8, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "shared/status_burning_flame" }
       },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.40 },
       "preview": { "targetDistance": 16.0, "duration": 7.8 },
-      "presentation": { "animation": "fire_column_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_fire_column_stream", "impactVfx": "magma_slime_impact", "audioCue": "" }
+      "presentation": { "animation": "fire_column_cast", "windupVfx": "enemy/magma_slime/magma_slime_charge", "activeVfx": "enemy/magma_slime/magma_slime_fire_column_stream", "impactVfx": "enemy/magma_slime/magma_slime_impact", "audioCue": "" }
     },
     {
       "id": "magma_flood",
@@ -88,11 +88,11 @@
       "timing": { "windup": 1.28, "active": 2.55, "recovery": 0.92, "cooldown": 4.85, "warningLead": 0.42 },
       "combat": {
         "damage": 0.65,
-        "statusEffect": { "type": "burning", "duration": 3.1, "tickInterval": 0.58, "tickDamage": 0.18, "vfx": "status_burning_flame" }
+        "statusEffect": { "type": "burning", "duration": 3.1, "tickInterval": 0.58, "tickDamage": 0.18, "vfx": "shared/status_burning_flame" }
       },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 2.55 },
       "preview": { "targetDistance": 9.0, "duration": 7.8 },
-      "presentation": { "animation": "magma_flood_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_flood_splash", "impactVfx": "magma_slime_impact", "audioCue": "" }
+      "presentation": { "animation": "magma_flood_cast", "windupVfx": "enemy/magma_slime/magma_slime_charge", "activeVfx": "enemy/magma_slime/magma_slime_flood_splash", "impactVfx": "enemy/magma_slime/magma_slime_impact", "audioCue": "" }
     }
   ]
 }

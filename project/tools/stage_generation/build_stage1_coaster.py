@@ -13,7 +13,7 @@ from dress_entry_garden import Mesh
 ROOT = Path(__file__).resolve().parents[2]
 SCENE = ROOT/'Resources/json/3Dobject/stage1_object.json'
 ENEMIES = ROOT/'Resources/json/3Dobject/stage1_enemy.json'
-ASSET = ROOT/'Resources/json/scenario/stage1_coaster.json'
+ASSET = ROOT/'Resources/json/scenario/stage1/stage1_coaster.json'
 MODELS = ROOT/'Resources/3DModel/Stages/coaster'
 PREFIX = 'Stage1_Coaster_'
 
@@ -143,7 +143,7 @@ def validate(scene,enemies,sequence):
     assert not any(o['name'].startswith('Stage1_V4_Appearing') for o in scene['objects'])
     assert sum(o['name'].startswith('Stage1_StarCoin_') for o in scene['objects'])==3
     floor=by[PREFIX+'Deck']
-    assert floor['components']['PathMover']['rideSequence']=='Resources/json/scenario/stage1_coaster.json'
+    assert floor['components']['PathMover']['rideSequence']=='Resources/json/scenario/stage1/stage1_coaster.json'
     assert not floor['recorder']['recordPathName']
     keys=sequence['tracks'][0]['keys']
     assert all(a['time']<b['time'] for a,b in zip(keys,keys[1:]))
@@ -270,7 +270,7 @@ def main():
         collider=dict(type=3,center=[0,-.4,0],size=[10,1,7],rotation=[0,0,0]),
         recorder=dict(recordPathName='',isRecordLoop=False,isRecordRelative=False),
         components={'PathMover':dict(version=1,_editorPresent=True,path='',loop=False,relative=False,
-            rideSequence='Resources/json/scenario/stage1_coaster.json')})
+            rideSequence='Resources/json/scenario/stage1/stage1_coaster.json')})
     scene['objects'].append(floor)
     star=by['Stage1_StarCoin_03'];star['position']=[756,34.5,51]
     # 星の取得ID/GUIDは変更しない。コイン列は任意ジャンプの方向を示す。

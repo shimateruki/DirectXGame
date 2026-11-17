@@ -285,33 +285,11 @@ void TrailEmitterEditor::DrawImGui() {
     ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.1f, 1.0f), ICON_FA_FIRE " Trail Emitter Editor");
     ImGui::Separator();
 
-    // ── 保存・読み込み ──
-    ImGui::SetNextItemWidth(160.0f);
-    ImGui::InputText("##ConfigName", configNameBuf_, sizeof(configNameBuf_));
-    ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_SAVE " 保存"))
-        Save(configNameBuf_);
-    ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_SYNC " 更新"))
-        RefreshFileLists();
-
-    if (!savedConfigList_.empty()) {
-        if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 設定読み込み", configNameBuf_)) {
-            for (auto& name : savedConfigList_) {
-                bool sel = (std::string(configNameBuf_) == name);
-
-                if (ImGui::Selectable(name.c_str(), sel)) {
-                    strcpy_s(configNameBuf_, sizeof(configNameBuf_), name.c_str());
-                    Load(name);
-                }
-
-                if (sel)
-                    ImGui::SetItemDefaultFocus();
-            }
-
-            ImGui::EndCombo();
-        }
-    }
+    files_.Draw("トレイルJSONファイル", "Resources/json/trail_emitter",
+        [this](const fs::path& path) { return Load(path); },
+        [this](const fs::path& path, const std::string&) { return Save(path); },
+        [this] { emitter_.GetConfig() = TrailEmitterConfig{}; });
+    if (ImGui::Button(ICON_FA_SYNC " 素材一覧を更新")) RefreshFileLists();
 
     ImGui::Separator();
 
@@ -535,33 +513,15 @@ void TrailEmitterEditor::DrawImGui() {
 // ============================================================
 void TrailEmitterEditor::RefreshFileLists() {
     // 選択欄には実在するJSONの名前だけを並べ、保存後も同じ一覧を更新する。
-    meshEffectList_.clear();
-    gpuParticleList_.clear();
-    savedConfigList_.clear();
-
-    auto scanDir = [](const std::string& dir, std::vector<std::string>& out) {
-        if (!fs::exists(dir))
-            return;
-        for (auto& entry : fs::directory_iterator(dir)) {
-            if (entry.path().extension() == ".json")
-                out.push_back(entry.path().stem().string());
-        }
-    };
-
-    scanDir("Resources/json/effect/",       meshEffectList_);
-    scanDir("Resources/json/gpu_particles/", gpuParticleList_);
-    scanDir("Resources/json/trail_emitter/", savedConfigList_);
+    meshEffectList_ = JsonAssetBrowser::ListKeys("Resources/json/effect");
+    gpuParticleList_ = JsonAssetBrowser::ListKeys("Resources/json/gpu_particles");
 }
 
 // ============================================================
 //  Save
 // ============================================================
-void TrailEmitterEditor::Save(const std::string& name) {
-    // 軌跡の参照プリセットと放出条件をJSONに書き出し、一覧へ即時反映する。
-    if (name.empty())
-        return;
-    fs::create_directories("Resources/json/trail_emitter/");
-
+bool TrailEmitterEditor::Save(const fs::path& path) {
+    // 軌跡の参照プリセットと放出条件を既存のJSON形式で書き出す。
     TrailEmitterConfig& cfg = emitter_.GetConfig();
     json j;
     j["meshEffectPreset"]  = cfg.meshEffectPreset;
@@ -572,28 +532,25 @@ void TrailEmitterEditor::Save(const std::string& name) {
     j["emitParticle"]      = cfg.emitParticle;
     j["autoOrient"]        = cfg.autoOrient;
 
-    std::ofstream f("Resources/json/trail_emitter/" + name + ".json");
-
-    if (f.is_open()) {
-        f << j.dump(4);
-        f.close();
-    }
-    RefreshFileLists();
+    std::ofstream file(path);
+    file << j.dump(4);
+    file.close();
+    return file.good();
 }
 
 // ============================================================
 //  Load
 // ============================================================
-void TrailEmitterEditor::Load(const std::string& name) {
+bool TrailEmitterEditor::Load(const fs::path& path) {
     // 保存された放出条件をエミッターへ反映し、参照する素材名も復元する。
-    std::ifstream f("Resources/json/trail_emitter/" + name + ".json");
-    if (!f.is_open())
-        return;
+    std::ifstream f(path);
+    if (!f) return false;
     json j;
     f >> j;
     f.close();
 
-    TrailEmitterConfig& cfg = emitter_.GetConfig();
+    if (!j.is_object()) return false;
+    auto cfg = emitter_.GetConfig();
     if (j.contains("meshEffectPreset"))
         cfg.meshEffectPreset  = j["meshEffectPreset"];
     if (j.contains("gpuParticlePreset"))
@@ -611,4 +568,6 @@ void TrailEmitterEditor::Load(const std::string& name) {
         cfg.emitParticle      = j["emitParticle"];
     if (j.contains("autoOrient"))
         cfg.autoOrient        = j["autoOrient"];
+    emitter_.GetConfig() = std::move(cfg);
+    return true;
 }

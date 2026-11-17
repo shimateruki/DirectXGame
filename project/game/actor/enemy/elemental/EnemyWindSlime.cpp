@@ -46,22 +46,22 @@ constexpr float kVolleyOrbVisualScale = 0.46f;
 constexpr int kVolleyOrbCount = 3;
 constexpr float kVolleyImpactLateralSpacing = 1.05f;
 constexpr float kVolleyImpactForwardSpacing = 0.38f;
-constexpr const char* kIdlePreset = "wind_slime_idle_wisp";
-constexpr const char* kChargePreset = "wind_slime_charge";
-constexpr const char* kBreathStreamPreset = "wind_slime_breath_stream";
-constexpr const char* kBreathDustPreset = "wind_slime_breath_dust";
-constexpr const char* kBurstPreset = "wind_slime_gust_burst";
-constexpr const char* kImpactPreset = "wind_slime_gust_impact";
-constexpr const char* kOrbHoldPreset = "wind_slime_orb_hold";
-constexpr const char* kUpdraftPreset = "player_wind_updraft";
-constexpr const char* kSoarTrailPreset = "player_wind_dash";
-constexpr const char* kBurstRingEffectPath = "Resources/json/effect/effect_wind_gust_ring.json";
-constexpr const char* kUpdraftSpiralEffectPath = "Resources/json/effect/effect_player_wind_updraft_spiral.json";
+constexpr const char* kIdlePreset = "enemy/wind_slime/wind_slime_idle_wisp";
+constexpr const char* kChargePreset = "shared/wind_slime_charge";
+constexpr const char* kBreathStreamPreset = "shared/wind_slime_breath_stream";
+constexpr const char* kBreathDustPreset = "shared/wind_slime_breath_dust";
+constexpr const char* kBurstPreset = "enemy/wind_slime/wind_slime_gust_burst";
+constexpr const char* kImpactPreset = "shared/wind_slime_gust_impact";
+constexpr const char* kOrbHoldPreset = "enemy/wind_slime/wind_slime_orb_hold";
+constexpr const char* kUpdraftPreset = "shared/player_wind_updraft";
+constexpr const char* kSoarTrailPreset = "shared/player_wind_dash";
+constexpr const char* kBurstRingEffectPath = "Resources/json/effect/shared/effect_wind_gust_ring.json";
+constexpr const char* kUpdraftSpiralEffectPath = "Resources/json/effect/shared/effect_player_wind_updraft_spiral.json";
 constexpr const char* kUpdraftCounterSpiralEffectPath =
-    "Resources/json/effect/effect_player_wind_updraft_spiral_counter.json";
-constexpr const char* kSoarLaunchEffectPath = "Resources/json/effect/effect_player_wind_soar_launch.json";
-constexpr const char* kSlowFallEffectPath = "Resources/json/effect/effect_player_wind_slow_fall.json";
-constexpr const char* kSoarLandEffectPath = "Resources/json/effect/effect_player_wind_soar_land.json";
+    "Resources/json/effect/shared/effect_player_wind_updraft_spiral_counter.json";
+constexpr const char* kSoarLaunchEffectPath = "Resources/json/effect/shared/effect_player_wind_soar_launch.json";
+constexpr const char* kSlowFallEffectPath = "Resources/json/effect/shared/effect_player_wind_slow_fall.json";
+constexpr const char* kSoarLandEffectPath = "Resources/json/effect/shared/effect_player_wind_soar_land.json";
 
 
 

@@ -133,8 +133,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         stageDecisionCooldown_ = 0.0f;
         isChangingStage_ = false;
         unlockingStageIndex_ = -1;
-        unlockPresentationTimer_ = 0.0f;
-        unlockParticleTimer_ = 0.0f;
+        unlockTime_ = {};
         unlockPresentationInitialized_ = false;
         unlockPresentationDebugReplay_ = false;
         unlockHadPlayerControl_ = true;
@@ -915,13 +914,13 @@ void GameSelectScene::ApplyStageGateStates() {
         const bool unlockTimelineReady = unlocking && unlockPresentationInitialized_;
         const float gateUnlockT =
             unlockTimelineReady ? SelectEaseInOutCubic(SelectClamp01(
-                                      (unlockPresentationTimer_ - unlockGateActivationTime_) /
+                                      (unlockTime_.Elapsed() - unlockGateActivationTime_) /
                                       std::max(unlockGateActivationEndTime_ - unlockGateActivationTime_, 0.001f)))
                                 : 0.0f;
 
         // カメラが正面へ到着するまでは、解放済みのセーブデータであっても閉じたゲートとして描画します。
         const bool gateVisualUnlocked =
-            unlocking ? (unlockTimelineReady && unlockPresentationTimer_ >= unlockGateActivationTime_) : unlocked;
+            unlocking ? (unlockTimelineReady && unlockTime_.Elapsed() >= unlockGateActivationTime_) : unlocked;
         if (engine::Object3D* lockSeal = FindObjectByName(std::string(kStageGateLockPrefix) + std::to_string(stageIndex))) {
             // 演出中は Director が表示と発光を所有し、通常の選択表示で上書きしない。
             if (!unlockTimelineReady) {
@@ -1029,8 +1028,7 @@ void GameSelectScene::RefreshDebugStageStates() {
 
     previousSelectedStageIndex_ = -1;
     unlockingStageIndex_ = FindPendingUnlockStage();
-    unlockPresentationTimer_ = 0.0f;
-    unlockParticleTimer_ = 0.0f;
+    unlockTime_ = {};
     ApplyStageGateStates();
     UpdateStageSelectDecorations(0.0f);
 }
